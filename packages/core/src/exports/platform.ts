@@ -228,6 +228,8 @@ export {
   themePreferenceSchema,
   accentColorSchema,
   ACCENT_COLOR_IDS,
+  customAccentColorSchema,
+  DEFAULT_CUSTOM_ACCENT,
   timeFormatSchema,
   dateFormatSchema,
   weekStartDaySchema,

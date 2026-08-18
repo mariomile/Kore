@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from 'react'
 import type { ThemePreference } from '@reflect/core'
+import { deriveAccentTokens } from '@/lib/accent-color'
 import { writeCachedAccentColor, writeCachedThemePreference } from '@/lib/theme-cache'
 import { useSettings, type SettingsLoadOutcome } from '@/providers/settings-provider'
 
@@ -62,6 +63,7 @@ export function ThemeProvider({ children }: ThemeProviderProps): ReactElement {
   const { settings, updateSettings, whenSettingsLoaded } = useSettings()
   const theme = settings.theme
   const accentColor = settings.accentColor
+  const customAccentColor = settings.customAccentColor
   const [systemTheme, setSystemTheme] = useState<ResolvedTheme>(getSystemTheme)
   const [loadOutcome, setLoadOutcome] = useState<SettingsLoadOutcome | null>(null)
 
@@ -99,7 +101,25 @@ export function ThemeProvider({ children }: ThemeProviderProps): ReactElement {
     root.setAttribute('data-theme', resolvedTheme)
     root.setAttribute('data-accent', accentColor)
     root.style.colorScheme = dark ? 'dark' : 'light'
-  }, [loadOutcome, resolvedTheme, accentColor])
+    // Preset accents resolve through the design-system's `[data-accent]`
+    // scopes; a custom hex has no scope, so its derived ramp is applied as
+    // inline custom properties (which outrank every stylesheet scope) and
+    // cleared the moment a preset takes over.
+    if (accentColor === 'custom') {
+      const tokens = deriveAccentTokens(customAccentColor, dark)
+      root.style.setProperty('--accent', tokens.accent)
+      root.style.setProperty('--accent-hover', tokens.accentHover)
+      root.style.setProperty('--accent-soft', tokens.accentSoft)
+      root.style.setProperty('--accent-soft-text', tokens.accentSoftText)
+      root.style.setProperty('--focus-ring', tokens.focusRing)
+    } else {
+      root.style.removeProperty('--accent')
+      root.style.removeProperty('--accent-hover')
+      root.style.removeProperty('--accent-soft')
+      root.style.removeProperty('--accent-soft-text')
+      root.style.removeProperty('--focus-ring')
+    }
+  }, [loadOutcome, resolvedTheme, accentColor, customAccentColor])
 
   // Only a loaded document is worth caching: after a failed load changes apply
   // for the session only, so mirroring them would have the next launch paint a

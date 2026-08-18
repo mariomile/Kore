@@ -5,7 +5,7 @@ import type { ReactNode } from 'react'
 import { setBridge } from '@reflect/core'
 import { resetOperations } from '@/lib/operations'
 import { THEME_ACCENT_CACHE_KEY, THEME_PREFERENCE_CACHE_KEY } from '@/lib/theme-cache'
-import { SETTINGS_QUERY_KEY, SettingsProvider } from './settings-provider'
+import { SETTINGS_QUERY_KEY, SettingsProvider, useSettings } from './settings-provider'
 import { ThemeProvider, useTheme } from './theme-provider'
 
 /**
@@ -208,6 +208,27 @@ describe('ThemeProvider', () => {
     await settleLoad(act)
     expect(document.documentElement.getAttribute('data-accent')).toBe('teal')
     expect(localStorage.getItem(THEME_ACCENT_CACHE_KEY)).toBe('teal')
+  })
+
+  it('applies a custom accent as inline tokens and clears them for presets', async () => {
+    stored = { theme: 'light', accentColor: 'custom', customAccentColor: '#0d9488' }
+
+    const { result, act } = await renderHook(
+      () => ({ theme: useTheme(), settings: useSettings() }),
+      { wrapper },
+    )
+    await settleLoad(act)
+    const rootStyle = document.documentElement.style
+    expect(rootStyle.getPropertyValue('--accent')).toBe('#0d9488')
+    expect(rootStyle.getPropertyValue('--accent-soft')).not.toBe('')
+
+    // Switching back to a preset must drop the inline overrides, or they
+    // would shadow every `[data-accent]` scope forever.
+    await act(() => {
+      result.current.settings.updateSettings({ accentColor: 'teal' })
+    })
+    expect(rootStyle.getPropertyValue('--accent')).toBe('')
+    expect(document.documentElement.getAttribute('data-accent')).toBe('teal')
   })
 
   it('applies but does not cache a preference after a failed load', async () => {

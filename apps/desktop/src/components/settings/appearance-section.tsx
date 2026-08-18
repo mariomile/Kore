@@ -23,12 +23,14 @@ const THEME_OPTIONS: ThemeOption[] = [
   { value: 'paper', label: 'Paper', icon: Feather },
 ]
 
+type PresetAccentColor = Exclude<AccentColor, 'custom'>
+
 /**
- * The swatch each accent id paints in the picker: the light-theme `--accent`
- * value from the design-system ramps. A static map rather than the live CSS
- * variable so every swatch shows its own hue, not the currently applied one.
+ * The swatch each preset accent paints in the picker: the light-theme
+ * `--accent` value from the design-system ramps. A static map rather than the
+ * live CSS variable so every swatch shows its own hue, not the applied one.
  */
-const ACCENT_SWATCHES: Record<AccentColor, string> = {
+const ACCENT_SWATCHES: Record<PresetAccentColor, string> = {
   indigo: '#4f46e5',
   purple: '#7c3aed',
   blue: '#2563eb',
@@ -39,7 +41,7 @@ const ACCENT_SWATCHES: Record<AccentColor, string> = {
   red: '#dc2626',
 }
 
-const ACCENT_LABELS: Record<AccentColor, string> = {
+const ACCENT_LABELS: Record<PresetAccentColor, string> = {
   indigo: 'Indigo',
   purple: 'Purple',
   blue: 'Blue',
@@ -97,7 +99,7 @@ export function AppearanceSection(): ReactElement {
         legend="Accent color"
         description="The highlight color for buttons, selection, and today's date."
       >
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="mt-3 flex flex-wrap items-center gap-2">
           {ACCENT_COLOR_IDS.map((accent) => {
             const selected = settings.accentColor === accent
             return (
@@ -127,6 +129,45 @@ export function AppearanceSection(): ReactElement {
               </label>
             )
           })}
+          <label
+            title="Custom"
+            className={cn(
+              'flex size-8 cursor-pointer items-center justify-center rounded-full border transition-colors duration-100',
+              'has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-focus-ring',
+              settings.accentColor === 'custom'
+                ? 'border-text'
+                : 'border-transparent hover:border-border-strong',
+            )}
+          >
+            <input
+              type="radio"
+              name="accent-color"
+              value="custom"
+              checked={settings.accentColor === 'custom'}
+              onChange={() => updateSettings({ accentColor: 'custom' })}
+              className="sr-only"
+              aria-label="Custom"
+            />
+            <span
+              aria-hidden
+              className="size-5 rounded-full"
+              style={{
+                background:
+                  settings.accentColor === 'custom'
+                    ? settings.customAccentColor
+                    : 'conic-gradient(#ef4444, #f59e0b, #22c55e, #3b82f6, #8b5cf6, #ef4444)',
+              }}
+            />
+          </label>
+          {settings.accentColor === 'custom' ? (
+            <input
+              type="color"
+              aria-label="Custom accent color"
+              value={settings.customAccentColor}
+              onChange={(event) => updateSettings({ customAccentColor: event.target.value })}
+              className="h-8 w-12 cursor-pointer rounded-md border border-border bg-transparent p-0.5"
+            />
+          ) : null}
         </div>
       </SettingsField>
     </SettingsSection>

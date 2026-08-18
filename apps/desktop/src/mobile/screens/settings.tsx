@@ -62,7 +62,8 @@ const THEME_OPTIONS: readonly SegmentedOption<ThemePreference>[] = [
 ]
 
 // Swatch fills mirror the desktop picker: each accent's light-theme value.
-const ACCENT_SWATCHES: Record<AccentColor, string> = {
+// The `custom` accent is desktop-configured; mobile offers the presets.
+const ACCENT_SWATCHES: Record<Exclude<AccentColor, 'custom'>, string> = {
   indigo: '#4f46e5',
   purple: '#7c3aed',
   blue: '#2563eb',

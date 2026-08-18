@@ -190,14 +190,31 @@ const accentColorEnum = z.enum([
   'amber',
   'rose',
   'red',
+  'custom',
 ])
 
 export const accentColorSchema = accentColorEnum.catch('indigo')
 
 export type AccentColor = z.infer<typeof accentColorSchema>
 
-/** Every accent color id, in the order pickers should display them. */
-export const ACCENT_COLOR_IDS = accentColorEnum.options
+/** The preset accent ids, in picker order — `custom` renders as its own swatch. */
+export const ACCENT_COLOR_IDS = accentColorEnum.options.filter(
+  (id): id is Exclude<AccentColor, 'custom'> => id !== 'custom',
+)
+
+/** The stock indigo accent — the custom color's starting value. */
+export const DEFAULT_CUSTOM_ACCENT = '#4f46e5'
+
+/**
+ * The hex color applied when {@link accentColorSchema} is `custom`. Stored
+ * normalized to lowercase `#rrggbb`; an invalid value degrades to the stock
+ * indigo so a hand-edit can't paint the app with an unparsable color.
+ */
+export const customAccentColorSchema = z
+  .string()
+  .regex(/^#[0-9a-f]{6}$/i)
+  .transform((value) => value.toLowerCase())
+  .catch(DEFAULT_CUSTOM_ACCENT)
 
 /**
  * How times of day are displayed throughout the app. `12h` (the default)
@@ -647,6 +664,7 @@ export const settingsSchema = z.looseObject({
   paywallSnoozeUntil: paywallSnoozeUntilSchema,
   theme: themePreferenceSchema,
   accentColor: accentColorSchema,
+  customAccentColor: customAccentColorSchema,
   timeFormat: timeFormatSchema,
   dateFormat: dateFormatSchema,
   weekStartDay: weekStartDaySchema,

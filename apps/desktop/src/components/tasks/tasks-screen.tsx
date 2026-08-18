@@ -8,7 +8,7 @@ import {
   type ReactElement,
 } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Archive, CalendarClock, List, Search } from 'lucide-react'
+import { Archive, CalendarClock, Flag, List, Search } from 'lucide-react'
 import {
   cycleTaskContentPriority,
   getCompletedTasks,
@@ -291,6 +291,20 @@ export function TasksScreen(): ReactElement {
               <TaskToolbarCountBadge count={selection.selectedCount} />
             </Button>
           </TaskScheduleCalendar>
+        ) : null}
+        {selection.selectedCount > 0 ? (
+          <Button
+            type="button"
+            variant="ghost"
+            aria-label={`Priority ${selection.selectedCount}`}
+            onClick={onCyclePriority}
+            title="Cycle the selection's priority: none → ! → !! (⌘⇧P)"
+            className="window-drag-control text-xs text-text-muted"
+          >
+            <Flag aria-hidden className="size-3.5" />
+            Priority
+            <TaskToolbarCountBadge count={selection.selectedCount} />
+          </Button>
         ) : null}
         {selection.selectedCount > 0 ? (
           <Button

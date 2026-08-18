@@ -25,6 +25,7 @@ describe('settingsSchema', () => {
       paywallSnoozeUntil: 0,
       theme: 'system',
       accentColor: 'indigo',
+      customAccentColor: '#4f46e5',
       timeFormat: '12h',
       dateFormat: 'mdy',
       weekStartDay: 'monday',
@@ -120,6 +121,8 @@ describe('settingsSchema', () => {
     expect(settingsSchema.parse({ theme: 'paper' }).theme).toBe('paper')
     expect(settingsSchema.parse({ accentColor: 'teal' }).accentColor).toBe('teal')
     expect(settingsSchema.parse({ accentColor: 'indigo' }).accentColor).toBe('indigo')
+    expect(settingsSchema.parse({ accentColor: 'custom' }).accentColor).toBe('custom')
+    expect(settingsSchema.parse({ customAccentColor: '#A1B2C3' }).customAccentColor).toBe('#a1b2c3')
     expect(settingsSchema.parse({ editorFontFamily: 'serif' }).editorFontFamily).toBe('serif')
     expect(settingsSchema.parse({ editorFontFamily: 'system' }).editorFontFamily).toBe('system')
     expect(settingsSchema.parse({ editorFontFamily: 'mono' }).editorFontFamily).toBe('mono')
@@ -209,6 +212,8 @@ describe('settingsSchema', () => {
     expect(settingsSchema.parse({ theme: 7 }).theme).toBe('system')
     expect(settingsSchema.parse({ accentColor: 'chartreuse' }).accentColor).toBe('indigo')
     expect(settingsSchema.parse({ accentColor: 7 }).accentColor).toBe('indigo')
+    expect(settingsSchema.parse({ customAccentColor: 'tomato' }).customAccentColor).toBe('#4f46e5')
+    expect(settingsSchema.parse({ customAccentColor: '#fff' }).customAccentColor).toBe('#4f46e5')
     expect(settingsSchema.parse({ editorFontFamily: 'comic-sans' }).editorFontFamily).toBe('sans')
     expect(settingsSchema.parse({ editorFontFamily: 3 }).editorFontFamily).toBe('sans')
     expect(settingsSchema.parse({ editorLineSpacing: 'double' }).editorLineSpacing).toBe('normal')
@@ -274,6 +279,7 @@ describe('settingsSchema', () => {
       paywallSnoozeUntil: 0,
       theme: 'system',
       accentColor: 'indigo',
+      customAccentColor: '#4f46e5',
       timeFormat: '12h',
       dateFormat: 'mdy',
       weekStartDay: 'monday',

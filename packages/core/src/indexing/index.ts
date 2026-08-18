@@ -106,6 +106,13 @@ export {
   type TaskGroupKind,
 } from './group-tasks'
 export {
+  nextOccurrenceContent,
+  nextOccurrenceDate,
+  taskContentDueDate,
+  taskContentRepeat,
+  type TaskRepeat,
+} from './task-repeat'
+export {
   compareTaskPriority,
   cycleTaskContentPriority,
   stripTaskContentPriority,

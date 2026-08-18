@@ -3,9 +3,12 @@ import {
   appendTaskLine,
   editTaskLine,
   isAppError,
+  nextOccurrenceContent,
   parseNote,
+  parseTaskMarker,
   readNote,
   removeTaskLine,
+  taskContentRepeat,
   taskLineToBullet,
   toggleTaskMarker,
   writeNote,
@@ -13,6 +16,8 @@ import {
 } from '@reflect/core'
 import type { NoteSession } from '@/editor/note-session'
 import { openSession } from '@/editor/open-documents'
+import { todayIso } from '@/lib/dates'
+import { taskContent } from '@/lib/tasks/task-content'
 
 /** The marker coordinates ({@link TaskMarker}) plus the note they live in. */
 export interface TaskRef extends TaskMarker {
@@ -117,14 +122,58 @@ function applyTaskChange(
  * Toggle a task's checkbox from the Tasks view (Plan 18). The open-tasks view
  * only ever flips `[ ]`→`[x]`, but the primitive toggles, hence the name; the
  * disk path is byte-exact (only the three marker characters change).
+ *
+ * Completing a task that carries a `@repeat(…)` token additionally spawns its
+ * next occurrence into the same note (see {@link spawnNextOccurrence}).
  */
-export function toggleTask(task: TaskRef, generation: number): Promise<void> {
-  return applyTaskChange(
+export async function toggleTask(task: TaskRef, generation: number): Promise<void> {
+  await applyTaskChange(
     task,
     generation,
     (owner, marker) => owner.commitTaskToggle(marker),
     (source, marker) => toggleTaskMarker(source, marker).source,
   )
+  await spawnNextOccurrence(task, generation)
+}
+
+/**
+ * After a recurring task completes, append its next occurrence to the note:
+ * the same content with the due-date link advanced by the repeat interval
+ * (appended when the task had none), so the repeat token rides along and the
+ * new task recurs in turn. Best-effort by design — the completion itself has
+ * already been persisted, so a spawn that cannot run (the note is open in a
+ * live editor session, which owns the buffer, or the append write fails)
+ * skips silently rather than surfacing a misleading "completing failed".
+ */
+async function spawnNextOccurrence(task: TaskRef, generation: number): Promise<void> {
+  const marker = parseTaskMarker(task.raw.slice(0, 3))
+  if (marker === null || marker.checked) {
+    return // a reopen, not a completion
+  }
+  const content = taskContent(task.raw)
+  const repeat = taskContentRepeat(content)
+  if (repeat === null) {
+    return
+  }
+  const next = nextOccurrenceContent(content, repeat, todayIso())
+  try {
+    await serializeByPath(task.notePath, async () => {
+      if (openSession(task.notePath) !== null) {
+        return
+      }
+      const source = await readNote(task.notePath)
+      const appended = appendTaskLine(source)
+      const filled = editTaskLine(
+        appended.source,
+        { markerOffset: appended.markerOffset, raw: '[ ] ' },
+        next,
+      )
+      await writeNote(task.notePath, filled, generation)
+    })
+  } catch {
+    // Best-effort: the completion stands; the next occurrence just isn't
+    // written. The task's repeat token is still in the note history.
+  }
 }
 
 /**

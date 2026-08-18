@@ -113,6 +113,78 @@ describe('toggleTask', () => {
   })
 })
 
+describe('recurring tasks', () => {
+  const repeatSource = '+ [ ] water plants @repeat(daily)\n'
+  const repeatTask = {
+    notePath: 'notes/a.md',
+    markerOffset: 2,
+    raw: '[ ] water plants @repeat(daily)',
+  }
+
+  it('appends the next occurrence after completing a repeat task on disk', async () => {
+    openSession.mockReturnValue(null)
+    readNote.mockResolvedValue(repeatSource)
+    writeNote.mockResolvedValue(undefined)
+
+    await toggleTask(repeatTask, 7)
+    // First write toggles the marker; the second appends the next occurrence
+    // with the repeat token intact and a fresh due-date link.
+    expect(writeNote).toHaveBeenCalledTimes(2)
+    const appended = writeNote.mock.calls[1]?.[1] as string
+    expect(appended).toMatch(/\+ \[ \] water plants @repeat\(daily\) \[\[\d{4}-\d{2}-\d{2}\]\]\n$/)
+  })
+
+  it('advances an existing due-date link instead of appending a second one', async () => {
+    openSession.mockReturnValue(null)
+    const source = '+ [ ] pay rent [[2026-07-01]] @repeat(monthly)\n'
+    readNote.mockResolvedValue(source)
+    writeNote.mockResolvedValue(undefined)
+
+    await toggleTask(
+      {
+        notePath: 'notes/a.md',
+        markerOffset: 2,
+        raw: '[ ] pay rent [[2026-07-01]] @repeat(monthly)',
+      },
+      7,
+    )
+    const appended = writeNote.mock.calls[1]?.[1] as string
+    const dates = [...appended.matchAll(/\[\[(\d{4}-\d{2}-\d{2})\]\]/g)].map((match) => match[1])
+    expect(dates).toHaveLength(2) // the completed line's date + the new line's
+    expect(appended).not.toContain('[[2026-07-01]] @repeat(monthly) [[')
+  })
+
+  it('does not spawn on a reopen', async () => {
+    openSession.mockReturnValue(null)
+    readNote.mockResolvedValue('+ [x] water plants @repeat(daily)\n')
+    writeNote.mockResolvedValue(undefined)
+
+    await toggleTask(
+      { notePath: 'notes/a.md', markerOffset: 2, raw: '[x] water plants @repeat(daily)' },
+      7,
+    )
+    expect(writeNote).toHaveBeenCalledTimes(1)
+  })
+
+  it('skips the spawn while the note is open in a live session', async () => {
+    const commitTaskToggle = vi.fn().mockResolvedValue(true)
+    openSession.mockReturnValue({ commitTaskToggle })
+
+    await toggleTask(repeatTask, 7)
+    expect(commitTaskToggle).toHaveBeenCalledTimes(1)
+    expect(writeNote).not.toHaveBeenCalled()
+  })
+
+  it('keeps the completion when the spawn write fails', async () => {
+    openSession.mockReturnValue(null)
+    readNote.mockResolvedValue(repeatSource)
+    writeNote.mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('disk full'))
+
+    await expect(toggleTask(repeatTask, 7)).resolves.toBeUndefined()
+    expect(writeNote).toHaveBeenCalledTimes(2)
+  })
+})
+
 describe('editTask', () => {
   it('writes the rewritten content to disk when the note is not open', async () => {
     openSession.mockReturnValue(null)

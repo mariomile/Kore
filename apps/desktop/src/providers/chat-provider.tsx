@@ -21,8 +21,9 @@ import {
   loadChatMessages,
   resolveChatModel,
   saveChatMessage,
+  isCliAgentProvider,
   streamChat,
-  streamClaudeCliChat,
+  streamCliAgentChat,
   userMessage,
   type AiProviderConfig,
   type ChatConversation,
@@ -291,11 +292,11 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
 
       try {
         const events = await (async () => {
-          if (config.provider === 'claude-cli') {
-            // The subscription engine: the CLI reads the graph itself, so it
-            // needs the private-note deny list, not an API key. A cold index
-            // degrades to no deny list additions being missed — the query
-            // reads the same projection the tools would.
+          if (isCliAgentProvider(config.provider)) {
+            // The subscription engines: the CLI reads the graph itself, so
+            // they need the private-note deny list, not an API key. Refusing
+            // on a failed read is deliberate — running without the deny list
+            // would drop the privacy hard block.
             const privateNotePaths = await listPrivateNotePaths().catch((cause: unknown) => {
               console.error('private-note list failed:', errorMessage(cause))
               return null
@@ -303,7 +304,7 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
             if (privateNotePaths === null) {
               return null
             }
-            return streamClaudeCliChat({
+            return streamCliAgentChat(config.provider, {
               model: config.model,
               messages,
               today: todayIso(),
@@ -344,7 +345,7 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
           })
         })()
         if (events === null) {
-          if (config.provider === 'claude-cli') {
+          if (isCliAgentProvider(config.provider)) {
             applyEvent({
               type: 'error',
               message: 'Couldn’t read the private-note list — try again in a moment.',

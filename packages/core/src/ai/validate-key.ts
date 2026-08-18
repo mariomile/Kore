@@ -75,7 +75,7 @@ function keyProbe(input: ApiKeyValidationInput): KeyProbe | null {
   if (input.provider === 'openai-compatible') {
     return openAiCompatibleProbe(input)
   }
-  if (input.provider === 'claude-cli') {
+  if (input.provider === 'claude-cli' || input.provider === 'codex-cli') {
     // No key to probe — the desktop dialog verifies the CLI itself instead.
     return null
   }

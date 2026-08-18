@@ -468,6 +468,7 @@ export const aiProviderIdSchema = z.enum([
   'openrouter',
   'openai-compatible',
   'claude-cli',
+  'codex-cli',
 ])
 
 export type AiProviderId = z.infer<typeof aiProviderIdSchema>
@@ -542,6 +543,17 @@ const claudeCliProviderConfigSchema = aiProviderConfigBaseSchema.extend({
 
 export type ClaudeCliProviderConfig = z.infer<typeof claudeCliProviderConfigSchema>
 
+/**
+ * The Codex CLI provider: same contract as the Claude Code entry — no API
+ * key, the locally installed `codex` binary carries its own ChatGPT sign-in,
+ * so chat bills the user's subscription. Desktop-only.
+ */
+const codexCliProviderConfigSchema = aiProviderConfigBaseSchema.extend({
+  provider: z.literal('codex-cli'),
+})
+
+export type CodexCliProviderConfig = z.infer<typeof codexCliProviderConfigSchema>
+
 export const aiProviderConfigSchema = z.discriminatedUnion('provider', [
   openAiProviderConfigSchema,
   anthropicProviderConfigSchema,
@@ -549,6 +561,7 @@ export const aiProviderConfigSchema = z.discriminatedUnion('provider', [
   openRouterProviderConfigSchema,
   openAiCompatibleProviderConfigSchema,
   claudeCliProviderConfigSchema,
+  codexCliProviderConfigSchema,
 ])
 
 export type AiProviderConfig = z.infer<typeof aiProviderConfigSchema>

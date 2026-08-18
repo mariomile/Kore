@@ -279,6 +279,7 @@ export {
   type HostedAiProviderConfig,
   type OpenAiCompatibleProviderConfig,
   type ClaudeCliProviderConfig,
+  type CodexCliProviderConfig,
   type AiPrompt,
   type AiPromptMode,
 } from '../settings/schema'

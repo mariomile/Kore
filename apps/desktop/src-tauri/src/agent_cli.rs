@@ -1,18 +1,14 @@
-//! Claude Code CLI bridge (the "subscription" AI provider).
+//! Agent-CLI bridge (the "subscription" AI providers).
 //!
-//! Runs the locally installed `claude` binary in headless mode
-//! (`-p --output-format stream-json`) so AI chat can bill the user's Claude
-//! subscription instead of a BYOK API key. The frontend engine
-//! (`@reflect/core`'s `ai/claude-cli`) owns the protocol: it builds the
-//! prompt and the permission settings, and parses the emitted JSON lines.
-//! This module only resolves the binary, spawns it, streams stdout lines as
-//! Tauri events, and kills the child on request.
-//!
-//! Tool access is locked down at spawn time: only the tools the frontend
-//! names are available (read-only graph access), everything else is outside
-//! the built-in set, and per-file deny rules (the frontend passes one per
-//! `private: true` note) are enforced by the CLI's own permission layer —
-//! the hard privacy block holds even though the CLI reads files itself.
+//! Runs a locally installed coding-agent CLI — Claude Code (`claude`) or
+//! Codex (`codex`) — in headless mode so AI chat can bill the user's Claude
+//! or ChatGPT subscription instead of a BYOK API key. The frontend engines
+//! (`@reflect/core`'s `ai/claude-cli` and `ai/codex-cli`) own the protocol:
+//! they build each binary's arguments (including the sandbox/permission
+//! lockdown that keeps `private: true` notes unreadable) and parse the
+//! emitted JSON lines. This module only resolves the binary from a closed
+//! set, spawns it, streams stdout lines as Tauri events, and kills the child
+//! on request — it never composes arguments itself.
 
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Read, Write};
@@ -20,18 +16,45 @@ use std::path::PathBuf;
 use std::process::{Child, Command, Stdio};
 use std::sync::Mutex;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tauri::{Emitter, Manager};
 
 use crate::error::{AppError, AppResult};
 
 /// Event channel the frontend subscribes to; every payload carries the
 /// request id so concurrent runs (or a stale listener) can't cross wires.
-const EVENT: &str = "claude-cli:event";
+const EVENT: &str = "agent-cli:event";
+
+/// The closed set of binaries this bridge will run — a frontend compromise
+/// must not be able to escalate into running arbitrary programs.
+#[derive(Clone, Copy, Debug, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum AgentCliBinary {
+    Claude,
+    Codex,
+}
+
+impl AgentCliBinary {
+    fn file_name(self) -> &'static str {
+        match (self, cfg!(windows)) {
+            (Self::Claude, false) => "claude",
+            (Self::Claude, true) => "claude.exe",
+            (Self::Codex, false) => "codex",
+            (Self::Codex, true) => "codex.exe",
+        }
+    }
+
+    fn label(self) -> &'static str {
+        match self {
+            Self::Claude => "Claude Code CLI (`claude`)",
+            Self::Codex => "Codex CLI (`codex`)",
+        }
+    }
+}
 
 /// Live child processes by request id, so a stop request can kill mid-run.
 #[derive(Default)]
-pub struct ClaudeCliState(Mutex<HashMap<String, Child>>);
+pub struct AgentCliState(Mutex<HashMap<String, Child>>);
 
 #[derive(Clone, Serialize)]
 #[serde(
@@ -40,7 +63,7 @@ pub struct ClaudeCliState(Mutex<HashMap<String, Child>>);
     rename_all_fields = "camelCase"
 )]
 enum CliEvent {
-    /// One stdout line (a stream-json event, passed through verbatim).
+    /// One stdout line (a stream-JSON event, passed through verbatim).
     Line { request_id: String, line: String },
     /// The process exited; `code` is the exit status when known.
     Done {
@@ -51,30 +74,23 @@ enum CliEvent {
     Failed { request_id: String, message: String },
 }
 
-/// Locate the `claude` binary. GUI apps on macOS launch with a minimal PATH,
-/// so the common install locations are probed explicitly after `$PATH`.
-fn resolve_claude_binary() -> Option<PathBuf> {
+/// Locate the binary. GUI apps on macOS launch with a minimal PATH, so the
+/// common install locations are probed explicitly after `$PATH`.
+fn resolve_binary(binary: AgentCliBinary) -> Option<PathBuf> {
+    let name = binary.file_name();
     let candidates = std::env::var_os("PATH").map(|paths| {
         std::env::split_paths(&paths)
-            .map(|dir| dir.join(claude_binary_name()))
+            .map(|dir| dir.join(name))
             .collect::<Vec<_>>()
     });
     let mut probes = candidates.unwrap_or_default();
     if let Some(home) = dirs_home() {
-        probes.push(home.join(".local/bin").join(claude_binary_name()));
-        probes.push(home.join(".claude/local").join(claude_binary_name()));
+        probes.push(home.join(".local/bin").join(name));
+        probes.push(home.join(".claude/local").join(name));
     }
-    probes.push(PathBuf::from("/usr/local/bin").join(claude_binary_name()));
-    probes.push(PathBuf::from("/opt/homebrew/bin").join(claude_binary_name()));
+    probes.push(PathBuf::from("/usr/local/bin").join(name));
+    probes.push(PathBuf::from("/opt/homebrew/bin").join(name));
     probes.into_iter().find(|path| path.is_file())
-}
-
-fn claude_binary_name() -> &'static str {
-    if cfg!(windows) {
-        "claude.exe"
-    } else {
-        "claude"
-    }
 }
 
 fn dirs_home() -> Option<PathBuf> {
@@ -83,83 +99,60 @@ fn dirs_home() -> Option<PathBuf> {
         .map(PathBuf::from)
 }
 
-/// Report whether the Claude Code CLI is installed, and its version.
+/// Report whether the CLI is installed, and its version.
 ///
-/// Used by the settings dialog as this provider's "key validation": there is
-/// no API key — a resolvable, runnable binary is the whole requirement.
+/// Used by the settings dialog as these providers' "key validation": there
+/// is no API key — a resolvable, runnable binary is the whole requirement.
 #[tauri::command]
-pub async fn claude_cli_check() -> AppResult<String> {
-    crate::blocking::run_blocking(|| {
-        let binary = resolve_claude_binary()
-            .ok_or_else(|| AppError::not_found("The Claude Code CLI (`claude`) was not found"))?;
-        let output = Command::new(&binary)
+pub async fn agent_cli_check(binary: AgentCliBinary) -> AppResult<String> {
+    crate::blocking::run_blocking(move || {
+        let path = resolve_binary(binary)
+            .ok_or_else(|| AppError::not_found(format!("{} was not found", binary.label())))?;
+        let output = Command::new(&path)
             .arg("--version")
             .stdin(Stdio::null())
             .output()
-            .map_err(|err| AppError::io(format!("could not run {}: {err}", binary.display())))?;
+            .map_err(|err| AppError::io(format!("could not run {}: {err}", path.display())))?;
         if !output.status.success() {
-            return Err(AppError::io("`claude --version` failed"));
+            return Err(AppError::io(format!("{} --version failed", binary.label())));
         }
         Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
     })
     .await
 }
 
-/// Start one headless chat run. Returns once the process is spawned; output
-/// arrives as `claude-cli:event` payloads tagged with `request_id`.
+/// Start one headless run. Returns once the process is spawned; output
+/// arrives as `agent-cli:event` payloads tagged with `request_id`.
 ///
-/// `prompt` goes to stdin (arbitrary length), `system_prompt` via
-/// `--append-system-prompt`. `tools` is the complete built-in tool set made
-/// available (`--tools`, empty = none), `settings_json` carries the deny
-/// rules, and `cwd` scopes relative tool paths to the graph root.
+/// `args` is the complete argument list (the frontend engine owns each
+/// binary's flag protocol); `prompt` goes to stdin (arbitrary length) and
+/// `cwd` scopes the run to the graph root.
 #[tauri::command]
-#[allow(clippy::too_many_arguments)]
-pub async fn claude_cli_run(
+pub async fn agent_cli_run(
     app: tauri::AppHandle,
-    state: tauri::State<'_, ClaudeCliState>,
+    state: tauri::State<'_, AgentCliState>,
     request_id: String,
+    binary: AgentCliBinary,
+    args: Vec<String>,
     prompt: String,
-    system_prompt: String,
-    model: Option<String>,
-    tools: Vec<String>,
-    settings_json: Option<String>,
     cwd: Option<String>,
-    max_turns: u32,
 ) -> AppResult<()> {
-    let binary = resolve_claude_binary()
-        .ok_or_else(|| AppError::not_found("The Claude Code CLI (`claude`) was not found"))?;
+    let path = resolve_binary(binary)
+        .ok_or_else(|| AppError::not_found(format!("{} was not found", binary.label())))?;
 
-    let mut command = Command::new(&binary);
+    let mut command = Command::new(&path);
     command
-        .arg("-p")
-        .arg("--output-format")
-        .arg("stream-json")
-        .arg("--verbose")
-        .arg("--include-partial-messages")
-        .arg("--max-turns")
-        .arg(max_turns.to_string())
-        .arg("--tools")
-        .arg(tools.join(","))
-        .arg("--append-system-prompt")
-        .arg(&system_prompt)
+        .args(&args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
-    if let Some(model) = model.as_deref() {
-        if !model.is_empty() {
-            command.arg("--model").arg(model);
-        }
-    }
-    if let Some(settings) = settings_json.as_deref() {
-        command.arg("--settings").arg(settings);
-    }
     if let Some(dir) = cwd.as_deref() {
         command.current_dir(dir);
     }
 
     let mut child = command
         .spawn()
-        .map_err(|err| AppError::io(format!("could not start {}: {err}", binary.display())))?;
+        .map_err(|err| AppError::io(format!("could not start {}: {err}", path.display())))?;
 
     // Feed the prompt and close stdin so the CLI starts answering.
     if let Some(mut stdin) = child.stdin.take() {
@@ -197,7 +190,7 @@ pub async fn claude_cli_run(
                 }
             }
         }
-        // Drain stderr for a useful failure message (the CLI prints flag and
+        // Drain stderr for a useful failure message (both CLIs print flag and
         // auth errors there), then reap the child.
         let mut error_tail = String::new();
         if let Some(mut stderr) = stderr {
@@ -208,7 +201,7 @@ pub async fn claude_cli_run(
             }
         }
         let child = emit_app
-            .try_state::<ClaudeCliState>()
+            .try_state::<AgentCliState>()
             .and_then(|state| state.0.lock().unwrap().remove(&emit_id));
         let code = child
             .and_then(|mut child| child.wait().ok())
@@ -237,8 +230,8 @@ pub async fn claude_cli_run(
 /// Kill a running chat (the UI's stop button). Unknown ids are a no-op — the
 /// run may already have finished.
 #[tauri::command]
-pub async fn claude_cli_stop(
-    state: tauri::State<'_, ClaudeCliState>,
+pub async fn agent_cli_stop(
+    state: tauri::State<'_, AgentCliState>,
     request_id: String,
 ) -> AppResult<()> {
     let child = state.0.lock().unwrap().remove(&request_id);

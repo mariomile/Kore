@@ -14,11 +14,11 @@
 //! [`menu`] (the macOS app menu, incl. Paste and Match Style),
 //! [`error`] (the shared error contract).
 
+mod agent_cli;
 mod background_task;
 mod blocking;
 mod calendar;
 mod capture;
-mod claude_cli;
 mod conflict;
 mod contacts;
 mod db;
@@ -268,15 +268,15 @@ pub fn run() {
         .manage(quit::QuitState::default())
         .manage(windows::WindowInit::default())
         .manage(embed::EmbedState::default())
-        .manage(claude_cli::ClaudeCliState::default())
+        .manage(agent_cli::AgentCliState::default())
         .invoke_handler(tauri::generate_handler![
             app_version,
             app_platform,
             background_task::background_task_begin,
             background_task::background_task_end,
-            claude_cli::claude_cli_check,
-            claude_cli::claude_cli_run,
-            claude_cli::claude_cli_stop,
+            agent_cli::agent_cli_check,
+            agent_cli::agent_cli_run,
+            agent_cli::agent_cli_stop,
             icloud::storage::mobile_storage,
             icloud::storage::mobile_storage_local,
             icloud::storage::icloud_download_pending,

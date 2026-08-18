@@ -208,10 +208,13 @@ export function AddAiProviderDialog({ onAdd, onClose }: AddAiProviderDialogProps
             </label>
           ) : null}
 
-          {provider.id === 'claude-cli' ? (
+          {provider.id === 'claude-cli' || provider.id === 'codex-cli' ? (
             <p className="text-xs text-text-muted">
-              No API key — chat runs through the installed Claude Code CLI and bills your Claude
-              subscription. Install it and sign in once with <code>claude</code> in a terminal.
+              No API key — chat runs through the installed{' '}
+              {provider.id === 'claude-cli' ? 'Claude Code' : 'Codex'} CLI and bills your{' '}
+              {provider.id === 'claude-cli' ? 'Claude' : 'ChatGPT'} subscription. Install it and
+              sign in once with <code>{provider.id === 'claude-cli' ? 'claude' : 'codex'}</code> in
+              a terminal.
             </p>
           ) : (
             <label className="flex flex-col gap-1">

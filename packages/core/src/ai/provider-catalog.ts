@@ -149,6 +149,24 @@ export const AI_PROVIDERS: NonEmptyArray<AiProviderInfo> = [
       { id: 'haiku', label: 'Claude Haiku', contextWindow: 200_000 },
     ],
   },
+  {
+    // The Codex CLI ("subscription" AI): no key — the installed `codex`
+    // binary carries its own ChatGPT sign-in. Model ids are the CLI's model
+    // slugs; `default` sends no model flag at all. Context windows are
+    // conservative floors for the transcript budget only.
+    id: 'codex-cli',
+    label: 'Codex (subscription)',
+    apiKeyRequired: false,
+    keyPlaceholder: 'No API key — uses your ChatGPT sign-in',
+    desktopOnly: true,
+    models: [
+      { id: 'default', label: 'CLI default', contextWindow: 200_000 },
+      { id: 'gpt-5.6-sol', label: 'GPT-5.6 Sol', contextWindow: 200_000 },
+      { id: 'gpt-5.6-terra', label: 'GPT-5.6 Terra', contextWindow: 200_000 },
+      { id: 'gpt-5.6-luna', label: 'GPT-5.6 Luna', contextWindow: 200_000 },
+      { id: 'gpt-5.5', label: 'GPT-5.5', contextWindow: 200_000 },
+    ],
+  },
 ]
 
 /** The catalog entry for `id` (every `AiProviderId` is in the catalog). */

@@ -2,7 +2,8 @@ import { useCallback, useState } from 'react'
 import {
   aiProvider,
   aiProviderRequiresApiKey,
-  checkClaudeCli,
+  checkCliAgentProvider,
+  isCliAgentProvider,
   errorMessage,
   isHttpBaseUrl,
   normalizeOpenAICompatibleBaseUrl,
@@ -72,16 +73,17 @@ export function useAddAiProviderSubmit({
         setSubmitError('Enter an http(s) endpoint URL.')
         return
       }
-      if (draft.provider === 'claude-cli') {
-        // No key to validate — the requirement is a runnable `claude` binary
-        // (which carries its own Claude sign-in for subscription billing).
+      if (isCliAgentProvider(draft.provider)) {
+        // No key to validate — the requirement is a runnable local binary
+        // (which carries its own sign-in for subscription billing).
+        const binary = draft.provider === 'claude-cli' ? 'claude' : 'codex'
         try {
-          await checkClaudeCli()
+          await checkCliAgentProvider(draft.provider)
           await onAdd({ ...draft, apiKey: '' })
           onDone()
         } catch (error: unknown) {
           setSubmitError(
-            `Claude Code CLI not found — install it and sign in (\`claude\`), then retry. (${errorMessage(error)})`,
+            `${provider.label} needs the \`${binary}\` CLI — install it and sign in, then retry. (${errorMessage(error)})`,
           )
         }
         return

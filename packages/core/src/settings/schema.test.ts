@@ -343,6 +343,13 @@ describe('settingsSchema', () => {
       ])
     })
 
+    it('accepts Codex CLI entries (no key)', () => {
+      const entry = { id: 'cx1', provider: 'codex-cli', model: 'default' }
+      expect(settingsSchema.parse({ aiProviders: [entry] }).aiProviders).toEqual([
+        { ...entry, keyHint: '' },
+      ])
+    })
+
     it('accepts OpenRouter entries', () => {
       const entry = {
         id: 'openrouter',

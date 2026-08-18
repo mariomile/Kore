@@ -106,6 +106,13 @@ export {
   type TaskGroupKind,
 } from './group-tasks'
 export {
+  loadGraphInsights,
+  type ActivityDay,
+  type GraphInsights,
+  type GraphInsightsOptions,
+  type LinkedNoteRank,
+} from './insights'
+export {
   nextOccurrenceContent,
   nextOccurrenceDate,
   taskContentDueDate,

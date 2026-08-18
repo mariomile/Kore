@@ -134,6 +134,12 @@ const APP_COMMANDS: AppCommand[] = [
     run: (context) => context.findPreviousInNote(),
   },
   {
+    id: 'nav.insights',
+    title: 'Insights',
+    keywords: ['stats', 'statistics', 'activity', 'graph', 'metrics', 'heatmap'],
+    run: (context) => context.navigate({ kind: 'insights' }),
+  },
+  {
     id: 'chat.open',
     title: 'Chat',
     keywords: ['ai', 'assistant', 'copilot', 'ask'],

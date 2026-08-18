@@ -18,6 +18,7 @@ export type Route =
   | { kind: 'search'; query: string }
   | { kind: 'tasks' }
   | { kind: 'chat' }
+  | { kind: 'insights' }
   | { kind: 'settings' }
   // The graph-switcher screen — a mobile settings sub-screen; desktop renders
   // it as the settings screen (its switcher lives in the sidebar footer).
@@ -35,6 +36,7 @@ export function routesEqual(a: Route, b: Route): boolean {
     case 'today':
     case 'tasks':
     case 'chat':
+    case 'insights':
     case 'settings':
     case 'graphs':
       return true

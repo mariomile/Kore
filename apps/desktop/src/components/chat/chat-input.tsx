@@ -1,5 +1,6 @@
-import { useMemo, type ReactElement } from 'react'
-import { ArrowUp, Plus, Square, X } from 'lucide-react'
+import { useMemo, useState, type ReactElement } from 'react'
+import { ArrowUp, FilePlus2, Plus, Square, X } from 'lucide-react'
+import { chatToMarkdown, createNoteWithTitle } from '@reflect/core'
 import { getIsComposing } from '@meowdown/core'
 import { ShortcutKeys } from '@/components/shortcut-keys'
 import {
@@ -20,10 +21,14 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { toast } from '@/components/ui/toast'
 import { imageFilesFrom } from '@/lib/chat-attachments'
 import { groupModelOptions } from '@/lib/chat-model-groups'
 import { keybindingFor } from '@/lib/commands/app-commands'
 import { useChatSession } from '@/providers/chat-provider'
+import { conversationTitle } from '@/providers/chat-title'
+import { useGraph } from '@/providers/graph-provider'
+import { useRouter } from '@/routing/router'
 import { ChatHistoryMenu } from './chat-history-menu'
 
 const NEW_CHAT_BINDING = keybindingFor('chat.new')
@@ -54,8 +59,29 @@ export function ChatInput(): ReactElement {
     stop,
     newChat,
   } = useChatSession()
+  const { graph } = useGraph()
+  const { navigate } = useRouter()
+  const [savingNote, setSavingNote] = useState(false)
   const streaming = status === 'streaming'
   const empty = draft.trim() === '' && attachments.length === 0
+
+  // Export the transcript as a regular note and open it. The note is a copy —
+  // the conversation stays in the chat history untouched.
+  const saveAsNote = async () => {
+    if (graph === null || savingNote) {
+      return
+    }
+    setSavingNote(true)
+    try {
+      const title = `Chat — ${conversationTitle(turns[0]?.userText ?? '')}`
+      const path = await createNoteWithTitle(title, graph.generation, chatToMarkdown(turns))
+      navigate({ kind: 'note', path })
+    } catch {
+      toast.add({ type: 'error', title: 'Could not save the chat as a note' })
+    } finally {
+      setSavingNote(false)
+    }
+  }
 
   const groups = useMemo(
     () => groupModelOptions(modelOptions, providers),
@@ -175,6 +201,24 @@ export function ChatInput(): ReactElement {
           </Select>
           <div className="flex-1" />
           <ChatHistoryMenu />
+          {turns.length > 0 && !streaming ? (
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label="Save chat as note"
+                    disabled={savingNote}
+                    onClick={() => void saveAsNote()}
+                  >
+                    <FilePlus2 aria-hidden />
+                  </Button>
+                }
+              />
+              <TooltipContent side="top">Save chat as note</TooltipContent>
+            </Tooltip>
+          ) : null}
           {turns.length > 0 && !streaming ? (
             <Tooltip>
               <TooltipTrigger

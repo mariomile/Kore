@@ -227,4 +227,38 @@ describe('groupTasks', () => {
     expect(forward).toEqual(reversed)
     expect(forward).toEqual(['overdue', 'upcoming', 'note'])
   })
+
+  it('orders a date bucket by priority within the same day', () => {
+    const groups = groupTasks(
+      [
+        task({ markerOffset: 1, raw: '[ ] plain', dailyDate: TODAY }),
+        task({ markerOffset: 2, raw: '[ ] !! urgent', dailyDate: TODAY }),
+        task({ markerOffset: 3, raw: '[ ] ! soon', dailyDate: TODAY }),
+      ],
+      TODAY,
+    )
+    expect(groups[0]?.tasks.map((entry) => entry.markerOffset)).toEqual([2, 3, 1])
+  })
+
+  it('keeps chronology ahead of priority across days', () => {
+    const groups = groupTasks(
+      [
+        task({ markerOffset: 1, raw: '[ ] !! later but urgent', dueDate: '2026-06-21' }),
+        task({ markerOffset: 2, raw: '[ ] sooner and plain', dueDate: FUTURE }),
+      ],
+      TODAY,
+    )
+    expect(groups[0]?.tasks.map((entry) => entry.markerOffset)).toEqual([2, 1])
+  })
+
+  it('orders a note group by priority before document order', () => {
+    const groups = groupTasks(
+      [
+        task({ notePath: 'notes/p.md', markerOffset: 1, raw: '[ ] plain' }),
+        task({ notePath: 'notes/p.md', markerOffset: 2, raw: '[ ] !! urgent' }),
+      ],
+      TODAY,
+    )
+    expect(groups[0]?.tasks.map((entry) => entry.markerOffset)).toEqual([2, 1])
+  })
 })

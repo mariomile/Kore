@@ -106,6 +106,15 @@ export {
   type TaskGroupKind,
 } from './group-tasks'
 export {
+  compareTaskPriority,
+  cycleTaskContentPriority,
+  stripTaskContentPriority,
+  taskContentPriority,
+  taskRawPriority,
+  withTaskContentPriority,
+  type TaskPriority,
+} from './task-priority'
+export {
   listNotes,
   listNoteTags,
   listRecentNotes,

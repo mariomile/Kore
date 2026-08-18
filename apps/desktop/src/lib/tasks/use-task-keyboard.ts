@@ -33,6 +33,8 @@ export interface TaskKeyboardOptions {
   onToggleSchedule: () => void
   /** ⌘⇧K: convert the selection to plain bullets (V1's "Convert to checklist"). */
   onConvertToBullet: () => void
+  /** ⌘⇧P: cycle the selection's priority marker (none → ! → !!). */
+  onCyclePriority: () => void
 }
 
 /** Elements that own their own keyboard nav — the shortcuts back off entirely. */
@@ -78,6 +80,7 @@ export function useTaskKeyboard({
   onToggleFilters,
   onToggleSchedule,
   onConvertToBullet,
+  onCyclePriority,
 }: TaskKeyboardOptions): void {
   const handlerRef = useRef<(event: KeyboardEvent) => void>(() => {})
   useEffect(() => {
@@ -112,6 +115,19 @@ export function useTaskKeyboard({
         if (selection.selectedCount > 0) {
           event.preventDefault()
           onToggleSchedule()
+        }
+        return
+      }
+      // ⌘⇧P cycles the selection's priority marker — same screen-level chord
+      // shape as scheduling, and likewise inert without a selection.
+      if (
+        (event.metaKey || event.ctrlKey) &&
+        event.shiftKey &&
+        (event.key === 'p' || event.key === 'P')
+      ) {
+        if (selection.selectedCount > 0) {
+          event.preventDefault()
+          onCyclePriority()
         }
         return
       }

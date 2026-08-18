@@ -1,4 +1,5 @@
 import type { OpenTask } from './queries'
+import { compareTaskPriority, taskRawPriority } from './task-priority'
 
 /**
  * Grouping for the Tasks view (Plan 18), faithful to V1's `task-view.ts`: open
@@ -106,7 +107,11 @@ export function taskDateBucket(task: OpenTask, today: string): TaskGroupKind {
   return 'current'
 }
 
-/** Within a date bucket: earliest effective date first, then document order. */
+/**
+ * Within a date bucket: earliest effective date first, then priority (`!!`
+ * before `!` before none), then document order. Date outranks priority so
+ * Upcoming stays chronological — priority orders tasks *within* a day.
+ */
 function compareDated(left: OpenTask, right: OpenTask): number {
   // Every task in a date bucket has an effective date; ISO `YYYY-MM-DD` sorts
   // chronologically. (The `?? ''` only satisfies the type — it never fires here.)
@@ -114,6 +119,10 @@ function compareDated(left: OpenTask, right: OpenTask): number {
   const rightDate = effectiveDate(right) ?? ''
   if (leftDate !== rightDate) {
     return leftDate < rightDate ? -1 : 1
+  }
+  const byPriority = compareTaskPriority(taskRawPriority(left.raw), taskRawPriority(right.raw))
+  if (byPriority !== 0) {
+    return byPriority
   }
   if (left.notePath !== right.notePath) {
     return left.notePath < right.notePath ? -1 : 1
@@ -233,7 +242,13 @@ export function groupTasks(tasks: readonly OpenTask[], today: string): TaskGroup
       // A `byNote` entry only exists once a task has been pushed into it.
       label: noteTasks[0]!.noteTitle,
       notePath: noteTasks[0]!.notePath,
-      tasks: noteTasks.sort((left, right) => left.markerOffset - right.markerOffset),
+      tasks: noteTasks.sort((left, right) => {
+        const byPriority = compareTaskPriority(
+          taskRawPriority(left.raw),
+          taskRawPriority(right.raw),
+        )
+        return byPriority !== 0 ? byPriority : left.markerOffset - right.markerOffset
+      }),
     }))
     .sort(compareNoteGroups)
 

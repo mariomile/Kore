@@ -71,6 +71,7 @@ async function mount(options: {
   const onToggleFilters = vi.fn()
   const onToggleSchedule = vi.fn()
   const onConvertToBullet = vi.fn()
+  const onCyclePriority = vi.fn()
   await renderHook(() =>
     useTaskKeyboard({
       selection,
@@ -85,6 +86,7 @@ async function mount(options: {
       onToggleFilters,
       onToggleSchedule,
       onConvertToBullet,
+      onCyclePriority,
     }),
   )
   return {
@@ -95,6 +97,7 @@ async function mount(options: {
     onToggleFilters,
     onToggleSchedule,
     onConvertToBullet,
+    onCyclePriority,
   }
 }
 
@@ -186,6 +189,18 @@ describe('useTaskKeyboard', () => {
     const withSel = await mount({ selection: makeSelection({ selectedCount: 2 }) })
     const selEvent = press(root, 's', { metaKey: true, shiftKey: true })
     expect(withSel.onToggleSchedule).toHaveBeenCalledTimes(1)
+    expect(selEvent.defaultPrevented).toBe(true)
+  })
+
+  it('cycles the selection priority on ⌘⇧P only when something is selected', async () => {
+    const withNone = await mount({ selection: makeSelection({ selectedCount: 0 }) })
+    const noneEvent = press(root, 'p', { metaKey: true, shiftKey: true })
+    expect(withNone.onCyclePriority).not.toHaveBeenCalled()
+    expect(noneEvent.defaultPrevented).toBe(false)
+
+    const withSel = await mount({ selection: makeSelection({ selectedCount: 2 }) })
+    const selEvent = press(root, 'p', { metaKey: true, shiftKey: true })
+    expect(withSel.onCyclePriority).toHaveBeenCalledTimes(1)
     expect(selEvent.defaultPrevented).toBe(true)
   })
 

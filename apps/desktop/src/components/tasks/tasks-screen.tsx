@@ -9,12 +9,19 @@ import {
 } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Archive, CalendarClock, List, Search } from 'lucide-react'
-import { getCompletedTasks, getOpenTasks, type OpenTask, type TaskGroup } from '@reflect/core'
+import {
+  cycleTaskContentPriority,
+  getCompletedTasks,
+  getOpenTasks,
+  type OpenTask,
+  type TaskGroup,
+} from '@reflect/core'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'
 import { useRecentlyCompleted } from '@/lib/tasks/recently-completed'
+import { taskContent } from '@/lib/tasks/task-content'
 import { sameTask, taskKey } from '@/lib/tasks/task-identity'
 import type { InsertTaskTarget } from '@/lib/tasks/task-insert-target'
 import { scrollTaskIntoView } from '@/lib/tasks/task-navigation'
@@ -207,6 +214,13 @@ export function TasksScreen(): ReactElement {
       selection.clear()
     }
   }, [actions, selection, selectedTasks])
+  // Cycle the selection's priority marker (⌘⇧P): none → ! → !!. The rows stay
+  // in place (priority only reorders within a bucket), so keep the selection.
+  const onCyclePriority = useCallback(() => {
+    for (const task of selectedTasks()) {
+      actions.edit(task, cycleTaskContentPriority(taskContent(task.raw)))
+    }
+  }, [actions, selectedTasks])
   const openNote = useCallback(
     (path: string, event?: ModClickEvent) =>
       navigateNoteLink({
@@ -228,6 +242,7 @@ export function TasksScreen(): ReactElement {
     onToggleFilters: () => setFiltersOpen((open) => !open),
     onToggleSchedule: () => setScheduleOpen((open) => !open),
     onConvertToBullet,
+    onCyclePriority,
   })
 
   // Move focus into the Tasks surface on mount so the shortcuts work the moment

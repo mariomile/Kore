@@ -44,12 +44,26 @@ vi.mock('@/lib/use-embed-status', () => ({
     embedReady.value ? { status: 'ready', model: 'all-MiniLM-L6-v2' } : { status: 'uninitialized' },
 }))
 const semanticSetting = vi.hoisted(() => ({ enabled: false }))
-vi.mock('@/providers/settings-provider', () => ({
-  useSettings: () => ({
-    settings: { semanticSearchEnabled: semanticSetting.enabled, dateFormat: 'mdy' },
-    updateSettings: () => {},
-  }),
+const savedSearchesState = vi.hoisted(() => ({
+  entries: [] as { id: string; query: string }[],
+  updates: [] as unknown[],
 }))
+vi.mock('@/providers/settings-provider', async () => {
+  const { DEFAULT_SETTINGS } = await import('@reflect/core')
+  return {
+    useSettings: () => ({
+      settings: {
+        ...DEFAULT_SETTINGS,
+        semanticSearchEnabled: semanticSetting.enabled,
+        dateFormat: 'mdy',
+        savedSearches: savedSearchesState.entries,
+      },
+      updateSettings: (patch: unknown) => {
+        savedSearchesState.updates.push(patch)
+      },
+    }),
+  }
+})
 vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({ graph: { root: '/g', name: 'g', generation: 1 } }),
 }))
@@ -60,6 +74,8 @@ registerAppCommands()
 beforeEach(() => {
   embedReady.value = false
   semanticSetting.enabled = false
+  savedSearchesState.entries = []
+  savedSearchesState.updates = []
   readNote.mockReset().mockResolvedValue('')
   openRouteInNewWindow.mockReset().mockResolvedValue(true)
 })
@@ -382,5 +398,42 @@ describe('CommandPalette', () => {
 
     await userEvent.keyboard('{Enter}')
     await expect.element(view.getByTestId('route')).toHaveTextContent('2026-06-09')
+  })
+
+  it('offers saving a filtered query and stores it in the settings document', async () => {
+    suggestWikiTargets.mockResolvedValue([])
+    searchWithFilters.mockResolvedValue([])
+    const { view } = await renderPalette('#book is:pinned')
+
+    await view.getByText('Save search “#book is:pinned”').click()
+    expect(savedSearchesState.updates).toEqual([
+      {
+        savedSearches: [expect.objectContaining({ query: '#book is:pinned' })],
+      },
+    ])
+  })
+
+  it('lists saved searches on the empty palette and recall fills the query', async () => {
+    savedSearchesState.entries = [{ id: 's1', query: '#book is:pinned' }]
+    suggestWikiTargets.mockResolvedValue([])
+    searchWithFilters.mockResolvedValue([])
+    const { view } = await renderPalette('')
+
+    await view.getByText('#book is:pinned').click()
+    // Recall types the query for you: the palette stays open with it filled.
+    await expect
+      .element(view.getByPlaceholder('Search notes, or > for commands…'))
+      .toHaveValue('#book is:pinned')
+  })
+
+  it('removes a saved search from its row without selecting it', async () => {
+    savedSearchesState.entries = [{ id: 's1', query: '#book is:pinned' }]
+    suggestWikiTargets.mockResolvedValue([])
+    const { view } = await renderPalette('')
+
+    await view.getByLabelText('Remove saved search “#book is:pinned”').click()
+    expect(savedSearchesState.updates).toEqual([{ savedSearches: [] }])
+    // Removal must not also run the row: the input stays empty.
+    await expect.element(view.getByPlaceholder('Search notes, or > for commands…')).toHaveValue('')
   })
 })

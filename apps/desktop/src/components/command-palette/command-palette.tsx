@@ -1,7 +1,7 @@
 import { memo, useEffect, useRef, useState, type KeyboardEvent, type ReactElement } from 'react'
 import { Command } from 'cmdk'
-import { parseHighlights } from '@reflect/core'
-import { CalendarDays, FileText } from 'lucide-react'
+import { parseHighlights, parseSearchQuery } from '@reflect/core'
+import { Bookmark, BookmarkPlus, CalendarDays, FileText, X } from 'lucide-react'
 import { getIsComposing, isModEvent } from '@meowdown/core'
 import { Kbd } from '@/components/kbd'
 import { ShortcutKeys } from '@/components/shortcut-keys'
@@ -58,7 +58,7 @@ interface PendingNoteClick {
 
 export function CommandPalette({ context }: CommandPaletteProps): ReactElement | null {
   const { open, query, setQuery, closePalette } = usePalette()
-  const { settings } = useSettings()
+  const { settings, updateSettings } = useSettings()
   const { sections, resultsSettled, searchFailed } = usePaletteResults(open, query)
   const navigateNoteLink = useNoteLinkNavigation()
   // cmdk's `onSelect` exposes only the selected value, not its originating
@@ -119,6 +119,23 @@ export function CommandPalette({ context }: CommandPaletteProps): ReactElement |
       openInNewWindow: pendingClick?.path === entry.path && isModEvent(pendingClick.event),
     })
     closePalette()
+  }
+
+  // Saved searches: recalled from the empty palette, saved from a typed
+  // query. Only a *filtered* query (one carrying `#tag`/`is:`/… tokens) offers
+  // saving — a plain text query is a jump, not a view worth keeping, and the
+  // extra row would steal cmdk's default highlight from notes and commands.
+  const savedSearches = settings.savedSearches
+  const trimmedQuery = query.trim()
+  const alreadySaved = savedSearches.some((saved) => saved.query === trimmedQuery)
+  const offerSave = trimmedQuery !== '' && parseSearchQuery(trimmedQuery).filtered && !alreadySaved
+  const saveSearch = (): void => {
+    updateSettings({
+      savedSearches: [...savedSearches, { id: crypto.randomUUID(), query: trimmedQuery }],
+    })
+  }
+  const removeSavedSearch = (id: string): void => {
+    updateSettings({ savedSearches: savedSearches.filter((saved) => saved.id !== id) })
   }
 
   // Width follows the palette's *mode*, not the result count: note modes keep
@@ -189,6 +206,43 @@ export function CommandPalette({ context }: CommandPaletteProps): ReactElement |
               ) : null}
               {resultsSettled && !searchFailed ? (
                 <Command.Empty className="reflect-palette-empty">No results</Command.Empty>
+              ) : null}
+              {trimmedQuery === '' && savedSearches.length > 0 ? (
+                <Command.Group heading="Saved searches" className="reflect-palette-group">
+                  {savedSearches.map((saved) => (
+                    <Command.Item
+                      key={saved.id}
+                      value={`saved:${saved.id}`}
+                      onSelect={() => setQuery(saved.query)}
+                      className="reflect-palette-item"
+                    >
+                      <span className="flex items-center gap-2.5">
+                        <Bookmark
+                          aria-hidden
+                          strokeWidth={1.75}
+                          className="size-4 shrink-0 text-text-muted"
+                        />
+                        <span className="min-w-0 flex-1 truncate text-sm">{saved.query}</span>
+                        <button
+                          type="button"
+                          aria-label={`Remove saved search “${saved.query}”`}
+                          onPointerDown={(event) => {
+                            event.preventDefault()
+                            event.stopPropagation()
+                          }}
+                          onClick={(event) => {
+                            event.preventDefault()
+                            event.stopPropagation()
+                            removeSavedSearch(saved.id)
+                          }}
+                          className="shrink-0 rounded p-0.5 text-text-muted opacity-0 transition-opacity hover:text-text focus-visible:opacity-100 group-hover:opacity-100 [[data-selected=true]_&]:opacity-100"
+                        >
+                          <X aria-hidden strokeWidth={1.75} className="size-3.5" />
+                        </button>
+                      </span>
+                    </Command.Item>
+                  ))}
+                </Command.Group>
               ) : null}
               {sections.notes.length > 0 ? (
                 <Command.Group
@@ -266,6 +320,26 @@ export function CommandPalette({ context }: CommandPaletteProps): ReactElement |
                       </Command.Item>
                     )
                   })}
+                </Command.Group>
+              ) : null}
+              {offerSave ? (
+                <Command.Group heading="Search" className="reflect-palette-group">
+                  <Command.Item
+                    value="save-search"
+                    onSelect={saveSearch}
+                    className="reflect-palette-item"
+                  >
+                    <span className="flex items-center gap-2.5">
+                      <BookmarkPlus
+                        aria-hidden
+                        strokeWidth={1.75}
+                        className="size-4 shrink-0 text-text-muted"
+                      />
+                      <span className="min-w-0 flex-1 truncate text-sm">
+                        Save search “{trimmedQuery}”
+                      </span>
+                    </span>
+                  </Command.Item>
                 </Command.Group>
               ) : null}
             </Command.List>

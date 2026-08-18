@@ -385,6 +385,34 @@ export const graphColorsSchema = z
   })
 
 /**
+ * One saved ⌘K search: the query verbatim, including any filter tokens
+ * (`#tag`, `is:pinned`, `links:` …). Displayed as its own text — a query like
+ * `#book is:pinned` reads better than any label a save dialog would ask for.
+ */
+export const savedSearchSchema = z.object({
+  id: z.string().min(1),
+  query: z.string().min(1),
+})
+
+export type SavedSearch = z.infer<typeof savedSearchSchema>
+
+/**
+ * The user's saved searches, shown in the empty command palette for one-click
+ * recall. Global across graphs — a query is workflow, not note content.
+ * Resilience is per entry: a corrupt entry is dropped while the rest load,
+ * and a non-array value degrades to the empty list.
+ */
+export const savedSearchesSchema = z
+  .array(z.unknown())
+  .catch([])
+  .transform((entries) =>
+    entries.flatMap((entry) => {
+      const parsed = savedSearchSchema.safeParse(entry)
+      return parsed.success ? [parsed.data] : []
+    }),
+  )
+
+/**
  * Which task groups the Tasks view shows (V1's task filter store). The five
  * date / pin buckets default on; `archived` (completed tasks) defaults off.
  * Persisted so a filter choice survives relaunch. Resilience is per key: an
@@ -623,6 +651,7 @@ export const settingsSchema = z.looseObject({
   dateFormat: dateFormatSchema,
   weekStartDay: weekStartDaySchema,
   allNotesFilterTags: allNotesFilterTagsSchema,
+  savedSearches: savedSearchesSchema,
   taskFilters: taskFiltersSchema,
   calendarEnabled: calendarEnabledSchema,
   calendarIds: calendarIdsSchema,

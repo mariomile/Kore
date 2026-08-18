@@ -279,6 +279,7 @@ describe('SettingsScreen', () => {
           chatModelSelection: null,
           chatSystemPrompt: '',
           aiPrompts: [],
+          savedSearches: [],
         },
       ]),
     )
@@ -343,6 +344,7 @@ describe('SettingsScreen', () => {
           chatModelSelection: null,
           chatSystemPrompt: '',
           aiPrompts: [],
+          savedSearches: [],
         },
       ]),
     )
@@ -421,6 +423,7 @@ describe('SettingsScreen', () => {
           chatModelSelection: null,
           chatSystemPrompt: '',
           aiPrompts: [],
+          savedSearches: [],
         },
       ]),
     )
@@ -506,6 +509,7 @@ describe('SettingsScreen', () => {
           chatModelSelection: null,
           chatSystemPrompt: '',
           aiPrompts: [],
+          savedSearches: [],
         },
       ]),
     )
@@ -570,6 +574,7 @@ describe('SettingsScreen', () => {
           chatModelSelection: null,
           chatSystemPrompt: '',
           aiPrompts: [],
+          savedSearches: [],
         },
       ]),
     )
@@ -627,6 +632,7 @@ describe('SettingsScreen', () => {
           chatModelSelection: null,
           chatSystemPrompt: '',
           aiPrompts: [],
+          savedSearches: [],
         },
       ]),
     )
@@ -693,6 +699,7 @@ describe('SettingsScreen', () => {
           chatModelSelection: null,
           chatSystemPrompt: '',
           aiPrompts: [],
+          savedSearches: [],
         },
       ]),
     )
@@ -756,6 +763,7 @@ describe('SettingsScreen', () => {
           chatModelSelection: null,
           chatSystemPrompt: '',
           aiPrompts: [],
+          savedSearches: [],
         },
       ]),
     )
@@ -825,6 +833,7 @@ describe('SettingsScreen', () => {
           chatModelSelection: null,
           chatSystemPrompt: '',
           aiPrompts: [],
+          savedSearches: [],
         },
       ]),
     )
@@ -900,6 +909,7 @@ describe('SettingsScreen', () => {
           chatModelSelection: null,
           chatSystemPrompt: '',
           aiPrompts: [],
+          savedSearches: [],
         },
       ]),
     )
@@ -957,6 +967,7 @@ describe('SettingsScreen', () => {
           chatModelSelection: null,
           chatSystemPrompt: '',
           aiPrompts: [],
+          savedSearches: [],
         },
       ]),
     )
@@ -1043,6 +1054,7 @@ describe('SettingsScreen', () => {
           chatModelSelection: null,
           chatSystemPrompt: '',
           aiPrompts: [],
+          savedSearches: [],
         },
       ]),
     )
@@ -1098,6 +1110,7 @@ describe('SettingsScreen', () => {
           chatModelSelection: null,
           chatSystemPrompt: '',
           aiPrompts: [],
+          savedSearches: [],
         },
       ]),
     )
@@ -1175,6 +1188,7 @@ describe('SettingsScreen', () => {
           chatModelSelection: null,
           chatSystemPrompt: '',
           aiPrompts: [],
+          savedSearches: [],
         },
       ]),
     )
@@ -1242,6 +1256,7 @@ describe('SettingsScreen', () => {
           chatModelSelection: null,
           chatSystemPrompt: '',
           aiPrompts: [],
+          savedSearches: [],
         },
       ]),
     )
@@ -1303,6 +1318,7 @@ describe('SettingsScreen', () => {
           chatModelSelection: null,
           chatSystemPrompt: '',
           aiPrompts: [],
+          savedSearches: [],
         },
       ]),
     )
@@ -1448,6 +1464,7 @@ describe('SettingsScreen', () => {
           defaultAiProviderId: null,
           chatModelSelection: null,
           chatSystemPrompt: '',
+          savedSearches: [],
           aiPrompts: [
             {
               id: expect.any(String),
@@ -1522,6 +1539,7 @@ describe('SettingsScreen', () => {
           chatModelSelection: null,
           chatSystemPrompt: '',
           aiPrompts: [],
+          savedSearches: [],
         },
       ]),
     )
@@ -1585,6 +1603,7 @@ describe('SettingsScreen', () => {
           defaultAiProviderId: null,
           chatModelSelection: null,
           chatSystemPrompt: '',
+          savedSearches: [],
           aiPrompts: [
             { id: 'p1', label: 'Translate to German', body: '{{selectedText}}', mode: 'replace' },
           ],

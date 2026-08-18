@@ -172,6 +172,7 @@ describe('SettingsProvider', () => {
           chatModelSelection: null,
           chatSystemPrompt: '',
           aiPrompts: [],
+          savedSearches: [],
         },
       ]),
     )
@@ -256,6 +257,7 @@ describe('SettingsProvider', () => {
           chatModelSelection: null,
           chatSystemPrompt: '',
           aiPrompts: [],
+          savedSearches: [],
           futureKey: true,
         },
       ]),
@@ -325,6 +327,7 @@ describe('SettingsProvider', () => {
           chatModelSelection: null,
           chatSystemPrompt: '',
           aiPrompts: [],
+          savedSearches: [],
           futureKey: true,
         },
       ]),
@@ -388,6 +391,7 @@ describe('SettingsProvider', () => {
           chatModelSelection: null,
           chatSystemPrompt: '',
           aiPrompts: [],
+          savedSearches: [],
         },
       ]),
     )
@@ -577,6 +581,7 @@ describe('SettingsProvider', () => {
           chatModelSelection: null,
           chatSystemPrompt: '',
           aiPrompts: [],
+          savedSearches: [],
         },
       ]),
     )
@@ -643,6 +648,7 @@ describe('SettingsProvider', () => {
         chatModelSelection: null,
         chatSystemPrompt: '',
         aiPrompts: [],
+        savedSearches: [],
       },
     ])
   })

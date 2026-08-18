@@ -45,6 +45,7 @@ describe('settingsSchema', () => {
       chatModelSelection: null,
       chatSystemPrompt: '',
       aiPrompts: [],
+      savedSearches: [],
     })
     expect(DEFAULT_SETTINGS.editorMarkdownSyntax).toBe('hide')
     expect(DEFAULT_SETTINGS.editorSpellCheck).toBe(true)
@@ -293,6 +294,7 @@ describe('settingsSchema', () => {
       chatModelSelection: null,
       chatSystemPrompt: '',
       aiPrompts: [],
+      savedSearches: [],
       futureKey: true,
     })
   })

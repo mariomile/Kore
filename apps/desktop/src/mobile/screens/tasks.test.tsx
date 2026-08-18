@@ -35,16 +35,64 @@ vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({ graph: { root: '/g', name: 'g', generation: 1 } }),
 }))
 vi.mock('@/lib/use-today', () => ({ useToday: () => '2026-06-14' }))
-vi.mock('@/providers/settings-provider', () => ({
-  useSettings: () => ({
-    settings: {
-      dateFormat: 'mdy',
-      weekStartDay: 'monday',
-      editorMarkdownSyntax: 'hide',
-      editorSpellCheck: false,
-    },
-  }),
+// A stateful settings mock: task filters live in the settings document, so
+// tests that seed "show archived" need readers to see the override.
+const settingsState = vi.hoisted(() => ({
+  overrides: {} as Record<string, unknown>,
+  listeners: new Set<() => void>(),
+  version: 0,
 }))
+
+function seedArchivedFilter(): void {
+  settingsState.overrides = {
+    ...settingsState.overrides,
+    taskFilters: {
+      pinned: true,
+      current: true,
+      overdue: true,
+      upcoming: true,
+      other: true,
+      archived: true,
+    },
+  }
+  settingsState.version += 1
+}
+
+vi.mock('@/providers/settings-provider', async () => {
+  const { DEFAULT_SETTINGS } = await import('@reflect/core')
+  const { useSyncExternalStore } = await import('react')
+  let cached: Record<string, unknown> | null = null
+  let cachedVersion = -1
+  function currentSettings(): Record<string, unknown> {
+    if (cached === null || cachedVersion !== settingsState.version) {
+      cached = {
+        ...DEFAULT_SETTINGS,
+        dateFormat: 'mdy',
+        weekStartDay: 'monday',
+        editorMarkdownSyntax: 'hide',
+        editorSpellCheck: false,
+        ...settingsState.overrides,
+      }
+      cachedVersion = settingsState.version
+    }
+    return cached
+  }
+  return {
+    useSettings: () => ({
+      settings: useSyncExternalStore((listener) => {
+        settingsState.listeners.add(listener)
+        return () => settingsState.listeners.delete(listener)
+      }, currentSettings),
+      updateSettings: (patch: Record<string, unknown>) => {
+        settingsState.overrides = { ...settingsState.overrides, ...patch }
+        settingsState.version += 1
+        for (const listener of settingsState.listeners) {
+          listener()
+        }
+      },
+    }),
+  }
+})
 // TaskText rendering is covered separately, so this suite keeps a small preview stub.
 vi.mock('@/editor/markdown-preview', () => ({
   MarkdownPreview: ({ content, className }: { content: string; className?: string }) => (
@@ -232,6 +280,8 @@ const waitFor = vi.waitFor
 beforeEach(async () => {
   await page.viewport(375, 700)
   window.sessionStorage.clear()
+  settingsState.overrides = {}
+  settingsState.version += 1
   getOpenTasks.mockReset()
   getCompletedTasks.mockReset()
   getCompletedTasks.mockResolvedValue([])
@@ -541,7 +591,7 @@ describe('MobileTasks', () => {
   })
 
   it('keeps open tasks visible while the archived history is still loading', async () => {
-    window.sessionStorage.setItem('reflect.tasks.filter.archived', 'true')
+    seedArchivedFilter()
     getOpenTasks.mockResolvedValue([task({ text: 'still open' })])
     getCompletedTasks.mockReturnValue(new Promise<OpenTask[]>(() => {}))
     const view = await renderScreen()

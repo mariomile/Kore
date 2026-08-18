@@ -385,6 +385,33 @@ export const graphColorsSchema = z
   })
 
 /**
+ * Which task groups the Tasks view shows (V1's task filter store). The five
+ * date / pin buckets default on; `archived` (completed tasks) defaults off.
+ * Persisted so a filter choice survives relaunch. Resilience is per key: an
+ * invalid flag degrades to its default, and a non-object value degrades to
+ * the whole default set.
+ */
+export const taskFiltersSchema = z
+  .object({
+    pinned: z.boolean().catch(true),
+    current: z.boolean().catch(true),
+    overdue: z.boolean().catch(true),
+    upcoming: z.boolean().catch(true),
+    other: z.boolean().catch(true),
+    archived: z.boolean().catch(false),
+  })
+  .catch({
+    pinned: true,
+    current: true,
+    overdue: true,
+    upcoming: true,
+    other: true,
+    archived: false,
+  })
+
+export type TaskFilters = z.infer<typeof taskFiltersSchema>
+
+/**
  * The AI providers Reflect can call directly (BYOK — the user's own keys, no
  * Reflect-hosted proxy). `openai-compatible` stores its user-supplied base URL
  * per configured entry.
@@ -596,6 +623,7 @@ export const settingsSchema = z.looseObject({
   dateFormat: dateFormatSchema,
   weekStartDay: weekStartDaySchema,
   allNotesFilterTags: allNotesFilterTagsSchema,
+  taskFilters: taskFiltersSchema,
   calendarEnabled: calendarEnabledSchema,
   calendarIds: calendarIdsSchema,
   graphColors: graphColorsSchema,

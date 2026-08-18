@@ -29,9 +29,60 @@ vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({ graph: { root: '/g', name: 'g', generation: 1 } }),
 }))
 vi.mock('@/lib/use-today', () => ({ useToday: () => '2026-06-14' }))
-vi.mock('@/providers/settings-provider', () => ({
-  useSettings: () => ({ settings: { dateFormat: 'mdy' } }),
+// A stateful settings mock: task filters now live in the settings document,
+// so tests that flip "Show archived tasks" need updates to re-render readers.
+const settingsState = vi.hoisted(() => ({
+  overrides: {} as Record<string, unknown>,
+  listeners: new Set<() => void>(),
+  version: 0,
 }))
+
+function seedSettings(overrides: Record<string, unknown>): void {
+  settingsState.overrides = { ...settingsState.overrides, ...overrides }
+  settingsState.version += 1
+}
+
+function seedArchivedFilter(): void {
+  seedSettings({
+    taskFilters: {
+      pinned: true,
+      current: true,
+      overdue: true,
+      upcoming: true,
+      other: true,
+      archived: true,
+    },
+  })
+}
+
+vi.mock('@/providers/settings-provider', async () => {
+  const { DEFAULT_SETTINGS } = await import('@reflect/core')
+  const { useSyncExternalStore } = await import('react')
+  let cached: Record<string, unknown> | null = null
+  let cachedVersion = -1
+  function currentSettings(): Record<string, unknown> {
+    if (cached === null || cachedVersion !== settingsState.version) {
+      cached = { ...DEFAULT_SETTINGS, dateFormat: 'mdy', ...settingsState.overrides }
+      cachedVersion = settingsState.version
+    }
+    return cached
+  }
+  return {
+    useSettings: () => ({
+      settings: useSyncExternalStore((listener) => {
+        settingsState.listeners.add(listener)
+        return () => settingsState.listeners.delete(listener)
+      }, currentSettings),
+      updateSettings: (patch: Record<string, unknown>) => {
+        settingsState.overrides = { ...settingsState.overrides, ...patch }
+        settingsState.version += 1
+        for (const listener of settingsState.listeners) {
+          listener()
+        }
+      },
+    }),
+  }
+})
 vi.mock('@/editor/markdown-preview', () => ({
   MarkdownPreview: ({ content, className }: { content: string; className?: string }) => {
     const strong = /^(.*)\*\*([^*]+)\*\*(.*)$/u.exec(content)
@@ -235,6 +286,8 @@ const waitFor = vi.waitFor
 
 beforeEach(() => {
   window.sessionStorage.clear()
+  settingsState.overrides = {}
+  settingsState.version += 1
   getOpenTasks.mockReset()
   getCompletedTasks.mockReset()
   getCompletedTasks.mockResolvedValue([])
@@ -270,7 +323,7 @@ describe('TasksScreen', () => {
   })
 
   it('does not flash an empty state while archived tasks are still loading', async () => {
-    window.sessionStorage.setItem('reflect.tasks.filter.archived', 'true')
+    seedArchivedFilter()
     getOpenTasks.mockResolvedValue([])
     let resolveCompleted: (rows: OpenTask[]) => void = () => {}
     getCompletedTasks.mockReturnValue(
@@ -302,7 +355,7 @@ describe('TasksScreen', () => {
   })
 
   it('surfaces a failed archived query as an alert, not a blank list', async () => {
-    window.sessionStorage.setItem('reflect.tasks.filter.archived', 'true')
+    seedArchivedFilter()
     getOpenTasks.mockResolvedValue([])
     getCompletedTasks.mockRejectedValue(new Error('index unavailable'))
     const view = await renderScreen()
@@ -312,7 +365,7 @@ describe('TasksScreen', () => {
   })
 
   it('clears the archived error when "show archived" is turned off', async () => {
-    window.sessionStorage.setItem('reflect.tasks.filter.archived', 'true')
+    seedArchivedFilter()
     getOpenTasks.mockResolvedValue([
       task({ notePath: 'notes/p.md', text: 'open task', noteTitle: 'P' }),
     ])
@@ -670,7 +723,7 @@ describe('TasksScreen', () => {
   })
 
   it('editing an already-completed task with ⌘↵ saves the text, never reopens it', async () => {
-    window.sessionStorage.setItem('reflect.tasks.filter.archived', 'true')
+    seedArchivedFilter()
     editTask.mockResolvedValue(undefined)
     toggleTask.mockResolvedValue(undefined)
     getOpenTasks.mockResolvedValue([])
@@ -1164,7 +1217,7 @@ describe('TasksScreen', () => {
   })
 
   it('does not reopen an already-completed task when ⌘↵ hits the selection', async () => {
-    window.sessionStorage.setItem('reflect.tasks.filter.archived', 'true')
+    seedArchivedFilter()
     toggleTask.mockResolvedValue(undefined)
     getOpenTasks.mockResolvedValue([
       task({
@@ -1578,7 +1631,7 @@ describe('TasksScreen', () => {
   })
 
   it('reopens selected checked tasks when a checked selected checkbox is clicked', async () => {
-    window.sessionStorage.setItem('reflect.tasks.filter.archived', 'true')
+    seedArchivedFilter()
     toggleTask.mockResolvedValue(undefined)
     getOpenTasks.mockResolvedValue([
       task({
@@ -1726,7 +1779,7 @@ describe('TasksScreen', () => {
   })
 
   it('reopens an archived completed task when its checkbox is clicked', async () => {
-    window.sessionStorage.setItem('reflect.tasks.filter.archived', 'true')
+    seedArchivedFilter()
     toggleTask.mockResolvedValue(undefined)
     getOpenTasks.mockResolvedValue([])
     getCompletedTasks.mockResolvedValue([
@@ -1758,7 +1811,7 @@ describe('TasksScreen', () => {
   })
 
   it('shows an open checkbox while a reopen write is pending', async () => {
-    window.sessionStorage.setItem('reflect.tasks.filter.archived', 'true')
+    seedArchivedFilter()
     let resolveToggle = (): void => {
       throw new Error('toggle promise was not created')
     }
@@ -1820,7 +1873,7 @@ describe('TasksScreen', () => {
   })
 
   it('reopens a selected completed task when its checkbox is clicked', async () => {
-    window.sessionStorage.setItem('reflect.tasks.filter.archived', 'true')
+    seedArchivedFilter()
     toggleTask.mockResolvedValue(undefined)
     getOpenTasks.mockResolvedValue([])
     getCompletedTasks.mockResolvedValue([
@@ -1853,7 +1906,7 @@ describe('TasksScreen', () => {
   })
 
   it('saves an edited selected completed task before reopening it from the checkbox', async () => {
-    window.sessionStorage.setItem('reflect.tasks.filter.archived', 'true')
+    seedArchivedFilter()
     editTask.mockResolvedValue(undefined)
     toggleTask.mockResolvedValue(undefined)
     getOpenTasks.mockResolvedValue([])
@@ -1929,7 +1982,7 @@ describe('TasksScreen', () => {
   it('keeps a completed task visible (struck) when archived tasks are shown', async () => {
     // With "show archived" on, completing must move the row into the completed
     // list (struck), not drop it until the refetch (Bugbot regression).
-    window.sessionStorage.setItem('reflect.tasks.filter.archived', 'true')
+    seedArchivedFilter()
     toggleTask.mockResolvedValue(undefined)
     getCompletedTasks.mockResolvedValue([])
     getOpenTasks.mockResolvedValue([

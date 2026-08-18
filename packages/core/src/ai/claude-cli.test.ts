@@ -1,0 +1,266 @@
+import { afterEach, describe, expect, it } from 'vitest'
+import type { ModelMessage } from 'ai'
+import { setBridge } from '../ipc/bridge'
+import {
+  claudeCliPrompt,
+  claudeCliSettingsJson,
+  claudeCliSystemPrompt,
+  parseClaudeCliLine,
+  streamClaudeCliChat,
+} from './claude-cli'
+
+afterEach(() => {
+  setBridge(null)
+})
+
+describe('parseClaudeCliLine', () => {
+  it('extracts top-level assistant text deltas', () => {
+    const line = JSON.stringify({
+      type: 'stream_event',
+      parent_tool_use_id: null,
+      event: { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'Ciao' } },
+    })
+    expect(parseClaudeCliLine(line)).toEqual({ type: 'text', text: 'Ciao' })
+  })
+
+  it('drops subagent deltas, non-text deltas, and other event types', () => {
+    const subagent = JSON.stringify({
+      type: 'stream_event',
+      parent_tool_use_id: 'tool-1',
+      event: { type: 'content_block_delta', delta: { type: 'text_delta', text: 'x' } },
+    })
+    expect(parseClaudeCliLine(subagent)).toBeNull()
+    const thinking = JSON.stringify({
+      type: 'stream_event',
+      parent_tool_use_id: null,
+      event: { type: 'content_block_delta', delta: { type: 'thinking_delta' } },
+    })
+    expect(parseClaudeCliLine(thinking)).toBeNull()
+    expect(parseClaudeCliLine(JSON.stringify({ type: 'system', subtype: 'init' }))).toBeNull()
+    expect(parseClaudeCliLine('not json at all')).toBeNull()
+  })
+
+  it('surfaces the terminal result with its error flag', () => {
+    expect(
+      parseClaudeCliLine(JSON.stringify({ type: 'result', is_error: false, result: 'Ciao' })),
+    ).toEqual({ type: 'result', isError: false, message: 'Ciao' })
+    expect(parseClaudeCliLine(JSON.stringify({ type: 'result', is_error: true }))).toEqual({
+      type: 'result',
+      isError: true,
+      message: null,
+    })
+  })
+})
+
+describe('claudeCliPrompt', () => {
+  it('sends a lone question verbatim', () => {
+    expect(claudeCliPrompt([{ role: 'user', content: 'What did I write?' }])).toBe(
+      'What did I write?',
+    )
+  })
+
+  it('carries prior turns as a transcript', () => {
+    const messages: ModelMessage[] = [
+      { role: 'user', content: 'First question' },
+      { role: 'assistant', content: [{ type: 'text', text: 'First answer' }] },
+      { role: 'user', content: 'Follow-up' },
+    ]
+    const prompt = claudeCliPrompt(messages)
+    expect(prompt).toContain('User: First question')
+    expect(prompt).toContain('Assistant: First answer')
+    expect(prompt.endsWith('Current question:\nFollow-up')).toBe(true)
+  })
+
+  it('notes attachments instead of embedding their bytes', () => {
+    const prompt = claudeCliPrompt([
+      {
+        role: 'user',
+        content: [
+          { type: 'file', data: 'data:image/png;base64,xxx', mediaType: 'image/png' },
+          { type: 'text', text: 'What is this?' },
+        ],
+      },
+    ])
+    expect(prompt).toContain('What is this?')
+    expect(prompt).toContain('[1 attachment not shown]')
+    expect(prompt).not.toContain('base64')
+  })
+})
+
+describe('claudeCliSettingsJson', () => {
+  it('denies each private note by absolute path plus the risky tools', () => {
+    const parsed = JSON.parse(
+      claudeCliSettingsJson('/graphs/work/', ['notes/secret.md', 'daily/2026-01-01.md']),
+    ) as { permissions: { deny: string[] } }
+    expect(parsed.permissions.deny).toContain('Read(//graphs/work/notes/secret.md)')
+    expect(parsed.permissions.deny).toContain('Read(//graphs/work/daily/2026-01-01.md)')
+    for (const tool of ['Grep', 'Bash', 'Write', 'Edit', 'WebSearch', 'WebFetch']) {
+      expect(parsed.permissions.deny).toContain(tool)
+    }
+  })
+})
+
+describe('claudeCliSystemPrompt', () => {
+  it('grounds the run in the graph and appends custom instructions', () => {
+    const prompt = claudeCliSystemPrompt({
+      today: '2026-06-14',
+      graphName: 'Work',
+      customSystemPrompt: 'Answer in Italian.',
+    })
+    expect(prompt).toContain('2026-06-14')
+    expect(prompt).toContain('“Work”')
+    expect(prompt).toContain('Read')
+    expect(prompt).toContain('Glob')
+    expect(prompt.endsWith('Answer in Italian.')).toBe(true)
+  })
+})
+
+describe('streamClaudeCliChat', () => {
+  interface FakeCli {
+    runs: Record<string, unknown>[]
+    stops: string[]
+    emit: ((payload: unknown) => void) | null
+  }
+
+  function installFakeCli(): FakeCli {
+    const fake: FakeCli = { runs: [], stops: [], emit: null }
+    setBridge({
+      invoke: async (command, args) => {
+        if (command === 'claude_cli_run') {
+          fake.runs.push(args)
+          return null
+        }
+        if (command === 'claude_cli_stop') {
+          fake.stops.push(String(args['requestId']))
+          return null
+        }
+        return null
+      },
+      listen: async (_event, handler) => {
+        fake.emit = handler
+        return () => {
+          fake.emit = null
+        }
+      },
+    })
+    return fake
+  }
+
+  function requestIdOf(fake: FakeCli): string {
+    return String(fake.runs[0]?.['requestId'])
+  }
+
+  const line = (requestId: string, payload: unknown) => ({
+    kind: 'line',
+    requestId,
+    line: JSON.stringify(payload),
+  })
+
+  it('streams text deltas and completes with the assistant message', async () => {
+    const fake = installFakeCli()
+    const stream = streamClaudeCliChat({
+      model: 'default',
+      messages: [{ role: 'user', content: 'hello' }],
+      today: '2026-06-14',
+      customSystemPrompt: '',
+      graphRoot: '/g',
+      graphName: 'g',
+      privateNotePaths: [],
+    })
+    const first = stream.next()
+    // The run starts before any event can arrive.
+    await Promise.resolve()
+    const requestId = requestIdOf(fake)
+    fake.emit?.(
+      line(requestId, {
+        type: 'stream_event',
+        parent_tool_use_id: null,
+        event: { type: 'content_block_delta', delta: { type: 'text_delta', text: 'Ciao' } },
+      }),
+    )
+    fake.emit?.(line(requestId, { type: 'result', is_error: false, result: 'Ciao' }))
+    fake.emit?.({ kind: 'done', requestId, code: 0 })
+
+    expect((await first).value).toEqual({ type: 'text-delta', text: 'Ciao' })
+    const terminal = await stream.next()
+    expect(terminal.value).toEqual({
+      type: 'complete',
+      messages: [{ role: 'assistant', content: [{ type: 'text', text: 'Ciao' }] }],
+    })
+    expect((await stream.next()).done).toBe(true)
+    // The default model sends no --model, and the run is scoped to the graph.
+    expect(fake.runs[0]).toMatchObject({ model: null, cwd: '/g', tools: ['Read', 'Glob'] })
+  })
+
+  it('yields an error carrying the CLI failure message', async () => {
+    const fake = installFakeCli()
+    const stream = streamClaudeCliChat({
+      model: 'sonnet',
+      messages: [{ role: 'user', content: 'hello' }],
+      today: '2026-06-14',
+      customSystemPrompt: '',
+      graphRoot: '/g',
+      graphName: 'g',
+      privateNotePaths: [],
+    })
+    const first = stream.next()
+    await Promise.resolve()
+    const requestId = requestIdOf(fake)
+    fake.emit?.({ kind: 'failed', requestId, message: 'not logged in' })
+    fake.emit?.({ kind: 'done', requestId, code: 1 })
+
+    const terminal = await first
+    expect(terminal.value).toMatchObject({ type: 'error', message: 'not logged in' })
+    expect(fake.runs[0]).toMatchObject({ model: 'sonnet' })
+  })
+
+  it('stops the CLI and reports aborted when the signal fires', async () => {
+    const fake = installFakeCli()
+    const controller = new AbortController()
+    const stream = streamClaudeCliChat({
+      model: 'default',
+      messages: [{ role: 'user', content: 'hello' }],
+      today: '2026-06-14',
+      customSystemPrompt: '',
+      graphRoot: '/g',
+      graphName: 'g',
+      privateNotePaths: [],
+      signal: controller.signal,
+    })
+    const first = stream.next()
+    await Promise.resolve()
+    const requestId = requestIdOf(fake)
+    controller.abort()
+    fake.emit?.({ kind: 'done', requestId, code: null })
+
+    const terminal = await first
+    expect(terminal.value).toEqual({ type: 'aborted', messages: [] })
+    expect(fake.stops).toEqual([requestId])
+  })
+
+  it('yields an error when the CLI cannot start', async () => {
+    setBridge({
+      invoke: async (command) => {
+        if (command === 'claude_cli_run') {
+          throw new Error('The Claude Code CLI (`claude`) was not found')
+        }
+        return null
+      },
+      listen: async () => () => {},
+    })
+    const stream = streamClaudeCliChat({
+      model: 'default',
+      messages: [{ role: 'user', content: 'hello' }],
+      today: '2026-06-14',
+      customSystemPrompt: '',
+      graphRoot: '/g',
+      graphName: 'g',
+      privateNotePaths: [],
+    })
+    const terminal = await stream.next()
+    expect(terminal.value).toMatchObject({
+      type: 'error',
+      message: expect.stringContaining('not found'),
+    })
+  })
+})

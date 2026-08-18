@@ -49,6 +49,9 @@ export function audioMemoEnrichmentConfig(config: AiProviderConfig): AiProviderC
       return null
     case 'openai-compatible':
       return config
+    case 'claude-cli':
+      // Chat-only: the CLI engine streams conversations, not enrichment calls.
+      return null
   }
 }
 

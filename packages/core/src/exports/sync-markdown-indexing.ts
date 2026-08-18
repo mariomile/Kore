@@ -179,6 +179,7 @@ export {
   taskContentDueDate,
   taskContentRepeat,
   loadGraphInsights,
+  listPrivateNotePaths,
   listDailyNotes,
   listNotes,
   listNoteTags,

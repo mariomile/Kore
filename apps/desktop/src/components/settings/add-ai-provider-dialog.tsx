@@ -208,29 +208,36 @@ export function AddAiProviderDialog({ onAdd, onClose }: AddAiProviderDialogProps
             </label>
           ) : null}
 
-          <label className="flex flex-col gap-1">
-            <span className={FIELD_LABEL_CLASS}>
-              {apiKeyRequired ? 'API key' : 'API key (optional)'}
-            </span>
-            <Input
-              type="password"
-              placeholder={provider.keyPlaceholder}
-              autoComplete="off"
-              spellCheck={false}
-              {...register('apiKey', {
-                validate: (value) =>
-                  !apiKeyRequired || value.trim().length > 0 || 'Enter an API key.',
-                onChange: () => {
-                  resetUnverified()
-                },
-              })}
-            />
-            {formState.errors.apiKey ? (
-              <span role="alert" className="text-xs text-red-600 dark:text-red-400">
-                {formState.errors.apiKey.message}
+          {provider.id === 'claude-cli' ? (
+            <p className="text-xs text-text-muted">
+              No API key — chat runs through the installed Claude Code CLI and bills your Claude
+              subscription. Install it and sign in once with <code>claude</code> in a terminal.
+            </p>
+          ) : (
+            <label className="flex flex-col gap-1">
+              <span className={FIELD_LABEL_CLASS}>
+                {apiKeyRequired ? 'API key' : 'API key (optional)'}
               </span>
-            ) : null}
-          </label>
+              <Input
+                type="password"
+                placeholder={provider.keyPlaceholder}
+                autoComplete="off"
+                spellCheck={false}
+                {...register('apiKey', {
+                  validate: (value) =>
+                    !apiKeyRequired || value.trim().length > 0 || 'Enter an API key.',
+                  onChange: () => {
+                    resetUnverified()
+                  },
+                })}
+              />
+              {formState.errors.apiKey ? (
+                <span role="alert" className="text-xs text-red-600 dark:text-red-400">
+                  {formState.errors.apiKey.message}
+                </span>
+              ) : null}
+            </label>
+          )}
 
           <label className="flex items-center gap-2">
             <input type="checkbox" className="accent-accent" {...register('isDefault')} />

@@ -55,6 +55,10 @@ export function AddAiProviderDrawer({
   )
 }
 
+// Providers that need a local binary can't run on the phone.
+const MOBILE_PROVIDERS = AI_PROVIDERS.filter((candidate) => candidate.desktopOnly !== true)
+const FIRST_MOBILE_PROVIDER = MOBILE_PROVIDERS[0] ?? AI_PROVIDERS[0]
+
 /** The sheet body — separate so each open starts a fresh draft. */
 function AddAiProviderSheet({
   onAdd,
@@ -63,8 +67,8 @@ function AddAiProviderSheet({
   onAdd: (draft: NewAiProvider) => Promise<void>
   onClose: () => void
 }): ReactElement {
-  const [providerId, setProviderId] = useState<AiProviderId>(AI_PROVIDERS[0].id)
-  const [model, setModel] = useState(AI_PROVIDERS[0].models[0].id)
+  const [providerId, setProviderId] = useState<AiProviderId>(FIRST_MOBILE_PROVIDER.id)
+  const [model, setModel] = useState(FIRST_MOBILE_PROVIDER.models[0].id)
   const [baseUrl, setBaseUrl] = useState('')
   const [apiKey, setApiKey] = useState('')
   const [isDefault, setIsDefault] = useState(false)
@@ -107,7 +111,7 @@ function AddAiProviderSheet({
           <span className={FIELD_LABEL_CLASS}>Provider</span>
           <Select
             value={provider.id}
-            items={AI_PROVIDERS.map((candidate) => ({
+            items={MOBILE_PROVIDERS.map((candidate) => ({
               value: candidate.id,
               label: candidate.label,
             }))}
@@ -124,7 +128,7 @@ function AddAiProviderSheet({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {AI_PROVIDERS.map((candidate) => (
+              {MOBILE_PROVIDERS.map((candidate) => (
                 <SelectItem key={candidate.id} value={candidate.id}>
                   {candidate.label}
                 </SelectItem>

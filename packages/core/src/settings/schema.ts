@@ -467,6 +467,7 @@ export const aiProviderIdSchema = z.enum([
   'google',
   'openrouter',
   'openai-compatible',
+  'claude-cli',
 ])
 
 export type AiProviderId = z.infer<typeof aiProviderIdSchema>
@@ -530,12 +531,24 @@ const openAiCompatibleProviderConfigSchema = aiProviderConfigBaseSchema.extend({
 
 export type OpenAiCompatibleProviderConfig = z.infer<typeof openAiCompatibleProviderConfigSchema>
 
+/**
+ * The Claude Code CLI provider ("subscription" AI): no API key — the locally
+ * installed `claude` binary carries its own Claude sign-in, so chat bills
+ * the user's subscription. Desktop-only (the CLI can't run on iOS).
+ */
+const claudeCliProviderConfigSchema = aiProviderConfigBaseSchema.extend({
+  provider: z.literal('claude-cli'),
+})
+
+export type ClaudeCliProviderConfig = z.infer<typeof claudeCliProviderConfigSchema>
+
 export const aiProviderConfigSchema = z.discriminatedUnion('provider', [
   openAiProviderConfigSchema,
   anthropicProviderConfigSchema,
   googleProviderConfigSchema,
   openRouterProviderConfigSchema,
   openAiCompatibleProviderConfigSchema,
+  claudeCliProviderConfigSchema,
 ])
 
 export type AiProviderConfig = z.infer<typeof aiProviderConfigSchema>

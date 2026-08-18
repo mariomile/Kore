@@ -38,6 +38,17 @@ export interface GraphInsights {
   topTags: NoteTagFacet[]
 }
 
+/**
+ * Graph-relative paths of every `private: true` note. The Claude Code CLI
+ * chat engine turns these into per-file Read deny rules — the privacy hard
+ * block for an engine that reads files itself instead of using the checked
+ * note tools.
+ */
+export async function listPrivateNotePaths(): Promise<string[]> {
+  const rows = await db.selectFrom('notes').where('isPrivate', '=', 1).select('path').execute()
+  return rows.map((row) => row.path)
+}
+
 export interface GraphInsightsOptions {
   /** How many most-linked notes to rank. */
   linkedLimit: number

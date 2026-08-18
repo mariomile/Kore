@@ -41,6 +41,11 @@ export interface AiProviderInfo {
   keyPlaceholder: string
   /** Curated models, most capable first (the first is the picker default). */
   models: NonEmptyArray<AiModelOption>
+  /**
+   * The provider only works on desktop (a local binary is involved) —
+   * mobile pickers hide it. Absent means available everywhere.
+   */
+  desktopOnly?: boolean
 }
 
 /** Drop the `(string & {})` escape hatch, leaving only the known literals. */
@@ -125,6 +130,24 @@ export const AI_PROVIDERS: NonEmptyArray<AiProviderInfo> = [
     apiKeyRequired: false,
     keyPlaceholder: 'Optional API key',
     models: [{ id: DEFAULT_OPENAI_COMPATIBLE_MODEL, label: 'Local model', contextWindow: 128_000 }],
+  },
+  {
+    // The Claude Code CLI ("subscription" AI): no key — the installed
+    // `claude` binary carries its own Claude sign-in. Model ids are the
+    // CLI's aliases, resolved by the CLI itself; `default` sends no
+    // `--model` at all. Context windows are conservative floors — the CLI
+    // manages its own context, this only budgets the transcript we send.
+    id: 'claude-cli',
+    label: 'Claude Code (subscription)',
+    apiKeyRequired: false,
+    keyPlaceholder: 'No API key — uses your Claude sign-in',
+    desktopOnly: true,
+    models: [
+      { id: 'default', label: 'CLI default', contextWindow: 200_000 },
+      { id: 'opus', label: 'Claude Opus', contextWindow: 200_000 },
+      { id: 'sonnet', label: 'Claude Sonnet', contextWindow: 200_000 },
+      { id: 'haiku', label: 'Claude Haiku', contextWindow: 200_000 },
+    ],
   },
 ]
 

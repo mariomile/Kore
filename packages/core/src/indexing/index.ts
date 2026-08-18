@@ -107,6 +107,7 @@ export {
 } from './group-tasks'
 export {
   loadGraphInsights,
+  listPrivateNotePaths,
   type ActivityDay,
   type GraphInsights,
   type GraphInsightsOptions,

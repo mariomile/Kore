@@ -336,6 +336,13 @@ describe('settingsSchema', () => {
       expect(settingsSchema.parse({ aiProviders: [valid] }).aiProviders).toEqual([valid])
     })
 
+    it('accepts Claude Code CLI entries (no key)', () => {
+      const entry = { id: 'cc1', provider: 'claude-cli', model: 'default' }
+      expect(settingsSchema.parse({ aiProviders: [entry] }).aiProviders).toEqual([
+        { ...entry, keyHint: '' },
+      ])
+    })
+
     it('accepts OpenRouter entries', () => {
       const entry = {
         id: 'openrouter',

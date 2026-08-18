@@ -52,5 +52,12 @@ export function languageModel(
         includeUsage: true,
         ...(apiKey.trim() === '' ? {} : { apiKey }),
       }).chatModel(config.model)
+    case 'claude-cli':
+      // The CLI provider streams through its own engine (`ai/claude-cli`),
+      // never through the AI SDK — reaching here means a feature that needs
+      // a direct provider call was pointed at the subscription entry.
+      throw new Error(
+        'Claude Code (subscription) supports chat only — pick an API-key provider for this feature.',
+      )
   }
 }

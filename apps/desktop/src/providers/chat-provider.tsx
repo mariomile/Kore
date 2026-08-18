@@ -16,11 +16,13 @@ import {
   errorMessage,
   hasBridge,
   listChatConversations,
+  listPrivateNotePaths,
   loadChatGraphContext,
   loadChatMessages,
   resolveChatModel,
   saveChatMessage,
   streamChat,
+  streamClaudeCliChat,
   userMessage,
   type AiProviderConfig,
   type ChatConversation,
@@ -288,34 +290,69 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
       lastSendSessionRef.current = activeSend.session
 
       try {
-        // The graph overview degrades to null (prompt without the block)
-        // rather than blocking the turn — a cold index shouldn't kill chat.
-        const [apiKey, context] = await Promise.all([
-          aiApiKeyForConfig(config),
-          loadChatGraphContext(graph.name).catch((cause: unknown) => {
-            console.error('chat graph context failed:', errorMessage(cause))
+        const events = await (async () => {
+          if (config.provider === 'claude-cli') {
+            // The subscription engine: the CLI reads the graph itself, so it
+            // needs the private-note deny list, not an API key. A cold index
+            // degrades to no deny list additions being missed — the query
+            // reads the same projection the tools would.
+            const privateNotePaths = await listPrivateNotePaths().catch((cause: unknown) => {
+              console.error('private-note list failed:', errorMessage(cause))
+              return null
+            })
+            if (privateNotePaths === null) {
+              return null
+            }
+            return streamClaudeCliChat({
+              model: config.model,
+              messages,
+              today: todayIso(),
+              customSystemPrompt,
+              graphRoot: graph.root,
+              graphName: graph.name,
+              privateNotePaths,
+              signal: controller.signal,
+            })
+          }
+          // The graph overview degrades to null (prompt without the block)
+          // rather than blocking the turn — a cold index shouldn't kill chat.
+          const [apiKey, context] = await Promise.all([
+            aiApiKeyForConfig(config),
+            loadChatGraphContext(graph.name).catch((cause: unknown) => {
+              console.error('chat graph context failed:', errorMessage(cause))
+              return null
+            }),
+          ])
+          if (apiKey === null) {
+            applyEvent({
+              type: 'error',
+              message: 'No API key found for this provider — re-add it in Settings → AI providers.',
+              messages: [],
+            })
             return null
-          }),
-        ])
-        if (apiKey === null) {
-          applyEvent({
-            type: 'error',
-            message: 'No API key found for this provider — re-add it in Settings → AI providers.',
-            messages: [],
+          }
+          return streamChat({
+            config,
+            apiKey,
+            fetchFn: providerFetch,
+            messages,
+            today: todayIso(),
+            semanticSearchEnabled: semanticSearchEnabledRef.current,
+            customSystemPrompt,
+            context,
+            signal: controller.signal,
           })
+        })()
+        if (events === null) {
+          if (config.provider === 'claude-cli') {
+            applyEvent({
+              type: 'error',
+              message: 'Couldn’t read the private-note list — try again in a moment.',
+              messages: [],
+            })
+          }
           return
         }
-        const events = streamChat({
-          config,
-          apiKey,
-          fetchFn: providerFetch,
-          messages,
-          today: todayIso(),
-          semanticSearchEnabled: semanticSearchEnabledRef.current,
-          customSystemPrompt,
-          context,
-          signal: controller.signal,
-        })
         for await (const event of events) {
           // Every terminal event carries the turn's messages — for a stopped or
           // failed turn that's the completed steps plus partial text, so the

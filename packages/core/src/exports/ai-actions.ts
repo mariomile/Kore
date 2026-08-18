@@ -92,6 +92,17 @@ export {
   type GraphContextDeps,
 } from '../ai/chat/graph-context'
 export { streamChat, type ChatStreamEvent, type StreamChatOptions } from '../ai/chat/stream-chat'
+export {
+  checkClaudeCli,
+  claudeCliPrompt,
+  claudeCliSettingsJson,
+  claudeCliSystemPrompt,
+  parseClaudeCliLine,
+  streamClaudeCliChat,
+  CLAUDE_CLI_DEFAULT_MODEL,
+  type ClaudeCliChunk,
+  type StreamClaudeCliChatOptions,
+} from '../ai/claude-cli'
 export { chatToMarkdown } from '../ai/chat/export'
 export {
   BUILT_IN_AI_PROMPTS,

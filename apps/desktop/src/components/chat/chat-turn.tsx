@@ -7,6 +7,7 @@ import { useWikiLinkNavigation } from '@/editor/use-wiki-link-navigation'
 import { assistantReplyMarkdown } from '@/lib/chat-copy'
 import { ChatAssistantPart } from './chat-assistant-part'
 import { ChatCopyButton } from './chat-copy-button'
+import { ChatSaveNoteButton } from './chat-save-note-button'
 import { ChatUserAttachments } from './chat-user-attachments'
 
 interface ChatTurnProps {
@@ -71,6 +72,7 @@ export function ChatTurn({ turn }: ChatTurnProps): ReactElement {
           {replyMarkdown !== null ? (
             <MessageFooter className="pointer-events-none -mt-1 opacity-0 transition-opacity duration-100 group-hover/assistant-response:pointer-events-auto group-hover/assistant-response:opacity-100 group-focus-within/assistant-response:pointer-events-auto group-focus-within/assistant-response:opacity-100">
               <ChatCopyButton text={replyMarkdown} />
+              <ChatSaveNoteButton userText={turn.userText} text={replyMarkdown} />
             </MessageFooter>
           ) : null}
         </MessageContent>

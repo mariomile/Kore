@@ -49,6 +49,14 @@ export interface ChatContextValue {
   stop: () => void
   /** Leave the conversation in the history and start a fresh one. */
   newChat: () => void
+  /**
+   * Extra instructions layered on the global system prompt for THIS
+   * conversation only. Session state: cleared by New chat and by opening a
+   * past conversation, never persisted.
+   */
+  instructions: string
+  /** Replace the conversation's instructions (the composer's popover). */
+  setInstructions: (text: string) => void
   /** The persisted conversation the transcript belongs to. */
   activeConversationId: string
   /** Load a past conversation from the history. */

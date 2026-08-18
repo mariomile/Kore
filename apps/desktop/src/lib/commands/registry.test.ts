@@ -29,6 +29,7 @@ function fakeContext(overrides?: Partial<CommandContext>): CommandContext {
     openTemplatePicker: vi.fn(),
     openTemplateCreate: vi.fn(),
     enableSemanticSearch: vi.fn(),
+    summarizeNote: vi.fn(),
     ...overrides,
   }
 }

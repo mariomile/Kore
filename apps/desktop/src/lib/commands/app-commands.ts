@@ -141,6 +141,12 @@ const APP_COMMANDS: AppCommand[] = [
     run: (context) => context.navigate({ kind: 'chat' }),
   },
   {
+    id: 'chat.summarizeNote',
+    title: 'Summarize note with AI',
+    keywords: ['ai', 'assistant', 'summary', 'tldr', 'recap'],
+    run: (context) => context.summarizeNote(),
+  },
+  {
     id: 'chat.new',
     title: 'New chat',
     keywords: ['ai', 'assistant', 'copilot', 'conversation'],

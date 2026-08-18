@@ -75,6 +75,10 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
   const [draft, setDraft] = useState('')
   const [attachments, setAttachments] = useState<ChatAttachment[]>([])
   const [conversationId, setConversationId] = useState<string>(() => crypto.randomUUID())
+  // Extra instructions for THIS conversation, layered on the global system
+  // prompt. Session state by design: the chat store's schema stays untouched,
+  // and a restored conversation starts from the global prompt alone.
+  const [instructions, setInstructions] = useState('')
 
   const status: ChatStatus = turns.at(-1)?.status === 'streaming' ? 'streaming' : 'idle'
 
@@ -102,6 +106,7 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
   const semanticSearchEnabled = settings.semanticSearchEnabled && !isMobileSurface()
   const semanticSearchEnabledRef = useRef(semanticSearchEnabled)
   const chatSystemPromptRef = useRef(settings.chatSystemPrompt)
+  const instructionsRef = useRef(instructions)
   useEffect(() => {
     turnsRef.current = turns
     attachmentsRef.current = attachments
@@ -110,6 +115,7 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
     generationRef.current = indexGeneration
     semanticSearchEnabledRef.current = semanticSearchEnabled
     chatSystemPromptRef.current = settings.chatSystemPrompt
+    instructionsRef.current = instructions
   })
 
   // The in-flight send, tracked synchronously — the no-concurrent-sends
@@ -228,7 +234,12 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
 
       const turnId = crypto.randomUUID()
       const messages = [...buildHistory(turnsRef.current), userMessage(trimmed, attached)]
-      const customSystemPrompt = chatSystemPromptRef.current
+      // The conversation's own instructions ride after the global prompt so a
+      // per-chat tone or format override wins where the two disagree.
+      const conversationInstructions = instructionsRef.current.trim()
+      const customSystemPrompt = [chatSystemPromptRef.current.trim(), conversationInstructions]
+        .filter((part) => part !== '')
+        .join('\n\n')
       // Everything the settle-time save needs, captured now: a turn detached
       // by New chat (or a conversation switch) still persists into the
       // conversation it was sent under.
@@ -344,6 +355,7 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
     sessionRef.current += 1
     setTurns([])
     setAttachments([])
+    setInstructions('')
     setConversationId(crypto.randomUUID())
   }, [])
 
@@ -355,6 +367,7 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
     sessionRef.current += 1
     const session = sessionRef.current
     setAttachments([])
+    setInstructions('')
     try {
       const restored = await loadChatMessages(id)
       // Superseded by another switch or New chat — or by a send: a message
@@ -435,6 +448,8 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
       send,
       stop,
       newChat,
+      instructions,
+      setInstructions,
       activeConversationId: conversationId,
       openConversation,
       deleteConversation,
@@ -453,6 +468,7 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
       send,
       stop,
       newChat,
+      instructions,
       conversationId,
       openConversation,
       deleteConversation,

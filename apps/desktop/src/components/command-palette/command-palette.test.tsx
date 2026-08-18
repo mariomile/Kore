@@ -117,6 +117,7 @@ async function renderPalette(query: string, context?: Partial<CommandContext>) {
     openTemplatePicker: vi.fn(),
     openTemplateCreate: vi.fn(),
     enableSemanticSearch: vi.fn(),
+    summarizeNote: vi.fn(),
     ...context,
   }
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })

@@ -157,6 +157,7 @@ async function renderSidebar(overrides?: Partial<CommandContext>, initialRoute?:
     openTemplatePicker: vi.fn(),
     openTemplateCreate: vi.fn(),
     enableSemanticSearch: vi.fn(),
+    summarizeNote: vi.fn(),
     ...overrides,
   }
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })

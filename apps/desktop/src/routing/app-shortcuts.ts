@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
+import { getNote } from '@reflect/core'
 import { getIsComposing } from '@meowdown/core'
 import { usePalette } from '@/components/command-palette/palette-provider'
 import { registerKeymap } from '@/editor/keymap'
@@ -173,7 +174,7 @@ export function useAppShortcuts(): CommandContext {
   } = useNoteTemplates()
   const { toggleSidebar } = useSidebar()
   const { toggle: toggleAudioMemo } = useAudioMemo()
-  const { newChat } = useChatSession()
+  const { newChat, setDraft: setChatDraft } = useChatSession()
   const { updateSettings } = useSettings()
   const {
     openForPath: openNoteFindForPath,
@@ -254,6 +255,30 @@ export function useAppShortcuts(): CommandContext {
         // retries on an explicit action like this command.
         void retryFailedEmbeddings()
       },
+      summarizeNote: () => {
+        const path = focusedNotePathForRoute(
+          routeRef.current,
+          todayIso(),
+          focusedDailyDateRef.current,
+        )
+        if (path === null) {
+          return
+        }
+        void (async () => {
+          const note = await getNote(path).catch(() => undefined)
+          // A daily note's wiki target is its date; a regular note's is its
+          // title. Private notes are hard-blocked from AI, so don't draft.
+          if (note === undefined || note.isPrivate) {
+            return
+          }
+          const target = note.dailyDate ?? note.title
+          if (target === '') {
+            return
+          }
+          setChatDraft(`Summarize [[${target}]]`)
+          navigate({ kind: 'chat' })
+        })()
+      },
     }),
     [
       navigate,
@@ -268,6 +293,7 @@ export function useAppShortcuts(): CommandContext {
       openTemplateCreate,
       toggleSidebar,
       newChat,
+      setChatDraft,
       openNoteFindForPath,
       findNextInNote,
       findPreviousInNote,

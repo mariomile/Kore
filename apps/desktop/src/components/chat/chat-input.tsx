@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactElement } from 'react'
-import { ArrowUp, FilePlus2, Plus, Square, X } from 'lucide-react'
+import { ArrowUp, FilePlus2, Plus, SlidersHorizontal, Square, X } from 'lucide-react'
 import { chatToMarkdown, createNoteWithTitle } from '@reflect/core'
 import { getIsComposing } from '@meowdown/core'
 import { ShortcutKeys } from '@/components/shortcut-keys'
@@ -21,6 +21,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Textarea } from '@/components/ui/textarea'
 import { toast } from '@/components/ui/toast'
 import { imageFilesFrom } from '@/lib/chat-attachments'
 import { groupModelOptions } from '@/lib/chat-model-groups'
@@ -58,6 +60,8 @@ export function ChatInput(): ReactElement {
     send,
     stop,
     newChat,
+    instructions,
+    setInstructions,
   } = useChatSession()
   const { graph } = useGraph()
   const { navigate } = useRouter()
@@ -200,6 +204,35 @@ export function ChatInput(): ReactElement {
             </SelectContent>
           </Select>
           <div className="flex-1" />
+          <Popover>
+            <PopoverTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Conversation instructions"
+                  className={instructions.trim() !== '' ? 'text-accent' : undefined}
+                >
+                  <SlidersHorizontal aria-hidden />
+                </Button>
+              }
+            />
+            <PopoverContent align="end" className="w-80 p-3">
+              <p className="text-sm font-medium text-text">Conversation instructions</p>
+              <Textarea
+                value={instructions}
+                onChange={(event) => setInstructions(event.target.value)}
+                placeholder="e.g. Answer in Italian, keep it to bullet points…"
+                aria-label="Conversation instructions"
+                rows={4}
+                className="mt-2 text-sm"
+              />
+              <p className="mt-2 text-xs text-text-muted">
+                Applies on top of your global system prompt, for this conversation only. Cleared by
+                New chat.
+              </p>
+            </PopoverContent>
+          </Popover>
           <ChatHistoryMenu />
           {turns.length > 0 && !streaming ? (
             <Tooltip>

@@ -60,6 +60,13 @@ export interface CommandContext {
    * downloading — the model, so flipping the flag is the whole command.
    */
   enableSemanticSearch: () => void
+  /**
+   * Open the chat with a "Summarize [[note]]" draft for the focused note —
+   * prefilled, never auto-sent, so a BYOK call only happens on the user's
+   * Enter. A private note is a no-op (the hard block applies before the
+   * prompt is even drafted).
+   */
+  summarizeNote: () => void
 }
 
 export interface AppCommand {

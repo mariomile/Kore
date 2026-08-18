@@ -17,6 +17,9 @@ import { RouterProvider } from '@/routing/router'
 import { expectLocatorToHaveCount } from '@/test-utils/expect'
 
 const getPinnedNotes = vi.hoisted(() => vi.fn<() => Promise<PinnedNote[]>>(async () => []))
+const listNoteTags = vi.hoisted(() =>
+  vi.fn<() => Promise<{ tag: string; count: number }[]>>(async () => []),
+)
 const revealItemInDir = vi.hoisted(() => vi.fn<(path: string) => Promise<void>>(async () => {}))
 const openRouteInNewWindow = vi.hoisted(() => vi.fn<(route: NoteRoute) => Promise<boolean>>())
 const openRecent = vi.hoisted(() => vi.fn())
@@ -45,6 +48,7 @@ vi.mock('@reflect/core', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@reflect/core')>()),
   hasBridge: () => true,
   getPinnedNotes,
+  listNoteTags,
 }))
 vi.mock('@tauri-apps/plugin-opener', () => ({ revealItemInDir }))
 vi.mock('@/lib/windows/open-in-new-window', async (importOriginal) => ({
@@ -115,6 +119,7 @@ beforeEach(() => {
   // The hoisted mock is shared module state — restore it so mic-related cases
   // can't inherit mutations from earlier tests.
   getPinnedNotes.mockReset().mockResolvedValue([])
+  listNoteTags.mockReset().mockResolvedValue([])
   audioMemo.available = true
   audioMemo.unavailableReason = null
   audioMemo.toggle.mockReset()
@@ -174,6 +179,33 @@ async function renderSidebar(overrides?: Partial<CommandContext>, initialRoute?:
 }
 
 describe('Sidebar', () => {
+  it('lists tags with counts and opens the tag-filtered All Notes view', async () => {
+    listNoteTags.mockResolvedValue([
+      { tag: 'book', count: 3 },
+      { tag: 'person', count: 1 },
+    ])
+    const { view } = await renderSidebar()
+
+    const tagRow = view.getByRole('button', { name: /#book\s*3/i })
+    await expect.element(tagRow).toBeVisible()
+    await expect.element(view.getByRole('button', { name: /#person\s*1/i })).toBeVisible()
+
+    // Navigation happens through the live router: All Notes lights up once the
+    // tag-filtered route is current.
+    await tagRow.click()
+    await vi.waitFor(async () => {
+      await expect
+        .element(view.getByRole('button', { name: /all notes/i }))
+        .toHaveAttribute('aria-current', 'page')
+    })
+  })
+
+  it('hides the Tags section while the graph has no tags', async () => {
+    const { view } = await renderSidebar()
+    await vi.waitFor(() => expect(listNoteTags).toHaveBeenCalled())
+    expect(view.container.querySelector('[aria-label="Tags"]')).toBeNull()
+  })
+
   it('nav rows navigate, with Daily notes always re-anchoring to today', async () => {
     const { view, navigate } = await renderSidebar(undefined, { kind: 'settings' })
 

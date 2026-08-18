@@ -163,6 +163,105 @@ export function SettingsSegmentedRow<Value extends string>({
   )
 }
 
+interface SettingsChipsRowProps<Value extends string> {
+  label: string
+  value: Value
+  options: readonly SegmentedOption<Value>[]
+  onChange: (value: Value) => void
+}
+
+/**
+ * A row whose choice wraps onto its own line as chips — for closed choices
+ * too wide for the inline segmented control (the six themes). Same visual
+ * language as the segmented row, just wrapping.
+ */
+export function SettingsChipsRow<Value extends string>({
+  label,
+  value,
+  options,
+  onChange,
+}: SettingsChipsRowProps<Value>): ReactElement {
+  return (
+    <div className={cn(ROW_CLASS, 'flex-col items-stretch gap-2')}>
+      <span className="min-w-0 truncate">{label}</span>
+      <div role="radiogroup" aria-label={label} className="flex flex-wrap gap-1.5">
+        {options.map((option) => {
+          const selected = option.value === value
+          return (
+            <button
+              key={option.value}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              onClick={() => onChange(option.value)}
+              className={cn(
+                'rounded-lg border px-3 py-1.5 text-[13px] font-medium transition-colors',
+                selected
+                  ? 'border-accent bg-accent-soft text-accent-soft-text'
+                  : 'border-border bg-secondary text-text-muted',
+              )}
+            >
+              {option.label}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+export interface SwatchOption<Value extends string> {
+  value: Value
+  label: string
+  /** The dot's fill (a CSS color). */
+  color: string
+}
+
+/** A row of color-dot radios (the accent color picker). */
+export function SettingsSwatchRow<Value extends string>({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string
+  value: Value
+  options: readonly SwatchOption<Value>[]
+  onChange: (value: Value) => void
+}): ReactElement {
+  return (
+    <div className={cn(ROW_CLASS, 'flex-col items-stretch gap-2')}>
+      <span className="min-w-0 truncate">{label}</span>
+      <div role="radiogroup" aria-label={label} className="flex flex-wrap gap-2">
+        {options.map((option) => {
+          const selected = option.value === value
+          return (
+            <button
+              key={option.value}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              aria-label={option.label}
+              title={option.label}
+              onClick={() => onChange(option.value)}
+              className={cn(
+                'flex size-8 items-center justify-center rounded-full border transition-colors',
+                selected ? 'border-text' : 'border-transparent',
+              )}
+            >
+              <span
+                aria-hidden
+                className="size-5 rounded-full"
+                style={{ background: option.color }}
+              />
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 interface SettingsActionRowProps {
   label: string
   onPress: () => void

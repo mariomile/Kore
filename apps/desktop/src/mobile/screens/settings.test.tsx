@@ -149,6 +149,18 @@ describe('MobileSettings', () => {
 
     await user.click(page.getByRole('radio', { name: 'Large' }))
     expect(updateSettings).toHaveBeenCalledWith({ editorTextSize: 'large' })
+
+    await user.click(page.getByRole('radio', { name: 'Space' }))
+    expect(updateSettings).toHaveBeenCalledWith({ theme: 'space' })
+
+    await user.click(page.getByRole('radio', { name: 'Teal' }))
+    expect(updateSettings).toHaveBeenCalledWith({ accentColor: 'teal' })
+
+    await user.click(page.getByRole('radio', { name: 'Serif' }))
+    expect(updateSettings).toHaveBeenCalledWith({ editorFontFamily: 'serif' })
+
+    await user.click(page.getByRole('radio', { name: 'Relaxed' }))
+    expect(updateSettings).toHaveBeenCalledWith({ editorLineSpacing: 'relaxed' })
   })
 
   it('toggles the editor switches', async () => {

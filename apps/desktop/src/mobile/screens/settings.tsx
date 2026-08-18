@@ -7,8 +7,12 @@ import {
   iapRestorePurchases,
   listNotes,
   normalizeChatSystemPrompt,
+  ACCENT_COLOR_IDS,
+  type AccentColor,
   type AiPrompt,
   type AiProviderConfig,
+  type EditorFontFamily,
+  type EditorLineSpacing,
   type EditorTextSize,
   type ThemePreference,
 } from '@reflect/core'
@@ -28,12 +32,15 @@ import { PRIVACY_POLICY_URL, TERMS_OF_USE_URL } from '@/mobile/legal-urls'
 import { MobileScreenHeader } from '@/mobile/screen-header'
 import {
   SettingsActionRow,
+  SettingsChipsRow,
   SettingsGroup,
   SettingsNavRow,
   SettingsSegmentedRow,
+  SettingsSwatchRow,
   SettingsSwitchRow,
   SettingsValueRow,
   type SegmentedOption,
+  type SwatchOption,
 } from '@/mobile/settings-list'
 import {
   invalidateEntitlementQueries,
@@ -49,6 +56,40 @@ const THEME_OPTIONS: readonly SegmentedOption<ThemePreference>[] = [
   { value: 'system', label: 'System' },
   { value: 'light', label: 'Light' },
   { value: 'dark', label: 'Dark' },
+  { value: 'space', label: 'Space' },
+  { value: 'midnight', label: 'Midnight' },
+  { value: 'paper', label: 'Paper' },
+]
+
+// Swatch fills mirror the desktop picker: each accent's light-theme value.
+const ACCENT_SWATCHES: Record<AccentColor, string> = {
+  indigo: '#4f46e5',
+  purple: '#7c3aed',
+  blue: '#2563eb',
+  teal: '#0d9488',
+  green: '#059669',
+  amber: '#d97706',
+  rose: '#e11d48',
+  red: '#dc2626',
+}
+
+const ACCENT_OPTIONS: readonly SwatchOption<AccentColor>[] = ACCENT_COLOR_IDS.map((id) => ({
+  value: id,
+  label: id.charAt(0).toUpperCase() + id.slice(1),
+  color: ACCENT_SWATCHES[id],
+}))
+
+const FONT_FAMILY_OPTIONS: readonly SegmentedOption<EditorFontFamily>[] = [
+  { value: 'sans', label: 'Sans' },
+  { value: 'serif', label: 'Serif' },
+  { value: 'system', label: 'System' },
+  { value: 'mono', label: 'Mono' },
+]
+
+const LINE_SPACING_OPTIONS: readonly SegmentedOption<EditorLineSpacing>[] = [
+  { value: 'compact', label: 'Compact' },
+  { value: 'normal', label: 'Normal' },
+  { value: 'relaxed', label: 'Relaxed' },
 ]
 
 function aiProviderValue(provider: AiProviderConfig, defaultProviderId: string | null): string {
@@ -186,17 +227,35 @@ export function MobileSettings(): ReactElement {
           </SettingsGroup>
 
           <SettingsGroup header="Appearance">
-            <SettingsSegmentedRow
+            <SettingsChipsRow
               label="Theme"
               value={settings.theme}
               options={THEME_OPTIONS}
               onChange={(theme) => updateSettings({ theme })}
+            />
+            <SettingsSwatchRow
+              label="Accent color"
+              value={settings.accentColor}
+              options={ACCENT_OPTIONS}
+              onChange={(accentColor) => updateSettings({ accentColor })}
             />
             <SettingsSegmentedRow
               label="Text size"
               value={settings.editorTextSize}
               options={TEXT_SIZE_OPTIONS}
               onChange={(editorTextSize) => updateSettings({ editorTextSize })}
+            />
+            <SettingsChipsRow
+              label="Font"
+              value={settings.editorFontFamily}
+              options={FONT_FAMILY_OPTIONS}
+              onChange={(editorFontFamily) => updateSettings({ editorFontFamily })}
+            />
+            <SettingsSegmentedRow
+              label="Line spacing"
+              value={settings.editorLineSpacing}
+              options={LINE_SPACING_OPTIONS}
+              onChange={(editorLineSpacing) => updateSettings({ editorLineSpacing })}
             />
           </SettingsGroup>
 

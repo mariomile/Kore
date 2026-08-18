@@ -1,4 +1,4 @@
-import type { ThemePreference } from '@reflect/core'
+import type { AccentColor, ThemePreference } from '@reflect/core'
 
 /**
  * Where the theme preference is mirrored for the *next* launch.
@@ -26,5 +26,25 @@ export function writeCachedThemePreference(preference: ThemePreference): void {
     localStorage.setItem(THEME_PREFERENCE_CACHE_KEY, preference)
   } catch {
     // Storage is unavailable; theme-init.js falls back to `prefers-color-scheme`.
+  }
+}
+
+/**
+ * Where the accent color is mirrored for the next launch, same contract as
+ * {@link THEME_PREFERENCE_CACHE_KEY}: `public/theme-init.js` repeats this
+ * literal because it cannot import, and `theme-cache.test.ts` guards the pair.
+ */
+export const THEME_ACCENT_CACHE_KEY = 'reflect.theme.accent'
+
+/**
+ * Mirror the persisted accent color so the next launch's first paint already
+ * carries it. Best-effort like the preference mirror — an unreadable cache
+ * just paints the default (indigo) accent until settings load.
+ */
+export function writeCachedAccentColor(accentColor: AccentColor): void {
+  try {
+    localStorage.setItem(THEME_ACCENT_CACHE_KEY, accentColor)
+  } catch {
+    // Storage is unavailable; theme-init.js paints the default accent.
   }
 }

@@ -9,14 +9,24 @@ import {
   type ReactNode,
 } from 'react'
 import type { ThemePreference } from '@reflect/core'
-import { writeCachedThemePreference } from '@/lib/theme-cache'
+import { writeCachedAccentColor, writeCachedThemePreference } from '@/lib/theme-cache'
 import { useSettings, type SettingsLoadOutcome } from '@/providers/settings-provider'
 
 /** User-selectable theme; `system` follows the OS preference. */
 export type Theme = ThemePreference
 
 /** The concrete theme actually applied to the document. */
-export type ResolvedTheme = 'light' | 'dark'
+export type ResolvedTheme = Exclude<ThemePreference, 'system'>
+
+/**
+ * Whether a resolved theme belongs to the dark family. `space` and `midnight`
+ * are dark variants — they layer over the `.dark` scope — while `paper` is a
+ * light variant. Family drives the `.dark` class (and with it every Tailwind
+ * `dark:` utility), the CSS `color-scheme`, and the light/dark toggle.
+ */
+export function isDarkResolvedTheme(theme: ResolvedTheme): boolean {
+  return theme === 'dark' || theme === 'space' || theme === 'midnight'
+}
 
 interface ThemeContextValue {
   theme: Theme
@@ -51,6 +61,7 @@ interface ThemeProviderProps {
 export function ThemeProvider({ children }: ThemeProviderProps): ReactElement {
   const { settings, updateSettings, whenSettingsLoaded } = useSettings()
   const theme = settings.theme
+  const accentColor = settings.accentColor
   const [systemTheme, setSystemTheme] = useState<ResolvedTheme>(getSystemTheme)
   const [loadOutcome, setLoadOutcome] = useState<SettingsLoadOutcome | null>(null)
 
@@ -83,9 +94,12 @@ export function ThemeProvider({ children }: ThemeProviderProps): ReactElement {
       return
     }
     const root = document.documentElement
-    root.classList.toggle('dark', resolvedTheme === 'dark')
-    root.style.colorScheme = resolvedTheme
-  }, [loadOutcome, resolvedTheme])
+    const dark = isDarkResolvedTheme(resolvedTheme)
+    root.classList.toggle('dark', dark)
+    root.setAttribute('data-theme', resolvedTheme)
+    root.setAttribute('data-accent', accentColor)
+    root.style.colorScheme = dark ? 'dark' : 'light'
+  }, [loadOutcome, resolvedTheme, accentColor])
 
   // Only a loaded document is worth caching: after a failed load changes apply
   // for the session only, so mirroring them would have the next launch paint a
@@ -95,7 +109,8 @@ export function ThemeProvider({ children }: ThemeProviderProps): ReactElement {
       return
     }
     writeCachedThemePreference(theme)
-  }, [loadOutcome, theme])
+    writeCachedAccentColor(accentColor)
+  }, [loadOutcome, theme, accentColor])
 
   const setTheme = useCallback((next: Theme) => updateSettings({ theme: next }), [updateSettings])
 

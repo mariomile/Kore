@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { THEME_PREFERENCE_CACHE_KEY } from './theme-cache'
+import { THEME_ACCENT_CACHE_KEY, THEME_PREFERENCE_CACHE_KEY } from './theme-cache'
 
 /**
  * `public/theme-init.js` is served raw — no bundler, so it cannot import the
@@ -16,5 +16,12 @@ describe('THEME_PREFERENCE_CACHE_KEY', () => {
   it('matches the key the early theme script reads', () => {
     const script = readFileSync(THEME_INIT_PATH, 'utf8')
     expect(script).toContain(`'${THEME_PREFERENCE_CACHE_KEY}'`)
+  })
+})
+
+describe('THEME_ACCENT_CACHE_KEY', () => {
+  it('matches the key the early theme script reads', () => {
+    const script = readFileSync(THEME_INIT_PATH, 'utf8')
+    expect(script).toContain(`'${THEME_ACCENT_CACHE_KEY}'`)
   })
 })

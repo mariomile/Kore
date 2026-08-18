@@ -7,17 +7,36 @@
 // The persisted preference lives in the settings document, which only arrives
 // over IPC after the first paint, so `ThemeProvider`
 // (`src/providers/theme-provider.tsx`) mirrors it into localStorage for the
-// next launch. A pinned `light`/`dark` wins here; `system`, a first launch, and
-// an unreadable cache all fall back to the OS preference. ThemeProvider
-// re-applies the real value once settings load.
+// next launch. A pinned theme wins here; `system`, a first launch, and an
+// unreadable cache all fall back to the OS preference. The accent color is
+// mirrored the same way; its absence just paints the default (indigo) accent.
+// ThemeProvider re-applies the real values once settings load.
 {
   // Keep in sync with THEME_PREFERENCE_CACHE_KEY in src/lib/theme-cache.ts.
   const PREFERENCE_KEY = 'reflect.theme.preference'
+  // Keep in sync with THEME_ACCENT_CACHE_KEY in src/lib/theme-cache.ts.
+  const ACCENT_KEY = 'reflect.theme.accent'
+
+  // Keep in sync with themePreferenceSchema / accentColorSchema in
+  // packages/core/src/settings/schema.ts and with isDarkResolvedTheme in
+  // src/providers/theme-provider.tsx.
+  const PINNED_THEMES = ['light', 'dark', 'space', 'midnight', 'paper']
+  const DARK_THEMES = ['dark', 'space', 'midnight']
+  const ACCENTS = ['indigo', 'purple', 'blue', 'teal', 'green', 'amber', 'rose', 'red']
 
   function pinnedTheme() {
     try {
       const preference = localStorage.getItem(PREFERENCE_KEY)
-      return preference === 'light' || preference === 'dark' ? preference : null
+      return PINNED_THEMES.includes(preference) ? preference : null
+    } catch {
+      return null
+    }
+  }
+
+  function cachedAccent() {
+    try {
+      const accent = localStorage.getItem(ACCENT_KEY)
+      return ACCENTS.includes(accent) ? accent : null
     } catch {
       return null
     }
@@ -25,6 +44,12 @@
 
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
   const theme = pinnedTheme() ?? (prefersDark ? 'dark' : 'light')
-  document.documentElement.classList.toggle('dark', theme === 'dark')
-  document.documentElement.style.colorScheme = theme
+  const dark = DARK_THEMES.includes(theme)
+  document.documentElement.classList.toggle('dark', dark)
+  document.documentElement.setAttribute('data-theme', theme)
+  document.documentElement.style.colorScheme = dark ? 'dark' : 'light'
+  const accent = cachedAccent()
+  if (accent) {
+    document.documentElement.setAttribute('data-accent', accent)
+  }
 }

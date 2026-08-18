@@ -3,7 +3,7 @@ import { Settings } from 'lucide-react'
 import { ShortcutKeys } from '@/components/shortcut-keys'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { keybindingFor } from '@/lib/commands/app-commands'
-import type { ResolvedTheme } from '@/providers/theme-provider'
+import { isDarkResolvedTheme, type ResolvedTheme } from '@/providers/theme-provider'
 
 const SETTINGS_BINDING = keybindingFor('settings.open')
 
@@ -59,7 +59,7 @@ export function WorkspaceHeader({
           onClick={onToggleTheme}
           className="rounded-md border border-black/10 px-2.5 py-1 text-xs font-medium dark:border-white/10"
         >
-          {resolvedTheme === 'dark' ? 'Light' : 'Dark'} mode
+          {isDarkResolvedTheme(resolvedTheme) ? 'Light' : 'Dark'} mode
         </button>
         <Tooltip>
           <TooltipTrigger

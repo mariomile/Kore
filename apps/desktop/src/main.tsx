@@ -7,7 +7,9 @@ import { initializeExceptionTelemetry } from '@/lib/exception-telemetry'
 import { installNativeMenu } from '@/lib/native-menu/menu'
 import { installTauriBridge } from '@/lib/tauri-bridge'
 import { PlatformRoot, warmPlatformRoot } from '@/platform-root'
+import { EditorFontFamilyEffect } from '@/providers/editor-font-family'
 import { EditorFullWidthEffect } from '@/providers/editor-full-width'
+import { EditorLineSpacingEffect } from '@/providers/editor-line-spacing'
 import { EditorTextSizeEffect } from '@/providers/editor-text-size'
 import { SettingsProvider } from '@/providers/settings-provider'
 import { ThemeProvider } from '@/providers/theme-provider'
@@ -38,6 +40,8 @@ createRoot(rootElement, reactRootOptions).render(
       <SettingsProvider>
         <EditorFullWidthEffect />
         <EditorTextSizeEffect />
+        <EditorFontFamilyEffect />
+        <EditorLineSpacingEffect />
         <ThemeProvider>
           <PlatformRoot />
         </ThemeProvider>

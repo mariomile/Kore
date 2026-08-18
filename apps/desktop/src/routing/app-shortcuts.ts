@@ -19,7 +19,7 @@ import { useNoteTemplates } from '@/providers/note-templates-provider'
 import { useSettings } from '@/providers/settings-provider'
 import { useShortcuts } from '@/providers/shortcuts-provider'
 import { useSidebar } from '@/providers/sidebar-provider'
-import { useTheme } from '@/providers/theme-provider'
+import { isDarkResolvedTheme, useTheme } from '@/providers/theme-provider'
 import { focusedNotePathForRoute } from './route'
 import { useRouter } from './router'
 
@@ -224,7 +224,7 @@ export function useAppShortcuts(): CommandContext {
       back,
       forward,
       clearScrollState,
-      toggleTheme: () => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark'),
+      toggleTheme: () => setTheme(isDarkResolvedTheme(resolvedTheme) ? 'light' : 'dark'),
       toggleSidebar,
       newChat,
       openNoteFind: () => {

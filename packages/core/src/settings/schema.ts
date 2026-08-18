@@ -82,6 +82,29 @@ export type EditorTextSize = z.infer<typeof editorTextSizeSchema>
 export const editorFullWidthSchema = z.boolean().catch(false)
 
 /**
+ * The typeface family the note editor renders prose in. `sans` (the default)
+ * is the app's Inter stack; `serif` swaps to a book-style serif stack,
+ * `system` to the OS UI font, and `mono` to the app's monospace stack.
+ * Display-only — it drives a CSS variable on the document root
+ * (`--editor-font-family`, applied by `EditorFontFamilyEffect`) and never
+ * touches the stored markdown.
+ */
+export const editorFontFamilySchema = z.enum(['sans', 'serif', 'system', 'mono']).catch('sans')
+
+export type EditorFontFamily = z.infer<typeof editorFontFamilySchema>
+
+/**
+ * The vertical rhythm of editor prose. `normal` (the default) keeps the
+ * editor's stock line height; `compact` tightens it and `relaxed` opens it
+ * up. Display-only — mapped to a line-height override on the note surface via
+ * `[data-editor-line-spacing]` on the document root; headings and code blocks
+ * keep their own line heights in every mode.
+ */
+export const editorLineSpacingSchema = z.enum(['compact', 'normal', 'relaxed']).catch('normal')
+
+export type EditorLineSpacing = z.infer<typeof editorLineSpacingSchema>
+
+/**
  * The clamp range for a user-adjustable sidebar width, in CSS pixels. Shared
  * between the schema (so a hand-edited document can't wreck the layout) and
  * the drag interaction (so the handle stops where the schema would clamp).
@@ -139,11 +162,42 @@ export const contextSidebarWidthSchema = sidebarWidthValueSchema(CONTEXT_SIDEBAR
 
 /**
  * The app color theme. `system` (the default) follows the OS preference;
- * `light`/`dark` pin it. Persisted here so the choice survives relaunch.
+ * every other value pins a concrete theme. Beyond the classic `light`/`dark`
+ * pair the app ships three pinned variants: `space` (the marketing site's
+ * deep-space purple), `midnight` (pure-black OLED), and `paper` (a warm,
+ * cream writing surface). Persisted here so the choice survives relaunch.
  */
-export const themePreferenceSchema = z.enum(['system', 'light', 'dark']).catch('system')
+export const themePreferenceSchema = z
+  .enum(['system', 'light', 'dark', 'space', 'midnight', 'paper'])
+  .catch('system')
 
 export type ThemePreference = z.infer<typeof themePreferenceSchema>
+
+/**
+ * The app accent color — the one saturated hue used for solid buttons,
+ * selection, focus, and today's daily-note heading. `indigo` (the default)
+ * keeps the stock Reflect brand ramp; any other id remaps the accent tokens
+ * app-wide via a `data-accent` attribute on the document root. A closed set of
+ * named ids — not raw hex — so each id can carry hand-tuned values that read
+ * well in both light and dark themes.
+ */
+const accentColorEnum = z.enum([
+  'indigo',
+  'purple',
+  'blue',
+  'teal',
+  'green',
+  'amber',
+  'rose',
+  'red',
+])
+
+export const accentColorSchema = accentColorEnum.catch('indigo')
+
+export type AccentColor = z.infer<typeof accentColorSchema>
+
+/** Every accent color id, in the order pickers should display them. */
+export const ACCENT_COLOR_IDS = accentColorEnum.options
 
 /**
  * How times of day are displayed throughout the app. `12h` (the default)
@@ -524,6 +578,8 @@ export const settingsSchema = z.looseObject({
   editorSmoothCaretAnimation: editorSmoothCaretAnimationSchema,
   editorTextSize: editorTextSizeSchema,
   editorFullWidth: editorFullWidthSchema,
+  editorFontFamily: editorFontFamilySchema,
+  editorLineSpacing: editorLineSpacingSchema,
   sidebarWidth: sidebarWidthSchema,
   contextSidebarWidth: contextSidebarWidthSchema,
   semanticSearchEnabled: semanticSearchEnabledSchema,
@@ -535,6 +591,7 @@ export const settingsSchema = z.looseObject({
   mobileGraphName: mobileGraphNameSchema,
   paywallSnoozeUntil: paywallSnoozeUntilSchema,
   theme: themePreferenceSchema,
+  accentColor: accentColorSchema,
   timeFormat: timeFormatSchema,
   dateFormat: dateFormatSchema,
   weekStartDay: weekStartDaySchema,

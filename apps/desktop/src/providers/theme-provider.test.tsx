@@ -4,7 +4,7 @@ import { renderHook } from 'vitest-browser-react'
 import type { ReactNode } from 'react'
 import { setBridge } from '@reflect/core'
 import { resetOperations } from '@/lib/operations'
-import { THEME_PREFERENCE_CACHE_KEY } from '@/lib/theme-cache'
+import { THEME_ACCENT_CACHE_KEY, THEME_PREFERENCE_CACHE_KEY } from '@/lib/theme-cache'
 import { SETTINGS_QUERY_KEY, SettingsProvider } from './settings-provider'
 import { ThemeProvider, useTheme } from './theme-provider'
 
@@ -114,6 +114,7 @@ beforeEach(() => {
   originalColorScheme = document.documentElement.style.colorScheme
   stored = {}
   localStorage.removeItem(THEME_PREFERENCE_CACHE_KEY)
+  localStorage.removeItem(THEME_ACCENT_CACHE_KEY)
   queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: Infinity } },
   })
@@ -124,8 +125,11 @@ afterEach(() => {
   setBridge(null)
   queryClient.clear()
   localStorage.removeItem(THEME_PREFERENCE_CACHE_KEY)
+  localStorage.removeItem(THEME_ACCENT_CACHE_KEY)
   document.documentElement.className = originalClassName
   document.documentElement.style.colorScheme = originalColorScheme
+  document.documentElement.removeAttribute('data-theme')
+  document.documentElement.removeAttribute('data-accent')
   resetOperations() // failed-load entries linger on a timer otherwise
 })
 
@@ -181,6 +185,29 @@ describe('ThemeProvider', () => {
     })
     expect(cachedPreference()).toBe('dark')
     expect(document.documentElement.classList.contains('dark')).toBe(true)
+  })
+
+  it('applies a dark-family variant as data-theme plus the dark scope', async () => {
+    // `space` layers over `.dark`: the class drives Tailwind `dark:` utilities
+    // and the base dark tokens, the attribute selects the variant overrides.
+    stored = { theme: 'space' }
+
+    const { result, act } = await renderHook(() => useTheme(), { wrapper })
+    await settleLoad(act)
+    expect(result.current.resolvedTheme).toBe('space')
+    expect(document.documentElement.classList.contains('dark')).toBe(true)
+    expect(document.documentElement.getAttribute('data-theme')).toBe('space')
+    expect(document.documentElement.style.colorScheme).toBe('dark')
+    expect(cachedPreference()).toBe('space')
+  })
+
+  it('applies and caches the accent color alongside the theme', async () => {
+    stored = { theme: 'light', accentColor: 'teal' }
+
+    const { act } = await renderHook(() => useTheme(), { wrapper })
+    await settleLoad(act)
+    expect(document.documentElement.getAttribute('data-accent')).toBe('teal')
+    expect(localStorage.getItem(THEME_ACCENT_CACHE_KEY)).toBe('teal')
   })
 
   it('applies but does not cache a preference after a failed load', async () => {

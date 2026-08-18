@@ -293,6 +293,39 @@ html:root {
   --editor-font-size: var(--text-lg);
 }
 
+/* Editor typeface (Settings → Editor → "Font"). Same contract as the text
+   size above: `EditorFontFamilyEffect` mirrors the setting onto
+   `[data-editor-font-family]`, and the `:root` fallback keeps the app's sans
+   stack before the effect has run. The serif stack leans on faces bundled
+   with the production WebKit/macOS webview, falling back to Georgia. */
+:root {
+  --editor-font-family: var(--font-sans);
+}
+:root[data-editor-font-family='sans'] {
+  --editor-font-family: var(--font-sans);
+}
+:root[data-editor-font-family='serif'] {
+  --editor-font-family: 'Iowan Old Style', Charter, Georgia, 'Times New Roman', serif;
+}
+:root[data-editor-font-family='system'] {
+  --editor-font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+:root[data-editor-font-family='mono'] {
+  --editor-font-family: var(--font-mono);
+}
+
+/* Editor line spacing (Settings → Editor → "Line spacing"). `normal` declares
+   nothing so the editor keeps meowdown's stock 1.7 rhythm; compact/relaxed
+   override only the base prose line-height on the primary note surface —
+   headings, code blocks, and read-only previews keep their own values. These
+   rules are un-layered, so they beat meowdown's layered `.ProseMirror` rule. */
+:root[data-editor-line-spacing='compact'] .reflect-note-surface .ProseMirror {
+  line-height: 1.45;
+}
+:root[data-editor-line-spacing='relaxed'] .reflect-note-surface .ProseMirror {
+  line-height: 1.95;
+}
+
 .reflect-editor {
   /* The panes own all spacing, so cancel the theme's editor padding (no
      floating UI of ours needs the `--meowdown-gutter`). Font size is left to
@@ -304,7 +337,7 @@ html:root {
      compound. */
   padding: 0;
   font-size: inherit;
-  font-family: var(--font-reading, var(--font-sans));
+  font-family: var(--editor-font-family, var(--font-sans));
 }
 
 /* The primary note editor (the note pane and every daily-stream row, both via

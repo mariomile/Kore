@@ -98,6 +98,12 @@ export {
 } from './queries'
 export { resolveNoteTarget } from './resolve-target'
 export {
+  findUnlinkedOccurrence,
+  getUnlinkedMentions,
+  MIN_MENTION_TITLE_LENGTH,
+  type UnlinkedMention,
+} from './unlinked-mentions'
+export {
   groupTaskContexts,
   groupTasks,
   taskDateBucket,

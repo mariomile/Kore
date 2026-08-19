@@ -8,6 +8,7 @@ import {
   untitledNoteSeed,
 } from '@reflect/core'
 import { BacklinksPanel } from '@/components/backlinks-panel'
+import { UnlinkedMentionsPanel } from '@/components/unlinked-mentions-panel'
 import { ConflictNoteView } from '@/components/conflict-note-view'
 import { InlineAlert } from '@/components/inline-alert'
 import { NoteConflictBanner } from '@/components/note-conflict-banner'
@@ -290,7 +291,12 @@ export function NotePaneComponent({
         ) : (
           <ProtectedNoteView content={document.initialContent} />
         )}
-        {showBacklinks ? <BacklinksPanel path={path} /> : null}
+        {showBacklinks ? (
+          <>
+            <BacklinksPanel path={path} />
+            <UnlinkedMentionsPanel path={path} />
+          </>
+        ) : null}
       </div>
     )
   }
@@ -387,6 +393,7 @@ export function NotePaneComponent({
       {showBacklinks ? (
         <div className={gutterClassName}>
           <BacklinksPanel path={path} />
+          <UnlinkedMentionsPanel path={path} />
         </div>
       ) : null}
     </div>

@@ -218,6 +218,7 @@ export {
   type ReconcileCaptureEnrichmentOutcome,
 } from '../actions/capture'
 export { parsePageMeta, scrapePageMeta, type PageMeta } from '../actions/meta-scrape'
+export { linkUnlinkedMention, type LinkMentionOutcome } from '../actions/link-mention'
 export {
   calendarAuthorizationStatus,
   canReadCalendars,

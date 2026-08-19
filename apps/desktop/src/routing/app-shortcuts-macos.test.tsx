@@ -39,7 +39,10 @@ vi.mock('@/providers/graph-provider', () => ({
     openRecent: vi.fn(),
   }),
 }))
-vi.mock('@/providers/theme-provider', () => ({
+vi.mock('@/providers/theme-provider', async (importOriginal) => ({
+  // Keep the real named exports (workspace-header imports
+  // isDarkResolvedTheme); only the hook is stubbed.
+  ...(await importOriginal<typeof import('@/providers/theme-provider')>()),
   useTheme: () => ({ theme: 'light', resolvedTheme: 'light', setTheme: vi.fn() }),
 }))
 vi.mock('@/providers/settings-provider', () => ({

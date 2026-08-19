@@ -1,4 +1,4 @@
-import { setBridge, type AppPlatform } from '@reflect/core'
+import { setBridge, setLocalWriteEcho, type AppPlatform } from '@reflect/core'
 import { createDevBridge } from '@/dev/dev-bridge'
 import { createDevFileStore } from '@/dev/dev-file-store'
 import { createDevIndexDb } from '@/dev/dev-index-db'
@@ -27,6 +27,10 @@ async function install(platform: AppPlatform): Promise<void> {
   const index = await createDevIndexDb()
   const files = createDevFileStore(seedGraphFiles())
   setBridge(createDevBridge({ platform, files, index }))
+  // No watcher exists in plain-browser dev (the Rust watcher is desktop's
+  // change source), so let the write commands echo their own changes —
+  // exactly the mobile arrangement — or edits never reindex until reload.
+  setLocalWriteEcho(true)
   // A console handle for poking the shim while debugging mobile surfaces:
   // `__reflectDev.query('select path, title from notes')`, `.files.read(...)`.
   Object.assign(window, { __reflectDev: { query: index.query, files } })

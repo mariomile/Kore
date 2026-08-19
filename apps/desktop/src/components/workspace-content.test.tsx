@@ -45,8 +45,10 @@ vi.mock('@/providers/focused-daily-provider', () => ({
 vi.mock('@/providers/sidebar-provider', () => ({
   useSidebar: () => ({ collapsed: workspaceState.collapsed, toggleSidebar: vi.fn() }),
 }))
-// The AppShell asides mount resize handles, which read the persisted widths.
+// The asides mount resize handles, which read the persisted widths. The
+// query key rides along for modules deeper in the import graph (graph boot).
 vi.mock('@/providers/settings-provider', () => ({
+  SETTINGS_QUERY_KEY: ['settings'],
   useSettings: () => ({
     settings: { sidebarWidth: 260, contextSidebarWidth: 320 },
     updateSettings: vi.fn(),

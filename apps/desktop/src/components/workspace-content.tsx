@@ -2,9 +2,7 @@ import type { ReactElement } from 'react'
 import type { GraphInfo } from '@reflect/core'
 import { AppShell } from '@/components/app-shell'
 import { CommandPalette } from '@/components/command-palette/command-palette'
-import { DailyContextSidebar } from '@/components/context-sidebar/daily-context-sidebar'
-import { NoteContextSidebar } from '@/components/context-sidebar/note-context-sidebar'
-import type { ContextSidebarTarget } from '@/components/context-sidebar/sidebar-route'
+import { ContextSidebar } from '@/components/context-sidebar/context-sidebar'
 import { EmbeddingsSync } from '@/components/embeddings-sync'
 import { NoteFindBar } from '@/components/note-find-bar'
 import { NoteTabsStrip } from '@/components/note-tabs-strip'
@@ -22,26 +20,15 @@ interface WorkspaceContentProps {
   graph: GraphInfo
 }
 
-/** The context panel for the route's sidebar target, if it gets one. */
-function contextSidebarFor(target: ContextSidebarTarget | null): ReactElement | undefined {
-  if (target === null) {
-    return undefined
-  }
-  return target.kind === 'daily' ? (
-    <DailyContextSidebar date={target.date} />
-  ) : (
-    <NoteContextSidebar path={target.path} />
-  )
-}
-
 /**
- * Everything inside the workspace's providers: the sidebar running the full
- * window height on the left, and beside it the content column — the tab bar
- * over a floating note-pane card (all four corners rounded, hairline border,
- * app-background gutter) that holds the note pane and its contextual sidebar.
- * The always-mounted global surfaces (⌘K palette, find bar, embeddings sync)
- * ride inside the card with the route. Split from {@link GraphWorkspace}
- * because these hooks need the providers it mounts.
+ * Everything inside the workspace's providers: two full-height sidebars — the
+ * workspace rail on the left, the context rail (details, chat, calendar) on
+ * the right — and between them the content column: the tab bar over a
+ * floating note-pane card with all four corners rounded, a hairline border,
+ * and the app background as its gutter. The always-mounted global surfaces
+ * (⌘K palette, find bar, embeddings sync) ride inside the card with the
+ * route. Split from {@link GraphWorkspace} because these hooks need the
+ * providers it mounts.
  */
 export function WorkspaceContent({ graph }: WorkspaceContentProps): ReactElement {
   const { collapsed } = useSidebar()
@@ -69,11 +56,7 @@ export function WorkspaceContent({ graph }: WorkspaceContentProps): ReactElement
         <NoteTabsStrip atWindowEdge={collapsed} />
         <div className="min-h-0 flex-1 px-2 pb-2">
           <div className="h-full overflow-hidden rounded-xl border border-border bg-surface shadow-sm">
-            <AppShell
-              className="bg-transparent"
-              context={collapsed ? undefined : contextSidebarFor(contextTarget)}
-              contextEdge={<SidebarResizeHandle panel="context" />}
-            >
+            <AppShell className="bg-transparent">
               <div className="relative flex h-full flex-col">
                 <div className="min-h-0 flex-1">
                   <RouteContent />
@@ -90,6 +73,17 @@ export function WorkspaceContent({ graph }: WorkspaceContentProps): ReactElement
           </div>
         </div>
       </div>
+
+      {collapsed ? undefined : (
+        <aside
+          id="context-sidebar"
+          aria-label="Context"
+          className="relative hidden w-[var(--context-sidebar-width)] shrink-0 overflow-hidden bg-surface-sunken lg:flex lg:flex-col"
+        >
+          <SidebarResizeHandle panel="context" />
+          <ContextSidebar target={contextTarget} />
+        </aside>
+      )}
     </div>
   )
 }

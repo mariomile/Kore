@@ -35,12 +35,13 @@ function contextSidebarFor(target: ContextSidebarTarget | null): ReactElement | 
 }
 
 /**
- * Everything inside the workspace's providers: the headerless shell — the
- * collapsible workspace and contextual sidebars beside the note pane — plus
- * the always-mounted global surfaces (operations status, ⌘K palette,
- * embeddings sync). Split
- * from {@link GraphWorkspace} because these hooks need the providers it
- * mounts.
+ * Everything inside the workspace's providers: the sidebar running the full
+ * window height on the left, and beside it the content column — the tab bar
+ * over a floating note-pane card (all four corners rounded, hairline border,
+ * app-background gutter) that holds the note pane and its contextual sidebar.
+ * The always-mounted global surfaces (⌘K palette, find bar, embeddings sync)
+ * ride inside the card with the route. Split from {@link GraphWorkspace}
+ * because these hooks need the providers it mounts.
  */
 export function WorkspaceContent({ graph }: WorkspaceContentProps): ReactElement {
   const { collapsed } = useSidebar()
@@ -52,28 +53,42 @@ export function WorkspaceContent({ graph }: WorkspaceContentProps): ReactElement
   const contextTarget = useDailyContextTarget()
 
   return (
-    <div className="flex h-screen w-screen flex-col overflow-hidden bg-surface-app text-text">
-      <NoteTabsStrip />
-      <div className="min-h-0 flex-1">
-        <AppShell
-          sidebar={collapsed ? undefined : <Sidebar graph={graph} context={commandContext} />}
-          sidebarEdge={<SidebarResizeHandle panel="workspace" />}
-          context={collapsed ? undefined : contextSidebarFor(contextTarget)}
-          contextEdge={<SidebarResizeHandle panel="context" />}
+    <div className="flex h-screen w-screen overflow-hidden bg-surface-app text-text">
+      {collapsed ? undefined : (
+        <aside
+          id="workspace-sidebar"
+          aria-label="Workspace"
+          className="relative flex w-[var(--sidebar-width)] shrink-0 flex-col overflow-hidden bg-surface-sunken"
         >
-          <div className="relative flex h-full flex-col">
-            <div className="min-h-0 flex-1">
-              <RouteContent />
-            </div>
+          <Sidebar graph={graph} context={commandContext} />
+          <SidebarResizeHandle panel="workspace" />
+        </aside>
+      )}
 
-            <NoteFindBar />
-            <CommandPalette context={commandContext} />
-            <ShortcutsDialog />
-            <TemplatePicker context={commandContext} />
-            <TemplateCreateDialog context={commandContext} />
-            <EmbeddingsSync />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <NoteTabsStrip atWindowEdge={collapsed} />
+        <div className="min-h-0 flex-1 px-2 pb-2">
+          <div className="h-full overflow-hidden rounded-xl border border-border bg-surface shadow-sm">
+            <AppShell
+              className="bg-transparent"
+              context={collapsed ? undefined : contextSidebarFor(contextTarget)}
+              contextEdge={<SidebarResizeHandle panel="context" />}
+            >
+              <div className="relative flex h-full flex-col">
+                <div className="min-h-0 flex-1">
+                  <RouteContent />
+                </div>
+
+                <NoteFindBar />
+                <CommandPalette context={commandContext} />
+                <ShortcutsDialog />
+                <TemplatePicker context={commandContext} />
+                <TemplateCreateDialog context={commandContext} />
+                <EmbeddingsSync />
+              </div>
+            </AppShell>
           </div>
-        </AppShell>
+        </div>
       </div>
     </div>
   )

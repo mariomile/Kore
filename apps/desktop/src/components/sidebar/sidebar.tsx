@@ -9,6 +9,8 @@ import { keybindingFor } from '@/lib/commands/app-commands'
 import { runCommand } from '@/lib/commands/registry'
 import { useToday } from '@/lib/use-today'
 import type { CommandContext } from '@/lib/commands/types'
+import { cn } from '@/lib/utils'
+import { hasMacosTitleBarOverlay } from '@/lib/window-chrome'
 import { notePathForRoute } from '@/routing/route'
 import { useRouter } from '@/routing/router'
 import { GraphFooter } from './graph-footer'
@@ -45,9 +47,15 @@ export function Sidebar({ graph, context }: SidebarProps): ReactElement {
   const lucideBox = 'flex size-6 shrink-0 items-center justify-center'
 
   return (
-    // The tab bar above the shell hosts the traffic lights and the history
-    // arrows now, so the sidebar starts directly with its own content.
-    <div className="flex h-full min-h-0 flex-col pt-3">
+    <div
+      className={cn(
+        'flex h-full min-h-0 flex-col',
+        // The sidebar runs the full window height, so on macOS the overlaid
+        // traffic lights and the WindowDragRegion strip sit over its top —
+        // start the search row below them.
+        hasMacosTitleBarOverlay ? 'pt-9' : 'pt-3',
+      )}
+    >
       <div className="flex flex-none flex-col">
         <div className="mt-1 flex items-center gap-1.5 px-4">
           <div className="min-w-0 flex-1">

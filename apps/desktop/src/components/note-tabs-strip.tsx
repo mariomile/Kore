@@ -7,16 +7,26 @@ import { hasMacosTitleBarOverlay } from '@/lib/window-chrome'
 import { cn } from '@/lib/utils'
 import { useOpenTabs } from '@/providers/open-tabs-provider'
 
+interface NoteTabsStripProps {
+  /**
+   * True when the bar reaches the window's left edge (sidebar collapsed) —
+   * only then does the macOS traffic-light inset apply. With the sidebar
+   * open, the sidebar owns that corner and the bar starts beside it.
+   */
+  atWindowEdge?: boolean
+}
+
 /**
- * The window's tab bar: a full-width title-bar row above the whole shell —
- * history arrows on the left, then the open notes as rounded pills, then a
- * "+" that opens the palette to jump anywhere. Daily notes is the fixed,
- * unclosable first pill; pinned tabs collapse to an icon right after it
- * (double-click pins); the rest close on hover or middle-click. Always
- * visible — as the title bar it also hosts the macOS traffic-light inset and
- * doubles as the window drag region, so it never blinks away.
+ * The content column's tab bar: history arrows on the left, then the open
+ * notes as rounded pills, then a "+" that opens the palette to jump anywhere.
+ * Daily notes is the fixed, unclosable first pill; pinned tabs collapse to an
+ * icon right after it (double-click pins); the rest close on hover or
+ * middle-click. It spans only the column beside the full-height sidebar —
+ * the note-pane card below provides the separation, so the bar itself is
+ * borderless — and doubles as the window drag region, so it never blinks
+ * away.
  */
-export function NoteTabsStrip(): ReactElement {
+export function NoteTabsStrip({ atWindowEdge = false }: NoteTabsStripProps): ReactElement {
   const { activePath, isDailyActive, activateTab, activateDaily, closeTab, togglePin } =
     useOpenTabs()
   const notes = useOpenTabNotes()
@@ -26,10 +36,10 @@ export function NoteTabsStrip(): ReactElement {
     <div
       data-tauri-drag-region
       className={cn(
-        'flex h-11 w-full flex-none items-center gap-1 border-b border-border bg-surface-app pr-2.5',
+        'flex h-11 w-full flex-none items-center gap-1 bg-surface-app pr-2.5',
         // With the overlaid macOS title bar the traffic lights own the left
-        // edge; elsewhere the bar starts at the window edge.
-        hasMacosTitleBarOverlay ? 'pl-20' : 'pl-2',
+        // edge — but only when the bar actually reaches it.
+        hasMacosTitleBarOverlay && atWindowEdge ? 'pl-20' : 'pl-2',
       )}
     >
       <div className="window-drag-control flex items-center">

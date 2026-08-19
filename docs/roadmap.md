@@ -10,10 +10,6 @@ customization effort.
   leaving the app; likely a separate Tauri webview window with back/forward,
   URL bar, and a "clip to note" action. Needs a hard security review
   (separate webview context, no IPC bridge exposure to arbitrary pages).
-- **Tabs for open notes** — move between open notes with a tab strip
-  (pin/reorder/close, `⌘1…9`, middle-click close). Interacts with the router
-  and multi-window support; design first: tabs per window, restored on
-  launch.
 
 ## Backlog
 
@@ -32,6 +28,12 @@ customization effort.
 
 ## Shipped (this fork)
 
+- Note tabs, two surfaces over one model: a strip above the note pane
+  (Daily notes as the fixed tab zero, pinned tabs collapsed to an icon,
+  close on hover/middle-click, double-click to pin) and an Open section
+  in the sidebar. Persisted in settings and restored at launch;
+  `⌃Tab`/`⌃⇧Tab` cycle, `⌘W` closes. Follow-ups: drag reorder,
+  overflow menu, preview-tab semantics.
 - In-app HTML & PDF attachment viewer: `assets/*.pdf` / `assets/*.html`
   open in a viewer dialog off the asset protocol (PDF via the webview's
   native renderer, HTML fully sandboxed — no scripts, no same-origin),

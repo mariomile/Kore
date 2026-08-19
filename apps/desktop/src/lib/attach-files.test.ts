@@ -34,6 +34,9 @@ function contextFor(notePath: string | null, generation: number | null): Command
     openTemplateCreate: vi.fn(),
     enableSemanticSearch: vi.fn(),
     summarizeNote: vi.fn(),
+    nextTab: vi.fn(),
+    previousTab: vi.fn(),
+    closeActiveTab: vi.fn(),
     clearScrollState: vi.fn(),
   }
 }

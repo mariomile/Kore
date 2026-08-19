@@ -17,6 +17,7 @@ import { useFocusedDailyDate } from '@/providers/focused-daily-provider'
 import { useGraph } from '@/providers/graph-provider'
 import { useNoteFindActions } from '@/providers/note-find-provider'
 import { useNoteTemplates } from '@/providers/note-templates-provider'
+import { useOpenTabs } from '@/providers/open-tabs-provider'
 import { useSettings } from '@/providers/settings-provider'
 import { useShortcuts } from '@/providers/shortcuts-provider'
 import { useSidebar } from '@/providers/sidebar-provider'
@@ -176,6 +177,8 @@ export function useAppShortcuts(): CommandContext {
   const { toggle: toggleAudioMemo } = useAudioMemo()
   const { newChat, setDraft: setChatDraft } = useChatSession()
   const { updateSettings } = useSettings()
+  // Safe no-op defaults outside OpenTabsProvider (secondary windows, tests).
+  const openTabs = useOpenTabs()
   const {
     openForPath: openNoteFindForPath,
     next: findNextInNote,
@@ -279,6 +282,9 @@ export function useAppShortcuts(): CommandContext {
           navigate({ kind: 'chat' })
         })()
       },
+      nextTab: openTabs.nextTab,
+      previousTab: openTabs.previousTab,
+      closeActiveTab: openTabs.closeActiveTab,
     }),
     [
       navigate,
@@ -299,6 +305,9 @@ export function useAppShortcuts(): CommandContext {
       findPreviousInNote,
       toggleAudioMemo,
       updateSettings,
+      openTabs.nextTab,
+      openTabs.previousTab,
+      openTabs.closeActiveTab,
     ],
   )
 

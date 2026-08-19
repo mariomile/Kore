@@ -118,6 +118,9 @@ async function renderPalette(query: string, context?: Partial<CommandContext>) {
     openTemplateCreate: vi.fn(),
     enableSemanticSearch: vi.fn(),
     summarizeNote: vi.fn(),
+    nextTab: vi.fn(),
+    previousTab: vi.fn(),
+    closeActiveTab: vi.fn(),
     ...context,
   }
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })

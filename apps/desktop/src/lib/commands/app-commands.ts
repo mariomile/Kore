@@ -352,6 +352,27 @@ const APP_COMMANDS: AppCommand[] = [
     run: (context) => context.toggleSidebar(),
   },
   {
+    id: 'tabs.next',
+    title: 'Next tab',
+    keywords: ['tab', 'cycle', 'switch', 'open', 'notes'],
+    keybinding: 'Ctrl-tab',
+    run: (context) => context.nextTab(),
+  },
+  {
+    id: 'tabs.previous',
+    title: 'Previous tab',
+    keywords: ['tab', 'cycle', 'switch', 'open', 'notes'],
+    keybinding: 'Ctrl-Shift-tab',
+    run: (context) => context.previousTab(),
+  },
+  {
+    id: 'tabs.close',
+    title: 'Close tab',
+    keywords: ['tab', 'close', 'open', 'notes'],
+    keybinding: 'Mod-w',
+    run: (context) => context.closeActiveTab(),
+  },
+  {
     id: 'settings.open',
     title: 'Open settings',
     keywords: ['preferences', 'config', 'options'],

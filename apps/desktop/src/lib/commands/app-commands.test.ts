@@ -96,6 +96,9 @@ function fakeContext(overrides?: Partial<CommandContext>) {
     openTemplateCreate: vi.fn(),
     enableSemanticSearch: vi.fn(),
     summarizeNote: vi.fn(),
+    nextTab: vi.fn(),
+    previousTab: vi.fn(),
+    closeActiveTab: vi.fn(),
     ...overrides,
   }
   return { context, navigated, navigateOptions }

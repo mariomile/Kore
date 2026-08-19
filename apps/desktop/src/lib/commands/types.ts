@@ -67,6 +67,12 @@ export interface CommandContext {
    * prompt is even drafted).
    */
   summarizeNote: () => void
+  /** Cycle the open-note tabs forward ([Daily, ...tabs], wrapping). */
+  nextTab: () => void
+  /** Cycle the open-note tabs backward. */
+  previousTab: () => void
+  /** Close the active note tab; a no-op on Daily and non-note screens. */
+  closeActiveTab: () => void
 }
 
 export interface AppCommand {

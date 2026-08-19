@@ -7,6 +7,7 @@ import { NoteContextSidebar } from '@/components/context-sidebar/note-context-si
 import type { ContextSidebarTarget } from '@/components/context-sidebar/sidebar-route'
 import { EmbeddingsSync } from '@/components/embeddings-sync'
 import { NoteFindBar } from '@/components/note-find-bar'
+import { NoteTabsStrip } from '@/components/note-tabs-strip'
 import { RouteContent } from '@/components/route-content'
 import { ShortcutsDialog } from '@/components/shortcuts-dialog'
 import { Sidebar } from '@/components/sidebar/sidebar'
@@ -58,6 +59,7 @@ export function WorkspaceContent({ graph }: WorkspaceContentProps): ReactElement
       contextEdge={<SidebarResizeHandle panel="context" />}
     >
       <div className="relative flex h-full flex-col">
+        <NoteTabsStrip />
         <div className="min-h-0 flex-1">
           <RouteContent />
         </div>

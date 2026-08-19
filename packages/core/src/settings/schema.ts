@@ -274,6 +274,23 @@ export const allNotesViewSchema = z.enum(['list', 'grid']).catch('list')
 export type AllNotesView = z.infer<typeof allNotesViewSchema>
 
 /**
+ * The open note tabs (the tab strip and the sidebar's Open section), in strip
+ * order, restored at launch. Daily notes are never stored here — the Daily
+ * tab is a fixed "tab zero" the UI provides. A malformed entry drops the
+ * whole list rather than resurrecting half a session.
+ */
+export const openNoteTabsSchema = z
+  .array(
+    z.object({
+      path: z.string(),
+      pinned: z.boolean().catch(false),
+    }),
+  )
+  .catch([])
+
+export type OpenNoteTab = z.infer<typeof openNoteTabsSchema>[number]
+
+/**
  * Whether semantic search is on. Off by default — turning it on downloads the
  * ~90MB embedding model, and that first network fetch is the user's call
  * (Plan 09). Later launches load the cached model because this flag is set.
@@ -704,6 +721,7 @@ export const settingsSchema = z.looseObject({
   weekStartDay: weekStartDaySchema,
   allNotesFilterTags: allNotesFilterTagsSchema,
   allNotesView: allNotesViewSchema,
+  openNoteTabs: openNoteTabsSchema,
   savedSearches: savedSearchesSchema,
   taskFilters: taskFiltersSchema,
   calendarEnabled: calendarEnabledSchema,

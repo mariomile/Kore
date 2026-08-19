@@ -168,6 +168,19 @@ try {
   })
   await page.screenshot({ path: `${SHOTS}05-linked.png` })
 
+  await step('the visited notes ride the tab strip and switch on click', async () => {
+    const strip = page.getByRole('tablist', { name: 'Open notes' })
+    await strip.waitFor()
+    await strip.getByRole('tab', { name: 'Daily notes' }).waitFor()
+    await strip.getByRole('tab', { name: /Quarterly Goals/ }).waitFor()
+    // Switch back to Reflect V2 through its tab; the note pane follows.
+    await strip.getByRole('tab', { name: /Reflect V2/ }).getByText('Reflect V2').click()
+    await page.getByText('sync over Git.').first().waitFor()
+    // The sidebar's Open section mirrors the same tabs.
+    await page.getByRole('heading', { name: 'Open' }).waitFor()
+  })
+  await page.screenshot({ path: `${SHOTS}06-tabs.png` })
+
   await step('the source note now carries the wiki link on disk', async () => {
     await page.waitForFunction(
       () =>

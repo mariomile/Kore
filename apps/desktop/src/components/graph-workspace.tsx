@@ -12,6 +12,7 @@ import { CaptureProvider } from '@/providers/capture-provider'
 import { ChatProvider } from '@/providers/chat-provider'
 import { DeepLinkProvider } from '@/providers/deep-link-provider'
 import { NoteFindProvider } from '@/providers/note-find-provider'
+import { OpenTabsProvider } from '@/providers/open-tabs-provider'
 import { NoteTemplatesProvider } from '@/providers/note-templates-provider'
 import { ShortcutsProvider } from '@/providers/shortcuts-provider'
 import { SidebarProvider } from '@/providers/sidebar-provider'
@@ -63,7 +64,11 @@ export function GraphWorkspace({ graph }: GraphWorkspaceProps): ReactElement {
                                   import's single face. */}
                               {isMainWindow() ? (
                                 <V1ImportProvider graph={graph}>
-                                  <WorkspaceContent graph={graph} />
+                                  {/* Tabs are main-window chrome: a ⌘-clicked
+                                      note window shows one note, no strip. */}
+                                  <OpenTabsProvider>
+                                    <WorkspaceContent graph={graph} />
+                                  </OpenTabsProvider>
                                 </V1ImportProvider>
                               ) : (
                                 <NoteWindowContent />

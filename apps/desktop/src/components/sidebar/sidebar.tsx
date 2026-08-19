@@ -16,6 +16,7 @@ import { useRouter } from '@/routing/router'
 import { GraphFooter } from './graph-footer'
 import { NavigateArrows } from './navigate-arrows'
 import { SidebarItem } from './sidebar-item'
+import { SidebarOpenNotes } from './sidebar-open-notes'
 import { SidebarPinned } from './sidebar-pinned'
 import { SidebarSearch } from './sidebar-search'
 import { SidebarTags } from './sidebar-tags'
@@ -142,6 +143,7 @@ export function Sidebar({ graph, context }: SidebarProps): ReactElement {
       </div>
 
       <div className="mt-1 min-h-0 flex-1 overflow-y-auto pb-2">
+        <SidebarOpenNotes />
         <SidebarPinned />
         <SidebarTags />
       </div>

@@ -269,6 +269,7 @@ export {
   type WeekStartDay,
   type AllNotesFilterTags,
   type AllNotesView,
+  type OpenNoteTab,
   type SavedSearch,
   type TaskFilters,
   type CalendarIds,

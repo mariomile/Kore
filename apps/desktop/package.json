@@ -12,6 +12,7 @@
     "release:ios": "node scripts/release-ios.mjs",
     "release:macos": "node scripts/release-macos.mjs",
     "test": "vitest run --config ../../vitest.config.ts --project browser --project node",
+    "e2e": "node e2e/run-e2e.mjs",
     "test:install": "playwright install chromium webkit",
     "tauri": "tauri",
     "tauri:dev": "tauri dev --config src-tauri/tauri.dev.conf.json",

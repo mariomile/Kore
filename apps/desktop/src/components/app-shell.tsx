@@ -38,9 +38,7 @@ export function AppShell({
   className,
 }: AppShellProps): ReactElement {
   return (
-    <div
-      className={cn('flex h-screen w-screen overflow-hidden bg-surface-app text-text', className)}
-    >
+    <div className={cn('flex h-full w-full overflow-hidden bg-surface-app text-text', className)}>
       {sidebar ? (
         <aside
           id="workspace-sidebar"

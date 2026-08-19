@@ -57,6 +57,9 @@ vi.mock('@/providers/settings-provider', async () => {
     }),
   }
 })
+vi.mock('@/components/command-palette/palette-provider', () => ({
+  usePalette: () => ({ openPalette: vi.fn(), open: false }),
+}))
 vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({ graph: { root: '/g', name: 'g', generation: 1 }, indexing: false }),
 }))
@@ -152,9 +155,10 @@ beforeEach(() => {
 })
 
 describe('note tabs', () => {
-  it('stays hidden until a note opens, then shows it on both surfaces', async () => {
+  it('always shows the bar, and an opened note joins both surfaces', async () => {
     const view = await renderTabs()
-    expect(view.getByRole('tablist').query()).toBeNull()
+    // The bar is the title bar now: always present, Daily pill leading.
+    await expect.element(view.getByRole('tab', { name: 'Daily notes' })).toBeVisible()
 
     await view.getByTestId('open-alpha').click()
     await expect.element(view.getByRole('tab', { name: /Alpha Plan/ })).toBeVisible()
@@ -182,10 +186,10 @@ describe('note tabs', () => {
     await vi.waitFor(() => expect(routeOf(view).path).toBe('notes/beta.md'))
     expect(view.getByRole('tab', { name: /Alpha Plan/ }).query()).toBeNull()
 
-    // Close the last one: back to Daily, strip hidden again.
+    // Close the last one: back to Daily; only the Daily pill remains.
     await view.getByTestId('close-active').click()
     await vi.waitFor(() => expect(routeOf(view).kind).toBe('today'))
-    expect(view.getByRole('tablist').query()).toBeNull()
+    expect(view.getByRole('tab', { name: /Beta Review/ }).query()).toBeNull()
     await view.unmount()
   })
 
@@ -220,6 +224,23 @@ describe('note tabs', () => {
     )
     expect(labels[0]).toContain('Daily notes')
     expect(labels[1]).toBe('Beta Review')
+    await view.unmount()
+  })
+
+  it('history arrows walk the router stack and disable at its edges', async () => {
+    const view = await renderTabs()
+    const backButton = view.getByRole('button', { name: 'Go back' })
+    const forwardButton = view.getByRole('button', { name: 'Go forward' })
+    await expect.element(backButton).toBeDisabled()
+    await expect.element(forwardButton).toBeDisabled()
+
+    await view.getByTestId('open-alpha').click()
+    await expect.element(backButton).toBeEnabled()
+    await backButton.click()
+    await vi.waitFor(() => expect(routeOf(view).kind).toBe('today'))
+    await expect.element(forwardButton).toBeEnabled()
+    await forwardButton.click()
+    await vi.waitFor(() => expect(routeOf(view).path).toBe('notes/alpha.md'))
     await view.unmount()
   })
 

@@ -1,63 +1,88 @@
 import type { MouseEvent, ReactElement } from 'react'
-import { Pencil, Pin, X } from 'lucide-react'
+import { Pencil, Pin, Plus, X } from 'lucide-react'
+import { usePalette } from '@/components/command-palette/palette-provider'
+import { NavigateArrows } from '@/components/sidebar/navigate-arrows'
 import { useOpenTabNotes, type OpenTabNote } from '@/hooks/use-open-tab-notes'
+import { hasMacosTitleBarOverlay } from '@/lib/window-chrome'
 import { cn } from '@/lib/utils'
 import { useOpenTabs } from '@/providers/open-tabs-provider'
 
 /**
- * The tab strip over the note pane (design option A): Daily notes as the
- * fixed, unclosable tab zero, pinned tabs collapsed to an icon right after
- * it, then the open notes — active tab fused with the page below (its white
- * background rides over the strip's hairline). Hidden entirely while no
- * ordinary note is open: with just the Daily view there is nothing to switch
- * between, and chrome that does nothing is noise. Middle-click closes;
- * double-click toggles pin.
+ * The window's tab bar: a full-width title-bar row above the whole shell —
+ * history arrows on the left, then the open notes as rounded pills, then a
+ * "+" that opens the palette to jump anywhere. Daily notes is the fixed,
+ * unclosable first pill; pinned tabs collapse to an icon right after it
+ * (double-click pins); the rest close on hover or middle-click. Always
+ * visible — as the title bar it also hosts the macOS traffic-light inset and
+ * doubles as the window drag region, so it never blinks away.
  */
-export function NoteTabsStrip(): ReactElement | null {
-  const { tabs, activePath, isDailyActive, activateTab, activateDaily, closeTab, togglePin } =
+export function NoteTabsStrip(): ReactElement {
+  const { activePath, isDailyActive, activateTab, activateDaily, closeTab, togglePin } =
     useOpenTabs()
   const notes = useOpenTabNotes()
-
-  if (tabs.length === 0) {
-    return null
-  }
+  const { openPalette } = usePalette()
 
   return (
     <div
-      role="tablist"
-      aria-label="Open notes"
-      className="flex h-11 flex-none items-end gap-0.5 overflow-x-auto border-b border-border bg-surface-app px-2.5 pt-1.5"
+      data-tauri-drag-region
+      className={cn(
+        'flex h-11 w-full flex-none items-center gap-1 border-b border-border bg-surface-app pr-2.5',
+        // With the overlaid macOS title bar the traffic lights own the left
+        // edge; elsewhere the bar starts at the window edge.
+        hasMacosTitleBarOverlay ? 'pl-20' : 'pl-2',
+      )}
     >
-      <button
-        type="button"
-        role="tab"
-        aria-selected={isDailyActive}
-        onClick={activateDaily}
-        className={tabClass(isDailyActive)}
-      >
-        <Pencil aria-hidden className="size-3 shrink-0" />
-        <span className="truncate">Daily notes</span>
-      </button>
+      <div className="window-drag-control flex items-center">
+        <NavigateArrows />
+      </div>
 
-      {notes.map((note) => (
-        <NoteTab
-          key={note.path}
-          note={note}
-          active={note.path === activePath}
-          onActivate={activateTab}
-          onClose={closeTab}
-          onTogglePin={togglePin}
-        />
-      ))}
+      <div
+        role="tablist"
+        aria-label="Open notes"
+        className="window-drag-control ml-1 flex min-w-0 flex-1 items-center gap-1 overflow-x-auto"
+      >
+        <button
+          type="button"
+          role="tab"
+          aria-selected={isDailyActive}
+          onClick={activateDaily}
+          className={pillClass(isDailyActive)}
+        >
+          <Pencil aria-hidden className="size-3 shrink-0" />
+          <span className="truncate">Daily notes</span>
+        </button>
+
+        {notes.map((note) => (
+          <NoteTab
+            key={note.path}
+            note={note}
+            active={note.path === activePath}
+            onActivate={activateTab}
+            onClose={closeTab}
+            onTogglePin={togglePin}
+          />
+        ))}
+
+        <button
+          type="button"
+          aria-label="Open a note"
+          onClick={() => {
+            openPalette()
+          }}
+          className="flex size-7 shrink-0 items-center justify-center rounded-lg text-text-muted hover:bg-surface-hover hover:text-text-secondary"
+        >
+          <Plus aria-hidden className="size-3.5" />
+        </button>
+      </div>
     </div>
   )
 }
 
-function tabClass(active: boolean): string {
+function pillClass(active: boolean): string {
   return cn(
-    'flex h-8 min-w-0 max-w-[11rem] shrink items-center gap-1.5 rounded-t-lg px-3 text-xs font-medium',
+    'flex h-7 min-w-0 max-w-[12rem] shrink items-center gap-1.5 rounded-lg px-3 text-xs font-medium',
     active
-      ? '-mb-px border border-b-0 border-border bg-surface pb-px font-semibold text-text'
+      ? 'border border-border bg-surface-hover text-text'
       : 'text-text-secondary hover:bg-surface-hover',
   )
 }
@@ -92,7 +117,7 @@ function NoteTab({ note, active, onActivate, onClose, onTogglePin }: NoteTabProp
           onTogglePin(note.path)
         }}
         onAuxClick={handleAuxClick}
-        className={cn(tabClass(active), 'shrink-0 px-2.5')}
+        className={cn(pillClass(active), 'shrink-0 px-2.5')}
       >
         <Pin aria-hidden className="size-3 shrink-0" />
       </button>
@@ -103,7 +128,7 @@ function NoteTab({ note, active, onActivate, onClose, onTogglePin }: NoteTabProp
       role="tab"
       aria-selected={active}
       onAuxClick={handleAuxClick}
-      className={cn(tabClass(active), 'group cursor-default pr-1.5')}
+      className={cn(pillClass(active), 'group cursor-default pr-1')}
     >
       <button
         type="button"

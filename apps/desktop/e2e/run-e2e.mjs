@@ -174,7 +174,10 @@ try {
     await strip.getByRole('tab', { name: 'Daily notes' }).waitFor()
     await strip.getByRole('tab', { name: /Quarterly Goals/ }).waitFor()
     // Switch back to Reflect V2 through its tab; the note pane follows.
-    await strip.getByRole('tab', { name: /Reflect V2/ }).getByText('Reflect V2').click()
+    await strip
+      .getByRole('tab', { name: /Reflect V2/ })
+      .getByText('Reflect V2')
+      .click()
     await page.getByText('sync over Git.').first().waitFor()
     // The sidebar's Open section mirrors the same tabs.
     await page.getByRole('heading', { name: 'Open' }).waitFor()

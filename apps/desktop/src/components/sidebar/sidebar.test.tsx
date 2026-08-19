@@ -400,27 +400,6 @@ describe('Sidebar', () => {
     await expect.element(view.getByRole('button', { name: 'Rust' })).toBeInTheDocument()
   })
 
-  it('history arrows walk the router stack and disable at its edges', async () => {
-    getPinnedNotes.mockResolvedValue([{ path: 'notes/rust.md', title: 'Rust', dailyDate: null }])
-    const { view } = await renderSidebar()
-    const backButton = view.getByRole('button', { name: 'Go back' })
-    const forwardButton = view.getByRole('button', { name: 'Go forward' })
-    await expect.element(backButton).toBeDisabled()
-    await expect.element(forwardButton).toBeDisabled()
-
-    // Pinned rows push onto the real router, enabling history navigation.
-    const rust = view.getByRole('button', { name: 'Rust' })
-    await rust.click()
-    await expect.element(backButton).toBeEnabled()
-
-    await backButton.click()
-    await expect.element(rust).not.toHaveAttribute('aria-current')
-    await expect.element(forwardButton).toBeEnabled()
-
-    await forwardButton.click()
-    await expect.element(rust).toHaveAttribute('aria-current', 'page')
-  })
-
   it('the graph footer switches to another recent graph', async () => {
     const { view } = await renderSidebar()
 

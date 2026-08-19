@@ -52,25 +52,29 @@ export function WorkspaceContent({ graph }: WorkspaceContentProps): ReactElement
   const contextTarget = useDailyContextTarget()
 
   return (
-    <AppShell
-      sidebar={collapsed ? undefined : <Sidebar graph={graph} context={commandContext} />}
-      sidebarEdge={<SidebarResizeHandle panel="workspace" />}
-      context={collapsed ? undefined : contextSidebarFor(contextTarget)}
-      contextEdge={<SidebarResizeHandle panel="context" />}
-    >
-      <div className="relative flex h-full flex-col">
-        <NoteTabsStrip />
-        <div className="min-h-0 flex-1">
-          <RouteContent />
-        </div>
+    <div className="flex h-screen w-screen flex-col overflow-hidden bg-surface-app text-text">
+      <NoteTabsStrip />
+      <div className="min-h-0 flex-1">
+        <AppShell
+          sidebar={collapsed ? undefined : <Sidebar graph={graph} context={commandContext} />}
+          sidebarEdge={<SidebarResizeHandle panel="workspace" />}
+          context={collapsed ? undefined : contextSidebarFor(contextTarget)}
+          contextEdge={<SidebarResizeHandle panel="context" />}
+        >
+          <div className="relative flex h-full flex-col">
+            <div className="min-h-0 flex-1">
+              <RouteContent />
+            </div>
 
-        <NoteFindBar />
-        <CommandPalette context={commandContext} />
-        <ShortcutsDialog />
-        <TemplatePicker context={commandContext} />
-        <TemplateCreateDialog context={commandContext} />
-        <EmbeddingsSync />
+            <NoteFindBar />
+            <CommandPalette context={commandContext} />
+            <ShortcutsDialog />
+            <TemplatePicker context={commandContext} />
+            <TemplateCreateDialog context={commandContext} />
+            <EmbeddingsSync />
+          </div>
+        </AppShell>
       </div>
-    </AppShell>
+    </div>
   )
 }

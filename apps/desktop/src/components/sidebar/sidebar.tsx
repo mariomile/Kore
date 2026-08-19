@@ -9,12 +9,9 @@ import { keybindingFor } from '@/lib/commands/app-commands'
 import { runCommand } from '@/lib/commands/registry'
 import { useToday } from '@/lib/use-today'
 import type { CommandContext } from '@/lib/commands/types'
-import { hasMacosTitleBarOverlay } from '@/lib/window-chrome'
-import { cn } from '@/lib/utils'
 import { notePathForRoute } from '@/routing/route'
 import { useRouter } from '@/routing/router'
 import { GraphFooter } from './graph-footer'
-import { NavigateArrows } from './navigate-arrows'
 import { SidebarItem } from './sidebar-item'
 import { SidebarOpenNotes } from './sidebar-open-notes'
 import { SidebarPinned } from './sidebar-pinned'
@@ -28,8 +25,7 @@ interface SidebarProps {
 }
 
 /**
- * The workspace sidebar, in the original app's shape: history arrows top
- * right, search, primary navigation with hover-revealed shortcut keycaps, the
+ * The workspace sidebar: search, primary navigation with hover-revealed shortcut keycaps, the
  * Pinned shelf, and the graph switcher footer. Most nav rows run registered
  * commands so a binding and its behavior stay one definition; the Daily notes
  * row is a capture gesture like `Mod-D` — it asks the stream to focus today
@@ -49,18 +45,9 @@ export function Sidebar({ graph, context }: SidebarProps): ReactElement {
   const lucideBox = 'flex size-6 shrink-0 items-center justify-center'
 
   return (
-    <div
-      className={cn(
-        'flex h-full min-h-0 flex-col',
-        // With the overlaid macOS title bar, the traffic lights and the
-        // WindowDragRegion strip own the top 28px — start content below them.
-        hasMacosTitleBarOverlay ? 'pt-2' : 'pt-2.5',
-      )}
-    >
-      <div className="flex flex-none items-center justify-end px-2 pt-1">
-        <NavigateArrows />
-      </div>
-
+    // The tab bar above the shell hosts the traffic lights and the history
+    // arrows now, so the sidebar starts directly with its own content.
+    <div className="flex h-full min-h-0 flex-col pt-3">
       <div className="flex flex-none flex-col">
         <div className="mt-1 flex items-center gap-1.5 px-4">
           <div className="min-w-0 flex-1">

@@ -112,9 +112,10 @@ thing on screen (16px+). The marketing site inverts this with huge tight display
 headings (`40–72px`).
 
 **Color.**
-- **App:** near-white canvas (`#fff` surfaces on a `#f8fafa` app bg) or deep-navy dark
-  mode (`hsl(224 49% 8%)` ≈ `#0a0f1e`). Neutrals are **cool greys** (the "coolgray"
-  ramp). **Indigo `#4F46E5` is the only saturated accent** — solid buttons, selected
+- **App:** near-white canvas (`#fff` surfaces on a `#f7f7f8` app bg) or refined
+  charcoal dark mode (`#17171b` surfaces on `#101013`). Semantic neutrals are ink
+  tints (`#17181c` text, hairlines at 7% ink); the "coolgray" ramp stays for raw
+  steps. **Indigo `#4F46E5` is the only saturated accent** — solid buttons, selected
   state, focus. Secondary actions use soft indigo (`#e0e7ff` bg / `#4338ca` text).
   Destructive is red-500. That's the whole palette — restraint is the point.
 - **Site:** near-black `#030014` lit by **purple** — a soft radial glow

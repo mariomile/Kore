@@ -409,37 +409,37 @@
     { "name": "--surface", "value": "#ffffff", "kind": "color", "definedIn": "tokens/colors.css" },
     {
       "name": "--surface-sunken",
-      "value": "var(--coolgray-50)",
+      "value": "#f7f7f8",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
     {
       "name": "--surface-app",
-      "value": "#f8fafa",
+      "value": "#f7f7f8",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
     {
       "name": "--surface-hover",
-      "value": "rgba(229,231,235,.5)",
+      "value": "rgba(18,19,23,.045)",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
     {
       "name": "--text",
-      "value": "var(--coolgray-900)",
+      "value": "#17181c",
       "kind": "font",
       "definedIn": "tokens/colors.css"
     },
     {
       "name": "--text-secondary",
-      "value": "var(--coolgray-500)",
+      "value": "#6b6f76",
       "kind": "font",
       "definedIn": "tokens/colors.css"
     },
     {
       "name": "--text-muted",
-      "value": "var(--coolgray-400)",
+      "value": "#9a9ea7",
       "kind": "font",
       "definedIn": "tokens/colors.css"
     },
@@ -451,13 +451,13 @@
     },
     {
       "name": "--border",
-      "value": "var(--coolgray-200)",
+      "value": "rgba(18,19,23,.07)",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
     {
       "name": "--border-strong",
-      "value": "rgba(11,19,36,.15)",
+      "value": "rgba(18,19,23,.13)",
       "kind": "color",
       "definedIn": "tokens/colors.css"
     },
@@ -525,69 +525,69 @@
     },
     {
       "name": "--border-hairline",
-      "value": "0 1px 0 rgba(11,19,36,.05)",
+      "value": "0 1px 0 rgba(18,19,23,.07)",
       "kind": "shadow",
       "definedIn": "tokens/colors.css"
     },
     {
       "name": "--surface",
-      "value": "#0b1020",
+      "value": "#17171b",
       "kind": "color",
       "definedIn": "tokens/colors.css",
       "scope": ".dark"
     },
     {
       "name": "--surface-sunken",
-      "value": "rgba(31,41,55,.3)",
+      "value": "#101013",
       "kind": "color",
       "definedIn": "tokens/colors.css",
       "scope": ".dark"
     },
     {
       "name": "--surface-app",
-      "value": "#0a0f1e",
+      "value": "#101013",
       "kind": "color",
       "definedIn": "tokens/colors.css",
       "scope": ".dark"
     },
     {
       "name": "--surface-hover",
-      "value": "rgba(255,255,255,.04)",
+      "value": "rgba(255,255,255,.045)",
       "kind": "color",
       "definedIn": "tokens/colors.css",
       "scope": ".dark"
     },
     {
       "name": "--text",
-      "value": "var(--near-white)",
+      "value": "#ededf0",
       "kind": "font",
       "definedIn": "tokens/colors.css",
       "scope": ".dark"
     },
     {
       "name": "--text-secondary",
-      "value": "var(--coolgray-400)",
+      "value": "#9fa1a7",
       "kind": "font",
       "definedIn": "tokens/colors.css",
       "scope": ".dark"
     },
     {
       "name": "--text-muted",
-      "value": "var(--coolgray-500)",
+      "value": "#66686f",
       "kind": "font",
       "definedIn": "tokens/colors.css",
       "scope": ".dark"
     },
     {
       "name": "--border",
-      "value": "rgba(255,255,255,.06)",
+      "value": "rgba(255,255,255,.075)",
       "kind": "color",
       "definedIn": "tokens/colors.css",
       "scope": ".dark"
     },
     {
       "name": "--border-strong",
-      "value": "rgba(255,255,255,.10)",
+      "value": "rgba(255,255,255,.14)",
       "kind": "color",
       "definedIn": "tokens/colors.css",
       "scope": ".dark"
@@ -601,42 +601,42 @@
     },
     {
       "name": "--accent",
-      "value": "var(--indigo-500)",
+      "value": "#7b7ef4",
       "kind": "color",
       "definedIn": "tokens/colors.css",
       "scope": ".dark"
     },
     {
       "name": "--accent-hover",
-      "value": "var(--indigo-400)",
+      "value": "#9598f7",
       "kind": "color",
       "definedIn": "tokens/colors.css",
       "scope": ".dark"
     },
     {
       "name": "--accent-soft",
-      "value": "var(--indigo-900)",
+      "value": "rgba(123,126,244,.16)",
       "kind": "color",
       "definedIn": "tokens/colors.css",
       "scope": ".dark"
     },
     {
       "name": "--accent-soft-text",
-      "value": "#ffffff",
+      "value": "#a5a8f8",
       "kind": "font",
       "definedIn": "tokens/colors.css",
       "scope": ".dark"
     },
     {
       "name": "--focus-ring",
-      "value": "var(--indigo-500)",
+      "value": "#7b7ef4",
       "kind": "color",
       "definedIn": "tokens/colors.css",
       "scope": ".dark"
     },
     {
       "name": "--border-hairline",
-      "value": "0 1px 0 rgba(255,255,255,.05)",
+      "value": "0 1px 0 rgba(255,255,255,.075)",
       "kind": "shadow",
       "definedIn": "tokens/colors.css",
       "scope": ".dark"

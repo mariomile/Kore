@@ -67,20 +67,20 @@
      SEMANTIC ALIASES — light (default) app theme
      ============================================================ */
   --surface: #ffffff; /* cards, editor canvas        */
-  --surface-sunken: var(--coolgray-50); /* sidebar, rails              */
-  --surface-app: #f8fafa; /* whole-app background        */
-  --surface-hover: rgba(229, 231, 235, 0.5); /* menu/list hover (gray-200/50)*/
-  --surface-active: rgba(229, 231, 235, 0.5); /* today's calendar square     */
+  --surface-sunken: #f7f7f8; /* sidebar shares the app bg — the document is the chrome */
+  --surface-app: #f7f7f8; /* whole-app background        */
+  --surface-hover: rgba(18, 19, 23, 0.045); /* menu/list hover — 4.5% ink  */
+  --surface-active: rgba(18, 19, 23, 0.06); /* selected rows — 6% ink      */
   --surface-inverse: hsl(222.2 47.4% 11.2%); /* selected calendar square  */
 
-  --text: var(--coolgray-900); /* primary copy                */
-  --text-secondary: var(--coolgray-500); /* note titles, meta           */
-  --text-muted: var(--coolgray-400); /* placeholders, shortcuts     */
+  --text: #17181c; /* primary copy                */
+  --text-secondary: #6b6f76; /* note titles, meta           */
+  --text-muted: #9a9ea7; /* placeholders, shortcuts     */
   --text-on-brand: #ffffff;
   --text-on-inverse: hsl(210 40% 98%); /* number on selected square   */
 
-  --border: var(--coolgray-100); /* hairline dividers           */
-  --border-strong: rgba(11, 19, 36, 0.15); /* input outlines              */
+  --border: rgba(18, 19, 23, 0.07); /* hairline dividers — 7% ink  */
+  --border-strong: rgba(18, 19, 23, 0.13); /* input outlines              */
   --input-bg: #ffffff;
 
   --accent: var(--brand);
@@ -93,12 +93,12 @@
 
   --radius: 0.5rem; /* 8px — the house radius      */
 
-  /* Shadows */
-  --shadow-input: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-sm: 0 1px 2px rgba(11, 19, 36, 0.06);
-  --shadow-md: 0 4px 12px rgba(11, 19, 36, 0.08);
-  --shadow-pop: 0 8px 28px rgba(11, 19, 36, 0.16);
-  --border-hairline: 0 1px 0 rgba(11, 19, 36, 0.05); /* shadow-border-b */
+  /* Shadows — one recipe per depth tier (card / floating / popover) */
+  --shadow-input: 0 1px 2px rgba(18, 19, 23, 0.04);
+  --shadow-sm: 0 1px 2px rgba(18, 19, 23, 0.04);
+  --shadow-md: 0 1px 2px rgba(18, 19, 23, 0.04), 0 8px 24px rgba(18, 19, 23, 0.05);
+  --shadow-pop: 0 12px 40px rgba(18, 19, 23, 0.14);
+  --border-hairline: 0 1px 0 rgba(18, 19, 23, 0.07); /* shadow-border-b */
   /* V1's layered search-field shadow (boxShadow['app-input']) */
   --shadow-app-input:
     0 1px 0 -1px rgba(0, 0, 0, 0.05), 0 1px 1px -1px rgba(0, 0, 0, 0.05),
@@ -108,32 +108,33 @@
 
 /* ============================================================
    DARK app theme — opt in with .dark on a wrapper
-   Deep navy, indigo-500 brand, near-white text.
+   Refined charcoal (no navy cast), lifted indigo accent,
+   near-white text.
    ============================================================ */
 .dark {
-  --surface: #0b1020;
-  --surface-sunken: rgba(31, 41, 55, 0.3);
-  --surface-app: #0a0f1e; /* hsl(224 49% 8%)             */
-  --surface-hover: rgba(255, 255, 255, 0.03);
-  --surface-active: rgba(55, 65, 81, 0.5); /* gray-700/50                 */
-  --surface-inverse: var(--indigo-500);
+  --surface: #17171b;
+  --surface-sunken: #101013; /* sidebar shares the app bg   */
+  --surface-app: #101013;
+  --surface-hover: rgba(255, 255, 255, 0.045);
+  --surface-active: rgba(255, 255, 255, 0.07);
+  --surface-inverse: #7b7ef4;
 
-  --text: var(--near-white);
-  --text-secondary: var(--coolgray-400);
-  --text-muted: var(--coolgray-500);
+  --text: #ededf0;
+  --text-secondary: #9fa1a7;
+  --text-muted: #66686f;
   --text-on-inverse: hsl(210 40% 98%);
 
-  --border: rgba(255, 255, 255, 0.06);
-  --border-strong: rgba(255, 255, 255, 0.05);
+  --border: rgba(255, 255, 255, 0.075);
+  --border-strong: rgba(255, 255, 255, 0.14);
   --input-bg: rgba(255, 255, 255, 0.05);
 
-  --accent: var(--indigo-500);
-  --accent-hover: var(--indigo-400);
-  --accent-soft: var(--indigo-900);
-  --accent-soft-text: #ffffff;
+  --accent: #7b7ef4;
+  --accent-hover: #9598f7;
+  --accent-soft: rgba(123, 126, 244, 0.16);
+  --accent-soft-text: #a5a8f8;
 
-  --focus-ring: var(--indigo-500);
-  --border-hairline: 0 1px 0 rgba(255, 255, 255, 0.05);
+  --focus-ring: #7b7ef4;
+  --border-hairline: 0 1px 0 rgba(255, 255, 255, 0.075);
   --shadow-app-input:
     0 1px 0 -1px rgba(0, 0, 0, 0.1), 0 1px 1px -1px rgba(0, 0, 0, 0.1),
     0 1px 2px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1),

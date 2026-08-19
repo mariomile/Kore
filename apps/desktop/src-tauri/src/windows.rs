@@ -79,12 +79,12 @@ pub(crate) fn restorable_window_state_flags() -> tauri_plugin_window_state::Stat
 }
 
 /// `--surface-app` in the `:root` scope of
-/// `design-system/tokens/colors.css` (`#f8fafa`).
-const SURFACE_APP_LIGHT: tauri::webview::Color = tauri::webview::Color(248, 250, 250, 255);
+/// `design-system/tokens/colors.css` (`#f7f7f8`).
+const SURFACE_APP_LIGHT: tauri::webview::Color = tauri::webview::Color(247, 247, 248, 255);
 
 /// `--surface-app` in the `.dark` scope of
-/// `design-system/tokens/colors.css` (`#0a0f1e`).
-const SURFACE_APP_DARK: tauri::webview::Color = tauri::webview::Color(10, 15, 30, 255);
+/// `design-system/tokens/colors.css` (`#101013`).
+const SURFACE_APP_DARK: tauri::webview::Color = tauri::webview::Color(16, 16, 19, 255);
 
 /// Resolve the OS-preferred theme background for `window`. Values mirror
 /// `--surface-app` so the native layer matches the first webview paint;

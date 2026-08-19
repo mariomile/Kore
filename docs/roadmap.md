@@ -6,10 +6,6 @@ customization effort.
 
 ## Next up
 
-- **HTML & PDF viewing in-app** — open `assets/*.html` and `assets/*.pdf`
-  attachments inside Reflect (a viewer pane/window) instead of bouncing to an
-  external app. PDF paging and text selection; HTML rendered sandboxed
-  (no script escalation from note attachments).
 - **In-app browser** — a browser pane for opening external links without
   leaving the app; likely a separate Tauri webview window with back/forward,
   URL bar, and a "clip to note" action. Needs a hard security review
@@ -36,6 +32,10 @@ customization effort.
 
 ## Shipped (this fork)
 
+- In-app HTML & PDF attachment viewer: `assets/*.pdf` / `assets/*.html`
+  open in a viewer dialog off the asset protocol (PDF via the webview's
+  native renderer, HTML fully sandboxed — no scripts, no same-origin),
+  with one-click "Open externally" as the fallback.
 - Design language overhaul (Craft/Linear-style tokens: ink hairlines,
   charcoal dark, one shadow recipe per depth tier) with themes (Space,
   Midnight, Paper) and accent colors incl. custom.

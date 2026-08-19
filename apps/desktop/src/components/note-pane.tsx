@@ -12,6 +12,7 @@ import { UnlinkedMentionsPanel } from '@/components/unlinked-mentions-panel'
 import { ConflictNoteView } from '@/components/conflict-note-view'
 import { InlineAlert } from '@/components/inline-alert'
 import { NoteConflictBanner } from '@/components/note-conflict-banner'
+import { AssetViewerDialog, viewableAssetKind } from '@/components/asset-viewer-dialog'
 import { ProtectedNoteView } from '@/components/protected-note-view'
 import { SuggestedContactCard } from '@/components/suggested-contact-card'
 import { SyncConflictNotice } from '@/components/sync-conflict-notice'
@@ -166,6 +167,19 @@ export function NotePaneComponent({
   })
   const { resolveImageUrl, resolveAssetOpenPath, openAsset, saveFile, resolveFileInfo, saveError } =
     useAssetPersistence(generation, path)
+  // PDF and HTML attachments open in the in-app viewer; everything else keeps
+  // the OS-open path. The viewer's "Open externally" routes back to openAsset.
+  const [viewerAssetPath, setViewerAssetPath] = useState<string | null>(null)
+  const openOrViewAsset = useCallback(
+    async (assetPath: string): Promise<void> => {
+      if (viewableAssetKind(assetPath) !== null) {
+        setViewerAssetPath(assetPath)
+        return
+      }
+      await openAsset(assetPath)
+    },
+    [openAsset],
+  )
   const renderWikilinkHoverCard = useWikiLinkHoverPreview({
     generation,
     graphKey: graph?.root ?? null,
@@ -358,7 +372,7 @@ export function NotePaneComponent({
         blockHandle={true}
         resolveImageUrl={resolveImageUrl}
         resolveAssetOpenPath={resolveAssetOpenPath}
-        openAsset={openAsset}
+        openAsset={openOrViewAsset}
         saveFile={saveFile}
         // Claims `assets/…` links (what saveFile inserts for a dropped
         // non-image file) so they render as file pills, sized by
@@ -395,6 +409,20 @@ export function NotePaneComponent({
           <BacklinksPanel path={path} />
           <UnlinkedMentionsPanel path={path} />
         </div>
+      ) : null}
+
+      {viewerAssetPath !== null ? (
+        <AssetViewerDialog
+          assetPath={viewerAssetPath}
+          url={resolveImageUrl(viewerAssetPath)}
+          onClose={() => {
+            setViewerAssetPath(null)
+          }}
+          onOpenExternally={() => {
+            void openAsset(viewerAssetPath)
+            setViewerAssetPath(null)
+          }}
+        />
       ) : null}
     </div>
   )

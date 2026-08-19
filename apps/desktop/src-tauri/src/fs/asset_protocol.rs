@@ -29,7 +29,8 @@ use tauri::{AppHandle, Manager, Runtime, UriSchemeContext, UriSchemeResponder};
 use super::GraphState;
 
 /// The scheme name, shared with the `lib.rs` registration. The frontend and
-/// the CSP `img-src` grant in `tauri.conf.json` spell it out literally.
+/// the CSP `img-src` / `frame-src` grants in `tauri.conf.json` (images and
+/// the in-app PDF/HTML attachment viewer) spell it out literally.
 pub(crate) const SCHEME: &str = "reflect-asset";
 const PREVIEW_RASTER_QUERY: &str = "reflect-preview=raster";
 

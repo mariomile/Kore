@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { isDaily, listNotes, listNoteTags } from '@reflect/core'
-import { Trash2 } from 'lucide-react'
+import { LayoutGrid, List, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'
@@ -13,7 +13,9 @@ import { useScrollToIndexBridge } from '@/lib/use-scroll-to-index-bridge'
 import { useGraph } from '@/providers/graph-provider'
 import { routeForPath } from '@/routing/route'
 import { useRouter } from '@/routing/router'
+import { useSettings } from '@/providers/settings-provider'
 import { AllNotesFilters } from './all-notes-filters'
+import { AllNotesGrid } from './all-notes-grid'
 import { AllNotesTable } from './all-notes-table'
 import { AllNotesTrashDialog } from './all-notes-trash-dialog'
 import { NewNoteButton } from './new-note-button'
@@ -43,6 +45,8 @@ interface AllNotesScreenProps {
  */
 export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
   const { graph } = useGraph()
+  const { settings, updateSettings } = useSettings()
+  const view = settings.allNotesView
   const { navigate } = useRouter()
   const navigateNoteLink = useNoteLinkNavigation()
   // The scroll container lives in state, not a ref, so scroll restoration
@@ -111,7 +115,9 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
 
   useAllNotesKeyboard({
     selection,
-    orderedPaths,
+    // The card grid has no selection affordance, so the list shortcuts would
+    // act on rows the user can't see selected — disarm them there.
+    orderedPaths: view === 'grid' ? [] : orderedPaths,
     onOpen: openNote,
     onRequestTrash: openTrashConfirm,
     rootRef,
@@ -153,6 +159,42 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
             </Button>
           ) : null}
           <AllNotesFilters tag={tag} facets={facets ?? []} onSelect={handleFilterSelect} />
+          <div
+            role="group"
+            aria-label="Layout"
+            className="flex items-center gap-0.5 rounded-full bg-surface-hover p-0.5"
+          >
+            <button
+              type="button"
+              aria-label="List view"
+              aria-pressed={view === 'list'}
+              onClick={() => {
+                updateSettings({ allNotesView: 'list' })
+              }}
+              className={`flex size-6 items-center justify-center rounded-full transition-colors ${
+                view === 'list'
+                  ? 'bg-surface text-text shadow-sm'
+                  : 'text-text-muted hover:text-text-secondary'
+              }`}
+            >
+              <List aria-hidden className="size-3.5" />
+            </button>
+            <button
+              type="button"
+              aria-label="Grid view"
+              aria-pressed={view === 'grid'}
+              onClick={() => {
+                updateSettings({ allNotesView: 'grid' })
+              }}
+              className={`flex size-6 items-center justify-center rounded-full transition-colors ${
+                view === 'grid'
+                  ? 'bg-surface text-text shadow-sm'
+                  : 'text-text-muted hover:text-text-secondary'
+              }`}
+            >
+              <LayoutGrid aria-hidden className="size-3.5" />
+            </button>
+          </div>
           <NewNoteButton />
         </div>
       </header>
@@ -162,13 +204,17 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
         onScroll={onScroll}
         className="min-h-0 flex-1 overflow-auto"
       >
-        <AllNotesTable
-          notes={notes}
-          tag={tag}
-          selection={selection}
-          onOpen={openNote}
-          registerScrollToIndex={registerScrollToIndex}
-        />
+        {view === 'grid' ? (
+          <AllNotesGrid notes={notes} tag={tag} onOpen={openNote} />
+        ) : (
+          <AllNotesTable
+            notes={notes}
+            tag={tag}
+            selection={selection}
+            onOpen={openNote}
+            registerScrollToIndex={registerScrollToIndex}
+          />
+        )}
       </div>
 
       <AllNotesTrashDialog

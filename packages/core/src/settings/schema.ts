@@ -266,6 +266,14 @@ export const allNotesFilterTagsSchema = z.array(z.string()).catch(['book', 'link
 export type AllNotesFilterTags = z.infer<typeof allNotesFilterTagsSchema>
 
 /**
+ * How the All Notes screen lays out its notes: the classic table, or a
+ * masonry card grid. A view preference, so it persists like one.
+ */
+export const allNotesViewSchema = z.enum(['list', 'grid']).catch('list')
+
+export type AllNotesView = z.infer<typeof allNotesViewSchema>
+
+/**
  * Whether semantic search is on. Off by default — turning it on downloads the
  * ~90MB embedding model, and that first network fetch is the user's call
  * (Plan 09). Later launches load the cached model because this flag is set.
@@ -695,6 +703,7 @@ export const settingsSchema = z.looseObject({
   dateFormat: dateFormatSchema,
   weekStartDay: weekStartDaySchema,
   allNotesFilterTags: allNotesFilterTagsSchema,
+  allNotesView: allNotesViewSchema,
   savedSearches: savedSearchesSchema,
   taskFilters: taskFiltersSchema,
   calendarEnabled: calendarEnabledSchema,

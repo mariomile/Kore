@@ -268,6 +268,7 @@ export {
   type DateFormat,
   type WeekStartDay,
   type AllNotesFilterTags,
+  type AllNotesView,
   type SavedSearch,
   type TaskFilters,
   type CalendarIds,

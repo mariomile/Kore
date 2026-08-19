@@ -30,6 +30,7 @@ describe('settingsSchema', () => {
       dateFormat: 'mdy',
       weekStartDay: 'monday',
       allNotesFilterTags: ['book', 'link', 'person'],
+      allNotesView: 'list',
       taskFilters: {
         pinned: true,
         current: true,
@@ -284,6 +285,7 @@ describe('settingsSchema', () => {
       dateFormat: 'mdy',
       weekStartDay: 'monday',
       allNotesFilterTags: ['book', 'link', 'person'],
+      allNotesView: 'list',
       taskFilters: {
         pinned: true,
         current: true,

@@ -16,9 +16,13 @@ import { AllNotesScreen } from './all-notes-screen'
  * query, and navigation through the real router.
  */
 
-const settingsState = vi.hoisted((): { dateFormat: 'mdy' | 'dmy' | 'iso' } => ({
-  dateFormat: 'mdy',
-}))
+const settingsState = vi.hoisted(
+  (): { dateFormat: 'mdy' | 'dmy' | 'iso'; allNotesView: 'list' | 'grid' } => ({
+    dateFormat: 'mdy',
+    allNotesView: 'list',
+  }),
+)
+const updateSettings = vi.hoisted(() => vi.fn())
 const openRouteInNewWindow = vi.hoisted(() => vi.fn<() => Promise<boolean>>())
 
 vi.mock('@/providers/graph-provider', () => ({
@@ -35,8 +39,9 @@ vi.mock('@/providers/settings-provider', () => ({
       timeFormat: '12h',
       dateFormat: settingsState.dateFormat,
       allNotesFilterTags: ['book', 'person'],
+      allNotesView: settingsState.allNotesView,
     },
-    updateSettings: () => {},
+    updateSettings,
   }),
 }))
 vi.mock('@/lib/windows/open-in-new-window', async (importOriginal) => ({
@@ -106,6 +111,8 @@ function mockManyNotes(): void {
 beforeEach(() => {
   resetOperations()
   settingsState.dateFormat = 'mdy'
+  settingsState.allNotesView = 'list'
+  updateSettings.mockReset()
   openRouteInNewWindow.mockReset().mockResolvedValue(true)
   mockInvoke.mockReset()
   mockInvoke.mockImplementation(async (command, args) => {
@@ -683,6 +690,31 @@ describe('AllNotesScreen — selection and bulk trash', () => {
       ([command, args]) => command === 'note_delete' && args['path'] === 'notes/health.md',
     )
     expect(healthDeletes).toHaveLength(1)
+    await view.unmount()
+  })
+})
+
+describe('AllNotesScreen grid view', () => {
+  it('switches to the card grid through the layout toggle', async () => {
+    const view = await renderScreen()
+    await expect.element(view.getByText('Health Stacked')).toBeInTheDocument()
+
+    await view.getByRole('button', { name: 'Grid view' }).click()
+    expect(updateSettings).toHaveBeenCalledWith({ allNotesView: 'grid' })
+    await view.unmount()
+  })
+
+  it('renders cards with previews and opens a note on click', async () => {
+    settingsState.allNotesView = 'grid'
+    const view = await renderScreen()
+
+    // Card previews render (the table renders them too, but the grid has no
+    // table columns — the Updated header is the table's marker).
+    await expect.element(view.getByText('Shop your health goals.')).toBeInTheDocument()
+    expect(view.getByText('Updated').query()).toBeNull()
+
+    await view.getByText('Health Stacked').click()
+    expect(probedRoute(view)).toEqual({ kind: 'note', path: 'notes/health.md' })
     await view.unmount()
   })
 })

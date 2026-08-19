@@ -102,6 +102,7 @@ vi.mock('@/providers/settings-provider', () => ({
     settings: {
       editorMarkdownSyntax: 'hide',
       allNotesFilterTags: ['book', 'link', 'person'],
+      allNotesView: 'list',
       aiProviders: [],
       defaultAiProviderId: null,
       chatSystemPrompt: '',

@@ -93,13 +93,23 @@ export {
 } from '../ai/chat/graph-context'
 export { streamChat, type ChatStreamEvent, type StreamChatOptions } from '../ai/chat/stream-chat'
 export {
-  loadAgentMemory,
-  agentMemoryPromptLines,
-  AGENT_MEMORY_PATH,
-  AGENT_MEMORY_TITLE,
+  loadAgentContext,
+  listAgentProfiles,
+  createAgentProfile,
+  ensureUserMemoryNote,
+  agentContextPromptLines,
+  agentSoulPath,
+  agentMemoryPath,
+  AGENTS_DIR,
+  AGENT_USER_MEMORY_PATH,
+  DEFAULT_AGENT_SLUG,
+  AGENT_SOUL_MAX_CHARS,
+  AGENT_USER_MEMORY_MAX_CHARS,
   AGENT_MEMORY_MAX_CHARS,
-  type AgentMemory,
-} from '../ai/agent-memory'
+  type AgentFile,
+  type AgentProfile,
+  type AgentPromptContext,
+} from '../ai/agent-profiles'
 export {
   agentCliPrompt,
   checkAgentCli,

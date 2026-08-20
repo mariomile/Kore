@@ -24,6 +24,7 @@ export function contextSidebarTarget(route: Route, today: string): ContextSideba
     case 'chat':
     case 'insights':
     case 'graphMap':
+    case 'agents':
     case 'settings':
     case 'graphs':
       return null

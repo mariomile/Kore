@@ -11,6 +11,9 @@ customization effort.
 
 ## Backlog
 
+- **More agent CLI providers** — Grok CLI, Cursor CLI, and Hermes agent as
+  chat engines beside Claude Code and Codex (the profile `provider:` pin
+  and the Rust binary allowlist are the two extension points).
 - **Global quick capture** — a system-wide shortcut opening a mini window
   that appends a line to today's daily note without focusing the app.
 - **Task reminders** — native notifications for tasks with due dates.
@@ -24,6 +27,17 @@ customization effort.
 
 ## Shipped (this fork)
 
+- Agents section (Hermes-agent model, vault-native): `agents/user.md` is
+  the shared profile of the user; each agent lives at `agents/<slug>/` with
+  a **soul.md** (identity and voice, the user's file, seeded on create,
+  injected first into every session, optional `provider:`/`model:` pin in
+  frontmatter) and a **memory.md** (the agent's own working memory). The
+  Agents screen creates, activates, opens, and deletes profiles; the active
+  agent shows as a chip in the chat composer; activating a profile with a
+  pinned CLI provider also steers the chat model. Prompt injection is
+  capped Hermes-style (soul 6k, user 2k, memory 4k chars) with explicit
+  consolidation nudges, `private: true` silences any of the files, and the
+  per-graph skill teaches external agents the same layout.
 - Agentic chat: an **edit mode** toggle in the composer lets the agent-CLI
   providers (Claude Code / Codex) create and modify notes to carry out a
   request — Codex gets a write grant on the graph subtree, Claude Code gets

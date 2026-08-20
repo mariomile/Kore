@@ -17,7 +17,7 @@ import {
   hasBridge,
   listChatConversations,
   listPrivateNotePaths,
-  loadAgentMemory,
+  loadAgentContext,
   loadChatGraphContext,
   loadChatMessages,
   resolveChatModel,
@@ -111,6 +111,7 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
   const semanticSearchEnabledRef = useRef(semanticSearchEnabled)
   const chatSystemPromptRef = useRef(settings.chatSystemPrompt)
   const chatAllowEditsRef = useRef(settings.chatAllowEdits)
+  const activeAgentProfileRef = useRef(settings.activeAgentProfile)
   const instructionsRef = useRef(instructions)
   useEffect(() => {
     turnsRef.current = turns
@@ -121,6 +122,7 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
     semanticSearchEnabledRef.current = semanticSearchEnabled
     chatSystemPromptRef.current = settings.chatSystemPrompt
     chatAllowEditsRef.current = settings.chatAllowEdits
+    activeAgentProfileRef.current = settings.activeAgentProfile
     instructionsRef.current = instructions
   })
 
@@ -294,9 +296,9 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
       lastSendSessionRef.current = activeSend.session
 
       try {
-        // The graph's agent memory rides into every provider's prompt; a
-        // failed read degrades to "no memory", never a blocked turn.
-        const agentMemory = await loadAgentMemory().catch(() => null)
+        // The active agent's soul + memories ride into every provider's
+        // prompt; a failed read degrades to "nothing", never a blocked turn.
+        const agentContext = await loadAgentContext(activeAgentProfileRef.current).catch(() => null)
         const events = await (async () => {
           if (isCliAgentProvider(config.provider)) {
             // The subscription engines: the CLI reads the graph itself, so
@@ -319,7 +321,7 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
               graphName: graph.name,
               privateNotePaths,
               allowEdits: chatAllowEditsRef.current,
-              agentMemory,
+              agentContext,
               signal: controller.signal,
             })
           }
@@ -349,7 +351,7 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
             semanticSearchEnabled: semanticSearchEnabledRef.current,
             customSystemPrompt,
             context,
-            agentMemory,
+            agentContext,
             signal: controller.signal,
           })
         })()

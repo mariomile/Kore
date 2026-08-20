@@ -21,6 +21,8 @@ export type Route =
   | { kind: 'insights' }
   // The link map over the whole graph (not the graph *switcher* below).
   | { kind: 'graphMap' }
+  // Agent profiles: souls, memories, and the shared user profile.
+  | { kind: 'agents' }
   | { kind: 'settings' }
   // The graph-switcher screen — a mobile settings sub-screen; desktop renders
   // it as the settings screen (its switcher lives in the sidebar footer).
@@ -40,6 +42,7 @@ export function routesEqual(a: Route, b: Route): boolean {
     case 'chat':
     case 'insights':
     case 'graphMap':
+    case 'agents':
     case 'settings':
     case 'graphs':
       return true

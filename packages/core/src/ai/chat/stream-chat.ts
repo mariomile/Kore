@@ -4,7 +4,7 @@ import { languageModel } from '../language-model'
 import { modelContextWindow } from '../provider-catalog'
 import type { AiProviderConfig } from '../../settings/schema'
 import type { CloudGraphContext, CloudSafe } from '../checkers'
-import type { AgentMemory } from '../agent-memory'
+import type { AgentPromptContext } from '../agent-profiles'
 import { fitToContextWindow } from './context-window'
 import { chatSystemPrompt } from './system-prompt'
 import {
@@ -58,8 +58,8 @@ export interface StreamChatOptions {
    * the degraded mode explicitly rather than forgetting the block.
    */
   context: CloudSafe<CloudGraphContext> | null
-  /** The graph's agent memory for the system prompt (null: none to send). */
-  agentMemory?: AgentMemory | null
+  /** The active agent's soul + memories for the system prompt. */
+  agentContext?: AgentPromptContext | null
   /** Aborts the provider call mid-stream (the UI's stop button). */
   signal?: AbortSignal
 }
@@ -89,7 +89,7 @@ export function streamChat(options: StreamChatOptions): AsyncGenerator<ChatStrea
       context: options.context,
       semanticSearchEnabled: options.semanticSearchEnabled,
       customSystemPrompt: options.customSystemPrompt,
-      agentMemory: options.agentMemory ?? null,
+      agentContext: options.agentContext ?? null,
     }),
   })
   return streamChatTurn(languageModel(options.config, options.apiKey, options.fetchFn), {
@@ -98,7 +98,7 @@ export function streamChat(options: StreamChatOptions): AsyncGenerator<ChatStrea
     semanticSearchEnabled: options.semanticSearchEnabled,
     customSystemPrompt: options.customSystemPrompt,
     context: options.context,
-    agentMemory: options.agentMemory ?? null,
+    agentContext: options.agentContext ?? null,
     signal: options.signal,
   })
 }
@@ -115,8 +115,8 @@ export interface ChatTurnOptions {
   customSystemPrompt: string
   /** Graph overview for the system prompt, or `null` to omit the block. */
   context: CloudSafe<CloudGraphContext> | null
-  /** The graph's agent memory for the system prompt (null: none to send). */
-  agentMemory?: AgentMemory | null
+  /** The active agent's soul + memories for the system prompt. */
+  agentContext?: AgentPromptContext | null
   /** Aborts the provider call mid-stream (the UI's stop button). */
   signal?: AbortSignal | undefined
   /** Test seam for the note tools' effects. */
@@ -159,7 +159,7 @@ export async function* streamChatTurn(
         context: options.context,
         semanticSearchEnabled: options.semanticSearchEnabled,
         customSystemPrompt: options.customSystemPrompt,
-        agentMemory: options.agentMemory ?? null,
+        agentContext: options.agentContext ?? null,
       }),
       messages: options.messages,
       tools,

@@ -127,11 +127,26 @@ describe('codexCliSystemPrompt edit mode', () => {
       graphName: 'Work',
       customSystemPrompt: '',
       allowEdits: true,
-      agentMemory: { body: '- Prefers Italian replies', truncated: false },
+      agentContext: {
+        profile: {
+          slug: 'riley',
+          name: 'Riley',
+          provider: null,
+          model: null,
+          soulPath: 'agents/riley/soul.md',
+          memoryPath: 'agents/riley/memory.md',
+        },
+        soul: { body: 'Speak plainly.', truncated: false },
+        userMemory: { body: '- Prefers Italian replies', truncated: false },
+        agentMemory: { body: '- Project X ships Friday', truncated: false },
+        memoryPath: 'agents/riley/memory.md',
+      },
     })
     expect(prompt).toContain('Editing rules')
     expect(prompt).toContain('- Prefers Italian replies')
-    expect(prompt).toContain('record it in notes/agent-memory.md')
+    expect(prompt).toContain('Speak plainly.')
+    expect(prompt).toContain('- Project X ships Friday')
+    expect(prompt).toContain('agents/riley/memory.md')
 
     const readOnly = codexCliSystemPrompt({
       today: '2026-06-14',

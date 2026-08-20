@@ -79,6 +79,7 @@ vi.mock('@/providers/settings-provider', async () => {
           chatModelSelection: selection,
           chatSystemPrompt: '',
           chatAllowEdits: false,
+          activeAgentProfile: null,
         },
         updateSettings: (patch: Partial<Settings>) => {
           updatedSettings.push(patch)

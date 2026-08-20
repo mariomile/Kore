@@ -146,6 +146,12 @@ const APP_COMMANDS: AppCommand[] = [
     run: (context) => context.navigate({ kind: 'graphMap' }),
   },
   {
+    id: 'nav.agents',
+    title: 'Agents',
+    keywords: ['agent', 'soul', 'memory', 'profiles', 'ai', 'persona'],
+    run: (context) => context.navigate({ kind: 'agents' }),
+  },
+  {
     id: 'chat.open',
     title: 'Chat',
     keywords: ['ai', 'assistant', 'copilot', 'ask'],

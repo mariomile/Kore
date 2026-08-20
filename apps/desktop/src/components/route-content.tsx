@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import { AgentsScreen } from '@/components/agents/agents-screen'
 import { AllNotesScreen } from '@/components/all-notes/all-notes-screen'
 import { ChatScreen } from '@/components/chat/chat-screen'
 import { DailyStream } from '@/components/daily-stream'
@@ -56,6 +57,12 @@ export function RouteContent(): ReactElement {
     case 'graphMap':
       // Owns its surface (a pan/zoom canvas), so no scroll wrapper.
       return <GraphMapScreen />
+    case 'agents':
+      return (
+        <ScrollRestored className="h-full overflow-auto px-6 py-8">
+          <AgentsScreen />
+        </ScrollRestored>
+      )
     case 'graphs':
     // The graph-switcher route is a mobile settings sub-screen; on desktop
     // graph switching lives in the sidebar footer, so it renders as settings.

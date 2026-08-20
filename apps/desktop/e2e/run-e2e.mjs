@@ -256,6 +256,19 @@ try {
     }
   })
 
+  await step('an agent profile is born with a soul and becomes active', async () => {
+    await page.getByRole('navigation', { name: 'Primary' }).getByText('Agents').click()
+    await page.getByRole('button', { name: 'New agent' }).click()
+    await page.getByLabel('Agent name').fill('Riley')
+    await page.getByRole('button', { name: 'Create agent' }).click()
+    // Creation opens the seeded soul for editing…
+    await page.getByText('You are Riley, an agent living in this vault.').first().waitFor()
+    // …and the profile is active back on the Agents screen.
+    await page.getByRole('navigation', { name: 'Primary' }).getByText('Agents').click()
+    await page.getByText('agents/riley').waitFor()
+    await page.getByText('Active', { exact: true }).waitFor()
+  })
+
   await step('the Graph view maps the seeded notes and links', async () => {
     await page.getByRole('navigation', { name: 'Primary' }).getByText('Graph').click()
     await page.getByRole('heading', { name: 'Graph', exact: true }).waitFor()

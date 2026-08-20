@@ -2,7 +2,7 @@ import { z } from 'zod'
 import type { ModelMessage } from 'ai'
 import { call } from '../ipc/invoke'
 import type { ChatStreamEvent } from './chat/stream-chat'
-import { agentMemoryPromptLines, type AgentMemory } from './agent-memory'
+import { agentContextPromptLines, type AgentPromptContext } from './agent-profiles'
 import { agentCliPrompt, streamAgentCliTurn, vaultEditRules, type AgentCliChunk } from './agent-cli'
 
 /**
@@ -53,7 +53,7 @@ export function claudeCliSystemPrompt(options: {
   graphName: string
   customSystemPrompt: string
   allowEdits?: boolean | undefined
-  agentMemory?: AgentMemory | null | undefined
+  agentContext?: AgentPromptContext | null | undefined
 }): string {
   const custom = options.customSystemPrompt.trim()
   const allowEdits = options.allowEdits === true
@@ -63,7 +63,7 @@ export function claudeCliSystemPrompt(options: {
       : `You are Reflect’s assistant, answering inside the user’s personal note graph “${options.graphName}” — the current directory, a folder of markdown files.`,
     `Today’s date is ${options.today}. Daily notes are daily/YYYY-MM-DD.md; other notes live under notes/ (file names are slugs of note titles); templates/ holds note templates and assets/ holds attachments.`,
     'Tasks in notes are round checkboxes: `+ [ ]` open, `+ [x]` done; a leading ! (medium) or !! (high) marks priority, and the first [[YYYY-MM-DD]] wiki link inside an item is its due date. Square `- [ ]` checkboxes are plain checklists, not tasks.',
-    ...agentMemoryPromptLines(options.agentMemory ?? null, { canEdit: allowEdits }),
+    ...agentContextPromptLines(options.agentContext ?? null, { canEdit: allowEdits }),
     '',
     'Grounding rules:',
     allowEdits
@@ -212,8 +212,8 @@ export interface StreamCliChatOptions {
   privateNotePaths: string[]
   /** Edit mode: the agent may create and modify notes (private ones stay fenced). */
   allowEdits?: boolean
-  /** The graph's agent memory for prompt injection (null: none to send). */
-  agentMemory?: AgentMemory | null
+  /** The active agent's soul + memories for prompt injection. */
+  agentContext?: AgentPromptContext | null
   /** Aborts the run mid-stream (the UI's stop button). */
   signal?: AbortSignal | undefined
 }
@@ -231,7 +231,7 @@ export function streamClaudeCliChat(
         graphName: options.graphName,
         customSystemPrompt: options.customSystemPrompt,
         allowEdits: options.allowEdits,
-        agentMemory: options.agentMemory,
+        agentContext: options.agentContext,
       }),
       settingsJson: claudeCliSettingsJson(
         options.graphRoot,

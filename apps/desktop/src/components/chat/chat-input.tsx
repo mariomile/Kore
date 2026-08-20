@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactElement } from 'react'
-import { ArrowUp, FilePlus2, Pencil, Plus, SlidersHorizontal, Square, X } from 'lucide-react'
+import { ArrowUp, Bot, FilePlus2, Pencil, Plus, SlidersHorizontal, Square, X } from 'lucide-react'
 import { chatToMarkdown, createNoteWithTitle } from '@reflect/core'
 import { getIsComposing } from '@meowdown/core'
 import { ShortcutKeys } from '@/components/shortcut-keys'
@@ -207,6 +207,29 @@ export function ChatInput(): ReactElement {
             </SelectContent>
           </Select>
           <div className="flex-1" />
+          {settings.activeAgentProfile != null ? (
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label="Active agent"
+                    className="gap-1 text-xs text-text-secondary"
+                    onClick={() => {
+                      navigate({ kind: 'agents' })
+                    }}
+                  >
+                    <Bot aria-hidden className="size-3.5" />
+                    {settings.activeAgentProfile}
+                  </Button>
+                }
+              />
+              <TooltipContent>
+                This agent’s soul and memories ride into every message. Click to manage agents.
+              </TooltipContent>
+            </Tooltip>
+          ) : null}
           <Tooltip>
             <TooltipTrigger
               render={

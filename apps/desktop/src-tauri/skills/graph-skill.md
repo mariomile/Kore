@@ -88,12 +88,14 @@ conventions so edits render as first-class notes:
   an `id:` — the app mints those. Preserve frontmatter you don't understand.
 - **Templates.** Files in `templates/` seed new notes; the placeholders
   `{{date}}`, `{{date:iso}}`, `{{time}}`, and `{{title}}` fill on use.
-- **Agent memory.** `notes/agent-memory.md` ([[Agent Memory]]) is the shared
-  persistent memory for AI agents working in this graph — the app injects it
-  into its own AI sessions too. Read it before starting a longer task, and
-  record durable preferences, conventions, and project state there (keep it
-  short and organized; rewrite stale entries; never store secrets or content
-  from private notes).
+- **Agents.** The `agents/` folder is the graph's agent home, injected into
+  the app's own AI sessions too: `agents/user.md` holds durable facts about
+  the user (shared by every agent); each profile lives at
+  `agents/<slug>/soul.md` (identity and voice — the user's file, respect it)
+  and `agents/<slug>/memory.md` (that agent's working memory). Read them
+  before longer tasks; record what you learn — user facts in `user.md`,
+  your own lessons in the profile memory. Keep entries short and curated;
+  never store secrets or content from private notes.
 
 ## Git history
 

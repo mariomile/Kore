@@ -667,6 +667,9 @@ export const chatSystemPromptSchema = z.string().catch('').transform(normalizeCh
  */
 export const chatAllowEditsSchema = z.boolean().catch(false)
 
+/** The active agent profile's slug (`agents/<slug>/`), or null for none. */
+export const activeAgentProfileSchema = z.string().nullable().catch(null)
+
 /**
  * The configured AI providers. Resilience is per entry, not per list: a
  * corrupt entry is dropped while the rest load, so one bad hand-edit can't
@@ -763,6 +766,7 @@ export const settingsSchema = z.looseObject({
   chatModelSelection: chatModelSelectionSchema,
   chatSystemPrompt: chatSystemPromptSchema,
   chatAllowEdits: chatAllowEditsSchema,
+  activeAgentProfile: activeAgentProfileSchema,
   aiPrompts: aiPromptsSchema,
 })
 

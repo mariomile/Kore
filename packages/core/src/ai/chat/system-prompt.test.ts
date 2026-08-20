@@ -151,10 +151,16 @@ describe('chatSystemPrompt agent memory', () => {
       semanticSearchEnabled: false,
       customSystemPrompt: '',
       context: null,
-      agentMemory: { body: '- Prefers Italian replies', truncated: false },
+      agentContext: {
+        profile: null,
+        soul: null,
+        userMemory: { body: '- Prefers Italian replies', truncated: false },
+        agentMemory: null,
+        memoryPath: 'agents/assistant/memory.md',
+      },
     })
     expect(prompt).toContain('- Prefers Italian replies')
-    expect(prompt).toContain('[[Agent Memory]]')
+    expect(prompt).toContain('agents/user.md')
     expect(prompt).toContain('never claim to have saved it')
   })
 })

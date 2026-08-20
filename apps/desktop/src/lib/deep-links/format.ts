@@ -39,6 +39,7 @@ export function deepLinkForRoute(route: Route): string | null {
     case 'chat':
     case 'insights':
     case 'graphMap':
+    case 'agents':
     case 'settings':
     case 'graphs':
       return null

@@ -48,15 +48,15 @@ export function TaskGroupSection({
 }: TaskGroupSectionProps): ReactElement {
   const showSource = group.kind !== 'note'
   const { notePath } = group
-  const { icon, colorClass } = taskGroupHeaderStyle(group)
+  const { icon, iconClass, labelClass } = taskGroupHeaderStyle(group)
   const addTarget = addTargetForGroup(group, today)
   const contexts = groupTaskContexts(group.tasks)
 
   return (
     <section>
       <div className="sticky top-0 z-10 flex items-center gap-2 bg-surface-sunken px-4 py-1.5 lg:px-12">
-        <h2 className={cn('flex min-w-0 items-center gap-2 text-sm font-medium', colorClass)}>
-          {icon}
+        <h2 className={cn('flex min-w-0 items-center gap-2 text-sm font-medium', labelClass)}>
+          <span className={iconClass}>{icon}</span>
           {group.kind === 'note' && notePath !== null ? (
             <button
               type="button"

@@ -13,22 +13,50 @@ import { insertTargetForTask, todaysDailyTarget } from '@/lib/tasks/task-navigat
 
 export interface TaskGroupHeaderStyle {
   icon: ReactElement
-  colorClass: string
+  /** The icon's colour — labels always read as ink; the icon whispers. */
+  iconClass: string
+  /** The label's colour — ink, except Overdue's genuine alarm. */
+  labelClass: string
 }
 
-/** The icon + accent colour for a group's sticky header, V1's per-bucket styling. */
+/**
+ * The icon + colour for a group's sticky header. Mono-accent discipline (a
+ * departure from V1's amber/green category coding): labels read as ink,
+ * icons stay quiet, and only the two semantic voices speak in colour — the
+ * accent for "now" (Current, pinned) and destructive for Overdue.
+ */
 export function taskGroupHeaderStyle(group: TaskGroup): TaskGroupHeaderStyle {
   switch (group.kind) {
     case 'current':
-      return { icon: <Star aria-hidden className="size-4" />, colorClass: 'text-amber-500' }
+      return {
+        icon: <Star aria-hidden className="size-4" />,
+        iconClass: 'text-accent',
+        labelClass: 'text-text',
+      }
     case 'overdue':
-      return { icon: <AlarmClock aria-hidden className="size-4" />, colorClass: 'text-red-500' }
+      return {
+        icon: <AlarmClock aria-hidden className="size-4" />,
+        iconClass: 'text-destructive',
+        labelClass: 'text-destructive',
+      }
     case 'upcoming':
-      return { icon: <Calendar aria-hidden className="size-4" />, colorClass: 'text-green-600' }
+      return {
+        icon: <Calendar aria-hidden className="size-4" />,
+        iconClass: 'text-text-muted',
+        labelClass: 'text-text',
+      }
     case 'note':
       return group.tasks[0]?.isPinned
-        ? { icon: <Pin aria-hidden className="size-4" />, colorClass: 'text-accent' }
-        : { icon: <FileText aria-hidden className="size-4" />, colorClass: 'text-text-secondary' }
+        ? {
+            icon: <Pin aria-hidden className="size-4" />,
+            iconClass: 'text-accent',
+            labelClass: 'text-text',
+          }
+        : {
+            icon: <FileText aria-hidden className="size-4" />,
+            iconClass: 'text-text-muted',
+            labelClass: 'text-text-secondary',
+          }
   }
 }
 

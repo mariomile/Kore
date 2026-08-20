@@ -38,15 +38,15 @@ export function MobileTaskGroup({
 }: MobileTaskGroupProps): ReactElement {
   const showSource = group.kind !== 'note'
   const { notePath } = group
-  const { icon, colorClass } = taskGroupHeaderStyle(group)
+  const { icon, iconClass, labelClass } = taskGroupHeaderStyle(group)
   const addTarget = addTargetForGroup(group, today)
   const contexts = groupTaskContexts(group.tasks)
 
   return (
     <section>
       <div className="sticky top-0 z-10 flex items-center gap-2 bg-surface-sunken px-4 py-1.5">
-        <h2 className={cn('flex min-w-0 items-center gap-2 text-sm font-medium', colorClass)}>
-          {icon}
+        <h2 className={cn('flex min-w-0 items-center gap-2 text-sm font-medium', labelClass)}>
+          <span className={iconClass}>{icon}</span>
           {/* The pin icon alone is invisible to screen readers (aria-hidden). */}
           {group.kind === 'note' && group.tasks[0]?.isPinned ? (
             <span className="sr-only">Pinned:</span>

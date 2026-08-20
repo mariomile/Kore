@@ -31,8 +31,10 @@ export function TaskText({ task }: { task: OpenTask }): ReactElement {
         aria-label={priority === 'high' ? 'High priority' : 'Medium priority'}
         title={priority === 'high' ? 'High priority' : 'Medium priority'}
         className={cn(
+          // Mono-accent: only high priority speaks in colour (the
+          // destructive voice); medium is a firm ink mark, not amber.
           'shrink-0 font-semibold leading-6',
-          priority === 'high' ? 'text-red-500' : 'text-amber-500',
+          priority === 'high' ? 'text-destructive' : 'text-text-secondary',
         )}
       >
         {priority === 'high' ? '!!' : '!'}

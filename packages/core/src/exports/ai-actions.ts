@@ -119,6 +119,16 @@ export {
   type PendingMemoryProposal,
 } from '../ai/agent-profiles'
 export {
+  agentRoutineSchema,
+  agentRoutinesSchema,
+  latestOccurrenceMs,
+  routineIsDue,
+  MEMORY_CURATOR_PRESET,
+  ROUTINE_RUN_SUFFIX,
+  type AgentRoutine,
+  type RoutineSchedule,
+} from '../ai/agent-routines'
+export {
   agentCliPrompt,
   checkAgentCli,
   type AgentCliBinary,

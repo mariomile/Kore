@@ -295,6 +295,10 @@ export function agentContextPromptLines(
       )
     }
   }
+  lines.push(
+    '',
+    'Recall: this digest is only the hot set — the vault itself is your long-term memory. When it lacks context you need, search the notes (dailies, linked notes, older journal entries) before concluding you don’t know.',
+  )
   if (!options.canEdit) {
     lines.push(
       '',

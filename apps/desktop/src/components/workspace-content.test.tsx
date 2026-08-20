@@ -28,6 +28,7 @@ vi.mock('@/components/context-sidebar/note-context-sidebar', () => ({
   NoteContextSidebar: ({ path }: { path: string }) => <div data-testid="note-context">{path}</div>,
 }))
 vi.mock('@/components/embeddings-sync', () => ({ EmbeddingsSync: () => null }))
+vi.mock('@/components/agent-routines-runner', () => ({ AgentRoutinesRunner: () => null }))
 vi.mock('@/components/note-find-bar', () => ({ NoteFindBar: () => null }))
 // The tab strip pulls the open-tabs stack (graph, palette, index queries) —
 // its own test covers it; here only the frame around it is under test.

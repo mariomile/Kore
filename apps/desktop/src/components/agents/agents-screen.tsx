@@ -35,6 +35,7 @@ import { cn } from '@/lib/utils'
 import { useGraph } from '@/providers/graph-provider'
 import { useSettings } from '@/providers/settings-provider'
 import { useRouter } from '@/routing/router'
+import { AgentRoutinesSection } from './agent-routines-section'
 
 /** Display names for provider kinds a profile can pin. */
 const PROVIDER_LABELS: Record<string, string> = {
@@ -376,6 +377,8 @@ export function AgentsScreen(): ReactElement {
           </p>
         ) : null}
       </section>
+
+      <AgentRoutinesSection profiles={list} />
 
       <NewAgentDialog
         open={createOpen}

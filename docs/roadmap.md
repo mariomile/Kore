@@ -27,6 +27,16 @@ customization effort.
 
 ## Shipped (this fork)
 
+- Automations: scheduled agent runs while the app is open — settings-backed
+  routines (daily/weekly at a local time, catch-up on launch), executed
+  headless through the agent CLI providers in edit mode with the active
+  soul/memory digest, journaled like any session, managed from the Agents
+  screen (enable/disable, Run now, delete) — with the **Memory curator** as
+  a one-click preset: distills the journal into facts, re-grades
+  confidence, prunes the stale, and keeps memory under its caps. Plus a
+  recall rule in every provider prompt: the digest is the hot set, the
+  vault is the long-term memory — search it before "I don't know".
+
 - Shared agent memory (Notion's Lore model, vault-native): `agents/memory/`
   holds `facts.md` — shared facts and decisions with confidence tags
   (`[certain|likely|speculative]`) and provenance signatures, updated in

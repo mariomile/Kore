@@ -41,9 +41,13 @@ vi.mock('@/providers/settings-provider', () => ({
       activeAgentProfile: settingsState.activeAgentProfile,
       aiProviders: settingsState.aiProviders,
       memoryWriteApproval: settingsState.memoryWriteApproval,
+      agentRoutines: [],
     },
     updateSettings: (patch: Partial<Settings>) => {
       updatedSettings.push(patch)
+    },
+    updateSettingsWith: (updater: (current: { agentRoutines: [] }) => Partial<Settings>) => {
+      updatedSettings.push(updater({ agentRoutines: [] }))
     },
   }),
 }))

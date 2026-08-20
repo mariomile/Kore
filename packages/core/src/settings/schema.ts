@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { agentRoutinesSchema } from '../ai/agent-routines'
 import { isHttpBaseUrl, normalizeOpenAICompatibleBaseUrl } from '../ai/openai-compatible'
 
 /**
@@ -676,6 +677,10 @@ export const activeAgentProfileSchema = z.string().nullable().catch(null)
  */
 export const memoryWriteApprovalSchema = z.boolean().catch(false)
 
+// Scheduled agent routines (automations) live in `ai/agent-routines.ts`;
+// the settings document stores them so the Agents screen and the background
+// runner share one source of truth.
+
 /**
  * The configured AI providers. Resilience is per entry, not per list: a
  * corrupt entry is dropped while the rest load, so one bad hand-edit can't
@@ -774,6 +779,7 @@ export const settingsSchema = z.looseObject({
   chatAllowEdits: chatAllowEditsSchema,
   activeAgentProfile: activeAgentProfileSchema,
   memoryWriteApproval: memoryWriteApprovalSchema,
+  agentRoutines: agentRoutinesSchema,
   aiPrompts: aiPromptsSchema,
 })
 

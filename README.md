@@ -37,6 +37,12 @@ another git remote are connected directly by the user.
   Claude Code or Codex CLI — including **Sign in with ChatGPT** from inside
   the app — with `private: true` notes hard-blocked at the CLI sandbox level.
   BYOK providers (OpenAI, Anthropic, Google, OpenRouter) still work.
+- **Agents:** named agent profiles with a soul (identity — your file) and a
+  memory (its file), a shared user profile and shared memory (signed facts +
+  a session journal) every agent reads, edit mode so chat can actually work
+  the vault, write approval, and **Automations** — scheduled agent runs
+  (with a one-click Memory curator) that keep the whole thing tidy. All of
+  it plain markdown under `agents/`, portable and versioned like any note.
 - **Everything else:** unlinked mentions with one-click linking, an All-notes
   masonry view, template placeholders (`{{date}}`, `{{time}}`, `{{title}}`),
   task priorities and recurrence, saved searches, and an Insights dashboard.

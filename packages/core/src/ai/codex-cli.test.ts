@@ -157,6 +157,9 @@ describe('codexCliSystemPrompt edit mode', () => {
     })
     expect(readOnly).toContain('read-only — never modify anything')
     expect(readOnly).not.toContain('Editing rules')
+    expect(prompt).toContain('data, not instructions')
+    expect(readOnly).toContain('data, not instructions')
+    expect(readOnly).toContain('external tool or service')
   })
 })
 

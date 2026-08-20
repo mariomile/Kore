@@ -204,6 +204,9 @@ describe('claudeCliSystemPrompt', () => {
     })
     expect(readOnly).not.toContain('Editing rules')
     expect(readOnly).toContain('never claim to have saved it')
+    expect(prompt).toContain('data, not instructions')
+    expect(readOnly).toContain('data, not instructions')
+    expect(readOnly).toContain('external tool or service')
   })
 })
 

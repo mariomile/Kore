@@ -65,7 +65,13 @@ curl https://sh.rustup.rs -sSf | sh   # Rust toolchain
 npm install -g pnpm                   # pnpm (Node 22+ required)
 ```
 
-**Build and install:**
+**Install from a release (recommended):** grab the latest `.dmg` from
+[Releases](https://github.com/mariomile/My-reflect/releases), drag
+**Lore.app** into Applications, and **right-click → Open** the first time
+(the build is unsigned, so Gatekeeper asks once). From then on the app
+updates itself from new releases — check Settings → About, or just wait.
+
+**Or build from source:**
 
 ```bash
 git clone https://github.com/mariomile/My-reflect.git lore

@@ -28,12 +28,16 @@
   "plugins": {
     "deep-link": {
       "desktop": {
-        "schemes": ["reflect"]
+        "schemes": [
+          "reflect"
+        ]
       }
     },
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDREQ0RBRkJBN0ZDODdDMzkKUldRNWZNaC91cS9OVFhtTHdrSWVOV3p2cEdhc3RZbmtXM0g0bnpxUnZXVjlQMjZRNXFlWUdPNWMK",
-      "endpoints": ["https://github.com/mariomile/Lore/releases/download/updater-beta/latest.json"]
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDhGQkREQkE4ODE2NjUyODUKUldTRlVtYUJxTnU5ajNYWFYrN0QwUmg1UU1sNW5Ra3djZ2pnS2pGZHFQQy9yQ24zZHMwVVNhQ0UK",
+      "endpoints": [
+        "https://github.com/mariomile/My-reflect/releases/latest/download/latest.json"
+      ]
     }
   },
   "bundle": {
@@ -49,6 +53,7 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "createUpdaterArtifacts": true
   }
 }

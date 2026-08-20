@@ -34,13 +34,17 @@ steps below are only needed for iCloud sync and for installing on an iPhone.
    `apps/desktop/src-tauri/` under the same file names, and follow
    [macos-distribution.md](macos-distribution.md). Plain `pnpm tauri build`
    for personal use needs none of this.
-5. **Auto-updates (optional):** the updater endpoints point at
-   `github.com/mariomile/Lore` releases and the public key is still
-   upstream's, so installed apps will never accept an update you didn't
-   sign — safe by default. To ship your own updates, generate a keypair
-   with `pnpm tauri signer generate`, put the public key in
-   `tauri.conf.json` → `plugins.updater.pubkey`, and publish releases with
-   `pnpm release:macos publish`.
+5. **Auto-updates:** live. Lore has its own updater keypair — the public
+   key sits in `tauri.conf.json`, the private key belongs in the repo's
+   Actions secrets (`TAURI_SIGNING_PRIVATE_KEY` +
+   `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`) — and the `Release DMG` workflow
+   (`.github/workflows/release-dmg.yml`) builds an unsigned DMG plus
+   signed updater artifacts on every `v*` tag, publishing them to the
+   GitHub release the in-app updater polls
+   (`releases/latest/download/latest.json`). Apple signing is *not*
+   required for self-update; it only removes the one-time
+   right-click → Open on fresh installs (then use release.yml, the
+   signed + notarized pipeline).
 
 ## What deliberately did NOT change
 

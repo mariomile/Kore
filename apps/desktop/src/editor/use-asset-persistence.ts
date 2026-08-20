@@ -38,7 +38,7 @@ const EXTENSION_BY_MIME: Record<string, string> = {
  * markdown is never handed to the asset protocol or the OS opener (defense
  * in depth).
  */
-function isSafeAssetSource(sourcePath: string): boolean {
+export function isSafeAssetSource(sourcePath: string): boolean {
   if (!sourcePath.startsWith('assets/') || sourcePath.includes('\\')) {
     return false
   }

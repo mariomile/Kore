@@ -6,8 +6,8 @@ customization effort.
 
 ## Next up
 
-- **Styled note export** — HTML/PDF export of a single note in the app's
-  design language.
+- **Routine run history** — a per-routine log of past runs (when, which
+  notes changed, errors) beyond the current last-run line.
 
 ## Backlog
 
@@ -26,6 +26,13 @@ customization effort.
   ships on desktop only.
 
 ## Shipped (this fork)
+
+- Styled note export: "Export note as styled HTML…" (palette command and
+  Note-actions button) saves one self-contained HTML file rendered by the
+  same engine as the in-app previews — wiki-link chips, round task
+  checkboxes, embedded vault images (data URIs), the app's stylesheets and
+  current theme inline — plus a print stylesheet and a floating button so
+  the browser's print dialog is the PDF path. Nothing leaves the machine.
 
 - v0.11.0 hardening round: green CI as the merge gate (full shard matrix on
   every master push), injection-resistance rules in both agent CLI prompts

@@ -160,6 +160,7 @@ export {
   subscribeImportProgress,
   cancelReflectV1Import,
   markReflectV1ImportOwnWrites,
+  exportHtmlWrite,
   readNote,
   readNoteLocal,
   type LocalNoteRead,

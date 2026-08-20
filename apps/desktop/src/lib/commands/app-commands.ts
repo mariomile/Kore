@@ -9,6 +9,7 @@ import {
 import { attachFilesToNote } from '@/lib/attach-files'
 import { runCopyNotePath } from '@/lib/note-copy-path'
 import { runCopyDeepLink } from '@/lib/note-deep-link'
+import { runNoteExport } from '@/lib/note-export'
 import { runGistPublish } from '@/lib/note-gist'
 import { toggleNotePinned } from '@/lib/note-pin'
 import { toggleNotePrivate } from '@/lib/note-private'
@@ -309,6 +310,23 @@ const APP_COMMANDS: AppCommand[] = [
         return
       }
       await runCopyNotePath(context.graphRoot(), path)
+    },
+  },
+  {
+    id: 'note.export',
+    title: 'Export note as styled HTML…',
+    keywords: ['export', 'html', 'pdf', 'print', 'save', 'download', 'share'],
+    // Saves a self-contained HTML rendering of the note the current route
+    // edits, in the app's design language (the file's floating button prints
+    // to PDF). No default keybinding: the palette keeps it keyboard-reachable
+    // without spending a shortcut. `runNoteExport` owns all feedback.
+    run: async (context) => {
+      const generation = context.generation()
+      const path = context.notePath()
+      if (generation === null || path === null) {
+        return
+      }
+      await runNoteExport(path, generation)
     },
   },
   {

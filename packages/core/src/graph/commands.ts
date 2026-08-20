@@ -137,6 +137,16 @@ export async function readNote(path: string, generation?: number): Promise<strin
   return await call('note_read', { path, generation }, z.string())
 }
 
+/**
+ * Write an exported HTML document to an absolute path the user chose in the
+ * OS save dialog — the one write that deliberately leaves the graph root.
+ * Rust re-validates (absolute path, .html/.htm extension); callers must only
+ * ever pass a path fresh out of the save dialog.
+ */
+export async function exportHtmlWrite(path: string, contents: string): Promise<void> {
+  await call('export_html_write', { path, contents }, voidSchema)
+}
+
 const localNoteReadSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('content'), content: z.string() }),
   z.object({ kind: z.literal('evicted') }),

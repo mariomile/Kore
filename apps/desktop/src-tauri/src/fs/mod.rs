@@ -650,6 +650,32 @@ fn ensure_revealable_path(path: &str) -> AppResult<()> {
     )))
 }
 
+/// Write an exported document to a location the user chose in the OS save
+/// dialog — the one write command that deliberately targets a path *outside*
+/// the graph root. The dialog is the authorization: the frontend only ever
+/// passes a path the user just picked. The command still refuses relative
+/// paths (nothing may resolve against the app's cwd) and non-HTML extensions
+/// (this channel exists for styled note export, not as a general file
+/// writer).
+#[tauri::command]
+pub fn export_html_write(path: String, contents: String) -> AppResult<()> {
+    let target = PathBuf::from(&path);
+    if !target.is_absolute() {
+        return Err(AppError::traversal(format!(
+            "export path must be absolute: {path}"
+        )));
+    }
+    let extension = target
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .map(str::to_ascii_lowercase);
+    if !matches!(extension.as_deref(), Some("html" | "htm")) {
+        return Err(AppError::io(format!("not an HTML export path: {path}")));
+    }
+    fs::write(&target, contents)
+        .map_err(|err| AppError::io(format!("could not write {}: {err}", target.display())))
+}
+
 #[cfg(target_os = "ios")]
 fn reveal_asset_path(_app: &tauri::AppHandle, _path: &Path) -> AppResult<()> {
     Err(AppError::io("revealing files is not supported on iOS"))
@@ -995,6 +1021,36 @@ pub(crate) fn invalidate_file_catalog(state: &GraphState, root: &Path) {
             ?error,
             "graph state lock poisoned while invalidating catalog"
         ),
+    }
+}
+
+#[cfg(test)]
+mod export_html_tests {
+    use super::export_html_write;
+
+    #[test]
+    fn writes_html_to_an_absolute_path() {
+        let dir = tempfile::tempdir().expect("dir");
+        let target = dir.path().join("My Note.html");
+        export_html_write(
+            target.to_string_lossy().into_owned(),
+            "<!doctype html>".to_string(),
+        )
+        .expect("write");
+        assert_eq!(
+            std::fs::read_to_string(&target).expect("read"),
+            "<!doctype html>"
+        );
+    }
+
+    #[test]
+    fn refuses_relative_paths_and_non_html_extensions() {
+        let dir = tempfile::tempdir().expect("dir");
+        assert!(export_html_write("relative.html".to_string(), String::new()).is_err());
+        let sneaky = dir.path().join("script.sh");
+        assert!(export_html_write(sneaky.to_string_lossy().into_owned(), String::new()).is_err());
+        let plain = dir.path().join("note.txt");
+        assert!(export_html_write(plain.to_string_lossy().into_owned(), String::new()).is_err());
     }
 }
 

@@ -3,9 +3,12 @@
 //! index is missing or unusable (`search` and `tasks` are the commands that
 //! require it). `capture` is the one command that writes.
 
+pub mod backlinks;
 pub mod capture;
+pub mod new;
 pub mod open;
 pub mod path;
+pub mod recent;
 pub mod search;
 pub mod show;
 pub mod tasks;

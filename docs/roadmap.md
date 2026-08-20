@@ -26,6 +26,12 @@ customization effort.
 
 ## Shipped (this fork)
 
+- Agent CLI, rounded out: `backlinks` (who links here, from the app's own
+  resolution), `recent` (latest notes), `new` (create a note with the app's
+  frozen filename-slug rules, H1, and optional template seeding with
+  placeholders expanded), and `capture --to` (append to any note, not just
+  today's daily) — all with the same privacy re-checks; writes stay
+  structural and never overwrite.
 - Agent surface, leveled up: the `reflect` CLI gains `tasks` (the graph's
   open tasks from the index, private notes filtered) and `capture` (the
   CLI's only write — an atomic, append-only list item or `+ [ ]` task into

@@ -3,9 +3,9 @@
 A small, self-contained read/discovery CLI over a Reflect graph (Plan 14). It
 reads the graph's markdown files directly and opens `.reflect/index.sqlite`
 strictly read-only — no running desktop app required. The index is refreshed
-by the desktop app, never by the CLI, and markdown is the write path: the one
-command that writes is `capture`, an append-only list item into today's daily
-note (the app's own capture convention).
+by the desktop app, never by the CLI, and markdown is the write path: the
+CLI's writes stay structural — `capture` appends a list item, `new` creates
+a note with an atomic no-clobber claim — and never overwrite anything.
 
 ```
 reflect today              # print today's daily note
@@ -15,7 +15,10 @@ reflect show <note>        # print a note by date, path, title, or alias
 reflect path <note>        # resolve a note to its absolute path
 reflect open <note>        # open a note in the app (reflect:// deep link)
 reflect tasks              # the graph's open tasks (--all includes done)
-reflect capture <text>     # append a bullet to today's daily note
+reflect backlinks <note>   # the notes linking to a note
+reflect recent             # the most recently updated notes, newest first
+reflect capture <text>     # append a bullet to today's daily (--to any note)
+reflect new <title>        # create notes/<slug>.md (--template seeds the body)
 ```
 
 Built from `apps/cli` (`cargo build -p reflect-cli`); bundled with the desktop
@@ -57,7 +60,7 @@ just-flagged note.
 | 1 | runtime error (no graph, IO/SQL failure) |
 | 2 | usage error |
 | 3 | note not found, or note is private |
-| 4 | search index missing or unusable (`search`/`tasks`) |
+| 4 | search index missing or unusable (`search`/`tasks`/`backlinks`/`recent`) |
 
 ## Commands
 
@@ -182,17 +185,59 @@ the last index run never surfaces. A stale index warns on stderr and sets
 }
 ```
 
-### `reflect capture <text> [--task] [--json]`
+### `reflect backlinks <note> [--json]`
 
-The CLI's only write: appends `<text>` as one list item to today's daily note,
-creating the file when it doesn't exist yet (dailies are lazy). `--task`
-appends an open task (`+ [ ] text`) instead of a plain bullet. The item joins
-a trailing bullet list with the list's own marker (a task only joins a `+`
-list — the round marker is what makes it a task); anything else gets a blank
-line and a fresh list. Line breaks in `<text>` collapse to spaces, the write
-is atomic (temp file + rename), and a `private: true` daily is refused with
-exit `3` before anything is read or written. stdout prints the daily's
-absolute path.
+Lists the notes linking *to* a note, from the index's `backlinks` view — the
+same resolution the app's Backlinks panel uses (ranked wiki-name joins with
+exact-file-first fallback, templates excluded), grouped per linking note with
+a link count and self-links excluded. `<note>` resolves like everywhere else
+(date, path, title, alias); a private target is refused with exit `3`, and
+each linking note's own frontmatter is re-checked on disk before it surfaces.
+Requires the index (exit `4` when missing); a stale index warns and sets
+`"stale": true`.
+
+```jsonc
+// reflect backlinks "Project X" --json
+{
+  "path": "notes/project-x.md",
+  "title": "Project X",
+  "stale": false,
+  "backlinks": [
+    { "path": "notes/standup.md", "title": "Standup", "count": 2 }
+  ]
+}
+```
+
+### `reflect recent [--limit N] [--json]`
+
+The most recently updated notes, newest first (default limit 20), from the
+index — templates excluded, private notes filtered with the same on-disk
+re-check as every index-backed command. Requires the index (exit `4`).
+`updatedAt` is an RFC 3339 UTC timestamp of the last indexed update.
+
+```jsonc
+// reflect recent --limit 2 --json
+{
+  "stale": false,
+  "notes": [
+    { "path": "daily/2026-08-20.md", "title": "2026-08-20", "updatedAt": "2026-08-20T09:14:03Z" }
+  ]
+}
+```
+
+### `reflect capture <text> [--task] [--to <note>] [--json]`
+
+The CLI's append-only write: appends `<text>` as one list item to today's
+daily note, or — with `--to` — to any note resolved the usual way (date,
+path, title, alias). A daily target may not exist yet (dailies are lazy, and
+capture creates them); any other target must. `--task` appends an open task
+(`+ [ ] text`) instead of a plain bullet. The item joins a trailing bullet
+list with the list's own marker (a task only joins a `+` list — the round
+marker is what makes it a task); anything else gets a blank line and a fresh
+list. Line breaks in `<text>` collapse to spaces, the write is atomic (temp
+file + rename), and a `private: true` target is refused with exit `3` before
+anything is read or written. stdout prints the target's absolute path. The
+JSON `date` field appears only for daily targets.
 
 ```jsonc
 // reflect capture --task "Pay bill" --json
@@ -205,9 +250,31 @@ absolute path.
 }
 ```
 
+### `reflect new <title> [--template <t>] [--json]`
+
+Creates a regular note the way the app would: a title-derived filename
+(`notes/<slug>.md` via the frozen slug rules, `-2` suffix on collision,
+claimed with an atomic no-clobber create) and the H1 title in place. The CLI
+mints no frontmatter `id:` — the app owns those. `--template` seeds the body
+from a `templates/` file (matched by name or H1 title, case-insensitive)
+with its frontmatter stripped and `{{date}}`/`{{date:iso}}`/`{{time}}`/
+`{{title}}` expanded; a template that opens with its own H1 owns the note's
+structure, otherwise the title leads. A `private: true` template is refused
+(exit `3`) — copying its body into a new public note would leak it. stdout
+prints the new note's absolute path.
+
+```jsonc
+// reflect new "Aug Journal" --template journal --json
+{
+  "path": "notes/aug-journal.md",
+  "absolutePath": "/…/graph/notes/aug-journal.md",
+  "title": "Aug Journal"
+}
+```
+
 ## For agents
 
-The seven commands plus `--json` are the supported automation surface (e.g.
+The ten commands plus `--json` are the supported automation surface (e.g.
 `~/.agents` discovery workflows). The JSON field names and exit codes above
 are stable; new fields may be added, existing ones won't change meaning.
 Reading a private note is not possible through this surface by design — don't

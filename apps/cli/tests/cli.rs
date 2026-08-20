@@ -938,13 +938,22 @@ impl Fixture {
 #[test]
 fn tasks_lists_open_tasks_and_excludes_private_notes() {
     let fixture = graph();
-    fixture.write_note("notes/project.md", "# Project X\n+ [ ] pay bill\n+ [x] done\n");
+    fixture.write_note(
+        "notes/project.md",
+        "# Project X\n+ [ ] pay bill\n+ [x] done\n",
+    );
     fixture.write_note(
         "notes/secret.md",
         "---\nprivate: true\n---\n# Secret\n+ [ ] hidden task\n",
     );
     fixture.build_index();
-    fixture.insert_task("notes/project.md", 12, "pay bill", false, Some("2026-08-22"));
+    fixture.insert_task(
+        "notes/project.md",
+        12,
+        "pay bill",
+        false,
+        Some("2026-08-22"),
+    );
     fixture.insert_task("notes/project.md", 27, "done", true, None);
     fixture.insert_task("notes/secret.md", 30, "hidden task", false, None);
 
@@ -1035,4 +1044,219 @@ fn capture_rejects_empty_text_and_collapses_line_breaks() {
         fs::read_to_string(absolute).unwrap(),
         "- line one line two\n"
     );
+}
+
+// ---- backlinks --------------------------------------------------------------
+
+impl Fixture {
+    /// Insert one wiki link the way the desktop projection would.
+    fn insert_wiki_link(&self, source: &str, target_title: &str, pos: i64) {
+        let conn =
+            rusqlite::Connection::open(self.root().join(".reflect").join("index.sqlite")).unwrap();
+        conn.execute(
+            "INSERT INTO links(source_path, kind, target_raw, target_key, alias,
+                               pos_from, pos_to, target_path_key)
+             VALUES(?1, 'wiki', ?2, ?3, NULL, ?4, ?4, NULL)",
+            params![source, target_title, fold_key(target_title), pos],
+        )
+        .unwrap();
+    }
+}
+
+#[test]
+fn backlinks_lists_linking_notes_and_excludes_private_sources() {
+    let fixture = graph();
+    fixture.write_note("notes/target.md", "# Target\nbody\n");
+    fixture.write_note("notes/a.md", "# A\nsee [[Target]]\n");
+    fixture.write_note("notes/b.md", "# B\n[[Target]] and [[Target]] again\n");
+    fixture.write_note(
+        "notes/secret.md",
+        "---\nprivate: true\n---\n# Secret\n[[Target]]\n",
+    );
+    fixture.build_index();
+    fixture.insert_wiki_link("notes/a.md", "Target", 10);
+    fixture.insert_wiki_link("notes/b.md", "Target", 4);
+    fixture.insert_wiki_link("notes/b.md", "Target", 20);
+    fixture.insert_wiki_link("notes/secret.md", "Target", 12);
+
+    let value = json(&reflect(&fixture, &["backlinks", "Target", "--json"]));
+    assert_eq!(value["path"], "notes/target.md");
+    assert_eq!(value["title"], "Target");
+    let backlinks = value["backlinks"].as_array().unwrap();
+    assert_eq!(backlinks.len(), 2, "private source excluded: {value}");
+    assert_eq!(backlinks[0]["path"], "notes/a.md");
+    assert_eq!(backlinks[0]["count"], 1);
+    assert_eq!(backlinks[1]["path"], "notes/b.md");
+    assert_eq!(backlinks[1]["count"], 2);
+
+    let human = reflect(&fixture, &["backlinks", "Target"]);
+    assert!(human.status.success());
+    assert!(stdout(&human).contains("notes/b.md\tB\t(2 links)"));
+    assert!(!stdout(&human).contains("secret"));
+}
+
+#[test]
+fn backlinks_refuses_a_private_target_and_needs_the_index() {
+    let fixture = graph();
+    let no_index = reflect(&fixture, &["backlinks", "Anything"]);
+    assert_eq!(no_index.status.code(), Some(4));
+
+    fixture.write_note(
+        "notes/secret.md",
+        "---\nprivate: true\n---\n# Secret\nbody\n",
+    );
+    fixture.build_index();
+    let output = reflect(&fixture, &["backlinks", "notes/secret.md"]);
+    assert_eq!(output.status.code(), Some(3));
+    assert!(stderr(&output).contains("private"));
+}
+
+// ---- recent -----------------------------------------------------------------
+
+#[test]
+fn recent_lists_newest_public_notes_first() {
+    let fixture = graph();
+    fixture.write_note("notes/old.md", "# Old\nbody\n");
+    fixture.write_note("notes/fresh.md", "# Fresh\nbody\n");
+    fixture.write_note(
+        "notes/secret.md",
+        "---\nprivate: true\n---\n# Secret\nbody\n",
+    );
+    fixture.write_note("templates/journal.md", "# Journal\nMood:\n");
+    fixture.build_index();
+    let conn =
+        rusqlite::Connection::open(fixture.root().join(".reflect").join("index.sqlite")).unwrap();
+    for (path, updated) in [
+        ("notes/old.md", 1_000_i64),
+        ("notes/fresh.md", 2_000),
+        ("notes/secret.md", 3_000),
+    ] {
+        conn.execute(
+            "UPDATE notes SET updated_at = ?2 WHERE path = ?1",
+            params![path, updated],
+        )
+        .unwrap();
+    }
+    conn.execute(
+        "UPDATE notes SET kind = 'template' WHERE path = 'templates/journal.md'",
+        [],
+    )
+    .unwrap();
+    drop(conn);
+
+    let value = json(&reflect(&fixture, &["recent", "--json"]));
+    let notes = value["notes"].as_array().unwrap();
+    assert_eq!(notes.len(), 2, "private + template excluded: {value}");
+    assert_eq!(notes[0]["path"], "notes/fresh.md");
+    assert_eq!(notes[1]["path"], "notes/old.md");
+    assert!(notes[0]["updatedAt"]
+        .as_str()
+        .unwrap()
+        .starts_with("1970-01-01T"));
+
+    let limited = json(&reflect(&fixture, &["recent", "--limit", "1", "--json"]));
+    assert_eq!(limited["notes"].as_array().unwrap().len(), 1);
+}
+
+// ---- new --------------------------------------------------------------------
+
+#[test]
+fn new_creates_titled_notes_with_collision_suffixes() {
+    let fixture = graph();
+    let value = json(&reflect(&fixture, &["new", "Meeting Notes!", "--json"]));
+    assert_eq!(value["path"], "notes/meeting-notes.md");
+    assert_eq!(value["title"], "Meeting Notes!");
+    assert_eq!(
+        fs::read_to_string(fixture.root().join("notes/meeting-notes.md")).unwrap(),
+        "# Meeting Notes!\n"
+    );
+
+    let second = json(&reflect(&fixture, &["new", "Meeting Notes!", "--json"]));
+    assert_eq!(second["path"], "notes/meeting-notes-2.md");
+
+    let human = reflect(&fixture, &["new", "Other"]);
+    assert!(human.status.success());
+    assert!(stdout(&human).trim_end().ends_with("notes/other.md"));
+}
+
+#[test]
+fn new_seeds_from_a_template_with_placeholders_expanded() {
+    let fixture = graph();
+    fixture.write_note(
+        "templates/journal.md",
+        "---\ncolor: blue\n---\n# {{title}} — {{date:iso}}\n\nMood:\n",
+    );
+    let value = json(&reflect(
+        &fixture,
+        &["new", "Aug Journal", "--template", "journal", "--json"],
+    ));
+    assert_eq!(value["path"], "notes/aug-journal.md");
+    let content = fs::read_to_string(fixture.root().join("notes/aug-journal.md")).unwrap();
+    assert_eq!(
+        content,
+        format!("# Aug Journal — {}\n\nMood:\n", today_date())
+    );
+
+    // A template without its own H1 gets the title prepended.
+    fixture.write_note("templates/plain.md", "Mood:\n");
+    reflect(&fixture, &["new", "Plain One", "--template", "plain"]);
+    assert_eq!(
+        fs::read_to_string(fixture.root().join("notes/plain-one.md")).unwrap(),
+        "# Plain One\n\nMood:\n"
+    );
+
+    let missing = reflect(&fixture, &["new", "X", "--template", "nope"]);
+    assert_eq!(missing.status.code(), Some(3));
+
+    fixture.write_note(
+        "templates/hidden.md",
+        "---\nprivate: true\n---\nsecret seed\n",
+    );
+    let private = reflect(&fixture, &["new", "Y", "--template", "hidden"]);
+    assert_eq!(private.status.code(), Some(3));
+    assert!(stderr(&private).contains("private"));
+}
+
+// ---- capture --to -----------------------------------------------------------
+
+#[test]
+fn capture_to_resolves_titles_dates_and_refuses_private_targets() {
+    let fixture = graph();
+    fixture.write_note("notes/project.md", "# Project X\n\n- one\n");
+    fixture.write_note(
+        "notes/secret.md",
+        "---\nprivate: true\n---\n# Secret\nbody\n",
+    );
+
+    let value = json(&reflect(
+        &fixture,
+        &["capture", "two", "--to", "Project X", "--json"],
+    ));
+    assert_eq!(value["path"], "notes/project.md");
+    assert!(
+        value.get("date").is_none(),
+        "no date for a regular note: {value}"
+    );
+    assert_eq!(
+        fs::read_to_string(fixture.root().join("notes/project.md")).unwrap(),
+        "# Project X\n\n- one\n- two\n"
+    );
+
+    // A date target is a lazy daily: capture creates it.
+    let dated = json(&reflect(
+        &fixture,
+        &["capture", "plan ahead", "--to", "2099-01-02", "--json"],
+    ));
+    assert_eq!(dated["date"], "2099-01-02");
+    assert_eq!(dated["created"], true);
+    assert_eq!(
+        fs::read_to_string(fixture.root().join("daily/2099-01-02.md")).unwrap(),
+        "- plan ahead\n"
+    );
+
+    let private = reflect(&fixture, &["capture", "x", "--to", "Secret"]);
+    assert_eq!(private.status.code(), Some(3));
+
+    let unknown = reflect(&fixture, &["capture", "x", "--to", "No Such Note"]);
+    assert_eq!(unknown.status.code(), Some(3));
 }

@@ -74,13 +74,36 @@ enum Command {
         #[arg(long, default_value_t = 200)]
         limit: usize,
     },
-    /// Append a list item to today's daily note (the CLI's only write)
+    /// Append a list item to today's daily note (or --to any note)
     Capture {
         /// The text of the item (one line; line breaks collapse to spaces)
         text: String,
         /// Append an open task (`+ [ ]`) instead of a plain bullet
         #[arg(long)]
         task: bool,
+        /// Target note (date, path, title, or alias) instead of today's daily
+        #[arg(long, value_name = "NOTE")]
+        to: Option<String>,
+    },
+    /// List the notes linking to a note, from the search index
+    Backlinks {
+        /// A YYYY-MM-DD date, graph-relative path, note title, or alias
+        note: String,
+    },
+    /// List the most recently updated notes, newest first
+    Recent {
+        /// Maximum number of notes
+        #[arg(long, default_value_t = 20)]
+        limit: usize,
+    },
+    /// Create a note under notes/ with a title-derived filename
+    New {
+        /// The note's title (becomes the H1 and the filename slug)
+        title: String,
+        /// Seed the body from a templates/ file (by name or title),
+        /// with {{date}}/{{date:iso}}/{{time}}/{{title}} expanded
+        #[arg(long, value_name = "TEMPLATE")]
+        template: Option<String>,
     },
 }
 
@@ -93,7 +116,14 @@ fn run(cli: &Cli) -> Result<(), CliError> {
         Command::Path { note } => commands::path::run(&graph, cli.json, note),
         Command::Open { note, print } => commands::open::run(&graph, cli.json, note, *print),
         Command::Tasks { all, limit } => commands::tasks::run(&graph, cli.json, *all, *limit),
-        Command::Capture { text, task } => commands::capture::run(&graph, cli.json, text, *task),
+        Command::Capture { text, task, to } => {
+            commands::capture::run(&graph, cli.json, text, *task, to.as_deref())
+        }
+        Command::Backlinks { note } => commands::backlinks::run(&graph, cli.json, note),
+        Command::Recent { limit } => commands::recent::run(&graph, cli.json, *limit),
+        Command::New { title, template } => {
+            commands::new::run(&graph, cli.json, title, template.as_deref())
+        }
     }
 }
 

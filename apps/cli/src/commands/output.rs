@@ -89,13 +89,64 @@ pub struct TaskJson {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CaptureJson<'a> {
-    pub date: &'a str,
+    /// The daily date, when the target is a daily note.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub date: Option<&'a str>,
     pub path: &'a str,
     pub absolute_path: String,
     /// True when this capture created the daily note.
     pub created: bool,
     /// The exact line appended, marker included (e.g. `+ [ ] Pay bill`).
     pub item: &'a str,
+}
+
+/// `backlinks`: the notes linking to the resolved target.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BacklinksJson<'a> {
+    /// The resolved target's graph-relative path.
+    pub path: &'a str,
+    pub title: &'a str,
+    /// True when files on disk diverge from the index — rows may be stale.
+    pub stale: bool,
+    pub backlinks: Vec<BacklinkJson>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BacklinkJson {
+    /// Graph-relative path of the linking note.
+    pub path: String,
+    pub title: String,
+    /// How many links this note carries to the target.
+    pub count: i64,
+}
+
+/// `recent`: the most recently updated notes, newest first.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RecentJson {
+    /// True when files on disk diverge from the index — rows may be stale.
+    pub stale: bool,
+    pub notes: Vec<RecentNoteJson>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RecentNoteJson {
+    pub path: String,
+    pub title: String,
+    /// RFC 3339 UTC timestamp of the last indexed update.
+    pub updated_at: String,
+}
+
+/// `new`: the created note.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NewJson<'a> {
+    pub path: &'a str,
+    pub absolute_path: String,
+    pub title: &'a str,
 }
 
 pub fn print_json<T: Serialize>(value: &T) -> Result<(), CliError> {

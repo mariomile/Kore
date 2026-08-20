@@ -1,9 +1,10 @@
-//! `reflect capture <text>` — the CLI's one write: append a list item to
+//! `reflect capture <text>` — the CLI's append-only write: a list item into
 //! today's daily note, mirroring the app's capture flow (all quick capture
-//! lands in the daily note; see `packages/core/src/markdown/append-list-item.ts`).
-//! The daily is created on first capture — dailies are lazy by design. A
-//! `private: true` daily is refused before anything is read or written, and
-//! the write is atomic (temp file + rename) so a crash never truncates a note.
+//! lands in the daily note; see `packages/core/src/markdown/append-list-item.ts`),
+//! or into any resolvable note via `--to`. Dailies are created lazily on
+//! first capture; any other target must already exist. A `private: true`
+//! target is refused before anything is read or written, and the write is
+//! atomic (temp file + rename) so a crash never truncates a note.
 //!
 //! Join rule (the line-based mirror of the app's): when the note already ends
 //! in a top-level bullet list, the item joins it with the list's own marker —
@@ -15,11 +16,15 @@ use std::fs;
 use std::io::Write;
 use std::path::Path;
 
-use crate::commands::output::{print_json, CaptureJson};
+use crate::commands::{
+    open_index_for_resolution,
+    output::{print_json, CaptureJson},
+};
 use crate::error::CliError;
 use crate::graph::Graph;
 use crate::note_file::ensure_not_private;
-use crate::paths::{daily_path, today_date};
+use crate::paths::{daily_path, date_from_daily_path, today_date};
+use crate::resolve::{resolve_note, ResolvedNote};
 
 /// The note's own line ending, from its first line break (LF for new files).
 fn line_ending(content: &str) -> &'static str {
@@ -74,7 +79,13 @@ fn atomic_write(path: &Path, contents: &str) -> Result<(), CliError> {
     Ok(())
 }
 
-pub fn run(graph: &Graph, json: bool, text: &str, task: bool) -> Result<(), CliError> {
+pub fn run(
+    graph: &Graph,
+    json: bool,
+    text: &str,
+    task: bool,
+    to: Option<&str>,
+) -> Result<(), CliError> {
     // One item is one line: embedded line breaks would smuggle arbitrary
     // markdown structure past the list-item contract.
     let text = text
@@ -89,8 +100,29 @@ pub fn run(graph: &Graph, json: bool, text: &str, task: bool) -> Result<(), CliE
         ));
     }
 
-    let date = today_date();
-    let rel_path = daily_path(&date);
+    // Default target: today's daily, which may not exist yet. A `--to`
+    // target resolves like every other `<note>` argument; only a daily
+    // reference is allowed to be missing (dailies are lazy, notes are not).
+    let (date, rel_path) = match to {
+        None => {
+            let date = today_date();
+            let rel_path = daily_path(&date);
+            (Some(date), rel_path)
+        }
+        Some(target) => {
+            let index = open_index_for_resolution(&graph.root);
+            let resolved =
+                resolve_note(target, &graph.root, index.as_ref().map(|open| &open.conn))?;
+            let rel_path = resolved.rel_path().to_string();
+            match resolved {
+                ResolvedNote::Daily { date, .. } => (Some(date), rel_path),
+                ResolvedNote::File { .. } => (
+                    date_from_daily_path(&rel_path).map(str::to_string),
+                    rel_path,
+                ),
+            }
+        }
+    };
     ensure_not_private(&graph.root, &rel_path)?;
     let absolute = graph.root.join(&rel_path);
 
@@ -115,7 +147,7 @@ pub fn run(graph: &Graph, json: bool, text: &str, task: bool) -> Result<(), CliE
         .to_string();
     if json {
         return print_json(&CaptureJson {
-            date: &date,
+            date: date.as_deref(),
             path: &rel_path,
             absolute_path: absolute.display().to_string(),
             created,
@@ -166,10 +198,7 @@ mod tests {
 
     #[test]
     fn keeps_the_notes_crlf_line_endings() {
-        assert_eq!(
-            append_item("- one\r\n", "two", false),
-            "- one\r\n- two\r\n"
-        );
+        assert_eq!(append_item("- one\r\n", "two", false), "- one\r\n- two\r\n");
         assert_eq!(
             append_item("prose\r\n", "item", false),
             "prose\r\n\r\n- item\r\n"

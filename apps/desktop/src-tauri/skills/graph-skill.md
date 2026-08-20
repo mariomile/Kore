@@ -35,8 +35,13 @@ or export `REFLECT_GRAPH="{{GRAPH_ROOT}}"` for a sequence of calls.
     reflect path <note>        # resolve a note to its absolute path
     reflect open <note>        # open the note in the Reflect app
     reflect tasks              # the graph's open tasks (--all includes done)
+    reflect backlinks <note>   # the notes linking to a note
+    reflect recent             # the most recently updated notes, newest first
     reflect capture <text>     # append a bullet to today's daily note
-    reflect capture --task <text>  # append an open task instead
+    reflect capture --task <text>       # append an open task instead
+    reflect capture --to <note> <text>  # append to any note instead
+    reflect new <title>        # create notes/<slug>.md with the H1 in place
+    reflect new <title> --template <t>  # seed the body from templates/
 
 - Add `--json` to any command for stable machine-readable output — the field
   names and exit codes are the supported automation contract.
@@ -52,15 +57,17 @@ or export `REFLECT_GRAPH="{{GRAPH_ROOT}}"` for a sequence of calls.
 | 1 | runtime error (no graph, IO failure) |
 | 2 | usage error |
 | 3 | note not found, or note is private |
-| 4 | index missing (`search`/`tasks`) — open the graph in Reflect once to build it |
+| 4 | index missing (`search`/`tasks`/`backlinks`/`recent`) — open the graph in Reflect once to build it |
 
 ## Writing notes
 
-`reflect capture` is the fast path for quick additions — it lands in today's
-daily note, which is where all capture flows by convention. For anything
-bigger, edit the markdown file directly (`reflect path <note>` resolves it);
-the running app watches the files and picks every edit up live. Follow the
-graph's conventions so edits render as first-class notes:
+Prefer the CLI's structural writes: `reflect capture` for quick additions
+(today's daily by default — where all capture flows by convention — or
+`--to` any note) and `reflect new` to create a note with the app's own
+filename slug, H1, and optional template seeding. For anything bigger, edit
+the markdown file directly (`reflect path <note>` resolves it); the running
+app watches the files and picks every edit up live. Follow the graph's
+conventions so edits render as first-class notes:
 
 - **Layout.** Dailies are `daily/YYYY-MM-DD.md`; new notes go in
   `notes/<kebab-case-title>.md`; templates in `templates/`; attachments in
@@ -105,9 +112,10 @@ or exposing its current or historical content unless the user explicitly asks.
    through the CLI by design — no content, no paths, no search hits, no
    captures into them. Never work around this by reading graph files directly
    unless the user explicitly asks for that.
-2. **Capture is the CLI's only write.** Everything else changes by editing
-   the markdown file the CLI resolves (`reflect path <note>`); the running
-   app picks the edit up. Never edit `.reflect/` or rewrite frontmatter you
+2. **The CLI's writes are structural only.** `capture` appends, `new`
+   creates — nothing overwrites. Everything else changes by editing the
+   markdown file the CLI resolves (`reflect path <note>`); the running app
+   picks the edit up. Never edit `.reflect/` or rewrite frontmatter you
    don't understand.
 3. **Prefer search over enumeration.** `reflect search` uses the app's own
    ranked index; don't grep the whole graph when a search will do.

@@ -32,6 +32,7 @@ const BRIEF: AgentRoutine = {
   schedule: { kind: 'daily', time: '08:00' },
   enabled: true,
   lastRunMs: Date.now(),
+  lastChangedPaths: [],
 }
 
 const RILEY = {
@@ -72,6 +73,7 @@ describe('AgentRoutinesSection', () => {
     expect(updated.at(-1)?.agentRoutines?.[0]).toMatchObject({
       id: 'brief',
       lastRunMs: null,
+      lastChangedPaths: [],
       enabled: true,
     })
     expect(poked).toHaveBeenCalled()

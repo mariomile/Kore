@@ -5,6 +5,8 @@ export {
   gitFetch,
   gitMergeRemote,
   gitPush,
+  gitAgentSnapshot,
+  gitChangedSince,
   gitNoteHistory,
   gitNoteVersion,
   isDeviceFlowConfigured,

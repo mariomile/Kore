@@ -31,7 +31,9 @@
   },
   "plugins": {
     "updater": {
-      "endpoints": ["https://github.com/mariomile/My-reflect/releases/download/updater-beta/latest.json"]
+      "endpoints": [
+        "https://github.com/mariomile/My-reflect/releases/download/updater-beta/latest.json"
+      ]
     }
   }
 }

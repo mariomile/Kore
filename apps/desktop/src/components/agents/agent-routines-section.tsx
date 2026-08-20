@@ -98,6 +98,7 @@ export function AgentRoutinesSection({ profiles }: AgentRoutinesSectionProps): R
       enabled: true,
       // Starts from the next occurrence; "Run now" is there for the eager.
       lastRunMs: Date.now(),
+      lastChangedPaths: [],
     })
   }
 
@@ -140,6 +141,11 @@ export function AgentRoutinesSection({ profiles }: AgentRoutinesSectionProps): R
                     : (profiles.find((profile) => profile.slug === routine.agentSlug)?.name ??
                       routine.agentSlug)}{' '}
                   · {lastRunLabel(routine.lastRunMs)}
+                  {routine.lastChangedPaths.length > 0
+                    ? ` · last run edited ${routine.lastChangedPaths.length} note${
+                        routine.lastChangedPaths.length === 1 ? '' : 's'
+                      }`
+                    : ''}
                 </p>
               </div>
               <Button
@@ -219,6 +225,7 @@ function NewRoutineDialog({
       schedule,
       enabled: true,
       lastRunMs: Date.now(),
+      lastChangedPaths: [],
     })
     setName('')
     setPrompt('')

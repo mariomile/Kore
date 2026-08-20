@@ -106,6 +106,13 @@ describe('loadChatMessages', () => {
     expect(error).toHaveBeenCalledOnce()
   })
 
+  it('round-trips an activity-ledger changes part', async () => {
+    const parts = [{ kind: 'changes', paths: ['notes/a.md', 'daily/2026-08-20.md'] }]
+    invoke.mockResolvedValue([messageRow({ parts: JSON.stringify(parts) })])
+    const turns = await loadChatMessages('conv-1')
+    expect(turns[0]?.parts).toEqual(parts)
+  })
+
   it('drops a row whose parts fail validation', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
     invoke.mockResolvedValue([messageRow({ parts: JSON.stringify([{ kind: 'mystery' }]) })])

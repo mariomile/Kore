@@ -231,6 +231,29 @@ pub async fn git_note_version(
     run_blocking(move || history::note_version_content(&root, &commit, &path)).await
 }
 
+/// Snapshot before an agent run: commit pending changes, return `HEAD`'s id
+/// (`null` on an unborn repository). The baseline `git_changed_since` takes.
+#[tauri::command]
+pub async fn git_agent_snapshot(
+    generation: u64,
+    state: State<'_, GraphState>,
+) -> AppResult<Option<String>> {
+    let root = crate::fs::root_for_generation(&state, generation)?;
+    run_blocking(move || history::agent_snapshot(&root, MAX_FILE_BYTES)).await
+}
+
+/// Graph-relative paths that differ from a snapshot commit's tree — what an
+/// agent run touched.
+#[tauri::command]
+pub async fn git_changed_since(
+    commit: String,
+    generation: u64,
+    state: State<'_, GraphState>,
+) -> AppResult<Vec<String>> {
+    let root = crate::fs::root_for_generation(&state, generation)?;
+    run_blocking(move || history::changed_since(&root, &commit)).await
+}
+
 /// Push the current branch to `origin`; rejections come back as data so the
 /// sync engine can branch on them.
 #[tauri::command]

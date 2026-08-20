@@ -157,6 +157,20 @@ export type NoteVersion = z.infer<typeof noteVersionSchema>
  * first) where the note's content changed. Cheap tree walks — no network —
  * and an empty list when the graph has no history yet.
  */
+/**
+ * Snapshot before an agent run: commit pending changes and return `HEAD`'s
+ * id (`null` on an unborn repository) — the baseline {@link gitChangedSince}
+ * diffs against, and itself a restorable version in every note's history.
+ */
+export async function gitAgentSnapshot(generation: number): Promise<string | null> {
+  return await call('git_agent_snapshot', { generation }, z.string().nullable())
+}
+
+/** Graph-relative paths that differ from a snapshot commit — what a run touched. */
+export async function gitChangedSince(commit: string, generation: number): Promise<string[]> {
+  return await call('git_changed_since', { commit, generation }, z.array(z.string()))
+}
+
 export async function gitNoteHistory(
   path: string,
   generation: number,

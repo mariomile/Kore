@@ -28,16 +28,12 @@
   "plugins": {
     "deep-link": {
       "desktop": {
-        "schemes": [
-          "reflect"
-        ]
+        "schemes": ["reflect"]
       }
     },
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDhGQkREQkE4ODE2NjUyODUKUldTRlVtYUJxTnU5ajNYWFYrN0QwUmg1UU1sNW5Ra3djZ2pnS2pGZHFQQy9yQ24zZHMwVVNhQ0UK",
-      "endpoints": [
-        "https://github.com/mariomile/My-reflect/releases/latest/download/latest.json"
-      ]
+      "endpoints": ["https://github.com/mariomile/My-reflect/releases/latest/download/latest.json"]
     }
   },
   "bundle": {

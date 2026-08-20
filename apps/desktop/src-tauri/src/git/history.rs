@@ -12,7 +12,6 @@
 
 use std::path::Path;
 
-use git2::Repository;
 use serde::Serialize;
 
 use crate::error::{AppError, AppResult};
@@ -33,7 +32,7 @@ pub struct NoteVersion {
 const MAX_WALKED_COMMITS: usize = 20_000;
 
 /// The blob id `rel_path` has in `commit`'s tree, or `None` when absent.
-fn blob_id(repo: &Repository, commit: &git2::Commit<'_>, rel_path: &str) -> Option<git2::Oid> {
+fn blob_id(commit: &git2::Commit<'_>, rel_path: &str) -> Option<git2::Oid> {
     let tree = commit.tree().ok()?;
     let entry = tree.get_path(Path::new(rel_path)).ok()?;
     (entry.kind() == Some(git2::ObjectType::Blob)).then(|| entry.id())
@@ -59,10 +58,10 @@ pub(super) fn note_history(
             break;
         }
         let parent = commit.parent(0).ok();
-        let own = blob_id(&repo, &commit, rel_path);
+        let own = blob_id(&commit, rel_path);
         let before = parent
             .as_ref()
-            .and_then(|parent| blob_id(&repo, parent, rel_path));
+            .and_then(|parent| blob_id(parent, rel_path));
         if let Some(own) = own {
             if Some(own) != before {
                 versions.push(NoteVersion {
@@ -97,6 +96,53 @@ pub(super) fn note_version_content(
         .find_blob(entry.id())
         .map_err(|_| AppError::not_found(format!("{rel_path} is not a file in {commit_id}")))?;
     Ok(String::from_utf8_lossy(blob.content()).into_owned())
+}
+
+
+/// Snapshot the graph before an agent run: commit whatever is pending and
+/// return `HEAD`'s id — the baseline `changed_since` diffs against. `None`
+/// on an unborn repository (nothing to diff yet, and nothing at risk).
+pub(super) fn agent_snapshot(root: &Path, max_file_bytes: u64) -> AppResult<Option<String>> {
+    super::commit::commit_all(root, "Before agent run", max_file_bytes)?;
+    let repo = super::repo::open_existing(root)?;
+    let head = match repo.head() {
+        Ok(head) => head,
+        Err(_) => return Ok(None),
+    };
+    let id = head.peel_to_commit()?.id().to_string();
+    Ok(Some(id))
+}
+
+/// Graph-relative paths whose content differs between `commit_id`'s tree and
+/// the working directory (index included) — what an agent run touched when
+/// diffed against its [`agent_snapshot`]. Deletions count: a vanished note
+/// is a change the user must be able to see and restore.
+pub(super) fn changed_since(root: &Path, commit_id: &str) -> AppResult<Vec<String>> {
+    let repo = super::repo::open_existing(root)?;
+    let oid = git2::Oid::from_str(commit_id)
+        .map_err(|_| AppError::not_found(format!("unknown snapshot {commit_id}")))?;
+    let commit = repo
+        .find_commit(oid)
+        .map_err(|_| AppError::not_found(format!("unknown snapshot {commit_id}")))?;
+    let tree = commit.tree()?;
+    let mut options = git2::DiffOptions::new();
+    options.include_untracked(true).recurse_untracked_dirs(true);
+    let diff = repo.diff_tree_to_workdir_with_index(Some(&tree), Some(&mut options))?;
+    let mut paths: Vec<String> = Vec::new();
+    for delta in diff.deltas() {
+        let path = delta
+            .new_file()
+            .path()
+            .or_else(|| delta.old_file().path())
+            .map(|path| path.to_string_lossy().into_owned());
+        if let Some(path) = path {
+            if !paths.contains(&path) {
+                paths.push(path);
+            }
+        }
+    }
+    paths.sort();
+    Ok(paths)
 }
 
 #[cfg(test)]
@@ -168,6 +214,26 @@ mod tests {
         let head = &versions[0].commit;
         assert!(note_version_content(root, head, "notes/never.md").is_err());
         assert!(note_version_content(root, "not-a-sha", "notes/a.md").is_err());
+    }
+
+    #[test]
+    fn snapshot_and_changed_since_track_an_agent_run() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        scaffold(root);
+        fs::write(root.join("notes/a.md"), "v1\n").unwrap();
+
+        let snapshot = super::agent_snapshot(root, u64::MAX).unwrap().unwrap();
+        assert!(super::changed_since(root, &snapshot).unwrap().is_empty());
+
+        fs::write(root.join("notes/a.md"), "v2\n").unwrap();
+        fs::write(root.join("notes/new.md"), "born\n").unwrap();
+        fs::remove_file(root.join("notes/a.md")).ok();
+        fs::write(root.join("notes/a.md"), "v2\n").unwrap();
+        let changed = super::changed_since(root, &snapshot).unwrap();
+        assert_eq!(changed, vec!["notes/a.md".to_string(), "notes/new.md".to_string()]);
+
+        assert!(super::changed_since(root, "not-a-sha").is_err());
     }
 
     #[test]

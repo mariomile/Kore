@@ -34,6 +34,8 @@ export const agentRoutineSchema = z.object({
   enabled: z.boolean().catch(true),
   /** Epoch ms of the last run attempt (success or failure), or null. */
   lastRunMs: z.number().nullable().catch(null),
+  /** Notes the last run touched (its activity ledger), newest run only. */
+  lastChangedPaths: z.array(z.string()).catch([]),
 })
 export type AgentRoutine = z.infer<typeof agentRoutineSchema>
 

@@ -3,6 +3,8 @@ import {
   errorMessage,
   isCliAgentProvider,
   listPrivateNotePaths,
+  gitAgentSnapshot,
+  gitChangedSince,
   loadAgentContext,
   resolveMcpServers,
   routineIsDue,
@@ -53,6 +55,14 @@ export function AgentRoutinesRunner(): null {
       }))
     }
 
+    const recordLedger = (id: string, paths: string[]): void => {
+      updateSettingsWith((current) => ({
+        agentRoutines: current.agentRoutines.map((routine) =>
+          routine.id === id ? { ...routine, lastChangedPaths: paths } : routine,
+        ),
+      }))
+    }
+
     async function runRoutine(routine: AgentRoutine): Promise<void> {
       const graph = graphRef.current
       if (graph === null) {
@@ -76,6 +86,9 @@ export function AgentRoutinesRunner(): null {
         }
         const privateNotePaths = await listPrivateNotePaths()
         const mcpServers = await resolveMcpServers(settingsRef.current.mcpServers).catch(() => [])
+        // Activity ledger baseline: commit pending changes so the run's
+        // touches diff cleanly against a restorable version.
+        const snapshot = await gitAgentSnapshot(graph.generation).catch(() => null)
         const events = streamCliAgentChat(provider, {
           model: context.profile?.model ?? 'default',
           messages: [{ role: 'user', content: `${routine.prompt}\n${ROUTINE_RUN_SUFFIX}` }],
@@ -95,8 +108,19 @@ export function AgentRoutinesRunner(): null {
             failure = event.message
           }
         }
+        const changed =
+          snapshot === null ? [] : await gitChangedSince(snapshot, graph.generation).catch(() => [])
+        const ledger = changed.filter((path) => path.toLowerCase().endsWith('.md'))
+        recordLedger(routine.id, ledger)
         if (failure === null) {
-          toast.add({ title: `Routine “${routine.name}” completed` })
+          toast.add({
+            title: `Routine “${routine.name}” completed`,
+            ...(ledger.length > 0
+              ? {
+                  description: `${ledger.length} note${ledger.length === 1 ? '' : 's'} edited — see Agents → Automations.`,
+                }
+              : {}),
+          })
         } else {
           toast.add({
             type: 'error',

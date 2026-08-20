@@ -18,6 +18,7 @@ function routine(overrides: Partial<AgentRoutine>): AgentRoutine {
     schedule: { kind: 'daily', time: '08:00' },
     enabled: true,
     lastRunMs: null,
+    lastChangedPaths: [],
     ...overrides,
   }
 }

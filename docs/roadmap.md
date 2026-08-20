@@ -27,6 +27,14 @@ customization effort.
 
 ## Shipped (this fork)
 
+- Agent activity ledger: before every edit-mode run (chat turn or
+  automation) the graph is snapshotted into its local Git history, and
+  afterwards the run's touches are diffed against that snapshot. Chat turns
+  end with an "Edited N notes" card — each row opens the note or its
+  version history (diff + one-click restore); automations record the same
+  ledger on the routine row and in the completion toast. Nothing an agent
+  does to the vault is silent or unrecoverable.
+
 - MCP servers, in-app: Settings → MCP servers holds each server's shape
   (stdio command or HTTP URL, which env variables it needs) while the
   values — API tokens — live only in the OS keychain, written on save and

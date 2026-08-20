@@ -33,6 +33,8 @@ export type AssistantPart =
   | { kind: 'text'; text: string }
   | { kind: 'tool'; call: NoteToolCall; result: NoteToolResult | null; error: string | null }
   | { kind: 'notice'; tone: 'error' | 'info'; text: string }
+  /** Notes an edit-mode agent run touched (vs its pre-run snapshot). */
+  | { kind: 'changes'; paths: string[] }
 
 /** One user message and everything the assistant did in response. */
 export interface ChatTurn {

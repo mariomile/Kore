@@ -12,6 +12,8 @@ export {
   gitFetch,
   gitMergeRemote,
   gitPush,
+  gitAgentSnapshot,
+  gitChangedSince,
   gitNoteHistory,
   gitNoteVersion,
   noteVersionSchema,

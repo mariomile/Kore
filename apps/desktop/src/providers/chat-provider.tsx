@@ -18,6 +18,8 @@ import {
   listChatConversations,
   listPrivateNotePaths,
   loadAgentContext,
+  gitAgentSnapshot,
+  gitChangedSince,
   loadChatGraphContext,
   resolveMcpServers,
   loadChatMessages,
@@ -300,6 +302,16 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
       activeSendRef.current = activeSend
       lastSendSessionRef.current = activeSend.session
 
+      // The activity ledger's baseline: before an edit-mode agent run,
+      // commit whatever is pending so the run's touches diff cleanly against
+      // a restorable version. Best-effort — no snapshot, no ledger, but the
+      // turn itself still runs.
+      const editRun =
+        isCliAgentProvider(config.provider) && chatAllowEditsRef.current
+          ? { generation: graph.generation }
+          : null
+      const snapshot = editRun ? await gitAgentSnapshot(editRun.generation).catch(() => null) : null
+
       try {
         // The active agent's soul + memories ride into every provider's
         // prompt; a failed read degrades to "nothing", never a blocked turn.
@@ -394,6 +406,15 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
         // it (keychain read, event application) so the UI never sticks.
         applyEvent({ type: 'error', message: errorMessage(cause), messages: [] })
       } finally {
+        // Close the ledger: whatever differs from the pre-run snapshot is
+        // what this run touched. Shown in the turn and persisted with it.
+        if (editRun && snapshot !== null) {
+          const changed = await gitChangedSince(snapshot, editRun.generation).catch(() => [])
+          const paths = changed.filter((path) => path.toLowerCase().endsWith('.md'))
+          if (paths.length > 0) {
+            updateTurn((turn) => ({ ...turn, parts: [...turn.parts, { kind: 'changes', paths }] }))
+          }
+        }
         updateTurn((turn) => ({ ...turn, status: 'done' }))
         persistTurn(conversationMeta(), localTurn, turnCreatedMs)
         // Only release the slot if it's still ours: a turn detached by New

@@ -4,6 +4,7 @@ import { Bubble, BubbleContent } from '@/components/ui/bubble'
 import { Marker, MarkerContent } from '@/components/ui/marker'
 import { MarkdownPreview } from '@/editor/markdown-preview'
 import { cn } from '@/lib/utils'
+import { ChatChangesCard } from './chat-changes-card'
 import { ChatToolChip } from './chat-tool-chip'
 
 interface ChatAssistantPartProps {
@@ -46,6 +47,8 @@ export function ChatAssistantPart({
       )
     case 'tool':
       return <ChatToolChip part={part} />
+    case 'changes':
+      return <ChatChangesCard paths={part.paths} />
     case 'notice':
       return (
         <Marker

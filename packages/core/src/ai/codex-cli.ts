@@ -189,6 +189,10 @@ export function codexCliArgs(options: {
     '--json',
     '--skip-git-repo-check',
     '--ephemeral',
+    // The user's ~/.codex/config.toml (their own MCP servers, profiles,
+    // approvals) must never bleed into a vault run; login credentials still
+    // come from CODEX_HOME, so the ChatGPT sign-in is untouched.
+    '--ignore-user-config',
     '--cd',
     options.graphRoot,
     '-c',

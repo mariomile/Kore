@@ -108,10 +108,11 @@ describe('config builders', () => {
     })
     expect(codex.join(' ')).toContain('mcp_servers.github.command')
 
-    // No servers → no MCP flags at all.
-    expect(
-      claudeCliArgs({ model: 'default', systemPrompt: 'sp', settingsJson: '{}' }),
-    ).not.toContain('--mcp-config')
+    // No servers → no MCP config, but isolation stays on for both CLIs.
+    const bare = claudeCliArgs({ model: 'default', systemPrompt: 'sp', settingsJson: '{}' })
+    expect(bare).not.toContain('--mcp-config')
+    expect(bare).toContain('--strict-mcp-config')
+    expect(codex).toContain('--ignore-user-config')
     expect(
       JSON.parse(claudeCliSettingsJson('/g', [], false)) as { permissions: { allow?: string[] } },
     ).not.toHaveProperty('permissions.allow')

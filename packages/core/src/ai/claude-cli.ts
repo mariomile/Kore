@@ -158,10 +158,10 @@ export function claudeCliArgs(options: {
     '--settings',
     options.settingsJson,
     // The user's global MCP configuration must never bleed into a vault run:
-    // only the servers the app resolved for this run exist, or none at all.
-    ...(mcpServers.length > 0
-      ? ['--mcp-config', claudeMcpConfigJson(mcpServers), '--strict-mcp-config']
-      : []),
+    // only the servers the app resolved for this run exist, or none at all —
+    // strict mode always, so a run with no app servers has no MCP at all.
+    '--strict-mcp-config',
+    ...(mcpServers.length > 0 ? ['--mcp-config', claudeMcpConfigJson(mcpServers)] : []),
     ...(options.model === CLAUDE_CLI_DEFAULT_MODEL ? [] : ['--model', options.model]),
   ]
 }

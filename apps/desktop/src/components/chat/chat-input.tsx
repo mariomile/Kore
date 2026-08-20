@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactElement } from 'react'
-import { ArrowUp, FilePlus2, Plus, SlidersHorizontal, Square, X } from 'lucide-react'
+import { ArrowUp, FilePlus2, Pencil, Plus, SlidersHorizontal, Square, X } from 'lucide-react'
 import { chatToMarkdown, createNoteWithTitle } from '@reflect/core'
 import { getIsComposing } from '@meowdown/core'
 import { ShortcutKeys } from '@/components/shortcut-keys'
@@ -30,6 +30,7 @@ import { keybindingFor } from '@/lib/commands/app-commands'
 import { useChatSession } from '@/providers/chat-provider'
 import { conversationTitle } from '@/providers/chat-title'
 import { useGraph } from '@/providers/graph-provider'
+import { useSettings } from '@/providers/settings-provider'
 import { useRouter } from '@/routing/router'
 import { ChatHistoryMenu } from './chat-history-menu'
 
@@ -64,6 +65,8 @@ export function ChatInput(): ReactElement {
     setInstructions,
   } = useChatSession()
   const { graph } = useGraph()
+  const { settings, updateSettings } = useSettings()
+  const editsOn = settings.chatAllowEdits
   const { navigate } = useRouter()
   const [savingNote, setSavingNote] = useState(false)
   const streaming = status === 'streaming'
@@ -204,6 +207,29 @@ export function ChatInput(): ReactElement {
             </SelectContent>
           </Select>
           <div className="flex-1" />
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Toggle edit mode"
+                  aria-pressed={editsOn}
+                  onClick={() => {
+                    updateSettings({ chatAllowEdits: !editsOn })
+                  }}
+                  className={editsOn ? 'text-accent' : undefined}
+                >
+                  <Pencil aria-hidden />
+                </Button>
+              }
+            />
+            <TooltipContent>
+              {editsOn
+                ? 'Edit mode is on — agent chat (Claude Code / Codex) can create and edit notes. Private notes stay locked.'
+                : 'Edit mode is off — chat only reads your notes. Turn on to let agent chat (Claude Code / Codex) create and edit notes.'}
+            </TooltipContent>
+          </Tooltip>
           <Popover>
             <PopoverTrigger
               render={

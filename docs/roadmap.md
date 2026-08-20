@@ -24,6 +24,17 @@ customization effort.
 
 ## Shipped (this fork)
 
+- Agentic chat: an **edit mode** toggle in the composer lets the agent-CLI
+  providers (Claude Code / Codex) create and modify notes to carry out a
+  request — Codex gets a write grant on the graph subtree, Claude Code gets
+  Write/Edit tools — while private notes, `.reflect/`, and `.git/` stay
+  fenced by sandbox rules that win over the grant, and Bash/network stay
+  off. Both prompts carry a shared editing rulebook (conventions, tasks,
+  frontmatter care). Plus **persistent agent memory**: `notes/agent-memory.md`
+  ([[Agent Memory]]) is injected into every AI session (BYOK included),
+  kept current by agents in edit mode, suggested-only in read mode, honored
+  as unsendable when marked `private: true`, and taught to external agents
+  through the per-graph skill.
 - Per-note version history: a History section in the note and daily details
   rail over the graph's local Git backup — timeline of every commit that
   changed the note, full preview or per-save line diff, and one-click

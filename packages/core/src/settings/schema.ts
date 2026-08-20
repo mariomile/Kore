@@ -661,6 +661,13 @@ export function normalizeChatSystemPrompt(value: string): string {
 export const chatSystemPromptSchema = z.string().catch('').transform(normalizeChatSystemPrompt)
 
 /**
+ * Chat edit mode: whether agent-CLI chat may create and modify notes (the
+ * BYOK engines stay read-only regardless). Off by default — writing is a
+ * capability the user turns on deliberately, per graph settings document.
+ */
+export const chatAllowEditsSchema = z.boolean().catch(false)
+
+/**
  * The configured AI providers. Resilience is per entry, not per list: a
  * corrupt entry is dropped while the rest load, so one bad hand-edit can't
  * wipe every configured provider. A non-array value degrades to the empty
@@ -755,6 +762,7 @@ export const settingsSchema = z.looseObject({
   defaultAiProviderId: defaultAiProviderIdSchema,
   chatModelSelection: chatModelSelectionSchema,
   chatSystemPrompt: chatSystemPromptSchema,
+  chatAllowEdits: chatAllowEditsSchema,
   aiPrompts: aiPromptsSchema,
 })
 

@@ -93,6 +93,14 @@ export {
 } from '../ai/chat/graph-context'
 export { streamChat, type ChatStreamEvent, type StreamChatOptions } from '../ai/chat/stream-chat'
 export {
+  loadAgentMemory,
+  agentMemoryPromptLines,
+  AGENT_MEMORY_PATH,
+  AGENT_MEMORY_TITLE,
+  AGENT_MEMORY_MAX_CHARS,
+  type AgentMemory,
+} from '../ai/agent-memory'
+export {
   agentCliPrompt,
   checkAgentCli,
   type AgentCliBinary,

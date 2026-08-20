@@ -5,8 +5,10 @@ import {
   agentCliPrompt,
   runAgentCliCommand,
   streamAgentCliTurn,
+  vaultEditRules,
   type AgentCliChunk,
 } from './agent-cli'
+import { agentMemoryPromptLines, type AgentMemory } from './agent-memory'
 import type { StreamCliChatOptions } from './claude-cli'
 
 /**
@@ -105,18 +107,27 @@ export function codexCliSystemPrompt(options: {
   today: string
   graphName: string
   customSystemPrompt: string
+  allowEdits?: boolean | undefined
+  agentMemory?: AgentMemory | null | undefined
 }): string {
   const custom = options.customSystemPrompt.trim()
+  const allowEdits = options.allowEdits === true
   return [
-    `You are Reflect’s assistant, answering inside the user’s personal note graph “${options.graphName}” — the working directory, a folder of markdown files.`,
+    allowEdits
+      ? `You are Reflect’s agent, working inside the user’s personal note graph “${options.graphName}” — the working directory, a folder of markdown files the running app picks up live.`
+      : `You are Reflect’s assistant, answering inside the user’s personal note graph “${options.graphName}” — the working directory, a folder of markdown files.`,
     `Today’s date is ${options.today}. Daily notes are daily/YYYY-MM-DD.md; other notes live under notes/ (file names are slugs of note titles); templates/ holds note templates and assets/ holds attachments.`,
     'Tasks in notes are round checkboxes: `+ [ ]` open, `+ [x]` done; a leading ! (medium) or !! (high) marks priority, and the first [[YYYY-MM-DD]] wiki link inside an item is its due date. Square `- [ ]` checkboxes are plain checklists, not tasks.',
+    ...agentMemoryPromptLines(options.agentMemory ?? null, { canEdit: allowEdits }),
     '',
     'Grounding rules:',
-    '- When a question could be answered by the user’s notes, look them up before answering: list and read the markdown files (read-only — never modify anything).',
+    allowEdits
+      ? '- When a question could be answered by the user’s notes, look them up before answering: list and read the markdown files.'
+      : '- When a question could be answered by the user’s notes, look them up before answering: list and read the markdown files (read-only — never modify anything).',
     '- Some notes are private and reading them is denied by the sandbox. If a read is denied, tell the user the note is private — never speculate about its contents.',
     '- Ground answers in what you read. If the notes don’t cover something, say so plainly instead of guessing.',
     '- Cite every note you draw on with a wiki link of its exact title (its H1, or the file name without extension), e.g. [[Project Atlas]]. For daily notes use the date, e.g. [[2026-06-14]].',
+    ...(allowEdits ? vaultEditRules() : []),
     '',
     'Style: answer in concise markdown. Prefer short paragraphs and lists over headings. Do not narrate your file reads — just answer.',
     ...(custom === ''
@@ -141,14 +152,18 @@ function tomlString(value: string): string {
  * database, and git history. Deny entries win over the read grant and are
  * enforced fail-closed by the sandbox.
  */
-export function codexCliFilesystemToml(graphRoot: string, privateNotePaths: string[]): string {
+export function codexCliFilesystemToml(
+  graphRoot: string,
+  privateNotePaths: string[],
+  allowEdits = false,
+): string {
   // Forward-slash the root: a Windows graph root would otherwise produce
   // mixed-separator entries (`C:\graphs\work/notes/x.md`) the sandbox's path
   // matching may not recognize, silently weakening the deny list. Windows
   // accepts forward slashes everywhere the sandbox resolves paths.
   const root = graphRoot.replaceAll('\\', '/').replace(/\/+$/, '')
   const entries = [
-    `${tomlString(`${root}/**`)} = "read"`,
+    `${tomlString(`${root}/**`)} = ${allowEdits ? '"write"' : '"read"'}`,
     `${tomlString(`${root}/.reflect`)} = "deny"`,
     `${tomlString(`${root}/.git`)} = "deny"`,
     ...privateNotePaths.map((path) => `${tomlString(`${root}/${path}`)} = "deny"`),
@@ -161,6 +176,7 @@ export function codexCliArgs(options: {
   model: string
   graphRoot: string
   privateNotePaths: string[]
+  allowEdits?: boolean | undefined
 }): string[] {
   return [
     'exec',
@@ -175,6 +191,7 @@ export function codexCliArgs(options: {
     `permissions.${PROFILE}.filesystem=${codexCliFilesystemToml(
       options.graphRoot,
       options.privateNotePaths,
+      options.allowEdits === true,
     )}`,
     ...(options.model === CODEX_CLI_DEFAULT_MODEL ? [] : ['--model', options.model]),
     // Read the prompt from stdin (arbitrary length, no arg-size limits).
@@ -232,6 +249,8 @@ export function streamCodexCliChat(options: StreamCliChatOptions): AsyncGenerato
     today: options.today,
     graphName: options.graphName,
     customSystemPrompt: options.customSystemPrompt,
+    allowEdits: options.allowEdits,
+    agentMemory: options.agentMemory,
   })
   return streamAgentCliTurn({
     binary: 'codex',
@@ -239,6 +258,7 @@ export function streamCodexCliChat(options: StreamCliChatOptions): AsyncGenerato
       model: options.model,
       graphRoot: options.graphRoot,
       privateNotePaths: options.privateNotePaths,
+      allowEdits: options.allowEdits,
     }),
     prompt: `<instructions>\n${preamble}\n</instructions>\n\n${agentCliPrompt(options.messages)}`,
     cwd: options.graphRoot,

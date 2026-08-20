@@ -1,4 +1,5 @@
 import type { CloudGraphContext, CloudSafe } from '../checkers'
+import { agentMemoryPromptLines, type AgentMemory } from '../agent-memory'
 import { normalizeChatSystemPrompt } from '../../settings/schema'
 
 /**
@@ -23,6 +24,8 @@ export interface SystemPromptInput {
    * it could not be loaded — the prompt then simply omits the overview.
    */
   context: CloudSafe<CloudGraphContext> | null
+  /** The graph's agent memory block (null: none to send). */
+  agentMemory?: AgentMemory | null
 }
 
 /** Build the system prompt for one chat session. */
@@ -31,12 +34,14 @@ export function chatSystemPrompt({
   context,
   semanticSearchEnabled,
   customSystemPrompt,
+  agentMemory = null,
 }: SystemPromptInput): string {
   const customInstructions = normalizeChatSystemPrompt(customSystemPrompt)
   return [
     'You are Reflect’s assistant, embedded in the user’s personal note graph.',
     `Today’s date is ${today}. Daily notes are markdown files named daily/YYYY-MM-DD.md. Reflect-created regular notes live under notes/. Adopted notes may live at any eligible visible path in the opened vault.`,
     ...graphOverviewLines(context),
+    ...agentMemoryPromptLines(agentMemory, { canEdit: false }),
     '',
     'Grounding rules:',
     '- When a question could be answered by the user’s notes, look them up before answering: search_notes finds notes by topic or keyword, list_daily_notes finds daily notes in a date range (questions like “yesterday” or “last week”), and list_recent_notes shows what was edited lately. Call read_notes when you need notes’ full content.',

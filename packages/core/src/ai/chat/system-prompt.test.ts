@@ -143,3 +143,18 @@ describe('chatSystemPrompt', () => {
     expect(prompt).not.toContain('User-configured system prompt')
   })
 })
+
+describe('chatSystemPrompt agent memory', () => {
+  it('injects the memory block with the read-only upkeep instruction', () => {
+    const prompt = chatSystemPrompt({
+      today: '2026-06-14',
+      semanticSearchEnabled: false,
+      customSystemPrompt: '',
+      context: null,
+      agentMemory: { body: '- Prefers Italian replies', truncated: false },
+    })
+    expect(prompt).toContain('- Prefers Italian replies')
+    expect(prompt).toContain('[[Agent Memory]]')
+    expect(prompt).toContain('never claim to have saved it')
+  })
+})

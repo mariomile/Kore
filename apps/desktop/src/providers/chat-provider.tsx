@@ -17,6 +17,7 @@ import {
   hasBridge,
   listChatConversations,
   listPrivateNotePaths,
+  loadAgentMemory,
   loadChatGraphContext,
   loadChatMessages,
   resolveChatModel,
@@ -109,6 +110,7 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
   const semanticSearchEnabled = settings.semanticSearchEnabled && !isMobileSurface()
   const semanticSearchEnabledRef = useRef(semanticSearchEnabled)
   const chatSystemPromptRef = useRef(settings.chatSystemPrompt)
+  const chatAllowEditsRef = useRef(settings.chatAllowEdits)
   const instructionsRef = useRef(instructions)
   useEffect(() => {
     turnsRef.current = turns
@@ -118,6 +120,7 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
     generationRef.current = indexGeneration
     semanticSearchEnabledRef.current = semanticSearchEnabled
     chatSystemPromptRef.current = settings.chatSystemPrompt
+    chatAllowEditsRef.current = settings.chatAllowEdits
     instructionsRef.current = instructions
   })
 
@@ -291,6 +294,9 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
       lastSendSessionRef.current = activeSend.session
 
       try {
+        // The graph's agent memory rides into every provider's prompt; a
+        // failed read degrades to "no memory", never a blocked turn.
+        const agentMemory = await loadAgentMemory().catch(() => null)
         const events = await (async () => {
           if (isCliAgentProvider(config.provider)) {
             // The subscription engines: the CLI reads the graph itself, so
@@ -312,6 +318,8 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
               graphRoot: graph.root,
               graphName: graph.name,
               privateNotePaths,
+              allowEdits: chatAllowEditsRef.current,
+              agentMemory,
               signal: controller.signal,
             })
           }
@@ -341,6 +349,7 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
             semanticSearchEnabled: semanticSearchEnabledRef.current,
             customSystemPrompt,
             context,
+            agentMemory,
             signal: controller.signal,
           })
         })()

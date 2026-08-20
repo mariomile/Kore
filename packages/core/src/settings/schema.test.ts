@@ -47,6 +47,7 @@ describe('settingsSchema', () => {
       defaultAiProviderId: null,
       chatModelSelection: null,
       chatSystemPrompt: '',
+      chatAllowEdits: false,
       aiPrompts: [],
       savedSearches: [],
     })
@@ -80,6 +81,7 @@ describe('settingsSchema', () => {
     expect(DEFAULT_SETTINGS.defaultAiProviderId).toBeNull()
     expect(DEFAULT_SETTINGS.chatModelSelection).toBeNull()
     expect(DEFAULT_SETTINGS.chatSystemPrompt).toBe('')
+    expect(DEFAULT_SETTINGS.chatAllowEdits).toBe(false)
     expect(DEFAULT_SETTINGS.aiPrompts).toEqual([])
   })
 
@@ -303,6 +305,7 @@ describe('settingsSchema', () => {
       defaultAiProviderId: null,
       chatModelSelection: null,
       chatSystemPrompt: '',
+      chatAllowEdits: false,
       aiPrompts: [],
       savedSearches: [],
       futureKey: true,

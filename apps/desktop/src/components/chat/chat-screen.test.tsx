@@ -63,6 +63,8 @@ const settingsState = vi.hoisted(() => ({
   defaultId: null as string | null,
   selection: null as ChatModelSelection | null,
 }))
+const updatedSettings: Partial<Settings>[] = []
+
 // Stateful like the real provider: a chatModelSelection patch re-renders with
 // the new value, so picking a model in the UI applies instantly here too.
 vi.mock('@/providers/settings-provider', async () => {
@@ -76,8 +78,10 @@ vi.mock('@/providers/settings-provider', async () => {
           defaultAiProviderId: settingsState.defaultId,
           chatModelSelection: selection,
           chatSystemPrompt: '',
+          chatAllowEdits: false,
         },
         updateSettings: (patch: Partial<Settings>) => {
+          updatedSettings.push(patch)
           if (patch.chatModelSelection !== undefined) {
             setSelection(patch.chatModelSelection)
           }
@@ -717,6 +721,15 @@ describe('ChatScreen', () => {
     // Nothing left to send: Enter on the empty composer is a no-op again.
     await userEvent.type(view.getByLabelText('Chat message'), '{Enter}')
     expect(streamChat).not.toHaveBeenCalled()
+  })
+
+  it('the edit-mode toggle renders off and patches the setting on click', async () => {
+    configureModel()
+    const view = await renderChat()
+    const toggle = view.getByRole('button', { name: 'Toggle edit mode' })
+    await expect.element(toggle).toHaveAttribute('aria-pressed', 'false')
+    await toggle.click()
+    expect(updatedSettings).toContainEqual({ chatAllowEdits: true })
   })
 
   it('New chat clears the conversation', async () => {

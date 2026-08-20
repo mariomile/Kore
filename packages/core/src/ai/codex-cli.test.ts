@@ -68,6 +68,14 @@ describe('codexCliFilesystemToml', () => {
     expect(toml).toContain('"/graphs/work/notes/secret.md" = "deny"')
   })
 
+  it('edit mode grants write on the subtree while every deny stays', () => {
+    const toml = codexCliFilesystemToml('/graphs/work', ['notes/secret.md'], true)
+    expect(toml).toContain('"/graphs/work/**" = "write"')
+    expect(toml).toContain('"/graphs/work/.reflect" = "deny"')
+    expect(toml).toContain('"/graphs/work/.git" = "deny"')
+    expect(toml).toContain('"/graphs/work/notes/secret.md" = "deny"')
+  })
+
   it('forward-slashes a Windows root and escapes TOML string characters', () => {
     // A native backslash root would emit mixed-separator entries the sandbox
     // may not match — the deny list must not silently weaken off POSIX.
@@ -109,6 +117,29 @@ describe('codexCliSystemPrompt', () => {
     expect(prompt).toContain('“Work”')
     expect(prompt).toContain('read-only')
     expect(prompt.endsWith('Answer in Italian.')).toBe(true)
+  })
+})
+
+describe('codexCliSystemPrompt edit mode', () => {
+  it('carries the editing rules and the injected memory', () => {
+    const prompt = codexCliSystemPrompt({
+      today: '2026-06-14',
+      graphName: 'Work',
+      customSystemPrompt: '',
+      allowEdits: true,
+      agentMemory: { body: '- Prefers Italian replies', truncated: false },
+    })
+    expect(prompt).toContain('Editing rules')
+    expect(prompt).toContain('- Prefers Italian replies')
+    expect(prompt).toContain('record it in notes/agent-memory.md')
+
+    const readOnly = codexCliSystemPrompt({
+      today: '2026-06-14',
+      graphName: 'Work',
+      customSystemPrompt: '',
+    })
+    expect(readOnly).toContain('read-only — never modify anything')
+    expect(readOnly).not.toContain('Editing rules')
   })
 })
 

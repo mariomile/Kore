@@ -102,6 +102,21 @@ describe('claudeCliSettingsJson', () => {
     }
   })
 
+  it('edit mode lifts the global Write/Edit denies but keeps every fence', () => {
+    const parsed = JSON.parse(claudeCliSettingsJson('/graphs/work', ['notes/secret.md'], true)) as {
+      permissions: { deny: string[] }
+    }
+    for (const rule of ['Read', 'Write', 'Edit']) {
+      expect(parsed.permissions.deny).toContain(`${rule}(//graphs/work/notes/secret.md)`)
+      expect(parsed.permissions.deny).toContain(`${rule}(//graphs/work/.reflect/**)`)
+      expect(parsed.permissions.deny).toContain(`${rule}(//graphs/work/.git/**)`)
+    }
+    expect(parsed.permissions.deny).not.toContain('Write')
+    expect(parsed.permissions.deny).not.toContain('Edit')
+    expect(parsed.permissions.deny).toContain('Bash')
+    expect(parsed.permissions.deny).toContain('Grep')
+  })
+
   it('anchors a Windows drive root the same way instead of failing open', () => {
     const parsed = JSON.parse(
       claudeCliSettingsJson(String.raw`C:\graphs\work`, ['notes/secret.md']),
@@ -126,6 +141,16 @@ describe('claudeCliArgs', () => {
     const args = claudeCliArgs({ model: 'default', systemPrompt: 'sys', settingsJson: '{}' })
     expect(args).not.toContain('--model')
   })
+
+  it('edit mode adds the write tools', () => {
+    const args = claudeCliArgs({
+      model: 'default',
+      systemPrompt: 'sys',
+      settingsJson: '{}',
+      allowEdits: true,
+    })
+    expect(args.join(' ')).toContain('--tools Read,Glob,Write,Edit')
+  })
 })
 
 describe('claudeCliSystemPrompt', () => {
@@ -140,6 +165,28 @@ describe('claudeCliSystemPrompt', () => {
     expect(prompt).toContain('Read')
     expect(prompt).toContain('Glob')
     expect(prompt.endsWith('Answer in Italian.')).toBe(true)
+  })
+
+  it('edit mode carries the editing rules and the injected memory', () => {
+    const prompt = claudeCliSystemPrompt({
+      today: '2026-06-14',
+      graphName: 'Work',
+      customSystemPrompt: '',
+      allowEdits: true,
+      agentMemory: { body: '- Prefers Italian replies', truncated: false },
+    })
+    expect(prompt).toContain('Editing rules')
+    expect(prompt).toContain('Write')
+    expect(prompt).toContain('- Prefers Italian replies')
+    expect(prompt).toContain('record it in notes/agent-memory.md')
+
+    const readOnly = claudeCliSystemPrompt({
+      today: '2026-06-14',
+      graphName: 'Work',
+      customSystemPrompt: '',
+    })
+    expect(readOnly).not.toContain('Editing rules')
+    expect(readOnly).toContain('never claim to have saved it')
   })
 })
 

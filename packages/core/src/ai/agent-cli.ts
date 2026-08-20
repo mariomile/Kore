@@ -50,6 +50,23 @@ function messageText(message: ModelMessage): string {
 }
 
 /**
+ * The edit-mode rulebook both agent CLI providers share: what an agent that
+ * may write to the vault must know to leave first-class notes behind. Kept
+ * in one place so the two engines can never drift on conventions.
+ */
+export function vaultEditRules(): string[] {
+  return [
+    '',
+    'Editing rules (edit mode is on — you may create and modify notes):',
+    '- Do the work directly: create and edit the markdown files to carry out the request, then summarize what changed, citing every touched note as a wiki link of its exact title.',
+    '- Follow the vault’s conventions: new notes are notes/<kebab-case-title>.md with an H1 title; [[Exact Title]] links notes and [[YYYY-MM-DD]] links a daily; tasks are round checkboxes `+ [ ] text` (a leading ! or !! sets priority; the first [[YYYY-MM-DD]] inside the item is its due date), while square `- [ ]` checkboxes are plain checklists.',
+    '- Quick additions belong in today’s daily note (daily/YYYY-MM-DD.md — create it if missing): capture flows there by convention.',
+    '- Preserve frontmatter you don’t understand and never invent an `id:` — the app mints those.',
+    '- Never write into .reflect/, .git/, or assets/, and never touch private notes — the sandbox denies them; when a change would need one, say so instead of working around it.',
+  ]
+}
+
+/**
  * Flatten the model-facing history into one headless prompt. The CLIs have
  * no conversation state across invocations, so prior turns ride along as a
  * transcript, oldest dropped first when the budget is exceeded.

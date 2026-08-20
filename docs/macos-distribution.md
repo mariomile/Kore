@@ -1,6 +1,6 @@
 # macOS Distribution Builds
 
-How to produce a signed, notarized macOS build of Reflect for distribution outside the
+How to produce a signed, notarized macOS build of Lore for distribution outside the
 Mac App Store.
 
 ```bash
@@ -79,8 +79,8 @@ can still build unsigned bundles with plain `pnpm tauri build`.
    stapled tickets — and fails loudly if any check is off.
 
 Bundles land under `target/<target-triple>/release/bundle/`, for example
-`target/aarch64-apple-darwin/release/bundle/macos/Reflect.app` and
-`target/x86_64-apple-darwin/release/bundle/dmg/Reflect_<version>_x86_64.dmg`.
+`target/aarch64-apple-darwin/release/bundle/macos/Lore.app` and
+`target/x86_64-apple-darwin/release/bundle/dmg/Lore_<version>_x86_64.dmg`.
 
 ## Commands and flags
 
@@ -141,7 +141,7 @@ before merging one.
    polish the changelog if needed (edit the PR branch — release-please regenerates the
    PR when new commits land, so polish last), and **merge it**.
 3. Everything else is automatic, ending with the `updater-beta` feed refresh and the
-   TestFlight upload. Installed Reflect Beta apps pick up the update.
+   TestFlight upload. Installed Lore Beta apps pick up the update.
 4. The stable Release PR stays open and is rebased by the next push; merge it whenever
    the channel is ready to graduate.
 
@@ -217,7 +217,7 @@ release-please created when the Release PR merged, or — when no release exists
 creating one itself. The release carries two notarized DMGs, two
 updater archives (one per architecture, each with its `.sig`), and a single
 `latest.json` manifest with both `darwin-aarch64` and `darwin-x86_64` platform entries.
-Published DMGs use fixed names (`Reflect_aarch64.dmg` and `Reflect_x86_64.dmg`
+Published DMGs use fixed names (`Lore_aarch64.dmg` and `Lore_x86_64.dmg`
 for stable) because the release tag already identifies the version. That keeps
 `releases/latest/download/<asset>` stable across releases. Updater archives remain
 versioned because each manifest points at an immutable release payload.
@@ -251,8 +251,8 @@ GitHub **pre-release** automatically. `releases/latest` ignores pre-releases, so
 stable installs never see a beta.
 
 Beta builds use the dedicated `updater-beta` release instead. Every non-draft beta
-publish replaces its `latest.json`, `Reflect.Beta_aarch64.dmg`, and
-`Reflect.Beta_x86_64.dmg` assets with `--clobber`. The fixed DMG names give the README
+publish replaces its `latest.json`, `Lore.Beta_aarch64.dmg`, and
+`Lore.Beta_x86_64.dmg` assets with `--clobber`. The fixed DMG names give the README
 permanent fresh-install links, while the manifest still points installed apps at the
 immutable versioned updater archives. Draft beta releases do not update the moving
 assets. The DMGs are replaced before `latest.json`; if that downstream job fails, rerun
@@ -269,15 +269,15 @@ build time, so releases are branch-independent.
 Cutting a beta means merging the beta Release PR; a stable release means merging the
 stable Release PR (see [Cutting a release](#cutting-a-release-release-prs) above).
 
-## Build flavors (Reflect / Reflect Beta / Reflect Dev)
+## Build flavors (Lore / Lore Beta / Lore Dev)
 
 Three flavors ship as distinct, coexisting apps:
 
 | Flavor       | Version        | productName  | identifier                 | Icon         | Updater feed      |
 | ------------ | -------------- | ------------ | -------------------------- | ------------ | ----------------- |
-| Reflect      | `X.Y.Z`        | Reflect      | `app.reflect.desktop`      | blue/violet  | `releases/latest` |
-| Reflect Beta | `X.Y.Z-beta.N` | Reflect Beta | `app.reflect.desktop.beta` | purple/violet | `updater-beta`    |
-| Reflect Dev  | local builds   | Reflect Dev  | `app.reflect.desktop.dev`  | green        | `updater-dev-noop` (no-op) |
+| Lore      | `X.Y.Z`        | Lore      | `app.lore.desktop`      | blue/violet  | `releases/latest` |
+| Lore Beta | `X.Y.Z-beta.N` | Lore Beta | `app.lore.desktop.beta` | purple/violet | `updater-beta`    |
+| Lore Dev  | local builds   | Lore Dev  | `app.lore.desktop.dev`  | green        | `updater-dev-noop` (no-op) |
 
 The base `tauri.conf.json` is the stable flavor and uses the shipped gradient icon
 (`icons/`). Beta and dev are config overlays (`src-tauri/tauri.beta.conf.json`,
@@ -301,20 +301,20 @@ identifier).
 Local builds:
 
 ```bash
-pnpm tauri:dev                                   # run Reflect Dev (green), isolated identifier
-pnpm tauri:build:dev                             # bundle Reflect Dev
-pnpm tauri:build:beta                            # bundle Reflect Beta locally (unsigned)
+pnpm tauri:dev                                   # run Lore Dev (green), isolated identifier
+pnpm tauri:build:dev                             # bundle Lore Dev
+pnpm tauri:build:beta                            # bundle Lore Beta locally (unsigned)
 pnpm release:macos --flavor=beta --no-notarize   # signed-only beta, for local checks
 ```
 
 Because GitHub rewrites spaces in uploaded asset names to dots, the updater manifest URL
-for "Reflect Beta" is sanitized to `Reflect.Beta.app.tar.gz` in `writeUpdaterManifest`.
+for "Lore Beta" is sanitized to `Lore.Beta.app.tar.gz` in `writeUpdaterManifest`.
 Do not "fix" the space back, or beta auto-update 404s.
 
 **Beta tester migration (one-time):** before flavors, beta builds were a plain "Reflect"
-(`app.reflect.desktop`) that merely polled the beta feed. The first flavored beta is a new
-app (`app.reflect.desktop.beta`, "Reflect Beta"), so existing beta installs do not migrate
-cleanly. Tell testers to delete the old "Reflect" beta and install "Reflect Beta" fresh.
+(`app.lore.desktop`) that merely polled the beta feed. The first flavored beta is a new
+app (`app.lore.desktop.beta`, "Lore Beta"), so existing beta installs do not migrate
+cleanly. Tell testers to delete the old "Reflect" beta and install "Lore Beta" fresh.
 Stable installs are unaffected (same identifier and the shipped icon).
 
 ## Releasing from CI
@@ -329,8 +329,8 @@ Each build job runs the same DMG notarization, Gatekeeper checks, and updater ar
 signing as a local release, then uploads its artifacts to the workflow. A final publish
 job downloads both sets, writes the combined `latest.json`, and fills the release-please
 draft release: it keeps the changelog body, appends the Mac download chooser that maps
-Apple Silicon to `Reflect_aarch64.dmg` and Intel to `Reflect_x86_64.dmg` (with
-`Reflect.Beta` names for beta releases), and undrafts the release as its last step. The
+Apple Silicon to `Lore_aarch64.dmg` and Intel to `Lore_x86_64.dmg` (with
+`Lore.Beta` names for beta releases), and undrafts the release as its last step. The
 downstream beta-sync job then downloads the canonical DMGs and manifest from that
 tagged release before refreshing `updater-beta`. The workflow normally runs via
 `workflow_call` from
@@ -379,7 +379,7 @@ on the runner keychain setup.
   log, which lists each offending file. Common cause: a binary that wasn't signed with
   hardened runtime.
 - **Bundled `reflect` or `reflect-capture-host` exits `Killed: 9`** — check its
-  entitlements with `codesign -d --entitlements :- Reflect.app/Contents/MacOS/reflect`.
+  entitlements with `codesign -d --entitlements :- Lore.app/Contents/MacOS/reflect`.
   Sidecars must not carry the app's restricted iCloud entitlements; the release verifier
   launches both sidecars to catch this.
 - **Intel sidecar launch fails on Apple Silicon with `Bad CPU type in executable`** —

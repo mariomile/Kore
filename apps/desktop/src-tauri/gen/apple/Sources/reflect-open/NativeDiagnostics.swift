@@ -20,7 +20,7 @@ private enum NativeDiagnostics {
 
   /// Forks build under their own bundle identifier and stay silent even if
   /// they carry a DSN.
-  private static let officialBundleIdentifier = "app.reflect.ios"
+  private static let officialBundleIdentifier = "app.lore.ios"
 
   private static let redacted = "[redacted]"
 

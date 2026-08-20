@@ -80,7 +80,7 @@
           "localizations" : [
 
           ],
-          "productID" : "app.reflect.ios.pro.monthly",
+          "productID" : "app.lore.ios.pro.monthly",
           "recurringSubscriptionPeriod" : "P1M",
           "referenceName" : "Reflect Pro Monthly",
           "subscriptionGroupID" : "22296822",
@@ -128,7 +128,7 @@
           "localizations" : [
 
           ],
-          "productID" : "app.reflect.ios.pro.yearly",
+          "productID" : "app.lore.ios.pro.yearly",
           "recurringSubscriptionPeriod" : "P1Y",
           "referenceName" : "Reflect Pro Yearly",
           "subscriptionGroupID" : "22296822",

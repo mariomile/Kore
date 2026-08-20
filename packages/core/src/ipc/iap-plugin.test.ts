@@ -21,13 +21,13 @@ function bridgeReturning(response: unknown) {
 describe('iap plugin bindings', () => {
   it('get_products wraps the ids in the payload parameter and unwraps products', async () => {
     const invoke = bridgeReturning({
-      products: [{ productId: 'app.reflect.ios.pro.yearly', formattedPrice: 'x' }],
+      products: [{ productId: 'app.lore.ios.pro.yearly', formattedPrice: 'x' }],
     })
-    await expect(iapGetProducts(['app.reflect.ios.pro.yearly'])).resolves.toEqual([
-      { productId: 'app.reflect.ios.pro.yearly', formattedPrice: 'x' },
+    await expect(iapGetProducts(['app.lore.ios.pro.yearly'])).resolves.toEqual([
+      { productId: 'app.lore.ios.pro.yearly', formattedPrice: 'x' },
     ])
     expect(invoke).toHaveBeenCalledWith('plugin:iap|get_products', {
-      payload: { productIds: ['app.reflect.ios.pro.yearly'], productType: 'subs' },
+      payload: { productIds: ['app.lore.ios.pro.yearly'], productType: 'subs' },
     })
   })
 
@@ -63,13 +63,13 @@ describe('iap plugin bindings', () => {
     await subscription.ready
     expect(listenPlugin).toHaveBeenCalledWith('iap', 'purchaseUpdated', expect.any(Function))
 
-    emit({ productId: 'app.reflect.ios.pro.yearly' })
+    emit({ productId: 'app.lore.ios.pro.yearly' })
     expect(handler).toHaveBeenCalledTimes(1)
 
     // Unlisten is a local detach (the shared native registration stays):
     // later events must not reach the handler anymore.
     subscription.unlisten()
-    emit({ productId: 'app.reflect.ios.pro.yearly' })
+    emit({ productId: 'app.lore.ios.pro.yearly' })
     expect(handler).toHaveBeenCalledTimes(1)
   })
 })

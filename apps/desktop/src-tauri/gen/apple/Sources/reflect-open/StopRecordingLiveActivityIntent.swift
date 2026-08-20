@@ -22,7 +22,7 @@ import Foundation
     @MainActor
     func perform() async throws -> some IntentResult {
       NotificationCenter.default.post(
-        name: Notification.Name("app.reflect.recording.stop-requested"), object: nil)
+        name: Notification.Name("app.lore.recording.stop-requested"), object: nil)
       return .result()
     }
   }

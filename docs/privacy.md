@@ -124,7 +124,7 @@ disk at call time), and it is covered by tests.
   error, an unhandled promise rejection, or a caught/recoverable React error — and on
   iOS, the native failure categories above. The WebView SDK initializes only in official
   builds carrying the release DSN. The iOS native SDK initializes only in release
-  configurations of the official `app.reflect.ios` bundle; debug builds compile the
+  configurations of the official `app.lore.ios` bundle; debug builds compile the
   call out entirely, and forks run under their own bundle identifier and stay silent.
 - **Operational safeguards:** Sentry's server-side and default scrubbers are enabled, IP
   address storage and server-side JavaScript source scraping are disabled, and explicit

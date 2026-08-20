@@ -68,13 +68,19 @@ pnpm tauri build
 
 The installers land in `apps/desktop/src-tauri/target/release/bundle/`:
 
-- `macos/Reflect.app` — drag it into `/Applications`
+- `macos/Lore.app` — drag it into `/Applications`
 - `dmg/*.dmg` — the same app as a disk-image installer
 
 A locally built app runs without Gatekeeper warnings on the machine that
 built it. To produce signed, notarized installers for other Macs (with
 auto-update), use `pnpm release:macos` — see
 [docs/macos-distribution.md](docs/macos-distribution.md).
+
+Lore ships with its own Apple identity (`app.lore.*`, iCloud container
+`iCloud.app.lore`). iCloud sync and iPhone installs need an Apple Developer
+account — the one-time checklist is in
+[docs/lore-apple-signing.md](docs/lore-apple-signing.md); everything else
+(local graphs, Git history, GitHub sync) works with no account at all.
 
 For a quick look without installing, `pnpm tauri dev` runs the app with hot
 reload; `pnpm tauri:dev` runs the separate "Dev" flavor that coexists with an

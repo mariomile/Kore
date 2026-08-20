@@ -316,9 +316,9 @@ pub fn capture_inbox_reject(
 /// debug configuration compiles the Rust dev profile, so `debug_assertions`
 /// tracks the flavor exactly.
 #[cfg(all(target_os = "ios", debug_assertions))]
-const SHARED_GROUP_ID: &str = "group.app.reflect.dev";
+const SHARED_GROUP_ID: &str = "group.app.lore.dev";
 #[cfg(all(target_os = "ios", not(debug_assertions)))]
-const SHARED_GROUP_ID: &str = "group.app.reflect";
+const SHARED_GROUP_ID: &str = "group.app.lore";
 
 /// The envelope spool directory inside the App Group container. The extension
 /// creates it lazily; a missing directory relays as zero.

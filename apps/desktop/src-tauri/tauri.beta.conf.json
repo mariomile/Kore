@@ -1,11 +1,11 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Reflect Beta",
-  "identifier": "app.reflect.desktop.beta",
+  "productName": "Lore Beta",
+  "identifier": "app.lore.desktop.beta",
   "app": {
     "windows": [
       {
-        "title": "Reflect Beta",
+        "title": "Lore Beta",
         "width": 1300,
         "height": 650,
         "titleBarStyle": "Overlay",
@@ -31,9 +31,7 @@
   },
   "plugins": {
     "updater": {
-      "endpoints": [
-        "https://github.com/team-reflect/reflect-open/releases/download/updater-beta/latest.json"
-      ]
+      "endpoints": ["https://github.com/mariomile/Lore/releases/download/updater-beta/latest.json"]
     }
   }
 }

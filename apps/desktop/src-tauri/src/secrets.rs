@@ -10,7 +10,7 @@ use keyring::Entry;
 use crate::error::{AppError, AppResult};
 
 /// The keychain service every Reflect secret is filed under.
-const SERVICE: &str = "reflect-open";
+const SERVICE: &str = "lore";
 
 fn entry(name: &str) -> AppResult<Entry> {
     Entry::new(SERVICE, name).map_err(|err| AppError::io(err.to_string()))

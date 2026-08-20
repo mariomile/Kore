@@ -26,6 +26,14 @@ customization effort.
 
 ## Shipped (this fork)
 
+- Lore's own Apple identity: bundle ids `app.lore.*` (desktop flavors, iOS,
+  share/widget extensions), iCloud container `iCloud.app.lore` (shown as
+  "Lore" in Files/Finder), App Groups `group.app.lore(.dev)`, product names
+  Lore / Lore Beta / Lore Dev, StoreKit/IAP ids, updater endpoints pointed
+  at this repo (safe-fail until own keys exist), keychain service `lore` —
+  with a one-time signing checklist in docs/lore-apple-signing.md.
+  Internal names (`reflect://`, the `reflect` CLI, `.reflect/`, the
+  capture host) deliberately unchanged.
 - Agent CLI, rounded out: `backlinks` (who links here, from the app's own
   resolution), `recent` (latest notes), `new` (create a note with the app's
   frozen filename-slug rules, H1, and optional template seeding with

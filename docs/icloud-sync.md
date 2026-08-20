@@ -58,7 +58,7 @@ provisioned:
 
 - **iOS**: the entitlements + `NSUbiquitousContainers` declaration are in
   `ios.project.yml` / `gen/apple`; Xcode automatic signing registers the
-  container (`iCloud.app.reflect`) on the first entitled build.
+  container (`iCloud.app.lore`) on the first entitled build.
 - **macOS**: the entitlements live in
   `apps/desktop/src-tauri/Entitlements.plist`, granted by the committed
   Developer ID provisioning profiles (`Reflect.provisionprofile` /

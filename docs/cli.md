@@ -22,7 +22,7 @@ reflect new <title>        # create notes/<slug>.md (--template seeds the body)
 ```
 
 Built from `apps/cli` (`cargo build -p reflect-cli`); bundled with the desktop
-app as a Tauri sidecar (macOS: `Reflect.app/Contents/MacOS/reflect`, Linux
+app as a Tauri sidecar (macOS: `Lore.app/Contents/MacOS/reflect`, Linux
 `.deb`: `/usr/bin/reflect`). For local development:
 `cargo install --path apps/cli`.
 

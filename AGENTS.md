@@ -192,7 +192,7 @@ pnpm dev              # turbo dev across packages (Vite on http://localhost:1420
                       #   add ?platform=ios to the URL to preview the MOBILE tree in a
                       #   plain browser (dev-only in-memory bridge + seeded demo graph)
 pnpm tauri dev        # Full Tauri app with hot reload (stages the CLI sidecar first)
-pnpm tauri:dev        # `pnpm tauri dev` with the dev overlay → the "Reflect Dev" flavor (green icon, own identifier; coexists with Reflect / Reflect Beta)
+pnpm tauri:dev        # `pnpm tauri dev` with the dev overlay → the "Lore Dev" flavor (green icon, own identifier; coexists with Reflect / Lore Beta)
 pnpm build            # turbo build pipeline → apps/desktop/dist/
 pnpm tauri build      # Native app bundle, incl. the reflect CLI sidecar
 pnpm release:macos    # Signed + notarized macOS build for distribution (docs/macos-distribution.md)
@@ -207,7 +207,7 @@ pnpm release:ios testflight --build-number=123 --wait  # Build and upload the iO
 The mobile app is the Tauri iOS target of `apps/desktop`, not a separate
 package. Use `pnpm tauri:ios:dev "iPhone 17 Pro"` from the repo root (or
 `pnpm tauri:ios:dev --host` for a physical device); debug builds are the dev
-flavor (`app.reflect.ios.dev`, shown as `Reflect Dev`) and need that script's
+flavor (`app.lore.ios.dev`, shown as `Lore Dev`) and need that script's
 config overlay, so do not run plain `tauri ios dev`. List
 available simulator names with `xcrun simctl list devices available`. The first
 run can be quiet while Xcode compiles Rust, Swift plugin code, and native
@@ -223,7 +223,7 @@ and `altool` unless debugging the helper itself. Start with
 `pnpm release:ios testflight --build-number=<number> --wait` or upload an
 existing IPA with `pnpm release:ios upload --ipa=<path> --wait`.
 
-The iOS bundle identifier is `app.reflect.ios`, intentionally separate from the
+The iOS bundle identifier is `app.lore.ios`, intentionally separate from the
 old Capacitor TestFlight app (`app.reflect.ReflectMobile`). The release helper
 verifies the IPA bundle identifier and `ITSAppUsesNonExemptEncryption=false`
 before upload. See `docs/ios-testflight.md` for App Store Connect setup, local

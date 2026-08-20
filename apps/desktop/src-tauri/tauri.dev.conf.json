@@ -1,11 +1,11 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Reflect Dev",
-  "identifier": "app.reflect.desktop.dev",
+  "productName": "Lore Dev",
+  "identifier": "app.lore.desktop.dev",
   "app": {
     "windows": [
       {
-        "title": "Reflect Dev",
+        "title": "Lore Dev",
         "width": 1300,
         "height": 650,
         "titleBarStyle": "Overlay",
@@ -33,7 +33,7 @@
   "plugins": {
     "updater": {
       "endpoints": [
-        "https://github.com/team-reflect/reflect-open/releases/download/updater-dev-noop/latest.json"
+        "https://github.com/mariomile/Lore/releases/download/updater-dev-noop/latest.json"
       ]
     }
   }

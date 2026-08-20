@@ -16,8 +16,8 @@ import { definePluginCommand, definePluginEvent, ignoredResult } from './plugin'
 
 /** The two auto-renewable subscription products (App Store Connect owns them). */
 export const IAP_PRODUCT_IDS = {
-  monthly: 'app.reflect.ios.pro.monthly',
-  yearly: 'app.reflect.ios.pro.yearly',
+  monthly: 'app.lore.ios.pro.monthly',
+  yearly: 'app.lore.ios.pro.yearly',
 } as const
 
 // Product:

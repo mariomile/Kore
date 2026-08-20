@@ -120,11 +120,11 @@ class RecordingPlugin: Plugin {
   /// through NotificationCenter. Names are duplicated in
   /// `gen/apple/Sources/reflect-open/` — keep them in sync.
   static let startRequestedNotification = Notification.Name(
-    "app.reflect.recording.start-requested")
+    "app.lore.recording.start-requested")
   static let stopRequestedNotification = Notification.Name(
-    "app.reflect.recording.stop-requested")
+    "app.lore.recording.stop-requested")
   /// The home-screen quick action's `UIApplicationShortcutItemType`.
-  static let recordShortcutType = "app.reflect.record-audio"
+  static let recordShortcutType = "app.lore.record-audio"
   /// The persisted native-action queue (the V1 handshake): an action fired
   /// from an OS entry point survives webview crashes and cold starts here
   /// until the webview confirms it ran.
@@ -385,7 +385,7 @@ class RecordingPlugin: Plugin {
     guard recorder.record(forDuration: maxDurationMs / 1000) else {
       deactivateAudioSession()
       throw NSError(
-        domain: "app.reflect.recording", code: 1,
+        domain: "app.lore.recording", code: 1,
         userInfo: [NSLocalizedDescriptionKey: "the audio recorder refused to start"])
     }
 
@@ -711,7 +711,7 @@ class RecordingPlugin: Plugin {
     let url = URL(fileURLWithPath: path).standardizedFileURL
     guard url.path.hasPrefix(directory.path + "/") else {
       throw NSError(
-        domain: "app.reflect.recording", code: 2,
+        domain: "app.lore.recording", code: 2,
         userInfo: [NSLocalizedDescriptionKey: "path is outside the recording staging directory"])
     }
     return url

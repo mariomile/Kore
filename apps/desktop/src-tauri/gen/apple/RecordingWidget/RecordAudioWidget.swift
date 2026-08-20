@@ -27,7 +27,7 @@ struct RecordProvider: TimelineProvider {
 /// survives cold starts and webview crashes (the V1 handshake).
 struct RecordAudioWidget: Widget {
   var body: some WidgetConfiguration {
-    StaticConfiguration(kind: "app.reflect.record-audio", provider: RecordProvider()) { _ in
+    StaticConfiguration(kind: "app.lore.record-audio", provider: RecordProvider()) { _ in
       RecordAudioWidgetView()
         .widgetURL(URL(string: "reflect://record-audio"))
         .widgetBackgroundCompat()

@@ -20,25 +20,25 @@ import { pathToFileURL } from 'node:url'
 
 const DEFAULT_EXPORT_METHOD = 'app-store-connect'
 const EXPORT_METHODS = new Set(['app-store-connect', 'release-testing', 'debugging', 'validation'])
-const IOS_BUNDLE_IDENTIFIER = 'app.reflect.ios'
+const IOS_BUNDLE_IDENTIFIER = 'app.lore.ios'
 const NON_EXEMPT_ENCRYPTION_KEY = 'ITSAppUsesNonExemptEncryption'
 const KEYCHAIN_SERVICE = 'reflect-notary'
-const SHARE_EXTENSION_APP_GROUP = 'group.app.reflect'
+const SHARE_EXTENSION_APP_GROUP = 'group.app.lore'
 
 const here = import.meta.dirname
 const appDir = join(here, '..')
 const repoRoot = join(here, '..', '..', '..')
 const iosBuildDir = join(appDir, 'src-tauri', 'gen', 'apple', 'build')
 const iosArchive = join(iosBuildDir, 'reflect-open_iOS.xcarchive')
-const iosAppBinary = join(iosArchive, 'Products', 'Applications', 'Reflect.app', 'Reflect')
+const iosAppBinary = join(iosArchive, 'Products', 'Applications', 'Lore.app', 'Lore')
 const iosDsymBinary = join(
   iosArchive,
   'dSYMs',
-  'Reflect.app.dSYM',
+  'Lore.app.dSYM',
   'Contents',
   'Resources',
   'DWARF',
-  'Reflect',
+  'Lore',
 )
 
 function log(message) {

@@ -712,9 +712,9 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = app.reflect.ios.share;
+				PRODUCT_BUNDLE_IDENTIFIER = app.lore.ios.share;
 				PRODUCT_NAME = ShareExtension;
-				REFLECT_DISPLAY_NAME = Reflect;
+				REFLECT_DISPLAY_NAME = Lore;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -746,9 +746,9 @@
 				);
 				"LIBRARY_SEARCH_PATHS[arch=arm64]" = "$(inherited) $(PROJECT_DIR)/Externals/arm64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/$(PLATFORM_NAME) $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/$(PLATFORM_NAME)";
 				"LIBRARY_SEARCH_PATHS[arch=x86_64]" = "$(inherited) $(PROJECT_DIR)/Externals/x86_64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/$(PLATFORM_NAME) $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/$(PLATFORM_NAME)";
-				PRODUCT_BUNDLE_IDENTIFIER = app.reflect.ios;
-				PRODUCT_NAME = Reflect;
-				REFLECT_DISPLAY_NAME = Reflect;
+				PRODUCT_BUNDLE_IDENTIFIER = app.lore.ios;
+				PRODUCT_NAME = Lore;
+				REFLECT_DISPLAY_NAME = Lore;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -832,9 +832,9 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = app.reflect.ios.dev.widgets;
+				PRODUCT_BUNDLE_IDENTIFIER = app.lore.ios.dev.widgets;
 				PRODUCT_NAME = RecordingWidget;
-				REFLECT_DISPLAY_NAME = "Reflect Dev";
+				REFLECT_DISPLAY_NAME = "Lore Dev";
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -853,9 +853,9 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = app.reflect.ios.dev.share;
+				PRODUCT_BUNDLE_IDENTIFIER = app.lore.ios.dev.share;
 				PRODUCT_NAME = ShareExtension;
-				REFLECT_DISPLAY_NAME = "Reflect Dev";
+				REFLECT_DISPLAY_NAME = "Lore Dev";
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -875,9 +875,9 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = app.reflect.ios.widgets;
+				PRODUCT_BUNDLE_IDENTIFIER = app.lore.ios.widgets;
 				PRODUCT_NAME = RecordingWidget;
-				REFLECT_DISPLAY_NAME = Reflect;
+				REFLECT_DISPLAY_NAME = Lore;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -909,9 +909,9 @@
 				);
 				"LIBRARY_SEARCH_PATHS[arch=arm64]" = "$(inherited) $(PROJECT_DIR)/Externals/arm64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/$(PLATFORM_NAME) $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/$(PLATFORM_NAME)";
 				"LIBRARY_SEARCH_PATHS[arch=x86_64]" = "$(inherited) $(PROJECT_DIR)/Externals/x86_64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/$(PLATFORM_NAME) $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/$(PLATFORM_NAME)";
-				PRODUCT_BUNDLE_IDENTIFIER = app.reflect.ios.dev;
-				PRODUCT_NAME = Reflect;
-				REFLECT_DISPLAY_NAME = "Reflect Dev";
+				PRODUCT_BUNDLE_IDENTIFIER = app.lore.ios.dev;
+				PRODUCT_NAME = Lore;
+				REFLECT_DISPLAY_NAME = "Lore Dev";
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";

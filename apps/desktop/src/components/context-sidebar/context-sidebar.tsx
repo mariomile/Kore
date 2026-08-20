@@ -55,18 +55,21 @@ export function ContextSidebar({ target }: ContextSidebarProps): ReactElement {
             type="button"
             role="tab"
             aria-selected={panel === id}
+            aria-label={label}
+            title={label}
             onClick={() => {
               setPanel(id)
             }}
             className={cn(
-              'flex h-7 flex-1 items-center justify-center gap-1.5 rounded-md text-xs font-medium',
+              // Icon-only tabs; the wide flex-1 hit area keeps them easy to
+              // reach while the label lives in the tooltip and aria-label.
+              'flex h-7 flex-1 items-center justify-center rounded-md',
               panel === id
                 ? 'border border-border bg-surface text-text shadow-sm'
                 : 'text-text-secondary hover:bg-surface-hover hover:text-text',
             )}
           >
-            <Icon aria-hidden strokeWidth={1.75} className="size-3.5 shrink-0" />
-            <span>{label}</span>
+            <Icon aria-hidden strokeWidth={1.75} className="size-4 shrink-0" />
           </button>
         ))}
       </div>

@@ -27,6 +27,16 @@ customization effort.
 
 ## Shipped (this fork)
 
+- MCP servers, in-app: Settings → MCP servers holds each server's shape
+  (stdio command or HTTP URL, which env variables it needs) while the
+  values — API tokens — live only in the OS keychain, written on save and
+  deleted with the server. Enabled servers ride agent chat and automations
+  **in edit mode only** (read-only chat stays zero-egress): Claude Code
+  gets one inline `--mcp-config` document with `--strict-mcp-config` (the
+  user's global MCP config never bleeds into a vault run) and per-server
+  `mcp__<name>` allow rules; Codex gets the equivalent `-c mcp_servers.*`
+  overrides. Both grammars verified against the real CLIs.
+
 - Automations: scheduled agent runs while the app is open — settings-backed
   routines (daily/weekly at a local time, catch-up on launch), executed
   headless through the agent CLI providers in edit mode with the active

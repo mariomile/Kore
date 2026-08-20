@@ -4,6 +4,7 @@ import { call } from '../ipc/invoke'
 import type { ChatStreamEvent } from './chat/stream-chat'
 import { agentContextPromptLines, type AgentPromptContext } from './agent-profiles'
 import { agentCliPrompt, streamAgentCliTurn, vaultEditRules, type AgentCliChunk } from './agent-cli'
+import { claudeMcpConfigJson, type ResolvedMcpServer } from './mcp'
 
 /**
  * The Claude Code CLI provider ("subscription" AI): chat runs through the
@@ -100,6 +101,7 @@ export function claudeCliSettingsJson(
   graphRoot: string,
   privateNotePaths: string[],
   allowEdits = false,
+  mcpServerNames: string[] = [],
 ): string {
   // Claude Code path rules: a leading `//` anchors at the filesystem root (a
   // single `/` would be settings-relative and silently match nothing). A
@@ -125,7 +127,11 @@ export function claudeCliSettingsJson(
     'WebSearch',
     'WebFetch',
   ]
-  return JSON.stringify({ permissions: { deny } })
+  // Headless runs can't prompt for tool approval, so each configured MCP
+  // server's tools are pre-allowed by server name (`mcp__<name>` covers all
+  // of its tools). Deny rules still win where they overlap.
+  const allow = mcpServerNames.map((name) => `mcp__${name}`)
+  return JSON.stringify({ permissions: { deny, ...(allow.length > 0 ? { allow } : {}) } })
 }
 
 /** The complete argument list for one headless chat run. */
@@ -134,7 +140,9 @@ export function claudeCliArgs(options: {
   systemPrompt: string
   settingsJson: string
   allowEdits?: boolean | undefined
+  mcpServers?: ResolvedMcpServer[] | undefined
 }): string[] {
+  const mcpServers = options.mcpServers ?? []
   return [
     '-p',
     '--output-format',
@@ -149,6 +157,11 @@ export function claudeCliArgs(options: {
     options.systemPrompt,
     '--settings',
     options.settingsJson,
+    // The user's global MCP configuration must never bleed into a vault run:
+    // only the servers the app resolved for this run exist, or none at all.
+    ...(mcpServers.length > 0
+      ? ['--mcp-config', claudeMcpConfigJson(mcpServers), '--strict-mcp-config']
+      : []),
     ...(options.model === CLAUDE_CLI_DEFAULT_MODEL ? [] : ['--model', options.model]),
   ]
 }
@@ -220,6 +233,8 @@ export interface StreamCliChatOptions {
   agentContext?: AgentPromptContext | null
   /** Stage memory writes as pending proposals instead of direct edits. */
   memoryWriteApproval?: boolean
+  /** MCP servers resolved for this run (edit mode only; [] = none). */
+  mcpServers?: ResolvedMcpServer[] | undefined
   /** Aborts the run mid-stream (the UI's stop button). */
   signal?: AbortSignal | undefined
 }
@@ -244,8 +259,10 @@ export function streamClaudeCliChat(
         options.graphRoot,
         options.privateNotePaths,
         options.allowEdits === true,
+        (options.mcpServers ?? []).map((server) => server.name),
       ),
       allowEdits: options.allowEdits,
+      mcpServers: options.mcpServers,
     }),
     prompt: agentCliPrompt(options.messages),
     cwd: options.graphRoot,

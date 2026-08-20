@@ -41,8 +41,10 @@ another git remote are connected directly by the user.
   memory (its file), a shared user profile and shared memory (signed facts +
   a session journal) every agent reads, edit mode so chat can actually work
   the vault, write approval, and **Automations** — scheduled agent runs
-  (with a one-click Memory curator) that keep the whole thing tidy. All of
-  it plain markdown under `agents/`, portable and versioned like any note.
+  (with a one-click Memory curator) that keep the whole thing tidy — plus
+  **MCP servers** configured in-app (tokens in the OS keychain, never on
+  disk) that give agents external tools in edit mode. All of it plain
+  markdown under `agents/`, portable and versioned like any note.
 - **Everything else:** unlinked mentions with one-click linking, an All-notes
   masonry view, template placeholders (`{{date}}`, `{{time}}`, `{{title}}`),
   task priorities and recurrence, saved searches, and an Insights dashboard.

@@ -14,6 +14,7 @@ export const SETTINGS_SECTIONS = [
   { id: 'audio-memos', title: 'Audio memos' },
   { id: 'ai-chat', title: 'AI chat' },
   { id: 'ai-prompts', title: 'AI prompts' },
+  { id: 'mcp', title: 'MCP servers' },
   // macOS only — installs files under ~/.agents for terminal coding agents.
   { id: 'agents', title: 'Agents' },
   // Only shown where the OS frameworks exist — see use-visible-settings-sections.

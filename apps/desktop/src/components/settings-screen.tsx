@@ -12,6 +12,7 @@ import { DestructiveSection } from './settings/destructive-section'
 import { EditorSection } from './settings/editor-section'
 import { ImportSection } from './settings/import-section'
 import { IntegrationsSection } from './settings/integrations-section'
+import { McpSection } from './settings/mcp-section'
 import { SearchSection } from './settings/search-section'
 import { SyncSection } from './settings/sync-section'
 import { TemplatesSection } from './settings/templates-section'
@@ -36,6 +37,7 @@ export function SettingsScreen(): ReactElement {
         <AudioMemosSection />
         <AiChatSection />
         <AiPromptsSection />
+        <McpSection />
         <AgentsSection />
         <IntegrationsSection />
         <SyncSection />

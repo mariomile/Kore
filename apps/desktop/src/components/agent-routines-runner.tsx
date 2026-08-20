@@ -4,6 +4,7 @@ import {
   isCliAgentProvider,
   listPrivateNotePaths,
   loadAgentContext,
+  resolveMcpServers,
   routineIsDue,
   streamCliAgentChat,
   ROUTINE_RUN_SUFFIX,
@@ -74,6 +75,7 @@ export function AgentRoutinesRunner(): null {
           return
         }
         const privateNotePaths = await listPrivateNotePaths()
+        const mcpServers = await resolveMcpServers(settingsRef.current.mcpServers).catch(() => [])
         const events = streamCliAgentChat(provider, {
           model: context.profile?.model ?? 'default',
           messages: [{ role: 'user', content: `${routine.prompt}\n${ROUTINE_RUN_SUFFIX}` }],
@@ -84,6 +86,7 @@ export function AgentRoutinesRunner(): null {
           privateNotePaths,
           allowEdits: true,
           agentContext: context,
+          mcpServers,
           memoryWriteApproval: settingsRef.current.memoryWriteApproval,
         })
         let failure: string | null = null

@@ -19,6 +19,7 @@ import {
   listPrivateNotePaths,
   loadAgentContext,
   loadChatGraphContext,
+  resolveMcpServers,
   loadChatMessages,
   resolveChatModel,
   saveChatMessage,
@@ -113,6 +114,7 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
   const chatAllowEditsRef = useRef(settings.chatAllowEdits)
   const activeAgentProfileRef = useRef(settings.activeAgentProfile)
   const memoryWriteApprovalRef = useRef(settings.memoryWriteApproval)
+  const mcpServersRef = useRef(settings.mcpServers)
   const instructionsRef = useRef(instructions)
   useEffect(() => {
     turnsRef.current = turns
@@ -125,6 +127,7 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
     chatAllowEditsRef.current = settings.chatAllowEdits
     activeAgentProfileRef.current = settings.activeAgentProfile
     memoryWriteApprovalRef.current = settings.memoryWriteApproval
+    mcpServersRef.current = settings.mcpServers
     instructionsRef.current = instructions
   })
 
@@ -314,6 +317,12 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
             if (privateNotePaths === null) {
               return null
             }
+            // MCP tools ride only edit-mode runs: read-only chat stays a
+            // zero-egress surface. Secrets resolve from the keychain here,
+            // per run — never stored anywhere else.
+            const mcpServers = chatAllowEditsRef.current
+              ? await resolveMcpServers(mcpServersRef.current).catch(() => [])
+              : []
             return streamCliAgentChat(config.provider, {
               model: config.model,
               messages,
@@ -323,6 +332,7 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
               graphName: graph.name,
               privateNotePaths,
               allowEdits: chatAllowEditsRef.current,
+              mcpServers,
               agentContext,
               memoryWriteApproval: memoryWriteApprovalRef.current,
               signal: controller.signal,

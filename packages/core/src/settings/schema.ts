@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { agentRoutinesSchema } from '../ai/agent-routines'
+import { mcpServersSchema } from '../ai/mcp'
 import { isHttpBaseUrl, normalizeOpenAICompatibleBaseUrl } from '../ai/openai-compatible'
 
 /**
@@ -780,6 +781,7 @@ export const settingsSchema = z.looseObject({
   activeAgentProfile: activeAgentProfileSchema,
   memoryWriteApproval: memoryWriteApprovalSchema,
   agentRoutines: agentRoutinesSchema,
+  mcpServers: mcpServersSchema,
   aiPrompts: aiPromptsSchema,
 })
 

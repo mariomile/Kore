@@ -129,6 +129,17 @@ export {
   type RoutineSchedule,
 } from '../ai/agent-routines'
 export {
+  claudeMcpConfigJson,
+  codexMcpConfigArgs,
+  mcpSecretName,
+  mcpServerSchema,
+  mcpServersSchema,
+  resolveMcpServers,
+  type McpServer,
+  type McpTransport,
+  type ResolvedMcpServer,
+} from '../ai/mcp'
+export {
   agentCliPrompt,
   checkAgentCli,
   type AgentCliBinary,

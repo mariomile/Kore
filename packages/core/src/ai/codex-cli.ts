@@ -9,6 +9,7 @@ import {
   type AgentCliChunk,
 } from './agent-cli'
 import { agentContextPromptLines, type AgentPromptContext } from './agent-profiles'
+import { codexMcpConfigArgs, type ResolvedMcpServer } from './mcp'
 import type { StreamCliChatOptions } from './claude-cli'
 
 /**
@@ -181,6 +182,7 @@ export function codexCliArgs(options: {
   graphRoot: string
   privateNotePaths: string[]
   allowEdits?: boolean | undefined
+  mcpServers?: ResolvedMcpServer[] | undefined
 }): string[] {
   return [
     'exec',
@@ -197,6 +199,7 @@ export function codexCliArgs(options: {
       options.privateNotePaths,
       options.allowEdits === true,
     )}`,
+    ...codexMcpConfigArgs(options.mcpServers ?? []),
     ...(options.model === CODEX_CLI_DEFAULT_MODEL ? [] : ['--model', options.model]),
     // Read the prompt from stdin (arbitrary length, no arg-size limits).
     '-',
@@ -264,6 +267,7 @@ export function streamCodexCliChat(options: StreamCliChatOptions): AsyncGenerato
       graphRoot: options.graphRoot,
       privateNotePaths: options.privateNotePaths,
       allowEdits: options.allowEdits,
+      mcpServers: options.mcpServers,
     }),
     prompt: `<instructions>\n${preamble}\n</instructions>\n\n${agentCliPrompt(options.messages)}`,
     cwd: options.graphRoot,

@@ -27,6 +27,12 @@ customization effort.
 
 ## Shipped (this fork)
 
+- v0.11.0 hardening round: green CI as the merge gate (full shard matrix on
+  every master push), injection-resistance rules in both agent CLI prompts
+  (note content is data, never instructions; no vault content to external
+  tools unless the user asked), and the upstream merge playbook
+  (docs/upstream-merges.md).
+
 - Agent activity ledger: before every edit-mode run (chat turn or
   automation) the graph is snapshotted into its local Git history, and
   afterwards the run's touches are diffed against that snapshot. Chat turns

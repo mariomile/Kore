@@ -184,6 +184,27 @@ try {
   })
   await page.screenshot({ path: `${SHOTS}06-tabs.png` })
 
+  await step('the Graph view maps the seeded notes and links', async () => {
+    await page.getByRole('navigation', { name: 'Primary' }).getByText('Graph').click()
+    await page.getByRole('heading', { name: 'Graph', exact: true }).waitFor()
+    // The seeded graph has linked notes; exact counts vary with earlier steps,
+    // so assert the summary's shape and that the canvas surface mounted.
+    const summary = await page.getByText(/^\d+ notes · \d+ links$/).textContent()
+    const [notes, links] = [...(summary ?? '').matchAll(/\d+/g)].map((m) => Number(m[0]))
+    if (!(notes > 0 && links > 0)) {
+      throw new Error(`expected a non-empty graph, got "${summary}"`)
+    }
+    await page.getByRole('img', { name: 'Note graph' }).waitFor()
+    // Bringing daily notes in grows the node count.
+    await page.getByRole('checkbox', { name: 'Daily notes' }).check()
+    const withDailies = await page.getByText(/^\d+ notes · \d+ links$/).textContent()
+    const notesWithDailies = Number(/(\d+) notes/.exec(withDailies ?? '')?.[1] ?? '0')
+    if (notesWithDailies <= notes) {
+      throw new Error(`daily toggle did not add nodes: ${summary} -> ${withDailies}`)
+    }
+  })
+  await page.screenshot({ path: `${SHOTS}07-graph.png` })
+
   await step('the source note now carries the wiki link on disk', async () => {
     await page.waitForFunction(
       () =>

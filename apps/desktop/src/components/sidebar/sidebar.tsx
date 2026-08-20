@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import { isUntitledNotePath, type GraphInfo } from '@reflect/core'
-import { ChartColumn, ListChecks, MessageSquare, SquarePen } from 'lucide-react'
+import { ChartColumn, ListChecks, MessageSquare, SquarePen, Waypoints } from 'lucide-react'
 import { AudioMemoButton } from '@/components/audio-memo/audio-memo-button'
 import { ListIcon } from '@/components/icons/list-icon'
 import { PencilIcon } from '@/components/icons/pencil-icon'
@@ -133,6 +133,17 @@ export function Sidebar({ graph, context }: SidebarProps): ReactElement {
             binding={keybindingFor('nav.insights') ?? undefined}
             active={route.kind === 'insights'}
             onClick={() => void runCommand('nav.insights', context)}
+          />
+          <SidebarItem
+            icon={
+              <span className={lucideBox}>
+                <Waypoints aria-hidden strokeWidth={1.75} className="size-4" />
+              </span>
+            }
+            label="Graph"
+            binding={keybindingFor('nav.graphMap') ?? undefined}
+            active={route.kind === 'graphMap'}
+            onClick={() => void runCommand('nav.graphMap', context)}
           />
         </nav>
       </div>

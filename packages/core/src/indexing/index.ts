@@ -111,6 +111,7 @@ export {
   type TaskGroup,
   type TaskGroupKind,
 } from './group-tasks'
+export { getGraphMap, type GraphMap, type GraphMapEdge, type GraphMapNode } from './graph-map'
 export {
   loadGraphInsights,
   listPrivateNotePaths,

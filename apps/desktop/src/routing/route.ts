@@ -19,6 +19,8 @@ export type Route =
   | { kind: 'tasks' }
   | { kind: 'chat' }
   | { kind: 'insights' }
+  // The link map over the whole graph (not the graph *switcher* below).
+  | { kind: 'graphMap' }
   | { kind: 'settings' }
   // The graph-switcher screen — a mobile settings sub-screen; desktop renders
   // it as the settings screen (its switcher lives in the sidebar footer).
@@ -37,6 +39,7 @@ export function routesEqual(a: Route, b: Route): boolean {
     case 'tasks':
     case 'chat':
     case 'insights':
+    case 'graphMap':
     case 'settings':
     case 'graphs':
       return true

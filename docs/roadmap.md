@@ -6,7 +6,8 @@ customization effort.
 
 ## Next up
 
-- **Graph view** — a visual map of note links (data already in the index).
+- **Per-note version history** — a timeline UI over the existing Git backup
+  (diff + restore).
 
 ## Backlog
 
@@ -18,8 +19,6 @@ customization effort.
   the next occurrence (meowdown exposes no editor-side task-toggle
   callback); Tasks-view completions now spawn in every case, live session
   included.
-- **Per-note version history** — a timeline UI over the existing Git backup
-  (diff + restore).
 - **Styled note export** — HTML/PDF export of a single note in the app's
   design language.
 - **Mobile parity for the All-notes grid view** — the card grid currently
@@ -27,6 +26,14 @@ customization effort.
 
 ## Shipped (this fork)
 
+- Graph view: the whole graph's notes and resolved wiki links as a
+  force-directed map on a canvas (own deterministic layout, no viz
+  dependency) — pan, cursor-anchored zoom, hover to spotlight a
+  neighborhood, drag to rearrange, click to open. Node size follows
+  inbound links; hubs and small graphs are labeled. Daily notes are
+  hidden by default with a toggle. Sidebar row + palette command
+  (`nav.graphMap`). Follow-ups: local view scoped to the open note,
+  tag coloring, search-to-highlight.
 - Template placeholders: template bodies expand `{{date}}` (user's date
   format), `{{date:iso}}`, `{{time}}`, and `{{title}}` (the target note's
   display title) at insertion, from both the picker and the `/` menu.

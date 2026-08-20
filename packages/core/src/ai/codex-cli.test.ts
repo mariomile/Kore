@@ -73,7 +73,7 @@ describe('codexCliFilesystemToml', () => {
     // may not match — the deny list must not silently weaken off POSIX.
     const toml = codexCliFilesystemToml(String.raw`C:\graphs\work`, ['notes/"odd".md'])
     expect(toml).toContain('"C:/graphs/work/**" = "read"')
-    expect(toml).toContain('"C:/graphs/work/notes/\\"odd\\".md" = "deny"')
+    expect(toml).toContain(String.raw`"C:/graphs/work/notes/\"odd\".md" = "deny"`)
   })
 })
 

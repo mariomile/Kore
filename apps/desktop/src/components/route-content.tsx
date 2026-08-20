@@ -2,6 +2,7 @@ import type { ReactElement } from 'react'
 import { AllNotesScreen } from '@/components/all-notes/all-notes-screen'
 import { ChatScreen } from '@/components/chat/chat-screen'
 import { DailyStream } from '@/components/daily-stream'
+import { GraphMapScreen } from '@/components/graph-map/graph-map-screen'
 import { InsightsScreen } from '@/components/insights/insights-screen'
 import { SearchRoute } from '@/components/search-route'
 import { SingleNoteView } from '@/components/single-note-view'
@@ -52,6 +53,9 @@ export function RouteContent(): ReactElement {
           <InsightsScreen />
         </ScrollRestored>
       )
+    case 'graphMap':
+      // Owns its surface (a pan/zoom canvas), so no scroll wrapper.
+      return <GraphMapScreen />
     case 'graphs':
     // The graph-switcher route is a mobile settings sub-screen; on desktop
     // graph switching lives in the sidebar footer, so it renders as settings.

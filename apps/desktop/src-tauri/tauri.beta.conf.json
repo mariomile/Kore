@@ -31,9 +31,7 @@
   },
   "plugins": {
     "updater": {
-      "endpoints": [
-        "https://github.com/mariomile/Lore/releases/download/updater-beta/latest.json"
-      ]
+      "endpoints": ["https://github.com/mariomile/Lore/releases/download/updater-beta/latest.json"]
     }
   }
 }

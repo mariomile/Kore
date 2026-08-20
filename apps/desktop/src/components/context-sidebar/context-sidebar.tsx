@@ -3,7 +3,6 @@ import { CalendarDays, Info, MessageSquare } from 'lucide-react'
 import { ChatScreen } from '@/components/chat/chat-screen'
 import { useToday } from '@/lib/use-today'
 import { cn } from '@/lib/utils'
-import { hasMacosTitleBarOverlay } from '@/lib/window-chrome'
 import { DailyContextSidebar } from './daily-context-sidebar'
 import { DailyEventsSection } from './daily-events-section'
 import { DayCalendar } from './day-calendar'
@@ -40,21 +39,16 @@ export function ContextSidebar({ target }: ContextSidebarProps): ReactElement {
   const calendarDate = target?.kind === 'daily' ? target.date : today
 
   return (
-    <div
-      className={cn(
-        'flex h-full min-h-0 flex-col',
-        // Like the left sidebar, the rail runs the full window height — on
-        // macOS the switcher must clear the WindowDragRegion strip.
-        hasMacosTitleBarOverlay && 'pt-9',
-      )}
-    >
+    <div className="flex h-full min-h-0 flex-col">
       {/* The switcher rides the same 44px top band as the tab strip and the
-          sidebar search, so all three sit on one optical line. */}
-      <div className="flex h-11 flex-none items-center px-3">
+          sidebar search — one optical line across the window. On macOS the
+          band doubles as title-bar drag area; the switcher itself is lifted
+          above the WindowDragRegion strip so its segments stay clickable. */}
+      <div data-tauri-drag-region className="flex h-11 flex-none items-center px-3">
         <div
           role="tablist"
           aria-label="Context panels"
-          className="flex w-full gap-0.5 rounded-lg bg-surface-hover p-0.5"
+          className="window-drag-control flex w-full gap-0.5 rounded-lg bg-surface-hover p-0.5"
         >
           {PANELS.map(({ id, label, icon: Icon }) => (
             <button

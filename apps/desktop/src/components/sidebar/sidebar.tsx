@@ -47,23 +47,27 @@ export function Sidebar({ graph, context }: SidebarProps): ReactElement {
   const lucideBox = 'flex size-6 shrink-0 items-center justify-center'
 
   return (
-    <div
-      className={cn(
-        'flex h-full min-h-0 flex-col',
-        // The sidebar runs the full window height, so on macOS the overlaid
-        // traffic lights and the WindowDragRegion strip sit over its top —
-        // start the search band below them.
-        hasMacosTitleBarOverlay && 'pt-9',
-      )}
-    >
+    <div className="flex h-full min-h-0 flex-col">
       <div className="flex flex-none flex-col">
         {/* The search row shares the 44px top band with the tab strip and the
-            context rail's switcher — one optical line across the window. */}
-        <div className="flex h-11 flex-none items-center gap-1.5 px-4">
-          <div className="min-w-0 flex-1">
+            context rail's switcher — one optical line across the window. On
+            macOS the overlaid traffic lights own the band's left edge, so the
+            row starts past them, and its controls are lifted above the
+            WindowDragRegion strip so they stay clickable while the empty band
+            still drags the window. */}
+        <div
+          data-tauri-drag-region
+          className={cn(
+            'flex h-11 flex-none items-center gap-1.5 pr-4',
+            hasMacosTitleBarOverlay ? 'pl-20' : 'pl-4',
+          )}
+        >
+          <div className="window-drag-control min-w-0 flex-1">
             <SidebarSearch onOpen={() => context.openPalette()} />
           </div>
-          <AudioMemoButton />
+          <div className="window-drag-control flex items-center">
+            <AudioMemoButton />
+          </div>
         </div>
 
         <nav aria-label="Primary" className="mt-5 space-y-1 px-4">

@@ -2,8 +2,10 @@
 
 A small, self-contained read/discovery CLI over a Reflect graph (Plan 14). It
 reads the graph's markdown files directly and opens `.reflect/index.sqlite`
-strictly read-only — no running desktop app required. It never writes: markdown
-edits are the write path, and the index is refreshed by the desktop app.
+strictly read-only — no running desktop app required. The index is refreshed
+by the desktop app, never by the CLI, and markdown is the write path: the one
+command that writes is `capture`, an append-only list item into today's daily
+note (the app's own capture convention).
 
 ```
 reflect today              # print today's daily note
@@ -12,6 +14,8 @@ reflect search <query>     # ranked full-text search over the index
 reflect show <note>        # print a note by date, path, title, or alias
 reflect path <note>        # resolve a note to its absolute path
 reflect open <note>        # open a note in the app (reflect:// deep link)
+reflect tasks              # the graph's open tasks (--all includes done)
+reflect capture <text>     # append a bullet to today's daily note
 ```
 
 Built from `apps/cli` (`cargo build -p reflect-cli`); bundled with the desktop
@@ -53,7 +57,7 @@ just-flagged note.
 | 1 | runtime error (no graph, IO/SQL failure) |
 | 2 | usage error |
 | 3 | note not found, or note is private |
-| 4 | search index missing or unusable (`search` only) |
+| 4 | search index missing or unusable (`search`/`tasks`) |
 
 ## Commands
 
@@ -157,9 +161,53 @@ CLI surface, before their address leaks.
 { "path": "notes/project-x.md", "url": "reflect://note/01hzy3…", "launched": false }
 ```
 
+### `reflect tasks [--all] [--limit N] [--json]`
+
+Lists the graph's tasks (round `+ [ ]` checkboxes) from the index's tasks
+projection — open ones by default, `--all` includes completed. Rows come back
+grouped by source note in file order, each with the note's title and the
+task's due date (the first calendar-valid `[[YYYY-MM-DD]]` link inside the
+item). Like `search`, this requires the index (exit `4` when missing) and
+re-checks each source note's own frontmatter, so a note flagged private after
+the last index run never surfaces. A stale index warns on stderr and sets
+`"stale": true`.
+
+```jsonc
+// reflect tasks --json
+{
+  "stale": false,
+  "tasks": [
+    { "path": "notes/project.md", "title": "Project X", "text": "pay bill", "checked": false, "dueDate": "2026-08-22" }
+  ]
+}
+```
+
+### `reflect capture <text> [--task] [--json]`
+
+The CLI's only write: appends `<text>` as one list item to today's daily note,
+creating the file when it doesn't exist yet (dailies are lazy). `--task`
+appends an open task (`+ [ ] text`) instead of a plain bullet. The item joins
+a trailing bullet list with the list's own marker (a task only joins a `+`
+list — the round marker is what makes it a task); anything else gets a blank
+line and a fresh list. Line breaks in `<text>` collapse to spaces, the write
+is atomic (temp file + rename), and a `private: true` daily is refused with
+exit `3` before anything is read or written. stdout prints the daily's
+absolute path.
+
+```jsonc
+// reflect capture --task "Pay bill" --json
+{
+  "date": "2026-08-20",
+  "path": "daily/2026-08-20.md",
+  "absolutePath": "/…/graph/daily/2026-08-20.md",
+  "created": true,
+  "item": "+ [ ] Pay bill"
+}
+```
+
 ## For agents
 
-The five commands plus `--json` are the supported automation surface (e.g.
+The seven commands plus `--json` are the supported automation surface (e.g.
 `~/.agents` discovery workflows). The JSON field names and exit codes above
 are stable; new fields may be added, existing ones won't change meaning.
 Reading a private note is not possible through this surface by design — don't

@@ -3,26 +3,15 @@
 //! never builds or repairs the index — that's the desktop app's job). A stale
 //! index warns and still returns rows.
 
-use std::path::Path;
-
 use reflect_index_schema::{INDEX_FILE, REFLECT_DIR};
 
 use crate::commands::output::{print_json, HitJson, SearchJson};
-use crate::commands::warn;
+use crate::commands::{still_public_on_disk, warn};
 use crate::error::CliError;
 use crate::graph::Graph;
 use crate::index::{detect_staleness, open_read_only, IndexOpen};
 use crate::keys::fold_key;
-use crate::note_file::read_note;
 use crate::search::{build_fts_match, search_index, SearchHit};
-
-/// The privacy re-check: the index row said public, but the file's own
-/// frontmatter is the truth — a note flagged private after the last index run
-/// must not surface. Unreadable, missing, and iCloud-placeholder files fail
-/// closed: their current privacy state cannot be proven from disk.
-fn still_public_on_disk(root: &Path, rel_path: &str) -> bool {
-    read_note(root, rel_path).is_ok()
-}
 
 pub fn run(graph: &Graph, json: bool, query: &str, limit: usize) -> Result<(), CliError> {
     let opened = match open_read_only(&graph.root) {

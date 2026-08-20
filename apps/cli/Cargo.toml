@@ -20,7 +20,7 @@ sha2 = { workspace = true }
 pulldown-cmark = "0.13.4"
 saphyr = "0.0.6"
 unicode-normalization = "0.1.24"
+tempfile = { workspace = true }
 
 [dev-dependencies]
-tempfile = { workspace = true }
 reflect-index-schema = { path = "../../crates/index-schema" }

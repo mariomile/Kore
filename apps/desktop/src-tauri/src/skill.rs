@@ -352,7 +352,11 @@ mod tests {
         assert!(context
             .managed_content
             .contains("git -C \"/graphs/Personal\""));
-        assert!(!context.managed_content.contains("{{"));
+        // Renderer placeholders must all be filled; the template-placeholder
+        // documentation ({{date}}, {{title}}, …) legitimately stays literal.
+        for placeholder in ["{{SKILL_NAME}}", "{{GRAPH_NAME}}", "{{GRAPH_ROOT}}", "{{CLI_PATH}}"] {
+            assert!(!context.managed_content.contains(placeholder));
+        }
     }
 
     #[test]

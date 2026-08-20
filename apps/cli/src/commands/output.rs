@@ -63,6 +63,41 @@ pub struct HitJson {
     pub score: f64,
 }
 
+/// `tasks`: the graph's tasks plus the staleness signal.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TasksJson {
+    /// True when files on disk diverge from the index — tasks may be stale.
+    pub stale: bool,
+    pub tasks: Vec<TaskJson>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TaskJson {
+    /// Graph-relative path of the note the task lives in.
+    pub path: String,
+    pub title: String,
+    /// The task's text, without its checkbox marker.
+    pub text: String,
+    pub checked: bool,
+    /// The first calendar-valid `[[YYYY-MM-DD]]` link inside the item.
+    pub due_date: Option<String>,
+}
+
+/// `capture`: where the item landed.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CaptureJson<'a> {
+    pub date: &'a str,
+    pub path: &'a str,
+    pub absolute_path: String,
+    /// True when this capture created the daily note.
+    pub created: bool,
+    /// The exact line appended, marker included (e.g. `+ [ ] Pay bill`).
+    pub item: &'a str,
+}
+
 pub fn print_json<T: Serialize>(value: &T) -> Result<(), CliError> {
     let json = serde_json::to_string_pretty(value)
         .map_err(|err| CliError::Runtime(format!("could not serialize output: {err}")))?;

@@ -26,6 +26,13 @@ customization effort.
 
 ## Shipped (this fork)
 
+- Agent surface, leveled up: the `reflect` CLI gains `tasks` (the graph's
+  open tasks from the index, private notes filtered) and `capture` (the
+  CLI's only write — an atomic, append-only list item or `+ [ ]` task into
+  today's daily note, private dailies refused); the per-graph agent skill
+  (Settings → Agents) now also teaches authoring conventions — layout,
+  wiki links, task/priority/due-date syntax, frontmatter, templates — and
+  the in-app chat prompts explain the task syntax to the AI.
 - ChatGPT sign-in for the Codex provider, in-app: the add-provider dialog
   shows the CLI's auth status and runs the whole OAuth flow from a button
   (the CLI's localhost callback + the OS browser); sign-out included.

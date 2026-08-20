@@ -9,12 +9,13 @@ use clap::{Parser, Subcommand};
 use reflect_cli::error::CliError;
 use reflect_cli::{commands, graph};
 
-/// Read and discover notes in a Reflect graph.
+/// Read, discover, and capture notes in a Reflect graph.
 ///
 /// The graph resolves from --graph, then $REFLECT_GRAPH, then the nearest
 /// ancestor of the current directory containing .reflect/. Notes marked
-/// `private: true` are never returned. Exit codes: 0 ok, 1 error, 2 usage,
-/// 3 not found or private, 4 search index missing.
+/// `private: true` are never returned (and never captured into). Exit codes:
+/// 0 ok, 1 error, 2 usage, 3 not found or private, 4 index missing
+/// (search/tasks).
 #[derive(Parser)]
 #[command(name = "reflect", version)]
 struct Cli {
@@ -64,6 +65,23 @@ enum Command {
         #[arg(long)]
         print: bool,
     },
+    /// List the graph's tasks (open ones by default), from the search index
+    Tasks {
+        /// Include completed tasks too
+        #[arg(long)]
+        all: bool,
+        /// Maximum number of tasks
+        #[arg(long, default_value_t = 200)]
+        limit: usize,
+    },
+    /// Append a list item to today's daily note (the CLI's only write)
+    Capture {
+        /// The text of the item (one line; line breaks collapse to spaces)
+        text: String,
+        /// Append an open task (`+ [ ]`) instead of a plain bullet
+        #[arg(long)]
+        task: bool,
+    },
 }
 
 fn run(cli: &Cli) -> Result<(), CliError> {
@@ -74,6 +92,8 @@ fn run(cli: &Cli) -> Result<(), CliError> {
         Command::Show { note } => commands::show::run(&graph, cli.json, note),
         Command::Path { note } => commands::path::run(&graph, cli.json, note),
         Command::Open { note, print } => commands::open::run(&graph, cli.json, note, *print),
+        Command::Tasks { all, limit } => commands::tasks::run(&graph, cli.json, *all, *limit),
+        Command::Capture { text, task } => commands::capture::run(&graph, cli.json, text, *task),
     }
 }
 

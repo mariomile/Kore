@@ -904,3 +904,135 @@ fn scan_resolution_agrees_with_the_index_on_stems() {
     assert_eq!(stdout(&indexed), scanned_path);
     assert!(scanned_path.contains("a/Plan.md"));
 }
+
+// ---- tasks ------------------------------------------------------------------
+
+impl Fixture {
+    /// Insert one task row the way the desktop projection would.
+    fn insert_task(
+        &self,
+        rel_path: &str,
+        offset: i64,
+        text: &str,
+        checked: bool,
+        due: Option<&str>,
+    ) {
+        let conn =
+            rusqlite::Connection::open(self.root().join(".reflect").join("index.sqlite")).unwrap();
+        conn.execute(
+            "INSERT INTO tasks(note_path, marker_offset, text, raw, checked, due_date)
+             VALUES(?1, ?2, ?3, ?4, ?5, ?6)",
+            params![
+                rel_path,
+                offset,
+                text,
+                format!("[ ] {text}"),
+                i64::from(checked),
+                due
+            ],
+        )
+        .unwrap();
+    }
+}
+
+#[test]
+fn tasks_lists_open_tasks_and_excludes_private_notes() {
+    let fixture = graph();
+    fixture.write_note("notes/project.md", "# Project X\n+ [ ] pay bill\n+ [x] done\n");
+    fixture.write_note(
+        "notes/secret.md",
+        "---\nprivate: true\n---\n# Secret\n+ [ ] hidden task\n",
+    );
+    fixture.build_index();
+    fixture.insert_task("notes/project.md", 12, "pay bill", false, Some("2026-08-22"));
+    fixture.insert_task("notes/project.md", 27, "done", true, None);
+    fixture.insert_task("notes/secret.md", 30, "hidden task", false, None);
+
+    let value = json(&reflect(&fixture, &["tasks", "--json"]));
+    let tasks = value["tasks"].as_array().unwrap();
+    assert_eq!(tasks.len(), 1, "only the public open task: {value}");
+    assert_eq!(tasks[0]["path"], "notes/project.md");
+    assert_eq!(tasks[0]["title"], "Project X");
+    assert_eq!(tasks[0]["text"], "pay bill");
+    assert_eq!(tasks[0]["checked"], false);
+    assert_eq!(tasks[0]["dueDate"], "2026-08-22");
+
+    let all = json(&reflect(&fixture, &["tasks", "--all", "--json"]));
+    assert_eq!(all["tasks"].as_array().unwrap().len(), 2);
+
+    let human = reflect(&fixture, &["tasks"]);
+    assert!(human.status.success());
+    let text = stdout(&human);
+    assert!(text.contains("notes/project.md\tProject X"));
+    assert!(text.contains("  [ ] pay bill  (due 2026-08-22)"));
+    assert!(!text.contains("hidden task"));
+}
+
+#[test]
+fn tasks_without_an_index_exits_4() {
+    let fixture = graph();
+    let output = reflect(&fixture, &["tasks"]);
+    assert_eq!(output.status.code(), Some(4));
+    assert!(stderr(&output).contains("open this graph in Reflect"));
+}
+
+// ---- capture ----------------------------------------------------------------
+
+#[test]
+fn capture_joins_todays_trailing_list() {
+    let fixture = graph();
+    let rel_path = daily_path(&today_date());
+    let absolute = fixture.write_note(&rel_path, "# Plans\n\n- one\n");
+
+    let output = reflect(&fixture, &["capture", "two"]);
+    assert!(output.status.success(), "stderr: {}", stderr(&output));
+    assert_eq!(stdout(&output).trim_end(), absolute.display().to_string());
+    assert_eq!(
+        fs::read_to_string(&absolute).unwrap(),
+        "# Plans\n\n- one\n- two\n"
+    );
+}
+
+#[test]
+fn capture_task_creates_the_daily_and_reports_json() {
+    let fixture = graph();
+    let value = json(&reflect(
+        &fixture,
+        &["capture", "--task", "Pay bill", "--json"],
+    ));
+    assert_eq!(value["date"], today_date());
+    assert_eq!(value["path"], daily_path(&today_date()));
+    assert_eq!(value["created"], true);
+    assert_eq!(value["item"], "+ [ ] Pay bill");
+
+    let absolute = fixture.root().join(daily_path(&today_date()));
+    assert_eq!(fs::read_to_string(absolute).unwrap(), "+ [ ] Pay bill\n");
+}
+
+#[test]
+fn capture_refuses_a_private_daily() {
+    let fixture = graph();
+    let rel_path = daily_path(&today_date());
+    let content = "---\nprivate: true\n---\nsecret plans\n";
+    let absolute = fixture.write_note(&rel_path, content);
+
+    let output = reflect(&fixture, &["capture", "never lands"]);
+    assert_eq!(output.status.code(), Some(3));
+    assert!(stderr(&output).contains("private"));
+    assert_eq!(fs::read_to_string(absolute).unwrap(), content);
+}
+
+#[test]
+fn capture_rejects_empty_text_and_collapses_line_breaks() {
+    let fixture = graph();
+    let empty = reflect(&fixture, &["capture", "  \n  "]);
+    assert_eq!(empty.status.code(), Some(1));
+
+    let output = reflect(&fixture, &["capture", "line one\nline two"]);
+    assert!(output.status.success(), "stderr: {}", stderr(&output));
+    let absolute = fixture.root().join(daily_path(&today_date()));
+    assert_eq!(
+        fs::read_to_string(absolute).unwrap(),
+        "- line one line two\n"
+    );
+}

@@ -55,7 +55,7 @@ customization and what is planned next.
 ## Install
 
 **Install from a release (recommended):** grab the latest `.dmg` from
-[Releases](https://github.com/mariomile/My-reflect/releases) and drag
+[Releases](https://github.com/mariomile/Lore/releases) and drag
 **Lore.app** into Applications. The build is unsigned, so recent macOS
 quarantines the download and claims the app "is damaged" — it isn't; clear
 the quarantine flag once from Terminal and open normally:
@@ -77,7 +77,7 @@ npm install -g pnpm                   # pnpm (Node 22+ required)
 ```
 
 ```bash
-git clone https://github.com/mariomile/My-reflect.git lore
+git clone https://github.com/mariomile/Lore.git lore
 cd lore
 pnpm install
 pnpm tauri build

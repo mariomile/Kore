@@ -14,7 +14,7 @@
 #   TAURI_SIGNING_PRIVATE_KEY_PASSWORD  its password (may be empty)
 #
 # The in-app updater polls
-#   https://github.com/mariomile/My-reflect/releases/latest/download/latest.json
+#   https://github.com/mariomile/Lore/releases/latest/download/latest.json
 # which tauri-action uploads alongside the DMG.
 
 name: Release DMG

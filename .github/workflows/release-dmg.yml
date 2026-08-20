@@ -21,6 +21,9 @@ name: Release DMG
 on:
   push:
     tags: ['v*']
+    # Pointer branch: pushing (or fast-forwarding) release/dmg releases the
+    # version in apps/desktop/package.json — the tag-free trigger path.
+    branches: ['release/dmg']
   # Manual fallback: builds the version in apps/desktop/package.json and
   # creates (or reuses) its v<version> tag and release.
   workflow_dispatch: {}
@@ -61,7 +64,12 @@ jobs:
       - name: Build workspace
         run: pnpm build
 
-      - name: Build the app and publish the release
+      # Two mutually exclusive publish steps: with the updater keypair in the
+      # repo secrets the release carries signed updater artifacts and
+      # latest.json (auto-update works); without it the release degrades to a
+      # plain DMG instead of failing — add the secrets and re-run to upgrade.
+      - name: Build and publish (with auto-update)
+        if: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' }}
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -84,3 +92,28 @@ jobs:
           releaseDraft: false
           prerelease: false
           includeUpdaterJson: true
+
+      - name: Build and publish (DMG only — updater secrets not set)
+        if: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY == '' }}
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: apps/desktop
+          tauriScript: pnpm tauri
+          args: --config '{"bundle":{"createUpdaterArtifacts":false}}'
+          tagName: v__VERSION__
+          releaseName: 'Lore v__VERSION__'
+          releaseBody: |
+            Unsigned build for Apple Silicon Macs.
+
+            **First install:** download the `.dmg`, drag Lore.app into
+            Applications, then **right-click → Open** the first time
+            (Gatekeeper prompt for unsigned apps — once only).
+
+            _This release was built without the updater keypair, so it will
+            not auto-update. Add the `TAURI_SIGNING_PRIVATE_KEY` secrets and
+            publish the next release to enable auto-updates._
+          releaseDraft: false
+          prerelease: false
+          includeUpdaterJson: false

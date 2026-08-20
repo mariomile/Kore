@@ -37,6 +37,17 @@ export async function openNoteWindow(deepLink: string): Promise<void> {
 }
 
 /**
+ * Open (or focus) the in-app browser window on an http(s) page. The page
+ * loads in a separate webview window with no IPC exposure (its label matches
+ * no capability, and remote URLs never receive the invoke bridge), so
+ * arbitrary web content can never reach the graph. The shell refuses every
+ * non-web scheme — those stay with the OS opener and its own policy.
+ */
+export async function openBrowserWindow(url: string): Promise<void> {
+  await call('open_browser_window', { url }, voidSchema)
+}
+
+/**
  * Adopt the already-open graph for a secondary note window: a pure read of
  * the current graph + index sessions (never `graph_open`/`index_open`, whose
  * generation bumps would strand the main window's pinned commands) plus the

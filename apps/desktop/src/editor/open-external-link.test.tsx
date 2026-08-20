@@ -7,9 +7,14 @@ import { dispatchDeepLink } from '@/lib/deep-links/intake'
 import { useOpenExternalLink } from '@/editor/open-external-link'
 
 const openDeepLinkInNewWindow = vi.hoisted(() => vi.fn<() => Promise<boolean>>())
+const openBrowserWindow = vi.hoisted(() => vi.fn<() => Promise<void>>())
 
 vi.mock('@tauri-apps/plugin-opener', () => ({
   openUrl: vi.fn(async () => {}),
+}))
+vi.mock('@reflect/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@reflect/core')>()),
+  openBrowserWindow,
 }))
 
 vi.mock('@/lib/deep-links/intake', () => ({
@@ -31,6 +36,7 @@ function click(href: string, metaKey = false): MouseEvent {
 beforeEach(async () => {
   vi.clearAllMocks()
   openDeepLinkInNewWindow.mockResolvedValue(true)
+  openBrowserWindow.mockResolvedValue(undefined)
   const { result } = await renderHook(() => useOpenExternalLink())
   openExternalLink = result.current
 })
@@ -38,11 +44,30 @@ beforeEach(async () => {
 afterEach(cleanup)
 
 describe('openExternalLink', () => {
-  it('opens an http(s) link in the OS browser and blocks the frame navigation', async () => {
+  it('opens an http(s) link in the in-app browser window and blocks the frame navigation', async () => {
     const event = click('https://example.com')
 
-    expect(openUrl).toHaveBeenCalledWith('https://example.com')
+    expect(openBrowserWindow).toHaveBeenCalledWith('https://example.com')
+    expect(openUrl).not.toHaveBeenCalled()
     expect(event.defaultPrevented).toBe(true)
+  })
+
+  it('⌘-clicks an http(s) link to the OS browser instead', async () => {
+    click('https://example.com', true)
+
+    expect(openUrl).toHaveBeenCalledWith('https://example.com')
+    expect(openBrowserWindow).not.toHaveBeenCalled()
+  })
+
+  it('falls back to the OS browser when the in-app window cannot open', async () => {
+    // The fallback logs the shell failure it is recovering from.
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    openBrowserWindow.mockRejectedValue(new Error('no window for you'))
+    click('https://example.com')
+
+    await vi.waitFor(() => expect(openUrl).toHaveBeenCalledWith('https://example.com'))
+    expect(consoleError).toHaveBeenCalled()
+    consoleError.mockRestore()
   })
 
   it('routes a reflect:// link through the in-app deep-link intake, not the URL opener', async () => {

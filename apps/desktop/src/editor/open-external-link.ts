@@ -1,5 +1,6 @@
 import { useCallback } from 'react'
 import type { LinkClickHandler } from '@meowdown/core'
+import { errorMessage, openBrowserWindow } from '@reflect/core'
 import { isDeepLinkUrl } from '@/lib/deep-links/parse'
 import { useFollowDeepLink } from '@/lib/deep-links/use-follow-deep-link'
 import { openUrlSync } from '@/lib/open-url'
@@ -30,12 +31,22 @@ export function isOpenableExternalUrl(href: string): boolean {
   return scheme !== undefined && !BLOCKED_SCHEMES.has(scheme.toLowerCase())
 }
 
+/** Whether `href` is a web page the in-app browser window can host. */
+export function isWebUrl(href: string): boolean {
+  const scheme = /^([a-z][a-z0-9+.-]*):/i.exec(href)?.[1]?.toLowerCase()
+  return scheme === 'http' || scheme === 'https'
+}
+
 /**
- * Open a rendered Markdown link in its OS default app instead of letting the
- * click navigate the app's WebView frame. The static `MarkdownView` surfaces
- * aren't contenteditable, so an `<a href>` click would otherwise unload the
- * whole app. A `reflect://` link routes through the in-app deep-link pipeline
- * instead — the OS opener denies the scheme.
+ * Open a rendered Markdown link without letting the click navigate the app's
+ * WebView frame. The static `MarkdownView` surfaces aren't contenteditable,
+ * so an `<a href>` click would otherwise unload the whole app.
+ *
+ * Routing: a `reflect://` link goes through the in-app deep-link pipeline
+ * (the OS opener denies the scheme); a plain click on a web page opens the
+ * in-app browser window so reading a link never leaves the app, with the OS
+ * browser as the fallback when the shell can't build the window; a
+ * modifier-click — and every non-web app scheme — goes to the OS opener.
  */
 export function useOpenExternalLink(): LinkClickHandler {
   const followDeepLink = useFollowDeepLink()
@@ -46,9 +57,17 @@ export function useOpenExternalLink(): LinkClickHandler {
         followDeepLink({ href, openInNewWindow: mod })
         return
       }
-      if (isOpenableExternalUrl(href)) {
-        openUrlSync(href)
+      if (!isOpenableExternalUrl(href)) {
+        return
       }
+      if (!mod && isWebUrl(href)) {
+        void openBrowserWindow(href).catch((cause: unknown) => {
+          console.error(`in-app browser failed for ${href}:`, errorMessage(cause))
+          openUrlSync(href)
+        })
+        return
+      }
+      openUrlSync(href)
     },
     [followDeepLink],
   )

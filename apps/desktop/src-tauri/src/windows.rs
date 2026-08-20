@@ -56,6 +56,13 @@ pub const MAIN_WINDOW_LABEL: &str = "main";
 /// and hash labels would otherwise accrete in the state file forever).
 pub const NOTE_WINDOW_PREFIX: &str = "note-";
 
+/// Browser-window labels carry this prefix. It deliberately matches NO
+/// capability file: a browser window hosts arbitrary remote content, so it
+/// must never hold IPC permissions — combined with Tauri's default of not
+/// exposing IPC to remote URLs at all, the page gets a plain webview and
+/// nothing else.
+pub const BROWSER_WINDOW_PREFIX: &str = "browser-";
+
 /// Event delivered when an already-open target is requested again: the window
 /// may have navigated elsewhere since it opened, so a focus alone could
 /// surface the wrong note — the payload (the deep link) re-navigates it to the
@@ -474,6 +481,76 @@ pub async fn open_note_window(
     Ok(())
 }
 
+/// The label for a browser window on `url` — content-addressed like note
+/// windows, so reopening the same page focuses the existing window.
+fn browser_window_label(url: &str) -> String {
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    url.hash(&mut hasher);
+    format!("{BROWSER_WINDOW_PREFIX}{:016x}", hasher.finish())
+}
+
+/// Validate a URL for the in-app browser: web pages only. Everything else —
+/// `file:`, `reflect:`, custom app schemes, script URIs — must go through the
+/// deep-link pipeline or the OS opener with their own policies, never into a
+/// live webview.
+fn parse_browser_url(url: &str) -> AppResult<tauri::Url> {
+    let parsed = tauri::Url::parse(url)
+        .map_err(|err| AppError::parse(format!("not a valid URL: {err}")))?;
+    match parsed.scheme() {
+        "http" | "https" => Ok(parsed),
+        other => Err(AppError::parse(format!(
+            "the in-app browser only opens http(s) pages, not {other}:"
+        ))),
+    }
+}
+
+/// Open (or focus) the in-app browser window on an external web page.
+///
+/// The page loads in its own webview window with no IPC exposure: the
+/// `browser-*` label is granted by no capability file, and Tauri never
+/// injects the invoke bridge into remote URLs. Content-addressed labels
+/// dedupe repeat opens of the same page; a distinct page always gets a fresh
+/// window. Async for the same reason as `open_note_window` — window creation
+/// from a sync command can deadlock the main thread.
+#[tauri::command]
+pub async fn open_browser_window(
+    url: String,
+    window: tauri::WebviewWindow,
+    app: tauri::AppHandle,
+) -> AppResult<()> {
+    let parsed = parse_browser_url(&url)?;
+    let label = browser_window_label(parsed.as_str());
+    if let Some(existing) = app.get_webview_window(&label) {
+        let _ = existing.show();
+        let _ = existing.set_focus();
+        return Ok(());
+    }
+
+    let title = parsed.host_str().unwrap_or("Browser").to_owned();
+    let mut builder = WebviewWindowBuilder::new(&app, &label, WebviewUrl::External(parsed))
+        .title(title)
+        .inner_size(1100.0, 780.0)
+        // Match the app theme until the page paints, instead of a white flash.
+        .background_color(theme_background_color(&window));
+    // Cascade from the invoking window; best-effort like note windows.
+    if let (Ok(position), Ok(scale)) = (window.outer_position(), window.scale_factor()) {
+        let position = position.to_logical::<f64>(scale);
+        builder = builder.position(position.x + 56.0, position.y + 56.0);
+    }
+
+    if let Err(err) = builder.build() {
+        // Lost a race against an identical open: the label now exists, so
+        // surface that window instead of failing the click.
+        if let Some(existing) = app.get_webview_window(&label) {
+            let _ = existing.show();
+            let _ = existing.set_focus();
+            return Ok(());
+        }
+        return Err(AppError::io(format!("failed to open browser window: {err}")));
+    }
+    Ok(())
+}
+
 /// Close every note window and wait (bounded) for them to be gone.
 ///
 /// The graph provider calls this **before** any generation bump (graph
@@ -631,6 +708,32 @@ mod tests {
             .build()
             .expect("main window");
         assert!(surface_main_window(app.handle()));
+    }
+
+    #[test]
+    fn browser_urls_are_limited_to_web_pages() {
+        assert!(parse_browser_url("https://example.com/docs").is_ok());
+        assert!(parse_browser_url("http://localhost:3000").is_ok());
+        for blocked in [
+            "file:///etc/passwd",
+            "reflect://note/notes/a.md",
+            "javascript:alert(1)",
+            "data:text/html,<script>alert(1)</script>",
+            "not a url",
+        ] {
+            assert!(parse_browser_url(blocked).is_err(), "{blocked} must be refused");
+        }
+    }
+
+    #[test]
+    fn browser_labels_are_stable_per_url_and_never_note_labels() {
+        let a1 = browser_window_label("https://example.com/");
+        let a2 = browser_window_label("https://example.com/");
+        let b = browser_window_label("https://example.org/");
+        assert_eq!(a1, a2);
+        assert_ne!(a1, b);
+        assert!(a1.starts_with(BROWSER_WINDOW_PREFIX));
+        assert!(!a1.starts_with(NOTE_WINDOW_PREFIX));
     }
 
     #[test]

@@ -151,6 +151,7 @@ export {
 export {
   openGraph,
   openNoteWindow,
+  openBrowserWindow,
   windowBootstrap,
   closeNoteWindows,
   createGraph,

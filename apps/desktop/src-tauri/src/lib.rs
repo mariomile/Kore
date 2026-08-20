@@ -376,6 +376,7 @@ pub fn run() {
             git::git_push,
             quit::quit_confirm,
             windows::open_note_window,
+            windows::open_browser_window,
             windows::window_bootstrap,
             windows::close_note_windows,
             devtools::toggle_devtools,

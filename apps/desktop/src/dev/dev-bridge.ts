@@ -49,6 +49,7 @@ const chatSaveArgsSchema = z.object({
   }),
 })
 const chatDeleteArgsSchema = z.object({ id: z.string() })
+const browserArgsSchema = z.object({ url: z.url() })
 
 /**
  * The in-browser stand-in for the Rust shell (dev builds only): answers the
@@ -121,6 +122,13 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
         return null
       case 'capture_inbox_list':
         return []
+      case 'open_browser_window': {
+        // No secondary Tauri windows in a plain browser — a popup tab is the
+        // honest stand-in for the in-app browser window.
+        const { url } = browserArgsSchema.parse(args)
+        window.open(url, '_blank', 'noopener,noreferrer')
+        return null
+      }
       case 'capture_shared_inbox_relay':
         // No share-extension App Group inbox in a browser; nothing to relay.
         return 0

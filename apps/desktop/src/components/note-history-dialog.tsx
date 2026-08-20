@@ -134,7 +134,7 @@ export function NoteHistoryDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex h-[80vh] w-[min(56rem,92vw)] max-w-none flex-col gap-0 overflow-hidden p-0">
+      <DialogContent className="flex h-[80vh] w-[min(56rem,92vw)] max-w-none flex-col gap-0 overflow-hidden p-0 sm:max-w-none">
         <DialogHeader className="border-b border-border px-4 py-3">
           <DialogTitle className="text-sm font-medium">History — {noteFileStem(path)}</DialogTitle>
         </DialogHeader>

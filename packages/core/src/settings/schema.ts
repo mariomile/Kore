@@ -206,6 +206,22 @@ export const ACCENT_COLOR_IDS = accentColorEnum.options.filter(
 export const DEFAULT_CUSTOM_ACCENT = '#4f46e5'
 
 /**
+ * Preset accent swatch colors for pickers, one definition for every surface.
+ * These mirror the 500-weight `--accent` values in
+ * `design-system/tokens/colors.css` — tune the ramp there first, then here.
+ */
+export const ACCENT_SWATCH_HEX: Record<Exclude<AccentColor, 'custom'>, string> = {
+  indigo: '#4f46e5',
+  purple: '#7c3aed',
+  blue: '#2563eb',
+  teal: '#0d9488',
+  green: '#059669',
+  amber: '#d97706',
+  rose: '#e11d48',
+  red: '#dc2626',
+}
+
+/**
  * The hex color applied when {@link accentColorSchema} is `custom`. Stored
  * normalized to lowercase `#rrggbb`; an invalid value degrades to the stock
  * indigo so a hand-edit can't paint the app with an unparsable color.
@@ -275,20 +291,28 @@ export type AllNotesView = z.infer<typeof allNotesViewSchema>
 
 /**
  * The open note tabs (the tab strip and the sidebar's Open section), in strip
- * order, restored at launch. Daily notes are never stored here — the Daily
- * tab is a fixed "tab zero" the UI provides. A malformed entry drops the
- * whole list rather than resurrecting half a session.
+ * order, restored at launch, **keyed by graph root**: the settings document
+ * is one global file shared across graphs, so without the keying another
+ * graph's tabs would render after every switch — and then be destroyed by
+ * the strip's self-pruning once they fail to resolve. Daily notes are never
+ * stored here — the Daily tab is a fixed "tab zero" the UI provides. A
+ * malformed graph entry drops that graph's list rather than resurrecting
+ * half a session; a malformed document (including the pre-keying flat-array
+ * shape) degrades to no stored sessions.
  */
-export const openNoteTabsSchema = z
-  .array(
-    z.object({
-      path: z.string(),
-      pinned: z.boolean().catch(false),
-    }),
-  )
-  .catch([])
+export const openNoteTabSchema = z.object({
+  path: z.string(),
+  pinned: z.boolean().catch(false),
+})
 
-export type OpenNoteTab = z.infer<typeof openNoteTabsSchema>[number]
+export type OpenNoteTab = z.infer<typeof openNoteTabSchema>
+
+export const openNoteTabsSchema = z
+  .record(z.string(), z.array(openNoteTabSchema).catch([]))
+  // An array is also an object to `z.record` (index keys) — the pre-keying
+  // shape must degrade to "no sessions", not to a graph named "0".
+  .refine((value) => !Array.isArray(value))
+  .catch({})
 
 /**
  * Whether semantic search is on. Off by default — turning it on downloads the

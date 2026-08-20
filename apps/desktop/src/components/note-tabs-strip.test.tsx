@@ -18,12 +18,14 @@ import { NoteTabsStrip } from './note-tabs-strip'
  */
 
 const settingsStore = vi.hoisted(() => {
-  type Tabs = { path: string; pinned: boolean }[]
-  let state: { openNoteTabs: Tabs } = { openNoteTabs: [] }
+  // Tabs are keyed by graph root (the settings document is global); the
+  // mocked graph provider below serves root '/g'.
+  type TabsByGraph = Record<string, { path: string; pinned: boolean }[]>
+  let state: { openNoteTabs: TabsByGraph } = { openNoteTabs: {} }
   const listeners = new Set<() => void>()
   return {
     get: () => state,
-    set(patch: Partial<{ openNoteTabs: Tabs }>) {
+    set(patch: Partial<{ openNoteTabs: TabsByGraph }>) {
       if (Object.keys(patch).length === 0) {
         return
       }
@@ -35,7 +37,7 @@ const settingsStore = vi.hoisted(() => {
       return () => listeners.delete(listener)
     },
     reset() {
-      state = { openNoteTabs: [] }
+      state = { openNoteTabs: {} }
     },
   }
 })
@@ -124,6 +126,9 @@ function Probe(): ReactElement {
       <button type="button" data-testid="close-active" onClick={closeActiveTab}>
         close
       </button>
+      <button type="button" data-testid="open-tasks" onClick={() => navigate({ kind: 'tasks' })}>
+        tasks
+      </button>
     </div>
   )
 }
@@ -204,6 +209,18 @@ describe('note tabs', () => {
     await view.getByTestId('next-tab').click()
     await vi.waitFor(() => expect(routeOf(view).path).toBe('notes/alpha.md'))
     await view.getByTestId('prev-tab').click()
+    await vi.waitFor(() => expect(routeOf(view).kind).toBe('today'))
+    await view.unmount()
+  })
+
+  it('enters the ring at Daily from a non-note screen', async () => {
+    const view = await renderTabs()
+    await view.getByTestId('open-alpha').click()
+    await view.getByTestId('open-tasks').click()
+    await vi.waitFor(() => expect(routeOf(view).kind).toBe('tasks'))
+
+    // Tasks has no active tab; Next must land on Daily, not on the first tab.
+    await view.getByTestId('next-tab').click()
     await vi.waitFor(() => expect(routeOf(view).kind).toBe('today'))
     await view.unmount()
   })

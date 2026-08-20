@@ -154,15 +154,45 @@ pub async fn agent_cli_run(
         .spawn()
         .map_err(|err| AppError::io(format!("could not start {}: {err}", path.display())))?;
 
-    // Feed the prompt and close stdin so the CLI starts answering.
+    // Feed the prompt from its own thread and close stdin so the CLI starts
+    // answering. A synchronous write here can deadlock: a long transcript
+    // fills the stdin pipe while a child that already started emitting fills
+    // stdout with no reader yet — both sides block forever. A failed write is
+    // best-effort by design: the child then answers a truncated prompt or
+    // exits, and the Done/Failed events below carry the outcome.
     if let Some(mut stdin) = child.stdin.take() {
-        if let Err(err) = stdin.write_all(prompt.as_bytes()) {
-            let _ = child.kill();
-            return Err(AppError::io(format!("could not write the prompt: {err}")));
-        }
+        std::thread::spawn(move || {
+            let _ = stdin.write_all(prompt.as_bytes());
+            // Dropping stdin closes the pipe — the CLI sees end-of-prompt.
+        });
     }
     let stdout = child.stdout.take();
     let stderr = child.stderr.take();
+
+    // Drain stderr concurrently, keeping a bounded tail for the failure
+    // message. Waiting for stdout EOF before reading stderr (the old order)
+    // deadlocks a chatty child: once the ~64KB stderr pipe fills, the child
+    // blocks mid-write and stops producing stdout, and nobody ever reads
+    // either. The bound keeps a runaway logger from growing memory instead.
+    let stderr_tail = std::thread::spawn(move || {
+        const TAIL_LIMIT: usize = 64 * 1024;
+        let mut tail: Vec<u8> = Vec::new();
+        if let Some(mut stderr) = stderr {
+            let mut chunk = [0_u8; 8192];
+            loop {
+                match stderr.read(&mut chunk) {
+                    Ok(0) | Err(_) => break,
+                    Ok(read) => {
+                        tail.extend_from_slice(&chunk[..read]);
+                        if tail.len() > TAIL_LIMIT {
+                            tail.drain(..tail.len() - TAIL_LIMIT);
+                        }
+                    }
+                }
+            }
+        }
+        String::from_utf8_lossy(&tail).into_owned()
+    });
 
     state.0.lock().unwrap().insert(request_id.clone(), child);
 
@@ -190,15 +220,13 @@ pub async fn agent_cli_run(
                 }
             }
         }
-        // Drain stderr for a useful failure message (both CLIs print flag and
-        // auth errors there), then reap the child.
+        // Collect the concurrently drained stderr tail for a useful failure
+        // message (both CLIs print flag and auth errors there), then reap the
+        // child. Stdout hit EOF, so the drain thread is done or about to be.
         let mut error_tail = String::new();
-        if let Some(mut stderr) = stderr {
-            let mut buffer = String::new();
-            if stderr.read_to_string(&mut buffer).is_ok() {
-                let tail: Vec<&str> = buffer.lines().rev().take(4).collect();
-                error_tail = tail.into_iter().rev().collect::<Vec<_>>().join("\n");
-            }
+        if let Ok(buffer) = stderr_tail.join() {
+            let tail: Vec<&str> = buffer.lines().rev().take(4).collect();
+            error_tail = tail.into_iter().rev().collect::<Vec<_>>().join("\n");
         }
         let child = emit_app
             .try_state::<AgentCliState>()

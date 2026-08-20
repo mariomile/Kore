@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { displayNoteTitle, getNote, type OpenNoteTab } from '@reflect/core'
+import { displayNoteTitle, getNote, noteFileStem, type OpenNoteTab } from '@reflect/core'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { useGraph } from '@/providers/graph-provider'
@@ -10,12 +10,6 @@ import { useOpenTabs } from '@/providers/open-tabs-provider'
 export interface OpenTabNote extends OpenNoteTab {
   /** Display title from the index; the file stem while the row is loading. */
   title: string
-}
-
-/** The path's file stem — the honest fallback while the index row is absent. */
-function stemTitle(path: string): string {
-  const file = path.split('/').pop() ?? path
-  return file.replace(/\.md$/i, '')
 }
 
 /**
@@ -56,7 +50,7 @@ export function useOpenTabNotes(): OpenTabNote[] {
     () =>
       tabs.map((tab) => ({
         ...tab,
-        title: displayNoteTitle(rows?.get(tab.path)?.title ?? stemTitle(tab.path)),
+        title: displayNoteTitle(rows?.get(tab.path)?.title ?? noteFileStem(tab.path)),
       })),
     [tabs, rows],
   )

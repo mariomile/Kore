@@ -31,7 +31,7 @@ describe('settingsSchema', () => {
       weekStartDay: 'monday',
       allNotesFilterTags: ['book', 'link', 'person'],
       allNotesView: 'list',
-      openNoteTabs: [],
+      openNoteTabs: {},
       taskFilters: {
         pinned: true,
         current: true,
@@ -287,7 +287,7 @@ describe('settingsSchema', () => {
       weekStartDay: 'monday',
       allNotesFilterTags: ['book', 'link', 'person'],
       allNotesView: 'list',
-      openNoteTabs: [],
+      openNoteTabs: {},
       taskFilters: {
         pinned: true,
         current: true,

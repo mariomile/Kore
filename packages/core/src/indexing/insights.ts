@@ -107,12 +107,15 @@ export async function loadGraphInsights({
     db
       .selectFrom('notes')
       .where('updatedAt', '>', 0)
-      .where(sql<string>`date(updated_at / 1000, 'unixepoch')`, '>=', activitySince)
+      // `localtime` matters: the heatmap grid and `activitySince` are local
+      // days (date-fns), so bucketing in UTC would file an evening edit under
+      // tomorrow — invisible until the calendar catches up.
+      .where(sql<string>`date(updated_at / 1000, 'unixepoch', 'localtime')`, '>=', activitySince)
       .select([
-        sql<string>`date(updated_at / 1000, 'unixepoch')`.as('date'),
+        sql<string>`date(updated_at / 1000, 'unixepoch', 'localtime')`.as('date'),
         sql<number>`count(*)`.as('edited'),
       ])
-      .groupBy(sql`date(updated_at / 1000, 'unixepoch')`)
+      .groupBy(sql`date(updated_at / 1000, 'unixepoch', 'localtime')`)
       .orderBy('date')
       .execute(),
     db

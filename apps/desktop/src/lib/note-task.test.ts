@@ -166,12 +166,27 @@ describe('recurring tasks', () => {
     expect(writeNote).toHaveBeenCalledTimes(1)
   })
 
-  it('skips the spawn while the note is open in a live session', async () => {
+  it('spawns through the live session buffer when the note is open', async () => {
     const commitTaskToggle = vi.fn().mockResolvedValue(true)
-    openSession.mockReturnValue({ commitTaskToggle })
+    const commitBodyAppend = vi.fn().mockResolvedValue(true)
+    openSession.mockReturnValue({ commitTaskToggle, commitBodyAppend })
 
     await toggleTask(repeatTask, 7)
     expect(commitTaskToggle).toHaveBeenCalledTimes(1)
+    // The next occurrence lands in the session buffer, never via disk (which
+    // would clobber unsaved edits).
+    expect(commitBodyAppend).toHaveBeenCalledTimes(1)
+    const appended = commitBodyAppend.mock.calls[0]?.[0] as string
+    expect(appended).toMatch(/^\+ \[ \] water plants @repeat\(daily\) \[\[\d{4}-\d{2}-\d{2}\]\]$/)
+    expect(writeNote).not.toHaveBeenCalled()
+  })
+
+  it('keeps the completion when the session refuses the spawn append', async () => {
+    const commitTaskToggle = vi.fn().mockResolvedValue(true)
+    const commitBodyAppend = vi.fn().mockResolvedValue(false)
+    openSession.mockReturnValue({ commitTaskToggle, commitBodyAppend })
+
+    await expect(toggleTask(repeatTask, 7)).resolves.toBeUndefined()
     expect(writeNote).not.toHaveBeenCalled()
   })
 

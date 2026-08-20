@@ -1,4 +1,5 @@
 import { sql } from 'kysely'
+import { splitFrontmatter } from '../markdown'
 import { db } from './db'
 
 /**
@@ -38,20 +39,79 @@ const WORD_CHAR_RE = /[\p{L}\p{N}]/u
 /** `[[target]]` / `[[target|alias]]` spans, where a title occurrence is already a link. */
 const WIKI_LINK_RE = /\[\[[^\n\]]*\]\]/g
 
-/** Ranges of `text` already inside wiki links, in document order. */
-function wikiLinkRanges(text: string): { from: number; to: number }[] {
-  const ranges: { from: number; to: number }[] = Array.from(
-    text.matchAll(WIKI_LINK_RE),
-    (match) => ({ from: match.index, to: match.index + match[0].length }),
-  )
+/** Inline code spans — an occurrence inside backticks is code, not prose. */
+const INLINE_CODE_RE = /`[^`\n]+`/g
+
+/**
+ * Markdown links and images, label and URL both: converting either side to a
+ * wiki link would corrupt the syntax (`[[[Title]]](url)`), and the label is
+ * already a link besides.
+ */
+const MARKDOWN_LINK_RE = /!?\[[^\]\n]*\]\([^)\n]*\)/g
+
+interface Range {
+  from: number
+  to: number
+}
+
+function matchRanges(text: string, re: RegExp): Range[] {
+  return Array.from(text.matchAll(re), (match) => ({
+    from: match.index,
+    to: match.index + match[0].length,
+  }))
+}
+
+/** The leading frontmatter block, when the text carries one — metadata, not prose. */
+function frontmatterRange(text: string): Range[] {
+  const { body } = splitFrontmatter(text)
+  const to = text.length - body.length
+  return to > 0 ? [{ from: 0, to }] : []
+}
+
+/**
+ * Fenced code blocks (``` / ~~~), tolerant of an unclosed trailing fence —
+ * excluding to the end is safe, converting inside code never is.
+ */
+function fencedCodeRanges(text: string): Range[] {
+  const ranges: Range[] = []
+  let open: { from: number; marker: string } | null = null
+  for (const match of text.matchAll(/^ {0,3}(`{3,}|~{3,})/gm)) {
+    const marker = match[1]?.[0] ?? '`'
+    if (open === null) {
+      open = { from: match.index, marker }
+    } else if (marker === open.marker) {
+      const lineEnd = text.indexOf('\n', match.index)
+      ranges.push({ from: open.from, to: lineEnd === -1 ? text.length : lineEnd + 1 })
+      open = null
+    }
+  }
+  if (open !== null) {
+    ranges.push({ from: open.from, to: text.length })
+  }
   return ranges
 }
 
 /**
+ * Every range where a title occurrence must not be link-converted: existing
+ * wiki links, frontmatter, code (fenced and inline), and markdown link/image
+ * syntax. Shared by the panel and the conversion so what the panel shows is
+ * exactly what the click would edit.
+ */
+function excludedRanges(text: string): Range[] {
+  return [
+    ...frontmatterRange(text),
+    ...fencedCodeRanges(text),
+    ...matchRanges(text, WIKI_LINK_RE),
+    ...matchRanges(text, INLINE_CODE_RE),
+    ...matchRanges(text, MARKDOWN_LINK_RE),
+  ]
+}
+
+/**
  * The first case-insensitive, word-bounded occurrence of `title` in `text`
- * that is not already inside a wiki link, or `null`. Shared by the panel
- * query (to build snippets) and the link conversion (to edit the same
- * occurrence it showed).
+ * that sits in linkable prose — outside wiki links, frontmatter, code, and
+ * markdown link syntax — or `null`. Shared by the panel query (to build
+ * snippets) and the link conversion (to edit the same occurrence it showed).
  */
 export function findUnlinkedOccurrence(
   text: string,
@@ -62,7 +122,7 @@ export function findUnlinkedOccurrence(
     return null
   }
   const haystack = text.toLowerCase()
-  const linkRanges = wikiLinkRanges(text)
+  const linkRanges = excludedRanges(text)
   let cursor = 0
   while (cursor <= haystack.length - needle.length) {
     const from = haystack.indexOf(needle, cursor)

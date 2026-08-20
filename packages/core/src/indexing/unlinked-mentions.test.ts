@@ -27,6 +27,33 @@ describe('findUnlinkedOccurrence', () => {
     const text = 'See [[Project Atlas|the plan]] and also project atlas prose.'
     expect(findUnlinkedOccurrence(text, 'Project Atlas')).toEqual({ from: 40, to: 53 })
   })
+
+  it('skips frontmatter and lands on the prose occurrence instead', () => {
+    const text = '---\ntopics: Project Atlas\n---\nWorking on project atlas today.\n'
+    const found = findUnlinkedOccurrence(text, 'Project Atlas')
+    expect(found).not.toBeNull()
+    expect(text.slice(found!.from, found!.to)).toBe('project atlas')
+    expect(found!.from).toBeGreaterThan(text.indexOf('---\nWorking'))
+  })
+
+  it('skips code, fenced and inline', () => {
+    expect(
+      findUnlinkedOccurrence('```\nProject Atlas\n```\nno prose here', 'Project Atlas'),
+    ).toBeNull()
+    expect(findUnlinkedOccurrence('Run `Project Atlas` locally.', 'Project Atlas')).toBeNull()
+    // An unclosed fence excludes to the end rather than converting inside code.
+    expect(findUnlinkedOccurrence('```\nProject Atlas', 'Project Atlas')).toBeNull()
+  })
+
+  it('skips markdown links and images, label and URL both', () => {
+    expect(
+      findUnlinkedOccurrence('See [Project Atlas](https://example.com).', 'Project Atlas'),
+    ).toBeNull()
+    expect(findUnlinkedOccurrence('![Project Atlas](assets/atlas.png)', 'Project Atlas')).toBeNull()
+    const text = '[docs](https://example.com/Project%20Atlas) cover project atlas well.'
+    const found = findUnlinkedOccurrence(text, 'Project Atlas')
+    expect(text.slice(found!.from, found!.to)).toBe('project atlas')
+  })
 })
 
 /** Mirror the indexer's FTS/text writes, which the projection helper skips. */

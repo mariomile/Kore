@@ -8,6 +8,7 @@ import {
   listNotes,
   normalizeChatSystemPrompt,
   ACCENT_COLOR_IDS,
+  ACCENT_SWATCH_HEX,
   type AccentColor,
   type AiPrompt,
   type AiProviderConfig,
@@ -61,23 +62,12 @@ const THEME_OPTIONS: readonly SegmentedOption<ThemePreference>[] = [
   { value: 'paper', label: 'Paper' },
 ]
 
-// Swatch fills mirror the desktop picker: each accent's light-theme value.
-// The `custom` accent is desktop-configured; mobile offers the presets.
-const ACCENT_SWATCHES: Record<Exclude<AccentColor, 'custom'>, string> = {
-  indigo: '#4f46e5',
-  purple: '#7c3aed',
-  blue: '#2563eb',
-  teal: '#0d9488',
-  green: '#059669',
-  amber: '#d97706',
-  rose: '#e11d48',
-  red: '#dc2626',
-}
-
+// Swatch fills come from the shared `ACCENT_SWATCH_HEX` map. The `custom`
+// accent is desktop-configured; mobile offers the presets.
 const ACCENT_OPTIONS: readonly SwatchOption<AccentColor>[] = ACCENT_COLOR_IDS.map((id) => ({
   value: id,
   label: id.charAt(0).toUpperCase() + id.slice(1),
-  color: ACCENT_SWATCHES[id],
+  color: ACCENT_SWATCH_HEX[id],
 }))
 
 const FONT_FAMILY_OPTIONS: readonly SegmentedOption<EditorFontFamily>[] = [

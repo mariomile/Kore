@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from 'react'
 import { isDaily, isTemplatePath, isUntitledNotePath, type OpenNoteTab } from '@reflect/core'
+import { useGraph } from '@/providers/graph-provider'
 import { useSettings } from '@/providers/settings-provider'
 import { routeForPath } from '@/routing/route'
 import { useRouter } from '@/routing/router'
@@ -15,10 +16,12 @@ import { useRouter } from '@/routing/router'
 /**
  * The open-notes model behind both tab surfaces (the strip over the note pane
  * and the sidebar's Open section — design options A + B). One ordered list of
- * open note tabs, persisted in settings (`openNoteTabs`) so a relaunch
- * restores the session. Daily notes are never tabs: the Daily view is the
- * fixed "tab zero" every surface renders itself, always first and never
- * closable — so `tabs` here holds ordinary notes only.
+ * open note tabs per graph, persisted in settings (`openNoteTabs`, keyed by
+ * graph root — the settings document is global, and unkeyed tabs would leak
+ * into other graphs and be pruned away there) so a relaunch restores the
+ * session. Daily notes are never tabs: the Daily view is the fixed "tab zero"
+ * every surface renders itself, always first and never closable — so `tabs`
+ * here holds ordinary notes only.
  */
 
 export interface OpenTabsValue {
@@ -79,9 +82,38 @@ function isTabbablePath(path: string): boolean {
 
 export function OpenTabsProvider({ children }: { children: ReactNode }): ReactElement {
   const { settings, updateSettingsWith } = useSettings()
+  const { graph } = useGraph()
   const { route, navigate } = useRouter()
 
-  const tabs = useMemo(() => stripOrder(settings.openNoteTabs), [settings.openNoteTabs])
+  const root = graph?.root ?? null
+  const stored = settings.openNoteTabs
+  const tabs = useMemo(() => stripOrder(root === null ? [] : (stored[root] ?? [])), [stored, root])
+
+  // Every write goes through this: read the graph's own list, mutate, store
+  // it back under the graph root — other graphs' sessions stay untouched.
+  // Returning the same list means "no change" and writes nothing.
+  const updateTabs = useCallback(
+    (mutate: (tabs: OpenNoteTab[]) => OpenNoteTab[]) => {
+      if (root === null) {
+        return
+      }
+      updateSettingsWith((current) => {
+        const graphTabs = current.openNoteTabs[root] ?? []
+        const next = mutate(graphTabs)
+        // Element-wise check: a filter that dropped nothing or a map that
+        // changed nothing is a no-op, and no-op settings writes churn
+        // subscribers.
+        const unchanged =
+          next === graphTabs ||
+          (next.length === graphTabs.length && next.every((tab, index) => tab === graphTabs[index]))
+        if (unchanged) {
+          return {}
+        }
+        return { openNoteTabs: { ...current.openNoteTabs, [root]: next } }
+      })
+    },
+    [root, updateSettingsWith],
+  )
 
   const routePath = route.kind === 'note' ? route.path : null
   const activePath = routePath !== null && isTabbablePath(routePath) ? routePath : null
@@ -96,13 +128,12 @@ export function OpenTabsProvider({ children }: { children: ReactNode }): ReactEl
     if (activePath === null || isOpen) {
       return
     }
-    updateSettingsWith((current) => {
-      if (current.openNoteTabs.some((tab) => tab.path === activePath)) {
-        return {}
-      }
-      return { openNoteTabs: [...current.openNoteTabs, { path: activePath, pinned: false }] }
-    })
-  }, [activePath, isOpen, updateSettingsWith])
+    updateTabs((graphTabs) =>
+      graphTabs.some((tab) => tab.path === activePath)
+        ? graphTabs
+        : [...graphTabs, { path: activePath, pinned: false }],
+    )
+  }, [activePath, isOpen, updateTabs])
 
   const activateTab = useCallback(
     (path: string) => {
@@ -127,31 +158,25 @@ export function OpenTabsProvider({ children }: { children: ReactNode }): ReactEl
           navigate({ kind: 'today' })
         }
       }
-      updateSettingsWith((current) => ({
-        openNoteTabs: current.openNoteTabs.filter((tab) => tab.path !== path),
-      }))
+      updateTabs((graphTabs) => graphTabs.filter((tab) => tab.path !== path))
     },
-    [activePath, tabs, navigate, updateSettingsWith],
+    [activePath, tabs, navigate, updateTabs],
   )
 
   const togglePin = useCallback(
     (path: string) => {
-      updateSettingsWith((current) => ({
-        openNoteTabs: current.openNoteTabs.map((tab) =>
-          tab.path === path ? { ...tab, pinned: !tab.pinned } : tab,
-        ),
-      }))
+      updateTabs((graphTabs) =>
+        graphTabs.map((tab) => (tab.path === path ? { ...tab, pinned: !tab.pinned } : tab)),
+      )
     },
-    [updateSettingsWith],
+    [updateTabs],
   )
 
   const pruneTab = useCallback(
     (path: string) => {
-      updateSettingsWith((current) => ({
-        openNoteTabs: current.openNoteTabs.filter((tab) => tab.path !== path),
-      }))
+      updateTabs((graphTabs) => graphTabs.filter((tab) => tab.path !== path))
     },
-    [updateSettingsWith],
+    [updateTabs],
   )
 
   // The cycle ring: Daily is index 0. On non-note screens (Tasks, Chat…)
@@ -159,7 +184,10 @@ export function OpenTabsProvider({ children }: { children: ReactNode }): ReactEl
   const cycle = useCallback(
     (step: 1 | -1) => {
       const ring: (string | null)[] = [null, ...tabs.map((tab) => tab.path)]
-      const current = isDailyActive ? 0 : ring.indexOf(activePath)
+      // `activePath` is null both on Daily and on non-note screens; only
+      // Daily is actually in the ring (as its null entry at index 0), so a
+      // bare indexOf(null) would silently treat Tasks/Chat as Daily.
+      const current = isDailyActive ? 0 : activePath === null ? -1 : ring.indexOf(activePath)
       if (current === -1) {
         navigate({ kind: 'today' })
         return

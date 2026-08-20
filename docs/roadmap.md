@@ -13,6 +13,11 @@ customization effort.
 - **Global quick capture** — a system-wide shortcut opening a mini window
   that appends a line to today's daily note without focusing the app.
 - **Task reminders** — native notifications for tasks with due dates.
+- **Recurring-task respawn from the editor checkbox** — completing a
+  repeat task by clicking its checkbox inside the note editor doesn't spawn
+  the next occurrence (meowdown exposes no editor-side task-toggle
+  callback); Tasks-view completions now spawn in every case, live session
+  included.
 - **Per-note version history** — a timeline UI over the existing Git backup
   (diff + restore).
 - **Styled note export** — HTML/PDF export of a single note in the app's

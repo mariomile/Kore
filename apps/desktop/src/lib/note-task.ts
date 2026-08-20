@@ -140,10 +140,13 @@ export async function toggleTask(task: TaskRef, generation: number): Promise<voi
  * After a recurring task completes, append its next occurrence to the note:
  * the same content with the due-date link advanced by the repeat interval
  * (appended when the task had none), so the repeat token rides along and the
- * new task recurs in turn. Best-effort by design — the completion itself has
- * already been persisted, so a spawn that cannot run (the note is open in a
- * live editor session, which owns the buffer, or the append write fails)
- * skips silently rather than surfacing a misleading "completing failed".
+ * new task recurs in turn. A note open in a live editor session gets the
+ * append through that session's buffer (`commitBodyAppend`) — completing
+ * from the Tasks view while the note is open must still spawn — and only an
+ * unopened note goes via disk. Best-effort by design: the completion itself
+ * has already been persisted, so a spawn that cannot run (the session can't
+ * take a body edit right now, or the write fails) skips silently rather
+ * than surfacing a misleading "completing failed".
  */
 async function spawnNextOccurrence(task: TaskRef, generation: number): Promise<void> {
   const marker = parseTaskMarker(task.raw.slice(0, 3))
@@ -158,7 +161,10 @@ async function spawnNextOccurrence(task: TaskRef, generation: number): Promise<v
   const next = nextOccurrenceContent(content, repeat, todayIso())
   try {
     await serializeByPath(task.notePath, async () => {
-      if (openSession(task.notePath) !== null) {
+      const owner = openSession(task.notePath)
+      if (owner !== null) {
+        // The same line the disk path builds (`appendTaskLine` + fill).
+        await owner.commitBodyAppend(`+ [ ] ${next}`)
         return
       }
       const source = await readNote(task.notePath)

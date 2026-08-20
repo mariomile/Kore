@@ -79,7 +79,11 @@ function tomlString(value: string): string {
  * enforced fail-closed by the sandbox.
  */
 export function codexCliFilesystemToml(graphRoot: string, privateNotePaths: string[]): string {
-  const root = graphRoot.replace(/[\\/]+$/, '')
+  // Forward-slash the root: a Windows graph root would otherwise produce
+  // mixed-separator entries (`C:\graphs\work/notes/x.md`) the sandbox's path
+  // matching may not recognize, silently weakening the deny list. Windows
+  // accepts forward slashes everywhere the sandbox resolves paths.
+  const root = graphRoot.replaceAll('\\', '/').replace(/\/+$/, '')
   const entries = [
     `${tomlString(`${root}/**`)} = "read"`,
     `${tomlString(`${root}/.reflect`)} = "deny"`,

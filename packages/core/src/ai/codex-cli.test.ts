@@ -68,10 +68,12 @@ describe('codexCliFilesystemToml', () => {
     expect(toml).toContain('"/graphs/work/notes/secret.md" = "deny"')
   })
 
-  it('escapes TOML string characters in paths', () => {
+  it('forward-slashes a Windows root and escapes TOML string characters', () => {
+    // A native backslash root would emit mixed-separator entries the sandbox
+    // may not match — the deny list must not silently weaken off POSIX.
     const toml = codexCliFilesystemToml(String.raw`C:\graphs\work`, ['notes/"odd".md'])
-    expect(toml).toContain(String.raw`"C:\\graphs\\work/**" = "read"`)
-    expect(toml).toContain(String.raw`\"odd\"`)
+    expect(toml).toContain('"C:/graphs/work/**" = "read"')
+    expect(toml).toContain('"C:/graphs/work/notes/\\"odd\\".md" = "deny"')
   })
 })
 

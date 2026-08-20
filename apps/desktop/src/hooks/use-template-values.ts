@@ -1,14 +1,13 @@
 import { useCallback } from 'react'
-import { displayNoteTitle, getNote, type TemplatePlaceholderValues } from '@reflect/core'
+import {
+  displayNoteTitle,
+  getNote,
+  noteFileStem,
+  type TemplatePlaceholderValues,
+} from '@reflect/core'
 import { formatDayLabel, formatTimeOfDay } from '@/lib/dates'
 import { useToday } from '@/lib/use-today'
 import { useSettings } from '@/providers/settings-provider'
-
-/** The path's file stem — the honest fallback while the index row is absent. */
-function stemTitle(path: string): string {
-  const file = path.split('/').pop() ?? path
-  return file.replace(/\.md$/i, '')
-}
 
 /**
  * A resolver for template placeholder values, evaluated at insertion time so
@@ -29,7 +28,7 @@ export function useTemplateValues(): (
     async (notePath) => {
       let title = ''
       if (notePath !== null) {
-        title = stemTitle(notePath)
+        title = noteFileStem(notePath)
         try {
           title = displayNoteTitle((await getNote(notePath))?.title ?? title)
         } catch {

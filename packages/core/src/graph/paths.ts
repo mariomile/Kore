@@ -265,3 +265,13 @@ export function isTemplatePath(path: string): boolean {
 export function dateFromDailyPath(path: string): string | null {
   return DAILY_PATH_RE.exec(path)?.[1] ?? null
 }
+
+/**
+ * The path's file stem (`notes/reading-list.md` → `reading-list`) — the
+ * honest display-title fallback while a note's index row is absent, shared
+ * by the tab strip and template `{{title}}` so the two can never disagree.
+ */
+export function noteFileStem(path: string): string {
+  const file = path.split('/').pop() ?? path
+  return file.replace(/\.md$/i, '')
+}

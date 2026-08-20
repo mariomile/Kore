@@ -74,13 +74,18 @@ export function claudeCliSystemPrompt(options: {
  * outside the allowed set.
  */
 export function claudeCliSettingsJson(graphRoot: string, privateNotePaths: string[]): string {
-  const root = graphRoot.replace(/[\\/]+$/, '')
+  // Claude Code path rules: a leading `//` anchors at the filesystem root (a
+  // single `/` would be settings-relative and silently match nothing). A
+  // POSIX root brings its own leading slash; a Windows drive root
+  // (`C:\graphs\work`) does not, and its backslashes would never match the
+  // rule matcher's forward-slash paths — normalize both so the privacy block
+  // cannot silently fail open off POSIX.
+  const posixRoot = graphRoot.replaceAll('\\', '/').replace(/\/+$/, '')
+  const root = posixRoot.startsWith('/') ? `/${posixRoot}` : `//${posixRoot}`
   const deny = [
-    // Claude Code path rules: a leading `//` anchors at the filesystem root
-    // (a single `/` would be settings-relative and silently match nothing).
-    ...privateNotePaths.map((path) => `Read(/${root}/${path})`),
-    `Read(/${root}/.reflect/**)`,
-    `Read(/${root}/.git/**)`,
+    ...privateNotePaths.map((path) => `Read(${root}/${path})`),
+    `Read(${root}/.reflect/**)`,
+    `Read(${root}/.git/**)`,
     'Grep',
     'Bash',
     'Write',

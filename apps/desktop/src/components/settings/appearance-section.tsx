@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import type { AccentColor, ThemePreference } from '@reflect/core'
-import { ACCENT_COLOR_IDS } from '@reflect/core'
+import { ACCENT_COLOR_IDS, ACCENT_SWATCH_HEX } from '@reflect/core'
 import { Feather, Monitor, Moon, MoonStar, Sparkles, Sun, type LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useSettings } from '@/providers/settings-provider'
@@ -25,22 +25,9 @@ const THEME_OPTIONS: ThemeOption[] = [
 
 type PresetAccentColor = Exclude<AccentColor, 'custom'>
 
-/**
- * The swatch each preset accent paints in the picker: the light-theme
- * `--accent` value from the design-system ramps. A static map rather than the
- * live CSS variable so every swatch shows its own hue, not the applied one.
- */
-const ACCENT_SWATCHES: Record<PresetAccentColor, string> = {
-  indigo: '#4f46e5',
-  purple: '#7c3aed',
-  blue: '#2563eb',
-  teal: '#0d9488',
-  green: '#059669',
-  amber: '#d97706',
-  rose: '#e11d48',
-  red: '#dc2626',
-}
-
+// Swatch fills come from the shared `ACCENT_SWATCH_HEX` map (a static map
+// rather than the live CSS variable so every swatch shows its own hue, not
+// the applied one).
 const ACCENT_LABELS: Record<PresetAccentColor, string> = {
   indigo: 'Indigo',
   purple: 'Purple',
@@ -124,7 +111,7 @@ export function AppearanceSection(): ReactElement {
                 <span
                   aria-hidden
                   className="size-5 rounded-full"
-                  style={{ backgroundColor: ACCENT_SWATCHES[accent] }}
+                  style={{ backgroundColor: ACCENT_SWATCH_HEX[accent] }}
                 />
               </label>
             )

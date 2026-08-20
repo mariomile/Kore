@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react'
+import { useEffect, useRef, useState, type ReactElement } from 'react'
 import type { NoteListEntry } from '@reflect/core'
 import { Pin } from 'lucide-react'
 import { formatRecencyLabel } from '@/lib/dates'
@@ -12,16 +12,45 @@ interface AllNotesGridProps {
   onOpen: (path: string, event?: ModClickEvent) => void
 }
 
+/** How many cards mount at once; scrolling near the end reveals the next batch. */
+const GRID_CHUNK = 120
+
 /**
  * The All Notes masonry view: the same notes as the table, as preview cards
  * flowing down CSS columns (cards keep their natural height, columns fill
  * left to right). A reading layout, not a management one — cards open on
  * click (⌘-click in a new window); multi-select and its keyboard shortcuts
- * stay with the table view. Rendered eagerly (no virtualizer): the card grid
- * is a browsing surface and CSS columns own the layout.
+ * stay with the table view. CSS columns own the layout, so instead of the
+ * table's row virtualizer the grid mounts in chunks: a sentinel below the
+ * cards reveals the next {@link GRID_CHUNK} as it scrolls into reach — a
+ * many-thousand-note graph never mounts every card at once.
  */
 export function AllNotesGrid({ notes, tag, onOpen }: AllNotesGridProps): ReactElement | null {
   const { settings } = useSettings()
+  const [visibleCount, setVisibleCount] = useState(GRID_CHUNK)
+  const sentinelRef = useRef<HTMLDivElement | null>(null)
+  const hasMore = notes !== undefined && notes.length > visibleCount
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current
+    if (!hasMore || sentinel === null) {
+      return
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setVisibleCount((count) => count + GRID_CHUNK)
+        }
+      },
+      // Start mounting the next chunk well before the sentinel is on screen.
+      { rootMargin: '600px' },
+    )
+    observer.observe(sentinel)
+    return () => {
+      observer.disconnect()
+    }
+  }, [hasMore, visibleCount])
+
   if (notes === undefined) {
     return null
   }
@@ -34,7 +63,7 @@ export function AllNotesGrid({ notes, tag, onOpen }: AllNotesGridProps): ReactEl
   }
   return (
     <div className="columns-[15rem] gap-4 px-12 py-6 [column-fill:balance]">
-      {notes.map((note) => (
+      {notes.slice(0, visibleCount).map((note) => (
         <button
           key={note.path}
           type="button"
@@ -71,6 +100,7 @@ export function AllNotesGrid({ notes, tag, onOpen }: AllNotesGridProps): ReactEl
           </div>
         </button>
       ))}
+      {hasMore ? <div ref={sentinelRef} aria-hidden className="h-px" /> : null}
     </div>
   )
 }

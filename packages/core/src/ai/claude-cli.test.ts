@@ -101,6 +101,16 @@ describe('claudeCliSettingsJson', () => {
       expect(parsed.permissions.deny).toContain(tool)
     }
   })
+
+  it('anchors a Windows drive root the same way instead of failing open', () => {
+    const parsed = JSON.parse(
+      claudeCliSettingsJson(String.raw`C:\graphs\work`, ['notes/secret.md']),
+    ) as {
+      permissions: { deny: string[] }
+    }
+    expect(parsed.permissions.deny).toContain('Read(//C:/graphs/work/notes/secret.md)')
+    expect(parsed.permissions.deny).toContain('Read(//C:/graphs/work/.reflect/**)')
+  })
 })
 
 describe('claudeCliArgs', () => {

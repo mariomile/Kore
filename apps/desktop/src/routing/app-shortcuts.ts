@@ -173,7 +173,7 @@ export function useAppShortcuts(): CommandContext {
     pickerOpen: templatePickerOpen,
     createOpen: templateCreateOpen,
   } = useNoteTemplates()
-  const { toggleSidebar } = useSidebar()
+  const { toggleSidebar, toggleContextSidebar } = useSidebar()
   const { toggle: toggleAudioMemo } = useAudioMemo()
   const { newChat, setDraft: setChatDraft } = useChatSession()
   const { updateSettings } = useSettings()
@@ -230,6 +230,7 @@ export function useAppShortcuts(): CommandContext {
       clearScrollState,
       toggleTheme: () => setTheme(isDarkResolvedTheme(resolvedTheme) ? 'light' : 'dark'),
       toggleSidebar,
+      toggleContextSidebar,
       newChat,
       openNoteFind: () => {
         openNoteFindForPath(
@@ -298,6 +299,7 @@ export function useAppShortcuts(): CommandContext {
       openTemplatePicker,
       openTemplateCreate,
       toggleSidebar,
+      toggleContextSidebar,
       newChat,
       setChatDraft,
       openNoteFindForPath,

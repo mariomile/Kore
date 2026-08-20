@@ -358,6 +358,13 @@ const APP_COMMANDS: AppCommand[] = [
     run: (context) => context.toggleSidebar(),
   },
   {
+    id: 'sidebar.toggleContext',
+    title: 'Toggle context panel',
+    keywords: ['collapse', 'expand', 'details', 'rail', 'right', 'focus'],
+    keybinding: 'Mod-Shift-\\',
+    run: (context) => context.toggleContextSidebar(),
+  },
+  {
     id: 'tabs.next',
     title: 'Next tab',
     keywords: ['tab', 'cycle', 'switch', 'open', 'notes'],

@@ -6,11 +6,13 @@ import type { ContextSidebarTarget } from '@/components/context-sidebar/sidebar-
 
 interface WorkspaceState {
   collapsed: boolean
+  contextCollapsed: boolean
   target: ContextSidebarTarget | null
 }
 
 const workspaceState = vi.hoisted<WorkspaceState>(() => ({
   collapsed: false,
+  contextCollapsed: false,
   target: { kind: 'daily', date: '2026-07-11' },
 }))
 
@@ -43,7 +45,12 @@ vi.mock('@/providers/focused-daily-provider', () => ({
   useDailyContextTarget: () => workspaceState.target,
 }))
 vi.mock('@/providers/sidebar-provider', () => ({
-  useSidebar: () => ({ collapsed: workspaceState.collapsed, toggleSidebar: vi.fn() }),
+  useSidebar: () => ({
+    collapsed: workspaceState.collapsed,
+    toggleSidebar: vi.fn(),
+    contextCollapsed: workspaceState.contextCollapsed,
+    toggleContextSidebar: vi.fn(),
+  }),
 }))
 // The asides mount resize handles, which read the persisted widths. The
 // query key rides along for modules deeper in the import graph (graph boot).
@@ -63,6 +70,7 @@ const GRAPH: GraphInfo = { root: '/notes', name: 'Notes', generation: 1 }
 
 beforeEach(async () => {
   workspaceState.collapsed = false
+  workspaceState.contextCollapsed = false
   workspaceState.target = { kind: 'daily', date: '2026-07-11' }
   // The context sidebar is `hidden lg:block`, so it only renders on a
   // desktop-width viewport.
@@ -74,12 +82,25 @@ afterEach(async () => {
 })
 
 describe('WorkspaceContent', () => {
-  it('hides and restores the workspace and daily context sidebars together', async () => {
+  it('collapses each rail independently and restores it', async () => {
     const view = await render(<WorkspaceContent graph={GRAPH} />)
 
     await expect.element(view.getByRole('complementary', { name: 'Workspace' })).toBeInTheDocument()
     await expect.element(view.getByRole('complementary', { name: 'Context' })).toBeInTheDocument()
     expect(view.getByTestId('daily-context').element().textContent).toBe('2026-07-11')
+
+    // Hiding the left rail leaves the right one standing…
+    workspaceState.collapsed = true
+    await view.rerender(<WorkspaceContent graph={GRAPH} />)
+    expect(view.getByRole('complementary', { name: 'Workspace' }).query()).toBeNull()
+    await expect.element(view.getByRole('complementary', { name: 'Context' })).toBeInTheDocument()
+
+    // …and vice versa; both hidden gives the bare sheet.
+    workspaceState.collapsed = false
+    workspaceState.contextCollapsed = true
+    await view.rerender(<WorkspaceContent graph={GRAPH} />)
+    await expect.element(view.getByRole('complementary', { name: 'Workspace' })).toBeInTheDocument()
+    expect(view.getByRole('complementary', { name: 'Context' }).query()).toBeNull()
 
     workspaceState.collapsed = true
     await view.rerender(<WorkspaceContent graph={GRAPH} />)
@@ -87,17 +108,18 @@ describe('WorkspaceContent', () => {
     expect(view.getByRole('complementary', { name: 'Context' }).query()).toBeNull()
 
     workspaceState.collapsed = false
+    workspaceState.contextCollapsed = false
     await view.rerender(<WorkspaceContent graph={GRAPH} />)
     await expect.element(view.getByRole('complementary', { name: 'Workspace' })).toBeInTheDocument()
     await expect.element(view.getByRole('complementary', { name: 'Context' })).toBeInTheDocument()
   })
 
-  it('applies the same collapsed state to ordinary note context', async () => {
+  it('collapsing the context rail hides ordinary note context too', async () => {
     workspaceState.target = { kind: 'note', path: 'notes/project.md' }
     const view = await render(<WorkspaceContent graph={GRAPH} />)
     expect(view.getByTestId('note-context').element().textContent).toBe('notes/project.md')
 
-    workspaceState.collapsed = true
+    workspaceState.contextCollapsed = true
     await view.rerender(<WorkspaceContent graph={GRAPH} />)
     expect(view.getByRole('complementary', { name: 'Context' }).query()).toBeNull()
   })

@@ -24,8 +24,10 @@ export interface CommandContext {
   /** Discard the current view's saved scroll offsets so it re-anchors when revisited. */
   clearScrollState: () => void
   toggleTheme: () => void
-  /** Collapse/expand the workspace and contextual sidebars. */
+  /** Collapse/expand the left (workspace) sidebar. */
   toggleSidebar: () => void
+  /** Collapse/expand the right (context) rail. */
+  toggleContextSidebar: () => void
   /** Start a fresh chat conversation. */
   newChat: () => void
   /** Open Find for the note currently targeted by {@link notePath}. */

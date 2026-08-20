@@ -6,6 +6,7 @@ import type { ReactElement } from 'react'
 import { setBridge } from '@reflect/core'
 import { SidebarOpenNotes } from '@/components/sidebar/sidebar-open-notes'
 import { OpenTabsProvider, useOpenTabs } from '@/providers/open-tabs-provider'
+import { SidebarProvider } from '@/providers/sidebar-provider'
 import { routeForPath } from '@/routing/route'
 import { RouterProvider, useRouter } from '@/routing/router'
 import { NoteTabsStrip } from './note-tabs-strip'
@@ -138,11 +139,13 @@ function renderTabs() {
   return render(
     <QueryClientProvider client={client}>
       <RouterProvider initialRoute={{ kind: 'today' }}>
-        <OpenTabsProvider>
-          <NoteTabsStrip />
-          <SidebarOpenNotes />
-          <Probe />
-        </OpenTabsProvider>
+        <SidebarProvider>
+          <OpenTabsProvider>
+            <NoteTabsStrip />
+            <SidebarOpenNotes />
+            <Probe />
+          </OpenTabsProvider>
+        </SidebarProvider>
       </RouterProvider>
     </QueryClientProvider>,
   )
@@ -210,6 +213,25 @@ describe('note tabs', () => {
     await vi.waitFor(() => expect(routeOf(view).path).toBe('notes/alpha.md'))
     await view.getByTestId('prev-tab').click()
     await vi.waitFor(() => expect(routeOf(view).kind).toBe('today'))
+    await view.unmount()
+  })
+
+  it('the rail toggles report and flip their pressed state', async () => {
+    const view = await renderTabs()
+    const left = view.getByRole('button', { name: 'Toggle sidebar' })
+    const right = view.getByRole('button', { name: 'Toggle context panel' })
+    // Pressed = the rail is shown; both start expanded.
+    await expect.element(left).toHaveAttribute('aria-pressed', 'true')
+    await expect.element(right).toHaveAttribute('aria-pressed', 'true')
+
+    await left.click()
+    await expect.element(left).toHaveAttribute('aria-pressed', 'false')
+    await expect.element(right).toHaveAttribute('aria-pressed', 'true')
+
+    await right.click()
+    await expect.element(right).toHaveAttribute('aria-pressed', 'false')
+    await left.click()
+    await expect.element(left).toHaveAttribute('aria-pressed', 'true')
     await view.unmount()
   })
 

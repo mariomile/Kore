@@ -104,6 +104,7 @@ async function renderPalette(query: string, context?: Partial<CommandContext>) {
     clearScrollState: vi.fn(),
     toggleTheme: vi.fn(),
     toggleSidebar: vi.fn(),
+    toggleContextSidebar: vi.fn(),
     newChat: vi.fn(),
     openNoteFind: vi.fn(),
     findNextInNote: vi.fn(),

@@ -20,6 +20,7 @@ function contextFor(notePath: string | null, generation: number | null): Command
     forward: vi.fn(),
     toggleTheme: vi.fn(),
     toggleSidebar: vi.fn(),
+    toggleContextSidebar: vi.fn(),
     newChat: vi.fn(),
     openNoteFind: vi.fn(),
     findNextInNote: vi.fn(),

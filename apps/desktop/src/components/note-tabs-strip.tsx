@@ -1,11 +1,12 @@
 import type { MouseEvent, ReactElement } from 'react'
-import { Pencil, Pin, Plus, X } from 'lucide-react'
+import { PanelLeft, PanelRight, Pencil, Pin, Plus, X } from 'lucide-react'
 import { usePalette } from '@/components/command-palette/palette-provider'
 import { NavigateArrows } from '@/components/sidebar/navigate-arrows'
 import { useOpenTabNotes, type OpenTabNote } from '@/hooks/use-open-tab-notes'
 import { hasMacosTitleBarOverlay } from '@/lib/window-chrome'
 import { cn } from '@/lib/utils'
 import { useOpenTabs } from '@/providers/open-tabs-provider'
+import { useSidebar } from '@/providers/sidebar-provider'
 
 interface NoteTabsStripProps {
   /**
@@ -31,6 +32,7 @@ export function NoteTabsStrip({ atWindowEdge = false }: NoteTabsStripProps): Rea
     useOpenTabs()
   const notes = useOpenTabNotes()
   const { openPalette } = usePalette()
+  const { collapsed, toggleSidebar, contextCollapsed, toggleContextSidebar } = useSidebar()
 
   return (
     <div
@@ -43,6 +45,12 @@ export function NoteTabsStrip({ atWindowEdge = false }: NoteTabsStripProps): Rea
       )}
     >
       <div className="window-drag-control flex items-center">
+        <PanelToggle
+          side="left"
+          collapsed={collapsed}
+          onToggle={toggleSidebar}
+          label="Toggle sidebar"
+        />
         <NavigateArrows />
       </div>
 
@@ -84,7 +92,49 @@ export function NoteTabsStrip({ atWindowEdge = false }: NoteTabsStripProps): Rea
           <Plus aria-hidden className="size-3.5" />
         </button>
       </div>
+
+      <div className="window-drag-control ml-auto flex items-center">
+        <PanelToggle
+          side="right"
+          collapsed={contextCollapsed}
+          onToggle={toggleContextSidebar}
+          label="Toggle context panel"
+        />
+      </div>
     </div>
+  )
+}
+
+interface PanelToggleProps {
+  side: 'left' | 'right'
+  collapsed: boolean
+  onToggle: () => void
+  label: string
+}
+
+/**
+ * The rail toggles bookending the bar — panel-left over the sidebar's
+ * corner, panel-right over the context rail's. `aria-pressed` reports the
+ * rail's visibility (pressed = shown), and the icon dims while its rail is
+ * hidden so the bar itself tells the layout state at a glance.
+ */
+function PanelToggle({ side, collapsed, onToggle, label }: PanelToggleProps): ReactElement {
+  const Icon = side === 'left' ? PanelLeft : PanelRight
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      aria-pressed={!collapsed}
+      onClick={onToggle}
+      className={cn(
+        'flex size-7 shrink-0 items-center justify-center rounded-lg transition-colors duration-100',
+        'hover:bg-surface-hover hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
+        collapsed ? 'text-text-muted' : 'text-text-secondary',
+      )}
+    >
+      <Icon aria-hidden strokeWidth={1.75} className="size-4" />
+    </button>
   )
 }
 

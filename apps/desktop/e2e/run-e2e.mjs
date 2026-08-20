@@ -184,6 +184,26 @@ try {
   })
   await page.screenshot({ path: `${SHOTS}06-tabs.png` })
 
+  await step('the two rails collapse and restore independently', async () => {
+    const primaryNav = page.getByRole('navigation', { name: 'Primary' })
+    await page.getByRole('button', { name: 'Toggle sidebar' }).click()
+    if (await primaryNav.count()) {
+      throw new Error('left sidebar still mounted after collapsing it')
+    }
+    // The context rail stands while the left one is hidden.
+    await page.getByRole('tab', { name: 'Details' }).waitFor()
+    await page.getByRole('button', { name: 'Toggle sidebar' }).click()
+    await primaryNav.waitFor()
+
+    await page.getByRole('button', { name: 'Toggle context panel' }).click()
+    if (await page.getByRole('tab', { name: 'Details' }).count()) {
+      throw new Error('context rail still mounted after collapsing it')
+    }
+    await primaryNav.waitFor()
+    await page.getByRole('button', { name: 'Toggle context panel' }).click()
+    await page.getByRole('tab', { name: 'Details' }).waitFor()
+  })
+
   await step('the Graph view maps the seeded notes and links', async () => {
     await page.getByRole('navigation', { name: 'Primary' }).getByText('Graph').click()
     await page.getByRole('heading', { name: 'Graph', exact: true }).waitFor()

@@ -31,7 +31,7 @@ interface WorkspaceContentProps {
  * providers it mounts.
  */
 export function WorkspaceContent({ graph }: WorkspaceContentProps): ReactElement {
-  const { collapsed } = useSidebar()
+  const { collapsed, contextCollapsed } = useSidebar()
   const commandContext = useAppShortcuts()
   // Daily routes get the day's contextual panel and note routes the note's;
   // search/settings get none (AppShell omits the region when context is absent).
@@ -74,7 +74,7 @@ export function WorkspaceContent({ graph }: WorkspaceContentProps): ReactElement
         </div>
       </div>
 
-      {collapsed ? undefined : (
+      {contextCollapsed ? undefined : (
         <aside
           id="context-sidebar"
           aria-label="Context"

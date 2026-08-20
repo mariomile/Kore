@@ -1,117 +1,124 @@
-# Reflect
+# Lore
 
-Plain-file notes for Mac and iPhone: daily notes, wiki links, local search,
-and optional AI over your own Markdown.
+Plain-file notes for Mac and iPhone: daily notes, wiki links, a graph view,
+tabs, local search, and AI over your own Markdown — billed to the ChatGPT or
+Claude subscription you already have.
 
-[![Release](https://img.shields.io/github/v/release/team-reflect/reflect-open)](https://github.com/team-reflect/reflect-open/releases/latest)
-[![CI](https://github.com/team-reflect/reflect-open/actions/workflows/ci.yml/badge.svg)](https://github.com/team-reflect/reflect-open/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+Lore is a personal fork of
+[Reflect (reflect-open)](https://github.com/team-reflect/reflect-open) — an
+open-source, local-first note app by the Reflect team, MIT-licensed. Lore
+keeps Reflect's plain-file model and privacy stance and builds a customized
+experience on top: a Craft/Linear-grade design language, note tabs, a dual
+sidebar layout, a force-directed graph view, an in-app browser and file
+viewer, and subscription AI through local coding-agent CLIs.
 
-Reflect is an open-source note-taking app built around a folder of Markdown
-files. It opens to today's note, lets `[[wiki links]]` connect people,
-projects, and ideas, and keeps search and backlinks fast without turning your
-notes into an app-only database.
-
-The app does not require a Reflect account. Notes live in a folder you choose,
-and optional services such as AI providers, transcription, iCloud, GitHub, or
+The app does not require any account. Notes live in a folder you choose, and
+optional services such as AI providers, transcription, iCloud, GitHub, or
 another git remote are connected directly by the user.
 
-<img width="2926" height="1800" alt="Reflect" src="https://github.com/user-attachments/assets/6da0e0d2-3f25-4fc4-850c-b764548c3abe" />
+## What Lore adds on top of Reflect
 
-## Features
+- **Design language:** ink hairlines, one accent color, raised-pill controls,
+  a floating note card between two full-height rails — light and dark, with
+  themes (Space, Midnight, Paper) and custom accent colors.
+- **Note tabs:** a Linear-style tab strip (`⌃Tab`/`⌃⇧Tab` cycle, `⌘W`
+  closes, double-click pins) plus an "Open" section in the sidebar, persisted
+  per graph and restored at launch.
+- **Dual rails:** the left navigation and the right context rail (Details /
+  Chat / Calendar panels) collapse independently — `⌘\` and `⌘⇧\`.
+- **Graph view:** every note and wiki link as a force-directed map — pan,
+  zoom, hover to spotlight a neighborhood, drag to rearrange, click to open.
+- **In-app browser:** web links in notes open in their own window inside the
+  app (Alt-click for the OS browser). Pages get a bare webview with zero
+  access to your notes.
+- **File viewer:** PDF, HTML (fully sandboxed), DOCX, CSV/TSV, and plain-text
+  attachments open in-app; anything else falls back to the OS.
+- **Subscription AI:** chat with your notes through the locally installed
+  Claude Code or Codex CLI — including **Sign in with ChatGPT** from inside
+  the app — with `private: true` notes hard-blocked at the CLI sandbox level.
+  BYOK providers (OpenAI, Anthropic, Google, OpenRouter) still work.
+- **Everything else:** unlinked mentions with one-click linking, an All-notes
+  masonry view, template placeholders (`{{date}}`, `{{time}}`, `{{title}}`),
+  task priorities and recurrence, saved searches, and an Insights dashboard.
 
-- **Daily notes:** the app opens to today's note, and capture defaults there.
-- **Wiki links and backlinks:** type `[[` to link notes; each note shows what
-  links back to it.
-- **Local search:** `⌘K` searches notes, backlinks, and tags. Optional semantic
-  search can be enabled locally.
-- **Ask your notes:** `⌘J` can query notes through user-provided OpenAI,
-  Anthropic, Google, or OpenRouter keys. Answers cite source notes.
-- **Private notes:** `private: true` excludes a note's content from AI and
-  other external services.
-- **Audio memos:** record audio and transcribe it into the daily note with a
-  configured transcription provider.
-- **Browser capture:** save links, selected text, screenshots, and page text
-  from Chrome.
-- **Sync choices:** use iCloud Drive for file sync, or git/GitHub for
-  versioned backup.
-- **CLI:** `reflect today`, `reflect search`, and `reflect show` are available
-  for scripts and agents. See [docs/cli.md](docs/cli.md).
+See [docs/roadmap.md](docs/roadmap.md) for the full changelog of the
+customization and what is planned next.
 
 ## Install
 
-1. **Install the Mac app.** Download the latest release for your Mac:
-   - **Stable:** [Apple silicon (M-series)](https://github.com/team-reflect/reflect-open/releases/latest/download/Reflect_aarch64.dmg) · [Intel](https://github.com/team-reflect/reflect-open/releases/latest/download/Reflect_x86_64.dmg)
-   - **Beta:** [Apple silicon (M-series)](https://github.com/team-reflect/reflect-open/releases/download/updater-beta/Reflect.Beta_aarch64.dmg) · [Intel](https://github.com/team-reflect/reflect-open/releases/download/updater-beta/Reflect.Beta_x86_64.dmg)
+Lore ships as a build-it-yourself app (this repository is private; there are
+no public signed installers).
 
-   Each build is signed, notarized, and auto-updated from GitHub Releases. You
-   can also [view all releases](https://github.com/team-reflect/reflect-open/releases).
-2. **Install the iOS beta.** Join
-   [TestFlight](https://testflight.apple.com/join/j2eEz43d). The iOS app uses
-   the same plain-file graph and sync options as the Mac app.
-3. **Install the Chrome extension.** Add
-   [Reflect Capture from the Chrome Web Store](https://chromewebstore.google.com/detail/reflect-capture/ccabifmooehighoonjeiololjfofkhkd)
-   to save the current page, selected text, screenshots, and optional page text
-   from Chrome.
+**Prerequisites** (one-time, on your Mac):
 
-You can also [build from source](#building-from-source).
+```bash
+xcode-select --install                # Xcode Command Line Tools
+curl https://sh.rustup.rs -sSf | sh   # Rust toolchain
+npm install -g pnpm                   # pnpm (Node 22+ required)
+```
 
-See [CHANGELOG.md](apps/desktop/CHANGELOG.md) for release notes.
+**Build and install:**
+
+```bash
+git clone https://github.com/mariomile/My-reflect.git lore
+cd lore
+pnpm install
+pnpm tauri build
+```
+
+The installers land in `apps/desktop/src-tauri/target/release/bundle/`:
+
+- `macos/Reflect.app` — drag it into `/Applications`
+- `dmg/*.dmg` — the same app as a disk-image installer
+
+A locally built app runs without Gatekeeper warnings on the machine that
+built it. To produce signed, notarized installers for other Macs (with
+auto-update), use `pnpm release:macos` — see
+[docs/macos-distribution.md](docs/macos-distribution.md).
+
+For a quick look without installing, `pnpm tauri dev` runs the app with hot
+reload; `pnpm tauri:dev` runs the separate "Dev" flavor that coexists with an
+installed build.
 
 ## Your Notes Are Files
 
-Reflect calls a notes folder a **graph**. A graph is a folder you can inspect,
+Lore calls a notes folder a **graph**. A graph is a folder you can inspect,
 back up, sync, or edit with other tools:
 
 ```text
 my-graph/
 ├── daily/2026-06-12.md     # Daily notes, named by date
 ├── notes/some-title.md     # Other notes, named from their titles
+├── templates/              # Note templates (placeholders expand on insert)
 ├── assets/                 # Images and attachments
 └── audio-memos/            # Audio recordings and transcripts
 ```
 
-Markdown files are the source of truth. Reflect adds search, backlinks, tags,
-and related notes on top, but the files remain usable in any Markdown editor.
+Markdown files are the source of truth. Lore adds search, backlinks, tags,
+tabs, and the graph view on top, but the files remain usable in any Markdown
+editor.
 
 ## Sync and Privacy
 
 For simple file sync across Apple devices, create your graph inside an
-iCloud-synced folder such as `iCloud Drive/ReflectGraph`.
+iCloud-synced folder. For versioned backup or non-iCloud sync, connect GitHub
+in the app or add [any SSH git remote](docs/generic-git-remotes.md).
 
-For versioned backup or non-iCloud sync, connect GitHub in the app or add
-[any SSH git remote](docs/generic-git-remotes.md). Git sync stores the Markdown
-graph in a repository you control.
-
-By default, note content stays on the device. External calls only happen after
-you configure a provider, connect a git remote, or use a platform sync service.
-See [docs/privacy.md](docs/privacy.md) for the full privacy model.
-
-## Building from Source
-
-Prerequisites:
-
-- A recent stable [Rust toolchain](https://rustup.rs)
-- Node.js with [pnpm](https://pnpm.io) 10
-- Xcode Command Line Tools
-
-```bash
-git clone https://github.com/team-reflect/reflect-open.git
-cd reflect-open
-corepack enable
-pnpm install
-pnpm tauri dev
-pnpm tauri build
-```
+By default, note content stays on the device. External calls only happen
+after you configure a provider, connect a git remote, or use a platform sync
+service. `private: true` in a note's frontmatter is a hard block: that note's
+content never reaches AI or any other external service — enforced for the
+CLI providers at the sandbox level, not by prompt. See
+[docs/privacy.md](docs/privacy.md) for the full model.
 
 ## Project Layout
 
-Reflect is a pnpm/Turborepo monorepo:
+Lore is a pnpm/Turborepo monorepo (structure inherited from Reflect):
 
 ```text
-reflect-open/
+lore/
 ├── apps/desktop/          # Mac and iOS app
-├── apps/cli/              # `reflect` CLI
+├── apps/cli/              # `reflect` CLI (scripts and agents)
 ├── apps/extension/        # Chrome capture extension
 ├── apps/native-host/      # Browser capture helper
 ├── packages/core/         # Shared TypeScript logic
@@ -121,8 +128,7 @@ reflect-open/
 └── docs/                  # Product, architecture, and contributor docs
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md), [docs/contributing/](docs/contributing/),
-and [AGENTS.md](AGENTS.md) for conventions and development guides.
+See [AGENTS.md](AGENTS.md) for conventions and the development cycle.
 
 ## Development
 
@@ -130,38 +136,17 @@ Common commands from the repository root:
 
 ```bash
 pnpm dev              # Vite only, http://localhost:1420
-pnpm typecheck        # TypeScript
-pnpm lint             # oxlint
-pnpm test             # vitest; use --run path/to/test for one file
 pnpm check            # typecheck + lint
+pnpm test             # vitest; use --run path/to/test for one file
+pnpm --filter reflect-desktop e2e   # Playwright over the real webview
 
 # Rust tests that compile the desktop crate need sidecars staged first
 pnpm --filter @reflect/desktop sidecar
 cargo test --workspace
 ```
 
-For iOS simulator development:
+## Credits and License
 
-```bash
-pnpm tauri:ios:dev "iPhone 17 Pro"
-```
-
-For TestFlight builds:
-
-```bash
-pnpm release:ios preflight --build-number=123
-pnpm release:ios testflight --build-number=123 --wait
-```
-
-## Status
-
-Reflect is in beta and used daily. The current focus is the Mac app, iOS
-companion, browser capture, local-first data model, and sync reliability.
-
-Windows, Android, and a plugin API are out of scope for now. See the
-[V2 product vision](docs/reflect-v2-product-vision.md) and the implementation
-plans in [docs/plans/](docs/plans/) for the longer-term direction.
-
-## License
-
-[MIT](LICENSE).
+Lore is built on [Reflect (reflect-open)](https://github.com/team-reflect/reflect-open)
+by the Reflect team. Both the upstream project and this fork are
+[MIT](LICENSE)-licensed.

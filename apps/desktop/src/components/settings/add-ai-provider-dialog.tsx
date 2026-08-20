@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { InlineAlert } from '@/components/inline-alert'
+import { CodexSignIn } from '@/components/settings/codex-sign-in'
 import { useAddAiProviderSubmit } from '@/hooks/use-add-ai-provider-submit'
 import type { NewAiProvider } from '@/hooks/use-ai-providers'
 import { ModelCombobox } from './model-combobox'
@@ -209,13 +210,20 @@ export function AddAiProviderDialog({ onAdd, onClose }: AddAiProviderDialogProps
           ) : null}
 
           {provider.id === 'claude-cli' || provider.id === 'codex-cli' ? (
-            <p className="text-xs text-text-muted">
-              No API key — chat runs through the installed{' '}
-              {provider.id === 'claude-cli' ? 'Claude Code' : 'Codex'} CLI and bills your{' '}
-              {provider.id === 'claude-cli' ? 'Claude' : 'ChatGPT'} subscription. Install it and
-              sign in once with <code>{provider.id === 'claude-cli' ? 'claude' : 'codex'}</code> in
-              a terminal.
-            </p>
+            <div className="flex flex-col gap-2">
+              <p className="text-xs text-text-muted">
+                No API key — chat runs through the installed{' '}
+                {provider.id === 'claude-cli' ? 'Claude Code' : 'Codex'} CLI and bills your{' '}
+                {provider.id === 'claude-cli' ? 'Claude' : 'ChatGPT'} subscription.
+                {provider.id === 'claude-cli' ? (
+                  <>
+                    {' '}
+                    Install it and sign in once with <code>claude</code> in a terminal.
+                  </>
+                ) : null}
+              </p>
+              {provider.id === 'codex-cli' ? <CodexSignIn /> : null}
+            </div>
           ) : (
             <label className="flex flex-col gap-1">
               <span className={FIELD_LABEL_CLASS}>

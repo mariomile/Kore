@@ -1,10 +1,11 @@
 import type { ReactElement } from 'react'
 import { ExternalLink } from 'lucide-react'
+import { CsvAssetView, DocxAssetView, TextAssetView } from '@/components/asset-viewer-views'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
 /** What the in-app viewer can render; anything else keeps the OS-open path. */
-export type ViewableAssetKind = 'pdf' | 'html'
+export type ViewableAssetKind = 'pdf' | 'html' | 'csv' | 'docx' | 'text'
 
 /** The viewer kind for a graph-relative asset path, or null to open externally. */
 export function viewableAssetKind(assetPath: string): ViewableAssetKind | null {
@@ -13,6 +14,15 @@ export function viewableAssetKind(assetPath: string): ViewableAssetKind | null {
   }
   if (/\.html?$/i.test(assetPath)) {
     return 'html'
+  }
+  if (/\.[ct]sv$/i.test(assetPath)) {
+    return 'csv'
+  }
+  if (/\.docx$/i.test(assetPath)) {
+    return 'docx'
+  }
+  if (/\.(?:txt|markdown|md|log|json)$/i.test(assetPath)) {
+    return 'text'
   }
   return null
 }
@@ -28,13 +38,14 @@ interface AssetViewerDialogProps {
 }
 
 /**
- * The in-app attachment viewer (roadmap: "HTML & PDF viewing in-app"): a
- * large dialog rendering the asset off the graph's `reflect-asset://`
- * protocol instead of bouncing to an external app. PDFs use the webview's
- * native renderer; HTML renders in a fully sandboxed iframe (no scripts, no
- * same-origin, no forms — `sandbox=""`), so a note attachment can never run
- * code against the app. "Open externally" keeps the old path one click away
- * — including for platforms whose webview can't render PDFs inline.
+ * The in-app attachment viewer: a large dialog rendering the asset off the
+ * graph's `reflect-asset://` protocol instead of bouncing to an external
+ * app. PDFs use the webview's native renderer; HTML (and converted DOCX)
+ * renders in a fully sandboxed iframe (no scripts, no same-origin, no forms
+ * — `sandbox=""`), so a note attachment can never run code against the app;
+ * CSV/TSV renders as a table and plain text as a scroller. "Open externally"
+ * keeps the old path one click away — including for platforms whose webview
+ * can't render PDFs inline.
  */
 export function AssetViewerDialog({
   assetPath,
@@ -73,6 +84,12 @@ export function AssetViewerDialog({
           <p className="flex flex-1 items-center justify-center text-sm text-text-muted">
             This attachment can’t be displayed here — try opening it externally.
           </p>
+        ) : kind === 'csv' ? (
+          <CsvAssetView url={url} />
+        ) : kind === 'docx' ? (
+          <DocxAssetView url={url} />
+        ) : kind === 'text' ? (
+          <TextAssetView url={url} />
         ) : (
           <iframe
             title={fileName}

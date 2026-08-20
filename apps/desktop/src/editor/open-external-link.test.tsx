@@ -27,8 +27,8 @@ vi.mock('@/lib/windows/open-in-new-window', async (importOriginal) => ({
 
 let openExternalLink: LinkClickHandler
 
-function click(href: string, metaKey = false): MouseEvent {
-  const event = new MouseEvent('click', { cancelable: true, metaKey })
+function click(href: string, metaKey = false, altKey = false): MouseEvent {
+  const event = new MouseEvent('click', { cancelable: true, metaKey, altKey })
   act(() => openExternalLink({ href, event, mod: metaKey }))
   return event
 }
@@ -52,8 +52,15 @@ describe('openExternalLink', () => {
     expect(event.defaultPrevented).toBe(true)
   })
 
-  it('⌘-clicks an http(s) link to the OS browser instead', async () => {
+  it('⌘-click also opens the in-app browser — in the editor it IS the open gesture', async () => {
     click('https://example.com', true)
+
+    expect(openBrowserWindow).toHaveBeenCalledWith('https://example.com')
+    expect(openUrl).not.toHaveBeenCalled()
+  })
+
+  it('Alt-click is the OS-browser escape hatch', async () => {
+    click('https://example.com', false, true)
 
     expect(openUrl).toHaveBeenCalledWith('https://example.com')
     expect(openBrowserWindow).not.toHaveBeenCalled()

@@ -11,6 +11,11 @@ import '@/test-utils/locator'
 import { hover, unhover } from '@/test-utils/mouse'
 import { NoteEditor, type NoteEditorHandle } from './note-editor'
 
+const openBrowserWindow = vi.hoisted(() => vi.fn(async () => {}))
+vi.mock('@reflect/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@reflect/core')>()),
+  openBrowserWindow,
+}))
 vi.mock('@tauri-apps/plugin-opener', () => ({
   openUrl: vi.fn(async () => {}),
 }))
@@ -343,13 +348,14 @@ describe('NoteEditor image lightbox', () => {
 })
 
 describe('NoteEditor link opening', () => {
-  it('opens external links through the OS opener', async () => {
+  it('opens web links through the in-app browser window', async () => {
     await render(<NoteEditor initialContent="see [Docs](https://example.com) here" />)
 
     await pmRoot.getByRole('link').click()
     await vi.waitFor(() => {
-      expect(openUrl).toHaveBeenCalledWith('https://example.com')
+      expect(openBrowserWindow).toHaveBeenCalledWith('https://example.com')
     })
+    expect(openUrl).not.toHaveBeenCalled()
   })
 
   it('opens a custom app scheme link via the URL opener', async () => {

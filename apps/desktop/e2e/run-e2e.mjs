@@ -81,7 +81,13 @@ try {
 
   await step('app boots on the dev bridge with the seeded graph', async () => {
     await page.goto(BASE)
-    await page.getByRole('navigation', { name: 'Primary' }).getByText('Daily notes').waitFor()
+    // Generous first-paint budget: a cold Vite dep re-optimization (new or
+    // changed dependencies) can hold the initial bundle well past the
+    // default timeout.
+    await page
+      .getByRole('navigation', { name: 'Primary' })
+      .getByText('Daily notes')
+      .waitFor({ timeout: 60000 })
     await page.getByText('Morning review with').first().waitFor()
   })
   await page.screenshot({ path: `${SHOTS}01-daily.png` })
@@ -202,6 +208,39 @@ try {
     await primaryNav.waitFor()
     await page.getByRole('button', { name: 'Toggle context panel' }).click()
     await page.getByRole('tab', { name: 'Details' }).waitFor()
+  })
+
+  await step('a web link routes through the in-app browser command', async () => {
+    await page.getByRole('navigation', { name: 'Primary' }).getByText('Daily notes').click()
+    // The seeded link lives four days back — jump there via the rail calendar
+    // (cells carry their full formatted date as the accessible name).
+    const target = new Date(Date.now() - 4 * 86_400_000)
+    const month = target.toLocaleString('en-US', { month: 'long' })
+    await page
+      .getByRole('button', { name: new RegExp(`${month} ${target.getDate()}(?:st|nd|rd|th),`) })
+      .first()
+      .click()
+    const link = page.getByText('Local-first software').first()
+    await link.waitFor()
+    // The dev bridge stands in for the Tauri browser window with a popup
+    // (window.open); record instead of opening so the run stays headless.
+    await page.evaluate(() => {
+      window.__openedUrls = []
+      window.open = (url) => {
+        window.__openedUrls.push(String(url))
+        return null
+      }
+    })
+    // In the editor, mod-click is the open gesture (a plain click places
+    // the caret).
+    await link.click({ modifiers: ['ControlOrMeta'] })
+    await page.waitForFunction(() => (window.__openedUrls ?? []).length > 0, undefined, {
+      timeout: 10000,
+    })
+    const opened = await page.evaluate(() => window.__openedUrls)
+    if (!String(opened[0]).includes('inkandswitch.com')) {
+      throw new Error(`expected the note's link, got ${JSON.stringify(opened)}`)
+    }
   })
 
   await step('the Graph view maps the seeded notes and links', async () => {

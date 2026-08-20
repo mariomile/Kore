@@ -126,7 +126,9 @@ pub async fn agent_cli_check(binary: AgentCliBinary) -> AppResult<String> {
 ///
 /// `args` is the complete argument list (the frontend engine owns each
 /// binary's flag protocol); `prompt` goes to stdin (arbitrary length) and
-/// `cwd` scopes the run to the graph root.
+/// `cwd` scopes the run to the graph root. `stream_stderr` additionally
+/// relays stderr lines as `Line` events — auth flows (`codex login`) talk on
+/// stderr, and the frontend must see the OAuth URL they print there.
 #[tauri::command]
 pub async fn agent_cli_run(
     app: tauri::AppHandle,
@@ -136,6 +138,7 @@ pub async fn agent_cli_run(
     args: Vec<String>,
     prompt: String,
     cwd: Option<String>,
+    stream_stderr: Option<bool>,
 ) -> AppResult<()> {
     let path = resolve_binary(binary)
         .ok_or_else(|| AppError::not_found(format!("{} was not found", binary.label())))?;
@@ -174,10 +177,38 @@ pub async fn agent_cli_run(
     // deadlocks a chatty child: once the ~64KB stderr pipe fills, the child
     // blocks mid-write and stops producing stdout, and nobody ever reads
     // either. The bound keeps a runaway logger from growing memory instead.
+    // With `stream_stderr` the drain also relays each line as a `Line` event
+    // (line-buffered rather than chunked, so the frontend sees whole lines).
+    let stream_stderr = stream_stderr.unwrap_or(false);
+    let stderr_app = app.clone();
+    let stderr_id = request_id.clone();
     let stderr_tail = std::thread::spawn(move || {
         const TAIL_LIMIT: usize = 64 * 1024;
-        let mut tail: Vec<u8> = Vec::new();
-        if let Some(mut stderr) = stderr {
+        if let Some(stderr) = stderr {
+            if stream_stderr {
+                let mut tail = String::new();
+                for line in BufReader::new(stderr).lines() {
+                    let Ok(line) = line else { break };
+                    if !line.trim().is_empty() {
+                        let _ = stderr_app.emit(
+                            EVENT,
+                            CliEvent::Line {
+                                request_id: stderr_id.clone(),
+                                line: line.clone(),
+                            },
+                        );
+                    }
+                    tail.push_str(&line);
+                    tail.push('\n');
+                    if tail.len() > TAIL_LIMIT {
+                        let cut = tail.len() - TAIL_LIMIT;
+                        tail.drain(..cut);
+                    }
+                }
+                return tail;
+            }
+            let mut tail: Vec<u8> = Vec::new();
+            let mut stderr = stderr;
             let mut chunk = [0_u8; 8192];
             loop {
                 match stderr.read(&mut chunk) {
@@ -190,8 +221,9 @@ pub async fn agent_cli_run(
                     }
                 }
             }
+            return String::from_utf8_lossy(&tail).into_owned();
         }
-        String::from_utf8_lossy(&tail).into_owned()
+        String::new()
     });
 
     state.0.lock().unwrap().insert(request_id.clone(), child);

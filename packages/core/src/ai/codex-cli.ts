@@ -1,7 +1,12 @@
 import { z } from 'zod'
 import type { ChatStreamEvent } from './chat/stream-chat'
 import { call } from '../ipc/invoke'
-import { agentCliPrompt, streamAgentCliTurn, type AgentCliChunk } from './agent-cli'
+import {
+  agentCliPrompt,
+  runAgentCliCommand,
+  streamAgentCliTurn,
+  type AgentCliChunk,
+} from './agent-cli'
 import type { StreamCliChatOptions } from './claude-cli'
 
 /**
@@ -36,6 +41,63 @@ const PROFILE = 'reflect_chat'
  */
 export async function checkCodexCli(): Promise<string> {
   return await call('agent_cli_check', { binary: 'codex' }, z.string())
+}
+
+export interface CodexAuthStatus {
+  loggedIn: boolean
+  /** The CLI's own last status line ("Logged in using ChatGPT", …). */
+  detail: string
+}
+
+/** Whether the Codex CLI holds ChatGPT credentials (`codex login status`). */
+export async function codexLoginStatus(): Promise<CodexAuthStatus> {
+  const result = await runAgentCliCommand({ binary: 'codex', args: ['login', 'status'] })
+  if (result.code === null) {
+    throw new Error(result.failure ?? 'could not run the Codex CLI')
+  }
+  return { loggedIn: result.code === 0, detail: result.lines.at(-1)?.trim() ?? '' }
+}
+
+/** The login flow prints exactly one OAuth URL, on this host. */
+const CODEX_AUTH_URL_RE = /https:\/\/auth\.openai\.com\/\S+/
+
+/**
+ * Run the ChatGPT sign-in flow (`codex login`): the CLI starts a local
+ * callback server and prints an OAuth URL — relayed through `onAuthUrl` for
+ * the app to open in the user's browser — then blocks until the browser
+ * completes the flow (or the signal cancels it). Resolves with the outcome;
+ * the credentials live wherever the CLI keeps them, never in the app.
+ */
+export async function runCodexLogin(options: {
+  onAuthUrl: (url: string) => void
+  signal?: AbortSignal | undefined
+}): Promise<{ success: boolean; message: string | null }> {
+  let urlSeen = false
+  const result = await runAgentCliCommand({
+    binary: 'codex',
+    args: ['login'],
+    signal: options.signal,
+    onLine: (line) => {
+      if (urlSeen) {
+        return
+      }
+      const url = CODEX_AUTH_URL_RE.exec(line)?.[0]
+      if (url !== undefined) {
+        urlSeen = true
+        options.onAuthUrl(url)
+      }
+    },
+  })
+  const success = result.code === 0
+  return {
+    success,
+    message: success ? null : (result.failure ?? result.lines.at(-1)?.trim() ?? null),
+  }
+}
+
+/** Drop the CLI's stored ChatGPT credentials (`codex logout`). */
+export async function codexLogout(): Promise<void> {
+  await runAgentCliCommand({ binary: 'codex', args: ['logout'] })
 }
 
 /** Build the headless run's instruction preamble (Codex has no system flag). */

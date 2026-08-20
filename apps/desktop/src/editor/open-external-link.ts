@@ -38,15 +38,39 @@ export function isWebUrl(href: string): boolean {
 }
 
 /**
+ * Open an external URL by the app's one routing rule — shared by the static
+ * Markdown surfaces and the editor so a link never behaves differently by
+ * where it was clicked. Web pages open the in-app browser window (with the
+ * OS opener as the fallback when the shell can't build one); `osBrowser`
+ * (the Alt-click escape hatch) and every non-web app scheme go to the OS
+ * opener, which owns its handler. Unsafe schemes never open anything.
+ */
+export function openExternalUrl(href: string, options?: { osBrowser?: boolean }): void {
+  if (!isOpenableExternalUrl(href)) {
+    return
+  }
+  if (options?.osBrowser !== true && isWebUrl(href)) {
+    void openBrowserWindow(href).catch((cause: unknown) => {
+      console.error(`in-app browser failed for ${href}:`, errorMessage(cause))
+      openUrlSync(href)
+    })
+    return
+  }
+  openUrlSync(href)
+}
+
+/**
  * Open a rendered Markdown link without letting the click navigate the app's
  * WebView frame. The static `MarkdownView` surfaces aren't contenteditable,
  * so an `<a href>` click would otherwise unload the whole app.
  *
  * Routing: a `reflect://` link goes through the in-app deep-link pipeline
- * (the OS opener denies the scheme); a plain click on a web page opens the
- * in-app browser window so reading a link never leaves the app, with the OS
- * browser as the fallback when the shell can't build the window; a
- * modifier-click — and every non-web app scheme — goes to the OS opener.
+ * (the OS opener denies the scheme); a web page opens the in-app browser
+ * window so reading a link never leaves the app — whatever the gesture, since
+ * inside the editor mod-click IS the open gesture (a plain click just places
+ * the caret) — with Alt held as the deliberate "OS browser" escape hatch,
+ * and the OS opener as the fallback when the shell can't build the window;
+ * every non-web app scheme goes to the OS opener, which owns its handler.
  */
 export function useOpenExternalLink(): LinkClickHandler {
   const followDeepLink = useFollowDeepLink()
@@ -57,17 +81,7 @@ export function useOpenExternalLink(): LinkClickHandler {
         followDeepLink({ href, openInNewWindow: mod })
         return
       }
-      if (!isOpenableExternalUrl(href)) {
-        return
-      }
-      if (!mod && isWebUrl(href)) {
-        void openBrowserWindow(href).catch((cause: unknown) => {
-          console.error(`in-app browser failed for ${href}:`, errorMessage(cause))
-          openUrlSync(href)
-        })
-        return
-      }
-      openUrlSync(href)
+      openExternalUrl(href, { osBrowser: 'altKey' in event && event.altKey })
     },
     [followDeepLink],
   )

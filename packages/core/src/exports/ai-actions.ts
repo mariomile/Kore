@@ -110,6 +110,10 @@ export {
 } from '../ai/claude-cli'
 export {
   checkCodexCli,
+  codexLoginStatus,
+  runCodexLogin,
+  codexLogout,
+  type CodexAuthStatus,
   codexCliArgs,
   codexCliFilesystemToml,
   codexCliSystemPrompt,

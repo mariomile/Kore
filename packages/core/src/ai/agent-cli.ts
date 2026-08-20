@@ -105,6 +105,78 @@ const cliEventSchema = z.discriminatedUnion('kind', [
 
 const CLI_EVENT = 'agent-cli:event'
 
+export interface AgentCliCommandResult {
+  /** The process exit code, or null when it died without one (or never ran). */
+  code: number | null
+  /** Every non-empty output line, stdout and stderr interleaved. */
+  lines: string[]
+  /** Spawn/stream failure, when the run never completed cleanly. */
+  failure: string | null
+}
+
+/**
+ * Run one non-chat CLI command (auth flows, status probes) to completion,
+ * collecting its output lines — stderr included, because that's where the
+ * CLIs talk outside of chat (`codex login` prints its OAuth URL there). The
+ * optional `onLine` hook lets a caller react mid-run (open the URL); the
+ * signal kills the child (the login flow blocks on its browser callback
+ * until cancelled).
+ */
+export async function runAgentCliCommand(options: {
+  binary: AgentCliBinary
+  args: string[]
+  signal?: AbortSignal | undefined
+  onLine?: ((line: string) => void) | undefined
+}): Promise<AgentCliCommandResult> {
+  const requestId = crypto.randomUUID()
+  const bridge = getBridge()
+  const lines: string[] = []
+  let failure: string | null = null
+  let settle: ((result: AgentCliCommandResult) => void) | null = null
+  const done = new Promise<AgentCliCommandResult>((resolve) => {
+    settle = resolve
+  })
+  const unlisten = await bridge.listen(CLI_EVENT, (payload) => {
+    const event = cliEventSchema.safeParse(payload)
+    if (!event.success || event.data.requestId !== requestId) {
+      return
+    }
+    if (event.data.kind === 'line') {
+      lines.push(event.data.line)
+      options.onLine?.(event.data.line)
+    } else if (event.data.kind === 'failed') {
+      failure = event.data.message
+    } else {
+      settle?.({ code: event.data.code, lines, failure })
+    }
+  })
+  const onAbort = (): void => {
+    void bridge.invoke('agent_cli_stop', { requestId }).catch(() => {})
+  }
+  options.signal?.addEventListener('abort', onAbort, { once: true })
+  try {
+    await bridge.invoke('agent_cli_run', {
+      requestId,
+      binary: options.binary,
+      args: options.args,
+      prompt: '',
+      cwd: null,
+      streamStderr: true,
+    })
+    return await done
+  } catch (cause) {
+    return {
+      code: null,
+      lines,
+      failure:
+        cause instanceof Error && cause.message !== '' ? cause.message : 'could not run the CLI',
+    }
+  } finally {
+    unlisten()
+    options.signal?.removeEventListener('abort', onAbort)
+  }
+}
+
 export interface AgentCliTurnOptions {
   binary: AgentCliBinary
   /** The complete argument list (each binary's protocol lives with its engine). */

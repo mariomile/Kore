@@ -26,6 +26,15 @@ customization effort.
 
 ## Shipped (this fork)
 
+- ChatGPT sign-in for the Codex provider, in-app: the add-provider dialog
+  shows the CLI's auth status and runs the whole OAuth flow from a button
+  (the CLI's localhost callback + the OS browser); sign-out included.
+  Credentials stay with the CLI — the app never sees them.
+- Attachment viewer, expanded: DOCX (converted locally, rendered fully
+  sandboxed), CSV/TSV (as a table, delimiter-sniffed), and plain text
+  (txt/md/log/json) join PDF and HTML.
+- One link-routing rule everywhere: web links open the in-app browser from
+  the editor and every static surface alike (Alt-click = OS browser).
 - Graph view: the whole graph's notes and resolved wiki links as a
   force-directed map on a canvas (own deterministic layout, no viz
   dependency) — pan, cursor-anchored zoom, hover to spotlight a

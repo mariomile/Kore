@@ -36,12 +36,11 @@ import {
   ImageLightbox,
   type LightboxImage,
 } from '@/editor/image-lightbox'
-import { isOpenableExternalUrl } from '@/editor/open-external-link'
+import { isOpenableExternalUrl, openExternalUrl } from '@/editor/open-external-link'
 import { isTouchEditorSurface } from '@/lib/platform-surface'
 import { useLightboxTransition } from '@/editor/use-lightbox-transition'
 import { isDeepLinkUrl } from '@/lib/deep-links/parse'
 import { useFollowDeepLink } from '@/lib/deep-links/use-follow-deep-link'
-import { openUrlSync } from '@/lib/open-url'
 import { cn } from '@/lib/utils'
 
 type WikilinkHoverRenderer = (hit: WikilinkHoverHit) => ReactNode | Promise<ReactNode>
@@ -344,7 +343,7 @@ export function NoteEditor({
   const handleLinkClick = useCallback(
     // The event may also be the Mod-Enter key press that followed the link
     // (meowdown ≥0.33).
-    ({ href, mod }: { href: string; event: MouseEvent | KeyboardEvent; mod: boolean }) => {
+    ({ href, event, mod }: { href: string; event: MouseEvent | KeyboardEvent; mod: boolean }) => {
       // A graph-relative `assets/…` href (an attachment link) opens through
       // the generation-pinned asset command, never the URL opener — which
       // would receive a meaningless relative string.
@@ -370,7 +369,9 @@ export function NoteEditor({
         onNoteLinkClickRef.current?.({ href, openInNewWindow: mod })
         return
       }
-      openUrlSync(href)
+      // Web links follow the app's one routing rule (the in-app browser,
+      // Alt for the OS one) — the same behavior as the static surfaces.
+      openExternalUrl(href, { osBrowser: 'altKey' in event && event.altKey })
     },
     [followDeepLink],
   )

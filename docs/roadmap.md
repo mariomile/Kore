@@ -6,8 +6,8 @@ customization effort.
 
 ## Next up
 
-- **Per-note version history** — a timeline UI over the existing Git backup
-  (diff + restore).
+- **Styled note export** — HTML/PDF export of a single note in the app's
+  design language.
 
 ## Backlog
 
@@ -19,13 +19,16 @@ customization effort.
   the next occurrence (meowdown exposes no editor-side task-toggle
   callback); Tasks-view completions now spawn in every case, live session
   included.
-- **Styled note export** — HTML/PDF export of a single note in the app's
-  design language.
 - **Mobile parity for the All-notes grid view** — the card grid currently
   ships on desktop only.
 
 ## Shipped (this fork)
 
+- Per-note version history: a History section in the note and daily details
+  rail over the graph's local Git backup — timeline of every commit that
+  changed the note, full preview or per-save line diff, and one-click
+  restore that snapshots the current state first (so a restore is itself
+  just another version, never a loss).
 - Lore's own Apple identity: bundle ids `app.lore.*` (desktop flavors, iOS,
   share/widget extensions), iCloud container `iCloud.app.lore` (shown as
   "Lore" in Files/Finder), App Groups `group.app.lore(.dev)`, product names

@@ -374,6 +374,8 @@ pub fn run() {
             git::git_fetch,
             git::git_merge_remote,
             git::git_push,
+            git::git_note_history,
+            git::git_note_version,
             quit::quit_confirm,
             windows::open_note_window,
             windows::open_browser_window,

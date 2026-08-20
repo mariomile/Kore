@@ -17,6 +17,7 @@
 
 mod commit;
 mod commit_message;
+mod history;
 mod merge;
 mod remote;
 mod repo;
@@ -203,6 +204,31 @@ pub async fn git_merge_remote(
     let root = crate::fs::root_for_generation(&state, generation)?;
     crate::fs::invalidate_file_catalog(&state, &root);
     outcome
+}
+
+/// A note's version timeline: the commits (newest first) where its content
+/// changed. Cheap tree walks over the local repository — no network.
+#[tauri::command]
+pub async fn git_note_history(
+    path: String,
+    limit: Option<usize>,
+    generation: u64,
+    state: State<'_, GraphState>,
+) -> AppResult<Vec<history::NoteVersion>> {
+    let root = crate::fs::root_for_generation(&state, generation)?;
+    run_blocking(move || history::note_history(&root, &path, limit.unwrap_or(200))).await
+}
+
+/// The note's content at one commit of its timeline.
+#[tauri::command]
+pub async fn git_note_version(
+    commit: String,
+    path: String,
+    generation: u64,
+    state: State<'_, GraphState>,
+) -> AppResult<String> {
+    let root = crate::fs::root_for_generation(&state, generation)?;
+    run_blocking(move || history::note_version_content(&root, &commit, &path)).await
 }
 
 /// Push the current branch to `origin`; rejections come back as data so the

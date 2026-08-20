@@ -210,6 +210,19 @@ try {
     await page.getByRole('tab', { name: 'Details' }).waitFor()
   })
 
+  await step('note history opens a version with preview and per-save diff', async () => {
+    // The open note's Details rail carries the History section; the dev
+    // bridge serves a canned two-version timeline, whose first version is
+    // the current content plus one later-removed line.
+    await page.getByText(/^Create notes\//).click()
+    const dialog = page.getByRole('dialog')
+    await dialog.getByText('A line the later edit removed.').waitFor()
+    await dialog.getByRole('button', { name: 'Changes' }).click()
+    await dialog.getByText('A line the later edit removed.').waitFor()
+    await page.keyboard.press('Escape')
+    await dialog.waitFor({ state: 'detached' })
+  })
+
   await step('a web link routes through the in-app browser command', async () => {
     await page.getByRole('navigation', { name: 'Primary' }).getByText('Daily notes').click()
     // The seeded link lives four days back — jump there via the rail calendar

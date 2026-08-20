@@ -140,3 +140,36 @@ export async function gitMergeRemote(generation: number): Promise<MergeOutcome> 
 export async function gitPush(token: string | null, generation: number): Promise<PushOutcome> {
   return await call('git_push', { token, generation }, pushOutcomeSchema)
 }
+
+/** One entry in a note's version timeline (newest first). */
+export const noteVersionSchema = z.object({
+  /** Full commit id — the handle {@link gitNoteVersion} takes. */
+  commit: z.string(),
+  /** Commit time, epoch milliseconds. */
+  timeMs: z.number(),
+  /** First line of the commit message (the sync loop's generated subject). */
+  summary: z.string(),
+})
+export type NoteVersion = z.infer<typeof noteVersionSchema>
+
+/**
+ * A note's version timeline: the local backup repository's commits (newest
+ * first) where the note's content changed. Cheap tree walks — no network —
+ * and an empty list when the graph has no history yet.
+ */
+export async function gitNoteHistory(
+  path: string,
+  generation: number,
+  limit?: number,
+): Promise<NoteVersion[]> {
+  return await call('git_note_history', { path, limit, generation }, z.array(noteVersionSchema))
+}
+
+/** The note's content at one commit of its timeline. */
+export async function gitNoteVersion(
+  commit: string,
+  path: string,
+  generation: number,
+): Promise<string> {
+  return await call('git_note_version', { commit, path, generation }, z.string())
+}

@@ -283,6 +283,37 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
           inProgress: false,
         }
 
+      // No repository in the browser harness — restore's pre-snapshot is a
+      // clean no-op, exactly like a native graph with nothing to commit.
+      case 'git_commit_all':
+        return { committed: false, sha: null, ahead: 0, skippedLargeFiles: [] }
+
+      // A canned two-version timeline per existing note, so the history UI
+      // is exercisable in the browser harness: "dev-head" is the note as it
+      // stands; "dev-first" is a synthesized earlier draft.
+      case 'git_note_history': {
+        const { path } = pathArgsSchema.parse(args)
+        if (files.read(path) === null) {
+          return []
+        }
+        const now = Date.now()
+        return [
+          { commit: 'dev-head', timeMs: now - 60_000, summary: `Update ${path}` },
+          { commit: 'dev-first', timeMs: now - 86_400_000, summary: `Create ${path}` },
+        ]
+      }
+      case 'git_note_version': {
+        const { commit, path } = z.object({ commit: z.string(), path: z.string() }).parse(args)
+        const current = files.read(path)
+        if (current === null) {
+          throw new ReflectError('notFound', `${path} is not in version ${commit}`)
+        }
+        if (commit === 'dev-head') {
+          return current
+        }
+        return `${current.trimEnd()}\n\nA line the later edit removed.\n`
+      }
+
       case 'calendar_authorization_status':
       case 'contacts_authorization_status':
         return 'denied'

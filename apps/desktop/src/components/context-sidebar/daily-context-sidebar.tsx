@@ -3,6 +3,7 @@ import { dailyPath } from '@reflect/core'
 import { DailyEventsSection } from './daily-events-section'
 import { DayCalendar } from './day-calendar'
 import { NoteActionsSection } from './note-actions-section'
+import { NoteHistorySection } from './note-history-section'
 import { PublishedUrlSection } from './published-url-section'
 import { SimilarNotesSection } from './similar-notes-section'
 import { useToday } from '@/lib/use-today'
@@ -40,6 +41,7 @@ export function DailyContextSidebar({ date }: DailyContextSidebarProps): ReactEl
         <DailyEventsSection date={date} />
         <PublishedUrlSection path={dailyPath(date)} />
         <SimilarNotesSection path={dailyPath(date)} />
+        <NoteHistorySection path={dailyPath(date)} />
       </div>
     </div>
   )

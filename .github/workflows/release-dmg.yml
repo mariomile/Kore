@@ -39,6 +39,10 @@ jobs:
   build:
     name: Build and publish (macOS, Apple Silicon)
     runs-on: macos-latest
+    env:
+      # `secrets` is not allowed inside step `if:` expressions — surface the
+      # presence of the updater key as an env flag instead.
+      HAS_UPDATER_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -69,7 +73,7 @@ jobs:
       # latest.json (auto-update works); without it the release degrades to a
       # plain DMG instead of failing — add the secrets and re-run to upgrade.
       - name: Build and publish (with auto-update)
-        if: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' }}
+        if: ${{ env.HAS_UPDATER_KEY == 'true' }}
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -94,7 +98,7 @@ jobs:
           includeUpdaterJson: true
 
       - name: Build and publish (DMG only — updater secrets not set)
-        if: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY == '' }}
+        if: ${{ env.HAS_UPDATER_KEY != 'true' }}
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

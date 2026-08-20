@@ -9,7 +9,7 @@ import {
   type AgentCliChunk,
 } from './agent-cli'
 import { agentContextPromptLines, type AgentPromptContext } from './agent-profiles'
-import { codexMcpConfigArgs, type ResolvedMcpServer } from './mcp'
+import { codexMcpConfigArgs, mcpSpawnEnv, type ResolvedMcpServer } from './mcp'
 import type { StreamCliChatOptions } from './claude-cli'
 
 /**
@@ -169,6 +169,14 @@ export function codexCliFilesystemToml(
   const root = graphRoot.replaceAll('\\', '/').replace(/\/+$/, '')
   const entries = [
     `${tomlString(`${root}/**`)} = ${allowEdits ? '"write"' : '"read"'}`,
+    // Binary user data stays readable but never writable in edit mode: the
+    // more specific entry overrides the subtree grant.
+    ...(allowEdits
+      ? [
+          `${tomlString(`${root}/assets/**`)} = "read"`,
+          `${tomlString(`${root}/audio-memos/**`)} = "read"`,
+        ]
+      : []),
     `${tomlString(`${root}/.reflect`)} = "deny"`,
     `${tomlString(`${root}/.git`)} = "deny"`,
     ...privateNotePaths.map((path) => `${tomlString(`${root}/${path}`)} = "deny"`),
@@ -275,6 +283,7 @@ export function streamCodexCliChat(options: StreamCliChatOptions): AsyncGenerato
     }),
     prompt: `<instructions>\n${preamble}\n</instructions>\n\n${agentCliPrompt(options.messages)}`,
     cwd: options.graphRoot,
+    env: mcpSpawnEnv(options.mcpServers ?? []),
     parseLine: parseCodexCliLine,
     startFailureMessage: 'Could not start the Codex CLI.',
     signal: options.signal,

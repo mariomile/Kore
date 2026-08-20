@@ -8,6 +8,7 @@ import {
   loadAgentContext,
   resolveMcpServers,
   routineIsDue,
+  withAgentRunLock,
   streamCliAgentChat,
   ROUTINE_RUN_SUFFIX,
   type AgentRoutine,
@@ -22,6 +23,15 @@ const CHECK_INTERVAL_MS = 60_000
 
 /** "Run now" and freshly created routines poke the runner through this event. */
 export const ROUTINES_CHECK_EVENT = 'agent-routines:check'
+
+/**
+ * "Run now" from the Agents screen: fires one routine immediately by id,
+ * dueness ignored. A dedicated event (with the id in `detail`) rather than
+ * a dueness re-check, because the click handler dispatches before React has
+ * flushed any settings change into the runner's ref — a re-check would see
+ * stale state and wait for the next minute tick.
+ */
+export const ROUTINE_RUN_NOW_EVENT = 'agent-routines:run-now'
 
 /**
  * The automations runner: an invisible resident of the workspace that fires
@@ -68,7 +78,6 @@ export function AgentRoutinesRunner(): null {
       if (graph === null) {
         return
       }
-      markRun(routine.id, Date.now())
       try {
         const context = await loadAgentContext(routine.agentSlug)
         const configured = settingsRef.current.aiProviders
@@ -77,6 +86,8 @@ export function AgentRoutinesRunner(): null {
         const pinned = configured.find((kind) => kind === context.profile?.provider)
         const provider = pinned ?? configured[0]
         if (provider === undefined) {
+          // Deliberately BEFORE markRun: a skipped occurrence is not
+          // consumed — configure a provider and the routine still fires.
           toast.add({
             type: 'error',
             title: `Routine “${routine.name}” skipped`,
@@ -84,13 +95,16 @@ export function AgentRoutinesRunner(): null {
           })
           return
         }
+        markRun(routine.id, Date.now())
         const privateNotePaths = await listPrivateNotePaths()
         const mcpServers = await resolveMcpServers(settingsRef.current.mcpServers).catch(() => [])
         // Activity ledger baseline: commit pending changes so the run's
         // touches diff cleanly against a restorable version.
         const snapshot = await gitAgentSnapshot(graph.generation).catch(() => null)
         const events = streamCliAgentChat(provider, {
-          model: context.profile?.model ?? 'default',
+          // The pinned model only makes sense on the pinned provider — on a
+          // fallback provider it would name a model that engine doesn't have.
+          model: pinned !== undefined ? (context.profile?.model ?? 'default') : 'default',
           messages: [{ role: 'user', content: `${routine.prompt}\n${ROUTINE_RUN_SUFFIX}` }],
           today: todayIso(),
           customSystemPrompt: settingsRef.current.chatSystemPrompt,
@@ -149,7 +163,9 @@ export function AgentRoutinesRunner(): null {
       runningRef.current = true
       try {
         for (const routine of due) {
-          await runRoutine(routine)
+          // Edit-mode agent runs are serialized app-wide (the chat holds the
+          // same lock) so concurrent runs can't cross-attribute ledgers.
+          await withAgentRunLock(() => runRoutine(routine))
         }
       } finally {
         runningRef.current = false
@@ -159,12 +175,25 @@ export function AgentRoutinesRunner(): null {
     const check = (): void => {
       void runDueRoutines()
     }
+    const runNow = (event: Event): void => {
+      const id = event instanceof CustomEvent ? String(event.detail ?? '') : ''
+      const routine = settingsRef.current.agentRoutines.find((entry) => entry.id === id)
+      if (routine === undefined || runningRef.current) {
+        return
+      }
+      runningRef.current = true
+      void withAgentRunLock(() => runRoutine(routine)).finally(() => {
+        runningRef.current = false
+      })
+    }
     check()
     const timer = setInterval(check, CHECK_INTERVAL_MS)
     window.addEventListener(ROUTINES_CHECK_EVENT, check)
+    window.addEventListener(ROUTINE_RUN_NOW_EVENT, runNow)
     return () => {
       clearInterval(timer)
       window.removeEventListener(ROUTINES_CHECK_EVENT, check)
+      window.removeEventListener(ROUTINE_RUN_NOW_EVENT, runNow)
     }
     // Refs carry the live settings/graph; the loop itself never re-arms.
     // eslint-disable-next-line react-hooks/exhaustive-deps

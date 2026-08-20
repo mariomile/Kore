@@ -139,6 +139,7 @@ pub async fn agent_cli_run(
     prompt: String,
     cwd: Option<String>,
     stream_stderr: Option<bool>,
+    env: Option<HashMap<String, String>>,
 ) -> AppResult<()> {
     let path = resolve_binary(binary)
         .ok_or_else(|| AppError::not_found(format!("{} was not found", binary.label())))?;
@@ -151,6 +152,11 @@ pub async fn agent_cli_run(
         .stderr(Stdio::piped());
     if let Some(dir) = cwd.as_deref() {
         command.current_dir(dir);
+    }
+    // Extra environment (MCP secrets): the child and the MCP servers it
+    // spawns inherit these — the values never appear on any command line.
+    if let Some(env) = env {
+        command.envs(env);
     }
 
     let mut child = command

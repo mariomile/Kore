@@ -183,6 +183,15 @@ describe('pending memory proposals', () => {
     expect(parsePendingMemory(rest)).toHaveLength(1)
   })
 
+  it('removes only the first of two identically-headed proposals', () => {
+    const heading = '## 2026-08-20 assistant → agents/user.md'
+    const doubled = `${heading}\n\n- fact one\n\n${heading}\n\n- fact two\n`
+    const rest = withoutPendingProposal(doubled, heading)
+    expect(rest).not.toContain('fact one')
+    expect(rest).toContain('fact two')
+    expect(parsePendingMemory(rest)).toHaveLength(1)
+  })
+
   it('tolerates junk and empty proposals', () => {
     expect(parsePendingMemory('no headings here')).toEqual([])
     expect(parsePendingMemory('## 2026-08-20 riley → agents/user.md\n\n')).toEqual([])

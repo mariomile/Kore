@@ -20,6 +20,7 @@ import {
   loadAgentContext,
   gitAgentSnapshot,
   gitChangedSince,
+  withAgentRunLock,
   loadChatGraphContext,
   resolveMcpServers,
   loadChatMessages,
@@ -310,6 +311,22 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
         isCliAgentProvider(config.provider) && chatAllowEditsRef.current
           ? { generation: graph.generation }
           : null
+      // Edit-mode runs are serialized across the app (chat and automations
+      // share one FIFO lock): overlapping runs would cross-attribute each
+      // other's changes in the activity ledger. `releaseRunLock` resolves
+      // the promise the next queued run awaits; the finally below releases.
+      let releaseRunLock: () => void = () => {}
+      if (editRun) {
+        await new Promise<void>((acquired) => {
+          void withAgentRunLock(
+            () =>
+              new Promise<void>((resolve) => {
+                releaseRunLock = resolve
+                acquired()
+              }),
+          )
+        })
+      }
       const snapshot = editRun ? await gitAgentSnapshot(editRun.generation).catch(() => null) : null
 
       try {
@@ -415,6 +432,7 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
             updateTurn((turn) => ({ ...turn, parts: [...turn.parts, { kind: 'changes', paths }] }))
           }
         }
+        releaseRunLock()
         updateTurn((turn) => ({ ...turn, status: 'done' }))
         persistTurn(conversationMeta(), localTurn, turnCreatedMs)
         // Only release the slot if it's still ours: a turn detached by New

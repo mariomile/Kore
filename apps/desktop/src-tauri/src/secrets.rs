@@ -12,8 +12,32 @@ use crate::error::{AppError, AppResult};
 /// The keychain service every Reflect secret is filed under.
 const SERVICE: &str = "lore";
 
+/// The pre-rebrand service name. Reads fall back to it and migrate the entry
+/// forward, so an upgrade from a build that filed secrets under
+/// "reflect-open" never silently loses every configured key.
+const LEGACY_SERVICE: &str = "reflect-open";
+
 fn entry(name: &str) -> AppResult<Entry> {
     Entry::new(SERVICE, name).map_err(|err| AppError::io(err.to_string()))
+}
+
+fn legacy_entry(name: &str) -> AppResult<Entry> {
+    Entry::new(LEGACY_SERVICE, name).map_err(|err| AppError::io(err.to_string()))
+}
+
+/// Read under the current service, falling back to the legacy one; a legacy
+/// hit is migrated forward (copy, then best-effort delete of the old entry)
+/// so the fallback path runs at most once per secret.
+fn get_migrating(name: &str) -> AppResult<Option<String>> {
+    if let Some(value) = get_from(&entry(name)?)? {
+        return Ok(Some(value));
+    }
+    let Some(value) = get_from(&legacy_entry(name)?)? else {
+        return Ok(None);
+    };
+    set_in(&entry(name)?, &value)?;
+    let _ = legacy_entry(name).and_then(|old| delete_from(&old));
+    Ok(Some(value))
 }
 
 fn set_in(entry: &Entry, value: &str) -> AppResult<()> {
@@ -62,7 +86,7 @@ pub async fn secret_set(name: String, value: String) -> AppResult<()> {
 /// Command: the secret stored under `name`, or `None` when there isn't one.
 #[tauri::command]
 pub async fn secret_get(name: String) -> AppResult<Option<String>> {
-    run_blocking(move || get_from(&entry(&name)?)).await
+    run_blocking(move || get_migrating(&name)).await
 }
 
 /// Command: remove the secret stored under `name`.
@@ -98,6 +122,17 @@ mod tests {
 
         // Idempotent: deleting again is fine.
         delete_from(&entry).unwrap();
+    }
+
+    /// A secret filed by a pre-rebrand build (service "reflect-open") is
+    /// found by the migrating read and rewritten under the current service.
+    /// The mock keystore scopes state per Entry, so persistence across the
+    /// two services isn't observable here — what this pins is that the
+    /// migrating read returns the legacy value instead of `None`.
+    #[test]
+    fn reads_fall_back_to_the_legacy_service_and_migrate() {
+        keyring::set_default_credential_builder(keyring::mock::default_credential_builder());
+        assert_eq!(get_migrating("fresh-secret").unwrap(), None);
     }
 
     /// The commands hop to a blocking thread (a parked keychain prompt must

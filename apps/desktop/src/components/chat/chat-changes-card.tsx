@@ -21,7 +21,10 @@ interface ChatChangesCardProps {
 export function ChatChangesCard({ paths }: ChatChangesCardProps): ReactElement {
   return (
     <div className="mt-1 rounded-lg border border-border bg-surface-sunken p-2">
-      <p className="px-1 pb-1 text-xs font-medium text-text-secondary">
+      <p
+        className="px-1 pb-1 text-xs font-medium text-text-secondary"
+        title="Everything that changed in the vault during this run — edits you made yourself in that window included."
+      >
         {paths.length === 1 ? 'Edited 1 note' : `Edited ${paths.length} notes`}
       </p>
       <ul className="space-y-0.5">

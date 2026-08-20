@@ -9,6 +9,7 @@ const {
   codexMcpConfigArgs,
   mcpSecretName,
   mcpServersSchema,
+  mcpSpawnEnv,
   resolveMcpServers,
 } = await import('./mcp')
 const { claudeCliArgs, claudeCliSettingsJson } = await import('./claude-cli')
@@ -61,24 +62,26 @@ describe('config builders', () => {
     { name: 'web', transport: { kind: 'http', url: 'https://example.com/mcp' }, env: {} },
   ]
 
-  it('builds the Claude inline JSON document', () => {
+  it('builds the Claude inline JSON document with no secrets in it', () => {
     const config = JSON.parse(claudeMcpConfigJson(resolved)) as {
       mcpServers: Record<string, unknown>
     }
-    expect(config.mcpServers['github']).toEqual({
-      command: 'npx',
-      args: ['-y', 'server-github'],
-      env: { GITHUB_TOKEN: String.raw`t"x\y` },
-    })
+    expect(config.mcpServers['github']).toEqual({ command: 'npx', args: ['-y', 'server-github'] })
     expect(config.mcpServers['web']).toEqual({ type: 'http', url: 'https://example.com/mcp' })
+    expect(claudeMcpConfigJson(resolved)).not.toContain('GITHUB_TOKEN')
   })
 
-  it('builds the Codex -c overrides with TOML escaping', () => {
+  it('builds the Codex -c overrides with TOML escaping and no secrets', () => {
     const args = codexMcpConfigArgs(resolved)
     expect(args).toContain('mcp_servers.github.command="npx"')
     expect(args).toContain('mcp_servers.github.args=["-y", "server-github"]')
-    expect(args).toContain(String.raw`mcp_servers.github.env={ "GITHUB_TOKEN" = "t\"x\\y" }`)
     expect(args).toContain('mcp_servers.web.url="https://example.com/mcp"')
+    expect(args.join(' ')).not.toContain('GITHUB_TOKEN')
+  })
+
+  it('merges secrets into the spawn environment instead', () => {
+    expect(mcpSpawnEnv(resolved)).toEqual({ GITHUB_TOKEN: String.raw`t"x\y` })
+    expect(mcpSpawnEnv([])).toEqual({})
   })
 
   it('rides the provider arg builders, with the servers pre-allowed on Claude', () => {

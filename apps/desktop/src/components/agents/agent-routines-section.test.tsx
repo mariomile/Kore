@@ -22,7 +22,7 @@ vi.mock('@/providers/settings-provider', () => ({
 }))
 
 const { AgentRoutinesSection } = await import('./agent-routines-section')
-const { ROUTINES_CHECK_EVENT } = await import('@/components/agent-routines-runner')
+const { ROUTINE_RUN_NOW_EVENT } = await import('@/components/agent-routines-runner')
 
 const BRIEF: AgentRoutine = {
   id: 'brief',
@@ -64,20 +64,15 @@ describe('AgentRoutinesSection', () => {
     await view.unmount()
   })
 
-  it('Run now clears the last-run stamp and pokes the runner', async () => {
+  it('Run now fires the routine by id, dueness ignored', async () => {
     reset([BRIEF])
-    const poked = vi.fn()
-    window.addEventListener(ROUTINES_CHECK_EVENT, poked)
+    const fired = vi.fn((event: Event) => (event as CustomEvent).detail as string)
+    window.addEventListener(ROUTINE_RUN_NOW_EVENT, fired)
     const view = await render(<AgentRoutinesSection profiles={[]} />)
     await view.getByRole('button', { name: 'Run Morning brief now' }).click()
-    expect(updated.at(-1)?.agentRoutines?.[0]).toMatchObject({
-      id: 'brief',
-      lastRunMs: null,
-      lastChangedPaths: [],
-      enabled: true,
-    })
-    expect(poked).toHaveBeenCalled()
-    window.removeEventListener(ROUTINES_CHECK_EVENT, poked)
+    expect(fired).toHaveBeenCalled()
+    expect(fired.mock.results[0]?.value).toBe('brief')
+    window.removeEventListener(ROUTINE_RUN_NOW_EVENT, fired)
     await view.unmount()
   })
 

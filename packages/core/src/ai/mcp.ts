@@ -15,7 +15,11 @@ import { getSecret } from '../secrets/keychain'
  * configuration per run on the command line — Claude Code as one inline
  * `--mcp-config` JSON document (with `--strict-mcp-config`, so the user's
  * global MCP configuration never bleeds into a vault run), Codex as
- * `-c mcp_servers.*` overrides — and spawn the servers themselves.
+ * `-c mcp_servers.*` overrides — and spawn the servers themselves. The
+ * configuration on the command line carries **no secrets**: env values
+ * travel in the CLI process's environment ({@link mcpSpawnEnv}), which the
+ * spawned MCP servers inherit — never on argv, where any local process
+ * could read them.
  */
 
 /** How a server is reached: a spawned stdio process, or a remote HTTP URL. */
@@ -98,9 +102,11 @@ export async function resolveMcpServers(servers: McpServer[]): Promise<ResolvedM
 export function claudeMcpConfigJson(servers: ResolvedMcpServer[]): string {
   const entries: Record<string, unknown> = {}
   for (const server of servers) {
+    // No env entries: secrets reach stdio servers by inheriting the CLI
+    // process environment ({@link mcpSpawnEnv}), keeping argv secret-free.
     entries[server.name] =
       server.transport.kind === 'stdio'
-        ? { command: server.transport.command, args: server.transport.args, env: server.env }
+        ? { command: server.transport.command, args: server.transport.args }
         : { type: 'http', url: server.transport.url }
   }
   return JSON.stringify({ mcpServers: entries })
@@ -121,15 +127,28 @@ export function codexMcpConfigArgs(servers: ResolvedMcpServer[]): string[] {
       return ['-c', `mcp_servers.${server.name}.url=${tomlString(server.transport.url)}`]
     }
     const args = server.transport.args.map((arg) => tomlString(arg)).join(', ')
-    const env = Object.entries(server.env)
-      .map(([key, value]) => `${tomlString(key)} = ${tomlString(value)}`)
-      .join(', ')
+    // No env override: secrets reach stdio servers by inheriting the CLI
+    // process environment ({@link mcpSpawnEnv}), keeping argv secret-free.
     return [
       '-c',
       `mcp_servers.${server.name}.command=${tomlString(server.transport.command)}`,
       '-c',
       `mcp_servers.${server.name}.args=[${args}]`,
-      ...(env === '' ? [] : ['-c', `mcp_servers.${server.name}.env={ ${env} }`]),
     ]
   })
+}
+
+/**
+ * The merged environment injected into the CLI process for a run — every
+ * enabled server's resolved env values. Merged flat because it is one
+ * process: two servers wanting the *same* variable name with *different*
+ * values cannot both win (the last configured does) — name the variables
+ * distinctly per service, as their servers already do by convention.
+ */
+export function mcpSpawnEnv(servers: ResolvedMcpServer[]): Record<string, string> {
+  const merged: Record<string, string> = {}
+  for (const server of servers) {
+    Object.assign(merged, server.env)
+  }
+  return merged
 }

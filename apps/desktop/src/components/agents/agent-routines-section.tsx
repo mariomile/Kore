@@ -6,7 +6,7 @@ import {
   type AgentRoutine,
   type RoutineSchedule,
 } from '@reflect/core'
-import { ROUTINES_CHECK_EVENT } from '@/components/agent-routines-runner'
+import { ROUTINE_RUN_NOW_EVENT } from '@/components/agent-routines-runner'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -84,8 +84,9 @@ export function AgentRoutinesSection({ profiles }: AgentRoutinesSectionProps): R
   }
 
   const runNow = (id: string): void => {
-    patch(id, { lastRunMs: null, enabled: true })
-    window.dispatchEvent(new Event(ROUTINES_CHECK_EVENT))
+    // Fire by id, dueness ignored — the runner reads the routine from its
+    // own live settings ref, so no state round-trip is needed first.
+    window.dispatchEvent(new CustomEvent(ROUTINE_RUN_NOW_EVENT, { detail: id }))
   }
 
   const addCurator = (): void => {

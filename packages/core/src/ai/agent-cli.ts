@@ -62,7 +62,7 @@ export function vaultEditRules(): string[] {
     '- Follow the vault’s conventions: new notes are notes/<kebab-case-title>.md with an H1 title; [[Exact Title]] links notes and [[YYYY-MM-DD]] links a daily; tasks are round checkboxes `+ [ ] text` (a leading ! or !! sets priority; the first [[YYYY-MM-DD]] inside the item is its due date), while square `- [ ]` checkboxes are plain checklists.',
     '- Quick additions belong in today’s daily note (daily/YYYY-MM-DD.md — create it if missing): capture flows there by convention.',
     '- Preserve frontmatter you don’t understand and never invent an `id:` — the app mints those.',
-    '- Never write into .reflect/, .git/, or assets/, and never touch private notes — the sandbox denies them; when a change would need one, say so instead of working around it.',
+    '- Never write into .reflect/, .git/, assets/, or audio-memos/, and never touch private notes — the sandbox denies those writes; when a change would need one, say so instead of working around it.',
   ]
 }
 
@@ -202,6 +202,12 @@ export interface AgentCliTurnOptions {
   prompt: string
   /** Working directory for the run — the graph root. */
   cwd: string
+  /**
+   * Extra environment for the CLI process (and, by inheritance, the MCP
+   * servers it spawns) — how secrets reach tools without ever riding the
+   * command line, where any local process could read them.
+   */
+  env?: Record<string, string> | undefined
   /** Parse one stdout line into a chunk, or null for noise. */
   parseLine: (line: string) => AgentCliChunk | null
   /** Message when the spawn itself fails without a specific cause. */
@@ -252,6 +258,7 @@ export async function* streamAgentCliTurn(
       args: options.args,
       prompt: options.prompt,
       cwd: options.cwd,
+      env: options.env ?? null,
     })
   } catch (cause) {
     unlisten()

@@ -370,22 +370,27 @@ function finishProposal(section: {
 }
 
 /**
- * `source` with one proposal section removed (matched by its exact heading
- * line) — the write-back for both approve and discard. Approval separately
- * appends the proposal's body to its target file.
+ * `source` with exactly one proposal section removed — the **first** whose
+ * heading line matches — the write-back for both approve and discard.
+ * First-only matters: agents are told to head proposals with date + agent +
+ * target, so two same-day proposals to one target share a heading, and
+ * removing every match would silently discard a proposal that was never
+ * applied. Approval separately appends the proposal's body to its target.
  */
 export function withoutPendingProposal(source: string, heading: string): string {
   const lines = source.split('\n')
   const result: string[] = []
   let skipping = false
+  let removed = false
   for (const line of lines) {
     const isHeading = PENDING_HEADING_RE.test(line.trim())
-    if (line.trim() === heading) {
-      skipping = true
-      continue
-    }
     if (skipping && isHeading) {
       skipping = false
+    }
+    if (!skipping && !removed && line.trim() === heading) {
+      skipping = true
+      removed = true
+      continue
     }
     if (!skipping) {
       result.push(line)

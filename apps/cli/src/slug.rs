@@ -3,6 +3,7 @@
 //! `reflect new` so a CLI-created note lands on the same path the app would
 //! give it. The TS module is the rule's author; keep this in lockstep.
 
+use unicode_general_category::{get_general_category, GeneralCategory};
 use unicode_normalization::UnicodeNormalization;
 
 /// Windows reserved device names (`slug.ts`'s `WINDOWS_RESERVED`).
@@ -13,6 +14,24 @@ const WINDOWS_RESERVED: [&str; 22] = [
 
 /// Maximum slug length in code points (`slug.ts`'s `MAX_SLUG_CHARS`).
 const MAX_SLUG_CHARS: usize = 60;
+
+/// Exactly `\p{L}` or `\p{N}` — the TS rule. `char::is_alphabetic` would be
+/// wrong here: it also matches Other_Alphabetic combining marks (Thai and
+/// Devanagari vowel signs), which the TS slug strips, and the two sides must
+/// produce identical filenames.
+fn is_letter_or_number(character: char) -> bool {
+    matches!(
+        get_general_category(character),
+        GeneralCategory::UppercaseLetter
+            | GeneralCategory::LowercaseLetter
+            | GeneralCategory::TitlecaseLetter
+            | GeneralCategory::ModifierLetter
+            | GeneralCategory::OtherLetter
+            | GeneralCategory::DecimalNumber
+            | GeneralCategory::LetterNumber
+            | GeneralCategory::OtherNumber
+    )
+}
 
 /// Derive the filename slug for a note title: NFC-normalize, lowercase,
 /// drop everything but letters/numbers/separators, collapse separator runs
@@ -26,7 +45,7 @@ pub fn slug_for_title(title: &str) -> String {
     for character in folded.chars() {
         if character.is_whitespace() || character == '_' || character == '-' {
             pending_separator = true;
-        } else if character.is_alphabetic() || character.is_numeric() {
+        } else if is_letter_or_number(character) {
             if pending_separator && !dashed.is_empty() {
                 dashed.push('-');
             }
@@ -62,6 +81,15 @@ mod tests {
         assert_eq!(slug_for_title("日本語ノート"), "日本語ノート");
         assert_eq!(slug_for_title("🎉🎉🎉"), "untitled");
         assert_eq!(slug_for_title("CON"), "con-note");
+    }
+
+    /// Combining vowel signs (Mn/Mc, Other_Alphabetic) must strip exactly as
+    /// TS `\p{L}` does — `is_alphabetic` would keep them and split filenames
+    /// between CLI and app.
+    #[test]
+    fn strips_combining_marks_like_the_ts_rule() {
+        assert_eq!(slug_for_title("หนังสือ"), "หนงสอ");
+        assert_eq!(slug_for_title("किताब"), "कतब");
     }
 
     #[test]

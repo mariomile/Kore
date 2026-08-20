@@ -92,6 +92,7 @@ export {
   type GraphContextDeps,
 } from '../ai/chat/graph-context'
 export { streamChat, type ChatStreamEvent, type StreamChatOptions } from '../ai/chat/stream-chat'
+export { withAgentRunLock } from '../ai/agent-run-lock'
 export {
   loadAgentContext,
   listAgentProfiles,

@@ -4,7 +4,7 @@ import { call } from '../ipc/invoke'
 import type { ChatStreamEvent } from './chat/stream-chat'
 import { agentContextPromptLines, type AgentPromptContext } from './agent-profiles'
 import { agentCliPrompt, streamAgentCliTurn, vaultEditRules, type AgentCliChunk } from './agent-cli'
-import { claudeMcpConfigJson, type ResolvedMcpServer } from './mcp'
+import { claudeMcpConfigJson, mcpSpawnEnv, type ResolvedMcpServer } from './mcp'
 
 /**
  * The Claude Code CLI provider ("subscription" AI): chat runs through the
@@ -119,8 +119,13 @@ export function claudeCliSettingsJson(
     `${root}/.reflect/**`,
     `${root}/.git/**`,
   ]
+  // Binary user data stays readable but never writable: attachments and
+  // audio memos are not markdown, so an agent "edit" there can only corrupt —
+  // and the .md-only activity ledger would not even surface it.
+  const writeFencedPaths = [`${root}/assets/**`, `${root}/audio-memos/**`]
   const deny = [
     ...fencedPaths.flatMap((path) => [`Read(${path})`, `Write(${path})`, `Edit(${path})`]),
+    ...writeFencedPaths.flatMap((path) => [`Write(${path})`, `Edit(${path})`]),
     'Grep',
     'Bash',
     ...(allowEdits ? [] : ['Write', 'Edit']),
@@ -266,6 +271,7 @@ export function streamClaudeCliChat(
     }),
     prompt: agentCliPrompt(options.messages),
     cwd: options.graphRoot,
+    env: mcpSpawnEnv(options.mcpServers ?? []),
     parseLine: parseClaudeCliLine,
     startFailureMessage: 'Could not start the Claude Code CLI.',
     signal: options.signal,

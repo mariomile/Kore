@@ -257,8 +257,14 @@ export function AgentsScreen(): ReactElement {
         </div>
         {(pending.data ?? []).length > 0 ? (
           <ul className="mt-3 space-y-2 border-t border-border pt-3">
-            {(pending.data ?? []).map((proposal) => (
-              <li key={proposal.heading} className="rounded-lg bg-surface-sunken p-3">
+            {(pending.data ?? []).map((proposal, position) => (
+              // Heading + position: same-day proposals to one target share a
+              // heading, and the list re-derives from the file on every
+              // change, so positional identity is stable enough here.
+              <li
+                key={`${proposal.heading}#${position}`}
+                className="rounded-lg bg-surface-sunken p-3"
+              >
                 <p className="text-xs font-medium text-text-secondary">
                   {proposal.heading.replace(/^##\s*/, '')}
                 </p>

@@ -42,9 +42,10 @@ steps below are only needed for iCloud sync and for installing on an iPhone.
    signed updater artifacts on every `v*` tag, publishing them to the
    GitHub release the in-app updater polls
    (`releases/latest/download/latest.json`). Apple signing is *not*
-   required for self-update; it only removes the one-time
-   right-click → Open on fresh installs (then use release.yml, the
-   signed + notarized pipeline).
+   required for self-update; it only removes the one-time Gatekeeper
+   quarantine on fresh installs (recent macOS calls the unsigned app
+   "damaged" — cleared with `xattr -cr /Applications/Lore.app`). For a
+   prompt-free install, use release.yml, the signed + notarized pipeline.
 
 ## What deliberately did NOT change
 

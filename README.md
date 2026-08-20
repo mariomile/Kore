@@ -55,10 +55,18 @@ customization and what is planned next.
 ## Install
 
 **Install from a release (recommended):** grab the latest `.dmg` from
-[Releases](https://github.com/mariomile/My-reflect/releases), drag
-**Lore.app** into Applications, and **right-click → Open** the first time
-(the build is unsigned, so Gatekeeper asks once). From then on the app
-updates itself from new releases — check Settings → About, or just wait.
+[Releases](https://github.com/mariomile/My-reflect/releases) and drag
+**Lore.app** into Applications. The build is unsigned, so recent macOS
+quarantines the download and claims the app "is damaged" — it isn't; clear
+the quarantine flag once from Terminal and open normally:
+
+```bash
+xattr -cr /Applications/Lore.app
+```
+
+(If macOS still objects: System Settings → Privacy & Security → "Open
+Anyway".) From then on the app updates itself from new releases — check
+Settings → About, or just wait.
 
 **Or build from source** — prerequisites first (one-time):
 

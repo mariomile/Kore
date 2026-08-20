@@ -4,9 +4,10 @@
 # This is deliberately separate from release.yml (the signed + notarized
 # pipeline, which needs Apple Developer certificates): it needs only the
 # Tauri updater keypair, so installed apps can verify and auto-apply
-# updates while the app itself stays unsigned. First launch of a freshly
-# downloaded DMG needs right-click → Open (Gatekeeper); updates installed
-# by the app afterwards do not.
+# updates while the app itself stays unsigned. A freshly downloaded DMG is
+# quarantined by Gatekeeper (recent macOS shows the app as "damaged"); one
+# `xattr -cr /Applications/Lore.app` clears it. Updates installed by the
+# app afterwards need nothing.
 #
 # Required repository secrets:
 #   TAURI_SIGNING_PRIVATE_KEY           the updater private key
@@ -87,9 +88,14 @@ jobs:
           releaseBody: |
             Unsigned build for Apple Silicon Macs.
 
-            **First install:** download the `.dmg`, drag Lore.app into
-            Applications, then **right-click → Open** the first time
-            (Gatekeeper prompt for unsigned apps — once only).
+            **First install:** download the `.dmg` and drag Lore.app into
+            Applications. The build is unsigned, so macOS quarantines the
+            download and may claim the app "is damaged" — it isn't. Clear
+            the flag once from Terminal, then open normally:
+
+            ```
+            xattr -cr /Applications/Lore.app
+            ```
 
             **Updates:** the app checks this repository's latest release and
             updates itself; nothing to download manually after this.
@@ -111,9 +117,14 @@ jobs:
           releaseBody: |
             Unsigned build for Apple Silicon Macs.
 
-            **First install:** download the `.dmg`, drag Lore.app into
-            Applications, then **right-click → Open** the first time
-            (Gatekeeper prompt for unsigned apps — once only).
+            **First install:** download the `.dmg` and drag Lore.app into
+            Applications. The build is unsigned, so macOS quarantines the
+            download and may claim the app "is damaged" — it isn't. Clear
+            the flag once from Terminal, then open normally:
+
+            ```
+            xattr -cr /Applications/Lore.app
+            ```
 
             _This release was built without the updater keypair, so it will
             not auto-update. Add the `TAURI_SIGNING_PRIVATE_KEY` secrets and

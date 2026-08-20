@@ -164,4 +164,5 @@ cargo test --workspace
 
 Lore is built on [Reflect (reflect-open)](https://github.com/team-reflect/reflect-open)
 by the Reflect team. Both the upstream project and this fork are
-[MIT](LICENSE)-licensed.
+[MIT](LICENSE)-licensed. Upstream fixes are merged deliberately — see
+[docs/upstream-merges.md](docs/upstream-merges.md) for the playbook.

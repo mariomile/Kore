@@ -1,14 +1,23 @@
 import { useState, type ReactElement } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Bot, Trash2, UserRound } from 'lucide-react'
+import { BookOpenText, Bot, Trash2, UserRound } from 'lucide-react'
 import {
+  AGENT_PENDING_MEMORY_PATH,
+  AGENT_SHARED_FACTS_PATH,
+  AGENT_SHARED_LOG_PATH,
   AGENT_USER_MEMORY_PATH,
   createAgentProfile,
   deleteNote,
+  ensureSharedMemoryNotes,
   ensureUserMemoryNote,
   errorMessage,
   listAgentProfiles,
+  parsePendingMemory,
+  readNote,
+  withoutPendingProposal,
+  writeNote,
   type AgentProfile,
+  type PendingMemoryProposal,
 } from '@reflect/core'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -20,6 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
 import { toast } from '@/components/ui/toast'
 import { cn } from '@/lib/utils'
 import { useGraph } from '@/providers/graph-provider'
@@ -40,6 +50,7 @@ function providerLabel(kind: string): string {
 }
 
 const PROFILES_QUERY_KEY = ['agent-profiles']
+const PENDING_QUERY_KEY = ['agent-pending-memory']
 
 /**
  * The Agents screen (Hermes-agent model): the shared "About you" profile the
@@ -63,8 +74,20 @@ export function AgentsScreen(): ReactElement {
   })
   const [createOpen, setCreateOpen] = useState(false)
 
+  const pending = useQuery({
+    queryKey: PENDING_QUERY_KEY,
+    queryFn: async (): Promise<PendingMemoryProposal[]> => {
+      try {
+        return parsePendingMemory(await readNote(AGENT_PENDING_MEMORY_PATH))
+      } catch {
+        return []
+      }
+    },
+  })
+
   const refresh = (): void => {
     void queryClient.invalidateQueries({ queryKey: PROFILES_QUERY_KEY })
+    void queryClient.invalidateQueries({ queryKey: PENDING_QUERY_KEY })
   }
 
   const openNote = (path: string): void => {
@@ -98,6 +121,45 @@ export function AgentsScreen(): ReactElement {
         })
       }
     }
+  }
+
+  const openSharedNote = async (path: string): Promise<void> => {
+    if (generation === null) {
+      return
+    }
+    try {
+      await ensureSharedMemoryNotes(generation)
+    } catch (cause: unknown) {
+      toast.add({ type: 'error', title: errorMessage(cause) })
+      return
+    }
+    openNote(path)
+  }
+
+  const resolvePending = async (
+    proposal: PendingMemoryProposal,
+    action: 'approve' | 'discard',
+  ): Promise<void> => {
+    if (generation === null) {
+      return
+    }
+    try {
+      if (action === 'approve') {
+        const current = await readNote(proposal.target).catch(() => '')
+        const base = current.trimEnd()
+        const updated = base === '' ? `${proposal.body}\n` : `${base}\n${proposal.body}\n`
+        await writeNote(proposal.target, updated, generation)
+      }
+      const source = await readNote(AGENT_PENDING_MEMORY_PATH)
+      await writeNote(
+        AGENT_PENDING_MEMORY_PATH,
+        withoutPendingProposal(source, proposal.heading),
+        generation,
+      )
+    } catch (cause: unknown) {
+      toast.add({ type: 'error', title: errorMessage(cause) })
+    }
+    refresh()
   }
 
   const remove = async (profile: AgentProfile): Promise<void> => {
@@ -147,6 +209,82 @@ export function AgentsScreen(): ReactElement {
             Open
           </Button>
         </div>
+      </section>
+
+      <section className="mt-3 rounded-xl border border-border bg-surface p-4">
+        <div className="flex items-center gap-3">
+          <BookOpenText aria-hidden strokeWidth={1.75} className="size-5 text-text-muted" />
+          <div className="min-w-0 flex-1">
+            <h2 className="text-sm font-medium text-text">Shared memory</h2>
+            <p className="text-xs text-text-muted">
+              Facts and a session journal every agent reads and keeps current, in{' '}
+              <code>agents/memory/</code>.
+            </p>
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => void openSharedNote(AGENT_SHARED_FACTS_PATH)}
+          >
+            Facts
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => void openSharedNote(AGENT_SHARED_LOG_PATH)}
+          >
+            Journal
+          </Button>
+        </div>
+        <div className="mt-3 flex items-center gap-3 border-t border-border pt-3">
+          <div className="min-w-0 flex-1">
+            <span id="memory-approval-label" className="text-sm text-text">
+              Approve memory writes
+            </span>
+            <p className="text-xs text-text-muted">
+              Agents propose changes to “About you” and shared facts here instead of writing them
+              directly.
+            </p>
+          </div>
+          <Switch
+            aria-labelledby="memory-approval-label"
+            checked={settings.memoryWriteApproval}
+            onCheckedChange={(checked) => updateSettings({ memoryWriteApproval: checked })}
+          />
+        </div>
+        {(pending.data ?? []).length > 0 ? (
+          <ul className="mt-3 space-y-2 border-t border-border pt-3">
+            {(pending.data ?? []).map((proposal) => (
+              <li key={proposal.heading} className="rounded-lg bg-surface-sunken p-3">
+                <p className="text-xs font-medium text-text-secondary">
+                  {proposal.heading.replace(/^##\s*/, '')}
+                </p>
+                <pre className="mt-1 whitespace-pre-wrap font-mono text-xs text-text">
+                  {proposal.body}
+                </pre>
+                <div className="mt-2 flex gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => void resolvePending(proposal, 'approve')}
+                  >
+                    Approve
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void resolvePending(proposal, 'discard')}
+                  >
+                    Discard
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : null}
       </section>
 
       <section className="mt-4 space-y-2">

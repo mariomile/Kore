@@ -90,11 +90,17 @@ conventions so edits render as first-class notes:
   `{{date}}`, `{{date:iso}}`, `{{time}}`, and `{{title}}` fill on use.
 - **Agents.** The `agents/` folder is the graph's agent home, injected into
   the app's own AI sessions too: `agents/user.md` holds durable facts about
-  the user (shared by every agent); each profile lives at
-  `agents/<slug>/soul.md` (identity and voice — the user's file, respect it)
-  and `agents/<slug>/memory.md` (that agent's working memory). Read them
-  before longer tasks; record what you learn — user facts in `user.md`,
-  your own lessons in the profile memory. Keep entries short and curated;
+  the user; `agents/memory/facts.md` holds shared facts and decisions every
+  agent relies on (one bullet per fact, tagged `[certain|likely|speculative]`
+  and signed `— <agent>, <date>`, updated in place); `agents/memory/log.md`
+  is the shared session journal (append one `## <date> — <agent>` entry per
+  work session); each profile lives at `agents/<slug>/soul.md` (identity and
+  voice — the user's file, respect it) and `agents/<slug>/memory.md` (that
+  agent's own working memory). Read them before longer tasks and route what
+  you learn to the right file. If `agents/memory/pending.md` exists with
+  proposal sections, the vault uses write approval: stage user/shared-fact
+  changes there (`## <date> <agent> → <target>` + bullets) instead of
+  editing those two files directly. Keep every entry short and curated;
   never store secrets or content from private notes.
 
 ## Git history

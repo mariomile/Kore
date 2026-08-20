@@ -156,6 +156,8 @@ describe('chatSystemPrompt agent memory', () => {
         soul: null,
         userMemory: { body: '- Prefers Italian replies', truncated: false },
         agentMemory: null,
+        sharedFacts: null,
+        sharedLog: null,
         memoryPath: 'agents/assistant/memory.md',
       },
     })

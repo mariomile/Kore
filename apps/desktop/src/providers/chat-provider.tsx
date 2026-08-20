@@ -112,6 +112,7 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
   const chatSystemPromptRef = useRef(settings.chatSystemPrompt)
   const chatAllowEditsRef = useRef(settings.chatAllowEdits)
   const activeAgentProfileRef = useRef(settings.activeAgentProfile)
+  const memoryWriteApprovalRef = useRef(settings.memoryWriteApproval)
   const instructionsRef = useRef(instructions)
   useEffect(() => {
     turnsRef.current = turns
@@ -123,6 +124,7 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
     chatSystemPromptRef.current = settings.chatSystemPrompt
     chatAllowEditsRef.current = settings.chatAllowEdits
     activeAgentProfileRef.current = settings.activeAgentProfile
+    memoryWriteApprovalRef.current = settings.memoryWriteApproval
     instructionsRef.current = instructions
   })
 
@@ -322,6 +324,7 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
               privateNotePaths,
               allowEdits: chatAllowEditsRef.current,
               agentContext,
+              memoryWriteApproval: memoryWriteApprovalRef.current,
               signal: controller.signal,
             })
           }

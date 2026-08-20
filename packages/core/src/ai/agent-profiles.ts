@@ -27,6 +27,33 @@ export const AGENTS_DIR = 'agents'
 /** The shared user profile — what agents know about the user (Hermes USER.md). */
 export const AGENT_USER_MEMORY_PATH = 'agents/user.md'
 
+/**
+ * The shared memory space (Notion's Lore model, vault-native): knowledge
+ * every agent — and the user — reads and writes, not one profile's own.
+ */
+export const AGENT_SHARED_DIR = 'agents/memory'
+
+/**
+ * Shared facts and decisions: one bullet per durable fact, updated in place,
+ * each carrying a confidence tag (`[certain]` / `[likely]` / `[speculative]`)
+ * and a provenance signature (agent slug + date).
+ */
+export const AGENT_SHARED_FACTS_PATH = 'agents/memory/facts.md'
+
+/**
+ * The shared session journal: newest entry appended last, one `##` heading
+ * per work session (`## YYYY-MM-DD — <agent>`), a few bullets each. The
+ * digest injects the tail, so recency wins by construction.
+ */
+export const AGENT_SHARED_LOG_PATH = 'agents/memory/log.md'
+
+/**
+ * Staged memory writes awaiting the user's approval (when the approval
+ * setting is on): agents append proposal sections here instead of touching
+ * the memory files, and the Agents screen applies or discards each one.
+ */
+export const AGENT_PENDING_MEMORY_PATH = 'agents/memory/pending.md'
+
 /** The memory home used when no profile is active. */
 export const DEFAULT_AGENT_SLUG = 'assistant'
 
@@ -48,6 +75,8 @@ export function agentMemoryPath(slug: string): string {
 export const AGENT_SOUL_MAX_CHARS = 6000
 export const AGENT_USER_MEMORY_MAX_CHARS = 2000
 export const AGENT_MEMORY_MAX_CHARS = 4000
+export const AGENT_SHARED_FACTS_MAX_CHARS = 3000
+export const AGENT_SHARED_LOG_MAX_CHARS = 2500
 
 /** One loaded agent file: body (frontmatter stripped), capped. */
 export interface AgentFile {
@@ -60,7 +89,11 @@ export interface AgentFile {
  * to send: missing/unreadable file, empty body, or `private: true` (the
  * hard block applies to agent files like to any note).
  */
-async function loadAgentFile(path: string, maxChars: number): Promise<AgentFile | null> {
+async function loadAgentFile(
+  path: string,
+  maxChars: number,
+  options?: { takeTail?: boolean },
+): Promise<AgentFile | null> {
   let source: string
   try {
     source = await readNote(path)
@@ -76,7 +109,13 @@ async function loadAgentFile(path: string, maxChars: number): Promise<AgentFile 
     return null
   }
   const truncated = body.length > maxChars
-  return { body: truncated ? body.slice(0, maxChars) : body, truncated }
+  if (!truncated) {
+    return { body, truncated }
+  }
+  // Journals append, so their tail is the recent part worth sending; every
+  // other file is curated head-first.
+  const kept = options?.takeTail === true ? body.slice(-maxChars) : body.slice(0, maxChars)
+  return { body: kept, truncated }
 }
 
 /** The optional per-profile provider pin carried in soul frontmatter. */
@@ -154,6 +193,10 @@ export interface AgentPromptContext {
   soul: AgentFile | null
   userMemory: AgentFile | null
   agentMemory: AgentFile | null
+  /** Shared facts and decisions every agent reads ({@link AGENT_SHARED_FACTS_PATH}). */
+  sharedFacts: AgentFile | null
+  /** The tail of the shared session journal ({@link AGENT_SHARED_LOG_PATH}). */
+  sharedLog: AgentFile | null
   /** Where this run's agent keeps its own memory (exists or not yet). */
   memoryPath: string
 }
@@ -173,27 +216,32 @@ export async function loadAgentContext(activeSlug: string | null): Promise<Agent
     }
   }
   const memoryPath = agentMemoryPath(profile?.slug ?? DEFAULT_AGENT_SLUG)
-  const [soul, userMemory, agentMemory] = await Promise.all([
+  const [soul, userMemory, agentMemory, sharedFacts, sharedLog] = await Promise.all([
     profile === null
       ? Promise.resolve(null)
       : loadAgentFile(profile.soulPath, AGENT_SOUL_MAX_CHARS),
     loadAgentFile(AGENT_USER_MEMORY_PATH, AGENT_USER_MEMORY_MAX_CHARS),
     loadAgentFile(memoryPath, AGENT_MEMORY_MAX_CHARS),
+    loadAgentFile(AGENT_SHARED_FACTS_PATH, AGENT_SHARED_FACTS_MAX_CHARS),
+    loadAgentFile(AGENT_SHARED_LOG_PATH, AGENT_SHARED_LOG_MAX_CHARS, { takeTail: true }),
   ])
-  return { profile, soul, userMemory, agentMemory, memoryPath }
+  return { profile, soul, userMemory, agentMemory, sharedFacts, sharedLog, memoryPath }
 }
 
 /**
- * The prompt block for the active agent — soul first (it colors everything
- * after it), then what the agent knows about the user, then its own working
- * memory, then the upkeep instruction matched to what this run may do.
+ * The wake-up digest for the active agent — soul first (it colors
+ * everything after it), then what the agents know about the user, the
+ * shared facts, the tail of the shared journal, this agent's own memory,
+ * and finally the upkeep rules matched to what the run may do. The order
+ * is deliberate: identity, then shared knowledge, then private notes.
  */
 export function agentContextPromptLines(
   context: AgentPromptContext | null,
-  options: { canEdit: boolean },
+  options: { canEdit: boolean; writeApproval?: boolean },
 ): string[] {
   const lines: string[] = []
   const memoryPath = context?.memoryPath ?? agentMemoryPath(DEFAULT_AGENT_SLUG)
+  const signature = context?.profile?.slug ?? DEFAULT_AGENT_SLUG
   if (context?.soul != null && context.profile !== null) {
     lines.push(
       '',
@@ -216,10 +264,29 @@ export function agentContextPromptLines(
       )
     }
   }
+  if (context?.sharedFacts != null) {
+    lines.push(
+      '',
+      `Shared memory — facts and decisions every agent in this vault relies on (${AGENT_SHARED_FACTS_PATH}; each entry carries a confidence tag and who recorded it):`,
+      context.sharedFacts.body,
+    )
+    if (context.sharedFacts.truncated) {
+      lines.push(
+        `[shared facts truncated at ${AGENT_SHARED_FACTS_MAX_CHARS} characters — consolidate them]`,
+      )
+    }
+  }
+  if (context?.sharedLog != null) {
+    lines.push(
+      '',
+      `Recent agent activity — the tail of the shared session journal (${AGENT_SHARED_LOG_PATH}), newest last:`,
+      context.sharedLog.body,
+    )
+  }
   if (context?.agentMemory != null) {
     lines.push(
       '',
-      `Your working memory from earlier sessions (${memoryPath}):`,
+      `Your own working memory from earlier sessions (${memoryPath}):`,
       context.agentMemory.body,
     )
     if (context.agentMemory.truncated) {
@@ -228,13 +295,99 @@ export function agentContextPromptLines(
       )
     }
   }
+  if (!options.canEdit) {
+    lines.push(
+      '',
+      `Memory upkeep: you cannot edit notes in this mode. When you learn something durable, say so and suggest the exact line — for ${AGENT_USER_MEMORY_PATH} when it is about the user, ${AGENT_SHARED_FACTS_PATH} when every agent should know it, or ${memoryPath} for your own note-to-self — never claim to have saved it.`,
+    )
+    return lines
+  }
   lines.push(
     '',
-    options.canEdit
-      ? `Memory upkeep: durable facts about the user (preferences, context, how they like to work) belong in ${AGENT_USER_MEMORY_PATH}; your own lessons, conventions, and ongoing project state belong in ${memoryPath}. Create either file when it does not exist. Keep both short and organized — merge and rewrite stale entries instead of appending forever — and never store secrets or the content of private notes.`
-      : `Memory upkeep: you cannot edit notes in this mode. When you learn something durable, say so and suggest the exact line — for ${AGENT_USER_MEMORY_PATH} when it is about the user, for ${memoryPath} when it is your own note-to-self — never claim to have saved it.`,
+    'Memory upkeep — route each durable learning to the right file (create any of them when missing):',
+    `- Facts about the user (preferences, context, how they like to work) → ${AGENT_USER_MEMORY_PATH}.`,
+    `- Facts and decisions every agent should know (project state, conventions, "we chose X over Y") → ${AGENT_SHARED_FACTS_PATH}, one bullet per fact, tagged with confidence and signed: "- [certain|likely|speculative] <fact> — ${signature}, <YYYY-MM-DD>". Update or remove a stale bullet in place instead of adding a contradicting one.`,
+    `- Your own lessons and working state → ${memoryPath}.`,
+    `- End of a session in which you changed notes or learned something: append one short entry to ${AGENT_SHARED_LOG_PATH} — "## <YYYY-MM-DD> — ${signature}" plus two or three bullets on what you did and learned.`,
+    'Keep every memory file short and curated — merge and rewrite instead of appending forever — and never store secrets or the content of private notes.',
+    ...(options.writeApproval === true
+      ? [
+          `Memory writes need the user's approval: do NOT edit ${AGENT_USER_MEMORY_PATH} or ${AGENT_SHARED_FACTS_PATH} directly. Instead, append a proposal section to ${AGENT_PENDING_MEMORY_PATH}: a heading "## <YYYY-MM-DD> ${signature} → <target path>" followed by the bullet lines to add. The user approves or discards each proposal from the Agents screen. The session journal (${AGENT_SHARED_LOG_PATH}) and your own memory file are exempt — write those directly.`,
+        ]
+      : []),
   )
   return lines
+}
+
+/** One staged memory write awaiting approval. */
+export interface PendingMemoryProposal {
+  /** The exact heading line (the proposal's identity in the file). */
+  heading: string
+  /** Target file the proposal wants to append to. */
+  target: string
+  /** The proposal's body lines (what approval appends). */
+  body: string
+}
+
+const PENDING_HEADING_RE = /^##\s+(.*?)→\s*(\S+)\s*$/
+
+/** Parse {@link AGENT_PENDING_MEMORY_PATH} into its proposal sections. */
+export function parsePendingMemory(source: string): PendingMemoryProposal[] {
+  const body = splitFrontmatter(source).body
+  const proposals: PendingMemoryProposal[] = []
+  let current: { heading: string; target: string; lines: string[] } | null = null
+  for (const line of body.split('\n')) {
+    const match = PENDING_HEADING_RE.exec(line.trim())
+    if (match !== null) {
+      if (current !== null) {
+        proposals.push(finishProposal(current))
+      }
+      current = { heading: line.trim(), target: match[2] ?? '', lines: [] }
+      continue
+    }
+    current?.lines.push(line)
+  }
+  if (current !== null) {
+    proposals.push(finishProposal(current))
+  }
+  return proposals.filter((proposal) => proposal.target !== '' && proposal.body !== '')
+}
+
+function finishProposal(section: {
+  heading: string
+  target: string
+  lines: string[]
+}): PendingMemoryProposal {
+  return {
+    heading: section.heading,
+    target: section.target,
+    body: section.lines.join('\n').trim(),
+  }
+}
+
+/**
+ * `source` with one proposal section removed (matched by its exact heading
+ * line) — the write-back for both approve and discard. Approval separately
+ * appends the proposal's body to its target file.
+ */
+export function withoutPendingProposal(source: string, heading: string): string {
+  const lines = source.split('\n')
+  const result: string[] = []
+  let skipping = false
+  for (const line of lines) {
+    const isHeading = PENDING_HEADING_RE.test(line.trim())
+    if (line.trim() === heading) {
+      skipping = true
+      continue
+    }
+    if (skipping && isHeading) {
+      skipping = false
+    }
+    if (!skipping) {
+      result.push(line)
+    }
+  }
+  return result.join('\n').replaceAll(/\n{3,}/g, '\n\n')
 }
 
 /** The seeded soul for a new profile — a starting point, meant to be edited. */
@@ -315,4 +468,34 @@ export async function createAgentProfile(options: {
 /** Seed the shared user profile if it does not exist yet. */
 export async function ensureUserMemoryNote(generation: number): Promise<void> {
   await createNoteIfAbsent(AGENT_USER_MEMORY_PATH, newUserMemorySeed(), generation)
+}
+
+/** The seeded shared facts file. */
+export function newSharedFactsSeed(): string {
+  return [
+    '# Shared facts',
+    '',
+    'Durable facts and decisions every agent in this vault relies on. One',
+    'bullet per fact, updated in place, tagged with confidence and signed:',
+    '',
+    '- [certain] Example: the vault owner prefers concise replies — assistant, 2026-01-01',
+    '',
+  ].join('\n')
+}
+
+/** The seeded shared session journal. */
+export function newSharedLogSeed(): string {
+  return [
+    '# Agent journal',
+    '',
+    'One short entry per work session, appended by the agent that ran it —',
+    'what happened and what was learned. Newest at the bottom.',
+    '',
+  ].join('\n')
+}
+
+/** Seed the shared memory space (facts + journal) if missing. */
+export async function ensureSharedMemoryNotes(generation: number): Promise<void> {
+  await createNoteIfAbsent(AGENT_SHARED_FACTS_PATH, newSharedFactsSeed(), generation)
+  await createNoteIfAbsent(AGENT_SHARED_LOG_PATH, newSharedLogSeed(), generation)
 }

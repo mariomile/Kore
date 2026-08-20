@@ -27,6 +27,17 @@ customization effort.
 
 ## Shipped (this fork)
 
+- Shared agent memory (Notion's Lore model, vault-native): `agents/memory/`
+  holds `facts.md` — shared facts and decisions with confidence tags
+  (`[certain|likely|speculative]`) and provenance signatures, updated in
+  place — and `log.md`, the append-only session journal whose tail rides
+  into every prompt. The wake-up digest now layers soul → user profile →
+  shared facts → recent journal → own memory, each capped with explicit
+  consolidation nudges. Optional **memory write approval**: agents stage
+  changes to “About you” and shared facts as proposal sections in
+  `pending.md`, and the Agents screen approves or discards each one
+  deterministically (no model in the loop). All of it plain markdown in
+  the vault — nothing leaves the app.
 - Agents section (Hermes-agent model, vault-native): `agents/user.md` is
   the shared profile of the user; each agent lives at `agents/<slug>/` with
   a **soul.md** (identity and voice, the user's file, seeded on create,

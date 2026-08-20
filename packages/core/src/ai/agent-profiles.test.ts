@@ -11,6 +11,8 @@ const {
   createAgentProfile,
   listAgentProfiles,
   loadAgentContext,
+  parsePendingMemory,
+  withoutPendingProposal,
 } = await import('./agent-profiles')
 
 const SOUL = '---\nprovider: codex-cli\nmodel: gpt-5\n---\n# Riley\n\nSpeak plainly.\n'
@@ -92,16 +94,35 @@ describe('agentContextPromptLines', () => {
     soul: { body: 'Speak plainly.', truncated: false },
     userMemory: { body: '- Prefers Italian', truncated: false },
     agentMemory: { body: 'x'.repeat(AGENT_MEMORY_MAX_CHARS), truncated: true },
+    sharedFacts: { body: '- [certain] Lore is the app — riley, 2026-08-20', truncated: false },
+    sharedLog: { body: '## 2026-08-19 — riley\n- shipped viewer', truncated: false },
     memoryPath: 'agents/riley/memory.md',
   }
 
-  it('puts the soul first and points upkeep at both memory files', () => {
+  it('puts the soul first and routes upkeep across all memory files', () => {
     const lines = agentContextPromptLines(context, { canEdit: true }).join('\n')
     expect(lines.indexOf('Speak plainly.')).toBeLessThan(lines.indexOf('- Prefers Italian'))
+    expect(lines.indexOf('- Prefers Italian')).toBeLessThan(
+      lines.indexOf('[certain] Lore is the app'),
+    )
     expect(lines).toContain('agents/user.md')
+    expect(lines).toContain('agents/memory/facts.md')
+    expect(lines).toContain('agents/memory/log.md')
+    expect(lines).toContain('shipped viewer')
     expect(lines).toContain('agents/riley/memory.md')
+    expect(lines).toContain('[certain|likely|speculative]')
     expect(lines).toContain('consolidate before adding more')
     expect(lines).not.toContain('cannot edit')
+    expect(lines).not.toContain('pending.md')
+  })
+
+  it('write approval reroutes user and shared facts through pending proposals', () => {
+    const lines = agentContextPromptLines(context, { canEdit: true, writeApproval: true }).join(
+      '\n',
+    )
+    expect(lines).toContain('agents/memory/pending.md')
+    expect(lines).toContain('do NOT edit agents/user.md or agents/memory/facts.md directly')
+    expect(lines).toContain('are exempt')
   })
 
   it('read-only upkeep suggests instead of saving', () => {
@@ -129,5 +150,41 @@ describe('createAgentProfile', () => {
     expect(soulCall?.[1]).toContain('provider: claude-cli')
     expect(soulCall?.[1]).toContain('# Riley!')
     expect(createNoteIfAbsent.mock.calls[2]?.[0]).toBe('agents/riley-2/memory.md')
+  })
+})
+
+describe('pending memory proposals', () => {
+  const source = [
+    '# Pending',
+    '',
+    '## 2026-08-20 riley → agents/user.md',
+    '- Prefers commit messages in English',
+    '',
+    '## 2026-08-20 coach → agents/memory/facts.md',
+    '- [likely] The team ships on Fridays — coach, 2026-08-20',
+    '',
+  ].join('\n')
+
+  it('parses proposal sections with their targets and bodies', () => {
+    const proposals = parsePendingMemory(source)
+    expect(proposals).toHaveLength(2)
+    expect(proposals[0]).toMatchObject({
+      target: 'agents/user.md',
+      body: '- Prefers commit messages in English',
+    })
+    expect(proposals[1]?.target).toBe('agents/memory/facts.md')
+  })
+
+  it('removes exactly one section by its heading', () => {
+    const first = parsePendingMemory(source)[0]
+    const rest = withoutPendingProposal(source, first?.heading ?? '')
+    expect(rest).not.toContain('Prefers commit messages')
+    expect(rest).toContain('The team ships on Fridays')
+    expect(parsePendingMemory(rest)).toHaveLength(1)
+  })
+
+  it('tolerates junk and empty proposals', () => {
+    expect(parsePendingMemory('no headings here')).toEqual([])
+    expect(parsePendingMemory('## 2026-08-20 riley → agents/user.md\n\n')).toEqual([])
   })
 })

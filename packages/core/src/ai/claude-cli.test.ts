@@ -185,6 +185,8 @@ describe('claudeCliSystemPrompt', () => {
         soul: { body: 'Speak plainly.', truncated: false },
         userMemory: { body: '- Prefers Italian replies', truncated: false },
         agentMemory: { body: '- Project X ships Friday', truncated: false },
+        sharedFacts: null,
+        sharedLog: null,
         memoryPath: 'agents/riley/memory.md',
       },
     })

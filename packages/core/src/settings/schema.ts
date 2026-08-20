@@ -671,6 +671,12 @@ export const chatAllowEditsSchema = z.boolean().catch(false)
 export const activeAgentProfileSchema = z.string().nullable().catch(null)
 
 /**
+ * Memory write approval: when on, agents stage writes to the user profile
+ * and shared facts as pending proposals instead of editing them directly.
+ */
+export const memoryWriteApprovalSchema = z.boolean().catch(false)
+
+/**
  * The configured AI providers. Resilience is per entry, not per list: a
  * corrupt entry is dropped while the rest load, so one bad hand-edit can't
  * wipe every configured provider. A non-array value degrades to the empty
@@ -767,6 +773,7 @@ export const settingsSchema = z.looseObject({
   chatSystemPrompt: chatSystemPromptSchema,
   chatAllowEdits: chatAllowEditsSchema,
   activeAgentProfile: activeAgentProfileSchema,
+  memoryWriteApproval: memoryWriteApprovalSchema,
   aiPrompts: aiPromptsSchema,
 })
 

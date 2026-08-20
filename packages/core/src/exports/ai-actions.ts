@@ -100,8 +100,15 @@ export {
   agentContextPromptLines,
   agentSoulPath,
   agentMemoryPath,
+  ensureSharedMemoryNotes,
+  parsePendingMemory,
+  withoutPendingProposal,
   AGENTS_DIR,
   AGENT_USER_MEMORY_PATH,
+  AGENT_SHARED_DIR,
+  AGENT_SHARED_FACTS_PATH,
+  AGENT_SHARED_LOG_PATH,
+  AGENT_PENDING_MEMORY_PATH,
   DEFAULT_AGENT_SLUG,
   AGENT_SOUL_MAX_CHARS,
   AGENT_USER_MEMORY_MAX_CHARS,
@@ -109,6 +116,7 @@ export {
   type AgentFile,
   type AgentProfile,
   type AgentPromptContext,
+  type PendingMemoryProposal,
 } from '../ai/agent-profiles'
 export {
   agentCliPrompt,

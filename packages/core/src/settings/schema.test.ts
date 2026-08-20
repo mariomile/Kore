@@ -49,6 +49,7 @@ describe('settingsSchema', () => {
       chatSystemPrompt: '',
       chatAllowEdits: false,
       activeAgentProfile: null,
+      memoryWriteApproval: false,
       aiPrompts: [],
       savedSearches: [],
     })
@@ -84,6 +85,7 @@ describe('settingsSchema', () => {
     expect(DEFAULT_SETTINGS.chatSystemPrompt).toBe('')
     expect(DEFAULT_SETTINGS.chatAllowEdits).toBe(false)
     expect(DEFAULT_SETTINGS.activeAgentProfile).toBeNull()
+    expect(DEFAULT_SETTINGS.memoryWriteApproval).toBe(false)
     expect(DEFAULT_SETTINGS.aiPrompts).toEqual([])
   })
 
@@ -309,6 +311,7 @@ describe('settingsSchema', () => {
       chatSystemPrompt: '',
       chatAllowEdits: false,
       activeAgentProfile: null,
+      memoryWriteApproval: false,
       aiPrompts: [],
       savedSearches: [],
       futureKey: true,

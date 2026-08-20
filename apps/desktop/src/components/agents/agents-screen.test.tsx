@@ -10,13 +10,21 @@ import { AgentsScreen } from './agents-screen'
 const listAgentProfiles = vi.hoisted(() => vi.fn())
 const createAgentProfile = vi.hoisted(() => vi.fn())
 const ensureUserMemoryNote = vi.hoisted(() => vi.fn(async () => {}))
+const ensureSharedMemoryNotes = vi.hoisted(() => vi.fn(async () => {}))
 const deleteNote = vi.hoisted(() => vi.fn(async () => {}))
+const readNote = vi.hoisted(() => vi.fn<(path: string) => Promise<string>>())
+const writeNote = vi.hoisted(() =>
+  vi.fn<(path: string, contents: string, generation: number) => Promise<void>>(async () => {}),
+)
 vi.mock('@reflect/core', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@reflect/core')>()),
   listAgentProfiles,
   createAgentProfile,
   ensureUserMemoryNote,
+  ensureSharedMemoryNotes,
   deleteNote,
+  readNote,
+  writeNote,
 }))
 vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({ graph: { root: '/g', name: 'g', generation: 7 } }),
@@ -24,6 +32,7 @@ vi.mock('@/providers/graph-provider', () => ({
 const settingsState = vi.hoisted(() => ({
   activeAgentProfile: null as string | null,
   aiProviders: [] as { id: string; provider: string }[],
+  memoryWriteApproval: false,
 }))
 const updatedSettings = vi.hoisted(() => [] as Partial<Settings>[])
 vi.mock('@/providers/settings-provider', () => ({
@@ -31,6 +40,7 @@ vi.mock('@/providers/settings-provider', () => ({
     settings: {
       activeAgentProfile: settingsState.activeAgentProfile,
       aiProviders: settingsState.aiProviders,
+      memoryWriteApproval: settingsState.memoryWriteApproval,
     },
     updateSettings: (patch: Partial<Settings>) => {
       updatedSettings.push(patch)
@@ -67,11 +77,15 @@ function renderScreen() {
 beforeEach(() => {
   settingsState.activeAgentProfile = null
   settingsState.aiProviders = []
+  settingsState.memoryWriteApproval = false
   updatedSettings.length = 0
   listAgentProfiles.mockReset().mockResolvedValue([RILEY])
   createAgentProfile.mockReset()
   ensureUserMemoryNote.mockClear()
+  ensureSharedMemoryNotes.mockClear()
   deleteNote.mockClear()
+  readNote.mockReset().mockRejectedValue(new Error('missing'))
+  writeNote.mockClear()
 })
 
 describe('AgentsScreen', () => {
@@ -118,6 +132,43 @@ describe('AgentsScreen', () => {
     await view.getByRole('button', { name: 'Open' }).click()
     expect(ensureUserMemoryNote).toHaveBeenCalledWith(7)
     await expect.element(view.getByTestId('route')).toHaveTextContent('"path":"agents/user.md"')
+    await view.unmount()
+  })
+
+  it('approving a pending proposal appends to its target and clears it', async () => {
+    const pendingSource = [
+      '## 2026-08-20 riley → agents/user.md',
+      '- Prefers commit messages in English',
+      '',
+    ].join('\n')
+    readNote.mockImplementation(async (path: string) => {
+      if (path === 'agents/memory/pending.md') return pendingSource
+      if (path === 'agents/user.md') return '# About you\n\n- Existing fact\n'
+      throw new Error('missing')
+    })
+    const view = await renderScreen()
+    await expect.element(view.getByText('Prefers commit messages in English')).toBeVisible()
+    await view.getByRole('button', { name: 'Approve' }).click()
+    await expect.poll(() => writeNote.mock.calls.length).toBe(2)
+    expect(writeNote).toHaveBeenCalledWith(
+      'agents/user.md',
+      '# About you\n\n- Existing fact\n- Prefers commit messages in English\n',
+      7,
+    )
+    const pendingWrite = writeNote.mock.calls.find((call) => call[0] === 'agents/memory/pending.md')
+    expect(pendingWrite?.[1]).not.toContain('Prefers commit messages')
+    await view.unmount()
+  })
+
+  it('the approval switch patches the setting and Facts opens the shared note', async () => {
+    const view = await renderScreen()
+    await view.getByLabelText('Approve memory writes').click()
+    expect(updatedSettings).toContainEqual({ memoryWriteApproval: true })
+    await view.getByRole('button', { name: 'Facts' }).click()
+    expect(ensureSharedMemoryNotes).toHaveBeenCalledWith(7)
+    await expect
+      .element(view.getByTestId('route'))
+      .toHaveTextContent('"path":"agents/memory/facts.md"')
     await view.unmount()
   })
 

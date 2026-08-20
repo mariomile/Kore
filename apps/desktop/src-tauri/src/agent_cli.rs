@@ -129,6 +129,9 @@ pub async fn agent_cli_check(binary: AgentCliBinary) -> AppResult<String> {
 /// `cwd` scopes the run to the graph root. `stream_stderr` additionally
 /// relays stderr lines as `Line` events — auth flows (`codex login`) talk on
 /// stderr, and the frontend must see the OAuth URL they print there.
+// Each parameter is one named field of the IPC payload; bundling them into
+// a struct would change the wire shape for no reader benefit.
+#[allow(clippy::too_many_arguments)]
 #[tauri::command]
 pub async fn agent_cli_run(
     app: tauri::AppHandle,

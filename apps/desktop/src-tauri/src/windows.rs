@@ -494,8 +494,8 @@ fn browser_window_label(url: &str) -> String {
 /// deep-link pipeline or the OS opener with their own policies, never into a
 /// live webview.
 fn parse_browser_url(url: &str) -> AppResult<tauri::Url> {
-    let parsed = tauri::Url::parse(url)
-        .map_err(|err| AppError::parse(format!("not a valid URL: {err}")))?;
+    let parsed =
+        tauri::Url::parse(url).map_err(|err| AppError::parse(format!("not a valid URL: {err}")))?;
     match parsed.scheme() {
         "http" | "https" => Ok(parsed),
         other => Err(AppError::parse(format!(
@@ -546,7 +546,9 @@ pub async fn open_browser_window(
             let _ = existing.set_focus();
             return Ok(());
         }
-        return Err(AppError::io(format!("failed to open browser window: {err}")));
+        return Err(AppError::io(format!(
+            "failed to open browser window: {err}"
+        )));
     }
     Ok(())
 }
@@ -721,7 +723,10 @@ mod tests {
             "data:text/html,<script>alert(1)</script>",
             "not a url",
         ] {
-            assert!(parse_browser_url(blocked).is_err(), "{blocked} must be refused");
+            assert!(
+                parse_browser_url(blocked).is_err(),
+                "{blocked} must be refused"
+            );
         }
     }
 

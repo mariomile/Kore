@@ -354,7 +354,12 @@ mod tests {
             .contains("git -C \"/graphs/Personal\""));
         // Renderer placeholders must all be filled; the template-placeholder
         // documentation ({{date}}, {{title}}, …) legitimately stays literal.
-        for placeholder in ["{{SKILL_NAME}}", "{{GRAPH_NAME}}", "{{GRAPH_ROOT}}", "{{CLI_PATH}}"] {
+        for placeholder in [
+            "{{SKILL_NAME}}",
+            "{{GRAPH_NAME}}",
+            "{{GRAPH_ROOT}}",
+            "{{CLI_PATH}}",
+        ] {
             assert!(!context.managed_content.contains(placeholder));
         }
     }

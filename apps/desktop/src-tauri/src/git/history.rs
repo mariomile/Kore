@@ -59,9 +59,7 @@ pub(super) fn note_history(
         }
         let parent = commit.parent(0).ok();
         let own = blob_id(&commit, rel_path);
-        let before = parent
-            .as_ref()
-            .and_then(|parent| blob_id(parent, rel_path));
+        let before = parent.as_ref().and_then(|parent| blob_id(parent, rel_path));
         if let Some(own) = own {
             if Some(own) != before {
                 versions.push(NoteVersion {
@@ -97,7 +95,6 @@ pub(super) fn note_version_content(
         .map_err(|_| AppError::not_found(format!("{rel_path} is not a file in {commit_id}")))?;
     Ok(String::from_utf8_lossy(blob.content()).into_owned())
 }
-
 
 /// Snapshot the graph before an agent run: commit whatever is pending and
 /// return `HEAD`'s id — the baseline `changed_since` diffs against. `None`
@@ -231,7 +228,10 @@ mod tests {
         fs::remove_file(root.join("notes/a.md")).ok();
         fs::write(root.join("notes/a.md"), "v2\n").unwrap();
         let changed = super::changed_since(root, &snapshot).unwrap();
-        assert_eq!(changed, vec!["notes/a.md".to_string(), "notes/new.md".to_string()]);
+        assert_eq!(
+            changed,
+            vec!["notes/a.md".to_string(), "notes/new.md".to_string()]
+        );
 
         assert!(super::changed_since(root, "not-a-sha").is_err());
     }

@@ -54,24 +54,19 @@ customization and what is planned next.
 
 ## Install
 
-Lore ships as a build-it-yourself app (this repository is private; there are
-no public signed installers).
-
-**Prerequisites** (one-time, on your Mac):
-
-```bash
-xcode-select --install                # Xcode Command Line Tools
-curl https://sh.rustup.rs -sSf | sh   # Rust toolchain
-npm install -g pnpm                   # pnpm (Node 22+ required)
-```
-
 **Install from a release (recommended):** grab the latest `.dmg` from
 [Releases](https://github.com/mariomile/My-reflect/releases), drag
 **Lore.app** into Applications, and **right-click → Open** the first time
 (the build is unsigned, so Gatekeeper asks once). From then on the app
 updates itself from new releases — check Settings → About, or just wait.
 
-**Or build from source:**
+**Or build from source** — prerequisites first (one-time):
+
+```bash
+xcode-select --install                # Xcode Command Line Tools
+curl https://sh.rustup.rs -sSf | sh   # Rust toolchain
+npm install -g pnpm                   # pnpm (Node 22+ required)
+```
 
 ```bash
 git clone https://github.com/mariomile/My-reflect.git lore

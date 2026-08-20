@@ -52,19 +52,21 @@ export function Sidebar({ graph, context }: SidebarProps): ReactElement {
         'flex h-full min-h-0 flex-col',
         // The sidebar runs the full window height, so on macOS the overlaid
         // traffic lights and the WindowDragRegion strip sit over its top —
-        // start the search row below them.
-        hasMacosTitleBarOverlay ? 'pt-9' : 'pt-3',
+        // start the search band below them.
+        hasMacosTitleBarOverlay && 'pt-9',
       )}
     >
       <div className="flex flex-none flex-col">
-        <div className="mt-1 flex items-center gap-1.5 px-4">
+        {/* The search row shares the 44px top band with the tab strip and the
+            context rail's switcher — one optical line across the window. */}
+        <div className="flex h-11 flex-none items-center gap-1.5 px-4">
           <div className="min-w-0 flex-1">
             <SidebarSearch onOpen={() => context.openPalette()} />
           </div>
           <AudioMemoButton />
         </div>
 
-        <nav aria-label="Primary" className="mt-6 space-y-1 px-4">
+        <nav aria-label="Primary" className="mt-5 space-y-1 px-4">
           <SidebarItem
             icon={<PencilIcon className="shrink-0" />}
             label="Daily notes"

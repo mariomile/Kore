@@ -79,7 +79,7 @@ export function NoteTabsStrip({ atWindowEdge = false }: NoteTabsStripProps): Rea
           onClick={() => {
             openPalette()
           }}
-          className="flex size-7 shrink-0 items-center justify-center rounded-lg text-text-muted hover:bg-surface-hover hover:text-text-secondary"
+          className="flex size-7 shrink-0 items-center justify-center rounded-lg text-text-muted transition-colors duration-100 hover:bg-surface-hover hover:text-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
         >
           <Plus aria-hidden className="size-3.5" />
         </button>
@@ -91,9 +91,12 @@ export function NoteTabsStrip({ atWindowEdge = false }: NoteTabsStripProps): Rea
 function pillClass(active: boolean): string {
   return cn(
     'flex h-7 min-w-0 max-w-[12rem] shrink items-center gap-1.5 rounded-lg px-3 text-xs font-medium',
+    'transition-colors duration-100',
+    // The active tab is the raised white pill on the app-background band —
+    // the same recipe as the context rail's active segment.
     active
-      ? 'border border-border bg-surface-hover text-text'
-      : 'text-text-secondary hover:bg-surface-hover',
+      ? 'border border-border bg-surface text-text shadow-sm'
+      : 'text-text-secondary hover:bg-surface-hover hover:text-text',
   )
 }
 
@@ -127,7 +130,10 @@ function NoteTab({ note, active, onActivate, onClose, onTogglePin }: NoteTabProp
           onTogglePin(note.path)
         }}
         onAuxClick={handleAuxClick}
-        className={cn(pillClass(active), 'shrink-0 px-2.5')}
+        className={cn(
+          pillClass(active),
+          'shrink-0 px-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
+        )}
       >
         <Pin aria-hidden className="size-3 shrink-0" />
       </button>
@@ -148,7 +154,7 @@ function NoteTab({ note, active, onActivate, onClose, onTogglePin }: NoteTabProp
         onDoubleClick={() => {
           onTogglePin(note.path)
         }}
-        className="min-w-0 flex-1 truncate text-left"
+        className="min-w-0 flex-1 truncate rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
       >
         {note.title}
       </button>
@@ -160,7 +166,8 @@ function NoteTab({ note, active, onActivate, onClose, onTogglePin }: NoteTabProp
           onClose(note.path)
         }}
         className={cn(
-          'flex size-4 shrink-0 items-center justify-center rounded text-text-muted hover:bg-surface-active hover:text-text',
+          'flex size-4 shrink-0 items-center justify-center rounded text-text-muted transition-colors duration-100 hover:bg-surface-active hover:text-text',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
           active ? '' : 'opacity-0 focus-visible:opacity-100 group-hover:opacity-100',
         )}
       >

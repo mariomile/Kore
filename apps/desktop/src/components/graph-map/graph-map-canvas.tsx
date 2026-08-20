@@ -214,32 +214,76 @@ export function GraphMapCanvas({ nodes, edges, onOpen }: GraphMapCanvasProps): R
         ctx.stroke()
       }
 
-      const labelAll = nodes.length <= LABEL_ALL_BELOW
       for (const [index, node] of layout.nodes.entries()) {
         const meta = nodes[index]
         if (meta === undefined) {
           continue
         }
-        const radius = nodeRadius(meta.inbound)
         const isHighlight = index === highlight
         const isNeighbor = neighborhood?.has(index) ?? false
         const dimmed = highlight !== null && !isHighlight && !isNeighbor
         ctx.globalAlpha = dimmed ? 0.3 : 1
         ctx.fillStyle = isHighlight ? colorAccent : meta.isDaily ? colorMuted : colorSecondary
         ctx.beginPath()
-        ctx.arc(node.x, node.y, radius, 0, Math.PI * 2)
+        ctx.arc(node.x, node.y, nodeRadius(meta.inbound), 0, Math.PI * 2)
         ctx.fill()
+      }
 
-        const showLabel =
-          isHighlight || isNeighbor || ((labelAll || meta.inbound >= HUB_LABEL_INBOUND) && !dimmed)
-        if (showLabel) {
-          const fontSize = Math.max(10 / viewport.scale, 11)
-          ctx.font = `500 ${fontSize}px Inter, system-ui, sans-serif`
-          ctx.fillStyle = isHighlight ? colorText : colorSecondary
-          ctx.textAlign = 'center'
-          ctx.textBaseline = 'top'
-          ctx.fillText(meta.label, node.x, node.y + radius + 3)
+      // Labels in a second pass, above every circle, placed greedily in
+      // priority order (the spotlight first, then hubs) — a label that would
+      // overlap an already-placed one is skipped, so dense clusters degrade
+      // to their most important names instead of ink soup.
+      const labelAll = nodes.length <= LABEL_ALL_BELOW
+      const fontSize = Math.max(10 / viewport.scale, 11)
+      ctx.font = `500 ${fontSize}px Inter, system-ui, sans-serif`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'top'
+      const placed: { x: number; y: number; w: number; h: number }[] = []
+      const priority = (index: number): number =>
+        index === highlight ? 2 : neighborhood?.has(index) ? 1 : 0
+      const order = [...layout.nodes.keys()].sort((a, b) => {
+        const byPriority = priority(b) - priority(a)
+        return byPriority !== 0 ? byPriority : (nodes[b]?.inbound ?? 0) - (nodes[a]?.inbound ?? 0)
+      })
+      for (const index of order) {
+        const node = layout.nodes[index]
+        const meta = nodes[index]
+        if (node === undefined || meta === undefined) {
+          continue
         }
+        const isHighlight = index === highlight
+        const isNeighbor = neighborhood?.has(index) ?? false
+        const dimmed = highlight !== null && !isHighlight && !isNeighbor
+        const wanted =
+          isHighlight || isNeighbor || ((labelAll || meta.inbound >= HUB_LABEL_INBOUND) && !dimmed)
+        if (!wanted) {
+          continue
+        }
+        const width = ctx.measureText(meta.label).width
+        const height = fontSize * 1.25
+        const radius = nodeRadius(meta.inbound)
+        const overlapsPlaced = (rect: { x: number; y: number; w: number; h: number }): boolean =>
+          placed.some(
+            (other) =>
+              rect.x < other.x + other.w &&
+              rect.x + rect.w > other.x &&
+              rect.y < other.y + other.h &&
+              rect.y + rect.h > other.y,
+          )
+        // Below the node first, above it as the fallback; a name that fits
+        // neither is skipped — except the spotlighted note, which always
+        // keeps its name.
+        let rect = { x: node.x - width / 2, y: node.y + radius + 3, w: width, h: height }
+        if (overlapsPlaced(rect)) {
+          rect = { ...rect, y: node.y - radius - 3 - height }
+          if (overlapsPlaced(rect) && !isHighlight) {
+            continue
+          }
+        }
+        placed.push(rect)
+        ctx.globalAlpha = dimmed ? 0.3 : 1
+        ctx.fillStyle = isHighlight ? colorText : colorSecondary
+        ctx.fillText(meta.label, node.x, rect.y)
       }
       ctx.globalAlpha = 1
     }

@@ -45,43 +45,51 @@ export function ContextSidebar({ target }: ContextSidebarProps): ReactElement {
         'flex h-full min-h-0 flex-col',
         // Like the left sidebar, the rail runs the full window height — on
         // macOS the switcher must clear the WindowDragRegion strip.
-        hasMacosTitleBarOverlay ? 'pt-9' : 'pt-3',
+        hasMacosTitleBarOverlay && 'pt-9',
       )}
     >
-      <div role="tablist" aria-label="Context panels" className="mx-3 flex flex-none gap-1">
-        {PANELS.map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            aria-selected={panel === id}
-            aria-label={label}
-            title={label}
-            onClick={() => {
-              setPanel(id)
-            }}
-            className={cn(
-              // Icon-only tabs; the wide flex-1 hit area keeps them easy to
-              // reach while the label lives in the tooltip and aria-label.
-              'flex h-7 flex-1 items-center justify-center rounded-md',
-              panel === id
-                ? 'border border-border bg-surface text-text shadow-sm'
-                : 'text-text-secondary hover:bg-surface-hover hover:text-text',
-            )}
-          >
-            <Icon aria-hidden strokeWidth={1.75} className="size-4 shrink-0" />
-          </button>
-        ))}
+      {/* The switcher rides the same 44px top band as the tab strip and the
+          sidebar search, so all three sit on one optical line. */}
+      <div className="flex h-11 flex-none items-center px-3">
+        <div
+          role="tablist"
+          aria-label="Context panels"
+          className="flex w-full gap-0.5 rounded-lg bg-surface-hover p-0.5"
+        >
+          {PANELS.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              aria-selected={panel === id}
+              aria-label={label}
+              title={label}
+              onClick={() => {
+                setPanel(id)
+              }}
+              className={cn(
+                // Icon-only segments on an inset track; the flex-1 hit area
+                // keeps them easy to reach while the label lives in the
+                // tooltip and aria-label.
+                'flex h-6 flex-1 items-center justify-center rounded-md transition-colors duration-100',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
+                panel === id ? 'bg-surface text-text shadow-sm' : 'text-text-muted hover:text-text',
+              )}
+            >
+              <Icon aria-hidden strokeWidth={1.75} className="size-4 shrink-0" />
+            </button>
+          ))}
+        </div>
       </div>
 
       {panel === 'chat' ? (
         // Chat owns its scrolling (the turn list) and pins its composer to
         // the bottom, so it gets the raw flex column instead of a scroller.
-        <div className="mt-2 flex min-h-0 flex-1 flex-col">
+        <div className="mt-1 flex min-h-0 flex-1 flex-col">
           <ChatScreen />
         </div>
       ) : (
-        <div className="mt-2 min-h-0 flex-1 overflow-y-auto">
+        <div className="mt-1 min-h-0 flex-1 overflow-y-auto">
           {panel === 'details' ? (
             target === null ? (
               <div className="flex h-full items-center justify-center px-6 text-center text-xs text-text-muted">

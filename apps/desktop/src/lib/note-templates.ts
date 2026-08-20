@@ -1,6 +1,7 @@
 import {
   availableTemplatePath,
   errorMessage,
+  expandTemplatePlaceholders,
   hasAuthoredTitle,
   parseNote,
   readNote,
@@ -9,6 +10,7 @@ import {
   templateSlugPathForTitle,
   upsertFrontmatter,
   writeNote,
+  type TemplatePlaceholderValues,
 } from '@reflect/core'
 import { moveNoteCarryingSession } from '@/editor/move-note'
 import type { NoteEditorHandle } from '@/editor/note-editor'
@@ -17,7 +19,8 @@ import { startOperation } from '@/lib/operations'
 
 /**
  * Note templates (docs/porting/note-templates.md): markdown files under
- * `templates/`, inserted verbatim at the cursor. This module owns the
+ * `templates/`, inserted at the cursor with `{{date}}`/`{{date:iso}}`/
+ * `{{time}}`/`{{title}}` placeholders expanded. This module owns the
  * file-level operations — reading a template's insertable body, inserting it,
  * creating, and renaming — shared by the palette commands, the slash menu,
  * and the settings section.
@@ -32,21 +35,23 @@ export async function templateBody(path: string): Promise<string> {
 }
 
 /**
- * Insert `path`'s body into `editor` at the cursor and refocus it. Every
- * failure is loud — a missing editor (the routed note is protected or still
- * loading) or a failed read must never be a silent nothing after the user
- * picked a template.
+ * Insert `path`'s body into `editor` at the cursor — placeholders expanded
+ * against `values` (see `useTemplateValues`) — and refocus it. Every failure
+ * is loud — a missing editor (the routed note is protected or still loading)
+ * or a failed read must never be a silent nothing after the user picked a
+ * template.
  */
 export async function insertTemplate(
   path: string,
   editor: Pick<NoteEditorHandle, 'insertMarkdown' | 'focus'> | null,
+  values: TemplatePlaceholderValues,
 ): Promise<void> {
   if (editor === null) {
     startOperation('Inserting template').fail('No open note to insert into')
     return
   }
   try {
-    editor.insertMarkdown(await templateBody(path))
+    editor.insertMarkdown(expandTemplatePlaceholders(await templateBody(path), values))
     editor.focus()
   } catch (cause) {
     startOperation('Inserting template').fail(errorMessage(cause))

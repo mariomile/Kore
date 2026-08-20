@@ -81,3 +81,4 @@ export {
   type WikiLookup,
   type AsyncWikiLookup,
 } from './resolve'
+export { expandTemplatePlaceholders, type TemplatePlaceholderValues } from './template-placeholders'

@@ -11,6 +11,7 @@ import {
   CommandList,
 } from '@/components/ui/command'
 import { noteEditorHandleFor } from '@/editor/editor-handle-registry'
+import { useTemplateValues } from '@/hooks/use-template-values'
 import type { CommandContext } from '@/lib/commands/types'
 import { insertTemplate } from '@/lib/note-templates'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
@@ -19,10 +20,10 @@ import { useNoteTemplates } from '@/providers/note-templates-provider'
 
 /**
  * The "Insert template…" picker (docs/porting/note-templates.md): the graph's
- * templates A→Z, chosen with the palette's keyboard model, inserted verbatim
- * (frontmatter stripped) at the cursor of the note the command targeted. The
- * ever-present "New template" row is also the feature's front door when the
- * graph has no templates yet.
+ * templates A→Z, chosen with the palette's keyboard model, inserted
+ * (frontmatter stripped, placeholders expanded) at the cursor of the note the
+ * command targeted. The ever-present "New template" row is also the feature's
+ * front door when the graph has no templates yet.
  */
 
 interface TemplatePickerProps {
@@ -33,6 +34,7 @@ interface TemplatePickerProps {
 export function TemplatePicker({ context }: TemplatePickerProps): ReactElement | null {
   const { pickerOpen, closeTemplatePicker, openTemplateCreate } = useNoteTemplates()
   const { graph } = useGraph()
+  const valuesFor = useTemplateValues()
   const { data: templates } = useQuery({
     queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'templates'],
     queryFn: listTemplates,
@@ -51,7 +53,10 @@ export function TemplatePicker({ context }: TemplatePickerProps): ReactElement |
     }
     // `insertTemplate` owns all feedback — a missing editor (protected or
     // still-loading note) and a failed read both surface as failed operations.
-    void insertTemplate(path, noteEditorHandleFor(target))
+    // The editor handle is claimed before the async value lookup: the values
+    // must describe the note the command targeted, stale pane or not.
+    const editor = noteEditorHandleFor(target)
+    void valuesFor(target).then((values) => insertTemplate(path, editor, values))
   }
 
   return (

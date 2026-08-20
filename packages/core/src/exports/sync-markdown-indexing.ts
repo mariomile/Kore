@@ -116,6 +116,8 @@ export {
   type Resolution,
   type WikiLookup,
   type AsyncWikiLookup,
+  expandTemplatePlaceholders,
+  type TemplatePlaceholderValues,
 } from '../markdown'
 export {
   openIndex,

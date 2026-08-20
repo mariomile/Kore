@@ -210,6 +210,7 @@ export function NotePaneComponent({
   // unmounted must insert nowhere rather than somewhere stale).
   const onSlashMenuSearch = useTemplateSlashItems(
     useCallback(() => registeredHandle.current?.handle ?? null, []),
+    path,
   )
   const handleRef = useCallback(
     (handle: NoteEditorHandle | null) => {

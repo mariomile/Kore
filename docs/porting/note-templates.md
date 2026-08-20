@@ -150,10 +150,17 @@ title: Company
   resolution, graph stats, the CLI — excludes `kind = 'template'`; the
   `note_keys`/`backlinks` views enforce the wikilink rule at the schema
   level. Templates are never embedded, so AI retrieval can't see them.
-- **Insertion.** The picker reads the file, strips frontmatter, and inserts
-  the body as a parsed fragment at the cursor
+- **Insertion.** The picker reads the file, strips frontmatter, expands
+  placeholders, and inserts the body as a parsed fragment at the cursor
   (`NoteEditorHandle.insertMarkdown`) — one undoable edit with paste
   semantics.
+- **Placeholders.** A template body may carry `{{date}}` (today in the
+  user's date format), `{{date:iso}}` (`YYYY-MM-DD`, what daily wiki links
+  want), `{{time}}` (the user's time format), and `{{title}}` (the target
+  note's display title). Expansion happens at insertion time
+  (`expandTemplatePlaceholders` in `@reflect/core`, values from
+  `useTemplateValues`); casing and inner whitespace are accepted, unknown
+  tokens pass through untouched, and values are never re-scanned.
 
 ## Open questions
 
@@ -162,6 +169,6 @@ title: Company
   applied to new daily notes is a natural v2 extension, but it interacts
   with the lazy "no file until first keystroke" contract — deferred to its
   own decision.
-- **Variables.** `{{date}}`-style substitution is deliberately out for
-  parity, but the files-first design leaves room for it later without
-  migration.
+- **Variables.** Shipped past v1 parity: `{{date}}`, `{{date:iso}}`,
+  `{{time}}` and `{{title}}` expand at insertion (see Placeholders above).
+  Richer tokens (custom date math, prompts) remain open.

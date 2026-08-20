@@ -31,6 +31,13 @@ vi.mock('@/lib/operations', async (importOriginal) => ({
 const { createTemplate, insertTemplate, renameTemplate, templateBody } =
   await import('./note-templates')
 
+const VALUES = {
+  title: 'Atomic Habits',
+  date: 'Wed, August 20th, 2026',
+  dateIso: '2026-08-20',
+  time: '9:41 AM',
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
 })
@@ -67,21 +74,30 @@ describe('insertTemplate', () => {
   it('inserts the body at the cursor and refocuses the editor', async () => {
     readNote.mockResolvedValueOnce('# Journal\n\nMood:\n')
     const editor = fakeEditor()
-    await insertTemplate('templates/journal.md', editor)
+    await insertTemplate('templates/journal.md', editor, VALUES)
     expect(editor.inserted).toEqual(['# Journal\n\nMood:\n'])
     expect(editor.focused).toBe(1)
     expect(startOperation).not.toHaveBeenCalled()
   })
 
+  it('expands placeholders against the provided values', async () => {
+    readNote.mockResolvedValueOnce('# {{title}}\n\n{{date}} {{time}} [[{{date:iso}}]]\n')
+    const editor = fakeEditor()
+    await insertTemplate('templates/journal.md', editor, VALUES)
+    expect(editor.inserted).toEqual([
+      '# Atomic Habits\n\nWed, August 20th, 2026 9:41 AM [[2026-08-20]]\n',
+    ])
+  })
+
   it('fails loud when there is no editor to insert into', async () => {
-    await insertTemplate('templates/journal.md', null)
+    await insertTemplate('templates/journal.md', null, VALUES)
     expect(startOperation).toHaveBeenCalledWith('Inserting template')
     expect(operationFail).toHaveBeenCalledWith('No open note to insert into')
   })
 
   it('surfaces a failed read as a failed operation, never a silent nothing', async () => {
     readNote.mockRejectedValueOnce(new Error('gone'))
-    await insertTemplate('templates/journal.md', fakeEditor())
+    await insertTemplate('templates/journal.md', fakeEditor(), VALUES)
     expect(startOperation).toHaveBeenCalledWith('Inserting template')
     expect(operationFail).toHaveBeenCalledWith('gone')
   })

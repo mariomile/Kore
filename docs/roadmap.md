@@ -6,14 +6,12 @@ customization effort.
 
 ## Next up
 
-- **Note templates** — a `templates/` folder with placeholder expansion
-  (`{{date}}`, `{{title}}`), pickable from New note and the palette.
+- **Graph view** — a visual map of note links (data already in the index).
 
 ## Backlog
 
 - **Global quick capture** — a system-wide shortcut opening a mini window
   that appends a line to today's daily note without focusing the app.
-- **Graph view** — a visual map of note links (data already in the index).
 - **Task reminders** — native notifications for tasks with due dates.
 - **Per-note version history** — a timeline UI over the existing Git backup
   (diff + restore).
@@ -24,6 +22,11 @@ customization effort.
 
 ## Shipped (this fork)
 
+- Template placeholders: template bodies expand `{{date}}` (user's date
+  format), `{{date:iso}}`, `{{time}}`, and `{{title}}` (the target note's
+  display title) at insertion, from both the picker and the `/` menu.
+  (Templates themselves — `templates/` folder, picker, slash menu,
+  create/rename — predate this fork's roadmap.)
 - In-app browser: clicking a web link in a note opens the page in a
   separate Tauri webview window instead of leaving the app (⌘-click keeps
   the OS browser). The `browser-*` window label matches no capability and

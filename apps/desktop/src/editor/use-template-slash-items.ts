@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import type { SlashMenuItem, SlashMenuSearchHandler } from '@meowdown/react'
 import { hasBridge, listTemplates } from '@reflect/core'
+import { useTemplateValues } from '@/hooks/use-template-values'
 import { insertTemplate } from '@/lib/note-templates'
 import { useGraph } from '@/providers/graph-provider'
 import type { NoteEditorHandle } from './note-editor'
@@ -18,8 +19,11 @@ import type { NoteEditorHandle } from './note-editor'
  */
 export function useTemplateSlashItems(
   getEditor: () => NoteEditorHandle | null,
+  /** The pane's note path — what `{{title}}` resolves against. */
+  notePath: string,
 ): SlashMenuSearchHandler {
   const { graph } = useGraph()
+  const valuesFor = useTemplateValues()
 
   return useCallback(
     async (_query: string): Promise<SlashMenuItem[]> => {
@@ -35,10 +39,13 @@ export function useTemplateSlashItems(
         // v1 parity: typing `/template` lists every template, whatever its name.
         keywords: ['template'],
         onSelect: () => {
-          void insertTemplate(template.path, getEditor())
+          // Editor first, values second: the late-resolve rule above is about
+          // the editor; the values always describe this pane's note.
+          const editor = getEditor()
+          void valuesFor(notePath).then((values) => insertTemplate(template.path, editor, values))
         },
       }))
     },
-    [graph, getEditor],
+    [graph, getEditor, notePath, valuesFor],
   )
 }

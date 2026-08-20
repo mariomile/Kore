@@ -19,6 +19,15 @@ vi.mock('@/lib/note-templates', () => ({ insertTemplate }))
 vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({ graph: { root: '/g', generation: 1 } }),
 }))
+const VALUES = vi.hoisted(() => ({
+  title: 'Plan',
+  date: 'Wed, August 20th, 2026',
+  dateIso: '2026-08-20',
+  time: '9:41 AM',
+}))
+vi.mock('@/hooks/use-template-values', () => ({
+  useTemplateValues: () => async () => VALUES,
+}))
 
 const { useTemplateSlashItems } = await import('./use-template-slash-items')
 
@@ -47,7 +56,7 @@ function fakeEditor(): NoteEditorHandle & { inserted: string[] } {
 describe('useTemplateSlashItems', () => {
   it('maps templates to slash rows whose select inserts through the shared flow', async () => {
     const editor = fakeEditor()
-    const { result } = await renderHook(() => useTemplateSlashItems(() => editor))
+    const { result } = await renderHook(() => useTemplateSlashItems(() => editor, 'notes/plan.md'))
 
     const items = await result.current('jour')
     expect(
@@ -64,24 +73,26 @@ describe('useTemplateSlashItems', () => {
 
     items[0]!.onSelect()
     await vi.waitFor(() =>
-      expect(insertTemplate).toHaveBeenCalledWith('templates/journal.md', editor),
+      expect(insertTemplate).toHaveBeenCalledWith('templates/journal.md', editor, VALUES),
     )
   })
 
   it('resolves the editor at select time, not capture time', async () => {
     // The pane unmounted between the menu opening and the select — the shared
     // flow receives null and surfaces the failure, never a stale editor.
-    const { result } = await renderHook(() => useTemplateSlashItems(() => null))
+    const { result } = await renderHook(() => useTemplateSlashItems(() => null, 'notes/plan.md'))
     const items = await result.current('')
     items[0]!.onSelect()
     await vi.waitFor(() =>
-      expect(insertTemplate).toHaveBeenCalledWith('templates/journal.md', null),
+      expect(insertTemplate).toHaveBeenCalledWith('templates/journal.md', null, VALUES),
     )
   })
 
   it('returns nothing without a bridge', async () => {
     hasBridge.mockReturnValueOnce(false)
-    const { result } = await renderHook(() => useTemplateSlashItems(() => fakeEditor()))
+    const { result } = await renderHook(() =>
+      useTemplateSlashItems(() => fakeEditor(), 'notes/plan.md'),
+    )
     await expect(result.current('')).resolves.toEqual([])
   })
 })

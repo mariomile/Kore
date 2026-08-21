@@ -1,9 +1,6 @@
 import type { ReactElement } from 'react'
 import { isUntitledNotePath, type GraphInfo } from '@reflect/core'
-import { Bot, ChartColumn, ListChecks, MessageSquare, SquarePen, Waypoints } from 'lucide-react'
 import { AudioMemoButton } from '@/components/audio-memo/audio-memo-button'
-import { ListIcon } from '@/components/icons/list-icon'
-import { PencilIcon } from '@/components/icons/pencil-icon'
 import { usePinnedNotes } from '@/hooks/use-pinned-notes'
 import { keybindingFor } from '@/lib/commands/app-commands'
 import { runCommand } from '@/lib/commands/registry'
@@ -15,6 +12,16 @@ import { notePathForRoute } from '@/routing/route'
 import { useRouter } from '@/routing/router'
 import { GraphFooter } from './graph-footer'
 import { SidebarItem } from './sidebar-item'
+import {
+  AgentsGlyph,
+  AllNotesGlyph,
+  ChatGlyph,
+  DailyNotesGlyph,
+  GraphGlyph,
+  InsightsGlyph,
+  NewNoteGlyph,
+  TasksGlyph,
+} from './sidebar-nav-icons'
 import { SidebarOpenNotes } from './sidebar-open-notes'
 import { SidebarPinned } from './sidebar-pinned'
 import { SidebarSearch } from './sidebar-search'
@@ -42,48 +49,38 @@ export function Sidebar({ graph, context }: SidebarProps): ReactElement {
   const hasActivePinnedNote =
     currentNotePath !== null && pinned.some((note) => note.path === currentNotePath)
 
-  // Wrap the 16px Lucide glyphs in the custom icons' 24px box so nav rows
-  // share one icon footprint.
-  const lucideBox = 'flex size-6 shrink-0 items-center justify-center'
-
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex flex-none flex-col">
-        {/* The search row shares the 44px top band with the tab strip and the
+        {/* The title-bar band shares its 44px with the tab strip and the
             context rail's switcher — one optical line across the window. On
             macOS the overlaid traffic lights own the band's left edge, so the
-            row starts past them, and its controls are lifted above the
-            WindowDragRegion strip so they stay clickable while the empty band
+            row starts past them. Lens + mic sit as sibling icon buttons;
+            window-drag-control keeps them clickable while the empty band
             still drags the window. */}
         <div
           data-tauri-drag-region
           className={cn(
-            'flex h-11 flex-none items-center gap-1.5 pr-4',
-            hasMacosTitleBarOverlay ? 'pl-20' : 'pl-4',
+            'flex h-11 flex-none items-center gap-0.5 pr-4',
+            hasMacosTitleBarOverlay ? 'pl-20' : 'pl-3',
           )}
         >
-          <div className="window-drag-control min-w-0 flex-1">
-            <SidebarSearch onOpen={() => context.openPalette()} />
-          </div>
           <div className="window-drag-control flex items-center">
+            <SidebarSearch onOpen={() => context.openPalette()} />
             <AudioMemoButton />
           </div>
         </div>
 
         <nav aria-label="Primary" className="mt-5 space-y-1 px-4">
           <SidebarItem
-            icon={<PencilIcon className="shrink-0" />}
+            icon={<DailyNotesGlyph />}
             label="Daily notes"
             binding={keybindingFor('nav.today') ?? undefined}
             active={(route.kind === 'today' || route.kind === 'daily') && !hasActivePinnedNote}
             onClick={() => void runCommand('nav.today', context)}
           />
           <SidebarItem
-            icon={
-              <span className={lucideBox}>
-                <SquarePen aria-hidden strokeWidth={1.75} className="size-4" />
-              </span>
-            }
+            icon={<NewNoteGlyph />}
             label="New note"
             binding={keybindingFor('note.new') ?? undefined}
             // Active while the open note is still on its ULID placeholder
@@ -94,7 +91,7 @@ export function Sidebar({ graph, context }: SidebarProps): ReactElement {
             onClick={() => void runCommand('note.new', context)}
           />
           <SidebarItem
-            icon={<ListIcon className="shrink-0" />}
+            icon={<AllNotesGlyph />}
             label="All notes"
             binding={keybindingFor('nav.allNotes') ?? undefined}
             // A named note lives in the All Notes collection, so keep this row
@@ -108,55 +105,35 @@ export function Sidebar({ graph, context }: SidebarProps): ReactElement {
             onClick={() => void runCommand('nav.allNotes', context)}
           />
           <SidebarItem
-            icon={
-              <span className={lucideBox}>
-                <ListChecks aria-hidden strokeWidth={1.75} className="size-4" />
-              </span>
-            }
+            icon={<TasksGlyph />}
             label="Tasks"
             binding={keybindingFor('nav.tasks') ?? undefined}
             active={route.kind === 'tasks'}
             onClick={() => void runCommand('nav.tasks', context)}
           />
           <SidebarItem
-            icon={
-              <span className={lucideBox}>
-                <MessageSquare aria-hidden strokeWidth={1.75} className="size-4" />
-              </span>
-            }
+            icon={<ChatGlyph />}
             label="Chat"
             binding={keybindingFor('chat.open') ?? undefined}
             active={route.kind === 'chat'}
             onClick={() => void runCommand('chat.open', context)}
           />
           <SidebarItem
-            icon={
-              <span className={lucideBox}>
-                <Bot aria-hidden strokeWidth={1.75} className="size-4" />
-              </span>
-            }
+            icon={<AgentsGlyph />}
             label="Agents"
             binding={keybindingFor('nav.agents') ?? undefined}
             active={route.kind === 'agents'}
             onClick={() => void runCommand('nav.agents', context)}
           />
           <SidebarItem
-            icon={
-              <span className={lucideBox}>
-                <ChartColumn aria-hidden strokeWidth={1.75} className="size-4" />
-              </span>
-            }
+            icon={<InsightsGlyph />}
             label="Insights"
             binding={keybindingFor('nav.insights') ?? undefined}
             active={route.kind === 'insights'}
             onClick={() => void runCommand('nav.insights', context)}
           />
           <SidebarItem
-            icon={
-              <span className={lucideBox}>
-                <Waypoints aria-hidden strokeWidth={1.75} className="size-4" />
-              </span>
-            }
+            icon={<GraphGlyph />}
             label="Graph"
             binding={keybindingFor('nav.graphMap') ?? undefined}
             active={route.kind === 'graphMap'}

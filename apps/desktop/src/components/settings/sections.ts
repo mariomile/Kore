@@ -20,6 +20,7 @@ export const SETTINGS_GROUPS = [
     sections: [
       { id: 'templates', title: 'Note templates' },
       { id: 'all-notes', title: 'All notes' },
+      { id: 'tasks', title: 'Tasks' },
       { id: 'search', title: 'Search' },
     ],
   },

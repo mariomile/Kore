@@ -6,16 +6,15 @@ customization effort.
 
 ## Next up
 
-- **Task reminders** — native notifications for tasks with due dates.
+- **More agent CLI providers** — Grok CLI and Cursor CLI as chat engines
+  beside Claude Code and Codex (the profile `provider:` pin and the Rust
+  binary allowlist are the two extension points); Hermes agent later.
 
 ## Backlog
 
 - **Global quick capture** — a system-wide shortcut opening a mini window
   that appends a line to today's daily note without focusing the app.
   (Deliberately parked.)
-- **More agent CLI providers** — Grok CLI, Cursor CLI, and Hermes agent as
-  chat engines beside Claude Code and Codex (the profile `provider:` pin
-  and the Rust binary allowlist are the two extension points).
 - **Recurring-task respawn from the editor checkbox** — completing a
   repeat task by clicking its checkbox inside the note editor doesn't spawn
   the next occurrence (meowdown exposes no editor-side task-toggle
@@ -25,6 +24,13 @@ customization effort.
   ships on desktop only.
 
 ## Shipped (this fork)
+
+- Task reminders: once a day, a native notification summarizes the open
+  tasks due today and the overdue ones (task due dates are date-only, so
+  the reminder fires on the first check of the day the app is awake for —
+  launch included). A switch in Settings → Notes → Tasks turns it on and
+  asks the OS for notification permission; the sent-day marker is kept per
+  graph so a re-render or graph switch can't double-send or suppress one.
 
 - Routine run history: every automation keeps a capped log of its past
   runs — when each started, whether it succeeded, the failure message when

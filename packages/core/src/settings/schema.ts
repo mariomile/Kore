@@ -515,6 +515,13 @@ export const taskFiltersSchema = z
 export type TaskFilters = z.infer<typeof taskFiltersSchema>
 
 /**
+ * Task reminders: one native notification per day summarizing the tasks due
+ * today and overdue. Off by default — notifications are a capability the
+ * user turns on deliberately (the switch also asks the OS for permission).
+ */
+export const taskRemindersSchema = z.boolean().catch(false)
+
+/**
  * The AI providers Reflect can call directly (BYOK — the user's own keys, no
  * Reflect-hosted proxy). `openai-compatible` stores its user-supplied base URL
  * per configured entry.
@@ -778,6 +785,7 @@ export const settingsSchema = z.looseObject({
   openNoteTabs: openNoteTabsSchema,
   savedSearches: savedSearchesSchema,
   taskFilters: taskFiltersSchema,
+  taskReminders: taskRemindersSchema,
   calendarEnabled: calendarEnabledSchema,
   calendarIds: calendarIdsSchema,
   graphColors: graphColorsSchema,

@@ -143,6 +143,7 @@ pub fn run() {
     let builder = builder
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_http::init());
 
     // Deep links (`reflect://`) are desktop-only for now: the scheme is

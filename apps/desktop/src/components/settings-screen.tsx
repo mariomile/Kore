@@ -16,6 +16,7 @@ import { IntegrationsSection } from './settings/integrations-section'
 import { McpSection } from './settings/mcp-section'
 import { SearchSection } from './settings/search-section'
 import { SyncSection } from './settings/sync-section'
+import { TasksSection } from './settings/tasks-section'
 import { TemplatesSection } from './settings/templates-section'
 
 /** A labelled page segment: the registry group's name over its section cards. */
@@ -56,6 +57,7 @@ export function SettingsScreen(): ReactElement {
         <SettingsGroupBlock id="notes">
           <TemplatesSection />
           <AllNotesSection />
+          <TasksSection />
           <SearchSection />
         </SettingsGroupBlock>
         <SettingsGroupBlock id="ai">

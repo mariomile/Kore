@@ -4,6 +4,7 @@ import { AppShell } from '@/components/app-shell'
 import { CommandPalette } from '@/components/command-palette/command-palette'
 import { ContextSidebar } from '@/components/context-sidebar/context-sidebar'
 import { AgentRoutinesRunner } from '@/components/agent-routines-runner'
+import { TaskRemindersRunner } from '@/components/task-reminders-runner'
 import { EmbeddingsSync } from '@/components/embeddings-sync'
 import { NoteFindBar } from '@/components/note-find-bar'
 import { NoteTabsStrip } from '@/components/note-tabs-strip'
@@ -70,6 +71,7 @@ export function WorkspaceContent({ graph }: WorkspaceContentProps): ReactElement
                 <TemplateCreateDialog context={commandContext} />
                 <EmbeddingsSync />
                 <AgentRoutinesRunner />
+                <TaskRemindersRunner />
               </div>
             </AppShell>
           </div>

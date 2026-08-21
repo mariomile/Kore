@@ -6,15 +6,16 @@ customization effort.
 
 ## Next up
 
-- **Global quick capture** — a system-wide shortcut opening a mini window
-  that appends a line to today's daily note without focusing the app.
+- **Task reminders** — native notifications for tasks with due dates.
 
 ## Backlog
 
+- **Global quick capture** — a system-wide shortcut opening a mini window
+  that appends a line to today's daily note without focusing the app.
+  (Deliberately parked.)
 - **More agent CLI providers** — Grok CLI, Cursor CLI, and Hermes agent as
   chat engines beside Claude Code and Codex (the profile `provider:` pin
   and the Rust binary allowlist are the two extension points).
-- **Task reminders** — native notifications for tasks with due dates.
 - **Recurring-task respawn from the editor checkbox** — completing a
   repeat task by clicking its checkbox inside the note editor doesn't spawn
   the next occurrence (meowdown exposes no editor-side task-toggle

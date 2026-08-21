@@ -1,6 +1,6 @@
 import { useState, type ReactElement } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { BookOpenText, Bot, Trash2, UserRound } from 'lucide-react'
+import { BookOpenText, Bot, Trash2, TriangleAlert, UserRound } from 'lucide-react'
 import {
   AGENT_PENDING_MEMORY_PATH,
   AGENT_SHARED_FACTS_PATH,
@@ -15,6 +15,7 @@ import {
   listAgentProfiles,
   parsePendingMemory,
   readNote,
+  scanMemoryContent,
   withoutPendingProposal,
   writeNote,
   type AgentProfile,
@@ -255,39 +256,60 @@ export function AgentsScreen(): ReactElement {
         </div>
         {(pending.data ?? []).length > 0 ? (
           <ul className="mt-3 space-y-2 border-t border-border pt-3">
-            {(pending.data ?? []).map((proposal, position) => (
+            {(pending.data ?? []).map((proposal, position) => {
+              // The memory-write scanner runs on every staged proposal:
+              // planted instructions and secrets get flagged right where
+              // the user decides — approval stays theirs, but informed.
+              const findings = scanMemoryContent(proposal.body)
               // Heading + position: same-day proposals to one target share a
               // heading, and the list re-derives from the file on every
               // change, so positional identity is stable enough here.
-              <li
-                key={`${proposal.heading}#${position}`}
-                className="rounded-lg bg-surface-sunken p-3"
-              >
-                <p className="text-xs font-medium text-text-secondary">
-                  {proposal.heading.replace(/^##\s*/, '')}
-                </p>
-                <pre className="mt-1 whitespace-pre-wrap font-mono text-xs text-text">
-                  {proposal.body}
-                </pre>
-                <div className="mt-2 flex gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={() => void resolvePending(proposal, 'approve')}
-                  >
-                    Approve
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => void resolvePending(proposal, 'discard')}
-                  >
-                    Discard
-                  </Button>
-                </div>
-              </li>
-            ))}
+              return (
+                <li
+                  key={`${proposal.heading}#${position}`}
+                  className="rounded-lg bg-surface-sunken p-3"
+                >
+                  <p className="text-xs font-medium text-text-secondary">
+                    {proposal.heading.replace(/^##\s*/, '')}
+                  </p>
+                  <pre className="mt-1 whitespace-pre-wrap font-mono text-xs text-text">
+                    {proposal.body}
+                  </pre>
+                  {findings.length > 0 ? (
+                    <div className="mt-2 rounded-md border border-destructive/40 bg-destructive/5 p-2">
+                      {findings.map((finding, index) => (
+                        <p
+                          key={index}
+                          className="flex items-start gap-1.5 text-xs text-destructive"
+                        >
+                          <TriangleAlert aria-hidden className="mt-0.5 size-3 shrink-0" />
+                          <span>
+                            Line {finding.line} {finding.reason}: “{finding.excerpt}”
+                          </span>
+                        </p>
+                      ))}
+                    </div>
+                  ) : null}
+                  <div className="mt-2 flex gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => void resolvePending(proposal, 'approve')}
+                    >
+                      Approve
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => void resolvePending(proposal, 'discard')}
+                    >
+                      Discard
+                    </Button>
+                  </div>
+                </li>
+              )
+            })}
           </ul>
         ) : null}
       </section>

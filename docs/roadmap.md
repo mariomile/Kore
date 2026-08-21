@@ -22,6 +22,17 @@ customization effort.
 
 ## Shipped (this fork)
 
+- Progressive-disclosure memory. The soul still rides whole, but a memory
+  file that outgrows its (now smaller) budget injects a deterministic
+  skeleton — headings, first line of each section, elision counts — with a
+  pointer to read the file on demand, and the journal keeps whole newest
+  entries. The memory block stays near bb's ~4k characters however much
+  the vault knows. Alongside it, the memory-write scanner: staged
+  proposals get flagged inline in the approval UI, and every edit-mode run
+  (chat and routines) scans what actually landed in memory files for
+  planted instructions and secrets — a review pointer for the user, never
+  a silent rewrite.
+
 - Notes as live cards + @-mentions. The assistant can put
   `::note{path="…"}` on a line of its own and the chat promotes it to a
   card (live title over path) that opens the note — the transcript keeps

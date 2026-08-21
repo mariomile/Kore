@@ -25,9 +25,11 @@ import {
   resolveMcpServers,
   loadChatMessages,
   mentionContextBlock,
+  readNote,
   resolveChatModel,
   resolveNoteMentions,
   saveChatMessage,
+  scanChangedMemoryPaths,
   cliProviderSupportsEdits,
   isCliAgentProvider,
   streamChat,
@@ -463,6 +465,23 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
           const paths = changed.filter((path) => path.toLowerCase().endsWith('.md'))
           if (paths.length > 0) {
             updateTurn((turn) => ({ ...turn, parts: [...turn.parts, { kind: 'changes', paths }] }))
+          }
+          // The memory-write scanner: prompts forbid storing instructions
+          // and secrets in memory, this checks what actually landed there.
+          // A finding is a review pointer for the user, never a rollback.
+          const warnings = await scanChangedMemoryPaths(paths, readNote).catch(() => [])
+          if (warnings.length > 0) {
+            updateTurn((turn) => ({
+              ...turn,
+              parts: [
+                ...turn.parts,
+                {
+                  kind: 'notice',
+                  tone: 'error',
+                  text: `Memory write check — review these lines:\n${warnings.join('\n')}`,
+                },
+              ],
+            }))
           }
         }
         releaseRunLock()

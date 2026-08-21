@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { parseFrontmatter, splitFrontmatter } from '../markdown/frontmatter'
 import { slugForTitle } from '../markdown/slug'
 import { createNoteIfAbsent, listFiles, readNote } from '../graph/commands'
+import { journalTailDigest, memoryDigest } from './memory-digest'
 
 /**
  * Agent profiles (Hermes-agent model, vault-native): the `agents/` folder
@@ -68,19 +69,29 @@ export function agentMemoryPath(slug: string): string {
 }
 
 /**
- * Prompt-injection caps (Hermes keeps USER.md ≈1.4k chars and MEMORY.md
- * ≈2.2k; souls run longer). Past a cap the tail is dropped and the prompt
- * says so — the nudge that makes agents consolidate instead of hoarding.
+ * Prompt budgets, progressive-disclosure model (bb's catalog): the soul
+ * rides whole up to its cap — identity must not arrive summarized — while
+ * a memory file that outgrows its budget contributes a deterministic
+ * skeleton (headings + first line each, see `memory-digest`) and the
+ * prompt points the agent at the file itself for the details. The digest
+ * budgets are deliberately small: the whole memory block stays near bb's
+ * ~4k characters however much the vault knows, because depth is read on
+ * demand instead of shipped with every turn.
  */
 export const AGENT_SOUL_MAX_CHARS = 6000
-export const AGENT_USER_MEMORY_MAX_CHARS = 2000
-export const AGENT_MEMORY_MAX_CHARS = 4000
-export const AGENT_SHARED_FACTS_MAX_CHARS = 3000
-export const AGENT_SHARED_LOG_MAX_CHARS = 2500
+export const AGENT_USER_MEMORY_MAX_CHARS = 1500
+export const AGENT_MEMORY_MAX_CHARS = 1500
+export const AGENT_SHARED_FACTS_MAX_CHARS = 1500
+export const AGENT_SHARED_LOG_MAX_CHARS = 1000
 
-/** One loaded agent file: body (frontmatter stripped), capped. */
+/** One loaded agent file: body (frontmatter stripped), possibly digested. */
 export interface AgentFile {
   body: string
+  /**
+   * True when `body` is a digest of a larger file (a skeleton, or the
+   * journal's newest entries) — the prompt then adds a read-on-demand
+   * pointer to the full file.
+   */
   truncated: boolean
 }
 
@@ -92,7 +103,7 @@ export interface AgentFile {
 async function loadAgentFile(
   path: string,
   maxChars: number,
-  options?: { takeTail?: boolean },
+  options?: { takeTail?: boolean; digest?: boolean },
 ): Promise<AgentFile | null> {
   let source: string
   try {
@@ -108,14 +119,20 @@ async function loadAgentFile(
   if (body === '') {
     return null
   }
-  const truncated = body.length > maxChars
-  if (!truncated) {
-    return { body, truncated }
+  if (body.length <= maxChars) {
+    return { body, truncated: false }
   }
-  // Journals append, so their tail is the recent part worth sending; every
-  // other file is curated head-first.
-  const kept = options?.takeTail === true ? body.slice(-maxChars) : body.slice(0, maxChars)
-  return { body: kept, truncated }
+  if (options?.takeTail === true) {
+    // Journals append, so whole newest entries are the part worth sending.
+    const digest = journalTailDigest(body, maxChars)
+    return { body: digest.text, truncated: true }
+  }
+  if (options?.digest === true) {
+    // Curated files over budget send their skeleton, not a blind head-cut.
+    const digest = memoryDigest(body, maxChars)
+    return { body: digest.text, truncated: true }
+  }
+  return { body: body.slice(0, maxChars), truncated: true }
 }
 
 /** The optional per-profile provider pin carried in soul frontmatter. */
@@ -220,9 +237,9 @@ export async function loadAgentContext(activeSlug: string | null): Promise<Agent
     profile === null
       ? Promise.resolve(null)
       : loadAgentFile(profile.soulPath, AGENT_SOUL_MAX_CHARS),
-    loadAgentFile(AGENT_USER_MEMORY_PATH, AGENT_USER_MEMORY_MAX_CHARS),
-    loadAgentFile(memoryPath, AGENT_MEMORY_MAX_CHARS),
-    loadAgentFile(AGENT_SHARED_FACTS_PATH, AGENT_SHARED_FACTS_MAX_CHARS),
+    loadAgentFile(AGENT_USER_MEMORY_PATH, AGENT_USER_MEMORY_MAX_CHARS, { digest: true }),
+    loadAgentFile(memoryPath, AGENT_MEMORY_MAX_CHARS, { digest: true }),
+    loadAgentFile(AGENT_SHARED_FACTS_PATH, AGENT_SHARED_FACTS_MAX_CHARS, { digest: true }),
     loadAgentFile(AGENT_SHARED_LOG_PATH, AGENT_SHARED_LOG_MAX_CHARS, { takeTail: true }),
   ])
   return { profile, soul, userMemory, agentMemory, sharedFacts, sharedLog, memoryPath }
@@ -260,7 +277,7 @@ export function agentContextPromptLines(
     )
     if (context.userMemory.truncated) {
       lines.push(
-        `[user profile truncated at ${AGENT_USER_MEMORY_MAX_CHARS} characters — it needs pruning]`,
+        `[summary of a longer file — read ${AGENT_USER_MEMORY_PATH} when you need the full profile]`,
       )
     }
   }
@@ -272,7 +289,7 @@ export function agentContextPromptLines(
     )
     if (context.sharedFacts.truncated) {
       lines.push(
-        `[shared facts truncated at ${AGENT_SHARED_FACTS_MAX_CHARS} characters — consolidate them]`,
+        `[summary of a longer file — read ${AGENT_SHARED_FACTS_PATH} when a fact you need is elided]`,
       )
     }
   }
@@ -282,6 +299,9 @@ export function agentContextPromptLines(
       `Recent agent activity — the tail of the shared session journal (${AGENT_SHARED_LOG_PATH}), newest last:`,
       context.sharedLog.body,
     )
+    if (context.sharedLog.truncated) {
+      lines.push(`[newest entries only — read ${AGENT_SHARED_LOG_PATH} for the full journal]`)
+    }
   }
   if (context?.agentMemory != null) {
     lines.push(
@@ -290,14 +310,12 @@ export function agentContextPromptLines(
       context.agentMemory.body,
     )
     if (context.agentMemory.truncated) {
-      lines.push(
-        `[memory truncated at ${AGENT_MEMORY_MAX_CHARS} characters — consolidate before adding more]`,
-      )
+      lines.push(`[summary of a longer file — read ${memoryPath} when you need the rest]`)
     }
   }
   lines.push(
     '',
-    'Recall: this digest is only the hot set — the vault itself is your long-term memory. When it lacks context you need, search the notes (dailies, linked notes, older journal entries) before concluding you don’t know.',
+    'Recall: this digest is only the hot set — the vault itself is your long-term memory. Memory sections marked as summaries elide detail on purpose: read the named file when a turn needs it. When the digest lacks context, search the notes (dailies, linked notes, older journal entries) before concluding you don’t know.',
   )
   if (!options.canEdit) {
     lines.push(

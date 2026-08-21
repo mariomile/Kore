@@ -150,6 +150,13 @@ export {
   type RoutineRun,
   type RoutineSchedule,
 } from '../ai/agent-routines'
+export { journalTailDigest, memoryDigest, type MemoryDigest } from '../ai/memory-digest'
+export {
+  isMemoryPath,
+  scanChangedMemoryPaths,
+  scanMemoryContent,
+  type MemoryScanFinding,
+} from '../ai/memory-scan'
 export {
   claudeMcpConfigJson,
   codexMcpConfigArgs,

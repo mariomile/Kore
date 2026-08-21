@@ -71,6 +71,36 @@ describe('loadAgentContext', () => {
     expect(context.memoryPath).toBe('agents/assistant/memory.md')
   })
 
+  it('digests an over-budget memory file to its skeleton, not a head-cut', async () => {
+    const facts = [
+      '# Shared facts',
+      '',
+      '## Team',
+      '- [certain] Ships on Fridays — riley, 2026-08-01',
+      ...Array.from(
+        { length: 80 },
+        (_, i) => `- [likely] filler fact number ${i} — riley, 2026-08-0${(i % 9) + 1}`,
+      ),
+      '',
+      '## Conventions',
+      '- [certain] Conventional commits — riley, 2026-08-02',
+    ].join('\n')
+    readNote.mockImplementation(async (path: string) => {
+      if (path === 'agents/memory/facts.md') return facts
+      throw new Error('missing')
+    })
+    const context = await loadAgentContext(null)
+    expect(context.sharedFacts?.truncated).toBe(true)
+    // The skeleton keeps every heading and the first fact of each section…
+    expect(context.sharedFacts?.body).toContain('## Team')
+    expect(context.sharedFacts?.body).toContain('## Conventions')
+    expect(context.sharedFacts?.body).toContain('Ships on Fridays')
+    expect(context.sharedFacts?.body).toContain('Conventional commits')
+    // …and elides the bulk instead of shipping it every turn.
+    expect(context.sharedFacts?.body).not.toContain('filler fact number 50')
+    expect(context.sharedFacts?.body).toContain('more lines')
+  })
+
   it('honors private: a private soul or memory never loads', async () => {
     readNote.mockImplementation(async (path: string) => {
       if (path === 'agents/riley/soul.md') return '---\nprivate: true\n---\n# Riley\nsecret\n'
@@ -111,7 +141,8 @@ describe('agentContextPromptLines', () => {
     expect(lines).toContain('shipped viewer')
     expect(lines).toContain('agents/riley/memory.md')
     expect(lines).toContain('[certain|likely|speculative]')
-    expect(lines).toContain('consolidate before adding more')
+    // The digested memory points at its file instead of apologizing.
+    expect(lines).toContain('read agents/riley/memory.md when you need the rest')
     expect(lines).not.toContain('cannot edit')
     expect(lines).not.toContain('pending.md')
   })

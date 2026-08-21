@@ -9,8 +9,10 @@ import {
   gitAgentSnapshot,
   gitChangedSince,
   loadAgentContext,
+  readNote,
   resolveMcpServers,
   routineIsDue,
+  scanChangedMemoryPaths,
   withAgentRunLock,
   streamCliAgentChat,
   ROUTINE_RUN_SUFFIX,
@@ -165,6 +167,17 @@ export function AgentRoutinesRunner(): null {
         const changed =
           snapshot === null ? [] : await gitChangedSince(snapshot, graph.generation).catch(() => [])
         const ledger = changed.filter((path) => path.toLowerCase().endsWith('.md'))
+        // The memory-write scanner also covers routine runs: an automation
+        // that plants instructions or secrets in memory gets flagged, not
+        // silently absorbed into every future prompt.
+        const memoryWarnings = await scanChangedMemoryPaths(ledger, readNote).catch(() => [])
+        if (memoryWarnings.length > 0) {
+          toast.add({
+            type: 'error',
+            title: `Routine “${routine.name}” wrote suspicious memory`,
+            description: memoryWarnings[0] ?? '',
+          })
+        }
         recordOutcome(routine.id, {
           startedMs,
           status: failure === null ? 'ok' : 'error',

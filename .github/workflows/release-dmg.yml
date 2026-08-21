@@ -69,6 +69,26 @@ jobs:
       - name: Build workspace
         run: pnpm build
 
+      # GitHub's secret text box preserves whatever whitespace was pasted in
+      # (a trailing newline from copying a code block is the common case),
+      # and rsign's base64 decoder rejects that outright. Re-export both
+      # values through GITHUB_ENV with every newline stripped so a stray
+      # trailing line break in the secret can never break the build again.
+      - name: Sanitize updater signing key secrets
+        if: ${{ env.HAS_UPDATER_KEY == 'true' }}
+        run: |
+          clean_key=$(printf '%s' "$KEY" | tr -d '\n\r')
+          clean_password=$(printf '%s' "$PASSWORD" | tr -d '\n\r')
+          echo "::add-mask::$clean_key"
+          echo "::add-mask::$clean_password"
+          {
+            echo "TAURI_SIGNING_PRIVATE_KEY=$clean_key"
+            echo "TAURI_SIGNING_PRIVATE_KEY_PASSWORD=$clean_password"
+          } >> "$GITHUB_ENV"
+        env:
+          KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+
       # Two mutually exclusive publish steps: with the updater keypair in the
       # repo secrets the release carries signed updater artifacts and
       # latest.json (auto-update works); without it the release degrades to a
@@ -78,8 +98,6 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           projectPath: apps/desktop
           tauriScript: pnpm tauri

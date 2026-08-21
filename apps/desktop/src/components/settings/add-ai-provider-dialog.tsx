@@ -6,6 +6,7 @@ import {
   aiProvider,
   aiProviderIdSchema,
   aiProviderRequiresApiKey,
+  isCliAgentProvider,
   isHttpBaseUrl,
   isPlainHttpRemoteBaseUrl,
   type AiProviderId,
@@ -50,11 +51,14 @@ const FIELD_LABEL_CLASS = 'text-xs font-medium text-text-secondary'
 
 /**
  * The "Add AI provider" modal: pick a provider, pick its default model, paste
- * an API key, optionally mark it as the app default. The verify-then-persist
- * flow (rejected keys inline, unreachable providers downgrading to "Save
- * anyway") is {@link useAddAiProviderSubmit}, shared with the mobile sheet.
- * The key goes to the OS keychain, never into the settings document, and a
- * failure keeps the dialog open with the typed key intact for a retry.
+ * an API key, optionally mark it as the app default. Subscription (CLI)
+ * providers skip both the model and the key: connecting is just the
+ * subscription — the model is chosen later in the chat's model selector, so
+ * the dialog never asks. The verify-then-persist flow (rejected keys inline,
+ * unreachable providers downgrading to "Save anyway") is
+ * {@link useAddAiProviderSubmit}, shared with the mobile sheet. The key goes
+ * to the OS keychain, never into the settings document, and a failure keeps
+ * the dialog open with the typed key intact for a retry.
  */
 export function AddAiProviderDialog({ onAdd, onClose }: AddAiProviderDialogProps): ReactElement {
   const { register, control, handleSubmit, setValue, formState } = useForm<AddAiProviderForm>({
@@ -148,37 +152,39 @@ export function AddAiProviderDialog({ onAdd, onClose }: AddAiProviderDialogProps
             </Select>
           </div>
 
-          <div className="flex flex-col gap-1">
-            <span className={FIELD_LABEL_CLASS}>Default model</span>
-            {isOpenAICompatible ? (
-              <Input
-                aria-label="Default model"
-                autoComplete="off"
-                spellCheck={false}
-                {...register('model', {
-                  validate: (value) => value.trim().length > 0 || 'Enter a model id.',
-                  onChange: () => {
+          {isCliAgentProvider(provider.id) ? null : (
+            <div className="flex flex-col gap-1">
+              <span className={FIELD_LABEL_CLASS}>Default model</span>
+              {isOpenAICompatible ? (
+                <Input
+                  aria-label="Default model"
+                  autoComplete="off"
+                  spellCheck={false}
+                  {...register('model', {
+                    validate: (value) => value.trim().length > 0 || 'Enter a model id.',
+                    onChange: () => {
+                      resetUnverified()
+                    },
+                  })}
+                />
+              ) : (
+                <ModelCombobox
+                  value={selectedModel}
+                  provider={provider.id}
+                  models={provider.models}
+                  onChange={(modelId) => {
+                    setValue('model', modelId)
                     resetUnverified()
-                  },
-                })}
-              />
-            ) : (
-              <ModelCombobox
-                value={selectedModel}
-                provider={provider.id}
-                models={provider.models}
-                onChange={(modelId) => {
-                  setValue('model', modelId)
-                  resetUnverified()
-                }}
-              />
-            )}
-            {formState.errors.model ? (
-              <span role="alert" className="text-xs text-red-600 dark:text-red-400">
-                {formState.errors.model.message}
-              </span>
-            ) : null}
-          </div>
+                  }}
+                />
+              )}
+              {formState.errors.model ? (
+                <span role="alert" className="text-xs text-red-600 dark:text-red-400">
+                  {formState.errors.model.message}
+                </span>
+              ) : null}
+            </div>
+          )}
 
           {isOpenAICompatible ? (
             <label className="flex flex-col gap-1">

@@ -3,6 +3,8 @@ import {
   aiProvider,
   aiProviderRequiresApiKey,
   checkCliAgentProvider,
+  CLAUDE_CLI_DEFAULT_MODEL,
+  CODEX_CLI_DEFAULT_MODEL,
   isCliAgentProvider,
   errorMessage,
   isHttpBaseUrl,
@@ -79,7 +81,15 @@ export function useAddAiProviderSubmit({
         const binary = draft.provider === 'claude-cli' ? 'claude' : 'codex'
         try {
           await checkCliAgentProvider(draft.provider)
-          await onAdd({ ...draft, apiKey: '' })
+          // Connecting a subscription never picks a model — the entry stores
+          // the CLI's own default and the chat model selector decides per
+          // conversation.
+          await onAdd({
+            ...draft,
+            apiKey: '',
+            model:
+              draft.provider === 'claude-cli' ? CLAUDE_CLI_DEFAULT_MODEL : CODEX_CLI_DEFAULT_MODEL,
+          })
           onDone()
         } catch (error: unknown) {
           setSubmitError(

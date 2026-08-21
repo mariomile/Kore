@@ -5,6 +5,7 @@ import {
   aiProvider,
   aiProviderRequiresApiKey,
   errorMessage,
+  isCliAgentProvider,
   type AiProviderConfig,
 } from '@reflect/core'
 import { Button } from '@/components/ui/button'
@@ -38,8 +39,12 @@ export function AiProviderRow({
 }: AiProviderRowProps): ReactElement {
   const provider = aiProvider(config.provider)
   const providerLabel = provider.label
-  const modelLabel = aiModelLabel(config.provider, config.model)
-  const name = `${providerLabel} — ${modelLabel}`
+  // Subscription (CLI) entries have no default model of their own — the
+  // model is picked per conversation in the chat selector.
+  const isCliEntry = isCliAgentProvider(config.provider)
+  const name = isCliEntry
+    ? providerLabel
+    : `${providerLabel} — ${aiModelLabel(config.provider, config.model)}`
   const showKeyHint = aiProviderRequiresApiKey(config.provider) || config.keyHint !== ''
 
   const remove = (): void => {
@@ -65,13 +70,17 @@ export function AiProviderRow({
           <p className="mt-0.5 truncate text-xs text-text-muted">{config.baseUrl}</p>
         ) : null}
       </div>
-      <ModelCombobox
-        value={config.model}
-        provider={config.provider}
-        models={provider.models}
-        onChange={(model) => onSetDefaultModel(config.id, model)}
-        ariaLabel={`Default model for ${providerLabel}`}
-      />
+      {isCliEntry ? (
+        <p className="text-xs text-text-muted">Model picked in chat</p>
+      ) : (
+        <ModelCombobox
+          value={config.model}
+          provider={config.provider}
+          models={provider.models}
+          onChange={(model) => onSetDefaultModel(config.id, model)}
+          ariaLabel={`Default model for ${providerLabel}`}
+        />
+      )}
       <div className="flex shrink-0 items-center gap-2">
         {isDefault ? (
           <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[11px] font-medium text-accent-soft-text">

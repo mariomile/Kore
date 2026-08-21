@@ -26,6 +26,7 @@ import {
   loadChatMessages,
   resolveChatModel,
   saveChatMessage,
+  cliProviderSupportsEdits,
   isCliAgentProvider,
   streamChat,
   streamCliAgentChat,
@@ -308,7 +309,9 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
       // a restorable version. Best-effort — no snapshot, no ledger, but the
       // turn itself still runs.
       const editRun =
-        isCliAgentProvider(config.provider) && chatAllowEditsRef.current
+        isCliAgentProvider(config.provider) &&
+        cliProviderSupportsEdits(config.provider) &&
+        chatAllowEditsRef.current
           ? { generation: graph.generation }
           : null
       // Edit-mode runs are serialized across the app (chat and automations
@@ -349,7 +352,11 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
             // MCP tools ride only edit-mode runs: read-only chat stays a
             // zero-egress surface. Secrets resolve from the keychain here,
             // per run — never stored anywhere else.
-            const mcpServers = chatAllowEditsRef.current
+            // Cursor never joins edit mode (its write path is unverified),
+            // so the toggle silently means read-only there.
+            const allowEdits =
+              chatAllowEditsRef.current && cliProviderSupportsEdits(config.provider)
+            const mcpServers = allowEdits
               ? await resolveMcpServers(mcpServersRef.current).catch(() => [])
               : []
             return streamCliAgentChat(config.provider, {
@@ -360,7 +367,7 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
               graphRoot: graph.root,
               graphName: graph.name,
               privateNotePaths,
-              allowEdits: chatAllowEditsRef.current,
+              allowEdits,
               mcpServers,
               agentContext,
               memoryWriteApproval: memoryWriteApprovalRef.current,

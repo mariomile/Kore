@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import {
   appendRoutineRun,
+  cliProviderSupportsEdits,
   errorMessage,
   isCliAgentProvider,
   listPrivateNotePaths,
@@ -90,9 +91,12 @@ export function AgentRoutinesRunner(): null {
       let startedMs: number | null = null
       try {
         const context = await loadAgentContext(routine.agentSlug)
+        // Automations write the vault, so only edit-capable engines run
+        // them — Cursor's read-only integration never does.
         const configured = settingsRef.current.aiProviders
           .map((entry) => entry.provider)
           .filter(isCliAgentProvider)
+          .filter(cliProviderSupportsEdits)
         const pinned = configured.find((kind) => kind === context.profile?.provider)
         const provider = pinned ?? configured[0]
         if (provider === undefined) {

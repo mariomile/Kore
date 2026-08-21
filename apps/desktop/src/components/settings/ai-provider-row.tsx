@@ -47,7 +47,10 @@ export function AiProviderRow({
     ? providerLabel
     : `${providerLabel} — ${aiModelLabel(config.provider, config.model)}`
   const showKeyHint = aiProviderRequiresApiKey(config.provider) || config.keyHint !== ''
-  const brand = brandForProvider(config.provider)
+  const brand = brandForProvider(
+    config.provider,
+    config.provider === 'openai-compatible' ? config.baseUrl : undefined,
+  )
   const modeLabel = brand?.modes.find((mode) => mode.provider === config.provider)?.label ?? null
 
   const remove = (): void => {

@@ -54,8 +54,9 @@ export function languageModel(
       }).chatModel(config.model)
     case 'claude-cli':
     case 'codex-cli':
+    case 'cursor-cli':
       // The CLI providers stream through their own engines (`ai/claude-cli`,
-      // `ai/codex-cli`), never through the AI SDK — reaching here means a
+      // `ai/codex-cli`, `ai/cursor-cli`), never through the AI SDK — reaching here means a
       // feature that needs a direct provider call was pointed at a
       // subscription entry.
       throw new Error(

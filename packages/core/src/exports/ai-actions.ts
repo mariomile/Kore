@@ -173,7 +173,19 @@ export {
   CODEX_CLI_DEFAULT_MODEL,
 } from '../ai/codex-cli'
 export {
+  checkCursorCli,
+  cursorLoginStatus,
+  type CursorAuthStatus,
+  cursorCliArgs,
+  cursorCliPermissionsJson,
+  cursorCliSystemPrompt,
+  parseCursorCliLine,
+  streamCursorCliChat,
+  CURSOR_CLI_DEFAULT_MODEL,
+} from '../ai/cursor-cli'
+export {
   checkCliAgentProvider,
+  cliProviderSupportsEdits,
   isCliAgentProvider,
   streamCliAgentChat,
   type CliAgentProviderId,

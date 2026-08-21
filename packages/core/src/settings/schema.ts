@@ -534,6 +534,7 @@ export const aiProviderIdSchema = z.enum([
   'openai-compatible',
   'claude-cli',
   'codex-cli',
+  'cursor-cli',
 ])
 
 export type AiProviderId = z.infer<typeof aiProviderIdSchema>
@@ -619,6 +620,18 @@ const codexCliProviderConfigSchema = aiProviderConfigBaseSchema.extend({
 
 export type CodexCliProviderConfig = z.infer<typeof codexCliProviderConfigSchema>
 
+/**
+ * The Cursor CLI provider: same contract — no API key, the locally
+ * installed `cursor-agent` binary carries its own Cursor sign-in, so chat
+ * bills the user's subscription. Desktop-only, and read-only: the engine
+ * never joins edit mode (see `cliProviderSupportsEdits`).
+ */
+const cursorCliProviderConfigSchema = aiProviderConfigBaseSchema.extend({
+  provider: z.literal('cursor-cli'),
+})
+
+export type CursorCliProviderConfig = z.infer<typeof cursorCliProviderConfigSchema>
+
 export const aiProviderConfigSchema = z.discriminatedUnion('provider', [
   openAiProviderConfigSchema,
   anthropicProviderConfigSchema,
@@ -627,6 +640,7 @@ export const aiProviderConfigSchema = z.discriminatedUnion('provider', [
   openAiCompatibleProviderConfigSchema,
   claudeCliProviderConfigSchema,
   codexCliProviderConfigSchema,
+  cursorCliProviderConfigSchema,
 ])
 
 export type AiProviderConfig = z.infer<typeof aiProviderConfigSchema>

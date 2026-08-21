@@ -1,14 +1,17 @@
 //! Agent-CLI bridge (the "subscription" AI providers).
 //!
-//! Runs a locally installed coding-agent CLI — Claude Code (`claude`) or
-//! Codex (`codex`) — in headless mode so AI chat can bill the user's Claude
-//! or ChatGPT subscription instead of a BYOK API key. The frontend engines
-//! (`@reflect/core`'s `ai/claude-cli` and `ai/codex-cli`) own the protocol:
-//! they build each binary's arguments (including the sandbox/permission
-//! lockdown that keeps `private: true` notes unreadable) and parse the
-//! emitted JSON lines. This module only resolves the binary from a closed
-//! set, spawns it, streams stdout lines as Tauri events, and kills the child
-//! on request — it never composes arguments itself.
+//! Runs a locally installed coding-agent CLI — Claude Code (`claude`),
+//! Codex (`codex`), or Cursor (`cursor-agent`) — in headless mode so AI
+//! chat can bill the user's subscription instead of a BYOK API key. The
+//! frontend engines (`@reflect/core`'s `ai/claude-cli`, `ai/codex-cli`, and
+//! `ai/cursor-cli`) own the protocol: they build each binary's arguments
+//! (including the sandbox/permission lockdown that keeps `private: true`
+//! notes unreadable) and parse the emitted JSON lines. This module only
+//! resolves the binary from a closed set, spawns it, streams stdout lines
+//! as Tauri events, and kills the child on request — it never composes
+//! arguments itself. The one file it writes is the run's declarative
+//! permission config when an engine supplies one (Cursor reads its rules
+//! from `.cursor/cli.json` in the workspace, not from a flag).
 
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Read, Write};
@@ -32,6 +35,7 @@ const EVENT: &str = "agent-cli:event";
 pub enum AgentCliBinary {
     Claude,
     Codex,
+    CursorAgent,
 }
 
 impl AgentCliBinary {
@@ -41,6 +45,8 @@ impl AgentCliBinary {
             (Self::Claude, true) => "claude.exe",
             (Self::Codex, false) => "codex",
             (Self::Codex, true) => "codex.exe",
+            (Self::CursorAgent, false) => "cursor-agent",
+            (Self::CursorAgent, true) => "cursor-agent.exe",
         }
     }
 
@@ -48,8 +54,44 @@ impl AgentCliBinary {
         match self {
             Self::Claude => "Claude Code CLI (`claude`)",
             Self::Codex => "Codex CLI (`codex`)",
+            Self::CursorAgent => "Cursor CLI (`cursor-agent`)",
         }
     }
+}
+
+/// A declarative permission config an engine asks to have materialized in
+/// the run's working directory before the spawn — Cursor's `.cursor/cli.json`
+/// is file-based, with no flag equivalent. The path is confined to the run's
+/// `cwd`: relative, no parent traversal, and always a `.json` file.
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkspaceConfigFile {
+    relative_path: String,
+    contents: String,
+}
+
+/// Write the engine's permission config under `cwd`, refusing anything that
+/// could reach outside it.
+fn write_workspace_config(cwd: &str, config: &WorkspaceConfigFile) -> AppResult<()> {
+    let relative = std::path::Path::new(&config.relative_path);
+    let traversal = relative.components().any(|component| {
+        !matches!(
+            component,
+            std::path::Component::Normal(_) | std::path::Component::CurDir
+        )
+    });
+    if traversal || !config.relative_path.ends_with(".json") {
+        return Err(AppError::traversal(
+            "workspace config path must be a relative .json file",
+        ));
+    }
+    let target = std::path::Path::new(cwd).join(relative);
+    if let Some(parent) = target.parent() {
+        std::fs::create_dir_all(parent)
+            .map_err(|err| AppError::io(format!("could not create {}: {err}", parent.display())))?;
+    }
+    std::fs::write(&target, &config.contents)
+        .map_err(|err| AppError::io(format!("could not write {}: {err}", target.display())))
 }
 
 /// Live child processes by request id, so a stop request can kill mid-run.
@@ -143,9 +185,17 @@ pub async fn agent_cli_run(
     cwd: Option<String>,
     stream_stderr: Option<bool>,
     env: Option<HashMap<String, String>>,
+    workspace_config: Option<WorkspaceConfigFile>,
 ) -> AppResult<()> {
     let path = resolve_binary(binary)
         .ok_or_else(|| AppError::not_found(format!("{} was not found", binary.label())))?;
+
+    if let Some(config) = workspace_config.as_ref() {
+        let dir = cwd
+            .as_deref()
+            .ok_or_else(|| AppError::io("workspace config requires a working directory"))?;
+        write_workspace_config(dir, config)?;
+    }
 
     let mut command = Command::new(&path);
     command
@@ -309,4 +359,42 @@ pub async fn agent_cli_stop(
         let _ = child.wait();
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod workspace_config_tests {
+    use super::*;
+
+    fn config(path: &str) -> WorkspaceConfigFile {
+        WorkspaceConfigFile {
+            relative_path: path.to_string(),
+            contents: "{}".to_string(),
+        }
+    }
+
+    #[test]
+    fn writes_a_relative_json_config_under_cwd() {
+        let dir = std::env::temp_dir().join(format!("agent-cli-cfg-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let cwd = dir.to_str().unwrap();
+        write_workspace_config(cwd, &config(".cursor/cli.json")).unwrap();
+        let written = std::fs::read_to_string(dir.join(".cursor/cli.json")).unwrap();
+        assert_eq!(written, "{}");
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn refuses_traversal_absolute_paths_and_non_json() {
+        for path in [
+            "../evil.json",
+            "/etc/evil.json",
+            ".cursor/cli.txt",
+            "a/../../b.json",
+        ] {
+            assert!(
+                write_workspace_config("/tmp", &config(path)).is_err(),
+                "{path}"
+            );
+        }
+    }
 }

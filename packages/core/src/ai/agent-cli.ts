@@ -16,7 +16,7 @@ import type { ChatStreamEvent } from './chat/stream-chat'
  */
 
 /** The closed set of binaries the Rust bridge will run. */
-export type AgentCliBinary = 'claude' | 'codex'
+export type AgentCliBinary = 'claude' | 'codex' | 'cursor-agent'
 
 /**
  * Check that a CLI is installed and runnable; resolves with its version
@@ -226,6 +226,12 @@ export interface AgentCliTurnOptions {
    * command line, where any local process could read them.
    */
   env?: Record<string, string> | undefined
+  /**
+   * A declarative permission config the bridge writes under `cwd` before
+   * the spawn — for engines whose rules live in a workspace file (Cursor's
+   * `.cursor/cli.json`) rather than a flag.
+   */
+  workspaceConfig?: { relativePath: string; contents: string } | undefined
   /** Parse one stdout line into a chunk, or null for noise. */
   parseLine: (line: string) => AgentCliChunk | null
   /** Message when the spawn itself fails without a specific cause. */
@@ -277,6 +283,7 @@ export async function* streamAgentCliTurn(
       prompt: options.prompt,
       cwd: options.cwd,
       env: options.env ?? null,
+      workspaceConfig: options.workspaceConfig ?? null,
     })
   } catch (cause) {
     unlisten()

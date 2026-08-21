@@ -5,6 +5,7 @@ import {
   checkCliAgentProvider,
   CLAUDE_CLI_DEFAULT_MODEL,
   CODEX_CLI_DEFAULT_MODEL,
+  CURSOR_CLI_DEFAULT_MODEL,
   isCliAgentProvider,
   errorMessage,
   isHttpBaseUrl,
@@ -13,6 +14,20 @@ import {
 } from '@reflect/core'
 import { providerFetch } from '@/lib/provider-fetch'
 import type { NewAiProvider } from '@/hooks/use-ai-providers'
+
+/** The binary each subscription engine needs on PATH, for error copy. */
+const CLI_BINARY_NAMES: Record<string, string> = {
+  'claude-cli': 'claude',
+  'codex-cli': 'codex',
+  'cursor-cli': 'cursor-agent',
+}
+
+/** The per-engine "no model chosen at setup" sentinel. */
+const CLI_DEFAULT_MODELS: Record<string, string> = {
+  'claude-cli': CLAUDE_CLI_DEFAULT_MODEL,
+  'codex-cli': CODEX_CLI_DEFAULT_MODEL,
+  'cursor-cli': CURSOR_CLI_DEFAULT_MODEL,
+}
 
 interface UseAddAiProviderSubmitOptions {
   /** Persists the new provider (keychain + settings); rejects on failure. */
@@ -78,7 +93,7 @@ export function useAddAiProviderSubmit({
       if (isCliAgentProvider(draft.provider)) {
         // No key to validate — the requirement is a runnable local binary
         // (which carries its own sign-in for subscription billing).
-        const binary = draft.provider === 'claude-cli' ? 'claude' : 'codex'
+        const binary = CLI_BINARY_NAMES[draft.provider] ?? draft.provider
         try {
           await checkCliAgentProvider(draft.provider)
           // Connecting a subscription never picks a model — the entry stores
@@ -87,8 +102,7 @@ export function useAddAiProviderSubmit({
           await onAdd({
             ...draft,
             apiKey: '',
-            model:
-              draft.provider === 'claude-cli' ? CLAUDE_CLI_DEFAULT_MODEL : CODEX_CLI_DEFAULT_MODEL,
+            model: CLI_DEFAULT_MODELS[draft.provider] ?? CLAUDE_CLI_DEFAULT_MODEL,
           })
           onDone()
         } catch (error: unknown) {

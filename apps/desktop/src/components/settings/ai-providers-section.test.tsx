@@ -49,6 +49,10 @@ function installFakeBridge(): void {
         case 'secret_delete':
           secrets.delete(args['name'] as string)
           return null
+        case 'agent_cli_check':
+          // The subscription flows verify a runnable binary instead of a
+          // key; the fake bridge reports every CLI as installed.
+          return '1.0.0'
         default:
           return null
       }
@@ -176,6 +180,34 @@ describe('AiProvidersSection', () => {
 
     await expect.element(dialog.getByRole('radio', { name: 'OpenRouter' })).toBeInTheDocument()
     await expect.element(dialog.getByRole('radio', { name: 'Custom' })).toBeInTheDocument()
+  })
+
+  it('Grok seeds the xAI endpoint over the OpenAI-compatible machinery', async () => {
+    await renderSection()
+    await expect.element(page.getByText(/No AI providers configured/)).toBeInTheDocument()
+
+    const dialog = await openDialog()
+    await dialog.getByRole('radio', { name: 'Grok' }).click()
+    await expect
+      .element(dialog.getByLabelText('Endpoint base URL'))
+      .toHaveValue('https://api.x.ai/v1')
+    await expect.element(dialog.getByLabelText('Model id')).toHaveValue('grok-4-latest')
+    await expect.element(dialog.getByText(/Calls the xAI API/)).toBeInTheDocument()
+  })
+
+  it('Cursor connects as a keyless subscription CLI', async () => {
+    await renderSection()
+    await expect.element(page.getByText(/No AI providers configured/)).toBeInTheDocument()
+
+    const dialog = await openDialog()
+    await dialog.getByRole('radio', { name: 'Cursor' }).click()
+    await expect.element(dialog.getByText('cursor-agent', { exact: true })).toBeInTheDocument()
+    await expect.element(dialog.getByText(/Read-only/)).toBeInTheDocument()
+
+    await dialog.getByRole('button', { name: 'Add provider' }).click()
+    await vi.waitFor(() => expect(saved).toHaveLength(1))
+    const [added] = lastSavedDoc().aiProviders
+    expect(added).toMatchObject({ provider: 'cursor-cli', model: 'default', keyHint: '' })
   })
 
   it('adds an OpenAI-compatible endpoint without storing an empty key', async () => {

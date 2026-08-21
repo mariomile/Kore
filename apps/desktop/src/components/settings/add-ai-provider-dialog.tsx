@@ -4,6 +4,7 @@ import {
   DEFAULT_OPENAI_COMPATIBLE_BASE_URL,
   aiProvider,
   aiProviderRequiresApiKey,
+  isCliAgentProvider,
   isHttpBaseUrl,
   isPlainHttpRemoteBaseUrl,
   type AiProviderId,
@@ -22,7 +23,12 @@ import { CodexSignIn } from '@/components/settings/codex-sign-in'
 import { useAddAiProviderSubmit } from '@/hooks/use-add-ai-provider-submit'
 import type { NewAiProvider } from '@/hooks/use-ai-providers'
 import { cn } from '@/lib/utils'
-import { PROVIDER_BRANDS, ProviderLogo, type ProviderBrand } from './provider-brands'
+import {
+  PROVIDER_BRANDS,
+  ProviderLogo,
+  type ProviderBrand,
+  type ProviderConnectionMode,
+} from './provider-brands'
 
 interface AddAiProviderDialogProps {
   /** Persists the new provider (keychain + settings); rejects on failure. */
@@ -41,11 +47,21 @@ interface AddAiProviderForm {
 const FIELD_LABEL_CLASS = 'text-xs font-medium text-text-secondary'
 
 /** The form values a connection mode starts from. */
-function seedForProvider(provider: AiProviderId): { model: string; baseUrl: string } {
-  return {
-    model: aiProvider(provider).models[0].id,
-    baseUrl: provider === 'openai-compatible' ? DEFAULT_OPENAI_COMPATIBLE_BASE_URL : '',
+function seedForMode(mode: ProviderConnectionMode): { model: string; baseUrl: string } {
+  if (mode.seed !== undefined) {
+    return mode.seed
   }
+  return {
+    model: aiProvider(mode.provider).models[0].id,
+    baseUrl: mode.provider === 'openai-compatible' ? DEFAULT_OPENAI_COMPATIBLE_BASE_URL : '',
+  }
+}
+
+/** Per-engine copy for the no-key connection block. */
+const CLI_BINARIES: Record<string, { binary: string; hint: string }> = {
+  'claude-cli': { binary: 'claude', hint: ' with your Claude account in a terminal' },
+  'codex-cli': { binary: 'codex', hint: '' },
+  'cursor-cli': { binary: 'cursor-agent', hint: ' with `cursor-agent login` in a terminal' },
 }
 
 /**
@@ -66,7 +82,7 @@ export function AddAiProviderDialog({ onAdd, onClose }: AddAiProviderDialogProps
   const { register, control, handleSubmit, setValue, formState } = useForm<AddAiProviderForm>({
     defaultValues: {
       provider: firstMode.provider,
-      ...seedForProvider(firstMode.provider),
+      ...seedForMode(firstMode),
       apiKey: '',
       isDefault: false,
     },
@@ -95,12 +111,12 @@ export function AddAiProviderDialog({ onAdd, onClose }: AddAiProviderDialogProps
   const provider = aiProvider(providerId)
   const mode = brand.modes.find((candidate) => candidate.provider === providerId) ?? brand.modes[0]!
   const isOpenAICompatible = provider.id === 'openai-compatible'
-  const isCliProvider = provider.id === 'claude-cli' || provider.id === 'codex-cli'
+  const isCliProvider = isCliAgentProvider(provider.id)
   const apiKeyRequired = aiProviderRequiresApiKey(provider.id)
 
-  const selectMode = (nextProvider: AiProviderId): void => {
-    const seed = seedForProvider(nextProvider)
-    setValue('provider', nextProvider)
+  const selectMode = (nextMode: ProviderConnectionMode): void => {
+    const seed = seedForMode(nextMode)
+    setValue('provider', nextMode.provider)
     setValue('model', seed.model)
     setValue('baseUrl', seed.baseUrl)
     resetUnverified()
@@ -108,7 +124,7 @@ export function AddAiProviderDialog({ onAdd, onClose }: AddAiProviderDialogProps
 
   const selectBrand = (next: ProviderBrand): void => {
     setBrand(next)
-    selectMode(next.modes[0]!.provider)
+    selectMode(next.modes[0]!)
   }
 
   const submitForm = handleSubmit(async (values) => {
@@ -135,7 +151,7 @@ export function AddAiProviderDialog({ onAdd, onClose }: AddAiProviderDialogProps
             void submitForm(event)
           }}
         >
-          <div role="radiogroup" aria-label="Provider" className="grid grid-cols-5 gap-1.5">
+          <div role="radiogroup" aria-label="Provider" className="grid grid-cols-4 gap-1.5">
             {PROVIDER_BRANDS.map((candidate) => {
               const selected = candidate.id === brand.id
               return (
@@ -177,7 +193,7 @@ export function AddAiProviderDialog({ onAdd, onClose }: AddAiProviderDialogProps
                       type="button"
                       role="radio"
                       aria-checked={selected}
-                      onClick={() => selectMode(candidate.provider)}
+                      onClick={() => selectMode(candidate)}
                       className={cn(
                         'flex h-7 flex-1 items-center justify-center rounded-md text-xs font-medium transition-all duration-150 ease-swift',
                         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
@@ -249,9 +265,8 @@ export function AddAiProviderDialog({ onAdd, onClose }: AddAiProviderDialogProps
             <div className="flex flex-col gap-2">
               <p className="text-xs text-text-muted">
                 No API key — install the{' '}
-                <code>{provider.id === 'claude-cli' ? 'claude' : 'codex'}</code> CLI and sign in
-                once{provider.id === 'claude-cli' ? ' with your Claude account in a terminal' : ''}.
-                The model is picked in the chat.
+                <code>{CLI_BINARIES[provider.id]?.binary ?? provider.id}</code> CLI and sign in once
+                {CLI_BINARIES[provider.id]?.hint ?? ''}. The model is picked in the chat.
               </p>
               {provider.id === 'codex-cli' ? <CodexSignIn /> : null}
             </div>

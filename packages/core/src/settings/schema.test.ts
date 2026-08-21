@@ -371,6 +371,13 @@ describe('settingsSchema', () => {
       ])
     })
 
+    it('accepts Cursor CLI entries (no key)', () => {
+      const entry = { id: 'cu1', provider: 'cursor-cli', model: 'default' }
+      expect(settingsSchema.parse({ aiProviders: [entry] }).aiProviders).toEqual([
+        { ...entry, keyHint: '' },
+      ])
+    })
+
     it('accepts OpenRouter entries', () => {
       const entry = {
         id: 'openrouter',

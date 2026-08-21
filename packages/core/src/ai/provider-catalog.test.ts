@@ -7,6 +7,20 @@ import {
 } from './provider-catalog'
 
 describe('AI_PROVIDERS', () => {
+  it('offers the Cursor CLI as a keyless, desktop-only subscription engine', () => {
+    expect(aiProvider('cursor-cli')).toMatchObject({
+      id: 'cursor-cli',
+      label: 'Cursor (subscription)',
+      apiKeyRequired: false,
+      desktopOnly: true,
+    })
+    expect(aiProvider('cursor-cli').models[0]).toEqual({
+      id: 'default',
+      label: 'CLI default',
+      contextWindow: 200_000,
+    })
+  })
+
   it('offers the current Claude lineup in capability order', () => {
     expect(aiProvider('anthropic').models.slice(0, 3)).toEqual([
       { id: 'claude-fable-5', label: 'Claude Fable 5', contextWindow: 1_000_000 },

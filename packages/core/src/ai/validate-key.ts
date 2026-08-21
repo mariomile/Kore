@@ -1,4 +1,5 @@
 import type { AiProviderId, HostedAiProviderId } from '../settings/schema'
+import { isCliAgentProvider } from './cli-providers'
 import { anthropicDirectBrowserAccessHeaders } from './anthropic-headers'
 import { APP_REVIEW_STUB_KEY } from './app-review-demo'
 import { isHttpBaseUrl, normalizeOpenAICompatibleBaseUrl } from './openai-compatible'
@@ -75,7 +76,7 @@ function keyProbe(input: ApiKeyValidationInput): KeyProbe | null {
   if (input.provider === 'openai-compatible') {
     return openAiCompatibleProbe(input)
   }
-  if (input.provider === 'claude-cli' || input.provider === 'codex-cli') {
+  if (isCliAgentProvider(input.provider)) {
     // No key to probe — the desktop dialog verifies the CLI itself instead.
     return null
   }

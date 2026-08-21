@@ -11,6 +11,7 @@ import {
   ensureSharedMemoryNotes,
   ensureUserMemoryNote,
   errorMessage,
+  isCliAgentProvider,
   listAgentProfiles,
   parsePendingMemory,
   readNote,
@@ -113,10 +114,7 @@ export function AgentsScreen(): ReactElement {
     // A pinned CLI provider also steers the chat model, when it is configured.
     if (profile?.provider != null) {
       const configured = settings.aiProviders.find((entry) => entry.provider === profile.provider)
-      if (
-        configured !== undefined &&
-        (configured.provider === 'claude-cli' || configured.provider === 'codex-cli')
-      ) {
+      if (configured !== undefined && isCliAgentProvider(configured.provider)) {
         updateSettings({
           chatModelSelection: { configId: configured.id, modelId: profile.model ?? 'default' },
         })
@@ -414,9 +412,7 @@ function NewAgentDialog({ open, onOpenChange, onCreated }: NewAgentDialogProps):
   const [busy, setBusy] = useState(false)
   const generation = graph?.generation ?? null
 
-  const cliProviders = settings.aiProviders.filter(
-    (entry) => entry.provider === 'claude-cli' || entry.provider === 'codex-cli',
-  )
+  const cliProviders = settings.aiProviders.filter((entry) => isCliAgentProvider(entry.provider))
 
   const create = async (): Promise<void> => {
     if (generation === null || name.trim() === '') {

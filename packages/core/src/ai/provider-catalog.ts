@@ -167,6 +167,21 @@ export const AI_PROVIDERS: NonEmptyArray<AiProviderInfo> = [
       { id: 'gpt-5.5', label: 'GPT-5.5', contextWindow: 200_000 },
     ],
   },
+  {
+    // The Cursor CLI ("subscription" AI): no key — the installed
+    // `cursor-agent` binary carries its own Cursor sign-in. `default` sends
+    // no model flag; `auto` is Cursor's own model router. Context windows
+    // are conservative floors for the transcript budget only.
+    id: 'cursor-cli',
+    label: 'Cursor (subscription)',
+    apiKeyRequired: false,
+    keyPlaceholder: 'No API key — uses your Cursor sign-in',
+    desktopOnly: true,
+    models: [
+      { id: 'default', label: 'CLI default', contextWindow: 200_000 },
+      { id: 'auto', label: 'Auto (Cursor picks)', contextWindow: 200_000 },
+    ],
+  },
 ]
 
 /** The catalog entry for `id` (every `AiProviderId` is in the catalog). */

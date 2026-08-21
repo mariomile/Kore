@@ -6,9 +6,8 @@ customization effort.
 
 ## Next up
 
-- **More agent CLI providers** — Grok CLI and Cursor CLI as chat engines
-  beside Claude Code and Codex (the profile `provider:` pin and the Rust
-  binary allowlist are the two extension points); Hermes agent later.
+- **Mobile parity for the All-notes grid view** — the card grid currently
+  ships on desktop only.
 
 ## Backlog
 
@@ -20,10 +19,21 @@ customization effort.
   the next occurrence (meowdown exposes no editor-side task-toggle
   callback); Tasks-view completions now spawn in every case, live session
   included.
-- **Mobile parity for the All-notes grid view** — the card grid currently
-  ships on desktop only.
 
 ## Shipped (this fork)
+
+- Grok and Cursor as providers. Grok is a first-class brand card riding the
+  xAI API (OpenAI-compatible, endpoint pre-filled, key in the OS keychain,
+  models by id) — the community Grok CLI was deliberately rejected: it
+  auto-approves an unsandboxed shell in headless mode, which the vault's
+  privacy rules cannot fence. Cursor joins as a true subscription CLI
+  (`cursor-agent`, signed in with the user's Cursor plan, model picked in
+  chat): read-only by design — it grounds answers in the vault while a
+  workspace `.cursor/cli.json` written fresh each run denies Shell, network,
+  writes, Grep, MCP, and every private note, `--mode ask` keeps Cursor's own
+  read-only posture, and `--force` (which headless writes require) is never
+  passed. Edit mode and automations stay with Claude Code and Codex until
+  Cursor's write path is verified against the real CLI.
 
 - Task reminders: once a day, a native notification summarizes the open
   tasks due today and the overdue ones (task due dates are date-only, so

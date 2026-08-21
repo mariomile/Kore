@@ -32,7 +32,7 @@
       }
     },
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDhGQkREQkE4ODE2NjUyODUKUldTRlVtYUJxTnU5ajNYWFYrN0QwUmg1UU1sNW5Ra3djZ2pnS2pGZHFQQy9yQ24zZHMwVVNhQ0UK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDY4NzMzMUNENTQ5REQwNkYKUldSdjBKMVV6VEZ6YUVwQWZFNzRML1FjYi9VN0hwSXdXVXlLcCtqK1R3VGNUaDIyeE5tcVpIQ2gK",
       "endpoints": ["https://github.com/mariomile/Lore/releases/latest/download/latest.json"]
     }
   },

@@ -6,6 +6,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react'
+import { haptic } from '@/lib/haptics'
 import {
   clampSidebarWidth,
   CONTEXT_SIDEBAR_WIDTH_RANGE,
@@ -309,6 +310,8 @@ export function useSidebarResize(panel: ResizableSidebarPanel): SidebarResize {
         applyWidth(next)
         if (next !== drag.startWidth) {
           commitWidth(next)
+          // The drag landed somewhere new — confirm it physically.
+          haptic('alignment')
         }
         setDragWidth(null)
       }
@@ -319,6 +322,7 @@ export function useSidebarResize(panel: ResizableSidebarPanel): SidebarResize {
   const onDoubleClick = useCallback((): void => {
     applyWidth(range.fallback)
     commitWidth(range.fallback)
+    haptic('alignment')
   }, [applyWidth, commitWidth, range])
 
   const onKeyDown = useCallback(
@@ -354,6 +358,8 @@ export function useSidebarResize(panel: ResizableSidebarPanel): SidebarResize {
       // Pressing into a wall (the range or the viewport's room) is a no-op:
       // nothing moves, so nothing commits and the saved preference survives.
       if (next === base) {
+        // Pressed into the wall: the rubber-band knock, nothing commits.
+        haptic('alignment')
         return
       }
       applyWidth(next)

@@ -27,6 +27,17 @@ customization effort.
 
 ## Shipped (this fork)
 
+- Premium interaction pass: one motion system (the `ease-swift` house curve
+  + 150ms) across buttons, switches, tab pills, menus, selects, dialogs and
+  the ⌘K palette (which now animates in); press-scale feedback on every
+  button; checkbox ticks land with a zoom instead of popping; hover-reveal
+  affordances fade instead of snapping; masonry cards lift on hover; the
+  elevation ladder is tokenized end to end (dialog/toast/menus on
+  `--shadow-pop`, dark-mode re-tints); and real macOS trackpad haptics
+  (NSHapticFeedbackManager) on toggles, the context-rail switcher, sidebar
+  resize landing/limits, and failed background operations — gated behind
+  `prefers-reduced-motion`.
+
 - Liquid Glass: an Appearance switch (independent of the theme) that paints
   an accent-tinted gradient backdrop and turns the chrome translucent — the
   note-pane card and every floating layer (menus, dialogs, the palette) get

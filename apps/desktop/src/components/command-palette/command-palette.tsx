@@ -149,7 +149,7 @@ export function CommandPalette({ context }: CommandPaletteProps): ReactElement |
   return (
     // The overlay is ours (no portal): click-outside closes, Esc closes below.
     <div
-      className="fixed inset-0 z-40 flex items-start justify-center bg-black/20 pt-[12vh]"
+      className="animate-in fade-in-0 fixed inset-0 z-40 flex items-start justify-center bg-black/20 pt-[12vh] duration-150 ease-swift"
       onPointerDown={closePalette}
       data-testid="palette-overlay"
     >
@@ -157,7 +157,10 @@ export function CommandPalette({ context }: CommandPaletteProps): ReactElement |
         role="dialog"
         aria-modal="true"
         aria-label="Command palette"
-        className={cn('w-full', splitLayout ? 'max-w-4xl' : 'max-w-xl')}
+        className={cn(
+          'animate-in fade-in-0 zoom-in-95 slide-in-from-top-2 w-full duration-150 ease-swift',
+          splitLayout ? 'max-w-4xl' : 'max-w-xl',
+        )}
         onPointerDown={(event) => {
           event.stopPropagation() // clicks inside must not close
         }}

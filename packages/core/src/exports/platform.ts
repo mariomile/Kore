@@ -161,6 +161,8 @@ export {
   cancelReflectV1Import,
   markReflectV1ImportOwnWrites,
   exportHtmlWrite,
+  hapticFeedback,
+  type HapticPattern,
   readNote,
   readNoteLocal,
   type LocalNoteRead,

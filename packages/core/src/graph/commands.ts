@@ -137,6 +137,17 @@ export async function readNote(path: string, generation?: number): Promise<strin
   return await call('note_read', { path, generation }, z.string())
 }
 
+/** AppKit's haptic taxonomy: snap-into-place, state flip, generic knock. */
+export type HapticPattern = 'alignment' | 'level-change' | 'generic'
+
+/**
+ * Trackpad haptic feedback — macOS only; a silent no-op everywhere else, so
+ * callers can fire unconditionally on interactions worth confirming.
+ */
+export async function hapticFeedback(pattern: HapticPattern): Promise<void> {
+  await call('haptic_feedback', { pattern }, voidSchema)
+}
+
 /**
  * Write an exported HTML document to an absolute path the user chose in the
  * OS save dialog — the one write that deliberately leaves the graph root.

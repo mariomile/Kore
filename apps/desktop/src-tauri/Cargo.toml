@@ -113,6 +113,7 @@ objc2-app-kit = { version = "0.3.2", default-features = false, features = [
   "NSColor",
   "NSColorSpace",
   "NSEvent",
+  "NSHapticFeedback",
   "NSMenu",
   "NSMenuItem",
   "NSWorkspace",

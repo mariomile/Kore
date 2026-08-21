@@ -1,4 +1,5 @@
 import { toast } from '@/components/ui/toast'
+import { haptic } from '@/lib/haptics'
 import { getOperations, subscribeOperations, type Operation } from '@/lib/operations'
 
 /**
@@ -59,6 +60,8 @@ function showOperationToast(operation: Operation): void {
   switch (operation.status) {
     case 'failed':
       toast.add({ ...options, type: 'error' })
+      // Background failures deserve a physical knock, not just a red toast.
+      haptic('generic')
       break
     case 'warning':
       toast.add({ ...options, type: 'warning' })

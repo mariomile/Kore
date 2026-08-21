@@ -1,5 +1,6 @@
 import { useId, type ReactElement } from 'react'
 import { Switch } from '@/components/ui/switch'
+import { haptic } from '@/lib/haptics'
 
 interface SettingsSwitchFieldProps {
   /** The setting name shown beside the switch. */
@@ -39,7 +40,11 @@ export function SettingsSwitchField({
         aria-labelledby={labelId}
         aria-describedby={descriptionId}
         checked={checked}
-        onCheckedChange={onCheckedChange}
+        onCheckedChange={(next) => {
+          // A state flip earns the level-change knock (macOS trackpads only).
+          haptic('level-change')
+          onCheckedChange(next)
+        }}
         className="shrink-0"
       />
     </div>

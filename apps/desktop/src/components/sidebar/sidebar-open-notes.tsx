@@ -50,7 +50,7 @@ export function SidebarOpenNotes(): ReactElement | null {
               onClick={() => {
                 closeTab(note.path)
               }}
-              className="absolute right-1.5 top-1/2 flex size-4 -translate-y-1/2 items-center justify-center rounded text-text-muted opacity-0 hover:bg-surface-active hover:text-text focus-visible:opacity-100 group-hover:opacity-100"
+              className="absolute right-1.5 top-1/2 flex size-4 -translate-y-1/2 items-center justify-center rounded text-text-muted opacity-0 transition-[color,background-color,opacity] duration-150 ease-swift hover:bg-surface-active hover:text-text focus-visible:opacity-100 group-hover:opacity-100"
             >
               <X aria-hidden className="size-3" />
             </button>

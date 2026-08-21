@@ -141,7 +141,7 @@ function PanelToggle({ side, collapsed, onToggle, label }: PanelToggleProps): Re
 function pillClass(active: boolean): string {
   return cn(
     'flex h-7 min-w-0 max-w-[12rem] shrink items-center gap-1.5 rounded-lg px-3 text-xs font-medium',
-    'transition-colors duration-100',
+    'transition-all duration-150 ease-swift active:scale-[0.97]',
     // The active tab is the raised white pill on the app-background band —
     // the same recipe as the context rail's active segment.
     active
@@ -216,7 +216,7 @@ function NoteTab({ note, active, onActivate, onClose, onTogglePin }: NoteTabProp
           onClose(note.path)
         }}
         className={cn(
-          'flex size-4 shrink-0 items-center justify-center rounded text-text-muted transition-colors duration-100 hover:bg-surface-active hover:text-text',
+          'flex size-4 shrink-0 items-center justify-center rounded text-text-muted transition-[color,background-color,opacity] duration-150 ease-swift hover:bg-surface-active hover:text-text',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
           active ? '' : 'opacity-0 focus-visible:opacity-100 group-hover:opacity-100',
         )}

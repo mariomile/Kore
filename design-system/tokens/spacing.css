@@ -53,6 +53,9 @@
   /* Reflect favours short, calm transitions. No bounces.
      The signature site easing is a fast-out cubic-bezier.      */
   --ease-standard: cubic-bezier(0.6, 0.6, 0, 1); /* @kind other */
+  /* Interface micro-motion (presses, lifts, floating layers): a settled
+     ease-out — starts fast, lands softly, no bounce. */
+  --ease-swift: cubic-bezier(0.22, 1, 0.36, 1); /* @kind other */
   --ease-in-out: ease-in-out; /* @kind other */
   --duration-fast: 100ms; /* @kind other */
   --duration-base: 150ms; /* @kind other */

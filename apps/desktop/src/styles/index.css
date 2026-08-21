@@ -64,6 +64,10 @@ Cascade layer order, low to high priority.
   --shadow-pop: var(--ds-shadow-pop);
   --shadow-app-input: var(--ds-shadow-app-input);
 
+  /* The house micro-motion curve (`ease-swift` utility) — same indirection
+     as the shadows, since the DS token shares Tailwind's --ease-* namespace. */
+  --ease-swift: var(--ds-ease-swift);
+
   /* 12px chrome text (V1's `text-xs`; the DS `--text-xs` is 13px). */
   --text-2xs: var(--ds-text-2xs);
   --text-2xs--line-height: 1.25;
@@ -128,6 +132,7 @@ Cascade layer order, low to high priority.
   --ds-shadow-app-input: var(--shadow-app-input);
   --ds-text-2xs: var(--text-2xs);
   --ds-font-shortcut: var(--font-shortcut);
+  --ds-ease-swift: var(--ease-swift);
 }
 
 /* shadcn semantic tokens, bridged onto the DS tokens so both vocabularies
@@ -716,7 +721,7 @@ html:root {
   border: 1px solid var(--border, rgb(0 0 0 / 10%));
   border-radius: 0.75rem;
   background: var(--surface, var(--background, #fff));
-  box-shadow: 0 16px 48px rgb(0 0 0 / 18%);
+  box-shadow: var(--shadow-pop, 0 16px 48px rgb(0 0 0 / 18%));
 }
 .reflect-palette-input {
   width: 100%;

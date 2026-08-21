@@ -27,6 +27,7 @@ mod error;
 mod fs;
 mod git;
 mod graph_gitignore;
+mod haptics;
 mod icloud;
 mod link_preview;
 mod menu;
@@ -305,6 +306,7 @@ pub fn run() {
             fs::asset_open,
             fs::asset_reveal,
             fs::export_html_write,
+            haptics::haptic_feedback,
             fs::assets::asset_upload_begin,
             fs::assets::asset_upload_append,
             fs::assets::asset_upload_commit,

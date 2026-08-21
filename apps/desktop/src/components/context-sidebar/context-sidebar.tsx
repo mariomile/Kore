@@ -1,6 +1,7 @@
 import { useState, type ReactElement } from 'react'
 import { CalendarDays, Info, MessageSquare } from 'lucide-react'
 import { ChatScreen } from '@/components/chat/chat-screen'
+import { haptic } from '@/lib/haptics'
 import { useToday } from '@/lib/use-today'
 import { cn } from '@/lib/utils'
 import { DailyContextSidebar } from './daily-context-sidebar'
@@ -59,13 +60,16 @@ export function ContextSidebar({ target }: ContextSidebarProps): ReactElement {
               aria-label={label}
               title={label}
               onClick={() => {
+                if (id !== panel) {
+                  haptic('alignment')
+                }
                 setPanel(id)
               }}
               className={cn(
                 // Icon-only segments on an inset track; the flex-1 hit area
                 // keeps them easy to reach while the label lives in the
                 // tooltip and aria-label.
-                'flex h-6 flex-1 items-center justify-center rounded-md transition-colors duration-100',
+                'flex h-6 flex-1 items-center justify-center rounded-md transition-all duration-150 ease-swift',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
                 panel === id ? 'bg-surface text-text shadow-sm' : 'text-text-muted hover:text-text',
               )}

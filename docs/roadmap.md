@@ -6,16 +6,14 @@ customization effort.
 
 ## Next up
 
-- **Routine run history** — a per-routine log of past runs (when, which
-  notes changed, errors) beyond the current last-run line.
+- **Global quick capture** — a system-wide shortcut opening a mini window
+  that appends a line to today's daily note without focusing the app.
 
 ## Backlog
 
 - **More agent CLI providers** — Grok CLI, Cursor CLI, and Hermes agent as
   chat engines beside Claude Code and Codex (the profile `provider:` pin
   and the Rust binary allowlist are the two extension points).
-- **Global quick capture** — a system-wide shortcut opening a mini window
-  that appends a line to today's daily note without focusing the app.
 - **Task reminders** — native notifications for tasks with due dates.
 - **Recurring-task respawn from the editor checkbox** — completing a
   repeat task by clicking its checkbox inside the note editor doesn't spawn
@@ -26,6 +24,11 @@ customization effort.
   ships on desktop only.
 
 ## Shipped (this fork)
+
+- Routine run history: every automation keeps a capped log of its past
+  runs — when each started, whether it succeeded, the failure message when
+  it didn't, and exactly which notes it edited. A History button on the
+  routine row opens the log; crashes mid-run record as failures too.
 
 - Provider setup, rethought: pick the brand first (logo cards — Claude,
   OpenAI, Gemini, OpenRouter, or a custom endpoint), then the connection

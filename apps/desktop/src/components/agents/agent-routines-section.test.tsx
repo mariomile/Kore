@@ -33,6 +33,7 @@ const BRIEF: AgentRoutine = {
   enabled: true,
   lastRunMs: Date.now(),
   lastChangedPaths: [],
+  runs: [],
 }
 
 const RILEY = {
@@ -88,6 +89,43 @@ describe('AgentRoutinesSection', () => {
       schedule: { kind: 'weekly', weekday: 0, time: '18:00' },
     })
     expect(added?.prompt).toContain('agents/memory/facts.md')
+    await view.unmount()
+  })
+
+  it('shows the run history dialog — outcomes, errors, and touched notes', async () => {
+    reset([
+      {
+        ...BRIEF,
+        runs: [
+          {
+            startedMs: new Date(2026, 7, 21, 8, 0).getTime(),
+            status: 'ok',
+            error: null,
+            changedPaths: ['notes/brief.md', 'agents/memory/log.md'],
+          },
+          {
+            startedMs: new Date(2026, 7, 20, 8, 0).getTime(),
+            status: 'error',
+            error: 'The CLI exited with code 1.',
+            changedPaths: [],
+          },
+        ],
+      },
+    ])
+    const view = await render(<AgentRoutinesSection profiles={[]} />)
+    await view.getByRole('button', { name: 'Run history for Morning brief' }).click()
+    await expect.element(view.getByText('Morning brief — run history')).toBeVisible()
+    await expect.element(view.getByText(/2 notes edited/)).toBeVisible()
+    await expect.element(view.getByText('notes/brief.md')).toBeVisible()
+    await expect.element(view.getByText('The CLI exited with code 1.')).toBeVisible()
+    await expect.element(view.getByText('failed')).toBeVisible()
+    await view.unmount()
+  })
+
+  it('hides the history button while a routine has never recorded a run', async () => {
+    reset([BRIEF])
+    const view = await render(<AgentRoutinesSection profiles={[]} />)
+    expect(view.getByRole('button', { name: 'Run history for Morning brief' }).query()).toBeNull()
     await view.unmount()
   })
 

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import {
+  appendRoutineRun,
   errorMessage,
   isCliAgentProvider,
   listPrivateNotePaths,
@@ -12,6 +13,7 @@ import {
   streamCliAgentChat,
   ROUTINE_RUN_SUFFIX,
   type AgentRoutine,
+  type RoutineRun,
 } from '@reflect/core'
 import { toast } from '@/components/ui/toast'
 import { todayIso } from '@/lib/dates'
@@ -65,10 +67,16 @@ export function AgentRoutinesRunner(): null {
       }))
     }
 
-    const recordLedger = (id: string, paths: string[]): void => {
+    const recordOutcome = (id: string, run: RoutineRun): void => {
       updateSettingsWith((current) => ({
         agentRoutines: current.agentRoutines.map((routine) =>
-          routine.id === id ? { ...routine, lastChangedPaths: paths } : routine,
+          routine.id === id
+            ? {
+                ...routine,
+                lastChangedPaths: run.changedPaths,
+                runs: appendRoutineRun(routine.runs, run),
+              }
+            : routine,
         ),
       }))
     }
@@ -78,6 +86,8 @@ export function AgentRoutinesRunner(): null {
       if (graph === null) {
         return
       }
+      // Null until markRun: a skipped occurrence records no history entry.
+      let startedMs: number | null = null
       try {
         const context = await loadAgentContext(routine.agentSlug)
         const configured = settingsRef.current.aiProviders
@@ -95,7 +105,8 @@ export function AgentRoutinesRunner(): null {
           })
           return
         }
-        markRun(routine.id, Date.now())
+        startedMs = Date.now()
+        markRun(routine.id, startedMs)
         const privateNotePaths = await listPrivateNotePaths()
         const mcpServers = await resolveMcpServers(settingsRef.current.mcpServers).catch(() => [])
         // Activity ledger baseline: commit pending changes so the run's
@@ -125,7 +136,12 @@ export function AgentRoutinesRunner(): null {
         const changed =
           snapshot === null ? [] : await gitChangedSince(snapshot, graph.generation).catch(() => [])
         const ledger = changed.filter((path) => path.toLowerCase().endsWith('.md'))
-        recordLedger(routine.id, ledger)
+        recordOutcome(routine.id, {
+          startedMs,
+          status: failure === null ? 'ok' : 'error',
+          error: failure,
+          changedPaths: ledger,
+        })
         if (failure === null) {
           toast.add({
             title: `Routine “${routine.name}” completed`,
@@ -143,6 +159,14 @@ export function AgentRoutinesRunner(): null {
           })
         }
       } catch (cause: unknown) {
+        if (startedMs !== null) {
+          recordOutcome(routine.id, {
+            startedMs,
+            status: 'error',
+            error: errorMessage(cause),
+            changedPaths: [],
+          })
+        }
         toast.add({
           type: 'error',
           title: `Routine “${routine.name}” failed`,

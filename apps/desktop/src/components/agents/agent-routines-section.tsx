@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from 'react'
-import { CalendarClock, Play, Trash2 } from 'lucide-react'
+import { CalendarClock, History, Play, Trash2 } from 'lucide-react'
 import {
   MEMORY_CURATOR_PRESET,
   type AgentProfile,
@@ -63,7 +63,9 @@ interface AgentRoutinesSectionProps {
 export function AgentRoutinesSection({ profiles }: AgentRoutinesSectionProps): ReactElement {
   const { settings, updateSettingsWith } = useSettings()
   const [createOpen, setCreateOpen] = useState(false)
+  const [historyId, setHistoryId] = useState<string | null>(null)
   const routines = settings.agentRoutines
+  const historyRoutine = routines.find((routine) => routine.id === historyId) ?? null
 
   const patch = (id: string, change: Partial<AgentRoutine>): void => {
     updateSettingsWith((current) => ({
@@ -100,6 +102,7 @@ export function AgentRoutinesSection({ profiles }: AgentRoutinesSectionProps): R
       // Starts from the next occurrence; "Run now" is there for the eager.
       lastRunMs: Date.now(),
       lastChangedPaths: [],
+      runs: [],
     })
   }
 
@@ -149,6 +152,17 @@ export function AgentRoutinesSection({ profiles }: AgentRoutinesSectionProps): R
                     : ''}
                 </p>
               </div>
+              {routine.runs.length > 0 ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={`Run history for ${routine.name}`}
+                  onClick={() => setHistoryId(routine.id)}
+                >
+                  <History aria-hidden className="size-4" />
+                </Button>
+              ) : null}
               <Button
                 type="button"
                 variant="ghost"
@@ -187,7 +201,84 @@ export function AgentRoutinesSection({ profiles }: AgentRoutinesSectionProps): R
           setCreateOpen(false)
         }}
       />
+      {historyRoutine !== null ? (
+        <RunHistoryDialog
+          routine={historyRoutine}
+          onClose={() => {
+            setHistoryId(null)
+          }}
+        />
+      ) : null}
     </section>
+  )
+}
+
+/** "21 Aug, 14:32" — compact but unambiguous within the 20-run window. */
+function runTimeLabel(startedMs: number): string {
+  return new Date(startedMs).toLocaleString(undefined, {
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+interface RunHistoryDialogProps {
+  routine: AgentRoutine
+  onClose: () => void
+}
+
+/**
+ * The routine's run log, newest first: when each run started, whether it
+ * succeeded, the failure message when it didn't, and the notes it edited.
+ */
+function RunHistoryDialog({ routine, onClose }: RunHistoryDialogProps): ReactElement {
+  return (
+    <Dialog
+      open
+      onOpenChange={(isOpen) => {
+        if (!isOpen) onClose()
+      }}
+    >
+      <DialogContent className="w-[28rem]">
+        <DialogHeader>
+          <DialogTitle>{routine.name} — run history</DialogTitle>
+        </DialogHeader>
+        <ul className="max-h-96 space-y-2 overflow-y-auto">
+          {routine.runs.map((run) => (
+            <li key={run.startedMs} className="rounded-lg bg-surface-sunken p-3">
+              <div className="flex items-center gap-2">
+                <span
+                  aria-hidden
+                  className={`size-1.5 rounded-full ${
+                    run.status === 'ok' ? 'bg-green-500' : 'bg-red-500'
+                  }`}
+                />
+                <span className="text-sm font-medium text-text">{runTimeLabel(run.startedMs)}</span>
+                <span className="text-xs text-text-muted">
+                  {run.status === 'ok' ? 'completed' : 'failed'}
+                  {run.changedPaths.length > 0
+                    ? ` · ${run.changedPaths.length} note${run.changedPaths.length === 1 ? '' : 's'} edited`
+                    : ''}
+                </span>
+              </div>
+              {run.error !== null ? (
+                <p className="mt-1 text-xs text-red-600 dark:text-red-400">{run.error}</p>
+              ) : null}
+              {run.changedPaths.length > 0 ? (
+                <ul className="mt-1 space-y-0.5">
+                  {run.changedPaths.map((path) => (
+                    <li key={path} className="truncate font-mono text-xs text-text-muted">
+                      {path}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -227,6 +318,7 @@ function NewRoutineDialog({
       enabled: true,
       lastRunMs: Date.now(),
       lastChangedPaths: [],
+      runs: [],
     })
     setName('')
     setPrompt('')

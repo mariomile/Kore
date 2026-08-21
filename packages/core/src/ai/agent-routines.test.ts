@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
   agentRoutinesSchema,
+  appendRoutineRun,
   latestOccurrenceMs,
   routineIsDue,
+  ROUTINE_RUN_HISTORY_LIMIT,
   type AgentRoutine,
+  type RoutineRun,
 } from './agent-routines'
 
 /** 2026-08-26 was a Wednesday (weekday 3). */
@@ -19,6 +22,7 @@ function routine(overrides: Partial<AgentRoutine>): AgentRoutine {
     enabled: true,
     lastRunMs: null,
     lastChangedPaths: [],
+    runs: [],
     ...overrides,
   }
 }
@@ -82,5 +86,30 @@ describe('agentRoutinesSchema', () => {
 
   it('degrades a non-array to the empty list', () => {
     expect(agentRoutinesSchema.parse('nope')).toEqual([])
+  })
+
+  it('parses pre-history entries (no runs key) with an empty history', () => {
+    const { runs: _omitted, ...legacy } = routine({})
+    const parsed = agentRoutinesSchema.parse([legacy])
+    expect(parsed[0]?.runs).toEqual([])
+  })
+})
+
+describe('appendRoutineRun', () => {
+  const run = (startedMs: number): RoutineRun => ({
+    startedMs,
+    status: 'ok',
+    error: null,
+    changedPaths: [],
+  })
+
+  it('prepends newest first and caps the history', () => {
+    let runs: RoutineRun[] = []
+    for (let index = 0; index < ROUTINE_RUN_HISTORY_LIMIT + 5; index += 1) {
+      runs = appendRoutineRun(runs, run(index))
+    }
+    expect(runs).toHaveLength(ROUTINE_RUN_HISTORY_LIMIT)
+    expect(runs[0]?.startedMs).toBe(ROUTINE_RUN_HISTORY_LIMIT + 4)
+    expect(runs.at(-1)?.startedMs).toBe(5)
   })
 })

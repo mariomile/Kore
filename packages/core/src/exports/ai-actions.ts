@@ -122,11 +122,14 @@ export {
 export {
   agentRoutineSchema,
   agentRoutinesSchema,
+  appendRoutineRun,
   latestOccurrenceMs,
   routineIsDue,
   MEMORY_CURATOR_PRESET,
+  ROUTINE_RUN_HISTORY_LIMIT,
   ROUTINE_RUN_SUFFIX,
   type AgentRoutine,
+  type RoutineRun,
   type RoutineSchedule,
 } from '../ai/agent-routines'
 export {

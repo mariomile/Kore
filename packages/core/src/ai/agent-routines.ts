@@ -23,6 +23,29 @@ export const routineScheduleSchema = z.union([
 ])
 export type RoutineSchedule = z.infer<typeof routineScheduleSchema>
 
+/** One completed run attempt, as kept in the routine's history. */
+export const routineRunSchema = z.object({
+  /** Epoch ms when the run started. */
+  startedMs: z.number(),
+  status: z.enum(['ok', 'error']),
+  /** The failure message when status is 'error'. */
+  error: z.string().nullable().catch(null),
+  /** Notes the run touched (its activity ledger). */
+  changedPaths: z.array(z.string()).catch([]),
+})
+export type RoutineRun = z.infer<typeof routineRunSchema>
+
+/**
+ * History cap per routine. Runs live in the settings document, so the list
+ * must stay small; twenty covers weeks of a daily routine.
+ */
+export const ROUTINE_RUN_HISTORY_LIMIT = 20
+
+/** The history with `run` prepended (newest first), capped. */
+export function appendRoutineRun(runs: RoutineRun[], run: RoutineRun): RoutineRun[] {
+  return [run, ...runs].slice(0, ROUTINE_RUN_HISTORY_LIMIT)
+}
+
 export const agentRoutineSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
@@ -36,6 +59,8 @@ export const agentRoutineSchema = z.object({
   lastRunMs: z.number().nullable().catch(null),
   /** Notes the last run touched (its activity ledger), newest run only. */
   lastChangedPaths: z.array(z.string()).catch([]),
+  /** Past run attempts, newest first, capped at the history limit. */
+  runs: z.array(routineRunSchema).catch([]),
 })
 export type AgentRoutine = z.infer<typeof agentRoutineSchema>
 

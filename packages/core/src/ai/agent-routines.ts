@@ -41,6 +41,41 @@ export type RoutineRun = z.infer<typeof routineRunSchema>
  */
 export const ROUTINE_RUN_HISTORY_LIMIT = 20
 
+/** Failures in a row before a routine pauses itself instead of retrying. */
+export const ROUTINE_MAX_CONSECUTIVE_FAILURES = 3
+
+/** Base delay before the first failure retry; each further failure doubles it. */
+export const ROUTINE_RETRY_BASE_MS = 30_000
+
+/**
+ * Delay before the next attempt after `consecutiveFailures` failures in a
+ * row: 30s, then 60s. The third failure pauses the routine instead (see
+ * ROUTINE_MAX_CONSECUTIVE_FAILURES), so the sequence never grows past that.
+ */
+export function routineRetryDelayMs(consecutiveFailures: number): number {
+  const exponent = Math.max(0, consecutiveFailures - 1)
+  return ROUTINE_RETRY_BASE_MS * 2 ** exponent
+}
+
+/**
+ * The strike-counter change one failed run produces: either a scheduled
+ * retry (backoff from `nowMs`) or, on the third consecutive failure, a
+ * pause — the caller flips `enabled` off so the routine stops firing until
+ * the user re-enables it (which resets the counter).
+ */
+export function routineFailureUpdate(
+  previousFailures: number,
+  nowMs: number,
+): { consecutiveFailures: number; retryAtMs: number | null; paused: boolean } {
+  const consecutiveFailures = previousFailures + 1
+  const paused = consecutiveFailures >= ROUTINE_MAX_CONSECUTIVE_FAILURES
+  return {
+    consecutiveFailures,
+    retryAtMs: paused ? null : nowMs + routineRetryDelayMs(consecutiveFailures),
+    paused,
+  }
+}
+
 /** The history with `run` prepended (newest first), capped. */
 export function appendRoutineRun(runs: RoutineRun[], run: RoutineRun): RoutineRun[] {
   return [run, ...runs].slice(0, ROUTINE_RUN_HISTORY_LIMIT)
@@ -61,6 +96,10 @@ export const agentRoutineSchema = z.object({
   lastChangedPaths: z.array(z.string()).catch([]),
   /** Past run attempts, newest first, capped at the history limit. */
   runs: z.array(routineRunSchema).catch([]),
+  /** Failed attempts since the last success; three in a row pause the routine. */
+  consecutiveFailures: z.number().catch(0),
+  /** Epoch ms of a scheduled failure retry, or null when none is pending. */
+  retryAtMs: z.number().nullable().catch(null),
 })
 export type AgentRoutine = z.infer<typeof agentRoutineSchema>
 
@@ -109,6 +148,12 @@ export function latestOccurrenceMs(schedule: RoutineSchedule, now: Date): number
 export function routineIsDue(routine: AgentRoutine, now: Date): boolean {
   if (!routine.enabled) {
     return false
+  }
+  // A pending failure retry outranks the schedule: the occurrence was
+  // already consumed when the failed attempt started, so dueness comes
+  // from the backoff clock until the routine succeeds or pauses.
+  if (routine.retryAtMs !== null) {
+    return now.getTime() >= routine.retryAtMs
   }
   const occurrence = latestOccurrenceMs(routine.schedule, now)
   return routine.lastRunMs === null || routine.lastRunMs < occurrence

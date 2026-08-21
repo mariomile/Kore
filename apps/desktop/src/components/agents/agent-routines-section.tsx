@@ -2,6 +2,7 @@ import { useState, type ReactElement } from 'react'
 import { CalendarClock, History, Play, Trash2 } from 'lucide-react'
 import {
   MEMORY_CURATOR_PRESET,
+  ROUTINE_MAX_CONSECUTIVE_FAILURES,
   type AgentProfile,
   type AgentRoutine,
   type RoutineSchedule,
@@ -103,6 +104,8 @@ export function AgentRoutinesSection({ profiles }: AgentRoutinesSectionProps): R
       lastRunMs: Date.now(),
       lastChangedPaths: [],
       runs: [],
+      consecutiveFailures: 0,
+      retryAtMs: null,
     })
   }
 
@@ -145,6 +148,10 @@ export function AgentRoutinesSection({ profiles }: AgentRoutinesSectionProps): R
                     : (profiles.find((profile) => profile.slug === routine.agentSlug)?.name ??
                       routine.agentSlug)}{' '}
                   · {lastRunLabel(routine.lastRunMs)}
+                  {!routine.enabled &&
+                  routine.consecutiveFailures >= ROUTINE_MAX_CONSECUTIVE_FAILURES
+                    ? ' · paused after repeated failures'
+                    : ''}
                   {routine.lastChangedPaths.length > 0
                     ? ` · last run edited ${routine.lastChangedPaths.length} note${
                         routine.lastChangedPaths.length === 1 ? '' : 's'
@@ -175,7 +182,16 @@ export function AgentRoutinesSection({ profiles }: AgentRoutinesSectionProps): R
               <Switch
                 aria-label={`${routine.name} enabled`}
                 checked={routine.enabled}
-                onCheckedChange={(checked) => patch(routine.id, { enabled: checked })}
+                onCheckedChange={(checked) =>
+                  // Re-enabling forgives the strikes that paused it —
+                  // otherwise the next failure would pause it again at once.
+                  patch(
+                    routine.id,
+                    checked
+                      ? { enabled: true, consecutiveFailures: 0, retryAtMs: null }
+                      : { enabled: false },
+                  )
+                }
               />
               <Button
                 type="button"
@@ -319,6 +335,8 @@ function NewRoutineDialog({
       lastRunMs: Date.now(),
       lastChangedPaths: [],
       runs: [],
+      consecutiveFailures: 0,
+      retryAtMs: null,
     })
     setName('')
     setPrompt('')

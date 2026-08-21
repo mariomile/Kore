@@ -34,6 +34,8 @@ const BRIEF: AgentRoutine = {
   lastRunMs: Date.now(),
   lastChangedPaths: [],
   runs: [],
+  consecutiveFailures: 0,
+  retryAtMs: null,
 }
 
 const RILEY = {

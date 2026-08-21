@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import {
   appendRoutineRun,
   cliProviderSupportsEdits,
+  routineFailureUpdate,
   errorMessage,
   isCliAgentProvider,
   listPrivateNotePaths,
@@ -63,22 +64,46 @@ export function AgentRoutinesRunner(): null {
     const markRun = (id: string, startedMs: number): void => {
       updateSettingsWith((current) => ({
         agentRoutines: current.agentRoutines.map((routine) =>
-          routine.id === id ? { ...routine, lastRunMs: startedMs } : routine,
+          // The pending retry (when this run IS the retry) is consumed by
+          // starting; a failure schedules the next one.
+          routine.id === id ? { ...routine, lastRunMs: startedMs, retryAtMs: null } : routine,
         ),
       }))
     }
 
     const recordOutcome = (id: string, run: RoutineRun): void => {
       updateSettingsWith((current) => ({
-        agentRoutines: current.agentRoutines.map((routine) =>
-          routine.id === id
+        agentRoutines: current.agentRoutines.map((routine) => {
+          if (routine.id !== id) {
+            return routine
+          }
+          if (run.status === 'ok') {
+            return {
+              ...routine,
+              lastChangedPaths: run.changedPaths,
+              runs: appendRoutineRun(routine.runs, run),
+              consecutiveFailures: 0,
+              retryAtMs: null,
+            }
+          }
+          // A failure retries with backoff (30s, then 60s); the third in a
+          // row pauses the routine instead of failing forever on schedule.
+          const update = routineFailureUpdate(routine.consecutiveFailures, Date.now())
+          const recorded = update.paused
             ? {
-                ...routine,
-                lastChangedPaths: run.changedPaths,
-                runs: appendRoutineRun(routine.runs, run),
+                ...run,
+                error: `${run.error ?? 'run failed'} (routine paused after ${update.consecutiveFailures} consecutive failures)`,
               }
-            : routine,
-        ),
+            : run
+          return {
+            ...routine,
+            lastChangedPaths: run.changedPaths,
+            runs: appendRoutineRun(routine.runs, recorded),
+            consecutiveFailures: update.consecutiveFailures,
+            retryAtMs: update.retryAtMs,
+            enabled: update.paused ? false : routine.enabled,
+          }
+        }),
       }))
     }
 

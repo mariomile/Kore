@@ -3,7 +3,9 @@ import {
   agentRoutinesSchema,
   appendRoutineRun,
   latestOccurrenceMs,
+  routineFailureUpdate,
   routineIsDue,
+  routineRetryDelayMs,
   ROUTINE_RUN_HISTORY_LIMIT,
   type AgentRoutine,
   type RoutineRun,
@@ -23,6 +25,8 @@ function routine(overrides: Partial<AgentRoutine>): AgentRoutine {
     lastRunMs: null,
     lastChangedPaths: [],
     runs: [],
+    consecutiveFailures: 0,
+    retryAtMs: null,
     ...overrides,
   }
 }
@@ -71,6 +75,34 @@ describe('routineIsDue', () => {
 
   it('never fires while disabled', () => {
     expect(routineIsDue(routine({ enabled: false }), WEDNESDAY_NOON)).toBe(false)
+  })
+
+  it('a pending failure retry outranks the schedule', () => {
+    const afterOccurrence = new Date(2026, 7, 26, 9, 0).getTime()
+    const base = routine({ lastRunMs: afterOccurrence })
+    // Not due by schedule…
+    expect(routineIsDue(base, WEDNESDAY_NOON)).toBe(false)
+    // …but a matured retry makes it due, and a future one does not.
+    expect(routineIsDue({ ...base, retryAtMs: WEDNESDAY_NOON.getTime() - 1 }, WEDNESDAY_NOON)).toBe(
+      true,
+    )
+    expect(routineIsDue({ ...base, retryAtMs: WEDNESDAY_NOON.getTime() + 1 }, WEDNESDAY_NOON)).toBe(
+      false,
+    )
+  })
+})
+
+describe('failure backoff', () => {
+  it('doubles from 30s and the third strike pauses instead', () => {
+    expect(routineRetryDelayMs(1)).toBe(30_000)
+    expect(routineRetryDelayMs(2)).toBe(60_000)
+
+    const first = routineFailureUpdate(0, 1_000)
+    expect(first).toEqual({ consecutiveFailures: 1, retryAtMs: 31_000, paused: false })
+    const second = routineFailureUpdate(1, 2_000)
+    expect(second).toEqual({ consecutiveFailures: 2, retryAtMs: 62_000, paused: false })
+    const third = routineFailureUpdate(2, 3_000)
+    expect(third).toEqual({ consecutiveFailures: 3, retryAtMs: null, paused: true })
   })
 })
 

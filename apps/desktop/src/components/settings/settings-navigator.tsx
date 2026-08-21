@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils'
 import { scrollToSettingsSection } from './section-scrolling'
 import type { SettingsSectionId } from './sections'
 import { useActiveSettingsSection } from './use-active-settings-section'
-import { useVisibleSettingsSections } from './use-visible-settings-sections'
+import { useVisibleSettingsGroups } from './use-visible-settings-sections'
 
 /** Where the sliding marker sits, in the rail's own coordinates. */
 interface MarkerPosition {
@@ -16,19 +16,19 @@ interface SettingsNavigatorProps {
 }
 
 /**
- * The sticky "on this page" rail beside the settings column: one entry per
- * registered section, with an accent marker that slides along a hairline
- * track to the section currently being read. Clicking an entry
- * smooth-scrolls the page to its card. The settings route only shows the
- * rail when the gutter is wide enough (a container query), so it must cope
- * with mounting at `display: none` — the marker re-measures when the rail
- * gains a size.
+ * The sticky "on this page" rail beside the settings column: the registry's
+ * groups as small caps labels, one entry per registered section under them,
+ * with an accent marker that slides along a hairline track to the section
+ * currently being read. Clicking an entry smooth-scrolls the page to its
+ * card. The settings route only shows the rail when the gutter is wide
+ * enough (a container query), so it must cope with mounting at
+ * `display: none` — the marker re-measures when the rail gains a size.
  */
 export function SettingsNavigator({ className }: SettingsNavigatorProps): ReactElement {
   const navRef = useRef<HTMLElement | null>(null)
   const itemRefs = useRef(new Map<SettingsSectionId, HTMLButtonElement>())
   const activeId = useActiveSettingsSection(navRef)
-  const sections = useVisibleSettingsSections()
+  const groups = useVisibleSettingsGroups()
   const [marker, setMarker] = useState<MarkerPosition | null>(null)
 
   const measure = useCallback((): void => {
@@ -64,35 +64,45 @@ export function SettingsNavigator({ className }: SettingsNavigatorProps): ReactE
             style={{ transform: `translateY(${marker.top}px)`, height: `${marker.height}px` }}
           />
         )}
-        {sections.map((section) => {
-          const isActive = section.id === activeId
-          return (
-            <button
-              key={section.id}
-              type="button"
-              ref={(node) => {
-                if (node) {
-                  itemRefs.current.set(section.id, node)
-                } else {
-                  itemRefs.current.delete(section.id)
-                }
-              }}
-              aria-current={isActive ? 'location' : undefined}
-              onClick={() => {
-                if (navRef.current) {
-                  scrollToSettingsSection(navRef.current, section.id)
-                }
-              }}
-              className={cn(
-                'truncate rounded-r-md py-1 pl-4 pr-2 text-left outline-none transition-colors duration-200',
-                'focus-visible:ring-2 focus-visible:ring-ring/50',
-                isActive ? 'text-text' : 'text-text-secondary hover:text-text',
-              )}
+        {groups.map((group) => (
+          <div key={group.id} className="flex flex-col pb-2 last:pb-0">
+            <span
+              aria-hidden
+              className="truncate py-1 pl-4 pr-2 text-[10px] font-semibold uppercase tracking-wider text-text-muted"
             >
-              {section.title}
-            </button>
-          )
-        })}
+              {group.title}
+            </span>
+            {group.sections.map((section) => {
+              const isActive = section.id === activeId
+              return (
+                <button
+                  key={section.id}
+                  type="button"
+                  ref={(node) => {
+                    if (node) {
+                      itemRefs.current.set(section.id, node)
+                    } else {
+                      itemRefs.current.delete(section.id)
+                    }
+                  }}
+                  aria-current={isActive ? 'location' : undefined}
+                  onClick={() => {
+                    if (navRef.current) {
+                      scrollToSettingsSection(navRef.current, section.id)
+                    }
+                  }}
+                  className={cn(
+                    'truncate rounded-r-md py-1 pl-4 pr-2 text-left outline-none transition-colors duration-200',
+                    'focus-visible:ring-2 focus-visible:ring-ring/50',
+                    isActive ? 'text-text' : 'text-text-secondary hover:text-text',
+                  )}
+                >
+                  {section.title}
+                </button>
+              )
+            })}
+          </div>
+        ))}
       </div>
     </nav>
   )

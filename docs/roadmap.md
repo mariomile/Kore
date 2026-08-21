@@ -27,6 +27,12 @@ customization effort.
 
 ## Shipped (this fork)
 
+- Settings, reorganized: the page and its sticky navigator now share five
+  labelled groups (General, Notes, AI & agents, Sync & data, Application)
+  from one registry. Connecting a subscription provider (Claude Code,
+  Codex) no longer asks for a model — connecting is just the subscription;
+  the model is picked per conversation in the chat's model selector.
+
 - Styled note export: "Export note as styled HTML…" (palette command and
   Note-actions button) saves one self-contained HTML file rendered by the
   same engine as the in-app previews — wiki-link chips, round task

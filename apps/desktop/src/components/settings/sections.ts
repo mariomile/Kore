@@ -1,32 +1,85 @@
 /**
- * The canonical, ordered registry of settings page sections. The section
- * cards and the sticky navigator both render from this list, so the
- * navigator's labels and jump targets can never drift from the page itself.
+ * The canonical registry of settings page sections, organized in groups.
+ * The section cards, the group headers, and the sticky navigator all render
+ * from this one structure, so page order, group labels, and jump targets can
+ * never drift apart.
  */
-export const SETTINGS_SECTIONS = [
-  { id: 'appearance', title: 'Appearance' },
-  { id: 'editor', title: 'Editor' },
-  { id: 'date-time', title: 'Date & time' },
-  { id: 'templates', title: 'Note templates' },
-  { id: 'all-notes', title: 'All notes' },
-  { id: 'search', title: 'Search' },
-  { id: 'ai-providers', title: 'AI providers' },
-  { id: 'audio-memos', title: 'Audio memos' },
-  { id: 'ai-chat', title: 'AI chat' },
-  { id: 'ai-prompts', title: 'AI prompts' },
-  { id: 'mcp', title: 'MCP servers' },
-  // macOS only — installs files under ~/.agents for terminal coding agents.
-  { id: 'agents', title: 'Agents' },
-  // Only shown where the OS frameworks exist — see use-visible-settings-sections.
-  { id: 'integrations', title: 'Integrations' },
-  { id: 'sync', title: 'Sync' },
-  { id: 'import', title: 'Import' },
-  { id: 'about', title: 'About' },
-  { id: 'destructive', title: 'Danger zone' },
+export const SETTINGS_GROUPS = [
+  {
+    id: 'general',
+    title: 'General',
+    sections: [
+      { id: 'appearance', title: 'Appearance' },
+      { id: 'editor', title: 'Editor' },
+      { id: 'date-time', title: 'Date & time' },
+    ],
+  },
+  {
+    id: 'notes',
+    title: 'Notes',
+    sections: [
+      { id: 'templates', title: 'Note templates' },
+      { id: 'all-notes', title: 'All notes' },
+      { id: 'search', title: 'Search' },
+    ],
+  },
+  {
+    id: 'ai',
+    title: 'AI & agents',
+    sections: [
+      { id: 'ai-providers', title: 'AI providers' },
+      { id: 'ai-chat', title: 'AI chat' },
+      { id: 'ai-prompts', title: 'AI prompts' },
+      { id: 'audio-memos', title: 'Audio memos' },
+      { id: 'mcp', title: 'MCP servers' },
+      // macOS only — installs files under ~/.agents for terminal coding agents.
+      { id: 'agents', title: 'Agents' },
+    ],
+  },
+  {
+    id: 'data',
+    title: 'Sync & data',
+    sections: [
+      { id: 'sync', title: 'Sync' },
+      // Only shown where the OS frameworks exist — see use-visible-settings-sections.
+      { id: 'integrations', title: 'Integrations' },
+      { id: 'import', title: 'Import' },
+    ],
+  },
+  {
+    id: 'app',
+    title: 'Application',
+    sections: [
+      { id: 'about', title: 'About' },
+      { id: 'destructive', title: 'Danger zone' },
+    ],
+  },
 ] as const
 
+/** One settings group (a page segment with a label over its section cards). */
+export type SettingsGroup = (typeof SETTINGS_GROUPS)[number]
+
+/** Identifier of one {@link SETTINGS_GROUPS} entry. */
+export type SettingsGroupId = SettingsGroup['id']
+
+/** The label a group renders — shared by the page and the navigator. */
+export function settingsGroupTitle(id: SettingsGroupId): string {
+  return SETTINGS_GROUPS.find((group) => group.id === id)?.title ?? id
+}
+
 /** Identifier of one {@link SETTINGS_SECTIONS} entry. */
-export type SettingsSectionId = (typeof SETTINGS_SECTIONS)[number]['id']
+export type SettingsSectionId = (typeof SETTINGS_GROUPS)[number]['sections'][number]['id']
+
+/** One registered settings section. */
+export interface SettingsSectionEntry {
+  id: SettingsSectionId
+  title: string
+}
+
+/** The flat, ordered section list — derived, so it always matches the groups. */
+export const SETTINGS_SECTIONS: readonly SettingsSectionEntry[] = SETTINGS_GROUPS.flatMap(
+  (group) => group.sections as readonly SettingsSectionEntry[],
+)
 
 /** The heading a section renders — shared by its card and the navigator. */
 export function settingsSectionTitle(id: SettingsSectionId): string {

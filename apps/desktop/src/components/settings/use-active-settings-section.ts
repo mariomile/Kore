@@ -21,7 +21,7 @@ const ACTIVATION_LINE_PX = SECTION_JUMP_OFFSET_PX + 16
 export function useActiveSettingsSection(
   anchorRef: RefObject<HTMLElement | null>,
 ): SettingsSectionId {
-  const [activeId, setActiveId] = useState<SettingsSectionId>(SETTINGS_SECTIONS[0].id)
+  const [activeId, setActiveId] = useState<SettingsSectionId>(SETTINGS_SECTIONS[0]!.id)
 
   useEffect(() => {
     const anchor = anchorRef.current
@@ -37,7 +37,7 @@ export function useActiveSettingsSection(
     // per frame, and the work is eight getBoundingClientRect calls.
     const compute = (): void => {
       const containerTop = container.getBoundingClientRect().top
-      let current: SettingsSectionId = SETTINGS_SECTIONS[0].id
+      let current: SettingsSectionId = SETTINGS_SECTIONS[0]!.id
       for (const section of SETTINGS_SECTIONS) {
         const element = document.getElementById(settingsSectionDomId(section.id))
         if (element && element.getBoundingClientRect().top - containerTop <= ACTIVATION_LINE_PX) {

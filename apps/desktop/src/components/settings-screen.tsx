@@ -1,4 +1,5 @@
-import type { ReactElement } from 'react'
+import type { ReactElement, ReactNode } from 'react'
+import { settingsGroupTitle, type SettingsGroupId } from './settings/sections'
 import { AboutSection } from './settings/about-section'
 import { AgentsSection } from './settings/agents-section'
 import { AiChatSection } from './settings/ai-chat-section'
@@ -17,33 +18,63 @@ import { SearchSection } from './settings/search-section'
 import { SyncSection } from './settings/sync-section'
 import { TemplatesSection } from './settings/templates-section'
 
+/** A labelled page segment: the registry group's name over its section cards. */
+function SettingsGroupBlock({
+  id,
+  children,
+}: {
+  id: SettingsGroupId
+  children: ReactNode
+}): ReactElement {
+  return (
+    <div className="mt-12 first:mt-0">
+      <p className="px-1 text-[11px] font-semibold uppercase tracking-wider text-text-muted">
+        {settingsGroupTitle(id)}
+      </p>
+      <div className="mt-3">{children}</div>
+    </div>
+  )
+}
+
 /**
  * The settings screen (a routed view, like notes — reached via ⌘, or the
- * palette's "Open settings"). Every control applies instantly through the
- * settings provider; there is no save button.
+ * palette's "Open settings"). Sections render in the grouped order of the
+ * sections registry, each group under a small caps label; the sticky
+ * navigator mirrors the same structure. Every control applies instantly
+ * through the settings provider; there is no save button.
  */
 export function SettingsScreen(): ReactElement {
   return (
     <div aria-label="Settings">
       <h1 className="text-lg font-semibold text-text">Settings</h1>
       <div className="mt-6">
-        <AppearanceSection />
-        <EditorSection />
-        <DateTimeSection />
-        <TemplatesSection />
-        <AllNotesSection />
-        <SearchSection />
-        <AiProvidersSection />
-        <AudioMemosSection />
-        <AiChatSection />
-        <AiPromptsSection />
-        <McpSection />
-        <AgentsSection />
-        <IntegrationsSection />
-        <SyncSection />
-        <ImportSection />
-        <AboutSection />
-        <DestructiveSection />
+        <SettingsGroupBlock id="general">
+          <AppearanceSection />
+          <EditorSection />
+          <DateTimeSection />
+        </SettingsGroupBlock>
+        <SettingsGroupBlock id="notes">
+          <TemplatesSection />
+          <AllNotesSection />
+          <SearchSection />
+        </SettingsGroupBlock>
+        <SettingsGroupBlock id="ai">
+          <AiProvidersSection />
+          <AiChatSection />
+          <AiPromptsSection />
+          <AudioMemosSection />
+          <McpSection />
+          <AgentsSection />
+        </SettingsGroupBlock>
+        <SettingsGroupBlock id="data">
+          <SyncSection />
+          <IntegrationsSection />
+          <ImportSection />
+        </SettingsGroupBlock>
+        <SettingsGroupBlock id="app">
+          <AboutSection />
+          <DestructiveSection />
+        </SettingsGroupBlock>
       </div>
     </div>
   )

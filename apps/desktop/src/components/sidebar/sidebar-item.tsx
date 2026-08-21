@@ -1,9 +1,10 @@
 import type { ReactElement, ReactNode } from 'react'
 import { ShortcutKeys } from '@/components/shortcut-keys'
+import { SidebarGlassTile } from './sidebar-glass-tile'
 import { cn } from '@/lib/utils'
 
 interface SidebarItemProps {
-  /** A 24px icon node — the V1 custom glyphs, or a Lucide icon in a 24px box. */
+  /** A 15px SF-style glyph — the glass tile supplies the 24px footprint. */
   icon: ReactNode
   label: string
   /** Keymap binding hinted on hover/focus (e.g. `Mod-d`). */
@@ -13,10 +14,10 @@ interface SidebarItemProps {
 }
 
 /**
- * One primary-navigation row, in the original sidebar's idiom: 24px icon +
- * medium label on a translucent hover wash; selected rows keep the wash in
- * light mode and tint the text brand-indigo in dark, with the keyboard
- * shortcut revealed on hover — chrome that teaches the fast path.
+ * One primary-navigation row: a liquid-glass icon tile + medium label on a
+ * translucent hover wash; selected rows keep the wash in light mode and tint
+ * the text brand-indigo in dark, with the keyboard shortcut revealed on
+ * hover — chrome that teaches the fast path.
  */
 export function SidebarItem({
   icon,
@@ -38,7 +39,7 @@ export function SidebarItem({
           : 'text-text hover:bg-surface-hover',
       )}
     >
-      {icon}
+      <SidebarGlassTile>{icon}</SidebarGlassTile>
       <span className="min-w-0 flex-1 truncate text-left">{label}</span>
       {binding ? (
         <ShortcutKeys

@@ -75,6 +75,12 @@ reqwest = { version = "0.12.28", default-features = false, features = ["rustls-t
 # reader lean: stored entries plus the usual deflate method are enough here.
 zip = { version = "8.6.0", default-features = false, features = ["deflate-flate2-zlib-rs"] }
 
+# Process-group kill for routine script timeouts (`routine_script.rs`):
+# `sh -c` scripts spawn children, and killing only the shell would leave
+# grandchildren running past the tick's deadline.
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
 [target.'cfg(target_os = "macos")'.dependencies]
 xattr = "1.6.1"
 # Apple Calendar read-only bridge (`src/calendar.rs`): EventKit through the

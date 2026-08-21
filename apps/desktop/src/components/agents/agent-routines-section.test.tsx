@@ -29,6 +29,7 @@ const BRIEF: AgentRoutine = {
   name: 'Morning brief',
   agentSlug: 'riley',
   prompt: 'Prepare the daily brief.',
+  script: null,
   schedule: { kind: 'daily', time: '08:00' },
   enabled: true,
   lastRunMs: Date.now(),

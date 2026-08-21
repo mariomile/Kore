@@ -27,7 +27,8 @@ export type RoutineSchedule = z.infer<typeof routineScheduleSchema>
 export const routineRunSchema = z.object({
   /** Epoch ms when the run started. */
   startedMs: z.number(),
-  status: z.enum(['ok', 'error']),
+  /** 'skipped' = a script-mode silent tick: the script saw nothing to do. */
+  status: z.enum(['ok', 'error', 'skipped']),
   /** The failure message when status is 'error'. */
   error: z.string().nullable().catch(null),
   /** Notes the run touched (its activity ledger). */
@@ -88,6 +89,14 @@ export const agentRoutineSchema = z.object({
   agentSlug: z.string().nullable().catch(null),
   /** The instruction the run receives as its user message. */
   prompt: z.string().min(1),
+  /**
+   * Script mode (the silent tick): an optional shell command run in the
+   * graph root at each occurrence, *before* any model wakes. Exit 0 with no
+   * output (or `{"wakeAgent": false}`) records a skipped tick and never
+   * starts an agent run; other output wakes the agent with that output as
+   * context; a failure counts as a failed run (backoff, then pause).
+   */
+  script: z.string().nullable().catch(null),
   schedule: routineScheduleSchema,
   enabled: z.boolean().catch(true),
   /** Epoch ms of the last run attempt (success or failure), or null. */

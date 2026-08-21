@@ -33,6 +33,7 @@ mod link_preview;
 mod menu;
 mod quit;
 mod recents;
+mod routine_script;
 mod secrets;
 mod settings;
 mod skill;
@@ -279,6 +280,7 @@ pub fn run() {
             agent_cli::agent_cli_check,
             agent_cli::agent_cli_run,
             agent_cli::agent_cli_stop,
+            routine_script::routine_script_run,
             icloud::storage::mobile_storage,
             icloud::storage::mobile_storage_local,
             icloud::storage::icloud_download_pending,

@@ -20,6 +20,7 @@ function routine(overrides: Partial<AgentRoutine>): AgentRoutine {
     name: 'Test',
     agentSlug: null,
     prompt: 'do the thing',
+    script: null,
     schedule: { kind: 'daily', time: '08:00' },
     enabled: true,
     lastRunMs: null,

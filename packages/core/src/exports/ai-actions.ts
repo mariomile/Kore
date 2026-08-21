@@ -150,6 +150,13 @@ export {
   type RoutineRun,
   type RoutineSchedule,
 } from '../ai/agent-routines'
+export {
+  decideScriptTick,
+  ROUTINE_SCRIPT_TIMEOUT_MS,
+  runRoutineScriptTick,
+  type ScriptTickDecision,
+  type ScriptTickOutcome,
+} from '../ai/routine-script'
 export { journalTailDigest, memoryDigest, type MemoryDigest } from '../ai/memory-digest'
 export {
   isMemoryPath,

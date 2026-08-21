@@ -98,6 +98,7 @@ export function AgentRoutinesSection({ profiles }: AgentRoutinesSectionProps): R
       name: MEMORY_CURATOR_PRESET.name,
       agentSlug: null,
       prompt: MEMORY_CURATOR_PRESET.prompt,
+      script: null,
       schedule: MEMORY_CURATOR_PRESET.schedule,
       enabled: true,
       // Starts from the next occurrence; "Run now" is there for the eager.
@@ -267,12 +268,20 @@ function RunHistoryDialog({ routine, onClose }: RunHistoryDialogProps): ReactEle
                 <span
                   aria-hidden
                   className={`size-1.5 rounded-full ${
-                    run.status === 'ok' ? 'bg-green-500' : 'bg-red-500'
+                    run.status === 'ok'
+                      ? 'bg-green-500'
+                      : run.status === 'skipped'
+                        ? 'bg-border'
+                        : 'bg-red-500'
                   }`}
                 />
                 <span className="text-sm font-medium text-text">{runTimeLabel(run.startedMs)}</span>
                 <span className="text-xs text-text-muted">
-                  {run.status === 'ok' ? 'completed' : 'failed'}
+                  {run.status === 'ok'
+                    ? 'completed'
+                    : run.status === 'skipped'
+                      ? 'skipped — nothing to do'
+                      : 'failed'}
                   {run.changedPaths.length > 0
                     ? ` · ${run.changedPaths.length} note${run.changedPaths.length === 1 ? '' : 's'} edited`
                     : ''}
@@ -314,6 +323,7 @@ function NewRoutineDialog({
 }: NewRoutineDialogProps): ReactElement {
   const [name, setName] = useState('')
   const [prompt, setPrompt] = useState('')
+  const [script, setScript] = useState('')
   const [agentSlug, setAgentSlug] = useState('none')
   const [kind, setKind] = useState<'daily' | 'weekly'>('daily')
   const [weekday, setWeekday] = useState('1')
@@ -330,6 +340,7 @@ function NewRoutineDialog({
       name: name.trim(),
       agentSlug: agentSlug === 'none' ? null : agentSlug,
       prompt: prompt.trim(),
+      script: script.trim() === '' ? null : script.trim(),
       schedule,
       enabled: true,
       lastRunMs: Date.now(),
@@ -340,6 +351,7 @@ function NewRoutineDialog({
     })
     setName('')
     setPrompt('')
+    setScript('')
     setAgentSlug('none')
   }
 
@@ -426,9 +438,20 @@ function NewRoutineDialog({
               className="w-28"
             />
           </div>
+          <Textarea
+            value={script}
+            onChange={(event) => setScript(event.target.value)}
+            placeholder={'Gate script (optional) — e.g. git log --since=yesterday --oneline'}
+            aria-label="Automation gate script"
+            rows={2}
+            className="font-mono text-xs"
+          />
           <p className="text-xs text-text-muted">
             Runs through your Claude Code or Codex provider in edit mode, with the chosen agent’s
-            soul and memory. The app must be open at (or after) the scheduled time.
+            soul and memory. The app must be open at (or after) the scheduled time. With a gate
+            script, each tick runs the script first in the vault folder: no output means nothing to
+            do — the tick is skipped silently and no AI runs — while output wakes the agent with it
+            as context.
           </p>
           <Button type="submit" disabled={name.trim() === '' || prompt.trim() === ''}>
             Create automation

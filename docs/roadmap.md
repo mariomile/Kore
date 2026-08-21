@@ -22,6 +22,16 @@ customization effort.
 
 ## Shipped (this fork)
 
+- Script-mode routines (the silent tick). An automation can carry an
+  optional gate script that runs deterministically in the vault folder at
+  each occurrence, before any model wakes: exit 0 with no output (or
+  `{"wakeAgent": false}`) records a *skipped* tick in the run history and
+  costs zero tokens; output wakes the agent with that output attached as
+  data; a failing or timed-out script counts as a failed run and feeds the
+  retry/backoff/pause machinery. The script runs through a new Rust
+  command with a 30s timeout, capped output, and a process-group kill so
+  a stalled script's children die with it.
+
 - Progressive-disclosure memory. The soul still rides whole, but a memory
   file that outgrows its (now smaller) budget injects a deterministic
   skeleton — headings, first line of each section, elision counts — with a

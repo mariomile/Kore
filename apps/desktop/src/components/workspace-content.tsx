@@ -56,7 +56,7 @@ export function WorkspaceContent({ graph }: WorkspaceContentProps): ReactElement
       <div className="flex min-w-0 flex-1 flex-col">
         <NoteTabsStrip atWindowEdge={collapsed} />
         <div className="min-h-0 flex-1 px-2 pb-2">
-          <div className="h-full overflow-hidden rounded-xl border border-border bg-surface shadow-sm">
+          <div className="app-glass-card h-full overflow-hidden rounded-xl border border-border bg-surface shadow-sm">
             <AppShell className="bg-transparent">
               <div className="relative flex h-full flex-col">
                 <div className="min-h-0 flex-1">

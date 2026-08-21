@@ -16,6 +16,8 @@
   const PREFERENCE_KEY = 'reflect.theme.preference'
   // Keep in sync with THEME_ACCENT_CACHE_KEY in src/lib/theme-cache.ts.
   const ACCENT_KEY = 'reflect.theme.accent'
+  // Keep in sync with THEME_GLASS_CACHE_KEY in src/lib/theme-cache.ts.
+  const GLASS_KEY = 'reflect.theme.glass'
 
   // Keep in sync with themePreferenceSchema / accentColorSchema in
   // packages/core/src/settings/schema.ts and with isDarkResolvedTheme in
@@ -51,5 +53,12 @@
   const accent = cachedAccent()
   if (accent) {
     document.documentElement.setAttribute('data-accent', accent)
+  }
+  try {
+    if (localStorage.getItem(GLASS_KEY) === 'on') {
+      document.documentElement.setAttribute('data-glass', 'on')
+    }
+  } catch {
+    // Storage unavailable; the first frame paints without glass.
   }
 }

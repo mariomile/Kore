@@ -776,3 +776,51 @@ html:root {
     @apply font-sans;
   }
 }
+
+/* ============================================================
+   Liquid Glass — activated by `data-glass="on"` on the root
+   element (ThemeProvider, mirrored pre-paint by theme-init.js).
+   Orthogonal to themes: it restyles whichever theme's tokens are
+   active. The backdrop is an accent-tinted gradient painted on
+   <body>; chrome above it goes translucent, and floating layers
+   add real backdrop blur.
+   ============================================================ */
+:root[data-glass='on'] body {
+  background:
+    radial-gradient(
+      52% 44% at 12% 8%,
+      color-mix(in srgb, var(--accent) 26%, transparent),
+      transparent 72%
+    ),
+    radial-gradient(
+      46% 52% at 88% 14%,
+      color-mix(in srgb, var(--accent-hover) 18%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      64% 56% at 50% 104%,
+      color-mix(in srgb, var(--accent-soft-text) 16%, transparent),
+      transparent 76%
+    ),
+    var(--surface-app);
+}
+:root[data-glass='on'] .bg-surface-app {
+  background-color: color-mix(in srgb, var(--surface-app) 32%, transparent);
+}
+:root[data-glass='on'] .bg-surface {
+  background-color: color-mix(in srgb, var(--surface) 60%, transparent);
+}
+/* The note-pane card blurs what the backdrop paints beneath it. */
+:root[data-glass='on'] .app-glass-card {
+  -webkit-backdrop-filter: blur(28px) saturate(150%);
+  backdrop-filter: blur(28px) saturate(150%);
+}
+/* Floating layers (menus, selects, dialogs, the palette) get the
+   strongest glass: they hover over real content. */
+:root[data-glass='on'] {
+  --popover: color-mix(in srgb, var(--surface) 76%, transparent);
+}
+:root[data-glass='on'] .bg-popover {
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
+  backdrop-filter: blur(28px) saturate(160%);
+}

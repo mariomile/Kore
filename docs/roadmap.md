@@ -27,6 +27,12 @@ customization effort.
 
 ## Shipped (this fork)
 
+- Liquid Glass: an Appearance switch (independent of the theme) that paints
+  an accent-tinted gradient backdrop and turns the chrome translucent — the
+  note-pane card and every floating layer (menus, dialogs, the palette) get
+  real backdrop blur. Applied pre-paint like the theme, so launches don't
+  flash opaque.
+
 - Settings, reorganized: the page and its sticky navigator now share five
   labelled groups (General, Notes, AI & agents, Sync & data, Application)
   from one registry. Connecting a subscription provider (Claude Code,

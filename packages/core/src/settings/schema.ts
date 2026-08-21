@@ -235,6 +235,13 @@ export const customAccentColorSchema = z
   .catch(DEFAULT_CUSTOM_ACCENT)
 
 /**
+ * Liquid Glass: translucent, blurred chrome over an accent-tinted backdrop.
+ * Orthogonal to the theme — it restyles the surfaces of whichever theme is
+ * active rather than being a theme of its own. Off by default.
+ */
+export const liquidGlassSchema = z.boolean().catch(false)
+
+/**
  * How times of day are displayed throughout the app. `12h` (the default)
  * renders `8:22pm`; `24h` renders `20:22`. Display-only — stored timestamps
  * and daily-note keys are unaffected.
@@ -762,6 +769,7 @@ export const settingsSchema = z.looseObject({
   theme: themePreferenceSchema,
   accentColor: accentColorSchema,
   customAccentColor: customAccentColorSchema,
+  liquidGlass: liquidGlassSchema,
   timeFormat: timeFormatSchema,
   dateFormat: dateFormatSchema,
   weekStartDay: weekStartDaySchema,

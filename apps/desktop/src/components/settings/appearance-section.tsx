@@ -7,6 +7,7 @@ import { useSettings } from '@/providers/settings-provider'
 import { SettingsField } from './field'
 import { SettingsOptionCard } from './option-card'
 import { SettingsSection } from './section'
+import { SettingsSwitchField } from './switch-field'
 
 interface ThemeOption {
   value: ThemePreference
@@ -157,6 +158,13 @@ export function AppearanceSection(): ReactElement {
           ) : null}
         </div>
       </SettingsField>
+
+      <SettingsSwitchField
+        legend="Liquid Glass"
+        description="Translucent, blurred surfaces over an accent-tinted backdrop — works with every theme."
+        checked={settings.liquidGlass}
+        onCheckedChange={(checked) => updateSettings({ liquidGlass: checked })}
+      />
     </SettingsSection>
   )
 }

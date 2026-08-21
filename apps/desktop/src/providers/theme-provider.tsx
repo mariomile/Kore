@@ -10,7 +10,11 @@ import {
 } from 'react'
 import type { ThemePreference } from '@reflect/core'
 import { deriveAccentTokens } from '@/lib/accent-color'
-import { writeCachedAccentColor, writeCachedThemePreference } from '@/lib/theme-cache'
+import {
+  writeCachedAccentColor,
+  writeCachedLiquidGlass,
+  writeCachedThemePreference,
+} from '@/lib/theme-cache'
 import { useSettings, type SettingsLoadOutcome } from '@/providers/settings-provider'
 
 /** User-selectable theme; `system` follows the OS preference. */
@@ -64,6 +68,7 @@ export function ThemeProvider({ children }: ThemeProviderProps): ReactElement {
   const theme = settings.theme
   const accentColor = settings.accentColor
   const customAccentColor = settings.customAccentColor
+  const liquidGlass = settings.liquidGlass
   const [systemTheme, setSystemTheme] = useState<ResolvedTheme>(getSystemTheme)
   const [loadOutcome, setLoadOutcome] = useState<SettingsLoadOutcome | null>(null)
 
@@ -100,6 +105,13 @@ export function ThemeProvider({ children }: ThemeProviderProps): ReactElement {
     root.classList.toggle('dark', dark)
     root.setAttribute('data-theme', resolvedTheme)
     root.setAttribute('data-accent', accentColor)
+    // Liquid Glass restyles the active theme's surfaces (translucent, blurred
+    // chrome over a tinted backdrop) — an orthogonal switch, not a theme.
+    if (liquidGlass) {
+      root.setAttribute('data-glass', 'on')
+    } else {
+      root.removeAttribute('data-glass')
+    }
     root.style.colorScheme = dark ? 'dark' : 'light'
     // Preset accents resolve through the design-system's `[data-accent]`
     // scopes; a custom hex has no scope, so its derived ramp is applied as
@@ -119,7 +131,7 @@ export function ThemeProvider({ children }: ThemeProviderProps): ReactElement {
       root.style.removeProperty('--accent-soft-text')
       root.style.removeProperty('--focus-ring')
     }
-  }, [loadOutcome, resolvedTheme, accentColor, customAccentColor])
+  }, [loadOutcome, resolvedTheme, accentColor, customAccentColor, liquidGlass])
 
   // Only a loaded document is worth caching: after a failed load changes apply
   // for the session only, so mirroring them would have the next launch paint a
@@ -130,7 +142,8 @@ export function ThemeProvider({ children }: ThemeProviderProps): ReactElement {
     }
     writeCachedThemePreference(theme)
     writeCachedAccentColor(accentColor)
-  }, [loadOutcome, theme, accentColor])
+    writeCachedLiquidGlass(liquidGlass)
+  }, [loadOutcome, theme, accentColor, liquidGlass])
 
   const setTheme = useCallback((next: Theme) => updateSettings({ theme: next }), [updateSettings])
 

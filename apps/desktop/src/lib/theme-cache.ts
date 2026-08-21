@@ -48,3 +48,24 @@ export function writeCachedAccentColor(accentColor: AccentColor): void {
     // Storage is unavailable; theme-init.js paints the default accent.
   }
 }
+
+/**
+ * Where the Liquid Glass switch is mirrored for the next launch, same
+ * contract as {@link THEME_PREFERENCE_CACHE_KEY}: `public/theme-init.js`
+ * repeats this literal because it cannot import, and `theme-cache.test.ts`
+ * guards the pair.
+ */
+export const THEME_GLASS_CACHE_KEY = 'reflect.theme.glass'
+
+/**
+ * Mirror the persisted Liquid Glass switch so the first painted frame already
+ * carries the glass backdrop. Best-effort like the other mirrors — an
+ * unreadable cache just paints opaque surfaces until settings load.
+ */
+export function writeCachedLiquidGlass(enabled: boolean): void {
+  try {
+    localStorage.setItem(THEME_GLASS_CACHE_KEY, enabled ? 'on' : 'off')
+  } catch {
+    // Storage is unavailable; the first frame paints without glass.
+  }
+}

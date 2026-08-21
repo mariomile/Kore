@@ -14,6 +14,7 @@ pub fn haptic_feedback(app: tauri::AppHandle, pattern: String) -> AppResult<()> 
         use crate::error::AppError;
         use objc2_app_kit::{
             NSHapticFeedbackManager, NSHapticFeedbackPattern, NSHapticFeedbackPerformanceTime,
+            NSHapticFeedbackPerformer,
         };
 
         let pattern = match pattern.as_str() {

@@ -11,6 +11,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { startOperation } from '@/lib/operations'
 import { ModelCombobox } from './model-combobox'
+import { brandForProvider, ProviderLogo } from './provider-brands'
 
 interface AiProviderRowProps {
   config: AiProviderConfig
@@ -46,6 +47,8 @@ export function AiProviderRow({
     ? providerLabel
     : `${providerLabel} — ${aiModelLabel(config.provider, config.model)}`
   const showKeyHint = aiProviderRequiresApiKey(config.provider) || config.keyHint !== ''
+  const brand = brandForProvider(config.provider)
+  const modeLabel = brand?.modes.find((mode) => mode.provider === config.provider)?.label ?? null
 
   const remove = (): void => {
     onRemove(config.id).catch((error: unknown) => {
@@ -55,20 +58,36 @@ export function AiProviderRow({
 
   return (
     <div className="grid grid-cols-[minmax(0,1fr)_12rem_auto] items-center gap-3 px-4 py-3">
-      <div className="min-w-0">
-        <div className="truncate text-sm font-medium text-text">{providerLabel}</div>
-        <p className="mt-0.5 text-xs text-text-muted">
-          {showKeyHint ? (
-            <>
-              API key <span className="font-mono">·····{config.keyHint}</span>
-            </>
-          ) : (
-            'No API key'
-          )}
-        </p>
-        {config.provider === 'openai-compatible' ? (
-          <p className="mt-0.5 truncate text-xs text-text-muted">{config.baseUrl}</p>
+      <div className="flex min-w-0 items-center gap-3">
+        {brand ? (
+          <span className="flex size-8 flex-none items-center justify-center rounded-lg border border-border bg-surface-sunken text-text">
+            <ProviderLogo brand={brand} className="size-4.5" />
+          </span>
         ) : null}
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5">
+            <span className="truncate text-sm font-medium text-text">
+              {brand?.name ?? providerLabel}
+            </span>
+            {modeLabel !== null ? (
+              <span className="rounded-full bg-surface-hover px-1.5 py-px text-[10px] font-medium text-text-secondary">
+                {modeLabel}
+              </span>
+            ) : null}
+          </div>
+          <p className="mt-0.5 text-xs text-text-muted">
+            {showKeyHint ? (
+              <>
+                API key <span className="font-mono">·····{config.keyHint}</span>
+              </>
+            ) : (
+              'No API key'
+            )}
+          </p>
+          {config.provider === 'openai-compatible' ? (
+            <p className="mt-0.5 truncate text-xs text-text-muted">{config.baseUrl}</p>
+          ) : null}
+        </div>
       </div>
       {isCliEntry ? (
         <p className="text-xs text-text-muted">Model picked in chat</p>

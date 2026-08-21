@@ -121,8 +121,8 @@ describe('AiProvidersSection', () => {
     stored = twoStoredModels()
     await renderSection()
 
-    await expect.element(page.getByText('Anthropic')).toBeInTheDocument()
-    await expect.element(page.getByText('OpenAI')).toBeInTheDocument()
+    await expect.element(page.getByText('Claude', { exact: true })).toBeInTheDocument()
+    await expect.element(page.getByText('OpenAI', { exact: true })).toBeInTheDocument()
     await expect
       .element(page.getByRole('combobox', { name: 'Default model for Anthropic' }))
       .toHaveTextContent(/Claude Opus 4\.8/)
@@ -140,11 +140,10 @@ describe('AiProvidersSection', () => {
     await expect.element(page.getByText(/No AI providers configured/)).toBeInTheDocument()
 
     const dialog = await openDialog()
-    // Options render in a portal, so they're queried from the page.
-    await dialog.getByRole('combobox', { name: 'Provider' }).click()
-    await page.getByRole('option', { name: 'Anthropic' }).click()
-    await dialog.getByRole('combobox', { name: 'Default model' }).click()
-    await page.getByRole('option', { name: /Claude Sonnet 5/ }).click()
+    // Brand first (Claude is the default card), then the connection mode —
+    // no model choice anywhere: the catalog default is seeded silently.
+    await dialog.getByRole('radio', { name: 'Claude' }).click()
+    await dialog.getByRole('radio', { name: 'API key' }).click()
     await dialog.getByLabelText('API key').fill('sk-ant-test-wxyz1')
     await dialog.getByRole('button', { name: 'Add provider' }).click()
 
@@ -153,7 +152,7 @@ describe('AiProvidersSection', () => {
     const [added] = doc.aiProviders
     expect(added).toMatchObject({
       provider: 'anthropic',
-      model: 'claude-sonnet-5',
+      model: 'claude-fable-5',
       keyHint: 'wxyz1',
     })
     // The first entry becomes the default automatically.
@@ -169,17 +168,14 @@ describe('AiProvidersSection', () => {
     await expectLocatorToHaveCount(page.getByRole('dialog'), 0)
   })
 
-  it('offers OpenRouter in the provider picker', async () => {
+  it('offers OpenRouter and a custom endpoint in the provider picker', async () => {
     await renderSection()
     await expect.element(page.getByText(/No AI providers configured/)).toBeInTheDocument()
 
     const dialog = await openDialog()
-    await dialog.getByRole('combobox', { name: 'Provider' }).click()
 
-    await expect.element(page.getByRole('option', { name: 'OpenRouter' })).toBeInTheDocument()
-    await expect
-      .element(page.getByRole('option', { name: 'OpenAI-compatible' }))
-      .toBeInTheDocument()
+    await expect.element(dialog.getByRole('radio', { name: 'OpenRouter' })).toBeInTheDocument()
+    await expect.element(dialog.getByRole('radio', { name: 'Custom' })).toBeInTheDocument()
   })
 
   it('adds an OpenAI-compatible endpoint without storing an empty key', async () => {
@@ -187,10 +183,9 @@ describe('AiProvidersSection', () => {
     await expect.element(page.getByText(/No AI providers configured/)).toBeInTheDocument()
 
     const dialog = await openDialog()
-    await dialog.getByRole('combobox', { name: 'Provider' }).click()
-    await page.getByRole('option', { name: 'OpenAI-compatible' }).click()
+    await dialog.getByRole('radio', { name: 'Custom' }).click()
     await dialog.getByLabelText('Endpoint base URL').fill('http://localhost:1234/v1/')
-    await dialog.getByLabelText('Default model').fill('llama-local')
+    await dialog.getByLabelText('Model id').fill('llama-local')
     await dialog.getByRole('button', { name: 'Add provider' }).click()
 
     await vi.waitFor(() => expect(saved).toHaveLength(1))
@@ -217,6 +212,8 @@ describe('AiProvidersSection', () => {
     await expect.element(page.getByText(/No AI providers configured/)).toBeInTheDocument()
 
     const dialog = await openDialog()
+    await dialog.getByRole('radio', { name: 'OpenAI' }).click()
+    await dialog.getByRole('radio', { name: 'API key' }).click()
     await dialog.getByLabelText('API key').fill('sk-typo')
     await dialog.getByRole('button', { name: 'Add provider' }).click()
 
@@ -231,6 +228,8 @@ describe('AiProvidersSection', () => {
     await expect.element(page.getByText(/No AI providers configured/)).toBeInTheDocument()
 
     const dialog = await openDialog()
+    await dialog.getByRole('radio', { name: 'OpenAI' }).click()
+    await dialog.getByRole('radio', { name: 'API key' }).click()
     await dialog.getByLabelText('API key').fill('sk-offline-key')
     await dialog.getByRole('button', { name: 'Add provider' }).click()
 
@@ -250,6 +249,8 @@ describe('AiProvidersSection', () => {
     failSecretSet = true
 
     const dialog = await openDialog()
+    await dialog.getByRole('radio', { name: 'OpenAI' }).click()
+    await dialog.getByRole('radio', { name: 'API key' }).click()
     await dialog.getByLabelText('API key').fill('sk-test')
     await dialog.getByRole('button', { name: 'Add provider' }).click()
 
@@ -265,6 +266,8 @@ describe('AiProvidersSection', () => {
     await expect.element(page.getByText(/No AI providers configured/)).toBeInTheDocument()
 
     const dialog = await openDialog()
+    await dialog.getByRole('radio', { name: 'OpenAI' }).click()
+    await dialog.getByRole('radio', { name: 'API key' }).click()
     await dialog.getByLabelText('API key').fill('sk-test')
     await dialog.getByRole('button', { name: 'Add provider' }).click()
 
@@ -279,7 +282,7 @@ describe('AiProvidersSection', () => {
     stored = twoStoredModels()
     secrets.set('ai-api-key:a', 'sk-a')
     await renderSection()
-    await expect.element(page.getByText('Anthropic')).toBeInTheDocument()
+    await expect.element(page.getByText('Claude', { exact: true })).toBeInTheDocument()
 
     await page.getByRole('button', { name: 'Remove Anthropic — Claude Opus 4.8' }).click()
 
@@ -297,7 +300,7 @@ describe('AiProvidersSection', () => {
     secrets.set('ai-api-key:a', 'sk-a')
     secrets.set('ai-api-key:b', 'sk-b')
     await renderSection()
-    await expect.element(page.getByText('Anthropic')).toBeInTheDocument()
+    await expect.element(page.getByText('Claude', { exact: true })).toBeInTheDocument()
 
     // Both removes fire in the same tick; each suspends on its keychain
     // delete, so each settings update applies after the other's snapshot
@@ -360,9 +363,7 @@ describe('AiProvidersSection', () => {
     // the wrap target — poll for the settled state, not the interim one
     // (WebKit reliably exposes the interim beat).
     await vi.waitFor(() => {
-      expect(document.activeElement).toBe(
-        dialog.getByLabelText('Provider', { exact: true }).element(),
-      )
+      expect(document.activeElement).toBe(dialog.getByRole('radio', { name: 'Claude' }).element())
     })
   })
 

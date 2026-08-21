@@ -27,6 +27,13 @@ customization effort.
 
 ## Shipped (this fork)
 
+- Provider setup, rethought: pick the brand first (logo cards — Claude,
+  OpenAI, Gemini, OpenRouter, or a custom endpoint), then the connection
+  where the brand offers more than one — Subscription through its coding
+  CLI, or an API key. No model choice at setup for any provider (only the
+  custom endpoint asks for a model id); configured rows carry the brand
+  mark and a connection badge. Pure UI regrouping over the same stored ids.
+
 - Premium interaction pass: one motion system (the `ease-swift` house curve
   + 150ms) across buttons, switches, tab pills, menus, selects, dialogs and
   the ⌘K palette (which now animates in); press-scale feedback on every

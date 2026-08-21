@@ -138,6 +138,9 @@ importers:
       react-hook-form:
         specifier: ^7.81.0
         version: 7.82.0(react@19.2.8)
+      simple-icons:
+        specifier: ^16.28.0
+        version: 16.28.0
       tailwind-merge:
         specifier: ^3.6.0
         version: 3.6.0
@@ -5482,6 +5485,10 @@ packages:
   simple-git-hooks@2.13.1:
     resolution: {integrity: sha512-WszCLXwT4h2k1ufIXAgsbiTOazqqevFCIncOuUBZJ91DdvWcC5+OFkluWRQPrcuSYd8fjq+o2y1QfWqYMoAToQ==}
     hasBin: true
+
+  simple-icons@16.28.0:
+    resolution: {integrity: sha512-sQPR5AtK/ijRjou7zw7mlLp08oB6FH7i0lOy5XJ2zp9mJs/yejgiOn7KvQoe2q4YJIx6VmgUSW5AOefebPt5kg==}
+    engines: {node: '>=0.12.18'}
 
   sirv@3.0.2:
     resolution: {integrity: sha512-2wcC/oGxHis/BoHkkPwldgiPSYcpZK3JU28WoMVv55yHJgcZ8rlXvuG9iZggz+sU1d4bRgIGASwyWqjxu3FM0g==}
@@ -12032,6 +12039,8 @@ snapshots:
       simple-concat: 1.0.1
 
   simple-git-hooks@2.13.1: {}
+
+  simple-icons@16.28.0: {}
 
   sirv@3.0.2:
     dependencies:

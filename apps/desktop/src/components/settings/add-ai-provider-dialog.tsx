@@ -1,12 +1,9 @@
-import { useEffect, type ReactElement } from 'react'
+import { useEffect, useState, type ReactElement } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import {
-  AI_PROVIDERS,
   DEFAULT_OPENAI_COMPATIBLE_BASE_URL,
   aiProvider,
-  aiProviderIdSchema,
   aiProviderRequiresApiKey,
-  isCliAgentProvider,
   isHttpBaseUrl,
   isPlainHttpRemoteBaseUrl,
   type AiProviderId,
@@ -20,18 +17,12 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { InlineAlert } from '@/components/inline-alert'
 import { CodexSignIn } from '@/components/settings/codex-sign-in'
 import { useAddAiProviderSubmit } from '@/hooks/use-add-ai-provider-submit'
 import type { NewAiProvider } from '@/hooks/use-ai-providers'
-import { ModelCombobox } from './model-combobox'
+import { cn } from '@/lib/utils'
+import { PROVIDER_BRANDS, ProviderLogo, type ProviderBrand } from './provider-brands'
 
 interface AddAiProviderDialogProps {
   /** Persists the new provider (keychain + settings); rejects on failure. */
@@ -49,23 +40,33 @@ interface AddAiProviderForm {
 
 const FIELD_LABEL_CLASS = 'text-xs font-medium text-text-secondary'
 
+/** The form values a connection mode starts from. */
+function seedForProvider(provider: AiProviderId): { model: string; baseUrl: string } {
+  return {
+    model: aiProvider(provider).models[0].id,
+    baseUrl: provider === 'openai-compatible' ? DEFAULT_OPENAI_COMPATIBLE_BASE_URL : '',
+  }
+}
+
 /**
- * The "Add AI provider" modal: pick a provider, pick its default model, paste
- * an API key, optionally mark it as the app default. Subscription (CLI)
- * providers skip both the model and the key: connecting is just the
- * subscription — the model is chosen later in the chat's model selector, so
- * the dialog never asks. The verify-then-persist flow (rejected keys inline,
- * unreachable providers downgrading to "Save anyway") is
+ * The "Add AI provider" modal, organized the way people think: pick the
+ * brand (logo cards), then how to connect — Subscription through its coding
+ * CLI, or an API key — where the brand offers both. No model choice here for
+ * any provider: catalog providers seed their default silently (editable on
+ * the row, overridden per conversation in the chat selector); only the
+ * custom OpenAI-compatible endpoint asks for a model id, since there is no
+ * catalog to fall back on. The verify-then-persist flow (rejected keys
+ * inline, unreachable providers downgrading to "Save anyway") is
  * {@link useAddAiProviderSubmit}, shared with the mobile sheet. The key goes
- * to the OS keychain, never into the settings document, and a failure keeps
- * the dialog open with the typed key intact for a retry.
+ * to the OS keychain, never into the settings document.
  */
 export function AddAiProviderDialog({ onAdd, onClose }: AddAiProviderDialogProps): ReactElement {
+  const [brand, setBrand] = useState<ProviderBrand>(PROVIDER_BRANDS[0]!)
+  const firstMode = PROVIDER_BRANDS[0]!.modes[0]!
   const { register, control, handleSubmit, setValue, formState } = useForm<AddAiProviderForm>({
     defaultValues: {
-      provider: AI_PROVIDERS[0].id,
-      model: AI_PROVIDERS[0].models[0].id,
-      baseUrl: '',
+      provider: firstMode.provider,
+      ...seedForProvider(firstMode.provider),
       apiKey: '',
       isDefault: false,
     },
@@ -90,11 +91,25 @@ export function AddAiProviderDialog({ onAdd, onClose }: AddAiProviderDialogProps
   }, [])
 
   const providerId = useWatch({ control, name: 'provider' })
-  const selectedModel = useWatch({ control, name: 'model' })
   const baseUrlValue = useWatch({ control, name: 'baseUrl' })
   const provider = aiProvider(providerId)
+  const mode = brand.modes.find((candidate) => candidate.provider === providerId) ?? brand.modes[0]!
   const isOpenAICompatible = provider.id === 'openai-compatible'
+  const isCliProvider = provider.id === 'claude-cli' || provider.id === 'codex-cli'
   const apiKeyRequired = aiProviderRequiresApiKey(provider.id)
+
+  const selectMode = (nextProvider: AiProviderId): void => {
+    const seed = seedForProvider(nextProvider)
+    setValue('provider', nextProvider)
+    setValue('model', seed.model)
+    setValue('baseUrl', seed.baseUrl)
+    resetUnverified()
+  }
+
+  const selectBrand = (next: ProviderBrand): void => {
+    setBrand(next)
+    selectMode(next.modes[0]!.provider)
+  }
 
   const submitForm = handleSubmit(async (values) => {
     await submit(values)
@@ -111,7 +126,7 @@ export function AddAiProviderDialog({ onAdd, onClose }: AddAiProviderDialogProps
         <DialogHeader>
           <DialogTitle>Add AI provider</DialogTitle>
           <DialogDescription>
-            The API key is stored in your OS keychain, never in your graph.
+            Keys are stored in your OS keychain, never in your graph.
           </DialogDescription>
         </DialogHeader>
         <form
@@ -120,44 +135,98 @@ export function AddAiProviderDialog({ onAdd, onClose }: AddAiProviderDialogProps
             void submitForm(event)
           }}
         >
-          <div className="flex flex-col gap-1">
-            <span className={FIELD_LABEL_CLASS}>Provider</span>
-            <Select
-              value={provider.id}
-              items={AI_PROVIDERS.map((candidate) => ({
-                value: candidate.id,
-                label: candidate.label,
-              }))}
-              onValueChange={(value) => {
-                const next = aiProvider(aiProviderIdSchema.parse(value))
-                setValue('provider', next.id)
-                setValue('model', next.models[0].id)
-                setValue(
-                  'baseUrl',
-                  next.id === 'openai-compatible' ? DEFAULT_OPENAI_COMPATIBLE_BASE_URL : '',
-                )
-                resetUnverified()
-              }}
-            >
-              <SelectTrigger aria-label="Provider" className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {AI_PROVIDERS.map((candidate) => (
-                  <SelectItem key={candidate.id} value={candidate.id}>
-                    {candidate.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div role="radiogroup" aria-label="Provider" className="grid grid-cols-5 gap-1.5">
+            {PROVIDER_BRANDS.map((candidate) => {
+              const selected = candidate.id === brand.id
+              return (
+                <button
+                  key={candidate.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  aria-label={candidate.name}
+                  onClick={() => selectBrand(candidate)}
+                  className={cn(
+                    'flex flex-col items-center gap-1.5 rounded-lg border px-1 py-2.5 transition-all duration-150 ease-swift',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
+                    selected
+                      ? 'border-accent bg-accent-soft/40 text-text'
+                      : 'border-border text-text-secondary hover:border-border-strong hover:text-text',
+                  )}
+                >
+                  <ProviderLogo brand={candidate} />
+                  <span className="text-[11px] font-medium">{candidate.name}</span>
+                </button>
+              )
+            })}
           </div>
 
-          {isCliAgentProvider(provider.id) ? null : (
+          {brand.modes.length > 1 ? (
             <div className="flex flex-col gap-1">
-              <span className={FIELD_LABEL_CLASS}>Default model</span>
-              {isOpenAICompatible ? (
+              <span className={FIELD_LABEL_CLASS}>Connection</span>
+              <div
+                role="radiogroup"
+                aria-label="Connection"
+                className="flex gap-0.5 rounded-lg bg-surface-hover p-0.5"
+              >
+                {brand.modes.map((candidate) => {
+                  const selected = candidate.provider === providerId
+                  return (
+                    <button
+                      key={candidate.provider}
+                      type="button"
+                      role="radio"
+                      aria-checked={selected}
+                      onClick={() => selectMode(candidate.provider)}
+                      className={cn(
+                        'flex h-7 flex-1 items-center justify-center rounded-md text-xs font-medium transition-all duration-150 ease-swift',
+                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
+                        selected
+                          ? 'bg-surface text-text shadow-sm'
+                          : 'text-text-muted hover:text-text',
+                      )}
+                    >
+                      {candidate.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          ) : null}
+          <p className="text-xs text-text-muted">{mode.description}</p>
+
+          {isOpenAICompatible ? (
+            <>
+              <label className="flex flex-col gap-1">
+                <span className={FIELD_LABEL_CLASS}>Endpoint base URL</span>
                 <Input
-                  aria-label="Default model"
+                  type="url"
+                  placeholder={DEFAULT_OPENAI_COMPATIBLE_BASE_URL}
+                  autoComplete="off"
+                  spellCheck={false}
+                  {...register('baseUrl', {
+                    validate: (value) => isHttpBaseUrl(value) || 'Enter an http(s) endpoint URL.',
+                    onChange: () => {
+                      resetUnverified()
+                    },
+                  })}
+                />
+                {formState.errors.baseUrl ? (
+                  <span role="alert" className="text-xs text-red-600 dark:text-red-400">
+                    {formState.errors.baseUrl.message}
+                  </span>
+                ) : null}
+                {isPlainHttpRemoteBaseUrl(baseUrlValue) ? (
+                  <InlineAlert tone="warning">
+                    This endpoint uses plain http, so the API key and note content are visible to
+                    the network in transit.
+                  </InlineAlert>
+                ) : null}
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className={FIELD_LABEL_CLASS}>Model id</span>
+                <Input
+                  aria-label="Model id"
                   autoComplete="off"
                   spellCheck={false}
                   {...register('model', {
@@ -167,66 +236,22 @@ export function AddAiProviderDialog({ onAdd, onClose }: AddAiProviderDialogProps
                     },
                   })}
                 />
-              ) : (
-                <ModelCombobox
-                  value={selectedModel}
-                  provider={provider.id}
-                  models={provider.models}
-                  onChange={(modelId) => {
-                    setValue('model', modelId)
-                    resetUnverified()
-                  }}
-                />
-              )}
-              {formState.errors.model ? (
-                <span role="alert" className="text-xs text-red-600 dark:text-red-400">
-                  {formState.errors.model.message}
-                </span>
-              ) : null}
-            </div>
-          )}
-
-          {isOpenAICompatible ? (
-            <label className="flex flex-col gap-1">
-              <span className={FIELD_LABEL_CLASS}>Endpoint base URL</span>
-              <Input
-                type="url"
-                placeholder={DEFAULT_OPENAI_COMPATIBLE_BASE_URL}
-                autoComplete="off"
-                spellCheck={false}
-                {...register('baseUrl', {
-                  validate: (value) => isHttpBaseUrl(value) || 'Enter an http(s) endpoint URL.',
-                  onChange: () => {
-                    resetUnverified()
-                  },
-                })}
-              />
-              {formState.errors.baseUrl ? (
-                <span role="alert" className="text-xs text-red-600 dark:text-red-400">
-                  {formState.errors.baseUrl.message}
-                </span>
-              ) : null}
-              {isPlainHttpRemoteBaseUrl(baseUrlValue) ? (
-                <InlineAlert tone="warning">
-                  This endpoint uses plain http, so the API key and note content are visible to the
-                  network in transit.
-                </InlineAlert>
-              ) : null}
-            </label>
+                {formState.errors.model ? (
+                  <span role="alert" className="text-xs text-red-600 dark:text-red-400">
+                    {formState.errors.model.message}
+                  </span>
+                ) : null}
+              </label>
+            </>
           ) : null}
 
-          {provider.id === 'claude-cli' || provider.id === 'codex-cli' ? (
+          {isCliProvider ? (
             <div className="flex flex-col gap-2">
               <p className="text-xs text-text-muted">
-                No API key — chat runs through the installed{' '}
-                {provider.id === 'claude-cli' ? 'Claude Code' : 'Codex'} CLI and bills your{' '}
-                {provider.id === 'claude-cli' ? 'Claude' : 'ChatGPT'} subscription.
-                {provider.id === 'claude-cli' ? (
-                  <>
-                    {' '}
-                    Install it and sign in once with <code>claude</code> in a terminal.
-                  </>
-                ) : null}
+                No API key — install the{' '}
+                <code>{provider.id === 'claude-cli' ? 'claude' : 'codex'}</code> CLI and sign in
+                once{provider.id === 'claude-cli' ? ' with your Claude account in a terminal' : ''}.
+                The model is picked in the chat.
               </p>
               {provider.id === 'codex-cli' ? <CodexSignIn /> : null}
             </div>

@@ -1,10 +1,11 @@
 import type { ReactElement } from 'react'
-import type { AssistantPart, ChatTurn } from '@reflect/core'
+import { parseNoteDirectives, type AssistantPart, type ChatTurn } from '@reflect/core'
 import { Bubble, BubbleContent } from '@/components/ui/bubble'
 import { Marker, MarkerContent } from '@/components/ui/marker'
 import { MarkdownPreview } from '@/editor/markdown-preview'
 import { cn } from '@/lib/utils'
 import { ChatChangesCard } from './chat-changes-card'
+import { ChatNoteCard } from './chat-note-card'
 import { ChatToolChip } from './chat-tool-chip'
 
 interface ChatAssistantPartProps {
@@ -36,12 +37,22 @@ export function ChatAssistantPart({
         </Bubble>
       ) : (
         <Bubble variant="ghost" className="max-w-full">
-          <BubbleContent className="max-w-full text-text">
-            <MarkdownPreview
-              content={part.text}
-              onWikiLinkClick={onWikiLinkClick}
-              className="reflect-chat-message text-sm"
-            />
+          <BubbleContent className="flex max-w-full flex-col gap-2 text-text">
+            {/* Settled text may carry ::note{…} directives — each becomes a
+                card that opens the note; the surrounding markdown renders
+                as before. Unsafe paths never leave the markdown. */}
+            {parseNoteDirectives(part.text).map((segment, segmentIndex) =>
+              segment.kind === 'note' ? (
+                <ChatNoteCard key={segmentIndex} path={segment.path} />
+              ) : (
+                <MarkdownPreview
+                  key={segmentIndex}
+                  content={segment.text}
+                  onWikiLinkClick={onWikiLinkClick}
+                  className="reflect-chat-message text-sm"
+                />
+              ),
+            )}
           </BubbleContent>
         </Bubble>
       )

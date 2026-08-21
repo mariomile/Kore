@@ -46,12 +46,22 @@ const loadChatGraphContext = vi.hoisted(() =>
   vi.fn<(graphName: string, deps?: GraphContextDeps) => Promise<CloudSafe<CloudGraphContext>>>(),
 )
 const openRouteInNewWindow = vi.hoisted(() => vi.fn<() => Promise<boolean>>())
+const searchNotes = vi.hoisted(() =>
+  vi.fn<(query: string, limit?: number) => Promise<{ path: string; title: string }[]>>(),
+)
+const listPrivateNotePaths = vi.hoisted(() => vi.fn<() => Promise<string[]>>())
+const resolveNoteMentions = vi.hoisted(() =>
+  vi.fn<(text: string) => Promise<import('@reflect/core').ResolvedNoteMention[]>>(),
+)
 vi.mock('@reflect/core', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@reflect/core')>()),
   streamChat,
   aiApiKeyForConfig,
   resolveWikiTarget,
   loadChatGraphContext,
+  searchNotes,
+  listPrivateNotePaths,
+  resolveNoteMentions,
 }))
 vi.mock('@/lib/windows/open-in-new-window', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/windows/open-in-new-window')>()),
@@ -154,6 +164,9 @@ beforeEach(() => {
     ref: `notes/${target.toLowerCase()}.md`,
   }))
   openRouteInNewWindow.mockReset().mockResolvedValue(true)
+  searchNotes.mockReset().mockResolvedValue([])
+  listPrivateNotePaths.mockReset().mockResolvedValue([])
+  resolveNoteMentions.mockReset().mockResolvedValue([])
 })
 
 const MODEL: AiProviderConfig = { id: 'm1', provider: 'openai', model: 'gpt-5.1', keyHint: '12345' }
@@ -761,6 +774,69 @@ describe('ChatScreen', () => {
     await expect.element(toggle).toHaveAttribute('aria-pressed', 'false')
     await toggle.click()
     expect(updatedSettings).toContainEqual({ chatAllowEdits: true })
+  })
+
+  it('promotes a ::note directive to a card that opens the note', async () => {
+    configureModel()
+    const reply = 'The plan lives here:\n::note{path="notes/atlas.md"}'
+    scriptTurn([
+      { type: 'text-delta', text: reply },
+      { type: 'complete', messages: [{ role: 'assistant', content: reply }] },
+    ])
+    const view = await renderChat()
+
+    await userEvent.type(view.getByLabelText('Chat message'), 'where is the plan?{Enter}')
+
+    // The directive line became a card; the prose kept rendering as markdown.
+    await expect
+      .element(view.getByTestId('markdown-preview'))
+      .toHaveTextContent('The plan lives here:')
+    const card = view.getByRole('button', { name: 'Open note atlas' })
+    await expect.element(card).toBeInTheDocument()
+    await card.click()
+    expect(probedRoute).toEqual({ kind: 'note', path: 'notes/atlas.md' })
+  })
+
+  it('suggests notes on @, private excluded, and sends the resolved mention', async () => {
+    configureModel()
+    searchNotes.mockResolvedValue([
+      { path: 'notes/atlas.md', title: 'Atlas' },
+      { path: 'notes/diary.md', title: 'Diary' },
+    ])
+    listPrivateNotePaths.mockResolvedValue(['notes/diary.md'])
+    resolveNoteMentions.mockResolvedValue([
+      {
+        target: 'Atlas',
+        path: 'notes/atlas.md',
+        title: 'Atlas',
+        content: 'Ships in June.',
+        error: null,
+      },
+    ])
+    scriptTurn([{ type: 'complete', messages: [{ role: 'assistant', content: 'It ships.' }] }])
+    const view = await renderChat()
+
+    await userEvent.type(view.getByLabelText('Chat message'), 'tell me about @atl')
+
+    // The private note never shows up as a suggestion.
+    const option = view.getByRole('option', { name: /Atlas/ })
+    await expect.element(option).toBeInTheDocument()
+    expect(view.getByRole('option', { name: /Diary/ }).query()).toBeNull()
+
+    await option.click()
+    await expect
+      .element(view.getByLabelText('Chat message'))
+      .toHaveValue('tell me about [[Atlas]] ')
+
+    await userEvent.type(view.getByLabelText('Chat message'), '{Enter}')
+    await vi.waitFor(() => expect(streamChat).toHaveBeenCalledTimes(1))
+
+    // The model message carries the note's content; the bubble stays as typed.
+    const content = streamChat.mock.lastCall?.[0]?.messages.at(-1)?.content
+    expect(content).toContain('tell me about [[Atlas]]')
+    expect(content).toContain('<mentioned-note path="notes/atlas.md" title="Atlas">')
+    expect(content).toContain('Ships in June.')
+    await expect.element(view.getByText('tell me about [[Atlas]]')).toBeInTheDocument()
   })
 
   it('New chat clears the conversation', async () => {

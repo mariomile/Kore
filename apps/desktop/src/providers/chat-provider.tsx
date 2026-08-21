@@ -24,7 +24,9 @@ import {
   loadChatGraphContext,
   resolveMcpServers,
   loadChatMessages,
+  mentionContextBlock,
   resolveChatModel,
+  resolveNoteMentions,
   saveChatMessage,
   cliProviderSupportsEdits,
   isCliAgentProvider,
@@ -347,6 +349,16 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
       const snapshot = editRun ? await gitAgentSnapshot(editRun.generation).catch(() => null) : null
 
       try {
+        // [[Mentions]] resolve to the notes' current content at send time,
+        // so the model grounds on what each note says *now*. Private notes
+        // contribute their refusal only, and a failed resolution degrades
+        // to a structured miss — the send always goes out. The block rides
+        // the model-bound message alone: the bubble and the persisted turn
+        // keep the text as typed.
+        const mentionBlock = mentionContextBlock(await resolveNoteMentions(trimmed))
+        if (mentionBlock !== '') {
+          messages[messages.length - 1] = userMessage(`${trimmed}\n\n${mentionBlock}`, attached)
+        }
         // The active agent's soul + memories ride into every provider's
         // prompt; a failed read degrades to "nothing", never a blocked turn.
         const agentContext = await loadAgentContext(activeAgentProfileRef.current).catch(() => null)

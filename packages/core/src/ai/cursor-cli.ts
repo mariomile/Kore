@@ -5,6 +5,7 @@ import {
   agentCliPrompt,
   runAgentCliCommand,
   streamAgentCliTurn,
+  noteCardAndMentionRules,
   noteContentSafetyRules,
   type AgentCliChunk,
 } from './agent-cli'
@@ -119,6 +120,7 @@ export function cursorCliSystemPrompt(options: {
     '- Some notes are private and reading them is denied. If a read is denied, tell the user the note is private — never speculate about its contents.',
     '- Ground answers in what you read. If the notes don’t cover something, say so plainly instead of guessing.',
     '- Cite every note you draw on with a wiki link of its exact title (its H1, or the file name without extension), e.g. [[Project Atlas]]. For daily notes use the date, e.g. [[2026-06-14]].',
+    ...noteCardAndMentionRules(),
     ...noteContentSafetyRules(),
     '',
     'Style: answer in concise markdown. Prefer short paragraphs and lists over headings. Do not narrate your file reads — just answer.',

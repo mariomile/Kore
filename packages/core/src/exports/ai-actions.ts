@@ -87,6 +87,20 @@ export {
 } from '../ai/chat/read-assets'
 export { chatSystemPrompt, type SystemPromptInput } from '../ai/chat/system-prompt'
 export {
+  isSafeNoteDirectivePath,
+  noteDirectiveTitle,
+  parseNoteDirectives,
+  type NoteDirectiveSegment,
+} from '../ai/chat/note-directives'
+export {
+  MAX_NOTE_MENTIONS,
+  mentionContextBlock,
+  noteMentionTargets,
+  resolveNoteMentions,
+  type NoteMentionDeps,
+  type ResolvedNoteMention,
+} from '../ai/chat/mentions'
+export {
   loadChatGraphContext,
   MAX_CONTEXT_TAGS,
   type GraphContextDeps,

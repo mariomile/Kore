@@ -22,6 +22,17 @@ customization effort.
 
 ## Shipped (this fork)
 
+- Notes as live cards + @-mentions. The assistant can put
+  `::note{path="…"}` on a line of its own and the chat promotes it to a
+  card (live title over path) that opens the note — the transcript keeps
+  plain markdown, only the renderer promotes it, and unsafe paths never
+  become clickable. In the other direction, typing `@` in the composer
+  suggests notes (private notes never appear); picking one inserts
+  `[[Title]]`, and the send resolves every mentioned note to its *current*
+  content, riding the model-bound message in a fenced `<mentioned-note>`
+  block. Private notes contribute only their refusal — same hard block as
+  read_notes — and all four engine prompts teach both conventions.
+
 - Chat message queue: sending while a turn is still streaming no longer
   drops the message — it parks as a card above the composer and rides
   automatically when the turn settles. Stopping a turn holds the queue

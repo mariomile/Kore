@@ -1,5 +1,15 @@
-import { useMemo, useState, type ReactElement } from 'react'
-import { ArrowUp, Bot, FilePlus2, Pencil, Plus, SlidersHorizontal, Square, X } from 'lucide-react'
+import { useMemo, useRef, useState, type ReactElement } from 'react'
+import {
+  ArrowUp,
+  Bot,
+  FilePlus2,
+  FileText,
+  Pencil,
+  Plus,
+  SlidersHorizontal,
+  Square,
+  X,
+} from 'lucide-react'
 import { chatToMarkdown, createNoteWithTitle } from '@reflect/core'
 import { getIsComposing } from '@meowdown/core'
 import { ShortcutKeys } from '@/components/shortcut-keys'
@@ -24,6 +34,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from '@/components/ui/toast'
+import { useNoteMentionAutocomplete } from '@/hooks/use-note-mention-autocomplete'
+import { cn } from '@/lib/utils'
 import { imageFilesFrom } from '@/lib/chat-attachments'
 import { groupModelOptions } from '@/lib/chat-model-groups'
 import { keybindingFor } from '@/lib/commands/app-commands'
@@ -72,6 +84,8 @@ export function ChatInput(): ReactElement {
   const editsOn = settings.chatAllowEdits
   const { navigate } = useRouter()
   const [savingNote, setSavingNote] = useState(false)
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null)
+  const mention = useNoteMentionAutocomplete(textareaRef, setDraft)
   const streaming = status === 'streaming'
   const empty = draft.trim() === '' && attachments.length === 0
 
@@ -187,11 +201,57 @@ export function ChatInput(): ReactElement {
             ))}
           </AttachmentGroup>
         ) : null}
+        {mention.open ? (
+          <div className="px-3.5 pt-3">
+            <div
+              role="listbox"
+              aria-label="Mention a note"
+              className="w-full rounded-lg border border-border bg-surface-sunken p-1"
+            >
+              {mention.suggestions.map((suggestion, index) => (
+                <button
+                  key={suggestion.path}
+                  type="button"
+                  role="option"
+                  aria-selected={index === mention.activeIndex}
+                  // Mouse down, not click: the click would blur the textarea
+                  // before firing and the popup would close under the cursor.
+                  onMouseDown={(event) => {
+                    event.preventDefault()
+                    mention.pick(suggestion)
+                  }}
+                  className={cn(
+                    'flex w-full min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-left',
+                    index === mention.activeIndex ? 'bg-surface-hover' : 'hover:bg-surface-hover',
+                  )}
+                >
+                  <FileText aria-hidden className="size-3.5 shrink-0 text-text-muted" />
+                  <span className="min-w-0 flex-1 truncate text-sm text-text">
+                    {suggestion.title}
+                  </span>
+                  <span className="max-w-32 shrink-0 truncate text-xs text-text-muted">
+                    {suggestion.path}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
         <textarea
+          ref={textareaRef}
           value={draft}
-          onChange={(event) => setDraft(event.target.value)}
+          onChange={(event) => {
+            setDraft(event.target.value)
+            mention.refresh()
+          }}
+          onClick={() => mention.refresh()}
+          onBlur={() => mention.close()}
           onKeyDown={(event) => {
             if (getIsComposing()) {
+              return
+            }
+            // The mention popup gets first claim on arrows, Enter, and Esc.
+            if (mention.onKeyDown(event)) {
               return
             }
             if (event.key === 'Enter' && !event.shiftKey) {

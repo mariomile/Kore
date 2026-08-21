@@ -6,6 +6,7 @@ import { agentContextPromptLines, type AgentPromptContext } from './agent-profil
 import {
   agentCliPrompt,
   streamAgentCliTurn,
+  noteCardAndMentionRules,
   noteContentSafetyRules,
   vaultEditRules,
   type AgentCliChunk,
@@ -83,6 +84,7 @@ export function claudeCliSystemPrompt(options: {
     '- Some notes are private and reading them is denied by policy. If a Read is denied, tell the user the note is private — never speculate about its contents.',
     '- Ground answers in what you read. If the notes don’t cover something, say so plainly instead of guessing.',
     '- Cite every note you draw on with a wiki link of its exact title (its H1, or the file name without extension), e.g. [[Project Atlas]]. For daily notes use the date, e.g. [[2026-06-14]].',
+    ...noteCardAndMentionRules(),
     ...noteContentSafetyRules(),
     ...(allowEdits ? vaultEditRules() : []),
     '',

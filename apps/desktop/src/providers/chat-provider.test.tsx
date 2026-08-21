@@ -420,6 +420,125 @@ describe('ChatProvider persistence', () => {
   })
 })
 
+describe('ChatProvider message queue', () => {
+  function gatedFirstTurn() {
+    // The first turn streams until released; later turns settle instantly.
+    let release: () => void = () => {}
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    let first = true
+    core.streamChat.mockImplementation(function script() {
+      const held = first
+      first = false
+      return (async function* () {
+        if (held) {
+          await gate
+        }
+        yield {
+          type: 'complete',
+          messages: [{ role: 'assistant', content: 'Done.' }],
+        } satisfies ChatStreamEvent
+      })()
+    })
+    return () => release()
+  }
+
+  it('queues a message sent mid-stream and drains it when the turn settles', async () => {
+    const release = gatedFirstTurn()
+    const { act } = await renderProvider()
+    await vi.waitFor(() => expect(core.listChatConversations).toHaveBeenCalled())
+
+    let firstDone: Promise<void> | undefined
+    await act(async () => {
+      firstDone = session?.send('first question')
+      await Promise.resolve()
+    })
+    await act(() => session?.send('second question'))
+
+    // Not dropped, not streamed — parked, with the composer cleared.
+    expect(session?.queued.map((entry) => entry.text)).toEqual(['second question'])
+    expect(session?.turns.map((turn) => turn.userText)).toEqual(['first question'])
+    expect(core.streamChat).toHaveBeenCalledTimes(1)
+
+    release()
+    await act(async () => {
+      await firstDone
+    })
+
+    await vi.waitFor(() => {
+      expect(session?.turns.map((turn) => turn.userText)).toEqual([
+        'first question',
+        'second question',
+      ])
+      expect(session?.turns.at(-1)?.status).toBe('done')
+    })
+    expect(session?.queued).toEqual([])
+    expect(core.streamChat).toHaveBeenCalledTimes(2)
+  })
+
+  it('parks the queue on Stop, then a card sends by hand', async () => {
+    const release = gatedFirstTurn()
+    const { act } = await renderProvider()
+    await vi.waitFor(() => expect(core.listChatConversations).toHaveBeenCalled())
+
+    let firstDone: Promise<void> | undefined
+    await act(async () => {
+      firstDone = session?.send('first question')
+      await Promise.resolve()
+    })
+    await act(() => session?.send('second question'))
+    await act(() => session?.stop())
+    release()
+    await act(async () => {
+      await firstDone
+    })
+
+    // An aborted turn never auto-drains — the message waits as a card.
+    expect(core.streamChat).toHaveBeenCalledTimes(1)
+    expect(session?.queued.map((entry) => entry.text)).toEqual(['second question'])
+
+    const queuedId = session?.queued[0]?.id ?? ''
+    await act(() => session?.sendQueuedNow(queuedId))
+
+    expect(session?.queued).toEqual([])
+    expect(core.streamChat).toHaveBeenCalledTimes(2)
+    expect(session?.turns.map((turn) => turn.userText)).toEqual([
+      'first question',
+      'second question',
+    ])
+  })
+
+  it('discards a card on demand and clears the queue on New chat', async () => {
+    const release = gatedFirstTurn()
+    const { act } = await renderProvider()
+    await vi.waitFor(() => expect(core.listChatConversations).toHaveBeenCalled())
+
+    let firstDone: Promise<void> | undefined
+    await act(async () => {
+      firstDone = session?.send('first question')
+      await Promise.resolve()
+    })
+    await act(() => session?.send('second question'))
+    await act(() => session?.send('third question'))
+    expect(session?.queued).toHaveLength(2)
+
+    const secondId = session?.queued[0]?.id ?? ''
+    await act(() => session?.removeQueued(secondId))
+    expect(session?.queued.map((entry) => entry.text)).toEqual(['third question'])
+
+    await act(() => session?.newChat())
+    expect(session?.queued).toEqual([])
+
+    // The detached turn settles into a changed session: still no drain.
+    release()
+    await act(async () => {
+      await firstDone
+    })
+    expect(core.streamChat).toHaveBeenCalledTimes(1)
+  })
+})
+
 describe('ChatProvider model selection', () => {
   it('starts on the persisted model selection', async () => {
     settingsState.selection = { configId: 'm1', modelId: 'gpt-5.5' }

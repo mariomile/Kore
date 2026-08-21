@@ -44,7 +44,12 @@ import { todayIso } from '@/lib/dates'
 import { isMobileSurface } from '@/lib/platform-surface'
 import { providerFetch } from '@/lib/provider-fetch'
 import { invalidateChatQueries } from '@/lib/query-client'
-import { ChatContext, type ChatContextValue, type ChatStatus } from '@/providers/chat-context'
+import {
+  ChatContext,
+  type ChatContextValue,
+  type ChatStatus,
+  type QueuedChatMessage,
+} from '@/providers/chat-context'
 import { conversationTitle } from '@/providers/chat-title'
 import { useGraph } from '@/providers/graph-provider'
 import { useSettings } from '@/providers/settings-provider'
@@ -88,6 +93,15 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
   // prompt. Session state by design: the chat store's schema stays untouched,
   // and a restored conversation starts from the global prompt alone.
   const [instructions, setInstructions] = useState('')
+  // Messages composed while a turn streams, waiting to ride after it. Ref
+  // and state move together through `setQueue`: the auto-drain fires from a
+  // stream's `finally`, which can run before React has re-rendered state.
+  const queuedRef = useRef<QueuedChatMessage[]>([])
+  const [queued, setQueued] = useState<QueuedChatMessage[]>([])
+  const setQueue = useCallback((next: QueuedChatMessage[]) => {
+    queuedRef.current = next
+    setQueued(next)
+  }, [])
 
   const status: ChatStatus = turns.at(-1)?.status === 'streaming' ? 'streaming' : 'idle'
 
@@ -234,20 +248,20 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
     }
   }, [bridgeReady, indexGeneration])
 
-  const send = useCallback(
-    async (text: string): Promise<void> => {
-      const trimmed = text.trim()
-      const attached = attachmentsRef.current
+  // Self-reference for the auto-drain: `deliver`'s finally hands the next
+  // queued message back to `deliver` itself, which a useCallback closure
+  // can't name directly.
+  const deliverRef = useRef<((text: string, attached: ChatAttachment[]) => Promise<void>) | null>(
+    null,
+  )
+
+  /** Run one user message as a streaming turn. Callers guard the busy slot. */
+  const deliver = useCallback(
+    async (trimmed: string, attached: ChatAttachment[]): Promise<void> => {
       const config = activeModelRef.current
-      if (
-        (trimmed === '' && attached.length === 0) ||
-        config === null ||
-        activeSendRef.current?.session === sessionRef.current
-      ) {
+      if (config === null || activeSendRef.current?.session === sessionRef.current) {
         return
       }
-      setDraft('')
-      setAttachments([])
 
       const turnId = crypto.randomUUID()
       const messages = [...buildHistory(turnsRef.current), userMessage(trimmed, attached)]
@@ -448,10 +462,71 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
         // to target the live stream.
         if (activeSendRef.current === activeSend) {
           activeSendRef.current = null
+          // Auto-drain the queue only when the turn settled naturally in
+          // this conversation. A Stop (or New chat / a switch, which also
+          // abort) means the user changed their mind — queued messages stay
+          // parked as cards to send or discard by hand.
+          if (!controller.signal.aborted && sessionRef.current === activeSend.session) {
+            const [next, ...rest] = queuedRef.current
+            if (next !== undefined) {
+              setQueue(rest)
+              void deliverRef.current?.(next.text, next.attachments)
+            }
+          }
         }
       }
     },
-    [graph.name, persistTurn],
+    [graph.name, persistTurn, setQueue],
+  )
+  useEffect(() => {
+    deliverRef.current = deliver
+  }, [deliver])
+
+  const send = useCallback(
+    async (text: string): Promise<void> => {
+      const trimmed = text.trim()
+      const attached = attachmentsRef.current
+      if ((trimmed === '' && attached.length === 0) || activeModelRef.current === null) {
+        return
+      }
+      // The composer clears on both paths — an enqueued message has left
+      // the textarea just as surely as a delivered one.
+      setDraft('')
+      setAttachments([])
+      if (activeSendRef.current?.session === sessionRef.current) {
+        // A turn is streaming: queue instead of silently dropping the
+        // message. It rides when the turn settles (or via its card).
+        setQueue([
+          ...queuedRef.current,
+          { id: crypto.randomUUID(), text: trimmed, attachments: attached },
+        ])
+        return
+      }
+      await deliver(trimmed, attached)
+    },
+    [deliver, setQueue],
+  )
+
+  const removeQueued = useCallback(
+    (id: string) => {
+      setQueue(queuedRef.current.filter((entry) => entry.id !== id))
+    },
+    [setQueue],
+  )
+
+  const sendQueuedNow = useCallback(
+    async (id: string): Promise<void> => {
+      if (activeSendRef.current?.session === sessionRef.current) {
+        return
+      }
+      const entry = queuedRef.current.find((candidate) => candidate.id === id)
+      if (entry === undefined) {
+        return
+      }
+      setQueue(queuedRef.current.filter((candidate) => candidate.id !== id))
+      await deliver(entry.text, entry.attachments)
+    },
+    [deliver, setQueue],
   )
 
   const stop = useCallback(() => {
@@ -464,35 +539,40 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
     setTurns([])
     setAttachments([])
     setInstructions('')
+    setQueue([])
     setConversationId(crypto.randomUUID())
-  }, [])
+  }, [setQueue])
 
-  const openConversation = useCallback(async (id: string): Promise<void> => {
-    if (id === conversationIdRef.current) {
-      return
-    }
-    activeSendRef.current?.controller.abort()
-    sessionRef.current += 1
-    const session = sessionRef.current
-    setAttachments([])
-    setInstructions('')
-    try {
-      const restored = await loadChatMessages(id)
-      // Superseded by another switch or New chat — or by a send: a message
-      // composed while the rows loaded belongs to the conversation that was
-      // on screen, so the user's turn must not be swapped out from under it.
-      // Checked via the last send's session (not the in-flight slot, which
-      // is cleared on settle) — a turn that finished streaming before the
-      // rows arrived still anchors the switch to the conversation it's in.
-      if (session !== sessionRef.current || lastSendSessionRef.current === session) {
+  const openConversation = useCallback(
+    async (id: string): Promise<void> => {
+      if (id === conversationIdRef.current) {
         return
       }
-      setConversationId(id)
-      setTurns(restored)
-    } catch (cause) {
-      console.error('chat: opening the conversation failed:', errorMessage(cause))
-    }
-  }, [])
+      activeSendRef.current?.controller.abort()
+      sessionRef.current += 1
+      const session = sessionRef.current
+      setAttachments([])
+      setInstructions('')
+      setQueue([])
+      try {
+        const restored = await loadChatMessages(id)
+        // Superseded by another switch or New chat — or by a send: a message
+        // composed while the rows loaded belongs to the conversation that was
+        // on screen, so the user's turn must not be swapped out from under it.
+        // Checked via the last send's session (not the in-flight slot, which
+        // is cleared on settle) — a turn that finished streaming before the
+        // rows arrived still anchors the switch to the conversation it's in.
+        if (session !== sessionRef.current || lastSendSessionRef.current === session) {
+          return
+        }
+        setConversationId(id)
+        setTurns(restored)
+      } catch (cause) {
+        console.error('chat: opening the conversation failed:', errorMessage(cause))
+      }
+    },
+    [setQueue],
+  )
 
   const deleteConversation = useCallback(
     async (id: string): Promise<void> => {
@@ -554,6 +634,9 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
       attachImages,
       removeAttachment,
       send,
+      queued,
+      removeQueued,
+      sendQueuedNow,
       stop,
       newChat,
       instructions,
@@ -574,6 +657,9 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
       attachImages,
       removeAttachment,
       send,
+      queued,
+      removeQueued,
+      sendQueuedNow,
       stop,
       newChat,
       instructions,

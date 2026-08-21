@@ -22,6 +22,19 @@ customization effort.
 
 ## Shipped (this fork)
 
+- Chat message queue: sending while a turn is still streaming no longer
+  drops the message — it parks as a card above the composer and rides
+  automatically when the turn settles. Stopping a turn holds the queue
+  instead (each card can then be sent or discarded by hand), and New chat
+  or switching conversations clears it. Desktop composer only for now —
+  the mobile composer's send button doubles as Stop while streaming.
+
+- Routines that stop failing forever: a failed automation retries with
+  backoff (30s, then 60s) and pauses itself after three consecutive
+  failures instead of erroring on every schedule tick. The pause shows in
+  Agents → Automations ("paused after repeated failures") and flipping the
+  switch back on resets the counter and re-arms the schedule.
+
 - Grok and Cursor as providers. Grok is a first-class brand card riding the
   xAI API (OpenAI-compatible, endpoint pre-filled, key in the OS keychain,
   models by id) — the community Grok CLI was deliberately rejected: it

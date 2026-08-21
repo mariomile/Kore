@@ -597,7 +597,7 @@ describe('ChatScreen', () => {
     expect(view.getByRole('button', { name: 'Copy reply' }).query()).toBeNull()
   })
 
-  it('rejects a second send fired before the first one has rendered', async () => {
+  it('queues a second send fired mid-stream and delivers it after the first', async () => {
     configureModel()
     scriptTurn([
       { type: 'text-delta', text: 'One.' },
@@ -610,13 +610,43 @@ describe('ChatScreen', () => {
     const send = probedSend
 
     // Two sends in one tick — rendered state (and refs synced to it) still
-    // says idle for both, so the guard must be synchronous.
+    // says idle for both, so the busy check must be synchronous: the second
+    // message queues (never streams concurrently) and rides once the first
+    // turn settles.
     await Promise.all([send('one'), send('two')])
 
-    expect(streamChat).toHaveBeenCalledTimes(1)
+    await vi.waitFor(() => expect(streamChat).toHaveBeenCalledTimes(2))
     // Exact match: the assistant's reply ("One.") also contains this text.
     await expect.element(view.getByText('one', { exact: true })).toBeInTheDocument()
-    expect(view.getByText('two', { exact: true }).query()).toBeNull()
+    await expect.element(view.getByText('two', { exact: true })).toBeInTheDocument()
+  })
+
+  it('parks a mid-stream message as a queued card, discarded on demand', async () => {
+    configureModel()
+    streamChat.mockImplementation(() =>
+      (async function* (): AsyncGenerator<ChatStreamEvent> {
+        yield { type: 'text-delta', text: 'Thinking…' }
+        // Never settles — the queue stays parked for the whole test.
+        await new Promise<never>(() => {})
+      })(),
+    )
+    const view = await renderChat()
+
+    await userEvent.type(view.getByLabelText('Chat message'), 'first{Enter}')
+    await userEvent.type(view.getByLabelText('Chat message'), 'second{Enter}')
+
+    await expect
+      .element(view.getByText('Queued — sends when the reply finishes'))
+      .toBeInTheDocument()
+    await expect.element(view.getByText('second', { exact: true })).toBeInTheDocument()
+    // Sending by hand needs the stream to settle first.
+    await expect
+      .element(view.getByRole('button', { name: 'Send queued message: second' }))
+      .toBeDisabled()
+
+    await view.getByRole('button', { name: 'Discard queued message: second' }).click()
+    expect(view.getByText('Queued — sends when the reply finishes').query()).toBeNull()
+    expect(streamChat).toHaveBeenCalledTimes(1)
   })
 
   it('surfaces a missing keychain entry as an in-transcript error', async () => {

@@ -59,6 +59,9 @@ export function ChatInput(): ReactElement {
     attachImages,
     removeAttachment,
     send,
+    queued,
+    removeQueued,
+    sendQueuedNow,
     stop,
     newChat,
     instructions,
@@ -103,9 +106,10 @@ export function ChatInput(): ReactElement {
 
   // The draft lives in the provider (it must survive the screen unmounting —
   // on mobile every tab switch does that), and a send that goes through
-  // clears it there.
+  // clears it there. Sending while a turn streams queues the message — the
+  // provider parks it as a card above the composer until the turn settles.
   const submit = () => {
-    if (streaming || empty) {
+    if (empty) {
       return
     }
     void send(draft)
@@ -114,6 +118,50 @@ export function ChatInput(): ReactElement {
   return (
     <div className="flex-none px-6 pb-6">
       <div className="mx-auto w-full max-w-2xl rounded-xl border border-border bg-surface focus-within:border-ring">
+        {queued.length > 0 ? (
+          <div className="flex flex-col gap-1.5 px-3.5 pt-3">
+            <p className="text-xs text-text-muted">
+              {streaming
+                ? 'Queued — sends when the reply finishes'
+                : 'Queued — held after Stop; send or discard'}
+            </p>
+            {queued.map((message) => {
+              const images = message.attachments.length
+              const imagesLabel = `${images} image${images === 1 ? '' : 's'}`
+              const label = message.text !== '' ? conversationTitle(message.text) : imagesLabel
+              return (
+                <div
+                  key={message.id}
+                  className="flex items-center gap-2 rounded-lg border border-border bg-background px-2.5 py-1"
+                >
+                  <p className="min-w-0 flex-1 truncate text-xs text-text-secondary">
+                    {message.text !== '' ? message.text : imagesLabel}
+                  </p>
+                  {message.text !== '' && images > 0 ? (
+                    <span className="flex-none text-xs text-text-muted">+{imagesLabel}</span>
+                  ) : null}
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={`Send queued message: ${label}`}
+                    disabled={streaming}
+                    onClick={() => void sendQueuedNow(message.id)}
+                  >
+                    <ArrowUp aria-hidden className="size-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={`Discard queued message: ${label}`}
+                    onClick={() => removeQueued(message.id)}
+                  >
+                    <X aria-hidden className="size-3.5" />
+                  </Button>
+                </div>
+              )
+            })}
+          </div>
+        ) : null}
         {attachments.length > 0 ? (
           <AttachmentGroup className="flex-wrap gap-2 overflow-visible px-3.5 pt-3 pb-0">
             {attachments.map((attachment) => (

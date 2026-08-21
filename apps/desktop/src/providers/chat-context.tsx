@@ -11,6 +11,13 @@ import type { ChatAttachment } from '@/lib/chat-attachments'
 
 export type ChatStatus = 'idle' | 'streaming'
 
+/** A message composed while a turn was streaming, waiting its turn. */
+export interface QueuedChatMessage {
+  id: string
+  text: string
+  attachments: ChatAttachment[]
+}
+
 export interface ChatContextValue {
   turns: ChatTurn[]
   status: ChatStatus
@@ -43,8 +50,23 @@ export interface ChatContextValue {
   attachImages: (files: File[]) => Promise<void>
   /** Drop one queued image. */
   removeAttachment: (id: string) => void
-  /** Send one user message (text, queued images, or both) and stream the turn. */
+  /**
+   * Send one user message (text, queued images, or both) and stream the
+   * turn. While a turn is already streaming the message queues instead —
+   * see {@link ChatContextValue.queued}.
+   */
   send: (text: string) => Promise<void>
+  /**
+   * Messages sent while a turn was streaming, in send order. Each delivers
+   * automatically when the streaming turn settles naturally; stopping the
+   * turn parks them instead — every card can then be sent or discarded by
+   * hand. Cleared by New chat and by opening a past conversation.
+   */
+  queued: QueuedChatMessage[]
+  /** Discard one queued message. */
+  removeQueued: (id: string) => void
+  /** Deliver one queued message immediately. No-op while a turn streams. */
+  sendQueuedNow: (id: string) => Promise<void>
   /** Abort the in-flight turn (partial text stays in the transcript). */
   stop: () => void
   /** Leave the conversation in the history and start a fresh one. */

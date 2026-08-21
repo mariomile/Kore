@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 // size and weight inside the liquid-glass tile.
 
 interface SidebarGlyphProps {
-  className?: string
+  className?: string | undefined
 }
 
 function SidebarGlyph({
@@ -36,7 +36,10 @@ const stroke = {
 export function DailyNotesGlyph({ className }: SidebarGlyphProps): ReactElement {
   return (
     <SidebarGlyph className={className}>
-      <path d="M14.6 5.15a2 2 0 0 1 2.83 0l1.42 1.42a2 2 0 0 1 0 2.83L9.05 19.2 5.5 20.1l.9-3.55 8.2-11.4Z" {...stroke} />
+      <path
+        d="M14.6 5.15a2 2 0 0 1 2.83 0l1.42 1.42a2 2 0 0 1 0 2.83L9.05 19.2 5.5 20.1l.9-3.55 8.2-11.4Z"
+        {...stroke}
+      />
       <path d="M13.35 6.4 17.6 10.65" {...stroke} />
     </SidebarGlyph>
   )
@@ -48,7 +51,10 @@ export function NewNoteGlyph({ className }: SidebarGlyphProps): ReactElement {
     <SidebarGlyph className={className}>
       <path d="M5.5 8.25v9.25A2 2 0 0 0 7.5 19.5h8.25" {...stroke} />
       <path d="M5.5 8.25A2 2 0 0 1 7.5 6.25h5.1" {...stroke} />
-      <path d="M13.7 6.05a1.65 1.65 0 0 1 2.33 0l1.12 1.12a1.65 1.65 0 0 1 0 2.33L13.2 13.45l-2.55.7.7-2.55 2.35-5.55Z" {...stroke} />
+      <path
+        d="M13.7 6.05a1.65 1.65 0 0 1 2.33 0l1.12 1.12a1.65 1.65 0 0 1 0 2.33L13.2 13.45l-2.55.7.7-2.55 2.35-5.55Z"
+        {...stroke}
+      />
     </SidebarGlyph>
   )
 }
@@ -57,7 +63,10 @@ export function NewNoteGlyph({ className }: SidebarGlyphProps): ReactElement {
 export function AllNotesGlyph({ className }: SidebarGlyphProps): ReactElement {
   return (
     <SidebarGlyph className={className}>
-      <path d="M8 5.5h5.2L17.5 9.8V18a1.7 1.7 0 0 1-1.7 1.7H8A1.7 1.7 0 0 1 6.3 18V7.2A1.7 1.7 0 0 1 8 5.5Z" {...stroke} />
+      <path
+        d="M8 5.5h5.2L17.5 9.8V18a1.7 1.7 0 0 1-1.7 1.7H8A1.7 1.7 0 0 1 6.3 18V7.2A1.7 1.7 0 0 1 8 5.5Z"
+        {...stroke}
+      />
       <path d="M13 5.7v3.4h3.6" {...stroke} />
       <path d="M9.2 13h5.4M9.2 16h3.6" {...stroke} />
     </SidebarGlyph>

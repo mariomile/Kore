@@ -12,7 +12,7 @@ import type { ChatStreamEvent } from './chat/stream-chat'
  * event queue, abort wiring, transcript flattening, and the shared turn
  * skeleton that maps parsed lines onto the chat engine's
  * {@link ChatStreamEvent}s. Each binary's argument protocol and line format
- * live in its own module (`./claude-cli`, `./codex-cli`).
+ * live in its own module (`./claude-cli`, `./codex-cli`, `./cursor-cli`).
  */
 
 /** The closed set of binaries the Rust bridge will run. */
@@ -251,14 +251,30 @@ export interface AgentCliTurnOptions {
   /** Aborts the run mid-stream (the UI's stop button). */
   signal?: AbortSignal | undefined
   /**
+   * Keep stdin open after the prompt even without steering. Engines that
+   * handshake over JSON-RPC (Codex app-server) send `turn/start` only after
+   * `thread/start` returns, so the pipe must stay writable from spawn.
+   */
+  keepStdinOpen?: boolean | undefined
+  /**
+   * Called for every stdout line before {@link parseLine}. Handshake
+   * responses are not chat text; the callback can reply on the held-open
+   * stdin (`sendLine` writes one line, newline added by the bridge).
+   */
+  onRawLine?:
+    | ((line: string, sendLine: (line: string) => Promise<void>) => void | Promise<void>)
+    | undefined
+  /**
    * Streaming-input mode (mid-turn steering): stdin stays open past the
    * prompt, and `onReady` receives a function that delivers one more user
-   * message into the live session — the CLI applies it at the next turn
-   * boundary with full context, no cancel-and-relaunch. Each steered
-   * message produces its own `result` line; the transport counts them and
-   * only ends the run (closing stdin, letting the process exit) once every
-   * delivered message has its result. A rejected steer means the run no
-   * longer accepts input — callers queue the message instead.
+   * message into the live session — no cancel-and-relaunch. A rejected
+   * steer means the run no longer accepts input — callers queue instead.
+   *
+   * How a steered message relates to `result` lines is per-engine:
+   * `next-turn` (Claude Code) treats each inject as a new turn with its
+   * own result, so the transport waits for one extra result per steer;
+   * `same-turn` (Codex `turn/steer`) appends to the in-flight turn, so one
+   * result still ends the run.
    */
   steering?:
     | {
@@ -266,6 +282,8 @@ export interface AgentCliTurnOptions {
         encodeLine: (text: string) => string
         /** Receives the live steer function once the process is spawned. */
         onReady: (steer: (text: string) => Promise<void>) => void
+        /** Defaults to `next-turn` (Claude Code's extra-result semantics). */
+        resultMode?: 'next-turn' | 'same-turn'
       }
     | undefined
 }
@@ -323,9 +341,13 @@ export async function* streamAgentCliTurn(
             : { role: 'user', content: segment.text },
       )
 
-  // Steered messages awaiting their own `result` line. Only meaningful in
-  // streaming-input mode; stays 0 otherwise.
+  // Steered messages awaiting their own `result` line. Only meaningful for
+  // `next-turn` inject; stays 0 for one-shot runs and same-turn steers.
   let pendingSteers = 0
+  const keepStdinOpen = options.keepStdinOpen === true || options.steering !== undefined
+  const sendRawLine = async (line: string): Promise<void> => {
+    await getBridge().invoke('agent_cli_send', { requestId, line })
+  }
 
   try {
     await getBridge().invoke('agent_cli_run', {
@@ -336,7 +358,7 @@ export async function* streamAgentCliTurn(
       cwd: options.cwd,
       env: options.env ?? null,
       workspaceConfig: options.workspaceConfig ?? null,
-      keepStdinOpen: options.steering !== undefined,
+      keepStdinOpen,
     })
   } catch (cause) {
     unlisten()
@@ -357,11 +379,10 @@ export async function* streamAgentCliTurn(
     steering.onReady(async (text: string): Promise<void> => {
       // Throws when the run is gone (settled, stopped) — callers fall back
       // to queueing. Count and record only after the write landed.
-      await getBridge().invoke('agent_cli_send', {
-        requestId,
-        line: steering.encodeLine(text),
-      })
-      pendingSteers += 1
+      await sendRawLine(steering.encodeLine(text))
+      if (steering.resultMode !== 'same-turn') {
+        pendingSteers += 1
+      }
       segments.push({ role: 'user', text })
     })
   }
@@ -384,6 +405,7 @@ export async function* streamAgentCliTurn(
         continue
       }
       if (event.kind === 'line') {
+        await options.onRawLine?.(event.line, sendRawLine)
         const chunk = options.parseLine(event.line)
         if (chunk === null) {
           continue
@@ -401,7 +423,7 @@ export async function* streamAgentCliTurn(
           if (chunk.isError) {
             resultError = chunk.message ?? 'The CLI reported an error.'
           }
-          if (steering !== undefined) {
+          if (keepStdinOpen) {
             if (pendingSteers > 0 && resultError === null) {
               // A steered message is still owed its turn: this result only
               // closes the previous one, so keep listening. The steer's own
@@ -437,9 +459,9 @@ export async function* streamAgentCliTurn(
   } finally {
     unlisten()
     options.signal?.removeEventListener('abort', onAbort)
-    // Streaming-input runs always release the held pipe — covers the race
-    // where the writer thread parks stdin after the run already finished.
-    if (steering !== undefined) {
+    // Held-open runs always release the pipe — covers the race where the
+    // writer thread parks stdin after the run already finished.
+    if (keepStdinOpen) {
       closeStdin()
     }
     // A consumer that abandons the stream (conversation switch, unmount)

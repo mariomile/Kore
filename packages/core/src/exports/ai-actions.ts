@@ -198,6 +198,8 @@ export {
   runCodexLogin,
   codexLogout,
   type CodexAuthStatus,
+  type CodexCliParseState,
+  codexAppServerHandshakePrompt,
   codexCliArgs,
   codexCliFilesystemToml,
   codexCliSystemPrompt,

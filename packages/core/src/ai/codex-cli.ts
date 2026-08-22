@@ -8,18 +8,35 @@ import {
   noteCardAndMentionRules,
   noteContentSafetyRules,
   vaultEditRules,
-  type AgentCliChunk,
 } from './agent-cli'
 import { agentContextPromptLines, type AgentPromptContext } from './agent-profiles'
 import { codexMcpConfigArgs, mcpSpawnEnv, type ResolvedMcpServer } from './mcp'
 import type { StreamCliChatOptions } from './claude-cli'
+import {
+  CODEX_FIRST_STEER_ID,
+  codexAppServerHandshakePrompt,
+  codexTurnStartLine,
+  codexTurnSteerLine,
+  isJsonRecord,
+  parseCodexCliLine,
+  threadIdFromAppServerLine,
+  turnIdFromAppServerLine,
+  type CodexCliParseState,
+} from './codex-app-server'
+
+export {
+  codexAppServerHandshakePrompt,
+  parseCodexCliLine,
+  type CodexCliParseState,
+} from './codex-app-server'
 
 /**
  * The Codex CLI provider ("subscription" AI): chat runs through the locally
- * installed `codex` binary in headless mode (`codex exec --json`), billing
- * the user's ChatGPT subscription instead of a BYOK API key. This module
- * owns the binary's protocol — arguments, the permission profile, and
- * parsing its JSONL events; the transport lives in `./agent-cli`.
+ * installed `codex` binary via `codex app-server` (JSON-RPC over stdio),
+ * billing the user's ChatGPT subscription instead of a BYOK API key. This
+ * module owns the binary's protocol — arguments, the permission profile,
+ * and the live session; JSON-RPC parse/handshake live in
+ * `./codex-app-server`, and the transport lives in `./agent-cli`.
  *
  * Grounding: Codex reads notes with its own sandboxed shell. The run gets a
  * custom permission profile whose base is *restricted* — nothing on disk is
@@ -27,11 +44,12 @@ import type { StreamCliChatOptions } from './claude-cli'
  * every `private: true` note (plus `.reflect/` and `.git/`, whose index and
  * history embed private content) carries an explicit deny entry, enforced
  * fail-closed by Codex's sandbox. Network stays restricted; writes are never
- * granted. That keeps the hard privacy block intact even though the CLI
- * reads files itself.
+ * granted in read-only chat. That keeps the hard privacy block intact even
+ * though the CLI reads files itself.
  *
- * Unlike Claude Code, `codex exec --json` emits whole agent messages, not
- * token deltas — the reply appears in one piece when it completes.
+ * Mid-turn steering uses `turn/steer` on the in-flight turn (same-turn
+ * inject, not Claude Code's extra-result next-turn). `codex exec` cannot
+ * do this: its stdin is the whole prompt until EOF.
  */
 
 /** The model id meaning "whatever the CLI is configured to use". */
@@ -188,7 +206,7 @@ export function codexCliFilesystemToml(
   return `{ ${entries.join(', ')} }`
 }
 
-/** The complete argument list for one headless chat run. */
+/** The complete argument list for one app-server chat run. */
 export function codexCliArgs(options: {
   model: string
   graphRoot: string
@@ -197,16 +215,14 @@ export function codexCliArgs(options: {
   mcpServers?: ResolvedMcpServer[] | undefined
 }): string[] {
   return [
-    'exec',
-    '--json',
-    '--skip-git-repo-check',
-    '--ephemeral',
+    'app-server',
     // The user's ~/.codex/config.toml (their own MCP servers, profiles,
     // approvals) must never bleed into a vault run; login credentials still
     // come from CODEX_HOME, so the ChatGPT sign-in is untouched.
     '--ignore-user-config',
-    '--cd',
-    options.graphRoot,
+    // Headless: never pause the turn on an approval JSON-RPC request.
+    '-c',
+    'approval_policy="never"',
     '-c',
     `default_permissions="${PROFILE}"`,
     '-c',
@@ -216,54 +232,7 @@ export function codexCliArgs(options: {
       options.allowEdits === true,
     )}`,
     ...codexMcpConfigArgs(options.mcpServers ?? []),
-    ...(options.model === CODEX_CLI_DEFAULT_MODEL ? [] : ['--model', options.model]),
-    // Read the prompt from stdin (arbitrary length, no arg-size limits).
-    '-',
   ]
-}
-
-/**
- * Parse one `codex exec --json` JSONL line. Agent messages arrive whole on
- * `item.completed`; `turn.completed` ends the run, and `turn.failed` /
- * `error` carry the failure. Everything else (reasoning, command items,
- * to-do lists) is activity, not answer text, and is dropped.
- */
-export function parseCodexCliLine(line: string): AgentCliChunk | null {
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(line)
-  } catch {
-    return null
-  }
-  const event = z
-    .object({
-      type: z.string(),
-      item: z.object({ type: z.string(), text: z.string().optional() }).optional(),
-      error: z.object({ message: z.string() }).optional(),
-      message: z.string().optional(),
-    })
-    .safeParse(parsed)
-  if (!event.success) {
-    return null
-  }
-  const data = event.data
-  if (
-    data.type === 'item.completed' &&
-    data.item?.type === 'agent_message' &&
-    data.item.text !== undefined
-  ) {
-    return { type: 'text-block', text: data.item.text }
-  }
-  if (data.type === 'turn.completed') {
-    return { type: 'result', isError: false, message: null }
-  }
-  if (data.type === 'turn.failed') {
-    return { type: 'result', isError: true, message: data.error?.message ?? null }
-  }
-  if (data.type === 'error') {
-    return { type: 'result', isError: true, message: data.message ?? null }
-  }
-  return null
 }
 
 /** Run one chat turn through the Codex CLI (see `./agent-cli`). */
@@ -276,6 +245,31 @@ export function streamCodexCliChat(options: StreamCliChatOptions): AsyncGenerato
     agentContext: options.agentContext,
     memoryWriteApproval: options.memoryWriteApproval,
   })
+  const userPrompt = `<instructions>\n${preamble}\n</instructions>\n\n${agentCliPrompt(options.messages)}`
+  const parseState: CodexCliParseState = { sawAgentMessageDelta: false }
+  let threadId: string | undefined
+  let turnId: string | undefined
+  let sentTurnStart = false
+  let nextSteerId = CODEX_FIRST_STEER_ID
+  let queuedSteerReady: ((text: string) => Promise<void>) | undefined
+  let hostArmed = false
+
+  const armHostIfReady = (): void => {
+    if (
+      hostArmed ||
+      queuedSteerReady === undefined ||
+      threadId === undefined ||
+      turnId === undefined
+    ) {
+      return
+    }
+    hostArmed = true
+    options.steering?.onSteerReady(queuedSteerReady)
+  }
+
+  const steering = options.steering
+  const handshakeModel = options.model === CODEX_CLI_DEFAULT_MODEL ? undefined : options.model
+
   return streamAgentCliTurn({
     binary: 'codex',
     args: codexCliArgs({
@@ -285,11 +279,48 @@ export function streamCodexCliChat(options: StreamCliChatOptions): AsyncGenerato
       allowEdits: options.allowEdits,
       mcpServers: options.mcpServers,
     }),
-    prompt: `<instructions>\n${preamble}\n</instructions>\n\n${agentCliPrompt(options.messages)}`,
+    prompt: `${codexAppServerHandshakePrompt({
+      graphRoot: options.graphRoot,
+      model: handshakeModel,
+    })}\n`,
     cwd: options.graphRoot,
     env: mcpSpawnEnv(options.mcpServers ?? []),
-    parseLine: parseCodexCliLine,
+    keepStdinOpen: true,
+    parseLine: (line) => parseCodexCliLine(line, parseState),
     startFailureMessage: 'Could not start the Codex CLI.',
     signal: options.signal,
+    onRawLine: async (line, sendLine) => {
+      let parsed: unknown
+      try {
+        parsed = JSON.parse(line)
+      } catch {
+        return
+      }
+      if (!isJsonRecord(parsed)) {
+        return
+      }
+      const startedThread = threadIdFromAppServerLine(parsed)
+      if (startedThread !== null && !sentTurnStart) {
+        sentTurnStart = true
+        threadId = startedThread
+        await sendLine(codexTurnStartLine(threadId, userPrompt))
+      }
+      const startedTurn = turnIdFromAppServerLine(parsed)
+      if (startedTurn !== null) {
+        turnId = startedTurn
+        armHostIfReady()
+      }
+    },
+    steering:
+      steering !== undefined
+        ? {
+            encodeLine: (text) => codexTurnSteerLine(nextSteerId++, threadId, turnId, text),
+            onReady: (steer) => {
+              queuedSteerReady = steer
+              armHostIfReady()
+            },
+            resultMode: 'same-turn',
+          }
+        : undefined,
   })
 }

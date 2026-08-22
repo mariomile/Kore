@@ -235,17 +235,21 @@ pub async fn agent_cli_run(
         let stdin_app = app.clone();
         let stdin_id = request_id.clone();
         std::thread::spawn(move || {
-            let _ = stdin.write_all(prompt.as_bytes());
             if keep_open {
-                // Streaming-input mode: the pipe stays open for
-                // `agent_cli_send` until the engine closes it (or the run
-                // ends). If the run already finished, `Done`'s cleanup ran
-                // first and the engine's unconditional close reaps this.
-                let _ = stdin.flush();
+                // Insert under the stdin mutex *before* writing so a
+                // handshake reply (Codex `thread/start` → `turn/start`)
+                // cannot race `agent_cli_send` and miss the pipe. Holding
+                // the lock across the write also keeps later sends from
+                // interleaving with a partial prompt.
                 if let Some(state) = stdin_app.try_state::<AgentCliStdinState>() {
-                    state.0.lock().unwrap().insert(stdin_id, stdin);
+                    let mut pipes = state.0.lock().unwrap();
+                    let _ = stdin.write_all(prompt.as_bytes());
+                    let _ = stdin.flush();
+                    pipes.insert(stdin_id, stdin);
+                    return;
                 }
             }
+            let _ = stdin.write_all(prompt.as_bytes());
             // Otherwise dropping stdin closes the pipe — end-of-prompt.
         });
     }

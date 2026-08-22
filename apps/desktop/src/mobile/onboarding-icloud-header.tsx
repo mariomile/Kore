@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { Cloud } from 'lucide-react'
+import { Cloud } from '@/components/icons'
 
 interface OnboardingIcloudHeaderProps {
   description: string

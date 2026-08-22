@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import type { ConflictedNote } from '@reflect/core'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'
 import { isModEvent } from '@meowdown/core'

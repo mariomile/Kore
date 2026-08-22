@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from 'react'
-import { X } from 'lucide-react'
+import { Close } from '@/components/icons'
 import { foldTag, type NoteTagFacet } from '@reflect/core'
 import { FilterChip } from './filter-chip'
 import {
@@ -71,7 +71,7 @@ export function FilterBar({
       <div className="flex gap-1.5 overflow-x-auto pb-1" role="toolbar" aria-label="Filters">
         {active && (
           <FilterChip onClick={reset}>
-            <X className="-ml-1 size-3.5" />
+            <Close className="-ml-1 size-3.5" />
             Reset
           </FilterChip>
         )}

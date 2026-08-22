@@ -1,6 +1,6 @@
 import { useState, type ReactElement } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check } from 'lucide-react'
+import { Check } from '@/components/icons'
 import {
   agentSkillInstall,
   agentSkillStatus,

@@ -1,5 +1,5 @@
 import type { ReactElement, ReactNode } from 'react'
-import { Sparkles } from 'lucide-react'
+import { Sparkles } from '@/components/icons'
 import { InlineAlert } from '@/components/inline-alert'
 import { ensureEmbeddingsVisibly, retryFailedEmbeddings } from '@/lib/semantic'
 import { useEmbedStatus } from '@/lib/use-embed-status'

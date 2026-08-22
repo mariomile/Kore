@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus } from '@/components/icons'
 import { useAiProviders } from '@/hooks/use-ai-providers'
 import { Button } from '@/components/ui/button'
 import { AddAiProviderDialog } from './add-ai-provider-dialog'

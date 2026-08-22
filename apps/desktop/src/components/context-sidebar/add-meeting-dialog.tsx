@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactElement } from 'react'
-import { X } from 'lucide-react'
+import { Close } from '@/components/icons'
 import {
   addMeetingToDaily,
   contactsAuthorizationStatus,
@@ -205,7 +205,7 @@ export function AddMeetingDialog({ date, event, onClose }: AddMeetingDialogProps
                       aria-label={`Remove ${attendee.name}`}
                       className="text-text-muted transition-colors hover:text-text"
                     >
-                      <X className="size-3" />
+                      <Close className="size-3" />
                     </button>
                   </li>
                 ))}

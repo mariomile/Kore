@@ -1,7 +1,7 @@
 import { useState, type ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { errorMessage, listTemplates, type TemplateEntry } from '@reflect/core'
-import { Pencil, Plus, Trash2 } from 'lucide-react'
+import { Pencil, Plus, Trash } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -80,7 +80,7 @@ export function TemplatesSection(): ReactElement {
                   aria-label={`Delete ${template.title}`}
                   onClick={() => setDeleting(template)}
                 >
-                  <Trash2 aria-hidden />
+                  <Trash aria-hidden />
                 </Button>
               </li>
             ))}

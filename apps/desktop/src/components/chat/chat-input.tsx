@@ -2,14 +2,14 @@ import { useMemo, useRef, useState, type ReactElement } from 'react'
 import {
   ArrowUp,
   Bot,
-  FilePlus2,
-  FileText,
+  Close,
+  Note,
+  NotePlus,
   Pencil,
   Plus,
-  SlidersHorizontal,
-  Square,
-  X,
-} from 'lucide-react'
+  Sliders,
+  Stop,
+} from '@/components/icons'
 import { chatToMarkdown, createNoteWithTitle } from '@reflect/core'
 import { getIsComposing, isModEvent } from '@meowdown/core'
 import { ShortcutKeys } from '@/components/shortcut-keys'
@@ -170,7 +170,7 @@ export function ChatInput(): ReactElement {
                     aria-label={`Discard queued message: ${label}`}
                     onClick={() => removeQueued(message.id)}
                   >
-                    <X aria-hidden className="size-3.5" />
+                    <Close aria-hidden className="size-3.5" />
                   </Button>
                 </div>
               )
@@ -195,7 +195,7 @@ export function ChatInput(): ReactElement {
                     className="size-4 rounded-full border border-border bg-surface p-0 text-text-muted hover:text-text"
                     onClick={() => removeAttachment(attachment.id)}
                   >
-                    <X aria-hidden className="size-3" />
+                    <Close aria-hidden className="size-3" />
                   </AttachmentAction>
                 </AttachmentActions>
               </Attachment>
@@ -226,7 +226,7 @@ export function ChatInput(): ReactElement {
                     index === mention.activeIndex ? 'bg-surface-hover' : 'hover:bg-surface-hover',
                   )}
                 >
-                  <FileText aria-hidden className="size-3.5 shrink-0 text-text-muted" />
+                  <Note aria-hidden className="size-3.5 shrink-0 text-text-muted" />
                   <span className="min-w-0 flex-1 truncate text-sm text-text">
                     {suggestion.title}
                   </span>
@@ -380,7 +380,7 @@ export function ChatInput(): ReactElement {
                   aria-label="Conversation instructions"
                   className={instructions.trim() !== '' ? 'text-accent' : undefined}
                 >
-                  <SlidersHorizontal aria-hidden />
+                  <Sliders aria-hidden />
                 </Button>
               }
             />
@@ -412,7 +412,7 @@ export function ChatInput(): ReactElement {
                     disabled={savingNote}
                     onClick={() => void saveAsNote()}
                   >
-                    <FilePlus2 aria-hidden />
+                    <NotePlus aria-hidden />
                   </Button>
                 }
               />
@@ -436,7 +436,7 @@ export function ChatInput(): ReactElement {
           ) : null}
           {streaming ? (
             <Button size="icon-sm" aria-label="Stop" onClick={stop}>
-              <Square aria-hidden className="size-3 fill-current" />
+              <Stop aria-hidden className="size-3 fill-current" />
             </Button>
           ) : (
             <Button

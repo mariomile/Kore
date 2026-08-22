@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from 'react'
-import { CalendarClock, History, Play, Trash2 } from 'lucide-react'
+import { CalendarClock, History, Play, Trash } from '@/components/icons'
 import {
   MEMORY_CURATOR_PRESET,
   ROUTINE_MAX_CONSECUTIVE_FAILURES,
@@ -202,7 +202,7 @@ export function AgentRoutinesSection({ profiles }: AgentRoutinesSectionProps): R
                 className="text-text-muted hover:text-destructive"
                 onClick={() => remove(routine.id)}
               >
-                <Trash2 aria-hidden className="size-4" />
+                <Trash aria-hidden className="size-4" />
               </Button>
             </li>
           ))}

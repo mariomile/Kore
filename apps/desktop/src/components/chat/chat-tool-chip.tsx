@@ -1,5 +1,5 @@
 import { Fragment, type MouseEvent, type ReactElement, type ReactNode } from 'react'
-import { CalendarDays, FileText, History, Paperclip, Search } from 'lucide-react'
+import { CalendarDays, History, Note, Paperclip, Search } from '@/components/icons'
 import { isTagName, isToolPending, type AssistantPart, type NoteHitSummary } from '@reflect/core'
 import { Marker, MarkerContent, MarkerIcon } from '@/components/ui/marker'
 import { Spinner } from '@/components/ui/spinner'
@@ -169,7 +169,7 @@ export function ChatToolChip({ part }: ChatToolChipProps): ReactElement {
   const result = part.result?.tool === 'read' ? part.result : null
   if (part.error !== null) {
     return (
-      <ChipFrame pending={false} icon={<FileText aria-hidden className="size-3.5" />}>
+      <ChipFrame pending={false} icon={<Note aria-hidden className="size-3.5" />}>
         {call.paths.join(', ')} — {part.error}
       </ChipFrame>
     )
@@ -177,7 +177,7 @@ export function ChatToolChip({ part }: ChatToolChipProps): ReactElement {
   // Settled, we know each note's title/error; pending, only the requested paths.
   const notes = result?.notes ?? call.paths.map((path) => ({ path, title: null, error: null }))
   return (
-    <ChipFrame pending={pending} icon={<FileText aria-hidden className="size-3.5" />}>
+    <ChipFrame pending={pending} icon={<Note aria-hidden className="size-3.5" />}>
       Read{' '}
       {notes.map((note, index) => {
         const label = note.title ?? note.path

@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactElement } from 'react'
-import { Check, Copy } from 'lucide-react'
+import { Check, Copy } from '@/components/icons'
 import { errorMessage } from '@reflect/core'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'

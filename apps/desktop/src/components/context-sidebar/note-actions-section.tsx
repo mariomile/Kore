@@ -1,6 +1,5 @@
 import type { ReactElement } from 'react'
-import { Lock } from 'lucide-react'
-import { PinIcon } from '@/components/icons/pin-icon'
+import { Lock, Pin } from '@/components/icons'
 import { useNoteRow } from '@/hooks/use-note-row'
 import { usePinnedNotes } from '@/hooks/use-pinned-notes'
 import { keybindingFor } from '@/lib/commands/app-commands'
@@ -50,7 +49,7 @@ export function NoteActionsSection({
         path={path}
         indexActive={isPinned}
         toggle={toggleNotePinned}
-        icon={<PinIcon width={20} height={20} />}
+        icon={<Pin aria-hidden size={20} />}
         labels={{ active: 'Un-pin this note', inactive: 'Pin this note' }}
         failureLabel="Updating pin"
         keybinding={PIN_KEYBINDING}

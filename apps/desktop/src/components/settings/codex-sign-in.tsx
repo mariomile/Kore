@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { codexLoginStatus, codexLogout, errorMessage, runCodexLogin } from '@reflect/core'
-import { CircleCheck } from 'lucide-react'
+import { CheckCircle } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { openUrlSync } from '@/lib/open-url'
 
@@ -112,7 +112,7 @@ export function CodexSignIn(): ReactElement {
   if (status.data.loggedIn) {
     return (
       <div className="flex items-center gap-2">
-        <CircleCheck aria-hidden className="size-4 shrink-0 text-accent" />
+        <CheckCircle aria-hidden className="size-4 shrink-0 text-accent" />
         <p className="min-w-0 flex-1 text-xs text-text-secondary">
           {status.data.detail === '' ? 'Signed in with ChatGPT.' : status.data.detail}
         </p>

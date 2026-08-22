@@ -1,5 +1,5 @@
 import { useCallback, useState, type ReactElement } from 'react'
-import { Undo2 } from 'lucide-react'
+import { Undo } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogTitle } from '@/components/ui/dialog'
 import { INPUT_CLASS_NAME } from '@/components/ui/input'
@@ -178,7 +178,7 @@ export function VaultReplaceDialog({
               onClick={() => void undo()}
               className="mr-auto text-text-secondary"
             >
-              <Undo2 aria-hidden className="size-3.5" />
+              <Undo aria-hidden className="size-3.5" />
               Undo last replace
             </Button>
           ) : null}

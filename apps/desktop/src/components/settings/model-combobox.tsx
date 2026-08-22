@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react'
 import { useCommandState } from 'cmdk'
-import { ChevronsUpDownIcon } from 'lucide-react'
+import { ChevronUpDown } from '@/components/icons'
 import { aiModelLabel, type AiModelOption, type AiProviderId } from '@reflect/core'
 import { getIsComposing } from '@meowdown/core'
 import { Button } from '@/components/ui/button'
@@ -109,7 +109,7 @@ export function ModelCombobox({
             className="w-full justify-between font-normal"
           >
             <span className="truncate">{aiModelLabel(provider, value)}</span>
-            <ChevronsUpDownIcon className="ml-2 size-4 shrink-0 opacity-50" />
+            <ChevronUpDown className="ml-2 size-4 shrink-0 opacity-50" />
           </Button>
         }
       />

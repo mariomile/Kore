@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { Settings } from 'lucide-react'
+import { Settings } from '@/components/icons'
 import { ShortcutKeys } from '@/components/shortcut-keys'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { keybindingFor } from '@/lib/commands/app-commands'

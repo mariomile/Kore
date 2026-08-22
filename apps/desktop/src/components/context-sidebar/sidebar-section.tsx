@@ -1,5 +1,5 @@
 import { useState, type ReactElement, type ReactNode } from 'react'
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronRight } from '@/components/icons'
 import { cn } from '@/lib/utils'
 
 interface SidebarSectionProps {

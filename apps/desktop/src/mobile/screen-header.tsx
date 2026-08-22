@@ -1,5 +1,5 @@
 import type { ReactElement, ReactNode } from 'react'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 
 interface MobileScreenHeaderProps {

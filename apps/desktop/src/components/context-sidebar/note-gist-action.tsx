@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from 'react'
-import { CloudOff, CloudUpload } from 'lucide-react'
+import { CloudOff, CloudUpload } from '@/components/icons'
 import { ShortcutKeys } from '@/components/shortcut-keys'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useNoteRowOverlay } from '@/hooks/note-row-overlay'

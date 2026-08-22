@@ -2,7 +2,7 @@ import type { ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { formatDistanceToNow } from 'date-fns'
 import { listChatConversations } from '@reflect/core'
-import { Check, Trash2 } from 'lucide-react'
+import { Check, Trash } from '@/components/icons'
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { CHAT_QUERY_SCOPE } from '@/lib/query-client'
@@ -77,7 +77,7 @@ export function ChatHistoryDrawer({ open, onOpenChange }: ChatHistoryDrawerProps
                         className="flex size-10 shrink-0 items-center justify-center text-text-muted"
                         onClick={() => void deleteConversation(conversation.id)}
                       >
-                        <Trash2 aria-hidden className="size-4" />
+                        <Trash aria-hidden className="size-4" />
                       </button>
                     )}
                   </li>

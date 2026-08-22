@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight } from '@/components/icons'
 import { BacklinkLoadMore } from '@/components/backlink-load-more'
 import { useBacklinkNavigation } from '@/hooks/use-backlink-navigation'
 import { useBacklinkSources } from '@/hooks/use-backlink-sources'

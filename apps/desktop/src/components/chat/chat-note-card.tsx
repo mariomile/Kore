@@ -1,5 +1,5 @@
 import type { MouseEvent, ReactElement } from 'react'
-import { ChevronRight, FileText } from 'lucide-react'
+import { ChevronRight, Note } from '@/components/icons'
 import { displayNoteTitle, noteDirectiveTitle } from '@reflect/core'
 import { isModEvent } from '@meowdown/core'
 import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'
@@ -35,7 +35,7 @@ export function ChatNoteCard({ path }: ChatNoteCardProps): ReactElement {
       onClick={open}
       className="group/note-card flex w-fit max-w-full items-center gap-2.5 rounded-lg border border-border bg-surface-sunken px-3 py-2 text-left transition-colors duration-100 hover:bg-surface-hover focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:outline-none"
     >
-      <FileText aria-hidden className="size-4 shrink-0 text-text-muted" />
+      <Note aria-hidden className="size-4 shrink-0 text-text-muted" />
       <span className="min-w-0">
         <span className="block truncate text-sm font-medium text-text">{title}</span>
         <span className="block truncate text-xs text-text-muted">{path}</span>

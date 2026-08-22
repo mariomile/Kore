@@ -1,5 +1,5 @@
 import type { ReactElement, ReactNode } from 'react'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown } from '@/components/icons'
 import { cn } from '@/lib/utils'
 
 interface FilterChipProps {

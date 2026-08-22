@@ -1,5 +1,5 @@
 import type { ComponentProps, ReactElement } from 'react'
-import { CircleX } from 'lucide-react'
+import { CloseCircle } from '@/components/icons'
 import { getIsComposing } from '@meowdown/core'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -66,7 +66,7 @@ export function SearchInput({
           onPointerDown={(event) => event.preventDefault()}
           onClick={() => onValueChange('')}
         >
-          <CircleX aria-hidden />
+          <CloseCircle aria-hidden />
         </Button>
       ) : null}
     </div>

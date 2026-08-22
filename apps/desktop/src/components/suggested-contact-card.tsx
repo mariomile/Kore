@@ -1,6 +1,6 @@
 import { useState, type ReactElement } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { UserRound } from 'lucide-react'
+import { User } from '@/components/icons'
 import { errorMessage } from '@reflect/core'
 import { Button } from '@/components/ui/button'
 import { suggestedContactQueryKey, useSuggestedContact } from '@/hooks/use-suggested-contact'
@@ -69,7 +69,7 @@ export function SuggestedContactCard({
         className,
       )}
     >
-      <UserRound aria-hidden className="size-4 shrink-0 text-text-muted" />
+      <User aria-hidden className="size-4 shrink-0 text-text-muted" />
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-medium text-text">{contact.fullName}</div>
         <div className="truncate text-xs text-text-muted">

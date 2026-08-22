@@ -295,8 +295,10 @@ document behavior, and the existing local patterns over new abstractions.
 
 ## UI and Styling
 
-- Use Tailwind CSS, React, shadcn/ui components, Radix, Tailwind Aria, and
-  Lucide React icons.
+- Use Tailwind CSS, React, shadcn/ui components, Radix, and Tailwind Aria.
+- Icons come from `@/components/icons` and nowhere else — one Solar-derived
+  family, documented in `apps/desktop/src/components/icons/readme.md`. Add a
+  missing glyph to that set instead of importing a second icon library.
 - Generate responsive designs and provide default props for reusable React
   components.
 - Always check `apps/desktop/src/components/ui/` before building custom UI.

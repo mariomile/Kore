@@ -1,5 +1,5 @@
 import type { ReactElement, ReactNode } from 'react'
-import { Check, ChevronRight, type LucideIcon } from 'lucide-react'
+import { Check, ChevronRight, type Icon } from '@/components/icons'
 import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
@@ -267,7 +267,7 @@ interface SettingsActionRowProps {
   onPress: () => void
   /** `destructive` renders the label in the destructive color (iOS red row). */
   tone?: 'default' | 'destructive'
-  icon?: LucideIcon
+  icon?: Icon
   disabled?: boolean
   /** Replaces the icon with a spinner and disables the row. */
   pending?: boolean
@@ -332,7 +332,7 @@ export function SettingsSelectRow({
       {pending === true ? (
         <Spinner />
       ) : selected ? (
-        <Check aria-hidden className="size-4 shrink-0 text-primary" strokeWidth={2} />
+        <Check aria-hidden className="size-4 shrink-0 text-primary" />
       ) : null}
     </button>
   )

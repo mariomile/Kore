@@ -1,5 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
-import { ArrowRight, CalendarDays, Check, CircleCheck, List, Trash2, Undo2, X } from 'lucide-react'
+import {
+  ArrowRight,
+  CalendarDays,
+  Check,
+  CheckCircle,
+  Close,
+  List,
+  Trash,
+  Undo,
+} from '@/components/icons'
 import { Priority } from '@meowdown/core'
 import { useKeymap } from '@meowdown/react'
 import type { OpenTask } from '@reflect/core'
@@ -263,7 +272,7 @@ export function MobileTaskEditSheet({
             {dueDate !== null ? (
               <ScheduleChip
                 label="Clear"
-                icon={<X aria-hidden className="size-3.5" />}
+                icon={<Close aria-hidden className="size-3.5" />}
                 active={false}
                 onClick={() => schedule(null)}
               />
@@ -279,7 +288,7 @@ export function MobileTaskEditSheet({
               className="h-12 justify-start gap-3 text-base"
               onClick={complete}
             >
-              {task.checked ? <Undo2 /> : <CircleCheck />}
+              {task.checked ? <Undo /> : <CheckCircle />}
               {task.checked ? 'Reopen' : 'Complete'}
             </Button>
             <Button
@@ -306,7 +315,7 @@ export function MobileTaskEditSheet({
               className="h-12 justify-start gap-3 text-base text-destructive hover:text-destructive"
               onClick={remove}
             >
-              <Trash2 />
+              <Trash />
               Delete
             </Button>
           </div>

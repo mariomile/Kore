@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from 'react'
-import { Check } from 'lucide-react'
+import { Check } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { Drawer, DrawerBody, DrawerContent, DrawerTitle } from '@/components/ui/drawer'
 import { Input } from '@/components/ui/input'

@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { LoaderCircle } from 'lucide-react'
+import { Spinner as SpinnerIcon } from '@/components/icons'
 import { cn } from '@/lib/utils'
 
 interface SpinnerProps {
@@ -9,5 +9,5 @@ interface SpinnerProps {
 
 /** A spinning loading indicator. Pair with a visible text label and set `aria-hidden` is applied automatically. */
 export function Spinner({ className }: SpinnerProps): ReactElement {
-  return <LoaderCircle aria-hidden className={cn('size-3 animate-spin', className)} />
+  return <SpinnerIcon aria-hidden className={cn('size-3 animate-spin', className)} />
 }

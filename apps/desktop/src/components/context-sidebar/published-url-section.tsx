@@ -1,5 +1,5 @@
 import { useEffect, useState, type MouseEvent, type ReactElement } from 'react'
-import { Check, Copy, RefreshCw } from 'lucide-react'
+import { Check, Copy, Refresh } from '@/components/icons'
 import { errorMessage } from '@reflect/core'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -127,7 +127,7 @@ export function PublishedUrlSection({ path }: PublishedUrlSectionProps): ReactEl
                   row?.gistStale === true && 'text-accent',
                 )}
               >
-                <RefreshCw aria-hidden className={cn('size-3.5', isUpdating && 'animate-spin')} />
+                <Refresh aria-hidden className={cn('size-3.5', isUpdating && 'animate-spin')} />
               </Button>
             }
           />

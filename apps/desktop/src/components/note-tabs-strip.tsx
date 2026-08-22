@@ -1,5 +1,5 @@
 import type { MouseEvent, ReactElement } from 'react'
-import { PanelLeft, PanelRight, Pencil, Pin, Plus, X } from 'lucide-react'
+import { Close, PanelLeft, PanelRight, Pencil, Pin, Plus } from '@/components/icons'
 import { usePalette } from '@/components/command-palette/palette-provider'
 import { NavigateArrows } from '@/components/sidebar/navigate-arrows'
 import { useOpenTabNotes, type OpenTabNote } from '@/hooks/use-open-tab-notes'
@@ -221,7 +221,7 @@ function NoteTab({ note, active, onActivate, onClose, onTogglePin }: NoteTabProp
           active ? '' : 'opacity-0 focus-visible:opacity-100 group-hover:opacity-100',
         )}
       >
-        <X aria-hidden className="size-3" />
+        <Close aria-hidden className="size-3" />
       </button>
     </div>
   )

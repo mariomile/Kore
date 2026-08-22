@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { ArrowUturnLeftIcon } from '@/components/icons/arrow-uturn-left-icon'
+import { ArrowUturnRight } from '@/components/icons'
 import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'
 import { useSimilarNotes } from '@/lib/use-similar-notes'
 import { routeForPath } from '@/routing/route'
@@ -48,9 +48,7 @@ export function SimilarNotesSection({ path }: SimilarNotesSectionProps): ReactEl
               <span className="min-w-0 flex-1 truncate text-left text-xs font-medium">
                 {hit.title}
               </span>
-              <span aria-hidden className="flex-none -scale-x-100">
-                <ArrowUturnLeftIcon width={13} height={13} />
-              </span>
+              <ArrowUturnRight aria-hidden size={13} className="flex-none" />
             </button>
           </li>
         ))}

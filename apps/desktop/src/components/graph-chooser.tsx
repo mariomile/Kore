@@ -1,7 +1,7 @@
 import { useId, useState, type ReactElement, type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { icloudStatus } from '@reflect/core'
-import { Cloud, Folder, FolderPlus } from 'lucide-react'
+import { Cloud, Folder, FolderPlus } from '@/components/icons'
 import { getIsComposing } from '@meowdown/core'
 import { InlineAlert } from '@/components/inline-alert'
 import { Badge } from '@/components/ui/badge'

@@ -4,45 +4,45 @@ import {
   CalendarDays,
   CloudUpload,
   Command,
-  FileDown,
-  FilePlus2,
+  Contrast,
   Inbox,
   LayoutTemplate,
+  NoteDownload,
+  NoteEdit,
+  NotePlus,
   PanelLeft,
   Pin,
-  RefreshCw,
+  Refresh,
   Search,
   Settings,
   Shuffle,
   Sparkles,
-  SquarePen,
-  SunMoon,
-  type LucideIcon,
-} from 'lucide-react'
+  type Icon,
+} from '@/components/icons'
 
 /**
  * Palette row icons by command id — a UI-side map, not part of the command
  * contract: the registry stays host-agnostic (CLI and deep links don't render
  * icons), and an unmapped command just gets the generic glyph.
  */
-export const COMMAND_ICONS: Record<string, LucideIcon> = {
+export const COMMAND_ICONS: Record<string, Icon> = {
   'nav.today': CalendarDays,
-  'note.new': SquarePen,
+  'note.new': NoteEdit,
   'capture.quick': Inbox,
   'history.back': ArrowLeft,
   'history.forward': ArrowRight,
   'palette.open': Search,
   'note.togglePin': Pin,
   'note.publishGist': CloudUpload,
-  'note.export': FileDown,
+  'note.export': NoteDownload,
   'note.random': Shuffle,
   'template.insert': LayoutTemplate,
-  'template.new': FilePlus2,
-  'theme.toggle': SunMoon,
+  'template.new': NotePlus,
+  'theme.toggle': Contrast,
   'sidebar.toggle': PanelLeft,
   'settings.open': Settings,
   'semantic.enable': Sparkles,
-  'index.rebuild': RefreshCw,
+  'index.rebuild': Refresh,
 }
 
-export const FALLBACK_COMMAND_ICON: LucideIcon = Command
+export const FALLBACK_COMMAND_ICON: Icon = Command

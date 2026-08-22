@@ -15,15 +15,15 @@ import {
 } from '@reflect/core'
 import {
   Contrast,
-  Feather,
   Monitor,
   Moon,
-  MoonStar,
+  MoonStars,
+  Notebook,
   Sparkles,
   Sun,
   SunDim,
-  type LucideIcon,
-} from 'lucide-react'
+  type Icon,
+} from '@/components/icons'
 import { cn } from '@/lib/utils'
 import { useSettings } from '@/providers/settings-provider'
 import { SettingsField } from './field'
@@ -34,7 +34,7 @@ import { SettingsSwitchField } from './switch-field'
 interface ThemeOption {
   value: ThemePreference
   label: string
-  icon: LucideIcon
+  icon: Icon
 }
 
 // Ordered the way the families read: the OS default, then light to dark.
@@ -42,11 +42,11 @@ const THEME_OPTIONS: ThemeOption[] = [
   { value: 'system', label: 'System', icon: Monitor },
   { value: 'light', label: 'Light', icon: Sun },
   { value: 'ash', label: 'Ash', icon: SunDim },
-  { value: 'paper', label: 'Paper', icon: Feather },
+  { value: 'paper', label: 'Paper', icon: Notebook },
   { value: 'dark', label: 'Dark', icon: Moon },
   { value: 'graphite', label: 'Graphite', icon: Contrast },
   { value: 'space', label: 'Space', icon: Sparkles },
-  { value: 'midnight', label: 'Midnight', icon: MoonStar },
+  { value: 'midnight', label: 'Midnight', icon: MoonStars },
 ]
 
 type PresetAccentColor = Exclude<AccentColor, 'custom'>

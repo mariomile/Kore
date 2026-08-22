@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { SearchIcon } from '@/components/icons/search-icon'
+import { Search } from '@/components/icons'
 import { ShortcutKeys } from '@/components/shortcut-keys'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -24,7 +24,7 @@ export function SidebarSearch({ onOpen }: { onOpen: () => void }): ReactElement 
             onClick={onOpen}
             className="text-text-muted hover:text-text-secondary dark:hover:text-text"
           >
-            <SearchIcon className="size-5" />
+            <Search aria-hidden className="size-5" />
           </Button>
         }
       />

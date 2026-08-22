@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { Pencil, Trash2 } from 'lucide-react'
+import { Pencil, Trash } from '@/components/icons'
 import type { AiPrompt } from '@reflect/core'
 import { Button } from '@/components/ui/button'
 
@@ -36,7 +36,7 @@ export function AiPromptRow({ prompt, onEdit, onRemove }: AiPromptRowProps): Rea
           onClick={() => onRemove(prompt.id)}
           className="text-text-muted hover:bg-surface-hover hover:text-text"
         >
-          <Trash2 aria-hidden />
+          <Trash aria-hidden />
         </Button>
       </div>
     </div>

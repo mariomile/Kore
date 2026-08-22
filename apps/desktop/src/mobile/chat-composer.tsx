@@ -1,6 +1,6 @@
 import { useRef, useState, type ReactElement } from 'react'
 import { aiModelLabel } from '@reflect/core'
-import { ArrowUp, ChevronDown, Plus, Square, X } from 'lucide-react'
+import { ArrowUp, ChevronDown, Close, Plus, Stop } from '@/components/icons'
 import {
   Attachment,
   AttachmentAction,
@@ -71,7 +71,7 @@ export function MobileChatComposer(): ReactElement {
                   className="size-5 rounded-full border border-border bg-surface p-0 text-text-muted"
                   onClick={() => removeAttachment(attachment.id)}
                 >
-                  <X aria-hidden className="size-3" />
+                  <Close aria-hidden className="size-3" />
                 </AttachmentAction>
               </AttachmentActions>
             </Attachment>
@@ -130,7 +130,7 @@ export function MobileChatComposer(): ReactElement {
         <div className="flex-1" />
         {streaming ? (
           <Button size="icon-sm" aria-label="Stop" onClick={stop}>
-            <Square aria-hidden className="size-3 fill-current" />
+            <Stop aria-hidden className="size-3 fill-current" />
           </Button>
         ) : (
           <Button

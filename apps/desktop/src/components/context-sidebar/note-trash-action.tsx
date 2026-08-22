@@ -1,6 +1,6 @@
 import { useState, type ReactElement } from 'react'
 import { errorMessage, isDaily } from '@reflect/core'
-import { Trash2 } from 'lucide-react'
+import { Trash } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -66,7 +66,7 @@ export function NoteTrashAction({ path }: NoteTrashActionProps): ReactElement | 
         className="group relative flex w-full items-center space-x-2 rounded-lg px-3 py-2 text-start transition-colors duration-100 hover:bg-surface-hover"
       >
         <span className="flex h-5 w-5 flex-none items-center justify-center text-text-muted transition-colors duration-100 group-hover:text-destructive">
-          <Trash2 size={14} aria-hidden />
+          <Trash size={14} aria-hidden />
         </span>
         <span className="min-w-0 flex-1 truncate text-xs font-medium transition-colors duration-100 group-hover:text-destructive">
           Trash note

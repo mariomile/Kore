@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from 'react'
-import { Lock, LockOpen, MoreHorizontal, Pin, PinOff, Share, Trash2 } from 'lucide-react'
+import { Lock, LockOpen, MoreHorizontal, Pin, PinOff, Share, Trash } from '@/components/icons'
 import { errorMessage } from '@reflect/core'
 import { Button } from '@/components/ui/button'
 import { Drawer, DrawerContent, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer'
@@ -120,7 +120,7 @@ export function NoteActionsMenu({ path, onDeleted }: NoteActionsMenuProps): Reac
                 setConfirmingDelete(true)
               }}
             >
-              <Trash2 />
+              <Trash />
               Delete
             </Button>
           </div>

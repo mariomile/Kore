@@ -1,6 +1,5 @@
 import type { ReactElement } from 'react'
-import { Square } from 'lucide-react'
-import { MicIcon } from '@/components/icons/mic-icon'
+import { Microphone, Stop } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { useMobileAudioMemo } from '@/mobile/audio-memo-provider'
@@ -45,9 +44,9 @@ export function AudioMemoFab(): ReactElement | null {
       {memo.phase === 'transcribing' ? (
         <Spinner className="size-5" />
       ) : recording ? (
-        <Square aria-hidden fill="currentColor" className="size-4" />
+        <Stop aria-hidden fill="currentColor" className="size-4" />
       ) : (
-        <MicIcon className="size-6" />
+        <Microphone aria-hidden className="size-6" />
       )}
     </Button>
   )

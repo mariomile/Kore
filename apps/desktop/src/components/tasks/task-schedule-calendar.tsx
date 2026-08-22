@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from 'react'
-import { ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Close } from '@/components/icons'
 import { weekStartDow } from '@reflect/core'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { formatDayLabel } from '@/lib/dates'
@@ -116,7 +116,7 @@ export function TaskScheduleCalendar({
             onClick={() => pick(null)}
             className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-text-muted transition-colors hover:bg-surface-hover hover:text-text focus-visible:outline-none"
           >
-            <X className="size-3.5" />
+            <Close className="size-3.5" />
             Clear date
           </button>
         </div>

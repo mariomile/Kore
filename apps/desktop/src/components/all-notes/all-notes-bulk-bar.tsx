@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState, type ReactElement } from 'react'
-import { FolderInput, Hash, Trash2 } from 'lucide-react'
+import { FolderMove, Hash, Trash } from '@/components/icons'
 import type { NoteListEntry } from '@reflect/core'
 import { Button } from '@/components/ui/button'
 import {
@@ -120,7 +120,7 @@ export function AllNotesBulkBar({
             onClick={openMoving}
             className="text-text-secondary"
           >
-            <FolderInput aria-hidden className="size-3.5" />
+            <FolderMove aria-hidden className="size-3.5" />
             <span>Move</span>
           </Button>
           {trashablePaths.length > 0 ? (
@@ -132,7 +132,7 @@ export function AllNotesBulkBar({
               onClick={onRequestTrash}
               className="text-text-secondary hover:text-destructive"
             >
-              <Trash2 aria-hidden className="size-3.5" />
+              <Trash aria-hidden className="size-3.5" />
               <span>Trash</span>
               <span
                 aria-hidden

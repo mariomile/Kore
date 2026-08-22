@@ -1837,8 +1837,8 @@ describe('TasksScreen', () => {
     await userEvent.click(await view.findByRole('button', { name: 'Reopen: project task' }))
     const complete = await view.findByRole('button', { name: 'Complete: project task' })
     await waitFor(() => expect((complete as HTMLButtonElement).disabled).toBe(true))
-    expect(complete.querySelector('.lucide-circle-check')).toBeNull()
-    expect(complete.querySelector('.lucide-circle')).not.toBeNull()
+    expect(complete.querySelector('.icon-check-circle')).toBeNull()
+    expect(complete.querySelector('.icon-circle')).not.toBeNull()
 
     resolveToggle()
     await waitFor(() => expect(toggleTask).toHaveBeenCalledTimes(1))

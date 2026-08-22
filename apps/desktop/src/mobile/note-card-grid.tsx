@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react'
-import { Pin } from 'lucide-react'
+import { Pin } from '@/components/icons'
 import { formatRecencyLabel } from '@/lib/dates'
 import { HighlightedText } from '@/mobile/highlighted-text'
 import type { NoteRowModel } from '@/mobile/swipeable-note-row'

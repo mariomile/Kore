@@ -1,9 +1,7 @@
 import { useMemo, useState, type ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { dailyDatesInRange, weekStartDow } from '@reflect/core'
-import { CalendarIcon } from '@/components/icons/calendar-icon'
-import { ChevronLeftIcon } from '@/components/icons/chevron-left-icon'
-import { ChevronRightIcon } from '@/components/icons/chevron-right-icon'
+import { CalendarDays, ChevronLeft, ChevronRight } from '@/components/icons'
 import { ShortcutKeys } from '@/components/shortcut-keys'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
@@ -81,7 +79,7 @@ export function DayCalendar({ selectedDate, today }: DayCalendarProps): ReactEle
             onClick={() => setMonth(addMonths(month, -1))}
             className={HEADER_BUTTON_CLASS}
           >
-            <ChevronLeftIcon />
+            <ChevronLeft aria-hidden />
           </button>
           <Tooltip>
             <TooltipTrigger
@@ -92,7 +90,7 @@ export function DayCalendar({ selectedDate, today }: DayCalendarProps): ReactEle
                   onClick={() => navigate({ kind: 'today' })}
                   className={HEADER_BUTTON_CLASS}
                 >
-                  <CalendarIcon />
+                  <CalendarDays aria-hidden />
                 </button>
               }
             />
@@ -106,7 +104,7 @@ export function DayCalendar({ selectedDate, today }: DayCalendarProps): ReactEle
             onClick={() => setMonth(addMonths(month, 1))}
             className={HEADER_BUTTON_CLASS}
           >
-            <ChevronRightIcon />
+            <ChevronRight aria-hidden />
           </button>
         </nav>
       </header>

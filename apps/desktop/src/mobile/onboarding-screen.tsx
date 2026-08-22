@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from 'react'
-import { Cloud, HardDrive } from 'lucide-react'
+import { Cloud, HardDrive } from '@/components/icons'
 import { InlineAlert } from '@/components/inline-alert'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'

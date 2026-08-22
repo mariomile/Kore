@@ -24,3 +24,6 @@ minimumReleaseAgeExclude:
   - '@prosemirror-adapter/*'
   - prosemirror-flat-list
   - prosemirror-view
+  # Dev-only: the icon generator's source data. 1.2.9 is the first release
+  # carrying the bare `close`/`add`/`bot` linear glyphs the set needs.
+  - '@iconify-json/solar@1.2.9'

@@ -1,6 +1,6 @@
 import { useState, type ReactElement } from 'react'
 import { foldTag, isTagName } from '@reflect/core'
-import { X } from 'lucide-react'
+import { Close } from '@/components/icons'
 import { useSettings } from '@/providers/settings-provider'
 import { SettingsField } from './field'
 import { SettingsSection } from './section'
@@ -69,7 +69,7 @@ export function AllNotesSection(): ReactElement {
                 onClick={() => removeTag(tag)}
                 className="rounded-full p-0.5 text-text-muted transition-colors duration-100 hover:bg-border hover:text-text"
               >
-                <X aria-hidden strokeWidth={2} className="size-3" />
+                <Close aria-hidden className="size-3" />
               </button>
             </li>
           ))}

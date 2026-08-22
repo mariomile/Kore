@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { ExternalLinkIcon, XIcon } from 'lucide-react'
+import { Close, ExternalLink } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { LightboxDialog } from '@/editor/lightbox-dialog'
 import { useImageDismissDrag } from '@/editor/use-image-dismiss-drag'
@@ -62,7 +62,7 @@ export function ImageLightbox({
             className="rounded-full bg-white/15 text-white shadow-sm backdrop-blur-xl hover:bg-white/25 active:bg-white/20"
             onClick={onClose}
           >
-            <XIcon />
+            <Close />
           </Button>
         </div>
       ) : null}
@@ -78,7 +78,7 @@ export function ImageLightbox({
             className="h-9 rounded-full bg-white/15 px-3 text-white shadow-sm backdrop-blur-xl hover:bg-white/25 active:bg-white/20"
             onClick={() => onOpenImage(image)}
           >
-            <ExternalLinkIcon data-icon="inline-start" />
+            <ExternalLink data-icon="inline-start" />
             Open
           </Button>
         </div>

@@ -245,20 +245,22 @@ inheriting `currentColor`.
 - The **brand mark** is the networked-graph sphere (`assets/reflect-app-icon.png` /
   `reflect-graph-hero.png`): glowing white nodes connected by purple arcs.
 
-**Substitution for this system:** rather than re-tracing Reflect's private SVGs, this
-kit uses **[Lucide](https://lucide.dev)** (loaded from CDN) — a thin-stroke line set
-that matches Reflect's weight and style almost exactly (`search`, `pencil`, `list`,
-`check`, `map`, `calendar`, `mic`, `pin`, `link`, `trash`, `history`, chevrons all map
-1:1). **⚠️ Flagged substitution** — swap in the real `components/icons` SVGs if you
-need pixel-exact brand icons. Set `stroke-width: 1.75` to match.
+**The set:** the desktop app draws every glyph from
+[Solar](https://www.figma.com/community/file/1166831539721848736)'s `-linear`
+family — a 24×24 grid, a 1.5px hairline stroke, rounded terminals — baked into
+plain React components under `apps/desktop/src/components/icons/`. The few
+glyphs Solar has no linear equivalent for (a bare checkmark, `[[wiki link]]`
+brackets, the indent carets, the spinner) are hand-drawn to the same spec in
+that directory rather than borrowed from a second library.
 
-> **Update (V1 parity pass):** the desktop app now vendors the real V1 SVGs in
-> `apps/desktop/src/components/icons/` — `pencil`, `list`, `search`, `help`, `pin`,
-> `calendar`, `chevron-left/right`, plus a heroicons-traced `arrow-uturn-left` (the
-> similar-notes return arrow, rendered flipped via `-scale-x-100`). All are 24×24
-> `currentColor` fills (the magnifier is a 1.5px stroke). Prefer these over Lucide in
-> product chrome; Lucide remains the stand-in for glyphs without a V1 equivalent
-> (e.g. `square-pen` for New note, `settings`), sized 16px inside a 24px box.
+That weight is deliberate: at the 14–18px the product chrome actually renders
+icons at, a 2px stroke crowds its own counters and reads heavier than the text
+beside it. Mixing families is the other half — Solar's `-bold` and `-broken`
+sets, or any second library, read as a different hand the moment they sit next
+to a `-linear` glyph.
+
+Outside the app (slides, marketing, prototypes), pull the same ids from Solar
+so the weight matches.
 
 ---
 

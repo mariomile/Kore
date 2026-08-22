@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from 'react'
-import { FileText, History } from 'lucide-react'
+import { History, Note } from '@/components/icons'
 import { displayNoteTitle, noteFileStem } from '@reflect/core'
 import { NoteHistoryDialog } from '@/components/note-history-dialog'
 import { Button } from '@/components/ui/button'
@@ -51,7 +51,7 @@ function ChangedNoteRow({ path }: { path: string }): ReactElement {
         }}
         className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-1 py-1 text-left transition-colors duration-100 hover:bg-surface-hover focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:outline-none"
       >
-        <FileText aria-hidden className="size-3.5 shrink-0 text-text-muted" />
+        <Note aria-hidden className="size-3.5 shrink-0 text-text-muted" />
         <span className="truncate text-sm text-text">{title}</span>
       </button>
       <Button

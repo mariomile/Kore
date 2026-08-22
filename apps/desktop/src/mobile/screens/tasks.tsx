@@ -1,6 +1,6 @@
 import { useDeferredValue, useMemo, useRef, useState, type ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Archive, CircleCheck, Plus, SlidersHorizontal } from 'lucide-react'
+import { Archive, CheckCircle, Plus, Sliders } from '@/components/icons'
 import { getCompletedTasks, getOpenTasks, type OpenTask } from '@reflect/core'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
@@ -166,7 +166,7 @@ export function MobileTasks(): ReactElement {
             setFiltersOpen(true)
           }}
         >
-          <SlidersHorizontal />
+          <Sliders />
         </Button>
       </header>
       {isError ? (
@@ -182,7 +182,7 @@ export function MobileTasks(): ReactElement {
         </div>
       ) : groups.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-3 text-text-muted">
-          <CircleCheck className="size-6" />
+          <CheckCircle className="size-6" />
           <p className="text-sm">{needle ? 'No matching tasks' : 'No tasks to show'}</p>
           {needle === '' ? (
             <Button variant="outline" onClick={() => onAdd(todaysDailyTarget(today))}>

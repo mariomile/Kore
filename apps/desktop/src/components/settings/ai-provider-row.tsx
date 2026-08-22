@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { Trash2 } from 'lucide-react'
+import { Trash } from '@/components/icons'
 import {
   aiModelLabel,
   aiProvider,
@@ -127,7 +127,7 @@ export function AiProviderRow({
           onClick={remove}
           className="text-text-muted hover:bg-surface-hover hover:text-text"
         >
-          <Trash2 aria-hidden />
+          <Trash aria-hidden />
         </Button>
       </div>
     </div>

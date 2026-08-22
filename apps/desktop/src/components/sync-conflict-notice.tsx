@@ -1,6 +1,6 @@
 import type { ReactElement, ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { GitMerge } from 'lucide-react'
+import { Layers } from '@/components/icons'
 import { conflictMarkerBlockCount, conflictMarkerLabels, getNote, readNote } from '@reflect/core'
 import { CONFLICT_SIDE_DOT } from '@/components/conflict-note-view'
 import { InlineAlert } from '@/components/inline-alert'
@@ -83,7 +83,7 @@ export function SyncConflictNotice({
   return (
     <InlineAlert tone="warning" className={className}>
       <div className="flex gap-2">
-        <GitMerge aria-hidden className="mt-0.5 size-3.5 shrink-0" />
+        <Layers aria-hidden className="mt-0.5 size-3.5 shrink-0" />
         <div className="min-w-0 flex-1">
           <p className="font-semibold">This note was edited on two devices at once.</p>
           <p className="mt-0.5">

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react'
-import { ChevronDown, Settings } from 'lucide-react'
+import { ChevronDown, Settings } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { addDaysIso } from '@/lib/dates'
 import { monthOf } from '@/lib/month-grid'

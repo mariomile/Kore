@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from 'react'
-import { Plug, Trash2 } from 'lucide-react'
+import { Plug, Trash } from '@/components/icons'
 import { deleteSecret, errorMessage, mcpSecretName, setSecret, type McpServer } from '@reflect/core'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -91,7 +91,7 @@ export function McpSection(): ReactElement {
                 className="text-text-muted hover:text-destructive"
                 onClick={() => void remove(server)}
               >
-                <Trash2 aria-hidden className="size-4" />
+                <Trash aria-hidden className="size-4" />
               </Button>
             </li>
           ))}

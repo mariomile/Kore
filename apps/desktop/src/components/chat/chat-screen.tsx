@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { MessageSquare } from 'lucide-react'
+import { Chat } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { imageFilesFrom } from '@/lib/chat-attachments'
 import { useChatSession } from '@/providers/chat-provider'
@@ -26,7 +26,7 @@ export function ChatScreen(): ReactElement {
     return (
       <div className="flex h-full items-center justify-center px-6">
         <div className="flex max-w-sm flex-col items-center text-center">
-          <MessageSquare aria-hidden strokeWidth={1.5} className="size-8 text-text-muted" />
+          <Chat aria-hidden className="size-8 text-text-muted" />
           <h2 className="mt-4 text-lg font-semibold text-text">Chat with your notes</h2>
           <p className="mt-2 text-sm text-text-muted">
             Add an AI provider to start chatting. Reflect calls the provider directly with your own

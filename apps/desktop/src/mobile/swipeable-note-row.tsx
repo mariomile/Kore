@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { Pin, PinOff, Trash2 } from 'lucide-react'
+import { Pin, PinOff, Trash } from '@/components/icons'
 import type { HighlightSegment } from '@reflect/core'
 import { formatRecencyLabel } from '@/lib/dates'
 import { HighlightedText } from '@/mobile/highlighted-text'
@@ -96,7 +96,7 @@ export function SwipeableNoteRow({
             aria-label={`Delete ${title}`}
             onClick={onDelete}
           >
-            <Trash2 className="size-4" />
+            <Trash className="size-4" />
             <span aria-hidden>Delete</span>
           </button>
         ) : null}

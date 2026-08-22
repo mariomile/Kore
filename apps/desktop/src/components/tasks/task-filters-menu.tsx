@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { ListFilter } from 'lucide-react'
+import { Filter } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -46,7 +46,7 @@ export function TaskFiltersMenu({
             variant="ghost"
             className="window-drag-control text-xs font-normal text-text-muted"
           >
-            <ListFilter aria-hidden className="size-3.5" />
+            <Filter aria-hidden className="size-3.5" />
             Task filters
           </Button>
         }

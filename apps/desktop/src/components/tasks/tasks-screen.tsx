@@ -8,7 +8,7 @@ import {
   type ReactElement,
 } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Archive, CalendarClock, Flag, List, Search } from 'lucide-react'
+import { Archive, CalendarClock, Flag, List, Search } from '@/components/icons'
 import {
   cycleTaskContentPriority,
   getCompletedTasks,

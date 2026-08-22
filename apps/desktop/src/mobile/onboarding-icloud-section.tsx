@@ -1,5 +1,5 @@
 import { useId, useState, type ReactElement } from 'react'
-import { Cloud, FolderOpen } from 'lucide-react'
+import { Cloud, FolderOpen } from '@/components/icons'
 import { getIsComposing } from '@meowdown/core'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'

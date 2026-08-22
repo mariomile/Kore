@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import { siClaude, siCursor, siGooglegemini, siOpenrouter } from 'simple-icons'
-import { Plug } from 'lucide-react'
+import { Plug } from '@/components/icons'
 import type { AiProviderId } from '@reflect/core'
 import { cn } from '@/lib/utils'
 

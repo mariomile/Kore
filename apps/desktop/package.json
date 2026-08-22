@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "icons": "node scripts/generate-icons.mjs",
     "preview": "vite preview",
     "sidecar": "node scripts/build-sidecar.mjs",
     "postinstall": "node src-tauri/xcode-scripts/generate-xcode-env.mjs",
@@ -49,7 +50,6 @@
     "cmdk": "^1.1.1",
     "date-fns": "^4.4.0",
     "embla-carousel-react": "^8.6.0",
-    "lucide-react": "^1.27.0",
     "mammoth": "^1.12.1",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
@@ -62,6 +62,7 @@
     "zod": "4.4.3"
   },
   "devDependencies": {
+    "@iconify-json/solar": "^1.2.9",
     "@ocavue/tsconfig": "^0.7.1",
     "@rolldown/plugin-babel": "^0.2.3",
     "@sentry/cli": "3.6.2",

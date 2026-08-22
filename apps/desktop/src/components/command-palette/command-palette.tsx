@@ -1,7 +1,7 @@
 import { memo, useEffect, useRef, useState, type KeyboardEvent, type ReactElement } from 'react'
 import { Command } from 'cmdk'
 import { parseHighlights, parseSearchQuery } from '@reflect/core'
-import { Bookmark, BookmarkPlus, CalendarDays, FileText, X } from 'lucide-react'
+import { Bookmark, BookmarkPlus, CalendarDays, Close, Note } from '@/components/icons'
 import { getIsComposing, isModEvent } from '@meowdown/core'
 import { Kbd } from '@/components/kbd'
 import { ShortcutKeys } from '@/components/shortcut-keys'
@@ -239,7 +239,7 @@ export function CommandPalette({ context }: CommandPaletteProps): ReactElement |
                           }}
                           className="shrink-0 rounded p-0.5 text-text-muted opacity-0 transition-opacity hover:text-text focus-visible:opacity-100 group-hover:opacity-100 [[data-selected=true]_&]:opacity-100"
                         >
-                          <X aria-hidden className="size-3.5" />
+                          <Close aria-hidden className="size-3.5" />
                         </button>
                       </span>
                     </Command.Item>
@@ -252,7 +252,7 @@ export function CommandPalette({ context }: CommandPaletteProps): ReactElement |
                   className="reflect-palette-group"
                 >
                   {sections.notes.map((entry) => {
-                    const Icon = entry.date !== null ? CalendarDays : FileText
+                    const Icon = entry.date !== null ? CalendarDays : Note
                     return (
                       <Command.Item
                         key={entry.path}

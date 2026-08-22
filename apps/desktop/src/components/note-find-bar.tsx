@@ -1,7 +1,6 @@
 import { useLayoutEffect, useRef, type KeyboardEvent, type ReactElement } from 'react'
-import { ChevronDownIcon, ChevronUpIcon, Replace, XIcon } from 'lucide-react'
+import { ChevronDown, ChevronUp, Close, Replace, Search } from '@/components/icons'
 import { getIsComposing } from '@meowdown/core'
-import { SearchIcon } from '@/components/icons/search-icon'
 import { useNoteFind } from '@/providers/note-find-provider'
 import { useVaultReplaceDialog } from '@/providers/vault-replace-provider'
 
@@ -90,7 +89,7 @@ export function NoteFindBar(): ReactElement | null {
       className="absolute top-2 right-3 z-40 flex max-w-[calc(100%_-_1.5rem)] items-center gap-1 rounded-[7px] border border-border-strong bg-input-bg py-1 pr-1 pl-1.5 shadow-app-input"
       onKeyDown={handleSearchKeyDown}
     >
-      <SearchIcon className="size-[18px] shrink-0 text-text-muted" />
+      <Search aria-hidden className="size-[18px] shrink-0 text-text-muted" />
       <input
         ref={inputRef}
         aria-label="Find in note"
@@ -122,7 +121,7 @@ export function NoteFindBar(): ReactElement | null {
         disabled={!canNavigate}
         onClick={find.previous}
       >
-        <ChevronUpIcon className="size-3.5" strokeWidth={2} />
+        <ChevronUp className="size-3.5" />
       </button>
       <button
         type="button"
@@ -131,7 +130,7 @@ export function NoteFindBar(): ReactElement | null {
         disabled={!canNavigate}
         onClick={find.next}
       >
-        <ChevronDownIcon className="size-3.5" strokeWidth={2} />
+        <ChevronDown className="size-3.5" />
       </button>
       {/* ⌘F found it here; the same needle across every note is one click
           away. The needle carries over, never the replacement — that one the
@@ -147,7 +146,7 @@ export function NoteFindBar(): ReactElement | null {
           openVaultReplace(find.query)
         }}
       >
-        <Replace className="size-3.5" strokeWidth={2} />
+        <Replace className="size-3.5" />
       </button>
       <button
         type="button"
@@ -155,7 +154,7 @@ export function NoteFindBar(): ReactElement | null {
         className={FIND_BUTTON_CLASS}
         onClick={() => find.close(true)}
       >
-        <XIcon className="size-3.5" strokeWidth={2} />
+        <Close className="size-3.5" />
       </button>
     </div>
   )

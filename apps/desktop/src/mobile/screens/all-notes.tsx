@@ -1,6 +1,6 @@
 import { useDeferredValue, useMemo, useRef, type ReactElement } from 'react'
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft, FileText, LayoutGrid, List, SearchX } from 'lucide-react'
+import { ChevronLeft, LayoutGrid, List, Note, SearchOff } from '@/components/icons'
 import {
   foldTag,
   listNoteTags,
@@ -201,9 +201,9 @@ export function MobileAllNotes({
         </div>
       ) : (hits ?? []).length === 0 ? (
         pristine ? (
-          <Empty icon={<FileText className="size-6" />} message="No notes yet" />
+          <Empty icon={<Note className="size-6" />} message="No notes yet" />
         ) : (
-          <Empty icon={<SearchX className="size-6" />} message="No matches" />
+          <Empty icon={<SearchOff className="size-6" />} message="No matches" />
         )
       ) : view === 'grid' ? (
         <NoteCardGrid rows={rows} onOpen={(path) => navigate(routeForPath(path))} />

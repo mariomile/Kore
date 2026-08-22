@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import { open } from '@tauri-apps/plugin-dialog'
-import { FileArchive } from 'lucide-react'
+import { ArchiveBox } from '@/components/icons'
 import { SettingsField } from '@/components/settings/field'
 import { SettingsSection } from '@/components/settings/section'
 import { Button } from '@/components/ui/button'
@@ -44,7 +44,7 @@ export function ImportSection(): ReactElement {
             disabled={running}
             onClick={() => void chooseAndImport()}
           >
-            <FileArchive aria-hidden />
+            <ArchiveBox aria-hidden />
             {running ? 'Importing...' : 'Import zip...'}
           </Button>
         </div>

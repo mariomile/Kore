@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { Check } from 'lucide-react'
+import { Check } from '@/components/icons'
 import { Drawer, DrawerBody, DrawerContent, DrawerTitle } from '@/components/ui/drawer'
 import type { TaskFilters } from '@/lib/tasks/task-filters'
 import { cn } from '@/lib/utils'
@@ -86,7 +86,7 @@ function FilterRow({
           checked ? 'border-accent bg-accent text-white' : 'border-border',
         )}
       >
-        {checked ? <Check aria-hidden className="size-3.5" strokeWidth={3} /> : null}
+        {checked ? <Check aria-hidden className="size-3.5" strokeWidth={2} /> : null}
       </span>
       {label}
     </button>

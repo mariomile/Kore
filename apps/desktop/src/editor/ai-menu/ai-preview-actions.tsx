@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { ChevronDownIcon, RotateCcwIcon } from 'lucide-react'
+import { ChevronDown, Restart } from '@/components/icons'
 import type { AiPromptMode, ChatModelOption } from '@reflect/core'
 import { Button } from '@/components/ui/button'
 import {
@@ -36,7 +36,7 @@ export function AiPreviewActions({
   return (
     <div className="flex items-center">
       <Button variant="ghost" size="sm" onClick={() => onRetry(null)}>
-        <RotateCcwIcon data-icon="inline-start" />
+        <Restart data-icon="inline-start" />
         Retry
       </Button>
       {modelOptions.length > 0 ? (
@@ -44,7 +44,7 @@ export function AiPreviewActions({
           <DropdownMenuTrigger
             render={
               <Button variant="ghost" size="sm" aria-label="Retry with another model">
-                <ChevronDownIcon />
+                <ChevronDown />
               </Button>
             }
           />

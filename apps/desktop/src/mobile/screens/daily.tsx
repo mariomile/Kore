@@ -1,6 +1,6 @@
 import { useCallback, type ReactElement } from 'react'
 import { untitledNotePath } from '@reflect/core'
-import { Plus } from 'lucide-react'
+import { Plus } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { useToday } from '@/lib/use-today'
 import { AudioMemoFab } from '@/mobile/audio-memo-fab'

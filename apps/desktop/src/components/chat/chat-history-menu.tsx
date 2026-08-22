@@ -2,7 +2,7 @@ import type { ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { formatDistanceToNow } from 'date-fns'
 import { listChatConversations } from '@reflect/core'
-import { Check, History, X } from 'lucide-react'
+import { Check, Close, History } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -88,7 +88,7 @@ export function ChatHistoryMenu(): ReactElement | null {
                     }}
                     className="invisible shrink-0 text-text-muted hover:text-text group-hover/conversation:visible"
                   >
-                    <X aria-hidden className="size-3.5" />
+                    <Close aria-hidden className="size-3.5" />
                   </button>
                 )}
               </DropdownMenuItem>

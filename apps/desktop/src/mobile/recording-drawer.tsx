@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react'
-import { Square, Trash2 } from 'lucide-react'
+import { Stop, Trash } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer'
 import { useMobileAudioMemo } from '@/mobile/audio-memo-provider'
@@ -129,7 +129,7 @@ function LiveRecordingControls({ memo }: LiveRecordingControlsProps): ReactEleme
           disabled={memo.phase !== 'recording'}
           onClick={() => memo.stopAndSave()}
         >
-          <Square aria-hidden fill="currentColor" className="size-5" />
+          <Stop aria-hidden fill="currentColor" className="size-5" />
         </Button>
         <Button
           variant={discardArmed ? 'destructive' : 'ghost'}
@@ -138,7 +138,7 @@ function LiveRecordingControls({ memo }: LiveRecordingControlsProps): ReactEleme
           aria-label={discardArmed ? 'Confirm discard recording' : 'Discard recording'}
           onClick={confirmDiscard}
         >
-          <Trash2 aria-hidden className="size-3.5" />
+          <Trash aria-hidden className="size-3.5" />
           {discardArmed ? 'Tap again to discard' : 'Discard'}
         </Button>
       </div>

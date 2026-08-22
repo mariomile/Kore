@@ -18,6 +18,22 @@ customization effort.
 
 ## Shipped (this fork)
 
+- One icon set. The app drew from two families at once — `lucide-react`
+  across the product chrome and ten SVGs traced from V1 (a *filled* pin
+  sitting next to hairline strokes) — which is what made the glyphs read as
+  assembled rather than drawn. Both are gone, replaced by
+  [Solar](https://www.figma.com/community/file/1166831539721848736)'s
+  `-linear` family: one 24×24 grid, a 1.5px stroke, rounded terminals, in the
+  register Linear and Craft use. The glyphs are baked into React components at
+  author time (`scripts/generate-icons.mjs` → `components/icons/`), so the SVG
+  paths land in review like any other source and the app ships no icon
+  runtime; the dozen shapes Solar has no linear equivalent for — a bare
+  checkmark, the `[[wiki link]]` brackets, the indent carets, the spinner —
+  are hand-drawn to the same spec beside them. One surface still holds out:
+  `@meowdown/react` draws its own in-editor chrome (the drag grips, the code
+  block's copy/edit actions, the link popover) with eight lucide glyphs of its
+  own, so closing that last gap is a change in the Meowdown repo.
+
 - Appearance, expanded. The theme picker gains two sober neutrals — Ash
   (white cards on a soft grey page, the Codex/Craft register) and Graphite
   (a flat neutral dark with no blue cast, where Cursor and Notion sit) —

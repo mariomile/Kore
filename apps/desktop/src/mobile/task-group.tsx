@@ -1,5 +1,5 @@
 import { Fragment, type ReactElement } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus } from '@/components/icons'
 import { groupTaskContexts, type OpenTask, type TaskGroup } from '@reflect/core'
 import { TaskBreadcrumbs } from '@/components/tasks/task-breadcrumbs'
 import { addTargetForGroup, taskGroupHeaderStyle } from '@/lib/tasks/task-group-presentation'

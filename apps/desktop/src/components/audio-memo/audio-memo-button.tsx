@@ -1,7 +1,6 @@
 import { useRef, type ComponentProps, type ReactElement } from 'react'
-import { Square } from 'lucide-react'
+import { Microphone, Stop } from '@/components/icons'
 import { RecordingPopover } from '@/components/audio-memo/recording-popover'
-import { MicIcon } from '@/components/icons/mic-icon'
 import { Button } from '@/components/ui/button'
 import { Popover } from '@/components/ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -53,7 +52,7 @@ export function AudioMemoButton(): ReactElement {
                 !memo.available && 'opacity-50 hover:bg-transparent hover:text-text-muted',
               )}
             >
-              <MicIcon className="size-5" />
+              <Microphone aria-hidden className="size-5" />
             </Button>
           }
         />
@@ -75,7 +74,7 @@ export function AudioMemoButton(): ReactElement {
           onClick={() => memo.toggle()}
           className="text-text-muted hover:text-text-secondary dark:hover:text-text"
         >
-          <MicIcon className="size-5" />
+          <Microphone aria-hidden className="size-5" />
         </Button>
         <RecordingPopover anchor={anchorRef} />
       </Popover>
@@ -101,9 +100,9 @@ export function AudioMemoButton(): ReactElement {
         }}
       >
         {memo.phase === 'error' ? (
-          <MicIcon className="size-5" />
+          <Microphone aria-hidden className="size-5" />
         ) : (
-          <Square aria-hidden fill="currentColor" className="size-3" />
+          <Stop aria-hidden fill="currentColor" className="size-3" />
         )}
       </Button>
       <RecordingPopover anchor={anchorRef} />

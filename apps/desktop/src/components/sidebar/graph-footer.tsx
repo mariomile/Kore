@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react'
 import type { GraphInfo } from '@reflect/core'
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
-import { Check, FolderOpen, LocateFixed, Settings } from 'lucide-react'
+import { Check, FolderOpen, Locate, Settings } from '@/components/icons'
 import { GraphSwatch } from '@/components/graph-swatch'
 import { ShortcutKeys } from '@/components/shortcut-keys'
 import { SidebarGlassTile } from '@/components/sidebar/sidebar-glass-tile'
@@ -182,7 +182,7 @@ export function GraphFooter({ graph, context }: GraphFooterProps): ReactElement 
             }}
             className={MENU_ITEM_CLASS}
           >
-            <LocateFixed aria-hidden className="size-3.5 shrink-0" />
+            <Locate aria-hidden className="size-3.5 shrink-0" />
             <span className="min-w-0 flex-1 truncate">Reveal graph in Finder</span>
           </DropdownMenuItem>
           {/* Graph switching re-roots every window; note windows hide it. */}

@@ -1,6 +1,6 @@
 import { useState, type ReactElement } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { BookOpenText, Bot, Trash2, TriangleAlert, UserRound } from 'lucide-react'
+import { AlertTriangle, Book, Bot, Trash, User } from '@/components/icons'
 import {
   AGENT_PENDING_MEMORY_PATH,
   AGENT_SHARED_FACTS_PATH,
@@ -197,7 +197,7 @@ export function AgentsScreen(): ReactElement {
 
       <section className="mt-6 rounded-xl border border-border bg-surface p-4">
         <div className="flex items-center gap-3">
-          <UserRound aria-hidden className="size-5 text-text-muted" />
+          <User aria-hidden className="size-5 text-text-muted" />
           <div className="min-w-0 flex-1">
             <h2 className="text-sm font-medium text-text">About you</h2>
             <p className="text-xs text-text-muted">
@@ -213,7 +213,7 @@ export function AgentsScreen(): ReactElement {
 
       <section className="mt-3 rounded-xl border border-border bg-surface p-4">
         <div className="flex items-center gap-3">
-          <BookOpenText aria-hidden className="size-5 text-text-muted" />
+          <Book aria-hidden className="size-5 text-text-muted" />
           <div className="min-w-0 flex-1">
             <h2 className="text-sm font-medium text-text">Shared memory</h2>
             <p className="text-xs text-text-muted">
@@ -282,7 +282,7 @@ export function AgentsScreen(): ReactElement {
                           key={index}
                           className="flex items-start gap-1.5 text-xs text-destructive"
                         >
-                          <TriangleAlert aria-hidden className="mt-0.5 size-3 shrink-0" />
+                          <AlertTriangle aria-hidden className="mt-0.5 size-3 shrink-0" />
                           <span>
                             Line {finding.line} {finding.reason}: “{finding.excerpt}”
                           </span>
@@ -388,7 +388,7 @@ export function AgentsScreen(): ReactElement {
                 className="ml-auto text-text-muted hover:text-destructive"
                 onClick={() => void remove(profile)}
               >
-                <Trash2 aria-hidden className="size-4" />
+                <Trash aria-hidden className="size-4" />
               </Button>
             </div>
           </div>

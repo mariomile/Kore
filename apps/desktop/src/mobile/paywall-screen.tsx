@@ -1,6 +1,6 @@
 import { useState, type ReactElement } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check } from 'lucide-react'
+import { Check } from '@/components/icons'
 import { toast } from '@/components/ui/toast'
 import { IAP_PRODUCT_IDS, iapGetProducts, iapPurchase, iapRestorePurchases } from '@reflect/core'
 import appIcon from '@/assets/app-icon.png'
@@ -269,7 +269,7 @@ function PlanCard({
           selected ? 'border-primary bg-primary text-primary-foreground' : 'border-border',
         )}
       >
-        {selected ? <Check className="size-3" strokeWidth={3} /> : null}
+        {selected ? <Check className="size-3" strokeWidth={2} /> : null}
       </span>
       <span className="flex flex-1 flex-col">
         <span className="text-sm font-medium">{title}</span>

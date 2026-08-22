@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { AlarmClock, Calendar, FileText, Pin, Star } from 'lucide-react'
+import { AlarmClock, Calendar, Note, Pin, Star } from '@/components/icons'
 import type { TaskGroup } from '@reflect/core'
 import type { InsertTaskTarget } from '@/lib/tasks/task-insert-target'
 import { insertTargetForTask, todaysDailyTarget } from '@/lib/tasks/task-navigation'
@@ -53,7 +53,7 @@ export function taskGroupHeaderStyle(group: TaskGroup): TaskGroupHeaderStyle {
             labelClass: 'text-text',
           }
         : {
-            icon: <FileText aria-hidden className="size-4" />,
+            icon: <Note aria-hidden className="size-4" />,
             iconClass: 'text-text-muted',
             labelClass: 'text-text-secondary',
           }

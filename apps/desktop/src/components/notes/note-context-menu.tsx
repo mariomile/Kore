@@ -2,15 +2,15 @@ import { useState, type ReactElement, type ReactNode } from 'react'
 import { isDaily } from '@reflect/core'
 import {
   ExternalLink,
-  FileDown,
   FolderOpen,
-  Link2,
+  Link,
   Lock,
   LockOpen,
+  NoteDownload,
   Pin,
   PinOff,
-  Trash2,
-} from 'lucide-react'
+  Trash,
+} from '@/components/icons'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -133,7 +133,7 @@ export function NoteContextMenu({ path, children }: NoteContextMenuProps): React
               await runCopyDeepLink(path, at)
             })}
           >
-            <Link2 aria-hidden />
+            <Link aria-hidden />
             Copy deep link
             {HINTS.deepLink === null ? null : (
               <ContextMenuShortcut>{HINTS.deepLink}</ContextMenuShortcut>
@@ -153,7 +153,7 @@ export function NoteContextMenu({ path, children }: NoteContextMenuProps): React
               await runNoteExport(path, at)
             })}
           >
-            <FileDown aria-hidden />
+            <NoteDownload aria-hidden />
             Export as HTML…
           </ContextMenuItem>
 
@@ -166,7 +166,7 @@ export function NoteContextMenu({ path, children }: NoteContextMenuProps): React
                   setConfirmingTrash(true)
                 }}
               >
-                <Trash2 aria-hidden />
+                <Trash aria-hidden />
                 Move to Trash
               </ContextMenuItem>
             </>

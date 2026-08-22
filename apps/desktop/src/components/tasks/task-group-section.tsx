@@ -1,5 +1,5 @@
 import { Fragment, type MutableRefObject, type ReactElement } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus } from '@/components/icons'
 import { groupTaskContexts, type OpenTask, type TaskGroup } from '@reflect/core'
 import { addTargetForGroup, taskGroupHeaderStyle } from '@/lib/tasks/task-group-presentation'
 import type { InsertTaskTarget } from '@/lib/tasks/task-insert-target'

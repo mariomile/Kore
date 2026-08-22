@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { Circle, CircleCheck } from 'lucide-react'
+import { CheckCircle, Circle } from '@/components/icons'
 import type { OpenTask } from '@reflect/core'
 import { getIsComposing } from '@meowdown/core'
 import { TaskText } from '@/components/tasks/task-text'
@@ -51,9 +51,9 @@ export function MobileTaskRow({ task, showSource, onEdit }: MobileTaskRowProps):
         className="flex shrink-0 self-stretch items-center pl-4 pr-3 text-text-muted disabled:opacity-50"
       >
         {task.checked ? (
-          <CircleCheck aria-hidden className="size-5 text-accent" strokeWidth={2} />
+          <CheckCircle aria-hidden className="size-5 text-accent" />
         ) : (
-          <Circle aria-hidden className="size-5" strokeWidth={2} />
+          <Circle aria-hidden className="size-5" />
         )}
       </button>
       {/* A div with the button role, not a real <button>: the markdown inside

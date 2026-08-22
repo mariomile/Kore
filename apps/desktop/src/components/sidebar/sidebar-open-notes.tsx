@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { FileText, Pin, X } from 'lucide-react'
+import { Close, Note, Pin } from '@/components/icons'
 import { useOpenTabNotes } from '@/hooks/use-open-tab-notes'
 import { cn } from '@/lib/utils'
 import { useOpenTabs } from '@/providers/open-tabs-provider'
@@ -40,7 +40,7 @@ export function SidebarOpenNotes(): ReactElement | null {
               {note.pinned ? (
                 <Pin aria-hidden className="size-3.5 shrink-0 text-text-muted" />
               ) : (
-                <FileText aria-hidden className="size-3.5 shrink-0 text-text-muted" />
+                <Note aria-hidden className="size-3.5 shrink-0 text-text-muted" />
               )}
               <span className="min-w-0 truncate">{note.title}</span>
             </button>
@@ -52,7 +52,7 @@ export function SidebarOpenNotes(): ReactElement | null {
               }}
               className="absolute right-1.5 top-1/2 flex size-4 -translate-y-1/2 items-center justify-center rounded text-text-muted opacity-0 transition-[color,background-color,opacity] duration-150 ease-swift hover:bg-surface-active hover:text-text focus-visible:opacity-100 group-hover:opacity-100"
             >
-              <X aria-hidden className="size-3" />
+              <Close aria-hidden className="size-3" />
             </button>
           </li>
         ))}

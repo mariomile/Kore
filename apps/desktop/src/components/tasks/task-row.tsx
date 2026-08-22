@@ -5,7 +5,7 @@ import {
   type MutableRefObject,
   type ReactElement,
 } from 'react'
-import { Circle, CircleCheck } from 'lucide-react'
+import { CheckCircle, Circle } from '@/components/icons'
 import type { OpenTask } from '@reflect/core'
 import { getIsComposing } from '@meowdown/core'
 import { formatDayLabel } from '@/lib/dates'
@@ -152,9 +152,9 @@ export function TaskRow({
         className="flex h-6 shrink-0 items-center text-text-muted transition-colors hover:text-text focus-visible:text-text focus-visible:outline-none disabled:cursor-default"
       >
         {done ? (
-          <CircleCheck aria-hidden className="size-[18px] text-accent" strokeWidth={2} />
+          <CheckCircle aria-hidden className="size-[18px] text-accent" />
         ) : (
-          <Circle aria-hidden className="size-[18px]" strokeWidth={2} />
+          <Circle aria-hidden className="size-[18px]" />
         )}
       </button>
       {editing ? (

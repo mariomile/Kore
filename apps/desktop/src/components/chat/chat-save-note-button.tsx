@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from 'react'
-import { FilePlus2 } from 'lucide-react'
+import { NotePlus } from '@/components/icons'
 import { createNoteWithTitle, errorMessage } from '@reflect/core'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -53,7 +53,7 @@ export function ChatSaveNoteButton({ userText, text }: ChatSaveNoteButtonProps):
             onClick={() => void saveReply()}
             className="size-5 rounded-md text-text-muted hover:text-text"
           >
-            <FilePlus2 aria-hidden className="size-3" />
+            <NotePlus aria-hidden className="size-3" />
           </Button>
         }
       />

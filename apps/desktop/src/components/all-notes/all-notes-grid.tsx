@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react'
 import type { NoteListEntry } from '@reflect/core'
-import { Pin } from 'lucide-react'
+import { Pin } from '@/components/icons'
 import { NoteContextMenu } from '@/components/notes/note-context-menu'
 import { formatRecencyLabel } from '@/lib/dates'
 import type { ModClickEvent } from '@/lib/windows/open-in-new-window'

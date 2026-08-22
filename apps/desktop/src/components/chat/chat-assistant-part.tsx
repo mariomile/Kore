@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { CornerDownRight } from 'lucide-react'
+import { CornerDownRight } from '@/components/icons'
 import { parseNoteDirectives, type AssistantPart, type ChatTurn } from '@reflect/core'
 import { Bubble, BubbleContent } from '@/components/ui/bubble'
 import { Marker, MarkerContent } from '@/components/ui/marker'

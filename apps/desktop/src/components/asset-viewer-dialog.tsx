@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { ExternalLink } from 'lucide-react'
+import { ExternalLink } from '@/components/icons'
 import { CsvAssetView, DocxAssetView, TextAssetView } from '@/components/asset-viewer-views'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'

@@ -2,16 +2,16 @@ import type { ReactElement } from 'react'
 import {
   ArrowDown,
   ArrowUp,
-  Brackets,
+  Checklist,
   ChevronDown,
   Hash,
   Image as ImageIcon,
   IndentDecrease,
   IndentIncrease,
   List,
-  ListTodo,
   Slash,
-} from 'lucide-react'
+  WikiLink,
+} from '@/components/icons'
 import { useFormattingToolbar } from '@/editor/formatting-toolbar-store'
 import { pickFiles } from '@/lib/pick-files'
 import { hapticImpactLight } from '@/mobile/haptics'
@@ -60,12 +60,12 @@ export function MobileFormattingToolbar(): ReactElement | null {
         />
         <ToolbarButton
           label="Cycle checklist and task"
-          icon={<ListTodo className="size-5" />}
+          icon={<Checklist className="size-5" />}
           onPress={commands.cycleCheckableList}
         />
         <ToolbarButton
           label="Link note"
-          icon={<Brackets className="size-5" />}
+          icon={<WikiLink className="size-5" />}
           onPress={() => commands.insertTrigger('[[')}
         />
         <ToolbarButton

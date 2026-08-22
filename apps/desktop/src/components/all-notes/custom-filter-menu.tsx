@@ -1,6 +1,6 @@
 import { useState, type ReactElement } from 'react'
 import { foldTag, isTagName, type NoteTagFacet } from '@reflect/core'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown } from '@/components/icons'
 import {
   Command,
   CommandEmpty,

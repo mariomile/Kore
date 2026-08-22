@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from 'react'
-import { ChevronRight } from 'lucide-react'
+import { ChevronRight } from '@/components/icons'
 import type { WikilinkClickHandler } from '@meowdown/core'
 import { BacklinkSnippet } from '@/components/backlink-snippet'
 import type { BacklinkSource } from '@/lib/group-backlinks'

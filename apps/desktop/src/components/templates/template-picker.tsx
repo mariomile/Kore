@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { listTemplates } from '@reflect/core'
-import { FilePlus2, LayoutTemplate } from 'lucide-react'
+import { LayoutTemplate, NotePlus } from '@/components/icons'
 import {
   CommandDialog,
   CommandEmpty,
@@ -91,7 +91,7 @@ export function TemplatePicker({ context }: TemplatePickerProps): ReactElement |
         ) : null}
         <CommandGroup forceMount>
           <CommandItem forceMount value="new-template" onSelect={openTemplateCreate}>
-            <FilePlus2 aria-hidden className="text-text-muted" />
+            <NotePlus aria-hidden className="text-text-muted" />
             New template
           </CommandItem>
         </CommandGroup>

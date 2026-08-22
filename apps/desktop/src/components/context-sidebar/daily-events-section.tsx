@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from 'react'
-import { Plus } from 'lucide-react'
+import { Plus } from '@/components/icons'
 import type { CalendarEvent } from '@reflect/core'
 import { formatTimeOfDay } from '@/lib/dates'
 import { useCalendarChangeInvalidation, useDayEvents } from '@/lib/use-calendar'

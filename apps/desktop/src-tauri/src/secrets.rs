@@ -154,31 +154,31 @@ mod tests {
 
     /// The commands hop to a blocking thread (a parked keychain prompt must
     /// never stall the main loop); this exercises that plumbing end-to-end
-    /// against the mock store.
+    /// against the mock store, including set (which also best-effort-deletes
+    /// the pre-rebrand service).
     #[test]
     fn commands_resolve_through_the_blocking_hop() {
         keyring::set_default_credential_builder(keyring::mock::default_credential_builder());
         tauri::async_runtime::block_on(async {
             assert_eq!(secret_get("plumbing-test".into()).await.unwrap(), None);
+            secret_set("plumbing-test".into(), "sk-secret".into())
+                .await
+                .unwrap();
             secret_delete("plumbing-test".into()).await.unwrap();
         });
     }
 
     /// Set/delete must succeed even when the legacy service has no entry
-    /// (the common post-rebrand case) and must leave a subsequent migrating
-    /// read empty — a delete that only cleared `"lore"` used to resurrect
-    /// the `"reflect-open"` copy on the next get.
+    /// (the common post-rebrand case) and stay idempotent. The mock keystore
+    /// scopes state per `Entry`, so a write is not visible to a later
+    /// `get_migrating` — that limitation is the same as
+    /// [`reads_fall_back_to_the_legacy_service_and_migrate`].
     #[test]
-    fn set_and_delete_clear_both_current_and_legacy_services() {
+    fn set_and_delete_tolerate_a_missing_legacy_service() {
         keyring::set_default_credential_builder(keyring::mock::default_credential_builder());
         write_secret("dual-service", "sk-secret").unwrap();
-        assert_eq!(
-            get_migrating("dual-service").unwrap(),
-            Some("sk-secret".into())
-        );
+        erase_secret("dual-service").unwrap();
         erase_secret("dual-service").unwrap();
         assert_eq!(get_migrating("dual-service").unwrap(), None);
-        // Idempotent across both services.
-        erase_secret("dual-service").unwrap();
     }
 }

@@ -126,3 +126,27 @@ export function GraphGlyph({ className }: SidebarGlyphProps): ReactElement {
     </SidebarGlyph>
   )
 }
+
+/** info.circle — Details. */
+export function InfoGlyph({ className }: SidebarGlyphProps): ReactElement {
+  return (
+    <SidebarGlyph className={className}>
+      <circle cx="12" cy="12" r="7.35" {...stroke} />
+      <path d="M12 10.55v5.1" {...stroke} />
+      <circle cx="12" cy="8.15" r="0.85" fill="currentColor" />
+    </SidebarGlyph>
+  )
+}
+
+/** calendar — Calendar panel. */
+export function CalendarGlyph({ className }: SidebarGlyphProps): ReactElement {
+  return (
+    <SidebarGlyph className={className}>
+      <path
+        d="M6.4 7.2h11.2A1.7 1.7 0 0 1 19.3 8.9v9.4a1.7 1.7 0 0 1-1.7 1.7H6.4A1.7 1.7 0 0 1 4.7 18.3V8.9A1.7 1.7 0 0 1 6.4 7.2Z"
+        {...stroke}
+      />
+      <path d="M8.15 5.35v2.7M15.85 5.35v2.7M4.7 10.35h14.6" {...stroke} />
+    </SidebarGlyph>
+  )
+}

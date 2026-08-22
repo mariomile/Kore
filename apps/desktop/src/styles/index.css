@@ -695,7 +695,8 @@ button:hover .sidebar-glass-tile {
   color: var(--text);
 }
 
-button[aria-current='page'] .sidebar-glass-tile {
+button[aria-current='page'] .sidebar-glass-tile,
+button[aria-selected='true'] .sidebar-glass-tile {
   color: var(--accent);
   background:
     linear-gradient(180deg, color-mix(in oklab, white 55%, transparent) 0%, transparent 50%),
@@ -703,7 +704,8 @@ button[aria-current='page'] .sidebar-glass-tile {
   outline-color: color-mix(in oklab, var(--accent) 22%, transparent);
 }
 
-.dark button[aria-current='page'] .sidebar-glass-tile {
+.dark button[aria-current='page'] .sidebar-glass-tile,
+.dark button[aria-selected='true'] .sidebar-glass-tile {
   background:
     linear-gradient(180deg, color-mix(in oklab, white 20%, transparent) 0%, transparent 48%),
     color-mix(in oklab, var(--accent) 22%, transparent);

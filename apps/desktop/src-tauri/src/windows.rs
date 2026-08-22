@@ -638,10 +638,10 @@ const QUICK_CAPTURE_SHORTCUT: &str = "CommandOrControl+Shift+Space";
 /// follow the frontend schema's `.catch(true)`.
 #[cfg(desktop)]
 fn quick_capture_enabled(settings: &crate::settings::SettingsDoc) -> bool {
-    match settings.get("quickCaptureEnabled") {
-        Some(serde_json::Value::Bool(false)) => false,
-        _ => true,
-    }
+    !matches!(
+        settings.get("quickCaptureEnabled"),
+        Some(serde_json::Value::Bool(false))
+    )
 }
 
 /// Register or drop the system-wide shortcut to match the saved setting.

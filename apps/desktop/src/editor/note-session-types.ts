@@ -119,7 +119,7 @@ export interface NoteSession {
   retarget: (to: string) => void
   /** Read the note and emit `ready` (or `error`). Call once after creation. */
   load: () => void
-  /** Every editor document change enters the pipeline here. */
+  /** Every editor document change enters the pipeline here. Completing a `@repeat` task via the in-editor checkbox also appends the next occurrence. */
   editorChanged: (markdown: string) => void
   /** The watcher reported an on-disk change to this note; reconcile. */
   externalChanged: () => void

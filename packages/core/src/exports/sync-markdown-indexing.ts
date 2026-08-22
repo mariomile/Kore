@@ -182,6 +182,7 @@ export {
   taskContentPriority,
   taskRawPriority,
   withTaskContentPriority,
+  nextOccurrenceAppends,
   nextOccurrenceContent,
   nextOccurrenceDate,
   taskContentDueDate,

@@ -122,6 +122,7 @@ export {
   type LinkedNoteRank,
 } from './insights'
 export {
+  nextOccurrenceAppends,
   nextOccurrenceContent,
   nextOccurrenceDate,
   taskContentDueDate,

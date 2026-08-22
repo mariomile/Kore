@@ -15,15 +15,13 @@ customization effort.
   ⌘-Enter queues there instead of injecting (`cliProviderSteerMode`).
   Revisit when either grows a streaming-input session.
 
-## Backlog
-
-- **Recurring-task respawn from the editor checkbox** — completing a
-  repeat task by clicking its checkbox inside the note editor doesn't spawn
-  the next occurrence (meowdown exposes no editor-side task-toggle
-  callback); Tasks-view completions now spawn in every case, live session
-  included.
-
 ## Shipped (this fork)
+
+- Recurring-task respawn from the editor checkbox: completing a `@repeat`
+  task by clicking its checkbox inside the note editor now appends the next
+  occurrence, matching Tasks-view completions. Meowdown still has no
+  editor-side task-toggle callback; the session diffs the pre/post buffers
+  for a checkbox-only completion and appends through the live buffer.
 
 - Steering a turn in flight. ⌘-Enter in the composer delivers a message
   into the *running* Claude Code session instead of cancelling it: the CLI

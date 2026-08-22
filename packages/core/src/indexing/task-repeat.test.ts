@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  nextOccurrenceAppends,
   nextOccurrenceContent,
   nextOccurrenceDate,
   taskContentDueDate,
@@ -90,5 +91,90 @@ describe('nextOccurrenceContent', () => {
     expect(
       nextOccurrenceContent('water plants @repeat(daily)', { every: 1, unit: 'day' }, '2026-06-14'),
     ).toBe('water plants @repeat(daily) [[2026-06-15]]')
+  })
+})
+
+describe('nextOccurrenceAppends', () => {
+  const today = '2026-08-22'
+
+  it('spawns the next occurrence when a round checkbox is completed', () => {
+    expect(
+      nextOccurrenceAppends(
+        '+ [ ] water plants @repeat(daily)\n',
+        '+ [x] water plants @repeat(daily)\n',
+        today,
+      ),
+    ).toEqual(['+ [ ] water plants @repeat(daily) [[2026-08-23]]'])
+  })
+
+  it('advances an existing due-date link', () => {
+    expect(
+      nextOccurrenceAppends(
+        '+ [ ] pay rent [[2026-07-01]] @repeat(monthly)\n',
+        '+ [x] pay rent [[2026-07-01]] @repeat(monthly)\n',
+        today,
+      ),
+    ).toEqual(['+ [ ] pay rent [[2026-09-01]] @repeat(monthly)'])
+  })
+
+  it('does not spawn on reopen', () => {
+    expect(
+      nextOccurrenceAppends(
+        '+ [x] water plants @repeat(daily)\n',
+        '+ [ ] water plants @repeat(daily)\n',
+        today,
+      ),
+    ).toEqual([])
+  })
+
+  it('does not spawn when the rest of the line also changed', () => {
+    expect(
+      nextOccurrenceAppends(
+        '+ [ ] water plants @repeat(daily)\n',
+        '+ [x] water plants @repeat(weekly)\n',
+        today,
+      ),
+    ).toEqual([])
+  })
+
+  it('does not spawn when an offset shift is the only match', () => {
+    expect(
+      nextOccurrenceAppends(
+        'gone\n+ [ ] water plants @repeat(daily)\n',
+        '+ [x] water plants @repeat(daily)\n',
+        today,
+      ),
+    ).toEqual([])
+  })
+
+  it('does not spawn a newly pasted already-checked task', () => {
+    expect(nextOccurrenceAppends('', '+ [x] water plants @repeat(daily)\n', today)).toEqual([])
+  })
+
+  it('ignores square GFM checkboxes', () => {
+    expect(
+      nextOccurrenceAppends(
+        '- [ ] water plants @repeat(daily)\n',
+        '- [x] water plants @repeat(daily)\n',
+        today,
+      ),
+    ).toEqual([])
+  })
+
+  it('does not spawn for a task with no repeat token', () => {
+    expect(nextOccurrenceAppends('+ [ ] buy milk\n', '+ [x] buy milk\n', today)).toEqual([])
+  })
+
+  it('spawns once per completed repeat task in the same change', () => {
+    expect(
+      nextOccurrenceAppends(
+        '+ [ ] water @repeat(daily)\n+ [ ] meds @repeat(daily)\n',
+        '+ [x] water @repeat(daily)\n+ [x] meds @repeat(daily)\n',
+        today,
+      ),
+    ).toEqual([
+      '+ [ ] water @repeat(daily) [[2026-08-23]]',
+      '+ [ ] meds @repeat(daily) [[2026-08-23]]',
+    ])
   })
 })

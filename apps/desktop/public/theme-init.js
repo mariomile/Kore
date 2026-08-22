@@ -53,12 +53,9 @@
   // is deliberately absent: an unset attribute *is* the default.
   const RADII = ['sharp', 'small', 'round']
   const GLASS_LEVELS = ['subtle', 'regular', 'strong']
-  // Keep in sync with DENSITY_METRICS in packages/core/src/settings/schema.ts.
-  const DENSITY = {
-    compact: ['40px', '0.25rem'],
-    default: ['48px', '0.375rem'],
-    comfortable: ['56px', '0.5rem'],
-  }
+  // Like RADII: `default` declares no scope, so an unset attribute is the
+  // default and the values live entirely in the design system's CSS.
+  const DENSITIES = ['compact', 'comfortable']
 
   function cached(key, allowed) {
     try {
@@ -83,10 +80,10 @@
   if (radius) {
     document.documentElement.setAttribute('data-radius', radius)
   }
-  const density = cached(DENSITY_KEY, Object.keys(DENSITY)) ?? 'default'
-  document.documentElement.setAttribute('data-density', density)
-  document.documentElement.style.setProperty('--row-height', DENSITY[density][0])
-  document.documentElement.style.setProperty('--nav-padding-y', DENSITY[density][1])
+  const density = cached(DENSITY_KEY, DENSITIES)
+  if (density) {
+    document.documentElement.setAttribute('data-density', density)
+  }
   if (cached(GLASS_KEY, ['on', 'off']) === 'on') {
     document.documentElement.setAttribute('data-glass', 'on')
     document.documentElement.setAttribute(

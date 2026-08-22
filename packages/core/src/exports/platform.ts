@@ -245,7 +245,7 @@ export {
   uiRadiusSchema,
   uiDensitySchema,
   UI_DENSITY_IDS,
-  DENSITY_METRICS,
+  DENSITY_ROW_HEIGHT,
   UI_RADIUS_IDS,
   timeFormatSchema,
   dateFormatSchema,

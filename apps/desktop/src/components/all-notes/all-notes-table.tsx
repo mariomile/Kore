@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, type MouseEvent, type ReactElement } from 'react'
 import { Virtualizer, type VirtualizerHandle } from 'virtua'
-import { DENSITY_METRICS, type NoteListEntry } from '@reflect/core'
+import { DENSITY_ROW_HEIGHT, type NoteListEntry } from '@reflect/core'
 import type { ListSelection } from '@/lib/selection/use-list-selection'
 import { cn } from '@/lib/utils'
 import { useSettings } from '@/providers/settings-provider'
@@ -39,14 +39,13 @@ export function AllNotesTable({
   onOpen,
   registerScrollToIndex,
 }: AllNotesTableProps): ReactElement | null {
-  // The same number the row's `h-(--row-height)` resolves to: the theme
-  // provider writes that custom property from this map, so the virtualizer's
-  // idea of a row and the row's actual height cannot drift apart.
+  // The same number the row's `h-(--row-height)` resolves to — the design
+  // system's density scope and this map are held equal by a token test.
   // `?? default` rather than a bare index: this feeds the virtualizer's
   // `itemSize`, and falling back to the house height is a layout that looks
   // slightly wrong, where throwing is a blank screen.
   const density = useSettings().settings.uiDensity
-  const rowHeight = (DENSITY_METRICS[density] ?? DENSITY_METRICS.default).rowHeight
+  const rowHeight = DENSITY_ROW_HEIGHT[density] ?? DENSITY_ROW_HEIGHT.default
   const rows = notes ?? []
   const { clickSelect, isSelected } = selection
   const virtualizerRef = useRef<VirtualizerHandle>(null)

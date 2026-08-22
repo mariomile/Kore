@@ -323,9 +323,10 @@ export const UI_RADIUS_IDS = uiRadiusEnum.options
  * spacing token": the app styles with Tailwind utilities, not the design
  * system's `--space-*` scale (which it never reads), and rescaling Tailwind's
  * base unit would also resize icons and desync the list virtualizers, whose
- * row heights are numbers in JS. So density drives a small set of named
- * metrics that both the stylesheet and those virtualizers read from
- * {@link DENSITY_METRICS} — one source of truth, no way to drift.
+ * row heights are numbers in JS. So density is a `data-density` scope in the
+ * design system (`spacing.css`), like the radius setting — plus
+ * {@link DENSITY_ROW_HEIGHT} for the one consumer that needs the value as a
+ * number. A token test asserts the two stay equal.
  */
 const uiDensityEnum = z.enum(['compact', 'default', 'comfortable'])
 
@@ -337,16 +338,16 @@ export type UiDensity = z.infer<typeof uiDensitySchema>
 export const UI_DENSITY_IDS = uiDensityEnum.options
 
 /**
- * What each density is, in numbers. `rowHeight` is a plain pixel count
- * because the All Notes virtualizer needs it as one: it feeds `itemSize`, and
- * a row that renders taller than the virtualizer believes overlaps its
- * neighbour. The CSS side reads the same value through a custom property the
- * theme provider writes, so the two cannot disagree.
+ * Each density's list-row height, in pixels. The CSS side owns the same value
+ * through the `[data-density]` scopes in `spacing.css`; this map exists for
+ * the All Notes virtualizer, which needs it as a number (it feeds `itemSize`,
+ * and a row that renders taller than the virtualizer believes overlaps its
+ * neighbour). `theme-tokens.test.ts` fails the build if the two drift.
  */
-export const DENSITY_METRICS: Record<UiDensity, { rowHeight: number; navPaddingY: string }> = {
-  compact: { rowHeight: 40, navPaddingY: '0.25rem' },
-  default: { rowHeight: 48, navPaddingY: '0.375rem' },
-  comfortable: { rowHeight: 56, navPaddingY: '0.5rem' },
+export const DENSITY_ROW_HEIGHT: Record<UiDensity, number> = {
+  compact: 40,
+  default: 48,
+  comfortable: 56,
 }
 
 /**

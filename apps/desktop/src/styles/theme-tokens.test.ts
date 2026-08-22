@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import {
   ACCENT_COLOR_IDS,
+  DENSITY_ROW_HEIGHT,
   ACCENT_SWATCH_HEX,
   DARK_THEME_IDS,
   THEME_PREFERENCE_IDS,
@@ -114,6 +115,24 @@ describe('theme tokens', () => {
         continue
       }
       expect(SPACING, radius).toContain(`[data-radius='${radius}']`)
+    }
+  })
+
+  it('defines a density scope for every step but the default, with the JS number', () => {
+    // The All Notes virtualizer reads DENSITY_ROW_HEIGHT as a number while the
+    // row's height comes from the CSS scope; if the two drift, rows overlap.
+    for (const [density, rowHeight] of Object.entries(DENSITY_ROW_HEIGHT)) {
+      if (density === 'default') {
+        expect(SPACING).not.toContain(`[data-density='${density}']`)
+        // The default is the base :root value.
+        expect(SPACING).toContain(`--row-height: ${rowHeight}px`)
+        continue
+      }
+      const scope = new RegExp(String.raw`\[data-density='${density}']\s*\{([^}]*)}`).exec(
+        SPACING,
+      )?.[1]
+      expect(scope, density).toBeDefined()
+      expect(scope, density).toContain(`--row-height: ${rowHeight}px`)
     }
   })
 

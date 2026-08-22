@@ -18,11 +18,9 @@ const searchWithFilters = vi.hoisted(() => vi.fn())
 const listNoteTags = vi.hoisted(() => vi.fn())
 const hapticImpactLight = vi.hoisted(() => vi.fn())
 const updateSettings = vi.hoisted(() => vi.fn())
-const settingsState = vi.hoisted(
-  (): { allNotesView: 'list' | 'grid' } => ({
-    allNotesView: 'list',
-  }),
-)
+const settingsState = vi.hoisted((): { allNotesView: 'list' | 'grid' } => ({
+  allNotesView: 'list',
+}))
 
 vi.mock('@reflect/core', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@reflect/core')>()),
@@ -159,8 +157,8 @@ describe('MobileAllNotes grid view', () => {
     await renderScreen()
 
     await expect.element(page.getByTestId('all-notes-grid')).toBeInTheDocument()
-    expect(
-      page.getByTestId('all-notes-grid').element().querySelector('mark')?.textContent,
-    ).toBe('Health')
+    expect(page.getByTestId('all-notes-grid').element().querySelector('mark')?.textContent).toBe(
+      'Health',
+    )
   })
 })

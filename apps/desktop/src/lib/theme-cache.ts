@@ -19,6 +19,20 @@ import type {
 export const THEME_PREFERENCE_CACHE_KEY = 'reflect.theme.preference'
 
 /**
+ * Best-effort mirror shared by every writer below: the settings document is
+ * the source of truth, this is only the pre-paint copy, so an unavailable
+ * localStorage (webview storage off, private mode) degrades to "the first
+ * frame paints the default" rather than an error.
+ */
+function mirror(key: string, value: string): void {
+  try {
+    localStorage.setItem(key, value)
+  } catch {
+    // Storage is unavailable; theme-init.js falls back to its default.
+  }
+}
+
+/**
  * Mirror the persisted theme preference so the next launch can apply it before
  * the frontend boots.
  *
@@ -28,11 +42,7 @@ export const THEME_PREFERENCE_CACHE_KEY = 'reflect.theme.preference'
  * with storage unavailable just falls back to the OS preference.
  */
 export function writeCachedThemePreference(preference: ThemePreference): void {
-  try {
-    localStorage.setItem(THEME_PREFERENCE_CACHE_KEY, preference)
-  } catch {
-    // Storage is unavailable; theme-init.js falls back to `prefers-color-scheme`.
-  }
+  mirror(THEME_PREFERENCE_CACHE_KEY, preference)
 }
 
 /**
@@ -48,11 +58,7 @@ export const THEME_ACCENT_CACHE_KEY = 'reflect.theme.accent'
  * just paints the default (indigo) accent until settings load.
  */
 export function writeCachedAccentColor(accentColor: AccentColor): void {
-  try {
-    localStorage.setItem(THEME_ACCENT_CACHE_KEY, accentColor)
-  } catch {
-    // Storage is unavailable; theme-init.js paints the default accent.
-  }
+  mirror(THEME_ACCENT_CACHE_KEY, accentColor)
 }
 
 /**
@@ -69,11 +75,7 @@ export const THEME_GLASS_CACHE_KEY = 'reflect.theme.glass'
  * unreadable cache just paints opaque surfaces until settings load.
  */
 export function writeCachedLiquidGlass(enabled: boolean): void {
-  try {
-    localStorage.setItem(THEME_GLASS_CACHE_KEY, enabled ? 'on' : 'off')
-  } catch {
-    // Storage is unavailable; the first frame paints without glass.
-  }
+  mirror(THEME_GLASS_CACHE_KEY, enabled ? 'on' : 'off')
 }
 
 /**
@@ -91,11 +93,7 @@ export const THEME_RADIUS_CACHE_KEY = 'reflect.theme.radius'
  * mirrors; an unreadable cache paints the house 8px default.
  */
 export function writeCachedUiRadius(radius: UiRadius): void {
-  try {
-    localStorage.setItem(THEME_RADIUS_CACHE_KEY, radius)
-  } catch {
-    // Storage is unavailable; the first frame paints the default radius.
-  }
+  mirror(THEME_RADIUS_CACHE_KEY, radius)
 }
 
 /**
@@ -111,11 +109,7 @@ export const THEME_GLASS_LEVEL_CACHE_KEY = 'reflect.theme.glass-level'
  * mirror says `on`; an unreadable cache paints the `regular` intensity.
  */
 export function writeCachedGlassIntensity(intensity: GlassIntensity): void {
-  try {
-    localStorage.setItem(THEME_GLASS_LEVEL_CACHE_KEY, intensity)
-  } catch {
-    // Storage is unavailable; the first frame paints the regular intensity.
-  }
+  mirror(THEME_GLASS_LEVEL_CACHE_KEY, intensity)
 }
 
 /**
@@ -131,9 +125,5 @@ export const THEME_DENSITY_CACHE_KEY = 'reflect.theme.density'
  * paints the default density until settings load.
  */
 export function writeCachedUiDensity(density: UiDensity): void {
-  try {
-    localStorage.setItem(THEME_DENSITY_CACHE_KEY, density)
-  } catch {
-    // Storage is unavailable; the first frame paints the default density.
-  }
+  mirror(THEME_DENSITY_CACHE_KEY, density)
 }

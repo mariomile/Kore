@@ -1,11 +1,17 @@
 import { useCallback, useState, type ReactElement } from 'react'
 import { Undo2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogFooter, DialogTitle } from '@/components/ui/dialog'
-import { INPUT_CLASS_NAME } from '@/components/ui/input'
+import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { useVaultReplaceDialog } from '@/providers/vault-replace-provider'
-import { useVaultReplace, type ReplaceScope, type ScanResult } from '@/lib/notes/use-vault-replace'
+import {
+  EMPTY_SCAN,
+  useVaultReplace,
+  type ReplaceScope,
+  type ScanResult,
+} from '@/lib/notes/use-vault-replace'
 
 interface VaultReplaceDialogProps {
   open: boolean
@@ -13,8 +19,6 @@ interface VaultReplaceDialogProps {
   /** Prefill the needle — the note find bar hands its query over. */
   seed?: string
 }
-
-const EMPTY: ScanResult = { notes: [], changeable: 0, liveMatches: 0, skippedMatches: 0 }
 
 /**
  * Replace across every note.
@@ -56,8 +60,7 @@ export function VaultReplaceDialog({
     preview.scope.needle === needle &&
     preview.scope.matchCase === matchCase &&
     preview.scope.wholeWord === wholeWord
-  const result = describesNow ? preview.result : EMPTY
-  const scanned = describesNow
+  const result = describesNow ? preview.result : EMPTY_SCAN
 
   const runScan = useCallback(
     async (next: ReplaceScope) => {
@@ -67,7 +70,7 @@ export function VaultReplaceDialog({
   )
 
   const blocked = result.notes.filter((note) => note.blocked !== null)
-  const ready = scanned && result.changeable > 0
+  const ready = describesNow && result.changeable > 0
 
   return (
     <Dialog open={open} onOpenChange={isBusy ? () => {} : onOpenChange}>
@@ -84,36 +87,32 @@ export function VaultReplaceDialog({
           }}
         >
           <div className="grid grid-cols-2 gap-2">
-            <input
+            <Input
               autoFocus
               aria-label="Find"
               placeholder="Find"
-              className={INPUT_CLASS_NAME}
               value={needle}
               onChange={(event) => setNeedle(event.target.value)}
             />
-            <input
+            <Input
               aria-label="Replace with"
               placeholder="Replace with"
-              className={INPUT_CLASS_NAME}
               value={replacement}
               onChange={(event) => setReplacement(event.target.value)}
             />
           </div>
           <div className="flex flex-wrap items-center gap-4 text-xs text-text-secondary">
             <label className="flex cursor-pointer items-center gap-1.5">
-              <input
-                type="checkbox"
+              <Checkbox
                 checked={matchCase}
-                onChange={(event) => setMatchCase(event.target.checked)}
+                onCheckedChange={(next) => setMatchCase(next === true)}
               />
               Match case
             </label>
             <label className="flex cursor-pointer items-center gap-1.5">
-              <input
-                type="checkbox"
+              <Checkbox
                 checked={wholeWord}
-                onChange={(event) => setWholeWord(event.target.checked)}
+                onCheckedChange={(next) => setWholeWord(next === true)}
               />
               Whole word
             </label>
@@ -129,7 +128,7 @@ export function VaultReplaceDialog({
         </form>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
-          {!scanned ? (
+          {!describesNow ? (
             <p className="text-sm text-text-muted">
               Nothing is written until you preview and confirm. Code, link targets, frontmatter and
               each note&rsquo;s own title are never rewritten.

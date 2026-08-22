@@ -290,6 +290,13 @@ export function streamCodexCliChat(options: StreamCliChatOptions): AsyncGenerato
     startFailureMessage: 'Could not start the Codex CLI.',
     signal: options.signal,
     onRawLine: async (line, sendLine) => {
+      // The handshake lives in the stream's first couple of lines; once the
+      // thread and turn ids are known there is nothing left to look for, and
+      // parsing every delta line a second time would shadow `parseLine`'s
+      // work for the rest of the turn.
+      if (sentTurnStart && turnId !== undefined) {
+        return
+      }
       let parsed: unknown
       try {
         parsed = JSON.parse(line)

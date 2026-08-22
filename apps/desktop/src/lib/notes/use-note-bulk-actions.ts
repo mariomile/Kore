@@ -1,12 +1,11 @@
 import { useCallback, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { appendBodyTag, errorMessage, writeNote } from '@reflect/core'
+import { appendBodyTag, writeNote } from '@reflect/core'
 import { moveNoteCarryingSession } from '@/editor/move-note'
 import { openSession } from '@/editor/open-documents'
 import { readNoteSource } from '@/lib/note-frontmatter'
-import { startOperation } from '@/lib/operations'
 import { useGraph } from '@/providers/graph-provider'
-import { allNotesListPrefix } from './all-notes-query'
+import { runNoteBatch } from './note-batch'
 
 export interface BulkOutcome {
   /** Notes the action actually changed. */
@@ -71,41 +70,31 @@ export function useNoteBulkActions(): NoteBulkActions {
       paths: readonly string[],
       each: (path: string, generation: number) => Promise<'changed' | 'skipped'>,
     ): Promise<BulkOutcome> => {
-      const empty: BulkOutcome = { changed: 0, skipped: 0, blocked: [], ok: true }
-      if (paths.length === 0) {
-        return empty
-      }
-      const generation = graph?.generation
-      const root = graph?.root
-      if (generation === undefined || root === undefined) {
-        startOperation(label).fail('No graph is open.')
-        return { ...empty, ok: false }
-      }
-      const operation = startOperation(label)
-      setIsRunning(true)
+      // The loop itself — sequencing, per-note failure collection, cache
+      // invalidation, toast wiring — is the shared `runNoteBatch`; this only
+      // adds the changed/skipped tally the bulk bar reports.
       const outcome: BulkOutcome = { changed: 0, skipped: 0, blocked: [], ok: true }
+      if (paths.length === 0) {
+        return outcome
+      }
+      setIsRunning(true)
       try {
-        for (const [index, path] of paths.entries()) {
-          operation.progress(index, paths.length)
-          try {
+        const { failures, ok } = await runNoteBatch({
+          label,
+          graph,
+          queryClient,
+          items: paths,
+          describe: basename,
+          each: async (path, generation) => {
             if ((await each(path, generation)) === 'changed') {
               outcome.changed += 1
             } else {
               outcome.skipped += 1
             }
-          } catch (cause) {
-            outcome.ok = false
-            outcome.blocked.push(`${basename(path)}: ${errorMessage(cause)}`)
-          }
-        }
-        // The list only refreshes when the watcher's reindex batch applies, a
-        // visible beat later; drop the caches so the change shows immediately.
-        await queryClient.invalidateQueries({ queryKey: allNotesListPrefix(root) })
-        if (outcome.ok) {
-          operation.done()
-        } else {
-          operation.fail(outcome.blocked.join('; '))
-        }
+          },
+        })
+        outcome.blocked = failures
+        outcome.ok = ok
       } finally {
         setIsRunning(false)
       }

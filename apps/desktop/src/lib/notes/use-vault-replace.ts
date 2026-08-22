@@ -5,14 +5,13 @@ import {
   errorMessage,
   findReplaceMatches,
   listNotes,
-  readNote,
   writeNote,
   type ReplaceMatch,
 } from '@reflect/core'
 import { openSession } from '@/editor/open-documents'
-import { startOperation } from '@/lib/operations'
+import { readNoteSource } from '@/lib/note-frontmatter'
+import { runNoteBatch } from './note-batch'
 import { useGraph } from '@/providers/graph-provider'
-import { allNotesListPrefix } from './all-notes-query'
 
 export interface ReplaceScope {
   needle: string
@@ -43,17 +42,16 @@ export interface ScanResult {
   skippedMatches: number
 }
 
-const EMPTY: ScanResult = { notes: [], changeable: 0, liveMatches: 0, skippedMatches: 0 }
-
-/**
- * Read the bytes a replace would act on: the open editor's live buffer when
- * one has the note loaded, otherwise disk — the same order `readNoteSource`
- * uses. Reading disk while a pane holds newer text is how a preview ends up
- * describing a file that no longer exists in that form.
- */
-async function currentSource(path: string): Promise<string> {
-  return openSession(path)?.liveContent() ?? (await readNote(path))
+/** The no-scan-yet result, shared with the dialog so neither owns a copy. */
+export const EMPTY_SCAN: ScanResult = {
+  notes: [],
+  changeable: 0,
+  liveMatches: 0,
+  skippedMatches: 0,
 }
+
+/** How many notes are read concurrently during a scan. */
+const SCAN_CONCURRENCY = 8
 
 export interface VaultReplace {
   scan: (scope: ReplaceScope) => Promise<ScanResult>
@@ -109,45 +107,69 @@ export function useVaultReplace(): VaultReplace {
   const scan = useCallback(
     async (scope: ReplaceScope): Promise<ScanResult> => {
       if (scope.needle === '' || graph === null) {
-        return EMPTY
+        return EMPTY_SCAN
       }
       setIsBusy(true)
       try {
         // Every note, not an FTS shortlist: the index projects markdown to
         // plain text (frontmatter stripped, links flattened), so it cannot see
         // a needle that lives inside a token or inside syntax. A shortlist
-        // that silently misses notes is worse than a slower scan.
+        // that silently misses notes is worse than a slower scan. The reads
+        // are pure, so a small worker pool overlaps the per-note IPC hops —
+        // sequentially, a large vault spends seconds purely waiting.
+        // (`readNoteSource` prefers the open editor's live buffer over disk,
+        // so the preview describes what the user is actually looking at.)
         const entries = await listNotes({ tag: null })
-        const notes: NoteHits[] = []
-        for (const entry of entries) {
+        const slots: (NoteHits | null)[] = entries.map(() => null)
+        let nextIndex = 0
+        const scanOne = async (index: number): Promise<void> => {
+          const entry = entries[index]
+          if (entry === undefined) {
+            return
+          }
           let source: string
           try {
-            source = await currentSource(entry.path)
+            source = await readNoteSource(entry.path)
           } catch (cause) {
-            notes.push({
+            slots[index] = {
               path: entry.path,
               title: entry.title,
               source: '',
               matches: [],
               live: 0,
               blocked: errorMessage(cause),
-            })
-            continue
+            }
+            return
           }
           const matches = findReplaceMatches(source, scope)
           if (matches.length === 0) {
-            continue
+            return
           }
           const live = matches.filter((match) => match.skipped === null).length
-          notes.push({
+          slots[index] = {
             path: entry.path,
             title: entry.title,
             source,
             matches,
             live,
             blocked: openSession(entry.path)?.isDirty() === true ? 'has unsaved changes' : null,
-          })
+          }
         }
+        await Promise.all(
+          Array.from({ length: Math.min(SCAN_CONCURRENCY, entries.length) }, async () => {
+            for (;;) {
+              const index = nextIndex
+              nextIndex += 1
+              if (index >= entries.length) {
+                return
+              }
+              await scanOne(index)
+            }
+          }),
+        )
+        // Slots, not pushes: the pool finishes out of order, and the preview
+        // must list notes in the index's deterministic order.
+        const notes = slots.filter((slot): slot is NoteHits => slot !== null)
         return {
           notes,
           changeable: notes.filter((note) => note.live > 0 && note.blocked === null).length,
@@ -172,49 +194,35 @@ export function useVaultReplace(): VaultReplace {
       if (targets.length === 0) {
         return 0
       }
-      const generation = graph?.generation
-      const root = graph?.root
-      if (generation === undefined || root === undefined) {
-        startOperation('Replacing in vault').fail('No graph is open.')
-        return 0
-      }
-      const operation = startOperation(`Replacing “${scope.needle}”`)
       setIsBusy(true)
       const entries: UndoEntry[] = []
-      const failures: string[] = []
       try {
-        for (const [index, note] of targets.entries()) {
-          operation.progress(index, targets.length)
-          try {
+        await runNoteBatch({
+          label: `Replacing “${scope.needle}”`,
+          graph,
+          queryClient,
+          items: targets,
+          describe: (note) => note.title,
+          each: async (note, generation) => {
             // The gate: only write a note that still holds exactly what the
             // preview described.
-            const now = await currentSource(note.path)
+            const now = await readNoteSource(note.path)
             if (now !== note.source) {
-              failures.push(`${note.title}: changed since the preview`)
-              continue
+              throw new Error('changed since the preview')
             }
             if (openSession(note.path)?.isDirty() === true) {
-              failures.push(`${note.title}: has unsaved changes`)
-              continue
+              throw new Error('has unsaved changes')
             }
             const after = applyReplaceMatches(note.source, note.matches, scope.replacement)
             if (after === note.source) {
-              continue
+              return
             }
             await writeNote(note.path, after, generation)
             entries.push({ path: note.path, before: note.source, after })
-          } catch (cause) {
-            failures.push(`${note.title}: ${errorMessage(cause)}`)
-          }
-        }
+          },
+        })
         undoable.current = entries
         setCanUndo(entries.length > 0)
-        await queryClient.invalidateQueries({ queryKey: allNotesListPrefix(root) })
-        if (failures.length === 0) {
-          operation.done()
-        } else {
-          operation.fail(failures.join('; '))
-        }
       } finally {
         setIsBusy(false)
       }
@@ -225,40 +233,31 @@ export function useVaultReplace(): VaultReplace {
 
   const undo = useCallback(async (): Promise<number> => {
     const entries = undoable.current
-    const generation = graph?.generation
-    const root = graph?.root
-    if (entries.length === 0 || generation === undefined || root === undefined) {
+    if (entries.length === 0) {
       return 0
     }
-    const operation = startOperation('Undoing replace')
     setIsBusy(true)
     let restored = 0
-    const failures: string[] = []
     try {
-      for (const [index, entry] of entries.entries()) {
-        operation.progress(index, entries.length)
-        try {
+      await runNoteBatch({
+        label: 'Undoing replace',
+        graph,
+        queryClient,
+        items: entries,
+        describe: (entry) => entry.path,
+        each: async (entry, generation) => {
           // Same gate in reverse: a note edited since the replace keeps its
           // newer content rather than being clobbered a second time.
-          const now = await currentSource(entry.path)
+          const now = await readNoteSource(entry.path)
           if (now !== entry.after) {
-            failures.push(`${entry.path}: edited since the replace`)
-            continue
+            throw new Error('edited since the replace')
           }
           await writeNote(entry.path, entry.before, generation)
           restored += 1
-        } catch (cause) {
-          failures.push(`${entry.path}: ${errorMessage(cause)}`)
-        }
-      }
+        },
+      })
       undoable.current = []
       setCanUndo(false)
-      await queryClient.invalidateQueries({ queryKey: allNotesListPrefix(root) })
-      if (failures.length === 0) {
-        operation.done()
-      } else {
-        operation.fail(failures.join('; '))
-      }
     } finally {
       setIsBusy(false)
     }

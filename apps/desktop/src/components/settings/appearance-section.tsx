@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react'
+import type { ReactElement, ReactNode } from 'react'
 import type {
   AccentColor,
   GlassIntensity,
@@ -107,6 +107,69 @@ const GLASS_INTENSITY_LABELS: Record<GlassIntensity, string> = {
   strong: 'Strong',
 }
 
+interface RadioCardOption<T extends string> {
+  value: T
+  label: string
+  /** Overrides the accessible name where the visible label collides app-wide. */
+  ariaLabel?: string
+  /** Icon or preview shown above the label. */
+  adornment?: ReactNode
+}
+
+/**
+ * One radio-card grid, shared by all four Appearance choice fields. They were
+ * four hand-written copies of the same skeleton before, and the copies had
+ * already drifted (one field's radios lacked their accessible-name prefix);
+ * the selected/unselected treatment, the sr-only input, and the focus lift
+ * now exist once.
+ */
+function SettingsRadioCards<T extends string>({
+  name,
+  value,
+  options,
+  onChange,
+  columns,
+}: {
+  name: string
+  value: T
+  options: readonly RadioCardOption<T>[]
+  onChange: (next: T) => void
+  /** The grid template, e.g. `grid-cols-3` — column count is per field. */
+  columns: string
+}): ReactElement {
+  return (
+    <div className={cn('mt-3 grid gap-2', columns)}>
+      {options.map((option) => {
+        const selected = value === option.value
+        return (
+          <SettingsOptionCard
+            key={option.value}
+            selected={selected}
+            className={cn(
+              option.adornment === undefined
+                ? 'items-center justify-center px-3 py-2'
+                : 'flex-col items-center gap-1.5 px-3 py-3',
+              selected ? 'text-accent-soft-text' : 'text-text-secondary',
+            )}
+          >
+            <input
+              type="radio"
+              name={name}
+              value={option.value}
+              checked={selected}
+              onChange={() => onChange(option.value)}
+              className="sr-only"
+              {...(option.ariaLabel === undefined ? {} : { 'aria-label': option.ariaLabel })}
+            />
+            {option.adornment}
+            <span className="text-xs font-medium">{option.label}</span>
+          </SettingsOptionCard>
+        )
+      })}
+    </div>
+  )
+}
+
 /**
  * Theme picker as radio cards (the original app's idiom) plus the accent
  * color swatch row, the corner-radius steps, and the Liquid Glass switch with
@@ -123,32 +186,17 @@ export function AppearanceSection(): ReactElement {
         legend="Theme"
         description="System follows your OS appearance. Saved with your settings."
       >
-        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {THEME_OPTIONS.map(({ value, label, icon: Icon }) => {
-            const selected = settings.theme === value
-            return (
-              <SettingsOptionCard
-                key={value}
-                selected={selected}
-                className={cn(
-                  'flex-col items-center gap-1.5 px-3 py-3',
-                  selected ? 'text-accent-soft-text' : 'text-text-secondary',
-                )}
-              >
-                <input
-                  type="radio"
-                  name="theme"
-                  value={value}
-                  checked={selected}
-                  onChange={() => updateSettings({ theme: value })}
-                  className="sr-only"
-                />
-                <Icon aria-hidden className="size-4" />
-                <span className="text-xs font-medium">{label}</span>
-              </SettingsOptionCard>
-            )
-          })}
-        </div>
+        <SettingsRadioCards
+          name="theme"
+          value={settings.theme}
+          options={THEME_OPTIONS.map(({ value, label, icon: Icon }) => ({
+            value,
+            label,
+            adornment: <Icon aria-hidden className="size-4" />,
+          }))}
+          onChange={(theme) => updateSettings({ theme })}
+          columns="grid-cols-2 sm:grid-cols-4"
+        />
       </SettingsField>
 
       <SettingsField
@@ -231,70 +279,45 @@ export function AppearanceSection(): ReactElement {
         legend="Corners"
         description="How round every surface is — buttons, cards, dialogs, and inputs move together."
       >
-        <div className="mt-3 grid grid-cols-4 gap-2">
-          {UI_RADIUS_IDS.map((radius) => {
-            const { label, preview } = RADIUS_OPTIONS[radius]
-            const selected = settings.uiRadius === radius
-            return (
-              <SettingsOptionCard
-                key={radius}
-                selected={selected}
-                className={cn(
-                  'flex-col items-center gap-1.5 px-3 py-3',
-                  selected ? 'text-accent-soft-text' : 'text-text-secondary',
-                )}
-              >
-                <input
-                  type="radio"
-                  name="ui-radius"
-                  value={radius}
-                  checked={selected}
-                  onChange={() => updateSettings({ uiRadius: radius })}
-                  className="sr-only"
-                  aria-label={`Corners: ${label}`}
-                />
-                <span
-                  aria-hidden
-                  className="h-5 w-8 border-[1.5px] border-current"
-                  style={{ borderRadius: preview }}
-                />
-                <span className="text-xs font-medium">{label}</span>
-              </SettingsOptionCard>
-            )
-          })}
-        </div>
+        <SettingsRadioCards
+          name="ui-radius"
+          value={settings.uiRadius}
+          options={UI_RADIUS_IDS.map((radius) => ({
+            value: radius,
+            label: RADIUS_OPTIONS[radius].label,
+            // The labels repeat elsewhere on this screen (the editor
+            // text-size steps are also Small/Default), so the accessible
+            // name carries the field.
+            ariaLabel: `Corners: ${RADIUS_OPTIONS[radius].label}`,
+            adornment: (
+              <span
+                aria-hidden
+                className="h-5 w-8 border-[1.5px] border-current"
+                style={{ borderRadius: RADIUS_OPTIONS[radius].preview }}
+              />
+            ),
+          }))}
+          onChange={(uiRadius) => updateSettings({ uiRadius })}
+          columns="grid-cols-4"
+        />
       </SettingsField>
 
       <SettingsField
         legend="Density"
         description="How tightly rows are packed in lists and the sidebar."
       >
-        <div className="mt-3 grid grid-cols-3 gap-2">
-          {UI_DENSITY_IDS.map((density) => {
-            const selected = settings.uiDensity === density
-            return (
-              <SettingsOptionCard
-                key={density}
-                selected={selected}
-                className={cn(
-                  'items-center justify-center px-3 py-2',
-                  selected ? 'text-accent-soft-text' : 'text-text-secondary',
-                )}
-              >
-                <input
-                  type="radio"
-                  name="ui-density"
-                  value={density}
-                  checked={selected}
-                  onChange={() => updateSettings({ uiDensity: density })}
-                  className="sr-only"
-                  aria-label={`Density: ${DENSITY_LABELS[density]}`}
-                />
-                <span className="text-xs font-medium">{DENSITY_LABELS[density]}</span>
-              </SettingsOptionCard>
-            )
-          })}
-        </div>
+        <SettingsRadioCards
+          name="ui-density"
+          value={settings.uiDensity}
+          options={UI_DENSITY_IDS.map((density) => ({
+            value: density,
+            label: DENSITY_LABELS[density],
+            // "Default" collides with the Corners step of the same name.
+            ariaLabel: `Density: ${DENSITY_LABELS[density]}`,
+          }))}
+          onChange={(uiDensity) => updateSettings({ uiDensity })}
+          columns="grid-cols-3"
+        />
       </SettingsField>
 
       <SettingsSwitchField
@@ -309,31 +332,16 @@ export function AppearanceSection(): ReactElement {
           legend="Glass intensity"
           description="How far the tint and blur go. Subtle keeps a busy vault readable behind the chrome."
         >
-          <div className="mt-3 grid grid-cols-3 gap-2">
-            {GLASS_INTENSITY_IDS.map((intensity) => {
-              const selected = settings.glassIntensity === intensity
-              return (
-                <SettingsOptionCard
-                  key={intensity}
-                  selected={selected}
-                  className={cn(
-                    'items-center justify-center px-3 py-2',
-                    selected ? 'text-accent-soft-text' : 'text-text-secondary',
-                  )}
-                >
-                  <input
-                    type="radio"
-                    name="glass-intensity"
-                    value={intensity}
-                    checked={selected}
-                    onChange={() => updateSettings({ glassIntensity: intensity })}
-                    className="sr-only"
-                  />
-                  <span className="text-xs font-medium">{GLASS_INTENSITY_LABELS[intensity]}</span>
-                </SettingsOptionCard>
-              )
-            })}
-          </div>
+          <SettingsRadioCards
+            name="glass-intensity"
+            value={settings.glassIntensity}
+            options={GLASS_INTENSITY_IDS.map((intensity) => ({
+              value: intensity,
+              label: GLASS_INTENSITY_LABELS[intensity],
+            }))}
+            onChange={(glassIntensity) => updateSettings({ glassIntensity })}
+            columns="grid-cols-3"
+          />
         </SettingsField>
       ) : null}
     </SettingsSection>

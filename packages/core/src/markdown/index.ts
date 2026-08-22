@@ -30,6 +30,14 @@ export { parseBody } from './grammar'
 export { parseNote, isTagName, hasAuthoredTitle } from './extract'
 export { appendBodyTag, bodyHasTag } from './body-tag'
 export {
+  applyReplaceMatches,
+  findReplaceMatches,
+  foldPreservingLength,
+  protectedRanges,
+  type ReplaceMatch,
+  type ReplaceScanOptions,
+} from './replace-scan'
+export {
   scanInlineWikiLinks,
   scanInlineImages,
   scanInlineSegments,

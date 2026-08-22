@@ -15,6 +15,7 @@ import { NoteFindProvider } from '@/providers/note-find-provider'
 import { OpenTabsProvider } from '@/providers/open-tabs-provider'
 import { NoteTemplatesProvider } from '@/providers/note-templates-provider'
 import { ShortcutsProvider } from '@/providers/shortcuts-provider'
+import { VaultReplaceProvider } from '@/providers/vault-replace-provider'
 import { SidebarProvider } from '@/providers/sidebar-provider'
 import { SyncProvider } from '@/providers/sync-provider'
 import { V1ImportProvider } from '@/providers/v1-import-provider'
@@ -41,47 +42,49 @@ export function GraphWorkspace({ graph }: GraphWorkspaceProps): ReactElement {
       <SyncProvider graph={graph}>
         <PaletteProvider>
           <ShortcutsProvider>
-            <NoteTemplatesProvider>
-              <SidebarProvider>
-                {/* Above the sidebar: a recording must survive the sidebar (and its
+            <VaultReplaceProvider>
+              <NoteTemplatesProvider>
+                <SidebarProvider>
+                  {/* Above the sidebar: a recording must survive the sidebar (and its
                     mic button) unmounting on collapse. */}
-                <AudioMemoProvider graph={graph}>
-                  <CaptureProvider graph={graph}>
-                    {/* Inside the router (deep links navigate) and beside capture
+                  <AudioMemoProvider graph={graph}>
+                    <CaptureProvider graph={graph}>
+                      {/* Inside the router (deep links navigate) and beside capture
                         (deep-link writes spool into the same inbox drain). */}
-                    <DeepLinkProvider graph={graph}>
-                      <AssetDescribeProvider graph={graph}>
-                        <ChatProvider graph={graph}>
-                          {/* Tracks the focused day in the daily stream so the right
+                      <DeepLinkProvider graph={graph}>
+                        <AssetDescribeProvider graph={graph}>
+                          <ChatProvider graph={graph}>
+                            {/* Tracks the focused day in the daily stream so the right
                               sidebar describes it, not just the routed day. */}
-                          <FocusedDailyProvider>
-                            <NoteFindProvider>
-                              {/* A ⌘-clicked note window is chrome-free: the
+                            <FocusedDailyProvider>
+                              <NoteFindProvider>
+                                {/* A ⌘-clicked note window is chrome-free: the
                                   routed view only, no sidebar/palette shell.
                                   The V1 import lives above the routed views so
                                   closing settings can't orphan a running
                                   import; main window only — its dialog is the
                                   import's single face. */}
-                              {isMainWindow() ? (
-                                <V1ImportProvider graph={graph}>
-                                  {/* Tabs are main-window chrome: a ⌘-clicked
+                                {isMainWindow() ? (
+                                  <V1ImportProvider graph={graph}>
+                                    {/* Tabs are main-window chrome: a ⌘-clicked
                                       note window shows one note, no strip. */}
-                                  <OpenTabsProvider>
-                                    <WorkspaceContent graph={graph} />
-                                  </OpenTabsProvider>
-                                </V1ImportProvider>
-                              ) : (
-                                <NoteWindowContent />
-                              )}
-                            </NoteFindProvider>
-                          </FocusedDailyProvider>
-                        </ChatProvider>
-                      </AssetDescribeProvider>
-                    </DeepLinkProvider>
-                  </CaptureProvider>
-                </AudioMemoProvider>
-              </SidebarProvider>
-            </NoteTemplatesProvider>
+                                    <OpenTabsProvider>
+                                      <WorkspaceContent graph={graph} />
+                                    </OpenTabsProvider>
+                                  </V1ImportProvider>
+                                ) : (
+                                  <NoteWindowContent />
+                                )}
+                              </NoteFindProvider>
+                            </FocusedDailyProvider>
+                          </ChatProvider>
+                        </AssetDescribeProvider>
+                      </DeepLinkProvider>
+                    </CaptureProvider>
+                  </AudioMemoProvider>
+                </SidebarProvider>
+              </NoteTemplatesProvider>
+            </VaultReplaceProvider>
           </ShortcutsProvider>
         </PaletteProvider>
       </SyncProvider>

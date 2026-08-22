@@ -1,8 +1,9 @@
 import { useLayoutEffect, useRef, type KeyboardEvent, type ReactElement } from 'react'
-import { ChevronDownIcon, ChevronUpIcon, XIcon } from 'lucide-react'
+import { ChevronDownIcon, ChevronUpIcon, Replace, XIcon } from 'lucide-react'
 import { getIsComposing } from '@meowdown/core'
 import { SearchIcon } from '@/components/icons/search-icon'
 import { useNoteFind } from '@/providers/note-find-provider'
+import { useVaultReplaceDialog } from '@/providers/vault-replace-provider'
 
 const FIND_BUTTON_CLASS =
   'flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-[5px] text-text-muted transition-colors hover:bg-surface-hover hover:text-text disabled:pointer-events-none disabled:opacity-40'
@@ -17,6 +18,7 @@ function statusText(active: number, total: number): string {
 /** Compact, non-modal browser-style Find chrome for the active note. */
 export function NoteFindBar(): ReactElement | null {
   const find = useNoteFind()
+  const { openVaultReplace } = useVaultReplaceDialog()
   const inputRef = useRef<HTMLInputElement>(null)
 
   useLayoutEffect(() => {
@@ -130,6 +132,22 @@ export function NoteFindBar(): ReactElement | null {
         onClick={find.next}
       >
         <ChevronDownIcon className="size-3.5" strokeWidth={2} />
+      </button>
+      {/* ⌘F found it here; the same needle across every note is one click
+          away. The needle carries over, never the replacement — that one the
+          user types deliberately, every time. */}
+      <button
+        type="button"
+        aria-label="Replace in vault"
+        title="Replace in vault…"
+        className={FIND_BUTTON_CLASS}
+        disabled={!hasQuery}
+        onClick={() => {
+          find.close(true)
+          openVaultReplace(find.query)
+        }}
+      >
+        <Replace className="size-3.5" strokeWidth={2} />
       </button>
       <button
         type="button"

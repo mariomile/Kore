@@ -62,7 +62,9 @@ export {
   parseNote,
   appendBlock,
   appendBodyTag,
+  applyReplaceMatches,
   bodyHasTag,
+  findReplaceMatches,
   appendTaskLine,
   appendTaskToContext,
   wikiLinkSafe,
@@ -125,6 +127,7 @@ export {
   type AsyncWikiLookup,
   expandTemplatePlaceholders,
   type TemplatePlaceholderValues,
+  type ReplaceMatch,
 } from '../markdown'
 export {
   openIndex,

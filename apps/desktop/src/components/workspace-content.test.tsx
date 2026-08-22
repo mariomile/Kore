@@ -31,6 +31,9 @@ vi.mock('@/components/embeddings-sync', () => ({ EmbeddingsSync: () => null }))
 vi.mock('@/components/agent-routines-runner', () => ({ AgentRoutinesRunner: () => null }))
 vi.mock('@/components/task-reminders-runner', () => ({ TaskRemindersRunner: () => null }))
 vi.mock('@/components/note-find-bar', () => ({ NoteFindBar: () => null }))
+vi.mock('@/components/vault-replace/vault-replace-dialog', () => ({
+  VaultReplaceMount: () => null,
+}))
 // The tab strip pulls the open-tabs stack (graph, palette, index queries) —
 // its own test covers it; here only the frame around it is under test.
 vi.mock('@/components/note-tabs-strip', () => ({ NoteTabsStrip: () => null }))

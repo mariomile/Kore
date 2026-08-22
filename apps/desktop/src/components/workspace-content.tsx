@@ -9,6 +9,7 @@ import { EmbeddingsSync } from '@/components/embeddings-sync'
 import { NoteFindBar } from '@/components/note-find-bar'
 import { NoteTabsStrip } from '@/components/note-tabs-strip'
 import { RouteContent } from '@/components/route-content'
+import { VaultReplaceMount } from '@/components/vault-replace/vault-replace-dialog'
 import { ShortcutsDialog } from '@/components/shortcuts-dialog'
 import { Sidebar } from '@/components/sidebar/sidebar'
 import { SidebarResizeHandle } from '@/components/sidebar-resize-handle'
@@ -67,6 +68,7 @@ export function WorkspaceContent({ graph }: WorkspaceContentProps): ReactElement
                 <NoteFindBar />
                 <CommandPalette context={commandContext} />
                 <ShortcutsDialog />
+                <VaultReplaceMount />
                 <TemplatePicker context={commandContext} />
                 <TemplateCreateDialog context={commandContext} />
                 <EmbeddingsSync />

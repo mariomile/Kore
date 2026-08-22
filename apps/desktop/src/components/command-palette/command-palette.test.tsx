@@ -115,6 +115,7 @@ async function renderPalette(query: string, context?: Partial<CommandContext>) {
     graphRoot: () => '/g',
     openPalette: vi.fn(),
     openShortcuts: vi.fn(),
+    openVaultReplace: vi.fn(),
     openTemplatePicker: vi.fn(),
     openTemplateCreate: vi.fn(),
     enableSemanticSearch: vi.fn(),

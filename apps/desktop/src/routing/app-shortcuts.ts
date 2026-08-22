@@ -19,6 +19,7 @@ import { useNoteFindActions } from '@/providers/note-find-provider'
 import { useNoteTemplates } from '@/providers/note-templates-provider'
 import { useOpenTabs } from '@/providers/open-tabs-provider'
 import { useSettings } from '@/providers/settings-provider'
+import { useVaultReplaceDialog } from '@/providers/vault-replace-provider'
 import { useShortcuts } from '@/providers/shortcuts-provider'
 import { useSidebar } from '@/providers/sidebar-provider'
 import { isDarkResolvedTheme, useTheme } from '@/providers/theme-provider'
@@ -167,6 +168,7 @@ export function useAppShortcuts(): CommandContext {
   const { graph, recents, openRecent } = useGraph()
   const { openPalette, open: paletteOpen } = usePalette()
   const { openShortcuts, closeShortcuts, open: shortcutsOpen } = useShortcuts()
+  const { openVaultReplace, open: vaultReplaceOpen } = useVaultReplaceDialog()
   const {
     openTemplatePicker,
     openTemplateCreate,
@@ -196,6 +198,11 @@ export function useAppShortcuts(): CommandContext {
   // navigate behind them.
   const templatesOpenRef = useRef(templatePickerOpen || templateCreateOpen)
 
+  // Replace-in-vault is modal for a stronger reason than the others: a
+  // command that navigated behind it could unmount the dialog mid-scan or,
+  // worse, mid-write.
+  const vaultReplaceOpenRef = useRef(vaultReplaceOpen)
+
   // Read at run time, not captured: a command can fire long after the render
   // that created the context (palette open across an index rebuild, etc.).
   const generationRef = useRef<number | null>(graph?.generation ?? null)
@@ -208,6 +215,7 @@ export function useAppShortcuts(): CommandContext {
     paletteOpenRef.current = paletteOpen
     shortcutsOpenRef.current = shortcutsOpen
     templatesOpenRef.current = templatePickerOpen || templateCreateOpen
+    vaultReplaceOpenRef.current = vaultReplaceOpen
     generationRef.current = graph?.generation ?? null
     graphRootRef.current = graph?.root ?? null
     recentsRef.current = recents
@@ -251,6 +259,7 @@ export function useAppShortcuts(): CommandContext {
       graphRoot: () => graphRootRef.current,
       openPalette,
       openShortcuts,
+      openVaultReplace,
       openTemplatePicker,
       openTemplateCreate,
       enableSemanticSearch: () => {
@@ -304,6 +313,7 @@ export function useAppShortcuts(): CommandContext {
       setTheme,
       openPalette,
       openShortcuts,
+      openVaultReplace,
       openTemplatePicker,
       openTemplateCreate,
       toggleSidebar,
@@ -339,6 +349,9 @@ export function useAppShortcuts(): CommandContext {
       }
       if (templatesOpenRef.current) {
         return false // the template picker/create dialogs are modal too
+      }
+      if (vaultReplaceOpenRef.current) {
+        return false // a scan or a write may be in flight behind it
       }
       void runCommand(id, context)
       return true

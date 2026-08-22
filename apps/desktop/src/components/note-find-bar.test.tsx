@@ -8,6 +8,7 @@ import {
 } from '@/editor/editor-handle-registry'
 import type { NoteEditorHandle } from '@/editor/note-editor'
 import { FocusedDailyProvider } from '@/providers/focused-daily-provider'
+import { VaultReplaceProvider } from '@/providers/vault-replace-provider'
 import {
   NoteFindProvider,
   useNoteFindActions,
@@ -74,9 +75,11 @@ function renderFindBar() {
   return render(
     <RouterProvider initialRoute={{ kind: 'note', path: NOTE_PATH }}>
       <FocusedDailyProvider>
-        <NoteFindProvider>
-          <Harness />
-        </NoteFindProvider>
+        <VaultReplaceProvider>
+          <NoteFindProvider>
+            <Harness />
+          </NoteFindProvider>
+        </VaultReplaceProvider>
       </FocusedDailyProvider>
     </RouterProvider>,
   )

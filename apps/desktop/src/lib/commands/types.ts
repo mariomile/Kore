@@ -52,6 +52,8 @@ export interface CommandContext {
   openPalette: (query?: string) => void
   /** Open the ⌘/ shortcuts cheat-sheet. */
   openShortcuts: () => void
+  /** Open the vault-wide Replace dialog, optionally pre-filled with a needle. */
+  openVaultReplace: (seed?: string) => void
   /** Open the "Insert template…" picker (inserts into {@link notePath}'s editor). */
   openTemplatePicker: () => void
   /** Open the "New template" name dialog. */

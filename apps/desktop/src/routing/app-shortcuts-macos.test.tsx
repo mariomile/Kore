@@ -5,6 +5,7 @@ import { PaletteProvider } from '@/components/command-palette/palette-provider'
 import { registerAppCommands } from '@/lib/commands/app-commands'
 import { dispatchMenuCommand } from '@/lib/native-menu/dispatch'
 import { NoteTemplatesProvider } from '@/providers/note-templates-provider'
+import { VaultReplaceProvider } from '@/providers/vault-replace-provider'
 import { ShortcutsProvider } from '@/providers/shortcuts-provider'
 import { SidebarProvider, useSidebar } from '@/providers/sidebar-provider'
 import { useAppShortcuts } from './app-shortcuts'
@@ -75,9 +76,11 @@ function shortcutsHook() {
         <RouterProvider>
           <PaletteProvider>
             <ShortcutsProvider>
-              <NoteTemplatesProvider>
-                <SidebarProvider>{children}</SidebarProvider>
-              </NoteTemplatesProvider>
+              <VaultReplaceProvider>
+                <NoteTemplatesProvider>
+                  <SidebarProvider>{children}</SidebarProvider>
+                </NoteTemplatesProvider>
+              </VaultReplaceProvider>
             </ShortcutsProvider>
           </PaletteProvider>
         </RouterProvider>

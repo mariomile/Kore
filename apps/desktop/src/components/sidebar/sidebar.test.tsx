@@ -155,6 +155,7 @@ async function renderSidebar(overrides?: Partial<CommandContext>, initialRoute?:
     graphRoot: () => '/notes',
     openPalette,
     openShortcuts: vi.fn(),
+    openVaultReplace: vi.fn(),
     openTemplatePicker: vi.fn(),
     openTemplateCreate: vi.fn(),
     enableSemanticSearch: vi.fn(),

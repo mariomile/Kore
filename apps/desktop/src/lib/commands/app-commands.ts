@@ -439,6 +439,18 @@ const APP_COMMANDS: AppCommand[] = [
     run: (context) => context.openShortcuts(),
   },
   {
+    id: 'note.replaceInVault',
+    title: 'Replace in vault…',
+    keywords: ['find', 'replace', 'rename', 'substitute', 'all notes', 'everywhere', 'bulk'],
+    // No keybinding on purpose. This is the one command in the registry that
+    // rewrites prose across every note; it should not be one chord away from
+    // a mistyped shortcut, and the palette keeps it reachable in three
+    // keystrokes anyway.
+    run: (context) => {
+      context.openVaultReplace()
+    },
+  },
+  {
     id: 'semantic.enable',
     title: 'Enable semantic search',
     keywords: ['embeddings', 'ai', 'similar', 'model'],

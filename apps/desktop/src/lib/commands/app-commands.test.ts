@@ -95,6 +95,7 @@ function fakeContext(overrides?: Partial<CommandContext>) {
     graphRoot: () => '/g',
     openPalette: vi.fn(),
     openShortcuts: vi.fn(),
+    openVaultReplace: vi.fn(),
     openTemplatePicker: vi.fn(),
     openTemplateCreate: vi.fn(),
     enableSemanticSearch: vi.fn(),

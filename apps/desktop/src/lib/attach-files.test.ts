@@ -31,6 +31,7 @@ function contextFor(notePath: string | null, generation: number | null): Command
     graphRoot: () => '/g',
     openPalette: vi.fn(),
     openShortcuts: vi.fn(),
+    openVaultReplace: vi.fn(),
     openTemplatePicker: vi.fn(),
     openTemplateCreate: vi.fn(),
     enableSemanticSearch: vi.fn(),

@@ -334,6 +334,7 @@ pub fn run() {
             db::index_apply,
             db::index_apply_batch,
             db::index_remove,
+            db::index_remove_batch,
             db::index_clear,
             db::index_move,
             db::index_reconcile_scan,

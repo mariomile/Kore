@@ -67,6 +67,12 @@ interface GraphContextValue extends MobileGraphBoot {
    * and friends take `graph.generation`. Null when the index failed to open.
    */
   indexGeneration: number | null
+  /**
+   * True after this index session's first reconcile has finished and the
+   * live watcher is up. Embedding backfill waits on this so a first-open
+   * pass cannot hash-skip against an empty projection.
+   */
+  indexReady: boolean
   /** True while the background index reconcile is running (Plan 06b). */
   indexing: boolean
   error: string | null
@@ -150,6 +156,7 @@ export function GraphProvider({
   const [recents, setRecents] = useState<RecentGraph[]>([])
   const [indexing, setIndexing] = useState(false)
   const [indexGeneration, setIndexGeneration] = useState<number | null>(null)
+  const [indexReady, setIndexReady] = useState(false)
   const [error, setError] = useState<string | null>(null)
   // Monotonic open token: only the most recent open may commit `graph`/`status`,
   // so overlapping opens (double-click, StrictMode remount) can't finish out of
@@ -164,6 +171,9 @@ export function GraphProvider({
       onError: (stage, err) => console.error(`index ${stage} failed:`, errorMessage(err)),
       onProgress: (progress) => {
         setIndexing(progress === 'reconciling')
+        if (progress === 'live') {
+          setIndexReady(true)
+        }
         if (progress !== 'reconciling') {
           setIndexProgress(null) // the pass finished (or went idle) — clear the pill
         }
@@ -288,6 +298,7 @@ export function GraphProvider({
           // Transition to 'ready' immediately — the user can start editing.
           setGraph(info)
           setIndexGeneration(generation)
+          setIndexReady(false)
           setStatus('ready')
           opened = true
           // Onboarding, considered exactly once per graph (the `welcomeSeeded`
@@ -428,6 +439,7 @@ export function GraphProvider({
     resetNoteRowOverlays()
     setGraph(null)
     setIndexGeneration(null)
+    setIndexReady(false)
     setIndexing(false)
     setError(null)
     setStatus('choosing')
@@ -537,6 +549,7 @@ export function GraphProvider({
       graph,
       recents,
       indexGeneration,
+      indexReady,
       indexing,
       error,
       pickAndOpen,
@@ -558,6 +571,7 @@ export function GraphProvider({
       graph,
       recents,
       indexGeneration,
+      indexReady,
       indexing,
       error,
       pickAndOpen,

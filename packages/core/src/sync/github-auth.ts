@@ -294,14 +294,34 @@ export async function refreshGithubAuth(
 const REFRESH_MARGIN_MS = 5 * 60 * 1000
 
 /**
+ * In-flight token acquisition. GitHub App refresh tokens are single-use:
+ * two overlapping `getGithubToken` calls that each refresh would burn the
+ * token and look like a disconnect.
+ */
+let inFlightToken: Promise<string | null> | null = null
+
+/**
  * The token for git/API calls, silently refreshing app tokens near expiry.
  * `null` means not connected — or the refresh token lapsed and the user must
- * reconnect.
+ * reconnect. Concurrent callers share one acquisition.
  */
 export async function getGithubToken(
   fetchFn: FetchFn = fetch,
   now: () => number = Date.now,
 ): Promise<string | null> {
+  if (inFlightToken !== null) {
+    return await inFlightToken
+  }
+  const pending = acquireGithubToken(fetchFn, now).finally(() => {
+    if (inFlightToken === pending) {
+      inFlightToken = null
+    }
+  })
+  inFlightToken = pending
+  return await pending
+}
+
+async function acquireGithubToken(fetchFn: FetchFn, now: () => number): Promise<string | null> {
   const auth = await loadGithubAuth()
   if (auth === null) {
     return null

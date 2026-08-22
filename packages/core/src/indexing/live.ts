@@ -1,7 +1,7 @@
 import type { Unlisten } from '../ipc/bridge'
 import { isAssetPath, isNotePath } from '../graph/paths'
 import { readNote } from '../graph/commands'
-import { moveIndexedRows, removeFromIndex } from './commands'
+import { moveIndexedRows, removeFromIndexBatch } from './commands'
 import { subscribeFileChanges, type FileChange } from './file-changes'
 import { hashContent, matchesTrustedMtime } from './hash'
 import { emitIndexApplied } from './index-applied'
@@ -9,6 +9,7 @@ import {
   buildNoteProjection,
   createIndexApplyBatch,
   createMtimeTouchBatch,
+  INDEX_APPLY_BATCH_SIZE,
   indexNote,
 } from './indexer'
 import { detectExternalMoves } from './move-healing'
@@ -26,8 +27,9 @@ import { getIndexedFileFactsByPath, getNoteIdsByPath, type IndexedFileFacts } fr
  * every downloaded note at once — so applying is batch-shaped end to end:
  * stored facts are prefetched in one query, files whose indexed mtime already
  * matches are skipped without a read, hash-unchanged reads skip the write,
- * changed notes land in shared `index_apply_batch` transactions, and the loop
- * takes an event-loop break every {@link INDEX_PASS_YIELD_EVERY} files.
+ * changed notes land in shared `index_apply_batch` transactions, consecutive
+ * deletes share one `index_remove_batch`, and the loop takes an event-loop
+ * break every {@link INDEX_PASS_YIELD_EVERY} files.
  */
 
 /** Reports a change that failed to apply; the batch continues past it. */
@@ -191,6 +193,22 @@ export async function applyIndexChanges(
     )
   })
   const touches = createMtimeTouchBatch(generation)
+  const pendingRemoves: string[] = []
+
+  async function flushPendingRemoves(): Promise<void> {
+    if (pendingRemoves.length === 0) {
+      return
+    }
+    const paths = pendingRemoves.splice(0)
+    for (let offset = 0; offset < paths.length; offset += INDEX_APPLY_BATCH_SIZE) {
+      if (!canApply()) {
+        return
+      }
+      const chunk = paths.slice(offset, offset + INDEX_APPLY_BATCH_SIZE)
+      await removeFromIndexBatch(chunk, generation)
+      mutations += chunk.length
+    }
+  }
 
   let done = 0
   for (const change of notes) {
@@ -209,8 +227,8 @@ export async function applyIndexChanges(
     }
     try {
       if (change.kind === 'remove') {
-        // Flush first: a same-batch upsert(x) … remove(x) sequence must not
-        // have the batched upsert land *after* the remove and resurrect it.
+        // Flush upserts first: a same-batch upsert(x) … remove(x) sequence
+        // must not have the batched upsert land *after* the remove.
         if (!canApply()) {
           return mutations
         }
@@ -218,9 +236,12 @@ export async function applyIndexChanges(
         if (!canApply()) {
           return mutations
         }
-        await removeFromIndex(change.path, generation)
-        mutations += 1
+        pendingRemoves.push(change.path)
         continue
+      }
+      await flushPendingRemoves()
+      if (!canApply()) {
+        return mutations
       }
       const facts = stored.get(change.path)
       if (matchesTrustedMtime(facts?.mtime, change.modifiedMs, now)) {
@@ -259,6 +280,10 @@ export async function applyIndexChanges(
     return mutations
   }
   await batch.flush()
+  if (!canApply()) {
+    return mutations + batch.applied()
+  }
+  await flushPendingRemoves()
   if (!canApply()) {
     return mutations + batch.applied()
   }

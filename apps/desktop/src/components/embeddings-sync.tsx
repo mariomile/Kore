@@ -18,10 +18,13 @@ import { useSettings } from '@/providers/settings-provider'
  *   untouched — at launch for users who opted in earlier (the cache makes
  *   that instant) and the moment the setting flips on (the one place the
  *   first download starts);
- * - run one incremental backfill per graph-open once `ready` (hash-skip makes
- *   this cheap when nothing changed);
+ * - run one incremental backfill per graph-open once `ready` **and** the
+ *   index session has finished reconciling — starting earlier hash-skips
+ *   against an empty projection and leaves semantic search empty;
  * - follow the index: changed notes re-embed, deleted notes drop vectors.
- *   Work is serialized on one queue so passes can't interleave.
+ *   Work is serialized on one queue so passes can't interleave, and live
+ *   follow-ups coalesce by path so a burst of watcher batches cannot grow
+ *   an unbounded `.then` chain.
  *
  * The follow trigger is `subscribeIndexApplied` — the post-apply signal — not
  * the raw watcher stream, for two reasons. Ordering: `embed_apply` drops
@@ -38,10 +41,12 @@ import { useSettings } from '@/providers/settings-provider'
  * via the cheap hash-skip backfill.
  */
 export function EmbeddingsSync(): null {
-  const { graph, indexGeneration } = useGraph()
+  const { graph, indexGeneration, indexReady } = useGraph()
   const { settings, updateSettings } = useSettings()
   const status = useEmbedStatus()
   const queue = useRef<Promise<void>>(Promise.resolve())
+  const pendingFollow = useRef(new Map<string, 'upsert' | 'remove'>())
+  const followScheduled = useRef(false)
 
   // embed_apply/embed_remove are gated on the INDEX session generation, not
   // the file-write generation in GraphInfo — the counters are independent.
@@ -75,10 +80,57 @@ export function EmbeddingsSync(): null {
   // this down: pending queue items see `active` go false and skip, and the
   // subscription drops.
   useEffect(() => {
-    if (!enabled || !ready || generation === null || root === null || modelId === null) {
+    if (
+      !enabled ||
+      !ready ||
+      generation === null ||
+      root === null ||
+      modelId === null ||
+      !indexReady
+    ) {
       return
     }
     let active = true
+    pendingFollow.current.clear()
+    followScheduled.current = false
+
+    let scheduleFollow: () => void = () => {}
+
+    const drainFollow = async (): Promise<void> => {
+      try {
+        while (active && pendingFollow.current.size > 0) {
+          const jobs = [...pendingFollow.current]
+          pendingFollow.current.clear()
+          for (const [path, kind] of jobs) {
+            if (!active) {
+              return
+            }
+            if (kind === 'remove') {
+              await embedRemove(path, generation)
+            } else {
+              await embedNote({ path, generation, modelId }).then(() => {})
+            }
+          }
+        }
+      } finally {
+        followScheduled.current = false
+        if (active && pendingFollow.current.size > 0) {
+          scheduleFollow()
+        }
+      }
+    }
+
+    scheduleFollow = (): void => {
+      if (followScheduled.current) {
+        return
+      }
+      followScheduled.current = true
+      queue.current = queue.current.then(drainFollow).catch((cause) => {
+        // A rejection here must not poison the queue (later change items
+        // chain off this promise) nor masquerade as a per-change failure.
+        console.error('embedding sync failed:', cause)
+      })
+    }
 
     queue.current = queue.current
       .then(() => {
@@ -103,26 +155,19 @@ export function EmbeddingsSync(): null {
         if (!isNotePath(change.path)) {
           continue // asset-file changes ride the same batches — never embedded
         }
-        queue.current = queue.current
-          .then(() => {
-            if (!active) {
-              return
-            }
-            return change.kind === 'remove'
-              ? embedRemove(change.path, generation)
-              : embedNote({ path: change.path, generation, modelId }).then(() => {})
-          })
-          .catch((cause) => {
-            console.error(`embedding sync failed for ${change.path}:`, cause)
-          })
+        pendingFollow.current.set(change.path, change.kind === 'remove' ? 'remove' : 'upsert')
+      }
+      if (pendingFollow.current.size > 0) {
+        scheduleFollow()
       }
     })
 
     return () => {
       active = false
+      pendingFollow.current.clear()
       unlisten()
     }
-  }, [enabled, ready, generation, root, modelId])
+  }, [enabled, ready, generation, root, modelId, indexReady])
 
   return null
 }

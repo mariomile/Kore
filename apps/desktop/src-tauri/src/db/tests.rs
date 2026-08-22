@@ -1280,6 +1280,59 @@ fn stale_generation_writes_are_dropped_end_to_end() {
 }
 
 #[test]
+fn index_remove_batch_drops_many_notes_in_one_transaction() {
+    use tauri::Manager;
+    let app = tauri::test::mock_builder()
+        .build(tauri::test::mock_context(tauri::test::noop_assets()))
+        .expect("mock app");
+    app.manage(crate::fs::GraphState::default());
+    app.manage(super::IndexState::default());
+    app.manage(crate::background_task::BackgroundTaskState::default());
+
+    let graph_dir = tempfile::tempdir().expect("tempdir");
+    {
+        let state: tauri::State<crate::fs::GraphState> = app.state();
+        let mut inner = state.0.lock().unwrap();
+        inner.root = Some(graph_dir.path().to_path_buf());
+    }
+    let generation = super::index_open(app.state(), app.state(), app.state()).expect("open");
+    super::index_apply_batch(
+        vec![
+            note("notes/a.md", "A", vec![]),
+            note("notes/b.md", "B", vec![]),
+        ],
+        generation,
+        app.handle().clone(),
+        app.state(),
+        app.state(),
+    )
+    .expect("apply");
+    super::index_remove_batch(
+        vec![],
+        generation,
+        app.handle().clone(),
+        app.state(),
+        app.state(),
+    )
+    .expect("empty batch is a no-op");
+    super::index_remove_batch(
+        vec!["notes/a.md".into(), "notes/b.md".into()],
+        generation,
+        app.handle().clone(),
+        app.state(),
+        app.state(),
+    )
+    .expect("remove batch");
+    let rows = tauri::async_runtime::block_on(super::db_query(
+        "SELECT count(*) AS n FROM notes".to_string(),
+        vec![],
+        app.handle().clone(),
+    ))
+    .expect("count");
+    assert_eq!(rows[0]["n"], Value::from(0));
+}
+
+#[test]
 fn fts5_is_compiled_in() {
     let conn = Connection::open_in_memory().expect("open");
     conn.execute_batch(

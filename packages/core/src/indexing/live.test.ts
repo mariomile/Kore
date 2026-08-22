@@ -58,7 +58,7 @@ describe('applyIndexChanges', () => {
     expect(failures.map((failure) => failure.change.path)).toEqual(['notes/bad.md'])
   })
 
-  it('routes removes to index_remove at the given generation', async () => {
+  it('routes removes to index_remove_batch at the given generation', async () => {
     const calls: Array<[string, Record<string, unknown>]> = []
     fakeBridge(async (command, args) => {
       calls.push([command, args])
@@ -66,7 +66,26 @@ describe('applyIndexChanges', () => {
     })
 
     await applyIndexChanges([{ path: 'notes/gone.md', kind: 'remove' }], 9)
-    expect(calls).toEqual([['index_remove', { path: 'notes/gone.md', generation: 9 }]])
+    expect(calls).toEqual([['index_remove_batch', { paths: ['notes/gone.md'], generation: 9 }]])
+  })
+
+  it('batches consecutive removes into one index_remove_batch', async () => {
+    const calls: Array<[string, Record<string, unknown>]> = []
+    fakeBridge(async (command, args) => {
+      calls.push([command, args])
+      return null
+    })
+
+    await applyIndexChanges(
+      [
+        { path: 'notes/a.md', kind: 'remove' },
+        { path: 'notes/b.md', kind: 'remove' },
+      ],
+      9,
+    )
+    expect(calls).toEqual([
+      ['index_remove_batch', { paths: ['notes/a.md', 'notes/b.md'], generation: 9 }],
+    ])
   })
 
   it('applies an upsert(x) … remove(x) sequence in order — the remove wins', async () => {
@@ -80,8 +99,8 @@ describe('applyIndexChanges', () => {
           ...(args['notes'] as Array<{ path: string }>).map((note) => `apply:${note.path}`),
         )
       }
-      if (command === 'index_remove') {
-        order.push(`remove:${String(args['path'])}`)
+      if (command === 'index_remove_batch') {
+        order.push(...(args['paths'] as string[]).map((path) => `remove:${path}`))
       }
       if (command === 'db_query') {
         return []
@@ -378,6 +397,7 @@ describe('applyIndexChanges move healing (Plan 17)', () => {
     const commands = calls.map(([command]) => command)
     expect(commands).toContain('index_move')
     expect(commands).not.toContain('index_remove')
+    expect(commands).not.toContain('index_remove_batch')
     const move = calls.find(([command]) => command === 'index_move')
     expect(move?.[1]).toEqual({
       from: OLD,
@@ -427,7 +447,7 @@ describe('applyIndexChanges move healing (Plan 17)', () => {
 
     const commands = calls.map(([command]) => command)
     expect(commands).not.toContain('index_move')
-    expect(commands).toContain('index_remove')
+    expect(commands).toContain('index_remove_batch')
     expect(commands).toContain('index_apply_batch')
   })
 
@@ -454,7 +474,7 @@ describe('applyIndexChanges move healing (Plan 17)', () => {
 
     const commands = calls.map(([command]) => command)
     expect(commands).not.toContain('index_move')
-    expect(commands).toContain('index_remove') // no-op against a moved row
+    expect(commands).toContain('index_remove_batch') // no-op against a moved row
     expect(commands).toContain('index_apply_batch') // idempotent re-apply
   })
 })

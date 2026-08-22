@@ -8,6 +8,7 @@ const core = vi.hoisted(() => ({
   embedRemove: vi.fn(async () => {}),
   subscribeIndexApplied: vi.fn(),
 }))
+const graphState = vi.hoisted(() => ({ indexReady: true }))
 vi.mock('@reflect/core', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@reflect/core')>()),
   embedNote: core.embedNote,
@@ -26,6 +27,7 @@ vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({
     graph: { root: '/g', name: 'g', generation: 1 },
     indexGeneration: 7,
+    indexReady: graphState.indexReady,
   }),
 }))
 const semanticSetting = vi.hoisted(() => ({ enabled: true }))
@@ -44,11 +46,13 @@ const unlisten = vi.fn()
 
 beforeEach(() => {
   semanticSetting.enabled = true
+  graphState.indexReady = true
   onApplied = null
   unlisten.mockClear()
   core.embedNote.mockClear()
   core.embedRemove.mockClear()
-  semantic.backfillEmbeddingsVisibly.mockClear()
+  semantic.backfillEmbeddingsVisibly.mockReset()
+  semantic.backfillEmbeddingsVisibly.mockImplementation(async () => 'completed')
   core.subscribeIndexApplied.mockReset().mockImplementation((handler: IndexAppliedListener) => {
     onApplied = handler
     return unlisten
@@ -107,6 +111,45 @@ describe('EmbeddingsSync', () => {
     await flushQueue()
     expect(semantic.backfillEmbeddingsVisibly).not.toHaveBeenCalled()
     expect(core.subscribeIndexApplied).not.toHaveBeenCalled()
+  })
+
+  it('starts no embedding work until the index session has finished reconciling', async () => {
+    graphState.indexReady = false
+    await render(<EmbeddingsSync />)
+    await flushQueue()
+    expect(semantic.backfillEmbeddingsVisibly).not.toHaveBeenCalled()
+    expect(core.subscribeIndexApplied).not.toHaveBeenCalled()
+  })
+
+  it('coalesces follow-up work that arrives during backfill into unique paths', async () => {
+    let releaseBackfill = (): void => {}
+    semantic.backfillEmbeddingsVisibly.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          releaseBackfill = () => resolve('completed')
+        }),
+    )
+    await render(<EmbeddingsSync />)
+    await vi.waitFor(() => expect(onApplied).not.toBeNull())
+
+    for (let index = 0; index < 8; index += 1) {
+      onApplied?.([{ kind: 'upsert', path: 'notes/a.md' }], 7)
+    }
+    onApplied?.([{ kind: 'upsert', path: 'notes/b.md' }], 7)
+    expect(core.embedNote).not.toHaveBeenCalled()
+
+    releaseBackfill()
+    await vi.waitFor(() => expect(core.embedNote).toHaveBeenCalledTimes(2))
+    expect(core.embedNote).toHaveBeenCalledWith({
+      path: 'notes/a.md',
+      generation: 7,
+      modelId: 'all-MiniLM-L6-v2',
+    })
+    expect(core.embedNote).toHaveBeenCalledWith({
+      path: 'notes/b.md',
+      generation: 7,
+      modelId: 'all-MiniLM-L6-v2',
+    })
   })
 
   it('pauses follow-up work the moment semantic search is disabled', async () => {

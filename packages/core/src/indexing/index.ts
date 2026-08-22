@@ -7,6 +7,7 @@ export {
   applyIndexedNote,
   applyIndexedNotes,
   removeFromIndex,
+  removeFromIndexBatch,
   moveNoteIndexed,
   clearIndex,
   setIndexMeta,

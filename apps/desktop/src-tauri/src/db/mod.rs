@@ -699,7 +699,8 @@ pub async fn db_query_batch<R: tauri::Runtime>(
     }
     let requested = {
         let index = app.state::<IndexState>();
-        lock_read(&index)?.generation
+        let generation = lock_read(&index)?.generation;
+        generation
     };
     crate::blocking::run_blocking(move || {
         let index = app.state::<IndexState>();

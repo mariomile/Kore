@@ -665,7 +665,7 @@ pub(crate) fn sync_quick_capture_shortcut<R: tauri::Runtime>(
             let handle = app.clone();
             tauri::async_runtime::spawn(async move {
                 if let Err(err) = raise_quick_capture(handle).await {
-                    tracing::warn!(error = %err, "quick capture failed");
+                    tracing::warn!(error = ?err, "quick capture failed");
                 }
             });
         }) {
@@ -705,7 +705,7 @@ pub fn quick_capture_hide(app: tauri::AppHandle) -> AppResult<()> {
 }
 
 #[cfg(desktop)]
-async fn raise_quick_capture(app: tauri::AppHandle) -> AppResult<()> {
+async fn raise_quick_capture<R: tauri::Runtime>(app: tauri::AppHandle<R>) -> AppResult<()> {
     if let Some(window) = app.get_webview_window(QUICK_CAPTURE_LABEL) {
         match window.is_visible() {
             Ok(true) => {
@@ -725,7 +725,7 @@ async fn raise_quick_capture(app: tauri::AppHandle) -> AppResult<()> {
 }
 
 #[cfg(desktop)]
-fn create_quick_capture_window(app: &tauri::AppHandle) -> AppResult<()> {
+fn create_quick_capture_window<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> AppResult<()> {
     let quit = app.state::<QuitState>();
     if quit.armed() {
         return Err(AppError::io("the app is quitting"));

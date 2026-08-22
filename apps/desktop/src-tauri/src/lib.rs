@@ -427,7 +427,7 @@ pub fn run() {
                     Ok(doc) => windows::sync_quick_capture_shortcut(app, &doc),
                     Err(err) => {
                         tracing::warn!(
-                            error = %err,
+                            error = ?err,
                             "settings load failed; registering default quick-capture shortcut"
                         );
                         windows::sync_quick_capture_shortcut(app, &Default::default());

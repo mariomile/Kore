@@ -93,11 +93,18 @@
 
   --radius: 0.5rem; /* 8px — the house radius      */
 
-  /* Shadows — one recipe per depth tier (card / floating / popover) */
+  /* Shadows — one recipe per depth tier (card / floating / popover).
+     Each tier stacks a tight contact shadow under a wide ambient one: a
+     single large blur reads as grey haze, two layers read as a lit object.
+     The higher the tier, the further the ambient layer travels. */
   --shadow-input: 0 1px 2px rgba(18, 19, 23, 0.04);
-  --shadow-sm: 0 1px 2px rgba(18, 19, 23, 0.04);
-  --shadow-md: 0 1px 2px rgba(18, 19, 23, 0.04), 0 8px 24px rgba(18, 19, 23, 0.05);
-  --shadow-pop: 0 12px 40px rgba(18, 19, 23, 0.14);
+  --shadow-sm: 0 1px 1px rgba(18, 19, 23, 0.04), 0 2px 6px rgba(18, 19, 23, 0.04);
+  --shadow-md:
+    0 1px 2px rgba(18, 19, 23, 0.05), 0 4px 10px rgba(18, 19, 23, 0.05),
+    0 12px 28px rgba(18, 19, 23, 0.05);
+  --shadow-pop:
+    0 1px 2px rgba(18, 19, 23, 0.06), 0 8px 20px rgba(18, 19, 23, 0.1),
+    0 24px 56px rgba(18, 19, 23, 0.12);
   --border-hairline: 0 1px 0 rgba(18, 19, 23, 0.07); /* shadow-border-b */
   /* V1's layered search-field shadow (boxShadow['app-input']) */
   --shadow-app-input:
@@ -136,10 +143,17 @@
   --focus-ring: #7b7ef4;
   --border-hairline: 0 1px 0 rgba(255, 255, 255, 0.075);
   /* Dark elevations need deeper ink or cards read flat against the dark app
-     background — same recipes as light, re-tinted. */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.25);
-  --shadow-md: 0 1px 2px rgba(0, 0, 0, 0.25), 0 8px 24px rgba(0, 0, 0, 0.3);
-  --shadow-pop: 0 12px 40px rgba(0, 0, 0, 0.5);
+     background — same recipes as light, re-tinted, plus a hairline of light
+     along the top edge. On a near-black background a shadow alone cannot
+     separate a surface (there is nothing darker to cast onto); the lit edge
+     is what actually reads as "this floats". */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 2px 6px rgba(0, 0, 0, 0.22);
+  --shadow-md:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 1px 2px rgba(0, 0, 0, 0.4),
+    0 6px 16px rgba(0, 0, 0, 0.35), 0 16px 36px rgba(0, 0, 0, 0.3);
+  --shadow-pop:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 1px 2px rgba(0, 0, 0, 0.5),
+    0 10px 28px rgba(0, 0, 0, 0.5), 0 28px 64px rgba(0, 0, 0, 0.45);
   --shadow-app-input:
     0 1px 0 -1px rgba(0, 0, 0, 0.1), 0 1px 1px -1px rgba(0, 0, 0, 0.1),
     0 1px 2px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1),
@@ -229,6 +243,46 @@
   --input-bg: #fdfbf6;
 }
 
+/* GRAPHITE — a flat neutral dark, the register Cursor / VS Code / Notion
+   sit in: no blue or purple cast at all, cards a step lighter than the page
+   rather than outlined. Stock `dark` is faintly cool by comparison. */
+:root[data-theme='graphite'] {
+  --surface: #1f1f1f;
+  --surface-sunken: #191919;
+  --surface-app: #171717;
+  --surface-hover: rgba(255, 255, 255, 0.055);
+  --surface-active: rgba(255, 255, 255, 0.085);
+  --surface-inverse: #e8e8e8;
+
+  --text: #e8e8e8;
+  --text-secondary: #a1a1a1;
+  --text-muted: #6e6e6e;
+
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.155);
+  --input-bg: rgba(255, 255, 255, 0.045);
+}
+
+/* ASH — the neutral light counterpart: white cards on a soft grey page, the
+   way Codex and Craft read. `light` keeps everything white; this one gives
+   the content a card to sit on. */
+:root[data-theme='ash'] {
+  --surface: #ffffff;
+  --surface-sunken: #eeeef0;
+  --surface-app: #f6f6f7;
+  --surface-hover: rgba(23, 23, 26, 0.05);
+  --surface-active: rgba(23, 23, 26, 0.08);
+  --surface-inverse: #202022;
+
+  --text: #17171a;
+  --text-secondary: #5c5c63;
+  --text-muted: #8c8c94;
+
+  --border: rgba(23, 23, 26, 0.1);
+  --border-strong: rgba(23, 23, 26, 0.18);
+  --input-bg: #ffffff;
+}
+
 /* ============================================================
    ACCENT COLOR OVERRIDES — data-accent on the document root.
    `indigo` (the default) declares nothing, so each theme keeps
@@ -239,18 +293,18 @@
    ============================================================ */
 
 :root[data-accent='purple'] {
-  --accent: #7c3aed;
-  --accent-hover: #8b5cf6;
-  --accent-soft: #ede9fe;
-  --accent-soft-text: #6d28d9;
-  --focus-ring: #8b5cf6;
+  --accent: #9333ea;
+  --accent-hover: #a855f7;
+  --accent-soft: #f3e8ff;
+  --accent-soft-text: #7e22ce;
+  --focus-ring: #a855f7;
 }
 :root.dark[data-accent='purple'] {
-  --accent: #8b5cf6;
-  --accent-hover: #a78bfa;
-  --accent-soft: rgba(76, 29, 149, 0.55);
-  --accent-soft-text: #ddd6fe;
-  --focus-ring: #8b5cf6;
+  --accent: #a855f7;
+  --accent-hover: #c084fc;
+  --accent-soft: rgba(88, 28, 135, 0.55);
+  --accent-soft-text: #e9d5ff;
+  --focus-ring: #a855f7;
 }
 
 :root[data-accent='blue'] {
@@ -341,4 +395,124 @@
   --accent-soft: rgba(127, 29, 29, 0.55);
   --accent-soft-text: #fecaca;
   --focus-ring: #ef4444;
+}
+
+:root[data-accent='violet'] {
+  --accent: #7c3aed;
+  --accent-hover: #8b5cf6;
+  --accent-soft: #ede9fe;
+  --accent-soft-text: #6d28d9;
+  --focus-ring: #8b5cf6;
+}
+:root.dark[data-accent='violet'] {
+  --accent: #8b5cf6;
+  --accent-hover: #a78bfa;
+  --accent-soft: rgba(76, 29, 149, 0.55);
+  --accent-soft-text: #ddd6fe;
+  --focus-ring: #8b5cf6;
+}
+
+:root[data-accent='pink'] {
+  --accent: #db2777;
+  --accent-hover: #ec4899;
+  --accent-soft: #fce7f3;
+  --accent-soft-text: #be185d;
+  --focus-ring: #ec4899;
+}
+:root.dark[data-accent='pink'] {
+  --accent: #ec4899;
+  --accent-hover: #f472b6;
+  --accent-soft: rgba(131, 24, 67, 0.55);
+  --accent-soft-text: #fbcfe8;
+  --focus-ring: #ec4899;
+}
+
+:root[data-accent='orange'] {
+  --accent: #ea580c;
+  --accent-hover: #f97316;
+  --accent-soft: #ffedd5;
+  --accent-soft-text: #c2410c;
+  --focus-ring: #f97316;
+}
+:root.dark[data-accent='orange'] {
+  --accent: #f97316;
+  --accent-hover: #fb923c;
+  --accent-soft: rgba(124, 45, 18, 0.6);
+  --accent-soft-text: #fed7aa;
+  --focus-ring: #f97316;
+}
+
+:root[data-accent='lime'] {
+  --accent: #65a30d;
+  --accent-hover: #84cc16;
+  --accent-soft: #ecfccb;
+  --accent-soft-text: #4d7c0f;
+  --focus-ring: #84cc16;
+}
+:root.dark[data-accent='lime'] {
+  --accent: #84cc16;
+  --accent-hover: #a3e635;
+  --accent-soft: rgba(54, 83, 20, 0.6);
+  --accent-soft-text: #d9f99d;
+  --focus-ring: #84cc16;
+}
+
+:root[data-accent='emerald'] {
+  --accent: #10b981;
+  --accent-hover: #34d399;
+  --accent-soft: #d1fae5;
+  --accent-soft-text: #047857;
+  --focus-ring: #34d399;
+}
+:root.dark[data-accent='emerald'] {
+  --accent: #34d399;
+  --accent-hover: #6ee7b7;
+  --accent-soft: rgba(6, 78, 59, 0.6);
+  --accent-soft-text: #a7f3d0;
+  --focus-ring: #34d399;
+}
+
+:root[data-accent='cyan'] {
+  --accent: #0891b2;
+  --accent-hover: #06b6d4;
+  --accent-soft: #cffafe;
+  --accent-soft-text: #0e7490;
+  --focus-ring: #06b6d4;
+}
+:root.dark[data-accent='cyan'] {
+  --accent: #22d3ee;
+  --accent-hover: #67e8f9;
+  --accent-soft: rgba(22, 78, 99, 0.6);
+  --accent-soft-text: #a5f3fc;
+  --focus-ring: #22d3ee;
+}
+
+:root[data-accent='sky'] {
+  --accent: #0284c7;
+  --accent-hover: #0ea5e9;
+  --accent-soft: #e0f2fe;
+  --accent-soft-text: #0369a1;
+  --focus-ring: #0ea5e9;
+}
+:root.dark[data-accent='sky'] {
+  --accent: #38bdf8;
+  --accent-hover: #7dd3fc;
+  --accent-soft: rgba(12, 74, 110, 0.6);
+  --accent-soft-text: #bae6fd;
+  --focus-ring: #38bdf8;
+}
+
+:root[data-accent='slate'] {
+  --accent: #475569;
+  --accent-hover: #64748b;
+  --accent-soft: #e2e8f0;
+  --accent-soft-text: #334155;
+  --focus-ring: #64748b;
+}
+:root.dark[data-accent='slate'] {
+  --accent: #94a3b8;
+  --accent-hover: #cbd5e1;
+  --accent-soft: rgba(51, 65, 85, 0.6);
+  --accent-soft-text: #e2e8f0;
+  --focus-ring: #94a3b8;
 }

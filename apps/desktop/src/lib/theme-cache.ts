@@ -1,4 +1,4 @@
-import type { AccentColor, ThemePreference } from '@reflect/core'
+import type { AccentColor, GlassIntensity, ThemePreference, UiRadius } from '@reflect/core'
 
 /**
  * Where the theme preference is mirrored for the *next* launch.
@@ -67,5 +67,47 @@ export function writeCachedLiquidGlass(enabled: boolean): void {
     localStorage.setItem(THEME_GLASS_CACHE_KEY, enabled ? 'on' : 'off')
   } catch {
     // Storage is unavailable; the first frame paints without glass.
+  }
+}
+
+/**
+ * Where the corner-radius choice is mirrored for the next launch, same
+ * contract as {@link THEME_PREFERENCE_CACHE_KEY}: `public/theme-init.js`
+ * repeats this literal because it cannot import, and `theme-cache.test.ts`
+ * guards the pair.
+ */
+export const THEME_RADIUS_CACHE_KEY = 'reflect.theme.radius'
+
+/**
+ * Mirror the persisted corner radius so the first painted frame already has
+ * the right geometry — the radius scope rescales every surface, so applying
+ * it late visibly re-shapes the whole window. Best-effort like the other
+ * mirrors; an unreadable cache paints the house 8px default.
+ */
+export function writeCachedUiRadius(radius: UiRadius): void {
+  try {
+    localStorage.setItem(THEME_RADIUS_CACHE_KEY, radius)
+  } catch {
+    // Storage is unavailable; the first frame paints the default radius.
+  }
+}
+
+/**
+ * Where the Liquid Glass intensity is mirrored for the next launch, same
+ * contract as {@link THEME_PREFERENCE_CACHE_KEY}: `public/theme-init.js`
+ * repeats this literal because it cannot import, and `theme-cache.test.ts`
+ * guards the pair.
+ */
+export const THEME_GLASS_LEVEL_CACHE_KEY = 'reflect.theme.glass-level'
+
+/**
+ * Mirror the persisted Liquid Glass intensity. Only consulted when the glass
+ * mirror says `on`; an unreadable cache paints the `regular` intensity.
+ */
+export function writeCachedGlassIntensity(intensity: GlassIntensity): void {
+  try {
+    localStorage.setItem(THEME_GLASS_LEVEL_CACHE_KEY, intensity)
+  } catch {
+    // Storage is unavailable; the first frame paints the regular intensity.
   }
 }

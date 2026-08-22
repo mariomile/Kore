@@ -17,6 +17,33 @@ customization effort.
 
 ## Shipped (this fork)
 
+- Appearance, expanded. The theme picker gains two sober neutrals — Ash
+  (white cards on a soft grey page, the Codex/Craft register) and Graphite
+  (a flat neutral dark with no blue cast, where Cursor and Notion sit) —
+  and the accent row doubles to sixteen presets around the wheel plus the
+  custom color. Surfaces stay quiet on purpose: colour is the accent's job,
+  which is why the new variants are greys rather than hues. Two new controls
+  sit alongside them: **Corners** rescales the whole radius ramp (Sharp /
+  Small / Default / Round) through one `data-radius` scope, and Liquid
+  Glass gains a **Glass intensity** step (Subtle / Regular / Strong) that
+  drives every blur and tint from variables instead of a second copy of
+  the rules. All four settings apply pre-paint like the theme, and a token
+  test now fails the build if an id ships without its CSS scope.
+
+- Depth pass, Craft-inspired. Every elevation tier is now two or three
+  stacked shadows (a tight contact shadow under a wide ambient one) instead
+  of one big blur, and in the dark family they carry a hairline of light
+  along the top edge — on a near-black background a shadow alone cannot
+  separate a surface. Floating layers (menus, selects, dialogs, the command
+  palette) are translucent over a real backdrop blur in every theme, not
+  only under Liquid Glass, and the palette overlay dims *and* blurs like the
+  dialog one. Lucide icons default to a 1.75 stroke app-wide via
+  `LucideProvider`, matching the house glyph set instead of lucide's heavier
+  2px. Fixed along the way: `spacing.css` is imported after `colors.css` and
+  its `:root` elevation tokens tie with `.dark` on specificity, so the
+  per-theme shadow recipes had never actually rendered; colors.css now owns
+  the ladder alone and a token test keeps it that way.
+
 - Recurring-task respawn from the editor checkbox: completing a `@repeat`
   task by clicking its checkbox inside the note editor now appends the next
   occurrence, matching Tasks-view completions. Meowdown still has no

@@ -4,7 +4,12 @@ import { renderHook } from 'vitest-browser-react'
 import type { ReactNode } from 'react'
 import { setBridge } from '@reflect/core'
 import { resetOperations } from '@/lib/operations'
-import { THEME_ACCENT_CACHE_KEY, THEME_PREFERENCE_CACHE_KEY } from '@/lib/theme-cache'
+import {
+  THEME_ACCENT_CACHE_KEY,
+  THEME_GLASS_LEVEL_CACHE_KEY,
+  THEME_PREFERENCE_CACHE_KEY,
+  THEME_RADIUS_CACHE_KEY,
+} from '@/lib/theme-cache'
 import { SETTINGS_QUERY_KEY, SettingsProvider, useSettings } from './settings-provider'
 import { ThemeProvider, useTheme } from './theme-provider'
 
@@ -115,6 +120,8 @@ beforeEach(() => {
   stored = {}
   localStorage.removeItem(THEME_PREFERENCE_CACHE_KEY)
   localStorage.removeItem(THEME_ACCENT_CACHE_KEY)
+  localStorage.removeItem(THEME_RADIUS_CACHE_KEY)
+  localStorage.removeItem(THEME_GLASS_LEVEL_CACHE_KEY)
   queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: Infinity } },
   })
@@ -126,10 +133,15 @@ afterEach(() => {
   queryClient.clear()
   localStorage.removeItem(THEME_PREFERENCE_CACHE_KEY)
   localStorage.removeItem(THEME_ACCENT_CACHE_KEY)
+  localStorage.removeItem(THEME_RADIUS_CACHE_KEY)
+  localStorage.removeItem(THEME_GLASS_LEVEL_CACHE_KEY)
   document.documentElement.className = originalClassName
   document.documentElement.style.colorScheme = originalColorScheme
   document.documentElement.removeAttribute('data-theme')
   document.documentElement.removeAttribute('data-accent')
+  document.documentElement.removeAttribute('data-radius')
+  document.documentElement.removeAttribute('data-glass')
+  document.documentElement.removeAttribute('data-glass-level')
   resetOperations() // failed-load entries linger on a timer otherwise
 })
 
@@ -229,6 +241,64 @@ describe('ThemeProvider', () => {
     })
     expect(rootStyle.getPropertyValue('--accent')).toBe('')
     expect(document.documentElement.getAttribute('data-accent')).toBe('teal')
+  })
+
+  it('applies a light-family variant without the dark scope', async () => {
+    // `ash` is a light variant: it must select its own `[data-theme]` scope
+    // while staying out of `.dark`, or every Tailwind `dark:` utility would
+    // paint over it.
+    stored = { theme: 'ash' }
+
+    const { act } = await renderHook(() => useTheme(), { wrapper })
+    await settleLoad(act)
+    expect(document.documentElement.classList.contains('dark')).toBe(false)
+    expect(document.documentElement.getAttribute('data-theme')).toBe('ash')
+    expect(document.documentElement.style.colorScheme).toBe('light')
+  })
+
+  it('scopes a non-default corner radius and caches it', async () => {
+    stored = { theme: 'light', uiRadius: 'round' }
+
+    const { result, act } = await renderHook(
+      () => ({ theme: useTheme(), settings: useSettings() }),
+      { wrapper },
+    )
+    await settleLoad(act)
+    expect(document.documentElement.getAttribute('data-radius')).toBe('round')
+    expect(localStorage.getItem(THEME_RADIUS_CACHE_KEY)).toBe('round')
+
+    // `default` is the design system's own geometry, which declares no scope —
+    // leaving the attribute behind would keep the round ramp applied.
+    await act(() => {
+      result.current.settings.updateSettings({ uiRadius: 'default' })
+    })
+    expect(document.documentElement.getAttribute('data-radius')).toBeNull()
+    expect(localStorage.getItem(THEME_RADIUS_CACHE_KEY)).toBe('default')
+  })
+
+  it('carries the glass intensity only while Liquid Glass is on', async () => {
+    stored = { theme: 'light', liquidGlass: true, glassIntensity: 'strong' }
+
+    const { result, act } = await renderHook(
+      () => ({ theme: useTheme(), settings: useSettings() }),
+      { wrapper },
+    )
+    await settleLoad(act)
+    expect(document.documentElement.getAttribute('data-glass')).toBe('on')
+    expect(document.documentElement.getAttribute('data-glass-level')).toBe('strong')
+    expect(localStorage.getItem(THEME_GLASS_LEVEL_CACHE_KEY)).toBe('strong')
+
+    // Turning glass off drops the level with it: a stale `data-glass-level`
+    // would still match the intensity rules if glass came back through a
+    // different path.
+    await act(() => {
+      result.current.settings.updateSettings({ liquidGlass: false })
+    })
+    expect(document.documentElement.getAttribute('data-glass')).toBeNull()
+    expect(document.documentElement.getAttribute('data-glass-level')).toBeNull()
+    // The chosen intensity survives the round trip, so switching glass back on
+    // returns to it rather than to the default.
+    expect(localStorage.getItem(THEME_GLASS_LEVEL_CACHE_KEY)).toBe('strong')
   })
 
   it('applies but does not cache a preference after a failed load', async () => {

@@ -112,9 +112,12 @@ Cascade layer order, low to high priority.
 
   /* shadcn's classic radius scale off the DS house radius (0.5rem): with that
      base these formulas reproduce Tailwind's default scale exactly, so
-     existing rounded-* usage doesn't shift. 2xl+ keep Tailwind defaults. */
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
+     existing rounded-* usage doesn't shift. 2xl+ keep Tailwind defaults.
+     `max(0px, …)` because the Appearance radius setting drives `--radius`
+     down to 0 on `sharp`, where the subtractions would otherwise compute a
+     negative radius and the whole declaration would be dropped. */
+  --radius-sm: max(0px, calc(var(--radius) - 4px));
+  --radius-md: max(0px, calc(var(--radius) - 2px));
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
 }
@@ -146,7 +149,13 @@ Cascade layer order, low to high priority.
   --foreground: var(--text);
   --card: var(--surface);
   --card-foreground: var(--text);
-  --popover: var(--surface);
+  /* Floating layers are never fully opaque: a menu that dims and blurs what
+     it covers reads as sitting *above* the page, where a solid panel reads as
+     a hole punched in it. Liquid Glass turns these same three knobs further,
+     which is why the blur is a variable and not a literal. */
+  --popover: color-mix(in srgb, var(--surface) 88%, transparent);
+  --layer-blur: 20px;
+  --layer-saturate: 140%;
   --popover-foreground: var(--text);
   --primary: var(--accent);
   --primary-foreground: var(--text-on-brand);
@@ -799,11 +808,18 @@ button[aria-selected='true'] .sidebar-glass-tile {
 }
 
 /* ---- ⌘K palette (Plan 08) ---------------------------------------------- */
+/* The palette predates `bg-popover` and paints its own surface, so it borrows
+   the same tokens rather than a second recipe: the popover fill, the shared
+   layer blur, the deepest shadow tier — which also means Liquid Glass reaches
+   it for free. `--radius-xl` rather than a literal so the Appearance corner
+   setting does too. */
 .reflect-palette {
   overflow: hidden;
   border: 1px solid var(--border, rgb(0 0 0 / 10%));
-  border-radius: 0.75rem;
-  background: var(--surface, var(--background, #fff));
+  border-radius: var(--radius-xl, 0.75rem);
+  background: var(--popover, var(--surface, #fff));
+  -webkit-backdrop-filter: blur(var(--layer-blur, 20px)) saturate(var(--layer-saturate, 140%));
+  backdrop-filter: blur(var(--layer-blur, 20px)) saturate(var(--layer-saturate, 140%));
   box-shadow: var(--shadow-pop, 0 16px 48px rgb(0 0 0 / 18%));
 }
 .reflect-palette-input {
@@ -865,6 +881,15 @@ button[aria-selected='true'] .sidebar-glass-tile {
   }
 }
 
+/* Every floating layer (menus, selects, dialogs, tooltips) blurs its backdrop,
+   in every theme — the translucent `--popover` above only reads right over a
+   blurred ground. Liquid Glass raises the same variables; this is the floor,
+   not the feature. */
+.bg-popover {
+  -webkit-backdrop-filter: blur(var(--layer-blur)) saturate(var(--layer-saturate));
+  backdrop-filter: blur(var(--layer-blur)) saturate(var(--layer-saturate));
+}
+
 /* ============================================================
    Liquid Glass — activated by `data-glass="on"` on the root
    element (ThemeProvider, mirrored pre-paint by theme-init.js).
@@ -872,43 +897,84 @@ button[aria-selected='true'] .sidebar-glass-tile {
    active. The backdrop is an accent-tinted gradient painted on
    <body>; chrome above it goes translucent, and floating layers
    add real backdrop blur.
+
+   How far it goes is one more attribute, `data-glass-level`. Every
+   knob below reads a variable, so an intensity is three lines of
+   values rather than a second copy of the rules; `regular` is the
+   original look and also the fallback when the level attribute is
+   missing (an older cache, a hand-edited settings document).
    ============================================================ */
+:root[data-glass='on'] {
+  --glass-tint-a: 26%;
+  --glass-tint-b: 18%;
+  --glass-tint-c: 16%;
+  --glass-surface-app: 32%;
+  --glass-surface: 60%;
+  --glass-popover: 76%;
+  --glass-blur: 28px;
+  --glass-saturate: 150%;
+  --glass-popover-saturate: 160%;
+}
+/* Barely there: enough tint to read as glass, little enough blur that
+   a dense vault behind it stays legible. */
+:root[data-glass='on'][data-glass-level='subtle'] {
+  --glass-tint-a: 14%;
+  --glass-tint-b: 10%;
+  --glass-tint-c: 8%;
+  --glass-surface-app: 58%;
+  --glass-surface: 76%;
+  --glass-popover: 88%;
+  --glass-blur: 14px;
+  --glass-saturate: 120%;
+  --glass-popover-saturate: 130%;
+}
+/* Leans into the backdrop: deeper accent wash, thinner chrome. */
+:root[data-glass='on'][data-glass-level='strong'] {
+  --glass-tint-a: 38%;
+  --glass-tint-b: 28%;
+  --glass-tint-c: 24%;
+  --glass-surface-app: 18%;
+  --glass-surface: 44%;
+  --glass-popover: 62%;
+  --glass-blur: 40px;
+  --glass-saturate: 180%;
+  --glass-popover-saturate: 190%;
+}
 :root[data-glass='on'] body {
   background:
     radial-gradient(
       52% 44% at 12% 8%,
-      color-mix(in srgb, var(--accent) 26%, transparent),
+      color-mix(in srgb, var(--accent) var(--glass-tint-a), transparent),
       transparent 72%
     ),
     radial-gradient(
       46% 52% at 88% 14%,
-      color-mix(in srgb, var(--accent-hover) 18%, transparent),
+      color-mix(in srgb, var(--accent-hover) var(--glass-tint-b), transparent),
       transparent 70%
     ),
     radial-gradient(
       64% 56% at 50% 104%,
-      color-mix(in srgb, var(--accent-soft-text) 16%, transparent),
+      color-mix(in srgb, var(--accent-soft-text) var(--glass-tint-c), transparent),
       transparent 76%
     ),
     var(--surface-app);
 }
 :root[data-glass='on'] .bg-surface-app {
-  background-color: color-mix(in srgb, var(--surface-app) 32%, transparent);
+  background-color: color-mix(in srgb, var(--surface-app) var(--glass-surface-app), transparent);
 }
 :root[data-glass='on'] .bg-surface {
-  background-color: color-mix(in srgb, var(--surface) 60%, transparent);
+  background-color: color-mix(in srgb, var(--surface) var(--glass-surface), transparent);
 }
 /* The note-pane card blurs what the backdrop paints beneath it. */
 :root[data-glass='on'] .app-glass-card {
-  -webkit-backdrop-filter: blur(28px) saturate(150%);
-  backdrop-filter: blur(28px) saturate(150%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
 }
-/* Floating layers (menus, selects, dialogs, the palette) get the
-   strongest glass: they hover over real content. */
+/* Floating layers (menus, selects, dialogs, the palette) get the strongest
+   glass: they hover over real content. Retuning the shared knobs reaches every
+   one of them — including the palette, which paints its own surface. */
 :root[data-glass='on'] {
-  --popover: color-mix(in srgb, var(--surface) 76%, transparent);
-}
-:root[data-glass='on'] .bg-popover {
-  -webkit-backdrop-filter: blur(28px) saturate(160%);
-  backdrop-filter: blur(28px) saturate(160%);
+  --popover: color-mix(in srgb, var(--surface) var(--glass-popover), transparent);
+  --layer-blur: var(--glass-blur);
+  --layer-saturate: var(--glass-popover-saturate);
 }

@@ -1,7 +1,22 @@
 import type { ReactElement } from 'react'
-import type { AccentColor, ThemePreference } from '@reflect/core'
-import { ACCENT_COLOR_IDS, ACCENT_SWATCH_HEX } from '@reflect/core'
-import { Feather, Monitor, Moon, MoonStar, Sparkles, Sun, type LucideIcon } from 'lucide-react'
+import type { AccentColor, GlassIntensity, ThemePreference, UiRadius } from '@reflect/core'
+import {
+  ACCENT_COLOR_IDS,
+  ACCENT_SWATCH_HEX,
+  GLASS_INTENSITY_IDS,
+  UI_RADIUS_IDS,
+} from '@reflect/core'
+import {
+  Contrast,
+  Feather,
+  Monitor,
+  Moon,
+  MoonStar,
+  Sparkles,
+  Sun,
+  SunDim,
+  type LucideIcon,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useSettings } from '@/providers/settings-provider'
 import { SettingsField } from './field'
@@ -15,13 +30,16 @@ interface ThemeOption {
   icon: LucideIcon
 }
 
+// Ordered the way the families read: the OS default, then light to dark.
 const THEME_OPTIONS: ThemeOption[] = [
   { value: 'system', label: 'System', icon: Monitor },
   { value: 'light', label: 'Light', icon: Sun },
+  { value: 'ash', label: 'Ash', icon: SunDim },
+  { value: 'paper', label: 'Paper', icon: Feather },
   { value: 'dark', label: 'Dark', icon: Moon },
+  { value: 'graphite', label: 'Graphite', icon: Contrast },
   { value: 'space', label: 'Space', icon: Sparkles },
   { value: 'midnight', label: 'Midnight', icon: MoonStar },
-  { value: 'paper', label: 'Paper', icon: Feather },
 ]
 
 type PresetAccentColor = Exclude<AccentColor, 'custom'>
@@ -31,18 +49,50 @@ type PresetAccentColor = Exclude<AccentColor, 'custom'>
 // the applied one).
 const ACCENT_LABELS: Record<PresetAccentColor, string> = {
   indigo: 'Indigo',
+  violet: 'Violet',
   purple: 'Purple',
-  blue: 'Blue',
-  teal: 'Teal',
-  green: 'Green',
-  amber: 'Amber',
+  pink: 'Pink',
   rose: 'Rose',
   red: 'Red',
+  orange: 'Orange',
+  amber: 'Amber',
+  lime: 'Lime',
+  green: 'Green',
+  emerald: 'Emerald',
+  teal: 'Teal',
+  cyan: 'Cyan',
+  sky: 'Sky',
+  blue: 'Blue',
+  slate: 'Slate',
+}
+
+/**
+ * Corner-radius steps. The preview is a wide rectangle with a hand-picked
+ * radius rather than a square carrying the live token: at swatch scale the
+ * real ramp rounds a square into a circle by `default`, so all four steps
+ * would look alike. A 20×32 box keeps a straight edge at every step.
+ *
+ * The labels are single words that repeat elsewhere on this screen (the editor
+ * text-size steps are also Small/Large), so each radio's accessible name is
+ * prefixed with the field — otherwise neither is reachable by name.
+ */
+const RADIUS_OPTIONS: Record<UiRadius, { label: string; preview: string }> = {
+  sharp: { label: 'Sharp', preview: '0px' },
+  small: { label: 'Small', preview: '2px' },
+  default: { label: 'Default', preview: '6px' },
+  round: { label: 'Round', preview: '10px' },
+}
+
+const GLASS_INTENSITY_LABELS: Record<GlassIntensity, string> = {
+  subtle: 'Subtle',
+  regular: 'Regular',
+  strong: 'Strong',
 }
 
 /**
  * Theme picker as radio cards (the original app's idiom) plus the accent
- * color swatch row. Edits the settings document directly — the ThemeProvider
+ * color swatch row, the corner-radius steps, and the Liquid Glass switch with
+ * its intensity. Edits the settings document directly — the ThemeProvider
  * applies whatever is persisted, so this section needs no theme context of
  * its own.
  */
@@ -55,7 +105,7 @@ export function AppearanceSection(): ReactElement {
         legend="Theme"
         description="System follows your OS appearance. Saved with your settings."
       >
-        <div className="mt-3 grid grid-cols-3 gap-2">
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
           {THEME_OPTIONS.map(({ value, label, icon: Icon }) => {
             const selected = settings.theme === value
             return (
@@ -159,12 +209,83 @@ export function AppearanceSection(): ReactElement {
         </div>
       </SettingsField>
 
+      <SettingsField
+        legend="Corners"
+        description="How round every surface is — buttons, cards, dialogs, and inputs move together."
+      >
+        <div className="mt-3 grid grid-cols-4 gap-2">
+          {UI_RADIUS_IDS.map((radius) => {
+            const { label, preview } = RADIUS_OPTIONS[radius]
+            const selected = settings.uiRadius === radius
+            return (
+              <SettingsOptionCard
+                key={radius}
+                selected={selected}
+                className={cn(
+                  'flex-col items-center gap-1.5 px-3 py-3',
+                  selected ? 'text-accent-soft-text' : 'text-text-secondary',
+                )}
+              >
+                <input
+                  type="radio"
+                  name="ui-radius"
+                  value={radius}
+                  checked={selected}
+                  onChange={() => updateSettings({ uiRadius: radius })}
+                  className="sr-only"
+                  aria-label={`Corners: ${label}`}
+                />
+                <span
+                  aria-hidden
+                  className="h-5 w-8 border-[1.5px] border-current"
+                  style={{ borderRadius: preview }}
+                />
+                <span className="text-xs font-medium">{label}</span>
+              </SettingsOptionCard>
+            )
+          })}
+        </div>
+      </SettingsField>
+
       <SettingsSwitchField
         legend="Liquid Glass"
         description="Translucent, blurred surfaces over an accent-tinted backdrop — works with every theme."
         checked={settings.liquidGlass}
         onCheckedChange={(checked) => updateSettings({ liquidGlass: checked })}
       />
+
+      {settings.liquidGlass ? (
+        <SettingsField
+          legend="Glass intensity"
+          description="How far the tint and blur go. Subtle keeps a busy vault readable behind the chrome."
+        >
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            {GLASS_INTENSITY_IDS.map((intensity) => {
+              const selected = settings.glassIntensity === intensity
+              return (
+                <SettingsOptionCard
+                  key={intensity}
+                  selected={selected}
+                  className={cn(
+                    'items-center justify-center px-3 py-2',
+                    selected ? 'text-accent-soft-text' : 'text-text-secondary',
+                  )}
+                >
+                  <input
+                    type="radio"
+                    name="glass-intensity"
+                    value={intensity}
+                    checked={selected}
+                    onChange={() => updateSettings({ glassIntensity: intensity })}
+                    className="sr-only"
+                  />
+                  <span className="text-xs font-medium">{GLASS_INTENSITY_LABELS[intensity]}</span>
+                </SettingsOptionCard>
+              )
+            })}
+          </div>
+        </SettingsField>
+      ) : null}
     </SettingsSection>
   )
 }

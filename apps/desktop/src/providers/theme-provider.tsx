@@ -8,12 +8,14 @@ import {
   type ReactElement,
   type ReactNode,
 } from 'react'
-import type { ThemePreference } from '@reflect/core'
+import { DARK_THEME_IDS, type ThemePreference } from '@reflect/core'
 import { deriveAccentTokens } from '@/lib/accent-color'
 import {
   writeCachedAccentColor,
+  writeCachedGlassIntensity,
   writeCachedLiquidGlass,
   writeCachedThemePreference,
+  writeCachedUiRadius,
 } from '@/lib/theme-cache'
 import { useSettings, type SettingsLoadOutcome } from '@/providers/settings-provider'
 
@@ -24,13 +26,15 @@ export type Theme = ThemePreference
 export type ResolvedTheme = Exclude<ThemePreference, 'system'>
 
 /**
- * Whether a resolved theme belongs to the dark family. `space` and `midnight`
- * are dark variants — they layer over the `.dark` scope — while `paper` is a
- * light variant. Family drives the `.dark` class (and with it every Tailwind
- * `dark:` utility), the CSS `color-scheme`, and the light/dark toggle.
+ * Whether a resolved theme belongs to the dark family. `space`, `midnight`,
+ * `nord` and `forest` are dark variants — they layer over the `.dark` scope —
+ * while `paper`, `sepia` and `mist` are light ones. Family drives the `.dark`
+ * class (and with it every Tailwind `dark:` utility), the CSS `color-scheme`,
+ * and the light/dark toggle. The list itself lives in the settings schema
+ * next to the theme enum, so adding a variant can't forget this.
  */
 export function isDarkResolvedTheme(theme: ResolvedTheme): boolean {
-  return theme === 'dark' || theme === 'space' || theme === 'midnight'
+  return DARK_THEME_IDS.includes(theme)
 }
 
 interface ThemeContextValue {
@@ -69,6 +73,8 @@ export function ThemeProvider({ children }: ThemeProviderProps): ReactElement {
   const accentColor = settings.accentColor
   const customAccentColor = settings.customAccentColor
   const liquidGlass = settings.liquidGlass
+  const glassIntensity = settings.glassIntensity
+  const uiRadius = settings.uiRadius
   const [systemTheme, setSystemTheme] = useState<ResolvedTheme>(getSystemTheme)
   const [loadOutcome, setLoadOutcome] = useState<SettingsLoadOutcome | null>(null)
 
@@ -106,11 +112,22 @@ export function ThemeProvider({ children }: ThemeProviderProps): ReactElement {
     root.setAttribute('data-theme', resolvedTheme)
     root.setAttribute('data-accent', accentColor)
     // Liquid Glass restyles the active theme's surfaces (translucent, blurred
-    // chrome over a tinted backdrop) — an orthogonal switch, not a theme.
+    // chrome over a tinted backdrop) — an orthogonal switch, not a theme. The
+    // intensity rides along as its own attribute so the stylesheet can pick a
+    // blur/tint pair without a rule per theme.
     if (liquidGlass) {
       root.setAttribute('data-glass', 'on')
+      root.setAttribute('data-glass-level', glassIntensity)
     } else {
       root.removeAttribute('data-glass')
+      root.removeAttribute('data-glass-level')
+    }
+    // The default radius is the design system's own geometry, so it declares
+    // no scope — leaving the attribute off keeps the cascade one level shallower.
+    if (uiRadius === 'default') {
+      root.removeAttribute('data-radius')
+    } else {
+      root.setAttribute('data-radius', uiRadius)
     }
     root.style.colorScheme = dark ? 'dark' : 'light'
     // Preset accents resolve through the design-system's `[data-accent]`
@@ -131,7 +148,15 @@ export function ThemeProvider({ children }: ThemeProviderProps): ReactElement {
       root.style.removeProperty('--accent-soft-text')
       root.style.removeProperty('--focus-ring')
     }
-  }, [loadOutcome, resolvedTheme, accentColor, customAccentColor, liquidGlass])
+  }, [
+    loadOutcome,
+    resolvedTheme,
+    accentColor,
+    customAccentColor,
+    liquidGlass,
+    glassIntensity,
+    uiRadius,
+  ])
 
   // Only a loaded document is worth caching: after a failed load changes apply
   // for the session only, so mirroring them would have the next launch paint a
@@ -143,7 +168,9 @@ export function ThemeProvider({ children }: ThemeProviderProps): ReactElement {
     writeCachedThemePreference(theme)
     writeCachedAccentColor(accentColor)
     writeCachedLiquidGlass(liquidGlass)
-  }, [loadOutcome, theme, accentColor, liquidGlass])
+    writeCachedGlassIntensity(glassIntensity)
+    writeCachedUiRadius(uiRadius)
+  }, [loadOutcome, theme, accentColor, liquidGlass, glassIntensity, uiRadius])
 
   const setTheme = useCallback((next: Theme) => updateSettings({ theme: next }), [updateSettings])
 

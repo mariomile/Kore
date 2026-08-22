@@ -31,14 +31,21 @@
   --radius-2xl: 1rem; /* 16px — marketing glass panels     */
   --radius-full: 9999px; /* pills, avatars, nav capsule       */
 
+  /* The ramp above is the `default` step of the radius setting; the
+     `[data-radius]` scopes at the bottom of this file rescale it. */
+
   /* ---- Elevation / shadow -------------------------------- */
   /* App is mostly flat: hairline borders do the work, shadows
-     appear only on floating things (menus, modals, inputs).   */
+     appear only on floating things (menus, modals, inputs).
+
+     The `--shadow-sm/md/pop/input` ladder is NOT declared here.
+     It has to change per theme (a dark surface needs deeper ink
+     and a lit top edge), so colors.css owns it next to the theme
+     it belongs to. Re-adding a `:root` copy here would silently
+     win over colors.css's `.dark` block — same specificity, and
+     styles.css imports this file second — which is exactly how
+     the dark elevations went unrendered before. */
   --shadow-none: none;
-  --shadow-input: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-sm: 0 1px 2px rgba(11, 19, 36, 0.06);
-  --shadow-md: 0 4px 12px rgba(11, 19, 36, 0.08);
-  --shadow-pop: 0 8px 28px rgba(11, 19, 36, 0.16);
   /* Marketing glow — inset purple light on glass controls     */
   --glow-purple: inset 0 0 12px rgba(191, 151, 255, 0.24); /* @kind shadow */
 
@@ -60,4 +67,49 @@
   --duration-fast: 100ms; /* @kind other */
   --duration-base: 150ms; /* @kind other */
   --duration-slow: 300ms; /* @kind other */
+}
+
+/* ============================================================
+   RADIUS SCALE — `data-radius` on the document root (settings →
+   Appearance). Redefining the ramp in one place moves every
+   surface together: components only ever name `--radius-*`, so
+   buttons, cards, dialogs and chips stay in proportion. `full`
+   never scales — a pill is a pill at any setting. `default`
+   declares nothing, keeping the house ramp above. Each scope
+   also restates `--radius` (the house radius in colors.css):
+   the desktop app derives its Tailwind rounded-* scale from
+   that one value, so leaving it behind would move the design
+   system's surfaces and not the app's.
+   ============================================================ */
+
+/* SHARP — square corners; only pills stay round. `0px`, not a bare `0`:
+   consumers subtract from `--radius` (`calc(var(--radius) - 4px)`), and
+   calc() rejects number-minus-length, which would void the whole ramp. */
+:root[data-radius='sharp'] {
+  --radius: 0px;
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --radius-2xl: 0px;
+}
+
+/* SMALL — a hairline softening, closer to a code editor. */
+:root[data-radius='small'] {
+  --radius: 0.25rem;
+  --radius-sm: 0.125rem; /* 2px */
+  --radius-md: 0.1875rem; /* 3px */
+  --radius-lg: 0.25rem; /* 4px */
+  --radius-xl: 0.375rem; /* 6px */
+  --radius-2xl: 0.5rem; /* 8px */
+}
+
+/* ROUND — generous curvature; the softest the chrome reads well at. */
+:root[data-radius='round'] {
+  --radius: 0.875rem;
+  --radius-sm: 0.375rem; /* 6px  */
+  --radius-md: 0.625rem; /* 10px */
+  --radius-lg: 0.875rem; /* 14px */
+  --radius-xl: 1.125rem; /* 18px */
+  --radius-2xl: 1.5rem; /* 24px */
 }

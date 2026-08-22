@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { QueryClientProvider } from '@tanstack/react-query'
+import { LucideProvider } from 'lucide-react'
 import { queryClient } from '@/lib/query-client'
 import { registerAppCommands } from '@/lib/commands/app-commands'
 import { initializeExceptionTelemetry } from '@/lib/exception-telemetry'
@@ -43,7 +44,13 @@ createRoot(rootElement, reactRootOptions).render(
         <EditorFontFamilyEffect />
         <EditorLineSpacingEffect />
         <ThemeProvider>
-          <PlatformRoot />
+          {/* Lucide ships a 2px stroke; the app's own glyph set draws at 1.7
+              and half the call sites already pass 1.75 by hand. Setting the
+              default here makes the hairline weight the rule instead of the
+              exception — an explicit `strokeWidth` on an icon still wins. */}
+          <LucideProvider strokeWidth={1.75}>
+            <PlatformRoot />
+          </LucideProvider>
         </ThemeProvider>
       </SettingsProvider>
     </QueryClientProvider>

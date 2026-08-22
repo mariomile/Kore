@@ -164,16 +164,43 @@ export const contextSidebarWidthSchema = sidebarWidthValueSchema(CONTEXT_SIDEBAR
 
 /**
  * The app color theme. `system` (the default) follows the OS preference;
- * every other value pins a concrete theme. Beyond the classic `light`/`dark`
- * pair the app ships three pinned variants: `space` (the marketing site's
- * deep-space purple), `midnight` (pure-black OLED), and `paper` (a warm,
- * cream writing surface). Persisted here so the choice survives relaunch.
+ * every other value pins a concrete variant.
+ *
+ * The set is deliberately sober — neutral greys in the register the tools
+ * this app sits beside use (Cursor, Codex, Notion, Craft), not a palette of
+ * hues. Light: `light` (pure white), `ash` (neutral grey page under white
+ * cards), `paper` (warm cream). Dark: `dark` (the house cool charcoal),
+ * `graphite` (a flat neutral grey), `space` (the marketing site's deep-space
+ * purple), `midnight` (pure-black OLED). Colour comes from the accent, which
+ * is a separate setting, so the surfaces can stay quiet.
+ *
+ * Persisted here so the choice survives relaunch. Listed in picker order:
+ * the OS default, then light to dark.
  */
-export const themePreferenceSchema = z
-  .enum(['system', 'light', 'dark', 'space', 'midnight', 'paper'])
-  .catch('system')
+const themePreferenceEnum = z.enum([
+  'system',
+  'light',
+  'ash',
+  'paper',
+  'dark',
+  'graphite',
+  'space',
+  'midnight',
+])
+
+export const themePreferenceSchema = themePreferenceEnum.catch('system')
 
 export type ThemePreference = z.infer<typeof themePreferenceSchema>
+
+/** Every theme id, `system` included. */
+export const THEME_PREFERENCE_IDS = themePreferenceEnum.options
+
+/**
+ * The pinned variants that layer over the dark scope. The single source of
+ * truth for the `.dark` class, `color-scheme`, and the light/dark toggle —
+ * `public/theme-init.js` repeats the list because it cannot import.
+ */
+export const DARK_THEME_IDS: readonly ThemePreference[] = ['dark', 'graphite', 'space', 'midnight']
 
 /**
  * The app accent color — the one saturated hue used for solid buttons,
@@ -184,14 +211,24 @@ export type ThemePreference = z.infer<typeof themePreferenceSchema>
  * well in both light and dark themes.
  */
 const accentColorEnum = z.enum([
+  // Ordered as the picker lays them out: one turn around the wheel from
+  // indigo, then the neutral.
   'indigo',
+  'violet',
   'purple',
-  'blue',
-  'teal',
-  'green',
-  'amber',
+  'pink',
   'rose',
   'red',
+  'orange',
+  'amber',
+  'lime',
+  'green',
+  'emerald',
+  'teal',
+  'cyan',
+  'sky',
+  'blue',
+  'slate',
   'custom',
 ])
 
@@ -214,13 +251,21 @@ export const DEFAULT_CUSTOM_ACCENT = '#4f46e5'
  */
 export const ACCENT_SWATCH_HEX: Record<Exclude<AccentColor, 'custom'>, string> = {
   indigo: '#4f46e5',
-  purple: '#7c3aed',
-  blue: '#2563eb',
-  teal: '#0d9488',
-  green: '#059669',
-  amber: '#d97706',
+  violet: '#7c3aed',
+  purple: '#9333ea',
+  pink: '#db2777',
   rose: '#e11d48',
   red: '#dc2626',
+  orange: '#ea580c',
+  amber: '#d97706',
+  lime: '#65a30d',
+  green: '#059669',
+  emerald: '#10b981',
+  teal: '#0d9488',
+  cyan: '#0891b2',
+  sky: '#0284c7',
+  blue: '#2563eb',
+  slate: '#475569',
 }
 
 /**
@@ -240,6 +285,38 @@ export const customAccentColorSchema = z
  * active rather than being a theme of its own. Off by default.
  */
 export const liquidGlassSchema = z.boolean().catch(false)
+
+/**
+ * How far Liquid Glass goes when it is on: `subtle` barely tints and blurs
+ * (readable on a busy vault), `regular` is the original look, and `strong`
+ * leans into the backdrop. A separate key from the on/off switch so turning
+ * glass off and back on returns to the intensity the user chose. Ignored
+ * entirely while {@link liquidGlassSchema} is false.
+ */
+const glassIntensityEnum = z.enum(['subtle', 'regular', 'strong'])
+
+export const glassIntensitySchema = glassIntensityEnum.catch('regular')
+
+export type GlassIntensity = z.infer<typeof glassIntensitySchema>
+
+/** The intensities in picker order, faintest first. */
+export const GLASS_INTENSITY_IDS = glassIntensityEnum.options
+
+/**
+ * How round the app's corners are. Scales the whole radius ramp through a
+ * `data-radius` scope on the document root (see the design system's
+ * `spacing.css`) rather than restyling components one by one, so every
+ * surface — buttons, cards, dialogs, chips — moves together. `default` is
+ * the house 8px geometry.
+ */
+const uiRadiusEnum = z.enum(['sharp', 'small', 'default', 'round'])
+
+export const uiRadiusSchema = uiRadiusEnum.catch('default')
+
+export type UiRadius = z.infer<typeof uiRadiusSchema>
+
+/** The radius steps in picker order, squarest first. */
+export const UI_RADIUS_IDS = uiRadiusEnum.options
 
 /**
  * How times of day are displayed throughout the app. `12h` (the default)
@@ -799,6 +876,8 @@ export const settingsSchema = z.looseObject({
   accentColor: accentColorSchema,
   customAccentColor: customAccentColorSchema,
   liquidGlass: liquidGlassSchema,
+  glassIntensity: glassIntensitySchema,
+  uiRadius: uiRadiusSchema,
   timeFormat: timeFormatSchema,
   dateFormat: dateFormatSchema,
   weekStartDay: weekStartDaySchema,

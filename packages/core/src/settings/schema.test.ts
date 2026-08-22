@@ -18,6 +18,7 @@ describe('settingsSchema', () => {
       semanticSearchEnabled: false,
       describeAssets: true,
       transcriptionFormat: true,
+      uiRadius: 'default',
       contactsEnabled: false,
       mobileOnboarded: false,
       mobileStorage: 'local',
@@ -27,6 +28,7 @@ describe('settingsSchema', () => {
       accentColor: 'indigo',
       customAccentColor: '#4f46e5',
       liquidGlass: false,
+      glassIntensity: 'regular',
       taskReminders: false,
       quickCaptureEnabled: true,
       timeFormat: '12h',
@@ -76,6 +78,8 @@ describe('settingsSchema', () => {
     expect(DEFAULT_SETTINGS.mobileStorage).toBe('local')
     expect(DEFAULT_SETTINGS.theme).toBe('system')
     expect(DEFAULT_SETTINGS.accentColor).toBe('indigo')
+    expect(DEFAULT_SETTINGS.uiRadius).toBe('default')
+    expect(DEFAULT_SETTINGS.glassIntensity).toBe('regular')
     expect(DEFAULT_SETTINGS.editorFontFamily).toBe('sans')
     expect(DEFAULT_SETTINGS.editorLineSpacing).toBe('normal')
     expect(DEFAULT_SETTINGS.timeFormat).toBe('12h')
@@ -133,7 +137,15 @@ describe('settingsSchema', () => {
     expect(settingsSchema.parse({ theme: 'space' }).theme).toBe('space')
     expect(settingsSchema.parse({ theme: 'midnight' }).theme).toBe('midnight')
     expect(settingsSchema.parse({ theme: 'paper' }).theme).toBe('paper')
+    expect(settingsSchema.parse({ theme: 'ash' }).theme).toBe('ash')
+    expect(settingsSchema.parse({ theme: 'graphite' }).theme).toBe('graphite')
     expect(settingsSchema.parse({ accentColor: 'teal' }).accentColor).toBe('teal')
+    expect(settingsSchema.parse({ accentColor: 'lime' }).accentColor).toBe('lime')
+    expect(settingsSchema.parse({ accentColor: 'slate' }).accentColor).toBe('slate')
+    expect(settingsSchema.parse({ uiRadius: 'sharp' }).uiRadius).toBe('sharp')
+    expect(settingsSchema.parse({ uiRadius: 'round' }).uiRadius).toBe('round')
+    expect(settingsSchema.parse({ glassIntensity: 'subtle' }).glassIntensity).toBe('subtle')
+    expect(settingsSchema.parse({ glassIntensity: 'strong' }).glassIntensity).toBe('strong')
     expect(settingsSchema.parse({ accentColor: 'indigo' }).accentColor).toBe('indigo')
     expect(settingsSchema.parse({ accentColor: 'custom' }).accentColor).toBe('custom')
     expect(settingsSchema.parse({ customAccentColor: '#A1B2C3' }).customAccentColor).toBe('#a1b2c3')
@@ -224,8 +236,12 @@ describe('settingsSchema', () => {
     expect(settingsSchema.parse({ contextSidebarWidth: 'wide' }).contextSidebarWidth).toBe(320)
     expect(settingsSchema.parse({ contextSidebarWidth: 100 }).contextSidebarWidth).toBe(240)
     expect(settingsSchema.parse({ contextSidebarWidth: 9000 }).contextSidebarWidth).toBe(480)
-    expect(settingsSchema.parse({ theme: 'sepia' }).theme).toBe('system')
+    expect(settingsSchema.parse({ theme: 'chartreuse' }).theme).toBe('system')
     expect(settingsSchema.parse({ theme: 7 }).theme).toBe('system')
+    expect(settingsSchema.parse({ uiRadius: 'pill' }).uiRadius).toBe('default')
+    expect(settingsSchema.parse({ uiRadius: 8 }).uiRadius).toBe('default')
+    expect(settingsSchema.parse({ glassIntensity: 'extreme' }).glassIntensity).toBe('regular')
+    expect(settingsSchema.parse({ glassIntensity: 3 }).glassIntensity).toBe('regular')
     expect(settingsSchema.parse({ accentColor: 'chartreuse' }).accentColor).toBe('indigo')
     expect(settingsSchema.parse({ accentColor: 7 }).accentColor).toBe('indigo')
     expect(settingsSchema.parse({ customAccentColor: 'tomato' }).customAccentColor).toBe('#4f46e5')
@@ -290,6 +306,7 @@ describe('settingsSchema', () => {
       semanticSearchEnabled: false,
       describeAssets: true,
       transcriptionFormat: true,
+      uiRadius: 'default',
       contactsEnabled: false,
       mobileOnboarded: false,
       mobileStorage: 'local',
@@ -299,6 +316,7 @@ describe('settingsSchema', () => {
       accentColor: 'indigo',
       customAccentColor: '#4f46e5',
       liquidGlass: false,
+      glassIntensity: 'regular',
       taskReminders: false,
       quickCaptureEnabled: true,
       timeFormat: '12h',

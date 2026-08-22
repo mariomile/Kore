@@ -679,7 +679,7 @@ pub async fn db_query<R: tauri::Runtime>(
 /// anything larger is a bug, not a legitimate read.
 const DB_QUERY_BATCH_MAX: usize = 32;
 
-/// One compiled read in a {@link db_query_batch} payload: SQL plus bound params.
+/// One compiled read in a [`db_query_batch`] payload: SQL plus bound params.
 #[derive(Debug, serde::Deserialize)]
 pub struct QuerySpec {
     sql: String,

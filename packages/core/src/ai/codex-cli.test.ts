@@ -76,7 +76,9 @@ describe('parseCodexCliLine', () => {
       ),
     ).toBeNull()
     expect(
-      parseCodexCliLine(JSON.stringify({ method: 'thread/started', params: { thread: { id: 't' } } })),
+      parseCodexCliLine(
+        JSON.stringify({ method: 'thread/started', params: { thread: { id: 't' } } }),
+      ),
     ).toBeNull()
     expect(parseCodexCliLine('not json')).toBeNull()
   })
@@ -110,7 +112,9 @@ describe('parseCodexCliLine', () => {
       message: 'boom',
     })
     expect(
-      parseCodexCliLine(JSON.stringify({ id: 2, error: { code: -32603, message: 'handshake failed' } })),
+      parseCodexCliLine(
+        JSON.stringify({ id: 2, error: { code: -32603, message: 'handshake failed' } }),
+      ),
     ).toEqual({ type: 'result', isError: true, message: 'handshake failed' })
   })
 })
@@ -173,7 +177,7 @@ describe('codexAppServerHandshakePrompt', () => {
   })
 
   it('omits the model for the CLI default', () => {
-    const prompt = codexAppServerHandshakePrompt({ graphRoot: '/g', model: 'default' })
+    const prompt = codexAppServerHandshakePrompt({ graphRoot: '/g' })
     expect(prompt).not.toContain('"model"')
   })
 })
@@ -311,7 +315,9 @@ describe('streamCodexCliChat', () => {
     const requestId = requestIdOf(fake)
 
     expect(fake.runs[0]).toMatchObject({ binary: 'codex', cwd: '/g', keepStdinOpen: true })
-    expect(fake.runs[0]?.['args']).toEqual(expect.arrayContaining(['app-server', '--ignore-user-config']))
+    expect(fake.runs[0]?.['args']).toEqual(
+      expect.arrayContaining(['app-server', '--ignore-user-config']),
+    )
     expect(String(fake.runs[0]?.['prompt'])).toContain('"method":"initialize"')
     expect(String(fake.runs[0]?.['prompt'])).not.toContain('hello')
 
@@ -369,7 +375,9 @@ describe('streamCodexCliChat', () => {
     fake.emit?.(
       line(requestId, {
         method: 'turn/completed',
-        params: { turn: { id: 'turn_1', status: 'failed', error: { message: 'not logged in to ChatGPT' } } },
+        params: {
+          turn: { id: 'turn_1', status: 'failed', error: { message: 'not logged in to ChatGPT' } },
+        },
       }),
     )
     fake.emit?.({ kind: 'done', requestId, code: 1 })

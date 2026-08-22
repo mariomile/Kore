@@ -6,12 +6,7 @@ import {
   type KeyboardEvent,
   type ReactElement,
 } from 'react'
-import {
-  captureInboxSpool,
-  errorMessage,
-  hideQuickCapture,
-  windowBootstrap,
-} from '@reflect/core'
+import { captureInboxSpool, errorMessage, hideQuickCapture, windowBootstrap } from '@reflect/core'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -94,7 +89,10 @@ export function QuickCaptureRoot(): ReactElement {
         </Button>
       </form>
       {error !== null ? (
-        <p className="ml-2 max-w-[10rem] shrink-0 truncate text-xs text-red-700 dark:text-red-300" role="alert">
+        <p
+          className="ml-2 max-w-[10rem] shrink-0 truncate text-xs text-red-700 dark:text-red-300"
+          role="alert"
+        >
           {error}
         </p>
       ) : null}

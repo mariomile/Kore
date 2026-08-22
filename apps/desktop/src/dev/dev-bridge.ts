@@ -218,9 +218,7 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
         return index.query(sql, params)
       }
       case 'db_query_batch': {
-        const { queries } = z
-          .object({ queries: z.array(dbQueryArgsSchema) })
-          .parse(args)
+        const { queries } = z.object({ queries: z.array(dbQueryArgsSchema) }).parse(args)
         return queries.map(({ sql, params }) => index.query(sql, params))
       }
       case 'index_open':

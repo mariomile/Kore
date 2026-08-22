@@ -20,8 +20,6 @@ describe('buildGlobalShortcutEnvelope', () => {
       text: 'ship the release notes',
       source: 'global-shortcut',
     })
-    expect(envelope.id).toMatch(
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
-    )
+    expect(envelope.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)
   })
 })

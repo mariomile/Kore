@@ -9,7 +9,7 @@ import {
  * a paste that includes them becomes a single daily-note bullet.
  */
 export function foldQuickCaptureText(raw: string): string {
-  return raw.replace(/[\r\n]+/g, ' ').trim()
+  return raw.replaceAll(/[\r\n]+/g, ' ').trim()
 }
 
 /**

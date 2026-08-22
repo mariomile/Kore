@@ -10,7 +10,9 @@ const windowBootstrap = vi.hoisted(() =>
     initialDeepLink: null,
   })),
 )
-const captureInboxSpool = vi.hoisted(() => vi.fn(async () => undefined))
+const captureInboxSpool = vi.hoisted(() =>
+  vi.fn<(name: string, json: string, generation: number) => Promise<void>>(async () => undefined),
+)
 const hideQuickCapture = vi.hoisted(() => vi.fn(async () => undefined))
 
 vi.mock('@reflect/core', async (importOriginal) => ({
@@ -36,7 +38,7 @@ describe('QuickCaptureRoot', () => {
     const [name, json, generation] = captureInboxSpool.mock.calls[0]!
     expect(generation).toBe(7)
     expect(name).toMatch(/\.json$/)
-    expect(JSON.parse(json as string)).toMatchObject({
+    expect(JSON.parse(json)).toMatchObject({
       kind: 'append',
       text: 'call Alex',
       source: 'global-shortcut',

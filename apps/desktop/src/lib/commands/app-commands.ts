@@ -1,8 +1,6 @@
 import {
   errorMessage,
   getNote,
-  parseNote,
-  readNoteLocal,
   showQuickCapture,
   getPinnedNotes,
   randomNotePath,

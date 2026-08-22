@@ -51,7 +51,8 @@ beforeEach(() => {
   unlisten.mockClear()
   core.embedNote.mockClear()
   core.embedRemove.mockClear()
-  semantic.backfillEmbeddingsVisibly.mockClear()
+  semantic.backfillEmbeddingsVisibly.mockReset()
+  semantic.backfillEmbeddingsVisibly.mockImplementation(async () => 'completed')
   core.subscribeIndexApplied.mockReset().mockImplementation((handler: IndexAppliedListener) => {
     onApplied = handler
     return unlisten
@@ -121,7 +122,7 @@ describe('EmbeddingsSync', () => {
   })
 
   it('coalesces follow-up work that arrives during backfill into unique paths', async () => {
-    let releaseBackfill: (() => void) | null = null
+    let releaseBackfill = (): void => {}
     semantic.backfillEmbeddingsVisibly.mockImplementation(
       () =>
         new Promise((resolve) => {
@@ -137,13 +138,18 @@ describe('EmbeddingsSync', () => {
     onApplied?.([{ kind: 'upsert', path: 'notes/b.md' }], 7)
     expect(core.embedNote).not.toHaveBeenCalled()
 
-    releaseBackfill?.()
+    releaseBackfill()
     await vi.waitFor(() => expect(core.embedNote).toHaveBeenCalledTimes(2))
-    const paths = core.embedNote.mock.calls.map((call) => {
-      const args = call[0]
-      return typeof args === 'object' && args !== null && 'path' in args ? args.path : null
+    expect(core.embedNote).toHaveBeenCalledWith({
+      path: 'notes/a.md',
+      generation: 7,
+      modelId: 'all-MiniLM-L6-v2',
     })
-    expect(paths.sort()).toEqual(['notes/a.md', 'notes/b.md'])
+    expect(core.embedNote).toHaveBeenCalledWith({
+      path: 'notes/b.md',
+      generation: 7,
+      modelId: 'all-MiniLM-L6-v2',
+    })
   })
 
   it('pauses follow-up work the moment semantic search is disabled', async () => {

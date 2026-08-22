@@ -310,7 +310,7 @@ export async function getGithubToken(
   now: () => number = Date.now,
 ): Promise<string | null> {
   if (inFlightToken !== null) {
-    return inFlightToken
+    return await inFlightToken
   }
   const pending = acquireGithubToken(fetchFn, now).finally(() => {
     if (inFlightToken === pending) {
@@ -318,7 +318,7 @@ export async function getGithubToken(
     }
   })
   inFlightToken = pending
-  return pending
+  return await pending
 }
 
 async function acquireGithubToken(fetchFn: FetchFn, now: () => number): Promise<string | null> {

@@ -312,7 +312,7 @@ describe('getGithubToken', () => {
     const gated = new Promise<Response>((resolve) => {
       release = resolve
     })
-    const fetchFn = vi.fn(async () => gated)
+    const fetchFn = vi.fn(() => gated)
     const first = getGithubToken(fetchFn, () => 2_000)
     const second = getGithubToken(fetchFn, () => 2_000)
     await vi.waitFor(() => expect(fetchFn).toHaveBeenCalledTimes(1))

@@ -16,10 +16,11 @@ import type { StreamCliChatOptions } from './claude-cli'
 
 /**
  * The Codex CLI provider ("subscription" AI): chat runs through the locally
- * installed `codex` binary in headless mode (`codex exec --json`), billing
- * the user's ChatGPT subscription instead of a BYOK API key. This module
- * owns the binary's protocol — arguments, the permission profile, and
- * parsing its JSONL events; the transport lives in `./agent-cli`.
+ * installed `codex` binary via `codex app-server` (JSON-RPC over stdio),
+ * billing the user's ChatGPT subscription instead of a BYOK API key. This
+ * module owns the binary's protocol — arguments, the permission profile,
+ * the handshake, and parsing its notifications; the transport lives in
+ * `./agent-cli`.
  *
  * Grounding: Codex reads notes with its own sandboxed shell. The run gets a
  * custom permission profile whose base is *restricted* — nothing on disk is
@@ -27,11 +28,12 @@ import type { StreamCliChatOptions } from './claude-cli'
  * every `private: true` note (plus `.reflect/` and `.git/`, whose index and
  * history embed private content) carries an explicit deny entry, enforced
  * fail-closed by Codex's sandbox. Network stays restricted; writes are never
- * granted. That keeps the hard privacy block intact even though the CLI
- * reads files itself.
+ * granted in read-only chat. That keeps the hard privacy block intact even
+ * though the CLI reads files itself.
  *
- * Unlike Claude Code, `codex exec --json` emits whole agent messages, not
- * token deltas — the reply appears in one piece when it completes.
+ * Mid-turn steering uses `turn/steer` on the in-flight turn (same-turn
+ * inject, not Claude Code's extra-result next-turn). `codex exec` cannot
+ * do this: its stdin is the whole prompt until EOF.
  */
 
 /** The model id meaning "whatever the CLI is configured to use". */
@@ -188,7 +190,13 @@ export function codexCliFilesystemToml(
   return `{ ${entries.join(', ')} }`
 }
 
-/** The complete argument list for one headless chat run. */
+/** JSON-RPC request ids for the app-server handshake (steer ids start after). */
+const INITIALIZE_ID = 1
+const THREAD_START_ID = 2
+const TURN_START_ID = 3
+const FIRST_STEER_ID = 4
+
+/** The complete argument list for one app-server chat run. */
 export function codexCliArgs(options: {
   model: string
   graphRoot: string
@@ -197,16 +205,14 @@ export function codexCliArgs(options: {
   mcpServers?: ResolvedMcpServer[] | undefined
 }): string[] {
   return [
-    'exec',
-    '--json',
-    '--skip-git-repo-check',
-    '--ephemeral',
+    'app-server',
     // The user's ~/.codex/config.toml (their own MCP servers, profiles,
     // approvals) must never bleed into a vault run; login credentials still
     // come from CODEX_HOME, so the ChatGPT sign-in is untouched.
     '--ignore-user-config',
-    '--cd',
-    options.graphRoot,
+    // Headless: never pause the turn on an approval JSON-RPC request.
+    '-c',
+    'approval_policy="never"',
     '-c',
     `default_permissions="${PROFILE}"`,
     '-c',
@@ -216,52 +222,179 @@ export function codexCliArgs(options: {
       options.allowEdits === true,
     )}`,
     ...codexMcpConfigArgs(options.mcpServers ?? []),
-    ...(options.model === CODEX_CLI_DEFAULT_MODEL ? [] : ['--model', options.model]),
-    // Read the prompt from stdin (arbitrary length, no arg-size limits).
-    '-',
   ]
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function jsonRpcLine(payload: Record<string, unknown>): string {
+  return JSON.stringify(payload)
+}
+
+function recordField(value: Record<string, unknown>, key: string): Record<string, unknown> | null {
+  const nested = value[key]
+  return isRecord(nested) ? nested : null
+}
+
+function stringField(value: Record<string, unknown>, key: string): string | null {
+  const nested = value[key]
+  return typeof nested === 'string' && nested !== '' ? nested : null
+}
+
 /**
- * Parse one `codex exec --json` JSONL line. Agent messages arrive whole on
- * `item.completed`; `turn.completed` ends the run, and `turn.failed` /
- * `error` carry the failure. Everything else (reasoning, command items,
- * to-do lists) is activity, not answer text, and is dropped.
+ * The initial stdin payload: `initialize`, `initialized`, and `thread/start`.
+ * `turn/start` waits for the thread id on stdout — it cannot ride here.
  */
-export function parseCodexCliLine(line: string): AgentCliChunk | null {
+export function codexAppServerHandshakePrompt(options: {
+  graphRoot: string
+  model: string
+}): string {
+  const threadParams: Record<string, unknown> = {
+    cwd: options.graphRoot,
+    approvalPolicy: 'never',
+    ephemeral: true,
+  }
+  if (options.model !== CODEX_CLI_DEFAULT_MODEL) {
+    threadParams.model = options.model
+  }
+  return [
+    jsonRpcLine({
+      method: 'initialize',
+      id: INITIALIZE_ID,
+      params: { clientInfo: { name: 'lore', title: 'Lore' } },
+    }),
+    jsonRpcLine({ method: 'initialized', params: {} }),
+    jsonRpcLine({
+      method: 'thread/start',
+      id: THREAD_START_ID,
+      params: threadParams,
+    }),
+  ].join('\n')
+}
+
+function rpcErrorMessage(value: unknown): string | null {
+  if (!isRecord(value)) {
+    return null
+  }
+  if (typeof value.message === 'string' && value.message !== '') {
+    return value.message
+  }
+  const nested = value.error
+  if (isRecord(nested) && typeof nested.message === 'string' && nested.message !== '') {
+    return nested.message
+  }
+  return null
+}
+
+/** Mutable parse state so a streamed agent message is not replayed as a block. */
+export interface CodexCliParseState {
+  sawAgentMessageDelta: boolean
+}
+
+/**
+ * Parse one Codex app-server JSONL line. Agent text arrives as
+ * `item/agentMessage/delta` fragments, with `item/completed` carrying the
+ * full snapshot (dropped when deltas already streamed). `turn/completed`
+ * ends the run.
+ */
+export function parseCodexCliLine(
+  line: string,
+  state: CodexCliParseState = { sawAgentMessageDelta: false },
+): AgentCliChunk | null {
   let parsed: unknown
   try {
     parsed = JSON.parse(line)
   } catch {
     return null
   }
-  const event = z
-    .object({
-      type: z.string(),
-      item: z.object({ type: z.string(), text: z.string().optional() }).optional(),
-      error: z.object({ message: z.string() }).optional(),
-      message: z.string().optional(),
-    })
-    .safeParse(parsed)
-  if (!event.success) {
+  if (!isRecord(parsed)) {
     return null
   }
-  const data = event.data
-  if (
-    data.type === 'item.completed' &&
-    data.item?.type === 'agent_message' &&
-    data.item.text !== undefined
-  ) {
-    return { type: 'text-block', text: data.item.text }
+
+  const rpcError = rpcErrorMessage(parsed.error)
+  if (rpcError !== null && parsed.id !== undefined) {
+    return { type: 'result', isError: true, message: rpcError }
   }
-  if (data.type === 'turn.completed') {
-    return { type: 'result', isError: false, message: null }
+
+  const method = typeof parsed.method === 'string' ? parsed.method : null
+  const params = isRecord(parsed.params) ? parsed.params : null
+
+  if (method === 'item/agentMessage/delta' && params !== null) {
+    const delta = stringField(params, 'delta')
+    if (delta === null) {
+      return null
+    }
+    state.sawAgentMessageDelta = true
+    return { type: 'text-delta', text: delta }
   }
-  if (data.type === 'turn.failed') {
-    return { type: 'result', isError: true, message: data.error?.message ?? null }
+
+  if (method === 'item/completed' && params !== null) {
+    const item = recordField(params, 'item')
+    if (item === null || stringField(item, 'type') !== 'agentMessage') {
+      return null
+    }
+    const text = stringField(item, 'text')
+    if (state.sawAgentMessageDelta) {
+      state.sawAgentMessageDelta = false
+      return null
+    }
+    if (text === null) {
+      return null
+    }
+    return { type: 'text-block', text }
   }
-  if (data.type === 'error') {
-    return { type: 'result', isError: true, message: data.message ?? null }
+
+  if (method === 'turn/completed' && params !== null) {
+    const turn = recordField(params, 'turn')
+    const status = turn === null ? null : stringField(turn, 'status')
+    if (status === 'completed' || status === 'interrupted') {
+      return { type: 'result', isError: false, message: null }
+    }
+    if (status === 'failed') {
+      const error = turn === null ? null : recordField(turn, 'error')
+      const message =
+        error === null ? 'Codex turn failed.' : (stringField(error, 'message') ?? 'Codex turn failed.')
+      return { type: 'result', isError: true, message }
+    }
+    return null
+  }
+
+  if (method === 'error') {
+    const message = rpcErrorMessage(params) ?? rpcErrorMessage(parsed.error)
+    if (message !== null) {
+      return { type: 'result', isError: true, message }
+    }
+  }
+
+  return null
+}
+
+function threadIdFromLine(parsed: Record<string, unknown>): string | null {
+  if (parsed.id === THREAD_START_ID) {
+    const result = recordField(parsed, 'result')
+    const thread = result === null ? null : recordField(result, 'thread')
+    return thread === null ? null : stringField(thread, 'id')
+  }
+  if (parsed.method === 'thread/started') {
+    const params = recordField(parsed, 'params')
+    const thread = params === null ? null : recordField(params, 'thread')
+    return thread === null ? null : stringField(thread, 'id')
+  }
+  return null
+}
+
+function turnIdFromLine(parsed: Record<string, unknown>): string | null {
+  if (parsed.id === TURN_START_ID) {
+    const result = recordField(parsed, 'result')
+    const turn = result === null ? null : recordField(result, 'turn')
+    return turn === null ? null : stringField(turn, 'id')
+  }
+  if (parsed.method === 'turn/started') {
+    const params = recordField(parsed, 'params')
+    const turn = params === null ? null : recordField(params, 'turn')
+    return turn === null ? null : stringField(turn, 'id')
   }
   return null
 }
@@ -276,6 +409,25 @@ export function streamCodexCliChat(options: StreamCliChatOptions): AsyncGenerato
     agentContext: options.agentContext,
     memoryWriteApproval: options.memoryWriteApproval,
   })
+  const userPrompt = `<instructions>\n${preamble}\n</instructions>\n\n${agentCliPrompt(options.messages)}`
+  const parseState: CodexCliParseState = { sawAgentMessageDelta: false }
+  let threadId: string | undefined
+  let turnId: string | undefined
+  let sentTurnStart = false
+  let nextSteerId = FIRST_STEER_ID
+  let queuedSteerReady: ((text: string) => Promise<void>) | undefined
+  let hostArmed = false
+
+  const armHostIfReady = (): void => {
+    if (hostArmed || queuedSteerReady === undefined || threadId === undefined || turnId === undefined) {
+      return
+    }
+    hostArmed = true
+    options.steering?.onSteerReady(queuedSteerReady)
+  }
+
+  const steering = options.steering
+
   return streamAgentCliTurn({
     binary: 'codex',
     args: codexCliArgs({
@@ -285,11 +437,66 @@ export function streamCodexCliChat(options: StreamCliChatOptions): AsyncGenerato
       allowEdits: options.allowEdits,
       mcpServers: options.mcpServers,
     }),
-    prompt: `<instructions>\n${preamble}\n</instructions>\n\n${agentCliPrompt(options.messages)}`,
+    prompt: `${codexAppServerHandshakePrompt({
+      graphRoot: options.graphRoot,
+      model: options.model,
+    })}\n`,
     cwd: options.graphRoot,
     env: mcpSpawnEnv(options.mcpServers ?? []),
-    parseLine: parseCodexCliLine,
+    keepStdinOpen: true,
+    parseLine: (line) => parseCodexCliLine(line, parseState),
     startFailureMessage: 'Could not start the Codex CLI.',
     signal: options.signal,
+    onRawLine: async (line, sendLine) => {
+      let parsed: unknown
+      try {
+        parsed = JSON.parse(line)
+      } catch {
+        return
+      }
+      if (!isRecord(parsed)) {
+        return
+      }
+      const startedThread = threadIdFromLine(parsed)
+      if (startedThread !== null && !sentTurnStart) {
+        sentTurnStart = true
+        threadId = startedThread
+        await sendLine(
+          jsonRpcLine({
+            method: 'turn/start',
+            id: TURN_START_ID,
+            params: {
+              threadId,
+              input: [{ type: 'text', text: userPrompt }],
+            },
+          }),
+        )
+      }
+      const startedTurn = turnIdFromLine(parsed)
+      if (startedTurn !== null) {
+        turnId = startedTurn
+        armHostIfReady()
+      }
+    },
+    steering:
+      steering !== undefined
+        ? {
+            encodeLine: (text) =>
+              jsonRpcLine({
+                method: 'turn/steer',
+                id: nextSteerId++,
+                params: {
+                  threadId,
+                  expectedTurnId: turnId,
+                  input: [{ type: 'text', text }],
+                },
+              }),
+            onReady: (steer) => {
+              queuedSteerReady = steer
+              armHostIfReady()
+            },
+            resultMode: 'same-turn',
+          }
+        : undefined,
   })
 }

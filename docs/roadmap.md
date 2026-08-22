@@ -11,9 +11,10 @@ customization effort.
   release goes straight to production. bb's model (one build-time variable
   branching bundle id, product name, binary name, release tag, and feed
   file) maps onto Tauri as-is. Deliberately parked for now.
-- **Steering the other engines** — Codex and Cursor run one-shot, so
-  ⌘-Enter queues there instead of injecting (`cliProviderSteerMode`).
-  Revisit when either grows a streaming-input session.
+- **Steering Cursor** — Cursor's `cursor-agent` still runs one-shot
+  (`-p` / ACP `session/prompt` blocks until the turn ends), so ⌘-Enter
+  queues there instead of injecting (`cliProviderSteerMode`). Revisit when
+  the CLI grows a streaming-input session.
 
 ## Shipped (this fork)
 
@@ -68,14 +69,14 @@ customization effort.
   for a checkbox-only completion and appends through the live buffer.
 
 - Steering a turn in flight. ⌘-Enter in the composer delivers a message
-  into the *running* Claude Code session instead of cancelling it: the CLI
-  runs with `--input-format stream-json` and a held-open stdin, so the
-  steer lands as the next user turn with the whole context intact, and the
-  transcript shows it where the reply splits around it. Steerability is a
-  per-engine capability (`cliProviderSteerMode`) — Codex and Cursor are
-  one-shot processes, so ⌘-Enter there degrades to the message queue,
-  as it does when a run settles between the keypress and the write.
-  Verified against the real `claude` binary: one process, two turns.
+  into the *running* session instead of cancelling it. Claude Code runs
+  with `--input-format stream-json` and a held-open stdin (each inject is
+  the next user turn); Codex runs `app-server` and `turn/steer` (same-turn
+  inject on the in-flight turn). The transcript shows the steer where the
+  reply splits around it. Steerability is a per-engine capability
+  (`cliProviderSteerMode`) — Cursor is still one-shot, so ⌘-Enter there
+  degrades to the message queue, as it does when a run settles between
+  the keypress and the write.
 
 - Script-mode routines (the silent tick). An automation can carry an
   optional gate script that runs deterministically in the vault folder at

@@ -58,16 +58,13 @@ struct IndexInner {
 }
 
 /// The `db_query` reader: a second, **read-only** connection under its own
-/// lock. Queries run on the blocking pool now, and the write commands are
-/// still synchronous main-thread calls — if both shared one mutex, a long
-/// FTS scan holding it would make the next `index_apply`/`index_touch` block
-/// the iOS main thread for the read's duration, recreating the exact
-/// touch-delivery stall the async conversion removed. Under WAL the reader
-/// sees the last committed state, so a query after an awaited write still
-/// reads its result; it just never contends with one. Rebound (with its own
-/// generation copy, so the pair swaps atomically for readers of *this* lock)
-/// by `index_open` while the writer lock is held — lock order is always
-/// writer → reader, nothing locks the reverse way.
+/// lock. Reads and writes both hop to the blocking pool; if they shared one
+/// mutex, a long FTS scan would stall the next `index_apply` for the read's
+/// duration. Under WAL the reader sees the last committed state, so a query
+/// after an awaited write still reads its result; it just never contends with
+/// one. Rebound (with its own generation copy, so the pair swaps atomically
+/// for readers of *this* lock) by `index_open` while the writer lock is held
+/// — lock order is always writer → reader, nothing locks the reverse way.
 #[derive(Default)]
 struct ReadInner {
     generation: u64,
@@ -81,7 +78,7 @@ pub struct IndexState {
     read: Mutex<ReadInner>,
 }
 
-fn lock_state<'a>(index: &'a State<IndexState>) -> AppResult<MutexGuard<'a, IndexInner>> {
+fn lock_state(index: &IndexState) -> AppResult<MutexGuard<'_, IndexInner>> {
     index.inner.lock().map_err(|err| {
         // A poisoned lock means a command panicked while holding it — the panic
         // itself is the bug; this context points at the blast radius.
@@ -90,7 +87,7 @@ fn lock_state<'a>(index: &'a State<IndexState>) -> AppResult<MutexGuard<'a, Inde
     })
 }
 
-fn lock_read<'a>(index: &'a State<IndexState>) -> AppResult<MutexGuard<'a, ReadInner>> {
+fn lock_read(index: &IndexState) -> AppResult<MutexGuard<'_, ReadInner>> {
     index.read.lock().map_err(|err| {
         tracing::error!(?err, "index read lock poisoned by an earlier panic");
         AppError::io("index read lock poisoned")
@@ -182,13 +179,7 @@ pub fn index_open(
 /// pass must not write the new graph's index. One transaction + cached statements
 /// keeps a full rebuild cheap; an empty batch commits a no-op transaction.
 /// Returns whether it committed, so callers only broadcast real writes.
-fn apply_in_txn(
-    index: &State<IndexState>,
-    background_tasks: &State<BackgroundTaskState>,
-    generation: u64,
-    notes: &[IndexedNote],
-) -> AppResult<bool> {
-    let _background_task = background_task::scoped(background_tasks, "Reflect index update");
+fn apply_in_txn(index: &IndexState, generation: u64, notes: &[IndexedNote]) -> AppResult<bool> {
     let mut state = lock_state(index)?;
     if state.generation != generation {
         return Ok(false);
@@ -204,19 +195,22 @@ fn apply_in_txn(
 
 /// Apply one note's extracted projection in a single transaction.
 #[tauri::command]
-pub fn index_apply<R: tauri::Runtime>(
+pub async fn index_apply<R: tauri::Runtime>(
     note: IndexedNote,
     generation: u64,
     app: tauri::AppHandle<R>,
-    index: State<IndexState>,
-    background_tasks: State<BackgroundTaskState>,
+    background_tasks: State<'_, BackgroundTaskState>,
 ) -> AppResult<()> {
-    if apply_in_txn(
-        &index,
-        &background_tasks,
-        generation,
-        std::slice::from_ref(&note),
-    )? {
+    let _background_task = background_task::scoped(&background_tasks, "Reflect index update");
+    let applied = crate::blocking::run_blocking({
+        let app = app.clone();
+        move || {
+            let index = app.state::<IndexState>();
+            apply_in_txn(&index, generation, std::slice::from_ref(&note))
+        }
+    })
+    .await?;
+    if applied {
         emit_index_written(&app);
     }
     Ok(())
@@ -224,14 +218,22 @@ pub fn index_apply<R: tauri::Runtime>(
 
 /// Apply many notes' projections in one transaction (the full-rebuild path).
 #[tauri::command]
-pub fn index_apply_batch<R: tauri::Runtime>(
+pub async fn index_apply_batch<R: tauri::Runtime>(
     notes: Vec<IndexedNote>,
     generation: u64,
     app: tauri::AppHandle<R>,
-    index: State<IndexState>,
-    background_tasks: State<BackgroundTaskState>,
+    background_tasks: State<'_, BackgroundTaskState>,
 ) -> AppResult<()> {
-    if apply_in_txn(&index, &background_tasks, generation, &notes)? {
+    let _background_task = background_task::scoped(&background_tasks, "Reflect index update");
+    let applied = crate::blocking::run_blocking({
+        let app = app.clone();
+        move || {
+            let index = app.state::<IndexState>();
+            apply_in_txn(&index, generation, &notes)
+        }
+    })
+    .await?;
+    if applied {
         emit_index_written(&app);
     }
     Ok(())
@@ -242,29 +244,51 @@ pub fn index_apply_batch<R: tauri::Runtime>(
 /// `apply_note`'s internal remove must NOT do this (it runs on every upsert
 /// and would destroy the chunk hash-skip).
 #[tauri::command]
-pub fn index_remove<R: tauri::Runtime>(
+pub async fn index_remove<R: tauri::Runtime>(
     path: String,
     generation: u64,
     app: tauri::AppHandle<R>,
-    index: State<IndexState>,
-    background_tasks: State<BackgroundTaskState>,
+    background_tasks: State<'_, BackgroundTaskState>,
 ) -> AppResult<()> {
-    let _background_task = background_task::scoped(&background_tasks, "Reflect index remove");
-    {
-        let mut state = lock_state(&index)?;
-        if state.generation != generation {
-            return Ok(());
-        }
-        let conn = state.conn.as_mut().ok_or_else(AppError::no_graph)?;
-        // One transaction: a half-removed note (row gone, chunks left) would let
-        // a later note at the same path surface stale chunk text in semantic
-        // search until a re-embed.
-        let tx = conn.transaction()?;
-        write::remove_note(&tx, &path)?;
-        embed_write::remove_chunks(&tx, &path)?;
-        tx.commit()?;
+    index_remove_batch(vec![path], generation, app, background_tasks).await
+}
+
+/// Remove many notes from the index in one transaction (no-op if stale).
+/// Same embedding-row contract as [`index_remove`]: genuine deletions drop
+/// chunks so a later note at the same path cannot surface stale vectors.
+#[tauri::command]
+pub async fn index_remove_batch<R: tauri::Runtime>(
+    paths: Vec<String>,
+    generation: u64,
+    app: tauri::AppHandle<R>,
+    background_tasks: State<'_, BackgroundTaskState>,
+) -> AppResult<()> {
+    if paths.is_empty() {
+        return Ok(());
     }
-    emit_index_written(&app);
+    let _background_task = background_task::scoped(&background_tasks, "Reflect index remove");
+    let wrote = crate::blocking::run_blocking({
+        let app = app.clone();
+        move || {
+            let index = app.state::<IndexState>();
+            let mut state = lock_state(&index)?;
+            if state.generation != generation {
+                return Ok(false);
+            }
+            let conn = state.conn.as_mut().ok_or_else(AppError::no_graph)?;
+            let tx = conn.transaction()?;
+            for path in &paths {
+                write::remove_note(&tx, path)?;
+                embed_write::remove_chunks(&tx, path)?;
+            }
+            tx.commit()?;
+            Ok(true)
+        }
+    })
+    .await?;
+    if wrote {
+        emit_index_written(&app);
+    }
     Ok(())
 }
 
@@ -566,44 +590,52 @@ pub fn chat_conversation_delete(
 /// Replace a note's embedding chunk set (diff applied in one transaction;
 /// no-op if stale). Unchanged chunks keep their vectors — the hash-skip.
 #[tauri::command]
-pub fn embed_apply(
+pub async fn embed_apply<R: tauri::Runtime>(
     path: String,
     chunks: Vec<EmbeddedChunk>,
     generation: u64,
-    index: State<IndexState>,
-    background_tasks: State<BackgroundTaskState>,
+    app: tauri::AppHandle<R>,
+    background_tasks: State<'_, BackgroundTaskState>,
 ) -> AppResult<()> {
     let _background_task = background_task::scoped(&background_tasks, "Reflect embeddings update");
-    let mut state = lock_state(&index)?;
-    if state.generation != generation {
-        return Ok(());
-    }
-    let conn = state.conn.as_mut().ok_or_else(AppError::no_graph)?;
-    let tx = conn.transaction()?;
-    embed_write::apply_chunks(&tx, &path, &chunks)?;
-    tx.commit()?;
-    Ok(())
+    crate::blocking::run_blocking(move || {
+        let index = app.state::<IndexState>();
+        let mut state = lock_state(&index)?;
+        if state.generation != generation {
+            return Ok(());
+        }
+        let conn = state.conn.as_mut().ok_or_else(AppError::no_graph)?;
+        let tx = conn.transaction()?;
+        embed_write::apply_chunks(&tx, &path, &chunks)?;
+        tx.commit()?;
+        Ok(())
+    })
+    .await
 }
 
 /// Drop a deleted note's chunks + vectors (no-op if stale).
 #[tauri::command]
-pub fn embed_remove(
+pub async fn embed_remove<R: tauri::Runtime>(
     path: String,
     generation: u64,
-    index: State<IndexState>,
-    background_tasks: State<BackgroundTaskState>,
+    app: tauri::AppHandle<R>,
+    background_tasks: State<'_, BackgroundTaskState>,
 ) -> AppResult<()> {
     let _background_task = background_task::scoped(&background_tasks, "Reflect embeddings remove");
-    let mut state = lock_state(&index)?;
-    if state.generation != generation {
-        return Ok(());
-    }
-    let conn = state.conn.as_mut().ok_or_else(AppError::no_graph)?;
-    // Two DELETEs (vectors, then rows): atomic, mirroring embed_apply.
-    let tx = conn.transaction()?;
-    embed_write::remove_chunks(&tx, &path)?;
-    tx.commit()?;
-    Ok(())
+    crate::blocking::run_blocking(move || {
+        let index = app.state::<IndexState>();
+        let mut state = lock_state(&index)?;
+        if state.generation != generation {
+            return Ok(());
+        }
+        let conn = state.conn.as_mut().ok_or_else(AppError::no_graph)?;
+        // Two DELETEs (vectors, then rows): atomic, mirroring embed_apply.
+        let tx = conn.transaction()?;
+        embed_write::remove_chunks(&tx, &path)?;
+        tx.commit()?;
+        Ok(())
+    })
+    .await
 }
 
 /// Execute a read query (compiled by Kysely on the frontend) and return rows.
@@ -639,6 +671,50 @@ pub async fn db_query<R: tauri::Runtime>(
         }
         let conn = read.conn.as_ref().ok_or_else(AppError::no_graph)?;
         query::run_query(conn, &sql, &params)
+    })
+    .await
+}
+
+/// Cap on {@link db_query_batch}: related-notes KNN uses at most 16 seeds;
+/// anything larger is a bug, not a legitimate read.
+const DB_QUERY_BATCH_MAX: usize = 32;
+
+/// One compiled read in a [`db_query_batch`] payload: SQL plus bound params.
+#[derive(Debug, serde::Deserialize)]
+pub struct QuerySpec {
+    sql: String,
+    params: Vec<Value>,
+}
+
+/// Run many read queries on the dedicated read connection in one IPC hop.
+/// Same generation pin and authorizer as [`db_query`].
+#[tauri::command]
+pub async fn db_query_batch<R: tauri::Runtime>(
+    queries: Vec<QuerySpec>,
+    app: tauri::AppHandle<R>,
+) -> AppResult<Vec<Vec<Map<String, Value>>>> {
+    if queries.len() > DB_QUERY_BATCH_MAX {
+        return Err(AppError::parse(format!(
+            "db_query_batch is capped at {DB_QUERY_BATCH_MAX} queries"
+        )));
+    }
+    let requested = {
+        let index = app.state::<IndexState>();
+        let generation = lock_read(&index)?.generation;
+        generation
+    };
+    crate::blocking::run_blocking(move || {
+        let index = app.state::<IndexState>();
+        let read = lock_read(&index)?;
+        if read.generation != requested {
+            return Err(AppError::io("index reopened during query"));
+        }
+        let conn = read.conn.as_ref().ok_or_else(AppError::no_graph)?;
+        let mut out = Vec::with_capacity(queries.len());
+        for query in &queries {
+            out.push(query::run_query(conn, &query.sql, &query.params)?);
+        }
+        Ok(out)
     })
     .await
 }

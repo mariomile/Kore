@@ -1,5 +1,5 @@
 import { sql } from 'kysely'
-import { db } from '../indexing/db'
+import { db, queryBatch } from '../indexing/db'
 import { searchWithFilters } from '../indexing/filtered-search'
 import { literalSearchQuery } from '../indexing/filter-query'
 import { embedTexts } from './commands'
@@ -198,8 +198,32 @@ export function mergeNearestFirst(lists: ReadonlyArray<readonly ChunkHitRow[]>):
  * a pathological note (a huge import) must not turn every sidebar refetch
  * into hundreds of queries. Sixteen seeds cover ~16k chars of note text —
  * past any real daily note — before later topics stop influencing neighbors.
+ * The MATCH arms share one `db_query_batch` IPC (capped in Rust at 32).
  */
 const MAX_RELATED_SEEDS = 16
+
+/**
+ * sqlite-vec KNN arm used by {@link relatedNotes}. Bound parameters are the
+ * seed vector JSON and `k`; private notes stay out of the neighbor list
+ * (this feed is a recall surface, not an AI payload).
+ */
+export const RELATED_KNN_SQL = `SELECT c.note_path AS path, n.title, c.heading, c.text,
+           n.is_private AS isPrivate, v.distance
+    FROM embedding_vectors v
+    JOIN embedding_chunks c ON c.id = v.rowid
+    JOIN notes n ON n.path = c.note_path
+    WHERE v.embedding MATCH ? AND k = ? AND n.is_private = 0
+    ORDER BY v.distance`
+
+/** One MATCH query per seed, shipped together through {@link queryBatch}. */
+export function relatedKnnQueries(
+  vectors: readonly string[],
+): { sql: string; params: readonly unknown[] }[] {
+  return vectors.map((vector) => ({
+    sql: RELATED_KNN_SQL,
+    params: [vector, KNN_CANDIDATES],
+  }))
+}
 
 /**
  * Semantic neighbors of an existing note, seeded by its own **stored** chunk
@@ -207,10 +231,10 @@ const MAX_RELATED_SEEDS = 16
  * keeps chunks current on every save, so a call always reads the note as it
  * was last embedded. Callers own their own refresh cadence (the desktop panel
  * computes once per note per session); this is a read, and a costly one.
- * Every chunk seeds its own
- * KNN pass (capped at {@link MAX_RELATED_SEEDS}) and the lists merge
- * nearest-first, so a multi-topic note — a daily note above all — surfaces
- * neighbors for anything written in it, not just its lead paragraph.
+ * Every chunk seeds its own MATCH arm (capped at {@link MAX_RELATED_SEEDS}),
+ * the arms share one IPC, and the lists merge nearest-first, so a multi-topic
+ * note — a daily note above all — surfaces neighbors for anything written in
+ * it, not just its lead paragraph.
  * Returns [] when the note has no vectors yet (model never enabled, or not
  * yet embedded). Candidates past {@link MAX_COSINE_DISTANCE} are dropped
  * rather than padded in, so a sparse graph shows few (or no) neighbors
@@ -228,20 +252,8 @@ export async function relatedNotes(path: string, limit = 10): Promise<RetrievalH
   if (seeds.rows.length === 0) {
     return []
   }
-  const neighborLists = await Promise.all(
-    seeds.rows.map(async (seed) => {
-      const result = await sql<ChunkHitRow>`
-        SELECT c.note_path AS path, n.title, c.heading, c.text,
-               n.is_private AS isPrivate, v.distance
-        FROM embedding_vectors v
-        JOIN embedding_chunks c ON c.id = v.rowid
-        JOIN notes n ON n.path = c.note_path
-        WHERE v.embedding MATCH ${seed.vec} AND k = ${KNN_CANDIDATES}
-          AND n.is_private = 0
-        ORDER BY v.distance
-      `.execute(db)
-      return result.rows
-    }),
+  const neighborLists = await queryBatch<ChunkHitRow>(
+    relatedKnnQueries(seeds.rows.map((seed) => seed.vec)),
   )
   return bestChunkPerNote(mergeNearestFirst(neighborLists), limit, path)
 }

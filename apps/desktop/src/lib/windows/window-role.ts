@@ -29,6 +29,21 @@ export function isMainWindow(): boolean {
 }
 
 /**
+ * The frameless global-shortcut bar. It must not boot graph singletons —
+ * capture just spools into the open graph's inbox.
+ */
+export function isQuickCaptureWindow(): boolean {
+  if (!isNativeShell()) {
+    return false
+  }
+  try {
+    return getCurrentWindow().label === 'quick-capture'
+  } catch {
+    return false
+  }
+}
+
+/**
  * Guard for graph-session mutations only the main window may run — opening,
  * switching, or deleting a graph re-roots the shared Rust `GraphState` under
  * every window at once. True in the main window; elsewhere warns and returns

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
-import { getNote } from '@reflect/core'
+import { getNote, parseNote, readNoteLocal } from '@reflect/core'
 import { getIsComposing } from '@meowdown/core'
 import { usePalette } from '@/components/command-palette/palette-provider'
 import { registerKeymap } from '@/editor/keymap'
@@ -269,10 +269,18 @@ export function useAppShortcuts(): CommandContext {
           return
         }
         void (async () => {
+          // Live flag, fail closed: the index can lag a just-saved `private: true`.
+          const local = await readNoteLocal(path).catch(() => null)
+          if (local === null || local.kind !== 'content') {
+            return
+          }
+          if (parseNote({ path, source: local.content }).frontmatter.private) {
+            return
+          }
           const note = await getNote(path).catch(() => undefined)
           // A daily note's wiki target is its date; a regular note's is its
           // title. Private notes are hard-blocked from AI, so don't draft.
-          if (note === undefined || note.isPrivate) {
+          if (note === undefined) {
             return
           }
           const target = note.dailyDate ?? note.title

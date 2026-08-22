@@ -153,6 +153,8 @@ export {
   openGraph,
   openNoteWindow,
   openBrowserWindow,
+  showQuickCapture,
+  hideQuickCapture,
   windowBootstrap,
   closeNoteWindows,
   createGraph,

@@ -45,6 +45,7 @@ beforeEach(() => {
       case 'index_apply_batch':
       case 'index_clear':
       case 'index_remove':
+      case 'index_remove_batch':
       case 'index_meta_set':
         return null
       case 'db_query':
@@ -338,12 +339,12 @@ describe('applyIndexChanges (watcher dispatch)', () => {
       9,
     )
     const apply = mockInvoke.mock.calls.find(([cmd]) => cmd === 'index_apply_batch')
-    const remove = mockInvoke.mock.calls.find(([cmd]) => cmd === 'index_remove')
+    const remove = mockInvoke.mock.calls.find(([cmd]) => cmd === 'index_remove_batch')
     const args = apply![1] as { notes: Array<{ path: string; mtime: number }>; generation: number }
     expect(args.generation).toBe(9)
     expect(args.notes.map((note) => note.path)).toEqual(['notes/a.md'])
     expect(args.notes[0]!.mtime).toBe(4242)
-    expect(remove![1]).toMatchObject({ path: 'notes/gone.md', generation: 9 })
+    expect(remove![1]).toMatchObject({ paths: ['notes/gone.md'], generation: 9 })
     expect(mutations).toBe(2)
   })
 
@@ -536,7 +537,7 @@ describe('reconcileIndex move healing (Plan 17)', () => {
     return calls
   }
 
-  it('moves the rows and skips the re-index when content is unchanged', async () => {
+  it('moves the rows and re-indexes the destination so path-derived claims stay correct', async () => {
     const calls = renameFake({ storedHash: await hashContent(CONTENT) })
 
     await reconcileIndex({ generation: 4 })
@@ -550,11 +551,56 @@ describe('reconcileIndex move healing (Plan 17)', () => {
       generation: 4,
       toAddress: { pathKey: NEW.toLowerCase(), basenameKey: 'meeting-notes', dailyDate: null },
     })
-    // The moved row carried its hash: identical content means no re-apply —
-    // and crucially no remove, so embeddings survived.
-    expect(commands).not.toContain('index_apply')
-    expect(commands).not.toContain('index_apply_batch')
+    // Re-apply even when the file hash is unchanged: kind/daily_date are
+    // path-derived and would otherwise stay stale after a notes/↔daily/ move.
+    expect(commands).toContain('index_apply_batch')
     expect(commands).not.toContain('index_remove')
+    expect(commands).not.toContain('index_remove_batch')
+    const apply = calls.find(([command]) => command === 'index_apply_batch')
+    const notes = apply![1]['notes'] as Array<{ path: string }>
+    expect(notes.map((note) => note.path)).toEqual([NEW])
+  })
+
+  it('re-indexes a notes→daily heal so kind and daily_date follow the new path', async () => {
+    const dailyPath = 'daily/2026-08-21.md'
+    const content = CONTENT
+    const calls: Array<[string, Record<string, unknown>]> = []
+    mockInvoke.mockImplementation(async (command, args) => {
+      calls.push([command, args])
+      if (command === 'index_reconcile_scan') {
+        return {
+          total: 1,
+          candidates: [{ path: dailyPath, modifiedMs: 9, storedMtime: null, storedHash: null }],
+          orphans: [{ path: OLD, storedMtime: 1, storedHash: await hashContent(content) }],
+          stalePlaceholders: [],
+        }
+      }
+      if (command === 'note_read') {
+        if (args['path'] === dailyPath) {
+          return content
+        }
+        throw { kind: 'notFound', message: 'missing' }
+      }
+      if (command === 'db_query') {
+        if (((args['params'] as unknown[]) ?? []).includes(OLD)) {
+          return [{ path: OLD, id: '01abcdefghjkmnpqrstvwxyz00' }]
+        }
+        return []
+      }
+      return null
+    })
+
+    await reconcileIndex({ generation: 4 })
+
+    const apply = calls.find(([command]) => command === 'index_apply_batch')
+    const notes = apply![1]['notes'] as Array<{
+      path: string
+      kind: string
+      dailyDate: string | null
+    }>
+    expect(notes).toEqual([
+      expect.objectContaining({ path: dailyPath, kind: 'daily', dailyDate: '2026-08-21' }),
+    ])
   })
 
   it('announces the heal via onMoved so the app can follow', async () => {
@@ -579,6 +625,7 @@ describe('reconcileIndex move healing (Plan 17)', () => {
     const commands = calls.map(([command]) => command)
     expect(commands).toContain('index_move')
     expect(commands).not.toContain('index_remove')
+    expect(commands).not.toContain('index_remove_batch')
     const apply = calls.find(([command]) => command === 'index_apply_batch')
     expect(apply).toBeDefined()
     const notes = apply![1]['notes'] as Array<{ path: string }>
@@ -596,7 +643,7 @@ describe('reconcileIndex move healing (Plan 17)', () => {
     const commands = calls.map(([command]) => command)
     expect(commands).not.toContain('index_move')
     expect(commands).toContain('index_apply_batch')
-    expect(commands).toContain('index_remove')
+    expect(commands).toContain('index_remove_batch')
   })
 })
 
@@ -705,8 +752,8 @@ describe('reconcileIndex over the native scan delta', () => {
     const notes = (apply![1] as { notes: Array<{ path: string; mtime: number }> }).notes
     expect(notes.map((note) => note.path)).toEqual(['notes/changed.md'])
     expect(notes[0]!.mtime).toBe(2_000)
-    const remove = mockInvoke.mock.calls.find(([cmd]) => cmd === 'index_remove')
-    expect(remove![1]).toMatchObject({ path: 'notes/gone.md', generation: 4 })
+    const remove = mockInvoke.mock.calls.find(([cmd]) => cmd === 'index_remove_batch')
+    expect(remove![1]).toMatchObject({ paths: ['notes/gone.md'], generation: 4 })
   })
 
   it('removes the row for a candidate that vanished between the scan and the read', async () => {
@@ -732,8 +779,8 @@ describe('reconcileIndex over the native scan delta', () => {
 
     await reconcileIndex({ generation: 4 })
 
-    const remove = mockInvoke.mock.calls.find(([cmd]) => cmd === 'index_remove')
-    expect(remove![1]).toMatchObject({ path: 'notes/ghost.md', generation: 4 })
+    const remove = mockInvoke.mock.calls.find(([cmd]) => cmd === 'index_remove_batch')
+    expect(remove![1]).toMatchObject({ paths: ['notes/ghost.md'], generation: 4 })
   })
 })
 

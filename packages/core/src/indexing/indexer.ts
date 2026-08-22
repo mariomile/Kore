@@ -7,7 +7,7 @@ import {
   clearIndex,
   moveIndexedRows,
   reconcileScan,
-  removeFromIndex,
+  removeFromIndexBatch,
   setIndexMeta,
   touchIndexedNotes,
   type IndexedNoteTouch,
@@ -472,13 +472,12 @@ export async function reconcileIndex(options: IndexPassOptions): Promise<void> {
         console.error(`id-based move failed (${move.from} → ${move.to}):`, err)
         continue
       }
-      // The moved row carries the old path's facts: the main pass re-indexes
-      // at the new path only if the content actually changed in transit.
-      const orphan = removals.get(move.from)
+      // Do not graft the orphan's hash onto `to`: path-derived claims
+      // (`kind`, `daily_date`) live on the row, so a notes/↔daily/ rename
+      // with identical content would otherwise skip the re-apply and keep
+      // the old kind. Live healing already re-indexes the destination;
+      // embeddings survive because `apply_note` does not drop chunks.
       removals.delete(move.from)
-      if (orphan !== undefined) {
-        facts.set(move.to, { mtime: orphan.storedMtime, fileHash: orphan.storedHash })
-      }
       onMoved?.(move.from, move.to)
     }
   } catch (err) {
@@ -558,10 +557,14 @@ export async function reconcileIndex(options: IndexPassOptions): Promise<void> {
   await touches.flush()
   onFileProgress?.(total, total, worked)
 
-  for (const path of removals.keys()) {
+  const removalPaths = [...removals.keys()]
+  for (let offset = 0; offset < removalPaths.length; offset += INDEX_APPLY_BATCH_SIZE) {
     if (signal?.aborted) {
       return
     }
-    await removeFromIndex(path, generation)
+    await removeFromIndexBatch(
+      removalPaths.slice(offset, offset + INDEX_APPLY_BATCH_SIZE),
+      generation,
+    )
   }
 }

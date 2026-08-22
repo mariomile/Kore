@@ -111,9 +111,15 @@ export const textCaptureKindSchema = z.enum(['append', 'checkbox', 'task'])
  * intent) joins by adding a member here — never by growing a new envelope
  * variant. `ios-share` is non-URL text shared through the iOS share sheet;
  * `ios-intent` is the Quick Note App Intent (Siri / Shortcuts / Action
- * button, Plan 24).
+ * button, Plan 24). `global-shortcut` is the desktop mini window the
+ * system-wide shortcut opens, which appends a line to today's daily note.
  */
-export const textCaptureSourceSchema = z.enum(['deep-link', 'ios-share', 'ios-intent'])
+export const textCaptureSourceSchema = z.enum([
+  'deep-link',
+  'ios-share',
+  'ios-intent',
+  'global-shortcut',
+])
 
 /**
  * A text write (`reflect://append?text=…` / `reflect://checkbox?text=…` /

@@ -1,11 +1,12 @@
 import { useDeferredValue, useMemo, useRef, type ReactElement } from 'react'
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft, FileText, SearchX } from 'lucide-react'
+import { ChevronLeft, FileText, LayoutGrid, List, SearchX } from 'lucide-react'
 import {
   foldTag,
   listNoteTags,
   parseHighlights,
   searchWithFilters,
+  type AllNotesView,
   type FilteredSearchHit,
   type NoteTagFacet,
 } from '@reflect/core'
@@ -13,6 +14,8 @@ import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
+import { hapticImpactLight } from '@/mobile/haptics'
+import { NoteCardGrid } from '@/mobile/note-card-grid'
 import { FilterBar } from '@/mobile/search-filters/filter-bar'
 import {
   buildAllNotesSearch,
@@ -25,6 +28,7 @@ import { SearchInput } from '@/mobile/search-input'
 import type { NoteRowModel } from '@/mobile/swipeable-note-row'
 import { useArrivalFocus } from '@/mobile/use-arrival-focus'
 import { useGraph } from '@/providers/graph-provider'
+import { useSettings } from '@/providers/settings-provider'
 import { routeForPath } from '@/routing/route'
 import { useRouter } from '@/routing/router'
 
@@ -63,7 +67,8 @@ interface MobileAllNotesProps {
 }
 
 /**
- * The All tab (Plan 19, V1 parity): a virtualized fixed-row note list with an
+ * The All tab (Plan 19, V1 parity): a virtualized fixed-row note list *or*
+ * a masonry card grid (the same `allNotesView` preference as desktop), with an
  * embedded search bar and AND-composed filter badges. Everything is one
  * search path ({@link buildAllNotesSearch} → `searchWithFilters`, run per
  * {@link searchPlanFor}): the plain list is the empty query's recall feed
@@ -71,7 +76,8 @@ interface MobileAllNotesProps {
  * and free text switches to ranked FTS. A trailing `#…` token switches the bar into
  * tag matching (V1): suggestions replace the badge row until the tag is
  * picked or the token completed. The route's tag (a tag tap landed here)
- * rides along as a badge with a back affordance.
+ * rides along as a badge with a back affordance. The card grid is a reading
+ * layout — tap opens; pin and delete stay with the swipeable list.
  */
 export function MobileAllNotes({
   query,
@@ -81,6 +87,8 @@ export function MobileAllNotes({
   onFiltersChange,
 }: MobileAllNotesProps): ReactElement {
   const { graph } = useGraph()
+  const { settings, updateSettings } = useSettings()
+  const view = settings.allNotesView
   const { navigate, back, arrivalSeq, arrivalFocusEditor } = useRouter()
   const queryClient = useQueryClient()
   const bridgeReady = useBridgeReady()
@@ -162,6 +170,13 @@ export function MobileAllNotes({
             value={query}
             onValueChange={onQueryChange}
           />
+          <AllNotesLayoutToggle
+            view={view}
+            onChange={(next) => {
+              hapticImpactLight()
+              updateSettings({ allNotesView: next })
+            }}
+          />
         </div>
         {pending !== null ? (
           <TagSuggestions
@@ -190,6 +205,8 @@ export function MobileAllNotes({
         ) : (
           <Empty icon={<SearchX className="size-6" />} message="No matches" />
         )
+      ) : view === 'grid' ? (
+        <NoteCardGrid rows={rows} onOpen={(path) => navigate(routeForPath(path))} />
       ) : (
         <NoteRowList
           rows={rows}
@@ -236,6 +253,49 @@ function Empty({ icon, message }: { icon: ReactElement; message: string }): Reac
     <div className="flex flex-1 flex-col items-center justify-center gap-2 text-text-muted">
       {icon}
       <p className="text-sm">{message}</p>
+    </div>
+  )
+}
+
+interface AllNotesLayoutToggleProps {
+  view: AllNotesView
+  onChange: (view: AllNotesView) => void
+}
+
+/** Compact list/grid switch — the same labels as desktop so the setting is one. */
+function AllNotesLayoutToggle({ view, onChange }: AllNotesLayoutToggleProps): ReactElement {
+  return (
+    <div
+      role="group"
+      aria-label="Layout"
+      className="flex shrink-0 items-center gap-0.5 rounded-full bg-surface-hover p-0.5"
+    >
+      <button
+        type="button"
+        aria-label="List view"
+        aria-pressed={view === 'list'}
+        onClick={() => onChange('list')}
+        className={`flex size-9 items-center justify-center rounded-full transition-colors ${
+          view === 'list'
+            ? 'bg-surface text-text shadow-sm'
+            : 'text-text-muted hover:text-text-secondary'
+        }`}
+      >
+        <List aria-hidden className="size-4" />
+      </button>
+      <button
+        type="button"
+        aria-label="Grid view"
+        aria-pressed={view === 'grid'}
+        onClick={() => onChange('grid')}
+        className={`flex size-9 items-center justify-center rounded-full transition-colors ${
+          view === 'grid'
+            ? 'bg-surface text-text shadow-sm'
+            : 'text-text-muted hover:text-text-secondary'
+        }`}
+      >
+        <LayoutGrid aria-hidden className="size-4" />
+      </button>
     </div>
   )
 }

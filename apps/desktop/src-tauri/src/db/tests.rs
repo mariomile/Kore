@@ -1197,13 +1197,12 @@ fn stale_generation_writes_are_dropped_end_to_end() {
     };
 
     let stale = super::index_open(app.state(), app.state(), app.state()).expect("first open");
-    super::index_apply(
+    tauri::async_runtime::block_on(super::index_apply(
         note("notes/a.md", "A", vec![]),
         stale,
         app.handle().clone(),
         app.state(),
-        app.state(),
-    )
+    ))
     .expect("apply");
     assert_eq!(count("after first apply"), Value::from(1));
 
@@ -1211,33 +1210,30 @@ fn stale_generation_writes_are_dropped_end_to_end() {
     let fresh = super::index_open(app.state(), app.state(), app.state()).expect("reopen");
     assert_ne!(stale, fresh);
 
-    super::index_apply(
+    tauri::async_runtime::block_on(super::index_apply(
         note("notes/b.md", "B", vec![]),
         stale,
         app.handle().clone(),
         app.state(),
-        app.state(),
-    )
+    ))
     .expect("stale apply returns Ok");
     assert_eq!(count("after stale apply"), Value::from(1)); // dropped, not applied
 
-    super::index_remove(
+    tauri::async_runtime::block_on(super::index_remove(
         "notes/a.md".to_string(),
         stale,
         app.handle().clone(),
         app.state(),
-        app.state(),
-    )
+    ))
     .expect("stale remove returns Ok");
     assert_eq!(count("after stale remove"), Value::from(1)); // also dropped
 
-    super::index_apply(
+    tauri::async_runtime::block_on(super::index_apply(
         note("notes/b.md", "B", vec![]),
         fresh,
         app.handle().clone(),
         app.state(),
-        app.state(),
-    )
+    ))
     .expect("fresh apply");
     assert_eq!(count("after fresh apply"), Value::from(2));
 
@@ -1277,6 +1273,56 @@ fn stale_generation_writes_are_dropped_end_to_end() {
     )
     .expect("meta upsert");
     assert_eq!(meta("after meta upsert")[0]["value"], Value::from("v2"));
+}
+
+#[test]
+fn index_remove_batch_drops_many_notes_in_one_transaction() {
+    use tauri::Manager;
+    let app = tauri::test::mock_builder()
+        .build(tauri::test::mock_context(tauri::test::noop_assets()))
+        .expect("mock app");
+    app.manage(crate::fs::GraphState::default());
+    app.manage(super::IndexState::default());
+    app.manage(crate::background_task::BackgroundTaskState::default());
+
+    let graph_dir = tempfile::tempdir().expect("tempdir");
+    {
+        let state: tauri::State<crate::fs::GraphState> = app.state();
+        let mut inner = state.0.lock().unwrap();
+        inner.root = Some(graph_dir.path().to_path_buf());
+    }
+    let generation = super::index_open(app.state(), app.state(), app.state()).expect("open");
+    tauri::async_runtime::block_on(super::index_apply_batch(
+        vec![
+            note("notes/a.md", "A", vec![]),
+            note("notes/b.md", "B", vec![]),
+        ],
+        generation,
+        app.handle().clone(),
+        app.state(),
+    ))
+    .expect("apply");
+    tauri::async_runtime::block_on(super::index_remove_batch(
+        vec![],
+        generation,
+        app.handle().clone(),
+        app.state(),
+    ))
+    .expect("empty batch is a no-op");
+    tauri::async_runtime::block_on(super::index_remove_batch(
+        vec!["notes/a.md".into(), "notes/b.md".into()],
+        generation,
+        app.handle().clone(),
+        app.state(),
+    ))
+    .expect("remove batch");
+    let rows = tauri::async_runtime::block_on(super::db_query(
+        "SELECT count(*) AS n FROM notes".to_string(),
+        vec![],
+        app.handle().clone(),
+    ))
+    .expect("count");
+    assert_eq!(rows[0]["n"], Value::from(0));
 }
 
 #[test]

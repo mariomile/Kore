@@ -119,9 +119,9 @@ describe('textCaptureEnvelopeSchema', () => {
     ).toBe(true)
   })
 
-  it('accepts the quick note intent as a text producer', () => {
+  it('accepts the desktop global-shortcut producer', () => {
     expect(
-      textCaptureEnvelopeSchema.safeParse({ ...VALID_TEXT, source: 'ios-intent' }).success,
+      textCaptureEnvelopeSchema.safeParse({ ...VALID_TEXT, source: 'global-shortcut' }).success,
     ).toBe(true)
   })
 

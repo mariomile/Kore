@@ -28,6 +28,7 @@ const touchArgsSchema = z.object({
 })
 const applyArgsSchema = z.object({ note: indexedNoteSchema })
 const applyBatchArgsSchema = z.object({ notes: z.array(indexedNoteSchema) })
+const removeBatchArgsSchema = z.object({ paths: z.array(z.string()) })
 const settingsArgsSchema = z.object({ settings: z.record(z.string(), z.unknown()) })
 const secretNameArgsSchema = z.object({ name: z.string() })
 const secretSetArgsSchema = z.object({ name: z.string(), value: z.string() })
@@ -216,6 +217,10 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
         const { sql, params } = dbQueryArgsSchema.parse(args)
         return index.query(sql, params)
       }
+      case 'db_query_batch': {
+        const { queries } = z.object({ queries: z.array(dbQueryArgsSchema) }).parse(args)
+        return queries.map(({ sql, params }) => index.query(sql, params))
+      }
       case 'index_open':
         return 1
       case 'index_apply': {
@@ -230,6 +235,12 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
       }
       case 'index_remove': {
         index.removeNote(pathArgsSchema.parse(args).path)
+        return null
+      }
+      case 'index_remove_batch': {
+        for (const path of removeBatchArgsSchema.parse(args).paths) {
+          index.removeNote(path)
+        }
         return null
       }
       case 'index_move': {
@@ -332,6 +343,9 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
         index.deleteChatConversation(chatDeleteArgsSchema.parse(args).id)
         return null
       }
+      case 'quick_capture_show':
+      case 'quick_capture_hide':
+        return null
 
       default:
         console.error(`[dev-bridge] unimplemented command "${command}"`, args)

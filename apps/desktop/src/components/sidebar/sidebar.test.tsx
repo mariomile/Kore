@@ -275,10 +275,17 @@ describe('Sidebar', () => {
       .not.toHaveAttribute('aria-current')
   })
 
-  it('the search affordance opens the palette', async () => {
+  it('the search affordance is a lens icon that opens the palette', async () => {
     const { view, openPalette } = await renderSidebar()
-    await view.getByRole('button', { name: /search anything/i }).click()
+    expect(view.getByText('Search anything...').query()).toBeNull()
+    await view.getByRole('button', { name: 'Search' }).click()
     expect(openPalette).toHaveBeenCalled()
+  })
+
+  it('primary nav icons sit in liquid-glass tiles', async () => {
+    const { view } = await renderSidebar()
+    const daily = view.getByRole('button', { name: /daily notes/i })
+    expect(daily.element().querySelector('.sidebar-glass-tile')).not.toBeNull()
   })
 
   it('the mic button starts an audio memo', async () => {

@@ -315,8 +315,19 @@ pub fn watch_start(
         Duration::from_millis(400),
         None,
         move |result: DebounceEventResult| {
-            let Ok(events) = result else {
-                return; // watch errors are transient; the next batch recovers
+            let events = match result {
+                Ok(events) => events,
+                Err(_) => {
+                    // Overflow/IO: events were dropped. Demand a full
+                    // reconcile instead of swallowing the error (the next
+                    // batch does not recover missed deletes/renames).
+                    crate::fs::invalidate_file_catalog(
+                        &app.state::<crate::fs::GraphState>(),
+                        &handler_root,
+                    );
+                    let _ = app.emit(RECONCILE_EVENT, ());
+                    return;
+                }
             };
             let rescan_demanded = events.iter().any(|event| event.need_rescan());
             let paths: Vec<PathBuf> = events
@@ -512,6 +523,18 @@ mod tests {
         // A real timestamp, not epoch zero — All Notes sorts and labels by it.
         assert!(effects.changes[0].modified_ms.is_some_and(|ms| ms > 0));
         assert!(!effects.reconcile);
+    }
+
+    #[test]
+    fn debounce_errors_are_not_empty_ok_batches() {
+        // Empty Ok is "nothing happened" and must not reconcile. Err is
+        // overflow/IO — the watch_start handler emits `index:reconcile` for
+        // that branch (previously it returned and dropped the signal).
+        let err: DebounceEventResult = Err(Vec::new());
+        assert!(err.is_err());
+        let empty = collect_changes(&[], Path::new("/g"));
+        assert!(!empty.reconcile);
+        assert!(empty.changes.is_empty());
     }
 
     #[test]

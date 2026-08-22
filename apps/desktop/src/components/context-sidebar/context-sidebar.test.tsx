@@ -51,6 +51,14 @@ describe('ContextSidebar', () => {
     await view.unmount()
   })
 
+  it('panel switcher icons sit in liquid-glass tiles', async () => {
+    const view = await render(<ContextSidebar target={null} />)
+    const details = view.getByRole('tab', { name: 'Details' })
+    expect(details.element().querySelector('.sidebar-glass-tile')).not.toBeNull()
+    await expect.element(details).toHaveAttribute('aria-selected', 'true')
+    await view.unmount()
+  })
+
   it('describes a note target and falls back to the empty state', async () => {
     const view = await render(<ContextSidebar target={{ kind: 'note', path: 'notes/plan.md' }} />)
     expect(view.getByTestId('note-details').element().textContent).toBe('notes/plan.md')

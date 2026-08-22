@@ -27,6 +27,16 @@ export async function openGraph(path: string): Promise<GraphInfo> {
   return await call('graph_open', { path }, graphInfoSchema)
 }
 
+/** Raise the always-on-top quick-capture window (desktop global shortcut). */
+export async function showQuickCapture(): Promise<void> {
+  await call('quick_capture_show', {}, voidSchema)
+}
+
+/** Hide the quick-capture window if it is open. Idempotent. */
+export async function hideQuickCapture(): Promise<void> {
+  await call('quick_capture_hide', {}, voidSchema)
+}
+
 /**
  * Open (or focus) a secondary note window on a `reflect://` route link
  * (⌘-click a note link). Desktop-only; requires an open graph, which the new

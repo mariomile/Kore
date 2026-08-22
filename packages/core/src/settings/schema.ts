@@ -291,8 +291,9 @@ export const allNotesFilterTagsSchema = z.array(z.string()).catch(['book', 'link
 export type AllNotesFilterTags = z.infer<typeof allNotesFilterTagsSchema>
 
 /**
- * How the All Notes screen lays out its notes: the classic table, or a
- * masonry card grid. A view preference, so it persists like one.
+ * How the All Notes screen lays out its notes: the classic table (desktop) /
+ * swipeable row list (mobile), or a masonry card grid. One view preference
+ * shared across surfaces.
  */
 export const allNotesViewSchema = z.enum(['list', 'grid']).catch('list')
 
@@ -520,6 +521,13 @@ export type TaskFilters = z.infer<typeof taskFiltersSchema>
  * user turns on deliberately (the switch also asks the OS for permission).
  */
 export const taskRemindersSchema = z.boolean().catch(false)
+
+/**
+ * Desktop global quick capture: a system-wide shortcut opens a mini window
+ * that appends a line to today's daily note. On by default; turn it off if
+ * the binding collides with another app.
+ */
+export const quickCaptureEnabledSchema = z.boolean().catch(true)
 
 /**
  * The AI providers Reflect can call directly (BYOK — the user's own keys, no
@@ -800,6 +808,7 @@ export const settingsSchema = z.looseObject({
   savedSearches: savedSearchesSchema,
   taskFilters: taskFiltersSchema,
   taskReminders: taskRemindersSchema,
+  quickCaptureEnabled: quickCaptureEnabledSchema,
   calendarEnabled: calendarEnabledSchema,
   calendarIds: calendarIdsSchema,
   graphColors: graphColorsSchema,

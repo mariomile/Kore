@@ -49,32 +49,47 @@ export interface AssetDescriptionGather {
  * download mid-pass); a repeated asset contributes once. Accumulation stops
  * once the combined length reaches {@link MAX_ASSET_TEXT_CHARS} (the body
  * that crosses the cap is kept whole — consumers apply their own final cap).
- * Reads are unpinned, matching the indexer's own note reads (the *write* is
- * generation-pinned, so a graph switch drops the stale row regardless).
+ * Description files are read in parallel (one `readNoteLocal` per unique
+ * asset); folding still walks reference order so the cap and eviction skip
+ * semantics stay the same. Reads are unpinned, matching the indexer's own
+ * note reads (the *write* is generation-pinned, so a graph switch drops the
+ * stale row regardless).
  */
 export async function gatherAssetDescriptionBodies(
   assetPaths: readonly string[],
 ): Promise<AssetDescriptionGather> {
-  const bodies: AssetDescriptionBody[] = []
-  const evicted: string[] = []
   if (assetPaths.length === 0) {
-    return { bodies, evicted }
+    return { bodies: [], evicted: [] }
   }
   const seen = new Set<string>()
-  let total = 0
+  const unique: string[] = []
   for (const assetPath of assetPaths) {
     if (seen.has(assetPath)) {
       continue // an asset referenced twice in one note contributes once
     }
     seen.add(assetPath)
-    let read: Awaited<ReturnType<typeof readNoteLocal>>
-    try {
-      read = await readNoteLocal(descriptionPathFor(assetPath))
-    } catch (cause) {
-      if (isAppError(cause) && cause.kind === 'notFound') {
-        continue // no description for this asset (not generated yet, or none)
+    unique.push(assetPath)
+  }
+
+  const reads = await Promise.all(
+    unique.map(async (assetPath) => {
+      try {
+        return { assetPath, read: await readNoteLocal(descriptionPathFor(assetPath)) }
+      } catch (cause) {
+        if (isAppError(cause) && cause.kind === 'notFound') {
+          return { assetPath, read: null }
+        }
+        throw cause
       }
-      throw cause
+    }),
+  )
+
+  const bodies: AssetDescriptionBody[] = []
+  const evicted: string[] = []
+  let total = 0
+  for (const { assetPath, read } of reads) {
+    if (read === null) {
+      continue // no description for this asset (not generated yet, or none)
     }
     if (read.kind === 'evicted') {
       evicted.push(assetPath)

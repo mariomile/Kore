@@ -1,6 +1,7 @@
 import { useState, type ReactElement } from 'react'
-import { CalendarDays, Info, MessageSquare } from 'lucide-react'
 import { ChatScreen } from '@/components/chat/chat-screen'
+import { SidebarGlassTile } from '@/components/sidebar/sidebar-glass-tile'
+import { CalendarGlyph, ChatGlyph, InfoGlyph } from '@/components/sidebar/sidebar-nav-icons'
 import { haptic } from '@/lib/haptics'
 import { useToday } from '@/lib/use-today'
 import { cn } from '@/lib/utils'
@@ -12,10 +13,10 @@ import type { ContextSidebarTarget } from './sidebar-route'
 
 type ContextPanel = 'details' | 'chat' | 'calendar'
 
-const PANELS: { id: ContextPanel; label: string; icon: typeof Info }[] = [
-  { id: 'details', label: 'Details', icon: Info },
-  { id: 'chat', label: 'Chat', icon: MessageSquare },
-  { id: 'calendar', label: 'Calendar', icon: CalendarDays },
+const PANELS: { id: ContextPanel; label: string; Glyph: typeof InfoGlyph }[] = [
+  { id: 'details', label: 'Details', Glyph: InfoGlyph },
+  { id: 'chat', label: 'Chat', Glyph: ChatGlyph },
+  { id: 'calendar', label: 'Calendar', Glyph: CalendarGlyph },
 ]
 
 interface ContextSidebarProps {
@@ -25,12 +26,12 @@ interface ContextSidebarProps {
 
 /**
  * The right-hand workspace sidebar: a full-height rail beside the floating
- * note-pane card, mirroring the left sidebar. A segmented switcher at the top
- * picks its panel — Details (the route's contextual sidebar: calendar,
- * actions, events, similar notes), Chat (the same graph-grounded session as
- * the chat route, so the conversation follows you between both surfaces), or
- * Calendar (the month at a glance with the day's events, on any route). The
- * panel choice is per-window session state, not persisted.
+ * note-pane card, mirroring the left sidebar. A liquid-glass icon switcher
+ * at the top picks its panel — Details (the route's contextual sidebar:
+ * calendar, actions, events, similar notes), Chat (the same graph-grounded
+ * session as the chat route, so the conversation follows you between both
+ * surfaces), or Calendar (the month at a glance with the day's events, on
+ * any route). The panel choice is per-window session state, not persisted.
  */
 export function ContextSidebar({ target }: ContextSidebarProps): ReactElement {
   const [panel, setPanel] = useState<ContextPanel>('details')
@@ -49,9 +50,9 @@ export function ContextSidebar({ target }: ContextSidebarProps): ReactElement {
         <div
           role="tablist"
           aria-label="Context panels"
-          className="window-drag-control flex w-full gap-0.5 rounded-lg bg-surface-hover p-0.5"
+          className="window-drag-control flex w-full items-center gap-1"
         >
-          {PANELS.map(({ id, label, icon: Icon }) => (
+          {PANELS.map(({ id, label, Glyph }) => (
             <button
               key={id}
               type="button"
@@ -66,15 +67,13 @@ export function ContextSidebar({ target }: ContextSidebarProps): ReactElement {
                 setPanel(id)
               }}
               className={cn(
-                // Icon-only segments on an inset track; the flex-1 hit area
-                // keeps them easy to reach while the label lives in the
-                // tooltip and aria-label.
-                'flex h-6 flex-1 items-center justify-center rounded-md transition-all duration-150 ease-swift',
+                'flex h-8 flex-1 items-center justify-center rounded-lg transition-colors duration-150 ease-swift',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
-                panel === id ? 'bg-surface text-text shadow-sm' : 'text-text-muted hover:text-text',
               )}
             >
-              <Icon aria-hidden strokeWidth={1.75} className="size-4 shrink-0" />
+              <SidebarGlassTile>
+                <Glyph />
+              </SidebarGlassTile>
             </button>
           ))}
         </div>

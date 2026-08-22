@@ -102,6 +102,13 @@ mod capability_tests {
         assert!(permissions
             .iter()
             .any(|permission| permission.as_str() == Some("core:window:allow-hide")));
+
+        let windows = capability["windows"]
+            .as_array()
+            .expect("capability windows");
+        assert!(windows
+            .iter()
+            .any(|label| label.as_str() == Some("quick-capture")));
     }
 }
 
@@ -189,9 +196,13 @@ pub fn run() {
             // otherwise accrete in the state file forever.
             tauri_plugin_window_state::Builder::default()
                 .with_state_flags(windows::restorable_window_state_flags())
-                .with_filter(|label| !label.starts_with(windows::NOTE_WINDOW_PREFIX))
+                .with_filter(|label| {
+                    !label.starts_with(windows::NOTE_WINDOW_PREFIX)
+                        && label != windows::QUICK_CAPTURE_LABEL
+                })
                 .build(),
-        );
+        )
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build());
 
     // Reveal the main window on `PageLoadEvent::Finished`, not on
     // `RunEvent::Ready`. Ready only guarantees plugin init + window-state
@@ -339,6 +350,7 @@ pub fn run() {
             db::index_apply,
             db::index_apply_batch,
             db::index_remove,
+            db::index_remove_batch,
             db::index_clear,
             db::index_move,
             db::index_reconcile_scan,
@@ -346,6 +358,7 @@ pub fn run() {
             db::note_move_indexed,
             db::index_meta_set,
             db::db_query,
+            db::db_query_batch,
             db::chat_message_save,
             db::chat_conversation_delete,
             db::embed_apply,
@@ -390,6 +403,8 @@ pub fn run() {
             quit::quit_confirm,
             windows::open_note_window,
             windows::open_browser_window,
+            windows::quick_capture_show,
+            windows::quick_capture_hide,
             windows::window_bootstrap,
             windows::close_note_windows,
             devtools::toggle_devtools,
@@ -411,6 +426,18 @@ pub fn run() {
                 // (wake.rs).
                 #[cfg(target_os = "macos")]
                 wake::install(app);
+                // Best-effort: a taken binding must not fail the launch.
+                // Arming from `.setup()` would replace the deep-link hook.
+                match settings::settings_load() {
+                    Ok(doc) => windows::sync_quick_capture_shortcut(app, &doc),
+                    Err(err) => {
+                        tracing::warn!(
+                            error = ?err,
+                            "settings load failed; registering default quick-capture shortcut"
+                        );
+                        windows::sync_quick_capture_shortcut(app, &Default::default());
+                    }
+                }
                 let app = app.clone();
                 windows::arm_reveal_fallback(
                     &revealed_main,
@@ -500,7 +527,9 @@ pub fn run() {
                 // exactly like ⌘W (docs/multi-window.md).
                 if label == windows::MAIN_WINDOW_LABEL {
                     for (child_label, child) in app.webview_windows() {
-                        if child_label.starts_with(windows::NOTE_WINDOW_PREFIX) {
+                        if child_label.starts_with(windows::NOTE_WINDOW_PREFIX)
+                            || child_label == windows::QUICK_CAPTURE_LABEL
+                        {
                             let _ = child.close();
                         }
                     }

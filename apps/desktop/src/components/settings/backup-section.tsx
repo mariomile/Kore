@@ -14,6 +14,7 @@ import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { useGithubConnected } from '@/hooks/use-github-connected'
 import { suggestRepoName } from '@/lib/github-repos'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
+import { cn } from '@/lib/utils'
 import { useGraph } from '@/providers/graph-provider'
 import { useSync, type BackupState } from '@/providers/sync-provider'
 
@@ -33,6 +34,23 @@ function statusLine(backup: Extract<BackupState, { phase: 'connected' }>): strin
         ? 'Backup failed — reconnect GitHub'
         : `Backup failed: ${backup.status.message}`
   }
+}
+
+function statusTone(backup: Extract<BackupState, { phase: 'connected' }>): string {
+  switch (backup.status.state) {
+    case 'offline':
+      return 'text-amber-700 dark:text-amber-300'
+    case 'error':
+      return 'text-red-700 dark:text-red-300'
+    default:
+      return 'text-text-muted'
+  }
+}
+
+function githubNeedsReconnect(backup: Extract<BackupState, { phase: 'connected' }>): boolean {
+  return (
+    backup.status.state === 'error' && backup.status.errorKind === 'auth' && backup.repo !== null
+  )
 }
 
 function githubRepoBrowserUrl(
@@ -139,7 +157,7 @@ export function BackupSettingsField(): ReactElement {
             <>
               <p className="text-sm text-text">
                 <span className="font-medium">{repoLabel}</span>
-                <span className="ml-2 text-xs text-text-muted">{statusLine(backup)}</span>
+                <span className={cn('ml-2 text-xs', statusTone(backup))}>{statusLine(backup)}</span>
               </p>
               {conflictCount > 0 ? (
                 <div className="text-xs text-amber-700 dark:text-amber-300">
@@ -154,6 +172,11 @@ export function BackupSettingsField(): ReactElement {
               ) : null}
               <SyncForkNotice groups={forkGroups} />
               <div className="flex flex-wrap gap-2">
+                {githubNeedsReconnect(backup) ? (
+                  <Button size="sm" onClick={() => setConnectOpen(true)}>
+                    Reconnect GitHub…
+                  </Button>
+                ) : null}
                 <Button
                   variant="outline"
                   size="sm"

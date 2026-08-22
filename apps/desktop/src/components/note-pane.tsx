@@ -28,6 +28,7 @@ import { NoteEditor, type NoteEditorHandle } from '@/editor/note-editor'
 import { resolveAssetFileLink, useAssetPersistence } from '@/editor/use-asset-persistence'
 import { useEditorAutocomplete } from '@/editor/use-editor-autocomplete'
 import { useNoteDocument } from '@/editor/use-note-document'
+import { useDailyNoteSeed } from '@/hooks/use-daily-note-seed'
 import { useTagNavigation } from '@/editor/use-tag-navigation'
 import { useTemplateSlashItems } from '@/editor/use-template-slash-items'
 import { useMarkdownLinkNavigation } from '@/editor/use-markdown-link-navigation'
@@ -152,6 +153,10 @@ export function NotePaneComponent({
   if (needsSeed && seed.path !== path) {
     setSeed({ path, seed: untitledNoteSeed() })
   }
+  // A daily's seed is `templates/daily.md`, not the name-me template: the date
+  // already names it. Undefined when the graph has no daily template, which
+  // leaves dailies opening empty exactly as they did before.
+  const dailySeed = useDailyNoteSeed(dailyDate ?? '')
   const document = useNoteDocument(path, generation, {
     createIfMissing: lazyCreate,
     // Every editable regular note maintains title-addressed links and
@@ -161,9 +166,12 @@ export function NotePaneComponent({
     // A missing ordinary note opens as a name-me template (old Reflect's
     // new-note flow): the seed — `id:` frontmatter plus an empty H1 the
     // caret lands in, ghosted "Untitled" by the title placeholder — only
-    // reaches disk if the user edits, and typing names the note. Daily
-    // notes stay unseeded — the date is their identity.
+    // reaches disk if the user edits, and typing names the note. A missing
+    // daily opens on `templates/daily.md` instead, under the same contract:
+    // the seed is the clean baseline, so a day you look at and leave still
+    // writes nothing.
     ...(needsSeed ? { missingSeed: seed.seed } : {}),
+    ...(dailyNote && lazyCreate && dailySeed !== undefined ? { missingSeed: dailySeed } : {}),
   })
   const { resolveImageUrl, resolveAssetOpenPath, openAsset, saveFile, resolveFileInfo, saveError } =
     useAssetPersistence(generation, path)

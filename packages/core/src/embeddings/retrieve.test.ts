@@ -3,6 +3,8 @@ import {
   bestChunkPerNote,
   fuseRanked,
   mergeNearestFirst,
+  relatedKnnQueries,
+  RELATED_KNN_SQL,
   type ChunkHitRow,
   type RetrievalHit,
 } from './retrieve'
@@ -94,6 +96,21 @@ describe('mergeNearestFirst (multi-seed related notes)', () => {
     expect(hits).toHaveLength(1)
     expect(hits[0]!.snippet).toBe('near chunk')
     expect(hits[0]!.score).toBeCloseTo(0.8)
+  })
+})
+
+describe('relatedKnnQueries', () => {
+  it('emits one MATCH arm per seed so relatedNotes can batch them in one IPC', () => {
+    const queries = relatedKnnQueries(['[0.1,0.2]', '[0.3,0.4]'])
+    expect(queries).toHaveLength(2)
+    expect(queries[0]!.sql).toBe(RELATED_KNN_SQL)
+    expect(queries[1]!.sql).toBe(RELATED_KNN_SQL)
+    expect(queries[0]!.params).toEqual(['[0.1,0.2]', 24])
+    expect(queries[1]!.params).toEqual(['[0.3,0.4]', 24])
+  })
+
+  it('is a no-op query list when the note has no stored vectors', () => {
+    expect(relatedKnnQueries([])).toEqual([])
   })
 })
 

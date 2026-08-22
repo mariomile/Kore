@@ -20,6 +20,8 @@ import {
   cloudSafeSelection,
   filterAiPrompts,
   isPrivateNoteError,
+  parseNote,
+  readNoteLocal,
   transformSelection,
   type AiPrompt,
   type AiPromptMode,
@@ -162,11 +164,19 @@ export function useEditorAiMenu({
       }
       const config = modelOverride === null ? base : { ...base, model: modelOverride.modelId }
 
+      // Live flag, fail closed: the index can lag a just-saved `private: true`.
+      const local = await readNoteLocal(path).catch(() => null)
+      if (runRef.current !== run) return
+      const livePrivate =
+        local === null || local.kind !== 'content'
+          ? true
+          : parseNote({ path, source: local.content }).frontmatter.private
+
       // The privacy gate: the selection is note content, so it only leaves the
-      // device as a CloudSafe value minted against the note's privacy flag.
+      // device as a CloudSafe value minted against the note's live privacy flag.
       let selection: CloudSafe<string>
       try {
-        selection = cloudSafeSelection({ path, isPrivate }, context.selectedText)
+        selection = cloudSafeSelection({ path, isPrivate: livePrivate }, context.selectedText)
       } catch (cause) {
         if (isPrivateNoteError(cause)) {
           fail('This note is marked private, so its content is never sent to an AI provider.')
@@ -202,7 +212,7 @@ export function useEditorAiMenu({
         // and the user decides with Accept/Discard.
       }
     },
-    [providers, defaultProvider, path, isPrivate, editorRef],
+    [providers, defaultProvider, path, editorRef],
   )
 
   const runPrompt = useCallback(

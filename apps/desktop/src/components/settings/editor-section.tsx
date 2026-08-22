@@ -313,6 +313,13 @@ export function EditorSection(): ReactElement {
         onCheckedChange={(checked) => updateSettings({ editorSmoothCaretAnimation: checked })}
       />
 
+      <SettingsSwitchField
+        legend="Global quick capture"
+        description="A system-wide shortcut (Shift+Space with ⌘ or Ctrl) opens a mini window that appends a line to today's note, even when Lore is in the background."
+        checked={settings.quickCaptureEnabled}
+        onCheckedChange={(checked) => updateSettings({ quickCaptureEnabled: checked })}
+      />
+
       <KeyboardShortcutsField />
     </SettingsSection>
   )

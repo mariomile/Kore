@@ -64,6 +64,15 @@ impl AppError {
     }
 }
 
+/// libgit2's "… status code: NNN" phrasing for transient HTTP failures.
+fn is_retryable_http_status(lowered: &str) -> bool {
+    lowered.contains("status code: 429")
+        || lowered.contains("status code: 500")
+        || lowered.contains("status code: 502")
+        || lowered.contains("status code: 503")
+        || lowered.contains("status code: 504")
+}
+
 impl From<git2::Error> for AppError {
     fn from(err: git2::Error) -> Self {
         use git2::{ErrorClass, ErrorCode};
@@ -77,6 +86,10 @@ impl From<git2::Error> for AppError {
         // rate limits; at the transport layer that's indistinguishable from a
         // rejected credential without the response body. Misclassification is
         // not sticky — the auth state never blocks the next cycle's retry.
+        //
+        // Transient GitHub HTTP (429/5xx) is retryable: the remote is up but
+        // overloaded, and treating it as Auth/Io would offer reconnect instead
+        // of waiting. Same phrasing-anchor as 401/403.
         //
         // SSH (Plan 16): Certificate code = host-key verification failure, and
         // Ssh-class errors (no agent, rejected keys, handshake) are all fixed
@@ -94,7 +107,7 @@ impl From<git2::Error> for AppError {
         {
             return Self::Auth { message };
         }
-        if err.class() == ErrorClass::Net {
+        if err.class() == ErrorClass::Net || is_retryable_http_status(&lowered) {
             return Self::Network { message };
         }
         Self::Io { message }
@@ -184,6 +197,30 @@ mod tests {
             "failed to resolve address for github.com",
         );
         assert!(matches!(error, AppError::Network { .. }), "{error:?}");
+    }
+
+    #[test]
+    fn transient_github_http_classifies_as_network_not_auth() {
+        let cases = [
+            classify(
+                ErrorCode::GenericError,
+                ErrorClass::Http,
+                "unexpected http status code: 503",
+            ),
+            classify(
+                ErrorCode::GenericError,
+                ErrorClass::Http,
+                "request failed with status code: 429",
+            ),
+            classify(
+                ErrorCode::GenericError,
+                ErrorClass::Http,
+                "unexpected http status code: 502",
+            ),
+        ];
+        for error in cases {
+            assert!(matches!(error, AppError::Network { .. }), "{error:?}");
+        }
     }
 
     #[test]

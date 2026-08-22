@@ -6,6 +6,7 @@ import {
   Command,
   FileDown,
   FilePlus2,
+  Inbox,
   LayoutTemplate,
   PanelLeft,
   Pin,
@@ -27,6 +28,7 @@ import {
 export const COMMAND_ICONS: Record<string, LucideIcon> = {
   'nav.today': CalendarDays,
   'note.new': SquarePen,
+  'capture.quick': Inbox,
   'history.back': ArrowLeft,
   'history.forward': ArrowRight,
   'palette.open': Search,

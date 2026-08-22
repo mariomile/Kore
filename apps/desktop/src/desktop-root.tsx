@@ -1,6 +1,7 @@
 import { useEffect, type ReactElement } from 'react'
 import { subscribeNoteMoved } from '@reflect/core'
 import { App } from '@/app'
+import { QuickCaptureRoot } from '@/components/quick-capture-root'
 import { followHealedMove } from '@/editor/move-note'
 import { attachOperationToasts } from '@/components/operation-toasts'
 import { Toaster } from '@/components/ui/toast'
@@ -11,6 +12,7 @@ import { useMainWindowEffect } from '@/hooks/use-main-window-effect'
 import { startDeepLinkListener } from '@/lib/deep-links/intake'
 import { isNativeShell } from '@/lib/platform'
 import { trackSubscriptions } from '@/lib/subscriptions'
+import { isQuickCaptureWindow } from '@/lib/windows/window-role'
 import { GraphProvider } from '@/providers/graph-provider'
 import { SidebarWidthEffect } from '@/providers/sidebar-width'
 import { UpdateProvider } from '@/providers/update-provider'
@@ -18,9 +20,22 @@ import { UpdateProvider } from '@/providers/update-provider'
 /**
  * The desktop surface tree (split out of `main.tsx` by the Plan 19 platform
  * gate): auto-update checks, the titlebar drag region, and the graph
- * chooser/workspace app — none of which exist on mobile.
+ * chooser/workspace app — none of which exist on mobile. The global-shortcut
+ * bar is a separate tree so it never boots graph singletons.
  */
 export function DesktopRoot(): ReactElement {
+  if (isQuickCaptureWindow()) {
+    return (
+      <TooltipProvider>
+        <QuickCaptureRoot />
+        <Toaster />
+      </TooltipProvider>
+    )
+  }
+  return <DesktopAppRoot />
+}
+
+function DesktopAppRoot(): ReactElement {
   const bridgeReady = useBridgeReady()
   // Deep-link intake starts with the surface, not the workspace: a
   // `reflect://` URL that launched the app (or arrived on the graph chooser)

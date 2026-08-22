@@ -11,9 +11,6 @@ customization effort.
 
 ## Backlog
 
-- **Global quick capture** — a system-wide shortcut opening a mini window
-  that appends a line to today's daily note without focusing the app.
-  (Deliberately parked.)
 - **Recurring-task respawn from the editor checkbox** — completing a
   repeat task by clicking its checkbox inside the note editor doesn't spawn
   the next occurrence (meowdown exposes no editor-side task-toggle
@@ -21,6 +18,12 @@ customization effort.
   included.
 
 ## Shipped (this fork)
+
+- Global quick capture: a system-wide shortcut (Shift+Space with ⌘ or Ctrl)
+  raises a frameless bar that appends a line to today's daily note through
+  the same capture inbox as share-sheet and deep-link writes. An in-app
+  command (⌘⇧C) opens the same bar; Settings → Editor turns the global
+  binding off if it collides with another app.
 
 - Grok and Cursor as providers. Grok is a first-class brand card riding the
   xAI API (OpenAI-compatible, endpoint pre-filled, key in the OS keychain,

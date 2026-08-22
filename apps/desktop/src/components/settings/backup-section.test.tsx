@@ -79,11 +79,25 @@ describe('BackupSettingsField', () => {
 
     await expect.element(page.getByText('GitHub sync')).toBeVisible()
     await expect.element(page.getByText('alex/notes')).toBeVisible()
-    await expect.element(page.getByText(/reconnect GitHub/)).toBeVisible()
+    await expect.element(page.getByRole('button', { name: 'Reconnect GitHub…' })).toBeVisible()
     await expect.element(page.getByText('GitHub account')).toBeVisible()
     await expect.element(page.getByText(/connected graphs stop backing up/i)).toBeVisible()
     await expect.element(page.getByRole('button', { name: 'Open GitHub repo' })).toBeVisible()
     await expect.element(page.getByRole('button', { name: /Sign out of GitHub/ })).toBeVisible()
+  })
+
+  it('colors a transient outage as waiting without offering reconnect', async () => {
+    await renderSection({
+      phase: 'connected',
+      remoteUrl: 'https://github.com/alex/notes.git',
+      repo: { owner: 'alex', name: 'notes' },
+      status: { state: 'offline', message: 'Offline — changes are saved locally' },
+    })
+
+    await expect.element(page.getByText(/saved locally/)).toBeVisible()
+    await expect
+      .element(page.getByRole('button', { name: 'Reconnect GitHub…' }))
+      .not.toBeInTheDocument()
   })
 
   it('opens the connected GitHub repository', async () => {

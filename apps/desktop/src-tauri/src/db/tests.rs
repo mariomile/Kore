@@ -1197,13 +1197,12 @@ fn stale_generation_writes_are_dropped_end_to_end() {
     };
 
     let stale = super::index_open(app.state(), app.state(), app.state()).expect("first open");
-    super::index_apply(
+    tauri::async_runtime::block_on(super::index_apply(
         note("notes/a.md", "A", vec![]),
         stale,
         app.handle().clone(),
         app.state(),
-        app.state(),
-    )
+    ))
     .expect("apply");
     assert_eq!(count("after first apply"), Value::from(1));
 
@@ -1211,33 +1210,30 @@ fn stale_generation_writes_are_dropped_end_to_end() {
     let fresh = super::index_open(app.state(), app.state(), app.state()).expect("reopen");
     assert_ne!(stale, fresh);
 
-    super::index_apply(
+    tauri::async_runtime::block_on(super::index_apply(
         note("notes/b.md", "B", vec![]),
         stale,
         app.handle().clone(),
         app.state(),
-        app.state(),
-    )
+    ))
     .expect("stale apply returns Ok");
     assert_eq!(count("after stale apply"), Value::from(1)); // dropped, not applied
 
-    super::index_remove(
+    tauri::async_runtime::block_on(super::index_remove(
         "notes/a.md".to_string(),
         stale,
         app.handle().clone(),
         app.state(),
-        app.state(),
-    )
+    ))
     .expect("stale remove returns Ok");
     assert_eq!(count("after stale remove"), Value::from(1)); // also dropped
 
-    super::index_apply(
+    tauri::async_runtime::block_on(super::index_apply(
         note("notes/b.md", "B", vec![]),
         fresh,
         app.handle().clone(),
         app.state(),
-        app.state(),
-    )
+    ))
     .expect("fresh apply");
     assert_eq!(count("after fresh apply"), Value::from(2));
 
@@ -1296,7 +1292,7 @@ fn index_remove_batch_drops_many_notes_in_one_transaction() {
         inner.root = Some(graph_dir.path().to_path_buf());
     }
     let generation = super::index_open(app.state(), app.state(), app.state()).expect("open");
-    super::index_apply_batch(
+    tauri::async_runtime::block_on(super::index_apply_batch(
         vec![
             note("notes/a.md", "A", vec![]),
             note("notes/b.md", "B", vec![]),
@@ -1304,24 +1300,21 @@ fn index_remove_batch_drops_many_notes_in_one_transaction() {
         generation,
         app.handle().clone(),
         app.state(),
-        app.state(),
-    )
+    ))
     .expect("apply");
-    super::index_remove_batch(
+    tauri::async_runtime::block_on(super::index_remove_batch(
         vec![],
         generation,
         app.handle().clone(),
         app.state(),
-        app.state(),
-    )
+    ))
     .expect("empty batch is a no-op");
-    super::index_remove_batch(
+    tauri::async_runtime::block_on(super::index_remove_batch(
         vec!["notes/a.md".into(), "notes/b.md".into()],
         generation,
         app.handle().clone(),
         app.state(),
-        app.state(),
-    )
+    ))
     .expect("remove batch");
     let rows = tauri::async_runtime::block_on(super::db_query(
         "SELECT count(*) AS n FROM notes".to_string(),

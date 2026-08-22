@@ -291,8 +291,9 @@ export const allNotesFilterTagsSchema = z.array(z.string()).catch(['book', 'link
 export type AllNotesFilterTags = z.infer<typeof allNotesFilterTagsSchema>
 
 /**
- * How the All Notes screen lays out its notes: the classic table, or a
- * masonry card grid. A view preference, so it persists like one.
+ * How the All Notes screen lays out its notes: the classic table (desktop) /
+ * swipeable row list (mobile), or a masonry card grid. One view preference
+ * shared across surfaces.
  */
 export const allNotesViewSchema = z.enum(['list', 'grid']).catch('list')
 

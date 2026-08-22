@@ -8,7 +8,12 @@ import {
   ContextMenuTrigger,
 } from '@/components/ui/context-menu'
 
-describe('trigger + dblclick', () => {
+/**
+ * The trigger wraps interactive rows as `display: contents`, so gestures the
+ * menu doesn't own must pass through untouched — a swallowed double-click
+ * here is invisible until a list stops opening notes.
+ */
+describe('ContextMenuTrigger', () => {
   it('lets a double-click through to the wrapped element', async () => {
     const onDoubleClick = vi.fn()
     await render(

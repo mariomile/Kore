@@ -3,7 +3,7 @@ import { page, userEvent } from 'vitest/browser'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { RouterProvider } from '@/routing/router'
-import { NoteContextMenu } from './note-context-menu'
+import { NoteListContextMenu } from './note-context-menu'
 
 const getPinnedNotes = vi.hoisted(() => vi.fn())
 const getNote = vi.hoisted(() => vi.fn())
@@ -44,18 +44,20 @@ async function renderMenu(path: string) {
   return await render(
     <QueryClientProvider client={client}>
       <RouterProvider initialRoute={{ kind: 'allNotes', tag: null }}>
-        <NoteContextMenu path={path}>
-          <div>A note row</div>
-        </NoteContextMenu>
+        <NoteListContextMenu>
+          {/* Two rows under ONE menu — the delegated shape the list uses. */}
+          <div data-note-path={path}>A note row</div>
+          <div data-note-path="notes/other.md">Another row</div>
+          <div>Not a note</div>
+        </NoteListContextMenu>
       </RouterProvider>
     </QueryClientProvider>,
   )
 }
 
-/** Right-click the trigger the way a user does; the menu opens on contextmenu. */
-async function openMenu(): Promise<void> {
-  const trigger = page.getByText('A note row')
-  await userEvent.click(trigger, { button: 'right' })
+/** Right-click a row the way a user does; the menu opens on contextmenu. */
+async function openMenu(text = 'A note row'): Promise<void> {
+  await userEvent.click(page.getByText(text), { button: 'right' })
   await expect.element(page.getByRole('menu')).toBeInTheDocument()
 }
 
@@ -73,7 +75,22 @@ beforeEach(() => {
   operationFail.mockClear()
 })
 
-describe('NoteContextMenu', () => {
+describe('NoteListContextMenu', () => {
+  it('does not open over parts of the list that are not a note', async () => {
+    // The capture handler swallows the event before the trigger sees it, so
+    // the menu can never open on a stale path.
+    await renderMenu('notes/atomic-habits.md')
+    await userEvent.click(page.getByText('Not a note'), { button: 'right' })
+    expect(page.getByRole('menu').elements()).toHaveLength(0)
+  })
+
+  it('acts on the row that was actually clicked', async () => {
+    await renderMenu('notes/atomic-habits.md')
+    await openMenu('Another row')
+    await userEvent.click(page.getByRole('menuitem', { name: /^Pin/ }))
+    expect(toggleNotePinned).toHaveBeenCalledWith('notes/other.md', 7)
+  })
+
   it('opens on right-click and runs the note actions against the graph generation', async () => {
     await renderMenu('notes/atomic-habits.md')
     await openMenu()

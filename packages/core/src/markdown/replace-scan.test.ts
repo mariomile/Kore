@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  applyReplaceMatches,
-  findReplaceMatches,
-  foldPreservingLength,
-  protectedRanges,
-} from './replace-scan'
+import { applyReplaceMatches, findReplaceMatches, foldPreservingLength } from './replace-scan'
 
 /**
  * Most of these are regressions against a specific way a whole-vault replace
@@ -207,14 +202,6 @@ describe('protected ranges — the note title', () => {
   it('does not mistake a fenced comment for the title', () => {
     const text = '```\n# cat\n```\n\n# The cat note\n\ncat\n'
     expect(replaceAll(text, 'cat', 'dog')).toBe('```\n# cat\n```\n\n# The cat note\n\ndog\n')
-  })
-})
-
-describe('protectedRanges', () => {
-  it('returns the regions sorted by start offset', () => {
-    const ranges = protectedRanges('---\na: 1\n---\n# T\n\n`x`\n\n[a](b)\n')
-    expect(ranges.length).toBeGreaterThan(1)
-    expect([...ranges].sort((a, b) => a.from - b.from)).toEqual(ranges)
   })
 })
 

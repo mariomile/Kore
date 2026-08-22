@@ -1,3 +1,4 @@
+import { splitFrontmatter } from './frontmatter'
 import type { Span } from './model'
 
 /**
@@ -50,6 +51,18 @@ export interface ReplaceScanOptions {
  * offset into the folded string is also an offset into the original.
  */
 export function foldPreservingLength(text: string): string {
+  // ASCII never resizes under folding, and most notes are ASCII: take the
+  // native path and keep the per-code-point loop for the rest.
+  let ascii = true
+  for (let i = 0; i < text.length; i += 1) {
+    if (text.charCodeAt(i) > 0x7f) {
+      ascii = false
+      break
+    }
+  }
+  if (ascii) {
+    return text.toLowerCase()
+  }
   let out = ''
   for (const char of text) {
     const lower = char.toLowerCase()
@@ -88,15 +101,12 @@ function isWordEdge(char: string): boolean {
 // ---------------------------------------------------------------------------
 
 function frontmatterRange(text: string): Span | null {
+  // `splitFrontmatter` owns the fence grammar; this only adds BOM tolerance
+  // (several probes anchor at index 0, and a BOM would defeat them) and turns
+  // the body offset into a protected span.
   const start = text.startsWith(BOM) ? 1 : 0
-  if (!/^---[ \t]*\r?\n/.test(text.slice(start))) {
-    return null
-  }
-  const close = /(?:^|\r?\n)---[ \t]*(?:\r?\n|$)/.exec(text.slice(start + 4))
-  if (close === null) {
-    return null
-  }
-  return { from: 0, to: start + 4 + close.index + close[0].length }
+  const { raw, bodyOffset } = splitFrontmatter(start === 0 ? text : text.slice(start))
+  return raw === null ? null : { from: 0, to: start + bodyOffset }
 }
 
 /**
@@ -212,23 +222,6 @@ function titleRange(text: string, protectedRanges: readonly Span[]): Span | null
   return null
 }
 
-/**
- * Every region of `text` a replace must leave alone: frontmatter, code
- * (fenced and inline), link destinations and wiki-link targets, and the
- * note's own title.
- */
-export function protectedRanges(text: string): Span[] {
-  const base = [
-    ...(frontmatterRange(text) === null ? [] : [frontmatterRange(text) as Span]),
-    ...fencedCodeRanges(text),
-    ...inlineCodeRanges(text),
-    ...linkRanges(text),
-  ]
-  const title = titleRange(text, base)
-  const all = title === null ? base : [...base, title]
-  return all.sort((a, b) => a.from - b.from)
-}
-
 function inAnyRange(index: number, ranges: readonly Span[]): boolean {
   return ranges.some((range) => index >= range.from && index < range.to)
 }
@@ -254,6 +247,12 @@ export function findReplaceMatches(text: string, options: ReplaceScanOptions): R
   // Length-preserving folding keeps this true, which is what makes the
   // offsets below safe to hand to a writer.
   if (haystack.length !== text.length || wanted.length !== needle.length) {
+    return []
+  }
+
+  // In a realistic replace most notes contain no match at all; bail before
+  // paying the seven range scans below for a note that yields nothing.
+  if (!haystack.includes(wanted)) {
     return []
   }
 
@@ -294,8 +293,8 @@ export function findReplaceMatches(text: string, options: ReplaceScanOptions): R
 }
 
 /**
- * `text` with each unskipped match replaced by `replacement`, applied
- * right-to-left so earlier offsets stay valid. The replacement is literal:
+ * `text` with each unskipped match replaced by `replacement`. The
+ * replacement is literal:
  * `$&`, `$1` and backslashes go in as typed, because there is no pattern for
  * them to refer back to.
  */
@@ -304,11 +303,18 @@ export function applyReplaceMatches(
   matches: readonly ReplaceMatch[],
   replacement: string,
 ): string {
-  let out = text
-  for (const match of [...matches]
-    .filter((m) => m.skipped === null)
-    .sort((a, b) => b.from - a.from)) {
-    out = out.slice(0, match.from) + replacement + out.slice(match.to)
+  const live = matches.filter((match) => match.skipped === null).sort((a, b) => a.from - b.from)
+  if (live.length === 0) {
+    return text
   }
-  return out
+  // One left-to-right pass: rebuilding the string per match is O(matches ×
+  // length), which a long note with a common needle turns into real copying.
+  const parts: string[] = []
+  let cursor = 0
+  for (const match of live) {
+    parts.push(text.slice(cursor, match.from), replacement)
+    cursor = match.to
+  }
+  parts.push(text.slice(cursor))
+  return parts.join('')
 }

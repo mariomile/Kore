@@ -54,7 +54,7 @@ describe('ContextSidebar', () => {
   it('panel switcher icons sit in liquid-glass tiles', async () => {
     const view = await render(<ContextSidebar target={null} />)
     const details = view.getByRole('tab', { name: 'Details' })
-    expect(details.element().querySelector('.sidebar-glass-tile')).not.toBeNull()
+    expect(details.element().querySelector('.sidebar-icon-slot')).not.toBeNull()
     await expect.element(details).toHaveAttribute('aria-selected', 'true')
     await view.unmount()
   })

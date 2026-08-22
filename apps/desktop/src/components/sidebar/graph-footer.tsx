@@ -4,7 +4,7 @@ import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { Check, FolderOpen, Locate, Settings } from '@/components/icons'
 import { GraphSwatch } from '@/components/graph-swatch'
 import { ShortcutKeys } from '@/components/shortcut-keys'
-import { SidebarGlassTile } from '@/components/sidebar/sidebar-glass-tile'
+import { SidebarIconSlot } from '@/components/sidebar/sidebar-icon-slot'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -218,9 +218,9 @@ export function GraphFooter({ graph, context }: GraphFooterProps): ReactElement 
                   : null,
               )}
             >
-              <SidebarGlassTile>
+              <SidebarIconSlot>
                 <Settings aria-hidden className="size-3.5" />
-              </SidebarGlassTile>
+              </SidebarIconSlot>
             </Button>
           }
         />

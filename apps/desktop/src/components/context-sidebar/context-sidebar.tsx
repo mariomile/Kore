@@ -1,7 +1,7 @@
 import { useState, type ReactElement } from 'react'
+import { CalendarDays, Chat, Info, type Icon } from '@/components/icons'
 import { ChatScreen } from '@/components/chat/chat-screen'
-import { SidebarGlassTile } from '@/components/sidebar/sidebar-glass-tile'
-import { CalendarGlyph, ChatGlyph, InfoGlyph } from '@/components/sidebar/sidebar-nav-icons'
+import { SidebarIconSlot } from '@/components/sidebar/sidebar-icon-slot'
 import { haptic } from '@/lib/haptics'
 import { useToday } from '@/lib/use-today'
 import { cn } from '@/lib/utils'
@@ -13,10 +13,10 @@ import type { ContextSidebarTarget } from './sidebar-route'
 
 type ContextPanel = 'details' | 'chat' | 'calendar'
 
-const PANELS: { id: ContextPanel; label: string; Glyph: typeof InfoGlyph }[] = [
-  { id: 'details', label: 'Details', Glyph: InfoGlyph },
-  { id: 'chat', label: 'Chat', Glyph: ChatGlyph },
-  { id: 'calendar', label: 'Calendar', Glyph: CalendarGlyph },
+const PANELS: { id: ContextPanel; label: string; Glyph: Icon }[] = [
+  { id: 'details', label: 'Details', Glyph: Info },
+  { id: 'chat', label: 'Chat', Glyph: Chat },
+  { id: 'calendar', label: 'Calendar', Glyph: CalendarDays },
 ]
 
 interface ContextSidebarProps {
@@ -71,9 +71,9 @@ export function ContextSidebar({ target }: ContextSidebarProps): ReactElement {
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
               )}
             >
-              <SidebarGlassTile>
-                <Glyph />
-              </SidebarGlassTile>
+              <SidebarIconSlot>
+                <Glyph className="size-[17px]" />
+              </SidebarIconSlot>
             </button>
           ))}
         </div>

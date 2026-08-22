@@ -1,6 +1,6 @@
 import type { ReactElement, ReactNode } from 'react'
 import { ShortcutKeys } from '@/components/shortcut-keys'
-import { SidebarGlassTile } from './sidebar-glass-tile'
+import { SidebarIconSlot } from './sidebar-icon-slot'
 import { cn } from '@/lib/utils'
 
 interface SidebarItemProps {
@@ -39,7 +39,7 @@ export function SidebarItem({
           : 'text-text hover:bg-surface-hover',
       )}
     >
-      <SidebarGlassTile>{icon}</SidebarGlassTile>
+      <SidebarIconSlot>{icon}</SidebarIconSlot>
       <span className="min-w-0 flex-1 truncate text-left">{label}</span>
       {binding ? (
         <ShortcutKeys

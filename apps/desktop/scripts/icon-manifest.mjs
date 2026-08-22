@@ -35,6 +35,7 @@ export const SOLAR_ICONS = {
   Book: 'book-linear',
   Bookmark: 'bookmark-linear',
   Folder: 'folder-linear',
+  Graph: 'structure-linear',
   FolderMove: 'folder-path-connect-linear',
   FolderOpen: 'folder-open-linear',
   FolderPlus: 'add-folder-linear',
@@ -109,6 +110,7 @@ export const SOLAR_ICONS = {
 
   // AI, chat, and integrations
   Bot: 'bot-linear',
+  Chart: 'chart-2-linear',
   Chat: 'chat-round-linear',
   Inbox: 'inbox-linear',
   Plug: 'plug-circle-linear',

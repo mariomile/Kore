@@ -18,10 +18,11 @@ customization effort.
 
 ## Shipped (this fork)
 
-- One icon set. The app drew from two families at once — `lucide-react`
-  across the product chrome and ten SVGs traced from V1 (a *filled* pin
-  sitting next to hairline strokes) — which is what made the glyphs read as
-  assembled rather than drawn. Both are gone, replaced by
+- One icon set. The app drew from three families at once — `lucide-react`
+  across the product chrome, ten SVGs traced from V1 (a *filled* pin sitting
+  next to hairline strokes), and a hand-drawn SF-Symbols-alike set at stroke
+  1.7 for the nav rail, which put two different document glyphs on screen at
+  the same time. All three are gone, replaced by
   [Solar](https://www.figma.com/community/file/1166831539721848736)'s
   `-linear` family: one 24×24 grid, a 1.5px stroke, rounded terminals, in the
   register Linear and Craft use. The glyphs are baked into React components at
@@ -29,7 +30,12 @@ customization effort.
   paths land in review like any other source and the app ships no icon
   runtime; the dozen shapes Solar has no linear equivalent for — a bare
   checkmark, the `[[wiki link]]` brackets, the indent carets, the spinner —
-  are hand-drawn to the same spec beside them. One surface still holds out:
+  are hand-drawn to the same spec beside them. The nav and palette glyphs also
+  lost the liquid-glass well they sat in — 80 lines of tint, sheen, and
+  backdrop blur that framed every icon as a chip. What is left is a bare 24px
+  slot that only aligns the labels and passes the row's color through, so the
+  glyph reads as the mark rather than as something set into a button. One
+  surface still holds out:
   `@meowdown/react` draws its own in-editor chrome (the drag grips, the code
   block's copy/edit actions, the link popover) with eight lucide glyphs of its
   own, so closing that last gap is a change in the Meowdown repo.

@@ -286,7 +286,7 @@ describe('Sidebar', () => {
   it('primary nav icons sit in liquid-glass tiles', async () => {
     const { view } = await renderSidebar()
     const daily = view.getByRole('button', { name: /daily notes/i })
-    expect(daily.element().querySelector('.sidebar-glass-tile')).not.toBeNull()
+    expect(daily.element().querySelector('.sidebar-icon-slot')).not.toBeNull()
   })
 
   it('the mic button starts an audio memo', async () => {

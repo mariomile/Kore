@@ -5,7 +5,7 @@ import { Bookmark, BookmarkPlus, CalendarDays, Close, Note } from '@/components/
 import { getIsComposing, isModEvent } from '@meowdown/core'
 import { Kbd } from '@/components/kbd'
 import { ShortcutKeys } from '@/components/shortcut-keys'
-import { SidebarGlassTile } from '@/components/sidebar/sidebar-glass-tile'
+import { SidebarIconSlot } from '@/components/sidebar/sidebar-icon-slot'
 import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'
 import { runCommand } from '@/lib/commands/registry'
 import type { CommandContext } from '@/lib/commands/types'
@@ -221,9 +221,9 @@ export function CommandPalette({ context }: CommandPaletteProps): ReactElement |
                       className="reflect-palette-item"
                     >
                       <span className="flex items-center gap-2.5">
-                        <SidebarGlassTile>
+                        <SidebarIconSlot>
                           <Bookmark aria-hidden className="size-3.5" />
-                        </SidebarGlassTile>
+                        </SidebarIconSlot>
                         <span className="min-w-0 flex-1 truncate text-sm">{saved.query}</span>
                         <button
                           type="button"
@@ -267,9 +267,9 @@ export function CommandPalette({ context }: CommandPaletteProps): ReactElement |
                         className="reflect-palette-item"
                       >
                         <span className="flex items-center gap-2.5">
-                          <SidebarGlassTile>
+                          <SidebarIconSlot>
                             <Icon aria-hidden className="size-3.5" />
-                          </SidebarGlassTile>
+                          </SidebarIconSlot>
                           <span className="min-w-0 flex-1">
                             <span className="block truncate text-sm">
                               {entry.phrase !== null
@@ -307,9 +307,9 @@ export function CommandPalette({ context }: CommandPaletteProps): ReactElement |
                         className="reflect-palette-item"
                       >
                         <span className="flex items-center gap-2.5">
-                          <SidebarGlassTile>
+                          <SidebarIconSlot>
                             <Icon aria-hidden className="size-3.5" />
-                          </SidebarGlassTile>
+                          </SidebarIconSlot>
                           <span className="min-w-0 flex-1 truncate text-sm">{command.title}</span>
                           {command.keybinding ? (
                             <ShortcutKeys binding={command.keybinding} />
@@ -328,9 +328,9 @@ export function CommandPalette({ context }: CommandPaletteProps): ReactElement |
                     className="reflect-palette-item"
                   >
                     <span className="flex items-center gap-2.5">
-                      <SidebarGlassTile>
+                      <SidebarIconSlot>
                         <BookmarkPlus aria-hidden className="size-3.5" />
-                      </SidebarGlassTile>
+                      </SidebarIconSlot>
                       <span className="min-w-0 flex-1 truncate text-sm">
                         Save search “{trimmedQuery}”
                       </span>

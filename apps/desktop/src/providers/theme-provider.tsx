@@ -8,13 +8,14 @@ import {
   type ReactElement,
   type ReactNode,
 } from 'react'
-import { DARK_THEME_IDS, type ThemePreference } from '@reflect/core'
+import { DARK_THEME_IDS, DENSITY_METRICS, type ThemePreference } from '@reflect/core'
 import { deriveAccentTokens } from '@/lib/accent-color'
 import {
   writeCachedAccentColor,
   writeCachedGlassIntensity,
   writeCachedLiquidGlass,
   writeCachedThemePreference,
+  writeCachedUiDensity,
   writeCachedUiRadius,
 } from '@/lib/theme-cache'
 import { useSettings, type SettingsLoadOutcome } from '@/providers/settings-provider'
@@ -75,6 +76,7 @@ export function ThemeProvider({ children }: ThemeProviderProps): ReactElement {
   const liquidGlass = settings.liquidGlass
   const glassIntensity = settings.glassIntensity
   const uiRadius = settings.uiRadius
+  const uiDensity = settings.uiDensity
   const [systemTheme, setSystemTheme] = useState<ResolvedTheme>(getSystemTheme)
   const [loadOutcome, setLoadOutcome] = useState<SettingsLoadOutcome | null>(null)
 
@@ -129,6 +131,15 @@ export function ThemeProvider({ children }: ThemeProviderProps): ReactElement {
     } else {
       root.setAttribute('data-radius', uiRadius)
     }
+    // Density is written as values, not as a scope to match on. The list
+    // virtualizers need the row height as a number in JS, so the numbers live
+    // in `DENSITY_METRICS` and the stylesheet reads them from here — one
+    // source of truth rather than a CSS scope and a JS constant that have to
+    // be kept in step by hand.
+    const metrics = DENSITY_METRICS[uiDensity]
+    root.setAttribute('data-density', uiDensity)
+    root.style.setProperty('--row-height', `${metrics.rowHeight}px`)
+    root.style.setProperty('--nav-padding-y', metrics.navPaddingY)
     root.style.colorScheme = dark ? 'dark' : 'light'
     // Preset accents resolve through the design-system's `[data-accent]`
     // scopes; a custom hex has no scope, so its derived ramp is applied as
@@ -156,6 +167,7 @@ export function ThemeProvider({ children }: ThemeProviderProps): ReactElement {
     liquidGlass,
     glassIntensity,
     uiRadius,
+    uiDensity,
   ])
 
   // Only a loaded document is worth caching: after a failed load changes apply
@@ -170,7 +182,8 @@ export function ThemeProvider({ children }: ThemeProviderProps): ReactElement {
     writeCachedLiquidGlass(liquidGlass)
     writeCachedGlassIntensity(glassIntensity)
     writeCachedUiRadius(uiRadius)
-  }, [loadOutcome, theme, accentColor, liquidGlass, glassIntensity, uiRadius])
+    writeCachedUiDensity(uiDensity)
+  }, [loadOutcome, theme, accentColor, liquidGlass, glassIntensity, uiRadius, uiDensity])
 
   const setTheme = useCallback((next: Theme) => updateSettings({ theme: next }), [updateSettings])
 

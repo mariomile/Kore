@@ -1,11 +1,12 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { ACCENT_COLOR_IDS, DARK_THEME_IDS, UI_RADIUS_IDS } from '@reflect/core'
+import { ACCENT_COLOR_IDS, DARK_THEME_IDS, DENSITY_METRICS, UI_RADIUS_IDS } from '@reflect/core'
 import {
   THEME_ACCENT_CACHE_KEY,
   THEME_GLASS_CACHE_KEY,
   THEME_GLASS_LEVEL_CACHE_KEY,
+  THEME_DENSITY_CACHE_KEY,
   THEME_PREFERENCE_CACHE_KEY,
   THEME_RADIUS_CACHE_KEY,
 } from './theme-cache'
@@ -85,5 +86,31 @@ describe('theme-init value lists', () => {
       expect(radiusList).toContain(`'${radius}'`)
     }
     expect(radiusList).not.toContain(`'default'`)
+  })
+})
+
+describe('THEME_DENSITY_CACHE_KEY', () => {
+  it('matches the key the early theme script reads', () => {
+    const script = readFileSync(THEME_INIT_PATH, 'utf8')
+    expect(script).toContain(`'${THEME_DENSITY_CACHE_KEY}'`)
+  })
+})
+
+/**
+ * Density is the one setting whose numbers exist in two places by necessity:
+ * the pre-paint script cannot import, and the All Notes virtualizer needs the
+ * row height as a JS number. A drift here means rows that overlap on the
+ * first frame, so assert the script's table against the real one.
+ */
+describe('theme-init density metrics', () => {
+  const script = readFileSync(THEME_INIT_PATH, 'utf8')
+
+  it('repeats every density with the same numbers', () => {
+    for (const [density, metrics] of Object.entries(DENSITY_METRICS)) {
+      const row = new RegExp(String.raw`${density}: \['([^']+)', '([^']+)']`).exec(script)
+      expect(row, density).not.toBeNull()
+      expect(row?.[1], `${density} row height`).toBe(`${metrics.rowHeight}px`)
+      expect(row?.[2], `${density} nav padding`).toBe(metrics.navPaddingY)
+    }
   })
 })

@@ -32,7 +32,7 @@ export function SidebarItem({
       onClick={onClick}
       aria-current={active ? 'page' : undefined}
       className={cn(
-        'group flex w-full items-center space-x-3 rounded-md px-2.5 py-1.5 text-sm font-medium',
+        'group flex w-full items-center space-x-3 rounded-md px-2.5 py-(--nav-padding-y) text-sm font-medium',
         'transition-colors duration-100',
         active
           ? 'bg-surface-hover text-text dark:bg-transparent dark:text-accent'

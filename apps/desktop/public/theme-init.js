@@ -23,6 +23,8 @@
   const GLASS_LEVEL_KEY = 'reflect.theme.glass-level'
   // Keep in sync with THEME_RADIUS_CACHE_KEY in src/lib/theme-cache.ts.
   const RADIUS_KEY = 'reflect.theme.radius'
+  // Keep in sync with THEME_DENSITY_CACHE_KEY in src/lib/theme-cache.ts.
+  const DENSITY_KEY = 'reflect.theme.density'
 
   // Keep in sync with themePreferenceSchema / DARK_THEME_IDS /
   // accentColorSchema / uiRadiusSchema / glassIntensitySchema in
@@ -51,6 +53,12 @@
   // is deliberately absent: an unset attribute *is* the default.
   const RADII = ['sharp', 'small', 'round']
   const GLASS_LEVELS = ['subtle', 'regular', 'strong']
+  // Keep in sync with DENSITY_METRICS in packages/core/src/settings/schema.ts.
+  const DENSITY = {
+    compact: ['40px', '0.25rem'],
+    default: ['48px', '0.375rem'],
+    comfortable: ['56px', '0.5rem'],
+  }
 
   function cached(key, allowed) {
     try {
@@ -75,6 +83,10 @@
   if (radius) {
     document.documentElement.setAttribute('data-radius', radius)
   }
+  const density = cached(DENSITY_KEY, Object.keys(DENSITY)) ?? 'default'
+  document.documentElement.setAttribute('data-density', density)
+  document.documentElement.style.setProperty('--row-height', DENSITY[density][0])
+  document.documentElement.style.setProperty('--nav-padding-y', DENSITY[density][1])
   if (cached(GLASS_KEY, ['on', 'off']) === 'on') {
     document.documentElement.setAttribute('data-glass', 'on')
     document.documentElement.setAttribute(

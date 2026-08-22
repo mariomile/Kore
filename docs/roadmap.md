@@ -30,6 +30,23 @@ customization effort.
   the rules. All four settings apply pre-paint like the theme, and a token
   test now fails the build if an id ships without its CSS scope.
 
+- The seven-item follow-up round: a right-click menu on notes (every entry
+  already existed as a command — the gesture didn't); bulk tag and move over
+  an All Notes selection, which could previously only be deleted; a heading
+  outline in the context sidebar; `templates/daily.md` seeding new daily
+  notes; **vault-wide find and replace**; and a density setting.
+
+  Two of those are worth a line each. Find and replace has its matching layer
+  written fresh rather than reusing the unlinked-mentions helpers: an
+  adversarial review of that plan found 22 concrete corruption paths, most of
+  them from promoting a first-match display helper into a whole-vault writer
+  (case folding that isn't length-preserving, fences paired by character
+  instead of run length, an H1 rewrite silently renaming the note). Density is
+  deliberately a handful of named metrics rather than a global spacing scale —
+  the app styles with Tailwind utilities and never reads the `--space-*`
+  tokens, and rescaling Tailwind's base unit would desync the list
+  virtualizers, whose row heights are numbers in JS.
+
 - Depth pass, Craft-inspired. Every elevation tier is now two or three
   stacked shadows (a tight contact shadow under a wide ambient one) instead
   of one big blur, and in the dark family they carry a hairline of light

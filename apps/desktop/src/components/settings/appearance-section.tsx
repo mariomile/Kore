@@ -1,9 +1,16 @@
 import type { ReactElement } from 'react'
-import type { AccentColor, GlassIntensity, ThemePreference, UiRadius } from '@reflect/core'
+import type {
+  AccentColor,
+  GlassIntensity,
+  ThemePreference,
+  UiDensity,
+  UiRadius,
+} from '@reflect/core'
 import {
   ACCENT_COLOR_IDS,
   ACCENT_SWATCH_HEX,
   GLASS_INTENSITY_IDS,
+  UI_DENSITY_IDS,
   UI_RADIUS_IDS,
 } from '@reflect/core'
 import {
@@ -81,6 +88,17 @@ const RADIUS_OPTIONS: Record<UiRadius, { label: string; preview: string }> = {
   small: { label: 'Small', preview: '2px' },
   default: { label: 'Default', preview: '6px' },
   round: { label: 'Round', preview: '10px' },
+}
+
+/**
+ * Density labels. It changes list-row height and sidebar padding — not a
+ * global scale — so the copy says what moves rather than promising the app
+ * will shrink whole.
+ */
+const DENSITY_LABELS: Record<UiDensity, string> = {
+  compact: 'Compact',
+  default: 'Default',
+  comfortable: 'Comfortable',
 }
 
 const GLASS_INTENSITY_LABELS: Record<GlassIntensity, string> = {
@@ -241,6 +259,38 @@ export function AppearanceSection(): ReactElement {
                   style={{ borderRadius: preview }}
                 />
                 <span className="text-xs font-medium">{label}</span>
+              </SettingsOptionCard>
+            )
+          })}
+        </div>
+      </SettingsField>
+
+      <SettingsField
+        legend="Density"
+        description="How tightly rows are packed in lists and the sidebar."
+      >
+        <div className="mt-3 grid grid-cols-3 gap-2">
+          {UI_DENSITY_IDS.map((density) => {
+            const selected = settings.uiDensity === density
+            return (
+              <SettingsOptionCard
+                key={density}
+                selected={selected}
+                className={cn(
+                  'items-center justify-center px-3 py-2',
+                  selected ? 'text-accent-soft-text' : 'text-text-secondary',
+                )}
+              >
+                <input
+                  type="radio"
+                  name="ui-density"
+                  value={density}
+                  checked={selected}
+                  onChange={() => updateSettings({ uiDensity: density })}
+                  className="sr-only"
+                  aria-label={`Density: ${DENSITY_LABELS[density]}`}
+                />
+                <span className="text-xs font-medium">{DENSITY_LABELS[density]}</span>
               </SettingsOptionCard>
             )
           })}

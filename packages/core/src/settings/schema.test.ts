@@ -19,6 +19,7 @@ describe('settingsSchema', () => {
       describeAssets: true,
       transcriptionFormat: true,
       uiRadius: 'default',
+      uiDensity: 'default',
       contactsEnabled: false,
       mobileOnboarded: false,
       mobileStorage: 'local',
@@ -79,6 +80,7 @@ describe('settingsSchema', () => {
     expect(DEFAULT_SETTINGS.theme).toBe('system')
     expect(DEFAULT_SETTINGS.accentColor).toBe('indigo')
     expect(DEFAULT_SETTINGS.uiRadius).toBe('default')
+    expect(DEFAULT_SETTINGS.uiDensity).toBe('default')
     expect(DEFAULT_SETTINGS.glassIntensity).toBe('regular')
     expect(DEFAULT_SETTINGS.editorFontFamily).toBe('sans')
     expect(DEFAULT_SETTINGS.editorLineSpacing).toBe('normal')
@@ -144,6 +146,8 @@ describe('settingsSchema', () => {
     expect(settingsSchema.parse({ accentColor: 'slate' }).accentColor).toBe('slate')
     expect(settingsSchema.parse({ uiRadius: 'sharp' }).uiRadius).toBe('sharp')
     expect(settingsSchema.parse({ uiRadius: 'round' }).uiRadius).toBe('round')
+    expect(settingsSchema.parse({ uiDensity: 'compact' }).uiDensity).toBe('compact')
+    expect(settingsSchema.parse({ uiDensity: 'comfortable' }).uiDensity).toBe('comfortable')
     expect(settingsSchema.parse({ glassIntensity: 'subtle' }).glassIntensity).toBe('subtle')
     expect(settingsSchema.parse({ glassIntensity: 'strong' }).glassIntensity).toBe('strong')
     expect(settingsSchema.parse({ accentColor: 'indigo' }).accentColor).toBe('indigo')
@@ -240,6 +244,8 @@ describe('settingsSchema', () => {
     expect(settingsSchema.parse({ theme: 7 }).theme).toBe('system')
     expect(settingsSchema.parse({ uiRadius: 'pill' }).uiRadius).toBe('default')
     expect(settingsSchema.parse({ uiRadius: 8 }).uiRadius).toBe('default')
+    expect(settingsSchema.parse({ uiDensity: 'cosy' }).uiDensity).toBe('default')
+    expect(settingsSchema.parse({ uiDensity: 2 }).uiDensity).toBe('default')
     expect(settingsSchema.parse({ glassIntensity: 'extreme' }).glassIntensity).toBe('regular')
     expect(settingsSchema.parse({ glassIntensity: 3 }).glassIntensity).toBe('regular')
     expect(settingsSchema.parse({ accentColor: 'chartreuse' }).accentColor).toBe('indigo')
@@ -307,6 +313,7 @@ describe('settingsSchema', () => {
       describeAssets: true,
       transcriptionFormat: true,
       uiRadius: 'default',
+      uiDensity: 'default',
       contactsEnabled: false,
       mobileOnboarded: false,
       mobileStorage: 'local',

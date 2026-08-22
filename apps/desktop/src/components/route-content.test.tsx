@@ -103,6 +103,7 @@ vi.mock('@/providers/settings-provider', () => ({
       editorMarkdownSyntax: 'hide',
       allNotesFilterTags: ['book', 'link', 'person'],
       allNotesView: 'list',
+      uiDensity: 'default',
       openNoteTabs: {},
       aiProviders: [],
       defaultAiProviderId: null,

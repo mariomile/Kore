@@ -52,7 +52,10 @@ export const AllNotesRow = memo(function AllNotesRow({
         }}
         onDoubleClick={(event) => onOpen(note.path, event)}
         className={cn(
-          'group/row relative h-12 cursor-default select-none transition-colors duration-100',
+          // The density setting owns the row height, and the virtualizer reads the
+          // same number from DENSITY_METRICS — a row taller than `itemSize`
+          // overlaps its neighbour.
+          'group/row relative h-(--row-height) cursor-default select-none transition-colors duration-100',
           ALL_NOTES_GRID,
           selected
             ? 'border-y border-accent/20 bg-accent-soft text-text dark:border-accent/10 dark:text-text'

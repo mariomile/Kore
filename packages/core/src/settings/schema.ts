@@ -319,6 +319,37 @@ export type UiRadius = z.infer<typeof uiRadiusSchema>
 export const UI_RADIUS_IDS = uiRadiusEnum.options
 
 /**
+ * How tightly the app packs its rows. Deliberately narrower than "scale every
+ * spacing token": the app styles with Tailwind utilities, not the design
+ * system's `--space-*` scale (which it never reads), and rescaling Tailwind's
+ * base unit would also resize icons and desync the list virtualizers, whose
+ * row heights are numbers in JS. So density drives a small set of named
+ * metrics that both the stylesheet and those virtualizers read from
+ * {@link DENSITY_METRICS} — one source of truth, no way to drift.
+ */
+const uiDensityEnum = z.enum(['compact', 'default', 'comfortable'])
+
+export const uiDensitySchema = uiDensityEnum.catch('default')
+
+export type UiDensity = z.infer<typeof uiDensitySchema>
+
+/** The densities in picker order, tightest first. */
+export const UI_DENSITY_IDS = uiDensityEnum.options
+
+/**
+ * What each density is, in numbers. `rowHeight` is a plain pixel count
+ * because the All Notes virtualizer needs it as one: it feeds `itemSize`, and
+ * a row that renders taller than the virtualizer believes overlaps its
+ * neighbour. The CSS side reads the same value through a custom property the
+ * theme provider writes, so the two cannot disagree.
+ */
+export const DENSITY_METRICS: Record<UiDensity, { rowHeight: number; navPaddingY: string }> = {
+  compact: { rowHeight: 40, navPaddingY: '0.25rem' },
+  default: { rowHeight: 48, navPaddingY: '0.375rem' },
+  comfortable: { rowHeight: 56, navPaddingY: '0.5rem' },
+}
+
+/**
  * How times of day are displayed throughout the app. `12h` (the default)
  * renders `8:22pm`; `24h` renders `20:22`. Display-only — stored timestamps
  * and daily-note keys are unaffected.
@@ -878,6 +909,7 @@ export const settingsSchema = z.looseObject({
   liquidGlass: liquidGlassSchema,
   glassIntensity: glassIntensitySchema,
   uiRadius: uiRadiusSchema,
+  uiDensity: uiDensitySchema,
   timeFormat: timeFormatSchema,
   dateFormat: dateFormatSchema,
   weekStartDay: weekStartDaySchema,

@@ -1,4 +1,10 @@
-import type { AccentColor, GlassIntensity, ThemePreference, UiRadius } from '@reflect/core'
+import type {
+  AccentColor,
+  GlassIntensity,
+  ThemePreference,
+  UiDensity,
+  UiRadius,
+} from '@reflect/core'
 
 /**
  * Where the theme preference is mirrored for the *next* launch.
@@ -109,5 +115,25 @@ export function writeCachedGlassIntensity(intensity: GlassIntensity): void {
     localStorage.setItem(THEME_GLASS_LEVEL_CACHE_KEY, intensity)
   } catch {
     // Storage is unavailable; the first frame paints the regular intensity.
+  }
+}
+
+/**
+ * Where the UI density is mirrored for the next launch, same contract as
+ * {@link THEME_PREFERENCE_CACHE_KEY}: `public/theme-init.js` repeats this
+ * literal because it cannot import, and `theme-cache.test.ts` guards the pair.
+ */
+export const THEME_DENSITY_CACHE_KEY = 'reflect.theme.density'
+
+/**
+ * Mirror the persisted density so rows are the right height on the first
+ * painted frame. Best-effort like the other mirrors; an unreadable cache
+ * paints the default density until settings load.
+ */
+export function writeCachedUiDensity(density: UiDensity): void {
+  try {
+    localStorage.setItem(THEME_DENSITY_CACHE_KEY, density)
+  } catch {
+    // Storage is unavailable; the first frame paints the default density.
   }
 }

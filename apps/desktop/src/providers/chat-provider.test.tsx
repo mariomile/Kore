@@ -546,7 +546,12 @@ describe('ChatProvider message queue', () => {
 })
 
 describe('ChatProvider mid-turn steering', () => {
-  const CLAUDE: AiProviderConfig = { id: 'c1', provider: 'claude-cli', model: 'default' }
+  const CLAUDE: AiProviderConfig = {
+    id: 'c1',
+    provider: 'claude-cli',
+    model: 'default',
+    keyHint: '',
+  }
 
   /**
    * A CLI turn that hands out its steer function and only settles when the

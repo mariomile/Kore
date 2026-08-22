@@ -1,7 +1,8 @@
-import type { ReactElement, ReactNode } from 'react'
+import type { ReactElement } from 'react'
 import { Pin, PinOff, Trash2 } from 'lucide-react'
 import type { HighlightSegment } from '@reflect/core'
 import { formatRecencyLabel } from '@/lib/dates'
+import { HighlightedText } from '@/mobile/highlighted-text'
 import { useNoteRowSwipe } from '@/mobile/use-note-row-swipe'
 import { useSettings } from '@/providers/settings-provider'
 
@@ -33,18 +34,6 @@ interface SwipeableNoteRowProps {
   onOpen: () => void
   onTogglePin: () => void
   onDelete: () => void
-}
-
-function renderHighlightedSegments(segments: HighlightSegment[]): ReactNode {
-  return segments.map((segment, index) =>
-    segment.highlighted ? (
-      <mark key={index} className="rounded-sm bg-primary/15 text-text">
-        {segment.text}
-      </mark>
-    ) : (
-      <span key={index}>{segment.text}</span>
-    ),
-  )
 }
 
 /**
@@ -138,7 +127,7 @@ export function SwipeableNoteRow({
             </>
           ) : null}
           <span className="min-w-0 flex-1 truncate text-sm font-medium">
-            {renderHighlightedSegments(row.titleSegments)}
+            <HighlightedText segments={row.titleSegments} />
           </span>
           <span className="shrink-0 text-xs text-text-muted">
             {formatRecencyLabel(row.mtime, settings)}
@@ -146,7 +135,7 @@ export function SwipeableNoteRow({
         </span>
         {row.snippet.length > 0 ? (
           <span className="w-full truncate text-xs text-text-muted">
-            {renderHighlightedSegments(row.snippet)}
+            <HighlightedText segments={row.snippet} />
           </span>
         ) : null}
       </button>

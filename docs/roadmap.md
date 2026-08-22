@@ -6,11 +6,6 @@ customization effort.
 
 ## Next up
 
-- **Mobile parity for the All-notes grid view** — the card grid currently
-  ships on desktop only.
-
-## Backlog
-
 - **Recurring-task respawn from the editor checkbox** — completing a
   repeat task by clicking its checkbox inside the note editor doesn't spawn
   the next occurrence (meowdown exposes no editor-side task-toggle
@@ -18,6 +13,11 @@ customization effort.
   included.
 
 ## Shipped (this fork)
+
+- Mobile All-notes grid: the same persisted `allNotesView` preference as
+  desktop switches the All tab between the swipeable row list and a
+  two-column masonry of preview cards. Search, filters, and highlights
+  apply to both layouts; pin and delete stay with the list.
 
 - Global quick capture: a system-wide shortcut (Shift+Space with ⌘ or Ctrl)
   raises a frameless bar that appends a line to today's daily note through

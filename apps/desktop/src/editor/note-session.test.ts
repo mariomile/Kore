@@ -753,6 +753,17 @@ describe('commitTaskToggle', () => {
     expect(h.writes.at(-1)?.contents).toBe('---\nid: 01abc\n---\n+ [x] ship it\n')
   })
 
+  it('does not spawn a next occurrence for a repeat task — that belongs to toggleTask', async () => {
+    const source = '+ [ ] water plants @repeat(daily)\n'
+    const h = harness({ disk: source })
+    h.session.load()
+    await settled()
+
+    expect(await h.session.commitTaskToggle(firstTask(source))).toBe(true)
+    await settled()
+    expect(h.writes.at(-1)?.contents).toBe('+ [x] water plants @repeat(daily)\n')
+  })
+
   it('refuses (returns false) a protected note rather than write', async () => {
     const h = harness({ disk: '+ [ ] x\n', classify: () => 'lossy' })
     h.session.load()
@@ -934,5 +945,45 @@ describe('commitTaskToBullet', () => {
     await expect(h.session.commitTaskToBullet(firstTask(source))).rejects.toBeInstanceOf(
       TaskStaleError,
     )
+  })
+})
+
+describe('editor checkbox repeat spawn', () => {
+  it('appends the next occurrence when the editor checkbox completes a repeat task', async () => {
+    const h = harness({ disk: '+ [ ] water plants @repeat(daily)\n' })
+    h.session.load()
+    await settled()
+
+    h.session.editorChanged('+ [x] water plants @repeat(daily)\n')
+    await vi.waitFor(() => {
+      expect(h.writes.at(-1)?.contents).toMatch(
+        /^\+ \[x\] water plants @repeat\(daily\)\n\n\+ \[ \] water plants @repeat\(daily\) \[\[\d{4}-\d{2}-\d{2}\]\]\n$/,
+      )
+    })
+    expect(h.applied.at(-1)).toMatch(
+      /^\+ \[x\] water plants @repeat\(daily\)\n\n\+ \[ \] water plants @repeat\(daily\) \[\[\d{4}-\d{2}-\d{2}\]\]\n$/,
+    )
+  })
+
+  it('does not spawn when the checkbox is reopened', async () => {
+    const h = harness({ disk: '+ [x] water plants @repeat(daily)\n' })
+    h.session.load()
+    await settled()
+
+    h.session.editorChanged('+ [ ] water plants @repeat(daily)\n')
+    await h.session.flush()
+    await settled()
+    expect(h.writes.at(-1)?.contents).toBe('+ [ ] water plants @repeat(daily)\n')
+  })
+
+  it('does not spawn for a task without a repeat token', async () => {
+    const h = harness({ disk: '+ [ ] buy milk\n' })
+    h.session.load()
+    await settled()
+
+    h.session.editorChanged('+ [x] buy milk\n')
+    await h.session.flush()
+    await settled()
+    expect(h.writes.at(-1)?.contents).toBe('+ [x] buy milk\n')
   })
 })

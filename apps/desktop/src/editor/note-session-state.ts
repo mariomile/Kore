@@ -4,12 +4,14 @@ import {
   editTaskLine,
   errorMessage,
   isAppError,
+  nextOccurrenceAppends,
   removeTaskLine,
   taskLineToBullet,
   toggleTaskMarker,
   upsertFrontmatter,
   type TaskMarker,
 } from '@reflect/core'
+import { todayIso } from '@/lib/dates'
 import { splitDoc } from './note-session-doc'
 import { frontmatterPatchToYaml, type FrontmatterPatch } from './note-session-frontmatter'
 import type {
@@ -66,6 +68,12 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
   // Set by `discard` — tells `dispose` to skip its flush (the file is being
   // deleted, so rewriting it would recreate it).
   let discarded = false
+  /**
+   * Serializes editor-checkbox repeat spawns. Two overlapping `editorChanged`
+   * completions must not each `commitBodyEdit` against the same pre-append
+   * buffer and clobber the other occurrence.
+   */
+  let spawnChain: Promise<void> = Promise.resolve()
 
   let lastEmitted: NoteSessionSnapshot | null = null
 
@@ -173,10 +181,12 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
       // lists) and differ from the disk bytes — that must not dirty the buffer
       // or schedule a save, or a reload would rewrite a file the user never
       // touched. Track the serialized form; dirtiness resumes with the next
-      // real edit.
+      // real edit. Tasks-view toggles also land here via applyToEditor; they
+      // spawn in `toggleTask`, so suppressing this path avoids a double spawn.
       buffer = markdown
       return
     }
+    const previous = buffer
     buffer = markdown
     dirty = header + markdown !== disk
     if (missing && markdown.trim() === '') {
@@ -190,6 +200,31 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
     if (dirty) {
       scheduleSave()
     }
+    enqueueRepeatSpawns(previous, markdown)
+  }
+
+  /**
+   * Completing a `@repeat` task by clicking the in-editor checkbox never goes
+   * through `toggleTask` — meowdown only reports the markdown change. Diff the
+   * pre/post buffers for checkbox-only completions and append the next
+   * occurrence. Best-effort: the completion is already in the buffer.
+   */
+  function enqueueRepeatSpawns(previousMarkdown: string, nextMarkdown: string): void {
+    const lines = nextOccurrenceAppends(previousMarkdown, nextMarkdown, todayIso())
+    if (lines.length === 0) {
+      return
+    }
+    const run = async (): Promise<void> => {
+      try {
+        for (const line of lines) {
+          await commitBodyAppend(line)
+        }
+      } catch {
+        // Best-effort: the completion stands; the next occurrence just isn't
+        // written. Matches Tasks-view spawn in note-task.ts.
+      }
+    }
+    spawnChain = spawnChain.then(run, run)
   }
 
   /** Apply external content to the live editor without entering the save path. */

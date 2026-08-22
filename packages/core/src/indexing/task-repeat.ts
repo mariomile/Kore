@@ -2,9 +2,10 @@
  * Recurring tasks (Reflect Open extension). A task opts in with a repeat
  * token in its own markdown — `[ ] Water plants @repeat(weekly)` — so the
  * rule survives every round trip, syncs like any other text, and shows in
- * the editor. Completing such a task from the Tasks view spawns the next
- * occurrence: the same content with its `[[YYYY-MM-DD]]` due-date link
- * advanced by the interval (appended when the task had no date yet).
+ * the editor. Completing such a task — from the Tasks view or by clicking
+ * the in-editor checkbox — spawns the next occurrence: the same content
+ * with its `[[YYYY-MM-DD]]` due-date link advanced by the interval
+ * (appended when the task had no date yet).
  *
  * Accepted intervals: `daily` / `weekly` / `monthly` / `yearly`, or a count
  * with a unit letter — `@repeat(2w)`, `@repeat(10d)`, `@repeat(3m)`,
@@ -13,6 +14,8 @@
  * Lives in core (not the desktop view) so the same rules serve any surface,
  * matching the task-grouping module.
  */
+
+import { parseNote } from '../markdown'
 
 /** A parsed repeat rule: every N days/weeks/months/years. */
 export interface TaskRepeat {
@@ -134,4 +137,61 @@ export function nextOccurrenceContent(content: string, repeat: TaskRepeat, today
     return content.replace(DATE_LINK_RE, `[[${next}]]`)
   }
   return `${content.trimEnd()} [[${next}]]`
+}
+
+/** Dummy path: extraction only needs a path for title/daily derivation, not tasks. */
+const PARSE_PATH = 'notes/repeat.md'
+
+/**
+ * Task line content after the three-character `[ ]`/`[x]` marker. Matches the
+ * desktop `taskContent` helper: one separating space or tab is stripped so
+ * spawned lines don't pick up a double gap.
+ */
+function taskMarkerContent(raw: string): string {
+  const rest = raw.slice(3)
+  return rest[0] === ' ' || rest[0] === '\t' ? rest.slice(1) : rest
+}
+
+/**
+ * Markdown task lines to append after `previousSource` became `nextSource` by
+ * completing one or more `@repeat(...)` checkboxes and nothing else on those
+ * lines. Empty when the change is a reopen, a content edit, a newly pasted
+ * already-checked task, or a square GFM checkbox (which is not a Reflect task).
+ *
+ * Identity is `markerOffset` plus an identical rest-of-line, so deleting a
+ * line above (which shifts later offsets) does not look like a completion.
+ * `today` is the local calendar date (`YYYY-MM-DD`) the next occurrence
+ * advances from when the completed task had no due-date link.
+ */
+export function nextOccurrenceAppends(
+  previousSource: string,
+  nextSource: string,
+  today: string,
+): string[] {
+  if (previousSource === nextSource || !REPEAT_TOKEN_RE.test(previousSource)) {
+    return []
+  }
+  const previousByOffset = new Map(
+    parseNote({ path: PARSE_PATH, source: previousSource }).tasks.map((task) => [
+      task.markerOffset,
+      task,
+    ]),
+  )
+  const appends: string[] = []
+  for (const next of parseNote({ path: PARSE_PATH, source: nextSource }).tasks) {
+    const previous = previousByOffset.get(next.markerOffset)
+    if (previous === undefined || previous.checked || !next.checked) {
+      continue
+    }
+    if (previous.raw.slice(3) !== next.raw.slice(3)) {
+      continue
+    }
+    const content = taskMarkerContent(previous.raw)
+    const repeat = taskContentRepeat(content)
+    if (repeat === null) {
+      continue
+    }
+    appends.push(`+ [ ] ${nextOccurrenceContent(content, repeat, today)}`)
+  }
+  return appends
 }

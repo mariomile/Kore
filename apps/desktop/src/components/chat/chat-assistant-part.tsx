@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import { CornerDownRight } from 'lucide-react'
 import { parseNoteDirectives, type AssistantPart, type ChatTurn } from '@reflect/core'
 import { Bubble, BubbleContent } from '@/components/ui/bubble'
 import { Marker, MarkerContent } from '@/components/ui/marker'
@@ -60,6 +61,17 @@ export function ChatAssistantPart({
       return <ChatToolChip part={part} />
     case 'changes':
       return <ChatChangesCard paths={part.paths} />
+    case 'steer':
+      // A message the user steered into the live turn — rendered where the
+      // reply split around it, styled like a compact user bubble.
+      return (
+        <div className="flex max-w-[85%] items-start gap-1.5 self-end rounded-lg bg-surface-hover px-3 py-1.5">
+          <CornerDownRight aria-hidden className="mt-0.5 size-3.5 shrink-0 text-text-muted" />
+          <span className="reflect-chat-message text-sm whitespace-pre-wrap text-text">
+            {part.text}
+          </span>
+        </div>
+      )
     case 'notice':
       return (
         <Marker

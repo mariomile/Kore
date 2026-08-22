@@ -272,6 +272,7 @@ pub fn run() {
         .manage(windows::WindowInit::default())
         .manage(embed::EmbedState::default())
         .manage(agent_cli::AgentCliState::default())
+        .manage(agent_cli::AgentCliStdinState::default())
         .invoke_handler(tauri::generate_handler![
             app_version,
             app_platform,
@@ -280,6 +281,8 @@ pub fn run() {
             agent_cli::agent_cli_check,
             agent_cli::agent_cli_run,
             agent_cli::agent_cli_stop,
+            agent_cli::agent_cli_send,
+            agent_cli::agent_cli_stdin_close,
             routine_script::routine_script_run,
             icloud::storage::mobile_storage,
             icloud::storage::mobile_storage_local,

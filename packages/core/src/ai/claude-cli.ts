@@ -155,10 +155,13 @@ export function claudeCliArgs(options: {
   settingsJson: string
   allowEdits?: boolean | undefined
   mcpServers?: ResolvedMcpServer[] | undefined
+  /** Steerable runs read stream-json user messages from held-open stdin. */
+  streamingInput?: boolean | undefined
 }): string[] {
   const mcpServers = options.mcpServers ?? []
   return [
     '-p',
+    ...(options.streamingInput === true ? ['--input-format', 'stream-json'] : []),
     '--output-format',
     'stream-json',
     '--verbose',
@@ -251,12 +254,34 @@ export interface StreamCliChatOptions {
   mcpServers?: ResolvedMcpServer[] | undefined
   /** Aborts the run mid-stream (the UI's stop button). */
   signal?: AbortSignal | undefined
+  /**
+   * Mid-turn steering, for engines whose steer mode is 'inject' (see
+   * `cliProviderSteerMode`): once the run is live, `onSteerReady` receives
+   * a function that delivers one more user message into the same session —
+   * the CLI applies it at the next turn boundary with full context, no
+   * cancel-and-relaunch. A rejected call means the run no longer accepts
+   * input (settled or stopped) — queue the message instead. Engines
+   * without an injection channel ignore this.
+   */
+  steering?: { onSteerReady: (steer: (text: string) => Promise<void>) => void } | undefined
+}
+
+/**
+ * One `--input-format stream-json` stdin line carrying a user message. The
+ * streaming-input session applies each such line as its next user turn.
+ */
+export function claudeStreamJsonUserLine(text: string): string {
+  return JSON.stringify({
+    type: 'user',
+    message: { role: 'user', content: [{ type: 'text', text }] },
+  })
 }
 
 /** Run one chat turn through the Claude Code CLI (see `./agent-cli`). */
 export function streamClaudeCliChat(
   options: StreamCliChatOptions,
 ): AsyncGenerator<ChatStreamEvent> {
+  const steering = options.steering
   return streamAgentCliTurn({
     binary: 'claude',
     args: claudeCliArgs({
@@ -277,12 +302,22 @@ export function streamClaudeCliChat(
       ),
       allowEdits: options.allowEdits,
       mcpServers: options.mcpServers,
+      streamingInput: steering !== undefined,
     }),
-    prompt: agentCliPrompt(options.messages),
+    // With steering, the prompt itself rides as the first stream-json user
+    // line — the same channel later steers arrive on.
+    prompt:
+      steering !== undefined
+        ? `${claudeStreamJsonUserLine(agentCliPrompt(options.messages))}\n`
+        : agentCliPrompt(options.messages),
     cwd: options.graphRoot,
     env: mcpSpawnEnv(options.mcpServers ?? []),
     parseLine: parseClaudeCliLine,
     startFailureMessage: 'Could not start the Claude Code CLI.',
     signal: options.signal,
+    steering:
+      steering !== undefined
+        ? { encodeLine: claudeStreamJsonUserLine, onReady: steering.onSteerReady }
+        : undefined,
   })
 }

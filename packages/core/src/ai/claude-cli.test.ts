@@ -214,11 +214,13 @@ describe('streamClaudeCliChat', () => {
   interface FakeCli {
     runs: Record<string, unknown>[]
     stops: string[]
+    sends: Record<string, unknown>[]
+    closes: string[]
     emit: ((payload: unknown) => void) | null
   }
 
   function installFakeCli(): FakeCli {
-    const fake: FakeCli = { runs: [], stops: [], emit: null }
+    const fake: FakeCli = { runs: [], stops: [], sends: [], closes: [], emit: null }
     setBridge({
       invoke: async (command, args) => {
         if (command === 'agent_cli_run') {
@@ -227,6 +229,14 @@ describe('streamClaudeCliChat', () => {
         }
         if (command === 'agent_cli_stop') {
           fake.stops.push(String(args['requestId']))
+          return null
+        }
+        if (command === 'agent_cli_send') {
+          fake.sends.push(args)
+          return null
+        }
+        if (command === 'agent_cli_stdin_close') {
+          fake.closes.push(String(args['requestId']))
           return null
         }
         return null
@@ -318,6 +328,80 @@ describe('streamClaudeCliChat', () => {
     const terminal = await first
     expect(terminal.value).toEqual({ type: 'aborted', messages: [] })
     expect(fake.stops).toEqual([requestId])
+  })
+
+  it('steers a live turn: injected message, split reply, one process', async () => {
+    const fake = installFakeCli()
+    let steer: ((text: string) => Promise<void>) | null = null
+    const stream = streamClaudeCliChat({
+      ...baseOptions,
+      steering: {
+        onSteerReady: (inject) => {
+          steer = inject
+        },
+      },
+    })
+    const first = stream.next()
+    await Promise.resolve()
+    const requestId = requestIdOf(fake)
+
+    // Streaming input: stdin stays open and the prompt itself rides as a
+    // stream-json user line.
+    expect(fake.runs[0]).toMatchObject({ keepStdinOpen: true })
+    expect(fake.runs[0]?.['args']).toContain('--input-format')
+    expect(String(fake.runs[0]?.['prompt'])).toContain('"type":"user"')
+
+    fake.emit?.(
+      line(requestId, {
+        type: 'stream_event',
+        parent_tool_use_id: null,
+        event: { type: 'content_block_delta', delta: { type: 'text_delta', text: 'Rivers…' } },
+      }),
+    )
+    expect((await first).value).toEqual({ type: 'text-delta', text: 'Rivers…' })
+
+    // Steer mid-turn: the message goes down the held-open stdin.
+    if (steer === null) {
+      expect.unreachable('steering was never armed')
+    }
+    await (steer as (text: string) => Promise<void>)('actually, mountains')
+    expect(fake.sends).toHaveLength(1)
+    expect(String(fake.sends[0]?.['line'])).toContain('actually, mountains')
+    expect(fake.closes).toEqual([])
+
+    // The first turn's result only closes THAT turn — the run keeps going
+    // for the steered message, so stdin stays open and the stream lives on.
+    const second = stream.next()
+    fake.emit?.(line(requestId, { type: 'result', is_error: false, result: 'Rivers…' }))
+    fake.emit?.(
+      line(requestId, {
+        type: 'stream_event',
+        parent_tool_use_id: null,
+        event: { type: 'content_block_delta', delta: { type: 'text_delta', text: 'Mountains…' } },
+      }),
+    )
+    expect((await second).value).toEqual({ type: 'text-delta', text: 'Mountains…' })
+    expect(fake.closes).toEqual([])
+
+    // The steered turn's result ends the run: stdin closes, the process exits.
+    const terminal = stream.next()
+    fake.emit?.(line(requestId, { type: 'result', is_error: false, result: 'Mountains…' }))
+    fake.emit?.({ kind: 'done', requestId, code: 0 })
+    const settled = await terminal
+    expect(fake.closes).toContain(requestId)
+
+    // One process for the whole exchange — the steer never relaunched it —
+    // and the history keeps the real order: reply, steer, reply.
+    expect(fake.runs).toHaveLength(1)
+    expect(fake.stops).toEqual([])
+    expect(settled.value).toEqual({
+      type: 'complete',
+      messages: [
+        { role: 'assistant', content: [{ type: 'text', text: 'Rivers…' }] },
+        { role: 'user', content: 'actually, mountains' },
+        { role: 'assistant', content: [{ type: 'text', text: 'Mountains…' }] },
+      ],
+    })
   })
 
   it('yields an error when the CLI cannot start', async () => {

@@ -25,6 +25,10 @@ import { ChatProvider, useChatSession } from '@/providers/chat-provider'
 
 const core = vi.hoisted(() => ({
   streamChat: vi.fn<(options: StreamChatOptions) => AsyncGenerator<ChatStreamEvent>>(),
+  streamCliAgentChat:
+    vi.fn<(id: string, options: Record<string, unknown>) => AsyncGenerator<ChatStreamEvent>>(),
+  listPrivateNotePaths: vi.fn<() => Promise<string[]>>(),
+  loadAgentContext: vi.fn<(slug: string | null) => Promise<null>>(),
   aiApiKeyForConfig: vi.fn<(config: AiProviderConfig) => Promise<string | null>>(),
   getSecret: vi.fn<(name: string) => Promise<string | null>>(),
   hasBridge: vi.fn<() => boolean>(),
@@ -142,6 +146,8 @@ beforeEach(() => {
   core.loadChatMessages.mockResolvedValue([RESTORED_TURN])
   core.saveChatMessage.mockResolvedValue(undefined)
   core.deleteChatConversation.mockResolvedValue(undefined)
+  core.listPrivateNotePaths.mockResolvedValue([])
+  core.loadAgentContext.mockResolvedValue(null)
 })
 
 describe('ChatProvider persistence', () => {
@@ -536,6 +542,106 @@ describe('ChatProvider message queue', () => {
       await firstDone
     })
     expect(core.streamChat).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('ChatProvider mid-turn steering', () => {
+  const CLAUDE: AiProviderConfig = { id: 'c1', provider: 'claude-cli', model: 'default' }
+
+  /**
+   * A CLI turn that hands out its steer function and only settles when the
+   * test says so — the shape `streamAgentCliTurn` gives an inject engine.
+   */
+  function scriptSteerableTurn() {
+    const state = {
+      steers: [] as string[],
+      release: () => {},
+      /** Set to reject, mimicking a run that no longer accepts input. */
+      refuse: false,
+    }
+    core.streamCliAgentChat.mockImplementation((_id, options) => {
+      const steering = options['steering'] as
+        | { onSteerReady: (steer: (text: string) => Promise<void>) => void }
+        | undefined
+      steering?.onSteerReady(async (text: string) => {
+        if (state.refuse) {
+          throw new Error('the run is no longer accepting input')
+        }
+        state.steers.push(text)
+      })
+      return (async function* (): AsyncGenerator<ChatStreamEvent> {
+        yield { type: 'text-delta', text: 'Working…' }
+        await new Promise<void>((resolve) => {
+          state.release = resolve
+        })
+        yield { type: 'complete', messages: [{ role: 'assistant', content: 'Done.' }] }
+      })()
+    })
+    return state
+  }
+
+  it('injects into the live turn instead of queueing, and shows it in the transcript', async () => {
+    settingsState.models = [CLAUDE]
+    settingsState.defaultId = 'c1'
+    const cli = scriptSteerableTurn()
+    const { act } = await renderProvider()
+    await vi.waitFor(() => expect(core.listChatConversations).toHaveBeenCalled())
+
+    let sendDone: Promise<void> | undefined
+    await act(async () => {
+      sendDone = session?.send('start the work')
+      await Promise.resolve()
+    })
+    await vi.waitFor(() => expect(core.streamCliAgentChat).toHaveBeenCalled())
+
+    await act(() => session?.steer('actually, do it differently'))
+
+    // Delivered into the running process — not queued, no second run.
+    expect(cli.steers).toEqual(['actually, do it differently'])
+    expect(session?.queued).toEqual([])
+    expect(core.streamCliAgentChat).toHaveBeenCalledTimes(1)
+    // And visible in the turn, where the reply splits around it.
+    expect(session?.turns.at(-1)?.parts).toContainEqual({
+      kind: 'steer',
+      text: 'actually, do it differently',
+    })
+
+    cli.release()
+    await act(async () => {
+      await sendDone
+    })
+    expect(session?.turns.at(-1)?.status).toBe('done')
+  })
+
+  it('falls back to the queue when the run refuses the steer', async () => {
+    settingsState.models = [CLAUDE]
+    settingsState.defaultId = 'c1'
+    const cli = scriptSteerableTurn()
+    const { act } = await renderProvider()
+    await vi.waitFor(() => expect(core.listChatConversations).toHaveBeenCalled())
+
+    let sendDone: Promise<void> | undefined
+    await act(async () => {
+      sendDone = session?.send('start the work')
+      await Promise.resolve()
+    })
+    await vi.waitFor(() => expect(core.streamCliAgentChat).toHaveBeenCalled())
+
+    // The run settled or stopped between the check and the write.
+    cli.refuse = true
+    await act(() => session?.steer('too late for this one'))
+
+    expect(cli.steers).toEqual([])
+    expect(session?.queued.map((entry) => entry.text)).toEqual(['too late for this one'])
+    expect(session?.turns.at(-1)?.parts).not.toContainEqual({
+      kind: 'steer',
+      text: 'too late for this one',
+    })
+
+    cli.release()
+    await act(async () => {
+      await sendDone
+    })
   })
 })
 

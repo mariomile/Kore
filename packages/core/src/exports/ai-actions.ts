@@ -186,6 +186,7 @@ export {
   claudeCliArgs,
   claudeCliSettingsJson,
   claudeCliSystemPrompt,
+  claudeStreamJsonUserLine,
   parseClaudeCliLine,
   streamClaudeCliChat,
   CLAUDE_CLI_DEFAULT_MODEL,
@@ -217,6 +218,7 @@ export {
 } from '../ai/cursor-cli'
 export {
   checkCliAgentProvider,
+  cliProviderSteerMode,
   cliProviderSupportsEdits,
   isCliAgentProvider,
   streamCliAgentChat,

@@ -57,6 +57,15 @@ export interface ChatContextValue {
    */
   send: (text: string) => Promise<void>
   /**
+   * Steer the live turn (⌘-Enter): on an inject-capable engine (Claude
+   * Code) the message is delivered into the running session and applied at
+   * the next turn boundary — context preserved, nothing cancelled — and
+   * shows in the transcript where the reply split around it. When the
+   * engine can't inject (or nothing is streaming), this degrades to
+   * {@link ChatContextValue.send}: the message queues or sends normally.
+   */
+  steer: (text: string) => Promise<void>
+  /**
    * Messages sent while a turn was streaming, in send order. Each delivers
    * automatically when the streaming turn settles naturally; stopping the
    * turn parks them instead — every card can then be sent or discarded by

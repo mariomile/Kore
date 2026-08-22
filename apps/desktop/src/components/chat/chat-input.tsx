@@ -11,7 +11,7 @@ import {
   X,
 } from 'lucide-react'
 import { chatToMarkdown, createNoteWithTitle } from '@reflect/core'
-import { getIsComposing } from '@meowdown/core'
+import { getIsComposing, isModEvent } from '@meowdown/core'
 import { ShortcutKeys } from '@/components/shortcut-keys'
 import {
   Attachment,
@@ -71,6 +71,7 @@ export function ChatInput(): ReactElement {
     attachImages,
     removeAttachment,
     send,
+    steer,
     queued,
     removeQueued,
     sendQueuedNow,
@@ -252,6 +253,15 @@ export function ChatInput(): ReactElement {
             }
             // The mention popup gets first claim on arrows, Enter, and Esc.
             if (mention.onKeyDown(event)) {
+              return
+            }
+            // ⌘-Enter steers the live turn (inject engines); it degrades to
+            // a plain send/queue when nothing is steerable right now.
+            if (event.key === 'Enter' && !event.shiftKey && isModEvent(event)) {
+              event.preventDefault()
+              if (draft.trim() !== '') {
+                void steer(draft)
+              }
               return
             }
             if (event.key === 'Enter' && !event.shiftKey) {

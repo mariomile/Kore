@@ -16,7 +16,7 @@
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::path::PathBuf;
-use std::process::{Child, Command, Stdio};
+use std::process::{Child, ChildStdin, Command, Stdio};
 use std::sync::Mutex;
 
 use serde::{Deserialize, Serialize};
@@ -97,6 +97,13 @@ fn write_workspace_config(cwd: &str, config: &WorkspaceConfigFile) -> AppResult<
 /// Live child processes by request id, so a stop request can kill mid-run.
 #[derive(Default)]
 pub struct AgentCliState(Mutex<HashMap<String, Child>>);
+
+/// Held-open stdin pipes for streaming-input runs (`keep_stdin_open`), by
+/// request id: `agent_cli_send` steers more input into a live turn, and
+/// removing an entry (close command, run done, stop) drops the pipe — the
+/// CLI sees end-of-input and finishes.
+#[derive(Default)]
+pub struct AgentCliStdinState(Mutex<HashMap<String, ChildStdin>>);
 
 #[derive(Clone, Serialize)]
 #[serde(
@@ -186,6 +193,7 @@ pub async fn agent_cli_run(
     stream_stderr: Option<bool>,
     env: Option<HashMap<String, String>>,
     workspace_config: Option<WorkspaceConfigFile>,
+    keep_stdin_open: Option<bool>,
 ) -> AppResult<()> {
     let path = resolve_binary(binary)
         .ok_or_else(|| AppError::not_found(format!("{} was not found", binary.label())))?;
@@ -222,10 +230,23 @@ pub async fn agent_cli_run(
     // stdout with no reader yet — both sides block forever. A failed write is
     // best-effort by design: the child then answers a truncated prompt or
     // exits, and the Done/Failed events below carry the outcome.
+    let keep_open = keep_stdin_open.unwrap_or(false);
     if let Some(mut stdin) = child.stdin.take() {
+        let stdin_app = app.clone();
+        let stdin_id = request_id.clone();
         std::thread::spawn(move || {
             let _ = stdin.write_all(prompt.as_bytes());
-            // Dropping stdin closes the pipe — the CLI sees end-of-prompt.
+            if keep_open {
+                // Streaming-input mode: the pipe stays open for
+                // `agent_cli_send` until the engine closes it (or the run
+                // ends). If the run already finished, `Done`'s cleanup ran
+                // first and the engine's unconditional close reaps this.
+                let _ = stdin.flush();
+                if let Some(state) = stdin_app.try_state::<AgentCliStdinState>() {
+                    state.0.lock().unwrap().insert(stdin_id, stdin);
+                }
+            }
+            // Otherwise dropping stdin closes the pipe — end-of-prompt.
         });
     }
     let stdout = child.stdout.take();
@@ -319,6 +340,10 @@ pub async fn agent_cli_run(
             let tail: Vec<&str> = buffer.lines().rev().take(4).collect();
             error_tail = tail.into_iter().rev().collect::<Vec<_>>().join("\n");
         }
+        // A streaming-input run's held stdin dies with the run.
+        if let Some(stdin_state) = emit_app.try_state::<AgentCliStdinState>() {
+            stdin_state.0.lock().unwrap().remove(&emit_id);
+        }
         let child = emit_app
             .try_state::<AgentCliState>()
             .and_then(|state| state.0.lock().unwrap().remove(&emit_id));
@@ -351,13 +376,47 @@ pub async fn agent_cli_run(
 #[tauri::command]
 pub async fn agent_cli_stop(
     state: tauri::State<'_, AgentCliState>,
+    stdin_state: tauri::State<'_, AgentCliStdinState>,
     request_id: String,
 ) -> AppResult<()> {
+    stdin_state.0.lock().unwrap().remove(&request_id);
     let child = state.0.lock().unwrap().remove(&request_id);
     if let Some(mut child) = child {
         let _ = child.kill();
         let _ = child.wait();
     }
+    Ok(())
+}
+
+/// Write one line into a live streaming-input run's held-open stdin (mid-turn
+/// steering). Fails with not-found when the run is gone or was started
+/// without `keep_stdin_open` — the frontend then queues the message instead.
+#[tauri::command]
+pub async fn agent_cli_send(
+    stdin_state: tauri::State<'_, AgentCliStdinState>,
+    request_id: String,
+    line: String,
+) -> AppResult<()> {
+    let mut pipes = stdin_state.0.lock().unwrap();
+    let stdin = pipes
+        .get_mut(&request_id)
+        .ok_or_else(|| AppError::not_found("the run is no longer accepting input"))?;
+    stdin
+        .write_all(line.as_bytes())
+        .and_then(|()| stdin.write_all(b"\n"))
+        .and_then(|()| stdin.flush())
+        .map_err(|err| AppError::io(format!("could not steer the run: {err}")))
+}
+
+/// Close a streaming-input run's held-open stdin: end-of-input, so the CLI
+/// finishes its pending turns and exits. Unknown ids are a no-op — the run
+/// may already have finished and cleaned up after itself.
+#[tauri::command]
+pub async fn agent_cli_stdin_close(
+    stdin_state: tauri::State<'_, AgentCliStdinState>,
+    request_id: String,
+) -> AppResult<()> {
+    stdin_state.0.lock().unwrap().remove(&request_id);
     Ok(())
 }
 

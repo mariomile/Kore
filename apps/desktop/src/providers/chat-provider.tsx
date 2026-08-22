@@ -30,6 +30,7 @@ import {
   resolveNoteMentions,
   saveChatMessage,
   scanChangedMemoryPaths,
+  cliProviderSteerMode,
   cliProviderSupportsEdits,
   isCliAgentProvider,
   streamChat,
@@ -159,7 +160,16 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
   // bumps the counter, so a detached send winding down no longer counts as
   // "this conversation is busy" and never clears a successor's slot.
   const sessionRef = useRef(0)
-  const activeSendRef = useRef<{ controller: AbortController; session: number } | null>(null)
+  const activeSendRef = useRef<{
+    controller: AbortController
+    session: number
+    /**
+     * Delivers one more user message into the live turn (inject-capable
+     * engines only — set once the run is spawned). Rejects when the run no
+     * longer accepts input; the caller then queues instead.
+     */
+    steer?: (text: string) => Promise<void>
+  } | null>(null)
   // The session of the most recent send — unlike `activeSendRef` this is not
   // cleared when the turn settles, so a pending conversation switch can tell
   // that the on-screen conversation received a message even after the stream
@@ -318,7 +328,10 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
       persistTurn(conversationMeta(), localTurn, turnCreatedMs)
 
       const controller = new AbortController()
-      const activeSend = { controller, session: sessionRef.current }
+      const activeSend: NonNullable<typeof activeSendRef.current> = {
+        controller,
+        session: sessionRef.current,
+      }
       activeSendRef.current = activeSend
       lastSendSessionRef.current = activeSend.session
 
@@ -400,6 +413,23 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
               agentContext,
               memoryWriteApproval: memoryWriteApprovalRef.current,
               signal: controller.signal,
+              // Inject-capable engines expose mid-turn steering: the steer
+              // lands in the live session AND in the transcript as its own
+              // part, right where the reply text splits around it.
+              steering:
+                cliProviderSteerMode(config.provider) === 'inject'
+                  ? {
+                      onSteerReady: (inject) => {
+                        activeSend.steer = async (steerText: string) => {
+                          await inject(steerText)
+                          updateTurn((turn) => ({
+                            ...turn,
+                            parts: [...turn.parts, { kind: 'steer', text: steerText }],
+                          }))
+                        }
+                      },
+                    }
+                  : undefined,
             })
           }
           // The graph overview degrades to null (prompt without the block)
@@ -538,6 +568,28 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
     [deliver, setQueue],
   )
 
+  const steer = useCallback(
+    async (text: string): Promise<void> => {
+      const trimmed = text.trim()
+      if (trimmed === '') {
+        return
+      }
+      const active = activeSendRef.current
+      if (active !== null && active.session === sessionRef.current && active.steer !== undefined) {
+        setDraft('')
+        try {
+          await active.steer(trimmed)
+          return
+        } catch {
+          // The run settled or stopped between the check and the write —
+          // fall through: the message queues like any busy-time send.
+        }
+      }
+      await send(trimmed)
+    },
+    [send],
+  )
+
   const removeQueued = useCallback(
     (id: string) => {
       setQueue(queuedRef.current.filter((entry) => entry.id !== id))
@@ -665,6 +717,7 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
       attachImages,
       removeAttachment,
       send,
+      steer,
       queued,
       removeQueued,
       sendQueuedNow,
@@ -688,6 +741,7 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
       attachImages,
       removeAttachment,
       send,
+      steer,
       queued,
       removeQueued,
       sendQueuedNow,

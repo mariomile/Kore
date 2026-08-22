@@ -27,6 +27,19 @@ export function cliProviderSupportsEdits(id: CliAgentProviderId): boolean {
   return id === 'claude-cli' || id === 'codex-cli'
 }
 
+/**
+ * How the engine takes a message while a turn is streaming (bb's steer-mode
+ * capability): 'inject' delivers it into the live session at the next turn
+ * boundary — context preserved, no cancel-and-relaunch — while 'queue'
+ * engines can only wait for the turn to settle (their one-shot processes
+ * close stdin after the prompt). Claude Code injects via its stream-json
+ * input session; Codex and Cursor stay queue-only until they grow an
+ * equivalent channel.
+ */
+export function cliProviderSteerMode(id: CliAgentProviderId): 'inject' | 'queue' {
+  return id === 'claude-cli' ? 'inject' : 'queue'
+}
+
 /** Verify the provider's CLI is installed; resolves with its version. */
 export async function checkCliAgentProvider(id: CliAgentProviderId): Promise<string> {
   switch (id) {

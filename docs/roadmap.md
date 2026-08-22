@@ -22,6 +22,16 @@ customization effort.
 
 ## Shipped (this fork)
 
+- Steering a turn in flight. ⌘-Enter in the composer delivers a message
+  into the *running* Claude Code session instead of cancelling it: the CLI
+  runs with `--input-format stream-json` and a held-open stdin, so the
+  steer lands as the next user turn with the whole context intact, and the
+  transcript shows it where the reply splits around it. Steerability is a
+  per-engine capability (`cliProviderSteerMode`) — Codex and Cursor are
+  one-shot processes, so ⌘-Enter there degrades to the message queue,
+  as it does when a run settles between the keypress and the write.
+  Verified against the real `claude` binary: one process, two turns.
+
 - Script-mode routines (the silent tick). An automation can carry an
   optional gate script that runs deterministically in the vault folder at
   each occurrence, before any model wakes: exit 0 with no output (or

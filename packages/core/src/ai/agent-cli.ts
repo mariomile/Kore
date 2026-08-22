@@ -250,6 +250,24 @@ export interface AgentCliTurnOptions {
   startFailureMessage: string
   /** Aborts the run mid-stream (the UI's stop button). */
   signal?: AbortSignal | undefined
+  /**
+   * Streaming-input mode (mid-turn steering): stdin stays open past the
+   * prompt, and `onReady` receives a function that delivers one more user
+   * message into the live session — the CLI applies it at the next turn
+   * boundary with full context, no cancel-and-relaunch. Each steered
+   * message produces its own `result` line; the transport counts them and
+   * only ends the run (closing stdin, letting the process exit) once every
+   * delivered message has its result. A rejected steer means the run no
+   * longer accepts input — callers queue the message instead.
+   */
+  steering?:
+    | {
+        /** Serialize one steer message into a stdin line (newline added by the bridge). */
+        encodeLine: (text: string) => string
+        /** Receives the live steer function once the process is spawned. */
+        onReady: (steer: (text: string) => Promise<void>) => void
+      }
+    | undefined
 }
 
 /**
@@ -283,9 +301,31 @@ export async function* streamAgentCliTurn(
   }
   options.signal?.addEventListener('abort', onAbort, { once: true })
 
-  let text = ''
+  // The turn's model-facing record as alternating segments: steering splits
+  // the assistant's output around each injected user message, so a later
+  // turn's rebuilt history preserves the real order of the exchange.
+  const segments: { role: 'assistant' | 'user'; text: string }[] = [{ role: 'assistant', text: '' }]
+  const appendText = (delta: string): void => {
+    const last = segments.at(-1)
+    if (last?.role === 'assistant') {
+      last.text += delta
+    } else {
+      segments.push({ role: 'assistant', text: delta })
+    }
+  }
   const responseMessages = (): ModelMessage[] =>
-    text === '' ? [] : [{ role: 'assistant', content: [{ type: 'text', text }] }]
+    segments
+      .filter((segment) => segment.text !== '')
+      .map(
+        (segment): ModelMessage =>
+          segment.role === 'assistant'
+            ? { role: 'assistant', content: [{ type: 'text', text: segment.text }] }
+            : { role: 'user', content: segment.text },
+      )
+
+  // Steered messages awaiting their own `result` line. Only meaningful in
+  // streaming-input mode; stays 0 otherwise.
+  let pendingSteers = 0
 
   try {
     await getBridge().invoke('agent_cli_run', {
@@ -296,6 +336,7 @@ export async function* streamAgentCliTurn(
       cwd: options.cwd,
       env: options.env ?? null,
       workspaceConfig: options.workspaceConfig ?? null,
+      keepStdinOpen: options.steering !== undefined,
     })
   } catch (cause) {
     unlisten()
@@ -309,6 +350,25 @@ export async function* streamAgentCliTurn(
       messages: [],
     }
     return
+  }
+
+  const steering = options.steering
+  if (steering !== undefined) {
+    steering.onReady(async (text: string): Promise<void> => {
+      // Throws when the run is gone (settled, stopped) — callers fall back
+      // to queueing. Count and record only after the write landed.
+      await getBridge().invoke('agent_cli_send', {
+        requestId,
+        line: steering.encodeLine(text),
+      })
+      pendingSteers += 1
+      segments.push({ role: 'user', text })
+    })
+  }
+  const closeStdin = (): void => {
+    void getBridge()
+      .invoke('agent_cli_stdin_close', { requestId })
+      .catch(() => {})
   }
 
   let failure: string | null = null
@@ -328,15 +388,32 @@ export async function* streamAgentCliTurn(
         if (chunk === null) {
           continue
         }
+        const open = segments.at(-1)
+        const text = open?.role === 'assistant' ? open.text : ''
         if (chunk.type === 'text-delta') {
-          text += chunk.text
+          appendText(chunk.text)
           yield { type: 'text-delta', text: chunk.text }
         } else if (chunk.type === 'text-block') {
           const delta = text === '' ? chunk.text : `\n\n${chunk.text}`
-          text += delta
+          appendText(delta)
           yield { type: 'text-delta', text: delta }
-        } else if (chunk.isError) {
-          resultError = chunk.message ?? 'The CLI reported an error.'
+        } else {
+          if (chunk.isError) {
+            resultError = chunk.message ?? 'The CLI reported an error.'
+          }
+          if (steering !== undefined) {
+            if (pendingSteers > 0 && resultError === null) {
+              // A steered message is still owed its turn: this result only
+              // closes the previous one, so keep listening. The steer's own
+              // transcript part already separates the two replies on screen,
+              // and the next delta opens a fresh assistant segment.
+              pendingSteers -= 1
+              continue
+            }
+            // The last owed turn settled (or errored): end-of-input — the
+            // process exits and `done` below delivers the terminal event.
+            closeStdin()
+          }
         }
       } else if (event.kind === 'failed') {
         failure = event.message
@@ -360,6 +437,11 @@ export async function* streamAgentCliTurn(
   } finally {
     unlisten()
     options.signal?.removeEventListener('abort', onAbort)
+    // Streaming-input runs always release the held pipe — covers the race
+    // where the writer thread parks stdin after the run already finished.
+    if (steering !== undefined) {
+      closeStdin()
+    }
     // A consumer that abandons the stream (conversation switch, unmount)
     // must not leave the CLI running headless in the background.
     if (!completed) {

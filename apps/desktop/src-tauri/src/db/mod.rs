@@ -249,6 +249,23 @@ pub fn index_remove<R: tauri::Runtime>(
     index: State<IndexState>,
     background_tasks: State<BackgroundTaskState>,
 ) -> AppResult<()> {
+    index_remove_batch(vec![path], generation, app, index, background_tasks)
+}
+
+/// Remove many notes from the index in one transaction (no-op if stale).
+/// Same embedding-row contract as [`index_remove`]: genuine deletions drop
+/// chunks so a later note at the same path cannot surface stale vectors.
+#[tauri::command]
+pub fn index_remove_batch<R: tauri::Runtime>(
+    paths: Vec<String>,
+    generation: u64,
+    app: tauri::AppHandle<R>,
+    index: State<IndexState>,
+    background_tasks: State<BackgroundTaskState>,
+) -> AppResult<()> {
+    if paths.is_empty() {
+        return Ok(());
+    }
     let _background_task = background_task::scoped(&background_tasks, "Reflect index remove");
     {
         let mut state = lock_state(&index)?;
@@ -256,12 +273,11 @@ pub fn index_remove<R: tauri::Runtime>(
             return Ok(());
         }
         let conn = state.conn.as_mut().ok_or_else(AppError::no_graph)?;
-        // One transaction: a half-removed note (row gone, chunks left) would let
-        // a later note at the same path surface stale chunk text in semantic
-        // search until a re-embed.
         let tx = conn.transaction()?;
-        write::remove_note(&tx, &path)?;
-        embed_write::remove_chunks(&tx, &path)?;
+        for path in &paths {
+            write::remove_note(&tx, path)?;
+            embed_write::remove_chunks(&tx, path)?;
+        }
         tx.commit()?;
     }
     emit_index_written(&app);

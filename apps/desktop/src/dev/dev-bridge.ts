@@ -28,6 +28,7 @@ const touchArgsSchema = z.object({
 })
 const applyArgsSchema = z.object({ note: indexedNoteSchema })
 const applyBatchArgsSchema = z.object({ notes: z.array(indexedNoteSchema) })
+const removeBatchArgsSchema = z.object({ paths: z.array(z.string()) })
 const settingsArgsSchema = z.object({ settings: z.record(z.string(), z.unknown()) })
 const secretNameArgsSchema = z.object({ name: z.string() })
 const secretSetArgsSchema = z.object({ name: z.string(), value: z.string() })
@@ -230,6 +231,12 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
       }
       case 'index_remove': {
         index.removeNote(pathArgsSchema.parse(args).path)
+        return null
+      }
+      case 'index_remove_batch': {
+        for (const path of removeBatchArgsSchema.parse(args).paths) {
+          index.removeNote(path)
+        }
         return null
       }
       case 'index_move': {

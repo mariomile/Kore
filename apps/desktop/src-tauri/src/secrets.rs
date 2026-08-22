@@ -77,10 +77,27 @@ async fn run_blocking<T: Send + 'static>(
         .map_err(|err| AppError::io(err.to_string()))?
 }
 
+/// Write under the current service and drop any leftover pre-rebrand copy.
+/// Leaving the legacy entry would let a later `secret_get` migrate it back
+/// after a delete that only touched `"lore"`.
+fn write_secret(name: &str, value: &str) -> AppResult<()> {
+    set_in(&entry(name)?, value)?;
+    let _ = legacy_entry(name).and_then(|old| delete_from(&old));
+    Ok(())
+}
+
+/// Delete under both service names so a cleared key cannot resurrect from
+/// the pre-rebrand `"reflect-open"` entry that `secret_get` still migrates.
+fn erase_secret(name: &str) -> AppResult<()> {
+    delete_from(&entry(name)?)?;
+    delete_from(&legacy_entry(name)?)?;
+    Ok(())
+}
+
 /// Command: store `value` under `name`, replacing any prior value.
 #[tauri::command]
 pub async fn secret_set(name: String, value: String) -> AppResult<()> {
-    run_blocking(move || set_in(&entry(&name)?, &value)).await
+    run_blocking(move || write_secret(&name, &value)).await
 }
 
 /// Command: the secret stored under `name`, or `None` when there isn't one.
@@ -92,7 +109,7 @@ pub async fn secret_get(name: String) -> AppResult<Option<String>> {
 /// Command: remove the secret stored under `name`.
 #[tauri::command]
 pub async fn secret_delete(name: String) -> AppResult<()> {
-    run_blocking(move || delete_from(&entry(&name)?)).await
+    run_blocking(move || erase_secret(&name)).await
 }
 
 #[cfg(test)]
@@ -145,5 +162,23 @@ mod tests {
             assert_eq!(secret_get("plumbing-test".into()).await.unwrap(), None);
             secret_delete("plumbing-test".into()).await.unwrap();
         });
+    }
+
+    /// Set/delete must succeed even when the legacy service has no entry
+    /// (the common post-rebrand case) and must leave a subsequent migrating
+    /// read empty — a delete that only cleared `"lore"` used to resurrect
+    /// the `"reflect-open"` copy on the next get.
+    #[test]
+    fn set_and_delete_clear_both_current_and_legacy_services() {
+        keyring::set_default_credential_builder(keyring::mock::default_credential_builder());
+        write_secret("dual-service", "sk-secret").unwrap();
+        assert_eq!(
+            get_migrating("dual-service").unwrap(),
+            Some("sk-secret".into())
+        );
+        erase_secret("dual-service").unwrap();
+        assert_eq!(get_migrating("dual-service").unwrap(), None);
+        // Idempotent across both services.
+        erase_secret("dual-service").unwrap();
     }
 }

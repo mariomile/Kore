@@ -298,6 +298,34 @@ describe('getGithubToken', () => {
     })
     expect(store.has('github-auth')).toBe(true)
   })
+
+  it('single-flights concurrent refreshes so a one-time refresh token is not burned twice', async () => {
+    fakeKeychain({
+      'github-auth': JSON.stringify({
+        kind: 'app',
+        accessToken: 'ghu_old',
+        refreshToken: 'ghr_once',
+        expiresAt: 1_000,
+      }),
+    })
+    let release: ((response: Response) => void) | undefined
+    const gated = new Promise<Response>((resolve) => {
+      release = resolve
+    })
+    const fetchFn = vi.fn(async () => gated)
+    const first = getGithubToken(fetchFn, () => 2_000)
+    const second = getGithubToken(fetchFn, () => 2_000)
+    await vi.waitFor(() => expect(fetchFn).toHaveBeenCalledTimes(1))
+    release?.(
+      jsonResponse({
+        access_token: 'ghu_new',
+        refresh_token: 'ghr_new',
+        expires_in: 28800,
+      }),
+    )
+    expect(await Promise.all([first, second])).toEqual(['ghu_new', 'ghu_new'])
+    expect(fetchFn).toHaveBeenCalledTimes(1)
+  })
 })
 
 describe('getAuthenticatedUser', () => {

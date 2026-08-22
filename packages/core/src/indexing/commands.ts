@@ -37,7 +37,22 @@ export async function applyIndexedNotes(notes: IndexedNote[], generation: number
 
 /** Remove a note (deleted on disk) from the index (for `generation`). */
 export async function removeFromIndex(path: string, generation: number): Promise<void> {
-  await call('index_remove', { path, generation }, voidSchema)
+  await removeFromIndexBatch([path], generation)
+}
+
+/**
+ * Remove many notes from the index in one Rust transaction (for `generation`).
+ * Reconcile and large watcher delete batches use this so a mass deletion is
+ * not one IPC round-trip per path. An empty batch never touches the backend.
+ */
+export async function removeFromIndexBatch(
+  paths: readonly string[],
+  generation: number,
+): Promise<void> {
+  if (paths.length === 0) {
+    return
+  }
+  await call('index_remove_batch', { paths, generation }, voidSchema)
 }
 
 /**

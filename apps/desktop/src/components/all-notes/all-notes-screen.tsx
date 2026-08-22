@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { isDaily, listNotes, listNoteTags } from '@reflect/core'
-import { LayoutGrid, List, Trash2 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { LayoutGrid, List } from 'lucide-react'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'
 import { allNotesQueryKey, allNotesTagsQueryKey } from '@/lib/notes/all-notes-query'
@@ -14,6 +13,7 @@ import { useGraph } from '@/providers/graph-provider'
 import { routeForPath } from '@/routing/route'
 import { useRouter } from '@/routing/router'
 import { useSettings } from '@/providers/settings-provider'
+import { AllNotesBulkBar } from './all-notes-bulk-bar'
 import { AllNotesFilters } from './all-notes-filters'
 import { AllNotesGrid } from './all-notes-grid'
 import { AllNotesTable } from './all-notes-table'
@@ -97,9 +97,13 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
   // selectable for keyboard navigation, but are never valid trash targets.
   const [confirmingTrash, setConfirmingTrash] = useState(false)
   const [pendingPaths, setPendingPaths] = useState<readonly string[]>([])
+  // The live selection as a stable array — the bulk bar takes it whole (tag
+  // and move accept dailies) and trash takes it minus the dailies, which the
+  // delete helper refuses.
+  const selectedPaths = useMemo(() => [...selection.selected], [selection.selected])
   const trashableSelectedPaths = useMemo(
-    () => [...selection.selected].filter((path) => !isDaily(path)),
-    [selection.selected],
+    () => selectedPaths.filter((path) => !isDaily(path)),
+    [selectedPaths],
   )
   const openTrashConfirm = useCallback(() => {
     if (trashableSelectedPaths.length === 0) {
@@ -135,29 +139,18 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
       ref={rootRef}
       tabIndex={-1}
       aria-label="All notes"
-      className="flex h-full min-h-0 flex-col outline-none"
+      className="relative flex h-full min-h-0 flex-col outline-none"
     >
+      <AllNotesBulkBar
+        paths={selectedPaths}
+        trashablePaths={trashableSelectedPaths}
+        notes={notes}
+        onRequestTrash={openTrashConfirm}
+        onDone={selection.clear}
+      />
       <header className="flex flex-none flex-wrap items-center justify-between gap-3 border-b border-border py-4 pl-12 pr-7">
         <h1 className="text-[15px] font-semibold text-text">Notes</h1>
         <div className="flex flex-wrap items-center gap-3">
-          {trashableSelectedPaths.length > 0 ? (
-            <Button
-              type="button"
-              variant="outline"
-              aria-label={`Trash (${trashableSelectedPaths.length})`}
-              onClick={openTrashConfirm}
-              className="text-text-secondary hover:text-destructive"
-            >
-              <Trash2 aria-hidden className="size-3.5" />
-              <span>Trash</span>
-              <span
-                aria-hidden
-                className="flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive/10 px-1 text-[10px] font-semibold leading-none tabular-nums text-destructive"
-              >
-                {trashableSelectedPaths.length}
-              </span>
-            </Button>
-          ) : null}
           <AllNotesFilters tag={tag} facets={facets ?? []} onSelect={handleFilterSelect} />
           <div
             role="group"

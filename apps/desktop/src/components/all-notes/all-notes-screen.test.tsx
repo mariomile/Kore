@@ -432,7 +432,7 @@ describe('AllNotesScreen', () => {
 })
 
 describe('AllNotesScreen — selection and bulk trash', () => {
-  it('selects a row on click and reveals the bulk Trash action', async () => {
+  it('selects a row on click and reveals the floating bulk actions', async () => {
     const view = await renderScreen()
     await expect.element(view.getByText('Health Stacked')).toBeInTheDocument()
 
@@ -441,9 +441,11 @@ describe('AllNotesScreen — selection and bulk trash', () => {
     expect(probedRoute(view)).toEqual({ kind: 'allNotes', tag: null })
     const trashButton = view.getByRole('button', { name: /Trash \(1\)/ })
     await expect.element(trashButton).toBeInTheDocument()
-    expect(
-      view.getByRole('group', { name: 'Filter by tag' }).element().previousElementSibling,
-    ).toBe(trashButton.element())
+    // The bulk actions float over the list, never inside the header: three
+    // buttons appearing in a wrapping header grow it by a line the first time
+    // a row is selected, which pushes the list down between the two clicks of
+    // a double-click. Assert the placement, not just the button.
+    expect(trashButton.element().closest('header')).toBeNull()
 
     // ⌘-click a second row extends the selection.
     await view.getByText('Dandelion chocolate.').click({ modifiers: ['Meta'] })

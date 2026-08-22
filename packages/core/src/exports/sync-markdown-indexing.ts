@@ -61,6 +61,8 @@ export {
   PARSED_NOTE_VERSION,
   parseNote,
   appendBlock,
+  appendBodyTag,
+  bodyHasTag,
   appendTaskLine,
   appendTaskToContext,
   wikiLinkSafe,

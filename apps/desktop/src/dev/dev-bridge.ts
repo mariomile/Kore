@@ -217,6 +217,12 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
         const { sql, params } = dbQueryArgsSchema.parse(args)
         return index.query(sql, params)
       }
+      case 'db_query_batch': {
+        const { queries } = z
+          .object({ queries: z.array(dbQueryArgsSchema) })
+          .parse(args)
+        return queries.map(({ sql, params }) => index.query(sql, params))
+      }
       case 'index_open':
         return 1
       case 'index_apply': {
@@ -339,6 +345,9 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
         index.deleteChatConversation(chatDeleteArgsSchema.parse(args).id)
         return null
       }
+      case 'quick_capture_show':
+      case 'quick_capture_hide':
+        return null
 
       default:
         console.error(`[dev-bridge] unimplemented command "${command}"`, args)

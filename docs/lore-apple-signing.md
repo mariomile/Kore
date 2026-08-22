@@ -55,3 +55,26 @@ steps below are only needed for iCloud sync and for installing on an iPhone.
 - `app.reflect.capture` — the Chrome native-messaging host name, paired
   with the browser extension's allowlist on both sides.
 - Config-dir name `reflect-open` (recents/settings/capture pointer paths).
+
+## Publishing a Lore release
+
+GitHub Actions cannot open pull requests in this fork, so release-please's
+Release PRs never appear. The official publish path is:
+
+1. Merge the work that should ship to `master`.
+2. Hand-bump `version` in `apps/desktop/package.json` only — never the
+   changelogs (`apps/desktop/CHANGELOG.md`, `CHANGELOG.beta.md`) or the
+   manifests under `.github/release-please/`.
+3. Merge that bump to `master`.
+4. Fast-forward the `release/dmg` pointer:
+   `git push origin origin/master:release/dmg`.
+5. The **Release DMG** workflow (`.github/workflows/release-dmg.yml`)
+   builds unsigned DMG plus signed updater artifacts from that pointer
+   and publishes them to the GitHub release the in-app updater polls.
+
+Do not wait for a `chore: release …` bot PR. Between those hand-bumps the
+version in `package.json` stays put; feature PRs must not touch it.
+
+See also the callout under [Cutting a release](macos-distribution.md#cutting-a-release-release-prs)
+in the distribution guide (that section still describes upstream's
+release-please flow, which this fork cannot run).

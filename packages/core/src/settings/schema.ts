@@ -522,6 +522,13 @@ export type TaskFilters = z.infer<typeof taskFiltersSchema>
 export const taskRemindersSchema = z.boolean().catch(false)
 
 /**
+ * Desktop global quick capture: a system-wide shortcut opens a mini window
+ * that appends a line to today's daily note. On by default; turn it off if
+ * the binding collides with another app.
+ */
+export const quickCaptureEnabledSchema = z.boolean().catch(true)
+
+/**
  * The AI providers Reflect can call directly (BYOK — the user's own keys, no
  * Reflect-hosted proxy). `openai-compatible` stores its user-supplied base URL
  * per configured entry.
@@ -800,6 +807,7 @@ export const settingsSchema = z.looseObject({
   savedSearches: savedSearchesSchema,
   taskFilters: taskFiltersSchema,
   taskReminders: taskRemindersSchema,
+  quickCaptureEnabled: quickCaptureEnabledSchema,
   calendarEnabled: calendarEnabledSchema,
   calendarIds: calendarIdsSchema,
   graphColors: graphColorsSchema,

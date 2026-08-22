@@ -21,6 +21,7 @@ const getNote = vi.hoisted(() => vi.fn<() => Promise<NoteRow | undefined>>(async
 const getPinnedNotes = vi.hoisted(() => vi.fn<() => Promise<PinnedNote[]>>(async () => []))
 const isNativeShell = vi.hoisted(() => vi.fn(() => true))
 const toggleDevtools = vi.hoisted(() => vi.fn(async () => undefined))
+const showQuickCapture = vi.hoisted(() => vi.fn(async () => undefined))
 const openRouteInNewWindow = vi.hoisted(() => vi.fn<() => Promise<boolean>>())
 const operationFail = vi.hoisted(() => vi.fn())
 const startOperation = vi.hoisted(() =>
@@ -51,6 +52,7 @@ vi.mock('@reflect/core', async (importOriginal) => ({
   getNote,
   getPinnedNotes,
   toggleDevtools,
+  showQuickCapture,
 }))
 
 // Importing registers the commands (module side effect, like production).
@@ -131,6 +133,10 @@ describe('keybindingFor', () => {
 
   it('audioMemo.toggle is bound to Mod-Shift-r', () => {
     expect(keybindingFor('audioMemo.toggle')).toBe('Mod-Shift-r')
+  })
+
+  it('capture.quick is bound to Mod-Shift-c', () => {
+    expect(keybindingFor('capture.quick')).toBe('Mod-Shift-c')
   })
 
   it('dev.toggleDevtools is bound to Mod-Shift-i', () => {

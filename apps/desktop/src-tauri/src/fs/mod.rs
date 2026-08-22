@@ -416,15 +416,18 @@ pub async fn note_read_local(
 /// with the value a later `list_files` will report — a `Date.now()` stamp
 /// never matches and costs a re-read on every reconcile.
 #[tauri::command]
-pub fn note_write(
+pub async fn note_write(
     path: String,
     contents: String,
     generation: u64,
-    state: State<GraphState>,
+    state: State<'_, GraphState>,
 ) -> AppResult<Option<u64>> {
     let root = root_for_generation(&state, generation)?;
-    let modified_ms = atomic_write(&root, &resolve(&root, &path)?, &contents)?;
-    invalidate_file_catalog(&state, &root);
+    let abs = resolve(&root, &path)?;
+    let catalog_root = root.clone();
+    let modified_ms =
+        crate::blocking::run_blocking(move || atomic_write(&root, &abs, &contents)).await?;
+    invalidate_file_catalog(&state, &catalog_root);
     Ok(modified_ms)
 }
 
@@ -432,17 +435,20 @@ pub fn note_write(
 /// [`note_write`], this is a no-clobber claim: a concurrent sync checkout or
 /// creator wins as `Collision`, with its file left byte-for-byte intact.
 #[tauri::command]
-pub fn note_create(
+pub async fn note_create(
     path: String,
     contents: String,
     generation: u64,
-    state: State<GraphState>,
+    state: State<'_, GraphState>,
 ) -> AppResult<NoteCreateOutcome> {
     let root = root_for_generation(&state, generation)?;
     let target = resolve(&root, &path)?;
-    match atomic_create(&root, &target, &contents)? {
+    let catalog_root = root.clone();
+    let outcome =
+        crate::blocking::run_blocking(move || atomic_create(&root, &target, &contents)).await?;
+    match outcome {
         AtomicCreateOutcome::Created(modified_ms) => {
-            invalidate_file_catalog(&state, &root);
+            invalidate_file_catalog(&state, &catalog_root);
             Ok(NoteCreateOutcome::Created { modified_ms })
         }
         AtomicCreateOutcome::Collision => Ok(NoteCreateOutcome::Collision),
@@ -453,19 +459,25 @@ pub fn note_create(
 /// path. Contents arrive base64-encoded — Tauri IPC args are JSON, and pasted
 /// images are small enough that the ~33% encoding overhead is irrelevant.
 #[tauri::command]
-pub fn asset_write(
+pub async fn asset_write(
     path: String,
     contents_base64: String,
     generation: u64,
-    state: State<GraphState>,
+    state: State<'_, GraphState>,
 ) -> AppResult<()> {
     use base64::Engine;
     let root = root_for_generation(&state, generation)?;
-    let bytes = base64::engine::general_purpose::STANDARD
-        .decode(contents_base64.as_bytes())
-        .map_err(|err| AppError::io(format!("invalid base64 asset payload: {err}")))?;
-    atomic_write_bytes(&root, &resolve(&root, &path)?, &bytes)?;
-    invalidate_file_catalog(&state, &root);
+    let abs = resolve(&root, &path)?;
+    let catalog_root = root.clone();
+    crate::blocking::run_blocking(move || {
+        let bytes = base64::engine::general_purpose::STANDARD
+            .decode(contents_base64.as_bytes())
+            .map_err(|err| AppError::io(format!("invalid base64 asset payload: {err}")))?;
+        atomic_write_bytes(&root, &abs, &bytes)?;
+        Ok(())
+    })
+    .await?;
+    invalidate_file_catalog(&state, &catalog_root);
     Ok(())
 }
 

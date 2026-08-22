@@ -1,6 +1,9 @@
 import {
   errorMessage,
   getNote,
+  parseNote,
+  readNoteLocal,
+  showQuickCapture,
   getPinnedNotes,
   randomNotePath,
   toggleDevtools,
@@ -96,6 +99,20 @@ const APP_COMMANDS: AppCommand[] = [
     keywords: ['create'],
     keybinding: 'Mod-n',
     run: openNewNote,
+  },
+  {
+    id: 'capture.quick',
+    title: 'Quick capture to today',
+    keywords: ['inbox', 'append', 'today', 'global', 'shortcut'],
+    keybinding: 'Mod-Shift-c',
+    run: () => {
+      if (!isNativeShell()) {
+        return
+      }
+      void showQuickCapture().catch((cause: unknown) => {
+        startOperation('Quick capture').fail(errorMessage(cause))
+      })
+    },
   },
   {
     id: 'note.openInNewWindow',

@@ -712,6 +712,25 @@ button[aria-selected='true'] .sidebar-glass-tile {
   outline-color: color-mix(in oklab, var(--accent) 35%, transparent);
 }
 
+.reflect-palette-item:hover .sidebar-glass-tile {
+  color: var(--text);
+}
+
+.reflect-palette-item[data-selected='true'] .sidebar-glass-tile {
+  color: var(--accent);
+  background:
+    linear-gradient(180deg, color-mix(in oklab, white 55%, transparent) 0%, transparent 50%),
+    color-mix(in oklab, var(--accent) 16%, transparent);
+  outline-color: color-mix(in oklab, var(--accent) 22%, transparent);
+}
+
+.dark .reflect-palette-item[data-selected='true'] .sidebar-glass-tile {
+  background:
+    linear-gradient(180deg, color-mix(in oklab, white 20%, transparent) 0%, transparent 48%),
+    color-mix(in oklab, var(--accent) 22%, transparent);
+  outline-color: color-mix(in oklab, var(--accent) 35%, transparent);
+}
+
 /* Reduced motion is honored app-wide, not just in the editor: collapse every
    transition and animation (palette/dialog zooms, sidebar washes, spinners).
    Near-zero durations rather than `none` so animation-end events still fire. */

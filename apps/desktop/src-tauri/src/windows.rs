@@ -63,6 +63,9 @@ pub const NOTE_WINDOW_PREFIX: &str = "note-";
 /// nothing else.
 pub const BROWSER_WINDOW_PREFIX: &str = "browser-";
 
+/// Mini window the desktop global shortcut raises to append a line to today.
+pub const QUICK_CAPTURE_LABEL: &str = "quick-capture";
+
 /// Event delivered when an already-open target is requested again: the window
 /// may have navigated elsewhere since it opened, so a focus alone could
 /// surface the wrong note — the payload (the deep link) re-navigates it to the
@@ -625,6 +628,149 @@ pub fn window_bootstrap(
         index_generation,
         initial_deep_link,
     })
+}
+
+/// The system-wide binding that raises the quick-capture window.
+#[cfg(desktop)]
+const QUICK_CAPTURE_SHORTCUT: &str = "CommandOrControl+Shift+Space";
+
+/// Whether the user left global quick capture on. Missing or invalid values
+/// follow the frontend schema's `.catch(true)`.
+#[cfg(desktop)]
+fn quick_capture_enabled(settings: &crate::settings::SettingsDoc) -> bool {
+    match settings.get("quickCaptureEnabled") {
+        Some(serde_json::Value::Bool(false)) => false,
+        _ => true,
+    }
+}
+
+/// Register or drop the system-wide shortcut to match the saved setting.
+/// Best-effort: a binding another app already owns is a warning, not a crash.
+#[cfg(desktop)]
+pub(crate) fn sync_quick_capture_shortcut<R: tauri::Runtime>(
+    app: &tauri::AppHandle<R>,
+    settings: &crate::settings::SettingsDoc,
+) {
+    use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
+
+    let manager = app.global_shortcut();
+    if quick_capture_enabled(settings) {
+        if manager.is_registered(QUICK_CAPTURE_SHORTCUT) {
+            return;
+        }
+        if let Err(err) = manager.on_shortcut(QUICK_CAPTURE_SHORTCUT, |app, _, event| {
+            if event.state != ShortcutState::Pressed {
+                return;
+            }
+            let handle = app.clone();
+            tauri::async_runtime::spawn(async move {
+                if let Err(err) = raise_quick_capture(handle).await {
+                    tracing::warn!(error = %err, "quick capture failed");
+                }
+            });
+        }) {
+            tracing::warn!(error = %err, "global quick-capture shortcut unavailable");
+        }
+        return;
+    }
+    if manager.is_registered(QUICK_CAPTURE_SHORTCUT) {
+        if let Err(err) = manager.unregister(QUICK_CAPTURE_SHORTCUT) {
+            tracing::warn!(error = %err, "failed to unregister quick-capture shortcut");
+        }
+    }
+}
+
+/// Raise (or toggle) the always-on-top capture bar. Desktop-only; mobile has
+/// no second window and no global shortcut.
+#[tauri::command]
+pub async fn quick_capture_show(app: tauri::AppHandle) -> AppResult<()> {
+    #[cfg(not(desktop))]
+    {
+        let _ = app;
+        Err(AppError::io("quick capture is desktop-only"))
+    }
+    #[cfg(desktop)]
+    raise_quick_capture(app).await
+}
+
+/// Hide the capture bar if it exists. Idempotent.
+#[tauri::command]
+pub fn quick_capture_hide(app: tauri::AppHandle) -> AppResult<()> {
+    if let Some(window) = app.get_webview_window(QUICK_CAPTURE_LABEL) {
+        window
+            .hide()
+            .map_err(|err| AppError::io(format!("failed to hide quick capture: {err}")))?;
+    }
+    Ok(())
+}
+
+#[cfg(desktop)]
+async fn raise_quick_capture(app: tauri::AppHandle) -> AppResult<()> {
+    if let Some(window) = app.get_webview_window(QUICK_CAPTURE_LABEL) {
+        match window.is_visible() {
+            Ok(true) => {
+                let _ = window.hide();
+                return Ok(());
+            }
+            _ => {
+                window
+                    .show()
+                    .map_err(|err| AppError::io(format!("failed to show quick capture: {err}")))?;
+                let _ = window.set_focus();
+                return Ok(());
+            }
+        }
+    }
+    create_quick_capture_window(&app)
+}
+
+#[cfg(desktop)]
+fn create_quick_capture_window(app: &tauri::AppHandle) -> AppResult<()> {
+    let quit = app.state::<QuitState>();
+    if quit.armed() {
+        return Err(AppError::io("the app is quitting"));
+    }
+
+    let background = app
+        .get_webview_window(MAIN_WINDOW_LABEL)
+        .map(|window| theme_background_color(&window))
+        .unwrap_or(SURFACE_APP_LIGHT);
+    let revealed = Arc::new(Once::new());
+
+    let builder = WebviewWindowBuilder::new(app, QUICK_CAPTURE_LABEL, WebviewUrl::default())
+        .title("Quick capture")
+        .inner_size(480.0, 88.0)
+        .resizable(false)
+        .decorations(false)
+        .always_on_top(true)
+        .skip_taskbar(true)
+        .visible(false)
+        .center()
+        .background_color(background)
+        .on_page_load({
+            let revealed = Arc::clone(&revealed);
+            move |window, payload| {
+                if !matches!(payload.event(), tauri::webview::PageLoadEvent::Finished) {
+                    return;
+                }
+                revealed.call_once(|| {
+                    let _ = window.show();
+                    let _ = window.set_focus();
+                });
+            }
+        })
+        .disable_drag_drop_handler();
+
+    let window = builder
+        .build()
+        .map_err(|err| AppError::io(format!("failed to open quick capture: {err}")))?;
+
+    let label = window.label().to_owned();
+    arm_reveal_fallback(&revealed, &label, move || {
+        let _ = window.show();
+        let _ = window.set_focus();
+    });
+    Ok(())
 }
 
 #[cfg(test)]

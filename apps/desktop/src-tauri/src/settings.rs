@@ -62,8 +62,16 @@ pub fn settings_load() -> AppResult<SettingsDoc> {
 
 /// Command: atomically replace the persisted settings document.
 #[tauri::command]
-pub fn settings_save(settings: SettingsDoc) -> AppResult<()> {
-    save_to(&store_path()?, &settings)
+pub fn settings_save<R: tauri::Runtime>(
+    settings: SettingsDoc,
+    app: tauri::AppHandle<R>,
+) -> AppResult<()> {
+    save_to(&store_path()?, &settings)?;
+    #[cfg(desktop)]
+    crate::windows::sync_quick_capture_shortcut(&app, &settings);
+    #[cfg(not(desktop))]
+    let _ = app;
+    Ok(())
 }
 
 #[cfg(test)]

@@ -104,6 +104,15 @@ deferred.
 
 ## Cutting a release (Release PRs)
 
+> **Lore fork:** GitHub Actions cannot create pull requests here, so the
+> Release PRs described below never open. Cut a Lore release by hand-bumping
+> `version` in `apps/desktop/package.json` only (never the changelogs or
+> `.github/release-please/` manifests), merging that to `master`, and
+> fast-forwarding the `release/dmg` pointer:
+> `git push origin origin/master:release/dmg`. The **Release DMG** workflow
+> builds updater artifacts from that pointer. Details:
+> [lore-apple-signing.md](lore-apple-signing.md#publishing-a-lore-release).
+
 The version lives in one place: `version` in `apps/desktop/package.json`.
 `tauri.conf.json` points its `version` at that file, the crate version in
 `src-tauri/Cargo.toml` is frozen at `0.0.0`, and `Cargo.lock` never changes for a

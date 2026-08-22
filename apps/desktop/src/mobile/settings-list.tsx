@@ -81,7 +81,7 @@ export function SettingsNavRow({
     <button type="button" className={PRESSABLE_ROW_CLASS} onClick={onPress} disabled={disabled}>
       <span className="min-w-0 flex-1 truncate font-medium">{label}</span>
       {value !== undefined ? <span className="shrink-0 text-text-muted">{value}</span> : null}
-      <ChevronRight aria-hidden className="size-4 shrink-0 text-text-muted" strokeWidth={1.75} />
+      <ChevronRight aria-hidden className="size-4 shrink-0 text-text-muted" />
     </button>
   )
 }
@@ -295,7 +295,7 @@ export function SettingsActionRow({
       {pending === true ? (
         <Spinner />
       ) : Icon !== undefined ? (
-        <Icon aria-hidden className="size-4 shrink-0" strokeWidth={1.75} />
+        <Icon aria-hidden className="size-4 shrink-0" />
       ) : null}
       <span className="min-w-0 flex-1 truncate">{label}</span>
     </button>

@@ -115,7 +115,7 @@ export function AgentRoutinesSection({ profiles }: AgentRoutinesSectionProps): R
   return (
     <section className="mt-3 rounded-xl border border-border bg-surface p-4">
       <div className="flex items-center gap-3">
-        <CalendarClock aria-hidden strokeWidth={1.75} className="size-5 text-text-muted" />
+        <CalendarClock aria-hidden className="size-5 text-text-muted" />
         <div className="min-w-0 flex-1">
           <h2 className="text-sm font-medium text-text">Automations</h2>
           <p className="text-xs text-text-muted">

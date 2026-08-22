@@ -125,7 +125,7 @@ export function AppearanceSection(): ReactElement {
                   onChange={() => updateSettings({ theme: value })}
                   className="sr-only"
                 />
-                <Icon aria-hidden strokeWidth={1.75} className="size-4" />
+                <Icon aria-hidden className="size-4" />
                 <span className="text-xs font-medium">{label}</span>
               </SettingsOptionCard>
             )

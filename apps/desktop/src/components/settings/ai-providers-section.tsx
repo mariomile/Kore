@@ -44,7 +44,7 @@ export function AiProvidersSection(): ReactElement {
           onClick={() => setAdding(true)}
           className="text-accent hover:bg-surface-hover"
         >
-          <Plus aria-hidden strokeWidth={1.75} />
+          <Plus aria-hidden />
           Add provider
         </Button>
       </div>

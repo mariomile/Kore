@@ -59,7 +59,7 @@ export function MobileOnboardingScreen(): ReactElement {
       <div className="mx-auto flex w-full max-w-md flex-col gap-7 py-6">
         <header className="flex flex-col gap-4 pt-2">
           <div className="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <Cloud aria-hidden className="size-5" strokeWidth={1.75} />
+            <Cloud aria-hidden className="size-5" />
           </div>
           <div className="space-y-2">
             <h1 className="text-[28px] font-semibold leading-tight tracking-tight">
@@ -96,11 +96,7 @@ export function MobileOnboardingScreen(): ReactElement {
               onClick={() => runChoice('local', () => completeOnboarding('local'))}
               disabled={action.pending || mobileStorageInfo === null}
             >
-              {pendingChoice === 'local' ? (
-                <Spinner />
-              ) : (
-                <HardDrive aria-hidden strokeWidth={1.75} />
-              )}
+              {pendingChoice === 'local' ? <Spinner /> : <HardDrive aria-hidden />}
               {pendingChoice === 'local' ? 'Setting up…' : 'Or, use this device only'}
             </Button>
           </div>

@@ -75,7 +75,7 @@ export function CustomFilterMenu({
         )}
       >
         {activeTag !== null ? `#${activeTag}` : 'Custom'}
-        <ChevronDown aria-hidden strokeWidth={1.75} className="size-3.5 shrink-0" />
+        <ChevronDown aria-hidden className="size-3.5 shrink-0" />
       </PopoverTrigger>
       <PopoverContent align="end" sideOffset={6} className="w-56 p-0">
         <Command label="Filter by another tag">

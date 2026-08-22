@@ -197,7 +197,7 @@ export function AgentsScreen(): ReactElement {
 
       <section className="mt-6 rounded-xl border border-border bg-surface p-4">
         <div className="flex items-center gap-3">
-          <UserRound aria-hidden strokeWidth={1.75} className="size-5 text-text-muted" />
+          <UserRound aria-hidden className="size-5 text-text-muted" />
           <div className="min-w-0 flex-1">
             <h2 className="text-sm font-medium text-text">About you</h2>
             <p className="text-xs text-text-muted">
@@ -213,7 +213,7 @@ export function AgentsScreen(): ReactElement {
 
       <section className="mt-3 rounded-xl border border-border bg-surface p-4">
         <div className="flex items-center gap-3">
-          <BookOpenText aria-hidden strokeWidth={1.75} className="size-5 text-text-muted" />
+          <BookOpenText aria-hidden className="size-5 text-text-muted" />
           <div className="min-w-0 flex-1">
             <h2 className="text-sm font-medium text-text">Shared memory</h2>
             <p className="text-xs text-text-muted">
@@ -327,7 +327,7 @@ export function AgentsScreen(): ReactElement {
               : 'border-transparent hover:bg-surface-hover',
           )}
         >
-          <Bot aria-hidden strokeWidth={1.75} className="size-5 text-text-muted" />
+          <Bot aria-hidden className="size-5 text-text-muted" />
           <div className="min-w-0 flex-1">
             <span className="text-sm font-medium text-text">No agent</span>
             <p className="text-xs text-text-muted">Plain assistant — no soul, default memory.</p>
@@ -346,7 +346,7 @@ export function AgentsScreen(): ReactElement {
             )}
           >
             <div className="flex items-center gap-3">
-              <Bot aria-hidden strokeWidth={1.75} className="size-5 text-text-muted" />
+              <Bot aria-hidden className="size-5 text-text-muted" />
               <div className="min-w-0 flex-1">
                 <span className="text-sm font-medium text-text">{profile.name}</span>
                 <p className="truncate text-xs text-text-muted">

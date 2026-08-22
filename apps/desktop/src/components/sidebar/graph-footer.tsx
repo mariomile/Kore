@@ -182,13 +182,13 @@ export function GraphFooter({ graph, context }: GraphFooterProps): ReactElement 
             }}
             className={MENU_ITEM_CLASS}
           >
-            <LocateFixed aria-hidden strokeWidth={1.75} className="size-3.5 shrink-0" />
+            <LocateFixed aria-hidden className="size-3.5 shrink-0" />
             <span className="min-w-0 flex-1 truncate">Reveal graph in Finder</span>
           </DropdownMenuItem>
           {/* Graph switching re-roots every window; note windows hide it. */}
           {isMainWindow() ? (
             <DropdownMenuItem onClick={() => void chooseGraph()} className={MENU_ITEM_CLASS}>
-              <FolderOpen aria-hidden strokeWidth={1.75} className="size-3.5 shrink-0" />
+              <FolderOpen aria-hidden className="size-3.5 shrink-0" />
               <span className="min-w-0 flex-1 truncate">Open another graph…</span>
             </DropdownMenuItem>
           ) : null}
@@ -196,7 +196,7 @@ export function GraphFooter({ graph, context }: GraphFooterProps): ReactElement 
             onClick={() => void runCommand('settings.open', context)}
             className={MENU_ITEM_CLASS}
           >
-            <Settings aria-hidden strokeWidth={1.75} className="size-3.5 shrink-0" />
+            <Settings aria-hidden className="size-3.5 shrink-0" />
             <span className="min-w-0 flex-1 truncate">User settings</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -219,7 +219,7 @@ export function GraphFooter({ graph, context }: GraphFooterProps): ReactElement 
               )}
             >
               <SidebarGlassTile>
-                <Settings aria-hidden strokeWidth={1.75} className="size-3.5" />
+                <Settings aria-hidden className="size-3.5" />
               </SidebarGlassTile>
             </Button>
           }

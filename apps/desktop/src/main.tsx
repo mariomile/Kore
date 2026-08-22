@@ -48,7 +48,7 @@ createRoot(rootElement, reactRootOptions).render(
               and half the call sites already pass 1.75 by hand. Setting the
               default here makes the hairline weight the rule instead of the
               exception — an explicit `strokeWidth` on an icon still wins. */}
-          <LucideProvider strokeWidth={1.75}>
+          <LucideProvider>
             <PlatformRoot />
           </LucideProvider>
         </ThemeProvider>

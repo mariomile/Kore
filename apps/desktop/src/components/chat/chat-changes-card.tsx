@@ -51,7 +51,7 @@ function ChangedNoteRow({ path }: { path: string }): ReactElement {
         }}
         className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-1 py-1 text-left transition-colors duration-100 hover:bg-surface-hover focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:outline-none"
       >
-        <FileText aria-hidden strokeWidth={1.75} className="size-3.5 shrink-0 text-text-muted" />
+        <FileText aria-hidden className="size-3.5 shrink-0 text-text-muted" />
         <span className="truncate text-sm text-text">{title}</span>
       </button>
       <Button

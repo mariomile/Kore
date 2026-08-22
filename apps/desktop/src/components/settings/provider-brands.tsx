@@ -177,7 +177,7 @@ export function ProviderLogo({
   className?: string
 }): ReactElement {
   if (brand.path === null) {
-    return <Plug aria-hidden strokeWidth={1.75} className={cn('size-5', className)} />
+    return <Plug aria-hidden className={cn('size-5', className)} />
   }
   return (
     <svg aria-hidden viewBox="0 0 24 24" fill="currentColor" className={cn('size-5', className)}>

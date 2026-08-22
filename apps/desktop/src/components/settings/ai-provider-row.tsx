@@ -127,7 +127,7 @@ export function AiProviderRow({
           onClick={remove}
           className="text-text-muted hover:bg-surface-hover hover:text-text"
         >
-          <Trash2 aria-hidden strokeWidth={1.75} />
+          <Trash2 aria-hidden />
         </Button>
       </div>
     </div>

@@ -68,7 +68,7 @@ export function McpSection(): ReactElement {
               key={server.id}
               className="flex items-center gap-3 rounded-lg bg-surface-sunken p-3"
             >
-              <Plug aria-hidden strokeWidth={1.75} className="size-4 shrink-0 text-text-muted" />
+              <Plug aria-hidden className="size-4 shrink-0 text-text-muted" />
               <div className="min-w-0 flex-1">
                 <span className="text-sm font-medium text-text">{server.name}</span>
                 <p className="truncate text-xs text-text-muted">

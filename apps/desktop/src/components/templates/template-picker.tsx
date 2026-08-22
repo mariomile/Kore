@@ -83,7 +83,7 @@ export function TemplatePicker({ context }: TemplatePickerProps): ReactElement |
                 value={`${template.title} ${template.path}`}
                 onSelect={() => insert(template.path)}
               >
-                <LayoutTemplate aria-hidden strokeWidth={1.75} className="text-text-muted" />
+                <LayoutTemplate aria-hidden className="text-text-muted" />
                 <span className="truncate">{template.title}</span>
               </CommandItem>
             ))}
@@ -91,7 +91,7 @@ export function TemplatePicker({ context }: TemplatePickerProps): ReactElement |
         ) : null}
         <CommandGroup forceMount>
           <CommandItem forceMount value="new-template" onSelect={openTemplateCreate}>
-            <FilePlus2 aria-hidden strokeWidth={1.75} className="text-text-muted" />
+            <FilePlus2 aria-hidden className="text-text-muted" />
             New template
           </CommandItem>
         </CommandGroup>

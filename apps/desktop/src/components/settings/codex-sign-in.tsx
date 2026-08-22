@@ -112,7 +112,7 @@ export function CodexSignIn(): ReactElement {
   if (status.data.loggedIn) {
     return (
       <div className="flex items-center gap-2">
-        <CircleCheck aria-hidden strokeWidth={1.75} className="size-4 shrink-0 text-accent" />
+        <CircleCheck aria-hidden className="size-4 shrink-0 text-accent" />
         <p className="min-w-0 flex-1 text-xs text-text-secondary">
           {status.data.detail === '' ? 'Signed in with ChatGPT.' : status.data.detail}
         </p>

@@ -133,7 +133,7 @@ function PanelToggle({ side, collapsed, onToggle, label }: PanelToggleProps): Re
         collapsed ? 'text-text-muted' : 'text-text-secondary',
       )}
     >
-      <Icon aria-hidden strokeWidth={1.75} className="size-4" />
+      <Icon aria-hidden className="size-4" />
     </button>
   )
 }

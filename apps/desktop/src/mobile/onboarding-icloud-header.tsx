@@ -9,7 +9,7 @@ export function OnboardingIcloudHeader({ description }: OnboardingIcloudHeaderPr
   return (
     <div className="flex items-start gap-3">
       <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-        <Cloud aria-hidden className="size-4" strokeWidth={1.75} />
+        <Cloud aria-hidden className="size-4" />
       </div>
       <div className="min-w-0 flex-1 space-y-1">
         <div className="flex items-center gap-2">

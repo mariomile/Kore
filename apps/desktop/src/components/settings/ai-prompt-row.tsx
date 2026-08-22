@@ -26,7 +26,7 @@ export function AiPromptRow({ prompt, onEdit, onRemove }: AiPromptRowProps): Rea
           onClick={() => onEdit(prompt)}
           className="text-text-muted hover:bg-surface-hover hover:text-text"
         >
-          <Pencil aria-hidden strokeWidth={1.75} />
+          <Pencil aria-hidden />
         </Button>
         <Button
           type="button"
@@ -36,7 +36,7 @@ export function AiPromptRow({ prompt, onEdit, onRemove }: AiPromptRowProps): Rea
           onClick={() => onRemove(prompt.id)}
           className="text-text-muted hover:bg-surface-hover hover:text-text"
         >
-          <Trash2 aria-hidden strokeWidth={1.75} />
+          <Trash2 aria-hidden />
         </Button>
       </div>
     </div>

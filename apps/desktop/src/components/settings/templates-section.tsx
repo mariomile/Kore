@@ -72,7 +72,7 @@ export function TemplatesSection(): ReactElement {
                   aria-label={`Rename ${template.title}`}
                   onClick={() => setRenaming(template)}
                 >
-                  <Pencil aria-hidden strokeWidth={1.75} />
+                  <Pencil aria-hidden />
                 </Button>
                 <Button
                   variant="ghost"
@@ -80,7 +80,7 @@ export function TemplatesSection(): ReactElement {
                   aria-label={`Delete ${template.title}`}
                   onClick={() => setDeleting(template)}
                 >
-                  <Trash2 aria-hidden strokeWidth={1.75} />
+                  <Trash2 aria-hidden />
                 </Button>
               </li>
             ))}
@@ -88,7 +88,7 @@ export function TemplatesSection(): ReactElement {
         ) : null}
         <div className="mt-3">
           <Button variant="outline" size="sm" onClick={openTemplateCreate}>
-            <Plus aria-hidden strokeWidth={1.75} />
+            <Plus aria-hidden />
             New template
           </Button>
         </div>

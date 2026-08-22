@@ -57,10 +57,7 @@ export function GraphChooser(): ReactElement {
 
         {/* The self-managed path: any folder, synced however the user likes. */}
         <section className="flex flex-col gap-4 rounded-xl border border-border bg-surface p-5 shadow-sm">
-          <CardHeader
-            icon={<Folder aria-hidden className="size-4" strokeWidth={1.75} />}
-            title="A folder you choose"
-          >
+          <CardHeader icon={<Folder aria-hidden className="size-4" />} title="A folder you choose">
             Open an existing Markdown folder on this {icloudCapable ? 'Mac' : 'computer'}. Reflect
             keeps its files where they are.
           </CardHeader>
@@ -70,7 +67,7 @@ export function GraphChooser(): ReactElement {
             className="mt-auto w-full"
             onClick={() => void pickAndOpen()}
           >
-            <FolderPlus aria-hidden strokeWidth={1.75} />
+            <FolderPlus aria-hidden />
             Choose a folder…
           </Button>
         </section>
@@ -100,7 +97,6 @@ export function GraphChooser(): ReactElement {
                   >
                     <Folder
                       aria-hidden
-                      strokeWidth={1.75}
                       className={cn('size-4 shrink-0', color === undefined && 'text-text-muted')}
                       style={color === undefined ? undefined : { color: graphColorCss(color) }}
                     />
@@ -242,7 +238,7 @@ function IcloudCard({
   return (
     <section className="flex flex-col gap-4 rounded-xl border border-border bg-surface p-5 shadow-sm">
       <CardHeader
-        icon={<Cloud aria-hidden className="size-4" strokeWidth={1.75} />}
+        icon={<Cloud aria-hidden className="size-4" />}
         title="iCloud"
         badge={<Badge variant="secondary">Recommended</Badge>}
         tinted
@@ -266,7 +262,7 @@ function IcloudCard({
                 disabled={pending}
                 onClick={() => open(root)}
               >
-                {busy === root ? <Spinner /> : <Cloud aria-hidden strokeWidth={1.75} />}
+                {busy === root ? <Spinner /> : <Cloud aria-hidden />}
                 <span className="truncate">{graphNameFromRoot(root, 'your notes')}</span>
               </Button>
             </li>
@@ -337,7 +333,7 @@ function IcloudCard({
             disabled={!available || pending || cleanName === null}
             onClick={() => void create()}
           >
-            {busy === 'create' ? <Spinner /> : <Cloud aria-hidden strokeWidth={1.75} />}
+            {busy === 'create' ? <Spinner /> : <Cloud aria-hidden />}
             {busy === 'create' ? 'Setting up…' : 'Create'}
           </Button>
         </div>

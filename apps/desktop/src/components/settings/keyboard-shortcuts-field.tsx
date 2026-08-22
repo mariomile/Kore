@@ -21,7 +21,7 @@ export function KeyboardShortcutsField(): ReactElement {
           <ShortcutKeys binding={SHORTCUTS_BINDING} className="hidden sm:flex" />
         ) : null}
         <Button type="button" variant="outline" size="sm" onClick={openShortcuts}>
-          <Keyboard aria-hidden data-icon="inline-start" strokeWidth={1.75} />
+          <Keyboard aria-hidden data-icon="inline-start" />
           Show all
         </Button>
       </div>

@@ -69,7 +69,7 @@ export function SuggestedContactCard({
         className,
       )}
     >
-      <UserRound aria-hidden strokeWidth={1.75} className="size-4 shrink-0 text-text-muted" />
+      <UserRound aria-hidden className="size-4 shrink-0 text-text-muted" />
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-medium text-text">{contact.fullName}</div>
         <div className="truncate text-xs text-text-muted">

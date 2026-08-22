@@ -36,7 +36,7 @@ export function SearchSection(): ReactElement {
         }}
         className="inline-flex items-center gap-1.5 rounded-md bg-accent px-2.5 py-1.5 text-xs font-medium text-text-on-brand shadow-sm transition-colors duration-100 hover:bg-accent-hover"
       >
-        <Sparkles aria-hidden strokeWidth={1.75} className="size-3.5" />
+        <Sparkles aria-hidden className="size-3.5" />
         Enable semantic search
       </button>
     )

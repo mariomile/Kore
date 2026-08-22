@@ -56,11 +56,7 @@ export function UpdateField(): ReactElement {
           onClick={run ? () => void run() : undefined}
           className="text-text-secondary"
         >
-          <action.icon
-            aria-hidden
-            strokeWidth={1.75}
-            className={action.spinning ? 'animate-spin' : undefined}
-          />
+          <action.icon aria-hidden className={action.spinning ? 'animate-spin' : undefined} />
           {action.label}
         </Button>
         {state.phase === 'upToDate' ? (

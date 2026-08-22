@@ -84,11 +84,7 @@ export function OnboardingIcloudSection(props: OnboardingIcloudSectionProps): Re
                     onClick={() => onOpen(root)}
                     disabled={busy}
                   >
-                    {pendingChoice === root ? (
-                      <Spinner />
-                    ) : (
-                      <FolderOpen aria-hidden strokeWidth={1.75} />
-                    )}
+                    {pendingChoice === root ? <Spinner /> : <FolderOpen aria-hidden />}
                     <span className="truncate">Continue with {graphNameFromRoot(root, root)}</span>
                   </Button>
                 </li>
@@ -129,11 +125,7 @@ export function OnboardingIcloudSection(props: OnboardingIcloudSectionProps): Re
               onClick={create}
               disabled={busy || cleanName === null || nameTaken || documentsRoot === null}
             >
-              {pendingChoice === 'icloud-create' ? (
-                <Spinner />
-              ) : (
-                <Cloud aria-hidden strokeWidth={1.75} />
-              )}
+              {pendingChoice === 'icloud-create' ? <Spinner /> : <Cloud aria-hidden />}
               {pendingChoice === 'icloud-create' ? 'Setting up…' : 'Setup graph'}
             </Button>
           </div>

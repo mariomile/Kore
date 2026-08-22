@@ -50,7 +50,7 @@ export function AiPromptsSection(): ReactElement {
           onClick={() => setEditing('new')}
           className="text-accent hover:bg-surface-hover"
         >
-          <Plus aria-hidden strokeWidth={1.75} />
+          <Plus aria-hidden />
           Add prompt
         </Button>
       </div>

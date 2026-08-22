@@ -51,7 +51,7 @@ export function DailyEventsSection({ date }: DailyEventsSectionProps): ReactElem
                 aria-hidden
                 className="flex-none opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
               >
-                <Plus className="size-3.5" strokeWidth={1.75} />
+                <Plus className="size-3.5" />
               </span>
             </button>
           </li>

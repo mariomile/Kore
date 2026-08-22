@@ -222,7 +222,7 @@ export function CommandPalette({ context }: CommandPaletteProps): ReactElement |
                     >
                       <span className="flex items-center gap-2.5">
                         <SidebarGlassTile>
-                          <Bookmark aria-hidden strokeWidth={1.75} className="size-3.5" />
+                          <Bookmark aria-hidden className="size-3.5" />
                         </SidebarGlassTile>
                         <span className="min-w-0 flex-1 truncate text-sm">{saved.query}</span>
                         <button
@@ -239,7 +239,7 @@ export function CommandPalette({ context }: CommandPaletteProps): ReactElement |
                           }}
                           className="shrink-0 rounded p-0.5 text-text-muted opacity-0 transition-opacity hover:text-text focus-visible:opacity-100 group-hover:opacity-100 [[data-selected=true]_&]:opacity-100"
                         >
-                          <X aria-hidden strokeWidth={1.75} className="size-3.5" />
+                          <X aria-hidden className="size-3.5" />
                         </button>
                       </span>
                     </Command.Item>
@@ -268,7 +268,7 @@ export function CommandPalette({ context }: CommandPaletteProps): ReactElement |
                       >
                         <span className="flex items-center gap-2.5">
                           <SidebarGlassTile>
-                            <Icon aria-hidden strokeWidth={1.75} className="size-3.5" />
+                            <Icon aria-hidden className="size-3.5" />
                           </SidebarGlassTile>
                           <span className="min-w-0 flex-1">
                             <span className="block truncate text-sm">
@@ -308,7 +308,7 @@ export function CommandPalette({ context }: CommandPaletteProps): ReactElement |
                       >
                         <span className="flex items-center gap-2.5">
                           <SidebarGlassTile>
-                            <Icon aria-hidden strokeWidth={1.75} className="size-3.5" />
+                            <Icon aria-hidden className="size-3.5" />
                           </SidebarGlassTile>
                           <span className="min-w-0 flex-1 truncate text-sm">{command.title}</span>
                           {command.keybinding ? (
@@ -329,7 +329,7 @@ export function CommandPalette({ context }: CommandPaletteProps): ReactElement |
                   >
                     <span className="flex items-center gap-2.5">
                       <SidebarGlassTile>
-                        <BookmarkPlus aria-hidden strokeWidth={1.75} className="size-3.5" />
+                        <BookmarkPlus aria-hidden className="size-3.5" />
                       </SidebarGlassTile>
                       <span className="min-w-0 flex-1 truncate text-sm">
                         Save search “{trimmedQuery}”

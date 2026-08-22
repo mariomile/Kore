@@ -54,6 +54,13 @@ export default defineConfig({
   // the module into .vite/deps and break that lookup.
   optimizeDeps: {
     exclude: ['@sqlite.org/sqlite-wasm'],
+    // Base UI ships one entry point per component and Vite pre-bundles each
+    // subpath as its own chunk, discovered from the import graph. A subpath
+    // that only appears behind an interaction is discovered *late*, and the
+    // re-optimization hands that chunk a second copy of React — "Invalid hook
+    // call" the first time a right-click mounts the menu. Declaring it keeps
+    // it in the first pass with everything else.
+    include: ['@base-ui/react/context-menu'],
   },
 
   // Vite options tailored for Tauri development, applied in `tauri dev`/`tauri build`.

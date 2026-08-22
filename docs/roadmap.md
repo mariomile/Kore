@@ -6,6 +6,17 @@ customization effort.
 
 ## Next up
 
+- **A beta release channel** — the updater endpoints for `beta` and `dev`
+  are already in `tauri.conf.json`, but no build targets them: every
+  release goes straight to production. bb's model (one build-time variable
+  branching bundle id, product name, binary name, release tag, and feed
+  file) maps onto Tauri as-is. Deliberately parked for now.
+- **Steering the other engines** — Codex and Cursor run one-shot, so
+  ⌘-Enter queues there instead of injecting (`cliProviderSteerMode`).
+  Revisit when either grows a streaming-input session.
+
+## Backlog
+
 - **Recurring-task respawn from the editor checkbox** — completing a
   repeat task by clicking its checkbox inside the note editor doesn't spawn
   the next occurrence (meowdown exposes no editor-side task-toggle

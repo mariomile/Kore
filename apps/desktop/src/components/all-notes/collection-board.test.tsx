@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
-import type { CollectionEntry, CollectionValue, TagProperty, TagType } from '@reflect/core'
+import type { CollectionEntry, CollectionValue, TagType } from '@reflect/core'
 import {
   boardColumns,
   boardProperty,

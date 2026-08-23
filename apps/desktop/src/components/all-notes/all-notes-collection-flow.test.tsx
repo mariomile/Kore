@@ -41,6 +41,8 @@ vi.mock('@/providers/settings-provider', () => ({
       collectionSorts: {},
       collectionGroups: settingsState.collectionGroups,
       collectionColumns: {},
+      collectionViewModes: {},
+      collectionSavedViews: {},
       allNotesView: settingsState.allNotesView,
       uiDensity: 'default',
     },
@@ -153,15 +155,27 @@ function Screen(): ReactElement {
 }
 
 describe('Collection flow (fake bridge, no module mocks below the hooks)', () => {
-  it('offers the Collection and Board toggles once the tag type row loads', async () => {
+  it('offers the Collection and Board toggles, persisting the view per tag', async () => {
     settingsState.allNotesView = 'list'
     const view = await render(<Screen />)
 
-    // The schema has a select property, so both typed views are offered.
+    // The schema has a select property, so both typed views are offered; on
+    // a tag route the choice lands in collectionViewModes, not the global.
     await view.getByRole('button', { name: 'Collection view' }).click()
-    expect(updateSettings).toHaveBeenCalledWith({ allNotesView: 'table' })
+    const tableUpdater = updateSettingsWith.mock.calls.at(-1)?.[0] as (current: {
+      collectionViewModes: Record<string, string>
+    }) => unknown
+    expect(tableUpdater({ collectionViewModes: {} })).toEqual({
+      collectionViewModes: { book: 'table' },
+    })
     await view.getByRole('button', { name: 'Board view' }).click()
-    expect(updateSettings).toHaveBeenCalledWith({ allNotesView: 'board' })
+    const boardUpdater = updateSettingsWith.mock.calls.at(-1)?.[0] as (current: {
+      collectionViewModes: Record<string, string>
+    }) => unknown
+    expect(boardUpdater({ collectionViewModes: {} })).toEqual({
+      collectionViewModes: { book: 'board' },
+    })
+    expect(updateSettings).not.toHaveBeenCalled()
     await view.unmount()
   })
 

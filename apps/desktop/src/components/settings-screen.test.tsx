@@ -319,6 +319,8 @@ describe('SettingsScreen', () => {
           collectionSorts: {},
           collectionGroups: {},
           collectionColumns: {},
+          collectionViewModes: {},
+          collectionSavedViews: {},
         },
       ]),
     )
@@ -403,6 +405,8 @@ describe('SettingsScreen', () => {
           collectionSorts: {},
           collectionGroups: {},
           collectionColumns: {},
+          collectionViewModes: {},
+          collectionSavedViews: {},
         },
       ]),
     )
@@ -501,6 +505,8 @@ describe('SettingsScreen', () => {
           collectionSorts: {},
           collectionGroups: {},
           collectionColumns: {},
+          collectionViewModes: {},
+          collectionSavedViews: {},
         },
       ]),
     )
@@ -606,6 +612,8 @@ describe('SettingsScreen', () => {
           collectionSorts: {},
           collectionGroups: {},
           collectionColumns: {},
+          collectionViewModes: {},
+          collectionSavedViews: {},
         },
       ]),
     )
@@ -690,6 +698,8 @@ describe('SettingsScreen', () => {
           collectionSorts: {},
           collectionGroups: {},
           collectionColumns: {},
+          collectionViewModes: {},
+          collectionSavedViews: {},
         },
       ]),
     )
@@ -767,6 +777,8 @@ describe('SettingsScreen', () => {
           collectionSorts: {},
           collectionGroups: {},
           collectionColumns: {},
+          collectionViewModes: {},
+          collectionSavedViews: {},
         },
       ]),
     )
@@ -853,6 +865,8 @@ describe('SettingsScreen', () => {
           collectionSorts: {},
           collectionGroups: {},
           collectionColumns: {},
+          collectionViewModes: {},
+          collectionSavedViews: {},
         },
       ]),
     )
@@ -936,6 +950,8 @@ describe('SettingsScreen', () => {
           collectionSorts: {},
           collectionGroups: {},
           collectionColumns: {},
+          collectionViewModes: {},
+          collectionSavedViews: {},
         },
       ]),
     )
@@ -1025,6 +1041,8 @@ describe('SettingsScreen', () => {
           collectionSorts: {},
           collectionGroups: {},
           collectionColumns: {},
+          collectionViewModes: {},
+          collectionSavedViews: {},
         },
       ]),
     )
@@ -1120,6 +1138,8 @@ describe('SettingsScreen', () => {
           collectionSorts: {},
           collectionGroups: {},
           collectionColumns: {},
+          collectionViewModes: {},
+          collectionSavedViews: {},
         },
       ]),
     )
@@ -1197,6 +1217,8 @@ describe('SettingsScreen', () => {
           collectionSorts: {},
           collectionGroups: {},
           collectionColumns: {},
+          collectionViewModes: {},
+          collectionSavedViews: {},
         },
       ]),
     )
@@ -1303,6 +1325,8 @@ describe('SettingsScreen', () => {
           collectionSorts: {},
           collectionGroups: {},
           collectionColumns: {},
+          collectionViewModes: {},
+          collectionSavedViews: {},
         },
       ]),
     )
@@ -1378,6 +1402,8 @@ describe('SettingsScreen', () => {
           collectionSorts: {},
           collectionGroups: {},
           collectionColumns: {},
+          collectionViewModes: {},
+          collectionSavedViews: {},
         },
       ]),
     )
@@ -1475,6 +1501,8 @@ describe('SettingsScreen', () => {
           collectionSorts: {},
           collectionGroups: {},
           collectionColumns: {},
+          collectionViewModes: {},
+          collectionSavedViews: {},
         },
       ]),
     )
@@ -1562,6 +1590,8 @@ describe('SettingsScreen', () => {
           collectionSorts: {},
           collectionGroups: {},
           collectionColumns: {},
+          collectionViewModes: {},
+          collectionSavedViews: {},
         },
       ]),
     )
@@ -1643,6 +1673,8 @@ describe('SettingsScreen', () => {
           collectionSorts: {},
           collectionGroups: {},
           collectionColumns: {},
+          collectionViewModes: {},
+          collectionSavedViews: {},
         },
       ]),
     )
@@ -1803,6 +1835,8 @@ describe('SettingsScreen', () => {
           collectionSorts: {},
           collectionGroups: {},
           collectionColumns: {},
+          collectionViewModes: {},
+          collectionSavedViews: {},
           aiPrompts: [
             {
               id: expect.any(String),
@@ -1902,6 +1936,8 @@ describe('SettingsScreen', () => {
           collectionSorts: {},
           collectionGroups: {},
           collectionColumns: {},
+          collectionViewModes: {},
+          collectionSavedViews: {},
         },
       ]),
     )
@@ -1980,6 +2016,8 @@ describe('SettingsScreen', () => {
           collectionSorts: {},
           collectionGroups: {},
           collectionColumns: {},
+          collectionViewModes: {},
+          collectionSavedViews: {},
           aiPrompts: [
             { id: 'p1', label: 'Translate to German', body: '{{selectedText}}', mode: 'replace' },
           ],

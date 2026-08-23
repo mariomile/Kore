@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { foldTag, isDaily, listNotes, listNoteTags, type CollectionSort } from '@reflect/core'
+import {
+  foldTag,
+  isDaily,
+  listNotes,
+  listNoteTags,
+  type AllNotesView,
+  type CollectionSort,
+  type SavedCollectionView,
+} from '@reflect/core'
 import {
   Check,
   Download,
@@ -43,6 +51,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { CollectionBoard, groupableProperties } from './collection-board'
+import { CollectionViewsMenu } from './collection-views-menu'
 import { runCollectionExport } from './collection-export'
 import { CollectionTable } from './collection-table'
 import { NoteListContextMenu } from '@/components/notes/note-context-menu'
@@ -96,11 +105,28 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
   const boardGroupProperty =
     boardProperties.find((property) => property.key === savedGroupKey) ?? boardProperties[0] ?? null
   const boardAvailable = boardGroupProperty !== null
+  // On a tag route, that tag's own persisted view mode wins over the global
+  // preference — the board you left on one tag doesn't chase you onto the
+  // next; the toggles write per-tag there, global elsewhere.
+  const requestedView =
+    (tagKey === null ? undefined : settings.collectionViewModes[tagKey]) ?? settings.allNotesView
   const view =
-    (settings.allNotesView === 'table' && !collectionAvailable) ||
-    (settings.allNotesView === 'board' && !boardAvailable)
+    (requestedView === 'table' && !collectionAvailable) ||
+    (requestedView === 'board' && !boardAvailable)
       ? 'list'
-      : settings.allNotesView
+      : requestedView
+  const setViewMode = useCallback(
+    (mode: AllNotesView) => {
+      if (tagKey === null) {
+        updateSettings({ allNotesView: mode })
+      } else {
+        updateSettingsWith((current) => ({
+          collectionViewModes: { ...current.collectionViewModes, [tagKey]: mode },
+        }))
+      }
+    },
+    [tagKey, updateSettings, updateSettingsWith],
+  )
   // The two views that render collection rows instead of the notes list.
   const collectionView = view === 'table' || view === 'board'
   // The sort is a persisted per-tag view preference (like task filters):
@@ -224,6 +250,61 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
     [collection, tagType, collectionFilters],
   )
 
+  // Saved views: named bundles of mode + sort + grouping + filters, per tag.
+  const savedViews = tagKey === null ? [] : (settings.collectionSavedViews[tagKey] ?? [])
+  const saveCurrentView = useCallback(
+    (name: string) => {
+      if (tagKey === null) {
+        return
+      }
+      const entry: SavedCollectionView = {
+        id: crypto.randomUUID(),
+        name,
+        view: view === 'board' ? 'board' : 'table',
+        sort: collectionSort,
+        group: boardGroupProperty?.key ?? null,
+        filters: [...collectionFilters],
+      }
+      updateSettingsWith((current) => ({
+        collectionSavedViews: {
+          ...current.collectionSavedViews,
+          [tagKey]: [...(current.collectionSavedViews[tagKey] ?? []), entry],
+        },
+      }))
+    },
+    [tagKey, view, collectionSort, boardGroupProperty, collectionFilters, updateSettingsWith],
+  )
+  const deleteSavedView = useCallback(
+    (id: string) => {
+      if (tagKey === null) {
+        return
+      }
+      updateSettingsWith((current) => {
+        const remaining = (current.collectionSavedViews[tagKey] ?? []).filter(
+          (entry) => entry.id !== id,
+        )
+        const next = { ...current.collectionSavedViews }
+        if (remaining.length === 0) {
+          delete next[tagKey]
+        } else {
+          next[tagKey] = remaining
+        }
+        return { collectionSavedViews: next }
+      })
+    },
+    [tagKey, updateSettingsWith],
+  )
+  const applySavedView = useCallback(
+    (saved: SavedCollectionView) => {
+      setViewMode(saved.view)
+      setCollectionSort(saved.sort)
+      if (saved.group !== null) {
+        setCollectionGroup(saved.group)
+      }
+      setCollectionFilters([...saved.filters])
+    },
+    [setViewMode, setCollectionSort, setCollectionGroup],
+  )
   const ready = notes !== undefined
   const { onScroll } = useScrollRestoration(scrollElement, ready)
 
@@ -345,6 +426,12 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
                 filters={collectionFilters}
                 onChange={setCollectionFilters}
               />
+              <CollectionViewsMenu
+                views={savedViews}
+                onApply={applySavedView}
+                onSave={saveCurrentView}
+                onDelete={deleteSavedView}
+              />
               {view === 'table' ? (
                 <Popover>
                   <PopoverTrigger
@@ -403,7 +490,7 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
               aria-label="List view"
               aria-pressed={view === 'list'}
               onClick={() => {
-                updateSettings({ allNotesView: 'list' })
+                setViewMode('list')
               }}
               className={`flex size-6 items-center justify-center rounded-full transition-colors ${
                 view === 'list'
@@ -418,7 +505,7 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
               aria-label="Grid view"
               aria-pressed={view === 'grid'}
               onClick={() => {
-                updateSettings({ allNotesView: 'grid' })
+                setViewMode('grid')
               }}
               className={`flex size-6 items-center justify-center rounded-full transition-colors ${
                 view === 'grid'
@@ -434,7 +521,7 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
                 aria-label="Collection view"
                 aria-pressed={view === 'table'}
                 onClick={() => {
-                  updateSettings({ allNotesView: 'table' })
+                  setViewMode('table')
                 }}
                 className={`flex size-6 items-center justify-center rounded-full transition-colors ${
                   view === 'table'
@@ -451,7 +538,7 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
                 aria-label="Board view"
                 aria-pressed={view === 'board'}
                 onClick={() => {
-                  updateSettings({ allNotesView: 'board' })
+                  setViewMode('board')
                 }}
                 className={`flex size-6 items-center justify-center rounded-full transition-colors ${
                   view === 'board'

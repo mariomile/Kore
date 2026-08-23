@@ -192,6 +192,8 @@ describe('SettingsProvider', () => {
           collectionSorts: {},
           collectionGroups: {},
           collectionColumns: {},
+          collectionViewModes: {},
+          collectionSavedViews: {},
         },
       ]),
     )
@@ -296,6 +298,8 @@ describe('SettingsProvider', () => {
           collectionSorts: {},
           collectionGroups: {},
           collectionColumns: {},
+          collectionViewModes: {},
+          collectionSavedViews: {},
           futureKey: true,
         },
       ]),
@@ -385,6 +389,8 @@ describe('SettingsProvider', () => {
           collectionSorts: {},
           collectionGroups: {},
           collectionColumns: {},
+          collectionViewModes: {},
+          collectionSavedViews: {},
           futureKey: true,
         },
       ]),
@@ -468,6 +474,8 @@ describe('SettingsProvider', () => {
           collectionSorts: {},
           collectionGroups: {},
           collectionColumns: {},
+          collectionViewModes: {},
+          collectionSavedViews: {},
         },
       ]),
     )
@@ -677,6 +685,8 @@ describe('SettingsProvider', () => {
           collectionSorts: {},
           collectionGroups: {},
           collectionColumns: {},
+          collectionViewModes: {},
+          collectionSavedViews: {},
         },
       ]),
     )
@@ -763,6 +773,8 @@ describe('SettingsProvider', () => {
         collectionSorts: {},
         collectionGroups: {},
         collectionColumns: {},
+        collectionViewModes: {},
+        collectionSavedViews: {},
       },
     ])
   })

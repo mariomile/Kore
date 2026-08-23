@@ -640,6 +640,86 @@ export const collectionSortsSchema = z
     return sorts
   })
 
+/**
+ * The view mode per typed tag (folded key) — on that tag's route it
+ * overrides the global {@link allNotesViewSchema} choice, so the board you
+ * left on #task doesn't chase you onto #book. Same per-entry resilience as
+ * the other collection records.
+ */
+export const collectionViewModesSchema = z
+  .record(z.string(), z.unknown())
+  .catch({})
+  .transform((entries) => {
+    const modes: Record<string, AllNotesView> = {}
+    for (const [tagKey, value] of Object.entries(entries)) {
+      const parsed = z.enum(['list', 'grid', 'table', 'board']).safeParse(value)
+      if (parsed.success) {
+        modes[tagKey] = parsed.data
+      }
+    }
+    return modes
+  })
+
+/** One condition of a saved collection view (mirrors the desktop's
+ * CollectionFilter shape — key, operator, comparison text). */
+const savedViewFilterSchema = z.object({
+  key: z.string().min(1),
+  operator: z.enum(['is', 'contains', 'gt', 'lt', 'empty', 'notEmpty']),
+  text: z.string(),
+})
+export type SavedCollectionViewFilter = z.infer<typeof savedViewFilterSchema>
+
+/**
+ * One saved collection view (TDR 0005): a named bundle of view mode, sort,
+ * board grouping, and filters — applying it restores the whole lens in one
+ * click. Malformed filters drop individually; a malformed view drops whole.
+ */
+export const savedCollectionViewSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  view: z.enum(['table', 'board']),
+  sort: collectionSortSettingSchema.nullable().catch(null),
+  group: z.string().nullable().catch(null),
+  filters: z
+    .array(z.unknown())
+    .catch([])
+    .transform((entries) => {
+      const filters: SavedCollectionViewFilter[] = []
+      for (const entry of entries) {
+        const parsed = savedViewFilterSchema.safeParse(entry)
+        if (parsed.success) {
+          filters.push(parsed.data)
+        }
+      }
+      return filters
+    }),
+})
+export type SavedCollectionView = z.infer<typeof savedCollectionViewSchema>
+
+/** Saved views per folded tag key, per-entry resilient at both levels. */
+export const collectionSavedViewsSchema = z
+  .record(z.string(), z.unknown())
+  .catch({})
+  .transform((entries) => {
+    const views: Record<string, SavedCollectionView[]> = {}
+    for (const [tagKey, value] of Object.entries(entries)) {
+      if (!Array.isArray(value)) {
+        continue
+      }
+      const parsed: SavedCollectionView[] = []
+      for (const entry of value) {
+        const view = savedCollectionViewSchema.safeParse(entry)
+        if (view.success) {
+          parsed.push(view.data)
+        }
+      }
+      if (parsed.length > 0) {
+        views[tagKey] = parsed
+      }
+    }
+    return views
+  })
+
 /** One Collection table's column layout: hidden property keys and manual
  * column widths (rem). Both empty by default — the schema's order and the
  * type-derived widths rule until the user touches a column. */
@@ -1055,6 +1135,8 @@ export const settingsSchema = z.looseObject({
   collectionSorts: collectionSortsSchema,
   collectionGroups: collectionGroupsSchema,
   collectionColumns: collectionColumnsSchema,
+  collectionViewModes: collectionViewModesSchema,
+  collectionSavedViews: collectionSavedViewsSchema,
   taskFilters: taskFiltersSchema,
   taskReminders: taskRemindersSchema,
   quickCaptureEnabled: quickCaptureEnabledSchema,

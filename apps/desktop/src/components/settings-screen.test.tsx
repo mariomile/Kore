@@ -316,6 +316,7 @@ describe('SettingsScreen', () => {
           agentRoutines: [],
           mcpServers: [],
           savedSearches: [],
+          collectionSorts: {},
         },
       ]),
     )
@@ -397,6 +398,7 @@ describe('SettingsScreen', () => {
           agentRoutines: [],
           mcpServers: [],
           savedSearches: [],
+          collectionSorts: {},
         },
       ]),
     )
@@ -492,6 +494,7 @@ describe('SettingsScreen', () => {
           agentRoutines: [],
           mcpServers: [],
           savedSearches: [],
+          collectionSorts: {},
         },
       ]),
     )
@@ -594,6 +597,7 @@ describe('SettingsScreen', () => {
           agentRoutines: [],
           mcpServers: [],
           savedSearches: [],
+          collectionSorts: {},
         },
       ]),
     )
@@ -675,6 +679,7 @@ describe('SettingsScreen', () => {
           agentRoutines: [],
           mcpServers: [],
           savedSearches: [],
+          collectionSorts: {},
         },
       ]),
     )
@@ -749,6 +754,7 @@ describe('SettingsScreen', () => {
           agentRoutines: [],
           mcpServers: [],
           savedSearches: [],
+          collectionSorts: {},
         },
       ]),
     )
@@ -832,6 +838,7 @@ describe('SettingsScreen', () => {
           agentRoutines: [],
           mcpServers: [],
           savedSearches: [],
+          collectionSorts: {},
         },
       ]),
     )
@@ -912,6 +919,7 @@ describe('SettingsScreen', () => {
           agentRoutines: [],
           mcpServers: [],
           savedSearches: [],
+          collectionSorts: {},
         },
       ]),
     )
@@ -998,6 +1006,7 @@ describe('SettingsScreen', () => {
           agentRoutines: [],
           mcpServers: [],
           savedSearches: [],
+          collectionSorts: {},
         },
       ]),
     )
@@ -1090,6 +1099,7 @@ describe('SettingsScreen', () => {
           agentRoutines: [],
           mcpServers: [],
           savedSearches: [],
+          collectionSorts: {},
         },
       ]),
     )
@@ -1164,6 +1174,7 @@ describe('SettingsScreen', () => {
           agentRoutines: [],
           mcpServers: [],
           savedSearches: [],
+          collectionSorts: {},
         },
       ]),
     )
@@ -1267,6 +1278,7 @@ describe('SettingsScreen', () => {
           agentRoutines: [],
           mcpServers: [],
           savedSearches: [],
+          collectionSorts: {},
         },
       ]),
     )
@@ -1339,6 +1351,7 @@ describe('SettingsScreen', () => {
           agentRoutines: [],
           mcpServers: [],
           savedSearches: [],
+          collectionSorts: {},
         },
       ]),
     )
@@ -1433,6 +1446,7 @@ describe('SettingsScreen', () => {
           agentRoutines: [],
           mcpServers: [],
           savedSearches: [],
+          collectionSorts: {},
         },
       ]),
     )
@@ -1517,6 +1531,7 @@ describe('SettingsScreen', () => {
           agentRoutines: [],
           mcpServers: [],
           savedSearches: [],
+          collectionSorts: {},
         },
       ]),
     )
@@ -1595,6 +1610,7 @@ describe('SettingsScreen', () => {
           agentRoutines: [],
           mcpServers: [],
           savedSearches: [],
+          collectionSorts: {},
         },
       ]),
     )
@@ -1752,6 +1768,7 @@ describe('SettingsScreen', () => {
           chatModelSelection: null,
           chatSystemPrompt: '',
           savedSearches: [],
+          collectionSorts: {},
           aiPrompts: [
             {
               id: expect.any(String),
@@ -1848,6 +1865,7 @@ describe('SettingsScreen', () => {
           agentRoutines: [],
           mcpServers: [],
           savedSearches: [],
+          collectionSorts: {},
         },
       ]),
     )
@@ -1923,6 +1941,7 @@ describe('SettingsScreen', () => {
           chatModelSelection: null,
           chatSystemPrompt: '',
           savedSearches: [],
+          collectionSorts: {},
           aiPrompts: [
             { id: 'p1', label: 'Translate to German', body: '{{selectedText}}', mode: 'replace' },
           ],

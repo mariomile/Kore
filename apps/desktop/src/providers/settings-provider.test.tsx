@@ -189,6 +189,7 @@ describe('SettingsProvider', () => {
           mcpServers: [],
           memoryWriteApproval: false,
           savedSearches: [],
+          collectionSorts: {},
         },
       ]),
     )
@@ -290,6 +291,7 @@ describe('SettingsProvider', () => {
           mcpServers: [],
           memoryWriteApproval: false,
           savedSearches: [],
+          collectionSorts: {},
           futureKey: true,
         },
       ]),
@@ -376,6 +378,7 @@ describe('SettingsProvider', () => {
           mcpServers: [],
           memoryWriteApproval: false,
           savedSearches: [],
+          collectionSorts: {},
           futureKey: true,
         },
       ]),
@@ -456,6 +459,7 @@ describe('SettingsProvider', () => {
           mcpServers: [],
           memoryWriteApproval: false,
           savedSearches: [],
+          collectionSorts: {},
         },
       ]),
     )
@@ -662,6 +666,7 @@ describe('SettingsProvider', () => {
           mcpServers: [],
           memoryWriteApproval: false,
           savedSearches: [],
+          collectionSorts: {},
         },
       ]),
     )
@@ -745,6 +750,7 @@ describe('SettingsProvider', () => {
         mcpServers: [],
         memoryWriteApproval: false,
         savedSearches: [],
+        collectionSorts: {},
       },
     ])
   })

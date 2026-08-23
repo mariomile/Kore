@@ -51,18 +51,21 @@ marker outside `tags/` defines nothing. Definition notes are indexed as
 `notes.kind = 'tag'`: openable and linkable (they keep their `note_claims`),
 excluded from note-listing surfaces exactly like templates.
 
-Property types (V1): `text · number · checkbox · date · select · multiselect
-· url · relation`. Property `key`s are flat frontmatter keys shared across
-tags, Obsidian-style — two tags declaring `author` read the same value. That
-is a feature (one fact, one key), not a collision to namespace away.
+Property types: `text · number · checkbox · date · select · multiselect
+· url · relation · relations`. Property `key`s are flat frontmatter keys
+shared across tags, Obsidian-style — two tags declaring `author` read the
+same value. That is a feature (one fact, one key), not a collision to
+namespace away.
 
 A `relation` references another note the way everything in the graph does:
 its value is a wiki link (`series: "[[Hainish Cycle]]"`), picked through the
 same verified `[[` autocomplete the editor uses, so the reference reads
-identically inside and outside the app. V1 scope: frontmatter relation links
-are display/reference only — they are not projected into `links`, so they do
-not yet appear as backlinks on the target (extraction is body-based; a
-follow-up can widen it).
+identically inside and outside the app; `relations` is its list form
+(`authors: ["[[Le Guin]]", "[[Frank Herbert]]"]`), edited through the same
+picker with toggling membership. Frontmatter wiki links are **first-class**:
+`parseNote` extracts them alongside body links (file-absolute spans), so they
+project into `links` — backlinks on the target, graph edges, and retitle
+rewrites all work — with no consumer changes.
 
 ## Decision 2 — Values live in each note's frontmatter; the index carries a generic projection
 
@@ -82,15 +85,31 @@ writable through a properties patch (`frontmatterPatchToYaml` drops them).
 `tag_types` projects each definition's parsed schema (`schema_json`), so
 "which tags are typed" is one lookup. Both tables are rebuildable projections;
 migration 0021 rebuilds `notes` for the widened `kind` CHECK (the 0015
-recipe) and the PROJECTION_VERSION bump (19 → 20) forces the re-index.
+recipe) and a PROJECTION_VERSION bump forces the re-index.
+
+Properties are searchable: the indexed values ride into the FTS body as
+`key value` lines, and the search grammar takes `prop:key` /
+`prop:key=value` filter tokens (equality on scalars, containment on lists,
+target-or-alias match on relations).
 
 ## Decision 3 — Collections are a view mode of All Notes, not a new surface
 
-The Collection table is a third All Notes view mode (`list · grid · table`),
-offered when the routed tag has a type. The route stays
-`{ kind: 'allNotes', tag }`; columns derive from `schema_json`; cell edits
-write through the frontmatter patch channel (live session first, disk
-fallback). No table library — the existing CSS-grid + virtua idiom.
+The Collection table is an All Notes view mode (`list · grid · table ·
+board`), offered when the routed tag has a type; `board` additionally needs
+a `select` property in the schema and groups the rows into lanes by it (a
+card's status changes through the same select editor — no dragging in V1).
+The route stays `{ kind: 'allNotes', tag }`; columns derive from
+`schema_json`; cell edits write through the frontmatter patch channel (live
+session first, disk fallback). No table library — the existing CSS-grid +
+virtua idiom. Around the table: ephemeral value filters, a persisted per-tag
+sort (`collectionSorts` setting), bulk property set on the selection, and a
+CSV export through the save-dialog export channel. Mobile keeps its one row
+shape and swaps the snippet for a compact property line on typed-tag routes.
+
+The collection is also readable outside the desktop UI, always excluding
+private notes entirely: the AI chat tool `list_collection` (rows behind the
+`CloudSafe` privacy gate with the live on-disk re-check) and the read-only
+CLI (`reflect collection <tag>`).
 
 ## Known consequences
 
@@ -106,3 +125,8 @@ fallback). No table library — the existing CSS-grid + virtua idiom.
 - Tag notes are reachable by search and wiki links (intended: the supertag is
   a node); they stay out of All Notes, recents, and the daily stream via the
   existing `kind = 'note'` filters.
+- Obsidian's `tags:` frontmatter key is **not** adopted as a tag source: in
+  Reflect a tag is derived from `#tag` in the body (TDR 0004), so a vault
+  using frontmatter tags sees `tags:` projected as an ordinary
+  `note_properties` row, not as membership in a Collection. Widening tag
+  extraction to frontmatter is a possible follow-up, decided separately.

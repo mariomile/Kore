@@ -1,0 +1,211 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { userEvent } from 'vitest/browser'
+import { render } from 'vitest-browser-react'
+import type { ReactElement } from 'react'
+import { setBridge } from '@reflect/core'
+import { RouterProvider } from '@/routing/router'
+import { AllNotesScreen } from './all-notes-screen'
+
+/**
+ * The Collection flow end-to-end over the real query layer and a fake IPC
+ * bridge (TDR 0005): the tag's type comes out of compiled `tag_types` SQL,
+ * the table renders its schema columns from compiled collection SQL, and an
+ * inline cell edit lands as a frontmatter write on disk (`note_read` →
+ * patch → `note_write`) — the full read/write loop with no module mocked.
+ */
+
+const settingsState = vi.hoisted((): { allNotesView: 'list' | 'table' | 'board' } => ({
+  allNotesView: 'table',
+}))
+const updateSettings = vi.hoisted(() => vi.fn())
+
+vi.mock('@/providers/graph-provider', () => ({
+  useGraph: () => ({
+    graph: { root: '/g', name: 'g', generation: 1 },
+    indexing: false,
+  }),
+}))
+vi.mock('@/providers/settings-provider', () => ({
+  useSettings: () => ({
+    settings: {
+      editorMarkdownSyntax: 'hide',
+      theme: 'system',
+      timeFormat: '12h',
+      dateFormat: 'mdy',
+      allNotesFilterTags: [],
+      collectionSorts: {},
+      allNotesView: settingsState.allNotesView,
+      uiDensity: 'default',
+    },
+    updateSettings,
+    updateSettingsWith: vi.fn(),
+  }),
+}))
+
+const BOOK_SCHEMA_JSON = JSON.stringify([
+  { name: 'Author', key: 'author', type: 'text' },
+  { name: 'Status', key: 'status', type: 'select', options: ['to-read', 'done'] },
+])
+
+const DISPOSSESSED_SOURCE = '---\nauthor: Le Guin\n---\n# The Dispossessed\n\n#book\n'
+
+const collectionRows = [
+  {
+    path: 'notes/dispossessed.md',
+    title: 'The Dispossessed',
+    mtime: new Date(2020, 0, 15).getTime(),
+    is_pinned: 0,
+  },
+  {
+    path: 'notes/dune.md',
+    title: 'Dune',
+    mtime: new Date(2020, 0, 10).getTime(),
+    is_pinned: 0,
+  },
+]
+const propertyRows = [
+  {
+    note_path: 'notes/dispossessed.md',
+    key: 'author',
+    value: 'Le Guin',
+    value_type: 'string',
+    value_number: null,
+  },
+  {
+    note_path: 'notes/dune.md',
+    key: 'status',
+    value: 'to-read',
+    value_type: 'string',
+    value_number: null,
+  },
+]
+
+const mockInvoke = vi.fn<(command: string, args: Record<string, unknown>) => Promise<unknown>>()
+
+setBridge({ invoke: mockInvoke, listen: async () => () => {} })
+
+beforeEach(() => {
+  settingsState.allNotesView = 'table'
+  updateSettings.mockReset()
+  mockInvoke.mockReset()
+  mockInvoke.mockImplementation(async (command, args) => {
+    if (command === 'note_read') {
+      return DISPOSSESSED_SOURCE
+    }
+    if (command === 'note_write') {
+      return null
+    }
+    if (command !== 'db_query') {
+      return null
+    }
+    const sql = String(args['sql'])
+    if (sql.includes('group by')) {
+      return []
+    }
+    if (sql.includes('tag_types')) {
+      // The tag's type row — `#book` is typed in this fixture.
+      return [{ tag_key: 'book', note_path: 'tags/book.md', schema_json: BOOK_SCHEMA_JSON }]
+    }
+    if (sql.includes('note_properties')) {
+      return propertyRows
+    }
+    if (sql.includes('"preview"')) {
+      // The classic list query (used by the list view and the bulk bar).
+      return collectionRows.map((row) => ({ ...row, preview: '' }))
+    }
+    if (sql.includes('from "tags"')) {
+      // The collection base query: notes carrying the routed tag.
+      return collectionRows
+    }
+    return []
+  })
+})
+
+function Screen(): ReactElement {
+  return (
+    <QueryClientProvider
+      client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+    >
+      <RouterProvider initialRoute={{ kind: 'allNotes', tag: 'book' }}>
+        <div style={{ height: '100vh' }}>
+          <AllNotesScreen tag="book" />
+        </div>
+      </RouterProvider>
+    </QueryClientProvider>
+  )
+}
+
+describe('Collection flow (fake bridge, no module mocks below the hooks)', () => {
+  it('offers the Collection and Board toggles once the tag type row loads', async () => {
+    settingsState.allNotesView = 'list'
+    const view = await render(<Screen />)
+
+    // The schema has a select property, so both typed views are offered.
+    await view.getByRole('button', { name: 'Collection view' }).click()
+    expect(updateSettings).toHaveBeenCalledWith({ allNotesView: 'table' })
+    await view.getByRole('button', { name: 'Board view' }).click()
+    expect(updateSettings).toHaveBeenCalledWith({ allNotesView: 'board' })
+    await view.unmount()
+  })
+
+  it('renders schema columns with stored values from the compiled SQL', async () => {
+    const view = await render(<Screen />)
+
+    await expect.element(view.getByRole('button', { name: 'Sort by Author' })).toBeInTheDocument()
+    await expect.element(view.getByRole('button', { name: 'Sort by Status' })).toBeInTheDocument()
+    await expect.element(view.getByText('Le Guin')).toBeInTheDocument()
+    await expect.element(view.getByText('to-read')).toBeInTheDocument()
+    await view.unmount()
+  })
+
+  it('lands an inline cell edit as a frontmatter write on disk', async () => {
+    const view = await render(<Screen />)
+    await expect.element(view.getByText('Le Guin')).toBeInTheDocument()
+
+    await view.getByText('Le Guin').click()
+    const input = view.getByRole('textbox', { name: 'Author' })
+    await input.fill('Ursula K. Le Guin')
+    await userEvent.keyboard('{Enter}')
+
+    // No session is open, so the commit takes the disk path: note_read of the
+    // live source, a minimal-diff frontmatter patch, note_write of the result.
+    await vi.waitFor(() => {
+      const write = mockInvoke.mock.calls.find(([command]) => command === 'note_write')
+      expect(write).toBeDefined()
+      const [, writeArgs] = write!
+      expect(writeArgs['path']).toBe('notes/dispossessed.md')
+      expect(writeArgs['generation']).toBe(1)
+      const content = String(writeArgs['contents'])
+      expect(content).toContain('author: Ursula K. Le Guin')
+      // The body survives the patch untouched.
+      expect(content).toContain('# The Dispossessed')
+      expect(content).toContain('#book')
+    })
+    await view.unmount()
+  })
+
+  it('groups the same rows into board lanes and writes a status change', async () => {
+    settingsState.allNotesView = 'board'
+    const view = await render(<Screen />)
+
+    await expect
+      .element(view.getByRole('region', { name: 'to-read', exact: true }))
+      .toBeInTheDocument()
+    await expect.element(view.getByRole('region', { name: 'No Status' })).toBeInTheDocument()
+
+    // Dune sits in to-read; moving it is one select-editor pick.
+    const lane = view.getByRole('region', { name: 'to-read', exact: true })
+    await expect.element(lane.getByRole('button', { name: 'Dune' })).toBeInTheDocument()
+    await lane.getByRole('button', { name: 'Edit Status' }).click()
+    await view.getByRole('option', { name: 'done' }).click()
+
+    await vi.waitFor(() => {
+      const write = mockInvoke.mock.calls.find(([command]) => command === 'note_write')
+      expect(write).toBeDefined()
+      expect(write![1]['path']).toBe('notes/dune.md')
+      expect(String(write![1]['contents'])).toContain('status: done')
+    })
+    await view.unmount()
+  })
+})

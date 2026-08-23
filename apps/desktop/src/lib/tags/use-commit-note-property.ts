@@ -27,21 +27,23 @@ export function invalidateOnNextIndexApply(): void {
 }
 
 /**
- * Persist one property value into a note's frontmatter (TDR 0005): the
- * shared commit for Collection cells and the note properties panel. Routes
- * through the session-or-disk patch channel; the reserved-key guard lives in
- * `frontmatterPatchToYaml`, so no caller can clobber app metadata. The
- * watcher's re-index refreshes every reader; a failed write toasts.
+ * Persist property values into a note's frontmatter (TDR 0005): the shared
+ * commit for Collection cells, the board, and the note properties panel —
+ * one patch, so a multi-key write (a positional board drop: lane value +
+ * rank) lands atomically. Routes through the session-or-disk patch channel;
+ * the reserved-key guard lives in `frontmatterPatchToYaml`, so no caller can
+ * clobber app metadata. The watcher's re-index refreshes every reader; a
+ * failed write toasts.
  */
-export function useCommitNoteProperty(): (path: string, key: string, value: unknown) => void {
+export function useCommitNoteProperties(): (path: string, values: Record<string, unknown>) => void {
   const { graph } = useGraph()
   const generation = graph?.generation ?? null
   return useCallback(
-    (path: string, key: string, value: unknown) => {
+    (path: string, values: Record<string, unknown>) => {
       if (generation === null) {
         return
       }
-      void commitNoteFrontmatter(path, { properties: { [key]: value } }, generation)
+      void commitNoteFrontmatter(path, { properties: values }, generation)
         .then(() => {
           invalidateOnNextIndexApply()
         })
@@ -54,5 +56,14 @@ export function useCommitNoteProperty(): (path: string, key: string, value: unkn
         })
     },
     [generation],
+  )
+}
+
+/** {@link useCommitNoteProperties} for the common one-key case. */
+export function useCommitNoteProperty(): (path: string, key: string, value: unknown) => void {
+  const commitProperties = useCommitNoteProperties()
+  return useCallback(
+    (path: string, key: string, value: unknown) => commitProperties(path, { [key]: value }),
+    [commitProperties],
   )
 }

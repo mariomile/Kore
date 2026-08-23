@@ -6,6 +6,7 @@ import {
   type TagProperty,
 } from '@reflect/core'
 import { Check } from '@/components/icons'
+import { selectOptionBadgeClass } from '@/components/tags/select-colors'
 import { formatShortDate } from '@/lib/dates'
 import { cn } from '@/lib/utils'
 import { useSettings } from '@/providers/settings-provider'
@@ -126,6 +127,22 @@ export function CollectionCell({ property, value, selected }: CollectionCellProp
         className="flex items-center"
       >
         <CheckboxFace checked={reading.checked} />
+      </span>
+    )
+  }
+  // Select values read as colored badges — the same deterministic hue the
+  // board's lane dot uses, so a status is recognizable across views.
+  if (property.type === 'select' && !reading.mismatch && reading.text !== '') {
+    return (
+      <span className="flex min-w-0 items-center">
+        <span
+          className={cn(
+            'truncate rounded px-1.5 py-px text-xs font-medium',
+            selectOptionBadgeClass(reading.text),
+          )}
+        >
+          {reading.text}
+        </span>
       </span>
     )
   }

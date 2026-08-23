@@ -1,77 +1,246 @@
 import { useMemo, useState, type DragEvent, type ReactElement } from 'react'
-import type { CollectionEntry, TagProperty, TagType } from '@reflect/core'
+import { Virtualizer } from 'virtua'
+import {
+  appendBodyTag,
+  createNoteIfAbsent,
+  errorMessage,
+  untitledNotePath,
+  untitledNoteSeed,
+  upsertFrontmatter,
+  type CollectionEntry,
+  type CollectionValue,
+  type TagProperty,
+  type TagType,
+} from '@reflect/core'
+import { Plus } from '@/components/icons'
 import { PropertyValueEditor } from '@/components/tags/property-editors'
+import { selectOptionDotClass } from '@/components/tags/select-colors'
+import { toast } from '@/components/ui/toast'
 import type { ModClickEvent } from '@/lib/windows/open-in-new-window'
-import { useCommitNoteProperty } from '@/lib/tags/use-commit-note-property'
+import { useCommitNoteProperties } from '@/lib/tags/use-commit-note-property'
 import { cn } from '@/lib/utils'
+import { useGraph } from '@/providers/graph-provider'
 import { readCellValue } from './collection-cell'
 
 /**
  * The Collection's kanban board (TDR 0005): the same rows as the table,
- * grouped into lanes by the tag's first `select` property. Cards move by
- * native drag onto a lane (an optimistic overlay moves the card instantly;
- * the write lands through the shared property commit and the index refresh
- * reconciles), and the same select editor the table uses stays as the
- * keyboard path.
+ * grouped into lanes by a groupable property — a `select` (one lane per
+ * option), a `checkbox` (checked / not), or a `relation` (one lane per
+ * target in use). Cards move by native drag: onto a lane to change its
+ * value, onto a card to also take that position (a fractional `order`
+ * frontmatter rank — midpoints between neighbours, so one drop writes one
+ * note). An optimistic overlay moves the card instantly; the write lands
+ * through the shared property commit and the index refresh reconciles. The
+ * select editor stays as the keyboard path, and each lane's list is
+ * virtualized so a thousand-card lane stays light.
  */
 
-/** The property the board groups by: the schema's first `select`. */
+/** The frontmatter key manual board ranks live under — an ordinary shared
+ * property (visible, portable), ascending, missing ranks sort last. */
+export const BOARD_ORDER_KEY = 'order'
+
+/** The property types a board can group by. */
+const GROUPABLE_TYPES: ReadonlySet<TagProperty['type']> = new Set([
+  'select',
+  'checkbox',
+  'relation',
+])
+
+/** Every property the board can group by, schema order. */
+export function groupableProperties(type: TagType): TagProperty[] {
+  return type.properties.filter((property) => GROUPABLE_TYPES.has(property.type))
+}
+
+/** The board's default grouping property: the schema's first groupable. */
 export function boardProperty(type: TagType): TagProperty | null {
-  return type.properties.find((property) => property.type === 'select') ?? null
+  return groupableProperties(type)[0] ?? null
 }
 
 interface BoardColumn {
-  /** Column title (an option, a stray stored value, or "No <name>"). */
+  /** Column title (an option, a live value, checked/not, or "No <name>"). */
   label: string
   /** The frontmatter value a drop into this lane writes (`null` clears). */
-  value: string | null
+  commit: unknown
+  /** The lane dot's color class, `null` for the neutral unset lane. */
+  color: string | null
   entries: CollectionEntry[]
 }
 
-/** Group entries by the select property's display value. Declared options
- * keep their configured order (empty ones included — a lane you can move
- * cards into); stray stored values get their own trailing columns rather
- * than vanishing; valueless rows land in the last, "No <name>" column. */
+/** A stored manual rank, or `null` when the note has none. */
+function rankOf(entry: CollectionEntry): number | null {
+  const value = entry.properties[BOARD_ORDER_KEY]
+  return value?.valueType === 'number' ? value.valueNumber : null
+}
+
+/** Ranked cards first (ascending), unranked keep their incoming order. */
+function sortByRank(entries: CollectionEntry[]): CollectionEntry[] {
+  return [...entries].sort((a, b) => {
+    const rankA = rankOf(a)
+    const rankB = rankOf(b)
+    if (rankA === null && rankB === null) {
+      return 0
+    }
+    if (rankA === null) {
+      return 1
+    }
+    if (rankB === null) {
+      return -1
+    }
+    return rankA - rankB
+  })
+}
+
+/**
+ * The rank a card inserted at `index` (into the lane's list *without* the
+ * dragged card) should carry: the midpoint between ranked neighbours, one
+ * past an edge, or `null` when no neighbour carries a rank a position could
+ * be expressed against (the drop still changes the lane, never the order).
+ */
+export function rankForInsertion(
+  entries: readonly CollectionEntry[],
+  index: number,
+): number | null {
+  const before = index > 0 ? rankOf(entries[index - 1] as CollectionEntry) : null
+  const after = index < entries.length ? rankOf(entries[index] as CollectionEntry) : null
+  if (before !== null && after !== null) {
+    return (before + after) / 2
+  }
+  if (before !== null) {
+    return before + 1
+  }
+  if (after !== null) {
+    return after - 1
+  }
+  // A wholly unranked lane: only "make it first" is expressible (rank 0
+  // sorts ahead of every unranked card).
+  return index === 0 && entries.length > 0 ? 0 : null
+}
+
+/**
+ * Group entries into lanes by `property`. Select lanes follow the declared
+ * options (empty ones included — a lane you can move cards into), stray
+ * stored values get trailing lanes; checkbox boards are checked / everything
+ * else; relation boards get one lane per target in use, alphabetical.
+ * Valueless (or mismatched) rows land in the last, "No <name>" lane, and
+ * every lane sorts its cards by the manual rank.
+ */
 export function boardColumns(
   entries: readonly CollectionEntry[],
   property: TagProperty,
 ): BoardColumn[] {
-  const options = property.options ?? []
-  const groups = new Map<string, CollectionEntry[]>(options.map((option) => [option, []]))
   const unset: CollectionEntry[] = []
+  const columns: BoardColumn[] = []
+
+  if (property.type === 'checkbox') {
+    const checked: CollectionEntry[] = []
+    for (const entry of entries) {
+      const reading = readCellValue(property, entry.properties[property.key])
+      if (!reading.mismatch && reading.checked) {
+        checked.push(entry)
+      } else {
+        unset.push(entry)
+      }
+    }
+    return [
+      {
+        label: `${property.name} ✓`,
+        commit: true,
+        color: selectOptionDotClass(property.name),
+        entries: sortByRank(checked),
+      },
+      { label: `No ${property.name}`, commit: false, color: null, entries: sortByRank(unset) },
+    ]
+  }
+
+  // select / relation: lanes keyed by the display text.
+  const groups = new Map<string, { commit: unknown; entries: CollectionEntry[] }>()
+  if (property.type === 'select') {
+    for (const option of property.options ?? []) {
+      groups.set(option, { commit: option, entries: [] })
+    }
+  }
   for (const entry of entries) {
-    const reading = readCellValue(property, entry.properties[property.key])
+    const value = entry.properties[property.key]
+    const reading = readCellValue(property, value)
     if (reading.mismatch || reading.text === '') {
       unset.push(entry)
       continue
     }
     const group = groups.get(reading.text)
     if (group === undefined) {
-      groups.set(reading.text, [entry])
+      // A stray select value, or a relation target: the lane commits the
+      // stored raw form so aliases and link shapes survive a drop verbatim.
+      groups.set(reading.text, {
+        commit: property.type === 'select' ? reading.text : (value?.value ?? reading.text),
+        entries: [entry],
+      })
     } else {
-      group.push(entry)
+      group.entries.push(entry)
     }
   }
-  return [
-    ...[...groups].map(([label, grouped]) => ({ label, value: label, entries: grouped })),
-    { label: `No ${property.name}`, value: null, entries: unset },
-  ]
+  const lanes = [...groups]
+  if (property.type === 'relation') {
+    lanes.sort(([a], [b]) => a.localeCompare(b))
+  }
+  for (const [label, group] of lanes) {
+    columns.push({
+      label,
+      commit: group.commit,
+      color: selectOptionDotClass(label),
+      entries: sortByRank(group.entries),
+    })
+  }
+  columns.push({
+    label: `No ${property.name}`,
+    commit: null,
+    color: null,
+    entries: sortByRank(unset),
+  })
+  return columns
+}
+
+/** One optimistic move: the lane value plus the positional rank, if any. */
+interface BoardMove {
+  group: unknown
+  rank: number | null
+}
+
+/** A committed value as the stored row the overlay projects it to. */
+function overlayValue(value: unknown): CollectionValue | null {
+  if (typeof value === 'boolean') {
+    return { value: String(value), valueType: 'boolean', valueNumber: null }
+  }
+  if (typeof value === 'number') {
+    return { value: String(value), valueType: 'number', valueNumber: value }
+  }
+  if (typeof value === 'string') {
+    return { value, valueType: 'string', valueNumber: null }
+  }
+  return null
 }
 
 interface CollectionBoardProps {
   entries: readonly CollectionEntry[] | undefined
-  /** The grouping select property — the screen only renders the board when
+  /** The routed tag — a lane's "+" creates a note that is born in it. */
+  tag: string
+  /** The grouping property — the screen only renders the board when
    * {@link boardProperty} found one, so it arrives resolved. */
   property: TagProperty
   onOpen: (path: string, event?: ModClickEvent) => void
 }
 
-export function CollectionBoard({ entries, property, onOpen }: CollectionBoardProps): ReactElement {
-  const commitProperty = useCommitNoteProperty()
+export function CollectionBoard({
+  entries,
+  tag,
+  property,
+  onOpen,
+}: CollectionBoardProps): ReactElement {
+  const { graph } = useGraph()
+  const commitProperties = useCommitNoteProperties()
   // A drop moves the card at once through this overlay; the stored rows only
   // catch up after write → watcher → refetch, and a fresh `entries` prop
-  // (which now carries the written value) clears it at render time.
-  const [moves, setMoves] = useState<Map<string, string | null>>(new Map())
+  // (which now carries the written values) clears it at render time.
+  const [moves, setMoves] = useState<Map<string, BoardMove>>(new Map())
   const [movesFor, setMovesFor] = useState(entries)
   if (movesFor !== entries) {
     setMovesFor(entries)
@@ -86,15 +255,23 @@ export function CollectionBoard({ entries, property, onOpen }: CollectionBoardPr
   const effectiveEntries = useMemo(
     () =>
       (entries ?? []).map((entry) => {
-        const moved = moves.get(entry.path)
-        if (moved === undefined) {
+        const move = moves.get(entry.path)
+        if (move === undefined) {
           return entry
         }
         const properties = { ...entry.properties }
-        if (moved === null) {
+        const grouped = overlayValue(move.group)
+        if (grouped === null) {
           delete properties[property.key]
         } else {
-          properties[property.key] = { value: moved, valueType: 'string', valueNumber: null }
+          properties[property.key] = grouped
+        }
+        if (move.rank !== null) {
+          properties[BOARD_ORDER_KEY] = {
+            value: String(move.rank),
+            valueType: 'number',
+            valueNumber: move.rank,
+          }
         }
         return { ...entry, properties }
       }),
@@ -109,26 +286,59 @@ export function CollectionBoard({ entries, property, onOpen }: CollectionBoardPr
     setDraggingPath(null)
     setDropLane(null)
   }
-  const dropOnLane = (column: BoardColumn, event: DragEvent<HTMLElement>): void => {
-    event.preventDefault()
+
+  /** Land a drop: onto a lane (append) or before `targetPath`'s card. */
+  const drop = (column: BoardColumn, targetPath: string | null): void => {
     const path = draggingPath
     endDrag()
-    // A drop into the card's own lane is a no-op, not a phantom write.
-    if (path === null || column.entries.some((entry) => entry.path === path)) {
+    if (path === null || path === targetPath) {
       return
     }
-    setMoves((current) => new Map(current).set(path, column.value))
-    commitProperty(path, property.key, column.value ?? undefined)
+    const sameLane = column.entries.some((entry) => entry.path === path)
+    const others = column.entries.filter((entry) => entry.path !== path)
+    const index =
+      targetPath === null ? others.length : others.findIndex((e) => e.path === targetPath)
+    const rank = index < 0 ? null : rankForInsertion(others, index)
+    if (sameLane && rank === null) {
+      return
+    }
+    setMoves((current) => new Map(current).set(path, { group: column.commit, rank }))
+    commitProperties(path, {
+      [property.key]: column.commit ?? undefined,
+      ...(rank !== null ? { [BOARD_ORDER_KEY]: rank } : {}),
+    })
+  }
+
+  /** Create a note born in `column`: tagged, with the lane's value set. */
+  const createInLane = async (column: BoardColumn): Promise<void> => {
+    if (graph === null) {
+      return
+    }
+    const path = untitledNotePath()
+    const base = untitledNoteSeed()
+    const tagged = appendBodyTag(base, tag) ?? base
+    const seed =
+      column.commit === null ? tagged : upsertFrontmatter(tagged, { [property.key]: column.commit })
+    try {
+      await createNoteIfAbsent(path, seed, graph.generation)
+      onOpen(path)
+    } catch (error) {
+      toast.add({
+        type: 'error',
+        title: "Couldn't create the note",
+        description: errorMessage(error),
+      })
+    }
   }
 
   return (
-    <div className="flex h-full items-start gap-4 overflow-x-auto px-12 pb-6">
+    <div className="flex h-full items-stretch gap-4 overflow-x-auto px-12 pb-6">
       {columns.map((column) => (
         <section
           key={column.label}
           aria-label={column.label}
           className={cn(
-            'flex w-60 flex-none flex-col rounded-lg bg-surface-hover/60 p-2',
+            'flex max-h-full w-60 flex-none flex-col rounded-lg bg-surface-hover/60 p-2',
             draggingPath !== null && dropLane === column.label && 'ring-2 ring-accent/60',
           )}
           onDragOver={(event) => {
@@ -138,57 +348,100 @@ export function CollectionBoard({ entries, property, onOpen }: CollectionBoardPr
               setDropLane(column.label)
             }
           }}
-          onDragLeave={(event) => {
+          onDragLeave={(event: DragEvent<HTMLElement>) => {
             // Child elements fire enter/leave pairs; only leaving the lane
             // itself clears the highlight.
             if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
               setDropLane((current) => (current === column.label ? null : current))
             }
           }}
-          onDrop={(event) => dropOnLane(column, event)}
+          onDrop={(event) => {
+            event.preventDefault()
+            drop(column, null)
+          }}
         >
-          <header className="flex items-center justify-between px-2 py-1.5">
-            <h2 className="truncate text-xs font-medium text-text-secondary">{column.label}</h2>
+          <header className="flex flex-none items-center gap-1.5 px-2 py-1.5">
+            {column.color !== null ? (
+              <span aria-hidden className={cn('size-2 shrink-0 rounded-full', column.color)} />
+            ) : null}
+            <h2 className="min-w-0 flex-1 truncate text-xs font-medium text-text-secondary">
+              {column.label}
+            </h2>
             <span className="text-xs tabular-nums text-text-muted">{column.entries.length}</span>
+            <button
+              type="button"
+              aria-label={`New note in ${column.label}`}
+              onClick={() => void createInLane(column)}
+              className="flex size-4 items-center justify-center rounded text-text-muted hover:text-text-secondary"
+            >
+              <Plus aria-hidden className="size-3" />
+            </button>
           </header>
-          <div className="flex flex-col gap-1.5">
-            {column.entries.map((entry) => (
-              <article
-                key={entry.path}
-                data-note-path={entry.path}
-                draggable
-                onDragStart={(event) => {
-                  setDraggingPath(entry.path)
-                  event.dataTransfer.setData('text/plain', entry.path)
-                  event.dataTransfer.effectAllowed = 'move'
-                }}
-                onDragEnd={endDrag}
-                className={cn(
-                  'flex cursor-grab flex-col gap-1 rounded-md border border-border bg-surface p-2 shadow-sm active:cursor-grabbing',
-                  draggingPath === entry.path && 'opacity-50',
-                )}
-              >
-                <button
-                  type="button"
-                  onClick={(event) => onOpen(entry.path, event)}
-                  className="truncate text-left text-[13px] font-medium text-text hover:underline"
-                >
-                  {entry.title}
-                </button>
-                <PropertyValueEditor
-                  property={property}
-                  value={entry.properties[property.key]}
-                  onCommit={(value) => commitProperty(entry.path, property.key, value)}
-                >
-                  <span className="truncate text-xs text-text-muted">
-                    {readCellValue(property, entry.properties[property.key]).text || '—'}
-                  </span>
-                </PropertyValueEditor>
-              </article>
-            ))}
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <Virtualizer data={column.entries} itemSize={64} bufferSize={400}>
+              {(entry) => (
+                <div className="pb-1.5">
+                  <article
+                    data-note-path={entry.path}
+                    draggable
+                    onDragStart={(event) => {
+                      setDraggingPath(entry.path)
+                      event.dataTransfer.setData('text/plain', entry.path)
+                      event.dataTransfer.effectAllowed = 'move'
+                    }}
+                    onDragEnd={endDrag}
+                    onDragOver={(event) => {
+                      if (draggingPath !== null) {
+                        event.preventDefault()
+                        event.stopPropagation()
+                        event.dataTransfer.dropEffect = 'move'
+                        setDropLane(column.label)
+                      }
+                    }}
+                    onDrop={(event) => {
+                      // A drop on a card takes its position (before it); the
+                      // lane handler must not double-handle the same drop.
+                      event.preventDefault()
+                      event.stopPropagation()
+                      drop(column, entry.path)
+                    }}
+                    className={cn(
+                      'flex cursor-grab flex-col gap-1 rounded-md border border-border bg-surface p-2 shadow-sm active:cursor-grabbing',
+                      draggingPath === entry.path && 'opacity-50',
+                    )}
+                  >
+                    <button
+                      type="button"
+                      onClick={(event) => onOpen(entry.path, event)}
+                      className="truncate text-left text-[13px] font-medium text-text hover:underline"
+                    >
+                      {entry.title}
+                    </button>
+                    <PropertyValueEditor
+                      property={property}
+                      value={entry.properties[property.key]}
+                      onCommit={(value) => commitProperties(entry.path, { [property.key]: value })}
+                    >
+                      <span className="truncate text-xs text-text-muted">
+                        {boardCardValueText(property, entry)}
+                      </span>
+                    </PropertyValueEditor>
+                  </article>
+                </div>
+              )}
+            </Virtualizer>
           </div>
         </section>
       ))}
     </div>
   )
+}
+
+/** The card's secondary line: the grouped value (checkboxes as a glyph). */
+function boardCardValueText(property: TagProperty, entry: CollectionEntry): string {
+  const reading = readCellValue(property, entry.properties[property.key])
+  if (property.type === 'checkbox' && !reading.mismatch) {
+    return reading.checked ? '✓' : '—'
+  }
+  return reading.text || '—'
 }

@@ -31,7 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { CollectionBoard } from './collection-board'
+import { CollectionBoard, groupableProperties } from './collection-board'
 import { runCollectionExport } from './collection-export'
 import { CollectionTable } from './collection-table'
 import { NoteListContextMenu } from '@/components/notes/note-context-menu'
@@ -69,22 +69,18 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
   // broken surface.
   const tagType = useTagType(tag)
   const collectionAvailable = tag !== null && tagType !== null && tagType !== undefined
-  // The board additionally needs a select property to group by. Which one is
-  // a persisted per-tag choice (like the sort); a saved key the schema no
-  // longer declares as a select falls back to the first, never a blank board.
+  // The board additionally needs a groupable property (select, checkbox, or
+  // relation). Which one is a persisted per-tag choice (like the sort); a
+  // saved key the schema no longer declares as groupable falls back to the
+  // first, never a blank board.
   const tagKey = tag === null ? null : foldTag(tag)
-  const selectProperties = useMemo(
-    () =>
-      collectionAvailable
-        ? tagType.properties.filter((property) => property.type === 'select')
-        : [],
+  const boardProperties = useMemo(
+    () => (collectionAvailable ? groupableProperties(tagType) : []),
     [collectionAvailable, tagType],
   )
   const savedGroupKey = tagKey === null ? undefined : settings.collectionGroups[tagKey]
   const boardGroupProperty =
-    selectProperties.find((property) => property.key === savedGroupKey) ??
-    selectProperties[0] ??
-    null
+    boardProperties.find((property) => property.key === savedGroupKey) ?? boardProperties[0] ?? null
   const boardAvailable = boardGroupProperty !== null
   const view =
     (settings.allNotesView === 'table' && !collectionAvailable) ||
@@ -255,11 +251,11 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
         <h1 className="text-[15px] font-semibold text-text">Notes</h1>
         <div className="flex flex-wrap items-center gap-3">
           <AllNotesFilters tag={tag} facets={facets ?? []} onSelect={handleFilterSelect} />
-          {view === 'board' && selectProperties.length > 1 ? (
+          {view === 'board' && boardProperties.length > 1 ? (
             <Select
               value={boardGroupProperty?.key ?? ''}
               items={Object.fromEntries(
-                selectProperties.map((property) => [property.key, property.name]),
+                boardProperties.map((property) => [property.key, property.name]),
               )}
               onValueChange={(value) => {
                 if (typeof value === 'string' && value !== '') {
@@ -271,7 +267,7 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {selectProperties.map((property) => (
+                {boardProperties.map((property) => (
                   <SelectItem key={property.key} value={property.key}>
                     {property.name}
                   </SelectItem>
@@ -387,9 +383,10 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
         >
           {view === 'grid' ? (
             <AllNotesGrid notes={notes} tag={tag} onOpen={openNote} />
-          ) : view === 'board' && boardGroupProperty !== null ? (
+          ) : view === 'board' && boardGroupProperty !== null && tag !== null ? (
             <CollectionBoard
               entries={filteredCollection}
+              tag={tag}
               property={boardGroupProperty}
               onOpen={openNote}
             />

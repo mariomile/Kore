@@ -1,4 +1,9 @@
-import { RESERVED_FRONTMATTER_KEYS, type GistFrontmatter } from '@reflect/core'
+import {
+  RESERVED_FRONTMATTER_KEYS,
+  TAG_TYPE_MARKER,
+  type GistFrontmatter,
+  type TagProperty,
+} from '@reflect/core'
 
 export interface FrontmatterPatch {
   /**
@@ -42,6 +47,16 @@ export interface FrontmatterPatch {
    * whichever surface built the patch.
    */
   properties?: Record<string, unknown>
+  /**
+   * A tag definition's schema write (TDR 0005): sets the `lore: tag` marker
+   * and replaces the `properties` list whole. A typed field, not part of the
+   * `properties` bag above — the reserved-key guard keeps *value* writes away
+   * from these keys, while this write is deliberately about them. Routing it
+   * through the patch means a definition note open with unsaved edits takes
+   * the schema into its live header instead of a disk write clobbering the
+   * buffer (or the buffer's next save reverting the schema).
+   */
+  tagSchema?: readonly TagProperty[]
 }
 
 /**
@@ -59,6 +74,17 @@ export function frontmatterPatchToYaml(patch: FrontmatterPatch): Record<string, 
         yaml[key] = value
       }
     }
+  }
+  if (patch.tagSchema !== undefined) {
+    yaml['lore'] = TAG_TYPE_MARKER
+    // Spelled out key-by-key so the YAML block's shape (and key order) is
+    // this module's contract, not whatever object the caller happened to hold.
+    yaml['properties'] = patch.tagSchema.map((property) => ({
+      name: property.name,
+      key: property.key,
+      type: property.type,
+      ...(property.options === undefined ? {} : { options: property.options }),
+    }))
   }
   if (patch.id !== undefined) {
     yaml['id'] = patch.id

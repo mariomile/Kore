@@ -77,6 +77,23 @@ describe('saveTagType', () => {
     expect(writeNote).not.toHaveBeenCalled()
   })
 
+  it('routes an existing definition through an open editor session', async () => {
+    createNoteIfAbsent.mockResolvedValue({ kind: 'exists' })
+    const commitFrontmatter = vi.fn(async () => true)
+    openSession.mockReturnValue({
+      liveContent: () => '---\nlore: tag\nproperties: []\n---\nDirty body edits\n',
+      commitFrontmatter,
+    } as never)
+
+    await saveTagType('book', schema, 3)
+
+    // The schema lands in the live header (the session flushes it), so the
+    // buffer's own next save can never revert it — and no disk write races
+    // the open buffer.
+    expect(commitFrontmatter).toHaveBeenCalledWith({ tagSchema: schema })
+    expect(writeNote).not.toHaveBeenCalled()
+  })
+
   it('patches an existing definition, preserving body and unknown keys', async () => {
     createNoteIfAbsent.mockResolvedValue({ kind: 'exists' })
     readNote.mockResolvedValue('---\nlore: tag\nproperties: []\ncolor: red\n---\nBody stays.\n')

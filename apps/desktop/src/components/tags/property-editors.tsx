@@ -81,12 +81,32 @@ function InputPropertyEditor({
   // Esc closes the popover through Radix, which also blurs the input — the
   // flag keeps that path a cancel instead of a phantom commit.
   const cancelled = useRef(false)
+  // What the input opened with. An untouched draft never commits: a value
+  // the column's type can't represent (a string under a number column, a
+  // list under a scalar one — the mismatch cases) must survive open + blur
+  // untouched. Tolerated, never destroyed (TDR 0005).
+  const seed = useRef('')
+
+  const inputRef = useRef<HTMLInputElement | null>(null)
 
   const commit = (): void => {
-    if (cancelled.current) {
+    if (cancelled.current || draft === seed.current) {
       return
     }
     cancelled.current = true // a blur following an Enter-commit is a no-op
+    const trimmed = draft.trim()
+    // Unparseable numeric input is a typo, not a delete — keep the stored
+    // value rather than erasing it. `badInput` catches the number-input case
+    // where the DOM reports '' for half-typed input like `4e`, which would
+    // otherwise read as an intentional clear.
+    if (
+      property.type === 'number' &&
+      ((trimmed !== '' && !Number.isFinite(Number(trimmed))) ||
+        inputRef.current?.validity.badInput === true)
+    ) {
+      setOpen(false)
+      return
+    }
     onCommit(typedValueForText(property, draft))
     setOpen(false)
   }
@@ -108,7 +128,8 @@ function InputPropertyEditor({
         setOpen(next)
         if (next) {
           cancelled.current = false
-          setDraft(editorSeedText(value))
+          seed.current = editorSeedText(value)
+          setDraft(seed.current)
         }
       }}
     >
@@ -122,6 +143,7 @@ function InputPropertyEditor({
       </PopoverTrigger>
       <PopoverContent align={align ?? 'start'} sideOffset={4} className="w-56 p-2">
         <Input
+          ref={inputRef}
           autoFocus
           type={inputType}
           value={draft}
@@ -146,7 +168,12 @@ function SelectPropertyEditor({
 }: PropertyEditorProps): ReactElement {
   const [open, setOpen] = useState(false)
   const multiple = property.type === 'multiselect'
-  const selected = editorSeedList(value)
+  // Toggles work against a local copy seeded when the popover opens: the
+  // `value` prop only refreshes after write → watcher → refetch, so two
+  // quick toggles would otherwise both start from the stale stored list and
+  // the second commit would clobber the first.
+  const [localSelected, setLocalSelected] = useState<string[] | null>(null)
+  const selected = localSelected ?? editorSeedList(value)
   const options = [...new Set([...(property.options ?? []), ...selected])]
 
   const chooseSingle = (option: string): void => {
@@ -154,15 +181,26 @@ function SelectPropertyEditor({
     onCommit(selected.length === 1 && selected[0] === option ? undefined : option)
     setOpen(false)
   }
+  const clear = (): void => {
+    onCommit(undefined)
+    setOpen(false)
+  }
   const toggleMultiple = (option: string): void => {
     const next = selected.includes(option)
       ? selected.filter((entry) => entry !== option)
       : [...selected, option]
+    setLocalSelected(next)
     onCommit(next.length === 0 ? undefined : next)
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next)
+        setLocalSelected(next ? editorSeedList(value) : null)
+      }}
+    >
       <PopoverTrigger
         aria-label={`Edit ${property.name}`}
         className="flex w-full min-w-0 items-center text-left focus-visible:outline-none"
@@ -194,7 +232,7 @@ function SelectPropertyEditor({
                 )
               })}
               {!multiple && selected.length > 0 ? (
-                <CommandItem value="__clear" onSelect={() => chooseSingle(selected[0] ?? '')}>
+                <CommandItem value="__clear" onSelect={clear}>
                   <span className="text-text-muted">Clear</span>
                 </CommandItem>
               ) : null}

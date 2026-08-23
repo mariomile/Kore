@@ -57,6 +57,16 @@ export function readCellValue(
   }
 }
 
+/** The checkbox property's read-only face, shared with the note properties
+ * panel so a styling or a11y fix reaches both surfaces at once. */
+export function CheckboxFace({ checked }: { checked: boolean }): ReactElement {
+  return checked ? (
+    <Check aria-hidden className="size-3.5 text-text-secondary" />
+  ) : (
+    <span aria-hidden className="size-3.5 rounded-sm border border-border" />
+  )
+}
+
 interface CollectionCellProps {
   property: TagProperty
   value: CollectionValue | undefined
@@ -74,11 +84,7 @@ export function CollectionCell({ property, value, selected }: CollectionCellProp
         aria-label={reading.checked ? 'Checked' : 'Unchecked'}
         className="flex items-center"
       >
-        {reading.checked ? (
-          <Check aria-hidden className="size-3.5 text-text-secondary" />
-        ) : (
-          <span aria-hidden className="size-3.5 rounded-sm border border-border" />
-        )}
+        <CheckboxFace checked={reading.checked} />
       </span>
     )
   }

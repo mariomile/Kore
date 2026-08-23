@@ -1,14 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 import type { CollectionEntry, TagType } from '@reflect/core'
 import type { ListSelection } from '@/lib/selection/use-list-selection'
 import { CollectionTable } from './collection-table'
 
-vi.mock('@/providers/settings-provider', () => ({
+vi.mock('@/providers/settings-provider', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/providers/settings-provider')>()),
   useSettings: () => ({
     settings: { uiDensity: 'default', dateFormat: 'mdy', timeFormat: '12h' },
     updateSettings: vi.fn(),
   }),
+}))
+const commitProperty = vi.hoisted(() => vi.fn())
+vi.mock('@/lib/tags/use-commit-note-property', () => ({
+  useCommitNoteProperty: () => commitProperty,
 }))
 
 const clickSelect = vi.fn()
@@ -64,6 +70,7 @@ const ENTRIES: CollectionEntry[] = [
 
 beforeEach(() => {
   clickSelect.mockClear()
+  commitProperty.mockClear()
 })
 
 describe('CollectionTable', () => {
@@ -81,7 +88,7 @@ describe('CollectionTable', () => {
       />,
     )
 
-    await expect.element(view.getByRole('button', { name: 'Author' })).toBeInTheDocument()
+    await expect.element(view.getByRole('button', { name: 'Sort by Author' })).toBeInTheDocument()
     await expect.element(view.getByText('Le Guin')).toBeInTheDocument()
     await expect.element(view.getByText('4.5')).toBeInTheDocument()
     await expect.element(view.getByLabelText('Checked', { exact: true })).toBeInTheDocument()
@@ -124,7 +131,7 @@ describe('CollectionTable', () => {
         registerScrollToIndex={() => {}}
       />,
     )
-    await view.getByRole('button', { name: 'Rating' }).click()
+    await view.getByRole('button', { name: /Sort by Rating/ }).click()
     expect(onSortChange).toHaveBeenLastCalledWith({ key: 'rating', direction: 'asc' })
     await view.unmount()
 
@@ -140,7 +147,7 @@ describe('CollectionTable', () => {
         registerScrollToIndex={() => {}}
       />,
     )
-    await ascending.getByRole('button', { name: 'Rating' }).click()
+    await ascending.getByRole('button', { name: /Sort by Rating/ }).click()
     expect(onSortChange).toHaveBeenLastCalledWith({ key: 'rating', direction: 'desc' })
     await ascending.unmount()
 
@@ -156,11 +163,11 @@ describe('CollectionTable', () => {
         registerScrollToIndex={() => {}}
       />,
     )
-    await descending.getByRole('button', { name: 'Rating' }).click()
+    await descending.getByRole('button', { name: /Sort by Rating/ }).click()
     expect(onSortChange).toHaveBeenLastCalledWith(null)
   })
 
-  it('opens a note from its subject and selects from the row body', async () => {
+  it('opens a note from its subject and an editor from a property cell', async () => {
     const onOpen = vi.fn()
     const view = await render(
       <CollectionTable
@@ -177,7 +184,15 @@ describe('CollectionTable', () => {
     await view.getByRole('button', { name: 'Dune' }).click()
     expect(onOpen).toHaveBeenCalledWith('notes/dune.md', expect.anything())
 
+    // A property cell click belongs to its editor, not the row selection —
+    // rows still select through the gutter indicator and keyboard.
     await view.getByText('Le Guin').click()
-    expect(clickSelect).toHaveBeenCalledWith('notes/dispossessed.md', expect.anything())
+    await expect.element(view.getByRole('textbox', { name: 'Author' })).toBeInTheDocument()
+    expect(clickSelect).not.toHaveBeenCalled()
+
+    // Editing writes through the shared property commit.
+    await view.getByRole('textbox', { name: 'Author' }).fill('U. K. Le Guin')
+    await userEvent.keyboard('{Enter}')
+    expect(commitProperty).toHaveBeenCalledWith('notes/dispossessed.md', 'author', 'U. K. Le Guin')
   })
 })

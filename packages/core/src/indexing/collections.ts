@@ -81,13 +81,14 @@ export async function getTagType(tag: string): Promise<TagType | null> {
   }
 }
 
-/** Every typed tag, alphabetical by key. Mangled schema columns are skipped. */
-export async function listTagTypes(): Promise<TagTypeEntry[]> {
-  const rows = await db
-    .selectFrom('tagTypes')
-    .select(['tagKey', 'notePath', 'schemaJson'])
-    .orderBy('tagKey')
-    .execute()
+/**
+ * The one tolerant decode for `tag_types` result rows: a hand-mangled
+ * `schema_json` column loses its type until the definition is re-saved,
+ * never a broken query.
+ */
+function decodeTagTypeRows(
+  rows: readonly { tagKey: string; notePath: string; schemaJson: string }[],
+): TagTypeEntry[] {
   const entries: TagTypeEntry[] = []
   for (const row of rows) {
     try {
@@ -97,10 +98,20 @@ export async function listTagTypes(): Promise<TagTypeEntry[]> {
         type: decodeTagTypeJson(row.schemaJson),
       })
     } catch {
-      // A hand-mangled column loses its type until the definition is re-saved.
+      // Skipped — see above.
     }
   }
   return entries
+}
+
+/** Every typed tag, alphabetical by key. Mangled schema columns are skipped. */
+export async function listTagTypes(): Promise<TagTypeEntry[]> {
+  const rows = await db
+    .selectFrom('tagTypes')
+    .select(['tagKey', 'notePath', 'schemaJson'])
+    .orderBy('tagKey')
+    .execute()
+  return decodeTagTypeRows(rows)
 }
 
 /**
@@ -116,19 +127,7 @@ export async function listNoteTagTypes(path: string): Promise<TagTypeEntry[]> {
     .select(['tagTypes.tagKey', 'tagTypes.notePath', 'tagTypes.schemaJson'])
     .orderBy('tagTypes.tagKey')
     .execute()
-  const entries: TagTypeEntry[] = []
-  for (const row of rows) {
-    try {
-      entries.push({
-        tagKey: row.tagKey,
-        notePath: row.notePath,
-        type: decodeTagTypeJson(row.schemaJson),
-      })
-    } catch {
-      // A hand-mangled column loses its type until the definition is re-saved.
-    }
-  }
-  return entries
+  return decodeTagTypeRows(rows)
 }
 
 /** One note's indexed frontmatter values, keyed by frontmatter key. */

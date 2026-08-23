@@ -1,18 +1,9 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  type CSSProperties,
-  type MouseEvent,
-  type ReactElement,
-} from 'react'
+import { useCallback, useEffect, useMemo, useRef, type MouseEvent, type ReactElement } from 'react'
 import { Virtualizer, type VirtualizerHandle } from 'virtua'
 import {
   DENSITY_ROW_HEIGHT,
   type CollectionEntry,
   type CollectionSort,
-  type TagProperty,
   type TagType,
 } from '@reflect/core'
 import { ArrowDown, ArrowUp } from '@/components/icons'
@@ -23,6 +14,7 @@ import { cn } from '@/lib/utils'
 import { useSettings } from '@/providers/settings-provider'
 import type { ModClickEvent } from '@/lib/windows/open-in-new-window'
 import { CollectionCell } from './collection-cell'
+import { collectionGridStyle, COLLECTION_GRID_CLASS } from './collection-grid'
 import { CollectionRow } from './collection-row'
 
 interface CollectionTableProps {
@@ -37,37 +29,6 @@ interface CollectionTableProps {
   onOpen: (path: string, event?: ModClickEvent) => void
   registerScrollToIndex: (scrollToIndex: (index: number) => void) => void
 }
-
-/** Column width per property type — narrow for glyph/numeric columns. */
-function columnWidth(property: TagProperty): string {
-  switch (property.type) {
-    case 'checkbox':
-      return '4rem'
-    case 'number':
-      return 'minmax(4rem, 6rem)'
-    case 'date':
-      return 'minmax(6rem, 7rem)'
-    default:
-      return 'minmax(6rem, 1fr)'
-  }
-}
-
-/**
- * The shared inline grid template — Subject, one column per schema property,
- * Updated. Inline style rather than a class: the columns are data-driven by
- * the tag's schema (`ALL_NOTES_GRID` stays the classic table's contract).
- */
-export function collectionGridStyle(type: TagType): CSSProperties {
-  const propertyColumns = type.properties.map(columnWidth).join(' ')
-  return {
-    gridTemplateColumns: `minmax(0, 15rem) ${propertyColumns}${
-      propertyColumns === '' ? '' : ' '
-    }6rem`,
-  }
-}
-
-/** Shared non-column layout classes for header and rows. */
-export const COLLECTION_GRID_CLASS = 'grid items-center gap-4 pl-12 pr-7'
 
 /**
  * The Collection table (TDR 0005): the All Notes table's shape — sticky
@@ -137,14 +98,19 @@ export function CollectionTable({
         <span>Subject</span>
         {type.properties.map((property) => {
           const active = sort?.key === property.key
+          // A plain button carries no columnheader role, so `aria-sort`
+          // wouldn't apply — the sort state rides the accessible name.
+          const sortState = !active
+            ? ''
+            : sort.direction === 'asc'
+              ? ', sorted ascending'
+              : ', sorted descending'
           return (
             <button
               key={property.key}
               type="button"
               onClick={() => cycleSort(property.key)}
-              aria-sort={
-                active ? (sort.direction === 'asc' ? 'ascending' : 'descending') : undefined
-              }
+              aria-label={`Sort by ${property.name}${sortState}`}
               className={cn(
                 'flex items-center gap-1 truncate text-left font-medium transition-colors hover:text-text',
                 active ? 'text-text' : 'text-text-secondary',

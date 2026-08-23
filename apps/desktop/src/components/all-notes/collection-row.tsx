@@ -4,7 +4,7 @@ import { formatRecencyLabel } from '@/lib/dates'
 import { cn } from '@/lib/utils'
 import type { ModClickEvent } from '@/lib/windows/open-in-new-window'
 import { useSettings } from '@/providers/settings-provider'
-import { COLLECTION_GRID_CLASS } from './collection-table'
+import { COLLECTION_GRID_CLASS } from './collection-grid'
 
 interface CollectionRowProps {
   entry: CollectionEntry

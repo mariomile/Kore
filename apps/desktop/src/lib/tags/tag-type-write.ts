@@ -5,17 +5,18 @@ import {
   TAG_TYPE_MARKER,
   tagDefinitionPath,
   upsertFrontmatter,
-  writeNote,
   type TagProperty,
 } from '@reflect/core'
-import { readNoteSource } from '@/lib/note-frontmatter'
+import { commitNoteFrontmatter, readNoteSource } from '@/lib/note-frontmatter'
 
 /**
  * Reading and writing tag definition notes (TDR 0005). The schema lives in
- * `tags/<key>.md` frontmatter (`lore: tag` + `properties`), so saves go
- * through `upsertFrontmatter` — minimal-diff, comments and unknown keys
- * survive — never through `FrontmatterPatch`, whose reserved-key guard
- * exists precisely to keep these keys out of property writes.
+ * `tags/<key>.md` frontmatter (`lore: tag` + `properties`); saves ride the
+ * typed `tagSchema` patch through the shared session-or-disk channel, so a
+ * definition note open with unsaved edits takes the schema into its live
+ * header instead of a disk write racing the buffer. Either way the write is
+ * minimal-diff (`upsertFrontmatter`): comments, unknown keys, and the body
+ * survive, and broken YAML refuses rather than rewriting.
  */
 
 /** What the config dialog found at the tag's definition path. */
@@ -52,11 +53,11 @@ export async function readTagDefinition(tag: string): Promise<TagDefinitionState
 }
 
 /**
- * Persist a tag's schema: create `tags/<key>.md` when missing, else patch the
- * marker + `properties` into the existing file (the conversion confirm
- * happens in the dialog, before this runs). `upsertFrontmatter` refuses a
- * file whose YAML is broken — the caller surfaces that instead of destroying
- * anything.
+ * Persist a tag's schema: create `tags/<key>.md` when missing, else commit
+ * the marker + `properties` as a `tagSchema` frontmatter patch (the
+ * conversion confirm happens in the dialog, before this runs).
+ * `upsertFrontmatter` refuses a file whose YAML is broken — the caller
+ * surfaces that instead of destroying anything.
  */
 export async function saveTagType(
   tag: string,
@@ -64,7 +65,7 @@ export async function saveTagType(
   generation: number,
 ): Promise<void> {
   const path = tagDefinitionPath(tag)
-  const patch = {
+  const seed = upsertFrontmatter('', {
     lore: TAG_TYPE_MARKER,
     properties: properties.map((property) => ({
       name: property.name,
@@ -72,14 +73,10 @@ export async function saveTagType(
       type: property.type,
       ...(property.options === undefined ? {} : { options: property.options }),
     })),
-  }
-  const created = await createNoteIfAbsent(path, upsertFrontmatter('', patch), generation)
+  })
+  const created = await createNoteIfAbsent(path, seed, generation)
   if (created.kind === 'created') {
     return
   }
-  const source = await readNoteSource(path)
-  const next = upsertFrontmatter(source, patch)
-  if (next !== source) {
-    await writeNote(path, next, generation)
-  }
+  await commitNoteFrontmatter(path, { tagSchema: properties }, generation)
 }

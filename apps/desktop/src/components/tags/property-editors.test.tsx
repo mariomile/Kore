@@ -49,6 +49,40 @@ describe('PropertyValueEditor', () => {
     expect(onCommit).not.toHaveBeenCalled()
   })
 
+  it('never commits an untouched draft — open + blur leaves a mismatched value alone', async () => {
+    // `topics: [a, b]` under a text column: the seed is '' (lists have no
+    // text form), and committing that would erase the list. Tolerated,
+    // never destroyed.
+    const property: TagProperty = { name: 'Topics', key: 'topics', type: 'text' }
+    const view = await render(editor(property, stored('["a","b"]', 'list')))
+
+    await view.getByRole('button', { name: 'Edit Topics' }).click()
+    await expect.element(view.getByRole('textbox', { name: 'Topics' })).toBeInTheDocument()
+    // Click-away, not Escape: the blur-commit path must hit the
+    // untouched-draft guard, not the cancel flag.
+    await userEvent.click(document.body)
+    await expect.element(view.getByRole('textbox', { name: 'Topics' })).not.toBeInTheDocument()
+    expect(onCommit).not.toHaveBeenCalled()
+  })
+
+  it('treats unparseable numeric input as a typo, not a delete', async () => {
+    const property: TagProperty = { name: 'Rating', key: 'rating', type: 'number' }
+    const view = await render(
+      <PropertyValueEditor property={property} value={stored('4', 'number')} onCommit={onCommit}>
+        <span>4</span>
+      </PropertyValueEditor>,
+    )
+
+    await view.getByRole('button', { name: 'Edit Rating' }).click()
+    const input = view.getByRole('spinbutton', { name: 'Rating' })
+    await input.fill('')
+    // Typed, not filled: a half-typed exponent is what real hands produce,
+    // and the DOM reports '' for it (badInput) — which must not read as an
+    // intentional clear of the stored value.
+    await userEvent.keyboard('4e{Enter}')
+    expect(onCommit).not.toHaveBeenCalled()
+  })
+
   it('commits numbers as numbers', async () => {
     const property: TagProperty = { name: 'Rating', key: 'rating', type: 'number' }
     const view = await render(editor(property))
@@ -85,7 +119,21 @@ describe('PropertyValueEditor', () => {
     expect(onCommit).toHaveBeenLastCalledWith(undefined)
   })
 
-  it('toggles multi-select entries into a list value', async () => {
+  it('Clear deletes the key even when the stored value is a mismatched list', async () => {
+    const property: TagProperty = {
+      name: 'Status',
+      key: 'status',
+      type: 'select',
+      options: ['a', 'b'],
+    }
+    const view = await render(editor(property, stored('["a","b"]', 'list')))
+
+    await view.getByRole('button', { name: 'Edit Status' }).click()
+    await view.getByRole('option', { name: 'Clear' }).click()
+    expect(onCommit).toHaveBeenCalledWith(undefined)
+  })
+
+  it('toggles multi-select entries against the popover-local list, not the stale prop', async () => {
     const property: TagProperty = {
       name: 'Topics',
       key: 'topics',
@@ -98,9 +146,10 @@ describe('PropertyValueEditor', () => {
     await view.getByRole('option', { name: 'product' }).click()
     expect(onCommit).toHaveBeenCalledWith(['ai', 'product'])
 
+    // The stored prop hasn't refreshed yet (write → watcher → refetch), but
+    // the second toggle must build on the first — removing 'ai' keeps
+    // 'product' instead of emptying the list.
     await view.getByRole('option', { name: 'ai' }).click()
-    // The stored value prop hasn't refreshed, so the second toggle still
-    // starts from ['ai'] — removing it empties the list, which deletes.
-    expect(onCommit).toHaveBeenLastCalledWith(undefined)
+    expect(onCommit).toHaveBeenLastCalledWith(['product'])
   })
 })

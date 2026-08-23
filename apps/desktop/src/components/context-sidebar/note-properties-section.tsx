@@ -6,8 +6,7 @@ import {
   type CollectionValue,
   type TagProperty,
 } from '@reflect/core'
-import { readCellValue } from '@/components/all-notes/collection-cell'
-import { Check } from '@/components/icons'
+import { CheckboxFace, readCellValue } from '@/components/all-notes/collection-cell'
 import { PropertyValueEditor } from '@/components/tags/property-editors'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
@@ -97,11 +96,7 @@ function PropertyFieldValue({
 }): ReactElement {
   const reading = readCellValue(property, value)
   if (property.type === 'checkbox' && !reading.mismatch) {
-    return reading.checked ? (
-      <Check aria-hidden className="size-3.5 text-text-secondary" />
-    ) : (
-      <span aria-hidden className="size-3.5 rounded-sm border border-border" />
-    )
+    return <CheckboxFace checked={reading.checked} />
   }
   return (
     <span

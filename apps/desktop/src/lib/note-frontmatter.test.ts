@@ -116,6 +116,22 @@ describe('commitNoteFrontmatter', () => {
     )
   })
 
+  it('writes a tagSchema patch as the marker plus the whole properties list', async () => {
+    readNote.mockResolvedValue('# Books\n')
+
+    await commitNoteFrontmatter(
+      'tags/book.md',
+      { tagSchema: [{ name: 'Author', key: 'author', type: 'text' }] },
+      3,
+    )
+
+    expect(writeNote).toHaveBeenCalledWith(
+      'tags/book.md',
+      '---\nlore: tag\nproperties:\n  - name: Author\n    key: author\n    type: text\n---\n# Books\n',
+      3,
+    )
+  })
+
   it('leaves unrelated keys and comments untouched around a property write', async () => {
     readNote.mockResolvedValue('---\n# reading log\nstatus: to-read\nid: 01H\n---\n# A\n')
 

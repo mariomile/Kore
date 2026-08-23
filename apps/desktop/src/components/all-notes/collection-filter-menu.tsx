@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactElement } from 'react'
-import type { CollectionEntry, TagType } from '@reflect/core'
-import { Close, Filter } from '@/components/icons'
+import type { CollectionEntry, TagProperty, TagType } from '@reflect/core'
+import { Close, Filter, Plus } from '@/components/icons'
+import { Button } from '@/components/ui/button'
 import {
   Command,
   CommandEmpty,
@@ -9,13 +10,25 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command'
+import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import { readCellValue } from './collection-cell'
 
-/** One active collection filter: rows whose display text equals `text`. */
+/** How one collection filter compares a row's display value. */
+export type CollectionFilterOperator = 'is' | 'contains' | 'gt' | 'lt' | 'empty' | 'notEmpty'
+
+/** One active collection filter. `text` is '' for empty/notEmpty. */
 export interface CollectionFilter {
   key: string
+  operator: CollectionFilterOperator
   text: string
 }
 
@@ -29,7 +42,67 @@ interface CollectionFilterMenuProps {
 
 const MAX_VALUES_PER_PROPERTY = 12
 
-/** Apply the active filters (ANDed, display-text equality). */
+/** The operators a property type sensibly offers. */
+export function operatorsFor(property: TagProperty): CollectionFilterOperator[] {
+  switch (property.type) {
+    case 'number':
+    case 'date':
+      return ['is', 'gt', 'lt', 'empty', 'notEmpty']
+    case 'select':
+      return ['is', 'empty', 'notEmpty']
+    case 'checkbox':
+      return ['empty', 'notEmpty']
+    default:
+      return ['is', 'contains', 'empty', 'notEmpty']
+  }
+}
+
+const OPERATOR_LABELS: Record<CollectionFilterOperator, string> = {
+  is: 'is',
+  contains: 'contains',
+  gt: '>',
+  lt: '<',
+  empty: 'is empty',
+  notEmpty: 'is set',
+}
+
+/** Numbers compare numerically; ISO dates (and everything else) as text. */
+function compare(property: TagProperty, text: string, against: string): number {
+  if (property.type === 'number') {
+    const left = Number(text)
+    const right = Number(against)
+    if (Number.isFinite(left) && Number.isFinite(right)) {
+      return left - right
+    }
+  }
+  return text.localeCompare(against)
+}
+
+function matches(property: TagProperty, entry: CollectionEntry, filter: CollectionFilter): boolean {
+  const value = entry.properties[filter.key]
+  const text = readCellValue(property, value).text
+  switch (filter.operator) {
+    case 'is':
+      return text === filter.text
+    case 'contains':
+      return text.toLowerCase().includes(filter.text.toLowerCase())
+    case 'gt':
+      return text !== '' && compare(property, text, filter.text) > 0
+    case 'lt':
+      return text !== '' && compare(property, text, filter.text) < 0
+    case 'empty':
+      return value === undefined || (text === '' && property.type !== 'checkbox')
+    case 'notEmpty':
+      return value !== undefined && (text !== '' || property.type === 'checkbox')
+  }
+}
+
+/**
+ * Apply the active filters: equality picks on the same property OR together
+ * ("status is done, or reading"), every other condition must hold, and
+ * properties AND across each other — so `status: done|reading AND rating > 3`
+ * reads the way it looks.
+ */
 export function applyCollectionFilters(
   type: TagType,
   entries: readonly CollectionEntry[],
@@ -39,23 +112,43 @@ export function applyCollectionFilters(
     return [...entries]
   }
   const propertiesByKey = new Map(type.properties.map((property) => [property.key, property]))
+  const byKey = new Map<string, CollectionFilter[]>()
+  for (const filter of filters) {
+    byKey.set(filter.key, [...(byKey.get(filter.key) ?? []), filter])
+  }
   return entries.filter((entry) =>
-    filters.every((filter) => {
-      const property = propertiesByKey.get(filter.key)
+    [...byKey].every(([key, keyFilters]) => {
+      const property = propertiesByKey.get(key)
       if (property === undefined) {
         return true
       }
-      return readCellValue(property, entry.properties[filter.key]).text === filter.text
+      const equals = keyFilters.filter((filter) => filter.operator === 'is')
+      const others = keyFilters.filter((filter) => filter.operator !== 'is')
+      const anyEqual =
+        equals.length === 0 || equals.some((filter) => matches(property, entry, filter))
+      return anyEqual && others.every((filter) => matches(property, entry, filter))
     }),
   )
 }
 
+/** The chip's text for one filter. */
+function filterLabel(type: TagType, filter: CollectionFilter): string {
+  const name = type.properties.find((property) => property.key === filter.key)?.name ?? filter.key
+  if (filter.operator === 'empty' || filter.operator === 'notEmpty') {
+    return `${name} ${OPERATOR_LABELS[filter.operator]}`
+  }
+  if (filter.operator === 'is') {
+    return `${name}: ${filter.text}`
+  }
+  return `${name} ${OPERATOR_LABELS[filter.operator]} ${filter.text}`
+}
+
 /**
- * The Collection's property filter (TDR 0005): a combobox over the values
- * the rows actually hold, grouped by property (schema options are offered
- * even when no row holds them yet, so a select can be filtered "to empty").
- * Filters AND together; picking an active value clears it. Ephemeral by
- * design — a filter is a glance, the sort is the view's durable order.
+ * The Collection's property filter (TDR 0005): one-click equality picks over
+ * the values the rows actually hold, plus a condition builder for the rest
+ * (contains, greater/less than, empty, set). Equality picks on one property
+ * OR together, everything else ANDs. Ephemeral by design — a filter is a
+ * glance; a keeper belongs in a saved view.
  */
 export function CollectionFilterMenu({
   type,
@@ -64,13 +157,24 @@ export function CollectionFilterMenu({
   onChange,
 }: CollectionFilterMenuProps): ReactElement | null {
   const [open, setOpen] = useState(false)
+  const filterable = useMemo(
+    () => type.properties.filter((property) => property.type !== 'checkbox'),
+    [type],
+  )
+  const [builderKey, setBuilderKey] = useState<string | null>(null)
+  const [builderOperator, setBuilderOperator] = useState<CollectionFilterOperator>('contains')
+  const [builderText, setBuilderText] = useState('')
+  const builderProperty =
+    type.properties.find((property) => property.key === builderKey) ?? filterable[0] ?? null
+  const builderOperators = builderProperty === null ? [] : operatorsFor(builderProperty)
+  const effectiveOperator = builderOperators.includes(builderOperator)
+    ? builderOperator
+    : (builderOperators[0] ?? 'is')
+  const needsText = effectiveOperator !== 'empty' && effectiveOperator !== 'notEmpty'
 
   const valuesByProperty = useMemo(() => {
     const inventory = new Map<string, string[]>()
-    for (const property of type.properties) {
-      if (property.type === 'checkbox') {
-        continue // two states, low value as a filter chip for now
-      }
+    for (const property of filterable) {
       const values = new Set<string>(property.options ?? [])
       for (const entry of entries ?? []) {
         const text = readCellValue(property, entry.properties[property.key]).text
@@ -83,35 +187,58 @@ export function CollectionFilterMenu({
       }
     }
     return inventory
-  }, [type, entries])
+  }, [filterable, entries])
 
-  if (valuesByProperty.size === 0 && filters.length === 0) {
+  if (valuesByProperty.size === 0 && filterable.length === 0 && filters.length === 0) {
     return null
   }
 
-  const isActive = (key: string, text: string): boolean =>
-    filters.some((filter) => filter.key === key && filter.text === text)
-  const toggle = (key: string, text: string): void => {
+  const remove = (target: CollectionFilter): void => {
     onChange(
-      isActive(key, text)
-        ? filters.filter((filter) => !(filter.key === key && filter.text === text))
-        : [...filters, { key, text }],
+      filters.filter(
+        (filter) =>
+          !(
+            filter.key === target.key &&
+            filter.operator === target.operator &&
+            filter.text === target.text
+          ),
+      ),
     )
+  }
+  const isActive = (key: string, text: string): boolean =>
+    filters.some((filter) => filter.key === key && filter.operator === 'is' && filter.text === text)
+  const toggleEquality = (key: string, text: string): void => {
+    if (isActive(key, text)) {
+      remove({ key, operator: 'is', text })
+    } else {
+      onChange([...filters, { key, operator: 'is', text }])
+    }
+  }
+  const addCondition = (): void => {
+    if (builderProperty === null || (needsText && builderText.trim() === '')) {
+      return
+    }
+    onChange([
+      ...filters,
+      {
+        key: builderProperty.key,
+        operator: effectiveOperator,
+        text: needsText ? builderText.trim() : '',
+      },
+    ])
+    setBuilderText('')
   }
 
   return (
     <div className="flex items-center gap-1.5">
       {filters.map((filter) => (
         <button
-          key={`${filter.key}:${filter.text}`}
+          key={`${filter.key}:${filter.operator}:${filter.text}`}
           type="button"
-          onClick={() => toggle(filter.key, filter.text)}
+          onClick={() => remove(filter)}
           className="flex items-center gap-1 rounded-full bg-surface-hover px-2.5 py-1 text-xs text-text-secondary transition-colors hover:text-text"
         >
-          <span className="max-w-32 truncate">
-            {type.properties.find((property) => property.key === filter.key)?.name ?? filter.key}:{' '}
-            {filter.text}
-          </span>
+          <span className="max-w-40 truncate">{filterLabel(type, filter)}</span>
           <Close aria-hidden className="size-3 shrink-0" />
         </button>
       ))}
@@ -128,7 +255,92 @@ export function CollectionFilterMenu({
         >
           <Filter aria-hidden className="size-3.5" />
         </PopoverTrigger>
-        <PopoverContent align="end" sideOffset={6} className="w-60 p-0">
+        <PopoverContent align="end" sideOffset={6} className="w-72 p-0">
+          {builderProperty !== null ? (
+            <div className="flex flex-col gap-1.5 border-b border-border p-2">
+              <div className="flex gap-1.5">
+                <Select
+                  value={builderProperty.key}
+                  items={Object.fromEntries(
+                    filterable.map((property) => [property.key, property.name]),
+                  )}
+                  onValueChange={(value) => {
+                    if (typeof value === 'string') {
+                      setBuilderKey(value)
+                    }
+                  }}
+                >
+                  <SelectTrigger aria-label="Filter property" data-size="sm" className="flex-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {filterable.map((property) => (
+                      <SelectItem key={property.key} value={property.key}>
+                        {property.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select
+                  value={effectiveOperator}
+                  items={Object.fromEntries(
+                    builderOperators.map((operator) => [operator, OPERATOR_LABELS[operator]]),
+                  )}
+                  onValueChange={(value) => {
+                    if (typeof value === 'string') {
+                      setBuilderOperator(value as CollectionFilterOperator)
+                    }
+                  }}
+                >
+                  <SelectTrigger aria-label="Filter operator" data-size="sm" className="w-24">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {builderOperators.map((operator) => (
+                      <SelectItem key={operator} value={operator}>
+                        {OPERATOR_LABELS[operator]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex gap-1.5">
+                {needsText ? (
+                  <Input
+                    aria-label="Filter value"
+                    type={
+                      builderProperty.type === 'number'
+                        ? 'number'
+                        : builderProperty.type === 'date'
+                          ? 'date'
+                          : 'text'
+                    }
+                    value={builderText}
+                    placeholder="Value"
+                    className="h-7 flex-1 text-sm"
+                    onChange={(event) => setBuilderText(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault()
+                        addCondition()
+                      }
+                    }}
+                  />
+                ) : (
+                  <span className="flex-1" />
+                )}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  aria-label="Add filter"
+                  onClick={addCondition}
+                >
+                  <Plus aria-hidden className="size-3" /> Add
+                </Button>
+              </div>
+            </div>
+          ) : null}
           <Command label="Filter by property">
             <CommandInput placeholder="Filter values…" />
             <CommandList>
@@ -141,7 +353,7 @@ export function CollectionFilterMenu({
                       <CommandItem
                         key={text}
                         value={`${property?.name ?? key} ${text}`}
-                        onSelect={() => toggle(key, text)}
+                        onSelect={() => toggleEquality(key, text)}
                       >
                         <span className="min-w-0 flex-1 truncate">{text}</span>
                         {isActive(key, text) ? (

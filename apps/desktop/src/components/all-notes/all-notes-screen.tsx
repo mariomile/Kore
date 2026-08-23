@@ -1,7 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { foldTag, isDaily, listNotes, listNoteTags, type CollectionSort } from '@reflect/core'
-import { Download, LayoutGrid, LayoutTemplate, Layers, List } from '@/components/icons'
+import {
+  Check,
+  Download,
+  LayoutGrid,
+  LayoutTemplate,
+  Layers,
+  List,
+  Sliders,
+} from '@/components/icons'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { TagConfigDialog } from '@/components/tags/tag-config-dialog'
+import { cn } from '@/lib/utils'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { useCollection } from '@/hooks/use-collection'
 import { useTagType } from '@/hooks/use-tag-type'
@@ -44,6 +55,9 @@ interface AllNotesScreenProps {
   /** Active tag filter carried by the route (`null` = all non-daily notes). */
   tag: string | null
 }
+
+/** Stable empty widths map, so an untouched tag never re-keys the memo. */
+const EMPTY_WIDTHS: Record<string, number> = {}
 
 /**
  * The All Notes screen (a routed view, like settings): every non-daily note,
@@ -121,6 +135,54 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
     },
     [tagKey, updateSettingsWith],
   )
+  // Column layout (hidden keys, manual widths) is a persisted per-tag view
+  // preference like the sort; the table renders the visible subset.
+  const columnsSetting = tagKey === null ? undefined : settings.collectionColumns[tagKey]
+  const hiddenColumns = useMemo(() => new Set(columnsSetting?.hidden ?? []), [columnsSetting])
+  const columnWidths = columnsSetting?.widths ?? EMPTY_WIDTHS
+  const visibleTagType = useMemo(
+    () =>
+      collectionAvailable
+        ? { properties: tagType.properties.filter((entry) => !hiddenColumns.has(entry.key)) }
+        : null,
+    [collectionAvailable, tagType, hiddenColumns],
+  )
+  const setColumnWidth = useCallback(
+    (key: string, rem: number) => {
+      if (tagKey === null) {
+        return
+      }
+      updateSettingsWith((current) => {
+        const entry = current.collectionColumns[tagKey] ?? { hidden: [], widths: {} }
+        return {
+          collectionColumns: {
+            ...current.collectionColumns,
+            [tagKey]: { ...entry, widths: { ...entry.widths, [key]: rem } },
+          },
+        }
+      })
+    },
+    [tagKey, updateSettingsWith],
+  )
+  const toggleColumnHidden = useCallback(
+    (key: string) => {
+      if (tagKey === null) {
+        return
+      }
+      updateSettingsWith((current) => {
+        const entry = current.collectionColumns[tagKey] ?? { hidden: [], widths: {} }
+        const hidden = entry.hidden.includes(key)
+          ? entry.hidden.filter((hiddenKey) => hiddenKey !== key)
+          : [...entry.hidden, key]
+        return {
+          collectionColumns: { ...current.collectionColumns, [tagKey]: { ...entry, hidden } },
+        }
+      })
+    },
+    [tagKey, updateSettingsWith],
+  )
+  // The "+" in the table header opens the tag's schema dialog in place.
+  const [editingSchema, setEditingSchema] = useState(false)
   const { navigate } = useRouter()
   const navigateNoteLink = useNoteLinkNavigation()
   // The scroll container lives in state, not a ref, so scroll restoration
@@ -283,6 +345,41 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
                 filters={collectionFilters}
                 onChange={setCollectionFilters}
               />
+              {view === 'table' ? (
+                <Popover>
+                  <PopoverTrigger
+                    aria-label="Columns"
+                    title="Show or hide columns"
+                    className="flex size-6 items-center justify-center rounded-full text-text-muted transition-colors hover:text-text-secondary"
+                  >
+                    <Sliders aria-hidden className="size-3.5" />
+                  </PopoverTrigger>
+                  <PopoverContent align="end" sideOffset={4} className="w-56 p-1">
+                    {tagType.properties.map((property) => {
+                      const hidden = hiddenColumns.has(property.key)
+                      return (
+                        <button
+                          key={property.key}
+                          type="button"
+                          role="menuitemcheckbox"
+                          aria-checked={!hidden}
+                          onClick={() => toggleColumnHidden(property.key)}
+                          className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-surface-hover"
+                        >
+                          <Check
+                            aria-hidden
+                            className={cn(
+                              'size-3.5 shrink-0',
+                              hidden ? 'opacity-0' : 'opacity-100',
+                            )}
+                          />
+                          <span className="min-w-0 flex-1 truncate text-left">{property.name}</span>
+                        </button>
+                      )
+                    })}
+                  </PopoverContent>
+                </Popover>
+              ) : null}
               <button
                 type="button"
                 aria-label="Export collection as CSV"
@@ -390,14 +487,17 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
               property={boardGroupProperty}
               onOpen={openNote}
             />
-          ) : view === 'table' && collectionAvailable ? (
+          ) : view === 'table' && collectionAvailable && visibleTagType !== null ? (
             <CollectionTable
               entries={filteredCollection}
               tag={tag}
-              type={tagType}
+              type={visibleTagType}
               selection={selection}
               sort={collectionSort}
               onSortChange={setCollectionSort}
+              columnWidths={columnWidths}
+              onColumnWidthChange={setColumnWidth}
+              onEditSchema={() => setEditingSchema(true)}
               onOpen={openNote}
               registerScrollToIndex={registerScrollToIndex}
             />
@@ -419,6 +519,9 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
         paths={pendingPaths}
         onTrashed={selection.clear}
       />
+      {editingSchema && tag !== null ? (
+        <TagConfigDialog tag={tag} onClose={() => setEditingSchema(false)} />
+      ) : null}
     </div>
   )
 }

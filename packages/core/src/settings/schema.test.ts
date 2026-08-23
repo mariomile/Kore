@@ -64,6 +64,7 @@ describe('settingsSchema', () => {
       savedSearches: [],
       collectionSorts: {},
       collectionGroups: {},
+      collectionColumns: {},
     })
     expect(DEFAULT_SETTINGS.editorMarkdownSyntax).toBe('hide')
     expect(DEFAULT_SETTINGS.editorSpellCheck).toBe(true)
@@ -372,6 +373,7 @@ describe('settingsSchema', () => {
       savedSearches: [],
       collectionSorts: {},
       collectionGroups: {},
+      collectionColumns: {},
       futureKey: true,
     })
   })

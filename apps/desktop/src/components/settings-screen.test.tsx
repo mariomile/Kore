@@ -318,6 +318,7 @@ describe('SettingsScreen', () => {
           savedSearches: [],
           collectionSorts: {},
           collectionGroups: {},
+          collectionColumns: {},
         },
       ]),
     )
@@ -401,6 +402,7 @@ describe('SettingsScreen', () => {
           savedSearches: [],
           collectionSorts: {},
           collectionGroups: {},
+          collectionColumns: {},
         },
       ]),
     )
@@ -498,6 +500,7 @@ describe('SettingsScreen', () => {
           savedSearches: [],
           collectionSorts: {},
           collectionGroups: {},
+          collectionColumns: {},
         },
       ]),
     )
@@ -602,6 +605,7 @@ describe('SettingsScreen', () => {
           savedSearches: [],
           collectionSorts: {},
           collectionGroups: {},
+          collectionColumns: {},
         },
       ]),
     )
@@ -685,6 +689,7 @@ describe('SettingsScreen', () => {
           savedSearches: [],
           collectionSorts: {},
           collectionGroups: {},
+          collectionColumns: {},
         },
       ]),
     )
@@ -761,6 +766,7 @@ describe('SettingsScreen', () => {
           savedSearches: [],
           collectionSorts: {},
           collectionGroups: {},
+          collectionColumns: {},
         },
       ]),
     )
@@ -846,6 +852,7 @@ describe('SettingsScreen', () => {
           savedSearches: [],
           collectionSorts: {},
           collectionGroups: {},
+          collectionColumns: {},
         },
       ]),
     )
@@ -928,6 +935,7 @@ describe('SettingsScreen', () => {
           savedSearches: [],
           collectionSorts: {},
           collectionGroups: {},
+          collectionColumns: {},
         },
       ]),
     )
@@ -1016,6 +1024,7 @@ describe('SettingsScreen', () => {
           savedSearches: [],
           collectionSorts: {},
           collectionGroups: {},
+          collectionColumns: {},
         },
       ]),
     )
@@ -1110,6 +1119,7 @@ describe('SettingsScreen', () => {
           savedSearches: [],
           collectionSorts: {},
           collectionGroups: {},
+          collectionColumns: {},
         },
       ]),
     )
@@ -1186,6 +1196,7 @@ describe('SettingsScreen', () => {
           savedSearches: [],
           collectionSorts: {},
           collectionGroups: {},
+          collectionColumns: {},
         },
       ]),
     )
@@ -1291,6 +1302,7 @@ describe('SettingsScreen', () => {
           savedSearches: [],
           collectionSorts: {},
           collectionGroups: {},
+          collectionColumns: {},
         },
       ]),
     )
@@ -1365,6 +1377,7 @@ describe('SettingsScreen', () => {
           savedSearches: [],
           collectionSorts: {},
           collectionGroups: {},
+          collectionColumns: {},
         },
       ]),
     )
@@ -1461,6 +1474,7 @@ describe('SettingsScreen', () => {
           savedSearches: [],
           collectionSorts: {},
           collectionGroups: {},
+          collectionColumns: {},
         },
       ]),
     )
@@ -1547,6 +1561,7 @@ describe('SettingsScreen', () => {
           savedSearches: [],
           collectionSorts: {},
           collectionGroups: {},
+          collectionColumns: {},
         },
       ]),
     )
@@ -1627,6 +1642,7 @@ describe('SettingsScreen', () => {
           savedSearches: [],
           collectionSorts: {},
           collectionGroups: {},
+          collectionColumns: {},
         },
       ]),
     )
@@ -1786,6 +1802,7 @@ describe('SettingsScreen', () => {
           savedSearches: [],
           collectionSorts: {},
           collectionGroups: {},
+          collectionColumns: {},
           aiPrompts: [
             {
               id: expect.any(String),
@@ -1884,6 +1901,7 @@ describe('SettingsScreen', () => {
           savedSearches: [],
           collectionSorts: {},
           collectionGroups: {},
+          collectionColumns: {},
         },
       ]),
     )
@@ -1961,6 +1979,7 @@ describe('SettingsScreen', () => {
           savedSearches: [],
           collectionSorts: {},
           collectionGroups: {},
+          collectionColumns: {},
           aiPrompts: [
             { id: 'p1', label: 'Translate to German', body: '{{selectedText}}', mode: 'replace' },
           ],

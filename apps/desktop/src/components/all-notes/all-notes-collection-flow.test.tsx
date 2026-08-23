@@ -40,6 +40,7 @@ vi.mock('@/providers/settings-provider', () => ({
       allNotesFilterTags: [],
       collectionSorts: {},
       collectionGroups: settingsState.collectionGroups,
+      collectionColumns: {},
       allNotesView: settingsState.allNotesView,
       uiDensity: 'default',
     },

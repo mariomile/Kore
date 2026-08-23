@@ -6,6 +6,8 @@ import {
   listCollection,
   listNoteTagTypes,
   listTagTypes,
+  TITLE_SORT_KEY,
+  UPDATED_SORT_KEY,
 } from './collections'
 
 // A fake bridge resolves `db_query` so the tests exercise the real compiled
@@ -154,6 +156,28 @@ describe('listCollection', () => {
     expect(missingAt).toBeGreaterThan(-1)
     expect(numberAt).toBeGreaterThan(missingAt)
     expect(stringAt).toBeGreaterThan(numberAt)
+  })
+
+  it('sorts on the built-in Title and Updated sentinels without a join', async () => {
+    mockInvoke.mockResolvedValueOnce([]).mockResolvedValueOnce([])
+    await listCollection('book', { key: TITLE_SORT_KEY, direction: 'asc' })
+    const titleSql = String(mockInvoke.mock.calls[0]![1]['sql'])
+    expect(titleSql).toContain('"notes"."title" collate nocase asc')
+    expect(titleSql).not.toContain('sort_property')
+
+    mockInvoke.mockClear()
+    mockInvoke.mockResolvedValueOnce([]).mockResolvedValueOnce([])
+    await listCollection('book', { key: UPDATED_SORT_KEY, direction: 'desc' })
+    const updatedSql = String(mockInvoke.mock.calls[0]![1]['sql'])
+    expect(updatedSql).toContain('"notes"."mtime" desc')
+    expect(updatedSql).not.toContain('sort_property')
+  })
+
+  it('prefilters private rows in SQL when asked', async () => {
+    mockInvoke.mockResolvedValueOnce([]).mockResolvedValueOnce([])
+    await listCollection('book', null, { excludePrivate: true })
+    const sql = String(mockInvoke.mock.calls[0]![1]['sql'])
+    expect(sql).toContain('"notes"."is_private" =')
   })
 
   it('returns early on an empty collection without a property query', async () => {

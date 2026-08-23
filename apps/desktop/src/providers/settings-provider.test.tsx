@@ -191,6 +191,7 @@ describe('SettingsProvider', () => {
           savedSearches: [],
           collectionSorts: {},
           collectionGroups: {},
+          collectionColumns: {},
         },
       ]),
     )
@@ -294,6 +295,7 @@ describe('SettingsProvider', () => {
           savedSearches: [],
           collectionSorts: {},
           collectionGroups: {},
+          collectionColumns: {},
           futureKey: true,
         },
       ]),
@@ -382,6 +384,7 @@ describe('SettingsProvider', () => {
           savedSearches: [],
           collectionSorts: {},
           collectionGroups: {},
+          collectionColumns: {},
           futureKey: true,
         },
       ]),
@@ -464,6 +467,7 @@ describe('SettingsProvider', () => {
           savedSearches: [],
           collectionSorts: {},
           collectionGroups: {},
+          collectionColumns: {},
         },
       ]),
     )
@@ -672,6 +676,7 @@ describe('SettingsProvider', () => {
           savedSearches: [],
           collectionSorts: {},
           collectionGroups: {},
+          collectionColumns: {},
         },
       ]),
     )
@@ -757,6 +762,7 @@ describe('SettingsProvider', () => {
         savedSearches: [],
         collectionSorts: {},
         collectionGroups: {},
+        collectionColumns: {},
       },
     ])
   })

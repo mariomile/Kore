@@ -10,8 +10,12 @@ import type { TagProperty, TagType } from '@reflect/core'
 /** Shared non-column layout classes for the header and every row. */
 export const COLLECTION_GRID_CLASS = 'grid items-center gap-4 pl-12 pr-7'
 
-/** Column width per property type — narrow for glyph/numeric columns. */
-function columnWidth(property: TagProperty): string {
+/** Column width per property type — narrow for glyph/numeric columns. A
+ * manual width (rem, from a header resize) wins over the type default. */
+function columnWidth(property: TagProperty, manualRem: number | undefined): string {
+  if (manualRem !== undefined) {
+    return `${manualRem}rem`
+  }
   switch (property.type) {
     case 'checkbox':
       return '4rem'
@@ -25,7 +29,10 @@ function columnWidth(property: TagProperty): string {
 }
 
 /** The rem a column can never shrink below (the minmax lower bounds). */
-function columnMinRem(property: TagProperty): number {
+function columnMinRem(property: TagProperty, manualRem: number | undefined): number {
+  if (manualRem !== undefined) {
+    return manualRem
+  }
   return property.type === 'checkbox' || property.type === 'number' ? 4 : 6
 }
 
@@ -40,12 +47,20 @@ function columnMinRem(property: TagProperty): number {
  * instead of the grid crushing its columns past readability. The page body
  * never scrolls sideways — only the notes container does.
  */
-export function collectionGridStyle(type: TagType): CSSProperties {
-  const propertyColumns = type.properties.map(columnWidth).join(' ')
+export function collectionGridStyle(
+  type: TagType,
+  widths: Record<string, number> = {},
+): CSSProperties {
+  const propertyColumns = type.properties
+    .map((property) => columnWidth(property, widths[property.key]))
+    .join(' ')
   const columns = type.properties.length + 2
   const minRem =
     8 + // subject floor
-    type.properties.reduce((total, property) => total + columnMinRem(property), 0) +
+    type.properties.reduce(
+      (total, property) => total + columnMinRem(property, widths[property.key]),
+      0,
+    ) +
     6 + // updated
     (columns - 1) * 1 + // gap-4
     3 + // pl-12

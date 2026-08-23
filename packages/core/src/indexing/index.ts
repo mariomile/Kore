@@ -181,6 +181,8 @@ export {
   getTagType,
   listTagTypes,
   listCollection,
+  TITLE_SORT_KEY,
+  UPDATED_SORT_KEY,
   listNoteTagTypes,
   getNoteProperties,
   listNotesWithProperty,

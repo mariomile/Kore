@@ -640,6 +640,48 @@ export const collectionSortsSchema = z
     return sorts
   })
 
+/** One Collection table's column layout: hidden property keys and manual
+ * column widths (rem). Both empty by default — the schema's order and the
+ * type-derived widths rule until the user touches a column. */
+export interface CollectionColumnsSetting {
+  hidden: string[]
+  widths: Record<string, number>
+}
+
+export type CollectionColumns = Record<string, CollectionColumnsSetting>
+
+const collectionColumnsEntrySchema = z.object({
+  hidden: z.array(z.string()).catch([]),
+  widths: z
+    .record(z.string(), z.unknown())
+    .catch({})
+    .transform((entries) => {
+      const widths: Record<string, number> = {}
+      for (const [key, value] of Object.entries(entries)) {
+        if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+          widths[key] = value
+        }
+      }
+      return widths
+    }),
+})
+
+/** Per-tag Collection column layout, same per-entry resilience as
+ * {@link collectionSortsSchema}. */
+export const collectionColumnsSchema = z
+  .record(z.string(), z.unknown())
+  .catch({})
+  .transform((entries) => {
+    const columns: CollectionColumns = {}
+    for (const [tagKey, value] of Object.entries(entries)) {
+      const parsed = collectionColumnsEntrySchema.safeParse(value)
+      if (parsed.success) {
+        columns[tagKey] = parsed.data
+      }
+    }
+    return columns
+  })
+
 /** The board's grouping property per typed tag (folded tag key → property
  * key). Absent = the schema's first `select`. Same per-entry resilience as
  * {@link collectionSortsSchema}; a key the schema no longer declares (or that
@@ -1012,6 +1054,7 @@ export const settingsSchema = z.looseObject({
   savedSearches: savedSearchesSchema,
   collectionSorts: collectionSortsSchema,
   collectionGroups: collectionGroupsSchema,
+  collectionColumns: collectionColumnsSchema,
   taskFilters: taskFiltersSchema,
   taskReminders: taskRemindersSchema,
   quickCaptureEnabled: quickCaptureEnabledSchema,

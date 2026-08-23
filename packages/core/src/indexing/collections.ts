@@ -39,11 +39,19 @@ export interface CollectionEntry {
   properties: Record<string, CollectionValue>
 }
 
-/** Sort a collection on one property key. */
+/** Sort a collection on one property key (or a built-in sentinel). */
 export interface CollectionSort {
   key: string
   direction: 'asc' | 'desc'
 }
+
+/**
+ * Sort sentinels for the built-in columns. Property keys can never start
+ * with `$` ({@link isPropertyKey}'s grammar), so these never collide with a
+ * schema key.
+ */
+export const TITLE_SORT_KEY = '$title'
+export const UPDATED_SORT_KEY = '$updated'
 
 const propertyValueTypes: ReadonlySet<string> = new Set(['string', 'number', 'boolean', 'list'])
 
@@ -214,27 +222,34 @@ export async function listCollection(
   if (options.excludePrivate === true) {
     baseQuery = baseQuery.where('notes.isPrivate', '=', 0)
   }
-  // The two branches build differently-typed queries (the sort branch joins
-  // an extra table), so each executes where it is built.
+  // The branches build differently-typed queries (the property-sort branch
+  // joins an extra table), so each executes where it is built.
   const rows =
     sort === null
       ? await recallOrder(true)
           .reduce((query, order) => query.orderBy(order), baseQuery)
           .execute()
-      : await baseQuery
-          .leftJoin('noteProperties as sortProperty', (join) =>
-            join
-              .onRef('sortProperty.notePath', '=', 'notes.path')
-              .on('sortProperty.key', '=', sort.key),
-          )
-          // Missing values last regardless of direction, then the numeric key
-          // (set only for numbers), then the string form. One ordering serves
-          // every value type without consulting the schema.
-          .orderBy(sql`"sort_property"."value" is null`)
-          .orderBy('sortProperty.valueNumber', sort.direction)
-          .orderBy(sql`"sort_property"."value" collate nocase ${sql.raw(sort.direction)}`)
-          .orderBy('notes.mtime', 'desc')
-          .execute()
+      : sort.key === TITLE_SORT_KEY
+        ? await baseQuery
+            .orderBy(sql`"notes"."title" collate nocase ${sql.raw(sort.direction)}`)
+            .orderBy('notes.mtime', 'desc')
+            .execute()
+        : sort.key === UPDATED_SORT_KEY
+          ? await baseQuery.orderBy('notes.mtime', sort.direction).orderBy('notes.path').execute()
+          : await baseQuery
+              .leftJoin('noteProperties as sortProperty', (join) =>
+                join
+                  .onRef('sortProperty.notePath', '=', 'notes.path')
+                  .on('sortProperty.key', '=', sort.key),
+              )
+              // Missing values last regardless of direction, then the numeric key
+              // (set only for numbers), then the string form. One ordering serves
+              // every value type without consulting the schema.
+              .orderBy(sql`"sort_property"."value" is null`)
+              .orderBy('sortProperty.valueNumber', sort.direction)
+              .orderBy(sql`"sort_property"."value" collate nocase ${sql.raw(sort.direction)}`)
+              .orderBy('notes.mtime', 'desc')
+              .execute()
   if (rows.length === 0) {
     return []
   }

@@ -3,7 +3,7 @@ import { userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 import type { CollectionEntry, TagType } from '@reflect/core'
 import type { ListSelection } from '@/lib/selection/use-list-selection'
-import { CollectionTable } from './collection-table'
+import { columnAggregate, CollectionTable } from './collection-table'
 
 vi.mock('@/providers/settings-provider', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/providers/settings-provider')>()),
@@ -86,6 +86,9 @@ describe('CollectionTable', () => {
         type={BOOK_TYPE}
         selection={selection()}
         sort={null}
+        columnWidths={{}}
+        onColumnWidthChange={() => {}}
+        onEditSchema={() => {}}
         onSortChange={() => {}}
         onOpen={() => {}}
         registerScrollToIndex={() => {}}
@@ -94,7 +97,7 @@ describe('CollectionTable', () => {
 
     await expect.element(view.getByRole('button', { name: 'Sort by Author' })).toBeInTheDocument()
     await expect.element(view.getByText('Le Guin')).toBeInTheDocument()
-    await expect.element(view.getByText('4.5')).toBeInTheDocument()
+    await expect.element(view.getByText('4.5', { exact: true })).toBeInTheDocument()
     await expect.element(view.getByLabelText('Checked', { exact: true })).toBeInTheDocument()
     // Dune's missing author renders an empty cell, its unread box unchecked.
     await expect.element(view.getByLabelText('Unchecked', { exact: true })).toBeInTheDocument()
@@ -108,6 +111,9 @@ describe('CollectionTable', () => {
         type={BOOK_TYPE}
         selection={selection()}
         sort={null}
+        columnWidths={{}}
+        onColumnWidthChange={() => {}}
+        onEditSchema={() => {}}
         onSortChange={() => {}}
         onOpen={() => {}}
         registerScrollToIndex={() => {}}
@@ -130,6 +136,9 @@ describe('CollectionTable', () => {
         type={BOOK_TYPE}
         selection={selection()}
         sort={null}
+        columnWidths={{}}
+        onColumnWidthChange={() => {}}
+        onEditSchema={() => {}}
         onSortChange={onSortChange}
         onOpen={() => {}}
         registerScrollToIndex={() => {}}
@@ -146,6 +155,9 @@ describe('CollectionTable', () => {
         type={BOOK_TYPE}
         selection={selection()}
         sort={{ key: 'rating', direction: 'asc' }}
+        columnWidths={{}}
+        onColumnWidthChange={() => {}}
+        onEditSchema={() => {}}
         onSortChange={onSortChange}
         onOpen={() => {}}
         registerScrollToIndex={() => {}}
@@ -162,6 +174,9 @@ describe('CollectionTable', () => {
         type={BOOK_TYPE}
         selection={selection()}
         sort={{ key: 'rating', direction: 'desc' }}
+        columnWidths={{}}
+        onColumnWidthChange={() => {}}
+        onEditSchema={() => {}}
         onSortChange={onSortChange}
         onOpen={() => {}}
         registerScrollToIndex={() => {}}
@@ -180,6 +195,9 @@ describe('CollectionTable', () => {
         type={BOOK_TYPE}
         selection={selection()}
         sort={null}
+        columnWidths={{}}
+        onColumnWidthChange={() => {}}
+        onEditSchema={() => {}}
         onSortChange={() => {}}
         onOpen={onOpen}
         registerScrollToIndex={() => {}}
@@ -198,5 +216,83 @@ describe('CollectionTable', () => {
     await view.getByRole('textbox', { name: 'Author' }).fill('U. K. Le Guin')
     await userEvent.keyboard('{Enter}')
     expect(commitProperty).toHaveBeenCalledWith('notes/dispossessed.md', 'author', 'U. K. Le Guin')
+  })
+})
+
+describe('columnAggregate', () => {
+  it('sums number columns and counts filled cells elsewhere', () => {
+    const [author, rating] = BOOK_TYPE.properties
+    expect(columnAggregate(rating!, ENTRIES)).toBe('Σ 4.5')
+    expect(columnAggregate(author!, ENTRIES)).toBe('1 filled')
+    expect(columnAggregate(author!, [])).toBe('')
+  })
+})
+
+describe('CollectionTable — built-in sorts, footer, add property', () => {
+  it('sorts by Title and Updated through the sentinel keys', async () => {
+    const onSortChange = vi.fn()
+    const view = await render(
+      <CollectionTable
+        entries={ENTRIES}
+        tag="book"
+        type={BOOK_TYPE}
+        selection={selection()}
+        sort={null}
+        columnWidths={{}}
+        onColumnWidthChange={() => {}}
+        onEditSchema={() => {}}
+        onSortChange={onSortChange}
+        onOpen={() => {}}
+        registerScrollToIndex={() => {}}
+      />,
+    )
+    await view.getByRole('button', { name: 'Sort by Title' }).click()
+    expect(onSortChange).toHaveBeenLastCalledWith({ key: '$title', direction: 'asc' })
+    await view.getByRole('button', { name: 'Sort by Updated' }).click()
+    expect(onSortChange).toHaveBeenLastCalledWith({ key: '$updated', direction: 'asc' })
+  })
+
+  it('renders the aggregate footer and the add-property entry point', async () => {
+    const onEditSchema = vi.fn()
+    const view = await render(
+      <CollectionTable
+        entries={ENTRIES}
+        tag="book"
+        type={BOOK_TYPE}
+        selection={selection()}
+        sort={null}
+        columnWidths={{}}
+        onColumnWidthChange={() => {}}
+        onEditSchema={onEditSchema}
+        onSortChange={() => {}}
+        onOpen={() => {}}
+        registerScrollToIndex={() => {}}
+      />,
+    )
+    await expect.element(view.getByText('2 notes')).toBeInTheDocument()
+    await expect.element(view.getByText('Σ 4.5', { exact: true })).toBeInTheDocument()
+    await view.getByRole('button', { name: 'Add property' }).click()
+    expect(onEditSchema).toHaveBeenCalled()
+  })
+
+  it('applies a manual column width to the grid template', async () => {
+    const view = await render(
+      <CollectionTable
+        entries={ENTRIES}
+        tag="book"
+        type={BOOK_TYPE}
+        selection={selection()}
+        sort={null}
+        columnWidths={{ author: 20 }}
+        onColumnWidthChange={() => {}}
+        onEditSchema={() => {}}
+        onSortChange={() => {}}
+        onOpen={() => {}}
+        registerScrollToIndex={() => {}}
+      />,
+    )
+    const header = view.getByRole('button', { name: 'Sort by Title' }).element()
+      .parentElement as HTMLElement
+    expect(header.style.gridTemplateColumns).toContain('20rem')
   })
 })

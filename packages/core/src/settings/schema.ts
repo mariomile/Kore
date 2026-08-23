@@ -72,9 +72,14 @@ export const editorSmoothCaretAnimationSchema = z.boolean().catch(true)
  * body via a CSS variable on the document root (`--editor-font-size`, applied
  * by `EditorTextSizeEffect`) and never touches the stored markdown.
  */
-export const editorTextSizeSchema = z.enum(['small', 'medium', 'large']).catch('small')
+const editorTextSizeEnum = z.enum(['small', 'medium', 'large'])
+
+export const editorTextSizeSchema = editorTextSizeEnum.catch('small')
 
 export type EditorTextSize = z.infer<typeof editorTextSizeSchema>
+
+/** The editor text sizes in picker order, smallest first. */
+export const EDITOR_TEXT_SIZE_IDS = editorTextSizeEnum.options
 
 /**
  * Whether note content stretches across the available desktop pane instead
@@ -336,6 +341,36 @@ export type UiDensity = z.infer<typeof uiDensitySchema>
 
 /** The densities in picker order, tightest first. */
 export const UI_DENSITY_IDS = uiDensityEnum.options
+
+/**
+ * The interface (chrome) text size. Display-only — mapped to a root
+ * font-size scale through a `data-ui-text-size` scope on the document root
+ * (see `styles/index.css`), so every rem-based size in the app moves
+ * together. `default` keeps the browser's 16px root.
+ */
+const uiTextSizeEnum = z.enum(['small', 'default', 'large'])
+
+export const uiTextSizeSchema = uiTextSizeEnum.catch('default')
+
+export type UiTextSize = z.infer<typeof uiTextSizeSchema>
+
+/** The interface text sizes in picker order, smallest first. */
+export const UI_TEXT_SIZE_IDS = uiTextSizeEnum.options
+
+/**
+ * The AI chat's reading text size. Same contract as the editor's
+ * `editorTextSize`: display-only, mapped to the `--chat-font-size` variable
+ * through a `data-chat-text-size` scope on the document root, applied by
+ * `ChatTextSizeEffect`. `medium` is the chat's stock 14px chrome size.
+ */
+const chatTextSizeEnum = z.enum(['small', 'medium', 'large'])
+
+export const chatTextSizeSchema = chatTextSizeEnum.catch('medium')
+
+export type ChatTextSize = z.infer<typeof chatTextSizeSchema>
+
+/** The chat text sizes in picker order, smallest first. */
+export const CHAT_TEXT_SIZE_IDS = chatTextSizeEnum.options
 
 /**
  * Each density's list-row height, in pixels. The CSS side owns the same value
@@ -911,6 +946,8 @@ export const settingsSchema = z.looseObject({
   glassIntensity: glassIntensitySchema,
   uiRadius: uiRadiusSchema,
   uiDensity: uiDensitySchema,
+  uiTextSize: uiTextSizeSchema,
+  chatTextSize: chatTextSizeSchema,
   timeFormat: timeFormatSchema,
   dateFormat: dateFormatSchema,
   weekStartDay: weekStartDaySchema,

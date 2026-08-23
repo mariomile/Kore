@@ -1,5 +1,6 @@
 import type { ReactElement, ReactNode } from 'react'
 import { NotePane } from '@/components/note-pane'
+import { NoteOutlineRail } from '@/components/notes/note-outline-rail'
 import { ScrollRestored } from '@/routing/scroll-restore'
 
 interface SingleNoteViewProps {
@@ -29,19 +30,24 @@ interface SingleNoteViewProps {
  */
 export function SingleNoteView({ path, dailyDate, heading }: SingleNoteViewProps): ReactElement {
   return (
-    <ScrollRestored className="h-full overflow-auto px-0">
-      <div className="mx-auto flex min-h-full w-full max-w-full flex-col py-8">
-        {heading}
-        <NotePane
-          path={path}
-          {...(dailyDate !== undefined ? { dailyDate } : {})}
-          lazy
-          autoFocus
-          className="flex grow flex-col"
-          gutterClassName="reflect-content-gutter"
-          editorClassName="grow"
-        />
-      </div>
-    </ScrollRestored>
+    // The relative wrapper pins the floating outline rail to the viewport
+    // edge of the pane while the note itself scrolls beneath it.
+    <div className="relative h-full">
+      <ScrollRestored className="h-full overflow-auto px-0">
+        <div className="mx-auto flex min-h-full w-full max-w-full flex-col py-8">
+          {heading}
+          <NotePane
+            path={path}
+            {...(dailyDate !== undefined ? { dailyDate } : {})}
+            lazy
+            autoFocus
+            className="flex grow flex-col"
+            gutterClassName="reflect-content-gutter"
+            editorClassName="grow"
+          />
+        </div>
+      </ScrollRestored>
+      <NoteOutlineRail />
+    </div>
   )
 }

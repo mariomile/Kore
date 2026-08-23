@@ -40,8 +40,9 @@ export function NoteTabsStrip({ atWindowEdge = false }: NoteTabsStripProps): Rea
       className={cn(
         'flex h-11 w-full flex-none items-center gap-1 bg-surface-app pr-2.5',
         // With the overlaid macOS title bar the traffic lights own the left
-        // edge — but only when the bar actually reaches it.
-        hasMacosTitleBarOverlay && atWindowEdge ? 'pl-20' : 'pl-2',
+        // edge — but only when the bar actually reaches it. 4.5rem clears
+        // the lights while keeping the toggles as far left as they can sit.
+        hasMacosTitleBarOverlay && atWindowEdge ? 'pl-[4.5rem]' : 'pl-1.5',
       )}
     >
       <div className="window-drag-control flex items-center">

@@ -78,7 +78,7 @@ export function GraphFooter({ graph, context }: GraphFooterProps): ReactElement 
   const settingsActive = route.kind === 'settings'
 
   return (
-    <div className="flex items-center gap-1 px-4 py-3">
+    <div className="flex items-center gap-1 px-2 py-3">
       <DropdownMenu>
         <Tooltip>
           <TooltipTrigger

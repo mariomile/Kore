@@ -71,7 +71,10 @@ export function AllNotesGrid({ notes, tag, onOpen }: AllNotesGridProps): ReactEl
           onClick={(event) => {
             onOpen(note.path, event)
           }}
-          className="group mb-4 block w-full break-inside-avoid rounded-[10px] border border-border bg-surface p-4 text-left shadow-sm transition-[box-shadow,transform] duration-150 ease-swift hover:-translate-y-0.5 hover:shadow-md focus-visible:ring-2 focus-visible:ring-focus-ring"
+          // No shadow or hover lift: box shadows and transforms fragment
+          // across CSS columns in WebKit, painting stray slivers at column
+          // tops — a border tint carries the hover affordance instead.
+          className="group mb-4 block w-full break-inside-avoid rounded-[10px] border border-border bg-surface p-4 text-left transition-colors duration-150 ease-swift hover:border-border-strong hover:bg-surface-hover focus-visible:ring-2 focus-visible:ring-focus-ring"
         >
           <div className="flex items-start justify-between gap-2">
             <h2 className="min-w-0 text-[13px] font-semibold leading-snug text-text">

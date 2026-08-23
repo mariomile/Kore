@@ -20,7 +20,7 @@ export function SidebarOpenNotes(): ReactElement | null {
   }
 
   return (
-    <div className="mt-6 px-4">
+    <div className="mt-6 px-2">
       <h2 className="pt-4 text-2xs font-medium leading-5 tracking-wide text-text-muted">Open</h2>
       <ul className="mt-1 space-y-0.5">
         {notes.map((note) => (

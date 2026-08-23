@@ -24,7 +24,7 @@ interface ConnectGithubDialogProps {
 
 const STEP_DESCRIPTIONS: Record<ConnectWizardStep, string> = {
   repo: 'Back up this graph to a private GitHub repository.',
-  auth: 'Sign in so Reflect can push your backups.',
+  auth: 'Sign in so Memento can push your backups.',
   finish: 'Connecting your repository…',
 }
 

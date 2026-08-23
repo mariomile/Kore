@@ -439,7 +439,11 @@ export type AllNotesFilterTags = z.infer<typeof allNotesFilterTagsSchema>
  * swipeable row list (mobile), or a masonry card grid. One view preference
  * shared across surfaces.
  */
-export const allNotesViewSchema = z.enum(['list', 'grid']).catch('list')
+/**
+ * All Notes layout. `table` is the Collection view (TDR 0005) — offered only
+ * while the routed tag has a type; screens without one render `list`.
+ */
+export const allNotesViewSchema = z.enum(['list', 'grid', 'table']).catch('list')
 
 export type AllNotesView = z.infer<typeof allNotesViewSchema>
 

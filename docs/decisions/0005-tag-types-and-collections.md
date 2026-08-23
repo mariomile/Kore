@@ -96,8 +96,10 @@ target-or-alias match on relations).
 
 The Collection table is an All Notes view mode (`list · grid · table ·
 board`), offered when the routed tag has a type; `board` additionally needs
-a `select` property in the schema and groups the rows into lanes by it (a
-card's status changes through the same select editor — no dragging in V1).
+a `select` property in the schema and groups the rows into lanes by it — a
+kanban: cards move by native drag between lanes (optimistic move, the write
+lands through the shared property commit), with the same select editor as
+the keyboard path.
 The route stays `{ kind: 'allNotes', tag }`; columns derive from
 `schema_json`; cell edits write through the frontmatter patch channel (live
 session first, disk fallback). No table library — the existing CSS-grid +

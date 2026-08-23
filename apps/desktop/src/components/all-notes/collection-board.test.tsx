@@ -38,6 +38,21 @@ beforeEach(() => {
   commitProperty.mockClear()
 })
 
+/** Native HTML5 drag as the browser fires it: dragstart on the card, then
+ * dragover + drop on the lane. Ticks between steps let React commit the
+ * drag state each handler reads. */
+async function dragTo(card: Element, lane: Element): Promise<void> {
+  const dataTransfer = new DataTransfer()
+  const tick = async (): Promise<void> => await new Promise((resolve) => setTimeout(resolve, 0))
+  card.dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer }))
+  await tick()
+  lane.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer }))
+  await tick()
+  lane.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer }))
+  card.dispatchEvent(new DragEvent('dragend', { bubbles: true, dataTransfer }))
+  await tick()
+}
+
 describe('boardProperty', () => {
   it('picks the first select property, or null without one', () => {
     expect(boardProperty(BOOK_TYPE)?.key).toBe('status')
@@ -73,6 +88,45 @@ describe('CollectionBoard', () => {
     await expect.element(view.getByRole('region', { name: 'No Status' })).toBeInTheDocument()
     await view.getByRole('button', { name: 'Dune' }).click()
     expect(onOpen).toHaveBeenCalledWith('notes/dune.md', expect.anything())
+  })
+
+  it('drags a card into another lane: one commit, and the card moves at once', async () => {
+    const view = await render(
+      <CollectionBoard entries={ENTRIES} property={boardProperty(BOOK_TYPE)!} onOpen={() => {}} />,
+    )
+    const card = view.getByRole('button', { name: 'Dune' }).element().closest('article')!
+    const lane = view.getByRole('region', { name: 'done', exact: true }).element()
+
+    await dragTo(card, lane)
+
+    expect(commitProperty).toHaveBeenCalledWith('notes/dune.md', 'status', 'done')
+    // The optimistic overlay moved the card before any index refresh.
+    const done = view.getByRole('region', { name: 'done', exact: true })
+    await expect.element(done.getByRole('button', { name: 'Dune' })).toBeInTheDocument()
+  })
+
+  it('dropping on the unset lane clears the property', async () => {
+    const view = await render(
+      <CollectionBoard entries={ENTRIES} property={boardProperty(BOOK_TYPE)!} onOpen={() => {}} />,
+    )
+    const card = view.getByRole('button', { name: 'Dune' }).element().closest('article')!
+    const lane = view.getByRole('region', { name: 'No Status' }).element()
+
+    await dragTo(card, lane)
+
+    expect(commitProperty).toHaveBeenCalledWith('notes/dune.md', 'status', undefined)
+  })
+
+  it('a drop into the card’s own lane writes nothing', async () => {
+    const view = await render(
+      <CollectionBoard entries={ENTRIES} property={boardProperty(BOOK_TYPE)!} onOpen={() => {}} />,
+    )
+    const card = view.getByRole('button', { name: 'Dune' }).element().closest('article')!
+    const lane = view.getByRole('region', { name: 'to-read', exact: true }).element()
+
+    await dragTo(card, lane)
+
+    expect(commitProperty).not.toHaveBeenCalled()
   })
 
   it('changes a card status through the select editor', async () => {

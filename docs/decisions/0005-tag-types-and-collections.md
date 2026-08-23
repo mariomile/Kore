@@ -52,9 +52,17 @@ marker outside `tags/` defines nothing. Definition notes are indexed as
 excluded from note-listing surfaces exactly like templates.
 
 Property types (V1): `text · number · checkbox · date · select · multiselect
-· url`. Property `key`s are flat frontmatter keys shared across tags,
-Obsidian-style — two tags declaring `author` read the same value. That is a
-feature (one fact, one key), not a collision to namespace away.
+· url · relation`. Property `key`s are flat frontmatter keys shared across
+tags, Obsidian-style — two tags declaring `author` read the same value. That
+is a feature (one fact, one key), not a collision to namespace away.
+
+A `relation` references another note the way everything in the graph does:
+its value is a wiki link (`series: "[[Hainish Cycle]]"`), picked through the
+same verified `[[` autocomplete the editor uses, so the reference reads
+identically inside and outside the app. V1 scope: frontmatter relation links
+are display/reference only — they are not projected into `links`, so they do
+not yet appear as backlinks on the target (extraction is body-based; a
+follow-up can widen it).
 
 ## Decision 2 — Values live in each note's frontmatter; the index carries a generic projection
 

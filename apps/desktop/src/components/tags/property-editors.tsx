@@ -1,5 +1,11 @@
 import { useRef, useState, type KeyboardEvent, type ReactElement, type ReactNode } from 'react'
-import type { CollectionValue, TagProperty } from '@reflect/core'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import {
+  relationValue,
+  suggestWikiLinkTargets,
+  type CollectionValue,
+  type TagProperty,
+} from '@reflect/core'
 import { Check } from '@/components/icons'
 import {
   Command,
@@ -11,7 +17,10 @@ import {
 } from '@/components/ui/command'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { useBridgeReady } from '@/hooks/use-bridge-ready'
+import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { cn } from '@/lib/utils'
+import { useGraph } from '@/providers/graph-provider'
 
 /**
  * The shared per-type property editors (TDR 0005), used by Collection cells
@@ -244,6 +253,99 @@ function SelectPropertyEditor({
   )
 }
 
+/**
+ * A relation property points at another note. The editor is a note picker
+ * over the same verified `[[` autocomplete the editor uses
+ * (`suggestWikiLinkTargets` — every offered target is proven to resolve),
+ * and the committed value is the wiki link `[[insertText]]`, so the
+ * reference reads the same inside and outside the app.
+ */
+function RelationPropertyEditor({
+  property,
+  value,
+  onCommit,
+  children,
+  align,
+}: PropertyEditorProps): ReactElement {
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const { graph } = useGraph()
+  const bridgeReady = useBridgeReady()
+
+  const { data } = useQuery({
+    queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'relation-targets', query],
+    queryFn: () => suggestWikiLinkTargets(query, 6),
+    enabled: open && bridgeReady && graph !== null,
+    placeholderData: keepPreviousData,
+  })
+  const suggestions = data?.suggestions ?? []
+
+  const choose = (insertText: string): void => {
+    onCommit(relationValue(insertText))
+    setOpen(false)
+  }
+  const clear = (): void => {
+    onCommit(undefined)
+    setOpen(false)
+  }
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next)
+        if (!next) {
+          setQuery('')
+        }
+      }}
+    >
+      <PopoverTrigger
+        aria-label={`Edit ${property.name}`}
+        className="flex min-h-5 w-full min-w-0 items-center self-stretch text-left focus-visible:outline-none"
+        onClick={(event) => event.stopPropagation()}
+        onDoubleClick={(event) => event.stopPropagation()}
+      >
+        {children}
+      </PopoverTrigger>
+      <PopoverContent align={align ?? 'start'} sideOffset={4} className="w-64 p-0">
+        {/* The DB already filtered; cmdk must not second-guess the ranking. */}
+        <Command label={`Link ${property.name}`} shouldFilter={false}>
+          <CommandInput
+            value={query}
+            onValueChange={setQuery}
+            placeholder="Link to a note…"
+            autoFocus
+          />
+          <CommandList>
+            <CommandEmpty>
+              {query === '' ? 'Type to find a note.' : 'No matching notes.'}
+            </CommandEmpty>
+            <CommandGroup>
+              {suggestions.map((suggestion) => (
+                <CommandItem
+                  key={`${suggestion.target}:${suggestion.alias ?? ''}`}
+                  value={suggestion.insertText}
+                  onSelect={() => choose(suggestion.insertText)}
+                >
+                  <span className="min-w-0 flex-1 truncate">{suggestion.title}</span>
+                  {suggestion.alias !== null ? (
+                    <span className="shrink-0 text-xs text-text-muted">{suggestion.alias}</span>
+                  ) : null}
+                </CommandItem>
+              ))}
+              {value !== undefined ? (
+                <CommandItem value="__clear" onSelect={clear}>
+                  <span className="text-text-muted">Clear</span>
+                </CommandItem>
+              ) : null}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
 /** A checkbox property edits in place — the display is the control. */
 function CheckboxPropertyEditor({
   property,
@@ -278,6 +380,8 @@ export function PropertyValueEditor(props: PropertyEditorProps): ReactElement {
     case 'select':
     case 'multiselect':
       return <SelectPropertyEditor {...props} />
+    case 'relation':
+      return <RelationPropertyEditor {...props} />
     default:
       return <InputPropertyEditor {...props} />
   }

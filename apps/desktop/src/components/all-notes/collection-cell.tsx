@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import type { CollectionValue, TagProperty } from '@reflect/core'
+import { relationDisplay, type CollectionValue, type TagProperty } from '@reflect/core'
 import { Check } from '@/components/icons'
 import { cn } from '@/lib/utils'
 
@@ -35,6 +35,14 @@ export function readCellValue(
       return value.valueType === 'number'
         ? { text: raw, checked: false, mismatch: false }
         : { text: raw, checked: false, mismatch: true }
+    case 'relation': {
+      if (value.valueType !== 'string') {
+        return { text: raw, checked: false, mismatch: true }
+      }
+      // `[[Target]]` displays as its title (alias when the link carries
+      // one); a bare string still reads as a human reference, not an error.
+      return { text: relationDisplay(raw) ?? raw, checked: false, mismatch: false }
+    }
     case 'multiselect': {
       if (value.valueType === 'list') {
         try {

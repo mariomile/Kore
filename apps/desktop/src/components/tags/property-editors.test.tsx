@@ -1,8 +1,24 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
-import type { CollectionValue, TagProperty } from '@reflect/core'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import type { CollectionValue, TagProperty, WikiLinkSuggestion } from '@reflect/core'
 import { PropertyValueEditor } from './property-editors'
+
+const relationSuggestions = vi.hoisted(() => ({ current: [] as WikiLinkSuggestion[] }))
+
+vi.mock('@reflect/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@reflect/core')>()),
+  suggestWikiLinkTargets: async () => ({
+    suggestions: relationSuggestions.current,
+    claimedTargetKeys: [],
+    queryReadsAsDate: false,
+  }),
+}))
+vi.mock('@/providers/graph-provider', () => ({
+  useGraph: () => ({ graph: { root: '/g', generation: 1 } }),
+}))
+vi.mock('@/hooks/use-bridge-ready', () => ({ useBridgeReady: () => true }))
 
 const onCommit = vi.fn()
 
@@ -16,9 +32,11 @@ function stored(value: string, valueType: CollectionValue['valueType']): Collect
 
 function editor(property: TagProperty, value?: CollectionValue) {
   return (
-    <PropertyValueEditor property={property} value={value} onCommit={onCommit}>
-      <span>{value?.value ?? 'Empty'}</span>
-    </PropertyValueEditor>
+    <QueryClientProvider client={new QueryClient()}>
+      <PropertyValueEditor property={property} value={value} onCommit={onCommit}>
+        <span>{value?.value ?? 'Empty'}</span>
+      </PropertyValueEditor>
+    </QueryClientProvider>
   )
 }
 
@@ -129,6 +147,37 @@ describe('PropertyValueEditor', () => {
     const view = await render(editor(property, stored('["a","b"]', 'list')))
 
     await view.getByRole('button', { name: 'Edit Status' }).click()
+    await view.getByRole('option', { name: 'Clear' }).click()
+    expect(onCommit).toHaveBeenCalledWith(undefined)
+  })
+
+  it('links a note through the relation picker and commits the wiki-link value', async () => {
+    relationSuggestions.current = [
+      {
+        target: 'Ursula K. Le Guin',
+        insertText: 'Ursula K. Le Guin',
+        path: 'notes/ursula.md',
+        title: 'Ursula K. Le Guin',
+        alias: null,
+        date: null,
+      },
+    ]
+    const property: TagProperty = { name: 'Author note', key: 'author-note', type: 'relation' }
+    const view = await render(editor(property))
+
+    await view.getByRole('button', { name: 'Edit Author note' }).click()
+    await view.getByRole('option', { name: 'Ursula K. Le Guin' }).click()
+    expect(onCommit).toHaveBeenCalledWith('[[Ursula K. Le Guin]]')
+  })
+
+  it('clears a relation from the picker', async () => {
+    relationSuggestions.current = []
+    const property: TagProperty = { name: 'Author note', key: 'author-note', type: 'relation' }
+    const view = await render(
+      editor(property, { value: '[[Someone]]', valueType: 'string', valueNumber: null }),
+    )
+
+    await view.getByRole('button', { name: 'Edit Author note' }).click()
     await view.getByRole('option', { name: 'Clear' }).click()
     expect(onCommit).toHaveBeenCalledWith(undefined)
   })

@@ -7,6 +7,9 @@ import {
   isTagDefinitionNote,
   parseTagTypeFrontmatter,
   propertyKeyForName,
+  relationDisplay,
+  relationTarget,
+  relationValue,
   tagDefinitionPath,
   tagNameForDefinitionPath,
   type TagType,
@@ -110,6 +113,36 @@ describe('isTagDefinitionNote', () => {
     expect(isTagDefinitionNote('tags/book.md', marked)).toBe(true)
     expect(isTagDefinitionNote('tags/book.md', frontmatter({}))).toBe(false)
     expect(isTagDefinitionNote('notes/book.md', marked)).toBe(false)
+  })
+})
+
+describe('relation values', () => {
+  it('parses a well-formed schema with a relation property', () => {
+    const parsed = parseTagTypeFrontmatter(
+      frontmatter({
+        lore: 'tag',
+        properties: [{ name: 'Series', key: 'series', type: 'relation' }],
+      }),
+    )
+    expect(parsed?.properties[0]?.type).toBe('relation')
+  })
+
+  it('round-trips a target through the wiki-link value form', () => {
+    expect(relationValue('Ursula K. Le Guin')).toBe('[[Ursula K. Le Guin]]')
+    expect(relationDisplay('[[Ursula K. Le Guin]]')).toBe('Ursula K. Le Guin')
+    expect(relationTarget('[[Ursula K. Le Guin]]')).toBe('Ursula K. Le Guin')
+  })
+
+  it('prefers the alias for display but keeps the target for resolution', () => {
+    expect(relationDisplay('[[Charlotte MacCaw|Mum]]')).toBe('Mum')
+    expect(relationTarget('[[Charlotte MacCaw|Mum]]')).toBe('Charlotte MacCaw')
+  })
+
+  it('returns null for values that are not wiki-link-shaped', () => {
+    expect(relationDisplay('just a title')).toBeNull()
+    expect(relationDisplay('[[broken')).toBeNull()
+    expect(relationDisplay('[[a]] and [[b]]')).toBeNull()
+    expect(relationTarget('just a title')).toBeNull()
   })
 })
 

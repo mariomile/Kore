@@ -53,6 +53,7 @@ const PROPERTY_TYPE_LABELS: Record<TagPropertyType, string> = {
   select: 'Select',
   multiselect: 'Multi-select',
   url: 'URL',
+  relation: 'Relation',
 }
 
 const FIELD_LABEL_CLASS = 'text-xs font-medium text-text-secondary'

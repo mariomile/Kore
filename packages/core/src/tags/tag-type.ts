@@ -25,8 +25,41 @@ export const tagPropertyTypeSchema = z.enum([
   'select',
   'multiselect',
   'url',
+  'relation',
 ])
 export type TagPropertyType = z.infer<typeof tagPropertyTypeSchema>
+
+/**
+ * A `relation` property references another note the way everything in the
+ * graph does — as a wiki link. The frontmatter value is `[[Target]]` (or
+ * `[[Target|alias]]`), so the reference survives outside the app and reads
+ * naturally in Obsidian and friends.
+ */
+const RELATION_RE = /^\[\[([^[\]|]+)(?:\|([^[\]|]+))?\]\]$/
+
+/** Wrap a validated link target as a relation's frontmatter value. */
+export function relationValue(target: string): string {
+  return `[[${target}]]`
+}
+
+/**
+ * The display text of a relation value: the alias when the link carries one,
+ * else the target; `null` when the value isn't wiki-link-shaped (shown raw —
+ * tolerated, like every value the schema didn't write).
+ */
+export function relationDisplay(value: string): string | null {
+  const match = RELATION_RE.exec(value.trim())
+  if (match === null) {
+    return null
+  }
+  return (match[2] ?? match[1] ?? '').trim()
+}
+
+/** The relation's link target (for resolution), or null when not a link. */
+export function relationTarget(value: string): string | null {
+  const match = RELATION_RE.exec(value.trim())
+  return match?.[1]?.trim() ?? null
+}
 
 /**
  * One property of a tag type. `key` is the flat frontmatter key the value

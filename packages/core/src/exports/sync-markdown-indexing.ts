@@ -199,6 +199,8 @@ export {
   getTagType,
   listTagTypes,
   listCollection,
+  listNoteTagTypes,
+  getNoteProperties,
   type TagTypeEntry,
   type CollectionEntry,
   type CollectionSort,

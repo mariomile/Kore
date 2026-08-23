@@ -16,7 +16,9 @@ import {
   type TagType,
 } from '@reflect/core'
 import { ArrowDown, ArrowUp } from '@/components/icons'
+import { PropertyValueEditor } from '@/components/tags/property-editors'
 import type { ListSelection } from '@/lib/selection/use-list-selection'
+import { useCommitNoteProperty } from '@/lib/tags/use-commit-note-property'
 import { cn } from '@/lib/utils'
 import { useSettings } from '@/providers/settings-provider'
 import type { ModClickEvent } from '@/lib/windows/open-in-new-window'
@@ -89,6 +91,7 @@ export function CollectionTable({
   const { clickSelect, isSelected } = selection
   const virtualizerRef = useRef<VirtualizerHandle>(null)
   const gridStyle = useMemo(() => collectionGridStyle(type), [type])
+  const commitProperty = useCommitNoteProperty()
 
   const handleToggle = useCallback(
     (path: string, event: Pick<MouseEvent, 'shiftKey'>) =>
@@ -182,12 +185,18 @@ export function CollectionTable({
               onOpen={onOpen}
             >
               {type.properties.map((property) => (
-                <CollectionCell
+                <PropertyValueEditor
                   key={property.key}
                   property={property}
                   value={entry.properties[property.key]}
-                  selected={isSelected(entry.path)}
-                />
+                  onCommit={(value) => commitProperty(entry.path, property.key, value)}
+                >
+                  <CollectionCell
+                    property={property}
+                    value={entry.properties[property.key]}
+                    selected={isSelected(entry.path)}
+                  />
+                </PropertyValueEditor>
               ))}
             </CollectionRow>
           )}

@@ -104,6 +104,48 @@ export async function listTagTypes(): Promise<TagTypeEntry[]> {
 }
 
 /**
+ * The typed tags one note carries — its `tags` rows joined against
+ * `tag_types` — in key order. Feeds the note's properties panel, whose
+ * fields are the union of these schemas.
+ */
+export async function listNoteTagTypes(path: string): Promise<TagTypeEntry[]> {
+  const rows = await db
+    .selectFrom('tags')
+    .innerJoin('tagTypes', 'tagTypes.tagKey', 'tags.tagKey')
+    .where('tags.notePath', '=', path)
+    .select(['tagTypes.tagKey', 'tagTypes.notePath', 'tagTypes.schemaJson'])
+    .orderBy('tagTypes.tagKey')
+    .execute()
+  const entries: TagTypeEntry[] = []
+  for (const row of rows) {
+    try {
+      entries.push({
+        tagKey: row.tagKey,
+        notePath: row.notePath,
+        type: decodeTagTypeJson(row.schemaJson),
+      })
+    } catch {
+      // A hand-mangled column loses its type until the definition is re-saved.
+    }
+  }
+  return entries
+}
+
+/** One note's indexed frontmatter values, keyed by frontmatter key. */
+export async function getNoteProperties(path: string): Promise<Record<string, CollectionValue>> {
+  const rows = await db
+    .selectFrom('noteProperties')
+    .where('notePath', '=', path)
+    .select(['key', 'value', 'valueType', 'valueNumber'])
+    .execute()
+  const properties: Record<string, CollectionValue> = {}
+  for (const row of rows) {
+    properties[row.key] = collectionValue(row)
+  }
+  return properties
+}
+
+/**
  * The notes carrying `tag` (regular and daily, like the tag-filtered All
  * Notes list) with their property values. Unsorted collections keep the list
  * order (pinned first, then newest); a property sort orders missing values

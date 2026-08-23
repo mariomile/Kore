@@ -1,6 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { setBridge } from '../ipc/bridge'
-import { getTagType, listCollection, listTagTypes } from './collections'
+import {
+  getNoteProperties,
+  getTagType,
+  listCollection,
+  listNoteTagTypes,
+  listTagTypes,
+} from './collections'
 
 // A fake bridge resolves `db_query` so the tests exercise the real compiled
 // SQL (snake_case columns, parameters) — the same harness note-list.test uses.
@@ -49,6 +55,33 @@ describe('listTagTypes', () => {
         type: { properties: [{ name: 'Author', key: 'author', type: 'text' }] },
       },
     ])
+  })
+})
+
+describe('listNoteTagTypes', () => {
+  it('joins the note’s tags against tag_types, skipping mangled schemas', async () => {
+    mockInvoke.mockResolvedValueOnce([
+      { tag_key: 'book', note_path: 'tags/book.md', schema_json: bookSchema },
+      { tag_key: 'broken', note_path: 'tags/broken.md', schema_json: '?' },
+    ])
+    const entries = await listNoteTagTypes('notes/a.md')
+    expect(entries.map((entry) => entry.tagKey)).toEqual(['book'])
+    const [, args] = mockInvoke.mock.calls[0]!
+    expect(String(args['sql'])).toContain('inner join "tag_types"')
+    expect(args['params']).toEqual(['notes/a.md'])
+  })
+})
+
+describe('getNoteProperties', () => {
+  it('maps one note’s property rows by key', async () => {
+    mockInvoke.mockResolvedValueOnce([
+      { key: 'author', value: 'Le Guin', value_type: 'string', value_number: null },
+      { key: 'rating', value: '5', value_type: 'number', value_number: 5 },
+    ])
+    expect(await getNoteProperties('notes/a.md')).toEqual({
+      author: { value: 'Le Guin', valueType: 'string', valueNumber: null },
+      rating: { value: '5', valueType: 'number', valueNumber: 5 },
+    })
   })
 })
 

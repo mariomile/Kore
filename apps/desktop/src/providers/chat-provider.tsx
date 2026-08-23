@@ -46,6 +46,7 @@ import {
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { toChatAttachment, type ChatAttachment } from '@/lib/chat-attachments'
 import { todayIso } from '@/lib/dates'
+import { commitNoteFrontmatter } from '@/lib/note-frontmatter'
 import { isMobileSurface } from '@/lib/platform-surface'
 import { providerFetch } from '@/lib/provider-fetch'
 import { invalidateChatQueries } from '@/lib/query-client'
@@ -459,6 +460,18 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
             customSystemPrompt,
             context,
             agentContext,
+            // The write tool routes through the session-safe frontmatter
+            // channel, pinned to the graph generation of this turn.
+            allowEdits: chatAllowEditsRef.current,
+            toolDeps: {
+              commitPropertyFn: async (path, key, value) => {
+                await commitNoteFrontmatter(
+                  path,
+                  { properties: { [key]: value } },
+                  graph.generation,
+                )
+              },
+            },
             signal: controller.signal,
           })
         })()

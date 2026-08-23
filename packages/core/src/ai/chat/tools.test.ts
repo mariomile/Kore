@@ -18,6 +18,11 @@ import {
   INVALID_TAG_ERROR,
   MAX_DAILY_NOTE_DAYS,
   UNTYPED_TAG_ERROR,
+  EDITS_DISABLED_ERROR,
+  RESERVED_PROPERTY_ERROR,
+  PRIVATE_NOTE_EDIT_ERROR,
+  MISSING_VALUE_ERROR,
+  type SetNotePropertyOutput,
   type ListCollectionOutput,
   type ListDailyNotesOutput,
   type ListRecentNotesOutput,
@@ -835,5 +840,84 @@ describe('list_collection', () => {
     }
     expect(output.truncated).toBe(true)
     expect(output.rows).toHaveLength(2)
+  })
+})
+
+describe('set_note_property', () => {
+  /** Execute `set_note_property` directly, asserting a non-streaming output. */
+  async function runSetProperty(
+    tools: NoteTools,
+    input: { path: string; key: string; value?: unknown; clear?: boolean },
+  ): Promise<SetNotePropertyOutput> {
+    const execute = tools.set_note_property.execute
+    if (!execute) {
+      throw new Error('set_note_property has no execute')
+    }
+    const output = await execute(input as never, CALL)
+    if (isAsyncIterable(output)) {
+      throw new Error('unexpected streaming tool output')
+    }
+    return output
+  }
+
+  it('refuses when edits are disabled, without touching the write channel', async () => {
+    const commitPropertyFn = async (): Promise<void> => {
+      throw new Error('must not be called')
+    }
+    const tools = buildNoteTools({ commitPropertyFn })
+    const output = await runSetProperty(tools, {
+      path: 'notes/a.md',
+      key: 'status',
+      value: 'done',
+    })
+    expect(output).toEqual({ ok: false, path: 'notes/a.md', error: EDITS_DISABLED_ERROR })
+  })
+
+  it('refuses reserved or invalid keys', async () => {
+    const tools = buildNoteTools({ allowEdits: true, commitPropertyFn: async () => {} })
+    const output = await runSetProperty(tools, { path: 'notes/a.md', key: 'private', value: true })
+    expect(output).toEqual({ ok: false, path: 'notes/a.md', error: RESERVED_PROPERTY_ERROR })
+  })
+
+  it('refuses private notes on the live frontmatter, failing closed', async () => {
+    const tools = buildNoteTools({
+      allowEdits: true,
+      commitPropertyFn: async () => {},
+      readNoteFn: async () => '---\nprivate: true\n---\n# Diary\n',
+    })
+    const output = await runSetProperty(tools, {
+      path: PRIVATE_PATH,
+      key: 'status',
+      value: 'done',
+    })
+    expect(output).toEqual({ ok: false, path: PRIVATE_PATH, error: PRIVATE_NOTE_EDIT_ERROR })
+  })
+
+  it('writes the typed value through the commit channel, and clears on clear', async () => {
+    const writes: Array<[string, string, unknown]> = []
+    const tools = buildNoteTools({
+      allowEdits: true,
+      readNoteFn: async () => 'a public body\n',
+      commitPropertyFn: async (path, key, value) => {
+        writes.push([path, key, value])
+      },
+    })
+    expect(await runSetProperty(tools, { path: 'notes/a.md', key: 'rating', value: 4.5 })).toEqual({
+      ok: true,
+      path: 'notes/a.md',
+      key: 'rating',
+    })
+    expect(await runSetProperty(tools, { path: 'notes/a.md', key: 'rating', clear: true })).toEqual(
+      { ok: true, path: 'notes/a.md', key: 'rating' },
+    )
+    expect(await runSetProperty(tools, { path: 'notes/a.md', key: 'rating' })).toEqual({
+      ok: false,
+      path: 'notes/a.md',
+      error: MISSING_VALUE_ERROR,
+    })
+    expect(writes).toEqual([
+      ['notes/a.md', 'rating', 4.5],
+      ['notes/a.md', 'rating', undefined],
+    ])
   })
 })

@@ -19,7 +19,7 @@ import {
 } from '../../indexing/note-list'
 import { parseFrontmatter, splitFrontmatter } from '../../markdown/frontmatter'
 import { isTagName } from '../../markdown/extract'
-import type { TagProperty, TagType } from '../../tags'
+import { isPropertyKey, type TagProperty, type TagType } from '../../tags'
 import { buildReadOneAsset, readAssetsInput, type ReadAssetsOutput } from './read-assets'
 import { buildReadOneNote, readNotesInput, type ReadNotesOutput } from './read-notes'
 import {
@@ -75,6 +75,12 @@ export interface NoteToolDeps {
     sort: CollectionSort | null,
     options?: ListCollectionOptions,
   ) => Promise<CollectionEntry[]>
+  /**
+   * Persist one property value into a note's frontmatter (`undefined`
+   * deletes the key). The desktop passes its session-safe commit channel;
+   * without it `set_note_property` refuses.
+   */
+  commitPropertyFn?: (path: string, key: string, value: unknown) => Promise<void>
 }
 
 export interface BuildNoteToolsOptions extends NoteToolDeps {
@@ -83,6 +89,12 @@ export interface BuildNoteToolsOptions extends NoteToolDeps {
    * false, `search_notes` stays lexical so disabled semantic search is honored.
    */
   semanticSearchEnabled?: boolean
+  /**
+   * Whether the user's "Allow edits" chat setting is on. Off (the default),
+   * `set_note_property` refuses with a corrective message — the tool set
+   * stays type-stable either way.
+   */
+  allowEdits?: boolean | undefined
 }
 
 export interface SearchNotesOutput {
@@ -133,6 +145,29 @@ export const INVALID_COLLECTION_TAG_ERROR =
 /** Refusal for a real tag that has no type definition (no collection). */
 export const UNTYPED_TAG_ERROR =
   'This tag has no type, so it has no collection. Use list_recent_notes with the tag to list its notes instead.'
+
+/** `set_note_property` refusals, read verbatim by both model and chip. */
+export const EDITS_DISABLED_ERROR =
+  'Editing is disabled — the user can turn on "Allow edits" in the chat settings.'
+export const RESERVED_PROPERTY_ERROR =
+  'That key is reserved app metadata (or not a valid property key) and cannot be set.'
+export const PRIVATE_NOTE_EDIT_ERROR =
+  'This note is marked private — the assistant cannot read or change it.'
+export const MISSING_VALUE_ERROR = 'Provide a value, or pass clear=true to remove the property.'
+
+export type SetNotePropertyOutput =
+  | { ok: true; path: string; key: string }
+  | { ok: false; path: string; error: string }
+
+export const setNotePropertyInput = z.object({
+  path: z.string().min(1).describe('Graph-relative note path (from search or listing results)'),
+  key: z.string().min(1).describe('The frontmatter property key to write (e.g. "status")'),
+  value: z
+    .union([z.string(), z.number(), z.boolean(), z.array(z.string())])
+    .nullish()
+    .describe('The new value. Omit it and pass clear=true to remove the property instead.'),
+  clear: z.boolean().optional().describe('Remove the property instead of setting a value'),
+})
 
 export const searchNotesInput = z.object({
   query: z.string().min(1).describe('Full-text search query over the note graph'),
@@ -338,6 +373,33 @@ export function buildNoteTools(options: BuildNoteToolsOptions = {}): NoteTools {
       },
     }),
 
+    set_note_property: tool({
+      description:
+        'Set (or clear) one frontmatter property on a note — a collection cell edit. ' +
+        'Requires the user’s "Allow edits" chat setting; private notes and reserved ' +
+        'keys are refused. Use the property `key` from list_collection’s schema.',
+      inputSchema: setNotePropertyInput,
+      execute: async ({ path, key, value, clear }): Promise<SetNotePropertyOutput> => {
+        if (options.allowEdits !== true || options.commitPropertyFn === undefined) {
+          return { ok: false, path, error: EDITS_DISABLED_ERROR }
+        }
+        if (!isPropertyKey(key)) {
+          return { ok: false, path, error: RESERVED_PROPERTY_ERROR }
+        }
+        // The privacy hard block applies to writes too: deciding a private
+        // note's values implies having read it. Live check, failing closed.
+        if (await isPrivateLive(path)) {
+          return { ok: false, path, error: PRIVATE_NOTE_EDIT_ERROR }
+        }
+        const resolved = clear === true ? undefined : (value ?? undefined)
+        if (resolved === undefined && clear !== true) {
+          return { ok: false, path, error: MISSING_VALUE_ERROR }
+        }
+        await options.commitPropertyFn(path, key, resolved)
+        return { ok: true, path, key }
+      },
+    }),
+
     read_notes: tool({
       description:
         'Read the full markdown content of one or more notes by their graph-relative ' +
@@ -384,6 +446,7 @@ export type NoteTools = {
   list_recent_notes: Tool<z.infer<typeof listRecentNotesInput>, ListRecentNotesOutput>
   list_daily_notes: Tool<z.infer<typeof listDailyNotesInput>, ListDailyNotesOutput>
   list_collection: Tool<z.infer<typeof listCollectionInput>, ListCollectionOutput>
+  set_note_property: Tool<z.infer<typeof setNotePropertyInput>, SetNotePropertyOutput>
   read_notes: Tool<z.infer<typeof readNotesInput>, ReadNotesOutput>
   read_assets: Tool<z.infer<typeof readAssetsInput>, ReadAssetsOutput>
 }
@@ -414,6 +477,7 @@ export type NoteToolCall =
   | { tool: 'recents'; toolCallId: string; tag: string | null }
   | { tool: 'dailies'; toolCallId: string; start: string; end: string }
   | { tool: 'collection'; toolCallId: string; tag: string }
+  | { tool: 'setProperty'; toolCallId: string; path: string; key: string }
 
 /** One settled tool invocation. A failed read or listing keeps its refusal. */
 export type NoteToolResult =
@@ -435,6 +499,7 @@ export type NoteToolResult =
       notes: NoteHitSummary[]
       error: string | null
     }
+  | { tool: 'setProperty'; toolCallId: string; path: string; key: string; error: string | null }
 
 /** Map an SDK tool-call part onto {@link NoteToolCall} (null for dynamic). */
 export function noteToolCall(part: TypedToolCall<NoteTools>): NoteToolCall | null {
@@ -459,6 +524,13 @@ export function noteToolCall(part: TypedToolCall<NoteTools>): NoteToolCall | nul
       }
     case 'list_collection':
       return { tool: 'collection', toolCallId: part.toolCallId, tag: part.input.tag }
+    case 'set_note_property':
+      return {
+        tool: 'setProperty',
+        toolCallId: part.toolCallId,
+        path: part.input.path,
+        key: part.input.key,
+      }
   }
 }
 
@@ -543,6 +615,16 @@ export function noteToolResult(part: TypedToolResult<NoteTools>): NoteToolResult
             notes: [],
             error: output.error,
           }
+    }
+    case 'set_note_property': {
+      const output = part.output
+      return {
+        tool: 'setProperty',
+        toolCallId: part.toolCallId,
+        path: output.path,
+        key: part.input.key,
+        error: output.ok ? null : output.error,
+      }
     }
   }
 }

@@ -94,26 +94,55 @@ target-or-alias match on relations).
 
 ## Decision 3 — Collections are a view mode of All Notes, not a new surface
 
-The Collection table is an All Notes view mode (`list · grid · table ·
-board`), offered when the routed tag has a type; `board` additionally needs
-a `select` property in the schema and groups the rows into lanes by it — a
-kanban: cards move by native drag between lanes (optimistic move, the write
-lands through the shared property commit), with the same select editor as
-the keyboard path. Which select property groups the lanes is a persisted
-per-tag choice (`collectionGroups`, like the sort), defaulting to the
-schema's first.
-The route stays `{ kind: 'allNotes', tag }`; columns derive from
-`schema_json`; cell edits write through the frontmatter patch channel (live
-session first, disk fallback). No table library — the existing CSS-grid +
-virtua idiom. Around the table: ephemeral value filters, a persisted per-tag
-sort (`collectionSorts` setting), bulk property set on the selection, and a
-CSV export through the save-dialog export channel. Mobile keeps its one row
-shape and swaps the snippet for a compact property line on typed-tag routes.
+The Collection is an All Notes view mode (`list · grid · table · board ·
+calendar`), offered when the routed tag has a type. The route stays
+`{ kind: 'allNotes', tag }`; the view choice is per tag on tag routes
+(`collectionViewModes`, global `allNotesView` elsewhere).
 
-The collection is also readable outside the desktop UI, always excluding
-private notes entirely: the AI chat tool `list_collection` (rows behind the
-`CloudSafe` privacy gate with the live on-disk re-check) and the read-only
-CLI (`reflect collection <tag>`).
+**Table**: columns derive from `schema_json`; cell edits write through the
+frontmatter patch channel (live session first, disk fallback). No table
+library — the existing CSS-grid + virtua idiom. Every header sorts (property
+keys, plus `$title`/`$updated` sentinels for the built-in columns); columns
+hide and resize from the header, persisted per tag (`collectionColumns`); a
+footer aggregates (count filled, Σ for numbers); a header "+" opens the
+schema dialog. Select values render as colored badges (deterministic hash →
+fixed palette — the same hue everywhere, zero configuration).
+
+**Board (kanban)**: lanes from any groupable property — `select` (one lane
+per option), `checkbox` (checked / not), `relation` (one lane per target in
+use) — picked per tag (`collectionGroups`, defaulting to the schema's first
+groupable). Cards move by native drag; dropping on a card also takes its
+position via a fractional `order` frontmatter rank (midpoints between
+neighbours — one drop writes one note). Optimistic overlay, virtualized
+lanes, a per-lane "+" that creates a note born with the lane's value, and
+the select editor as the keyboard path.
+
+**Calendar**: a month grid placing each row on its first `date` property's
+day; read-and-navigate in V1.
+
+Around the views: filters with operators (`is` — the one-click inventory
+picks, ORed per property — plus `contains`, `>`/`<`, empty/set, ANDed),
+saved views (`collectionSavedViews`: named mode + sort + grouping + filter
+bundles per tag), a persisted per-tag sort (`collectionSorts`), bulk
+property set on the selection, CSV export through the save-dialog export
+channel and CSV import (new tagged notes from rows — never updates existing
+notes). Mobile keeps its one row shape and swaps the snippet for a compact
+property line on typed-tag routes.
+
+The collection is also reachable outside the desktop UI, always excluding
+private notes entirely: the AI chat tools `list_collection` (rows behind the
+`CloudSafe` privacy gate with the live on-disk re-check) and
+`set_note_property` (one property write through the session-safe commit
+channel — gated on the "Allow edits" chat setting, refusing private notes
+and reserved keys), and the read-only CLI (`reflect collection <tag>`).
+
+**Deliberate non-goals (V1)**, so their absence reads as a decision, not an
+oversight: multi-level sort (one key at a time; `$title`/`$updated` cover
+the common asks); grouping the board by `multiselect` (a note in several
+lanes at once needs duplication semantics worth their own design); formula
+and rollup properties (derived values contradict frontmatter-as-truth — if
+ever, they belong in the projection only); person/contact and created-at
+property types; dragging calendar entries between days.
 
 ## Known consequences
 

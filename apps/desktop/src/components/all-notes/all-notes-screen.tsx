@@ -55,6 +55,7 @@ import { CollectionBoard, groupableProperties } from './collection-board'
 import { calendarProperty, CollectionCalendar } from './collection-calendar'
 import { CollectionViewsMenu } from './collection-views-menu'
 import { runCollectionExport } from './collection-export'
+import { CollectionImportButton } from './collection-import'
 import { CollectionTable } from './collection-table'
 import { NoteListContextMenu } from '@/components/notes/note-context-menu'
 import { NoteTrashDialog } from '@/components/notes/note-trash-dialog'
@@ -473,6 +474,7 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
                   </PopoverContent>
                 </Popover>
               ) : null}
+              {tag !== null ? <CollectionImportButton tag={tag} type={tagType} /> : null}
               <button
                 type="button"
                 aria-label="Export collection as CSV"

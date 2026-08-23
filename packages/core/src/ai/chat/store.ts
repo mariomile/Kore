@@ -48,6 +48,12 @@ const toolCallSchema = z.discriminatedUnion('tool', [
     end: z.string(),
   }),
   z.object({ tool: z.literal('collection'), toolCallId: z.string(), tag: z.string() }),
+  z.object({
+    tool: z.literal('setProperty'),
+    toolCallId: z.string(),
+    path: z.string(),
+    key: z.string(),
+  }),
 ])
 
 const toolResultSchema = z.discriminatedUnion('tool', [
@@ -81,6 +87,13 @@ const toolResultSchema = z.discriminatedUnion('tool', [
     toolCallId: z.string(),
     tag: z.string(),
     notes: z.array(hitSummarySchema),
+    error: z.string().nullable(),
+  }),
+  z.object({
+    tool: z.literal('setProperty'),
+    toolCallId: z.string(),
+    path: z.string(),
+    key: z.string(),
     error: z.string().nullable(),
   }),
 ])

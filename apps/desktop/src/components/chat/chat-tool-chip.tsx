@@ -1,5 +1,5 @@
 import { Fragment, type MouseEvent, type ReactElement, type ReactNode } from 'react'
-import { CalendarDays, History, Layers, Note, Paperclip, Search } from '@/components/icons'
+import { CalendarDays, History, Layers, Note, Paperclip, Pencil, Search } from '@/components/icons'
 import { isTagName, isToolPending, type AssistantPart, type NoteHitSummary } from '@reflect/core'
 import { Marker, MarkerContent, MarkerIcon } from '@/components/ui/marker'
 import { Spinner } from '@/components/ui/spinner'
@@ -141,6 +141,29 @@ export function ChatToolChip({ part }: ChatToolChipProps): ReactElement {
         {result !== null && result.error === null ? (
           <NoteLinks notes={result.notes} onOpen={openNote} />
         ) : null}
+      </ChipFrame>
+    )
+  }
+
+  if (call.tool === 'setProperty') {
+    const result = part.result?.tool === 'setProperty' ? part.result : null
+    const failed = result?.error ?? part.error
+    return (
+      <ChipFrame pending={pending} icon={<Pencil aria-hidden className="size-3.5" />}>
+        Set {call.key} on{' '}
+        {failed === null || failed === undefined ? (
+          <button
+            type="button"
+            onClick={(event) => openNote(call.path, event)}
+            className="underline-offset-2 hover:text-text hover:underline"
+          >
+            {call.path}
+          </button>
+        ) : (
+          <span>
+            {call.path} — {failed}
+          </span>
+        )}
       </ChipFrame>
     )
   }

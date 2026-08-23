@@ -73,6 +73,7 @@ fn note(path: &str, title: &str, links: Vec<IndexedLink>) -> IndexedNote {
         assets: vec![],
         tasks: vec![],
         properties: vec![],
+        properties_text: String::new(),
         tag_type: None,
     }
 }

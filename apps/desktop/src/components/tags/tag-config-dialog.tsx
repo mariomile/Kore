@@ -3,8 +3,11 @@ import { useQueryClient } from '@tanstack/react-query'
 import {
   foldTag,
   isPropertyKey,
+  listNotesWithProperty,
   propertyKeyForName,
+  propertyRowValue,
   tagPropertyTypeSchema,
+  type CollectionValue,
   type TagProperty,
   type TagPropertyType,
 } from '@reflect/core'
@@ -26,6 +29,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { toast } from '@/components/ui/toast'
+import { commitNoteFrontmatter } from '@/lib/note-frontmatter'
 import { readTagDefinition, saveTagType } from '@/lib/tags/tag-type-write'
 import { tagTypeQueryKey } from '@/hooks/use-tag-type'
 import { useGraph } from '@/providers/graph-provider'
@@ -41,8 +45,18 @@ interface PropertyDraft {
   rowId: number
   name: string
   key: string
+  /** The stored key this row loaded with (null for a new row) — a changed
+   * key is a rename, which can migrate the notes' values on save. */
+  originalKey: string | null
   type: TagPropertyType
   options: string
+}
+
+/** A key rename awaiting the migrate-or-not decision, with its blast radius. */
+interface PendingRename {
+  from: string
+  to: string
+  notes: { notePath: string; value: CollectionValue }[]
 }
 
 const PROPERTY_TYPE_LABELS: Record<TagPropertyType, string> = {
@@ -63,6 +77,7 @@ function draftsFromSchema(properties: readonly TagProperty[]): PropertyDraft[] {
     rowId: index,
     name: property.name,
     key: property.key,
+    originalKey: property.key,
     type: property.type,
     options: property.options?.join(', ') ?? '',
   }))
@@ -99,6 +114,7 @@ export function TagConfigDialog({ tag, onClose }: TagConfigDialogProps): ReactEl
   const [drafts, setDrafts] = useState<PropertyDraft[]>([])
   const [nextRowId, setNextRowId] = useState(0)
   const [saving, setSaving] = useState(false)
+  const [pendingRenames, setPendingRenames] = useState<PendingRename[] | null>(null)
 
   useEffect(() => {
     let active = true
@@ -153,18 +169,36 @@ export function TagConfigDialog({ tag, onClose }: TagConfigDialogProps): ReactEl
   const addDraft = (): void => {
     setDrafts((current) => [
       ...current,
-      { rowId: nextRowId, name: '', key: '', type: 'text', options: '' },
+      { rowId: nextRowId, name: '', key: '', originalKey: null, type: 'text', options: '' },
     ])
     setNextRowId((current) => current + 1)
   }
 
-  const save = async (): Promise<void> => {
-    if (graph === null || saving || invalidRowIds.size > 0) {
+  const performSave = async (renames: PendingRename[], migrate: boolean): Promise<void> => {
+    if (graph === null) {
       return
     }
     setSaving(true)
     try {
       await saveTagType(tag, schemaFromDrafts(drafts), graph.generation)
+      if (migrate) {
+        // Move each note's value to the new key through the ordinary patch
+        // channel — the same write an inline edit makes, one note at a time.
+        for (const rename of renames) {
+          for (const note of rename.notes) {
+            await commitNoteFrontmatter(
+              note.notePath,
+              {
+                properties: {
+                  [rename.from]: undefined,
+                  [rename.to]: propertyRowValue(note.value),
+                },
+              },
+              graph.generation,
+            )
+          }
+        }
+      }
       await queryClient.invalidateQueries({ queryKey: tagTypeQueryKey(graph.root, tag) })
       onClose()
     } catch (error) {
@@ -175,6 +209,33 @@ export function TagConfigDialog({ tag, onClose }: TagConfigDialogProps): ReactEl
       })
       setSaving(false)
     }
+  }
+
+  const save = async (): Promise<void> => {
+    if (graph === null || saving || invalidRowIds.size > 0) {
+      return
+    }
+    // A changed key on a loaded row is a rename; when notes still carry the
+    // old key, saving must not silently orphan their values — surface the
+    // blast radius and let the user migrate (or explicitly not).
+    const renamed = drafts.filter(
+      (draft) => draft.originalKey !== null && draft.originalKey !== draft.key,
+    )
+    if (renamed.length > 0) {
+      const withUses = await Promise.all(
+        renamed.map(async (draft) => ({
+          from: draft.originalKey!,
+          to: draft.key,
+          notes: await listNotesWithProperty(draft.originalKey!),
+        })),
+      )
+      const affecting = withUses.filter((rename) => rename.notes.length > 0)
+      if (affecting.length > 0) {
+        setPendingRenames(affecting)
+        return
+      }
+    }
+    await performSave([], false)
   }
 
   return (
@@ -319,20 +380,60 @@ export function TagConfigDialog({ tag, onClose }: TagConfigDialogProps): ReactEl
             <Plus className="size-4" /> Add property
           </Button>
         </div>
-        <div className="flex justify-end gap-2">
-          <Button type="button" variant="ghost" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            type="button"
-            onClick={() => {
-              void save()
-            }}
-            disabled={loading || saving || invalidRowIds.size > 0}
-          >
-            {needsConversion ? 'Convert & save' : 'Save'}
-          </Button>
-        </div>
+        {pendingRenames !== null ? (
+          <div className="flex flex-col gap-2 rounded-md bg-surface-hover px-3 py-2">
+            <p className="text-xs text-text-secondary">
+              {pendingRenames
+                .map(
+                  (rename) =>
+                    `${rename.from} → ${rename.to} (${rename.notes.length} ${
+                      rename.notes.length === 1 ? 'note' : 'notes'
+                    })`,
+                )
+                .join(' · ')}
+              {' — '}migrate the stored values to the new key, or keep them under the old one?
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="ghost" onClick={() => setPendingRenames(null)}>
+                Back
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={saving}
+                onClick={() => {
+                  void performSave([], false)
+                }}
+              >
+                Save without migrating
+              </Button>
+              <Button
+                type="button"
+                disabled={saving}
+                onClick={() => {
+                  void performSave(pendingRenames, true)
+                }}
+              >
+                Save & migrate values
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="ghost" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                void save()
+              }}
+              disabled={loading || saving || invalidRowIds.size > 0}
+            >
+              {needsConversion ? 'Convert & save' : 'Save'}
+            </Button>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   )

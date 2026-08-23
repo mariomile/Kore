@@ -150,6 +150,7 @@ export function buildAllNotesSearch(
         parsed.filters.updatedBeforeMs,
         filters.updated?.beforeMs ?? null,
       ),
+      properties: parsed.filters.properties,
     },
   }
   return merged

@@ -20,6 +20,7 @@ describe('parseSearchQuery', () => {
         linkedFrom: null,
         updatedAfterMs: null,
         updatedBeforeMs: null,
+        properties: [],
       },
     })
   })
@@ -112,5 +113,22 @@ describe('parseSearchQuery', () => {
 
   it('a colon inside ordinary text is untouched', () => {
     expect(parseSearchQuery('re: standup notes').text).toBe('re: standup notes')
+  })
+
+  it('prop: takes bare keys, values, and quoted values (TDR 0005)', () => {
+    const parsed = parseSearchQuery('prop:status=reading prop:rating prop:topic="deep work" plan')
+    expect(parsed.filters.properties).toEqual([
+      { key: 'status', value: 'reading' },
+      { key: 'rating', value: null },
+      { key: 'topic', value: 'deep work' },
+    ])
+    expect(parsed.filtered).toBe(true)
+    expect(parsed.text).toBe('plan')
+  })
+
+  it('a prop: token with a bad key or empty value stays text', () => {
+    const parsed = parseSearchQuery('prop:=x prop:-bad=1 prop:status= plan')
+    expect(parsed.filters.properties).toEqual([])
+    expect(parsed.text).toBe('prop:=x prop:-bad=1 prop:status= plan')
   })
 })

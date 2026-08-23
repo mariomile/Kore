@@ -18,6 +18,15 @@ vi.mock('@/lib/tags/tag-type-write', () => ({
   readTagDefinition: async () => definition.current,
   saveTagType,
 }))
+const propertyUses = vi.hoisted(() => ({
+  current: [] as { notePath: string; value: unknown }[],
+}))
+const commitNoteFrontmatter = vi.hoisted(() => vi.fn(async () => {}))
+vi.mock('@reflect/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@reflect/core')>()),
+  listNotesWithProperty: async () => propertyUses.current,
+}))
+vi.mock('@/lib/note-frontmatter', () => ({ commitNoteFrontmatter }))
 vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({ graph: { root: '/g', generation: 7 } }),
 }))
@@ -33,8 +42,10 @@ beforeEach(() => {
     needsConversion: false,
     properties: [],
   }
+  propertyUses.current = []
   saveTagType.mockClear()
   invalidateQueries.mockClear()
+  commitNoteFrontmatter.mockClear()
 })
 
 describe('TagConfigDialog', () => {
@@ -79,6 +90,67 @@ describe('TagConfigDialog', () => {
 
     await expect.element(view.getByText('Saving converts it', { exact: false })).toBeInTheDocument()
     await expect.element(view.getByRole('button', { name: 'Convert & save' })).toBeEnabled()
+  })
+
+  it('renaming a used key offers migration and moves the values on confirm', async () => {
+    definition.current = {
+      path: 'tags/book.md',
+      exists: true,
+      needsConversion: false,
+      properties: [{ name: 'Author', key: 'author', type: 'text' }],
+    }
+    propertyUses.current = [
+      {
+        notePath: 'notes/dune.md',
+        value: { value: 'Frank Herbert', valueType: 'string', valueNumber: null },
+      },
+    ]
+    const onClose = vi.fn()
+    const view = await render(<TagConfigDialog tag="book" onClose={onClose} />)
+
+    const keyInput = view.getByRole('textbox', { name: 'Frontmatter key' })
+    await keyInput.fill('writer')
+    await view.getByRole('button', { name: 'Save' }).click()
+
+    // The blast radius surfaces before anything is written.
+    await expect.element(view.getByText('author → writer (1 note)')).toBeInTheDocument()
+    expect(saveTagType).not.toHaveBeenCalled()
+
+    await view.getByRole('button', { name: 'Save & migrate values' }).click()
+    expect(saveTagType).toHaveBeenCalledWith(
+      'book',
+      [{ name: 'Author', key: 'writer', type: 'text' }],
+      7,
+    )
+    expect(commitNoteFrontmatter).toHaveBeenCalledWith(
+      'notes/dune.md',
+      { properties: { author: undefined, writer: 'Frank Herbert' } },
+      7,
+    )
+    expect(onClose).toHaveBeenCalled()
+  })
+
+  it('renaming a used key can save without migrating — values stay put', async () => {
+    definition.current = {
+      path: 'tags/book.md',
+      exists: true,
+      needsConversion: false,
+      properties: [{ name: 'Author', key: 'author', type: 'text' }],
+    }
+    propertyUses.current = [
+      {
+        notePath: 'notes/dune.md',
+        value: { value: 'Frank Herbert', valueType: 'string', valueNumber: null },
+      },
+    ]
+    const view = await render(<TagConfigDialog tag="book" onClose={() => {}} />)
+
+    await view.getByRole('textbox', { name: 'Frontmatter key' }).fill('writer')
+    await view.getByRole('button', { name: 'Save' }).click()
+    await view.getByRole('button', { name: 'Save without migrating' }).click()
+
+    expect(saveTagType).toHaveBeenCalled()
+    expect(commitNoteFrontmatter).not.toHaveBeenCalled()
   })
 
   it('disables save while a row is invalid (duplicate key)', async () => {

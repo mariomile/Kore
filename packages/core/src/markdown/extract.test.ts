@@ -27,6 +27,27 @@ describe('parseNote — wiki links', () => {
     expect(note.text).toBe('See www.reddit.com/r/test www.reddit.com.')
   })
 
+  it('lifts frontmatter wiki links with file-absolute spans (TDR 0005 relations)', () => {
+    const source =
+      '---\nauthor: "[[James Clear]]"\nseries: "[[Hainish Cycle|Hainish]]"\n---\nBody [[Other]].'
+    const note = parse(source)
+    expect(note.wikiLinks.map((w) => ({ target: w.target, alias: w.alias }))).toEqual([
+      { target: 'James Clear', alias: undefined },
+      { target: 'Hainish Cycle', alias: 'Hainish' },
+      { target: 'Other', alias: undefined },
+    ])
+    const relation = note.wikiLinks[0]!
+    // File-absolute spans: the splice-based retitle rewrites the YAML value
+    // exactly like a body link.
+    expect(source.slice(relation.from, relation.to)).toBe('[[James Clear]]')
+  })
+
+  it('ignores malformed frontmatter link shapes and notes without frontmatter', () => {
+    expect(parse('No header [[Real]].').wikiLinks).toHaveLength(1)
+    const note = parse('---\nbroken: "[[unclosed"\nempty: "[[ ]]"\n---\nBody.')
+    expect(note.wikiLinks).toHaveLength(0)
+  })
+
   it('does not match wiki links inside code spans or empty brackets', () => {
     const note = parse('Code `[[NotALink]]` stays literal, and [[]] is ignored.')
     expect(note.wikiLinks).toEqual([])

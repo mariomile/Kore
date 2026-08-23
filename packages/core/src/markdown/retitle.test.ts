@@ -14,6 +14,13 @@ describe('retitleWikiLinks', () => {
     )
   })
 
+  it('rewrites frontmatter relation links alongside body links (TDR 0005)', () => {
+    const source = '---\nauthor: "[[Foo]]"\nseries: "[[Foo|shown]]"\n---\nBody [[Foo]] too.'
+    expect(retitleWikiLinks(source, repointOnly('foo', 'Baz'))).toBe(
+      '---\nauthor: "[[Baz]]"\nseries: "[[Baz|shown]]"\n---\nBody [[Baz]] too.',
+    )
+  })
+
   it('is a byte-identical no-op when nothing matches', () => {
     const source = 'see [[Alpha]] and [[Beta]]'
     expect(retitleWikiLinks(source, repointOnly('gamma', 'Delta'))).toBe(source)

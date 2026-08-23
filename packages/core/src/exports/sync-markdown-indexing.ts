@@ -204,6 +204,8 @@ export {
   listCollection,
   listNoteTagTypes,
   getNoteProperties,
+  listNotesWithProperty,
+  propertyRowValue,
   type TagTypeEntry,
   type CollectionEntry,
   type CollectionSort,

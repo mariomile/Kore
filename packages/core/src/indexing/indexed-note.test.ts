@@ -3,8 +3,8 @@ import { gistBodyHash, parseNote } from '../markdown'
 import { buildIndexedNote, CLAIM_TIER, indexedNoteSchema, PROJECTION_VERSION } from './indexed-note'
 
 describe('buildIndexedNote', () => {
-  it('carries the projection version that backfills property rows', () => {
-    expect(PROJECTION_VERSION).toBe(20)
+  it('carries the projection version that backfills frontmatter links', () => {
+    expect(PROJECTION_VERSION).toBe(21)
   })
 
   it('flattens a parsed note into the index payload', () => {
@@ -66,6 +66,21 @@ describe('buildIndexedNote', () => {
     ])
     expect(indexed.tagType).toBeNull()
     expect(indexed.kind).toBe('note')
+  })
+
+  it('projects frontmatter relation links into links, searchable via propertiesText', () => {
+    const source = '---\nauthor: "[[James Clear]]"\nstatus: reading\n---\n# Habits'
+    const indexed = buildIndexedNote(parseNote({ path: 'notes/habits.md', source }), {
+      fileHash: 'h',
+      mtime: 0,
+      source,
+    })
+    const wiki = indexed.links.filter((link) => link.kind === 'wiki')
+    expect(wiki).toHaveLength(1)
+    expect(wiki[0]).toMatchObject({ targetRaw: 'James Clear', targetKey: 'james clear' })
+    // Real spans: the retitle splice reaches the YAML value.
+    expect(source.slice(wiki[0]!.posFrom, wiki[0]!.posTo)).toBe('[[James Clear]]')
+    expect(indexed.propertiesText).toBe('author [[James Clear]]\nstatus reading')
   })
 
   it('indexes a marked tags/ note as a tag definition with its schema', () => {

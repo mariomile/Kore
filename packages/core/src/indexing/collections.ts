@@ -130,6 +130,43 @@ export async function listNoteTagTypes(path: string): Promise<TagTypeEntry[]> {
   return decodeTagTypeRows(rows)
 }
 
+/**
+ * Every note carrying frontmatter key `key`, with its stored value — the
+ * schema dialog's rename-migration source (values re-typed from the row:
+ * the projection round-trips scalars and lists faithfully).
+ */
+export async function listNotesWithProperty(
+  key: string,
+): Promise<{ notePath: string; value: CollectionValue }[]> {
+  const rows = await db
+    .selectFrom('noteProperties')
+    .where('key', '=', key)
+    .select(['notePath', 'value', 'valueType', 'valueNumber'])
+    .orderBy('notePath')
+    .execute()
+  return rows.map((row) => ({ notePath: row.notePath, value: collectionValue(row) }))
+}
+
+/** The typed YAML value a stored property row round-trips to. */
+export function propertyRowValue(value: CollectionValue): unknown {
+  switch (value.valueType) {
+    case 'number':
+      return value.valueNumber ?? Number(value.value)
+    case 'boolean':
+      return value.value === 'true'
+    case 'list': {
+      try {
+        const entries = JSON.parse(value.value) as unknown
+        return Array.isArray(entries) ? entries.map(String) : value.value
+      } catch {
+        return value.value
+      }
+    }
+    default:
+      return value.value
+  }
+}
+
 /** One note's indexed frontmatter values, keyed by frontmatter key. */
 export async function getNoteProperties(path: string): Promise<Record<string, CollectionValue>> {
   const rows = await db

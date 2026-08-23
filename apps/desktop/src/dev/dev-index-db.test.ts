@@ -68,6 +68,7 @@ function sampleNote(overrides: Partial<IndexedNote> = {}): IndexedNote {
       },
     ],
     properties: [],
+    propertiesText: '',
     tagType: null,
     ...overrides,
   }
@@ -637,5 +638,58 @@ describe('createDevIndexDb', () => {
 
     expect(db.query('SELECT count(*) AS rows FROM notes', [])).toEqual([{ rows: 0 }])
     expect(db.query('SELECT count(*) AS rows FROM chat_messages', [])).toEqual([{ rows: 1 }])
+  })
+
+  it('finds frontmatter-only values via FTS and narrows with prop: (TDR 0005)', async () => {
+    const db = await openDb()
+    db.applyNote(
+      sampleNote({
+        path: 'notes/dispossessed.md',
+        id: '01hv3xq7c2dm8k4t9w5e6r1n96',
+        title: 'The Dispossessed',
+        titleKey: 'the dispossessed',
+        text: 'An otherwise unrelated body.',
+        preview: 'An otherwise unrelated body.',
+        properties: [
+          { key: 'author', value: '[[Ursula K. Le Guin]]', valueType: 'string', valueNumber: null },
+          { key: 'status', value: 'reading', valueType: 'string', valueNumber: null },
+          { key: 'topics', value: '["ai","utopia"]', valueType: 'list', valueNumber: null },
+        ],
+        propertiesText: 'author [[Ursula K. Le Guin]]\nstatus reading\ntopics ["ai","utopia"]',
+      }),
+    )
+    db.applyNote(
+      sampleNote({
+        path: 'notes/dune.md',
+        id: '01hv3xq7c2dm8k4t9w5e6r1n97',
+        title: 'Dune',
+        titleKey: 'dune',
+        text: 'An otherwise unrelated body.',
+        preview: 'An otherwise unrelated body.',
+        properties: [{ key: 'status', value: 'done', valueType: 'string', valueNumber: null }],
+        propertiesText: 'status done',
+      }),
+    )
+    installQueryBridge(db)
+
+    // The author's name lives only in frontmatter — FTS still finds it.
+    const byText = await searchWithFilters(parseSearchQuery('Guin'))
+    expect(byText.map((hit) => hit.path)).toEqual(['notes/dispossessed.md'])
+
+    // prop: value match, relation form ([[value]]), list containment, existence.
+    const byStatus = await searchWithFilters(parseSearchQuery('prop:status=reading'))
+    expect(byStatus.map((hit) => hit.path)).toEqual(['notes/dispossessed.md'])
+    const byRelation = await searchWithFilters(parseSearchQuery('prop:author="Ursula K. Le Guin"'))
+    expect(byRelation.map((hit) => hit.path)).toEqual(['notes/dispossessed.md'])
+    const byListEntry = await searchWithFilters(parseSearchQuery('prop:topics=utopia'))
+    expect(byListEntry.map((hit) => hit.path)).toEqual(['notes/dispossessed.md'])
+    const byExistence = await searchWithFilters(parseSearchQuery('prop:status'))
+    expect(byExistence.map((hit) => hit.path).sort()).toEqual([
+      'notes/dispossessed.md',
+      'notes/dune.md',
+    ])
+    // Composes with tags: both notes carry #book (the fixture default).
+    const composed = await searchWithFilters(parseSearchQuery('#book prop:status=done'))
+    expect(composed.map((hit) => hit.path)).toEqual(['notes/dune.md'])
   })
 })

@@ -403,6 +403,13 @@ function deriveTitle(frontmatter: Frontmatter, headings: Heading[], path: string
   return basename(path)
 }
 
+/**
+ * A `[[target]]` / `[[target|alias]]` occurrence in the frontmatter region.
+ * Mirrors the body grammar's reserved set: no brackets, pipe, or newlines
+ * inside either part (YAML string values hold these links quoted).
+ */
+const FRONTMATTER_WIKI_RE = /\[\[([^[\]|\r\n]+)(\|[^[\]\r\n]*)?\]\]/g
+
 /** Parse one note's full source into the stable {@link ParsedNote} contract. */
 export function parseNote(input: { path: string; source: string }): ParsedNote {
   const { path, source } = input
@@ -495,6 +502,29 @@ export function parseNote(input: { path: string; source: string }): ParsedNote {
       return true
     },
   })
+
+  // Frontmatter wiki links (TDR 0005 relations, and any `[[…]]` a tool wrote
+  // into the header): the region above the body is YAML, which the markdown
+  // tree never sees, so a plain scan lifts them. Spans are file-absolute like
+  // every other span, so the index projection, backlink context, and the
+  // retitle splice treat them exactly like body links.
+  if (bodyOffset > 0) {
+    const headerLinks: WikiLink[] = []
+    for (const match of source.slice(0, bodyOffset).matchAll(FRONTMATTER_WIKI_RE)) {
+      const target = (match[1] ?? '').trim()
+      if (target === '') {
+        continue
+      }
+      const alias = match[2]?.slice(1)
+      headerLinks.push({
+        target,
+        ...(alias === undefined ? {} : { alias }),
+        from: match.index,
+        to: match.index + match[0].length,
+      })
+    }
+    wikiLinks.unshift(...headerLinks)
+  }
 
   const tags = new Map<string, string>()
   collectTags(body, tagExcluded, tags)

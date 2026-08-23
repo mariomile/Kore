@@ -1,7 +1,7 @@
 import type { Database } from '@reflect/db'
 import { sql, type RawBuilder, type Selectable } from 'kysely'
 import { db } from './db'
-import { literalSearchQuery, type ParsedSearchQuery } from './filter-query'
+import { literalSearchQuery, type ParsedSearchQuery, type PropertyFilter } from './filter-query'
 import { resolveWikiTarget } from './queries'
 import { HIGHLIGHT_END, HIGHLIGHT_START } from './search'
 import { buildFtsMatch, buildTitleMatchSql } from './search-query'
@@ -84,6 +84,42 @@ export function recallOrder(pinnedFirst: boolean): RawBuilder<unknown>[] {
     sql`"notes"."pinned_order"`,
   ]
   return [...(pinnedFirst ? pinned : []), sql`"notes"."mtime" desc`, sql`"notes"."path"`]
+}
+
+/** Escape `%`/`_`/`\` for a LIKE pattern with `ESCAPE '\'`. */
+function escapeLike(value: string): string {
+  return value.replaceAll(/[\\%_]/g, (char) => `\\${char}`)
+}
+
+/**
+ * One `prop:` token as SQL (TDR 0005). A bare key is existence; a value
+ * matches the scalar, a multi-select entry (the stored JSON list text), or a
+ * relation's `[[value]]` / `[[value|alias]]`. Case-insensitivity is SQLite's
+ * `lower()` — ASCII-only, unlike tag keys which are folded in JS at index
+ * time; property values are stored in display form, so the ASCII fold is the
+ * honest trade until a folded column earns its keep.
+ */
+function propertyFilterSql(filter: PropertyFilter): RawBuilder<boolean> {
+  if (filter.value === null) {
+    return sql<boolean>`exists (
+      select 1 from note_properties
+      where note_properties.note_path = notes.path and note_properties.key = ${filter.key}
+    )`
+  }
+  const value = filter.value
+  const listPattern = `%"${escapeLike(value)}"%`
+  const aliasPattern = `[[${escapeLike(value)}|%`
+  return sql<boolean>`exists (
+    select 1 from note_properties
+    where note_properties.note_path = notes.path and note_properties.key = ${filter.key}
+      and (
+        lower(note_properties.value) = lower(${value})
+        or lower(note_properties.value) = lower(${`[[${value}]]`})
+        or (note_properties.value_type = 'list'
+          and lower(note_properties.value) like lower(${listPattern}) escape '\\')
+        or lower(note_properties.value) like lower(${aliasPattern}) escape '\\'
+      )
+  )`
 }
 
 /** Search the graph with parsed filters (see {@link FilteredSearchOptions}). */
@@ -179,6 +215,9 @@ export async function searchWithFilters(
     if (filters.updatedBeforeMs !== null) {
       taggedQuery = taggedQuery.where('notes.mtime', '<', filters.updatedBeforeMs)
     }
+    for (const property of filters.properties) {
+      taggedQuery = taggedQuery.where(propertyFilterSql(property))
+    }
     if (limit !== null) {
       taggedQuery = taggedQuery.limit(limit)
     }
@@ -247,6 +286,9 @@ export async function searchWithFilters(
   }
   if (filters.updatedBeforeMs !== null) {
     query = query.where('notes.mtime', '<', filters.updatedBeforeMs)
+  }
+  for (const property of filters.properties) {
+    query = query.where(propertyFilterSql(property))
   }
   if (match === null) {
     // No free text: a filtered recall feed, newest first.

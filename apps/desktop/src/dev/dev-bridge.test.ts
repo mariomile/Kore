@@ -38,6 +38,7 @@ function projection(path: string, mtime: number, fileHash: string): IndexedNote 
     assets: [],
     tasks: [],
     properties: [],
+    propertiesText: '',
     tagType: null,
   }
 }

@@ -13,6 +13,10 @@
  * - `updated:>D`        — updated on or after `D` (`YYYY-MM-DD`, local)
  * - `updated:<D`        — updated before `D`
  * - `updated:D`         — updated during `D`
+ * - `prop:key`          — note carries the frontmatter property (TDR 0005)
+ * - `prop:key=value`    — property equals value, case-insensitive; matches a
+ *                         multi-select entry and a relation's `[[value]]` too
+ *                         (quote multi-word: `prop:status="in progress"`)
  *
  * A malformed token (impossible date, empty value) stays search text — typing
  * never makes results vanish behind a filter the user didn't form yet.
@@ -45,6 +49,16 @@ export interface SearchFilters {
   updatedAfterMs: number | null
   /** Exclusive upper bound on `mtime`, epoch ms (local day start). */
   updatedBeforeMs: number | null
+  /** Frontmatter property constraints (TDR 0005), ANDed. */
+  properties: PropertyFilter[]
+}
+
+/** One `prop:` token: the key must exist; with `value`, it must match. */
+export interface PropertyFilter {
+  /** Frontmatter key, verbatim (keys are case-sensitive like YAML). */
+  key: string
+  /** Case-insensitive value match, or null for bare existence. */
+  value: string | null
 }
 
 export interface ParsedSearchQuery {
@@ -63,6 +77,7 @@ const EMPTY_FILTERS: SearchFilters = {
   linkedFrom: null,
   updatedAfterMs: null,
   updatedBeforeMs: null,
+  properties: [],
 }
 
 /**
@@ -72,8 +87,15 @@ const EMPTY_FILTERS: SearchFilters = {
  * terms, not become constraints.
  */
 export function literalSearchQuery(text: string): ParsedSearchQuery {
-  return { text, filters: { ...EMPTY_FILTERS, tags: [] }, filtered: false }
+  return { text, filters: { ...EMPTY_FILTERS, tags: [], properties: [] }, filtered: false }
 }
+
+/**
+ * Mirrors `isPropertyKey` in `tags/tag-type.ts` (a plain YAML-safe
+ * identifier). A `prop:` token whose key could never be a property stays
+ * search text, like every other malformed token.
+ */
+const PROPERTY_KEY_TOKEN_RE = /^[\p{L}\p{N}][\p{L}\p{N}_-]*$/u
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
@@ -126,7 +148,7 @@ function unquote(value: string): string {
 }
 
 export function parseSearchQuery(query: string): ParsedSearchQuery {
-  const filters: SearchFilters = { ...EMPTY_FILTERS, tags: [] }
+  const filters: SearchFilters = { ...EMPTY_FILTERS, tags: [], properties: [] }
   const text: string[] = []
   let filtered = false
 
@@ -160,6 +182,17 @@ export function parseSearchQuery(query: string): ParsedSearchQuery {
       const target = unquote(token.slice('linked-from:'.length)).trim()
       if (target !== '') {
         filters.linkedFrom = target
+        filtered = true
+        continue
+      }
+    }
+    if (lower.startsWith('prop:')) {
+      const body = token.slice('prop:'.length)
+      const equals = body.indexOf('=')
+      const key = equals === -1 ? body : body.slice(0, equals)
+      const value = equals === -1 ? null : unquote(body.slice(equals + 1)).trim()
+      if (PROPERTY_KEY_TOKEN_RE.test(key) && value !== '') {
+        filters.properties.push({ key, value })
         filtered = true
         continue
       }

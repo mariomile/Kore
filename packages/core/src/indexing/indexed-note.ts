@@ -98,8 +98,11 @@ import {
  * 20 - tag types + collections (TDR 0005): the `note_properties` and
  * `tag_types` projections and `notes.kind = 'tag'` for definition notes.
  * Existing notes carry no property rows until reprojected.
+ * 21 - frontmatter wiki links join the `links` projection (relations gain
+ * backlinks, graph edges, and retitle rewrites) and property values join the
+ * FTS body (`propertiesText`); existing rows carry neither until reprojected.
  */
-export const PROJECTION_VERSION = 20
+export const PROJECTION_VERSION = 21
 
 /**
  * Precedence of the spellings a note answers to (`note_claims.tier`): the
@@ -265,6 +268,13 @@ export const indexedNoteSchema = z.object({
   /** Non-reserved frontmatter keys for the `note_properties` projection (TDR 0005). */
   properties: z.array(indexedPropertySchema),
   /**
+   * The property key/value pairs as searchable text, folded into the FTS
+   * `body` only (the `assetText` arrangement): a value that lives solely in
+   * frontmatter is still findable, while `note_text`, previews, and the AI's
+   * note text stay the body alone.
+   */
+  propertiesText: z.string(),
+  /**
    * The tag schema this definition note carries (`tag_types` row); null for
    * every other kind.
    */
@@ -397,6 +407,7 @@ export function buildIndexedNote(
   const isTagDefinition = isTagDefinitionNote(parsed.path, parsed.frontmatter)
   const tagName = isTagDefinition ? tagNameForDefinitionPath(parsed.path) : null
   const tagSchema = isTagDefinition ? parseTagTypeFrontmatter(parsed.frontmatter) : null
+  const properties = extractNoteProperties(parsed.frontmatter)
 
   return {
     path: parsed.path,
@@ -443,7 +454,11 @@ export function buildIndexedNote(
       checked: task.checked,
       dueDate: task.dueDate,
     })),
-    properties: extractNoteProperties(parsed.frontmatter),
+    properties,
+    // FTS5's tokenizer splits on the punctuation ([["quotes"]], commas), so
+    // raw stored forms — wiki links and JSON list text included — search as
+    // their words without any display-side decoding.
+    propertiesText: properties.map((property) => `${property.key} ${property.value}`).join('\n'),
     tagType:
       tagName === null || tagSchema === null
         ? null

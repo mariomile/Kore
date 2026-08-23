@@ -55,6 +55,10 @@ pub struct IndexedNote {
     /// Non-reserved frontmatter keys (`note_properties`, TDR 0005).
     #[serde(default)]
     pub(super) properties: Vec<IndexedProperty>,
+    /// Property key/value text for the FTS `body` only (the `asset_text`
+    /// arrangement) — frontmatter-only values stay findable.
+    #[serde(default)]
+    pub(super) properties_text: String,
     /// The tag schema when this is a definition note (`tag_types` row).
     #[serde(default)]
     pub(super) tag_type: Option<IndexedTagType>,
@@ -292,15 +296,18 @@ pub(super) fn apply_note(conn: &Connection, note: &IndexedNote) -> AppResult<()>
         )?
         .execute(params![tag_type.tag_key, note.path, tag_type.schema_json])?;
     }
-    // The FTS body carries the note text plus any referenced assets' description
-    // text (Plan 20), so a query matching a description surfaces the note. Only
-    // the search index is enriched — `note_text`, `preview`, and AI-reachable
-    // text above stay the note body alone.
-    let search_body = if note.asset_text.is_empty() {
-        note.text.clone()
-    } else {
-        format!("{}\n{}", note.text, note.asset_text)
-    };
+    // The FTS body carries the note text plus any referenced assets'
+    // description text (Plan 20) and the frontmatter property text (TDR
+    // 0005), so a query matching either surfaces the note. Only the search
+    // index is enriched — `note_text`, `preview`, and AI-reachable text
+    // above stay the note body alone.
+    let mut search_body = note.text.clone();
+    for extra in [&note.asset_text, &note.properties_text] {
+        if !extra.is_empty() {
+            search_body.push('\n');
+            search_body.push_str(extra);
+        }
+    }
     conn.prepare_cached("INSERT INTO search_fts(path, title, body) VALUES(?1, ?2, ?3)")?
         .execute(params![note.path, note.title, search_body])?;
     Ok(())

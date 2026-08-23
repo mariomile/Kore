@@ -47,10 +47,13 @@ export function ContextSidebar({ target }: ContextSidebarProps): ReactElement {
           band doubles as title-bar drag area; the switcher itself is lifted
           above the WindowDragRegion strip so its segments stay clickable. */}
       <div data-tauri-drag-region className="flex h-11 flex-none items-center px-3">
+        {/* The segments cluster centered at a fixed width instead of
+            stretching across the rail, so the three glyphs stay close
+            together at any panel width. */}
         <div
           role="tablist"
           aria-label="Context panels"
-          className="window-drag-control flex w-full items-center gap-1"
+          className="window-drag-control flex w-full items-center justify-center gap-1"
         >
           {PANELS.map(({ id, label, Glyph }) => (
             <button
@@ -67,7 +70,7 @@ export function ContextSidebar({ target }: ContextSidebarProps): ReactElement {
                 setPanel(id)
               }}
               className={cn(
-                'flex h-8 flex-1 items-center justify-center rounded-lg transition-colors duration-150 ease-swift',
+                'flex h-8 w-10 items-center justify-center rounded-lg transition-colors duration-150 ease-swift',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
               )}
             >

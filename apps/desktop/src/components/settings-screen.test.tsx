@@ -12,6 +12,7 @@ import { SettingsProvider } from '@/providers/settings-provider'
 import { UpdateProvider } from '@/providers/update-provider'
 import { RouterProvider } from '@/routing/router'
 import { expectLocatorToHaveCount } from '@/test-utils/expect'
+import { requestSettingsSectionExpand } from './settings/section-scrolling'
 import { ShortcutsDialog } from './shortcuts-dialog'
 import { SettingsScreen } from './settings-screen'
 
@@ -146,6 +147,25 @@ afterEach(() => {
 })
 
 describe('SettingsScreen', () => {
+  it('collapses a section from its heading and re-opens it on a navigator jump', async () => {
+    await renderScreen()
+    const section = page.getByRole('region', { name: 'Appearance' })
+    const toggle = section.getByRole('button', { name: 'Appearance' })
+    await expect.element(toggle).toHaveAttribute('aria-expanded', 'true')
+
+    await toggle.click()
+
+    await expect.element(toggle).toHaveAttribute('aria-expanded', 'false')
+    // The card's controls fold away; the heading (and its anchor id) stay.
+    expect(radio(/^ash/i).query()).toBeNull()
+
+    // A navigator jump to a collapsed card asks it to open again.
+    requestSettingsSectionExpand('appearance')
+
+    await expect.element(toggle).toHaveAttribute('aria-expanded', 'true')
+    await expect.element(radio(/^ash/i)).toBeInTheDocument()
+  })
+
   it('shows update controls when the native bridge is available', async () => {
     await renderScreen()
     await expect
@@ -254,6 +274,8 @@ describe('SettingsScreen', () => {
           transcriptionFormat: true,
           uiRadius: 'default',
           uiDensity: 'default',
+          uiTextSize: 'default',
+          chatTextSize: 'medium',
           contactsEnabled: false,
           mobileOnboarded: false,
           mobileStorage: 'local',
@@ -333,6 +355,8 @@ describe('SettingsScreen', () => {
           transcriptionFormat: true,
           uiRadius: 'default',
           uiDensity: 'default',
+          uiTextSize: 'default',
+          chatTextSize: 'medium',
           contactsEnabled: false,
           mobileOnboarded: false,
           mobileStorage: 'local',
@@ -426,6 +450,8 @@ describe('SettingsScreen', () => {
           transcriptionFormat: true,
           uiRadius: 'default',
           uiDensity: 'default',
+          uiTextSize: 'default',
+          chatTextSize: 'medium',
           contactsEnabled: false,
           mobileOnboarded: false,
           mobileStorage: 'local',
@@ -526,6 +552,8 @@ describe('SettingsScreen', () => {
           transcriptionFormat: true,
           uiRadius: 'default',
           uiDensity: 'default',
+          uiTextSize: 'default',
+          chatTextSize: 'medium',
           contactsEnabled: false,
           mobileOnboarded: false,
           mobileStorage: 'local',
@@ -605,6 +633,8 @@ describe('SettingsScreen', () => {
           transcriptionFormat: true,
           uiRadius: 'default',
           uiDensity: 'default',
+          uiTextSize: 'default',
+          chatTextSize: 'medium',
           contactsEnabled: false,
           mobileOnboarded: false,
           mobileStorage: 'local',
@@ -677,6 +707,8 @@ describe('SettingsScreen', () => {
           transcriptionFormat: true,
           uiRadius: 'default',
           uiDensity: 'default',
+          uiTextSize: 'default',
+          chatTextSize: 'medium',
           contactsEnabled: false,
           mobileOnboarded: false,
           mobileStorage: 'local',
@@ -758,6 +790,8 @@ describe('SettingsScreen', () => {
           transcriptionFormat: true,
           uiRadius: 'default',
           uiDensity: 'default',
+          uiTextSize: 'default',
+          chatTextSize: 'medium',
           contactsEnabled: false,
           mobileOnboarded: false,
           mobileStorage: 'local',
@@ -836,6 +870,8 @@ describe('SettingsScreen', () => {
           transcriptionFormat: true,
           uiRadius: 'default',
           uiDensity: 'default',
+          uiTextSize: 'default',
+          chatTextSize: 'medium',
           contactsEnabled: false,
           mobileOnboarded: false,
           mobileStorage: 'local',
@@ -920,6 +956,8 @@ describe('SettingsScreen', () => {
           transcriptionFormat: true,
           uiRadius: 'default',
           uiDensity: 'default',
+          uiTextSize: 'default',
+          chatTextSize: 'medium',
           contactsEnabled: false,
           mobileOnboarded: false,
           mobileStorage: 'local',
@@ -1010,6 +1048,8 @@ describe('SettingsScreen', () => {
           transcriptionFormat: true,
           uiRadius: 'default',
           uiDensity: 'default',
+          uiTextSize: 'default',
+          chatTextSize: 'medium',
           contactsEnabled: false,
           mobileOnboarded: false,
           mobileStorage: 'local',
@@ -1082,6 +1122,8 @@ describe('SettingsScreen', () => {
           transcriptionFormat: true,
           uiRadius: 'default',
           uiDensity: 'default',
+          uiTextSize: 'default',
+          chatTextSize: 'medium',
           contactsEnabled: false,
           mobileOnboarded: false,
           mobileStorage: 'local',
@@ -1183,6 +1225,8 @@ describe('SettingsScreen', () => {
           transcriptionFormat: true,
           uiRadius: 'default',
           uiDensity: 'default',
+          uiTextSize: 'default',
+          chatTextSize: 'medium',
           contactsEnabled: false,
           mobileOnboarded: false,
           mobileStorage: 'local',
@@ -1253,6 +1297,8 @@ describe('SettingsScreen', () => {
           transcriptionFormat: true,
           uiRadius: 'default',
           uiDensity: 'default',
+          uiTextSize: 'default',
+          chatTextSize: 'medium',
           contactsEnabled: false,
           mobileOnboarded: false,
           mobileStorage: 'local',
@@ -1345,6 +1391,8 @@ describe('SettingsScreen', () => {
           transcriptionFormat: true,
           uiRadius: 'default',
           uiDensity: 'default',
+          uiTextSize: 'default',
+          chatTextSize: 'medium',
           contactsEnabled: false,
           mobileOnboarded: false,
           mobileStorage: 'local',
@@ -1427,6 +1475,8 @@ describe('SettingsScreen', () => {
           transcriptionFormat: true,
           uiRadius: 'default',
           uiDensity: 'default',
+          uiTextSize: 'default',
+          chatTextSize: 'medium',
           contactsEnabled: false,
           mobileOnboarded: false,
           mobileStorage: 'local',
@@ -1503,6 +1553,8 @@ describe('SettingsScreen', () => {
           transcriptionFormat: true,
           uiRadius: 'default',
           uiDensity: 'default',
+          uiTextSize: 'default',
+          chatTextSize: 'medium',
           contactsEnabled: false,
           mobileOnboarded: false,
           mobileStorage: 'local',
@@ -1664,6 +1716,8 @@ describe('SettingsScreen', () => {
           transcriptionFormat: true,
           uiRadius: 'default',
           uiDensity: 'default',
+          uiTextSize: 'default',
+          chatTextSize: 'medium',
           contactsEnabled: false,
           mobileOnboarded: false,
           mobileStorage: 'local',
@@ -1752,6 +1806,8 @@ describe('SettingsScreen', () => {
           transcriptionFormat: true,
           uiRadius: 'default',
           uiDensity: 'default',
+          uiTextSize: 'default',
+          chatTextSize: 'medium',
           contactsEnabled: false,
           mobileOnboarded: false,
           mobileStorage: 'local',
@@ -1831,6 +1887,8 @@ describe('SettingsScreen', () => {
           transcriptionFormat: true,
           uiRadius: 'default',
           uiDensity: 'default',
+          uiTextSize: 'default',
+          chatTextSize: 'medium',
           contactsEnabled: false,
           mobileOnboarded: false,
           mobileStorage: 'local',

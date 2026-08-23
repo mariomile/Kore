@@ -307,6 +307,40 @@ html:root {
   --editor-font-size: var(--text-lg);
 }
 
+/* Interface text size (Settings → Appearance → "Text size" → Interface).
+   Scales the root font-size, so every rem-based size in the app — chrome,
+   lists, and the design-system type scale — moves together. `default`
+   declares nothing and keeps the browser's 16px root; the setting rides on
+   `[data-ui-text-size]`, mirrored by `UiTextSizeEffect`. */
+:root[data-ui-text-size='small'] {
+  font-size: 93.75%; /* 15px root */
+}
+:root[data-ui-text-size='large'] {
+  font-size: 106.25%; /* 17px root */
+}
+
+/* Chat reading size (Settings → Appearance → "Text size" → Chat). Same
+   contract as the editor size above: `ChatTextSizeEffect` mirrors the
+   setting onto `[data-chat-text-size]`, and the `:root` fallback keeps the
+   chat's stock 14px before the effect has run. Applied through the
+   `.reflect-chat-message` class every chat text surface carries; un-layered,
+   so it beats the Tailwind `text-sm` utilities on the same elements. */
+:root {
+  --chat-font-size: var(--text-sm);
+}
+:root[data-chat-text-size='small'] {
+  --chat-font-size: var(--text-xs);
+}
+:root[data-chat-text-size='medium'] {
+  --chat-font-size: var(--text-sm);
+}
+:root[data-chat-text-size='large'] {
+  --chat-font-size: var(--text-base);
+}
+.reflect-chat-message {
+  font-size: var(--chat-font-size, var(--text-sm));
+}
+
 /* Editor typeface (Settings → Editor → "Font"). Same contract as the text
    size above: `EditorFontFamilyEffect` mirrors the setting onto
    `[data-editor-font-family]`, and the `:root` fallback keeps the app's sans

@@ -20,6 +20,8 @@ describe('settingsSchema', () => {
       transcriptionFormat: true,
       uiRadius: 'default',
       uiDensity: 'default',
+      uiTextSize: 'default',
+      chatTextSize: 'medium',
       contactsEnabled: false,
       mobileOnboarded: false,
       mobileStorage: 'local',
@@ -81,6 +83,8 @@ describe('settingsSchema', () => {
     expect(DEFAULT_SETTINGS.accentColor).toBe('indigo')
     expect(DEFAULT_SETTINGS.uiRadius).toBe('default')
     expect(DEFAULT_SETTINGS.uiDensity).toBe('default')
+    expect(DEFAULT_SETTINGS.uiTextSize).toBe('default')
+    expect(DEFAULT_SETTINGS.chatTextSize).toBe('medium')
     expect(DEFAULT_SETTINGS.glassIntensity).toBe('regular')
     expect(DEFAULT_SETTINGS.editorFontFamily).toBe('sans')
     expect(DEFAULT_SETTINGS.editorLineSpacing).toBe('normal')
@@ -148,6 +152,10 @@ describe('settingsSchema', () => {
     expect(settingsSchema.parse({ uiRadius: 'round' }).uiRadius).toBe('round')
     expect(settingsSchema.parse({ uiDensity: 'compact' }).uiDensity).toBe('compact')
     expect(settingsSchema.parse({ uiDensity: 'comfortable' }).uiDensity).toBe('comfortable')
+    expect(settingsSchema.parse({ uiTextSize: 'small' }).uiTextSize).toBe('small')
+    expect(settingsSchema.parse({ uiTextSize: 'large' }).uiTextSize).toBe('large')
+    expect(settingsSchema.parse({ chatTextSize: 'small' }).chatTextSize).toBe('small')
+    expect(settingsSchema.parse({ chatTextSize: 'large' }).chatTextSize).toBe('large')
     expect(settingsSchema.parse({ glassIntensity: 'subtle' }).glassIntensity).toBe('subtle')
     expect(settingsSchema.parse({ glassIntensity: 'strong' }).glassIntensity).toBe('strong')
     expect(settingsSchema.parse({ accentColor: 'indigo' }).accentColor).toBe('indigo')
@@ -246,6 +254,10 @@ describe('settingsSchema', () => {
     expect(settingsSchema.parse({ uiRadius: 8 }).uiRadius).toBe('default')
     expect(settingsSchema.parse({ uiDensity: 'cosy' }).uiDensity).toBe('default')
     expect(settingsSchema.parse({ uiDensity: 2 }).uiDensity).toBe('default')
+    expect(settingsSchema.parse({ uiTextSize: 'huge' }).uiTextSize).toBe('default')
+    expect(settingsSchema.parse({ uiTextSize: 2 }).uiTextSize).toBe('default')
+    expect(settingsSchema.parse({ chatTextSize: 'huge' }).chatTextSize).toBe('medium')
+    expect(settingsSchema.parse({ chatTextSize: 2 }).chatTextSize).toBe('medium')
     expect(settingsSchema.parse({ glassIntensity: 'extreme' }).glassIntensity).toBe('regular')
     expect(settingsSchema.parse({ glassIntensity: 3 }).glassIntensity).toBe('regular')
     expect(settingsSchema.parse({ accentColor: 'chartreuse' }).accentColor).toBe('indigo')
@@ -314,6 +326,8 @@ describe('settingsSchema', () => {
       transcriptionFormat: true,
       uiRadius: 'default',
       uiDensity: 'default',
+      uiTextSize: 'default',
+      chatTextSize: 'medium',
       contactsEnabled: false,
       mobileOnboarded: false,
       mobileStorage: 'local',

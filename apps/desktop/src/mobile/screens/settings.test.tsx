@@ -335,7 +335,7 @@ describe('MobileSettings', () => {
     await mount()
 
     await expect
-      .element(page.getByText('Sync notes with Reflect on your other devices.'))
+      .element(page.getByText('Sync notes with Memento on your other devices.'))
       .toBeVisible()
     await user.click(page.getByRole('button', { name: 'Connect GitHub' }))
 

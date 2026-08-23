@@ -11,7 +11,9 @@ import { EditorFontFamilyEffect } from '@/providers/editor-font-family'
 import { EditorFullWidthEffect } from '@/providers/editor-full-width'
 import { EditorLineSpacingEffect } from '@/providers/editor-line-spacing'
 import { EditorTextSizeEffect } from '@/providers/editor-text-size'
+import { ChatTextSizeEffect } from '@/providers/chat-text-size'
 import { SettingsProvider } from '@/providers/settings-provider'
+import { UiTextSizeEffect } from '@/providers/ui-text-size'
 import { ThemeProvider } from '@/providers/theme-provider'
 import '@/styles/index.css'
 
@@ -40,6 +42,8 @@ createRoot(rootElement, reactRootOptions).render(
       <SettingsProvider>
         <EditorFullWidthEffect />
         <EditorTextSizeEffect />
+        <UiTextSizeEffect />
+        <ChatTextSizeEffect />
         <EditorFontFamilyEffect />
         <EditorLineSpacingEffect />
         <ThemeProvider>

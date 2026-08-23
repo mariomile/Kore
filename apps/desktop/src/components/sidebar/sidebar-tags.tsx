@@ -20,7 +20,7 @@ export function SidebarTags(): ReactElement | null {
   }
 
   return (
-    <section aria-label="Tags" className="px-6.5">
+    <section aria-label="Tags" className="px-4.5">
       <h2 className="pt-4 text-2xs font-medium leading-5 tracking-wide text-text-muted">Tags</h2>
       <ul className="mt-2 flex flex-col space-y-1">
         {tags.map((facet) => {

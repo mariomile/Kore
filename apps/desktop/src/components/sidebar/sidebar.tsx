@@ -62,7 +62,7 @@ export function Sidebar({ graph, context }: SidebarProps): ReactElement {
           </div>
         </div>
 
-        <nav aria-label="Primary" className="mt-5 space-y-1 px-4">
+        <nav aria-label="Primary" className="mt-5 space-y-1 px-2">
           <SidebarItem
             icon={<Pencil className="size-[17px]" />}
             label="Daily notes"

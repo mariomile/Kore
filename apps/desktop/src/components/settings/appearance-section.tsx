@@ -1,17 +1,23 @@
 import type { ReactElement, ReactNode } from 'react'
 import type {
   AccentColor,
+  ChatTextSize,
+  EditorTextSize,
   GlassIntensity,
   ThemePreference,
   UiDensity,
   UiRadius,
+  UiTextSize,
 } from '@reflect/core'
 import {
   ACCENT_COLOR_IDS,
   ACCENT_SWATCH_HEX,
+  CHAT_TEXT_SIZE_IDS,
+  EDITOR_TEXT_SIZE_IDS,
   GLASS_INTENSITY_IDS,
   UI_DENSITY_IDS,
   UI_RADIUS_IDS,
+  UI_TEXT_SIZE_IDS,
 } from '@reflect/core'
 import {
   Contrast,
@@ -105,6 +111,24 @@ const GLASS_INTENSITY_LABELS: Record<GlassIntensity, string> = {
   subtle: 'Subtle',
   regular: 'Regular',
   strong: 'Strong',
+}
+
+const UI_TEXT_SIZE_LABELS: Record<UiTextSize, string> = {
+  small: 'Small',
+  default: 'Default',
+  large: 'Large',
+}
+
+const EDITOR_TEXT_SIZE_LABELS: Record<EditorTextSize, string> = {
+  small: 'Small',
+  medium: 'Medium',
+  large: 'Large',
+}
+
+const CHAT_TEXT_SIZE_LABELS: Record<ChatTextSize, string> = {
+  small: 'Small',
+  medium: 'Medium',
+  large: 'Large',
 }
 
 interface RadioCardOption<T extends string> {
@@ -300,6 +324,59 @@ export function AppearanceSection(): ReactElement {
           onChange={(uiRadius) => updateSettings({ uiRadius })}
           columns="grid-cols-4"
         />
+      </SettingsField>
+
+      <SettingsField
+        legend="Text size"
+        description="How big type renders — the interface chrome, the note editor, and the AI chat each get their own step."
+      >
+        <div className="mt-3 space-y-3">
+          <div>
+            <p className="text-xs font-medium text-text-secondary">Interface</p>
+            <SettingsRadioCards
+              name="ui-text-size"
+              value={settings.uiTextSize}
+              options={UI_TEXT_SIZE_IDS.map((size) => ({
+                value: size,
+                label: UI_TEXT_SIZE_LABELS[size],
+                // Small/Default/Large repeat across this field's three rows
+                // (and elsewhere on the screen), so the accessible name
+                // carries the row.
+                ariaLabel: `Interface text size: ${UI_TEXT_SIZE_LABELS[size]}`,
+              }))}
+              onChange={(uiTextSize) => updateSettings({ uiTextSize })}
+              columns="grid-cols-3"
+            />
+          </div>
+          <div>
+            <p className="text-xs font-medium text-text-secondary">Notes</p>
+            <SettingsRadioCards
+              name="appearance-editor-text-size"
+              value={settings.editorTextSize}
+              options={EDITOR_TEXT_SIZE_IDS.map((size) => ({
+                value: size,
+                label: EDITOR_TEXT_SIZE_LABELS[size],
+                ariaLabel: `Note text size: ${EDITOR_TEXT_SIZE_LABELS[size]}`,
+              }))}
+              onChange={(editorTextSize) => updateSettings({ editorTextSize })}
+              columns="grid-cols-3"
+            />
+          </div>
+          <div>
+            <p className="text-xs font-medium text-text-secondary">Chat</p>
+            <SettingsRadioCards
+              name="chat-text-size"
+              value={settings.chatTextSize}
+              options={CHAT_TEXT_SIZE_IDS.map((size) => ({
+                value: size,
+                label: CHAT_TEXT_SIZE_LABELS[size],
+                ariaLabel: `Chat text size: ${CHAT_TEXT_SIZE_LABELS[size]}`,
+              }))}
+              onChange={(chatTextSize) => updateSettings({ chatTextSize })}
+              columns="grid-cols-3"
+            />
+          </div>
+        </div>
       </SettingsField>
 
       <SettingsField

@@ -98,8 +98,8 @@ export function CalendarIntegrationField(): ReactElement | null {
       <div>
         <InlineAlert tone="error">
           {status === 'notDetermined'
-            ? 'Reflect needs permission to read your calendars.'
-            : 'Reflect can’t read your calendars. Allow it under Privacy & Security → Calendars.'}
+            ? 'Memento needs permission to read your calendars.'
+            : 'Memento can’t read your calendars. Allow it under Privacy & Security → Calendars.'}
         </InlineAlert>
         <div className="mt-2">
           {status === 'notDetermined' ? (

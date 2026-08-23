@@ -13,7 +13,8 @@ use super::query::run_query;
 use super::scan::scan_reconcile;
 use super::write::{
     apply_note, claim_tier, clear_index, move_note, touch_note, IndexedAlias, IndexedClaim,
-    IndexedEmail, IndexedLink, IndexedNote, IndexedTag, IndexedTask, MovedNoteAddress,
+    IndexedEmail, IndexedLink, IndexedNote, IndexedProperty, IndexedTag, IndexedTagType,
+    IndexedTask, MovedNoteAddress,
 };
 
 fn migrated() -> Connection {
@@ -71,6 +72,8 @@ fn note(path: &str, title: &str, links: Vec<IndexedLink>) -> IndexedNote {
         emails: vec![],
         assets: vec![],
         tasks: vec![],
+        properties: vec![],
+        tag_type: None,
     }
 }
 
@@ -1687,6 +1690,82 @@ fn move_in_txn(conn: &mut Connection, from: &str, to: &str) -> crate::error::App
     move_note(&tx, from, to, &moved_address(to))?;
     tx.commit()?;
     Ok(())
+}
+
+// ---- tag types + note properties (TDR 0005) --------------------------------
+
+#[test]
+fn tag_type_and_property_rows_apply_move_and_cascade() {
+    let mut conn = migrated();
+
+    let mut definition = note("tags/book.md", "book", vec![]);
+    definition.kind = "tag".to_string();
+    definition.tag_type = Some(IndexedTagType {
+        tag_key: "book".to_string(),
+        schema_json: r#"[{"name":"Author","key":"author","type":"text"}]"#.to_string(),
+    });
+    apply_note(&conn, &definition).unwrap();
+
+    let mut tagged = note("notes/dispossessed.md", "The Dispossessed", vec![]);
+    tagged.properties = vec![
+        IndexedProperty {
+            key: "author".to_string(),
+            value: "Le Guin".to_string(),
+            value_type: "string".to_string(),
+            value_number: None,
+        },
+        IndexedProperty {
+            key: "rating".to_string(),
+            value: "4.5".to_string(),
+            value_type: "number".to_string(),
+            value_number: Some(4.5),
+        },
+    ];
+    apply_note(&conn, &tagged).unwrap();
+
+    let schema: String = conn
+        .query_row(
+            "SELECT schema_json FROM tag_types WHERE tag_key = 'book'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert!(schema.contains("author"));
+    let rating: f64 = conn
+        .query_row(
+            "SELECT value_number FROM note_properties
+             WHERE note_path = 'notes/dispossessed.md' AND key = 'rating'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert!((rating - 4.5).abs() < f64::EPSILON);
+
+    // A move carries the property rows (they are content-derived).
+    move_in_txn(&mut conn, "notes/dispossessed.md", "notes/le-guin.md").unwrap();
+    let moved_properties: i64 = conn
+        .query_row(
+            "SELECT count(*) FROM note_properties WHERE note_path = 'notes/le-guin.md'",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(moved_properties, 2);
+
+    // Re-applying a definition whose marker was removed clears its type row
+    // (the delete-and-reinsert cascade), and property rows die with the note.
+    definition.kind = "note".to_string();
+    definition.tag_type = None;
+    apply_note(&conn, &definition).unwrap();
+    let types: i64 = conn
+        .query_row("SELECT count(*) FROM tag_types", [], |row| row.get(0))
+        .unwrap();
+    assert_eq!(types, 0);
+    super::write::remove_note(&conn, "notes/le-guin.md").unwrap();
+    let orphaned: i64 = conn
+        .query_row("SELECT count(*) FROM note_properties", [], |row| row.get(0))
+        .unwrap();
+    assert_eq!(orphaned, 0);
 }
 
 #[test]

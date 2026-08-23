@@ -1,4 +1,4 @@
-import type { GistFrontmatter } from '@reflect/core'
+import { RESERVED_FRONTMATTER_KEYS, type GistFrontmatter } from '@reflect/core'
 
 export interface FrontmatterPatch {
   /**
@@ -35,6 +35,13 @@ export interface FrontmatterPatch {
    * dismissals the frontmatter carries nothing.
    */
   ignoredContacts?: string[]
+  /**
+   * Tag-type property values (TDR 0005): arbitrary non-reserved frontmatter
+   * keys, written per entry (`undefined` deletes a key). Reserved keys are
+   * dropped here — no property write can ever clobber the app's own metadata,
+   * whichever surface built the patch.
+   */
+  properties?: Record<string, unknown>
 }
 
 /**
@@ -44,6 +51,15 @@ export interface FrontmatterPatch {
  */
 export function frontmatterPatchToYaml(patch: FrontmatterPatch): Record<string, unknown> {
   const yaml: Record<string, unknown> = {}
+  if (patch.properties !== undefined) {
+    // Properties first, typed keys after: a (dropped) reserved entry can
+    // never shadow the typed fields below, which always win their keys.
+    for (const [key, value] of Object.entries(patch.properties)) {
+      if (!RESERVED_FRONTMATTER_KEYS.has(key)) {
+        yaml[key] = value
+      }
+    }
+  }
   if (patch.id !== undefined) {
     yaml['id'] = patch.id
   }

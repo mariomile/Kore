@@ -52,6 +52,12 @@ pub struct IndexedNote {
     pub(super) emails: Vec<IndexedEmail>,
     pub(super) assets: Vec<String>,
     pub(super) tasks: Vec<IndexedTask>,
+    /// Non-reserved frontmatter keys (`note_properties`, TDR 0005).
+    #[serde(default)]
+    pub(super) properties: Vec<IndexedProperty>,
+    /// The tag schema when this is a definition note (`tag_types` row).
+    #[serde(default)]
+    pub(super) tag_type: Option<IndexedTagType>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -113,6 +119,27 @@ pub(super) struct IndexedClaim {
 pub(super) struct IndexedEmail {
     pub(super) email: String,
     pub(super) email_key: String,
+}
+
+/// One non-reserved frontmatter key (`note_properties`, TDR 0005). `value` is
+/// the canonical string form (JSON array text for lists); `value_number` is
+/// the numeric sort key, set only for numbers. Mirrors `indexedPropertySchema`.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct IndexedProperty {
+    pub(super) key: String,
+    pub(super) value: String,
+    pub(super) value_type: String,
+    pub(super) value_number: Option<f64>,
+}
+
+/// A tag definition note's schema (`tag_types`, TDR 0005). `tag_key` is
+/// folded in TypeScript — Rust never folds. Mirrors `indexedTagTypeSchema`.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(super) struct IndexedTagType {
+    pub(super) tag_key: String,
+    pub(super) schema_json: String,
 }
 
 /// One GFM checkbox (Plan 18). `marker_offset` is the `[`'s character offset in
@@ -240,6 +267,31 @@ pub(super) fn apply_note(conn: &Connection, note: &IndexedNote) -> AppResult<()>
             ])?;
         }
     }
+    {
+        let mut stmt = conn.prepare_cached(
+            "INSERT INTO note_properties(note_path, key, value, value_type, value_number)
+             VALUES(?1, ?2, ?3, ?4, ?5)",
+        )?;
+        for property in &note.properties {
+            stmt.execute(params![
+                note.path,
+                property.key,
+                property.value,
+                property.value_type,
+                property.value_number
+            ])?;
+        }
+    }
+    if let Some(tag_type) = &note.tag_type {
+        // `INSERT OR REPLACE` on the tag_key PK: if two definition files ever
+        // address one folded key (a case-variant duplicate), the last write
+        // wins instead of failing the whole batch — the duplicate-file state
+        // itself is the anomaly, and it converges when either file changes.
+        conn.prepare_cached(
+            "INSERT OR REPLACE INTO tag_types(tag_key, note_path, schema_json) VALUES(?1, ?2, ?3)",
+        )?
+        .execute(params![tag_type.tag_key, note.path, tag_type.schema_json])?;
+    }
     // The FTS body carries the note text plus any referenced assets' description
     // text (Plan 20), so a query matching a description surfaces the note. Only
     // the search index is enriched — `note_text`, `preview`, and AI-reachable
@@ -336,6 +388,14 @@ pub(super) fn move_note(
     conn.prepare_cached("UPDATE assets SET note_path = ?2 WHERE note_path = ?1")?
         .execute(params![from, to])?;
     conn.prepare_cached("UPDATE tasks SET note_path = ?2 WHERE note_path = ?1")?
+        .execute(params![from, to])?;
+    conn.prepare_cached("UPDATE note_properties SET note_path = ?2 WHERE note_path = ?1")?
+        .execute(params![from, to])?;
+    // The row rides along for FK integrity; its `tag_key` derives from the
+    // path and goes stale on a cross-stem move. External (healed) moves
+    // reproject the destination right after this, which rewrites the row —
+    // and in-app renames never target `tags/` today.
+    conn.prepare_cached("UPDATE tag_types SET note_path = ?2 WHERE note_path = ?1")?
         .execute(params![from, to])?;
     conn.prepare_cached("UPDATE embedding_chunks SET note_path = ?2 WHERE note_path = ?1")?
         .execute(params![from, to])?;

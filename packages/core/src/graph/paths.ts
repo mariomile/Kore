@@ -8,6 +8,12 @@ export const DAILY_DIR = 'daily'
 export const NOTES_DIR = 'notes'
 /** Note templates — indexed as their own kind, excluded from note surfaces. */
 export const TEMPLATES_DIR = 'templates'
+/**
+ * Tag definition notes (TDR 0005) — `tags/<name>.md` with a `lore: tag`
+ * marker defines the tag's type. Indexed as their own kind, linkable and
+ * openable like notes, excluded from note-listing surfaces.
+ */
+export const TAGS_DIR = 'tags'
 export const ASSETS_DIR = 'assets'
 /** Audio-memo recordings live apart from pasted/dropped `assets/` files. */
 export const AUDIO_MEMOS_DIR = 'audio-memos'

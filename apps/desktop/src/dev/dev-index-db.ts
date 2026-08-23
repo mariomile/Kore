@@ -206,6 +206,20 @@ export async function createDevIndexDb(): Promise<DevIndexDb> {
           ],
         )
       }
+      for (const property of note.properties) {
+        run(
+          db,
+          'INSERT INTO note_properties(note_path, key, value, value_type, value_number) VALUES(?, ?, ?, ?, ?)',
+          [note.path, property.key, property.value, property.valueType, property.valueNumber],
+        )
+      }
+      if (note.tagType !== null) {
+        run(
+          db,
+          'INSERT OR REPLACE INTO tag_types(tag_key, note_path, schema_json) VALUES(?, ?, ?)',
+          [note.tagType.tagKey, note.path, note.tagType.schemaJson],
+        )
+      }
       const searchBody = note.assetText === '' ? note.text : `${note.text}\n${note.assetText}`
       run(db, 'INSERT INTO search_fts(path, title, body) VALUES(?, ?, ?)', [
         note.path,
@@ -267,6 +281,10 @@ export async function createDevIndexDb(): Promise<DevIndexDb> {
         run(db, 'UPDATE note_emails SET note_path = ? WHERE note_path = ?', [to, from])
         run(db, 'UPDATE assets SET note_path = ? WHERE note_path = ?', [to, from])
         run(db, 'UPDATE tasks SET note_path = ? WHERE note_path = ?', [to, from])
+        run(db, 'UPDATE note_properties SET note_path = ? WHERE note_path = ?', [to, from])
+        // Rides along for FK integrity like `write.rs`; a stale tag_key
+        // converges on the reprojection that follows a healed move.
+        run(db, 'UPDATE tag_types SET note_path = ? WHERE note_path = ?', [to, from])
         run(db, 'UPDATE embedding_chunks SET note_path = ? WHERE note_path = ?', [to, from])
         run(db, 'UPDATE search_fts SET path = ? WHERE path = ?', [to, from])
         db.exec('COMMIT')

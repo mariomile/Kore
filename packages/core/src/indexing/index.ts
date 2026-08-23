@@ -177,6 +177,15 @@ export {
   type BlockContextSource,
 } from './block-context'
 export { extractSnippetTasks, type SnippetTask } from './snippet-tasks'
+export {
+  getTagType,
+  listTagTypes,
+  listCollection,
+  type TagTypeEntry,
+  type CollectionEntry,
+  type CollectionSort,
+  type CollectionValue,
+} from './collections'
 export { parseSearchQuery, type ParsedSearchQuery, type SearchFilters } from './filter-query'
 export {
   searchNotes,

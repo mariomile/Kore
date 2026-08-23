@@ -93,6 +93,14 @@ export interface NoteKeys {
   notePath: string | null;
 }
 
+export interface NoteProperties {
+  key: string;
+  notePath: string;
+  value: string;
+  valueNumber: number | null;
+  valueType: string;
+}
+
 export interface Notes {
   dailyDate: string | null;
   fileHash: string;
@@ -130,6 +138,12 @@ export interface Tags {
   tagKey: Generated<string>;
 }
 
+export interface TagTypes {
+  notePath: string;
+  schemaJson: string;
+  tagKey: string;
+}
+
 export interface Tasks {
   breadcrumbs: Generated<string>;
   checked: number;
@@ -152,9 +166,11 @@ export interface DB {
   noteClaims: NoteClaims;
   noteEmails: NoteEmails;
   noteKeys: NoteKeys;
+  noteProperties: NoteProperties;
   notes: Notes;
   noteText: NoteText;
   searchFts: SearchFts;
   tags: Tags;
+  tagTypes: TagTypes;
   tasks: Tasks;
 }

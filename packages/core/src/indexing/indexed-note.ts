@@ -23,6 +23,13 @@ import {
 } from '../markdown'
 import { previewSnippet } from './snippet'
 import { serializeWikiSuggestionAddress } from './suggest'
+import {
+  encodeTagTypeJson,
+  extractNoteProperties,
+  isTagDefinitionNote,
+  parseTagTypeFrontmatter,
+  tagNameForDefinitionPath,
+} from '../tags'
 
 /**
  * The index write payload (Plan 04): a {@link ParsedNote} (Plan 03) flattened into
@@ -88,8 +95,11 @@ import { serializeWikiSuggestionAddress } from './suggest'
  * and `.md` stripped; '' for strict-path, self, and refused targets), so the
  * backlinks view's name join matches navigation. Existing rows carry the raw
  * fold and must reproject.
+ * 20 - tag types + collections (TDR 0005): the `note_properties` and
+ * `tag_types` projections and `notes.kind = 'tag'` for definition notes.
+ * Existing notes carry no property rows until reprojected.
  */
-export const PROJECTION_VERSION = 19
+export const PROJECTION_VERSION = 20
 
 /**
  * Precedence of the spellings a note answers to (`note_claims.tier`): the
@@ -184,9 +194,31 @@ export const indexedTaskSchema = z.object({
 })
 export type IndexedTask = z.infer<typeof indexedTaskSchema>
 
-/** What a `notes` row is: part of the graph (daily/note) or a template. */
-export const noteKindSchema = z.enum(['daily', 'note', 'template'])
+/**
+ * What a `notes` row is: part of the graph (daily/note), a template, or a
+ * tag definition note (TDR 0005). Templates and tag notes are excluded from
+ * note-listing surfaces; tag notes stay linkable and openable.
+ */
+export const noteKindSchema = z.enum(['daily', 'note', 'template', 'tag'])
 export type NoteKind = z.infer<typeof noteKindSchema>
+
+export const indexedPropertySchema = z.object({
+  /** Frontmatter key, verbatim. */
+  key: z.string(),
+  /** Canonical string form (JSON array text for lists). */
+  value: z.string(),
+  valueType: z.enum(['string', 'number', 'boolean', 'list']),
+  /** Numeric sort key, set only for `number` values. */
+  valueNumber: z.number().nullable(),
+})
+
+export const indexedTagTypeSchema = z.object({
+  /** Folded tag key ({@link foldTag}) the definition addresses. */
+  tagKey: z.string(),
+  /** The schema as one JSON string (`encodeTagTypeJson`) — `tag_types.schema_json`. */
+  schemaJson: z.string(),
+})
+export type IndexedTagType = z.infer<typeof indexedTagTypeSchema>
 
 export const indexedNoteSchema = z.object({
   path: z.string(),
@@ -230,6 +262,13 @@ export const indexedNoteSchema = z.object({
   assets: z.array(z.string()),
   /** Reflect task rows for the Tasks projection (Plan 18). */
   tasks: z.array(indexedTaskSchema),
+  /** Non-reserved frontmatter keys for the `note_properties` projection (TDR 0005). */
+  properties: z.array(indexedPropertySchema),
+  /**
+   * The tag schema this definition note carries (`tag_types` row); null for
+   * every other kind.
+   */
+  tagType: indexedTagTypeSchema.nullable(),
 })
 export type IndexedNote = z.infer<typeof indexedNoteSchema>
 
@@ -355,6 +394,9 @@ export function buildIndexedNote(
   })
   const aliases = projectNoteAliases(parsed)
   const body = splitFrontmatter(meta.source).body
+  const isTagDefinition = isTagDefinitionNote(parsed.path, parsed.frontmatter)
+  const tagName = isTagDefinition ? tagNameForDefinitionPath(parsed.path) : null
+  const tagSchema = isTagDefinition ? parseTagTypeFrontmatter(parsed.frontmatter) : null
 
   return {
     path: parsed.path,
@@ -362,7 +404,13 @@ export function buildIndexedNote(
     title: parsed.title,
     titleKey: foldKey(parsed.title),
     pathKey: foldGraphPath(parsed.path),
-    kind: isDaily(parsed.path) ? 'daily' : isTemplatePath(parsed.path) ? 'template' : 'note',
+    kind: isDaily(parsed.path)
+      ? 'daily'
+      : isTemplatePath(parsed.path)
+        ? 'template'
+        : isTagDefinition
+          ? 'tag'
+          : 'note',
     dailyDate: isDaily(parsed.path) ? dateFromDailyPath(parsed.path) : null,
     isPrivate: parsed.frontmatter.private,
     isPinned: isPinned(parsed.frontmatter),
@@ -395,5 +443,10 @@ export function buildIndexedNote(
       checked: task.checked,
       dueDate: task.dueDate,
     })),
+    properties: extractNoteProperties(parsed.frontmatter),
+    tagType:
+      tagName === null || tagSchema === null
+        ? null
+        : { tagKey: foldTag(tagName), schemaJson: encodeTagTypeJson(tagSchema) },
   }
 }

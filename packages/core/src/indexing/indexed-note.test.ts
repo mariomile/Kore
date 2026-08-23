@@ -3,8 +3,8 @@ import { gistBodyHash, parseNote } from '../markdown'
 import { buildIndexedNote, CLAIM_TIER, indexedNoteSchema, PROJECTION_VERSION } from './indexed-note'
 
 describe('buildIndexedNote', () => {
-  it('carries the projection version that rebuilds classifier link keys', () => {
-    expect(PROJECTION_VERSION).toBe(19)
+  it('carries the projection version that backfills property rows', () => {
+    expect(PROJECTION_VERSION).toBe(20)
   })
 
   it('flattens a parsed note into the index payload', () => {
@@ -48,6 +48,52 @@ describe('buildIndexedNote', () => {
       indexed.links.some((link) => link.kind === 'md' && link.targetRaw === 'https://x.com'),
     ).toBe(true)
     expect(indexed.assets).toEqual(['notes/assets/p.png', 'assets/p.png'])
+  })
+
+  it('projects non-reserved frontmatter keys as properties (TDR 0005)', () => {
+    const source =
+      '---\nid: 01H\nprivate: true\nauthor: Le Guin\nrating: 4.5\nread: true\ntopics: [ai, product]\nweird: {a: 1}\n---\n# Book'
+    const indexed = buildIndexedNote(parseNote({ path: 'notes/book-note.md', source }), {
+      fileHash: 'h',
+      mtime: 0,
+      source,
+    })
+    expect(indexed.properties).toEqual([
+      { key: 'author', value: 'Le Guin', valueType: 'string', valueNumber: null },
+      { key: 'rating', value: '4.5', valueType: 'number', valueNumber: 4.5 },
+      { key: 'read', value: 'true', valueType: 'boolean', valueNumber: null },
+      { key: 'topics', value: '["ai","product"]', valueType: 'list', valueNumber: null },
+    ])
+    expect(indexed.tagType).toBeNull()
+    expect(indexed.kind).toBe('note')
+  })
+
+  it('indexes a marked tags/ note as a tag definition with its schema', () => {
+    const source =
+      '---\nlore: tag\nproperties:\n  - {name: Author, key: author, type: text}\n---\nBooks.'
+    const indexed = buildIndexedNote(parseNote({ path: 'tags/Book.md', source }), {
+      fileHash: 'h',
+      mtime: 0,
+      source,
+    })
+    expect(indexed.kind).toBe('tag')
+    expect(indexed.tagType).toEqual({
+      tagKey: 'book',
+      schemaJson: '[{"name":"Author","key":"author","type":"text"}]',
+    })
+    // The definition's own schema keys are reserved, never property rows.
+    expect(indexed.properties).toEqual([])
+  })
+
+  it('keeps an unmarked tags/ note an ordinary note', () => {
+    const source = '# Just a note that lives in tags/'
+    const indexed = buildIndexedNote(parseNote({ path: 'tags/book.md', source }), {
+      fileHash: 'h',
+      mtime: 0,
+      source,
+    })
+    expect(indexed.kind).toBe('note')
+    expect(indexed.tagType).toBeNull()
   })
 
   it('derives v1 subject aliases from a `//` title, after frontmatter aliases', () => {

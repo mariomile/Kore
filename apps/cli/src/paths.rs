@@ -6,6 +6,8 @@
 pub const DAILY_DIR: &str = "daily";
 pub const NOTES_DIR: &str = "notes";
 pub const TEMPLATES_DIR: &str = "templates";
+/// Tag definition notes (TDR 0005): `tags/<name>.md` marked `lore: tag`.
+pub const TAGS_DIR: &str = "tags";
 
 /// Graph-relative path to the daily note for an ISO `YYYY-MM-DD` date.
 pub fn daily_path(date: &str) -> String {

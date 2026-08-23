@@ -37,6 +37,8 @@ function projection(path: string, mtime: number, fileHash: string): IndexedNote 
     emails: [],
     assets: [],
     tasks: [],
+    properties: [],
+    tagType: null,
   }
 }
 

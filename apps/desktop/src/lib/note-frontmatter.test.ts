@@ -83,4 +83,48 @@ describe('commitNoteFrontmatter', () => {
 
     expect(writeNote).not.toHaveBeenCalled()
   })
+
+  it('writes property values and deletes a key set to undefined (TDR 0005)', async () => {
+    readNote.mockResolvedValue('---\nstatus: to-read\n---\n# A\n')
+
+    await commitNoteFrontmatter(
+      'notes/a.md',
+      { properties: { author: 'Le Guin', rating: 4.5, status: undefined } },
+      3,
+    )
+
+    expect(writeNote).toHaveBeenCalledWith(
+      'notes/a.md',
+      '---\nauthor: Le Guin\nrating: 4.5\n---\n# A\n',
+      3,
+    )
+  })
+
+  it('drops reserved keys from a properties patch — they can never clobber metadata', async () => {
+    readNote.mockResolvedValue('---\nprivate: true\n---\n# A\n')
+
+    await commitNoteFrontmatter(
+      'notes/a.md',
+      { properties: { private: undefined, pinned: 9, lore: 'x', author: 'Ada' } },
+      3,
+    )
+
+    expect(writeNote).toHaveBeenCalledWith(
+      'notes/a.md',
+      '---\nprivate: true\nauthor: Ada\n---\n# A\n',
+      3,
+    )
+  })
+
+  it('leaves unrelated keys and comments untouched around a property write', async () => {
+    readNote.mockResolvedValue('---\n# reading log\nstatus: to-read\nid: 01H\n---\n# A\n')
+
+    await commitNoteFrontmatter('notes/a.md', { properties: { status: 'done' } }, 3)
+
+    expect(writeNote).toHaveBeenCalledWith(
+      'notes/a.md',
+      '---\n# reading log\nstatus: done\nid: 01H\n---\n# A\n',
+      3,
+    )
+  })
 })

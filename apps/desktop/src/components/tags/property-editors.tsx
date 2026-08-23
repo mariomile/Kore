@@ -135,7 +135,7 @@ function InputPropertyEditor({
     >
       <PopoverTrigger
         aria-label={`Edit ${property.name}`}
-        className="flex w-full min-w-0 items-center text-left focus-visible:outline-none"
+        className="flex min-h-5 w-full min-w-0 items-center self-stretch text-left focus-visible:outline-none"
         onClick={(event) => event.stopPropagation()}
         onDoubleClick={(event) => event.stopPropagation()}
       >
@@ -203,7 +203,7 @@ function SelectPropertyEditor({
     >
       <PopoverTrigger
         aria-label={`Edit ${property.name}`}
-        className="flex w-full min-w-0 items-center text-left focus-visible:outline-none"
+        className="flex min-h-5 w-full min-w-0 items-center self-stretch text-left focus-visible:outline-none"
         onClick={(event) => event.stopPropagation()}
         onDoubleClick={(event) => event.stopPropagation()}
       >
@@ -258,7 +258,7 @@ function CheckboxPropertyEditor({
       role="checkbox"
       aria-checked={checked}
       aria-label={property.name}
-      className="flex min-w-0 items-center focus-visible:outline-none"
+      className="flex min-h-5 min-w-0 items-center self-stretch focus-visible:outline-none"
       onClick={(event) => {
         event.stopPropagation()
         onCommit(!checked)

@@ -402,9 +402,9 @@ fn note_addressing_migrations_preserve_rows_and_reproject_resolution() {
         })
         .collect();
 
-    migrate(&mut conn).expect("migrate to latest");
+    migrate_to(&mut conn, 20).expect("migrate through the addressing migrations");
 
-    // Neither 0018 nor 0019 wipes projection rows...
+    // Neither 0018 nor 0019 (nor 0020) wipes projection rows...
     let counts_after: Vec<i64> = ["notes", "links"]
         .iter()
         .map(|table| {
@@ -426,6 +426,14 @@ fn note_addressing_migrations_preserve_rows_and_reproject_resolution() {
     )
     .unwrap();
     assert!(stale.is_empty());
+
+    // 0021 (tag types) rebuilds `notes` with the 0015 recipe, wiping the
+    // projection; the paired projection-version bump re-indexes on open.
+    migrate(&mut conn).expect("migrate to latest");
+    let wiped: i64 = conn
+        .query_row("SELECT count(*) FROM notes", [], |row| row.get(0))
+        .unwrap();
+    assert_eq!(wiped, 0);
 
     // The reprojection restores resolution through the claims table.
     apply_note(&conn, &note("notes/dad.md", "Dad", vec![])).unwrap();

@@ -159,10 +159,11 @@ export async function hapticFeedback(pattern: HapticPattern): Promise<void> {
 }
 
 /**
- * Write an exported HTML document to an absolute path the user chose in the
- * OS save dialog — the one write that deliberately leaves the graph root.
- * Rust re-validates (absolute path, .html/.htm extension); callers must only
- * ever pass a path fresh out of the save dialog.
+ * Write an exported document (styled note HTML, collection CSV) to an
+ * absolute path the user chose in the OS save dialog — the one write that
+ * deliberately leaves the graph root. Rust re-validates (absolute path,
+ * .html/.htm/.csv extension); callers must only ever pass a path fresh out
+ * of the save dialog.
  */
 export async function exportHtmlWrite(path: string, contents: string): Promise<void> {
   await call('export_html_write', { path, contents }, voidSchema)

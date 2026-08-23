@@ -1158,6 +1158,107 @@ fn recent_lists_newest_public_notes_first() {
     assert_eq!(limited["notes"].as_array().unwrap().len(), 1);
 }
 
+// ---- collection -------------------------------------------------------------
+
+#[test]
+fn collection_lists_typed_tag_rows_with_properties() {
+    let fixture = graph();
+    fixture.write_note(
+        "notes/dispossessed.md",
+        "---\nauthor: Le Guin\nrating: 4.5\n---\n# The Dispossessed\n#book\n",
+    );
+    fixture.write_note("notes/dune.md", "---\nauthor: Herbert\n---\n# Dune\n#book\n");
+    fixture.write_note(
+        "notes/secret.md",
+        "---\nprivate: true\nauthor: Nobody\n---\n# Secret\n#book\n",
+    );
+    fixture.build_index();
+    let conn =
+        rusqlite::Connection::open(fixture.root().join(".reflect").join("index.sqlite")).unwrap();
+    // Mirror the desktop projection: tag rows, the tag's type, property rows.
+    for path in ["notes/dispossessed.md", "notes/dune.md", "notes/secret.md"] {
+        conn.execute(
+            "INSERT INTO tags(note_path, tag, tag_key) VALUES(?1, 'book', 'book')",
+            params![path],
+        )
+        .unwrap();
+    }
+    conn.execute(
+        "INSERT INTO notes(path, id, title, title_key, kind, is_private, is_pinned,
+                           file_hash, mtime, updated_at, preview)
+         VALUES('tags/book.md', 'tag-book', 'book', 'book', 'tag', 0, 0, 'x', 0, 0, '')",
+        [],
+    )
+    .unwrap();
+    conn.execute(
+        "INSERT INTO tag_types(tag_key, note_path, schema_json)
+         VALUES('book', 'tags/book.md',
+                '[{\"name\":\"Author\",\"key\":\"author\",\"type\":\"text\"},{\"name\":\"Rating\",\"key\":\"rating\",\"type\":\"number\"}]')",
+        [],
+    )
+    .unwrap();
+    for (path, key, value, value_type, value_number) in [
+        (
+            "notes/dispossessed.md",
+            "author",
+            "Le Guin",
+            "string",
+            None::<f64>,
+        ),
+        ("notes/dispossessed.md", "rating", "4.5", "number", Some(4.5)),
+        ("notes/dune.md", "author", "Herbert", "string", None),
+        ("notes/secret.md", "author", "Nobody", "string", None),
+    ] {
+        conn.execute(
+            "INSERT INTO note_properties(note_path, key, value, value_type, value_number)
+             VALUES(?1, ?2, ?3, ?4, ?5)",
+            params![path, key, value, value_type, value_number],
+        )
+        .unwrap();
+    }
+    drop(conn);
+
+    let value = json(&reflect(&fixture, &["collection", "Book", "--json"]));
+    assert_eq!(value["tag"], "Book");
+    let schema = value["schema"].as_array().unwrap();
+    assert_eq!(schema.len(), 2);
+    assert_eq!(schema[0]["key"], "author");
+    assert_eq!(schema[1]["type"], "number");
+    let notes = value["notes"].as_array().unwrap();
+    assert_eq!(notes.len(), 2, "private row excluded entirely: {value}");
+    let payload = value.to_string();
+    assert!(!payload.contains("secret"), "private leak: {payload}");
+    assert!(!payload.contains("Nobody"), "private value leak: {payload}");
+    let dispossessed = notes
+        .iter()
+        .find(|note| note["path"] == "notes/dispossessed.md")
+        .unwrap();
+    assert_eq!(dispossessed["properties"]["author"], "Le Guin");
+    assert_eq!(dispossessed["properties"]["rating"], 4.5);
+
+    // A property sort orders by the stored value, missing values last.
+    let sorted = json(&reflect(
+        &fixture,
+        &["collection", "book", "--sort", "rating", "--json"],
+    ));
+    let sorted_notes = sorted["notes"].as_array().unwrap();
+    assert_eq!(sorted_notes[0]["path"], "notes/dispossessed.md");
+    assert_eq!(sorted_notes[1]["path"], "notes/dune.md");
+}
+
+#[test]
+fn collection_refuses_untyped_tags_and_requires_the_index() {
+    let fixture = graph();
+    fixture.write_note("notes/a.md", "# A\n#plain\n");
+    let missing = reflect(&fixture, &["collection", "plain"]);
+    assert_eq!(missing.status.code(), Some(4), "no index yet");
+
+    fixture.build_index();
+    let untyped = reflect(&fixture, &["collection", "plain"]);
+    assert_eq!(untyped.status.code(), Some(3));
+    assert!(stderr(&untyped).contains("no type"));
+}
+
 // ---- new --------------------------------------------------------------------
 
 #[test]

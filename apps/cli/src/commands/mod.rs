@@ -5,6 +5,7 @@
 
 pub mod backlinks;
 pub mod capture;
+pub mod collection;
 pub mod new;
 pub mod open;
 pub mod path;

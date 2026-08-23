@@ -3,6 +3,14 @@ import { z } from 'zod'
 import { readNote } from '../../graph/commands'
 import { retrieve, type RetrievalHit, type RetrieveOptions } from '../../embeddings/retrieve'
 import { assetReferencingNotePaths } from '../../indexing/asset-refs'
+import {
+  getTagType,
+  listCollection,
+  propertyRowValue,
+  type CollectionEntry,
+  type CollectionSort,
+} from '../../indexing/collections'
+import { listPrivateNotePaths } from '../../indexing/insights'
 import { listDailyNotes, type DailyNoteRow, type DailyNotesRange } from '../../indexing/queries'
 import {
   listRecentNotes,
@@ -11,11 +19,14 @@ import {
 } from '../../indexing/note-list'
 import { parseFrontmatter, splitFrontmatter } from '../../markdown/frontmatter'
 import { isTagName } from '../../markdown/extract'
+import type { TagProperty, TagType } from '../../tags'
 import { buildReadOneAsset, readAssetsInput, type ReadAssetsOutput } from './read-assets'
 import { buildReadOneNote, readNotesInput, type ReadNotesOutput } from './read-notes'
 import {
+  cloudSafeCollectionRows,
   cloudSafeNoteListings,
   cloudSafeSearchHits,
+  type CloudCollectionRow,
   type CloudNoteListing,
   type CloudSafe,
   type CloudSearchHit,
@@ -47,6 +58,10 @@ const MAX_RECENT_LIMIT = 20
 /** Most days one daily-range call returns; past it the model narrows the range. */
 export const MAX_DAILY_NOTE_DAYS = 31
 
+/** Default and ceiling for collection rows per call. */
+const DEFAULT_COLLECTION_LIMIT = 30
+const MAX_COLLECTION_LIMIT = 100
+
 /** Injectable effects so tests can drive the tools without a live bridge. */
 export interface NoteToolDeps {
   retrieveFn?: (query: string, options?: RetrieveOptions) => Promise<RetrievalHit[]>
@@ -54,6 +69,9 @@ export interface NoteToolDeps {
   listRecentNotesFn?: (options: RecentNotesOptions) => Promise<RecentNoteRow[]>
   listDailyNotesFn?: (range: DailyNotesRange) => Promise<DailyNoteRow[]>
   assetReferencingNotePathsFn?: (assetPath: string) => Promise<string[]>
+  getTagTypeFn?: (tag: string) => Promise<TagType | null>
+  listCollectionFn?: (tag: string, sort: CollectionSort | null) => Promise<CollectionEntry[]>
+  listPrivateNotePathsFn?: () => Promise<string[]>
 }
 
 export interface BuildNoteToolsOptions extends NoteToolDeps {
@@ -88,6 +106,31 @@ export interface ListDailyNotesOutput {
   truncated: boolean
 }
 
+/**
+ * A collection listing, or a corrective refusal — same policy as
+ * {@link ListRecentNotesOutput}: junk tags and untyped tags each get a
+ * refusal that tells the model what to do instead of a misleading "0 rows".
+ */
+export type ListCollectionOutput =
+  | {
+      ok: true
+      tag: string
+      /** The tag's schema — one entry per property column. */
+      schema: TagProperty[]
+      rows: CloudSafe<CloudCollectionRow>[]
+      /** More public rows exist than the limit returned. */
+      truncated: boolean
+    }
+  | { ok: false; tag: string; error: string }
+
+/** Refusal for a `tag` input the tag grammar can never produce. */
+export const INVALID_COLLECTION_TAG_ERROR =
+  'Not a tag — tags are single words like "book" or "project/atlas".'
+
+/** Refusal for a real tag that has no type definition (no collection). */
+export const UNTYPED_TAG_ERROR =
+  'This tag has no type, so it has no collection. Use list_recent_notes with the tag to list its notes instead.'
+
 export const searchNotesInput = z.object({
   query: z.string().min(1).describe('Full-text search query over the note graph'),
   limit: z
@@ -114,6 +157,28 @@ export const listRecentNotesInput = z.object({
       'Only notes carrying this tag (case-insensitive, without the #). ' +
         'Omit, or pass null, to list all recent notes.',
     ),
+})
+
+export const listCollectionInput = z.object({
+  tag: z
+    .string()
+    .min(1)
+    .describe('The typed tag whose collection to list (case-insensitive, without the #)'),
+  sortBy: z
+    .string()
+    .nullish()
+    .describe(
+      'Property key to sort the rows by (a `key` from the collection schema). ' +
+        'Omit, or pass null, for the default order (pinned first, then newest).',
+    ),
+  direction: z.enum(['asc', 'desc']).nullish().describe('Sort direction (default asc)'),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(MAX_COLLECTION_LIMIT)
+    .optional()
+    .describe(`How many rows to return (default ${DEFAULT_COLLECTION_LIMIT})`),
 })
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'an ISO date, YYYY-MM-DD')
@@ -148,6 +213,9 @@ export function buildNoteTools(options: BuildNoteToolsOptions = {}): NoteTools {
   const listRecentNotesFn = options.listRecentNotesFn ?? listRecentNotes
   const listDailyNotesFn = options.listDailyNotesFn ?? listDailyNotes
   const assetRefsFn = options.assetReferencingNotePathsFn ?? assetReferencingNotePaths
+  const getTagTypeFn = options.getTagTypeFn ?? getTagType
+  const listCollectionFn = options.listCollectionFn ?? listCollection
+  const listPrivateNotePathsFn = options.listPrivateNotePathsFn ?? listPrivateNotePaths
   const searchMode: RetrieveOptions['mode'] =
     options.semanticSearchEnabled === false ? 'lexical' : 'hybrid'
 
@@ -225,6 +293,54 @@ export function buildNoteTools(options: BuildNoteToolsOptions = {}): NoteTools {
       },
     }),
 
+    list_collection: tool({
+      description:
+        'List a typed tag’s collection: every note carrying the tag, as database rows ' +
+        'with the property values the tag’s schema declares (author, rating, status…). ' +
+        'Optionally sorted by a property key. Only works for tags with a type — the ' +
+        'refusal says so when there is none. Private notes are excluded.',
+      inputSchema: listCollectionInput,
+      execute: async ({ tag, sortBy, direction, limit }): Promise<ListCollectionOutput> => {
+        if (!isTagName(tag)) {
+          return { ok: false, tag, error: INVALID_COLLECTION_TAG_ERROR }
+        }
+        const type = await getTagTypeFn(tag)
+        if (type === null) {
+          return { ok: false, tag, error: UNTYPED_TAG_ERROR }
+        }
+        const sort: CollectionSort | null =
+          sortBy != null && sortBy !== '' ? { key: sortBy, direction: direction ?? 'asc' } : null
+        // The index prefilter (private paths dropped before the cap, so a
+        // private row never even consumes a slot); the gate re-checks every
+        // survivor live, failing closed.
+        const [rows, privatePaths] = await Promise.all([
+          listCollectionFn(tag, sort),
+          listPrivateNotePathsFn(),
+        ])
+        const privateSet = new Set(privatePaths)
+        const publicRows = rows.filter((row) => !privateSet.has(row.path))
+        const max = limit ?? DEFAULT_COLLECTION_LIMIT
+        const truncated = publicRows.length > max
+        const kept = truncated ? publicRows.slice(0, max) : publicRows
+        const candidates = kept.map((row) => ({
+          path: row.path,
+          isPrivate: false,
+          title: row.title,
+          modifiedAt: new Date(row.mtime).toISOString(),
+          properties: Object.fromEntries(
+            Object.entries(row.properties).map(([key, value]) => [key, propertyRowValue(value)]),
+          ),
+        }))
+        return {
+          ok: true,
+          tag,
+          schema: type.properties,
+          rows: await cloudSafeCollectionRows(candidates, isPrivateLive),
+          truncated,
+        }
+      },
+    }),
+
     read_notes: tool({
       description:
         'Read the full markdown content of one or more notes by their graph-relative ' +
@@ -270,6 +386,7 @@ export type NoteTools = {
   search_notes: Tool<z.infer<typeof searchNotesInput>, SearchNotesOutput>
   list_recent_notes: Tool<z.infer<typeof listRecentNotesInput>, ListRecentNotesOutput>
   list_daily_notes: Tool<z.infer<typeof listDailyNotesInput>, ListDailyNotesOutput>
+  list_collection: Tool<z.infer<typeof listCollectionInput>, ListCollectionOutput>
   read_notes: Tool<z.infer<typeof readNotesInput>, ReadNotesOutput>
   read_assets: Tool<z.infer<typeof readAssetsInput>, ReadAssetsOutput>
 }
@@ -299,6 +416,7 @@ export type NoteToolCall =
   | { tool: 'assets'; toolCallId: string; paths: string[] }
   | { tool: 'recents'; toolCallId: string; tag: string | null }
   | { tool: 'dailies'; toolCallId: string; start: string; end: string }
+  | { tool: 'collection'; toolCallId: string; tag: string }
 
 /** One settled tool invocation. A failed read or listing keeps its refusal. */
 export type NoteToolResult =
@@ -313,6 +431,13 @@ export type NoteToolResult =
       error: string | null
     }
   | { tool: 'dailies'; toolCallId: string; start: string; end: string; days: NoteHitSummary[] }
+  | {
+      tool: 'collection'
+      toolCallId: string
+      tag: string
+      notes: NoteHitSummary[]
+      error: string | null
+    }
 
 /** Map an SDK tool-call part onto {@link NoteToolCall} (null for dynamic). */
 export function noteToolCall(part: TypedToolCall<NoteTools>): NoteToolCall | null {
@@ -335,6 +460,8 @@ export function noteToolCall(part: TypedToolCall<NoteTools>): NoteToolCall | nul
         start: part.input.start,
         end: part.input.end,
       }
+    case 'list_collection':
+      return { tool: 'collection', toolCallId: part.toolCallId, tag: part.input.tag }
   }
 }
 
@@ -402,5 +529,23 @@ export function noteToolResult(part: TypedToolResult<NoteTools>): NoteToolResult
         end: part.input.end,
         days: part.output.days.map(listingSummary),
       }
+    case 'list_collection': {
+      const output = part.output
+      return output.ok
+        ? {
+            tool: 'collection',
+            toolCallId: part.toolCallId,
+            tag: output.tag,
+            notes: output.rows.map((row) => ({ path: row.path, title: row.title })),
+            error: null,
+          }
+        : {
+            tool: 'collection',
+            toolCallId: part.toolCallId,
+            tag: output.tag,
+            notes: [],
+            error: output.error,
+          }
+    }
   }
 }

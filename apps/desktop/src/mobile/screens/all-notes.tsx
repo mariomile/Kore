@@ -13,6 +13,8 @@ import {
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
+import { useCollection } from '@/hooks/use-collection'
+import { useTagType } from '@/hooks/use-tag-type'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { hapticImpactLight } from '@/mobile/haptics'
 import { NoteCardGrid } from '@/mobile/note-card-grid'
@@ -24,6 +26,7 @@ import {
   type AllNotesFilters,
 } from '@/mobile/search-filters/filter-state'
 import { NoteRowList } from '@/mobile/note-row-list'
+import { propertyLine } from '@/mobile/property-line'
 import { SearchInput } from '@/mobile/search-input'
 import type { NoteRowModel } from '@/mobile/swipeable-note-row'
 import { useArrivalFocus } from '@/mobile/use-arrival-focus'
@@ -123,7 +126,32 @@ export function MobileAllNotes({
     placeholderData: keepPreviousData,
   })
 
-  const rows = useMemo(() => (hits ?? []).map(rowForHit), [hits])
+  // On a typed-tag route, rows carry a compact property summary in place of
+  // the prose snippet — the phone-sized Collection view (TDR 0005).
+  const tagType = useTagType(tag)
+  const collection = useCollection(tagType != null ? tag : null, null)
+  const propertyLines = useMemo(() => {
+    if (tagType == null || collection === undefined) {
+      return null
+    }
+    const lines = new Map<string, string>()
+    for (const entry of collection) {
+      const line = propertyLine(tagType, entry.properties)
+      if (line !== '') {
+        lines.set(entry.path, line)
+      }
+    }
+    return lines
+  }, [tagType, collection])
+  const rows = useMemo(
+    () =>
+      (hits ?? []).map((hit) => {
+        const row = rowForHit(hit)
+        const line = propertyLines?.get(hit.path)
+        return line === undefined ? row : { ...row, propertyLine: line }
+      }),
+    [hits, propertyLines],
+  )
   const pristine = parsed.text === '' && !parsed.filtered
 
   const removeDeletedRow = (path: string): void => {

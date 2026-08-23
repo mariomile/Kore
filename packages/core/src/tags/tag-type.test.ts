@@ -127,6 +127,16 @@ describe('relation values', () => {
     expect(parsed?.properties[0]?.type).toBe('relation')
   })
 
+  it('parses a multi-relation property (a list of wiki links)', () => {
+    const parsed = parseTagTypeFrontmatter(
+      frontmatter({
+        lore: 'tag',
+        properties: [{ name: 'Authors', key: 'authors', type: 'relations' }],
+      }),
+    )
+    expect(parsed?.properties[0]?.type).toBe('relations')
+  })
+
   it('round-trips a target through the wiki-link value form', () => {
     expect(relationValue('Ursula K. Le Guin')).toBe('[[Ursula K. Le Guin]]')
     expect(relationDisplay('[[Ursula K. Le Guin]]')).toBe('Ursula K. Le Guin')

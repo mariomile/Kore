@@ -182,6 +182,53 @@ describe('PropertyValueEditor', () => {
     expect(onCommit).toHaveBeenCalledWith(undefined)
   })
 
+  it('toggles multi-relation links against the popover-local list', async () => {
+    relationSuggestions.current = [
+      {
+        target: 'Frank Herbert',
+        insertText: 'Frank Herbert',
+        path: 'notes/herbert.md',
+        title: 'Frank Herbert',
+        alias: null,
+        date: null,
+      },
+    ]
+    const property: TagProperty = { name: 'Authors', key: 'authors', type: 'relations' }
+    const view = await render(editor(property, stored('["[[Le Guin]]"]', 'list')))
+
+    await view.getByRole('button', { name: 'Edit Authors' }).click()
+    // The stored link lists first (one-click unlink); the suggestion adds.
+    await view.getByRole('option', { name: 'Frank Herbert' }).click()
+    expect(onCommit).toHaveBeenCalledWith(['[[Le Guin]]', '[[Frank Herbert]]'])
+
+    // The prop hasn't refreshed (write → watcher → refetch), but the second
+    // toggle builds on the first — unlinking Le Guin keeps Herbert.
+    await view.getByRole('option', { name: 'Le Guin' }).click()
+    expect(onCommit).toHaveBeenLastCalledWith(['[[Frank Herbert]]'])
+  })
+
+  it('deletes the key on the last unlink of a multi-relation', async () => {
+    relationSuggestions.current = []
+    const property: TagProperty = { name: 'Authors', key: 'authors', type: 'relations' }
+    const view = await render(editor(property, stored('["[[Le Guin]]"]', 'list')))
+
+    await view.getByRole('button', { name: 'Edit Authors' }).click()
+    await view.getByRole('option', { name: 'Le Guin' }).click()
+    expect(onCommit).toHaveBeenCalledWith(undefined)
+  })
+
+  it('Clear deletes a multi-relation key in one gesture', async () => {
+    relationSuggestions.current = []
+    const property: TagProperty = { name: 'Authors', key: 'authors', type: 'relations' }
+    const view = await render(
+      editor(property, stored('["[[Le Guin]]","[[Frank Herbert]]"]', 'list')),
+    )
+
+    await view.getByRole('button', { name: 'Edit Authors' }).click()
+    await view.getByRole('option', { name: 'Clear' }).click()
+    expect(onCommit).toHaveBeenCalledWith(undefined)
+  })
+
   it('toggles multi-select entries against the popover-local list, not the stale prop', async () => {
     const property: TagProperty = {
       name: 'Topics',

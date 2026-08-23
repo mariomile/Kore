@@ -140,6 +140,36 @@ pub struct RecentNoteJson {
     pub updated_at: String,
 }
 
+/// `collection`: a typed tag's rows plus its schema and the staleness signal.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CollectionJson<'a> {
+    pub tag: &'a str,
+    /// True when files on disk diverge from the index — rows may be stale.
+    pub stale: bool,
+    /// The tag's schema — one entry per property column.
+    pub schema: Vec<PropertyJson<'a>>,
+    pub notes: Vec<CollectionNoteJson>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PropertyJson<'a> {
+    pub name: &'a str,
+    pub key: &'a str,
+    #[serde(rename = "type")]
+    pub kind: &'a str,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CollectionNoteJson {
+    pub path: String,
+    pub title: String,
+    /// Frontmatter property values, keyed by frontmatter key (typed JSON).
+    pub properties: serde_json::Map<String, serde_json::Value>,
+}
+
 /// `new`: the created note.
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]

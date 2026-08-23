@@ -132,6 +132,44 @@ export async function cloudSafeNoteListings(
     )
 }
 
+/** One collection row (a typed tag's database view) as an external service
+ * may see it. `properties` carries the note's frontmatter values — note
+ * content, so the row rides the same gate as every listing. */
+export interface CloudCollectionRow {
+  path: string
+  title: string
+  /** Last file modification, ISO 8601 UTC. */
+  modifiedAt: string
+  /** Frontmatter property values, keyed by frontmatter key (typed YAML). */
+  properties: Record<string, unknown>
+}
+
+/**
+ * Gate collection rows for an outbound payload. Same contract as
+ * {@link cloudSafeNoteListings}: a private row is dropped **entirely** — its
+ * property values are frontmatter content, and even the title is a leak —
+ * and the index-side prefilter only prefilters, so every survivor is
+ * re-checked through `isPrivateLive` against the note on disk, failing
+ * closed.
+ */
+export async function cloudSafeCollectionRows(
+  entries: readonly (CloudSendable & Omit<CloudCollectionRow, 'path'>)[],
+  isPrivateLive: (path: string) => Promise<boolean>,
+): Promise<CloudSafe<CloudCollectionRow>[]> {
+  const indexedPublic = entries.filter((entry) => !entry.isPrivate)
+  const liveFlags = await Promise.all(indexedPublic.map((entry) => isPrivateLive(entry.path)))
+  return indexedPublic
+    .filter((_, index) => liveFlags[index] === false)
+    .map((entry) =>
+      mint({
+        path: entry.path,
+        title: entry.title,
+        modifiedAt: entry.modifiedAt,
+        properties: entry.properties,
+      }),
+    )
+}
+
 /** The graph-level prompt context as an external service may see it. */
 export interface CloudGraphContext {
   /** The graph's display name (its root folder name). */

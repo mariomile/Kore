@@ -66,6 +66,17 @@ function bulkPropertyValue(
     }
     case 'relation':
       return { ok: true, value: relationValue(trimmed) }
+    case 'relations': {
+      // Comma-separated titles, each becoming its own `[[link]]`.
+      const targets = trimmed
+        .split(',')
+        .map((entry) => entry.trim())
+        .filter((entry) => entry !== '')
+      return {
+        ok: true,
+        value: targets.length === 0 ? undefined : targets.map(relationValue),
+      }
+    }
     default:
       return { ok: true, value: trimmed }
   }
@@ -367,9 +378,11 @@ export function AllNotesBulkBar({
                 placeholder={
                   selectedProperty?.type === 'multiselect'
                     ? 'comma, separated, values'
-                    : selectedProperty?.type === 'relation'
-                      ? 'Note title'
-                      : 'Empty clears the property'
+                    : selectedProperty?.type === 'relations'
+                      ? 'Note titles, comma-separated'
+                      : selectedProperty?.type === 'relation'
+                        ? 'Note title'
+                        : 'Empty clears the property'
                 }
                 value={propertyValue}
                 onChange={(event) => setPropertyValue(event.target.value)}

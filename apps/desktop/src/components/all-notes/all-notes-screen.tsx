@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { foldTag, isDaily, listNotes, listNoteTags, type CollectionSort } from '@reflect/core'
-import { LayoutGrid, Layers, List } from '@/components/icons'
+import { Download, LayoutGrid, LayoutTemplate, Layers, List } from '@/components/icons'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { useCollection } from '@/hooks/use-collection'
 import { useTagType } from '@/hooks/use-tag-type'
@@ -24,6 +24,8 @@ import {
   CollectionFilterMenu,
   type CollectionFilter,
 } from './collection-filter-menu'
+import { boardProperty, CollectionBoard } from './collection-board'
+import { runCollectionExport } from './collection-export'
 import { CollectionTable } from './collection-table'
 import { NoteListContextMenu } from '@/components/notes/note-context-menu'
 import { NoteTrashDialog } from '@/components/notes/note-trash-dialog'
@@ -60,8 +62,13 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
   // broken surface.
   const tagType = useTagType(tag)
   const collectionAvailable = tag !== null && tagType !== null && tagType !== undefined
+  // The board additionally needs a select property to group by.
+  const boardAvailable = collectionAvailable && boardProperty(tagType) !== null
   const view =
-    settings.allNotesView === 'table' && !collectionAvailable ? 'list' : settings.allNotesView
+    (settings.allNotesView === 'table' && !collectionAvailable) ||
+    (settings.allNotesView === 'board' && !boardAvailable)
+      ? 'list'
+      : settings.allNotesView
   // The sort is a persisted per-tag view preference (like task filters):
   // leaving and returning to a collection keeps its order.
   const tagKey = tag === null ? null : foldTag(tag)
@@ -108,7 +115,10 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
     queryFn: () => listNoteTags(),
     enabled,
   })
-  const collection = useCollection(view === 'table' ? tag : null, collectionSort)
+  const collection = useCollection(
+    view === 'table' || view === 'board' ? tag : null,
+    collectionSort,
+  )
   // Property filters are ephemeral (unlike the persisted sort) and belong to
   // one tag's schema — a tag switch drops them at render time.
   const [collectionFilters, setCollectionFilters] = useState<CollectionFilter[]>([])
@@ -132,7 +142,7 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
   // the collection's own order while the table view sorts by a property.
   const orderedPaths = useMemo(
     () =>
-      view === 'table'
+      view === 'table' || view === 'board'
         ? (filteredCollection ?? []).map((entry) => entry.path)
         : (notes ?? []).map((note) => note.path),
     [view, filteredCollection, notes],
@@ -179,9 +189,9 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
 
   useAllNotesKeyboard({
     selection,
-    // The card grid has no selection affordance, so the list shortcuts would
-    // act on rows the user can't see selected — disarm them there.
-    orderedPaths: view === 'grid' ? [] : orderedPaths,
+    // The card grid and the board have no selection affordance, so the list
+    // shortcuts would act on rows the user can't see selected — disarm them.
+    orderedPaths: view === 'grid' || view === 'board' ? [] : orderedPaths,
     onOpen: openNote,
     onRequestTrash: openTrashConfirm,
     rootRef,
@@ -214,13 +224,26 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
         <h1 className="text-[15px] font-semibold text-text">Notes</h1>
         <div className="flex flex-wrap items-center gap-3">
           <AllNotesFilters tag={tag} facets={facets ?? []} onSelect={handleFilterSelect} />
-          {view === 'table' && collectionAvailable ? (
-            <CollectionFilterMenu
-              type={tagType}
-              entries={collection}
-              filters={collectionFilters}
-              onChange={setCollectionFilters}
-            />
+          {(view === 'table' || view === 'board') && collectionAvailable ? (
+            <>
+              <CollectionFilterMenu
+                type={tagType}
+                entries={collection}
+                filters={collectionFilters}
+                onChange={setCollectionFilters}
+              />
+              <button
+                type="button"
+                aria-label="Export collection as CSV"
+                title="Export CSV"
+                onClick={() => {
+                  void runCollectionExport(tag, tagType, filteredCollection ?? [])
+                }}
+                className="flex size-6 items-center justify-center rounded-full text-text-muted transition-colors hover:text-text-secondary"
+              >
+                <Download aria-hidden className="size-3.5" />
+              </button>
+            </>
           ) : null}
           <div
             role="group"
@@ -274,6 +297,23 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
                 <Layers aria-hidden className="size-3.5" />
               </button>
             ) : null}
+            {boardAvailable ? (
+              <button
+                type="button"
+                aria-label="Board view"
+                aria-pressed={view === 'board'}
+                onClick={() => {
+                  updateSettings({ allNotesView: 'board' })
+                }}
+                className={`flex size-6 items-center justify-center rounded-full transition-colors ${
+                  view === 'board'
+                    ? 'bg-surface text-text shadow-sm'
+                    : 'text-text-muted hover:text-text-secondary'
+                }`}
+              >
+                <LayoutTemplate aria-hidden className="size-3.5" />
+              </button>
+            ) : null}
           </div>
           <NewNoteButton tag={tag} />
         </div>
@@ -292,6 +332,8 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
         >
           {view === 'grid' ? (
             <AllNotesGrid notes={notes} tag={tag} onOpen={openNote} />
+          ) : view === 'board' && collectionAvailable ? (
+            <CollectionBoard entries={filteredCollection} type={tagType} onOpen={openNote} />
           ) : view === 'table' && collectionAvailable ? (
             <CollectionTable
               entries={filteredCollection}

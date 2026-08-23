@@ -441,9 +441,11 @@ export type AllNotesFilterTags = z.infer<typeof allNotesFilterTagsSchema>
  */
 /**
  * All Notes layout. `table` is the Collection view (TDR 0005) — offered only
- * while the routed tag has a type; screens without one render `list`.
+ * while the routed tag has a type; `board` groups the same collection by its
+ * first select property, so it additionally needs one in the schema. Screens
+ * without the prerequisite render `list`.
  */
-export const allNotesViewSchema = z.enum(['list', 'grid', 'table']).catch('list')
+export const allNotesViewSchema = z.enum(['list', 'grid', 'table', 'board']).catch('list')
 
 export type AllNotesView = z.infer<typeof allNotesViewSchema>
 

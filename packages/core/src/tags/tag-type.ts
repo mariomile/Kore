@@ -26,6 +26,7 @@ export const tagPropertyTypeSchema = z.enum([
   'multiselect',
   'url',
   'relation',
+  'relations',
 ])
 export type TagPropertyType = z.infer<typeof tagPropertyTypeSchema>
 

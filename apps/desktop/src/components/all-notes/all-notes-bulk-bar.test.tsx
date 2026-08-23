@@ -2,11 +2,12 @@ import { render } from 'vitest-browser-react'
 import { page, userEvent } from 'vitest/browser'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { NoteListEntry } from '@reflect/core'
+import type { NoteListEntry, TagType } from '@reflect/core'
 import { AllNotesBulkBar } from './all-notes-bulk-bar'
 
 const writeNote = vi.hoisted(() => vi.fn(async () => {}))
 const readNoteSource = vi.hoisted(() => vi.fn(async () => 'Some prose.\n'))
+const commitNoteFrontmatter = vi.hoisted(() => vi.fn(async () => {}))
 const moveNoteCarryingSession = vi.hoisted(() => vi.fn(async () => {}))
 const openSession = vi.hoisted(() => vi.fn(() => null as { isDirty: () => boolean } | null))
 const operationFail = vi.hoisted(() => vi.fn())
@@ -19,7 +20,10 @@ vi.mock('@reflect/core', async (importOriginal) => ({
   hasBridge: () => true,
   writeNote,
 }))
-vi.mock('@/lib/note-frontmatter', () => ({ readNoteSource }))
+vi.mock('@/lib/note-frontmatter', () => ({ readNoteSource, commitNoteFrontmatter }))
+vi.mock('@/lib/tags/use-commit-note-property', () => ({
+  invalidateOnNextIndexApply: vi.fn(),
+}))
 vi.mock('@/editor/move-note', () => ({ moveNoteCarryingSession }))
 vi.mock('@/editor/open-documents', () => ({ openSession }))
 vi.mock('@/lib/operations', () => ({ startOperation }))
@@ -35,7 +39,7 @@ const NOTES: NoteListEntry[] = [
 const onDone = vi.fn()
 const onRequestTrash = vi.fn()
 
-async function renderBar(paths: readonly string[]) {
+async function renderBar(paths: readonly string[], tagType: TagType | null = null) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return await render(
     <QueryClientProvider client={client}>
@@ -43,6 +47,7 @@ async function renderBar(paths: readonly string[]) {
         paths={paths}
         trashablePaths={paths}
         notes={NOTES}
+        tagType={tagType}
         onRequestTrash={onRequestTrash}
         onDone={onDone}
       />
@@ -53,6 +58,7 @@ async function renderBar(paths: readonly string[]) {
 beforeEach(() => {
   writeNote.mockReset().mockResolvedValue(undefined)
   readNoteSource.mockReset().mockResolvedValue('Some prose.\n')
+  commitNoteFrontmatter.mockReset().mockResolvedValue(undefined)
   moveNoteCarryingSession.mockReset().mockResolvedValue(undefined)
   openSession.mockReset().mockReturnValue(null)
   startOperation.mockClear()
@@ -104,6 +110,24 @@ describe('AllNotesBulkBar', () => {
     expect(operationFail.mock.calls[0]?.[0]).toContain('unsaved changes')
     // A partial failure keeps the selection so the user can retry it.
     expect(onDone).not.toHaveBeenCalled()
+  })
+
+  it('bulk-sets a multi-relation from comma-separated titles', async () => {
+    const tagType: TagType = {
+      properties: [{ name: 'Authors', key: 'authors', type: 'relations' }],
+    }
+    await renderBar(['notes/a.md', 'inbox/b.md'], tagType)
+    await userEvent.click(page.getByRole('button', { name: 'Set property (2)' }))
+    await userEvent.fill(page.getByLabelText('Value'), 'Le Guin, Frank Herbert')
+    await userEvent.click(page.getByRole('button', { name: 'Set property', exact: true }))
+
+    await vi.waitFor(() => expect(commitNoteFrontmatter).toHaveBeenCalledTimes(2))
+    expect(commitNoteFrontmatter).toHaveBeenCalledWith(
+      'notes/a.md',
+      { properties: { authors: ['[[Le Guin]]', '[[Frank Herbert]]'] } },
+      7,
+    )
+    await vi.waitFor(() => expect(onDone).toHaveBeenCalled())
   })
 
   it('moves notes through the session-carrying helper, keeping the filename', async () => {

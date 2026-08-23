@@ -666,9 +666,9 @@ fn ensure_revealable_path(path: &str) -> AppResult<()> {
 /// dialog — the one write command that deliberately targets a path *outside*
 /// the graph root. The dialog is the authorization: the frontend only ever
 /// passes a path the user just picked. The command still refuses relative
-/// paths (nothing may resolve against the app's cwd) and non-HTML extensions
-/// (this channel exists for styled note export, not as a general file
-/// writer).
+/// paths (nothing may resolve against the app's cwd) and unexpected
+/// extensions — this channel exists for the app's exports (styled note HTML,
+/// collection CSV), not as a general file writer.
 #[tauri::command]
 pub fn export_html_write(path: String, contents: String) -> AppResult<()> {
     let target = PathBuf::from(&path);
@@ -681,8 +681,8 @@ pub fn export_html_write(path: String, contents: String) -> AppResult<()> {
         .extension()
         .and_then(|ext| ext.to_str())
         .map(str::to_ascii_lowercase);
-    if !matches!(extension.as_deref(), Some("html" | "htm")) {
-        return Err(AppError::io(format!("not an HTML export path: {path}")));
+    if !matches!(extension.as_deref(), Some("html" | "htm" | "csv")) {
+        return Err(AppError::io(format!("not an export path: {path}")));
     }
     fs::write(&target, contents)
         .map_err(|err| AppError::io(format!("could not write {}: {err}", target.display())))
@@ -1056,13 +1056,28 @@ mod export_html_tests {
     }
 
     #[test]
-    fn refuses_relative_paths_and_non_html_extensions() {
+    fn refuses_relative_paths_and_unexpected_extensions() {
         let dir = tempfile::tempdir().expect("dir");
         assert!(export_html_write("relative.html".to_string(), String::new()).is_err());
         let sneaky = dir.path().join("script.sh");
         assert!(export_html_write(sneaky.to_string_lossy().into_owned(), String::new()).is_err());
         let plain = dir.path().join("note.txt");
         assert!(export_html_write(plain.to_string_lossy().into_owned(), String::new()).is_err());
+    }
+
+    #[test]
+    fn writes_csv_exports_too() {
+        let dir = tempfile::tempdir().expect("dir");
+        let target = dir.path().join("books.csv");
+        export_html_write(
+            target.to_string_lossy().into_owned(),
+            "Title,Author\n".to_string(),
+        )
+        .expect("write");
+        assert_eq!(
+            std::fs::read_to_string(&target).expect("read"),
+            "Title,Author\n"
+        );
     }
 }
 

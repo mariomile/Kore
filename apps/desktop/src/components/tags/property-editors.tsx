@@ -1,6 +1,7 @@
 import { useRef, useState, type KeyboardEvent, type ReactElement, type ReactNode } from 'react'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import {
+  relationDisplay,
   relationTarget,
   relationValue,
   suggestWikiLinkTargets,
@@ -362,6 +363,136 @@ function RelationPropertyEditor({
   )
 }
 
+/**
+ * A multi-relation property holds a list of wiki links. Same picker as the
+ * single relation, but selecting toggles membership instead of replacing —
+ * the local list mirrors {@link SelectPropertyEditor}'s race guard, since two
+ * quick toggles both land before the watcher refreshes the stored value.
+ */
+function MultiRelationPropertyEditor({
+  property,
+  value,
+  onCommit,
+  children,
+  align,
+}: PropertyEditorProps): ReactElement {
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const [localLinks, setLocalLinks] = useState<string[] | null>(null)
+  const { graph } = useGraph()
+  const bridgeReady = useBridgeReady()
+  // Each entry is a stored `[[Target]]` value; a bare string (hand-written
+  // YAML) still participates, keyed by its own text.
+  const links = localLinks ?? editorSeedList(value)
+  const targetOf = (link: string): string => relationTarget(link) ?? link
+
+  const { data } = useQuery({
+    queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'relation-targets', query],
+    queryFn: () => suggestWikiLinkTargets(query, 6),
+    enabled: open && bridgeReady && graph !== null,
+    placeholderData: keepPreviousData,
+  })
+  const suggestions = data?.suggestions ?? []
+
+  const toggle = (insertText: string): void => {
+    const candidate = relationValue(insertText)
+    const next = links.some((link) => targetOf(link) === targetOf(candidate))
+      ? links.filter((link) => targetOf(link) !== targetOf(candidate))
+      : [...links, candidate]
+    setLocalLinks(next)
+    onCommit(next.length === 0 ? undefined : next)
+  }
+  const clear = (): void => {
+    onCommit(undefined)
+    setOpen(false)
+  }
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next)
+        setLocalLinks(next ? editorSeedList(value) : null)
+        if (!next) {
+          setQuery('')
+        }
+      }}
+    >
+      <PopoverTrigger
+        aria-label={`Edit ${property.name}`}
+        className="flex min-h-5 w-full min-w-0 items-center self-stretch text-left focus-visible:outline-none"
+        onClick={(event) => event.stopPropagation()}
+        onDoubleClick={(event) => event.stopPropagation()}
+      >
+        {children}
+      </PopoverTrigger>
+      <PopoverContent align={align ?? 'start'} sideOffset={4} className="w-64 p-0">
+        {/* The DB already filtered; cmdk must not second-guess the ranking. */}
+        <Command label={`Link ${property.name}`} shouldFilter={false}>
+          <CommandInput
+            value={query}
+            onValueChange={setQuery}
+            placeholder="Link notes…"
+            autoFocus
+          />
+          <CommandList>
+            <CommandEmpty>
+              {query === '' && links.length === 0 ? 'Type to find a note.' : 'No matching notes.'}
+            </CommandEmpty>
+            <CommandGroup>
+              {/* At rest the current links list first, so unlinking is one
+                  click without retyping the title. */}
+              {query === ''
+                ? links.map((link) => (
+                    <CommandItem
+                      key={`linked:${link}`}
+                      value={`linked:${link}`}
+                      onSelect={() => toggle(targetOf(link))}
+                    >
+                      <span className="min-w-0 flex-1 truncate">
+                        {relationDisplay(link) ?? link}
+                      </span>
+                      <Check aria-hidden className="size-3.5 shrink-0 opacity-100" />
+                    </CommandItem>
+                  ))
+                : null}
+              {suggestions
+                .filter(
+                  (suggestion) =>
+                    query !== '' ||
+                    !links.some((link) => targetOf(link) === targetOf(suggestion.insertText)),
+                )
+                .map((suggestion) => {
+                  const active = links.some(
+                    (link) => targetOf(link) === targetOf(suggestion.insertText),
+                  )
+                  return (
+                    <CommandItem
+                      key={`${suggestion.target}:${suggestion.alias ?? ''}`}
+                      value={suggestion.insertText}
+                      onSelect={() => toggle(suggestion.insertText)}
+                    >
+                      <span className="min-w-0 flex-1 truncate">{suggestion.title}</span>
+                      <Check
+                        aria-hidden
+                        className={cn('size-3.5 shrink-0', active ? 'opacity-100' : 'opacity-0')}
+                      />
+                    </CommandItem>
+                  )
+                })}
+              {links.length > 0 ? (
+                <CommandItem value="__clear" onSelect={clear}>
+                  <span className="text-text-muted">Clear</span>
+                </CommandItem>
+              ) : null}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  )
+}
+
 /** A checkbox property edits in place — the display is the control. */
 function CheckboxPropertyEditor({
   property,
@@ -398,6 +529,8 @@ export function PropertyValueEditor(props: PropertyEditorProps): ReactElement {
       return <SelectPropertyEditor {...props} />
     case 'relation':
       return <RelationPropertyEditor {...props} />
+    case 'relations':
+      return <MultiRelationPropertyEditor {...props} />
     default:
       return <InputPropertyEditor {...props} />
   }

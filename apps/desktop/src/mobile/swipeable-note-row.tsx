@@ -23,6 +23,10 @@ export interface NoteRowModel {
   canDelete: boolean
   /** First content line; search hits carry highlighted match segments. */
   snippet: HighlightSegment[]
+  /** Compact `Name: value` summary on typed-tag routes — replaces the
+   * snippet line when set (the properties out-inform the first prose line
+   * there). */
+  propertyLine?: string
 }
 
 interface SwipeableNoteRowProps {
@@ -133,7 +137,9 @@ export function SwipeableNoteRow({
             {formatRecencyLabel(row.mtime, settings)}
           </span>
         </span>
-        {row.snippet.length > 0 ? (
+        {row.propertyLine !== undefined && row.propertyLine !== '' ? (
+          <span className="w-full truncate text-xs text-text-muted">{row.propertyLine}</span>
+        ) : row.snippet.length > 0 ? (
           <span className="w-full truncate text-xs text-text-muted">
             <HighlightedText segments={row.snippet} />
           </span>

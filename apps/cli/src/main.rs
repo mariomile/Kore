@@ -96,6 +96,20 @@ enum Command {
         #[arg(long, default_value_t = 20)]
         limit: usize,
     },
+    /// List a typed tag's collection (its notes with their property values)
+    Collection {
+        /// The tag (case-insensitive, without the #)
+        tag: String,
+        /// Property key to sort by (missing values last)
+        #[arg(long, value_name = "KEY")]
+        sort: Option<String>,
+        /// Sort descending (with --sort)
+        #[arg(long, requires = "sort")]
+        desc: bool,
+        /// Maximum number of rows
+        #[arg(long, default_value_t = 100)]
+        limit: usize,
+    },
     /// Create a note under notes/ with a title-derived filename
     New {
         /// The note's title (becomes the H1 and the filename slug)
@@ -121,6 +135,12 @@ fn run(cli: &Cli) -> Result<(), CliError> {
         }
         Command::Backlinks { note } => commands::backlinks::run(&graph, cli.json, note),
         Command::Recent { limit } => commands::recent::run(&graph, cli.json, *limit),
+        Command::Collection {
+            tag,
+            sort,
+            desc,
+            limit,
+        } => commands::collection::run(&graph, cli.json, tag, sort.as_deref(), *desc, *limit),
         Command::New { title, template } => {
             commands::new::run(&graph, cli.json, title, template.as_deref())
         }

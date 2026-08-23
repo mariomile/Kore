@@ -1,5 +1,5 @@
 import { Fragment, type MouseEvent, type ReactElement, type ReactNode } from 'react'
-import { CalendarDays, History, Note, Paperclip, Search } from '@/components/icons'
+import { CalendarDays, History, Layers, Note, Paperclip, Search } from '@/components/icons'
 import { isTagName, isToolPending, type AssistantPart, type NoteHitSummary } from '@reflect/core'
 import { Marker, MarkerContent, MarkerIcon } from '@/components/ui/marker'
 import { Spinner } from '@/components/ui/spinner'
@@ -112,6 +112,34 @@ export function ChatToolChip({ part }: ChatToolChipProps): ReactElement {
     return (
       <ChipFrame pending={pending} icon={<History aria-hidden className="size-3.5" />}>
         Listed {tagLabel} notes
+        {result !== null
+          ? result.error !== null
+            ? ` — ${result.error}`
+            : countSuffix(result.notes.length, 'note')
+          : ''}
+        {result !== null && result.error === null ? (
+          <NoteLinks notes={result.notes} onOpen={openNote} />
+        ) : null}
+      </ChipFrame>
+    )
+  }
+
+  if (call.tool === 'collection') {
+    const result = part.result?.tool === 'collection' ? part.result : null
+    const tagLabel = isTagName(call.tag) ? (
+      <button
+        type="button"
+        onClick={() => navigate({ kind: 'allNotes', tag: call.tag })}
+        className="underline-offset-2 hover:text-text hover:underline"
+      >
+        #{call.tag}
+      </button>
+    ) : (
+      `#${call.tag}`
+    )
+    return (
+      <ChipFrame pending={pending} icon={<Layers aria-hidden className="size-3.5" />}>
+        Listed the {tagLabel} collection
         {result !== null
           ? result.error !== null
             ? ` — ${result.error}`

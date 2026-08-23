@@ -14,13 +14,18 @@ import {
 import { MAX_NOTE_CONTENT_CHARS, type ReadNoteResult, type ReadNotesOutput } from './read-notes'
 import {
   buildNoteTools,
+  INVALID_COLLECTION_TAG_ERROR,
   INVALID_TAG_ERROR,
   MAX_DAILY_NOTE_DAYS,
+  UNTYPED_TAG_ERROR,
+  type ListCollectionOutput,
   type ListDailyNotesOutput,
   type ListRecentNotesOutput,
   type NoteTools,
   type SearchNotesOutput,
 } from './tools'
+import type { CollectionEntry } from '../../indexing/collections'
+import type { TagType } from '../../tags'
 
 const CALL: ToolExecutionOptions<Record<string, unknown>> = {
   toolCallId: 'call-1',
@@ -166,6 +171,49 @@ async function runDailies(
     throw new Error('unexpected streaming tool output')
   }
   return output
+}
+
+/** Execute `list_collection` directly, asserting a non-streaming output. */
+async function runCollection(
+  tools: NoteTools,
+  input: {
+    tag: string
+    sortBy?: string | null
+    direction?: 'asc' | 'desc' | null
+    limit?: number
+  },
+): Promise<ListCollectionOutput> {
+  const execute = tools.list_collection.execute
+  if (!execute) {
+    throw new Error('list_collection has no execute')
+  }
+  const output = await execute(input, CALL)
+  if (isAsyncIterable(output)) {
+    throw new Error('unexpected streaming tool output')
+  }
+  return output
+}
+
+/** A public collection row, overridable per test. */
+function collectionRow(overrides: Partial<CollectionEntry>): CollectionEntry {
+  return {
+    path: 'notes/public.md',
+    title: 'Public note',
+    mtime: 1_750_000_000_000,
+    isPinned: false,
+    properties: {
+      author: { value: 'Le Guin', valueType: 'string', valueNumber: null },
+      rating: { value: '4.5', valueType: 'number', valueNumber: 4.5 },
+    },
+    ...overrides,
+  }
+}
+
+const BOOK_TYPE: TagType = {
+  properties: [
+    { name: 'Author', key: 'author', type: 'text' },
+    { name: 'Rating', key: 'rating', type: 'number' },
+  ],
 }
 
 describe('search_notes', () => {
@@ -676,5 +724,112 @@ describe('list_daily_notes', () => {
     const output = await runDailies(tools, { start: '2026-06-01', end: '2026-06-30' })
     expect(output.days).toEqual([])
     expect(JSON.stringify(output)).not.toContain(PRIVATE_TITLE)
+  })
+})
+
+describe('list_collection', () => {
+  it('refuses a tag the grammar can never produce', async () => {
+    const tools = buildNoteTools({})
+    const output = await runCollection(tools, { tag: '*' })
+    expect(output).toEqual({ ok: false, tag: '*', error: INVALID_COLLECTION_TAG_ERROR })
+  })
+
+  it('refuses a tag without a type instead of returning misleading rows', async () => {
+    const tools = buildNoteTools({
+      getTagTypeFn: async () => null,
+    })
+    const output = await runCollection(tools, { tag: 'book' })
+    expect(output).toEqual({ ok: false, tag: 'book', error: UNTYPED_TAG_ERROR })
+  })
+
+  it('returns the schema and rows with typed property values', async () => {
+    const tools = buildNoteTools({
+      getTagTypeFn: async () => BOOK_TYPE,
+      listCollectionFn: async () => [collectionRow({})],
+      listPrivateNotePathsFn: async () => [],
+      readNoteFn: async () => 'a public body\n',
+    })
+    const output = await runCollection(tools, { tag: 'book' })
+    if (!output.ok) {
+      throw new Error(`unexpected refusal: ${output.error}`)
+    }
+    expect(output.schema).toEqual(BOOK_TYPE.properties)
+    expect(output.truncated).toBe(false)
+    expect(output.rows).toEqual([
+      {
+        path: 'notes/public.md',
+        title: 'Public note',
+        modifiedAt: new Date(1_750_000_000_000).toISOString(),
+        // Round-tripped to typed YAML values, not raw index rows.
+        properties: { author: 'Le Guin', rating: 4.5 },
+      },
+    ])
+  })
+
+  it('drops private rows entirely — title, path, and property values', async () => {
+    const tools = buildNoteTools({
+      getTagTypeFn: async () => BOOK_TYPE,
+      listCollectionFn: async () => [
+        collectionRow({}),
+        collectionRow({
+          path: PRIVATE_PATH,
+          title: PRIVATE_TITLE,
+          properties: {
+            author: { value: PRIVATE_BODY, valueType: 'string', valueNumber: null },
+          },
+        }),
+      ],
+      listPrivateNotePathsFn: async () => [PRIVATE_PATH],
+      readNoteFn: async () => 'a public body\n',
+    })
+    const output = await runCollection(tools, { tag: 'book' })
+    const payload = JSON.stringify(output)
+    expect(payload).not.toContain(PRIVATE_TITLE)
+    expect(payload).not.toContain(PRIVATE_PATH)
+    expect(payload).not.toContain(PRIVATE_BODY)
+    if (!output.ok) {
+      throw new Error(`unexpected refusal: ${output.error}`)
+    }
+    expect(output.rows).toHaveLength(1)
+  })
+
+  it('drops a row whose live frontmatter turned private before reindex (TOCTOU)', async () => {
+    const tools = buildNoteTools({
+      getTagTypeFn: async () => BOOK_TYPE,
+      // The stale index still says public…
+      listCollectionFn: async () => [collectionRow({ path: PRIVATE_PATH, title: PRIVATE_TITLE })],
+      listPrivateNotePathsFn: async () => [],
+      // …but the note on disk was just marked private.
+      readNoteFn: async () => '---\nprivate: true\n---\n# Diary\n',
+    })
+    const output = await runCollection(tools, { tag: 'book' })
+    if (!output.ok) {
+      throw new Error(`unexpected refusal: ${output.error}`)
+    }
+    expect(output.rows).toEqual([])
+    expect(JSON.stringify(output)).not.toContain(PRIVATE_TITLE)
+  })
+
+  it('passes the sort through and reports truncation past the limit', async () => {
+    const seenSorts: Array<unknown> = []
+    const rows = Array.from({ length: 3 }, (_, index) =>
+      collectionRow({ path: `notes/book-${index}.md`, title: `Book ${index}` }),
+    )
+    const tools = buildNoteTools({
+      getTagTypeFn: async () => BOOK_TYPE,
+      listCollectionFn: async (_tag, sort) => {
+        seenSorts.push(sort)
+        return rows
+      },
+      listPrivateNotePathsFn: async () => [],
+      readNoteFn: async () => 'a public body\n',
+    })
+    const output = await runCollection(tools, { tag: 'book', sortBy: 'rating', limit: 2 })
+    expect(seenSorts).toEqual([{ key: 'rating', direction: 'asc' }])
+    if (!output.ok) {
+      throw new Error(`unexpected refusal: ${output.error}`)
+    }
+    expect(output.truncated).toBe(true)
+    expect(output.rows).toHaveLength(2)
   })
 })

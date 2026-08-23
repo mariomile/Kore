@@ -50,6 +50,29 @@ export function readCellValue(
       // one); a bare string still reads as a human reference, not an error.
       return { text: relationDisplay(raw) ?? raw, checked: false, mismatch: false }
     }
+    case 'relations': {
+      if (value.valueType === 'string') {
+        // A single link under a multi-relation reads as a one-entry list.
+        return { text: relationDisplay(raw) ?? raw, checked: false, mismatch: false }
+      }
+      if (value.valueType === 'list') {
+        try {
+          const entries = JSON.parse(raw) as unknown
+          if (Array.isArray(entries)) {
+            return {
+              text: entries
+                .map((entry) => relationDisplay(String(entry)) ?? String(entry))
+                .join(', '),
+              checked: false,
+              mismatch: false,
+            }
+          }
+        } catch {
+          // Fall through to the raw form below.
+        }
+      }
+      return { text: raw, checked: false, mismatch: true }
+    }
     case 'multiselect': {
       if (value.valueType === 'list') {
         try {

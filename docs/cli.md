@@ -225,6 +225,36 @@ re-check as every index-backed command. Requires the index (exit `4`).
 }
 ```
 
+### `reflect collection <tag> [--sort KEY] [--desc] [--limit N] [--json]`
+
+A typed tag's collection (TDR 0005): the notes carrying `<tag>`, with the
+property values the tag's schema declares. Requires the index (exit `4`); a
+tag without a type is exit `3` — configure the tag in Reflect first. Private
+notes are dropped entirely (row, title, and property values), with the same
+on-disk re-check as every index-backed command. `--sort` orders by a property
+key (missing values last; `--desc` flips the direction); unsorted rows come
+pinned-first, then newest. Property values are typed JSON: numbers, booleans,
+and lists round-trip as themselves, everything else as strings.
+
+```jsonc
+// reflect collection book --sort rating --desc --json
+{
+  "tag": "book",
+  "stale": false,
+  "schema": [
+    { "name": "Author", "key": "author", "type": "text" },
+    { "name": "Rating", "key": "rating", "type": "number" }
+  ],
+  "notes": [
+    {
+      "path": "notes/the-dispossessed.md",
+      "title": "The Dispossessed",
+      "properties": { "author": "Le Guin", "rating": 4.5 }
+    }
+  ]
+}
+```
+
 ### `reflect capture <text> [--task] [--to <note>] [--json]`
 
 The CLI's append-only write: appends `<text>` as one list item to today's

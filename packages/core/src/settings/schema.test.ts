@@ -62,6 +62,7 @@ describe('settingsSchema', () => {
       memoryWriteApproval: false,
       aiPrompts: [],
       savedSearches: [],
+      collectionSorts: {},
     })
     expect(DEFAULT_SETTINGS.editorMarkdownSyntax).toBe('hide')
     expect(DEFAULT_SETTINGS.editorSpellCheck).toBe(true)
@@ -368,6 +369,7 @@ describe('settingsSchema', () => {
       memoryWriteApproval: false,
       aiPrompts: [],
       savedSearches: [],
+      collectionSorts: {},
       futureKey: true,
     })
   })

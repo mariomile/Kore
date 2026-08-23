@@ -16,6 +16,10 @@ const commitProperty = vi.hoisted(() => vi.fn())
 vi.mock('@/lib/tags/use-commit-note-property', () => ({
   useCommitNoteProperty: () => commitProperty,
 }))
+const openRelation = vi.hoisted(() => vi.fn())
+vi.mock('@/lib/tags/use-open-relation', () => ({
+  useOpenRelation: () => openRelation,
+}))
 
 const clickSelect = vi.fn()
 

@@ -75,7 +75,7 @@ vi.mock('@/providers/graph-provider', () => ({
 }))
 vi.mock('@/providers/settings-provider', () => ({
   useSettings: () => ({
-    settings: { dateFormat: 'mdy', graphColors: {} },
+    settings: { dateFormat: 'mdy', graphColors: {}, collectionSorts: {} },
     updateSettings: () => {},
     updateSettingsWith,
   }),

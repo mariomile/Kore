@@ -10,6 +10,7 @@ import { ArrowDown, ArrowUp } from '@/components/icons'
 import { PropertyValueEditor } from '@/components/tags/property-editors'
 import type { ListSelection } from '@/lib/selection/use-list-selection'
 import { useCommitNoteProperty } from '@/lib/tags/use-commit-note-property'
+import { useOpenRelation } from '@/lib/tags/use-open-relation'
 import { cn } from '@/lib/utils'
 import { useSettings } from '@/providers/settings-provider'
 import type { ModClickEvent } from '@/lib/windows/open-in-new-window'
@@ -53,6 +54,7 @@ export function CollectionTable({
   const virtualizerRef = useRef<VirtualizerHandle>(null)
   const gridStyle = useMemo(() => collectionGridStyle(type), [type])
   const commitProperty = useCommitNoteProperty()
+  const openRelation = useOpenRelation()
 
   const handleToggle = useCallback(
     (path: string, event: Pick<MouseEvent, 'shiftKey'>) =>
@@ -156,6 +158,7 @@ export function CollectionTable({
                   property={property}
                   value={entry.properties[property.key]}
                   onCommit={(value) => commitProperty(entry.path, property.key, value)}
+                  onOpenRelation={openRelation}
                 >
                   <CollectionCell
                     property={property}

@@ -1,7 +1,14 @@
 import type { ReactElement } from 'react'
-import { relationDisplay, type CollectionValue, type TagProperty } from '@reflect/core'
+import {
+  isCalendarDate,
+  relationDisplay,
+  type CollectionValue,
+  type TagProperty,
+} from '@reflect/core'
 import { Check } from '@/components/icons'
+import { formatShortDate } from '@/lib/dates'
 import { cn } from '@/lib/utils'
+import { useSettings } from '@/providers/settings-provider'
 
 /** How a stored value reads under the column's declared type. */
 export interface CellReading {
@@ -84,7 +91,13 @@ interface CollectionCellProps {
 /** One typed cell of a Collection row — single-line, truncating (the fixed
  * density row height is a layout contract with the virtualizer). */
 export function CollectionCell({ property, value, selected }: CollectionCellProps): ReactElement {
+  const { settings } = useSettings()
   const reading = readCellValue(property, value)
+  // Storage stays honest ISO; only the face follows the user's date format.
+  const text =
+    property.type === 'date' && !reading.mismatch && isCalendarDate(reading.text)
+      ? formatShortDate(reading.text, settings.dateFormat)
+      : reading.text
   if (property.type === 'checkbox' && !reading.mismatch) {
     return (
       <span
@@ -109,7 +122,7 @@ export function CollectionCell({ property, value, selected }: CollectionCellProp
       )}
       title={reading.mismatch ? 'Value does not match the property type' : undefined}
     >
-      {reading.text}
+      {text}
     </span>
   )
 }

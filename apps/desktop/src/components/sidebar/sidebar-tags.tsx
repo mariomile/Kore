@@ -1,9 +1,13 @@
 import { useState, type ReactElement } from 'react'
-import { foldTag } from '@reflect/core'
-import { Settings } from '@/components/icons'
+import { useQuery } from '@tanstack/react-query'
+import { foldTag, listTagTypes } from '@reflect/core'
+import { Layers, Settings } from '@/components/icons'
 import { TagConfigDialog } from '@/components/tags/tag-config-dialog'
+import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { useNoteTags } from '@/hooks/use-note-tags'
+import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { cn } from '@/lib/utils'
+import { useGraph } from '@/providers/graph-provider'
 import { useRouter } from '@/routing/router'
 
 /**
@@ -16,9 +20,18 @@ import { useRouter } from '@/routing/router'
  */
 export function SidebarTags(): ReactElement | null {
   const tags = useNoteTags()
+  const { graph } = useGraph()
+  const bridgeReady = useBridgeReady()
   const { route, navigate } = useRouter()
   const [configuring, setConfiguring] = useState<string | null>(null)
   const activeTagKey = route.kind === 'allNotes' && route.tag !== null ? foldTag(route.tag) : null
+  // Which tags are types (TDR 0005) — those rows carry the collection glyph.
+  const { data: tagTypes } = useQuery({
+    queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'tag-types'],
+    queryFn: () => listTagTypes(),
+    enabled: bridgeReady && graph !== null,
+  })
+  const typedKeys = new Set((tagTypes ?? []).map((entry) => entry.tagKey))
 
   if (tags.length === 0) {
     return null
@@ -42,8 +55,14 @@ export function SidebarTags(): ReactElement | null {
                     : 'text-text-secondary hover:bg-surface-hover hover:text-text',
                 )}
               >
-                <span className="min-w-0 flex-1 py-1 px-2.5 text-left">
-                  <span className="block truncate text-xs font-medium">#{facet.tag}</span>
+                <span className="flex min-w-0 flex-1 items-center gap-1.5 py-1 px-2.5 text-left">
+                  <span className="min-w-0 truncate text-xs font-medium">#{facet.tag}</span>
+                  {typedKeys.has(foldTag(facet.tag)) ? (
+                    <Layers
+                      aria-label="Has a collection"
+                      className="size-3 shrink-0 text-text-muted"
+                    />
+                  ) : null}
                 </span>
                 <span className="shrink-0 px-2.5 text-2xs tabular-nums text-text-muted transition-opacity duration-150 group-hover:opacity-0 group-focus-within:opacity-0">
                   {facet.count}

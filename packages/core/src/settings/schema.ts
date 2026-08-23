@@ -608,6 +608,36 @@ export const graphColorsSchema = z
     return colors
   })
 
+/** One Collection's persisted sort: the property key and direction. */
+export const collectionSortSettingSchema = z.object({
+  key: z.string().min(1),
+  direction: z.enum(['asc', 'desc']),
+})
+export type CollectionSortSetting = z.infer<typeof collectionSortSettingSchema>
+
+export type CollectionSorts = Record<string, CollectionSortSetting>
+
+/**
+ * The Collection view's sort per folded tag key (TDR 0005) — a view
+ * preference, like task filters, so leaving and returning to a collection
+ * keeps its order. Global across graphs (a sort is workflow, not note
+ * content); an absent key means the list's own recall order. Resilience is
+ * per entry: a corrupt value is dropped while the rest load.
+ */
+export const collectionSortsSchema = z
+  .record(z.string(), z.unknown())
+  .catch({})
+  .transform((entries) => {
+    const sorts: CollectionSorts = {}
+    for (const [tagKey, value] of Object.entries(entries)) {
+      const parsed = collectionSortSettingSchema.safeParse(value)
+      if (parsed.success) {
+        sorts[tagKey] = parsed.data
+      }
+    }
+    return sorts
+  })
+
 /**
  * One saved ⌘K search: the query verbatim, including any filter tokens
  * (`#tag`, `is:pinned`, `links:` …). Displayed as its own text — a query like
@@ -959,6 +989,7 @@ export const settingsSchema = z.looseObject({
   allNotesView: allNotesViewSchema,
   openNoteTabs: openNoteTabsSchema,
   savedSearches: savedSearchesSchema,
+  collectionSorts: collectionSortsSchema,
   taskFilters: taskFiltersSchema,
   taskReminders: taskRemindersSchema,
   quickCaptureEnabled: quickCaptureEnabledSchema,

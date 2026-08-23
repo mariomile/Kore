@@ -23,6 +23,7 @@ vi.mock('@/hooks/use-bridge-ready', () => ({ useBridgeReady: () => true }))
 vi.mock('@/lib/tags/use-commit-note-property', () => ({
   useCommitNoteProperty: () => commitProperty,
 }))
+vi.mock('@/lib/tags/use-open-relation', () => ({ useOpenRelation: () => vi.fn() }))
 
 function Subject(): ReactElement {
   return (

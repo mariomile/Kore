@@ -71,6 +71,7 @@ describe('buildAllNotesSearch', () => {
       linkedFromPath: 'notes/hub.md',
       updatedAfterMs: 1000,
       updatedBeforeMs: null,
+      properties: [],
     })
   })
 

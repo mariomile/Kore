@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { isDaily, listNotes, listNoteTags, type CollectionSort } from '@reflect/core'
+import { foldTag, isDaily, listNotes, listNoteTags, type CollectionSort } from '@reflect/core'
 import { LayoutGrid, Layers, List } from '@/components/icons'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { useCollection } from '@/hooks/use-collection'
@@ -19,6 +19,11 @@ import { AllNotesBulkBar } from './all-notes-bulk-bar'
 import { AllNotesFilters } from './all-notes-filters'
 import { AllNotesGrid } from './all-notes-grid'
 import { AllNotesTable } from './all-notes-table'
+import {
+  applyCollectionFilters,
+  CollectionFilterMenu,
+  type CollectionFilter,
+} from './collection-filter-menu'
 import { CollectionTable } from './collection-table'
 import { NoteListContextMenu } from '@/components/notes/note-context-menu'
 import { NoteTrashDialog } from '@/components/notes/note-trash-dialog'
@@ -49,7 +54,7 @@ interface AllNotesScreenProps {
  */
 export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
   const { graph } = useGraph()
-  const { settings, updateSettings } = useSettings()
+  const { settings, updateSettings, updateSettingsWith } = useSettings()
   // The Collection view exists only while the routed tag has a type (TDR
   // 0005); everywhere else a stored 'table' renders as 'list' — never a
   // broken surface.
@@ -57,14 +62,28 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
   const collectionAvailable = tag !== null && tagType !== null && tagType !== undefined
   const view =
     settings.allNotesView === 'table' && !collectionAvailable ? 'list' : settings.allNotesView
-  const [collectionSort, setCollectionSort] = useState<CollectionSort | null>(null)
-  // Render-time reset (not an effect): a sort belongs to one tag's schema, so
-  // switching tags drops it before the stale key can query the new collection.
-  const [sortTag, setSortTag] = useState(tag)
-  if (sortTag !== tag) {
-    setSortTag(tag)
-    setCollectionSort(null)
-  }
+  // The sort is a persisted per-tag view preference (like task filters):
+  // leaving and returning to a collection keeps its order.
+  const tagKey = tag === null ? null : foldTag(tag)
+  const collectionSort: CollectionSort | null =
+    tagKey === null ? null : (settings.collectionSorts[tagKey] ?? null)
+  const setCollectionSort = useCallback(
+    (sort: CollectionSort | null) => {
+      if (tagKey === null) {
+        return
+      }
+      updateSettingsWith((current) => {
+        const next = { ...current.collectionSorts }
+        if (sort === null) {
+          delete next[tagKey]
+        } else {
+          next[tagKey] = sort
+        }
+        return { collectionSorts: next }
+      })
+    },
+    [tagKey, updateSettingsWith],
+  )
   const { navigate } = useRouter()
   const navigateNoteLink = useNoteLinkNavigation()
   // The scroll container lives in state, not a ref, so scroll restoration
@@ -90,6 +109,21 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
     enabled,
   })
   const collection = useCollection(view === 'table' ? tag : null, collectionSort)
+  // Property filters are ephemeral (unlike the persisted sort) and belong to
+  // one tag's schema — a tag switch drops them at render time.
+  const [collectionFilters, setCollectionFilters] = useState<CollectionFilter[]>([])
+  const [filterTag, setFilterTag] = useState(tag)
+  if (filterTag !== tag) {
+    setFilterTag(tag)
+    setCollectionFilters([])
+  }
+  const filteredCollection = useMemo(
+    () =>
+      collection === undefined || tagType === null || tagType === undefined
+        ? collection
+        : applyCollectionFilters(tagType, collection, collectionFilters),
+    [collection, tagType, collectionFilters],
+  )
 
   const ready = notes !== undefined
   const { onScroll } = useScrollRestoration(scrollElement, ready)
@@ -99,9 +133,9 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
   const orderedPaths = useMemo(
     () =>
       view === 'table'
-        ? (collection ?? []).map((entry) => entry.path)
+        ? (filteredCollection ?? []).map((entry) => entry.path)
         : (notes ?? []).map((note) => note.path),
-    [view, collection, notes],
+    [view, filteredCollection, notes],
   )
   const selection = useListSelection(orderedPaths)
   const openNote = useCallback(
@@ -172,6 +206,7 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
         paths={selectedPaths}
         trashablePaths={trashableSelectedPaths}
         notes={notes}
+        tagType={collectionAvailable ? tagType : null}
         onRequestTrash={openTrashConfirm}
         onDone={selection.clear}
       />
@@ -179,6 +214,14 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
         <h1 className="text-[15px] font-semibold text-text">Notes</h1>
         <div className="flex flex-wrap items-center gap-3">
           <AllNotesFilters tag={tag} facets={facets ?? []} onSelect={handleFilterSelect} />
+          {view === 'table' && collectionAvailable ? (
+            <CollectionFilterMenu
+              type={tagType}
+              entries={collection}
+              filters={collectionFilters}
+              onChange={setCollectionFilters}
+            />
+          ) : null}
           <div
             role="group"
             aria-label="Layout"
@@ -232,7 +275,7 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
               </button>
             ) : null}
           </div>
-          <NewNoteButton />
+          <NewNoteButton tag={tag} />
         </div>
       </header>
       {/* One context menu for the whole list — rows and cards carry
@@ -251,7 +294,7 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
             <AllNotesGrid notes={notes} tag={tag} onOpen={openNote} />
           ) : view === 'table' && collectionAvailable ? (
             <CollectionTable
-              entries={collection}
+              entries={filteredCollection}
               tag={tag}
               type={tagType}
               selection={selection}

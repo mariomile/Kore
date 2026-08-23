@@ -14,7 +14,7 @@ import { useGraph } from '@/providers/graph-provider'
  * The subscription self-cleans after one batch (or a 5s safety timeout, for
  * a write the indexer coalesced into nothing).
  */
-function invalidateOnNextIndexApply(): void {
+export function invalidateOnNextIndexApply(): void {
   const cleanup = (): void => {
     clearTimeout(timeout)
     unsubscribe()

@@ -11,6 +11,7 @@ import { PropertyValueEditor } from '@/components/tags/property-editors'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { useCommitNoteProperty } from '@/lib/tags/use-commit-note-property'
+import { useOpenRelation } from '@/lib/tags/use-open-relation'
 import { cn } from '@/lib/utils'
 import { useGraph } from '@/providers/graph-provider'
 import { SidebarSection } from './sidebar-section'
@@ -31,6 +32,7 @@ export function NotePropertiesSection({ path }: NotePropertiesSectionProps): Rea
   const bridgeReady = useBridgeReady()
   const enabled = bridgeReady && graph !== null
   const commitProperty = useCommitNoteProperty()
+  const openRelation = useOpenRelation()
 
   const { data: tagTypes } = useQuery({
     queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'note-tag-types', path],
@@ -75,6 +77,7 @@ export function NotePropertiesSection({ path }: NotePropertiesSectionProps): Rea
               property={property}
               value={values?.[property.key]}
               onCommit={(value) => commitProperty(path, property.key, value)}
+              onOpenRelation={openRelation}
               align="end"
             >
               <PropertyFieldValue property={property} value={values?.[property.key]} />

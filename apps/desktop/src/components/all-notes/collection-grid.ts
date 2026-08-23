@@ -24,16 +24,36 @@ function columnWidth(property: TagProperty): string {
   }
 }
 
+/** The rem a column can never shrink below (the minmax lower bounds). */
+function columnMinRem(property: TagProperty): number {
+  return property.type === 'checkbox' || property.type === 'number' ? 4 : 6
+}
+
 /**
  * The inline grid template — Subject, one column per schema property,
  * Updated. Inline style rather than a class: the columns are data-driven by
  * the tag's schema (`ALL_NOTES_GRID` stays the classic table's contract).
+ *
+ * `minWidth` is the template's own floor (column minimums + gaps + the
+ * row padding): with many columns the header and every row keep the same
+ * width and the screen's scroll container scrolls them horizontally,
+ * instead of the grid crushing its columns past readability. The page body
+ * never scrolls sideways — only the notes container does.
  */
 export function collectionGridStyle(type: TagType): CSSProperties {
   const propertyColumns = type.properties.map(columnWidth).join(' ')
+  const columns = type.properties.length + 2
+  const minRem =
+    8 + // subject floor
+    type.properties.reduce((total, property) => total + columnMinRem(property), 0) +
+    6 + // updated
+    (columns - 1) * 1 + // gap-4
+    3 + // pl-12
+    1.75 // pr-7
   return {
-    gridTemplateColumns: `minmax(0, 15rem) ${propertyColumns}${
+    gridTemplateColumns: `minmax(8rem, 15rem) ${propertyColumns}${
       propertyColumns === '' ? '' : ' '
     }6rem`,
+    minWidth: `${minRem}rem`,
   }
 }

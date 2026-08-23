@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState, type ReactElement } from 'react'
-import { FolderMove, Hash, Trash } from '@/components/icons'
-import type { NoteListEntry } from '@reflect/core'
+import { FolderMove, Hash, Layers, Trash } from '@/components/icons'
+import { errorMessage, relationValue, type NoteListEntry, type TagType } from '@reflect/core'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -11,7 +11,18 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { toast } from '@/components/ui/toast'
+import { commitNoteFrontmatter } from '@/lib/note-frontmatter'
 import { folderOf, useNoteBulkActions } from '@/lib/notes/use-note-bulk-actions'
+import { invalidateOnNextIndexApply } from '@/lib/tags/use-commit-note-property'
+import { useGraph } from '@/providers/graph-provider'
 
 interface AllNotesBulkBarProps {
   /** The notes the actions apply to — the current selection, dailies included. */
@@ -20,10 +31,44 @@ interface AllNotesBulkBarProps {
   trashablePaths: readonly string[]
   /** Every note in the graph — the folder list is derived from their paths. */
   notes: readonly NoteListEntry[] | undefined
+  /** The routed tag's schema, when it has one — enables Set property. */
+  tagType?: TagType | null
   /** Open the bulk-trash confirm the screen owns. */
   onRequestTrash: () => void
   /** Run after an action fully succeeded, so the screen can clear its selection. */
   onDone: () => void
+}
+
+/** Parse the dialog's value input into the typed YAML value ('' clears). */
+function bulkPropertyValue(
+  type: TagType['properties'][number]['type'],
+  raw: string,
+): { ok: true; value: unknown } | { ok: false } {
+  const trimmed = raw.trim()
+  if (trimmed === '') {
+    return { ok: true, value: undefined }
+  }
+  switch (type) {
+    case 'number': {
+      const parsed = Number(trimmed)
+      return Number.isFinite(parsed) ? { ok: true, value: parsed } : { ok: false }
+    }
+    case 'checkbox':
+      return trimmed === 'true' || trimmed === 'false'
+        ? { ok: true, value: trimmed === 'true' }
+        : { ok: false }
+    case 'multiselect': {
+      const entries = trimmed
+        .split(',')
+        .map((entry) => entry.trim())
+        .filter((entry) => entry !== '')
+      return { ok: true, value: entries.length === 0 ? undefined : entries }
+    }
+    case 'relation':
+      return { ok: true, value: relationValue(trimmed) }
+    default:
+      return { ok: true, value: trimmed }
+  }
 }
 
 /** The distinct folders notes actually live in, plus the root, alphabetical. */
@@ -59,14 +104,20 @@ export function AllNotesBulkBar({
   paths,
   trashablePaths,
   notes,
+  tagType = null,
   onRequestTrash,
   onDone,
 }: AllNotesBulkBarProps): ReactElement | null {
   const { tag, move, isRunning } = useNoteBulkActions()
+  const { graph } = useGraph()
   const [tagging, setTagging] = useState(false)
   const [moving, setMoving] = useState(false)
+  const [settingProperty, setSettingProperty] = useState(false)
+  const [propertyRunning, setPropertyRunning] = useState(false)
   const [tagValue, setTagValue] = useState('')
   const [folderValue, setFolderValue] = useState('')
+  const [propertyKey, setPropertyKey] = useState('')
+  const [propertyValue, setPropertyValue] = useState('')
   const folders = useMemo(() => foldersFrom(notes), [notes])
   // Snapshots taken when a dialog opens: the actions prune the selection as
   // they land, and driving the dialog off the live one would have its count
@@ -86,6 +137,45 @@ export function AllNotesBulkBar({
     pending.current = paths
     setFolderValue('')
     setMoving(true)
+  }
+  const openSetProperty = (): void => {
+    pending.current = paths
+    setPropertyKey(tagType?.properties[0]?.key ?? '')
+    setPropertyValue('')
+    setSettingProperty(true)
+  }
+
+  const selectedProperty = tagType?.properties.find((entry) => entry.key === propertyKey) ?? null
+  const parsedBulkValue =
+    selectedProperty === null
+      ? ({ ok: false } as const)
+      : bulkPropertyValue(selectedProperty.type, propertyValue)
+
+  const runSetProperty = async (): Promise<void> => {
+    if (graph === null || selectedProperty === null || !parsedBulkValue.ok) {
+      return
+    }
+    setPropertyRunning(true)
+    try {
+      for (const path of pending.current) {
+        await commitNoteFrontmatter(
+          path,
+          { properties: { [selectedProperty.key]: parsedBulkValue.value } },
+          graph.generation,
+        )
+      }
+      invalidateOnNextIndexApply()
+      setSettingProperty(false)
+      onDone()
+    } catch (error) {
+      toast.add({
+        type: 'error',
+        title: "Couldn't set the property",
+        description: errorMessage(error),
+      })
+    } finally {
+      setPropertyRunning(false)
+    }
   }
   const finish = (ok: boolean, close: (open: boolean) => void): void => {
     close(false)
@@ -125,6 +215,19 @@ export function AllNotesBulkBar({
             <FolderMove aria-hidden className="size-3.5" />
             <span>Move</span>
           </Button>
+          {tagType !== null && tagType.properties.length > 0 ? (
+            <Button
+              type="button"
+              variant="ghost"
+              aria-label={`Set property (${paths.length})`}
+              disabled={isRunning || propertyRunning}
+              onClick={openSetProperty}
+              className="text-text-secondary"
+            >
+              <Layers aria-hidden className="size-3.5" />
+              <span>Property</span>
+            </Button>
+          ) : null}
           {trashablePaths.length > 0 ? (
             <Button
               type="button"
@@ -181,6 +284,107 @@ export function AllNotesBulkBar({
               />
               <Button type="submit" disabled={isRunning || tagValue.trim() === ''}>
                 Tag
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={settingProperty} onOpenChange={propertyRunning ? () => {} : setSettingProperty}>
+        <DialogContent>
+          <DialogTitle>
+            Set a property on {pending.current.length}{' '}
+            {pending.current.length === 1 ? 'note' : 'notes'}
+          </DialogTitle>
+          <DialogDescription>
+            Writes the value into each note&rsquo;s frontmatter. An empty value clears the property
+            instead.
+          </DialogDescription>
+          <form
+            className="flex flex-col gap-3"
+            onSubmit={(event) => {
+              event.preventDefault()
+              void runSetProperty()
+            }}
+          >
+            <Select
+              value={propertyKey}
+              items={Object.fromEntries(
+                (tagType?.properties ?? []).map((entry) => [entry.key, entry.name]),
+              )}
+              onValueChange={(value) => setPropertyKey(value ?? '')}
+            >
+              <SelectTrigger aria-label="Property">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(tagType?.properties ?? []).map((entry) => (
+                  <SelectItem key={entry.key} value={entry.key}>
+                    {entry.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {selectedProperty?.type === 'checkbox' ? (
+              <Select
+                value={propertyValue}
+                onValueChange={(value) => setPropertyValue(value ?? '')}
+              >
+                <SelectTrigger aria-label="Value">
+                  <SelectValue placeholder="Keep empty to clear" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="true">Checked</SelectItem>
+                  <SelectItem value="false">Unchecked</SelectItem>
+                </SelectContent>
+              </Select>
+            ) : selectedProperty?.type === 'select' ? (
+              <Select
+                value={propertyValue}
+                onValueChange={(value) => setPropertyValue(value ?? '')}
+              >
+                <SelectTrigger aria-label="Value">
+                  <SelectValue placeholder="Keep empty to clear" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(selectedProperty.options ?? []).map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {option}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Input
+                aria-label="Value"
+                type={
+                  selectedProperty?.type === 'number'
+                    ? 'number'
+                    : selectedProperty?.type === 'date'
+                      ? 'date'
+                      : 'text'
+                }
+                placeholder={
+                  selectedProperty?.type === 'multiselect'
+                    ? 'comma, separated, values'
+                    : selectedProperty?.type === 'relation'
+                      ? 'Note title'
+                      : 'Empty clears the property'
+                }
+                value={propertyValue}
+                onChange={(event) => setPropertyValue(event.target.value)}
+              />
+            )}
+            <DialogFooter>
+              <DialogClose
+                render={
+                  <Button type="button" variant="ghost" disabled={propertyRunning}>
+                    Cancel
+                  </Button>
+                }
+              />
+              <Button type="submit" disabled={propertyRunning || !parsedBulkValue.ok}>
+                {propertyValue.trim() === '' ? 'Clear property' : 'Set property'}
               </Button>
             </DialogFooter>
           </form>

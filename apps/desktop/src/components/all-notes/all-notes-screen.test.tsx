@@ -39,6 +39,7 @@ vi.mock('@/providers/settings-provider', () => ({
       timeFormat: '12h',
       dateFormat: settingsState.dateFormat,
       allNotesFilterTags: ['book', 'person'],
+      collectionSorts: {},
       allNotesView: settingsState.allNotesView,
       uiDensity: 'default',
     },

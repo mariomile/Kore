@@ -1,6 +1,7 @@
 import { useRef, useState, type KeyboardEvent, type ReactElement, type ReactNode } from 'react'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import {
+  relationTarget,
   relationValue,
   suggestWikiLinkTargets,
   type CollectionValue,
@@ -35,6 +36,8 @@ export interface PropertyEditorProps {
   value: CollectionValue | undefined
   /** Persist a new value (`undefined` deletes the key). */
   onCommit: (value: unknown) => void
+  /** Follow a relation's target note (offered as the picker's first item). */
+  onOpenRelation?: (target: string) => void
   /** The read-only display the editor opens from. */
   children: ReactNode
   align?: 'start' | 'end'
@@ -264,6 +267,7 @@ function RelationPropertyEditor({
   property,
   value,
   onCommit,
+  onOpenRelation,
   children,
   align,
 }: PropertyEditorProps): ReactElement {
@@ -271,6 +275,7 @@ function RelationPropertyEditor({
   const [query, setQuery] = useState('')
   const { graph } = useGraph()
   const bridgeReady = useBridgeReady()
+  const currentTarget = value === undefined ? null : relationTarget(value.value)
 
   const { data } = useQuery({
     queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'relation-targets', query],
@@ -321,6 +326,17 @@ function RelationPropertyEditor({
               {query === '' ? 'Type to find a note.' : 'No matching notes.'}
             </CommandEmpty>
             <CommandGroup>
+              {currentTarget !== null && onOpenRelation !== undefined && query === '' ? (
+                <CommandItem
+                  value="__open"
+                  onSelect={() => {
+                    setOpen(false)
+                    onOpenRelation(currentTarget)
+                  }}
+                >
+                  <span className="min-w-0 flex-1 truncate">Open “{currentTarget}”</span>
+                </CommandItem>
+              ) : null}
               {suggestions.map((suggestion) => (
                 <CommandItem
                   key={`${suggestion.target}:${suggestion.alias ?? ''}`}

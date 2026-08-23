@@ -32,8 +32,6 @@ export { appendBodyTag, bodyHasTag } from './body-tag'
 export {
   applyReplaceMatches,
   findReplaceMatches,
-  foldPreservingLength,
-  protectedRanges,
   type ReplaceMatch,
   type ReplaceScanOptions,
 } from './replace-scan'

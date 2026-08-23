@@ -49,6 +49,14 @@
   /* Marketing glow — inset purple light on glass controls     */
   --glow-purple: inset 0 0 12px rgba(191, 151, 255, 0.24); /* @kind shadow */
 
+  /* ---- Density (the `default` step) ----------------------- */
+  /* List-row height and sidebar-item padding; the `[data-density]`
+     scopes at the bottom of this file rescale them. The row height
+     is mirrored as a number in the settings schema for the list
+     virtualizer — a token test keeps the two equal. */
+  --row-height: 48px;
+  --nav-padding-y: 0.375rem;
+
   /* Layout widths — the sidebar values are fresh-install defaults; the app
      overrides both on the root from the user's persisted widths. */
   --sidebar-width: 260px;
@@ -112,4 +120,20 @@
   --radius-lg: 0.875rem; /* 14px */
   --radius-xl: 1.125rem; /* 18px */
   --radius-2xl: 1.5rem; /* 24px */
+}
+
+/* ============================================================
+   DENSITY — `data-density` on the document root (settings →
+   Appearance). Like the radius scopes above: `default` declares
+   nothing, keeping the base values in :root.
+   ============================================================ */
+
+:root[data-density='compact'] {
+  --row-height: 40px;
+  --nav-padding-y: 0.25rem;
+}
+
+:root[data-density='comfortable'] {
+  --row-height: 56px;
+  --nav-padding-y: 0.5rem;
 }

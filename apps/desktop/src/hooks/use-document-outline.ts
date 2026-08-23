@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 export interface OutlineEntry {
   /** Heading depth, 1–6, as rendered. */
@@ -62,24 +62,38 @@ export interface DocumentOutline {
  */
 export function useDocumentOutline(): DocumentOutline {
   const [entries, setEntries] = useState<OutlineEntry[]>([])
-  const entriesRef = useRef<OutlineEntry[]>([])
 
   useEffect(() => {
     const sync = (): void => {
       const next = toEntries(readHeadings())
-      if (!sameEntries(entriesRef.current, next)) {
-        entriesRef.current = next
-        setEntries(next)
+      // Functional update + bail on an identical reference: typing inside a
+      // paragraph re-runs the read but never re-renders the panel.
+      setEntries((previous) => (sameEntries(previous, next) ? previous : next))
+    }
+    // Coalesce to one read per frame: the observer fires for every mutation
+    // batch anywhere in the document (toasts, spinners, unrelated panels),
+    // and a keystroke burst would otherwise re-query the DOM per batch.
+    let pending = 0
+    const schedule = (): void => {
+      if (pending !== 0) {
+        return
       }
+      pending = requestAnimationFrame(() => {
+        pending = 0
+        sync()
+      })
     }
     sync()
     // The surface mounts after this hook on a note switch, so observe the
     // document and let the selector do the narrowing rather than waiting for
     // an element that may not exist yet.
-    const observer = new MutationObserver(sync)
+    const observer = new MutationObserver(schedule)
     observer.observe(document.body, { subtree: true, childList: true, characterData: true })
     return () => {
       observer.disconnect()
+      if (pending !== 0) {
+        cancelAnimationFrame(pending)
+      }
     }
   }, [])
 

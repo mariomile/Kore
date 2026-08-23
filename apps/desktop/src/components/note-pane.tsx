@@ -156,7 +156,11 @@ export function NotePaneComponent({
   // A daily's seed is `templates/daily.md`, not the name-me template: the date
   // already names it. Undefined when the graph has no daily template, which
   // leaves dailies opening empty exactly as they did before.
-  const dailySeed = useDailyNoteSeed(dailyDate ?? '')
+  const dailySeed = useDailyNoteSeed(dailyDate ?? null)
+  // One value, one spread: `needsSeed` already excludes dailies, so the two
+  // sources are mutually exclusive — computed here so the object below
+  // doesn't ask the reader to prove it.
+  const missingSeed = needsSeed ? seed.seed : lazyCreate && dailyNote ? dailySeed : undefined
   const document = useNoteDocument(path, generation, {
     createIfMissing: lazyCreate,
     // Every editable regular note maintains title-addressed links and
@@ -170,8 +174,7 @@ export function NotePaneComponent({
     // daily opens on `templates/daily.md` instead, under the same contract:
     // the seed is the clean baseline, so a day you look at and leave still
     // writes nothing.
-    ...(needsSeed ? { missingSeed: seed.seed } : {}),
-    ...(dailyNote && lazyCreate && dailySeed !== undefined ? { missingSeed: dailySeed } : {}),
+    ...(missingSeed !== undefined ? { missingSeed } : {}),
   })
   const { resolveImageUrl, resolveAssetOpenPath, openAsset, saveFile, resolveFileInfo, saveError } =
     useAssetPersistence(generation, path)

@@ -160,32 +160,34 @@ export function parseCodexCliLine(
   return null
 }
 
+/**
+ * The id both start events carry, whichever way it arrives: as the response
+ * to our own start request (keyed by its request id) or as the server's
+ * `thread/started` / `turn/started` notification. Thread and turn are the
+ * same walk with different names, so there is one walk.
+ */
+function idFromAppServerLine(
+  parsed: Record<string, unknown>,
+  requestId: number,
+  startedMethod: string,
+  key: string,
+): string | null {
+  const container =
+    parsed.id === requestId
+      ? recordField(parsed, 'result')
+      : parsed.method === startedMethod
+        ? recordField(parsed, 'params')
+        : null
+  const entity = container === null ? null : recordField(container, key)
+  return entity === null ? null : stringField(entity, 'id')
+}
+
 export function threadIdFromAppServerLine(parsed: Record<string, unknown>): string | null {
-  if (parsed.id === CODEX_THREAD_START_ID) {
-    const result = recordField(parsed, 'result')
-    const thread = result === null ? null : recordField(result, 'thread')
-    return thread === null ? null : stringField(thread, 'id')
-  }
-  if (parsed.method === 'thread/started') {
-    const params = recordField(parsed, 'params')
-    const thread = params === null ? null : recordField(params, 'thread')
-    return thread === null ? null : stringField(thread, 'id')
-  }
-  return null
+  return idFromAppServerLine(parsed, CODEX_THREAD_START_ID, 'thread/started', 'thread')
 }
 
 export function turnIdFromAppServerLine(parsed: Record<string, unknown>): string | null {
-  if (parsed.id === CODEX_TURN_START_ID) {
-    const result = recordField(parsed, 'result')
-    const turn = result === null ? null : recordField(result, 'turn')
-    return turn === null ? null : stringField(turn, 'id')
-  }
-  if (parsed.method === 'turn/started') {
-    const params = recordField(parsed, 'params')
-    const turn = params === null ? null : recordField(params, 'turn')
-    return turn === null ? null : stringField(turn, 'id')
-  }
-  return null
+  return idFromAppServerLine(parsed, CODEX_TURN_START_ID, 'turn/started', 'turn')
 }
 
 export function codexTurnStartLine(threadId: string, userPrompt: string): string {

@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dialog'
 import { useNoteTrash } from '@/lib/notes/use-note-trash'
 
-interface AllNotesTrashDialogProps {
+interface NoteTrashDialogProps {
   /** Whether the confirm is shown. */
   open: boolean
   /** Open-state changes the screen owns (the trigger lives there). */
@@ -26,8 +26,10 @@ interface AllNotesTrashDialogProps {
 }
 
 /**
- * The All Notes bulk-trash confirmation. Owns the delete ({@link useNoteTrash})
- * so the screen only tracks which paths to trash and whether the dialog is open.
+ * The trash confirmation for one note or many, from any surface — the All
+ * Notes bulk action and the note context menu both open it. Owns the delete
+ * ({@link useNoteTrash}) so callers only track which paths to trash and
+ * whether the dialog is open.
  *
  * It always closes on confirm: on full success it clears the selection, and on
  * any failure it leaves the selection alone — the notes that didn't trash stay
@@ -35,12 +37,12 @@ interface AllNotesTrashDialogProps {
  * report the reason through the operations toast, the app's standard channel for
  * background-work failures. No inline error, no in-dialog retry.
  */
-export function AllNotesTrashDialog({
+export function NoteTrashDialog({
   open,
   onOpenChange,
   paths,
   onTrashed,
-}: AllNotesTrashDialogProps): ReactElement {
+}: NoteTrashDialogProps): ReactElement {
   const { trash, isTrashing } = useNoteTrash()
   const confirmButtonRef = useRef<HTMLButtonElement>(null)
   // Guards against a double-submit: the button's `disabled={isTrashing}` only

@@ -150,7 +150,7 @@ export function CommandPalette({ context }: CommandPaletteProps): ReactElement |
   return (
     // The overlay is ours (no portal): click-outside closes, Esc closes below.
     <div
-      className="animate-in fade-in-0 fixed inset-0 z-40 flex items-start justify-center bg-black/20 pt-[12vh] duration-150 ease-swift supports-backdrop-filter:backdrop-blur-xs"
+      className="animate-in fade-in-0 fixed inset-0 z-40 flex items-start justify-center bg-black/20 pt-[12vh] duration-150 ease-swift"
       onPointerDown={closePalette}
       data-testid="palette-overlay"
     >

@@ -96,6 +96,8 @@ export function AllNotesBulkBar({
 
   return (
     <>
+      {/* Positioned against the screen root, which declares `relative` for
+          exactly this — see the note beside it in all-notes-screen.tsx. */}
       <div className="pointer-events-none absolute inset-x-0 bottom-6 z-20 flex justify-center">
         <div className="animate-in fade-in-0 slide-in-from-bottom-2 pointer-events-auto flex items-center gap-1.5 rounded-full border border-border bg-popover p-1.5 pl-3.5 shadow-pop duration-150 ease-swift">
           <span className="mr-1 text-xs tabular-nums text-text-secondary">

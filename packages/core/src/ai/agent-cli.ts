@@ -405,7 +405,9 @@ export async function* streamAgentCliTurn(
         continue
       }
       if (event.kind === 'line') {
-        await options.onRawLine?.(event.line, sendRawLine)
+        if (options.onRawLine !== undefined) {
+          await options.onRawLine(event.line, sendRawLine)
+        }
         const chunk = options.parseLine(event.line)
         if (chunk === null) {
           continue

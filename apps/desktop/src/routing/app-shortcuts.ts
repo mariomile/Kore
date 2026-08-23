@@ -187,21 +187,18 @@ export function useAppShortcuts(): CommandContext {
     previous: findPreviousInNote,
   } = useNoteFindActions()
 
-  // The palette is modal: app shortcuts must not navigate behind its overlay.
-  // A ref keeps the listener stable across open/close renders.
-  const paletteOpenRef = useRef(paletteOpen)
+  // Modal surfaces suppress app commands: nothing may navigate behind the
+  // palette, the template dialogs, or Replace-in-vault (which could be
+  // mid-scan or, worse, mid-write). One ref covers every "open → refuse"
+  // modal; a ref rather than state keeps the listener stable across
+  // open/close renders.
+  const blockingModalOpenRef = useRef(
+    paletteOpen || templatePickerOpen || templateCreateOpen || vaultReplaceOpen,
+  )
 
-  // Same for the ⌘/ cheat-sheet, except ⌘/ itself toggles it closed.
+  // The ⌘/ cheat-sheet is the one modal with behaviour beyond "refuse":
+  // the command that opened it closes it again, so it keeps its own ref.
   const shortcutsOpenRef = useRef(shortcutsOpen)
-
-  // And for the template dialogs — both are Radix modals; nothing may
-  // navigate behind them.
-  const templatesOpenRef = useRef(templatePickerOpen || templateCreateOpen)
-
-  // Replace-in-vault is modal for a stronger reason than the others: a
-  // command that navigated behind it could unmount the dialog mid-scan or,
-  // worse, mid-write.
-  const vaultReplaceOpenRef = useRef(vaultReplaceOpen)
 
   // Read at run time, not captured: a command can fire long after the render
   // that created the context (palette open across an index rebuild, etc.).
@@ -212,10 +209,9 @@ export function useAppShortcuts(): CommandContext {
   const routeRef = useRef(route)
   const focusedDailyDateRef = useRef(focusedDailyDate)
   useEffect(() => {
-    paletteOpenRef.current = paletteOpen
+    blockingModalOpenRef.current =
+      paletteOpen || templatePickerOpen || templateCreateOpen || vaultReplaceOpen
     shortcutsOpenRef.current = shortcutsOpen
-    templatesOpenRef.current = templatePickerOpen || templateCreateOpen
-    vaultReplaceOpenRef.current = vaultReplaceOpen
     generationRef.current = graph?.generation ?? null
     graphRootRef.current = graph?.root ?? null
     recentsRef.current = recents
@@ -335,8 +331,8 @@ export function useAppShortcuts(): CommandContext {
     // The one guarded entry point for app commands, shared by keystrokes and
     // native menu activations. Returns whether the command was handled.
     function triggerCommand(id: string): boolean {
-      if (paletteOpenRef.current) {
-        return false // modal palette owns the screen; Esc closes, then commands resume
+      if (blockingModalOpenRef.current) {
+        return false // a modal owns the screen; Esc closes it, then commands resume
       }
       if (shortcutsOpenRef.current) {
         // The cheat-sheet is modal too: nothing may navigate behind it, but
@@ -346,12 +342,6 @@ export function useAppShortcuts(): CommandContext {
           return true
         }
         return false
-      }
-      if (templatesOpenRef.current) {
-        return false // the template picker/create dialogs are modal too
-      }
-      if (vaultReplaceOpenRef.current) {
-        return false // a scan or a write may be in flight behind it
       }
       void runCommand(id, context)
       return true

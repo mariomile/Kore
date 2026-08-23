@@ -8,7 +8,7 @@ import {
   type ReactElement,
   type ReactNode,
 } from 'react'
-import { DARK_THEME_IDS, DENSITY_METRICS, type ThemePreference } from '@reflect/core'
+import { DARK_THEME_IDS, type ThemePreference } from '@reflect/core'
 import { deriveAccentTokens } from '@/lib/accent-color'
 import {
   writeCachedAccentColor,
@@ -27,9 +27,9 @@ export type Theme = ThemePreference
 export type ResolvedTheme = Exclude<ThemePreference, 'system'>
 
 /**
- * Whether a resolved theme belongs to the dark family. `space`, `midnight`,
- * `nord` and `forest` are dark variants — they layer over the `.dark` scope —
- * while `paper`, `sepia` and `mist` are light ones. Family drives the `.dark`
+ * Whether a resolved theme belongs to the dark family. `graphite`, `space`
+ * and `midnight` are dark variants — they layer over the `.dark` scope —
+ * while `ash` and `paper` are light ones. Family drives the `.dark`
  * class (and with it every Tailwind `dark:` utility), the CSS `color-scheme`,
  * and the light/dark toggle. The list itself lives in the settings schema
  * next to the theme enum, so adding a variant can't forget this.
@@ -131,15 +131,14 @@ export function ThemeProvider({ children }: ThemeProviderProps): ReactElement {
     } else {
       root.setAttribute('data-radius', uiRadius)
     }
-    // Density is written as values, not as a scope to match on. The list
-    // virtualizers need the row height as a number in JS, so the numbers live
-    // in `DENSITY_METRICS` and the stylesheet reads them from here — one
-    // source of truth rather than a CSS scope and a JS constant that have to
-    // be kept in step by hand.
-    const metrics = DENSITY_METRICS[uiDensity]
-    root.setAttribute('data-density', uiDensity)
-    root.style.setProperty('--row-height', `${metrics.rowHeight}px`)
-    root.style.setProperty('--nav-padding-y', metrics.navPaddingY)
+    // Density follows the radius pattern: one scope in the design system,
+    // `default` declares nothing. The list virtualizer reads the same number
+    // from `DENSITY_ROW_HEIGHT`, and a token test keeps CSS and JS equal.
+    if (uiDensity === 'default') {
+      root.removeAttribute('data-density')
+    } else {
+      root.setAttribute('data-density', uiDensity)
+    }
     root.style.colorScheme = dark ? 'dark' : 'light'
     // Preset accents resolve through the design-system's `[data-accent]`
     // scopes; a custom hex has no scope, so its derived ramp is applied as

@@ -306,18 +306,24 @@ describe('ThemeProvider', () => {
     expect(localStorage.getItem(THEME_GLASS_LEVEL_CACHE_KEY)).toBe('strong')
   })
 
-  it('writes the density metrics as values, not just a scope to match on', async () => {
-    // The All Notes virtualizer reads the same numbers from DENSITY_METRICS,
-    // so a row can never render taller than the height it was sized for.
+  it('scopes a non-default density and caches it', async () => {
+    // Same pattern as the radius scope: `default` declares nothing, so the
+    // attribute must come off when the user returns to it.
     stored = { theme: 'light', uiDensity: 'compact' }
 
-    const { act } = await renderHook(() => useTheme(), { wrapper })
+    const { result, act } = await renderHook(
+      () => ({ theme: useTheme(), settings: useSettings() }),
+      { wrapper },
+    )
     await settleLoad(act)
-    const root = document.documentElement
-    expect(root.getAttribute('data-density')).toBe('compact')
-    expect(root.style.getPropertyValue('--row-height')).toBe('40px')
-    expect(root.style.getPropertyValue('--nav-padding-y')).toBe('0.25rem')
+    expect(document.documentElement.getAttribute('data-density')).toBe('compact')
     expect(localStorage.getItem(THEME_DENSITY_CACHE_KEY)).toBe('compact')
+
+    await act(() => {
+      result.current.settings.updateSettings({ uiDensity: 'default' })
+    })
+    expect(document.documentElement.getAttribute('data-density')).toBeNull()
+    expect(localStorage.getItem(THEME_DENSITY_CACHE_KEY)).toBe('default')
   })
 
   it('applies but does not cache a preference after a failed load', async () => {

@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { expandTemplatePlaceholders, readNote, splitFrontmatter } from '@reflect/core'
+import { expandTemplatePlaceholders, templatePath } from '@reflect/core'
 import { formatDayLabel, formatTimeOfDay, todayIso } from '@/lib/dates'
+import { templateBody } from '@/lib/note-templates'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { useGraph } from '@/providers/graph-provider'
 import { useSettings } from '@/providers/settings-provider'
 
 /** Where a daily note's starting shape lives, by convention. */
-export const DAILY_TEMPLATE_PATH = 'templates/daily.md'
+export const DAILY_TEMPLATE_PATH = templatePath('daily')
 
 /**
  * The markdown a daily note starts life with, or undefined when there is no
@@ -27,11 +28,11 @@ export const DAILY_TEMPLATE_PATH = 'templates/daily.md'
  * start get the template. That is the one predicate below, if it ever wants
  * changing.
  */
-export function useDailyNoteSeed(date: string): string | undefined {
+export function useDailyNoteSeed(date: string | null): string | undefined {
   const { graph } = useGraph()
   const { settings } = useSettings()
   const { dateFormat, timeFormat } = settings
-  const startable = date >= todayIso()
+  const startable = date !== null && date >= todayIso()
   // Read once when the row mounts, not on every render — reading the clock
   // during render is impure. A `{{time}}` in a *daily* template therefore
   // means "when this day came on screen" rather than "when you typed", which
@@ -44,9 +45,9 @@ export function useDailyNoteSeed(date: string): string | undefined {
     // Shared across every mounted day in the stream: one read, not one per row.
     queryFn: async () => {
       try {
-        // Frontmatter is a template's metadata, never its content — the same
-        // rule `templateBody` applies to an inserted template.
-        return splitFrontmatter(await readNote(DAILY_TEMPLATE_PATH)).body
+        // `templateBody` strips the template's own frontmatter — metadata,
+        // never content — exactly as it does for an inserted template.
+        return await templateBody(DAILY_TEMPLATE_PATH)
       } catch {
         return null // no daily template — dailies open empty, as before
       }
@@ -54,7 +55,7 @@ export function useDailyNoteSeed(date: string): string | undefined {
     enabled: graph !== null && startable,
   })
 
-  if (!startable || template === null || template === undefined || template.trim() === '') {
+  if (!startable || date === null || template == null || template.trim() === '') {
     return undefined
   }
   return expandTemplatePlaceholders(template, {

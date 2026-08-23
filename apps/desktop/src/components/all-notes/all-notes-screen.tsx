@@ -17,7 +17,8 @@ import { AllNotesBulkBar } from './all-notes-bulk-bar'
 import { AllNotesFilters } from './all-notes-filters'
 import { AllNotesGrid } from './all-notes-grid'
 import { AllNotesTable } from './all-notes-table'
-import { AllNotesTrashDialog } from './all-notes-trash-dialog'
+import { NoteListContextMenu } from '@/components/notes/note-context-menu'
+import { NoteTrashDialog } from '@/components/notes/note-trash-dialog'
 import { NewNoteButton } from './new-note-button'
 import { useAllNotesKeyboard } from './use-all-notes-keyboard'
 import { isModEvent } from '@meowdown/core'
@@ -139,6 +140,7 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
       ref={rootRef}
       tabIndex={-1}
       aria-label="All notes"
+      // `relative`: the floating bulk bar positions against this root.
       className="relative flex h-full min-h-0 flex-col outline-none"
     >
       <AllNotesBulkBar
@@ -191,26 +193,33 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
           <NewNoteButton />
         </div>
       </header>
-      <div
-        ref={setScrollElement}
-        data-testid="all-notes-scroll"
-        onScroll={onScroll}
-        className="min-h-0 flex-1 overflow-auto"
-      >
-        {view === 'grid' ? (
-          <AllNotesGrid notes={notes} tag={tag} onOpen={openNote} />
-        ) : (
-          <AllNotesTable
-            notes={notes}
-            tag={tag}
-            selection={selection}
-            onOpen={openNote}
-            registerScrollToIndex={registerScrollToIndex}
-          />
-        )}
-      </div>
+      {/* One context menu for the whole list — rows and cards carry
+          data-note-path; the menu resolves the note from the click. It wraps
+          the scroll container from OUTSIDE: its wrappers are display:contents,
+          and the table's virtualizer measures its direct parent — a wrapper
+          between the two would hand it a zero-height viewport. */}
+      <NoteListContextMenu>
+        <div
+          ref={setScrollElement}
+          data-testid="all-notes-scroll"
+          onScroll={onScroll}
+          className="min-h-0 flex-1 overflow-auto"
+        >
+          {view === 'grid' ? (
+            <AllNotesGrid notes={notes} tag={tag} onOpen={openNote} />
+          ) : (
+            <AllNotesTable
+              notes={notes}
+              tag={tag}
+              selection={selection}
+              onOpen={openNote}
+              registerScrollToIndex={registerScrollToIndex}
+            />
+          )}
+        </div>
+      </NoteListContextMenu>
 
-      <AllNotesTrashDialog
+      <NoteTrashDialog
         open={confirmingTrash}
         onOpenChange={setConfirmingTrash}
         paths={pendingPaths}

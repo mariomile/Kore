@@ -317,6 +317,7 @@ describe('SettingsScreen', () => {
           mcpServers: [],
           savedSearches: [],
           collectionSorts: {},
+          collectionGroups: {},
         },
       ]),
     )
@@ -399,6 +400,7 @@ describe('SettingsScreen', () => {
           mcpServers: [],
           savedSearches: [],
           collectionSorts: {},
+          collectionGroups: {},
         },
       ]),
     )
@@ -495,6 +497,7 @@ describe('SettingsScreen', () => {
           mcpServers: [],
           savedSearches: [],
           collectionSorts: {},
+          collectionGroups: {},
         },
       ]),
     )
@@ -598,6 +601,7 @@ describe('SettingsScreen', () => {
           mcpServers: [],
           savedSearches: [],
           collectionSorts: {},
+          collectionGroups: {},
         },
       ]),
     )
@@ -680,6 +684,7 @@ describe('SettingsScreen', () => {
           mcpServers: [],
           savedSearches: [],
           collectionSorts: {},
+          collectionGroups: {},
         },
       ]),
     )
@@ -755,6 +760,7 @@ describe('SettingsScreen', () => {
           mcpServers: [],
           savedSearches: [],
           collectionSorts: {},
+          collectionGroups: {},
         },
       ]),
     )
@@ -839,6 +845,7 @@ describe('SettingsScreen', () => {
           mcpServers: [],
           savedSearches: [],
           collectionSorts: {},
+          collectionGroups: {},
         },
       ]),
     )
@@ -920,6 +927,7 @@ describe('SettingsScreen', () => {
           mcpServers: [],
           savedSearches: [],
           collectionSorts: {},
+          collectionGroups: {},
         },
       ]),
     )
@@ -1007,6 +1015,7 @@ describe('SettingsScreen', () => {
           mcpServers: [],
           savedSearches: [],
           collectionSorts: {},
+          collectionGroups: {},
         },
       ]),
     )
@@ -1100,6 +1109,7 @@ describe('SettingsScreen', () => {
           mcpServers: [],
           savedSearches: [],
           collectionSorts: {},
+          collectionGroups: {},
         },
       ]),
     )
@@ -1175,6 +1185,7 @@ describe('SettingsScreen', () => {
           mcpServers: [],
           savedSearches: [],
           collectionSorts: {},
+          collectionGroups: {},
         },
       ]),
     )
@@ -1279,6 +1290,7 @@ describe('SettingsScreen', () => {
           mcpServers: [],
           savedSearches: [],
           collectionSorts: {},
+          collectionGroups: {},
         },
       ]),
     )
@@ -1352,6 +1364,7 @@ describe('SettingsScreen', () => {
           mcpServers: [],
           savedSearches: [],
           collectionSorts: {},
+          collectionGroups: {},
         },
       ]),
     )
@@ -1447,6 +1460,7 @@ describe('SettingsScreen', () => {
           mcpServers: [],
           savedSearches: [],
           collectionSorts: {},
+          collectionGroups: {},
         },
       ]),
     )
@@ -1532,6 +1546,7 @@ describe('SettingsScreen', () => {
           mcpServers: [],
           savedSearches: [],
           collectionSorts: {},
+          collectionGroups: {},
         },
       ]),
     )
@@ -1611,6 +1626,7 @@ describe('SettingsScreen', () => {
           mcpServers: [],
           savedSearches: [],
           collectionSorts: {},
+          collectionGroups: {},
         },
       ]),
     )
@@ -1769,6 +1785,7 @@ describe('SettingsScreen', () => {
           chatSystemPrompt: '',
           savedSearches: [],
           collectionSorts: {},
+          collectionGroups: {},
           aiPrompts: [
             {
               id: expect.any(String),
@@ -1866,6 +1883,7 @@ describe('SettingsScreen', () => {
           mcpServers: [],
           savedSearches: [],
           collectionSorts: {},
+          collectionGroups: {},
         },
       ]),
     )
@@ -1942,6 +1960,7 @@ describe('SettingsScreen', () => {
           chatSystemPrompt: '',
           savedSearches: [],
           collectionSorts: {},
+          collectionGroups: {},
           aiPrompts: [
             { id: 'p1', label: 'Translate to German', body: '{{selectedText}}', mode: 'replace' },
           ],

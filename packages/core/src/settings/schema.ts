@@ -640,6 +640,25 @@ export const collectionSortsSchema = z
     return sorts
   })
 
+/** The board's grouping property per typed tag (folded tag key → property
+ * key). Absent = the schema's first `select`. Same per-entry resilience as
+ * {@link collectionSortsSchema}; a key the schema no longer declares (or that
+ * is no longer a select) simply falls back at render time. */
+export type CollectionGroups = Record<string, string>
+
+export const collectionGroupsSchema = z
+  .record(z.string(), z.unknown())
+  .catch({})
+  .transform((entries) => {
+    const groups: CollectionGroups = {}
+    for (const [tagKey, value] of Object.entries(entries)) {
+      if (typeof value === 'string' && value !== '') {
+        groups[tagKey] = value
+      }
+    }
+    return groups
+  })
+
 /**
  * One saved ⌘K search: the query verbatim, including any filter tokens
  * (`#tag`, `is:pinned`, `links:` …). Displayed as its own text — a query like
@@ -992,6 +1011,7 @@ export const settingsSchema = z.looseObject({
   openNoteTabs: openNoteTabsSchema,
   savedSearches: savedSearchesSchema,
   collectionSorts: collectionSortsSchema,
+  collectionGroups: collectionGroupsSchema,
   taskFilters: taskFiltersSchema,
   taskReminders: taskRemindersSchema,
   quickCaptureEnabled: quickCaptureEnabledSchema,

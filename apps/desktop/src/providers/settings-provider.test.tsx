@@ -190,6 +190,7 @@ describe('SettingsProvider', () => {
           memoryWriteApproval: false,
           savedSearches: [],
           collectionSorts: {},
+          collectionGroups: {},
         },
       ]),
     )
@@ -292,6 +293,7 @@ describe('SettingsProvider', () => {
           memoryWriteApproval: false,
           savedSearches: [],
           collectionSorts: {},
+          collectionGroups: {},
           futureKey: true,
         },
       ]),
@@ -379,6 +381,7 @@ describe('SettingsProvider', () => {
           memoryWriteApproval: false,
           savedSearches: [],
           collectionSorts: {},
+          collectionGroups: {},
           futureKey: true,
         },
       ]),
@@ -460,6 +463,7 @@ describe('SettingsProvider', () => {
           memoryWriteApproval: false,
           savedSearches: [],
           collectionSorts: {},
+          collectionGroups: {},
         },
       ]),
     )
@@ -667,6 +671,7 @@ describe('SettingsProvider', () => {
           memoryWriteApproval: false,
           savedSearches: [],
           collectionSorts: {},
+          collectionGroups: {},
         },
       ]),
     )
@@ -751,6 +756,7 @@ describe('SettingsProvider', () => {
         memoryWriteApproval: false,
         savedSearches: [],
         collectionSorts: {},
+        collectionGroups: {},
       },
     ])
   })

@@ -24,7 +24,14 @@ import {
   CollectionFilterMenu,
   type CollectionFilter,
 } from './collection-filter-menu'
-import { boardProperty, CollectionBoard } from './collection-board'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { CollectionBoard } from './collection-board'
 import { runCollectionExport } from './collection-export'
 import { CollectionTable } from './collection-table'
 import { NoteListContextMenu } from '@/components/notes/note-context-menu'
@@ -62,8 +69,22 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
   // broken surface.
   const tagType = useTagType(tag)
   const collectionAvailable = tag !== null && tagType !== null && tagType !== undefined
-  // The board additionally needs a select property to group by.
-  const boardGroupProperty = collectionAvailable ? boardProperty(tagType) : null
+  // The board additionally needs a select property to group by. Which one is
+  // a persisted per-tag choice (like the sort); a saved key the schema no
+  // longer declares as a select falls back to the first, never a blank board.
+  const tagKey = tag === null ? null : foldTag(tag)
+  const selectProperties = useMemo(
+    () =>
+      collectionAvailable
+        ? tagType.properties.filter((property) => property.type === 'select')
+        : [],
+    [collectionAvailable, tagType],
+  )
+  const savedGroupKey = tagKey === null ? undefined : settings.collectionGroups[tagKey]
+  const boardGroupProperty =
+    selectProperties.find((property) => property.key === savedGroupKey) ??
+    selectProperties[0] ??
+    null
   const boardAvailable = boardGroupProperty !== null
   const view =
     (settings.allNotesView === 'table' && !collectionAvailable) ||
@@ -74,7 +95,6 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
   const collectionView = view === 'table' || view === 'board'
   // The sort is a persisted per-tag view preference (like task filters):
   // leaving and returning to a collection keeps its order.
-  const tagKey = tag === null ? null : foldTag(tag)
   const collectionSort: CollectionSort | null =
     tagKey === null ? null : (settings.collectionSorts[tagKey] ?? null)
   const setCollectionSort = useCallback(
@@ -91,6 +111,17 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
         }
         return { collectionSorts: next }
       })
+    },
+    [tagKey, updateSettingsWith],
+  )
+  const setCollectionGroup = useCallback(
+    (key: string) => {
+      if (tagKey === null) {
+        return
+      }
+      updateSettingsWith((current) => ({
+        collectionGroups: { ...current.collectionGroups, [tagKey]: key },
+      }))
     },
     [tagKey, updateSettingsWith],
   )
@@ -224,6 +255,30 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
         <h1 className="text-[15px] font-semibold text-text">Notes</h1>
         <div className="flex flex-wrap items-center gap-3">
           <AllNotesFilters tag={tag} facets={facets ?? []} onSelect={handleFilterSelect} />
+          {view === 'board' && selectProperties.length > 1 ? (
+            <Select
+              value={boardGroupProperty?.key ?? ''}
+              items={Object.fromEntries(
+                selectProperties.map((property) => [property.key, property.name]),
+              )}
+              onValueChange={(value) => {
+                if (typeof value === 'string' && value !== '') {
+                  setCollectionGroup(value)
+                }
+              }}
+            >
+              <SelectTrigger aria-label="Group by" data-size="sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {selectProperties.map((property) => (
+                  <SelectItem key={property.key} value={property.key}>
+                    {property.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : null}
           {collectionView && collectionAvailable ? (
             <>
               <CollectionFilterMenu

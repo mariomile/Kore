@@ -99,7 +99,9 @@ board`), offered when the routed tag has a type; `board` additionally needs
 a `select` property in the schema and groups the rows into lanes by it — a
 kanban: cards move by native drag between lanes (optimistic move, the write
 lands through the shared property commit), with the same select editor as
-the keyboard path.
+the keyboard path. Which select property groups the lanes is a persisted
+per-tag choice (`collectionGroups`, like the sort), defaulting to the
+schema's first.
 The route stays `{ kind: 'allNotes', tag }`; columns derive from
 `schema_json`; cell edits write through the frontmatter patch channel (live
 session first, disk fallback). No table library — the existing CSS-grid +

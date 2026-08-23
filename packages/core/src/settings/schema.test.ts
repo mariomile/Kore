@@ -63,6 +63,7 @@ describe('settingsSchema', () => {
       aiPrompts: [],
       savedSearches: [],
       collectionSorts: {},
+      collectionGroups: {},
     })
     expect(DEFAULT_SETTINGS.editorMarkdownSyntax).toBe('hide')
     expect(DEFAULT_SETTINGS.editorSpellCheck).toBe(true)
@@ -370,6 +371,7 @@ describe('settingsSchema', () => {
       aiPrompts: [],
       savedSearches: [],
       collectionSorts: {},
+      collectionGroups: {},
       futureKey: true,
     })
   })

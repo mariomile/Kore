@@ -15,10 +15,14 @@ import { AllNotesScreen } from './all-notes-screen'
  * patch → `note_write`) — the full read/write loop with no module mocked.
  */
 
-const settingsState = vi.hoisted((): { allNotesView: 'list' | 'table' | 'board' } => ({
-  allNotesView: 'table',
-}))
+const settingsState = vi.hoisted(
+  (): { allNotesView: 'list' | 'table' | 'board'; collectionGroups: Record<string, string> } => ({
+    allNotesView: 'table',
+    collectionGroups: {},
+  }),
+)
 const updateSettings = vi.hoisted(() => vi.fn())
+const updateSettingsWith = vi.hoisted(() => vi.fn())
 
 vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({
@@ -35,17 +39,19 @@ vi.mock('@/providers/settings-provider', () => ({
       dateFormat: 'mdy',
       allNotesFilterTags: [],
       collectionSorts: {},
+      collectionGroups: settingsState.collectionGroups,
       allNotesView: settingsState.allNotesView,
       uiDensity: 'default',
     },
     updateSettings,
-    updateSettingsWith: vi.fn(),
+    updateSettingsWith,
   }),
 }))
 
 const BOOK_SCHEMA_JSON = JSON.stringify([
   { name: 'Author', key: 'author', type: 'text' },
   { name: 'Status', key: 'status', type: 'select', options: ['to-read', 'done'] },
+  { name: 'Priority', key: 'priority', type: 'select', options: ['high', 'low'] },
 ])
 
 const DISPOSSESSED_SOURCE = '---\nauthor: Le Guin\n---\n# The Dispossessed\n\n#book\n'
@@ -79,6 +85,13 @@ const propertyRows = [
     value_type: 'string',
     value_number: null,
   },
+  {
+    note_path: 'notes/dispossessed.md',
+    key: 'priority',
+    value: 'high',
+    value_type: 'string',
+    value_number: null,
+  },
 ]
 
 const mockInvoke = vi.fn<(command: string, args: Record<string, unknown>) => Promise<unknown>>()
@@ -87,7 +100,9 @@ setBridge({ invoke: mockInvoke, listen: async () => () => {} })
 
 beforeEach(() => {
   settingsState.allNotesView = 'table'
+  settingsState.collectionGroups = {}
   updateSettings.mockReset()
+  updateSettingsWith.mockReset()
   mockInvoke.mockReset()
   mockInvoke.mockImplementation(async (command, args) => {
     if (command === 'note_read') {
@@ -181,6 +196,41 @@ describe('Collection flow (fake bridge, no module mocks below the hooks)', () =>
       // The body survives the patch untouched.
       expect(content).toContain('# The Dispossessed')
       expect(content).toContain('#book')
+    })
+    await view.unmount()
+  })
+
+  it('regroups the board by the persisted Group-by choice', async () => {
+    settingsState.allNotesView = 'board'
+    settingsState.collectionGroups = { book: 'priority' }
+    const view = await render(<Screen />)
+
+    // Lanes now follow Priority: Dispossessed sits in `high`, Dune (no
+    // priority) in the unset lane; the Status lanes are gone.
+    const high = view.getByRole('region', { name: 'high', exact: true })
+    await expect.element(high.getByRole('button', { name: 'The Dispossessed' })).toBeInTheDocument()
+    const unset = view.getByRole('region', { name: 'No Priority' })
+    await expect.element(unset.getByRole('button', { name: 'Dune' })).toBeInTheDocument()
+    expect(view.getByRole('region', { name: 'to-read', exact: true }).query()).toBeNull()
+    await view.unmount()
+  })
+
+  it('picking a Group-by property persists the per-tag choice', async () => {
+    settingsState.allNotesView = 'board'
+    const view = await render(<Screen />)
+    await expect
+      .element(view.getByRole('region', { name: 'to-read', exact: true }))
+      .toBeInTheDocument()
+
+    await view.getByRole('combobox', { name: 'Group by' }).click()
+    await view.getByRole('option', { name: 'Priority' }).click()
+
+    expect(updateSettingsWith).toHaveBeenCalled()
+    const updater = updateSettingsWith.mock.calls[0]?.[0] as (current: {
+      collectionGroups: Record<string, string>
+    }) => { collectionGroups: Record<string, string> }
+    expect(updater({ collectionGroups: {} })).toEqual({
+      collectionGroups: { book: 'priority' },
     })
     await view.unmount()
   })

@@ -38,6 +38,24 @@ function ChipFrame({ pending, icon, children }: ChipFrameProps): ReactElement {
   )
 }
 
+/** A `#tag` mention that routes to the tag's All Notes view when the text
+ * is a real tag (a junk filter stays plain text). */
+function TagRouteButton({ tag }: { tag: string }): ReactElement {
+  const { navigate } = useRouter()
+  if (!isTagName(tag)) {
+    return <>#{tag}</>
+  }
+  return (
+    <button
+      type="button"
+      onClick={() => navigate({ kind: 'allNotes', tag })}
+      className="underline-offset-2 hover:text-text hover:underline"
+    >
+      #{tag}
+    </button>
+  )
+}
+
 interface NoteLinksProps {
   notes: readonly NoteHitSummary[]
   onOpen: (path: string, event: MouseEvent<HTMLButtonElement>) => void
@@ -75,7 +93,6 @@ function NoteLinks({ notes, onOpen }: NoteLinksProps): ReactElement | null {
  * UI that knows tool names — new tools extend `tools.ts` and this switch.
  */
 export function ChatToolChip({ part }: ChatToolChipProps): ReactElement {
-  const { navigate } = useRouter()
   const navigateNoteLink = useNoteLinkNavigation()
   const openNote = (path: string, event: MouseEvent<HTMLButtonElement>): void => {
     navigateNoteLink({ target: routeForPath(path), openInNewWindow: isModEvent(event) })
@@ -95,20 +112,7 @@ export function ChatToolChip({ part }: ChatToolChipProps): ReactElement {
 
   if (call.tool === 'recents') {
     const result = part.result?.tool === 'recents' ? part.result : null
-    const tagLabel =
-      call.tag !== null && isTagName(call.tag) ? (
-        <button
-          type="button"
-          onClick={() => navigate({ kind: 'allNotes', tag: call.tag })}
-          className="underline-offset-2 hover:text-text hover:underline"
-        >
-          #{call.tag}
-        </button>
-      ) : call.tag !== null ? (
-        `#${call.tag}`
-      ) : (
-        'recent'
-      )
+    const tagLabel = call.tag !== null ? <TagRouteButton tag={call.tag} /> : 'recent'
     return (
       <ChipFrame pending={pending} icon={<History aria-hidden className="size-3.5" />}>
         Listed {tagLabel} notes
@@ -126,20 +130,9 @@ export function ChatToolChip({ part }: ChatToolChipProps): ReactElement {
 
   if (call.tool === 'collection') {
     const result = part.result?.tool === 'collection' ? part.result : null
-    const tagLabel = isTagName(call.tag) ? (
-      <button
-        type="button"
-        onClick={() => navigate({ kind: 'allNotes', tag: call.tag })}
-        className="underline-offset-2 hover:text-text hover:underline"
-      >
-        #{call.tag}
-      </button>
-    ) : (
-      `#${call.tag}`
-    )
     return (
       <ChipFrame pending={pending} icon={<Layers aria-hidden className="size-3.5" />}>
-        Listed the {tagLabel} collection
+        Listed the <TagRouteButton tag={call.tag} /> collection
         {result !== null
           ? result.error !== null
             ? ` — ${result.error}`

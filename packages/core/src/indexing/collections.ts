@@ -181,6 +181,17 @@ export async function getNoteProperties(path: string): Promise<Record<string, Co
   return properties
 }
 
+export interface ListCollectionOptions {
+  /**
+   * Drop `private: true` rows in SQL. Outbound surfaces (the AI tool) pass
+   * this so a private note's row never even reaches their layer — their live
+   * on-disk re-check stays the gate; this is the index-side prefilter.
+   * Local surfaces (the Collection table) omit it: privacy blocks external
+   * services, not the user's own screen (TDR 0005).
+   */
+  excludePrivate?: boolean
+}
+
 /**
  * The notes carrying `tag` (regular and daily, like the tag-filtered All
  * Notes list) with their property values. Unsorted collections keep the list
@@ -191,14 +202,18 @@ export async function getNoteProperties(path: string): Promise<Record<string, Co
 export async function listCollection(
   tag: string,
   sort: CollectionSort | null = null,
+  options: ListCollectionOptions = {},
 ): Promise<CollectionEntry[]> {
   const tagKey = foldTag(tag)
-  const baseQuery = db
+  let baseQuery = db
     .selectFrom('tags')
     .innerJoin('notes', 'notes.path', 'tags.notePath')
     .where('tags.tagKey', '=', tagKey)
     .where('notes.kind', 'in', ['note', 'daily'])
     .select(['notes.path', 'notes.title', 'notes.mtime', 'notes.isPinned'])
+  if (options.excludePrivate === true) {
+    baseQuery = baseQuery.where('notes.isPrivate', '=', 0)
+  }
   // The two branches build differently-typed queries (the sort branch joins
   // an extra table), so each executes where it is built.
   const rows =
@@ -226,12 +241,16 @@ export async function listCollection(
 
   // Property rows for the same note set, via the same predicates (join, not
   // IN — the list is uncapped and must stay clear of the parameter ceiling).
-  const propertyRows = await db
+  let propertiesQuery = db
     .selectFrom('noteProperties')
     .innerJoin('notes', 'notes.path', 'noteProperties.notePath')
     .innerJoin('tags', 'tags.notePath', 'notes.path')
     .where('tags.tagKey', '=', tagKey)
     .where('notes.kind', 'in', ['note', 'daily'])
+  if (options.excludePrivate === true) {
+    propertiesQuery = propertiesQuery.where('notes.isPrivate', '=', 0)
+  }
+  const propertyRows = await propertiesQuery
     .select([
       'noteProperties.notePath',
       'noteProperties.key',

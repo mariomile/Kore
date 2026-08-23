@@ -209,6 +209,7 @@ export {
   type TagTypeEntry,
   type CollectionEntry,
   type CollectionSort,
+  type ListCollectionOptions,
   type CollectionValue,
   getOpenTasks,
   getCompletedTasks,

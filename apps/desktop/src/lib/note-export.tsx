@@ -3,11 +3,10 @@ import { flushSync } from 'react-dom'
 import { createRoot } from 'react-dom/client'
 import { MarkdownView } from '@meowdown/react'
 import { convertFileSrc } from '@tauri-apps/api/core'
-import { save } from '@tauri-apps/plugin-dialog'
-import { errorMessage, exportHtmlWrite, parseNote, splitFrontmatter } from '@reflect/core'
+import { parseNote, splitFrontmatter } from '@reflect/core'
 import { isSafeAssetSource } from '@/editor/use-asset-persistence'
+import { exportFileName, runFileExport } from '@/lib/export-file'
 import { readNoteSource } from '@/lib/note-frontmatter'
-import { startOperation } from '@/lib/operations'
 
 /**
  * Styled note export: one self-contained HTML file that looks like the note
@@ -238,54 +237,36 @@ export async function renderNoteBodyHtml(body: string, generation: number): Prom
   }
 }
 
-/** A save-dialog default the OS accepts: the title with path characters out. */
-function suggestedFileName(title: string): string {
-  const safe = title.replaceAll(/[\\/:]/g, '-').trim()
-  return `${safe === '' ? 'note' : safe}.html`
-}
-
 /**
  * The full export flow behind the `note.export` command and the sidebar
- * action: read the live note source, ask where to save, render + assemble,
- * write. Cancelling the dialog is a silent no-op; failures land on the
- * operations status line like other background work.
+ * action: read the live note source, ask where to save (through the shared
+ * {@link runFileExport} dialog/operation scaffolding), render + assemble,
+ * write.
  */
 export async function runNoteExport(path: string, generation: number): Promise<void> {
-  let target: string | null = null
   let source = ''
-  try {
-    source = await readNoteSource(path)
-    const parsed = parseNote({ path, source })
-    target = await save({
-      defaultPath: suggestedFileName(parsed.title),
-      filters: [{ name: 'HTML', extensions: ['html'] }],
-    })
-  } catch (cause) {
-    startOperation('Exporting note').fail(errorMessage(cause))
-    return
-  }
-  if (target === null) {
-    return
-  }
-  const operation = startOperation('Exporting note')
-  try {
-    const parsed = parseNote({ path, source })
-    const body = splitFrontmatter(source).body
-    const html = buildExportDocument({
-      title: parsed.title,
-      bodyHtml: await renderNoteBodyHtml(body, generation),
-      css: collectAppCss(),
-      addTitleHeading: needsTitleHeading(body),
-      rootAttributes: {
-        class: document.documentElement.getAttribute('class') ?? '',
-        'data-theme': document.documentElement.getAttribute('data-theme') ?? '',
-        'data-accent': document.documentElement.getAttribute('data-accent') ?? '',
-        style: document.documentElement.getAttribute('style') ?? '',
-      },
-    })
-    await exportHtmlWrite(target, html)
-    operation.done()
-  } catch (cause) {
-    operation.fail(errorMessage(cause))
-  }
+  await runFileExport({
+    operation: 'Exporting note',
+    defaultPath: async () => {
+      source = await readNoteSource(path)
+      return exportFileName(parseNote({ path, source }).title, 'note', 'html')
+    },
+    filter: { name: 'HTML', extensions: ['html'] },
+    build: async () => {
+      const parsed = parseNote({ path, source })
+      const body = splitFrontmatter(source).body
+      return buildExportDocument({
+        title: parsed.title,
+        bodyHtml: await renderNoteBodyHtml(body, generation),
+        css: collectAppCss(),
+        addTitleHeading: needsTitleHeading(body),
+        rootAttributes: {
+          class: document.documentElement.getAttribute('class') ?? '',
+          'data-theme': document.documentElement.getAttribute('data-theme') ?? '',
+          'data-accent': document.documentElement.getAttribute('data-accent') ?? '',
+          style: document.documentElement.getAttribute('style') ?? '',
+        },
+      })
+    },
+  })
 }

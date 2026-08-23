@@ -9,8 +9,8 @@ import {
   propertyRowValue,
   type CollectionEntry,
   type CollectionSort,
+  type ListCollectionOptions,
 } from '../../indexing/collections'
-import { listPrivateNotePaths } from '../../indexing/insights'
 import { listDailyNotes, type DailyNoteRow, type DailyNotesRange } from '../../indexing/queries'
 import {
   listRecentNotes,
@@ -70,8 +70,11 @@ export interface NoteToolDeps {
   listDailyNotesFn?: (range: DailyNotesRange) => Promise<DailyNoteRow[]>
   assetReferencingNotePathsFn?: (assetPath: string) => Promise<string[]>
   getTagTypeFn?: (tag: string) => Promise<TagType | null>
-  listCollectionFn?: (tag: string, sort: CollectionSort | null) => Promise<CollectionEntry[]>
-  listPrivateNotePathsFn?: () => Promise<string[]>
+  listCollectionFn?: (
+    tag: string,
+    sort: CollectionSort | null,
+    options?: ListCollectionOptions,
+  ) => Promise<CollectionEntry[]>
 }
 
 export interface BuildNoteToolsOptions extends NoteToolDeps {
@@ -215,7 +218,6 @@ export function buildNoteTools(options: BuildNoteToolsOptions = {}): NoteTools {
   const assetRefsFn = options.assetReferencingNotePathsFn ?? assetReferencingNotePaths
   const getTagTypeFn = options.getTagTypeFn ?? getTagType
   const listCollectionFn = options.listCollectionFn ?? listCollection
-  const listPrivateNotePathsFn = options.listPrivateNotePathsFn ?? listPrivateNotePaths
   const searchMode: RetrieveOptions['mode'] =
     options.semanticSearchEnabled === false ? 'lexical' : 'hybrid'
 
@@ -310,15 +312,10 @@ export function buildNoteTools(options: BuildNoteToolsOptions = {}): NoteTools {
         }
         const sort: CollectionSort | null =
           sortBy != null && sortBy !== '' ? { key: sortBy, direction: direction ?? 'asc' } : null
-        // The index prefilter (private paths dropped before the cap, so a
-        // private row never even consumes a slot); the gate re-checks every
-        // survivor live, failing closed.
-        const [rows, privatePaths] = await Promise.all([
-          listCollectionFn(tag, sort),
-          listPrivateNotePathsFn(),
-        ])
-        const privateSet = new Set(privatePaths)
-        const publicRows = rows.filter((row) => !privateSet.has(row.path))
+        // Private rows are dropped in SQL before the cap, so a private row
+        // never even consumes a slot; the gate then re-checks every survivor
+        // live against the note on disk, failing closed.
+        const publicRows = await listCollectionFn(tag, sort, { excludePrivate: true })
         const max = limit ?? DEFAULT_COLLECTION_LIMIT
         const truncated = publicRows.length > max
         const kept = truncated ? publicRows.slice(0, max) : publicRows

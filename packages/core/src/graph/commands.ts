@@ -165,8 +165,8 @@ export async function hapticFeedback(pattern: HapticPattern): Promise<void> {
  * .html/.htm/.csv extension); callers must only ever pass a path fresh out
  * of the save dialog.
  */
-export async function exportHtmlWrite(path: string, contents: string): Promise<void> {
-  await call('export_html_write', { path, contents }, voidSchema)
+export async function exportWrite(path: string, contents: string): Promise<void> {
+  await call('export_write', { path, contents }, voidSchema)
 }
 
 const localNoteReadSchema = z.discriminatedUnion('kind', [

@@ -188,6 +188,7 @@ export {
   type TagTypeEntry,
   type CollectionEntry,
   type CollectionSort,
+  type ListCollectionOptions,
   type CollectionValue,
 } from './collections'
 export { parseSearchQuery, type ParsedSearchQuery, type SearchFilters } from './filter-query'

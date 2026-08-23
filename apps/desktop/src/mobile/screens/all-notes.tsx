@@ -127,30 +127,30 @@ export function MobileAllNotes({
   })
 
   // On a typed-tag route, rows carry a compact property summary in place of
-  // the prose snippet — the phone-sized Collection view (TDR 0005).
+  // the prose snippet — the phone-sized Collection view (TDR 0005). The map
+  // only indexes the fetched values; the display line is formatted lazily
+  // for the hits actually rendered, not the whole collection.
   const tagType = useTagType(tag)
   const collection = useCollection(tagType != null ? tag : null, null)
-  const propertyLines = useMemo(() => {
-    if (tagType == null || collection === undefined) {
-      return null
-    }
-    const lines = new Map<string, string>()
-    for (const entry of collection) {
-      const line = propertyLine(tagType, entry.properties)
-      if (line !== '') {
-        lines.set(entry.path, line)
-      }
-    }
-    return lines
-  }, [tagType, collection])
+  const collectionProperties = useMemo(
+    () =>
+      tagType == null || collection === undefined
+        ? null
+        : new Map(collection.map((entry) => [entry.path, entry.properties])),
+    [tagType, collection],
+  )
   const rows = useMemo(
     () =>
       (hits ?? []).map((hit) => {
         const row = rowForHit(hit)
-        const line = propertyLines?.get(hit.path)
-        return line === undefined ? row : { ...row, propertyLine: line }
+        const properties = collectionProperties?.get(hit.path)
+        if (tagType == null || properties === undefined) {
+          return row
+        }
+        const line = propertyLine(tagType, properties)
+        return line === '' ? row : { ...row, propertyLine: line }
       }),
-    [hits, propertyLines],
+    [hits, tagType, collectionProperties],
   )
   const pristine = parsed.text === '' && !parsed.filtered
 

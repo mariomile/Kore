@@ -75,8 +75,7 @@ pub fn run(
         ));
     }
 
-    // `foldTag` (keys.ts) is a plain Unicode lowercase — no NFC/trim.
-    let tag_key = tag.to_lowercase();
+    let tag_key = crate::keys::fold_tag(tag);
     let schema_json: Option<String> = opened
         .conn
         .query_row(
@@ -117,61 +116,72 @@ pub fn run(
          ORDER BY n.is_pinned DESC, n.mtime DESC, n.path"
             .to_string()
     };
+    // The row cursor is walked lazily and abandoned at the limit, so rows
+    // past the cap never leave SQLite (the `recent` idiom); the on-disk
+    // privacy re-check runs inside the walk, before a row takes a slot.
     let mut statement = opened.conn.prepare(&query)?;
-    let mapper = |row: &rusqlite::Row<'_>| {
+    let query_params: Vec<&str> = match sort {
+        Some(key) => vec![tag_key.as_str(), key],
+        None => vec![tag_key.as_str()],
+    };
+    let mut kept: Vec<(String, String)> = Vec::new();
+    let rows = statement.query_map(rusqlite::params_from_iter(query_params), |row| {
         Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
-    };
-    let rows: Vec<(String, String)> = match sort {
-        Some(key) => statement
-            .query_map(params![tag_key, key], mapper)?
-            .collect::<Result<_, _>>()?,
-        None => statement
-            .query_map(params![tag_key], mapper)?
-            .collect::<Result<_, _>>()?,
-    };
-
-    // Property rows for the same note set (one query, grouped in memory).
-    let mut properties_statement = opened.conn.prepare(
-        "SELECT p.note_path, p.key, p.value, p.value_type, p.value_number
-         FROM note_properties p
-         JOIN tags t ON t.note_path = p.note_path
-         JOIN notes n ON n.path = p.note_path
-         WHERE t.tag_key = ?1 AND n.kind IN ('note','daily') AND n.is_private = 0",
-    )?;
-    let property_rows = properties_statement.query_map(params![tag_key], |row| {
-        Ok((
-            row.get::<_, String>(0)?,
-            row.get::<_, String>(1)?,
-            row.get::<_, String>(2)?,
-            row.get::<_, String>(3)?,
-            row.get::<_, Option<f64>>(4)?,
-        ))
     })?;
-    let mut properties_by_path: HashMap<String, serde_json::Map<String, serde_json::Value>> =
-        HashMap::new();
-    for row in property_rows {
-        let (path, key, value, value_type, value_number) = row?;
-        properties_by_path
-            .entry(path)
-            .or_default()
-            .insert(key, typed_value(&value, &value_type, value_number));
-    }
-
-    let mut notes: Vec<CollectionNoteJson> = Vec::new();
-    for (path, title) in rows {
+    for row in rows {
+        let (path, title) = row?;
         if !still_public_on_disk(&graph.root, &path) {
             continue;
         }
-        let properties = properties_by_path.remove(&path).unwrap_or_default();
-        notes.push(CollectionNoteJson {
-            path,
-            title,
-            properties,
-        });
-        if notes.len() >= limit {
+        kept.push((path, title));
+        if kept.len() >= limit {
             break;
         }
     }
+
+    // Property rows only for the kept notes — the list is bounded by the
+    // limit, so a parameterized IN is safe here (unlike the app's uncapped
+    // table view, which must join instead).
+    let mut properties_by_path: HashMap<String, serde_json::Map<String, serde_json::Value>> =
+        HashMap::new();
+    if !kept.is_empty() {
+        let placeholders = vec!["?"; kept.len()].join(", ");
+        let mut properties_statement = opened.conn.prepare(&format!(
+            "SELECT note_path, key, value, value_type, value_number
+             FROM note_properties WHERE note_path IN ({placeholders})"
+        ))?;
+        let property_rows = properties_statement.query_map(
+            rusqlite::params_from_iter(kept.iter().map(|(path, _)| path.as_str())),
+            |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, String>(2)?,
+                    row.get::<_, String>(3)?,
+                    row.get::<_, Option<f64>>(4)?,
+                ))
+            },
+        )?;
+        for row in property_rows {
+            let (path, key, value, value_type, value_number) = row?;
+            properties_by_path
+                .entry(path)
+                .or_default()
+                .insert(key, typed_value(&value, &value_type, value_number));
+        }
+    }
+
+    let notes: Vec<CollectionNoteJson> = kept
+        .into_iter()
+        .map(|(path, title)| {
+            let properties = properties_by_path.remove(&path).unwrap_or_default();
+            CollectionNoteJson {
+                path,
+                title,
+                properties,
+            }
+        })
+        .collect();
 
     if json {
         return print_json(&CollectionJson {

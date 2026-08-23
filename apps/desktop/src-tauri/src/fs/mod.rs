@@ -670,7 +670,7 @@ fn ensure_revealable_path(path: &str) -> AppResult<()> {
 /// extensions — this channel exists for the app's exports (styled note HTML,
 /// collection CSV), not as a general file writer.
 #[tauri::command]
-pub fn export_html_write(path: String, contents: String) -> AppResult<()> {
+pub fn export_write(path: String, contents: String) -> AppResult<()> {
     let target = PathBuf::from(&path);
     if !target.is_absolute() {
         return Err(AppError::traversal(format!(
@@ -1037,14 +1037,14 @@ pub(crate) fn invalidate_file_catalog(state: &GraphState, root: &Path) {
 }
 
 #[cfg(test)]
-mod export_html_tests {
-    use super::export_html_write;
+mod export_write_tests {
+    use super::export_write;
 
     #[test]
     fn writes_html_to_an_absolute_path() {
         let dir = tempfile::tempdir().expect("dir");
         let target = dir.path().join("My Note.html");
-        export_html_write(
+        export_write(
             target.to_string_lossy().into_owned(),
             "<!doctype html>".to_string(),
         )
@@ -1058,18 +1058,18 @@ mod export_html_tests {
     #[test]
     fn refuses_relative_paths_and_unexpected_extensions() {
         let dir = tempfile::tempdir().expect("dir");
-        assert!(export_html_write("relative.html".to_string(), String::new()).is_err());
+        assert!(export_write("relative.html".to_string(), String::new()).is_err());
         let sneaky = dir.path().join("script.sh");
-        assert!(export_html_write(sneaky.to_string_lossy().into_owned(), String::new()).is_err());
+        assert!(export_write(sneaky.to_string_lossy().into_owned(), String::new()).is_err());
         let plain = dir.path().join("note.txt");
-        assert!(export_html_write(plain.to_string_lossy().into_owned(), String::new()).is_err());
+        assert!(export_write(plain.to_string_lossy().into_owned(), String::new()).is_err());
     }
 
     #[test]
     fn writes_csv_exports_too() {
         let dir = tempfile::tempdir().expect("dir");
         let target = dir.path().join("books.csv");
-        export_html_write(
+        export_write(
             target.to_string_lossy().into_owned(),
             "Title,Author\n".to_string(),
         )

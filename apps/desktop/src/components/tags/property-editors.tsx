@@ -7,6 +7,7 @@ import {
   suggestWikiLinkTargets,
   type CollectionValue,
   type TagProperty,
+  type WikiLinkSuggestion,
 } from '@reflect/core'
 import { Check } from '@/components/icons'
 import {
@@ -81,6 +82,35 @@ export function typedValueForText(property: TagProperty, text: string): unknown 
   return trimmed
 }
 
+/** The one read-only trigger every popover editor opens from: cell-sized
+ * even when empty, and click-transparent to the row's select/open gestures. */
+function EditorTrigger({ name, children }: { name: string; children: ReactNode }): ReactElement {
+  return (
+    <PopoverTrigger
+      aria-label={`Edit ${name}`}
+      className="flex min-h-5 w-full min-w-0 items-center self-stretch text-left focus-visible:outline-none"
+      onClick={(event) => event.stopPropagation()}
+      onDoubleClick={(event) => event.stopPropagation()}
+    >
+      {children}
+    </PopoverTrigger>
+  )
+}
+
+/** The relation pickers' shared note suggestions: the same verified `[[`
+ * autocomplete the editor uses, fetched only while the popover is open. */
+function useRelationSuggestions(open: boolean, query: string): readonly WikiLinkSuggestion[] {
+  const { graph } = useGraph()
+  const bridgeReady = useBridgeReady()
+  const { data } = useQuery({
+    queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'relation-targets', query],
+    queryFn: () => suggestWikiLinkTargets(query, 6),
+    enabled: open && bridgeReady && graph !== null,
+    placeholderData: keepPreviousData,
+  })
+  return data?.suggestions ?? []
+}
+
 /** An input-backed editor (text, url, date, number) inside a popover. */
 function InputPropertyEditor({
   property,
@@ -146,14 +176,7 @@ function InputPropertyEditor({
         }
       }}
     >
-      <PopoverTrigger
-        aria-label={`Edit ${property.name}`}
-        className="flex min-h-5 w-full min-w-0 items-center self-stretch text-left focus-visible:outline-none"
-        onClick={(event) => event.stopPropagation()}
-        onDoubleClick={(event) => event.stopPropagation()}
-      >
-        {children}
-      </PopoverTrigger>
+      <EditorTrigger name={property.name}>{children}</EditorTrigger>
       <PopoverContent align={align ?? 'start'} sideOffset={4} className="w-56 p-2">
         <Input
           ref={inputRef}
@@ -214,14 +237,7 @@ function SelectPropertyEditor({
         setLocalSelected(next ? editorSeedList(value) : null)
       }}
     >
-      <PopoverTrigger
-        aria-label={`Edit ${property.name}`}
-        className="flex min-h-5 w-full min-w-0 items-center self-stretch text-left focus-visible:outline-none"
-        onClick={(event) => event.stopPropagation()}
-        onDoubleClick={(event) => event.stopPropagation()}
-      >
-        {children}
-      </PopoverTrigger>
+      <EditorTrigger name={property.name}>{children}</EditorTrigger>
       <PopoverContent align={align ?? 'start'} sideOffset={4} className="w-56 p-0">
         <Command label={`Choose ${property.name}`}>
           {options.length > 6 ? <CommandInput placeholder={`Search ${property.name}…`} /> : null}
@@ -274,17 +290,8 @@ function RelationPropertyEditor({
 }: PropertyEditorProps): ReactElement {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
-  const { graph } = useGraph()
-  const bridgeReady = useBridgeReady()
   const currentTarget = value === undefined ? null : relationTarget(value.value)
-
-  const { data } = useQuery({
-    queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'relation-targets', query],
-    queryFn: () => suggestWikiLinkTargets(query, 6),
-    enabled: open && bridgeReady && graph !== null,
-    placeholderData: keepPreviousData,
-  })
-  const suggestions = data?.suggestions ?? []
+  const suggestions = useRelationSuggestions(open, query)
 
   const choose = (insertText: string): void => {
     onCommit(relationValue(insertText))
@@ -305,14 +312,7 @@ function RelationPropertyEditor({
         }
       }}
     >
-      <PopoverTrigger
-        aria-label={`Edit ${property.name}`}
-        className="flex min-h-5 w-full min-w-0 items-center self-stretch text-left focus-visible:outline-none"
-        onClick={(event) => event.stopPropagation()}
-        onDoubleClick={(event) => event.stopPropagation()}
-      >
-        {children}
-      </PopoverTrigger>
+      <EditorTrigger name={property.name}>{children}</EditorTrigger>
       <PopoverContent align={align ?? 'start'} sideOffset={4} className="w-64 p-0">
         {/* The DB already filtered; cmdk must not second-guess the ranking. */}
         <Command label={`Link ${property.name}`} shouldFilter={false}>
@@ -379,20 +379,11 @@ function MultiRelationPropertyEditor({
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [localLinks, setLocalLinks] = useState<string[] | null>(null)
-  const { graph } = useGraph()
-  const bridgeReady = useBridgeReady()
   // Each entry is a stored `[[Target]]` value; a bare string (hand-written
   // YAML) still participates, keyed by its own text.
   const links = localLinks ?? editorSeedList(value)
   const targetOf = (link: string): string => relationTarget(link) ?? link
-
-  const { data } = useQuery({
-    queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'relation-targets', query],
-    queryFn: () => suggestWikiLinkTargets(query, 6),
-    enabled: open && bridgeReady && graph !== null,
-    placeholderData: keepPreviousData,
-  })
-  const suggestions = data?.suggestions ?? []
+  const suggestions = useRelationSuggestions(open, query)
 
   const toggle = (insertText: string): void => {
     const candidate = relationValue(insertText)
@@ -418,14 +409,7 @@ function MultiRelationPropertyEditor({
         }
       }}
     >
-      <PopoverTrigger
-        aria-label={`Edit ${property.name}`}
-        className="flex min-h-5 w-full min-w-0 items-center self-stretch text-left focus-visible:outline-none"
-        onClick={(event) => event.stopPropagation()}
-        onDoubleClick={(event) => event.stopPropagation()}
-      >
-        {children}
-      </PopoverTrigger>
+      <EditorTrigger name={property.name}>{children}</EditorTrigger>
       <PopoverContent align={align ?? 'start'} sideOffset={4} className="w-64 p-0">
         {/* The DB already filtered; cmdk must not second-guess the ranking. */}
         <Command label={`Link ${property.name}`} shouldFilter={false}>

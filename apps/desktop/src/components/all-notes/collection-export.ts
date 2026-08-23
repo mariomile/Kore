@@ -1,6 +1,5 @@
-import { errorMessage, exportHtmlWrite, type CollectionEntry, type TagType } from '@reflect/core'
-import { save } from '@tauri-apps/plugin-dialog'
-import { startOperation } from '@/lib/operations'
+import type { CollectionEntry, TagType } from '@reflect/core'
+import { exportFileName, runFileExport } from '@/lib/export-file'
 import { readCellValue } from './collection-cell'
 
 /**
@@ -46,40 +45,16 @@ export function collectionCsv(type: TagType, entries: readonly CollectionEntry[]
   return `${lines.join('\r\n')}\r\n`
 }
 
-/** A save-dialog default the OS accepts: the tag with path characters out. */
-function suggestedFileName(tag: string): string {
-  const safe = tag.replaceAll(/[\\/:]/g, '-').trim()
-  return `${safe === '' ? 'collection' : safe}.csv`
-}
-
-/**
- * The export flow behind the collection header's CSV button: ask where to
- * save, build, write. Cancelling the dialog is a silent no-op; failures land
- * on the operations status line like other background work.
- */
+/** The export behind the collection header's CSV button. */
 export async function runCollectionExport(
   tag: string,
   type: TagType,
   entries: readonly CollectionEntry[],
 ): Promise<void> {
-  let target: string | null = null
-  try {
-    target = await save({
-      defaultPath: suggestedFileName(tag),
-      filters: [{ name: 'CSV', extensions: ['csv'] }],
-    })
-  } catch (cause) {
-    startOperation('Exporting collection').fail(errorMessage(cause))
-    return
-  }
-  if (target === null) {
-    return
-  }
-  const operation = startOperation('Exporting collection')
-  try {
-    await exportHtmlWrite(target, collectionCsv(type, entries))
-    operation.done()
-  } catch (cause) {
-    operation.fail(errorMessage(cause))
-  }
+  await runFileExport({
+    operation: 'Exporting collection',
+    defaultPath: exportFileName(tag, 'collection', 'csv'),
+    filter: { name: 'CSV', extensions: ['csv'] },
+    build: () => collectionCsv(type, entries),
+  })
 }

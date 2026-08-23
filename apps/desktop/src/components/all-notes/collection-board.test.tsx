@@ -64,7 +64,7 @@ describe('CollectionBoard', () => {
   it('renders a lane per status with its cards, and opens a note from its card', async () => {
     const onOpen = vi.fn()
     const view = await render(
-      <CollectionBoard entries={ENTRIES} type={BOOK_TYPE} onOpen={onOpen} />,
+      <CollectionBoard entries={ENTRIES} property={boardProperty(BOOK_TYPE)!} onOpen={onOpen} />,
     )
 
     await expect
@@ -77,7 +77,11 @@ describe('CollectionBoard', () => {
 
   it('changes a card status through the select editor', async () => {
     const view = await render(
-      <CollectionBoard entries={[ENTRIES[1]!]} type={BOOK_TYPE} onOpen={() => {}} />,
+      <CollectionBoard
+        entries={[ENTRIES[1]!]}
+        property={boardProperty(BOOK_TYPE)!}
+        onOpen={() => {}}
+      />,
     )
 
     await view.getByRole('button', { name: 'Edit Status' }).click()

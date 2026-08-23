@@ -162,7 +162,7 @@ export {
   subscribeImportProgress,
   cancelReflectV1Import,
   markReflectV1ImportOwnWrites,
-  exportHtmlWrite,
+  exportWrite,
   hapticFeedback,
   type HapticPattern,
   readNote,

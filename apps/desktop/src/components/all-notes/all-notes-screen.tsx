@@ -63,12 +63,15 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
   const tagType = useTagType(tag)
   const collectionAvailable = tag !== null && tagType !== null && tagType !== undefined
   // The board additionally needs a select property to group by.
-  const boardAvailable = collectionAvailable && boardProperty(tagType) !== null
+  const boardGroupProperty = collectionAvailable ? boardProperty(tagType) : null
+  const boardAvailable = boardGroupProperty !== null
   const view =
     (settings.allNotesView === 'table' && !collectionAvailable) ||
     (settings.allNotesView === 'board' && !boardAvailable)
       ? 'list'
       : settings.allNotesView
+  // The two views that render collection rows instead of the notes list.
+  const collectionView = view === 'table' || view === 'board'
   // The sort is a persisted per-tag view preference (like task filters):
   // leaving and returning to a collection keeps its order.
   const tagKey = tag === null ? null : foldTag(tag)
@@ -115,10 +118,7 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
     queryFn: () => listNoteTags(),
     enabled,
   })
-  const collection = useCollection(
-    view === 'table' || view === 'board' ? tag : null,
-    collectionSort,
-  )
+  const collection = useCollection(collectionView ? tag : null, collectionSort)
   // Property filters are ephemeral (unlike the persisted sort) and belong to
   // one tag's schema — a tag switch drops them at render time.
   const [collectionFilters, setCollectionFilters] = useState<CollectionFilter[]>([])
@@ -142,10 +142,10 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
   // the collection's own order while the table view sorts by a property.
   const orderedPaths = useMemo(
     () =>
-      view === 'table' || view === 'board'
+      collectionView
         ? (filteredCollection ?? []).map((entry) => entry.path)
         : (notes ?? []).map((note) => note.path),
-    [view, filteredCollection, notes],
+    [collectionView, filteredCollection, notes],
   )
   const selection = useListSelection(orderedPaths)
   const openNote = useCallback(
@@ -224,7 +224,7 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
         <h1 className="text-[15px] font-semibold text-text">Notes</h1>
         <div className="flex flex-wrap items-center gap-3">
           <AllNotesFilters tag={tag} facets={facets ?? []} onSelect={handleFilterSelect} />
-          {(view === 'table' || view === 'board') && collectionAvailable ? (
+          {collectionView && collectionAvailable ? (
             <>
               <CollectionFilterMenu
                 type={tagType}
@@ -332,8 +332,12 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
         >
           {view === 'grid' ? (
             <AllNotesGrid notes={notes} tag={tag} onOpen={openNote} />
-          ) : view === 'board' && collectionAvailable ? (
-            <CollectionBoard entries={filteredCollection} type={tagType} onOpen={openNote} />
+          ) : view === 'board' && boardGroupProperty !== null ? (
+            <CollectionBoard
+              entries={filteredCollection}
+              property={boardGroupProperty}
+              onOpen={openNote}
+            />
           ) : view === 'table' && collectionAvailable ? (
             <CollectionTable
               entries={filteredCollection}

@@ -25,7 +25,7 @@ export interface NoteRowModel {
   snippet: HighlightSegment[]
   /** Compact `Name: value` summary on typed-tag routes — replaces the
    * snippet line when set (the properties out-inform the first prose line
-   * there). */
+   * there). Never '': the producer only sets lines with content. */
   propertyLine?: string
 }
 
@@ -137,7 +137,7 @@ export function SwipeableNoteRow({
             {formatRecencyLabel(row.mtime, settings)}
           </span>
         </span>
-        {row.propertyLine !== undefined && row.propertyLine !== '' ? (
+        {row.propertyLine !== undefined ? (
           <span className="w-full truncate text-xs text-text-muted">{row.propertyLine}</span>
         ) : row.snippet.length > 0 ? (
           <span className="w-full truncate text-xs text-text-muted">

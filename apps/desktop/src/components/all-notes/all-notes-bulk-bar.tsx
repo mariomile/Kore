@@ -39,6 +39,13 @@ interface AllNotesBulkBarProps {
   onDone: () => void
 }
 
+/** Per-type hints for the Set-property value input (default covers the rest). */
+const BULK_VALUE_PLACEHOLDERS: Partial<Record<TagType['properties'][number]['type'], string>> = {
+  multiselect: 'comma, separated, values',
+  relations: 'Note titles, comma-separated',
+  relation: 'Note title',
+}
+
 /** Parse the dialog's value input into the typed YAML value ('' clears). */
 function bulkPropertyValue(
   type: TagType['properties'][number]['type'],
@@ -57,26 +64,21 @@ function bulkPropertyValue(
       return trimmed === 'true' || trimmed === 'false'
         ? { ok: true, value: trimmed === 'true' }
         : { ok: false }
-    case 'multiselect': {
+    case 'multiselect':
+    case 'relations': {
+      // One comma-list grammar for both; relations wrap each entry as its
+      // own `[[link]]`.
       const entries = trimmed
         .split(',')
         .map((entry) => entry.trim())
         .filter((entry) => entry !== '')
-      return { ok: true, value: entries.length === 0 ? undefined : entries }
+      if (entries.length === 0) {
+        return { ok: true, value: undefined }
+      }
+      return { ok: true, value: type === 'relations' ? entries.map(relationValue) : entries }
     }
     case 'relation':
       return { ok: true, value: relationValue(trimmed) }
-    case 'relations': {
-      // Comma-separated titles, each becoming its own `[[link]]`.
-      const targets = trimmed
-        .split(',')
-        .map((entry) => entry.trim())
-        .filter((entry) => entry !== '')
-      return {
-        ok: true,
-        value: targets.length === 0 ? undefined : targets.map(relationValue),
-      }
-    }
     default:
       return { ok: true, value: trimmed }
   }
@@ -376,13 +378,8 @@ export function AllNotesBulkBar({
                       : 'text'
                 }
                 placeholder={
-                  selectedProperty?.type === 'multiselect'
-                    ? 'comma, separated, values'
-                    : selectedProperty?.type === 'relations'
-                      ? 'Note titles, comma-separated'
-                      : selectedProperty?.type === 'relation'
-                        ? 'Note title'
-                        : 'Empty clears the property'
+                  (selectedProperty && BULK_VALUE_PLACEHOLDERS[selectedProperty.type]) ??
+                  'Empty clears the property'
                 }
                 value={propertyValue}
                 onChange={(event) => setPropertyValue(event.target.value)}

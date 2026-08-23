@@ -55,24 +55,15 @@ export function boardColumns(
 
 interface CollectionBoardProps {
   entries: readonly CollectionEntry[] | undefined
-  type: TagType
+  /** The grouping select property — the screen only renders the board when
+   * {@link boardProperty} found one, so it arrives resolved. */
+  property: TagProperty
   onOpen: (path: string, event?: ModClickEvent) => void
 }
 
-export function CollectionBoard({
-  entries,
-  type,
-  onOpen,
-}: CollectionBoardProps): ReactElement | null {
+export function CollectionBoard({ entries, property, onOpen }: CollectionBoardProps): ReactElement {
   const commitProperty = useCommitNoteProperty()
-  const property = boardProperty(type)
-  const columns = useMemo(
-    () => (property === null ? [] : boardColumns(entries ?? [], property)),
-    [entries, property],
-  )
-  if (property === null) {
-    return null
-  }
+  const columns = useMemo(() => boardColumns(entries ?? [], property), [entries, property])
 
   return (
     <div className="flex h-full items-start gap-4 overflow-x-auto px-12 pb-6">

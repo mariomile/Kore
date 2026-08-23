@@ -322,7 +322,7 @@ pub fn run() {
             fs::transcript_cache_write,
             fs::asset_open,
             fs::asset_reveal,
-            fs::export_html_write,
+            fs::export_write,
             haptics::haptic_feedback,
             fs::assets::asset_upload_begin,
             fs::assets::asset_upload_append,

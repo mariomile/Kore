@@ -15,6 +15,14 @@ pub fn fold_key(value: &str) -> String {
     value.nfc().collect::<String>().trim().to_lowercase()
 }
 
+/// Tag-key folding — the Rust mirror of `foldTag` (`keys.ts`): a plain
+/// Unicode lowercase, deliberately **without** the NFC + trim [`fold_key`]
+/// applies. The indexer wrote `tags.tag_key` with exactly this fold, so
+/// every CLI tag lookup must use this, never `fold_key`.
+pub fn fold_tag(value: &str) -> String {
+    value.to_lowercase()
+}
+
 /// Scripts written without spaces between words (Han, kana, Hangul, Thai, …).
 /// FTS5's `unicode61` tokenizer only segments at non-alphanumeric characters,
 /// so a title run in these scripts indexes as ONE token and a shorter query
@@ -51,7 +59,7 @@ pub fn contains_unsegmented_script(value: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{contains_unsegmented_script, fold_key};
+    use super::{contains_unsegmented_script, fold_key, fold_tag};
 
     /// Parity with `foldKey` (`keys.ts`): NFC + trim + Unicode lowercase. JS
     /// `toLowerCase` and Rust `to_lowercase` agree on all common inputs; known
@@ -62,6 +70,14 @@ mod tests {
         assert_eq!(fold_key("  MiXeD Case  "), "mixed case");
         assert_eq!(fold_key("ALPHA"), "alpha");
         assert_eq!(fold_key(""), "");
+    }
+
+    /// Parity with `foldTag` (`keys.ts`): lowercase only — no trim, no NFC.
+    #[test]
+    fn folds_tags_like_the_ts_indexer() {
+        assert_eq!(fold_tag("Book"), "book");
+        assert_eq!(fold_tag("Project/Atlas"), "project/atlas");
+        assert_eq!(fold_tag(" Book "), " book ");
     }
 
     /// The shared corpus (`fixtures/fold-key-parity.json`) both sides fold;

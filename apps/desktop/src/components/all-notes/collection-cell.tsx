@@ -24,6 +24,17 @@ export interface CellReading {
   mismatch: boolean
 }
 
+/** Decode a stored `list` column ('["a","b"]') into its entries, or `null`
+ * when the text isn't a well-formed list (shown raw as a mismatch). */
+function decodeStoredList(raw: string): string[] | null {
+  try {
+    const entries = JSON.parse(raw) as unknown
+    return Array.isArray(entries) ? entries.map(String) : null
+  } catch {
+    return null
+  }
+}
+
 /** Decode a `note_properties` value for display under `property`'s type. */
 export function readCellValue(
   property: TagProperty,
@@ -55,38 +66,24 @@ export function readCellValue(
         // A single link under a multi-relation reads as a one-entry list.
         return { text: relationDisplay(raw) ?? raw, checked: false, mismatch: false }
       }
-      if (value.valueType === 'list') {
-        try {
-          const entries = JSON.parse(raw) as unknown
-          if (Array.isArray(entries)) {
-            return {
-              text: entries
-                .map((entry) => relationDisplay(String(entry)) ?? String(entry))
-                .join(', '),
-              checked: false,
-              mismatch: false,
-            }
+      const entries = value.valueType === 'list' ? decodeStoredList(raw) : null
+      return entries === null
+        ? { text: raw, checked: false, mismatch: true }
+        : {
+            text: entries.map((entry) => relationDisplay(entry) ?? entry).join(', '),
+            checked: false,
+            mismatch: false,
           }
-        } catch {
-          // Fall through to the raw form below.
-        }
-      }
-      return { text: raw, checked: false, mismatch: true }
     }
     case 'multiselect': {
-      if (value.valueType === 'list') {
-        try {
-          const entries = JSON.parse(raw) as unknown
-          if (Array.isArray(entries)) {
-            return { text: entries.map(String).join(', '), checked: false, mismatch: false }
-          }
-        } catch {
-          // Fall through to the raw form below.
-        }
-        return { text: raw, checked: false, mismatch: true }
+      if (value.valueType !== 'list') {
+        // A single scalar under a multi-select reads as a one-entry list.
+        return { text: raw, checked: false, mismatch: false }
       }
-      // A single scalar under a multi-select reads as a one-entry list.
-      return { text: raw, checked: false, mismatch: false }
+      const entries = decodeStoredList(raw)
+      return entries === null
+        ? { text: raw, checked: false, mismatch: true }
+        : { text: entries.join(', '), checked: false, mismatch: false }
     }
     default:
       return value.valueType === 'list'

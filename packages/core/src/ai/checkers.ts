@@ -60,6 +60,28 @@ export function assertCloudAllowed(note: CloudSendable): void {
   }
 }
 
+/**
+ * The one gate pipeline every batch mint runs (search hits, listings,
+ * collection rows): drop entries the index already flags private — they must
+ * never even reach the live probe's error paths — then re-check every
+ * survivor against the note on disk, because the index can lag a just-saved
+ * `private: true` (TOCTOU). The probe must **fail closed** (a missing or
+ * unreadable note counts as private), and only entries whose live flag came
+ * back explicitly `false` are minted. Living in one place keeps the
+ * fail-closed sequencing from drifting between payload shapes.
+ */
+async function gateAndMint<Entry extends CloudSendable, Shape>(
+  entries: readonly Entry[],
+  isPrivateLive: (path: string) => Promise<boolean>,
+  project: (entry: Entry) => Shape,
+): Promise<CloudSafe<Shape>[]> {
+  const indexedPublic = entries.filter((entry) => !entry.isPrivate)
+  const liveFlags = await Promise.all(indexedPublic.map((entry) => isPrivateLive(entry.path)))
+  return indexedPublic
+    .filter((_, index) => liveFlags[index] === false)
+    .map((entry) => mint(project(entry)))
+}
+
 /** One search hit as an external service may see it. */
 export interface CloudSearchHit {
   path: string
@@ -75,23 +97,19 @@ export interface CloudSearchHit {
  * private snippets upstream; this second, stricter gate is what AI callers
  * must pass hits through, so no caller can forget the drop-titles rule.
  *
- * The index's `isPrivate` flag only prefilters: the index can lag a
- * just-saved `private: true` (the same TOCTOU `cloudSafeNoteContent` guards
- * with its live flag), so every surviving hit is re-checked through
- * `isPrivateLive` against the note on disk. The probe must **fail closed**
- * — a missing or unreadable note counts as private.
+ * The index's `isPrivate` flag only prefilters — {@link gateAndMint} runs
+ * the live re-check, failing closed.
  */
 export async function cloudSafeSearchHits(
   hits: readonly RetrievalHit[],
   isPrivateLive: (path: string) => Promise<boolean>,
 ): Promise<CloudSafe<CloudSearchHit>[]> {
-  const indexedPublic = hits.filter((hit) => !hit.isPrivate)
-  const liveFlags = await Promise.all(indexedPublic.map((hit) => isPrivateLive(hit.path)))
-  return indexedPublic
-    .filter((_, index) => liveFlags[index] === false)
-    .map((hit) =>
-      mint({ path: hit.path, title: hit.title, snippet: hit.snippet, heading: hit.heading }),
-    )
+  return await gateAndMint(hits, isPrivateLive, (hit) => ({
+    path: hit.path,
+    title: hit.title,
+    snippet: hit.snippet,
+    heading: hit.heading,
+  }))
 }
 
 /** One note-listing entry as an external service may see it. */
@@ -109,27 +127,19 @@ export interface CloudNoteListing {
 /**
  * Gate note-list entries (recents, daily ranges) for an outbound payload.
  * Same contract as {@link cloudSafeSearchHits}: a private entry is dropped
- * **entirely** — even its title or path is a leak — and the index's
- * `isPrivate` flag only prefilters, so every survivor is re-checked through
- * `isPrivateLive` against the note on disk, failing closed.
+ * **entirely** — even its title or path is a leak — via {@link gateAndMint}.
  */
 export async function cloudSafeNoteListings(
   entries: readonly (CloudSendable & Omit<CloudNoteListing, 'path'>)[],
   isPrivateLive: (path: string) => Promise<boolean>,
 ): Promise<CloudSafe<CloudNoteListing>[]> {
-  const indexedPublic = entries.filter((entry) => !entry.isPrivate)
-  const liveFlags = await Promise.all(indexedPublic.map((entry) => isPrivateLive(entry.path)))
-  return indexedPublic
-    .filter((_, index) => liveFlags[index] === false)
-    .map((entry) =>
-      mint({
-        path: entry.path,
-        title: entry.title,
-        dailyDate: entry.dailyDate,
-        snippet: entry.snippet,
-        modifiedAt: entry.modifiedAt,
-      }),
-    )
+  return await gateAndMint(entries, isPrivateLive, (entry) => ({
+    path: entry.path,
+    title: entry.title,
+    dailyDate: entry.dailyDate,
+    snippet: entry.snippet,
+    modifiedAt: entry.modifiedAt,
+  }))
 }
 
 /** One collection row (a typed tag's database view) as an external service
@@ -148,26 +158,18 @@ export interface CloudCollectionRow {
  * Gate collection rows for an outbound payload. Same contract as
  * {@link cloudSafeNoteListings}: a private row is dropped **entirely** — its
  * property values are frontmatter content, and even the title is a leak —
- * and the index-side prefilter only prefilters, so every survivor is
- * re-checked through `isPrivateLive` against the note on disk, failing
- * closed.
+ * via {@link gateAndMint}.
  */
 export async function cloudSafeCollectionRows(
   entries: readonly (CloudSendable & Omit<CloudCollectionRow, 'path'>)[],
   isPrivateLive: (path: string) => Promise<boolean>,
 ): Promise<CloudSafe<CloudCollectionRow>[]> {
-  const indexedPublic = entries.filter((entry) => !entry.isPrivate)
-  const liveFlags = await Promise.all(indexedPublic.map((entry) => isPrivateLive(entry.path)))
-  return indexedPublic
-    .filter((_, index) => liveFlags[index] === false)
-    .map((entry) =>
-      mint({
-        path: entry.path,
-        title: entry.title,
-        modifiedAt: entry.modifiedAt,
-        properties: entry.properties,
-      }),
-    )
+  return await gateAndMint(entries, isPrivateLive, (entry) => ({
+    path: entry.path,
+    title: entry.title,
+    modifiedAt: entry.modifiedAt,
+    properties: entry.properties,
+  }))
 }
 
 /** The graph-level prompt context as an external service may see it. */

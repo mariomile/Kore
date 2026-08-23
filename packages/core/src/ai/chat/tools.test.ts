@@ -746,7 +746,6 @@ describe('list_collection', () => {
     const tools = buildNoteTools({
       getTagTypeFn: async () => BOOK_TYPE,
       listCollectionFn: async () => [collectionRow({})],
-      listPrivateNotePathsFn: async () => [],
       readNoteFn: async () => 'a public body\n',
     })
     const output = await runCollection(tools, { tag: 'book' })
@@ -766,23 +765,30 @@ describe('list_collection', () => {
     ])
   })
 
-  it('drops private rows entirely — title, path, and property values', async () => {
+  it('asks SQL to prefilter private rows and drops leftovers entirely', async () => {
+    const seenOptions: Array<unknown> = []
     const tools = buildNoteTools({
       getTagTypeFn: async () => BOOK_TYPE,
-      listCollectionFn: async () => [
-        collectionRow({}),
-        collectionRow({
-          path: PRIVATE_PATH,
-          title: PRIVATE_TITLE,
-          properties: {
-            author: { value: PRIVATE_BODY, valueType: 'string', valueNumber: null },
-          },
-        }),
-      ],
-      listPrivateNotePathsFn: async () => [PRIVATE_PATH],
-      readNoteFn: async () => 'a public body\n',
+      // A private row that slipped past the SQL prefilter (stale index) —
+      // the live gate must still drop it whole: title, path, and values.
+      listCollectionFn: async (_tag, _sort, options) => {
+        seenOptions.push(options)
+        return [
+          collectionRow({}),
+          collectionRow({
+            path: PRIVATE_PATH,
+            title: PRIVATE_TITLE,
+            properties: {
+              author: { value: PRIVATE_BODY, valueType: 'string', valueNumber: null },
+            },
+          }),
+        ]
+      },
+      readNoteFn: async (path) =>
+        path === PRIVATE_PATH ? '---\nprivate: true\n---\n# Diary\n' : 'a public body\n',
     })
     const output = await runCollection(tools, { tag: 'book' })
+    expect(seenOptions).toEqual([{ excludePrivate: true }])
     const payload = JSON.stringify(output)
     expect(payload).not.toContain(PRIVATE_TITLE)
     expect(payload).not.toContain(PRIVATE_PATH)
@@ -798,7 +804,6 @@ describe('list_collection', () => {
       getTagTypeFn: async () => BOOK_TYPE,
       // The stale index still says public…
       listCollectionFn: async () => [collectionRow({ path: PRIVATE_PATH, title: PRIVATE_TITLE })],
-      listPrivateNotePathsFn: async () => [],
       // …but the note on disk was just marked private.
       readNoteFn: async () => '---\nprivate: true\n---\n# Diary\n',
     })
@@ -821,7 +826,6 @@ describe('list_collection', () => {
         seenSorts.push(sort)
         return rows
       },
-      listPrivateNotePathsFn: async () => [],
       readNoteFn: async () => 'a public body\n',
     })
     const output = await runCollection(tools, { tag: 'book', sortBy: 'rating', limit: 2 })

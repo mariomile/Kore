@@ -10,6 +10,7 @@ import {
   type SavedCollectionView,
 } from '@reflect/core'
 import {
+  Calendar,
   Check,
   Download,
   LayoutGrid,
@@ -51,6 +52,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { CollectionBoard, groupableProperties } from './collection-board'
+import { calendarProperty, CollectionCalendar } from './collection-calendar'
 import { CollectionViewsMenu } from './collection-views-menu'
 import { runCollectionExport } from './collection-export'
 import { CollectionTable } from './collection-table'
@@ -105,6 +107,9 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
   const boardGroupProperty =
     boardProperties.find((property) => property.key === savedGroupKey) ?? boardProperties[0] ?? null
   const boardAvailable = boardGroupProperty !== null
+  // The calendar needs a date property to place rows by.
+  const calendarDateProperty = collectionAvailable ? calendarProperty(tagType) : null
+  const calendarAvailable = calendarDateProperty !== null
   // On a tag route, that tag's own persisted view mode wins over the global
   // preference — the board you left on one tag doesn't chase you onto the
   // next; the toggles write per-tag there, global elsewhere.
@@ -112,7 +117,8 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
     (tagKey === null ? undefined : settings.collectionViewModes[tagKey]) ?? settings.allNotesView
   const view =
     (requestedView === 'table' && !collectionAvailable) ||
-    (requestedView === 'board' && !boardAvailable)
+    (requestedView === 'board' && !boardAvailable) ||
+    (requestedView === 'calendar' && !calendarAvailable)
       ? 'list'
       : requestedView
   const setViewMode = useCallback(
@@ -127,8 +133,8 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
     },
     [tagKey, updateSettings, updateSettingsWith],
   )
-  // The two views that render collection rows instead of the notes list.
-  const collectionView = view === 'table' || view === 'board'
+  // The views that render collection rows instead of the notes list.
+  const collectionView = view === 'table' || view === 'board' || view === 'calendar'
   // The sort is a persisted per-tag view preference (like task filters):
   // leaving and returning to a collection keeps its order.
   const collectionSort: CollectionSort | null =
@@ -359,9 +365,9 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
 
   useAllNotesKeyboard({
     selection,
-    // The card grid and the board have no selection affordance, so the list
-    // shortcuts would act on rows the user can't see selected — disarm them.
-    orderedPaths: view === 'grid' || view === 'board' ? [] : orderedPaths,
+    // The card grid, board, and calendar have no selection affordance, so the
+    // list shortcuts would act on rows the user can't see selected — disarm.
+    orderedPaths: view === 'grid' || view === 'board' || view === 'calendar' ? [] : orderedPaths,
     onOpen: openNote,
     onRequestTrash: openTrashConfirm,
     rootRef,
@@ -549,6 +555,23 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
                 <LayoutTemplate aria-hidden className="size-3.5" />
               </button>
             ) : null}
+            {calendarAvailable ? (
+              <button
+                type="button"
+                aria-label="Calendar view"
+                aria-pressed={view === 'calendar'}
+                onClick={() => {
+                  setViewMode('calendar')
+                }}
+                className={`flex size-6 items-center justify-center rounded-full transition-colors ${
+                  view === 'calendar'
+                    ? 'bg-surface text-text shadow-sm'
+                    : 'text-text-muted hover:text-text-secondary'
+                }`}
+              >
+                <Calendar aria-hidden className="size-3.5" />
+              </button>
+            ) : null}
           </div>
           <NewNoteButton tag={tag} />
         </div>
@@ -567,6 +590,12 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
         >
           {view === 'grid' ? (
             <AllNotesGrid notes={notes} tag={tag} onOpen={openNote} />
+          ) : view === 'calendar' && calendarDateProperty !== null ? (
+            <CollectionCalendar
+              entries={filteredCollection}
+              property={calendarDateProperty}
+              onOpen={openNote}
+            />
           ) : view === 'board' && boardGroupProperty !== null && tag !== null ? (
             <CollectionBoard
               entries={filteredCollection}

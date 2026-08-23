@@ -445,7 +445,9 @@ export type AllNotesFilterTags = z.infer<typeof allNotesFilterTagsSchema>
  * first select property, so it additionally needs one in the schema. Screens
  * without the prerequisite render `list`.
  */
-export const allNotesViewSchema = z.enum(['list', 'grid', 'table', 'board']).catch('list')
+export const allNotesViewSchema = z
+  .enum(['list', 'grid', 'table', 'board', 'calendar'])
+  .catch('list')
 
 export type AllNotesView = z.infer<typeof allNotesViewSchema>
 
@@ -652,7 +654,7 @@ export const collectionViewModesSchema = z
   .transform((entries) => {
     const modes: Record<string, AllNotesView> = {}
     for (const [tagKey, value] of Object.entries(entries)) {
-      const parsed = z.enum(['list', 'grid', 'table', 'board']).safeParse(value)
+      const parsed = z.enum(['list', 'grid', 'table', 'board', 'calendar']).safeParse(value)
       if (parsed.success) {
         modes[tagKey] = parsed.data
       }
@@ -677,7 +679,7 @@ export type SavedCollectionViewFilter = z.infer<typeof savedViewFilterSchema>
 export const savedCollectionViewSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
-  view: z.enum(['table', 'board']),
+  view: z.enum(['table', 'board', 'calendar']),
   sort: collectionSortSettingSchema.nullable().catch(null),
   group: z.string().nullable().catch(null),
   filters: z

@@ -31,7 +31,9 @@ afterEach(() => {
 })
 
 function importButton(): Locator {
-  return page.getByRole('button', { name: /import/i })
+  // The section heading is now also a button named "Import" (the collapse
+  // toggle), so target the action button by its idle/running labels.
+  return page.getByRole('button', { name: /import zip|importing/i })
 }
 
 describe('ImportSection', () => {

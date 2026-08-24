@@ -96,11 +96,14 @@ describe('SidebarResizeHandle', () => {
   })
 
   it('clamps a drag past the range to its bounds', async () => {
+    // 1024px only budgets 664px for the rail (viewport minus the note pane).
+    // A wider window is required for the range max of 800px to be the wall.
+    await page.viewport(1600, 800)
     const handle = await renderHandle('workspace')
 
     firePointer(handle, 'pointerdown', { pointerId: 7, button: 0, clientX: 300 })
-    firePointer(handle, 'pointermove', { pointerId: 7, clientX: 1200 })
-    expect(rootVariable('--sidebar-width')).toBe('480px')
+    firePointer(handle, 'pointermove', { pointerId: 7, clientX: 1600 })
+    expect(rootVariable('--sidebar-width')).toBe('800px')
 
     firePointer(handle, 'pointermove', { pointerId: 7, clientX: -1200 })
     firePointer(handle, 'pointerup', { pointerId: 7, clientX: -1200 })
@@ -214,7 +217,8 @@ describe('SidebarResizeHandle', () => {
   })
 
   it('a keystroke into a wall commits nothing', async () => {
-    settingsState.settings.sidebarWidth = 480
+    await page.viewport(1600, 800)
+    settingsState.settings.sidebarWidth = 800
     const handle = await renderHandle('workspace')
 
     // Already at the range maximum: nothing moves, so nothing persists.
@@ -290,6 +294,7 @@ describe('SidebarResizeHandle', () => {
   })
 
   it('jumps to the rail minimum and maximum with Home and End', async () => {
+    await page.viewport(1600, 800)
     const workspaceHandle = await renderHandle('workspace')
 
     fireKey(workspaceHandle, 'Home')

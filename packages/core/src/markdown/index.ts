@@ -27,6 +27,13 @@ export {
   type ParsedFrontmatter,
 } from './frontmatter'
 export { parseBody } from './grammar'
+export {
+  CALLOUT_KINDS,
+  formatCalloutBlock,
+  parseCalloutMarker,
+  type CalloutKind,
+  type CalloutMarker,
+} from './callout'
 export { parseNote, isTagName, hasAuthoredTitle } from './extract'
 export { appendBodyTag, bodyHasTag } from './body-tag'
 export {

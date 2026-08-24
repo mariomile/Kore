@@ -31,6 +31,8 @@ import { useEditorAutocomplete } from '@/editor/use-editor-autocomplete'
 import { useNoteDocument } from '@/editor/use-note-document'
 import { useDailyNoteSeed } from '@/hooks/use-daily-note-seed'
 import { useTagNavigation } from '@/editor/use-tag-navigation'
+import { CalloutHighlighter } from '@/editor/callout-highlighter'
+import { useCalloutSlashItems } from '@/editor/use-callout-slash-items'
 import { useCollectionSlashItems } from '@/editor/use-collection-slash-items'
 import { useTemplateSlashItems } from '@/editor/use-template-slash-items'
 import { EmbeddedCollection } from '@/components/notes/embedded-collection'
@@ -225,12 +227,14 @@ export function NotePaneComponent({
   const getEditor = useCallback(() => registeredHandle.current?.handle ?? null, [])
   const templateSlashItems = useTemplateSlashItems(getEditor, path)
   const collectionSlashItems = useCollectionSlashItems(getEditor)
+  const calloutSlashItems = useCalloutSlashItems(getEditor)
   const onSlashMenuSearch = useCallback(
     async (query: string) => [
       ...(await collectionSlashItems(query)),
+      ...(await calloutSlashItems(query)),
       ...(await templateSlashItems(query)),
     ],
-    [collectionSlashItems, templateSlashItems],
+    [collectionSlashItems, calloutSlashItems, templateSlashItems],
   )
   // Live body for embed parsing: typed markdown while this session's seed is
   // unchanged, otherwise the snapshot (a new session or an external reload).
@@ -448,6 +452,7 @@ export function NotePaneComponent({
         onExitBoundary={handleExitBoundary}
       >
         <EditorAiKeymap onTrigger={aiMenu.openMenu} />
+        <CalloutHighlighter />
       </NoteEditor>
 
       {collectionEmbeds.length > 0 ? (

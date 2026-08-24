@@ -215,8 +215,11 @@ targets:
       # xcodebuild. iconv backs libgit2's Apple filename-precompose support.
       - sdk: libz.tbd
       - sdk: libiconv.tbd
-      # objc2-contacts' link directive doesn't reach xcodebuild either.
+      # The objc2-* link directives don't reach xcodebuild either, so every
+      # framework those crates bind has to be listed by hand. EventKit backs
+      # the calendar module, which compiles on iOS as well as macOS.
       - sdk: Contacts.framework
+      - sdk: EventKit.framework
       - sdk: LinkPresentation.framework
       - sdk: CoreGraphics.framework
       - sdk: Metal.framework

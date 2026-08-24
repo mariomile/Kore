@@ -50,11 +50,12 @@ interface RouterValue {
   navigationRevision: () => number
   /**
    * True when the latest arrival asked the destination to focus its primary
-   * input (`navigate(route, { focusEditor: true })`). Only explicit capture
-   * gestures request it — the mobile Daily-, All-, Tasks-, and Chat-tab
-   * double-taps, desktop's ⌘D and sidebar Daily notes row — while note
-   * navigations (wiki links, backlinks, back/forward) stay calm so the
-   * keyboard never rises mid-arrival.
+   * input (`navigate(route, { focusEditor: true })`). The first today
+   * arrival is focused so opening the app lands the caret in today's note.
+   * Later, only explicit capture gestures request it — the mobile Daily-,
+   * All-, Tasks-, and Chat-tab double-taps, desktop's ⌘D and sidebar Daily
+   * notes row — while note navigations (wiki links, backlinks, back/forward)
+   * stay calm so the keyboard never rises mid-arrival.
    * One-shot by construction: the next navigate overwrites it and history
    * moves clear it, so it can never leak onto a later, unrelated arrival.
    */
@@ -148,7 +149,7 @@ export function RouterProvider({
     index: 0,
   })
   const [arrivalSeq, setArrivalSeq] = useState(0)
-  const [arrivalFocusEditor, setArrivalFocusEditor] = useState(false)
+  const [arrivalFocusEditor, setArrivalFocusEditor] = useState(true)
   const nextId = useRef(1)
   const navigationRevisionRef = useRef(0)
   /** Scroll offsets by entry id — a ref so scroll reporting never re-renders. */

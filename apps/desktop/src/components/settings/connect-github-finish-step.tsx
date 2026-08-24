@@ -53,7 +53,7 @@ export function ConnectGithubFinishStep({
               {view.repo.owner}/{view.repo.name} is public.
             </strong>{' '}
             Anyone on the internet can read everything in this graph, including notes marked
-            private.
+            private. Lock blocks AI, not GitHub.
           </InlineAlert>
           <div className={groupClass}>
             {layout === 'row' ? changeRepository('Choose another repo') : null}

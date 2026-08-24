@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { buildGlobalShortcutEnvelope, foldQuickCaptureText } from './quick-capture'
+import {
+  buildGlobalShortcutEnvelope,
+  defaultQuickCaptureDestination,
+  foldQuickCaptureText,
+} from './quick-capture'
 
 describe('foldQuickCaptureText', () => {
   it('collapses newlines and trims', () => {
@@ -8,6 +12,14 @@ describe('foldQuickCaptureText', () => {
 
   it('returns empty for whitespace-only input', () => {
     expect(foldQuickCaptureText(' \n\t ')).toBe('')
+  })
+})
+
+describe('defaultQuickCaptureDestination', () => {
+  it('defaults a company graph to a decision, otherwise today', () => {
+    expect(defaultQuickCaptureDestination('company')).toBe('decision')
+    expect(defaultQuickCaptureDestination('personal')).toBe('today')
+    expect(defaultQuickCaptureDestination(null)).toBe('today')
   })
 })
 

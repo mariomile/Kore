@@ -100,6 +100,7 @@ export {
   DAILY_DIR,
   NOTES_DIR,
   TEMPLATES_DIR,
+  GRAPH_META_PATH,
   ASSETS_DIR,
   AUDIO_MEMOS_DIR,
   dailyPath,
@@ -122,6 +123,22 @@ export {
   isCalendarDate,
   type GraphPathKind,
 } from '../graph/paths'
+export {
+  GRAPH_META_MARKER,
+  graphRoleSchema,
+  parseGraphMetaFrontmatter,
+  isGraphMetaPath,
+  isGraphMetaNote,
+  graphMetaSource,
+  type GraphRole,
+} from '../graph/meta'
+export {
+  COMPANY_SEED_TAGS,
+  COMPANY_CHAT_PROMPTS,
+  companySeedTypes,
+  type CompanySeedTag,
+  type CompanySeedType,
+} from '../graph/company-seed'
 export {
   wikiNoteReference,
   markdownNoteReference,
@@ -264,6 +281,8 @@ export {
   calendarIdsSchema,
   graphColorSchema,
   graphColorsSchema,
+  graphRoleSettingSchema,
+  graphRolesSchema,
   GRAPH_COLOR_IDS,
   aiProviderIdSchema,
   openAiCompatibleBaseUrlSchema,
@@ -303,6 +322,7 @@ export {
   type CalendarIds,
   type GraphColor,
   type GraphColors,
+  type GraphRoles,
   type AiProviderId,
   type HostedAiProviderId,
   type AiProviderConfig,

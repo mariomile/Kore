@@ -30,6 +30,7 @@ import { AiProviderActionsDrawer } from '@/mobile/ai-provider-actions-drawer'
 import { ChatSystemPromptDrawer } from '@/mobile/chat-system-prompt-drawer'
 import { ConnectGithubDrawer } from '@/mobile/connect-github-drawer'
 import { PRIVACY_POLICY_URL, TERMS_OF_USE_URL } from '@/mobile/legal-urls'
+import { MobileCalendarSettings } from '@/mobile/mobile-calendar-settings'
 import { MobileScreenHeader } from '@/mobile/screen-header'
 import {
   SettingsActionRow,
@@ -250,6 +251,8 @@ export function MobileSettings(): ReactElement {
             />
           </SettingsGroup>
 
+          {isIos ? <MobileCalendarSettings /> : null}
+
           <SettingsGroup header="Editor">
             <SettingsSwitchRow
               label="Smooth caret animation"
@@ -338,7 +341,7 @@ export function MobileSettings(): ReactElement {
               header="Backup"
               footer={
                 canConnect
-                  ? 'Sync notes with Memento on your other devices.'
+                  ? 'Connect GitHub so the team shares this graph. Lock keeps a note out of AI, not out of the repo.'
                   : (status?.detail ?? null)
               }
             >

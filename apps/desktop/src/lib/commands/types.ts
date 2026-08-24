@@ -41,9 +41,10 @@ export interface CommandContext {
   /** Start an audio memo, or stop-and-save the one recording. */
   toggleAudioMemo: () => void
   /**
-   * The open **index session** generation (`index_open`), or null when none —
-   * what index/embedding commands echo. File writes (`note_write`) take
-   * `graph.generation` instead; no current command needs that one.
+   * The open graph's file-write generation (`graph.generation`), or null
+   * when none is open — what note-write commands (capture, pin, export)
+   * echo. Index/embedding commands that need `index_open` read
+   * `indexGeneration` from the graph provider instead.
    */
   generation: () => number | null
   /** Absolute root of the open graph, or null when none is open. */

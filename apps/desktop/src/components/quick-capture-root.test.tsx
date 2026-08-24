@@ -14,12 +14,24 @@ const captureInboxSpool = vi.hoisted(() =>
   vi.fn<(name: string, json: string, generation: number) => Promise<void>>(async () => undefined),
 )
 const hideQuickCapture = vi.hoisted(() => vi.fn(async () => undefined))
+const readGraphRole = vi.hoisted(() => vi.fn(async () => null as 'personal' | 'company' | null))
+const logCompanyCapture = vi.hoisted(() =>
+  vi.fn<(kind: string, generation: number, title?: string) => Promise<string>>(
+    async () => 'notes/decision.md',
+  ),
+)
 
 vi.mock('@reflect/core', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@reflect/core')>()),
   windowBootstrap,
   captureInboxSpool,
   hideQuickCapture,
+}))
+vi.mock('@/lib/graph-role', () => ({
+  readGraphRole,
+}))
+vi.mock('@/lib/company-capture', () => ({
+  logCompanyCapture,
 }))
 
 afterEach(async () => {
@@ -43,6 +55,20 @@ describe('QuickCaptureRoot', () => {
       text: 'call Alex',
       source: 'global-shortcut',
     })
+    expect(hideQuickCapture).toHaveBeenCalledTimes(1)
+  })
+
+  it('writes a named decision on a company graph', async () => {
+    readGraphRole.mockResolvedValueOnce('company')
+    await render(<QuickCaptureRoot />)
+    await vi.waitFor(() => expect(readGraphRole).toHaveBeenCalled())
+    const input = page.getByLabelText('Log a decision')
+    await userEvent.fill(input, 'Ship the pricing change')
+    await userEvent.click(page.getByRole('button', { name: 'Save' }))
+
+    await vi.waitFor(() => expect(logCompanyCapture).toHaveBeenCalledTimes(1))
+    expect(logCompanyCapture).toHaveBeenCalledWith('decision', 7, 'Ship the pricing change')
+    expect(captureInboxSpool).not.toHaveBeenCalled()
     expect(hideQuickCapture).toHaveBeenCalledTimes(1)
   })
 

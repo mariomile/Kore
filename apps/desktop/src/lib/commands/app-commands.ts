@@ -7,6 +7,7 @@ import {
   toggleDevtools,
   untitledNotePath,
 } from '@reflect/core'
+import { COMPANY_CAPTURE_COMMANDS, logCompanyCapture } from '@/lib/company-capture'
 import { attachFilesToNote } from '@/lib/attach-files'
 import { runCopyNotePath } from '@/lib/note-copy-path'
 import { runCopyDeepLink } from '@/lib/note-deep-link'
@@ -63,8 +64,27 @@ const GRAPH_SWITCH_COMMANDS: AppCommand[] = Array.from({ length: 9 }, (_, index)
   }
 })
 
+const COMPANY_CAPTURE_APP_COMMANDS: AppCommand[] = COMPANY_CAPTURE_COMMANDS.map((command) => ({
+  id: command.id,
+  title: command.title,
+  keywords: [...command.keywords],
+  run: async (context) => {
+    const generation = context.generation()
+    if (generation === null) {
+      return
+    }
+    try {
+      const path = await logCompanyCapture(command.kind, generation)
+      context.navigate({ kind: 'note', path })
+    } catch (cause) {
+      startOperation(command.title).fail(errorMessage(cause))
+    }
+  },
+}))
+
 const APP_COMMANDS: AppCommand[] = [
   ...GRAPH_SWITCH_COMMANDS,
+  ...COMPANY_CAPTURE_APP_COMMANDS,
   {
     id: 'nav.today',
     title: 'Go to today',

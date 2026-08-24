@@ -15,6 +15,7 @@ import { useGithubConnected } from '@/hooks/use-github-connected'
 import { suggestRepoName } from '@/lib/github-repos'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { cn } from '@/lib/utils'
+import { useGraphRole } from '@/hooks/use-graph-role'
 import { useGraph } from '@/providers/graph-provider'
 import { useSync, type BackupState } from '@/providers/sync-provider'
 
@@ -68,6 +69,7 @@ function githubRepoBrowserUrl(
 export function BackupSettingsField(): ReactElement {
   const { backup, disconnectGraph, signOut, backUpNow } = useSync()
   const { graph } = useGraph()
+  const { role } = useGraphRole()
   const githubConnected = useGithubConnected()
   const [connectOpen, setConnectOpen] = useState(false)
   const openRepoAttempt = useRef(0)
@@ -129,7 +131,9 @@ export function BackupSettingsField(): ReactElement {
         description={
           genericRemote
             ? 'This graph backs up to its own git remote. Edits back up automatically a few moments after you stop typing.'
-            : 'Back up this graph to a GitHub repository. Edits back up automatically a few moments after you stop typing.'
+            : role === 'company'
+              ? 'Connect the team repo so everyone shares this company brain. Everyone with the repo can read every note — lock keeps a note out of AI, not out of GitHub.'
+              : 'Back up this graph to a GitHub repository. Edits back up automatically a few moments after you stop typing.'
         }
       >
         <div className="mt-3 flex flex-col gap-2">

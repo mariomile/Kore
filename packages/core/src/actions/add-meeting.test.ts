@@ -267,6 +267,21 @@ describe('addMeetingToDaily', () => {
     expect(ensurePersonMock).toHaveBeenCalledTimes(1)
   })
 
+  it('skips the daily write when writeDaily is false', async () => {
+    const outcome = await addMeetingToDaily(
+      input({
+        writeDaily: false,
+        attendees: [{ name: 'Ada Lovelace' }],
+      }),
+    )
+
+    expect(writeNoteMock).not.toHaveBeenCalled()
+    expect(readNoteMock).not.toHaveBeenCalled()
+    expect(createNoteMock).toHaveBeenCalledWith('Standup', GENERATION, '- Type: #meeting')
+    expect(ensurePersonMock).toHaveBeenCalledTimes(1)
+    expect(outcome).toEqual({ appended: false, createdNotes: ['Standup', 'Ada Lovelace'] })
+  })
+
   it('rejects an empty meeting name before writing', async () => {
     await expect(addMeetingToDaily(input({ title: '  [|]  ' }))).rejects.toThrow(
       'a meeting needs a name',

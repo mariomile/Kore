@@ -739,7 +739,7 @@ fn create_quick_capture_window<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> 
 
     let builder = WebviewWindowBuilder::new(app, QUICK_CAPTURE_LABEL, WebviewUrl::default())
         .title("Quick capture")
-        .inner_size(480.0, 88.0)
+        .inner_size(480.0, 120.0)
         .resizable(false)
         .decorations(false)
         .always_on_top(true)

@@ -6,6 +6,7 @@ import { useChatSession } from '@/providers/chat-provider'
 import { useRouter } from '@/routing/router'
 import { ChatInput } from './chat-input'
 import { ChatTurnList } from './chat-turn-list'
+import { CompanySemanticBanner } from './company-semantic-banner'
 
 /**
  * The dedicated chat view (Plan 10, revised: a full route, not a side panel).
@@ -61,6 +62,7 @@ export function ChatScreen(): ReactElement {
         }
       }}
     >
+      <CompanySemanticBanner />
       <ChatTurnList />
       <ChatInput />
     </div>

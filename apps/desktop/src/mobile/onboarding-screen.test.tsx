@@ -39,7 +39,7 @@ describe('MobileOnboardingScreen', () => {
     await render(<MobileOnboardingScreen />)
 
     await expect
-      .element(page.getByRole('heading', { name: 'iCloud sync', exact: true }))
+      .element(page.getByRole('heading', { name: 'Personal notes', exact: true }))
       .toBeVisible()
     await expect.element(page.getByLabelText('Graph name')).toHaveValue('Notes')
     fireEvent.change(page.getByLabelText('Graph name'), { target: { value: 'Journal' } })
@@ -108,7 +108,7 @@ describe('MobileOnboardingScreen', () => {
     await render(<MobileOnboardingScreen />)
 
     await expect
-      .element(page.getByRole('heading', { name: 'iCloud sync', exact: true }))
+      .element(page.getByRole('heading', { name: 'Personal notes', exact: true }))
       .toBeVisible()
     await expect.element(page.getByText('Checking iCloud Drive…')).toBeVisible()
     expect(page.getByRole('button', { name: 'Setup graph' }).query()).toBeNull()
@@ -124,7 +124,7 @@ describe('MobileOnboardingScreen', () => {
     await render(<MobileOnboardingScreen />)
 
     await expect
-      .element(page.getByRole('heading', { name: 'iCloud sync', exact: true }))
+      .element(page.getByRole('heading', { name: 'Personal notes', exact: true }))
       .toBeVisible()
     await expect
       .element(page.getByText('Turn on iCloud Drive to keep your notes synced between devices.'))
@@ -143,6 +143,12 @@ describe('MobileOnboardingScreen', () => {
     expect(page.getByRole('button', { name: /github/i }).query()).toBeNull()
     expect(page.getByText(/backup repository/i).query()).toBeNull()
     expect(page.getByRole('button', { name: 'Download & open' }).query()).toBeNull()
+  })
+
+  it('starts a company brain on this device', async () => {
+    await render(<MobileOnboardingScreen />)
+    await page.getByRole('button', { name: 'Start a company brain' }).click()
+    await vi.waitFor(() => expect(completeOnboarding).toHaveBeenCalledWith('local'))
   })
 
   it('does not expose folder language in the primary first-run path', async () => {

@@ -49,6 +49,7 @@ const settingsState = vi.hoisted(() => ({
   selection: null as ChatModelSelection | null,
   semanticSearchEnabled: false,
   chatSystemPrompt: '',
+  graphRoles: {} as Record<string, 'personal' | 'company'>,
 }))
 const updateSettings = vi.hoisted(() => vi.fn<(patch: Partial<Settings>) => void>())
 // Stateful like the real provider: a chatModelSelection patch re-renders with
@@ -65,6 +66,7 @@ vi.mock('@/providers/settings-provider', async () => {
           chatModelSelection: selection,
           semanticSearchEnabled: settingsState.semanticSearchEnabled,
           chatSystemPrompt: settingsState.chatSystemPrompt,
+          graphRoles: settingsState.graphRoles,
         },
         updateSettings: (patch: Partial<Settings>) => {
           updateSettings(patch)
@@ -138,6 +140,7 @@ beforeEach(() => {
   settingsState.selection = null
   settingsState.semanticSearchEnabled = false
   settingsState.chatSystemPrompt = ''
+  settingsState.graphRoles = {}
   core.hasBridge.mockReturnValue(true)
   core.aiApiKeyForConfig.mockResolvedValue('sk-test')
   core.getSecret.mockResolvedValue('sk-test')
@@ -267,6 +270,17 @@ describe('ChatProvider persistence', () => {
         customSystemPrompt: 'Answer like a rigorous research partner.',
       }),
     )
+  })
+
+  it('passes the company graph role into the chat turn', async () => {
+    settingsState.graphRoles = { '/g': 'company' }
+    scriptTurn([{ type: 'complete', messages: [{ role: 'assistant', content: 'Hi.' }] }])
+    const { act } = await renderProvider()
+    await vi.waitFor(() => expect(core.listChatConversations).toHaveBeenCalled())
+
+    await act(() => session?.send('hello'))
+
+    expect(core.streamChat).toHaveBeenCalledWith(expect.objectContaining({ graphRole: 'company' }))
   })
 
   it('forces lexical search on the mobile surface, over an enabled setting', async () => {

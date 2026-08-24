@@ -3,6 +3,7 @@ import { Sparkles } from '@/components/icons'
 import { InlineAlert } from '@/components/inline-alert'
 import { ensureEmbeddingsVisibly, retryFailedEmbeddings } from '@/lib/semantic'
 import { useEmbedStatus } from '@/lib/use-embed-status'
+import { isMobileSurface } from '@/lib/platform-surface'
 import { useSettings } from '@/providers/settings-provider'
 import { DescribeAssetsField } from './describe-assets-field'
 import { SettingsField } from './field'
@@ -89,7 +90,11 @@ export function SearchSection(): ReactElement {
     <SettingsSection id="search">
       <SettingsField
         legend="Semantic search"
-        description="Find notes by meaning, not just keywords — smarter ⌘K results and related notes. Runs entirely on this device; enabling downloads a small model (~90 MB) once."
+        description={
+          isMobileSurface()
+            ? 'Semantic search runs on Mac. This phone searches by words. Enable the model on a computer — the setting syncs, but retrieval here stays lexical.'
+            : 'Find notes by meaning, not just keywords — smarter ⌘K results and related notes. Runs entirely on this device; enabling downloads a small model (~90 MB) once.'
+        }
       >
         <div className="mt-3">{control}</div>
       </SettingsField>

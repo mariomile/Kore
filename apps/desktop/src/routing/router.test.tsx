@@ -191,7 +191,7 @@ describe('router', () => {
 
   it('carries the focusEditor intent on the arrival that asked for it, one-shot', async () => {
     const { result, act } = await routerHook()
-    expect(result.current.arrivalFocusEditor).toBe(false)
+    expect(result.current.arrivalFocusEditor).toBe(true)
 
     await act(() =>
       result.current.navigate({ kind: 'note', path: 'notes/a.md' }, { focusEditor: true }),

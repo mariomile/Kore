@@ -1,7 +1,9 @@
 import { useId, useState, type ReactElement, type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { icloudStatus } from '@reflect/core'
-import { Cloud, Folder, FolderPlus } from '@/components/icons'
+import { Cloud, Folder, FolderPlus, Graph } from '@/components/icons'
+import { queueGraphRole } from '@/lib/graph-role'
+import { useGraphRole } from '@/hooks/use-graph-role'
 import { getIsComposing } from '@meowdown/core'
 import { InlineAlert } from '@/components/inline-alert'
 import { Badge } from '@/components/ui/badge'
@@ -35,6 +37,7 @@ function isIcloudCapablePlatform(): boolean {
 export function GraphChooser(): ReactElement {
   const { recents, error, pickAndOpen, openRecent, createAt, forget } = useGraph()
   const { colorFor } = useGraphColors()
+  const { roleFor } = useGraphRole()
   const icloudCapable = isIcloudCapablePlatform()
 
   return (
@@ -42,8 +45,8 @@ export function GraphChooser(): ReactElement {
       <div className="space-y-1.5 text-center">
         <h1 className="text-2xl font-semibold tracking-tight text-text">Welcome to Reflect</h1>
         <p className="text-sm text-text-secondary">
-          Your notes are plain Markdown files. Open an existing folder or choose where new notes
-          live.
+          Personal notes live on today&apos;s daily page. A company brain is a shared folder of
+          named notes — decisions, people, meetings — not a shared diary.
         </p>
       </div>
 
@@ -73,6 +76,13 @@ export function GraphChooser(): ReactElement {
         </section>
       </div>
 
+      <ChooserDivider>or a company brain</ChooserDivider>
+      <CompanyCard
+        icloudCapable={icloudCapable}
+        pickAndOpen={pickAndOpen}
+        createAt={createAt}
+      />
+
       {error ? (
         <InlineAlert tone="error" className="mx-auto w-full max-w-sm text-center">
           {error}
@@ -101,8 +111,13 @@ export function GraphChooser(): ReactElement {
                       style={color === undefined ? undefined : { color: graphColorCss(color) }}
                     />
                     <span className="min-w-0">
-                      <span className="block truncate text-sm font-medium text-text">
-                        {recent.name}
+                      <span className="flex min-w-0 items-center gap-1.5">
+                        <span className="min-w-0 truncate text-sm font-medium text-text">
+                          {recent.name}
+                        </span>
+                        {roleFor(recent.root) === 'company' ? (
+                          <Badge variant="outline">Company</Badge>
+                        ) : null}
                       </span>
                       <span className="block truncate text-xs text-text-muted">{recent.root}</span>
                     </span>
@@ -224,6 +239,7 @@ function IcloudCard({
     }
     setBusy('create')
     try {
+      queueGraphRole('personal')
       await createAt(`${status.documentsRoot}/${cleanName}`)
     } finally {
       setBusy(null)
@@ -239,7 +255,7 @@ function IcloudCard({
     <section className="flex flex-col gap-4 rounded-xl border border-border bg-surface p-5 shadow-sm">
       <CardHeader
         icon={<Cloud aria-hidden className="size-4" />}
-        title="iCloud"
+        title="Personal notes"
         badge={<Badge variant="secondary">Recommended</Badge>}
         tinted
       >
@@ -335,6 +351,120 @@ function IcloudCard({
           >
             {busy === 'create' ? <Spinner /> : <Cloud aria-hidden />}
             {busy === 'create' ? 'Setting up…' : 'Create'}
+          </Button>
+        </div>
+      )}
+    </section>
+  )
+}
+
+function CompanyCard({
+  icloudCapable,
+  pickAndOpen,
+  createAt,
+}: {
+  icloudCapable: boolean
+  pickAndOpen: () => Promise<boolean>
+  createAt: (root: string) => Promise<boolean>
+}): ReactElement {
+  const [typedName, setTypedName] = useState('Company')
+  const [busy, setBusy] = useState(false)
+  const nameId = useId()
+  const bridgeReady = useBridgeReady()
+  const { data: status } = useQuery({
+    queryKey: ICLOUD_STATUS_QUERY_KEY,
+    queryFn: icloudStatus,
+    enabled: bridgeReady && icloudCapable,
+  })
+
+  const available = status?.available === true
+  const existing = status?.existingGraphRoots ?? []
+  const cleanName = cleanGraphName(typedName)
+  const nameTaken = cleanName !== null && isGraphNameTaken(cleanName, existing)
+
+  async function create(): Promise<void> {
+    if (status?.documentsRoot == null || cleanName === null || nameTaken) {
+      return
+    }
+    setBusy(true)
+    try {
+      queueGraphRole('company')
+      await createAt(`${status.documentsRoot}/${cleanName}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  function chooseSharedFolder(): void {
+    queueGraphRole('company')
+    void pickAndOpen()
+  }
+
+  return (
+    <section className="flex flex-col gap-4 rounded-xl border border-border bg-surface p-5 shadow-sm">
+      <CardHeader
+        icon={<Graph aria-hidden className="size-4" />}
+        title="Company brain"
+        badge={<Badge variant="outline">Shared</Badge>}
+      >
+        Named notes — meetings, decisions, people. Not a shared daily.
+      </CardHeader>
+      <p className="text-sm leading-relaxed text-text-secondary">
+        Five people writing the same daily note will fight Git. Capture as{' '}
+        <code className="text-xs">#decision</code>, <code className="text-xs">#meeting</code>, and{' '}
+        <code className="text-xs">#person</code> instead. Connect GitHub after you open it. Lock
+        keeps a note out of AI — it does not hide it from the repo.
+      </p>
+      {available ? (
+        <div className="mt-auto space-y-2">
+          <div className="space-y-1.5">
+            <label htmlFor={nameId} className="text-xs font-medium text-text-secondary">
+              Company graph name
+            </label>
+            <Input
+              id={nameId}
+              value={typedName}
+              disabled={busy}
+              aria-label="Company graph name"
+              aria-invalid={nameTaken}
+              onChange={(event) => setTypedName(event.target.value)}
+              onKeyDown={(event) => {
+                if (getIsComposing()) {
+                  return
+                }
+                if (event.key === 'Enter') {
+                  void create()
+                }
+              }}
+            />
+          </div>
+          {nameTaken ? (
+            <p className="text-xs text-destructive">That name already exists in iCloud Drive.</p>
+          ) : null}
+          <Button
+            type="button"
+            className="w-full"
+            disabled={busy || cleanName === null || nameTaken}
+            onClick={() => void create()}
+          >
+            {busy ? <Spinner /> : <Graph aria-hidden />}
+            New company graph
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            className="w-full text-text-muted"
+            disabled={busy}
+            onClick={chooseSharedFolder}
+          >
+            Choose a shared folder…
+          </Button>
+        </div>
+      ) : (
+        <div className="mt-auto space-y-2">
+          <Button type="button" className="w-full" disabled={busy} onClick={chooseSharedFolder}>
+            <FolderPlus aria-hidden />
+            Choose a shared folder…
           </Button>
         </div>
       )}

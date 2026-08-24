@@ -22,6 +22,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { useGraphRole } from '@/hooks/use-graph-role'
 import { formatTimeOfDay } from '@/lib/dates'
 import { useGraph } from '@/providers/graph-provider'
 import { useSettings } from '@/providers/settings-provider'
@@ -50,9 +51,11 @@ const FIELD_LABEL_CLASS = 'text-xs font-medium text-text-secondary'
 export function AddMeetingDialog({ date, event, onClose }: AddMeetingDialogProps): ReactElement {
   const { settings } = useSettings()
   const { graph } = useGraph()
+  const { role } = useGraphRole()
+  const writeDaily = role !== 'company'
   const [name, setName] = useState(event.title)
   const [attendees, setAttendees] = useState<MeetingAttendee[]>(() => defaultAttendees(event))
-  const [createNote, setCreateNote] = useState(event.recurring)
+  const [createNote, setCreateNote] = useState(event.recurring || role === 'company')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -143,6 +146,7 @@ export function AddMeetingDialog({ date, event, onClose }: AddMeetingDialogProps
         lookupContacts,
         startTime: formatTimeOfDay(new Date(event.startsAt), settings.timeFormat),
         generation: graph.generation,
+        writeDaily,
       })
       onClose()
     } catch (cause) {
@@ -226,7 +230,7 @@ export function AddMeetingDialog({ date, event, onClose }: AddMeetingDialogProps
               Cancel
             </Button>
             <Button type="submit" disabled={!canSubmit}>
-              Add to daily note
+              {writeDaily ? 'Add to daily note' : 'Create meeting note'}
             </Button>
           </DialogFooter>
         </form>

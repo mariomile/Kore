@@ -11,6 +11,8 @@ import {
   Stop,
 } from '@/components/icons'
 import { chatToMarkdown, createNoteWithTitle } from '@reflect/core'
+import { useGraphRole } from '@/hooks/use-graph-role'
+import { logCompanyCapture } from '@/lib/company-capture'
 import { getIsComposing, isModEvent } from '@meowdown/core'
 import { ShortcutKeys } from '@/components/shortcut-keys'
 import {
@@ -81,6 +83,7 @@ export function ChatInput(): ReactElement {
     setInstructions,
   } = useChatSession()
   const { graph } = useGraph()
+  const { role } = useGraphRole()
   const { settings, updateSettings } = useSettings()
   const editsOn = settings.chatAllowEdits
   const { navigate } = useRouter()
@@ -103,6 +106,27 @@ export function ChatInput(): ReactElement {
       navigate({ kind: 'note', path })
     } catch {
       toast.add({ type: 'error', title: 'Could not save the chat as a note' })
+    } finally {
+      setSavingNote(false)
+    }
+  }
+
+  const saveAsDecision = async (): Promise<void> => {
+    if (graph === null || savingNote) {
+      return
+    }
+    setSavingNote(true)
+    try {
+      const title = conversationTitle(turns[0]?.userText ?? '') || 'Decision'
+      const path = await logCompanyCapture(
+        'decision',
+        graph.generation,
+        title,
+        chatToMarkdown(turns),
+      )
+      navigate({ kind: 'note', path })
+    } catch {
+      toast.add({ type: 'error', title: 'Could not save the chat as a decision' })
     } finally {
       setSavingNote(false)
     }
@@ -401,6 +425,25 @@ export function ChatInput(): ReactElement {
             </PopoverContent>
           </Popover>
           <ChatHistoryMenu />
+          {turns.length > 0 && !streaming && role === 'company' ? (
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label="Save as a decision"
+                    disabled={savingNote}
+                    onClick={() => void saveAsDecision()}
+                    className="text-xs"
+                  >
+                    Save as a decision
+                  </Button>
+                }
+              />
+              <TooltipContent side="top">Write a #decision note from this chat</TooltipContent>
+            </Tooltip>
+          ) : null}
           {turns.length > 0 && !streaming ? (
             <Tooltip>
               <TooltipTrigger

@@ -57,6 +57,7 @@ import {
   type QueuedChatMessage,
 } from '@/providers/chat-context'
 import { conversationTitle } from '@/providers/chat-title'
+import { useGraphRole } from '@/hooks/use-graph-role'
 import { useGraph } from '@/providers/graph-provider'
 import { useSettings } from '@/providers/settings-provider'
 
@@ -90,6 +91,7 @@ interface ChatProviderProps {
 export function ChatProvider({ graph, children }: ChatProviderProps): ReactElement {
   const { settings, updateSettings } = useSettings()
   const { indexGeneration } = useGraph()
+  const { role: graphRole } = useGraphRole()
   const bridgeReady = useBridgeReady()
   const [turns, setTurns] = useState<ChatTurn[]>([])
   const [draft, setDraft] = useState('')
@@ -134,6 +136,7 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
   // stray enabled flag must still lose to the platform here.
   const semanticSearchEnabled = settings.semanticSearchEnabled && !isMobileSurface()
   const semanticSearchEnabledRef = useRef(semanticSearchEnabled)
+  const graphRoleRef = useRef(graphRole)
   const chatSystemPromptRef = useRef(settings.chatSystemPrompt)
   const chatAllowEditsRef = useRef(settings.chatAllowEdits)
   const activeAgentProfileRef = useRef(settings.activeAgentProfile)
@@ -147,6 +150,7 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
     conversationIdRef.current = conversationId
     generationRef.current = indexGeneration
     semanticSearchEnabledRef.current = semanticSearchEnabled
+    graphRoleRef.current = graphRole
     chatSystemPromptRef.current = settings.chatSystemPrompt
     chatAllowEditsRef.current = settings.chatAllowEdits
     activeAgentProfileRef.current = settings.activeAgentProfile
@@ -457,6 +461,7 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
             messages,
             today: todayIso(),
             semanticSearchEnabled: semanticSearchEnabledRef.current,
+            graphRole: graphRoleRef.current,
             customSystemPrompt,
             context,
             agentContext,

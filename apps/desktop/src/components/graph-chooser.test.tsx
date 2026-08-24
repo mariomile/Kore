@@ -91,12 +91,14 @@ describe('GraphChooser', () => {
     }
     await render(<GraphChooser />, { wrapper })
 
-    await expect.element(page.getByRole('heading', { name: 'iCloud' })).toBeVisible()
+    await expect.element(page.getByRole('heading', { name: 'Personal notes' })).toBeVisible()
     await expect.element(page.getByText('Recommended')).toBeVisible()
     await expect.element(page.getByText(/Open an existing folder/)).toBeVisible()
     await expect.element(page.getByRole('heading', { name: 'A folder you choose' })).toBeVisible()
     await expect.element(page.getByRole('button', { name: /Choose a folder/ })).toBeVisible()
     await expect.element(page.getByText(/Reflect keeps its files where they are/)).toBeVisible()
+    await expect.element(page.getByRole('heading', { name: 'Company brain' })).toBeVisible()
+    await expect.element(page.getByRole('button', { name: 'New company graph' })).toBeVisible()
   })
 
   it('creates an iCloud graph from the typed name', async () => {
@@ -107,7 +109,7 @@ describe('GraphChooser', () => {
     }
     await render(<GraphChooser />, { wrapper })
 
-    const nameInput = page.getByRole('textbox', { name: 'Name' })
+    const nameInput = page.getByRole('textbox', { name: 'Name', exact: true })
     // The input starts disabled until `icloud_status` resolves; typing into it
     // before then throws on slower engines (WebKit).
     await expect.element(nameInput).toBeEnabled()
@@ -150,7 +152,7 @@ describe('GraphChooser', () => {
     // compact create row — not the pre-status empty-container form — is the
     // input under test. Next to an existing list the row starts empty.
     await expect.element(page.getByRole('button', { name: 'Notes' })).toBeVisible()
-    const nameInput = page.getByRole('textbox', { name: 'Name' })
+    const nameInput = page.getByRole('textbox', { name: 'Name', exact: true })
     await expect.element(nameInput).toHaveValue('')
     await expect.element(page.getByRole('button', { name: 'Create' })).toBeDisabled()
 
@@ -186,7 +188,8 @@ describe('GraphChooser', () => {
     await render(<GraphChooser />, { wrapper })
 
     await expect.element(page.getByRole('heading', { name: 'A folder you choose' })).toBeVisible()
-    await expect.element(page.getByRole('heading', { name: 'iCloud' })).not.toBeInTheDocument()
+    await expect.element(page.getByRole('heading', { name: 'Personal notes' })).not.toBeInTheDocument()
+    await expect.element(page.getByRole('heading', { name: 'Company brain' })).toBeVisible()
     await expect.element(page.getByText(/existing Markdown folder on this computer/)).toBeVisible()
   })
 
@@ -228,5 +231,21 @@ describe('GraphChooser', () => {
       .getByRole('button', { name: 'work /graphs/work', exact: true })
       .locate('svg')
     await expect.element(workIcon).toHaveClass('text-text-muted')
+  })
+
+  it('creates a company graph from the company card and queues the role', async () => {
+    icloudStatusResponse = {
+      available: true,
+      documentsRoot: '/icloud/Documents',
+      existingGraphRoots: [],
+    }
+    await render(<GraphChooser />, { wrapper })
+
+    await expect.element(page.getByRole('button', { name: 'New company graph' })).toBeEnabled()
+    await userEvent.click(page.getByRole('button', { name: 'New company graph' }))
+
+    await vi.waitFor(() =>
+      expect(invokeLog).toContainEqual(['graph_create', { path: '/icloud/Documents/Company' }]),
+    )
   })
 })

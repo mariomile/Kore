@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { markdownNoteReference, noteBasenameKey, wikiNoteReference } from '../graph/note-reference'
+import { isGraphMetaPath } from '../graph/meta'
 import {
   dateFromDailyPath,
   foldGraphPath,
@@ -342,7 +343,7 @@ export function projectNoteClaims(
   parsed: ParsedNote,
   aliases: readonly IndexedAlias[],
 ): IndexedClaim[] {
-  if (isTemplatePath(parsed.path)) {
+  if (isTemplatePath(parsed.path) || isGraphMetaPath(parsed.path)) {
     return []
   }
   const claims: IndexedClaim[] = []
@@ -421,7 +422,7 @@ export function buildIndexedNote(
     pathKey: foldGraphPath(parsed.path),
     kind: isDaily(parsed.path)
       ? 'daily'
-      : isTemplatePath(parsed.path)
+      : isTemplatePath(parsed.path) || isGraphMetaPath(parsed.path)
         ? 'template'
         : isTagDefinition
           ? 'tag'

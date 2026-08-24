@@ -5,6 +5,7 @@ import { Check, FolderOpen, Locate, Settings } from '@/components/icons'
 import { GraphSwatch } from '@/components/graph-swatch'
 import { ShortcutKeys } from '@/components/shortcut-keys'
 import { SidebarIconSlot } from '@/components/sidebar/sidebar-icon-slot'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -24,6 +25,7 @@ import type { CommandContext } from '@/lib/commands/types'
 import { DEFAULT_GRAPH_COLOR, GRAPH_COLOR_OPTIONS } from '@/lib/graph-colors'
 import { cn } from '@/lib/utils'
 import { isMainWindow } from '@/lib/windows/window-role'
+import { useGraphRole } from '@/hooks/use-graph-role'
 import { useGraph } from '@/providers/graph-provider'
 import { useSync, type BackupState } from '@/providers/sync-provider'
 import { useRouter } from '@/routing/router'
@@ -71,6 +73,7 @@ interface GraphFooterProps {
 export function GraphFooter({ graph, context }: GraphFooterProps): ReactElement {
   const { recents, indexing, openRecent, chooseGraph } = useGraph()
   const { colorFor, setColor } = useGraphColors()
+  const { role, roleFor, setRole } = useGraphRole()
   const currentColor = colorFor(graph.root) ?? DEFAULT_GRAPH_COLOR
   const { backup } = useSync()
   const { route } = useRouter()
@@ -98,6 +101,11 @@ export function GraphFooter({ graph, context }: GraphFooterProps): ReactElement 
                     <span className="min-w-0 truncate text-xs font-medium text-text-secondary transition-colors duration-100 group-hover:text-text">
                       {graph.name}
                     </span>
+                    {role === 'company' ? (
+                      <Badge variant="outline" className="h-4 px-1.5 text-[10px]">
+                        Company
+                      </Badge>
+                    ) : null}
                     {dot !== null ? (
                       <>
                         <span
@@ -140,6 +148,11 @@ export function GraphFooter({ graph, context }: GraphFooterProps): ReactElement 
                     >
                       <GraphSwatch color={colorFor(recent.root)} className="size-3.5 rounded" />
                       <span className="min-w-0 flex-1 truncate">{recent.name}</span>
+                      {roleFor(recent.root) === 'company' ? (
+                        <Badge variant="outline" className="h-4 px-1.5 text-[10px]">
+                          Company
+                        </Badge>
+                      ) : null}
                       {current ? (
                         <Check aria-hidden className="size-3.5 shrink-0 text-accent" />
                       ) : binding !== null ? (
@@ -153,6 +166,15 @@ export function GraphFooter({ graph, context }: GraphFooterProps): ReactElement 
             )
           })}
           {recents.length > 0 ? <DropdownMenuSeparator /> : null}
+          <DropdownMenuItem
+            onClick={() => void setRole(role === 'company' ? 'personal' : 'company')}
+            className={MENU_ITEM_CLASS}
+          >
+            <GraphSwatch color={currentColor} className="size-3.5 rounded" />
+            <span className="min-w-0 flex-1 truncate">
+              {role === 'company' ? 'Use as personal notes' : 'Use as company brain'}
+            </span>
+          </DropdownMenuItem>
           <DropdownMenuSub>
             <DropdownMenuSubTrigger className={MENU_ITEM_CLASS}>
               <GraphSwatch color={currentColor} className="size-3.5 rounded" />

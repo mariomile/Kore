@@ -83,6 +83,11 @@ export interface AddMeetingInput {
   startTime?: string
   /** `GraphInfo.generation` — pins every read and write to the issuing graph. */
   generation: number
+  /**
+   * When false, create person/meeting notes but do not write `daily/`.
+   * Company graphs skip the shared daily so teammates do not collide.
+   */
+  writeDaily?: boolean
 }
 
 export interface AddMeetingOutcome {
@@ -246,15 +251,16 @@ export async function addMeetingToDaily(input: AddMeetingInput): Promise<AddMeet
     throw new Error('a meeting needs a name')
   }
   const lookupContacts = input.lookupContacts ?? false
+  const writeDaily = input.writeDaily !== false
 
   const daily = dailyPath(input.date)
-  const source = await noteSource(daily, input.generation)
+  const source = writeDaily ? await noteSource(daily, input.generation) : ''
   // An already-linked meeting makes the whole call a no-op — appending
   // nothing but still creating notes would be surprising. A run that failed
   // between the append and note creation still heals: the line's unresolved
   // links create their notes on click. (A plain-text line — backlink off —
   // carries no link to match against, so, like v1, it always appends.)
-  if (input.backlinkMeeting && meetingAlreadyLinked(source, title)) {
+  if (writeDaily && input.backlinkMeeting && meetingAlreadyLinked(source, title)) {
     return { appended: false, createdNotes: [] }
   }
   // Canonicalize by invite email before deduplicating: an attendee whose
@@ -265,21 +271,23 @@ export async function addMeetingToDaily(input: AddMeetingInput): Promise<AddMeet
   const attendees = normalizeAttendees(
     await resolveMeetingAttendeeTargets(input.attendees, lookupContacts),
   ).filter(({ attendee }) => attendee.name.toLowerCase() !== title.toLowerCase())
-  const line = meetingLine({
-    title,
-    attendees: attendees.map((resolved) =>
-      resolved.kind === 'plain'
-        ? { kind: 'plain', text: resolved.attendee.name }
-        : { kind: 'linked', insertText: resolved.insertText },
-    ),
-    backlinkMeeting: input.backlinkMeeting,
-    startTime: input.startTime,
-  })
-  await writeNote(
-    daily,
-    appendListItemUnderHeading(source, MEETINGS_HEADING, line),
-    input.generation,
-  )
+  if (writeDaily) {
+    const line = meetingLine({
+      title,
+      attendees: attendees.map((resolved) =>
+        resolved.kind === 'plain'
+          ? { kind: 'plain', text: resolved.attendee.name }
+          : { kind: 'linked', insertText: resolved.insertText },
+      ),
+      backlinkMeeting: input.backlinkMeeting,
+      startTime: input.startTime,
+    })
+    await writeNote(
+      daily,
+      appendListItemUnderHeading(source, MEETINGS_HEADING, line),
+      input.generation,
+    )
+  }
 
   const createdNotes: string[] = []
   if (input.backlinkMeeting && !(await titleHasNote(title))) {
@@ -303,5 +311,5 @@ export async function addMeetingToDaily(input: AddMeetingInput): Promise<AddMeet
     }
   }
 
-  return { appended: true, createdNotes }
+  return { appended: writeDaily, createdNotes }
 }

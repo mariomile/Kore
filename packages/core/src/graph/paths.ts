@@ -14,6 +14,12 @@ export const TEMPLATES_DIR = 'templates'
  * openable like notes, excluded from note-listing surfaces.
  */
 export const TAGS_DIR = 'tags'
+/**
+ * Graph identity note at the vault root (`graph.md`). Markdown is the source
+ * of truth so a Personal vs Company role syncs with GitHub/iCloud the same
+ * way tag types do.
+ */
+export const GRAPH_META_PATH = 'graph.md'
 export const ASSETS_DIR = 'assets'
 /** Audio-memo recordings live apart from pasted/dropped `assets/` files. */
 export const AUDIO_MEMOS_DIR = 'audio-memos'

@@ -18,7 +18,7 @@ vi.mock('@/providers/graph-provider', () => ({
 }))
 vi.mock('@/providers/settings-provider', () => ({
   useSettings: () => ({
-    settings: { semanticSearchEnabled: true },
+    settings: { semanticSearchEnabled: true, graphRoles: {} },
     updateSettings: () => {},
   }),
 }))

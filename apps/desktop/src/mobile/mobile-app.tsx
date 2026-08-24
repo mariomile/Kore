@@ -15,6 +15,7 @@ import {
 } from '@/mobile/use-keyboard'
 import { useShouldShowPaywall } from '@/mobile/use-should-show-paywall'
 import { useTaskCheckboxHaptics } from '@/mobile/use-task-haptics'
+import { GraphRoleSync } from '@/components/graph-role-sync'
 import { CaptureProvider } from '@/providers/capture-provider'
 import { ChatProvider } from '@/providers/chat-provider'
 import { useGraph } from '@/providers/graph-provider'
@@ -88,6 +89,7 @@ export function MobileApp(): ReactElement {
                     switches. */}
                 <MobileAudioMemoProvider graph={graph}>
                   <MobileShell />
+                  <GraphRoleSync />
                   <MobileStatusLayer />
                   {/* Mounted beside the shell (not inside the daily screen)
                       so a live recording's sheet survives tab switches. */}

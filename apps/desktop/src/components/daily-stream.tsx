@@ -1,6 +1,7 @@
 import { useCallback, useLayoutEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { Virtualizer, type VirtualizerHandle } from 'virtua'
 import { dailyPath } from '@reflect/core'
+import { CompanyDailyBanner } from '@/components/company-daily-banner'
 import { NotePane } from '@/components/note-pane'
 import type { NoteEditorHandle } from '@/editor/note-editor'
 import { formatDayLabel, todayIso } from '@/lib/dates'
@@ -280,6 +281,11 @@ export function DailyStream({ target }: DailyStreamProps): ReactElement {
               >
                 {formatDayLabel(date, settings.dateFormat)}
               </h2>
+              {isToday ? (
+                <div className={CONTENT_GUTTER}>
+                  <CompanyDailyBanner />
+                </div>
+              ) : null}
               <NotePane
                 path={dailyPath(date)}
                 dailyDate={date}

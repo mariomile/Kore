@@ -3,6 +3,7 @@ import { errorMessage } from '../../errors'
 import { languageModel } from '../language-model'
 import { modelContextWindow } from '../provider-catalog'
 import type { AiProviderConfig } from '../../settings/schema'
+import type { GraphRole } from '../../graph/meta'
 import type { CloudGraphContext, CloudSafe } from '../checkers'
 import type { AgentPromptContext } from '../agent-profiles'
 import { fitToContextWindow } from './context-window'
@@ -60,6 +61,8 @@ export interface StreamChatOptions {
   context: CloudSafe<CloudGraphContext> | null
   /** The active agent's soul + memories for the system prompt. */
   agentContext?: AgentPromptContext | null
+  /** Personal vs company graph — steers retrieval toward named notes. */
+  graphRole?: GraphRole | null
   /** The user's "Allow edits" chat setting — gates `set_note_property`. */
   allowEdits?: boolean | undefined
   /** Effect overrides for the note tools (the desktop's write channel). */
@@ -94,6 +97,7 @@ export function streamChat(options: StreamChatOptions): AsyncGenerator<ChatStrea
       semanticSearchEnabled: options.semanticSearchEnabled,
       customSystemPrompt: options.customSystemPrompt,
       agentContext: options.agentContext ?? null,
+      graphRole: options.graphRole ?? null,
     }),
   })
   return streamChatTurn(languageModel(options.config, options.apiKey, options.fetchFn), {
@@ -103,6 +107,7 @@ export function streamChat(options: StreamChatOptions): AsyncGenerator<ChatStrea
     customSystemPrompt: options.customSystemPrompt,
     context: options.context,
     agentContext: options.agentContext ?? null,
+    graphRole: options.graphRole ?? null,
     allowEdits: options.allowEdits,
     toolDeps: options.toolDeps,
     signal: options.signal,
@@ -123,6 +128,8 @@ export interface ChatTurnOptions {
   context: CloudSafe<CloudGraphContext> | null
   /** The active agent's soul + memories for the system prompt. */
   agentContext?: AgentPromptContext | null
+  /** Personal vs company graph — steers retrieval toward named notes. */
+  graphRole?: GraphRole | null
   /** The user's "Allow edits" chat setting — gates `set_note_property`. */
   allowEdits?: boolean | undefined
   /** Aborts the provider call mid-stream (the UI's stop button). */
@@ -169,6 +176,7 @@ export async function* streamChatTurn(
         semanticSearchEnabled: options.semanticSearchEnabled,
         customSystemPrompt: options.customSystemPrompt,
         agentContext: options.agentContext ?? null,
+        graphRole: options.graphRole ?? null,
       }),
       messages: options.messages,
       tools,

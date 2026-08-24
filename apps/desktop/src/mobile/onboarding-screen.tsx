@@ -1,5 +1,6 @@
 import { useState, type ReactElement } from 'react'
-import { Cloud, HardDrive } from '@/components/icons'
+import { Cloud, Graph, HardDrive } from '@/components/icons'
+import { queueGraphRole } from '@/lib/graph-role'
 import { InlineAlert } from '@/components/inline-alert'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
@@ -63,10 +64,11 @@ export function MobileOnboardingScreen(): ReactElement {
           </div>
           <div className="space-y-2">
             <h1 className="text-[28px] font-semibold leading-tight tracking-tight">
-              Start with iCloud sync
+              Personal notes or a company brain
             </h1>
             <p className="text-sm leading-6 text-text-secondary">
-              Keep your notes up to date across iPhone, iPad, and Mac with iCloud Drive.
+              Today&apos;s note stays on iCloud. A company brain is shared named notes — decisions,
+              people, meetings — not a shared diary.
             </p>
           </div>
         </header>
@@ -81,7 +83,10 @@ export function MobileOnboardingScreen(): ReactElement {
               pendingChoice={pendingChoice}
               onOpen={(root) => runChoice(root, () => completeOnboarding('icloud', root))}
               onCreate={(root) =>
-                runChoice('icloud-create', () => completeOnboarding('icloud', root))
+                runChoice('icloud-create', () => {
+                  queueGraphRole('personal')
+                  return completeOnboarding('icloud', root)
+                })
               }
             />
           ) : (
@@ -89,6 +94,21 @@ export function MobileOnboardingScreen(): ReactElement {
           )}
 
           <div className="flex flex-col items-center gap-1 px-4 text-center">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-text-secondary"
+              onClick={() =>
+                runChoice('company', () => {
+                  queueGraphRole('company')
+                  return completeOnboarding('local')
+                })
+              }
+              disabled={action.pending || mobileStorageInfo === null}
+            >
+              {pendingChoice === 'company' ? <Spinner /> : <Graph aria-hidden />}
+              {pendingChoice === 'company' ? 'Setting up…' : 'Start a company brain'}
+            </Button>
             <Button
               variant="ghost"
               size="sm"

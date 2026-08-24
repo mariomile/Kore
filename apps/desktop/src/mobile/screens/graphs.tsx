@@ -1,6 +1,7 @@
 import { useState, type ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Plus } from '@/components/icons'
+import { Graph, Plus } from '@/components/icons'
+import { queueGraphRole } from '@/lib/graph-role'
 import { errorMessage, mobileStorage, type MobileStorageKind } from '@reflect/core'
 import { InlineAlert } from '@/components/inline-alert'
 import { Spinner } from '@/components/ui/spinner'
@@ -86,13 +87,13 @@ export function MobileGraphs(): ReactElement {
       >
         <div className="flex flex-col gap-6 px-4 py-4">
           <SettingsGroup
-            header="iCloud Drive"
+            header="Personal notes"
             footer={
               resolving
                 ? null
                 : icloudDocumentsRoot === null
                   ? 'iCloud Drive isn’t available on this device.'
-                  : 'Syncs with Memento on your other devices.'
+                  : 'Your daily note. Syncs across iPhone and Mac.'
             }
           >
             {resolving ? (
@@ -113,19 +114,33 @@ export function MobileGraphs(): ReactElement {
                   />
                 ))}
                 {icloudDocumentsRoot !== null ? (
-                  <SettingsActionRow
-                    label="New graph"
-                    icon={Plus}
-                    disabled={busy}
-                    onPress={() => setCreateOpen(true)}
-                  />
+                  <>
+                    <SettingsActionRow
+                      label="New graph"
+                      icon={Plus}
+                      disabled={busy}
+                      onPress={() => {
+                        queueGraphRole('personal')
+                        setCreateOpen(true)
+                      }}
+                    />
+                    <SettingsActionRow
+                      label="New company graph"
+                      icon={Graph}
+                      disabled={busy}
+                      onPress={() => {
+                        queueGraphRole('company')
+                        setCreateOpen(true)
+                      }}
+                    />
+                  </>
                 ) : null}
               </>
             )}
           </SettingsGroup>
 
           {localRoot !== null ? (
-            <SettingsGroup footer="Notes stay on this device. Sync with GitHub from Settings.">
+            <SettingsGroup footer="On this device. A company brain should connect GitHub from Settings so the team shares the same notes.">
               <SettingsSelectRow
                 label="This device"
                 selected={graph?.root === localRoot}

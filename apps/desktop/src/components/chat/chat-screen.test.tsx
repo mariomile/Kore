@@ -90,6 +90,8 @@ vi.mock('@/providers/settings-provider', async () => {
           chatSystemPrompt: '',
           chatAllowEdits: false,
           activeAgentProfile: null,
+          semanticSearchEnabled: false,
+          graphRoles: {},
         },
         updateSettings: (patch: Partial<Settings>) => {
           updatedSettings.push(patch)

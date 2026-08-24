@@ -67,7 +67,7 @@ export function NoteActionsSection({
         }}
         failureLabel="Updating privacy"
         keybinding={PRIVATE_KEYBINDING}
-        tooltip="Locks this note out of AI. Backup and sync still include it."
+        tooltip="Locks this note out of AI. Backup and sync still include it — a lock is not encryption, and teammates with the repo can still read it."
       />
       <NoteGistAction path={path} keybinding={GIST_KEYBINDING} />
       <NoteExportAction path={path} keybinding={EXPORT_KEYBINDING} />

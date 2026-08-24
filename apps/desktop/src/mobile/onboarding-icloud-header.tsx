@@ -13,7 +13,7 @@ export function OnboardingIcloudHeader({ description }: OnboardingIcloudHeaderPr
       </div>
       <div className="min-w-0 flex-1 space-y-1">
         <div className="flex items-center gap-2">
-          <h2 className="text-sm font-semibold">iCloud sync</h2>
+          <h2 className="text-sm font-semibold">Personal notes</h2>
           <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">
             Recommended
           </span>

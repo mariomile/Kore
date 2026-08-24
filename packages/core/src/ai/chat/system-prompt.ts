@@ -1,3 +1,4 @@
+import type { GraphRole } from '../../graph/meta'
 import type { CloudGraphContext, CloudSafe } from '../checkers'
 import { agentContextPromptLines, type AgentPromptContext } from '../agent-profiles'
 import { normalizeChatSystemPrompt } from '../../settings/schema'
@@ -26,6 +27,11 @@ export interface SystemPromptInput {
   context: CloudSafe<CloudGraphContext> | null
   /** The active agent's soul + memories (null: none to send). */
   agentContext?: AgentPromptContext | null
+  /**
+   * When `company`, steer retrieval toward named collection notes instead
+   * of a shared daily diary.
+   */
+  graphRole?: GraphRole | null
 }
 
 /** Build the system prompt for one chat session. */
@@ -35,12 +41,14 @@ export function chatSystemPrompt({
   semanticSearchEnabled,
   customSystemPrompt,
   agentContext = null,
+  graphRole = null,
 }: SystemPromptInput): string {
   const customInstructions = normalizeChatSystemPrompt(customSystemPrompt)
   return [
     'You are Reflect’s assistant, embedded in the user’s personal note graph.',
     `Today’s date is ${today}. Daily notes are markdown files named daily/YYYY-MM-DD.md. Reflect-created regular notes live under notes/. Adopted notes may live at any eligible visible path in the opened vault.`,
     ...graphOverviewLines(context),
+    ...companyGraphGuidance(graphRole),
     ...agentContextPromptLines(agentContext, { canEdit: false }),
     '',
     'Grounding rules:',
@@ -82,6 +90,18 @@ function searchNotesGuidance(semanticSearchEnabled: boolean): string {
  * complete the model is told these are the *only* tags, so it never guesses
  * a filter that can only return nothing.
  */
+function companyGraphGuidance(role: GraphRole | null | undefined): string[] {
+  if (role !== 'company') {
+    return []
+  }
+  return [
+    '',
+    'This is a company graph. Prefer #decision, #person, #company, #project, and #meeting notes.',
+    'A shared daily note is not the team journal — do not treat daily/ as the source of truth for decisions.',
+    'When the question is about a choice, a person, or a project, search those tags (or list_collection) before scanning dailies.',
+  ]
+}
+
 function graphOverviewLines(context: CloudSafe<CloudGraphContext> | null): string[] {
   if (context === null) {
     return []

@@ -598,6 +598,29 @@ export type GraphColors = Record<string, GraphColor>
  * its color. Resilience is per entry: a corrupt value is dropped while the
  * rest load, and a non-object value degrades to the empty record.
  */
+export const graphRoleSettingSchema = z.enum(['personal', 'company'])
+
+export type GraphRoles = Record<string, 'personal' | 'company'>
+
+/**
+ * Cached Personal vs Company role per graph root. The source of truth is
+ * `graph.md` in the vault (syncs); this record is the switcher's local
+ * cache so recents can show a badge without opening every folder.
+ */
+export const graphRolesSchema = z
+  .record(z.string(), z.unknown())
+  .catch({})
+  .transform((entries) => {
+    const roles: GraphRoles = {}
+    for (const [root, value] of Object.entries(entries)) {
+      const parsed = graphRoleSettingSchema.safeParse(value)
+      if (parsed.success) {
+        roles[root] = parsed.data
+      }
+    }
+    return roles
+  })
+
 export const graphColorsSchema = z
   .record(z.string(), z.unknown())
   .catch({})
@@ -1146,6 +1169,7 @@ export const settingsSchema = z.looseObject({
   calendarEnabled: calendarEnabledSchema,
   calendarIds: calendarIdsSchema,
   graphColors: graphColorsSchema,
+  graphRoles: graphRolesSchema,
   aiProviders: aiProvidersSchema,
   defaultAiProviderId: defaultAiProviderIdSchema,
   chatModelSelection: chatModelSelectionSchema,

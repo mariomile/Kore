@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dialog'
 import { openUrlSync } from '@/lib/open-url'
 import { isMacosDesktop } from '@/lib/platform'
+import { isMobileSurface } from '@/lib/platform-surface'
 import {
   CALENDAR_QUERY_PREFIX,
   useCalendarAuthorization,
@@ -37,7 +38,7 @@ const ACTION_BUTTON_CLASS =
  * chooser in a dialog. There are no credentials here and none to go stale:
  * macOS Calendar owns the accounts (Google, iCloud, Exchange), so a denied
  * or revoked grant shows one explanation with a System Settings button, not
- * an error-badge-and-reconnect loop. macOS-only; the field renders nothing
+ * an error-badge-and-reconnect loop. Apple-only; the field renders nothing
  * elsewhere.
  */
 export function CalendarIntegrationField(): ReactElement | null {
@@ -61,7 +62,7 @@ export function CalendarIntegrationField(): ReactElement | null {
     return [...bySource]
   }, [calendars])
 
-  if (!isMacosDesktop) {
+  if (!isMacosDesktop && !isMobileSurface()) {
     return null
   }
 
@@ -110,11 +111,11 @@ export function CalendarIntegrationField(): ReactElement | null {
             <button
               type="button"
               onClick={() => {
-                openUrlSync(CALENDAR_PRIVACY_PANE)
+                openUrlSync(isMobileSurface() ? 'app-settings:' : CALENDAR_PRIVACY_PANE)
               }}
               className={ACTION_BUTTON_CLASS}
             >
-              Open System Settings
+              {isMobileSurface() ? 'Open Settings' : 'Open System Settings'}
             </button>
           )}
         </div>

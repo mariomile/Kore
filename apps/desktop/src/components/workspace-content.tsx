@@ -6,6 +6,8 @@ import { ContextSidebar } from '@/components/context-sidebar/context-sidebar'
 import { AgentRoutinesRunner } from '@/components/agent-routines-runner'
 import { TaskRemindersRunner } from '@/components/task-reminders-runner'
 import { EmbeddingsSync } from '@/components/embeddings-sync'
+import { CompanySyncBanner } from '@/components/company-sync-banner'
+import { GraphRoleSync } from '@/components/graph-role-sync'
 import { NoteFindBar } from '@/components/note-find-bar'
 import { NoteTabsStrip } from '@/components/note-tabs-strip'
 import { RouteContent } from '@/components/route-content'
@@ -62,6 +64,7 @@ export function WorkspaceContent({ graph }: WorkspaceContentProps): ReactElement
             <AppShell className="bg-transparent">
               <div className="relative flex h-full flex-col">
                 <div className="min-h-0 flex-1">
+                  <CompanySyncBanner />
                   <RouteContent />
                 </div>
 
@@ -71,6 +74,7 @@ export function WorkspaceContent({ graph }: WorkspaceContentProps): ReactElement
                 <VaultReplaceMount />
                 <TemplatePicker context={commandContext} />
                 <TemplateCreateDialog context={commandContext} />
+                <GraphRoleSync />
                 <EmbeddingsSync />
                 <AgentRoutinesRunner />
                 <TaskRemindersRunner />

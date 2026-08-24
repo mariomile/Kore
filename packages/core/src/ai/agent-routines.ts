@@ -268,3 +268,25 @@ export const MEMORY_CURATOR_PRESET: {
     '5. If the journal has grown very long, compress entries older than a month into a single summary entry; leave recent entries untouched.',
   ].join('\n'),
 }
+
+/**
+ * Weekly company digest: what changed in decisions, people, and projects.
+ * Offered next to the memory curator on the Agents screen.
+ */
+export const COMPANY_DIGEST_PRESET: {
+  name: string
+  prompt: string
+  schedule: RoutineSchedule
+} = {
+  name: 'Company digest',
+  schedule: { kind: 'weekly', weekday: 5, time: '16:00' },
+  prompt: [
+    'You are writing this week’s company-brain digest. Work only from the vault:',
+    '',
+    '1. Search #decision notes updated recently. List each decision, its status, and a wiki link.',
+    '2. Search #meeting notes from the last seven days. Pull any decisions or follow-ups that are not already a #decision note — propose creating those notes rather than inventing them.',
+    '3. Search #project notes. Summarize status changes.',
+    '4. Write a new note titled like “Week of <ISO Monday>” tagged #digest with the summary. Do not append to a shared daily note.',
+    '5. Keep it short. Cite every note you used.',
+  ].join('\n'),
+}

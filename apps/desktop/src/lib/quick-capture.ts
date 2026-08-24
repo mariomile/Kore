@@ -1,8 +1,17 @@
 import {
   TEXT_CAPTURE_MAX_LENGTH,
   textCaptureEnvelopeSchema,
+  type GraphRole,
   type TextCaptureEnvelope,
 } from '@reflect/core'
+
+/** Where a global-shortcut line lands. */
+export type QuickCaptureDestination = 'today' | 'decision' | 'meeting'
+
+/** Company graphs default to a named decision so capture never hits a shared daily. */
+export function defaultQuickCaptureDestination(role: GraphRole | null): QuickCaptureDestination {
+  return role === 'company' ? 'decision' : 'today'
+}
 
 /**
  * Fold a capture bar's payload to one line. The drain rejects newlines, so

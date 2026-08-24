@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import { CompanyApplySection } from './company-apply-section'
 import { NoteActionsSection } from './note-actions-section'
 import { NoteHistorySection } from './note-history-section'
 import { NoteOutlineSection } from './note-outline-section'
@@ -23,6 +24,7 @@ export function NoteContextSidebar({ path }: NoteContextSidebarProps): ReactElem
     <div className="flex flex-col py-2 text-text">
       <div className="my-4 space-y-4 pb-4">
         <NoteActionsSection path={path} showTrash />
+        <CompanyApplySection path={path} />
         <NotePropertiesSection path={path} />
         <NoteOutlineSection />
         <PublishedUrlSection path={path} />

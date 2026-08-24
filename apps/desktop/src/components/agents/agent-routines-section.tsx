@@ -1,6 +1,7 @@
 import { useState, type ReactElement } from 'react'
 import { CalendarClock, History, Play, Trash } from '@/components/icons'
 import {
+  COMPANY_DIGEST_PRESET,
   MEMORY_CURATOR_PRESET,
   ROUTINE_MAX_CONSECUTIVE_FAILURES,
   type AgentProfile,
@@ -95,7 +96,25 @@ export function AgentRoutinesSection({ profiles }: AgentRoutinesSectionProps): R
     })
   }
 
+  const addDigest = (): void => {
+    add({
+      id: crypto.randomUUID(),
+      name: COMPANY_DIGEST_PRESET.name,
+      agentSlug: null,
+      prompt: COMPANY_DIGEST_PRESET.prompt,
+      script: null,
+      schedule: COMPANY_DIGEST_PRESET.schedule,
+      enabled: true,
+      lastRunMs: Date.now(),
+      lastChangedPaths: [],
+      runs: [],
+      consecutiveFailures: 0,
+      retryAtMs: null,
+    })
+  }
+
   const hasCurator = routines.some((routine) => routine.name === MEMORY_CURATOR_PRESET.name)
+  const hasDigest = routines.some((routine) => routine.name === COMPANY_DIGEST_PRESET.name)
 
   return (
     <section className="mt-3 rounded-xl border border-border bg-surface p-4">
@@ -111,6 +130,11 @@ export function AgentRoutinesSection({ profiles }: AgentRoutinesSectionProps): R
         {hasCurator ? null : (
           <Button type="button" variant="outline" size="sm" onClick={addCurator}>
             Add Memory curator
+          </Button>
+        )}
+        {hasDigest ? null : (
+          <Button type="button" variant="outline" size="sm" onClick={addDigest}>
+            Add Company digest
           </Button>
         )}
         <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>

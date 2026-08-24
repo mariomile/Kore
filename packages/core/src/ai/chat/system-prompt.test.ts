@@ -144,6 +144,21 @@ describe('chatSystemPrompt', () => {
   })
 })
 
+describe('chatSystemPrompt company graph', () => {
+  it('steers retrieval toward named collection notes', () => {
+    const prompt = chatSystemPrompt({
+      today: '2026-08-24',
+      context: null,
+      semanticSearchEnabled: false,
+      customSystemPrompt: '',
+      graphRole: 'company',
+    })
+    expect(prompt).toContain('This is a company graph')
+    expect(prompt).toContain('#decision')
+    expect(prompt).toContain('shared daily note is not the team journal')
+  })
+})
+
 describe('chatSystemPrompt agent memory', () => {
   it('injects the memory block with the read-only upkeep instruction', () => {
     const prompt = chatSystemPrompt({

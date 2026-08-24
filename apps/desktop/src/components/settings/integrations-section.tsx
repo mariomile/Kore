@@ -7,6 +7,7 @@ import {
 } from '@/hooks/use-contacts-authorization'
 import { openUrlSync } from '@/lib/open-url'
 import { isMacosDesktop } from '@/lib/platform'
+import { isMobileSurface } from '@/lib/platform-surface'
 import { useSettings } from '@/providers/settings-provider'
 import { CalendarIntegrationField } from './calendar-integration-field'
 import { SettingsSection } from './section'
@@ -52,7 +53,7 @@ export function IntegrationsSection(): ReactElement | null {
   }, [contactsEnabled, refreshAuthorization])
 
   const contactsAvailable = authorization !== null && authorization !== 'unavailable'
-  const calendarAvailable = isMacosDesktop
+  const calendarAvailable = isMacosDesktop || isMobileSurface()
 
   if (!contactsAvailable && !calendarAvailable) {
     return null

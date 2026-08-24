@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/message-scroller'
 import { useChatSession } from '@/providers/chat-provider'
 import { ChatTurn } from './chat-turn'
+import { CompanyChatPrompts } from './company-chat-prompts'
 
 /**
  * The conversation column: a centered list of turns inside shadcn's chat
@@ -21,6 +22,7 @@ export function ChatTurnList(): ReactElement {
     <MessageScrollerProvider autoScroll defaultScrollPosition="end">
       <MessageScroller className="min-h-0 flex-1">
         <MessageScrollerViewport className="px-6" aria-label="Chat conversation">
+          <CompanyChatPrompts />
           {turns.length > 0 ? (
             <div className="mx-auto w-full max-w-2xl">
               <MessageScrollerContent className="gap-6 py-8">

@@ -40,6 +40,7 @@ vi.mock('@/providers/settings-provider', () => ({
       defaultAiProviderId: null,
       chatSystemPrompt: '',
       aiPrompts: [],
+      graphRoles: {},
     },
     updateSettings: async () => {},
     updateSettingsWith: () => {},

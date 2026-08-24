@@ -132,6 +132,20 @@ describe('commitNoteFrontmatter', () => {
     )
   })
 
+  it('writes or clears a bound template on a tag definition', async () => {
+    readNote.mockResolvedValue('---\nlore: tag\nproperties: []\n---\n')
+
+    await commitNoteFrontmatter('tags/book.md', { tagTemplate: 'templates/book.md' }, 3)
+    const written = writeNote.mock.calls[0] as unknown as [string, string, number]
+    expect(written[1]).toContain('template: templates/book.md')
+
+    writeNote.mockClear()
+    readNote.mockResolvedValue('---\nlore: tag\ntemplate: templates/book.md\nproperties: []\n---\n')
+    await commitNoteFrontmatter('tags/book.md', { tagTemplate: null }, 3)
+    const cleared = writeNote.mock.calls[0] as unknown as [string, string, number]
+    expect(cleared[1]).not.toContain('template:')
+  })
+
   it('leaves unrelated keys and comments untouched around a property write', async () => {
     readNote.mockResolvedValue('---\n# reading log\nstatus: to-read\nid: 01H\n---\n# A\n')
 

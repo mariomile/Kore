@@ -248,4 +248,53 @@ describe('PropertyValueEditor', () => {
     await view.getByRole('option', { name: 'ai' }).click()
     expect(onCommit).toHaveBeenLastCalledWith(['product'])
   })
+
+  it('picks a status option the same way as a select', async () => {
+    const property: TagProperty = {
+      name: 'Stage',
+      key: 'stage',
+      type: 'status',
+      options: ['todo', 'done'],
+    }
+    const view = await render(editor(property, stored('todo', 'string')))
+
+    await view.getByRole('button', { name: 'Edit Stage' }).click()
+    await view.getByRole('option', { name: 'done' }).click()
+    expect(onCommit).toHaveBeenCalledWith('done')
+  })
+
+  it('commits a rating as an integer 1–5', async () => {
+    const property: TagProperty = { name: 'Score', key: 'score', type: 'rating' }
+    const view = await render(editor(property))
+
+    await view.getByRole('button', { name: 'Edit Score' }).click()
+    await view.getByRole('spinbutton', { name: 'Score' }).fill('4')
+    await userEvent.keyboard('{Enter}')
+    expect(onCommit).toHaveBeenCalledWith(4)
+  })
+
+  it('commits files as a list of paths', async () => {
+    const property: TagProperty = { name: 'Attachments', key: 'attachments', type: 'files' }
+    const view = await render(editor(property))
+
+    await view.getByRole('button', { name: 'Edit Attachments' }).click()
+    await view.getByRole('textbox', { name: 'Attachments' }).fill('assets/scan.pdf, cover.png')
+    await userEvent.keyboard('{Enter}')
+    expect(onCommit).toHaveBeenCalledWith(['assets/scan.pdf', 'cover.png'])
+  })
+
+  it('does not open an editor for a view-only rollup', async () => {
+    const property: TagProperty = {
+      name: 'Author score',
+      key: 'author-score',
+      type: 'rollup',
+      rollup: { relation: 'author', property: 'score', aggregation: 'original' },
+    }
+    const view = await render(editor(property, stored('5', 'number')))
+
+    await expect
+      .element(view.getByRole('button', { name: 'Edit Author score' }))
+      .not.toBeInTheDocument()
+    await expect.element(view.getByText('5')).toBeInTheDocument()
+  })
 })

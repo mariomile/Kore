@@ -117,6 +117,10 @@ export const frontmatterSchema = z.looseObject({
    * card reappears, nothing breaks.
    */
   ignoredContacts: z.array(z.string()).catch([]).default([]),
+  /** Short glyph or image path shown above the editor. */
+  icon: z.string().optional().catch(undefined),
+  /** Cover image path (graph-relative, wiki embed, or http(s) URL). */
+  cover: z.string().optional().catch(undefined),
 })
 export type Frontmatter = z.infer<typeof frontmatterSchema>
 
@@ -208,6 +212,12 @@ export interface ParsedTask extends TaskMarker {
    * (a bare task in a past daily note is Current, not Overdue — Plan 18 / V1).
    */
   dueDate: string | null
+  /**
+   * Local time of day on {@link dueDate}, `HH:MM` 24-hour, or null. Authored as
+   * `@HH:MM` immediately after the due-date wiki link (`+ [ ] call [[2026-08-24]] @14:30`).
+   * Absent when the task is date-only — the daily digest still covers those.
+   */
+  dueTime: string | null
 }
 
 /** Version of the extraction contract; bump on breaking shape changes.
@@ -216,8 +226,9 @@ export interface ParsedTask extends TaskMarker {
  * checkboxes are excluded.
  * 4 — task rows carry parent outline/list breadcrumbs.
  * 5 — `wikiLinks` includes frontmatter `[[…]]` occurrences (TDR 0005
- * relations), with file-absolute spans like every body link. */
-export const PARSED_NOTE_VERSION = 5
+ * relations), with file-absolute spans like every body link.
+ * 6 — `tasks[].dueTime` from `@HH:MM` after the due-date link. */
+export const PARSED_NOTE_VERSION = 6
 
 /** The full parse of one note — the stable contract downstream plans depend on. */
 export interface ParsedNote {

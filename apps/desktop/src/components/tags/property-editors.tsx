@@ -1,6 +1,7 @@
 import { useRef, useState, type KeyboardEvent, type ReactElement, type ReactNode } from 'react'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import {
+  parseRating,
   relationDisplay,
   relationTarget,
   relationValue,
@@ -79,6 +80,17 @@ export function typedValueForText(property: TagProperty, text: string): unknown 
     const parsed = Number(trimmed)
     return Number.isFinite(parsed) ? parsed : undefined
   }
+  if (property.type === 'rating') {
+    const parsed = Number(trimmed)
+    return parseRating(parsed) ?? undefined
+  }
+  if (property.type === 'files') {
+    const entries = trimmed
+      .split(',')
+      .map((entry) => entry.trim())
+      .filter((entry) => entry !== '')
+    return entries.length === 0 ? undefined : entries
+  }
   return trimmed
 }
 
@@ -143,7 +155,7 @@ function InputPropertyEditor({
     // where the DOM reports '' for half-typed input like `4e`, which would
     // otherwise read as an intentional clear.
     if (
-      property.type === 'number' &&
+      (property.type === 'number' || property.type === 'rating') &&
       ((trimmed !== '' && !Number.isFinite(Number(trimmed))) ||
         inputRef.current?.validity.badInput === true)
     ) {
@@ -162,7 +174,13 @@ function InputPropertyEditor({
     }
   }
   const inputType =
-    property.type === 'number' ? 'number' : property.type === 'date' ? 'date' : 'text'
+    property.type === 'number' || property.type === 'rating'
+      ? 'number'
+      : property.type === 'date'
+        ? 'date'
+        : property.type === 'email'
+          ? 'email'
+          : 'text'
 
   return (
     <Popover
@@ -171,7 +189,8 @@ function InputPropertyEditor({
         setOpen(next)
         if (next) {
           cancelled.current = false
-          seed.current = editorSeedText(value)
+          seed.current =
+            property.type === 'files' ? editorSeedList(value).join(', ') : editorSeedText(value)
           setDraft(seed.current)
         }
       }}
@@ -182,6 +201,9 @@ function InputPropertyEditor({
           ref={inputRef}
           autoFocus
           type={inputType}
+          min={property.type === 'rating' ? 1 : undefined}
+          max={property.type === 'rating' ? 5 : undefined}
+          step={property.type === 'rating' ? 1 : undefined}
           value={draft}
           aria-label={property.name}
           placeholder={property.name}
@@ -509,12 +531,15 @@ export function PropertyValueEditor(props: PropertyEditorProps): ReactElement {
     case 'checkbox':
       return <CheckboxPropertyEditor {...props} />
     case 'select':
+    case 'status':
     case 'multiselect':
       return <SelectPropertyEditor {...props} />
     case 'relation':
       return <RelationPropertyEditor {...props} />
     case 'relations':
       return <MultiRelationPropertyEditor {...props} />
+    case 'rollup':
+      return <>{props.children}</>
     default:
       return <InputPropertyEditor {...props} />
   }

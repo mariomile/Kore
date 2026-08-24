@@ -3,6 +3,8 @@ import type { ExitBoundaryHandler, SearchStatus } from '@meowdown/core'
 import {
   detectConflictMarkers,
   isDaily,
+  parseCollectionEmbeds,
+  parseNoteTransclusions,
   isTemplatePath,
   isUntitledNotePath,
   untitledNoteSeed,
@@ -30,7 +32,13 @@ import { useEditorAutocomplete } from '@/editor/use-editor-autocomplete'
 import { useNoteDocument } from '@/editor/use-note-document'
 import { useDailyNoteSeed } from '@/hooks/use-daily-note-seed'
 import { useTagNavigation } from '@/editor/use-tag-navigation'
+import { CalloutHighlighter } from '@/editor/callout-highlighter'
+import { useCalloutSlashItems } from '@/editor/use-callout-slash-items'
+import { useCollectionSlashItems } from '@/editor/use-collection-slash-items'
 import { useTemplateSlashItems } from '@/editor/use-template-slash-items'
+import { EmbeddedCollection } from '@/components/notes/embedded-collection'
+import { EmbeddedNote } from '@/components/notes/embedded-note'
+import { NoteAppearance } from '@/components/notes/note-appearance'
 import { useMarkdownLinkNavigation } from '@/editor/use-markdown-link-navigation'
 import { useWikiLinkNavigation } from '@/editor/use-wiki-link-navigation'
 import { useWikiLinkHoverPreview } from '@/editor/use-wiki-link-hover-preview'
@@ -219,9 +227,43 @@ export function NotePaneComponent({
   // The `/` menu's template rows insert into this pane's own editor, read
   // through the registry ref at select time (a late resolve after the pane
   // unmounted must insert nowhere rather than somewhere stale).
-  const onSlashMenuSearch = useTemplateSlashItems(
-    useCallback(() => registeredHandle.current?.handle ?? null, []),
-    path,
+  const getEditor = useCallback(() => registeredHandle.current?.handle ?? null, [])
+  const templateSlashItems = useTemplateSlashItems(getEditor, path)
+  const collectionSlashItems = useCollectionSlashItems(getEditor)
+  const calloutSlashItems = useCalloutSlashItems(getEditor)
+  const onSlashMenuSearch = useCallback(
+    async (query: string) => [
+      ...(await collectionSlashItems(query)),
+      ...(await calloutSlashItems(query)),
+      ...(await templateSlashItems(query)),
+    ],
+    [collectionSlashItems, calloutSlashItems, templateSlashItems],
+  )
+  // Live body for embed parsing: typed markdown while this session's seed is
+  // unchanged, otherwise the snapshot (a new session or an external reload).
+  const [typedBody, setTypedBody] = useState<{
+    markdown: string
+    epoch: number
+    seed: string
+  } | null>(null)
+  const bodyMarkdown =
+    typedBody !== null &&
+    typedBody.epoch === document.sessionEpoch &&
+    typedBody.seed === document.initialContent
+      ? typedBody.markdown
+      : document.initialContent
+  const collectionEmbeds = useMemo(() => parseCollectionEmbeds(bodyMarkdown), [bodyMarkdown])
+  const noteTransclusions = useMemo(() => parseNoteTransclusions(bodyMarkdown), [bodyMarkdown])
+  const handleEditorChange = useCallback(
+    (markdown: string) => {
+      setTypedBody({
+        markdown,
+        epoch: document.sessionEpoch,
+        seed: document.initialContent,
+      })
+      document.onEditorChange(markdown)
+    },
+    [document],
   )
   const handleRef = useCallback(
     (handle: NoteEditorHandle | null) => {
@@ -311,6 +353,11 @@ export function NotePaneComponent({
     const conflicted = detectConflictMarkers(document.initialContent)
     return (
       <div className={cn(gutterClassName, className)}>
+        <NoteAppearance
+          source={document.header}
+          resolveImageUrl={resolveImageUrl}
+          gutterClassName={gutterClassName}
+        />
         <SyncConflictNotice path={path} className="mb-4" />
         {conflicted ? (
           <ConflictNoteView content={document.initialContent} />
@@ -366,13 +413,19 @@ export function NotePaneComponent({
         {!dailyNote ? <SuggestedContactCard key={path} path={path} /> : null}
       </div>
 
+      <NoteAppearance
+        source={document.header}
+        resolveImageUrl={resolveImageUrl}
+        gutterClassName={gutterClassName}
+      />
+
       <NoteEditor
         // Keyed on the session, not the path: a rename retargets the live
         // session under a new filename (Plan 17), and remounting the editor
         // for that would throw away the cursor mid-thought.
         key={document.sessionEpoch}
         initialContent={editorSeed}
-        onChange={document.onEditorChange}
+        onChange={handleEditorChange}
         markMode={markModeFromSyntax(settings.editorMarkdownSyntax)}
         spellCheck={settings.editorSpellCheck}
         searchQuery={searchQuery}
@@ -414,7 +467,29 @@ export function NotePaneComponent({
         onExitBoundary={handleExitBoundary}
       >
         <EditorAiKeymap onTrigger={aiMenu.openMenu} />
+        <CalloutHighlighter />
       </NoteEditor>
+
+      {collectionEmbeds.length > 0 ? (
+        <div className={gutterClassName}>
+          {collectionEmbeds.map((embed, index) => (
+            <EmbeddedCollection key={`${embed.tag}:${embed.view}:${index}`} embed={embed} />
+          ))}
+        </div>
+      ) : null}
+
+      {noteTransclusions.length > 0 ? (
+        <div className={gutterClassName}>
+          {noteTransclusions.map((embed, index) => (
+            <EmbeddedNote
+              key={`${embed.target}:${embed.heading ?? ''}:${index}`}
+              embed={embed}
+              sourcePath={path}
+              resolveImageUrl={resolveImageUrl}
+            />
+          ))}
+        </div>
+      ) : null}
 
       {showBacklinks ? (
         <div className={gutterClassName}>

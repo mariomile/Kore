@@ -69,6 +69,19 @@ describe('parseTagTypeFrontmatter', () => {
       properties: [],
     })
   })
+
+  it('reads a bound template path and ignores anything that is not one', () => {
+    expect(
+      parseTagTypeFrontmatter(
+        frontmatter({ lore: 'tag', template: 'templates/book.md', properties: [] }),
+      ),
+    ).toEqual({ properties: [], template: 'templates/book.md' })
+    expect(
+      parseTagTypeFrontmatter(
+        frontmatter({ lore: 'tag', template: 'notes/not-a-template.md', properties: [] }),
+      ),
+    ).toEqual({ properties: [] })
+  })
 })
 
 describe('schema_json codec', () => {
@@ -84,6 +97,17 @@ describe('schema_json codec', () => {
 
   it('rejects a mangled column instead of guessing', () => {
     expect(() => decodeTagTypeJson('{"nope": true}')).toThrow()
+  })
+
+  it('round-trips a bound template and still reads the legacy array column', () => {
+    const type: TagType = {
+      properties: [{ name: 'Author', key: 'author', type: 'text' }],
+      template: 'templates/book.md',
+    }
+    expect(decodeTagTypeJson(encodeTagTypeJson(type))).toEqual(type)
+    expect(
+      decodeTagTypeJson(JSON.stringify([{ name: 'Author', key: 'author', type: 'text' }])),
+    ).toEqual({ properties: [{ name: 'Author', key: 'author', type: 'text' }] })
   })
 })
 
@@ -162,6 +186,9 @@ describe('property keys', () => {
     expect(isPropertyKey('read-on')).toBe(true)
     expect(isPropertyKey('private')).toBe(false)
     expect(isPropertyKey('properties')).toBe(false)
+    expect(isPropertyKey('template')).toBe(false)
+    expect(isPropertyKey('cover')).toBe(false)
+    expect(isPropertyKey('icon')).toBe(false)
     expect(isPropertyKey('-leading')).toBe(false)
     expect(isPropertyKey('has space')).toBe(false)
     expect(isPropertyKey('')).toBe(false)
@@ -172,5 +199,53 @@ describe('property keys', () => {
     expect(propertyKeyForName('Autore Preferito!')).toBe('autore-preferito')
     expect(propertyKeyForName('  ')).toBe('')
     expect(propertyKeyForName('Private')).toBe('') // reserved after slugging
+  })
+})
+
+describe('new property types', () => {
+  it('parses status, files, email, rating, and a view-only rollup', () => {
+    const parsed = parseTagTypeFrontmatter(
+      frontmatter({
+        lore: 'tag',
+        properties: [
+          { name: 'Stage', key: 'stage', type: 'status', options: ['todo', 'doing', 'done'] },
+          { name: 'Attachments', key: 'attachments', type: 'files' },
+          { name: 'Email', key: 'email', type: 'email' },
+          { name: 'Score', key: 'score', type: 'rating' },
+          {
+            name: 'Author score',
+            key: 'author-score',
+            type: 'rollup',
+            rollup: { relation: 'author', property: 'score', aggregation: 'original' },
+          },
+        ],
+      }),
+    )
+    expect(parsed?.properties.map((property) => property.type)).toEqual([
+      'status',
+      'files',
+      'email',
+      'rating',
+      'rollup',
+    ])
+    expect(parsed?.properties[4]?.rollup).toEqual({
+      relation: 'author',
+      property: 'score',
+      aggregation: 'original',
+    })
+  })
+
+  it('round-trips a rollup through schema_json', () => {
+    const type: TagType = {
+      properties: [
+        {
+          name: 'Author score',
+          key: 'author-score',
+          type: 'rollup',
+          rollup: { relation: 'author', property: 'score', aggregation: 'unique' },
+        },
+      ],
+    }
+    expect(decodeTagTypeJson(encodeTagTypeJson(type))).toEqual(type)
   })
 })

@@ -38,12 +38,14 @@ function cellValue(property: TagProperty, raw: string): unknown {
     return undefined
   }
   switch (property.type) {
-    case 'number': {
+    case 'number':
+    case 'rating': {
       const parsed = Number(trimmed)
       return Number.isFinite(parsed) ? parsed : trimmed
     }
     case 'checkbox':
       return trimmed.toLowerCase() === 'true'
+    case 'files':
     case 'multiselect':
       return trimmed
         .split(',')
@@ -73,6 +75,9 @@ export function parseCollectionCsv(text: string, type: TagType): CsvNote[] {
   const titleIndex = Math.max(normalized.indexOf('title'), 0)
   const columns = new Map<number, TagProperty>()
   for (const property of type.properties) {
+    if (property.type === 'rollup') {
+      continue
+    }
     const index = normalized.findIndex(
       (column) => column === property.name.toLowerCase() || column === property.key.toLowerCase(),
     )

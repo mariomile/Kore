@@ -1,5 +1,12 @@
 import { useQuery } from '@tanstack/react-query'
-import { foldTag, listCollection, type CollectionEntry, type CollectionSort } from '@reflect/core'
+import {
+  attachRollups,
+  foldTag,
+  getTagType,
+  listCollection,
+  type CollectionEntry,
+  type CollectionSort,
+} from '@reflect/core'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { useGraph } from '@/providers/graph-provider'
@@ -32,7 +39,14 @@ export function useCollection(
   const bridgeReady = useBridgeReady()
   const { data } = useQuery({
     queryKey: collectionQueryKey(graph?.root, tag ?? '', sort),
-    queryFn: () => listCollection(tag ?? '', sort),
+    queryFn: async () => {
+      const rows = await listCollection(tag ?? '', sort)
+      const type = await getTagType(tag ?? '')
+      if (type === null) {
+        return rows
+      }
+      return await attachRollups(rows, type)
+    },
     enabled: bridgeReady && graph !== null && tag !== null,
   })
   return data

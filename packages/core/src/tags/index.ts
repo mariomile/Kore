@@ -14,12 +14,36 @@ export {
   relationValue,
   relationDisplay,
   relationTarget,
+  rollupAggregationSchema,
+  rollupConfigSchema,
   type TagProperty,
   type TagPropertyType,
   type TagType,
+  type RollupAggregation,
+  type RollupConfig,
 } from './tag-type'
+export {
+  isEmailValue,
+  parseRating,
+  formatRating,
+  fileBasename,
+  decodePropertyList,
+  extractRelationTargets,
+  computeRollup,
+  rollupSourceFromValue,
+  type PropertyValue,
+  type RollupSourceValue,
+  type RollupResult,
+} from './property-values'
 export {
   extractNoteProperties,
   type IndexedProperty,
   type IndexedPropertyValueType,
 } from './properties'
+export {
+  COLLECTION_EMBED_VIEWS,
+  formatCollectionEmbed,
+  parseCollectionEmbeds,
+  type CollectionEmbed,
+  type CollectionEmbedView,
+} from './collection-embed'

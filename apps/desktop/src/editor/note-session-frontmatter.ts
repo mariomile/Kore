@@ -57,6 +57,11 @@ export interface FrontmatterPatch {
    * buffer (or the buffer's next save reverting the schema).
    */
   tagSchema?: readonly TagProperty[]
+  /**
+   * Bound note template for new collection rows (`template:` on the
+   * definition). `null` deletes the key; omitted leaves whatever is there.
+   */
+  tagTemplate?: string | null
 }
 
 /**
@@ -84,7 +89,11 @@ export function frontmatterPatchToYaml(patch: FrontmatterPatch): Record<string, 
       key: property.key,
       type: property.type,
       ...(property.options === undefined ? {} : { options: property.options }),
+      ...(property.rollup === undefined ? {} : { rollup: property.rollup }),
     }))
+  }
+  if (patch.tagTemplate !== undefined) {
+    yaml['template'] = patch.tagTemplate === null ? undefined : patch.tagTemplate
   }
   if (patch.id !== undefined) {
     yaml['id'] = patch.id

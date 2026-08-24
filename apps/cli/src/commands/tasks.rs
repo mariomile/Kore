@@ -20,6 +20,7 @@ struct TaskRow {
     text: String,
     checked: bool,
     due_date: Option<String>,
+    due_time: Option<String>,
 }
 
 pub fn run(graph: &Graph, json: bool, all: bool, limit: usize) -> Result<(), CliError> {
@@ -45,7 +46,7 @@ pub fn run(graph: &Graph, json: bool, all: bool, limit: usize) -> Result<(), Cli
     }
 
     let mut statement = opened.conn.prepare(
-        "SELECT tasks.note_path, notes.title, tasks.text, tasks.checked, tasks.due_date
+        "SELECT tasks.note_path, notes.title, tasks.text, tasks.checked, tasks.due_date, tasks.due_time
          FROM tasks JOIN notes ON notes.path = tasks.note_path
          WHERE ?1 OR tasks.checked = 0
          ORDER BY tasks.note_path, tasks.marker_offset",
@@ -57,6 +58,7 @@ pub fn run(graph: &Graph, json: bool, all: bool, limit: usize) -> Result<(), Cli
             text: row.get(2)?,
             checked: row.get::<_, i64>(3)? != 0,
             due_date: row.get(4)?,
+            due_time: row.get(5)?,
         })
     })?;
 
@@ -87,6 +89,7 @@ pub fn run(graph: &Graph, json: bool, all: bool, limit: usize) -> Result<(), Cli
                     text: task.text,
                     checked: task.checked,
                     due_date: task.due_date,
+                    due_time: task.due_time,
                 })
                 .collect(),
         });
@@ -98,9 +101,10 @@ pub fn run(graph: &Graph, json: bool, all: bool, limit: usize) -> Result<(), Cli
             current_path = Some(task.path.as_str());
         }
         let marker = if task.checked { "[x]" } else { "[ ]" };
-        match &task.due_date {
-            Some(due) => println!("  {marker} {}  (due {due})", task.text),
-            None => println!("  {marker} {}", task.text),
+        match (&task.due_date, &task.due_time) {
+            (Some(due), Some(time)) => println!("  {marker} {}  (due {due} {time})", task.text),
+            (Some(due), None) => println!("  {marker} {}  (due {due})", task.text),
+            (None, _) => println!("  {marker} {}", task.text),
         }
     }
     Ok(())

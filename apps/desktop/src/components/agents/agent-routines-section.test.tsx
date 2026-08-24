@@ -150,4 +150,39 @@ describe('AgentRoutinesSection', () => {
     expect(added?.lastRunMs).not.toBeNull()
     await view.unmount()
   })
+
+  it('lists a collection event routine with its trigger', async () => {
+    reset([
+      {
+        ...BRIEF,
+        id: 'on-book',
+        name: 'New book',
+        schedule: { kind: 'event', event: 'row-created', tag: 'books' },
+      },
+    ])
+    const view = await render(<AgentRoutinesSection profiles={[RILEY]} />)
+    await expect.element(view.getByText('New book')).toBeVisible()
+    await expect.element(view.getByText(/When a #books row is created/)).toBeVisible()
+    await view.unmount()
+  })
+
+  it('creates a collection event automation from the dialog', async () => {
+    reset([])
+    const view = await render(<AgentRoutinesSection profiles={[RILEY]} />)
+    await view.getByRole('button', { name: 'New automation' }).click()
+    await view.getByLabelText('Automation name').fill('On new book')
+    await view.getByLabelText('Automation prompt').fill('Summarize the new book.')
+    await view.getByLabelText('Schedule').click()
+    await view.getByRole('option', { name: 'On collection event' }).click()
+    await view.getByLabelText('Collection tag').fill('books')
+    await view.getByRole('button', { name: 'Create automation' }).click()
+    const added = updated.at(-1)?.agentRoutines?.[0]
+    expect(added).toMatchObject({
+      name: 'On new book',
+      prompt: 'Summarize the new book.',
+      schedule: { kind: 'event', event: 'row-created', tag: 'books' },
+      enabled: true,
+    })
+    await view.unmount()
+  })
 })

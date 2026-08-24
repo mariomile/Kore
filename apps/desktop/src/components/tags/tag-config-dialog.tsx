@@ -4,12 +4,15 @@ import {
   foldTag,
   isPropertyKey,
   listNotesWithProperty,
+  listTemplates,
   propertyKeyForName,
   propertyRowValue,
   tagPropertyTypeSchema,
   type CollectionValue,
+  type RollupAggregation,
   type TagProperty,
   type TagPropertyType,
+  type TemplateEntry,
 } from '@reflect/core'
 import { ArrowDown, ArrowUp, Plus, Trash } from '@/components/icons'
 import { Button } from '@/components/ui/button'
@@ -50,6 +53,9 @@ interface PropertyDraft {
   originalKey: string | null
   type: TagPropertyType
   options: string
+  rollupRelation: string
+  rollupProperty: string
+  rollupAggregation: RollupAggregation
 }
 
 /** A key rename awaiting the migrate-or-not decision, with its blast radius. */
@@ -69,6 +75,11 @@ const PROPERTY_TYPE_LABELS: Record<TagPropertyType, string> = {
   url: 'URL',
   relation: 'Relation',
   relations: 'Multi-relation',
+  status: 'Status',
+  files: 'Files',
+  email: 'Email',
+  rating: 'Rating',
+  rollup: 'Rollup',
 }
 
 const FIELD_LABEL_CLASS = 'text-xs font-medium text-text-secondary'
@@ -81,6 +92,9 @@ function draftsFromSchema(properties: readonly TagProperty[]): PropertyDraft[] {
     originalKey: property.key,
     type: property.type,
     options: property.options?.join(', ') ?? '',
+    rollupRelation: property.rollup?.relation ?? '',
+    rollupProperty: property.rollup?.property ?? '',
+    rollupAggregation: property.rollup?.aggregation ?? 'count',
   }))
 }
 
@@ -90,12 +104,24 @@ function schemaFromDrafts(drafts: readonly PropertyDraft[]): TagProperty[] {
       .split(',')
       .map((option) => option.trim())
       .filter((option) => option !== '')
-    const hasOptions = draft.type === 'select' || draft.type === 'multiselect'
+    const hasOptions =
+      draft.type === 'select' || draft.type === 'multiselect' || draft.type === 'status'
+    const rollup =
+      draft.type === 'rollup' &&
+      draft.rollupRelation.trim() !== '' &&
+      draft.rollupProperty.trim() !== ''
+        ? {
+            relation: draft.rollupRelation.trim(),
+            property: draft.rollupProperty.trim(),
+            aggregation: draft.rollupAggregation,
+          }
+        : undefined
     return {
       name: draft.name.trim(),
       key: draft.key,
       type: draft.type,
       ...(hasOptions && options.length > 0 ? { options } : {}),
+      ...(rollup === undefined ? {} : { rollup }),
     }
   })
 }
@@ -116,11 +142,19 @@ export function TagConfigDialog({ tag, onClose }: TagConfigDialogProps): ReactEl
   const [nextRowId, setNextRowId] = useState(0)
   const [saving, setSaving] = useState(false)
   const [pendingRenames, setPendingRenames] = useState<PendingRename[] | null>(null)
+  const [template, setTemplate] = useState<string | null>(null)
+  const [templates, setTemplates] = useState<TemplateEntry[]>([])
 
   useEffect(() => {
     let active = true
     void (async () => {
       const definition = await readTagDefinition(tag)
+      let available: TemplateEntry[] = []
+      try {
+        available = await listTemplates()
+      } catch {
+        available = []
+      }
       if (!active) {
         return
       }
@@ -128,6 +162,8 @@ export function TagConfigDialog({ tag, onClose }: TagConfigDialogProps): ReactEl
       const rows = draftsFromSchema(definition.properties)
       setDrafts(rows)
       setNextRowId(rows.length)
+      setTemplate(definition.template)
+      setTemplates(available)
       setLoading(false)
     })()
     return () => {
@@ -170,7 +206,17 @@ export function TagConfigDialog({ tag, onClose }: TagConfigDialogProps): ReactEl
   const addDraft = (): void => {
     setDrafts((current) => [
       ...current,
-      { rowId: nextRowId, name: '', key: '', originalKey: null, type: 'text', options: '' },
+      {
+        rowId: nextRowId,
+        name: '',
+        key: '',
+        originalKey: null,
+        type: 'text',
+        options: '',
+        rollupRelation: '',
+        rollupProperty: '',
+        rollupAggregation: 'count',
+      },
     ])
     setNextRowId((current) => current + 1)
   }
@@ -181,7 +227,7 @@ export function TagConfigDialog({ tag, onClose }: TagConfigDialogProps): ReactEl
     }
     setSaving(true)
     try {
-      await saveTagType(tag, schemaFromDrafts(drafts), graph.generation)
+      await saveTagType(tag, schemaFromDrafts(drafts), graph.generation, template)
       if (migrate) {
         // Move each note's value to the new key through the ordinary patch
         // channel — the same write an inline edit makes, one note at a time.
@@ -263,10 +309,30 @@ export function TagConfigDialog({ tag, onClose }: TagConfigDialogProps): ReactEl
             its body is kept.
           </p>
         ) : null}
+        <label className="flex flex-col gap-1">
+          <span className={FIELD_LABEL_CLASS}>New-row template</span>
+          <Select
+            value={template ?? 'none'}
+            onValueChange={(value) => setTemplate(value === 'none' ? null : value)}
+          >
+            <SelectTrigger aria-label="New-row template">
+              <SelectValue placeholder="None" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">None</SelectItem>
+              {templates.map((entry) => (
+                <SelectItem key={entry.path} value={entry.path}>
+                  {entry.title}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </label>
         <div className="flex flex-col gap-2" aria-busy={loading || undefined}>
           {drafts.map((draft) => {
             const invalid = invalidRowIds.has(draft.rowId)
-            const hasOptions = draft.type === 'select' || draft.type === 'multiselect'
+            const hasOptions =
+              draft.type === 'select' || draft.type === 'multiselect' || draft.type === 'status'
             return (
               <div
                 key={draft.rowId}
@@ -368,6 +434,62 @@ export function TagConfigDialog({ tag, onClose }: TagConfigDialogProps): ReactEl
                     </label>
                   ) : null}
                 </div>
+                {draft.type === 'rollup' ? (
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex items-center gap-1.5">
+                      <label className="flex flex-1 items-center gap-1.5">
+                        <span className={FIELD_LABEL_CLASS}>Relation</span>
+                        <Input
+                          value={draft.rollupRelation}
+                          aria-label="Rollup relation key"
+                          placeholder="author"
+                          className="flex-1 font-mono text-xs"
+                          onChange={(event) =>
+                            updateDraft(draft.rowId, { rollupRelation: event.target.value })
+                          }
+                        />
+                      </label>
+                      <label className="flex flex-1 items-center gap-1.5">
+                        <span className={FIELD_LABEL_CLASS}>Property</span>
+                        <Input
+                          value={draft.rollupProperty}
+                          aria-label="Rollup property key"
+                          placeholder="rating"
+                          className="flex-1 font-mono text-xs"
+                          onChange={(event) =>
+                            updateDraft(draft.rowId, { rollupProperty: event.target.value })
+                          }
+                        />
+                      </label>
+                    </div>
+                    <label className="flex items-center gap-1.5">
+                      <span className={FIELD_LABEL_CLASS}>Aggregation</span>
+                      <Select
+                        value={draft.rollupAggregation}
+                        onValueChange={(value) => {
+                          if (
+                            value === 'count' ||
+                            value === 'empty' ||
+                            value === 'original' ||
+                            value === 'unique'
+                          ) {
+                            updateDraft(draft.rowId, { rollupAggregation: value })
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="w-40" aria-label="Rollup aggregation">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="count">Count</SelectItem>
+                          <SelectItem value="empty">Empty</SelectItem>
+                          <SelectItem value="original">Original</SelectItem>
+                          <SelectItem value="unique">Unique</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </label>
+                  </div>
+                ) : null}
               </div>
             )
           })}

@@ -916,19 +916,21 @@ impl Fixture {
         text: &str,
         checked: bool,
         due: Option<&str>,
+        due_time: Option<&str>,
     ) {
         let conn =
             rusqlite::Connection::open(self.root().join(".reflect").join("index.sqlite")).unwrap();
         conn.execute(
-            "INSERT INTO tasks(note_path, marker_offset, text, raw, checked, due_date)
-             VALUES(?1, ?2, ?3, ?4, ?5, ?6)",
+            "INSERT INTO tasks(note_path, marker_offset, text, raw, checked, due_date, due_time)
+             VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7)",
             params![
                 rel_path,
                 offset,
                 text,
                 format!("[ ] {text}"),
                 i64::from(checked),
-                due
+                due,
+                due_time
             ],
         )
         .unwrap();
@@ -953,9 +955,10 @@ fn tasks_lists_open_tasks_and_excludes_private_notes() {
         "pay bill",
         false,
         Some("2026-08-22"),
+        None,
     );
-    fixture.insert_task("notes/project.md", 27, "done", true, None);
-    fixture.insert_task("notes/secret.md", 30, "hidden task", false, None);
+    fixture.insert_task("notes/project.md", 27, "done", true, None, None);
+    fixture.insert_task("notes/secret.md", 30, "hidden task", false, None, None);
 
     let value = json(&reflect(&fixture, &["tasks", "--json"]));
     let tasks = value["tasks"].as_array().unwrap();
@@ -975,6 +978,31 @@ fn tasks_lists_open_tasks_and_excludes_private_notes() {
     assert!(text.contains("notes/project.md\tProject X"));
     assert!(text.contains("  [ ] pay bill  (due 2026-08-22)"));
     assert!(!text.contains("hidden task"));
+}
+
+#[test]
+fn tasks_includes_a_due_time_when_the_row_has_one() {
+    let fixture = graph();
+    fixture.write_note("notes/project.md", "# Project X\n+ [ ] dentist\n");
+    fixture.build_index();
+    fixture.insert_task(
+        "notes/project.md",
+        12,
+        "dentist",
+        false,
+        Some("2026-08-22"),
+        Some("14:30"),
+    );
+
+    let value = json(&reflect(&fixture, &["tasks", "--json"]));
+    let tasks = value["tasks"].as_array().unwrap();
+    assert_eq!(tasks.len(), 1, "only the timed task: {value}");
+    assert_eq!(tasks[0]["dueDate"], "2026-08-22");
+    assert_eq!(tasks[0]["dueTime"], "14:30");
+
+    let human = reflect(&fixture, &["tasks"]);
+    assert!(human.status.success());
+    assert!(stdout(&human).contains("  [ ] dentist  (due 2026-08-22 14:30)"));
 }
 
 #[test]
@@ -1167,7 +1195,10 @@ fn collection_lists_typed_tag_rows_with_properties() {
         "notes/dispossessed.md",
         "---\nauthor: Le Guin\nrating: 4.5\n---\n# The Dispossessed\n#book\n",
     );
-    fixture.write_note("notes/dune.md", "---\nauthor: Herbert\n---\n# Dune\n#book\n");
+    fixture.write_note(
+        "notes/dune.md",
+        "---\nauthor: Herbert\n---\n# Dune\n#book\n",
+    );
     fixture.write_note(
         "notes/secret.md",
         "---\nprivate: true\nauthor: Nobody\n---\n# Secret\n#book\n",
@@ -1205,7 +1236,13 @@ fn collection_lists_typed_tag_rows_with_properties() {
             "string",
             None::<f64>,
         ),
-        ("notes/dispossessed.md", "rating", "4.5", "number", Some(4.5)),
+        (
+            "notes/dispossessed.md",
+            "rating",
+            "4.5",
+            "number",
+            Some(4.5),
+        ),
         ("notes/dune.md", "author", "Herbert", "string", None),
         ("notes/secret.md", "author", "Nobody", "string", None),
     ] {

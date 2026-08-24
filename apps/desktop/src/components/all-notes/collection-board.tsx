@@ -1,12 +1,7 @@
 import { useMemo, useState, type DragEvent, type ReactElement } from 'react'
 import { Virtualizer } from 'virtua'
 import {
-  appendBodyTag,
-  createNoteIfAbsent,
   errorMessage,
-  untitledNotePath,
-  untitledNoteSeed,
-  upsertFrontmatter,
   type CollectionEntry,
   type CollectionValue,
   type TagProperty,
@@ -16,6 +11,8 @@ import { Plus } from '@/components/icons'
 import { PropertyValueEditor } from '@/components/tags/property-editors'
 import { selectOptionDotClass } from '@/components/tags/select-colors'
 import { toast } from '@/components/ui/toast'
+import { createTypedCollectionNote } from '@/lib/tags/create-collection-note'
+import { useTemplateValues } from '@/hooks/use-template-values'
 import type { ModClickEvent } from '@/lib/windows/open-in-new-window'
 import { useCommitNoteProperties } from '@/lib/tags/use-commit-note-property'
 import { cn } from '@/lib/utils'
@@ -42,6 +39,7 @@ export const BOARD_ORDER_KEY = 'order'
 /** The property types a board can group by. */
 const GROUPABLE_TYPES: ReadonlySet<TagProperty['type']> = new Set([
   'select',
+  'status',
   'checkbox',
   'relation',
 ])
@@ -154,7 +152,7 @@ export function boardColumns(
 
   // select / relation: lanes keyed by the display text.
   const groups = new Map<string, { commit: unknown; entries: CollectionEntry[] }>()
-  if (property.type === 'select') {
+  if (property.type === 'select' || property.type === 'status') {
     for (const option of property.options ?? []) {
       groups.set(option, { commit: option, entries: [] })
     }
@@ -171,7 +169,10 @@ export function boardColumns(
       // A stray select value, or a relation target: the lane commits the
       // stored raw form so aliases and link shapes survive a drop verbatim.
       groups.set(reading.text, {
-        commit: property.type === 'select' ? reading.text : (value?.value ?? reading.text),
+        commit:
+          property.type === 'select' || property.type === 'status'
+            ? reading.text
+            : (value?.value ?? reading.text),
         entries: [entry],
       })
     } else {
@@ -223,6 +224,8 @@ interface CollectionBoardProps {
   entries: readonly CollectionEntry[] | undefined
   /** The routed tag — a lane's "+" creates a note that is born in it. */
   tag: string
+  /** The tag's type, so a new row can seed from a bound template. */
+  type: TagType
   /** The grouping property — the screen only renders the board when
    * {@link boardProperty} found one, so it arrives resolved. */
   property: TagProperty
@@ -232,11 +235,13 @@ interface CollectionBoardProps {
 export function CollectionBoard({
   entries,
   tag,
+  type,
   property,
   onOpen,
 }: CollectionBoardProps): ReactElement {
   const { graph } = useGraph()
   const commitProperties = useCommitNoteProperties()
+  const resolveTemplateValues = useTemplateValues()
   // A drop moves the card at once through this overlay; the stored rows only
   // catch up after write → watcher → refetch, and a fresh `entries` prop
   // (which now carries the written values) clears it at render time.
@@ -314,13 +319,14 @@ export function CollectionBoard({
     if (graph === null) {
       return
     }
-    const path = untitledNotePath()
-    const base = untitledNoteSeed()
-    const tagged = appendBodyTag(base, tag) ?? base
-    const seed =
-      column.commit === null ? tagged : upsertFrontmatter(tagged, { [property.key]: column.commit })
     try {
-      await createNoteIfAbsent(path, seed, graph.generation)
+      const path = await createTypedCollectionNote(
+        tag,
+        graph.generation,
+        column.commit === null ? {} : { [property.key]: column.commit },
+        type,
+        await resolveTemplateValues(null),
+      )
       onOpen(path)
     } catch (error) {
       toast.add({

@@ -27,6 +27,30 @@ export {
   type ParsedFrontmatter,
 } from './frontmatter'
 export { parseBody } from './grammar'
+export {
+  CALLOUT_KINDS,
+  formatCalloutBlock,
+  parseCalloutMarker,
+  type CalloutKind,
+  type CalloutMarker,
+} from './callout'
+export {
+  extractHeadingSection,
+  formatNoteTransclusion,
+  parseNoteTransclusions,
+  transclusionMarkdown,
+  wikiEmbedKind,
+  type NoteTransclusion,
+  type WikiEmbedKind,
+} from './note-transclusion'
+export {
+  parseNoteAppearance,
+  parseNoteAppearanceFromSource,
+  parseNoteCover,
+  parseNoteIcon,
+  type NoteAppearance,
+  type NoteIcon,
+} from './note-appearance'
 export { parseNote, isTagName, hasAuthoredTitle } from './extract'
 export { appendBodyTag, bodyHasTag } from './body-tag'
 export {
@@ -54,6 +78,7 @@ export {
   removeTaskLine,
   setTaskDueDate,
   clearTaskDueDate,
+  setTaskDueTime,
   taskLineToBullet,
   toggleTaskMarker,
   TaskStaleError,

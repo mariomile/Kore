@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, type ReactElement } from 'react'
 import { MarkdownView } from '@meowdown/react'
 import { useOpenExternalLink } from '@/editor/open-external-link'
 import { cn } from '@/lib/utils'
+import { resolveWikiEmbed } from '@/editor/resolve-wiki-embed'
 
 /**
  * A read-only rendering of note markdown via @meowdown/react's `<MarkdownView>`
@@ -75,6 +76,7 @@ export function MarkdownPreview({
       markMode="hide"
       interactive={interactive}
       resolveImageUrl={resolveImageUrlStable}
+      resolveWikiEmbed={resolveWikiEmbed}
       {...(interactive ? { onLinkClick: openExternalLink } : {})}
       {...(navigates ? { onWikilinkClick: onWikilinkClickStable } : {})}
       className={cn('reflect-editor', className)}

@@ -276,6 +276,8 @@ html:root {
   --meowdown-bullet: var(--text-muted); /* resting bullet dot; collapsed stays themed */
   --meowdown-border: var(--border);
   --meowdown-code-bg: var(--surface-sunken, rgb(0 0 0 / 5%));
+  --meowdown-table-border: var(--border);
+  --meowdown-table-header-bg: var(--surface-sunken, rgb(0 0 0 / 5%));
   --meowdown-font-mono: var(--font-mono, monospace);
   /* Selection: meowdown defaults warm; Reflect keeps its blue-violet accent. */
   --meowdown-node-outline: var(--accent);
@@ -637,6 +639,38 @@ html:root {
   border-left: 2px solid var(--accent-soft, var(--border));
   margin: 0.6em 0;
   padding-left: 1em;
+}
+
+.reflect-editor blockquote[data-callout] {
+  border-left-width: 3px;
+  border-left-color: var(--callout-color);
+  border-radius: 0 6px 6px 0;
+  background: color-mix(in oklab, var(--callout-color) 10%, transparent);
+  padding: 0.65em 1em;
+}
+
+.reflect-editor blockquote[data-callout] > :first-child {
+  color: var(--callout-color);
+  font-size: 0.75em;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.reflect-editor blockquote[data-callout='note'] {
+  --callout-color: var(--accent);
+}
+.reflect-editor blockquote[data-callout='tip'] {
+  --callout-color: var(--success, #16a34a);
+}
+.reflect-editor blockquote[data-callout='important'] {
+  --callout-color: var(--accent);
+}
+.reflect-editor blockquote[data-callout='warning'] {
+  --callout-color: var(--warning, #ca8a04);
+}
+.reflect-editor blockquote[data-callout='caution'] {
+  --callout-color: var(--destructive);
 }
 
 /* A thematic break is content, not chrome. Keep it at V1's stronger rule

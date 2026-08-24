@@ -1,6 +1,16 @@
-import { Fragment, type MouseEvent, type ReactElement, type ReactNode } from 'react'
+import { Fragment, useState, type MouseEvent, type ReactElement, type ReactNode } from 'react'
 import { CalendarDays, History, Layers, Note, Paperclip, Pencil, Search } from '@/components/icons'
-import { isTagName, isToolPending, type AssistantPart, type NoteHitSummary } from '@reflect/core'
+import {
+  isTagName,
+  isToolPending,
+  formatPropertyPreview,
+  type AssistantPart,
+  type NoteHitSummary,
+  type NoteToolCall,
+  type NoteToolResult,
+} from '@reflect/core'
+import { Button } from '@/components/ui/button'
+import { useCommitNoteProperty } from '@/lib/tags/use-commit-note-property'
 import { Marker, MarkerContent, MarkerIcon } from '@/components/ui/marker'
 import { Spinner } from '@/components/ui/spinner'
 import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'
@@ -26,14 +36,18 @@ interface ChipFrameProps {
   pending: boolean
   icon: ReactElement
   children: ReactNode
+  /** When true, the label can wrap so an Apply button isn't clipped. */
+  wrap?: boolean | undefined
 }
 
 /** The shared marker shell: a spinner while pending, the tool's icon after. */
-function ChipFrame({ pending, icon, children }: ChipFrameProps): ReactElement {
+function ChipFrame({ pending, icon, children, wrap = false }: ChipFrameProps): ReactElement {
   return (
     <Marker className="text-xs text-text-muted">
       <MarkerIcon>{pending ? <Spinner /> : icon}</MarkerIcon>
-      <MarkerContent className="truncate">{children}</MarkerContent>
+      <MarkerContent className={wrap ? 'flex flex-wrap items-center gap-1' : 'truncate'}>
+        {children}
+      </MarkerContent>
     </Marker>
   )
 }
@@ -92,6 +106,75 @@ function NoteLinks({ notes, onOpen }: NoteLinksProps): ReactElement | null {
  * shows the failure instead of pretending the note was used. This is the only
  * UI that knows tool names — new tools extend `tools.ts` and this switch.
  */
+
+interface SetPropertyChipProps {
+  call: Extract<NoteToolCall, { tool: 'setProperty' }>
+  result: Extract<NoteToolResult, { tool: 'setProperty' }> | null
+  error: string | null | undefined
+  pending: boolean
+  onOpen: (path: string, event: MouseEvent<HTMLButtonElement>) => void
+}
+
+function SetPropertyChip({
+  call,
+  result,
+  error,
+  pending,
+  onOpen,
+}: SetPropertyChipProps): ReactElement {
+  const commitProperty = useCommitNoteProperty()
+  const [applied, setApplied] = useState(false)
+  const failed = error ?? null
+  // Legacy persisted chips omit `value` (the tool used to write immediately).
+  // `null` is a real proposal (clear); `undefined` is "no preview to apply".
+  const proposed = result?.value
+  const hasProposal = result !== null && proposed !== undefined
+  const canApply = !pending && failed === null && hasProposal && !applied
+
+  function apply(): void {
+    commitProperty(call.path, call.key, proposed === null ? undefined : proposed)
+    setApplied(true)
+  }
+
+  return (
+    <ChipFrame pending={pending} icon={<Pencil aria-hidden className="size-3.5" />} wrap>
+      {applied ? 'Applied' : 'Proposed'} {call.key}
+      {proposed !== undefined && failed === null
+        ? ` → ${formatPropertyPreview(proposed)}`
+        : ''} on{' '}
+      {failed === null ? (
+        <button
+          type="button"
+          onClick={(event) => onOpen(call.path, event)}
+          className="underline-offset-2 hover:text-text hover:underline"
+        >
+          {call.path}
+        </button>
+      ) : (
+        <span>
+          {call.path} — {failed}
+        </span>
+      )}
+      {canApply ? (
+        <>
+          {' '}
+          <Button
+            type="button"
+            size="xs"
+            variant="outline"
+            onClick={(event) => {
+              event.stopPropagation()
+              apply()
+            }}
+          >
+            Apply
+          </Button>
+        </>
+      ) : null}
+    </ChipFrame>
+  )
+}
+
 export function ChatToolChip({ part }: ChatToolChipProps): ReactElement {
   const navigateNoteLink = useNoteLinkNavigation()
   const openNote = (path: string, event: MouseEvent<HTMLButtonElement>): void => {
@@ -147,24 +230,14 @@ export function ChatToolChip({ part }: ChatToolChipProps): ReactElement {
 
   if (call.tool === 'setProperty') {
     const result = part.result?.tool === 'setProperty' ? part.result : null
-    const failed = result?.error ?? part.error
     return (
-      <ChipFrame pending={pending} icon={<Pencil aria-hidden className="size-3.5" />}>
-        Set {call.key} on{' '}
-        {failed === null || failed === undefined ? (
-          <button
-            type="button"
-            onClick={(event) => openNote(call.path, event)}
-            className="underline-offset-2 hover:text-text hover:underline"
-          >
-            {call.path}
-          </button>
-        ) : (
-          <span>
-            {call.path} — {failed}
-          </span>
-        )}
-      </ChipFrame>
+      <SetPropertyChip
+        call={call}
+        result={result}
+        error={result?.error ?? part.error}
+        pending={pending}
+        onOpen={openNote}
+      />
     )
   }
 

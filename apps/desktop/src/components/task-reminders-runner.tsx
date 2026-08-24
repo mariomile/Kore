@@ -2,6 +2,14 @@ import { useEffect, useRef } from 'react'
 import { isPermissionGranted, sendNotification } from '@tauri-apps/plugin-notification'
 import { getOpenTasks } from '@reflect/core'
 import { todayIso } from '@/lib/dates'
+import {
+  digestCounts,
+  parsePunctualFireState,
+  punctualReminderBody,
+  punctualTaskKey,
+  punctualTasksReady,
+  serializePunctualFireState,
+} from '@/lib/task-reminders'
 import { useGraph } from '@/providers/graph-provider'
 import { useSettings } from '@/providers/settings-provider'
 
@@ -11,6 +19,11 @@ const CHECK_INTERVAL_MS = 60_000
 /** Per-graph localStorage key: the last local day a reminder was sent. */
 export function taskRemindersCacheKey(graphRoot: string): string {
   return `reflect.taskReminders.lastDay:${graphRoot}`
+}
+
+/** Per-graph localStorage key: punctual task notifications already fired today. */
+export function taskRemindersPunctualCacheKey(graphRoot: string): string {
+  return `reflect.taskReminders.punctual:${graphRoot}`
 }
 
 /** The one-per-day summary line, or null when nothing is due. */
@@ -31,11 +44,11 @@ export function taskReminderBody(dueToday: number, overdue: number): string | nu
 /**
  * The task-reminders runner: an invisible resident of the workspace that,
  * when the setting is on, sends at most one native notification per local
- * day summarizing the open tasks due today and the overdue ones. Task due
- * dates are date-only, so the reminder fires on the first check of the day
- * the app is awake for — launch included. The sent-day marker lives in
- * localStorage per graph, so switching graphs can't suppress a reminder and
- * a re-render can't double-send one.
+ * day summarizing date-only tasks due today and every overdue task. Timed
+ * tasks (`[[YYYY-MM-DD]] @HH:MM`) fire once at that local time instead of
+ * joining the morning digest. The sent-day marker lives in localStorage per
+ * graph, so switching graphs can't suppress a reminder and a re-render can't
+ * double-send one.
  */
 export function TaskRemindersRunner(): null {
   const { graph } = useGraph()
@@ -54,26 +67,46 @@ export function TaskRemindersRunner(): null {
       if (graph === null || !settingsRef.current.taskReminders) {
         return
       }
-      const today = todayIso()
-      const cacheKey = taskRemindersCacheKey(graph.root)
-      try {
-        if (localStorage.getItem(cacheKey) === today) {
-          return
-        }
-      } catch {
-        // Storage unavailable — better a repeated reminder than none.
-      }
       if (!(await isPermissionGranted().catch(() => false))) {
         return
       }
+      const today = todayIso()
+      const now = new Date()
+      const nowMinutes = now.getHours() * 60 + now.getMinutes()
       const tasks = await getOpenTasks().catch(() => [])
-      const due = tasks.filter((task) => task.dueDate !== null && task.dueDate <= today)
-      const overdue = due.filter((task) => task.dueDate !== null && task.dueDate < today).length
-      const body = taskReminderBody(due.length - overdue, overdue)
-      // A no-tasks day still marks itself done: the point is one check per
-      // day, not a poll that re-runs every minute until something is due.
+      const punctualKey = taskRemindersPunctualCacheKey(graph.root)
+      let fired = new Set<string>()
       try {
-        localStorage.setItem(cacheKey, today)
+        fired = parsePunctualFireState(localStorage.getItem(punctualKey), today)
+      } catch {
+        fired = new Set()
+      }
+      const ready = punctualTasksReady(tasks, today, nowMinutes, fired)
+      for (const task of ready) {
+        sendNotification({ title: 'Task due', body: punctualReminderBody(task) })
+        fired.add(punctualTaskKey(task))
+      }
+      if (ready.length > 0) {
+        try {
+          localStorage.setItem(punctualKey, serializePunctualFireState(today, fired))
+        } catch {
+          // Storage unavailable — better a repeated punctual reminder than none.
+        }
+      }
+      const digestKey = taskRemindersCacheKey(graph.root)
+      try {
+        if (localStorage.getItem(digestKey) === today) {
+          return
+        }
+      } catch {
+        // Storage unavailable — better a repeated digest than none.
+      }
+      const counts = digestCounts(tasks, today)
+      const body = taskReminderBody(counts.dueToday, counts.overdue)
+      // A no-tasks day still marks the digest done: the point is one summary
+      // per day. Timed tasks keep firing on later checks via the punctual set.
+      try {
+        localStorage.setItem(digestKey, today)
       } catch {
         // Ignored — see above.
       }

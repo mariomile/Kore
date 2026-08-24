@@ -95,6 +95,7 @@ const toolResultSchema = z.discriminatedUnion('tool', [
     path: z.string(),
     key: z.string(),
     error: z.string().nullable(),
+    value: z.union([z.string(), z.number(), z.boolean(), z.array(z.string()), z.null()]),
   }),
 ])
 
@@ -146,6 +147,9 @@ function upgradeLegacyReadPart(part: unknown): unknown {
   ) {
     const { path, title, error, ...rest } = rawResult
     upgraded['result'] = { ...rest, notes: [{ path, title: title ?? null, error: error ?? null }] }
+  }
+  if (isRecord(rawResult) && rawResult['tool'] === 'setProperty' && !('value' in rawResult)) {
+    upgraded['result'] = { ...rawResult, value: null }
   }
   return upgraded
 }

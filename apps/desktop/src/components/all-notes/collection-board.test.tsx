@@ -21,6 +21,14 @@ vi.mock('@reflect/core', async (importOriginal) => ({
 vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({ graph: { root: '/g', name: 'g', generation: 7 } }),
 }))
+vi.mock('@/hooks/use-template-values', () => ({
+  useTemplateValues: () => async () => ({
+    title: '',
+    date: 'today',
+    dateIso: '2026-08-24',
+    time: '2:15 PM',
+  }),
+}))
 
 const BOOK_TYPE: TagType = {
   properties: [
@@ -161,7 +169,13 @@ async function dragTo(card: Element, target: Element): Promise<void> {
 function renderBoard(entries: CollectionEntry[], onOpen: (path: string) => void = () => {}) {
   return render(
     <div style={{ height: '100vh' }}>
-      <CollectionBoard entries={entries} tag="book" property={STATUS} onOpen={onOpen} />
+      <CollectionBoard
+        entries={entries}
+        tag="book"
+        type={BOOK_TYPE}
+        property={STATUS}
+        onOpen={onOpen}
+      />
     </div>,
   )
 }

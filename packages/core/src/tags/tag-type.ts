@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { TAGS_DIR } from '../graph/paths'
+import { isTemplatePath, TAGS_DIR } from '../graph/paths'
 import { foldTag, isTagName, type Frontmatter } from '../markdown'
 
 /**
@@ -27,6 +27,11 @@ export const tagPropertyTypeSchema = z.enum([
   'url',
   'relation',
   'relations',
+  'status',
+  'files',
+  'email',
+  'rating',
+  'rollup',
 ])
 export type TagPropertyType = z.infer<typeof tagPropertyTypeSchema>
 
@@ -67,20 +72,41 @@ export function relationTarget(value: string): string | null {
  * lives under in each note — shared across tags Obsidian-style, so two types
  * declaring `author` read and write the same value.
  */
+export const rollupAggregationSchema = z.enum(['count', 'empty', 'original', 'unique'])
+export type RollupAggregation = z.infer<typeof rollupAggregationSchema>
+
+/** View-only rollup: which relation to follow, which related property to read. */
+export const rollupConfigSchema = z.object({
+  relation: z.string().min(1),
+  property: z.string().min(1),
+  aggregation: rollupAggregationSchema,
+})
+export type RollupConfig = z.infer<typeof rollupConfigSchema>
+
 export const tagPropertySchema = z.object({
   /** Display label ("Read on"). */
   name: z.string().min(1),
   /** Frontmatter key ("read-on") — validated by {@link isPropertyKey}. */
   key: z.string().min(1),
   type: tagPropertyTypeSchema,
-  /** Choices for `select` / `multiselect`; ignored for other types. */
+  /** Choices for `select` / `multiselect` / `status`; ignored for other types. */
   options: z.array(z.string()).optional(),
+  /**
+   * View-only rollup config. Stored on the tag definition, never as a value
+   * on member notes — markdown stays the source of truth (TDR 0005).
+   */
+  rollup: rollupConfigSchema.optional(),
 })
 export type TagProperty = z.infer<typeof tagPropertySchema>
 
 /** A tag's schema: the ordered property list a Collection renders as columns. */
 export interface TagType {
   properties: TagProperty[]
+  /**
+   * Graph-relative path of the note template (`templates/…md`) new rows are
+   * seeded from. Absent when the type does not bind one.
+   */
+  template?: string
 }
 
 /**
@@ -98,6 +124,9 @@ export const RESERVED_FRONTMATTER_KEYS: ReadonlySet<string> = new Set([
   'ignoredContacts',
   'lore',
   'properties',
+  'template',
+  'cover',
+  'icon',
 ])
 
 /** Property keys are plain YAML-safe identifiers, never reserved. */
@@ -144,7 +173,12 @@ export function parseTagTypeFrontmatter(frontmatter: Frontmatter): TagType | nul
     claimed.add(property.key)
     properties.push(property)
   }
-  return { properties }
+  const templateRaw = frontmatter['template']
+  const template =
+    typeof templateRaw === 'string' && isTemplatePath(templateRaw.trim())
+      ? templateRaw.trim()
+      : undefined
+  return template === undefined ? { properties } : { properties, template }
 }
 
 /**
@@ -153,12 +187,27 @@ export function parseTagTypeFrontmatter(frontmatter: Frontmatter): TagType | nul
  * reader of the column goes through this pair).
  */
 export function encodeTagTypeJson(type: TagType): string {
-  return JSON.stringify(type.properties)
+  if (type.template === undefined) {
+    return JSON.stringify(type.properties)
+  }
+  return JSON.stringify({ properties: type.properties, template: type.template })
 }
 
 export function decodeTagTypeJson(column: string): TagType {
-  const properties = z.array(tagPropertySchema).parse(JSON.parse(column))
-  return { properties }
+  const parsed: unknown = JSON.parse(column)
+  if (Array.isArray(parsed)) {
+    return { properties: z.array(tagPropertySchema).parse(parsed) }
+  }
+  const object = z
+    .object({
+      properties: z.array(tagPropertySchema),
+      template: z.string().min(1).optional(),
+    })
+    .parse(parsed)
+  if (object.template !== undefined && isTemplatePath(object.template)) {
+    return { properties: object.properties, template: object.template }
+  }
+  return { properties: object.properties }
 }
 
 /**

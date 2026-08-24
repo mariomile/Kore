@@ -6,8 +6,8 @@ import { foldTag } from './keys'
 import { parseInlineLink } from './link-syntax'
 import { headingLevelOf } from './node-types'
 import { buildPlainText, plainTextOfRange, unescapeMarkdownText } from './plain-text'
-import { normalizeWikiTarget } from './resolve'
 import { taskBreadcrumbs } from './task-breadcrumbs'
+import { firstDue } from './task-due'
 import { parseTaskMarker } from './task-marker'
 import { isWikiNodeName, wikiBracketStart } from './wiki-nodes'
 import type {
@@ -306,7 +306,7 @@ function readTask(
   literalRanges: Span[],
   wikiLinks: WikiLink[],
 ): ParsedTask | null {
-  const { from, to } = taskNode
+  const { from } = taskNode
   if (!hasRoundTaskListMarker(body, from)) {
     return null
   }
@@ -322,27 +322,8 @@ function readTask(
     raw: body.slice(from, lineEnd),
     checked: marker.checked,
     markerOffset,
-    dueDate: firstDueDate(wikiLinks, markerOffset, to + bodyOffset),
+    ...firstDue(body, bodyOffset, wikiLinks, markerOffset, lineEnd + bodyOffset),
   }
-}
-
-/**
- * The task's due date: the first calendar-valid `[[YYYY-MM-DD]]` link inside the
- * task's span `[from, to)` (file coords). `wikiLinks` are in document order, so
- * "first" is the first such link in the item. Reuses {@link normalizeWikiTarget}
- * so an impossible date (`2026-02-31`) is not treated as a due date — exactly the
- * dailies the resolver recognises.
- */
-function firstDueDate(wikiLinks: WikiLink[], from: number, to: number): string | null {
-  for (const link of wikiLinks) {
-    if (link.from >= from && link.from < to) {
-      const { date } = normalizeWikiTarget(link.target)
-      if (date !== undefined) {
-        return date
-      }
-    }
-  }
-  return null
 }
 
 function inAnyRange(index: number, ranges: Span[]): boolean {

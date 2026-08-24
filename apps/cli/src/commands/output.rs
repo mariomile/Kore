@@ -83,6 +83,9 @@ pub struct TaskJson {
     pub checked: bool,
     /// The first calendar-valid `[[YYYY-MM-DD]]` link inside the item.
     pub due_date: Option<String>,
+    /// Local `HH:MM` on `due_date` when the item carries `@HH:MM`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub due_time: Option<String>,
 }
 
 /// `capture`: where the item landed.

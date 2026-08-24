@@ -7,7 +7,7 @@ import {
 
 const CAPTURE_CONTENT_SCRIPT = '/content-scripts/capture-content.js'
 
-/** Extract normalized article paragraphs from the active tab's live DOM. */
+/** Extract the article as markdown from the active tab's live DOM. */
 export async function extractPageText(
   tabId: number,
   expectedUrl: string,

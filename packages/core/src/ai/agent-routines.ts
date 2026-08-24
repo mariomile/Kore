@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { foldTag } from '../markdown'
 
 /**
  * Agent routines (automations): scheduled background runs of an agent over
@@ -11,7 +12,10 @@ import { z } from 'zod'
 
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/
 
-/** When a routine fires: every day, or one weekday a week, at a local time. */
+/** When a routine fires: a clock time, or a collection row event. */
+export const collectionEventKindSchema = z.enum(['row-created', 'row-updated'])
+export type CollectionEventKind = z.infer<typeof collectionEventKindSchema>
+
 export const routineScheduleSchema = z.union([
   z.object({ kind: z.literal('daily'), time: z.string().regex(TIME_RE) }),
   z.object({
@@ -20,8 +24,25 @@ export const routineScheduleSchema = z.union([
     weekday: z.number().int().min(0).max(6),
     time: z.string().regex(TIME_RE),
   }),
+  z.object({
+    kind: z.literal('event'),
+    event: collectionEventKindSchema,
+    tag: z.string().min(1),
+  }),
 ])
 export type RoutineSchedule = z.infer<typeof routineScheduleSchema>
+export type ClockSchedule = Extract<RoutineSchedule, { kind: 'daily' | 'weekly' }>
+export type EventSchedule = Extract<RoutineSchedule, { kind: 'event' }>
+
+/** Clock schedules (daily/weekly). Event schedules have no `time`. */
+export function isClockSchedule(schedule: RoutineSchedule): schedule is ClockSchedule {
+  return schedule.kind === 'daily' || schedule.kind === 'weekly'
+}
+
+/** Collection-row event schedules. They never fire from the clock. */
+export function isEventSchedule(schedule: RoutineSchedule): schedule is EventSchedule {
+  return schedule.kind === 'event'
+}
 
 /** One completed run attempt, as kept in the routine's history. */
 export const routineRunSchema = z.object({
@@ -128,7 +149,7 @@ export const agentRoutinesSchema = z
  * epoch ms. Every schedule has one: a daily time looks back at most one
  * day, a weekly one at most a week.
  */
-export function latestOccurrenceMs(schedule: RoutineSchedule, now: Date): number {
+export function latestOccurrenceMs(schedule: ClockSchedule, now: Date): number {
   const [hoursPart, minutesPart] = schedule.time.split(':')
   const hours = Number(hoursPart)
   const minutes = Number(minutesPart)
@@ -164,8 +185,52 @@ export function routineIsDue(routine: AgentRoutine, now: Date): boolean {
   if (routine.retryAtMs !== null) {
     return now.getTime() >= routine.retryAtMs
   }
+  if (!isClockSchedule(routine.schedule)) {
+    return false
+  }
   const occurrence = latestOccurrenceMs(routine.schedule, now)
   return routine.lastRunMs === null || routine.lastRunMs < occurrence
+}
+
+/**
+ * Classify an indexed note against a collection's previous membership.
+ * Leaving a collection is not an event — only rows that are members fire.
+ */
+export function collectionEventKind(
+  previousMembers: ReadonlySet<string>,
+  path: string,
+  isMember: boolean,
+): CollectionEventKind | null {
+  if (!isMember) {
+    return null
+  }
+  return previousMembers.has(path) ? 'row-updated' : 'row-created'
+}
+
+/** Enabled event routines whose tag (folded) and event kind match. */
+export function routinesMatchingCollectionEvent(
+  routines: readonly AgentRoutine[],
+  event: CollectionEventKind,
+  tag: string,
+): AgentRoutine[] {
+  const folded = foldTag(tag)
+  return routines.filter(
+    (routine) =>
+      routine.enabled &&
+      isEventSchedule(routine.schedule) &&
+      routine.schedule.event === event &&
+      foldTag(routine.schedule.tag) === folded,
+  )
+}
+
+/** Prompt suffix for one event-triggered run; not stored on the routine. */
+export function collectionEventPromptSuffix(
+  event: CollectionEventKind,
+  tag: string,
+  path: string,
+): string {
+  const action = event === 'row-created' ? 'created' : 'updated'
+  return `A collection row was ${action} in #${tag}: ${path}`
 }
 
 /**

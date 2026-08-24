@@ -2,10 +2,13 @@ import { describe, expect, it } from 'vitest'
 import {
   agentRoutinesSchema,
   appendRoutineRun,
+  collectionEventKind,
+  collectionEventPromptSuffix,
   latestOccurrenceMs,
   routineFailureUpdate,
   routineIsDue,
   routineRetryDelayMs,
+  routinesMatchingCollectionEvent,
   ROUTINE_RUN_HISTORY_LIMIT,
   type AgentRoutine,
   type RoutineRun,
@@ -91,6 +94,20 @@ describe('routineIsDue', () => {
       false,
     )
   })
+
+  it('never fires an event schedule from the clock, except a matured retry', () => {
+    const eventRoutine = routine({
+      schedule: { kind: 'event', event: 'row-created', tag: 'books' },
+      lastRunMs: null,
+    })
+    expect(routineIsDue(eventRoutine, WEDNESDAY_NOON)).toBe(false)
+    expect(
+      routineIsDue({ ...eventRoutine, retryAtMs: WEDNESDAY_NOON.getTime() - 1 }, WEDNESDAY_NOON),
+    ).toBe(true)
+    expect(
+      routineIsDue({ ...eventRoutine, retryAtMs: WEDNESDAY_NOON.getTime() + 1 }, WEDNESDAY_NOON),
+    ).toBe(false)
+  })
 })
 
 describe('failure backoff', () => {
@@ -126,6 +143,23 @@ describe('agentRoutinesSchema', () => {
     const parsed = agentRoutinesSchema.parse([legacy])
     expect(parsed[0]?.runs).toEqual([])
   })
+
+  it('parses a collection event schedule', () => {
+    const parsed = agentRoutinesSchema.parse([
+      routine({
+        id: 'on-create',
+        schedule: { kind: 'event', event: 'row-created', tag: 'Books' },
+      }),
+    ])
+    expect(parsed[0]?.schedule).toEqual({ kind: 'event', event: 'row-created', tag: 'Books' })
+  })
+
+  it('drops an event schedule with an empty tag', () => {
+    const parsed = agentRoutinesSchema.parse([
+      routine({ schedule: { kind: 'event', event: 'row-updated', tag: '' } }),
+    ])
+    expect(parsed).toEqual([])
+  })
 })
 
 describe('appendRoutineRun', () => {
@@ -144,5 +178,65 @@ describe('appendRoutineRun', () => {
     expect(runs).toHaveLength(ROUTINE_RUN_HISTORY_LIMIT)
     expect(runs[0]?.startedMs).toBe(ROUTINE_RUN_HISTORY_LIMIT + 4)
     expect(runs.at(-1)?.startedMs).toBe(5)
+  })
+})
+
+describe('collectionEventKind', () => {
+  const previous = new Set(['notes/old.md'])
+
+  it('classifies a new member as created and a known member as updated', () => {
+    expect(collectionEventKind(previous, 'notes/new.md', true)).toBe('row-created')
+    expect(collectionEventKind(previous, 'notes/old.md', true)).toBe('row-updated')
+  })
+
+  it('ignores paths that are not collection members', () => {
+    expect(collectionEventKind(previous, 'notes/old.md', false)).toBeNull()
+    expect(collectionEventKind(previous, 'notes/other.md', false)).toBeNull()
+  })
+})
+
+describe('routinesMatchingCollectionEvent', () => {
+  it('matches enabled event routines by folded tag and event kind', () => {
+    const created = routine({
+      id: 'created',
+      schedule: { kind: 'event', event: 'row-created', tag: 'Books' },
+    })
+    const updated = routine({
+      id: 'updated',
+      schedule: { kind: 'event', event: 'row-updated', tag: 'books' },
+    })
+    const disabled = routine({
+      id: 'off',
+      enabled: false,
+      schedule: { kind: 'event', event: 'row-created', tag: 'books' },
+    })
+    const daily = routine({ id: 'daily' })
+    const otherTag = routine({
+      id: 'films',
+      schedule: { kind: 'event', event: 'row-created', tag: 'films' },
+    })
+    expect(
+      routinesMatchingCollectionEvent(
+        [created, updated, disabled, daily, otherTag],
+        'row-created',
+        'BOOKS',
+      ).map((entry) => entry.id),
+    ).toEqual(['created'])
+    expect(
+      routinesMatchingCollectionEvent([created, updated], 'row-updated', 'books').map(
+        (entry) => entry.id,
+      ),
+    ).toEqual(['updated'])
+  })
+})
+
+describe('collectionEventPromptSuffix', () => {
+  it('names the event, tag, and path for that run only', () => {
+    expect(collectionEventPromptSuffix('row-created', 'books', 'notes/dune.md')).toBe(
+      'A collection row was created in #books: notes/dune.md',
+    )
+    expect(collectionEventPromptSuffix('row-updated', 'books', 'notes/dune.md')).toBe(
+      'A collection row was updated in #books: notes/dune.md',
+    )
   })
 })

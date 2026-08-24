@@ -14,7 +14,13 @@ vi.mock('@tauri-apps/plugin-notification', () => ({
 }))
 
 const core = vi.hoisted(() => ({
-  tasks: [] as { dueDate: string | null }[],
+  tasks: [] as {
+    notePath?: string
+    markerOffset?: number
+    text?: string
+    dueDate: string | null
+    dueTime?: string | null
+  }[],
 }))
 vi.mock('@reflect/core', () => ({
   getOpenTasks: () => Promise.resolve(core.tasks),
@@ -30,8 +36,12 @@ vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({ graph: { root: '/vault', name: 'Vault', generation: 1 } }),
 }))
 
-const { TaskRemindersRunner, taskReminderBody, taskRemindersCacheKey } =
-  await import('./task-reminders-runner')
+const {
+  TaskRemindersRunner,
+  taskReminderBody,
+  taskRemindersCacheKey,
+  taskRemindersPunctualCacheKey,
+} = await import('./task-reminders-runner')
 const { todayIso, addDaysIso } = await import('@/lib/dates')
 
 /** The runner's first check settles asynchronously; poll until it lands. */
@@ -54,6 +64,7 @@ describe('taskReminderBody', () => {
 describe('TaskRemindersRunner', () => {
   beforeEach(() => {
     localStorage.removeItem(taskRemindersCacheKey('/vault'))
+    localStorage.removeItem(taskRemindersPunctualCacheKey('/vault'))
     notification.sent.length = 0
     notification.granted = true
     state.taskReminders = true
@@ -103,6 +114,44 @@ describe('TaskRemindersRunner', () => {
     // No permission → the day is NOT consumed; granting it later still
     // delivers today's reminder.
     expect(localStorage.getItem(taskRemindersCacheKey('/vault'))).toBeNull()
+    expect(localStorage.getItem(taskRemindersPunctualCacheKey('/vault'))).toBeNull()
+    await view.unmount()
+  })
+
+  it('notifies a timed task at its clock time and keeps it out of the digest', async () => {
+    const today = todayIso()
+    core.tasks = [
+      {
+        notePath: 'notes/a.md',
+        markerOffset: 4,
+        text: 'Dentist',
+        dueDate: today,
+        dueTime: '00:00',
+      },
+    ]
+    const view = await render(<TaskRemindersRunner />)
+    await settled()
+    expect(notification.sent).toEqual([{ title: 'Task due', body: 'Dentist · 00:00' }])
+    await view.unmount()
+  })
+
+  it('still fires a timed task after the daily digest has already been sent', async () => {
+    const today = todayIso()
+    localStorage.setItem(taskRemindersCacheKey('/vault'), today)
+    core.tasks = [
+      {
+        notePath: 'notes/a.md',
+        markerOffset: 4,
+        text: 'Dentist',
+        dueDate: today,
+        dueTime: '00:00',
+      },
+    ]
+    const view = await render(<TaskRemindersRunner />)
+    await vi.waitFor(() => {
+      expect(notification.sent).toEqual([{ title: 'Task due', body: 'Dentist · 00:00' }])
+    })
+    expect(localStorage.getItem(taskRemindersPunctualCacheKey('/vault'))).not.toBeNull()
     await view.unmount()
   })
 })

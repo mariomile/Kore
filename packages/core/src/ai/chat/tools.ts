@@ -155,9 +155,22 @@ export const PRIVATE_NOTE_EDIT_ERROR =
   'This note is marked private — the assistant cannot read or change it.'
 export const MISSING_VALUE_ERROR = 'Provide a value, or pass clear=true to remove the property.'
 
+export type SetNotePropertyValue = string | number | boolean | string[] | null
+
 export type SetNotePropertyOutput =
-  | { ok: true; path: string; key: string }
+  | { ok: true; path: string; key: string; value: SetNotePropertyValue }
   | { ok: false; path: string; error: string }
+
+/** Compact preview of a proposed property value (null means clear). */
+export function formatPropertyPreview(value: SetNotePropertyValue): string {
+  if (value === null) {
+    return 'cleared'
+  }
+  if (Array.isArray(value)) {
+    return value.join(', ')
+  }
+  return String(value)
+}
 
 export const setNotePropertyInput = z.object({
   path: z.string().min(1).describe('Graph-relative note path (from search or listing results)'),
@@ -375,9 +388,10 @@ export function buildNoteTools(options: BuildNoteToolsOptions = {}): NoteTools {
 
     set_note_property: tool({
       description:
-        'Set (or clear) one frontmatter property on a note — a collection cell edit. ' +
-        'Requires the user’s "Allow edits" chat setting; private notes and reserved ' +
-        'keys are refused. Use the property `key` from list_collection’s schema.',
+        'Propose one frontmatter property change on a note — a collection cell edit. ' +
+        'The user previews the value in chat and applies it. Requires "Allow edits"; ' +
+        'private notes and reserved keys are refused. Use the property `key` from ' +
+        'list_collection’s schema. Do not claim the value is saved until they apply it.',
       inputSchema: setNotePropertyInput,
       execute: async ({ path, key, value, clear }): Promise<SetNotePropertyOutput> => {
         if (options.allowEdits !== true || options.commitPropertyFn === undefined) {
@@ -395,8 +409,8 @@ export function buildNoteTools(options: BuildNoteToolsOptions = {}): NoteTools {
         if (resolved === undefined && clear !== true) {
           return { ok: false, path, error: MISSING_VALUE_ERROR }
         }
-        await options.commitPropertyFn(path, key, resolved)
-        return { ok: true, path, key }
+        const proposed: SetNotePropertyValue = resolved === undefined ? null : resolved
+        return { ok: true, path, key, value: proposed }
       },
     }),
 
@@ -499,7 +513,14 @@ export type NoteToolResult =
       notes: NoteHitSummary[]
       error: string | null
     }
-  | { tool: 'setProperty'; toolCallId: string; path: string; key: string; error: string | null }
+  | {
+      tool: 'setProperty'
+      toolCallId: string
+      path: string
+      key: string
+      error: string | null
+      value: SetNotePropertyValue | null
+    }
 
 /** Map an SDK tool-call part onto {@link NoteToolCall} (null for dynamic). */
 export function noteToolCall(part: TypedToolCall<NoteTools>): NoteToolCall | null {
@@ -624,6 +645,7 @@ export function noteToolResult(part: TypedToolResult<NoteTools>): NoteToolResult
         path: output.path,
         key: part.input.key,
         error: output.ok ? null : output.error,
+        value: output.ok ? output.value : null,
       }
     }
   }

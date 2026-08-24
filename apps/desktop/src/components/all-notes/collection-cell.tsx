@@ -1,6 +1,10 @@
 import type { ReactElement } from 'react'
 import {
+  fileBasename,
+  formatRating,
   isCalendarDate,
+  isEmailValue,
+  parseRating,
   relationDisplay,
   type CollectionValue,
   type TagProperty,
@@ -86,6 +90,30 @@ export function readCellValue(
         ? { text: raw, checked: false, mismatch: true }
         : { text: entries.join(', '), checked: false, mismatch: false }
     }
+    case 'email':
+      return value.valueType === 'list'
+        ? { text: raw, checked: false, mismatch: true }
+        : { text: raw, checked: false, mismatch: raw !== '' && !isEmailValue(raw) }
+    case 'rating': {
+      const numeric = value.valueType === 'number' ? (value.valueNumber ?? Number(raw)) : NaN
+      const rating = parseRating(numeric)
+      return rating === null
+        ? { text: raw, checked: false, mismatch: true }
+        : { text: formatRating(rating), checked: false, mismatch: false }
+    }
+    case 'files': {
+      if (value.valueType === 'string') {
+        return { text: fileBasename(raw), checked: false, mismatch: false }
+      }
+      const entries = value.valueType === 'list' ? decodeStoredList(raw) : null
+      return entries === null
+        ? { text: raw, checked: false, mismatch: true }
+        : {
+            text: entries.map(fileBasename).join(', '),
+            checked: false,
+            mismatch: false,
+          }
+    }
     default:
       return value.valueType === 'list'
         ? { text: raw, checked: false, mismatch: true }
@@ -132,7 +160,11 @@ export function CollectionCell({ property, value, selected }: CollectionCellProp
   }
   // Select values read as colored badges — the same deterministic hue the
   // board's lane dot uses, so a status is recognizable across views.
-  if (property.type === 'select' && !reading.mismatch && reading.text !== '') {
+  if (
+    (property.type === 'select' || property.type === 'status') &&
+    !reading.mismatch &&
+    reading.text !== ''
+  ) {
     return (
       <span className="flex min-w-0 items-center">
         <span
@@ -150,7 +182,9 @@ export function CollectionCell({ property, value, selected }: CollectionCellProp
     <span
       className={cn(
         'truncate text-[13px]',
-        property.type === 'number' && !reading.mismatch && 'text-right tabular-nums',
+        (property.type === 'number' || property.type === 'rating') &&
+          !reading.mismatch &&
+          'text-right tabular-nums',
         reading.mismatch
           ? 'text-amber-700 dark:text-amber-300'
           : selected

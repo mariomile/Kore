@@ -32,6 +32,8 @@ export interface TagDefinitionState {
   needsConversion: boolean
   /** The current schema (empty for a missing or unmarked definition). */
   properties: TagProperty[]
+  /** Bound template path for new rows, or `null` when the type names none. */
+  template: string | null
 }
 
 /** Read the tag's definition state for the config dialog. */
@@ -41,7 +43,7 @@ export async function readTagDefinition(tag: string): Promise<TagDefinitionState
   try {
     source = await readNoteSource(path)
   } catch {
-    return { path, exists: false, needsConversion: false, properties: [] }
+    return { path, exists: false, needsConversion: false, properties: [], template: null }
   }
   const type = parseTagTypeFrontmatter(parseNote({ path, source }).frontmatter)
   return {
@@ -49,6 +51,7 @@ export async function readTagDefinition(tag: string): Promise<TagDefinitionState
     exists: true,
     needsConversion: type === null,
     properties: type?.properties ?? [],
+    template: type?.template ?? null,
   }
 }
 
@@ -63,6 +66,7 @@ export async function saveTagType(
   tag: string,
   properties: readonly TagProperty[],
   generation: number,
+  template: string | null = null,
 ): Promise<void> {
   const path = tagDefinitionPath(tag)
   const seed = upsertFrontmatter('', {
@@ -72,11 +76,13 @@ export async function saveTagType(
       key: property.key,
       type: property.type,
       ...(property.options === undefined ? {} : { options: property.options }),
+      ...(property.rollup === undefined ? {} : { rollup: property.rollup }),
     })),
+    ...(template === null ? {} : { template }),
   })
   const created = await createNoteIfAbsent(path, seed, generation)
   if (created.kind === 'created') {
     return
   }
-  await commitNoteFrontmatter(path, { tagSchema: properties }, generation)
+  await commitNoteFrontmatter(path, { tagSchema: properties, tagTemplate: template }, generation)
 }

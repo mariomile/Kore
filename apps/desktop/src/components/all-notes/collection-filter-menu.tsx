@@ -46,9 +46,11 @@ const MAX_VALUES_PER_PROPERTY = 12
 export function operatorsFor(property: TagProperty): CollectionFilterOperator[] {
   switch (property.type) {
     case 'number':
+    case 'rating':
     case 'date':
       return ['is', 'gt', 'lt', 'empty', 'notEmpty']
     case 'select':
+    case 'status':
       return ['is', 'empty', 'notEmpty']
     case 'checkbox':
       return ['empty', 'notEmpty']
@@ -68,7 +70,7 @@ const OPERATOR_LABELS: Record<CollectionFilterOperator, string> = {
 
 /** Numbers compare numerically; ISO dates (and everything else) as text. */
 function compare(property: TagProperty, text: string, against: string): number {
-  if (property.type === 'number') {
+  if (property.type === 'number' || property.type === 'rating') {
     const left = Number(text)
     const right = Number(against)
     if (Number.isFinite(left) && Number.isFinite(right)) {

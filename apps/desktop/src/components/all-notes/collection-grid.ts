@@ -20,6 +20,7 @@ function columnWidth(property: TagProperty, manualRem: number | undefined): stri
     case 'checkbox':
       return '4rem'
     case 'number':
+    case 'rating':
       return 'minmax(4rem, 6rem)'
     case 'date':
       return 'minmax(6rem, 7rem)'
@@ -33,7 +34,9 @@ function columnMinRem(property: TagProperty, manualRem: number | undefined): num
   if (manualRem !== undefined) {
     return manualRem
   }
-  return property.type === 'checkbox' || property.type === 'number' ? 4 : 6
+  return property.type === 'checkbox' || property.type === 'number' || property.type === 'rating'
+    ? 4
+    : 6
 }
 
 /**

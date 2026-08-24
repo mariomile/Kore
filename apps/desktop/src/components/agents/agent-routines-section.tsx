@@ -21,22 +21,7 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { useSettings } from '@/providers/settings-provider'
-
-const WEEKDAY_LABELS = [
-  'Sunday',
-  'Monday',
-  'Tuesday',
-  'Wednesday',
-  'Thursday',
-  'Friday',
-  'Saturday',
-]
-
-function scheduleLabel(schedule: RoutineSchedule): string {
-  return schedule.kind === 'daily'
-    ? `Daily at ${schedule.time}`
-    : `${WEEKDAY_LABELS[schedule.weekday]}s at ${schedule.time}`
-}
+import { WEEKDAY_LABELS, scheduleLabel } from './agent-routine-schedule'
 
 function lastRunLabel(lastRunMs: number | null): string {
   if (lastRunMs === null) {
@@ -325,16 +310,28 @@ function NewRoutineDialog({
   const [prompt, setPrompt] = useState('')
   const [script, setScript] = useState('')
   const [agentSlug, setAgentSlug] = useState('none')
-  const [kind, setKind] = useState<'daily' | 'weekly'>('daily')
+  const [kind, setKind] = useState<'daily' | 'weekly' | 'event'>('daily')
   const [weekday, setWeekday] = useState('1')
   const [time, setTime] = useState('08:00')
+  const [eventKind, setEventKind] = useState<'row-created' | 'row-updated'>('row-created')
+  const [tag, setTag] = useState('')
 
   const create = (): void => {
-    if (name.trim() === '' || prompt.trim() === '' || !/^\d{2}:\d{2}$/.test(time)) {
+    if (name.trim() === '' || prompt.trim() === '') {
       return
     }
-    const schedule: RoutineSchedule =
-      kind === 'daily' ? { kind, time } : { kind, weekday: Number(weekday), time }
+    let schedule: RoutineSchedule
+    if (kind === 'event') {
+      if (tag.trim() === '') {
+        return
+      }
+      schedule = { kind: 'event', event: eventKind, tag: tag.trim() }
+    } else if (!/^\d{2}:\d{2}$/.test(time)) {
+      return
+    } else {
+      schedule =
+        kind === 'daily' ? { kind, time } : { kind, weekday: Number(weekday), time }
+    }
     onCreate({
       id: crypto.randomUUID(),
       name: name.trim(),
@@ -353,6 +350,9 @@ function NewRoutineDialog({
     setPrompt('')
     setScript('')
     setAgentSlug('none')
+    setKind('daily')
+    setTag('')
+    setEventKind('row-created')
   }
 
   return (
@@ -405,7 +405,7 @@ function NewRoutineDialog({
             <Select
               value={kind}
               onValueChange={(value) => {
-                setKind(value === 'weekly' ? 'weekly' : 'daily')
+                setKind(value === 'weekly' ? 'weekly' : value === 'event' ? 'event' : 'daily')
               }}
             >
               <SelectTrigger aria-label="Schedule" className="flex-1">
@@ -414,6 +414,7 @@ function NewRoutineDialog({
               <SelectContent>
                 <SelectItem value="daily">Daily</SelectItem>
                 <SelectItem value="weekly">Weekly</SelectItem>
+                <SelectItem value="event">On collection event</SelectItem>
               </SelectContent>
             </Select>
             {kind === 'weekly' ? (
@@ -430,13 +431,39 @@ function NewRoutineDialog({
                 </SelectContent>
               </Select>
             ) : null}
-            <Input
-              type="time"
-              value={time}
-              onChange={(event) => setTime(event.target.value)}
-              aria-label="Time"
-              className="w-28"
-            />
+            {kind === 'event' ? (
+              <>
+                <Select
+                  value={eventKind}
+                  onValueChange={(value) => {
+                    setEventKind(value === 'row-updated' ? 'row-updated' : 'row-created')
+                  }}
+                >
+                  <SelectTrigger aria-label="Collection event" className="flex-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="row-created">Row created</SelectItem>
+                    <SelectItem value="row-updated">Row updated</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Input
+                  value={tag}
+                  onChange={(change) => setTag(change.target.value)}
+                  placeholder="tag — e.g. books"
+                  aria-label="Collection tag"
+                  className="w-32"
+                />
+              </>
+            ) : (
+              <Input
+                type="time"
+                value={time}
+                onChange={(change) => setTime(change.target.value)}
+                aria-label="Time"
+                className="w-28"
+              />
+            )}
           </div>
           <Textarea
             value={script}
@@ -448,12 +475,13 @@ function NewRoutineDialog({
           />
           <p className="text-xs text-text-muted">
             Runs through your Claude Code or Codex provider in edit mode, with the chosen agent’s
-            soul and memory. The app must be open at (or after) the scheduled time. With a gate
+            soul and memory. Clock schedules need the app open at (or after) the time; collection
+            events fire while the app is open when a tagged row is created or updated. With a gate
             script, each tick runs the script first in the vault folder: no output means nothing to
             do — the tick is skipped silently and no AI runs — while output wakes the agent with it
             as context.
           </p>
-          <Button type="submit" disabled={name.trim() === '' || prompt.trim() === ''}>
+          <Button type="submit" disabled={name.trim() === '' || prompt.trim() === '' || (kind === 'event' && tag.trim() === '')}>
             Create automation
           </Button>
         </form>

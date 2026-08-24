@@ -1,4 +1,5 @@
 import type { ReactElement, ReactNode } from 'react'
+import { useShowAdvancedSurfaces } from '@/hooks/use-show-advanced-surfaces'
 import { settingsGroupTitle, type SettingsGroupId } from './settings/sections'
 import { AboutSection } from './settings/about-section'
 import { AgentsSection } from './settings/agents-section'
@@ -45,6 +46,7 @@ function SettingsGroupBlock({
  * through the settings provider; there is no save button.
  */
 export function SettingsScreen(): ReactElement {
+  const showAdvanced = useShowAdvancedSurfaces()
   return (
     <div aria-label="Settings">
       <h1 className="text-lg font-semibold text-text">Settings</h1>
@@ -58,7 +60,7 @@ export function SettingsScreen(): ReactElement {
           <TemplatesSection />
           <AllNotesSection />
           <TasksSection />
-          <SearchSection />
+          {showAdvanced ? <SearchSection /> : null}
         </SettingsGroupBlock>
         <SettingsGroupBlock id="ai">
           <AiProvidersSection />
@@ -66,7 +68,7 @@ export function SettingsScreen(): ReactElement {
           <AiPromptsSection />
           <AudioMemosSection />
           <McpSection />
-          <AgentsSection />
+          {showAdvanced ? <AgentsSection /> : null}
         </SettingsGroupBlock>
         <SettingsGroupBlock id="data">
           <SyncSection />

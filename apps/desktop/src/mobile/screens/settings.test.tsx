@@ -2,7 +2,13 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { cleanup, render } from 'vitest-browser-react'
 import { page, userEvent } from 'vitest/browser'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { DEFAULT_SETTINGS, getConflictedNotes, type GraphInfo, type Settings } from '@reflect/core'
+import {
+  DEFAULT_SETTINGS,
+  getConflictedNotes,
+  type AppPlatform,
+  type GraphInfo,
+  type Settings,
+} from '@reflect/core'
 import type { BackupState } from '@/lib/backup-controller'
 import '@/test-utils/locator'
 import { MobileSettings } from './settings'
@@ -24,11 +30,13 @@ vi.mock('@reflect/core', async (importOriginal) => ({
 
 const graphState = vi.hoisted(() => ({
   mobileStorageKind: 'icloud' as 'icloud' | 'local' | null,
+  platform: undefined as AppPlatform | undefined,
 }))
 vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({
     graph: { root: '/g', name: 'Field Notes', generation: 1 } as GraphInfo,
     mobileStorageKind: graphState.mobileStorageKind,
+    platform: graphState.platform,
   }),
 }))
 vi.mock('@/hooks/use-app-version', () => ({ useAppVersion: () => '1.2.3-beta.4' }))
@@ -94,6 +102,7 @@ beforeEach(async () => {
   queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   settingsState.current = { ...DEFAULT_SETTINGS }
   graphState.mobileStorageKind = 'icloud'
+  graphState.platform = undefined
   sync.value = {
     backup: connected({ state: 'idle' }),
     disconnectGraph: vi.fn(async () => {}),
@@ -380,6 +389,19 @@ describe('MobileSettings', () => {
       .element(page.getByRole('button', { name: 'Connect GitHub' }))
       .not.toBeInTheDocument()
     await expect.element(page.getByText('Backup')).not.toBeInTheDocument()
+  })
+
+  it('shows today’s meetings on iOS', async () => {
+    graphState.platform = 'ios'
+    await mount()
+
+    await expect.element(page.getByText("Show today’s meetings")).toBeVisible()
+  })
+
+  it('hides calendar settings off iOS', async () => {
+    await mount()
+
+    await expect.element(page.getByText("Show today’s meetings")).not.toBeInTheDocument()
   })
 
   it('degrades to the local groups where no sync lifecycle is mounted', async () => {

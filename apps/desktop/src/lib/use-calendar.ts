@@ -14,6 +14,7 @@ import {
 } from '@reflect/core'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { isMacosDesktop } from '@/lib/platform'
+import { isMobileSurface } from '@/lib/platform-surface'
 import { useSettings } from '@/providers/settings-provider'
 
 /**
@@ -31,11 +32,11 @@ export const CALENDAR_LIST_QUERY_KEY = ['calendar', 'calendars'] as const
 
 /** Whether calendar queries can run at all in this environment. */
 function useCalendarAvailable(): boolean {
-  return useBridgeReady() && isMacosDesktop
+  return useBridgeReady() && (isMacosDesktop || isMobileSurface())
 }
 
 /**
- * The macOS calendar permission state (never prompts). The state changes
+ * The Apple calendar permission state (never prompts). The state changes
  * behind Reflect's back in System Settings, so this query opts out of the
  * app-wide defaults (`staleTime: Infinity`, no focus refetch — right for
  * invalidation-driven index reads, wrong here) and re-checks every time the
@@ -81,7 +82,7 @@ export function useCalendars(enabled: boolean): CalendarsResult {
 
 /**
  * The day's displayable events (filtered and sorted by `displayEvents`) from
- * the enabled calendars. Off (or empty-selection, or non-macOS) resolves to
+ * the enabled calendars. Off (or empty-selection, or non-Apple) resolves to
  * an empty list. The minute-level `staleTime` is only a backstop — the
  * EventKit change subscription (below) invalidates on real changes.
  */

@@ -6,6 +6,10 @@ import '@/test-utils/locator'
 import { SETTINGS_SECTIONS, settingsSectionDomId } from './sections'
 import { SettingsNavigator } from './settings-navigator'
 
+vi.mock('@/hooks/use-show-advanced-surfaces', () => ({
+  useShowAdvancedSurfaces: () => true,
+}))
+
 // No bridge is installed here, so the platform-gated entries are hidden
 // (Integrations needs the Rust contacts answer; Agents needs `isMacosDesktop`,
 // which requires a Tauri webview) — the navigator lists the sections every

@@ -83,6 +83,8 @@ function installFakeBridge(): void {
           return []
         case 'db_query':
           return [] // the Note templates section lists `kind = 'template'` rows
+        case 'vault_scan_stats':
+          return { notes: 50, attachments: 0, skipped: 0 }
         default:
           return null
       }

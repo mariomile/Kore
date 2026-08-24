@@ -49,6 +49,7 @@ vi.mock('@reflect/core', async (importOriginal) => ({
   hasBridge: () => true,
   getPinnedNotes,
   listNoteTags,
+  vaultScanStats: async () => ({ notes: 50, attachments: 0, skipped: 0 }),
 }))
 vi.mock('@tauri-apps/plugin-opener', () => ({ revealItemInDir }))
 vi.mock('@/lib/windows/open-in-new-window', async (importOriginal) => ({

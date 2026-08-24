@@ -12,7 +12,7 @@ use std::thread;
 
 use portable_pty::{native_pty_system, CommandBuilder, MasterPty, PtySize};
 use serde::Serialize;
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::error::{AppError, AppResult};
 use crate::fs::{current_root, GraphState};
@@ -156,7 +156,16 @@ pub fn pty_open(
             .ok()
             .and_then(|mut child| child.try_wait().ok().flatten())
             .map(|status| status.exit_code() as i32);
-        let _ = read_app.emit(EXIT_EVENT, PtyExitPayload { id: read_id, code });
+        let _ = read_app.emit(
+            EXIT_EVENT,
+            PtyExitPayload {
+                id: read_id.clone(),
+                code,
+            },
+        );
+        if let Ok(mut sessions) = read_app.state::<PtyState>().sessions.lock() {
+            sessions.remove(&read_id);
+        }
     });
 
     Ok(PtyOpenResult { id })

@@ -127,7 +127,12 @@ export function TerminalScreen(): ReactElement {
         if (cancelled || hostRef.current === null) {
           return
         }
-        session.terminal.open(hostRef.current)
+        const mount = hostRef.current
+        if (session.terminal.element) {
+          mount.appendChild(session.terminal.element)
+        } else {
+          session.terminal.open(mount)
+        }
         session.fit.fit()
         const dims = session.terminal.cols
         void ptyResize(session.id, dims, session.terminal.rows)
@@ -148,7 +153,8 @@ export function TerminalScreen(): ReactElement {
       resizeObserver?.disconnect()
       // Detach the renderer from this host without killing the PTY — the
       // session is reused the next time this screen mounts.
-      if (live !== null && host.contains(live.terminal.element)) {
+      const element = live?.terminal.element
+      if (element !== undefined && host.contains(element)) {
         host.replaceChildren()
       }
     }

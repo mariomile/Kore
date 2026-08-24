@@ -7,7 +7,11 @@ function entry(path: string, properties: Record<string, CollectionValue>): Colle
   return { path, title: path, mtime: 0, isPinned: false, properties }
 }
 
-function cell(value: string, valueType: CollectionValue['valueType'], valueNumber: number | null = null): CollectionValue {
+function cell(
+  value: string,
+  valueType: CollectionValue['valueType'],
+  valueNumber: number | null = null,
+): CollectionValue {
   return { value, valueType, valueNumber }
 }
 
@@ -24,7 +28,10 @@ describe('attachRollups', () => {
         },
       ],
     }
-    const resolveWikiTarget = vi.fn(async () => ({ kind: 'resolved' as const, ref: 'notes/le-guin.md' }))
+    const resolveWikiTarget = vi.fn(async () => ({
+      kind: 'resolved' as const,
+      ref: 'notes/le-guin.md',
+    }))
     const getNoteProperties = vi.fn(async () => ({
       rating: cell('5', 'number', 5),
     }))

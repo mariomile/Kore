@@ -82,12 +82,16 @@ describe('readCellValue extra types', () => {
   })
 
   it('formats a 1–5 rating as stars and mismatches anything else', () => {
-    expect(
-      readCellValue(rating, { value: '3', valueType: 'number', valueNumber: 3 }),
-    ).toEqual({ text: '★★★☆☆', checked: false, mismatch: false })
-    expect(
-      readCellValue(rating, { value: '9', valueType: 'number', valueNumber: 9 }),
-    ).toEqual({ text: '9', checked: false, mismatch: true })
+    expect(readCellValue(rating, { value: '3', valueType: 'number', valueNumber: 3 })).toEqual({
+      text: '★★★☆☆',
+      checked: false,
+      mismatch: false,
+    })
+    expect(readCellValue(rating, { value: '9', valueType: 'number', valueNumber: 9 })).toEqual({
+      text: '9',
+      checked: false,
+      mismatch: true,
+    })
   })
 
   it('displays file paths by basename', () => {
@@ -107,8 +111,10 @@ describe('readCellValue extra types', () => {
   })
 
   it('displays an attached rollup cell without treating it as a write', () => {
-    expect(
-      readCellValue(rollup, { value: '5', valueType: 'number', valueNumber: 5 }),
-    ).toEqual({ text: '5', checked: false, mismatch: false })
+    expect(readCellValue(rollup, { value: '5', valueType: 'number', valueNumber: 5 })).toEqual({
+      text: '5',
+      checked: false,
+      mismatch: false,
+    })
   })
 })

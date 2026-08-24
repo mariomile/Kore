@@ -27,8 +27,7 @@ export async function createCollectionNote(
 ): Promise<string> {
   const path = untitledNotePath()
   const tagged = appendBodyTag(body, tag) ?? body
-  const seed =
-    Object.keys(properties).length === 0 ? tagged : upsertFrontmatter(tagged, properties)
+  const seed = Object.keys(properties).length === 0 ? tagged : upsertFrontmatter(tagged, properties)
   await createNoteIfAbsent(path, seed, generation)
   return path
 }
@@ -78,4 +77,3 @@ export async function bodyForCollectionCreate(
     return untitledNoteSeed()
   }
 }
-

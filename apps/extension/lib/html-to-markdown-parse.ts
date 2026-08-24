@@ -142,7 +142,7 @@ interface CloseTag {
 }
 
 function readOpenTag(html: string, start: number): OpenTag | null {
-  const match = /^<([A-Za-z][\w:-]*)/.exec(html.slice(start))
+  const match = /^<([a-z][\w:-]*)/i.exec(html.slice(start))
   if (match === null || match[1] === undefined) {
     return null
   }
@@ -171,7 +171,7 @@ function readOpenTag(html: string, start: number): OpenTag | null {
 }
 
 function readCloseTag(html: string, start: number): CloseTag | null {
-  const match = /^<\/([A-Za-z][\w:-]*)\s*>/.exec(html.slice(start))
+  const match = /^<\/([a-z][\w:-]*)\s*>/i.exec(html.slice(start))
   if (match === null || match[1] === undefined) {
     return null
   }
@@ -200,7 +200,7 @@ function readAttribute(html: string, start: number): ParsedAttribute | null {
 }
 
 function readRawText(html: string, start: number, tag: string): { text: string; end: number } {
-  const close = html.slice(start).search(new RegExp(`</${tag}\\s*>`, 'i'))
+  const close = html.slice(start).search(new RegExp(String.raw`</${tag}\s*>`, 'i'))
   if (close === -1) {
     return { text: decodeEntities(html.slice(start)), end: html.length }
   }
@@ -208,7 +208,7 @@ function readRawText(html: string, start: number, tag: string): { text: string; 
 }
 
 function decodeEntities(text: string): string {
-  return text.replace(/&(#x[0-9a-fA-F]+|#\d+|[a-zA-Z][a-zA-Z0-9]+);/g, (full, body: string) => {
+  return text.replaceAll(/&(#x[0-9a-fA-F]+|#\d+|[a-zA-Z][a-zA-Z0-9]+);/g, (full, body: string) => {
     if (body.startsWith('#x') || body.startsWith('#X')) {
       return codePointToChar(Number.parseInt(body.slice(2), 16), full)
     }
@@ -220,7 +220,7 @@ function decodeEntities(text: string): string {
 }
 
 function codePointToChar(code: number, fallback: string): string {
-  if (!Number.isInteger(code) || code < 0 || code > 0x10ffff) {
+  if (!Number.isSafeInteger(code) || code < 0 || code > 0x10ffff) {
     return fallback
   }
   if (code >= 0xd800 && code <= 0xdfff) {

@@ -1,8 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const createNoteIfAbsent = vi.hoisted(() =>
-  vi.fn(async () => ({ kind: 'created' as const })),
-)
+const createNoteIfAbsent = vi.hoisted(() => vi.fn(async () => ({ kind: 'created' as const })))
 const readNote = vi.hoisted(() => vi.fn<(path: string, generation?: number) => Promise<string>>())
 
 vi.mock('@reflect/core', async (importOriginal) => ({
@@ -45,7 +43,7 @@ describe('createCollectionNote', () => {
   it('skips a property patch when none are set', async () => {
     await createCollectionNote('book', 1)
 
-    const seed = createNoteIfAbsent.mock.calls[0]![1] as string
+    const [, seed] = createNoteIfAbsent.mock.calls[0] as unknown as [string, string, number]
     expect(seed).toContain('#book')
     expect(seed).not.toContain('status:')
   })
@@ -53,7 +51,7 @@ describe('createCollectionNote', () => {
   it('uses the supplied body instead of the untitled seed', async () => {
     await createCollectionNote('book', 1, { finished: '2026-08-10' }, '# Template\n')
 
-    const seed = createNoteIfAbsent.mock.calls[0]![1] as string
+    const [, seed] = createNoteIfAbsent.mock.calls[0] as unknown as [string, string, number]
     expect(seed).toContain('# Template')
     expect(seed).toContain('#book')
     expect(seed).toContain('finished: 2026-08-10')

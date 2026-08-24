@@ -83,9 +83,7 @@ export function renderHtmlFragment(
       if (block !== '') {
         blocks.push(block)
       }
-    } else if (node.kind === 'element' && SKIP_TAGS.has(node.tag)) {
-      continue
-    } else {
+    } else if (node.kind !== 'element' || !SKIP_TAGS.has(node.tag)) {
       inlineRun.push(node)
     }
   }
@@ -95,7 +93,8 @@ export function renderHtmlFragment(
 
 function elementHasBlockChild(element: HtmlElement): boolean {
   return element.children.some(
-    (child) => child.kind === 'element' && (BLOCK_TAGS.has(child.tag) || elementHasBlockChild(child)),
+    (child) =>
+      child.kind === 'element' && (BLOCK_TAGS.has(child.tag) || elementHasBlockChild(child)),
   )
 }
 
@@ -199,7 +198,7 @@ function renderPre(element: HtmlElement): string {
 }
 
 function fenceLanguage(className: string): string {
-  const match = /(?:^|\s)(?:language|lang)-([A-Za-z0-9_+-]+)/.exec(className)
+  const match = /(?:^|\s)(?:language|lang)-([\w+-]+)/.exec(className)
   return match?.[1] ?? ''
 }
 
@@ -251,7 +250,7 @@ function collectTableRows(element: HtmlElement): HtmlNode[][][] {
 }
 
 function escapeTableCell(text: string): string {
-  return text.replaceAll('|', '\\|').replaceAll('\n', ' ')
+  return text.replaceAll('|', String.raw`\|`).replaceAll('\n', ' ')
 }
 
 function renderInlineNodes(nodes: readonly HtmlNode[], context: MarkdownRenderContext): string {
@@ -326,7 +325,12 @@ function renderLink(element: HtmlElement, context: MarkdownRenderContext): strin
 
 function renderImage(element: HtmlElement, context: MarkdownRenderContext): string {
   const src = element.attrs['src']
-  if (src === undefined || src === '' || src.startsWith('data:') || !isSafeUrl(src, ['http', 'https'])) {
+  if (
+    src === undefined ||
+    src === '' ||
+    src.startsWith('data:') ||
+    !isSafeUrl(src, ['http', 'https'])
+  ) {
     return ''
   }
   const resolved = resolveUrl(src, context.baseUrl)
@@ -335,7 +339,7 @@ function renderImage(element: HtmlElement, context: MarkdownRenderContext): stri
 }
 
 function isSafeUrl(value: string, allowed: readonly string[]): boolean {
-  const scheme = /^([a-zA-Z][a-zA-Z0-9+.-]*):/.exec(value.trim())
+  const scheme = /^([a-z][a-z0-9+.-]*):/i.exec(value.trim())
   if (scheme === null || scheme[1] === undefined) {
     return true
   }
@@ -358,7 +362,7 @@ function escapeUrl(value: string): string {
 }
 
 function escapeInline(text: string): string {
-  return text.replace(/([\\`*_[\]~])/g, '\\$1')
+  return text.replaceAll(/([\\`*_[\]~])/g, String.raw`\$1`)
 }
 
 function collapseInlineWhitespace(text: string): string {

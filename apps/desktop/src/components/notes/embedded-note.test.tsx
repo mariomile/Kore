@@ -68,7 +68,7 @@ describe('EmbeddedNote', () => {
     const root = view.getByTestId('note-embed')
     await expect.element(root).toBeInTheDocument()
     await expect.element(root).toHaveAttribute('data-embed-target', 'Dune')
-    await expect.element(view.getByText('Dune')).toBeInTheDocument()
+    await expect.element(view.getByRole('button', { name: 'Open Dune' })).toBeInTheDocument()
     await expect.element(view.getByTestId('markdown-preview')).toHaveTextContent('Sandworms.')
   })
 

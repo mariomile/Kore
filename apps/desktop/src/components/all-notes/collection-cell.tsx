@@ -95,7 +95,7 @@ export function readCellValue(
         ? { text: raw, checked: false, mismatch: true }
         : { text: raw, checked: false, mismatch: raw !== '' && !isEmailValue(raw) }
     case 'rating': {
-      const numeric = value.valueType === 'number' ? (value.valueNumber ?? Number(raw)) : Number.NaN
+      const numeric = value.valueType === 'number' ? (value.valueNumber ?? Number(raw)) : NaN
       const rating = parseRating(numeric)
       return rating === null
         ? { text: raw, checked: false, mismatch: true }

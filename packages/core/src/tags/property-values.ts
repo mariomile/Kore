@@ -23,7 +23,7 @@ export function isEmailValue(value: string): boolean {
 
 /** Integer 1–5, or `null` when the stored value isn't a rating. */
 export function parseRating(value: number): number | null {
-  if (!Number.isInteger(value) || value < 1 || value > 5) {
+  if (!Number.isSafeInteger(value) || value < 1 || value > 5) {
     return null
   }
   return value
@@ -149,8 +149,6 @@ export function computeRollup(
 }
 
 /** Flatten one related note's property into a rollup source. */
-export function rollupSourceFromValue(
-  value: PropertyValue | undefined,
-): RollupSourceValue {
+export function rollupSourceFromValue(value: PropertyValue | undefined): RollupSourceValue {
   return sourceFromValue(value)
 }

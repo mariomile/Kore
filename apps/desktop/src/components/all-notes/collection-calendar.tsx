@@ -257,7 +257,9 @@ export function CollectionCalendar({
               className={cn(
                 'group flex min-h-20 flex-col gap-0.5 border-b border-r border-border/60 p-1.5',
                 !cell.inMonth && 'opacity-40',
-                draggingPath !== null && dropDay === cell.iso && 'bg-accent/10 ring-1 ring-accent/40',
+                draggingPath !== null &&
+                  dropDay === cell.iso &&
+                  'bg-accent/10 ring-1 ring-accent/40',
               )}
             >
               <div className="flex items-center justify-between gap-1">

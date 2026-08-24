@@ -1,15 +1,6 @@
-import {
-  computeRollup,
-  extractRelationTargets,
-  rollupSourceFromValue,
-  type TagType,
-} from '../tags'
+import { computeRollup, extractRelationTargets, rollupSourceFromValue, type TagType } from '../tags'
 import { resolveWikiTarget } from './queries'
-import {
-  getNoteProperties,
-  type CollectionEntry,
-  type CollectionValue,
-} from './collections'
+import { getNoteProperties, type CollectionEntry, type CollectionValue } from './collections'
 
 export interface RollupLookup {
   resolveWikiTarget: typeof resolveWikiTarget

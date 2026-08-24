@@ -42,7 +42,10 @@ export function useCollection(
     queryFn: async () => {
       const rows = await listCollection(tag ?? '', sort)
       const type = await getTagType(tag ?? '')
-      return type === null ? rows : attachRollups(rows, type)
+      if (type === null) {
+        return rows
+      }
+      return await attachRollups(rows, type)
     },
     enabled: bridgeReady && graph !== null && tag !== null,
   })

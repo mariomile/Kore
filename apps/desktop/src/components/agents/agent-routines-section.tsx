@@ -329,8 +329,7 @@ function NewRoutineDialog({
     } else if (!/^\d{2}:\d{2}$/.test(time)) {
       return
     } else {
-      schedule =
-        kind === 'daily' ? { kind, time } : { kind, weekday: Number(weekday), time }
+      schedule = kind === 'daily' ? { kind, time } : { kind, weekday: Number(weekday), time }
     }
     onCreate({
       id: crypto.randomUUID(),
@@ -481,7 +480,12 @@ function NewRoutineDialog({
             do — the tick is skipped silently and no AI runs — while output wakes the agent with it
             as context.
           </p>
-          <Button type="submit" disabled={name.trim() === '' || prompt.trim() === '' || (kind === 'event' && tag.trim() === '')}>
+          <Button
+            type="submit"
+            disabled={
+              name.trim() === '' || prompt.trim() === '' || (kind === 'event' && tag.trim() === '')
+            }
+          >
             Create automation
           </Button>
         </form>

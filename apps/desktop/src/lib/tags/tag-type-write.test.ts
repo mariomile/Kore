@@ -59,9 +59,7 @@ describe('readTagDefinition', () => {
   })
 
   it('reads a bound template from a marked definition', async () => {
-    readNote.mockResolvedValue(
-      '---\nlore: tag\ntemplate: templates/book.md\nproperties: []\n---\n',
-    )
+    readNote.mockResolvedValue('---\nlore: tag\ntemplate: templates/book.md\nproperties: []\n---\n')
     expect(await readTagDefinition('book')).toMatchObject({
       template: 'templates/book.md',
       properties: [],
@@ -112,7 +110,7 @@ describe('saveTagType', () => {
 
     await saveTagType('book', schema, 3)
 
-    const written = String(writeNote.mock.calls[0]?.[1])
+    const written = (writeNote.mock.calls[0] as unknown as [string, string, number])[1]
     expect(written).toContain('color: red')
     expect(written).toContain('Body stays.')
     expect(written).toContain('key: author')
@@ -131,7 +129,7 @@ describe('saveTagType', () => {
 
     await saveTagType('Book', schema, 3, 'templates/book.md')
 
-    const contents = String(createNoteIfAbsent.mock.calls[0]?.[1])
+    const [, contents] = createNoteIfAbsent.mock.calls[0] as unknown as [string, string, number]
     expect(contents).toContain('template: templates/book.md')
   })
 })

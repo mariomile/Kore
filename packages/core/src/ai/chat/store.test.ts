@@ -169,6 +169,20 @@ describe('loadChatMessages', () => {
     ]
     invoke.mockResolvedValue([messageRow({ parts: JSON.stringify(parts) })])
     const [restored] = await loadChatMessages('conv-1')
-    expect(restored?.parts).toEqual(parts)
+    expect(restored?.parts).toEqual([
+      {
+        kind: 'tool',
+        call: { tool: 'setProperty', toolCallId: 'tool-3', path: 'notes/a.md', key: 'rating' },
+        result: {
+          tool: 'setProperty',
+          toolCallId: 'tool-3',
+          path: 'notes/a.md',
+          key: 'rating',
+          error: null,
+          value: null,
+        },
+        error: null,
+      },
+    ])
   })
 })

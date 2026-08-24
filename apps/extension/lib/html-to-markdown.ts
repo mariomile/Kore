@@ -16,5 +16,8 @@ export function htmlToMarkdown(html: string, options: HtmlToMarkdownOptions = {}
   const rendered = renderHtmlFragment(parseHtmlFragment(html), {
     baseUrl: options.baseUrl,
   })
-  return rendered.replaceAll(/[ \t]+\n/g, '\n').replaceAll(/\n{3,}/g, '\n\n').trim()
+  return rendered
+    .replaceAll(/[ \t]+\n/g, '\n')
+    .replaceAll(/\n{3,}/g, '\n\n')
+    .trim()
 }

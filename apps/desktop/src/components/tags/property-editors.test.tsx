@@ -292,7 +292,9 @@ describe('PropertyValueEditor', () => {
     }
     const view = await render(editor(property, stored('5', 'number')))
 
-    await expect.element(view.getByRole('button', { name: 'Edit Author score' })).not.toBeInTheDocument()
+    await expect
+      .element(view.getByRole('button', { name: 'Edit Author score' }))
+      .not.toBeInTheDocument()
     await expect.element(view.getByText('5')).toBeInTheDocument()
   })
 })

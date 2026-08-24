@@ -215,12 +215,18 @@ describe('routinesMatchingCollectionEvent', () => {
       id: 'films',
       schedule: { kind: 'event', event: 'row-created', tag: 'films' },
     })
-    expect(routinesMatchingCollectionEvent([created, updated, disabled, daily, otherTag], 'row-created', 'BOOKS').map((entry) => entry.id)).toEqual(
-      ['created'],
-    )
-    expect(routinesMatchingCollectionEvent([created, updated], 'row-updated', 'books').map((entry) => entry.id)).toEqual(
-      ['updated'],
-    )
+    expect(
+      routinesMatchingCollectionEvent(
+        [created, updated, disabled, daily, otherTag],
+        'row-created',
+        'BOOKS',
+      ).map((entry) => entry.id),
+    ).toEqual(['created'])
+    expect(
+      routinesMatchingCollectionEvent([created, updated], 'row-updated', 'books').map(
+        (entry) => entry.id,
+      ),
+    ).toEqual(['updated'])
   })
 })
 

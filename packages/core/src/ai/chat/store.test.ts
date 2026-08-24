@@ -151,4 +151,24 @@ describe('loadChatMessages', () => {
       },
     ])
   })
+
+  it('loads a legacy setProperty result that has no proposed value', async () => {
+    const parts = [
+      {
+        kind: 'tool',
+        call: { tool: 'setProperty', toolCallId: 'tool-3', path: 'notes/a.md', key: 'rating' },
+        result: {
+          tool: 'setProperty',
+          toolCallId: 'tool-3',
+          path: 'notes/a.md',
+          key: 'rating',
+          error: null,
+        },
+        error: null,
+      },
+    ]
+    invoke.mockResolvedValue([messageRow({ parts: JSON.stringify(parts) })])
+    const [restored] = await loadChatMessages('conv-1')
+    expect(restored?.parts).toEqual(parts)
+  })
 })

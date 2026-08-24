@@ -95,6 +95,10 @@ const toolResultSchema = z.discriminatedUnion('tool', [
     path: z.string(),
     key: z.string(),
     error: z.string().nullable(),
+    value: z
+      .union([z.string(), z.number(), z.boolean(), z.array(z.string()), z.null()])
+      .nullable()
+      .optional(),
   }),
 ])
 

@@ -61,6 +61,7 @@ export {
 } from '../ai/checkers'
 export {
   buildNoteTools,
+  formatPropertyPreview,
   MAX_DAILY_NOTE_DAYS,
   type ListDailyNotesOutput,
   type ListRecentNotesOutput,

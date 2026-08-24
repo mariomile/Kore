@@ -22,6 +22,8 @@ import {
   RESERVED_PROPERTY_ERROR,
   PRIVATE_NOTE_EDIT_ERROR,
   MISSING_VALUE_ERROR,
+  formatPropertyPreview,
+  noteToolResult,
   type SetNotePropertyOutput,
   type ListCollectionOutput,
   type ListDailyNotesOutput,
@@ -893,7 +895,7 @@ describe('set_note_property', () => {
     expect(output).toEqual({ ok: false, path: PRIVATE_PATH, error: PRIVATE_NOTE_EDIT_ERROR })
   })
 
-  it('writes the typed value through the commit channel, and clears on clear', async () => {
+  it('proposes the typed value without writing, and clears as null', async () => {
     const writes: Array<[string, string, unknown]> = []
     const tools = buildNoteTools({
       allowEdits: true,
@@ -906,18 +908,82 @@ describe('set_note_property', () => {
       ok: true,
       path: 'notes/a.md',
       key: 'rating',
+      value: 4.5,
     })
     expect(await runSetProperty(tools, { path: 'notes/a.md', key: 'rating', clear: true })).toEqual(
-      { ok: true, path: 'notes/a.md', key: 'rating' },
+      {
+        ok: true,
+        path: 'notes/a.md',
+        key: 'rating',
+        value: null,
+      },
     )
     expect(await runSetProperty(tools, { path: 'notes/a.md', key: 'rating' })).toEqual({
       ok: false,
       path: 'notes/a.md',
       error: MISSING_VALUE_ERROR,
     })
-    expect(writes).toEqual([
-      ['notes/a.md', 'rating', 4.5],
-      ['notes/a.md', 'rating', undefined],
-    ])
+    expect(writes).toEqual([])
+  })
+
+  it('formats proposed values for the apply chip', () => {
+    expect(formatPropertyPreview(null)).toBe('cleared')
+    expect(formatPropertyPreview(4.5)).toBe('4.5')
+    expect(formatPropertyPreview(true)).toBe('true')
+    expect(formatPropertyPreview(['sci-fi', 'novel'])).toBe('sci-fi, novel')
+  })
+
+  it('maps a successful proposal onto the chip result, including a clear', () => {
+    expect(
+      noteToolResult({
+        type: 'tool-result',
+        toolCallId: 'c1',
+        toolName: 'set_note_property',
+        input: { path: 'notes/a.md', key: 'rating', value: 4.5 },
+        output: { ok: true, path: 'notes/a.md', key: 'rating', value: 4.5 },
+      } as never),
+    ).toEqual({
+      tool: 'setProperty',
+      toolCallId: 'c1',
+      path: 'notes/a.md',
+      key: 'rating',
+      error: null,
+      value: 4.5,
+    })
+    expect(
+      noteToolResult({
+        type: 'tool-result',
+        toolCallId: 'c2',
+        toolName: 'set_note_property',
+        input: { path: 'notes/a.md', key: 'rating', clear: true },
+        output: { ok: true, path: 'notes/a.md', key: 'rating', value: null },
+      } as never),
+    ).toEqual({
+      tool: 'setProperty',
+      toolCallId: 'c2',
+      path: 'notes/a.md',
+      key: 'rating',
+      error: null,
+      value: null,
+    })
+  })
+
+  it('maps a refused property edit onto an error chip with no value', () => {
+    expect(
+      noteToolResult({
+        type: 'tool-result',
+        toolCallId: 'c3',
+        toolName: 'set_note_property',
+        input: { path: 'notes/a.md', key: 'private', value: true },
+        output: { ok: false, path: 'notes/a.md', error: RESERVED_PROPERTY_ERROR },
+      } as never),
+    ).toEqual({
+      tool: 'setProperty',
+      toolCallId: 'c3',
+      path: 'notes/a.md',
+      key: 'private',
+      error: RESERVED_PROPERTY_ERROR,
+      value: null,
+    })
   })
 })

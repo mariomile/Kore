@@ -148,6 +148,7 @@ export interface Tasks {
   breadcrumbs: Generated<string>;
   checked: number;
   dueDate: string | null;
+  dueTime: string | null;
   markerOffset: number;
   notePath: string;
   raw: string;

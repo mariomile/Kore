@@ -4,7 +4,7 @@ import { buildIndexedNote, CLAIM_TIER, indexedNoteSchema, PROJECTION_VERSION } f
 
 describe('buildIndexedNote', () => {
   it('carries the projection version that backfills frontmatter links', () => {
-    expect(PROJECTION_VERSION).toBe(21)
+    expect(PROJECTION_VERSION).toBe(22)
   })
 
   it('flattens a parsed note into the index payload', () => {
@@ -311,6 +311,7 @@ describe('buildIndexedNote', () => {
         raw: '[ ] buy milk',
         checked: false,
         dueDate: null,
+        dueTime: null,
       },
       {
         markerOffset: source.indexOf('[x] call'),
@@ -319,6 +320,7 @@ describe('buildIndexedNote', () => {
         raw: '[x] call mum',
         checked: true,
         dueDate: null,
+        dueTime: null,
       },
     ])
   })
@@ -331,6 +333,18 @@ describe('buildIndexedNote', () => {
       source,
     })
     expect(indexed.tasks[0]?.dueDate).toBe('2026-06-20')
+    expect(indexed.tasks[0]?.dueTime).toBeNull()
+  })
+
+  it('maps @HH:MM after the due-date link onto the task row', () => {
+    const source = '# Todo\n\n+ [ ] pay bill [[2026-06-20]] @09:15\n'
+    const indexed = buildIndexedNote(parseNote({ path: 'notes/n.md', source }), {
+      fileHash: 'h',
+      mtime: 0,
+      source,
+    })
+    expect(indexed.tasks[0]?.dueDate).toBe('2026-06-20')
+    expect(indexed.tasks[0]?.dueTime).toBe('09:15')
   })
 
   it('flags notes carrying sync conflict markers', () => {

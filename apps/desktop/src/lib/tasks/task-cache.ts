@@ -47,6 +47,7 @@ interface TaskMarkerRelocationOptions {
 interface TaskLineProjection {
   readonly text: string
   readonly dueDate: string | null
+  readonly dueTime: string | null
 }
 
 function taskLineProjection(raw: string): TaskLineProjection {
@@ -54,6 +55,7 @@ function taskLineProjection(raw: string): TaskLineProjection {
   return {
     text: projected?.text ?? '',
     dueDate: projected?.dueDate ?? null,
+    dueTime: projected?.dueTime ?? null,
   }
 }
 

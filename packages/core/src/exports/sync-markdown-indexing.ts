@@ -75,6 +75,7 @@ export {
   type WikiLinkRetitleOptions,
   setTaskDueDate,
   clearTaskDueDate,
+  setTaskDueTime,
   taskLineToBullet,
   toggleTaskMarker,
   TaskStaleError,

@@ -78,6 +78,7 @@ export {
   removeTaskLine,
   setTaskDueDate,
   clearTaskDueDate,
+  setTaskDueTime,
   taskLineToBullet,
   toggleTaskMarker,
   TaskStaleError,

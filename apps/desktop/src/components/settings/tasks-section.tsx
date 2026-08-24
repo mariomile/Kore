@@ -26,7 +26,7 @@ export function TasksSection(): ReactElement {
     <SettingsSection id="tasks">
       <SettingsSwitchField
         legend="Due-task reminders"
-        description="Once a day, a system notification summarizes the tasks due today and any overdue ones."
+        description="A daily summary of date-only due and overdue tasks, plus a notification at the @HH:MM on a timed task."
         checked={settings.taskReminders}
         onCheckedChange={setReminders}
       />

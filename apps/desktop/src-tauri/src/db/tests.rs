@@ -146,6 +146,7 @@ fn task(marker_offset: i64, text: &str, checked: bool) -> IndexedTask {
         breadcrumbs: vec![],
         checked,
         due_date: None,
+        due_time: None,
     }
 }
 
@@ -887,12 +888,13 @@ fn apply_note_inserts_tasks_and_replace_clears_them() {
     let mut seeded = note("notes/a.md", "A", vec![]);
     let mut due = task(4, "buy milk", false);
     due.due_date = Some("2026-07-01".to_string());
+    due.due_time = Some("14:30".to_string());
     seeded.tasks = vec![due, task(20, "call mum", true)];
     apply_note(&conn, &seeded).unwrap();
 
     let rows = run_query(
         &conn,
-        "SELECT marker_offset, text, breadcrumbs, checked, due_date FROM tasks WHERE note_path = 'notes/a.md' ORDER BY marker_offset",
+        "SELECT marker_offset, text, breadcrumbs, checked, due_date, due_time FROM tasks WHERE note_path = 'notes/a.md' ORDER BY marker_offset",
         &[],
     )
     .unwrap();
@@ -902,8 +904,10 @@ fn apply_note_inserts_tasks_and_replace_clears_them() {
     assert_eq!(rows[0]["breadcrumbs"], Value::from("[]"));
     assert_eq!(rows[0]["checked"], Value::from(0));
     assert_eq!(rows[0]["due_date"], Value::from("2026-07-01"));
+    assert_eq!(rows[0]["due_time"], Value::from("14:30"));
     assert_eq!(rows[1]["checked"], Value::from(1));
     assert_eq!(rows[1]["due_date"], Value::Null);
+    assert_eq!(rows[1]["due_time"], Value::Null);
 
     // Re-applying with no tasks cascades the old rows away (no explicit delete).
     apply_note(&conn, &note("notes/a.md", "A", vec![])).unwrap();

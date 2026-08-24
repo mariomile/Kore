@@ -194,7 +194,7 @@ export async function createDevIndexDb(): Promise<DevIndexDb> {
       for (const task of note.tasks) {
         run(
           db,
-          'INSERT INTO tasks(note_path, marker_offset, text, breadcrumbs, raw, checked, due_date) VALUES(?, ?, ?, ?, ?, ?, ?)',
+          'INSERT INTO tasks(note_path, marker_offset, text, breadcrumbs, raw, checked, due_date, due_time) VALUES(?, ?, ?, ?, ?, ?, ?, ?)',
           [
             note.path,
             task.markerOffset,
@@ -203,6 +203,7 @@ export async function createDevIndexDb(): Promise<DevIndexDb> {
             task.raw,
             task.checked,
             task.dueDate,
+            task.dueTime,
           ],
         )
       }

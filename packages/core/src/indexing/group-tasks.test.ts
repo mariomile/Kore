@@ -22,6 +22,7 @@ function task(overrides: Partial<OpenTask> = {}): OpenTask {
     breadcrumbs: [],
     noteTitle: 'N',
     dueDate: null,
+    dueTime: null,
     dailyDate: null,
     isPinned: false,
     pinnedOrder: null,

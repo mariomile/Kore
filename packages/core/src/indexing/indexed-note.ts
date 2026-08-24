@@ -101,8 +101,10 @@ import {
  * 21 - frontmatter wiki links join the `links` projection (relations gain
  * backlinks, graph edges, and retitle rewrites) and property values join the
  * FTS body (`propertiesText`); existing rows carry neither until reprojected.
+ * 22 — `tasks.due_time` (`@HH:MM` after the due-date wiki link): existing
+ * task rows have a null due time until reprojected.
  */
-export const PROJECTION_VERSION = 21
+export const PROJECTION_VERSION = 22
 
 /**
  * Precedence of the spellings a note answers to (`note_claims.tier`): the
@@ -194,6 +196,8 @@ export const indexedTaskSchema = z.object({
   checked: z.boolean(),
   /** Explicit due date (first `[[YYYY-MM-DD]]` in the item), or null — drives Overdue. */
   dueDate: z.string().nullable(),
+  /** Local `HH:MM` on {@link dueDate} from `@HH:MM` after the date link, or null. */
+  dueTime: z.string().nullable(),
 })
 export type IndexedTask = z.infer<typeof indexedTaskSchema>
 
@@ -453,6 +457,7 @@ export function buildIndexedNote(
       raw: task.raw,
       checked: task.checked,
       dueDate: task.dueDate,
+      dueTime: task.dueTime,
     })),
     properties,
     // FTS5's tokenizer splits on the punctuation ([["quotes"]], commas), so

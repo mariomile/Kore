@@ -28,6 +28,7 @@ export function insertedTaskRow(
     breadcrumbs,
     noteTitle: target.noteTitle,
     dueDate: null,
+    dueTime: null,
     dailyDate: target.dailyDate,
     isPinned: target.isPinned,
     pinnedOrder: target.pinnedOrder,

@@ -10,6 +10,7 @@ import { lineEndingAt, offsetBeforeLineEnding } from './line-endings'
 import type { Heading, TaskMarker, WikiLink } from './model'
 import { normalizeWikiTarget } from './resolve'
 import { scanInlineWikiLinks } from './scan'
+import { matchDueTimePrefix } from './task-due'
 import { parseTaskMarker } from './task-marker'
 
 export { appendBlock } from './append-section'
@@ -232,19 +233,33 @@ export function taskLineToBullet(source: string, task: TaskMarker): string {
   return source.slice(0, offset) + source.slice(contentStart)
 }
 
+function firstDueDateLink(content: string): { from: number; to: number } | undefined {
+  return scanInlineWikiLinks(content).find(
+    (link) => normalizeWikiTarget(link.target).date !== undefined,
+  )
+}
+
+/** End offset of a due-date link plus its optional `@HH:MM` suffix. */
+function dueStampEnd(content: string, dateLinkTo: number): number {
+  const suffix = matchDueTimePrefix(content.slice(dateLinkTo))
+  return suffix === null ? dateLinkTo : dateLinkTo + suffix.length
+}
+
+function tidyTaskContent(content: string): string {
+  return content.replaceAll(/[ \t]{2,}/g, ' ').trim()
+}
+
 /**
  * Schedule a task by setting its due date to `isoDate` (a `YYYY-MM-DD`), working
  * on the task's **content** — the markdown after the marker. A task's due date is
  * the first calendar-valid `[[YYYY-MM-DD]]` link inside it (the same rule the
  * projection reads), so this replaces that link's target when one exists, else
- * appends `[[isoDate]]` to the content. Returned content is fed back through
- * {@link editTaskLine}; the caller supplies a valid ISO date (the calendar only
- * yields real days).
+ * appends `[[isoDate]]` to the content. An existing `@HH:MM` after the date is
+ * left in place. Returned content is fed back through {@link editTaskLine}; the
+ * caller supplies a valid ISO date (the calendar only yields real days).
  */
 export function setTaskDueDate(content: string, isoDate: string): string {
-  const existing = scanInlineWikiLinks(content).find(
-    (link) => normalizeWikiTarget(link.target).date !== undefined,
-  )
+  const existing = firstDueDateLink(content)
   if (existing !== undefined) {
     return content.slice(0, existing.from) + `[[${isoDate}]]` + content.slice(existing.to)
   }
@@ -254,18 +269,38 @@ export function setTaskDueDate(content: string, isoDate: string): string {
 
 /**
  * Unschedule a task: drop its first calendar-valid `[[YYYY-MM-DD]]` due-date link
- * from the content (collapsing the surrounding whitespace), or return the content
- * unchanged when it has no due date. The inverse of {@link setTaskDueDate}.
+ * and the `@HH:MM` suffix when present (collapsing the surrounding whitespace),
+ * or return the content unchanged when it has no due date. The inverse of
+ * {@link setTaskDueDate}.
  */
 export function clearTaskDueDate(content: string): string {
-  const existing = scanInlineWikiLinks(content).find(
-    (link) => normalizeWikiTarget(link.target).date !== undefined,
-  )
+  const existing = firstDueDateLink(content)
   if (existing === undefined) {
     return content
   }
-  const removed = content.slice(0, existing.from) + content.slice(existing.to)
-  return removed.replaceAll(/[ \t]{2,}/g, ' ').trim()
+  const removed = content.slice(0, existing.from) + content.slice(dueStampEnd(content, existing.to))
+  return tidyTaskContent(removed)
+}
+
+/**
+ * Set or clear a task's local due time (`@HH:MM` after the due-date link).
+ * `time` is `HH:MM` or `H:MM` 24-hour; null removes the suffix. No-ops when
+ * the content has no due date, or when `time` is not a real clock time.
+ */
+export function setTaskDueTime(content: string, time: string | null): string {
+  const existing = firstDueDateLink(content)
+  if (existing === undefined) {
+    return content
+  }
+  const end = dueStampEnd(content, existing.to)
+  if (time === null) {
+    return tidyTaskContent(content.slice(0, existing.to) + content.slice(end))
+  }
+  const parsed = matchDueTimePrefix(`@${time}`)
+  if (parsed === null) {
+    return content
+  }
+  return content.slice(0, existing.to) + ` @${parsed.time}` + content.slice(end)
 }
 
 /**

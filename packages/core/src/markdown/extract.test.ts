@@ -201,6 +201,7 @@ describe('parseNote — tasks', () => {
         checked: false,
         markerOffset: 2,
         dueDate: null,
+        dueTime: null,
       },
       {
         text: 'call mum',
@@ -209,6 +210,7 @@ describe('parseNote — tasks', () => {
         checked: true,
         markerOffset: 17,
         dueDate: null,
+        dueTime: null,
       },
     ])
   })
@@ -223,6 +225,7 @@ describe('parseNote — tasks', () => {
         checked: true,
         markerOffset: 2,
         dueDate: null,
+        dueTime: null,
       },
     ])
   })
@@ -286,6 +289,7 @@ describe('parseNote — tasks', () => {
         checked: false,
         markerOffset: 2,
         dueDate: null,
+        dueTime: null,
       },
     ])
   })
@@ -321,6 +325,27 @@ describe('parseNote — tasks', () => {
       { text: 'parent', dueDate: null },
       { text: 'child 2026-07-01', dueDate: '2026-07-01' },
     ])
+  })
+
+  it('reads @HH:MM after the due-date link as a local due time', () => {
+    const note = parse('+ [ ] call dentist [[2026-08-24]] @14:30\n')
+    expect(note.tasks[0]!.dueDate).toBe('2026-08-24')
+    expect(note.tasks[0]!.dueTime).toBe('14:30')
+  })
+
+  it('zero-pads a single-digit hour and ignores an impossible time', () => {
+    const padded = parse('+ [ ] stretch [[2026-08-24]] @9:05\n')
+    expect(padded.tasks[0]!.dueTime).toBe('09:05')
+    const invalid = parse('+ [ ] stretch [[2026-08-24]] @24:00\n')
+    expect(invalid.tasks[0]!.dueDate).toBe('2026-08-24')
+    expect(invalid.tasks[0]!.dueTime).toBeNull()
+  })
+
+  it('still reads @HH:MM when the task sits below frontmatter', () => {
+    const source = '---\nid: abc\n---\n+ [ ] call [[2026-08-24]] @14:30\n'
+    const note = parse(source)
+    expect(note.tasks[0]!.dueDate).toBe('2026-08-24')
+    expect(note.tasks[0]!.dueTime).toBe('14:30')
   })
 })
 

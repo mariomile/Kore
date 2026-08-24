@@ -839,9 +839,10 @@ export const taskFiltersSchema = z
 export type TaskFilters = z.infer<typeof taskFiltersSchema>
 
 /**
- * Task reminders: one native notification per day summarizing the tasks due
- * today and overdue. Off by default — notifications are a capability the
- * user turns on deliberately (the switch also asks the OS for permission).
+ * Task reminders: a daily native notification summarizing date-only tasks due
+ * today and every overdue task, plus a per-task notification at `@HH:MM` for
+ * timed ones. Off by default — notifications are a capability the user turns
+ * on deliberately (the switch also asks the OS for permission).
  */
 export const taskRemindersSchema = z.boolean().catch(false)
 

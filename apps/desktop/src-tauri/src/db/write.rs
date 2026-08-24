@@ -160,6 +160,9 @@ pub(super) struct IndexedTask {
     pub(super) checked: bool,
     /// Explicit due date (first `[[YYYY-MM-DD]]` in the item), or None.
     pub(super) due_date: Option<String>,
+    /// Local `HH:MM` on `due_date` from `@HH:MM` after the date link, or None.
+    #[serde(default)]
+    pub(super) due_time: Option<String>,
 }
 
 /// Replace all rows for `note.path` with its current projection. Caller wraps
@@ -254,7 +257,7 @@ pub(super) fn apply_note(conn: &Connection, note: &IndexedNote) -> AppResult<()>
     }
     {
         let mut stmt = conn.prepare_cached(
-            "INSERT INTO tasks(note_path, marker_offset, text, breadcrumbs, raw, checked, due_date) VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            "INSERT INTO tasks(note_path, marker_offset, text, breadcrumbs, raw, checked, due_date, due_time) VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
         )?;
         for task in &note.tasks {
             let breadcrumbs = serde_json::to_string(&task.breadcrumbs).map_err(|err| {
@@ -267,7 +270,8 @@ pub(super) fn apply_note(conn: &Connection, note: &IndexedNote) -> AppResult<()>
                 breadcrumbs,
                 task.raw,
                 i64::from(task.checked),
-                task.due_date
+                task.due_date,
+                task.due_time
             ])?;
         }
     }

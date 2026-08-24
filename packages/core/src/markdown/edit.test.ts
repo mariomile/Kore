@@ -10,6 +10,7 @@ import {
   editTaskLine,
   removeTaskLine,
   setTaskDueDate,
+  setTaskDueTime,
   taskLineToBullet,
   TaskStaleError,
   toggleTaskMarker,
@@ -446,6 +447,12 @@ describe('setTaskDueDate', () => {
       'plan [[2026-02-31]] [[2026-07-01]]',
     )
   })
+
+  it('keeps an @HH:MM suffix when replacing the date', () => {
+    expect(setTaskDueDate('call [[2026-08-24]] @14:30', '2026-08-25')).toBe(
+      'call [[2026-08-25]] @14:30',
+    )
+  })
 })
 
 describe('clearTaskDueDate', () => {
@@ -459,6 +466,28 @@ describe('clearTaskDueDate', () => {
 
   it('empties content that was only a due date', () => {
     expect(clearTaskDueDate('[[2026-06-01]]')).toBe('')
+  })
+
+  it('also drops the @HH:MM suffix', () => {
+    expect(clearTaskDueDate('call [[2026-08-24]] @14:30 dentist')).toBe('call dentist')
+  })
+})
+
+describe('setTaskDueTime', () => {
+  it('inserts @HH:MM after the due-date link', () => {
+    expect(setTaskDueTime('call [[2026-08-24]] dentist', '14:30')).toBe(
+      'call [[2026-08-24]] @14:30 dentist',
+    )
+  })
+
+  it('replaces an existing time and zero-pads a single-digit hour', () => {
+    expect(setTaskDueTime('call [[2026-08-24]] @09:00', '9:05')).toBe('call [[2026-08-24]] @09:05')
+  })
+
+  it('clears the suffix and ignores content without a due date', () => {
+    expect(setTaskDueTime('call [[2026-08-24]] @14:30', null)).toBe('call [[2026-08-24]]')
+    expect(setTaskDueTime('call mum', '14:30')).toBe('call mum')
+    expect(setTaskDueTime('call [[2026-08-24]]', '24:00')).toBe('call [[2026-08-24]]')
   })
 })
 

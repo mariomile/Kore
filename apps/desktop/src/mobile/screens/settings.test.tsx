@@ -40,6 +40,14 @@ vi.mock('@/providers/graph-provider', () => ({
   }),
 }))
 vi.mock('@/hooks/use-app-version', () => ({ useAppVersion: () => '1.2.3-beta.4' }))
+vi.mock('@/mobile/use-active-subscription', () => ({
+  useActiveSubscription: () => ({
+    needSubscription: false,
+    activeSubscription: null,
+    pending: false,
+  }),
+  invalidateEntitlementQueries: async () => {},
+}))
 
 const openUrl = vi.hoisted(() => vi.fn(() => Promise.resolve()))
 vi.mock('@tauri-apps/plugin-opener', () => ({ openUrl }))

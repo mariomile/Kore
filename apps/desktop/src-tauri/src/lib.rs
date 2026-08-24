@@ -41,24 +41,24 @@ mod skill;
 mod wake;
 mod windows;
 
-// The watcher and the embedding runtime are desktop capabilities (Plan 19):
-// mobile swaps in stand-ins with the identical command surface, so the
-// `invoke_handler` list below needs no platform branches.
+// The watcher, embedding runtime, and in-app PTY are desktop capabilities
+// (Plan 19): mobile swaps in stand-ins with the identical command surface,
+// so the `invoke_handler` list below needs no platform branches.
 #[cfg(desktop)]
 mod embed;
 #[cfg(mobile)]
 #[path = "embed_mobile.rs"]
 mod embed;
 #[cfg(desktop)]
-mod watcher;
-#[cfg(mobile)]
-#[path = "watcher_mobile.rs"]
-mod watcher;
-#[cfg(desktop)]
 mod pty;
 #[cfg(mobile)]
 #[path = "pty_mobile.rs"]
 mod pty;
+#[cfg(desktop)]
+mod watcher;
+#[cfg(mobile)]
+#[path = "watcher_mobile.rs"]
+mod watcher;
 
 use tauri::{Emitter, Manager};
 

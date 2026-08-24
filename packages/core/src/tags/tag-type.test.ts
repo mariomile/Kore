@@ -201,3 +201,51 @@ describe('property keys', () => {
     expect(propertyKeyForName('Private')).toBe('') // reserved after slugging
   })
 })
+
+describe('new property types', () => {
+  it('parses status, files, email, rating, and a view-only rollup', () => {
+    const parsed = parseTagTypeFrontmatter(
+      frontmatter({
+        lore: 'tag',
+        properties: [
+          { name: 'Stage', key: 'stage', type: 'status', options: ['todo', 'doing', 'done'] },
+          { name: 'Attachments', key: 'attachments', type: 'files' },
+          { name: 'Email', key: 'email', type: 'email' },
+          { name: 'Score', key: 'score', type: 'rating' },
+          {
+            name: 'Author score',
+            key: 'author-score',
+            type: 'rollup',
+            rollup: { relation: 'author', property: 'score', aggregation: 'original' },
+          },
+        ],
+      }),
+    )
+    expect(parsed?.properties.map((property) => property.type)).toEqual([
+      'status',
+      'files',
+      'email',
+      'rating',
+      'rollup',
+    ])
+    expect(parsed?.properties[4]?.rollup).toEqual({
+      relation: 'author',
+      property: 'score',
+      aggregation: 'original',
+    })
+  })
+
+  it('round-trips a rollup through schema_json', () => {
+    const type: TagType = {
+      properties: [
+        {
+          name: 'Author score',
+          key: 'author-score',
+          type: 'rollup',
+          rollup: { relation: 'author', property: 'score', aggregation: 'unique' },
+        },
+      ],
+    }
+    expect(decodeTagTypeJson(encodeTagTypeJson(type))).toEqual(type)
+  })
+})

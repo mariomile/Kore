@@ -44,6 +44,8 @@ const BULK_VALUE_PLACEHOLDERS: Partial<Record<TagType['properties'][number]['typ
   multiselect: 'comma, separated, values',
   relations: 'Note titles, comma-separated',
   relation: 'Note title',
+  files: 'comma, separated, paths',
+  email: 'name@example.com',
 }
 
 /** Parse the dialog's value input into the typed YAML value ('' clears). */
@@ -55,8 +57,12 @@ function bulkPropertyValue(
   if (trimmed === '') {
     return { ok: true, value: undefined }
   }
+  if (type === 'rollup') {
+    return { ok: false }
+  }
   switch (type) {
-    case 'number': {
+    case 'number':
+    case 'rating': {
       const parsed = Number(trimmed)
       return Number.isFinite(parsed) ? { ok: true, value: parsed } : { ok: false }
     }
@@ -64,6 +70,7 @@ function bulkPropertyValue(
       return trimmed === 'true' || trimmed === 'false'
         ? { ok: true, value: trimmed === 'true' }
         : { ok: false }
+    case 'files':
     case 'multiselect':
     case 'relations': {
       // One comma-list grammar for both; relations wrap each entry as its
@@ -323,7 +330,9 @@ export function AllNotesBulkBar({
             <Select
               value={propertyKey}
               items={Object.fromEntries(
-                (tagType?.properties ?? []).map((entry) => [entry.key, entry.name]),
+                (tagType?.properties ?? [])
+                  .filter((entry) => entry.type !== 'rollup')
+                  .map((entry) => [entry.key, entry.name]),
               )}
               onValueChange={(value) => setPropertyKey(value ?? '')}
             >
@@ -331,11 +340,13 @@ export function AllNotesBulkBar({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {(tagType?.properties ?? []).map((entry) => (
-                  <SelectItem key={entry.key} value={entry.key}>
-                    {entry.name}
-                  </SelectItem>
-                ))}
+                {(tagType?.properties ?? [])
+                  .filter((entry) => entry.type !== 'rollup')
+                  .map((entry) => (
+                    <SelectItem key={entry.key} value={entry.key}>
+                      {entry.name}
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
             {selectedProperty?.type === 'checkbox' ? (
@@ -351,7 +362,7 @@ export function AllNotesBulkBar({
                   <SelectItem value="false">Unchecked</SelectItem>
                 </SelectContent>
               </Select>
-            ) : selectedProperty?.type === 'select' ? (
+            ) : selectedProperty?.type === 'select' || selectedProperty?.type === 'status' ? (
               <Select
                 value={propertyValue}
                 onValueChange={(value) => setPropertyValue(value ?? '')}
@@ -371,11 +382,13 @@ export function AllNotesBulkBar({
               <Input
                 aria-label="Value"
                 type={
-                  selectedProperty?.type === 'number'
+                  selectedProperty?.type === 'number' || selectedProperty?.type === 'rating'
                     ? 'number'
                     : selectedProperty?.type === 'date'
                       ? 'date'
-                      : 'text'
+                      : selectedProperty?.type === 'email'
+                        ? 'email'
+                        : 'text'
                 }
                 placeholder={
                   (selectedProperty && BULK_VALUE_PLACEHOLDERS[selectedProperty.type]) ??

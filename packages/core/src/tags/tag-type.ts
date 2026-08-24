@@ -27,6 +27,11 @@ export const tagPropertyTypeSchema = z.enum([
   'url',
   'relation',
   'relations',
+  'status',
+  'files',
+  'email',
+  'rating',
+  'rollup',
 ])
 export type TagPropertyType = z.infer<typeof tagPropertyTypeSchema>
 
@@ -67,14 +72,30 @@ export function relationTarget(value: string): string | null {
  * lives under in each note — shared across tags Obsidian-style, so two types
  * declaring `author` read and write the same value.
  */
+export const rollupAggregationSchema = z.enum(['count', 'empty', 'original', 'unique'])
+export type RollupAggregation = z.infer<typeof rollupAggregationSchema>
+
+/** View-only rollup: which relation to follow, which related property to read. */
+export const rollupConfigSchema = z.object({
+  relation: z.string().min(1),
+  property: z.string().min(1),
+  aggregation: rollupAggregationSchema,
+})
+export type RollupConfig = z.infer<typeof rollupConfigSchema>
+
 export const tagPropertySchema = z.object({
   /** Display label ("Read on"). */
   name: z.string().min(1),
   /** Frontmatter key ("read-on") — validated by {@link isPropertyKey}. */
   key: z.string().min(1),
   type: tagPropertyTypeSchema,
-  /** Choices for `select` / `multiselect`; ignored for other types. */
+  /** Choices for `select` / `multiselect` / `status`; ignored for other types. */
   options: z.array(z.string()).optional(),
+  /**
+   * View-only rollup config. Stored on the tag definition, never as a value
+   * on member notes — markdown stays the source of truth (TDR 0005).
+   */
+  rollup: rollupConfigSchema.optional(),
 })
 export type TagProperty = z.infer<typeof tagPropertySchema>
 

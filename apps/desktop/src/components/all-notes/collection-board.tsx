@@ -39,6 +39,7 @@ export const BOARD_ORDER_KEY = 'order'
 /** The property types a board can group by. */
 const GROUPABLE_TYPES: ReadonlySet<TagProperty['type']> = new Set([
   'select',
+  'status',
   'checkbox',
   'relation',
 ])
@@ -151,7 +152,7 @@ export function boardColumns(
 
   // select / relation: lanes keyed by the display text.
   const groups = new Map<string, { commit: unknown; entries: CollectionEntry[] }>()
-  if (property.type === 'select') {
+  if (property.type === 'select' || property.type === 'status') {
     for (const option of property.options ?? []) {
       groups.set(option, { commit: option, entries: [] })
     }
@@ -168,7 +169,10 @@ export function boardColumns(
       // A stray select value, or a relation target: the lane commits the
       // stored raw form so aliases and link shapes survive a drop verbatim.
       groups.set(reading.text, {
-        commit: property.type === 'select' ? reading.text : (value?.value ?? reading.text),
+        commit:
+          property.type === 'select' || property.type === 'status'
+            ? reading.text
+            : (value?.value ?? reading.text),
         entries: [entry],
       })
     } else {

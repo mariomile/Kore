@@ -89,6 +89,7 @@ export function frontmatterPatchToYaml(patch: FrontmatterPatch): Record<string, 
       key: property.key,
       type: property.type,
       ...(property.options === undefined ? {} : { options: property.options }),
+      ...(property.rollup === undefined ? {} : { rollup: property.rollup }),
     }))
   }
   if (patch.tagTemplate !== undefined) {

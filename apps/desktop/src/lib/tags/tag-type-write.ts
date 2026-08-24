@@ -76,6 +76,7 @@ export async function saveTagType(
       key: property.key,
       type: property.type,
       ...(property.options === undefined ? {} : { options: property.options }),
+      ...(property.rollup === undefined ? {} : { rollup: property.rollup }),
     })),
     ...(template === null ? {} : { template }),
   })

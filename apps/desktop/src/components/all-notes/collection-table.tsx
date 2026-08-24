@@ -279,7 +279,7 @@ export function columnAggregate(
   property: TagProperty,
   entries: readonly CollectionEntry[],
 ): string {
-  if (property.type === 'number') {
+  if (property.type === 'number' || property.type === 'rating') {
     let sum = 0
     let any = false
     for (const entry of entries) {

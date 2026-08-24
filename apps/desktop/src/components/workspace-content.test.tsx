@@ -68,6 +68,12 @@ vi.mock('@/providers/settings-provider', () => ({
   }),
 }))
 vi.mock('@/routing/app-shortcuts', () => ({ useAppShortcuts: () => ({}) }))
+// The frame registers the in-app browser opener with the router; the frame
+// test runs without a RouterProvider.
+vi.mock('@/routing/router', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/routing/router')>()),
+  useRouter: () => ({ navigate: vi.fn() }),
+}))
 
 const { WorkspaceContent } = await import('./workspace-content')
 

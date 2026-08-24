@@ -496,7 +496,7 @@ fn browser_window_label(url: &str) -> String {
 /// `file:`, `reflect:`, custom app schemes, script URIs — must go through the
 /// deep-link pipeline or the OS opener with their own policies, never into a
 /// live webview.
-fn parse_browser_url(url: &str) -> AppResult<tauri::Url> {
+pub(crate) fn parse_browser_url(url: &str) -> AppResult<tauri::Url> {
     let parsed =
         tauri::Url::parse(url).map_err(|err| AppError::parse(format!("not a valid URL: {err}")))?;
     match parsed.scheme() {

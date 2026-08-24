@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react'
 import { AgentsScreen } from '@/components/agents/agents-screen'
 import { AllNotesScreen } from '@/components/all-notes/all-notes-screen'
+import { BrowserPane } from '@/components/browser/browser-pane'
 import { ChatScreen } from '@/components/chat/chat-screen'
 import { DailyStream } from '@/components/daily-stream'
 import { GraphMapScreen } from '@/components/graph-map/graph-map-screen'
@@ -60,6 +61,9 @@ export function RouteContent(): ReactElement {
       return <GraphMapScreen />
     case 'terminal':
       return <TerminalScreen />
+    case 'browser':
+      // Owns no scroll container — the embedded webview covers its host.
+      return <BrowserPane />
     case 'agents':
       return (
         <ScrollRestored className="h-full overflow-auto px-6 py-8">

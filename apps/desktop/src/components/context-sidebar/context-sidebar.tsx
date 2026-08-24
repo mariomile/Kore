@@ -1,7 +1,10 @@
 import { useState, type ReactElement } from 'react'
-import { CalendarDays, Chat, Info, type Icon } from '@/components/icons'
+import { CalendarDays, Chat, Globe, Hash, Info, Terminal, type Icon } from '@/components/icons'
+import { BrowserPane } from '@/components/browser/browser-pane'
 import { ChatScreen } from '@/components/chat/chat-screen'
 import { SidebarIconSlot } from '@/components/sidebar/sidebar-icon-slot'
+import { SidebarTags } from '@/components/sidebar/sidebar-tags'
+import { TerminalScreen } from '@/components/terminal/terminal-screen'
 import { haptic } from '@/lib/haptics'
 import { useToday } from '@/lib/use-today'
 import { cn } from '@/lib/utils'
@@ -11,12 +14,15 @@ import { DayCalendar } from './day-calendar'
 import { NoteContextSidebar } from './note-context-sidebar'
 import type { ContextSidebarTarget } from './sidebar-route'
 
-type ContextPanel = 'details' | 'chat' | 'calendar'
+type ContextPanel = 'details' | 'chat' | 'calendar' | 'tags' | 'browser' | 'terminal'
 
 const PANELS: { id: ContextPanel; label: string; Glyph: Icon }[] = [
   { id: 'details', label: 'Details', Glyph: Info },
   { id: 'chat', label: 'Chat', Glyph: Chat },
   { id: 'calendar', label: 'Calendar', Glyph: CalendarDays },
+  { id: 'tags', label: 'Tags', Glyph: Hash },
+  { id: 'browser', label: 'Browser', Glyph: Globe },
+  { id: 'terminal', label: 'Terminal', Glyph: Terminal },
 ]
 
 interface ContextSidebarProps {
@@ -30,8 +36,11 @@ interface ContextSidebarProps {
  * at the top picks its panel — Details (the route's contextual sidebar:
  * calendar, actions, events, similar notes), Chat (the same graph-grounded
  * session as the chat route, so the conversation follows you between both
- * surfaces), or Calendar (the month at a glance with the day's events, on
- * any route). The panel choice is per-window session state, not persisted.
+ * surfaces), Calendar (the month at a glance with the day's events, on any
+ * route), Tags (the graph's tag list, same rows as the left rail's section),
+ * Browser (the built-in browser, sharing its session with the browser tab),
+ * or Terminal (the same PTY as the terminal route). The panel choice is
+ * per-window session state, not persisted.
  */
 export function ContextSidebar({ target }: ContextSidebarProps): ReactElement {
   const [panel, setPanel] = useState<ContextPanel>('details')
@@ -70,7 +79,9 @@ export function ContextSidebar({ target }: ContextSidebarProps): ReactElement {
                 setPanel(id)
               }}
               className={cn(
-                'flex h-8 w-10 items-center justify-center rounded-lg transition-colors duration-150 ease-swift',
+                // Six panels have to fit the rail's 240px minimum, so the
+                // segments give up width before the row overflows.
+                'flex h-8 min-w-0 max-w-10 flex-1 items-center justify-center rounded-lg transition-colors duration-150 ease-swift',
                 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
               )}
             >
@@ -87,6 +98,28 @@ export function ContextSidebar({ target }: ContextSidebarProps): ReactElement {
         // the bottom, so it gets the raw flex column instead of a scroller.
         <div className="mt-1 flex min-h-0 flex-1 flex-col">
           <ChatScreen />
+        </div>
+      ) : panel === 'browser' ? (
+        // The browser owns its region (the embedded webview covers its
+        // host), so no scroller — same shared session as the browser tab.
+        <div className="mt-1 flex min-h-0 flex-1 flex-col">
+          <BrowserPane />
+        </div>
+      ) : panel === 'terminal' ? (
+        // The terminal owns its region too (xterm scrolls itself); the PTY
+        // is the same session as the terminal route's.
+        <div className="mt-1 flex min-h-0 flex-1 flex-col">
+          <TerminalScreen />
+        </div>
+      ) : panel === 'tags' ? (
+        <div className="mt-1 min-h-0 flex-1 overflow-y-auto px-3 pb-4">
+          <SidebarTags
+            emptyNotice={
+              <div className="flex h-full items-center justify-center px-6 text-center text-xs text-text-muted">
+                No tags yet — add #tags to your notes and they collect here.
+              </div>
+            }
+          />
         </div>
       ) : (
         <div className="mt-1 min-h-0 flex-1 overflow-y-auto">

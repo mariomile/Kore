@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import type { LinkClickHandler } from '@meowdown/core'
 import { errorMessage, openBrowserWindow } from '@reflect/core'
+import { openInAppBrowser } from '@/lib/browser-session'
 import { isDeepLinkUrl } from '@/lib/deep-links/parse'
 import { useFollowDeepLink } from '@/lib/deep-links/use-follow-deep-link'
 import { openUrlSync } from '@/lib/open-url'
@@ -40,16 +41,24 @@ export function isWebUrl(href: string): boolean {
 /**
  * Open an external URL by the app's one routing rule — shared by the static
  * Markdown surfaces and the editor so a link never behaves differently by
- * where it was clicked. Web pages open the in-app browser window (with the
- * OS opener as the fallback when the shell can't build one); `osBrowser`
- * (the Alt-click escape hatch) and every non-web app scheme go to the OS
- * opener, which owns its handler. Unsafe schemes never open anything.
+ * where it was clicked. Web pages open the built-in browser: the workspace's
+ * embedded surface when one is registered, else a separate browser window
+ * (with the OS opener as the fallback when the shell can't build one).
+ * `osBrowser` (the Alt-click escape hatch) and every non-web app scheme go
+ * to the OS opener, which owns its handler. Unsafe schemes never open
+ * anything.
  */
 export function openExternalUrl(href: string, options?: { osBrowser?: boolean }): void {
   if (!isOpenableExternalUrl(href)) {
     return
   }
   if (options?.osBrowser !== true && isWebUrl(href)) {
+    // The workspace hosts the built-in browser (a tab / the context rail);
+    // a chrome-free note window has no such surface and keeps the separate
+    // browser window instead.
+    if (openInAppBrowser(href)) {
+      return
+    }
     void openBrowserWindow(href).catch((cause: unknown) => {
       console.error(`in-app browser failed for ${href}:`, errorMessage(cause))
       openUrlSync(href)

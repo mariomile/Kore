@@ -364,6 +364,18 @@ export {
   type PtyExitEvent,
 } from '../pty/commands'
 export {
+  browserEmbedShow,
+  browserEmbedBounds,
+  browserEmbedHide,
+  browserEmbedNavigate,
+  browserEmbedBack,
+  browserEmbedForward,
+  browserEmbedReload,
+  subscribeBrowserNavigated,
+  type BrowserEmbedRect,
+  type BrowserNavigatedEvent,
+} from '../browser/commands'
+export {
   IAP_PRODUCT_IDS,
   iapGetProducts,
   iapPurchase,

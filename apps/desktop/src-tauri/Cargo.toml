@@ -32,9 +32,11 @@ tauri-plugin-opener = "2.5.4"
 # Decodes `reflect-asset://` request paths (`fs/asset_protocol.rs`); the same
 # crate tauri itself uses for its protocol URLs.
 percent-encoding = "2.3.2"
-# `time` backs the bounded wait in `windows::close_note_windows` (tauri
-# already runs on tokio; this only makes the sleep primitive addressable).
-tokio = { version = "1.52.3", features = ["time"] }
+# `time` backs the bounded waits in `windows::close_note_windows` and the
+# browser page reads; `sync` adds the oneshot channel `browser_embed_read`
+# awaits its eval callback on (tauri already runs on tokio; these only make
+# the primitives addressable).
+tokio = { version = "1.52.3", features = ["time", "sync"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 # `hooks` adds the authorizer API used to lock the read-only `db_query` bridge

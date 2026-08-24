@@ -1,5 +1,15 @@
 import { Fragment, useState, type MouseEvent, type ReactElement, type ReactNode } from 'react'
-import { CalendarDays, History, Layers, Note, Paperclip, Pencil, Search } from '@/components/icons'
+import {
+  CalendarDays,
+  Globe,
+  History,
+  Layers,
+  Note,
+  Paperclip,
+  Pencil,
+  Search,
+} from '@/components/icons'
+import { openExternalUrl } from '@/editor/open-external-link'
 import {
   isTagName,
   isToolPending,
@@ -30,6 +40,30 @@ function countSuffix(count: number, noun: string): string {
 /** An asset chip labels entries by filename — the path adds only noise. */
 function assetName(path: string): string {
   return path.split('/').pop() ?? path
+}
+
+/** A browse chip labels the page by host — the full URL adds only noise. */
+function pageHost(url: string): string {
+  try {
+    return new URL(url).hostname
+  } catch {
+    return url
+  }
+}
+
+/** The clickable page label of a browse chip: reopens it in the built-in browser. */
+function PageLink({ url, label }: { url: string; label: string }): ReactElement {
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        openExternalUrl(url)
+      }}
+      className="underline-offset-2 hover:text-text hover:underline"
+    >
+      {label}
+    </button>
+  )
 }
 
 interface ChipFrameProps {
@@ -238,6 +272,36 @@ export function ChatToolChip({ part }: ChatToolChipProps): ReactElement {
         pending={pending}
         onOpen={openNote}
       />
+    )
+  }
+
+  if (call.tool === 'browse') {
+    const result = part.result?.tool === 'browse' ? part.result : null
+    const failed = result?.error ?? part.error ?? null
+    const url = result?.url ?? call.url
+    const label = result?.title ?? pageHost(url)
+    return (
+      <ChipFrame pending={pending} icon={<Globe aria-hidden className="size-3.5" />}>
+        Browsed <PageLink url={url} label={label} />
+        {failed !== null ? ` — ${failed}` : ''}
+      </ChipFrame>
+    )
+  }
+
+  if (call.tool === 'readPage') {
+    const result = part.result?.tool === 'readPage' ? part.result : null
+    const failed = result?.error ?? part.error ?? null
+    return (
+      <ChipFrame pending={pending} icon={<Globe aria-hidden className="size-3.5" />}>
+        Read the open page
+        {result?.url != null ? (
+          <>
+            {': '}
+            <PageLink url={result.url} label={result.title ?? pageHost(result.url)} />
+          </>
+        ) : null}
+        {failed !== null ? ` — ${failed}` : ''}
+      </ChipFrame>
     )
   }
 

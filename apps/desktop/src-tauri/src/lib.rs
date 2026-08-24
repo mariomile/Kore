@@ -421,6 +421,8 @@ pub fn run() {
             browser::browser_embed_back,
             browser::browser_embed_forward,
             browser::browser_embed_reload,
+            browser::browser_embed_load,
+            browser::browser_embed_read,
             pty::pty_open,
             pty::pty_write,
             pty::pty_resize,

@@ -40,6 +40,9 @@ const readNoteSummarySchema = z.object({
 const toolCallSchema = z.discriminatedUnion('tool', [
   z.object({ tool: z.literal('search'), toolCallId: z.string(), query: z.string() }),
   z.object({ tool: z.literal('read'), toolCallId: z.string(), paths: z.array(z.string()) }),
+  z.object({ tool: z.literal('assets'), toolCallId: z.string(), paths: z.array(z.string()) }),
+  z.object({ tool: z.literal('browse'), toolCallId: z.string(), url: z.string() }),
+  z.object({ tool: z.literal('readPage'), toolCallId: z.string() }),
   z.object({ tool: z.literal('recents'), toolCallId: z.string(), tag: z.string().nullable() }),
   z.object({
     tool: z.literal('dailies'),
@@ -67,6 +70,25 @@ const toolResultSchema = z.discriminatedUnion('tool', [
     tool: z.literal('read'),
     toolCallId: z.string(),
     notes: z.array(readNoteSummarySchema),
+  }),
+  z.object({
+    tool: z.literal('assets'),
+    toolCallId: z.string(),
+    assets: z.array(z.object({ path: z.string(), error: z.string().nullable() })),
+  }),
+  z.object({
+    tool: z.literal('browse'),
+    toolCallId: z.string(),
+    url: z.string(),
+    title: z.string().nullable(),
+    error: z.string().nullable(),
+  }),
+  z.object({
+    tool: z.literal('readPage'),
+    toolCallId: z.string(),
+    url: z.string().nullable(),
+    title: z.string().nullable(),
+    error: z.string().nullable(),
   }),
   z.object({
     tool: z.literal('recents'),

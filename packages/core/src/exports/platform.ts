@@ -371,9 +371,12 @@ export {
   browserEmbedBack,
   browserEmbedForward,
   browserEmbedReload,
+  browserEmbedLoad,
+  browserEmbedRead,
   subscribeBrowserNavigated,
   type BrowserEmbedRect,
   type BrowserNavigatedEvent,
+  type BrowserPageRead,
 } from '../browser/commands'
 export {
   IAP_PRODUCT_IDS,

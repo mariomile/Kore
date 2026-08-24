@@ -65,6 +65,42 @@ export async function browserEmbedReload(): Promise<void> {
   await call('browser_embed_reload', {}, voidSchema)
 }
 
+const browserPageReadSchema = z.object({
+  url: z.string(),
+  title: z.string(),
+  text: z.string(),
+  truncated: z.boolean(),
+})
+
+/** One extracted page: final URL, title, visible text, and whether it was cut. */
+export type BrowserPageRead = z.infer<typeof browserPageReadSchema>
+
+/**
+ * Load a page in the embedded browser without touching its placement — the
+ * AI tools' open. With no webview yet the shell creates one off-screen and
+ * hidden, so an agent can browse before the user ever opens the pane;
+ * opening the Browser tab later reveals the loaded page.
+ */
+export async function browserEmbedLoad(url: string): Promise<void> {
+  await call('browser_embed_load', { url }, voidSchema)
+}
+
+/**
+ * Extract the current page's visible text, waiting (bounded) for the
+ * document to finish loading. `expectUrl` tightens the wait right after a
+ * {@link browserEmbedLoad} so the previous page is not read as the new one.
+ */
+export function browserEmbedRead(options?: {
+  expectUrl?: string
+  maxChars?: number
+}): Promise<BrowserPageRead> {
+  return call(
+    'browser_embed_read',
+    { expectUrl: options?.expectUrl ?? null, maxChars: options?.maxChars ?? null },
+    browserPageReadSchema,
+  )
+}
+
 /** The embedded page navigated (link click, redirect, or a navigate call). */
 export function subscribeBrowserNavigated(
   handler: (event: BrowserNavigatedEvent) => void,

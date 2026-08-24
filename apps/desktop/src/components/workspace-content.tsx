@@ -1,5 +1,5 @@
 import { useEffect, type ReactElement } from 'react'
-import type { GraphInfo } from '@reflect/core'
+import { subscribeBrowserNavigated, type GraphInfo } from '@reflect/core'
 import { AppShell } from '@/components/app-shell'
 import { CommandPalette } from '@/components/command-palette/command-palette'
 import { ContextSidebar } from '@/components/context-sidebar/context-sidebar'
@@ -52,6 +52,27 @@ export function WorkspaceContent({ graph }: WorkspaceContentProps): ReactElement
       }),
     [navigate],
   )
+  // The session URL follows every navigation — including pages the AI's
+  // browse tools load while no pane is mounted, so a later mount docks the
+  // agent's page instead of navigating back to a stale one. No bridge (the
+  // web harness, tests) just means no embedded browser to follow.
+  useEffect(() => {
+    let unlisten: Promise<() => void>
+    try {
+      unlisten = subscribeBrowserNavigated((event) => {
+        setBrowserSessionUrl(event.url)
+      })
+    } catch {
+      return
+    }
+    return () => {
+      void unlisten
+        .then((stop) => {
+          stop()
+        })
+        .catch(() => undefined)
+    }
+  }, [])
   // Daily routes get the day's contextual panel and note routes the note's;
   // search/settings get none (AppShell omits the region when context is absent).
   // In the daily stream the route stays put while focus moves between days, so

@@ -43,3 +43,13 @@ pub fn browser_embed_forward() -> AppResult<()> {
 pub fn browser_embed_reload() -> AppResult<()> {
     desktop_only()
 }
+
+#[tauri::command]
+pub fn browser_embed_load() -> AppResult<()> {
+    desktop_only()
+}
+
+#[tauri::command]
+pub fn browser_embed_read() -> AppResult<()> {
+    desktop_only()
+}

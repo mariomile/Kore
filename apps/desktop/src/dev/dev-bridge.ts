@@ -154,6 +154,16 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
       case 'pty_resize':
       case 'pty_close':
         throw new ReflectError('unknown', 'the in-app terminal is desktop-only')
+      case 'browser_embed_show':
+      case 'browser_embed_bounds':
+      case 'browser_embed_hide':
+      case 'browser_embed_navigate':
+      case 'browser_embed_back':
+      case 'browser_embed_forward':
+      case 'browser_embed_reload':
+      case 'browser_embed_load':
+      case 'browser_embed_read':
+        throw new ReflectError('unknown', 'the embedded browser is desktop-only')
       case 'open_browser_window': {
         // No secondary Tauri windows in a plain browser — a popup tab is the
         // honest stand-in for the in-app browser window.

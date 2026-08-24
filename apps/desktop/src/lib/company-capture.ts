@@ -94,9 +94,7 @@ export const COMPANY_CAPTURE_COMMANDS: readonly {
   },
 ]
 
-const COMPANY_CAPTURE_COMMAND_IDS = new Set(
-  COMPANY_CAPTURE_COMMANDS.map((command) => command.id),
-)
+const COMPANY_CAPTURE_COMMAND_IDS = new Set(COMPANY_CAPTURE_COMMANDS.map((command) => command.id))
 
 /** Palette / keymap ids that belong only on a company graph. */
 export function isCompanyCaptureCommand(id: string): boolean {

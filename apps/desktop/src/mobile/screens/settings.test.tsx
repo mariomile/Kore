@@ -5,11 +5,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   DEFAULT_SETTINGS,
   getConflictedNotes,
+  THEME_PREFERENCE_IDS,
   type AppPlatform,
   type GraphInfo,
   type Settings,
 } from '@reflect/core'
 import type { BackupState } from '@/lib/backup-controller'
+import { expectLocatorToHaveCount } from '@/test-utils/expect'
 import '@/test-utils/locator'
 import { MobileSettings } from './settings'
 
@@ -178,6 +180,53 @@ describe('MobileSettings', () => {
 
     await user.click(page.getByRole('radio', { name: 'Relaxed' }))
     expect(updateSettings).toHaveBeenCalledWith({ editorLineSpacing: 'relaxed' })
+  })
+
+  // The theme chips are derived from the schema's id list; this fails if the
+  // picker ever goes back to a hand-written subset and drops a variant, as it
+  // did for the two sober neutrals.
+  it('offers every theme the schema defines', async () => {
+    await mount()
+
+    const themes = page.getByRole('radiogroup', { name: 'Theme' })
+    await expectLocatorToHaveCount(themes.getByRole('radio'), THEME_PREFERENCE_IDS.length)
+    await expect.element(themes.getByRole('radio', { name: 'Ash' })).toBeVisible()
+    await expect.element(themes.getByRole('radio', { name: 'Graphite' })).toBeVisible()
+  })
+
+  // 'Small' is also a text-size step, so both queries scope to their group.
+  it('writes the corner radius', async () => {
+    const user = userEvent
+    await mount()
+
+    const corners = page.getByRole('radiogroup', { name: 'Corners' })
+    await user.click(corners.getByRole('radio', { name: 'Round' }))
+    expect(updateSettings).toHaveBeenCalledWith({ uiRadius: 'round' })
+
+    await user.click(corners.getByRole('radio', { name: 'Small' }))
+    expect(updateSettings).toHaveBeenCalledWith({ uiRadius: 'small' })
+  })
+
+  it('hides glass intensity until Liquid Glass is on', async () => {
+    const user = userEvent
+    await mount()
+
+    await expect
+      .element(page.getByRole('radiogroup', { name: 'Glass intensity' }))
+      .not.toBeInTheDocument()
+
+    await user.click(page.getByRole('switch', { name: 'Liquid Glass' }))
+    expect(updateSettings).toHaveBeenCalledWith({ liquidGlass: true })
+  })
+
+  it('writes the glass intensity while Liquid Glass is on', async () => {
+    const user = userEvent
+    settingsState.current = { ...DEFAULT_SETTINGS, liquidGlass: true }
+    await mount()
+
+    const intensity = page.getByRole('radiogroup', { name: 'Glass intensity' })
+    await user.click(intensity.getByRole('radio', { name: 'Strong' }))
+    expect(updateSettings).toHaveBeenCalledWith({ glassIntensity: 'strong' })
   })
 
   it('toggles the editor switches', async () => {

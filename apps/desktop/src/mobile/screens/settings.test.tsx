@@ -395,13 +395,13 @@ describe('MobileSettings', () => {
     graphState.platform = 'ios'
     await mount()
 
-    await expect.element(page.getByText("Show today’s meetings")).toBeVisible()
+    await expect.element(page.getByText('Show today’s meetings')).toBeVisible()
   })
 
   it('hides calendar settings off iOS', async () => {
     await mount()
 
-    await expect.element(page.getByText("Show today’s meetings")).not.toBeInTheDocument()
+    await expect.element(page.getByText('Show today’s meetings')).not.toBeInTheDocument()
   })
 
   it('degrades to the local groups where no sync lifecycle is mounted', async () => {

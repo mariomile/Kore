@@ -49,6 +49,7 @@ import {
   useActiveSubscription,
 } from '@/mobile/use-active-subscription'
 import { useMobileSyncStatus } from '@/mobile/use-sync-status'
+import { useGraphRole } from '@/hooks/use-graph-role'
 import { useGraph } from '@/providers/graph-provider'
 import { useSettings } from '@/providers/settings-provider'
 import { useSyncContext } from '@/providers/sync-provider'
@@ -110,6 +111,7 @@ const TEXT_SIZE_OPTIONS: readonly SegmentedOption<EditorTextSize>[] = [
 export function MobileSettings(): ReactElement {
   const { back, canBack, navigate } = useRouter()
   const { graph, mobileStorageKind, platform } = useGraph()
+  const { role } = useGraphRole()
   const isIos = platform === 'ios'
   const { activeSubscription } = useActiveSubscription()
   const queryClient = useQueryClient()
@@ -341,7 +343,9 @@ export function MobileSettings(): ReactElement {
               header="Backup"
               footer={
                 canConnect
-                  ? 'Connect GitHub so the team shares this graph. Lock keeps a note out of AI, not out of the repo.'
+                  ? role === 'company'
+                    ? 'Connect GitHub so the team shares this graph. Lock keeps a note out of AI, not out of the repo.'
+                    : 'Sync notes with Memento on your other devices.'
                   : (status?.detail ?? null)
               }
             >

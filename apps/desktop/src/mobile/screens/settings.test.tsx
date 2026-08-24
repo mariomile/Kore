@@ -342,6 +342,28 @@ describe('MobileSettings', () => {
     await expect.element(page.getByText('connect-github-sheet')).toBeVisible()
   })
 
+  it('tells a company graph that lock is not a sync lock', async () => {
+    graphState.mobileStorageKind = 'local'
+    settingsState.current = {
+      ...DEFAULT_SETTINGS,
+      graphRoles: { '/g': 'company' },
+    }
+    sync.value = {
+      backup: { phase: 'disconnected' },
+      disconnectGraph: vi.fn(async () => {}),
+      signOut: vi.fn(async () => {}),
+    }
+    await mount()
+
+    await expect
+      .element(
+        page.getByText(
+          'Connect GitHub so the team shares this graph. Lock keeps a note out of AI, not out of the repo.',
+        ),
+      )
+      .toBeVisible()
+  })
+
   it('hides the connect row once the local graph is connected', async () => {
     graphState.mobileStorageKind = 'local'
     await mount()

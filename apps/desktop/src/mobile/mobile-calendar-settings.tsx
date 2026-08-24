@@ -20,8 +20,7 @@ export function MobileCalendarSettings(): ReactElement {
   const footerId = useId()
   const status = useCalendarAuthorization(settings.calendarEnabled)
   useCalendarChangeInvalidation(settings.calendarEnabled)
-  const denied =
-    settings.calendarEnabled && status !== undefined && !canReadCalendars(status)
+  const denied = settings.calendarEnabled && status !== undefined && !canReadCalendars(status)
 
   async function enableCalendars(): Promise<void> {
     updateSettings({ calendarEnabled: true })

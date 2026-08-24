@@ -22,8 +22,8 @@ export function CompanySyncBanner(): ReactElement | null {
   return (
     <InlineAlert className="mx-4 mt-3 mb-0 flex flex-wrap items-center gap-x-3 gap-y-2">
       <span className="min-w-0 flex-1">
-        Connect GitHub so the team shares this graph. Lock keeps a note out of
-        AI — it does not hide it from sync.
+        Connect GitHub so the team shares this graph. Lock keeps a note out of AI — it does not hide
+        it from sync.
       </span>
       <Button size="sm" variant="outline" onClick={() => navigate({ kind: 'settings' })}>
         Connect GitHub

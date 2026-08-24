@@ -35,8 +35,8 @@ export function CompanyDailyBanner(): ReactElement | null {
   return (
     <InlineAlert className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2">
       <span className="min-w-0 flex-1">
-        This is a company graph. Capture as a named note — several people
-        writing the same daily file will conflict.
+        This is a company graph. Capture as a named note — several people writing the same daily
+        file will conflict.
       </span>
       <Button size="sm" variant="outline" onClick={() => void logDecision()}>
         Log a decision

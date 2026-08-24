@@ -46,9 +46,5 @@ export async function writeGraphRole(role: GraphRole, generation: number): Promi
     return
   }
   const source = await readNote(GRAPH_META_PATH, generation)
-  await writeNote(
-    GRAPH_META_PATH,
-    upsertFrontmatter(source, { lore: 'graph', role }),
-    generation,
-  )
+  await writeNote(GRAPH_META_PATH, upsertFrontmatter(source, { lore: 'graph', role }), generation)
 }

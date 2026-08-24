@@ -77,11 +77,7 @@ export function GraphChooser(): ReactElement {
       </div>
 
       <ChooserDivider>or a company brain</ChooserDivider>
-      <CompanyCard
-        icloudCapable={icloudCapable}
-        pickAndOpen={pickAndOpen}
-        createAt={createAt}
-      />
+      <CompanyCard icloudCapable={icloudCapable} pickAndOpen={pickAndOpen} createAt={createAt} />
 
       {error ? (
         <InlineAlert tone="error" className="mx-auto w-full max-w-sm text-center">
@@ -364,7 +360,7 @@ function CompanyCard({
   createAt,
 }: {
   icloudCapable: boolean
-  pickAndOpen: () => Promise<boolean>
+  pickAndOpen: () => Promise<void>
   createAt: (root: string) => Promise<boolean>
 }): ReactElement {
   const [typedName, setTypedName] = useState('Company')

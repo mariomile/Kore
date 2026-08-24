@@ -22,8 +22,8 @@ export function CompanySemanticBanner(): ReactElement | null {
   if (isMobileSurface()) {
     return (
       <InlineAlert className="mx-auto mt-4 max-w-2xl">
-        Semantic search runs on Mac. This phone searches by words; ask about #decision and
-        #person notes and chat will still cite them.
+        Semantic search runs on Mac. This phone searches by words; ask about #decision and #person
+        notes and chat will still cite them.
       </InlineAlert>
     )
   }

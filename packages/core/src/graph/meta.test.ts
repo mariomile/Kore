@@ -31,7 +31,17 @@ describe('graph meta', () => {
     const parsed = parseNote({ path: GRAPH_META_PATH, source })
     expect(parseGraphMetaFrontmatter(parsed.frontmatter)).toBe('personal')
     expect(isGraphMetaNote('notes/other.md', parsed.frontmatter)).toBe(false)
-    expect(parseGraphMetaFrontmatter({ lore: 'tag', role: 'company' })).toBe(null)
-    expect(parseGraphMetaFrontmatter({ lore: 'graph', role: 'team' })).toBe(null)
+    expect(
+      parseGraphMetaFrontmatter(
+        parseNote({ path: GRAPH_META_PATH, source: '---\nlore: tag\nrole: company\n---\n' })
+          .frontmatter,
+      ),
+    ).toBe(null)
+    expect(
+      parseGraphMetaFrontmatter(
+        parseNote({ path: GRAPH_META_PATH, source: '---\nlore: graph\nrole: team\n---\n' })
+          .frontmatter,
+      ),
+    ).toBe(null)
   })
 })

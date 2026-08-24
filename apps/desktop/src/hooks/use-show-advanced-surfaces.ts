@@ -2,10 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { vaultScanStats } from '@reflect/core'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { useGraphRole } from '@/hooks/use-graph-role'
-import {
-  ADVANCED_SURFACE_NOTE_THRESHOLD,
-  showAdvancedSurfaces,
-} from '@/lib/progressive-disclosure'
+import { ADVANCED_SURFACE_NOTE_THRESHOLD, showAdvancedSurfaces } from '@/lib/progressive-disclosure'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { useGraph } from '@/providers/graph-provider'
 

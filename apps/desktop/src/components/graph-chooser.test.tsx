@@ -93,7 +93,7 @@ describe('GraphChooser', () => {
 
     await expect.element(page.getByRole('heading', { name: 'Personal notes' })).toBeVisible()
     await expect.element(page.getByText('Recommended')).toBeVisible()
-    await expect.element(page.getByText(/Open an existing folder/)).toBeVisible()
+    await expect.element(page.getByText(/Open an existing Markdown folder/)).toBeVisible()
     await expect.element(page.getByRole('heading', { name: 'A folder you choose' })).toBeVisible()
     await expect.element(page.getByRole('button', { name: /Choose a folder/ })).toBeVisible()
     await expect.element(page.getByText(/Reflect keeps its files where they are/)).toBeVisible()
@@ -188,7 +188,9 @@ describe('GraphChooser', () => {
     await render(<GraphChooser />, { wrapper })
 
     await expect.element(page.getByRole('heading', { name: 'A folder you choose' })).toBeVisible()
-    await expect.element(page.getByRole('heading', { name: 'Personal notes' })).not.toBeInTheDocument()
+    await expect
+      .element(page.getByRole('heading', { name: 'Personal notes' }))
+      .not.toBeInTheDocument()
     await expect.element(page.getByRole('heading', { name: 'Company brain' })).toBeVisible()
     await expect.element(page.getByText(/existing Markdown folder on this computer/)).toBeVisible()
   })

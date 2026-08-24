@@ -104,6 +104,8 @@ export const RESERVED_FRONTMATTER_KEYS: ReadonlySet<string> = new Set([
   'lore',
   'properties',
   'template',
+  'cover',
+  'icon',
 ])
 
 /** Property keys are plain YAML-safe identifiers, never reserved. */

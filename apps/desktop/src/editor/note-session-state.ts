@@ -84,6 +84,7 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
     const next: NoteSessionSnapshot = {
       status,
       initialContent,
+      header,
       protected: isProtected,
       dirty,
       missing,
@@ -94,6 +95,7 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
       lastEmitted !== null &&
       lastEmitted.status === next.status &&
       lastEmitted.initialContent === next.initialContent &&
+      lastEmitted.header === next.header &&
       lastEmitted.protected === next.protected &&
       lastEmitted.dirty === next.dirty &&
       lastEmitted.missing === next.missing &&

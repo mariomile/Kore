@@ -38,6 +38,7 @@ import { useCollectionSlashItems } from '@/editor/use-collection-slash-items'
 import { useTemplateSlashItems } from '@/editor/use-template-slash-items'
 import { EmbeddedCollection } from '@/components/notes/embedded-collection'
 import { EmbeddedNote } from '@/components/notes/embedded-note'
+import { NoteAppearance } from '@/components/notes/note-appearance'
 import { useMarkdownLinkNavigation } from '@/editor/use-markdown-link-navigation'
 import { useWikiLinkNavigation } from '@/editor/use-wiki-link-navigation'
 import { useWikiLinkHoverPreview } from '@/editor/use-wiki-link-hover-preview'
@@ -352,6 +353,11 @@ export function NotePaneComponent({
     const conflicted = detectConflictMarkers(document.initialContent)
     return (
       <div className={cn(gutterClassName, className)}>
+        <NoteAppearance
+          source={document.header}
+          resolveImageUrl={resolveImageUrl}
+          gutterClassName={gutterClassName}
+        />
         <SyncConflictNotice path={path} className="mb-4" />
         {conflicted ? (
           <ConflictNoteView content={document.initialContent} />
@@ -406,6 +412,12 @@ export function NotePaneComponent({
             state into the next note's card. */}
         {!dailyNote ? <SuggestedContactCard key={path} path={path} /> : null}
       </div>
+
+      <NoteAppearance
+        source={document.header}
+        resolveImageUrl={resolveImageUrl}
+        gutterClassName={gutterClassName}
+      />
 
       <NoteEditor
         // Keyed on the session, not the path: a rename retargets the live

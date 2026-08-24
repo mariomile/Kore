@@ -43,6 +43,14 @@ export {
   type NoteTransclusion,
   type WikiEmbedKind,
 } from './note-transclusion'
+export {
+  parseNoteAppearance,
+  parseNoteAppearanceFromSource,
+  parseNoteCover,
+  parseNoteIcon,
+  type NoteAppearance,
+  type NoteIcon,
+} from './note-appearance'
 export { parseNote, isTagName, hasAuthoredTitle } from './extract'
 export { appendBodyTag, bodyHasTag } from './body-tag'
 export {

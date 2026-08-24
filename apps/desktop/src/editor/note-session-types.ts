@@ -15,6 +15,11 @@ export interface NoteSessionSnapshot {
    */
   initialContent: string
   /**
+   * Exact frontmatter bytes including fences (`''` when the note has none).
+   * Cover/icon chrome reads this; the editor never sees it.
+   */
+  header: string
+  /**
    * True when the editor cannot faithfully round-trip this note (a converter
    * gap, e.g. task lists today) — the note opens read-only and is **never**
    * auto-rewritten, so no content can be silently lost.
@@ -36,6 +41,7 @@ export interface NoteSessionSnapshot {
 export const INITIAL_NOTE_SNAPSHOT: NoteSessionSnapshot = {
   status: 'loading',
   initialContent: '',
+  header: '',
   protected: false,
   dirty: false,
   missing: false,

@@ -187,6 +187,8 @@ describe('property keys', () => {
     expect(isPropertyKey('private')).toBe(false)
     expect(isPropertyKey('properties')).toBe(false)
     expect(isPropertyKey('template')).toBe(false)
+    expect(isPropertyKey('cover')).toBe(false)
+    expect(isPropertyKey('icon')).toBe(false)
     expect(isPropertyKey('-leading')).toBe(false)
     expect(isPropertyKey('has space')).toBe(false)
     expect(isPropertyKey('')).toBe(false)

@@ -117,6 +117,10 @@ export const frontmatterSchema = z.looseObject({
    * card reappears, nothing breaks.
    */
   ignoredContacts: z.array(z.string()).catch([]).default([]),
+  /** Short glyph or image path shown above the editor. */
+  icon: z.string().optional().catch(undefined),
+  /** Cover image path (graph-relative, wiki embed, or http(s) URL). */
+  cover: z.string().optional().catch(undefined),
 })
 export type Frontmatter = z.infer<typeof frontmatterSchema>
 

@@ -257,6 +257,7 @@ describe('frontmatter ownership (Plan 07b)', () => {
     const h = harness({ disk: `${FM}# Hello\n` })
     h.session.load()
     await vi.runAllTimersAsync()
+    expect(h.snapshots.at(-1)?.header).toBe(FM)
     h.session.editorChanged('# Hello edited\n')
     await vi.runAllTimersAsync()
     expect(h.writes.at(-1)?.contents).toBe(`${FM}# Hello edited\n`)

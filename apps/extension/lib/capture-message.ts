@@ -14,7 +14,7 @@ export interface CapturedPage {
   screenshotDataUrl?: string | undefined
   /** The page's current selection, when the page allowed the script. */
   selection?: string | undefined
-  /** Defuddle-extracted page paragraphs, when the user asks to include them. */
+  /** Defuddle-extracted article markdown, when the user asks to include them. */
   contentText?: string | undefined
   /** The user's comment from the popup. */
   note?: string | undefined

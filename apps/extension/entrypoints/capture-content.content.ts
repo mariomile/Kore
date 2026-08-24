@@ -1,9 +1,11 @@
 import Defuddle from 'defuddle'
 import { browser } from 'wxt/browser'
+import { htmlToMarkdown } from '@/lib/html-to-markdown'
 import {
   extractPageTextRequestSchema,
   formatParagraphs,
   normalizeParagraphText,
+  pageTextFromArticleHtml,
   samePageUrl,
   type ExtractPageTextResponse,
 } from '@/lib/page-text'
@@ -55,15 +57,20 @@ function visibleTextBlocks(root: ParentNode): string[] {
   return textFromElements(fallback)
 }
 
-function paragraphsFromHtml(html: string): string[] {
-  const template = document.createElement('template')
-  template.innerHTML = html
-  return visibleTextBlocks(template.content)
-}
-
 function fallbackParagraphs(): string[] {
   const root = document.querySelector('article, main') ?? document.body
   return root ? visibleTextBlocks(root) : []
+}
+
+function fallbackPageText(): string {
+  const root = document.querySelector('article, main') ?? document.body
+  if (root) {
+    const markdown = htmlToMarkdown(root.innerHTML, { baseUrl: document.location.href })
+    if (markdown !== '') {
+      return markdown
+    }
+  }
+  return formatParagraphs(fallbackParagraphs())
 }
 
 function extractPageText(expectedUrl: string): ExtractPageTextResponse {
@@ -73,22 +80,23 @@ function extractPageText(expectedUrl: string): ExtractPageTextResponse {
   try {
     const clone = document.cloneNode(true)
     if (!(clone instanceof Document)) {
-      return { ok: true, contentText: formatParagraphs(fallbackParagraphs()) }
+      return { ok: true, contentText: fallbackPageText() }
     }
     const article = new Defuddle(clone, {
       url: document.location.href,
       useAsync: false,
       includeReplies: false,
-      removeImages: true,
+      removeImages: false,
     }).parse()
-    const articleParagraphs = article.content ? paragraphsFromHtml(article.content) : []
-    const contentText = formatParagraphs(
-      articleParagraphs.length > 0 ? articleParagraphs : fallbackParagraphs(),
-    )
+    const contentText = article.content
+      ? pageTextFromArticleHtml(article.content, fallbackParagraphs(), {
+          baseUrl: document.location.href,
+        })
+      : fallbackPageText()
     return { ok: true, contentText }
   } catch (cause) {
     try {
-      return { ok: true, contentText: formatParagraphs(fallbackParagraphs()) }
+      return { ok: true, contentText: fallbackPageText() }
     } catch {
       return { ok: false, message: cause instanceof Error ? cause.message : String(cause) }
     }

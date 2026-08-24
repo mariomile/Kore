@@ -9,6 +9,7 @@ import {
   type ReactElement,
   type ReactNode,
 } from 'react'
+import { isMobileSurface } from '@/lib/platform-surface'
 import { onNoteMoved } from '@/lib/note-moves'
 import { normalizeRoute, routesEqual, type Route } from './route'
 
@@ -149,7 +150,11 @@ export function RouterProvider({
     index: 0,
   })
   const [arrivalSeq, setArrivalSeq] = useState(0)
-  const [arrivalFocusEditor, setArrivalFocusEditor] = useState(true)
+  // Desktop open-on-today puts the caret in the daily note. Mobile keeps the
+  // keyboard down until an explicit capture gesture (Daily-tab double-tap).
+  const [arrivalFocusEditor, setArrivalFocusEditor] = useState(
+    !isMobileSurface() && normalizeRoute(initialRoute).kind === 'today',
+  )
   const nextId = useRef(1)
   const navigationRevisionRef = useRef(0)
   /** Scroll offsets by entry id — a ref so scroll reporting never re-renders. */

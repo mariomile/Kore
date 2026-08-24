@@ -196,6 +196,7 @@ describe('DailyEventsSection', () => {
         lookupContacts: false,
         startTime: '9:00am',
         generation: 3,
+        writeDaily: true,
       }),
     )
     await expectLocatorToHaveCount(page.getByLabelText('Meeting name'), 0)

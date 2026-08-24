@@ -27,6 +27,8 @@ vi.mock('@/components/context-sidebar/daily-context-sidebar', () => ({
 vi.mock('@/components/context-sidebar/note-context-sidebar', () => ({
   NoteContextSidebar: ({ path }: { path: string }) => <div data-testid="note-context">{path}</div>,
 }))
+vi.mock('@/components/company-sync-banner', () => ({ CompanySyncBanner: () => null }))
+vi.mock('@/components/graph-role-sync', () => ({ GraphRoleSync: () => null }))
 vi.mock('@/components/embeddings-sync', () => ({ EmbeddingsSync: () => null }))
 vi.mock('@/components/agent-routines-runner', () => ({ AgentRoutinesRunner: () => null }))
 vi.mock('@/components/task-reminders-runner', () => ({ TaskRemindersRunner: () => null }))

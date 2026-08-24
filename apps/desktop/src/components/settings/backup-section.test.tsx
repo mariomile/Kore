@@ -22,6 +22,13 @@ const github = vi.hoisted(() => ({ connected: false }))
 vi.mock('@tauri-apps/plugin-opener', () => ({ openUrl: vi.fn(async () => {}) }))
 vi.mock('@/providers/sync-provider', () => ({ useSync: () => sync }))
 vi.mock('@/providers/graph-provider', () => ({ useGraph: () => ({ graph: null }) }))
+vi.mock('@/providers/settings-provider', () => ({
+  useSettings: () => ({
+    settings: { graphRoles: {} },
+    updateSettings: vi.fn(),
+    updateSettingsWith: vi.fn(),
+  }),
+}))
 vi.mock('@/hooks/use-github-connected', () => ({ useGithubConnected: () => github.connected }))
 
 afterEach(async () => {

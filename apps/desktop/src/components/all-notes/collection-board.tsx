@@ -1,12 +1,7 @@
 import { useMemo, useState, type DragEvent, type ReactElement } from 'react'
 import { Virtualizer } from 'virtua'
 import {
-  appendBodyTag,
-  createNoteIfAbsent,
   errorMessage,
-  untitledNotePath,
-  untitledNoteSeed,
-  upsertFrontmatter,
   type CollectionEntry,
   type CollectionValue,
   type TagProperty,
@@ -16,6 +11,7 @@ import { Plus } from '@/components/icons'
 import { PropertyValueEditor } from '@/components/tags/property-editors'
 import { selectOptionDotClass } from '@/components/tags/select-colors'
 import { toast } from '@/components/ui/toast'
+import { createCollectionNote } from '@/lib/tags/create-collection-note'
 import type { ModClickEvent } from '@/lib/windows/open-in-new-window'
 import { useCommitNoteProperties } from '@/lib/tags/use-commit-note-property'
 import { cn } from '@/lib/utils'
@@ -314,13 +310,12 @@ export function CollectionBoard({
     if (graph === null) {
       return
     }
-    const path = untitledNotePath()
-    const base = untitledNoteSeed()
-    const tagged = appendBodyTag(base, tag) ?? base
-    const seed =
-      column.commit === null ? tagged : upsertFrontmatter(tagged, { [property.key]: column.commit })
     try {
-      await createNoteIfAbsent(path, seed, graph.generation)
+      const path = await createCollectionNote(
+        tag,
+        graph.generation,
+        column.commit === null ? {} : { [property.key]: column.commit },
+      )
       onOpen(path)
     } catch (error) {
       toast.add({

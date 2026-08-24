@@ -592,10 +592,11 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
         >
           {view === 'grid' ? (
             <AllNotesGrid notes={notes} tag={tag} onOpen={openNote} />
-          ) : view === 'calendar' && calendarDateProperty !== null ? (
+          ) : view === 'calendar' && calendarDateProperty !== null && tag !== null ? (
             <CollectionCalendar
               entries={filteredCollection}
               property={calendarDateProperty}
+              tag={tag}
               onOpen={openNote}
             />
           ) : view === 'board' && boardGroupProperty !== null && tag !== null ? (

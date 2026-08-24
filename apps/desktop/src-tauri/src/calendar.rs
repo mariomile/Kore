@@ -1,4 +1,4 @@
-//! Apple Calendar capability: read-only EventKit access (macOS).
+//! Apple Calendar capability: read-only EventKit access (macOS and iOS).
 //!
 //! Rust owns the capability only — requesting access, listing calendars, and
 //! listing events for a date range. Which calendars are enabled, how events
@@ -16,7 +16,7 @@ use serde::Serialize;
 
 use crate::error::{AppError, AppResult};
 
-/// A calendar known to macOS, across every account the user has added in
+/// A calendar known to the device, across every account the user has added in
 /// System Settings → Internet Accounts.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -118,7 +118,7 @@ async fn run_blocking<T: Send + 'static>(
         })?
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "ios"))]
 mod platform {
     use std::ptr::NonNull;
     use std::sync::atomic::{AtomicBool, Ordering};
@@ -128,6 +128,7 @@ mod platform {
     use objc2::rc::Retained;
     use objc2::runtime::{AnyObject, Bool};
     use objc2::sel;
+    #[cfg(target_os = "macos")]
     use objc2_app_kit::NSColorSpace;
     use objc2_event_kit::{
         EKAuthorizationStatus, EKCalendar, EKEntityType, EKEvent, EKEventAvailability,
@@ -270,15 +271,23 @@ mod platform {
     }
 
     fn calendar_color_hex(calendar: &EKCalendar) -> Option<String> {
-        let color = unsafe { calendar.color() };
-        let srgb = color.colorUsingColorSpace(&NSColorSpace::sRGBColorSpace())?;
-        let to_byte = |component: f64| (component.clamp(0.0, 1.0) * 255.0).round() as u8;
-        Some(format!(
-            "#{:02x}{:02x}{:02x}",
-            to_byte(srgb.redComponent()),
-            to_byte(srgb.greenComponent()),
-            to_byte(srgb.blueComponent()),
-        ))
+        #[cfg(target_os = "macos")]
+        {
+            let color = unsafe { calendar.color() };
+            let srgb = color.colorUsingColorSpace(&NSColorSpace::sRGBColorSpace())?;
+            let to_byte = |component: f64| (component.clamp(0.0, 1.0) * 255.0).round() as u8;
+            Some(format!(
+                "#{:02x}{:02x}{:02x}",
+                to_byte(srgb.redComponent()),
+                to_byte(srgb.greenComponent()),
+                to_byte(srgb.blueComponent()),
+            ))
+        }
+        #[cfg(target_os = "ios")]
+        {
+            let _ = calendar;
+            None
+        }
     }
 
     fn describe_event(event: &EKEvent) -> CalendarEvent {
@@ -351,14 +360,14 @@ mod platform {
     }
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(not(any(target_os = "macos", target_os = "ios")))]
 mod platform {
     use super::{CalendarEvent, CalendarInfo};
     use crate::error::{AppError, AppResult};
 
     fn unsupported<T>() -> AppResult<T> {
         Err(AppError::Unknown {
-            message: "calendar integration is only available on macOS".into(),
+            message: "calendar integration is only available on Apple platforms".into(),
         })
     }
 

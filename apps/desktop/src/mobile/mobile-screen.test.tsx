@@ -9,6 +9,7 @@ import { clearFormattingToolbar, publishFormattingToolbar } from '@/editor/forma
 import { RouterProvider, useRouter } from '@/routing/router'
 import type { Route } from '@/routing/route'
 import { addDaysIso, formatDayLabel, parseIsoDate, todayIso } from '@/lib/dates'
+import { setPlatformSurface } from '@/lib/platform-surface'
 import { monthLabel, monthOf } from '@/lib/month-grid'
 import { fireEvent } from '@/test-utils/fire-event'
 import '@/test-utils/locator'
@@ -135,6 +136,8 @@ vi.mock('@/providers/settings-provider', () => ({
         other: true,
         archived: false,
       },
+      calendarEnabled: false,
+      calendarIds: [],
       aiProviders: [],
       defaultAiProviderId: null,
       chatSystemPrompt: '',
@@ -177,9 +180,11 @@ setBridge({
 afterEach(async () => {
   await cleanup()
   publishKeyboardHeight(0)
+  setPlatformSurface({ mobileApp: false, touchEditor: false })
 })
 
 beforeEach(async () => {
+  setPlatformSurface({ mobileApp: true })
   await page.viewport(375, 700)
   files = {}
   editorProbe.focusCalls = 0

@@ -189,9 +189,14 @@ describe('router', () => {
     expect(result.current.savedScroll()).toBe(120) // the tab restores only the new offset
   })
 
+  it('does not focus the editor when the first route is not today', async () => {
+    const { result } = await routerHook({ kind: 'note', path: 'notes/a.md' })
+    expect(result.current.arrivalFocusEditor).toBe(false)
+  })
+
   it('carries the focusEditor intent on the arrival that asked for it, one-shot', async () => {
     const { result, act } = await routerHook()
-    expect(result.current.arrivalFocusEditor).toBe(false)
+    expect(result.current.arrivalFocusEditor).toBe(true)
 
     await act(() =>
       result.current.navigate({ kind: 'note', path: 'notes/a.md' }, { focusEditor: true }),

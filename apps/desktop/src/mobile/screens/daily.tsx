@@ -6,6 +6,7 @@ import { useToday } from '@/lib/use-today'
 import { AudioMemoFab } from '@/mobile/audio-memo-fab'
 import { CalendarStrip } from '@/mobile/calendar-strip'
 import { DayCarousel } from '@/mobile/day-carousel'
+import { MobileDayEvents } from '@/mobile/mobile-day-events'
 import { useDailyArrivals } from '@/mobile/use-daily-arrivals'
 import { useSwipeTarget } from '@/mobile/use-swipe-target'
 import { useRouter } from '@/routing/router'
@@ -65,6 +66,7 @@ export function MobileDaily({ date }: { date: string }): ReactElement {
         resetSeq={resetSeq}
         onSelect={select}
       />
+      <MobileDayEvents date={targetDate ?? date} />
       <DayCarousel
         date={date}
         today={today}

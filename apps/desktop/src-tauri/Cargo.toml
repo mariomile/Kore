@@ -155,6 +155,19 @@ objc2-ui-kit = { version = "0.3.2", default-features = false, features = [
   "UIApplication",
   "block2",
 ] }
+# EventKit without AppKit — `EKCalendar.color()` is NSColor on macOS only.
+objc2-event-kit = { version = "0.3.2", default-features = false, features = [
+  "std",
+  "EKCalendar",
+  "EKCalendarItem",
+  "EKEvent",
+  "EKEventStore",
+  "EKObject",
+  "EKParticipant",
+  "EKSource",
+  "EKTypes",
+  "block2",
+] }
 tauri-plugin-iap = "0.9.1"
 
 # Desktop-only capabilities (Plan 19): auto-update (mobile updates go through

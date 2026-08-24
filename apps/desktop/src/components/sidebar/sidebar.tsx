@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils'
 import { hasMacosTitleBarOverlay } from '@/lib/window-chrome'
 import { notePathForRoute } from '@/routing/route'
 import { useRouter } from '@/routing/router'
+import { useShowAdvancedSurfaces } from '@/hooks/use-show-advanced-surfaces'
 import { GraphFooter } from './graph-footer'
 import { SidebarItem } from './sidebar-item'
 import { SidebarOpenNotes } from './sidebar-open-notes'
@@ -36,6 +37,7 @@ export function Sidebar({ graph, context }: SidebarProps): ReactElement {
   const { route } = useRouter()
   const today = useToday()
   const pinned = usePinnedNotes()
+  const showAdvanced = useShowAdvancedSurfaces()
   const currentNotePath = notePathForRoute(route, today)
   const hasActivePinnedNote =
     currentNotePath !== null && pinned.some((note) => note.path === currentNotePath)
@@ -109,13 +111,15 @@ export function Sidebar({ graph, context }: SidebarProps): ReactElement {
             active={route.kind === 'chat'}
             onClick={() => void runCommand('chat.open', context)}
           />
-          <SidebarItem
-            icon={<User className="size-[17px]" />}
-            label="Agents"
-            binding={keybindingFor('nav.agents') ?? undefined}
-            active={route.kind === 'agents'}
-            onClick={() => void runCommand('nav.agents', context)}
-          />
+          {showAdvanced ? (
+            <SidebarItem
+              icon={<User className="size-[17px]" />}
+              label="Agents"
+              binding={keybindingFor('nav.agents') ?? undefined}
+              active={route.kind === 'agents'}
+              onClick={() => void runCommand('nav.agents', context)}
+            />
+          ) : null}
           <SidebarItem
             icon={<Chart className="size-[17px]" />}
             label="Insights"

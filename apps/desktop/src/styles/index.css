@@ -276,6 +276,8 @@ html:root {
   --meowdown-bullet: var(--text-muted); /* resting bullet dot; collapsed stays themed */
   --meowdown-border: var(--border);
   --meowdown-code-bg: var(--surface-sunken, rgb(0 0 0 / 5%));
+  --meowdown-table-border: var(--border);
+  --meowdown-table-header-bg: var(--surface-sunken, rgb(0 0 0 / 5%));
   --meowdown-font-mono: var(--font-mono, monospace);
   /* Selection: meowdown defaults warm; Reflect keeps its blue-violet accent. */
   --meowdown-node-outline: var(--accent);

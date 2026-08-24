@@ -1,4 +1,10 @@
-import { indexedNoteSchema, ReflectError, type AppPlatform, type IpcBridge } from '@reflect/core'
+import {
+  IAP_PRODUCT_IDS,
+  indexedNoteSchema,
+  ReflectError,
+  type AppPlatform,
+  type IpcBridge,
+} from '@reflect/core'
 import { z } from 'zod'
 import type { DevFileStore } from '@/dev/dev-file-store'
 import type { DevIndexDb } from '@/dev/dev-index-db'
@@ -85,6 +91,26 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
         return null
       case 'plugin:keyboard|impact_light':
         return null
+
+      // No StoreKit in a browser. The harness exists to make the mobile tree
+      // reachable, so the subscription gate answers "owned": an unowned stub
+      // would park every `?platform=ios` preview on a paywall whose purchase
+      // sheet cannot open. The paywall screen itself is exercised in its own
+      // tests, not here.
+      case 'plugin:iap|get_product_status':
+        return { isOwned: true }
+      case 'plugin:iap|get_products':
+        return {
+          products: [
+            { productId: IAP_PRODUCT_IDS.yearly, formattedPrice: '$59.99' },
+            { productId: IAP_PRODUCT_IDS.monthly, formattedPrice: '$6.99' },
+          ],
+        }
+      case 'plugin:iap|purchase':
+        return null
+      case 'plugin:iap|restore_purchases':
+        return { purchases: [{ productId: IAP_PRODUCT_IDS.yearly }] }
+
       case 'mobile_storage':
         // No iCloud in a plain browser — the dev harness exercises the
         // local-storage path (and, via `mobileOnboarded` above, skips

@@ -146,11 +146,16 @@ export {
   relationDisplay,
   relationTarget,
   extractNoteProperties,
+  COLLECTION_EMBED_VIEWS,
+  formatCollectionEmbed,
+  parseCollectionEmbeds,
   type TagProperty,
   type TagPropertyType,
   type TagType,
   type IndexedProperty,
   type IndexedPropertyValueType,
+  type CollectionEmbed,
+  type CollectionEmbedView,
 } from '../tags'
 export {
   openIndex,

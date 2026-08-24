@@ -23,3 +23,10 @@ export {
   type IndexedProperty,
   type IndexedPropertyValueType,
 } from './properties'
+export {
+  COLLECTION_EMBED_VIEWS,
+  formatCollectionEmbed,
+  parseCollectionEmbeds,
+  type CollectionEmbed,
+  type CollectionEmbedView,
+} from './collection-embed'

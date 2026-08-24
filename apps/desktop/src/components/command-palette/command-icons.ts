@@ -5,6 +5,7 @@ import {
   CloudUpload,
   Command,
   Contrast,
+  Globe,
   Inbox,
   LayoutTemplate,
   NoteDownload,
@@ -17,6 +18,7 @@ import {
   Settings,
   Shuffle,
   Sparkles,
+  Terminal,
   type Icon,
 } from '@/components/icons'
 
@@ -28,6 +30,8 @@ import {
 export const COMMAND_ICONS: Record<string, Icon> = {
   'nav.today': CalendarDays,
   'note.new': NoteEdit,
+  'browser.open': Globe,
+  'nav.terminal': Terminal,
   'capture.quick': Inbox,
   'history.back': ArrowLeft,
   'history.forward': ArrowRight,

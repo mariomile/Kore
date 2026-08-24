@@ -27,6 +27,8 @@ export type Route =
   // The graph-switcher screen — a mobile settings sub-screen; desktop renders
   // it as the settings screen (its switcher lives in the sidebar footer).
   | { kind: 'graphs' }
+  // Desktop-only in-app terminal (local PTY + xterm). Mobile shows an error.
+  | { kind: 'terminal' }
 
 /** A route that addresses one concrete note, including a dated daily note. */
 export type NoteRoute = Extract<Route, { kind: 'daily' | 'note' }>
@@ -45,6 +47,7 @@ export function routesEqual(a: Route, b: Route): boolean {
     case 'agents':
     case 'settings':
     case 'graphs':
+    case 'terminal':
       return true
     case 'daily':
       return a.date === (b as Extract<Route, { kind: 'daily' }>).date

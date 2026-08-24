@@ -7,6 +7,7 @@ import {
   type ReactElement,
   type ReactNode,
 } from 'react'
+import { haptic } from '@/lib/haptics'
 
 /**
  * Side-panel visibility state, provided once per workspace so the shell
@@ -32,9 +33,11 @@ export function SidebarProvider({ children }: { children: ReactNode }): ReactEle
   const [collapsed, setCollapsed] = useState(false)
   const [contextCollapsed, setContextCollapsed] = useState(false)
   const toggleSidebar = useCallback(() => {
+    haptic('level-change')
     setCollapsed((current) => !current)
   }, [])
   const toggleContextSidebar = useCallback(() => {
+    haptic('level-change')
     setContextCollapsed((current) => !current)
   }, [])
 

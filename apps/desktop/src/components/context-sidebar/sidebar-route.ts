@@ -27,6 +27,7 @@ export function contextSidebarTarget(route: Route, today: string): ContextSideba
     case 'agents':
     case 'settings':
     case 'graphs':
+    case 'terminal':
       return null
   }
 }

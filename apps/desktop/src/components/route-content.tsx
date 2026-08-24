@@ -10,6 +10,7 @@ import { SingleNoteView } from '@/components/single-note-view'
 import { SettingsNavigator } from '@/components/settings/settings-navigator'
 import { SettingsScreen } from '@/components/settings-screen'
 import { TasksScreen } from '@/components/tasks/tasks-screen'
+import { TerminalScreen } from '@/components/terminal/terminal-screen'
 import { useRouter } from '@/routing/router'
 import { ScrollRestored } from '@/routing/scroll-restore'
 
@@ -57,6 +58,8 @@ export function RouteContent(): ReactElement {
     case 'graphMap':
       // Owns its surface (a pan/zoom canvas), so no scroll wrapper.
       return <GraphMapScreen />
+    case 'terminal':
+      return <TerminalScreen />
     case 'agents':
       return (
         <ScrollRestored className="h-full overflow-auto px-6 py-8">

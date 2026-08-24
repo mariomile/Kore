@@ -353,6 +353,17 @@ export {
   type PersonResolution,
 } from '../contacts/person'
 export {
+  ptyOpen,
+  ptyWrite,
+  ptyResize,
+  ptyClose,
+  subscribePtyData,
+  subscribePtyExit,
+  type PtyOpenResult,
+  type PtyDataEvent,
+  type PtyExitEvent,
+} from '../pty/commands'
+export {
   IAP_PRODUCT_IDS,
   iapGetProducts,
   iapPurchase,

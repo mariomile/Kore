@@ -41,14 +41,19 @@ mod skill;
 mod wake;
 mod windows;
 
-// The watcher and the embedding runtime are desktop capabilities (Plan 19):
-// mobile swaps in stand-ins with the identical command surface, so the
-// `invoke_handler` list below needs no platform branches.
+// The watcher, embedding runtime, and in-app PTY are desktop capabilities
+// (Plan 19): mobile swaps in stand-ins with the identical command surface,
+// so the `invoke_handler` list below needs no platform branches.
 #[cfg(desktop)]
 mod embed;
 #[cfg(mobile)]
 #[path = "embed_mobile.rs"]
 mod embed;
+#[cfg(desktop)]
+mod pty;
+#[cfg(mobile)]
+#[path = "pty_mobile.rs"]
+mod pty;
 #[cfg(desktop)]
 mod watcher;
 #[cfg(mobile)]
@@ -284,6 +289,7 @@ pub fn run() {
         .manage(embed::EmbedState::default())
         .manage(agent_cli::AgentCliState::default())
         .manage(agent_cli::AgentCliStdinState::default())
+        .manage(pty::PtyState::default())
         .invoke_handler(tauri::generate_handler![
             app_version,
             app_platform,
@@ -403,6 +409,10 @@ pub fn run() {
             quit::quit_confirm,
             windows::open_note_window,
             windows::open_browser_window,
+            pty::pty_open,
+            pty::pty_write,
+            pty::pty_resize,
+            pty::pty_close,
             windows::quick_capture_show,
             windows::quick_capture_hide,
             windows::window_bootstrap,

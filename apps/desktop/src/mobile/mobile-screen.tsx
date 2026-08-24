@@ -80,6 +80,12 @@ export function MobileScreen({
       return <MobileSettings key="settings" />
     case 'graphs':
       return <MobileGraphs key="graphs" />
+    case 'terminal':
+      return (
+        <div className="flex h-full items-center justify-center px-6 text-sm text-text-muted">
+          The terminal is available on desktop.
+        </div>
+      )
     default:
       return <MobileDaily key="daily" date={today} />
   }

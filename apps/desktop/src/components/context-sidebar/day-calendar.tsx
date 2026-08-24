@@ -79,7 +79,7 @@ export function DayCalendar({ selectedDate, today }: DayCalendarProps): ReactEle
             onClick={() => setMonth(addMonths(month, -1))}
             className={HEADER_BUTTON_CLASS}
           >
-            <ChevronLeft aria-hidden />
+            <ChevronLeft aria-hidden className="size-4" />
           </button>
           <Tooltip>
             <TooltipTrigger
@@ -90,7 +90,7 @@ export function DayCalendar({ selectedDate, today }: DayCalendarProps): ReactEle
                   onClick={() => navigate({ kind: 'today' })}
                   className={HEADER_BUTTON_CLASS}
                 >
-                  <CalendarDays aria-hidden />
+                  <CalendarDays aria-hidden className="size-4" />
                 </button>
               }
             />
@@ -104,13 +104,13 @@ export function DayCalendar({ selectedDate, today }: DayCalendarProps): ReactEle
             onClick={() => setMonth(addMonths(month, 1))}
             className={HEADER_BUTTON_CLASS}
           >
-            <ChevronRight aria-hidden />
+            <ChevronRight aria-hidden className="size-4" />
           </button>
         </nav>
       </header>
 
       <div>
-        <div className="grid grid-cols-7 border-b border-black/5 px-4 text-center dark:border-white/10">
+        <div className="grid grid-cols-7 px-4 text-center">
           {weekdayLabels(weekStartsOn).map((weekday) => (
             <div key={weekday} className="py-2 text-xs font-medium text-text">
               {weekday}

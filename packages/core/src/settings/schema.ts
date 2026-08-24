@@ -128,7 +128,7 @@ export interface SidebarWidthRange {
  * of the macOS traffic lights, which float over its top-left corner at an
  * OS-controlled position; the maximum protects the note pane.
  */
-export const SIDEBAR_WIDTH_RANGE: SidebarWidthRange = { min: 200, max: 480, fallback: 260 }
+export const SIDEBAR_WIDTH_RANGE: SidebarWidthRange = { min: 200, max: 800, fallback: 260 }
 
 /**
  * The contextual (right) panel's range. Its minimum is higher than the
@@ -136,7 +136,7 @@ export const SIDEBAR_WIDTH_RANGE: SidebarWidthRange = { min: 200, max: 480, fall
  */
 export const CONTEXT_SIDEBAR_WIDTH_RANGE: SidebarWidthRange = {
   min: 240,
-  max: 480,
+  max: 800,
   fallback: 320,
 }
 

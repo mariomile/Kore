@@ -1,8 +1,9 @@
 import type { MouseEvent, ReactElement } from 'react'
-import { Close, PanelLeft, PanelRight, Pencil, Pin, Plus } from '@/components/icons'
-import { usePalette } from '@/components/command-palette/palette-provider'
+import { Close, PanelLeft, PanelRight, Pencil, Pin } from '@/components/icons'
+import { NoteTabsPlusMenu } from '@/components/note-tabs-plus-menu'
 import { NavigateArrows } from '@/components/sidebar/navigate-arrows'
 import { useOpenTabNotes, type OpenTabNote } from '@/hooks/use-open-tab-notes'
+import type { CommandContext } from '@/lib/commands/types'
 import { hasMacosTitleBarOverlay } from '@/lib/window-chrome'
 import { cn } from '@/lib/utils'
 import { useOpenTabs } from '@/providers/open-tabs-provider'
@@ -15,23 +16,27 @@ interface NoteTabsStripProps {
    * open, the sidebar owns that corner and the bar starts beside it.
    */
   atWindowEdge?: boolean
+  /** Commands for the "+" menu (new note vs the built-in browser). */
+  commandContext?: CommandContext
 }
 
 /**
  * The content column's tab bar: history arrows on the left, then the open
- * notes as rounded pills, then a "+" that opens the palette to jump anywhere.
- * Daily notes is the fixed, unclosable first pill; pinned tabs collapse to an
- * icon right after it (double-click pins); the rest close on hover or
- * middle-click. It spans only the column beside the full-height sidebar —
- * the note-pane card below provides the separation, so the bar itself is
- * borderless — and doubles as the window drag region, so it never blinks
- * away.
+ * notes as rounded pills, then a "+" that creates a note or opens the
+ * built-in browser. Daily notes is the fixed, unclosable first pill; pinned
+ * tabs collapse to an icon right after it (double-click pins); the rest close
+ * on hover or middle-click. It spans only the column beside the full-height
+ * sidebar — the note-pane card below provides the separation, so the bar
+ * itself is borderless — and doubles as the window drag region, so it never
+ * blinks away.
  */
-export function NoteTabsStrip({ atWindowEdge = false }: NoteTabsStripProps): ReactElement {
+export function NoteTabsStrip({
+  atWindowEdge = false,
+  commandContext,
+}: NoteTabsStripProps): ReactElement {
   const { activePath, isDailyActive, activateTab, activateDaily, closeTab, togglePin } =
     useOpenTabs()
   const notes = useOpenTabNotes()
-  const { openPalette } = usePalette()
   const { collapsed, toggleSidebar, contextCollapsed, toggleContextSidebar } = useSidebar()
 
   return (
@@ -42,7 +47,7 @@ export function NoteTabsStrip({ atWindowEdge = false }: NoteTabsStripProps): Rea
         // With the overlaid macOS title bar the traffic lights own the left
         // edge — but only when the bar actually reaches it. 4.5rem clears
         // the lights while keeping the toggles as far left as they can sit.
-        hasMacosTitleBarOverlay && atWindowEdge ? 'pl-[4.5rem]' : 'pl-1.5',
+        hasMacosTitleBarOverlay && atWindowEdge ? 'pl-[4.5rem]' : 'pl-1',
       )}
     >
       <div className="window-drag-control flex items-center">
@@ -82,16 +87,7 @@ export function NoteTabsStrip({ atWindowEdge = false }: NoteTabsStripProps): Rea
           />
         ))}
 
-        <button
-          type="button"
-          aria-label="Open a note"
-          onClick={() => {
-            openPalette()
-          }}
-          className="flex size-7 shrink-0 items-center justify-center rounded-lg text-text-muted transition-colors duration-100 hover:bg-surface-hover hover:text-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
-        >
-          <Plus aria-hidden className="size-3.5" />
-        </button>
+        {commandContext ? <NoteTabsPlusMenu context={commandContext} /> : null}
       </div>
 
       <div className="window-drag-control ml-auto flex items-center">
@@ -129,12 +125,12 @@ function PanelToggle({ side, collapsed, onToggle, label }: PanelToggleProps): Re
       aria-pressed={!collapsed}
       onClick={onToggle}
       className={cn(
-        'flex size-7 shrink-0 items-center justify-center rounded-lg transition-colors duration-100',
-        'hover:bg-surface-hover hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
+        'flex size-6 shrink-0 items-center justify-center rounded-md transition-[color,background-color,transform] duration-150 ease-[cubic-bezier(0.32,0.72,0,1)]',
+        'hover:bg-surface-hover hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring active:scale-[0.97]',
         collapsed ? 'text-text-muted' : 'text-text-secondary',
       )}
     >
-      <Icon aria-hidden className="size-4" />
+      <Icon aria-hidden className="size-3.5" />
     </button>
   )
 }

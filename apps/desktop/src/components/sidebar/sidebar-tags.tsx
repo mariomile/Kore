@@ -10,6 +10,7 @@ import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { cn } from '@/lib/utils'
 import { useGraph } from '@/providers/graph-provider'
 import { useRouter } from '@/routing/router'
+import { SidebarDisclosure } from './sidebar-disclosure'
 
 /**
  * The sidebar's Tags section: every tag carried by a non-daily note, with its
@@ -40,8 +41,7 @@ export function SidebarTags(): ReactElement | null {
   }
 
   return (
-    <section aria-label="Tags" className="px-4.5">
-      <h2 className="pt-4 text-2xs font-medium leading-5 tracking-wide text-text-muted">Tags</h2>
+    <SidebarDisclosure storageKey="tags" title="Tags" label="Tags">
       <ul className="mt-2 flex flex-col space-y-1">
         {tags.map((facet) => {
           const active = activeTagKey !== null && foldTag(facet.tag) === activeTagKey
@@ -87,6 +87,6 @@ export function SidebarTags(): ReactElement | null {
       {configuring !== null ? (
         <TagConfigDialog tag={configuring} onClose={() => setConfiguring(null)} />
       ) : null}
-    </section>
+    </SidebarDisclosure>
   )
 }

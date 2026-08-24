@@ -96,11 +96,14 @@ describe('SidebarResizeHandle', () => {
   })
 
   it('clamps a drag past the range to its bounds', async () => {
+    // 1024px only budgets 664px for the rail (viewport minus the note pane).
+    // A wider window is required for the range max of 800px to be the wall.
+    await page.viewport(1600, 800)
     const handle = await renderHandle('workspace')
 
     firePointer(handle, 'pointerdown', { pointerId: 7, button: 0, clientX: 300 })
-    firePointer(handle, 'pointermove', { pointerId: 7, clientX: 1200 })
-    expect(rootVariable('--sidebar-width')).toBe('480px')
+    firePointer(handle, 'pointermove', { pointerId: 7, clientX: 1600 })
+    expect(rootVariable('--sidebar-width')).toBe('800px')
 
     firePointer(handle, 'pointermove', { pointerId: 7, clientX: -1200 })
     firePointer(handle, 'pointerup', { pointerId: 7, clientX: -1200 })
@@ -214,7 +217,8 @@ describe('SidebarResizeHandle', () => {
   })
 
   it('a keystroke into a wall commits nothing', async () => {
-    settingsState.settings.sidebarWidth = 480
+    await page.viewport(1600, 800)
+    settingsState.settings.sidebarWidth = 800
     const handle = await renderHandle('workspace')
 
     // Already at the range maximum: nothing moves, so nothing persists.
@@ -290,13 +294,14 @@ describe('SidebarResizeHandle', () => {
   })
 
   it('jumps to the rail minimum and maximum with Home and End', async () => {
+    await page.viewport(1600, 800)
     const workspaceHandle = await renderHandle('workspace')
 
     fireKey(workspaceHandle, 'Home')
     expect(settingsState.updateSettings).toHaveBeenLastCalledWith({ sidebarWidth: 200 })
 
     fireKey(workspaceHandle, 'End')
-    expect(settingsState.updateSettings).toHaveBeenLastCalledWith({ sidebarWidth: 480 })
+    expect(settingsState.updateSettings).toHaveBeenLastCalledWith({ sidebarWidth: 800 })
 
     await cleanup()
     const contextHandle = await renderHandle('context')
@@ -307,7 +312,7 @@ describe('SidebarResizeHandle', () => {
     expect(settingsState.updateSettings).toHaveBeenLastCalledWith({ contextSidebarWidth: 240 })
 
     fireKey(contextHandle, 'End')
-    expect(settingsState.updateSettings).toHaveBeenLastCalledWith({ contextSidebarWidth: 480 })
+    expect(settingsState.updateSettings).toHaveBeenLastCalledWith({ contextSidebarWidth: 800 })
   })
 
   it('exposes the clamp range and controlled panel through the separator attributes', async () => {
@@ -316,7 +321,7 @@ describe('SidebarResizeHandle', () => {
     expect(handle.getAttribute('aria-orientation')).toBe('vertical')
     expect(handle.getAttribute('aria-controls')).toBe('workspace-sidebar')
     expect(handle.getAttribute('aria-valuemin')).toBe('200')
-    expect(handle.getAttribute('aria-valuemax')).toBe('480')
+    expect(handle.getAttribute('aria-valuemax')).toBe('800')
     expect(handle.getAttribute('aria-valuenow')).toBe('260')
   })
 })

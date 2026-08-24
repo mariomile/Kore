@@ -25,6 +25,6 @@ describe('effectiveSidebarWidths', () => {
   })
 
   it('clamps out-of-range preferences before budgeting', () => {
-    expect(effectiveSidebarWidths(1600, 9000, 100)).toEqual({ workspace: 480, context: 240 })
+    expect(effectiveSidebarWidths(1600, 9000, 100)).toEqual({ workspace: 800, context: 240 })
   })
 })

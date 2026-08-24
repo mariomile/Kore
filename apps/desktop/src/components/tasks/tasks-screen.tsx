@@ -259,7 +259,7 @@ export function TasksScreen(): ReactElement {
       aria-label="Tasks"
       className="flex h-full min-h-0 flex-col outline-none"
     >
-      <header className="flex flex-none items-center gap-2 border-b border-border py-2.5 pl-2 pr-3 lg:pl-10">
+      <header className="flex flex-none items-center gap-2 py-2.5 pl-2 pr-3 lg:pl-10">
         <div className="window-drag-control min-w-0 flex-1">
           <Search
             aria-hidden

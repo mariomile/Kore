@@ -42,7 +42,7 @@ export function AllNotesFilters({ tag, facets, onSelect }: AllNotesFiltersProps)
     <div
       role="group"
       aria-label="Filter by tag"
-      className="flex items-stretch divide-x divide-border overflow-hidden rounded-lg border border-border bg-surface shadow-sm"
+      className="flex items-center gap-0.5 rounded-full bg-surface-hover p-0.5"
     >
       <FilterTab label="All" active={tag === null} onClick={() => onSelect(null)} />
       {pinned.map((pinnedTag) => (

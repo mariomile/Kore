@@ -6,6 +6,7 @@ import {
   randomNotePath,
   toggleDevtools,
   untitledNotePath,
+  openBrowserWindow,
 } from '@reflect/core'
 import { attachFilesToNote } from '@/lib/attach-files'
 import { runCopyNotePath } from '@/lib/note-copy-path'
@@ -16,6 +17,7 @@ import { toggleNotePinned } from '@/lib/note-pin'
 import { toggleNotePrivate } from '@/lib/note-private'
 import { startOperation } from '@/lib/operations'
 import { isNativeShell } from '@/lib/platform'
+import { isMobileSurface } from '@/lib/platform-surface'
 import { rebuildIndexVisibly } from '@/lib/rebuild-index'
 import { openRouteInNewWindow } from '@/lib/windows/open-in-new-window'
 import { routeForPath, type Route } from '@/routing/route'
@@ -99,6 +101,17 @@ const APP_COMMANDS: AppCommand[] = [
     run: openNewNote,
   },
   {
+    id: 'browser.open',
+    title: 'Open browser',
+    keywords: ['web', 'duckduckgo', 'browse', 'window'],
+    run: () => {
+      if (!isNativeShell()) {
+        return
+      }
+      void openBrowserWindow('https://duckduckgo.com')
+    },
+  },
+  {
     id: 'capture.quick',
     title: 'Quick capture to today',
     keywords: ['inbox', 'append', 'today', 'global', 'shortcut'],
@@ -160,6 +173,17 @@ const APP_COMMANDS: AppCommand[] = [
     title: 'Graph',
     keywords: ['map', 'links', 'network', 'connections', 'visual'],
     run: (context) => context.navigate({ kind: 'graphMap' }),
+  },
+  {
+    id: 'nav.terminal',
+    title: 'Terminal',
+    keywords: ['shell', 'pty', 'console', 'ghostty', 'xterm'],
+    run: (context) => {
+      if (isMobileSurface()) {
+        return
+      }
+      context.navigate({ kind: 'terminal' })
+    },
   },
   {
     id: 'nav.agents',

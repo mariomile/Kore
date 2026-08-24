@@ -66,11 +66,11 @@ export function NewNoteButton({ tag = null }: NewNoteButtonProps): ReactElement 
           void createTagged(tag)
         }
       }}
-      className="flex items-center gap-2 rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-text-on-brand shadow-sm transition-colors duration-100 hover:bg-accent-hover"
+      className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-sm font-medium text-text-secondary transition-colors duration-100 hover:bg-surface-hover hover:text-text"
     >
       New note
       {NEW_NOTE_BINDING !== null ? (
-        <span aria-hidden className="rounded bg-white/20 px-1 py-px text-[11px] font-medium">
+        <span aria-hidden className="rounded px-1 py-px text-[11px] font-medium text-text-muted">
           {formatBindingLabel(NEW_NOTE_BINDING)}
         </span>
       ) : null}

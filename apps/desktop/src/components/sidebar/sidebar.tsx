@@ -1,5 +1,15 @@
 import type { ReactElement } from 'react'
-import { Chart, Chat, Checklist, Graph, Note, NoteEdit, Pencil, User } from '@/components/icons'
+import {
+  Chart,
+  Chat,
+  Checklist,
+  Graph,
+  Note,
+  NoteEdit,
+  Pencil,
+  Terminal,
+  User,
+} from '@/components/icons'
 import { isUntitledNotePath, type GraphInfo } from '@reflect/core'
 import { AudioMemoButton } from '@/components/audio-memo/audio-memo-button'
 import { usePinnedNotes } from '@/hooks/use-pinned-notes'
@@ -7,6 +17,7 @@ import { keybindingFor } from '@/lib/commands/app-commands'
 import { runCommand } from '@/lib/commands/registry'
 import { useToday } from '@/lib/use-today'
 import type { CommandContext } from '@/lib/commands/types'
+import { isMobileSurface } from '@/lib/platform-surface'
 import { cn } from '@/lib/utils'
 import { hasMacosTitleBarOverlay } from '@/lib/window-chrome'
 import { notePathForRoute } from '@/routing/route'
@@ -66,14 +77,14 @@ export function Sidebar({ graph, context }: SidebarProps): ReactElement {
 
         <nav aria-label="Primary" className="mt-5 space-y-1 px-2">
           <SidebarItem
-            icon={<Pencil className="size-[17px]" />}
+            icon={<Pencil className="size-3.5" />}
             label="Daily notes"
             binding={keybindingFor('nav.today') ?? undefined}
             active={(route.kind === 'today' || route.kind === 'daily') && !hasActivePinnedNote}
             onClick={() => void runCommand('nav.today', context)}
           />
           <SidebarItem
-            icon={<NoteEdit className="size-[17px]" />}
+            icon={<NoteEdit className="size-3.5" />}
             label="New note"
             binding={keybindingFor('note.new') ?? undefined}
             // Active while the open note is still on its ULID placeholder
@@ -84,7 +95,7 @@ export function Sidebar({ graph, context }: SidebarProps): ReactElement {
             onClick={() => void runCommand('note.new', context)}
           />
           <SidebarItem
-            icon={<Note className="size-[17px]" />}
+            icon={<Note className="size-3.5" />}
             label="All notes"
             binding={keybindingFor('nav.allNotes') ?? undefined}
             // A named note lives in the All Notes collection, so keep this row
@@ -98,14 +109,14 @@ export function Sidebar({ graph, context }: SidebarProps): ReactElement {
             onClick={() => void runCommand('nav.allNotes', context)}
           />
           <SidebarItem
-            icon={<Checklist className="size-[17px]" />}
+            icon={<Checklist className="size-3.5" />}
             label="Tasks"
             binding={keybindingFor('nav.tasks') ?? undefined}
             active={route.kind === 'tasks'}
             onClick={() => void runCommand('nav.tasks', context)}
           />
           <SidebarItem
-            icon={<Chat className="size-[17px]" />}
+            icon={<Chat className="size-3.5" />}
             label="Chat"
             binding={keybindingFor('chat.open') ?? undefined}
             active={route.kind === 'chat'}
@@ -113,7 +124,7 @@ export function Sidebar({ graph, context }: SidebarProps): ReactElement {
           />
           {showAdvanced ? (
             <SidebarItem
-              icon={<User className="size-[17px]" />}
+              icon={<User className="size-3.5" />}
               label="Agents"
               binding={keybindingFor('nav.agents') ?? undefined}
               active={route.kind === 'agents'}
@@ -121,19 +132,28 @@ export function Sidebar({ graph, context }: SidebarProps): ReactElement {
             />
           ) : null}
           <SidebarItem
-            icon={<Chart className="size-[17px]" />}
+            icon={<Chart className="size-3.5" />}
             label="Insights"
             binding={keybindingFor('nav.insights') ?? undefined}
             active={route.kind === 'insights'}
             onClick={() => void runCommand('nav.insights', context)}
           />
           <SidebarItem
-            icon={<Graph className="size-[17px]" />}
+            icon={<Graph className="size-3.5" />}
             label="Graph"
             binding={keybindingFor('nav.graphMap') ?? undefined}
             active={route.kind === 'graphMap'}
             onClick={() => void runCommand('nav.graphMap', context)}
           />
+          {isMobileSurface() ? null : (
+            <SidebarItem
+              icon={<Terminal className="size-3.5" />}
+              label="Terminal"
+              binding={keybindingFor('nav.terminal') ?? undefined}
+              active={route.kind === 'terminal'}
+              onClick={() => void runCommand('nav.terminal', context)}
+            />
+          )}
         </nav>
       </div>
 

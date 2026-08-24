@@ -15,10 +15,8 @@ export function FilterTab({ label, active, onClick }: FilterTabProps): ReactElem
       aria-pressed={active}
       onClick={onClick}
       className={cn(
-        'px-3 py-1.5 text-[13px] font-medium transition-colors duration-100',
-        active
-          ? 'bg-surface-hover text-text'
-          : 'text-text-secondary hover:bg-surface-hover hover:text-text',
+        'rounded-full px-2.5 py-1 text-[13px] font-medium transition-colors duration-100',
+        active ? 'bg-surface text-text shadow-sm' : 'text-text-muted hover:text-text-secondary',
       )}
     >
       {label}

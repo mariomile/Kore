@@ -248,11 +248,11 @@ describe('settingsSchema', () => {
     // Out-of-range numbers clamp instead of resetting: a near-miss hand-edit
     // keeps its intent.
     expect(settingsSchema.parse({ sidebarWidth: 100 }).sidebarWidth).toBe(200)
-    expect(settingsSchema.parse({ sidebarWidth: 9000 }).sidebarWidth).toBe(480)
+    expect(settingsSchema.parse({ sidebarWidth: 9000 }).sidebarWidth).toBe(800)
     expect(settingsSchema.parse({ sidebarWidth: 315.4 }).sidebarWidth).toBe(315)
     expect(settingsSchema.parse({ contextSidebarWidth: 'wide' }).contextSidebarWidth).toBe(320)
     expect(settingsSchema.parse({ contextSidebarWidth: 100 }).contextSidebarWidth).toBe(240)
-    expect(settingsSchema.parse({ contextSidebarWidth: 9000 }).contextSidebarWidth).toBe(480)
+    expect(settingsSchema.parse({ contextSidebarWidth: 9000 }).contextSidebarWidth).toBe(800)
     expect(settingsSchema.parse({ theme: 'chartreuse' }).theme).toBe('system')
     expect(settingsSchema.parse({ theme: 7 }).theme).toBe('system')
     expect(settingsSchema.parse({ uiRadius: 'pill' }).uiRadius).toBe('default')

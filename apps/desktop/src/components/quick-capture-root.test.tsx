@@ -72,6 +72,14 @@ describe('QuickCaptureRoot', () => {
     expect(hideQuickCapture).toHaveBeenCalledTimes(1)
   })
 
+  it('keeps a personal graph on today — no decision or meeting destinations', async () => {
+    await render(<QuickCaptureRoot />)
+    await vi.waitFor(() => expect(readGraphRole).toHaveBeenCalled())
+    expect(page.getByRole('radio', { name: 'Today' }).query()).toBeNull()
+    expect(page.getByRole('radio', { name: 'Decision' }).query()).toBeNull()
+    expect(page.getByRole('radio', { name: 'Meeting' }).query()).toBeNull()
+  })
+
   it('hides on Escape without spooling', async () => {
     await render(<QuickCaptureRoot />)
     await userEvent.keyboard('{Escape}')

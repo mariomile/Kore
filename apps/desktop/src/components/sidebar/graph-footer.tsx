@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react'
+import { useState, type ReactElement } from 'react'
 import type { GraphInfo } from '@reflect/core'
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
 import { Check, FolderOpen, Locate, Settings } from '@/components/icons'
@@ -7,6 +7,14 @@ import { ShortcutKeys } from '@/components/shortcut-keys'
 import { SidebarIconSlot } from '@/components/sidebar/sidebar-icon-slot'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,13 +27,13 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useGraphColors } from '@/hooks/use-graph-colors'
+import { useGraphRole } from '@/hooks/use-graph-role'
 import { keybindingFor } from '@/lib/commands/app-commands'
 import { runCommand } from '@/lib/commands/registry'
 import type { CommandContext } from '@/lib/commands/types'
 import { DEFAULT_GRAPH_COLOR, GRAPH_COLOR_OPTIONS } from '@/lib/graph-colors'
 import { cn } from '@/lib/utils'
 import { isMainWindow } from '@/lib/windows/window-role'
-import { useGraphRole } from '@/hooks/use-graph-role'
 import { useGraph } from '@/providers/graph-provider'
 import { useSync, type BackupState } from '@/providers/sync-provider'
 import { useRouter } from '@/routing/router'
@@ -77,6 +85,7 @@ export function GraphFooter({ graph, context }: GraphFooterProps): ReactElement 
   const currentColor = colorFor(graph.root) ?? DEFAULT_GRAPH_COLOR
   const { backup } = useSync()
   const { route } = useRouter()
+  const [confirmCompany, setConfirmCompany] = useState(false)
   const dot = backupDot(backup)
   const settingsActive = route.kind === 'settings'
 
@@ -167,7 +176,13 @@ export function GraphFooter({ graph, context }: GraphFooterProps): ReactElement 
           })}
           {recents.length > 0 ? <DropdownMenuSeparator /> : null}
           <DropdownMenuItem
-            onClick={() => void setRole(role === 'company' ? 'personal' : 'company')}
+            onClick={() => {
+              if (role === 'company') {
+                void setRole('personal')
+                return
+              }
+              setConfirmCompany(true)
+            }}
             className={MENU_ITEM_CLASS}
           >
             <GraphSwatch color={currentColor} className="size-3.5 rounded" />
@@ -250,6 +265,26 @@ export function GraphFooter({ graph, context }: GraphFooterProps): ReactElement 
           Settings {SETTINGS_BINDING && <ShortcutKeys binding={SETTINGS_BINDING} />}
         </TooltipContent>
       </Tooltip>
+      <Dialog open={confirmCompany} onOpenChange={setConfirmCompany}>
+        <DialogContent>
+          <DialogTitle>Use as a company brain?</DialogTitle>
+          <DialogDescription>
+            Capture becomes named notes (decisions, meetings, people) instead of today&apos;s daily.
+            You can switch back later.
+          </DialogDescription>
+          <DialogFooter>
+            <DialogClose render={<Button variant="ghost">Cancel</Button>} />
+            <Button
+              onClick={() => {
+                setConfirmCompany(false)
+                void setRole('company')
+              }}
+            >
+              Use as company brain
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

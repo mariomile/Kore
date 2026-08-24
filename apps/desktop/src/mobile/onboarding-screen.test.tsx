@@ -39,6 +39,9 @@ describe('MobileOnboardingScreen', () => {
     await render(<MobileOnboardingScreen />)
 
     await expect
+      .element(page.getByRole('heading', { name: 'Start with iCloud sync' }))
+      .toBeVisible()
+    await expect
       .element(page.getByRole('heading', { name: 'Personal notes', exact: true }))
       .toBeVisible()
     await expect.element(page.getByLabelText('Graph name')).toHaveValue('Notes')

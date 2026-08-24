@@ -68,6 +68,7 @@ describe('ensureWelcomeNote', () => {
     expect(isPinned(frontmatter)).toBe(true)
     expect(frontmatter.id).toMatch(/^[0-9a-z]{26}$/)
     expect(graph.written[0]!.contents).toContain('[[Wiki Links]]')
+    expect(graph.written[0]!.contents).not.toMatch(/company brain/i)
   })
 
   it.each([

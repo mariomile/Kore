@@ -4,6 +4,8 @@ import { cleanup, render } from 'vitest-browser-react'
 import { page, userEvent } from 'vitest/browser'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { setBridge } from '@reflect/core'
+import { open } from '@tauri-apps/plugin-dialog'
+import { clearQueuedGraphRole, takeQueuedGraphRole } from '@/lib/graph-role'
 import { GraphProvider } from '@/providers/graph-provider'
 import { SettingsProvider } from '@/providers/settings-provider'
 import '@/test-utils/locator'
@@ -34,6 +36,7 @@ function wrapper({ children }: { children: ReactNode }) {
 
 beforeEach(() => {
   vi.stubEnv('TAURI_ENV_PLATFORM', 'darwin')
+  clearQueuedGraphRole()
   invokeLog = []
   recents = [
     { root: '/graphs/work', name: 'work', openedMs: 2 },
@@ -93,6 +96,7 @@ describe('GraphChooser', () => {
 
     await expect.element(page.getByRole('heading', { name: 'Personal notes' })).toBeVisible()
     await expect.element(page.getByText('Recommended')).toBeVisible()
+    await expect.element(page.getByText(/Your notes are plain Markdown files/)).toBeVisible()
     await expect.element(page.getByText(/Open an existing Markdown folder/)).toBeVisible()
     await expect.element(page.getByRole('heading', { name: 'A folder you choose' })).toBeVisible()
     await expect.element(page.getByRole('button', { name: /Choose a folder/ })).toBeVisible()
@@ -249,5 +253,14 @@ describe('GraphChooser', () => {
     await vi.waitFor(() =>
       expect(invokeLog).toContainEqual(['graph_create', { path: '/icloud/Documents/Company' }]),
     )
+  })
+
+  it('drops a queued company role when the shared-folder picker is cancelled', async () => {
+    vi.mocked(open).mockResolvedValueOnce(null)
+    await render(<GraphChooser />, { wrapper })
+
+    await userEvent.click(page.getByRole('button', { name: 'Choose a shared folder…' }))
+    await vi.waitFor(() => expect(open).toHaveBeenCalled())
+    expect(takeQueuedGraphRole()).toBe(null)
   })
 })

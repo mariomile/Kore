@@ -5,6 +5,7 @@ import type { AgentRoutine, Settings } from '@reflect/core'
 const settingsState = vi.hoisted(() => ({
   agentRoutines: [] as AgentRoutine[],
 }))
+const graphRoleState = vi.hoisted(() => ({ role: null as 'personal' | 'company' | null }))
 const updated = vi.hoisted(() => [] as Partial<Settings>[])
 vi.mock('@/providers/settings-provider', () => ({
   SETTINGS_QUERY_KEY: ['settings'],
@@ -18,6 +19,13 @@ vi.mock('@/providers/settings-provider', () => ({
     ) => {
       updated.push(updater({ agentRoutines: settingsState.agentRoutines }))
     },
+  }),
+}))
+vi.mock('@/hooks/use-graph-role', () => ({
+  useGraphRole: () => ({
+    role: graphRoleState.role,
+    roleFor: () => null,
+    setRole: async () => {},
   }),
 }))
 
@@ -50,6 +58,7 @@ const RILEY = {
 
 function reset(routines: AgentRoutine[]): void {
   settingsState.agentRoutines = routines
+  graphRoleState.role = null
   updated.length = 0
 }
 
@@ -184,5 +193,18 @@ describe('AgentRoutinesSection', () => {
       enabled: true,
     })
     await view.unmount()
+  })
+
+  it('offers Company digest only on a company graph', async () => {
+    reset([])
+    const personal = await render(<AgentRoutinesSection profiles={[]} />)
+    expect(personal.getByRole('button', { name: 'Add Company digest' }).query()).toBeNull()
+    await personal.unmount()
+
+    graphRoleState.role = 'company'
+    const company = await render(<AgentRoutinesSection profiles={[]} />)
+    await company.getByRole('button', { name: 'Add Company digest' }).click()
+    expect(updated.at(-1)?.agentRoutines?.[0]).toMatchObject({ name: 'Company digest' })
+    await company.unmount()
   })
 })

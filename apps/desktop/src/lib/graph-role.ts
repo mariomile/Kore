@@ -22,6 +22,15 @@ export function queueGraphRole(role: GraphRole): void {
   queuedRole = role
 }
 
+/**
+ * Drop a queued role that never landed — cancelled folder pickers, failed
+ * creates, opening an existing recent. Without this, the next graph open
+ * (including a personal vault) would inherit a leftover company stamp.
+ */
+export function clearQueuedGraphRole(): void {
+  queuedRole = null
+}
+
 /** Consume a queued role, or `null` when the chooser did not pick one. */
 export function takeQueuedGraphRole(): GraphRole | null {
   const role = queuedRole

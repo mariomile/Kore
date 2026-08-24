@@ -59,6 +59,7 @@ export function QuickCaptureRoot(): ReactElement {
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
   const [destination, setDestination] = useState<QuickCaptureDestination>('today')
+  const [isCompany, setIsCompany] = useState(false)
 
   useEffect(() => installQuitFlush(), [])
 
@@ -72,6 +73,7 @@ export function QuickCaptureRoot(): ReactElement {
       .then((boot) => readGraphRole(boot.graph.generation))
       .then((role) => {
         if (!cancelled) {
+          setIsCompany(role === 'company')
           setDestination(defaultQuickCaptureDestination(role))
         }
       })
@@ -92,7 +94,7 @@ export function QuickCaptureRoot(): ReactElement {
     setError(null)
     try {
       const boot = await windowBootstrap()
-      if (destination === 'today') {
+      if (destination === 'today' || !isCompany) {
         const envelope = buildGlobalShortcutEnvelope(line)
         await captureInboxSpool(
           `${envelope.id}.json`,
@@ -125,30 +127,32 @@ export function QuickCaptureRoot(): ReactElement {
 
   return (
     <div className="flex h-screen w-screen flex-col justify-center bg-background px-3 py-2">
-      <div
-        role="radiogroup"
-        aria-label="Capture destination"
-        className="mb-1.5 flex items-center gap-1 pl-3"
-      >
-        {DESTINATIONS.map((entry) => (
-          <button
-            key={entry.id}
-            type="button"
-            role="radio"
-            aria-checked={destination === entry.id}
-            disabled={pending}
-            onClick={() => setDestination(entry.id)}
-            className={cn(
-              'rounded-md px-2 py-0.5 text-2xs font-medium transition-colors',
-              destination === entry.id
-                ? 'bg-accent-soft text-accent-soft-text'
-                : 'text-text-muted hover:text-text',
-            )}
-          >
-            {entry.label}
-          </button>
-        ))}
-      </div>
+      {isCompany ? (
+        <div
+          role="radiogroup"
+          aria-label="Capture destination"
+          className="mb-1.5 flex items-center gap-1 pl-3"
+        >
+          {DESTINATIONS.map((entry) => (
+            <button
+              key={entry.id}
+              type="button"
+              role="radio"
+              aria-checked={destination === entry.id}
+              disabled={pending}
+              onClick={() => setDestination(entry.id)}
+              className={cn(
+                'rounded-md px-2 py-0.5 text-2xs font-medium transition-colors',
+                destination === entry.id
+                  ? 'bg-accent-soft text-accent-soft-text'
+                  : 'text-text-muted hover:text-text',
+              )}
+            >
+              {entry.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
       <div className="flex items-center">
         <div aria-hidden data-tauri-drag-region className="h-10 w-3 shrink-0" />
         <form className="flex min-w-0 flex-1 items-center gap-2" onSubmit={onSubmit}>

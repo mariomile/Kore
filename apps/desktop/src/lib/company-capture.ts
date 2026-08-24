@@ -1,6 +1,7 @@
 import {
   createNoteWithTitle,
   getTagType,
+  type GraphRole,
   type TagType,
   type TemplatePlaceholderValues,
 } from '@reflect/core'
@@ -92,3 +93,26 @@ export const COMPANY_CAPTURE_COMMANDS: readonly {
     keywords: ['company', 'org', 'crm'],
   },
 ]
+
+const COMPANY_CAPTURE_COMMAND_IDS = new Set(
+  COMPANY_CAPTURE_COMMANDS.map((command) => command.id),
+)
+
+/** Palette / keymap ids that belong only on a company graph. */
+export function isCompanyCaptureCommand(id: string): boolean {
+  return COMPANY_CAPTURE_COMMAND_IDS.has(id)
+}
+
+/**
+ * Company capture commands stay off the default personal notebook. Unmarked
+ * graphs are personal — one person, today's note, no extra destinations.
+ */
+export function commandsForGraphRole<T extends { readonly id: string }>(
+  commands: readonly T[],
+  role: GraphRole | null,
+): T[] {
+  if (role === 'company') {
+    return [...commands]
+  }
+  return commands.filter((command) => !isCompanyCaptureCommand(command.id))
+}

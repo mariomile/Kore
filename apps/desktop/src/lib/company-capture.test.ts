@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createNoteWithTitle, getTagType } from '@reflect/core'
-import { logCompanyCapture } from './company-capture'
+import { logCompanyCapture, commandsForGraphRole } from './company-capture'
 import { ensureCompanyGraphSeed } from './company-graph-seed'
 import { createTypedCollectionNote } from './tags/create-collection-note'
 
@@ -52,5 +52,24 @@ describe('logCompanyCapture', () => {
     )
     expect(typedMock).not.toHaveBeenCalled()
     expect(path).toBe('notes/ship pricing.md')
+  })
+})
+
+describe('commandsForGraphRole', () => {
+  it('hides company capture on personal and unmarked graphs', () => {
+    const commands = [
+      { id: 'nav.today' },
+      { id: 'capture.logDecision' },
+      { id: 'capture.logMeeting' },
+    ]
+    expect(commandsForGraphRole(commands, null).map((command) => command.id)).toEqual(['nav.today'])
+    expect(commandsForGraphRole(commands, 'personal').map((command) => command.id)).toEqual([
+      'nav.today',
+    ])
+    expect(commandsForGraphRole(commands, 'company').map((command) => command.id)).toEqual([
+      'nav.today',
+      'capture.logDecision',
+      'capture.logMeeting',
+    ])
   })
 })

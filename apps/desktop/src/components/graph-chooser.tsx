@@ -1,10 +1,8 @@
 import { useId, useState, type ReactElement, type ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { getIsComposing } from '@meowdown/core'
 import { icloudStatus } from '@reflect/core'
 import { Cloud, Folder, FolderPlus, Graph } from '@/components/icons'
-import { queueGraphRole } from '@/lib/graph-role'
-import { useGraphRole } from '@/hooks/use-graph-role'
-import { getIsComposing } from '@meowdown/core'
 import { InlineAlert } from '@/components/inline-alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -12,9 +10,11 @@ import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { useGraphColors } from '@/hooks/use-graph-colors'
-import { cleanGraphName, graphNameFromRoot, isGraphNameTaken } from '@/lib/graph-names'
-import { ICLOUD_STATUS_QUERY_KEY } from '@/lib/query-client'
+import { useGraphRole } from '@/hooks/use-graph-role'
 import { graphColorCss } from '@/lib/graph-colors'
+import { cleanGraphName, graphNameFromRoot, isGraphNameTaken } from '@/lib/graph-names'
+import { clearQueuedGraphRole, queueGraphRole } from '@/lib/graph-role'
+import { ICLOUD_STATUS_QUERY_KEY } from '@/lib/query-client'
 import { cn } from '@/lib/utils'
 import { useGraph } from '@/providers/graph-provider'
 
@@ -45,8 +45,8 @@ export function GraphChooser(): ReactElement {
       <div className="space-y-1.5 text-center">
         <h1 className="text-2xl font-semibold tracking-tight text-text">Welcome to Reflect</h1>
         <p className="text-sm text-text-secondary">
-          Personal notes live on today&apos;s daily page. A company brain is a shared folder of
-          named notes — decisions, people, meetings — not a shared diary.
+          Your notes are plain Markdown files. Open an existing folder or choose where new notes
+          live.
         </p>
       </div>
 
@@ -68,7 +68,10 @@ export function GraphChooser(): ReactElement {
             type="button"
             variant={icloudCapable ? 'outline' : 'default'}
             className="mt-auto w-full"
-            onClick={() => void pickAndOpen()}
+            onClick={() => {
+              clearQueuedGraphRole()
+              void pickAndOpen()
+            }}
           >
             <FolderPlus aria-hidden />
             Choose a folder…
@@ -98,7 +101,10 @@ export function GraphChooser(): ReactElement {
                 >
                   <button
                     type="button"
-                    onClick={() => void openRecent(recent.root)}
+                    onClick={() => {
+                      clearQueuedGraphRole()
+                      void openRecent(recent.root)
+                    }}
                     className="flex min-w-0 flex-1 items-center gap-2.5 text-left"
                   >
                     <Folder
@@ -243,6 +249,7 @@ function IcloudCard({
   }
 
   function open(root: string): void {
+    clearQueuedGraphRole()
     setBusy(root)
     void openRecent(root).finally(() => setBusy(null))
   }

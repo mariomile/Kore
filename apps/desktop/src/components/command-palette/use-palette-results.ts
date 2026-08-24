@@ -2,7 +2,9 @@ import { useDeferredValue, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { parseSearchQuery, retrieve, searchWithFilters, suggestWikiTargets } from '@reflect/core'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
+import { useGraphRole } from '@/hooks/use-graph-role'
 import { listCommands } from '@/lib/commands/registry'
+import { commandsForGraphRole } from '@/lib/company-capture'
 import { todayIso } from '@/lib/dates'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { useEmbedStatus } from '@/lib/use-embed-status'
@@ -28,6 +30,7 @@ export interface PaletteResults {
 
 export function usePaletteResults(open: boolean, query: string): PaletteResults {
   const { graph } = useGraph()
+  const { role } = useGraphRole()
   // Hybrid needs both halves of the opt-in: the setting on *and* the model
   // ready. The setting gate makes disabling immediate — the model stays loaded
   // for the session, but its results must not. Plain-text queries blend
@@ -122,9 +125,9 @@ export function usePaletteResults(open: boolean, query: string): PaletteResults 
         suggestions: suggestions ?? [],
         hits: hits ?? [],
         filtered: parsed.filtered,
-        commands: listCommands(),
+        commands: commandsForGraphRole(listCommands(), role),
       }),
-    [query, trimmed, suggestions, hits, parsed.filtered],
+    [query, trimmed, suggestions, hits, parsed.filtered, role],
   )
 
   return { sections, resultsSettled, searchFailed }

@@ -7,8 +7,9 @@ import {
   toggleDevtools,
   untitledNotePath,
 } from '@reflect/core'
-import { COMPANY_CAPTURE_COMMANDS, logCompanyCapture } from '@/lib/company-capture'
 import { attachFilesToNote } from '@/lib/attach-files'
+import { COMPANY_CAPTURE_COMMANDS, logCompanyCapture } from '@/lib/company-capture'
+import { readGraphRole } from '@/lib/graph-role'
 import { runCopyNotePath } from '@/lib/note-copy-path'
 import { runCopyDeepLink } from '@/lib/note-deep-link'
 import { runNoteExport } from '@/lib/note-export'
@@ -71,6 +72,11 @@ const COMPANY_CAPTURE_APP_COMMANDS: AppCommand[] = COMPANY_CAPTURE_COMMANDS.map(
   run: async (context) => {
     const generation = context.generation()
     if (generation === null) {
+      return
+    }
+    // Unmarked / personal graphs stay a daily notebook. These commands are
+    // also filtered out of the palette; this is the hard block if invoked.
+    if ((await readGraphRole(generation)) !== 'company') {
       return
     }
     try {

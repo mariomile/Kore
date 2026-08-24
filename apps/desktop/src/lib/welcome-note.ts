@@ -35,7 +35,6 @@ Reflect is a daily notebook: press ⌘D any time to land on today's note and wri
 - **Link as you think.** Type \`[[\` and a title — [[Wiki Links]] connect notes. There are no folders.
 - **Find anything.** ⌘K searches your whole graph; ⌘/ lists every shortcut.
 - **Your files.** Every note is a markdown file in this folder, portable forever.
-- **Lock is not a sync lock.** \`private: true\` keeps a note out of AI. Backup and GitHub still include it. Personal thoughts belong in a personal graph; a company brain is named notes (decisions, people, meetings) — not a shared daily.
 
 When you want more, open Settings (⌘,):
 

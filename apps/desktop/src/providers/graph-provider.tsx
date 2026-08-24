@@ -27,6 +27,7 @@ import {
 } from '@reflect/core'
 import { followHealedMove } from '@/editor/move-note'
 import { resetNoteRowOverlays } from '@/hooks/note-row-overlay'
+import { clearQueuedGraphRole } from '@/lib/graph-role'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { setIndexProgress } from '@/lib/index-progress'
 import {
@@ -401,15 +402,21 @@ export function GraphProvider({
       // session, so off-main it would re-root every window even though the
       // openRecent below refuses.
       if (!requireMainWindow('creating a graph')) {
+        clearQueuedGraphRole()
         return false
       }
       try {
         await createGraph(root)
       } catch (err) {
+        clearQueuedGraphRole()
         setError(errorMessage(err))
         return false
       }
-      return await openRecent(root)
+      const opened = await openRecent(root)
+      if (!opened) {
+        clearQueuedGraphRole()
+      }
+      return opened
     },
     [openRecent],
   )
@@ -425,12 +432,16 @@ export function GraphProvider({
       })
       selected = typeof result === 'string' ? result : null
     } catch (err) {
+      clearQueuedGraphRole()
       setError(errorMessage(err))
       return
     }
     if (selected) {
       await openRecent(selected)
+      return
     }
+    // Cancelled picker: never leave a company stamp for the next open.
+    clearQueuedGraphRole()
   }, [openRecent, recents])
 
   const closeActiveGraph = useCallback(async (): Promise<void> => {

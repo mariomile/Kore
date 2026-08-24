@@ -1,6 +1,6 @@
 import { useState, type ReactElement } from 'react'
 import { Cloud, Graph, HardDrive } from '@/components/icons'
-import { queueGraphRole } from '@/lib/graph-role'
+import { clearQueuedGraphRole, queueGraphRole } from '@/lib/graph-role'
 import { InlineAlert } from '@/components/inline-alert'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
@@ -64,11 +64,10 @@ export function MobileOnboardingScreen(): ReactElement {
           </div>
           <div className="space-y-2">
             <h1 className="text-[28px] font-semibold leading-tight tracking-tight">
-              Personal notes or a company brain
+              Start with iCloud sync
             </h1>
             <p className="text-sm leading-6 text-text-secondary">
-              Today&apos;s note stays on iCloud. A company brain is shared named notes — decisions,
-              people, meetings — not a shared diary.
+              Keep your notes up to date across iPhone, iPad, and Mac with iCloud Drive.
             </p>
           </div>
         </header>
@@ -81,11 +80,21 @@ export function MobileOnboardingScreen(): ReactElement {
               graphs={icloudGraphs}
               busy={action.pending}
               pendingChoice={pendingChoice}
-              onOpen={(root) => runChoice(root, () => completeOnboarding('icloud', root))}
-              onCreate={(root) =>
-                runChoice('icloud-create', () => {
-                  queueGraphRole('personal')
+              onOpen={(root) =>
+                runChoice(root, () => {
+                  clearQueuedGraphRole()
                   return completeOnboarding('icloud', root)
+                })
+              }
+              onCreate={(root) =>
+                runChoice('icloud-create', async () => {
+                  queueGraphRole('personal')
+                  try {
+                    await completeOnboarding('icloud', root)
+                  } catch (cause) {
+                    clearQueuedGraphRole()
+                    throw cause
+                  }
                 })
               }
             />
@@ -99,25 +108,35 @@ export function MobileOnboardingScreen(): ReactElement {
               size="sm"
               className="text-text-secondary"
               onClick={() =>
-                runChoice('company', () => {
-                  queueGraphRole('company')
+                runChoice('local', () => {
+                  clearQueuedGraphRole()
                   return completeOnboarding('local')
+                })
+              }
+              disabled={action.pending || mobileStorageInfo === null}
+            >
+              {pendingChoice === 'local' ? <Spinner /> : <HardDrive aria-hidden />}
+              {pendingChoice === 'local' ? 'Setting up…' : 'Or, use this device only'}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-text-muted"
+              onClick={() =>
+                runChoice('company', async () => {
+                  queueGraphRole('company')
+                  try {
+                    await completeOnboarding('local')
+                  } catch (cause) {
+                    clearQueuedGraphRole()
+                    throw cause
+                  }
                 })
               }
               disabled={action.pending || mobileStorageInfo === null}
             >
               {pendingChoice === 'company' ? <Spinner /> : <Graph aria-hidden />}
               {pendingChoice === 'company' ? 'Setting up…' : 'Start a company brain'}
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-text-secondary"
-              onClick={() => runChoice('local', () => completeOnboarding('local'))}
-              disabled={action.pending || mobileStorageInfo === null}
-            >
-              {pendingChoice === 'local' ? <Spinner /> : <HardDrive aria-hidden />}
-              {pendingChoice === 'local' ? 'Setting up…' : 'Or, use this device only'}
             </Button>
           </div>
         </div>

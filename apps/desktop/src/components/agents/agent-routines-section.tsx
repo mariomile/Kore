@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
+import { useGraphRole } from '@/hooks/use-graph-role'
 import { useSettings } from '@/providers/settings-provider'
 import { WEEKDAY_LABELS, scheduleLabel } from './agent-routine-schedule'
 
@@ -49,6 +50,7 @@ interface AgentRoutinesSectionProps {
  */
 export function AgentRoutinesSection({ profiles }: AgentRoutinesSectionProps): ReactElement {
   const { settings, updateSettingsWith } = useSettings()
+  const { role } = useGraphRole()
   const [createOpen, setCreateOpen] = useState(false)
   const [historyId, setHistoryId] = useState<string | null>(null)
   const routines = settings.agentRoutines
@@ -132,11 +134,11 @@ export function AgentRoutinesSection({ profiles }: AgentRoutinesSectionProps): R
             Add Memory curator
           </Button>
         )}
-        {hasDigest ? null : (
+        {role === 'company' && !hasDigest ? (
           <Button type="button" variant="outline" size="sm" onClick={addDigest}>
             Add Company digest
           </Button>
-        )}
+        ) : null}
         <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
           New automation
         </Button>

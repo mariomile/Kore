@@ -1,12 +1,12 @@
 import { useState, type ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { errorMessage, mobileStorage, type GraphRole, type MobileStorageKind } from '@reflect/core'
 import { Graph, Plus } from '@/components/icons'
-import { queueGraphRole } from '@/lib/graph-role'
-import { errorMessage, mobileStorage, type MobileStorageKind } from '@reflect/core'
 import { InlineAlert } from '@/components/inline-alert'
 import { Spinner } from '@/components/ui/spinner'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { graphNameFromRoot } from '@/lib/graph-names'
+import { clearQueuedGraphRole, queueGraphRole } from '@/lib/graph-role'
 import { NewGraphDrawer } from '@/mobile/new-graph-drawer'
 import { MobileScreenHeader } from '@/mobile/screen-header'
 import { SettingsActionRow, SettingsGroup, SettingsSelectRow } from '@/mobile/settings-list'
@@ -30,6 +30,7 @@ export function MobileGraphs(): ReactElement {
   const [pendingRoot, setPendingRoot] = useState<string | null>(null)
   const [switchError, setSwitchError] = useState<string | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
+  const [createRole, setCreateRole] = useState<GraphRole>('personal')
 
   const bridgeReady = useBridgeReady()
   const { data: storage } = useQuery({
@@ -66,6 +67,7 @@ export function MobileGraphs(): ReactElement {
     if (busy || graph?.root === root) {
       return
     }
+    clearQueuedGraphRole()
     switchTo(kind, root).catch(() => {
       // Surfaced via switchError; the rethrow is for the create sheet's own
       // error display.
@@ -120,7 +122,7 @@ export function MobileGraphs(): ReactElement {
                       icon={Plus}
                       disabled={busy}
                       onPress={() => {
-                        queueGraphRole('personal')
+                        setCreateRole('personal')
                         setCreateOpen(true)
                       }}
                     />
@@ -129,7 +131,7 @@ export function MobileGraphs(): ReactElement {
                       icon={Graph}
                       disabled={busy}
                       onPress={() => {
-                        queueGraphRole('company')
+                        setCreateRole('company')
                         setCreateOpen(true)
                       }}
                     />
@@ -140,7 +142,7 @@ export function MobileGraphs(): ReactElement {
           </SettingsGroup>
 
           {localRoot !== null ? (
-            <SettingsGroup footer="On this device. A company brain should connect GitHub from Settings so the team shares the same notes.">
+            <SettingsGroup footer="On this device only. GitHub backup lives in Settings.">
               <SettingsSelectRow
                 label="This device"
                 selected={graph?.root === localRoot}
@@ -160,7 +162,13 @@ export function MobileGraphs(): ReactElement {
           onOpenChange={setCreateOpen}
           documentsRoot={icloudDocumentsRoot}
           existingRoots={icloudGraphRoots}
-          onCreate={(root) => switchTo('icloud', root)}
+          onCreate={(root) => {
+            queueGraphRole(createRole)
+            return switchTo('icloud', root).catch((cause: unknown) => {
+              clearQueuedGraphRole()
+              throw cause
+            })
+          }}
         />
       ) : null}
     </div>

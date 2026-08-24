@@ -22,6 +22,8 @@ const getPinnedNotes = vi.hoisted(() => vi.fn<() => Promise<PinnedNote[]>>(async
 const isNativeShell = vi.hoisted(() => vi.fn(() => true))
 const toggleDevtools = vi.hoisted(() => vi.fn(async () => undefined))
 const showQuickCapture = vi.hoisted(() => vi.fn(async () => undefined))
+const readGraphRole = vi.hoisted(() => vi.fn(async () => null as 'personal' | 'company' | null))
+const logCompanyCapture = vi.hoisted(() => vi.fn(async () => 'notes/decision.md'))
 const openRouteInNewWindow = vi.hoisted(() => vi.fn<() => Promise<boolean>>())
 const operationFail = vi.hoisted(() => vi.fn())
 const startOperation = vi.hoisted(() =>
@@ -38,6 +40,13 @@ vi.mock('@/lib/note-copy-path', () => ({ runCopyNotePath }))
 vi.mock('@/lib/platform', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/platform')>()),
   isNativeShell,
+}))
+vi.mock('@/lib/graph-role', () => ({
+  readGraphRole,
+}))
+vi.mock('@/lib/company-capture', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/company-capture')>()),
+  logCompanyCapture,
 }))
 vi.mock('@/lib/windows/open-in-new-window', () => ({ openRouteInNewWindow }))
 vi.mock('@/lib/operations', async (importOriginal) => ({
@@ -138,6 +147,24 @@ describe('keybindingFor', () => {
 
   it('capture.quick is bound to Mod-Shift-c', () => {
     expect(keybindingFor('capture.quick')).toBe('Mod-Shift-c')
+  })
+
+  it('company capture no-ops on a personal graph', async () => {
+    readGraphRole.mockResolvedValueOnce(null)
+    logCompanyCapture.mockClear()
+    const { context, navigated } = fakeContext()
+    await command('capture.logDecision').run(context)
+    expect(logCompanyCapture).not.toHaveBeenCalled()
+    expect(navigated).toEqual([])
+  })
+
+  it('company capture logs a named note on a company graph', async () => {
+    readGraphRole.mockResolvedValueOnce('company')
+    logCompanyCapture.mockClear()
+    const { context, navigated } = fakeContext()
+    await command('capture.logDecision').run(context)
+    expect(logCompanyCapture).toHaveBeenCalledWith('decision', 7)
+    expect(navigated).toEqual([{ kind: 'note', path: 'notes/decision.md' }])
   })
 
   it('dev.toggleDevtools is bound to Mod-Shift-i', () => {

@@ -34,6 +34,15 @@ export {
   type CalloutKind,
   type CalloutMarker,
 } from './callout'
+export {
+  extractHeadingSection,
+  formatNoteTransclusion,
+  parseNoteTransclusions,
+  transclusionMarkdown,
+  wikiEmbedKind,
+  type NoteTransclusion,
+  type WikiEmbedKind,
+} from './note-transclusion'
 export { parseNote, isTagName, hasAuthoredTitle } from './extract'
 export { appendBodyTag, bodyHasTag } from './body-tag'
 export {

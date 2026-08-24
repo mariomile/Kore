@@ -4,6 +4,7 @@ import {
   detectConflictMarkers,
   isDaily,
   parseCollectionEmbeds,
+  parseNoteTransclusions,
   isTemplatePath,
   isUntitledNotePath,
   untitledNoteSeed,
@@ -36,6 +37,7 @@ import { useCalloutSlashItems } from '@/editor/use-callout-slash-items'
 import { useCollectionSlashItems } from '@/editor/use-collection-slash-items'
 import { useTemplateSlashItems } from '@/editor/use-template-slash-items'
 import { EmbeddedCollection } from '@/components/notes/embedded-collection'
+import { EmbeddedNote } from '@/components/notes/embedded-note'
 import { useMarkdownLinkNavigation } from '@/editor/use-markdown-link-navigation'
 import { useWikiLinkNavigation } from '@/editor/use-wiki-link-navigation'
 import { useWikiLinkHoverPreview } from '@/editor/use-wiki-link-hover-preview'
@@ -250,6 +252,7 @@ export function NotePaneComponent({
       ? typedBody.markdown
       : document.initialContent
   const collectionEmbeds = useMemo(() => parseCollectionEmbeds(bodyMarkdown), [bodyMarkdown])
+  const noteTransclusions = useMemo(() => parseNoteTransclusions(bodyMarkdown), [bodyMarkdown])
   const handleEditorChange = useCallback(
     (markdown: string) => {
       setTypedBody({
@@ -459,6 +462,19 @@ export function NotePaneComponent({
         <div className={gutterClassName}>
           {collectionEmbeds.map((embed, index) => (
             <EmbeddedCollection key={`${embed.tag}:${embed.view}:${index}`} embed={embed} />
+          ))}
+        </div>
+      ) : null}
+
+      {noteTransclusions.length > 0 ? (
+        <div className={gutterClassName}>
+          {noteTransclusions.map((embed, index) => (
+            <EmbeddedNote
+              key={`${embed.target}:${embed.heading ?? ''}:${index}`}
+              embed={embed}
+              sourcePath={path}
+              resolveImageUrl={resolveImageUrl}
+            />
           ))}
         </div>
       ) : null}

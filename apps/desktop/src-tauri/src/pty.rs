@@ -63,9 +63,13 @@ fn default_shell() -> String {
     {
         std::env::var("COMSPEC").unwrap_or_else(|_| "powershell.exe".into())
     }
-    #[cfg(not(windows))]
+    #[cfg(target_os = "macos")]
     {
         "/bin/zsh".into()
+    }
+    #[cfg(not(any(windows, target_os = "macos")))]
+    {
+        "/bin/bash".into()
     }
 }
 

@@ -149,6 +149,11 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
         return null
       case 'capture_inbox_list':
         return []
+      case 'pty_open':
+      case 'pty_write':
+      case 'pty_resize':
+      case 'pty_close':
+        throw new ReflectError('unknown', 'the in-app terminal is desktop-only')
       case 'open_browser_window': {
         // No secondary Tauri windows in a plain browser — a popup tab is the
         // honest stand-in for the in-app browser window.

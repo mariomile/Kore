@@ -62,6 +62,12 @@ impl AppError {
             message: "No graph is open".into(),
         }
     }
+
+    pub fn unknown(message: impl Into<String>) -> Self {
+        Self::Unknown {
+            message: message.into(),
+        }
+    }
 }
 
 /// libgit2's "… status code: NNN" phrasing for transient HTTP failures.

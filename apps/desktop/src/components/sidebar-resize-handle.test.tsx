@@ -296,7 +296,7 @@ describe('SidebarResizeHandle', () => {
     expect(settingsState.updateSettings).toHaveBeenLastCalledWith({ sidebarWidth: 200 })
 
     fireKey(workspaceHandle, 'End')
-    expect(settingsState.updateSettings).toHaveBeenLastCalledWith({ sidebarWidth: 480 })
+    expect(settingsState.updateSettings).toHaveBeenLastCalledWith({ sidebarWidth: 800 })
 
     await cleanup()
     const contextHandle = await renderHandle('context')
@@ -307,7 +307,7 @@ describe('SidebarResizeHandle', () => {
     expect(settingsState.updateSettings).toHaveBeenLastCalledWith({ contextSidebarWidth: 240 })
 
     fireKey(contextHandle, 'End')
-    expect(settingsState.updateSettings).toHaveBeenLastCalledWith({ contextSidebarWidth: 480 })
+    expect(settingsState.updateSettings).toHaveBeenLastCalledWith({ contextSidebarWidth: 800 })
   })
 
   it('exposes the clamp range and controlled panel through the separator attributes', async () => {
@@ -316,7 +316,7 @@ describe('SidebarResizeHandle', () => {
     expect(handle.getAttribute('aria-orientation')).toBe('vertical')
     expect(handle.getAttribute('aria-controls')).toBe('workspace-sidebar')
     expect(handle.getAttribute('aria-valuemin')).toBe('200')
-    expect(handle.getAttribute('aria-valuemax')).toBe('480')
+    expect(handle.getAttribute('aria-valuemax')).toBe('800')
     expect(handle.getAttribute('aria-valuenow')).toBe('260')
   })
 })

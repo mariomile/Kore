@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react'
 import type { GraphInfo } from '@reflect/core'
 import { AppShell } from '@/components/app-shell'
+import { cn } from '@/lib/utils'
 import { CommandPalette } from '@/components/command-palette/command-palette'
 import { ContextSidebar } from '@/components/context-sidebar/context-sidebar'
 import { AgentRoutinesRunner } from '@/components/agent-routines-runner'
@@ -44,21 +45,27 @@ export function WorkspaceContent({ graph }: WorkspaceContentProps): ReactElement
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-surface-app text-text">
-      {collapsed ? undefined : (
-        <aside
-          id="workspace-sidebar"
-          aria-label="Workspace"
-          className="relative flex w-[var(--sidebar-width)] shrink-0 flex-col overflow-hidden bg-surface-sunken"
-        >
+      <aside
+        id="workspace-sidebar"
+        aria-label="Workspace"
+        aria-hidden={collapsed}
+        {...(collapsed ? { inert: true } : {})}
+        className={cn(
+          'relative flex shrink-0 flex-col overflow-hidden bg-surface-sunken',
+          'transition-[width] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]',
+        )}
+        style={{ width: collapsed ? 0 : 'var(--sidebar-width)' }}
+      >
+        <div className="flex h-full w-[var(--sidebar-width)] min-w-[var(--sidebar-width)] flex-col">
           <Sidebar graph={graph} context={commandContext} />
-          <SidebarResizeHandle panel="workspace" />
-        </aside>
-      )}
+        </div>
+        {collapsed ? null : <SidebarResizeHandle panel="workspace" />}
+      </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <NoteTabsStrip atWindowEdge={collapsed} />
-        <div className="min-h-0 flex-1 px-2 pb-2">
-          <div className="app-glass-card h-full overflow-hidden rounded-xl border border-border bg-surface shadow-sm">
+        <NoteTabsStrip atWindowEdge={collapsed} commandContext={commandContext} />
+        <div className="min-h-0 flex-1">
+          <div className="app-glass-card h-full overflow-hidden rounded-xl bg-surface">
             <AppShell className="bg-transparent">
               <div className="relative flex h-full flex-col">
                 <div className="min-h-0 flex-1">
@@ -80,16 +87,22 @@ export function WorkspaceContent({ graph }: WorkspaceContentProps): ReactElement
         </div>
       </div>
 
-      {contextCollapsed ? undefined : (
-        <aside
-          id="context-sidebar"
-          aria-label="Context"
-          className="relative hidden w-[var(--context-sidebar-width)] shrink-0 overflow-hidden bg-surface-sunken lg:flex lg:flex-col"
-        >
-          <SidebarResizeHandle panel="context" />
+      <aside
+        id="context-sidebar"
+        aria-label="Context"
+        aria-hidden={contextCollapsed}
+        {...(contextCollapsed ? { inert: true } : {})}
+        className={cn(
+          'relative hidden shrink-0 overflow-hidden bg-surface-sunken lg:flex lg:flex-col',
+          'transition-[width] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]',
+        )}
+        style={{ width: contextCollapsed ? 0 : 'var(--context-sidebar-width)' }}
+      >
+        {contextCollapsed ? null : <SidebarResizeHandle panel="context" />}
+        <div className="flex h-full w-[var(--context-sidebar-width)] min-w-[var(--context-sidebar-width)] flex-col">
           <ContextSidebar target={contextTarget} />
-        </aside>
-      )}
+        </div>
+      </aside>
     </div>
   )
 }

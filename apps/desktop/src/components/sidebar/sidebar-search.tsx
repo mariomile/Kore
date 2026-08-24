@@ -24,7 +24,7 @@ export function SidebarSearch({ onOpen }: { onOpen: () => void }): ReactElement 
             onClick={onOpen}
             className="text-text-muted hover:text-text-secondary dark:hover:text-text"
           >
-            <Search aria-hidden className="size-5" />
+            <Search aria-hidden className="size-4" />
           </Button>
         }
       />

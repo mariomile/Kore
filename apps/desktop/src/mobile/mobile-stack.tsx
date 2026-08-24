@@ -59,6 +59,8 @@ function layerKey(route: Route): string {
     case 'allNotes':
     case 'search':
       return 'all'
+    case 'terminal':
+      return 'terminal'
     default:
       return 'daily'
   }

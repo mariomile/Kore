@@ -730,8 +730,8 @@ html:root {
    own — the icon is the mark, not a chip. */
 .sidebar-icon-slot {
   display: flex;
-  width: 1.5rem;
-  height: 1.5rem;
+  width: 1.125rem;
+  height: 1.125rem;
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
@@ -748,6 +748,11 @@ button[aria-current='page'] .sidebar-icon-slot,
 button[aria-selected='true'] .sidebar-icon-slot,
 .reflect-palette-item[data-selected='true'] .sidebar-icon-slot {
   color: var(--accent);
+}
+
+/* Live rail drags must not fight the collapse/expand width animation. */
+html[data-sidebar-resizing] aside {
+  transition: none;
 }
 
 /* Reduced motion is honored app-wide, not just in the editor: collapse every

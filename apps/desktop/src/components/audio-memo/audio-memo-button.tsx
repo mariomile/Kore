@@ -52,7 +52,7 @@ export function AudioMemoButton(): ReactElement {
                 !memo.available && 'opacity-50 hover:bg-transparent hover:text-text-muted',
               )}
             >
-              <Microphone aria-hidden className="size-5" />
+              <Microphone aria-hidden className="size-4" />
             </Button>
           }
         />
@@ -74,7 +74,7 @@ export function AudioMemoButton(): ReactElement {
           onClick={() => memo.toggle()}
           className="text-text-muted hover:text-text-secondary dark:hover:text-text"
         >
-          <Microphone aria-hidden className="size-5" />
+          <Microphone aria-hidden className="size-4" />
         </Button>
         <RecordingPopover anchor={anchorRef} />
       </Popover>
@@ -100,7 +100,7 @@ export function AudioMemoButton(): ReactElement {
         }}
       >
         {memo.phase === 'error' ? (
-          <Microphone aria-hidden className="size-5" />
+          <Microphone aria-hidden className="size-4" />
         ) : (
           <Stop aria-hidden fill="currentColor" className="size-3" />
         )}

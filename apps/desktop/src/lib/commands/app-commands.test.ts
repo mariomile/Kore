@@ -20,6 +20,8 @@ const runCopyNotePath = vi.hoisted(() => vi.fn(async () => undefined))
 const getNote = vi.hoisted(() => vi.fn<() => Promise<NoteRow | undefined>>(async () => undefined))
 const getPinnedNotes = vi.hoisted(() => vi.fn<() => Promise<PinnedNote[]>>(async () => []))
 const isNativeShell = vi.hoisted(() => vi.fn(() => true))
+const isMobileSurface = vi.hoisted(() => vi.fn(() => false))
+const openBrowserWindow = vi.hoisted(() => vi.fn(async () => undefined))
 const toggleDevtools = vi.hoisted(() => vi.fn(async () => undefined))
 const showQuickCapture = vi.hoisted(() => vi.fn(async () => undefined))
 const openRouteInNewWindow = vi.hoisted(() => vi.fn<() => Promise<boolean>>())
@@ -39,6 +41,10 @@ vi.mock('@/lib/platform', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/platform')>()),
   isNativeShell,
 }))
+vi.mock('@/lib/platform-surface', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/platform-surface')>()),
+  isMobileSurface,
+}))
 vi.mock('@/lib/windows/open-in-new-window', () => ({ openRouteInNewWindow }))
 vi.mock('@/lib/operations', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/operations')>()),
@@ -53,6 +59,7 @@ vi.mock('@reflect/core', async (importOriginal) => ({
   getPinnedNotes,
   toggleDevtools,
   showQuickCapture,
+  openBrowserWindow,
 }))
 
 // Importing registers the commands (module side effect, like production).
@@ -414,6 +421,33 @@ describe('app commands', () => {
     })
     await command('note.copyPath').run(context)
     expect(runCopyNotePath).toHaveBeenCalledWith(null, 'notes/a.md')
+  })
+
+  it('browser.open raises DuckDuckGo in a native shell and no-ops in the browser', async () => {
+    openBrowserWindow.mockClear()
+    isNativeShell.mockReturnValue(true)
+    const { context } = fakeContext()
+    await command('browser.open').run(context)
+    expect(openBrowserWindow).toHaveBeenCalledExactlyOnceWith('https://duckduckgo.com')
+
+    openBrowserWindow.mockClear()
+    isNativeShell.mockReturnValue(false)
+    await command('browser.open').run(context)
+    expect(openBrowserWindow).not.toHaveBeenCalled()
+    isNativeShell.mockReturnValue(true)
+  })
+
+  it('nav.terminal opens the terminal on desktop and no-ops on mobile', async () => {
+    isMobileSurface.mockReturnValue(false)
+    const desktop = fakeContext()
+    await command('nav.terminal').run(desktop.context)
+    expect(desktop.navigated).toEqual([{ kind: 'terminal' }])
+
+    isMobileSurface.mockReturnValue(true)
+    const mobile = fakeContext()
+    await command('nav.terminal').run(mobile.context)
+    expect(mobile.navigated).toEqual([])
+    isMobileSurface.mockReturnValue(false)
   })
 
   it('dev.toggleDevtools toggles the inspector through the native shell', async () => {

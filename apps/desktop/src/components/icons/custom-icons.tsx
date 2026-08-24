@@ -124,6 +124,28 @@ export const Stop: Icon = createIcon(
   <rect x="6" y="6" width="12" height="12" rx="3" fill="currentColor" stroke="none" />,
 )
 
+/** A globe: the in-app browser, which Solar's linear set never draws. */
+export const Globe: Icon = createIcon(
+  'Globe',
+  <>
+    <circle cx="12" cy="12" r="9.25" />
+    <path strokeLinecap="round" d="M3 12h18" />
+    <path d="M12 2.75C14.5 5.4 15.75 8.6 15.75 12S14.5 18.6 12 21.25C9.5 18.6 8.25 15.4 8.25 12S9.5 5.4 12 2.75Z" />
+  </>,
+)
+
+/**
+ * A prompt box. Ghostty cannot run inside the webview; this glyph marks the
+ * in-app terminal that drives a local PTY through xterm.js instead.
+ */
+export const Terminal: Icon = createIcon(
+  'Terminal',
+  <>
+    <rect x="3.25" y="4.75" width="17.5" height="14.5" rx="2.25" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M7.25 9.5L10.25 12L7.25 14.5M12.5 14.5H16.75" />
+  </>,
+)
+
 /** Double square brackets: the `[[wiki link]]` affordance. */
 export const WikiLink: Icon = createIcon(
   'WikiLink',

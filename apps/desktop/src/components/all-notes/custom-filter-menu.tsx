@@ -68,10 +68,10 @@ export function CustomFilterMenu({
       <PopoverTrigger
         aria-pressed={activeTag !== null}
         className={cn(
-          'flex h-full items-center gap-1 px-3 py-1.5 text-[13px] font-medium transition-colors duration-100',
+          'flex items-center gap-1 rounded-full px-2.5 py-1 text-[13px] font-medium transition-colors duration-100',
           activeTag !== null
-            ? 'bg-surface-hover text-text'
-            : 'text-text-secondary hover:bg-surface-hover hover:text-text',
+            ? 'bg-surface text-text shadow-sm'
+            : 'text-text-muted hover:text-text-secondary',
         )}
       >
         {activeTag !== null ? `#${activeTag}` : 'Custom'}

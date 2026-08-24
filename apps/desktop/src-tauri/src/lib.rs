@@ -54,6 +54,11 @@ mod watcher;
 #[cfg(mobile)]
 #[path = "watcher_mobile.rs"]
 mod watcher;
+#[cfg(desktop)]
+mod pty;
+#[cfg(mobile)]
+#[path = "pty_mobile.rs"]
+mod pty;
 
 use tauri::{Emitter, Manager};
 
@@ -284,6 +289,7 @@ pub fn run() {
         .manage(embed::EmbedState::default())
         .manage(agent_cli::AgentCliState::default())
         .manage(agent_cli::AgentCliStdinState::default())
+        .manage(pty::PtyState::default())
         .invoke_handler(tauri::generate_handler![
             app_version,
             app_platform,
@@ -403,6 +409,10 @@ pub fn run() {
             quit::quit_confirm,
             windows::open_note_window,
             windows::open_browser_window,
+            pty::pty_open,
+            pty::pty_write,
+            pty::pty_resize,
+            pty::pty_close,
             windows::quick_capture_show,
             windows::quick_capture_hide,
             windows::window_bootstrap,

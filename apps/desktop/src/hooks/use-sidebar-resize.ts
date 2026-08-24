@@ -136,15 +136,18 @@ export const activeSidebarWidthDrags = new Set<string>()
  * keeps it in place.
  */
 function syncDragChrome(): void {
-  const style = document.documentElement.style
+  const root = document.documentElement
+  const style = root.style
   if (activeSidebarWidthDrags.size > 0) {
     style.setProperty('cursor', 'col-resize')
     style.setProperty('user-select', 'none')
     style.setProperty('-webkit-user-select', 'none')
+    root.setAttribute('data-sidebar-resizing', '')
   } else {
     style.removeProperty('cursor')
     style.removeProperty('user-select')
     style.removeProperty('-webkit-user-select')
+    root.removeAttribute('data-sidebar-resizing')
   }
 }
 

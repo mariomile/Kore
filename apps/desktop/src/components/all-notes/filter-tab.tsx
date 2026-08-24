@@ -16,9 +16,7 @@ export function FilterTab({ label, active, onClick }: FilterTabProps): ReactElem
       onClick={onClick}
       className={cn(
         'rounded-full px-2.5 py-1 text-[13px] font-medium transition-colors duration-100',
-        active
-          ? 'bg-surface text-text shadow-sm'
-          : 'text-text-muted hover:text-text-secondary',
+        active ? 'bg-surface text-text shadow-sm' : 'text-text-muted hover:text-text-secondary',
       )}
     >
       {label}

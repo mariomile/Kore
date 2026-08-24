@@ -142,7 +142,11 @@ export const Terminal: Icon = createIcon(
   'Terminal',
   <>
     <rect x="3.25" y="4.75" width="17.5" height="14.5" rx="2.25" />
-    <path strokeLinecap="round" strokeLinejoin="round" d="M7.25 9.5L10.25 12L7.25 14.5M12.5 14.5H16.75" />
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M7.25 9.5L10.25 12L7.25 14.5M12.5 14.5H16.75"
+    />
   </>,
 )
 

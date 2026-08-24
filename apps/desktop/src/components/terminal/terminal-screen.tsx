@@ -58,7 +58,7 @@ async function ensureSession(): Promise<LiveSession> {
     return live
   }
   if (opening !== null) {
-    return opening
+    return await opening
   }
   opening = (async () => {
     const terminal = new Terminal({

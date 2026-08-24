@@ -4,12 +4,14 @@ import {
   foldTag,
   isPropertyKey,
   listNotesWithProperty,
+  listTemplates,
   propertyKeyForName,
   propertyRowValue,
   tagPropertyTypeSchema,
   type CollectionValue,
   type TagProperty,
   type TagPropertyType,
+  type TemplateEntry,
 } from '@reflect/core'
 import { ArrowDown, ArrowUp, Plus, Trash } from '@/components/icons'
 import { Button } from '@/components/ui/button'
@@ -116,11 +118,19 @@ export function TagConfigDialog({ tag, onClose }: TagConfigDialogProps): ReactEl
   const [nextRowId, setNextRowId] = useState(0)
   const [saving, setSaving] = useState(false)
   const [pendingRenames, setPendingRenames] = useState<PendingRename[] | null>(null)
+  const [template, setTemplate] = useState<string | null>(null)
+  const [templates, setTemplates] = useState<TemplateEntry[]>([])
 
   useEffect(() => {
     let active = true
     void (async () => {
       const definition = await readTagDefinition(tag)
+      let available: TemplateEntry[] = []
+      try {
+        available = await listTemplates()
+      } catch {
+        available = []
+      }
       if (!active) {
         return
       }
@@ -128,6 +138,8 @@ export function TagConfigDialog({ tag, onClose }: TagConfigDialogProps): ReactEl
       const rows = draftsFromSchema(definition.properties)
       setDrafts(rows)
       setNextRowId(rows.length)
+      setTemplate(definition.template)
+      setTemplates(available)
       setLoading(false)
     })()
     return () => {
@@ -181,7 +193,7 @@ export function TagConfigDialog({ tag, onClose }: TagConfigDialogProps): ReactEl
     }
     setSaving(true)
     try {
-      await saveTagType(tag, schemaFromDrafts(drafts), graph.generation)
+      await saveTagType(tag, schemaFromDrafts(drafts), graph.generation, template)
       if (migrate) {
         // Move each note's value to the new key through the ordinary patch
         // channel — the same write an inline edit makes, one note at a time.
@@ -263,6 +275,25 @@ export function TagConfigDialog({ tag, onClose }: TagConfigDialogProps): ReactEl
             its body is kept.
           </p>
         ) : null}
+        <label className="flex flex-col gap-1">
+          <span className={FIELD_LABEL_CLASS}>New-row template</span>
+          <Select
+            value={template ?? 'none'}
+            onValueChange={(value) => setTemplate(value === 'none' ? null : value)}
+          >
+            <SelectTrigger aria-label="New-row template">
+              <SelectValue placeholder="None" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">None</SelectItem>
+              {templates.map((entry) => (
+                <SelectItem key={entry.path} value={entry.path}>
+                  {entry.title}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </label>
         <div className="flex flex-col gap-2" aria-busy={loading || undefined}>
           {drafts.map((draft) => {
             const invalid = invalidRowIds.has(draft.rowId)

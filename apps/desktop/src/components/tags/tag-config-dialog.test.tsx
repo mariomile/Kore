@@ -9,6 +9,7 @@ const definition = vi.hoisted(() => ({
     exists: false,
     needsConversion: false,
     properties: [],
+    template: null,
   } as TagDefinitionState,
 }))
 const saveTagType = vi.hoisted(() => vi.fn(async () => {}))
@@ -21,10 +22,14 @@ vi.mock('@/lib/tags/tag-type-write', () => ({
 const propertyUses = vi.hoisted(() => ({
   current: [] as { notePath: string; value: unknown }[],
 }))
+const templates = vi.hoisted(() => ({
+  current: [] as { path: string; title: string; mtime: number }[],
+}))
 const commitNoteFrontmatter = vi.hoisted(() => vi.fn(async () => {}))
 vi.mock('@reflect/core', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@reflect/core')>()),
   listNotesWithProperty: async () => propertyUses.current,
+  listTemplates: async () => templates.current,
 }))
 vi.mock('@/lib/note-frontmatter', () => ({ commitNoteFrontmatter }))
 vi.mock('@/providers/graph-provider', () => ({
@@ -41,8 +46,10 @@ beforeEach(() => {
     exists: false,
     needsConversion: false,
     properties: [],
+    template: null,
   }
   propertyUses.current = []
+  templates.current = []
   saveTagType.mockClear()
   invalidateQueries.mockClear()
   commitNoteFrontmatter.mockClear()
@@ -55,6 +62,7 @@ describe('TagConfigDialog', () => {
       exists: true,
       needsConversion: false,
       properties: [{ name: 'Author', key: 'author', type: 'text' }],
+      template: null,
     }
     const onClose = vi.fn()
     const view = await render(<TagConfigDialog tag="Book" onClose={onClose} />)
@@ -74,6 +82,7 @@ describe('TagConfigDialog', () => {
         { name: 'Read on', key: 'read-on', type: 'text' },
       ],
       7,
+      null,
     )
     expect(invalidateQueries).toHaveBeenCalled()
     expect(onClose).toHaveBeenCalled()
@@ -85,6 +94,7 @@ describe('TagConfigDialog', () => {
       exists: true,
       needsConversion: true,
       properties: [],
+      template: null,
     }
     const view = await render(<TagConfigDialog tag="book" onClose={() => {}} />)
 
@@ -98,6 +108,7 @@ describe('TagConfigDialog', () => {
       exists: true,
       needsConversion: false,
       properties: [{ name: 'Author', key: 'author', type: 'text' }],
+      template: null,
     }
     propertyUses.current = [
       {
@@ -121,6 +132,7 @@ describe('TagConfigDialog', () => {
       'book',
       [{ name: 'Author', key: 'writer', type: 'text' }],
       7,
+      null,
     )
     expect(commitNoteFrontmatter).toHaveBeenCalledWith(
       'notes/dune.md',
@@ -136,6 +148,7 @@ describe('TagConfigDialog', () => {
       exists: true,
       needsConversion: false,
       properties: [{ name: 'Author', key: 'author', type: 'text' }],
+      template: null,
     }
     propertyUses.current = [
       {
@@ -159,6 +172,7 @@ describe('TagConfigDialog', () => {
       exists: true,
       needsConversion: false,
       properties: [{ name: 'Author', key: 'author', type: 'text' }],
+      template: null,
     }
     const view = await render(<TagConfigDialog tag="book" onClose={() => {}} />)
 

@@ -34,6 +34,7 @@ describe('readTagDefinition', () => {
       exists: false,
       needsConversion: false,
       properties: [],
+      template: null,
     })
   })
 
@@ -51,8 +52,19 @@ describe('readTagDefinition', () => {
       '---\nlore: tag\nproperties:\n  - {name: Author, key: author, type: text}\n---\n',
     )
     expect(await readTagDefinition('book')).toMatchObject({
+      exists: true,
       needsConversion: false,
       properties: [{ name: 'Author', key: 'author', type: 'text' }],
+    })
+  })
+
+  it('reads a bound template from a marked definition', async () => {
+    readNote.mockResolvedValue(
+      '---\nlore: tag\ntemplate: templates/book.md\nproperties: []\n---\n',
+    )
+    expect(await readTagDefinition('book')).toMatchObject({
+      template: 'templates/book.md',
+      properties: [],
     })
   })
 })
@@ -90,7 +102,7 @@ describe('saveTagType', () => {
     // The schema lands in the live header (the session flushes it), so the
     // buffer's own next save can never revert it — and no disk write races
     // the open buffer.
-    expect(commitFrontmatter).toHaveBeenCalledWith({ tagSchema: schema })
+    expect(commitFrontmatter).toHaveBeenCalledWith({ tagSchema: schema, tagTemplate: null })
     expect(writeNote).not.toHaveBeenCalled()
   })
 
@@ -112,5 +124,14 @@ describe('saveTagType', () => {
 
     await expect(saveTagType('book', schema, 3)).rejects.toThrow(/invalid YAML/)
     expect(writeNote).not.toHaveBeenCalled()
+  })
+
+  it('writes a bound template onto a new definition', async () => {
+    createNoteIfAbsent.mockResolvedValue({ kind: 'created', modifiedMs: 1 })
+
+    await saveTagType('Book', schema, 3, 'templates/book.md')
+
+    const contents = String(createNoteIfAbsent.mock.calls[0]?.[1])
+    expect(contents).toContain('template: templates/book.md')
   })
 })

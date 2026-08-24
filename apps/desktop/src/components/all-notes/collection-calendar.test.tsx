@@ -14,7 +14,15 @@ vi.mock('@/lib/tags/use-commit-note-property', () => ({
 }))
 const createCollectionNote = vi.hoisted(() => vi.fn(async () => 'notes/new.md'))
 vi.mock('@/lib/tags/create-collection-note', () => ({
-  createCollectionNote,
+  createTypedCollectionNote: createCollectionNote,
+}))
+vi.mock('@/hooks/use-template-values', () => ({
+  useTemplateValues: () => async () => ({
+    title: '',
+    date: 'today',
+    dateIso: '2026-08-24',
+    time: '2:15 PM',
+  }),
 }))
 vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({ graph: { root: '/g', name: 'g', generation: 7 } }),
@@ -114,6 +122,7 @@ describe('CollectionCalendar', () => {
           entries={[entry('notes/a.md', 'The Dispossessed', iso)]}
           property={FINISHED}
           tag="book"
+          type={BOOK_TYPE}
           onOpen={onOpen}
         />
       </div>,
@@ -131,6 +140,7 @@ describe('CollectionCalendar', () => {
           entries={[entry('notes/a.md', 'The Dispossessed', '2026-08-10')]}
           property={FINISHED}
           tag="book"
+          type={BOOK_TYPE}
           onOpen={() => {}}
         />
       </div>,
@@ -151,6 +161,7 @@ describe('CollectionCalendar', () => {
           entries={[entry('notes/a.md', 'The Dispossessed', iso)]}
           property={FINISHED}
           tag="book"
+          type={BOOK_TYPE}
           onOpen={() => {}}
         />
       </div>,
@@ -174,12 +185,24 @@ describe('CollectionCalendar', () => {
     const iso = todayIso()
     const view = await render(
       <div style={{ height: '100vh' }}>
-        <CollectionCalendar entries={[]} property={FINISHED} tag="book" onOpen={onOpen} />
+        <CollectionCalendar
+          entries={[]}
+          property={FINISHED}
+          tag="book"
+          type={BOOK_TYPE}
+          onOpen={onOpen}
+        />
       </div>,
     )
 
     await view.getByRole('button', { name: `New note on ${iso}` }).click()
-    expect(createCollectionNote).toHaveBeenCalledWith('book', 7, { finished: iso })
+    expect(createCollectionNote).toHaveBeenCalledWith(
+      'book',
+      7,
+      { finished: iso },
+      BOOK_TYPE,
+      expect.objectContaining({ dateIso: '2026-08-24' }),
+    )
     expect(onOpen).toHaveBeenCalledWith('notes/new.md')
   })
 })

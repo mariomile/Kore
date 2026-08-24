@@ -6,10 +6,12 @@ import {
   type CollectionEntry,
   type CollectionValue,
   type TagProperty,
+  type TagType,
 } from '@reflect/core'
 import { ChevronLeft, ChevronRight, Plus } from '@/components/icons'
 import { toast } from '@/components/ui/toast'
-import { createCollectionNote } from '@/lib/tags/create-collection-note'
+import { createTypedCollectionNote } from '@/lib/tags/create-collection-note'
+import { useTemplateValues } from '@/hooks/use-template-values'
 import { useCommitNoteProperties } from '@/lib/tags/use-commit-note-property'
 import type { ModClickEvent } from '@/lib/windows/open-in-new-window'
 import { cn } from '@/lib/utils'
@@ -82,6 +84,8 @@ interface CollectionCalendarProps {
   property: TagProperty
   /** The active tag, so a day's + can birth a row in this collection. */
   tag: string
+  /** The tag's type, so a new row can seed from a bound template. */
+  type: TagType
   onOpen: (path: string, event?: ModClickEvent) => void
 }
 
@@ -89,12 +93,14 @@ export function CollectionCalendar({
   entries,
   property,
   tag,
+  type,
   onOpen,
 }: CollectionCalendarProps): ReactElement {
   const weekStartDay = useSettings().settings.weekStartDay
   const weekStart = weekStartDow(weekStartDay)
   const { graph } = useGraph()
   const commitProperties = useCommitNoteProperties()
+  const resolveTemplateValues = useTemplateValues()
   const [now] = useState(() => new Date())
   const [visible, setVisible] = useState(() => ({
     year: now.getFullYear(),
@@ -170,7 +176,13 @@ export function CollectionCalendar({
       return
     }
     try {
-      const path = await createCollectionNote(tag, graph.generation, { [property.key]: iso })
+      const path = await createTypedCollectionNote(
+        tag,
+        graph.generation,
+        { [property.key]: iso },
+        type,
+        await resolveTemplateValues(null),
+      )
       onOpen(path)
     } catch (error) {
       toast.add({

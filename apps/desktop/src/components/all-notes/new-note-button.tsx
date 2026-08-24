@@ -1,14 +1,11 @@
 import type { ReactElement } from 'react'
-import {
-  appendBodyTag,
-  createNoteIfAbsent,
-  errorMessage,
-  untitledNotePath,
-  untitledNoteSeed,
-} from '@reflect/core'
+import { errorMessage } from '@reflect/core'
 import { toast } from '@/components/ui/toast'
+import { useTemplateValues } from '@/hooks/use-template-values'
+import { useTagType } from '@/hooks/use-tag-type'
 import { keybindingFor, newNoteRoute } from '@/lib/commands/app-commands'
 import { formatBindingLabel } from '@/lib/keybindings'
+import { createTypedCollectionNote } from '@/lib/tags/create-collection-note'
 import { useGraph } from '@/providers/graph-provider'
 import { useRouter } from '@/routing/router'
 
@@ -28,20 +25,27 @@ interface NewNoteButtonProps {
  * The All Notes header's primary action — the same fresh-note route as ⌘N
  * (created lazily on the first keystroke), with the binding taught inline.
  * Under a tag filter the file is created eagerly instead, seeded with the
- * tag, so the new note is a member of the collection immediately.
+ * tag (and the type's bound template, when it names one), so the new note
+ * is a member of the collection immediately.
  */
 export function NewNoteButton({ tag = null }: NewNoteButtonProps): ReactElement {
   const { navigate } = useRouter()
   const { graph } = useGraph()
+  const tagType = useTagType(tag)
+  const resolveTemplateValues = useTemplateValues()
 
   const createTagged = async (activeTag: string): Promise<void> => {
     if (graph === null) {
       return
     }
-    const path = untitledNotePath()
-    const seed = untitledNoteSeed()
     try {
-      await createNoteIfAbsent(path, appendBodyTag(seed, activeTag) ?? seed, graph.generation)
+      const path = await createTypedCollectionNote(
+        activeTag,
+        graph.generation,
+        {},
+        tagType,
+        await resolveTemplateValues(null),
+      )
       navigate({ kind: 'note', path })
     } catch (error) {
       toast.add({

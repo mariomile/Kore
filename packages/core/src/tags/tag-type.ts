@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { TAGS_DIR } from '../graph/paths'
+import { isTemplatePath, TAGS_DIR } from '../graph/paths'
 import { foldTag, isTagName, type Frontmatter } from '../markdown'
 
 /**
@@ -81,6 +81,11 @@ export type TagProperty = z.infer<typeof tagPropertySchema>
 /** A tag's schema: the ordered property list a Collection renders as columns. */
 export interface TagType {
   properties: TagProperty[]
+  /**
+   * Graph-relative path of the note template (`templates/…md`) new rows are
+   * seeded from. Absent when the type does not bind one.
+   */
+  template?: string
 }
 
 /**
@@ -98,6 +103,7 @@ export const RESERVED_FRONTMATTER_KEYS: ReadonlySet<string> = new Set([
   'ignoredContacts',
   'lore',
   'properties',
+  'template',
 ])
 
 /** Property keys are plain YAML-safe identifiers, never reserved. */
@@ -144,7 +150,12 @@ export function parseTagTypeFrontmatter(frontmatter: Frontmatter): TagType | nul
     claimed.add(property.key)
     properties.push(property)
   }
-  return { properties }
+  const templateRaw = frontmatter['template']
+  const template =
+    typeof templateRaw === 'string' && isTemplatePath(templateRaw.trim())
+      ? templateRaw.trim()
+      : undefined
+  return template === undefined ? { properties } : { properties, template }
 }
 
 /**
@@ -153,12 +164,27 @@ export function parseTagTypeFrontmatter(frontmatter: Frontmatter): TagType | nul
  * reader of the column goes through this pair).
  */
 export function encodeTagTypeJson(type: TagType): string {
-  return JSON.stringify(type.properties)
+  if (type.template === undefined) {
+    return JSON.stringify(type.properties)
+  }
+  return JSON.stringify({ properties: type.properties, template: type.template })
 }
 
 export function decodeTagTypeJson(column: string): TagType {
-  const properties = z.array(tagPropertySchema).parse(JSON.parse(column))
-  return { properties }
+  const parsed: unknown = JSON.parse(column)
+  if (Array.isArray(parsed)) {
+    return { properties: z.array(tagPropertySchema).parse(parsed) }
+  }
+  const object = z
+    .object({
+      properties: z.array(tagPropertySchema),
+      template: z.string().min(1).optional(),
+    })
+    .parse(parsed)
+  if (object.template !== undefined && isTemplatePath(object.template)) {
+    return { properties: object.properties, template: object.template }
+  }
+  return { properties: object.properties }
 }
 
 /**

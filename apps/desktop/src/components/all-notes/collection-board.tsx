@@ -11,7 +11,8 @@ import { Plus } from '@/components/icons'
 import { PropertyValueEditor } from '@/components/tags/property-editors'
 import { selectOptionDotClass } from '@/components/tags/select-colors'
 import { toast } from '@/components/ui/toast'
-import { createCollectionNote } from '@/lib/tags/create-collection-note'
+import { createTypedCollectionNote } from '@/lib/tags/create-collection-note'
+import { useTemplateValues } from '@/hooks/use-template-values'
 import type { ModClickEvent } from '@/lib/windows/open-in-new-window'
 import { useCommitNoteProperties } from '@/lib/tags/use-commit-note-property'
 import { cn } from '@/lib/utils'
@@ -219,6 +220,8 @@ interface CollectionBoardProps {
   entries: readonly CollectionEntry[] | undefined
   /** The routed tag — a lane's "+" creates a note that is born in it. */
   tag: string
+  /** The tag's type, so a new row can seed from a bound template. */
+  type: TagType
   /** The grouping property — the screen only renders the board when
    * {@link boardProperty} found one, so it arrives resolved. */
   property: TagProperty
@@ -228,11 +231,13 @@ interface CollectionBoardProps {
 export function CollectionBoard({
   entries,
   tag,
+  type,
   property,
   onOpen,
 }: CollectionBoardProps): ReactElement {
   const { graph } = useGraph()
   const commitProperties = useCommitNoteProperties()
+  const resolveTemplateValues = useTemplateValues()
   // A drop moves the card at once through this overlay; the stored rows only
   // catch up after write → watcher → refetch, and a fresh `entries` prop
   // (which now carries the written values) clears it at render time.
@@ -311,10 +316,12 @@ export function CollectionBoard({
       return
     }
     try {
-      const path = await createCollectionNote(
+      const path = await createTypedCollectionNote(
         tag,
         graph.generation,
         column.commit === null ? {} : { [property.key]: column.commit },
+        type,
+        await resolveTemplateValues(null),
       )
       onOpen(path)
     } catch (error) {

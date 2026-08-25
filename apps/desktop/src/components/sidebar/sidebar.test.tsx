@@ -471,6 +471,15 @@ describe('Sidebar', () => {
     expect(pickAndOpen).not.toHaveBeenCalled()
   })
 
+  it('the graph footer opens Insights from the graph menu', async () => {
+    const { view, navigate } = await renderSidebar()
+
+    await view.getByRole('button', { name: /Notes/ }).click()
+    await page.getByRole('menuitem', { name: /insights/i }).click()
+
+    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith({ kind: 'insights' }))
+  })
+
   it('the graph footer opens user settings from the graph menu', async () => {
     const { view, navigate } = await renderSidebar()
 

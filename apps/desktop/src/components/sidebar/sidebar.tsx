@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from 'react'
-import { Chart, Checklist, Graph, Note, NoteEdit, Pencil, Terminal, User } from '@/components/icons'
+import { Checklist, Graph, Note, NoteEdit, Pencil, Terminal, User } from '@/components/icons'
 import { isUntitledNotePath, type GraphInfo } from '@reflect/core'
 import { AudioMemoButton } from '@/components/audio-memo/audio-memo-button'
 import { usePinnedNotes } from '@/hooks/use-pinned-notes'
@@ -142,13 +142,6 @@ export function Sidebar({ graph, context }: SidebarProps): ReactElement {
                 onClick={() => void runCommand('nav.agents', context)}
               />
             ) : null}
-            <SidebarItem
-              icon={<Chart className="size-3.5" />}
-              label="Insights"
-              binding={keybindingFor('nav.insights') ?? undefined}
-              active={route.kind === 'insights'}
-              onClick={() => void runCommand('nav.insights', context)}
-            />
             <SidebarItem
               icon={<Graph className="size-3.5" />}
               label="Graph"

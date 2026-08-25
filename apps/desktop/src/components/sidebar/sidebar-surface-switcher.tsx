@@ -1,7 +1,6 @@
 import type { ReactElement } from 'react'
-import { Calendar, Chat, Home } from '@/components/icons'
+import { Calendar, Chat, Home, type Icon } from '@/components/icons'
 import { ShortcutKeys } from '@/components/shortcut-keys'
-import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { keybindingFor } from '@/lib/commands/app-commands'
 import { cn } from '@/lib/utils'
@@ -16,12 +15,26 @@ interface SidebarSurfaceSwitcherProps {
 
 const CHAT_BINDING = keybindingFor('chat.open')
 
+interface SurfaceEntry {
+  readonly id: SidebarSurface
+  readonly label: string
+  readonly icon: Icon
+  readonly binding: string | null
+}
+
+const SURFACES: readonly SurfaceEntry[] = [
+  { id: 'home', label: 'Home', icon: Home, binding: null },
+  { id: 'chat', label: 'Chat', icon: Chat, binding: CHAT_BINDING },
+  { id: 'meetings', label: 'Meetings', icon: Calendar, binding: null },
+]
+
 /**
- * The Notion-style surface bar: a labeled Home pill followed by icon-only
- * Chat and Meetings toggles, sitting inline with the search and audio-memo
- * icons at the top of the sidebar. Picking one swaps the rail below; the
- * selected surface carries the active wash so the bar always shows where
- * the rail is.
+ * The Notion-style surface bar: three pills that swap the rail below. The
+ * selected pill wears its label; the others collapse to bare icons, so the
+ * bar always spends its width on where you are. The label slides open
+ * through an animated 0fr→1fr grid column (the same trick the disclosure
+ * shelves use for height), with the wash and a small press scale carrying
+ * the rest of the motion.
  */
 export function SidebarSurfaceSwitcher({
   surface,
@@ -29,64 +42,53 @@ export function SidebarSurfaceSwitcher({
 }: SidebarSurfaceSwitcherProps): ReactElement {
   return (
     <nav aria-label="Sidebar surfaces" className="flex items-center gap-0.5">
-      <button
-        type="button"
-        aria-current={surface === 'home' ? 'page' : undefined}
-        onClick={() => onSelect('home')}
-        className={cn(
-          'flex h-7 flex-none items-center gap-1.5 rounded-full px-2.5 text-[13px] font-medium transition-colors duration-100',
-          surface === 'home'
-            ? 'bg-surface-active text-text'
-            : 'text-text-secondary hover:bg-surface-hover hover:text-text',
-        )}
-      >
-        <Home aria-hidden className="size-4" />
-        Home
-      </button>
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label="Chat"
-              aria-current={surface === 'chat' ? 'page' : undefined}
-              onClick={() => onSelect('chat')}
-              className={cn(
-                surface === 'chat'
-                  ? 'bg-surface-active text-text'
-                  : 'text-text-muted hover:text-text-secondary dark:hover:text-text',
-              )}
-            >
-              <Chat aria-hidden className="size-4" />
-            </Button>
-          }
-        />
-        <TooltipContent side="bottom">
-          Chat {CHAT_BINDING !== null ? <ShortcutKeys binding={CHAT_BINDING} /> : null}
-        </TooltipContent>
-      </Tooltip>
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label="Meetings"
-              aria-current={surface === 'meetings' ? 'page' : undefined}
-              onClick={() => onSelect('meetings')}
-              className={cn(
-                surface === 'meetings'
-                  ? 'bg-surface-active text-text'
-                  : 'text-text-muted hover:text-text-secondary dark:hover:text-text',
-              )}
-            >
-              <Calendar aria-hidden className="size-4" />
-            </Button>
-          }
-        />
-        <TooltipContent side="bottom">Meetings</TooltipContent>
-      </Tooltip>
+      {SURFACES.map((entry) => {
+        const active = surface === entry.id
+        const Glyph = entry.icon
+        return (
+          <Tooltip key={entry.id}>
+            <TooltipTrigger
+              delay={700}
+              render={
+                <button
+                  type="button"
+                  aria-label={entry.label}
+                  aria-current={active ? 'page' : undefined}
+                  onClick={() => onSelect(entry.id)}
+                  className={cn(
+                    'flex h-7 flex-none items-center rounded-full px-2 text-[13px] font-medium',
+                    'transition-all duration-200 ease-swift outline-none select-none',
+                    'focus-visible:ring-3 focus-visible:ring-ring/50 active:scale-[0.97]',
+                    active
+                      ? 'bg-surface-active text-text'
+                      : 'text-text-muted hover:bg-surface-hover hover:text-text-secondary dark:hover:text-text',
+                  )}
+                >
+                  <Glyph aria-hidden className="size-4 flex-none" />
+                  {/* The label column animates 0fr→1fr so the pill's width
+                      eases rather than popping; the fade rides the same
+                      curve so the text never shows mid-clip. */}
+                  <span
+                    aria-hidden
+                    className={cn(
+                      'grid transition-[grid-template-columns,opacity] duration-200 ease-swift',
+                      active ? 'grid-cols-[1fr] opacity-100' : 'grid-cols-[0fr] opacity-0',
+                    )}
+                  >
+                    <span className="min-w-0 overflow-hidden whitespace-nowrap pl-1.5 pr-0.5">
+                      {entry.label}
+                    </span>
+                  </span>
+                </button>
+              }
+            />
+            <TooltipContent side="bottom">
+              {entry.label}{' '}
+              {entry.binding !== null ? <ShortcutKeys binding={entry.binding} /> : null}
+            </TooltipContent>
+          </Tooltip>
+        )
+      })}
     </nav>
   )
 }

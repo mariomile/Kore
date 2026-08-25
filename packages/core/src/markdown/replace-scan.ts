@@ -54,8 +54,8 @@ export function foldPreservingLength(text: string): string {
   // ASCII never resizes under folding, and most notes are ASCII: take the
   // native path and keep the per-code-point loop for the rest.
   let ascii = true
-  for (let i = 0; i < text.length; i += 1) {
-    if (text.charCodeAt(i) > 0x7f) {
+  for (let index = 0; index < text.length; index += 1) {
+    if (text.charCodeAt(index) > 0x7f) {
       ascii = false
       break
     }

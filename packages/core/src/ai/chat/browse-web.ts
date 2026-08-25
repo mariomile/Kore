@@ -69,12 +69,18 @@ function pageFromRead(read: BrowserPageRead): WebPageContent {
 
 /**
  * Build the open_web_page executor: load the URL in the embedded browser and
- * return the page's text once the document settles. Every failure — no
- * shell, a refused scheme, a page that never answers — comes back as a
- * corrective `ok: false` rather than a thrown tool error.
+ * return the page's text once the document settles. Every failure — an
+ * unavailable surface, a refused scheme, a page that never answers — comes
+ * back as a corrective `ok: false` rather than a thrown tool error.
+ * `available` is the host's typed capability answer (the desktop passes
+ * whether it runs in a native, non-mobile shell) — never inferred from
+ * error-message prose.
  */
-export function buildOpenWebPage(deps: BrowseWebDeps) {
+export function buildOpenWebPage(deps: BrowseWebDeps, available = true) {
   return async function openWebPage(url: string): Promise<BrowseWebOutput> {
+    if (!available) {
+      return { ok: false, error: BROWSER_UNAVAILABLE_ERROR }
+    }
     if (!/^https?:\/\//i.test(url.trim())) {
       return { ok: false, error: WEB_URL_ERROR }
     }
@@ -83,7 +89,7 @@ export function buildOpenWebPage(deps: BrowseWebDeps) {
       const read = await deps.browseReadFn({ expectUrl: url, maxChars: MAX_PAGE_TEXT_CHARS })
       return { ok: true, page: pageFromRead(read) }
     } catch (cause) {
-      return { ok: false, error: browseError(cause) }
+      return { ok: false, error: errorMessage(cause) }
     }
   }
 }
@@ -93,23 +99,16 @@ export function buildOpenWebPage(deps: BrowseWebDeps) {
  * browser is currently on — the user's "look at this page", or a re-read
  * after in-page navigation.
  */
-export function buildReadWebPage(deps: BrowseWebDeps) {
+export function buildReadWebPage(deps: BrowseWebDeps, available = true) {
   return async function readWebPage(): Promise<BrowseWebOutput> {
+    if (!available) {
+      return { ok: false, error: BROWSER_UNAVAILABLE_ERROR }
+    }
     try {
       const read = await deps.browseReadFn({ maxChars: MAX_PAGE_TEXT_CHARS })
       return { ok: true, page: pageFromRead(read) }
     } catch (cause) {
-      return { ok: false, error: browseError(cause) }
+      return { ok: false, error: errorMessage(cause) }
     }
   }
-}
-
-/** Fold shell absence and command failures into one corrective message. */
-function browseError(cause: unknown): string {
-  const message = errorMessage(cause)
-  // No bridge (web harness) or the mobile stand-in: same honest refusal.
-  if (/desktop-only|no tauri|bridge/i.test(message)) {
-    return BROWSER_UNAVAILABLE_ERROR
-  }
-  return message
 }

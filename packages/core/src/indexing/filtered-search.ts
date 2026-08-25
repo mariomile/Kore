@@ -165,7 +165,7 @@ export async function searchWithFilters(
       .select(HIT_COLUMNS)
       // The length guard above guarantees a primary tag.
       .where('tags.tagKey', '=', primaryTag!)
-      .where('notes.kind', '!=', 'template')
+      .where('notes.kind', 'not in', ['template', 'tag'])
       .distinct()
 
     for (const tag of remainingTags) {
@@ -234,8 +234,12 @@ export async function searchWithFilters(
     }))
   }
 
-  // Templates never surface in search — they are boilerplate, not notes.
-  let query = db.selectFrom('notes').select(HIT_COLUMNS).where('notes.kind', '!=', 'template')
+  // Templates and tag definition notes never surface in search — they are
+  // boilerplate and schema, not notes (matching the listing surfaces).
+  let query = db
+    .selectFrom('notes')
+    .select(HIT_COLUMNS)
+    .where('notes.kind', 'not in', ['template', 'tag'])
 
   // `filters.tags` are folded keys (filter-query) matched against the stored
   // `tag_key` — folded in JS at index time, since SQLite's lower() is

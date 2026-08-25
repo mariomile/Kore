@@ -40,7 +40,8 @@ export function matchDueTimePrefix(text: string): DueTimeMatch | null {
  * link inside the marker line (file coords), plus `@HH:MM` immediately after that
  * link when present. Reuses {@link normalizeWikiTarget} so an impossible date
  * (`2026-02-31`) is not a due date — exactly the dailies the resolver recognises.
- * The search window is the marker line so `@14:30` after the date is included.
+ * The search window is the task's full span (marker line plus continuation
+ * lines) so a date on a wrapped line, and `@14:30` after the date, count.
  */
 export function firstDue(
   body: string,

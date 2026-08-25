@@ -7,8 +7,9 @@
 use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{mpsc, Arc, Mutex};
 use std::thread;
+use std::time::{Duration, Instant};
 
 use portable_pty::{native_pty_system, CommandBuilder, MasterPty, PtySize};
 use serde::Serialize;
@@ -134,8 +135,12 @@ pub fn pty_open(
         sessions.insert(id.clone(), Arc::clone(&session));
     }
 
-    let read_app = app.clone();
-    let read_id = id.clone();
+    // Bulk output (`cat bigfile`, a chatty build) would flood the IPC
+    // bridge if every 4 KB read became its own event: the reader funnels
+    // chunks through a channel and the emitter coalesces whatever arrives
+    // within a short window into one payload (bounded, so a firehose still
+    // flushes regularly).
+    let (chunk_sender, chunk_receiver) = mpsc::channel::<String>();
     thread::spawn(move || {
         let mut buffer = [0_u8; 4096];
         loop {
@@ -143,16 +148,41 @@ pub fn pty_open(
                 Ok(0) => break,
                 Ok(count) => {
                     let data = String::from_utf8_lossy(&buffer[..count]).into_owned();
-                    let _ = read_app.emit(
-                        DATA_EVENT,
-                        PtyDataPayload {
-                            id: read_id.clone(),
-                            data,
-                        },
-                    );
+                    if chunk_sender.send(data).is_err() {
+                        break;
+                    }
                 }
                 Err(_) => break,
             }
+        }
+        // Dropping the sender closes the channel — the emitter's exit signal.
+    });
+
+    let read_app = app.clone();
+    let read_id = id.clone();
+    thread::spawn(move || {
+        const COALESCE_WINDOW: Duration = Duration::from_millis(12);
+        const MAX_COALESCED_BYTES: usize = 256 * 1024;
+        while let Ok(first) = chunk_receiver.recv() {
+            let mut data = first;
+            let deadline = Instant::now() + COALESCE_WINDOW;
+            while data.len() < MAX_COALESCED_BYTES {
+                let now = Instant::now();
+                if now >= deadline {
+                    break;
+                }
+                match chunk_receiver.recv_timeout(deadline - now) {
+                    Ok(chunk) => data.push_str(&chunk),
+                    Err(_) => break,
+                }
+            }
+            let _ = read_app.emit(
+                DATA_EVENT,
+                PtyDataPayload {
+                    id: read_id.clone(),
+                    data,
+                },
+            );
         }
         let code = session
             .child

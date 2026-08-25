@@ -7,6 +7,7 @@ import {
   listTemplates,
   propertyKeyForName,
   propertyRowValue,
+  rollupAggregationSchema,
   tagPropertyTypeSchema,
   type CollectionValue,
   type RollupAggregation,
@@ -467,13 +468,9 @@ export function TagConfigDialog({ tag, onClose }: TagConfigDialogProps): ReactEl
                       <Select
                         value={draft.rollupAggregation}
                         onValueChange={(value) => {
-                          if (
-                            value === 'count' ||
-                            value === 'empty' ||
-                            value === 'original' ||
-                            value === 'unique'
-                          ) {
-                            updateDraft(draft.rowId, { rollupAggregation: value })
+                          const parsed = rollupAggregationSchema.safeParse(value)
+                          if (parsed.success) {
+                            updateDraft(draft.rowId, { rollupAggregation: parsed.data })
                           }
                         }}
                       >
@@ -481,10 +478,11 @@ export function TagConfigDialog({ tag, onClose }: TagConfigDialogProps): ReactEl
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="count">Count</SelectItem>
-                          <SelectItem value="empty">Empty</SelectItem>
-                          <SelectItem value="original">Original</SelectItem>
-                          <SelectItem value="unique">Unique</SelectItem>
+                          {rollupAggregationSchema.options.map((aggregation) => (
+                            <SelectItem key={aggregation} value={aggregation}>
+                              {aggregation.charAt(0).toUpperCase() + aggregation.slice(1)}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </label>

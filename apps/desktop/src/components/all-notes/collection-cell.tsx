@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react'
 import {
+  decodeStoredList,
   fileBasename,
   formatRating,
   isCalendarDate,
@@ -27,17 +28,6 @@ export interface CellReading {
    * tolerated, never destroyed (TDR 0005).
    */
   mismatch: boolean
-}
-
-/** Decode a stored `list` column ('["a","b"]') into its entries, or `null`
- * when the text isn't a well-formed list (shown raw as a mismatch). */
-function decodeStoredList(raw: string): string[] | null {
-  try {
-    const entries = JSON.parse(raw) as unknown
-    return Array.isArray(entries) ? entries.map(String) : null
-  } catch {
-    return null
-  }
 }
 
 /** Decode a `note_properties` value for display under `property`'s type. */

@@ -221,8 +221,12 @@ export function useVaultReplace(): VaultReplace {
             entries.push({ path: note.path, before: note.source, after })
           },
         })
-        undoable.current = entries
-        setCanUndo(entries.length > 0)
+        // A run that wrote nothing (e.g. the batch failed fast with no open
+        // graph) must not evict the previous replace's undo entries.
+        if (entries.length > 0) {
+          undoable.current = entries
+          setCanUndo(true)
+        }
       } finally {
         setIsBusy(false)
       }
@@ -238,8 +242,9 @@ export function useVaultReplace(): VaultReplace {
     }
     setIsBusy(true)
     let restored = 0
+    const restoredPaths = new Set<string>()
     try {
-      await runNoteBatch({
+      const result = await runNoteBatch({
         label: 'Undoing replace',
         graph,
         queryClient,
@@ -253,11 +258,14 @@ export function useVaultReplace(): VaultReplace {
             throw new Error('edited since the replace')
           }
           await writeNote(entry.path, entry.before, generation)
+          restoredPaths.add(entry.path)
           restored += 1
         },
       })
-      undoable.current = []
-      setCanUndo(false)
+      // Keep the unrestored entries after a failed undo (no open graph,
+      // notes that refused) so the user can retry once the blocker clears.
+      undoable.current = result.ok ? [] : entries.filter((entry) => !restoredPaths.has(entry.path))
+      setCanUndo(undoable.current.length > 0)
     } finally {
       setIsBusy(false)
     }

@@ -29,15 +29,20 @@ function parseCollectionEmbedBody(body: string): CollectionEmbed | null {
   let view: CollectionEmbedView = 'table'
   for (const rawLine of body.split(/\r?\n/)) {
     const line = rawLine.trim()
-    if (line === '' || line.startsWith('#')) {
+    if (line === '') {
       continue
     }
     const colon = line.indexOf(':')
     if (colon === -1) {
+      // A bare tag names the collection, with or without its `#` — only a
+      // `#` line that is NOT a tag reads as a comment.
       const bare = line.replace(/^#/, '')
       if (tag === '' && isTagName(bare)) {
         tag = bare
       }
+      continue
+    }
+    if (line.startsWith('#')) {
       continue
     }
     const key = line.slice(0, colon).trim().toLowerCase()

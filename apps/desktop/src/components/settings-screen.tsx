@@ -1,6 +1,10 @@
-import type { ReactElement, ReactNode } from 'react'
-import { useShowAdvancedSurfaces } from '@/hooks/use-show-advanced-surfaces'
-import { settingsGroupTitle, type SettingsGroupId } from './settings/sections'
+import type { ComponentType, ReactElement, ReactNode } from 'react'
+import { useVisibleSettingsGroups } from './settings/use-visible-settings-sections'
+import {
+  settingsGroupTitle,
+  type SettingsGroupId,
+  type SettingsSectionId,
+} from './settings/sections'
 import { AboutSection } from './settings/about-section'
 import { AgentsSection } from './settings/agents-section'
 import { AiChatSection } from './settings/ai-chat-section'
@@ -45,40 +49,45 @@ function SettingsGroupBlock({
  * navigator mirrors the same structure. Every control applies instantly
  * through the settings provider; there is no save button.
  */
+/** The section cards, keyed by the registry ids the navigator also uses. */
+const SECTION_COMPONENTS: Record<SettingsSectionId, ComponentType> = {
+  appearance: AppearanceSection,
+  editor: EditorSection,
+  'date-time': DateTimeSection,
+  templates: TemplatesSection,
+  'all-notes': AllNotesSection,
+  tasks: TasksSection,
+  search: SearchSection,
+  'ai-providers': AiProvidersSection,
+  'ai-chat': AiChatSection,
+  'ai-prompts': AiPromptsSection,
+  'audio-memos': AudioMemosSection,
+  mcp: McpSection,
+  agents: AgentsSection,
+  sync: SyncSection,
+  integrations: IntegrationsSection,
+  import: ImportSection,
+  about: AboutSection,
+  destructive: DestructiveSection,
+}
+
 export function SettingsScreen(): ReactElement {
-  const showAdvanced = useShowAdvancedSurfaces()
+  // One visibility rule for the page and the navigator: both render from
+  // useVisibleSettingsGroups, so a gated section can never appear in one
+  // surface and not the other.
+  const groups = useVisibleSettingsGroups()
   return (
     <div aria-label="Settings">
       <h1 className="text-lg font-semibold text-text">Settings</h1>
       <div className="mt-6">
-        <SettingsGroupBlock id="general">
-          <AppearanceSection />
-          <EditorSection />
-          <DateTimeSection />
-        </SettingsGroupBlock>
-        <SettingsGroupBlock id="notes">
-          <TemplatesSection />
-          <AllNotesSection />
-          <TasksSection />
-          {showAdvanced ? <SearchSection /> : null}
-        </SettingsGroupBlock>
-        <SettingsGroupBlock id="ai">
-          <AiProvidersSection />
-          <AiChatSection />
-          <AiPromptsSection />
-          <AudioMemosSection />
-          <McpSection />
-          {showAdvanced ? <AgentsSection /> : null}
-        </SettingsGroupBlock>
-        <SettingsGroupBlock id="data">
-          <SyncSection />
-          <IntegrationsSection />
-          <ImportSection />
-        </SettingsGroupBlock>
-        <SettingsGroupBlock id="app">
-          <AboutSection />
-          <DestructiveSection />
-        </SettingsGroupBlock>
+        {groups.map((group) => (
+          <SettingsGroupBlock key={group.id} id={group.id}>
+            {group.sections.map((section) => {
+              const Section = SECTION_COMPONENTS[section.id]
+              return <Section key={section.id} />
+            })}
+          </SettingsGroupBlock>
+        ))}
       </div>
     </div>
   )

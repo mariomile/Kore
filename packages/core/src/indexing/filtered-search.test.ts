@@ -55,9 +55,9 @@ describe('searchWithFilters', () => {
     expect(sql).toContain('"tags"."tag_key"')
     expect(sql).not.toContain('search_fts')
     expect(sql).not.toContain('lower(')
-    // The template exclusion rides every search path.
-    expect(sql).toContain('"notes"."kind" != ?')
-    expect(args['params']).toEqual(['work', 'template', 12])
+    // The template/tag-definition exclusion rides every search path.
+    expect(sql).toContain('"notes"."kind" not in (?, ?)')
+    expect(args['params']).toEqual(['work', 'template', 'tag', 12])
   })
 
   it('keeps additional tag filters as indexed existence checks', async () => {
@@ -81,7 +81,7 @@ describe('searchWithFilters', () => {
     expect(sql).toContain('"filter_tags"."note_path" = "notes"."path"')
     expect(sql).toContain('"filter_tags"."tag_key"')
     expect(sql).not.toContain('search_fts')
-    expect(args['params']).toEqual(['work', 'template', 'home', 12])
+    expect(args['params']).toEqual(['work', 'template', 'tag', 'home', 12])
   })
 
   it('applies non-tag filters on the tag-first recall path', async () => {
@@ -118,7 +118,14 @@ describe('searchWithFilters', () => {
     expect(sql).toContain('"notes"."is_pinned" =')
     expect(sql).toContain('"notes"."mtime" >=')
     expect(sql).not.toContain('search_fts')
-    expect(args['params']).toEqual(['work', 'template', 1, startOfLocalDay('2026-01-01'), 12])
+    expect(args['params']).toEqual([
+      'work',
+      'template',
+      'tag',
+      1,
+      startOfLocalDay('2026-01-01'),
+      12,
+    ])
   })
 
   it('promotes title matches, then bm25, pinned and recency on text search', async () => {
@@ -195,7 +202,7 @@ describe('searchWithFilters', () => {
     const [, args] = mockInvoke.mock.calls[0]!
     const sql = String(args['sql'])
     expect(sql).not.toContain('limit')
-    expect(args['params']).toEqual(['template', 1])
+    expect(args['params']).toEqual(['template', 'tag', 1])
   })
 
   it('orders the recall feed pinned-first when asked (the All list order)', async () => {
@@ -308,7 +315,7 @@ describe('searchWithFilters', () => {
     const [, args] = mockInvoke.mock.calls[0]!
     const sql = String(args['sql'])
     expect(sql).toContain('"notes"."kind" = ?')
-    expect(args['params']).toEqual(['template', 'note', 1])
+    expect(args['params']).toEqual(['template', 'tag', 'note', 1])
   })
 
   it('lets an explicit daily filter win over notesOnly', async () => {

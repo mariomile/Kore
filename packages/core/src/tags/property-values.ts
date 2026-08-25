@@ -1,5 +1,25 @@
+import { z } from 'zod'
 import type { IndexedPropertyValueType } from './properties'
 import { relationTarget, type RollupAggregation } from './tag-type'
+
+const storedListSchema = z.array(z.unknown())
+
+/**
+ * Decode a stored JSON list column (`'["a","b"]'`) into its string entries,
+ * or `null` when the text isn't a well-formed list. The one decoder every
+ * list-shaped surface uses — cells, editors, YAML round-trips — so a
+ * hardening lands everywhere at once.
+ */
+export function decodeStoredList(raw: string): string[] | null {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    return null
+  }
+  const list = storedListSchema.safeParse(parsed)
+  return list.success ? list.data.map(String) : null
+}
 
 /** Indexed cell shape these helpers read — structural, not the collections type. */
 export interface PropertyValue {
@@ -47,15 +67,7 @@ export function fileBasename(path: string): string {
 
 /** Decode a `list` PropertyValue into strings, or `null` when malformed. */
 export function decodePropertyList(value: PropertyValue): string[] | null {
-  if (value.valueType !== 'list') {
-    return null
-  }
-  try {
-    const entries = JSON.parse(value.value) as unknown
-    return Array.isArray(entries) ? entries.map(String) : null
-  } catch {
-    return null
-  }
+  return value.valueType === 'list' ? decodeStoredList(value.value) : null
 }
 
 /** Wiki-link targets (or raw strings) stored on a relation / relations cell. */
@@ -124,8 +136,8 @@ export function computeRollup(
     case 'count':
       return { text: String(sources.length), number: sources.length }
     case 'empty': {
-      const n = sources.filter((source) => source.empty).length
-      return { text: String(n), number: n }
+      const emptyCount = sources.filter((source) => source.empty).length
+      return { text: String(emptyCount), number: emptyCount }
     }
     case 'original': {
       const first = sources.find((source) => !source.empty)

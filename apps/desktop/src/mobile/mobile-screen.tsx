@@ -8,6 +8,7 @@ import { MobileNote } from '@/mobile/screens/note'
 import { MobileSettings } from '@/mobile/screens/settings'
 import { MobileTasks } from '@/mobile/screens/tasks'
 import type { AllNotesFilters } from '@/mobile/search-filters/filter-state'
+import { isDesktopOnlyRoute } from '@/routing/route'
 import type { Route } from '@/routing/route'
 
 interface MobileScreenProps {
@@ -41,6 +42,17 @@ export function MobileScreen({
   onAllFiltersChange,
 }: MobileScreenProps): ReactElement {
   const today = useToday()
+
+  // Desktop-only routes (terminal, browser) share one honest fallback —
+  // never a silent redirect to the daily screen.
+  if (isDesktopOnlyRoute(route)) {
+    return (
+      <div className="flex h-full items-center justify-center px-6 text-sm text-text-muted">
+        {route.kind === 'terminal' ? 'The terminal' : 'The built-in browser'} is available on
+        desktop.
+      </div>
+    )
+  }
 
   switch (route.kind) {
     // One stable key for the whole daily surface (today + any day): a day
@@ -80,12 +92,6 @@ export function MobileScreen({
       return <MobileSettings key="settings" />
     case 'graphs':
       return <MobileGraphs key="graphs" />
-    case 'terminal':
-      return (
-        <div className="flex h-full items-center justify-center px-6 text-sm text-text-muted">
-          The terminal is available on desktop.
-        </div>
-      )
     default:
       return <MobileDaily key="daily" date={today} />
   }

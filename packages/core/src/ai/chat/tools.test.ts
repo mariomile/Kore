@@ -795,7 +795,7 @@ describe('list_collection', () => {
         path === PRIVATE_PATH ? '---\nprivate: true\n---\n# Diary\n' : 'a public body\n',
     })
     const output = await runCollection(tools, { tag: 'book' })
-    expect(seenOptions).toEqual([{ excludePrivate: true }])
+    expect(seenOptions).toEqual([{ excludePrivate: true, limit: 31 }])
     const payload = JSON.stringify(output)
     expect(payload).not.toContain(PRIVATE_TITLE)
     expect(payload).not.toContain(PRIVATE_PATH)
@@ -862,11 +862,8 @@ describe('set_note_property', () => {
     return output
   }
 
-  it('refuses when edits are disabled, without touching the write channel', async () => {
-    const commitPropertyFn = async (): Promise<void> => {
-      throw new Error('must not be called')
-    }
-    const tools = buildNoteTools({ commitPropertyFn })
+  it('refuses when edits are disabled', async () => {
+    const tools = buildNoteTools({})
     const output = await runSetProperty(tools, {
       path: 'notes/a.md',
       key: 'status',
@@ -876,7 +873,7 @@ describe('set_note_property', () => {
   })
 
   it('refuses reserved or invalid keys', async () => {
-    const tools = buildNoteTools({ allowEdits: true, commitPropertyFn: async () => {} })
+    const tools = buildNoteTools({ allowEdits: true })
     const output = await runSetProperty(tools, { path: 'notes/a.md', key: 'private', value: true })
     expect(output).toEqual({ ok: false, path: 'notes/a.md', error: RESERVED_PROPERTY_ERROR })
   })
@@ -884,7 +881,6 @@ describe('set_note_property', () => {
   it('refuses private notes on the live frontmatter, failing closed', async () => {
     const tools = buildNoteTools({
       allowEdits: true,
-      commitPropertyFn: async () => {},
       readNoteFn: async () => '---\nprivate: true\n---\n# Diary\n',
     })
     const output = await runSetProperty(tools, {
@@ -896,13 +892,9 @@ describe('set_note_property', () => {
   })
 
   it('proposes the typed value without writing, and clears as null', async () => {
-    const writes: Array<[string, string, unknown]> = []
     const tools = buildNoteTools({
       allowEdits: true,
       readNoteFn: async () => 'a public body\n',
-      commitPropertyFn: async (path, key, value) => {
-        writes.push([path, key, value])
-      },
     })
     expect(await runSetProperty(tools, { path: 'notes/a.md', key: 'rating', value: 4.5 })).toEqual({
       ok: true,
@@ -923,7 +915,6 @@ describe('set_note_property', () => {
       path: 'notes/a.md',
       error: MISSING_VALUE_ERROR,
     })
-    expect(writes).toEqual([])
   })
 
   it('formats proposed values for the apply chip', () => {

@@ -29,6 +29,25 @@ struct SchemaProperty {
     kind: String,
 }
 
+/// The two on-disk forms of `tag_types.schema_json`, mirroring
+/// `decodeTagTypeJson`: a bare property array, or `{properties, template}`
+/// once the tag carries a new-row template.
+#[derive(serde::Deserialize)]
+#[serde(untagged)]
+enum SchemaJson {
+    Properties(Vec<SchemaProperty>),
+    Object { properties: Vec<SchemaProperty> },
+}
+
+impl SchemaJson {
+    fn into_properties(self) -> Vec<SchemaProperty> {
+        match self {
+            SchemaJson::Properties(properties) => properties,
+            SchemaJson::Object { properties } => properties,
+        }
+    }
+}
+
 /// Decode a stored `note_properties` row into a typed JSON value, mirroring
 /// `propertyRowValue` (`packages/core/src/indexing/collections.ts`).
 fn typed_value(value: &str, value_type: &str, value_number: Option<f64>) -> serde_json::Value {
@@ -94,8 +113,11 @@ pub fn run(
         )));
     };
     // Tolerant like the app: a mangled column reads as an empty schema, and
-    // the rows still list.
-    let schema: Vec<SchemaProperty> = serde_json::from_str(&schema_json).unwrap_or_default();
+    // the rows still list. Both stored forms decode — a templated tag writes
+    // the object shape (`decodeTagTypeJson`), not the bare array.
+    let schema: Vec<SchemaProperty> = serde_json::from_str::<SchemaJson>(&schema_json)
+        .map(SchemaJson::into_properties)
+        .unwrap_or_default();
 
     // Mirrors `listCollection`: missing sort values last regardless of
     // direction, then the numeric key, then the string form, case-insensitive.
@@ -133,10 +155,10 @@ pub fn run(
         if !still_public_on_disk(&graph.root, &path) {
             continue;
         }
-        kept.push((path, title));
         if kept.len() >= limit {
             break;
         }
+        kept.push((path, title));
     }
 
     // Property rows only for the kept notes — the list is bounded by the

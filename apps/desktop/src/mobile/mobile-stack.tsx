@@ -10,7 +10,7 @@ import { MobileScreen } from '@/mobile/mobile-screen'
 import type { AllNotesFilters } from '@/mobile/search-filters/filter-state'
 import { BACK_SWIPE_SETTLE_MS, useBackSwipe, type BackSwipeState } from '@/mobile/use-back-swipe'
 import { usePrefersReducedMotion } from '@/mobile/use-reduced-motion'
-import type { Route } from '@/routing/route'
+import { isDesktopOnlyRoute, type Route } from '@/routing/route'
 import { RouterFreeze, useRouter } from '@/routing/router'
 import './mobile-stack.css'
 
@@ -59,10 +59,8 @@ function layerKey(route: Route): string {
     case 'allNotes':
     case 'search':
       return 'all'
-    case 'terminal':
-      return 'terminal'
     default:
-      return 'daily'
+      return isDesktopOnlyRoute(route) ? route.kind : 'daily'
   }
 }
 

@@ -254,18 +254,23 @@ function escapeTableCell(text: string): string {
 }
 
 function renderInlineNodes(nodes: readonly HtmlNode[], context: MarkdownRenderContext): string {
-  const parts: string[] = []
+  // Whitespace collapses per text node and at part boundaries — never across
+  // a rendered code span, whose internal spacing (and the ` padding around
+  // backtick-edged code) is meaningful markdown.
+  let out = ''
   for (const node of nodes) {
     if (node.kind === 'text') {
-      parts.push(collapseInlineWhitespace(escapeInline(node.value)))
+      const text = collapseInlineWhitespace(escapeInline(node.value))
+      out += out.endsWith(' ') ? text.replace(/^ +/, '') : text
       continue
     }
     if (SKIP_TAGS.has(node.tag)) {
       continue
     }
-    parts.push(renderInlineElement(node, context))
+    const rendered = renderInlineElement(node, context)
+    out += out.endsWith(' ') && node.tag !== 'code' ? rendered.replace(/^ +/, '') : rendered
   }
-  return parts.join('').replaceAll(/ {2,}/g, ' ')
+  return out
 }
 
 function renderInlineElement(element: HtmlElement, context: MarkdownRenderContext): string {

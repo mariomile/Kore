@@ -296,6 +296,7 @@ export {
   type WeekStartDay,
   type AllNotesFilterTags,
   type AllNotesView,
+  collectionViewForAllNotesView,
   type SavedCollectionView,
   type OpenNoteTab,
   type SavedSearch,

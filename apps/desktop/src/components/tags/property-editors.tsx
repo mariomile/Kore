@@ -1,6 +1,7 @@
 import { useRef, useState, type KeyboardEvent, type ReactElement, type ReactNode } from 'react'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import {
+  decodeStoredList,
   parseRating,
   relationDisplay,
   relationTarget,
@@ -57,15 +58,7 @@ export function editorSeedList(value: CollectionValue | undefined): string[] {
     return []
   }
   if (value.valueType === 'list') {
-    try {
-      const entries = JSON.parse(value.value) as unknown
-      if (Array.isArray(entries)) {
-        return entries.map(String)
-      }
-    } catch {
-      return []
-    }
-    return []
+    return decodeStoredList(value.value) ?? []
   }
   return value.value === '' ? [] : [value.value]
 }

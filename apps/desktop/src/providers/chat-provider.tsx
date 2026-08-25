@@ -46,7 +46,7 @@ import {
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { toChatAttachment, type ChatAttachment } from '@/lib/chat-attachments'
 import { todayIso } from '@/lib/dates'
-import { commitNoteFrontmatter } from '@/lib/note-frontmatter'
+import { isNativeShell } from '@/lib/platform'
 import { isMobileSurface } from '@/lib/platform-surface'
 import { providerFetch } from '@/lib/provider-fetch'
 import { invalidateChatQueries } from '@/lib/query-client'
@@ -464,13 +464,10 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
             // channel, pinned to the graph generation of this turn.
             allowEdits: chatAllowEditsRef.current,
             toolDeps: {
-              commitPropertyFn: async (path, key, value) => {
-                await commitNoteFrontmatter(
-                  path,
-                  { properties: { [key]: value } },
-                  graph.generation,
-                )
-              },
+              // The embedded browser is a desktop capability: the typed
+              // answer here is what makes the browse tools refuse honestly
+              // on mobile and in the web harness.
+              browsingAvailable: isNativeShell() && !isMobileSurface(),
             },
             signal: controller.signal,
           })

@@ -77,9 +77,7 @@ export function CollectionViewsMenu({
                 className="flex min-w-0 flex-1 items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-surface-hover"
               >
                 <span className="min-w-0 flex-1 truncate text-left">{view.name}</span>
-                <span className="shrink-0 text-xs text-text-muted">
-                  {view.view === 'board' ? 'board' : 'table'}
-                </span>
+                <span className="shrink-0 text-xs text-text-muted">{view.view}</span>
               </button>
               <button
                 type="button"

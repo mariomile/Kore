@@ -37,6 +37,7 @@ const BRIEF: AgentRoutine = {
   runs: [],
   consecutiveFailures: 0,
   retryAtMs: null,
+  retryContext: null,
 }
 
 const RILEY = {

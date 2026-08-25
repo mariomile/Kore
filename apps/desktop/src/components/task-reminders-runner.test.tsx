@@ -25,6 +25,9 @@ const core = vi.hoisted(() => ({
 vi.mock('@reflect/core', () => ({
   getOpenTasks: () => Promise.resolve(core.tasks),
 }))
+// The runner subscribes to file changes only to invalidate its task cache;
+// each test renders a fresh mount, whose first tick always queries.
+vi.mock('@/lib/use-file-changes', () => ({ useFileChanges: () => {} }))
 
 const state = vi.hoisted(() => ({
   taskReminders: true,

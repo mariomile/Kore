@@ -1,22 +1,14 @@
 import { useMemo, useState, type DragEvent, type ReactElement } from 'react'
 import { Virtualizer } from 'virtua'
-import {
-  errorMessage,
-  type CollectionEntry,
-  type CollectionValue,
-  type TagProperty,
-  type TagType,
-} from '@reflect/core'
+import type { CollectionEntry, CollectionValue, TagProperty, TagType } from '@reflect/core'
 import { Plus } from '@/components/icons'
 import { PropertyValueEditor } from '@/components/tags/property-editors'
 import { selectOptionDotClass } from '@/components/tags/select-colors'
-import { toast } from '@/components/ui/toast'
-import { createTypedCollectionNote } from '@/lib/tags/create-collection-note'
-import { useTemplateValues } from '@/hooks/use-template-values'
+import { useOptimisticMoves } from '@/hooks/use-optimistic-moves'
 import type { ModClickEvent } from '@/lib/windows/open-in-new-window'
 import { useCommitNoteProperties } from '@/lib/tags/use-commit-note-property'
+import { useCreateCollectionNote } from '@/lib/tags/use-create-collection-note'
 import { cn } from '@/lib/utils'
-import { useGraph } from '@/providers/graph-provider'
 import { readCellValue } from './collection-cell'
 
 /**
@@ -239,18 +231,9 @@ export function CollectionBoard({
   property,
   onOpen,
 }: CollectionBoardProps): ReactElement {
-  const { graph } = useGraph()
   const commitProperties = useCommitNoteProperties()
-  const resolveTemplateValues = useTemplateValues()
-  // A drop moves the card at once through this overlay; the stored rows only
-  // catch up after write → watcher → refetch, and a fresh `entries` prop
-  // (which now carries the written values) clears it at render time.
-  const [moves, setMoves] = useState<Map<string, BoardMove>>(new Map())
-  const [movesFor, setMovesFor] = useState(entries)
-  if (movesFor !== entries) {
-    setMovesFor(entries)
-    setMoves(new Map())
-  }
+  const createNote = useCreateCollectionNote(tag, type)
+  const { moves, record } = useOptimisticMoves<BoardMove>(entries)
   // The dragged card's path lives in React state, not only in the
   // DataTransfer: `dragover` cannot read the payload (spec), and gating the
   // handlers on it keeps foreign drags (files onto the window) refused.
@@ -302,12 +285,12 @@ export function CollectionBoard({
     const sameLane = column.entries.some((entry) => entry.path === path)
     const others = column.entries.filter((entry) => entry.path !== path)
     const index =
-      targetPath === null ? others.length : others.findIndex((e) => e.path === targetPath)
+      targetPath === null ? others.length : others.findIndex((entry) => entry.path === targetPath)
     const rank = index < 0 ? null : rankForInsertion(others, index)
     if (sameLane && rank === null) {
       return
     }
-    setMoves((current) => new Map(current).set(path, { group: column.commit, rank }))
+    record(path, { group: column.commit, rank })
     commitProperties(path, {
       [property.key]: column.commit ?? undefined,
       ...(rank !== null ? { [BOARD_ORDER_KEY]: rank } : {}),
@@ -316,24 +299,9 @@ export function CollectionBoard({
 
   /** Create a note born in `column`: tagged, with the lane's value set. */
   const createInLane = async (column: BoardColumn): Promise<void> => {
-    if (graph === null) {
-      return
-    }
-    try {
-      const path = await createTypedCollectionNote(
-        tag,
-        graph.generation,
-        column.commit === null ? {} : { [property.key]: column.commit },
-        type,
-        await resolveTemplateValues(null),
-      )
+    const path = await createNote(column.commit === null ? {} : { [property.key]: column.commit })
+    if (path !== null) {
       onOpen(path)
-    } catch (error) {
-      toast.add({
-        type: 'error',
-        title: "Couldn't create the note",
-        description: errorMessage(error),
-      })
     }
   }
 

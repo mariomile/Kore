@@ -46,17 +46,17 @@ describe('open_web_page', () => {
     expect(deps.browseLoadFn).not.toHaveBeenCalled()
   })
 
-  it('folds shell absence into the corrective unavailable message', async () => {
-    const open = buildOpenWebPage({
-      browseLoadFn: async () => {
-        throw new Error('the embedded browser is desktop-only')
-      },
-      browseReadFn: fakeDeps().browseReadFn,
-    })
+  it('refuses upfront on surfaces without the embedded browser', async () => {
+    const deps = fakeDeps()
+    const open = buildOpenWebPage(deps, false)
     expect(await open('https://example.com')).toEqual({
       ok: false,
       error: BROWSER_UNAVAILABLE_ERROR,
     })
+    const read = buildReadWebPage(deps, false)
+    expect(await read()).toEqual({ ok: false, error: BROWSER_UNAVAILABLE_ERROR })
+    expect(deps.browseLoadFn).not.toHaveBeenCalled()
+    expect(deps.browseReadFn).not.toHaveBeenCalled()
   })
 
   it('returns other shell failures as their own message', async () => {

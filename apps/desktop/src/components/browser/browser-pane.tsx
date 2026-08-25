@@ -41,8 +41,16 @@ export function normalizeAddress(raw: string): string | null {
   return `https://duckduckgo.com/?q=${encodeURIComponent(trimmed)}`
 }
 
-/** The newest mounted pane owns the (single) embedded webview. */
-let mountToken = 0
+/**
+ * The mounted panes, oldest first — the last entry owns the (single)
+ * embedded webview. The browser tab and the context rail's panel can be
+ * mounted at once: when the owner unmounts, the webview is handed back to
+ * the survivor (re-docked over its host) instead of being hidden under it.
+ */
+interface BrowserHost {
+  dock: () => void
+}
+const hostStack: BrowserHost[] = []
 
 interface BrowserPaneProps {
   className?: string
@@ -74,22 +82,27 @@ export function BrowserPane({ className }: BrowserPaneProps): ReactElement {
     if (host === null) {
       return
     }
-    const token = ++mountToken
     const rect = (): BrowserEmbedRect => {
       const bounds = host.getBoundingClientRect()
       return { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height }
     }
+    const entry: BrowserHost = {
+      dock: () => {
+        void browserEmbedShow(browserSessionUrl(), rect()).catch((cause: unknown) => {
+          setError(errorMessage(cause))
+        })
+      },
+    }
+    hostStack.push(entry)
     const replaceBounds = (): void => {
-      // A newer mount owns the webview's placement; a stale observer firing
-      // during the handover must not drag the page back to the old host.
-      if (token !== mountToken) {
+      // Only the owning host places the webview; a covered pane's observer
+      // firing must not drag the page away from the owner.
+      if (hostStack.at(-1) !== entry) {
         return
       }
       void browserEmbedBounds(rect()).catch(() => undefined)
     }
-    void browserEmbedShow(browserSessionUrl(), rect()).catch((cause: unknown) => {
-      setError(errorMessage(cause))
-    })
+    entry.dock()
 
     const unsubscribeSession = subscribeBrowserSession((url) => {
       if (document.activeElement !== inputRef.current) {
@@ -110,10 +123,22 @@ export function BrowserPane({ className }: BrowserPaneProps): ReactElement {
       void unlistenNavigated.then((unlisten) => {
         unlisten()
       })
-      // Only the owner hides — a newer mount (tab → rail) already took over
-      // the webview and repositioned it.
-      if (token === mountToken) {
-        void browserEmbedHide().catch(() => undefined)
+      // The owner hands the webview to the surviving pane (tab closed while
+      // the rail panel stays up → the panel re-docks it); with no survivor
+      // it hides, keeping the page alive for the next mount. A covered pane
+      // just leaves the stack.
+      const wasOwner = hostStack.at(-1) === entry
+      const index = hostStack.indexOf(entry)
+      if (index !== -1) {
+        hostStack.splice(index, 1)
+      }
+      if (wasOwner) {
+        const survivor = hostStack.at(-1)
+        if (survivor !== undefined) {
+          survivor.dock()
+        } else {
+          void browserEmbedHide().catch(() => undefined)
+        }
       }
     }
   }, [])

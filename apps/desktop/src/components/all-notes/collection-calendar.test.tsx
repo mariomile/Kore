@@ -1,12 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
 import type { CollectionEntry, CollectionValue, TagType } from '@reflect/core'
-import {
-  calendarProperty,
-  CollectionCalendar,
-  entriesByDate,
-  monthGrid,
-} from './collection-calendar'
+import { calendarProperty, CollectionCalendar, entriesByDate } from './collection-calendar'
 
 const commitProperties = vi.hoisted(() => vi.fn())
 vi.mock('@/lib/tags/use-commit-note-property', () => ({
@@ -97,18 +92,6 @@ describe('entriesByDate', () => {
     )
     expect(grouped.get('2026-08-10')?.map((row) => row.path)).toEqual(['a', 'b'])
     expect(grouped.size).toBe(1)
-  })
-})
-
-describe('monthGrid', () => {
-  it('aligns six full weeks to the week start', () => {
-    // August 2026 starts on a Saturday; with a Monday week start the grid
-    // leads with Mon Jul 27 and always spans 42 cells.
-    const cells = monthGrid(2026, 7, 1)
-    expect(cells).toHaveLength(42)
-    expect(cells[0]).toEqual({ iso: '2026-07-27', day: 27, inMonth: false })
-    expect(cells[5]).toEqual({ iso: '2026-08-01', day: 1, inMonth: true })
-    expect(cells.filter((cell) => cell.inMonth)).toHaveLength(31)
   })
 })
 

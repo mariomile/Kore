@@ -69,6 +69,22 @@ describe('BrowserPane', () => {
     await vi.waitFor(() => expect(browserEmbedHide).toHaveBeenCalled())
   })
 
+  it('hands the webview to a surviving pane instead of hiding it under it', async () => {
+    const first = await render(<BrowserPane />)
+    await vi.waitFor(() => expect(browserEmbedShow).toHaveBeenCalledTimes(1))
+    const second = await render(<BrowserPane />)
+    await vi.waitFor(() => expect(browserEmbedShow).toHaveBeenCalledTimes(2))
+
+    // The newer owner unmounts while the first pane is still up: the
+    // webview re-docks over the survivor, it is not hidden.
+    await second.unmount()
+    await vi.waitFor(() => expect(browserEmbedShow).toHaveBeenCalledTimes(3))
+    expect(browserEmbedHide).not.toHaveBeenCalled()
+
+    await first.unmount()
+    await vi.waitFor(() => expect(browserEmbedHide).toHaveBeenCalledTimes(1))
+  })
+
   it('resumes the session page instead of the default one', async () => {
     setBrowserSessionUrl('https://example.com/docs')
     const view = await render(<BrowserPane />)

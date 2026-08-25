@@ -11,6 +11,7 @@ import {
   type CollectionSort,
   type ListCollectionOptions,
 } from '../../indexing/collections'
+import { attachRollups } from '../../indexing/rollups'
 import { listDailyNotes, type DailyNoteRow, type DailyNotesRange } from '../../indexing/queries'
 import {
   listRecentNotes,
@@ -84,16 +85,21 @@ export interface NoteToolDeps {
     sort: CollectionSort | null,
     options?: ListCollectionOptions,
   ) => Promise<CollectionEntry[]>
-  /**
-   * Persist one property value into a note's frontmatter (`undefined`
-   * deletes the key). The desktop passes its session-safe commit channel;
-   * without it `set_note_property` refuses.
-   */
-  commitPropertyFn?: (path: string, key: string, value: unknown) => Promise<void>
+  /** Attach view-only rollup cells onto collection rows (list_collection). */
+  attachRollupsFn?: (
+    entries: readonly CollectionEntry[],
+    type: TagType,
+  ) => Promise<CollectionEntry[]>
   /** Load a page in the built-in browser (open_web_page). */
   browseLoadFn?: BrowseWebDeps['browseLoadFn']
   /** Extract the built-in browser's current page (both browse tools). */
   browseReadFn?: BrowseWebDeps['browseReadFn']
+  /**
+   * Whether this surface has the embedded browser at all — the desktop's
+   * typed capability answer. False makes both browse tools refuse upfront
+   * with the honest unavailable message; omitted means "attempt".
+   */
+  browsingAvailable?: boolean
 }
 
 export interface BuildNoteToolsOptions extends NoteToolDeps {
@@ -279,6 +285,7 @@ export function buildNoteTools(options: BuildNoteToolsOptions = {}): NoteTools {
   const assetRefsFn = options.assetReferencingNotePathsFn ?? assetReferencingNotePaths
   const getTagTypeFn = options.getTagTypeFn ?? getTagType
   const listCollectionFn = options.listCollectionFn ?? listCollection
+  const attachRollupsFn = options.attachRollupsFn ?? attachRollups
   const searchMode: RetrieveOptions['mode'] =
     options.semanticSearchEnabled === false ? 'lexical' : 'hybrid'
 
@@ -306,8 +313,8 @@ export function buildNoteTools(options: BuildNoteToolsOptions = {}): NoteTools {
     browseLoadFn: options.browseLoadFn ?? shellBrowseDeps.browseLoadFn,
     browseReadFn: options.browseReadFn ?? shellBrowseDeps.browseReadFn,
   }
-  const openWebPage = buildOpenWebPage(browseDeps)
-  const readWebPage = buildReadWebPage(browseDeps)
+  const openWebPage = buildOpenWebPage(browseDeps, options.browsingAvailable ?? true)
+  const readWebPage = buildReadWebPage(browseDeps, options.browsingAvailable ?? true)
 
   return {
     search_notes: tool({
@@ -382,11 +389,19 @@ export function buildNoteTools(options: BuildNoteToolsOptions = {}): NoteTools {
           sortBy != null && sortBy !== '' ? { key: sortBy, direction: direction ?? 'asc' } : null
         // Private rows are dropped in SQL before the cap, so a private row
         // never even consumes a slot; the gate then re-checks every survivor
-        // live against the note on disk, failing closed.
-        const publicRows = await listCollectionFn(tag, sort, { excludePrivate: true })
+        // live against the note on disk, failing closed. The limit rides
+        // into the SQL too (one extra row detects truncation) so a huge
+        // collection never materializes for a 30-row page.
         const max = limit ?? DEFAULT_COLLECTION_LIMIT
+        const publicRows = await listCollectionFn(tag, sort, {
+          excludePrivate: true,
+          limit: max + 1,
+        })
         const truncated = publicRows.length > max
-        const kept = truncated ? publicRows.slice(0, max) : publicRows
+        const sliced = truncated ? publicRows.slice(0, max) : publicRows
+        // Rollup columns are view-only synthetics: attach them so the rows
+        // carry every property the returned schema advertises.
+        const kept = await attachRollupsFn(sliced, type)
         const candidates = kept.map((row) => ({
           path: row.path,
           isPrivate: false,
@@ -414,7 +429,7 @@ export function buildNoteTools(options: BuildNoteToolsOptions = {}): NoteTools {
         'list_collection’s schema. Do not claim the value is saved until they apply it.',
       inputSchema: setNotePropertyInput,
       execute: async ({ path, key, value, clear }): Promise<SetNotePropertyOutput> => {
-        if (options.allowEdits !== true || options.commitPropertyFn === undefined) {
+        if (options.allowEdits !== true) {
           return { ok: false, path, error: EDITS_DISABLED_ERROR }
         }
         if (!isPropertyKey(key)) {

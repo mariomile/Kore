@@ -36,6 +36,16 @@ export type Route =
 /** A route that addresses one concrete note, including a dated daily note. */
 export type NoteRoute = Extract<Route, { kind: 'daily' | 'note' }>
 
+/**
+ * Routes only the desktop surface can render (a local PTY, a child
+ * webview). The one predicate every surface derives desktop-only-ness from
+ * — the mobile tree's fallback screen, its layer keys, and the command
+ * guards — so adding the next desktop-only route touches exactly this line.
+ */
+export function isDesktopOnlyRoute(route: Route): boolean {
+  return route.kind === 'terminal' || route.kind === 'browser'
+}
+
 /** Structural route equality (used to avoid pushing no-op history entries). */
 export function routesEqual(a: Route, b: Route): boolean {
   if (a.kind !== b.kind) {

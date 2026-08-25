@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react'
 import type { GraphInfo } from '@reflect/core'
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
-import { Check, FolderOpen, Locate, Settings } from '@/components/icons'
+import { Chart, Check, FolderOpen, Locate, Settings } from '@/components/icons'
 import { GraphSwatch } from '@/components/graph-swatch'
 import { ShortcutKeys } from '@/components/shortcut-keys'
 import { SidebarIconSlot } from '@/components/sidebar/sidebar-icon-slot'
@@ -30,6 +30,7 @@ import { useRouter } from '@/routing/router'
 
 const MENU_ITEM_CLASS = 'gap-2 px-2 py-1.5 text-[13px] text-text-secondary'
 const SETTINGS_BINDING = keybindingFor('settings.open')
+const INSIGHTS_BINDING = keybindingFor('nav.insights')
 
 function graphSwitchBindingFor(index: number): string | null {
   // Recent rows are zero-based; `graph.switchN` commands and keycaps are one-based.
@@ -57,8 +58,9 @@ function backupDot(backup: BackupState): { className: string; label: string } | 
 
 /**
  * The sidebar footer: the graph's color swatch and name on the left — a
- * dropdown menu for switching to a recent graph, recoloring this graph, or
- * the OS folder picker. The swatch pulses while the graph indexes; a small
+ * dropdown menu for switching to a recent graph, opening this graph's
+ * Insights, recoloring this graph, or the OS folder picker. The swatch
+ * pulses while the graph indexes; a small
  * dot reports backup state. The menu content matches the trigger width, so
  * it stays inset from the sidebar edges.
  */
@@ -153,6 +155,16 @@ export function GraphFooter({ graph, context }: GraphFooterProps): ReactElement 
             )
           })}
           {recents.length > 0 ? <DropdownMenuSeparator /> : null}
+          <DropdownMenuItem
+            onClick={() => void runCommand('nav.insights', context)}
+            className={MENU_ITEM_CLASS}
+          >
+            <Chart aria-hidden className="size-3.5 shrink-0" />
+            <span className="min-w-0 flex-1 truncate">Insights</span>
+            {INSIGHTS_BINDING !== null ? (
+              <ShortcutKeys binding={INSIGHTS_BINDING} className="text-[10px]" />
+            ) : null}
+          </DropdownMenuItem>
           <DropdownMenuSub>
             <DropdownMenuSubTrigger className={MENU_ITEM_CLASS}>
               <GraphSwatch color={currentColor} className="size-3.5 rounded" />

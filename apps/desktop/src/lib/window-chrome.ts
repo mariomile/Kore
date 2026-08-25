@@ -31,9 +31,6 @@ export const hasMacosTitleBarOverlay: boolean =
  * dead space that crushes the sidebar surface bar against the search/mic
  * cluster.
  */
-export function needsMacosTrafficLightInset(
-  overlay: boolean,
-  isFullscreen: boolean,
-): boolean {
+export function needsMacosTrafficLightInset(overlay: boolean, isFullscreen: boolean): boolean {
   return overlay && !isFullscreen
 }

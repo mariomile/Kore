@@ -1,5 +1,84 @@
 # Changelog
 
+## [0.11.0-beta](https://github.com/mariomile/Lore/compare/v0.10.0...v0.11.0-beta) (2026-08-25)
+
+
+### Features
+
+* add global quick capture and harden search, sync, and privacy ([#5](https://github.com/mariomile/Lore/issues/5)) ([5c21be7](https://github.com/mariomile/Lore/commit/5c21be72d7c71e0ce82122c320d04d7ea1ae15b9))
+* add the All-notes card grid on mobile ([#7](https://github.com/mariomile/Lore/issues/7)) ([433ffbd](https://github.com/mariomile/Lore/commit/433ffbdf320b51a5b20a492f4b496230d347dd1d))
+* agent activity ledger — every edit-mode run shows what it touched ([71b90e5](https://github.com/mariomile/Lore/commit/71b90e593b2b02230d6b1fbd7efb83941a46ce61))
+* **all-notes:** bulk tag and move for a selection ([0c738f6](https://github.com/mariomile/Lore/commit/0c738f652d71a5e41c41b44f70655419ca4334ca))
+* **appearance:** sober theme variants, corner radius, glass intensity ([2d36228](https://github.com/mariomile/Lore/commit/2d36228bb46cef0fe9f0345111843f8759c9c4ac))
+* **appearance:** UI density (compact / default / comfortable) ([5608138](https://github.com/mariomile/Lore/commit/5608138e26979c68667f8f85a60bda6b0ef9ee6e))
+* close the Notion gaps — collections, editor, clipper, reminders ([#12](https://github.com/mariomile/Lore/issues/12)) ([71139b6](https://github.com/mariomile/Lore/commit/71139b6e06cbfdad7972b590e70b16e6c9e939fa))
+* collapse sidebar search to a lens and restyle nav icons as liquid glass ([#1](https://github.com/mariomile/Lore/issues/1)) ([375487a](https://github.com/mariomile/Lore/commit/375487a9a0a7e6e03b54b7ac320ba215991e53eb))
+* **collections:** expand the surface — multi-relation, AI tool, CLI, board, CSV, mobile ([dedf4b3](https://github.com/mariomile/Lore/commit/dedf4b3c78781b3d74346cdc292204b5d6c6234e))
+* **collections:** the chat writes properties, CSV comes back in, the TDR closes the loop ([7fc4927](https://github.com/mariomile/Lore/commit/7fc49275ebd6f3678f85f41da70aa2cef0c9e659))
+* connecting a subscription provider never asks for a model ([a0cf940](https://github.com/mariomile/Lore/commit/a0cf94081e455e28589f39d4ce3b469df5d2861b))
+* **daily:** seed a new daily note from templates/daily.md ([8cc665a](https://github.com/mariomile/Lore/commit/8cc665a2da4e98e723b06bd150c27f7d1fd67539))
+* fold the nav rail into the icon set and drop the glyph tiles ([7e77d26](https://github.com/mariomile/Lore/commit/7e77d2657f3283b48b07e935847d355f7084d1de))
+* Grok and Cursor as providers — xAI API brand card, cursor-agent CLI ([5f038ec](https://github.com/mariomile/Lore/commit/5f038ecf04aae639248fca72fdf647fbda1999a6))
+* injection-resistance rules in both agent CLI prompts ([aaae352](https://github.com/mariomile/Lore/commit/aaae3521499daabac78410d7b1f8c7a602e4b307))
+* land caret in today and show iOS calendar meetings ([#15](https://github.com/mariomile/Lore/issues/15)) ([51209f4](https://github.com/mariomile/Lore/commit/51209f4e8ef8ff7e5f5737989a4b896f729b48fc))
+* Liquid Glass — translucent, blurred chrome over a tinted backdrop ([4e0fd50](https://github.com/mariomile/Lore/commit/4e0fd50bea0b7e386c6cc28e5edb3a1046696617))
+* notes as live cards in chat and @-mentions resolved at send time ([69116ef](https://github.com/mariomile/Lore/commit/69116efc8a7143f38a791f149e4f209ea184b7fe))
+* **notes:** board Group-by picker — choose which select property makes the lanes ([67c7f85](https://github.com/mariomile/Lore/commit/67c7f8504c66c0df7313c288280eeb24417e6bd2))
+* **notes:** calendar view — the collection placed on its date property ([2f2d312](https://github.com/mariomile/Lore/commit/2f2d312d0606447ba32eb0dcdcefac9d9de12ae9))
+* **notes:** collection ergonomics — tagged birth, filters, bulk property, sticky sort ([5106a1d](https://github.com/mariomile/Lore/commit/5106a1d312a98444dbf54e23b41420d65f025d81))
+* **notes:** collection filters learn operators ([1186322](https://github.com/mariomile/Lore/commit/1186322dcafe1e95964f91f11c513f8f19cad6c0))
+* **notes:** collection view — a typed table for tagged notes ([5b075c9](https://github.com/mariomile/Lore/commit/5b075c929f2101797ff416adab9c1f038f740d72))
+* **notes:** per-tag view modes and saved collection views ([254b484](https://github.com/mariomile/Lore/commit/254b484362de7091f2c726b9adb38faa43dcf084))
+* **notes:** right-click menu on notes in All Notes ([10d8840](https://github.com/mariomile/Lore/commit/10d88405dbc9bf5d352126c409c86a786f44b313))
+* **notes:** the collection board becomes a kanban — drag cards between lanes ([15fe554](https://github.com/mariomile/Lore/commit/15fe55480297f3ed3daef0050d3c75635658a01f))
+* **notes:** the collection table earns its columns — built-in sorts, aggregates, layout control ([6c0720e](https://github.com/mariomile/Lore/commit/6c0720e88b94b9d1b7cc7ca14aa9328947a2d606))
+* **notes:** the kanban grows up — manual ranks, lane creation, colors, wider grouping, virtualized lanes ([cb023fd](https://github.com/mariomile/Lore/commit/cb023fd473c0a7031c52819d44ce3580cf0231fa))
+* **notes:** vault-wide find and replace ([1ae8f75](https://github.com/mariomile/Lore/commit/1ae8f75f2e42e7edd9da7f450a8df6434a0ba17e))
+* pick every theme, corner radius, and glass level from mobile Settings ([#14](https://github.com/mariomile/Lore/issues/14)) ([468d673](https://github.com/mariomile/Lore/commit/468d6730cf9c085b4d55a75c4b478a062c23c5a5))
+* premium interaction pass — one motion system, tokenized elevation, macOS haptics ([a091650](https://github.com/mariomile/Lore/commit/a0916506102702fc2dcc42ade6c70ee229429eba))
+* progressive-disclosure memory digest and memory-write scanner ([719a2a8](https://github.com/mariomile/Lore/commit/719a2a871adc53baf29557ef272e812aed3dfe31))
+* provider setup by brand — logo cards, then the connection mode ([2885b7e](https://github.com/mariomile/Lore/commit/2885b7e96c7ad49905eaf0941528ce3cda04e06a))
+* queue chat messages sent while a turn is streaming ([30a00e9](https://github.com/mariomile/Lore/commit/30a00e9b6a43504225ecb62477b1aa3885c17058))
+* quieter chrome, wider rails, plus menu, and in-app terminal ([#16](https://github.com/mariomile/Lore/issues/16)) ([b7df6fc](https://github.com/mariomile/Lore/commit/b7df6fc6afe4911e43a90e714578318176eebf10))
+* redraw the icon set on one hairline family ([d0e0374](https://github.com/mariomile/Lore/commit/d0e037429c284c60a249c86d46a66e323dff29fc))
+* restructure sidebar with Home, Chat, and Meetings surfaces ([#20](https://github.com/mariomile/Lore/issues/20)) ([9219747](https://github.com/mariomile/Lore/commit/9219747a19c5f69f48cdb9538ad3c1526945550a))
+* restyle context sidebar switcher icons as liquid glass ([819667b](https://github.com/mariomile/Lore/commit/819667bff881756482f7354229bd6051aafb1e07))
+* routine run history — a per-routine log of past runs ([6438bb7](https://github.com/mariomile/Lore/commit/6438bb797dc25c044c66cc043f7d1e65b3c0c807))
+* routines retry with backoff and pause after three failures ([a26a5ac](https://github.com/mariomile/Lore/commit/a26a5ac5fdb54ab6c6b8bb5ea038e395d142f1ce))
+* script-mode routines with the silent tick ([0509200](https://github.com/mariomile/Lore/commit/05092003329a625ef2c12c965215a935778c8515))
+* settings organized into labelled groups ([c6110bf](https://github.com/mariomile/Lore/commit/c6110bf9c3037669c3a98e95a1b6b42787f0d6ae))
+* **sidebar:** heading outline for the open note ([de9249f](https://github.com/mariomile/Lore/commit/de9249fcbc2b320a4c95fe43b535844b5cf8f808))
+* spawn the next recurring task from the editor checkbox ([#8](https://github.com/mariomile/Lore/issues/8)) ([b08e8d9](https://github.com/mariomile/Lore/commit/b08e8d944244de3842215690839e2a46886682df))
+* steer a live agent turn instead of cancelling it ([ac35e78](https://github.com/mariomile/Lore/commit/ac35e7864f36f5899433504de189b514066b3627))
+* steer a live Codex turn from the chat composer ([#10](https://github.com/mariomile/Lore/issues/10)) ([f310915](https://github.com/mariomile/Lore/commit/f310915074c4b2c61636e9ff200aea18b7dfa502))
+* styled note export — self-contained HTML with a print-to-PDF path ([4f00729](https://github.com/mariomile/Lore/commit/4f00729b3df371420c499bc1fbe2f0acb256ceb9))
+* **tags:** inline property editing and the note properties panel ([5b660ac](https://github.com/mariomile/Lore/commit/5b660ac3fe019b6dd403d492d84507edb5e1d64f))
+* **tags:** per-tag type configuration — definition notes and config dialog ([cb97f5b](https://github.com/mariomile/Lore/commit/cb97f5b89fb32dfbb92dbb7a5514b43acc02f5fe))
+* **tags:** relation properties — link notes from a collection ([d5cdacd](https://github.com/mariomile/Lore/commit/d5cdacd72dbc75cad9cb4bb7c37d5acb62bd68d5))
+* **tags:** relations become first-class links; properties become searchable ([7588efc](https://github.com/mariomile/Lore/commit/7588efcc24d90997f46e47a110d2e59dcbeaf516))
+* **tags:** tag types data layer — schemas, property index, collections queries ([b07e79f](https://github.com/mariomile/Lore/commit/b07e79fe17b4b5e46fbcae577d696dbe0c155204))
+* task reminders — one native notification a day for due tasks ([1bc9bd0](https://github.com/mariomile/Lore/commit/1bc9bd0273df191fd8e3c31cfbba9124e803ba50))
+* text-size settings, note outline rail, collapsible settings, Memento rename ([#11](https://github.com/mariomile/Lore/issues/11)) ([090195b](https://github.com/mariomile/Lore/commit/090195b73ae72321bf51c1b44dbb6887dce7c1b7))
+
+
+### Bug Fixes
+
+* close all nine code-review findings on the agent stack ([6bf9f6b](https://github.com/mariomile/Lore/commit/6bf9f6b9c33030ec5759f63ac243871237cd35d4))
+* import the NSHapticFeedbackPerformer trait — macOS build ([f40d542](https://github.com/mariomile/Lore/commit/f40d542327198f54e5d9caf854f65627b34376a0))
+* keep index, secrets, and GitHub token paths correct under load ([129223c](https://github.com/mariomile/Lore/commit/129223ccd455bf88132bd229e0dfcd2a2391c5ec))
+* make GitHub CI green — rustfmt, clippy, stale settings test literals ([cbd6dcd](https://github.com/mariomile/Lore/commit/cbd6dcd17f36ef37da6fd316c8b23e31bbd6627f))
+* **notes:** drop the unused type import the board test left behind ([172f16b](https://github.com/mariomile/Lore/commit/172f16bb7b2487a02ca952a86884082d47f14b75))
+* rotate the updater signing key with a real passphrase ([b2447af](https://github.com/mariomile/Lore/commit/b2447afda27bc21ba590f1ef51ad7e9a805f6c99))
+* sidebar top rows align with the tab strip on macOS ([5c66965](https://github.com/mariomile/Lore/commit/5c6696585b19c8f978d7c9b8a6c840fa79ffb536))
+* **tags:** empty property cells keep a clickable editor target ([287e824](https://github.com/mariomile/Lore/commit/287e82424076694d7eb7daca9c1eedcb01779c48))
+* **tags:** never destroy mismatched values, race-free multiselect, session-safe schema saves ([8bdbf95](https://github.com/mariomile/Lore/commit/8bdbf95522dab3d6e7ac498e2ddab271bd6ec058))
+* vault runs never load the CLIs' own user configuration ([ec03098](https://github.com/mariomile/Lore/commit/ec03098e60994114a6c63fbc805ee94b214b2ab6))
+
+
+### Performance Improvements
+
+* **notes:** delegate the list context menu, fast-path the vault scan ([134453c](https://github.com/mariomile/Lore/commit/134453cbf8f7258959f4f903459cece75e3d9ce3))
+
 ## [0.10.0-beta.5](https://github.com/team-reflect/reflect-open/compare/v0.10.0-beta.4...v0.10.0-beta.5) (2026-08-17)
 
 

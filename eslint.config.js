@@ -13,7 +13,9 @@ export default defineESLintConfig(
     perfectionist: false,
   },
   {
-    ignores: ['./design-system/', '**/.wxt/', '**/.output/'],
+    // src-tauri/gen holds generated platform projects plus Apple's Share
+    // Extension preprocessing JS — not code this repo authors or lints.
+    ignores: ['./design-system/', '**/.wxt/', '**/.output/', '**/src-tauri/gen/'],
   },
   {
     files: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.mjs'],
@@ -40,7 +42,6 @@ export default defineESLintConfig(
       '@typescript-eslint/unbound-method': 'off',
       'jsdoc/multiline-blocks': 'off',
       'jsdoc/no-multi-asterisks': 'off',
-      'no-var': 'off',
       'react-hooks/exhaustive-deps': 'off',
       'react-hooks/globals': 'off',
       'regexp/no-super-linear-backtracking': 'off',

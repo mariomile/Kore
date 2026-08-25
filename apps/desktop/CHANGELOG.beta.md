@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.28.1-beta](https://github.com/mariomile/Lore/compare/v0.28.0...v0.28.1-beta) (2026-08-25)
+
+
+### Bug Fixes
+
+* collapse the traffic-light band in fullscreen ([#36](https://github.com/mariomile/Lore/issues/36)) ([1709b0e](https://github.com/mariomile/Lore/commit/1709b0e487883f8049f347b9dfaef92cd520f6e5))
+* give the macOS traffic lights their own band ([#35](https://github.com/mariomile/Lore/issues/35)) ([ca3e4dc](https://github.com/mariomile/Lore/commit/ca3e4dc0f5d74e3d0e0967d11d12478423b09059))
+
 ## [0.10.0-beta.5](https://github.com/team-reflect/reflect-open/compare/v0.10.0-beta.4...v0.10.0-beta.5) (2026-08-17)
 
 

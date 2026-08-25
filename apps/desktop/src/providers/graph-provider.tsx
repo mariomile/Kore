@@ -1,14 +1,4 @@
-import {
-  createContext,
-  useCallback,
-  use,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from 'react'
-import { homeDir, join } from '@tauri-apps/api/path'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { open } from '@tauri-apps/plugin-dialog'
 import {
   deleteGraph as deleteGraphCommand,
@@ -20,7 +10,6 @@ import {
   createGraph,
   openGraph,
   recentGraphs,
-  subscribeReconcileRequests,
   type AppPlatform,
   type GraphInfo,
   type RecentGraph,
@@ -37,97 +26,15 @@ import {
 import { ensureWelcomeNote } from '@/lib/welcome-note'
 import { closeSecondaryWindows } from '@/lib/windows/close-secondary-windows'
 import { isMainWindow, requireMainWindow } from '@/lib/windows/window-role'
+import { GraphContext, type GraphContextValue, type GraphStatus } from './graph-context'
 import { createGraphIndex } from './graph-index'
+import { pickerDefaultPath } from './graph-provider-helpers'
 import { useDesktopGraphBoot } from './use-desktop-graph-boot'
-import { useMobileGraphBoot, type MobileGraphBoot } from './use-mobile-graph-boot'
+import { useMobileGraphBoot } from './use-mobile-graph-boot'
 import { useNoteWindowBoot } from './use-note-window-boot'
+import { useReconcileRequests } from './use-reconcile-requests'
 
-/** Lifecycle of the active graph (Plan 02 loading gate). */
-export type GraphStatus = 'loading' | 'choosing' | 'opening' | 'ready'
-
-/**
- * The graph context surface. The mobile-only slice (`needsOnboarding`,
- * storage roots, `completeOnboarding`) is documented on
- * {@link MobileGraphBoot}, whose hook owns it.
- */
-interface GraphContextValue extends MobileGraphBoot {
-  /**
-   * Which UI family the shell was built for (Plan 19's root gate), fixed at
-   * boot; gates platform-only surfaces like the iOS subscription paywall.
-   */
-  platform: AppPlatform
-  status: GraphStatus
-  graph: GraphInfo | null
-  recents: RecentGraph[]
-  /**
-   * The open **index session** generation (from `index_open`) — distinct from
-   * `graph.generation` (the file-write generation): the two counters are
-   * independent in Rust. Index-gated commands (`index_*`, `embed_*`,
-   * `db_query` writes via the pipelines) must echo THIS one; `note_write`
-   * and friends take `graph.generation`. Null when the index failed to open.
-   */
-  indexGeneration: number | null
-  /**
-   * True after this index session's first reconcile has finished and the
-   * live watcher is up. Embedding backfill waits on this so a first-open
-   * pass cannot hash-skip against an empty projection.
-   */
-  indexReady: boolean
-  /** True while the background index reconcile is running (Plan 06b). */
-  indexing: boolean
-  error: string | null
-  /** Show the OS folder picker, then open (and bootstrap) the chosen graph. */
-  pickAndOpen: () => Promise<void>
-  /** Close the active graph and show the desktop graph chooser. */
-  chooseGraph: () => Promise<void>
-  /**
-   * Create (and open) a graph at an app-chosen absolute path — desktop
-   * onboarding's iCloud path names the folder inside the container instead
-   * of showing a picker. Resolves true only on a confirmed open.
-   */
-  createAt: (root: string) => Promise<boolean>
-  /** Open a graph by its root path. Resolves true only when it reached 'ready'. */
-  openRecent: (root: string) => Promise<boolean>
-  /** Drop a graph from the recents list. */
-  forget: (root: string) => Promise<void>
-  /**
-   * Move the open graph's directory to the OS trash (recoverable), drop it
-   * from recents, and return to the chooser. Throws when the delete fails so
-   * the settings confirm dialog can surface the error. Desktop-only.
-   */
-  deleteGraph: () => Promise<void>
-  /**
-   * Re-run the open graph's background index reconcile. External writers the
-   * watcher can't see (mobile has none; iCloud lands files behind the app's
-   * back) call this after nudging downloads so arrived files get indexed.
-   * No-op while no index is open.
-   */
-  refreshIndex: () => void
-}
-
-const GraphContext = createContext<GraphContextValue | null>(null)
-
-/**
- * On a macOS first run (no recents yet), start the folder picker in iCloud
- * Drive — the recommended home for a graph (Plan 21): notes back up
- * automatically and the iOS app's container lives there too. Suggestion
- * only: the user can navigate anywhere, and once they have a graph the
- * picker reverts to the OS default (their last-used location). Best-effort —
- * a resolution failure (or a signed-out account's missing folder, which the
- * open panel falls back from on its own) must never block picking.
- */
-async function pickerDefaultPath(hasRecents: boolean): Promise<{ defaultPath: string } | null> {
-  if (hasRecents || import.meta.env.TAURI_ENV_PLATFORM !== 'darwin') {
-    return null
-  }
-  try {
-    const home = await homeDir()
-    return { defaultPath: await join(home, 'Library', 'Mobile Documents', 'com~apple~CloudDocs') }
-  } catch (err) {
-    console.warn('iCloud Drive picker suggestion failed:', errorMessage(err))
-    return null
-  }
-}
+export { useGraph, type GraphStatus } from './graph-context'
 
 /**
  * Owns the active graph and the open/choose flow. On mount it auto-opens the
@@ -517,30 +424,7 @@ export function GraphProvider({
     const seq = openSeq.current
     indexRef.current.refresh(indexGeneration, () => seq !== openSeq.current)
   }, [indexGeneration])
-  // A structural vault change (folder created, renamed, or removed) cannot
-  // be expressed as per-file events; the watcher asks for one full reconcile
-  // instead, and `refresh` coalesces bursts into a single queued rerun.
-  useEffect(() => {
-    if (!bridgeReady) {
-      return // bridgeless browser dev — no native event stream to subscribe to
-    }
-    let unlisten: (() => void) | null = null
-    let disposed = false
-    void subscribeReconcileRequests(() => refreshIndex()).then(
-      (fn) => {
-        if (disposed) {
-          fn()
-        } else {
-          unlisten = fn
-        }
-      },
-      (error: unknown) => console.error('failed to subscribe reconcile requests:', error),
-    )
-    return () => {
-      disposed = true
-      unlisten?.()
-    }
-  }, [bridgeReady, refreshIndex])
+  useReconcileRequests(bridgeReady, refreshIndex)
 
   const value = useMemo<GraphContextValue>(
     () => ({
@@ -590,13 +474,4 @@ export function GraphProvider({
   )
 
   return <GraphContext value={value}>{children}</GraphContext>
-}
-
-/** Access the active graph + open/choose actions. Use within a GraphProvider. */
-export function useGraph(): GraphContextValue {
-  const context = use(GraphContext)
-  if (!context) {
-    throw new Error('useGraph must be used within a GraphProvider')
-  }
-  return context
 }

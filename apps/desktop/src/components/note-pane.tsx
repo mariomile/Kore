@@ -1,14 +1,6 @@
 import { memo, useCallback, useMemo, useRef, useState, type ReactElement } from 'react'
 import type { ExitBoundaryHandler, SearchStatus } from '@meowdown/core'
-import {
-  detectConflictMarkers,
-  isDaily,
-  parseCollectionEmbeds,
-  parseNoteTransclusions,
-  isTemplatePath,
-  isUntitledNotePath,
-  untitledNoteSeed,
-} from '@reflect/core'
+import { detectConflictMarkers, parseCollectionEmbeds, parseNoteTransclusions } from '@reflect/core'
 import { BacklinksPanel } from '@/components/backlinks-panel'
 import { UnlinkedMentionsPanel } from '@/components/unlinked-mentions-panel'
 import { ConflictNoteView } from '@/components/conflict-note-view'
@@ -29,8 +21,7 @@ import { markModeFromSyntax } from '@/editor/mark-mode'
 import { NoteEditor, type NoteEditorHandle } from '@/editor/note-editor'
 import { resolveAssetFileLink, useAssetPersistence } from '@/editor/use-asset-persistence'
 import { useEditorAutocomplete } from '@/editor/use-editor-autocomplete'
-import { useNoteDocument } from '@/editor/use-note-document'
-import { useDailyNoteSeed } from '@/hooks/use-daily-note-seed'
+import { useNotePaneDocument } from '@/components/use-note-pane-document'
 import { useTagNavigation } from '@/editor/use-tag-navigation'
 import { CalloutHighlighter } from '@/editor/callout-highlighter'
 import { useCalloutSlashItems } from '@/editor/use-callout-slash-items'
@@ -144,46 +135,9 @@ export function NotePaneComponent({
   const { graph } = useGraph()
   const { settings } = useSettings()
   const generation = graph?.generation ?? null
-  const dailyNote = isDaily(path)
-  const lazyCreate = lazy && (dailyNote || isUntitledNotePath(path))
-  // Templates rename via file operations only (settings, or outside the app):
-  // the rename pipeline's slug targets live under `notes/`, so tracking a
-  // template's title would move it out of `templates/`. The untitled `id:`
-  // seed is skipped for the same reason — it exists to feed that pipeline.
-  const template = isTemplatePath(path)
-  // One seed per (pane, path): a fresh seed carries a fresh `id:`, and a mere
-  // re-render must not mint a new identity (the session is keyed on the seed).
-  // Re-mint during render when the path changes — only the committed render's
-  // seed reaches the session, so the transient stale render is harmless, and
-  // this avoids writing a ref during render.
-  const needsSeed = lazyCreate && !dailyNote && !template
-  const [seed, setSeed] = useState(() => ({ path, seed: untitledNoteSeed() }))
-  if (needsSeed && seed.path !== path) {
-    setSeed({ path, seed: untitledNoteSeed() })
-  }
-  // A daily's seed is `templates/daily.md`, not the name-me template: the date
-  // already names it. Undefined when the graph has no daily template, which
-  // leaves dailies opening empty exactly as they did before.
-  const dailySeed = useDailyNoteSeed(dailyDate ?? null)
-  // One value, one spread: `needsSeed` already excludes dailies, so the two
-  // sources are mutually exclusive — computed here so the object below
-  // doesn't ask the reader to prove it.
-  const missingSeed = needsSeed ? seed.seed : lazyCreate && dailyNote ? dailySeed : undefined
-  const document = useNoteDocument(path, generation, {
-    createIfMissing: lazyCreate,
-    // Every editable regular note maintains title-addressed links and
-    // title-mirroring backlink displays. The coordinator separately limits
-    // title-derived file moves to Reflect-managed notes.
-    trackRenames: !dailyNote && !template,
-    // A missing ordinary note opens as a name-me template (old Reflect's
-    // new-note flow): the seed — `id:` frontmatter plus an empty H1 the
-    // caret lands in, ghosted "Untitled" by the title placeholder — only
-    // reaches disk if the user edits, and typing names the note. A missing
-    // daily opens on `templates/daily.md` instead, under the same contract:
-    // the seed is the clean baseline, so a day you look at and leave still
-    // writes nothing.
-    ...(missingSeed !== undefined ? { missingSeed } : {}),
-  })
+  // The document session plus the lazy-create/seed policy around it — see
+  // use-note-pane-document.
+  const { document, dailyNote } = useNotePaneDocument(path, generation, lazy, dailyDate)
   const { resolveImageUrl, resolveAssetOpenPath, openAsset, saveFile, resolveFileInfo, saveError } =
     useAssetPersistence(generation, path)
   // PDF and HTML attachments open in the in-app viewer; everything else keeps

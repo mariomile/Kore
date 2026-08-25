@@ -1,25 +1,17 @@
-import {
-  describePage,
-  isDescriptionRejected,
-  normalizedPageTitle,
-  type PageEnrichment,
-} from '../ai/describe-page'
+import { normalizedPageTitle, type PageEnrichment } from '../ai/describe-page'
 import { defaultAiProvider, type AiProvidersState } from '../ai/provider-config'
 import { aiApiKeyForConfig } from '../ai/secrets'
 import { errorMessage, isAppError, toAppError } from '../errors'
-import {
-  captureLinkPreview,
-  listFiles,
-  readAsset,
-  readNote,
-  writeAsset,
-  writeNote,
-} from '../graph/commands'
+import { listFiles, readNote, writeAsset, writeNote } from '../graph/commands'
 import { dailyPath } from '../graph/paths'
 import { hashContent } from '../indexing/hash'
 import { parseFrontmatter, splitFrontmatter, upsertFrontmatter } from '../markdown/frontmatter'
-import type { AiProviderConfig } from '../settings/schema'
 import type { ReconcileStop } from './audio-memo'
+import {
+  fetchLinkPreviewImage,
+  generateEnrichment,
+  readCaptureScreenshot,
+} from './capture-enrichment-helpers'
 import {
   finishCaptureWrite,
   hasCaptureWriteTransaction,
@@ -31,7 +23,6 @@ import { captureFromPath, type CaptureIdentity } from './capture-identity'
 import {
   captureDescriptionFromBody,
   captureNoteMeta,
-  capturePageTextFromBody,
   displayTitle,
   hasDescription,
   metadataValue,
@@ -40,7 +31,6 @@ import {
   withDescription,
   withScreenshot,
   withTitle,
-  type CaptureNoteMeta,
 } from './capture-note'
 import { scrapePageMeta, type PageMeta } from './meta-scrape'
 
@@ -95,75 +85,6 @@ export interface ReconcileCaptureEnrichmentOutcome {
   skipped: number
   /** Why captures remain pending, or `null` when the pass drained. */
   stopped: ReconcileStop | null
-}
-
-interface GenerateEnrichmentInput {
-  config: AiProviderConfig
-  apiKey: string
-  fetchFn?: typeof fetch | undefined
-  /** The pending capture's frontmatter keys (URL, screenshot asset). */
-  meta: CaptureNoteMeta
-  /** The note's current display title. */
-  title: string
-  scraped: PageMeta | null
-  /** The raw drain-written body (page text is extracted from it). */
-  body: string
-  screenshotBase64?: string | undefined
-}
-
-/**
- * The AI leg of one capture's enrichment: make the one-shot provider call and
- * treat a provider refusal as "no enrichment" (`null`) — the scraped meta is
- * the fallback. Transient failures (`auth`, `network`) propagate for retry.
- */
-async function generateEnrichment(input: GenerateEnrichmentInput): Promise<PageEnrichment | null> {
-  try {
-    return await describePage({
-      config: input.config,
-      apiKey: input.apiKey,
-      fetchFn: input.fetchFn,
-      url: input.meta.captureUrl,
-      title: input.title,
-      metaTitle: input.scraped?.title ?? undefined,
-      siteName: input.scraped?.siteName ?? undefined,
-      metaDescription: input.scraped?.description ?? undefined,
-      contentText: capturePageTextFromBody(input.body),
-      screenshotBase64: input.screenshotBase64,
-    })
-  } catch (cause) {
-    if (!isDescriptionRejected(cause)) {
-      throw cause
-    }
-    return null
-  }
-}
-
-async function readCaptureScreenshot(
-  meta: CaptureNoteMeta,
-  generation: number,
-): Promise<string | undefined> {
-  if (!meta.captureScreenshot) {
-    return undefined
-  }
-  try {
-    return await readAsset(meta.captureScreenshot, generation)
-  } catch (cause) {
-    if (!isAppError(cause) || cause.kind !== 'notFound') {
-      throw cause
-    }
-    return undefined
-  }
-}
-
-async function fetchLinkPreviewImage(meta: CaptureNoteMeta): Promise<string | null> {
-  if (meta.captureScreenshot) {
-    return null
-  }
-  try {
-    return await captureLinkPreview(meta.captureUrl)
-  } catch {
-    return null
-  }
 }
 
 /**

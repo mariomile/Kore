@@ -5,18 +5,26 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   DEFAULT_SETTINGS,
   untitledNotePath,
+  type ChatConversation,
   type GraphInfo,
   type PinnedNote,
   type Settings,
 } from '@reflect/core'
 import type { CommandContext } from '@/lib/commands/types'
 import type { NoteRoute, Route } from '@/routing/route'
+import type { ReactElement } from 'react'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { UpdateProvider } from '@/providers/update-provider'
-import { RouterProvider } from '@/routing/router'
+import { RouterProvider, useRouter } from '@/routing/router'
 import { expectLocatorToHaveCount } from '@/test-utils/expect'
 
 const getPinnedNotes = vi.hoisted(() => vi.fn<() => Promise<PinnedNote[]>>(async () => []))
+const listChatConversations = vi.hoisted(() =>
+  vi.fn<() => Promise<ChatConversation[]>>(async () => []),
+)
+const openConversation = vi.hoisted(() => vi.fn(async () => {}))
+const deleteConversation = vi.hoisted(() => vi.fn(async () => {}))
+const newChat = vi.hoisted(() => vi.fn())
 const listNoteTags = vi.hoisted(() =>
   vi.fn<() => Promise<{ tag: string; count: number }[]>>(async () => []),
 )
@@ -49,7 +57,16 @@ vi.mock('@reflect/core', async (importOriginal) => ({
   hasBridge: () => true,
   getPinnedNotes,
   listNoteTags,
+  listChatConversations,
   vaultScanStats: async () => ({ notes: 50, attachments: 0, skipped: 0 }),
+}))
+vi.mock('@/providers/chat-provider', () => ({
+  useChatSession: () => ({
+    activeConversationId: 'active-conversation',
+    openConversation,
+    deleteConversation,
+    newChat,
+  }),
 }))
 vi.mock('@tauri-apps/plugin-opener', () => ({ revealItemInDir }))
 vi.mock('@/lib/windows/open-in-new-window', async (importOriginal) => ({
@@ -64,6 +81,7 @@ vi.mock('@/lib/note-pin', async (importOriginal) => ({
 vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({
     graph: GRAPH,
+    indexGeneration: 1,
     recents: [
       { root: '/notes', name: 'Notes', openedMs: 2 },
       { root: '/work', name: 'Work', openedMs: 1 },
@@ -113,13 +131,21 @@ const GRAPH: GraphInfo = { root: '/notes', name: 'Notes', generation: 1 }
 
 // Import after the core mock so the command registry sees the mocked module.
 const { Sidebar } = await import('./sidebar')
+const { readSidebarSurface } = await import('./sidebar-surface')
 const { registerAppCommands } = await import('@/lib/commands/app-commands')
 registerAppCommands()
 
 beforeEach(() => {
+  // The selected surface persists in sessionStorage — reset it so a test
+  // that switched to Chat or Meetings can't leak its rail into the next.
+  window.sessionStorage.clear()
   // The hoisted mock is shared module state — restore it so mic-related cases
   // can't inherit mutations from earlier tests.
   getPinnedNotes.mockReset().mockResolvedValue([])
+  listChatConversations.mockReset().mockResolvedValue([])
+  openConversation.mockClear()
+  deleteConversation.mockClear()
+  newChat.mockClear()
   listNoteTags.mockReset().mockResolvedValue([])
   audioMemo.available = true
   audioMemo.unavailableReason = null
@@ -132,6 +158,16 @@ beforeEach(() => {
   openNativeContextMenu.mockClear()
   unpinNote.mockClear()
 })
+
+/**
+ * The sidebar's Chat and Meetings rails navigate through the live router
+ * (like the pinned rows), not the command context — this exposes the routed
+ * kind so those clicks can be asserted.
+ */
+function RouteProbe(): ReactElement {
+  const { route } = useRouter()
+  return <div data-testid="route-probe">{route.kind}</div>
+}
 
 async function renderSidebar(overrides?: Partial<CommandContext>, initialRoute?: Route) {
   const navigate = vi.fn()
@@ -176,6 +212,7 @@ async function renderSidebar(overrides?: Partial<CommandContext>, initialRoute?:
           <UpdateProvider autoCheck={false}>
             <RouterProvider initialRoute={initialRoute}>
               <Sidebar graph={GRAPH} context={context} />
+              <RouteProbe />
             </RouterProvider>
           </UpdateProvider>
         </QueryClientProvider>
@@ -434,6 +471,15 @@ describe('Sidebar', () => {
     expect(pickAndOpen).not.toHaveBeenCalled()
   })
 
+  it('the graph footer opens Insights from the graph menu', async () => {
+    const { view, navigate } = await renderSidebar()
+
+    await view.getByRole('button', { name: /Notes/ }).click()
+    await page.getByRole('menuitem', { name: /insights/i }).click()
+
+    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith({ kind: 'insights' }))
+  })
+
   it('the graph footer opens user settings from the graph menu', async () => {
     const { view, navigate } = await renderSidebar()
 
@@ -450,6 +496,83 @@ describe('Sidebar', () => {
     await page.getByRole('menuitem', { name: /reveal graph in finder/i }).click()
 
     expect(revealItemInDir).toHaveBeenCalledWith('/notes')
+  })
+
+  it('defaults to the Home rail and switches rails via the top-level rows', async () => {
+    const { view } = await renderSidebar()
+    await expect.element(view.getByRole('button', { name: /daily notes/i })).toBeVisible()
+
+    await view.getByRole('button', { name: 'Meetings' }).click()
+    expect(view.getByRole('button', { name: /daily notes/i }).query()).toBeNull()
+
+    await view.getByRole('button', { name: 'Home' }).click()
+    await expect.element(view.getByRole('button', { name: /daily notes/i })).toBeVisible()
+  })
+
+  it('picking Chat opens the chat screen alongside its rail', async () => {
+    const { view, navigate } = await renderSidebar()
+
+    await view.getByRole('button', { name: /^chat/i }).click()
+
+    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith({ kind: 'chat' }))
+    await expect.element(view.getByRole('button', { name: /new chat/i })).toBeVisible()
+    expect(view.getByRole('button', { name: /daily notes/i }).query()).toBeNull()
+  })
+
+  it('the Chat rail lists past conversations and opens one into the chat screen', async () => {
+    listChatConversations.mockResolvedValue([
+      { id: 'active-conversation', title: 'Roadmap questions', createdMs: 1, updatedMs: 2 },
+      { id: 'older', title: 'Older chat', createdMs: 1, updatedMs: 1 },
+    ])
+    const { view } = await renderSidebar()
+    await view.getByRole('button', { name: 'Chat' }).click()
+
+    await view.getByRole('button', { name: /^older chat/i }).click()
+
+    await vi.waitFor(() => expect(openConversation).toHaveBeenCalledWith('older'))
+    await expect.element(view.getByTestId('route-probe')).toHaveTextContent('chat')
+  })
+
+  it('the Chat rail starts a fresh conversation from New chat', async () => {
+    const { view } = await renderSidebar()
+    await view.getByRole('button', { name: 'Chat' }).click()
+
+    await view.getByRole('button', { name: /new chat/i }).click()
+
+    expect(newChat).toHaveBeenCalled()
+    await expect.element(view.getByTestId('route-probe')).toHaveTextContent('chat')
+  })
+
+  it('the Chat rail deletes a conversation from its hover affordance', async () => {
+    listChatConversations.mockResolvedValue([
+      { id: 'older', title: 'Older chat', createdMs: 1, updatedMs: 1 },
+    ])
+    const { view } = await renderSidebar()
+    await view.getByRole('button', { name: 'Chat' }).click()
+
+    await view.getByRole('button', { name: /delete “older chat”/i }).click({ force: true })
+
+    await vi.waitFor(() => expect(deleteConversation).toHaveBeenCalledWith('older'))
+  })
+
+  it('the Meetings rail points at Settings while the integration is off', async () => {
+    const { view } = await renderSidebar()
+    await view.getByRole('button', { name: 'Meetings' }).click()
+
+    await expect.element(view.getByText(/connect your calendar/i)).toBeVisible()
+    // Exact case: the graph footer's gear is "Open settings", the rail's
+    // call-to-action "Open Settings".
+    await view.getByRole('button', { name: 'Open Settings', exact: true }).click()
+
+    await expect.element(view.getByTestId('route-probe')).toHaveTextContent('settings')
+  })
+
+  it('the picked rail persists for the session', async () => {
+    const { view } = await renderSidebar()
+    await view.getByRole('button', { name: 'Meetings' }).click()
+
+    // What the next mount reads back — the round-trip the rail restores from.
+    await vi.waitFor(() => expect(readSidebarSurface()).toBe('meetings'))
   })
 
   it('the graph footer recolors the current graph', async () => {

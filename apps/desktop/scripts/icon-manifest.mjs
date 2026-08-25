@@ -23,6 +23,7 @@ export const SOLAR_ICONS = {
   ChevronRight: 'alt-arrow-right-linear',
   ChevronUp: 'alt-arrow-up-linear',
   Close: 'close-linear',
+  Home: 'home-2-linear',
   Command: 'command-linear',
   ExternalLink: 'square-share-line-linear',
   Keyboard: 'keyboard-linear',

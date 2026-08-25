@@ -13,6 +13,7 @@ import {
   type Unlisten,
 } from '@reflect/core'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
+import { addDaysIso } from '@/lib/dates'
 import { isMacosDesktop } from '@/lib/platform'
 import { isMobileSurface } from '@/lib/platform-surface'
 import { useSettings } from '@/providers/settings-provider'
@@ -102,6 +103,31 @@ export function useDayEvents(date: string): CalendarEvent[] {
   // Gate on `enabled`, not just the cache: the query keeps its last payload
   // after the integration is switched off, and stale meetings must not
   // linger in the sidebar.
+  return useMemo(() => (enabled ? displayEvents(query.data ?? []) : []), [enabled, query.data])
+}
+
+/** How many days ahead (today included) the sidebar's Meetings rail shows. */
+export const UPCOMING_EVENTS_DAYS = 7
+
+/**
+ * The displayable events of the {@link UPCOMING_EVENTS_DAYS}-day window
+ * starting on `fromDate` — the sidebar's Meetings rail. Same gating and
+ * display policy as {@link useDayEvents}, over a wider EventKit range.
+ */
+export function useUpcomingEvents(fromDate: string): CalendarEvent[] {
+  const { settings } = useSettings()
+  const available = useCalendarAvailable()
+  const enabled = settings.calendarEnabled && settings.calendarIds.length > 0 && available
+  const query = useQuery({
+    queryKey: ['calendar', 'events', 'upcoming', fromDate, settings.calendarIds],
+    queryFn: () => {
+      const start = dayRange(fromDate).start
+      const end = dayRange(addDaysIso(fromDate, UPCOMING_EVENTS_DAYS - 1)).end
+      return listCalendarEvents(start, end, settings.calendarIds)
+    },
+    enabled,
+    staleTime: 60_000,
+  })
   return useMemo(() => (enabled ? displayEvents(query.data ?? []) : []), [enabled, query.data])
 }
 

@@ -3,9 +3,9 @@ import { hasMacosTitleBarOverlay } from '@/lib/window-chrome'
 
 /**
  * Live macOS-window fullscreen as a module-level store. The traffic-light
- * inset keys off this: overlay title-bar chrome still reports
+ * band keys off this: overlay title-bar chrome still reports
  * {@link hasMacosTitleBarOverlay} in fullscreen, but the lights themselves
- * are gone, so layout must drop the left indent.
+ * are gone, so layout must drop the reserved strip.
  *
  * One resize listener + one `isFullscreen` reader per window, not per
  * mounted hook. Resize is the signal native fullscreen actually sends

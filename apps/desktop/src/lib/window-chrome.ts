@@ -23,13 +23,13 @@ export const hasMacosTitleBarOverlay: boolean =
   navigator.maxTouchPoints === 0
 
 /**
- * Whether chrome should indent past the overlaid traffic lights.
+ * Whether chrome should reserve layout space for the overlaid traffic
+ * lights (the dedicated 28px band in `WorkspaceContent`).
  *
  * The lights occupy the top-left only while the window is in the ordinary
  * windowed/zoomed state. Native fullscreen hides them (they reappear as a
- * hover overlay, not a layout reservation), so keeping the inset would be
- * dead space that crushes the sidebar surface bar against the search/mic
- * cluster.
+ * hover overlay, not a layout reservation), so keeping the band would be a
+ * blank strip across the window.
  */
 export function needsMacosTrafficLightInset(overlay: boolean, isFullscreen: boolean): boolean {
   return overlay && !isFullscreen

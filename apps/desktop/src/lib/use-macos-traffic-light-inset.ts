@@ -3,9 +3,9 @@ import { getMacosFullscreenSnapshot, subscribeMacosFullscreen } from '@/lib/maco
 import { hasMacosTitleBarOverlay, needsMacosTrafficLightInset } from '@/lib/window-chrome'
 
 /**
- * Live "should chrome clear the traffic lights?" flag. False on every
- * non-overlay platform, and on macOS once the window is fullscreen so the
- * Home/Chat/Meetings bar can use the width the lights were sitting on.
+ * Live "should chrome reserve space for the traffic lights?" flag. False on
+ * every non-overlay platform, and on macOS once the window is fullscreen so
+ * the dedicated title-bar band can collapse.
  */
 export function useMacosTrafficLightInset(): boolean {
   const isFullscreen = useSyncExternalStore(

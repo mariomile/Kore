@@ -89,9 +89,7 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
   const assets = new Map<string, string>()
   // In-memory keychain stand-in so the AI-provider settings flow (and chat,
   // against a CORS-permissive provider) works end-to-end in the harness.
-  const secrets = new Map<string, string>([
-    [aiKeySecretName(demoProvider.id), APP_REVIEW_STUB_KEY],
-  ])
+  const secrets = new Map<string, string>([[aiKeySecretName(demoProvider.id), APP_REVIEW_STUB_KEY]])
 
   async function invoke(command: string, args: Record<string, unknown>): Promise<unknown> {
     switch (command) {

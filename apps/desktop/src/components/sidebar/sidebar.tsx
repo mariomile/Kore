@@ -1,9 +1,11 @@
-import type { ReactElement } from 'react'
+import { useState, type ReactElement } from 'react'
 import {
+  Calendar,
   Chart,
   Chat,
   Checklist,
   Graph,
+  Home,
   Note,
   NoteEdit,
   Pencil,
@@ -24,11 +26,14 @@ import { notePathForRoute } from '@/routing/route'
 import { useRouter } from '@/routing/router'
 import { useShowAdvancedSurfaces } from '@/hooks/use-show-advanced-surfaces'
 import { GraphFooter } from './graph-footer'
+import { SidebarChatSection } from './sidebar-chat-section'
 import { SidebarItem } from './sidebar-item'
+import { SidebarMeetingsSection } from './sidebar-meetings-section'
 import { SidebarOpenNotes } from './sidebar-open-notes'
 import { SidebarPinned } from './sidebar-pinned'
 import { SidebarSearch } from './sidebar-search'
 import { SidebarTags } from './sidebar-tags'
+import { readSidebarSurface, storeSidebarSurface, type SidebarSurface } from './sidebar-surface'
 
 interface SidebarProps {
   graph: GraphInfo
@@ -37,21 +42,31 @@ interface SidebarProps {
 }
 
 /**
- * The workspace sidebar: search, primary navigation with hover-revealed shortcut keycaps, the
- * Pinned shelf, and the graph switcher footer. Most nav rows run registered
- * commands so a binding and its behavior stay one definition; the Daily notes
- * row is a capture gesture like `Mod-D` — it asks the stream to focus today
- * with the caret at the end, ready to append. (Sidebar collapse stays on
- * `Mod-\` via the command registry.)
+ * The workspace sidebar. The title-bar band (search + audio memo) and the
+ * graph-switcher footer are fixtures; between them the rail is one of three
+ * surfaces picked by the top-level rows — Home (the classic navigation plus
+ * the Open/Pinned/Tags shelves), Chat (the AI conversation list), and
+ * Meetings (the coming week's calendar events). Picking Chat also opens the
+ * chat screen, since its rail is only useful beside the conversation. Most
+ * nav rows run registered commands so a binding and its behavior stay one
+ * definition; the Daily notes row is a capture gesture like `Mod-D` — it asks
+ * the stream to focus today with the caret at the end, ready to append.
+ * (Sidebar collapse stays on `Mod-\` via the command registry.)
  */
 export function Sidebar({ graph, context }: SidebarProps): ReactElement {
   const { route } = useRouter()
   const today = useToday()
   const pinned = usePinnedNotes()
   const showAdvanced = useShowAdvancedSurfaces()
+  const [surface, setSurface] = useState<SidebarSurface>(readSidebarSurface)
   const currentNotePath = notePathForRoute(route, today)
   const hasActivePinnedNote =
     currentNotePath !== null && pinned.some((note) => note.path === currentNotePath)
+
+  const selectSurface = (next: SidebarSurface): void => {
+    setSurface(next)
+    storeSidebarSurface(next)
+  }
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -75,93 +90,120 @@ export function Sidebar({ graph, context }: SidebarProps): ReactElement {
           </div>
         </div>
 
-        <nav aria-label="Primary" className="mt-5 space-y-1 px-2">
+        <nav aria-label="Sidebar surfaces" className="mt-5 space-y-1 px-2">
           <SidebarItem
-            icon={<Pencil className="size-3.5" />}
-            label="Daily notes"
-            binding={keybindingFor('nav.today') ?? undefined}
-            active={(route.kind === 'today' || route.kind === 'daily') && !hasActivePinnedNote}
-            onClick={() => void runCommand('nav.today', context)}
-          />
-          <SidebarItem
-            icon={<NoteEdit className="size-3.5" />}
-            label="New note"
-            binding={keybindingFor('note.new') ?? undefined}
-            // Active while the open note is still on its ULID placeholder
-            // name — the state this row creates. The birth rename onto a
-            // title slug is also what hands the note off to ordinary
-            // navigation, releasing the highlight.
-            active={route.kind === 'note' && isUntitledNotePath(route.path)}
-            onClick={() => void runCommand('note.new', context)}
-          />
-          <SidebarItem
-            icon={<Note className="size-3.5" />}
-            label="All notes"
-            binding={keybindingFor('nav.allNotes') ?? undefined}
-            // A named note lives in the All Notes collection, so keep this row
-            // lit while editing one. A brand-new note is still an untitled
-            // placeholder, though, and the "New note" row above owns that
-            // highlight until the birth rename — so the two never light at once.
-            active={
-              route.kind === 'allNotes' ||
-              (route.kind === 'note' && !isUntitledNotePath(route.path) && !hasActivePinnedNote)
-            }
-            onClick={() => void runCommand('nav.allNotes', context)}
-          />
-          <SidebarItem
-            icon={<Checklist className="size-3.5" />}
-            label="Tasks"
-            binding={keybindingFor('nav.tasks') ?? undefined}
-            active={route.kind === 'tasks'}
-            onClick={() => void runCommand('nav.tasks', context)}
+            icon={<Home className="size-3.5" />}
+            label="Home"
+            active={surface === 'home'}
+            onClick={() => selectSurface('home')}
           />
           <SidebarItem
             icon={<Chat className="size-3.5" />}
             label="Chat"
             binding={keybindingFor('chat.open') ?? undefined}
-            active={route.kind === 'chat'}
-            onClick={() => void runCommand('chat.open', context)}
-          />
-          {showAdvanced ? (
-            <SidebarItem
-              icon={<User className="size-3.5" />}
-              label="Agents"
-              binding={keybindingFor('nav.agents') ?? undefined}
-              active={route.kind === 'agents'}
-              onClick={() => void runCommand('nav.agents', context)}
-            />
-          ) : null}
-          <SidebarItem
-            icon={<Chart className="size-3.5" />}
-            label="Insights"
-            binding={keybindingFor('nav.insights') ?? undefined}
-            active={route.kind === 'insights'}
-            onClick={() => void runCommand('nav.insights', context)}
+            active={surface === 'chat'}
+            onClick={() => {
+              selectSurface('chat')
+              void runCommand('chat.open', context)
+            }}
           />
           <SidebarItem
-            icon={<Graph className="size-3.5" />}
-            label="Graph"
-            binding={keybindingFor('nav.graphMap') ?? undefined}
-            active={route.kind === 'graphMap'}
-            onClick={() => void runCommand('nav.graphMap', context)}
+            icon={<Calendar className="size-3.5" />}
+            label="Meetings"
+            active={surface === 'meetings'}
+            onClick={() => selectSurface('meetings')}
           />
-          {isMobileSurface() ? null : (
-            <SidebarItem
-              icon={<Terminal className="size-3.5" />}
-              label="Terminal"
-              binding={keybindingFor('nav.terminal') ?? undefined}
-              active={route.kind === 'terminal'}
-              onClick={() => void runCommand('nav.terminal', context)}
-            />
-          )}
         </nav>
       </div>
 
-      <div className="mt-1 min-h-0 flex-1 overflow-y-auto pb-2">
-        <SidebarOpenNotes />
-        <SidebarPinned />
-        <SidebarTags />
-      </div>
+      {surface === 'home' && (
+        <>
+          <nav
+            aria-label="Primary"
+            className="mt-4 flex-none space-y-1 border-t border-border/50 px-2 pt-4"
+          >
+            <SidebarItem
+              icon={<Pencil className="size-3.5" />}
+              label="Daily notes"
+              binding={keybindingFor('nav.today') ?? undefined}
+              active={(route.kind === 'today' || route.kind === 'daily') && !hasActivePinnedNote}
+              onClick={() => void runCommand('nav.today', context)}
+            />
+            <SidebarItem
+              icon={<NoteEdit className="size-3.5" />}
+              label="New note"
+              binding={keybindingFor('note.new') ?? undefined}
+              // Active while the open note is still on its ULID placeholder
+              // name — the state this row creates. The birth rename onto a
+              // title slug is also what hands the note off to ordinary
+              // navigation, releasing the highlight.
+              active={route.kind === 'note' && isUntitledNotePath(route.path)}
+              onClick={() => void runCommand('note.new', context)}
+            />
+            <SidebarItem
+              icon={<Note className="size-3.5" />}
+              label="All notes"
+              binding={keybindingFor('nav.allNotes') ?? undefined}
+              // A named note lives in the All Notes collection, so keep this row
+              // lit while editing one. A brand-new note is still an untitled
+              // placeholder, though, and the "New note" row above owns that
+              // highlight until the birth rename — so the two never light at once.
+              active={
+                route.kind === 'allNotes' ||
+                (route.kind === 'note' && !isUntitledNotePath(route.path) && !hasActivePinnedNote)
+              }
+              onClick={() => void runCommand('nav.allNotes', context)}
+            />
+            <SidebarItem
+              icon={<Checklist className="size-3.5" />}
+              label="Tasks"
+              binding={keybindingFor('nav.tasks') ?? undefined}
+              active={route.kind === 'tasks'}
+              onClick={() => void runCommand('nav.tasks', context)}
+            />
+            {showAdvanced ? (
+              <SidebarItem
+                icon={<User className="size-3.5" />}
+                label="Agents"
+                binding={keybindingFor('nav.agents') ?? undefined}
+                active={route.kind === 'agents'}
+                onClick={() => void runCommand('nav.agents', context)}
+              />
+            ) : null}
+            <SidebarItem
+              icon={<Chart className="size-3.5" />}
+              label="Insights"
+              binding={keybindingFor('nav.insights') ?? undefined}
+              active={route.kind === 'insights'}
+              onClick={() => void runCommand('nav.insights', context)}
+            />
+            <SidebarItem
+              icon={<Graph className="size-3.5" />}
+              label="Graph"
+              binding={keybindingFor('nav.graphMap') ?? undefined}
+              active={route.kind === 'graphMap'}
+              onClick={() => void runCommand('nav.graphMap', context)}
+            />
+            {isMobileSurface() ? null : (
+              <SidebarItem
+                icon={<Terminal className="size-3.5" />}
+                label="Terminal"
+                binding={keybindingFor('nav.terminal') ?? undefined}
+                active={route.kind === 'terminal'}
+                onClick={() => void runCommand('nav.terminal', context)}
+              />
+            )}
+          </nav>
+          <div className="mt-1 min-h-0 flex-1 overflow-y-auto pb-2">
+            <SidebarOpenNotes />
+            <SidebarPinned />
+            <SidebarTags />
+          </div>
+        </>
+      )}
+
+      {surface === 'chat' && <SidebarChatSection />}
+      {surface === 'meetings' && <SidebarMeetingsSection />}
 
       <GraphFooter graph={graph} context={context} />
     </div>

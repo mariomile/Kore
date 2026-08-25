@@ -4,6 +4,7 @@ import { NotePane } from '@/components/note-pane'
 import { IncomingBacklinks } from '@/mobile/incoming-backlinks'
 import { MOBILE_CONTENT_GUTTER } from '@/mobile/mobile-content-gutter'
 import { MobileScreenHeader } from '@/mobile/screen-header'
+import { useBarHeightVar } from '@/mobile/use-bar-height'
 import { NoteActionsMenu } from '@/mobile/note-actions-menu'
 import { cn } from '@/lib/utils'
 import { useRouter } from '@/routing/router'
@@ -21,14 +22,13 @@ import { useRouter } from '@/routing/router'
  */
 export function MobileNote({ path }: { path: string }): ReactElement {
   const { back, canBack, navigate } = useRouter()
+  const { scopeRef, barRef } = useBarHeightVar('--mobile-header-height')
   const untitled = isUntitledNotePath(path)
 
   return (
-    <div
-      className="flex h-full w-screen flex-col"
-      style={{ paddingTop: 'env(safe-area-inset-top)' }}
-    >
+    <div ref={scopeRef} className="relative flex h-full w-screen flex-col">
       <MobileScreenHeader
+        ref={barRef}
         title={untitled ? 'New note' : 'Edit note'}
         onBack={() => (canBack ? back() : navigate({ kind: 'today' }))}
         trailing={
@@ -40,10 +40,15 @@ export function MobileNote({ path }: { path: string }): ReactElement {
       />
       <main
         className="min-h-0 flex-1 overflow-y-auto"
+        // The chrome floats: the scroller runs the full screen and pads past
+        // the glass header and tab bar, so content scrolls under both.
         // Keyboard avoidance is the shell root's job (it ends at the
-        // keyboard's top); this only clears the home indicator when the
-        // keyboard is down.
-        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+        // keyboard's top); the bottom fallback only clears the home
+        // indicator while the tab bar is hidden.
+        style={{
+          paddingTop: 'var(--mobile-header-height, 0px)',
+          paddingBottom: 'var(--mobile-tab-bar-height, env(safe-area-inset-bottom))',
+        }}
       >
         <NotePane
           path={path}

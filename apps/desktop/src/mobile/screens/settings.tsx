@@ -25,6 +25,7 @@ import { ConnectGithubDrawer } from '@/mobile/connect-github-drawer'
 import { PRIVACY_POLICY_URL, TERMS_OF_USE_URL } from '@/mobile/legal-urls'
 import { MobileCalendarSettings } from '@/mobile/mobile-calendar-settings'
 import { MobileScreenHeader } from '@/mobile/screen-header'
+import { useBarHeightVar } from '@/mobile/use-bar-height'
 import { MobileAppearanceGroup } from '@/mobile/settings-appearance-group'
 import {
   SettingsActionRow,
@@ -62,6 +63,7 @@ function aiProviderValue(provider: AiProviderConfig, defaultProviderId: string |
  */
 export function MobileSettings(): ReactElement {
   const { back, canBack, navigate } = useRouter()
+  const { scopeRef, barRef } = useBarHeightVar('--mobile-header-height')
   const { graph, mobileStorageKind, platform } = useGraph()
   const isIos = platform === 'ios'
   const { activeSubscription } = useActiveSubscription()
@@ -150,17 +152,18 @@ export function MobileSettings(): ReactElement {
         : undefined
 
   return (
-    <div
-      className="flex h-full w-screen flex-col"
-      style={{ paddingTop: 'env(safe-area-inset-top)' }}
-    >
+    <div ref={scopeRef} className="relative flex h-full w-screen flex-col">
       <MobileScreenHeader
+        ref={barRef}
         title="Settings"
         onBack={() => (canBack ? back() : navigate({ kind: 'today' }))}
       />
       <main
         className="min-h-0 flex-1 overflow-y-auto"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+        style={{
+          paddingTop: 'var(--mobile-header-height, 0px)',
+          paddingBottom: 'var(--mobile-tab-bar-height, env(safe-area-inset-bottom))',
+        }}
       >
         <div className="flex flex-col gap-6 px-4 py-4">
           <SettingsGroup header="Graph">

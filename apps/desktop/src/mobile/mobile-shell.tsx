@@ -100,24 +100,24 @@ export function MobileShell(): ReactElement {
       className="flex w-screen flex-col"
       style={{ height: 'calc(100dvh - var(--keyboard-height, 0px))' }}
     >
-      <div className="min-h-0 flex-1">
+      <div className="relative min-h-0 flex-1">
         <MobileStack
           allQuery={allQuery}
           onAllQueryChange={setAllQuery}
           allFilters={allFilters}
           onAllFiltersChange={setAllFilters}
         />
+        {/* The tab bar floats over the stack as a translucent glass bar —
+            screens pad their scrollers past `--mobile-tab-bar-height`, so
+            content scrolls under it rather than stopping above. */}
+        {keyboardVisible ? null : <MobileTabBar tab={tab} onSelect={handleTabSelect} />}
       </div>
       {/* V1 lets the keyboard cover the tab bar; with the root shrunk it
           would ride above the keyboard instead, so it hides while typing.
           Its slot goes to the formatting toolbar, which — sitting at the
           bottom of a root that ends at the keyboard's top — lands exactly
           on the keyboard edge with no fixed positioning. */}
-      {keyboardVisible ? (
-        <MobileFormattingToolbar />
-      ) : (
-        <MobileTabBar tab={tab} onSelect={handleTabSelect} />
-      )}
+      {keyboardVisible ? <MobileFormattingToolbar /> : null}
     </div>
   )
 }

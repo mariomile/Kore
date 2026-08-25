@@ -109,7 +109,7 @@ export function CalendarStrip({
 
   return (
     <header
-      className="shrink-0 border-b border-border px-2 pb-1"
+      className="mobile-glass-bar z-30 shrink-0 border-b border-border px-2 pb-1"
       style={{ paddingTop: 'env(safe-area-inset-top)' }}
     >
       {/* Three equal-flanked columns so the month sits at the screen's center

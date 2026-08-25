@@ -59,7 +59,14 @@ export function MobileChatComposer(): ReactElement {
   }
 
   return (
-    <div ref={composerRef} className="absolute inset-x-0 bottom-0 z-10 px-3 pb-2">
+    // The card floats above the glass tab bar (its published height is the
+    // offset); with the keyboard up the tab bar unmounts, its variable
+    // clears, and the card lands on the keyboard's top edge.
+    <div
+      ref={composerRef}
+      className="absolute inset-x-0 z-10 px-3 pb-2"
+      style={{ bottom: 'var(--mobile-tab-bar-height, 0px)' }}
+    >
       <div className="rounded-2xl border border-border bg-popover shadow-md focus-within:border-ring">
         {attachments.length > 0 ? (
           <AttachmentGroup className="flex-wrap gap-2 overflow-visible px-3 pt-3">

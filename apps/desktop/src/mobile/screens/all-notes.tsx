@@ -30,6 +30,7 @@ import { propertyLine } from '@/mobile/property-line'
 import { SearchInput } from '@/mobile/search-input'
 import type { NoteRowModel } from '@/mobile/swipeable-note-row'
 import { useArrivalFocus } from '@/mobile/use-arrival-focus'
+import { useBarHeightVar } from '@/mobile/use-bar-height'
 import { useGraph } from '@/providers/graph-provider'
 import { useSettings } from '@/providers/settings-provider'
 import { routeForPath } from '@/routing/route'
@@ -93,6 +94,7 @@ export function MobileAllNotes({
   const { settings, updateSettings } = useSettings()
   const view = settings.allNotesView
   const { navigate, back, arrivalSeq, arrivalFocusEditor } = useRouter()
+  const { scopeRef, barRef } = useBarHeightVar('--mobile-header-height')
   const queryClient = useQueryClient()
   const bridgeReady = useBridgeReady()
   const enabled = bridgeReady && graph !== null
@@ -174,11 +176,12 @@ export function MobileAllNotes({
   }
 
   return (
-    <div
-      className="flex h-full w-screen flex-col"
-      style={{ paddingTop: 'env(safe-area-inset-top)' }}
-    >
-      <header className="shrink-0 space-y-2 border-b border-border px-4 pb-2 pt-1">
+    <div ref={scopeRef} className="relative flex h-full w-screen flex-col">
+      <header
+        ref={barRef}
+        className="mobile-glass-bar absolute inset-x-0 top-0 z-30 space-y-2 border-b border-border px-4 pb-2"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top) + 0.25rem)' }}
+      >
         <div className="flex items-center gap-1">
           {tag !== null && (
             <Button
@@ -224,7 +227,11 @@ export function MobileAllNotes({
       {/* Undefined hits mean "still fetching" only while the query can run —
           with no bridge/graph it never will, and the empty state is honest. */}
       {enabled && hits === undefined ? (
-        <div className="flex flex-1 items-center justify-center" aria-label="Loading notes">
+        <div
+          className="flex flex-1 items-center justify-center"
+          style={{ paddingTop: 'var(--mobile-header-height, 0px)' }}
+          aria-label="Loading notes"
+        >
           <Spinner className="size-5 text-text-muted" />
         </div>
       ) : (hits ?? []).length === 0 ? (
@@ -278,7 +285,10 @@ function TagSuggestions({
 
 function Empty({ icon, message }: { icon: ReactElement; message: string }): ReactElement {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-2 text-text-muted">
+    <div
+      className="flex flex-1 flex-col items-center justify-center gap-2 text-text-muted"
+      style={{ paddingTop: 'var(--mobile-header-height, 0px)' }}
+    >
       {icon}
       <p className="text-sm">{message}</p>
     </div>

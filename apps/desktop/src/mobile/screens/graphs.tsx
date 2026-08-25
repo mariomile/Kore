@@ -8,6 +8,7 @@ import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { graphNameFromRoot } from '@/lib/graph-names'
 import { NewGraphDrawer } from '@/mobile/new-graph-drawer'
 import { MobileScreenHeader } from '@/mobile/screen-header'
+import { useBarHeightVar } from '@/mobile/use-bar-height'
 import { SettingsActionRow, SettingsGroup, SettingsSelectRow } from '@/mobile/settings-list'
 import { useGraph } from '@/providers/graph-provider'
 import { useRouter } from '@/routing/router'
@@ -25,6 +26,7 @@ import { useRouter } from '@/routing/router'
  */
 export function MobileGraphs(): ReactElement {
   const { back, canBack, navigate } = useRouter()
+  const { scopeRef, barRef } = useBarHeightVar('--mobile-header-height')
   const { graph, completeOnboarding } = useGraph()
   const [pendingRoot, setPendingRoot] = useState<string | null>(null)
   const [switchError, setSwitchError] = useState<string | null>(null)
@@ -72,17 +74,18 @@ export function MobileGraphs(): ReactElement {
   }
 
   return (
-    <div
-      className="flex h-full w-screen flex-col"
-      style={{ paddingTop: 'env(safe-area-inset-top)' }}
-    >
+    <div ref={scopeRef} className="relative flex h-full w-screen flex-col">
       <MobileScreenHeader
+        ref={barRef}
         title="Graphs"
         onBack={() => (canBack ? back() : navigate({ kind: 'settings' }))}
       />
       <main
         className="min-h-0 flex-1 overflow-y-auto"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+        style={{
+          paddingTop: 'var(--mobile-header-height, 0px)',
+          paddingBottom: 'var(--mobile-tab-bar-height, env(safe-area-inset-bottom))',
+        }}
       >
         <div className="flex flex-col gap-6 px-4 py-4">
           <SettingsGroup

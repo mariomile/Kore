@@ -44,6 +44,10 @@ export function MobileTaskGroup({
 
   return (
     <section>
+      {/* Sticky offsets resolve against the scroller's content box, so the
+          scroller's own glass-header padding-top already pins this below the
+          floating header — top-0 is the correct offset, not the header
+          height (which would double it). */}
       <div className="sticky top-0 z-10 flex items-center gap-2 bg-surface-sunken px-4 py-1.5">
         <h2 className={cn('flex min-w-0 items-center gap-2 text-sm font-medium', labelClass)}>
           <span className={iconClass}>{icon}</span>

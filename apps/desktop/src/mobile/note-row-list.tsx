@@ -32,9 +32,15 @@ export function NoteRowList({ rows, onOpen, onDeleted }: NoteRowListProps): Reac
     <>
       <div
         className="min-h-0 flex-1 overflow-y-auto"
-        // Keyboard avoidance is the shell root's job (it ends at the keyboard's
-        // top); this only clears the home indicator when the keyboard is down.
-        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+        // The chrome floats: the list runs the full screen and pads past the
+        // glass header and tab bar, so rows scroll under both. Keyboard
+        // avoidance is the shell root's job (it ends at the keyboard's top);
+        // the bottom fallback only clears the home indicator while the tab
+        // bar is hidden.
+        style={{
+          paddingTop: 'var(--mobile-header-height, 0px)',
+          paddingBottom: 'var(--mobile-tab-bar-height, env(safe-area-inset-bottom))',
+        }}
         onScroll={() => setRevealedPath(null)}
       >
         <Virtualizer as="ul" item="li" data={rows} itemSize={NOTE_ROW_HEIGHT} bufferSize={640}>

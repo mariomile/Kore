@@ -905,6 +905,16 @@ html[data-sidebar-resizing] aside {
   backdrop-filter: blur(var(--layer-blur)) saturate(var(--layer-saturate));
 }
 
+/* Mobile shell chrome (headers, tab bar): the same translucency knobs as the
+   floating layers above, but mixed from the app background rather than the
+   popover surface — the bars read as part of the shell, and the content
+   scrolling under them is what sells the depth. */
+.mobile-glass-bar {
+  background: color-mix(in srgb, var(--surface-app) 78%, transparent);
+  -webkit-backdrop-filter: blur(var(--layer-blur, 20px)) saturate(var(--layer-saturate, 140%));
+  backdrop-filter: blur(var(--layer-blur, 20px)) saturate(var(--layer-saturate, 140%));
+}
+
 /* ============================================================
    Liquid Glass — activated by `data-glass="on"` on the root
    element (ThemeProvider, mirrored pre-paint by theme-init.js).

@@ -16,10 +16,17 @@ describe('MobileScreenHeader', () => {
     if (header === null) {
       throw new Error('expected a header')
     }
-    expect(Array.from(header.classList)).toContain('grid')
-    expect(Array.from(header.classList)).toContain('h-11')
-    expect(Array.from(header.classList)).toContain('grid-cols-[2.5rem_minmax(0,1fr)_2.5rem]')
-    expect(Array.from(header.classList)).toContain('items-center')
+    // The header floats as a glass bar; the balanced grid row lives inside
+    // it, under the safe-area padding the bar owns.
+    expect(Array.from(header.classList)).toContain('mobile-glass-bar')
+    const row = header.firstElementChild
+    if (row === null) {
+      throw new Error('expected the header row')
+    }
+    expect(Array.from(row.classList)).toContain('grid')
+    expect(Array.from(row.classList)).toContain('h-11')
+    expect(Array.from(row.classList)).toContain('grid-cols-[2.5rem_minmax(0,1fr)_2.5rem]')
+    expect(Array.from(row.classList)).toContain('items-center')
 
     expect(Array.from(view.getByRole('button', { name: 'Back' }).element().classList)).toContain(
       'justify-self-center',

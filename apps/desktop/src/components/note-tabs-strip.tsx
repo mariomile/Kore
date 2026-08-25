@@ -4,7 +4,7 @@ import { NoteTabsPlusMenu } from '@/components/note-tabs-plus-menu'
 import { NavigateArrows } from '@/components/sidebar/navigate-arrows'
 import { useOpenTabNotes, type OpenTabNote } from '@/hooks/use-open-tab-notes'
 import type { CommandContext } from '@/lib/commands/types'
-import { hasMacosTitleBarOverlay } from '@/lib/window-chrome'
+import { useMacosTrafficLightInset } from '@/lib/use-macos-traffic-light-inset'
 import { cn } from '@/lib/utils'
 import { useOpenTabs } from '@/providers/open-tabs-provider'
 import { useSidebar } from '@/providers/sidebar-provider'
@@ -12,7 +12,8 @@ import { useSidebar } from '@/providers/sidebar-provider'
 interface NoteTabsStripProps {
   /**
    * True when the bar reaches the window's left edge (sidebar collapsed) —
-   * only then does the macOS traffic-light inset apply. With the sidebar
+   * only then does the macOS traffic-light inset apply, and only while the
+   * lights actually occupy that corner (not in fullscreen). With the sidebar
    * open, the sidebar owns that corner and the bar starts beside it.
    */
   atWindowEdge?: boolean
@@ -38,6 +39,7 @@ export function NoteTabsStrip({
     useOpenTabs()
   const notes = useOpenTabNotes()
   const { collapsed, toggleSidebar, contextCollapsed, toggleContextSidebar } = useSidebar()
+  const trafficLightInset = useMacosTrafficLightInset()
 
   return (
     <div
@@ -46,11 +48,13 @@ export function NoteTabsStrip({
         // `surface-sunken` matches the two rails flanking the bar — the whole
         // chrome band reads as one color in every theme (several themes tint
         // `surface-app` differently, which left the strip a mismatched stripe).
-        'flex h-11 w-full flex-none items-center gap-1 bg-surface-sunken pr-2.5',
+        'flex h-11 w-full flex-none items-center gap-1 bg-surface-sunken pr-2.5 transition-[padding] duration-200 ease-swift',
         // With the overlaid macOS title bar the traffic lights own the left
-        // edge — but only when the bar actually reaches it. 4.5rem clears
-        // the lights while keeping the toggles as far left as they can sit.
-        hasMacosTitleBarOverlay && atWindowEdge ? 'pl-[4.5rem]' : 'pl-1',
+        // edge — but only when the bar actually reaches it *and* the lights
+        // are on screen. Fullscreen hides them; keeping 4.5rem would be a
+        // blank gap. 4.5rem otherwise clears the lights while keeping the
+        // toggles as far left as they can sit.
+        trafficLightInset && atWindowEdge ? 'pl-[4.5rem]' : 'pl-1',
       )}
     >
       <div className="window-drag-control flex items-center">

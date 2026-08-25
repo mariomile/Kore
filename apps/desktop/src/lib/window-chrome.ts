@@ -9,11 +9,31 @@ import { isTauri } from '@tauri-apps/api/core'
  * desktop platforms keep their native title bars, and iPadOS — whose user
  * agent masquerades as macOS — is excluded by the touch-point check.
  *
- * Layout that must clear the title-bar zone (the top 28px, `h-7`/`pt-7`)
- * keys off this; the zone itself is claimed by `WindowDragRegion`.
+ * This is a *platform* fact, not the current window state. Fullscreen still
+ * reports true here (the overlay style is unchanged) even though macOS has
+ * hidden the lights — layout that must clear them should go through
+ * {@link needsMacosTrafficLightInset} instead. The title-bar *zone* (the
+ * top 28px, `h-7`/`pt-7`) still keys off this; it is claimed by
+ * `WindowDragRegion`.
  */
 export const hasMacosTitleBarOverlay: boolean =
   isTauri() &&
   typeof navigator !== 'undefined' &&
   navigator.userAgent.includes('Macintosh') &&
   navigator.maxTouchPoints === 0
+
+/**
+ * Whether chrome should indent past the overlaid traffic lights.
+ *
+ * The lights occupy the top-left only while the window is in the ordinary
+ * windowed/zoomed state. Native fullscreen hides them (they reappear as a
+ * hover overlay, not a layout reservation), so keeping the inset would be
+ * dead space that crushes the sidebar surface bar against the search/mic
+ * cluster.
+ */
+export function needsMacosTrafficLightInset(
+  overlay: boolean,
+  isFullscreen: boolean,
+): boolean {
+  return overlay && !isFullscreen
+}

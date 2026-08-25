@@ -9,7 +9,7 @@ import { useToday } from '@/lib/use-today'
 import type { CommandContext } from '@/lib/commands/types'
 import { isMobileSurface } from '@/lib/platform-surface'
 import { cn } from '@/lib/utils'
-import { hasMacosTitleBarOverlay } from '@/lib/window-chrome'
+import { useMacosTrafficLightInset } from '@/lib/use-macos-traffic-light-inset'
 import { notePathForRoute } from '@/routing/route'
 import { useRouter } from '@/routing/router'
 import { useShowAdvancedSurfaces } from '@/hooks/use-show-advanced-surfaces'
@@ -49,6 +49,7 @@ export function Sidebar({ graph, context }: SidebarProps): ReactElement {
   const pinned = usePinnedNotes()
   const showAdvanced = useShowAdvancedSurfaces()
   const [surface, setSurface] = useState<SidebarSurface>(readSidebarSurface)
+  const trafficLightInset = useMacosTrafficLightInset()
   const currentNotePath = notePathForRoute(route, today)
   const hasActivePinnedNote =
     currentNotePath !== null && pinned.some((note) => note.path === currentNotePath)
@@ -65,15 +66,17 @@ export function Sidebar({ graph, context }: SidebarProps): ReactElement {
             context rail's switcher — one optical line across the window,
             level with the sidebar-collapse toggle. On macOS the overlaid
             traffic lights own the band's left edge, so the row starts past
-            them. The surface pills anchor the band's left edge and the
-            lens + mic its right one; each group sits inside
-            window-drag-control so it stays clickable while the stretch
-            between them still drags the window. */}
+            them — except in fullscreen, where the lights hide and that
+            indent would crush the surface pills against the lens + mic.
+            The surface pills anchor the band's left edge and the lens +
+            mic its right one; each group sits inside window-drag-control
+            so it stays clickable while the stretch between them still
+            drags the window. */}
         <div
           data-tauri-drag-region
           className={cn(
-            'flex h-11 flex-none items-center pr-2',
-            hasMacosTitleBarOverlay ? 'pl-20' : 'pl-3',
+            'flex h-11 flex-none items-center pr-2 transition-[padding] duration-200 ease-swift',
+            trafficLightInset ? 'pl-20' : 'pl-3',
           )}
         >
           <div className="window-drag-control flex min-w-0 items-center">

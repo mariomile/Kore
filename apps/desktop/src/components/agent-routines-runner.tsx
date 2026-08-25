@@ -88,7 +88,7 @@ export function AgentRoutinesRunner(): null {
       }))
     }
 
-    const recordOutcome = (id: string, run: RoutineRun): void => {
+    const recordOutcome = (id: string, run: RoutineRun, promptSuffix?: string): void => {
       updateSettingsWith((current) => ({
         agentRoutines: current.agentRoutines.map((routine) => {
           if (routine.id !== id) {
@@ -103,6 +103,7 @@ export function AgentRoutinesRunner(): null {
               runs: appendRoutineRun(routine.runs, run),
               consecutiveFailures: 0,
               retryAtMs: null,
+              retryContext: null,
             }
           }
           if (run.status === 'ok') {
@@ -112,6 +113,7 @@ export function AgentRoutinesRunner(): null {
               runs: appendRoutineRun(routine.runs, run),
               consecutiveFailures: 0,
               retryAtMs: null,
+              retryContext: null,
             }
           }
           // A failure retries with backoff (30s, then 60s); the third in a
@@ -129,6 +131,9 @@ export function AgentRoutinesRunner(): null {
             runs: appendRoutineRun(routine.runs, recorded),
             consecutiveFailures: update.consecutiveFailures,
             retryAtMs: update.retryAtMs,
+            // The retry replays this run's event context — an event routine
+            // must never re-run blind from the backoff clock.
+            retryContext: update.paused ? null : (promptSuffix ?? null),
             enabled: update.paused ? false : routine.enabled,
           }
         }),
@@ -168,12 +173,11 @@ export function AgentRoutinesRunner(): null {
             return
           }
           if (decision.kind === 'fail') {
-            recordOutcome(routine.id, {
-              startedMs,
-              status: 'error',
-              error: decision.message,
-              changedPaths: [],
-            })
+            recordOutcome(
+              routine.id,
+              { startedMs, status: 'error', error: decision.message, changedPaths: [] },
+              promptSuffix,
+            )
             toast.add({
               type: 'error',
               title: `Routine “${routine.name}” failed`,
@@ -196,12 +200,16 @@ export function AgentRoutinesRunner(): null {
           if (startedMs !== null) {
             // A script already woke this tick: no provider is a real
             // failure now (backoff, then pause), not a silent skip.
-            recordOutcome(routine.id, {
-              startedMs,
-              status: 'error',
-              error: 'No edit-capable CLI provider is configured for the woken run.',
-              changedPaths: [],
-            })
+            recordOutcome(
+              routine.id,
+              {
+                startedMs,
+                status: 'error',
+                error: 'No edit-capable CLI provider is configured for the woken run.',
+                changedPaths: [],
+              },
+              promptSuffix,
+            )
           }
           // For agent-only routines, deliberately BEFORE markRun: a skipped
           // occurrence is not consumed — configure a provider and the
@@ -275,12 +283,16 @@ export function AgentRoutinesRunner(): null {
             description: memoryWarnings[0] ?? '',
           })
         }
-        recordOutcome(routine.id, {
-          startedMs,
-          status: failure === null ? 'ok' : 'error',
-          error: failure,
-          changedPaths: ledger,
-        })
+        recordOutcome(
+          routine.id,
+          {
+            startedMs,
+            status: failure === null ? 'ok' : 'error',
+            error: failure,
+            changedPaths: ledger,
+          },
+          promptSuffix,
+        )
         if (failure === null) {
           toast.add({
             title: `Routine “${routine.name}” completed`,
@@ -299,12 +311,11 @@ export function AgentRoutinesRunner(): null {
         }
       } catch (cause: unknown) {
         if (startedMs !== null) {
-          recordOutcome(routine.id, {
-            startedMs,
-            status: 'error',
-            error: errorMessage(cause),
-            changedPaths: [],
-          })
+          recordOutcome(
+            routine.id,
+            { startedMs, status: 'error', error: errorMessage(cause), changedPaths: [] },
+            promptSuffix,
+          )
         }
         toast.add({
           type: 'error',
@@ -435,8 +446,9 @@ export function AgentRoutinesRunner(): null {
       try {
         for (const routine of due) {
           // Edit-mode agent runs are serialized app-wide (the chat holds the
-          // same lock) so concurrent runs can't cross-attribute ledgers.
-          await withAgentRunLock(() => runRoutine(routine))
+          // same lock) so concurrent runs can't cross-attribute ledgers. A
+          // failure retry replays the stored event context, if any.
+          await withAgentRunLock(() => runRoutine(routine, routine.retryContext ?? undefined))
         }
       } finally {
         runningRef.current = false

@@ -100,7 +100,10 @@ export function parseHtmlFragment(html: string): HtmlNode[] {
       }
       currentChildren().push(element)
       cursor = open.end
-      if (RAW_TEXT_TAGS.has(open.tag)) {
+      // A self-closed raw-text tag (XHTML/SVG serializations emit
+      // `<script src="x"/>`) has no raw content and no closing tag — scanning
+      // for one would swallow the rest of the document.
+      if (RAW_TEXT_TAGS.has(open.tag) && !open.selfClosing) {
         const raw = readRawText(html, cursor, open.tag)
         if (open.tag !== 'script' && open.tag !== 'style' && raw.text !== '') {
           element.children.push({ kind: 'text', value: raw.text })
@@ -141,8 +144,13 @@ interface CloseTag {
   readonly end: number
 }
 
+// Sticky (/y) tokens anchored via lastIndex, so no per-token copy of the
+// remaining document is ever made — a large page parses in linear time.
+const OPEN_TAG_RE = /<([a-z][\w:-]*)/iy
+
 function readOpenTag(html: string, start: number): OpenTag | null {
-  const match = /^<([a-z][\w:-]*)/i.exec(html.slice(start))
+  OPEN_TAG_RE.lastIndex = start
+  const match = OPEN_TAG_RE.exec(html)
   if (match === null || match[1] === undefined) {
     return null
   }
@@ -170,12 +178,15 @@ function readOpenTag(html: string, start: number): OpenTag | null {
   return null
 }
 
+const CLOSE_TAG_RE = /<\/([a-z][\w:-]*)\s*>/iy
+
 function readCloseTag(html: string, start: number): CloseTag | null {
-  const match = /^<\/([a-z][\w:-]*)\s*>/i.exec(html.slice(start))
+  CLOSE_TAG_RE.lastIndex = start
+  const match = CLOSE_TAG_RE.exec(html)
   if (match === null || match[1] === undefined) {
     return null
   }
-  return { tag: match[1].toLowerCase(), end: start + match[0].length }
+  return { tag: match[1].toLowerCase(), end: CLOSE_TAG_RE.lastIndex }
 }
 
 interface ParsedAttribute {
@@ -184,10 +195,11 @@ interface ParsedAttribute {
   readonly end: number
 }
 
+const ATTRIBUTE_RE = /([^\s"'></=]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/y
+
 function readAttribute(html: string, start: number): ParsedAttribute | null {
-  const match = /^([^\s"'></=]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/.exec(
-    html.slice(start),
-  )
+  ATTRIBUTE_RE.lastIndex = start
+  const match = ATTRIBUTE_RE.exec(html)
   if (match === null || match[1] === undefined) {
     return null
   }
@@ -195,16 +207,18 @@ function readAttribute(html: string, start: number): ParsedAttribute | null {
   return {
     name: match[1].toLowerCase(),
     value: decodeEntities(rawValue),
-    end: start + match[0].length,
+    end: ATTRIBUTE_RE.lastIndex,
   }
 }
 
 function readRawText(html: string, start: number, tag: string): { text: string; end: number } {
-  const close = html.slice(start).search(new RegExp(String.raw`</${tag}\s*>`, 'i'))
-  if (close === -1) {
+  const closeRe = new RegExp(String.raw`</${tag}\s*>`, 'gi')
+  closeRe.lastIndex = start
+  const match = closeRe.exec(html)
+  if (match === null) {
     return { text: decodeEntities(html.slice(start)), end: html.length }
   }
-  return { text: decodeEntities(html.slice(start, start + close)), end: start + close }
+  return { text: decodeEntities(html.slice(start, match.index)), end: match.index }
 }
 
 function decodeEntities(text: string): string {

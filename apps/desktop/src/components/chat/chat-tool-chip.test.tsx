@@ -11,6 +11,11 @@ vi.mock('@/lib/tags/use-commit-note-property', () => ({
 vi.mock('@/hooks/use-note-link-navigation', () => ({
   useNoteLinkNavigation: () => vi.fn(),
 }))
+const openExternalUrl = vi.hoisted(() => vi.fn())
+vi.mock('@/editor/open-external-link', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/editor/open-external-link')>()),
+  openExternalUrl,
+}))
 
 beforeEach(() => {
   commitProperty.mockClear()
@@ -29,6 +34,63 @@ function setPropertyPart(
     error: null,
   }
 }
+
+describe('ChatToolChip browse', () => {
+  it('labels the settled page by title and reopens it in the built-in browser', async () => {
+    const view = await render(
+      <ChatToolChip
+        part={{
+          kind: 'tool',
+          call: { tool: 'browse', toolCallId: 'c1', url: 'https://example.com/docs' },
+          result: {
+            tool: 'browse',
+            toolCallId: 'c1',
+            url: 'https://example.com/docs/intro',
+            title: 'Example Docs',
+            error: null,
+          },
+          error: null,
+        }}
+      />,
+    )
+
+    await expect.element(view.getByText('Browsed')).toBeInTheDocument()
+    await view.getByRole('button', { name: 'Example Docs' }).click()
+    expect(openExternalUrl).toHaveBeenCalledWith('https://example.com/docs/intro')
+  })
+
+  it('falls back to the host while pending and shows a settled failure', async () => {
+    const pending = await render(
+      <ChatToolChip
+        part={{
+          kind: 'tool',
+          call: { tool: 'browse', toolCallId: 'c1', url: 'https://example.com/docs' },
+          result: null,
+          error: null,
+        }}
+      />,
+    )
+    await expect.element(pending.getByRole('button', { name: 'example.com' })).toBeInTheDocument()
+
+    const failed = await render(
+      <ChatToolChip
+        part={{
+          kind: 'tool',
+          call: { tool: 'readPage', toolCallId: 'c2' },
+          result: {
+            tool: 'readPage',
+            toolCallId: 'c2',
+            url: null,
+            title: null,
+            error: 'no embedded browser is open',
+          },
+          error: null,
+        }}
+      />,
+    )
+    await expect.element(failed.getByText(/no embedded browser is open/)).toBeInTheDocument()
+  })
+})
 
 describe('ChatToolChip setProperty', () => {
   it('applies a proposed value through the session-safe commit channel', async () => {

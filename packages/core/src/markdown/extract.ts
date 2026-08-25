@@ -306,7 +306,7 @@ function readTask(
   literalRanges: Span[],
   wikiLinks: WikiLink[],
 ): ParsedTask | null {
-  const { from } = taskNode
+  const { from, to } = taskNode
   if (!hasRoundTaskListMarker(body, from)) {
     return null
   }
@@ -322,7 +322,9 @@ function readTask(
     raw: body.slice(from, lineEnd),
     checked: marker.checked,
     markerOffset,
-    ...firstDue(body, bodyOffset, wikiLinks, markerOffset, lineEnd + bodyOffset),
+    // The due window is the task node's full span, not just the marker
+    // line — a `[[YYYY-MM-DD]]` on a wrapped or child line still counts.
+    ...firstDue(body, bodyOffset, wikiLinks, markerOffset, to + bodyOffset),
   }
 }
 

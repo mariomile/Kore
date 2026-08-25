@@ -28,21 +28,40 @@ export async function attachRollups(
     return [...entries]
   }
 
-  const relatedCache = new Map<string, Record<string, CollectionValue>>()
+  // Memoized per *target string*, not just per resolved ref: the same
+  // `[[Author]]` repeated across a thousand rows resolves and reads once.
+  const byTarget = new Map<string, Promise<Record<string, CollectionValue> | null>>()
 
-  async function propertiesFor(target: string): Promise<Record<string, CollectionValue> | null> {
-    const resolution = await lookup.resolveWikiTarget(target)
-    if (resolution.kind !== 'resolved') {
-      return null
-    }
-    const cached = relatedCache.get(resolution.ref)
+  function propertiesFor(target: string): Promise<Record<string, CollectionValue> | null> {
+    const cached = byTarget.get(target)
     if (cached !== undefined) {
       return cached
     }
-    const properties = await lookup.getNoteProperties(resolution.ref)
-    relatedCache.set(resolution.ref, properties)
-    return properties
+    const pending = (async () => {
+      const resolution = await lookup.resolveWikiTarget(target)
+      if (resolution.kind !== 'resolved') {
+        return null
+      }
+      return await lookup.getNoteProperties(resolution.ref)
+    })()
+    byTarget.set(target, pending)
+    return pending
   }
+
+  // Warm the cache concurrently over the distinct targets, so a large
+  // collection waits on one batch of lookups instead of a serial N+1 walk.
+  const allTargets = new Set<string>()
+  for (const entry of entries) {
+    for (const property of rollups) {
+      const relation = property.rollup?.relation
+      if (relation !== undefined) {
+        for (const target of extractRelationTargets(entry.properties[relation])) {
+          allTargets.add(target)
+        }
+      }
+    }
+  }
+  await Promise.all([...allTargets].map(propertiesFor))
 
   const next: CollectionEntry[] = []
   for (const entry of entries) {

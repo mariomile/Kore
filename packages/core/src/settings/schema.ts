@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { COLLECTION_EMBED_VIEWS, type CollectionEmbedView } from '../tags/collection-embed'
 import { agentRoutinesSchema } from '../ai/agent-routines'
 import { mcpServersSchema } from '../ai/mcp'
 import { isHttpBaseUrl, normalizeOpenAICompatibleBaseUrl } from '../ai/openai-compatible'
@@ -445,11 +446,23 @@ export type AllNotesFilterTags = z.infer<typeof allNotesFilterTagsSchema>
  * first select property, so it additionally needs one in the schema. Screens
  * without the prerequisite render `list`.
  */
-export const allNotesViewSchema = z
-  .enum(['list', 'grid', 'table', 'board', 'calendar'])
-  .catch('list')
+const ALL_NOTES_VIEWS = ['list', 'grid', ...COLLECTION_EMBED_VIEWS] as const
+
+const allNotesViewValueSchema = z.enum(ALL_NOTES_VIEWS)
+
+export const allNotesViewSchema = allNotesViewValueSchema.catch('list')
 
 export type AllNotesView = z.infer<typeof allNotesViewSchema>
+
+/**
+ * The collection view an All Notes view persists as: the note-centric list
+ * and grid lenses collapse to the table; the collection lenses keep their
+ * identity. The one mapping shared by saved views and their menu labels —
+ * never re-spell it as a ternary.
+ */
+export function collectionViewForAllNotesView(view: AllNotesView): CollectionEmbedView {
+  return view === 'list' || view === 'grid' ? 'table' : view
+}
 
 /**
  * The open note tabs (the tab strip and the sidebar's Open section), in strip
@@ -654,7 +667,7 @@ export const collectionViewModesSchema = z
   .transform((entries) => {
     const modes: Record<string, AllNotesView> = {}
     for (const [tagKey, value] of Object.entries(entries)) {
-      const parsed = z.enum(['list', 'grid', 'table', 'board', 'calendar']).safeParse(value)
+      const parsed = allNotesViewValueSchema.safeParse(value)
       if (parsed.success) {
         modes[tagKey] = parsed.data
       }
@@ -679,7 +692,7 @@ export type SavedCollectionViewFilter = z.infer<typeof savedViewFilterSchema>
 export const savedCollectionViewSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
-  view: z.enum(['table', 'board', 'calendar']),
+  view: z.enum(COLLECTION_EMBED_VIEWS),
   sort: collectionSortSettingSchema.nullable().catch(null),
   group: z.string().nullable().catch(null),
   filters: z

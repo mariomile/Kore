@@ -92,6 +92,7 @@ export function AgentRoutinesSection({ profiles }: AgentRoutinesSectionProps): R
       runs: [],
       consecutiveFailures: 0,
       retryAtMs: null,
+      retryContext: null,
     })
   }
 
@@ -174,7 +175,12 @@ export function AgentRoutinesSection({ profiles }: AgentRoutinesSectionProps): R
                   patch(
                     routine.id,
                     checked
-                      ? { enabled: true, consecutiveFailures: 0, retryAtMs: null }
+                      ? {
+                          enabled: true,
+                          consecutiveFailures: 0,
+                          retryAtMs: null,
+                          retryContext: null,
+                        }
                       : { enabled: false },
                   )
                 }
@@ -344,6 +350,7 @@ function NewRoutineDialog({
       runs: [],
       consecutiveFailures: 0,
       retryAtMs: null,
+      retryContext: null,
     })
     setName('')
     setPrompt('')

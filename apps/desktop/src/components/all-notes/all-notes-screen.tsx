@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
+  collectionViewForAllNotesView,
   foldTag,
   isDaily,
   listNotes,
@@ -267,7 +268,7 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
       const entry: SavedCollectionView = {
         id: crypto.randomUUID(),
         name,
-        view: view === 'board' ? 'board' : 'table',
+        view: collectionViewForAllNotesView(view),
         sort: collectionSort,
         group: boardGroupProperty?.key ?? null,
         filters: [...collectionFilters],
@@ -493,87 +494,49 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
             aria-label="Layout"
             className="flex items-center gap-0.5 rounded-full bg-surface-hover p-0.5"
           >
-            <button
-              type="button"
-              aria-label="List view"
-              aria-pressed={view === 'list'}
-              onClick={() => {
-                setViewMode('list')
-              }}
-              className={`flex size-6 items-center justify-center rounded-full transition-colors ${
-                view === 'list'
-                  ? 'bg-surface text-text shadow-sm'
-                  : 'text-text-muted hover:text-text-secondary'
-              }`}
-            >
-              <List aria-hidden className="size-3.5" />
-            </button>
-            <button
-              type="button"
-              aria-label="Grid view"
-              aria-pressed={view === 'grid'}
-              onClick={() => {
-                setViewMode('grid')
-              }}
-              className={`flex size-6 items-center justify-center rounded-full transition-colors ${
-                view === 'grid'
-                  ? 'bg-surface text-text shadow-sm'
-                  : 'text-text-muted hover:text-text-secondary'
-              }`}
-            >
-              <LayoutGrid aria-hidden className="size-3.5" />
-            </button>
-            {collectionAvailable ? (
-              <button
-                type="button"
-                aria-label="Collection view"
-                aria-pressed={view === 'table'}
-                onClick={() => {
-                  setViewMode('table')
-                }}
-                className={`flex size-6 items-center justify-center rounded-full transition-colors ${
-                  view === 'table'
-                    ? 'bg-surface text-text shadow-sm'
-                    : 'text-text-muted hover:text-text-secondary'
-                }`}
-              >
-                <Layers aria-hidden className="size-3.5" />
-              </button>
-            ) : null}
-            {boardAvailable ? (
-              <button
-                type="button"
-                aria-label="Board view"
-                aria-pressed={view === 'board'}
-                onClick={() => {
-                  setViewMode('board')
-                }}
-                className={`flex size-6 items-center justify-center rounded-full transition-colors ${
-                  view === 'board'
-                    ? 'bg-surface text-text shadow-sm'
-                    : 'text-text-muted hover:text-text-secondary'
-                }`}
-              >
-                <LayoutTemplate aria-hidden className="size-3.5" />
-              </button>
-            ) : null}
-            {calendarAvailable ? (
-              <button
-                type="button"
-                aria-label="Calendar view"
-                aria-pressed={view === 'calendar'}
-                onClick={() => {
-                  setViewMode('calendar')
-                }}
-                className={`flex size-6 items-center justify-center rounded-full transition-colors ${
-                  view === 'calendar'
-                    ? 'bg-surface text-text shadow-sm'
-                    : 'text-text-muted hover:text-text-secondary'
-                }`}
-              >
-                <Calendar aria-hidden className="size-3.5" />
-              </button>
-            ) : null}
+            {(
+              [
+                { mode: 'list', label: 'List view', Glyph: List, available: true },
+                { mode: 'grid', label: 'Grid view', Glyph: LayoutGrid, available: true },
+                {
+                  mode: 'table',
+                  label: 'Collection view',
+                  Glyph: Layers,
+                  available: collectionAvailable,
+                },
+                {
+                  mode: 'board',
+                  label: 'Board view',
+                  Glyph: LayoutTemplate,
+                  available: boardAvailable,
+                },
+                {
+                  mode: 'calendar',
+                  label: 'Calendar view',
+                  Glyph: Calendar,
+                  available: calendarAvailable,
+                },
+              ] as const
+            ).map(({ mode, label, Glyph, available }) =>
+              available ? (
+                <button
+                  key={mode}
+                  type="button"
+                  aria-label={label}
+                  aria-pressed={view === mode}
+                  onClick={() => {
+                    setViewMode(mode)
+                  }}
+                  className={`flex size-6 items-center justify-center rounded-full transition-colors ${
+                    view === mode
+                      ? 'bg-surface text-text shadow-sm'
+                      : 'text-text-muted hover:text-text-secondary'
+                  }`}
+                >
+                  <Glyph aria-hidden className="size-3.5" />
+                </button>
+              ) : null,
+            )}
           </div>
           <NewNoteButton tag={tag} />
         </div>

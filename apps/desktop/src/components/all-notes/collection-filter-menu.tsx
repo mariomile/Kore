@@ -159,7 +159,12 @@ export function CollectionFilterMenu({
   onChange,
 }: CollectionFilterMenuProps): ReactElement | null {
   const [open, setOpen] = useState(false)
-  const filterable = useMemo(
+  // Every property joins the condition builder — a checkbox filters as
+  // checked / not (its operatorsFor pair). Only the one-click value
+  // inventory skips checkboxes: its chips are equality picks, which a
+  // checkbox never offers.
+  const filterable = type.properties
+  const inventoried = useMemo(
     () => type.properties.filter((property) => property.type !== 'checkbox'),
     [type],
   )
@@ -176,7 +181,7 @@ export function CollectionFilterMenu({
 
   const valuesByProperty = useMemo(() => {
     const inventory = new Map<string, string[]>()
-    for (const property of filterable) {
+    for (const property of inventoried) {
       const values = new Set<string>(property.options ?? [])
       for (const entry of entries ?? []) {
         const text = readCellValue(property, entry.properties[property.key]).text
@@ -189,9 +194,9 @@ export function CollectionFilterMenu({
       }
     }
     return inventory
-  }, [filterable, entries])
+  }, [inventoried, entries])
 
-  if (valuesByProperty.size === 0 && filterable.length === 0 && filters.length === 0) {
+  if (filterable.length === 0 && filters.length === 0) {
     return null
   }
 

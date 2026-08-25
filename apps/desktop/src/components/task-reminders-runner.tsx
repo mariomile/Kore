@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { isPermissionGranted, sendNotification } from '@tauri-apps/plugin-notification'
-import { getOpenTasks } from '@reflect/core'
+import { getOpenTasks, type OpenTask } from '@reflect/core'
 import { todayIso } from '@/lib/dates'
+import { useFileChanges } from '@/lib/use-file-changes'
 import {
   digestCounts,
   parsePunctualFireState,
@@ -60,6 +61,15 @@ export function TaskRemindersRunner(): null {
     settingsRef.current = settings
     graphRef.current = graph
   })
+  // The minute tick reuses one cached open-task query: a vault edit (any
+  // file change), a new day, or a graph switch invalidates it, so quiet
+  // minutes cost no index round-trip at all.
+  const tasksCacheRef = useRef<{ tasks: OpenTask[]; day: string; root: string } | null>(null)
+  useFileChanges(
+    useCallback(() => {
+      tasksCacheRef.current = null
+    }, []),
+  )
 
   useEffect(() => {
     async function checkDueTasks(): Promise<void> {
@@ -73,7 +83,12 @@ export function TaskRemindersRunner(): null {
       const today = todayIso()
       const now = new Date()
       const nowMinutes = now.getHours() * 60 + now.getMinutes()
-      const tasks = await getOpenTasks().catch(() => [])
+      let cache = tasksCacheRef.current
+      if (cache === null || cache.day !== today || cache.root !== graph.root) {
+        cache = { tasks: await getOpenTasks().catch(() => []), day: today, root: graph.root }
+        tasksCacheRef.current = cache
+      }
+      const tasks = cache.tasks
       const punctualKey = taskRemindersPunctualCacheKey(graph.root)
       let fired = new Set<string>()
       try {

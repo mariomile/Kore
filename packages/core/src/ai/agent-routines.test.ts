@@ -31,6 +31,7 @@ function routine(overrides: Partial<AgentRoutine>): AgentRoutine {
     runs: [],
     consecutiveFailures: 0,
     retryAtMs: null,
+    retryContext: null,
     ...overrides,
   }
 }

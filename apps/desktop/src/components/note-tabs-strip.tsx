@@ -43,7 +43,10 @@ export function NoteTabsStrip({
     <div
       data-tauri-drag-region
       className={cn(
-        'flex h-11 w-full flex-none items-center gap-1 bg-surface-app pr-2.5',
+        // `surface-sunken` matches the two rails flanking the bar — the whole
+        // chrome band reads as one color in every theme (several themes tint
+        // `surface-app` differently, which left the strip a mismatched stripe).
+        'flex h-11 w-full flex-none items-center gap-1 bg-surface-sunken pr-2.5',
         // With the overlaid macOS title bar the traffic lights own the left
         // edge — but only when the bar actually reaches it. 4.5rem clears
         // the lights while keeping the toggles as far left as they can sit.

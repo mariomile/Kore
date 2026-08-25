@@ -296,6 +296,7 @@ export {
   type WeekStartDay,
   type AllNotesFilterTags,
   type AllNotesView,
+  collectionViewForAllNotesView,
   type SavedCollectionView,
   type OpenNoteTab,
   type SavedSearch,
@@ -363,6 +364,21 @@ export {
   type PtyDataEvent,
   type PtyExitEvent,
 } from '../pty/commands'
+export {
+  browserEmbedShow,
+  browserEmbedBounds,
+  browserEmbedHide,
+  browserEmbedNavigate,
+  browserEmbedBack,
+  browserEmbedForward,
+  browserEmbedReload,
+  browserEmbedLoad,
+  browserEmbedRead,
+  subscribeBrowserNavigated,
+  type BrowserEmbedRect,
+  type BrowserNavigatedEvent,
+  type BrowserPageRead,
+} from '../browser/commands'
 export {
   IAP_PRODUCT_IDS,
   iapGetProducts,

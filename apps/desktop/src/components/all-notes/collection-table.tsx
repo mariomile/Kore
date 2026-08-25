@@ -72,7 +72,6 @@ export function CollectionTable({
 }: CollectionTableProps): ReactElement | null {
   const density = useSettings().settings.uiDensity
   const rowHeight = DENSITY_ROW_HEIGHT[density] ?? DENSITY_ROW_HEIGHT.default
-  const rows = entries ?? []
   const { clickSelect, isSelected } = selection
   const virtualizerRef = useRef<VirtualizerHandle>(null)
   // During a drag the draft widths render live; the persisted setting only
@@ -85,6 +84,12 @@ export function CollectionTable({
   )
   const commitProperty = useCommitNoteProperty()
   const openRelation = useOpenRelation()
+  // The footer sums are O(rows × columns): memoized so a selection click or
+  // a resize drag's per-pointermove re-render reuses them.
+  const aggregates = useMemo(
+    () => type.properties.map((property) => columnAggregate(property, entries ?? [])),
+    [type.properties, entries],
+  )
 
   const handleToggle = useCallback(
     (path: string, event: Pick<MouseEvent, 'shiftKey'>) =>
@@ -218,7 +223,7 @@ export function CollectionTable({
             ref={virtualizerRef}
             as="ul"
             item="li"
-            data={rows}
+            data={entries}
             itemSize={rowHeight}
             bufferSize={10 * rowHeight}
           >
@@ -257,10 +262,10 @@ export function CollectionTable({
               'border-t border-border py-2 text-xs tabular-nums text-text-muted',
             )}
           >
-            <span>{`${rows.length} ${rows.length === 1 ? 'note' : 'notes'}`}</span>
-            {type.properties.map((property) => (
+            <span>{`${entries.length} ${entries.length === 1 ? 'note' : 'notes'}`}</span>
+            {type.properties.map((property, index) => (
               <span key={property.key} className="truncate">
-                {columnAggregate(property, rows)}
+                {aggregates[index]}
               </span>
             ))}
             <span />

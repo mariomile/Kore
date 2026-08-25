@@ -977,6 +977,12 @@ html[data-sidebar-resizing] aside {
 :root[data-glass='on'] .bg-surface-app {
   background-color: color-mix(in srgb, var(--surface-app) var(--glass-surface-app), transparent);
 }
+/* The rails and the tab strip share `surface-sunken`; without this rule they
+   would stay opaque and read as a mismatched band against the translucent
+   chrome around them. */
+:root[data-glass='on'] .bg-surface-sunken {
+  background-color: color-mix(in srgb, var(--surface-sunken) var(--glass-surface-app), transparent);
+}
 :root[data-glass='on'] .bg-surface {
   background-color: color-mix(in srgb, var(--surface) var(--glass-surface), transparent);
 }

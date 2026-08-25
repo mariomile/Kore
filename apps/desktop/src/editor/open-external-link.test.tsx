@@ -3,6 +3,7 @@ import { cleanup, renderHook } from 'vitest-browser-react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { LinkClickHandler } from '@meowdown/core'
 import { openUrl } from '@tauri-apps/plugin-opener'
+import { registerInAppBrowserOpener, resetBrowserSessionForTests } from '@/lib/browser-session'
 import { dispatchDeepLink } from '@/lib/deep-links/intake'
 import { useOpenExternalLink } from '@/editor/open-external-link'
 
@@ -41,7 +42,10 @@ beforeEach(async () => {
   openExternalLink = result.current
 })
 
-afterEach(cleanup)
+afterEach(() => {
+  resetBrowserSessionForTests()
+  cleanup()
+})
 
 describe('openExternalLink', () => {
   it('opens an http(s) link in the in-app browser window and blocks the frame navigation', async () => {
@@ -56,6 +60,18 @@ describe('openExternalLink', () => {
     click('https://example.com', true)
 
     expect(openBrowserWindow).toHaveBeenCalledWith('https://example.com')
+    expect(openUrl).not.toHaveBeenCalled()
+  })
+
+  it('prefers the workspace’s built-in browser surface when one is registered', async () => {
+    const opened: string[] = []
+    registerInAppBrowserOpener((url) => {
+      opened.push(url)
+    })
+    click('https://example.com')
+
+    expect(opened).toEqual(['https://example.com'])
+    expect(openBrowserWindow).not.toHaveBeenCalled()
     expect(openUrl).not.toHaveBeenCalled()
   })
 

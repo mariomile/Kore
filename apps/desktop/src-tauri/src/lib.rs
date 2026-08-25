@@ -45,6 +45,11 @@ mod windows;
 // (Plan 19): mobile swaps in stand-ins with the identical command surface,
 // so the `invoke_handler` list below needs no platform branches.
 #[cfg(desktop)]
+mod browser;
+#[cfg(mobile)]
+#[path = "browser_mobile.rs"]
+mod browser;
+#[cfg(desktop)]
 mod embed;
 #[cfg(mobile)]
 #[path = "embed_mobile.rs"]
@@ -409,6 +414,15 @@ pub fn run() {
             quit::quit_confirm,
             windows::open_note_window,
             windows::open_browser_window,
+            browser::browser_embed_show,
+            browser::browser_embed_bounds,
+            browser::browser_embed_hide,
+            browser::browser_embed_navigate,
+            browser::browser_embed_back,
+            browser::browser_embed_forward,
+            browser::browser_embed_reload,
+            browser::browser_embed_load,
+            browser::browser_embed_read,
             pty::pty_open,
             pty::pty_write,
             pty::pty_resize,

@@ -314,6 +314,11 @@ describe('parseNote — tasks', () => {
     expect(note.tasks[0]!.dueDate).toBeNull()
   })
 
+  it('reads a due-date link on a wrapped continuation line of the item', () => {
+    const note = parse('+ [ ] renew passport\n  before the trip [[2026-09-01]]\n')
+    expect(note.tasks[0]!.dueDate).toBe('2026-09-01')
+  })
+
   it('does not borrow a due-date link from a neighbouring task', () => {
     const note = parse('+ [ ] no date here\n+ [ ] dated [[2026-07-01]]\n')
     expect(note.tasks.map((task) => task.dueDate)).toEqual([null, '2026-07-01'])

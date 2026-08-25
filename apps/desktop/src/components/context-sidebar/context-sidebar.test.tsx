@@ -10,6 +10,15 @@ import { describe, expect, it, vi } from 'vitest'
 vi.mock('@/components/chat/chat-screen', () => ({
   ChatScreen: () => <div data-testid="chat-panel" />,
 }))
+vi.mock('@/components/browser/browser-pane', () => ({
+  BrowserPane: () => <div data-testid="browser-panel" />,
+}))
+vi.mock('@/components/terminal/terminal-screen', () => ({
+  TerminalScreen: () => <div data-testid="terminal-panel" />,
+}))
+vi.mock('@/components/sidebar/sidebar-tags', () => ({
+  SidebarTags: () => <div data-testid="tags-panel" />,
+}))
 vi.mock('./daily-context-sidebar', () => ({
   DailyContextSidebar: ({ date }: { date: string }) => (
     <div data-testid="daily-details">{date}</div>
@@ -48,6 +57,22 @@ describe('ContextSidebar', () => {
 
     await view.getByRole('tab', { name: 'Details' }).click()
     await expect.element(view.getByTestId('daily-details')).toBeInTheDocument()
+    await view.unmount()
+  })
+
+  it('hosts the tags list, the built-in browser, and the terminal as panels', async () => {
+    const view = await render(<ContextSidebar target={null} />)
+
+    await view.getByRole('tab', { name: 'Tags' }).click()
+    await expect.element(view.getByTestId('tags-panel')).toBeInTheDocument()
+
+    await view.getByRole('tab', { name: 'Browser' }).click()
+    await expect.element(view.getByTestId('browser-panel')).toBeInTheDocument()
+    expect(view.getByTestId('tags-panel').query()).toBeNull()
+
+    await view.getByRole('tab', { name: 'Terminal' }).click()
+    await expect.element(view.getByTestId('terminal-panel')).toBeInTheDocument()
+    expect(view.getByTestId('browser-panel').query()).toBeNull()
     await view.unmount()
   })
 

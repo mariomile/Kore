@@ -423,18 +423,20 @@ describe('app commands', () => {
     expect(runCopyNotePath).toHaveBeenCalledWith(null, 'notes/a.md')
   })
 
-  it('browser.open raises DuckDuckGo in a native shell and no-ops in the browser', async () => {
+  it('browser.open opens the built-in browser tab on desktop and no-ops on mobile', async () => {
     openBrowserWindow.mockClear()
-    isNativeShell.mockReturnValue(true)
-    const { context } = fakeContext()
-    await command('browser.open').run(context)
-    expect(openBrowserWindow).toHaveBeenCalledExactlyOnceWith('https://duckduckgo.com')
-
-    openBrowserWindow.mockClear()
-    isNativeShell.mockReturnValue(false)
-    await command('browser.open').run(context)
+    isMobileSurface.mockReturnValue(false)
+    const desktop = fakeContext()
+    await command('browser.open').run(desktop.context)
+    expect(desktop.navigated).toEqual([{ kind: 'browser' }])
+    // The browser is a workspace surface now — never a separate window.
     expect(openBrowserWindow).not.toHaveBeenCalled()
-    isNativeShell.mockReturnValue(true)
+
+    isMobileSurface.mockReturnValue(true)
+    const mobile = fakeContext()
+    await command('browser.open').run(mobile.context)
+    expect(mobile.navigated).toEqual([])
+    isMobileSurface.mockReturnValue(false)
   })
 
   it('nav.terminal opens the terminal on desktop and no-ops on mobile', async () => {

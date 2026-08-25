@@ -6,7 +6,6 @@ import {
   randomNotePath,
   toggleDevtools,
   untitledNotePath,
-  openBrowserWindow,
 } from '@reflect/core'
 import { attachFilesToNote } from '@/lib/attach-files'
 import { runCopyNotePath } from '@/lib/note-copy-path'
@@ -103,12 +102,14 @@ const APP_COMMANDS: AppCommand[] = [
   {
     id: 'browser.open',
     title: 'Open browser',
-    keywords: ['web', 'duckduckgo', 'browse', 'window'],
-    run: () => {
-      if (!isNativeShell()) {
+    keywords: ['web', 'duckduckgo', 'browse', 'internet'],
+    // The built-in browser is a workspace surface now — a tab, not a
+    // separate window. Desktop-only, like the terminal.
+    run: (context) => {
+      if (isMobileSurface()) {
         return
       }
-      void openBrowserWindow('https://duckduckgo.com')
+      context.navigate({ kind: 'browser' })
     },
   },
   {

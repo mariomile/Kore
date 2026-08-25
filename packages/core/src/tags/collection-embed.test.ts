@@ -14,6 +14,12 @@ describe('parseCollectionEmbeds', () => {
     ])
   })
 
+  it('accepts a bare #tag line as the tag, not a comment', () => {
+    expect(parseCollectionEmbeds('```collection\n#books\n```\n')).toEqual([
+      { tag: 'books', view: 'table' },
+    ])
+  })
+
   it('strips a leading hash on the tag and quoted values', () => {
     expect(parseCollectionEmbeds('```collection\ntag: "#Books"\nview: "calendar"\n```\n')).toEqual([
       { tag: 'Books', view: 'calendar' },

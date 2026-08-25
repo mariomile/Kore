@@ -1,6 +1,5 @@
 import { useMemo, useState, type DragEvent, type ReactElement } from 'react'
 import {
-  errorMessage,
   isCalendarDate,
   weekStartDow,
   type CollectionEntry,
@@ -9,13 +8,13 @@ import {
   type TagType,
 } from '@reflect/core'
 import { ChevronLeft, ChevronRight, Plus } from '@/components/icons'
-import { toast } from '@/components/ui/toast'
-import { createTypedCollectionNote } from '@/lib/tags/create-collection-note'
-import { useTemplateValues } from '@/hooks/use-template-values'
+import { useOptimisticMoves } from '@/hooks/use-optimistic-moves'
+import { todayIso } from '@/lib/dates'
+import { addMonths, buildMonthGrid, monthLabel, monthOf, weekdayLabels } from '@/lib/month-grid'
 import { useCommitNoteProperties } from '@/lib/tags/use-commit-note-property'
+import { useCreateCollectionNote } from '@/lib/tags/use-create-collection-note'
 import type { ModClickEvent } from '@/lib/windows/open-in-new-window'
 import { cn } from '@/lib/utils'
-import { useGraph } from '@/providers/graph-provider'
 import { useSettings } from '@/providers/settings-provider'
 import { readCellValue } from './collection-cell'
 
@@ -29,13 +28,6 @@ import { readCellValue } from './collection-cell'
 /** The property the calendar places by: the schema's first `date`. */
 export function calendarProperty(type: { properties: readonly TagProperty[] }): TagProperty | null {
   return type.properties.find((property) => property.type === 'date') ?? null
-}
-
-/** Local `YYYY-MM-DD` for a Date (the daily-note key space). */
-function toIso(date: Date): string {
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${date.getFullYear()}-${month}-${day}`
 }
 
 /** Entries grouped by their calendar-date value under `property`. */
@@ -52,23 +44,6 @@ export function entriesByDate(
     byDate.set(reading.text, [...(byDate.get(reading.text) ?? []), entry])
   }
   return byDate
-}
-
-interface MonthCell {
-  iso: string
-  day: number
-  inMonth: boolean
-}
-
-/** Six weeks of cells covering `year`/`month`, aligned to the week start. */
-export function monthGrid(year: number, month: number, weekStart: 0 | 1 | 6): MonthCell[] {
-  const lead = (new Date(year, month, 1).getDay() - weekStart + 7) % 7
-  const cells: MonthCell[] = []
-  for (let index = 0; index < 42; index += 1) {
-    const date = new Date(year, month, 1 - lead + index)
-    cells.push({ iso: toIso(date), day: date.getDate(), inMonth: date.getMonth() === month })
-  }
-  return cells
 }
 
 const MAX_NOTES_PER_DAY = 3
@@ -98,18 +73,13 @@ export function CollectionCalendar({
 }: CollectionCalendarProps): ReactElement {
   const weekStartDay = useSettings().settings.weekStartDay
   const weekStart = weekStartDow(weekStartDay)
-  const { graph } = useGraph()
   const commitProperties = useCommitNoteProperties()
-  const resolveTemplateValues = useTemplateValues()
-  const [now] = useState(() => new Date())
-  const [visible, setVisible] = useState(() => ({
-    year: now.getFullYear(),
-    month: now.getMonth(),
-  }))
+  const createNote = useCreateCollectionNote(tag, type)
+  const [today] = useState(() => todayIso())
+  const [visibleMonth, setVisibleMonth] = useState(() => monthOf(today))
   const [draggingPath, setDraggingPath] = useState<string | null>(null)
   const [dropDay, setDropDay] = useState<string | null>(null)
-  const [moves, setMoves] = useState(() => new Map<string, string>())
-  const todayIso = toIso(now)
+  const { moves, record } = useOptimisticMoves<string>(entries)
 
   const effectiveEntries = useMemo(() => {
     return (entries ?? []).map((entry) => {
@@ -128,25 +98,16 @@ export function CollectionCalendar({
     () => entriesByDate(effectiveEntries, property),
     [effectiveEntries, property],
   )
+  // The same grid math as the daily sidebar and task-schedule calendars —
+  // one week-start convention and one set of header labels everywhere.
   const cells = useMemo(
-    () => monthGrid(visible.year, visible.month, weekStart),
-    [visible, weekStart],
+    () => buildMonthGrid(visibleMonth, weekStart).weeks.flat(),
+    [visibleMonth, weekStart],
   )
-  const weekdayLabels = useMemo(() => {
-    return Array.from({ length: 7 }, (_, index) =>
-      new Date(2024, 0, 1 + ((weekStart + 6) % 7) + index).toLocaleDateString(undefined, {
-        weekday: 'short',
-      }),
-    )
-  }, [weekStart])
-  const monthLabel = new Date(visible.year, visible.month).toLocaleDateString(undefined, {
-    month: 'long',
-    year: 'numeric',
-  })
+  const dayLabels = useMemo(() => weekdayLabels(weekStart), [weekStart])
 
   const shift = (delta: number): void => {
-    const date = new Date(visible.year, visible.month + delta)
-    setVisible({ year: date.getFullYear(), month: date.getMonth() })
+    setVisibleMonth((current) => addMonths(current, delta))
   }
 
   const endDrag = (): void => {
@@ -167,36 +128,21 @@ export function CollectionCalendar({
     if (!current.mismatch && current.text === iso) {
       return
     }
-    setMoves((existing) => new Map(existing).set(path, iso))
+    record(path, iso)
     commitProperties(path, { [property.key]: iso })
   }
 
   const createOnDay = async (iso: string): Promise<void> => {
-    if (graph === null) {
-      return
-    }
-    try {
-      const path = await createTypedCollectionNote(
-        tag,
-        graph.generation,
-        { [property.key]: iso },
-        type,
-        await resolveTemplateValues(null),
-      )
+    const path = await createNote({ [property.key]: iso })
+    if (path !== null) {
       onOpen(path)
-    } catch (error) {
-      toast.add({
-        type: 'error',
-        title: "Couldn't create the note",
-        description: errorMessage(error),
-      })
     }
   }
 
   return (
     <div className="flex h-full flex-col px-12 pb-6">
       <div className="flex flex-none items-center justify-between py-2">
-        <h2 className="text-sm font-medium text-text">{monthLabel}</h2>
+        <h2 className="text-sm font-medium text-text">{monthLabel(visibleMonth)}</h2>
         <div className="flex items-center gap-1">
           <button
             type="button"
@@ -209,7 +155,7 @@ export function CollectionCalendar({
           <button
             type="button"
             aria-label="Today"
-            onClick={() => setVisible({ year: now.getFullYear(), month: now.getMonth() })}
+            onClick={() => setVisibleMonth(monthOf(today))}
             className="rounded px-2 py-1 text-xs text-text-secondary hover:bg-surface-hover"
           >
             Today
@@ -225,7 +171,7 @@ export function CollectionCalendar({
         </div>
       </div>
       <div className="grid flex-none grid-cols-7 border-b border-border pb-1">
-        {weekdayLabels.map((label) => (
+        {dayLabels.map((label) => (
           <span key={label} className="px-1.5 text-xs font-medium text-text-muted">
             {label}
           </span>
@@ -233,32 +179,32 @@ export function CollectionCalendar({
       </div>
       <div className="grid min-h-0 flex-1 auto-rows-fr grid-cols-7 overflow-y-auto">
         {cells.map((cell) => {
-          const dayEntries = byDate.get(cell.iso) ?? []
+          const dayEntries = byDate.get(cell.date) ?? []
           return (
             <div
-              key={cell.iso}
-              data-calendar-day={cell.iso}
+              key={cell.date}
+              data-calendar-day={cell.date}
               onDragOver={(event: DragEvent<HTMLDivElement>) => {
                 if (draggingPath !== null) {
                   event.preventDefault()
                   event.dataTransfer.dropEffect = 'move'
-                  setDropDay(cell.iso)
+                  setDropDay(cell.date)
                 }
               }}
               onDragLeave={(event: DragEvent<HTMLDivElement>) => {
                 if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-                  setDropDay((current) => (current === cell.iso ? null : current))
+                  setDropDay((current) => (current === cell.date ? null : current))
                 }
               }}
               onDrop={(event: DragEvent<HTMLDivElement>) => {
                 event.preventDefault()
-                dropOnDay(cell.iso)
+                dropOnDay(cell.date)
               }}
               className={cn(
                 'group flex min-h-20 flex-col gap-0.5 border-b border-r border-border/60 p-1.5',
                 !cell.inMonth && 'opacity-40',
                 draggingPath !== null &&
-                  dropDay === cell.iso &&
+                  dropDay === cell.date &&
                   'bg-accent/10 ring-1 ring-accent/40',
               )}
             >
@@ -266,15 +212,15 @@ export function CollectionCalendar({
                 <span
                   className={cn(
                     'text-xs tabular-nums',
-                    cell.iso === todayIso ? 'font-semibold text-accent' : 'text-text-muted',
+                    cell.date === today ? 'font-semibold text-accent' : 'text-text-muted',
                   )}
                 >
-                  {cell.day}
+                  {Number(cell.date.slice(8, 10))}
                 </span>
                 <button
                   type="button"
-                  aria-label={`New note on ${cell.iso}`}
-                  onClick={() => void createOnDay(cell.iso)}
+                  aria-label={`New note on ${cell.date}`}
+                  onClick={() => void createOnDay(cell.date)}
                   className="flex size-4 items-center justify-center rounded text-text-muted opacity-0 hover:text-text-secondary group-hover:opacity-100 focus-visible:opacity-100"
                 >
                   <Plus aria-hidden className="size-3" />

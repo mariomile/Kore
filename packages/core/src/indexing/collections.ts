@@ -1,6 +1,6 @@
 import { sql } from 'kysely'
 import { foldTag } from '../markdown'
-import { decodeTagTypeJson, type TagType } from '../tags'
+import { decodeStoredList, decodeTagTypeJson, type TagType } from '../tags'
 import { db } from './db'
 import { recallOrder } from './filtered-search'
 import type { IndexedPropertyValueType } from '../tags'
@@ -8,8 +8,9 @@ import type { IndexedPropertyValueType } from '../tags'
 /**
  * Collection queries (TDR 0005): the notes carrying a typed tag, with their
  * indexed frontmatter properties. Follows the `listNotes` idiom — an uncapped
- * base query plus a join-shaped second query for the per-note property rows,
- * never a `note_path IN (…)` list.
+ * base query plus a join-shaped second query for the per-note property rows.
+ * A `note_path IN (…)` list appears only under an explicit row `limit`,
+ * where it is bounded by construction.
  */
 
 /** A tag with a type: its folded key and parsed schema. */
@@ -162,14 +163,8 @@ export function propertyRowValue(value: CollectionValue): unknown {
       return value.valueNumber ?? Number(value.value)
     case 'boolean':
       return value.value === 'true'
-    case 'list': {
-      try {
-        const entries = JSON.parse(value.value) as unknown
-        return Array.isArray(entries) ? entries.map(String) : value.value
-      } catch {
-        return value.value
-      }
-    }
+    case 'list':
+      return decodeStoredList(value.value) ?? value.value
     default:
       return value.value
   }
@@ -198,6 +193,13 @@ export interface ListCollectionOptions {
    * services, not the user's own screen (TDR 0005).
    */
   excludePrivate?: boolean
+  /**
+   * Cap the returned rows in SQL (after the sort). Bounded surfaces (the AI
+   * tool's page) pass this so a huge collection never materializes; the
+   * property rows are then fetched by an IN over the kept paths instead of
+   * the uncapped join.
+   */
+  limit?: number
 }
 
 /**
@@ -221,6 +223,9 @@ export async function listCollection(
     .select(['notes.path', 'notes.title', 'notes.mtime', 'notes.isPinned'])
   if (options.excludePrivate === true) {
     baseQuery = baseQuery.where('notes.isPrivate', '=', 0)
+  }
+  if (options.limit !== undefined) {
+    baseQuery = baseQuery.limit(options.limit)
   }
   // The branches build differently-typed queries (the property-sort branch
   // joins an extra table), so each executes where it is built.
@@ -265,15 +270,32 @@ export async function listCollection(
   if (options.excludePrivate === true) {
     propertiesQuery = propertiesQuery.where('notes.isPrivate', '=', 0)
   }
-  const propertyRows = await propertiesQuery
-    .select([
-      'noteProperties.notePath',
-      'noteProperties.key',
-      'noteProperties.value',
-      'noteProperties.valueType',
-      'noteProperties.valueNumber',
-    ])
-    .execute()
+  const propertyRows =
+    options.limit !== undefined
+      ? await db
+          .selectFrom('noteProperties')
+          .where(
+            'noteProperties.notePath',
+            'in',
+            rows.map((row) => row.path),
+          )
+          .select([
+            'noteProperties.notePath',
+            'noteProperties.key',
+            'noteProperties.value',
+            'noteProperties.valueType',
+            'noteProperties.valueNumber',
+          ])
+          .execute()
+      : await propertiesQuery
+          .select([
+            'noteProperties.notePath',
+            'noteProperties.key',
+            'noteProperties.value',
+            'noteProperties.valueType',
+            'noteProperties.valueNumber',
+          ])
+          .execute()
   const propertiesByPath = new Map<string, Record<string, CollectionValue>>()
   for (const row of propertyRows) {
     const properties = propertiesByPath.get(row.notePath) ?? {}

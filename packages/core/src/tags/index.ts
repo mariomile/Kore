@@ -28,6 +28,7 @@ export {
   formatRating,
   fileBasename,
   decodePropertyList,
+  decodeStoredList,
   extractRelationTargets,
   computeRollup,
   rollupSourceFromValue,

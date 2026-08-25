@@ -130,6 +130,12 @@ export const agentRoutineSchema = z.object({
   consecutiveFailures: z.number().catch(0),
   /** Epoch ms of a scheduled failure retry, or null when none is pending. */
   retryAtMs: z.number().nullable().catch(null),
+  /**
+   * The prompt suffix the failed run carried (a collection-row event's
+   * context), replayed by the retry so an event routine never re-runs
+   * blind. Null when no retry is pending or the run had no suffix.
+   */
+  retryContext: z.string().nullable().catch(null),
 })
 export type AgentRoutine = z.infer<typeof agentRoutineSchema>
 
@@ -181,7 +187,9 @@ export function routineIsDue(routine: AgentRoutine, now: Date): boolean {
   }
   // A pending failure retry outranks the schedule: the occurrence was
   // already consumed when the failed attempt started, so dueness comes
-  // from the backoff clock until the routine succeeds or pauses.
+  // from the backoff clock until the routine succeeds or pauses. This is
+  // also the one clock path an event routine takes — the retry re-runs
+  // with the stored `retryContext`, never context-free.
   if (routine.retryAtMs !== null) {
     return now.getTime() >= routine.retryAtMs
   }

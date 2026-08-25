@@ -7,8 +7,6 @@ import { NoteHistorySection } from './note-history-section'
 import { PublishedUrlSection } from './published-url-section'
 import { SimilarNotesSection } from './similar-notes-section'
 import { useToday } from '@/lib/use-today'
-import { cn } from '@/lib/utils'
-import { hasMacosTitleBarOverlay } from '@/lib/window-chrome'
 
 interface DailyContextSidebarProps {
   /** The day the sidebar describes — a validated ISO date from the route. */
@@ -27,14 +25,7 @@ export function DailyContextSidebar({ date }: DailyContextSidebarProps): ReactEl
   const today = useToday()
 
   return (
-    <div
-      className={cn(
-        'flex flex-col text-text',
-        // The calendar's controls must clear the WindowDragRegion strip when
-        // the macOS title bar is overlaid.
-        hasMacosTitleBarOverlay ? 'pt-0' : 'pt-2',
-      )}
-    >
+    <div className="flex flex-col pt-2 text-text">
       <DayCalendar selectedDate={date} today={today} />
       <div className="my-4 space-y-4 pb-4">
         <NoteActionsSection path={dailyPath(date)} />

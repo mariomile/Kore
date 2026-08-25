@@ -1,4 +1,6 @@
 import {
+  aiKeySecretName,
+  APP_REVIEW_STUB_KEY,
   IAP_PRODUCT_IDS,
   indexedNoteSchema,
   ReflectError,
@@ -73,11 +75,23 @@ const browserArgsSchema = z.object({ url: z.url() })
 export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
   const { platform, files, index } = backend
   const graphInfo = { root: DEV_GRAPH_ROOT, name: 'Dev Graph', generation: 1 }
-  let settingsDocument: Record<string, unknown> = { mobileOnboarded: true }
+  // A pre-wired App Review demo provider: `sk-demo` streams a canned local
+  // reply, so the chat surface is reachable in plain-browser previews. The
+  // add-provider flow cannot persist here — the settings load settles as
+  // 'failed' before this async bridge install lands — so the harness seeds
+  // one instead of asking the user to add it.
+  const demoProvider = { id: 'dev-demo', provider: 'openai', model: 'gpt-5.6-sol', keyHint: 'demo' }
+  let settingsDocument: Record<string, unknown> = {
+    mobileOnboarded: true,
+    aiProviders: [demoProvider],
+    defaultAiProviderId: demoProvider.id,
+  }
   const assets = new Map<string, string>()
   // In-memory keychain stand-in so the AI-provider settings flow (and chat,
   // against a CORS-permissive provider) works end-to-end in the harness.
-  const secrets = new Map<string, string>()
+  const secrets = new Map<string, string>([
+    [aiKeySecretName(demoProvider.id), APP_REVIEW_STUB_KEY],
+  ])
 
   async function invoke(command: string, args: Record<string, unknown>): Promise<unknown> {
     switch (command) {

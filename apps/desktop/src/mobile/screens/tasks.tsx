@@ -20,6 +20,7 @@ import { MobileTaskEditSheet } from '@/mobile/task-edit-sheet'
 import { TaskFiltersDrawer } from '@/mobile/task-filters-drawer'
 import { MobileTaskGroup } from '@/mobile/task-group'
 import { useArrivalFocus } from '@/mobile/use-arrival-focus'
+import { useBarHeightVar } from '@/mobile/use-bar-height'
 import { useGraph } from '@/providers/graph-provider'
 import { routeForPath } from '@/routing/route'
 import { useRouter } from '@/routing/router'
@@ -40,6 +41,7 @@ import { useRouter } from '@/routing/router'
 export function MobileTasks(): ReactElement {
   const { graph } = useGraph()
   const { navigate, arrivalSeq, arrivalFocusEditor } = useRouter()
+  const { scopeRef, barRef } = useBarHeightVar('--mobile-header-height')
   const today = useToday()
   const { filters, toggle } = useTaskFilters()
   const [query, setQuery] = useState('')
@@ -133,11 +135,12 @@ export function MobileTasks(): ReactElement {
   }
 
   return (
-    <div
-      className="flex h-full w-screen flex-col"
-      style={{ paddingTop: 'env(safe-area-inset-top)' }}
-    >
-      <header className="flex shrink-0 items-center gap-1 border-b border-border px-4 pb-2 pt-1">
+    <div ref={scopeRef} className="relative flex h-full w-screen flex-col">
+      <header
+        ref={barRef}
+        className="mobile-glass-bar absolute inset-x-0 top-0 z-30 flex items-center gap-1 border-b border-border px-4 pb-2"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top) + 0.25rem)' }}
+      >
         <SearchInput
           ref={searchInputRef}
           placeholder="Search tasks…"
@@ -177,11 +180,18 @@ export function MobileTasks(): ReactElement {
         // Loading only gates what would otherwise be a false empty state: with
         // archived flipping on, the open groups keep showing while the
         // completed history loads (desktop likewise gates only the message).
-        <div className="flex flex-1 items-center justify-center" aria-label="Loading tasks">
+        <div
+          className="flex flex-1 items-center justify-center"
+          style={{ paddingTop: 'var(--mobile-header-height, 0px)' }}
+          aria-label="Loading tasks"
+        >
           <Spinner className="size-5 text-text-muted" />
         </div>
       ) : groups.length === 0 ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-3 text-text-muted">
+        <div
+          className="flex flex-1 flex-col items-center justify-center gap-3 text-text-muted"
+          style={{ paddingTop: 'var(--mobile-header-height, 0px)' }}
+        >
           <CheckCircle className="size-6" />
           <p className="text-sm">{needle ? 'No matching tasks' : 'No tasks to show'}</p>
           {needle === '' ? (
@@ -191,7 +201,15 @@ export function MobileTasks(): ReactElement {
           ) : null}
         </div>
       ) : (
-        <div className="min-h-0 flex-1 overflow-y-auto pb-24">
+        <div
+          className="min-h-0 flex-1 overflow-y-auto"
+          // Past the glass header above and the tab bar plus the floating
+          // new-task button below.
+          style={{
+            paddingTop: 'var(--mobile-header-height, 0px)',
+            paddingBottom: 'calc(var(--mobile-tab-bar-height, env(safe-area-inset-bottom)) + 5rem)',
+          }}
+        >
           {groups.map((group) => (
             <MobileTaskGroup
               key={group.kind === 'note' ? `note:${group.notePath}` : group.kind}

@@ -45,6 +45,7 @@ import { useGraph } from '@/providers/graph-provider'
 import { useSettings } from '@/providers/settings-provider'
 import { useRouter } from '@/routing/router'
 import { ChatHistoryMenu } from './chat-history-menu'
+import { useComposerHeightVar } from './use-composer-height'
 
 const NEW_CHAT_BINDING = keybindingFor('chat.new')
 
@@ -85,6 +86,7 @@ export function ChatInput(): ReactElement {
   const editsOn = settings.chatAllowEdits
   const { navigate } = useRouter()
   const [savingNote, setSavingNote] = useState(false)
+  const composerRef = useComposerHeightVar()
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
   const mention = useNoteMentionAutocomplete(textareaRef, setDraft)
   const streaming = status === 'streaming'
@@ -131,8 +133,11 @@ export function ChatInput(): ReactElement {
   }
 
   return (
-    <div className="flex-none px-6 pb-6">
-      <div className="mx-auto w-full max-w-2xl rounded-xl border border-border bg-surface focus-within:border-ring">
+    // A floating translucent card over the turn list's bottom edge (the
+    // `bg-popover` blur recipe): the conversation scrolls under it, and the
+    // list pads past the published height (useComposerHeightVar).
+    <div ref={composerRef} className="absolute inset-x-0 bottom-0 z-10 px-6 pb-6">
+      <div className="mx-auto w-full max-w-2xl rounded-2xl border border-border bg-popover shadow-md focus-within:border-ring">
         {queued.length > 0 ? (
           <div className="flex flex-col gap-1.5 px-3.5 pt-3">
             <p className="text-xs text-text-muted">
@@ -435,12 +440,13 @@ export function ChatInput(): ReactElement {
             </Tooltip>
           ) : null}
           {streaming ? (
-            <Button size="icon-sm" aria-label="Stop" onClick={stop}>
+            <Button size="icon" className="rounded-full" aria-label="Stop" onClick={stop}>
               <Stop aria-hidden className="size-3 fill-current" />
             </Button>
           ) : (
             <Button
-              size="icon-sm"
+              size="icon"
+              className="rounded-full"
               aria-label="Send"
               disabled={empty || activeModel === null}
               onClick={submit}

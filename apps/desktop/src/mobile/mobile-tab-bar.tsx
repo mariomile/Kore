@@ -31,8 +31,8 @@ interface MobileTabBarProps {
 
 /**
  * The V1-parity bottom tab bar: Daily (the chronological spine), All
- * (every note + search), and Tasks (every open checkbox, grouped). It sits at
- * the very bottom of the shell. In V1 the
+ * (every note + search), and Tasks (every open checkbox, grouped). It floats
+ * over the stack's bottom edge as a translucent glass bar. In V1 the
  * software keyboard simply covered it; the shell root now ends at the
  * keyboard's top, so the shell hides the bar while the keyboard is up to
  * keep that behavior.
@@ -68,7 +68,7 @@ export function MobileTabBar({ tab, onSelect }: MobileTabBarProps): ReactElement
     <nav
       ref={navRef}
       aria-label="Sections"
-      className="flex shrink-0 border-t border-border"
+      className="mobile-glass-bar absolute inset-x-0 bottom-0 z-40 flex border-t border-border"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
     >
       <TabButton
@@ -122,11 +122,18 @@ function TabButton({
         onClick()
       }}
       className={cn(
-        'flex flex-1 flex-col items-center gap-0.5 pb-1 pt-2 text-[11px] font-medium',
-        active ? 'text-primary' : 'text-text-muted',
+        'flex flex-1 flex-col items-center gap-0.5 pb-1 pt-1.5 text-[11px] font-medium',
+        active ? 'text-accent-soft-text' : 'text-text-muted',
       )}
     >
-      {icon}
+      <span
+        className={cn(
+          'flex h-[1.875rem] w-14 items-center justify-center rounded-full transition-colors duration-150',
+          active && 'bg-accent-soft',
+        )}
+      >
+        {icon}
+      </span>
       {label}
     </button>
   )

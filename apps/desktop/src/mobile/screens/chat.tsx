@@ -4,6 +4,7 @@ import { ChatTurnList } from '@/components/chat/chat-turn-list'
 import { Button } from '@/components/ui/button'
 import { MobileChatComposer } from '@/mobile/chat-composer'
 import { ChatHistoryDrawer } from '@/mobile/chat-history-drawer'
+import { useBarHeightVar } from '@/mobile/use-bar-height'
 import { useChatSession } from '@/providers/chat-provider'
 import { useRouter } from '@/routing/router'
 
@@ -19,39 +20,50 @@ import { useRouter } from '@/routing/router'
 export function MobileChat(): ReactElement {
   const { providers, turns, newChat } = useChatSession()
   const { navigate } = useRouter()
+  const { scopeRef, barRef } = useBarHeightVar('--mobile-header-height')
   const [historyOpen, setHistoryOpen] = useState(false)
   const hasProvider = providers.length > 0
 
   return (
-    <div
-      className="flex h-full w-screen flex-col"
-      style={{ paddingTop: 'env(safe-area-inset-top)' }}
-    >
-      <header className="flex h-11 shrink-0 items-center gap-1 border-b border-border pl-4 pr-1">
-        <h1 className="min-w-0 flex-1 truncate text-base font-semibold">Chat</h1>
-        {hasProvider ? (
-          <>
-            {turns.length > 0 ? (
-              <Button variant="ghost" size="icon" aria-label="New chat" onClick={newChat}>
-                <Plus aria-hidden />
+    <div ref={scopeRef} className="relative flex h-full w-screen flex-col">
+      <header
+        ref={barRef}
+        className="mobile-glass-bar absolute inset-x-0 top-0 z-30 border-b border-border"
+        style={{ paddingTop: 'env(safe-area-inset-top)' }}
+      >
+        <div className="flex h-11 items-center gap-1 pl-4 pr-1">
+          <h1 className="min-w-0 flex-1 truncate text-base font-semibold">Chat</h1>
+          {hasProvider ? (
+            <>
+              {turns.length > 0 ? (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-9 rounded-full bg-surface-hover"
+                  aria-label="New chat"
+                  onClick={newChat}
+                >
+                  <Plus aria-hidden />
+                </Button>
+              ) : null}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-9 rounded-full bg-surface-hover"
+                aria-label="Chat history"
+                onClick={() => setHistoryOpen(true)}
+              >
+                <History aria-hidden />
               </Button>
-            ) : null}
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Chat history"
-              onClick={() => setHistoryOpen(true)}
-            >
-              <History aria-hidden />
-            </Button>
-          </>
-        ) : null}
+            </>
+          ) : null}
+        </div>
       </header>
       {hasProvider ? (
-        <>
+        <div className="relative flex min-h-0 flex-1 flex-col">
           <ChatTurnList />
           <MobileChatComposer />
-        </>
+        </div>
       ) : (
         <div className="flex flex-1 items-center justify-center px-6">
           <div className="flex max-w-sm flex-col items-center text-center">

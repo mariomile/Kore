@@ -103,9 +103,11 @@ export function DaySlide({
     <div
       ref={containerRef}
       className="h-full overflow-y-auto"
-      // Keyboard avoidance is the shell root's job (it ends at the keyboard's
-      // top); this only clears the home indicator when the keyboard is down.
-      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      // The tab bar floats over the shell's bottom edge, so the note scrolls
+      // under it and pads past its published height. Keyboard avoidance is
+      // the shell root's job (it ends at the keyboard's top); the fallback
+      // only clears the home indicator while the tab bar is hidden.
+      style={{ paddingBottom: 'var(--mobile-tab-bar-height, env(safe-area-inset-bottom))' }}
       onScroll={handleScroll}
     >
       <div ref={contentRef}>

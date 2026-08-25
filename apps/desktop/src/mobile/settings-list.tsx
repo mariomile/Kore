@@ -135,10 +135,12 @@ export function SettingsSegmentedRow<Value extends string>({
   return (
     <div className={cn(ROW_CLASS, 'justify-between')}>
       <span className="min-w-0 truncate">{label}</span>
+      {/* The one segmented-control recipe (shared with All notes' list/grid
+          toggle): a fully-round track with a round floating thumb. */}
       <div
         role="radiogroup"
         aria-label={label}
-        className="flex shrink-0 rounded-lg bg-secondary p-0.5"
+        className="flex shrink-0 items-center gap-0.5 rounded-full bg-surface-hover p-0.5"
       >
         {options.map((option) => {
           const selected = option.value === value
@@ -150,8 +152,8 @@ export function SettingsSegmentedRow<Value extends string>({
               aria-checked={selected}
               onClick={() => onChange(option.value)}
               className={cn(
-                'rounded-md px-2.5 py-1 text-[13px] font-medium transition-colors',
-                selected ? 'bg-background shadow-sm' : 'text-text-muted',
+                'h-7 rounded-full px-3 text-[13px] font-medium transition-colors',
+                selected ? 'bg-surface text-text shadow-sm' : 'text-text-muted',
               )}
             >
               {option.label}
@@ -195,10 +197,10 @@ export function SettingsChipsRow<Value extends string>({
               aria-checked={selected}
               onClick={() => onChange(option.value)}
               className={cn(
-                'rounded-lg border px-3 py-1.5 text-[13px] font-medium transition-colors',
+                'rounded-full border px-3 py-1.5 text-[13px] font-medium transition-colors',
                 selected
                   ? 'border-accent bg-accent-soft text-accent-soft-text'
-                  : 'border-border bg-secondary text-text-muted',
+                  : 'border-border text-text-muted',
               )}
             >
               {option.label}

@@ -65,9 +65,12 @@ vi.mock('@/editor/markdown-preview', () => ({
 }))
 vi.mock('@/lib/provider-fetch', () => ({ providerFetch: vi.fn() }))
 
-// Keep sheet content inline so this suite isolates the chat flow.
+// Keep sheet content inline so this suite isolates the chat flow. Honoring
+// `open` matters: the composer floats over the screen, and a closed sheet's
+// content rendered inline inside that overlay would cover the whole screen.
 vi.mock('@/components/ui/drawer', () => ({
-  Drawer: ({ children }: { children?: ReactNode }) => <>{children}</>,
+  Drawer: ({ open, children }: { open?: boolean; children?: ReactNode }) =>
+    open === true ? <>{children}</> : null,
   DrawerContent: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
   DrawerBody: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
   DrawerTitle: ({ children }: { children?: ReactNode }) => <h2>{children}</h2>,
@@ -126,7 +129,14 @@ function Harness({ showScreen }: { showScreen: boolean }): ReactElement {
         <RouteProbe />
         <FocusChatProbe />
         <ChatProvider graph={{ root: '/graphs/test', name: 'test-graph', generation: 1 }}>
-          {showScreen ? <MobileChat /> : null}
+          {/* The composer floats over the turn list anchored to the screen's
+              bottom edge, so the screen needs the bounded height the mobile
+              shell provides in production. */}
+          {showScreen ? (
+            <div style={{ height: 480 }}>
+              <MobileChat />
+            </div>
+          ) : null}
         </ChatProvider>
       </RouterProvider>
     </QueryClientProvider>

@@ -109,7 +109,7 @@ export function CalendarStrip({
 
   return (
     <header
-      className="shrink-0 border-b border-border px-2 pb-1"
+      className="mobile-glass-bar z-30 shrink-0 border-b border-border px-2 pb-1"
       style={{ paddingTop: 'env(safe-area-inset-top)' }}
     >
       {/* Three equal-flanked columns so the month sits at the screen's center
@@ -119,7 +119,7 @@ export function CalendarStrip({
           <Button
             variant="ghost"
             size="icon"
-            className="size-9"
+            className="size-9 rounded-full bg-surface-hover"
             aria-label="Settings"
             onClick={openSettings}
           >
@@ -144,7 +144,7 @@ export function CalendarStrip({
             aria-hidden={!showToday || undefined}
             inert={!showToday}
             className={cn(
-              'transition-opacity duration-150 motion-reduce:transition-none',
+              'rounded-full bg-surface-hover transition-opacity duration-150 motion-reduce:transition-none',
               showToday ? 'opacity-100' : 'pointer-events-none opacity-0',
             )}
             onClick={jumpToToday}

@@ -225,7 +225,12 @@ function renderChat() {
       <RouterProvider>
         <TooltipProvider>
           <ChatProvider graph={GRAPH}>
-            <ChatScreen />
+            {/* The composer floats over the turn list anchored to the screen's
+                bottom edge, so the screen needs the bounded height the app
+                shell provides in production. */}
+            <div style={{ height: 480 }}>
+              <ChatScreen />
+            </div>
             <SendProbe />
             <RouteProbe />
           </ChatProvider>
@@ -303,21 +308,15 @@ describe('ChatScreen', () => {
       expect.unreachable('copy button did not render in a message footer')
     }
 
-    expect(getComputedStyle(copyFooter).opacity).toBe('0')
-    expect(getComputedStyle(copyFooter).pointerEvents).toBe('none')
-    expect(getComputedStyle(copyButton.element()).pointerEvents).toBe('none')
+    // The footer is hover-revealed on fine pointers only: this browser suite
+    // emulates touch (`hasTouch`), where a hover affordance is unreachable,
+    // so the coarse-pointer rule keeps the actions visible from the start.
+    expect(getComputedStyle(copyFooter).opacity).toBe('1')
+    expect(getComputedStyle(copyFooter).pointerEvents).toBe('auto')
     expect(getComputedStyle(copyButton.element()).width).toBe('20px')
     expect(copyFooter.parentElement?.classList.contains('group/assistant-response')).toBe(true)
     expect(copyFooter.classList.contains('group-hover/assistant-response:opacity-100')).toBe(true)
-
-    // The browser suite emulates touch, where hover media queries stay off;
-    // keyboard focus exercises the equivalent accessible reveal path.
-    copyButton.element().focus()
-    await vi.waitFor(() => {
-      expect(getComputedStyle(copyFooter).opacity).toBe('1')
-      expect(getComputedStyle(copyFooter).pointerEvents).toBe('auto')
-      expect(getComputedStyle(copyButton.element()).pointerEvents).toBe('auto')
-    })
+    expect(copyFooter.classList.contains('pointer-coarse:opacity-100')).toBe(true)
     await copyButton.click()
 
     // The wiki link survives the copy, so a pasted reply still links.

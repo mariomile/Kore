@@ -23,7 +23,19 @@ export function ChatTurnList(): ReactElement {
         <MessageScrollerViewport className="px-6" aria-label="Chat conversation">
           {turns.length > 0 ? (
             <div className="mx-auto w-full max-w-2xl">
-              <MessageScrollerContent className="gap-6 py-8">
+              {/* The chrome floats over the list on both edges, so the
+                  content pads past the published heights instead of fixed
+                  insets: the mobile glass header above (absent on desktop —
+                  the 1rem fallback restores the plain pt-8), and the
+                  composer plus, on mobile, the glass tab bar below. */}
+              <MessageScrollerContent
+                className="gap-6"
+                style={{
+                  paddingTop: 'calc(var(--mobile-header-height, 1rem) + 1rem)',
+                  paddingBottom:
+                    'calc(var(--chat-composer-height, 6rem) + var(--mobile-tab-bar-height, 0px) + 1.5rem)',
+                }}
+              >
                 {turns.map((turn) => (
                   // The item's content-visibility paint containment clips at its
                   // padding edge, cutting the copy button's focus ring where the
@@ -43,7 +55,7 @@ export function ChatTurnList(): ReactElement {
             </div>
           ) : null}
         </MessageScrollerViewport>
-        <MessageScrollerButton className="bottom-5" />
+        <MessageScrollerButton className="!bottom-[calc(var(--chat-composer-height,6rem)+var(--mobile-tab-bar-height,0px)+1.25rem)]" />
       </MessageScroller>
     </MessageScrollerProvider>
   )

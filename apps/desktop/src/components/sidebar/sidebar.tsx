@@ -65,9 +65,10 @@ export function Sidebar({ graph, context }: SidebarProps): ReactElement {
             context rail's switcher — one optical line across the window,
             level with the sidebar-collapse toggle. On macOS the overlaid
             traffic lights own the band's left edge, so the row starts past
-            them. The surface pills, lens, and mic sit inside
-            window-drag-control so they stay clickable while the band's
-            empty stretch still drags the window. */}
+            them. The surface pills anchor the band's left edge and the
+            lens + mic its right one; each group sits inside
+            window-drag-control so it stays clickable while the stretch
+            between them still drags the window. */}
         <div
           data-tauri-drag-region
           className={cn(
@@ -75,7 +76,7 @@ export function Sidebar({ graph, context }: SidebarProps): ReactElement {
             hasMacosTitleBarOverlay ? 'pl-20' : 'pl-3',
           )}
         >
-          <div className="window-drag-control flex min-w-0 items-center gap-0.5">
+          <div className="window-drag-control flex min-w-0 items-center">
             <SidebarSurfaceSwitcher
               surface={surface}
               onSelect={(next) => {
@@ -87,6 +88,9 @@ export function Sidebar({ graph, context }: SidebarProps): ReactElement {
                 }
               }}
             />
+          </div>
+          <div className="flex-1" />
+          <div className="window-drag-control flex flex-none items-center gap-0.5">
             <SidebarSearch onOpen={() => context.openPalette()} />
             <AudioMemoButton />
           </div>

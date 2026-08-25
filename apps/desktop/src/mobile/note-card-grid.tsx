@@ -48,7 +48,10 @@ export function NoteCardGrid({ rows, onOpen }: NoteCardGridProps): ReactElement 
   return (
     <div
       className="min-h-0 flex-1 overflow-y-auto"
-      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      style={{
+        paddingTop: 'var(--mobile-header-height, 0px)',
+        paddingBottom: 'var(--mobile-tab-bar-height, env(safe-area-inset-bottom))',
+      }}
     >
       <div data-testid="all-notes-grid" className="columns-2 gap-3 px-4 py-4 [column-fill:balance]">
         {rows.slice(0, visibleCount).map((row) => {

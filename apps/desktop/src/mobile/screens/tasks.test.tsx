@@ -248,7 +248,11 @@ function renderScreen() {
   return render(
     <QueryClientProvider client={client}>
       <RouterProvider>
-        <MobileTasks />
+        {/* The screen floats its chrome over the scroller, so it needs the
+            bounded height the mobile shell provides in production. */}
+        <div style={{ height: 520 }}>
+          <MobileTasks />
+        </div>
         <RouteProbe />
       </RouterProvider>
     </QueryClientProvider>,

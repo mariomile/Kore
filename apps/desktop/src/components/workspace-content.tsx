@@ -16,7 +16,7 @@ import { SidebarResizeHandle } from '@/components/sidebar-resize-handle'
 import { TemplateCreateDialog } from '@/components/templates/template-create-dialog'
 import { TemplatePicker } from '@/components/templates/template-picker'
 import { registerInAppBrowserOpener, setBrowserSessionUrl } from '@/lib/browser-session'
-import { hasMacosTitleBarOverlay } from '@/lib/window-chrome'
+import { useMacosTrafficLightInset } from '@/lib/use-macos-traffic-light-inset'
 import { useDailyContextTarget } from '@/providers/focused-daily-provider'
 import { useSidebar } from '@/providers/sidebar-provider'
 import { useAppShortcuts } from '@/routing/app-shortcuts'
@@ -79,6 +79,7 @@ export function WorkspaceContent({ graph }: WorkspaceContentProps): ReactElement
   // In the daily stream the route stays put while focus moves between days, so
   // the panel follows the focused day and snaps back on navigation.
   const contextTarget = useDailyContextTarget()
+  const trafficLightBand = useMacosTrafficLightInset()
 
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden bg-surface-sunken text-text">
@@ -87,9 +88,13 @@ export function WorkspaceContent({ graph }: WorkspaceContentProps): ReactElement
           the left edge. That inset cost the workspace rail 80 of its 260
           points — enough that the surface pills, the lens and the mic could
           not share a line. `WindowDragRegion` (28px, mounted at the desktop
-          root) already covers this strip, so it needs no drag handler of its
-          own; it only has to reserve the height. */}
-      {hasMacosTitleBarOverlay ? <div aria-hidden className="h-7 flex-none" /> : null}
+          root) already covers this strip, so it needs no drag handler of
+          its own; it only has to reserve the height — and only while the
+          lights are actually on screen. Native fullscreen hides them, and
+          keeping the band would be a blank 28px gap across the window. */}
+      {trafficLightBand ? (
+        <div aria-hidden data-testid="macos-traffic-light-band" className="h-7 flex-none" />
+      ) : null}
 
       <div className="flex min-h-0 flex-1">
         {collapsed ? undefined : (

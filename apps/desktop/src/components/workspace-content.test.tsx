@@ -15,6 +15,7 @@ const workspaceState = vi.hoisted<WorkspaceState>(() => ({
   contextCollapsed: false,
   target: { kind: 'daily', date: '2026-07-11' },
 }))
+const trafficLights = vi.hoisted(() => ({ inset: false }))
 
 vi.mock('@/components/command-palette/command-palette', () => ({
   CommandPalette: () => null,
@@ -37,6 +38,9 @@ vi.mock('@/components/vault-replace/vault-replace-dialog', () => ({
 // The tab strip pulls the open-tabs stack (graph, palette, index queries) —
 // its own test covers it; here only the frame around it is under test.
 vi.mock('@/components/note-tabs-strip', () => ({ NoteTabsStrip: () => null }))
+vi.mock('@/lib/use-macos-traffic-light-inset', () => ({
+  useMacosTrafficLightInset: () => trafficLights.inset,
+}))
 vi.mock('@/components/route-content', () => ({ RouteContent: () => <div>Route content</div> }))
 vi.mock('@/components/shortcuts-dialog', () => ({ ShortcutsDialog: () => null }))
 vi.mock('@/components/sidebar/sidebar', () => ({
@@ -83,6 +87,7 @@ beforeEach(async () => {
   workspaceState.collapsed = false
   workspaceState.contextCollapsed = false
   workspaceState.target = { kind: 'daily', date: '2026-07-11' }
+  trafficLights.inset = false
   // The context sidebar is `hidden lg:block`, so it only renders on a
   // desktop-width viewport.
   await page.viewport(1280, 800)
@@ -133,5 +138,14 @@ describe('WorkspaceContent', () => {
     workspaceState.contextCollapsed = true
     await view.rerender(<WorkspaceContent graph={GRAPH} />)
     expect(view.getByRole('complementary', { name: 'Context' }).query()).toBeNull()
+  })
+
+  it('reserves the traffic-light band only while the lights occupy the top', async () => {
+    const view = await render(<WorkspaceContent graph={GRAPH} />)
+    expect(view.getByTestId('macos-traffic-light-band').query()).toBeNull()
+
+    trafficLights.inset = true
+    await view.rerender(<WorkspaceContent graph={GRAPH} />)
+    await expect.element(view.getByTestId('macos-traffic-light-band')).toBeInTheDocument()
   })
 })

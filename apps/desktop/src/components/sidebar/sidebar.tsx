@@ -64,7 +64,8 @@ export function Sidebar({ graph, context }: SidebarProps): ReactElement {
             level with the sidebar-collapse toggle. The macOS traffic lights
             ride their own band above the window (see `WorkspaceContent`)
             rather than an inset carved out of this one, which is what leaves
-            room for the pills, the lens and the mic on a single line. All
+            room for the pills, the lens and the mic on a single line. That
+            band collapses in fullscreen, when the lights are hidden. All
             five read as one cluster against the band's left edge — they sit
             inside window-drag-control so they stay clickable while the
             stretch beyond them still drags the window. */}

@@ -5,17 +5,10 @@ import {
   isPropertyKey,
   listNotesWithProperty,
   listTemplates,
-  propertyKeyForName,
   propertyRowValue,
-  rollupAggregationSchema,
-  tagPropertyTypeSchema,
-  type CollectionValue,
-  type RollupAggregation,
-  type TagProperty,
-  type TagPropertyType,
   type TemplateEntry,
 } from '@reflect/core'
-import { ArrowDown, ArrowUp, Plus, Trash } from '@/components/icons'
+import { Plus } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -24,7 +17,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
 import {
   Select,
   SelectContent,
@@ -37,94 +29,19 @@ import { commitNoteFrontmatter } from '@/lib/note-frontmatter'
 import { readTagDefinition, saveTagType } from '@/lib/tags/tag-type-write'
 import { tagTypeQueryKey } from '@/hooks/use-tag-type'
 import { useGraph } from '@/providers/graph-provider'
+import {
+  FIELD_LABEL_CLASS,
+  draftsFromSchema,
+  schemaFromDrafts,
+  type PendingRename,
+  type PropertyDraft,
+} from './tag-config-drafts'
+import { TagPropertyRow } from './tag-property-row'
 
 interface TagConfigDialogProps {
   /** The tag being configured (display casing). */
   tag: string
   onClose: () => void
-}
-
-/** One schema row under edit; `options` stays comma-text until save. */
-interface PropertyDraft {
-  rowId: number
-  name: string
-  key: string
-  /** The stored key this row loaded with (null for a new row) — a changed
-   * key is a rename, which can migrate the notes' values on save. */
-  originalKey: string | null
-  type: TagPropertyType
-  options: string
-  rollupRelation: string
-  rollupProperty: string
-  rollupAggregation: RollupAggregation
-}
-
-/** A key rename awaiting the migrate-or-not decision, with its blast radius. */
-interface PendingRename {
-  from: string
-  to: string
-  notes: { notePath: string; value: CollectionValue }[]
-}
-
-const PROPERTY_TYPE_LABELS: Record<TagPropertyType, string> = {
-  text: 'Text',
-  number: 'Number',
-  checkbox: 'Checkbox',
-  date: 'Date',
-  select: 'Select',
-  multiselect: 'Multi-select',
-  url: 'URL',
-  relation: 'Relation',
-  relations: 'Multi-relation',
-  status: 'Status',
-  files: 'Files',
-  email: 'Email',
-  rating: 'Rating',
-  rollup: 'Rollup',
-}
-
-const FIELD_LABEL_CLASS = 'text-xs font-medium text-text-secondary'
-
-function draftsFromSchema(properties: readonly TagProperty[]): PropertyDraft[] {
-  return properties.map((property, index) => ({
-    rowId: index,
-    name: property.name,
-    key: property.key,
-    originalKey: property.key,
-    type: property.type,
-    options: property.options?.join(', ') ?? '',
-    rollupRelation: property.rollup?.relation ?? '',
-    rollupProperty: property.rollup?.property ?? '',
-    rollupAggregation: property.rollup?.aggregation ?? 'count',
-  }))
-}
-
-function schemaFromDrafts(drafts: readonly PropertyDraft[]): TagProperty[] {
-  return drafts.map((draft) => {
-    const options = draft.options
-      .split(',')
-      .map((option) => option.trim())
-      .filter((option) => option !== '')
-    const hasOptions =
-      draft.type === 'select' || draft.type === 'multiselect' || draft.type === 'status'
-    const rollup =
-      draft.type === 'rollup' &&
-      draft.rollupRelation.trim() !== '' &&
-      draft.rollupProperty.trim() !== ''
-        ? {
-            relation: draft.rollupRelation.trim(),
-            property: draft.rollupProperty.trim(),
-            aggregation: draft.rollupAggregation,
-          }
-        : undefined
-    return {
-      name: draft.name.trim(),
-      key: draft.key,
-      type: draft.type,
-      ...(hasOptions && options.length > 0 ? { options } : {}),
-      ...(rollup === undefined ? {} : { rollup }),
-    }
-  })
 }
 
 /**
@@ -330,167 +247,18 @@ export function TagConfigDialog({ tag, onClose }: TagConfigDialogProps): ReactEl
           </Select>
         </label>
         <div className="flex flex-col gap-2" aria-busy={loading || undefined}>
-          {drafts.map((draft) => {
-            const invalid = invalidRowIds.has(draft.rowId)
-            const hasOptions =
-              draft.type === 'select' || draft.type === 'multiselect' || draft.type === 'status'
-            return (
-              <div
-                key={draft.rowId}
-                className="flex flex-col gap-1.5 rounded-md border border-border p-2.5"
-              >
-                <div className="flex items-center gap-1.5">
-                  <Input
-                    value={draft.name}
-                    aria-label="Property name"
-                    aria-invalid={invalid || undefined}
-                    placeholder="Author"
-                    className="flex-1"
-                    onChange={(event) => {
-                      const name = event.target.value
-                      updateDraft(draft.rowId, {
-                        name,
-                        // Follow the name until the key was edited by hand.
-                        ...(draft.key === propertyKeyForName(draft.name)
-                          ? { key: propertyKeyForName(name) }
-                          : {}),
-                      })
-                    }}
-                  />
-                  <Select
-                    value={draft.type}
-                    items={PROPERTY_TYPE_LABELS}
-                    onValueChange={(value) => {
-                      const parsed = tagPropertyTypeSchema.safeParse(value)
-                      if (parsed.success) {
-                        updateDraft(draft.rowId, { type: parsed.data })
-                      }
-                    }}
-                  >
-                    <SelectTrigger className="w-32 shrink-0" aria-label="Property type">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(PROPERTY_TYPE_LABELS).map(([value, label]) => (
-                        <SelectItem key={value} value={value}>
-                          {label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    aria-label="Move property up"
-                    onClick={() => moveDraft(draft.rowId, -1)}
-                  >
-                    <ArrowUp className="size-4" />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    aria-label="Move property down"
-                    onClick={() => moveDraft(draft.rowId, 1)}
-                  >
-                    <ArrowDown className="size-4" />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    aria-label="Remove property"
-                    onClick={() =>
-                      setDrafts((current) => current.filter((row) => row.rowId !== draft.rowId))
-                    }
-                  >
-                    <Trash className="size-4" />
-                  </Button>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <label className="flex flex-1 items-center gap-1.5">
-                    <span className={FIELD_LABEL_CLASS}>Key</span>
-                    <Input
-                      value={draft.key}
-                      aria-label="Frontmatter key"
-                      aria-invalid={invalid || undefined}
-                      placeholder="author"
-                      className="flex-1 font-mono text-xs"
-                      onChange={(event) => updateDraft(draft.rowId, { key: event.target.value })}
-                    />
-                  </label>
-                  {hasOptions ? (
-                    <label className="flex flex-[2] items-center gap-1.5">
-                      <span className={FIELD_LABEL_CLASS}>Options</span>
-                      <Input
-                        value={draft.options}
-                        aria-label="Options (comma-separated)"
-                        placeholder="to-read, reading, done"
-                        className="flex-1"
-                        onChange={(event) =>
-                          updateDraft(draft.rowId, { options: event.target.value })
-                        }
-                      />
-                    </label>
-                  ) : null}
-                </div>
-                {draft.type === 'rollup' ? (
-                  <div className="flex flex-col gap-1.5">
-                    <div className="flex items-center gap-1.5">
-                      <label className="flex flex-1 items-center gap-1.5">
-                        <span className={FIELD_LABEL_CLASS}>Relation</span>
-                        <Input
-                          value={draft.rollupRelation}
-                          aria-label="Rollup relation key"
-                          placeholder="author"
-                          className="flex-1 font-mono text-xs"
-                          onChange={(event) =>
-                            updateDraft(draft.rowId, { rollupRelation: event.target.value })
-                          }
-                        />
-                      </label>
-                      <label className="flex flex-1 items-center gap-1.5">
-                        <span className={FIELD_LABEL_CLASS}>Property</span>
-                        <Input
-                          value={draft.rollupProperty}
-                          aria-label="Rollup property key"
-                          placeholder="rating"
-                          className="flex-1 font-mono text-xs"
-                          onChange={(event) =>
-                            updateDraft(draft.rowId, { rollupProperty: event.target.value })
-                          }
-                        />
-                      </label>
-                    </div>
-                    <label className="flex items-center gap-1.5">
-                      <span className={FIELD_LABEL_CLASS}>Aggregation</span>
-                      <Select
-                        value={draft.rollupAggregation}
-                        onValueChange={(value) => {
-                          const parsed = rollupAggregationSchema.safeParse(value)
-                          if (parsed.success) {
-                            updateDraft(draft.rowId, { rollupAggregation: parsed.data })
-                          }
-                        }}
-                      >
-                        <SelectTrigger className="w-40" aria-label="Rollup aggregation">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {rollupAggregationSchema.options.map((aggregation) => (
-                            <SelectItem key={aggregation} value={aggregation}>
-                              {aggregation.charAt(0).toUpperCase() + aggregation.slice(1)}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </label>
-                  </div>
-                ) : null}
-              </div>
-            )
-          })}
+          {drafts.map((draft) => (
+            <TagPropertyRow
+              key={draft.rowId}
+              draft={draft}
+              invalid={invalidRowIds.has(draft.rowId)}
+              updateDraft={updateDraft}
+              moveDraft={moveDraft}
+              onRemove={() =>
+                setDrafts((current) => current.filter((row) => row.rowId !== draft.rowId))
+              }
+            />
+          ))}
           <Button
             type="button"
             variant="ghost"

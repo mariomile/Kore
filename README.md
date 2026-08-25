@@ -54,14 +54,17 @@ customization and what is planned next.
 
 ## Install
 
+The app ships under the product name **Memento** (the repository keeps the
+Lore name); the bundle you install is `Memento.app`.
+
 **Install from a release (recommended):** grab the latest `.dmg` from
 [Releases](https://github.com/mariomile/Lore/releases) and drag
-**Lore.app** into Applications. The build is unsigned, so recent macOS
+**Memento.app** into Applications. The build is unsigned, so recent macOS
 quarantines the download and claims the app "is damaged" — it isn't; clear
 the quarantine flag once from Terminal and open normally:
 
 ```bash
-xattr -cr /Applications/Lore.app
+xattr -cr /Applications/Memento.app
 ```
 
 (If macOS still objects: System Settings → Privacy & Security → "Open
@@ -85,7 +88,7 @@ pnpm tauri build
 
 The installers land in `apps/desktop/src-tauri/target/release/bundle/`:
 
-- `macos/Lore.app` — drag it into `/Applications`
+- `macos/Memento.app` — drag it into `/Applications`
 - `dmg/*.dmg` — the same app as a disk-image installer
 
 A locally built app runs without Gatekeeper warnings on the machine that
@@ -140,13 +143,17 @@ Lore is a pnpm/Turborepo monorepo (structure inherited from Reflect):
 
 ```text
 lore/
-├── apps/desktop/          # Mac and iOS app
-├── apps/cli/              # `reflect` CLI (scripts and agents)
+├── apps/desktop/          # Mac and iOS app (Tauri 2 shell + React frontend)
+├── apps/cli/              # `reflect` CLI — Rust read/discovery/capture tool
 ├── apps/extension/        # Chrome capture extension
-├── apps/native-host/      # Browser capture helper
-├── packages/core/         # Shared TypeScript logic
-├── packages/db/           # Database types and helpers
-├── crates/index-schema/   # Shared index schema
+├── apps/native-host/      # Browser capture helper (native-messaging spooler)
+├── packages/core/         # Shared TypeScript business logic
+├── packages/db/           # Database types and helpers (Kysely + IPC dialect)
+├── packages/utils/        # Small dependency-free helpers (ISO date math)
+├── crates/index-schema/   # Shared SQLite index schema and migrations
+├── crates/graph-paths/    # Shared graph-path classification (Rust ↔ TS parity)
+├── plugins/               # First-party Tauri plugins (keyboard, recording)
+├── fixtures/              # TS ↔ Rust parity test corpora
 ├── design-system/         # Tokens and UI primitives
 └── docs/                  # Product, architecture, and contributor docs
 ```
@@ -158,10 +165,10 @@ See [AGENTS.md](AGENTS.md) for conventions and the development cycle.
 Common commands from the repository root:
 
 ```bash
-pnpm dev              # Vite only, http://localhost:1420
+pnpm dev              # turbo dev: Vite app on http://localhost:1420 (+ extension dev server)
 pnpm check            # typecheck + lint
 pnpm test             # vitest; use --run path/to/test for one file
-pnpm --filter reflect-desktop e2e   # Playwright over the real webview
+pnpm --filter @reflect/desktop e2e  # Chromium smoke of the Vite app (no Tauri shell)
 
 # Rust tests that compile the desktop crate need sidecars staged first
 pnpm --filter @reflect/desktop sidecar

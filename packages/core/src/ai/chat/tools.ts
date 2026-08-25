@@ -1,5 +1,5 @@
-import { tool, type Tool, type TypedToolCall, type TypedToolResult } from 'ai'
-import { z } from 'zod'
+import { tool, type Tool } from 'ai'
+import type { z } from 'zod'
 import { readNote } from '../../graph/commands'
 import { retrieve, type RetrievalHit, type RetrieveOptions } from '../../embeddings/retrieve'
 import { assetReferencingNotePaths } from '../../indexing/asset-refs'
@@ -20,7 +20,7 @@ import {
 } from '../../indexing/note-list'
 import { parseFrontmatter, splitFrontmatter } from '../../markdown/frontmatter'
 import { isTagName } from '../../markdown/extract'
-import { isPropertyKey, type TagProperty, type TagType } from '../../tags'
+import { isPropertyKey, type TagType } from '../../tags'
 import {
   buildOpenWebPage,
   buildReadWebPage,
@@ -36,41 +36,51 @@ import {
   cloudSafeCollectionRows,
   cloudSafeNoteListings,
   cloudSafeSearchHits,
-  type CloudCollectionRow,
   type CloudNoteListing,
-  type CloudSafe,
-  type CloudSearchHit,
   type CloudSendable,
 } from '../checkers'
+import {
+  DEFAULT_COLLECTION_LIMIT,
+  DEFAULT_RECENT_LIMIT,
+  DEFAULT_SEARCH_LIMIT,
+  EDITS_DISABLED_ERROR,
+  INVALID_COLLECTION_TAG_ERROR,
+  INVALID_TAG_ERROR,
+  listCollectionInput,
+  listDailyNotesInput,
+  listRecentNotesInput,
+  MAX_DAILY_NOTE_DAYS,
+  MISSING_VALUE_ERROR,
+  PRIVATE_NOTE_EDIT_ERROR,
+  RESERVED_PROPERTY_ERROR,
+  searchNotesInput,
+  setNotePropertyInput,
+  UNTYPED_TAG_ERROR,
+  type ListCollectionOutput,
+  type ListDailyNotesOutput,
+  type ListRecentNotesOutput,
+  type SearchNotesOutput,
+  type SetNotePropertyOutput,
+  type SetNotePropertyValue,
+} from './tools-io'
+
+export * from './tools-io'
+export * from './tools-activity'
 
 /**
- * The read-only note tools the chat model can call (Plan 10, first wave),
- * and — deliberately in the same module — everything else that knows their
- * names: the {@link NoteToolCall}/{@link NoteToolResult} unions the engine
- * streams and the UI renders, and the mappers from SDK stream parts onto
- * them. Adding a tool means registering it here (batch executors live in
- * sibling `read-*.ts` modules) and extending the chip that renders it;
- * nothing else switches on tool names.
+ * The read-only note tools the chat model can call (Plan 10, first wave).
+ * Everything else that knows their names stays in sibling modules re-exported
+ * above: the tools' wire contract (schemas, outputs, refusal strings) in
+ * `./tools-io`, and the {@link NoteToolCall}/{@link NoteToolResult} unions the
+ * engine streams and the UI renders — with the mappers from SDK stream parts
+ * onto them — in `./tools-activity`. Adding a tool means registering it here
+ * (batch executors live in sibling `read-*.ts` modules) and extending the
+ * chip that renders it; nothing else switches on tool names.
  *
- * Note content enters tool outputs only as {@link CloudSafe} values, minted
+ * Note content enters tool outputs only as `CloudSafe` values, minted
  * by the privacy gate in `../checkers` — search drops private hits entirely,
  * and reads re-check the live frontmatter before any content is minted.
  */
-
-/** Default and ceiling for search hits per call (token budget, not recall). */
-const DEFAULT_SEARCH_LIMIT = 8
-const MAX_SEARCH_LIMIT = 20
-
-/** Default and ceiling for recent-note listings per call. */
-const DEFAULT_RECENT_LIMIT = 10
-const MAX_RECENT_LIMIT = 20
-
-/** Most days one daily-range call returns; past it the model narrows the range. */
-export const MAX_DAILY_NOTE_DAYS = 31
-
-/** Default and ceiling for collection rows per call. */
-const DEFAULT_COLLECTION_LIMIT = 30
-const MAX_COLLECTION_LIMIT = 100
 
 /** Injectable effects so tests can drive the tools without a live bridge. */
 export interface NoteToolDeps {
@@ -115,148 +125,6 @@ export interface BuildNoteToolsOptions extends NoteToolDeps {
    */
   allowEdits?: boolean | undefined
 }
-
-export interface SearchNotesOutput {
-  hits: CloudSafe<CloudSearchHit>[]
-}
-
-/**
- * A listing, or a corrective refusal for a `tag` the tag grammar can never
- * produce. Without the refusal a junk filter (`*`, `all`, whitespace…) reads
- * as a clean "0 notes" — indistinguishable from a real tag nothing carries —
- * and a model hunting for an "all notes" sentinel just keeps guessing.
- */
-export type ListRecentNotesOutput =
-  | { ok: true; notes: CloudSafe<CloudNoteListing>[] }
-  | { ok: false; tag: string; error: string }
-
-/** The refusal text — one string, read verbatim by both model and chip. */
-export const INVALID_TAG_ERROR =
-  'Not a tag — omit the tag to list all recent notes. Tags are single words like "book" or "project/atlas".'
-
-export interface ListDailyNotesOutput {
-  days: CloudSafe<CloudNoteListing>[]
-  /** The range held more days than one call returns — narrow it to see the rest. */
-  truncated: boolean
-}
-
-/**
- * A collection listing, or a corrective refusal — same policy as
- * {@link ListRecentNotesOutput}: junk tags and untyped tags each get a
- * refusal that tells the model what to do instead of a misleading "0 rows".
- */
-export type ListCollectionOutput =
-  | {
-      ok: true
-      tag: string
-      /** The tag's schema — one entry per property column. */
-      schema: TagProperty[]
-      rows: CloudSafe<CloudCollectionRow>[]
-      /** More public rows exist than the limit returned. */
-      truncated: boolean
-    }
-  | { ok: false; tag: string; error: string }
-
-/** Refusal for a `tag` input the tag grammar can never produce. */
-export const INVALID_COLLECTION_TAG_ERROR =
-  'Not a tag — tags are single words like "book" or "project/atlas".'
-
-/** Refusal for a real tag that has no type definition (no collection). */
-export const UNTYPED_TAG_ERROR =
-  'This tag has no type, so it has no collection. Use list_recent_notes with the tag to list its notes instead.'
-
-/** `set_note_property` refusals, read verbatim by both model and chip. */
-export const EDITS_DISABLED_ERROR =
-  'Editing is disabled — the user can turn on "Allow edits" in the chat settings.'
-export const RESERVED_PROPERTY_ERROR =
-  'That key is reserved app metadata (or not a valid property key) and cannot be set.'
-export const PRIVATE_NOTE_EDIT_ERROR =
-  'This note is marked private — the assistant cannot read or change it.'
-export const MISSING_VALUE_ERROR = 'Provide a value, or pass clear=true to remove the property.'
-
-export type SetNotePropertyValue = string | number | boolean | string[] | null
-
-export type SetNotePropertyOutput =
-  | { ok: true; path: string; key: string; value: SetNotePropertyValue }
-  | { ok: false; path: string; error: string }
-
-/** Compact preview of a proposed property value (null means clear). */
-export function formatPropertyPreview(value: SetNotePropertyValue): string {
-  if (value === null) {
-    return 'cleared'
-  }
-  if (Array.isArray(value)) {
-    return value.join(', ')
-  }
-  return String(value)
-}
-
-export const setNotePropertyInput = z.object({
-  path: z.string().min(1).describe('Graph-relative note path (from search or listing results)'),
-  key: z.string().min(1).describe('The frontmatter property key to write (e.g. "status")'),
-  value: z
-    .union([z.string(), z.number(), z.boolean(), z.array(z.string())])
-    .nullish()
-    .describe('The new value. Omit it and pass clear=true to remove the property instead.'),
-  clear: z.boolean().optional().describe('Remove the property instead of setting a value'),
-})
-
-export const searchNotesInput = z.object({
-  query: z.string().min(1).describe('Full-text search query over the note graph'),
-  limit: z
-    .number()
-    .int()
-    .min(1)
-    .max(MAX_SEARCH_LIMIT)
-    .optional()
-    .describe(`How many notes to return (default ${DEFAULT_SEARCH_LIMIT})`),
-})
-
-export const listRecentNotesInput = z.object({
-  limit: z
-    .number()
-    .int()
-    .min(1)
-    .max(MAX_RECENT_LIMIT)
-    .optional()
-    .describe(`How many notes to return (default ${DEFAULT_RECENT_LIMIT})`),
-  tag: z
-    .string()
-    .nullish()
-    .describe(
-      'Only notes carrying this tag (case-insensitive, without the #). ' +
-        'Omit, or pass null, to list all recent notes.',
-    ),
-})
-
-export const listCollectionInput = z.object({
-  tag: z
-    .string()
-    .min(1)
-    .describe('The typed tag whose collection to list (case-insensitive, without the #)'),
-  sortBy: z
-    .string()
-    .nullish()
-    .describe(
-      'Property key to sort the rows by (a `key` from the collection schema). ' +
-        'Omit, or pass null, for the default order (pinned first, then newest).',
-    ),
-  direction: z.enum(['asc', 'desc']).nullish().describe('Sort direction (default asc)'),
-  limit: z
-    .number()
-    .int()
-    .min(1)
-    .max(MAX_COLLECTION_LIMIT)
-    .optional()
-    .describe(`How many rows to return (default ${DEFAULT_COLLECTION_LIMIT})`),
-})
-
-const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'an ISO date, YYYY-MM-DD')
-
-export const listDailyNotesInput = z.object({
-  start: isoDate.describe('First day of the range, inclusive (YYYY-MM-DD)'),
-  end: isoDate.describe('Last day of the range, inclusive (YYYY-MM-DD)'),
-})
 
 /** Shape one query row for the listings gate (epoch mtime → ISO timestamp). */
 function listingCandidate(
@@ -521,247 +389,4 @@ export type NoteTools = {
   read_assets: Tool<z.infer<typeof readAssetsInput>, ReadAssetsOutput>
   open_web_page: Tool<z.infer<typeof openWebPageInput>, BrowseWebOutput>
   read_web_page: Tool<z.infer<typeof readWebPageInput>, BrowseWebOutput>
-}
-
-/** The hit slice tool-activity UI renders (full hits stay engine-side). */
-export type NoteHitSummary = Pick<CloudSearchHit, 'path' | 'title'>
-
-/** One note's outcome in a read_notes call, for the tool-activity UI. */
-export interface ReadNoteSummary {
-  path: string
-  title: string | null
-  /** The per-note refusal/miss text, or `null` when the read succeeded. */
-  error: string | null
-}
-
-/** One asset's outcome in a read_assets call, for the tool-activity UI. */
-export interface ReadAssetSummary {
-  path: string
-  /** The per-asset refusal/miss text, or `null` when the read succeeded. */
-  error: string | null
-}
-
-/** One tool invocation, as the transcript sees it. */
-export type NoteToolCall =
-  | { tool: 'search'; toolCallId: string; query: string }
-  | { tool: 'read'; toolCallId: string; paths: string[] }
-  | { tool: 'assets'; toolCallId: string; paths: string[] }
-  | { tool: 'recents'; toolCallId: string; tag: string | null }
-  | { tool: 'dailies'; toolCallId: string; start: string; end: string }
-  | { tool: 'collection'; toolCallId: string; tag: string }
-  | { tool: 'setProperty'; toolCallId: string; path: string; key: string }
-  | { tool: 'browse'; toolCallId: string; url: string }
-  | { tool: 'readPage'; toolCallId: string }
-
-/** One settled tool invocation. A failed read or listing keeps its refusal. */
-export type NoteToolResult =
-  | { tool: 'search'; toolCallId: string; query: string; hits: NoteHitSummary[] }
-  | { tool: 'read'; toolCallId: string; notes: ReadNoteSummary[] }
-  | { tool: 'assets'; toolCallId: string; assets: ReadAssetSummary[] }
-  | {
-      tool: 'recents'
-      toolCallId: string
-      tag: string | null
-      notes: NoteHitSummary[]
-      error: string | null
-    }
-  | { tool: 'dailies'; toolCallId: string; start: string; end: string; days: NoteHitSummary[] }
-  | {
-      tool: 'collection'
-      toolCallId: string
-      tag: string
-      notes: NoteHitSummary[]
-      error: string | null
-    }
-  | {
-      tool: 'setProperty'
-      toolCallId: string
-      path: string
-      key: string
-      error: string | null
-      value: SetNotePropertyValue | null
-    }
-  | {
-      tool: 'browse'
-      toolCallId: string
-      /** The final URL — the page's own after redirects, the requested one on failure. */
-      url: string
-      title: string | null
-      error: string | null
-    }
-  | {
-      tool: 'readPage'
-      toolCallId: string
-      url: string | null
-      title: string | null
-      error: string | null
-    }
-
-/** Map an SDK tool-call part onto {@link NoteToolCall} (null for dynamic). */
-export function noteToolCall(part: TypedToolCall<NoteTools>): NoteToolCall | null {
-  if (part.dynamic) {
-    return null
-  }
-  switch (part.toolName) {
-    case 'search_notes':
-      return { tool: 'search', toolCallId: part.toolCallId, query: part.input.query }
-    case 'read_notes':
-      return { tool: 'read', toolCallId: part.toolCallId, paths: part.input.paths }
-    case 'read_assets':
-      return { tool: 'assets', toolCallId: part.toolCallId, paths: part.input.paths }
-    case 'list_recent_notes':
-      return { tool: 'recents', toolCallId: part.toolCallId, tag: part.input.tag ?? null }
-    case 'list_daily_notes':
-      return {
-        tool: 'dailies',
-        toolCallId: part.toolCallId,
-        start: part.input.start,
-        end: part.input.end,
-      }
-    case 'list_collection':
-      return { tool: 'collection', toolCallId: part.toolCallId, tag: part.input.tag }
-    case 'set_note_property':
-      return {
-        tool: 'setProperty',
-        toolCallId: part.toolCallId,
-        path: part.input.path,
-        key: part.input.key,
-      }
-    case 'open_web_page':
-      return { tool: 'browse', toolCallId: part.toolCallId, url: part.input.url }
-    case 'read_web_page':
-      return { tool: 'readPage', toolCallId: part.toolCallId }
-  }
-}
-
-/** The path+title slice of one listing, for the tool-activity UI. */
-function listingSummary(entry: CloudNoteListing): NoteHitSummary {
-  return { path: entry.path, title: entry.title }
-}
-
-/** Map an SDK tool-result part onto {@link NoteToolResult} (null for dynamic). */
-export function noteToolResult(part: TypedToolResult<NoteTools>): NoteToolResult | null {
-  if (part.dynamic) {
-    return null
-  }
-  switch (part.toolName) {
-    case 'search_notes':
-      return {
-        tool: 'search',
-        toolCallId: part.toolCallId,
-        query: part.input.query,
-        hits: part.output.hits.map((hit) => ({ path: hit.path, title: hit.title })),
-      }
-    case 'read_notes':
-      return {
-        tool: 'read',
-        toolCallId: part.toolCallId,
-        notes: part.output.notes.map((entry) =>
-          entry.ok
-            ? { path: entry.note.path, title: entry.note.title, error: null }
-            : { path: entry.path, title: null, error: entry.error },
-        ),
-      }
-    case 'read_assets':
-      return {
-        tool: 'assets',
-        toolCallId: part.toolCallId,
-        assets: part.output.assets.map((entry) =>
-          entry.ok
-            ? { path: entry.asset.path, error: null }
-            : { path: entry.path, error: entry.error },
-        ),
-      }
-    case 'list_recent_notes': {
-      const output = part.output
-      return output.ok
-        ? {
-            tool: 'recents',
-            toolCallId: part.toolCallId,
-            tag: part.input.tag ?? null,
-            notes: output.notes.map(listingSummary),
-            error: null,
-          }
-        : {
-            tool: 'recents',
-            toolCallId: part.toolCallId,
-            tag: output.tag,
-            notes: [],
-            error: output.error,
-          }
-    }
-    case 'list_daily_notes':
-      return {
-        tool: 'dailies',
-        toolCallId: part.toolCallId,
-        start: part.input.start,
-        end: part.input.end,
-        days: part.output.days.map(listingSummary),
-      }
-    case 'list_collection': {
-      const output = part.output
-      return output.ok
-        ? {
-            tool: 'collection',
-            toolCallId: part.toolCallId,
-            tag: output.tag,
-            notes: output.rows.map((row) => ({ path: row.path, title: row.title })),
-            error: null,
-          }
-        : {
-            tool: 'collection',
-            toolCallId: part.toolCallId,
-            tag: output.tag,
-            notes: [],
-            error: output.error,
-          }
-    }
-    case 'set_note_property': {
-      const output = part.output
-      return {
-        tool: 'setProperty',
-        toolCallId: part.toolCallId,
-        path: output.path,
-        key: part.input.key,
-        error: output.ok ? null : output.error,
-        value: output.ok ? output.value : null,
-      }
-    }
-    case 'open_web_page': {
-      const output = part.output
-      return output.ok
-        ? {
-            tool: 'browse',
-            toolCallId: part.toolCallId,
-            url: output.page.url,
-            title: output.page.title === '' ? null : output.page.title,
-            error: null,
-          }
-        : {
-            tool: 'browse',
-            toolCallId: part.toolCallId,
-            url: part.input.url,
-            title: null,
-            error: output.error,
-          }
-    }
-    case 'read_web_page': {
-      const output = part.output
-      return output.ok
-        ? {
-            tool: 'readPage',
-            toolCallId: part.toolCallId,
-            url: output.page.url,
-            title: output.page.title === '' ? null : output.page.title,
-            error: null,
-          }
-        : {
-            tool: 'readPage',
-            toolCallId: part.toolCallId,
-            url: null,
-            title: null,
-            error: output.error,
-          }
-    }
-  }
 }

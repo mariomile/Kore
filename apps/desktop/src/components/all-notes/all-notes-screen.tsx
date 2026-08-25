@@ -1,15 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import {
-  collectionViewForAllNotesView,
-  foldTag,
-  isDaily,
-  listNotes,
-  listNoteTags,
-  type AllNotesView,
-  type CollectionSort,
-  type SavedCollectionView,
-} from '@reflect/core'
+import { foldTag, isDaily, listNotes, listNoteTags } from '@reflect/core'
 import {
   Calendar,
   Check,
@@ -35,7 +26,6 @@ import { useScrollToIndexBridge } from '@/lib/use-scroll-to-index-bridge'
 import { useGraph } from '@/providers/graph-provider'
 import { routeForPath } from '@/routing/route'
 import { useRouter } from '@/routing/router'
-import { useSettings } from '@/providers/settings-provider'
 import { AllNotesBulkBar } from './all-notes-bulk-bar'
 import { AllNotesFilters } from './all-notes-filters'
 import { AllNotesGrid } from './all-notes-grid'
@@ -52,8 +42,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { CollectionBoard, groupableProperties } from './collection-board'
-import { calendarProperty, CollectionCalendar } from './collection-calendar'
+import { CollectionBoard } from './collection-board'
+import { CollectionCalendar } from './collection-calendar'
 import { CollectionViewsMenu } from './collection-views-menu'
 import { runCollectionExport } from './collection-export'
 import { CollectionImportButton } from './collection-import'
@@ -62,15 +52,13 @@ import { NoteListContextMenu } from '@/components/notes/note-context-menu'
 import { NoteTrashDialog } from '@/components/notes/note-trash-dialog'
 import { NewNoteButton } from './new-note-button'
 import { useAllNotesKeyboard } from './use-all-notes-keyboard'
+import { useCollectionSavedViews, useCollectionViewSettings } from './use-collection-view-settings'
 import { isModEvent } from '@meowdown/core'
 
 interface AllNotesScreenProps {
   /** Active tag filter carried by the route (`null` = all non-daily notes). */
   tag: string | null
 }
-
-/** Stable empty widths map, so an untouched tag never re-keys the memo. */
-const EMPTY_WIDTHS: Record<string, number> = {}
 
 /**
  * The All Notes screen (a routed view, like settings): every non-daily note,
@@ -90,131 +78,32 @@ const EMPTY_WIDTHS: Record<string, number> = {}
  */
 export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
   const { graph } = useGraph()
-  const { settings, updateSettings, updateSettingsWith } = useSettings()
   // The Collection view exists only while the routed tag has a type (TDR
   // 0005); everywhere else a stored 'table' renders as 'list' — never a
   // broken surface.
   const tagType = useTagType(tag)
   const collectionAvailable = tag !== null && tagType !== null && tagType !== undefined
-  // The board additionally needs a groupable property (select, checkbox, or
-  // relation). Which one is a persisted per-tag choice (like the sort); a
-  // saved key the schema no longer declares as groupable falls back to the
-  // first, never a blank board.
   const tagKey = tag === null ? null : foldTag(tag)
-  const boardProperties = useMemo(
-    () => (collectionAvailable ? groupableProperties(tagType) : []),
-    [collectionAvailable, tagType],
-  )
-  const savedGroupKey = tagKey === null ? undefined : settings.collectionGroups[tagKey]
-  const boardGroupProperty =
-    boardProperties.find((property) => property.key === savedGroupKey) ?? boardProperties[0] ?? null
-  const boardAvailable = boardGroupProperty !== null
-  // The calendar needs a date property to place rows by.
-  const calendarDateProperty = collectionAvailable ? calendarProperty(tagType) : null
-  const calendarAvailable = calendarDateProperty !== null
-  // On a tag route, that tag's own persisted view mode wins over the global
-  // preference — the board you left on one tag doesn't chase you onto the
-  // next; the toggles write per-tag there, global elsewhere.
-  const requestedView =
-    (tagKey === null ? undefined : settings.collectionViewModes[tagKey]) ?? settings.allNotesView
-  const view =
-    (requestedView === 'table' && !collectionAvailable) ||
-    (requestedView === 'board' && !boardAvailable) ||
-    (requestedView === 'calendar' && !calendarAvailable)
-      ? 'list'
-      : requestedView
-  const setViewMode = useCallback(
-    (mode: AllNotesView) => {
-      if (tagKey === null) {
-        updateSettings({ allNotesView: mode })
-      } else {
-        updateSettingsWith((current) => ({
-          collectionViewModes: { ...current.collectionViewModes, [tagKey]: mode },
-        }))
-      }
-    },
-    [tagKey, updateSettings, updateSettingsWith],
-  )
-  // The views that render collection rows instead of the notes list.
-  const collectionView = view === 'table' || view === 'board' || view === 'calendar'
-  // The sort is a persisted per-tag view preference (like task filters):
-  // leaving and returning to a collection keeps its order.
-  const collectionSort: CollectionSort | null =
-    tagKey === null ? null : (settings.collectionSorts[tagKey] ?? null)
-  const setCollectionSort = useCallback(
-    (sort: CollectionSort | null) => {
-      if (tagKey === null) {
-        return
-      }
-      updateSettingsWith((current) => {
-        const next = { ...current.collectionSorts }
-        if (sort === null) {
-          delete next[tagKey]
-        } else {
-          next[tagKey] = sort
-        }
-        return { collectionSorts: next }
-      })
-    },
-    [tagKey, updateSettingsWith],
-  )
-  const setCollectionGroup = useCallback(
-    (key: string) => {
-      if (tagKey === null) {
-        return
-      }
-      updateSettingsWith((current) => ({
-        collectionGroups: { ...current.collectionGroups, [tagKey]: key },
-      }))
-    },
-    [tagKey, updateSettingsWith],
-  )
-  // Column layout (hidden keys, manual widths) is a persisted per-tag view
-  // preference like the sort; the table renders the visible subset.
-  const columnsSetting = tagKey === null ? undefined : settings.collectionColumns[tagKey]
-  const hiddenColumns = useMemo(() => new Set(columnsSetting?.hidden ?? []), [columnsSetting])
-  const columnWidths = columnsSetting?.widths ?? EMPTY_WIDTHS
-  const visibleTagType = useMemo(
-    () =>
-      collectionAvailable
-        ? { properties: tagType.properties.filter((entry) => !hiddenColumns.has(entry.key)) }
-        : null,
-    [collectionAvailable, tagType, hiddenColumns],
-  )
-  const setColumnWidth = useCallback(
-    (key: string, rem: number) => {
-      if (tagKey === null) {
-        return
-      }
-      updateSettingsWith((current) => {
-        const entry = current.collectionColumns[tagKey] ?? { hidden: [], widths: {} }
-        return {
-          collectionColumns: {
-            ...current.collectionColumns,
-            [tagKey]: { ...entry, widths: { ...entry.widths, [key]: rem } },
-          },
-        }
-      })
-    },
-    [tagKey, updateSettingsWith],
-  )
-  const toggleColumnHidden = useCallback(
-    (key: string) => {
-      if (tagKey === null) {
-        return
-      }
-      updateSettingsWith((current) => {
-        const entry = current.collectionColumns[tagKey] ?? { hidden: [], widths: {} }
-        const hidden = entry.hidden.includes(key)
-          ? entry.hidden.filter((hiddenKey) => hiddenKey !== key)
-          : [...entry.hidden, key]
-        return {
-          collectionColumns: { ...current.collectionColumns, [tagKey]: { ...entry, hidden } },
-        }
-      })
-    },
-    [tagKey, updateSettingsWith],
-  )
+  // The persisted per-tag view preferences: active layout, sort, board
+  // grouping, and the table's column layout — see use-collection-view-settings.
+  const {
+    boardProperties,
+    boardGroupProperty,
+    boardAvailable,
+    calendarDateProperty,
+    calendarAvailable,
+    view,
+    setViewMode,
+    collectionView,
+    collectionSort,
+    setCollectionSort,
+    setCollectionGroup,
+    hiddenColumns,
+    columnWidths,
+    visibleTagType,
+    setColumnWidth,
+    toggleColumnHidden,
+  } = useCollectionViewSettings(tagKey, collectionAvailable ? tagType : null)
   // The "+" in the table header opens the tag's schema dialog in place.
   const [editingSchema, setEditingSchema] = useState(false)
   const { navigate } = useRouter()
@@ -259,60 +148,17 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
   )
 
   // Saved views: named bundles of mode + sort + grouping + filters, per tag.
-  const savedViews = tagKey === null ? [] : (settings.collectionSavedViews[tagKey] ?? [])
-  const saveCurrentView = useCallback(
-    (name: string) => {
-      if (tagKey === null) {
-        return
-      }
-      const entry: SavedCollectionView = {
-        id: crypto.randomUUID(),
-        name,
-        view: collectionViewForAllNotesView(view),
-        sort: collectionSort,
-        group: boardGroupProperty?.key ?? null,
-        filters: [...collectionFilters],
-      }
-      updateSettingsWith((current) => ({
-        collectionSavedViews: {
-          ...current.collectionSavedViews,
-          [tagKey]: [...(current.collectionSavedViews[tagKey] ?? []), entry],
-        },
-      }))
-    },
-    [tagKey, view, collectionSort, boardGroupProperty, collectionFilters, updateSettingsWith],
-  )
-  const deleteSavedView = useCallback(
-    (id: string) => {
-      if (tagKey === null) {
-        return
-      }
-      updateSettingsWith((current) => {
-        const remaining = (current.collectionSavedViews[tagKey] ?? []).filter(
-          (entry) => entry.id !== id,
-        )
-        const next = { ...current.collectionSavedViews }
-        if (remaining.length === 0) {
-          delete next[tagKey]
-        } else {
-          next[tagKey] = remaining
-        }
-        return { collectionSavedViews: next }
-      })
-    },
-    [tagKey, updateSettingsWith],
-  )
-  const applySavedView = useCallback(
-    (saved: SavedCollectionView) => {
-      setViewMode(saved.view)
-      setCollectionSort(saved.sort)
-      if (saved.group !== null) {
-        setCollectionGroup(saved.group)
-      }
-      setCollectionFilters([...saved.filters])
-    },
-    [setViewMode, setCollectionSort, setCollectionGroup],
-  )
+  const { savedViews, saveCurrentView, deleteSavedView, applySavedView } = useCollectionSavedViews({
+    tagKey,
+    view,
+    collectionSort,
+    boardGroupProperty,
+    collectionFilters,
+    setViewMode,
+    setCollectionSort,
+    setCollectionGroup,
+    setCollectionFilters,
+  })
   const ready = notes !== undefined
   const { onScroll } = useScrollRestoration(scrollElement, ready)
 

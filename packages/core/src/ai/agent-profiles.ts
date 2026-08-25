@@ -3,6 +3,16 @@ import { parseFrontmatter, splitFrontmatter } from '../markdown/frontmatter'
 import { slugForTitle } from '../markdown/slug'
 import { createNoteIfAbsent, listFiles, readNote } from '../graph/commands'
 import { journalTailDigest, memoryDigest } from './memory-digest'
+import {
+  newAgentMemorySeed,
+  newAgentSoulSeed,
+  newSharedFactsSeed,
+  newSharedLogSeed,
+  newUserMemorySeed,
+} from './agent-profile-seeds'
+
+export * from './agent-profile-seeds'
+export * from './agent-memory-pending'
 
 /**
  * Agent profiles (Hermes-agent model, vault-native): the `agents/` folder
@@ -341,126 +351,6 @@ export function agentContextPromptLines(
   return lines
 }
 
-/** One staged memory write awaiting approval. */
-export interface PendingMemoryProposal {
-  /** The exact heading line (the proposal's identity in the file). */
-  heading: string
-  /** Target file the proposal wants to append to. */
-  target: string
-  /** The proposal's body lines (what approval appends). */
-  body: string
-}
-
-const PENDING_HEADING_RE = /^##\s+(.*?)→\s*(\S+)\s*$/
-
-/** Parse {@link AGENT_PENDING_MEMORY_PATH} into its proposal sections. */
-export function parsePendingMemory(source: string): PendingMemoryProposal[] {
-  const body = splitFrontmatter(source).body
-  const proposals: PendingMemoryProposal[] = []
-  let current: { heading: string; target: string; lines: string[] } | null = null
-  for (const line of body.split('\n')) {
-    const match = PENDING_HEADING_RE.exec(line.trim())
-    if (match !== null) {
-      if (current !== null) {
-        proposals.push(finishProposal(current))
-      }
-      current = { heading: line.trim(), target: match[2] ?? '', lines: [] }
-      continue
-    }
-    current?.lines.push(line)
-  }
-  if (current !== null) {
-    proposals.push(finishProposal(current))
-  }
-  return proposals.filter((proposal) => proposal.target !== '' && proposal.body !== '')
-}
-
-function finishProposal(section: {
-  heading: string
-  target: string
-  lines: string[]
-}): PendingMemoryProposal {
-  return {
-    heading: section.heading,
-    target: section.target,
-    body: section.lines.join('\n').trim(),
-  }
-}
-
-/**
- * `source` with exactly one proposal section removed — the **first** whose
- * heading line matches — the write-back for both approve and discard.
- * First-only matters: agents are told to head proposals with date + agent +
- * target, so two same-day proposals to one target share a heading, and
- * removing every match would silently discard a proposal that was never
- * applied. Approval separately appends the proposal's body to its target.
- */
-export function withoutPendingProposal(source: string, heading: string): string {
-  const lines = source.split('\n')
-  const result: string[] = []
-  let skipping = false
-  let removed = false
-  for (const line of lines) {
-    const isHeading = PENDING_HEADING_RE.test(line.trim())
-    if (skipping && isHeading) {
-      skipping = false
-    }
-    if (!skipping && !removed && line.trim() === heading) {
-      skipping = true
-      removed = true
-      continue
-    }
-    if (!skipping) {
-      result.push(line)
-    }
-  }
-  return result.join('\n').replaceAll(/\n{3,}/g, '\n\n')
-}
-
-/** The seeded soul for a new profile — a starting point, meant to be edited. */
-export function newAgentSoulSeed(options: {
-  name: string
-  provider?: string | null
-  model?: string | null
-}): string {
-  const frontmatter = [
-    '---',
-    ...(options.provider ? [`provider: ${options.provider}`] : []),
-    ...(options.model ? [`model: ${options.model}`] : []),
-    '---',
-    '',
-  ]
-  return [
-    ...(options.provider || options.model ? frontmatter : []),
-    `# ${options.name.trim()}`,
-    '',
-    '## Identity',
-    '',
-    `You are ${options.name.trim()}, an agent living in this vault. Rewrite this file to shape who you are — it is injected first into every session.`,
-    '',
-    '## Voice',
-    '',
-    '- Concise and warm. Short paragraphs over walls of text.',
-    '- Say what you did, not what you might do.',
-    '',
-    '## Boundaries',
-    '',
-    '- Ask before acting outside the vault or on anything irreversible.',
-    '- Never touch private notes; never store secrets in memory files.',
-    '',
-  ].join('\n')
-}
-
-/** The seeded memory file for a new profile. */
-export function newAgentMemorySeed(name: string): string {
-  return `# ${name.trim()} — Memory\n\nWorking notes this agent keeps for itself. It curates this file; feel free to edit or prune.\n`
-}
-
-/** The seeded shared user profile (created lazily from the Agents screen). */
-export function newUserMemorySeed(): string {
-  return '# About you\n\nWhat your agents know about you — name, role, preferences, how you like to work. Agents keep this current; edit it any time.\n'
-}
-
 /**
  * Create a new profile: a seeded soul and memory under a title-derived slug
  * (`-2` suffix on collision, claimed atomically). Returns the profile.
@@ -495,30 +385,6 @@ export async function createAgentProfile(options: {
 /** Seed the shared user profile if it does not exist yet. */
 export async function ensureUserMemoryNote(generation: number): Promise<void> {
   await createNoteIfAbsent(AGENT_USER_MEMORY_PATH, newUserMemorySeed(), generation)
-}
-
-/** The seeded shared facts file. */
-export function newSharedFactsSeed(): string {
-  return [
-    '# Shared facts',
-    '',
-    'Durable facts and decisions every agent in this vault relies on. One',
-    'bullet per fact, updated in place, tagged with confidence and signed:',
-    '',
-    '- [certain] Example: the vault owner prefers concise replies — assistant, 2026-01-01',
-    '',
-  ].join('\n')
-}
-
-/** The seeded shared session journal. */
-export function newSharedLogSeed(): string {
-  return [
-    '# Agent journal',
-    '',
-    'One short entry per work session, appended by the agent that ran it —',
-    'what happened and what was learned. Newest at the bottom.',
-    '',
-  ].join('\n')
 }
 
 /** Seed the shared memory space (facts + journal) if missing. */

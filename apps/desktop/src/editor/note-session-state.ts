@@ -1,19 +1,8 @@
-import {
-  appendBlock,
-  detectConflictMarkers,
-  editTaskLine,
-  errorMessage,
-  isAppError,
-  nextOccurrenceAppends,
-  removeTaskLine,
-  taskLineToBullet,
-  toggleTaskMarker,
-  upsertFrontmatter,
-  type TaskMarker,
-} from '@reflect/core'
-import { todayIso } from '@/lib/dates'
+import { detectConflictMarkers, errorMessage, isAppError, upsertFrontmatter } from '@reflect/core'
 import { splitDoc } from './note-session-doc'
 import { frontmatterPatchToYaml, type FrontmatterPatch } from './note-session-frontmatter'
+import { sameSnapshot } from './note-session-snapshot'
+import { createRepeatSpawner, createTaskCommits } from './note-session-tasks'
 import type {
   NoteSession,
   NoteSessionOptions,
@@ -68,12 +57,6 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
   // Set by `discard` — tells `dispose` to skip its flush (the file is being
   // deleted, so rewriting it would recreate it).
   let discarded = false
-  /**
-   * Serializes editor-checkbox repeat spawns. Two overlapping `editorChanged`
-   * completions must not each `commitBodyEdit` against the same pre-append
-   * buffer and clobber the other occurrence.
-   */
-  let spawnChain: Promise<void> = Promise.resolve()
 
   let lastEmitted: NoteSessionSnapshot | null = null
 
@@ -91,17 +74,7 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
       conflict,
       error,
     }
-    if (
-      lastEmitted !== null &&
-      lastEmitted.status === next.status &&
-      lastEmitted.initialContent === next.initialContent &&
-      lastEmitted.header === next.header &&
-      lastEmitted.protected === next.protected &&
-      lastEmitted.dirty === next.dirty &&
-      lastEmitted.missing === next.missing &&
-      lastEmitted.conflict === next.conflict &&
-      lastEmitted.error === next.error
-    ) {
+    if (sameSnapshot(lastEmitted, next)) {
       return
     }
     lastEmitted = next
@@ -203,30 +176,6 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
       scheduleSave()
     }
     enqueueRepeatSpawns(previous, markdown)
-  }
-
-  /**
-   * Completing a `@repeat` task by clicking the in-editor checkbox never goes
-   * through `toggleTask` — meowdown only reports the markdown change. Diff the
-   * pre/post buffers for checkbox-only completions and append the next
-   * occurrence. Best-effort: the completion is already in the buffer.
-   */
-  function enqueueRepeatSpawns(previousMarkdown: string, nextMarkdown: string): void {
-    const lines = nextOccurrenceAppends(previousMarkdown, nextMarkdown, todayIso())
-    if (lines.length === 0) {
-      return
-    }
-    const run = async (): Promise<void> => {
-      try {
-        for (const line of lines) {
-          await commitBodyAppend(line)
-        }
-      } catch {
-        // Best-effort: the completion stands; the next occurrence just isn't
-        // written. Matches Tasks-view spawn in note-task.ts.
-      }
-    }
-    spawnChain = spawnChain.then(run, run)
   }
 
   /** Apply external content to the live editor without entering the save path. */
@@ -484,28 +433,8 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
     return true
   }
 
-  function commitTaskToggle(task: TaskMarker): Promise<boolean> {
-    return commitBodyEdit((full) => toggleTaskMarker(full, task).source)
-  }
-
-  function commitTaskEdit(task: TaskMarker, content: string): Promise<boolean> {
-    return commitBodyEdit((full) => editTaskLine(full, task, content))
-  }
-
-  function commitTaskRemove(task: TaskMarker): Promise<boolean> {
-    return commitBodyEdit((full) => removeTaskLine(full, task))
-  }
-
-  function commitTaskToBullet(task: TaskMarker): Promise<boolean> {
-    return commitBodyEdit((full) => taskLineToBullet(full, task))
-  }
-
-  function commitBodyAppend(block: string): Promise<boolean> {
-    if (block.trim() === '') {
-      return Promise.resolve(false)
-    }
-    return commitBodyEdit((full) => appendBlock(full, block))
-  }
+  const taskCommits = createTaskCommits(commitBodyEdit)
+  const enqueueRepeatSpawns = createRepeatSpawner(taskCommits.commitBodyAppend)
 
   function dispose(): void {
     // A discarded session must not write: its file is being deleted, and a
@@ -542,11 +471,7 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
     isDirty: () => dirty,
     updateFrontmatter,
     commitFrontmatter,
-    commitTaskToggle,
-    commitTaskEdit,
-    commitTaskRemove,
-    commitTaskToBullet,
-    commitBodyAppend,
+    ...taskCommits,
     dispose,
     discard,
   }

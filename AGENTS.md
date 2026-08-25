@@ -64,21 +64,54 @@ Drawn from the product docs — read these for deeper context:
 ### Development workflow
 
 Development happens on `master` (the only long-lived branch); branch from it and
-target it with PRs. release-please keeps a beta and a stable Release PR open side by
-side; merging one publishes that channel. Between stable releases the version carries
-a prerelease suffix (`0.7.0-beta.3`), which the release pipeline publishes as GitHub
-pre-releases. See [docs/macos-distribution.md](docs/macos-distribution.md).
+target it with PRs. Publishing a Lore build is a **bump** (see
+[Cutting a Lore release (bump)](#cutting-a-lore-release-bump) below) — not the
+upstream notarized `Release` workflow. See
+[docs/macos-distribution.md](docs/macos-distribution.md) and
+[docs/lore-apple-signing.md](docs/lore-apple-signing.md#publishing-a-lore-release).
 
 PR titles must be conventional commits (`feat:` / `fix:` / `chore:` …, enforced by
-CI). The title becomes the squash-commit message, drives the release-please version
-bump, and — for `feat`/`fix` — is the user-facing changelog entry, so write it
-as behavior, not implementation. Do not use `feat!:` or `BREAKING CHANGE:` footers;
-see [CONTRIBUTING.md](CONTRIBUTING.md).
+CI). The title becomes the squash-commit message, and — for `feat`/`fix` — is the
+user-facing changelog entry, so write it as behavior, not implementation. Do not
+use `feat!:` or `BREAKING CHANGE:` footers; see [CONTRIBUTING.md](CONTRIBUTING.md).
 
-The app version lives solely in `apps/desktop/package.json`, maintained by
-release-please through Release PRs. Never hand-edit that version, the changelogs
-(`apps/desktop/CHANGELOG.md`, `apps/desktop/CHANGELOG.beta.md`), or the manifests
-under `.github/release-please/`.
+The app version lives solely in `apps/desktop/package.json`. Feature PRs must not
+touch it, the changelogs (`apps/desktop/CHANGELOG.md`,
+`apps/desktop/CHANGELOG.beta.md`), or the manifests under
+`.github/release-please/`. Bump the version only when cutting a release.
+
+### Cutting a Lore release (bump)
+
+When the user says **bump**, **fai bump**, or **fai partire il bump**, do this
+and nothing else. Do not diagnose Apple signing secrets, wait on TestFlight, or
+retry the notarized **Release** workflow.
+
+1. Confirm the work to ship is already on `origin/master`.
+2. Confirm `version` in `apps/desktop/package.json` is the version to publish.
+   If it still matches the last published `Lore v*` GitHub release, bump it
+   there only (patch unless the user specifies otherwise), merge that to
+   `master`, and continue. If a `chore: release X.Y.Z` PR is already open,
+   merging it is equivalent. Never edit changelogs or
+   `.github/release-please/` manifests as part of this step.
+3. Point the `release/dmg` branch at current `master`. It is a pointer, not
+   history — `--force` is expected when previous pointer-retrigger commits
+   sit on that branch:
+
+   ```bash
+   git fetch origin master
+   git push --force origin origin/master:release/dmg
+   ```
+
+4. Watch the **Release DMG** workflow (`.github/workflows/release-dmg.yml`).
+   That build publishes `Lore v<version>` (unsigned Apple Silicon DMG plus
+   updater `latest.json`). That is the bump; it is done when that run
+   succeeds.
+
+Do not run `pnpm release:macos` or wait for `.github/workflows/release.yml`
+(signed + notarized macOS + TestFlight). That pipeline is a separate
+upstream path this fork does not use for day-to-day publishes.
+
+Daily loop:
 
 1. Make your changes
 2. Run typecheck (`pnpm typecheck`)
@@ -229,8 +262,8 @@ pnpm tauri dev        # Full Tauri app with hot reload (stages the CLI sidecar f
 pnpm tauri:dev        # `pnpm tauri dev` with the dev overlay → the "Memento Dev" flavor (green icon, own identifier; coexists with Memento / Memento Beta)
 pnpm build            # turbo build pipeline → apps/desktop/dist/
 pnpm tauri build      # Native app bundle, incl. the reflect CLI sidecar
-pnpm release:macos    # Signed + notarized macOS build for distribution (docs/macos-distribution.md)
-pnpm release:macos publish  # The above, then fill and undraft the release-please draft release
+# Lore day-to-day publish: bump via release/dmg (see "Cutting a Lore release" above).
+# pnpm release:macos is the separate signed+notarized local path, not the bump.
 pnpm tauri:ios:dev "iPhone 17 Pro"  # Run the Tauri iOS target in the simulator (docs/contributing/mobile-simulator.md)
 pnpm release:ios preflight --build-number=123  # Check iOS/TestFlight signing, App Store Connect app record, and upload auth
 pnpm release:ios testflight --build-number=123 --wait  # Build and upload the iOS app to TestFlight

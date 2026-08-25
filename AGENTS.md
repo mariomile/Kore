@@ -6,6 +6,19 @@ This document helps AI agents and automated systems interact with the Reflect re
 
 Reflect is a modern note‑taking tool with a TypeScript codebase. This repo contains Reflect V2, a rewrite of the original Reflect code-base to make it offline-first, markdown backed, and open source.
 
+### Naming
+
+Three names coexist and are all intentional — do not "fix" one into another:
+
+- **Reflect** is the upstream project this repo forked from; internal
+  identifiers keep its names (`@reflect/*` packages, `reflect-*` crates, the
+  `reflect` CLI, `.reflect/` index directory).
+- **Lore** is this fork: the repository name and the Apple identity
+  (`app.lore.*` bundle identifiers, `iCloud.app.lore`).
+- **Memento** is the shipped product name (`productName` in
+  `apps/desktop/src-tauri/tauri.conf.json` and its overlays): the app bundle
+  is `Memento.app`, the flavors are Memento / Memento Beta / Memento Dev.
+
 ### Product Principles
 
 Drawn from the product docs — read these for deeper context:
@@ -101,7 +114,8 @@ Desktop JS tests are split into Vitest projects (details in
   `apps/desktop/src/test-utils/allowed-console.ts`; PRs may only shrink that
   list, and a new entry needs a stated reason.
 
-Rust tests (the Cargo workspace: desktop shell, `reflect` CLI, index-schema crate):
+Rust tests (the Cargo workspace: desktop shell, `reflect` CLI, capture host,
+shared crates, and the Tauri plugins — see the layout below):
 
 ```bash
 # Prefer per-crate runs; cargo test --workspace also works
@@ -127,36 +141,51 @@ React + TypeScript frontend bundled by Vite, embedded in a Rust native shell. Th
 crates form a single **Cargo workspace** rooted at the repository root.
 
 ```
-reflect-open/
+Lore/
 ├── apps/
 │   ├── desktop/            # @reflect/desktop — the Tauri 2 app
-│   │   ├── src/            # React frontend (main.tsx, app.tsx, components/, editor/,
-│   │   │                   #   hooks/, providers/, routing/); calls Rust via @tauri-apps/api
+│   │   ├── src/            # React frontend (main.tsx, app.tsx, desktop-root.tsx, platform-root.tsx,
+│   │   │                   #   components/, editor/, hooks/, lib/, mobile/, providers/, routing/,
+│   │   │                   #   styles/, dev/, test-utils/); calls Rust via @tauri-apps/api
 │   │   ├── src-tauri/      # Tauri native shell (Rust crate `reflect-open`)
-│   │   │   ├── src/        # lib.rs (#[tauri::command] handlers, plugins), db/, fs/,
-│   │   │   │               #   watcher.rs, embed.rs, recents.rs, secrets.rs, settings.rs
+│   │   │   ├── src/        # lib.rs (#[tauri::command] handlers, plugins), db/, fs/, git/,
+│   │   │   │               #   icloud/, conflict/, plus per-feature modules (watcher.rs,
+│   │   │   │               #   embed.rs, secrets.rs, settings.rs, calendar.rs, pty.rs, …)
 │   │   │   ├── tauri.conf.json          # build hooks, windows, bundle targets (incl. iOS)
 │   │   │   ├── tauri.<platform>.conf.json  # desktop overlays: bundle the reflect CLI sidecar
-│   │   │   ├── capabilities/            # Tauri 2 permission grants (e.g. default.json)
-│   │   │   ├── icons/                   # App icons for desktop/mobile bundles
-│   │   │   ├── gen/                     # Generated schemas + platform projects (no hand-edits)
+│   │   │   ├── tauri.{dev,beta,ios,ios.dev}.conf.json  # flavor overlays (Memento Dev / Beta / iOS)
+│   │   │   ├── capabilities/            # Tauri 2 permission grants (default/desktop/ios/mobile)
+│   │   │   ├── icons/, icons-beta/, icons-dev/  # App icons per release channel
+│   │   │   ├── gen/                     # Generated schemas + platform projects (hand-written
+│   │   │   │                            #   Swift for widgets/share lives under gen/apple/)
+│   │   │   ├── skills/, xcode-scripts/  # Agent-CLI graph skill; Xcode build phases
 │   │   │   └── ios.project.yml          # iOS XcodeGen template
-│   │   ├── scripts/        # build-sidecar.mjs (stages the reflect CLI for bundling)
+│   │   ├── scripts/        # build-sidecar.mjs, generate-icons.mjs, release-macos.mjs,
+│   │   │                   #   release-ios.mjs (+ their .test.mjs suites)
+│   │   ├── e2e/            # run-e2e.mjs — Chromium smoke of the Vite app (no Tauri shell)
 │   │   ├── dist/           # Vite build output (frontendDist in tauri.conf.json)
 │   │   └── public/         # Static assets served by Vite
-│   ├── cli/                # `reflect` — self-contained Rust read/discovery CLI (see docs/cli.md)
+│   ├── cli/                # `reflect` — self-contained Rust read/discovery/capture CLI (docs/cli.md)
 │   ├── extension/          # @reflect/extension — Chrome MV3 capture extension (WXT; see its README)
 │   └── native-host/        # `reflect-capture-host` — native-messaging spooler sidecar (Plan 11)
 ├── packages/
-│   ├── core/               # @reflect/core — ALL TS business logic (markdown/, indexing/,
-│   │                       #   graph/, embeddings/, ai/, settings/, ipc/)
-│   └── db/                 # @reflect/db — generated Kysely schema + the IPC dialect
+│   ├── core/               # @reflect/core — the TS business logic (markdown/, indexing/, graph/,
+│   │                       #   embeddings/, ai/, settings/, tags/, sync/, actions/, ipc/, …)
+│   ├── db/                 # @reflect/db — generated Kysely schema + the IPC dialect
+│   └── utils/              # @reflect/utils — small dependency-free helpers (ISO date math)
 ├── crates/
-│   └── index-schema/       # Shared SQLite migrations for <graph>/.reflect/index.sqlite
-│                           #   (one schema for the desktop writer + CLI reader)
+│   ├── index-schema/       # Shared SQLite migrations for <graph>/.reflect/index.sqlite
+│   │                       #   (one schema for the desktop writer + CLI reader)
+│   └── graph-paths/        # Shared graph-relative path classification + vault walker
+│                           #   (kept in lockstep with packages/core/src/graph/paths.ts)
+├── plugins/                # First-party Tauri 2 plugins: tauri-plugin-keyboard (iOS keyboard
+│                           #   pinning + haptics), tauri-plugin-recording (native audio memos)
+├── fixtures/               # TS ↔ Rust parity corpora (fold keys, path classification,
+│                           #   frontmatter/index parity — see fixtures/parity/README.txt)
 ├── design-system/          # Design tokens, components, and UI guidelines (see design-system/readme.md)
-├── docs/                   # Product/architecture docs + docs/plans/ (Reflect V2)
-├── Cargo.toml              # Root Cargo workspace (reflect-open, reflect-cli, reflect-capture-host, reflect-index-schema)
+├── docs/                   # Product/architecture docs + plans/, decisions/, contributing/, porting/
+├── Cargo.toml              # Root Cargo workspace: reflect-open, reflect-cli, reflect-capture-host,
+│                           #   reflect-index-schema, reflect-graph-paths, and the two Tauri plugins
 └── turbo.json, pnpm-workspace.yaml
 ```
 
@@ -172,7 +201,12 @@ reflect-open/
 
 **Design system**
 
-All UI work should follow the Reflect design system documented in [`design-system/readme.md`](design-system/readme.md). Key resources:
+All UI work should follow the design system. Note that
+[`design-system/readme.md`](design-system/readme.md) documents the **upstream
+Reflect brand** (its marketing claims — pricing, E2EE, GPT-4 — do not describe
+this app); the operative resources for app UI are the tokens, the shadcn
+components in `apps/desktop/src/components/ui/`, and this fork's design
+language described in the README. Key resources:
 
 - `design-system/tokens/` — CSS custom properties for color, typography, spacing, and motion
 - `design-system/components/` — reusable React primitives (Button, Input, Badge, etc.)
@@ -192,7 +226,7 @@ pnpm dev              # turbo dev across packages (Vite on http://localhost:1420
                       #   add ?platform=ios to the URL to preview the MOBILE tree in a
                       #   plain browser (dev-only in-memory bridge + seeded demo graph)
 pnpm tauri dev        # Full Tauri app with hot reload (stages the CLI sidecar first)
-pnpm tauri:dev        # `pnpm tauri dev` with the dev overlay → the "Lore Dev" flavor (green icon, own identifier; coexists with Reflect / Lore Beta)
+pnpm tauri:dev        # `pnpm tauri dev` with the dev overlay → the "Memento Dev" flavor (green icon, own identifier; coexists with Memento / Memento Beta)
 pnpm build            # turbo build pipeline → apps/desktop/dist/
 pnpm tauri build      # Native app bundle, incl. the reflect CLI sidecar
 pnpm release:macos    # Signed + notarized macOS build for distribution (docs/macos-distribution.md)

@@ -41,7 +41,7 @@ export function SidebarSurfaceSwitcher({
   onSelect,
 }: SidebarSurfaceSwitcherProps): ReactElement {
   return (
-    <nav aria-label="Sidebar surfaces" className="flex items-center gap-0.5">
+    <nav aria-label="Sidebar surfaces" className="flex min-w-0 items-center gap-0.5">
       {SURFACES.map((entry) => {
         const active = surface === entry.id
         const Glyph = entry.icon
@@ -56,7 +56,11 @@ export function SidebarSurfaceSwitcher({
                   aria-current={active ? 'page' : undefined}
                   onClick={() => onSelect(entry.id)}
                   className={cn(
-                    'flex h-7 flex-none items-center rounded-full px-2 text-[13px] font-medium',
+                    'flex h-7 items-center rounded-full px-2 text-[13px] font-medium',
+                    // The expanded pill may shrink (truncating its label) so
+                    // the title-bar band never overflows past the mic on a
+                    // narrow rail; collapsed pills keep their icon footprint.
+                    active ? 'min-w-0' : 'flex-none',
                     'transition-all duration-200 ease-swift outline-none select-none',
                     'focus-visible:ring-3 focus-visible:ring-ring/50 active:scale-[0.97]',
                     active
@@ -75,9 +79,7 @@ export function SidebarSurfaceSwitcher({
                       active ? 'grid-cols-[1fr] opacity-100' : 'grid-cols-[0fr] opacity-0',
                     )}
                   >
-                    <span className="min-w-0 overflow-hidden whitespace-nowrap pl-1.5 pr-0.5">
-                      {entry.label}
-                    </span>
+                    <span className="min-w-0 truncate pl-1.5 pr-0.5">{entry.label}</span>
                   </span>
                 </button>
               }

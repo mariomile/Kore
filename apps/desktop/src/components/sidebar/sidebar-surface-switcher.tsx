@@ -71,15 +71,20 @@ export function SidebarSurfaceSwitcher({
                   <Glyph aria-hidden className="size-4 flex-none" />
                   {/* The label column animates 0fr→1fr so the pill's width
                       eases rather than popping; the fade rides the same
-                      curve so the text never shows mid-clip. */}
+                      curve so the text never shows mid-clip. The clipping
+                      span carries no padding of its own: padding survives
+                      `min-width: 0`, so putting it here would leave every
+                      collapsed pill 8px wider than its icon. */}
                   <span
                     aria-hidden
                     className={cn(
-                      'grid transition-[grid-template-columns,opacity] duration-200 ease-swift',
+                      'grid overflow-hidden transition-[grid-template-columns,opacity] duration-200 ease-swift',
                       active ? 'grid-cols-[1fr] opacity-100' : 'grid-cols-[0fr] opacity-0',
                     )}
                   >
-                    <span className="min-w-0 truncate pl-1.5 pr-0.5">{entry.label}</span>
+                    <span className="min-w-0 overflow-hidden">
+                      <span className="block truncate pl-1.5 pr-0.5">{entry.label}</span>
+                    </span>
                   </span>
                 </button>
               }

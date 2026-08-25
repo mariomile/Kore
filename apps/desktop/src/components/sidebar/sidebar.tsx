@@ -8,8 +8,6 @@ import { runCommand } from '@/lib/commands/registry'
 import { useToday } from '@/lib/use-today'
 import type { CommandContext } from '@/lib/commands/types'
 import { isMobileSurface } from '@/lib/platform-surface'
-import { cn } from '@/lib/utils'
-import { hasMacosTitleBarOverlay } from '@/lib/window-chrome'
 import { notePathForRoute } from '@/routing/route'
 import { useRouter } from '@/routing/router'
 import { useShowAdvancedSurfaces } from '@/hooks/use-show-advanced-surfaces'
@@ -63,19 +61,15 @@ export function Sidebar({ graph, context }: SidebarProps): ReactElement {
       <div className="flex flex-none flex-col">
         {/* The title-bar band shares its 44px with the tab strip and the
             context rail's switcher — one optical line across the window,
-            level with the sidebar-collapse toggle. On macOS the overlaid
-            traffic lights own the band's left edge, so the row starts past
-            them. The surface pills anchor the band's left edge and the
-            lens + mic its right one; each group sits inside
-            window-drag-control so it stays clickable while the stretch
-            between them still drags the window. */}
-        <div
-          data-tauri-drag-region
-          className={cn(
-            'flex h-11 flex-none items-center pr-2',
-            hasMacosTitleBarOverlay ? 'pl-20' : 'pl-3',
-          )}
-        >
+            level with the sidebar-collapse toggle. The macOS traffic lights
+            ride their own band above the window (see `WorkspaceContent`)
+            rather than an inset carved out of this one, which is what leaves
+            room for the pills, the lens and the mic on a single line. The
+            surface pills anchor the band's left edge and the lens + mic its
+            right one; each group sits inside window-drag-control so it stays
+            clickable while the stretch between them still drags the
+            window. */}
+        <div data-tauri-drag-region className="flex h-11 flex-none items-center pl-3 pr-2">
           <div className="window-drag-control flex min-w-0 items-center">
             <SidebarSurfaceSwitcher
               surface={surface}

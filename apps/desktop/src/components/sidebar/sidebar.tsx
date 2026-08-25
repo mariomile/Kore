@@ -64,13 +64,12 @@ export function Sidebar({ graph, context }: SidebarProps): ReactElement {
             level with the sidebar-collapse toggle. The macOS traffic lights
             ride their own band above the window (see `WorkspaceContent`)
             rather than an inset carved out of this one, which is what leaves
-            room for the pills, the lens and the mic on a single line. The
-            surface pills anchor the band's left edge and the lens + mic its
-            right one; each group sits inside window-drag-control so it stays
-            clickable while the stretch between them still drags the
-            window. */}
+            room for the pills, the lens and the mic on a single line. All
+            five read as one cluster against the band's left edge — they sit
+            inside window-drag-control so they stay clickable while the
+            stretch beyond them still drags the window. */}
         <div data-tauri-drag-region className="flex h-11 flex-none items-center pl-3 pr-2">
-          <div className="window-drag-control flex min-w-0 items-center">
+          <div className="window-drag-control flex min-w-0 items-center gap-0.5">
             <SidebarSurfaceSwitcher
               surface={surface}
               onSelect={(next) => {
@@ -82,9 +81,6 @@ export function Sidebar({ graph, context }: SidebarProps): ReactElement {
                 }
               }}
             />
-          </div>
-          <div className="flex-1" />
-          <div className="window-drag-control flex flex-none items-center gap-0.5">
             <SidebarSearch onOpen={() => context.openPalette()} />
             <AudioMemoButton />
           </div>

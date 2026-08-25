@@ -62,32 +62,34 @@ export function Sidebar({ graph, context }: SidebarProps): ReactElement {
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex flex-none flex-col">
         {/* The title-bar band shares its 44px with the tab strip and the
-            context rail's switcher — one optical line across the window. On
-            macOS the overlaid traffic lights own the band's left edge; the
-            surface bar lives on its own row below (Notion's arrangement), so
-            the band itself is pure drag space. */}
+            context rail's switcher — one optical line across the window,
+            level with the sidebar-collapse toggle. On macOS the overlaid
+            traffic lights own the band's left edge, so the row starts past
+            them. The surface pills, lens, and mic sit inside
+            window-drag-control so they stay clickable while the band's
+            empty stretch still drags the window. */}
         <div
           data-tauri-drag-region
-          className={cn('h-11 flex-none', hasMacosTitleBarOverlay ? 'pl-20' : 'pl-3')}
-        />
-
-        {/* The Notion-style top bar: the Home pill and the Chat/Meetings
-            icon toggles, with the ever-present search and audio-memo icons
-            completing the row. */}
-        <div className="flex h-8 flex-none items-center gap-0.5 px-3">
-          <SidebarSurfaceSwitcher
-            surface={surface}
-            onSelect={(next) => {
-              selectSurface(next)
-              // The Chat rail is only useful beside the conversation, so
-              // picking it opens the chat screen too.
-              if (next === 'chat') {
-                void runCommand('chat.open', context)
-              }
-            }}
-          />
-          <SidebarSearch onOpen={() => context.openPalette()} />
-          <AudioMemoButton />
+          className={cn(
+            'flex h-11 flex-none items-center pr-2',
+            hasMacosTitleBarOverlay ? 'pl-20' : 'pl-3',
+          )}
+        >
+          <div className="window-drag-control flex min-w-0 items-center gap-0.5">
+            <SidebarSurfaceSwitcher
+              surface={surface}
+              onSelect={(next) => {
+                selectSurface(next)
+                // The Chat rail is only useful beside the conversation, so
+                // picking it opens the chat screen too.
+                if (next === 'chat') {
+                  void runCommand('chat.open', context)
+                }
+              }}
+            />
+            <SidebarSearch onOpen={() => context.openPalette()} />
+            <AudioMemoButton />
+          </div>
         </div>
       </div>
 

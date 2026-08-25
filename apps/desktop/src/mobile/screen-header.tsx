@@ -25,7 +25,7 @@ export function MobileScreenHeader({
       <Button
         variant="ghost"
         size="icon"
-        className="size-10 justify-self-center"
+        className="size-9 justify-self-center rounded-full bg-surface-hover"
         aria-label="Back"
         onClick={onBack}
       >

@@ -32,13 +32,20 @@ export function MobileChat(): ReactElement {
         {hasProvider ? (
           <>
             {turns.length > 0 ? (
-              <Button variant="ghost" size="icon" aria-label="New chat" onClick={newChat}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-9 rounded-full bg-surface-hover"
+                aria-label="New chat"
+                onClick={newChat}
+              >
                 <Plus aria-hidden />
               </Button>
             ) : null}
             <Button
               variant="ghost"
               size="icon"
+              className="size-9 rounded-full bg-surface-hover"
               aria-label="Chat history"
               onClick={() => setHistoryOpen(true)}
             >
@@ -48,10 +55,10 @@ export function MobileChat(): ReactElement {
         ) : null}
       </header>
       {hasProvider ? (
-        <>
+        <div className="relative flex min-h-0 flex-1 flex-col">
           <ChatTurnList />
           <MobileChatComposer />
-        </>
+        </div>
       ) : (
         <div className="flex flex-1 items-center justify-center px-6">
           <div className="flex max-w-sm flex-col items-center text-center">

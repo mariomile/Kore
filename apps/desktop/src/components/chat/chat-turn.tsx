@@ -70,7 +70,9 @@ export function ChatTurn({ turn }: ChatTurnProps): ReactElement {
             />
           ))}
           {replyMarkdown !== null ? (
-            <MessageFooter className="pointer-events-none -mt-1 opacity-0 transition-opacity duration-100 group-hover/assistant-response:pointer-events-auto group-hover/assistant-response:opacity-100 group-focus-within/assistant-response:pointer-events-auto group-focus-within/assistant-response:opacity-100">
+            /* Hover-revealed on fine pointers; a touch screen has no hover,
+               so coarse pointers get the actions always visible. */
+            <MessageFooter className="pointer-events-none -mt-1 opacity-0 transition-opacity duration-100 group-hover/assistant-response:pointer-events-auto group-hover/assistant-response:opacity-100 group-focus-within/assistant-response:pointer-events-auto group-focus-within/assistant-response:opacity-100 pointer-coarse:pointer-events-auto pointer-coarse:opacity-100">
               <ChatCopyButton text={replyMarkdown} />
               <ChatSaveNoteButton userText={turn.userText} text={replyMarkdown} />
             </MessageFooter>

@@ -42,7 +42,7 @@ export function ChatScreen(): ReactElement {
 
   return (
     <div
-      className="flex h-full min-h-0 flex-col"
+      className="relative flex h-full min-h-0 flex-col"
       onDragOver={(event) => {
         if (event.dataTransfer.types.includes('Files')) {
           event.preventDefault()

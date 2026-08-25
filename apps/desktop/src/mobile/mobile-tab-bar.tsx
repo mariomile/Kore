@@ -122,11 +122,18 @@ function TabButton({
         onClick()
       }}
       className={cn(
-        'flex flex-1 flex-col items-center gap-0.5 pb-1 pt-2 text-[11px] font-medium',
-        active ? 'text-primary' : 'text-text-muted',
+        'flex flex-1 flex-col items-center gap-0.5 pb-1 pt-1.5 text-[11px] font-medium',
+        active ? 'text-accent-soft-text' : 'text-text-muted',
       )}
     >
-      {icon}
+      <span
+        className={cn(
+          'flex h-[1.875rem] w-14 items-center justify-center rounded-full transition-colors duration-150',
+          active && 'bg-accent-soft',
+        )}
+      >
+        {icon}
+      </span>
       {label}
     </button>
   )

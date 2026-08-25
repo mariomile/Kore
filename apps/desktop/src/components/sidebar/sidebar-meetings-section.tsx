@@ -62,10 +62,7 @@ export function SidebarMeetingsSection(): ReactElement {
   const groups = groupEventsByDay(events)
 
   return (
-    <div
-      aria-label="Meetings"
-      className="mt-4 min-h-0 flex-1 overflow-y-auto border-t border-border/50 px-2 pb-2 pt-2"
-    >
+    <div aria-label="Meetings" className="mt-2 min-h-0 flex-1 overflow-y-auto px-2 pb-2">
       {setupNeeded ? (
         <div className="px-2 pt-2">
           <p className="text-xs leading-5 text-text-muted">

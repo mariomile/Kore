@@ -1,17 +1,5 @@
 import { useState, type ReactElement } from 'react'
-import {
-  Calendar,
-  Chart,
-  Chat,
-  Checklist,
-  Graph,
-  Home,
-  Note,
-  NoteEdit,
-  Pencil,
-  Terminal,
-  User,
-} from '@/components/icons'
+import { Chart, Checklist, Graph, Note, NoteEdit, Pencil, Terminal, User } from '@/components/icons'
 import { isUntitledNotePath, type GraphInfo } from '@reflect/core'
 import { AudioMemoButton } from '@/components/audio-memo/audio-memo-button'
 import { usePinnedNotes } from '@/hooks/use-pinned-notes'
@@ -32,6 +20,7 @@ import { SidebarMeetingsSection } from './sidebar-meetings-section'
 import { SidebarOpenNotes } from './sidebar-open-notes'
 import { SidebarPinned } from './sidebar-pinned'
 import { SidebarSearch } from './sidebar-search'
+import { SidebarSurfaceSwitcher } from './sidebar-surface-switcher'
 import { SidebarTags } from './sidebar-tags'
 import { readSidebarSurface, storeSidebarSurface, type SidebarSurface } from './sidebar-surface'
 
@@ -42,12 +31,13 @@ interface SidebarProps {
 }
 
 /**
- * The workspace sidebar. The title-bar band (search + audio memo) and the
- * graph-switcher footer are fixtures; between them the rail is one of three
- * surfaces picked by the top-level rows — Home (the classic navigation plus
- * the Open/Pinned/Tags shelves), Chat (the AI conversation list), and
- * Meetings (the coming week's calendar events). Picking Chat also opens the
- * chat screen, since its rail is only useful beside the conversation. Most
+ * The workspace sidebar. The Notion-style top bar (the Home pill, the
+ * Chat/Meetings icon toggles, and the ever-present search + audio-memo
+ * icons) and the graph-switcher footer are fixtures; between them the rail
+ * is one of three surfaces — Home (the classic navigation plus the
+ * Open/Pinned/Tags shelves), Chat (the AI conversation list), and Meetings
+ * (the coming week's calendar events). Picking Chat also opens the chat
+ * screen, since its rail is only useful beside the conversation. Most
  * nav rows run registered commands so a binding and its behavior stay one
  * definition; the Daily notes row is a capture gesture like `Mod-D` — it asks
  * the stream to focus today with the caret at the end, ready to append.
@@ -73,55 +63,37 @@ export function Sidebar({ graph, context }: SidebarProps): ReactElement {
       <div className="flex flex-none flex-col">
         {/* The title-bar band shares its 44px with the tab strip and the
             context rail's switcher — one optical line across the window. On
-            macOS the overlaid traffic lights own the band's left edge, so the
-            row starts past them. Lens + mic sit as sibling icon buttons;
-            window-drag-control keeps them clickable while the empty band
-            still drags the window. */}
+            macOS the overlaid traffic lights own the band's left edge; the
+            surface bar lives on its own row below (Notion's arrangement), so
+            the band itself is pure drag space. */}
         <div
           data-tauri-drag-region
-          className={cn(
-            'flex h-11 flex-none items-center gap-0.5 pr-4',
-            hasMacosTitleBarOverlay ? 'pl-20' : 'pl-3',
-          )}
-        >
-          <div className="window-drag-control flex items-center">
-            <SidebarSearch onOpen={() => context.openPalette()} />
-            <AudioMemoButton />
-          </div>
-        </div>
+          className={cn('h-11 flex-none', hasMacosTitleBarOverlay ? 'pl-20' : 'pl-3')}
+        />
 
-        <nav aria-label="Sidebar surfaces" className="mt-5 space-y-1 px-2">
-          <SidebarItem
-            icon={<Home className="size-3.5" />}
-            label="Home"
-            active={surface === 'home'}
-            onClick={() => selectSurface('home')}
-          />
-          <SidebarItem
-            icon={<Chat className="size-3.5" />}
-            label="Chat"
-            binding={keybindingFor('chat.open') ?? undefined}
-            active={surface === 'chat'}
-            onClick={() => {
-              selectSurface('chat')
-              void runCommand('chat.open', context)
+        {/* The Notion-style top bar: the Home pill and the Chat/Meetings
+            icon toggles, with the ever-present search and audio-memo icons
+            completing the row. */}
+        <div className="flex h-8 flex-none items-center gap-0.5 px-3">
+          <SidebarSurfaceSwitcher
+            surface={surface}
+            onSelect={(next) => {
+              selectSurface(next)
+              // The Chat rail is only useful beside the conversation, so
+              // picking it opens the chat screen too.
+              if (next === 'chat') {
+                void runCommand('chat.open', context)
+              }
             }}
           />
-          <SidebarItem
-            icon={<Calendar className="size-3.5" />}
-            label="Meetings"
-            active={surface === 'meetings'}
-            onClick={() => selectSurface('meetings')}
-          />
-        </nav>
+          <SidebarSearch onOpen={() => context.openPalette()} />
+          <AudioMemoButton />
+        </div>
       </div>
 
       {surface === 'home' && (
         <>
-          <nav
-            aria-label="Primary"
-            className="mt-4 flex-none space-y-1 border-t border-border/50 px-2 pt-4"
-          >
+          <nav aria-label="Primary" className="mt-4 flex-none space-y-1 px-2">
             <SidebarItem
               icon={<Pencil className="size-3.5" />}
               label="Daily notes"

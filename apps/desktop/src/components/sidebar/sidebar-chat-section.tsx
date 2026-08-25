@@ -43,7 +43,7 @@ export function SidebarChatSection(): ReactElement {
   }
 
   return (
-    <div className="mt-4 flex min-h-0 flex-1 flex-col border-t border-border/50 pt-4">
+    <div className="mt-4 flex min-h-0 flex-1 flex-col">
       <nav aria-label="Chat" className="flex-none space-y-1 px-2">
         <SidebarItem
           icon={<NoteEdit className="size-3.5" />}

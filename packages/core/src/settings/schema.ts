@@ -125,11 +125,7 @@ export interface OpenStaticSurfaceTab {
   pinned: boolean
 }
 
-export type OpenSurfaceTab =
-  | OpenDailyTab
-  | OpenAllNotesTab
-  | OpenSearchTab
-  | OpenStaticSurfaceTab
+export type OpenSurfaceTab = OpenDailyTab | OpenAllNotesTab | OpenSearchTab | OpenStaticSurfaceTab
 
 export type OpenTab = OpenNoteTab | OpenChatTab | OpenSurfaceTab
 

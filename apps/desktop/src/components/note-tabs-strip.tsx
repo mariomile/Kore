@@ -21,9 +21,7 @@ interface WorkspaceTabsStripProps {
  * closable tab; pinned tabs collapse to their semantic icon, and closing the
  * final tab falls back to Daily through the provider.
  */
-export function WorkspaceTabsStrip({
-  commandContext,
-}: WorkspaceTabsStripProps): ReactElement {
+export function WorkspaceTabsStrip({ commandContext }: WorkspaceTabsStripProps): ReactElement {
   const { activeTab, activateTab, closeTab, togglePin } = useOpenTabs()
   const items = useOpenTabItems()
   const { collapsed, toggleSidebar, contextCollapsed, toggleContextSidebar } = useSidebar()

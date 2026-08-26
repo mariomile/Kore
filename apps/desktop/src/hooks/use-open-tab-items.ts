@@ -54,11 +54,7 @@ export function useOpenTabItems(): OpenTabItem[] {
       return
     }
     for (const path of notePaths) {
-      if (
-        noteRows.get(path) === null &&
-        path !== activePath &&
-        !isUntitledNotePath(path)
-      ) {
+      if (noteRows.get(path) === null && path !== activePath && !isUntitledNotePath(path)) {
         pruneTab(path)
       }
     }

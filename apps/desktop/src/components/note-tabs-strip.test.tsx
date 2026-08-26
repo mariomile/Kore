@@ -223,11 +223,7 @@ function Probe(): ReactElement {
       >
         all notes
       </button>
-      <button
-        type="button"
-        data-testid="open-tasks"
-        onClick={() => navigate({ kind: 'tasks' })}
-      >
+      <button type="button" data-testid="open-tasks" onClick={() => navigate({ kind: 'tasks' })}>
         tasks
       </button>
       <button
@@ -237,18 +233,10 @@ function Probe(): ReactElement {
       >
         insights
       </button>
-      <button
-        type="button"
-        data-testid="open-graph"
-        onClick={() => navigate({ kind: 'graphMap' })}
-      >
+      <button type="button" data-testid="open-graph" onClick={() => navigate({ kind: 'graphMap' })}>
         graph
       </button>
-      <button
-        type="button"
-        data-testid="open-agents"
-        onClick={() => navigate({ kind: 'agents' })}
-      >
+      <button type="button" data-testid="open-agents" onClick={() => navigate({ kind: 'agents' })}>
         agents
       </button>
       <button

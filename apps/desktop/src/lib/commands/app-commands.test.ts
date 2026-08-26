@@ -233,10 +233,10 @@ describe('app commands', () => {
   })
 
   it('chat.new starts and opens a fresh conversation from any route', async () => {
-    const { context } = fakeContext()
+    const { context, navigated } = fakeContext()
     await command('chat.new').run(context)
     expect(context.newChat).toHaveBeenCalledTimes(1)
-    expect(context.navigate).toHaveBeenCalledWith({ kind: 'chat' })
+    expect(navigated).toEqual([{ kind: 'chat' }])
     expect(keybindingFor('chat.new')).toBe('Mod-Shift-n')
   })
 

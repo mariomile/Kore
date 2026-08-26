@@ -204,12 +204,12 @@ export function OpenTabsProvider({ children }: { children: ReactNode }): ReactEl
             return graphTabs
               .filter((tab) => tab !== moved)
               .map((tab) =>
-                tab === target && moved.pinned && !target.pinned ? { ...target, pinned: true } : tab,
+                tab === target && moved.pinned && !target.pinned
+                  ? { ...target, pinned: true }
+                  : tab,
               )
           }
-          return graphTabs.map((tab) =>
-            tab === moved ? { ...moved, path: to } : tab,
-          )
+          return graphTabs.map((tab) => (tab === moved ? { ...moved, path: to } : tab))
         })
       }),
     [updateTabs],

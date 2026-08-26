@@ -56,11 +56,7 @@ import { useChatConversationRestore } from '@/providers/use-chat-conversation-re
  * in-memory conversation carries on.
  */
 
-export {
-  useChatSession,
-  useOptionalChatSession,
-  type ChatStatus,
-} from '@/providers/chat-context'
+export { useChatSession, useOptionalChatSession, type ChatStatus } from '@/providers/chat-context'
 
 interface ChatProviderProps {
   /** The open graph — names the prompt's overview block. */

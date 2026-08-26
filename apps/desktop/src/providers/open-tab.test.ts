@@ -100,9 +100,9 @@ describe('tabKey', () => {
     expect(tabKey({ kind: 'surface', surface: 'browser', pinned: false })).toBe(
       tabKey({ kind: 'surface', surface: 'browser', pinned: true }),
     )
-    expect(
-      tabKey({ kind: 'surface', surface: 'search', query: 'alpha', pinned: false }),
-    ).toBe(tabKey({ kind: 'surface', surface: 'search', query: 'beta', pinned: true }))
+    expect(tabKey({ kind: 'surface', surface: 'search', query: 'alpha', pinned: false })).toBe(
+      tabKey({ kind: 'surface', surface: 'search', query: 'beta', pinned: true }),
+    )
     expect(tabKey({ kind: 'chat', conversationId: 'one', pinned: false })).not.toBe(
       tabKey({ kind: 'chat', conversationId: 'two', pinned: false }),
     )

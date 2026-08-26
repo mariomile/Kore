@@ -1,9 +1,4 @@
-import {
-  isDaily,
-  isTemplatePath,
-  type OpenTab,
-  type WorkspaceSurface,
-} from '@reflect/core'
+import { isDaily, isTemplatePath, type OpenTab, type WorkspaceSurface } from '@reflect/core'
 import { routeForPath, routesEqual, type Route } from '@/routing/route'
 
 /**
@@ -54,7 +49,10 @@ export function isTabbableNotePath(path: string): boolean {
  * The tab a route opens or focuses. Chat identity lives in ChatProvider rather
  * than the router, so callers provide the active conversation id.
  */
-export function openTabForRoute(route: Route, conversationId: string | null = null): OpenTab | null {
+export function openTabForRoute(
+  route: Route,
+  conversationId: string | null = null,
+): OpenTab | null {
   switch (route.kind) {
     case 'note':
       return isTabbableNotePath(route.path)
@@ -69,9 +67,7 @@ export function openTabForRoute(route: Route, conversationId: string | null = nu
     case 'search':
       return { kind: 'surface', surface: 'search', query: route.query, pinned: false }
     case 'chat':
-      return conversationId === null
-        ? null
-        : { kind: 'chat', conversationId, pinned: false }
+      return conversationId === null ? null : { kind: 'chat', conversationId, pinned: false }
     case 'tasks':
     case 'insights':
     case 'graphMap':

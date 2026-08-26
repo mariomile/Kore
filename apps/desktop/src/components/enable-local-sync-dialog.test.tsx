@@ -10,7 +10,7 @@ import { EnableLocalSyncDialog } from './enable-local-sync-dialog'
 const core = vi.hoisted(() => ({
   status: {
     available: true,
-    documentsRoot: '/Users/alex/Library/Mobile Documents/iCloud~app/Documents',
+    documentsRoot: '/Users/alex/Library/Mobile Documents/iCloud~app/Documents' as string | null,
     existingGraphRoots: [] as string[],
   },
   adoptedRoot: '/Users/alex/Library/Mobile Documents/iCloud~app/Documents/Notes',
@@ -52,7 +52,9 @@ vi.mock('@/providers/sync-provider', () => ({ useSync: () => sync }))
 
 async function renderDialog(): Promise<void> {
   await render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+    <QueryClientProvider
+      client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+    >
       <EnableLocalSyncDialog />
     </QueryClientProvider>,
   )

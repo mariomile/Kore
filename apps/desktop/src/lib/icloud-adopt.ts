@@ -38,9 +38,7 @@ export async function adoptGraphToIcloud(
   }
   const opened = await params.openRecent(newRoot)
   if (!opened) {
-    warnings.push(
-      'The copy landed in iCloud but could not be opened — open it from Saved graphs.',
-    )
+    warnings.push('The copy landed in iCloud but could not be opened — open it from Saved graphs.')
   }
   return {
     newRoot,

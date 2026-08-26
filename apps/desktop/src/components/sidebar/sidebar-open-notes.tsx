@@ -22,7 +22,9 @@ export function SidebarOpenTabs(): ReactElement | null {
 
   return (
     <div className="mt-6 px-2">
-      <h2 className="pt-4 text-2xs font-medium leading-5 tracking-wide text-text-muted">Open</h2>
+      <h2 className="px-2.5 pt-4 text-2xs font-medium leading-5 tracking-wide text-text-muted">
+        Open
+      </h2>
       <ul className="mt-1 space-y-0.5">
         {items.map((item) => {
           const isActive = tabKey(item.tab) === activeKey

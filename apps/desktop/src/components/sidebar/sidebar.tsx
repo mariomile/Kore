@@ -15,7 +15,7 @@ import { GraphFooter } from './graph-footer'
 import { SidebarChatSection } from './sidebar-chat-section'
 import { SidebarItem } from './sidebar-item'
 import { SidebarMeetingsSection } from './sidebar-meetings-section'
-import { SidebarOpenNotes } from './sidebar-open-notes'
+import { SidebarOpenTabs } from './sidebar-open-notes'
 import { SidebarPinned } from './sidebar-pinned'
 import { SidebarSearch } from './sidebar-search'
 import { SidebarSurfaceSwitcher } from './sidebar-surface-switcher'
@@ -157,7 +157,7 @@ export function Sidebar({ graph, context }: SidebarProps): ReactElement {
             )}
           </nav>
           <div className="mt-1 min-h-0 flex-1 overflow-y-auto pb-2">
-            <SidebarOpenNotes />
+            <SidebarOpenTabs />
             <SidebarPinned />
             <SidebarTags />
           </div>

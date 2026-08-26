@@ -1,64 +1,32 @@
-import { noteFileStem, type OpenTab, type WorkspaceSurface } from '@reflect/core'
-import { useMemo, type MouseEvent, type ReactElement } from 'react'
-import {
-  Close,
-  Globe,
-  PanelLeft,
-  PanelRight,
-  Pencil,
-  Pin,
-  Settings,
-  type Icon,
-} from '@/components/icons'
+import type { OpenTab } from '@reflect/core'
+import type { MouseEvent, ReactElement } from 'react'
+import { Close, PanelLeft, PanelRight, Pin } from '@/components/icons'
 import { NoteTabsPlusMenu } from '@/components/note-tabs-plus-menu'
+import { iconForOpenTab } from '@/components/open-tab-icon'
 import { NavigateArrows } from '@/components/sidebar/navigate-arrows'
-import { useOpenTabNotes } from '@/hooks/use-open-tab-notes'
+import { useOpenTabItems, type OpenTabItem } from '@/hooks/use-open-tab-items'
 import type { CommandContext } from '@/lib/commands/types'
 import { cn } from '@/lib/utils'
-import { SURFACE_TAB_LABEL, tabKey } from '@/providers/open-tab'
+import { tabKey } from '@/providers/open-tab'
 import { useOpenTabs } from '@/providers/open-tabs-provider'
 import { useSidebar } from '@/providers/sidebar-provider'
 
-interface NoteTabsStripProps {
+interface WorkspaceTabsStripProps {
   /** Commands for the "+" menu (new note vs the built-in browser). */
   commandContext?: CommandContext
 }
 
-const SURFACE_ICON: Record<WorkspaceSurface, Icon> = {
-  settings: Settings,
-  browser: Globe,
-}
-
-interface StripItem {
-  tab: OpenTab
-  title: string
-}
-
 /**
- * The content column's tab bar: history arrows on the left, then the open
- * notes and workspace screens as rounded pills, then a "+" that creates a
- * note or opens the built-in browser. Daily notes is the fixed, unclosable
- * first pill; pinned tabs collapse to an icon right after it (double-click
- * pins); the rest close on hover or middle-click. It spans only the column
- * beside the full-height sidebar — the note-pane card below provides the
- * separation, so the bar itself is borderless — and doubles as the window
- * drag region, so it never blinks away.
+ * The content column's browser-style tab bar. Every workspace page is a
+ * closable tab; pinned tabs collapse to their semantic icon, and closing the
+ * final tab falls back to Daily through the provider.
  */
-export function NoteTabsStrip({ commandContext }: NoteTabsStripProps): ReactElement {
-  const { tabs, activeTab, isDailyActive, activateTab, activateDaily, closeTab, togglePin } =
-    useOpenTabs()
-  const notes = useOpenTabNotes()
+export function WorkspaceTabsStrip({
+  commandContext,
+}: WorkspaceTabsStripProps): ReactElement {
+  const { activeTab, activateTab, closeTab, togglePin } = useOpenTabs()
+  const items = useOpenTabItems()
   const { collapsed, toggleSidebar, contextCollapsed, toggleContextSidebar } = useSidebar()
-  const items = useMemo((): StripItem[] => {
-    const titles = new Map(notes.map((note) => [note.path, note.title]))
-    return tabs.map((tab) => ({
-      tab,
-      title:
-        tab.kind === 'note'
-          ? (titles.get(tab.path) ?? noteFileStem(tab.path))
-          : SURFACE_TAB_LABEL[tab.surface],
-    }))
-  }, [tabs, notes])
   const activeKey = activeTab === null ? null : tabKey(activeTab)
 
   return (
@@ -86,20 +54,9 @@ export function NoteTabsStrip({ commandContext }: NoteTabsStripProps): ReactElem
 
       <div
         role="tablist"
-        aria-label="Open tabs"
+        aria-label="Workspace tabs"
         className="window-drag-control ml-1 flex min-w-0 flex-1 items-center gap-1 overflow-x-auto"
       >
-        <button
-          type="button"
-          role="tab"
-          aria-selected={isDailyActive}
-          onClick={activateDaily}
-          className={pillClass(isDailyActive)}
-        >
-          <Pencil aria-hidden className="size-3 shrink-0" />
-          <span className="truncate">Daily notes</span>
-        </button>
-
         {items.map((item) => (
           <StripTab
             key={tabKey(item.tab)}
@@ -172,7 +129,7 @@ function pillClass(active: boolean): string {
 }
 
 interface StripTabProps {
-  item: StripItem
+  item: OpenTabItem
   active: boolean
   onActivate: (tab: OpenTab) => void
   onClose: (tab: OpenTab) => void
@@ -187,7 +144,7 @@ function StripTab({ item, active, onActivate, onClose, onTogglePin }: StripTabPr
       onClose(tab)
     }
   }
-  const PinnedIcon = tab.kind === 'surface' ? SURFACE_ICON[tab.surface] : Pin
+  const PinnedIcon = tab.kind === 'note' ? Pin : iconForOpenTab(tab)
   if (tab.pinned) {
     return (
       <button

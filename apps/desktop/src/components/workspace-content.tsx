@@ -7,7 +7,7 @@ import { AgentRoutinesRunner } from '@/components/agent-routines-runner'
 import { TaskRemindersRunner } from '@/components/task-reminders-runner'
 import { EmbeddingsSync } from '@/components/embeddings-sync'
 import { NoteFindBar } from '@/components/note-find-bar'
-import { NoteTabsStrip } from '@/components/note-tabs-strip'
+import { WorkspaceTabsStrip } from '@/components/note-tabs-strip'
 import { RouteContent } from '@/components/route-content'
 import { VaultReplaceMount } from '@/components/vault-replace/vault-replace-dialog'
 import { ShortcutsDialog } from '@/components/shortcuts-dialog'
@@ -109,7 +109,7 @@ export function WorkspaceContent({ graph }: WorkspaceContentProps): ReactElement
         )}
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <NoteTabsStrip commandContext={commandContext} />
+          <WorkspaceTabsStrip commandContext={commandContext} />
           <div data-testid="note-pane-gutter" className="min-h-0 flex-1 px-2 pb-2">
             <div className="app-glass-card h-full overflow-hidden rounded-xl bg-surface">
               <AppShell className="bg-transparent">

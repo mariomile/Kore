@@ -376,7 +376,7 @@ export {
   browserEmbedBack,
   browserEmbedForward,
   browserEmbedReload,
-  browserEmbedLoad,
+  browserEmbedOpen,
   browserEmbedRead,
   subscribeBrowserNavigated,
   type BrowserEmbedRect,

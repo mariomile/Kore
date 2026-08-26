@@ -13,7 +13,7 @@
 //! into remote URLs, so page content cannot reach the graph. Navigation is
 //! clamped to http(s) — any other scheme is dropped rather than followed.
 //!
-//! The AI chat drives the same webview: `browser_embed_load` opens a page
+//! The AI chat drives the same webview: `browser_embed_open` opens a page
 //! even with no pane mounted (created off-screen and hidden), and
 //! `browser_embed_read` waits for the document and extracts its visible text
 //! for the model. Background-only pages close after that read; a page hosted
@@ -37,17 +37,16 @@ const EMBED_LABEL: &str = "embedded-browser";
 #[derive(Default)]
 struct BrowserLifecycle {
     is_hosted: bool,
-    has_pending_read: bool,
+    is_closing: bool,
     active_reads: u32,
 }
 
 impl BrowserLifecycle {
     fn begin_read(&mut self) -> AppResult<()> {
-        self.has_pending_read = false;
-        self.active_reads = self
-            .active_reads
-            .checked_add(1)
-            .ok_or_else(|| AppError::unknown("too many concurrent browser reads"))?;
+        if self.active_reads > 0 {
+            return Err(AppError::unknown("a browser read is already in progress"));
+        }
+        self.active_reads = 1;
         Ok(())
     }
 
@@ -60,7 +59,7 @@ impl BrowserLifecycle {
     }
 
     fn can_close(&self) -> bool {
-        !self.is_hosted && !self.has_pending_read && self.active_reads == 0
+        !self.is_hosted && !self.is_closing && self.active_reads == 0
     }
 }
 
@@ -74,6 +73,41 @@ fn lock_lifecycle(state: &BrowserState) -> AppResult<std::sync::MutexGuard<'_, B
         .lifecycle
         .lock()
         .map_err(|_| AppError::unknown("browser state lock poisoned"))
+}
+
+fn queue_close(webview: &Webview, lifecycle: &mut BrowserLifecycle) -> AppResult<()> {
+    lifecycle.is_closing = true;
+    if let Err(error) = webview.close() {
+        lifecycle.is_closing = false;
+        return Err(AppError::io(format!(
+            "failed to close the embedded browser: {error}"
+        )));
+    }
+    Ok(())
+}
+
+async fn wait_for_close(app: &AppHandle, state: &BrowserState) -> AppResult<()> {
+    const CLOSE_POLL_ATTEMPTS: u32 = 40;
+    const CLOSE_POLL_MS: u64 = 25;
+
+    for attempt in 0..CLOSE_POLL_ATTEMPTS {
+        {
+            let mut lifecycle = lock_lifecycle(state)?;
+            if !lifecycle.is_closing {
+                return Ok(());
+            }
+            if embed(app).is_none() {
+                lifecycle.is_closing = false;
+                return Ok(());
+            }
+        }
+        if attempt + 1 < CLOSE_POLL_ATTEMPTS {
+            tokio::time::sleep(Duration::from_millis(CLOSE_POLL_MS)).await;
+        }
+    }
+    Err(AppError::unknown(
+        "the embedded browser did not finish closing",
+    ))
 }
 
 /// Emitted to the main webview whenever the page navigates (link clicks,
@@ -115,6 +149,7 @@ pub async fn browser_embed_show(
     height: f64,
 ) -> AppResult<()> {
     let target = url.as_deref().map(parse_browser_url).transpose()?;
+    wait_for_close(&app, &state).await?;
     let mut lifecycle = lock_lifecycle(&state)?;
     if let Some(existing) = embed(&app) {
         if let Some(parsed) = target {
@@ -200,14 +235,15 @@ pub fn browser_embed_bounds(
 pub fn browser_embed_close(app: AppHandle, state: State<'_, BrowserState>) -> AppResult<()> {
     let mut lifecycle = lock_lifecycle(&state)?;
     lifecycle.is_hosted = false;
+    if lifecycle.is_closing {
+        return Ok(());
+    }
     if let Some(webview) = embed(&app) {
         webview
             .hide()
             .map_err(|err| AppError::io(format!("failed to hide the embedded browser: {err}")))?;
         if lifecycle.can_close() {
-            webview.close().map_err(|err| {
-                AppError::io(format!("failed to close the embedded browser: {err}"))
-            })?;
+            queue_close(&webview, &mut lifecycle)?;
         }
     }
     Ok(())
@@ -268,39 +304,59 @@ const READ_MAX_ATTEMPTS: u32 = 20;
 /// differs from the expected one — that's what a redirect looks like.
 const READ_GRACE_ATTEMPTS: u32 = 8;
 
-/// Load a page in the embedded browser without touching its placement — the
-/// AI chat's open. With no webview yet, one is created off-screen and hidden.
-/// The load holds a lifecycle lease until the following read finishes.
+/// Load and extract a page as one lifecycle operation for the AI chat. With no
+/// visible host, the webview is created off-screen and released after the read.
 #[tauri::command]
-pub async fn browser_embed_load(
+pub async fn browser_embed_open(
     window: tauri::WebviewWindow,
     app: AppHandle,
     state: State<'_, BrowserState>,
     url: String,
-) -> AppResult<()> {
+    max_chars: Option<u32>,
+) -> AppResult<BrowserPageRead> {
     let parsed = parse_browser_url(&url)?;
+    wait_for_close(&app, &state).await?;
     let mut lifecycle = lock_lifecycle(&state)?;
-    if let Some(existing) = embed(&app) {
-        existing
+    lifecycle.begin_read()?;
+    let webview = if let Some(existing) = embed(&app) {
+        if let Err(error) = existing
             .navigate(parsed)
-            .map_err(|err| AppError::io(format!("failed to navigate: {err}")))?;
-        lifecycle.has_pending_read = true;
-        return Ok(());
-    }
-    let webview = create_embed(
-        &window,
-        &app,
-        parsed,
-        BACKGROUND_X,
-        0.0,
-        BACKGROUND_WIDTH,
-        BACKGROUND_HEIGHT,
-    )?;
-    webview
-        .hide()
-        .map_err(|err| AppError::io(format!("failed to hide the background browser: {err}")))?;
-    lifecycle.has_pending_read = true;
-    Ok(())
+            .map_err(|err| AppError::io(format!("failed to navigate: {err}")))
+        {
+            lifecycle.finish_read()?;
+            return Err(error);
+        }
+        existing
+    } else {
+        match create_embed(
+            &window,
+            &app,
+            parsed,
+            BACKGROUND_X,
+            0.0,
+            BACKGROUND_WIDTH,
+            BACKGROUND_HEIGHT,
+        ) {
+            Ok(webview) => {
+                if let Err(error) = webview.hide().map_err(|err| {
+                    AppError::io(format!("failed to hide the background browser: {err}"))
+                }) {
+                    lifecycle.finish_read()?;
+                    queue_close(&webview, &mut lifecycle)?;
+                    return Err(error);
+                }
+                webview
+            }
+            Err(error) => {
+                lifecycle.finish_read()?;
+                return Err(error);
+            }
+        }
+    };
+    drop(lifecycle);
+
+    let result = read_page(&webview, Some(url), max_chars).await;
+    finish_browser_read(&state, &webview, result)
 }
 
 /// What one in-page probe reports (serialized by the webview to JSON).
@@ -391,9 +447,22 @@ async fn read_page(
     })
 }
 
+fn finish_browser_read(
+    state: &BrowserState,
+    webview: &Webview,
+    result: AppResult<BrowserPageRead>,
+) -> AppResult<BrowserPageRead> {
+    let mut lifecycle = lock_lifecycle(state)?;
+    lifecycle.finish_read()?;
+    if lifecycle.can_close() {
+        queue_close(webview, &mut lifecycle)?;
+    }
+    result
+}
+
 /// Extract the current page's visible text for the AI tools, waiting
 /// (bounded) for the document to finish loading. `expect_url` tightens the
-/// wait after a `browser_embed_load`: until the grace window lapses, a
+/// wait after navigation: until the grace window lapses, a
 /// `complete` answer for a *different* URL is treated as the previous page
 /// still on screen rather than the requested one. A page created off-screen
 /// for an AI tool is closed after the read; a page in a visible Browser host
@@ -405,27 +474,16 @@ pub async fn browser_embed_read(
     expect_url: Option<String>,
     max_chars: Option<u32>,
 ) -> AppResult<BrowserPageRead> {
+    wait_for_close(&app, &state).await?;
     let webview = {
         let mut lifecycle = lock_lifecycle(&state)?;
-        let webview = match embed(&app) {
-            Some(webview) => webview,
-            None => {
-                lifecycle.has_pending_read = false;
-                return Err(AppError::not_found("no embedded browser is open"));
-            }
-        };
+        let webview =
+            embed(&app).ok_or_else(|| AppError::not_found("no embedded browser is open"))?;
         lifecycle.begin_read()?;
         webview
     };
     let result = read_page(&webview, expect_url, max_chars).await;
-    let mut lifecycle = lock_lifecycle(&state)?;
-    lifecycle.finish_read()?;
-    if lifecycle.can_close() {
-        webview.close().map_err(|err| {
-            AppError::io(format!("failed to close the background browser: {err}"))
-        })?;
-    }
-    result
+    finish_browser_read(&state, &webview, result)
 }
 
 #[cfg(test)]
@@ -436,7 +494,7 @@ mod tests {
     fn host_release_waits_for_active_reads() {
         let mut lifecycle = BrowserLifecycle {
             is_hosted: true,
-            has_pending_read: true,
+            is_closing: false,
             active_reads: 0,
         };
         lifecycle.begin_read().unwrap();
@@ -448,16 +506,12 @@ mod tests {
     }
 
     #[test]
-    fn pending_load_prevents_background_cleanup() {
-        let mut lifecycle = BrowserLifecycle {
-            has_pending_read: true,
+    fn a_closing_webview_cannot_close_twice() {
+        let lifecycle = BrowserLifecycle {
+            is_closing: true,
             ..BrowserLifecycle::default()
         };
 
         assert!(!lifecycle.can_close());
-        lifecycle.begin_read().unwrap();
-        assert!(!lifecycle.can_close());
-        lifecycle.finish_read().unwrap();
-        assert!(lifecycle.can_close());
     }
 }

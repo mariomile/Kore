@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { browserEmbedLoad, browserEmbedRead, type BrowserPageRead } from '../../browser/commands'
+import { browserEmbedOpen, browserEmbedRead, type BrowserPageRead } from '../../browser/commands'
 import { errorMessage } from '../../errors'
 
 /**
@@ -54,13 +54,13 @@ export type BrowseWebOutput = { ok: true; page: WebPageContent } | { ok: false; 
 
 /** The effects the browse executors need, already defaulted by the caller. */
 export interface BrowseWebDeps {
-  browseLoadFn: (url: string) => Promise<void>
+  browseOpenFn: (url: string, options?: { maxChars?: number }) => Promise<BrowserPageRead>
   browseReadFn: (options?: { expectUrl?: string; maxChars?: number }) => Promise<BrowserPageRead>
 }
 
 /** The default effects: the shell's embedded-browser commands. */
 export const shellBrowseDeps: BrowseWebDeps = {
-  browseLoadFn: browserEmbedLoad,
+  browseOpenFn: browserEmbedOpen,
   browseReadFn: browserEmbedRead,
 }
 
@@ -86,8 +86,7 @@ export function buildOpenWebPage(deps: BrowseWebDeps, available = true) {
       return { ok: false, error: WEB_URL_ERROR }
     }
     try {
-      await deps.browseLoadFn(url)
-      const read = await deps.browseReadFn({ expectUrl: url, maxChars: MAX_PAGE_TEXT_CHARS })
+      const read = await deps.browseOpenFn(url, { maxChars: MAX_PAGE_TEXT_CHARS })
       return { ok: true, page: pageFromRead(read) }
     } catch (cause) {
       return { ok: false, error: errorMessage(cause) }

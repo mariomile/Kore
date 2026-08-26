@@ -174,7 +174,7 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
       case 'browser_embed_back':
       case 'browser_embed_forward':
       case 'browser_embed_reload':
-      case 'browser_embed_load':
+      case 'browser_embed_open':
       case 'browser_embed_read':
         throw new ReflectError('unknown', 'the embedded browser is desktop-only')
       case 'open_browser_window': {

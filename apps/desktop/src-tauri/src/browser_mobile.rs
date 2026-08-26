@@ -48,7 +48,7 @@ pub fn browser_embed_reload() -> AppResult<()> {
 }
 
 #[tauri::command]
-pub fn browser_embed_load() -> AppResult<()> {
+pub fn browser_embed_open() -> AppResult<()> {
     desktop_only()
 }
 

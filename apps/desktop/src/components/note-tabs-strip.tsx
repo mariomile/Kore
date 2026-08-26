@@ -2,7 +2,7 @@ import type { OpenTab } from '@reflect/core'
 import type { MouseEvent, ReactElement } from 'react'
 import { Close, PanelLeft, PanelRight, Pin } from '@/components/icons'
 import { NoteTabsPlusMenu } from '@/components/note-tabs-plus-menu'
-import { iconForOpenTab } from '@/components/open-tab-icon'
+import { OpenTabIcon } from '@/components/open-tab-icon'
 import { NavigateArrows } from '@/components/sidebar/navigate-arrows'
 import { useOpenTabItems, type OpenTabItem } from '@/hooks/use-open-tab-items'
 import type { CommandContext } from '@/lib/commands/types'
@@ -142,7 +142,6 @@ function StripTab({ item, active, onActivate, onClose, onTogglePin }: StripTabPr
       onClose(tab)
     }
   }
-  const PinnedIcon = tab.kind === 'note' ? Pin : iconForOpenTab(tab)
   if (tab.pinned) {
     return (
       <button
@@ -163,7 +162,11 @@ function StripTab({ item, active, onActivate, onClose, onTogglePin }: StripTabPr
           'shrink-0 px-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
         )}
       >
-        <PinnedIcon aria-hidden className="size-3 shrink-0" />
+        {tab.kind === 'note' ? (
+          <Pin aria-hidden className="size-3 shrink-0" />
+        ) : (
+          <OpenTabIcon tab={tab} className="size-3 shrink-0" />
+        )}
       </button>
     )
   }

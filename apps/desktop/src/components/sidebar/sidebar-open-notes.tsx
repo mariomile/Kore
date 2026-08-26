@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import { Close, Pin } from '@/components/icons'
-import { iconForOpenTab } from '@/components/open-tab-icon'
+import { OpenTabIcon } from '@/components/open-tab-icon'
 import { useOpenTabItems } from '@/hooks/use-open-tab-items'
 import { cn } from '@/lib/utils'
 import { tabKey } from '@/providers/open-tab'
@@ -25,7 +25,6 @@ export function SidebarOpenTabs(): ReactElement | null {
       <h2 className="pt-4 text-2xs font-medium leading-5 tracking-wide text-text-muted">Open</h2>
       <ul className="mt-1 space-y-0.5">
         {items.map((item) => {
-          const Icon = item.tab.pinned ? Pin : iconForOpenTab(item.tab)
           const isActive = tabKey(item.tab) === activeKey
           return (
             <li key={tabKey(item.tab)} className="group relative">
@@ -42,7 +41,11 @@ export function SidebarOpenTabs(): ReactElement | null {
                     : 'text-text-secondary hover:bg-surface-hover',
                 )}
               >
-                <Icon aria-hidden className="size-3.5 shrink-0 text-text-muted" />
+                {item.tab.pinned ? (
+                  <Pin aria-hidden className="size-3.5 shrink-0 text-text-muted" />
+                ) : (
+                  <OpenTabIcon tab={item.tab} className="size-3.5 shrink-0 text-text-muted" />
+                )}
                 <span className="min-w-0 truncate">{item.title}</span>
               </button>
               <button

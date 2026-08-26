@@ -75,6 +75,25 @@ describe('BrowserPane', () => {
     await vi.waitFor(() => expect(browserEmbedClose).toHaveBeenCalled())
   })
 
+  it('waits for a pending dock before closing an unmounted host', async () => {
+    let releaseShow: () => void = () => {}
+    browserEmbedShow.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          releaseShow = resolve
+        }),
+    )
+    const view = await render(<BrowserPane />)
+    await vi.waitFor(() => expect(browserEmbedShow).toHaveBeenCalled())
+
+    await view.unmount()
+    await Promise.resolve()
+    expect(browserEmbedClose).not.toHaveBeenCalled()
+
+    releaseShow()
+    await vi.waitFor(() => expect(browserEmbedClose).toHaveBeenCalledOnce())
+  })
+
   it('hands the webview to a surviving pane instead of hiding it under it', async () => {
     const first = await render(<BrowserPane />)
     await vi.waitFor(() => expect(browserEmbedShow).toHaveBeenCalledTimes(1))

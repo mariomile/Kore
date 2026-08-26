@@ -62,6 +62,13 @@ interface BrowserHost {
   dock: () => void
 }
 const hostStack: BrowserHost[] = []
+let hostTransition = Promise.resolve()
+
+function queueHostTransition(operation: () => Promise<void>): Promise<void> {
+  const queued = hostTransition.then(operation, operation)
+  hostTransition = queued.catch(() => undefined)
+  return queued
+}
 
 interface BrowserPaneProps {
   className?: string
@@ -100,9 +107,11 @@ export function BrowserPane({ className }: BrowserPaneProps): ReactElement {
     }
     const entry: BrowserHost = {
       dock: () => {
-        void browserEmbedShow(browserSessionUrl(), rect()).catch((cause: unknown) => {
-          setError(errorMessage(cause))
-        })
+        void queueHostTransition(() => browserEmbedShow(browserSessionUrl(), rect())).catch(
+          (cause: unknown) => {
+            setError(errorMessage(cause))
+          },
+        )
       },
     }
     hostStack.push(entry)
@@ -149,7 +158,7 @@ export function BrowserPane({ className }: BrowserPaneProps): ReactElement {
         if (survivor !== undefined) {
           survivor.dock()
         } else {
-          void browserEmbedClose().catch(() => undefined)
+          void queueHostTransition(browserEmbedClose).catch(() => undefined)
         }
       }
     }

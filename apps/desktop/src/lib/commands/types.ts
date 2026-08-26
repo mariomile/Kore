@@ -28,8 +28,8 @@ export interface CommandContext {
   toggleSidebar: () => void
   /** Collapse/expand the right (context) rail. */
   toggleContextSidebar: () => void
-  /** Start a fresh chat conversation. */
-  newChat: () => void
+  /** Start a fresh chat conversation and return its id. */
+  newChat: () => string
   /** Open Find for the note currently targeted by {@link notePath}. */
   openNoteFind: () => void
   /** Advance the active or most recently closed note Find query. */
@@ -71,11 +71,11 @@ export interface CommandContext {
    * prompt is even drafted).
    */
   summarizeNote: () => void
-  /** Cycle the open-note tabs forward ([Daily, ...tabs], wrapping). */
+  /** Cycle workspace tabs forward, wrapping. */
   nextTab: () => void
-  /** Cycle the open-note tabs backward. */
+  /** Cycle workspace tabs backward. */
   previousTab: () => void
-  /** Close the active note tab; a no-op on Daily and non-note screens. */
+  /** Close the active workspace tab. */
   closeActiveTab: () => void
 }
 

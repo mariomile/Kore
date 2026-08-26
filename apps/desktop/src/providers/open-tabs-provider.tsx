@@ -8,45 +8,50 @@ import {
   type ReactNode,
 } from 'react'
 import type { OpenTab } from '@reflect/core'
+import { onChatConversationDeleted } from '@/lib/chat-events'
+import { onNoteMoved } from '@/lib/note-moves'
+import { useOptionalChatSession } from '@/providers/chat-provider'
 import { useGraph } from '@/providers/graph-provider'
-import { openTabForRoute, routeForOpenTab, tabKey, tabsEqual } from '@/providers/open-tab'
+import {
+  openTabForRoute,
+  routeForOpenTab,
+  tabKey,
+  tabsEqual,
+  tabStateEqual,
+  updateOpenTabRoute,
+} from '@/providers/open-tab'
 import { useSettings } from '@/providers/settings-provider'
 import { useRouter } from '@/routing/router'
 
 /**
  * The open-tabs model behind both tab surfaces (the strip over the note pane
  * and the sidebar's Open section — design options A + B). One ordered list of
- * open tabs per graph, persisted in settings (`openNoteTabs`, keyed by graph
+ * open tabs per graph, persisted in settings (`openTabs`, keyed by graph
  * root — the settings document is global, and unkeyed tabs would leak into
- * other graphs and be pruned away there) so a relaunch restores the session.
- * Daily notes are never tabs: the Daily view is the fixed "tab zero" every
- * surface renders itself, always first and never closable — so `tabs` here
- * holds ordinary notes and workspace screens (Settings, Browser).
+ * other graphs) so a relaunch restores the session. Notes and conversations
+ * have distinct identities; workspace pages are singleton tabs whose latest
+ * route payload is retained.
  */
 
 export interface OpenTabsValue {
   /** Open tabs in strip order (pinned first). */
   tabs: OpenTab[]
-  /** The tab the current route addresses, or null (daily view, search, …). */
+  /** The tab the current route addresses, or null for excluded note routes. */
   activeTab: OpenTab | null
   /** The note path the current route addresses, or null. */
   activePath: string | null
-  /** True while the route is the daily view — the fixed tab zero. */
-  isDailyActive: boolean
   /** Navigate to a tab's note or screen. */
   activateTab: (tab: OpenTab) => void
-  /** Navigate to the daily view — tab zero. */
-  activateDaily: () => void
   /** Close a tab; closing the active one moves to its neighbor, else Daily. */
   closeTab: (tab: OpenTab) => void
   /** Pin/unpin a tab (pinned tabs collapse to an icon, leading the strip). */
   togglePin: (tab: OpenTab) => void
   /** Drop a note tab that no longer resolves (rename/delete healing). */
   pruneTab: (path: string) => void
-  /** Cycle across [Daily, ...tabs]; wraps at the ends. */
+  /** Cycle across open tabs; wraps at the ends. */
   nextTab: () => void
   previousTab: () => void
-  /** Close the active tab (`⌘W`); a no-op on Daily and non-tab screens. */
+  /** Close the active tab (`⌘W`). */
   closeActiveTab: () => void
 }
 
@@ -58,9 +63,7 @@ const EMPTY: OpenTabsValue = {
   tabs: [],
   activeTab: null,
   activePath: null,
-  isDailyActive: false,
   activateTab: () => {},
-  activateDaily: () => {},
   closeTab: () => {},
   togglePin: () => {},
   pruneTab: () => {},
@@ -76,13 +79,20 @@ function stripOrder(tabs: OpenTab[]): OpenTab[] {
   return [...tabs.filter((tab) => tab.pinned), ...tabs.filter((tab) => !tab.pinned)]
 }
 
+function createDailyTab(): OpenTab {
+  return { kind: 'surface', surface: 'daily', date: null, pinned: false }
+}
+
 export function OpenTabsProvider({ children }: { children: ReactNode }): ReactElement {
   const { settings, updateSettingsWith } = useSettings()
   const { graph } = useGraph()
   const { route, navigate } = useRouter()
+  const chatSession = useOptionalChatSession()
+  const activeConversationId = chatSession?.activeConversationId ?? null
+  const openConversation = chatSession?.openConversation
 
   const root = graph?.root ?? null
-  const stored = settings.openNoteTabs
+  const stored = settings.openTabs
   const tabs = useMemo(() => stripOrder(root === null ? [] : (stored[root] ?? [])), [stored, root])
 
   // Every write goes through this: read the graph's own list, mutate, store
@@ -94,7 +104,7 @@ export function OpenTabsProvider({ children }: { children: ReactNode }): ReactEl
         return
       }
       updateSettingsWith((current) => {
-        const graphTabs = current.openNoteTabs[root] ?? []
+        const graphTabs = current.openTabs[root] ?? []
         const next = mutate(graphTabs)
         // Element-wise check: a filter that dropped nothing or a map that
         // changed nothing is a no-op, and no-op settings writes churn
@@ -105,47 +115,53 @@ export function OpenTabsProvider({ children }: { children: ReactNode }): ReactEl
         if (unchanged) {
           return {}
         }
-        return { openNoteTabs: { ...current.openNoteTabs, [root]: next } }
+        return { openTabs: { ...current.openTabs, [root]: next } }
       })
     },
     [root, updateSettingsWith],
   )
 
-  const routeTab = openTabForRoute(route)
+  const routeTab = openTabForRoute(route, activeConversationId)
   const routeTabKey = routeTab === null ? null : tabKey(routeTab)
   const activeTab =
     routeTab === null ? null : (tabs.find((tab) => tabKey(tab) === routeTabKey) ?? routeTab)
   const activePath = activeTab?.kind === 'note' ? activeTab.path : null
-  const isDailyActive = route.kind === 'today' || route.kind === 'daily'
 
-  // Every visited tabbable route becomes (or stays) a tab, appended after
-  // the existing ones. Functional update: two rapid navigations must both land.
-  const isOpen = routeTabKey !== null && tabs.some((tab) => tabKey(tab) === routeTabKey)
+  // Every visited route becomes or updates one tab. Functional updates keep
+  // rapid navigations and mutable singleton payloads (date/tag/query) intact.
   useEffect(() => {
-    // Skip the write entirely when the tab already exists — a no-op settings
-    // update still churns subscribers on every render of some providers.
-    if (routeTabKey === null || isOpen) {
-      return
-    }
-    const incoming = openTabForRoute(route)
+    const incoming = openTabForRoute(route, activeConversationId)
     if (incoming === null) {
       return
     }
-    updateTabs((graphTabs) =>
-      graphTabs.some((tab) => tabKey(tab) === routeTabKey) ? graphTabs : [...graphTabs, incoming],
-    )
-  }, [route, routeTabKey, isOpen, updateTabs])
+    updateTabs((graphTabs) => {
+      const existing = graphTabs.find((tab) => tabsEqual(tab, incoming))
+      if (existing === undefined) {
+        return [...graphTabs, incoming]
+      }
+      const updated = updateOpenTabRoute(existing, incoming)
+      return tabStateEqual(existing, updated)
+        ? graphTabs
+        : graphTabs.map((tab) => (tabsEqual(tab, incoming) ? updated : tab))
+    })
+  }, [route, activeConversationId, updateTabs])
 
   const activateTab = useCallback(
     (tab: OpenTab) => {
+      if (
+        tab.kind === 'chat' &&
+        tab.conversationId !== activeConversationId &&
+        openConversation !== undefined
+      ) {
+        void openConversation(tab.conversationId).then(() => {
+          navigate(routeForOpenTab(tab))
+        })
+        return
+      }
       navigate(routeForOpenTab(tab))
     },
-    [navigate],
+    [activeConversationId, navigate, openConversation],
   )
-
-  const activateDaily = useCallback(() => {
-    navigate({ kind: 'today' })
-  }, [navigate])
 
   const closeTab = useCallback(
     (tab: OpenTab) => {
@@ -154,14 +170,17 @@ export function OpenTabsProvider({ children }: { children: ReactNode }): ReactEl
         const index = tabs.findIndex((open) => tabsEqual(open, tab))
         const neighbor = tabs[index + 1] ?? tabs[index - 1]
         if (neighbor !== undefined) {
-          navigate(routeForOpenTab(neighbor))
+          activateTab(neighbor)
         } else {
           navigate({ kind: 'today' })
         }
       }
-      updateTabs((graphTabs) => graphTabs.filter((open) => !tabsEqual(open, tab)))
+      updateTabs((graphTabs) => {
+        const remaining = graphTabs.filter((open) => !tabsEqual(open, tab))
+        return remaining.length === 0 ? [createDailyTab()] : remaining
+      })
     },
-    [activeTab, tabs, navigate, updateTabs],
+    [activeTab, tabs, activateTab, navigate, updateTabs],
   )
 
   const togglePin = useCallback(
@@ -182,28 +201,60 @@ export function OpenTabsProvider({ children }: { children: ReactNode }): ReactEl
     [updateTabs],
   )
 
-  // The cycle ring: Daily is index 0. On non-tab screens (Tasks, Chat, …)
-  // nothing is active; Next enters the ring at Daily.
+  useEffect(
+    () =>
+      onNoteMoved((from, to) => {
+        updateTabs((graphTabs) => {
+          const moved = graphTabs.find((tab) => tab.kind === 'note' && tab.path === from)
+          if (moved === undefined) {
+            return graphTabs
+          }
+          const target = graphTabs.find((tab) => tab.kind === 'note' && tab.path === to)
+          if (target !== undefined) {
+            return graphTabs
+              .filter((tab) => tab !== moved)
+              .map((tab) =>
+                tab === target && moved.pinned && !target.pinned
+                  ? { ...target, pinned: true }
+                  : tab,
+              )
+          }
+          return graphTabs.map((tab) => (tab === moved ? { ...moved, path: to } : tab))
+        })
+      }),
+    [updateTabs],
+  )
+
+  useEffect(
+    () =>
+      onChatConversationDeleted((conversationId) => {
+        const deleted = tabs.find(
+          (tab) => tab.kind === 'chat' && tab.conversationId === conversationId,
+        )
+        if (deleted !== undefined) {
+          closeTab(deleted)
+        }
+      }),
+    [tabs, closeTab],
+  )
+
   const cycle = useCallback(
     (step: 1 | -1) => {
-      const ring: (OpenTab | null)[] = [null, ...tabs]
-      const current = isDailyActive
-        ? 0
-        : activeTab === null
-          ? -1
-          : ring.findIndex((entry) => entry !== null && tabsEqual(entry, activeTab))
-      if (current === -1) {
+      if (tabs.length === 0) {
         navigate({ kind: 'today' })
         return
       }
-      const next = ring[(current + step + ring.length) % ring.length] ?? null
-      if (next === null) {
-        navigate({ kind: 'today' })
-      } else {
-        navigate(routeForOpenTab(next))
-      }
+      const current =
+        activeTab === null ? -1 : tabs.findIndex((entry) => tabsEqual(entry, activeTab))
+      const nextIndex =
+        current === -1
+          ? step === 1
+            ? 0
+            : tabs.length - 1
+          : (current + step + tabs.length) % tabs.length
+      activateTab(tabs[nextIndex]!)
     },
-    [tabs, activeTab, isDailyActive, navigate],
+    [tabs, activeTab, activateTab, navigate],
   )
 
   const nextTab = useCallback(() => {
@@ -224,9 +275,7 @@ export function OpenTabsProvider({ children }: { children: ReactNode }): ReactEl
       tabs,
       activeTab,
       activePath,
-      isDailyActive,
       activateTab,
-      activateDaily,
       closeTab,
       togglePin,
       pruneTab,
@@ -238,9 +287,7 @@ export function OpenTabsProvider({ children }: { children: ReactNode }): ReactEl
       tabs,
       activeTab,
       activePath,
-      isDailyActive,
       activateTab,
-      activateDaily,
       closeTab,
       togglePin,
       pruneTab,

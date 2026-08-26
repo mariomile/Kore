@@ -168,7 +168,7 @@ describe('SettingsProvider', () => {
           weekStartDay: 'monday',
           allNotesFilterTags: ['book'],
           allNotesView: 'list',
-          openNoteTabs: {},
+          openTabs: {},
           taskFilters: {
             pinned: true,
             current: true,
@@ -276,7 +276,7 @@ describe('SettingsProvider', () => {
           weekStartDay: 'monday',
           allNotesFilterTags: ['book', 'link', 'person'],
           allNotesView: 'list',
-          openNoteTabs: {},
+          openTabs: {},
           taskFilters: {
             pinned: true,
             current: true,
@@ -369,7 +369,7 @@ describe('SettingsProvider', () => {
           weekStartDay: 'monday',
           allNotesFilterTags: ['book', 'link', 'person'],
           allNotesView: 'list',
-          openNoteTabs: {},
+          openTabs: {},
           taskFilters: {
             pinned: true,
             current: true,
@@ -456,7 +456,7 @@ describe('SettingsProvider', () => {
           weekStartDay: 'monday',
           allNotesFilterTags: ['book', 'link', 'person'],
           allNotesView: 'list',
-          openNoteTabs: {},
+          openTabs: {},
           taskFilters: {
             pinned: true,
             current: true,
@@ -669,7 +669,7 @@ describe('SettingsProvider', () => {
           weekStartDay: 'monday',
           allNotesFilterTags: ['book', 'link', 'person'],
           allNotesView: 'list',
-          openNoteTabs: {},
+          openTabs: {},
           taskFilters: {
             pinned: true,
             current: true,
@@ -759,7 +759,7 @@ describe('SettingsProvider', () => {
         weekStartDay: 'monday',
         allNotesFilterTags: ['book', 'link', 'person'],
         allNotesView: 'list',
-        openNoteTabs: {},
+        openTabs: {},
         taskFilters: {
           pinned: true,
           current: true,

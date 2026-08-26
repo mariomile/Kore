@@ -22,6 +22,7 @@ import {
 } from '@reflect/core'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { toChatAttachment, type ChatAttachment } from '@/lib/chat-attachments'
+import { emitChatConversationDeleted } from '@/lib/chat-events'
 import { isMobileSurface } from '@/lib/platform-surface'
 import { invalidateChatQueries } from '@/lib/query-client'
 import {
@@ -55,7 +56,7 @@ import { useChatConversationRestore } from '@/providers/use-chat-conversation-re
  * in-memory conversation carries on.
  */
 
-export { useChatSession, type ChatStatus } from '@/providers/chat-context'
+export { useChatSession, useOptionalChatSession, type ChatStatus } from '@/providers/chat-context'
 
 interface ChatProviderProps {
   /** The open graph — names the prompt's overview block. */
@@ -298,14 +299,17 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
     activeSendRef.current?.controller.abort()
   }, [])
 
-  const newChat = useCallback(() => {
+  const newChat = useCallback((): string => {
     activeSendRef.current?.controller.abort()
     sessionRef.current += 1
     setTurns([])
     setAttachments([])
     setInstructions('')
     setQueue([])
-    setConversationId(crypto.randomUUID())
+    const nextConversationId = crypto.randomUUID()
+    conversationIdRef.current = nextConversationId
+    setConversationId(nextConversationId)
+    return nextConversationId
   }, [setQueue])
 
   const openConversation = useCallback(
@@ -359,6 +363,7 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
       if (id === conversationIdRef.current) {
         newChat()
       }
+      emitChatConversationDeleted(id)
     },
     [newChat],
   )

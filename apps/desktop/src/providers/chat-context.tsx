@@ -78,8 +78,8 @@ export interface ChatContextValue {
   sendQueuedNow: (id: string) => Promise<void>
   /** Abort the in-flight turn (partial text stays in the transcript). */
   stop: () => void
-  /** Leave the conversation in the history and start a fresh one. */
-  newChat: () => void
+  /** Leave the conversation in history, start a fresh one, and return its id. */
+  newChat: () => string
   /**
    * Extra instructions layered on the global system prompt for THIS
    * conversation only. Session state: cleared by New chat and by opening a
@@ -98,9 +98,14 @@ export interface ChatContextValue {
 
 export const ChatContext = createContext<ChatContextValue | null>(null)
 
+/** Read the chat session when a host may intentionally omit ChatProvider. */
+export function useOptionalChatSession(): ChatContextValue | null {
+  return use(ChatContext)
+}
+
 /** Access the chat session. Use within a ChatProvider. */
 export function useChatSession(): ChatContextValue {
-  const context = use(ChatContext)
+  const context = useOptionalChatSession()
   if (!context) {
     throw new Error('useChatSession must be used within a ChatProvider')
   }

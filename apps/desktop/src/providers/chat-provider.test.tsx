@@ -533,8 +533,12 @@ describe('ChatProvider message queue', () => {
     await act(() => session?.removeQueued(secondId))
     expect(session?.queued.map((entry) => entry.text)).toEqual(['third question'])
 
-    await act(() => session?.newChat())
+    let newConversationId: string | undefined
+    await act(() => {
+      newConversationId = session?.newChat()
+    })
     expect(session?.queued).toEqual([])
+    expect(newConversationId).toBe(session?.activeConversationId)
 
     // The detached turn settles into a changed session: still no drain.
     release()

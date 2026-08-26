@@ -2,14 +2,16 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
-import type { ReactElement } from 'react'
-import { setBridge, type OpenTab } from '@reflect/core'
-import { SidebarOpenNotes } from '@/components/sidebar/sidebar-open-notes'
+import { useSyncExternalStore, type ReactElement } from 'react'
+import { setBridge, untitledNotePath, type OpenTab } from '@reflect/core'
+import { SidebarOpenTabs } from '@/components/sidebar/sidebar-open-notes'
+import { emitChatConversationDeleted } from '@/lib/chat-events'
+import { emitNoteMoved } from '@/lib/note-moves'
 import { OpenTabsProvider, useOpenTabs } from '@/providers/open-tabs-provider'
 import { SidebarProvider } from '@/providers/sidebar-provider'
 import { routeForPath } from '@/routing/route'
 import { RouterProvider, useRouter } from '@/routing/router'
-import { NoteTabsStrip } from './note-tabs-strip'
+import { WorkspaceTabsStrip } from './note-tabs-strip'
 
 /**
  * The open-tabs system end to end in the browser: the provider over a
@@ -22,11 +24,11 @@ const settingsStore = vi.hoisted(() => {
   // Tabs are keyed by graph root (the settings document is global); the
   // mocked graph provider below serves root '/g'.
   type TabsByGraph = Record<string, OpenTab[]>
-  let state: { openNoteTabs: TabsByGraph } = { openNoteTabs: {} }
+  let state: { openTabs: TabsByGraph } = { openTabs: {} }
   const listeners = new Set<() => void>()
   return {
     get: () => state,
-    set(patch: Partial<{ openNoteTabs: TabsByGraph }>) {
+    set(patch: Partial<{ openTabs: TabsByGraph }>) {
       if (Object.keys(patch).length === 0) {
         return
       }
@@ -38,7 +40,45 @@ const settingsStore = vi.hoisted(() => {
       return () => listeners.delete(listener)
     },
     reset() {
-      state = { openNoteTabs: {} }
+      state = { openTabs: {} }
+    },
+  }
+})
+
+const graphStore = vi.hoisted(() => {
+  let root = '/g'
+  const listeners = new Set<() => void>()
+  return {
+    get: () => root,
+    set(next: string) {
+      root = next
+      for (const listener of listeners) listener()
+    },
+    subscribe(listener: () => void) {
+      listeners.add(listener)
+      return () => listeners.delete(listener)
+    },
+    reset() {
+      root = '/g'
+    },
+  }
+})
+
+const chatStore = vi.hoisted(() => {
+  let activeConversationId = 'chat-1'
+  const listeners = new Set<() => void>()
+  return {
+    get: () => activeConversationId,
+    set(next: string) {
+      activeConversationId = next
+      for (const listener of listeners) listener()
+    },
+    subscribe(listener: () => void) {
+      listeners.add(listener)
+      return () => listeners.delete(listener)
+    },
+    reset() {
+      activeConversationId = 'chat-1'
     },
   }
 })
@@ -63,14 +103,42 @@ vi.mock('@/providers/settings-provider', async () => {
 vi.mock('@/components/command-palette/palette-provider', () => ({
   usePalette: () => ({ openPalette: vi.fn(), open: false }),
 }))
-vi.mock('@/providers/graph-provider', () => ({
-  useGraph: () => ({ graph: { root: '/g', name: 'g', generation: 1 }, indexing: false }),
-}))
+vi.mock('@/providers/graph-provider', async () => {
+  const { useSyncExternalStore } = await import('react')
+  return {
+    useGraph: () => {
+      const root = useSyncExternalStore(
+        (listener: () => void) => graphStore.subscribe(listener),
+        () => graphStore.get(),
+      )
+      return { graph: { root, name: root, generation: 1 }, indexing: false }
+    },
+  }
+})
+vi.mock('@/providers/chat-provider', async () => {
+  const { useSyncExternalStore } = await import('react')
+  return {
+    useOptionalChatSession: () => {
+      const activeConversationId = useSyncExternalStore(
+        (listener: () => void) => chatStore.subscribe(listener),
+        () => chatStore.get(),
+      )
+      return {
+        activeConversationId,
+        openConversation: async (conversationId: string) => {
+          chatStore.set(conversationId)
+        },
+      }
+    },
+  }
+})
 
 const TITLES: Record<string, string> = {
   'notes/alpha.md': 'Alpha Plan',
   'notes/beta.md': 'Beta Review',
+  'notes/renamed.md': 'Renamed Note',
 }
+const UNTITLED_PATH = untitledNotePath()
 
 setBridge({
   invoke: async (command, args) => {
@@ -118,6 +186,13 @@ function Probe(): ReactElement {
       >
         beta
       </button>
+      <button
+        type="button"
+        data-testid="open-untitled"
+        onClick={() => navigate(routeForPath(UNTITLED_PATH))}
+      >
+        untitled
+      </button>
       <button type="button" data-testid="next-tab" onClick={nextTab}>
         next
       </button>
@@ -136,6 +211,36 @@ function Probe(): ReactElement {
       </button>
       <button
         type="button"
+        data-testid="open-search-y"
+        onClick={() => navigate({ kind: 'search', query: 'y' })}
+      >
+        search y
+      </button>
+      <button
+        type="button"
+        data-testid="open-all-notes"
+        onClick={() => navigate({ kind: 'allNotes', tag: null })}
+      >
+        all notes
+      </button>
+      <button type="button" data-testid="open-tasks" onClick={() => navigate({ kind: 'tasks' })}>
+        tasks
+      </button>
+      <button
+        type="button"
+        data-testid="open-insights"
+        onClick={() => navigate({ kind: 'insights' })}
+      >
+        insights
+      </button>
+      <button type="button" data-testid="open-graph" onClick={() => navigate({ kind: 'graphMap' })}>
+        graph
+      </button>
+      <button type="button" data-testid="open-agents" onClick={() => navigate({ kind: 'agents' })}>
+        agents
+      </button>
+      <button
+        type="button"
         data-testid="open-settings"
         onClick={() => navigate({ kind: 'settings' })}
       >
@@ -148,6 +253,36 @@ function Probe(): ReactElement {
       >
         browser
       </button>
+      <button
+        type="button"
+        data-testid="open-terminal"
+        onClick={() => navigate({ kind: 'terminal' })}
+      >
+        terminal
+      </button>
+      <button
+        type="button"
+        data-testid="open-chat-one"
+        onClick={() => {
+          chatStore.set('chat-1')
+          navigate({ kind: 'chat' })
+        }}
+      >
+        chat one
+      </button>
+      <button
+        type="button"
+        data-testid="open-chat-two"
+        onClick={() => {
+          chatStore.set('chat-2')
+          navigate({ kind: 'chat' })
+        }}
+      >
+        chat two
+      </button>
+      <button type="button" data-testid="switch-graph" onClick={() => graphStore.set('/other')}>
+        graph workspace
+      </button>
     </div>
   )
 }
@@ -156,31 +291,50 @@ function renderTabs() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
-      <RouterProvider initialRoute={{ kind: 'today' }}>
-        <SidebarProvider>
-          <OpenTabsProvider>
-            <NoteTabsStrip />
-            <SidebarOpenNotes />
-            <Probe />
-          </OpenTabsProvider>
-        </SidebarProvider>
-      </RouterProvider>
+      <GraphHarness />
     </QueryClientProvider>,
   )
 }
 
-function routeOf(view: Awaited<ReturnType<typeof renderTabs>>): { kind: string; path?: string } {
+function GraphHarness(): ReactElement {
+  const root = useSyncExternalStore(
+    (listener: () => void) => graphStore.subscribe(listener),
+    () => graphStore.get(),
+  )
+  return (
+    <RouterProvider key={root} initialRoute={{ kind: 'today' }}>
+      <SidebarProvider>
+        <OpenTabsProvider>
+          <WorkspaceTabsStrip />
+          <SidebarOpenTabs />
+          <Probe />
+        </OpenTabsProvider>
+      </SidebarProvider>
+    </RouterProvider>
+  )
+}
+
+function routeOf(view: Awaited<ReturnType<typeof renderTabs>>): {
+  kind: string
+  path?: string
+  query?: string
+  tag?: string | null
+} {
   return JSON.parse(view.getByTestId('route').element().textContent ?? '{}') as {
     kind: string
     path?: string
+    query?: string
+    tag?: string | null
   }
 }
 
 beforeEach(() => {
   settingsStore.reset()
+  graphStore.reset()
+  chatStore.reset()
 })
 
-describe('note tabs', () => {
+describe('workspace tabs', () => {
   it('always shows the bar, and an opened note joins both surfaces', async () => {
     const view = await renderTabs()
     // The bar is the title bar now: always present, Daily pill leading.
@@ -253,13 +407,21 @@ describe('note tabs', () => {
     await view.unmount()
   })
 
-  it('enters the ring at Daily from a non-tab screen', async () => {
+  it('tabs singleton routes and cycles from Search back to Daily', async () => {
     const view = await renderTabs()
     await view.getByTestId('open-alpha').click()
     await view.getByTestId('open-search').click()
     await vi.waitFor(() => expect(routeOf(view).kind).toBe('search'))
+    await expect.element(view.getByRole('tab', { name: 'Search' })).toBeVisible()
 
-    // Search has no strip tab; Next must land on Daily, not on the first tab.
+    await view.getByTestId('open-search-y').click()
+    await vi.waitFor(() => expect(routeOf(view).query).toBe('y'))
+    expect(
+      [...view.getByRole('tablist').element().querySelectorAll('[role="tab"]')].filter(
+        (tab) => tab.textContent === 'Search',
+      ),
+    ).toHaveLength(1)
+
     await view.getByTestId('next-tab').click()
     await vi.waitFor(() => expect(routeOf(view).kind).toBe('today'))
     await view.unmount()
@@ -279,8 +441,8 @@ describe('note tabs', () => {
     const labels = [...tabs.querySelectorAll('[role="tab"]')].map(
       (tab) => tab.getAttribute('aria-label') ?? tab.textContent,
     )
-    expect(labels[0]).toContain('Daily notes')
-    expect(labels[1]).toBe('Beta Review')
+    expect(labels[0]).toBe('Beta Review')
+    expect(labels[1]).toContain('Daily notes')
     await view.unmount()
   })
 
@@ -330,6 +492,106 @@ describe('note tabs', () => {
     await view.getByRole('button', { name: 'Close Browser' }).first().click()
     await vi.waitFor(() => expect(routeOf(view).kind).toBe('today'))
     expect(view.getByRole('tab', { name: /Browser/ }).query()).toBeNull()
+    await view.unmount()
+  })
+
+  it('opens untitled notes immediately and follows their birth rename', async () => {
+    const view = await renderTabs()
+    await view.getByTestId('open-untitled').click()
+    await expect.element(view.getByRole('tab', { name: 'Untitled' })).toBeVisible()
+
+    emitNoteMoved(UNTITLED_PATH, 'notes/renamed.md')
+    await vi.waitFor(() => expect(routeOf(view).path).toBe('notes/renamed.md'))
+    await expect.element(view.getByRole('tab', { name: /Renamed Note/ })).toBeVisible()
+    expect(view.getByRole('tab', { name: 'Untitled' }).query()).toBeNull()
+    await view.unmount()
+  })
+
+  it('opens every workspace surface as a deduplicated tab', async () => {
+    const view = await renderTabs()
+    const surfaces = [
+      ['open-all-notes', 'All notes'],
+      ['open-tasks', 'Tasks'],
+      ['open-insights', 'Insights'],
+      ['open-graph', 'Graph'],
+      ['open-agents', 'Agents'],
+      ['open-settings', 'Settings'],
+      ['open-terminal', 'Terminal'],
+      ['open-browser', 'Browser'],
+    ] as const
+
+    for (const [testId, label] of surfaces) {
+      await view.getByTestId(testId).click()
+      await expect.element(view.getByRole('tab', { name: label })).toBeVisible()
+    }
+    await view.getByTestId('open-tasks').click()
+    expect(
+      [...view.getByRole('tablist').element().querySelectorAll('[role="tab"]')].filter(
+        (tab) => tab.textContent === 'Tasks',
+      ),
+    ).toHaveLength(1)
+    await view.unmount()
+  })
+
+  it('keeps separate chat tabs, activates existing conversations, and closes deleted chats', async () => {
+    const view = await renderTabs()
+    await view.getByTestId('open-chat-one').click()
+    await view.getByTestId('open-chat-two').click()
+    await vi.waitFor(() => {
+      const labels = [...view.getByRole('tablist').element().querySelectorAll('[role="tab"]')].map(
+        (tab) => tab.textContent,
+      )
+      expect(labels.filter((label) => label === 'New chat')).toHaveLength(2)
+    })
+
+    const chatTabs = view.getByRole('tab', { name: 'New chat' })
+    await chatTabs.first().getByText('New chat').click()
+    await vi.waitFor(() => expect(chatStore.get()).toBe('chat-1'))
+
+    emitChatConversationDeleted('chat-1')
+    await vi.waitFor(() => {
+      const labels = [...view.getByRole('tablist').element().querySelectorAll('[role="tab"]')].map(
+        (tab) => tab.textContent,
+      )
+      expect(labels.filter((label) => label === 'New chat')).toHaveLength(1)
+    })
+    await view.unmount()
+  })
+
+  it('makes Daily closable and restores it only as the last-tab fallback', async () => {
+    const view = await renderTabs()
+    await expect.element(view.getByRole('tab', { name: 'Daily notes' })).toBeVisible()
+    await view.getByTestId('close-active').click()
+    await expect.element(view.getByRole('tab', { name: 'Daily notes' })).toBeVisible()
+
+    await view.getByTestId('open-alpha').click()
+    await view.getByRole('tab', { name: 'Daily notes' }).getByText('Daily notes').click()
+    await view.getByTestId('close-active').click()
+    await vi.waitFor(() => expect(routeOf(view).path).toBe('notes/alpha.md'))
+    expect(view.getByRole('tab', { name: 'Daily notes' }).query()).toBeNull()
+
+    await view.getByTestId('close-active').click()
+    await vi.waitFor(() => expect(routeOf(view).kind).toBe('today'))
+    await expect.element(view.getByRole('tab', { name: 'Daily notes' })).toBeVisible()
+    await view.unmount()
+  })
+
+  it('restores persisted tabs and isolates them by graph', async () => {
+    settingsStore.set({
+      openTabs: {
+        '/g': [
+          { kind: 'surface', surface: 'daily', date: null, pinned: false },
+          { kind: 'note', path: 'notes/alpha.md', pinned: false },
+        ],
+      },
+    })
+    const view = await renderTabs()
+    await expect.element(view.getByRole('tab', { name: /Alpha Plan/ })).toBeVisible()
+
+    await view.getByTestId('switch-graph').click()
+    await vi.waitFor(() => expect(routeOf(view).kind).toBe('today'))
+    expect(view.getByRole('tab', { name: /Alpha Plan/ }).query()).toBeNull()
+    await expect.element(view.getByRole('tab', { name: 'Daily notes' })).toBeVisible()
     await view.unmount()
   })
 })

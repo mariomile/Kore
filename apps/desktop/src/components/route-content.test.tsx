@@ -104,7 +104,7 @@ vi.mock('@/providers/settings-provider', () => ({
       allNotesFilterTags: ['book', 'link', 'person'],
       allNotesView: 'list',
       uiDensity: 'default',
-      openNoteTabs: {},
+      openTabs: {},
       browserSearchEngine: 'duckduckgo',
       browserOpenLinksInApp: true,
       aiProviders: [],

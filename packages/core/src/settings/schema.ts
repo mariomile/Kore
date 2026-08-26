@@ -66,13 +66,23 @@ export * from './schema-editor'
  */
 
 /**
- * App screens that join the tab strip the same way notes do: opening the
- * page opens (or focuses) its tab; closing the tab leaves the page. Daily
- * notes stay out of this set — they are the fixed, unclosable tab zero.
- * Settings and the built-in browser are the screens that otherwise replace
- * the pane with no strip presence.
+ * Singleton workspace pages that join notes and conversations in the desktop
+ * tab strip. Route payloads such as the focused daily date, collection tag, or
+ * search query live on the corresponding tab while identity remains the
+ * surface name.
  */
-export const workspaceSurfaceSchema = z.enum(['settings', 'browser'])
+export const workspaceSurfaceSchema = z.enum([
+  'daily',
+  'allNotes',
+  'search',
+  'tasks',
+  'insights',
+  'graphMap',
+  'agents',
+  'settings',
+  'terminal',
+  'browser',
+])
 
 export type WorkspaceSurface = z.infer<typeof workspaceSurfaceSchema>
 
@@ -82,13 +92,42 @@ export interface OpenNoteTab {
   pinned: boolean
 }
 
-export interface OpenSurfaceTab {
-  kind: 'surface'
-  surface: WorkspaceSurface
+export interface OpenChatTab {
+  kind: 'chat'
+  conversationId: string
   pinned: boolean
 }
 
-export type OpenTab = OpenNoteTab | OpenSurfaceTab
+export interface OpenDailyTab {
+  kind: 'surface'
+  surface: 'daily'
+  date: string | null
+  pinned: boolean
+}
+
+export interface OpenAllNotesTab {
+  kind: 'surface'
+  surface: 'allNotes'
+  tag: string | null
+  pinned: boolean
+}
+
+export interface OpenSearchTab {
+  kind: 'surface'
+  surface: 'search'
+  query: string
+  pinned: boolean
+}
+
+export interface OpenStaticSurfaceTab {
+  kind: 'surface'
+  surface: Exclude<WorkspaceSurface, 'daily' | 'allNotes' | 'search'>
+  pinned: boolean
+}
+
+export type OpenSurfaceTab = OpenDailyTab | OpenAllNotesTab | OpenSearchTab | OpenStaticSurfaceTab
+
+export type OpenTab = OpenNoteTab | OpenChatTab | OpenSurfaceTab
 
 const openNoteTabStoredSchema = z.object({
   kind: z.literal('note'),
@@ -96,11 +135,38 @@ const openNoteTabStoredSchema = z.object({
   pinned: z.boolean().catch(false),
 }) satisfies z.ZodType<OpenNoteTab>
 
-const openSurfaceTabStoredSchema = z.object({
-  kind: z.literal('surface'),
-  surface: workspaceSurfaceSchema,
+const openChatTabStoredSchema = z.object({
+  kind: z.literal('chat'),
+  conversationId: z.string(),
   pinned: z.boolean().catch(false),
-}) satisfies z.ZodType<OpenSurfaceTab>
+}) satisfies z.ZodType<OpenChatTab>
+
+const openDailyTabStoredSchema = z.object({
+  kind: z.literal('surface'),
+  surface: z.literal('daily'),
+  date: z.string().nullable().catch(null),
+  pinned: z.boolean().catch(false),
+}) satisfies z.ZodType<OpenDailyTab>
+
+const openAllNotesTabStoredSchema = z.object({
+  kind: z.literal('surface'),
+  surface: z.literal('allNotes'),
+  tag: z.string().nullable().catch(null),
+  pinned: z.boolean().catch(false),
+}) satisfies z.ZodType<OpenAllNotesTab>
+
+const openSearchTabStoredSchema = z.object({
+  kind: z.literal('surface'),
+  surface: z.literal('search'),
+  query: z.string().catch(''),
+  pinned: z.boolean().catch(false),
+}) satisfies z.ZodType<OpenSearchTab>
+
+const openStaticSurfaceTabStoredSchema = z.object({
+  kind: z.literal('surface'),
+  surface: z.enum(['tasks', 'insights', 'graphMap', 'agents', 'settings', 'terminal', 'browser']),
+  pinned: z.boolean().catch(false),
+}) satisfies z.ZodType<OpenStaticSurfaceTab>
 
 /** Pre-surface shape: `{ path, pinned }` with no `kind`. */
 const legacyOpenNoteTabSchema = z
@@ -111,20 +177,20 @@ const legacyOpenNoteTabSchema = z
   .transform((tab): OpenNoteTab => ({ kind: 'note', path: tab.path, pinned: tab.pinned }))
 
 /**
- * One strip tab: an ordinary note, or a workspace surface (Settings,
- * Browser). The open-tabs list (the strip and the sidebar's Open section),
- * in strip order, restored at launch, **keyed by graph root**: the settings
- * document is one global file shared across graphs, so without the keying
- * another graph's tabs would render after every switch — and then be
- * destroyed by the strip's self-pruning once they fail to resolve. Daily
- * notes are never stored here — the Daily tab is a fixed "tab zero" the UI
- * provides. A malformed graph entry drops that graph's list rather than
- * resurrecting half a session; a malformed document (including the
- * pre-keying flat-array shape) degrades to no stored sessions.
+ * One desktop workspace tab: a note, a chat conversation, or a singleton
+ * workspace surface. Lists are restored at launch and keyed by graph root so
+ * one graph's session can never leak into another. A malformed graph entry
+ * drops that graph's list rather than resurrecting half a session; a malformed
+ * document (including the pre-keying flat-array shape) degrades to no stored
+ * sessions.
  */
 export const openTabSchema: z.ZodType<OpenTab> = z.union([
   openNoteTabStoredSchema,
-  openSurfaceTabStoredSchema,
+  openChatTabStoredSchema,
+  openDailyTabStoredSchema,
+  openAllNotesTabStoredSchema,
+  openSearchTabStoredSchema,
+  openStaticSurfaceTabStoredSchema,
   legacyOpenNoteTabSchema,
 ])
 
@@ -136,7 +202,11 @@ export function isSurfaceTab(tab: OpenTab): tab is OpenSurfaceTab {
   return tab.kind === 'surface'
 }
 
-export const openNoteTabsSchema = z
+export function isChatTab(tab: OpenTab): tab is OpenChatTab {
+  return tab.kind === 'chat'
+}
+
+export const openTabsSchema = z
   .record(z.string(), z.array(openTabSchema).catch([]))
   // An array is also an object to `z.record` (index keys) — the pre-keying
   // shape must degrade to "no sessions", not to a graph named "0".
@@ -337,7 +407,26 @@ export type BrowserSearchEngine = z.infer<typeof browserSearchEngineSchema>
  */
 export const browserOpenLinksInAppSchema = z.boolean().catch(true)
 
-export const settingsSchema = z.looseObject({
+/**
+ * Move the legacy `openNoteTabs` document into the generalized `openTabs`
+ * field at the untrusted JSON boundary. The legacy key is removed from the
+ * parsed value so the next settings write completes the migration.
+ */
+function migrateOpenTabs(value: unknown): unknown {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return value
+  }
+  if (!('openNoteTabs' in value)) {
+    return value
+  }
+  const entries = Object.entries(value).filter(([key]) => key !== 'openNoteTabs')
+  if ('openTabs' in value) {
+    return Object.fromEntries(entries)
+  }
+  return { ...Object.fromEntries(entries), openTabs: value.openNoteTabs }
+}
+
+const settingsDocumentSchema = z.looseObject({
   editorMarkdownSyntax: editorMarkdownSyntaxSchema,
   editorSpellCheck: editorSpellCheckSchema,
   editorDefaultBullet: editorDefaultBulletSchema,
@@ -371,7 +460,7 @@ export const settingsSchema = z.looseObject({
   weekStartDay: weekStartDaySchema,
   allNotesFilterTags: allNotesFilterTagsSchema,
   allNotesView: allNotesViewSchema,
-  openNoteTabs: openNoteTabsSchema,
+  openTabs: openTabsSchema,
   savedSearches: savedSearchesSchema,
   collectionSorts: collectionSortsSchema,
   collectionGroups: collectionGroupsSchema,
@@ -397,6 +486,8 @@ export const settingsSchema = z.looseObject({
   mcpServers: mcpServersSchema,
   aiPrompts: aiPromptsSchema,
 })
+
+export const settingsSchema = z.preprocess(migrateOpenTabs, settingsDocumentSchema)
 
 export type Settings = z.infer<typeof settingsSchema>
 

@@ -37,7 +37,7 @@ vi.mock('@/components/vault-replace/vault-replace-dialog', () => ({
 }))
 // The tab strip pulls the open-tabs stack (graph, palette, index queries) —
 // its own test covers it; here only the frame around it is under test.
-vi.mock('@/components/note-tabs-strip', () => ({ NoteTabsStrip: () => null }))
+vi.mock('@/components/note-tabs-strip', () => ({ WorkspaceTabsStrip: () => null }))
 vi.mock('@/lib/use-macos-traffic-light-inset', () => ({
   useMacosTrafficLightInset: () => trafficLights.inset,
 }))

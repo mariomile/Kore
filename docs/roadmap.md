@@ -290,12 +290,12 @@ customization effort.
   changed the note, full preview or per-save line diff, and one-click
   restore that snapshots the current state first (so a restore is itself
   just another version, never a loss).
-- Lore's own Apple identity: bundle ids `app.lore.*` (desktop flavors, iOS,
+- Kore's own Apple identity: bundle ids `app.lore.*` (desktop flavors, iOS,
   share/widget extensions), iCloud container `iCloud.app.lore` (shown as
-  "Lore" in Files/Finder), App Groups `group.app.lore(.dev)`, product names
-  Lore / Lore Beta / Lore Dev, StoreKit/IAP ids, updater endpoints pointed
+  "Kore" in Files/Finder), App Groups `group.app.lore(.dev)`, product names
+  Kore / Kore Beta / Kore Dev, StoreKit/IAP ids, updater endpoints pointed
   at this repo (safe-fail until own keys exist), keychain service `lore` —
-  with a one-time signing checklist in docs/lore-apple-signing.md.
+  with a one-time signing checklist in docs/kore-apple-signing.md.
   Internal names (`reflect://`, the `reflect` CLI, `.reflect/`, the
   capture host) deliberately unchanged.
 - Agent CLI, rounded out: `backlinks` (who links here, from the app's own

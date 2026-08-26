@@ -38,15 +38,15 @@
 	<key>LSSupportsOpeningDocumentsInPlace</key>
 	<true/>
 	<key>NSCalendarsFullAccessUsageDescription</key>
-	<string>Lore reads your calendar to show the day&apos;s meetings beside your daily note. Access is read-only and stays on this device.</string>
+	<string>Kore reads your calendar to show the day&apos;s meetings beside your daily note. Access is read-only and stays on this device.</string>
 	<key>NSCalendarsUsageDescription</key>
-	<string>Lore reads your calendar to show the day&apos;s meetings beside your daily note. Access is read-only and stays on this device.</string>
+	<string>Kore reads your calendar to show the day&apos;s meetings beside your daily note. Access is read-only and stays on this device.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>Lore uses the camera so you can take a photo and add it to a note. Photos are saved into your notes folder on this device.</string>
+	<string>Kore uses the camera so you can take a photo and add it to a note. Photos are saved into your notes folder on this device.</string>
 	<key>NSContactsUsageDescription</key>
-	<string>Lore reads your contacts to suggest details for person notes. Nothing is stored or sent anywhere.</string>
+	<string>Kore reads your contacts to suggest details for person notes. Nothing is stored or sent anywhere.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Lore uses the microphone to record audio memos that are transcribed into your daily note.</string>
+	<string>Kore uses the microphone to record audio memos that are transcribed into your daily note.</string>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>NSUbiquitousContainers</key>
@@ -56,7 +56,7 @@
 			<key>NSUbiquitousContainerIsDocumentScopePublic</key>
 			<true/>
 			<key>NSUbiquitousContainerName</key>
-			<string>Lore</string>
+			<string>Kore</string>
 			<key>NSUbiquitousContainerSupportedFolderLevels</key>
 			<string>Any</string>
 		</dict>

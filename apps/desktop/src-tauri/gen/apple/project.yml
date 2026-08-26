@@ -36,20 +36,20 @@ settingGroups:
   # REFLECT_DISPLAY_NAME feeds CFBundleDisplayName via Info.plist expansion.
   app:
     base:
-      PRODUCT_NAME: Lore
+      PRODUCT_NAME: Kore
       CODE_SIGN_STYLE: Automatic
       DEVELOPMENT_TEAM: 789ULN5MZB
     configs:
       debug:
         PRODUCT_BUNDLE_IDENTIFIER: app.lore.ios.dev
-        REFLECT_DISPLAY_NAME: Lore Dev
+        REFLECT_DISPLAY_NAME: Kore Dev
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon-Dev
         # The dev App Group, no iCloud; see the entitlements comment on the
         # reflect-open_iOS target.
         CODE_SIGN_ENTITLEMENTS: reflect-open_iOS/reflect-open_iOS.dev.entitlements
       release:
         PRODUCT_BUNDLE_IDENTIFIER: app.lore.ios
-        REFLECT_DISPLAY_NAME: Lore
+        REFLECT_DISPLAY_NAME: Kore
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         CODE_SIGN_ENTITLEMENTS: reflect-open_iOS/reflect-open_iOS.entitlements
 targetTemplates:
@@ -93,20 +93,20 @@ targets:
         # user can see, copy, and back up their markdown (Plan 19).
         UIFileSharingEnabled: true
         LSSupportsOpeningDocumentsInPlace: true
-        # Lore only uses exempt encryption (standard HTTPS/Git transport and
+        # Kore only uses exempt encryption (standard HTTPS/Git transport and
         # OS keychain storage), so App Store Connect should not ask for export
         # compliance answers on every TestFlight upload.
         ITSAppUsesNonExemptEncryption: false
         # Apple Contacts integration: read-only CNContactStore lookups for
         # person notes; the string is shown on the iOS permission prompt.
-        NSContactsUsageDescription: Lore reads your contacts to suggest details for person notes. Nothing is stored or sent anywhere.
+        NSContactsUsageDescription: Kore reads your contacts to suggest details for person notes. Nothing is stored or sent anywhere.
         # Mirrored from src-tauri/Info.plist (which merges at build) so that
         # xcodegen regens keep them in the committed generated Info.plist
         # instead of silently dropping them.
-        NSMicrophoneUsageDescription: Lore uses the microphone to record audio memos that are transcribed into your daily note.
-        NSCameraUsageDescription: Lore uses the camera so you can take a photo and add it to a note. Photos are saved into your notes folder on this device.
-        NSCalendarsFullAccessUsageDescription: Lore reads your calendar to show the day's meetings beside your daily note. Access is read-only and stays on this device.
-        NSCalendarsUsageDescription: Lore reads your calendar to show the day's meetings beside your daily note. Access is read-only and stays on this device.
+        NSMicrophoneUsageDescription: Kore uses the microphone to record audio memos that are transcribed into your daily note.
+        NSCameraUsageDescription: Kore uses the camera so you can take a photo and add it to a note. Photos are saved into your notes folder on this device.
+        NSCalendarsFullAccessUsageDescription: Kore reads your calendar to show the day's meetings beside your daily note. Access is read-only and stays on this device.
+        NSCalendarsUsageDescription: Kore reads your calendar to show the day's meetings beside your daily note. Access is read-only and stays on this device.
         # Audio memos keep recording through screen lock and backgrounding
         # (audio-memos wave 2). The recording plugin activates the audio
         # session only while a recording is live, so the mode never keeps the
@@ -145,12 +145,12 @@ targets:
           - UIInterfaceOrientationLandscapeRight
         # iCloud Drive document storage (Plan 21): the graph can live in the
         # app's iCloud container so notes sync across devices. Public document
-        # scope surfaces it as "Lore" in the Files app and in Finder's
+        # scope surfaces it as "Kore" in the Files app and in Finder's
         # iCloud Drive, where the desktop app opens the same folder.
         NSUbiquitousContainers:
           iCloud.app.lore:
             NSUbiquitousContainerIsDocumentScopePublic: true
-            NSUbiquitousContainerName: Lore
+            NSUbiquitousContainerName: Kore
             NSUbiquitousContainerSupportedFolderLevels: Any
         # Rendered by Tauri from `version` in tauri.conf.json (the prerelease
         # tag is stripped — Apple requires three dot-separated integers), so the
@@ -292,11 +292,11 @@ targets:
       configs:
         debug:
           PRODUCT_BUNDLE_IDENTIFIER: app.lore.ios.dev.share
-          REFLECT_DISPLAY_NAME: Lore Dev
+          REFLECT_DISPLAY_NAME: Kore Dev
           CODE_SIGN_ENTITLEMENTS: ShareExtension/ShareExtension.dev.entitlements
         release:
           PRODUCT_BUNDLE_IDENTIFIER: app.lore.ios.share
-          REFLECT_DISPLAY_NAME: Lore
+          REFLECT_DISPLAY_NAME: Kore
           CODE_SIGN_ENTITLEMENTS: ShareExtension/ShareExtension.entitlements
     postBuildScripts:
       # Tauri's App Store Connect API-key flow (CI TestFlight builds) archives
@@ -350,11 +350,11 @@ targets:
       configs:
         debug:
           PRODUCT_BUNDLE_IDENTIFIER: app.lore.ios.dev.widgets
-          REFLECT_DISPLAY_NAME: Lore Dev
+          REFLECT_DISPLAY_NAME: Kore Dev
           CODE_SIGN_ENTITLEMENTS: RecordingWidget/RecordingWidget.dev.entitlements
         release:
           PRODUCT_BUNDLE_IDENTIFIER: app.lore.ios.widgets
-          REFLECT_DISPLAY_NAME: Lore
+          REFLECT_DISPLAY_NAME: Kore
           CODE_SIGN_ENTITLEMENTS: RecordingWidget/RecordingWidget.entitlements
     postBuildScripts:
       # Same skip-codesign entitlement preservation as ShareExtension: CI

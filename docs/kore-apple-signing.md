@@ -1,14 +1,14 @@
-# Lore: Apple identity & signing checklist
+# Kore: Apple identity & signing checklist
 
-Lore carries its own Apple-facing identity, distinct from upstream Reflect:
+Kore carries its own Apple-facing identity, distinct from upstream Reflect:
 
 | What | Value |
 | --- | --- |
 | macOS bundle ids | `app.lore.desktop` / `.beta` / `.dev` |
 | iOS bundle ids | `app.lore.ios` / `.dev` (+ `.share`, `.widgets` extensions) |
-| iCloud container | `iCloud.app.lore` (shown as **Lore** in Files/Finder) |
+| iCloud container | `iCloud.app.lore` (shown as **Kore** in Files/Finder) |
 | App Group | `group.app.lore` / `group.app.lore.dev` |
-| Product names | Lore / Lore Beta / Lore Dev |
+| Product names | Kore / Kore Beta / Kore Dev |
 | Keychain service | `lore` |
 
 Everything builds and runs **without any Apple account**: unsigned/dev builds
@@ -34,7 +34,7 @@ steps below are only needed for iCloud sync and for installing on an iPhone.
    `apps/desktop/src-tauri/` under the same file names, and follow
    [macos-distribution.md](macos-distribution.md). Plain `pnpm tauri build`
    for personal use needs none of this.
-5. **Auto-updates:** live. Lore has its own updater keypair — the public
+5. **Auto-updates:** live. Kore has its own updater keypair — the public
    key sits in `tauri.conf.json`, the private key belongs in the repo's
    Actions secrets (`TAURI_SIGNING_PRIVATE_KEY` +
    `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`) — and the `Release DMG` workflow
@@ -44,7 +44,7 @@ steps below are only needed for iCloud sync and for installing on an iPhone.
    (`releases/latest/download/latest.json`). Apple signing is *not*
    required for self-update; it only removes the one-time Gatekeeper
    quarantine on fresh installs (recent macOS calls the unsigned app
-   "damaged" — cleared with `xattr -cr /Applications/Lore.app`). For a
+   "damaged" — cleared with `xattr -cr /Applications/Memento.app`). For a
    prompt-free install, use release.yml, the signed + notarized pipeline.
 
 ## What deliberately did NOT change
@@ -55,8 +55,11 @@ steps below are only needed for iCloud sync and for installing on an iPhone.
 - `app.reflect.capture` — the Chrome native-messaging host name, paired
   with the browser extension's allowlist on both sides.
 - Config-dir name `reflect-open` (recents/settings/capture pointer paths).
+- Apple technical identity: bundle ids `app.lore.*`, iCloud container key
+  `iCloud.app.lore`, App Group `group.app.lore`, and keychain service `lore`.
+- Desktop bundle name `Memento.app` (`productName` in `tauri.conf.json`).
 
-## Publishing a Lore release
+## Publishing a Kore release
 
 GitHub Actions cannot open pull requests in this fork, so release-please's
 Release PRs never appear. The official publish path is:

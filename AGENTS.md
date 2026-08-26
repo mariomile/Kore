@@ -13,9 +13,11 @@ Three names coexist and are all intentional — do not "fix" one into another:
 - **Reflect** is the upstream project this repo forked from; internal
   identifiers keep its names (`@reflect/*` packages, `reflect-*` crates, the
   `reflect` CLI, `.reflect/` index directory).
-- **Lore** is this fork: the repository name and the Apple identity
-  (`app.lore.*` bundle identifiers, `iCloud.app.lore`).
-- **Memento** is the shipped product name (`productName` in
+- **Kore** is this fork: the repository name and the public product name
+  people see (README, iOS home screen, iCloud Drive folder, permission
+  prompts). Apple technical identity stays `app.lore.*` and
+  `iCloud.app.lore` (changing those breaks signing/iCloud).
+- **Memento** is the shipped desktop product name (`productName` in
   `apps/desktop/src-tauri/tauri.conf.json` and its overlays): the app bundle
   is `Memento.app`, the flavors are Memento / Memento Beta / Memento Dev.
 
@@ -64,11 +66,11 @@ Drawn from the product docs — read these for deeper context:
 ### Development workflow
 
 Development happens on `master` (the only long-lived branch); branch from it and
-target it with PRs. Publishing a Lore build is a **bump** (see
-[Cutting a Lore release (bump)](#cutting-a-lore-release-bump) below) — not the
+target it with PRs. Publishing a Kore build is a **bump** (see
+[Cutting a Kore release (bump)](#cutting-a-kore-release-bump) below) — not the
 upstream notarized `Release` workflow. See
 [docs/macos-distribution.md](docs/macos-distribution.md) and
-[docs/lore-apple-signing.md](docs/lore-apple-signing.md#publishing-a-lore-release).
+[docs/kore-apple-signing.md](docs/kore-apple-signing.md#publishing-a-kore-release).
 
 PR titles must be conventional commits (`feat:` / `fix:` / `chore:` …, enforced by
 CI). The title becomes the squash-commit message, and — for `feat`/`fix` — is the
@@ -80,7 +82,7 @@ touch it, the changelogs (`apps/desktop/CHANGELOG.md`,
 `apps/desktop/CHANGELOG.beta.md`), or the manifests under
 `.github/release-please/`. Bump the version only when cutting a release.
 
-### Cutting a Lore release (bump)
+### Cutting a Kore release (bump)
 
 When the user says **bump**, **fai bump**, or **fai partire il bump**, do this
 and nothing else. Do not diagnose Apple signing secrets, wait on TestFlight, or
@@ -88,7 +90,7 @@ retry the notarized **Release** workflow.
 
 1. Confirm the work to ship is already on `origin/master`.
 2. Confirm `version` in `apps/desktop/package.json` is the version to publish.
-   If it still matches the last published `Lore v*` GitHub release, bump it
+   If it still matches the last published `Kore v*` GitHub release, bump it
    there only (patch unless the user specifies otherwise), merge that to
    `master`, and continue. If a `chore: release X.Y.Z` PR is already open,
    merging it is equivalent. Never edit changelogs or
@@ -103,7 +105,7 @@ retry the notarized **Release** workflow.
    ```
 
 4. Watch the **Release DMG** workflow (`.github/workflows/release-dmg.yml`).
-   That build publishes `Lore v<version>` (unsigned Apple Silicon DMG plus
+   That build publishes `Kore v<version>` (unsigned Apple Silicon DMG plus
    updater `latest.json`). That is the bump; it is done when that run
    succeeds.
 
@@ -174,7 +176,7 @@ React + TypeScript frontend bundled by Vite, embedded in a Rust native shell. Th
 crates form a single **Cargo workspace** rooted at the repository root.
 
 ```
-Lore/
+Kore/
 ├── apps/
 │   ├── desktop/            # @reflect/desktop — the Tauri 2 app
 │   │   ├── src/            # React frontend (main.tsx, app.tsx, desktop-root.tsx, platform-root.tsx,
@@ -262,7 +264,7 @@ pnpm tauri dev        # Full Tauri app with hot reload (stages the CLI sidecar f
 pnpm tauri:dev        # `pnpm tauri dev` with the dev overlay → the "Memento Dev" flavor (green icon, own identifier; coexists with Memento / Memento Beta)
 pnpm build            # turbo build pipeline → apps/desktop/dist/
 pnpm tauri build      # Native app bundle, incl. the reflect CLI sidecar
-# Lore day-to-day publish: bump via release/dmg (see "Cutting a Lore release" above).
+# Kore day-to-day publish: bump via release/dmg (see "Cutting a Kore release" above).
 # pnpm release:macos is the separate signed+notarized local path, not the bump.
 pnpm tauri:ios:dev "iPhone 17 Pro"  # Run the Tauri iOS target in the simulator (docs/contributing/mobile-simulator.md)
 pnpm release:ios preflight --build-number=123  # Check iOS/TestFlight signing, App Store Connect app record, and upload auth
@@ -274,7 +276,7 @@ pnpm release:ios testflight --build-number=123 --wait  # Build and upload the iO
 The mobile app is the Tauri iOS target of `apps/desktop`, not a separate
 package. Use `pnpm tauri:ios:dev "iPhone 17 Pro"` from the repo root (or
 `pnpm tauri:ios:dev --host` for a physical device); debug builds are the dev
-flavor (`app.lore.ios.dev`, shown as `Lore Dev`) and need that script's
+flavor (`app.lore.ios.dev`, shown as `Kore Dev`) and need that script's
 config overlay, so do not run plain `tauri ios dev`. List
 available simulator names with `xcrun simctl list devices available`. The first
 run can be quiet while Xcode compiles Rust, Swift plugin code, and native

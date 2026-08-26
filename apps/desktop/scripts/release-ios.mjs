@@ -30,15 +30,15 @@ const appDir = join(here, '..')
 const repoRoot = join(here, '..', '..', '..')
 const iosBuildDir = join(appDir, 'src-tauri', 'gen', 'apple', 'build')
 const iosArchive = join(iosBuildDir, 'reflect-open_iOS.xcarchive')
-const iosAppBinary = join(iosArchive, 'Products', 'Applications', 'Lore.app', 'Lore')
+const iosAppBinary = join(iosArchive, 'Products', 'Applications', 'Kore.app', 'Kore')
 const iosDsymBinary = join(
   iosArchive,
   'dSYMs',
-  'Lore.app.dSYM',
+  'Kore.app.dSYM',
   'Contents',
   'Resources',
   'DWARF',
-  'Lore',
+  'Kore',
 )
 
 function log(message) {

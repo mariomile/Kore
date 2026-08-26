@@ -585,4 +585,23 @@ describe('settingsSchema', () => {
       ).toBeNull()
     })
   })
+
+  it('migrates legacy note tabs and accepts surface tabs', () => {
+    const parsed = settingsSchema.parse({
+      openNoteTabs: {
+        '/g': [
+          { path: 'notes/alpha.md', pinned: true },
+          { kind: 'note', path: 'notes/beta.md', pinned: false },
+          { kind: 'surface', surface: 'settings', pinned: false },
+        ],
+      },
+    })
+    expect(parsed.openNoteTabs).toEqual({
+      '/g': [
+        { kind: 'note', path: 'notes/alpha.md', pinned: true },
+        { kind: 'note', path: 'notes/beta.md', pinned: false },
+        { kind: 'surface', surface: 'settings', pinned: false },
+      ],
+    })
+  })
 })

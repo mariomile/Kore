@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 interface PtyDataEvent {
   id: string
   data: string
+  sequence: number
 }
 
 interface PtyExitEvent {
@@ -14,6 +15,7 @@ interface PtyExitEvent {
 const mocks = vi.hoisted(() => ({
   ptyOpen: vi.fn(async () => ({ id: 'pty-1' })),
   ptyWrite: vi.fn(async () => undefined),
+  ptyAck: vi.fn(async () => undefined),
   ptyResize: vi.fn(async () => undefined),
   ptyClose: vi.fn(async () => undefined),
   unsubscribeData: vi.fn(),
@@ -30,8 +32,12 @@ const terminal = vi.hoisted(() => ({
   rows: 24,
   loadAddon: vi.fn(),
   onData: vi.fn(() => ({ dispose: mocks.disposeInput })),
-  write: vi.fn(),
-  writeln: vi.fn(),
+  write: vi.fn((_data: string, callback?: () => void) => {
+    callback?.()
+  }),
+  writeln: vi.fn((_data: string, callback?: () => void) => {
+    callback?.()
+  }),
   focus: vi.fn(),
   dispose: mocks.disposeTerminal,
   open: vi.fn((host: HTMLElement) => {
@@ -45,6 +51,7 @@ const fit = vi.hoisted(() => ({ fit: vi.fn() }))
 vi.mock('@reflect/core', () => ({
   ptyOpen: mocks.ptyOpen,
   ptyWrite: mocks.ptyWrite,
+  ptyAck: mocks.ptyAck,
   ptyResize: mocks.ptyResize,
   ptyClose: mocks.ptyClose,
   subscribePtyData: vi.fn(async (handler: (event: PtyDataEvent) => void) => {
@@ -92,14 +99,16 @@ describe('TerminalScreen', () => {
     const view = await render(<TerminalScreen />)
     await vi.waitFor(() => expect(mocks.exitHandler).not.toBeNull())
 
-    mocks.dataHandler?.({ id: 'pty-1', data: 'hello' })
-    expect(terminal.write).toHaveBeenCalledWith('hello')
+    mocks.dataHandler?.({ id: 'pty-1', data: 'hello', sequence: 7 })
+    expect(terminal.write).toHaveBeenCalledWith('hello', expect.any(Function))
+    expect(mocks.ptyAck).toHaveBeenCalledWith('pty-1', 7)
 
     mocks.exitHandler?.({ id: 'pty-1', code: 0 })
 
     expect(mocks.unsubscribeData).toHaveBeenCalledOnce()
     expect(mocks.unsubscribeExit).toHaveBeenCalledOnce()
     expect(mocks.disposeInput).toHaveBeenCalledOnce()
+    expect(mocks.disposeTerminal).toHaveBeenCalledOnce()
     await view.unmount()
   })
 })

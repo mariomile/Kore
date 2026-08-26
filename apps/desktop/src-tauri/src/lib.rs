@@ -426,6 +426,7 @@ pub fn run() {
             browser::browser_embed_read,
             pty::pty_open,
             pty::pty_write,
+            pty::pty_ack,
             pty::pty_resize,
             pty::pty_close,
             windows::quick_capture_show,

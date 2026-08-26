@@ -359,6 +359,7 @@ export {
 export {
   ptyOpen,
   ptyWrite,
+  ptyAck,
   ptyResize,
   ptyClose,
   subscribePtyData,

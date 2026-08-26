@@ -163,6 +163,7 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
         return []
       case 'pty_open':
       case 'pty_write':
+      case 'pty_ack':
       case 'pty_resize':
       case 'pty_close':
         throw new ReflectError('unknown', 'the in-app terminal is desktop-only')

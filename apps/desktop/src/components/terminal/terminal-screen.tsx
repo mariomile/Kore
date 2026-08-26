@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react'
 import {
+  ptyAck,
   ptyClose,
   ptyOpen,
   ptyResize,
@@ -118,7 +119,9 @@ async function ensureSession(): Promise<LiveSession> {
       session,
       subscribePtyData((event) => {
         if (event.id === session.id) {
-          session.terminal.write(event.data)
+          session.terminal.write(event.data, () => {
+            void ptyAck(session.id, event.sequence).catch(() => undefined)
+          })
         }
       }),
     )
@@ -129,7 +132,12 @@ async function ensureSession(): Promise<LiveSession> {
           return
         }
         const code = event.code === null ? '' : String(event.code)
-        session.terminal.writeln(`\r\n[process exited${code === '' ? '' : ` with ${code}`}]`)
+        session.terminal.writeln(
+          `\r\n[process exited${code === '' ? '' : ` with ${code}`}]`,
+          () => {
+            session.terminal.dispose()
+          },
+        )
         disposeSessionSubscriptions(session)
         if (live?.id === session.id) {
           live = null

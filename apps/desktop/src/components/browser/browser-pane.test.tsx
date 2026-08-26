@@ -36,6 +36,12 @@ vi.mock('@reflect/core', async (importOriginal) => ({
 vi.mock('@/lib/platform', () => ({
   isNativeShell,
 }))
+vi.mock('@/providers/settings-provider', () => ({
+  useSettings: () => ({
+    settings: { browserSearchEngine: 'duckduckgo', browserOpenLinksInApp: true },
+    updateSettings: () => {},
+  }),
+}))
 
 const { BrowserPane, normalizeAddress } = await import('./browser-pane')
 
@@ -137,6 +143,11 @@ describe('normalizeAddress', () => {
     ['hello', 'https://duckduckgo.com/?q=hello'],
   ])('%s → %s', (raw, expected) => {
     expect(normalizeAddress(raw)).toBe(expected)
+  })
+
+  it('uses the chosen search engine for free text', () => {
+    expect(normalizeAddress('hello', 'google')).toBe('https://www.google.com/search?q=hello')
+    expect(normalizeAddress('hello', 'bing')).toBe('https://www.bing.com/search?q=hello')
   })
 
   it('refuses empty input and non-web schemes', () => {

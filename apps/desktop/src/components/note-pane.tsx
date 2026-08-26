@@ -386,6 +386,7 @@ export function NotePaneComponent({
         onSearchChange={handleSearchChange}
         smoothCaretAnimation={settings.editorSmoothCaretAnimation}
         timeFormat={settings.timeFormat}
+        openLinksInApp={settings.browserOpenLinksInApp}
         bulletAfterHeading={settings.editorBulletAfterHeading}
         // The grip drag-reorders blocks and the "+" inserts a paragraph below.
         blockHandle={true}

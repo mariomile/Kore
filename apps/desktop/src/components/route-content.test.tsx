@@ -105,6 +105,8 @@ vi.mock('@/providers/settings-provider', () => ({
       allNotesView: 'list',
       uiDensity: 'default',
       openNoteTabs: {},
+      browserSearchEngine: 'duckduckgo',
+      browserOpenLinksInApp: true,
       aiProviders: [],
       defaultAiProviderId: null,
       chatSystemPrompt: '',

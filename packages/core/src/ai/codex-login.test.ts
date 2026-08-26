@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { setBridge } from '../ipc/bridge'
-import { agentCliFailureMessage, isAgentCliRuntimeFailure, runAgentCliCommand } from './agent-cli'
+import { agentCliFailureMessage, isAgentCliRuntimeFailure } from './agent-cli-failure'
+import { runAgentCliCommand } from './agent-cli'
 import { codexLoginStatus, runCodexLogin } from './codex-cli'
 
 afterEach(() => {

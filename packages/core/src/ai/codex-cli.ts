@@ -1,10 +1,9 @@
 import { z } from 'zod'
 import type { ChatStreamEvent } from './chat/stream-chat'
 import { call } from '../ipc/invoke'
+import { agentCliFailureMessage, isAgentCliRuntimeFailure } from './agent-cli-failure'
 import {
-  agentCliFailureMessage,
   agentCliPrompt,
-  isAgentCliRuntimeFailure,
   runAgentCliCommand,
   streamAgentCliTurn,
   noteCardAndMentionRules,

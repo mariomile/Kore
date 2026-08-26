@@ -35,25 +35,50 @@ use crate::windows::parse_browser_url;
 const EMBED_LABEL: &str = "embedded-browser";
 
 #[derive(Default)]
-pub struct BrowserState {
-    is_hosted: Mutex<bool>,
+struct BrowserLifecycle {
+    is_hosted: bool,
+    active_reads: u32,
 }
 
-fn set_hosted(state: &BrowserState, is_hosted: bool) -> AppResult<()> {
-    let mut hosted = state
-        .is_hosted
+#[derive(Default)]
+pub struct BrowserState {
+    lifecycle: Mutex<BrowserLifecycle>,
+}
+
+fn lock_lifecycle(state: &BrowserState) -> AppResult<std::sync::MutexGuard<'_, BrowserLifecycle>> {
+    state
+        .lifecycle
         .lock()
-        .map_err(|_| AppError::unknown("browser state lock poisoned"))?;
-    *hosted = is_hosted;
+        .map_err(|_| AppError::unknown("browser state lock poisoned"))
+}
+
+fn set_hosted(state: &BrowserState) -> AppResult<()> {
+    lock_lifecycle(state)?.is_hosted = true;
     Ok(())
 }
 
-fn is_hosted(state: &BrowserState) -> AppResult<bool> {
-    state
-        .is_hosted
-        .lock()
-        .map(|hosted| *hosted)
-        .map_err(|_| AppError::unknown("browser state lock poisoned"))
+fn begin_read(state: &BrowserState) -> AppResult<()> {
+    let mut lifecycle = lock_lifecycle(state)?;
+    lifecycle.active_reads = lifecycle
+        .active_reads
+        .checked_add(1)
+        .ok_or_else(|| AppError::unknown("too many concurrent browser reads"))?;
+    Ok(())
+}
+
+fn finish_read(state: &BrowserState) -> AppResult<bool> {
+    let mut lifecycle = lock_lifecycle(state)?;
+    lifecycle.active_reads = lifecycle
+        .active_reads
+        .checked_sub(1)
+        .ok_or_else(|| AppError::unknown("browser read lease underflow"))?;
+    Ok(!lifecycle.is_hosted && lifecycle.active_reads == 0)
+}
+
+fn release_host(state: &BrowserState) -> AppResult<bool> {
+    let mut lifecycle = lock_lifecycle(state)?;
+    lifecycle.is_hosted = false;
+    Ok(lifecycle.active_reads == 0)
 }
 
 /// Emitted to the main webview whenever the page navigates (link clicks,
@@ -80,6 +105,9 @@ fn place(webview: &Webview, x: f64, y: f64, width: f64, height: f64) -> AppResul
 /// Show the embedded browser over the host rectangle, creating the child
 /// webview on first use. `url` navigates an existing webview only when it
 /// differs from the current page, so re-showing the pane never reloads.
+// The command keeps rectangle fields flat to match browserEmbedShow's IPC
+// payload instead of adding a nested transport-only object.
+#[allow(clippy::too_many_arguments)]
 #[tauri::command]
 pub async fn browser_embed_show(
     window: tauri::WebviewWindow,
@@ -104,7 +132,7 @@ pub async fn browser_embed_show(
         existing
             .show()
             .map_err(|err| AppError::io(format!("failed to show the embedded browser: {err}")))?;
-        set_hosted(&state, true)?;
+        set_hosted(&state)?;
         return Ok(());
     }
 
@@ -113,7 +141,7 @@ pub async fn browser_embed_show(
         None => return Err(AppError::parse("the embedded browser needs a first URL")),
     };
     create_embed(&window, &app, parsed, x, y, width, height)?;
-    set_hosted(&state, true)?;
+    set_hosted(&state)?;
     Ok(())
 }
 
@@ -170,15 +198,17 @@ pub fn browser_embed_bounds(
     }
 }
 
-/// Close the embedded browser when its last host unmounts. Idempotent.
+/// Release the last visible host, closing immediately unless an AI read is
+/// still using the page. Idempotent.
 #[tauri::command]
 pub fn browser_embed_close(app: AppHandle, state: State<'_, BrowserState>) -> AppResult<()> {
-    if let Some(webview) = embed(&app) {
-        webview
-            .close()
-            .map_err(|err| AppError::io(format!("failed to close the embedded browser: {err}")))?;
+    if release_host(&state)? {
+        if let Some(webview) = embed(&app) {
+            webview.close().map_err(|err| {
+                AppError::io(format!("failed to close the embedded browser: {err}"))
+            })?;
+        }
     }
-    set_hosted(&state, false)?;
     Ok(())
 }
 
@@ -367,12 +397,44 @@ pub async fn browser_embed_read(
     expect_url: Option<String>,
     max_chars: Option<u32>,
 ) -> AppResult<BrowserPageRead> {
-    let webview = embed(&app).ok_or_else(|| AppError::not_found("no embedded browser is open"))?;
+    begin_read(&state)?;
+    let webview = match embed(&app) {
+        Some(webview) => webview,
+        None => {
+            finish_read(&state)?;
+            return Err(AppError::not_found("no embedded browser is open"));
+        }
+    };
     let result = read_page(&webview, expect_url, max_chars).await;
-    if !is_hosted(&state)? {
+    if finish_read(&state)? {
         webview.close().map_err(|err| {
             AppError::io(format!("failed to close the background browser: {err}"))
         })?;
     }
     result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn host_release_waits_for_active_reads() {
+        let state = BrowserState::default();
+        set_hosted(&state).unwrap();
+        begin_read(&state).unwrap();
+
+        assert!(!release_host(&state).unwrap());
+        assert!(finish_read(&state).unwrap());
+    }
+
+    #[test]
+    fn last_background_read_releases_the_webview() {
+        let state = BrowserState::default();
+        begin_read(&state).unwrap();
+        begin_read(&state).unwrap();
+
+        assert!(!finish_read(&state).unwrap());
+        assert!(finish_read(&state).unwrap());
+    }
 }

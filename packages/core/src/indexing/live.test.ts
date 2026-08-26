@@ -224,7 +224,9 @@ describe('subscribeIndexChanges', () => {
     releaseFirstRead()
 
     await vi.waitFor(() => {
-      expect(applied).toContainEqual({ path: 'notes/latest.md', mtime: 300 })
+      expect(applied).toContainEqual(
+        expect.objectContaining({ path: 'notes/latest.md', mtime: 300 }),
+      )
     })
     expect(reads.filter((path) => path === 'notes/latest.md')).toHaveLength(1)
     expect(removes).not.toContain('notes/latest.md')

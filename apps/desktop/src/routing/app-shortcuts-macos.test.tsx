@@ -56,7 +56,7 @@ vi.mock('@/providers/audio-memo-provider', () => ({
   useAudioMemo: () => ({ toggle: vi.fn() }),
 }))
 vi.mock('@/providers/chat-provider', () => ({
-  useChatSession: () => ({ newChat: vi.fn() }),
+  useChatSession: () => ({ newChat: vi.fn(() => 'chat-new') }),
 }))
 
 registerAppCommands() // production does this in main.tsx

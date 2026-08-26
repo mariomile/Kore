@@ -197,10 +197,8 @@ const APP_COMMANDS: AppCommand[] = [
     keywords: ['ai', 'assistant', 'copilot', 'conversation'],
     keybinding: 'Mod-Shift-n',
     run: (context) => {
-      if (context.route().kind !== 'chat') {
-        return
-      }
       context.newChat()
+      context.navigate({ kind: 'chat' })
     },
   },
   {
@@ -277,21 +275,21 @@ const APP_COMMANDS: AppCommand[] = [
   {
     id: 'tabs.next',
     title: 'Next tab',
-    keywords: ['tab', 'cycle', 'switch', 'open', 'notes'],
+    keywords: ['tab', 'cycle', 'switch', 'open', 'workspace'],
     keybinding: 'Ctrl-tab',
     run: (context) => context.nextTab(),
   },
   {
     id: 'tabs.previous',
     title: 'Previous tab',
-    keywords: ['tab', 'cycle', 'switch', 'open', 'notes'],
+    keywords: ['tab', 'cycle', 'switch', 'open', 'workspace'],
     keybinding: 'Ctrl-Shift-tab',
     run: (context) => context.previousTab(),
   },
   {
     id: 'tabs.close',
     title: 'Close tab',
-    keywords: ['tab', 'close', 'open', 'notes'],
+    keywords: ['tab', 'close', 'open', 'workspace'],
     keybinding: 'Mod-w',
     run: (context) => context.closeActiveTab(),
   },

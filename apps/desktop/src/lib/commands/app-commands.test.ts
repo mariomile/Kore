@@ -92,7 +92,7 @@ function fakeContext(overrides?: Partial<CommandContext>) {
     toggleTheme: vi.fn(),
     toggleSidebar: vi.fn(),
     toggleContextSidebar: vi.fn(),
-    newChat: vi.fn(),
+    newChat: vi.fn(() => 'chat-new'),
     openNoteFind: vi.fn(),
     findNextInNote: vi.fn(),
     findPreviousInNote: vi.fn(),
@@ -232,15 +232,12 @@ describe('app commands', () => {
     expect(context.openTemplateCreate).toHaveBeenCalledTimes(1)
   })
 
-  it('chat.new starts a fresh conversation only from the chat route', async () => {
-    const { context } = fakeContext({ route: () => ({ kind: 'chat' }) })
+  it('chat.new starts and opens a fresh conversation from any route', async () => {
+    const { context } = fakeContext()
     await command('chat.new').run(context)
     expect(context.newChat).toHaveBeenCalledTimes(1)
+    expect(context.navigate).toHaveBeenCalledWith({ kind: 'chat' })
     expect(keybindingFor('chat.new')).toBe('Mod-Shift-n')
-
-    const { context: outsideChat } = fakeContext()
-    await command('chat.new').run(outsideChat)
-    expect(outsideChat.newChat).not.toHaveBeenCalled()
   })
 
   it('graph switch commands select their recent graph position', async () => {

@@ -182,7 +182,7 @@ async function renderSidebar(overrides?: Partial<CommandContext>, initialRoute?:
     toggleTheme: vi.fn(),
     toggleSidebar: vi.fn(),
     toggleContextSidebar: vi.fn(),
-    newChat: vi.fn(),
+    newChat: vi.fn(() => 'chat-new'),
     openNoteFind: vi.fn(),
     findNextInNote: vi.fn(),
     findPreviousInNote: vi.fn(),

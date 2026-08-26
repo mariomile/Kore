@@ -7,6 +7,8 @@ import {
   ptyWrite,
   subscribePtyData,
   subscribePtyExit,
+  type PtyDataEvent,
+  type PtyExitEvent,
 } from '@reflect/core'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
@@ -41,20 +43,6 @@ function disposeSessionSubscriptions(session: LiveSession): void {
     unsubscribe()
   }
   session.subscriptions.clear()
-}
-
-function registerSubscription(session: LiveSession, pending: Promise<() => void>): void {
-  void pending
-    .then((unsubscribe) => {
-      if (session.isClosed) {
-        unsubscribe()
-        return
-      }
-      session.subscriptions.add(unsubscribe)
-    })
-    .catch((cause: unknown) => {
-      console.error('failed to subscribe to PTY events:', cause)
-    })
 }
 
 const GHOSTTY_THEME = {
@@ -98,53 +86,78 @@ async function ensureSession(): Promise<LiveSession> {
     })
     const fit = new FitAddon()
     terminal.loadAddon(fit)
-    const cols = 80
-    const rows = 24
-    const opened = await ptyOpen(cols, rows)
-    const session: LiveSession = {
-      id: opened.id,
-      terminal,
-      fit,
-      subscriptions: new Set(),
-      isClosed: false,
+    const subscriptions = new Set<() => void>()
+    const pendingData: PtyDataEvent[] = []
+    const pendingExit: PtyExitEvent[] = []
+    let session: LiveSession | null = null
+    let openedId: string | null = null
+
+    const handleData = (event: PtyDataEvent): void => {
+      const activeSession = session
+      if (activeSession === null) {
+        pendingData.push(event)
+        return
+      }
+      if (event.id === activeSession.id && !activeSession.isClosed) {
+        activeSession.terminal.write(event.data, () => {
+          void ptyAck(activeSession.id, event.sequence).catch(() => undefined)
+        })
+      }
     }
-    const inputSubscription = terminal.onData((data) => {
-      void ptyWrite(opened.id, data)
-    })
-    session.subscriptions.add(() => {
-      inputSubscription.dispose()
-    })
-    live = session
-    registerSubscription(
-      session,
-      subscribePtyData((event) => {
-        if (event.id === session.id) {
-          session.terminal.write(event.data, () => {
-            void ptyAck(session.id, event.sequence).catch(() => undefined)
-          })
-        }
-      }),
-    )
-    registerSubscription(
-      session,
-      subscribePtyExit((event) => {
-        if (event.id !== session.id) {
-          return
-        }
-        const code = event.code === null ? '' : String(event.code)
-        session.terminal.writeln(
-          `\r\n[process exited${code === '' ? '' : ` with ${code}`}]`,
-          () => {
-            session.terminal.dispose()
-          },
-        )
-        disposeSessionSubscriptions(session)
-        if (live?.id === session.id) {
-          live = null
-        }
-      }),
-    )
-    return session
+    const handleExit = (event: PtyExitEvent): void => {
+      const activeSession = session
+      if (activeSession === null) {
+        pendingExit.push(event)
+        return
+      }
+      if (event.id !== activeSession.id || activeSession.isClosed) {
+        return
+      }
+      const code = event.code === null ? '' : String(event.code)
+      activeSession.terminal.writeln(
+        `\r\n[process exited${code === '' ? '' : ` with ${code}`}]`,
+        () => {
+          activeSession.terminal.dispose()
+        },
+      )
+      disposeSessionSubscriptions(activeSession)
+      if (live?.id === activeSession.id) {
+        live = null
+      }
+    }
+
+    try {
+      subscriptions.add(await subscribePtyData(handleData))
+      subscriptions.add(await subscribePtyExit(handleExit))
+      const opened = await ptyOpen(80, 24)
+      openedId = opened.id
+      session = {
+        id: opened.id,
+        terminal,
+        fit,
+        subscriptions,
+        isClosed: false,
+      }
+      const inputSubscription = terminal.onData((data) => {
+        void ptyWrite(opened.id, data)
+      })
+      subscriptions.add(() => {
+        inputSubscription.dispose()
+      })
+      live = session
+      pendingData.splice(0).forEach(handleData)
+      pendingExit.splice(0).forEach(handleExit)
+      return session
+    } catch (cause) {
+      for (const unsubscribe of subscriptions) {
+        unsubscribe()
+      }
+      if (openedId !== null) {
+        void ptyClose(openedId)
+      }
+      terminal.dispose()
+      throw cause
+    }
   })()
   try {
     return await opening

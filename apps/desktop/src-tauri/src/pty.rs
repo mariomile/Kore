@@ -21,7 +21,6 @@ use crate::fs::{current_root, GraphState};
 const DATA_EVENT: &str = "pty:data";
 const EXIT_EVENT: &str = "pty:exit";
 const OUTPUT_CHANNEL_CAPACITY: usize = 256;
-const OUTPUT_ACK_TIMEOUT: Duration = Duration::from_secs(2);
 
 static NEXT_ID: AtomicU64 = AtomicU64::new(1);
 
@@ -195,11 +194,9 @@ pub fn pty_open(
                 break;
             }
             if let Ok(acknowledged) = session.output_ack.lock() {
-                let _ = session.output_ready.wait_timeout_while(
-                    acknowledged,
-                    OUTPUT_ACK_TIMEOUT,
-                    |latest| *latest < sequence,
-                );
+                let _ = session
+                    .output_ready
+                    .wait_while(acknowledged, |latest| *latest < sequence);
             }
             sequence = sequence.wrapping_add(1);
         }

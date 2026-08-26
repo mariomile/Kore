@@ -105,9 +105,22 @@ async fn wait_for_close(app: &AppHandle, state: &BrowserState) -> AppResult<()> 
             tokio::time::sleep(Duration::from_millis(CLOSE_POLL_MS)).await;
         }
     }
-    Err(AppError::unknown(
-        "the embedded browser did not finish closing",
-    ))
+    let mut lifecycle = lock_lifecycle(state)?;
+    recover_stalled_close(&mut lifecycle, embed(app).is_some())
+}
+
+/// Always drop `is_closing` after the poll budget. A timeout that left the
+/// latch set made every later show/open/read wait forever.
+fn recover_stalled_close(lifecycle: &mut BrowserLifecycle, webview_present: bool) -> AppResult<()> {
+    lifecycle.is_closing = false;
+    if webview_present {
+        tracing::warn!("the embedded browser did not finish closing; clearing the close latch");
+        Err(AppError::unknown(
+            "the embedded browser did not finish closing",
+        ))
+    } else {
+        Ok(())
+    }
 }
 
 /// Emitted to the main webview whenever the page navigates (link clicks,
@@ -455,9 +468,27 @@ fn finish_browser_read(
     result: AppResult<BrowserPageRead>,
 ) -> AppResult<BrowserPageRead> {
     let mut lifecycle = lock_lifecycle(state)?;
+    complete_read(&mut lifecycle, result, |lifecycle| {
+        queue_close(webview, lifecycle)
+    })
+}
+
+/// Close a background page after a read. Keep the extracted payload even if
+/// that close fails — losing the page text is worse than a leaked webview
+/// the next host release can retry.
+fn complete_read<T>(
+    lifecycle: &mut BrowserLifecycle,
+    result: AppResult<T>,
+    close: impl FnOnce(&mut BrowserLifecycle) -> AppResult<()>,
+) -> AppResult<T> {
     lifecycle.finish_read()?;
     if lifecycle.can_close() {
-        queue_close(webview, &mut lifecycle)?;
+        if let Err(error) = close(lifecycle) {
+            tracing::warn!(
+                error = ?error,
+                "failed to close the background browser after a page read"
+            );
+        }
     }
     result
 }
@@ -515,5 +546,87 @@ mod tests {
         };
 
         assert!(!lifecycle.can_close());
+    }
+
+    #[test]
+    fn a_stalled_close_clears_the_latch_so_later_commands_can_proceed() {
+        let mut lifecycle = BrowserLifecycle {
+            is_closing: true,
+            ..BrowserLifecycle::default()
+        };
+
+        let error = recover_stalled_close(&mut lifecycle, true).unwrap_err();
+        assert!(
+            matches!(
+                error,
+                AppError::Unknown { message } if message == "the embedded browser did not finish closing"
+            ),
+            "{error:?}"
+        );
+        assert!(!lifecycle.is_closing);
+        assert!(lifecycle.can_close());
+    }
+
+    #[test]
+    fn a_stalled_close_that_finished_during_the_last_poll_succeeds() {
+        let mut lifecycle = BrowserLifecycle {
+            is_closing: true,
+            ..BrowserLifecycle::default()
+        };
+
+        recover_stalled_close(&mut lifecycle, false).unwrap();
+        assert!(!lifecycle.is_closing);
+    }
+
+    fn sample_page() -> BrowserPageRead {
+        BrowserPageRead {
+            url: "https://example.com/".into(),
+            title: "Example".into(),
+            text: "hello".into(),
+            truncated: false,
+        }
+    }
+
+    #[test]
+    fn a_failed_close_does_not_discard_extracted_page_text() {
+        let mut lifecycle = BrowserLifecycle {
+            is_hosted: false,
+            is_closing: false,
+            active_reads: 1,
+        };
+
+        let page = complete_read(&mut lifecycle, Ok(sample_page()), |_| {
+            Err(AppError::unknown("close failed"))
+        })
+        .expect("page text should survive a close failure");
+
+        assert_eq!(page.text, "hello");
+        assert_eq!(lifecycle.active_reads, 0);
+        assert!(!lifecycle.is_closing);
+    }
+
+    #[test]
+    fn a_failed_close_still_surfaces_a_failed_read() {
+        let mut lifecycle = BrowserLifecycle {
+            is_hosted: false,
+            is_closing: false,
+            active_reads: 1,
+        };
+
+        let error = complete_read(
+            &mut lifecycle,
+            Err::<BrowserPageRead, _>(AppError::unknown("the page did not answer in time")),
+            |_| Err(AppError::unknown("close failed")),
+        )
+        .unwrap_err();
+
+        assert!(
+            matches!(
+                error,
+                AppError::Unknown { message } if message == "the page did not answer in time"
+            ),
+            "{error:?}"
+        );
+        assert_eq!(lifecycle.active_reads, 0);
     }
 }

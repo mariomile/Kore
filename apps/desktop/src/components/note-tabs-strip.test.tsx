@@ -560,6 +560,10 @@ describe('workspace tabs', () => {
 
   it('makes Daily closable and restores it only as the last-tab fallback', async () => {
     const view = await renderTabs()
+    await expect.element(view.getByRole('tab', { name: 'Daily notes' })).toBeVisible()
+    await view.getByTestId('close-active').click()
+    await expect.element(view.getByRole('tab', { name: 'Daily notes' })).toBeVisible()
+
     await view.getByTestId('open-alpha').click()
     await view.getByRole('tab', { name: 'Daily notes' }).getByText('Daily notes').click()
     await view.getByTestId('close-active').click()

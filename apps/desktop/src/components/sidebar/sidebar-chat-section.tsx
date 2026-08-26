@@ -69,7 +69,8 @@ export function SidebarChatSection(): ReactElement {
                     type="button"
                     onClick={() => {
                       if (conversation.id !== activeConversationId) {
-                        void openConversation(conversation.id)
+                        void openConversation(conversation.id).then(openChatScreen)
+                        return
                       }
                       openChatScreen()
                     }}

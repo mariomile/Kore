@@ -79,6 +79,10 @@ function stripOrder(tabs: OpenTab[]): OpenTab[] {
   return [...tabs.filter((tab) => tab.pinned), ...tabs.filter((tab) => !tab.pinned)]
 }
 
+function createDailyTab(): OpenTab {
+  return { kind: 'surface', surface: 'daily', date: null, pinned: false }
+}
+
 export function OpenTabsProvider({ children }: { children: ReactNode }): ReactElement {
   const { settings, updateSettingsWith } = useSettings()
   const { graph } = useGraph()
@@ -149,7 +153,10 @@ export function OpenTabsProvider({ children }: { children: ReactNode }): ReactEl
         tab.conversationId !== activeConversationId &&
         openConversation !== undefined
       ) {
-        void openConversation(tab.conversationId)
+        void openConversation(tab.conversationId).then(() => {
+          navigate(routeForOpenTab(tab))
+        })
+        return
       }
       navigate(routeForOpenTab(tab))
     },
@@ -168,7 +175,10 @@ export function OpenTabsProvider({ children }: { children: ReactNode }): ReactEl
           navigate({ kind: 'today' })
         }
       }
-      updateTabs((graphTabs) => graphTabs.filter((open) => !tabsEqual(open, tab)))
+      updateTabs((graphTabs) => {
+        const remaining = graphTabs.filter((open) => !tabsEqual(open, tab))
+        return remaining.length === 0 ? [createDailyTab()] : remaining
+      })
     },
     [activeTab, tabs, activateTab, navigate, updateTabs],
   )
@@ -236,7 +246,12 @@ export function OpenTabsProvider({ children }: { children: ReactNode }): ReactEl
       }
       const current =
         activeTab === null ? -1 : tabs.findIndex((entry) => tabsEqual(entry, activeTab))
-      const nextIndex = current === -1 ? 0 : (current + step + tabs.length) % tabs.length
+      const nextIndex =
+        current === -1
+          ? step === 1
+            ? 0
+            : tabs.length - 1
+          : (current + step + tabs.length) % tabs.length
       activateTab(tabs[nextIndex]!)
     },
     [tabs, activeTab, activateTab, navigate],

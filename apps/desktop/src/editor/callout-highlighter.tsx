@@ -1,5 +1,7 @@
 import { useLayoutEffect, type ReactElement } from 'react'
 import { parseCalloutMarker } from '@reflect/core'
+import { useEditor } from '@meowdown/react'
+import { whenEditorMounted } from './when-editor-mounted'
 
 function firstLine(text: string): string {
   const breakAt = text.search(/\r?\n/)
@@ -24,18 +26,22 @@ function decorate(root: ParentNode): void {
  * for the editor session and disconnects on unmount.
  */
 export function CalloutHighlighter(): ReactElement | null {
+  const editor = useEditor()
+
   useLayoutEffect(() => {
-    const decorateTree = (): void => {
-      for (const root of document.querySelectorAll('.reflect-editor .ProseMirror')) {
+    let observer: MutationObserver | null = null
+    const cancelMount = whenEditorMounted(editor, () => {
+      const root = editor.view.dom
+      decorate(root)
+      observer = new MutationObserver(() => {
         decorate(root)
-      }
-    }
-    decorateTree()
-    const observer = new MutationObserver(decorateTree)
-    observer.observe(document.body, { subtree: true, childList: true, characterData: true })
+      })
+      observer.observe(root, { subtree: true, childList: true, characterData: true })
+    })
     return () => {
-      observer.disconnect()
+      cancelMount()
+      observer?.disconnect()
     }
-  }, [])
+  }, [editor])
   return null
 }

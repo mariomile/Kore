@@ -5,6 +5,9 @@
 
 use crate::error::{AppError, AppResult};
 
+#[derive(Default)]
+pub struct BrowserState;
+
 fn desktop_only<T>() -> AppResult<T> {
     Err(AppError::unknown("the embedded browser is desktop-only"))
 }
@@ -20,7 +23,7 @@ pub fn browser_embed_bounds() -> AppResult<()> {
 }
 
 #[tauri::command]
-pub fn browser_embed_hide() -> AppResult<()> {
+pub fn browser_embed_close() -> AppResult<()> {
     desktop_only()
 }
 
@@ -45,7 +48,7 @@ pub fn browser_embed_reload() -> AppResult<()> {
 }
 
 #[tauri::command]
-pub fn browser_embed_load() -> AppResult<()> {
+pub fn browser_embed_open() -> AppResult<()> {
     desktop_only()
 }
 

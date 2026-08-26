@@ -23,6 +23,11 @@ pub fn pty_write() -> AppResult<()> {
 }
 
 #[tauri::command]
+pub fn pty_ack() -> AppResult<()> {
+    desktop_only()
+}
+
+#[tauri::command]
 pub fn pty_resize() -> AppResult<()> {
     desktop_only()
 }

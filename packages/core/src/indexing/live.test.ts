@@ -186,6 +186,54 @@ describe('subscribeIndexChanges', () => {
     ])
   })
 
+  it('coalesces queued changes by path while an earlier batch is applying', async () => {
+    let releaseFirstRead: () => void = () => {}
+    const applied: Array<{ path: string; mtime: number }> = []
+    const reads: string[] = []
+    const removes: string[] = []
+    const { emitChanges } = fakeBridge(async (command, args) => {
+      if (command === 'note_read') {
+        const path = String(args['path'])
+        reads.push(path)
+        if (path === 'notes/slow.md') {
+          await new Promise<void>((resolve) => {
+            releaseFirstRead = resolve
+          })
+        }
+        return '# content'
+      }
+      if (command === 'index_apply_batch') {
+        applied.push(...(args['notes'] as Array<{ path: string; mtime: number }>))
+      }
+      if (command === 'index_remove_batch') {
+        removes.push(...(args['paths'] as string[]))
+      }
+      if (command === 'db_query') {
+        return []
+      }
+      return null
+    })
+
+    await subscribeIndexChanges(1)
+    emitChanges([{ path: 'notes/slow.md', kind: 'upsert' }])
+    await vi.waitFor(() => expect(reads).toContain('notes/slow.md'))
+
+    emitChanges([{ path: 'notes/latest.md', kind: 'upsert', modifiedMs: 100 }])
+    emitChanges([{ path: 'notes/middle.md', kind: 'upsert', modifiedMs: 200 }])
+    emitChanges([{ path: 'notes/latest.md', kind: 'remove' }])
+    emitChanges([{ path: 'notes/latest.md', kind: 'upsert', modifiedMs: 300 }])
+    releaseFirstRead()
+
+    await vi.waitFor(() => {
+      expect(applied).toContainEqual(
+        expect.objectContaining({ path: 'notes/latest.md', mtime: 300 }),
+      )
+    })
+    expect(reads.filter((path) => path === 'notes/latest.md')).toHaveLength(1)
+    expect(reads.slice(-2)).toEqual(['notes/middle.md', 'notes/latest.md'])
+    expect(removes).not.toContain('notes/latest.md')
+  })
+
   it('drops queued live writes when the lifecycle suspends and leaves replay to reconcile', async () => {
     const order: string[] = []
     let canApply = true

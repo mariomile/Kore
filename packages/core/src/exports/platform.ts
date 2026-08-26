@@ -364,6 +364,7 @@ export {
 export {
   ptyOpen,
   ptyWrite,
+  ptyAck,
   ptyResize,
   ptyClose,
   subscribePtyData,
@@ -375,12 +376,12 @@ export {
 export {
   browserEmbedShow,
   browserEmbedBounds,
-  browserEmbedHide,
+  browserEmbedClose,
   browserEmbedNavigate,
   browserEmbedBack,
   browserEmbedForward,
   browserEmbedReload,
-  browserEmbedLoad,
+  browserEmbedOpen,
   browserEmbedRead,
   subscribeBrowserNavigated,
   type BrowserEmbedRect,

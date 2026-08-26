@@ -100,8 +100,8 @@ export interface NoteToolDeps {
     entries: readonly CollectionEntry[],
     type: TagType,
   ) => Promise<CollectionEntry[]>
-  /** Load a page in the built-in browser (open_web_page). */
-  browseLoadFn?: BrowseWebDeps['browseLoadFn']
+  /** Load and extract a page in the built-in browser (open_web_page). */
+  browseOpenFn?: BrowseWebDeps['browseOpenFn']
   /** Extract the built-in browser's current page (both browse tools). */
   browseReadFn?: BrowseWebDeps['browseReadFn']
   /**
@@ -178,7 +178,7 @@ export function buildNoteTools(options: BuildNoteToolsOptions = {}): NoteTools {
   })
 
   const browseDeps: BrowseWebDeps = {
-    browseLoadFn: options.browseLoadFn ?? shellBrowseDeps.browseLoadFn,
+    browseOpenFn: options.browseOpenFn ?? shellBrowseDeps.browseOpenFn,
     browseReadFn: options.browseReadFn ?? shellBrowseDeps.browseReadFn,
   }
   const openWebPage = buildOpenWebPage(browseDeps, options.browsingAvailable ?? true)

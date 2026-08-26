@@ -2,8 +2,8 @@ import { useEffect, useRef, useState, type ReactElement } from 'react'
 import {
   browserEmbedBack,
   browserEmbedBounds,
+  browserEmbedClose,
   browserEmbedForward,
-  browserEmbedHide,
   browserEmbedNavigate,
   browserEmbedReload,
   browserEmbedShow,
@@ -56,12 +56,19 @@ export function normalizeAddress(
  * The mounted panes, oldest first — the last entry owns the (single)
  * embedded webview. The browser tab and the context rail's panel can be
  * mounted at once: when the owner unmounts, the webview is handed back to
- * the survivor (re-docked over its host) instead of being hidden under it.
+ * the survivor (re-docked over its host) instead of being closed under it.
  */
 interface BrowserHost {
   dock: () => void
 }
 const hostStack: BrowserHost[] = []
+let hostTransition = Promise.resolve()
+
+function queueHostTransition(operation: () => Promise<void>): Promise<void> {
+  const queued = hostTransition.then(operation, operation)
+  hostTransition = queued.catch(() => undefined)
+  return queued
+}
 
 interface BrowserPaneProps {
   className?: string
@@ -71,9 +78,9 @@ interface BrowserPaneProps {
  * The built-in browser surface: an address bar over a host region that the
  * shell's embedded child webview covers (see `browser_embed_*`). Mount it in
  * a tab (the browser route) or the context rail — the page is one shared
- * session either way, and it survives unmounts hidden, so switching surfaces
- * never reloads. Web harness and mobile have no child webviews; they get an
- * honest notice instead of a dead pane.
+ * session while either host is mounted. Its URL survives after the last host
+ * closes, but the remote webview does not. Web harness and mobile have no
+ * child webviews; they get an honest notice instead of a dead pane.
  */
 export function BrowserPane({ className }: BrowserPaneProps): ReactElement {
   const { settings } = useSettings()
@@ -100,9 +107,11 @@ export function BrowserPane({ className }: BrowserPaneProps): ReactElement {
     }
     const entry: BrowserHost = {
       dock: () => {
-        void browserEmbedShow(browserSessionUrl(), rect()).catch((cause: unknown) => {
-          setError(errorMessage(cause))
-        })
+        void queueHostTransition(() => browserEmbedShow(browserSessionUrl(), rect())).catch(
+          (cause: unknown) => {
+            setError(errorMessage(cause))
+          },
+        )
       },
     }
     hostStack.push(entry)
@@ -137,8 +146,8 @@ export function BrowserPane({ className }: BrowserPaneProps): ReactElement {
       })
       // The owner hands the webview to the surviving pane (tab closed while
       // the rail panel stays up → the panel re-docks it); with no survivor
-      // it hides, keeping the page alive for the next mount. A covered pane
-      // just leaves the stack.
+      // it closes, releasing the remote page. A covered pane just leaves the
+      // stack.
       const wasOwner = hostStack.at(-1) === entry
       const index = hostStack.indexOf(entry)
       if (index !== -1) {
@@ -149,7 +158,7 @@ export function BrowserPane({ className }: BrowserPaneProps): ReactElement {
         if (survivor !== undefined) {
           survivor.dock()
         } else {
-          void browserEmbedHide().catch(() => undefined)
+          void queueHostTransition(browserEmbedClose).catch(() => undefined)
         }
       }
     }

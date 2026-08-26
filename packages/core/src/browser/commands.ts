@@ -40,9 +40,9 @@ export async function browserEmbedBounds(rect: BrowserEmbedRect): Promise<void> 
   await call('browser_embed_bounds', { ...rect }, voidSchema)
 }
 
-/** Hide the embedded browser, keeping the page alive for the next mount. */
-export async function browserEmbedHide(): Promise<void> {
-  await call('browser_embed_hide', {}, voidSchema)
+/** Close the embedded browser and release the remote page's resources. */
+export async function browserEmbedClose(): Promise<void> {
+  await call('browser_embed_close', {}, voidSchema)
 }
 
 /** Load a new page. Web (http/https) URLs only — anything else errors. */
@@ -76,19 +76,9 @@ const browserPageReadSchema = z.object({
 export type BrowserPageRead = z.infer<typeof browserPageReadSchema>
 
 /**
- * Load a page in the embedded browser without touching its placement — the
- * AI tools' open. With no webview yet the shell creates one off-screen and
- * hidden, so an agent can browse before the user ever opens the pane;
- * opening the Browser tab later reveals the loaded page.
- */
-export async function browserEmbedLoad(url: string): Promise<void> {
-  await call('browser_embed_load', { url }, voidSchema)
-}
-
-/**
  * Extract the current page's visible text, waiting (bounded) for the
  * document to finish loading. `expectUrl` tightens the wait right after a
- * {@link browserEmbedLoad} so the previous page is not read as the new one.
+ * navigation so the previous page is not read as the new one.
  */
 export function browserEmbedRead(options?: {
   expectUrl?: string
@@ -97,6 +87,21 @@ export function browserEmbedRead(options?: {
   return call(
     'browser_embed_read',
     { expectUrl: options?.expectUrl ?? null, maxChars: options?.maxChars ?? null },
+    browserPageReadSchema,
+  )
+}
+
+/**
+ * Load and extract a web page as one lifecycle operation. Background-only
+ * webviews are released before this resolves; a visible Browser pane remains.
+ */
+export function browserEmbedOpen(
+  url: string,
+  options?: { maxChars?: number },
+): Promise<BrowserPageRead> {
+  return call(
+    'browser_embed_open',
+    { url, maxChars: options?.maxChars ?? null },
     browserPageReadSchema,
   )
 }

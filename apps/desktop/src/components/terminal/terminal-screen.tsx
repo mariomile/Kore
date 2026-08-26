@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react'
 import {
+  ptyAck,
   ptyClose,
   ptyOpen,
   ptyResize,
   ptyWrite,
   subscribePtyData,
   subscribePtyExit,
+  type PtyDataEvent,
+  type PtyExitEvent,
 } from '@reflect/core'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
@@ -24,10 +27,39 @@ interface LiveSession {
   id: string
   terminal: Terminal
   fit: FitAddon
+  subscriptions: Set<() => void>
+  isClosed: boolean
 }
 
 let live: LiveSession | null = null
 let opening: Promise<LiveSession> | null = null
+
+function disposeSessionSubscriptions(session: LiveSession): void {
+  if (session.isClosed) {
+    return
+  }
+  session.isClosed = true
+  for (const unsubscribe of session.subscriptions) {
+    unsubscribe()
+  }
+  session.subscriptions.clear()
+}
+
+async function acknowledgeOutput(session: LiveSession, sequence: number): Promise<void> {
+  try {
+    await ptyAck(session.id, sequence)
+  } catch {
+    if (session.isClosed) {
+      return
+    }
+    disposeSessionSubscriptions(session)
+    if (live?.id === session.id) {
+      live = null
+    }
+    session.terminal.dispose()
+    await ptyClose(session.id).catch(() => undefined)
+  }
+}
 
 const GHOSTTY_THEME = {
   background: '#1d1f21',
@@ -70,30 +102,82 @@ async function ensureSession(): Promise<LiveSession> {
     })
     const fit = new FitAddon()
     terminal.loadAddon(fit)
-    const cols = 80
-    const rows = 24
-    const opened = await ptyOpen(cols, rows)
-    terminal.onData((data) => {
-      void ptyWrite(opened.id, data)
-    })
-    const session: LiveSession = { id: opened.id, terminal, fit }
-    live = session
-    void subscribePtyData((event) => {
-      if (event.id === session.id) {
-        session.terminal.write(event.data)
+    const subscriptions = new Set<() => void>()
+    const pendingData: PtyDataEvent[] = []
+    const pendingExit: PtyExitEvent[] = []
+    let session: LiveSession | null = null
+    let openedId: string | null = null
+
+    const handleData = (event: PtyDataEvent): void => {
+      const activeSession = session
+      if (activeSession === null) {
+        pendingData.push(event)
+        return
       }
-    })
-    void subscribePtyExit((event) => {
-      if (event.id !== session.id) {
+      if (event.id === activeSession.id && !activeSession.isClosed) {
+        activeSession.terminal.write(event.data, () => {
+          void acknowledgeOutput(activeSession, event.sequence)
+        })
+      }
+    }
+    const handleExit = (event: PtyExitEvent): void => {
+      const activeSession = session
+      if (activeSession === null) {
+        pendingExit.push(event)
+        return
+      }
+      if (event.id !== activeSession.id || activeSession.isClosed) {
         return
       }
       const code = event.code === null ? '' : String(event.code)
-      session.terminal.writeln(`\r\n[process exited${code === '' ? '' : ` with ${code}`}]`)
-      if (live?.id === session.id) {
+      activeSession.terminal.writeln(
+        `\r\n[process exited${code === '' ? '' : ` with ${code}`}]`,
+        () => {
+          activeSession.terminal.dispose()
+        },
+      )
+      disposeSessionSubscriptions(activeSession)
+      if (live?.id === activeSession.id) {
         live = null
       }
-    })
-    return session
+    }
+
+    try {
+      subscriptions.add(await subscribePtyData(handleData))
+      subscriptions.add(await subscribePtyExit(handleExit))
+      const opened = await ptyOpen(80, 24)
+      openedId = opened.id
+      session = {
+        id: opened.id,
+        terminal,
+        fit,
+        subscriptions,
+        isClosed: false,
+      }
+      const inputSubscription = terminal.onData((data) => {
+        void ptyWrite(opened.id, data)
+      })
+      subscriptions.add(() => {
+        inputSubscription.dispose()
+      })
+      live = session
+      for (const event of pendingData.splice(0)) {
+        handleData(event)
+      }
+      for (const event of pendingExit.splice(0)) {
+        handleExit(event)
+      }
+      return session
+    } catch (cause) {
+      for (const unsubscribe of subscriptions) {
+        unsubscribe()
+      }
+      if (openedId !== null) {
+        void ptyClose(openedId)
+      }
+      terminal.dispose()
+      throw cause
+    }
   })()
   try {
     return await opening
@@ -178,9 +262,11 @@ export function TerminalScreen(): ReactElement {
 /** Test seam: drop the cached PTY so a later mount starts clean. */
 export function resetTerminalSessionForTests(): void {
   if (live !== null) {
-    void ptyClose(live.id)
-    live.terminal.dispose()
+    const session = live
     live = null
+    disposeSessionSubscriptions(session)
+    void ptyClose(session.id)
+    session.terminal.dispose()
   }
   opening = null
 }

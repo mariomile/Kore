@@ -7,7 +7,7 @@
 use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{mpsc, Arc, Mutex};
+use std::sync::{mpsc, Arc, Condvar, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
@@ -20,6 +20,7 @@ use crate::fs::{current_root, GraphState};
 
 const DATA_EVENT: &str = "pty:data";
 const EXIT_EVENT: &str = "pty:exit";
+const OUTPUT_CHANNEL_CAPACITY: usize = 256;
 
 static NEXT_ID: AtomicU64 = AtomicU64::new(1);
 
@@ -27,6 +28,8 @@ struct PtySession {
     writer: Mutex<Box<dyn Write + Send>>,
     master: Mutex<Box<dyn MasterPty + Send>>,
     child: Mutex<Box<dyn portable_pty::Child + Send + Sync>>,
+    output_ack: Mutex<u64>,
+    output_ready: Condvar,
 }
 
 #[derive(Default)]
@@ -39,6 +42,7 @@ pub struct PtyState {
 struct PtyDataPayload {
     id: String,
     data: String,
+    sequence: u64,
 }
 
 #[derive(Clone, Serialize)]
@@ -125,6 +129,8 @@ pub fn pty_open(
         writer: Mutex::new(writer),
         master: Mutex::new(pair.master),
         child: Mutex::new(child),
+        output_ack: Mutex::new(0),
+        output_ready: Condvar::new(),
     });
 
     {
@@ -135,12 +141,9 @@ pub fn pty_open(
         sessions.insert(id.clone(), Arc::clone(&session));
     }
 
-    // Bulk output (`cat bigfile`, a chatty build) would flood the IPC
-    // bridge if every 4 KB read became its own event: the reader funnels
-    // chunks through a channel and the emitter coalesces whatever arrives
-    // within a short window into one payload (bounded, so a firehose still
-    // flushes regularly).
-    let (chunk_sender, chunk_receiver) = mpsc::channel::<String>();
+    // Backpressure is intentional: a noisy child may otherwise outrun the
+    // webview and retain every unread chunk in process memory.
+    let (chunk_sender, chunk_receiver) = mpsc::sync_channel::<String>(OUTPUT_CHANNEL_CAPACITY);
     thread::spawn(move || {
         let mut buffer = [0_u8; 4096];
         loop {
@@ -163,6 +166,7 @@ pub fn pty_open(
     thread::spawn(move || {
         const COALESCE_WINDOW: Duration = Duration::from_millis(12);
         const MAX_COALESCED_BYTES: usize = 256 * 1024;
+        let mut sequence = 1_u64;
         while let Ok(first) = chunk_receiver.recv() {
             let mut data = first;
             let deadline = Instant::now() + COALESCE_WINDOW;
@@ -176,13 +180,27 @@ pub fn pty_open(
                     Err(_) => break,
                 }
             }
-            let _ = read_app.emit(
-                DATA_EVENT,
-                PtyDataPayload {
-                    id: read_id.clone(),
-                    data,
-                },
-            );
+            if read_app
+                .emit(
+                    DATA_EVENT,
+                    PtyDataPayload {
+                        id: read_id.clone(),
+                        data,
+                        sequence,
+                    },
+                )
+                .is_err()
+            {
+                break;
+            }
+            if let Ok(acknowledged) = session.output_ack.lock() {
+                drop(
+                    session
+                        .output_ready
+                        .wait_while(acknowledged, |latest| *latest < sequence),
+                );
+            }
+            sequence = sequence.wrapping_add(1);
         }
         let code = session
             .child
@@ -222,6 +240,32 @@ pub fn pty_write(state: State<'_, PtyState>, id: String, data: String) -> AppRes
     Ok(())
 }
 
+fn acknowledge_output(session: &PtySession, sequence: u64) -> AppResult<()> {
+    let mut acknowledged = session
+        .output_ack
+        .lock()
+        .map_err(|_| AppError::unknown("pty output acknowledgment lock poisoned"))?;
+    *acknowledged = (*acknowledged).max(sequence);
+    session.output_ready.notify_all();
+    Ok(())
+}
+
+/// Confirm that xterm has parsed one output event. Late acknowledgments for a
+/// closed session are harmless.
+#[tauri::command]
+pub fn pty_ack(state: State<'_, PtyState>, id: String, sequence: u64) -> AppResult<()> {
+    let session = state
+        .sessions
+        .lock()
+        .map_err(|_| AppError::unknown("pty state lock poisoned"))?
+        .get(&id)
+        .cloned();
+    match session {
+        Some(session) => acknowledge_output(&session, sequence),
+        None => Ok(()),
+    }
+}
+
 /// Resize an open PTY to match the terminal viewport.
 #[tauri::command]
 pub fn pty_resize(state: State<'_, PtyState>, id: String, cols: u16, rows: u16) -> AppResult<()> {
@@ -247,6 +291,7 @@ pub fn pty_close(state: State<'_, PtyState>, id: String) -> AppResult<()> {
         sessions.remove(&id)
     };
     if let Some(session) = session {
+        let _ = acknowledge_output(&session, u64::MAX);
         if let Ok(mut child) = session.child.lock() {
             let _ = child.kill();
         }

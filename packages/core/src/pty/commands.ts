@@ -13,6 +13,7 @@ const ptyOpenSchema = z.object({
 const ptyDataSchema = z.object({
   id: z.string().min(1),
   data: z.string(),
+  sequence: z.number().int().nonnegative(),
 })
 
 const ptyExitSchema = z.object({
@@ -32,6 +33,11 @@ export function ptyOpen(cols: number, rows: number): Promise<PtyOpenResult> {
 /** Write UTF-8 to an open PTY. */
 export async function ptyWrite(id: string, data: string): Promise<void> {
   await call('pty_write', { id, data }, voidSchema)
+}
+
+/** Confirm that one output event has finished parsing in xterm. */
+export async function ptyAck(id: string, sequence: number): Promise<void> {
+  await call('pty_ack', { id, sequence }, voidSchema)
 }
 
 /** Resize an open PTY to match the terminal viewport. */

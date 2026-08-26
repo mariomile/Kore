@@ -294,6 +294,7 @@ pub fn run() {
         .manage(embed::EmbedState::default())
         .manage(agent_cli::AgentCliState::default())
         .manage(agent_cli::AgentCliStdinState::default())
+        .manage(browser::BrowserState::default())
         .manage(pty::PtyState::default())
         .invoke_handler(tauri::generate_handler![
             app_version,
@@ -416,15 +417,16 @@ pub fn run() {
             windows::open_browser_window,
             browser::browser_embed_show,
             browser::browser_embed_bounds,
-            browser::browser_embed_hide,
+            browser::browser_embed_close,
             browser::browser_embed_navigate,
             browser::browser_embed_back,
             browser::browser_embed_forward,
             browser::browser_embed_reload,
-            browser::browser_embed_load,
+            browser::browser_embed_open,
             browser::browser_embed_read,
             pty::pty_open,
             pty::pty_write,
+            pty::pty_ack,
             pty::pty_resize,
             pty::pty_close,
             windows::quick_capture_show,

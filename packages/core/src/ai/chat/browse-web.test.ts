@@ -18,7 +18,7 @@ const PAGE: BrowserPageRead = {
 
 function fakeDeps(read: BrowserPageRead = PAGE) {
   return {
-    browseLoadFn: vi.fn(async () => {}),
+    browseOpenFn: vi.fn(async () => read),
     browseReadFn: vi.fn(async () => read),
   }
 }
@@ -29,11 +29,10 @@ describe('open_web_page', () => {
     const open = buildOpenWebPage(deps)
     const output = await open('https://example.com/docs')
 
-    expect(deps.browseLoadFn).toHaveBeenCalledWith('https://example.com/docs')
-    expect(deps.browseReadFn).toHaveBeenCalledWith({
-      expectUrl: 'https://example.com/docs',
+    expect(deps.browseOpenFn).toHaveBeenCalledWith('https://example.com/docs', {
       maxChars: MAX_PAGE_TEXT_CHARS,
     })
+    expect(deps.browseReadFn).not.toHaveBeenCalled()
     expect(output).toEqual({ ok: true, page: PAGE })
   })
 
@@ -43,7 +42,7 @@ describe('open_web_page', () => {
     for (const url of ['file:///etc/passwd', 'javascript:alert(1)', 'example.com', 'reflect://x']) {
       expect(await open(url)).toEqual({ ok: false, error: WEB_URL_ERROR })
     }
-    expect(deps.browseLoadFn).not.toHaveBeenCalled()
+    expect(deps.browseOpenFn).not.toHaveBeenCalled()
   })
 
   it('refuses upfront on surfaces without the embedded browser', async () => {
@@ -55,16 +54,16 @@ describe('open_web_page', () => {
     })
     const read = buildReadWebPage(deps, false)
     expect(await read()).toEqual({ ok: false, error: BROWSER_UNAVAILABLE_ERROR })
-    expect(deps.browseLoadFn).not.toHaveBeenCalled()
+    expect(deps.browseOpenFn).not.toHaveBeenCalled()
     expect(deps.browseReadFn).not.toHaveBeenCalled()
   })
 
   it('returns other shell failures as their own message', async () => {
     const open = buildOpenWebPage({
-      browseLoadFn: async () => {},
-      browseReadFn: async () => {
+      browseOpenFn: async () => {
         throw new Error('the page did not answer in time')
       },
+      browseReadFn: async () => PAGE,
     })
     expect(await open('https://example.com')).toEqual({
       ok: false,

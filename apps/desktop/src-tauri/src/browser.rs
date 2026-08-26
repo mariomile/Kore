@@ -559,7 +559,7 @@ mod tests {
         assert!(
             matches!(
                 error,
-                AppError::Unknown { message } if message == "the embedded browser did not finish closing"
+                AppError::Unknown { ref message } if message == "the embedded browser did not finish closing"
             ),
             "{error:?}"
         );
@@ -613,17 +613,19 @@ mod tests {
             active_reads: 1,
         };
 
-        let error = complete_read(
+        let error = match complete_read(
             &mut lifecycle,
             Err::<BrowserPageRead, _>(AppError::unknown("the page did not answer in time")),
             |_| Err(AppError::unknown("close failed")),
-        )
-        .unwrap_err();
+        ) {
+            Err(error) => error,
+            Ok(_) => panic!("expected the original read error"),
+        };
 
         assert!(
             matches!(
                 error,
-                AppError::Unknown { message } if message == "the page did not answer in time"
+                AppError::Unknown { ref message } if message == "the page did not answer in time"
             ),
             "{error:?}"
         );

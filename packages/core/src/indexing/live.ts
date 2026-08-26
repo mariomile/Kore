@@ -312,8 +312,11 @@ export async function applyIndexChanges(
  * entirely, as before.
  *
  * `canApply` gates both event admission and execution from the serialized
- * queue. Events dropped after suspension are intentionally recovered by the
- * lifecycle's foreground reconcile.
+ * queue. While a batch is applying, later events coalesce by path to the
+ * latest observed state. This bounds retained watcher payloads during sync
+ * storms without changing the converged index. Events dropped after
+ * suspension are intentionally recovered by the lifecycle's foreground
+ * reconcile.
  */
 export function subscribeIndexChanges(
   generation: number,
@@ -321,43 +324,54 @@ export function subscribeIndexChanges(
   onMoved?: MovedHandler,
   canApply: () => boolean = () => true,
 ): Promise<Unlisten> {
-  // Serialize batches so overlapping events for the same path can't reorder
-  // (e.g. an upsert landing after a later remove, leaving a ghost row).
-  let applyQueue: Promise<void> = Promise.resolve()
+  const pendingChanges = new Map<string, FileChange>()
+  let isApplying = false
+
+  async function drainQueue(): Promise<void> {
+    if (isApplying) {
+      return
+    }
+    isApplying = true
+    try {
+      while (pendingChanges.size > 0) {
+        if (!canApply()) {
+          pendingChanges.clear()
+          return
+        }
+        const changes = Array.from(pendingChanges.values())
+        pendingChanges.clear()
+        const notes = changes.filter((change) => isNotePath(change.path))
+        try {
+          const mutations =
+            notes.length > 0
+              ? await applyIndexChanges(notes, generation, undefined, onMoved, canApply)
+              : 0
+          if (!canApply()) {
+            pendingChanges.clear()
+            return
+          }
+          if (notes.length > 0 && mutations > 0) {
+            onApplied?.(notes)
+          }
+          emitIndexApplied(changes, generation)
+        } catch (error) {
+          console.error('failed to apply watcher batch:', error)
+        }
+      }
+    } finally {
+      isApplying = false
+    }
+  }
+
   return subscribeFileChanges((changes) => {
     if (!canApply()) {
       return
     }
-    const notes = changes.filter((change) => isNotePath(change.path))
-    const touchesAssets = changes.some((change) => isAssetPath(change.path))
-    if (notes.length === 0 && !touchesAssets) {
-      return // e.g. a batch of audio-memo recordings — nothing the index tracks
+    for (const change of changes) {
+      if (isNotePath(change.path) || isAssetPath(change.path)) {
+        pendingChanges.set(change.path, change)
+      }
     }
-    applyQueue = applyQueue
-      .then(() => {
-        if (!canApply()) {
-          return 0
-        }
-        return notes.length > 0
-          ? applyIndexChanges(notes, generation, undefined, onMoved, canApply)
-          : 0
-      })
-      .then((mutations) => {
-        if (!canApply()) {
-          return
-        }
-        if (notes.length > 0 && mutations > 0) {
-          onApplied?.(notes)
-        }
-        // Post-apply: the asset-description controller reads the now-settled
-        // index off this. Carries the full batch (notes + asset files) and the
-        // `generation` so a consumer can drop a stale emit from a graph it has
-        // switched away from. Chained on the same queue, so any prior note apply
-        // is visible before an asset-only batch's gate runs.
-        emitIndexApplied(changes, generation)
-      })
-      .catch((error) => {
-        console.error('failed to apply watcher batch:', error)
-      })
+    void drainQueue()
   })
 }

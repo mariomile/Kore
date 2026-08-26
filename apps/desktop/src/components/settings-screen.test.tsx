@@ -297,7 +297,7 @@ describe('SettingsScreen', () => {
           weekStartDay: 'monday',
           allNotesFilterTags: ['book', 'link', 'person'],
           allNotesView: 'list',
-          openNoteTabs: {},
+          openTabs: {},
           taskFilters: {
             pinned: true,
             current: true,
@@ -385,7 +385,7 @@ describe('SettingsScreen', () => {
           weekStartDay: 'monday',
           allNotesFilterTags: ['book', 'link', 'person'],
           allNotesView: 'list',
-          openNoteTabs: {},
+          openTabs: {},
           taskFilters: {
             pinned: true,
             current: true,
@@ -487,7 +487,7 @@ describe('SettingsScreen', () => {
           weekStartDay: 'monday',
           allNotesFilterTags: ['book', 'link', 'person'],
           allNotesView: 'list',
-          openNoteTabs: {},
+          openTabs: {},
           taskFilters: {
             pinned: true,
             current: true,
@@ -596,7 +596,7 @@ describe('SettingsScreen', () => {
           weekStartDay: 'monday',
           allNotesFilterTags: ['book', 'link', 'person'],
           allNotesView: 'list',
-          openNoteTabs: {},
+          openTabs: {},
           taskFilters: {
             pinned: true,
             current: true,
@@ -684,7 +684,7 @@ describe('SettingsScreen', () => {
           weekStartDay: 'monday',
           allNotesFilterTags: ['book', 'link', 'person'],
           allNotesView: 'list',
-          openNoteTabs: {},
+          openTabs: {},
           taskFilters: {
             pinned: true,
             current: true,
@@ -765,7 +765,7 @@ describe('SettingsScreen', () => {
           weekStartDay: 'monday',
           allNotesFilterTags: ['book', 'link', 'person'],
           allNotesView: 'list',
-          openNoteTabs: {},
+          openTabs: {},
           taskFilters: {
             pinned: true,
             current: true,
@@ -855,7 +855,7 @@ describe('SettingsScreen', () => {
           weekStartDay: 'monday',
           allNotesFilterTags: ['book', 'link', 'person'],
           allNotesView: 'list',
-          openNoteTabs: {},
+          openTabs: {},
           taskFilters: {
             pinned: true,
             current: true,
@@ -942,7 +942,7 @@ describe('SettingsScreen', () => {
           weekStartDay: 'monday',
           allNotesFilterTags: ['book', 'link', 'person'],
           allNotesView: 'list',
-          openNoteTabs: {},
+          openTabs: {},
           taskFilters: {
             pinned: true,
             current: true,
@@ -1035,7 +1035,7 @@ describe('SettingsScreen', () => {
           weekStartDay: 'sunday',
           allNotesFilterTags: ['book', 'link', 'person'],
           allNotesView: 'list',
-          openNoteTabs: {},
+          openTabs: {},
           taskFilters: {
             pinned: true,
             current: true,
@@ -1134,7 +1134,7 @@ describe('SettingsScreen', () => {
           weekStartDay: 'monday',
           allNotesFilterTags: ['book', 'link', 'person'],
           allNotesView: 'list',
-          openNoteTabs: {},
+          openTabs: {},
           taskFilters: {
             pinned: true,
             current: true,
@@ -1250,7 +1250,7 @@ describe('SettingsScreen', () => {
           weekStartDay: 'monday',
           allNotesFilterTags: ['book', 'link', 'person', 'meeting'],
           allNotesView: 'list',
-          openNoteTabs: {},
+          openTabs: {},
           taskFilters: {
             pinned: true,
             current: true,
@@ -1360,7 +1360,7 @@ describe('SettingsScreen', () => {
           weekStartDay: 'monday',
           allNotesFilterTags: ['person'],
           allNotesView: 'list',
-          openNoteTabs: {},
+          openTabs: {},
           taskFilters: {
             pinned: true,
             current: true,
@@ -1439,7 +1439,7 @@ describe('SettingsScreen', () => {
           weekStartDay: 'monday',
           allNotesFilterTags: ['book', 'link', 'person'],
           allNotesView: 'list',
-          openNoteTabs: {},
+          openTabs: {},
           taskFilters: {
             pinned: true,
             current: true,
@@ -1540,7 +1540,7 @@ describe('SettingsScreen', () => {
           weekStartDay: 'monday',
           allNotesFilterTags: ['book', 'link', 'person'],
           allNotesView: 'list',
-          openNoteTabs: {},
+          openTabs: {},
           taskFilters: {
             pinned: true,
             current: true,
@@ -1631,7 +1631,7 @@ describe('SettingsScreen', () => {
           weekStartDay: 'monday',
           allNotesFilterTags: ['book', 'link', 'person'],
           allNotesView: 'list',
-          openNoteTabs: {},
+          openTabs: {},
           taskFilters: {
             pinned: true,
             current: true,
@@ -1716,7 +1716,7 @@ describe('SettingsScreen', () => {
           weekStartDay: 'monday',
           allNotesFilterTags: ['book', 'link', 'person'],
           allNotesView: 'list',
-          openNoteTabs: {},
+          openTabs: {},
           taskFilters: {
             pinned: true,
             current: true,
@@ -1886,7 +1886,7 @@ describe('SettingsScreen', () => {
           weekStartDay: 'monday',
           allNotesFilterTags: ['book', 'link', 'person'],
           allNotesView: 'list',
-          openNoteTabs: {},
+          openTabs: {},
           taskFilters: {
             pinned: true,
             current: true,
@@ -1983,7 +1983,7 @@ describe('SettingsScreen', () => {
           weekStartDay: 'monday',
           allNotesFilterTags: ['book', 'link', 'person'],
           allNotesView: 'list',
-          openNoteTabs: {},
+          openTabs: {},
           taskFilters: {
             pinned: true,
             current: true,
@@ -2071,7 +2071,7 @@ describe('SettingsScreen', () => {
           weekStartDay: 'monday',
           allNotesFilterTags: ['book', 'link', 'person'],
           allNotesView: 'list',
-          openNoteTabs: {},
+          openTabs: {},
           taskFilters: {
             pinned: true,
             current: true,

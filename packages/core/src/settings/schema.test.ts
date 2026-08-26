@@ -41,7 +41,7 @@ describe('settingsSchema', () => {
       weekStartDay: 'monday',
       allNotesFilterTags: ['book', 'link', 'person'],
       allNotesView: 'list',
-      openNoteTabs: {},
+      openTabs: {},
       taskFilters: {
         pinned: true,
         current: true,
@@ -371,7 +371,7 @@ describe('settingsSchema', () => {
       weekStartDay: 'monday',
       allNotesFilterTags: ['book', 'link', 'person'],
       allNotesView: 'list',
-      openNoteTabs: {},
+      openTabs: {},
       taskFilters: {
         pinned: true,
         current: true,
@@ -586,7 +586,7 @@ describe('settingsSchema', () => {
     })
   })
 
-  it('migrates legacy note tabs and accepts surface tabs', () => {
+  it('migrates legacy note tabs into generalized workspace tabs', () => {
     const parsed = settingsSchema.parse({
       openNoteTabs: {
         '/g': [
@@ -596,12 +596,40 @@ describe('settingsSchema', () => {
         ],
       },
     })
-    expect(parsed.openNoteTabs).toEqual({
+    expect(parsed.openTabs).toEqual({
       '/g': [
         { kind: 'note', path: 'notes/alpha.md', pinned: true },
         { kind: 'note', path: 'notes/beta.md', pinned: false },
         { kind: 'surface', surface: 'settings', pinned: false },
       ],
+    })
+    expect('openNoteTabs' in parsed).toBe(false)
+  })
+
+  it('accepts note, chat, and route tabs while dropping a malformed graph list', () => {
+    const parsed = settingsSchema.parse({
+      openTabs: {
+        '/g': [
+          { kind: 'surface', surface: 'daily', date: null, pinned: false },
+          { kind: 'note', path: 'notes/alpha.md', pinned: true },
+          { kind: 'chat', conversationId: 'conversation-1', pinned: false },
+          { kind: 'surface', surface: 'allNotes', tag: 'book', pinned: false },
+          { kind: 'surface', surface: 'search', query: 'alpha', pinned: false },
+          { kind: 'surface', surface: 'tasks', pinned: false },
+        ],
+        '/broken': [{ kind: 'chat', pinned: false }],
+      },
+    })
+    expect(parsed.openTabs).toEqual({
+      '/g': [
+        { kind: 'surface', surface: 'daily', date: null, pinned: false },
+        { kind: 'note', path: 'notes/alpha.md', pinned: true },
+        { kind: 'chat', conversationId: 'conversation-1', pinned: false },
+        { kind: 'surface', surface: 'allNotes', tag: 'book', pinned: false },
+        { kind: 'surface', surface: 'search', query: 'alpha', pinned: false },
+        { kind: 'surface', surface: 'tasks', pinned: false },
+      ],
+      '/broken': [],
     })
   })
 })

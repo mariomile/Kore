@@ -168,6 +168,7 @@ describe('codexAppServerHandshakePrompt', () => {
     const prompt = codexAppServerHandshakePrompt({ graphRoot: '/g', model: 'gpt-5.5' })
     expect(prompt).toContain('"method":"initialize"')
     expect(prompt).toContain('"name":"lore"')
+    expect(prompt).toContain('"title":"Kore"')
     expect(prompt).toContain('"method":"initialized"')
     expect(prompt).toContain('"method":"thread/start"')
     expect(prompt).toContain('"cwd":"/g"')

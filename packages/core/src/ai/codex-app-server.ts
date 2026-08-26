@@ -50,7 +50,7 @@ export function codexAppServerHandshakePrompt(options: {
     jsonRpcLine({
       method: 'initialize',
       id: CODEX_INITIALIZE_ID,
-      params: { clientInfo: { name: 'lore', title: 'Lore' } },
+      params: { clientInfo: { name: 'lore', title: 'Kore' } },
     }),
     jsonRpcLine({ method: 'initialized', params: {} }),
     jsonRpcLine({

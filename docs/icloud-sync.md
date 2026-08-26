@@ -7,7 +7,7 @@ edit the same note while apart.
 ## The user contract
 
 - **Where the graph lives.** In the app's iCloud Drive container — visible as
-  **iCloud Drive → Reflect** in Files (iOS) and Finder (macOS). Notes stay
+  **iCloud Drive → Kore** in Files (iOS) and Finder (macOS). Notes stay
   plain markdown files; iCloud moves them between devices.
 - **Turning it on.** Both platforms offer iCloud first during onboarding and
   list every graph already in the container (it can hold several): macOS's

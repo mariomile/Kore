@@ -33,7 +33,7 @@
   "plugins": {
     "updater": {
       "endpoints": [
-        "https://github.com/mariomile/Lore/releases/download/updater-dev-noop/latest.json"
+        "https://github.com/mariomile/Kore/releases/download/updater-dev-noop/latest.json"
       ]
     }
   }

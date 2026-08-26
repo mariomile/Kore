@@ -1,12 +1,12 @@
-# Lore
+# Kore
 
 Plain-file notes for Mac and iPhone: daily notes, wiki links, a graph view,
 tabs, local search, and AI over your own Markdown — billed to the ChatGPT or
 Claude subscription you already have.
 
-Lore is a personal fork of
+Kore is a personal fork of
 [Reflect (reflect-open)](https://github.com/team-reflect/reflect-open) — an
-open-source, local-first note app by the Reflect team, MIT-licensed. Lore
+open-source, local-first note app by the Reflect team, MIT-licensed. Kore
 keeps Reflect's plain-file model and privacy stance and builds a customized
 experience on top: a Craft/Linear-grade design language, note tabs, a dual
 sidebar layout, a force-directed graph view, an in-app browser and file
@@ -16,7 +16,7 @@ The app does not require any account. Notes live in a folder you choose, and
 optional services such as AI providers, transcription, iCloud, GitHub, or
 another git remote are connected directly by the user.
 
-## What Lore adds on top of Reflect
+## What Kore adds on top of Reflect
 
 - **Design language:** ink hairlines, one accent color, raised-pill controls,
   a floating note card between two full-height rails — light and dark, with
@@ -54,11 +54,11 @@ customization and what is planned next.
 
 ## Install
 
-The app ships under the product name **Memento** (the repository keeps the
-Lore name); the bundle you install is `Memento.app`.
+The app ships under the product name **Memento** (the repository is Kore);
+the bundle you install is `Memento.app`.
 
 **Install from a release (recommended):** grab the latest `.dmg` from
-[Releases](https://github.com/mariomile/Lore/releases) and drag
+[Releases](https://github.com/mariomile/Kore/releases) and drag
 **Memento.app** into Applications. The build is unsigned, so recent macOS
 quarantines the download and claims the app "is damaged" — it isn't; clear
 the quarantine flag once from Terminal and open normally:
@@ -80,8 +80,8 @@ npm install -g pnpm                   # pnpm (Node 22+ required)
 ```
 
 ```bash
-git clone https://github.com/mariomile/Lore.git lore
-cd lore
+git clone https://github.com/mariomile/Kore.git kore
+cd kore
 pnpm install
 pnpm tauri build
 ```
@@ -96,10 +96,10 @@ built it. To produce signed, notarized installers for other Macs (with
 auto-update), use `pnpm release:macos` — see
 [docs/macos-distribution.md](docs/macos-distribution.md).
 
-Lore ships with its own Apple identity (`app.lore.*`, iCloud container
+Kore ships with its own Apple identity (`app.lore.*`, iCloud container
 `iCloud.app.lore`). iCloud sync and iPhone installs need an Apple Developer
 account — the one-time checklist is in
-[docs/lore-apple-signing.md](docs/lore-apple-signing.md); everything else
+[docs/kore-apple-signing.md](docs/kore-apple-signing.md); everything else
 (local graphs, Git history, GitHub sync) works with no account at all.
 
 For a quick look without installing, `pnpm tauri dev` runs the app with hot
@@ -108,7 +108,7 @@ installed build.
 
 ## Your Notes Are Files
 
-Lore calls a notes folder a **graph**. A graph is a folder you can inspect,
+Kore calls a notes folder a **graph**. A graph is a folder you can inspect,
 back up, sync, or edit with other tools:
 
 ```text
@@ -120,7 +120,7 @@ my-graph/
 └── audio-memos/            # Audio recordings and transcripts
 ```
 
-Markdown files are the source of truth. Lore adds search, backlinks, tags,
+Markdown files are the source of truth. Kore adds search, backlinks, tags,
 tabs, and the graph view on top, but the files remain usable in any Markdown
 editor.
 
@@ -139,10 +139,10 @@ CLI providers at the sandbox level, not by prompt. See
 
 ## Project Layout
 
-Lore is a pnpm/Turborepo monorepo (structure inherited from Reflect):
+Kore is a pnpm/Turborepo monorepo (structure inherited from Reflect):
 
 ```text
-lore/
+kore/
 ├── apps/desktop/          # Mac and iOS app (Tauri 2 shell + React frontend)
 ├── apps/cli/              # `reflect` CLI — Rust read/discovery/capture tool
 ├── apps/extension/        # Chrome capture extension
@@ -177,7 +177,7 @@ cargo test --workspace
 
 ## Credits and License
 
-Lore is built on [Reflect (reflect-open)](https://github.com/team-reflect/reflect-open)
+Kore is built on [Reflect (reflect-open)](https://github.com/team-reflect/reflect-open)
 by the Reflect team. Both the upstream project and this fork are
 [MIT](LICENSE)-licensed. Upstream fixes are merged deliberately — see
 [docs/upstream-merges.md](docs/upstream-merges.md) for the playbook.

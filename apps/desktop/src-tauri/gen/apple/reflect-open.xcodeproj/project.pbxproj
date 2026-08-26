@@ -724,7 +724,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = app.lore.ios.share;
 				PRODUCT_NAME = ShareExtension;
-				REFLECT_DISPLAY_NAME = Lore;
+				REFLECT_DISPLAY_NAME = Kore;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -757,8 +757,8 @@
 				"LIBRARY_SEARCH_PATHS[arch=arm64]" = "$(inherited) $(PROJECT_DIR)/Externals/arm64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/$(PLATFORM_NAME) $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/$(PLATFORM_NAME)";
 				"LIBRARY_SEARCH_PATHS[arch=x86_64]" = "$(inherited) $(PROJECT_DIR)/Externals/x86_64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/$(PLATFORM_NAME) $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/$(PLATFORM_NAME)";
 				PRODUCT_BUNDLE_IDENTIFIER = app.lore.ios.dev;
-				PRODUCT_NAME = "Memento";
-				REFLECT_DISPLAY_NAME = Lore;
+				PRODUCT_NAME = Kore;
+				REFLECT_DISPLAY_NAME = Kore;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -844,7 +844,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = app.lore.ios.dev.widgets;
 				PRODUCT_NAME = RecordingWidget;
-				REFLECT_DISPLAY_NAME = "Lore Dev";
+				REFLECT_DISPLAY_NAME = "Kore Dev";
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -865,7 +865,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = app.lore.ios.dev.share;
 				PRODUCT_NAME = ShareExtension;
-				REFLECT_DISPLAY_NAME = "Lore Dev";
+				REFLECT_DISPLAY_NAME = "Kore Dev";
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -887,7 +887,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = app.lore.ios.widgets;
 				PRODUCT_NAME = RecordingWidget;
-				REFLECT_DISPLAY_NAME = Lore;
+				REFLECT_DISPLAY_NAME = Kore;
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -920,8 +920,8 @@
 				"LIBRARY_SEARCH_PATHS[arch=arm64]" = "$(inherited) $(PROJECT_DIR)/Externals/arm64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/$(PLATFORM_NAME) $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/$(PLATFORM_NAME)";
 				"LIBRARY_SEARCH_PATHS[arch=x86_64]" = "$(inherited) $(PROJECT_DIR)/Externals/x86_64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/$(PLATFORM_NAME) $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/$(PLATFORM_NAME)";
 				PRODUCT_BUNDLE_IDENTIFIER = app.lore.ios.dev;
-				PRODUCT_NAME = "Memento";
-				REFLECT_DISPLAY_NAME = "Lore Dev";
+				PRODUCT_NAME = Kore;
+				REFLECT_DISPLAY_NAME = "Kore Dev";
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";

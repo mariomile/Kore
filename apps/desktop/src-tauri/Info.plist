@@ -20,7 +20,7 @@
 	<key>NSContactsUsageDescription</key>
 	<string>Memento reads your contacts to suggest details for person notes. Nothing is stored or sent anywhere.</string>
 	<!-- iCloud Drive document storage (Plan 21): declares the container so it
-	     shows up as a "Lore" location in Finder's iCloud Drive. Must match
+	     shows up as a "Kore" location in Finder's iCloud Drive. Must match
 	     the iOS declaration (ios.project.yml / gen/apple) key for key — the
 	     container is the shared folder both apps sync through. -->
 	<key>NSUbiquitousContainers</key>
@@ -30,7 +30,7 @@
 			<key>NSUbiquitousContainerIsDocumentScopePublic</key>
 			<true/>
 			<key>NSUbiquitousContainerName</key>
-			<string>Lore</string>
+			<string>Kore</string>
 			<key>NSUbiquitousContainerSupportedFolderLevels</key>
 			<string>Any</string>
 		</dict>

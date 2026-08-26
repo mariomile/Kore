@@ -33,7 +33,7 @@
     },
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDY4NzMzMUNENTQ5REQwNkYKUldSdjBKMVV6VEZ6YUVwQWZFNzRML1FjYi9VN0hwSXdXVXlLcCtqK1R3VGNUaDIyeE5tcVpIQ2gK",
-      "endpoints": ["https://github.com/mariomile/Lore/releases/latest/download/latest.json"]
+      "endpoints": ["https://github.com/mariomile/Kore/releases/latest/download/latest.json"]
     }
   },
   "bundle": {

@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { displayNoteTitle, getNote, noteFileStem, type OpenNoteTab } from '@reflect/core'
+import { displayNoteTitle, getNote, isNoteTab, noteFileStem, type OpenNoteTab } from '@reflect/core'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { useGraph } from '@/providers/graph-provider'
@@ -24,7 +24,8 @@ export function useOpenTabNotes(): OpenTabNote[] {
   const { tabs, pruneTab } = useOpenTabs()
   const { graph, indexing } = useGraph()
   const bridgeReady = useBridgeReady()
-  const paths = useMemo(() => tabs.map((tab) => tab.path), [tabs])
+  const noteTabs = useMemo(() => tabs.filter(isNoteTab), [tabs])
+  const paths = useMemo(() => noteTabs.map((tab) => tab.path), [noteTabs])
 
   const { data: rows, isSuccess } = useQuery({
     queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'open-tab-notes', paths],
@@ -48,10 +49,10 @@ export function useOpenTabNotes(): OpenTabNote[] {
 
   return useMemo(
     () =>
-      tabs.map((tab) => ({
+      noteTabs.map((tab) => ({
         ...tab,
         title: displayNoteTitle(rows?.get(tab.path)?.title ?? noteFileStem(tab.path)),
       })),
-    [tabs, rows],
+    [noteTabs, rows],
   )
 }

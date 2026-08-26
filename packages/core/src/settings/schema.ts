@@ -66,25 +66,78 @@ export * from './schema-editor'
  */
 
 /**
- * The open note tabs (the tab strip and the sidebar's Open section), in strip
- * order, restored at launch, **keyed by graph root**: the settings document
- * is one global file shared across graphs, so without the keying another
- * graph's tabs would render after every switch — and then be destroyed by
- * the strip's self-pruning once they fail to resolve. Daily notes are never
- * stored here — the Daily tab is a fixed "tab zero" the UI provides. A
- * malformed graph entry drops that graph's list rather than resurrecting
- * half a session; a malformed document (including the pre-keying flat-array
- * shape) degrades to no stored sessions.
+ * App screens that join the tab strip the same way notes do: opening the
+ * page opens (or focuses) its tab; closing the tab leaves the page. Daily
+ * notes stay out of this set — they are the fixed, unclosable tab zero.
+ * Settings and the built-in browser are the screens that otherwise replace
+ * the pane with no strip presence.
  */
-export const openNoteTabSchema = z.object({
+export const workspaceSurfaceSchema = z.enum(['settings', 'browser'])
+
+export type WorkspaceSurface = z.infer<typeof workspaceSurfaceSchema>
+
+export interface OpenNoteTab {
+  kind: 'note'
+  path: string
+  pinned: boolean
+}
+
+export interface OpenSurfaceTab {
+  kind: 'surface'
+  surface: WorkspaceSurface
+  pinned: boolean
+}
+
+export type OpenTab = OpenNoteTab | OpenSurfaceTab
+
+const openNoteTabStoredSchema = z.object({
+  kind: z.literal('note'),
   path: z.string(),
   pinned: z.boolean().catch(false),
-})
+}) satisfies z.ZodType<OpenNoteTab>
 
-export type OpenNoteTab = z.infer<typeof openNoteTabSchema>
+const openSurfaceTabStoredSchema = z.object({
+  kind: z.literal('surface'),
+  surface: workspaceSurfaceSchema,
+  pinned: z.boolean().catch(false),
+}) satisfies z.ZodType<OpenSurfaceTab>
+
+/** Pre-surface shape: `{ path, pinned }` with no `kind`. */
+const legacyOpenNoteTabSchema = z
+  .object({
+    path: z.string(),
+    pinned: z.boolean().catch(false),
+  })
+  .transform((tab): OpenNoteTab => ({ kind: 'note', path: tab.path, pinned: tab.pinned }))
+
+/**
+ * One strip tab: an ordinary note, or a workspace surface (Settings,
+ * Browser). The open-tabs list (the strip and the sidebar's Open section),
+ * in strip order, restored at launch, **keyed by graph root**: the settings
+ * document is one global file shared across graphs, so without the keying
+ * another graph's tabs would render after every switch — and then be
+ * destroyed by the strip's self-pruning once they fail to resolve. Daily
+ * notes are never stored here — the Daily tab is a fixed "tab zero" the UI
+ * provides. A malformed graph entry drops that graph's list rather than
+ * resurrecting half a session; a malformed document (including the
+ * pre-keying flat-array shape) degrades to no stored sessions.
+ */
+export const openTabSchema: z.ZodType<OpenTab> = z.union([
+  openNoteTabStoredSchema,
+  openSurfaceTabStoredSchema,
+  legacyOpenNoteTabSchema,
+])
+
+export function isNoteTab(tab: OpenTab): tab is OpenNoteTab {
+  return tab.kind === 'note'
+}
+
+export function isSurfaceTab(tab: OpenTab): tab is OpenSurfaceTab {
+  return tab.kind === 'surface'
+}
 
 export const openNoteTabsSchema = z
-  .record(z.string(), z.array(openNoteTabSchema).catch([]))
+  .record(z.string(), z.array(openTabSchema).catch([]))
   // An array is also an object to `z.record` (index keys) — the pre-keying
   // shape must degrade to "no sessions", not to a graph named "0".
   .refine((value) => !Array.isArray(value))

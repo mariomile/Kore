@@ -37,7 +37,31 @@ const EMBED_LABEL: &str = "embedded-browser";
 #[derive(Default)]
 struct BrowserLifecycle {
     is_hosted: bool,
+    has_pending_read: bool,
     active_reads: u32,
+}
+
+impl BrowserLifecycle {
+    fn begin_read(&mut self) -> AppResult<()> {
+        self.has_pending_read = false;
+        self.active_reads = self
+            .active_reads
+            .checked_add(1)
+            .ok_or_else(|| AppError::unknown("too many concurrent browser reads"))?;
+        Ok(())
+    }
+
+    fn finish_read(&mut self) -> AppResult<()> {
+        self.active_reads = self
+            .active_reads
+            .checked_sub(1)
+            .ok_or_else(|| AppError::unknown("browser read lease underflow"))?;
+        Ok(())
+    }
+
+    fn can_close(&self) -> bool {
+        !self.is_hosted && !self.has_pending_read && self.active_reads == 0
+    }
 }
 
 #[derive(Default)]
@@ -50,35 +74,6 @@ fn lock_lifecycle(state: &BrowserState) -> AppResult<std::sync::MutexGuard<'_, B
         .lifecycle
         .lock()
         .map_err(|_| AppError::unknown("browser state lock poisoned"))
-}
-
-fn set_hosted(state: &BrowserState) -> AppResult<()> {
-    lock_lifecycle(state)?.is_hosted = true;
-    Ok(())
-}
-
-fn begin_read(state: &BrowserState) -> AppResult<()> {
-    let mut lifecycle = lock_lifecycle(state)?;
-    lifecycle.active_reads = lifecycle
-        .active_reads
-        .checked_add(1)
-        .ok_or_else(|| AppError::unknown("too many concurrent browser reads"))?;
-    Ok(())
-}
-
-fn finish_read(state: &BrowserState) -> AppResult<bool> {
-    let mut lifecycle = lock_lifecycle(state)?;
-    lifecycle.active_reads = lifecycle
-        .active_reads
-        .checked_sub(1)
-        .ok_or_else(|| AppError::unknown("browser read lease underflow"))?;
-    Ok(!lifecycle.is_hosted && lifecycle.active_reads == 0)
-}
-
-fn release_host(state: &BrowserState) -> AppResult<bool> {
-    let mut lifecycle = lock_lifecycle(state)?;
-    lifecycle.is_hosted = false;
-    Ok(lifecycle.active_reads == 0)
 }
 
 /// Emitted to the main webview whenever the page navigates (link clicks,
@@ -120,6 +115,7 @@ pub async fn browser_embed_show(
     height: f64,
 ) -> AppResult<()> {
     let target = url.as_deref().map(parse_browser_url).transpose()?;
+    let mut lifecycle = lock_lifecycle(&state)?;
     if let Some(existing) = embed(&app) {
         if let Some(parsed) = target {
             if existing.url().ok().as_ref() != Some(&parsed) {
@@ -132,7 +128,7 @@ pub async fn browser_embed_show(
         existing
             .show()
             .map_err(|err| AppError::io(format!("failed to show the embedded browser: {err}")))?;
-        set_hosted(&state)?;
+        lifecycle.is_hosted = true;
         return Ok(());
     }
 
@@ -141,7 +137,7 @@ pub async fn browser_embed_show(
         None => return Err(AppError::parse("the embedded browser needs a first URL")),
     };
     create_embed(&window, &app, parsed, x, y, width, height)?;
-    set_hosted(&state)?;
+    lifecycle.is_hosted = true;
     Ok(())
 }
 
@@ -202,8 +198,13 @@ pub fn browser_embed_bounds(
 /// still using the page. Idempotent.
 #[tauri::command]
 pub fn browser_embed_close(app: AppHandle, state: State<'_, BrowserState>) -> AppResult<()> {
-    if release_host(&state)? {
-        if let Some(webview) = embed(&app) {
+    let mut lifecycle = lock_lifecycle(&state)?;
+    lifecycle.is_hosted = false;
+    if let Some(webview) = embed(&app) {
+        webview
+            .hide()
+            .map_err(|err| AppError::io(format!("failed to hide the embedded browser: {err}")))?;
+        if lifecycle.can_close() {
             webview.close().map_err(|err| {
                 AppError::io(format!("failed to close the embedded browser: {err}"))
             })?;
@@ -268,19 +269,23 @@ const READ_MAX_ATTEMPTS: u32 = 20;
 const READ_GRACE_ATTEMPTS: u32 = 8;
 
 /// Load a page in the embedded browser without touching its placement — the
-/// AI chat's open. With no webview yet, one is created off-screen and hidden;
-/// opening the Browser tab or panel later reveals the loaded page.
+/// AI chat's open. With no webview yet, one is created off-screen and hidden.
+/// The load holds a lifecycle lease until the following read finishes.
 #[tauri::command]
 pub async fn browser_embed_load(
     window: tauri::WebviewWindow,
     app: AppHandle,
+    state: State<'_, BrowserState>,
     url: String,
 ) -> AppResult<()> {
     let parsed = parse_browser_url(&url)?;
+    let mut lifecycle = lock_lifecycle(&state)?;
     if let Some(existing) = embed(&app) {
-        return existing
+        existing
             .navigate(parsed)
-            .map_err(|err| AppError::io(format!("failed to navigate: {err}")));
+            .map_err(|err| AppError::io(format!("failed to navigate: {err}")))?;
+        lifecycle.has_pending_read = true;
+        return Ok(());
     }
     let webview = create_embed(
         &window,
@@ -291,7 +296,10 @@ pub async fn browser_embed_load(
         BACKGROUND_WIDTH,
         BACKGROUND_HEIGHT,
     )?;
-    let _ = webview.hide();
+    webview
+        .hide()
+        .map_err(|err| AppError::io(format!("failed to hide the background browser: {err}")))?;
+    lifecycle.has_pending_read = true;
     Ok(())
 }
 
@@ -397,16 +405,22 @@ pub async fn browser_embed_read(
     expect_url: Option<String>,
     max_chars: Option<u32>,
 ) -> AppResult<BrowserPageRead> {
-    begin_read(&state)?;
-    let webview = match embed(&app) {
-        Some(webview) => webview,
-        None => {
-            finish_read(&state)?;
-            return Err(AppError::not_found("no embedded browser is open"));
-        }
+    let webview = {
+        let mut lifecycle = lock_lifecycle(&state)?;
+        let webview = match embed(&app) {
+            Some(webview) => webview,
+            None => {
+                lifecycle.has_pending_read = false;
+                return Err(AppError::not_found("no embedded browser is open"));
+            }
+        };
+        lifecycle.begin_read()?;
+        webview
     };
     let result = read_page(&webview, expect_url, max_chars).await;
-    if finish_read(&state)? {
+    let mut lifecycle = lock_lifecycle(&state)?;
+    lifecycle.finish_read()?;
+    if lifecycle.can_close() {
         webview.close().map_err(|err| {
             AppError::io(format!("failed to close the background browser: {err}"))
         })?;
@@ -420,21 +434,30 @@ mod tests {
 
     #[test]
     fn host_release_waits_for_active_reads() {
-        let state = BrowserState::default();
-        set_hosted(&state).unwrap();
-        begin_read(&state).unwrap();
+        let mut lifecycle = BrowserLifecycle {
+            is_hosted: true,
+            has_pending_read: true,
+            active_reads: 0,
+        };
+        lifecycle.begin_read().unwrap();
+        lifecycle.is_hosted = false;
 
-        assert!(!release_host(&state).unwrap());
-        assert!(finish_read(&state).unwrap());
+        assert!(!lifecycle.can_close());
+        lifecycle.finish_read().unwrap();
+        assert!(lifecycle.can_close());
     }
 
     #[test]
-    fn last_background_read_releases_the_webview() {
-        let state = BrowserState::default();
-        begin_read(&state).unwrap();
-        begin_read(&state).unwrap();
+    fn pending_load_prevents_background_cleanup() {
+        let mut lifecycle = BrowserLifecycle {
+            has_pending_read: true,
+            ..BrowserLifecycle::default()
+        };
 
-        assert!(!finish_read(&state).unwrap());
-        assert!(finish_read(&state).unwrap());
+        assert!(!lifecycle.can_close());
+        lifecycle.begin_read().unwrap();
+        assert!(!lifecycle.can_close());
+        lifecycle.finish_read().unwrap();
+        assert!(lifecycle.can_close());
     }
 }

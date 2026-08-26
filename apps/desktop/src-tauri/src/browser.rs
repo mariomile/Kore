@@ -316,44 +316,46 @@ pub async fn browser_embed_open(
 ) -> AppResult<BrowserPageRead> {
     let parsed = parse_browser_url(&url)?;
     wait_for_close(&app, &state).await?;
-    let mut lifecycle = lock_lifecycle(&state)?;
-    lifecycle.begin_read()?;
-    let webview = if let Some(existing) = embed(&app) {
-        if let Err(error) = existing
-            .navigate(parsed)
-            .map_err(|err| AppError::io(format!("failed to navigate: {err}")))
-        {
-            lifecycle.finish_read()?;
-            return Err(error);
-        }
-        existing
-    } else {
-        match create_embed(
-            &window,
-            &app,
-            parsed,
-            BACKGROUND_X,
-            0.0,
-            BACKGROUND_WIDTH,
-            BACKGROUND_HEIGHT,
-        ) {
-            Ok(webview) => {
-                if let Err(error) = webview.hide().map_err(|err| {
-                    AppError::io(format!("failed to hide the background browser: {err}"))
-                }) {
-                    lifecycle.finish_read()?;
-                    queue_close(&webview, &mut lifecycle)?;
-                    return Err(error);
-                }
-                webview
-            }
-            Err(error) => {
+    let webview = {
+        let mut lifecycle = lock_lifecycle(&state)?;
+        lifecycle.begin_read()?;
+        let webview = if let Some(existing) = embed(&app) {
+            if let Err(error) = existing
+                .navigate(parsed)
+                .map_err(|err| AppError::io(format!("failed to navigate: {err}")))
+            {
                 lifecycle.finish_read()?;
                 return Err(error);
             }
-        }
+            existing
+        } else {
+            match create_embed(
+                &window,
+                &app,
+                parsed,
+                BACKGROUND_X,
+                0.0,
+                BACKGROUND_WIDTH,
+                BACKGROUND_HEIGHT,
+            ) {
+                Ok(webview) => {
+                    if let Err(error) = webview.hide().map_err(|err| {
+                        AppError::io(format!("failed to hide the background browser: {err}"))
+                    }) {
+                        lifecycle.finish_read()?;
+                        queue_close(&webview, &mut lifecycle)?;
+                        return Err(error);
+                    }
+                    webview
+                }
+                Err(error) => {
+                    lifecycle.finish_read()?;
+                    return Err(error);
+                }
+            }
+        };
+        webview
     };
-    drop(lifecycle);
 
     let result = read_page(&webview, Some(url), max_chars).await;
     finish_browser_read(&state, &webview, result)

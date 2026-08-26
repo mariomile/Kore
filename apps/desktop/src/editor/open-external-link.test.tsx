@@ -29,7 +29,7 @@ vi.mock('@/lib/windows/open-in-new-window', async (importOriginal) => ({
   openDeepLinkInNewWindow,
 }))
 vi.mock('@/providers/settings-provider', () => ({
-  useSettings: () => ({
+  useOptionalSettings: () => ({
     settings: settingsState,
     updateSettings: () => {},
   }),

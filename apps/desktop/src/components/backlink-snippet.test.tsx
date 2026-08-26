@@ -16,12 +16,6 @@ vi.mock('@/lib/operations', () => ({
 vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({ graph: { root: '/g', name: 'g', generation: 7 } }),
 }))
-vi.mock('@/providers/settings-provider', () => ({
-  useSettings: () => ({
-    settings: { browserOpenLinksInApp: true },
-    updateSettings: () => {},
-  }),
-}))
 
 /**
  * A context with one round task, one square box, and a nested round task —

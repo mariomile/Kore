@@ -5,7 +5,7 @@ import { openInAppBrowser } from '@/lib/browser-session'
 import { isDeepLinkUrl } from '@/lib/deep-links/parse'
 import { useFollowDeepLink } from '@/lib/deep-links/use-follow-deep-link'
 import { openUrlSync } from '@/lib/open-url'
-import { useSettings } from '@/providers/settings-provider'
+import { useOptionalSettings } from '@/providers/settings-provider'
 
 /**
  * Schemes that must never reach the OS opener: script and data URIs carry
@@ -95,7 +95,7 @@ export function preferOsBrowser(altKey: boolean, openLinksInApp: boolean): boole
  */
 export function useOpenExternalLink(): LinkClickHandler {
   const followDeepLink = useFollowDeepLink()
-  const openLinksInApp = useSettings().settings.browserOpenLinksInApp
+  const openLinksInApp = useOptionalSettings()?.settings.browserOpenLinksInApp ?? true
   return useCallback<LinkClickHandler>(
     ({ href, event, mod }) => {
       event.preventDefault()

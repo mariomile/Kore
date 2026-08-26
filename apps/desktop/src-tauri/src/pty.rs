@@ -138,8 +138,7 @@ pub fn pty_open(
 
     // Backpressure is intentional: a noisy child may otherwise outrun the
     // webview and retain every unread chunk in process memory.
-    let (chunk_sender, chunk_receiver) =
-        mpsc::sync_channel::<String>(OUTPUT_CHANNEL_CAPACITY);
+    let (chunk_sender, chunk_receiver) = mpsc::sync_channel::<String>(OUTPUT_CHANNEL_CAPACITY);
     thread::spawn(move || {
         let mut buffer = [0_u8; 4096];
         loop {

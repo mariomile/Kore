@@ -14,11 +14,12 @@ edit the same note while apart.
   recommended card opens one or names-and-creates a new one, with a
   self-managed choose-your-own-folder alternative; iOS's first-run screen
   opens one (or stores fresh notes in iCloud), and its settings sheet
-  switches between graphs later. An existing
-  local graph moves later via Settings → **iCloud sync** → *Move graph to
-  iCloud…*, which copies it into the container (verified file-by-file) and
-  reopens it there; the original folder stays on disk, untouched, as a
-  recovery copy.
+  switches between graphs later. Choosing an existing Markdown folder that
+  is not already in iCloud Drive then offers to enable sync: iCloud copies
+  the notes into the container (the original stays on disk as a recovery
+  copy), and GitHub keeps the folder where it is and syncs through a
+  repository the iPhone app can pull. The same iCloud move remains available
+  later via Settings → **iCloud Drive** → *Move graph to iCloud…*.
 - **iCloud or GitHub, not both.** A graph syncs through iCloud Drive *or* a
   Git remote. Two sync engines merging the same files fight each other, and a
   `.git` directory must never ride a file-sync provider (object-store

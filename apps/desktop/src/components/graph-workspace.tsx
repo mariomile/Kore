@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react'
 import type { GraphInfo } from '@reflect/core'
 import { PaletteProvider } from '@/components/command-palette/palette-provider'
+import { EnableLocalSyncDialog } from '@/components/enable-local-sync-dialog'
 import { NoteWindowContent } from '@/components/note-window-content'
 import { WorkspaceContent } from '@/components/workspace-content'
 import { getInitialWindowRoute } from '@/lib/windows/initial-window-route'
@@ -40,6 +41,7 @@ export function GraphWorkspace({ graph }: GraphWorkspaceProps): ReactElement {
   return (
     <RouterProvider key={graph.root} {...(initialRoute !== null ? { initialRoute } : {})}>
       <SyncProvider graph={graph}>
+        {isMainWindow() ? <EnableLocalSyncDialog /> : null}
         <PaletteProvider>
           <ShortcutsProvider>
             <VaultReplaceProvider>

@@ -17,6 +17,7 @@ import {
 import { followHealedMove } from '@/editor/move-note'
 import { resetNoteRowOverlays } from '@/hooks/note-row-overlay'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
+import { isICloudRoot } from '@/lib/icloud-controller'
 import { setIndexProgress } from '@/lib/index-progress'
 import {
   dropIcloudStatusQuery,
@@ -65,6 +66,7 @@ export function GraphProvider({
   const [indexGeneration, setIndexGeneration] = useState<number | null>(null)
   const [indexReady, setIndexReady] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [pendingLocalSyncOffer, setPendingLocalSyncOffer] = useState(false)
   // Monotonic open token: only the most recent open may commit `graph`/`status`,
   // so overlapping opens (double-click, StrictMode remount) can't finish out of
   // order and leave us on a graph the user didn't pick last.
@@ -336,9 +338,16 @@ export function GraphProvider({
       return
     }
     if (selected) {
-      await openRecent(selected)
+      const opened = await openRecent(selected)
+      if (opened && !isICloudRoot(selected)) {
+        setPendingLocalSyncOffer(true)
+      }
     }
   }, [openRecent, recents])
+
+  const dismissLocalSyncOffer = useCallback((): void => {
+    setPendingLocalSyncOffer(false)
+  }, [])
 
   const closeActiveGraph = useCallback(async (): Promise<void> => {
     ++openSeq.current
@@ -349,6 +358,7 @@ export function GraphProvider({
     setIndexReady(false)
     setIndexing(false)
     setError(null)
+    setPendingLocalSyncOffer(false)
     setStatus('choosing')
   }, [])
 
@@ -436,6 +446,8 @@ export function GraphProvider({
       indexReady,
       indexing,
       error,
+      pendingLocalSyncOffer,
+      dismissLocalSyncOffer,
       pickAndOpen,
       chooseGraph,
       createAt,
@@ -458,6 +470,8 @@ export function GraphProvider({
       indexReady,
       indexing,
       error,
+      pendingLocalSyncOffer,
+      dismissLocalSyncOffer,
       pickAndOpen,
       chooseGraph,
       createAt,

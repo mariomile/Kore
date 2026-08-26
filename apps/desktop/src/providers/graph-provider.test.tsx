@@ -353,6 +353,85 @@ describe('GraphProvider welcome seeding', () => {
   })
 })
 
+describe('GraphProvider local-folder sync offer', () => {
+  it('offers sync after picking a local Markdown folder', async () => {
+    vi.mocked(open).mockResolvedValue('/notes')
+    const { result, act } = await renderHook(() => useGraph(), { wrapper })
+    await vi.waitFor(() => expect(result.current.status).toBe('choosing'))
+
+    await act(async () => {
+      const picking = result.current.pickAndOpen()
+      await vi.waitFor(() => expect(pendingOpens.has('/notes')).toBe(true))
+      resolveOpen('/notes')
+      await picking
+    })
+
+    expect(result.current.status).toBe('ready')
+    expect(result.current.pendingLocalSyncOffer).toBe(true)
+  })
+
+  it('does not offer sync after picking a folder already in iCloud Drive', async () => {
+    const icloudRoot = '/Users/alex/Library/Mobile Documents/iCloud~app~lore/Documents/Notes'
+    vi.mocked(open).mockResolvedValue(icloudRoot)
+    const { result, act } = await renderHook(() => useGraph(), { wrapper })
+    await vi.waitFor(() => expect(result.current.status).toBe('choosing'))
+
+    await act(async () => {
+      const picking = result.current.pickAndOpen()
+      await vi.waitFor(() => expect(pendingOpens.has(icloudRoot)).toBe(true))
+      resolveOpen(icloudRoot)
+      await picking
+    })
+
+    expect(result.current.status).toBe('ready')
+    expect(result.current.pendingLocalSyncOffer).toBe(false)
+  })
+
+  it('does not offer sync when reopening a recent graph', async () => {
+    storedRecents = [{ root: '/known', name: 'known', openedMs: 1 }]
+    const { result, act } = await renderHook(() => useGraph(), { wrapper })
+
+    await act(async () => {
+      await vi.waitFor(() => expect(pendingOpens.has('/known')).toBe(true))
+      resolveOpen('/known')
+    })
+    await vi.waitFor(() => expect(result.current.status).toBe('ready'))
+    expect(result.current.pendingLocalSyncOffer).toBe(false)
+  })
+
+  it('clears the offer when returning to the chooser', async () => {
+    vi.mocked(open).mockResolvedValue('/notes')
+    const { result, act } = await renderHook(() => useGraph(), { wrapper })
+    await vi.waitFor(() => expect(result.current.status).toBe('choosing'))
+
+    await act(async () => {
+      const picking = result.current.pickAndOpen()
+      await vi.waitFor(() => expect(pendingOpens.has('/notes')).toBe(true))
+      resolveOpen('/notes')
+      await picking
+    })
+    expect(result.current.pendingLocalSyncOffer).toBe(true)
+
+    await act(async () => {
+      await result.current.chooseGraph()
+    })
+    expect(result.current.pendingLocalSyncOffer).toBe(false)
+  })
+
+  it('does not offer sync when the picker is cancelled', async () => {
+    vi.mocked(open).mockResolvedValue(null)
+    const { result, act } = await renderHook(() => useGraph(), { wrapper })
+    await vi.waitFor(() => expect(result.current.status).toBe('choosing'))
+
+    await act(async () => {
+      await result.current.pickAndOpen()
+    })
+
+    expect(result.current.status).toBe('choosing')
+    expect(result.current.pendingLocalSyncOffer).toBe(false)
+  })
+})
+
 describe('GraphProvider mobile onboarding (Plans 19/21)', () => {
   it('defers opening the fixed roots and shows onboarding on a fresh install', async () => {
     const { result } = await renderHook(() => useGraph(), { wrapper: mobileWrapper })

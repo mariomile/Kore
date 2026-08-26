@@ -32,7 +32,7 @@ const { CalloutHighlighter } = await import('./callout-highlighter')
 
 beforeEach(() => {
   editor.view.dom = document.createElement('div')
-  editor.view.dom.innerHTML = '<blockquote>&gt; [!NOTE] Local</blockquote>'
+  editor.view.dom.innerHTML = '<blockquote>[!NOTE] Local</blockquote>'
   vi.stubGlobal('MutationObserver', TestMutationObserver)
 })
 

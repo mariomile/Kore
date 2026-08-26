@@ -369,6 +369,7 @@ export function subscribeIndexChanges(
     }
     for (const change of changes) {
       if (isNotePath(change.path) || isAssetPath(change.path)) {
+        pendingChanges.delete(change.path)
         pendingChanges.set(change.path, change)
       }
     }

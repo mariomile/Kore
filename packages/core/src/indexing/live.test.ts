@@ -219,6 +219,7 @@ describe('subscribeIndexChanges', () => {
     await vi.waitFor(() => expect(reads).toContain('notes/slow.md'))
 
     emitChanges([{ path: 'notes/latest.md', kind: 'upsert', modifiedMs: 100 }])
+    emitChanges([{ path: 'notes/middle.md', kind: 'upsert', modifiedMs: 200 }])
     emitChanges([{ path: 'notes/latest.md', kind: 'remove' }])
     emitChanges([{ path: 'notes/latest.md', kind: 'upsert', modifiedMs: 300 }])
     releaseFirstRead()
@@ -229,6 +230,7 @@ describe('subscribeIndexChanges', () => {
       )
     })
     expect(reads.filter((path) => path === 'notes/latest.md')).toHaveLength(1)
+    expect(reads.slice(-2)).toEqual(['notes/middle.md', 'notes/latest.md'])
     expect(removes).not.toContain('notes/latest.md')
   })
 

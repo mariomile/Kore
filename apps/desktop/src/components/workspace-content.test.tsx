@@ -111,7 +111,8 @@ describe('WorkspaceContent', () => {
     expect(view.getByRole('complementary', { name: 'Workspace' }).query()).toBeNull()
     await expect.element(view.getByRole('complementary', { name: 'Context' })).toBeInTheDocument()
 
-    // …and vice versa; both hidden gives the bare sheet.
+    // …and vice versa; both hidden still leaves the sunken gutter around
+    // the note pane so the sheet does not go edge-to-edge.
     workspaceState.collapsed = false
     workspaceState.contextCollapsed = true
     await view.rerender(<WorkspaceContent graph={GRAPH} />)
@@ -138,6 +139,18 @@ describe('WorkspaceContent', () => {
     workspaceState.contextCollapsed = true
     await view.rerender(<WorkspaceContent graph={GRAPH} />)
     expect(view.getByRole('complementary', { name: 'Context' }).query()).toBeNull()
+  })
+
+  it('keeps the sunken gutter around the note pane when both rails collapse', async () => {
+    workspaceState.collapsed = true
+    workspaceState.contextCollapsed = true
+    const view = await render(<WorkspaceContent graph={GRAPH} />)
+
+    const gutter = view.getByTestId('note-pane-gutter').element()
+    const style = getComputedStyle(gutter)
+    expect(style.paddingLeft).toBe('8px')
+    expect(style.paddingRight).toBe('8px')
+    expect(style.paddingBottom).toBe('8px')
   })
 
   it('reserves the traffic-light band only while the lights occupy the top', async () => {

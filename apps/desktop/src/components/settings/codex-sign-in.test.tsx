@@ -73,4 +73,13 @@ describe('CodexSignIn', () => {
     await expect.element(view.getByText(/Couldn’t check the Codex CLI/)).toBeVisible()
     await view.unmount()
   })
+
+  it('shows why the CLI failed to run', async () => {
+    codexLoginStatus.mockRejectedValue(
+      new Error('The CLI needs Node.js on your PATH. Install Node and retry.'),
+    )
+    const view = await renderSignIn()
+    await expect.element(view.getByText(/The CLI needs Node.js on your PATH/)).toBeVisible()
+    await view.unmount()
+  })
 })

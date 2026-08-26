@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { setBridge } from '../ipc/bridge'
-import { runAgentCliCommand } from './agent-cli'
+import { agentCliFailureMessage, isAgentCliRuntimeFailure, runAgentCliCommand } from './agent-cli'
 import { codexLoginStatus, runCodexLogin } from './codex-cli'
 
 afterEach(() => {
@@ -96,6 +96,20 @@ describe('codexLoginStatus', () => {
       detail: 'Logged in using ChatGPT',
     })
   })
+
+  it('treats a missing Node interpreter as a CLI failure, not signed-out', async () => {
+    const fake = installFakeCli()
+    const pending = codexLoginStatus()
+    await Promise.resolve()
+    const requestId = requestIdOf(fake)
+    fake.emit?.({
+      kind: 'failed',
+      requestId,
+      message: 'env: node: No such file or directory',
+    })
+    fake.emit?.({ kind: 'done', requestId, code: 127 })
+    await expect(pending).rejects.toThrow('The CLI needs Node.js on your PATH')
+  })
 })
 
 describe('runCodexLogin', () => {
@@ -135,5 +149,65 @@ describe('runCodexLogin', () => {
     fake.emit?.({ kind: 'line', requestId, line: 'login failed: port busy' })
     fake.emit?.({ kind: 'done', requestId, code: 1 })
     await expect(pending).resolves.toEqual({ success: false, message: 'login failed: port busy' })
+  })
+
+  it('rewrites a missing Node interpreter into an actionable message', async () => {
+    const fake = installFakeCli()
+    const pending = runCodexLogin({ onAuthUrl: () => {} })
+    await Promise.resolve()
+    const requestId = requestIdOf(fake)
+    fake.emit?.({
+      kind: 'failed',
+      requestId,
+      message: 'env: node: No such file or directory',
+    })
+    fake.emit?.({ kind: 'done', requestId, code: 127 })
+    await expect(pending).resolves.toEqual({
+      success: false,
+      message: 'The CLI needs Node.js on your PATH. Install Node and retry.',
+    })
+  })
+})
+
+describe('agent CLI runtime failures', () => {
+  it('detects POSIX 127 and env-interpreter stderr', () => {
+    expect(
+      isAgentCliRuntimeFailure({
+        code: 1,
+        lines: ['Not logged in'],
+        failure: null,
+      }),
+    ).toBe(false)
+    expect(
+      isAgentCliRuntimeFailure({
+        code: 127,
+        lines: [],
+        failure: 'env: node: No such file or directory',
+      }),
+    ).toBe(true)
+    expect(
+      isAgentCliRuntimeFailure({
+        code: 1,
+        lines: ['env: node: No such file or directory'],
+        failure: null,
+      }),
+    ).toBe(true)
+  })
+
+  it('humanizes a missing Node interpreter', () => {
+    expect(
+      agentCliFailureMessage({
+        code: 127,
+        lines: [],
+        failure: 'env: node: No such file or directory',
+      }),
+    ).toBe('The CLI needs Node.js on your PATH. Install Node and retry.')
+    expect(
+      agentCliFailureMessage({
+        code: 1,
+        lines: ['login failed: port busy'],
+        failure: null,
+      }),
+    ).toBe('login failed: port busy')
   })
 })

@@ -186,8 +186,10 @@ export {
   type ResolvedMcpServer,
 } from '../ai/mcp'
 export {
+  agentCliFailureMessage,
   agentCliPrompt,
   checkAgentCli,
+  isAgentCliRuntimeFailure,
   type AgentCliBinary,
   type AgentCliChunk,
 } from '../ai/agent-cli'

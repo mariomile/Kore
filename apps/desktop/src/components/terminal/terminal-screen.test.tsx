@@ -58,11 +58,15 @@ vi.mock('@reflect/core', () => ({
 }))
 
 vi.mock('@xterm/xterm', () => ({
-  Terminal: vi.fn(() => terminal),
+  Terminal: vi.fn(function TerminalMock() {
+    return terminal
+  }),
 }))
 
 vi.mock('@xterm/addon-fit', () => ({
-  FitAddon: vi.fn(() => fit),
+  FitAddon: vi.fn(function FitAddonMock() {
+    return fit
+  }),
 }))
 
 vi.mock('@/lib/platform-surface', () => ({

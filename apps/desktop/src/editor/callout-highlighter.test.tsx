@@ -5,10 +5,28 @@ import { CalloutHighlighter } from './callout-highlighter'
 
 const observe = vi.fn()
 const disconnect = vi.fn()
+const NativeMutationObserver = globalThis.MutationObserver
 
-class TestMutationObserver {
-  observe = observe
-  disconnect = disconnect
+class TestMutationObserver implements MutationObserver {
+  private readonly observer: MutationObserver
+
+  constructor(callback: MutationCallback) {
+    this.observer = new NativeMutationObserver(callback)
+  }
+
+  observe(target: Node, options?: MutationObserverInit): void {
+    observe(target, options)
+    this.observer.observe(target, options)
+  }
+
+  disconnect(): void {
+    disconnect()
+    this.observer.disconnect()
+  }
+
+  takeRecords(): MutationRecord[] {
+    return this.observer.takeRecords()
+  }
 }
 
 afterEach(() => {

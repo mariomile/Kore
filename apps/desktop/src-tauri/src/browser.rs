@@ -14,23 +14,47 @@
 //! clamped to http(s) — any other scheme is dropped rather than followed.
 //!
 //! The AI chat drives the same webview: `browser_embed_load` opens a page
-//! even with no pane mounted (created off-screen and hidden — opening the
-//! Browser tab later reveals whatever the agent loaded), and
+//! even with no pane mounted (created off-screen and hidden), and
 //! `browser_embed_read` waits for the document and extracts its visible text
-//! for the model.
+//! for the model. Background-only pages close after that read; a page hosted
+//! in a visible Browser pane remains available to both user and agent.
 
 use std::sync::Mutex;
 use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 use tauri::webview::WebviewBuilder;
-use tauri::{AppHandle, Emitter, LogicalPosition, LogicalSize, Manager, Webview, WebviewUrl};
+use tauri::{
+    AppHandle, Emitter, LogicalPosition, LogicalSize, Manager, State, Webview, WebviewUrl,
+};
 
 use crate::error::{AppError, AppResult};
 use crate::windows::parse_browser_url;
 
 /// The child webview's label. Must stay out of every capability grant.
 const EMBED_LABEL: &str = "embedded-browser";
+
+#[derive(Default)]
+pub struct BrowserState {
+    is_hosted: Mutex<bool>,
+}
+
+fn set_hosted(state: &BrowserState, is_hosted: bool) -> AppResult<()> {
+    let mut hosted = state
+        .is_hosted
+        .lock()
+        .map_err(|_| AppError::unknown("browser state lock poisoned"))?;
+    *hosted = is_hosted;
+    Ok(())
+}
+
+fn is_hosted(state: &BrowserState) -> AppResult<bool> {
+    state
+        .is_hosted
+        .lock()
+        .map(|hosted| *hosted)
+        .map_err(|_| AppError::unknown("browser state lock poisoned"))
+}
 
 /// Emitted to the main webview whenever the page navigates (link clicks,
 /// redirects, the frontend's own `browser_embed_navigate`).
@@ -60,6 +84,7 @@ fn place(webview: &Webview, x: f64, y: f64, width: f64, height: f64) -> AppResul
 pub async fn browser_embed_show(
     window: tauri::WebviewWindow,
     app: AppHandle,
+    state: State<'_, BrowserState>,
     url: Option<String>,
     x: f64,
     y: f64,
@@ -79,6 +104,7 @@ pub async fn browser_embed_show(
         existing
             .show()
             .map_err(|err| AppError::io(format!("failed to show the embedded browser: {err}")))?;
+        set_hosted(&state, true)?;
         return Ok(());
     }
 
@@ -87,6 +113,7 @@ pub async fn browser_embed_show(
         None => return Err(AppError::parse("the embedded browser needs a first URL")),
     };
     create_embed(&window, &app, parsed, x, y, width, height)?;
+    set_hosted(&state, true)?;
     Ok(())
 }
 
@@ -145,12 +172,13 @@ pub fn browser_embed_bounds(
 
 /// Close the embedded browser when its last host unmounts. Idempotent.
 #[tauri::command]
-pub fn browser_embed_close(app: AppHandle) -> AppResult<()> {
+pub fn browser_embed_close(app: AppHandle, state: State<'_, BrowserState>) -> AppResult<()> {
     if let Some(webview) = embed(&app) {
         webview
             .close()
             .map_err(|err| AppError::io(format!("failed to close the embedded browser: {err}")))?;
     }
+    set_hosted(&state, false)?;
     Ok(())
 }
 
@@ -287,24 +315,17 @@ fn urls_match(current: &str, expected: &str) -> bool {
     current.trim_end_matches('/') == expected.trim_end_matches('/')
 }
 
-/// Extract the current page's visible text for the AI tools, waiting
-/// (bounded) for the document to finish loading. `expect_url` tightens the
-/// wait after a `browser_embed_load`: until the grace window lapses, a
-/// `complete` answer for a *different* URL is treated as the previous page
-/// still on screen rather than the requested one.
-#[tauri::command]
-pub async fn browser_embed_read(
-    app: AppHandle,
+async fn read_page(
+    webview: &Webview,
     expect_url: Option<String>,
     max_chars: Option<u32>,
 ) -> AppResult<BrowserPageRead> {
-    let webview = embed(&app).ok_or_else(|| AppError::not_found("no embedded browser is open"))?;
     let mut last: Option<PageProbe> = None;
     for attempt in 0..READ_MAX_ATTEMPTS {
         if attempt > 0 {
             tokio::time::sleep(Duration::from_millis(READ_POLL_MS)).await;
         }
-        let Ok(probe) = probe_page(&webview).await else {
+        let Ok(probe) = probe_page(webview).await else {
             // A page mid-navigation can swallow a probe; the next poll asks
             // the new document.
             continue;
@@ -330,4 +351,28 @@ pub async fn browser_embed_read(
         text: capped,
         truncated,
     })
+}
+
+/// Extract the current page's visible text for the AI tools, waiting
+/// (bounded) for the document to finish loading. `expect_url` tightens the
+/// wait after a `browser_embed_load`: until the grace window lapses, a
+/// `complete` answer for a *different* URL is treated as the previous page
+/// still on screen rather than the requested one. A page created off-screen
+/// for an AI tool is closed after the read; a page in a visible Browser host
+/// stays open.
+#[tauri::command]
+pub async fn browser_embed_read(
+    app: AppHandle,
+    state: State<'_, BrowserState>,
+    expect_url: Option<String>,
+    max_chars: Option<u32>,
+) -> AppResult<BrowserPageRead> {
+    let webview = embed(&app).ok_or_else(|| AppError::not_found("no embedded browser is open"))?;
+    let result = read_page(&webview, expect_url, max_chars).await;
+    if !is_hosted(&state)? {
+        webview.close().map_err(|err| {
+            AppError::io(format!("failed to close the background browser: {err}"))
+        })?;
+    }
+    result
 }

@@ -5,6 +5,9 @@
 
 use crate::error::{AppError, AppResult};
 
+#[derive(Default)]
+pub struct BrowserState;
+
 fn desktop_only<T>() -> AppResult<T> {
     Err(AppError::unknown("the embedded browser is desktop-only"))
 }

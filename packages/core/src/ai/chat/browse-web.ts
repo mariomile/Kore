@@ -10,10 +10,11 @@ import { errorMessage } from '../../errors'
  * only knows how to open and extract one page.
  *
  * Browsing is local: the shell's webview fetches the page directly, nothing
- * proxies through Reflect infrastructure. What the agent opens is what the
- * user sees — the pane shares one webview session with these tools — so
- * agent browsing is always inspectable. Page text is untrusted input; the
- * system prompt tells the model to treat it as data, never instructions.
+ * proxies through Reflect infrastructure. A visible Browser pane shares its
+ * webview session with these tools, so the user can watch an active browse.
+ * Without a visible pane, the shell releases the background page after
+ * extracting it. Page text is untrusted input; the system prompt tells the
+ * model to treat it as data, never instructions.
  */
 
 /** Cap on returned page text so one page can't flood the context. */

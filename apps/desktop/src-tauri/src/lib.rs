@@ -294,6 +294,7 @@ pub fn run() {
         .manage(embed::EmbedState::default())
         .manage(agent_cli::AgentCliState::default())
         .manage(agent_cli::AgentCliStdinState::default())
+        .manage(browser::BrowserState::default())
         .manage(pty::PtyState::default())
         .invoke_handler(tauri::generate_handler![
             app_version,

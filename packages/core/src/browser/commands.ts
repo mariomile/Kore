@@ -78,8 +78,8 @@ export type BrowserPageRead = z.infer<typeof browserPageReadSchema>
 /**
  * Load a page in the embedded browser without touching its placement — the
  * AI tools' open. With no webview yet the shell creates one off-screen and
- * hidden, so an agent can browse before the user ever opens the pane;
- * opening the Browser tab later reveals the loaded page.
+ * hidden, so an agent can browse before the user ever opens the pane. The
+ * shell releases a background-only page after its subsequent read.
  */
 export async function browserEmbedLoad(url: string): Promise<void> {
   await call('browser_embed_load', { url }, voidSchema)

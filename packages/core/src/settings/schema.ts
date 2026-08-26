@@ -268,6 +268,22 @@ export const taskRemindersSchema = z.boolean().catch(false)
  */
 export const quickCaptureEnabledSchema = z.boolean().catch(true)
 
+/**
+ * Search engine used when the in-app browser's address bar is free text
+ * rather than a URL. DuckDuckGo is the default (no tracking, no account).
+ */
+export const browserSearchEngineSchema = z
+  .enum(['duckduckgo', 'google', 'bing'])
+  .catch('duckduckgo')
+
+export type BrowserSearchEngine = z.infer<typeof browserSearchEngineSchema>
+
+/**
+ * Whether web links in notes open in the in-app browser. Off sends them to
+ * the OS default browser. Alt-click always does the opposite of this choice.
+ */
+export const browserOpenLinksInAppSchema = z.boolean().catch(true)
+
 export const settingsSchema = z.looseObject({
   editorMarkdownSyntax: editorMarkdownSyntaxSchema,
   editorSpellCheck: editorSpellCheckSchema,
@@ -312,6 +328,8 @@ export const settingsSchema = z.looseObject({
   taskFilters: taskFiltersSchema,
   taskReminders: taskRemindersSchema,
   quickCaptureEnabled: quickCaptureEnabledSchema,
+  browserSearchEngine: browserSearchEngineSchema,
+  browserOpenLinksInApp: browserOpenLinksInAppSchema,
   calendarEnabled: calendarEnabledSchema,
   calendarIds: calendarIdsSchema,
   graphColors: graphColorsSchema,

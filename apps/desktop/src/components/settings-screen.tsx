@@ -13,6 +13,7 @@ import { AiProvidersSection } from './settings/ai-providers-section'
 import { AllNotesSection } from './settings/all-notes-section'
 import { AppearanceSection } from './settings/appearance-section'
 import { AudioMemosSection } from './settings/audio-memos-section'
+import { BrowserSection } from './settings/browser-section'
 import { DateTimeSection } from './settings/date-time-section'
 import { DestructiveSection } from './settings/destructive-section'
 import { EditorSection } from './settings/editor-section'
@@ -54,6 +55,7 @@ const SECTION_COMPONENTS: Record<SettingsSectionId, ComponentType> = {
   appearance: AppearanceSection,
   editor: EditorSection,
   'date-time': DateTimeSection,
+  browser: BrowserSection,
   templates: TemplatesSection,
   'all-notes': AllNotesSection,
   tasks: TasksSection,

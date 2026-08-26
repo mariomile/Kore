@@ -235,6 +235,7 @@ export function MobileTaskEditSheet({
               spellCheck={settings.editorSpellCheck}
               smoothCaretAnimation={settings.editorSmoothCaretAnimation}
               timeFormat={settings.timeFormat}
+              openLinksInApp={settings.browserOpenLinksInApp}
               // A one-line editor has nothing to reorder, so keep the gutter grip off.
               blockHandle={false}
               onWikiLinkClick={openWikiLink}

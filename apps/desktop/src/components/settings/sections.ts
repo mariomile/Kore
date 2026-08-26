@@ -12,6 +12,7 @@ export const SETTINGS_GROUPS = [
       { id: 'appearance', title: 'Appearance' },
       { id: 'editor', title: 'Editor' },
       { id: 'date-time', title: 'Date & time' },
+      { id: 'browser', title: 'Browser' },
     ],
   },
   {

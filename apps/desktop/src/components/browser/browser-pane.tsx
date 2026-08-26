@@ -10,6 +10,7 @@ import {
   errorMessage,
   subscribeBrowserNavigated,
   type BrowserEmbedRect,
+  type BrowserSearchEngine,
 } from '@reflect/core'
 import { ArrowLeft, ArrowRight, ExternalLink, Refresh } from '@/components/icons'
 import {
@@ -20,9 +21,19 @@ import {
 import { openUrlSync } from '@/lib/open-url'
 import { isNativeShell } from '@/lib/platform'
 import { cn } from '@/lib/utils'
+import { useSettings } from '@/providers/settings-provider'
+
+const SEARCH_URLS = {
+  duckduckgo: 'https://duckduckgo.com/?q=',
+  google: 'https://www.google.com/search?q=',
+  bing: 'https://www.bing.com/search?q=',
+} as const satisfies Record<BrowserSearchEngine, string>
 
 /** Turn address-bar text into a navigable web URL (or a search for it). */
-export function normalizeAddress(raw: string): string | null {
+export function normalizeAddress(
+  raw: string,
+  engine: BrowserSearchEngine = 'duckduckgo',
+): string | null {
   const trimmed = raw.trim()
   if (trimmed === '') {
     return null
@@ -38,7 +49,7 @@ export function normalizeAddress(raw: string): string | null {
   if (!/\s/.test(trimmed) && trimmed.includes('.')) {
     return `https://${trimmed}`
   }
-  return `https://duckduckgo.com/?q=${encodeURIComponent(trimmed)}`
+  return `${SEARCH_URLS[engine]}${encodeURIComponent(trimmed)}`
 }
 
 /**
@@ -65,6 +76,7 @@ interface BrowserPaneProps {
  * honest notice instead of a dead pane.
  */
 export function BrowserPane({ className }: BrowserPaneProps): ReactElement {
+  const { settings } = useSettings()
   const hostRef = useRef<HTMLDivElement>(null)
   const [address, setAddress] = useState(browserSessionUrl())
   const [error, setError] = useState<string | null>(
@@ -144,7 +156,7 @@ export function BrowserPane({ className }: BrowserPaneProps): ReactElement {
   }, [])
 
   const navigate = (): void => {
-    const url = normalizeAddress(address)
+    const url = normalizeAddress(address, settings.browserSearchEngine)
     if (url === null) {
       return
     }

@@ -1,3 +1,4 @@
+import { useSyncExternalStore } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render } from 'vitest-browser-react'
 import { page, userEvent } from 'vitest/browser'
@@ -27,12 +28,33 @@ const graph = vi.hoisted(() => ({
   openRecent: vi.fn<(root: string) => Promise<boolean>>(async () => true),
 }))
 
-const sync = vi.hoisted(() => ({
-  backup: { phase: 'disconnected' } as BackupState,
-  disconnectGraph: vi.fn(async () => {}),
-  connectNewRepo: vi.fn(),
-  connectExistingRepo: vi.fn(),
-}))
+const sync = vi.hoisted(() => {
+  const listeners = new Set<() => void>()
+  let version = 0
+  const state = {
+    backup: { phase: 'disconnected' } as BackupState,
+    disconnectGraph: vi.fn(async () => {}),
+    connectNewRepo: vi.fn(),
+    connectExistingRepo: vi.fn(),
+    setBackup(next: BackupState) {
+      state.backup = next
+      version += 1
+      for (const listener of listeners) {
+        listener()
+      }
+    },
+    subscribe(listener: () => void) {
+      listeners.add(listener)
+      return () => {
+        listeners.delete(listener)
+      }
+    },
+    getVersion(): number {
+      return version
+    },
+  }
+  return state
+})
 
 vi.mock('@reflect/core', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@reflect/core')>()),
@@ -48,7 +70,12 @@ vi.mock('@/providers/graph-provider', () => ({
     openRecent: graph.openRecent,
   }),
 }))
-vi.mock('@/providers/sync-provider', () => ({ useSync: () => sync }))
+vi.mock('@/providers/sync-provider', () => ({
+  useSync: () => {
+    useSyncExternalStore(sync.subscribe, sync.getVersion)
+    return sync
+  },
+}))
 
 async function renderDialog(): Promise<void> {
   await render(
@@ -74,7 +101,7 @@ beforeEach(() => {
     documentsRoot: '/Users/alex/Library/Mobile Documents/iCloud~app/Documents',
     existingGraphRoots: [],
   }
-  sync.backup = { phase: 'disconnected' }
+  sync.setBackup({ phase: 'disconnected' })
   sync.disconnectGraph.mockReset().mockResolvedValue()
 })
 
@@ -132,6 +159,17 @@ describe('EnableLocalSyncDialog', () => {
     expect(graph.dismissLocalSyncOffer).not.toHaveBeenCalled()
   })
 
+  it('keeps the GitHub wizard mounted while backup is connecting', async () => {
+    await renderDialog()
+    await userEvent.click(page.getByRole('button', { name: 'Connect GitHub…' }))
+    await expect.element(page.getByRole('heading', { name: 'Connect GitHub' })).toBeVisible()
+
+    sync.setBackup({ phase: 'loading' })
+
+    await expect.element(page.getByRole('heading', { name: 'Connect GitHub' })).toBeVisible()
+    expect(graph.dismissLocalSyncOffer).not.toHaveBeenCalled()
+  })
+
   it('does not render when the offer is not pending', async () => {
     graph.pendingLocalSyncOffer = false
     await renderDialog()
@@ -153,12 +191,12 @@ describe('EnableLocalSyncDialog', () => {
   })
 
   it('dismisses itself when GitHub sync is already connected', async () => {
-    sync.backup = {
+    sync.setBackup({
       phase: 'connected',
       remoteUrl: 'https://github.com/alex/notes.git',
       repo: { owner: 'alex', name: 'notes' },
       status: { state: 'idle' },
-    }
+    })
     await renderDialog()
     await vi.waitFor(() => expect(graph.dismissLocalSyncOffer).toHaveBeenCalled())
     await expect

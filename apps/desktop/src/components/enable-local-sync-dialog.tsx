@@ -49,10 +49,10 @@ export function EnableLocalSyncDialog(): ReactElement | null {
   if (!pendingLocalSyncOffer || graph === null || isICloudRoot(graph.root)) {
     return null
   }
-  if (backup.phase === 'loading' || backup.phase === 'connected') {
-    return null
-  }
 
+  // The GitHub wizard starts the backup controller (`loading`) before it
+  // finishes connecting — keep it mounted through that, or the sheet vanishes
+  // mid-flow. Auto-dismiss on `connected` still ends the offer after success.
   if (githubOpen) {
     return (
       <ConnectGithubDialog
@@ -60,6 +60,10 @@ export function EnableLocalSyncDialog(): ReactElement | null {
         onClose={() => setGithubOpen(false)}
       />
     )
+  }
+
+  if (backup.phase === 'loading' || backup.phase === 'connected') {
+    return null
   }
 
   const icloudPending = bridgeReady && icloud === undefined

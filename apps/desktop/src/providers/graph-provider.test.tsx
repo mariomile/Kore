@@ -418,6 +418,29 @@ describe('GraphProvider local-folder sync offer', () => {
     expect(result.current.pendingLocalSyncOffer).toBe(false)
   })
 
+  it('clears the offer when switching to a different graph', async () => {
+    vi.mocked(open).mockResolvedValue('/notes')
+    const { result, act } = await renderHook(() => useGraph(), { wrapper })
+    await vi.waitFor(() => expect(result.current.status).toBe('choosing'))
+
+    await act(async () => {
+      const picking = result.current.pickAndOpen()
+      await vi.waitFor(() => expect(pendingOpens.has('/notes')).toBe(true))
+      resolveOpen('/notes')
+      await picking
+    })
+    expect(result.current.pendingLocalSyncOffer).toBe(true)
+
+    await act(async () => {
+      const switching = result.current.openRecent('/other')
+      await vi.waitFor(() => expect(pendingOpens.has('/other')).toBe(true))
+      resolveOpen('/other')
+      await switching
+    })
+    expect(result.current.graph?.root).toBe('/other')
+    expect(result.current.pendingLocalSyncOffer).toBe(false)
+  })
+
   it('does not offer sync when the picker is cancelled', async () => {
     vi.mocked(open).mockResolvedValue(null)
     const { result, act } = await renderHook(() => useGraph(), { wrapper })

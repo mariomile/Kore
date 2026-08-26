@@ -21,7 +21,6 @@ const getNote = vi.hoisted(() => vi.fn<() => Promise<NoteRow | undefined>>(async
 const getPinnedNotes = vi.hoisted(() => vi.fn<() => Promise<PinnedNote[]>>(async () => []))
 const isNativeShell = vi.hoisted(() => vi.fn(() => true))
 const isMobileSurface = vi.hoisted(() => vi.fn(() => false))
-const openBrowserWindow = vi.hoisted(() => vi.fn(async () => undefined))
 const toggleDevtools = vi.hoisted(() => vi.fn(async () => undefined))
 const showQuickCapture = vi.hoisted(() => vi.fn(async () => undefined))
 const openRouteInNewWindow = vi.hoisted(() => vi.fn<() => Promise<boolean>>())
@@ -59,7 +58,6 @@ vi.mock('@reflect/core', async (importOriginal) => ({
   getPinnedNotes,
   toggleDevtools,
   showQuickCapture,
-  openBrowserWindow,
 }))
 
 // Importing registers the commands (module side effect, like production).
@@ -423,18 +421,10 @@ describe('app commands', () => {
     expect(runCopyNotePath).toHaveBeenCalledWith(null, 'notes/a.md')
   })
 
-  it('browser.open raises DuckDuckGo in a native shell and no-ops in the browser', async () => {
-    openBrowserWindow.mockClear()
-    isNativeShell.mockReturnValue(true)
-    const { context } = fakeContext()
+  it('browser.open navigates to the browser tab', async () => {
+    const { context, navigated } = fakeContext()
     await command('browser.open').run(context)
-    expect(openBrowserWindow).toHaveBeenCalledExactlyOnceWith('https://duckduckgo.com')
-
-    openBrowserWindow.mockClear()
-    isNativeShell.mockReturnValue(false)
-    await command('browser.open').run(context)
-    expect(openBrowserWindow).not.toHaveBeenCalled()
-    isNativeShell.mockReturnValue(true)
+    expect(navigated).toEqual([{ kind: 'browser' }])
   })
 
   it('nav.terminal opens the terminal on desktop and no-ops on mobile', async () => {

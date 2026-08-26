@@ -61,6 +61,8 @@ function layerKey(route: Route): string {
       return 'all'
     case 'terminal':
       return 'terminal'
+    case 'browser':
+      return 'browser'
     default:
       return 'daily'
   }

@@ -358,6 +358,30 @@ describe('NoteEditor link opening', () => {
     expect(openUrl).not.toHaveBeenCalled()
   })
 
+  it('opens web links in the OS browser when the in-app setting is off', async () => {
+    await render(
+      <NoteEditor initialContent="see [Docs](https://example.com) here" openLinksInApp={false} />,
+    )
+
+    await pmRoot.getByRole('link').click()
+    await vi.waitFor(() => {
+      expect(openUrl).toHaveBeenCalledWith('https://example.com')
+    })
+    expect(openBrowserWindow).not.toHaveBeenCalled()
+  })
+
+  it('Alt-click uses the in-app browser when the setting prefers the OS', async () => {
+    await render(
+      <NoteEditor initialContent="see [Docs](https://example.com) here" openLinksInApp={false} />,
+    )
+
+    await pmRoot.getByRole('link').click({ modifiers: ['Alt'] })
+    await vi.waitFor(() => {
+      expect(openBrowserWindow).toHaveBeenCalledWith('https://example.com')
+    })
+    expect(openUrl).not.toHaveBeenCalled()
+  })
+
   it('opens a custom app scheme link via the URL opener', async () => {
     await render(
       <NoteEditor initialContent="[note](x-devonthink-item://40C88434-68B6-4DCB) here" />,

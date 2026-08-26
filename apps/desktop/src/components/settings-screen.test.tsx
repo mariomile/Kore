@@ -290,6 +290,8 @@ describe('SettingsScreen', () => {
           glassIntensity: 'regular',
           taskReminders: false,
           quickCaptureEnabled: true,
+          browserSearchEngine: 'duckduckgo',
+          browserOpenLinksInApp: true,
           timeFormat: '12h',
           dateFormat: 'mdy',
           weekStartDay: 'monday',
@@ -376,6 +378,8 @@ describe('SettingsScreen', () => {
           glassIntensity: 'regular',
           taskReminders: false,
           quickCaptureEnabled: true,
+          browserSearchEngine: 'duckduckgo',
+          browserOpenLinksInApp: true,
           timeFormat: '12h',
           dateFormat: 'mdy',
           weekStartDay: 'monday',
@@ -476,6 +480,8 @@ describe('SettingsScreen', () => {
           glassIntensity: 'regular',
           taskReminders: false,
           quickCaptureEnabled: true,
+          browserSearchEngine: 'duckduckgo',
+          browserOpenLinksInApp: true,
           timeFormat: '12h',
           dateFormat: 'mdy',
           weekStartDay: 'monday',
@@ -583,6 +589,8 @@ describe('SettingsScreen', () => {
           glassIntensity: 'regular',
           taskReminders: false,
           quickCaptureEnabled: true,
+          browserSearchEngine: 'duckduckgo',
+          browserOpenLinksInApp: true,
           timeFormat: '12h',
           dateFormat: 'mdy',
           weekStartDay: 'monday',
@@ -669,6 +677,8 @@ describe('SettingsScreen', () => {
           glassIntensity: 'regular',
           taskReminders: false,
           quickCaptureEnabled: true,
+          browserSearchEngine: 'duckduckgo',
+          browserOpenLinksInApp: true,
           timeFormat: '12h',
           dateFormat: 'mdy',
           weekStartDay: 'monday',
@@ -748,6 +758,8 @@ describe('SettingsScreen', () => {
           glassIntensity: 'regular',
           taskReminders: false,
           quickCaptureEnabled: true,
+          browserSearchEngine: 'duckduckgo',
+          browserOpenLinksInApp: true,
           timeFormat: '12h',
           dateFormat: 'mdy',
           weekStartDay: 'monday',
@@ -836,6 +848,8 @@ describe('SettingsScreen', () => {
           glassIntensity: 'regular',
           taskReminders: false,
           quickCaptureEnabled: true,
+          browserSearchEngine: 'duckduckgo',
+          browserOpenLinksInApp: true,
           timeFormat: '12h',
           dateFormat: 'dmy',
           weekStartDay: 'monday',
@@ -921,6 +935,8 @@ describe('SettingsScreen', () => {
           glassIntensity: 'regular',
           taskReminders: false,
           quickCaptureEnabled: true,
+          browserSearchEngine: 'duckduckgo',
+          browserOpenLinksInApp: true,
           timeFormat: '12h',
           dateFormat: 'iso',
           weekStartDay: 'monday',
@@ -1012,6 +1028,8 @@ describe('SettingsScreen', () => {
           glassIntensity: 'regular',
           taskReminders: false,
           quickCaptureEnabled: true,
+          browserSearchEngine: 'duckduckgo',
+          browserOpenLinksInApp: true,
           timeFormat: '12h',
           dateFormat: 'mdy',
           weekStartDay: 'sunday',
@@ -1109,6 +1127,8 @@ describe('SettingsScreen', () => {
           glassIntensity: 'regular',
           taskReminders: false,
           quickCaptureEnabled: true,
+          browserSearchEngine: 'duckduckgo',
+          browserOpenLinksInApp: true,
           timeFormat: '24h',
           dateFormat: 'mdy',
           weekStartDay: 'monday',
@@ -1145,6 +1165,41 @@ describe('SettingsScreen', () => {
         },
       ]),
     )
+  })
+
+  it('reflects the persisted browser search engine', async () => {
+    stored = { browserSearchEngine: 'google' }
+    await renderScreen()
+    await expect.element(radio(/^google/i)).toBeChecked()
+    await expect.element(radio(/^duckduckgo/i)).not.toBeChecked()
+  })
+
+  it('selecting Google persists the browser search engine', async () => {
+    await renderScreen()
+    await expect.element(radio(/^duckduckgo/i)).toBeChecked()
+
+    await pickRadio(/^google/i)
+
+    await expect.element(radio(/^google/i)).toBeChecked()
+    await vi.waitFor(() => expect(saved.at(-1)).toMatchObject({ browserSearchEngine: 'google' }))
+  })
+
+  it('reflects a persisted opt-out of in-app browser links', async () => {
+    stored = { browserOpenLinksInApp: false }
+    await renderScreen()
+    const toggle = page.getByRole('switch', { name: /open links in the in-app browser/i })
+    await expect.element(toggle).toHaveAttribute('aria-checked', 'false')
+  })
+
+  it('toggling in-app browser links off persists the preference', async () => {
+    await renderScreen()
+    const toggle = page.getByRole('switch', { name: /open links in the in-app browser/i })
+    await expect.element(toggle).toHaveAttribute('aria-checked', 'true')
+
+    await toggle.click()
+
+    await expect.element(toggle).toHaveAttribute('aria-checked', 'false')
+    await vi.waitFor(() => expect(saved.at(-1)).toMatchObject({ browserOpenLinksInApp: false }))
   })
 
   it('adds an All Notes filter tag, normalized, and persists it', async () => {
@@ -1188,6 +1243,8 @@ describe('SettingsScreen', () => {
           glassIntensity: 'regular',
           taskReminders: false,
           quickCaptureEnabled: true,
+          browserSearchEngine: 'duckduckgo',
+          browserOpenLinksInApp: true,
           timeFormat: '12h',
           dateFormat: 'mdy',
           weekStartDay: 'monday',
@@ -1296,6 +1353,8 @@ describe('SettingsScreen', () => {
           glassIntensity: 'regular',
           taskReminders: false,
           quickCaptureEnabled: true,
+          browserSearchEngine: 'duckduckgo',
+          browserOpenLinksInApp: true,
           timeFormat: '12h',
           dateFormat: 'mdy',
           weekStartDay: 'monday',
@@ -1373,6 +1432,8 @@ describe('SettingsScreen', () => {
           glassIntensity: 'regular',
           taskReminders: false,
           quickCaptureEnabled: true,
+          browserSearchEngine: 'duckduckgo',
+          browserOpenLinksInApp: true,
           timeFormat: '12h',
           dateFormat: 'mdy',
           weekStartDay: 'monday',
@@ -1472,6 +1533,8 @@ describe('SettingsScreen', () => {
           glassIntensity: 'regular',
           taskReminders: false,
           quickCaptureEnabled: true,
+          browserSearchEngine: 'duckduckgo',
+          browserOpenLinksInApp: true,
           timeFormat: '12h',
           dateFormat: 'mdy',
           weekStartDay: 'monday',
@@ -1561,6 +1624,8 @@ describe('SettingsScreen', () => {
           glassIntensity: 'regular',
           taskReminders: false,
           quickCaptureEnabled: true,
+          browserSearchEngine: 'duckduckgo',
+          browserOpenLinksInApp: true,
           timeFormat: '12h',
           dateFormat: 'mdy',
           weekStartDay: 'monday',
@@ -1644,6 +1709,8 @@ describe('SettingsScreen', () => {
           glassIntensity: 'regular',
           taskReminders: false,
           quickCaptureEnabled: true,
+          browserSearchEngine: 'duckduckgo',
+          browserOpenLinksInApp: true,
           timeFormat: '12h',
           dateFormat: 'mdy',
           weekStartDay: 'monday',
@@ -1812,6 +1879,8 @@ describe('SettingsScreen', () => {
           glassIntensity: 'regular',
           taskReminders: false,
           quickCaptureEnabled: true,
+          browserSearchEngine: 'duckduckgo',
+          browserOpenLinksInApp: true,
           timeFormat: '12h',
           dateFormat: 'mdy',
           weekStartDay: 'monday',
@@ -1907,6 +1976,8 @@ describe('SettingsScreen', () => {
           glassIntensity: 'regular',
           taskReminders: false,
           quickCaptureEnabled: true,
+          browserSearchEngine: 'duckduckgo',
+          browserOpenLinksInApp: true,
           timeFormat: '12h',
           dateFormat: 'mdy',
           weekStartDay: 'monday',
@@ -1993,6 +2064,8 @@ describe('SettingsScreen', () => {
           glassIntensity: 'regular',
           taskReminders: false,
           quickCaptureEnabled: true,
+          browserSearchEngine: 'duckduckgo',
+          browserOpenLinksInApp: true,
           timeFormat: '12h',
           dateFormat: 'mdy',
           weekStartDay: 'monday',

@@ -409,6 +409,7 @@ pub fn run() {
             quit::quit_confirm,
             windows::open_note_window,
             windows::open_browser_window,
+            windows::close_browser_windows,
             pty::pty_open,
             pty::pty_write,
             pty::pty_resize,

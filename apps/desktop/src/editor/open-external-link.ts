@@ -4,6 +4,7 @@ import { errorMessage, openBrowserWindow } from '@reflect/core'
 import { isDeepLinkUrl } from '@/lib/deep-links/parse'
 import { useFollowDeepLink } from '@/lib/deep-links/use-follow-deep-link'
 import { openUrlSync } from '@/lib/open-url'
+import { useSettings } from '@/providers/settings-provider'
 
 /**
  * Schemes that must never reach the OS opener: script and data URIs carry
@@ -42,8 +43,9 @@ export function isWebUrl(href: string): boolean {
  * Markdown surfaces and the editor so a link never behaves differently by
  * where it was clicked. Web pages open the in-app browser window (with the
  * OS opener as the fallback when the shell can't build one); `osBrowser`
- * (the Alt-click escape hatch) and every non-web app scheme go to the OS
- * opener, which owns its handler. Unsafe schemes never open anything.
+ * (the Alt-click escape hatch, inverted when the setting prefers the OS
+ * browser) and every non-web app scheme go to the OS opener, which owns its
+ * handler. Unsafe schemes never open anything.
  */
 export function openExternalUrl(href: string, options?: { osBrowser?: boolean }): void {
   if (!isOpenableExternalUrl(href)) {
@@ -60,6 +62,16 @@ export function openExternalUrl(href: string, options?: { osBrowser?: boolean })
 }
 
 /**
+ * Whether a click with Alt held should go to the OS browser.
+ *
+ * When links open in-app, Alt is the OS-browser escape hatch. When they
+ * open in the OS browser, Alt inverts and uses the in-app window.
+ */
+export function preferOsBrowser(altKey: boolean, openLinksInApp: boolean): boolean {
+  return altKey === openLinksInApp
+}
+
+/**
  * Open a rendered Markdown link without letting the click navigate the app's
  * WebView frame. The static `MarkdownView` surfaces aren't contenteditable,
  * so an `<a href>` click would otherwise unload the whole app.
@@ -68,12 +80,14 @@ export function openExternalUrl(href: string, options?: { osBrowser?: boolean })
  * (the OS opener denies the scheme); a web page opens the in-app browser
  * window so reading a link never leaves the app — whatever the gesture, since
  * inside the editor mod-click IS the open gesture (a plain click just places
- * the caret) — with Alt held as the deliberate "OS browser" escape hatch,
- * and the OS opener as the fallback when the shell can't build the window;
- * every non-web app scheme goes to the OS opener, which owns its handler.
+ * the caret) — with Alt held as the deliberate invert of
+ * `browserOpenLinksInApp`, and the OS opener as the fallback when the shell
+ * can't build the window; every non-web app scheme goes to the OS opener,
+ * which owns its handler.
  */
 export function useOpenExternalLink(): LinkClickHandler {
   const followDeepLink = useFollowDeepLink()
+  const openLinksInApp = useSettings().settings.browserOpenLinksInApp
   return useCallback<LinkClickHandler>(
     ({ href, event, mod }) => {
       event.preventDefault()
@@ -81,8 +95,9 @@ export function useOpenExternalLink(): LinkClickHandler {
         followDeepLink({ href, openInNewWindow: mod })
         return
       }
-      openExternalUrl(href, { osBrowser: 'altKey' in event && event.altKey })
+      const altKey = 'altKey' in event && event.altKey
+      openExternalUrl(href, { osBrowser: preferOsBrowser(altKey, openLinksInApp) })
     },
-    [followDeepLink],
+    [followDeepLink, openLinksInApp],
   )
 }

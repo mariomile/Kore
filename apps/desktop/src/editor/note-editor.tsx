@@ -36,7 +36,11 @@ import {
   ImageLightbox,
   type LightboxImage,
 } from '@/editor/image-lightbox'
-import { isOpenableExternalUrl, openExternalUrl } from '@/editor/open-external-link'
+import {
+  isOpenableExternalUrl,
+  openExternalUrl,
+  preferOsBrowser,
+} from '@/editor/open-external-link'
 import { isTouchEditorSurface } from '@/lib/platform-surface'
 import { useLightboxTransition } from '@/editor/use-lightbox-transition'
 import { isDeepLinkUrl } from '@/lib/deep-links/parse'
@@ -120,6 +124,11 @@ interface NoteEditorProps {
    * `timeFormat` setting). Defaults to `12h`.
    */
   timeFormat?: TimeFormat
+  /**
+   * Whether web links open in the in-app browser (the `browserOpenLinksInApp`
+   * setting). Alt-click always does the opposite. Defaults to `true`.
+   */
+  openLinksInApp?: boolean
   /**
    * Whether Enter at the end of a heading starts a bullet on the next line
    * (the `editorBulletAfterHeading` setting). Off by default.
@@ -231,6 +240,7 @@ export function NoteEditor({
   spellCheck = true,
   smoothCaretAnimation = true,
   timeFormat = '12h',
+  openLinksInApp = true,
   bulletAfterHeading = false,
   blockHandle = false,
   resolveImageUrl,
@@ -273,6 +283,7 @@ export function NoteEditor({
   const saveFileRef = useRef(saveFile)
   const resolveFileInfoRef = useRef(resolveFileInfo)
   const onExitBoundaryRef = useRef(onExitBoundary)
+  const openLinksInAppRef = useRef(openLinksInApp)
   useLayoutEffect(() => {
     onChangeRef.current = onChange
     onWikiLinkClickRef.current = onWikiLinkClick
@@ -284,6 +295,7 @@ export function NoteEditor({
     saveFileRef.current = saveFile
     resolveFileInfoRef.current = resolveFileInfo
     onExitBoundaryRef.current = onExitBoundary
+    openLinksInAppRef.current = openLinksInApp
   })
 
   const {
@@ -371,8 +383,11 @@ export function NoteEditor({
         return
       }
       // Web links follow the app's one routing rule (the in-app browser,
-      // Alt for the OS one) — the same behavior as the static surfaces.
-      openExternalUrl(href, { osBrowser: 'altKey' in event && event.altKey })
+      // Alt inverts) — the same behavior as the static surfaces.
+      const altKey = 'altKey' in event && event.altKey
+      openExternalUrl(href, {
+        osBrowser: preferOsBrowser(altKey, openLinksInAppRef.current),
+      })
     },
     [followDeepLink],
   )

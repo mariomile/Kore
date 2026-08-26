@@ -14,9 +14,9 @@ interface NoteTabsPlusMenuProps {
 }
 
 /**
- * The tab-strip "+" : New note (⌘N) or the built-in browser. The palette is
- * still ⌘K; this control used to open it, which left no way to choose the
- * browser window the shell already knows how to raise.
+ * The tab-strip "+" : New note (⌘N) or the in-app browser tab. The palette
+ * is still ⌘K; this control used to open it, which left no way to choose
+ * the browser the strip already knows how to host.
  */
 export function NoteTabsPlusMenu({ context }: NoteTabsPlusMenuProps): ReactElement {
   return (

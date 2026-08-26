@@ -34,6 +34,8 @@ describe('settingsSchema', () => {
       glassIntensity: 'regular',
       taskReminders: false,
       quickCaptureEnabled: true,
+      browserSearchEngine: 'duckduckgo',
+      browserOpenLinksInApp: true,
       timeFormat: '12h',
       dateFormat: 'mdy',
       weekStartDay: 'monday',
@@ -79,6 +81,8 @@ describe('settingsSchema', () => {
     expect(DEFAULT_SETTINGS.contextSidebarWidth).toBe(320)
     expect(DEFAULT_SETTINGS.semanticSearchEnabled).toBe(false)
     expect(DEFAULT_SETTINGS.quickCaptureEnabled).toBe(true)
+    expect(DEFAULT_SETTINGS.browserSearchEngine).toBe('duckduckgo')
+    expect(DEFAULT_SETTINGS.browserOpenLinksInApp).toBe(true)
     expect(DEFAULT_SETTINGS.describeAssets).toBe(true)
     expect(DEFAULT_SETTINGS.transcriptionFormat).toBe(true)
     expect(DEFAULT_SETTINGS.contactsEnabled).toBe(false)
@@ -183,6 +187,15 @@ describe('settingsSchema', () => {
     expect(settingsSchema.parse({ semanticSearchEnabled: false }).semanticSearchEnabled).toBe(false)
     expect(settingsSchema.parse({ quickCaptureEnabled: true }).quickCaptureEnabled).toBe(true)
     expect(settingsSchema.parse({ quickCaptureEnabled: false }).quickCaptureEnabled).toBe(false)
+    expect(settingsSchema.parse({ browserSearchEngine: 'google' }).browserSearchEngine).toBe(
+      'google',
+    )
+    expect(settingsSchema.parse({ browserSearchEngine: 'bing' }).browserSearchEngine).toBe('bing')
+    expect(settingsSchema.parse({ browserSearchEngine: 'duckduckgo' }).browserSearchEngine).toBe(
+      'duckduckgo',
+    )
+    expect(settingsSchema.parse({ browserOpenLinksInApp: true }).browserOpenLinksInApp).toBe(true)
+    expect(settingsSchema.parse({ browserOpenLinksInApp: false }).browserOpenLinksInApp).toBe(false)
     expect(settingsSchema.parse({ describeAssets: true }).describeAssets).toBe(true)
     expect(settingsSchema.parse({ describeAssets: false }).describeAssets).toBe(false)
     expect(settingsSchema.parse({ transcriptionFormat: true }).transcriptionFormat).toBe(true)
@@ -283,6 +296,12 @@ describe('settingsSchema', () => {
     expect(settingsSchema.parse({ semanticSearchEnabled: 1 }).semanticSearchEnabled).toBe(false)
     expect(settingsSchema.parse({ quickCaptureEnabled: 'yes' }).quickCaptureEnabled).toBe(true)
     expect(settingsSchema.parse({ quickCaptureEnabled: 0 }).quickCaptureEnabled).toBe(true)
+    expect(settingsSchema.parse({ browserSearchEngine: 'yahoo' }).browserSearchEngine).toBe(
+      'duckduckgo',
+    )
+    expect(settingsSchema.parse({ browserSearchEngine: 1 }).browserSearchEngine).toBe('duckduckgo')
+    expect(settingsSchema.parse({ browserOpenLinksInApp: 'yes' }).browserOpenLinksInApp).toBe(true)
+    expect(settingsSchema.parse({ browserOpenLinksInApp: 0 }).browserOpenLinksInApp).toBe(true)
     // `.catch(true)` keeps the resilient-degrade pattern: an invalid value falls
     // back to the default rather than failing the whole settings load.
     expect(settingsSchema.parse({ describeAssets: 'yes' }).describeAssets).toBe(true)
@@ -345,6 +364,8 @@ describe('settingsSchema', () => {
       glassIntensity: 'regular',
       taskReminders: false,
       quickCaptureEnabled: true,
+      browserSearchEngine: 'duckduckgo',
+      browserOpenLinksInApp: true,
       timeFormat: '12h',
       dateFormat: 'mdy',
       weekStartDay: 'monday',
@@ -562,6 +583,25 @@ describe('settingsSchema', () => {
         settingsSchema.parse({ chatModelSelection: { configId: '', modelId: 'gpt-5.5' } })
           .chatModelSelection,
       ).toBeNull()
+    })
+  })
+
+  it('migrates legacy note tabs and accepts surface tabs', () => {
+    const parsed = settingsSchema.parse({
+      openNoteTabs: {
+        '/g': [
+          { path: 'notes/alpha.md', pinned: true },
+          { kind: 'note', path: 'notes/beta.md', pinned: false },
+          { kind: 'surface', surface: 'settings', pinned: false },
+        ],
+      },
+    })
+    expect(parsed.openNoteTabs).toEqual({
+      '/g': [
+        { kind: 'note', path: 'notes/alpha.md', pinned: true },
+        { kind: 'note', path: 'notes/beta.md', pinned: false },
+        { kind: 'surface', surface: 'settings', pinned: false },
+      ],
     })
   })
 })

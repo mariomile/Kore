@@ -10,6 +10,7 @@ import { SingleNoteView } from '@/components/single-note-view'
 import { SettingsNavigator } from '@/components/settings/settings-navigator'
 import { SettingsScreen } from '@/components/settings-screen'
 import { TasksScreen } from '@/components/tasks/tasks-screen'
+import { BrowserScreen } from '@/components/browser/browser-screen'
 import { TerminalScreen } from '@/components/terminal/terminal-screen'
 import { useRouter } from '@/routing/router'
 import { ScrollRestored } from '@/routing/scroll-restore'
@@ -60,6 +61,8 @@ export function RouteContent(): ReactElement {
       return <GraphMapScreen />
     case 'terminal':
       return <TerminalScreen />
+    case 'browser':
+      return <BrowserScreen />
     case 'agents':
       return (
         <ScrollRestored className="h-full overflow-auto px-6 py-8">

@@ -86,6 +86,12 @@ export function MobileScreen({
           The terminal is available on desktop.
         </div>
       )
+    case 'browser':
+      return (
+        <div className="flex h-full items-center justify-center px-6 text-sm text-text-muted">
+          The browser is available on desktop.
+        </div>
+      )
     default:
       return <MobileDaily key="daily" date={today} />
   }

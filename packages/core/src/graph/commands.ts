@@ -58,6 +58,15 @@ export async function openBrowserWindow(url: string): Promise<void> {
 }
 
 /**
+ * Close every in-app browser window. Used when the Browser tab itself
+ * closes, so the page does not outlive its tab. Idempotent when none are
+ * open; desktop-only — other surfaces no-op at the command boundary.
+ */
+export async function closeBrowserWindows(): Promise<void> {
+  await call('close_browser_windows', {}, voidSchema)
+}
+
+/**
  * Adopt the already-open graph for a secondary note window: a pure read of
  * the current graph + index sessions (never `graph_open`/`index_open`, whose
  * generation bumps would strand the main window's pinned commands) plus the

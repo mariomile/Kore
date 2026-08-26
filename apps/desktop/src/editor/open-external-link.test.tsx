@@ -4,10 +4,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { LinkClickHandler } from '@meowdown/core'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { dispatchDeepLink } from '@/lib/deep-links/intake'
-import { useOpenExternalLink } from '@/editor/open-external-link'
+import { useOpenExternalLink, preferOsBrowser } from '@/editor/open-external-link'
 
 const openDeepLinkInNewWindow = vi.hoisted(() => vi.fn<() => Promise<boolean>>())
 const openBrowserWindow = vi.hoisted(() => vi.fn<() => Promise<void>>())
+const settingsState = vi.hoisted(() => ({
+  browserOpenLinksInApp: true,
+}))
 
 vi.mock('@tauri-apps/plugin-opener', () => ({
   openUrl: vi.fn(async () => {}),
@@ -24,6 +27,12 @@ vi.mock('@/lib/windows/open-in-new-window', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/windows/open-in-new-window')>()),
   openDeepLinkInNewWindow,
 }))
+vi.mock('@/providers/settings-provider', () => ({
+  useSettings: () => ({
+    settings: settingsState,
+    updateSettings: () => {},
+  }),
+}))
 
 let openExternalLink: LinkClickHandler
 
@@ -35,6 +44,7 @@ function click(href: string, metaKey = false, altKey = false): MouseEvent {
 
 beforeEach(async () => {
   vi.clearAllMocks()
+  settingsState.browserOpenLinksInApp = true
   openDeepLinkInNewWindow.mockResolvedValue(true)
   openBrowserWindow.mockResolvedValue(undefined)
   const { result } = await renderHook(() => useOpenExternalLink())
@@ -42,6 +52,18 @@ beforeEach(async () => {
 })
 
 afterEach(cleanup)
+
+describe('preferOsBrowser', () => {
+  it('uses Alt as the OS-browser hatch when links open in-app', () => {
+    expect(preferOsBrowser(false, true)).toBe(false)
+    expect(preferOsBrowser(true, true)).toBe(true)
+  })
+
+  it('inverts Alt when links open in the OS browser', () => {
+    expect(preferOsBrowser(false, false)).toBe(true)
+    expect(preferOsBrowser(true, false)).toBe(false)
+  })
+})
 
 describe('openExternalLink', () => {
   it('opens an http(s) link in the in-app browser window and blocks the frame navigation', async () => {
@@ -64,6 +86,26 @@ describe('openExternalLink', () => {
 
     expect(openUrl).toHaveBeenCalledWith('https://example.com')
     expect(openBrowserWindow).not.toHaveBeenCalled()
+  })
+
+  it('opens web links in the OS browser when the in-app setting is off', async () => {
+    settingsState.browserOpenLinksInApp = false
+    const { result } = await renderHook(() => useOpenExternalLink())
+    openExternalLink = result.current
+    click('https://example.com')
+
+    expect(openUrl).toHaveBeenCalledWith('https://example.com')
+    expect(openBrowserWindow).not.toHaveBeenCalled()
+  })
+
+  it('Alt-click uses the in-app browser when the setting prefers the OS', async () => {
+    settingsState.browserOpenLinksInApp = false
+    const { result } = await renderHook(() => useOpenExternalLink())
+    openExternalLink = result.current
+    click('https://example.com', false, true)
+
+    expect(openBrowserWindow).toHaveBeenCalledWith('https://example.com')
+    expect(openUrl).not.toHaveBeenCalled()
   })
 
   it('falls back to the OS browser when the in-app window cannot open', async () => {

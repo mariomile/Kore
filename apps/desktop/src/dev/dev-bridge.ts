@@ -161,6 +161,10 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
         window.open(url, '_blank', 'noopener,noreferrer')
         return null
       }
+      case 'close_browser_windows':
+        // Popup tabs from `open_browser_window` are `noopener` — the harness
+        // cannot close them. The real shell closes its `browser-*` windows.
+        return null
       case 'capture_shared_inbox_relay':
         // No share-extension App Group inbox in a browser; nothing to relay.
         return 0

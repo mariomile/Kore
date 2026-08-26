@@ -307,6 +307,13 @@ describe('RouteContent', () => {
     await view.unmount()
   })
 
+  it('renders the browser empty state for the browser route', async () => {
+    const view = await renderRoute({ kind: 'browser' })
+    await expect.element(page.getByTestId('browser-screen')).toBeInTheDocument()
+    await expect.element(page.getByRole('heading', { name: 'Browser' })).toBeVisible()
+    await view.unmount()
+  })
+
   it('renders the chat screen for the chat route, not the stream', async () => {
     const view = await renderRoute({ kind: 'chat' })
     await expect.element(page.getByTestId('chat-screen')).toBeInTheDocument()

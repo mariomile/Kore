@@ -1,11 +1,29 @@
-import type { MouseEvent, ReactElement } from 'react'
-import { Close, PanelLeft, PanelRight, Pencil, Pin } from '@/components/icons'
+import { noteFileStem, type OpenTab, type WorkspaceSurface } from '@reflect/core'
+import { useMemo, type MouseEvent, type ReactElement } from 'react'
+import {
+  Chart,
+  Chat,
+  Checklist,
+  Close,
+  Globe,
+  Graph,
+  Note,
+  PanelLeft,
+  PanelRight,
+  Pencil,
+  Pin,
+  Settings,
+  Terminal,
+  User,
+  type Icon,
+} from '@/components/icons'
 import { NoteTabsPlusMenu } from '@/components/note-tabs-plus-menu'
 import { NavigateArrows } from '@/components/sidebar/navigate-arrows'
-import { useOpenTabNotes, type OpenTabNote } from '@/hooks/use-open-tab-notes'
+import { useOpenTabNotes } from '@/hooks/use-open-tab-notes'
 import type { CommandContext } from '@/lib/commands/types'
 import { hasMacosTitleBarOverlay } from '@/lib/window-chrome'
 import { cn } from '@/lib/utils'
+import { SURFACE_TAB_LABEL, tabKey } from '@/providers/open-tab'
 import { useOpenTabs } from '@/providers/open-tabs-provider'
 import { useSidebar } from '@/providers/sidebar-provider'
 
@@ -20,24 +38,52 @@ interface NoteTabsStripProps {
   commandContext?: CommandContext
 }
 
+const SURFACE_ICON: Record<WorkspaceSurface, Icon> = {
+  settings: Settings,
+  browser: Globe,
+  tasks: Checklist,
+  chat: Chat,
+  terminal: Terminal,
+  allNotes: Note,
+  insights: Chart,
+  graphMap: Graph,
+  agents: User,
+}
+
+interface StripItem {
+  tab: OpenTab
+  title: string
+}
+
 /**
  * The content column's tab bar: history arrows on the left, then the open
- * notes as rounded pills, then a "+" that creates a note or opens the
- * built-in browser. Daily notes is the fixed, unclosable first pill; pinned
- * tabs collapse to an icon right after it (double-click pins); the rest close
- * on hover or middle-click. It spans only the column beside the full-height
- * sidebar — the note-pane card below provides the separation, so the bar
- * itself is borderless — and doubles as the window drag region, so it never
- * blinks away.
+ * notes and workspace screens as rounded pills, then a "+" that creates a
+ * note or opens the built-in browser. Daily notes is the fixed, unclosable
+ * first pill; pinned tabs collapse to an icon right after it (double-click
+ * pins); the rest close on hover or middle-click. It spans only the column
+ * beside the full-height sidebar — the note-pane card below provides the
+ * separation, so the bar itself is borderless — and doubles as the window
+ * drag region, so it never blinks away.
  */
 export function NoteTabsStrip({
   atWindowEdge = false,
   commandContext,
 }: NoteTabsStripProps): ReactElement {
-  const { activePath, isDailyActive, activateTab, activateDaily, closeTab, togglePin } =
+  const { tabs, activeTab, isDailyActive, activateTab, activateDaily, closeTab, togglePin } =
     useOpenTabs()
   const notes = useOpenTabNotes()
   const { collapsed, toggleSidebar, contextCollapsed, toggleContextSidebar } = useSidebar()
+  const items = useMemo((): StripItem[] => {
+    const titles = new Map(notes.map((note) => [note.path, note.title]))
+    return tabs.map((tab) => ({
+      tab,
+      title:
+        tab.kind === 'note'
+          ? (titles.get(tab.path) ?? noteFileStem(tab.path))
+          : SURFACE_TAB_LABEL[tab.surface],
+    }))
+  }, [tabs, notes])
+  const activeKey = activeTab === null ? null : tabKey(activeTab)
 
   return (
     <div
@@ -62,7 +108,7 @@ export function NoteTabsStrip({
 
       <div
         role="tablist"
-        aria-label="Open notes"
+        aria-label="Open tabs"
         className="window-drag-control ml-1 flex min-w-0 flex-1 items-center gap-1 overflow-x-auto"
       >
         <button
@@ -76,11 +122,11 @@ export function NoteTabsStrip({
           <span className="truncate">Daily notes</span>
         </button>
 
-        {notes.map((note) => (
-          <NoteTab
-            key={note.path}
-            note={note}
-            active={note.path === activePath}
+        {items.map((item) => (
+          <StripTab
+            key={tabKey(item.tab)}
+            item={item}
+            active={tabKey(item.tab) === activeKey}
             onActivate={activateTab}
             onClose={closeTab}
             onTogglePin={togglePin}
@@ -147,34 +193,36 @@ function pillClass(active: boolean): string {
   )
 }
 
-interface NoteTabProps {
-  note: OpenTabNote
+interface StripTabProps {
+  item: StripItem
   active: boolean
-  onActivate: (path: string) => void
-  onClose: (path: string) => void
-  onTogglePin: (path: string) => void
+  onActivate: (tab: OpenTab) => void
+  onClose: (tab: OpenTab) => void
+  onTogglePin: (tab: OpenTab) => void
 }
 
-function NoteTab({ note, active, onActivate, onClose, onTogglePin }: NoteTabProps): ReactElement {
+function StripTab({ item, active, onActivate, onClose, onTogglePin }: StripTabProps): ReactElement {
+  const { tab, title } = item
   const handleAuxClick = (event: MouseEvent): void => {
     if (event.button === 1) {
       event.preventDefault()
-      onClose(note.path)
+      onClose(tab)
     }
   }
-  if (note.pinned) {
+  const PinnedIcon = tab.kind === 'surface' ? SURFACE_ICON[tab.surface] : Pin
+  if (tab.pinned) {
     return (
       <button
         type="button"
         role="tab"
         aria-selected={active}
-        aria-label={note.title}
-        title={note.title}
+        aria-label={title}
+        title={title}
         onClick={() => {
-          onActivate(note.path)
+          onActivate(tab)
         }}
         onDoubleClick={() => {
-          onTogglePin(note.path)
+          onTogglePin(tab)
         }}
         onAuxClick={handleAuxClick}
         className={cn(
@@ -182,7 +230,7 @@ function NoteTab({ note, active, onActivate, onClose, onTogglePin }: NoteTabProp
           'shrink-0 px-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
         )}
       >
-        <Pin aria-hidden className="size-3 shrink-0" />
+        <PinnedIcon aria-hidden className="size-3 shrink-0" />
       </button>
     )
   }
@@ -196,21 +244,21 @@ function NoteTab({ note, active, onActivate, onClose, onTogglePin }: NoteTabProp
       <button
         type="button"
         onClick={() => {
-          onActivate(note.path)
+          onActivate(tab)
         }}
         onDoubleClick={() => {
-          onTogglePin(note.path)
+          onTogglePin(tab)
         }}
         className="min-w-0 flex-1 truncate rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
       >
-        {note.title}
+        {title}
       </button>
       <button
         type="button"
-        aria-label={`Close ${note.title}`}
+        aria-label={`Close ${title}`}
         onClick={(event) => {
           event.stopPropagation()
-          onClose(note.path)
+          onClose(tab)
         }}
         className={cn(
           'flex size-4 shrink-0 items-center justify-center rounded text-text-muted transition-[color,background-color,opacity] duration-150 ease-swift hover:bg-surface-active hover:text-text',

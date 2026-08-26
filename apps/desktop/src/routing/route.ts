@@ -29,6 +29,9 @@ export type Route =
   | { kind: 'graphs' }
   // Desktop-only in-app terminal (local PTY + xterm). Mobile shows an error.
   | { kind: 'terminal' }
+  // Desktop in-app browser tab. Web pages still load in an isolated native
+  // window; this route is the strip tab and its empty/new-tab page.
+  | { kind: 'browser' }
 
 /** A route that addresses one concrete note, including a dated daily note. */
 export type NoteRoute = Extract<Route, { kind: 'daily' | 'note' }>
@@ -48,6 +51,7 @@ export function routesEqual(a: Route, b: Route): boolean {
     case 'settings':
     case 'graphs':
     case 'terminal':
+    case 'browser':
       return true
     case 'daily':
       return a.date === (b as Extract<Route, { kind: 'daily' }>).date

@@ -127,8 +127,26 @@ function Probe(): ReactElement {
       <button type="button" data-testid="close-active" onClick={closeActiveTab}>
         close
       </button>
-      <button type="button" data-testid="open-tasks" onClick={() => navigate({ kind: 'tasks' })}>
-        tasks
+      <button
+        type="button"
+        data-testid="open-search"
+        onClick={() => navigate({ kind: 'search', query: 'x' })}
+      >
+        search
+      </button>
+      <button
+        type="button"
+        data-testid="open-settings"
+        onClick={() => navigate({ kind: 'settings' })}
+      >
+        settings
+      </button>
+      <button
+        type="button"
+        data-testid="open-browser"
+        onClick={() => navigate({ kind: 'browser' })}
+      >
+        browser
       </button>
     </div>
   )
@@ -235,13 +253,13 @@ describe('note tabs', () => {
     await view.unmount()
   })
 
-  it('enters the ring at Daily from a non-note screen', async () => {
+  it('enters the ring at Daily from a non-tab screen', async () => {
     const view = await renderTabs()
     await view.getByTestId('open-alpha').click()
-    await view.getByTestId('open-tasks').click()
-    await vi.waitFor(() => expect(routeOf(view).kind).toBe('tasks'))
+    await view.getByTestId('open-search').click()
+    await vi.waitFor(() => expect(routeOf(view).kind).toBe('search'))
 
-    // Tasks has no active tab; Next must land on Daily, not on the first tab.
+    // Search has no strip tab; Next must land on Daily, not on the first tab.
     await view.getByTestId('next-tab').click()
     await vi.waitFor(() => expect(routeOf(view).kind).toBe('today'))
     await view.unmount()
@@ -292,6 +310,26 @@ describe('note tabs', () => {
     await view.getByRole('button', { name: 'Close Alpha Plan' }).first().click()
     await vi.waitFor(() => expect(view.getByRole('tab', { name: /Alpha Plan/ }).query()).toBeNull())
     expect(routeOf(view).path).toBe('notes/beta.md')
+    await view.unmount()
+  })
+
+  it('opening settings or browser adds a tab; closing it leaves the page', async () => {
+    const view = await renderTabs()
+    await view.getByTestId('open-settings').click()
+    await vi.waitFor(() => expect(routeOf(view).kind).toBe('settings'))
+    await expect.element(view.getByRole('tab', { name: /Settings/ })).toBeVisible()
+
+    await view.getByRole('button', { name: 'Close Settings' }).first().click()
+    await vi.waitFor(() => expect(routeOf(view).kind).toBe('today'))
+    expect(view.getByRole('tab', { name: /Settings/ }).query()).toBeNull()
+
+    await view.getByTestId('open-browser').click()
+    await vi.waitFor(() => expect(routeOf(view).kind).toBe('browser'))
+    await expect.element(view.getByRole('tab', { name: /Browser/ })).toBeVisible()
+
+    await view.getByRole('button', { name: 'Close Browser' }).first().click()
+    await vi.waitFor(() => expect(routeOf(view).kind).toBe('today'))
+    expect(view.getByRole('tab', { name: /Browser/ }).query()).toBeNull()
     await view.unmount()
   })
 })

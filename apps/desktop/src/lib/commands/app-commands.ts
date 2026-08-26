@@ -6,7 +6,6 @@ import {
   randomNotePath,
   toggleDevtools,
   untitledNotePath,
-  openBrowserWindow,
 } from '@reflect/core'
 import { attachFilesToNote } from '@/lib/attach-files'
 import { runCopyNotePath } from '@/lib/note-copy-path'
@@ -104,12 +103,7 @@ const APP_COMMANDS: AppCommand[] = [
     id: 'browser.open',
     title: 'Open browser',
     keywords: ['web', 'duckduckgo', 'browse', 'window'],
-    run: () => {
-      if (!isNativeShell()) {
-        return
-      }
-      void openBrowserWindow('https://duckduckgo.com')
-    },
+    run: (context) => context.navigate({ kind: 'browser' }),
   },
   {
     id: 'capture.quick',

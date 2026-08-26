@@ -9,6 +9,7 @@ import { AiProvidersSection } from './settings/ai-providers-section'
 import { AllNotesSection } from './settings/all-notes-section'
 import { AppearanceSection } from './settings/appearance-section'
 import { AudioMemosSection } from './settings/audio-memos-section'
+import { BrowserSection } from './settings/browser-section'
 import { DateTimeSection } from './settings/date-time-section'
 import { DestructiveSection } from './settings/destructive-section'
 import { EditorSection } from './settings/editor-section'
@@ -55,6 +56,7 @@ export function SettingsScreen(): ReactElement {
           <AppearanceSection />
           <EditorSection />
           <DateTimeSection />
+          <BrowserSection />
         </SettingsGroupBlock>
         <SettingsGroupBlock id="notes">
           <TemplatesSection />

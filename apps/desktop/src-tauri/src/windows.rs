@@ -556,6 +556,19 @@ pub async fn open_browser_window(
     Ok(())
 }
 
+/// Close every in-app browser window. The Browser tab owns these pages, so
+/// closing the tab must take them with it — otherwise the webview outlives
+/// the strip. Best-effort and fire-and-forget: there is no flush to wait on.
+#[tauri::command]
+pub async fn close_browser_windows(app: tauri::AppHandle) -> AppResult<()> {
+    for (label, window) in app.webview_windows() {
+        if label.starts_with(BROWSER_WINDOW_PREFIX) {
+            let _ = window.close();
+        }
+    }
+    Ok(())
+}
+
 /// Close every note window and wait (bounded) for them to be gone.
 ///
 /// The graph provider calls this **before** any generation bump (graph

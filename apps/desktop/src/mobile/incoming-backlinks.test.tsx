@@ -26,6 +26,12 @@ vi.mock('@reflect/core', async (importOriginal) => ({
 vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({ graph: { root: '/g', name: 'g', generation: 1 } }),
 }))
+vi.mock('@/providers/settings-provider', () => ({
+  useSettings: () => ({
+    settings: { browserOpenLinksInApp: true },
+    updateSettings: () => {},
+  }),
+}))
 
 function RouteProbe(): ReactNode {
   const { route, arrivalFocusEditor } = useRouter()

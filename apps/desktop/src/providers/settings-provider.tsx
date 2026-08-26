@@ -294,17 +294,9 @@ export function SettingsProvider({ children }: SettingsProviderProps): ReactElem
   return <SettingsContext value={value}>{children}</SettingsContext>
 }
 
-/**
- * Settings when a provider is mounted; `null` in isolated trees (tests,
- * chrome-free surfaces) so callers can fall back to defaults.
- */
-export function useOptionalSettings(): SettingsContextValue | null {
-  return use(SettingsContext)
-}
-
 /** Access the current settings and the updater. Use within a SettingsProvider. */
 export function useSettings(): SettingsContextValue {
-  const context = useOptionalSettings()
+  const context = use(SettingsContext)
   if (!context) {
     throw new Error('useSettings must be used within a SettingsProvider')
   }

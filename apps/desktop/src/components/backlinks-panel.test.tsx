@@ -27,6 +27,12 @@ vi.mock('@reflect/core', async (importOriginal) => ({
 vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({ graph: { root: '/g', name: 'g', generation: 1 } }),
 }))
+vi.mock('@/providers/settings-provider', () => ({
+  useSettings: () => ({
+    settings: { browserOpenLinksInApp: true },
+    updateSettings: () => {},
+  }),
+}))
 vi.mock('@/lib/windows/open-in-new-window', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/windows/open-in-new-window')>()),
   openRouteInNewWindow,

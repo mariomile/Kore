@@ -20,6 +20,7 @@ use crate::fs::{current_root, GraphState};
 
 const DATA_EVENT: &str = "pty:data";
 const EXIT_EVENT: &str = "pty:exit";
+const OUTPUT_CHANNEL_CAPACITY: usize = 256;
 
 static NEXT_ID: AtomicU64 = AtomicU64::new(1);
 
@@ -135,12 +136,10 @@ pub fn pty_open(
         sessions.insert(id.clone(), Arc::clone(&session));
     }
 
-    // Bulk output (`cat bigfile`, a chatty build) would flood the IPC
-    // bridge if every 4 KB read became its own event: the reader funnels
-    // chunks through a channel and the emitter coalesces whatever arrives
-    // within a short window into one payload (bounded, so a firehose still
-    // flushes regularly).
-    let (chunk_sender, chunk_receiver) = mpsc::channel::<String>();
+    // Backpressure is intentional: a noisy child may otherwise outrun the
+    // webview and retain every unread chunk in process memory.
+    let (chunk_sender, chunk_receiver) =
+        mpsc::sync_channel::<String>(OUTPUT_CHANNEL_CAPACITY);
     thread::spawn(move || {
         let mut buffer = [0_u8; 4096];
         loop {

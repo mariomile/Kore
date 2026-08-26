@@ -24,10 +24,37 @@ interface LiveSession {
   id: string
   terminal: Terminal
   fit: FitAddon
+  subscriptions: Set<() => void>
+  isClosed: boolean
 }
 
 let live: LiveSession | null = null
 let opening: Promise<LiveSession> | null = null
+
+function disposeSessionSubscriptions(session: LiveSession): void {
+  if (session.isClosed) {
+    return
+  }
+  session.isClosed = true
+  for (const unsubscribe of session.subscriptions) {
+    unsubscribe()
+  }
+  session.subscriptions.clear()
+}
+
+function registerSubscription(session: LiveSession, pending: Promise<() => void>): void {
+  void pending
+    .then((unsubscribe) => {
+      if (session.isClosed) {
+        unsubscribe()
+        return
+      }
+      session.subscriptions.add(unsubscribe)
+    })
+    .catch((cause: unknown) => {
+      console.error('failed to subscribe to PTY events:', cause)
+    })
+}
 
 const GHOSTTY_THEME = {
   background: '#1d1f21',
@@ -73,26 +100,42 @@ async function ensureSession(): Promise<LiveSession> {
     const cols = 80
     const rows = 24
     const opened = await ptyOpen(cols, rows)
-    terminal.onData((data) => {
+    const session: LiveSession = {
+      id: opened.id,
+      terminal,
+      fit,
+      subscriptions: new Set(),
+      isClosed: false,
+    }
+    const inputSubscription = terminal.onData((data) => {
       void ptyWrite(opened.id, data)
     })
-    const session: LiveSession = { id: opened.id, terminal, fit }
+    session.subscriptions.add(() => {
+      inputSubscription.dispose()
+    })
     live = session
-    void subscribePtyData((event) => {
-      if (event.id === session.id) {
-        session.terminal.write(event.data)
-      }
-    })
-    void subscribePtyExit((event) => {
-      if (event.id !== session.id) {
-        return
-      }
-      const code = event.code === null ? '' : String(event.code)
-      session.terminal.writeln(`\r\n[process exited${code === '' ? '' : ` with ${code}`}]`)
-      if (live?.id === session.id) {
-        live = null
-      }
-    })
+    registerSubscription(
+      session,
+      subscribePtyData((event) => {
+        if (event.id === session.id) {
+          session.terminal.write(event.data)
+        }
+      }),
+    )
+    registerSubscription(
+      session,
+      subscribePtyExit((event) => {
+        if (event.id !== session.id) {
+          return
+        }
+        const code = event.code === null ? '' : String(event.code)
+        session.terminal.writeln(`\r\n[process exited${code === '' ? '' : ` with ${code}`}]`)
+        disposeSessionSubscriptions(session)
+        if (live?.id === session.id) {
+          live = null
+        }
+      }),
+    )
     return session
   })()
   try {
@@ -178,9 +221,11 @@ export function TerminalScreen(): ReactElement {
 /** Test seam: drop the cached PTY so a later mount starts clean. */
 export function resetTerminalSessionForTests(): void {
   if (live !== null) {
-    void ptyClose(live.id)
-    live.terminal.dispose()
+    const session = live
     live = null
+    disposeSessionSubscriptions(session)
+    void ptyClose(session.id)
+    session.terminal.dispose()
   }
   opening = null
 }

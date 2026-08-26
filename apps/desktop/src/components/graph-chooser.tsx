@@ -26,7 +26,8 @@ function isIcloudCapablePlatform(): boolean {
  * plainly: where do your notes live? iCloud is the recommended default —
  * every graph already in the container is listed to open, and a name field
  * creates a new one right there. Choosing a folder yourself is the
- * self-managed path.
+ * self-managed path — after it opens, a follow-up offers iCloud or GitHub
+ * sync so that same folder can reach other devices.
  *
  * The iCloud card uses "graph" only where the user is deciding between
  * existing containers and creating another one; the folder card talks about
@@ -58,8 +59,8 @@ export function GraphChooser(): ReactElement {
         {/* The self-managed path: any folder, synced however the user likes. */}
         <section className="flex flex-col gap-4 rounded-xl border border-border bg-surface p-5 shadow-sm">
           <CardHeader icon={<Folder aria-hidden className="size-4" />} title="A folder you choose">
-            Open an existing Markdown folder on this {icloudCapable ? 'Mac' : 'computer'}. Reflect
-            keeps its files where they are.
+            Open an existing Markdown folder on this {icloudCapable ? 'Mac' : 'computer'}. You can
+            enable iCloud or GitHub sync afterwards so the same notes appear on your other devices.
           </CardHeader>
           <Button
             type="button"

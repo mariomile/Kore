@@ -36,6 +36,14 @@ export interface GraphContextValue extends MobileGraphBoot {
   /** True while the background index reconcile is running (Plan 06b). */
   indexing: boolean
   error: string | null
+  /**
+   * True after the user picks a local (non-iCloud) folder from the OS picker.
+   * The workspace then offers iCloud or GitHub sync. Recents and iCloud
+   * creates never set this.
+   */
+  pendingLocalSyncOffer: boolean
+  /** Dismiss the post-open sync offer without enabling anything. */
+  dismissLocalSyncOffer: () => void
   /** Show the OS folder picker, then open (and bootstrap) the chosen graph. */
   pickAndOpen: () => Promise<void>
   /** Close the active graph and show the desktop graph chooser. */

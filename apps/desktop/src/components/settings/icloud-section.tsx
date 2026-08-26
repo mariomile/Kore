@@ -9,7 +9,6 @@ import {
   icloudStatus,
 } from '@reflect/core'
 import { ConflictedNoteLinks } from '@/components/settings/conflicted-note-links'
-import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { SettingsField } from '@/components/settings/field'
 import { Button } from '@/components/ui/button'
 import {
@@ -22,9 +21,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import { useBridgeReady } from '@/hooks/use-bridge-ready'
+import { adoptGraphToIcloud } from '@/lib/icloud-adopt'
 import { isICloudRoot } from '@/lib/icloud-controller'
-import { ICLOUD_STATUS_QUERY_KEY, INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { isMacosDesktop } from '@/lib/platform'
+import { ICLOUD_STATUS_QUERY_KEY, INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { useGraph } from '@/providers/graph-provider'
 import { useSync } from '@/providers/sync-provider'
 
@@ -127,32 +128,16 @@ export function IcloudSettingsField(): ReactElement | null {
     try {
       // Copy first: if it fails, nothing changed — the backup is still
       // connected and the graph untouched.
-      const newRoot = await icloudAdoptGraph(graph.generation)
-      if (backupConnected) {
-        try {
-          await disconnectGraph()
-        } catch (caught) {
-          // The iCloud copy has no .git, so exclusivity holds for the new
-          // graph regardless; the original folder keeping its backup is the
-          // recovery copy working as intended. Tell the user, don't block.
-          setError(
-            `The graph moved to iCloud, but GitHub sync could not be disconnected from the original folder: ${errorMessage(caught)}`,
-          )
-        }
-      }
+      const result = await adoptGraphToIcloud({
+        generation: graph.generation,
+        backupConnected,
+        adopt: icloudAdoptGraph,
+        disconnectGraph,
+        openRecent,
+      })
       setConfirmOpen(false)
-      const opened = await openRecent(newRoot)
-      if (!opened) {
-        // Append rather than replace: a disconnect failure above must stay
-        // visible alongside this one — both tell the user something distinct.
-        setError((previous) =>
-          [
-            previous,
-            'The copy landed in iCloud but could not be opened — open it from Saved graphs.',
-          ]
-            .filter(Boolean)
-            .join(' '),
-        )
+      if (result.warning !== null) {
+        setError(result.warning)
       }
     } catch (caught) {
       setError(errorMessage(caught))

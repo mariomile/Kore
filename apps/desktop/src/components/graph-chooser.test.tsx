@@ -96,7 +96,9 @@ describe('GraphChooser', () => {
     await expect.element(page.getByText(/Open an existing folder/)).toBeVisible()
     await expect.element(page.getByRole('heading', { name: 'A folder you choose' })).toBeVisible()
     await expect.element(page.getByRole('button', { name: /Choose a folder/ })).toBeVisible()
-    await expect.element(page.getByText(/Reflect keeps its files where they are/)).toBeVisible()
+    await expect
+      .element(page.getByText(/You can enable iCloud or GitHub sync afterwards/))
+      .toBeVisible()
   })
 
   it('creates an iCloud graph from the typed name', async () => {

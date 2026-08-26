@@ -145,8 +145,12 @@ async function ensureSession(): Promise<LiveSession> {
         inputSubscription.dispose()
       })
       live = session
-      pendingData.splice(0).forEach(handleData)
-      pendingExit.splice(0).forEach(handleExit)
+      for (const event of pendingData.splice(0)) {
+        handleData(event)
+      }
+      for (const event of pendingExit.splice(0)) {
+        handleExit(event)
+      }
       return session
     } catch (cause) {
       for (const unsubscribe of subscriptions) {

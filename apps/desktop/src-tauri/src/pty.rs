@@ -194,9 +194,11 @@ pub fn pty_open(
                 break;
             }
             if let Ok(acknowledged) = session.output_ack.lock() {
-                let _ = session
-                    .output_ready
-                    .wait_while(acknowledged, |latest| *latest < sequence);
+                drop(
+                    session
+                        .output_ready
+                        .wait_while(acknowledged, |latest| *latest < sequence),
+                );
             }
             sequence = sequence.wrapping_add(1);
         }

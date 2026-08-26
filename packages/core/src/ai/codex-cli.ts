@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import type { ChatStreamEvent } from './chat/stream-chat'
 import { call } from '../ipc/invoke'
+import { agentCliFailureMessage, isAgentCliRuntimeFailure } from './agent-cli-failure'
 import {
   agentCliPrompt,
   runAgentCliCommand,
@@ -75,8 +76,8 @@ export interface CodexAuthStatus {
 /** Whether the Codex CLI holds ChatGPT credentials (`codex login status`). */
 export async function codexLoginStatus(): Promise<CodexAuthStatus> {
   const result = await runAgentCliCommand({ binary: 'codex', args: ['login', 'status'] })
-  if (result.code === null) {
-    throw new Error(result.failure ?? 'could not run the Codex CLI')
+  if (result.code === null || isAgentCliRuntimeFailure(result)) {
+    throw new Error(agentCliFailureMessage(result) ?? 'could not run the Codex CLI')
   }
   return { loggedIn: result.code === 0, detail: result.lines.at(-1)?.trim() ?? '' }
 }
@@ -114,7 +115,7 @@ export async function runCodexLogin(options: {
   const success = result.code === 0
   return {
     success,
-    message: success ? null : (result.failure ?? result.lines.at(-1)?.trim() ?? null),
+    message: success ? null : agentCliFailureMessage(result),
   }
 }
 

@@ -88,10 +88,12 @@ export function CodexSignIn(): ReactElement {
     return <p className="text-xs text-text-muted">Checking Codex sign-in…</p>
   }
   if (status.isError) {
+    const detail = errorMessage(status.error)
     return (
       <p className="text-xs text-text-muted">
-        Couldn’t check the Codex CLI — make sure <code>codex</code> is installed, then reopen this
-        dialog.
+        Couldn’t check the Codex CLI
+        {detail === '' ? '' : ` (${detail})`} — make sure <code>codex</code> is installed, then
+        reopen this dialog.
       </p>
     )
   }

@@ -13,9 +13,10 @@
 //! permission config when an engine supplies one (Cursor reads its rules
 //! from `.cursor/cli.json` in the workspace, not from a flag).
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+use std::ffi::{OsStr, OsString};
 use std::io::{BufRead, BufReader, Read, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdin, Command, Stdio};
 use std::sync::Mutex;
 
@@ -126,26 +127,149 @@ enum CliEvent {
 /// Locate the binary. GUI apps on macOS launch with a minimal PATH, so the
 /// common install locations are probed explicitly after `$PATH`.
 fn resolve_binary(binary: AgentCliBinary) -> Option<PathBuf> {
-    let name = binary.file_name();
-    let candidates = std::env::var_os("PATH").map(|paths| {
-        std::env::split_paths(&paths)
-            .map(|dir| dir.join(name))
-            .collect::<Vec<_>>()
-    });
-    let mut probes = candidates.unwrap_or_default();
-    if let Some(home) = dirs_home() {
-        probes.push(home.join(".local/bin").join(name));
-        probes.push(home.join(".claude/local").join(name));
+    resolve_binary_in(
+        binary.file_name(),
+        std::env::var_os("PATH").as_deref(),
+        dirs_home().as_deref(),
+    )
+}
+
+fn resolve_binary_in(name: &str, path_env: Option<&OsStr>, home: Option<&Path>) -> Option<PathBuf> {
+    let mut probes = Vec::new();
+    if let Some(path_env) = path_env {
+        probes.extend(std::env::split_paths(path_env).map(|dir| dir.join(name)));
     }
-    probes.push(PathBuf::from("/usr/local/bin").join(name));
-    probes.push(PathBuf::from("/opt/homebrew/bin").join(name));
-    probes.into_iter().find(|path| path.is_file())
+    probes.extend(
+        extra_bin_dirs_in(home)
+            .into_iter()
+            .map(|dir| dir.join(name)),
+    );
+    unique_dirs(probes).into_iter().find(|path| path.is_file())
 }
 
 fn dirs_home() -> Option<PathBuf> {
     std::env::var_os("HOME")
         .or_else(|| std::env::var_os("USERPROFILE"))
         .map(PathBuf::from)
+}
+
+/// Directories GUI apps typically miss because launchd starts them with
+/// `/usr/bin:/bin:/usr/sbin:/sbin`. npm-installed CLIs (`codex`, `claude`)
+/// are `#!/usr/bin/env node` wrappers, so the child needs these on PATH
+/// even after we locate the wrapper by probing.
+fn extra_bin_dirs_in(home: Option<&Path>) -> Vec<PathBuf> {
+    let mut dirs = Vec::new();
+    if let Some(home) = home {
+        dirs.push(home.join(".local/bin"));
+        dirs.push(home.join(".claude/local"));
+        dirs.push(home.join(".volta/bin"));
+        dirs.push(home.join(".asdf/shims"));
+        dirs.push(home.join(".local/share/mise/shims"));
+        dirs.push(home.join(".bun/bin"));
+        dirs.push(home.join(".cargo/bin"));
+        dirs.push(home.join(".npm-global/bin"));
+        dirs.push(home.join("Library/pnpm"));
+        push_nvm_bins(home, &mut dirs);
+        push_fnm_bins(home, &mut dirs);
+        #[cfg(windows)]
+        {
+            dirs.push(home.join("AppData/Roaming/npm"));
+            dirs.push(home.join("AppData/Local/pnpm"));
+        }
+    }
+    #[cfg(unix)]
+    {
+        dirs.push(PathBuf::from("/usr/local/bin"));
+        dirs.push(PathBuf::from("/opt/homebrew/bin"));
+        dirs.push(PathBuf::from("/opt/homebrew/sbin"));
+    }
+    #[cfg(windows)]
+    {
+        dirs.push(PathBuf::from(r"C:\Program Files\nodejs"));
+    }
+    dirs
+}
+
+fn push_nvm_bins(home: &Path, dirs: &mut Vec<PathBuf>) {
+    let nvm_dir = home.join(".nvm");
+    let versions_root = nvm_dir.join("versions/node");
+    if let Ok(default) = std::fs::read_to_string(nvm_dir.join("alias/default")) {
+        let name = default.trim();
+        if !name.is_empty() {
+            for candidate in [
+                versions_root.join(name).join("bin"),
+                versions_root.join(format!("v{name}")).join("bin"),
+            ] {
+                if candidate.is_dir() {
+                    dirs.push(candidate);
+                    break;
+                }
+            }
+        }
+    }
+    let Ok(entries) = std::fs::read_dir(&versions_root) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let bin = entry.path().join("bin");
+        if bin.is_dir() {
+            dirs.push(bin);
+        }
+    }
+}
+
+fn push_fnm_bins(home: &Path, dirs: &mut Vec<PathBuf>) {
+    let roots = [
+        home.join(".local/share/fnm/node-versions"),
+        home.join(".fnm/node-versions"),
+        home.join("Library/Application Support/fnm/node-versions"),
+    ];
+    for root in roots {
+        let Ok(entries) = std::fs::read_dir(&root) else {
+            continue;
+        };
+        for entry in entries.flatten() {
+            let bin = entry.path().join("installation/bin");
+            if bin.is_dir() {
+                dirs.push(bin);
+            }
+        }
+    }
+}
+
+fn unique_dirs(dirs: Vec<PathBuf>) -> Vec<PathBuf> {
+    let mut seen = HashSet::new();
+    dirs.into_iter()
+        .filter(|dir| seen.insert(dir.clone()))
+        .collect()
+}
+
+/// PATH for a spawned CLI: the wrapper's own directory first (where `node`
+/// usually sits next to an npm global), then the GUI-missing extras, then
+/// the process PATH.
+fn gui_path_for(binary_path: &Path, path_env: Option<&OsStr>, home: Option<&Path>) -> OsString {
+    let mut dirs = Vec::new();
+    if let Some(parent) = binary_path.parent() {
+        dirs.push(parent.to_path_buf());
+    }
+    dirs.extend(extra_bin_dirs_in(home));
+    if let Some(path_env) = path_env {
+        dirs.extend(std::env::split_paths(path_env));
+    }
+    let unique = unique_dirs(dirs);
+    std::env::join_paths(&unique)
+        .unwrap_or_else(|_| path_env.map_or_else(OsString::new, OsStr::to_os_string))
+}
+
+fn apply_gui_path(command: &mut Command, binary_path: &Path) {
+    command.env(
+        "PATH",
+        gui_path_for(
+            binary_path,
+            std::env::var_os("PATH").as_deref(),
+            dirs_home().as_deref(),
+        ),
+    );
 }
 
 /// Report whether the CLI is installed, and its version.
@@ -157,13 +281,21 @@ pub async fn agent_cli_check(binary: AgentCliBinary) -> AppResult<String> {
     crate::blocking::run_blocking(move || {
         let path = resolve_binary(binary)
             .ok_or_else(|| AppError::not_found(format!("{} was not found", binary.label())))?;
-        let output = Command::new(&path)
+        let mut command = Command::new(&path);
+        apply_gui_path(&mut command, &path);
+        let output = command
             .arg("--version")
             .stdin(Stdio::null())
             .output()
             .map_err(|err| AppError::io(format!("could not run {}: {err}", path.display())))?;
         if !output.status.success() {
-            return Err(AppError::io(format!("{} --version failed", binary.label())));
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            let stderr = stderr.trim();
+            return Err(AppError::io(if stderr.is_empty() {
+                format!("{} --version failed", binary.label())
+            } else {
+                format!("{} --version failed: {stderr}", binary.label())
+            }));
         }
         Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
     })
@@ -219,6 +351,9 @@ pub async fn agent_cli_run(
     if let Some(env) = env {
         command.envs(env);
     }
+    // After MCP env so a secret named PATH cannot strip the GUI extras
+    // `env node` needs to find Node next to npm-installed CLIs.
+    apply_gui_path(&mut command, &path);
 
     let mut child = command
         .spawn()
@@ -459,5 +594,82 @@ mod workspace_config_tests {
                 "{path}"
             );
         }
+    }
+}
+
+#[cfg(test)]
+mod path_tests {
+    use super::*;
+    use std::ffi::OsStr;
+
+    fn split(path: &OsString) -> Vec<PathBuf> {
+        std::env::split_paths(path).collect()
+    }
+
+    #[test]
+    fn gui_path_puts_the_binary_dir_ahead_of_the_process_path() {
+        let path = gui_path_for(
+            Path::new("/opt/homebrew/bin/codex"),
+            Some(OsStr::new("/usr/bin:/bin")),
+            None,
+        );
+        let dirs = split(&path);
+        assert_eq!(
+            dirs.first().map(PathBuf::as_path),
+            Some(Path::new("/opt/homebrew/bin"))
+        );
+        assert!(dirs.contains(&PathBuf::from("/usr/bin")));
+        assert!(dirs.contains(&PathBuf::from("/bin")));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn gui_path_includes_homebrew_and_usr_local() {
+        let path = gui_path_for(Path::new("/tmp/codex"), Some(OsStr::new("/usr/bin")), None);
+        let dirs = split(&path);
+        assert!(dirs.contains(&PathBuf::from("/opt/homebrew/bin")));
+        assert!(dirs.contains(&PathBuf::from("/usr/local/bin")));
+    }
+
+    #[test]
+    fn resolve_binary_finds_nvm_installs_outside_path() {
+        let home = tempfile::tempdir().unwrap();
+        let bin = home.path().join(".nvm/versions/node/v22.14.0/bin");
+        std::fs::create_dir_all(&bin).unwrap();
+        let cli = bin.join("codex");
+        std::fs::write(&cli, b"").unwrap();
+        let found = resolve_binary_in("codex", None, Some(home.path()));
+        assert_eq!(found.as_deref(), Some(cli.as_path()));
+    }
+
+    #[test]
+    fn gui_path_includes_nvm_so_env_node_resolves() {
+        let home = tempfile::tempdir().unwrap();
+        let bin = home.path().join(".nvm/versions/node/v22.14.0/bin");
+        std::fs::create_dir_all(&bin).unwrap();
+        let path = gui_path_for(
+            Path::new("/usr/local/bin/codex"),
+            Some(OsStr::new("/usr/bin:/bin")),
+            Some(home.path()),
+        );
+        let dirs = split(&path);
+        assert!(dirs.contains(&bin), "nvm bin missing from PATH: {dirs:?}");
+    }
+
+    #[test]
+    fn nvm_default_alias_is_searched_before_other_versions() {
+        let home = tempfile::tempdir().unwrap();
+        let default_bin = home.path().join(".nvm/versions/node/v20.11.0/bin");
+        let other_bin = home.path().join(".nvm/versions/node/v18.0.0/bin");
+        std::fs::create_dir_all(&default_bin).unwrap();
+        std::fs::create_dir_all(&other_bin).unwrap();
+        std::fs::create_dir_all(home.path().join(".nvm/alias")).unwrap();
+        std::fs::write(home.path().join(".nvm/alias/default"), "20.11.0\n").unwrap();
+        let extras = extra_bin_dirs_in(Some(home.path()));
+        let default_pos = extras.iter().position(|dir| dir == &default_bin);
+        let other_pos = extras.iter().position(|dir| dir == &other_bin);
+        assert!(default_pos.is_some(), "default nvm bin missing: {extras:?}");
+        assert!(other_pos.is_some(), "other nvm bin missing: {extras:?}");
+        assert!(default_pos < other_pos);
     }
 }

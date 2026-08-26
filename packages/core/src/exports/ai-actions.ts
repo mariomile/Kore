@@ -191,6 +191,7 @@ export {
   type AgentCliBinary,
   type AgentCliChunk,
 } from '../ai/agent-cli'
+export { agentCliFailureMessage, isAgentCliRuntimeFailure } from '../ai/agent-cli-failure'
 export {
   checkClaudeCli,
   claudeCliArgs,

@@ -370,7 +370,7 @@ export {
 export {
   browserEmbedShow,
   browserEmbedBounds,
-  browserEmbedHide,
+  browserEmbedClose,
   browserEmbedNavigate,
   browserEmbedBack,
   browserEmbedForward,

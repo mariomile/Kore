@@ -4,9 +4,9 @@
 //!
 //! The frontend owns the layout: it renders a host element where the page
 //! should appear and mirrors that element's rectangle here (logical CSS
-//! pixels, the same unit Tauri's `Logical*` types use). The child webview
-//! survives host unmounts hidden, so switching routes never reloads the page —
-//! the same lifetime rule as the terminal's PTY.
+//! pixels, the same unit Tauri's `Logical*` types use). The child webview is
+//! closed with its last host so a remote page cannot keep consuming resources
+//! after the user leaves the browser; its URL is restored on the next mount.
 //!
 //! Security matches the old browser window: the `embedded-browser` label is
 //! granted by no capability file and Tauri never injects the invoke bridge
@@ -143,14 +143,13 @@ pub fn browser_embed_bounds(
     }
 }
 
-/// Hide the embedded browser when its host unmounts, keeping the page alive
-/// for the next mount. Idempotent.
+/// Close the embedded browser when its last host unmounts. Idempotent.
 #[tauri::command]
-pub fn browser_embed_hide(app: AppHandle) -> AppResult<()> {
+pub fn browser_embed_close(app: AppHandle) -> AppResult<()> {
     if let Some(webview) = embed(&app) {
         webview
-            .hide()
-            .map_err(|err| AppError::io(format!("failed to hide the embedded browser: {err}")))?;
+            .close()
+            .map_err(|err| AppError::io(format!("failed to close the embedded browser: {err}")))?;
     }
     Ok(())
 }

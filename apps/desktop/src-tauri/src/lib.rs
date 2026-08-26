@@ -416,7 +416,7 @@ pub fn run() {
             windows::open_browser_window,
             browser::browser_embed_show,
             browser::browser_embed_bounds,
-            browser::browser_embed_hide,
+            browser::browser_embed_close,
             browser::browser_embed_navigate,
             browser::browser_embed_back,
             browser::browser_embed_forward,

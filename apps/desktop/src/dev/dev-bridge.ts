@@ -168,7 +168,7 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
         throw new ReflectError('unknown', 'the in-app terminal is desktop-only')
       case 'browser_embed_show':
       case 'browser_embed_bounds':
-      case 'browser_embed_hide':
+      case 'browser_embed_close':
       case 'browser_embed_navigate':
       case 'browser_embed_back':
       case 'browser_embed_forward':

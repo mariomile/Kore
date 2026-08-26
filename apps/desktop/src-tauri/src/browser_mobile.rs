@@ -20,7 +20,7 @@ pub fn browser_embed_bounds() -> AppResult<()> {
 }
 
 #[tauri::command]
-pub fn browser_embed_hide() -> AppResult<()> {
+pub fn browser_embed_close() -> AppResult<()> {
     desktop_only()
 }
 

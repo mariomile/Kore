@@ -40,9 +40,9 @@ export async function browserEmbedBounds(rect: BrowserEmbedRect): Promise<void> 
   await call('browser_embed_bounds', { ...rect }, voidSchema)
 }
 
-/** Hide the embedded browser, keeping the page alive for the next mount. */
-export async function browserEmbedHide(): Promise<void> {
-  await call('browser_embed_hide', {}, voidSchema)
+/** Close the embedded browser and release the remote page's resources. */
+export async function browserEmbedClose(): Promise<void> {
+  await call('browser_embed_close', {}, voidSchema)
 }
 
 /** Load a new page. Web (http/https) URLs only — anything else errors. */

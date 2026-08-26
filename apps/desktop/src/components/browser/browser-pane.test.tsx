@@ -14,7 +14,7 @@ const browserEmbedShow = vi.hoisted(() =>
   vi.fn<(url: string | null, rect: EmbedRect) => Promise<void>>(),
 )
 const browserEmbedBounds = vi.hoisted(() => vi.fn<() => Promise<void>>())
-const browserEmbedHide = vi.hoisted(() => vi.fn<() => Promise<void>>())
+const browserEmbedClose = vi.hoisted(() => vi.fn<() => Promise<void>>())
 const browserEmbedNavigate = vi.hoisted(() => vi.fn<(url: string) => Promise<void>>())
 const browserEmbedBack = vi.hoisted(() => vi.fn<() => Promise<void>>())
 const browserEmbedForward = vi.hoisted(() => vi.fn<() => Promise<void>>())
@@ -26,7 +26,7 @@ vi.mock('@reflect/core', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@reflect/core')>()),
   browserEmbedShow,
   browserEmbedBounds,
-  browserEmbedHide,
+  browserEmbedClose,
   browserEmbedNavigate,
   browserEmbedBack,
   browserEmbedForward,
@@ -51,7 +51,7 @@ beforeEach(() => {
   browserEmbedShow.mockResolvedValue(undefined)
   browserEmbedBounds.mockResolvedValue(undefined)
   browserEmbedNavigate.mockResolvedValue(undefined)
-  browserEmbedHide.mockResolvedValue(undefined)
+  browserEmbedClose.mockResolvedValue(undefined)
   browserEmbedBack.mockResolvedValue(undefined)
   browserEmbedForward.mockResolvedValue(undefined)
   browserEmbedReload.mockResolvedValue(undefined)
@@ -63,7 +63,7 @@ afterEach(() => {
 })
 
 describe('BrowserPane', () => {
-  it('docks the embedded webview over its host on mount and hides it on unmount', async () => {
+  it('docks the embedded webview over its host and closes it after unmount', async () => {
     const view = await render(<BrowserPane />)
 
     await vi.waitFor(() => expect(browserEmbedShow).toHaveBeenCalled())
@@ -72,7 +72,7 @@ describe('BrowserPane', () => {
     expect(rect.width).toBeGreaterThan(0)
 
     await view.unmount()
-    await vi.waitFor(() => expect(browserEmbedHide).toHaveBeenCalled())
+    await vi.waitFor(() => expect(browserEmbedClose).toHaveBeenCalled())
   })
 
   it('hands the webview to a surviving pane instead of hiding it under it', async () => {
@@ -82,13 +82,13 @@ describe('BrowserPane', () => {
     await vi.waitFor(() => expect(browserEmbedShow).toHaveBeenCalledTimes(2))
 
     // The newer owner unmounts while the first pane is still up: the
-    // webview re-docks over the survivor, it is not hidden.
+    // webview re-docks over the survivor, it is not closed.
     await second.unmount()
     await vi.waitFor(() => expect(browserEmbedShow).toHaveBeenCalledTimes(3))
-    expect(browserEmbedHide).not.toHaveBeenCalled()
+    expect(browserEmbedClose).not.toHaveBeenCalled()
 
     await first.unmount()
-    await vi.waitFor(() => expect(browserEmbedHide).toHaveBeenCalledTimes(1))
+    await vi.waitFor(() => expect(browserEmbedClose).toHaveBeenCalledTimes(1))
   })
 
   it('resumes the session page instead of the default one', async () => {

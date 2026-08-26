@@ -295,13 +295,13 @@ describe('app shortcuts', () => {
     expect(newChat).toHaveBeenCalledTimes(1)
   })
 
-  it('⌘⇧N is inert outside the chat route', async () => {
+  it('⌘⇧N starts and opens a fresh chat from outside the chat route', async () => {
     newChat.mockClear()
     const { result, act } = await shortcutsHook()
 
     await act(() => press('n', { shiftKey: true }))
-    expect(result.current.router.route).toEqual({ kind: 'today' })
-    expect(newChat).not.toHaveBeenCalled()
+    expect(result.current.router.route).toEqual({ kind: 'chat' })
+    expect(newChat).toHaveBeenCalledTimes(1)
   })
 
   it('⌘number switches to the matching recent graph', async () => {

@@ -24,7 +24,7 @@ const listChatConversations = vi.hoisted(() =>
 )
 const openConversation = vi.hoisted(() => vi.fn(async () => {}))
 const deleteConversation = vi.hoisted(() => vi.fn(async () => {}))
-const newChat = vi.hoisted(() => vi.fn())
+const newChat = vi.hoisted(() => vi.fn(() => 'chat-new'))
 const listNoteTags = vi.hoisted(() =>
   vi.fn<() => Promise<{ tag: string; count: number }[]>>(async () => []),
 )
@@ -61,6 +61,7 @@ vi.mock('@reflect/core', async (importOriginal) => ({
   vaultScanStats: async () => ({ notes: 50, attachments: 0, skipped: 0 }),
 }))
 vi.mock('@/providers/chat-provider', () => ({
+  useOptionalChatSession: () => null,
   useChatSession: () => ({
     activeConversationId: 'active-conversation',
     openConversation,

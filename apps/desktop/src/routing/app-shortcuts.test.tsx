@@ -11,7 +11,7 @@ import { SidebarProvider, useSidebar } from '@/providers/sidebar-provider'
 import { useAppShortcuts } from './app-shortcuts'
 import { RouterProvider, useRouter } from './router'
 
-const newChat = vi.hoisted(() => vi.fn())
+const newChat = vi.hoisted(() => vi.fn(() => 'chat-new'))
 const openRecent = vi.hoisted(() => vi.fn())
 const openRouteInNewWindow = vi.hoisted(() => vi.fn(async () => true))
 
@@ -63,6 +63,7 @@ vi.mock('@/providers/audio-memo-provider', () => ({
   useAudioMemo: () => ({ toggle: vi.fn() }),
 }))
 vi.mock('@/providers/chat-provider', () => ({
+  useOptionalChatSession: () => null,
   useChatSession: () => ({ newChat }),
 }))
 

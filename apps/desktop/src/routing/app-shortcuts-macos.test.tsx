@@ -56,6 +56,7 @@ vi.mock('@/providers/audio-memo-provider', () => ({
   useAudioMemo: () => ({ toggle: vi.fn() }),
 }))
 vi.mock('@/providers/chat-provider', () => ({
+  useOptionalChatSession: () => null,
   useChatSession: () => ({ newChat: vi.fn(() => 'chat-new') }),
 }))
 

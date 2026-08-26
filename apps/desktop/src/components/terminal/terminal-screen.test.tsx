@@ -111,4 +111,18 @@ describe('TerminalScreen', () => {
     expect(mocks.disposeTerminal).toHaveBeenCalledOnce()
     await view.unmount()
   })
+
+  it('closes the PTY if render acknowledgment fails', async () => {
+    mocks.ptyAck.mockRejectedValueOnce(new Error('bridge unavailable'))
+    const view = await render(<TerminalScreen />)
+    await vi.waitFor(() => expect(mocks.dataHandler).not.toBeNull())
+
+    mocks.dataHandler?.({ id: 'pty-1', data: 'hello', sequence: 8 })
+
+    await vi.waitFor(() => expect(mocks.ptyClose).toHaveBeenCalledWith('pty-1'))
+    expect(mocks.unsubscribeData).toHaveBeenCalledOnce()
+    expect(mocks.unsubscribeExit).toHaveBeenCalledOnce()
+    expect(mocks.disposeTerminal).toHaveBeenCalledOnce()
+    await view.unmount()
+  })
 })

@@ -45,6 +45,22 @@ function disposeSessionSubscriptions(session: LiveSession): void {
   session.subscriptions.clear()
 }
 
+async function acknowledgeOutput(session: LiveSession, sequence: number): Promise<void> {
+  try {
+    await ptyAck(session.id, sequence)
+  } catch {
+    if (session.isClosed) {
+      return
+    }
+    disposeSessionSubscriptions(session)
+    if (live?.id === session.id) {
+      live = null
+    }
+    session.terminal.dispose()
+    await ptyClose(session.id).catch(() => undefined)
+  }
+}
+
 const GHOSTTY_THEME = {
   background: '#1d1f21',
   foreground: '#c5c8c6',
@@ -100,7 +116,7 @@ async function ensureSession(): Promise<LiveSession> {
       }
       if (event.id === activeSession.id && !activeSession.isClosed) {
         activeSession.terminal.write(event.data, () => {
-          void ptyAck(activeSession.id, event.sequence).catch(() => undefined)
+          void acknowledgeOutput(activeSession, event.sequence)
         })
       }
     }

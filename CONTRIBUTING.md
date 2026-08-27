@@ -26,6 +26,12 @@ pnpm --filter @reflect/desktop sidecar
 cargo test --workspace   # from the repo root (the Cargo workspace lives there)
 ```
 
+The eslint pass runs through `node --max-old-space-size=4096` on purpose. Its
+type-aware rules hold the whole program in memory and peak just past 2GB, which
+is the default heap Node picks on a stock GitHub runner — without the flag the
+lint job dies with "JavaScript heap out of memory" rather than reporting a lint
+error. Keep the flag when touching those scripts.
+
 ## PR titles
 
 PR titles must follow [Conventional Commits](https://www.conventionalcommits.org)

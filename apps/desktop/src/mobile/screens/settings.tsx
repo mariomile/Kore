@@ -266,7 +266,7 @@ export function MobileSettings(): ReactElement {
               header="Backup"
               footer={
                 canConnect
-                  ? 'Sync notes with Memento on your other devices.'
+                  ? 'Sync notes with Kore on your other devices.'
                   : (status?.detail ?? null)
               }
             >

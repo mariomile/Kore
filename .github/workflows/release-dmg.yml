@@ -6,7 +6,7 @@
 # Tauri updater keypair, so installed apps can verify and auto-apply
 # updates while the app itself stays unsigned. A freshly downloaded DMG is
 # quarantined by Gatekeeper (recent macOS shows the app as "damaged"); one
-# `xattr -cr /Applications/Memento.app` clears it. Updates installed by the
+# `xattr -cr /Applications/Kore.app` clears it. Updates installed by the
 # app afterwards need nothing.
 #
 # Required repository secrets:
@@ -106,13 +106,13 @@ jobs:
           releaseBody: |
             Unsigned build for Apple Silicon Macs.
 
-            **First install:** download the `.dmg` and drag Memento.app into
+            **First install:** download the `.dmg` and drag Kore.app into
             Applications. The build is unsigned, so macOS quarantines the
             download and may claim the app "is damaged" — it isn't. Clear
             the flag once from Terminal, then open normally:
 
             ```
-            xattr -cr /Applications/Memento.app
+            xattr -cr /Applications/Kore.app
             ```
 
             **Updates:** the app checks this repository's latest release and
@@ -135,13 +135,13 @@ jobs:
           releaseBody: |
             Unsigned build for Apple Silicon Macs.
 
-            **First install:** download the `.dmg` and drag Memento.app into
+            **First install:** download the `.dmg` and drag Kore.app into
             Applications. The build is unsigned, so macOS quarantines the
             download and may claim the app "is damaged" — it isn't. Clear
             the flag once from Terminal, then open normally:
 
             ```
-            xattr -cr /Applications/Memento.app
+            xattr -cr /Applications/Kore.app
             ```
 
             _This release was built without the updater keypair, so it will

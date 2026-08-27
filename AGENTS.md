@@ -8,18 +8,26 @@ Reflect is a modern note‑taking tool with a TypeScript codebase. This repo con
 
 ### Naming
 
-Three names coexist and are all intentional — do not "fix" one into another:
+Two names coexist and are both intentional — do not "fix" one into the other:
 
 - **Reflect** is the upstream project this repo forked from; internal
   identifiers keep its names (`@reflect/*` packages, `reflect-*` crates, the
   `reflect` CLI, `.reflect/` index directory).
-- **Kore** is this fork: the repository name and the public product name
-  people see (README, iOS home screen, iCloud Drive folder, permission
-  prompts). Apple technical identity stays `app.lore.*` and
-  `iCloud.app.lore` (changing those breaks signing/iCloud).
-- **Memento** is the shipped desktop product name (`productName` in
-  `apps/desktop/src-tauri/tauri.conf.json` and its overlays): the app bundle
-  is `Memento.app`, the flavors are Memento / Memento Beta / Memento Dev.
+- **Kore** is this fork and the only name a user ever sees: the repository,
+  the `productName` in `apps/desktop/src-tauri/tauri.conf.json` and its
+  overlays (the bundle is `Kore.app`; the flavors are Kore / Kore Beta /
+  Kore Dev), the window title, the iOS home screen, the iCloud Drive folder,
+  and every permission prompt.
+
+Two exceptions keep older spellings on purpose, and renaming either one
+breaks working installs:
+
+- Apple technical identity stays `app.lore.*` and `iCloud.app.lore` —
+  changing it breaks signing and iCloud, and macOS would treat the build as
+  a different app.
+- The keychain service in `apps/desktop/src-tauri/src/secrets.rs` stays
+  `"lore"`: renaming it orphans every API key already stored by an
+  installed app.
 
 ### Product Principles
 
@@ -188,7 +196,7 @@ Kore/
 │   │   │   │               #   embed.rs, secrets.rs, settings.rs, calendar.rs, pty.rs, …)
 │   │   │   ├── tauri.conf.json          # build hooks, windows, bundle targets (incl. iOS)
 │   │   │   ├── tauri.<platform>.conf.json  # desktop overlays: bundle the reflect CLI sidecar
-│   │   │   ├── tauri.{dev,beta,ios,ios.dev}.conf.json  # flavor overlays (Memento Dev / Beta / iOS)
+│   │   │   ├── tauri.{dev,beta,ios,ios.dev}.conf.json  # flavor overlays (Kore Dev / Beta / iOS)
 │   │   │   ├── capabilities/            # Tauri 2 permission grants (default/desktop/ios/mobile)
 │   │   │   ├── icons/, icons-beta/, icons-dev/  # App icons per release channel
 │   │   │   ├── gen/                     # Generated schemas + platform projects (hand-written
@@ -261,7 +269,7 @@ pnpm dev              # turbo dev across packages (Vite on http://localhost:1420
                       #   add ?platform=ios to the URL to preview the MOBILE tree in a
                       #   plain browser (dev-only in-memory bridge + seeded demo graph)
 pnpm tauri dev        # Full Tauri app with hot reload (stages the CLI sidecar first)
-pnpm tauri:dev        # `pnpm tauri dev` with the dev overlay → the "Memento Dev" flavor (green icon, own identifier; coexists with Memento / Memento Beta)
+pnpm tauri:dev        # `pnpm tauri dev` with the dev overlay → the "Kore Dev" flavor (green icon, own identifier; coexists with Kore / Kore Beta)
 pnpm build            # turbo build pipeline → apps/desktop/dist/
 pnpm tauri build      # Native app bundle, incl. the reflect CLI sidecar
 # Kore day-to-day publish: bump via release/dmg (see "Cutting a Kore release" above).

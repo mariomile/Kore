@@ -44,7 +44,7 @@ steps below are only needed for iCloud sync and for installing on an iPhone.
    (`releases/latest/download/latest.json`). Apple signing is *not*
    required for self-update; it only removes the one-time Gatekeeper
    quarantine on fresh installs (recent macOS calls the unsigned app
-   "damaged" — cleared with `xattr -cr /Applications/Memento.app`). For a
+   "damaged" — cleared with `xattr -cr /Applications/Kore.app`). For a
    prompt-free install, use release.yml, the signed + notarized pipeline.
 
 ## What deliberately did NOT change
@@ -57,7 +57,7 @@ steps below are only needed for iCloud sync and for installing on an iPhone.
 - Config-dir name `reflect-open` (recents/settings/capture pointer paths).
 - Apple technical identity: bundle ids `app.lore.*`, iCloud container key
   `iCloud.app.lore`, App Group `group.app.lore`, and keychain service `lore`.
-- Desktop bundle name `Memento.app` (`productName` in `tauri.conf.json`).
+- Desktop bundle name `Kore.app` (`productName` in `tauri.conf.json`).
 
 ## Publishing a Kore release
 

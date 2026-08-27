@@ -95,7 +95,7 @@ export function MobileGraphs(): ReactElement {
                 ? null
                 : icloudDocumentsRoot === null
                   ? 'iCloud Drive isn’t available on this device.'
-                  : 'Syncs with Memento on your other devices.'
+                  : 'Syncs with Kore on your other devices.'
             }
           >
             {resolving ? (

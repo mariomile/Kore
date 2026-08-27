@@ -87,7 +87,7 @@ const MobileAudioMemoContext = createContext<MobileAudioMemoContextValue | null>
 /** Auto-stop cap: bounds the transcription payload (desktop parity). */
 const MAX_DURATION_MS = 10 * 60_000
 
-const MIC_DENIED_REASON = 'Microphone access was denied. Allow it for Memento in the Settings app.'
+const MIC_DENIED_REASON = 'Microphone access was denied. Allow it for Kore in the Settings app.'
 
 interface MobileAudioMemoProviderProps {
   graph: GraphInfo

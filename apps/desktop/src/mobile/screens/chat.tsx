@@ -70,8 +70,8 @@ export function MobileChat(): ReactElement {
             <Chat aria-hidden className="size-8 text-text-muted" />
             <h2 className="mt-4 text-lg font-semibold text-text">Chat with your notes</h2>
             <p className="mt-2 text-sm text-text-muted">
-              Add an AI provider to start chatting. Memento calls the provider directly with your
-              own key — it stays in the device keychain, and private notes are never sent.
+              Add an AI provider to start chatting. Kore calls the provider directly with your own
+              key — it stays in the device keychain, and private notes are never sent.
             </p>
             <Button className="mt-5" onClick={() => navigate({ kind: 'settings' })}>
               Add an AI provider

@@ -4,7 +4,7 @@ import { parseNote } from '../markdown'
 import {
   createIndexApplyBatch,
   createMtimeTouchBatch,
-  INDEX_APPLY_BATCH_SIZE,
+  INDEX_PATH_BATCH_SIZE,
   type SkippedIndexedNote,
 } from './apply-batch'
 import {
@@ -39,7 +39,10 @@ import { getIndexMeta } from './queries'
 export {
   createIndexApplyBatch,
   createMtimeTouchBatch,
+  INDEX_APPLY_BATCH_BYTES,
   INDEX_APPLY_BATCH_SIZE,
+  INDEX_PATH_BATCH_SIZE,
+  indexedNoteWeight,
   type IndexApplyBatch,
   type MtimeTouchBatch,
   type SkippedIndexedNote,
@@ -438,12 +441,12 @@ export async function reconcileIndex(options: IndexPassOptions): Promise<void> {
   onFileProgress?.(total, total, worked)
 
   const removalPaths = [...removals.keys()]
-  for (let offset = 0; offset < removalPaths.length; offset += INDEX_APPLY_BATCH_SIZE) {
+  for (let offset = 0; offset < removalPaths.length; offset += INDEX_PATH_BATCH_SIZE) {
     if (signal?.aborted) {
       return
     }
     await removeFromIndexBatch(
-      removalPaths.slice(offset, offset + INDEX_APPLY_BATCH_SIZE),
+      removalPaths.slice(offset, offset + INDEX_PATH_BATCH_SIZE),
       generation,
     )
   }

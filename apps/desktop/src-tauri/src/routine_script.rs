@@ -6,7 +6,8 @@
 //!
 //! The script runs in its own process group so the timeout can kill the
 //! whole tree — `sh -c` scripts spawn children, and killing only the shell
-//! would leave grandchildren running past the tick.
+//! would leave grandchildren running past the tick. `process_tree` owns that
+//! sequence (terminate, grace, kill, reap).
 
 use std::io::Read;
 use std::process::{Command, Stdio};
@@ -15,6 +16,7 @@ use std::time::{Duration, Instant};
 use serde::Serialize;
 
 use crate::error::{AppError, AppResult};
+use crate::process_tree;
 
 /// Cap on each captured stream — a runaway script can't balloon memory.
 const OUTPUT_LIMIT: usize = 64 * 1024;
@@ -73,8 +75,7 @@ fn run_script(script: &str, cwd: &str, timeout_ms: Option<u64>) -> AppResult<Scr
             Ok(None) => {
                 if Instant::now() >= deadline {
                     timed_out = true;
-                    kill_process_group(&mut child);
-                    let _ = child.wait();
+                    process_tree::terminate_tree(&mut child);
                     break None;
                 }
                 std::thread::sleep(Duration::from_millis(POLL_MS));
@@ -95,37 +96,23 @@ fn run_script(script: &str, cwd: &str, timeout_ms: Option<u64>) -> AppResult<Scr
     })
 }
 
-/// `sh -c` on Unix (its own process group, so the timeout kill reaches the
-/// whole tree), `cmd /C` elsewhere.
+/// `sh -c` on Unix, `cmd /C` elsewhere — in its own process group, so the
+/// timeout kill reaches the whole tree (see module docs and `process_tree`).
 fn shell_command(script: &str) -> Command {
     #[cfg(unix)]
-    {
-        use std::os::unix::process::CommandExt;
-        let mut command = Command::new("/bin/sh");
-        command.arg("-c").arg(script).process_group(0);
-        command
-    }
+    let mut command = {
+        let mut shell = Command::new("/bin/sh");
+        shell.arg("-c").arg(script);
+        shell
+    };
     #[cfg(not(unix))]
-    {
-        let mut command = Command::new("cmd");
-        command.arg("/C").arg(script);
-        command
-    }
-}
-
-/// Kill the script's whole process group (see module docs), then the child
-/// itself as a fallback for platforms without process groups.
-fn kill_process_group(child: &mut std::process::Child) {
-    #[cfg(unix)]
-    {
-        // SAFETY: plain syscall on a pid we own; a stale pid is at worst a
-        // no-op error return.
-        let pgid = child.id() as i32;
-        unsafe {
-            libc::kill(-pgid, libc::SIGKILL);
-        }
-    }
-    let _ = child.kill();
+    let mut command = {
+        let mut shell = Command::new("cmd");
+        shell.arg("/C").arg(script);
+        shell
+    };
+    process_tree::own_process_group(&mut command);
+    command
 }
 
 /// Read a pipe to EOF on its own thread, keeping only the first

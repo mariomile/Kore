@@ -27,6 +27,43 @@ export async function getAppPlatform(): Promise<AppPlatform> {
   return await call('app_platform', {}, appPlatformSchema)
 }
 
+const helperProcessSchema = z.object({
+  pid: z.number().int().nonnegative(),
+  parentPid: z.number().int().nonnegative(),
+  /** Resident set size in kilobytes, as the OS reports it. */
+  rssKb: z.number().nonnegative(),
+  /** The executable, e.g. `node` or `/bin/zsh`. */
+  command: z.string(),
+})
+
+const memoryReportSchema = z.object({
+  pid: z.number().int().nonnegative(),
+  rssKb: z.number().nonnegative(),
+  /** Heaviest first. */
+  helpers: z.array(helperProcessSchema),
+  helpersRssKb: z.number().nonnegative(),
+})
+
+/** One process the app started, directly or indirectly. */
+export type HelperProcess = z.infer<typeof helperProcessSchema>
+
+/** The app's memory footprint and that of the helpers it owns. */
+export type MemoryReport = z.infer<typeof memoryReportSchema>
+
+/**
+ * The app's resident set plus every process it started — an agent CLI run and
+ * its MCP servers, an open terminal and what runs inside it.
+ *
+ * The point of measuring is attribution: an empty `helpers` list with a large
+ * `rssKb` is the app's own memory, while a small `rssKb` next to a large
+ * `helpersRssKb` is helpers the app is hosting. Note that on macOS the
+ * webview's WebKit processes are `launchd`-owned XPC services, so they count
+ * in neither number.
+ */
+export async function memoryReport(): Promise<MemoryReport> {
+  return await call('memory_report', {}, memoryReportSchema)
+}
+
 /** Narrows {@link AppPlatform} to the mobile family. */
 export function isMobilePlatform(platform: AppPlatform): boolean {
   return platform !== 'desktop'

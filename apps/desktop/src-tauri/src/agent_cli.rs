@@ -24,6 +24,7 @@ use serde::{Deserialize, Serialize};
 use tauri::{Emitter, Manager};
 
 use crate::error::{AppError, AppResult};
+use crate::process_tree;
 
 /// Event channel the frontend subscribes to; every payload carries the
 /// request id so concurrent runs (or a stale listener) can't cross wires.
@@ -96,8 +97,29 @@ fn write_workspace_config(cwd: &str, config: &WorkspaceConfigFile) -> AppResult<
 }
 
 /// Live child processes by request id, so a stop request can kill mid-run.
+///
+/// Every run is spawned into its own process group and stopped through
+/// [`process_tree::terminate_tree`]: an agent CLI starts MCP servers and Node
+/// workers of its own, and signalling only the CLI would leave that subtree
+/// running for the rest of the session (see `process_tree`).
 #[derive(Default)]
 pub struct AgentCliState(Mutex<HashMap<String, Child>>);
+
+impl AgentCliState {
+    /// Terminate every live run and everything it started. Called when the
+    /// app exits: a quit that leaves agent subtrees behind hands the user's
+    /// machine processes it can no longer see, let alone stop.
+    pub fn terminate_all(&self) {
+        let running: Vec<(String, Child)> = match self.0.lock() {
+            Ok(mut runs) => runs.drain().collect(),
+            Err(poisoned) => poisoned.into_inner().drain().collect(),
+        };
+        for (request_id, mut child) in running {
+            tracing::info!(request_id, "terminating agent CLI run at shutdown");
+            process_tree::terminate_tree(&mut child);
+        }
+    }
+}
 
 /// Held-open stdin pipes for streaming-input runs (`keep_stdin_open`), by
 /// request id: `agent_cli_send` steers more input into a live turn, and
@@ -354,6 +376,9 @@ pub async fn agent_cli_run(
     // After MCP env so a secret named PATH cannot strip the GUI extras
     // `env node` needs to find Node next to npm-installed CLIs.
     apply_gui_path(&mut command, &path);
+    // Its own process group, so stopping the run reaches the MCP servers and
+    // workers the CLI forks — they inherit the group.
+    process_tree::own_process_group(&mut command);
 
     let mut child = command
         .spawn()
@@ -486,9 +511,18 @@ pub async fn agent_cli_run(
         let child = emit_app
             .try_state::<AgentCliState>()
             .and_then(|state| state.0.lock().unwrap().remove(&emit_id));
+        // Snapshot the run's tree *before* reaping the CLI: a CLI that
+        // exited without tearing down its MCP servers leaves them orphaned,
+        // and once the root is gone they are only findable by the process
+        // group they inherited.
+        let root = child.as_ref().map(Child::id);
+        let snapshot = root.map(process_tree::tree_snapshot);
         let code = child
             .and_then(|mut child| child.wait().ok())
             .and_then(|status| status.code());
+        if let (Some(root), Some(snapshot)) = (root, snapshot) {
+            process_tree::terminate_leftovers(root, &snapshot);
+        }
         if code.is_some_and(|code| code != 0) && !error_tail.is_empty() {
             let _ = emit_app.emit(
                 EVENT,
@@ -520,11 +554,16 @@ pub async fn agent_cli_stop(
 ) -> AppResult<()> {
     stdin_state.0.lock().unwrap().remove(&request_id);
     let child = state.0.lock().unwrap().remove(&request_id);
-    if let Some(mut child) = child {
-        let _ = child.kill();
-        let _ = child.wait();
-    }
-    Ok(())
+    let Some(mut child) = child else {
+        return Ok(());
+    };
+    // The whole tree, not just the CLI (see `process_tree`) — and off the
+    // async runtime, because the tree gets a grace period before the kill.
+    crate::blocking::run_blocking(move || {
+        process_tree::terminate_tree(&mut child);
+        Ok(())
+    })
+    .await
 }
 
 /// Write one line into a live streaming-input run's held-open stdin (mid-turn

@@ -56,6 +56,22 @@ export function SearchSection(): ReactElement {
         </button>
       </div>
     )
+  } else if (status.status === 'unloaded') {
+    control = (
+      <div className="flex items-center justify-between gap-4">
+        <span className="flex items-center gap-2 text-xs text-text-muted">
+          <span aria-hidden className="size-1.5 rounded-full bg-emerald-500" />
+          Model downloaded ({status.model}) — released while idle, reloads on the next search
+        </span>
+        <button
+          type="button"
+          onClick={() => updateSettings({ semanticSearchEnabled: false })}
+          className="shrink-0 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-text-secondary transition-colors duration-100 hover:bg-surface-hover"
+        >
+          Disable
+        </button>
+      </div>
+    )
   } else if (status.status === 'failed') {
     control = (
       <div>

@@ -23,6 +23,7 @@ mod conflict;
 mod contacts;
 mod db;
 mod devtools;
+mod diagnostics;
 mod error;
 mod fs;
 mod git;
@@ -31,6 +32,7 @@ mod haptics;
 mod icloud;
 mod link_preview;
 mod menu;
+mod process_tree;
 mod quit;
 mod recents;
 mod routine_script;
@@ -434,6 +436,7 @@ pub fn run() {
             windows::window_bootstrap,
             windows::close_note_windows,
             devtools::toggle_devtools,
+            diagnostics::memory_report,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
@@ -533,6 +536,16 @@ pub fn run() {
                     quit.arm(windows);
                     let _ = app.emit("app:quit-requested", ());
                 }
+            }
+            // Last stop before the process goes away: every helper Kore
+            // started — agent CLI runs with their MCP servers, open
+            // terminals with whatever is running inside them — dies with the
+            // app. Orphaned subtrees would otherwise keep their memory for
+            // as long as the user's session lasts, with no window left to
+            // stop them from (see `process_tree`).
+            tauri::RunEvent::Exit => {
+                app.state::<agent_cli::AgentCliState>().terminate_all();
+                app.state::<pty::PtyState>().close_all();
             }
             tauri::RunEvent::WindowEvent {
                 label,

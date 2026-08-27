@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { setBridge } from '../../ipc/bridge'
-import { loadChatMessages, saveChatMessage } from './store'
+import { CHAT_HISTORY_TURN_LIMIT, loadChatMessages, saveChatMessage } from './store'
 import type { ChatTurn } from './transcript'
 
 /**
@@ -95,7 +95,34 @@ describe('loadChatMessages', () => {
     // The query went through the read-only bridge with the conversation bound.
     const [command, args] = invoke.mock.calls[0]!
     expect(command).toBe('db_query')
-    expect(args).toMatchObject({ params: ['conv-1'] })
+    expect(args).toMatchObject({ params: ['conv-1', CHAT_HISTORY_TURN_LIMIT] })
+  })
+
+  it('reads the newest turns and hands them back oldest first', async () => {
+    invoke.mockResolvedValue([
+      messageRow({ id: 'turn-2', user_text: 'second' }),
+      messageRow({ id: 'turn-1', user_text: 'first' }),
+    ])
+    const turns = await loadChatMessages('conv-1')
+    expect(turns.map((entry) => entry.userText)).toEqual(['first', 'second'])
+    const [, args] = invoke.mock.calls[0]!
+    const { sql } = args as { sql: string }
+    expect(sql).toMatch(/order by\s+"seq"\s+desc/i)
+    expect(sql).toMatch(/limit/i)
+  })
+
+  it('caps the restore at the turn limit', async () => {
+    invoke.mockResolvedValue([])
+    await loadChatMessages('conv-1')
+    expect(invoke.mock.calls[0]![1]).toMatchObject({
+      params: ['conv-1', CHAT_HISTORY_TURN_LIMIT],
+    })
+  })
+
+  it('honors an explicit smaller limit', async () => {
+    invoke.mockResolvedValue([])
+    await loadChatMessages('conv-1', 5)
+    expect(invoke.mock.calls[0]![1]).toMatchObject({ params: ['conv-1', 5] })
   })
 
   it('drops an unreadable row but keeps the rest', async () => {

@@ -251,18 +251,42 @@ export async function listChatConversations(limit = 50): Promise<ChatConversatio
 }
 
 /**
- * Load a conversation's turns in order. Restored turns are always `done` —
- * a row whose stream never settled (crash mid-turn) comes back with empty
- * `responseMessages`, which `buildHistory` already omits from the model view.
+ * How many of a conversation's most recent turns a restore loads.
+ *
+ * A restored conversation lives whole in memory: every turn's parts, tool
+ * results, model messages, and inlined image attachments, held for as long as
+ * the conversation is open. Fifty turns bounds that at a length no real
+ * exchange reaches. It costs no context either — what the model sees is
+ * already trimmed to its budget by `fitToContextWindow`, from the newest turn
+ * backwards — and nothing is lost: the older turns stay in the database,
+ * where the conversation is still complete.
  */
-export async function loadChatMessages(conversationId: string): Promise<ChatTurn[]> {
+export const CHAT_HISTORY_TURN_LIMIT = 50
+
+/**
+ * Load a conversation's most recent turns, oldest first. Restored turns are
+ * always `done` — a row whose stream never settled (crash mid-turn) comes back
+ * with empty `responseMessages`, which `buildHistory` already omits from the
+ * model view.
+ *
+ * `limit` caps how many turns are read (see {@link CHAT_HISTORY_TURN_LIMIT});
+ * the rows are taken from the end of the conversation, so what is dropped is
+ * always the oldest part of it.
+ */
+export async function loadChatMessages(
+  conversationId: string,
+  limit: number = CHAT_HISTORY_TURN_LIMIT,
+): Promise<ChatTurn[]> {
   const rows = await db
     .selectFrom('chatMessages')
     .select(['id', 'userText', 'attachments', 'parts', 'responseMessages'])
     .where('conversationId', '=', conversationId)
-    .orderBy('seq', 'asc')
+    // Newest first so the limit keeps the *tail*; reversed below into the
+    // reading order every caller expects.
+    .orderBy('seq', 'desc')
+    .limit(limit)
     .execute()
-  return rows.flatMap((row) => {
+  return rows.reverse().flatMap((row) => {
     const turn = parseTurn(row)
     if (turn === null) {
       console.error(`dropping unreadable chat message ${row.id} in ${conversationId}`)

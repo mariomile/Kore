@@ -97,6 +97,10 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
         return '0.0.0-dev'
       case 'app_platform':
         return platform
+      // The browser preview owns no child processes and cannot read a
+      // process table; report the shape with nothing in it.
+      case 'memory_report':
+        return { pid: 0, rssKb: 0, helpers: [], helpersRssKb: 0 }
       case 'background_task_begin':
         // Browser previews are never suspended like an iOS process, so the
         // native finite-length assertion is honestly unavailable.

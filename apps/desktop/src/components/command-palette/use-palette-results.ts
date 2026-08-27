@@ -1,9 +1,10 @@
-import { useDeferredValue, useMemo } from 'react'
+import { useDeferredValue, useEffect, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { parseSearchQuery, retrieve, searchWithFilters, suggestWikiTargets } from '@reflect/core'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { listCommands } from '@/lib/commands/registry'
 import { todayIso } from '@/lib/dates'
+import { ensureEmbeddingsVisibly } from '@/lib/semantic'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { useEmbedStatus } from '@/lib/use-embed-status'
 import { useGraph } from '@/providers/graph-provider'
@@ -30,7 +31,7 @@ export function usePaletteResults(open: boolean, query: string): PaletteResults 
   const { graph } = useGraph()
   // Hybrid needs both halves of the opt-in: the setting on *and* the model
   // ready. The setting gate makes disabling immediate — the model stays loaded
-  // for the session, but its results must not. Plain-text queries blend
+  // until it idles out, but its results must not. Plain-text queries blend
   // semantic hits via RRF and degrade invisibly to lexical without either.
   // Filtered queries stay constraint-based — filters are exact by nature.
   const { settings } = useSettings()
@@ -75,6 +76,20 @@ export function usePaletteResults(open: boolean, query: string): PaletteResults 
     enabled: searching && !parsed.filtered,
   })
   const useHybrid = hybrid && !parsed.filtered
+  // A model released after idling comes back on the first real search, not on
+  // every palette open: this query stays lexical while it loads, and re-runs
+  // as hybrid the moment `ready` lands — the hybrid flag is part of its key.
+  const reloadIdleModel =
+    settings.semanticSearchEnabled &&
+    embed.status === 'unloaded' &&
+    searching &&
+    trimmed !== '' &&
+    !parsed.filtered
+  useEffect(() => {
+    if (reloadIdleModel) {
+      void ensureEmbeddingsVisibly()
+    }
+  }, [reloadIdleModel])
   const {
     data: hits,
     isLoading: hitsLoading,

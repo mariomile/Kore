@@ -1,11 +1,11 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Memento Dev",
+  "productName": "Kore Dev",
   "identifier": "app.lore.desktop.dev",
   "app": {
     "windows": [
       {
-        "title": "Memento Dev",
+        "title": "Kore Dev",
         "width": 1300,
         "height": 650,
         "titleBarStyle": "Overlay",

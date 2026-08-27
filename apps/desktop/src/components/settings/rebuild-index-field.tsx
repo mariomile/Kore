@@ -31,7 +31,7 @@ export function RebuildIndexField(): ReactElement {
   return (
     <SettingsField
       legend="Rebuild index"
-      description="Memento keeps a local index of your notes to power search and links. If results ever look stale or incomplete, rebuild it — your notes are never changed."
+      description="Kore keeps a local index of your notes to power search and links. If results ever look stale or incomplete, rebuild it — your notes are never changed."
     >
       <div className="mt-3 flex justify-start">
         <Button

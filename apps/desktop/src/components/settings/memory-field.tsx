@@ -16,7 +16,7 @@ function kilobytes(rssKb: number): string {
 }
 
 /**
- * What Memento and the processes it started are holding right now.
+ * What Kore and the processes it started are holding right now.
  *
  * The number people quote from Activity Monitor is the app plus every helper
  * it spawned — an agent CLI run with its MCP servers, a terminal with what
@@ -46,7 +46,7 @@ export function MemoryField(): ReactElement {
   return (
     <SettingsField
       legend="Memory"
-      description="What Memento and the helper processes it started are using right now. With no chat running and no terminal open, the helper list should be empty."
+      description="What Kore and the helper processes it started are using right now. With no chat running and no terminal open, the helper list should be empty."
     >
       <div className="mt-3 space-y-2">
         {error !== null ? (
@@ -57,7 +57,7 @@ export function MemoryField(): ReactElement {
         {report !== undefined ? (
           <>
             <div className="flex items-baseline justify-between gap-4 text-sm">
-              <span className="text-text-secondary">Memento</span>
+              <span className="text-text-secondary">Kore</span>
               <span className="tabular-nums text-text">{kilobytes(report.rssKb)}</span>
             </div>
             {report.helpers.length === 0 ? (

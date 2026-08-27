@@ -83,7 +83,7 @@ export function PaywallScreen(): ReactElement {
       return
     }
     toast.add({
-      title: 'Enjoy Memento free for now',
+      title: 'Enjoy Kore free for now',
       description: "We'll ask about your free year again once codes are ready.",
       timeout: 6000,
     })

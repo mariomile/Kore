@@ -45,7 +45,7 @@ export function UpdateField(): ReactElement {
   return (
     <SettingsField
       legend="Updates"
-      description="Memento checks for new versions on launch and installs them only when you say so."
+      description="Kore checks for new versions on launch and installs them only when you say so."
     >
       <div className="mt-3 flex items-center gap-3">
         <Button

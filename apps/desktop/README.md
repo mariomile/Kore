@@ -5,7 +5,7 @@ embedded in a Rust native shell (`src-tauri/`, crate `reflect-open`). The
 same package is also the iOS target; the mobile tree lives under
 `src/mobile/`.
 
-Ships as **Memento** (stable), **Memento Beta**, and **Memento Dev** — the
+Ships as **Kore** (stable), **Kore Beta**, and **Kore Dev** — the
 flavor overlays are the `tauri.{beta,dev,ios,ios.dev}.conf.json` files.
 
 Common entry points (run from the repo root):

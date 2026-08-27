@@ -124,7 +124,7 @@ describe('agentContextPromptLines', () => {
     soul: { body: 'Speak plainly.', truncated: false },
     userMemory: { body: '- Prefers Italian', truncated: false },
     agentMemory: { body: 'x'.repeat(AGENT_MEMORY_MAX_CHARS), truncated: true },
-    sharedFacts: { body: '- [certain] Lore is the app — riley, 2026-08-20', truncated: false },
+    sharedFacts: { body: '- [certain] Kore is the app — riley, 2026-08-20', truncated: false },
     sharedLog: { body: '## 2026-08-19 — riley\n- shipped viewer', truncated: false },
     memoryPath: 'agents/riley/memory.md',
   }
@@ -133,7 +133,7 @@ describe('agentContextPromptLines', () => {
     const lines = agentContextPromptLines(context, { canEdit: true }).join('\n')
     expect(lines.indexOf('Speak plainly.')).toBeLessThan(lines.indexOf('- Prefers Italian'))
     expect(lines.indexOf('- Prefers Italian')).toBeLessThan(
-      lines.indexOf('[certain] Lore is the app'),
+      lines.indexOf('[certain] Kore is the app'),
     )
     expect(lines).toContain('agents/user.md')
     expect(lines).toContain('agents/memory/facts.md')

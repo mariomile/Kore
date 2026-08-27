@@ -54,17 +54,17 @@ customization and what is planned next.
 
 ## Install
 
-The app ships under the product name **Memento** (the repository is Kore);
-the bundle you install is `Memento.app`.
+The app ships under the product name **Kore** (the repository is Kore);
+the bundle you install is `Kore.app`.
 
 **Install from a release (recommended):** grab the latest `.dmg` from
 [Releases](https://github.com/mariomile/Kore/releases) and drag
-**Memento.app** into Applications. The build is unsigned, so recent macOS
+**Kore.app** into Applications. The build is unsigned, so recent macOS
 quarantines the download and claims the app "is damaged" — it isn't; clear
 the quarantine flag once from Terminal and open normally:
 
 ```bash
-xattr -cr /Applications/Memento.app
+xattr -cr /Applications/Kore.app
 ```
 
 (If macOS still objects: System Settings → Privacy & Security → "Open
@@ -88,7 +88,7 @@ pnpm tauri build
 
 The installers land in `apps/desktop/src-tauri/target/release/bundle/`:
 
-- `macos/Memento.app` — drag it into `/Applications`
+- `macos/Kore.app` — drag it into `/Applications`
 - `dmg/*.dmg` — the same app as a disk-image installer
 
 A locally built app runs without Gatekeeper warnings on the machine that

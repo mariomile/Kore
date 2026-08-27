@@ -1,8 +1,8 @@
-# Pulling upstream reflect-open changes into Lore
+# Pulling upstream reflect-open changes into Kore
 
-Lore forked [team-reflect/reflect-open](https://github.com/team-reflect/reflect-open)
+Kore forked [team-reflect/reflect-open](https://github.com/team-reflect/reflect-open)
 and has since diverged heavily: the Apple identity and updater channel are
-Lore's own, and whole subsystems (the `reflect` CLI, the Agents section,
+Kore's own, and whole subsystems (the `reflect` CLI, the Agents section,
 shared memory, automations, in-app MCP, the activity ledger) exist only
 here. Upstream still ships fixes worth taking — editor, indexing, sync,
 mobile — so merges stay worthwhile, but they are a deliberate chore, not a
@@ -48,10 +48,10 @@ Files where both sides move often — resolve with intent, not mechanically:
 - `apps/desktop/src-tauri/src/lib.rs` command registration and
   `packages/core/src/exports/*`: both sides append. Union, keep sorted
   groupings.
-- `packages/core/src/ai/**`: Lore rewired chat around agent profiles, CLI
-  providers and MCP. Prefer Lore's structure; port upstream's logic changes
+- `packages/core/src/ai/**`: Kore rewired chat around agent profiles, CLI
+  providers and MCP. Prefer Kore's structure; port upstream's logic changes
   into it rather than taking upstream files wholesale.
-- `apps/desktop/src/providers/chat-provider.tsx`: same rule — Lore's edit
+- `apps/desktop/src/providers/chat-provider.tsx`: same rule — Kore's edit
   mode, run lock and ledger wiring must survive.
 - Lockfiles (`pnpm-lock.yaml`, `Cargo.lock`): never hand-merge. Take either
   side, then regenerate with `pnpm install` / `cargo update --workspace`.
@@ -59,16 +59,16 @@ Files where both sides move often — resolve with intent, not mechanically:
 ## Never take from upstream
 
 These are identity, not code — an upstream hunk touching them is always
-resolved to Lore's side:
+resolved to Kore's side:
 
 - Bundle identifiers (`app.lore.*`) and product names in
   `apps/desktop/src-tauri/tauri.conf.json` and its overlays.
-- The updater `pubkey` and `endpoints` (they pin Lore's release channel and
+- The updater `pubkey` and `endpoints` (they pin Kore's release channel and
   signing keypair; upstream's would brick auto-update).
 - Keychain service names (`lore`, legacy `reflect-open` migration path in
   `secrets.rs`).
-- `.github/workflows/release-dmg.yml` and Lore's release/versioning flow.
-- `README.md` branding and `docs/` pages that describe Lore-only systems.
+- `.github/workflows/release-dmg.yml` and Kore's release/versioning flow.
+- `README.md` branding and `docs/` pages that describe Kore-only systems.
 
 ## After the merge
 

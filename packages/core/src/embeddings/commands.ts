@@ -20,6 +20,12 @@ export const embedStatusSchema = z.discriminatedUnion('status', [
     progress: embedProgressSchema.optional(),
   }),
   z.object({ status: z.literal('ready'), model: z.string() }),
+  /**
+   * Loaded earlier and released after idling. Semantic search is still
+   * available — an embed call reloads the model from the local cache — so
+   * this must never be treated as "unavailable" the way `uninitialized` is.
+   */
+  z.object({ status: z.literal('unloaded'), model: z.string() }),
   z.object({ status: z.literal('failed'), message: z.string() }),
 ])
 export type EmbedStatus = z.infer<typeof embedStatusSchema>

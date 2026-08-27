@@ -8,6 +8,11 @@ use crate::error::{AppError, AppResult};
 #[derive(Default)]
 pub struct PtyState;
 
+impl PtyState {
+    /// No terminals to close on mobile; the shutdown hook is shared.
+    pub fn close_all(&self) {}
+}
+
 fn desktop_only<T>() -> AppResult<T> {
     Err(AppError::unknown("the in-app terminal is desktop-only"))
 }

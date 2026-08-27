@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react'
 import { useAppVersion } from '@/hooks/use-app-version'
 import { useUpdate } from '@/providers/update-provider'
+import { MemoryField } from './memory-field'
 import { SettingsSection } from './section'
 import { UpdateField } from './update-field'
 
@@ -18,6 +19,7 @@ export function AboutSection(): ReactElement {
         </span>
       </div>
       {supported ? <UpdateField /> : null}
+      <MemoryField />
     </SettingsSection>
   )
 }

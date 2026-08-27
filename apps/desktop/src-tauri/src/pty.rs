@@ -17,6 +17,7 @@ use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::error::{AppError, AppResult};
 use crate::fs::{current_root, GraphState};
+use crate::process_tree::{self, ReapableChild};
 
 const DATA_EVENT: &str = "pty:data";
 const EXIT_EVENT: &str = "pty:exit";
@@ -35,6 +36,50 @@ struct PtySession {
 #[derive(Default)]
 pub struct PtyState {
     sessions: Mutex<HashMap<String, Arc<PtySession>>>,
+}
+
+/// The shell is a session leader (`portable_pty` calls `setsid`), so
+/// terminating it through `process_tree` reaches every job the user started
+/// from it — a `claude` run, its MCP servers, a stray dev server. Closing
+/// only the shell would leave all of them running with no window left to
+/// stop them from.
+impl ReapableChild for Box<dyn portable_pty::Child + Send + Sync> {
+    fn pid(&self) -> Option<u32> {
+        self.process_id()
+    }
+
+    fn try_reap(&mut self) -> bool {
+        matches!(self.try_wait(), Ok(Some(_)) | Err(_))
+    }
+
+    fn reap(&mut self) {
+        let _ = self.wait();
+    }
+}
+
+impl PtyState {
+    /// Terminate every open terminal and everything running inside it.
+    /// Called when the app exits — a quit that only drops the sessions would
+    /// orphan whatever the user left running in them.
+    pub fn close_all(&self) {
+        let sessions: Vec<(String, Arc<PtySession>)> = match self.sessions.lock() {
+            Ok(mut open) => open.drain().collect(),
+            Err(poisoned) => poisoned.into_inner().drain().collect(),
+        };
+        for (id, session) in sessions {
+            tracing::info!(id, "closing terminal session at shutdown");
+            terminate_session(&session);
+        }
+    }
+}
+
+/// Release the emitter thread and take the session's whole tree down.
+fn terminate_session(session: &PtySession) {
+    let _ = acknowledge_output(session, u64::MAX);
+    match session.child.lock() {
+        Ok(mut child) => process_tree::terminate_tree(&mut *child),
+        Err(poisoned) => process_tree::terminate_tree(&mut *poisoned.into_inner()),
+    }
 }
 
 #[derive(Clone, Serialize)]
@@ -280,9 +325,14 @@ pub fn pty_resize(state: State<'_, PtyState>, id: String, cols: u16, rows: u16) 
     Ok(())
 }
 
-/// Kill an open PTY. Idempotent if the session is already gone.
+/// Kill an open PTY and everything running inside it. Idempotent if the
+/// session is already gone.
+///
+/// Async because the teardown is not instant: the shell's tree gets a grace
+/// period between `SIGTERM` and `SIGKILL`, and the UI thread must not wait
+/// it out.
 #[tauri::command]
-pub fn pty_close(state: State<'_, PtyState>, id: String) -> AppResult<()> {
+pub async fn pty_close(state: State<'_, PtyState>, id: String) -> AppResult<()> {
     let session = {
         let mut sessions = state
             .sessions
@@ -290,13 +340,14 @@ pub fn pty_close(state: State<'_, PtyState>, id: String) -> AppResult<()> {
             .map_err(|_| AppError::unknown("pty state lock poisoned"))?;
         sessions.remove(&id)
     };
-    if let Some(session) = session {
-        let _ = acknowledge_output(&session, u64::MAX);
-        if let Ok(mut child) = session.child.lock() {
-            let _ = child.kill();
-        }
-    }
-    Ok(())
+    let Some(session) = session else {
+        return Ok(());
+    };
+    crate::blocking::run_blocking(move || {
+        terminate_session(&session);
+        Ok(())
+    })
+    .await
 }
 
 fn lookup(state: &State<'_, PtyState>, id: &str) -> AppResult<Arc<PtySession>> {

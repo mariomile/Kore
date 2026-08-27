@@ -3,9 +3,20 @@
 //! into app data — never bundled — and every failure degrades to a reported
 //! "unavailable" state (the same recoverable contract as sqlite-vec): semantic
 //! search is strictly additive, so nothing here may ever take the app down.
+//!
+//! The loaded model is not free to keep around — the ONNX session is resident
+//! for as long as it is held — so it does not stay loaded forever. After
+//! [`IDLE_UNLOAD_AFTER`] without an embed call the runtime releases it and
+//! reports `unloaded`; the next semantic query reloads it from the local
+//! cache inside `embed_texts`. That state is deliberately distinct from
+//! `uninitialized`: a never-loaded runtime may still need the ~90MB download,
+//! which only the explicit opt-in is allowed to start, while an unloaded one
+//! is a pure cache read.
 
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
 use hf_hub::api::sync::ApiBuilder;
@@ -63,6 +74,9 @@ pub enum EmbedStatus {
     },
     /// `embed_texts` is ready; `model` is recorded per vector (rebuild key).
     Ready { model: String },
+    /// Loaded earlier and released after idling. Semantic search is still
+    /// available: the next query reloads the model from the local cache.
+    Unloaded { model: String },
     /// Load failed; semantic search is unavailable (lexical still works).
     Failed { message: String },
 }
@@ -77,17 +91,41 @@ enum Runtime {
     // fastembed's `embed` takes `&mut self`, so the model sits behind its own
     // Mutex — embed calls serialize, which batching makes irrelevant.
     Ready(Arc<Mutex<TextEmbedding>>),
+    /// Released after idling — see the module docs.
+    Unloaded,
     Failed(String),
 }
 
+/// Idle time after which the loaded model is released.
+const IDLE_UNLOAD_AFTER: Duration = Duration::from_secs(15 * 60);
+
+/// How often the idle watchdog re-checks. Coarse on purpose: releasing a
+/// minute late costs nothing, and a busy timer would.
+const IDLE_CHECK_EVERY: Duration = Duration::from_secs(60);
+
 /// Process-wide embedding runtime state.
 #[derive(Default)]
-pub struct EmbedState(Mutex<Runtime>);
+pub struct EmbedState {
+    runtime: Mutex<Runtime>,
+    /// When the model was last loaded or used — the idle clock's zero.
+    last_used: Mutex<Option<Instant>>,
+    /// Whether the idle watchdog thread is already running.
+    idle_watchdog: AtomicBool,
+}
+
+impl EmbedState {
+    /// Restart the idle clock. Called around every embed and after a load.
+    fn touch(&self) {
+        if let Ok(mut stamp) = self.last_used.lock() {
+            *stamp = Some(Instant::now());
+        }
+    }
+}
 
 fn lock_state<'a>(
     state: &'a State<'a, EmbedState>,
 ) -> AppResult<std::sync::MutexGuard<'a, Runtime>> {
-    state.0.lock().map_err(|err| {
+    state.runtime.lock().map_err(|err| {
         tracing::error!(?err, "embed state lock poisoned by an earlier panic");
         AppError::io("embed state lock poisoned")
     })
@@ -100,6 +138,9 @@ fn status_of(runtime: &Runtime) -> EmbedStatus {
             progress: *progress,
         },
         Runtime::Ready(_) => EmbedStatus::Ready {
+            model: MODEL_ID.to_string(),
+        },
+        Runtime::Unloaded => EmbedStatus::Unloaded {
             model: MODEL_ID.to_string(),
         },
         Runtime::Failed(message) => EmbedStatus::Failed {
@@ -118,7 +159,7 @@ fn emit_status(app: &AppHandle, status: &EmbedStatus) {
 /// stale progress callback could land, the state owns a terminal status.
 fn store_progress(app: &AppHandle, progress: ByteProgress) {
     let state = app.state::<EmbedState>();
-    let Ok(mut runtime) = state.0.lock() else {
+    let Ok(mut runtime) = state.runtime.lock() else {
         return;
     };
     if matches!(*runtime, Runtime::Loading { .. }) {
@@ -284,6 +325,13 @@ pub fn embed_status(state: State<EmbedState>) -> AppResult<EmbedStatus> {
 /// even when cached, and the first run downloads.
 #[tauri::command]
 pub async fn embed_ensure(app: AppHandle, state: State<'_, EmbedState>) -> AppResult<EmbedStatus> {
+    load_model(&app, &state).await
+}
+
+/// The load itself, shared by the explicit `embed_ensure` and the transparent
+/// reload in `embed_texts`. Idempotent, and safe to race: a concurrent call
+/// while loading returns the in-flight status.
+async fn load_model(app: &AppHandle, state: &State<'_, EmbedState>) -> AppResult<EmbedStatus> {
     // Resolve the cache dir BEFORE flipping to Loading: it's the only step
     // here that may fail without a guaranteed state transition afterwards.
     let cache_dir = app
@@ -293,15 +341,15 @@ pub async fn embed_ensure(app: AppHandle, state: State<'_, EmbedState>) -> AppRe
         .join("models");
 
     {
-        let mut runtime = lock_state(&state)?;
+        let mut runtime = lock_state(state)?;
         match &*runtime {
             Runtime::Ready(_) | Runtime::Loading { .. } => return Ok(status_of(&runtime)),
-            Runtime::Uninitialized | Runtime::Failed(_) => {
+            Runtime::Uninitialized | Runtime::Failed(_) | Runtime::Unloaded => {
                 *runtime = Runtime::Loading { progress: None };
             }
         }
     }
-    emit_status(&app, &EmbedStatus::Loading { progress: None });
+    emit_status(app, &EmbedStatus::Loading { progress: None });
 
     // From here every path — success, load failure, even a panicked blocking
     // task — must land the state in Ready or Failed: an early `?` would wedge
@@ -323,7 +371,7 @@ pub async fn embed_ensure(app: AppHandle, state: State<'_, EmbedState>) -> AppRe
         };
 
     let status = {
-        let mut runtime = lock_state(&state)?;
+        let mut runtime = lock_state(state)?;
         *runtime = match loaded {
             Ok(model) => Runtime::Ready(Arc::new(Mutex::new(model))),
             Err(message) => {
@@ -333,25 +381,129 @@ pub async fn embed_ensure(app: AppHandle, state: State<'_, EmbedState>) -> AppRe
         };
         status_of(&runtime)
     };
-    emit_status(&app, &status);
+    if matches!(status, EmbedStatus::Ready { .. }) {
+        // The idle clock starts at the load: a model loaded and never used is
+        // exactly the case worth releasing.
+        state.touch();
+        arm_idle_unload(app);
+    }
+    emit_status(app, &status);
     Ok(status)
 }
 
-/// Embed a batch of texts → 384-dim vectors, off the UI thread. Errors if the
-/// model isn't `Ready` (callers gate on `embed_status`/`embed_ensure`).
+/// Start the watchdog that releases an idle model, unless one is running.
+///
+/// One thread per load, not one for the app's life: it exits as soon as it
+/// releases the model (or finds the runtime gone), and the next load arms a
+/// fresh one.
+fn arm_idle_unload(app: &AppHandle) {
+    if app
+        .state::<EmbedState>()
+        .idle_watchdog
+        .swap(true, Ordering::SeqCst)
+    {
+        return;
+    }
+    let app = app.clone();
+    std::thread::spawn(move || loop {
+        std::thread::sleep(IDLE_CHECK_EVERY);
+        let state = app.state::<EmbedState>();
+        match unload_if_idle(&state) {
+            IdleCheck::Waiting => continue,
+            IdleCheck::Released => {
+                tracing::info!("released the idle embedding model");
+                state.idle_watchdog.store(false, Ordering::SeqCst);
+                emit_status(
+                    &app,
+                    &EmbedStatus::Unloaded {
+                        model: MODEL_ID.to_string(),
+                    },
+                );
+                return;
+            }
+            IdleCheck::Gone => {
+                state.idle_watchdog.store(false, Ordering::SeqCst);
+                return;
+            }
+        }
+    });
+}
+
+/// What one watchdog tick concluded.
+enum IdleCheck {
+    /// Still loaded and still in use (or in use recently).
+    Waiting,
+    /// The model was released; the runtime now reports `unloaded`.
+    Released,
+    /// Nothing left to watch — the runtime is no longer `Ready`.
+    Gone,
+}
+
+/// Release the model if nothing has embedded with it for
+/// [`IDLE_UNLOAD_AFTER`].
+fn unload_if_idle(state: &EmbedState) -> IdleCheck {
+    let Ok(mut runtime) = state.runtime.lock() else {
+        return IdleCheck::Gone;
+    };
+    let Runtime::Ready(model) = &*runtime else {
+        return IdleCheck::Gone;
+    };
+    // An in-flight `embed_texts` holds its own clone of the model. Releasing
+    // the state under it would be harmless (the Arc keeps the session alive
+    // until that call returns) but it would report `unloaded` for a runtime
+    // that is very much in use.
+    if Arc::strong_count(model) > 1 {
+        return IdleCheck::Waiting;
+    }
+    let idle_for = state
+        .last_used
+        .lock()
+        .ok()
+        .and_then(|stamp| *stamp)
+        .map(|stamp| stamp.elapsed());
+    match idle_for {
+        Some(elapsed) if elapsed >= IDLE_UNLOAD_AFTER => {
+            *runtime = Runtime::Unloaded;
+            IdleCheck::Released
+        }
+        _ => IdleCheck::Waiting,
+    }
+}
+
+/// The loaded model, or `None` when it was released after idling.
+///
+/// Errors for a runtime that was never loaded: an embed call must not be able
+/// to start the ~90MB first download, which belongs to the explicit opt-in
+/// (callers gate on `embed_status`/`embed_ensure`).
+fn ready_model(state: &State<'_, EmbedState>) -> AppResult<Option<Arc<Mutex<TextEmbedding>>>> {
+    let runtime = lock_state(state)?;
+    match &*runtime {
+        Runtime::Ready(model) => Ok(Some(Arc::clone(model))),
+        Runtime::Unloaded => Ok(None),
+        _ => Err(AppError::io("embedding model is not loaded")),
+    }
+}
+
+/// Embed a batch of texts → 384-dim vectors, off the UI thread.
+///
+/// A model released after idling reloads here first — a pure read of the
+/// local cache, so the only cost is the load itself.
 #[tauri::command]
 pub async fn embed_texts(
+    app: AppHandle,
     texts: Vec<String>,
     state: State<'_, EmbedState>,
 ) -> AppResult<Vec<Vec<f32>>> {
-    let model = {
-        let runtime = lock_state(&state)?;
-        match &*runtime {
-            Runtime::Ready(model) => Arc::clone(model),
-            _ => return Err(AppError::io("embedding model is not loaded")),
+    let model = match ready_model(&state)? {
+        Some(model) => model,
+        None => {
+            load_model(&app, &state).await?;
+            ready_model(&state)?
+                .ok_or_else(|| AppError::io("the embedding model could not be reloaded"))?
         }
     };
-    tauri::async_runtime::spawn_blocking(move || {
+    state.touch();
+    let vectors = tauri::async_runtime::spawn_blocking(move || {
         let mut model = model
             .lock()
             .map_err(|_| AppError::io("embedding model lock poisoned"))?;
@@ -360,5 +512,9 @@ pub async fn embed_texts(
             .map_err(|err| AppError::io(format!("embedding failed: {err}")))
     })
     .await
-    .map_err(|err| AppError::io(format!("embedding task panicked: {err}")))?
+    .map_err(|err| AppError::io(format!("embedding task panicked: {err}")))?;
+    // Stamped again on the way out: a long backfill batch must not look idle
+    // just because it started fifteen minutes ago.
+    state.touch();
+    vectors
 }

@@ -9,7 +9,7 @@ import {
   buildNoteProjection,
   createIndexApplyBatch,
   createMtimeTouchBatch,
-  INDEX_APPLY_BATCH_SIZE,
+  INDEX_PATH_BATCH_SIZE,
   indexNote,
 } from './indexer'
 import { detectExternalMoves } from './move-healing'
@@ -200,11 +200,11 @@ export async function applyIndexChanges(
       return
     }
     const paths = pendingRemoves.splice(0)
-    for (let offset = 0; offset < paths.length; offset += INDEX_APPLY_BATCH_SIZE) {
+    for (let offset = 0; offset < paths.length; offset += INDEX_PATH_BATCH_SIZE) {
       if (!canApply()) {
         return
       }
-      const chunk = paths.slice(offset, offset + INDEX_APPLY_BATCH_SIZE)
+      const chunk = paths.slice(offset, offset + INDEX_PATH_BATCH_SIZE)
       await removeFromIndexBatch(chunk, generation)
       mutations += chunk.length
     }

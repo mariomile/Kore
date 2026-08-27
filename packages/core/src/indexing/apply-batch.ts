@@ -7,8 +7,64 @@ import type { IndexedNote } from './indexed-note'
  * reconcile, and large watcher batches). Bounds the IPC payload and
  * transaction size on large graphs while keeping the transaction/round-trip
  * count far below one-per-note.
+ *
+ * A count alone is a poor bound on *memory*: an accumulated batch holds every
+ * queued {@link IndexedNote} whole — note text, asset descriptions, preview,
+ * and every projection row — so 256 long notes is a far larger transient
+ * allocation than 256 daily notes, and the peak lands on top of whatever the
+ * rest of the app is holding. {@link INDEX_APPLY_BATCH_BYTES} is the real
+ * bound; this count only keeps small-note graphs from making one enormous
+ * transaction out of thousands of rows.
  */
-export const INDEX_APPLY_BATCH_SIZE = 256
+export const INDEX_APPLY_BATCH_SIZE = 64
+
+/**
+ * Byte budget for one `index_apply_batch` transaction, measured with
+ * {@link indexedNoteWeight}. A batch flushes as soon as the queued
+ * projections exceed it, so a graph of large notes indexes in the same
+ * bounded memory as a graph of small ones. A single note past the budget
+ * still applies alone — this caps accumulation, not note size.
+ */
+export const INDEX_APPLY_BATCH_BYTES = 8 * 1024 * 1024
+
+/**
+ * Paths per transaction for the batches that carry no note content: removals
+ * (a path list) and mtime re-stamps (a path plus two numbers). Those rows are
+ * bounded by construction, so they keep the larger transaction size the
+ * projection batches gave up.
+ */
+export const INDEX_PATH_BATCH_SIZE = 256
+
+/** Fixed cost of a queued projection beyond its text: the scalar columns. */
+const NOTE_OVERHEAD_BYTES = 512
+
+/** Charged per projection row (link, tag, alias, claim, email, task, …). */
+const PROJECTION_ROW_BYTES = 64
+
+/**
+ * Roughly how much memory a queued {@link IndexedNote} holds, in bytes.
+ *
+ * An estimate on purpose: it counts the fields that actually scale with a
+ * note — its text, the folded asset and property text, the preview — and
+ * charges a flat rate for each projection row, rather than serializing the
+ * note to measure it (which would allocate the very payload the budget
+ * exists to bound). String lengths are UTF-16 code units, so non-Latin text
+ * is undercounted by up to a third; the budget is sized with that slack.
+ */
+export function indexedNoteWeight(note: IndexedNote): number {
+  const text =
+    note.text.length + note.assetText.length + note.preview.length + note.propertiesText.length
+  const rows =
+    note.links.length +
+    note.tags.length +
+    note.aliases.length +
+    note.claims.length +
+    note.emails.length +
+    note.assets.length +
+    note.tasks.length +
+    note.properties.length
+  return NOTE_OVERHEAD_BYTES + text + rows * PROJECTION_ROW_BYTES
+}
 
 /** One note omitted from a rebuild because its projection could not be written. */
 export interface SkippedIndexedNote {
@@ -62,16 +118,18 @@ export interface IndexApplyBatch {
 /**
  * The one write path for the bulk index passes (rebuild, reconcile, watcher
  * batches): accumulate projections, apply them in shared
- * `index_apply_batch` transactions of {@link INDEX_APPLY_BATCH_SIZE}, and
- * degrade refused batches through {@link applySplitBatch}'s halving retry so
- * failures attribute to single notes. Callers own *when* to flush early —
- * e.g. before a remove that must not be overtaken by queued upserts.
+ * `index_apply_batch` transactions bounded by {@link INDEX_APPLY_BATCH_SIZE}
+ * *and* {@link INDEX_APPLY_BATCH_BYTES}, and degrade refused batches through
+ * {@link applySplitBatch}'s halving retry so failures attribute to single
+ * notes. Callers own *when* to flush early — e.g. before a remove that must
+ * not be overtaken by queued upserts.
  */
 export function createIndexApplyBatch(
   generation: number,
   onSkippedNote?: (note: SkippedIndexedNote) => void,
 ): IndexApplyBatch {
   let batch: IndexedNote[] = []
+  let batchBytes = 0
   let appliedCount = 0
   async function flush(): Promise<void> {
     if (batch.length === 0) {
@@ -79,12 +137,14 @@ export function createIndexApplyBatch(
     }
     const notes = batch
     batch = []
+    batchBytes = 0
     appliedCount += await applySplitBatch(notes, generation, onSkippedNote)
   }
   return {
     add: async (note) => {
       batch.push(note)
-      if (batch.length >= INDEX_APPLY_BATCH_SIZE) {
+      batchBytes += indexedNoteWeight(note)
+      if (batch.length >= INDEX_APPLY_BATCH_SIZE || batchBytes >= INDEX_APPLY_BATCH_BYTES) {
         await flush()
       }
     },
@@ -107,7 +167,7 @@ export interface MtimeTouchBatch {
  * Accumulate mtime re-stamps for hash-match skips (the self-heal for rows
  * whose stored mtime was an echo-time stamp — see {@link touchIndexedNotes})
  * and apply them in shared `index_touch` transactions of
- * {@link INDEX_APPLY_BATCH_SIZE}. Both bulk skip paths (reconcile, watcher
+ * {@link INDEX_PATH_BATCH_SIZE}. Both bulk skip paths (reconcile, watcher
  * batch) share this shape, mirroring {@link createIndexApplyBatch}.
  */
 export function createMtimeTouchBatch(generation: number): MtimeTouchBatch {
@@ -125,7 +185,7 @@ export function createMtimeTouchBatch(generation: number): MtimeTouchBatch {
   return {
     add: async (entry) => {
       batch.push(entry)
-      if (batch.length >= INDEX_APPLY_BATCH_SIZE) {
+      if (batch.length >= INDEX_PATH_BATCH_SIZE) {
         await flush()
       }
     },

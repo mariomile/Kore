@@ -1,7 +1,7 @@
 import { embedStatus, errorMessage, rebuildIndex } from '@reflect/core'
 import { startOperation } from '@/lib/operations'
 import { invalidateIndexQueries } from '@/lib/query-client'
-import { backfillEmbeddingsVisibly } from '@/lib/semantic'
+import { backfillEmbeddingsVisibly, ensureEmbeddingsVisibly } from '@/lib/semantic'
 
 let inFlight: { generation: number; promise: Promise<void> } | null = null
 
@@ -64,7 +64,11 @@ async function runRebuild(generation: number): Promise<void> {
   // index_clear wiped the embedding tables with everything else — rebuild
   // them too, or semantic search stays silently empty until some other
   // trigger re-embeds.
-  const embed = await embedStatus()
+  // An idle-released model has to come back for this: the rebuild wiped the
+  // vectors, and nothing else re-embeds them until a semantic query happens
+  // to reload the runtime.
+  const status = await embedStatus()
+  const embed = status.status === 'unloaded' ? await ensureEmbeddingsVisibly() : status
   if (embed.status === 'ready') {
     await backfillEmbeddingsVisibly({ generation, modelId: embed.model })
   }

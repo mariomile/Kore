@@ -58,10 +58,17 @@ jobs:
       matrix:
         shard: ['1/3', '2/3', '3/3']
         config:
+          # Chromium is the full run: every project, including the five that
+          # never read REFLECT_TEST_BROWSER. WebKit exists to cover the engine
+          # the production Tauri webview actually uses, so it runs only the two
+          # browser projects. Re-running ~250 engine-independent Node files on
+          # a macOS runner costs 10x per minute and proves nothing new.
           - os: ubuntu-latest
             browser: chromium
+            projects: ''
           - os: macos-latest
             browser: webkit
+            projects: '--project browser --project core-browser'
 
     name: test ${{ matrix.config.browser }} ${{ matrix.shard }}
     runs-on: ${{ matrix.config.os }}
@@ -87,7 +94,7 @@ jobs:
         run: pnpm --filter @reflect/desktop exec playwright install ${{ matrix.config.browser }}
 
       - name: Test
-        run: pnpm run test --shard ${{ matrix.shard }}
+        run: pnpm run test --shard ${{ matrix.shard }} ${{ matrix.config.projects }}
         env:
           REFLECT_TEST_BROWSER: ${{ matrix.config.browser }}
 

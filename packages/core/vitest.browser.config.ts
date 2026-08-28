@@ -7,7 +7,9 @@ export default defineProject({
   test: {
     name: 'core-browser',
     include: ['src/**/*.test.tsx'],
-    sequence: { groupOrder: 100 },
+    // Distinct from the desktop browser project's 100: same group order with
+    // different `maxWorkers` aborts the whole run before a single test starts.
+    sequence: { groupOrder: 101 },
     retry: process.env.CI ? 3 : 0,
     browser: {
       enabled: true,

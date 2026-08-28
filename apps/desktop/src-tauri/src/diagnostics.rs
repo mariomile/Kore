@@ -37,8 +37,17 @@ pub struct HelperProcess {
 #[serde(rename_all = "camelCase")]
 pub struct MemoryReport {
     pub pid: u32,
-    /// The app process's own resident set, in kilobytes.
-    pub rss_kb: u64,
+    /// The app's physical footprint in kilobytes — the number Activity
+    /// Monitor shows — or its resident set where the OS has no footprint
+    /// metric.
+    ///
+    /// Deliberately not the resident set on Apple platforms. The OS
+    /// compresses pages under memory pressure and RSS stops counting them
+    /// the moment it does, so a compaction alone can drop RSS by a gigabyte
+    /// while the app has released nothing: measured here at 130MB resident
+    /// against 846MB actually held. A memory report that shrinks when the
+    /// machine gets busy is worse than no report.
+    pub footprint_kb: u64,
     /// Helpers, heaviest first.
     pub helpers: Vec<HelperProcess>,
     /// The helpers' resident sets summed, in kilobytes.
@@ -55,12 +64,35 @@ pub async fn memory_report() -> AppResult<MemoryReport> {
     crate::blocking::run_blocking(|| Ok(collect_memory_report(std::process::id()))).await
 }
 
+/// The process's physical footprint in kilobytes, or `None` where the OS
+/// does not track one.
+#[cfg(any(target_os = "macos", target_os = "ios"))]
+fn physical_footprint_kb(pid: u32) -> Option<u64> {
+    let mut info = std::mem::MaybeUninit::<libc::rusage_info_v4>::zeroed();
+    let read = unsafe {
+        libc::proc_pid_rusage(
+            pid as libc::c_int,
+            libc::RUSAGE_INFO_V4,
+            info.as_mut_ptr().cast(),
+        )
+    };
+    (read == 0).then(|| unsafe { info.assume_init() }.ri_phys_footprint / 1024)
+}
+
+#[cfg(not(any(target_os = "macos", target_os = "ios")))]
+fn physical_footprint_kb(_pid: u32) -> Option<u64> {
+    None
+}
+
 fn collect_memory_report(pid: u32) -> MemoryReport {
     let table = process_tree::process_table();
-    let rss_kb = table
-        .iter()
-        .find(|row| row.pid == pid)
-        .map_or(0, |row| row.rss_kb);
+    let resident_kb = || {
+        table
+            .iter()
+            .find(|row| row.pid == pid)
+            .map_or(0, |row| row.rss_kb)
+    };
+    let footprint_kb = physical_footprint_kb(pid).unwrap_or_else(resident_kb);
     let mut helpers: Vec<HelperProcess> = process_tree::tree_pids(&table, pid)
         .into_iter()
         .filter(|helper| *helper != pid)
@@ -81,7 +113,7 @@ fn collect_memory_report(pid: u32) -> MemoryReport {
     let helpers_rss_kb = helpers.iter().map(|helper| helper.rss_kb).sum();
     MemoryReport {
         pid,
-        rss_kb,
+        footprint_kb,
         helpers,
         helpers_rss_kb,
     }
@@ -100,7 +132,7 @@ mod tests {
             .unwrap();
         let report = collect_memory_report(std::process::id());
         assert_eq!(report.pid, std::process::id());
-        assert!(report.rss_kb > 0, "the test process has a resident set");
+        assert!(report.footprint_kb > 0, "the test process holds memory");
         assert!(
             report.helpers.iter().any(|helper| helper.pid == child.id()),
             "the spawned child is missing from {:?}",

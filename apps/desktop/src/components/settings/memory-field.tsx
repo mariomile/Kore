@@ -11,8 +11,8 @@ function commandName(command: string): string {
   return command.split('/').at(-1) ?? command
 }
 
-function kilobytes(rssKb: number): string {
-  return formatBytes(rssKb * 1024)
+function kilobytes(value: number): string {
+  return formatBytes(value * 1024)
 }
 
 /**
@@ -58,7 +58,7 @@ export function MemoryField(): ReactElement {
           <>
             <div className="flex items-baseline justify-between gap-4 text-sm">
               <span className="text-text-secondary">Kore</span>
-              <span className="tabular-nums text-text">{kilobytes(report.rssKb)}</span>
+              <span className="tabular-nums text-text">{kilobytes(report.footprintKb)}</span>
             </div>
             {report.helpers.length === 0 ? (
               <p className="text-xs text-text-muted">No helper processes.</p>

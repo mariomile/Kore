@@ -279,7 +279,7 @@ describe('BacklinksPanel', () => {
     await view.unmount()
   })
 
-  it('lets one group be peeked at after the header collapse (old Reflect behavior)', async () => {
+  it('lets one group be peeked at after the header collapse (old Kore behavior)', async () => {
     getBacklinksWithContext.mockResolvedValue([
       {
         sourcePath: 'notes/meeting.md',

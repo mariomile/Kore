@@ -1,6 +1,6 @@
 import { useSessionFlag } from '@/lib/use-session-flag'
 
-/** Session-wide (all notes) expanded state, old Reflect's `backlinks-expanded`. */
+/** Session-wide (all notes) expanded state, old Kore's `backlinks-expanded`. */
 const EXPANDED_STORAGE_KEY = 'reflect.backlinks-expanded'
 
 /**

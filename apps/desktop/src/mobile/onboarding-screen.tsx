@@ -113,7 +113,7 @@ function IcloudUnavailableSection(): ReactElement {
     <section className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4">
       <OnboardingIcloudHeader description="Turn on iCloud Drive to keep your notes synced between devices." />
       <p className="rounded-lg bg-muted/60 px-3 py-2 text-xs leading-5 text-text-muted">
-        Sign in to iCloud on this device, then reopen Reflect.
+        Sign in to iCloud on this device, then reopen Kore.
       </p>
     </section>
   )

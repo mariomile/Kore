@@ -77,7 +77,7 @@ export function ConnectGithubFinishStep({
             <strong>
               {view.owner}/{view.name}
             </strong>{' '}
-            on GitHub. Reflect will connect it as soon as it exists.
+            on GitHub. Kore will connect it as soon as it exists.
           </p>
           <div className={groupClass}>
             <Button size={buttonSize} onClick={wizard.openCreatePage}>
@@ -90,7 +90,7 @@ export function ConnectGithubFinishStep({
             <p className="text-xs text-text-muted">
               If it doesn’t connect,{' '}
               <button type="button" className="underline" onClick={wizard.openInstallPage}>
-                grant the Reflect app access
+                grant the Kore app access
               </button>{' '}
               to just this repository.
             </p>
@@ -105,7 +105,7 @@ export function ConnectGithubFinishStep({
       {view.kind === 'grantAccess' ? (
         <>
           <p className="text-sm text-text">
-            Give Reflect access to{' '}
+            Give Kore access to{' '}
             <strong>
               {view.repo.owner}/{view.repo.name}
             </strong>{' '}
@@ -120,8 +120,7 @@ export function ConnectGithubFinishStep({
           {/* Steer to per-repo selection: the backup needs exactly one repo,
               so "All repositories" is needless account-wide risk. */}
           <p className="text-xs text-text-muted">
-            On GitHub, choose <strong>Only select repositories</strong> — Reflect only needs this
-            one.
+            On GitHub, choose <strong>Only select repositories</strong> — Kore only needs this one.
           </p>
           <p className="text-xs text-text-muted">Waiting for access…</p>
         </>

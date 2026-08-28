@@ -22,7 +22,7 @@ function showUpdateToast(state: UpdateState, controller: UpdateController): void
       toast.add({
         id: UPDATE_TOAST_ID,
         title: 'Update available',
-        description: `Reflect ${state.version} is ready to install.`,
+        description: `Kore ${state.version} is ready to install.`,
         // `add()` with an existing id merges into the current toast, so this
         // phase clears any stale type (e.g. a lingering spinner) explicitly.
         type: undefined,
@@ -51,7 +51,7 @@ function showUpdateToast(state: UpdateState, controller: UpdateController): void
       toast.add({
         id: UPDATE_TOAST_ID,
         title: 'Update ready',
-        description: `Reflect ${state.version} will finish updating after restart.`,
+        description: `Kore ${state.version} will finish updating after restart.`,
         type: 'success',
         ...NON_DISMISSIBLE_UPDATE_OPTIONS,
         actionProps: {

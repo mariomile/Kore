@@ -85,7 +85,7 @@ fn app_version<R: tauri::Runtime>(app: tauri::AppHandle<R>) -> String {
 
 /// Builds the HTTP User-Agent from the same resolved version shown in the UI.
 pub(crate) fn app_user_agent<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> String {
-    format!("Reflect/{}", app.package_info().version)
+    format!("Kore/{}", app.package_info().version)
 }
 
 #[cfg(test)]
@@ -101,7 +101,7 @@ mod app_metadata_tests {
             .expect("mock app");
 
         assert_eq!(app_version(app.handle().clone()), "7.8.9-beta.4");
-        assert_eq!(app_user_agent(app.handle()), "Reflect/7.8.9-beta.4");
+        assert_eq!(app_user_agent(app.handle()), "Kore/7.8.9-beta.4");
     }
 }
 
@@ -264,9 +264,6 @@ pub fn run() {
     // so it runs on AVAudioRecorder behind this plugin.
     #[cfg(mobile)]
     let builder = builder.plugin(tauri_plugin_recording::init());
-
-    #[cfg(target_os = "ios")]
-    let builder = builder.plugin(tauri_plugin_iap::init());
 
     // The main window starts hidden (`visible: false`); desktop reveals it
     // from the page-load hook above after restoring geometry, but mobile has

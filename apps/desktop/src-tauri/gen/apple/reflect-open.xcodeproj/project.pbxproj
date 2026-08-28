@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		0B64041CFADD8313F72A847E /* Sentry-Dynamic in Frameworks */ = {isa = PBXBuildFile; productRef = 27BF2501FCD1BD0D24DB4908 /* Sentry-Dynamic */; };
 		134EB81FCC748D5D00632D1C /* QuickNoteIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B63E3BA904337F6625AA036 /* QuickNoteIntent.swift */; };
 		1C8847A7F1C163FBA53373F9 /* ExtensionClass.js in Resources */ = {isa = PBXBuildFile; fileRef = 536E4F5E21B7DCC3C7ECDC1A /* ExtensionClass.js */; };
 		266B3807E809464C8FC14146 /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FDC9BB81FAB5AF8D65160799 /* Metal.framework */; };
@@ -41,7 +40,6 @@
 		E7D75AA83CFA468E0EFBAB21 /* RecordAudioWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7AC6BF821D47F74D41DFAFE /* RecordAudioWidget.swift */; };
 		E9E7B6C59015E7301EE63308 /* libiconv.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 44C3B8C21F2D38187423AB2F /* libiconv.tbd */; };
 		F00F5EAED90E34102F9AE651 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A86D201016958E2276806466 /* Assets.xcassets */; };
-		FADB6730A395557D6526A671 /* NativeDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0456178FD4D66A4DF255631 /* NativeDiagnostics.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -173,7 +171,6 @@
 		E8031FEC080EBAF422BEE44C /* markers.rs */ = {isa = PBXFileReference; path = markers.rs; sourceTree = "<group>"; };
 		E833A01F2799F6788CDCE53F /* link_preview.rs */ = {isa = PBXFileReference; path = link_preview.rs; sourceTree = "<group>"; };
 		EC45808CD3D13DD431212EAE /* watch.rs */ = {isa = PBXFileReference; path = watch.rs; sourceTree = "<group>"; };
-		F0456178FD4D66A4DF255631 /* NativeDiagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeDiagnostics.swift; sourceTree = "<group>"; };
 		F28F8A628D32337E04C0CBC0 /* libapp.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libapp.a; sourceTree = "<group>"; };
 		F3173A0D7E498896FAC5A43E /* watcher_mobile.rs */ = {isa = PBXFileReference; path = watcher_mobile.rs; sourceTree = "<group>"; };
 		FDC9BB81FAB5AF8D65160799 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
@@ -184,7 +181,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				0B64041CFADD8313F72A847E /* Sentry-Dynamic in Frameworks */,
 				9D7F5A94048CECBFC3D89BBA /* libapp.a in Frameworks */,
 				319EDF8F46AB05DFBA9D674F /* libz.tbd in Frameworks */,
 				E9E7B6C59015E7301EE63308 /* libiconv.tbd in Frameworks */,
@@ -295,7 +291,6 @@
 			isa = PBXGroup;
 			children = (
 				38829A9D2116D0D324C18C4B /* main.mm */,
-				F0456178FD4D66A4DF255631 /* NativeDiagnostics.swift */,
 				3B63E3BA904337F6625AA036 /* QuickNoteIntent.swift */,
 				80AF8D983D8D0A334637D2FD /* RecordingIntents.swift */,
 				2444231AB919C7263A3007F8 /* StopRecordingLiveActivityIntent.swift */,
@@ -521,7 +516,6 @@
 			);
 			name = "reflect-open_iOS";
 			packageProductDependencies = (
-				27BF2501FCD1BD0D24DB4908 /* Sentry-Dynamic */,
 			);
 			productName = "reflect-open_iOS";
 			productReference = BC3901740F3A40252C3750C7 /* reflect-open_iOS.app */;
@@ -560,7 +554,6 @@
 			mainGroup = 32CAD5F88380EB83D170715E;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				66F54EA13384DC78CB89C8EA /* XCRemoteSwiftPackageReference "sentry-cocoa" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 085B9B9F8FF6A8514F9F4511 /* Products */;
@@ -686,7 +679,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				6B01E62DB23C8918C76FD0F1 /* CaptureInbox.swift in Sources */,
-				FADB6730A395557D6526A671 /* NativeDiagnostics.swift in Sources */,
 				134EB81FCC748D5D00632D1C /* QuickNoteIntent.swift in Sources */,
 				C3F8EB03E386D36B71BF8772 /* RecordingIntents.swift in Sources */,
 				775E33492750BC96D2399943 /* StopRecordingLiveActivityIntent.swift in Sources */,
@@ -1027,22 +1019,9 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		66F54EA13384DC78CB89C8EA /* XCRemoteSwiftPackageReference "sentry-cocoa" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/getsentry/sentry-cocoa";
-			requirement = {
-				kind = exactVersion;
-				version = 8.58.4;
-			};
-		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		27BF2501FCD1BD0D24DB4908 /* Sentry-Dynamic */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 66F54EA13384DC78CB89C8EA /* XCRemoteSwiftPackageReference "sentry-cocoa" */;
-			productName = "Sentry-Dynamic";
-		};
 /* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 5489219F37B2885D5C3112F4 /* Project object */;

@@ -10,15 +10,16 @@
 // REFLECT_E2E_CHROMIUM=/path/to/chromium for prebaked environments.
 //
 // The scenario leans on the seed graph fixtures (src/dev/seed-graph.ts):
-// renaming "Reflect V2"/"Quarterly Goals" or the "sync over Git." sentence
+// renaming "Kore V2"/"Quarterly Goals" or the "sync over Git." sentence
 // there means updating the locators here.
 import { spawn } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
 import { existsSync, mkdirSync } from 'node:fs'
 import { chromium } from 'playwright'
 
 const PORT = process.env['E2E_PORT'] ?? '5199'
 const BASE = `http://127.0.0.1:${PORT}/`
-const SHOTS = new URL('./shots/', import.meta.url).pathname
+const SHOTS = fileURLToPath(new URL('./shots/', import.meta.url))
 mkdirSync(SHOTS, { recursive: true })
 
 const results = []
@@ -39,7 +40,7 @@ async function step(name, fn) {
 }
 
 // ---- dev server -----------------------------------------------------------
-const appDir = new URL('..', import.meta.url).pathname
+const appDir = fileURLToPath(new URL('..', import.meta.url))
 const server = spawn('pnpm', ['dev', '--port', PORT, '--strictPort', '--host', '127.0.0.1'], {
   cwd: appDir,
   stdio: 'ignore',
@@ -95,7 +96,7 @@ try {
   await step('All notes lists the seeded notes', async () => {
     await page.getByRole('navigation', { name: 'Primary' }).getByText('All notes').click()
     await page.getByRole('heading', { name: 'Notes', exact: true }).waitFor()
-    await page.getByText('Reflect V2').first().waitFor()
+    await page.getByText('Kore V2').first().waitFor()
   })
 
   await step('grid toggle switches to the masonry cards', async () => {
@@ -117,10 +118,10 @@ try {
   })
   await page.screenshot({ path: `${SHOTS}03-note.png` })
 
-  await step('typing an unlinked mention into the Reflect V2 note', async () => {
+  await step('typing an unlinked mention into the Kore V2 note', async () => {
     await page.getByRole('navigation', { name: 'Primary' }).getByText('All notes').click()
     await page.getByRole('button', { name: 'Grid view' }).click()
-    await page.getByRole('heading', { name: 'Reflect V2' }).click()
+    await page.getByRole('heading', { name: 'Kore V2' }).click()
     // A single stable editor (the daily stream virtualizes its days). Let the
     // arrival autofocus settle before claiming the caret, then append to the
     // existing paragraph — a split near the H1 would read as a title edit.
@@ -179,10 +180,10 @@ try {
     await strip.waitFor()
     await strip.getByRole('tab', { name: 'Daily notes' }).waitFor()
     await strip.getByRole('tab', { name: /Quarterly Goals/ }).waitFor()
-    // Switch back to Reflect V2 through its tab; the note pane follows.
+    // Switch back to Kore V2 through its tab; the note pane follows.
     await strip
-      .getByRole('tab', { name: /Reflect V2/ })
-      .getByText('Reflect V2')
+      .getByRole('tab', { name: /Kore V2/ })
+      .getByText('Kore V2')
       .click()
     await page.getByText('sync over Git.').first().waitFor()
     // The sidebar's Open section mirrors the same tabs.

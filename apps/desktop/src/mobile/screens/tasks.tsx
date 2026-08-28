@@ -227,7 +227,8 @@ export function MobileTasks(): ReactElement {
         aria-label="New task"
         className="fixed right-4 z-40 size-12 rounded-full shadow-lg"
         style={{
-          bottom: 'calc(max(env(safe-area-inset-bottom), var(--keyboard-height, 0px)) + 4.25rem)',
+          bottom:
+            'calc(max(var(--mobile-tab-bar-height, 0px), calc(var(--keyboard-height, 0px) + 2.75rem)) + 0.75rem)',
         }}
         onClick={() => onAdd(todaysDailyTarget(today))}
       >

@@ -13,7 +13,7 @@ import { tryExtractPageText } from './popup/extract-page-text'
  * capture is persisted before a flush starts, so nothing depends on this
  * worker's (or the popup's) lifetime. Retries ride four triggers: every flush
  * ping, the keyboard shortcut, browser startup, and a coarse alarm for the
- * "Reflect installed an hour later" case.
+ * "Kore installed an hour later" case.
  */
 
 const RETRY_ALARM = 'capture-retry'
@@ -37,7 +37,7 @@ async function saveTabWithDefaults(tab: Parameters<typeof snapshotTab>[0]): Prom
     flushQueue,
   )
   if (outcome.fate === 'rejected') {
-    console.error('shortcut capture rejected by Reflect host')
+    console.error('shortcut capture rejected by Kore host')
   }
 }
 

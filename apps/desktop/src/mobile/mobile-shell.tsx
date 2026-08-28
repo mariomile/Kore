@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react'
+import { untitledNotePath } from '@reflect/core'
 import { useDoubleTap } from '@/hooks/use-double-tap'
 import { MobileFormattingToolbar } from '@/mobile/formatting-toolbar'
 import { MobileStack } from '@/mobile/mobile-stack'
@@ -110,7 +111,13 @@ export function MobileShell(): ReactElement {
         {/* The tab bar floats over the stack as a translucent glass bar —
             screens pad their scrollers past `--mobile-tab-bar-height`, so
             content scrolls under it rather than stopping above. */}
-        {keyboardVisible ? null : <MobileTabBar tab={tab} onSelect={handleTabSelect} />}
+        {keyboardVisible ? null : (
+          <MobileTabBar
+            tab={tab}
+            onSelect={handleTabSelect}
+            onNewNote={() => navigate({ kind: 'note', path: untitledNotePath() })}
+          />
+        )}
       </div>
       {/* V1 lets the keyboard cover the tab bar; with the root shrunk it
           would ride above the keyboard instead, so it hides while typing.

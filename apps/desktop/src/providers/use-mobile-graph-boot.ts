@@ -15,7 +15,7 @@ import { takeWarmMobileStorage } from '@/lib/mobile-boot-warm'
 import { SETTINGS_QUERY_KEY, useSettings } from '@/providers/settings-provider'
 
 /** The graph directory created in the container for a fresh start — reads as
- * `iCloud Drive → Reflect → Notes` in Files/Finder. */
+ * `iCloud Drive → Kore → Notes` in Files/Finder. */
 const DEFAULT_ICLOUD_GRAPH_NAME = 'Notes'
 
 /**
@@ -269,7 +269,7 @@ export function useMobileGraphBoot(options: MobileGraphBootOptions): MobileGraph
           // silently start a second graph — park on an honest error until
           // iCloud is back.
           onParked(
-            'Your notes are stored in iCloud Drive, but iCloud isn’t available on this device. Sign in to iCloud in Settings, then reopen Reflect.',
+            'Your notes are stored in iCloud Drive, but iCloud isn’t available on this device. Sign in to iCloud in Settings, then reopen Kore.',
           )
           return
         }

@@ -10,6 +10,6 @@ import { setWindowTitle } from '@/lib/windows/window-title'
  */
 export function useNoteWindowTitle(title: string | null): void {
   useEffect(() => {
-    setWindowTitle(title ?? 'Reflect')
+    setWindowTitle(title ?? 'Kore')
   }, [title])
 }

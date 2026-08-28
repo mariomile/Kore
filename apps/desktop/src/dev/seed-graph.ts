@@ -30,7 +30,7 @@ export function seedGraphFiles(): Record<string, string> {
 
   return {
     [`daily/${today}.md`]: [
-      `- Morning review with [[Sarah Chen]] about the [[Reflect V2]] launch`,
+      `- Morning review with [[Sarah Chen]] about the [[Kore V2]] launch`,
       `+ [ ] Ship the mobile filter badges [[${today}]]`,
       `+ [ ] Reply to the beta feedback thread`,
       `- Started reading [[Atomic Habits]] on the train #book`,
@@ -59,7 +59,7 @@ export function seedGraphFiles(): Record<string, string> {
     ].join('\n'),
     'notes/reflect-v2.md': [
       frontmatter({ id: '01hv3xq7c2dm8k4t9w5e6r1n0a', pinned: '1' }),
-      `# Reflect V2`,
+      `# Kore V2`,
       ``,
       `The offline-first rewrite. Markdown on disk, SQLite as a rebuildable`,
       `projection, sync over Git.`,
@@ -74,7 +74,7 @@ export function seedGraphFiles(): Record<string, string> {
       `# Sarah Chen`,
       ``,
       `- Type: #person`,
-      `- Engineering lead on [[Reflect V2]]`,
+      `- Engineering lead on [[Kore V2]]`,
       `- Prefers async updates, Tuesday 1:1s`,
       ``,
     ].join('\n'),
@@ -104,7 +104,7 @@ export function seedGraphFiles(): Record<string, string> {
       `- URL: https://www.inkandswitch.com/local-first/`,
       ``,
       `Seven ideals for software that keeps data on the device and syncs`,
-      `without a server owning it. Core inspiration for [[Reflect V2]].`,
+      `without a server owning it. Core inspiration for [[Kore V2]].`,
       ``,
     ].join('\n'),
     'notes/reading-list.md': [

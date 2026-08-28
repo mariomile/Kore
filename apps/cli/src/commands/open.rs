@@ -1,5 +1,5 @@
 //! `reflect open <note>` — resolve like `show`/`path`, then navigate the
-//! Reflect app there by handing the OS URL opener a `reflect://` deep link
+//! Kore app there by handing the OS URL opener a `reflect://` deep link
 //! (docs/deep-links.md). The URL prefers the most durable address the note
 //! has: the date form for dailies, the frontmatter `id` form when the note
 //! carries one (it survives renames), else the graph-relative path form.

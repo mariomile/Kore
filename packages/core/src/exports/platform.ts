@@ -401,12 +401,3 @@ export {
   type BrowserNavigatedEvent,
   type BrowserPageRead,
 } from '../browser/commands'
-export {
-  IAP_PRODUCT_IDS,
-  iapGetProducts,
-  iapPurchase,
-  iapRestorePurchases,
-  iapIsOwned,
-  subscribeIapPurchaseUpdated,
-  type IapProduct,
-} from '../ipc/iap-plugin'

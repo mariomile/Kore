@@ -42,7 +42,7 @@ fn open_index_for_resolution(root: &Path) -> Option<OpenIndex> {
     match open_read_only(root) {
         IndexOpen::Opened(open) => {
             if open.newer_schema {
-                warn("the index schema is newer than this CLI — update Reflect");
+                warn("the index schema is newer than this CLI — update Kore");
             }
             Some(open)
         }

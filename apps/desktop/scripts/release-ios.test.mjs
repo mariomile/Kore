@@ -7,15 +7,12 @@ import {
   createAltoolUploadArgs,
   createAltoolValidateArgs,
   createApiKeyAltoolArgs,
-  createSentryDebugFilesUploadArgs,
   createTimestampBuildNumber,
   createTauriIosBuildEnv,
   createTauriIosBuildArgs,
   findIpaAppexPaths,
   findIpaInfoPlistPath,
-  inspectSentryUploadConfiguration,
   isFalsePlistValue,
-  isProductionSentryDsn,
   normalizeApiKeyContent,
   parseDwarfdumpUuids,
   resolveBuildNumber,
@@ -110,46 +107,6 @@ test('iOS release builds emit Rust line tables so the app dSYM can symbolicate n
     createTauriIosBuildEnv({ baseEnv: { CARGO_PROFILE_RELEASE_DEBUG: 'full' } })
       .CARGO_PROFILE_RELEASE_DEBUG,
   ).toBe('full')
-})
-
-test('native dSYMs upload without source bundles', () => {
-  expect(createSentryDebugFilesUploadArgs('/build/reflect-open_iOS.xcarchive')).toEqual([
-    'debug-files',
-    'upload',
-    '--org',
-    'reflect-64',
-    '--project',
-    'reflect-open',
-    '--type',
-    'dsym',
-    '--no-sources',
-    '--wait-for',
-    '60',
-    '/build/reflect-open_iOS.xcarchive',
-  ])
-})
-
-test('the auth token enables uploads and a foreign DSN fails the release', () => {
-  const dsn =
-    'https://0123456789abcdef0123456789abcdef@o463484.ingest.us.sentry.io/4511705649971200'
-  expect(isProductionSentryDsn(dsn)).toBe(true)
-  expect(isProductionSentryDsn('https://public@example.test/1')).toBe(false)
-  expect(isProductionSentryDsn(undefined)).toBe(false)
-
-  expect(
-    inspectSentryUploadConfiguration({ SENTRY_AUTH_TOKEN: 'token', VITE_SENTRY_DSN: dsn }),
-  ).toEqual({ enabled: true, error: null })
-  expect(inspectSentryUploadConfiguration({ SENTRY_AUTH_TOKEN: 'token' })).toEqual({
-    enabled: true,
-    error: null,
-  })
-  expect(inspectSentryUploadConfiguration({})).toEqual({ enabled: false, error: null })
-  expect(
-    inspectSentryUploadConfiguration({
-      SENTRY_AUTH_TOKEN: 'token',
-      VITE_SENTRY_DSN: 'https://public@example.test/1',
-    }).error,
-  ).toMatch(/production Reflect Sentry project/)
 })
 
 test('dwarfdump UUIDs are parsed per architecture and compared order-independently', () => {

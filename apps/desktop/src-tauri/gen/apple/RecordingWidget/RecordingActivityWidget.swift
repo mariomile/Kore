@@ -18,7 +18,7 @@ struct RecordingActivityWidget: Widget {
         VStack(alignment: .leading, spacing: 2) {
           Text("Recording")
             .font(.headline)
-          Text("Reflect")
+          Text("Kore")
             .font(.caption)
             .foregroundStyle(.secondary)
         }

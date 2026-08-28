@@ -1,11 +1,11 @@
 ---
 name: {{SKILL_NAME}}
-description: Read, search, capture, and edit notes in the user's "{{GRAPH_NAME}}" Reflect graph via the `reflect` CLI. Use when the user asks about their notes, daily notes, journal, tasks, or anything they may have written down in Reflect.
+description: Read, search, capture, and edit notes in the user's "{{GRAPH_NAME}}" Kore graph via the `reflect` CLI. Use when the user asks about their notes, daily notes, journal, tasks, or anything they may have written down in Kore.
 ---
 
-# Reflect graph: {{GRAPH_NAME}}
+# Kore graph: {{GRAPH_NAME}}
 
-Reflect is a local-first, markdown-backed note-taking app. This skill targets
+Kore is a local-first, markdown-backed note-taking app. This skill targets
 one graph (a folder of notes):
 
     {{GRAPH_ROOT}}
@@ -33,7 +33,7 @@ or export `REFLECT_GRAPH="{{GRAPH_ROOT}}"` for a sequence of calls.
     reflect search <query>     # ranked full-text search over the graph
     reflect show <note>        # print a note by date, path, title, or alias
     reflect path <note>        # resolve a note to its absolute path
-    reflect open <note>        # open the note in the Reflect app
+    reflect open <note>        # open the note in the Kore app
     reflect tasks              # the graph's open tasks (--all includes done)
     reflect backlinks <note>   # the notes linking to a note
     reflect recent             # the most recently updated notes, newest first
@@ -57,7 +57,7 @@ or export `REFLECT_GRAPH="{{GRAPH_ROOT}}"` for a sequence of calls.
 | 1 | runtime error (no graph, IO failure) |
 | 2 | usage error |
 | 3 | note not found, or note is private |
-| 4 | index missing (`search`/`tasks`/`backlinks`/`recent`) — open the graph in Reflect once to build it |
+| 4 | index missing (`search`/`tasks`/`backlinks`/`recent`) — open the graph in Kore once to build it |
 
 ## Writing notes
 
@@ -105,7 +105,7 @@ conventions so edits render as first-class notes:
 
 ## Git history
 
-On desktop, every graph is also a Git repository at its root. Reflect
+On desktop, every graph is also a Git repository at its root. Kore
 initializes or adopts that repo when the graph opens; even graphs with no
 backup remote keep local history through a commit-only sync loop. There may be
 no `origin`, but `.git` history is available.

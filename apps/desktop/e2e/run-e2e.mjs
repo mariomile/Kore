@@ -14,11 +14,15 @@
 // there means updating the locators here.
 import { spawn } from 'node:child_process'
 import { existsSync, mkdirSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright'
 
 const PORT = process.env['E2E_PORT'] ?? '5199'
 const BASE = `http://127.0.0.1:${PORT}/`
-const SHOTS = new URL('./shots/', import.meta.url).pathname
+// `fileURLToPath`, not `.pathname`: the latter keeps URL percent-encoding, so
+// any checkout whose path contains a space resolves to a directory that does
+// not exist (`/Dev%20Projects/…`).
+const SHOTS = fileURLToPath(new URL('./shots/', import.meta.url))
 mkdirSync(SHOTS, { recursive: true })
 
 const results = []
@@ -39,7 +43,7 @@ async function step(name, fn) {
 }
 
 // ---- dev server -----------------------------------------------------------
-const appDir = new URL('..', import.meta.url).pathname
+const appDir = fileURLToPath(new URL('..', import.meta.url))
 const server = spawn('pnpm', ['dev', '--port', PORT, '--strictPort', '--host', '127.0.0.1'], {
   cwd: appDir,
   stdio: 'ignore',

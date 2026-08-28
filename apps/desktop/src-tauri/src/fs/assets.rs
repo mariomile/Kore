@@ -26,7 +26,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
 
 use tauri::ipc::{InvokeBody, Request};
-use tauri::State;
+use tauri::{Manager, State};
 
 use crate::error::{AppError, AppResult};
 
@@ -164,51 +164,74 @@ pub fn asset_upload_begin(
 /// body** (`InvokeBody::Raw`) — never JSON — and the upload id arrives in the
 /// `x-upload-id` header, since a raw-body invoke carries no args.
 #[tauri::command]
-pub fn asset_upload_append(request: Request<'_>, uploads: State<AssetUploads>) -> AppResult<()> {
+pub async fn asset_upload_append<R: tauri::Runtime>(
+    request: Request<'_>,
+    app: tauri::AppHandle<R>,
+) -> AppResult<()> {
     let id = request
         .headers()
         .get(UPLOAD_ID_HEADER)
         .and_then(|value| value.to_str().ok())
-        .ok_or_else(|| AppError::io(format!("missing {UPLOAD_ID_HEADER} header")))?;
+        .ok_or_else(|| AppError::io(format!("missing {UPLOAD_ID_HEADER} header")))?
+        .to_string();
     let InvokeBody::Raw(bytes) = request.body() else {
         return Err(AppError::io(
             "asset_upload_append expects a raw binary body, got JSON",
         ));
     };
-    let mut uploads = lock_uploads(&uploads)?;
-    let upload = uploads
-        .get_mut(id)
-        .ok_or_else(|| AppError::not_found(format!("unknown upload: {id}")))?;
-    upload.file.as_file_mut().write_all(bytes)?;
-    Ok(())
+    // `InvokeBody::Raw` borrows `request`, which cannot cross the hop below —
+    // clone the chunk into an owned buffer before handing it to the pool.
+    let bytes = bytes.clone();
+    crate::blocking::run_blocking(move || {
+        let uploads = app.state::<AssetUploads>();
+        // Take the Upload out of the registry for the write instead of
+        // holding the global mutex across it: other in-flight uploads (each
+        // a different id) would otherwise serialize behind this one's chunk.
+        // A failed write therefore drops the upload rather than leaving a
+        // half-written one behind, which deletes the staged temp file at once.
+        // `asset_upload_abort` removes by id and succeeds either way, and the
+        // caller runs it in a `catch` on any failure, so the cleanup path is
+        // unchanged from the caller's side.
+        let mut upload = lock_uploads(&uploads)?
+            .remove(&id)
+            .ok_or_else(|| AppError::not_found(format!("unknown upload: {id}")))?;
+        upload.file.as_file_mut().write_all(&bytes)?;
+        lock_uploads(&uploads)?.insert(id, upload);
+        Ok(())
+    })
+    .await
 }
 
 /// Finish a streamed upload: fsync, then move the staged file into `assets/`
 /// under `desired_name` (or the first free `-2`-suffixed variant). Returns the
 /// final graph-relative `assets/…` path.
 #[tauri::command]
-pub fn asset_upload_commit(
+pub async fn asset_upload_commit<R: tauri::Runtime>(
     id: String,
     desired_name: String,
     generation: u64,
-    state: State<GraphState>,
-    uploads: State<AssetUploads>,
+    app: tauri::AppHandle<R>,
 ) -> AppResult<String> {
-    let upload = lock_uploads(&uploads)?
-        .remove(&id)
-        .ok_or_else(|| AppError::not_found(format!("unknown upload: {id}")))?;
-    if upload.generation != generation {
-        return Err(AppError::io(
-            "upload was started for a different graph session; dropping it",
-        ));
-    }
-    // Pin the root before persisting: after the file lands, a failed root
-    // lookup would otherwise skip invalidation and strand a stale catalog.
-    let root = root_for_generation(&state, generation)?;
-    let assets_dir = assets_dir_for(&state, generation, &desired_name)?;
-    let final_name = persist_unique(upload.file, &assets_dir, &desired_name)?;
-    super::invalidate_file_catalog(&state, &root);
-    Ok(format!("assets/{final_name}"))
+    crate::blocking::run_blocking(move || {
+        let uploads = app.state::<AssetUploads>();
+        let upload = lock_uploads(&uploads)?
+            .remove(&id)
+            .ok_or_else(|| AppError::not_found(format!("unknown upload: {id}")))?;
+        if upload.generation != generation {
+            return Err(AppError::io(
+                "upload was started for a different graph session; dropping it",
+            ));
+        }
+        let state = app.state::<GraphState>();
+        // Pin the root before persisting: after the file lands, a failed root
+        // lookup would otherwise skip invalidation and strand a stale catalog.
+        let root = root_for_generation(&state, generation)?;
+        let assets_dir = assets_dir_for(&state, generation, &desired_name)?;
+        let final_name = persist_unique(upload.file, &assets_dir, &desired_name)?;
+        super::invalidate_file_catalog(&state, &root);
+        Ok(format!("assets/{final_name}"))
+    })
+    .await
 }
 
 /// Persist a staged upload at an exact target path, creating parent
@@ -242,26 +265,30 @@ fn persist_exact(temp: tempfile::NamedTempFile, target: &Path) -> AppResult<()> 
 /// it. Memo basenames carry millisecond precision; an existing file at
 /// `path` is a bug and fails loudly rather than being clobbered.
 #[tauri::command]
-pub fn asset_upload_commit_path(
+pub async fn asset_upload_commit_path<R: tauri::Runtime>(
     id: String,
     path: String,
     generation: u64,
-    state: State<GraphState>,
-    uploads: State<AssetUploads>,
+    app: tauri::AppHandle<R>,
 ) -> AppResult<()> {
-    let upload = lock_uploads(&uploads)?
-        .remove(&id)
-        .ok_or_else(|| AppError::not_found(format!("unknown upload: {id}")))?;
-    if upload.generation != generation {
-        return Err(AppError::io(
-            "upload was started for a different graph session; dropping it",
-        ));
-    }
-    let root = root_for_generation(&state, generation)?;
-    let target = resolve(&root, &path)?;
-    persist_exact(upload.file, &target)?;
-    super::invalidate_file_catalog(&state, &root);
-    Ok(())
+    crate::blocking::run_blocking(move || {
+        let uploads = app.state::<AssetUploads>();
+        let upload = lock_uploads(&uploads)?
+            .remove(&id)
+            .ok_or_else(|| AppError::not_found(format!("unknown upload: {id}")))?;
+        if upload.generation != generation {
+            return Err(AppError::io(
+                "upload was started for a different graph session; dropping it",
+            ));
+        }
+        let state = app.state::<GraphState>();
+        let root = root_for_generation(&state, generation)?;
+        let target = resolve(&root, &path)?;
+        persist_exact(upload.file, &target)?;
+        super::invalidate_file_catalog(&state, &root);
+        Ok(())
+    })
+    .await
 }
 
 /// Discard an in-flight upload; dropping the temp file deletes it. Idempotent
@@ -276,25 +303,29 @@ pub fn asset_upload_abort(id: String, uploads: State<AssetUploads>) -> AppResult
 /// under `desired_name`, with the same collision policy as uploads. The bytes
 /// never cross the IPC. Returns the final graph-relative `assets/…` path.
 #[tauri::command]
-pub fn asset_import(
+pub async fn asset_import<R: tauri::Runtime>(
     source_path: String,
     desired_name: String,
     generation: u64,
-    state: State<GraphState>,
+    app: tauri::AppHandle<R>,
 ) -> AppResult<String> {
-    let source = Path::new(&source_path);
-    if !source.is_file() {
-        return Err(AppError::not_found(format!(
-            "import source is not a file: {source_path}"
-        )));
-    }
-    let root = root_for_generation(&state, generation)?;
-    let mut temp = tempfile::NamedTempFile::new_in(staging_dir(&root)?)?;
-    std::io::copy(&mut fs::File::open(source)?, temp.as_file_mut())?;
-    let assets_dir = assets_dir_for(&state, generation, &desired_name)?;
-    let final_name = persist_unique(temp, &assets_dir, &desired_name)?;
-    super::invalidate_file_catalog(&state, &root);
-    Ok(format!("assets/{final_name}"))
+    crate::blocking::run_blocking(move || {
+        let source = Path::new(&source_path);
+        if !source.is_file() {
+            return Err(AppError::not_found(format!(
+                "import source is not a file: {source_path}"
+            )));
+        }
+        let state = app.state::<GraphState>();
+        let root = root_for_generation(&state, generation)?;
+        let mut temp = tempfile::NamedTempFile::new_in(staging_dir(&root)?)?;
+        std::io::copy(&mut fs::File::open(source)?, temp.as_file_mut())?;
+        let assets_dir = assets_dir_for(&state, generation, &desired_name)?;
+        let final_name = persist_unique(temp, &assets_dir, &desired_name)?;
+        super::invalidate_file_catalog(&state, &root);
+        Ok(format!("assets/{final_name}"))
+    })
+    .await
 }
 
 #[cfg(test)]

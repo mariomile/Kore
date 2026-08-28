@@ -1167,7 +1167,7 @@ fn session_adoption_reads_never_bump_generations() {
     // than opening one itself.
     assert_eq!(super::current_generation(&app.state()).unwrap(), None);
 
-    let opened = super::index_open(app.state(), app.state(), app.state()).expect("open");
+    let opened = super::open_index_for(&app.state(), &app.state()).expect("open");
     for _ in 0..2 {
         let info = crate::fs::current_graph_info(&app.state()).expect("graph info");
         assert_eq!(info.generation, 3);
@@ -1213,7 +1213,7 @@ fn stale_generation_writes_are_dropped_end_to_end() {
         rows[0]["n"].clone()
     };
 
-    let stale = super::index_open(app.state(), app.state(), app.state()).expect("first open");
+    let stale = super::open_index_for(&app.state(), &app.state()).expect("first open");
     tauri::async_runtime::block_on(super::index_apply(
         note("notes/a.md", "A", vec![]),
         stale,
@@ -1224,7 +1224,7 @@ fn stale_generation_writes_are_dropped_end_to_end() {
     assert_eq!(count("after first apply"), Value::from(1));
 
     // Reopening (graph switch / reload) bumps the generation; the old one is stale.
-    let fresh = super::index_open(app.state(), app.state(), app.state()).expect("reopen");
+    let fresh = super::open_index_for(&app.state(), &app.state()).expect("reopen");
     assert_ne!(stale, fresh);
 
     tauri::async_runtime::block_on(super::index_apply(
@@ -1264,30 +1264,12 @@ fn stale_generation_writes_are_dropped_end_to_end() {
         ))
         .unwrap_or_else(|err| panic!("{label}: {err:?}"))
     };
-    super::index_meta_set(
-        "k".to_string(),
-        "stale".to_string(),
-        stale,
-        app.state(),
-        app.state(),
-    )
+    super::set_index_meta_for(&app.state(), "k", "stale", stale)
     .expect("stale meta set returns Ok");
     assert!(meta("after stale meta set").is_empty());
-    super::index_meta_set(
-        "k".to_string(),
-        "v1".to_string(),
-        fresh,
-        app.state(),
-        app.state(),
-    )
+    super::set_index_meta_for(&app.state(), "k", "v1", fresh)
     .expect("fresh meta set");
-    super::index_meta_set(
-        "k".to_string(),
-        "v2".to_string(),
-        fresh,
-        app.state(),
-        app.state(),
-    )
+    super::set_index_meta_for(&app.state(), "k", "v2", fresh)
     .expect("meta upsert");
     assert_eq!(meta("after meta upsert")[0]["value"], Value::from("v2"));
 }
@@ -1308,7 +1290,7 @@ fn index_remove_batch_drops_many_notes_in_one_transaction() {
         let mut inner = state.0.lock().unwrap();
         inner.root = Some(graph_dir.path().to_path_buf());
     }
-    let generation = super::index_open(app.state(), app.state(), app.state()).expect("open");
+    let generation = super::open_index_for(&app.state(), &app.state()).expect("open");
     tauri::async_runtime::block_on(super::index_apply_batch(
         vec![
             note("notes/a.md", "A", vec![]),
@@ -2295,7 +2277,7 @@ fn reconcile_scan_walks_the_index_sessions_root_not_the_current_graph() {
         inner.generation = 1;
         inner.root = Some(graph_a.path().to_path_buf());
     }
-    let generation = super::index_open(app.state(), app.state(), app.state()).expect("open");
+    let generation = super::open_index_for(&app.state(), &app.state()).expect("open");
 
     // The switch's first half: `graph_open` swapped the root, `index_open`
     // hasn't run yet — the exact window a queued scan can land in.

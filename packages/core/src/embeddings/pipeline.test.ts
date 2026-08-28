@@ -28,6 +28,8 @@ function fakePipelineBridge(options: {
   evicted?: boolean
   /** Sidecar paths (`<asset>.reflect.md`) to report as iCloud-evicted. */
   evictedSidecars?: string[]
+  /** Stand in for the runtime's response to one `embed_texts` batch. */
+  embed?: (texts: string[]) => number[][] | Promise<number[][]>
 }) {
   const embedded: string[][] = []
   const applied: { path: string; chunks: AppliedChunk[] }[] = []
@@ -56,7 +58,7 @@ function fakePipelineBridge(options: {
       if (command === 'embed_texts') {
         const texts = (args as { texts: string[] }).texts
         embedded.push(texts)
-        return texts.map(() => [0.5, 0.5])
+        return options.embed ? await options.embed(texts) : texts.map(() => [0.5, 0.5])
       }
       if (command === 'embed_apply') {
         const { path, chunks } = args as { path: string; chunks: AppliedChunk[] }
@@ -129,6 +131,96 @@ describe('embedNote', () => {
     expect(count).toBe(0)
     expect(second.embedded).toHaveLength(0) // nothing re-embedded
     expect(second.applied[0]!.chunks[0]!.vector).toBeNull() // metadata-only row
+  })
+
+  it('bounds native calls and preserves vector order in one atomic note write', async () => {
+    const content = Array.from(
+      { length: 41 },
+      (_, index) => `# Section ${index}\n\nText.\n\n`,
+    ).join('')
+    const { embedded, applied } = fakePipelineBridge({
+      content,
+      storedRows: [],
+      embed: (texts) => texts.map((text) => [Number(text.match(/Section (\d+)/)?.[1])]),
+    })
+    expect(await embedNote({ path: 'notes/a.md', generation: 1, modelId: MODEL })).toBe(41)
+    expect(embedded.map((batch) => batch.length)).toEqual([4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 1])
+    expect(applied).toHaveLength(1)
+    expect(applied[0]!.chunks.map((chunk) => chunk.vector)).toEqual(
+      Array.from({ length: 41 }, (_, index) => [index]),
+    )
+  })
+
+  it('stops between batches without replacing a note with partial vectors', async () => {
+    let stale = false
+    const content = Array.from(
+      { length: 40 },
+      (_, index) => `# Section ${index}\n\nText.\n\n`,
+    ).join('')
+    const { embedded, applied } = fakePipelineBridge({
+      content,
+      storedRows: [],
+      embed: (texts) => {
+        stale = true
+        return texts.map(() => [0.5, 0.5])
+      },
+    })
+    const count = await embedNote({
+      path: 'notes/a.md',
+      generation: 1,
+      modelId: MODEL,
+      isStale: () => stale,
+    })
+    expect(count).toBe(0)
+    expect(embedded).toHaveLength(1)
+    expect(applied).toHaveLength(0)
+  })
+
+  it('does not persist an incomplete runtime response', async () => {
+    const { applied } = fakePipelineBridge({
+      content: '# One\n\nAlpha.\n',
+      storedRows: [],
+      embed: () => [],
+    })
+    await expect(embedNote({ path: 'notes/a.md', generation: 1, modelId: MODEL })).rejects.toThrow(
+      'incomplete batch',
+    )
+    expect(applied).toHaveLength(0)
+  })
+
+  it('does not replace vectors when cancelled during the final batch', async () => {
+    let stale = false
+    const { applied } = fakePipelineBridge({
+      content: '# One\n\nAlpha.\n',
+      storedRows: [],
+      embed: (texts) => {
+        stale = true
+        return texts.map(() => [0.5, 0.5])
+      },
+    })
+    expect(
+      await embedNote({
+        path: 'notes/a.md',
+        generation: 1,
+        modelId: MODEL,
+        isStale: () => stale,
+      }),
+    ).toBe(0)
+    expect(applied).toHaveLength(0)
+  })
+
+  it('does not remove vectors when cancelled while reading an empty note', async () => {
+    const { applied } = fakePipelineBridge({ content: '\n', storedRows: [] })
+    let stale = false
+    const work = embedNote({
+      path: 'notes/a.md',
+      generation: 1,
+      modelId: MODEL,
+      isStale: () => stale,
+    })
+    stale = true
+    expect(await work).toBe(0)
+    expect(applied).toHaveLength(0)
   })
 
   it('a model change re-embeds chunks whose hashes are unchanged', async () => {

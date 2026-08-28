@@ -42,8 +42,17 @@ export function embedEnsure(): Promise<EmbedStatus> {
   return call('embed_ensure', {}, embedStatusSchema)
 }
 
-/** Embed texts → 384-dim vectors. Errors unless status is `ready`. */
+/**
+ * Maximum texts per native call, mirrored by `embed_batch::BATCH_SIZE`.
+ * Each call completes pooling before another batch can retain raw outputs.
+ */
+export const EMBEDDING_BATCH_SIZE = 4
+
+/** Embed a bounded batch → 384-dim vectors; reloads an idle model. */
 export function embedTexts(texts: string[]): Promise<number[][]> {
+  if (texts.length > EMBEDDING_BATCH_SIZE) {
+    throw new Error(`An embedding request cannot exceed ${EMBEDDING_BATCH_SIZE} texts`)
+  }
   return call('embed_texts', { texts }, vectorsSchema)
 }
 

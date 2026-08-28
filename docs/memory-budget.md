@@ -1,29 +1,29 @@
 # Memory: where it goes, and what holds it down
 
-Kore's resident footprint is not one number. What a user reads in Activity
-Monitor is the app process, the WebKit processes behind the webview, and every
-helper the app started — an agent CLI with its MCP servers, the in-app
-terminal's shell and whatever runs inside it. Those are separate processes with
-separate resident sets, and confusing them is how "the app is using 10GB"
-becomes unanswerable.
-
-This document is the map: what owns memory, what releases it, and the budgets a
-change should not blow through.
+Kore uses a native Tauri process, WebKit services, and optional helper
+processes. Account for them separately. RSS measures resident pages; on macOS
+physical footprint also accounts for charged nonresident memory. A process
+with little RSS can still retain gigabytes. See the
+[incident and remediation report](performance-audit-2026-08-27.md).
 
 ## Measure first
 
-**Settings → About → Memory** reports the app's own resident set and every
-helper process it owns, heaviest first (`memory_report`, `src/diagnostics.rs`).
-Read it before optimizing anything:
+**Settings → About → Memory** reports native physical footprint, lifetime peak,
+native RSS, and helper RSS (`memory_report`, `src/diagnostics.rs`).
 
-- large app RSS, empty helper list → the app itself (webview and chat state are
-  the usual suspects; see below);
-- small app RSS, heavy helper list → helpers, and the question becomes whether
-  they should still be running at all.
+- High native footprint identifies native retention even when RSS is small.
+- Heavy helper RSS identifies subprocess memory, not allocations in Kore.
+- Missing observations show `Unavailable`; failed process discovery is not
+  reported as a healthy empty helper list.
 
-One thing the report cannot see: on macOS the WebKit content and GPU processes
-are XPC services launched by `launchd`, not children of the app, so they are
-outside the tree it walks. What the webview holds is measured from the frontend.
+On macOS, footprint and peak come from `proc_pid_rusage(RUSAGE_INFO_V4)`.
+Other platforms return unavailable for these fields. Do not add footprint,
+RSS, and peak: they overlap, and peak is historical.
+
+WebKit content and GPU processes are XPC services launched by `launchd`, not
+children of Kore. The report cannot establish their ownership or an app-wide
+total. Use a separately attributed native WebKit capture; JavaScript heap
+measurements are neither universally available nor a complete webview footprint.
 
 ## Helper processes
 
@@ -58,15 +58,93 @@ run does that today.
 
 ## The embedding model
 
-`all-MiniLM-L6-v2` under ONNX is resident for as long as it is held, so it is
-not held forever: after fifteen idle minutes the runtime releases it and
-reports `unloaded`. The next semantic query reloads it from the local cache
-inside `embed_texts` — a pure disk read, never a download.
+The native runtime uses `all-MiniLM-L6-v2` through fastembed/ONNX Runtime.
+The session owns the ONNX arena, which can retain its inference high-water
+allocation. Limiting only the library's internal batch size is insufficient:
+fastembed 5.13.2 collects raw batch outputs until the entire call is pooled.
 
-`unloaded` is deliberately **not** `uninitialized`. An uninitialized runtime may
-still owe the ~90MB first download, which only the explicit opt-in may start; an
-unloaded one is available and one cache read away. Every consumer that gates on
-"semantic search is available" must treat the two differently.
+The production bounds are:
+
+| Boundary | Limit and behavior |
+|---|---|
+| TypeScript inference request | At most 4 texts (`EMBEDDING_BATCH_SIZE`) |
+| Native inference request | At most 4 texts and 128 KiB total UTF-8 input; reject before model work |
+| Native library call | One request per call, `Some(4)`; raw outputs cannot accumulate across an entire note |
+| Native queue | At most 8 admitted requests, FIFO execution; overload is an explicit error |
+| Blocking worker | One inference at a time; its admission lease survives caller cancellation until work finishes |
+| Chunk length | At most 1,500 UTF-16 code units, including long unbroken spans and tail merging |
+| Persistence | Ordered vectors accumulated per note, followed by one generation-pinned atomic replacement |
+| Cancellation | Checked before work, between inference requests, and before replacement/removal |
+
+The chunk limit preserves source offsets and surrogate pairs, but is **not a
+token limit**. Dense multilingual text may still reach the tokenizer's
+512-position truncation ceiling. The inference batch bound protects memory
+at that maximum sequence length. Token-aware chunking and retrieval quality
+for such text remain a separate correctness evaluation.
+
+After fifteen idle minutes (checked once per minute), the runtime drops its
+session and reports `unloaded`. An active request's model reference prevents
+release. The watchdog disarms and publishes `unloaded` under the state lock,
+so a concurrent reload cannot be followed by an obsolete unload event.
+
+`unloaded` is distinct from `uninitialized`: only explicit opt-in can start
+the initial model download. An embedding request can reload an already used
+model and waits for a concurrent load to finish. Synchronization keeps following
+note changes while the model is unloaded/loading; normal unload/reload no
+longer starts another whole-graph backfill. Disabling semantic search or
+switching graphs cancels pending work at request boundaries.
+
+Dropping the session does not guarantee an immediate footprint decrease:
+allocator and OS accounting can recover later. Measure release over time and
+across repeated cycles instead of calling one high post-drop sample a leak.
+Thread-pool, QoS and arena configuration remain unchanged in this patch; no
+production dependencies are added.
+
+### Reproduce the native experiments
+
+These ignored tests require macOS and an **already cached** model. They use
+synthetic text, never open a graph or send note content to a provider. The
+cache check fails if model files are missing. Run each experiment alone in a
+fresh process; concurrent builds distort latency comparisons.
+
+Stage the existing sidecars once per checkout, then build the test binary:
+
+```sh
+pnpm --filter @reflect/desktop sidecar
+cargo test -p reflect-open --lib --locked --no-run
+```
+
+Set `KORE_EMBED_BENCH_CACHE` to the populated `models` directory under the
+app's data directory. Use the test executable path printed by Cargo (named
+`target/debug/deps/reflect_open_lib-<hash>`):
+
+```sh
+export KORE_EMBED_BENCH_CACHE='/path/to/existing/model/cache'
+export KORE_EMBED_BENCH_BINARY='target/debug/deps/reflect_open_lib-<hash>'
+KORE_EMBED_BENCH_MODE=baseline KORE_EMBED_BENCH_TEXTS=32 KORE_EMBED_BENCH_CYCLES=5 \
+  "$KORE_EMBED_BENCH_BINARY" embed_bench::native_embedding_memory --ignored --exact --nocapture --test-threads=1
+KORE_EMBED_BENCH_MODE=bounded KORE_EMBED_BENCH_TEXTS=32 KORE_EMBED_BENCH_CYCLES=5 \
+  "$KORE_EMBED_BENCH_BINARY" embed_bench::native_embedding_memory --ignored --exact --nocapture --test-threads=1
+KORE_EMBED_BENCH_MODE=bounded KORE_EMBED_BENCH_TEXTS=769 KORE_EMBED_BENCH_CYCLES=3 \
+  "$KORE_EMBED_BENCH_BINARY" embed_bench::native_embedding_memory --ignored --exact --nocapture --test-threads=1
+"$KORE_EMBED_BENCH_BINARY" embed_bench::bounded_batches_preserve_vectors --ignored --exact --nocapture --test-threads=1
+KORE_EMBED_BENCH_CYCLES=50 "$KORE_EMBED_BENCH_BINARY" embed::tests::repeated_idle_release_preserves_active_requests --ignored --exact --nocapture --test-threads=1
+```
+
+`baseline` reproduces the source's previous `embed(texts, None)` call; for
+machine safety it refuses more than 64 texts. `inference16` is an optional
+intermediate experiment, not the checked-in baseline. `bounded` exercises
+the production request helper. The synthetic texts deliberately reach the
+maximum token sequence length. Every inference checks vector count,
+dimension and finite values. The parity test compares 33 mixed texts against
+the baseline with cosine similarity above 0.99999. The lifecycle test forces
+the idle timestamp, checks active-reference protection and repeats 20 releases by default (50 with the command above);
+it does not wait 15 minutes or exercise a full GUI session.
+
+JSON records include PID, workload size, timing, footprint, peak and RSS;
+post-drop samples occur at 1, 5, 15 and 30 seconds. Keep records and a source
+revision with any result. These are native model experiments, not app-wide
+memory or end-to-end search latency measurements.
 
 ## Indexing
 
@@ -108,5 +186,8 @@ it ships:
 | Agent running | < 2 GB app-owned |
 | Growth over a 24h session | < 200 MB |
 
-The last row is the one that catches leaks: a footprint that does not come back
-down after an agent run finishes is a teardown that did not happen.
+Use decimal MB/GB for these targets and name the included processes. The
+incident remediation experiments measure only the native test process, so
+they cannot certify these app-wide targets or the 24-hour row. Persistent
+growth is a signal to inspect retained owners, not proof of a specific leak
+or failed teardown.

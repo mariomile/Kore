@@ -12,7 +12,10 @@ interface HelperPayload {
   command: string
 }
 
-let rssKb: number
+let rssKb: number | null
+let footprintBytes: number | null
+let peakFootprintBytes: number | null
+let processTableAvailable: boolean
 let helpers: HelperPayload[]
 let failure: string | null
 
@@ -28,6 +31,9 @@ function installFakeBridge(): void {
       return {
         pid: 100,
         rssKb,
+        footprintBytes,
+        peakFootprintBytes,
+        processTableAvailable,
         helpers,
         helpersRssKb: helpers.reduce((total, helper) => total + helper.rssKb, 0),
       }
@@ -47,6 +53,9 @@ async function renderField(): Promise<void> {
 
 beforeEach(() => {
   rssKb = 512 * 1024
+  footprintBytes = 640 * 1024 * 1024
+  peakFootprintBytes = 768 * 1024 * 1024
+  processTableAvailable = true
   helpers = []
   failure = null
   installFakeBridge()
@@ -61,6 +70,8 @@ describe('MemoryField', () => {
     await renderField()
 
     await expect.element(page.getByText('512 MB')).toBeInTheDocument()
+    await expect.element(page.getByText('640 MB')).toBeInTheDocument()
+    await expect.element(page.getByText('768 MB')).toBeInTheDocument()
     await expect.element(page.getByText('No helper processes.')).toBeInTheDocument()
   })
 
@@ -92,5 +103,28 @@ describe('MemoryField', () => {
     await renderField()
 
     await expect.element(page.getByText(/ps is unavailable/)).toBeInTheDocument()
+  })
+
+  it('shows a large native footprint even when almost nothing remains resident', async () => {
+    rssKb = 35 * 1024
+    footprintBytes = 8 * 1024 ** 3
+    peakFootprintBytes = 15 * 1024 ** 3
+    await renderField()
+    await expect.element(page.getByText('8.0 GB')).toBeInTheDocument()
+    await expect.element(page.getByText('15.0 GB')).toBeInTheDocument()
+    await expect.element(page.getByText('35 MB')).toBeInTheDocument()
+  })
+
+  it('does not present failed discovery or an unsupported footprint as zero', async () => {
+    rssKb = null
+    footprintBytes = null
+    peakFootprintBytes = null
+    processTableAvailable = false
+    await renderField()
+    await expect.element(page.getByText('Unavailable').first()).toBeInTheDocument()
+    await expect
+      .element(page.getByText('Helper process discovery unavailable.'))
+      .toBeInTheDocument()
+    await expect.element(page.getByText('No helper processes.')).not.toBeInTheDocument()
   })
 })

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { MAX_ASSET_TEXT_CHARS } from '../indexing/asset-description-text'
-import { chunkAssetDescriptions, chunkNote } from './chunk'
+import { chunkAssetDescriptions, chunkNote, MAX_EMBEDDING_CHUNK_CHARS } from './chunk'
 
 const PATH = 'notes/a.md'
 
@@ -57,6 +57,24 @@ describe('chunkNote', () => {
   it('returns nothing for empty or whitespace-only notes', async () => {
     expect(await chunkNote(PATH, '')).toEqual([])
     expect(await chunkNote(PATH, '\n\n  \n')).toEqual([])
+  })
+
+  it('bounds unbroken spans without dropping content or splitting surrogate pairs', async () => {
+    const source = `${'x'.repeat(1499)}${'🙂漢'.repeat(9000)}`
+    const chunks = await chunkNote(PATH, source)
+    expect(chunks.map((chunk) => chunk.text).join('')).toBe(source)
+    for (const chunk of chunks) {
+      expect(chunk.text.length).toBeLessThanOrEqual(MAX_EMBEDDING_CHUNK_CHARS)
+      expect(chunk.text.isWellFormed()).toBe(true)
+      expect(source.slice(chunk.posFrom, chunk.posTo)).toBe(chunk.text)
+    }
+  })
+
+  it('does not exceed the hard bound when accumulating sentences or merging a tail', async () => {
+    const source = `${'a'.repeat(900)}. ${'b'.repeat(1400)}. ${'c'.repeat(100)}`
+    const chunks = await chunkNote(PATH, source)
+    expect(chunks.map((chunk) => chunk.text).join('')).toBe(source)
+    expect(chunks.every((chunk) => chunk.text.length <= MAX_EMBEDDING_CHUNK_CHARS)).toBe(true)
   })
 
   it('merges a runt tail chunk into its predecessor', async () => {

@@ -1,6 +1,6 @@
 import { render } from 'vitest-browser-react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { IndexAppliedListener } from '@reflect/core'
+import type { EmbedStatus, IndexAppliedListener } from '@reflect/core'
 import { EmbeddingsSync } from './embeddings-sync'
 
 const core = vi.hoisted(() => ({
@@ -9,6 +9,9 @@ const core = vi.hoisted(() => ({
   subscribeIndexApplied: vi.fn(),
 }))
 const graphState = vi.hoisted(() => ({ indexReady: true }))
+const modelState = vi.hoisted((): { current: EmbedStatus } => ({
+  current: { status: 'ready', model: 'all-MiniLM-L6-v2' },
+}))
 vi.mock('@reflect/core', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@reflect/core')>()),
   embedNote: core.embedNote,
@@ -38,7 +41,7 @@ vi.mock('@/providers/settings-provider', () => ({
   }),
 }))
 vi.mock('@/lib/use-embed-status', () => ({
-  useEmbedStatus: () => ({ status: 'ready', model: 'all-MiniLM-L6-v2' }),
+  useEmbedStatus: () => modelState.current,
 }))
 
 let onApplied: IndexAppliedListener | null = null
@@ -47,6 +50,7 @@ const unlisten = vi.fn()
 beforeEach(() => {
   semanticSetting.enabled = true
   graphState.indexReady = true
+  modelState.current = { status: 'ready', model: 'all-MiniLM-L6-v2' }
   onApplied = null
   unlisten.mockClear()
   core.embedNote.mockClear()
@@ -76,6 +80,7 @@ describe('EmbeddingsSync', () => {
         path: 'notes/a.md',
         generation: 7,
         modelId: 'all-MiniLM-L6-v2',
+        isStale: expect.any(Function),
       }),
     )
   })
@@ -144,11 +149,13 @@ describe('EmbeddingsSync', () => {
       path: 'notes/a.md',
       generation: 7,
       modelId: 'all-MiniLM-L6-v2',
+      isStale: expect.any(Function),
     })
     expect(core.embedNote).toHaveBeenCalledWith({
       path: 'notes/b.md',
       generation: 7,
       modelId: 'all-MiniLM-L6-v2',
+      isStale: expect.any(Function),
     })
   })
 
@@ -165,5 +172,29 @@ describe('EmbeddingsSync', () => {
     onApplied?.([{ kind: 'upsert', path: 'notes/b.md' }], 7)
     await flushQueue()
     expect(core.embedNote).not.toHaveBeenCalled()
+  })
+
+  it('follows edits across idle unload and reload without another graph backfill', async () => {
+    const view = await render(<EmbeddingsSync />)
+    await vi.waitFor(() => expect(onApplied).not.toBeNull())
+    modelState.current = { status: 'unloaded', model: 'all-MiniLM-L6-v2' }
+    await view.rerender(<EmbeddingsSync />)
+    onApplied?.([{ kind: 'upsert', path: 'notes/idle-edit.md' }], 7)
+    await vi.waitFor(() => expect(core.embedNote).toHaveBeenCalledTimes(1))
+    modelState.current = { status: 'loading' }
+    await view.rerender(<EmbeddingsSync />)
+    modelState.current = { status: 'ready', model: 'all-MiniLM-L6-v2' }
+    await view.rerender(<EmbeddingsSync />)
+    await flushQueue()
+    expect(semantic.backfillEmbeddingsVisibly).toHaveBeenCalledTimes(1)
+    expect(core.subscribeIndexApplied).toHaveBeenCalledTimes(1)
+    expect(unlisten).not.toHaveBeenCalled()
+  })
+
+  it('initializes synchronization when the graph opens with an unloaded model', async () => {
+    modelState.current = { status: 'unloaded', model: 'all-MiniLM-L6-v2' }
+    await render(<EmbeddingsSync />)
+    await vi.waitFor(() => expect(semantic.backfillEmbeddingsVisibly).toHaveBeenCalledTimes(1))
+    await vi.waitFor(() => expect(onApplied).not.toBeNull())
   })
 })

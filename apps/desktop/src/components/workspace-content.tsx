@@ -16,6 +16,7 @@ import { SidebarResizeHandle } from '@/components/sidebar-resize-handle'
 import { TemplateCreateDialog } from '@/components/templates/template-create-dialog'
 import { TemplatePicker } from '@/components/templates/template-picker'
 import { registerInAppBrowserOpener, setBrowserSessionUrl } from '@/lib/browser-session'
+import { cn } from '@/lib/utils'
 import { useMacosTrafficLightInset } from '@/lib/use-macos-traffic-light-inset'
 import { useDailyContextTarget } from '@/providers/focused-daily-provider'
 import { useSidebar } from '@/providers/sidebar-provider'
@@ -29,11 +30,13 @@ interface WorkspaceContentProps {
 /**
  * Everything inside the workspace's providers: two full-height sidebars — the
  * workspace rail on the left, the context rail (details, chat, calendar,
- * tags, browser, terminal) on the right — and between them the content
- * column: the tab bar over a floating note-pane card with all four corners
- * rounded. A sunken gutter keeps the card off the window's left, right,
- * and bottom edges so collapsing a rail does not send the sheet flush to
- * the screen. A collapsed rail unmounts — the layout snaps instead of
+ * browser, terminal) on the right — and between them the content column.
+ * Both the content column and the context rail are a 44px band (tab bar /
+ * panel switcher) over a floating card with all four corners rounded. A
+ * sunken gutter keeps every card off the window's edges so collapsing a
+ * rail does not send a sheet flush to the screen; the left rail stays flat,
+ * carrying the window's own ground. A collapsed rail unmounts — the layout
+ * snaps instead of
  * animating, and panels hosting live surfaces (the embedded browser)
  * release them. The always-mounted global surfaces (⌘K palette, find bar,
  * embeddings sync) ride inside the card with the route. Split from
@@ -110,7 +113,14 @@ export function WorkspaceContent({ graph }: WorkspaceContentProps): ReactElement
 
         <div className="flex min-w-0 flex-1 flex-col">
           <WorkspaceTabsStrip commandContext={commandContext} />
-          <div data-testid="note-pane-gutter" className="min-h-0 flex-1 px-2 pb-2">
+          {/* The context rail carries its own left gutter, so the note pane
+              drops its right one wherever that rail is actually on screen —
+              otherwise the two 8px gaps would stack into a 16px trench that
+              breaks the window's rhythm. */}
+          <div
+            data-testid="note-pane-gutter"
+            className={cn('min-h-0 flex-1 px-2 pb-2', contextCollapsed ? undefined : 'lg:pr-0')}
+          >
             <div className="app-glass-card h-full overflow-hidden rounded-xl bg-surface">
               <AppShell className="bg-transparent">
                 <div className="relative flex h-full flex-col">

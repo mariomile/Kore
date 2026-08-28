@@ -199,6 +199,33 @@ describe('SettingsScreen', () => {
     await expect.element(toggle).toHaveAttribute('aria-checked', 'false')
   })
 
+  it('offers a transcription model per configured provider, and persists the pick', async () => {
+    stored = {
+      aiProviders: [{ id: 'p1', provider: 'openai', label: 'OpenAI', model: 'gpt-5.6-sol' }],
+    }
+    await renderScreen()
+
+    const picker = page.getByRole('combobox', { name: /openai transcription model/i })
+    // Nothing chosen yet, so the picker shows the app's built-in default.
+    await expect.element(picker).toHaveTextContent('gpt-4o-mini-transcribe')
+
+    await picker.click()
+    await page.getByRole('option', { name: /whisper/i }).click()
+
+    await vi.waitFor(() =>
+      expect(saved.at(-1)).toMatchObject({
+        transcriptionModels: { openai: 'whisper-1', google: '' },
+      }),
+    )
+  })
+
+  it('points at AI providers when none can transcribe', async () => {
+    await renderScreen()
+    await expect
+      .element(page.getByText(/add an openai or google provider under ai providers/i))
+      .toBeVisible()
+  })
+
   it('confirms before forgetting the open graph from saved graphs', async () => {
     graph.current = { root: '/graphs/work', name: 'Work', generation: 1 }
     await renderScreen()
@@ -274,6 +301,7 @@ describe('SettingsScreen', () => {
           semanticSearchEnabled: false,
           describeAssets: true,
           transcriptionFormat: true,
+          transcriptionModels: { openai: '', google: '' },
           uiRadius: 'default',
           uiDensity: 'default',
           uiTextSize: 'default',
@@ -362,6 +390,7 @@ describe('SettingsScreen', () => {
           semanticSearchEnabled: false,
           describeAssets: true,
           transcriptionFormat: true,
+          transcriptionModels: { openai: '', google: '' },
           uiRadius: 'default',
           uiDensity: 'default',
           uiTextSize: 'default',
@@ -464,6 +493,7 @@ describe('SettingsScreen', () => {
           semanticSearchEnabled: false,
           describeAssets: true,
           transcriptionFormat: true,
+          transcriptionModels: { openai: '', google: '' },
           uiRadius: 'default',
           uiDensity: 'default',
           uiTextSize: 'default',
@@ -573,6 +603,7 @@ describe('SettingsScreen', () => {
           semanticSearchEnabled: false,
           describeAssets: true,
           transcriptionFormat: true,
+          transcriptionModels: { openai: '', google: '' },
           uiRadius: 'default',
           uiDensity: 'default',
           uiTextSize: 'default',
@@ -661,6 +692,7 @@ describe('SettingsScreen', () => {
           semanticSearchEnabled: false,
           describeAssets: true,
           transcriptionFormat: true,
+          transcriptionModels: { openai: '', google: '' },
           uiRadius: 'default',
           uiDensity: 'default',
           uiTextSize: 'default',
@@ -742,6 +774,7 @@ describe('SettingsScreen', () => {
           semanticSearchEnabled: false,
           describeAssets: true,
           transcriptionFormat: true,
+          transcriptionModels: { openai: '', google: '' },
           uiRadius: 'default',
           uiDensity: 'default',
           uiTextSize: 'default',
@@ -832,6 +865,7 @@ describe('SettingsScreen', () => {
           semanticSearchEnabled: false,
           describeAssets: true,
           transcriptionFormat: true,
+          transcriptionModels: { openai: '', google: '' },
           uiRadius: 'default',
           uiDensity: 'default',
           uiTextSize: 'default',
@@ -919,6 +953,7 @@ describe('SettingsScreen', () => {
           semanticSearchEnabled: false,
           describeAssets: true,
           transcriptionFormat: true,
+          transcriptionModels: { openai: '', google: '' },
           uiRadius: 'default',
           uiDensity: 'default',
           uiTextSize: 'default',
@@ -1012,6 +1047,7 @@ describe('SettingsScreen', () => {
           semanticSearchEnabled: false,
           describeAssets: true,
           transcriptionFormat: true,
+          transcriptionModels: { openai: '', google: '' },
           uiRadius: 'default',
           uiDensity: 'default',
           uiTextSize: 'default',
@@ -1111,6 +1147,7 @@ describe('SettingsScreen', () => {
           semanticSearchEnabled: false,
           describeAssets: true,
           transcriptionFormat: true,
+          transcriptionModels: { openai: '', google: '' },
           uiRadius: 'default',
           uiDensity: 'default',
           uiTextSize: 'default',
@@ -1227,6 +1264,7 @@ describe('SettingsScreen', () => {
           semanticSearchEnabled: false,
           describeAssets: true,
           transcriptionFormat: true,
+          transcriptionModels: { openai: '', google: '' },
           uiRadius: 'default',
           uiDensity: 'default',
           uiTextSize: 'default',
@@ -1337,6 +1375,7 @@ describe('SettingsScreen', () => {
           semanticSearchEnabled: false,
           describeAssets: true,
           transcriptionFormat: true,
+          transcriptionModels: { openai: '', google: '' },
           uiRadius: 'default',
           uiDensity: 'default',
           uiTextSize: 'default',
@@ -1416,6 +1455,7 @@ describe('SettingsScreen', () => {
           semanticSearchEnabled: true,
           describeAssets: true,
           transcriptionFormat: true,
+          transcriptionModels: { openai: '', google: '' },
           uiRadius: 'default',
           uiDensity: 'default',
           uiTextSize: 'default',
@@ -1517,6 +1557,7 @@ describe('SettingsScreen', () => {
           semanticSearchEnabled: false,
           describeAssets: true,
           transcriptionFormat: true,
+          transcriptionModels: { openai: '', google: '' },
           uiRadius: 'default',
           uiDensity: 'default',
           uiTextSize: 'default',
@@ -1608,6 +1649,7 @@ describe('SettingsScreen', () => {
           semanticSearchEnabled: true,
           describeAssets: true,
           transcriptionFormat: true,
+          transcriptionModels: { openai: '', google: '' },
           uiRadius: 'default',
           uiDensity: 'default',
           uiTextSize: 'default',
@@ -1693,6 +1735,7 @@ describe('SettingsScreen', () => {
           semanticSearchEnabled: false,
           describeAssets: true,
           transcriptionFormat: true,
+          transcriptionModels: { openai: '', google: '' },
           uiRadius: 'default',
           uiDensity: 'default',
           uiTextSize: 'default',
@@ -1863,6 +1906,7 @@ describe('SettingsScreen', () => {
           semanticSearchEnabled: false,
           describeAssets: true,
           transcriptionFormat: true,
+          transcriptionModels: { openai: '', google: '' },
           uiRadius: 'default',
           uiDensity: 'default',
           uiTextSize: 'default',
@@ -1960,6 +2004,7 @@ describe('SettingsScreen', () => {
           semanticSearchEnabled: false,
           describeAssets: true,
           transcriptionFormat: true,
+          transcriptionModels: { openai: '', google: '' },
           uiRadius: 'default',
           uiDensity: 'default',
           uiTextSize: 'default',
@@ -2048,6 +2093,7 @@ describe('SettingsScreen', () => {
           semanticSearchEnabled: false,
           describeAssets: true,
           transcriptionFormat: true,
+          transcriptionModels: { openai: '', google: '' },
           uiRadius: 'default',
           uiDensity: 'default',
           uiTextSize: 'default',

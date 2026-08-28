@@ -99,7 +99,14 @@ export function GraphMapCanvas({ nodes, edges, onOpen }: GraphMapCanvasProps): R
     let hoverIndex: number | null = null
     let drag: DragState | null = null
     let dirty = true
-    let fitted = false
+    /** Cleared once the viewer pans, zooms, or drags — auto-fitting stops there. */
+    let autoFit = true
+    /**
+     * How far out the viewer may zoom. {@link MIN_SCALE} normally, but a
+     * graph too big to frame at that scale lowers it to its own fit, so the
+     * whole map stays reachable instead of being clipped by the floor.
+     */
+    let minScale = MIN_SCALE
     let disposed = false
 
     const dpr = window.devicePixelRatio || 1
@@ -115,13 +122,18 @@ export function GraphMapCanvas({ nodes, edges, onOpen }: GraphMapCanvasProps): R
     fitView()
     const observer = new ResizeObserver(() => {
       resize()
-      if (!fitted) {
+      if (autoFit) {
         fitView()
       }
     })
     observer.observe(surface)
 
-    /** Center the settled (or settling) graph in the canvas, once. */
+    /**
+     * Frame the whole graph in the canvas. Called every frame while the
+     * layout is still moving and the viewer has not taken over, so a big
+     * map — which spends seconds rearranging — stays visible the entire
+     * time instead of showing a spiral's worth of dots until it settles.
+     */
     function fitView(): void {
       if (layout.nodes.length === 0) {
         return
@@ -140,10 +152,11 @@ export function GraphMapCanvas({ nodes, edges, onOpen }: GraphMapCanvasProps): R
       const height = surface.clientHeight
       const spanX = Math.max(maxX - minX, 1)
       const spanY = Math.max(maxY - minY, 1)
-      const scale = Math.min(
-        MAX_SCALE,
-        Math.max(MIN_SCALE, Math.min((width * 0.85) / spanX, (height * 0.85) / spanY, 1.4)),
-      )
+      const scale = Math.min(MAX_SCALE, (width * 0.85) / spanX, (height * 0.85) / spanY, 1.4)
+      // A graph wider than MIN_SCALE can show becomes the new zoom floor —
+      // clamping the fit up instead would draw it many times oversized, with
+      // every node a sub-pixel speck off the edges of the canvas.
+      minScale = Math.min(MIN_SCALE, scale)
       viewport.scale = scale
       viewport.offsetX = width / 2 - ((minX + maxX) / 2) * scale
       viewport.offsetY = height / 2 - ((minY + maxY) / 2) * scale
@@ -297,8 +310,7 @@ export function GraphMapCanvas({ nodes, edges, onOpen }: GraphMapCanvasProps): R
         stepGraphLayout(layout, layoutEdges)
         stepGraphLayout(layout, layoutEdges)
         dirty = true
-        if (isSettled(layout) && !fitted) {
-          fitted = true
+        if (autoFit) {
           fitView()
         }
       }
@@ -311,6 +323,9 @@ export function GraphMapCanvas({ nodes, edges, onOpen }: GraphMapCanvasProps): R
     requestAnimationFrame(frame)
 
     const handlePointerDown = (event: PointerEvent): void => {
+      // Panning or hauling a node hands the viewport to the viewer; re-fitting
+      // under their pointer from here on would yank the map away from them.
+      autoFit = false
       surface.setPointerCapture(event.pointerId)
       drag = {
         pointerId: event.pointerId,
@@ -387,8 +402,9 @@ export function GraphMapCanvas({ nodes, edges, onOpen }: GraphMapCanvasProps): R
       const rect = surface.getBoundingClientRect()
       const pointX = event.clientX - rect.left
       const pointY = event.clientY - rect.top
+      autoFit = false
       const factor = Math.exp(-event.deltaY * 0.0015)
-      const nextScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, viewport.scale * factor))
+      const nextScale = Math.min(MAX_SCALE, Math.max(minScale, viewport.scale * factor))
       // Zoom about the cursor: keep the world point under it fixed.
       viewport.offsetX = pointX - ((pointX - viewport.offsetX) / viewport.scale) * nextScale
       viewport.offsetY = pointY - ((pointY - viewport.offsetY) / viewport.scale) * nextScale

@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import {
-  DEFAULT_BROWSER_URL,
   browserSessionUrl,
   openInAppBrowser,
   registerInAppBrowserOpener,
@@ -12,8 +11,10 @@ import {
 afterEach(resetBrowserSessionForTests)
 
 describe('browser session', () => {
-  it('starts on the default page and follows navigations', () => {
-    expect(browserSessionUrl()).toBe(DEFAULT_BROWSER_URL)
+  it('starts with no page of its own and follows navigations', () => {
+    // Null, not a URL: the home page follows the browser's search-engine
+    // setting, which this module cannot read.
+    expect(browserSessionUrl()).toBeNull()
     const seen: string[] = []
     const unsubscribe = subscribeBrowserSession((url) => {
       seen.push(url)

@@ -5,6 +5,7 @@ import {
   OPENAI_TRANSCRIPTION_FALLBACK_MODEL,
   OPENAI_TRANSCRIPTION_MODEL,
   transcribeAudio,
+  transcriptionModelFor,
   type TranscriptionRequest,
 } from './transcribe'
 import { bytesToBase64 } from '../lib/base64'
@@ -61,6 +62,15 @@ describe('transcribeAudio (openai)', () => {
     const file = form.get('file') as File
     // whisper-1 sniffs by extension: an audio-only MP4 must upload as .m4a.
     expect(file.name).toBe('memo.m4a')
+  })
+
+  it('sends the chosen model instead of the default', async () => {
+    const calls: RecordedCall[] = []
+    const fetchFn = recordingFetch(calls, () => jsonResponse(200, { text: 'hi' }))
+
+    await transcribeAudio(request({ fetchFn, model: 'gpt-4o-transcribe' }))
+
+    expect((calls[0]!.body as FormData).get('model')).toBe('gpt-4o-transcribe')
   })
 
   it('names webm recordings .webm', async () => {
@@ -211,6 +221,19 @@ describe('transcribeAudio (google)', () => {
     expect(parts[1]!.inline_data).toEqual({ mime_type: 'audio/mp4', data: btoa('abc') })
   })
 
+  it('sends the chosen model instead of the default', async () => {
+    const calls: RecordedCall[] = []
+    const fetchFn = recordingFetch(calls, () => geminiResponse('hi'))
+
+    await transcribeAudio(
+      request({ provider: 'google', apiKey: 'AIza-test', fetchFn, model: 'gemini-4-flash' }),
+    )
+
+    expect(calls[0]!.url).toBe(
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-4-flash:generateContent',
+    )
+  })
+
   it('strips codec parameters from the declared MIME type', async () => {
     const calls: RecordedCall[] = []
     const fetchFn = recordingFetch(calls, () => geminiResponse('ok'))
@@ -295,6 +318,23 @@ describe('transcribeAudio (google)', () => {
     await expect(transcribeAudio(request({ provider: 'google', fetchFn }))).rejects.toMatchObject({
       kind: 'auth',
     })
+  })
+})
+
+describe('transcriptionModelFor', () => {
+  it('uses the built-in default until the user names a model', () => {
+    expect(transcriptionModelFor({ openai: '', google: '' }, 'openai')).toBe(
+      OPENAI_TRANSCRIPTION_MODEL,
+    )
+    expect(transcriptionModelFor({ openai: '', google: '   ' }, 'google')).toBe(
+      GOOGLE_TRANSCRIPTION_MODEL,
+    )
+  })
+
+  it('honors a chosen model, per provider', () => {
+    const models = { openai: 'whisper-1', google: 'gemini-4-flash' }
+    expect(transcriptionModelFor(models, 'openai')).toBe('whisper-1')
+    expect(transcriptionModelFor(models, 'google')).toBe('gemini-4-flash')
   })
 })
 

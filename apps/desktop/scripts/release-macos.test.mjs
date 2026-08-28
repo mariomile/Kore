@@ -31,11 +31,11 @@ import {
 } from './release-macos.mjs'
 
 const baseInput = {
-  assets: ['Reflect.dmg', 'Reflect.app.tar.gz', 'Reflect.app.tar.gz.sig', 'latest.json'],
+  assets: ['Kore.dmg', 'Kore.app.tar.gz', 'Kore.app.tar.gz.sig', 'latest.json'],
   commit: 'abc123',
   draft: false,
   notesPath: 'release-notes.md',
-  productName: 'Reflect',
+  productName: 'Kore',
 }
 const appDir = join(import.meta.dirname, '..')
 
@@ -51,12 +51,12 @@ test('pre-release publish uses prepared notes and opts out of GitHub latest heur
     'release',
     'create',
     'v0.2.0-beta.14',
-    'Reflect.dmg',
-    'Reflect.app.tar.gz',
-    'Reflect.app.tar.gz.sig',
+    'Kore.dmg',
+    'Kore.app.tar.gz',
+    'Kore.app.tar.gz.sig',
     'latest.json',
     '--title',
-    'Reflect 0.2.0-beta.14',
+    'Kore 0.2.0-beta.14',
     '--target',
     'abc123',
     '--notes-file',
@@ -95,15 +95,15 @@ test('draft publish keeps the draft flag last', () => {
 test('draft release uploads clobber so a crashed publish can retry', () => {
   expect(
     createExistingReleaseUploadArgs({
-      assets: ['Reflect.dmg', 'Reflect.app.tar.gz', 'latest.json'],
+      assets: ['Kore.dmg', 'Kore.app.tar.gz', 'latest.json'],
       tag: 'v0.5.0-beta.1',
     }),
   ).toEqual([
     'release',
     'upload',
     'v0.5.0-beta.1',
-    'Reflect.dmg',
-    'Reflect.app.tar.gz',
+    'Kore.dmg',
+    'Kore.app.tar.gz',
     'latest.json',
     '--clobber',
   ])
@@ -114,7 +114,7 @@ test('finalizing a beta draft keeps the pre-release flag and undrafts last', () 
     keepDraft: false,
     notesPath: 'release-notes.md',
     prerelease: true,
-    productName: 'Reflect Beta',
+    productName: 'Kore Beta',
     tag: 'v0.5.0-beta.1',
     version: '0.5.0-beta.1',
   })
@@ -124,7 +124,7 @@ test('finalizing a beta draft keeps the pre-release flag and undrafts last', () 
     'edit',
     'v0.5.0-beta.1',
     '--title',
-    'Reflect Beta 0.5.0-beta.1',
+    'Kore Beta 0.5.0-beta.1',
     '--notes-file',
     'release-notes.md',
     '--prerelease',
@@ -138,7 +138,7 @@ test('finalizing a stable draft promotes it to the latest release', () => {
     keepDraft: false,
     notesPath: 'release-notes.md',
     prerelease: false,
-    productName: 'Reflect',
+    productName: 'Kore',
     tag: 'v0.5.0',
     version: '0.5.0',
   })
@@ -153,7 +153,7 @@ test('finalizing with --draft leaves the release a draft for review', () => {
     keepDraft: true,
     notesPath: 'release-notes.md',
     prerelease: true,
-    productName: 'Reflect Beta',
+    productName: 'Kore Beta',
     tag: 'v0.5.0-beta.1',
     version: '0.5.0-beta.1',
   })
@@ -175,10 +175,10 @@ test('generated release notes API targets the release tag and commit', () => {
 })
 
 test('Mac download notice points each processor at the matching DMG', () => {
-  const notice = createMacDownloadNotice({ productName: 'Reflect Beta' })
+  const notice = createMacDownloadNotice({ productName: 'Kore Beta' })
 
-  expect(notice).toContain('`Reflect.Beta_aarch64.dmg`')
-  expect(notice).toContain('`Reflect.Beta_x86_64.dmg`')
+  expect(notice).toContain('`Kore.Beta_aarch64.dmg`')
+  expect(notice).toContain('`Kore.Beta_x86_64.dmg`')
   expect(notice).toContain('Apple Silicon (M-series Macs)')
   expect(notice).toContain('Apple menu -> About This Mac')
 })
@@ -186,7 +186,7 @@ test('Mac download notice points each processor at the matching DMG', () => {
 test('Mac download notice is appended after generated release notes', () => {
   const notes = appendMacDownloadNotice({
     body: "## What's Changed\n\n- Fixed sync\n\n**Full Changelog**: v0.3.6...v0.3.7\n",
-    productName: 'Reflect',
+    productName: 'Kore',
   })
 
   expect(notes).toBe(
@@ -194,16 +194,16 @@ test('Mac download notice is appended after generated release notes', () => {
       '- Fixed sync\n\n' +
       '**Full Changelog**: v0.3.6...v0.3.7\n\n' +
       '## Which Mac download should I choose?\n\n' +
-      '- **Apple Silicon (M-series Macs):** download `Reflect_aarch64.dmg`.\n' +
-      '- **Intel Macs:** download `Reflect_x86_64.dmg`.\n\n' +
+      '- **Apple Silicon (M-series Macs):** download `Kore_aarch64.dmg`.\n' +
+      '- **Intel Macs:** download `Kore_x86_64.dmg`.\n\n' +
       'To check your Mac, open **Apple menu -> About This Mac**. If it shows **Chip** with M1, M2, M3, M4, or newer, choose Apple Silicon. If it shows **Processor** with Intel, choose Intel.\n',
   )
 })
 
 test('Mac download notice is not duplicated when release notes are regenerated', () => {
   const notes = appendMacDownloadNotice({
-    body: createMacDownloadNotice({ productName: 'Reflect' }),
-    productName: 'Reflect',
+    body: createMacDownloadNotice({ productName: 'Kore' }),
+    productName: 'Kore',
   })
 
   expect(notes.match(/Which Mac download should I choose/g)).toHaveLength(1)
@@ -212,31 +212,31 @@ test('Mac download notice is not duplicated when release notes are regenerated',
 test('beta feed release carries the latest downloads without becoming the latest stable release', () => {
   expect(
     createBetaFeedReleaseArgs({
-      assets: ['Reflect.Beta_aarch64.dmg', 'Reflect.Beta_x86_64.dmg', 'latest.json'],
+      assets: ['Kore.Beta_aarch64.dmg', 'Kore.Beta_x86_64.dmg', 'latest.json'],
       commit: 'abc123',
     }),
   ).toEqual([
     'release',
     'create',
     'updater-beta',
-    'Reflect.Beta_aarch64.dmg',
-    'Reflect.Beta_x86_64.dmg',
+    'Kore.Beta_aarch64.dmg',
+    'Kore.Beta_x86_64.dmg',
     'latest.json',
     '--title',
-    'Latest Reflect Beta downloads',
+    'Latest Kore Beta downloads',
     '--target',
     'abc123',
     '--prerelease',
     '--latest=false',
     '--notes',
-    'Moving downloads and updater feed for the latest Reflect Beta release. Choose a DMG for a fresh install; installed beta apps use latest.json.',
+    'Moving downloads and updater feed for the latest Kore Beta release. Choose a DMG for a fresh install; installed beta apps use latest.json.',
   ])
 })
 
 test('beta feed replaces downloads before the updater manifest', () => {
   expect(
     createBetaFeedUploadSteps({
-      dmgPaths: ['Reflect.Beta_aarch64.dmg', 'Reflect.Beta_x86_64.dmg'],
+      dmgPaths: ['Kore.Beta_aarch64.dmg', 'Kore.Beta_x86_64.dmg'],
       manifestPath: 'latest.json',
     }),
   ).toEqual([
@@ -246,8 +246,8 @@ test('beta feed replaces downloads before the updater manifest', () => {
         'release',
         'upload',
         'updater-beta',
-        'Reflect.Beta_aarch64.dmg',
-        'Reflect.Beta_x86_64.dmg',
+        'Kore.Beta_aarch64.dmg',
+        'Kore.Beta_x86_64.dmg',
         '--clobber',
       ],
     },
@@ -261,7 +261,7 @@ test('beta feed replaces downloads before the updater manifest', () => {
 test('beta feed recovery downloads exact assets from the tagged release', () => {
   expect(
     createReleaseDownloadArgs({
-      assetNames: ['Reflect.Beta_aarch64.dmg', 'Reflect.Beta_x86_64.dmg', 'latest.json'],
+      assetNames: ['Kore.Beta_aarch64.dmg', 'Kore.Beta_x86_64.dmg', 'latest.json'],
       outputDir: '/tmp/release-assets',
       tag: 'v0.6.0-beta.14',
     }),
@@ -272,9 +272,9 @@ test('beta feed recovery downloads exact assets from the tagged release', () => 
     '--dir',
     '/tmp/release-assets',
     '--pattern',
-    'Reflect.Beta_aarch64.dmg',
+    'Kore.Beta_aarch64.dmg',
     '--pattern',
-    'Reflect.Beta_x86_64.dmg',
+    'Kore.Beta_x86_64.dmg',
     '--pattern',
     'latest.json',
   ])
@@ -331,9 +331,7 @@ test('release builds ask Tauri for the app bundle only', () => {
     JSON.stringify({
       plugins: {
         updater: {
-          endpoints: [
-            'https://github.com/team-reflect/reflect-open/releases/latest/download/latest.json',
-          ],
+          endpoints: ['https://github.com/mariomile/Kore/releases/latest/download/latest.json'],
         },
       },
     }),
@@ -491,17 +489,17 @@ test('sidecar launch checks cover native targets and Intel under Rosetta', () =>
 test('updater archive is created from the finalized app bundle', () => {
   expect(
     createUpdaterArchiveArgs({
-      app: '/tmp/build/Reflect.app',
-      archive: '/tmp/build/Reflect.app.tar.gz',
+      app: '/tmp/build/Kore.app',
+      archive: '/tmp/build/Kore.app.tar.gz',
     }),
-  ).toEqual(['-czf', '/tmp/build/Reflect.app.tar.gz', '-C', '/tmp/build', 'Reflect.app'])
+  ).toEqual(['-czf', '/tmp/build/Kore.app.tar.gz', '-C', '/tmp/build', 'Kore.app'])
 })
 
 test('updater manifest includes both macOS release targets', () => {
   const tempDir = mkdtempSync(join(tmpdir(), 'reflect-release-test-'))
   try {
-    const appleSignature = join(tempDir, 'Reflect Beta_0.3.4_aarch64.app.tar.gz.sig')
-    const intelSignature = join(tempDir, 'Reflect Beta_0.3.4_x86_64.app.tar.gz.sig')
+    const appleSignature = join(tempDir, 'Kore Beta_0.3.4_aarch64.app.tar.gz.sig')
+    const intelSignature = join(tempDir, 'Kore Beta_0.3.4_x86_64.app.tar.gz.sig')
     writeFileSync(appleSignature, 'apple-signature\n')
     writeFileSync(intelSignature, 'intel-signature\n')
 
@@ -510,17 +508,17 @@ test('updater manifest includes both macOS release targets', () => {
         artifacts: [
           {
             platform: 'darwin-aarch64',
-            updaterArchive: join(tempDir, 'Reflect Beta_0.3.4_aarch64.app.tar.gz'),
+            updaterArchive: join(tempDir, 'Kore Beta_0.3.4_aarch64.app.tar.gz'),
             updaterSignature: appleSignature,
           },
           {
             platform: 'darwin-x86_64',
-            updaterArchive: join(tempDir, 'Reflect Beta_0.3.4_x86_64.app.tar.gz'),
+            updaterArchive: join(tempDir, 'Kore Beta_0.3.4_x86_64.app.tar.gz'),
             updaterSignature: intelSignature,
           },
         ],
         pubDate: '2026-06-26T00:00:00.000Z',
-        slug: 'team-reflect/reflect-open',
+        slug: 'mariomile/Kore',
         tag: 'v0.3.4',
         version: '0.3.4',
       }),
@@ -530,11 +528,11 @@ test('updater manifest includes both macOS release targets', () => {
       platforms: {
         'darwin-aarch64': {
           signature: 'apple-signature',
-          url: 'https://github.com/team-reflect/reflect-open/releases/download/v0.3.4/Reflect.Beta_0.3.4_aarch64.app.tar.gz',
+          url: 'https://github.com/mariomile/Kore/releases/download/v0.3.4/Kore.Beta_0.3.4_aarch64.app.tar.gz',
         },
         'darwin-x86_64': {
           signature: 'intel-signature',
-          url: 'https://github.com/team-reflect/reflect-open/releases/download/v0.3.4/Reflect.Beta_0.3.4_x86_64.app.tar.gz',
+          url: 'https://github.com/mariomile/Kore/releases/download/v0.3.4/Kore.Beta_0.3.4_x86_64.app.tar.gz',
         },
       },
     })
@@ -545,50 +543,50 @@ test('updater manifest includes both macOS release targets', () => {
 
 test('DMG creation uses direct hdiutil packaging', () => {
   expect(
-    createDmgArgs({ dmg: 'Reflect.dmg', sourceFolder: '/tmp/stage', volumeName: 'Reflect' }),
+    createDmgArgs({ dmg: 'Kore.dmg', sourceFolder: '/tmp/stage', volumeName: 'Kore' }),
   ).toEqual([
     'create',
     '-volname',
-    'Reflect',
+    'Kore',
     '-srcfolder',
     '/tmp/stage',
     '-ov',
     '-format',
     'UDZO',
-    'Reflect.dmg',
+    'Kore.dmg',
   ])
 })
 
 test('DMG signing timestamps the container', () => {
   expect(
     signDmgArgs({
-      dmg: 'Reflect.dmg',
-      identity: 'Developer ID Application: Reflect App, LLC (789ULN5MZB)',
+      dmg: 'Kore.dmg',
+      identity: 'Developer ID Application: Kore App, LLC (789ULN5MZB)',
     }),
   ).toEqual([
     '--force',
     '--sign',
-    'Developer ID Application: Reflect App, LLC (789ULN5MZB)',
+    'Developer ID Application: Kore App, LLC (789ULN5MZB)',
     '--timestamp',
-    'Reflect.dmg',
+    'Kore.dmg',
   ])
 })
 
 test('DMG signing can target a temporary CI keychain', () => {
   expect(
     signDmgArgs({
-      dmg: 'Reflect.dmg',
-      identity: 'Developer ID Application: Reflect App, LLC (789ULN5MZB)',
+      dmg: 'Kore.dmg',
+      identity: 'Developer ID Application: Kore App, LLC (789ULN5MZB)',
       keychain: '/tmp/reflect-signing.keychain-db',
     }),
   ).toEqual([
     '--force',
     '--sign',
-    'Developer ID Application: Reflect App, LLC (789ULN5MZB)',
+    'Developer ID Application: Kore App, LLC (789ULN5MZB)',
     '--timestamp',
     '--keychain',
     '/tmp/reflect-signing.keychain-db',
-    'Reflect.dmg',
+    'Kore.dmg',
   ])
 })
 

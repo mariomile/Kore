@@ -1,11 +1,8 @@
 # What leaves the device, and when
 
-Reflect is local-first: your notes are markdown files in a folder you chose, the search
-index is SQLite in `.reflect/` beside them, and **no Reflect-hosted server exists in any
-path** — there is no product analytics and no account. Official release builds send
-scrubbed WebView diagnostics to Sentry, and official iOS release builds also send scrubbed
-native crash diagnostics. Every network call the app can make is listed here, with what it
-carries.
+Kore is local-first: your notes are markdown files in a folder you chose, the search
+index is SQLite in `.reflect/` beside them, and **no Kore-hosted server exists in any
+path** — there is no product analytics and no account. Kore does not send exception diagnostics or product analytics. Every network call the app can make is listed here, with what it carries.
 
 The one hard rule sits above all of it: **a note with `private: true` frontmatter never
 has its content sent to any external service.** This is enforced in code at every AI
@@ -16,7 +13,7 @@ disk at call time), and it is covered by tests.
 ## AI chat (off until you add a key)
 
 - **Where:** directly to the provider whose API key *you* added — OpenAI, Anthropic,
-  Google, or OpenRouter. Keys are bring-your-own; Reflect proxies nothing.
+  Google, or OpenRouter. Keys are bring-your-own; Kore proxies nothing.
 - **What:** your chat messages and configured system prompt, plus what the model's
   tools read from your graph: search snippets, note content, and note listings. The
   configured prompt is stored in the device's ordinary settings file and is sent with
@@ -55,15 +52,15 @@ disk at call time), and it is covered by tests.
   The privacy flag blocks *services that read your content*; backup is your own
   repository, and excluding private notes from it would silently lose them.
 - **When:** after you connect, on the background backup cadence and on "Back up now".
-- GitHub sign-in uses the OAuth device flow against `github.com`; the token is stored
+- GitHub sign-in uses your personal access token; the token is stored
   in the OS keychain.
 
 ## Browser capture (the Chrome extension)
 
-- **Where:** nowhere on the network. The **Reflect Capture** extension hands each
+- **Where:** nowhere on the network. The **Kore Capture** extension hands each
   capture to a local native-messaging host (`reflect-capture-host`) that the desktop
   app registers on your machine; the host spools it to the capture inbox on disk
-  (`<graph>/.reflect/inbox/`) and the app drains it on next launch. **No Reflect-hosted
+  (`<graph>/.reflect/inbox/`) and the app drains it on next launch. **No Kore-hosted
   server, no third party, and no other destination is ever contacted** — the extension
   stores no keys and makes no AI or network calls of its own.
 - **What:** only the page you explicitly capture (toolbar button or ⌘⇧K) — its URL,
@@ -76,10 +73,10 @@ disk at call time), and it is covered by tests.
   spools — it is never sent anywhere else in the meantime.
 - Once a capture lands in your graph, the desktop app's rules above apply unchanged:
   enrichment may request the captured URL directly to read page metadata. On macOS and
-  iOS, Reflect also asks Apple's LinkPresentation framework for one representative
+  iOS, Kore also asks Apple's LinkPresentation framework for one representative
   image when the capture has no screenshot. These requests go to the captured website
   and any redirects or subresources selected by the operating system, never through a
-  Reflect server. The app re-reads the capture and daily note before and after each
+  Kore server. The app re-reads the capture and daily note before and after each
   request; `private: true` prevents the request or discards its result. A successful
   image is downscaled and stored as a local JPEG in the graph. Any BYOK AI enrichment
   then follows the provider rules above.
@@ -88,8 +85,8 @@ disk at call time), and it is covered by tests.
 
 - **Where:** nowhere on the network. Enabling the Contacts integration reads the
   **macOS/iOS contacts store on-device** (the same store System Settings governs),
-  behind the standard OS permission prompt. There is no Reflect copy of your address
-  book: lookups are live queries, nothing is mirrored into `.reflect/`, and Reflect
+  behind the standard OS permission prompt. There is no Kore copy of your address
+  book: lookups are live queries, nothing is mirrored into `.reflect/`, and Kore
   never writes back to Contacts.
 - **What:** a note title or a meeting attendee's email is matched against your
   contacts; a match's name, email, and phone are shown on a suggestion card. Contact
@@ -100,38 +97,9 @@ disk at call time), and it is covered by tests.
   the meeting being added). Turning it off — in Settings or in the OS privacy pane —
   stops all reads immediately.
 
-## Exception diagnostics (on in official release builds)
+## Exception diagnostics
 
-- **Where:** Sentry. The React/WebView SDK handles JavaScript exceptions; on iOS a
-  native SDK handles host-process crashes, fully blocking main-thread hangs, watchdog
-  terminations, and converted Apple MetricKit diagnostics — the failures that never
-  reach the JavaScript layer, and that arrive in TestFlight with no usable stack.
-- **What:** an allow-listed diagnostic containing the JavaScript exception class (or a
-  fixed native failure category), sanitized stack locations, the app/build version, and
-  whether the exception was marked handled. Native reports also carry non-identifying
-  OS/device model, architecture, memory, storage, battery, and thermal facts, which are
-  what distinguish a resource termination from a code defect. A small set of vetted
-  JavaScript structural error messages that cannot contain document data is kept; every
-  native exception value and all other exception text is redacted. JavaScript filenames
-  and native loaded-image names are reduced to basenames.
-- **Never collected:** request data, note content, note titles, graph paths, local
-  filesystem paths, native source paths, frame variables, source context lines, thread
-  names, breadcrumbs, console or Rust tracing output, session replay, performance
-  traces and profiles, screenshots, view hierarchy, raw MetricKit payloads, and user
-  identifiers. Sentry is also configured not to store the transport IP address with
-  events.
-- **When:** only when an official desktop or iOS release raises an uncaught JavaScript
-  error, an unhandled promise rejection, or a caught/recoverable React error — and on
-  iOS, the native failure categories above. The WebView SDK initializes only in official
-  builds carrying the release DSN. The iOS native SDK initializes only in release
-  configurations of the official `app.lore.ios` bundle; debug builds compile the
-  call out entirely, and forks run under their own bundle identifier and stay silent.
-- **Operational safeguards:** Sentry's server-side and default scrubbers are enabled, IP
-  address storage and server-side JavaScript source scraping are disabled, and explicit
-  sensitive-field rules cover notes, graph paths, requests, and user identifiers. Private
-  JavaScript source maps and native dSYMs are uploaded during official builds so stacks
-  are readable; native symbol uploads exclude sources, and neither kind of symbol file
-  ships as readable source in the app bundle.
+Kore does not include an external exception reporter. Errors remain local; no diagnostic events or source maps are sent to Reflect or Sentry.
 
 ## Housekeeping calls
 
@@ -161,6 +129,6 @@ API keys and tokens live in the **OS keychain only** — never in markdown, neve
 | Key validation | The provider | No | — (only when adding a key) |
 | Update check | GitHub Releases | No | On in packaged builds |
 | Browser capture | Nowhere (local host on disk) | — (stays on your machine) | — (only when you capture) |
-| Capture metadata and preview | The captured website, via Reflect and Apple LinkPresentation | URL only; private captures are blocked | No (after an explicit capture) |
+| Capture metadata and preview | The captured website, via Kore and Apple LinkPresentation | URL only; private captures are blocked | No (after an explicit capture) |
 | Contacts lookup | Nowhere (on-device OS store) | — (stays on your machine) | Yes (opt-in) |
-| Exception diagnostics | Sentry | No — free-form messages and context are redacted | No (official releases) |
+| Exception diagnostics | Nowhere | — | Disabled |

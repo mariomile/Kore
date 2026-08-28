@@ -23,16 +23,16 @@ type SaveState =
   | { phase: 'held'; result: FlushResult }
   | { phase: 'failed'; message: string }
 
-const RELEASES_URL = 'https://github.com/team-reflect/reflect-open/releases/latest'
+const RELEASES_URL = 'https://github.com/mariomile/Kore/releases/latest'
 
 function holdMessage(result: FlushResult): string {
   switch (result.holdReason) {
     case 'no-host':
-      return 'Install Reflect to finish saving — the capture is kept and retries automatically.'
+      return 'Install Kore to finish saving — the capture is kept and retries automatically.'
     case 'no-graph':
-      return 'Open Reflect and pick a graph first — the capture is kept and retries automatically.'
+      return 'Open Kore and pick a graph first — the capture is kept and retries automatically.'
     default:
-      return 'Reflect could not be reached — the capture is kept and retries automatically.'
+      return 'Kore could not be reached — the capture is kept and retries automatically.'
   }
 }
 
@@ -171,7 +171,7 @@ export function CapturePopup(): ReactElement {
         disabled={busy}
         className="rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-text-on-brand hover:bg-accent-hover disabled:opacity-60"
       >
-        {save.phase === 'saving' ? 'Saving…' : 'Save to Reflect'}
+        {save.phase === 'saving' ? 'Saving…' : 'Save to Kore'}
       </button>
       {save.phase === 'held' ? (
         <p className="text-xs text-text-muted">
@@ -183,7 +183,7 @@ export function CapturePopup(): ReactElement {
               rel="noreferrer"
               className="text-accent underline"
             >
-              Download Reflect
+              Download Kore
             </a>
           ) : null}
         </p>
@@ -191,7 +191,7 @@ export function CapturePopup(): ReactElement {
       {save.phase === 'failed' ? <p className="text-xs text-destructive">{save.message}</p> : null}
       {save.phase === 'idle' && heldCount > 0 ? (
         <p className="text-xs text-text-muted">
-          {heldCount} earlier {heldCount === 1 ? 'capture' : 'captures'} waiting for Reflect.
+          {heldCount} earlier {heldCount === 1 ? 'capture' : 'captures'} waiting for Kore.
         </p>
       ) : null}
     </form>

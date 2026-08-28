@@ -27,6 +27,6 @@ describe('useNoteWindowTitle', () => {
 
   it('falls back to the app name while the title is unknown', async () => {
     await renderHook(() => useNoteWindowTitle(null))
-    expect(setWindowTitle).toHaveBeenLastCalledWith('Reflect')
+    expect(setWindowTitle).toHaveBeenLastCalledWith('Kore')
   })
 })

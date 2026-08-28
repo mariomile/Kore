@@ -149,7 +149,7 @@ export function CalendarIntegrationField(): ReactElement | null {
               <DialogHeader>
                 <DialogTitle>Choose calendars</DialogTitle>
                 <DialogDescription>
-                  Select the calendars Reflect shows beside your daily note.
+                  Select the calendars Kore shows beside your daily note.
                 </DialogDescription>
               </DialogHeader>
               <div className="max-h-[min(28rem,70vh)] overflow-y-auto pr-1">

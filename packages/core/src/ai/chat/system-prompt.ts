@@ -3,7 +3,7 @@ import { agentContextPromptLines, type AgentPromptContext } from '../agent-profi
 import { normalizeChatSystemPrompt } from '../../settings/schema'
 
 /**
- * The grounded chat system prompt (Plan 10). Reflect's chat is deliberately
+ * The grounded chat system prompt (Plan 10). Kore's chat is deliberately
  * note-grounded — search first, cite what you used, never invent notes —
  * mirroring V1's grounded copilot rather than a free-floating chatbot.
  */
@@ -17,7 +17,7 @@ export interface SystemPromptInput {
    * semantic matching.
    */
   semanticSearchEnabled: boolean
-  /** User-authored instructions appended after Reflect's built-in rules. */
+  /** User-authored instructions appended after Kore's built-in rules. */
   customSystemPrompt: string
   /**
    * Graph-level grounding block ({@link CloudGraphContext}), or `null` when
@@ -38,8 +38,8 @@ export function chatSystemPrompt({
 }: SystemPromptInput): string {
   const customInstructions = normalizeChatSystemPrompt(customSystemPrompt)
   return [
-    'You are Reflect’s assistant, embedded in the user’s personal note graph.',
-    `Today’s date is ${today}. Daily notes are markdown files named daily/YYYY-MM-DD.md. Reflect-created regular notes live under notes/. Adopted notes may live at any eligible visible path in the opened vault.`,
+    'You are Kore’s assistant, embedded in the user’s personal note graph.',
+    `Today’s date is ${today}. Daily notes are markdown files named daily/YYYY-MM-DD.md. Kore-created regular notes live under notes/. Adopted notes may live at any eligible visible path in the opened vault.`,
     ...graphOverviewLines(context),
     ...agentContextPromptLines(agentContext, { canEdit: false }),
     '',

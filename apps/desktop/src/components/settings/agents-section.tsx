@@ -68,7 +68,7 @@ export function AgentsSection(): ReactElement | null {
             </p>
             {status.installState === 'conflict' ? (
               <p className="text-xs text-destructive">
-                A file Reflect doesn’t manage already exists there. Move it aside to install.
+                A file Kore doesn’t manage already exists there. Move it aside to install.
               </p>
             ) : (
               <div className="flex items-center gap-2">

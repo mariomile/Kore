@@ -11,12 +11,12 @@ import {
 
 /**
  * The first-run seed (Plan 15 step 1): a brand-new graph gets one short,
- * pinned "How to use Reflect" note. It doubles as the optional-setup surface —
+ * pinned "How to use Kore" note. It doubles as the optional-setup surface —
  * backup and AI keys are pointers into Settings, not a wizard — so onboarding
  * never gates the editor and "skipping" is just not reading the note.
  */
 
-const WELCOME_TITLE = 'How to use Reflect'
+const WELCOME_TITLE = 'How to use Kore'
 
 /** Title-derived slug path, same birth rules as any titled note. */
 export const WELCOME_NOTE_PATH = notePath(slugForTitle(WELCOME_TITLE))
@@ -30,7 +30,7 @@ export const WELCOME_SEEDED_META_KEY = 'welcomeSeeded'
 
 const WELCOME_BODY = `# ${WELCOME_TITLE}
 
-Reflect is a daily notebook: press ⌘D any time to land on today's note and write.
+Kore is a daily notebook: press ⌘D any time to land on today's note and write.
 
 - **Link as you think.** Type \`[[\` and a title — [[Wiki Links]] connect notes. There are no folders.
 - **Find anything.** ⌘K searches your whole graph; ⌘/ lists every shortcut.

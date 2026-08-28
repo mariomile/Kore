@@ -179,7 +179,7 @@ export function MobileAllNotes({
     <div ref={scopeRef} className="relative flex h-full w-screen flex-col">
       <header
         ref={barRef}
-        className="mobile-glass-bar absolute inset-x-0 top-0 z-30 space-y-2 border-b border-border px-4 pb-2"
+        className="mobile-glass-bar absolute inset-x-0 top-0 z-30 space-y-2 px-4 pb-2"
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 0.25rem)' }}
       >
         <div className="flex items-center gap-1">

@@ -319,7 +319,7 @@ describe('ConnectGithubDialog', () => {
 
     await page.getByRole('button', { name: 'Continue' }).click()
 
-    await page.getByRole('button', { name: /grant the Reflect app access/i }).click()
+    await page.getByRole('button', { name: /grant the Kore app access/i }).click()
     expect(openedUrls).toHaveBeenCalledWith(
       'https://github.com/apps/reflect-github-app/installations/new',
     )

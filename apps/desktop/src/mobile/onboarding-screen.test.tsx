@@ -4,17 +4,33 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { MobileStorageInfo } from '@reflect/core'
 import { fireEvent } from '@/test-utils/fire-event'
 import { MobileOnboardingScreen } from './onboarding-screen'
+import { MobileApp } from './mobile-app'
 
 const completeOnboarding = vi.hoisted(() => vi.fn(async (_kind: string, _root?: string) => {}))
 const storageInfo = vi.hoisted<{ current: unknown }>(() => ({ current: null }))
 const storageResolving = vi.hoisted<{ current: boolean }>(() => ({ current: false }))
 vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({
+    platform: 'ios',
+    status: 'choosing',
+    graph: null,
+    error: null,
+    needsOnboarding: true,
     mobileStorageInfo: storageInfo.current,
     mobileStorageResolving: storageResolving.current,
     completeOnboarding,
   }),
 }))
+
+vi.mock('@/lib/background-flush', () => ({ installBackgroundFlush: () => () => {} }))
+vi.mock('@/mobile/use-keyboard', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/mobile/use-keyboard')>()),
+  useKeyboardHeightVar: () => {},
+  useKeyboardFieldReveal: () => {},
+  useKeyboardCaretReveal: () => {},
+}))
+vi.mock('@/mobile/use-task-haptics', () => ({ useTaskCheckboxHaptics: () => {} }))
+vi.mock('@/mobile/use-icloud-refresh', () => ({ useICloudRefresh: () => {} }))
 
 function setStorage(info: MobileStorageInfo): void {
   storageInfo.current = info
@@ -35,6 +51,15 @@ afterEach(async () => {
 })
 
 describe('MobileOnboardingScreen', () => {
+  it('opens first-run onboarding directly from the iOS app without store access', async () => {
+    setStorage({ localRoot: '/Documents', icloudDocumentsRoot: null, icloudGraphRoots: [] })
+    await render(<MobileApp />)
+
+    await page.getByRole('button', { name: 'Or, use this device only' }).click()
+
+    await vi.waitFor(() => expect(completeOnboarding).toHaveBeenCalledWith('local'))
+  })
+
   it('leads with iCloud sync and creates the named iCloud notes', async () => {
     await render(<MobileOnboardingScreen />)
 
@@ -130,7 +155,7 @@ describe('MobileOnboardingScreen', () => {
       .element(page.getByText('Turn on iCloud Drive to keep your notes synced between devices.'))
       .toBeVisible()
     await expect
-      .element(page.getByText('Sign in to iCloud on this device, then reopen Reflect.'))
+      .element(page.getByText('Sign in to iCloud on this device, then reopen Kore.'))
       .toBeVisible()
     await expect
       .element(page.getByRole('button', { name: 'Or, use this device only' }))

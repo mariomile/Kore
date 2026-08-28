@@ -44,7 +44,7 @@ impl HostError {
 
     fn message(&self) -> String {
         match self {
-            HostError::NoGraph => "Open Reflect and pick a graph first.".to_string(),
+            HostError::NoGraph => "Open Kore and pick a graph first.".to_string(),
             HostError::InvalidPayload(message) | HostError::Io(message) => message.clone(),
         }
     }

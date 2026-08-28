@@ -16,14 +16,14 @@ interface AiPreviewActionsProps {
   modelOptions: ChatModelOption[]
   /** Re-run the transform; `null` keeps the model of the previous run. */
   onRetry: (option: ChatModelOption | null) => void
-  /** Accept with the placement opposite to the staged one (old Reflect's Replace/Insert choice). */
+  /** Accept with the placement opposite to the staged one (old Kore's Replace/Insert choice). */
   onAcceptAs: (mode: AiPromptMode) => void
 }
 
 /**
  * The AI preview's extra controls (rendered in meowdown's pending-replacement
  * actions slot): retry on the same model, a one-shot model switch, and the
- * alternate placement — old Reflect let the user pick Replace vs Insert at
+ * alternate placement — old Kore let the user pick Replace vs Insert at
  * accept time, so next to the mode-default Accept the other placement stays
  * one click away.
  */

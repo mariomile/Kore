@@ -50,7 +50,7 @@ export interface StreamChatOptions {
   today: string
   /** Whether note search can use embeddings for meaning-based recall. */
   semanticSearchEnabled: boolean
-  /** User-authored instructions appended to Reflect's built-in system prompt. */
+  /** User-authored instructions appended to Kore's built-in system prompt. */
   customSystemPrompt: string
   /**
    * Graph overview for the system prompt (`loadChatGraphContext`), or
@@ -117,7 +117,7 @@ export interface ChatTurnOptions {
   today: string
   /** Whether note search can use embeddings for meaning-based recall. */
   semanticSearchEnabled: boolean
-  /** User-authored instructions appended to Reflect's built-in system prompt. */
+  /** User-authored instructions appended to Kore's built-in system prompt. */
   customSystemPrompt: string
   /** Graph overview for the system prompt, or `null` to omit the block. */
   context: CloudSafe<CloudGraphContext> | null

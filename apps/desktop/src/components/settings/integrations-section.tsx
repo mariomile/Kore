@@ -105,7 +105,7 @@ export function IntegrationsSection(): ReactElement | null {
           {showDenied ? (
             <div className="px-4 pb-3.5">
               <InlineAlert tone="warning">
-                Reflect doesn’t have contacts access.{' '}
+                Kore doesn’t have contacts access.{' '}
                 <button
                   type="button"
                   className="font-medium underline underline-offset-2"
@@ -125,7 +125,7 @@ export function IntegrationsSection(): ReactElement | null {
           {showPrompt ? (
             <div className="px-4 pb-3.5">
               <InlineAlert tone="warning">
-                Reflect hasn’t asked for contacts access yet.{' '}
+                Kore hasn’t asked for contacts access yet.{' '}
                 <button
                   type="button"
                   className="font-medium underline underline-offset-2"

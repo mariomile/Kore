@@ -42,14 +42,6 @@ vi.mock('@/providers/graph-provider', () => ({
   }),
 }))
 vi.mock('@/hooks/use-app-version', () => ({ useAppVersion: () => '1.2.3-beta.4' }))
-vi.mock('@/mobile/use-active-subscription', () => ({
-  useActiveSubscription: () => ({
-    needSubscription: false,
-    activeSubscription: null,
-    pending: false,
-  }),
-  invalidateEntitlementQueries: async () => {},
-}))
 
 const openUrl = vi.hoisted(() => vi.fn(() => Promise.resolve()))
 vi.mock('@tauri-apps/plugin-opener', () => ({ openUrl }))
@@ -133,12 +125,37 @@ afterEach(async () => {
 function mount() {
   return render(
     <QueryClientProvider client={queryClient}>
-      <MobileSettings />
+      <div style={{ height: '100dvh' }}>
+        <MobileSettings />
+      </div>
     </QueryClientProvider>,
   )
 }
 
 describe('MobileSettings', () => {
+  it('keeps settings scrollable within the mobile viewport', async () => {
+    await mount()
+    const main = page.getByRole('main').element()
+    expect(main.scrollHeight).toBeGreaterThan(main.clientHeight)
+    main.scrollTop = main.scrollHeight
+    expect(main.scrollTop).toBeGreaterThan(0)
+    const policy = page.getByRole('button', { name: 'Privacy Policy' }).element()
+    expect(policy.getBoundingClientRect().bottom).toBeLessThanOrEqual(window.innerHeight)
+  })
+
+  it('has no purchase or subscription actions on iOS', async () => {
+    graphState.platform = 'ios'
+    await mount()
+
+    await expect.element(page.getByText('Subscription', { exact: true })).not.toBeInTheDocument()
+    await expect
+      .element(
+        page.getByRole('button', { name: /Upgrade to Pro|Restore Purchases|Manage Subscription/ }),
+      )
+      .not.toBeInTheDocument()
+    await expect.element(page.getByText('Field Notes')).toBeVisible()
+  })
+
   it('discloses the graph row into the Graphs screen', async () => {
     const user = userEvent
     await mount()
@@ -156,7 +173,9 @@ describe('MobileSettings', () => {
 
     await user.click(page.getByRole('button', { name: 'Privacy Policy' }))
 
-    expect(openUrl).toHaveBeenCalledWith('https://reflect.app/privacy')
+    expect(openUrl).toHaveBeenCalledWith(
+      'https://github.com/mariomile/Kore/blob/master/docs/privacy.md',
+    )
   })
 
   it('writes appearance choices to the settings document', async () => {
@@ -284,7 +303,9 @@ describe('MobileSettings', () => {
     }
     await view.rerender(
       <QueryClientProvider client={queryClient}>
-        <MobileSettings />
+        <div style={{ height: '100dvh' }}>
+          <MobileSettings />
+        </div>
       </QueryClientProvider>,
     )
 

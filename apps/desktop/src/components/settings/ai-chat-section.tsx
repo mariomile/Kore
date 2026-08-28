@@ -56,7 +56,7 @@ export function AiChatSection(): ReactElement {
     <SettingsSection id="ai-chat">
       <SettingsField
         legend="System prompt"
-        description={`Additional instructions sent with every AI chat (up to ${CHAT_SYSTEM_PROMPT_MAX_LENGTH.toLocaleString()} characters). Reflect’s note-search, citation, and privacy rules still apply.`}
+        description={`Additional instructions sent with every AI chat (up to ${CHAT_SYSTEM_PROMPT_MAX_LENGTH.toLocaleString()} characters). Kore’s note-search, citation, and privacy rules still apply.`}
       >
         <Textarea
           aria-label="System prompt"

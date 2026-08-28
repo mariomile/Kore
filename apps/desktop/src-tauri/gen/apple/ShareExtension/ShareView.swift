@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The share sheet's content: saving spinner → "Saved to Reflect" (then the
+/// The share sheet's content: saving spinner → "Saved to Kore" (then the
 /// sheet dismisses itself) or a failure with a Dismiss button. Copy stays
 /// short and action-free — the save starts on appear, no confirm step.
 struct ShareView: View {
@@ -12,14 +12,14 @@ struct ShareView: View {
             switch state.status {
             case .saving:
                 ProgressView()
-                Text("Saving to Reflect…")
+                Text("Saving to Kore…")
                     .font(.body.weight(.medium))
                     .foregroundColor(.secondary)
             case .saved:
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 44))
                     .foregroundColor(.green)
-                Text("Saved to Reflect")
+                Text("Saved to Kore")
                     .font(.body.weight(.medium))
             case .failed:
                 Image(systemName: "exclamationmark.circle.fill")

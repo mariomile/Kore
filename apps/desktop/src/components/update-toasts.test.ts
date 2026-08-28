@@ -57,7 +57,7 @@ describe('attachUpdateToasts', () => {
       expect.objectContaining({
         id: 'reflect-update',
         title: 'Update available',
-        description: 'Reflect 1.2.3 is ready to install.',
+        description: 'Kore 1.2.3 is ready to install.',
         timeout: 0,
         data: { dismissible: false },
         actionProps: expect.objectContaining({ children: 'Install' }),

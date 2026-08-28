@@ -1,5 +1,4 @@
 import { fileURLToPath } from 'node:url'
-import { sentryVitePlugin } from '@sentry/vite-plugin'
 import { defineConfig } from 'vite'
 import tailwindcss from '@tailwindcss/vite'
 // The single version source; tauri.conf.json's `version` also points here.
@@ -18,18 +17,6 @@ export default defineConfig({
     }),
 
     tailwindcss(),
-    sentryVitePlugin({
-      authToken: process.env.SENTRY_AUTH_TOKEN,
-      org: 'reflect-64',
-      project: 'reflect-open',
-      telemetry: false,
-      release: {
-        name: `reflect@${pkg.version}`,
-      },
-      sourcemaps: {
-        filesToDeleteAfterUpload: ['./dist/**/*.map'],
-      },
-    }),
   ],
 
   define: {

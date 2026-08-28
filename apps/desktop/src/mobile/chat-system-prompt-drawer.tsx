@@ -52,7 +52,7 @@ function ChatSystemPromptSheet({
       <DrawerBody>
         <p className="text-sm text-text-muted">
           Additional instructions sent with every AI chat (up to{' '}
-          {CHAT_SYSTEM_PROMPT_MAX_LENGTH.toLocaleString()} characters). Reflect’s note-search,
+          {CHAT_SYSTEM_PROMPT_MAX_LENGTH.toLocaleString()} characters). Kore’s note-search,
           citation, and privacy rules still apply.
         </p>
         <Textarea

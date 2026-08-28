@@ -251,8 +251,9 @@ export async function deliverChatTurn(
       if (isCliAgentProvider(config.provider)) {
         // The subscription engines: the CLI reads the graph itself, so
         // they need the private-note deny list, not an API key. Refusing
-        // on a failed read is deliberate — running without the deny list
-        // would drop the privacy hard block.
+        // is deliberate for both null answers — a failed read and an index
+        // that cannot answer yet are the same fact here, and running
+        // without a complete deny list would drop the privacy hard block.
         const privateNotePaths = await listPrivateNotePaths().catch((cause: unknown) => {
           console.error('private-note list failed:', errorMessage(cause))
           return null
@@ -344,7 +345,8 @@ export async function deliverChatTurn(
       if (isCliAgentProvider(config.provider)) {
         applyEvent({
           type: 'error',
-          message: 'Couldn’t read the private-note list — try again in a moment.',
+          message:
+            'Couldn’t confirm which notes are private, so this run was refused. If the index is still building, try again in a moment.',
           messages: [],
         })
       }

@@ -140,6 +140,32 @@ export function AgentRoutinesRunner(): null {
       }))
     }
 
+    /**
+     * Record a routine's failed tick and surface it once. `error` is what the
+     * run ledger stores and `description` what the toast says: they differ
+     * because the ledger is read later, out of context. A tick that never
+     * started has no run to record, so it only toasts.
+     */
+    const failRun = (
+      routine: AgentRoutine,
+      startedMs: number | null,
+      detail: { error: string; description: string; verb?: 'failed' | 'skipped' },
+      promptSuffix?: string,
+    ): void => {
+      if (startedMs !== null) {
+        recordOutcome(
+          routine.id,
+          { startedMs, status: 'error', error: detail.error, changedPaths: [] },
+          promptSuffix,
+        )
+      }
+      toast.add({
+        type: 'error',
+        title: `Routine “${routine.name}” ${detail.verb ?? 'failed'}`,
+        description: detail.description,
+      })
+    }
+
     async function runRoutine(routine: AgentRoutine, promptSuffix?: string): Promise<void> {
       const graph = graphRef.current
       if (graph === null) {
@@ -173,16 +199,12 @@ export function AgentRoutinesRunner(): null {
             return
           }
           if (decision.kind === 'fail') {
-            recordOutcome(
-              routine.id,
-              { startedMs, status: 'error', error: decision.message, changedPaths: [] },
+            failRun(
+              routine,
+              startedMs,
+              { error: decision.message, description: decision.message },
               promptSuffix,
             )
-            toast.add({
-              type: 'error',
-              title: `Routine “${routine.name}” failed`,
-              description: decision.message,
-            })
             return
           }
           scriptContext = decision.context
@@ -197,35 +219,46 @@ export function AgentRoutinesRunner(): null {
         const pinned = configured.find((kind) => kind === context.profile?.provider)
         const provider = pinned ?? configured[0]
         if (provider === undefined) {
-          if (startedMs !== null) {
-            // A script already woke this tick: no provider is a real
-            // failure now (backoff, then pause), not a silent skip.
-            recordOutcome(
-              routine.id,
-              {
-                startedMs,
-                status: 'error',
-                error: 'No edit-capable CLI provider is configured for the woken run.',
-                changedPaths: [],
-              },
-              promptSuffix,
-            )
-          }
-          // For agent-only routines, deliberately BEFORE markRun: a skipped
-          // occurrence is not consumed — configure a provider and the
+          // A script already woke this tick, so no provider is a real failure
+          // now (backoff, then pause) rather than a silent skip. For agent-only
+          // routines `startedMs` is still null, deliberately BEFORE markRun: a
+          // skipped occurrence is not consumed, so configure a provider and the
           // routine still fires.
-          toast.add({
-            type: 'error',
-            title: `Routine “${routine.name}” skipped`,
-            description: 'It needs a Claude Code or Codex provider configured in Settings → AI.',
-          })
+          failRun(
+            routine,
+            startedMs,
+            {
+              error: 'No edit-capable CLI provider is configured for the woken run.',
+              description: 'It needs a Claude Code or Codex provider configured in Settings → AI.',
+              verb: 'skipped',
+            },
+            promptSuffix,
+          )
           return
         }
         if (startedMs === null) {
           startedMs = Date.now()
           markRun(routine.id, startedMs)
         }
+        // Same refusal as interactive chat: an unbuilt index cannot say
+        // which notes are private, and a routine runs unattended, so
+        // proceeding on a partial deny list is the one outcome to avoid.
+        // Deliberately after markRun: the occurrence is consumed, so a
+        // rebuild does not queue a backlog of retries.
         const privateNotePaths = await listPrivateNotePaths()
+        if (privateNotePaths === null) {
+          failRun(
+            routine,
+            startedMs,
+            {
+              error: 'The note index was rebuilding, so the private-note list was unavailable.',
+              description: 'The note index is still building. It will run on the next occurrence.',
+              verb: 'skipped',
+            },
+            promptSuffix,
+          )
+          return
+        }
         const mcpServers = await resolveMcpServers(settingsRef.current.mcpServers).catch(() => [])
         // Activity ledger baseline: commit pending changes so the run's
         // touches diff cleanly against a restorable version.
@@ -310,18 +343,12 @@ export function AgentRoutinesRunner(): null {
           })
         }
       } catch (cause: unknown) {
-        if (startedMs !== null) {
-          recordOutcome(
-            routine.id,
-            { startedMs, status: 'error', error: errorMessage(cause), changedPaths: [] },
-            promptSuffix,
-          )
-        }
-        toast.add({
-          type: 'error',
-          title: `Routine “${routine.name}” failed`,
-          description: errorMessage(cause),
-        })
+        failRun(
+          routine,
+          startedMs,
+          { error: errorMessage(cause), description: errorMessage(cause) },
+          promptSuffix,
+        )
       }
     }
 

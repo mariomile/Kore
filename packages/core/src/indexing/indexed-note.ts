@@ -107,6 +107,15 @@ import {
 export const PROJECTION_VERSION = 22
 
 /**
+ * The `index_meta` key holding the {@link PROJECTION_VERSION} the stored rows
+ * were built with. Stamped after every full rebuild; `index_clear` preserves
+ * `index_meta`, and the stamp is rewritten once the rebuild completes. It
+ * lives beside the version it stores so a reader can check the projection is
+ * current without importing the indexer.
+ */
+export const PROJECTION_VERSION_KEY = 'projection_version'
+
+/**
  * Precedence of the spellings a note answers to (`note_claims.tier`): the
  * lowest tier claiming a key wins it. The numbers are the storage encoding —
  * migration 0019 and the CLI read the same values.

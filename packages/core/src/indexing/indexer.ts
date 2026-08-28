@@ -19,10 +19,15 @@ import { assetReferencingNotePaths } from './asset-refs'
 import { gatherAssetDescriptionText } from './asset-description-text'
 import { emitIndexApplied } from './index-applied'
 import { hashContent } from './hash'
-import { buildIndexedNote, PROJECTION_VERSION, type IndexedNote } from './indexed-note'
+import {
+  buildIndexedNote,
+  PROJECTION_VERSION,
+  PROJECTION_VERSION_KEY,
+  type IndexedNote,
+} from './indexed-note'
 import { detectExternalMoves } from './move-healing'
 import { INDEX_PASS_YIELD_EVERY, yieldToEventLoop } from './pacing'
-import { getIndexMeta } from './queries'
+import { getIndexMeta, isProjectionCurrent } from './queries'
 
 /**
  * The indexing pipeline (Plan 04): read (Plan 02) → parse/extract in TS
@@ -47,13 +52,6 @@ export {
   type MtimeTouchBatch,
   type SkippedIndexedNote,
 } from './apply-batch'
-
-/**
- * The `index_meta` key holding the {@link PROJECTION_VERSION} the stored rows
- * were built with. Stamped after every full rebuild; `index_clear` preserves
- * `index_meta`, and the stamp is rewritten once the rebuild completes.
- */
-export const PROJECTION_VERSION_KEY = 'projection_version'
 
 /**
  * Read, parse, and (re)index a single note for the given index generation.
@@ -274,10 +272,10 @@ export async function rebuildIndex(options: IndexPassOptions): Promise<void> {
  * forever on unchanged files.
  */
 export async function syncIndex(options: IndexPassOptions): Promise<void> {
-  const stamped = await getIndexMeta(PROJECTION_VERSION_KEY)
-  if (stamped === String(PROJECTION_VERSION)) {
+  if (await isProjectionCurrent()) {
     return await reconcileIndex(options)
   }
+  const stamped = await getIndexMeta(PROJECTION_VERSION_KEY)
   // Loud on purpose: a rebuild is expected once per projection bump or fresh
   // graph. Seeing this on *every* open means the stamp (or the whole index
   // file) isn't persisting between launches — a pathology that would

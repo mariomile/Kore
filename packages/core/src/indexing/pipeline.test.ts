@@ -3,14 +3,13 @@ import { setBridge } from '../ipc/bridge'
 import { getBacklinks, resolveWikiTarget } from './queries'
 import { searchNotes } from './filtered-search'
 import { hashContent } from './hash'
-import { PROJECTION_VERSION } from './indexed-note'
+import { PROJECTION_VERSION, PROJECTION_VERSION_KEY } from './indexed-note'
 import {
   indexNote,
   rebuildIndex,
   reconcileIndex,
   reindexNotesReferencing,
   syncIndex,
-  PROJECTION_VERSION_KEY,
 } from './indexer'
 import { subscribeIndexApplied } from './index-applied'
 import { applyIndexChanges } from './live'

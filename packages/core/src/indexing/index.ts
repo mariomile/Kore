@@ -46,6 +46,7 @@ export {
   indexedTagSchema,
   indexedAliasSchema,
   PROJECTION_VERSION,
+  PROJECTION_VERSION_KEY,
   type IndexedNote,
   type IndexedLink,
   type IndexedTag,
@@ -57,7 +58,6 @@ export {
   rebuildIndex,
   reconcileIndex,
   syncIndex,
-  PROJECTION_VERSION_KEY,
   type IndexPassOptions,
 } from './indexer'
 export {

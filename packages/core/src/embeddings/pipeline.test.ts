@@ -144,7 +144,7 @@ describe('embedNote', () => {
       embed: (texts) => texts.map((text) => [Number(text.match(/Section (\d+)/)?.[1])]),
     })
     expect(await embedNote({ path: 'notes/a.md', generation: 1, modelId: MODEL })).toBe(41)
-    expect(embedded.map((batch) => batch.length)).toEqual([16, 16, 9])
+    expect(embedded.map((batch) => batch.length)).toEqual([4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 1])
     expect(applied).toHaveLength(1)
     expect(applied[0]!.chunks.map((chunk) => chunk.vector)).toEqual(
       Array.from({ length: 41 }, (_, index) => [index]),
@@ -185,6 +185,41 @@ describe('embedNote', () => {
     await expect(embedNote({ path: 'notes/a.md', generation: 1, modelId: MODEL })).rejects.toThrow(
       'incomplete batch',
     )
+    expect(applied).toHaveLength(0)
+  })
+
+  it('does not replace vectors when cancelled during the final batch', async () => {
+    let stale = false
+    const { applied } = fakePipelineBridge({
+      content: '# One\n\nAlpha.\n',
+      storedRows: [],
+      embed: (texts) => {
+        stale = true
+        return texts.map(() => [0.5, 0.5])
+      },
+    })
+    expect(
+      await embedNote({
+        path: 'notes/a.md',
+        generation: 1,
+        modelId: MODEL,
+        isStale: () => stale,
+      }),
+    ).toBe(0)
+    expect(applied).toHaveLength(0)
+  })
+
+  it('does not remove vectors when cancelled while reading an empty note', async () => {
+    const { applied } = fakePipelineBridge({ content: '\n', storedRows: [] })
+    let stale = false
+    const work = embedNote({
+      path: 'notes/a.md',
+      generation: 1,
+      modelId: MODEL,
+      isStale: () => stale,
+    })
+    stale = true
+    expect(await work).toBe(0)
     expect(applied).toHaveLength(0)
   })
 

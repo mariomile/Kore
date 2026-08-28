@@ -11,23 +11,15 @@ function commandName(command: string): string {
   return command.split('/').at(-1) ?? command
 }
 
-function kilobytes(value: number): string {
-  return formatBytes(value * 1024)
+function kilobytes(rssKb: number | null): string {
+  return rssKb === null ? 'Unavailable' : formatBytes(rssKb * 1024)
 }
 
 /**
  * What Kore and the processes it started are holding right now.
  *
- * The number people quote from Activity Monitor is the app plus every helper
- * it spawned — an agent CLI run with its MCP servers, a terminal with what
- * runs inside it — and those are separate processes with separate
- * footprints. Listing them is what turns "the app uses 10GB" into an
- * answerable question: an empty helper list points at the app itself, a heavy
- * one points at the helpers.
- *
- * Helpers that outlive the work that started them are the leak the process-
- * tree teardown exists to prevent, and this is where that is checked: with no
- * chat running and no terminal open, the list should be empty.
+ * Physical footprint includes charged nonresident memory. RSS and helper
+ * totals describe different measurements and must not be added to it.
  */
 export function MemoryField(): ReactElement {
   const bridgeReady = useBridgeReady()
@@ -46,21 +38,39 @@ export function MemoryField(): ReactElement {
   return (
     <SettingsField
       legend="Memory"
-      description="What Kore and the helper processes it started are using right now. With no chat running and no terminal open, the helper list should be empty."
+      description="Native footprint includes memory that is no longer resident. Helper figures are resident memory (RSS). WebKit processes are excluded."
     >
       <div className="mt-3 space-y-2">
         {error !== null ? (
           <p className="text-xs text-text-muted">
-            Could not read the process table: {errorMessage(error)}
+            Could not read memory usage: {errorMessage(error)}
           </p>
         ) : null}
         {report !== undefined ? (
           <>
             <div className="flex items-baseline justify-between gap-4 text-sm">
-              <span className="text-text-secondary">Kore</span>
-              <span className="tabular-nums text-text">{kilobytes(report.footprintKb)}</span>
+              <span className="text-text-secondary">Kore native footprint</span>
+              <span className="tabular-nums text-text">
+                {report.footprintBytes === null
+                  ? 'Unavailable'
+                  : formatBytes(report.footprintBytes)}
+              </span>
             </div>
-            {report.helpers.length === 0 ? (
+            <div className="flex items-baseline justify-between gap-4 text-sm">
+              <span className="text-text-secondary">Native peak</span>
+              <span className="tabular-nums text-text">
+                {report.peakFootprintBytes === null
+                  ? 'Unavailable'
+                  : formatBytes(report.peakFootprintBytes)}
+              </span>
+            </div>
+            <div className="flex items-baseline justify-between gap-4 text-sm">
+              <span className="text-text-secondary">Native resident (RSS)</span>
+              <span className="tabular-nums text-text">{kilobytes(report.rssKb)}</span>
+            </div>
+            {!report.processTableAvailable ? (
+              <p className="text-xs text-text-muted">Helper process discovery unavailable.</p>
+            ) : report.helpers.length === 0 ? (
               <p className="text-xs text-text-muted">No helper processes.</p>
             ) : (
               <>

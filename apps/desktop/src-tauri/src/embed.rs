@@ -27,6 +27,7 @@ use hf_hub::Cache;
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, State};
 
+use crate::embed_batch;
 use crate::error::{AppError, AppResult};
 
 /// Identifier recorded per vector; changing the model bumps this and triggers
@@ -98,16 +99,6 @@ enum Runtime {
     Failed(String),
 }
 
-/// Texts per inference batch, passed explicitly because fastembed's default
-/// (256) is sized for a server.
-///
-/// Peak allocation scales with `batch x seq^2`, so a 256-wide batch of
-/// 512-token sequences materializes a 3 GiB attention tensor that ONNX
-/// Runtime's arena then keeps for the life of the session; at 16 it is
-/// 192 MiB. The bound lives here rather than at the call site so that no
-/// caller can raise it. See `docs/memory-budget.md`.
-const EMBED_BATCH_SIZE: usize = 16;
-
 /// Idle time after which the loaded model is released.
 const IDLE_UNLOAD_AFTER: Duration = Duration::from_secs(15 * 60);
 
@@ -119,6 +110,8 @@ const IDLE_CHECK_EVERY: Duration = Duration::from_secs(60);
 #[derive(Default)]
 pub struct EmbedState {
     runtime: Mutex<Runtime>,
+    requests: embed_batch::RequestQueue,
+    loaded: tokio::sync::Notify,
     /// When the model was last loaded or used — the idle clock's zero.
     last_used: Mutex<Option<Instant>>,
     /// Whether the idle watchdog thread is already running.
@@ -313,7 +306,7 @@ fn embed_thread_count() -> usize {
 /// The QoS interface from `<pthread/qos.h>` and `<sys/qos.h>`
 /// (macOS 10.10 / iOS 8.0), not bound by the `libc` crate yet.
 /// `QOS_CLASS_UTILITY` is the class for progress the user is not waiting on,
-/// which is what schedules it onto efficiency cores.
+/// which gives the scheduler a background-work hint, not core affinity.
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 const QOS_CLASS_UTILITY: c_uint = 0x11;
 #[cfg(any(target_os = "macos", target_os = "ios"))]
@@ -327,10 +320,8 @@ extern "C" {
 
 /// The current thread demoted to `utility` QoS until dropped.
 ///
-/// Engaging this *before* the model loads is what puts ONNX Runtime's worker
-/// pool on efficiency cores too: macOS gives a thread created without an
-/// explicit class the class of the thread that created it, and the pool is
-/// created under the load.
+/// Engaging before model load also gives newly created pool threads the
+/// background scheduling context. Core placement remains an OS decision.
 ///
 /// Restoring on drop matters for the same reason it does in `fs::io`: the
 /// async runtime's blocking pool reuses threads, and a leaked demotion would
@@ -407,6 +398,13 @@ fn configure_onnx_runtime(app: &AppHandle) -> Result<(), String> {
         ort::init()
     };
 
+    commit_environment(environment)
+}
+
+/// Configure the same ONNX worker pool in the app and native experiments.
+pub(crate) fn commit_environment(
+    environment: ort::environment::EnvironmentBuilder,
+) -> Result<(), String> {
     let threads = embed_thread_count();
     let pool = ort::environment::GlobalThreadPoolOptions::default()
         .with_intra_threads(threads)
@@ -502,6 +500,7 @@ async fn load_model(app: &AppHandle, state: &State<'_, EmbedState>) -> AppResult
         arm_idle_unload(app);
     }
     emit_status(app, &status);
+    state.loaded.notify_waiters();
     Ok(status)
 }
 
@@ -522,28 +521,26 @@ fn arm_idle_unload(app: &AppHandle) {
     std::thread::spawn(move || loop {
         std::thread::sleep(IDLE_CHECK_EVERY);
         let state = app.state::<EmbedState>();
-        match unload_if_idle(&state) {
+        match unload_if_idle(&state, || {
+            emit_status(
+                &app,
+                &EmbedStatus::Unloaded {
+                    model: MODEL_ID.to_string(),
+                },
+            );
+        }) {
             IdleCheck::Waiting => continue,
             IdleCheck::Released => {
                 tracing::info!("released the idle embedding model");
-                state.idle_watchdog.store(false, Ordering::SeqCst);
-                emit_status(
-                    &app,
-                    &EmbedStatus::Unloaded {
-                        model: MODEL_ID.to_string(),
-                    },
-                );
                 return;
             }
-            IdleCheck::Gone => {
-                state.idle_watchdog.store(false, Ordering::SeqCst);
-                return;
-            }
+            IdleCheck::Gone => return,
         }
     });
 }
 
 /// What one watchdog tick concluded.
+#[derive(Debug, PartialEq)]
 enum IdleCheck {
     /// Still loaded and still in use (or in use recently).
     Waiting,
@@ -555,11 +552,13 @@ enum IdleCheck {
 
 /// Release the model if nothing has embedded with it for
 /// [`IDLE_UNLOAD_AFTER`].
-fn unload_if_idle(state: &EmbedState) -> IdleCheck {
+fn unload_if_idle(state: &EmbedState, on_release: impl FnOnce()) -> IdleCheck {
     let Ok(mut runtime) = state.runtime.lock() else {
+        state.idle_watchdog.store(false, Ordering::SeqCst);
         return IdleCheck::Gone;
     };
     let Runtime::Ready(model) = &*runtime else {
+        state.idle_watchdog.store(false, Ordering::SeqCst);
         return IdleCheck::Gone;
     };
     // An in-flight `embed_texts` holds its own clone of the model. Releasing
@@ -578,23 +577,47 @@ fn unload_if_idle(state: &EmbedState) -> IdleCheck {
     match idle_for {
         Some(elapsed) if elapsed >= IDLE_UNLOAD_AFTER => {
             *runtime = Runtime::Unloaded;
+            // Publish and disarm before another request can start reloading.
+            // Otherwise the old watchdog can overwrite the new one's flag
+            // or emit an obsolete Unloaded event after Loading/Ready.
+            state.idle_watchdog.store(false, Ordering::SeqCst);
+            on_release();
             IdleCheck::Released
         }
         _ => IdleCheck::Waiting,
     }
 }
 
-/// The loaded model, or `None` when it was released after idling.
+/// Await a concurrent load or reload a model released after idling.
 ///
 /// Errors for a runtime that was never loaded: an embed call must not be able
 /// to start the ~90MB first download, which belongs to the explicit opt-in
 /// (callers gate on `embed_status`/`embed_ensure`).
-fn ready_model(state: &State<'_, EmbedState>) -> AppResult<Option<Arc<Mutex<TextEmbedding>>>> {
-    let runtime = lock_state(state)?;
-    match &*runtime {
-        Runtime::Ready(model) => Ok(Some(Arc::clone(model))),
-        Runtime::Unloaded => Ok(None),
-        _ => Err(AppError::io("embedding model is not loaded")),
+async fn ready_model(
+    app: &AppHandle,
+    state: &State<'_, EmbedState>,
+) -> AppResult<Arc<Mutex<TextEmbedding>>> {
+    loop {
+        let notification = state.loaded.notified();
+        tokio::pin!(notification);
+        notification.as_mut().enable(); // register before checking for a concurrent completion
+        let reload = {
+            let runtime = lock_state(state)?;
+            match &*runtime {
+                Runtime::Ready(model) => return Ok(Arc::clone(model)),
+                Runtime::Unloaded => true,
+                Runtime::Loading { .. } => false,
+                Runtime::Failed(message) => return Err(AppError::io(message.clone())),
+                Runtime::Uninitialized => {
+                    return Err(AppError::io("embedding model is not loaded"))
+                }
+            }
+        };
+        if reload {
+            load_model(app, state).await?;
+        } else {
+            notification.await;
+        }
     }
 }
 
@@ -608,23 +631,20 @@ pub async fn embed_texts(
     texts: Vec<String>,
     state: State<'_, EmbedState>,
 ) -> AppResult<Vec<Vec<f32>>> {
-    let model = match ready_model(&state)? {
-        Some(model) => model,
-        None => {
-            load_model(&app, &state).await?;
-            ready_model(&state)?
-                .ok_or_else(|| AppError::io("the embedding model could not be reloaded"))?
-        }
-    };
+    embed_batch::validate(&texts)?;
+    if texts.is_empty() {
+        return Ok(Vec::new());
+    }
+    let lease = state.requests.acquire().await?;
+    let model = ready_model(&app, &state).await?;
     state.touch();
     let vectors = tauri::async_runtime::spawn_blocking(move || {
+        let _lease = lease;
         let _qos = BackgroundQos::engage();
         let mut model = model
             .lock()
             .map_err(|_| AppError::io("embedding model lock poisoned"))?;
-        model
-            .embed(texts, Some(EMBED_BATCH_SIZE))
-            .map_err(|err| AppError::io(format!("embedding failed: {err}")))
+        embed_batch::embed(&mut model, &texts)
     })
     .await
     .map_err(|err| AppError::io(format!("embedding task panicked: {err}")))?;
@@ -632,4 +652,46 @@ pub async fn embed_texts(
     // just because it started fifteen minutes ago.
     state.touch();
     vectors
+}
+
+#[cfg(all(test, target_os = "macos"))]
+mod tests {
+    use super::*;
+
+    #[test]
+    #[ignore = "requires an existing model cache; exercises real unload/reload cycles"]
+    fn repeated_idle_release_preserves_active_requests() {
+        let _qos = BackgroundQos::engage();
+        let state = EmbedState::default();
+        let texts = vec!["Project planning and memory. ".repeat(100); embed_batch::BATCH_SIZE];
+        let cycles = crate::embed_bench::parameter("KORE_EMBED_BENCH_CYCLES", 20, 50);
+        for cycle in 0..cycles {
+            let model = Arc::new(Mutex::new(crate::embed_bench::cached_model()));
+            *state.runtime.lock().unwrap() = Runtime::Ready(Arc::clone(&model));
+            state.idle_watchdog.store(true, Ordering::SeqCst);
+            state.touch();
+            assert_eq!(
+                unload_if_idle(&state, || panic!("recent model")),
+                IdleCheck::Waiting
+            );
+            embed_batch::embed(&mut model.lock().unwrap(), &texts).unwrap();
+            *state.last_used.lock().unwrap() = Some(Instant::now() - IDLE_UNLOAD_AFTER);
+            assert_eq!(
+                unload_if_idle(&state, || panic!("active request")),
+                IdleCheck::Waiting
+            );
+            drop(model);
+            let mut published = false;
+            assert_eq!(
+                unload_if_idle(&state, || {
+                    assert!(!state.idle_watchdog.load(Ordering::SeqCst));
+                    published = true;
+                }),
+                IdleCheck::Released
+            );
+            assert!(published);
+            assert!(matches!(*state.runtime.lock().unwrap(), Runtime::Unloaded));
+            crate::embed_bench::record("idle-released", "bounded", texts.len(), cycle, 0.0);
+        }
+    }
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { foldGraphPath, type IndexedNote } from '@reflect/core'
+import { foldGraphPath, memoryReport, setBridge, type IndexedNote } from '@reflect/core'
 import { createDevBridge } from '@/dev/dev-bridge'
 import { createDevFileStore } from '@/dev/dev-file-store'
 import { createDevIndexDb } from '@/dev/dev-index-db'
@@ -105,6 +105,22 @@ describe('dev bridge desktop boot surface', () => {
       skipped: 0,
     })
     await expect(bridge.invoke('list_attachments', { generation: 1 })).resolves.toEqual([])
+    setBridge(bridge)
+    try {
+      // Exercise the public schema too: a drifted stub otherwise breaks the
+      // settings preview even though native diagnostics still work.
+      await expect(memoryReport()).resolves.toEqual({
+        pid: 0,
+        rssKb: null,
+        footprintBytes: null,
+        peakFootprintBytes: null,
+        processTableAvailable: false,
+        helpers: [],
+        helpersRssKb: 0,
+      })
+    } finally {
+      setBridge(null)
+    }
   })
 })
 

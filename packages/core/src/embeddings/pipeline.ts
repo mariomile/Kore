@@ -79,6 +79,9 @@ export async function embedNote(options: EmbedNoteOptions): Promise<number> {
     ...(await chunkNote(path, content, parsed)),
     ...(await chunkAssetDescriptions(gathered.bodies, content.length + 1)),
   ]
+  if (isStale()) {
+    return 0
+  }
   if (chunks.length === 0) {
     await embedRemove(path, generation)
     return 0

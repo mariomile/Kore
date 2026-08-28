@@ -43,17 +43,16 @@ export function embedEnsure(): Promise<EmbedStatus> {
 }
 
 /**
- * Texts per `embedTexts` call, mirroring `EMBED_BATCH_SIZE` in `embed.rs`.
- *
- * The runtime bounds its own batches whatever arrives, so this is not what
- * keeps memory in check — it is what keeps an IPC payload small and a long
- * pass interruptible, by giving callers a point to stop between batches
- * rather than only between notes.
+ * Maximum texts per native call, mirrored by `embed_batch::BATCH_SIZE`.
+ * Each call completes pooling before another batch can retain raw outputs.
  */
-export const EMBEDDING_BATCH_SIZE = 16
+export const EMBEDDING_BATCH_SIZE = 4
 
-/** Embed texts → 384-dim vectors. Errors unless status is `ready`. */
+/** Embed a bounded batch → 384-dim vectors; reloads an idle model. */
 export function embedTexts(texts: string[]): Promise<number[][]> {
+  if (texts.length > EMBEDDING_BATCH_SIZE) {
+    throw new Error(`An embedding request cannot exceed ${EMBEDDING_BATCH_SIZE} texts`)
+  }
   return call('embed_texts', { texts }, vectorsSchema)
 }
 

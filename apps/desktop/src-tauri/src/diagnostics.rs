@@ -11,13 +11,13 @@
 //!
 //! One caveat this report cannot fix: on macOS the WebKit content and GPU
 //! processes backing the webview are XPC services launched by `launchd`, not
-//! children of the app, so they are outside the tree reported here. What the
-//! *webview* holds is measured from the frontend (`performance.memory` and
-//! the like), not from this side.
+//! children of the app, so they are outside the tree reported here. No WebKit
+//! ownership or app-wide total is inferred from this report.
 
 use serde::Serialize;
 
 use crate::error::AppResult;
+use crate::process_memory;
 use crate::process_tree;
 
 /// One process Kore started, directly or indirectly.
@@ -37,17 +37,14 @@ pub struct HelperProcess {
 #[serde(rename_all = "camelCase")]
 pub struct MemoryReport {
     pub pid: u32,
-    /// The app's physical footprint in kilobytes — the number Activity
-    /// Monitor shows — or its resident set where the OS has no footprint
-    /// metric.
-    ///
-    /// Deliberately not the resident set on Apple platforms. The OS
-    /// compresses pages under memory pressure and RSS stops counting them
-    /// the moment it does, so a compaction alone can drop RSS by a gigabyte
-    /// while the app has released nothing: measured here at 130MB resident
-    /// against 846MB actually held. A memory report that shrinks when the
-    /// machine gets busy is worse than no report.
-    pub footprint_kb: u64,
+    /// The app process's own resident set, in kilobytes.
+    pub rss_kb: Option<u64>,
+    /// macOS native physical footprint, including charged nonresident memory.
+    pub footprint_bytes: Option<u64>,
+    /// Lifetime peak of native physical footprint; not a sum with RSS.
+    pub peak_footprint_bytes: Option<u64>,
+    /// False means helper discovery failed, not that no helpers exist.
+    pub process_table_available: bool,
     /// Helpers, heaviest first.
     pub helpers: Vec<HelperProcess>,
     /// The helpers' resident sets summed, in kilobytes.
@@ -64,35 +61,13 @@ pub async fn memory_report() -> AppResult<MemoryReport> {
     crate::blocking::run_blocking(|| Ok(collect_memory_report(std::process::id()))).await
 }
 
-/// The process's physical footprint in kilobytes, or `None` where the OS
-/// does not track one.
-#[cfg(any(target_os = "macos", target_os = "ios"))]
-fn physical_footprint_kb(pid: u32) -> Option<u64> {
-    let mut info = std::mem::MaybeUninit::<libc::rusage_info_v4>::zeroed();
-    let read = unsafe {
-        libc::proc_pid_rusage(
-            pid as libc::c_int,
-            libc::RUSAGE_INFO_V4,
-            info.as_mut_ptr().cast(),
-        )
-    };
-    (read == 0).then(|| unsafe { info.assume_init() }.ri_phys_footprint / 1024)
-}
-
-#[cfg(not(any(target_os = "macos", target_os = "ios")))]
-fn physical_footprint_kb(_pid: u32) -> Option<u64> {
-    None
-}
-
 fn collect_memory_report(pid: u32) -> MemoryReport {
     let table = process_tree::process_table();
-    let resident_kb = || {
-        table
-            .iter()
-            .find(|row| row.pid == pid)
-            .map_or(0, |row| row.rss_kb)
-    };
-    let footprint_kb = physical_footprint_kb(pid).unwrap_or_else(resident_kb);
+    let rss_kb = table
+        .iter()
+        .find(|row| row.pid == pid)
+        .map(|row| row.rss_kb);
+    let native = process_memory::read(pid);
     let mut helpers: Vec<HelperProcess> = process_tree::tree_pids(&table, pid)
         .into_iter()
         .filter(|helper| *helper != pid)
@@ -113,7 +88,10 @@ fn collect_memory_report(pid: u32) -> MemoryReport {
     let helpers_rss_kb = helpers.iter().map(|helper| helper.rss_kb).sum();
     MemoryReport {
         pid,
-        footprint_kb,
+        rss_kb,
+        footprint_bytes: native.as_ref().map(|memory| memory.footprint_bytes),
+        peak_footprint_bytes: native.as_ref().map(|memory| memory.peak_footprint_bytes),
+        process_table_available: rss_kb.is_some(),
         helpers,
         helpers_rss_kb,
     }
@@ -132,7 +110,10 @@ mod tests {
             .unwrap();
         let report = collect_memory_report(std::process::id());
         assert_eq!(report.pid, std::process::id());
-        assert!(report.footprint_kb > 0, "the test process holds memory");
+        assert!(
+            report.rss_kb.is_some_and(|rss| rss > 0),
+            "the test process has a resident set"
+        );
         assert!(
             report.helpers.iter().any(|helper| helper.pid == child.id()),
             "the spawned child is missing from {:?}",

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { embedNote, embedRemove, isNotePath, subscribeIndexApplied } from '@reflect/core'
 import {
   backfillEmbeddingsVisibly,
@@ -35,18 +35,25 @@ import { useSettings } from '@/providers/settings-provider'
  * pipeline (`reindexNotesReferencing` emits the same signal), and those notes
  * must re-embed for the description text to reach semantic search.
  *
- * Backfill and follow work need the runtime `ready` *and* the setting on:
- * disabling semantic search pauses embedding work immediately (the loaded
- * model just idles for the rest of the session), and re-enabling catches up
- * via the cheap hash-skip backfill.
+ * Once initialized, synchronization outlives model residency: edits wake an
+ * unloaded model, while idle unload/reload does not trigger another backfill.
+ * Disabling the setting or changing graphs cancels work at batch boundaries.
  */
 export function EmbeddingsSync(): null {
   const { graph, indexGeneration, indexReady } = useGraph()
   const { settings, updateSettings } = useSettings()
   const status = useEmbedStatus()
   const queue = useRef<Promise<void>>(Promise.resolve())
-  const pendingFollow = useRef(new Map<string, 'upsert' | 'remove'>())
-  const followScheduled = useRef(false)
+  const [previousModelId, setPreviousModelId] = useState<string | null>(null)
+  const modelId =
+    status.status === 'ready' || status.status === 'unloaded'
+      ? status.model
+      : status.status === 'loading'
+        ? previousModelId
+        : null
+  if (modelId !== previousModelId) {
+    setPreviousModelId(modelId)
+  }
 
   // embed_apply/embed_remove are gated on the INDEX session generation, not
   // the file-write generation in GraphInfo — the counters are independent.
@@ -55,8 +62,6 @@ export function EmbeddingsSync(): null {
   // Main window only: a secondary note window loading the model and
   // re-embedding on the same watcher stream would duplicate every write.
   const enabled = settings.semanticSearchEnabled && isMainWindow()
-  const ready = status.status === 'ready'
-  const modelId = status.status === 'ready' ? status.model : null
 
   // The opt-in predates the settings document (it lived in localStorage);
   // carry it over once so those users keep semantic search across the move.
@@ -80,27 +85,20 @@ export function EmbeddingsSync(): null {
   // this down: pending queue items see `active` go false and skip, and the
   // subscription drops.
   useEffect(() => {
-    if (
-      !enabled ||
-      !ready ||
-      generation === null ||
-      root === null ||
-      modelId === null ||
-      !indexReady
-    ) {
+    if (!enabled || generation === null || root === null || modelId === null || !indexReady) {
       return
     }
     let active = true
-    pendingFollow.current.clear()
-    followScheduled.current = false
+    const pendingFollow = new Map<string, 'upsert' | 'remove'>()
+    let followScheduled = false
 
     let scheduleFollow: () => void = () => {}
 
     const drainFollow = async (): Promise<void> => {
       try {
-        while (active && pendingFollow.current.size > 0) {
-          const jobs = [...pendingFollow.current]
-          pendingFollow.current.clear()
+        while (active && pendingFollow.size > 0) {
+          const jobs = [...pendingFollow]
+          pendingFollow.clear()
           for (const [path, kind] of jobs) {
             if (!active) {
               return
@@ -113,18 +111,18 @@ export function EmbeddingsSync(): null {
           }
         }
       } finally {
-        followScheduled.current = false
-        if (active && pendingFollow.current.size > 0) {
+        followScheduled = false
+        if (active && pendingFollow.size > 0) {
           scheduleFollow()
         }
       }
     }
 
     scheduleFollow = (): void => {
-      if (followScheduled.current) {
+      if (followScheduled) {
         return
       }
-      followScheduled.current = true
+      followScheduled = true
       queue.current = queue.current.then(drainFollow).catch((cause) => {
         // A rejection here must not poison the queue (later change items
         // chain off this promise) nor masquerade as a per-change failure.
@@ -155,19 +153,19 @@ export function EmbeddingsSync(): null {
         if (!isNotePath(change.path)) {
           continue // asset-file changes ride the same batches — never embedded
         }
-        pendingFollow.current.set(change.path, change.kind === 'remove' ? 'remove' : 'upsert')
+        pendingFollow.set(change.path, change.kind === 'remove' ? 'remove' : 'upsert')
       }
-      if (pendingFollow.current.size > 0) {
+      if (pendingFollow.size > 0) {
         scheduleFollow()
       }
     })
 
     return () => {
       active = false
-      pendingFollow.current.clear()
+      pendingFollow.clear()
       unlisten()
     }
-  }, [enabled, ready, generation, root, modelId, indexReady])
+  }, [enabled, generation, root, modelId, indexReady])
 
   return null
 }

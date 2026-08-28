@@ -32,6 +32,7 @@ mod haptics;
 mod icloud;
 mod link_preview;
 mod menu;
+mod process_memory;
 mod process_tree;
 mod quit;
 mod recents;
@@ -56,6 +57,10 @@ mod embed;
 #[cfg(mobile)]
 #[path = "embed_mobile.rs"]
 mod embed;
+#[cfg(desktop)]
+mod embed_batch;
+#[cfg(all(test, desktop, target_os = "macos"))]
+mod embed_bench;
 #[cfg(desktop)]
 mod pty;
 #[cfg(mobile)]

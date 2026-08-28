@@ -76,6 +76,7 @@ describe('EmbeddingsSync', () => {
         path: 'notes/a.md',
         generation: 7,
         modelId: 'all-MiniLM-L6-v2',
+        isStale: expect.any(Function),
       }),
     )
   })
@@ -144,11 +145,13 @@ describe('EmbeddingsSync', () => {
       path: 'notes/a.md',
       generation: 7,
       modelId: 'all-MiniLM-L6-v2',
+      isStale: expect.any(Function),
     })
     expect(core.embedNote).toHaveBeenCalledWith({
       path: 'notes/b.md',
       generation: 7,
       modelId: 'all-MiniLM-L6-v2',
+      isStale: expect.any(Function),
     })
   })
 

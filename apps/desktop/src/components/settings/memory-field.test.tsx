@@ -12,7 +12,7 @@ interface HelperPayload {
   command: string
 }
 
-let rssKb: number
+let footprintKb: number
 let helpers: HelperPayload[]
 let failure: string | null
 
@@ -27,7 +27,7 @@ function installFakeBridge(): void {
       }
       return {
         pid: 100,
-        rssKb,
+        footprintKb,
         helpers,
         helpersRssKb: helpers.reduce((total, helper) => total + helper.rssKb, 0),
       }
@@ -46,7 +46,7 @@ async function renderField(): Promise<void> {
 }
 
 beforeEach(() => {
-  rssKb = 512 * 1024
+  footprintKb = 512 * 1024
   helpers = []
   failure = null
   installFakeBridge()
@@ -81,7 +81,7 @@ describe('MemoryField', () => {
     await renderField()
     await expect.element(page.getByText('512 MB')).toBeInTheDocument()
 
-    rssKb = 700 * 1024
+    footprintKb = 700 * 1024
     await page.getByRole('button', { name: /refresh/i }).click()
 
     await expect.element(page.getByText('700 MB')).toBeInTheDocument()

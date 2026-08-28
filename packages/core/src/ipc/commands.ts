@@ -38,7 +38,13 @@ const helperProcessSchema = z.object({
 
 const memoryReportSchema = z.object({
   pid: z.number().int().nonnegative(),
-  rssKb: z.number().nonnegative(),
+  /**
+   * The app's physical footprint in kilobytes, not its resident set: macOS
+   * compresses pages under pressure and stops counting them as resident, so
+   * RSS falls when the machine gets busy rather than when the app frees
+   * anything.
+   */
+  footprintKb: z.number().nonnegative(),
   /** Heaviest first. */
   helpers: z.array(helperProcessSchema),
   helpersRssKb: z.number().nonnegative(),
@@ -55,8 +61,8 @@ export type MemoryReport = z.infer<typeof memoryReportSchema>
  * its MCP servers, an open terminal and what runs inside it.
  *
  * The point of measuring is attribution: an empty `helpers` list with a large
- * `rssKb` is the app's own memory, while a small `rssKb` next to a large
- * `helpersRssKb` is helpers the app is hosting. Note that on macOS the
+ * `footprintKb` is the app's own memory, while a small `footprintKb` next to
+ * a large `helpersRssKb` is helpers the app is hosting. Note that on macOS the
  * webview's WebKit processes are `launchd`-owned XPC services, so they count
  * in neither number.
  */

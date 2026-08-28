@@ -4,7 +4,13 @@ import { gatherAssetDescriptionBodies } from '../indexing/asset-description-text
 import { db } from '../indexing/db'
 import { parseNote } from '../markdown'
 import { chunkAssetDescriptions, chunkNote } from './chunk'
-import { embedApply, embedRemove, embedTexts, type EmbedChunkPayload } from './commands'
+import {
+  EMBEDDING_BATCH_SIZE,
+  embedApply,
+  embedRemove,
+  embedTexts,
+  type EmbedChunkPayload,
+} from './commands'
 
 /**
  * The incremental embedding pass (Plan 09): chunk a note, diff chunk hashes
@@ -25,15 +31,18 @@ export interface EmbedNoteOptions {
   modelId: string
   /** Pre-loaded content (the watcher path has it); read from disk if absent. */
   content?: string
+  /** Stop between inference batches when this work has been superseded. */
+  isStale?: () => boolean
 }
 
 /**
  * Bring one note's embeddings up to date. Returns the number of chunks that
- * were (re)embedded — 0 means the hash-skip caught everything.
+ * were (re)embedded — 0 means the hash-skip caught everything, the note was
+ * skipped, or the pass was cancelled before it wrote anything.
  */
 export async function embedNote(options: EmbedNoteOptions): Promise<number> {
-  const { path, generation, modelId } = options
-  if (isTemplatePath(path)) {
+  const { path, generation, modelId, isStale = () => false } = options
+  if (isTemplatePath(path) || isStale()) {
     return 0 // templates are boilerplate — never embedded, never retrieved
   }
   let content = options.content
@@ -101,7 +110,26 @@ export async function embedNote(options: EmbedNoteOptions): Promise<number> {
     return false
   })
   const toEmbed = chunks.filter((_, i) => !skip[i])
-  const vectors = toEmbed.length > 0 ? await embedTexts(toEmbed.map((chunk) => chunk.text)) : []
+  // Batched rather than one call per note: a long note produces hundreds of
+  // chunks, and handing them to the runtime in one go is what made a single
+  // note cost gigabytes. Cancellation is checked between batches, never
+  // mid-note after a partial write — `embedApply` replaces a note's *entire*
+  // chunk set, so applying half the vectors would drop the rest.
+  const vectors: number[][] = []
+  for (let offset = 0; offset < toEmbed.length; offset += EMBEDDING_BATCH_SIZE) {
+    if (isStale()) {
+      return 0
+    }
+    const batch = toEmbed.slice(offset, offset + EMBEDDING_BATCH_SIZE)
+    const embedded = await embedTexts(batch.map((chunk) => chunk.text))
+    if (embedded.length !== batch.length) {
+      throw new Error('the embedding runtime returned an incomplete batch')
+    }
+    vectors.push(...embedded)
+  }
+  if (isStale()) {
+    return 0
+  }
   let vectorAt = 0
 
   const payload: EmbedChunkPayload[] = chunks.map((chunk, i) => ({
@@ -127,10 +155,10 @@ export async function backfillEmbeddings(options: {
   generation: number
   modelId: string
   onProgress?: (done: number, total: number) => void
-  /** Abort between notes (e.g. graph switch). */
+  /** Abort between inference batches and between notes (e.g. graph switch). */
   isStale?: () => boolean
 }): Promise<'completed' | 'aborted'> {
-  const { generation, modelId, onProgress, isStale } = options
+  const { generation, modelId, onProgress, isStale = () => false } = options
   const rows = await db
     .selectFrom('notes')
     .where('kind', '!=', 'template')
@@ -139,11 +167,14 @@ export async function backfillEmbeddings(options: {
     .execute()
   let done = 0
   for (const row of rows) {
-    if (isStale?.()) {
+    if (isStale()) {
       return 'aborted'
     }
     try {
-      await embedNote({ path: row.path, generation, modelId })
+      await embedNote({ path: row.path, generation, modelId, isStale })
+      if (isStale()) {
+        return 'aborted'
+      }
     } catch (cause) {
       console.error(`embedding backfill failed for ${row.path}:`, cause)
     }

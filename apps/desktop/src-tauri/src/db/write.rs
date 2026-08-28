@@ -4,7 +4,7 @@
 //! plain functions over a [`Connection`] so the command layer ([`super`]) owns
 //! transactions and generation gating while these stay directly unit-testable.
 
-use rusqlite::{params, Connection};
+use rusqlite::{params, Connection, OptionalExtension};
 use serde::Deserialize;
 
 use crate::error::AppResult;
@@ -198,6 +198,10 @@ pub(super) fn apply_note(conn: &Connection, note: &IndexedNote) -> AppResult<()>
         note.mtime,
         note.preview,
     ])?;
+    // Captured here, not at the FTS insert below: eleven child-table inserts
+    // sit in between, and `last_insert_rowid` reports whichever of those ran
+    // last. This is the note's own rowid, and the FTS row is keyed by it.
+    let note_rowid = conn.last_insert_rowid();
     conn.prepare_cached("INSERT INTO note_text(note_path, text) VALUES(?1, ?2)")?
         .execute(params![note.path, note.text])?;
     {
@@ -312,8 +316,14 @@ pub(super) fn apply_note(conn: &Connection, note: &IndexedNote) -> AppResult<()>
             search_body.push_str(extra);
         }
     }
-    conn.prepare_cached("INSERT INTO search_fts(path, title, body) VALUES(?1, ?2, ?3)")?
-        .execute(params![note.path, note.title, search_body])?;
+    // Keyed by the `notes` rowid captured above, so `remove_note` can delete by
+    // rowid instead of scanning the whole FTS table. The delete guards the
+    // insert: SQLite may hand back a rowid an orphaned FTS row still holds,
+    // and FTS5 has no foreign key to clear one for us.
+    conn.prepare_cached("DELETE FROM search_fts WHERE rowid = ?1")?
+        .execute(params![note_rowid])?;
+    conn.prepare_cached("INSERT INTO search_fts(rowid, path, title, body) VALUES(?1, ?2, ?3, ?4)")?
+        .execute(params![note_rowid, note.path, note.title, search_body])?;
     Ok(())
 }
 
@@ -410,8 +420,17 @@ pub(super) fn move_note(
         .execute(params![from, to])?;
     conn.prepare_cached("UPDATE embedding_chunks SET note_path = ?2 WHERE note_path = ?1")?
         .execute(params![from, to])?;
-    conn.prepare_cached("UPDATE search_fts SET path = ?2 WHERE path = ?1")?
-        .execute(params![from, to])?;
+    // `UPDATE notes SET path` preserves the rowid, so the FTS row is already
+    // keyed correctly and only its stored `path` needs rewriting. Resolved
+    // through the destination, because the notes row has moved by now.
+    let note_rowid: Option<i64> = conn
+        .prepare_cached("SELECT rowid FROM notes WHERE path = ?1")?
+        .query_row(params![to], |row| row.get(0))
+        .optional()?;
+    if let Some(note_rowid) = note_rowid {
+        conn.prepare_cached("UPDATE search_fts SET path = ?2 WHERE rowid = ?1")?
+            .execute(params![note_rowid, to])?;
+    }
     Ok(())
 }
 
@@ -440,9 +459,18 @@ pub(super) fn touch_note(conn: &Connection, path: &str, mtime: i64) -> AppResult
 /// Drop every row belonging to `path` (the `notes` row cascades to child
 /// tables; `search_fts` is standalone).
 pub(super) fn remove_note(conn: &Connection, path: &str) -> AppResult<()> {
+    // Read the rowid first: it is the FTS row's key, and deleting the `notes`
+    // row is what makes it unrecoverable. A path with no row leaves nothing to
+    // delete, which is the same answer the old path-scan gave.
+    let note_rowid: Option<i64> = conn
+        .prepare_cached("SELECT rowid FROM notes WHERE path = ?1")?
+        .query_row(params![path], |row| row.get(0))
+        .optional()?;
     conn.prepare_cached("DELETE FROM notes WHERE path = ?1")?
         .execute(params![path])?;
-    conn.prepare_cached("DELETE FROM search_fts WHERE path = ?1")?
-        .execute(params![path])?;
+    if let Some(note_rowid) = note_rowid {
+        conn.prepare_cached("DELETE FROM search_fts WHERE rowid = ?1")?
+            .execute(params![note_rowid])?;
+    }
     Ok(())
 }

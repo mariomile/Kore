@@ -12,7 +12,8 @@ use super::migrations::{migrate, migrate_to, open_in_memory, open_index_at, vali
 use super::query::run_query;
 use super::scan::scan_reconcile;
 use super::write::{
-    apply_note, claim_tier, clear_index, move_note, touch_note, IndexedAlias, IndexedClaim,
+    apply_note, claim_tier, clear_index, move_note, remove_note, touch_note, IndexedAlias,
+    IndexedClaim,
     IndexedEmail, IndexedLink, IndexedNote, IndexedProperty, IndexedTag, IndexedTagType,
     IndexedTask, MovedNoteAddress,
 };
@@ -2311,4 +2312,92 @@ fn reconcile_scan_walks_the_index_sessions_root_not_the_current_graph() {
     ))
     .expect("scan");
     assert_eq!(scan.total, 1, "must list graph A, the index session's root");
+}
+
+/// The FTS row's rowid IS the note's rowid (migration 0023). Deletes and moves
+/// resolve through it instead of scanning `search_fts`, so if this alignment
+/// ever drifts, search silently keeps rows for deleted notes and loses rows for
+/// live ones. Nothing else in the schema enforces it: fts5 has no foreign key.
+#[test]
+fn fts_rows_stay_keyed_by_their_note_rowid() {
+    let mut conn = migrated();
+
+    // Deliberately rich: eleven child-table inserts sit between the `notes`
+    // row and the FTS row, and each one moves `last_insert_rowid`. A note with
+    // no children would keep the two in step by accident and prove nothing.
+    apply_note(&conn, &rich_note("notes/a.md", "Alpha", 3)).unwrap();
+    apply_note(&conn, &rich_note("notes/b.md", "Beta", 1)).unwrap();
+    assert_eq!(aligned_fts_rows(&conn), 2, "both rows aligned after apply");
+
+    // Reapplying replaces the note row, and the FTS row must follow the new
+    // rowid rather than stranding one under the old.
+    let mut updated = rich_note("notes/a.md", "Alpha", 2);
+    updated.text = "rewritten body".to_string();
+    apply_note(&conn, &updated).unwrap();
+    assert_eq!(aligned_fts_rows(&conn), 2, "still aligned after reapply");
+    assert_eq!(fts_row_count(&conn), 2, "reapply left no orphan behind");
+
+    // A move keeps the rowid and rewrites only the stored path.
+    move_in_txn(&mut conn, "notes/b.md", "notes/moved.md").unwrap();
+    assert_eq!(aligned_fts_rows(&conn), 2, "still aligned after move");
+    let hits = run_query(
+        &conn,
+        "SELECT path FROM search_fts WHERE search_fts MATCH ?1",
+        &[Value::from("Beta")],
+    )
+    .unwrap();
+    assert_eq!(hits.len(), 1);
+    assert_eq!(hits[0]["path"], Value::from("notes/moved.md"));
+
+    // Removing a note takes its FTS row with it, by rowid.
+    remove_note(&conn, "notes/a.md").unwrap();
+    assert_eq!(fts_row_count(&conn), 1, "the removed note left no FTS row");
+    assert_eq!(aligned_fts_rows(&conn), 1);
+
+    // Removing a path that was never indexed is a no-op, not a wipe.
+    remove_note(&conn, "notes/never-existed.md").unwrap();
+    assert_eq!(fts_row_count(&conn), 1);
+}
+
+/// How many `search_fts` rows sit on the rowid of a `notes` row with the same
+/// path. Equal to the FTS row count exactly when the invariant holds.
+fn aligned_fts_rows(conn: &Connection) -> i64 {
+    conn.query_row(
+        "SELECT count(*) FROM search_fts f
+         JOIN notes n ON n.rowid = f.rowid AND n.path = f.path",
+        [],
+        |row| row.get(0),
+    )
+    .unwrap()
+}
+
+fn fts_row_count(conn: &Connection) -> i64 {
+    conn.query_row("SELECT count(*) FROM search_fts", [], |row| row.get(0))
+        .unwrap()
+}
+
+/// A note carrying every kind of child row, with `tasks` many tasks.
+///
+/// The count has to vary between notes. Every child table is a rowid table, so
+/// if each note contributes the same number of rows to the table written last,
+/// its rowid counter marches in lockstep with `notes`' own and a misaligned
+/// FTS key looks correct by accident.
+fn rich_note(path: &str, title: &str, tasks: usize) -> IndexedNote {
+    let mut sample = note(path, title, vec![wiki("Somewhere"), wiki("Elsewhere")]);
+    sample.tags = vec![IndexedTag {
+        tag: "Project".to_string(),
+        tag_key: "project".to_string(),
+    }];
+    sample.aliases = vec![IndexedAlias {
+        alias: format!("{title} alias"),
+        alias_key: format!("{} alias", title.to_lowercase()),
+    }];
+    sample.tasks = (0..tasks)
+        .map(|index| task(index as i64, &format!("do thing {index}"), false))
+        .collect();
+    sample.emails = vec![IndexedEmail {
+        email: "a@example.com".to_string(),
+        email_key: "a@example.com".to_string(),
+    }];
+    sample
 }

@@ -1,0 +1,20 @@
+-- Key `search_fts` rows by the `notes` rowid.
+--
+-- `search_fts` declares `path UNINDEXED`, so `DELETE FROM search_fts WHERE
+-- path = ?` plans as `SCAN search_fts VIRTUAL TABLE`. `apply_note` calls
+-- `remove_note` unconditionally, so every single note write full-scanned the
+-- whole FTS table, and the cost grows as the table fills: a rebuild is
+-- quadratic in note count. Measured at 5,000 rows / 23 MB: 5.67 ms by path
+-- versus 0.029 ms by rowid, and a 5,000-note rebuild loop 2.45 s versus
+-- 0.171 s for the same inserts alone.
+--
+-- The fix is addressing, not shape: each FTS row now carries the rowid of its
+-- `notes` row, which is a rowid-table primary key lookup away from the path.
+-- The `path` column stays, because filtered search and unlinked mentions read
+-- it back.
+--
+-- No table is recreated. FTS5 assigns rowids itself, so existing rows cannot
+-- be re-keyed in place: wipe them and let the PROJECTION_VERSION bump drive a
+-- rebuild, the pattern 0004, 0006, 0009, 0014, 0015 and 0021 already use.
+-- `notes` is untouched here, so the rows come back aligned on the next pass.
+DELETE FROM search_fts;

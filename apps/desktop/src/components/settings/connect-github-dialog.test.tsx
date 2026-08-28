@@ -18,6 +18,11 @@ vi.mock('@/lib/platform', async (importOriginal) => ({
   isNativeShell: () => true,
 }))
 vi.mock('@tauri-apps/plugin-opener', () => ({ openUrl: vi.fn() }))
+// App-credential scenarios exercise a configured installation; Kore ships with PAT auth.
+vi.mock('@reflect/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@reflect/core')>()),
+  githubAppInstallUrl: () => 'https://github.com/apps/kore-test/installations/new',
+}))
 const httpFetch = vi.mocked(tauriFetch)
 const openedUrls = vi.mocked(openUrl)
 
@@ -275,16 +280,14 @@ describe('ConnectGithubDialog', () => {
 
     // A plain "give access" step that names the repo and steers to a per-repo
     // grant (never "All repositories").
-    await expect.element(page.getByText(/give reflect access to/i)).toBeInTheDocument()
+    await expect.element(page.getByText(/give Kore access to/i)).toBeInTheDocument()
     await expect.element(page.getByText(/only select repositories/i)).toBeInTheDocument()
     expect(page.getByText(/all repositories/i).query()).toBeNull()
     expect(page.getByText(/token/i).query()).toBeNull()
     expect(page.getByRole('button', { name: /try again/i }).query()).toBeNull()
 
     await page.getByRole('button', { name: 'Grant access on GitHub…' }).click()
-    expect(openedUrls).toHaveBeenCalledWith(
-      'https://github.com/apps/reflect-github-app/installations/new',
-    )
+    expect(openedUrls).toHaveBeenCalledWith('https://github.com/apps/kore-test/installations/new')
 
     // Back from the browser with access granted — the poll connects, no click.
     await vi.waitFor(() =>
@@ -308,7 +311,7 @@ describe('ConnectGithubDialog', () => {
     await page.getByRole('button', { name: 'Continue' }).click()
 
     await vi.waitFor(() => expect(onClose).toHaveBeenCalled())
-    expect(page.getByText(/give reflect access/i).query()).toBeNull()
+    expect(page.getByText(/give Kore access/i).query()).toBeNull()
   })
 
   it('points the app create guide at granting access, not token scope', async () => {
@@ -320,9 +323,7 @@ describe('ConnectGithubDialog', () => {
     await page.getByRole('button', { name: 'Continue' }).click()
 
     await page.getByRole('button', { name: /grant the Kore app access/i }).click()
-    expect(openedUrls).toHaveBeenCalledWith(
-      'https://github.com/apps/reflect-github-app/installations/new',
-    )
+    expect(openedUrls).toHaveBeenCalledWith('https://github.com/apps/kore-test/installations/new')
     expect(page.getByText(/token/i).query()).toBeNull()
   })
 

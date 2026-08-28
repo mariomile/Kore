@@ -10,8 +10,11 @@ import { IntegrationsSection } from './integrations-section'
 // (see `integrations-section.test.tsx` for the rest of the suite).
 vi.mock('@/lib/platform', () => ({ isMacosDesktop: true, isNativeShell: () => true }))
 
-vi.mock('./calendar-integration-field', () => ({
-  CalendarIntegrationField: () => <div>Calendar events</div>,
+// The alias path, not './calendar-integration-field': a relative specifier
+// here resolves to a different module id than the one the section imports,
+// so the factory never intercepts and the real field renders instead.
+vi.mock('@/components/settings/calendar-integration-field', () => ({
+  CalendarIntegrationField: () => <div data-testid="calendar-field">Calendar events</div>,
 }))
 
 vi.mock('@/providers/settings-provider', () => ({
@@ -43,7 +46,7 @@ describe('IntegrationsSection on macOS', () => {
       </QueryClientProvider>,
     )
 
-    await expect.element(page.getByText('Calendar events')).toBeInTheDocument()
+    await expect.element(page.getByTestId('calendar-field')).toBeInTheDocument()
     expect(page.getByRole('switch', { name: 'Contacts' }).query()).toBeNull()
   })
 })

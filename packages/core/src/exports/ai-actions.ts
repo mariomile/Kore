@@ -22,6 +22,7 @@ export { setSecret, getSecret, deleteSecret } from '../secrets/keychain'
 export {
   KEY_HINT_LENGTH,
   TRANSCRIPTION_PROVIDERS,
+  configuredTranscriptionProviders,
   apiKeyHint,
   withAiProviderAdded,
   withAiProviderRemoved,

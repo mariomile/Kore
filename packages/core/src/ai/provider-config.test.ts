@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { AiProviderConfig, HostedAiProviderConfig } from '../settings/schema'
 import {
   apiKeyHint,
+  configuredTranscriptionProviders,
   defaultAiProvider,
   pickTranscriptionConfig,
   resolveTranscriptionTarget,
@@ -69,6 +70,23 @@ describe('withAiProviderRemoved', () => {
 
   it('removing the last entry clears the default', () => {
     expect(withAiProviderRemoved(state([config({ id: 'a' })], 'a'), 'a')).toEqual(state([], null))
+  })
+})
+
+describe('configuredTranscriptionProviders', () => {
+  it('lists only capable providers the user configured, in preference order', () => {
+    const providers = [
+      config({ id: 'gemini', provider: 'google' }),
+      config({ id: 'claude', provider: 'anthropic' }),
+      config({ id: 'oai', provider: 'openai' }),
+    ]
+    expect(configuredTranscriptionProviders(state(providers, null))).toEqual(['openai', 'google'])
+  })
+
+  it('is empty when nothing configured can transcribe', () => {
+    const providers = [config({ id: 'claude', provider: 'anthropic' })]
+    expect(configuredTranscriptionProviders(state(providers, null))).toEqual([])
+    expect(configuredTranscriptionProviders(state([], null))).toEqual([])
   })
 })
 

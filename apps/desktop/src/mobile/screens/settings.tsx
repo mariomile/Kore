@@ -6,8 +6,12 @@ import {
   errorMessage,
   listNotes,
   normalizeChatSystemPrompt,
+  configuredTranscriptionProviders,
+  transcriptionModelFor,
+  TRANSCRIPTION_MODEL_OPTIONS,
   type AiPrompt,
   type AiProviderConfig,
+  type TranscriptionProvider,
 } from '@reflect/core'
 import { useAiPrompts } from '@/hooks/use-ai-prompts'
 import { useAiProviders } from '@/hooks/use-ai-providers'
@@ -28,6 +32,7 @@ import { useBarHeightVar } from '@/mobile/use-bar-height'
 import { MobileAppearanceGroup } from '@/mobile/settings-appearance-group'
 import {
   SettingsActionRow,
+  SettingsChipsRow,
   SettingsGroup,
   SettingsNavRow,
   SettingsSwitchRow,
@@ -56,6 +61,25 @@ function aiProviderValue(provider: AiProviderConfig, defaultProviderId: string |
  * GitHub for the local graph (the {@link ConnectGithubDrawer} sheet — iCloud
  * graphs sync through the container instead, Plan 21), and can disconnect.
  */
+/**
+ * The transcription models this provider offers as chips. A model typed on
+ * desktop is not in the curated list, so it rides along as its own chip —
+ * otherwise the row would render nothing selected while that model is the
+ * one actually transcribing.
+ */
+function transcriptionModelOptions(
+  provider: TranscriptionProvider,
+  current: string,
+): { value: string; label: string }[] {
+  const curated = TRANSCRIPTION_MODEL_OPTIONS[provider].map((model) => ({
+    value: model.id,
+    label: model.label,
+  }))
+  return curated.some((option) => option.value === current)
+    ? curated
+    : [...curated, { value: current, label: current }]
+}
+
 export function MobileSettings(): ReactElement {
   const { back, canBack, navigate } = useRouter()
   const { scopeRef, barRef } = useBarHeightVar('--mobile-header-height')
@@ -80,6 +104,10 @@ export function MobileSettings(): ReactElement {
   const [editingPrompt, setEditingPrompt] = useState<AiPrompt | 'new' | null>(null)
   const [promptOpen, setPromptOpen] = useState(false)
   const audioMemoDescriptionId = useId()
+  const transcriptionProviders = configuredTranscriptionProviders({
+    providers: settings.aiProviders,
+    defaultProviderId: settings.defaultAiProviderId,
+  })
   // The managed provider sticks around after close so the exit animation has
   // content; `manageOpen` alone drives visibility (the edit-sheet pattern).
   const [managedProvider, setManagedProvider] = useState<AiProviderConfig | null>(null)
@@ -234,6 +262,22 @@ export function MobileSettings(): ReactElement {
               descriptionId={audioMemoDescriptionId}
               onCheckedChange={(transcriptionFormat) => updateSettings({ transcriptionFormat })}
             />
+            {transcriptionProviders.map((provider) => (
+              <SettingsChipsRow
+                key={provider}
+                label={`${aiProvider(provider).label} model`}
+                value={transcriptionModelFor(settings.transcriptionModels, provider)}
+                options={transcriptionModelOptions(
+                  provider,
+                  transcriptionModelFor(settings.transcriptionModels, provider),
+                )}
+                onChange={(model) => {
+                  updateSettings({
+                    transcriptionModels: { ...settings.transcriptionModels, [provider]: model },
+                  })
+                }}
+              />
+            ))}
           </SettingsGroup>
 
           {repo !== null || status !== null || canConnect ? (

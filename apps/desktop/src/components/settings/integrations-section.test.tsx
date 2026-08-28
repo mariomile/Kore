@@ -13,8 +13,11 @@ vi.mock('@tauri-apps/plugin-opener', () => ({ openUrl }))
 // `integrations-section-macos.test.tsx`.
 vi.mock('@/lib/platform', () => ({ isMacosDesktop: false, isNativeShell: () => true }))
 
-vi.mock('./calendar-integration-field', () => ({
-  CalendarIntegrationField: () => <div>Calendar events</div>,
+// The alias path, not './calendar-integration-field': a relative specifier
+// here resolves to a different module id than the one the section imports,
+// so the factory never intercepts and the real field renders instead.
+vi.mock('@/components/settings/calendar-integration-field', () => ({
+  CalendarIntegrationField: () => <div data-testid="calendar-field">Calendar events</div>,
 }))
 
 const settings = vi.hoisted(() => ({

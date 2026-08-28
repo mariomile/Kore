@@ -1,9 +1,9 @@
 import type { ReactElement } from 'react'
 import {
   aiProvider,
+  configuredTranscriptionProviders,
   transcriptionModelFor,
   TRANSCRIPTION_MODEL_OPTIONS,
-  TRANSCRIPTION_PROVIDERS,
   type TranscriptionProvider,
 } from '@reflect/core'
 import { useSettings } from '@/providers/settings-provider'
@@ -15,11 +15,12 @@ import { SettingsSwitchField } from './switch-field'
 /** Preferences for recording enrichment after the raw audio is safely stored. */
 export function AudioMemosSection(): ReactElement {
   const { settings, updateSettings } = useSettings()
-  // Only providers with a key configured here can transcribe, so only those
-  // get a model row — an empty section would read as a broken setting.
-  const configured = TRANSCRIPTION_PROVIDERS.filter((provider) =>
-    settings.aiProviders.some((entry) => entry.provider === provider),
-  )
+  // An empty section would read as a broken setting, so only configured
+  // transcription providers get a model row.
+  const configured = configuredTranscriptionProviders({
+    providers: settings.aiProviders,
+    defaultProviderId: settings.defaultAiProviderId,
+  })
 
   const setModel = (provider: TranscriptionProvider, model: string): void => {
     updateSettings({

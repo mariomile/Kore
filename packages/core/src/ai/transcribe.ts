@@ -84,10 +84,11 @@ export interface TranscriptionRequest {
   provider: TranscriptionProvider
   apiKey: string
   /**
-   * The model to transcribe with. Omitted (or blank) falls back to the
-   * provider's built-in default — see {@link transcriptionModelFor}.
+   * The model to transcribe with, already resolved against the provider's
+   * default by {@link transcriptionModelFor}. Required: leaving the fallback
+   * to this layer too would put the same rule in two places.
    */
-  model?: string | undefined
+  model: string
   /** The recording, as MediaRecorder produced it. */
   audio: Blob
   /** The recording's MIME type, possibly with codec parameters. */
@@ -115,12 +116,6 @@ export async function transcribeAudio(request: TranscriptionRequest): Promise<st
   return request.provider === 'openai'
     ? await transcribeWithOpenAi(request)
     : await transcribeWithGemini(request)
-}
-
-/** The request's model, or the provider's built-in default when unset. */
-function requestedModel(request: TranscriptionRequest, provider: TranscriptionProvider): string {
-  const model = request.model?.trim() ?? ''
-  return model === '' ? DEFAULT_TRANSCRIPTION_MODELS[provider] : model
 }
 
 /** `audio/webm;codecs=opus` → `audio/webm` — parameters confuse provider sniffing. */
@@ -174,7 +169,7 @@ async function transcribeWithOpenAi(request: TranscriptionRequest): Promise<stri
     )
   }
 
-  let response = await attempt(requestedModel(request, 'openai'))
+  let response = await attempt(request.model)
   let body = await response.text()
   if (!response.ok && isModelNotFound(body)) {
     response = await attempt(OPENAI_TRANSCRIPTION_FALLBACK_MODEL)
@@ -250,7 +245,7 @@ async function transcribeWithGemini(request: TranscriptionRequest): Promise<stri
       { timeoutMs: TRANSCRIPTION_TRANSFER_TIMEOUT_MS, isStale: request.isStale },
     )
 
-  let response = await attempt(requestedModel(request, 'google'))
+  let response = await attempt(request.model)
   let body = await response.text()
   // A 404 on the model path means Google retired the model.
   if (response.status === 404) {

@@ -206,8 +206,10 @@ describe('SettingsScreen', () => {
     await renderScreen()
 
     const picker = page.getByRole('combobox', { name: /openai transcription model/i })
-    // Nothing chosen yet, so the picker shows the app's built-in default.
-    await expect.element(picker).toHaveTextContent('gpt-4o-mini-transcribe')
+    // Nothing chosen yet, so the picker shows the app's built-in default — by
+    // the label from the transcription list, not the chat catalog's fallback
+    // to the raw id.
+    await expect.element(picker).toHaveTextContent('GPT-4o mini Transcribe')
 
     await picker.click()
     await page.getByRole('option', { name: /whisper/i }).click()

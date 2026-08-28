@@ -8,8 +8,8 @@ import { ChatInput } from './chat-input'
 import { ChatTurnList } from './chat-turn-list'
 
 interface ChatScreenProps {
-  /** Passed through to the composer — see {@link ChatInput}'s `autoFocus`. */
-  autoFocusComposer?: boolean
+  /** Whether the composer takes focus on mount — see {@link ChatInput}. */
+  autoFocus?: boolean
 }
 
 /**
@@ -23,7 +23,7 @@ interface ChatScreenProps {
  * The whole view accepts dropped images — aiming for the composer exactly
  * shouldn't be required — and queues them as the next message's attachments.
  */
-export function ChatScreen({ autoFocusComposer = true }: ChatScreenProps = {}): ReactElement {
+export function ChatScreen({ autoFocus = true }: ChatScreenProps = {}): ReactElement {
   const { providers, attachImages } = useChatSession()
   const { navigate } = useRouter()
 
@@ -67,7 +67,7 @@ export function ChatScreen({ autoFocusComposer = true }: ChatScreenProps = {}): 
       }}
     >
       <ChatTurnList />
-      <ChatInput autoFocus={autoFocusComposer} />
+      <ChatInput autoFocus={autoFocus} />
     </div>
   )
 }

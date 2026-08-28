@@ -9,7 +9,9 @@ import { describe, expect, it, vi } from 'vitest'
  */
 
 vi.mock('@/components/chat/chat-screen', () => ({
-  ChatScreen: () => <div data-testid="chat-panel" />,
+  ChatScreen: ({ autoFocus }: { autoFocus?: boolean }) => (
+    <div data-testid="chat-panel" data-autofocus={String(autoFocus)} />
+  ),
 }))
 vi.mock('@/components/browser/browser-pane', () => ({
   BrowserPane: () => <div data-testid="browser-panel" />,
@@ -46,6 +48,8 @@ describe('ContextSidebar', () => {
 
     await view.getByRole('tab', { name: 'Chat' }).click()
     await expect.element(view.getByTestId('chat-panel')).toBeInTheDocument()
+    // The rail is auxiliary: opening it must not pull the caret out of the note.
+    await expect.element(view.getByTestId('chat-panel')).toHaveAttribute('data-autofocus', 'false')
     expect(view.getByTestId('daily-details').query()).toBeNull()
 
     await view.getByRole('tab', { name: 'Calendar' }).click()

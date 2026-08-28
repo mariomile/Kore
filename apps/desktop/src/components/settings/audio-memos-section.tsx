@@ -37,13 +37,10 @@ export function AudioMemosSection(): ReactElement {
       />
 
       {configured.length === 0 ? (
-        <div className="px-4 py-3.5">
-          <p className="text-sm font-medium text-text">Transcription model</p>
-          <p className="mt-0.5 text-xs text-text-muted">
-            Add an OpenAI or Google provider under AI providers to choose the model that transcribes
-            your voice notes.
-          </p>
-        </div>
+        <SettingsField
+          legend="Transcription model"
+          description="Add an OpenAI or Google provider under AI providers to choose the model that transcribes your voice notes."
+        />
       ) : (
         configured.map((provider) => (
           <SettingsField

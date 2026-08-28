@@ -16,7 +16,6 @@ import { SidebarResizeHandle } from '@/components/sidebar-resize-handle'
 import { TemplateCreateDialog } from '@/components/templates/template-create-dialog'
 import { TemplatePicker } from '@/components/templates/template-picker'
 import { registerInAppBrowserOpener, setBrowserSessionUrl } from '@/lib/browser-session'
-import { cn } from '@/lib/utils'
 import { useMacosTrafficLightInset } from '@/lib/use-macos-traffic-light-inset'
 import { useDailyContextTarget } from '@/providers/focused-daily-provider'
 import { useSidebar } from '@/providers/sidebar-provider'
@@ -99,7 +98,13 @@ export function WorkspaceContent({ graph }: WorkspaceContentProps): ReactElement
         <div aria-hidden data-testid="macos-traffic-light-band" className="h-7 flex-none" />
       ) : null}
 
-      <div className="flex min-h-0 flex-1">
+      {/* Every gap in this row is one pane's own left gutter, and the row
+          itself holds the window's right edge open. Nothing here has to know
+          whether its neighbour is mounted, so no gutter is conditional and
+          the `lg` breakpoint the context rail appears at stays the rail's
+          business alone. The workspace rail keeps no gutter: it is flat
+          sunken ground, not a card. */}
+      <div className="flex min-h-0 flex-1 pr-2">
         {collapsed ? undefined : (
           <aside
             id="workspace-sidebar"
@@ -113,14 +118,7 @@ export function WorkspaceContent({ graph }: WorkspaceContentProps): ReactElement
 
         <div className="flex min-w-0 flex-1 flex-col">
           <WorkspaceTabsStrip commandContext={commandContext} />
-          {/* The context rail carries its own left gutter, so the note pane
-              drops its right one wherever that rail is actually on screen —
-              otherwise the two 8px gaps would stack into a 16px trench that
-              breaks the window's rhythm. */}
-          <div
-            data-testid="note-pane-gutter"
-            className={cn('min-h-0 flex-1 px-2 pb-2', contextCollapsed ? undefined : 'lg:pr-0')}
-          >
+          <div data-testid="note-pane-gutter" className="min-h-0 flex-1 pl-2 pb-2">
             <div className="app-glass-card h-full overflow-hidden rounded-xl bg-surface">
               <AppShell className="bg-transparent">
                 <div className="relative flex h-full flex-col">

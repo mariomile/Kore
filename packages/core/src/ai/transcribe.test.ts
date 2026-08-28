@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  DEFAULT_TRANSCRIPTION_MODELS,
   GOOGLE_TRANSCRIPTION_FALLBACK_MODEL,
   GOOGLE_TRANSCRIPTION_MODEL,
   OPENAI_TRANSCRIPTION_FALLBACK_MODEL,
@@ -37,9 +38,13 @@ function jsonResponse(status: number, payload: unknown): Response {
 }
 
 function request(overrides: Partial<TranscriptionRequest>): TranscriptionRequest {
+  const provider = overrides.provider ?? 'openai'
   return {
-    provider: 'openai',
+    provider,
     apiKey: 'sk-test',
+    // Callers resolve the model; the default mirrors what the pipeline sends
+    // for a provider the user has left alone.
+    model: DEFAULT_TRANSCRIPTION_MODELS[provider],
     audio: new Blob(['abc'], { type: 'audio/mp4' }),
     mimeType: 'audio/mp4',
     ...overrides,

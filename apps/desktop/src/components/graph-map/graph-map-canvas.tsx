@@ -323,9 +323,6 @@ export function GraphMapCanvas({ nodes, edges, onOpen }: GraphMapCanvasProps): R
     requestAnimationFrame(frame)
 
     const handlePointerDown = (event: PointerEvent): void => {
-      // Panning or hauling a node hands the viewport to the viewer; re-fitting
-      // under their pointer from here on would yank the map away from them.
-      autoFit = false
       surface.setPointerCapture(event.pointerId)
       drag = {
         pointerId: event.pointerId,
@@ -357,7 +354,11 @@ export function GraphMapCanvas({ nodes, edges, onOpen }: GraphMapCanvasProps): R
         Math.abs(event.clientX - drag.startClientX) > CLICK_SLOP ||
         Math.abs(event.clientY - drag.startClientY) > CLICK_SLOP
       ) {
+        // Panning or hauling a node hands the viewport to the viewer;
+        // re-fitting under their pointer would yank the map away from them.
+        // A click that never travelled is not a takeover — it opens a note.
         drag.moved = true
+        autoFit = false
       }
       if (drag.nodeIndex === null) {
         viewport.offsetX += event.movementX

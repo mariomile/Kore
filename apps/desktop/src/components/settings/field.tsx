@@ -5,8 +5,8 @@ interface SettingsFieldProps {
   legend: string
   /** One-line explanation under the legend. */
   description: string
-  /** The control itself (option cards, inputs). */
-  children: ReactNode
+  /** The control itself (option cards, inputs) — omitted for a bare notice. */
+  children?: ReactNode
 }
 
 /**

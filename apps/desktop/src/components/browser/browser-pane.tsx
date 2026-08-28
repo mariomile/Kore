@@ -7,6 +7,8 @@ import {
   browserEmbedNavigate,
   browserEmbedReload,
   browserEmbedShow,
+  browserSearchHomeUrl,
+  browserSearchUrl,
   errorMessage,
   subscribeBrowserNavigated,
   type BrowserEmbedRect,
@@ -22,12 +24,6 @@ import { openUrlSync } from '@/lib/open-url'
 import { isNativeShell } from '@/lib/platform'
 import { cn } from '@/lib/utils'
 import { useSettings } from '@/providers/settings-provider'
-
-const SEARCH_URLS = {
-  duckduckgo: 'https://duckduckgo.com/?q=',
-  google: 'https://www.google.com/search?q=',
-  bing: 'https://www.bing.com/search?q=',
-} as const satisfies Record<BrowserSearchEngine, string>
 
 /** Turn address-bar text into a navigable web URL (or a search for it). */
 export function normalizeAddress(
@@ -49,7 +45,7 @@ export function normalizeAddress(
   if (!/\s/.test(trimmed) && trimmed.includes('.')) {
     return `https://${trimmed}`
   }
-  return `${SEARCH_URLS[engine]}${encodeURIComponent(trimmed)}`
+  return browserSearchUrl(engine, trimmed)
 }
 
 /**
@@ -85,7 +81,13 @@ interface BrowserPaneProps {
 export function BrowserPane({ className }: BrowserPaneProps): ReactElement {
   const { settings } = useSettings()
   const hostRef = useRef<HTMLDivElement>(null)
-  const [address, setAddress] = useState(browserSessionUrl())
+  // A session that has not navigated yet opens on the chosen engine's front
+  // page. The docking effect runs once on mount, so it reads the home
+  // through a ref that every render refreshes.
+  const home = browserSearchHomeUrl(settings.browserSearchEngine)
+  const homeRef = useRef(home)
+  homeRef.current = home
+  const [address, setAddress] = useState(() => browserSessionUrl() ?? home)
   const [error, setError] = useState<string | null>(
     isNativeShell() ? null : 'The built-in browser is available in the desktop app.',
   )
@@ -107,11 +109,11 @@ export function BrowserPane({ className }: BrowserPaneProps): ReactElement {
     }
     const entry: BrowserHost = {
       dock: () => {
-        void queueHostTransition(() => browserEmbedShow(browserSessionUrl(), rect())).catch(
-          (cause: unknown) => {
-            setError(errorMessage(cause))
-          },
-        )
+        void queueHostTransition(() =>
+          browserEmbedShow(browserSessionUrl() ?? homeRef.current, rect()),
+        ).catch((cause: unknown) => {
+          setError(errorMessage(cause))
+        })
       },
     }
     hostStack.push(entry)
@@ -244,7 +246,7 @@ export function BrowserPane({ className }: BrowserPaneProps): ReactElement {
           }}
           onBlur={() => {
             // Abandoned edits snap back to the page's real URL.
-            setAddress(browserSessionUrl())
+            setAddress(browserSessionUrl() ?? home)
           }}
           className="h-7 min-w-0 flex-1 rounded-md border border-border bg-input-bg px-2.5 text-xs text-text placeholder:text-text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
           placeholder="Search or enter address"
@@ -254,7 +256,7 @@ export function BrowserPane({ className }: BrowserPaneProps): ReactElement {
           aria-label="Open in default browser"
           title="Open in default browser"
           onClick={() => {
-            openUrlSync(browserSessionUrl())
+            openUrlSync(browserSessionUrl() ?? home)
           }}
           className={toolbarButtonClass}
         >

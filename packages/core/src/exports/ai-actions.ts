@@ -273,7 +273,13 @@ export {
 export type { ModelMessage as ChatModelMessage } from 'ai'
 export { base64ToBytes } from '../lib/base64'
 export { isTranscriptionRejected, TranscriptionRejectedError } from '../ai/transcribe-http'
-export { transcribeAudio, type TranscriptionRequest } from '../ai/transcribe'
+export {
+  transcribeAudio,
+  transcriptionModelFor,
+  DEFAULT_TRANSCRIPTION_MODELS,
+  TRANSCRIPTION_MODEL_OPTIONS,
+  type TranscriptionRequest,
+} from '../ai/transcribe'
 export {
   audioMemoFromPath,
   audioMemoIdentity,

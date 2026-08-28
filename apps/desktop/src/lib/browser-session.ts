@@ -6,14 +6,17 @@
  * without holding a router.
  */
 
-export const DEFAULT_BROWSER_URL = 'https://duckduckgo.com/'
-
-let currentUrl: string = DEFAULT_BROWSER_URL
+let currentUrl: string | null = null
 const listeners = new Set<(url: string) => void>()
 let opener: ((url: string) => void) | null = null
 
-/** The page the embedded browser is on (or should open with). */
-export function browserSessionUrl(): string {
+/**
+ * The page the embedded browser is on, or null when this session has not
+ * navigated anywhere yet. The home page for that null case is not decided
+ * here: it follows the browser's search-engine setting, which this module
+ * (a plain module, with no settings access) must not guess at.
+ */
+export function browserSessionUrl(): string | null {
   return currentUrl
 }
 
@@ -65,7 +68,7 @@ export function openInAppBrowser(url: string): boolean {
 
 /** Test seam: forget the session between tests. */
 export function resetBrowserSessionForTests(): void {
-  currentUrl = DEFAULT_BROWSER_URL
+  currentUrl = null
   listeners.clear()
   opener = null
 }

@@ -246,3 +246,38 @@ export const aiPromptsSchema = z
       return parsed.success ? [parsed.data] : []
     }),
   )
+
+/**
+ * Whether audio-memo transcripts receive a best-effort AI formatting pass
+ * before they are written as Markdown. On by default, matching the original
+ * Reflect preference. Turning it off keeps the transcription provider's raw
+ * body; transcript-derived title generation remains enabled.
+ */
+export const transcriptionFormatSchema = z.boolean().catch(true)
+
+/**
+ * Per-provider transcription model override for audio memos. An empty string
+ * means "the app's built-in default for that provider" (see
+ * `ai/transcribe`), so a fresh install carries no opinion and a provider
+ * whose default model is retired can be repointed without a release.
+ *
+ * The keys mirror `TRANSCRIPTION_PROVIDERS`; they are spelled out here
+ * because the provider module reads this schema and cannot be imported back.
+ * Speech-to-text and chat models are separate choices — a chat model cannot
+ * take the transcription endpoint — so this never falls back to the entry's
+ * default model.
+ */
+export const transcriptionModelsSchema = z
+  .object({
+    openai: z
+      .string()
+      .catch('')
+      .transform((model) => model.trim()),
+    google: z
+      .string()
+      .catch('')
+      .transform((model) => model.trim()),
+  })
+  .catch({ openai: '', google: '' })
+
+export type TranscriptionModels = z.infer<typeof transcriptionModelsSchema>

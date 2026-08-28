@@ -3,12 +3,15 @@ import { describe, expect, it, vi } from 'vitest'
 
 /**
  * The right rail's panel switcher: Details follows the target (or shows the
- * empty state), Chat and Calendar swap in their surfaces. The panels
- * themselves are mocked — each has its own test.
+ * empty state), Chat and Calendar swap in their surfaces, and every panel
+ * renders inside the rail's own card. The panels themselves are mocked —
+ * each has its own test.
  */
 
 vi.mock('@/components/chat/chat-screen', () => ({
-  ChatScreen: () => <div data-testid="chat-panel" />,
+  ChatScreen: ({ autoFocus }: { autoFocus?: boolean }) => (
+    <div data-testid="chat-panel" data-autofocus={String(autoFocus)} />
+  ),
 }))
 vi.mock('@/components/browser/browser-pane', () => ({
   BrowserPane: () => <div data-testid="browser-panel" />,
@@ -16,23 +19,20 @@ vi.mock('@/components/browser/browser-pane', () => ({
 vi.mock('@/components/terminal/terminal-screen', () => ({
   TerminalScreen: () => <div data-testid="terminal-panel" />,
 }))
-vi.mock('@/components/sidebar/sidebar-tags', () => ({
-  SidebarTags: () => <div data-testid="tags-panel" />,
-}))
-vi.mock('./daily-context-sidebar', () => ({
+vi.mock('@/components/context-sidebar/daily-context-sidebar', () => ({
   DailyContextSidebar: ({ date }: { date: string }) => (
     <div data-testid="daily-details">{date}</div>
   ),
 }))
-vi.mock('./note-context-sidebar', () => ({
+vi.mock('@/components/context-sidebar/note-context-sidebar', () => ({
   NoteContextSidebar: ({ path }: { path: string }) => <div data-testid="note-details">{path}</div>,
 }))
-vi.mock('./day-calendar', () => ({
+vi.mock('@/components/context-sidebar/day-calendar', () => ({
   DayCalendar: ({ selectedDate }: { selectedDate: string }) => (
     <div data-testid="month-calendar">{selectedDate}</div>
   ),
 }))
-vi.mock('./daily-events-section', () => ({
+vi.mock('@/components/context-sidebar/daily-events-section', () => ({
   DailyEventsSection: () => null,
 }))
 vi.mock('@/lib/use-today', () => ({
@@ -48,6 +48,8 @@ describe('ContextSidebar', () => {
 
     await view.getByRole('tab', { name: 'Chat' }).click()
     await expect.element(view.getByTestId('chat-panel')).toBeInTheDocument()
+    // The rail is auxiliary: opening it must not pull the caret out of the note.
+    await expect.element(view.getByTestId('chat-panel')).toHaveAttribute('data-autofocus', 'false')
     expect(view.getByTestId('daily-details').query()).toBeNull()
 
     await view.getByRole('tab', { name: 'Calendar' }).click()
@@ -60,19 +62,30 @@ describe('ContextSidebar', () => {
     await view.unmount()
   })
 
-  it('hosts the tags list, the built-in browser, and the terminal as panels', async () => {
+  it('hosts the built-in browser and the terminal as panels', async () => {
     const view = await render(<ContextSidebar target={null} />)
-
-    await view.getByRole('tab', { name: 'Tags' }).click()
-    await expect.element(view.getByTestId('tags-panel')).toBeInTheDocument()
 
     await view.getByRole('tab', { name: 'Browser' }).click()
     await expect.element(view.getByTestId('browser-panel')).toBeInTheDocument()
-    expect(view.getByTestId('tags-panel').query()).toBeNull()
 
     await view.getByRole('tab', { name: 'Terminal' }).click()
     await expect.element(view.getByTestId('terminal-panel')).toBeInTheDocument()
     expect(view.getByTestId('browser-panel').query()).toBeNull()
+    await view.unmount()
+  })
+
+  it('leaves tags to the left rail', async () => {
+    const view = await render(<ContextSidebar target={null} />)
+    expect(view.getByRole('tab', { name: 'Tags' }).query()).toBeNull()
+    await view.unmount()
+  })
+
+  it('renders its panels inside the rail card', async () => {
+    const view = await render(<ContextSidebar target={null} />)
+    const gutter = view.getByTestId('context-pane-gutter').element()
+    expect(gutter.querySelector('.app-glass-card')).not.toBeNull()
+    // The switcher stays outside the card, on the window's drag band.
+    expect(gutter.querySelector('[role="tablist"]')).toBeNull()
     await view.unmount()
   })
 

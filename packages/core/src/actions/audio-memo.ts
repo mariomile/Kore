@@ -12,6 +12,8 @@ import {
 } from '../ai/audio-memo-title'
 import { enrichSessionTranscript } from '../ai/audio-memo-transcript'
 import { APP_REVIEW_STUB_KEY, stubTranscriptBody } from '../ai/app-review-demo'
+import { transcriptionModelFor } from '../ai/transcribe'
+import type { TranscriptionModels } from '../settings/schema'
 import { listDir, listFiles, readNote, writeNote } from '../graph/commands'
 import {
   groupAudioMemoSessions,
@@ -215,6 +217,8 @@ export interface ReconcileAudioMemosInput {
   generation: number
   /** Whether a best-effort text-model pass formats each fresh transcript. */
   formatTranscript: boolean
+  /** Per-provider speech-to-text model overrides; blank entries use the default. */
+  transcriptionModels: TranscriptionModels
   /** Host transport for the provider call (the Tauri HTTP plugin's fetch). */
   fetchFn?: typeof fetch
   /** Abort gate, checked between memos (graph switch / unmount). */
@@ -363,6 +367,7 @@ export async function reconcileAudioMemos(
         session,
         provider: config.provider,
         apiKey,
+        model: transcriptionModelFor(input.transcriptionModels, config.provider),
         generation: input.generation,
         fetchFn: input.fetchFn,
         isStale: stale,

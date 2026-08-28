@@ -36,9 +36,10 @@ vi.mock('@reflect/core', async (importOriginal) => ({
 vi.mock('@/lib/platform', () => ({
   isNativeShell,
 }))
+const searchEngine = vi.hoisted(() => ({ current: 'duckduckgo' as 'duckduckgo' | 'google' }))
 vi.mock('@/providers/settings-provider', () => ({
   useSettings: () => ({
-    settings: { browserSearchEngine: 'duckduckgo', browserOpenLinksInApp: true },
+    settings: { browserSearchEngine: searchEngine.current, browserOpenLinksInApp: true },
     updateSettings: () => {},
   }),
 }))
@@ -47,6 +48,7 @@ const { BrowserPane, normalizeAddress } = await import('./browser-pane')
 
 beforeEach(() => {
   vi.clearAllMocks()
+  searchEngine.current = 'duckduckgo'
   isNativeShell.mockReturnValue(true)
   browserEmbedShow.mockResolvedValue(undefined)
   browserEmbedBounds.mockResolvedValue(undefined)
@@ -73,6 +75,25 @@ describe('BrowserPane', () => {
 
     await view.unmount()
     await vi.waitFor(() => expect(browserEmbedClose).toHaveBeenCalled())
+  })
+
+  it('opens a fresh session on the chosen engine, not always DuckDuckGo', async () => {
+    searchEngine.current = 'google'
+    const view = await render(<BrowserPane />)
+
+    await vi.waitFor(() => expect(browserEmbedShow).toHaveBeenCalled())
+    expect(browserEmbedShow.mock.calls[0]![0]).toBe('https://www.google.com/')
+    await view.unmount()
+  })
+
+  it('keeps the session URL over the home page once the browser has navigated', async () => {
+    searchEngine.current = 'google'
+    setBrowserSessionUrl('https://example.com/a')
+    const view = await render(<BrowserPane />)
+
+    await vi.waitFor(() => expect(browserEmbedShow).toHaveBeenCalled())
+    expect(browserEmbedShow.mock.calls[0]![0]).toBe('https://example.com/a')
+    await view.unmount()
   })
 
   it('waits for a pending dock before closing an unmounted host', async () => {

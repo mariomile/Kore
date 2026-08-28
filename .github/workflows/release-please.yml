@@ -64,10 +64,17 @@ jobs:
   # and output its tag. Chain straight into the build/sign/publish pipeline
   # with the tag resolved to its immutable commit once; the called workflows
   # check out that SHA rather than resolving the tag name again.
+  #
+  # Gated on the APPLE_SIGNING_ENABLED repository variable. This fork publishes
+  # through release-dmg.yml, so without signing secrets these four macOS jobs
+  # only fail their secret preflight on every release merge and leave a red
+  # check behind. The pipeline itself is kept: docs/kore-apple-signing.md
+  # documents it as the prompt-free-install path the moment secrets exist, and
+  # setting the variable to `true` turns it back on with no other change.
   publish-release-stable:
     name: Build and publish the stable release
     needs: release-please
-    if: needs.release-please.outputs.stable_created == 'true'
+    if: vars.APPLE_SIGNING_ENABLED == 'true' && needs.release-please.outputs.stable_created == 'true'
     uses: ./.github/workflows/release.yml
     with:
       tag: ${{ needs.release-please.outputs.stable_tag }}
@@ -77,7 +84,7 @@ jobs:
   publish-release-beta:
     name: Build and publish the beta release
     needs: release-please
-    if: needs.release-please.outputs.beta_created == 'true'
+    if: vars.APPLE_SIGNING_ENABLED == 'true' && needs.release-please.outputs.beta_created == 'true'
     uses: ./.github/workflows/release.yml
     with:
       tag: ${{ needs.release-please.outputs.beta_tag }}
@@ -91,7 +98,7 @@ jobs:
   publish-testflight-stable:
     name: Upload the stable release to TestFlight
     needs: release-please
-    if: needs.release-please.outputs.stable_created == 'true'
+    if: vars.APPLE_SIGNING_ENABLED == 'true' && needs.release-please.outputs.stable_created == 'true'
     uses: ./.github/workflows/testflight.yml
     with:
       commit: ${{ needs.release-please.outputs.stable_commit }}
@@ -100,7 +107,7 @@ jobs:
   publish-testflight-beta:
     name: Upload the beta release to TestFlight
     needs: release-please
-    if: needs.release-please.outputs.beta_created == 'true'
+    if: vars.APPLE_SIGNING_ENABLED == 'true' && needs.release-please.outputs.beta_created == 'true'
     uses: ./.github/workflows/testflight.yml
     with:
       commit: ${{ needs.release-please.outputs.beta_commit }}

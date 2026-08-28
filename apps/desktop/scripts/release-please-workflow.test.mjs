@@ -56,7 +56,7 @@ test('each channel chains its release into delivery', () => {
     )
     expect(workflow).toContain(`${channel}_tag: \${{ steps.${channel}.outputs.tag_name }}`)
     expect(workflow).toContain(`${channel}_commit: \${{ steps.${channel}.outputs.sha }}`)
-    expect(workflow).toContain(`if: needs.release-please.outputs.${channel}_created == 'true'`)
+    expect(workflow).toContain(`needs.release-please.outputs.${channel}_created == 'true'`)
     expect(workflow).toContain(`tag: \${{ needs.release-please.outputs.${channel}_tag }}`)
     expect(workflow).toContain(`commit: \${{ needs.release-please.outputs.${channel}_commit }}`)
   }
@@ -67,4 +67,22 @@ test('each channel chains its release into delivery', () => {
 test('release runs queue instead of cancelling', () => {
   expect(workflow).toContain('group: release-please')
   expect(workflow).toContain('cancel-in-progress: false')
+})
+
+test('the notarized and TestFlight jobs stay dormant without signing secrets', () => {
+  // This fork publishes through release-dmg.yml. Left ungated, these four
+  // macOS jobs fire on every release merge and fail their secret preflight,
+  // leaving a red check and a draft release behind. The pipeline is kept
+  // because docs/kore-apple-signing.md documents it as the supported
+  // prompt-free-install path: flipping the repository variable is the only
+  // step needed to turn it back on.
+  const gated = workflow.match(/if: vars\.APPLE_SIGNING_ENABLED == 'true' &&/g) ?? []
+  expect(gated).toHaveLength(4)
+  // The gate must be an addition, never a replacement: each job still has to
+  // wait for its own channel to have produced a release.
+  for (const channel of ['stable', 'beta']) {
+    expect(workflow).toContain(
+      `if: vars.APPLE_SIGNING_ENABLED == 'true' && needs.release-please.outputs.${channel}_created == 'true'`,
+    )
+  }
 })

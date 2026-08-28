@@ -9,9 +9,9 @@ pub struct ProcessMemory {
     pub peak_footprint_bytes: u64,
 }
 
-/// Read macOS resource accounting for a live process. Unsupported platforms
+/// Read Apple resource accounting for a live process. Unsupported platforms
 /// and failed observations return `None`, never a fabricated zero footprint.
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "ios"))]
 pub fn read(pid: u32) -> Option<ProcessMemory> {
     let mut info = std::mem::MaybeUninit::<libc::rusage_info_v4>::zeroed();
     // SAFETY: RUSAGE_INFO_V4 writes exactly rusage_info_v4 into this aligned,
@@ -35,7 +35,7 @@ pub fn read(pid: u32) -> Option<ProcessMemory> {
     })
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(not(any(target_os = "macos", target_os = "ios")))]
 pub fn read(_pid: u32) -> Option<ProcessMemory> {
     None
 }

@@ -16,7 +16,7 @@ native RSS, and helper RSS (`memory_report`, `src/diagnostics.rs`).
 - Missing observations show `Unavailable`; failed process discovery is not
   reported as a healthy empty helper list.
 
-On macOS, footprint and peak come from `proc_pid_rusage(RUSAGE_INFO_V4)`.
+On macOS and iOS, footprint and peak come from `proc_pid_rusage(RUSAGE_INFO_V4)`.
 Other platforms return unavailable for these fields. Do not add footprint,
 RSS, and peak: they overlap, and peak is historical.
 
@@ -97,8 +97,9 @@ switching graphs cancels pending work at request boundaries.
 Dropping the session does not guarantee an immediate footprint decrease:
 allocator and OS accounting can recover later. Measure release over time and
 across repeated cycles instead of calling one high post-drop sample a leak.
-Thread-pool, QoS and arena configuration remain unchanged in this patch; no
-production dependencies are added.
+The integration retains Kore 0.30.1's global pool of at most four ONNX workers,
+disabled idle spinning and background QoS. Arena configuration remains unchanged;
+no dependencies are added beyond those already present in 0.30.1.
 
 ### Reproduce the native experiments
 
@@ -121,7 +122,7 @@ app's data directory. Use the test executable path printed by Cargo (named
 ```sh
 export KORE_EMBED_BENCH_CACHE='/path/to/existing/model/cache'
 export KORE_EMBED_BENCH_BINARY='target/debug/deps/reflect_open_lib-<hash>'
-KORE_EMBED_BENCH_MODE=baseline KORE_EMBED_BENCH_TEXTS=32 KORE_EMBED_BENCH_CYCLES=5 \
+KORE_EMBED_BENCH_MODE=release KORE_EMBED_BENCH_TEXTS=32 KORE_EMBED_BENCH_CYCLES=5 \
   "$KORE_EMBED_BENCH_BINARY" embed_bench::native_embedding_memory --ignored --exact --nocapture --test-threads=1
 KORE_EMBED_BENCH_MODE=bounded KORE_EMBED_BENCH_TEXTS=32 KORE_EMBED_BENCH_CYCLES=5 \
   "$KORE_EMBED_BENCH_BINARY" embed_bench::native_embedding_memory --ignored --exact --nocapture --test-threads=1
@@ -131,7 +132,9 @@ KORE_EMBED_BENCH_MODE=bounded KORE_EMBED_BENCH_TEXTS=769 KORE_EMBED_BENCH_CYCLES
 KORE_EMBED_BENCH_CYCLES=50 "$KORE_EMBED_BENCH_BINARY" embed::tests::repeated_idle_release_preserves_active_requests --ignored --exact --nocapture --test-threads=1
 ```
 
-`baseline` reproduces the source's previous `embed(texts, None)` call; for
+`release` reproduces 0.30.1 outer and inference batches of 16. All modes use
+the current production ONNX pool and QoS. `baseline` reproduces the older
+`embed(texts, None)` call shape (not its historical thread policy); for
 machine safety it refuses more than 64 texts. `inference16` is an optional
 intermediate experiment, not the checked-in baseline. `bounded` exercises
 the production request helper. The synthetic texts deliberately reach the

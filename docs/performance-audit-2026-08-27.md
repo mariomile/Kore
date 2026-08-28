@@ -456,3 +456,69 @@ afc75ceff9695c7209d1c0e2fec57700bedaa6b4742c9f3e765152c3f2217368
 /tmp/kore-verified-parity33.txt
 1906b3de562149c42ffed652d3791f16c5b7646cea3f0eba4bf7d6587a0d748e
 ```
+
+
+## 10. Integration with released Kore 0.30.1
+
+The integration merges `38ccd9f0` (Kore 0.30.1, including PR #61) into
+`fix/embedding-memory-verified`. It retains the released global ONNX pool
+of at most four workers, disabled idle spinning and background QoS. No
+version, release assets, icons or dependencies change relative to 0.30.1.
+The earlier section 9 measurements used a different thread policy and remain
+historical evidence, not measurements of this integrated tree.
+
+The native harness now shares the production environment setup. `release`
+reproduces 0.30.1's outer and internal batches of 16; `bounded` uses the
+integrated production helper with batches of four. Both use the same CPU
+policy, model, synthetic texts, hardware and fresh-process isolation.
+Vector parity compares 0.30.1-style batches of 16 against batches of four.
+
+Integrated verification results are recorded below. The
+release check confirmed that 0.30.1's installed executable matched its GitHub
+asset, but the running graph had only four notes; that idle observation was
+not a representative indexing benchmark. These experiments do not mutate
+the user's graph or certify an app-wide/24-hour memory budget.
+
+
+| Integrated experiment | Passes | Peak footprint (decimal MB) | Median inference (ms) |
+|---|---:|---:|---:|
+| release32 | 5 | 1455.72 | 1151.12 |
+| bounded32 | 5 | 509.15 | 1215.03 |
+| bounded769 | 3 | 525.93 | 26718.76 |
+
+The paired 32-text case lowers peak footprint by 65.0%, with a 5.6% higher
+median inference time in this five-pass sample. It is a memory/throughput
+tradeoff, not a claim that all operations became faster. At 30 seconds after
+model drop, release32 reported 20.66 MB, bounded32 22.95 MB, and bounded769
+388.56 MB; recovery varies with allocator and OS behavior.
+
+Vector parity passed for 33 mixed texts. Fifty real load/inference/release
+cycles passed, peaking at 440.44 MB; the last 20 post-release
+samples ranged from 352.91 to 417.55 MB.
+The macOS/iOS resource-accounting capability from 0.30.1 is preserved.
+
+Local checks passed: 53 node/core tests, 21 WebKit tests, five native
+queue/accounting/diagnostics tests, native parity and lifecycle experiments,
+`pnpm check`, `pnpm build`, `cargo fmt --all -- --check` and the desktop
+native build. Existing note-editor length, Vite and missing-Sentry-token
+warnings remain. JavaScript checks used the previously documented pnpm
+metadata override; no dependency versions were changed.
+
+Temporary integrated experiment receipts (SHA-256):
+
+```text
+/tmp/kore-integrated-release32.log
+84070f37d77224e20b08f979c8c760b649c8a8f832f8b5cb6ae4c1c0a3c09663
+
+/tmp/kore-integrated-bounded32.log
+852269bdcde559fc7cd29c235be957f2a6923fd1325907535edb14e7ebca6400
+
+/tmp/kore-integrated-bounded769.log
+e4b6f4b68bdaa23662974348e6e24563795326520ab12a3eea2cf4b575a73e22
+
+/tmp/kore-integrated-parity33.log
+aa210a92f0e33a753242b37cd37ec6160361ba52d8ee9641b5fcb4127c57842c
+
+/tmp/kore-integrated-lifecycle50.log
+100bca323b9fb023fe9d36465149580dbd46f1e4f33a03d2c31a8ee87e172768
+```

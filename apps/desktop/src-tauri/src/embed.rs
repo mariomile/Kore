@@ -13,6 +13,8 @@
 //! which only the explicit opt-in is allowed to start, while an unloaded one
 //! is a pure cache read.
 
+#[cfg(any(target_os = "macos", target_os = "ios"))]
+use std::ffi::{c_int, c_uint};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -287,9 +289,94 @@ fn download_model_files(app: &AppHandle, cache_dir: &Path) -> Result<(), String>
     Ok(())
 }
 
+/// Ceiling on ONNX Runtime's intra-op threads.
+///
+/// fastembed asks for `available_parallelism()` per session — every core — so
+/// a background backfill used to take the whole machine. Four is enough to
+/// keep inference off the critical path while leaving the UI its cores.
+const MAX_EMBED_THREADS: usize = 4;
+
+/// Threads to give ONNX Runtime, never every core and never fewer than one.
+fn embed_thread_count() -> usize {
+    std::thread::available_parallelism()
+        .map(|cores| cores.get().saturating_sub(1).clamp(1, MAX_EMBED_THREADS))
+        .unwrap_or(1)
+}
+
+/// The QoS interface from `<pthread/qos.h>` and `<sys/qos.h>`
+/// (macOS 10.10 / iOS 8.0), not bound by the `libc` crate yet.
+/// `QOS_CLASS_UTILITY` is the class for progress the user is not waiting on,
+/// which gives the scheduler a background-work hint, not core affinity.
+#[cfg(any(target_os = "macos", target_os = "ios"))]
+const QOS_CLASS_UTILITY: c_uint = 0x11;
+#[cfg(any(target_os = "macos", target_os = "ios"))]
+const QOS_CLASS_UNSPECIFIED: c_uint = 0x00;
+
+#[cfg(any(target_os = "macos", target_os = "ios"))]
+extern "C" {
+    fn qos_class_self() -> c_uint;
+    fn pthread_set_qos_class_self_np(qos_class: c_uint, relative_priority: c_int) -> c_int;
+}
+
+/// The current thread demoted to `utility` QoS until dropped.
+///
+/// Engaging before model load also gives newly created pool threads the
+/// background scheduling context. Core placement remains an OS decision.
+///
+/// Restoring on drop matters for the same reason it does in `fs::io`: the
+/// async runtime's blocking pool reuses threads, and a leaked demotion would
+/// slow every later command that happened to land on this one.
+#[cfg(any(target_os = "macos", target_os = "ios"))]
+pub(crate) struct BackgroundQos {
+    previous: c_uint,
+}
+
+#[cfg(any(target_os = "macos", target_os = "ios"))]
+impl BackgroundQos {
+    /// Demote the current thread; `None` when the kernel refuses (a thread
+    /// carrying a QoS override cannot set its own class). Callers proceed
+    /// undemoted then — the work still runs, just at the thread's own class.
+    pub(crate) fn engage() -> Option<Self> {
+        let previous = unsafe { qos_class_self() };
+        if previous == QOS_CLASS_UNSPECIFIED {
+            return None;
+        }
+        let set = unsafe { pthread_set_qos_class_self_np(QOS_CLASS_UTILITY, 0) };
+        (set == 0).then_some(Self { previous })
+    }
+}
+
+#[cfg(any(target_os = "macos", target_os = "ios"))]
+impl Drop for BackgroundQos {
+    fn drop(&mut self) {
+        unsafe {
+            pthread_set_qos_class_self_np(self.previous, 0);
+        }
+    }
+}
+
+/// No thread QoS off Apple platforms; the guard is a no-op.
+#[cfg(not(any(target_os = "macos", target_os = "ios")))]
+pub(crate) struct BackgroundQos;
+
+#[cfg(not(any(target_os = "macos", target_os = "ios")))]
+impl BackgroundQos {
+    pub(crate) fn engage() -> Option<Self> {
+        Some(Self)
+    }
+}
+
+/// Commit the process-wide ONNX Runtime environment, before any session
+/// exists.
+///
+/// The global thread pool is the point of this: fastembed hard-codes
+/// `with_intra_threads(available_parallelism())` on every session it builds
+/// and exposes no way to change it, but a session created while the
+/// environment owns a global pool uses that pool instead of its own. Bounding
+/// it here needs no reach into fastembed's private session builder.
 fn configure_onnx_runtime(app: &AppHandle) -> Result<(), String> {
     #[cfg(all(target_os = "macos", target_arch = "x86_64"))]
-    {
+    let environment = {
         let dylib = app
             .path()
             .resource_dir()
@@ -301,16 +388,35 @@ fn configure_onnx_runtime(app: &AppHandle) -> Result<(), String> {
                 dylib.display()
             ));
         }
-        let committed = ort::init_from(&dylib)
+        tracing::info!(path = %dylib.display(), "loading bundled ONNX Runtime");
+        ort::init_from(&dylib)
             .map_err(|err| format!("loading ONNX Runtime from {}: {err}", dylib.display()))?
-            .commit();
-        if committed {
-            tracing::info!(path = %dylib.display(), "loaded bundled ONNX Runtime");
-        }
-    }
+    };
     #[cfg(not(all(target_os = "macos", target_arch = "x86_64")))]
-    {
+    let environment = {
         let _ = app;
+        ort::init()
+    };
+
+    commit_environment(environment)
+}
+
+/// Configure the same ONNX worker pool in the app and native experiments.
+pub(crate) fn commit_environment(
+    environment: ort::environment::EnvironmentBuilder,
+) -> Result<(), String> {
+    let threads = embed_thread_count();
+    let pool = ort::environment::GlobalThreadPoolOptions::default()
+        .with_intra_threads(threads)
+        .map_err(|err| format!("sizing the ONNX Runtime thread pool: {err}"))?
+        // Idle workers busy-wait by default, which is right for a server
+        // running inference back to back and wrong here: embedding arrives in
+        // bursts, and between them the spin keeps every pool thread hot.
+        .with_spin_control(false)
+        .map_err(|err| format!("disabling ONNX Runtime spin control: {err}"))?;
+
+    if environment.with_global_thread_pool(pool).commit() {
+        tracing::info!(threads, "committed the ONNX Runtime environment");
     }
     Ok(())
 }
@@ -360,6 +466,9 @@ async fn load_model(app: &AppHandle, state: &State<'_, EmbedState>) -> AppResult
     let app_for_progress = app.clone();
     let loaded: Result<TextEmbedding, String> =
         match tauri::async_runtime::spawn_blocking(move || {
+            // Before the runtime is configured: ONNX Runtime's pool threads
+            // are created under this call and inherit the class.
+            let _qos = BackgroundQos::engage();
             configure_onnx_runtime(&app_for_progress)?;
             download_model_files(&app_for_progress, &cache_dir)?;
             TextEmbedding::try_new(
@@ -531,6 +640,7 @@ pub async fn embed_texts(
     state.touch();
     let vectors = tauri::async_runtime::spawn_blocking(move || {
         let _lease = lease;
+        let _qos = BackgroundQos::engage();
         let mut model = model
             .lock()
             .map_err(|_| AppError::io("embedding model lock poisoned"))?;
@@ -551,6 +661,7 @@ mod tests {
     #[test]
     #[ignore = "requires an existing model cache; exercises real unload/reload cycles"]
     fn repeated_idle_release_preserves_active_requests() {
+        let _qos = BackgroundQos::engage();
         let state = EmbedState::default();
         let texts = vec!["Project planning and memory. ".repeat(100); embed_batch::BATCH_SIZE];
         let cycles = crate::embed_bench::parameter("KORE_EMBED_BENCH_CYCLES", 20, 50);

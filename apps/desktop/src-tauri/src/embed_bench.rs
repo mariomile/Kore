@@ -27,6 +27,7 @@ pub(super) fn cached_model() -> TextEmbedding {
             "missing cached {file}; benchmark never downloads"
         );
     }
+    crate::embed::commit_environment(ort::init()).expect("production ONNX thread pool");
     TextEmbedding::try_new(
         TextInitOptions::new(EmbeddingModel::AllMiniLML6V2).with_cache_dir(cache_dir),
     )
@@ -61,7 +62,7 @@ fn native_embedding_memory() {
     let mode = std::env::var("KORE_EMBED_BENCH_MODE").unwrap_or_else(|_| "bounded".to_string());
     assert!(matches!(
         mode.as_str(),
-        "baseline" | "inference16" | "bounded"
+        "baseline" | "inference16" | "release" | "bounded"
     ));
     let count = parameter("KORE_EMBED_BENCH_TEXTS", 32, 1024);
     let cycles = parameter("KORE_EMBED_BENCH_CYCLES", 3, 50);
@@ -82,6 +83,7 @@ fn native_embedding_memory() {
         .map(|index| format!("Document {index}. {long_text}"))
         .collect();
     record("before-load", &mode, count, 0, 0.0);
+    let _qos = crate::embed::BackgroundQos::engage();
     let started = Instant::now();
     let mut model = cached_model();
     record(
@@ -93,8 +95,15 @@ fn native_embedding_memory() {
     );
     for cycle in 0..cycles {
         let started = Instant::now();
-        let vectors = if mode != "bounded" {
-            // HEAD uses the library default (256). The intermediate variant
+        let vectors = if mode == "release" {
+            // Kore 0.30.1 bounds outer calls and inference batches at 16.
+            let mut vectors = Vec::with_capacity(count);
+            for batch in texts.chunks(16) {
+                vectors.extend(model.embed(batch, Some(16)).expect("released inference"));
+            }
+            vectors
+        } else if mode != "bounded" {
+            // The pre-0.30.1 source used the library default (256). This variant
             // limits inference only, while still submitting an entire note.
             let batch = (mode == "inference16").then_some(16);
             model.embed(&texts, batch).expect("baseline inference")
@@ -138,6 +147,7 @@ fn native_embedding_memory() {
 #[test]
 #[ignore = "requires an existing model cache; verifies actual ONNX vectors"]
 fn bounded_batches_preserve_vectors() {
+    let _qos = crate::embed::BackgroundQos::engage();
     let mut model = cached_model();
     let texts: Vec<_> = (0..33)
         .map(|index| match index % 3 {
@@ -146,7 +156,10 @@ fn bounded_batches_preserve_vectors() {
             _ => "A longer sentence about the memory of an application. ".repeat(30),
         })
         .collect();
-    let baseline = model.embed(&texts, None).unwrap();
+    let baseline: Vec<_> = texts
+        .chunks(16)
+        .flat_map(|batch| model.embed(batch, Some(16)).unwrap())
+        .collect();
     let bounded: Vec<_> = texts
         .chunks(embed_batch::BATCH_SIZE)
         .flat_map(|batch| embed_batch::embed(&mut model, batch).unwrap())

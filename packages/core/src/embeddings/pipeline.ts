@@ -95,7 +95,7 @@ export async function embedNote(options: EmbedNoteOptions): Promise<number> {
   const existing = await db
     .selectFrom('embeddingChunks')
     .where('notePath', '=', path)
-    .select(['contentHash', 'modelId'])
+    .select(['contentHash', 'modelId', 'heading', 'posFrom', 'posTo'])
     .execute()
   const available = new Map<string, number>()
   for (const row of existing) {
@@ -113,6 +113,21 @@ export async function embedNote(options: EmbedNoteOptions): Promise<number> {
     return false
   })
   const toEmbed = chunks.filter((_, i) => !skip[i])
+  // Nothing to embed and the stored rows already say exactly what we would
+  // write: the whole `embedApply` is a no-op, so skip it. Without this an
+  // unchanged note still cost one writer-lock transaction and one dead UPDATE
+  // per chunk, and shipped every chunk's full text over IPC to do it. That is
+  // not only the repair path: the backfill runs on every launch with semantic
+  // search on, so a 5,000-note graph paid ~5,000 transactions and ~40,000 dead
+  // updates per start, contending with the initial reconcile's own writes.
+  //
+  // Position and heading are part of the comparison because `embedApply` would
+  // otherwise be the thing that refreshes them. The vector-reuse decision above
+  // stays keyed on hash and model alone: a chunk that only moved must keep its
+  // vector, not be re-embedded.
+  if (toEmbed.length === 0 && sameChunkRows(existing, chunks, modelId)) {
+    return 0
+  }
   // Batched rather than one call per note: a long note produces hundreds of
   // chunks, and handing them to the runtime in one go is what made a single
   // note cost gigabytes. Cancellation is checked between batches, never
@@ -185,4 +200,58 @@ export async function backfillEmbeddings(options: {
     onProgress?.(done, rows.length)
   }
   return 'completed'
+}
+
+/** One stored chunk row's identity, for comparing against what we would write. */
+function chunkRowKey(row: {
+  contentHash: string
+  modelId: string
+  heading: string | null
+  posFrom: number
+  posTo: number
+}): string {
+  return [row.modelId, row.contentHash, row.heading ?? '', row.posFrom, row.posTo].join('\u0000')
+}
+
+/**
+ * Whether the stored rows are already exactly the rows this pass would write.
+ *
+ * A multiset comparison, not a set one: a note that repeats a section produces
+ * several chunks sharing a hash, and losing that count would call a shrunk note
+ * unchanged and leave orphaned rows behind that `apply_chunks` would have
+ * deleted.
+ */
+function sameChunkRows(
+  existing: readonly {
+    contentHash: string
+    modelId: string
+    heading: string | null
+    posFrom: number
+    posTo: number
+  }[],
+  chunks: readonly {
+    contentHash: string
+    heading: string | null
+    posFrom: number
+    posTo: number
+  }[],
+  modelId: string,
+): boolean {
+  if (existing.length !== chunks.length) {
+    return false
+  }
+  const counts = new Map<string, number>()
+  for (const row of existing) {
+    const key = chunkRowKey(row)
+    counts.set(key, (counts.get(key) ?? 0) + 1)
+  }
+  for (const chunk of chunks) {
+    const key = chunkRowKey({ ...chunk, modelId })
+    const remaining = counts.get(key) ?? 0
+    if (remaining === 0) {
+      return false
+    }
+    counts.set(key, remaining - 1)
+  }
+  return true
 }

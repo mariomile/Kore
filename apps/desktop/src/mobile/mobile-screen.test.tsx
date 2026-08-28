@@ -321,6 +321,42 @@ function otherDayInWeek(date: string): string {
 }
 
 describe('MobileShell', () => {
+  it.each([320, 393, 852])('keeps floating navigation reachable at %ipx wide', async (width) => {
+    await page.viewport(width, 700)
+    const view = await mount({ kind: 'today' })
+    const nav = view.getByRole('navigation', { name: 'Sections' }).element()
+    const daily = view.getByRole('button', { name: 'Daily', exact: true }).element()
+    const chat = view.getByRole('button', { name: 'Chat', exact: true }).element()
+    const left = daily.parentElement!.getBoundingClientRect()
+    const right = chat.parentElement!.getBoundingClientRect()
+
+    expect(left.left).toBeGreaterThanOrEqual(16)
+    expect(right.right).toBeLessThanOrEqual(width - 16)
+    expect(right.left - left.right).toBeGreaterThanOrEqual(16)
+    expect(getComputedStyle(nav).pointerEvents).toBe('none')
+    expect(getComputedStyle(nav).borderTopWidth).toBe('0px')
+    for (const button of nav.querySelectorAll('button')) {
+      const bounds = button.getBoundingClientRect()
+      expect(bounds.width).toBeGreaterThanOrEqual(44)
+      expect(bounds.height).toBeGreaterThanOrEqual(44)
+      expect(button.textContent).toBe('')
+      expect(getComputedStyle(button).pointerEvents).toBe('auto')
+    }
+    expect(daily.getAttribute('aria-current')).toBe('page')
+    expect(document.documentElement.style.getPropertyValue('--mobile-tab-bar-height')).toBe(
+      `${nav.getBoundingClientRect().height}px`,
+    )
+  })
+
+  it.each(['Daily', 'All', 'Tasks'])('opens a new note from the %s capsule tab', async (label) => {
+    const view = await mount({ kind: 'today' })
+    await userEvent.click(view.getByRole('button', { name: label, exact: true }))
+    expect(view.getByRole('button', { name: 'New note' }).elements()).toHaveLength(1)
+    await userEvent.click(view.getByRole('button', { name: 'New note' }))
+    await expect.element(view.getByRole('heading', { name: 'New note' })).toBeVisible()
+    expect(editorProbe.focusCalls).toBeGreaterThan(0)
+  })
+
   it('renders today as the daily spine with its note content', async () => {
     const today = todayIso()
     files[`daily/${today}.md`] = 'captured on the go'
@@ -653,6 +689,9 @@ describe('MobileShell', () => {
     await expect.element(view.getByRole('searchbox', { name: 'Search tasks' })).toBeVisible()
     // The fake bridge's index is empty, so the tab lands on its empty state.
     await expect.element(view.getByText('No tasks to show')).toHaveTextContent('No tasks to show')
+    const newTask = view.getByRole('button', { name: 'New task' }).element().getBoundingClientRect()
+    const nav = view.getByRole('navigation', { name: 'Sections' }).element().getBoundingClientRect()
+    expect(newTask.bottom).toBeLessThan(nav.top)
   })
 
   it('double-tapping Tasks selects the task search filter', async () => {
@@ -691,9 +730,12 @@ describe('MobileShell', () => {
 
     act(() => publishKeyboardHeight(316))
     expect(view.getByRole('navigation', { name: 'Sections' }).query()).toBeNull()
+    expect(view.getByRole('button', { name: 'New note' }).query()).toBeNull()
+    expect(document.documentElement.style.getPropertyValue('--mobile-tab-bar-height')).toBe('')
 
     act(() => publishKeyboardHeight(0))
     await expect.element(view.getByRole('navigation', { name: 'Sections' })).toBeVisible()
+    await expect.element(view.getByRole('button', { name: 'New note' })).toBeVisible()
   })
 
   it('gives the tab bar slot to the formatting toolbar only while an editor is focused', async () => {

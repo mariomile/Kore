@@ -16,9 +16,12 @@ use crate::search::{build_fts_match, search_index, SearchHit};
 pub fn run(graph: &Graph, json: bool, query: &str, limit: usize) -> Result<(), CliError> {
     let opened = match open_read_only(&graph.root) {
         IndexOpen::Opened(opened) => opened,
-        IndexOpen::Missing => return Err(CliError::NoIndex(format!(
-            "no search index at {REFLECT_DIR}/{INDEX_FILE} — open this graph in Kore to build it"
-        ))),
+        IndexOpen::Missing => {
+            let message = format!(
+                "no search index at {REFLECT_DIR}/{INDEX_FILE} — open this graph in Kore to build it"
+            );
+            return Err(CliError::NoIndex(message));
+        }
         IndexOpen::Unusable(message) => return Err(CliError::NoIndex(message)),
     };
     if opened.newer_schema {

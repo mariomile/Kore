@@ -71,7 +71,6 @@ mod tests {
     ("capture_inbox_reject", "capture.rs", "DEBT (audit 2.4 and 2.1): spools and reads capture files on the main thread"),
     ("capture_inbox_remove", "capture.rs", "DEBT (audit 2.4 and 2.1): spools and reads capture files on the main thread"),
     ("capture_inbox_spool", "capture.rs", "DEBT (audit 2.4 and 2.1): spools and reads capture files on the main thread"),
-    ("capture_screenshot_promote", "capture.rs", "DEBT (audit 2.4 and 2.1): spools and reads capture files on the main thread"),
     ("dir_list", "fs/mod.rs", "DEBT (audit 1.8 and 2.1): filesystem work on the main thread"),
     ("embed_ensure", "embed_mobile.rs", "unsupported-platform stub: returns immediately, touches nothing"),
     ("embed_status", "embed.rs", "reads cached model status behind a mutex"),

@@ -17,7 +17,7 @@
 use std::ffi::{c_int, c_uint};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
 use fastembed::{EmbeddingModel, InitOptions, TextEmbedding};
@@ -402,9 +402,31 @@ fn configure_onnx_runtime(app: &AppHandle) -> Result<(), String> {
 }
 
 /// Configure the same ONNX worker pool in the app and native experiments.
+/// The one attempt this process makes at configuring ONNX Runtime, and how it
+/// went. Every caller after the first reads the same outcome.
+static ENVIRONMENT: OnceLock<Result<(), String>> = OnceLock::new();
+
+/// Install the process-wide ONNX Runtime environment, once.
+///
+/// ONNX Runtime keeps only the *first* configuration a process offers it —
+/// `commit` reports `false` for every later one. That makes the return value
+/// load-bearing rather than cosmetic: a lost first commit leaves inference on
+/// fastembed's defaults, every core with the workers spinning, which is
+/// exactly what this configuration exists to prevent. Reporting `Ok` there
+/// would hide the failure behind a runtime that looks configured and is not.
+///
+/// Later calls are not failures and must not be treated as any: `load_model`
+/// runs again after every idle unload, and by then the environment is ours
+/// and still installed. They reuse the first outcome instead of re-committing.
 pub(crate) fn commit_environment(
     environment: ort::environment::EnvironmentBuilder,
 ) -> Result<(), String> {
+    ENVIRONMENT
+        .get_or_init(|| install_environment(environment))
+        .clone()
+}
+
+fn install_environment(environment: ort::environment::EnvironmentBuilder) -> Result<(), String> {
     let threads = embed_thread_count();
     let pool = ort::environment::GlobalThreadPoolOptions::default()
         .with_intra_threads(threads)
@@ -415,9 +437,12 @@ pub(crate) fn commit_environment(
         .with_spin_control(false)
         .map_err(|err| format!("disabling ONNX Runtime spin control: {err}"))?;
 
-    if environment.with_global_thread_pool(pool).commit() {
-        tracing::info!(threads, "committed the ONNX Runtime environment");
+    if !environment.with_global_thread_pool(pool).commit() {
+        return Err(
+            "ONNX Runtime was configured before Kore could bound its thread pool".to_string(),
+        );
     }
+    tracing::info!(threads, "committed the ONNX Runtime environment");
     Ok(())
 }
 

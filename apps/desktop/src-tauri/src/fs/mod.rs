@@ -953,17 +953,35 @@ pub struct VaultScanStats {
     pub skipped: u32,
 }
 
+/// Async for the same reason as [`list_files`]: a cold catalog is a full-tree
+/// walk with a `metadata()` per entry, and every write and watcher batch
+/// invalidates the cache, so this runs cold far more often than it runs warm.
+/// Measured at 5.2 ms for 2,500 files, 28.9 ms at 12,000 and 73.8 ms at 30,000
+/// — a main-thread block on the thread that delivers touches on iOS.
 #[tauri::command]
-pub fn vault_scan_stats(
+pub async fn vault_scan_stats<R: tauri::Runtime>(
     generation: Option<u64>,
-    state: State<GraphState>,
+    app: tauri::AppHandle<R>,
 ) -> AppResult<VaultScanStats> {
-    let catalog = file_catalog(&state, generation)?;
-    Ok(VaultScanStats {
-        notes: catalog.notes.len() as u32,
-        attachments: catalog.attachments.len() as u32,
-        skipped: catalog.skipped,
+    // Pinned before the hop exactly as `list_files` does: resolving inside the
+    // closure could count a root swapped in after the invoke.
+    let generation = match generation {
+        Some(generation) => generation,
+        None => {
+            let state = app.state::<GraphState>();
+            current_graph_info(&state)?.generation
+        }
+    };
+    crate::blocking::run_blocking(move || {
+        let state = app.state::<GraphState>();
+        let catalog = file_catalog(&state, Some(generation))?;
+        Ok(VaultScanStats {
+            notes: catalog.notes.len() as u32,
+            attachments: catalog.attachments.len() as u32,
+            skipped: catalog.skipped,
+        })
     })
+    .await
 }
 
 /// The same note listing as [`list_files`], callable with a plain root — the

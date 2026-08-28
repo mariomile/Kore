@@ -106,7 +106,13 @@ export function PlatformRoot(): ReactElement {
   useEffect(() => {
     let active = true
     const devPlatform = devBridgePlatform()
-    if (devPlatform !== null && !bridgeReady) {
+    // `import.meta.env.DEV` is repeated here even though `devBridgePlatform`
+    // already checks it: define-substitution folds a literal `false` at this
+    // call site, which is what actually drops the dynamic import. Behind the
+    // function call the bundler cannot propagate the constant, so the dev
+    // bridge chunk, sqlite3.wasm and the OPFS proxy all shipped in release
+    // builds despite being unreachable.
+    if (import.meta.env.DEV && devPlatform !== null && !bridgeReady) {
       void import('@/dev/install-dev-bridge')
         .then(async (module) => {
           await module.installDevBridge(devPlatform)

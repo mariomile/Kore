@@ -8,10 +8,16 @@ native crash diagnostics. Every network call the app can make is listed here, wi
 carries.
 
 The one hard rule sits above all of it: **a note with `private: true` frontmatter never
-has its content sent to any external service.** This is enforced in code at every AI
-call site (the `CloudSafe` type brand in `packages/core/src/ai/` — content for a
-provider cannot even be constructed from a private note, and the flag is re-read from
-disk at call time), and it is covered by tests.
+has its content sent to any external service.** Two different mechanisms enforce it,
+and it is worth knowing which one you are relying on.
+
+For everything the app sends itself, it is the `CloudSafe` type brand in
+`packages/core/src/ai/`: content for a provider cannot even be constructed from a private
+note, the flag is re-read from disk at call time, and an unchecked payload does not
+compile. For the coding-agent CLIs, which read your files themselves rather than being
+handed content, it is a deny list instead. See
+[Coding-agent CLIs](#coding-agent-clis-off-until-you-configure-one) for what that means in
+practice. Both are covered by tests.
 
 ## AI chat (off until you add a key)
 
@@ -84,6 +90,26 @@ disk at call time), and it is covered by tests.
   image is downscaled and stored as a local JPEG in the graph. Any BYOK AI enrichment
   then follows the provider rules above.
 
+## Coding-agent CLIs (off until you configure one)
+
+- **Where:** the vendor's own service, through a CLI you installed and signed into
+  yourself (Claude Code, Codex, or Cursor). Reflect starts the process; it never sees or
+  proxies the traffic, and no key is stored here.
+- **What:** whatever the agent decides to read. It runs with your graph folder as its
+  working directory and reads files with its own tools, so this is the one AI surface
+  where Reflect is not the thing assembling the payload.
+- **How private notes are fenced:** before each run, Reflect queries the index for every
+  `private: true` note and writes absolute per-file `Read`, `Write` and `Edit` deny rules
+  into the CLI's own permission layer, alongside `.reflect/**` and `.git/**`. The rules
+  are matched by the CLI, not by prompting, so the agent cannot talk itself past them.
+- **The limits, stated plainly:** the list comes from the SQLite index rather than from
+  the files, so it is only as good as the index. If the index cannot answer, because it is
+  mid-rebuild after an app update, the run is refused rather than started with an
+  incomplete list. A note you marked private in the last instant before the index caught
+  up is the residual gap, and it closes as soon as the file is re-indexed.
+- **Off by default:** yes. Nothing runs until you configure a provider in Settings, and
+  edit mode is a second, separate opt-in.
+
 ## Apple Contacts (off by default)
 
 - **Where:** nowhere on the network. Enabling the Contacts integration reads the
@@ -154,6 +180,7 @@ API keys and tokens live in the **OS keychain only** — never in markdown, neve
 | Call | Destination | Carries note content? | Off by default? |
 | --- | --- | --- | --- |
 | AI chat | Your chosen provider | Yes — private-note tool reads are blocked | Yes (needs your key) |
+| Coding-agent CLI | The vendor's service, via a CLI you installed | Yes, with private notes fenced by per-file deny rules | Yes (needs a configured provider) |
 | Audio transcription | Your chosen providers | No existing note content; audio and its fresh transcript | Yes (needs your key) |
 | Embeddings | Nowhere (on-device) | — | Yes (opt-in download) |
 | Model download | Hugging Face | No | Yes (opt-in) |

@@ -108,7 +108,7 @@ export function EmbeddingsSync(): null {
             if (kind === 'remove') {
               await embedRemove(path, generation)
             } else {
-              await embedNote({ path, generation, modelId }).then(() => {})
+              await embedNote({ path, generation, modelId, isStale: () => !active }).then(() => {})
             }
           }
         }

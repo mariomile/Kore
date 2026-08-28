@@ -21,6 +21,15 @@ export interface NoteChunk {
 
 /** Accumulate sentences up to this size before starting a new chunk. */
 const TARGET_CHARS = 1000
+/**
+ * Hard ceiling on a chunk's length, in UTF-16 code units.
+ *
+ * {@link TARGET_CHARS} is a target, not a bound — it is checked *after* a
+ * span is appended — so a run with no sentence boundary used to become one
+ * arbitrarily long chunk: the model truncated its tail away unembedded, and
+ * its length padded the whole inference batch. See `docs/memory-budget.md`.
+ */
+export const MAX_EMBEDDING_CHUNK_CHARS = 1500
 /** A trailing chunk smaller than this merges into its predecessor. */
 const MIN_CHARS = 200
 
@@ -36,6 +45,35 @@ function sentenceSpans(text: string, base: number): Array<{ from: number; to: nu
   }
   if (start < text.length) {
     spans.push({ from: base + start, to: base + text.length })
+  }
+  return spans
+}
+
+/** True for the leading half of a UTF-16 surrogate pair. */
+function isHighSurrogate(unit: number): boolean {
+  return unit >= 0xd800 && unit <= 0xdbff
+}
+
+/**
+ * Sentence spans, each split further so none exceeds
+ * {@link MAX_EMBEDDING_CHUNK_CHARS}. A run with no sentence boundary — a
+ * table, a code fence, pasted JSON — is one span as long as the run itself,
+ * which is the case this pass exists to bound.
+ */
+function boundedSpans(text: string, base: number): Array<{ from: number; to: number }> {
+  const spans: Array<{ from: number; to: number }> = []
+  for (const span of sentenceSpans(text, base)) {
+    let from = span.from
+    while (from < span.to) {
+      let to = Math.min(from + MAX_EMBEDDING_CHUNK_CHARS, span.to)
+      // A cut between a surrogate pair's halves would leave a lone surrogate
+      // at the end of one chunk and another at the start of the next.
+      if (to < span.to && isHighSurrogate(text.charCodeAt(to - base - 1))) {
+        to -= 1
+      }
+      spans.push({ from, to })
+      from = to
+    }
   }
   return spans
 }
@@ -74,7 +112,10 @@ async function chunkRun(text: string, base: number, heading: string | null): Pro
     })
     chunkFrom = -1
   }
-  for (const span of sentenceSpans(text, base)) {
+  for (const span of boundedSpans(text, base)) {
+    if (chunkFrom !== -1 && span.to - chunkFrom > MAX_EMBEDDING_CHUNK_CHARS) {
+      await flush() // appending this span would push the chunk past the ceiling
+    }
     if (chunkFrom === -1) {
       chunkFrom = span.from
     }
@@ -102,7 +143,11 @@ async function mergeRuntTail(
   }
   const last = chunks[chunks.length - 1]!
   const prev = chunks[chunks.length - 2]!
-  if (last.text.length >= MIN_CHARS || prev.heading !== last.heading) {
+  if (
+    last.text.length >= MIN_CHARS ||
+    prev.heading !== last.heading ||
+    last.posTo - prev.posFrom > MAX_EMBEDDING_CHUNK_CHARS
+  ) {
     return chunks
   }
   const text = sliceText(prev.posFrom, last.posTo)

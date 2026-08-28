@@ -63,6 +63,18 @@ not held forever: after fifteen idle minutes the runtime releases it and
 reports `unloaded`. The next semantic query reloads it from the local cache
 inside `embed_texts` — a pure disk read, never a download.
 
+Holding the model is not the expensive part — running it is. Peak allocation
+during inference scales with `batch x seq^2`: the tokenizer pads each batch to
+its longest member and truncates at the model's 512 positions, so a batch of
+256 (fastembed's default, which the runtime does **not** use) materializes a
+`256 x 12 heads x 512 x 512` f32 attention tensor of 3 GiB — and ONNX
+Runtime's arena keeps whatever peak it reached for the life of the session.
+`EMBED_BATCH_SIZE` in `src/embed.rs` caps that at 16, or 192 MiB, and the cap
+lives in the runtime so no caller can raise it. Chunking holds up the other
+end: `MAX_EMBEDDING_CHUNK_CHARS` bounds a single chunk, because one unbroken
+run of text — a table, a code fence, pasted JSON — would otherwise pad its
+whole batch to the 512-token ceiling.
+
 `unloaded` is deliberately **not** `uninitialized`. An uninitialized runtime may
 still owe the ~90MB first download, which only the explicit opt-in may start; an
 unloaded one is available and one cache read away. Every consumer that gates on

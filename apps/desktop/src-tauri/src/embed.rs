@@ -96,6 +96,16 @@ enum Runtime {
     Failed(String),
 }
 
+/// Texts per inference batch, passed explicitly because fastembed's default
+/// (256) is sized for a server.
+///
+/// Peak allocation scales with `batch x seq^2`, so a 256-wide batch of
+/// 512-token sequences materializes a 3 GiB attention tensor that ONNX
+/// Runtime's arena then keeps for the life of the session; at 16 it is
+/// 192 MiB. The bound lives here rather than at the call site so that no
+/// caller can raise it. See `docs/memory-budget.md`.
+const EMBED_BATCH_SIZE: usize = 16;
+
 /// Idle time after which the loaded model is released.
 const IDLE_UNLOAD_AFTER: Duration = Duration::from_secs(15 * 60);
 
@@ -508,7 +518,7 @@ pub async fn embed_texts(
             .lock()
             .map_err(|_| AppError::io("embedding model lock poisoned"))?;
         model
-            .embed(texts, None)
+            .embed(texts, Some(EMBED_BATCH_SIZE))
             .map_err(|err| AppError::io(format!("embedding failed: {err}")))
     })
     .await

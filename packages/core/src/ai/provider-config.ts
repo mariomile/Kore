@@ -102,6 +102,18 @@ export function pickTranscriptionConfig(state: AiProvidersState): TranscriptionC
   return null
 }
 
+/**
+ * The transcription-capable providers the user has actually configured, in
+ * {@link TRANSCRIPTION_PROVIDERS} order. Settings surfaces ask this before
+ * offering a per-provider transcription model: what counts as capable is
+ * this module's to know, not each screen's to re-derive.
+ */
+export function configuredTranscriptionProviders(state: AiProvidersState): TranscriptionProvider[] {
+  return TRANSCRIPTION_PROVIDERS.filter((provider) =>
+    state.providers.some((entry) => entry.provider === provider),
+  )
+}
+
 /** The transcription entry a pass should use, with its keychain key. */
 export interface TranscriptionTarget {
   config: TranscriptionConfig

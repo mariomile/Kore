@@ -154,7 +154,7 @@ kore/
 ├── crates/graph-paths/    # Shared graph-path classification (Rust ↔ TS parity)
 ├── plugins/               # First-party Tauri plugins (keyboard, recording)
 ├── fixtures/              # TS ↔ Rust parity test corpora
-├── design-system/         # Tokens and UI primitives
+├── design-system/         # Design tokens and the Inter webfont
 └── docs/                  # Product, architecture, and contributor docs
 ```
 

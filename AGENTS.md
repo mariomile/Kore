@@ -225,7 +225,7 @@ Kore/
 │                           #   pinning + haptics), tauri-plugin-recording (native audio memos)
 ├── fixtures/               # TS ↔ Rust parity corpora (fold keys, path classification,
 │                           #   frontmatter/index parity — see fixtures/parity/README.txt)
-├── design-system/          # Design tokens, components, and UI guidelines (see design-system/readme.md)
+├── design-system/          # Design tokens + the Inter webfont (see design-system/readme.md)
 ├── docs/                   # Product/architecture docs + plans/, decisions/, contributing/, porting/
 ├── Cargo.toml              # Root Cargo workspace: reflect-open, reflect-cli, reflect-capture-host,
 │                           #   reflect-index-schema, reflect-graph-paths, and the two Tauri plugins
@@ -245,16 +245,15 @@ Kore/
 **Design system**
 
 All UI work should follow the design system. Note that
-[`design-system/readme.md`](design-system/readme.md) documents the **upstream
-Reflect brand** (its marketing claims — pricing, E2EE, GPT-4 — do not describe
-this app); the operative resources for app UI are the tokens, the shadcn
-components in `apps/desktop/src/components/ui/`, and this fork's design
-language described in the README. Key resources:
+`design-system/` carries the design **tokens** and the Inter webfont, and
+nothing else: UI primitives are the shadcn components in
+`apps/desktop/src/components/ui/`, and icons come from
+`apps/desktop/src/components/icons/`. Key resources:
 
-- `design-system/tokens/` — CSS custom properties for color, typography, spacing, and motion
-- `design-system/components/` — reusable React primitives (Button, Input, Badge, etc.)
-- `design-system/guidelines/` — color, type, spacing, and brand specimens
-- `design-system/styles.css` — global entry point that imports all tokens
+- `design-system/tokens/`: CSS custom properties for color, typography, spacing, and motion
+- `design-system/styles.css`: global entry point that imports all tokens
+- `apps/desktop/src/components/ui/`: the shadcn components. Check here before building custom UI
+- The fork's own design language is described in the README
 
 **Frontend ↔ Rust bridge**
 

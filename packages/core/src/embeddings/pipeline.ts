@@ -210,7 +210,7 @@ function chunkRowKey(row: {
   posFrom: number
   posTo: number
 }): string {
-  return [row.modelId, row.contentHash, row.heading ?? '', row.posFrom, row.posTo].join('\u0000')
+  return [row.modelId, row.contentHash, row.heading ?? '', row.posFrom, row.posTo].join('\u{0}')
 }
 
 /**

@@ -225,4 +225,4 @@ function checkedTaskLines(source: string): string {
 }
 
 /** A list item whose marker is checked, in either `-`/`+`/`*` bullet form. */
-const CHECKED_TASK_LINE_RE = /^[ \t]*[-+*] \[[xX]\].*$/gm
+const CHECKED_TASK_LINE_RE = /^[ \t]*[-+*] \[x\].*$/gim

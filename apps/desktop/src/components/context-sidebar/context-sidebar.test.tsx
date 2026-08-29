@@ -4,8 +4,9 @@ import { describe, expect, it, vi } from 'vitest'
 /**
  * The right rail's panel switcher: the band starts as Details alone plus the
  * "+", Details follows the target (or shows the empty state), the panels the
- * "+" opens swap in their surfaces, and every panel renders inside the rail's
- * own card. The panels themselves are mocked — each has its own test.
+ * "+" opens become tabs you can close again, and every panel renders inside
+ * the rail's own card. The panels themselves are mocked — each has its own
+ * test.
  */
 
 vi.mock('@/components/chat/chat-screen', () => ({
@@ -41,10 +42,10 @@ vi.mock('@/lib/use-today', () => ({
 
 const { ContextSidebar } = await import('./context-sidebar')
 
-/** Open a panel the way a user does: the "+" menu, then its tick. */
+/** Open a panel the way a user does: the "+" menu, then its entry. */
 async function openPanel(view: Awaited<ReturnType<typeof render>>, label: string): Promise<void> {
   await view.getByRole('button', { name: 'Open a panel' }).click()
-  await view.getByRole('menuitemcheckbox', { name: label }).click()
+  await view.getByRole('menuitem', { name: label }).click()
 }
 
 describe('ContextSidebar', () => {
@@ -79,16 +80,47 @@ describe('ContextSidebar', () => {
     await view.unmount()
   })
 
-  it('closes a panel from the "+" and falls back to Details', async () => {
+  it('closes a tab from the band and falls back to Details', async () => {
     const view = await render(<ContextSidebar target={{ kind: 'daily', date: '2026-08-17' }} />)
 
     await openPanel(view, 'Chat')
     await expect.element(view.getByTestId('chat-panel')).toBeInTheDocument()
 
-    // Unticking the panel on screen takes its segment off the band.
-    await openPanel(view, 'Chat')
+    // Closing the tab on screen takes it off the band.
+    await view.getByRole('button', { name: 'Close Chat' }).click()
     expect(view.getByRole('tab', { name: 'Chat' }).query()).toBeNull()
     await expect.element(view.getByTestId('daily-details')).toBeInTheDocument()
+    await view.unmount()
+  })
+
+  it('closes a tab that is not the one on screen, and never Details', async () => {
+    const view = await render(<ContextSidebar target={{ kind: 'daily', date: '2026-08-17' }} />)
+
+    await openPanel(view, 'Chat')
+    await openPanel(view, 'Calendar')
+    // Details is the one tab the rail always carries, so it has no close.
+    expect(view.getByRole('button', { name: 'Close Details' }).query()).toBeNull()
+
+    // Closing a background tab leaves the panel on screen alone.
+    await view.getByRole('button', { name: 'Close Chat' }).click()
+    expect(view.getByRole('tab', { name: 'Chat' }).query()).toBeNull()
+    await expect.element(view.getByTestId('month-calendar')).toBeInTheDocument()
+
+    // And it can be opened again from the "+".
+    await openPanel(view, 'Chat')
+    await expect.element(view.getByRole('tab', { name: 'Chat' })).toBeVisible()
+    await view.unmount()
+  })
+
+  it('re-picking an open panel from the "+" shows it instead of duplicating its tab', async () => {
+    const view = await render(<ContextSidebar target={null} />)
+
+    await openPanel(view, 'Chat')
+    await openPanel(view, 'Calendar')
+    await openPanel(view, 'Chat')
+
+    await expect.element(view.getByTestId('chat-panel')).toBeInTheDocument()
+    expect(view.getByRole('tab', { name: 'Chat' }).elements()).toHaveLength(1)
     await view.unmount()
   })
 
@@ -107,7 +139,7 @@ describe('ContextSidebar', () => {
   it('leaves tags to the left rail', async () => {
     const view = await render(<ContextSidebar target={null} />)
     await view.getByRole('button', { name: 'Open a panel' }).click()
-    expect(view.getByRole('menuitemcheckbox', { name: 'Tags' }).query()).toBeNull()
+    expect(view.getByRole('menuitem', { name: 'Tags' }).query()).toBeNull()
     await view.unmount()
   })
 

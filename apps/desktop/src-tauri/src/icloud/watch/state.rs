@@ -305,6 +305,10 @@ mod tests {
         fold_conflicts_into_view(&mut view, 1, &[conflicted_item("notes/a.md")], &[], true);
         assert!(!view.gathered, "a stale gather must not declare readiness");
         assert!(view.paths.is_empty());
+        assert!(
+            view.authoritative,
+            "a dropped round must not clear the scope flag"
+        );
     }
 
     #[test]
@@ -318,6 +322,11 @@ mod tests {
         fold_conflicts_into_view(&mut view, 3, &[conflicted_item("notes/a.md")], &[], true);
         assert!(view.gathered);
         assert_eq!(view.paths, HashSet::from(["notes/a.md".to_string()]));
+        // Folding a round must not disturb the scope flag: it records whether
+        // the query covers the graph root, which is decided at install time.
+        // Only `conflicted_paths` reads it, and that lives in the Apple half,
+        // so without this assertion the field is dead on a Linux test build.
+        assert!(view.authoritative);
 
         // A later delta of the same epoch edits in place without
         // touching readiness.

@@ -9,6 +9,21 @@ edit the same note while apart.
 - **Where the graph lives.** In the app's iCloud Drive container — visible as
   **iCloud Drive → Kore** in Files (iOS) and Finder (macOS). Notes stay
   plain markdown files; iCloud moves them between devices.
+- **The container's real directory is `iCloud~app~lore`.** Finder and Files
+  substitute the container's `NSUbiquitousContainerName` ("Kore", declared in
+  `src-tauri/Info.plist` and `ios.project.yml`), but a terminal, a backup tool,
+  or any other app that prints real paths shows
+  `~/Library/Mobile Documents/iCloud~app~lore/Documents/<graph>` — the
+  container id spelled with `~` for `.`. It reads as a stray "Lore" folder and
+  it is not one: iCloud container ids are permanent, and this one is bound to
+  the `app.lore.*` Apple identity that must not change (see AGENTS.md —
+  Naming). Renaming it would break signing and orphan every synced graph.
+  Kore therefore prints its own paths the way the file managers do —
+  `iCloud Drive › Kore › <graph>` (`lib/graph-path-display.ts`) — so the raw
+  directory only ever shows up outside the app. macOS also caches the display
+  name per install and re-reads it when the app's bundle version rises, so a
+  container created by an older build can keep showing the old name in Finder
+  until the next update lands.
 - **Turning it on.** Both platforms offer iCloud first during onboarding and
   list every graph already in the container (it can hold several): macOS's
   recommended card opens one or names-and-creates a new one, with a

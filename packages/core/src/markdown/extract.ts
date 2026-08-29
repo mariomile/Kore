@@ -11,6 +11,7 @@ import { foldTag } from './keys'
 import { parseInlineLink } from './link-syntax'
 import { headingLevelOf } from './node-types'
 import { buildPlainText, plainTextOfRange, unescapeMarkdownText } from './plain-text'
+import { isRoundTaskNode } from './round-task'
 import { taskBreadcrumbs } from './task-breadcrumbs'
 import { firstDue } from './task-due'
 import { parseTaskMarker } from './task-marker'
@@ -134,16 +135,6 @@ function readLink(body: string, from: number, to: number, offset: number): Markd
   return { href, text, from: from + offset, to: to + offset, domain: hostOf(href) }
 }
 
-/**
- * A Reflect task is the round Meowdown checkbox syntax: optional indentation,
- * then `+`, then whitespace, then the GFM marker. Square checklist items
- * (`- [ ]`/`* [ ]`) are intentionally not projected into Tasks.
- */
-function hasRoundTaskListMarker(body: string, markerStart: number): boolean {
-  const lineStart = body.lastIndexOf('\n', markerStart - 1) + 1
-  return /^[\t ]*\+[\t ]+$/.test(body.slice(lineStart, markerStart))
-}
-
 function lineEndAfter(body: string, from: number): number {
   const newline = body.indexOf('\n', from)
   return newline === -1 ? body.length : newline
@@ -164,7 +155,7 @@ function readTask(
   wikiLinks: WikiLink[],
 ): ParsedTask | null {
   const { from, to } = taskNode
-  if (!hasRoundTaskListMarker(body, from)) {
+  if (!isRoundTaskNode(body, taskNode)) {
     return null
   }
   const marker = parseTaskMarker(body.slice(from, from + 3))

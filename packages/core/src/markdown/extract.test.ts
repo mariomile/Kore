@@ -299,6 +299,35 @@ describe('parseNote — tasks', () => {
     expect(note.tasks).toEqual([])
   })
 
+  it('projects round tasks written inside a callout', () => {
+    const note = parse('> [!note] Rent\n> + [ ] !! pay rent [[2026-08-30]]\n> + [x] file receipt\n')
+    expect(note.tasks.map((task) => ({ text: task.text, checked: task.checked }))).toEqual([
+      { text: '!! pay rent 2026-08-30', checked: false },
+      { text: 'file receipt', checked: true },
+    ])
+    expect(note.tasks[0]?.dueDate).toBe('2026-08-30')
+  })
+
+  it('projects a round task nested inside a blockquote list', () => {
+    const note = parse('> - Errands\n>   + [ ] buy milk\n')
+    expect(note.tasks).toEqual([
+      expect.objectContaining({ text: 'buy milk', breadcrumbs: ['Errands'] }),
+    ])
+  })
+
+  it('still ignores square checklist items inside a callout', () => {
+    const note = parse('> [!note] Packing\n> - [ ] passport\n')
+    expect(note.tasks).toEqual([])
+  })
+
+  it('keeps the raw line anchored to the marker inside a callout', () => {
+    const source = '> [!todo] Today\n> + [ ] ship it\n'
+    const note = parse(source)
+    const task = note.tasks[0]!
+    expect(source.slice(task.markerOffset, task.markerOffset + task.raw.length)).toBe(task.raw)
+    expect(task.raw).toBe('[ ] ship it')
+  })
+
   it('yields no tasks for a plain bullet list', () => {
     const note = parse('- just a bullet\n- another\n')
     expect(note.tasks).toEqual([])

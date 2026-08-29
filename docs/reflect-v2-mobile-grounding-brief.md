@@ -1,5 +1,12 @@
 # Reflect V2 Mobile Grounding Brief
 
+> **Kore next-wave direction (2026-08-27):** See the
+> [target architecture](kore-target-architecture.md), [roadmap](roadmap.md), and
+> [Plan 25](plans/25-personal-os.md). This document remains baseline/reference
+> material; the new target takes precedence for future scope. The target preserves the
+> Tauri mobile client and adds controlled desktop/headless execution; it does not
+> promise always-on iOS work.
+
 **Purpose:** Provide a broad, product-oriented overview of what the Reflect V2 mobile app should be, so a mobile-implementation agent understands the product model, the inherited V2 constraints, the lessons from V1 mobile, and the shape of the later waves — before and while working through the implementation plan.
 
 **Decision status:** This brief is grounding material, not the source of truth. The implementation plan is [Plan 19 (mobile companion)](./plans/19-mobile.md) and the shell decision is [TDR 0003 (Tauri 2 mobile)](./decisions/0003-mobile-shell.md) — when this brief conflicts with either, they win, along with [Reflect V2 Product Vision](./reflect-v2-product-vision.md), [Reflect V2 Indexing Strategy](./reflect-v2-indexing-strategy.md), [Reflect V2 Sync Strategy](./reflect-v2-sync-strategy.md), and — for storage and sync — [Plan 21 (iCloud Drive sync)](./plans/21-icloud-drive-sync.md) with its user contract in [iCloud Drive Sync](./icloud-sync.md). First-release scope calls recorded in section 3 were confirmed with the product owner on 2026-06-12; the brief was last trued up on 2026-07-05, after Plan 21 shipped iCloud Drive as the primary sync backend.

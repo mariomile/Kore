@@ -1,5 +1,15 @@
 # Reflect V2 — First-Version Implementation Roadmap
 
+> **Kore planning update (2026-08-27):** This is the historical first-wave
+> roadmap. Its dated implementation/deferred labels are not current status.
+> Use [Plan 25](25-personal-os.md), the [Kore roadmap](../roadmap.md),
+> [target architecture](../kore-target-architecture.md), and
+> [complete planning inventory](../planning-index.md) for the next wave.
+> Current source already includes note ULIDs, typed Collections, basic rollups,
+> collection events and agent edit mode; do not rebuild them from these old labels.
+> The target moves persistent execution/policy into the native runtime and protects
+> durable state beyond the existing chat exception.
+
 This directory holds the numbered, dependency-ordered plans for building the **first
 version (first wave)** of Reflect V2: the open-source, local-first, markdown-native,
 AI-native rewrite described in the product docs.
@@ -81,6 +91,8 @@ before the editor, and the editor lands before search/AI.
 | 21 | [iCloud Drive sync](21-icloud-drive-sync.md) | **Shipped (2026-07-04).** iCloud Drive as the primary consumer sync path: graphs in the app's iCloud container, deterministic resolution ladder over per-device shadow bases (markers as the fallback), `.reflect/`/`.git/` sync-exclusion, iCloud-first onboarding on both platforms with multi-graph lists + the mobile switcher; git remotes stay the self-managed path. AI-assisted resolution deferred |
 | 22 | [Mobile GitHub connect](22-mobile-github-connect.md) | **Implemented; device pass pending.** The connect front door for local (non-iCloud) graphs on iOS: shared wizard hook, `ConnectGithubDrawer`, Settings entry point — no new sync mechanism |
 | 23 | [Mobile AI chat](23-mobile-ai-chat.md) | The Plan 10 chat on iOS as a fourth tab: same engine/store/privacy gate, mobile composer + history/model sheets, per-device BYOK provider settings, lexical-only `search_notes`; streaming-on-iOS spike gates the build |
+| 24 | [Quick Note Intent](24-quick-note-intent.md) | iOS Siri/Shortcuts/Action button capture; plan records simulator validation and remaining physical-device checks |
+| 25 | [Kore Personal OS](25-personal-os.md) | **Planned next wave.** 29 initiatives, five slices, dependencies, acceptance gates, and complete source traceability |
 
 ## Milestone map
 
@@ -143,11 +155,12 @@ The highest-severity risks surfaced reviewing this plan, with where they're hand
 
 ## First-wave scope guardrails
 
-These are the product's hard principles. Every plan must hold them. Restated here so
-they are not re-litigated per phase:
+These are first-wave constraints, retained for context. For next-wave decisions,
+apply the target architecture and TDR 0006; unchanged privacy and ownership rules hold.
 
-- **Markdown is the source of truth.** SQLite under `.reflect/` is a rebuildable
-  projection, never durable storage. Any non-rebuildable local state must be justified.
+- **Markdown is the source of truth for knowledge.** The note index is rebuildable;
+  existing `chat_*` history is durable. Plan 25 defines additional durable runtime
+  state with separate ownership/recovery; index rebuild must preserve it.
 - **No Reflect-hosted APIs.** LLM/transcription/sync calls go directly from the app to
   user-approved providers (BYOK AI providers, GitHub). No proxy through Reflect infra.
 - **`private: true` is a hard block.** Such notes' content must never be sent to any
@@ -162,10 +175,12 @@ they are not re-litigated per phase:
   editor [meowdown](https://github.com/prosekit/meowdown) is **first-party** (owned by the
   team) and MIT-licensed, so the MIT core holds with no copyleft constraint.
 
-## Explicitly deferred (NOT first wave)
+## Historical first-wave deferrals (not current backlog)
 
-Do not build these now; keep the door open in the data model. Tasks (now planned as a
-post-release add-on — [Plan 18](18-tasks.md)), full browser clipper / article
+The following list records original exclusions, not current instructions. Some
+items later shipped or were superseded by Plans 18–25; verify source before work.
+
+Original exclusions: Tasks (then planned as a post-release add-on — [Plan 18](18-tasks.md)), full browser clipper / article
 extraction beyond the implemented Plan 11 link-capture flow, graph-map view, templates,
 contacts/calendar, publishing, any non-GitHub sync (iCloud/Dropbox/Drive are unsupported
 by design, not "deferred"), a public plugin API, typed-entity layer, and full multi-device

@@ -1,5 +1,12 @@
 # TDR 0005 — Tag types and collections: a tag may own a schema
 
+> **Next-wave relationship (2026-08-27):** This remains the current Collection
+> storage contract. [TDR 0006](0006-personal-os-boundaries.md) and
+> [Plan 25 I14–I15](../plans/25-personal-os.md#i14--structured-objects-and-database-contract)
+> extend it toward stable-ID Object relations and broader Database semantics.
+> They do not authorize rewriting existing wiki-link properties or moving schema
+> ownership from Markdown to SQLite without the recorded serialization decision.
+
 - **Status:** Accepted
 - **Date:** 2026-08-23
 - **Scope:** The tag-type model (Tana-style supertags): per-tag property

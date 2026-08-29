@@ -353,7 +353,6 @@ pub fn run() {
             fs::note_exists,
             fs::note_delete,
             fs::list_files,
-            fs::list_attachments,
             fs::vault_scan_stats,
             recents::recent_graphs,
             recents::forget_recent,

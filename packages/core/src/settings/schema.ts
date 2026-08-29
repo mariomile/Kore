@@ -194,18 +194,6 @@ export const openTabSchema: z.ZodType<OpenTab> = z.union([
   legacyOpenNoteTabSchema,
 ])
 
-export function isNoteTab(tab: OpenTab): tab is OpenNoteTab {
-  return tab.kind === 'note'
-}
-
-export function isSurfaceTab(tab: OpenTab): tab is OpenSurfaceTab {
-  return tab.kind === 'surface'
-}
-
-export function isChatTab(tab: OpenTab): tab is OpenChatTab {
-  return tab.kind === 'chat'
-}
-
 export const openTabsSchema = z
   .record(z.string(), z.array(openTabSchema).catch([]))
   // An array is also an object to `z.record` (index keys) — the pre-keying

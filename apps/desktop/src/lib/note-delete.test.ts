@@ -46,4 +46,14 @@ describe('deleteOpenNote', () => {
     expect(mockInvoke).not.toHaveBeenCalled()
     expect(openSession).not.toHaveBeenCalled()
   })
+
+  it('leaves the session intact when the delete fails', async () => {
+    mockInvoke.mockRejectedValue(new Error('disk full'))
+
+    await expect(deleteOpenNote('notes/keep.md', 7)).rejects.toThrow('disk full')
+
+    // The session was never even looked up — a failed delete must not risk
+    // discarding (and thus losing) a still-live editor session.
+    expect(openSession).not.toHaveBeenCalled()
+  })
 })

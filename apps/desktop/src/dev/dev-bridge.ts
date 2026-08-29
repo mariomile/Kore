@@ -160,8 +160,6 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
         return { status: 'failed', message: 'embeddings are unavailable in browser dev' }
       case 'vault_scan_stats':
         return { notes: files.list().length, attachments: 0, skipped: 0 }
-      case 'list_attachments':
-        return []
       case 'forget_recent':
       case 'capture_host_register':
       case 'watch_start':

@@ -1,6 +1,5 @@
 import { z } from 'zod'
 import type { ModelMessage } from 'ai'
-import { call } from '../ipc/invoke'
 import type { ChatStreamEvent } from './chat/stream-chat'
 import { agentContextPromptLines, type AgentPromptContext } from './agent-profiles'
 import {
@@ -46,14 +45,6 @@ export const CLAUDE_CLI_MAX_TURNS = 25
 
 /** The model id meaning "whatever the CLI is configured to use". */
 export const CLAUDE_CLI_DEFAULT_MODEL = 'default'
-
-/**
- * Check that the `claude` binary is installed and runnable; resolves with
- * its version string. This provider's whole "key validation".
- */
-export async function checkClaudeCli(): Promise<string> {
-  return await call('agent_cli_check', { binary: 'claude' }, z.string())
-}
 
 /** Build the headless run's system prompt (appended to the CLI's own). */
 export function claudeCliSystemPrompt(options: {

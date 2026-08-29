@@ -122,7 +122,6 @@ export {
   withoutPendingProposal,
   AGENTS_DIR,
   AGENT_USER_MEMORY_PATH,
-  AGENT_SHARED_DIR,
   AGENT_SHARED_FACTS_PATH,
   AGENT_SHARED_LOG_PATH,
   AGENT_PENDING_MEMORY_PATH,
@@ -193,7 +192,6 @@ export {
 } from '../ai/agent-cli'
 export { agentCliFailureMessage, isAgentCliRuntimeFailure } from '../ai/agent-cli-failure'
 export {
-  checkClaudeCli,
   claudeCliArgs,
   claudeCliSettingsJson,
   claudeCliSystemPrompt,
@@ -204,7 +202,6 @@ export {
   type StreamCliChatOptions,
 } from '../ai/claude-cli'
 export {
-  checkCodexCli,
   codexLoginStatus,
   runCodexLogin,
   codexLogout,
@@ -219,9 +216,6 @@ export {
   CODEX_CLI_DEFAULT_MODEL,
 } from '../ai/codex-cli'
 export {
-  checkCursorCli,
-  cursorLoginStatus,
-  type CursorAuthStatus,
   cursorCliArgs,
   cursorCliPermissionsJson,
   cursorCliSystemPrompt,

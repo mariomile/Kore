@@ -84,7 +84,6 @@ mod tests {
     ("graph_open", "fs/mod.rs", "DEBT (audit 1.8 and 2.1): filesystem work on the main thread"),
     ("haptic_feedback", "haptics.rs", "fires a native haptic, a UI-thread call that returns immediately"),
     ("icloud_watch_stop", "icloud/watch.rs", "stops a watcher by flipping an atomic; the watcher itself runs off-thread"),
-    ("list_attachments", "fs/mod.rs", "DEBT (audit 1.8 and 2.1): filesystem work on the main thread"),
     ("menu_install_paste_and_match_style", "menu.rs", "installs a native menu item, which AppKit requires on the main thread"),
     ("mobile_storage_local", "icloud/storage.rs", "reads a cached container path"),
     ("note_delete", "fs/mod.rs", "DEBT (audit 1.8 and 2.1): filesystem work on the main thread"),

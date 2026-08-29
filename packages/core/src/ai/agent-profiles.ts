@@ -39,12 +39,6 @@ export const AGENTS_DIR = 'agents'
 export const AGENT_USER_MEMORY_PATH = 'agents/user.md'
 
 /**
- * The shared memory space (Notion's Lore model, vault-native): knowledge
- * every agent — and the user — reads and writes, not one profile's own.
- */
-export const AGENT_SHARED_DIR = 'agents/memory'
-
-/**
  * Shared facts and decisions: one bullet per durable fact, updated in place,
  * each carrying a confidence tag (`[certain]` / `[likely]` / `[speculative]`)
  * and a provenance signature (agent slug + date).

@@ -932,16 +932,6 @@ pub async fn list_files<R: tauri::Runtime>(
     .await
 }
 
-/// List supported local attachments from the same cached catalog as
-/// [`list_files`].
-#[tauri::command]
-pub fn list_attachments(
-    generation: Option<u64>,
-    state: State<GraphState>,
-) -> AppResult<Vec<FileMeta>> {
-    Ok(file_catalog(&state, generation)?.attachments)
-}
-
 /// Counts from the vault catalog. `skipped` is what the walk refused or
 /// failed to list (unreadable directories, symlinks, default-pruned trees) —
 /// the number that keeps "why isn't my file showing up" diagnosable.

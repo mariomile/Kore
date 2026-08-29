@@ -1,8 +1,9 @@
 import type { AiProviderId } from '../settings/schema'
 import type { ChatStreamEvent } from './chat/stream-chat'
-import { checkClaudeCli, streamClaudeCliChat, type StreamCliChatOptions } from './claude-cli'
-import { checkCodexCli, streamCodexCliChat } from './codex-cli'
-import { checkCursorCli, streamCursorCliChat } from './cursor-cli'
+import { checkAgentCli, type AgentCliBinary } from './agent-cli'
+import { streamClaudeCliChat, type StreamCliChatOptions } from './claude-cli'
+import { streamCodexCliChat } from './codex-cli'
+import { streamCursorCliChat } from './cursor-cli'
 
 /**
  * The "subscription" AI providers — chat engines backed by a locally
@@ -39,16 +40,16 @@ export function cliProviderSteerMode(id: CliAgentProviderId): 'inject' | 'queue'
   return id === 'cursor-cli' ? 'queue' : 'inject'
 }
 
+/** The binary each provider's CLI check runs. */
+const CLI_AGENT_BINARY: Record<CliAgentProviderId, AgentCliBinary> = {
+  'claude-cli': 'claude',
+  'codex-cli': 'codex',
+  'cursor-cli': 'cursor-agent',
+}
+
 /** Verify the provider's CLI is installed; resolves with its version. */
 export async function checkCliAgentProvider(id: CliAgentProviderId): Promise<string> {
-  switch (id) {
-    case 'claude-cli':
-      return await checkClaudeCli()
-    case 'codex-cli':
-      return await checkCodexCli()
-    case 'cursor-cli':
-      return await checkCursorCli()
-  }
+  return await checkAgentCli(CLI_AGENT_BINARY[id])
 }
 
 /** Run one chat turn through the provider's CLI engine. */

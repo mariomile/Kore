@@ -104,7 +104,6 @@ describe('dev bridge desktop boot surface', () => {
       attachments: 0,
       skipped: 0,
     })
-    await expect(bridge.invoke('list_attachments', { generation: 1 })).resolves.toEqual([])
     setBridge(bridge)
     try {
       // Exercise the public schema too: a drifted stub otherwise breaks the

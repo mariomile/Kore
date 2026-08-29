@@ -15,7 +15,9 @@ describe('AppBootScreen', () => {
     const mark = document.querySelector('.reflect-boot-mark')
     expect(mark?.textContent).toBe('Kore')
     // The sheen clips a gradient to the glyphs; a solid color here would mean
-    // the animation is painting nothing.
-    expect(getComputedStyle(mark!).webkitBackgroundClip).toBe('text')
+    // the animation is painting nothing. Both spellings are declared, and the
+    // two engines resolve different ones, so either satisfies this.
+    const style = getComputedStyle(mark!)
+    expect([style.backgroundClip, style.webkitBackgroundClip]).toContain('text')
   })
 })

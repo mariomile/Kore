@@ -9,7 +9,15 @@ import { SWIPE_COMMIT_PX } from './block-swipe-gestures'
 /**
  * The swipe wired to the live editor: it must move a list item, and it must
  * not take a gesture that was a scroll.
+ *
+ * Synthesizing the gesture needs the `Touch`/`TouchEvent` constructors, which
+ * desktop WebKit does not implement — so this file's suite runs on the
+ * Chromium leg and skips on the WebKit one. The thresholds it exercises are
+ * pure and covered on every engine by `block-swipe-gestures.test.ts`; what is
+ * engine-specific here is the event plumbing, not the decision.
  */
+
+const CAN_SYNTHESIZE_TOUCH = typeof Touch === 'function' && typeof TouchEvent === 'function'
 
 const BASE_LIST = '- first\n- second\n'
 
@@ -56,7 +64,7 @@ afterEach(() => {
   setPlatformSurface({ touchEditor: false })
 })
 
-describe('BlockSwipeGestures', () => {
+describe.skipIf(!CAN_SYNTHESIZE_TOUCH)('BlockSwipeGestures', () => {
   it('nests the caret’s list item on a rightward swipe and lifts it back', async () => {
     const onChange = vi.fn<(markdown: string) => void>()
     const { view, editable } = await renderList(onChange)

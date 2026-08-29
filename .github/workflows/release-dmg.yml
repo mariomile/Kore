@@ -35,6 +35,9 @@ concurrency:
 
 permissions:
   contents: write
+  # The final step clears the `autorelease: pending` label off the Release PR
+  # this build just published.
+  pull-requests: write
 
 jobs:
   build:
@@ -150,3 +153,38 @@ jobs:
           releaseDraft: false
           prerelease: false
           includeUpdaterJson: false
+
+      # release-please decides whether it may build the next Release PR by
+      # looking for merged release PRs still labelled `autorelease: pending`.
+      # It clears that label itself when it creates the GitHub release — but
+      # this repo sets `skip-github-release`, because tagging and publishing
+      # belong here, so nothing ever cleared it and the next run aborted with
+      # "There are untagged, merged release PRs outstanding". Publishing is
+      # the moment those PRs genuinely became released, so close the loop.
+      #
+      # That label is also the interlock that stops release-please computing a
+      # version before the tag exists. The Release PR workflow fires on the
+      # push that carries the bump, minutes before this build publishes
+      # `v<version>`; a run that finds neither the tag nor a pending PR falls
+      # back to the whole history and proposes a *lower* version (that is what
+      # #89 was). Leaving the label until publish keeps that window shut.
+      - name: Mark merged Release PRs as released
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh label create 'autorelease: tagged' --force \
+            --color ededed \
+            --description 'Release PR whose version has been published'
+          numbers=$(gh pr list --state merged --label 'autorelease: pending' \
+            --json number --jq '.[].number')
+          if [ -z "$numbers" ]; then
+            echo 'No merged Release PR is waiting to be marked released.'
+            exit 0
+          fi
+          for number in $numbers; do
+            echo "Marking #$number as released"
+            gh pr edit "$number" \
+              --remove-label 'autorelease: pending' \
+              --add-label 'autorelease: tagged'
+          done

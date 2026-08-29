@@ -55,6 +55,18 @@ test('the Release PR is the bump', () => {
   })
 })
 
+test('publishing clears the label that gates the next Release PR', () => {
+  // `skip-github-release` means release-please never marks a merged Release PR
+  // released, so it aborted the next run with "There are untagged, merged
+  // release PRs outstanding" and bumps went manual. The same label is the
+  // interlock that stops release-please computing a version before this
+  // workflow has published the tag — without it a run fired by the bump
+  // commit walks the whole history and proposes a LOWER version (#89).
+  expect(releaseDmg).toContain("--remove-label 'autorelease: pending'")
+  expect(releaseDmg).toContain("--add-label 'autorelease: tagged'")
+  expect(releaseDmg).toContain('pull-requests: write')
+})
+
 test('the manifest tracks the version the app actually ships', () => {
   // A manifest behind package.json makes the next Release PR propose a version
   // that renames releases already published, and re-lists their commits.

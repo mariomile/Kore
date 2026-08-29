@@ -28,6 +28,7 @@ import { resolveAssetFileLink, useAssetPersistence } from '@/editor/use-asset-pe
 import { useEditorAutocomplete } from '@/editor/use-editor-autocomplete'
 import { useNotePaneDocument } from '@/components/use-note-pane-document'
 import { useTagNavigation } from '@/editor/use-tag-navigation'
+import { BlockSwipeGestures } from '@/editor/block-swipe'
 import { CalloutHighlighter } from '@/editor/callout-highlighter'
 import { useCalloutSlashItems } from '@/editor/use-callout-slash-items'
 import { useCollectionSlashItems } from '@/editor/use-collection-slash-items'
@@ -433,6 +434,10 @@ export function NotePaneComponent({
       >
         <EditorAiKeymap onTrigger={aiMenu.openMenu} />
         <CalloutHighlighter />
+        {/* Touch only: the gutter grip is pointer-only and pinned off there,
+            so the sideways swipe is the only block-structure gesture a thumb
+            has. */}
+        {isTouchEditorSurface() ? <BlockSwipeGestures /> : null}
       </NoteEditor>
 
       {collectionEmbeds.length > 0 ? (

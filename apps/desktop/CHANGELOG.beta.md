@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.31.0-beta](https://github.com/mariomile/Kore/compare/v0.30.0...v0.31.0-beta) (2026-08-29)
+
+
+### Features
+
+* anchor the sidebar search and mic to the band's right edge ([#73](https://github.com/mariomile/Kore/issues/73)) ([002fdb9](https://github.com/mariomile/Kore/commit/002fdb91c5d2cb63ad0020653d3553364dd5c66e))
+* choose the voice-note transcription model on iPhone too ([#70](https://github.com/mariomile/Kore/issues/70)) ([ca486ca](https://github.com/mariomile/Kore/commit/ca486cafebbda257f44deb9a8756a7a25ac4973a))
+* make Kore mobile free and add floating navigation ([#69](https://github.com/mariomile/Kore/issues/69)) ([37a5051](https://github.com/mariomile/Kore/commit/37a5051cf8f3c815b53e19d79eca6f05107f9898))
+
+
+### Bug Fixes
+
+* **embeddings:** bound native memory and preserve idle synchronization ([#64](https://github.com/mariomile/Kore/issues/64)) ([7196cde](https://github.com/mariomile/Kore/commit/7196cdee1655a9c15d710bc242e6b3cced206a6d))
+* honor the browser and voice-note settings, and make the right rail a panel you can see ([#67](https://github.com/mariomile/Kore/issues/67)) ([d985def](https://github.com/mariomile/Kore/commit/d985def1efe177aeb17d7c7e2e862bad4daec0c1))
+* report when the ONNX thread pool never takes effect ([#66](https://github.com/mariomile/Kore/issues/66)) ([6e3ea08](https://github.com/mariomile/Kore/commit/6e3ea0878ea2d75bf90a8ea090bc3d078daad00e))
+* stop the embedding backfill from exhausting memory and CPU ([#61](https://github.com/mariomile/Kore/issues/61)) ([16fecbc](https://github.com/mariomile/Kore/commit/16fecbc1ac6f6ac648749d2314a47deba2fe0309))
+
 ## [0.28.1-beta](https://github.com/mariomile/Lore/compare/v0.28.0...v0.28.1-beta) (2026-08-25)
 
 

@@ -102,7 +102,7 @@ export function MobileTabBar({ tab, onSelect, onCapture }: MobileTabBarProps): R
           />
           <button
             type="button"
-            aria-label="Create"
+            aria-label="New"
             onClick={() => {
               hapticImpactLight()
               onCapture()

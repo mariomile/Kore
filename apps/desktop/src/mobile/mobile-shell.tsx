@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react'
 import { untitledNotePath } from '@reflect/core'
 import { useDoubleTap } from '@/hooks/use-double-tap'
+import { useMobileAudioMemo } from '@/mobile/audio-memo-provider'
 import { MobileCaptureDrawer } from '@/mobile/capture-drawer'
 import { MobileFormattingToolbar } from '@/mobile/formatting-toolbar'
 import { MobileStack } from '@/mobile/mobile-stack'
@@ -26,6 +27,7 @@ function dailyRouteFrom(route: Route): DailyRoute | null {
  */
 export function MobileShell(): ReactElement {
   const { route, navigate, entryId } = useRouter()
+  const audioMemo = useMobileAudioMemo()
   const [allQuery, setAllQuery] = useState('')
   const [allFilters, setAllFilters] = useState<AllNotesFilters>(EMPTY_ALL_NOTES_FILTERS)
   const [captureOpen, setCaptureOpen] = useState(false)
@@ -133,12 +135,13 @@ export function MobileShell(): ReactElement {
       <MobileCaptureDrawer
         open={captureOpen}
         onOpenChange={setCaptureOpen}
-        onDaily={() => navigate({ kind: 'today' }, { focusEditor: true })}
         onNote={() => navigate({ kind: 'note', path: untitledNotePath() })}
         onTask={() => {
           setNewTaskRequested(true)
           navigate({ kind: 'tasks' })
         }}
+        onRecord={audioMemo.toggle}
+        recordingAvailable={audioMemo.available}
       />
     </div>
   )

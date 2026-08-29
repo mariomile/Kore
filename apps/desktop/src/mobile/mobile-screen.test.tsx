@@ -147,19 +147,19 @@ vi.mock('@/providers/settings-provider', () => ({
     updateSettingsWith: () => {},
   }),
 }))
-// The daily spine renders the audio-memo FAB; this suite is about screens,
-// not recording — an unavailable memo surface keeps the FAB out of the tree.
+const audioMemo = vi.hoisted(() => ({ available: false, toggle: vi.fn() }))
 vi.mock('@/mobile/audio-memo-provider', () => ({
   useMobileAudioMemo: () => ({
     phase: 'idle',
     elapsedMs: 0,
     level: 0,
     pendingCount: 0,
-    available: false,
+    available: audioMemo.available,
+    hasTranscriptionConfig: true,
     error: null,
     canRetry: false,
     drawerOpen: false,
-    toggle: () => {},
+    toggle: audioMemo.toggle,
     stopAndSave: () => {},
     cancelRecording: () => {},
     onDrawerOpenChange: () => {},
@@ -187,6 +187,8 @@ beforeEach(async () => {
   setPlatformSurface({ mobileApp: true })
   await page.viewport(375, 700)
   files = {}
+  audioMemo.available = false
+  audioMemo.toggle.mockReset()
   editorProbe.focusCalls = 0
   editorProbe.selectionCalls = []
   mockInvoke.mockReset()
@@ -351,10 +353,26 @@ describe('MobileShell', () => {
   it.each(['Daily', 'All', 'Tasks'])('opens a new note from the %s capsule tab', async (label) => {
     const view = await mount({ kind: 'today' })
     await userEvent.click(view.getByRole('button', { name: label, exact: true }))
-    await userEvent.click(view.getByRole('button', { name: 'Create' }))
+    await userEvent.click(view.getByRole('button', { name: 'New' }))
     await userEvent.click(view.getByRole('button', { name: 'Note', exact: true }))
     await expect.element(view.getByRole('heading', { name: 'New note' })).toBeVisible()
     expect(editorProbe.focusCalls).toBeGreaterThan(0)
+  })
+
+  it('offers note, task, and recording from plus without duplicating Today', async () => {
+    audioMemo.available = true
+    const view = await mount({ kind: 'today' })
+
+    await userEvent.click(view.getByRole('button', { name: 'New' }))
+
+    await expect.element(view.getByRole('button', { name: 'Note', exact: true })).toBeVisible()
+    await expect.element(view.getByRole('button', { name: 'Task', exact: true })).toBeVisible()
+    await expect.element(view.getByRole('button', { name: 'Record', exact: true })).toBeVisible()
+    expect(view.getByRole('button', { name: 'Today', exact: true }).query()).toBeNull()
+    expect(view.getByText('Create', { exact: true }).query()).toBeNull()
+
+    await userEvent.click(view.getByRole('button', { name: 'Record', exact: true }))
+    expect(audioMemo.toggle).toHaveBeenCalledTimes(1)
   })
 
   it('renders today as the daily spine with its note content', async () => {
@@ -728,12 +746,12 @@ describe('MobileShell', () => {
 
     act(() => publishKeyboardHeight(316))
     expect(view.getByRole('navigation', { name: 'Sections' }).query()).toBeNull()
-    expect(view.getByRole('button', { name: 'Create' }).query()).toBeNull()
+    expect(view.getByRole('button', { name: 'New' }).query()).toBeNull()
     expect(document.documentElement.style.getPropertyValue('--mobile-tab-bar-height')).toBe('')
 
     act(() => publishKeyboardHeight(0))
     await expect.element(view.getByRole('navigation', { name: 'Sections' })).toBeVisible()
-    await expect.element(view.getByRole('button', { name: 'Create' })).toBeVisible()
+    await expect.element(view.getByRole('button', { name: 'New' })).toBeVisible()
   })
 
   it('gives the tab bar slot to the formatting toolbar only while an editor is focused', async () => {

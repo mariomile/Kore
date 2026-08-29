@@ -204,6 +204,18 @@ export async function rebuildIndex(options: IndexPassOptions): Promise<void> {
   if (options.signal?.aborted) {
     return // don't wipe the current index for an already-cancelled pass
   }
+  // Unstamp BEFORE the wipe, so "a rebuild is in flight" is visible to readers
+  // rather than inferable only from a version mismatch. `syncIndex` arrives
+  // here with an already-stale stamp, but the manual rebuild from Settings and
+  // the command palette calls this directly with a current one, and every
+  // reader that gates on `isProjectionCurrent` would otherwise see a green
+  // light over a table that is empty, then partial. `listPrivateNotePaths` is
+  // that reader, and it is the private-note deny list.
+  //
+  // It also makes an aborted rebuild resume as a rebuild: the stamp only comes
+  // back at the end, so a pass cancelled midway leaves the projection honestly
+  // marked stale instead of reconciling into a hole.
+  await setIndexMeta(PROJECTION_VERSION_KEY, '', generation)
   await clearIndex(generation)
   if (options.signal?.aborted) {
     return

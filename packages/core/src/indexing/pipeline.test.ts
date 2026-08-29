@@ -180,15 +180,18 @@ describe('rebuildIndex', () => {
     // A rebuild reads everything: worked tracks done, so the pill surfaces.
     expect(progress.at(-1)).toEqual([1, 1, 1])
     const commands = mockInvoke.mock.calls.map(([cmd]) => cmd)
-    expect(commands[0]).toBe('index_clear')
+    // The wipe is the second command: the pass unstamps the projection first.
+    expect(commands[0]).toBe('index_meta_set')
+    expect(commands[1]).toBe('index_clear')
     expect(commands).toContain('list_files')
     const batch = mockInvoke.mock.calls.find(([cmd]) => cmd === 'index_apply_batch')
     expect(batch).toBeDefined()
     const notes = (batch![1] as { notes: { path: string }[] }).notes
     expect(notes.map((note) => note.path)).toEqual(['notes/a.md'])
     expect(commands).not.toContain('index_apply') // batched, not one-by-one
-    // The stamp lets the next open reconcile instead of rebuilding again.
-    const stamp = mockInvoke.mock.calls.find(([cmd]) => cmd === 'index_meta_set')
+    // The stamp lets the next open reconcile instead of rebuilding again. It is
+    // the LAST meta write: the pass opens by clearing the stamp.
+    const stamp = mockInvoke.mock.calls.findLast(([cmd]) => cmd === 'index_meta_set')
     expect(stamp![1]).toMatchObject({
       key: PROJECTION_VERSION_KEY,
       value: String(PROJECTION_VERSION),
@@ -276,7 +279,13 @@ describe('rebuildIndex', () => {
     })
 
     await expect(rebuildIndex({ generation: 1 })).rejects.toThrow('single note refused')
-    expect(mockInvoke.mock.calls.some(([command]) => command === 'index_meta_set')).toBe(false)
+    // The pass unstamped on the way in, so a meta write did happen. What must
+    // not happen is a write claiming the projection is current: a failed
+    // rebuild has to leave the index honestly marked stale.
+    const stamped = mockInvoke.mock.calls.filter(
+      ([command, args]) => command === 'index_meta_set' && (args as { value: string }).value !== '',
+    )
+    expect(stamped).toEqual([])
   })
 
   it('stops before the next SQLite write when suspended after the rebuild wipe', async () => {
@@ -298,9 +307,14 @@ describe('rebuildIndex', () => {
     const commands = mockInvoke.mock.calls.map(([command]) => command)
     expect(commands).toContain('index_clear') // began while foregrounded
     expect(commands).not.toContain('index_apply_batch')
-    // No new projection stamp is written; foreground sync converges either by
-    // rebuilding an old projection or reconciling missing rows for a current one.
-    expect(commands).not.toContain('index_meta_set')
+    // No stamp claiming the projection is current is written: the pass cleared
+    // the stamp on the way in and never restored it, so the interrupted index
+    // reads as stale and the next foreground pass rebuilds rather than
+    // reconciling into a hole.
+    const stamped = mockInvoke.mock.calls.filter(
+      ([command, args]) => command === 'index_meta_set' && (args as { value: string }).value !== '',
+    )
+    expect(stamped).toEqual([])
   })
 })
 
@@ -314,12 +328,31 @@ describe('syncIndex', () => {
     expect(commands).not.toContain('index_meta_set')
   })
 
+  it('clears the projection stamp before wiping, so a rebuild is visible while it runs', async () => {
+    // `syncIndex` reaches a rebuild with an already-stale stamp, so the gate
+    // works there by accident. The manual rebuild from Settings and the command
+    // palette calls `rebuildIndex` directly with a CURRENT stamp, and every
+    // reader gating on `isProjectionCurrent` would otherwise get a green light
+    // over a table that is empty, then partial. `listPrivateNotePaths` is one
+    // of those readers, and it is the private-note deny list.
+    await rebuildIndex({ generation: 4 })
+    const order = mockInvoke.mock.calls
+      .map(([cmd, args]) =>
+        cmd === 'index_meta_set' ? `meta:${(args as { value: string }).value}` : cmd,
+      )
+      .filter((cmd) => cmd.startsWith('meta:') || cmd === 'index_clear')
+    // Unstamped first, wiped second, restamped last.
+    expect(order[0]).toBe('meta:')
+    expect(order[1]).toBe('index_clear')
+    expect(order.at(-1)).toBe(`meta:${PROJECTION_VERSION}`)
+  })
+
   it('rebuilds and stamps when the index predates the current projection', async () => {
     metaRows = [] // never stamped (or written by an older app)
     await syncIndex({ generation: 3 })
     const commands = mockInvoke.mock.calls.map(([cmd]) => cmd)
     expect(commands).toContain('index_clear')
-    const stamp = mockInvoke.mock.calls.find(([cmd]) => cmd === 'index_meta_set')
+    const stamp = mockInvoke.mock.calls.findLast(([cmd]) => cmd === 'index_meta_set')
     expect(stamp![1]).toMatchObject({
       key: PROJECTION_VERSION_KEY,
       value: String(PROJECTION_VERSION),

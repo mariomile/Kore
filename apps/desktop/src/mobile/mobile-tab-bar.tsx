@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, type ReactElement } from 'react'
 import { Chat, CheckCircle, NoteEdit, Notes, Plus } from '@/components/icons'
 import { cn } from '@/lib/utils'
 import { hapticImpactLight } from '@/mobile/haptics'
+import { useSlidingIndicator } from '@/mobile/use-sliding-indicator'
 import type { Route } from '@/routing/route'
 
 export type MobileTab = 'daily' | 'all' | 'tasks' | 'chat'
@@ -27,7 +28,7 @@ export function tabRootFor(route: Route): MobileTab | null {
 interface MobileTabBarProps {
   tab: MobileTab
   onSelect: (tab: MobileTab) => void
-  onNewNote: () => void
+  onCapture: () => void
 }
 
 /**
@@ -39,8 +40,11 @@ interface MobileTabBarProps {
  * sit above it without hardcoding its size. The variable clears on unmount
  * (the keyboard-up state), leaving consumers their own fallback.
  */
-export function MobileTabBar({ tab, onSelect, onNewNote }: MobileTabBarProps): ReactElement {
+export function MobileTabBar({ tab, onSelect, onCapture }: MobileTabBarProps): ReactElement {
   const navRef = useRef<HTMLElement | null>(null)
+  const indicatorRef = useRef<HTMLSpanElement | null>(null)
+
+  useSlidingIndicator(navRef, indicatorRef, tab)
 
   useLayoutEffect(() => {
     const nav = navRef.current
@@ -72,21 +76,30 @@ export function MobileTabBar({ tab, onSelect, onNewNote }: MobileTabBarProps): R
         paddingRight: 'max(env(safe-area-inset-right), 1rem)',
       }}
     >
+      <span
+        ref={indicatorRef}
+        data-testid="mobile-tab-indicator"
+        aria-hidden
+        className="pointer-events-none absolute top-0 left-0 z-10 rounded-full bg-foreground/10 opacity-0 transition-[transform,width,height,opacity] duration-200 ease-swift motion-reduce:transition-none"
+      />
       <div className="flex w-full max-w-md items-center justify-between gap-4">
         <div className="mobile-nav-capsule flex max-w-56 flex-1 p-1">
           <TabButton
+            tab="daily"
             label="Daily"
             icon={<NoteEdit aria-hidden className="size-6" />}
             active={tab === 'daily'}
             onClick={() => onSelect('daily')}
           />
           <TabButton
+            tab="all"
             label="All"
             icon={<Notes aria-hidden className="size-6" />}
             active={tab === 'all'}
             onClick={() => onSelect('all')}
           />
           <TabButton
+            tab="tasks"
             label="Tasks"
             icon={<CheckCircle aria-hidden className="size-6" />}
             active={tab === 'tasks'}
@@ -95,6 +108,7 @@ export function MobileTabBar({ tab, onSelect, onNewNote }: MobileTabBarProps): R
         </div>
         <div className="mobile-nav-capsule flex shrink-0 p-1">
           <TabButton
+            tab="chat"
             label="Chat"
             icon={<Chat aria-hidden className="size-6" />}
             active={tab === 'chat'}
@@ -102,12 +116,12 @@ export function MobileTabBar({ tab, onSelect, onNewNote }: MobileTabBarProps): R
           />
           <button
             type="button"
-            aria-label="New note"
+            aria-label="New"
             onClick={() => {
               hapticImpactLight()
-              onNewNote()
+              onCapture()
             }}
-            className="flex size-12 items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="relative z-20 flex size-12 items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             <span className="flex size-8 items-center justify-center rounded-full bg-foreground text-background">
               <Plus aria-hidden className="size-6" />
@@ -120,11 +134,13 @@ export function MobileTabBar({ tab, onSelect, onNewNote }: MobileTabBarProps): R
 }
 
 function TabButton({
+  tab,
   label,
   icon,
   active,
   onClick,
 }: {
+  tab: MobileTab
   label: string
   icon: ReactElement
   active: boolean
@@ -133,6 +149,7 @@ function TabButton({
   return (
     <button
       type="button"
+      data-sliding-value={tab}
       aria-label={label}
       aria-current={active ? 'page' : undefined}
       // V1 parity: a light haptic on every tab press, including the two taps
@@ -142,8 +159,8 @@ function TabButton({
         onClick()
       }}
       className={cn(
-        'flex h-12 min-w-12 flex-1 items-center justify-center rounded-full outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none',
-        active ? 'bg-foreground/10 text-foreground' : 'text-foreground/70 active:bg-foreground/5',
+        'relative z-20 flex h-12 min-w-12 flex-1 items-center justify-center rounded-full outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none',
+        active ? 'text-foreground' : 'text-foreground/70 active:bg-foreground/5',
       )}
     >
       {icon}

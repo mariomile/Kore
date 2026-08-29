@@ -24,6 +24,9 @@ interface MobileScreenProps {
   /** The All tab's badge filters (owned by the shell — survive navigation). */
   allFilters: AllNotesFilters
   onAllFiltersChange: (filters: AllNotesFilters) => void
+  /** True when the global capture sheet asks Tasks to create today's task. */
+  newTaskRequested?: boolean
+  onNewTaskConsumed?: () => void
 }
 
 /**
@@ -40,6 +43,8 @@ export function MobileScreen({
   onAllQueryChange,
   allFilters,
   onAllFiltersChange,
+  newTaskRequested = false,
+  onNewTaskConsumed = () => {},
 }: MobileScreenProps): ReactElement {
   const today = useToday()
 
@@ -85,7 +90,13 @@ export function MobileScreen({
         />
       )
     case 'tasks':
-      return <MobileTasks key="tasks" />
+      return (
+        <MobileTasks
+          key="tasks"
+          newTaskRequested={newTaskRequested}
+          onNewTaskConsumed={onNewTaskConsumed}
+        />
+      )
     case 'chat':
       return <MobileChat key="chat" />
     case 'settings':

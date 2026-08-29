@@ -29,21 +29,21 @@ export function MobileScreenHeader({
   return (
     <header
       ref={ref}
-      className="mobile-glass-bar absolute inset-x-0 top-0 z-30 border-b border-border"
+      className="mobile-glass-bar absolute inset-x-0 top-0 z-30"
       style={{ paddingTop: 'env(safe-area-inset-top)' }}
     >
-      <div className="grid h-11 grid-cols-[2.5rem_minmax(0,1fr)_2.5rem] items-center px-1">
+      <div className="grid h-11 grid-cols-[2.75rem_minmax(0,1fr)_2.75rem] items-center px-1">
         <Button
           variant="ghost"
           size="icon"
-          className="size-9 justify-self-center rounded-full bg-surface-hover"
+          className="size-11 justify-self-center rounded-full bg-surface-hover"
           aria-label="Back"
           onClick={onBack}
         >
           <ChevronLeft />
         </Button>
         <h1 className="min-w-0 truncate text-center text-base font-semibold">{title}</h1>
-        <div className="flex size-10 items-center justify-center justify-self-center">
+        <div className="flex size-11 items-center justify-center justify-self-center">
           {trailing}
         </div>
       </div>

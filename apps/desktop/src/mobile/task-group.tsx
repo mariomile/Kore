@@ -76,7 +76,7 @@ export function MobileTaskGroup({
             type="button"
             aria-label={`Add a task to ${group.kind === 'current' ? 'today' : group.label}`}
             onClick={() => onAdd(addTarget)}
-            className="-my-1 ml-auto flex size-8 flex-none items-center justify-center text-text-muted"
+            className="-my-2.5 ml-auto flex size-11 flex-none items-center justify-center rounded-full text-text-muted active:bg-surface-hover"
           >
             <Plus aria-hidden className="size-4" />
           </button>

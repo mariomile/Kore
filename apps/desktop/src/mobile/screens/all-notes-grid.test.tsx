@@ -122,9 +122,25 @@ beforeEach(() => {
 })
 
 describe('MobileAllNotes grid view', () => {
+  it('shows a retry action when the note query fails', async () => {
+    searchWithFilters.mockRejectedValueOnce(new Error('index unavailable'))
+    await renderScreen()
+
+    await expect.element(page.getByText('Couldn’t load your notes.')).toBeVisible()
+    searchWithFilters.mockResolvedValueOnce([hit()])
+    await page.getByRole('button', { name: 'Try again' }).click()
+    await expect.element(page.getByText('Health Stacked')).toBeVisible()
+  })
+
   it('switches to the card grid through the layout toggle', async () => {
     await renderScreen()
     await expect.element(page.getByText('Health Stacked')).toBeInTheDocument()
+
+    const layout = page.getByRole('group', { name: 'Layout' }).element()
+    const indicator = layout.querySelector<HTMLElement>('[data-sliding-indicator]')
+    expect(indicator).not.toBeNull()
+    expect(indicator?.style.transform).not.toBe('')
+    expect(indicator?.classList.contains('motion-reduce:transition-none')).toBe(true)
 
     await page.getByRole('button', { name: 'Grid view' }).click()
     expect(updateSettings).toHaveBeenCalledWith({ allNotesView: 'grid' })
@@ -137,12 +153,40 @@ describe('MobileAllNotes grid view', () => {
 
     await expect.element(page.getByText('Shop your health goals.')).toBeInTheDocument()
     expect(page.getByTestId('all-notes-grid').query()).not.toBeNull()
+    expect(
+      page
+        .getByRole('button', { name: 'Health Stacked' })
+        .element()
+        .classList.contains('shadow-sm'),
+    ).toBe(false)
 
     await page.getByRole('button', { name: 'Health Stacked' }).click()
     expect(JSON.parse(page.getByTestId('route').element().textContent ?? '{}')).toEqual({
       kind: 'note',
       path: 'notes/health.md',
     })
+  })
+
+  it('aligns the first card in each masonry column to the same top edge', async () => {
+    settingsState.allNotesView = 'grid'
+    searchWithFilters.mockResolvedValue([
+      hit({
+        preview:
+          'A deliberately long preview that wraps across several lines and makes this card much taller than its neighbor.',
+      }),
+      hit({
+        path: 'notes/short.md',
+        title: 'Short note',
+        highlightedTitle: 'Short note',
+        preview: '',
+      }),
+    ])
+    await renderScreen()
+
+    await expect.element(page.getByTestId('all-notes-grid')).toBeInTheDocument()
+    const cards = page.getByTestId('all-notes-grid').element().querySelectorAll('button')
+    expect(cards).toHaveLength(2)
+    expect(cards[0]?.getBoundingClientRect().top).toBe(cards[1]?.getBoundingClientRect().top)
   })
 
   it('keeps free-text highlights on card titles', async () => {

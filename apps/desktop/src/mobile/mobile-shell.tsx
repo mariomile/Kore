@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type ReactElement } from 'react'
 import { untitledNotePath } from '@reflect/core'
 import { useDoubleTap } from '@/hooks/use-double-tap'
+import { useMobileAudioMemo } from '@/mobile/audio-memo-provider'
+import { MobileCaptureDrawer } from '@/mobile/capture-drawer'
 import { MobileFormattingToolbar } from '@/mobile/formatting-toolbar'
 import { MobileStack } from '@/mobile/mobile-stack'
 import { MobileTabBar, tabRootFor, type MobileTab } from '@/mobile/mobile-tab-bar'
@@ -25,8 +27,11 @@ function dailyRouteFrom(route: Route): DailyRoute | null {
  */
 export function MobileShell(): ReactElement {
   const { route, navigate, entryId } = useRouter()
+  const audioMemo = useMobileAudioMemo()
   const [allQuery, setAllQuery] = useState('')
   const [allFilters, setAllFilters] = useState<AllNotesFilters>(EMPTY_ALL_NOTES_FILTERS)
+  const [captureOpen, setCaptureOpen] = useState(false)
+  const [newTaskRequested, setNewTaskRequested] = useState(false)
   const [lastTab, setLastTab] = useState<MobileTab>('daily')
   const [lastDailyRoute, setLastDailyRoute] = useState<DailyRoute>({ kind: 'today' })
   // A tab double-tap is a capture gesture (Daily focuses today's editor; list
@@ -107,6 +112,8 @@ export function MobileShell(): ReactElement {
           onAllQueryChange={setAllQuery}
           allFilters={allFilters}
           onAllFiltersChange={setAllFilters}
+          newTaskRequested={newTaskRequested}
+          onNewTaskConsumed={() => setNewTaskRequested(false)}
         />
         {/* The tab bar floats over the stack as a translucent glass bar —
             screens pad their scrollers past `--mobile-tab-bar-height`, so
@@ -115,7 +122,7 @@ export function MobileShell(): ReactElement {
           <MobileTabBar
             tab={tab}
             onSelect={handleTabSelect}
-            onNewNote={() => navigate({ kind: 'note', path: untitledNotePath() })}
+            onCapture={() => setCaptureOpen(true)}
           />
         )}
       </div>
@@ -125,6 +132,17 @@ export function MobileShell(): ReactElement {
           bottom of a root that ends at the keyboard's top — lands exactly
           on the keyboard edge with no fixed positioning. */}
       {keyboardVisible ? <MobileFormattingToolbar /> : null}
+      <MobileCaptureDrawer
+        open={captureOpen}
+        onOpenChange={setCaptureOpen}
+        onNote={() => navigate({ kind: 'note', path: untitledNotePath() })}
+        onTask={() => {
+          setNewTaskRequested(true)
+          navigate({ kind: 'tasks' })
+        }}
+        onRecord={audioMemo.toggle}
+        recordingAvailable={audioMemo.available}
+      />
     </div>
   )
 }

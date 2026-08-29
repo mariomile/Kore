@@ -25,7 +25,7 @@ describe('MobileScreenHeader', () => {
     }
     expect(Array.from(row.classList)).toContain('grid')
     expect(Array.from(row.classList)).toContain('h-11')
-    expect(Array.from(row.classList)).toContain('grid-cols-[2.5rem_minmax(0,1fr)_2.5rem]')
+    expect(Array.from(row.classList)).toContain('grid-cols-[2.75rem_minmax(0,1fr)_2.75rem]')
     expect(Array.from(row.classList)).toContain('items-center')
 
     expect(Array.from(view.getByRole('button', { name: 'Back' }).element().classList)).toContain(

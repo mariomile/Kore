@@ -147,19 +147,19 @@ vi.mock('@/providers/settings-provider', () => ({
     updateSettingsWith: () => {},
   }),
 }))
-// The daily spine renders the audio-memo FAB; this suite is about screens,
-// not recording — an unavailable memo surface keeps the FAB out of the tree.
+const audioMemo = vi.hoisted(() => ({ available: false, toggle: vi.fn() }))
 vi.mock('@/mobile/audio-memo-provider', () => ({
   useMobileAudioMemo: () => ({
     phase: 'idle',
     elapsedMs: 0,
     level: 0,
     pendingCount: 0,
-    available: false,
+    available: audioMemo.available,
+    hasTranscriptionConfig: true,
     error: null,
     canRetry: false,
     drawerOpen: false,
-    toggle: () => {},
+    toggle: audioMemo.toggle,
     stopAndSave: () => {},
     cancelRecording: () => {},
     onDrawerOpenChange: () => {},
@@ -187,6 +187,8 @@ beforeEach(async () => {
   setPlatformSurface({ mobileApp: true })
   await page.viewport(375, 700)
   files = {}
+  audioMemo.available = false
+  audioMemo.toggle.mockReset()
   editorProbe.focusCalls = 0
   editorProbe.selectionCalls = []
   mockInvoke.mockReset()
@@ -348,13 +350,47 @@ describe('MobileShell', () => {
     )
   })
 
+  it('slides one active indicator between navigation tabs', async () => {
+    const view = await mount({ kind: 'today' })
+    const indicator = view.getByTestId('mobile-tab-indicator').element()
+    const initialTransform = indicator.style.transform
+
+    expect(initialTransform).not.toBe('')
+    expect(Array.from(indicator.classList)).toContain('transition-[transform,width,height,opacity]')
+    expect(Array.from(indicator.classList)).toContain('top-0')
+    expect(Array.from(indicator.classList)).toContain('left-0')
+
+    await userEvent.click(view.getByRole('button', { name: 'All', exact: true }))
+
+    await waitFor(() => expect(indicator.style.transform).not.toBe(initialTransform))
+    expect(
+      view.getByRole('button', { name: 'All', exact: true }).element().getAttribute('aria-current'),
+    ).toBe('page')
+  })
+
   it.each(['Daily', 'All', 'Tasks'])('opens a new note from the %s capsule tab', async (label) => {
     const view = await mount({ kind: 'today' })
     await userEvent.click(view.getByRole('button', { name: label, exact: true }))
-    expect(view.getByRole('button', { name: 'New note' }).elements()).toHaveLength(1)
-    await userEvent.click(view.getByRole('button', { name: 'New note' }))
+    await userEvent.click(view.getByRole('button', { name: 'New' }))
+    await userEvent.click(view.getByRole('button', { name: 'Note', exact: true }))
     await expect.element(view.getByRole('heading', { name: 'New note' })).toBeVisible()
     expect(editorProbe.focusCalls).toBeGreaterThan(0)
+  })
+
+  it('offers note, task, and recording from plus without duplicating Today', async () => {
+    audioMemo.available = true
+    const view = await mount({ kind: 'today' })
+
+    await userEvent.click(view.getByRole('button', { name: 'New' }))
+
+    await expect.element(view.getByRole('button', { name: 'Note', exact: true })).toBeVisible()
+    await expect.element(view.getByRole('button', { name: 'Task', exact: true })).toBeVisible()
+    await expect.element(view.getByRole('button', { name: 'Record', exact: true })).toBeVisible()
+    expect(view.getByRole('button', { name: 'Today', exact: true }).query()).toBeNull()
+    expect(view.getByText('Create', { exact: true }).query()).toBeNull()
+
+    await userEvent.click(view.getByRole('button', { name: 'Record', exact: true }))
+    expect(audioMemo.toggle).toHaveBeenCalledTimes(1)
   })
 
   it('renders today as the daily spine with its note content', async () => {
@@ -689,9 +725,7 @@ describe('MobileShell', () => {
     await expect.element(view.getByRole('searchbox', { name: 'Search tasks' })).toBeVisible()
     // The fake bridge's index is empty, so the tab lands on its empty state.
     await expect.element(view.getByText('No tasks to show')).toHaveTextContent('No tasks to show')
-    const newTask = view.getByRole('button', { name: 'New task' }).element().getBoundingClientRect()
-    const nav = view.getByRole('navigation', { name: 'Sections' }).element().getBoundingClientRect()
-    expect(newTask.bottom).toBeLessThan(nav.top)
+    expect(view.getByRole('button', { name: 'New task' }).query()).toBeNull()
   })
 
   it('double-tapping Tasks selects the task search filter', async () => {
@@ -730,12 +764,12 @@ describe('MobileShell', () => {
 
     act(() => publishKeyboardHeight(316))
     expect(view.getByRole('navigation', { name: 'Sections' }).query()).toBeNull()
-    expect(view.getByRole('button', { name: 'New note' }).query()).toBeNull()
+    expect(view.getByRole('button', { name: 'New' }).query()).toBeNull()
     expect(document.documentElement.style.getPropertyValue('--mobile-tab-bar-height')).toBe('')
 
     act(() => publishKeyboardHeight(0))
     await expect.element(view.getByRole('navigation', { name: 'Sections' })).toBeVisible()
-    await expect.element(view.getByRole('button', { name: 'New note' })).toBeVisible()
+    await expect.element(view.getByRole('button', { name: 'New' })).toBeVisible()
   })
 
   it('gives the tab bar slot to the formatting toolbar only while an editor is focused', async () => {

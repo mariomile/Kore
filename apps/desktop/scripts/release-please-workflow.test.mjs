@@ -65,6 +65,11 @@ test('publishing clears the label that gates the next Release PR', () => {
   expect(releaseDmg).toContain("--remove-label 'autorelease: pending'")
   expect(releaseDmg).toContain("--add-label 'autorelease: tagged'")
   expect(releaseDmg).toContain('pull-requests: write')
+  expect(releaseDmg).toContain(
+    'version=$(node -p "require(\'./apps/desktop/package.json\').version")',
+  )
+  expect(releaseDmg).toContain(String.raw`select(.title == \"chore: release $version\")`)
+  expect(releaseDmg).not.toContain("--json number --jq '.[].number'")
 })
 
 test('the manifest tracks the version the app actually ships', () => {

@@ -168,7 +168,7 @@ jobs:
       # `v<version>`; a run that finds neither the tag nor a pending PR falls
       # back to the whole history and proposes a *lower* version (that is what
       # #89 was). Leaving the label until publish keeps that window shut.
-      - name: Mark merged Release PRs as released
+      - name: Mark the published Release PR as released
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -176,10 +176,12 @@ jobs:
           gh label create 'autorelease: tagged' --force \
             --color ededed \
             --description 'Release PR whose version has been published'
+          version=$(node -p "require('./apps/desktop/package.json').version")
           numbers=$(gh pr list --state merged --label 'autorelease: pending' \
-            --json number --jq '.[].number')
+            --json number,title \
+            --jq ".[] | select(.title == \"chore: release $version\") | .number")
           if [ -z "$numbers" ]; then
-            echo 'No merged Release PR is waiting to be marked released.'
+            echo "No merged Release PR for $version is waiting to be marked released."
             exit 0
           fi
           for number in $numbers; do

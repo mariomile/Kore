@@ -1,5 +1,12 @@
 # Architecture & Conventions
 
+> **Scope update (2026-08-27):** The TS-core/Rust-primitives split below documents
+> the original implementation architecture. For the next wave,
+> [TDR 0006 D07](../decisions/0006-personal-os-boundaries.md) assigns persistent
+> execution and security enforcement to a shared native runtime. Keep reusable TS
+> helpers and thin UI/IPC clients; do not duplicate authorization in the webview or
+> pre-create speculative crates. See [Plan 25](25-personal-os.md).
+
 Cross-cutting conventions for the whole codebase, adapted from `~/repos/picardo` (a
 separate first-party app with battle-tested structure).
 These four decisions were made deliberately and apply to **every** plan; individual

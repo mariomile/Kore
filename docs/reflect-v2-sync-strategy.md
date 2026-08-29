@@ -1,5 +1,12 @@
 # Reflect V2 Sync Strategy
 
+> **Kore next-wave direction (2026-08-27):** See the
+> [target architecture](kore-target-architecture.md), [roadmap](roadmap.md), and
+> [Plan 25](plans/25-personal-os.md). This document remains baseline/reference
+> material; the new target takes precedence for future scope. The next wave separates
+> knowledge sync, runtime coordination and secrets. Existing iCloud/Git exclusivity
+> remains; no live SQLite/WAL file sync is authorized.
+
 This document captures the current V2 sync direction. It focuses on a storage/sync adapter model, with AI-assisted conflict resolution sitting above the adapters.
 
 It complements [Reflect V2 Product Vision](./reflect-v2-product-vision.md).

@@ -1,22 +1,180 @@
-# Roadmap
+# Kore roadmap
 
-Feature backlog for this fork, roughly by priority. Shipped work moves to the
-bottom rather than being deleted, so the list doubles as a changelog of the
-customization effort.
+**Updated:** 2026-08-29.
+**Direction:** A local-first Personal OS for knowledge, work context, and agents.
+**Status:** Target direction and priority order. The delivery log below records
+work already merged; nothing in the plan above is claimed as delivered.
 
-## Next up
+Start with the [planning inventory](planning-index.md),
+[target architecture](kore-target-architecture.md), and
+[Plan 25 initiative catalog](plans/25-personal-os.md). The complete supplied
+“Lore” specification is preserved as [source material](kore-architecture-source.md).
+Kore remains the public project name; technical and Apple identifiers are unchanged.
 
-- **A beta release channel** — the updater endpoints for `beta` and `dev`
-  are already in `tauri.conf.json`, but no build targets them: every
-  release goes straight to production. bb's model (one build-time variable
-  branching bundle id, product name, binary name, release tag, and feed
-  file) maps onto Tauri as-is. Deliberately parked for now.
-- **Steering Cursor** — Cursor's `cursor-agent` still runs one-shot
-  (`-p` / ACP `session/prompt` blocks until the turn ends), so ⌘-Enter
-  queues there instead of injecting (`cliProviderSteerMode`). Revisit when
-  the CLI grows a streaming-input session.
+## Next up: Account-safe execution foundations
+
+Build on current Graphs, note ULIDs, typed Collections, keychain, profiles, and
+routines. They are useful foundations, not proof of the target permission/runtime
+model. The [source evidence table](kore-target-architecture.md#evidence-and-current-gaps)
+distinguishes existing code from remaining work.
+
+| Order | Priority | Initiative IDs | Outcome and gate |
+|---|---|---|---|
+| 1 | P0 | I01–I06, I23, I29 | Graph/domain identity, global Connections, multi-account, grants, capabilities, credentials and stable Object references; fail-closed authorization |
+| 2 | P0 | I07–I08 | Native durable jobs, queue/scheduler, global locks, retries, approvals and audit; survive webview lifecycle |
+| 3 | P1 | I09–I11 | Two Gmail + two Calendar + two Graphs; restricted Product Agent and cross-Graph Chief of Staff; understandable setup, scoped memory/models/skills |
+| 4 | P1 | I12–I13 | Normalized Resources before universal search/Ask Kore; notes + email + calendar with source/account/freshness |
+| 5 | P1 | I14 | Extend existing typed Collections into stable Objects/Databases, references and views |
+| 6 | P2 | I15–I19, I24 | Advanced calculations/views, external-event automations, Browser Profiles, Entity graph, Action Center, then additional connectors |
+| 7 | P3 | I20–I23 | Controlled external MCP, headless runtime and mobile control; separate knowledge/runtime/secrets sync |
+| 8 | P3 | I25–I28 | Connector SDK/catalog, plugin SDK, optional hosted execution; collaboration last |
+
+I23 storage design and I29 security/testing start in P0 and continue through every
+phase. Priority is a dependency sequence, not a delivery-date commitment.
+
+## First five demonstrable slices
+
+1. **S1: Two Gmail accounts, read-only.** Registry, credentials, two Graphs,
+   Agent grants, deterministic resolver, `email.search`, visible account and audit.
+   Bounded plan: [Plan 26](plans/26-account-safe-read.md).
+2. **S2: Two Calendar accounts.** Reuse the same Connection system without
+   Gmail-specific exceptions.
+3. **S3: Durable execution.** Native queue, locks, scheduler, retry/approval
+   checkpoints; close/reopen webview and recover state. Writes wait for this gate.
+4. **S4: Resources and search.** Query Markdown + Gmail + Calendar with provenance.
+5. **S5: Structured Objects.** Extend existing properties/Collections/views and
+   relation semantics; keep Markdown canonical.
+
+S1/S2 are early read-only architecture proofs; they do not complete the P0 release
+or permit background/write claims before S3. See [Plan 25](plans/25-personal-os.md)
+for the full dependency and source-order reconciliation.
+
+## Non-negotiable gates
+
+- **Foundation:** Graph/Agent/account isolation, stable IDs, secure credentials;
+  ambiguous writes blocked and revocation enforced at execution time.
+- **Runtime:** Durable jobs/retries, cross-client locks, approval continuation,
+  complete redacted audit and safe uncertain-effect handling.
+- **Operating workflows:** Unified Resources, attributable search, persistent
+  external-event automation, isolated authenticated Browser Profiles.
+- **Platform:** Authenticated external AI access, shared headless semantics,
+  mobile control and permission-constrained extensibility.
+
+All are open. [Acceptance checklist](plans/25-personal-os.md#acceptance-and-release-gates).
+Webview closure is not runtime termination, and iOS is not an always-on executor.
+
+## Deferred and decision-gated
+
+No new Space primitive, fifty-connector expansion, independent Database rewrite,
+mandatory hosted backend, or collaboration before single-user foundations.
+Existing simple rollups remain; expanded formulas depend on stable relations.
+The supplied temporary MCP adapter/compatibility proposal conflicts with repository
+policy and needs an explicit cutover decision before implementation. Storage,
+relation serialization, remote pairing and public API names also remain open.
+
+## Retained fork follow-ups
+
+[Plan 25 B01–B09](plans/25-personal-os.md#existing-backlog-retained-outside-the-new-program)
+retains beta channel (parked), Cursor steering (provider-dependent), graph/browser/
+tab polish, Meowdown glyph alignment, mobile queue/device checks, Git HTTPS auth,
+and AI-assisted sync-conflict resolution. They do not outrank the foundations.
+No bump, Apple signing, TestFlight, or release action is part of this update.
+
+## Historical fork delivery log
+
+The entries below are preserved from the previous roadmap. They record prior
+work, not a fresh source/runtime/release certification; terminology and historical
+implementation descriptions can differ from current code (for example icon sets
+and product names). New target work belongs above, not in this log.
 
 ## Shipped (this fork)
+
+- One release channel, and tagging that belongs to one workflow. Two
+  release-please components tracked the same master branch, so the beta and
+  stable Release PRs listed the same commits and neither published anything.
+  Both also created their GitHub releases as drafts and handed the tag to the
+  notarized `release.yml` this fork does not run, leaving nine untagged,
+  asset-less draft releases behind. That is a live hazard rather than clutter:
+  the in-app updater reads `releases/latest`. The beta component is gone and
+  the survivor carries `skip-github-release`, so tagging and publishing belong
+  solely to `release-dmg.yml`, whose `tauri-action` creates the tag and uploads
+  the DMG, the updater artifacts and `latest.json` in one shot. Merging the
+  Release PR is now the bump; the hand-bump remains the no-Release-PR fallback.
+  `manifest.stable.json` and the changelog were realigned to the versions
+  actually live, and a test now fails the build when the manifest falls behind
+  `package.json`.
+
+- The right rail opens on Details. The switcher shipped all five panels as
+  permanent segments, but Details is the only one tied to what the route is
+  already showing, so it is now the whole band by default and Chat, Calendar,
+  Browser and Terminal move behind a "+" beside it. Picking one from the "+"
+  opens it and gives it a segment so the switcher can return to it; unticking
+  it takes the segment away again, falling back to Details when that was the
+  panel on screen. The open set is per-window session state, like the panel
+  choice it joins.
+
+- The title-bar band, split in two. All five controls sat in one left cluster,
+  which put the search lens and the mic hard against the surface pills. The band
+  is now two window-drag control groups: pills hold the left edge, lens and mic
+  hold the right, and the gap between them still drags the window.
+
+- Voice-note transcription model on iPhone. Mobile settings carried the
+  auto-format toggle but not the model behind it, so a memo recorded on the
+  phone was stuck on the built-in default while the desktop could choose.
+  Shipped alongside a test-suite repair worth its own line: three
+  `vi.mock(...)` factories resolved to a different module id than the component
+  imported, so they never intercepted and the tests drove the real components.
+  The tasks screen was failing 26 of 66 locally while CI passed them; the
+  integrations pair asserted text the real field also renders, so it passed on
+  the component it believed it had replaced. The browser suite now runs green
+  locally end to end: 217 files, 1,797 tests.
+
+- Mobile, free. The paid-access gate and the upstream product integrations are
+  gone from the iOS app, which also gains floating navigation capsules and
+  shared note capture.
+
+- Six settings and surfaces that did not do what they said. The right rail now
+  mirrors the content column (a 44px switcher band over a floating card, sunken
+  off the window edges like the note pane), and its left gutter doubles as the
+  resize divider's lane: the embedded browser's native child webview covers the
+  card, so a divider sharing those pixels was unreachable whenever the Browser
+  panel was up. Tags leave the rail for the left sidebar, the rail's Chat panel
+  stops stealing focus from the note you were editing, and the search-engine
+  setting finally reaches the blank tab (the in-app browser's home page was a
+  hardcoded DuckDuckGo URL, so picking Google changed only the address bar).
+
+- The ONNX thread pool, when it never takes effect. ONNX Runtime keeps only the
+  first configuration a process offers it and reports `false` from `commit` for
+  every later one. `commit_environment` read that as cosmetic and returned `Ok`
+  either way, so a first commit lost to an environment configured elsewhere left
+  inference on fastembed's defaults, every core spinning, behind a runtime that
+  looked configured and was not. That also made `embed_bench`'s
+  `.expect("production ONNX thread pool")` inert: from the second benchmark in a
+  process the pool was silently the default while the numbers were read as
+  production's. The outcome is now computed once and shared.
+
+- Native embedding memory, bounded and measured. Four texts per native request
+  and library call, a 128 KiB admission limit, eight admitted requests and FIFO
+  execution; chunking bounds unbroken text at 1,500 UTF-16 units without
+  dropping content or splitting surrogate pairs; idle release protects active
+  model references and publishes before a new load can race the old watchdog.
+  The paired 32-text experiment cut native peak footprint by 81.9% with no
+  throughput regression in that sample. Native footprint and lifetime peak are
+  now reported separately from RSS. Boundaries and reproduction commands live in
+  [memory budgets](memory-budget.md); the incident itself is in the
+  [performance audit](performance-audit-2026-08-27.md). These are native
+  benchmark figures, not a certification of the app-wide budgets.
+
+- The embedding backfill that drove the machine into swap. Backfill fed every
+  pending note to the embedder in one call; with BatchLongest padding and 29 KB
+  chunk outliers that pushed ONNX Runtime's arena past 30 GB. The runtime batch
+  is now capped at a fixed size in `embed.rs` (mirrored as a shared constant for
+  the TypeScript side), chunk length is hard-capped so one outlier cannot
+  inflate a batch, and note embedding is batched in the pipeline with a
+  cancellation check between batches, wired through to the live embeddings UI.
+  The app icon was replaced in the same round: the supplied white-on-transparent
+  Kore mark now sits on a near-black squircle following the macOS icon grid,
+  regenerated for every target from a 1024 master.
 
 - One icon set. The app drew from three families at once — `lucide-react`
   across the product chrome, ten SVGs traced from V1 (a *filled* pin sitting

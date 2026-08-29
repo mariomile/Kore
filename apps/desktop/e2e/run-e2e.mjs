@@ -13,12 +13,15 @@
 // renaming "Kore V2"/"Quarterly Goals" or the "sync over Git." sentence
 // there means updating the locators here.
 import { spawn } from 'node:child_process'
-import { fileURLToPath } from 'node:url'
 import { existsSync, mkdirSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
 import { chromium } from 'playwright'
 
 const PORT = process.env['E2E_PORT'] ?? '5199'
 const BASE = `http://127.0.0.1:${PORT}/`
+// `fileURLToPath`, not `.pathname`: the latter keeps URL percent-encoding, so
+// any checkout whose path contains a space resolves to a directory that does
+// not exist (`/Dev%20Projects/…`).
 const SHOTS = fileURLToPath(new URL('./shots/', import.meta.url))
 mkdirSync(SHOTS, { recursive: true })
 

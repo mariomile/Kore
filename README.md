@@ -52,6 +52,21 @@ another git remote are connected directly by the user.
 See [docs/roadmap.md](docs/roadmap.md) for the full changelog of the
 customization and what is planned next.
 
+## Product planning
+
+The next development wave targets a **local-first Personal OS**: Graph-scoped
+knowledge, multiple external accounts, persistent agents, structured Objects,
+and a durable execution runtime. This is planned direction, not a list of
+features already available in the installed app.
+
+- [Roadmap](docs/roadmap.md): Priorities, delivery gates, and retained fork history.
+- [Target architecture](docs/kore-target-architecture.md): Domain, runtime, privacy,
+  storage, existing-source baseline, and unresolved design decisions.
+- [Plan 25](docs/plans/25-personal-os.md): All 29 initiatives, dependencies,
+  first implementation slices, acceptance tests, and source traceability.
+- [Planning inventory](docs/planning-index.md): Every planning, decision, porting,
+  and supporting reference document in this repository.
+
 ## Install
 
 The app ships under the product name **Kore** (the repository is Kore);
@@ -154,7 +169,7 @@ kore/
 ├── crates/graph-paths/    # Shared graph-path classification (Rust ↔ TS parity)
 ├── plugins/               # First-party Tauri plugins (keyboard, recording)
 ├── fixtures/              # TS ↔ Rust parity test corpora
-├── design-system/         # Tokens and UI primitives
+├── design-system/         # Design tokens and the Inter webfont
 └── docs/                  # Product, architecture, and contributor docs
 ```
 

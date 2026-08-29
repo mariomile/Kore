@@ -14,7 +14,6 @@ import {
   getCompletedTasks,
   getOpenTasks,
   type OpenTask,
-  type TaskGroup,
 } from '@reflect/core'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -24,7 +23,7 @@ import { useRecentlyCompleted } from '@/lib/tasks/recently-completed'
 import { taskContent } from '@/lib/tasks/task-content'
 import { sameTask, taskKey } from '@/lib/tasks/task-identity'
 import type { InsertTaskTarget } from '@/lib/tasks/task-insert-target'
-import { scrollTaskIntoView } from '@/lib/tasks/task-navigation'
+import { flattenTaskGroups } from '@/lib/tasks/task-list-items'
 import { useTaskActions } from '@/lib/tasks/use-task-actions'
 import { useTaskRowHandlers } from '@/lib/tasks/use-task-row-handlers'
 import { useTaskFilters } from '@/lib/tasks/task-filters'
@@ -33,12 +32,13 @@ import { useTaskKeyboard } from '@/lib/tasks/use-task-keyboard'
 import { useTaskSelection } from '@/lib/tasks/use-task-selection'
 import { completedTasksQueryKey, tasksQueryKey } from '@/lib/tasks/tasks-query'
 import { useScrollRestoration } from '@/lib/use-scroll-restoration'
+import { useScrollToIndexBridge } from '@/lib/use-scroll-to-index-bridge'
 import { useToday } from '@/lib/use-today'
 import type { ModClickEvent } from '@/lib/windows/open-in-new-window'
 import { useGraph } from '@/providers/graph-provider'
 import { routeForPath } from '@/routing/route'
 import { TaskFiltersMenu } from './task-filters-menu'
-import { TaskGroupSection } from './task-group-section'
+import { TaskList } from './task-list'
 import { TaskScheduleCalendar } from './task-schedule-calendar'
 import { TaskToolbarCountBadge } from './task-toolbar-count-badge'
 import { isModEvent } from '@meowdown/core'
@@ -64,6 +64,9 @@ function focusedSelectedKey(
  * box filters by text; the "Task filters" menu toggles which buckets show and
  * reveals completed ("archived") tasks. Owns its scroll container so the sticky
  * headers and the toolbar stay put; per-entry scroll memory mirrors All Notes.
+ * The rows themselves are virtualized ({@link TaskList}) — the completed-tasks
+ * read carries no LIMIT (Cmd+A must select the whole history), so only
+ * virtualization keeps a long-lived graph's archive cheap to render.
  *
  * Rows are multi-selectable (V1 parity): click to select, ⌘/Shift to extend, and
  * keyboard shortcuts act on the selection — ⌘A select all, ↑/↓ (Shift to extend),
@@ -129,6 +132,23 @@ export function TasksScreen(): ReactElement {
     [orderedTasks],
   )
   const selection = useTaskSelection(orderedKeys)
+  // The rows the virtualized list renders: every group's header, breadcrumb,
+  // and task row flattened into one order, so a graph's full completed
+  // history costs the same as a handful of tasks — see the "why" in
+  // getCompletedTasks (packages/core), which deliberately carries no LIMIT.
+  const items = useMemo(() => flattenTaskGroups(groups), [groups])
+  // Where a task's row landed in the flattened order — the index the
+  // scroll-to-index bridge needs, since it isn't `orderedTasks`' own index
+  // (headers and breadcrumbs sit between task rows).
+  const taskItemIndex = useMemo(() => {
+    const index = new Map<string, number>()
+    for (const [position, item] of items.entries()) {
+      if (item.kind === 'task') {
+        index.set(taskKey(item.task), position)
+      }
+    }
+    return index
+  }, [items])
   // Close the schedule popover when the selection it acts on goes away (e.g. a
   // reindex prunes the selected row): the toolbar trigger and the calendar unmount
   // together, so a lingering `scheduleOpen` would remount it open on re-select.
@@ -136,11 +156,20 @@ export function TasksScreen(): ReactElement {
     setScheduleOpen(false)
   }
   const actions = useTaskActions()
-  const scrollToKey = useCallback((key: string | null) => {
-    if (key !== null) {
-      scrollTaskIntoView(rootRef.current, key)
-    }
-  }, [])
+  // The list owns the virtualizer; the bridge lets keyboard nav, selection,
+  // and inserts pull an off-screen (unmounted) row into view through the
+  // virtualizer's own scrollToIndex — element.scrollIntoView can't reach a
+  // row that isn't in the DOM.
+  const { scrollToIndex, registerScrollToIndex } = useScrollToIndexBridge()
+  const scrollToKey = useCallback(
+    (key: string | null) => {
+      const index = key === null ? undefined : taskItemIndex.get(key)
+      if (index !== undefined) {
+        scrollToIndex(index)
+      }
+    },
+    [taskItemIndex, scrollToIndex],
+  )
   const editHandlers = useTaskRowHandlers({ selection, actions, orderedTasks, today, scrollToKey })
   const selectedTaskKeys = selection.selected
   const activeTaskKey = selection.activeKey
@@ -350,22 +379,18 @@ export function TasksScreen(): ReactElement {
             {needle ? 'No matching tasks.' : 'No tasks to show.'}
           </p>
         ) : (
-          <div className="flex flex-col gap-5">
-            {groups.map((group: TaskGroup) => (
-              <TaskGroupSection
-                key={group.kind === 'note' ? `note:${group.notePath}` : group.kind}
-                group={group}
-                selection={selection}
-                editHandlers={editHandlers}
-                taskActionPending={actions.isPending}
-                onSelectionCheckboxToggle={onSelectionCheckboxToggle}
-                today={today}
-                onAdd={onAdd}
-                convertControllerRef={convertControllerRef}
-                onOpen={openNote}
-              />
-            ))}
-          </div>
+          <TaskList
+            items={items}
+            selection={selection}
+            editHandlers={editHandlers}
+            taskActionPending={actions.isPending}
+            onSelectionCheckboxToggle={onSelectionCheckboxToggle}
+            today={today}
+            onAdd={onAdd}
+            convertControllerRef={convertControllerRef}
+            onOpen={openNote}
+            registerScrollToIndex={registerScrollToIndex}
+          />
         )}
       </div>
     </div>

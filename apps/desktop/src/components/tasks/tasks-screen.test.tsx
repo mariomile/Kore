@@ -246,7 +246,12 @@ function renderScreen(client = new QueryClient({ defaultOptions: { queries: { re
   return render(
     <QueryClientProvider client={client}>
       <RouterProvider>
-        <TasksScreen />
+        {/* The screen fills its container (`h-full`); hand it the viewport
+            height so the virtualized list's scroll container gets a real,
+            bounded size (mirrors AllNotesScreen's test harness). */}
+        <div style={{ height: '100vh' }}>
+          <TasksScreen />
+        </div>
         <RouteProbe />
       </RouterProvider>
     </QueryClientProvider>,
@@ -401,8 +406,17 @@ describe('TasksScreen', () => {
     const view = await renderScreen()
 
     await view.findByText('today task')
-    const headers = view.getAllByRole('heading', { level: 2 }).map((node) => node.textContent)
-    expect(headers).toEqual(['Current', 'Overdue', 'Project'])
+    // Polled, not read once: the list is virtualized, so the first task can be
+    // on screen a frame before the virtualizer has measured and mounted the
+    // rest of the window. Reading synchronously here passes on a fast machine
+    // and fails on a slow one.
+    await vi.waitFor(() =>
+      expect(view.getAllByRole('heading', { level: 2 }).map((node) => node.textContent)).toEqual([
+        'Current',
+        'Overdue',
+        'Project',
+      ]),
+    )
     expect(view.getByText('overdue task')).toBeDefined()
     expect(view.getByText('project task')).toBeDefined()
     await view.unmount()

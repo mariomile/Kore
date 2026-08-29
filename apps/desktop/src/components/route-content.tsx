@@ -1,19 +1,49 @@
-import type { ReactElement } from 'react'
-import { AgentsScreen } from '@/components/agents/agents-screen'
+import { lazy, Suspense, type ReactElement } from 'react'
 import { AllNotesScreen } from '@/components/all-notes/all-notes-screen'
-import { BrowserPane } from '@/components/browser/browser-pane'
 import { ChatScreen } from '@/components/chat/chat-screen'
 import { DailyStream } from '@/components/daily-stream'
-import { GraphMapScreen } from '@/components/graph-map/graph-map-screen'
-import { InsightsScreen } from '@/components/insights/insights-screen'
 import { SearchRoute } from '@/components/search-route'
 import { SingleNoteView } from '@/components/single-note-view'
-import { SettingsNavigator } from '@/components/settings/settings-navigator'
-import { SettingsScreen } from '@/components/settings-screen'
 import { TasksScreen } from '@/components/tasks/tasks-screen'
-import { TerminalScreen } from '@/components/terminal/terminal-screen'
 import { useRouter } from '@/routing/router'
 import { ScrollRestored } from '@/routing/scroll-restore'
+
+// The six routes below are reached deliberately, never on boot, and one of
+// them (`terminal`) pulls xterm, 345 KB already minified. Statically imported
+// they all landed in `desktop-root`, which `warmPlatformRoot` fetches during
+// startup. The six eager ones above are the routes the app can open into or
+// that a keystroke reaches instantly, so they stay in the boot chunk.
+const AgentsScreen = lazy(() =>
+  import('@/components/agents/agents-screen').then((module) => ({
+    default: module.AgentsScreen,
+  })),
+)
+const BrowserPane = lazy(() =>
+  import('@/components/browser/browser-pane').then((module) => ({ default: module.BrowserPane })),
+)
+const GraphMapScreen = lazy(() =>
+  import('@/components/graph-map/graph-map-screen').then((module) => ({
+    default: module.GraphMapScreen,
+  })),
+)
+const InsightsScreen = lazy(() =>
+  import('@/components/insights/insights-screen').then((module) => ({
+    default: module.InsightsScreen,
+  })),
+)
+const SettingsNavigator = lazy(() =>
+  import('@/components/settings/settings-navigator').then((module) => ({
+    default: module.SettingsNavigator,
+  })),
+)
+const SettingsScreen = lazy(() =>
+  import('@/components/settings-screen').then((module) => ({ default: module.SettingsScreen })),
+)
+const TerminalScreen = lazy(() =>
+  import('@/components/terminal/terminal-screen').then((module) => ({
+    default: module.TerminalScreen,
+  })),
+)
 
 /**
  * The route → view mapping (Plan 06): the single place a {@link Route} kind
@@ -26,6 +56,20 @@ import { ScrollRestored } from '@/routing/scroll-restore'
  * same clock.
  */
 export function RouteContent(): ReactElement {
+  return (
+    <Suspense fallback={null}>
+      <RouteView />
+    </Suspense>
+  )
+}
+
+/**
+ * The switch itself. Split out so the `Suspense` boundary wraps every branch
+ * without indenting the whole mapping, and so a lazy branch cannot be added
+ * without one. `null` is the right fallback: these routes are opened
+ * deliberately, and a spinner for one frame reads as jank rather than progress.
+ */
+function RouteView(): ReactElement {
   const { route } = useRouter()
   switch (route.kind) {
     case 'today':

@@ -6,11 +6,17 @@ interface TaskBreadcrumbsProps {
   breadcrumbs: readonly string[]
   /** Select every task row sharing this outline context; omit on read-only surfaces. */
   onSelect?: () => void
-  /** Additional classes applied to the wrapper list item. */
+  /** Additional classes applied to the wrapper element. */
   className?: string
 }
 
-/** One V1-style outline-context row above the consecutive tasks it labels. */
+/**
+ * One V1-style outline-context row above the consecutive tasks it labels.
+ *
+ * Renders a `div`, not an `li`: the desktop Tasks screen flattens headers,
+ * breadcrumbs and task rows into one virtualized sequence that is not a list,
+ * and the mobile tab supplies its own `li` around this.
+ */
 export function TaskBreadcrumbs({
   breadcrumbs,
   onSelect,
@@ -22,7 +28,7 @@ export function TaskBreadcrumbs({
   const label = breadcrumbs.join(' → ')
 
   return (
-    <li className={cn('min-w-0 px-4 pt-1.5 lg:px-12', className)}>
+    <div className={cn('min-w-0 px-4 pt-1.5 lg:px-12', className)}>
       {onSelect === undefined ? (
         <span
           title={label}
@@ -40,6 +46,6 @@ export function TaskBreadcrumbs({
           {label}
         </button>
       )}
-    </li>
+    </div>
   )
 }

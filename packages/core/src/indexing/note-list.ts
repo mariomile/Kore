@@ -41,85 +41,64 @@ export interface NoteListOptions {
 export async function listNotes(options: NoteListOptions = {}): Promise<NoteListEntry[]> {
   const tag = options.tag ?? null
 
-  let listQuery =
+  // One query, not two. The tags used to come back as their own uncapped
+  // listing (roughly 9,000 rows on a 4,500-note graph) and were stitched to the
+  // list in JS. Folding them in with `group_concat` deletes that whole round
+  // trip, along with the per-row `serde_json::Map` the Rust query bridge builds
+  // for each of those rows.
+  //
+  // The tag filter is an `EXISTS` rather than a join: joining the filter tag
+  // would multiply the grouped rows whenever a note matched more than once, and
+  // the old `distinct()` that guarded against that cannot coexist with the
+  // aggregate. `EXISTS` narrows without duplicating, so the grouping is exact.
+  let listQuery = db
+    .selectFrom('notes')
+    .leftJoin('tags', 'tags.notePath', 'notes.path')
+    .select([
+      'notes.path',
+      'notes.title',
+      'notes.mtime',
+      'notes.preview',
+      'notes.isPinned',
+      'notes.pinnedOrder',
+      // Ordered on the folded key so a row's tags read in the same alphabetical
+      // order as the facet list, regardless of display casing. The separator is
+      // the ASCII unit separator: the `#tag` grammar cannot produce a control
+      // character, so it can never appear inside a tag and split one in half.
+      sql<string | null>`group_concat("tags"."tag", char(31) ORDER BY "tags"."tag_key")`.as('tags'),
+    ])
+    .groupBy('notes.path')
+
+  listQuery =
     tag === null
-      ? db
-          .selectFrom('notes')
-          .where('notes.kind', '=', 'note')
-          .select([
-            'notes.path',
-            'notes.title',
-            'notes.mtime',
-            'notes.preview',
-            'notes.isPinned',
-            'notes.pinnedOrder',
-          ])
-      : db
-          .selectFrom('tags')
-          .innerJoin('notes', 'notes.path', 'tags.notePath')
-          .where('tags.tagKey', '=', foldTag(tag))
-          .where('notes.kind', 'in', ['note', 'daily'])
-          .select([
-            'notes.path',
-            'notes.title',
-            'notes.mtime',
-            'notes.preview',
-            'notes.isPinned',
-            'notes.pinnedOrder',
-          ])
-          .distinct()
+      ? listQuery.where('notes.kind', '=', 'note')
+      : listQuery.where('notes.kind', 'in', ['note', 'daily']).where(
+          sql<boolean>`exists (
+            select 1 from "tags" as "filter_tags"
+            where "filter_tags"."note_path" = "notes"."path"
+              and "filter_tags"."tag_key" = ${foldTag(tag)}
+          )`,
+        )
+
   for (const order of recallOrder(true)) {
     listQuery = listQuery.orderBy(order)
   }
   const rows = await listQuery.execute()
-
-  if (rows.length === 0) {
-    return []
-  }
-
-  // Tags for the same note set, via the same predicates — a join rather than a
-  // `note_path IN (…)` list, which would put a per-row parameter between the
-  // list and SQLite's bound-parameter ceiling.
-  const tagRows =
-    tag === null
-      ? await db
-          .selectFrom('tags')
-          .innerJoin('notes', 'notes.path', 'tags.notePath')
-          .where('notes.kind', '=', 'note')
-          .select(['tags.notePath', 'tags.tag'])
-          // Order on the folded key so a row's tags read in the same alphabetical
-          // order as the facet list, regardless of display casing.
-          .orderBy('tags.tagKey')
-          .execute()
-      : await db
-          .selectFrom('tags')
-          .innerJoin('notes', 'notes.path', 'tags.notePath')
-          .innerJoin('tags as filterTags', 'filterTags.notePath', 'notes.path')
-          .where('filterTags.tagKey', '=', foldTag(tag))
-          .where('notes.kind', 'in', ['note', 'daily'])
-          .select(['tags.notePath', 'tags.tag'])
-          .distinct()
-          .orderBy('tags.tagKey')
-          .execute()
-  const tagsByPath = new Map<string, string[]>()
-  for (const row of tagRows) {
-    const tags = tagsByPath.get(row.notePath)
-    if (tags === undefined) {
-      tagsByPath.set(row.notePath, [row.tag])
-    } else {
-      tags.push(row.tag)
-    }
-  }
 
   return rows.map((row) => ({
     path: row.path,
     title: row.title,
     mtime: row.mtime,
     snippet: row.preview,
-    tags: tagsByPath.get(row.path) ?? [],
+    // `group_concat` yields null for a note with no tags, which is the common
+    // case: splitting that string would hand back `['']`, a phantom empty tag.
+    tags: row.tags === null ? [] : row.tags.split(TAG_SEPARATOR),
     isPinned: row.isPinned !== 0,
   }))
 }
+
+/** ASCII unit separator, the `char(31)` the tag `group_concat` joins on. */
+const TAG_SEPARATOR = '\u{1F}'
 
 /** One row of the recent-notes listing (the AI chat's recents tool). */
 export interface RecentNoteRow {

@@ -1,5 +1,6 @@
 import { sql } from 'kysely'
 import { db } from './db'
+import { isProjectionCurrent } from './queries'
 import type { NoteTagFacet } from './note-list'
 
 /**
@@ -39,12 +40,22 @@ export interface GraphInsights {
 }
 
 /**
- * Graph-relative paths of every `private: true` note. The Claude Code CLI
- * chat engine turns these into per-file Read deny rules — the privacy hard
- * block for an engine that reads files itself instead of using the checked
- * note tools.
+ * Graph-relative paths of every `private: true` note, or `null` when the index
+ * cannot answer. The CLI chat engines turn these into per-file Read deny rules
+ * — the privacy hard block for an engine that reads files itself instead of
+ * using the checked note tools.
+ *
+ * `null` is not an error channel, it is the third answer. The projection is
+ * wiped and refilled one note at a time on every {@link PROJECTION_VERSION}
+ * bump, so during a rebuild the query succeeds and returns a list that is
+ * empty, then partial. A partial list is the dangerous shape: it looks like a
+ * real answer while silently omitting the notes not yet re-indexed. Callers
+ * must treat `null` exactly as they treat a throw and refuse the run.
  */
-export async function listPrivateNotePaths(): Promise<string[]> {
+export async function listPrivateNotePaths(): Promise<string[] | null> {
+  if (!(await isProjectionCurrent())) {
+    return null
+  }
   const rows = await db.selectFrom('notes').where('isPrivate', '=', 1).select('path').execute()
   return rows.map((row) => row.path)
 }

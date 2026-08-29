@@ -85,7 +85,15 @@ export function MobileTaskGroup({
       <ul className="flex flex-col">
         {contexts.map((context) => (
           <Fragment key={taskKey(context.tasks[0]!)}>
-            <TaskBreadcrumbs breadcrumbs={context.visibleBreadcrumbs} className="px-4 pb-1 pt-3" />
+            {/* The shared breadcrumb renders a div, since the desktop screen
+              flattens its rows into a virtualized sequence that is not a list.
+              This tab keeps a real list, so it supplies the item wrapper. */}
+            <li>
+              <TaskBreadcrumbs
+                breadcrumbs={context.visibleBreadcrumbs}
+                className="px-4 pb-1 pt-3"
+              />
+            </li>
             {context.tasks.map((task) => (
               <MobileTaskRow
                 key={taskKey(task)}

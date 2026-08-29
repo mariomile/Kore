@@ -6,11 +6,10 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use pulldown_cmark::{Event, HeadingLevel, Parser, Tag};
 use reflect_graph_paths::eviction_placeholder;
+use reflect_note_policy::{first_h1, parse_frontmatter, split_frontmatter, Frontmatter};
 
 use crate::error::CliError;
-use crate::frontmatter::{parse_frontmatter, split_frontmatter, Frontmatter};
 use crate::keys::fold_key;
 use crate::paths::date_from_daily_path;
 
@@ -49,64 +48,6 @@ fn basename(path: &str) -> &str {
     } else {
         file
     }
-}
-
-/// The TS `unescapeMarkdownText` (`plain-text.ts`): a backslash before ASCII
-/// punctuation resolves to that character; any other backslash stays literal.
-fn unescape_markdown_text(text: &str) -> String {
-    let mut out = String::with_capacity(text.len());
-    let mut chars = text.chars();
-    while let Some(ch) = chars.next() {
-        if ch == '\\' {
-            if let Some(next) = chars.clone().next() {
-                if next.is_ascii_punctuation() {
-                    out.push(next);
-                    chars.next();
-                    continue;
-                }
-            }
-        }
-        out.push(ch);
-    }
-    out
-}
-
-/// The TS `cleanHeadingText`: setext headings keep their first line; ATX
-/// headings lose the leading hashes and any trailing closing hashes; both
-/// resolve backslash escapes like the TS extractor.
-fn clean_heading_text(raw: &str) -> String {
-    let raw = raw
-        .strip_suffix('\n')
-        .map(|text| text.strip_suffix('\r').unwrap_or(text))
-        .unwrap_or(raw);
-    if let Some(newline_at) = raw.find('\n') {
-        return unescape_markdown_text(raw[..newline_at].trim());
-    }
-    let text = raw.trim_start();
-    let text = text.trim_start_matches('#');
-    let text = text.trim_start_matches([' ', '\t']);
-    let text = text.trim_end_matches([' ', '\t']);
-    let text = text.trim_end_matches('#');
-    unescape_markdown_text(text.trim())
-}
-
-/// First level-1 heading with non-empty text, cleaned like the TS extractor
-/// (raw source slice, so inline markup is kept verbatim). pulldown-cmark gives
-/// CommonMark semantics — a `# line` inside a code fence is not a heading.
-fn first_h1(body: &str) -> Option<String> {
-    for (event, range) in Parser::new(body).into_offset_iter() {
-        if let Event::Start(Tag::Heading {
-            level: HeadingLevel::H1,
-            ..
-        }) = event
-        {
-            let text = clean_heading_text(&body[range]);
-            if !text.is_empty() {
-                return Some(text);
-            }
-        }
-    }
-    None
 }
 
 /// Split positions of v1 subject-alias separators: exactly two slashes, not

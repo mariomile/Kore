@@ -238,12 +238,24 @@ fn ensure_readable_attachment_path(path: &str) -> AppResult<()> {
 // ---- commands --------------------------------------------------------------
 
 /// Create a new graph at `path` (scaffolds the layout) and open it.
+///
+/// Async so the directory scaffold and `bootstrap` writes run off the main
+/// thread — on iOS, the thread that delivers touches. `activate` stays in the
+/// same closure as the fs work: it is what advances the graph to the new
+/// root, and must not be split from the work that makes that root real.
 #[tauri::command]
-pub fn graph_create(path: String, state: State<GraphState>) -> AppResult<GraphInfo> {
-    let root = PathBuf::from(&path);
-    fs::create_dir_all(&root)?;
-    bootstrap(&root)?;
-    activate(&state, &root)
+pub async fn graph_create<R: tauri::Runtime>(
+    path: String,
+    app: tauri::AppHandle<R>,
+) -> AppResult<GraphInfo> {
+    crate::blocking::run_blocking(move || {
+        let root = PathBuf::from(&path);
+        fs::create_dir_all(&root)?;
+        bootstrap(&root)?;
+        let state = app.state::<GraphState>();
+        activate(&state, &root)
+    })
+    .await
 }
 
 /// Import a user-selected Reflect V1 export `.zip` into the open graph. V1's
@@ -319,14 +331,25 @@ fn emit_import_progress(app: &tauri::AppHandle, stage: &'static str, done: usize
 
 /// Open an existing Markdown vault in place, adding only `.reflect/` runtime
 /// state. Reflect's authoring directories remain lazy for adopted vaults.
+///
+/// Async so the directory check and `initialize_runtime` writes run off the
+/// main thread — on iOS, the thread that delivers touches. `activate` stays
+/// in the same closure as that work for the same reason as `graph_create`.
 #[tauri::command]
-pub fn graph_open(path: String, state: State<GraphState>) -> AppResult<GraphInfo> {
-    let root = PathBuf::from(&path);
-    if !root.is_dir() {
-        return Err(AppError::not_found(format!("not a directory: {path}")));
-    }
-    initialize_runtime(&root)?;
-    activate(&state, &root)
+pub async fn graph_open<R: tauri::Runtime>(
+    path: String,
+    app: tauri::AppHandle<R>,
+) -> AppResult<GraphInfo> {
+    crate::blocking::run_blocking(move || {
+        let root = PathBuf::from(&path);
+        if !root.is_dir() {
+            return Err(AppError::not_found(format!("not a directory: {path}")));
+        }
+        initialize_runtime(&root)?;
+        let state = app.state::<GraphState>();
+        activate(&state, &root)
+    })
+    .await
 }
 
 /// Read a note's markdown by graph-relative path. `generation`, when given,
@@ -487,29 +510,39 @@ pub async fn asset_write(
 /// file-delete IPC. Idempotent — a segment deleted twice (or never written)
 /// is fine.
 #[tauri::command]
-pub fn audio_memo_delete(path: String, generation: u64, state: State<GraphState>) -> AppResult<()> {
+pub async fn audio_memo_delete<R: tauri::Runtime>(
+    path: String,
+    generation: u64,
+    app: tauri::AppHandle<R>,
+) -> AppResult<()> {
+    // Checked before the hop: a malformed path is rejected without spending
+    // a thread on it.
     if !path.starts_with("audio-memos/") {
         return Err(AppError::traversal(format!(
             "not an audio memo path: {path}"
         )));
     }
-    let root = root_for_generation(&state, generation)?;
-    let abs = resolve(&root, &path)?;
-    // An iCloud-evicted segment exists only as its `.name.icloud` stub —
-    // mirror `note_delete` so a cancelled session's evicted parts still
-    // delete (Plan 21).
-    let target = if abs.exists() {
-        abs
-    } else {
-        eviction_placeholder(&abs)
-            .filter(|stub| stub.exists())
-            .unwrap_or(abs)
-    };
-    match fs::remove_file(target) {
-        Ok(()) => Ok(()),
-        Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(()),
-        Err(err) => Err(err.into()),
-    }
+    crate::blocking::run_blocking(move || {
+        let state = app.state::<GraphState>();
+        let root = root_for_generation(&state, generation)?;
+        let abs = resolve(&root, &path)?;
+        // An iCloud-evicted segment exists only as its `.name.icloud` stub —
+        // mirror `note_delete` so a cancelled session's evicted parts still
+        // delete (Plan 21).
+        let target = if abs.exists() {
+            abs
+        } else {
+            eviction_placeholder(&abs)
+                .filter(|stub| stub.exists())
+                .unwrap_or(abs)
+        };
+        match fs::remove_file(target) {
+            Ok(()) => Ok(()),
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(()),
+            Err(err) => Err(err.into()),
+        }
+    })
+    .await
 }
 
 /// The per-segment transcript cache lives under `.reflect/transcripts/`:
@@ -542,33 +575,41 @@ fn transcript_cache_file(root: &Path, name: &str) -> AppResult<std::path::PathBu
 
 /// Read one cached segment transcript; `notFound` when nothing is cached.
 #[tauri::command]
-pub fn transcript_cache_read(
+pub async fn transcript_cache_read<R: tauri::Runtime>(
     name: String,
     generation: u64,
-    state: State<GraphState>,
+    app: tauri::AppHandle<R>,
 ) -> AppResult<String> {
-    let root = root_for_generation(&state, generation)?;
-    match fs::read_to_string(transcript_cache_file(&root, &name)?) {
-        Ok(contents) => Ok(contents),
-        Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
-            Err(AppError::not_found(format!("no cached transcript: {name}")))
+    crate::blocking::run_blocking(move || {
+        let state = app.state::<GraphState>();
+        let root = root_for_generation(&state, generation)?;
+        match fs::read_to_string(transcript_cache_file(&root, &name)?) {
+            Ok(contents) => Ok(contents),
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
+                Err(AppError::not_found(format!("no cached transcript: {name}")))
+            }
+            Err(err) => Err(err.into()),
         }
-        Err(err) => Err(err.into()),
-    }
+    })
+    .await
 }
 
 /// Cache one segment's transcription result. A torn write is harmless — the
 /// reader treats undecodable JSON as "no cache" and re-transcribes.
 #[tauri::command]
-pub fn transcript_cache_write(
+pub async fn transcript_cache_write<R: tauri::Runtime>(
     name: String,
     contents: String,
     generation: u64,
-    state: State<GraphState>,
+    app: tauri::AppHandle<R>,
 ) -> AppResult<()> {
-    let root = root_for_generation(&state, generation)?;
-    fs::write(transcript_cache_file(&root, &name)?, contents)?;
-    Ok(())
+    crate::blocking::run_blocking(move || {
+        let state = app.state::<GraphState>();
+        let root = root_for_generation(&state, generation)?;
+        fs::write(transcript_cache_file(&root, &name)?, contents)?;
+        Ok(())
+    })
+    .await
 }
 
 /// Read a binary asset's bytes as a **raw IPC response** — no base64, no
@@ -576,13 +617,17 @@ pub fn transcript_cache_write(
 /// the bridge ~1.33× inflated inside one giant JSON string. Pinned to
 /// `generation` for the same reason as [`asset_read`].
 #[tauri::command]
-pub fn asset_read_binary(
+pub async fn asset_read_binary<R: tauri::Runtime>(
     path: String,
     generation: u64,
-    state: State<GraphState>,
+    app: tauri::AppHandle<R>,
 ) -> AppResult<tauri::ipc::Response> {
-    let root = root_for_generation(&state, generation)?;
-    Ok(tauri::ipc::Response::new(fs::read(resolve(&root, &path)?)?))
+    crate::blocking::run_blocking(move || {
+        let state = app.state::<GraphState>();
+        let root = root_for_generation(&state, generation)?;
+        Ok(tauri::ipc::Response::new(fs::read(resolve(&root, &path)?)?))
+    })
+    .await
 }
 
 /// Read a binary asset's bytes, base64-encoded for the JSON IPC (e.g. audio
@@ -591,31 +636,42 @@ pub fn asset_read_binary(
 /// switch, and an unpinned read would resolve against the *new* root —
 /// handing back (and possibly sending to a provider) another graph's file.
 #[tauri::command]
-pub fn asset_read(path: String, generation: u64, state: State<GraphState>) -> AppResult<String> {
+pub async fn asset_read<R: tauri::Runtime>(
+    path: String,
+    generation: u64,
+    app: tauri::AppHandle<R>,
+) -> AppResult<String> {
     use base64::Engine;
+    // Checked before the hop: a non-attachment path is rejected without
+    // spending a thread on it.
     ensure_readable_attachment_path(&path)?;
-    let root = root_for_generation(&state, generation)?;
-    let bytes = fs::read(resolve(&root, &path)?)?;
-    Ok(base64::engine::general_purpose::STANDARD.encode(bytes))
+    crate::blocking::run_blocking(move || {
+        let state = app.state::<GraphState>();
+        let root = root_for_generation(&state, generation)?;
+        let bytes = fs::read(resolve(&root, &path)?)?;
+        Ok(base64::engine::general_purpose::STANDARD.encode(bytes))
+    })
+    .await
 }
 
 /// Open a graph asset in the OS default application. The frontend supplies the
 /// graph-relative `assets/...` path from markdown; Rust resolves it inside the
 /// generation-pinned graph so the JS opener never gets broad filesystem access.
 #[tauri::command]
-pub fn asset_open(
-    path: String,
-    generation: u64,
-    app: tauri::AppHandle,
-    state: State<GraphState>,
-) -> AppResult<()> {
+pub async fn asset_open(path: String, generation: u64, app: tauri::AppHandle) -> AppResult<()> {
+    // Checked before the hop: a non-attachment path is rejected without
+    // spending a thread on it.
     ensure_readable_attachment_path(&path)?;
-    let root = root_for_generation(&state, generation)?;
-    let abs = resolve(&root, &path)?;
-    if !abs.is_file() {
-        return Err(AppError::not_found(format!("asset not found: {path}")));
-    }
-    open_asset_path(&app, &abs)
+    crate::blocking::run_blocking(move || {
+        let state = app.state::<GraphState>();
+        let root = root_for_generation(&state, generation)?;
+        let abs = resolve(&root, &path)?;
+        if !abs.is_file() {
+            return Err(AppError::not_found(format!("asset not found: {path}")));
+        }
+        open_asset_path(&app, &abs)
+    })
+    .await
 }
 
 #[cfg(target_os = "ios")]
@@ -638,19 +694,18 @@ fn open_asset_path(app: &tauri::AppHandle, path: &Path) -> AppResult<()> {
 /// plus existence is the whole requirement. This is the frontend's fallback
 /// when `asset_open` refuses a file type.
 #[tauri::command]
-pub fn asset_reveal(
-    path: String,
-    generation: u64,
-    app: tauri::AppHandle,
-    state: State<GraphState>,
-) -> AppResult<()> {
+pub async fn asset_reveal(path: String, generation: u64, app: tauri::AppHandle) -> AppResult<()> {
     ensure_revealable_path(&path)?;
-    let root = root_for_generation(&state, generation)?;
-    let abs = resolve(&root, &path)?;
-    if !abs.is_file() {
-        return Err(AppError::not_found(format!("asset not found: {path}")));
-    }
-    reveal_asset_path(&app, &abs)
+    crate::blocking::run_blocking(move || {
+        let state = app.state::<GraphState>();
+        let root = root_for_generation(&state, generation)?;
+        let abs = resolve(&root, &path)?;
+        if !abs.is_file() {
+            return Err(AppError::not_found(format!("asset not found: {path}")));
+        }
+        reveal_asset_path(&app, &abs)
+    })
+    .await
 }
 
 fn ensure_revealable_path(path: &str) -> AppResult<()> {
@@ -670,7 +725,13 @@ fn ensure_revealable_path(path: &str) -> AppResult<()> {
 /// extensions — this channel exists for the app's exports (styled note HTML,
 /// collection CSV), not as a general file writer.
 #[tauri::command]
-pub fn export_write(path: String, contents: String) -> AppResult<()> {
+pub async fn export_write(path: String, contents: String) -> AppResult<()> {
+    crate::blocking::run_blocking(move || export_write_sync(path, contents)).await
+}
+
+/// The write itself, off the command's threading shell so the tests below can
+/// exercise it directly without a Tokio runtime.
+fn export_write_sync(path: String, contents: String) -> AppResult<()> {
     let target = PathBuf::from(&path);
     if !target.is_absolute() {
         return Err(AppError::traversal(format!(
@@ -716,28 +777,41 @@ fn asset_file_url(path: &Path) -> AppResult<tauri::Url> {
 /// reason as `asset_read` — the listing seeds a background pass that must
 /// never mix graphs.
 #[tauri::command]
-pub fn dir_list(
+pub async fn dir_list<R: tauri::Runtime>(
     dir: String,
     generation: u64,
-    state: State<GraphState>,
+    app: tauri::AppHandle<R>,
 ) -> AppResult<Vec<FileMeta>> {
-    let root = root_for_generation(&state, generation)?;
-    resolve(&root, &dir)?; // traversal guard; the walk itself skips symlinks
-    let mut out = Vec::new();
-    collect_files(&root, &dir, None, &mut out)?;
-    Ok(out)
+    crate::blocking::run_blocking(move || {
+        let state = app.state::<GraphState>();
+        let root = root_for_generation(&state, generation)?;
+        resolve(&root, &dir)?; // traversal guard; the walk itself skips symlinks
+        let mut out = Vec::new();
+        collect_files(&root, &dir, None, &mut out)?;
+        Ok(out)
+    })
+    .await
 }
 
 /// Does a graph-relative path currently exist as a file? The collision picker
 /// (Plan 17) probes disk as well as the index — the index lags the watcher by
 /// a debounce, and an unindexed file must never be clobbered by a new note.
 #[tauri::command]
-pub fn note_exists(path: String, state: State<GraphState>) -> AppResult<bool> {
-    let root = current_root(&state)?;
-    // Occupied, not merely readable: an iCloud-evicted note is only a stub on
-    // disk, but creating a new note at its path would collide the moment the
-    // real file re-downloads (Plan 21).
-    Ok(io::file_occupied(&resolve(&root, &path)?))
+pub async fn note_exists<R: tauri::Runtime>(
+    path: String,
+    app: tauri::AppHandle<R>,
+) -> AppResult<bool> {
+    // Pinned before the hop, like `list_files`'s unpinned branch: resolving
+    // "current" inside the closure could probe a root swapped in after the
+    // invoke.
+    let root = current_root(&app.state::<GraphState>())?;
+    crate::blocking::run_blocking(move || {
+        // Occupied, not merely readable: an iCloud-evicted note is only a
+        // stub on disk, but creating a new note at its path would collide
+        // the moment the real file re-downloads (Plan 21).
+        Ok(io::file_occupied(&resolve(&root, &path)?))
+    })
+    .await
 }
 
 /// Rename `from` → `to` on disk (both graph-relative, traversal-guarded).
@@ -772,27 +846,35 @@ pub(crate) fn move_note_file(root: &Path, from: &str, to: &str) -> AppResult<()>
 /// `.reflect/trash/` instead (Plan 19), the same recoverability promise, and
 /// `.reflect/` is already excluded from sync and indexing.
 #[tauri::command]
-pub fn note_delete(path: String, generation: u64, state: State<GraphState>) -> AppResult<()> {
-    let root = root_for_generation(&state, generation)?;
-    let abs = resolve(&root, &path)?;
-    // An iCloud-evicted note exists only as its `.name.md.icloud` stub —
-    // trashing the logical path would fail and the note would be
-    // undeletable. Removing the stub deletes the iCloud item (Plan 21).
-    let target = if abs.exists() {
-        abs
-    } else {
-        eviction_placeholder(&abs)
-            .filter(|stub| stub.exists())
-            .unwrap_or(abs)
-    };
-    #[cfg(desktop)]
-    os_trash_delete(&target)?;
-    #[cfg(mobile)]
-    move_to_graph_trash(&root, &target)?;
-    // A deleted note's sync ancestor is meaningless — drop it (Plan 21).
-    crate::conflict::shadow::ShadowStore::new(&root).forget(&path);
-    invalidate_file_catalog(&state, &root);
-    Ok(())
+pub async fn note_delete<R: tauri::Runtime>(
+    path: String,
+    generation: u64,
+    app: tauri::AppHandle<R>,
+) -> AppResult<()> {
+    crate::blocking::run_blocking(move || {
+        let state = app.state::<GraphState>();
+        let root = root_for_generation(&state, generation)?;
+        let abs = resolve(&root, &path)?;
+        // An iCloud-evicted note exists only as its `.name.md.icloud` stub —
+        // trashing the logical path would fail and the note would be
+        // undeletable. Removing the stub deletes the iCloud item (Plan 21).
+        let target = if abs.exists() {
+            abs
+        } else {
+            eviction_placeholder(&abs)
+                .filter(|stub| stub.exists())
+                .unwrap_or(abs)
+        };
+        #[cfg(desktop)]
+        os_trash_delete(&target)?;
+        #[cfg(mobile)]
+        move_to_graph_trash(&root, &target)?;
+        // A deleted note's sync ancestor is meaningless — drop it (Plan 21).
+        crate::conflict::shadow::ShadowStore::new(&root).forget(&path);
+        invalidate_file_catalog(&state, &root);
+        Ok(())
+    })
+    .await
 }
 
 /// Move the open graph's **entire directory** to the OS trash (recoverable)
@@ -805,14 +887,24 @@ pub fn note_delete(path: String, generation: u64, state: State<GraphState>) -> A
 /// Pinned to `generation` — a delete enqueued before a graph switch must
 /// never trash the newly opened graph. Desktop-only: mobile's fixed roots
 /// have no OS trash and no delete UI.
+///
+/// The check-and-invalidate stays on the command's own async body, before
+/// the hop: it is a mutex lock, not I/O, and running it there keeps the
+/// documented ordering exact — invalidated *before* the trash move starts,
+/// with no blocking-pool queueing delay widening that window. Only the trash
+/// move and the recents write, the actual I/O, run on the blocking pool.
 #[tauri::command]
-pub fn graph_delete(generation: u64, state: State<GraphState>) -> AppResult<()> {
+pub async fn graph_delete<R: tauri::Runtime>(
+    generation: u64,
+    app: tauri::AppHandle<R>,
+) -> AppResult<()> {
     #[cfg(desktop)]
     {
         // Check-and-invalidate under one lock hold — `root_for_generation`
         // followed by a separate invalidation would leave a window where a
         // pinned write still resolves the doomed root.
         let root = {
+            let state = app.state::<GraphState>();
             let mut inner = lock_graph(&state)?;
             if inner.generation != generation {
                 return Err(AppError::io(
@@ -825,18 +917,22 @@ pub fn graph_delete(generation: u64, state: State<GraphState>) -> AppResult<()> 
             inner.catalog_revision = inner.catalog_revision.wrapping_add(1);
             root
         };
-        os_trash_delete(&root)?;
-        // Recents is a convenience cache (same stance as `activate`): the
-        // directory is already in the trash, so a failure to persist must not
-        // report the delete as failed. A stale entry fails loudly on open.
-        if let Err(err) = crate::recents::forget(&root.to_string_lossy()) {
-            tracing::warn!(?err, "failed to forget deleted graph");
-        }
-        Ok(())
+        crate::blocking::run_blocking(move || {
+            os_trash_delete(&root)?;
+            // Recents is a convenience cache (same stance as `activate`): the
+            // directory is already in the trash, so a failure to persist must
+            // not report the delete as failed. A stale entry fails loudly on
+            // open.
+            if let Err(err) = crate::recents::forget(&root.to_string_lossy()) {
+                tracing::warn!(?err, "failed to forget deleted graph");
+            }
+            Ok(())
+        })
+        .await
     }
     #[cfg(mobile)]
     {
-        let _ = (generation, &state);
+        let _ = (generation, &app);
         Err(AppError::io(
             "deleting a graph is not supported on this platform",
         ))
@@ -932,16 +1028,6 @@ pub async fn list_files<R: tauri::Runtime>(
     .await
 }
 
-/// List supported local attachments from the same cached catalog as
-/// [`list_files`].
-#[tauri::command]
-pub fn list_attachments(
-    generation: Option<u64>,
-    state: State<GraphState>,
-) -> AppResult<Vec<FileMeta>> {
-    Ok(file_catalog(&state, generation)?.attachments)
-}
-
 /// Counts from the vault catalog. `skipped` is what the walk refused or
 /// failed to list (unreadable directories, symlinks, default-pruned trees) —
 /// the number that keeps "why isn't my file showing up" diagnosable.
@@ -953,17 +1039,35 @@ pub struct VaultScanStats {
     pub skipped: u32,
 }
 
+/// Async for the same reason as [`list_files`]: a cold catalog is a full-tree
+/// walk with a `metadata()` per entry, and every write and watcher batch
+/// invalidates the cache, so this runs cold far more often than it runs warm.
+/// Measured at 5.2 ms for 2,500 files, 28.9 ms at 12,000 and 73.8 ms at 30,000
+/// — a main-thread block on the thread that delivers touches on iOS.
 #[tauri::command]
-pub fn vault_scan_stats(
+pub async fn vault_scan_stats<R: tauri::Runtime>(
     generation: Option<u64>,
-    state: State<GraphState>,
+    app: tauri::AppHandle<R>,
 ) -> AppResult<VaultScanStats> {
-    let catalog = file_catalog(&state, generation)?;
-    Ok(VaultScanStats {
-        notes: catalog.notes.len() as u32,
-        attachments: catalog.attachments.len() as u32,
-        skipped: catalog.skipped,
+    // Pinned before the hop exactly as `list_files` does: resolving inside the
+    // closure could count a root swapped in after the invoke.
+    let generation = match generation {
+        Some(generation) => generation,
+        None => {
+            let state = app.state::<GraphState>();
+            current_graph_info(&state)?.generation
+        }
+    };
+    crate::blocking::run_blocking(move || {
+        let state = app.state::<GraphState>();
+        let catalog = file_catalog(&state, Some(generation))?;
+        Ok(VaultScanStats {
+            notes: catalog.notes.len() as u32,
+            attachments: catalog.attachments.len() as u32,
+            skipped: catalog.skipped,
+        })
     })
+    .await
 }
 
 /// The same note listing as [`list_files`], callable with a plain root — the
@@ -1038,13 +1142,13 @@ pub(crate) fn invalidate_file_catalog(state: &GraphState, root: &Path) {
 
 #[cfg(test)]
 mod export_write_tests {
-    use super::export_write;
+    use super::export_write_sync;
 
     #[test]
     fn writes_html_to_an_absolute_path() {
         let dir = tempfile::tempdir().expect("dir");
         let target = dir.path().join("My Note.html");
-        export_write(
+        export_write_sync(
             target.to_string_lossy().into_owned(),
             "<!doctype html>".to_string(),
         )
@@ -1058,18 +1162,18 @@ mod export_write_tests {
     #[test]
     fn refuses_relative_paths_and_unexpected_extensions() {
         let dir = tempfile::tempdir().expect("dir");
-        assert!(export_write("relative.html".to_string(), String::new()).is_err());
+        assert!(export_write_sync("relative.html".to_string(), String::new()).is_err());
         let sneaky = dir.path().join("script.sh");
-        assert!(export_write(sneaky.to_string_lossy().into_owned(), String::new()).is_err());
+        assert!(export_write_sync(sneaky.to_string_lossy().into_owned(), String::new()).is_err());
         let plain = dir.path().join("note.txt");
-        assert!(export_write(plain.to_string_lossy().into_owned(), String::new()).is_err());
+        assert!(export_write_sync(plain.to_string_lossy().into_owned(), String::new()).is_err());
     }
 
     #[test]
     fn writes_csv_exports_too() {
         let dir = tempfile::tempdir().expect("dir");
         let target = dir.path().join("books.csv");
-        export_write(
+        export_write_sync(
             target.to_string_lossy().into_owned(),
             "Title,Author\n".to_string(),
         )

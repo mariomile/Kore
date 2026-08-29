@@ -2,7 +2,6 @@ import { errorMessage, getNote, getPinnedNotes, randomNotePath } from '@reflect/
 import { attachFilesToNote } from '@/lib/attach-files'
 import { runCopyNotePath } from '@/lib/note-copy-path'
 import { runCopyDeepLink } from '@/lib/note-deep-link'
-import { runNoteExport } from '@/lib/note-export'
 import { runGistPublish } from '@/lib/note-gist'
 import { toggleNotePinned } from '@/lib/note-pin'
 import { toggleNotePrivate } from '@/lib/note-private'
@@ -146,6 +145,13 @@ export const NOTE_ACTION_COMMANDS: AppCommand[] = [
       if (generation === null || path === null) {
         return
       }
+      // Loaded on demand: `runNoteExport` pulls MarkdownView from
+      // `@meowdown/react`, and with it ProseMirror and CodeMirror. This module
+      // is registered from `main.tsx` at top level, so a static import puts
+      // the whole editor stack in the entry's eager graph, evaluated before
+      // the first render in every webview: main window, each note window, and
+      // the quick-capture popup.
+      const { runNoteExport } = await import('@/lib/note-export')
       await runNoteExport(path, generation)
     },
   },

@@ -58,10 +58,17 @@ jobs:
       matrix:
         shard: ['1/3', '2/3', '3/3']
         config:
+          # Chromium is the full run: every project, including the five that
+          # never read REFLECT_TEST_BROWSER. WebKit exists to cover the engine
+          # the production Tauri webview actually uses, so it runs only the two
+          # browser projects. Re-running ~250 engine-independent Node files on
+          # a macOS runner costs 10x per minute and proves nothing new.
           - os: ubuntu-latest
             browser: chromium
+            projects: ''
           - os: macos-latest
             browser: webkit
+            projects: '--project browser --project core-browser'
 
     name: test ${{ matrix.config.browser }} ${{ matrix.shard }}
     runs-on: ${{ matrix.config.os }}
@@ -87,7 +94,7 @@ jobs:
         run: pnpm --filter @reflect/desktop exec playwright install ${{ matrix.config.browser }}
 
       - name: Test
-        run: pnpm run test --shard ${{ matrix.shard }}
+        run: pnpm run test --shard ${{ matrix.shard }} ${{ matrix.config.projects }}
         env:
           REFLECT_TEST_BROWSER: ${{ matrix.config.browser }}
 
@@ -186,6 +193,17 @@ jobs:
       # set `tauri ios` builds with.
       - name: Check iOS library
         run: cargo check -p reflect-open --lib --target aarch64-apple-ios --no-default-features
+
+      # CaptureInbox/ShareState (the share extension's capture-envelope
+      # encoder + extraction logic) are hand-written Swift with no Tauri
+      # dependency, unlike the two Tauri plugins under plugins/*/ios — those
+      # need the iOS build's generated .tauri/tauri-api and can't build
+      # standalone. ShareExtensionTests symlinks the real ShareExtension
+      # sources in (SwiftPM won't let a target's path escape the package
+      # root) so this pins the capture envelope's wire shape against
+      # packages/core/src/actions/capture-envelope.ts without copying them.
+      - name: Test ShareExtension capture ingress (Swift)
+        run: swift test --package-path apps/desktop/src-tauri/gen/apple/ShareExtensionTests
 
   # A single job for branch protection to require, instead of listing every
   # job (and every matrix shard) as a required status check.

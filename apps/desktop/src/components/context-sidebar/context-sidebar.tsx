@@ -1,9 +1,35 @@
-import { useState, type ReactElement, type ReactNode } from 'react'
-import { CalendarDays, Chat, Globe, Info, Terminal, type Icon } from '@/components/icons'
-import { BrowserPane } from '@/components/browser/browser-pane'
+import { lazy, Suspense, useState, type ReactElement, type ReactNode } from 'react'
+import {
+  CalendarDays,
+  Chat,
+  Close,
+  Globe,
+  Info,
+  Plus,
+  Terminal,
+  type Icon,
+} from '@/components/icons'
 import { ChatScreen } from '@/components/chat/chat-screen'
 import { SidebarIconSlot } from '@/components/sidebar/sidebar-icon-slot'
-import { TerminalScreen } from '@/components/terminal/terminal-screen'
+import {
+  DropdownMenu,
+  DropdownMenuItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+
+// Lazy here too, or this edge survives the route split: the sidebar can host
+// the terminal and browser panes, so a static import from here would pull xterm
+// and the browser pane back into the boot chunk regardless of what
+// route-content.tsx does.
+const BrowserPane = lazy(() =>
+  import('@/components/browser/browser-pane').then((module) => ({ default: module.BrowserPane })),
+)
+const TerminalScreen = lazy(() =>
+  import('@/components/terminal/terminal-screen').then((module) => ({
+    default: module.TerminalScreen,
+  })),
+)
 import { haptic } from '@/lib/haptics'
 import { useToday } from '@/lib/use-today'
 import { cn } from '@/lib/utils'
@@ -14,6 +40,13 @@ import { NoteContextSidebar } from './note-context-sidebar'
 import type { ContextSidebarTarget } from './sidebar-route'
 
 type ContextPanel = 'details' | 'chat' | 'calendar' | 'browser' | 'terminal'
+
+/**
+ * The one panel the rail always carries. Every other panel is opt-in through
+ * the "+" menu, so the default switcher is a single glyph rather than a row
+ * of five — the rail opens on what the route is already about.
+ */
+const DEFAULT_PANEL: ContextPanel = 'details'
 
 /** What a panel's body gets to describe: the route's note, and the day. */
 interface PanelContext {
@@ -88,7 +121,11 @@ const PANELS: ContextPanelSpec[] = [
     Glyph: Globe,
     ownsScrolling: true,
     // Shares its session with the browser tab.
-    render: () => <BrowserPane />,
+    render: () => (
+      <Suspense fallback={null}>
+        <BrowserPane />
+      </Suspense>
+    ),
   },
   {
     id: 'terminal',
@@ -96,9 +133,16 @@ const PANELS: ContextPanelSpec[] = [
     Glyph: Terminal,
     ownsScrolling: true,
     // The same PTY as the terminal route's.
-    render: () => <TerminalScreen />,
+    render: () => (
+      <Suspense fallback={null}>
+        <TerminalScreen />
+      </Suspense>
+    ),
   },
 ]
+
+/** The panels the "+" menu offers — everything the rail does not start with. */
+const OPTIONAL_PANELS = PANELS.filter((spec) => spec.id !== DEFAULT_PANEL)
 
 interface ContextSidebarProps {
   /** What the Details panel describes — null on routes without a note. */
@@ -109,15 +153,47 @@ interface ContextSidebarProps {
  * The right-hand workspace sidebar: a switcher band over a floating card,
  * the same two-part shape as the content column's tab strip over the
  * note-pane card. A liquid-glass icon switcher picks which of {@link PANELS}
- * fills the card. The choice is per-window session state, not persisted.
+ * fills the card, and starts as Details alone plus the "+" that adds the
+ * rest. What the "+" opens is a real tab: it stays on the band until you
+ * close it, and only Details cannot be closed. Both the open set and the
+ * choice are per-window session state, not persisted.
  */
 export function ContextSidebar({ target }: ContextSidebarProps): ReactElement {
-  const [panel, setPanel] = useState<ContextPanel>('details')
+  const [opened, setOpened] = useState<ContextPanel[]>([])
+  const [panel, setPanel] = useState<ContextPanel>(DEFAULT_PANEL)
   const today = useToday()
   // The calendar panel anchors on the described day when there is one, so it
   // matches what the Details panel would show on a daily route.
   const calendarDate = target?.kind === 'daily' ? target.date : today
-  const active = PANELS.find((spec) => spec.id === panel) ?? PANELS[0]!
+  // Segments keep `PANELS` order however the panels were opened, so the band
+  // never reshuffles itself around the glyph you are aiming at.
+  const segments = PANELS.filter((spec) => spec.id === DEFAULT_PANEL || opened.includes(spec.id))
+  const active = segments.find((spec) => spec.id === panel) ?? segments[0]!
+
+  const selectPanel = (id: ContextPanel): void => {
+    if (id !== panel) {
+      haptic('alignment')
+      setPanel(id)
+    }
+  }
+
+  /** Opening a panel from the "+" also brings it up; re-picking an open one just shows it. */
+  const openPanel = (id: ContextPanel): void => {
+    haptic('alignment')
+    if (!opened.includes(id)) {
+      setOpened([...opened, id])
+    }
+    setPanel(id)
+  }
+
+  /** Closing the tab on screen falls back to Details, the one tab that never closes. */
+  const closePanel = (id: ContextPanel): void => {
+    haptic('alignment')
+    setOpened(opened.filter((entry) => entry !== id))
+    if (panel === id) {
+      setPanel(DEFAULT_PANEL)
+    }
+  }
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -126,40 +202,27 @@ export function ContextSidebar({ target }: ContextSidebarProps): ReactElement {
           band doubles as title-bar drag area; the switcher itself is lifted
           above the WindowDragRegion strip so its segments stay clickable. */}
       <div data-tauri-drag-region className="flex h-11 flex-none items-center px-3">
-        {/* The segments cluster centered at a fixed width instead of
-            stretching across the rail, so the glyphs stay close together at
-            any panel width. */}
-        <div
-          role="tablist"
-          aria-label="Context panels"
-          className="window-drag-control flex w-full items-center justify-center gap-1"
-        >
-          {PANELS.map(({ id, label, Glyph }) => (
-            <button
-              key={id}
-              type="button"
-              role="tab"
-              aria-selected={panel === id}
-              aria-label={label}
-              title={label}
-              onClick={() => {
-                if (id !== panel) {
-                  haptic('alignment')
-                }
-                setPanel(id)
-              }}
-              className={cn(
-                // The segments have to fit the rail's 240px minimum, so they
-                // give up width before the row overflows.
-                'flex h-8 min-w-0 max-w-10 flex-1 items-center justify-center rounded-lg transition-colors duration-150 ease-swift',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
-              )}
-            >
-              <SidebarIconSlot>
-                <Glyph className="size-[17px]" />
-              </SidebarIconSlot>
-            </button>
-          ))}
+        {/* The tabs run from the rail's left edge, the same direction the
+            content column's strip fills, with the "+" trailing the last one
+            rather than the row centering itself around them. */}
+        <div className="window-drag-control flex w-full items-center justify-start gap-1">
+          <div
+            role="tablist"
+            aria-label="Context panels"
+            className="flex min-w-0 items-center gap-1"
+          >
+            {segments.map((spec) => (
+              <PanelTab
+                key={spec.id}
+                spec={spec}
+                active={panel === spec.id}
+                onSelect={selectPanel}
+                onClose={spec.id === DEFAULT_PANEL ? undefined : closePanel}
+              />
+            ))}
+          </div>
+
+          <ContextPanelsPlusMenu onOpen={openPanel} />
         </div>
       </div>
 
@@ -181,5 +244,128 @@ export function ContextSidebar({ target }: ContextSidebarProps): ReactElement {
         </div>
       </div>
     </div>
+  )
+}
+
+interface PanelTabProps {
+  spec: ContextPanelSpec
+  active: boolean
+  onSelect: (id: ContextPanel) => void
+  /** Left out for Details, the tab the rail always carries. */
+  onClose?: ((id: ContextPanel) => void) | undefined
+}
+
+/**
+ * One tab on the switcher band: the panel's glyph, plus the close badge that
+ * takes it back off the band. The badge is noise on every tile at once, so it
+ * belongs to the tab you are pointing at or the one already on screen — and
+ * middle-click closes without aiming at it, as it does on the content strip.
+ */
+function PanelTab({
+  spec: { id, label, Glyph },
+  active,
+  onSelect,
+  onClose,
+}: PanelTabProps): ReactElement {
+  return (
+    <div
+      // Presentational so the tablist still sees tabs, not wrappers: the box
+      // exists to hang the close badge off the tab's corner.
+      role="presentation"
+      className="group relative flex shrink items-center"
+      onAuxClick={(event) => {
+        if (onClose && event.button === 1) {
+          event.preventDefault()
+          onClose(id)
+        }
+      }}
+    >
+      <button
+        type="button"
+        role="tab"
+        aria-selected={active}
+        aria-label={label}
+        title={label}
+        onClick={() => {
+          onSelect(id)
+        }}
+        className={cn(
+          // The tabs have to fit the rail's 240px minimum, so they give up
+          // width before the row overflows.
+          'flex size-8 shrink items-center justify-center rounded-lg transition-colors duration-150 ease-swift',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
+        )}
+      >
+        <SidebarIconSlot>
+          <Glyph className="size-[17px]" />
+        </SidebarIconSlot>
+      </button>
+      {onClose ? (
+        <button
+          type="button"
+          aria-label={`Close ${label}`}
+          title={`Close ${label}`}
+          onClick={() => {
+            onClose(id)
+          }}
+          className={cn(
+            'absolute -right-0.5 -top-0.5 z-10 flex size-3.5 items-center justify-center rounded-full',
+            'bg-surface-active text-text-muted ring-1 ring-border transition-opacity duration-150 ease-swift',
+            'hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
+            active ? '' : 'opacity-0 focus-visible:opacity-100 group-hover:opacity-100',
+          )}
+        >
+          <Close aria-hidden className="size-2.5" />
+        </button>
+      ) : null}
+    </div>
+  )
+}
+
+interface ContextPanelsPlusMenuProps {
+  onOpen: (id: ContextPanel) => void
+}
+
+/**
+ * The switcher's "+": every panel the rail does not start with. Picking one
+ * gives it a tab and brings it up; picking one that already has a tab just
+ * shows it, since the tab itself is what closes it again.
+ */
+function ContextPanelsPlusMenu({ onOpen }: ContextPanelsPlusMenuProps): ReactElement {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={
+          <button
+            type="button"
+            aria-label="Open a panel"
+            title="Open a panel"
+            className={cn(
+              // The "+" never gives up its width: it is the only way back to
+              // the panels the band is not carrying.
+              'flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors duration-150 ease-swift',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
+            )}
+          >
+            <SidebarIconSlot>
+              <Plus className="size-[17px]" />
+            </SidebarIconSlot>
+          </button>
+        }
+      />
+      <DropdownMenuContent align="start" sideOffset={6} className="min-w-44">
+        {OPTIONAL_PANELS.map(({ id, label, Glyph }) => (
+          <DropdownMenuItem
+            key={id}
+            onClick={() => {
+              onOpen(id)
+            }}
+          >
+            <Glyph aria-hidden className="size-3.5" />
+            {label}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }

@@ -1,5 +1,11 @@
 # Reflect V2 Grounding Brief
 
+> **Kore next-wave direction (2026-08-27):** See the
+> [target architecture](kore-target-architecture.md), [roadmap](roadmap.md), and
+> [Plan 25](plans/25-personal-os.md). This document remains baseline/reference
+> material; the new target takes precedence for future scope. V1 capabilities and
+> architecture here describe upstream grounding, not implemented Kore behavior.
+
 **Purpose:** Provide a broad, implementation-oriented overview of the current Reflect app so a V2 agent can understand the existing product model, feature surface, UX assumptions, constraints, and likely migration implications.
 
 **Decision status:** This brief is grounding material from the V1/Academy docs. It is not the source of truth for V2 product decisions. When this brief conflicts with the newer V2 decision docs, defer to [Reflect V2 Product Vision](./reflect-v2-product-vision.md), [Reflect V2 Indexing Strategy](./reflect-v2-indexing-strategy.md), and [Reflect V2 Sync Strategy](./reflect-v2-sync-strategy.md).

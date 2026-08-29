@@ -3,8 +3,13 @@ import { gistBodyHash, parseNote } from '../markdown'
 import { buildIndexedNote, CLAIM_TIER, indexedNoteSchema, PROJECTION_VERSION } from './indexed-note'
 
 describe('buildIndexedNote', () => {
-  it('carries the projection version that backfills frontmatter links', () => {
-    expect(PROJECTION_VERSION).toBe(22)
+  it('pins the projection version so a bump is always deliberate', () => {
+    // Changing this number makes every existing install wipe and rebuild its
+    // index on next open. That is the intended cost of a projection change,
+    // but it must never happen by accident: bump it here together with the
+    // migration that requires it, and with the changelog entry in
+    // `indexed-note.ts` saying what the new rows carry.
+    expect(PROJECTION_VERSION).toBe(23)
   })
 
   it('flattens a parsed note into the index payload', () => {

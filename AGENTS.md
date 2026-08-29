@@ -86,9 +86,9 @@ user-facing changelog entry, so write it as behavior, not implementation. Do not
 use `feat!:` or `BREAKING CHANGE:` footers; see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 The app version lives solely in `apps/desktop/package.json`. Feature PRs must not
-touch it, the changelogs (`apps/desktop/CHANGELOG.md`,
-`apps/desktop/CHANGELOG.beta.md`), or the manifests under
-`.github/release-please/`. Bump the version only when cutting a release.
+touch it, the changelog (`apps/desktop/CHANGELOG.md`), or the manifest under
+`.github/release-please/`. Those three move together, and only through the
+Release PR — see below.
 
 ### Cutting a Kore release (bump)
 
@@ -97,12 +97,22 @@ and nothing else. Do not diagnose Apple signing secrets, wait on TestFlight, or
 retry the notarized **Release** workflow.
 
 1. Confirm the work to ship is already on `origin/master`.
-2. Confirm `version` in `apps/desktop/package.json` is the version to publish.
-   If it still matches the last published `Kore v*` GitHub release, bump it
-   there only (patch unless the user specifies otherwise), merge that to
-   `master`, and continue. If a `chore: release X.Y.Z` PR is already open,
-   merging it is equivalent. Never edit changelogs or
-   `.github/release-please/` manifests as part of this step.
+2. Merge the open `chore: release X.Y.Z` PR — the one **Release PR**
+   (`.github/workflows/release-please.yml`) keeps refreshed against `master`.
+   Merging it *is* the bump: it sets `version` in `apps/desktop/package.json`,
+   prepends `apps/desktop/CHANGELOG.md`, and advances
+   `.github/release-please/manifest.stable.json`, all in one commit.
+
+   Only when there is no Release PR (nothing since the last release carried a
+   `feat:`/`fix:` title) bump by hand — and by hand means doing everything the
+   Release PR does, in one commit: `version` in `apps/desktop/package.json`
+   (patch by default), the matching `apps/desktop/CHANGELOG.md` entry, and
+   `.github/release-please/manifest.stable.json`. Moving only the version is
+   what produced the drift this procedure now guards against: versions
+   published with no changelog entry, and a lagging manifest that makes the
+   next Release PR re-list commits that already shipped.
+   `release-please-workflow.test.mjs` fails CI when the three fall out of
+   step.
 3. Point the `release/dmg` branch at current `master`. It is a pointer, not
    history — `--force` is expected when previous pointer-retrigger commits
    sit on that branch:
@@ -113,13 +123,19 @@ retry the notarized **Release** workflow.
    ```
 
 4. Watch the **Release DMG** workflow (`.github/workflows/release-dmg.yml`).
-   That build publishes `Kore v<version>` (unsigned Apple Silicon DMG plus
-   updater `latest.json`). That is the bump; it is done when that run
-   succeeds.
+   That build creates the `v<version>` tag and publishes `Kore v<version>`
+   (unsigned Apple Silicon DMG plus updater `latest.json`). That is the bump;
+   it is done when that run succeeds.
+
+Publishing lives entirely in step 4. The Release PR workflow deliberately
+creates no release and no tag (`skip-github-release`): when it also created
+them, they landed as untagged, asset-less drafts the in-app updater could
+resolve as "latest".
 
 Do not run `pnpm release:macos` or wait for `.github/workflows/release.yml`
 (signed + notarized macOS + TestFlight). That pipeline is a separate
-upstream path this fork does not use for day-to-day publishes.
+upstream path this fork does not use for day-to-day publishes; it and
+`testflight.yml` stay available on `workflow_dispatch` only.
 
 Daily loop:
 
@@ -219,16 +235,19 @@ Kore/
 ├── crates/
 │   ├── index-schema/       # Shared SQLite migrations for <graph>/.reflect/index.sqlite
 │   │                       #   (one schema for the desktop writer + CLI reader)
-│   └── graph-paths/        # Shared graph-relative path classification + vault walker
-│                           #   (kept in lockstep with packages/core/src/graph/paths.ts)
+│   ├── graph-paths/        # Shared graph-relative path classification + vault walker
+│   │                       #   (kept in lockstep with packages/core/src/graph/paths.ts)
+│   └── note-policy/        # Shared frontmatter parsing + first-H1 title extraction
+│                           #   (one policy for the desktop backup path + CLI reader)
 ├── plugins/                # First-party Tauri 2 plugins: tauri-plugin-keyboard (iOS keyboard
 │                           #   pinning + haptics), tauri-plugin-recording (native audio memos)
 ├── fixtures/               # TS ↔ Rust parity corpora (fold keys, path classification,
 │                           #   frontmatter/index parity — see fixtures/parity/README.txt)
-├── design-system/          # Design tokens, components, and UI guidelines (see design-system/readme.md)
+├── design-system/          # Design tokens + the Inter webfont (see design-system/readme.md)
 ├── docs/                   # Product/architecture docs + plans/, decisions/, contributing/, porting/
 ├── Cargo.toml              # Root Cargo workspace: reflect-open, reflect-cli, reflect-capture-host,
-│                           #   reflect-index-schema, reflect-graph-paths, and the two Tauri plugins
+│                           #   reflect-index-schema, reflect-graph-paths, reflect-note-policy, and
+│                           #   the two Tauri plugins
 └── turbo.json, pnpm-workspace.yaml
 ```
 
@@ -245,16 +264,15 @@ Kore/
 **Design system**
 
 All UI work should follow the design system. Note that
-[`design-system/readme.md`](design-system/readme.md) documents the **upstream
-Reflect brand** (its marketing claims — pricing, E2EE, GPT-4 — do not describe
-this app); the operative resources for app UI are the tokens, the shadcn
-components in `apps/desktop/src/components/ui/`, and this fork's design
-language described in the README. Key resources:
+`design-system/` carries the design **tokens** and the Inter webfont, and
+nothing else: UI primitives are the shadcn components in
+`apps/desktop/src/components/ui/`, and icons come from
+`apps/desktop/src/components/icons/`. Key resources:
 
-- `design-system/tokens/` — CSS custom properties for color, typography, spacing, and motion
-- `design-system/components/` — reusable React primitives (Button, Input, Badge, etc.)
-- `design-system/guidelines/` — color, type, spacing, and brand specimens
-- `design-system/styles.css` — global entry point that imports all tokens
+- `design-system/tokens/`: CSS custom properties for color, typography, spacing, and motion
+- `design-system/styles.css`: global entry point that imports all tokens
+- `apps/desktop/src/components/ui/`: the shadcn components. Check here before building custom UI
+- The fork's own design language is described in the README
 
 **Frontend ↔ Rust bridge**
 

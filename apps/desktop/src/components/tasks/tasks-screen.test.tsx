@@ -243,7 +243,12 @@ function renderScreen(client = new QueryClient({ defaultOptions: { queries: { re
   return render(
     <QueryClientProvider client={client}>
       <RouterProvider>
-        <TasksScreen />
+        {/* The screen fills its container (`h-full`); hand it the viewport
+            height so the virtualized list's scroll container gets a real,
+            bounded size (mirrors AllNotesScreen's test harness). */}
+        <div style={{ height: '100vh' }}>
+          <TasksScreen />
+        </div>
         <RouteProbe />
       </RouterProvider>
     </QueryClientProvider>,

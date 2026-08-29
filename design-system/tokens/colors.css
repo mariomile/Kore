@@ -246,6 +246,28 @@
   --input-bg: #fdfbf6;
 }
 
+/* INK — the notebook after dark, and the one dark theme that is not a
+   dev-tool grey. `paper`'s counterpart: the same warm brown-black ground and
+   cream ink, so switching families keeps the writing surface rather than
+   swapping a manuscript for a terminal. Every other dark variant is neutral
+   or cool by design; this one is deliberately not. */
+:root[data-theme='ink'] {
+  --surface: #201d19;
+  --surface-sunken: #1a1714;
+  --surface-app: #16130f;
+  --surface-hover: rgba(240, 226, 200, 0.06);
+  --surface-active: rgba(240, 226, 200, 0.1);
+  --surface-inverse: #f2ead8;
+
+  --text: #f0e6d4;
+  --text-secondary: #b3a690;
+  --text-muted: #7d7263;
+
+  --border: rgba(240, 226, 200, 0.1);
+  --border-strong: rgba(240, 226, 200, 0.17);
+  --input-bg: rgba(240, 226, 200, 0.05);
+}
+
 /* GRAPHITE — a flat neutral dark, the register Cursor / VS Code / Notion
    sit in: no blue or purple cast at all, cards a step lighter than the page
    rather than outlined. Stock `dark` is faintly cool by comparison. */

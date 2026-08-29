@@ -1,4 +1,5 @@
 import { useEffect, type ReactElement } from 'react'
+import { AppBootScreen } from '@/components/app-boot-screen'
 import { GraphChooser } from '@/components/graph-chooser'
 import { GraphWorkspace } from '@/components/graph-workspace'
 import { installQuitFlush } from '@/lib/quit-flush'
@@ -41,9 +42,5 @@ export function App(): ReactElement {
   }
 
   // 'loading' | 'opening'
-  return (
-    <div className="flex h-screen w-screen items-center justify-center text-sm text-text-muted">
-      Loading…
-    </div>
-  )
+  return <AppBootScreen />
 }

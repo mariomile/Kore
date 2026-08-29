@@ -55,18 +55,35 @@ fn save_to(path: &Path, settings: &SettingsDoc) -> AppResult<()> {
 }
 
 /// Command: the persisted settings document (an empty object on first run).
+///
+/// Async for the same reason as every other file read here: the config dir is
+/// ordinary storage, and a cold or synced volume makes even a small read a wait
+/// the main thread must not take.
 #[tauri::command]
-pub fn settings_load() -> AppResult<SettingsDoc> {
+pub async fn settings_load() -> AppResult<SettingsDoc> {
+    crate::blocking::run_blocking(load_settings).await
+}
+
+/// Read the persisted settings document synchronously.
+///
+/// The app's own startup path reads settings before any async runtime work is
+/// scheduled, so it calls this rather than the command.
+pub(crate) fn load_settings() -> AppResult<SettingsDoc> {
     load_from(&store_path()?)
 }
 
 /// Command: atomically replace the persisted settings document.
+///
+/// The write hops; the shortcut sync does not. Registering a global shortcut is
+/// a main-thread window operation, so it stays on the command body after the
+/// write lands, which is the same split `graph_delete` uses.
 #[tauri::command]
-pub fn settings_save<R: tauri::Runtime>(
+pub async fn settings_save<R: tauri::Runtime>(
     settings: SettingsDoc,
     app: tauri::AppHandle<R>,
 ) -> AppResult<()> {
-    save_to(&store_path()?, &settings)?;
+    let written = settings.clone();
+    crate::blocking::run_blocking(move || save_to(&store_path()?, &written)).await?;
     #[cfg(desktop)]
     crate::windows::sync_quick_capture_shortcut(&app, &settings);
     #[cfg(not(desktop))]

@@ -461,7 +461,7 @@ pub fn run() {
                 wake::install(app);
                 // Best-effort: a taken binding must not fail the launch.
                 // Arming from `.setup()` would replace the deep-link hook.
-                match settings::settings_load() {
+                match settings::load_settings() {
                     Ok(doc) => windows::sync_quick_capture_shortcut(app, &doc),
                     Err(err) => {
                         tracing::warn!(

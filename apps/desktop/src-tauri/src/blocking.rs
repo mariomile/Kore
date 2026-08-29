@@ -246,16 +246,6 @@ mod tests {
             "reads and writes a small in-memory list behind a mutex",
         ),
         (
-            "settings_load",
-            "settings.rs",
-            "reads and writes one small JSON file in the app config dir",
-        ),
-        (
-            "settings_save",
-            "settings.rs",
-            "reads and writes one small JSON file in the app config dir",
-        ),
-        (
             "toggle_devtools",
             "devtools.rs",
             "toggles the webview inspector, a main-thread window operation",
@@ -316,6 +306,7 @@ mod tests {
                     if !line.trim_start().starts_with("#[tauri::command") {
                         continue;
                     }
+                    let mut found_fn = false;
                     for candidate in lines.iter().skip(index + 1).take(8) {
                         let trimmed = candidate.trim_start();
                         let without_vis = trimmed
@@ -333,9 +324,20 @@ mod tests {
                                 .take_while(|ch| ch.is_alphanumeric() || *ch == '_')
                                 .collect();
                             found.push((name, module.clone(), is_async));
+                            found_fn = true;
                             break;
                         }
                     }
+                    // A declaration the scanner cannot read would otherwise
+                    // vanish silently, and a missing command is indistinguishable
+                    // from an async one: the guard would fail open on exactly the
+                    // case it exists to catch.
+                    assert!(
+                        found_fn,
+                        "{module}:{} carries #[tauri::command] but no fn was found within 8 lines; \
+                         the scanner in blocking.rs needs to learn this shape",
+                        index + 1
+                    );
                 }
             }
         }

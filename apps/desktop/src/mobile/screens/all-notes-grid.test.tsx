@@ -183,6 +183,7 @@ describe('MobileAllNotes grid view', () => {
     ])
     await renderScreen()
 
+    await expect.element(page.getByTestId('all-notes-grid')).toBeInTheDocument()
     const cards = page.getByTestId('all-notes-grid').element().querySelectorAll('button')
     expect(cards).toHaveLength(2)
     expect(cards[0]?.getBoundingClientRect().top).toBe(cards[1]?.getBoundingClientRect().top)

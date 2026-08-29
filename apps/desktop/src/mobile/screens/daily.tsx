@@ -4,6 +4,7 @@ import { AudioMemoFab } from '@/mobile/audio-memo-fab'
 import { CalendarStrip } from '@/mobile/calendar-strip'
 import { DayCarousel } from '@/mobile/day-carousel'
 import { MobileDayEvents } from '@/mobile/mobile-day-events'
+import { MobileQuickAdd } from '@/mobile/quick-add-bar'
 import { useDailyArrivals } from '@/mobile/use-daily-arrivals'
 import { useSwipeTarget } from '@/mobile/use-swipe-target'
 import { useRouter } from '@/routing/router'
@@ -15,6 +16,8 @@ import { useRouter } from '@/routing/router'
  * carousel both navigate a daily route, which flows back as `date` (though
  * mid-swipe the strip briefly leads, following the gesture's target day). The
  * shell's new-note action opens a fresh untitled note via desktop's ⌘N seed flow.
+ * Two capture affordances float over the spine: {@link MobileQuickAdd} for a
+ * typed line and {@link AudioMemoFab} for a spoken one.
  *
  * Mounted once for the daily surface (a stable key in `MobileScreen`), so a
  * day change scrolls the carousel rather than remounting it.
@@ -73,6 +76,7 @@ export function MobileDaily({ date }: { date: string }): ReactElement {
         onSelect={select}
         onTarget={followSwipeTarget}
       />
+      <MobileQuickAdd />
       <AudioMemoFab />
     </div>
   )

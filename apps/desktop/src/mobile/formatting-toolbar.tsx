@@ -147,7 +147,7 @@ function ToolbarButton({
         hapticImpactLight()
         onPress()
       }}
-      className="flex h-11 w-10 shrink-0 items-center justify-center rounded-md text-text-muted disabled:opacity-40"
+      className="flex size-11 shrink-0 items-center justify-center rounded-md text-text-muted disabled:opacity-40"
     >
       {icon}
     </button>

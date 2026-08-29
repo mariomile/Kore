@@ -1,6 +1,6 @@
-import { useDeferredValue, useMemo, useRef, useState, type ReactElement } from 'react'
+import { useDeferredValue, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Archive, CheckCircle, Plus, Sliders } from '@/components/icons'
+import { Archive, CheckCircle, Sliders } from '@/components/icons'
 import { getCompletedTasks, getOpenTasks, type OpenTask } from '@reflect/core'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
@@ -21,6 +21,7 @@ import { TaskFiltersDrawer } from '@/mobile/task-filters-drawer'
 import { MobileTaskGroup } from '@/mobile/task-group'
 import { useArrivalFocus } from '@/mobile/use-arrival-focus'
 import { useBarHeightVar } from '@/mobile/use-bar-height'
+import { useSearchHeaderFocus } from '@/mobile/use-search-header-focus'
 import { useGraph } from '@/providers/graph-provider'
 import { routeForPath } from '@/routing/route'
 import { useRouter } from '@/routing/router'
@@ -38,15 +39,23 @@ import { useRouter } from '@/routing/router'
  * the row struck (V1's middle state) until Archive hides this session's completed
  * tasks.
  */
-export function MobileTasks(): ReactElement {
+export function MobileTasks({
+  newTaskRequested = false,
+  onNewTaskConsumed = () => {},
+}: {
+  newTaskRequested?: boolean
+  onNewTaskConsumed?: () => void
+}): ReactElement {
   const { graph } = useGraph()
   const { navigate, arrivalSeq, arrivalFocusEditor } = useRouter()
   const { scopeRef, barRef } = useBarHeightVar('--mobile-header-height')
   const today = useToday()
   const { filters, toggle } = useTaskFilters()
   const [query, setQuery] = useState('')
+  const searchHeaderFocus = useSearchHeaderFocus()
   const searchInputRef = useRef<HTMLInputElement>(null)
   const [filtersOpen, setFiltersOpen] = useState(false)
+  const taskRequestConsumed = useRef(false)
   // The sheet's task sticks around after close so the exit animation has
   // content; `sheetOpen` alone drives visibility.
   const [editingTask, setEditingTask] = useState<OpenTask | null>(null)
@@ -116,9 +125,8 @@ export function MobileTasks(): ReactElement {
     setSheetOpen(true)
   }
 
-  // The group headers' "+" (V1): drop any search filter so the new row is
-  // visible, write it, then open its quick-edit sheet with the editor focused
-  // so typing starts immediately.
+  // New-task capture clears any search filter so the optimistic row stays
+  // visible, then opens its quick-edit sheet with the editor focused.
   const onAdd = (target: InsertTaskTarget): void => {
     hapticImpactLight()
     setQuery('')
@@ -129,6 +137,25 @@ export function MobileTasks(): ReactElement {
     })
   }
 
+  useEffect(() => {
+    if (!newTaskRequested) {
+      taskRequestConsumed.current = false
+      return
+    }
+    if (taskRequestConsumed.current) {
+      return
+    }
+    taskRequestConsumed.current = true
+    onNewTaskConsumed()
+    hapticImpactLight()
+    void actions.insert(todaysDailyTarget(today)).then((created) => {
+      setQuery('')
+      if (created !== null) {
+        editTask(created, { autoFocus: true, haptic: false })
+      }
+    })
+  }, [actions, newTaskRequested, onNewTaskConsumed, today])
+
   const archiveCompleted = (): void => {
     hapticImpactLight()
     actions.archive()
@@ -138,39 +165,50 @@ export function MobileTasks(): ReactElement {
     <div ref={scopeRef} className="relative flex h-full w-screen flex-col">
       <header
         ref={barRef}
-        className="mobile-glass-bar absolute inset-x-0 top-0 z-30 flex items-center gap-1 border-b border-border px-4 pb-2"
+        className="mobile-glass-bar absolute inset-x-0 top-0 z-30 space-y-2 px-4 pb-2"
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 0.25rem)' }}
       >
-        <SearchInput
-          ref={searchInputRef}
-          placeholder="Search tasks…"
-          aria-label="Search tasks"
-          value={query}
-          onValueChange={setQuery}
-        />
-        {recentlyCompleted.length > 0 ? (
+        <h1
+          className={`overflow-hidden text-[28px] font-semibold tracking-tight transition-[height,opacity] duration-200 motion-reduce:transition-none ${
+            searchHeaderFocus.isFocused ? 'h-0 opacity-0' : 'h-9 opacity-100'
+          }`}
+        >
+          Tasks
+        </h1>
+        <div className="flex items-center gap-1">
+          <SearchInput
+            ref={searchInputRef}
+            placeholder="Search tasks…"
+            aria-label="Search tasks"
+            value={query}
+            onValueChange={setQuery}
+            onFocus={searchHeaderFocus.onFocus}
+            onBlur={searchHeaderFocus.onBlur}
+          />
+          {recentlyCompleted.length > 0 ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-11 shrink-0"
+              aria-label={`Archive ${recentlyCompleted.length} completed`}
+              onClick={archiveCompleted}
+            >
+              <Archive />
+            </Button>
+          ) : null}
           <Button
             variant="ghost"
             size="icon"
-            className="size-10 shrink-0"
-            aria-label={`Archive ${recentlyCompleted.length} completed`}
-            onClick={archiveCompleted}
+            className="size-11 shrink-0"
+            aria-label="Task filters"
+            onClick={() => {
+              hapticImpactLight()
+              setFiltersOpen(true)
+            }}
           >
-            <Archive />
+            <Sliders />
           </Button>
-        ) : null}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="size-10 shrink-0"
-          aria-label="Task filters"
-          onClick={() => {
-            hapticImpactLight()
-            setFiltersOpen(true)
-          }}
-        >
-          <Sliders />
-        </Button>
+        </div>
       </header>
       {isError ? (
         <p role="alert" className="px-4 py-6 text-sm text-text-muted">
@@ -203,11 +241,10 @@ export function MobileTasks(): ReactElement {
       ) : (
         <div
           className="min-h-0 flex-1 overflow-y-auto"
-          // Past the glass header above and the tab bar plus the floating
-          // new-task button below.
+          // Past the glass header above and the floating tab bar below.
           style={{
             paddingTop: 'var(--mobile-header-height, 0px)',
-            paddingBottom: 'calc(var(--mobile-tab-bar-height, env(safe-area-inset-bottom)) + 5rem)',
+            paddingBottom: 'var(--mobile-tab-bar-height, env(safe-area-inset-bottom))',
           }}
         >
           {groups.map((group) => (
@@ -222,18 +259,6 @@ export function MobileTasks(): ReactElement {
           ))}
         </div>
       )}
-      <Button
-        size="icon"
-        aria-label="New task"
-        className="fixed right-4 z-40 size-12 rounded-full shadow-lg"
-        style={{
-          bottom:
-            'calc(max(var(--mobile-tab-bar-height, 0px), calc(var(--keyboard-height, 0px) + 2.75rem)) + 0.75rem)',
-        }}
-        onClick={() => onAdd(todaysDailyTarget(today))}
-      >
-        <Plus className="size-6" />
-      </Button>
       {liveEditingTask !== null ? (
         <MobileTaskEditSheet
           key={taskKey(liveEditingTask)}

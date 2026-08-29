@@ -57,30 +57,31 @@ export function NoteCardGrid({ rows, onOpen }: NoteCardGridProps): ReactElement 
         {rows.slice(0, visibleCount).map((row) => {
           const title = row.titleSegments.map((segment) => segment.text).join('')
           return (
-            <button
-              key={row.path}
-              type="button"
-              aria-label={title}
-              onClick={() => onOpen(row.path)}
-              className="mb-3 block w-full break-inside-avoid rounded-[10px] border border-border bg-surface p-3 text-left shadow-sm active:bg-surface-hover"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <h2 className="min-w-0 text-[13px] font-semibold leading-snug text-text">
-                  <HighlightedText segments={row.titleSegments} />
-                </h2>
-                {row.isPinned ? (
-                  <Pin aria-label="Pinned" className="mt-0.5 size-3 shrink-0 text-text-muted" />
+            <div key={row.path} className="break-inside-avoid pb-3">
+              <button
+                type="button"
+                aria-label={title}
+                onClick={() => onOpen(row.path)}
+                className="block w-full rounded-[10px] border border-border bg-surface p-3 text-left active:bg-surface-hover"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <h2 className="min-w-0 text-[13px] font-semibold leading-snug text-text">
+                    <HighlightedText segments={row.titleSegments} />
+                  </h2>
+                  {row.isPinned ? (
+                    <Pin aria-label="Pinned" className="mt-0.5 size-3 shrink-0 text-text-muted" />
+                  ) : null}
+                </div>
+                {row.snippet.length > 0 ? (
+                  <p className="mt-2 line-clamp-4 text-xs leading-relaxed text-text-secondary">
+                    <HighlightedText segments={row.snippet} />
+                  </p>
                 ) : null}
-              </div>
-              {row.snippet.length > 0 ? (
-                <p className="mt-2 line-clamp-4 text-xs leading-relaxed text-text-secondary">
-                  <HighlightedText segments={row.snippet} />
-                </p>
-              ) : null}
-              <div className="mt-3 text-2xs text-text-muted">
-                {row.mtime > 0 ? formatRecencyLabel(row.mtime, settings) : '—'}
-              </div>
-            </button>
+                <div className="mt-3 text-2xs text-text-muted">
+                  {row.mtime > 0 ? formatRecencyLabel(row.mtime, settings) : '—'}
+                </div>
+              </button>
+            </div>
           )
         })}
         {hasMore ? <div ref={sentinelRef} aria-hidden className="h-px" /> : null}

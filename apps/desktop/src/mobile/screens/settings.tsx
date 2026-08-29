@@ -28,6 +28,7 @@ import { ConnectGithubDrawer } from '@/mobile/connect-github-drawer'
 import { PRIVACY_POLICY_URL } from '@/mobile/legal-urls'
 import { MobileCalendarSettings } from '@/mobile/mobile-calendar-settings'
 import { MobileScreenHeader } from '@/mobile/screen-header'
+import { SearchInput } from '@/mobile/search-input'
 import { useBarHeightVar } from '@/mobile/use-bar-height'
 import { MobileAppearanceGroup } from '@/mobile/settings-appearance-group'
 import {
@@ -94,6 +95,7 @@ export function MobileSettings(): ReactElement {
   const status = useMobileSyncStatus()
   const [disconnecting, setDisconnecting] = useState(false)
   const [connectOpen, setConnectOpen] = useState(false)
+  const [settingsQuery, setSettingsQuery] = useState('')
   const { providers, defaultProvider, addProvider, removeProvider, makeDefault, setDefaultModel } =
     useAiProviders()
   const [addProviderOpen, setAddProviderOpen] = useState(false)
@@ -153,6 +155,45 @@ export function MobileSettings(): ReactElement {
       : mobileStorageKind === 'local'
         ? 'This device'
         : undefined
+  const backupAvailable = repo !== null || status !== null || canConnect
+  const settingsNeedle = settingsQuery.trim().toLowerCase()
+  const matches = (keywords: string): boolean =>
+    settingsNeedle === '' || keywords.toLowerCase().includes(settingsNeedle)
+  const showGraph = matches(`graph storage device icloud this device ${graph?.name ?? ''}`)
+  const showAppearance = matches(
+    'appearance theme system light dark space ash graphite accent color red orange yellow green teal blue purple pink text size small medium large font sans serif mono spacing compact relaxed corners default round liquid glass intensity subtle balanced strong',
+  )
+  const showCalendar = isIos && matches('calendar events access open settings')
+  const showEditor = matches(
+    'editor smooth caret animation start bullet bullet after heading typography writing',
+  )
+  const showAi = matches(
+    `ai provider model system prompt api key ${providers
+      .map((provider) => aiProvider(provider.provider).label)
+      .join(' ')}`,
+  )
+  const showPrompts = matches(
+    `ai prompts custom prompt add prompt ${prompts.map((prompt) => prompt.label).join(' ')}`,
+  )
+  const showAudio = matches(
+    `audio memo transcription auto format model ${transcriptionProviders
+      .map((provider) => aiProvider(provider).label)
+      .join(' ')}`,
+  )
+  const showBackup =
+    backupAvailable &&
+    matches(`backup sync github ${repo?.owner ?? ''} ${repo?.name ?? ''} ${status?.label ?? ''}`)
+  const showAbout = matches(`about notes version privacy policy ${version ?? ''}`)
+  const hasMatches =
+    showGraph ||
+    showAppearance ||
+    showCalendar ||
+    showEditor ||
+    showAi ||
+    showPrompts ||
+    showAudio ||
+    showBackup ||
+    showAbout
 
   return (
     <div ref={scopeRef} className="relative flex h-full w-screen flex-col">
@@ -169,118 +210,135 @@ export function MobileSettings(): ReactElement {
         }}
       >
         <div className="flex flex-col gap-6 px-4 py-4">
-          <SettingsGroup header="Graph">
-            <SettingsNavRow
-              label={graph?.name ?? '—'}
-              value={storageLabel}
-              onPress={() => navigate({ kind: 'graphs' })}
-            />
-          </SettingsGroup>
+          <SearchInput
+            aria-label="Search settings"
+            placeholder="Search settings…"
+            value={settingsQuery}
+            onValueChange={setSettingsQuery}
+          />
 
-          <MobileAppearanceGroup />
-
-          {isIos ? <MobileCalendarSettings /> : null}
-
-          <SettingsGroup header="Editor">
-            <SettingsSwitchRow
-              label="Smooth caret animation"
-              checked={settings.editorSmoothCaretAnimation}
-              onCheckedChange={(editorSmoothCaretAnimation) =>
-                updateSettings({ editorSmoothCaretAnimation })
-              }
-            />
-            <SettingsSwitchRow
-              label="Start with a bullet"
-              checked={settings.editorDefaultBullet}
-              onCheckedChange={(editorDefaultBullet) => updateSettings({ editorDefaultBullet })}
-            />
-            <SettingsSwitchRow
-              label="Bullet after a heading"
-              checked={settings.editorBulletAfterHeading}
-              onCheckedChange={(editorBulletAfterHeading) =>
-                updateSettings({ editorBulletAfterHeading })
-              }
-            />
-          </SettingsGroup>
-
-          <SettingsGroup
-            header="AI"
-            footer="Keys stay in this device’s keychain and are never synced."
-          >
-            {providers.map((provider) => (
+          {showGraph ? (
+            <SettingsGroup header="Graph">
               <SettingsNavRow
-                key={provider.id}
-                label={aiProvider(provider.provider).label}
-                value={aiProviderValue(provider, defaultProvider?.id ?? null)}
-                onPress={() => {
-                  setManagedProvider(provider)
-                  setManageOpen(true)
-                }}
+                label={graph?.name ?? '—'}
+                value={storageLabel}
+                onPress={() => navigate({ kind: 'graphs' })}
               />
-            ))}
-            <SettingsActionRow label="Add AI provider" onPress={() => setAddProviderOpen(true)} />
-            <SettingsNavRow
-              label="System prompt"
-              value={
-                normalizeChatSystemPrompt(settings.chatSystemPrompt) === '' ? 'Default' : 'Custom'
-              }
-              onPress={() => setSystemPromptOpen(true)}
-            />
-          </SettingsGroup>
+            </SettingsGroup>
+          ) : null}
 
-          <SettingsGroup
-            header="AI prompts"
-            footer="Prompts run on text you select in a note, after the built-in set. They stay on this device and aren’t synced."
-          >
-            {prompts.map((prompt) => (
+          {showAppearance ? <MobileAppearanceGroup /> : null}
+
+          {showCalendar ? <MobileCalendarSettings /> : null}
+
+          {showEditor ? (
+            <SettingsGroup header="Editor">
+              <SettingsSwitchRow
+                label="Smooth caret animation"
+                checked={settings.editorSmoothCaretAnimation}
+                onCheckedChange={(editorSmoothCaretAnimation) =>
+                  updateSettings({ editorSmoothCaretAnimation })
+                }
+              />
+              <SettingsSwitchRow
+                label="Start with a bullet"
+                checked={settings.editorDefaultBullet}
+                onCheckedChange={(editorDefaultBullet) => updateSettings({ editorDefaultBullet })}
+              />
+              <SettingsSwitchRow
+                label="Bullet after a heading"
+                checked={settings.editorBulletAfterHeading}
+                onCheckedChange={(editorBulletAfterHeading) =>
+                  updateSettings({ editorBulletAfterHeading })
+                }
+              />
+            </SettingsGroup>
+          ) : null}
+
+          {showAi ? (
+            <SettingsGroup
+              header="AI"
+              footer="Keys stay in this device’s keychain and are never synced."
+            >
+              {providers.map((provider) => (
+                <SettingsNavRow
+                  key={provider.id}
+                  label={aiProvider(provider.provider).label}
+                  value={aiProviderValue(provider, defaultProvider?.id ?? null)}
+                  onPress={() => {
+                    setManagedProvider(provider)
+                    setManageOpen(true)
+                  }}
+                />
+              ))}
+              <SettingsActionRow label="Add AI provider" onPress={() => setAddProviderOpen(true)} />
               <SettingsNavRow
-                key={prompt.id}
-                label={prompt.label}
+                label="System prompt"
+                value={
+                  normalizeChatSystemPrompt(settings.chatSystemPrompt) === '' ? 'Default' : 'Custom'
+                }
+                onPress={() => setSystemPromptOpen(true)}
+              />
+            </SettingsGroup>
+          ) : null}
+
+          {showPrompts ? (
+            <SettingsGroup
+              header="AI prompts"
+              footer="Prompts run on text you select in a note, after the built-in set. They stay on this device and aren’t synced."
+            >
+              {prompts.map((prompt) => (
+                <SettingsNavRow
+                  key={prompt.id}
+                  label={prompt.label}
+                  onPress={() => {
+                    setEditingPrompt(prompt)
+                    setPromptOpen(true)
+                  }}
+                />
+              ))}
+              <SettingsActionRow
+                label="Add prompt"
                 onPress={() => {
-                  setEditingPrompt(prompt)
+                  setEditingPrompt('new')
                   setPromptOpen(true)
                 }}
               />
-            ))}
-            <SettingsActionRow
-              label="Add prompt"
-              onPress={() => {
-                setEditingPrompt('new')
-                setPromptOpen(true)
-              }}
-            />
-          </SettingsGroup>
+            </SettingsGroup>
+          ) : null}
 
-          <SettingsGroup
-            header="Audio memos"
-            footer="Uses AI to add punctuation, paragraphs, and light Markdown."
-            footerId={audioMemoDescriptionId}
-          >
-            <SettingsSwitchRow
-              label="Transcription auto-format"
-              checked={settings.transcriptionFormat}
-              descriptionId={audioMemoDescriptionId}
-              onCheckedChange={(transcriptionFormat) => updateSettings({ transcriptionFormat })}
-            />
-            {transcriptionProviders.map((provider) => (
-              <SettingsChipsRow
-                key={provider}
-                label={`${aiProvider(provider).label} model`}
-                value={transcriptionModelFor(settings.transcriptionModels, provider)}
-                options={transcriptionModelOptions(
-                  provider,
-                  transcriptionModelFor(settings.transcriptionModels, provider),
-                )}
-                onChange={(model) => {
-                  updateSettings({
-                    transcriptionModels: { ...settings.transcriptionModels, [provider]: model },
-                  })
-                }}
+          {showAudio ? (
+            <SettingsGroup
+              header="Audio memos"
+              footer="Uses AI to add punctuation, paragraphs, and light Markdown."
+              footerId={audioMemoDescriptionId}
+            >
+              <SettingsSwitchRow
+                label="Transcription auto-format"
+                checked={settings.transcriptionFormat}
+                descriptionId={audioMemoDescriptionId}
+                onCheckedChange={(transcriptionFormat) => updateSettings({ transcriptionFormat })}
               />
-            ))}
-          </SettingsGroup>
+              {transcriptionProviders.map((provider) => (
+                <SettingsChipsRow
+                  key={provider}
+                  label={`${aiProvider(provider).label} model`}
+                  value={transcriptionModelFor(settings.transcriptionModels, provider)}
+                  options={transcriptionModelOptions(
+                    provider,
+                    transcriptionModelFor(settings.transcriptionModels, provider),
+                  )}
+                  onChange={(model) => {
+                    updateSettings({
+                      transcriptionModels: { ...settings.transcriptionModels, [provider]: model },
+                    })
+                  }}
+                />
+              ))}
+            </SettingsGroup>
+          ) : null}
 
-          {repo !== null || status !== null || canConnect ? (
+          {showBackup ? (
             <SettingsGroup
               header="Backup"
               footer={
@@ -307,22 +365,28 @@ export function MobileSettings(): ReactElement {
             </SettingsGroup>
           ) : null}
 
-          <SettingsGroup header="About">
-            <SettingsValueRow
-              label="Notes"
-              value={notes === undefined ? '…' : String(notes.length)}
-            />
-            <SettingsValueRow
-              label="Version"
-              value={version === null ? '…' : marketingVersion(version)}
-            />
-            <SettingsActionRow
-              label="Privacy Policy"
-              onPress={() => {
-                openUrlSync(PRIVACY_POLICY_URL)
-              }}
-            />
-          </SettingsGroup>
+          {showAbout ? (
+            <SettingsGroup header="About">
+              <SettingsValueRow
+                label="Notes"
+                value={notes === undefined ? '…' : String(notes.length)}
+              />
+              <SettingsValueRow
+                label="Version"
+                value={version === null ? '…' : marketingVersion(version)}
+              />
+              <SettingsActionRow
+                label="Privacy Policy"
+                onPress={() => {
+                  openUrlSync(PRIVACY_POLICY_URL)
+                }}
+              />
+            </SettingsGroup>
+          ) : null}
+
+          {!hasMatches ? (
+            <p className="py-10 text-center text-sm text-text-muted">No settings found</p>
+          ) : null}
         </div>
       </main>
       <ConnectGithubDrawer open={connectOpen} onOpenChange={setConnectOpen} />

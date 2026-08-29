@@ -31,6 +31,8 @@ import { SearchInput } from '@/mobile/search-input'
 import type { NoteRowModel } from '@/mobile/swipeable-note-row'
 import { useArrivalFocus } from '@/mobile/use-arrival-focus'
 import { useBarHeightVar } from '@/mobile/use-bar-height'
+import { useSearchHeaderFocus } from '@/mobile/use-search-header-focus'
+import { useSlidingIndicator } from '@/mobile/use-sliding-indicator'
 import { useGraph } from '@/providers/graph-provider'
 import { useSettings } from '@/providers/settings-provider'
 import { routeForPath } from '@/routing/route'
@@ -90,6 +92,7 @@ export function MobileAllNotes({
   filters,
   onFiltersChange,
 }: MobileAllNotesProps): ReactElement {
+  const searchHeaderFocus = useSearchHeaderFocus()
   const { graph } = useGraph()
   const { settings, updateSettings } = useSettings()
   const view = settings.allNotesView
@@ -119,7 +122,11 @@ export function MobileAllNotes({
     queryFn: () => listNoteTags(),
     enabled,
   })
-  const { data: hits } = useQuery({
+  const {
+    data: hits,
+    isError,
+    refetch,
+  } = useQuery({
     queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'mobile-all-notes', parsed],
     queryFn: () => searchWithFilters(parsed, searchPlanFor(parsed)),
     enabled,
@@ -182,12 +189,19 @@ export function MobileAllNotes({
         className="mobile-glass-bar absolute inset-x-0 top-0 z-30 space-y-2 px-4 pb-2"
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 0.25rem)' }}
       >
+        <h1
+          className={`overflow-hidden text-[28px] font-semibold tracking-tight transition-[height,opacity] duration-200 motion-reduce:transition-none ${
+            searchHeaderFocus.isFocused ? 'h-0 opacity-0' : 'h-9 opacity-100'
+          }`}
+        >
+          Notes
+        </h1>
         <div className="flex items-center gap-1">
           {tag !== null && (
             <Button
               variant="ghost"
               size="icon"
-              className="-ml-2 size-9 shrink-0"
+              className="-ml-2 size-11 shrink-0"
               aria-label="Back"
               onClick={back}
             >
@@ -200,6 +214,8 @@ export function MobileAllNotes({
             aria-label="Search notes"
             value={query}
             onValueChange={onQueryChange}
+            onFocus={searchHeaderFocus.onFocus}
+            onBlur={searchHeaderFocus.onBlur}
           />
           <AllNotesLayoutToggle
             view={view}
@@ -226,7 +242,19 @@ export function MobileAllNotes({
       </header>
       {/* Undefined hits mean "still fetching" only while the query can run —
           with no bridge/graph it never will, and the empty state is honest. */}
-      {enabled && hits === undefined ? (
+      {isError ? (
+        <div
+          role="alert"
+          className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center"
+          style={{ paddingTop: 'var(--mobile-header-height, 0px)' }}
+        >
+          <SearchOff className="size-6 text-text-muted" />
+          <p className="text-sm text-text-muted">Couldn’t load your notes.</p>
+          <Button variant="outline" onClick={() => void refetch()}>
+            Try again
+          </Button>
+        </div>
+      ) : enabled && hits === undefined ? (
         <div
           className="flex flex-1 items-center justify-center"
           style={{ paddingTop: 'var(--mobile-header-height, 0px)' }}
@@ -273,7 +301,7 @@ function TagSuggestions({
           role="option"
           aria-selected={false}
           onClick={() => onPick(facet)}
-          className="flex h-7 shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-border px-3 text-xs font-medium text-text-muted"
+          className="flex h-11 shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-border px-4 text-sm font-medium text-text-muted"
         >
           #{facet.tag}
           <span className="opacity-60">{facet.count}</span>
@@ -302,34 +330,44 @@ interface AllNotesLayoutToggleProps {
 
 /** Compact list/grid switch — the same labels as desktop so the setting is one. */
 function AllNotesLayoutToggle({ view, onChange }: AllNotesLayoutToggleProps): ReactElement {
+  const controlRef = useRef<HTMLDivElement | null>(null)
+  const indicatorRef = useRef<HTMLSpanElement | null>(null)
+
+  useSlidingIndicator(controlRef, indicatorRef, view)
+
   return (
     <div
+      ref={controlRef}
       role="group"
       aria-label="Layout"
-      className="flex shrink-0 items-center gap-0.5 rounded-full bg-surface-hover p-0.5"
+      className="relative flex shrink-0 items-center gap-0.5 rounded-full bg-surface-hover p-0.5"
     >
+      <span
+        ref={indicatorRef}
+        data-sliding-indicator
+        aria-hidden
+        className="pointer-events-none absolute top-0 left-0 z-10 rounded-full bg-surface opacity-0 shadow-sm transition-[transform,width,height,opacity] duration-200 ease-swift motion-reduce:transition-none"
+      />
       <button
         type="button"
+        data-sliding-value="list"
         aria-label="List view"
         aria-pressed={view === 'list'}
         onClick={() => onChange('list')}
-        className={`flex size-9 items-center justify-center rounded-full transition-colors ${
-          view === 'list'
-            ? 'bg-surface text-text shadow-sm'
-            : 'text-text-muted hover:text-text-secondary'
+        className={`relative z-20 flex size-11 items-center justify-center rounded-full transition-colors duration-150 motion-reduce:transition-none ${
+          view === 'list' ? 'text-text' : 'text-text-muted hover:text-text-secondary'
         }`}
       >
         <List aria-hidden className="size-4" />
       </button>
       <button
         type="button"
+        data-sliding-value="grid"
         aria-label="Grid view"
         aria-pressed={view === 'grid'}
         onClick={() => onChange('grid')}
-        className={`flex size-9 items-center justify-center rounded-full transition-colors ${
-          view === 'grid'
-            ? 'bg-surface text-text shadow-sm'
-            : 'text-text-muted hover:text-text-secondary'
+        className={`relative z-20 flex size-11 items-center justify-center rounded-full transition-colors duration-150 motion-reduce:transition-none ${
+          view === 'grid' ? 'text-text' : 'text-text-muted hover:text-text-secondary'
         }`}
       >
         <LayoutGrid aria-hidden className="size-4" />

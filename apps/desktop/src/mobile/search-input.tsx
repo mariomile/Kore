@@ -37,8 +37,8 @@ export function SearchInput({
         type="search"
         inputMode="search"
         className={cn(
-          'text-base [&::-webkit-search-cancel-button]:hidden',
-          value !== '' && 'pr-9',
+          'h-11 rounded-full border-transparent bg-surface px-4 text-base shadow-sm [&::-webkit-search-cancel-button]:hidden',
+          value !== '' && 'pr-11',
           className,
         )}
         disabled={disabled}
@@ -61,7 +61,7 @@ export function SearchInput({
           type="button"
           variant="ghost"
           size="icon"
-          className="absolute inset-y-0 right-0 size-8 text-text-muted"
+          className="absolute inset-y-0 right-0 size-11 text-text-muted"
           aria-label="Clear search"
           onPointerDown={(event) => event.preventDefault()}
           onClick={() => onValueChange('')}

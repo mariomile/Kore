@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react'
+import { useLayoutEffect, type ReactElement } from 'react'
 import { setLocalWriteEcho, type AppPlatform } from '@reflect/core'
 import { Toaster } from '@/components/ui/toast'
 import { TooltipProvider } from '@/components/ui/tooltip'
@@ -23,6 +23,13 @@ setPlatformSurface({ touchEditor: true, mobileApp: true })
  * shell. Desktop-only providers (auto-update, drag region) never load here.
  */
 export function MobileRoot({ platform }: { platform: AppPlatform }): ReactElement {
+  useLayoutEffect(() => {
+    document.documentElement.dataset.mobilePlatform = platform
+    return () => {
+      delete document.documentElement.dataset.mobilePlatform
+    }
+  }, [platform])
+
   return (
     <GraphProvider platform={platform}>
       <TooltipProvider>

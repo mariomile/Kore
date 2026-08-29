@@ -186,6 +186,8 @@ interface MobileStackProps {
   /** The All tab's badge filters (owned by the shell — survive navigation). */
   allFilters: AllNotesFilters
   onAllFiltersChange: (filters: AllNotesFilters) => void
+  newTaskRequested: boolean
+  onNewTaskConsumed: () => void
 }
 
 /**

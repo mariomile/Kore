@@ -1,8 +1,9 @@
-import type { ReactElement, ReactNode } from 'react'
+import { useRef, type ReactElement, type ReactNode } from 'react'
 import { Check, ChevronRight, type Icon } from '@/components/icons'
 import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
 import { cn } from '@/lib/utils'
+import { useSlidingIndicator } from '@/mobile/use-sliding-indicator'
 
 /**
  * iOS-style inset-grouped list primitives for the mobile settings screens:
@@ -132,28 +133,41 @@ export function SettingsSegmentedRow<Value extends string>({
   options,
   onChange,
 }: SettingsSegmentedRowProps<Value>): ReactElement {
+  const controlRef = useRef<HTMLDivElement | null>(null)
+  const indicatorRef = useRef<HTMLSpanElement | null>(null)
+
+  useSlidingIndicator(controlRef, indicatorRef, value)
+
   return (
     <div className={cn(ROW_CLASS, 'justify-between')}>
       <span className="min-w-0 truncate">{label}</span>
       {/* The one segmented-control recipe (shared with All notes' list/grid
           toggle): a fully-round track with a round floating thumb. */}
       <div
+        ref={controlRef}
         role="radiogroup"
         aria-label={label}
-        className="flex shrink-0 items-center gap-0.5 rounded-full bg-surface-hover p-0.5"
+        className="relative flex shrink-0 items-center gap-0.5 rounded-full bg-surface-hover p-0.5"
       >
+        <span
+          ref={indicatorRef}
+          data-sliding-indicator
+          aria-hidden
+          className="pointer-events-none absolute top-0 left-0 z-10 rounded-full bg-surface opacity-0 shadow-sm transition-[transform,width,height,opacity] duration-200 ease-swift motion-reduce:transition-none"
+        />
         {options.map((option) => {
           const selected = option.value === value
           return (
             <button
               key={option.value}
               type="button"
+              data-sliding-value={option.value}
               role="radio"
               aria-checked={selected}
               onClick={() => onChange(option.value)}
               className={cn(
-                'h-7 rounded-full px-3 text-[13px] font-medium transition-colors',
-                selected ? 'bg-surface text-text shadow-sm' : 'text-text-muted',
+                'relative z-20 h-7 rounded-full px-3 text-[13px] font-medium transition-colors duration-150 motion-reduce:transition-none',
+                selected ? 'text-text' : 'text-text-muted',
               )}
             >
               {option.label}

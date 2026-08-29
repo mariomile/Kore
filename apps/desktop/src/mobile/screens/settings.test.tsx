@@ -143,6 +143,20 @@ describe('MobileSettings', () => {
     expect(policy.getBoundingClientRect().bottom).toBeLessThanOrEqual(window.innerHeight)
   })
 
+  it('filters settings by section and row labels', async () => {
+    const user = userEvent
+    await mount()
+
+    const search = page.getByRole('searchbox', { name: 'Search settings' })
+    await user.fill(search, 'privacy')
+
+    await expect.element(page.getByText('About', { exact: true })).toBeVisible()
+    await expect.element(page.getByText('Graph', { exact: true })).not.toBeInTheDocument()
+
+    await user.fill(search, 'not a setting')
+    await expect.element(page.getByText('No settings found')).toBeVisible()
+  })
+
   it('has no purchase or subscription actions on iOS', async () => {
     graphState.platform = 'ios'
     await mount()
@@ -224,6 +238,16 @@ describe('MobileSettings', () => {
 
     await user.click(corners.getByRole('radio', { name: 'Small' }))
     expect(updateSettings).toHaveBeenCalledWith({ uiRadius: 'small' })
+  })
+
+  it('animates the inline segmented control and respects Reduce Motion', async () => {
+    await mount()
+
+    const textSize = page.getByRole('radiogroup', { name: 'Text size' })
+    const indicator = textSize.element().querySelector<HTMLElement>('[data-sliding-indicator]')
+    expect(indicator).not.toBeNull()
+    expect(indicator?.style.transform).not.toBe('')
+    expect(indicator?.classList.contains('motion-reduce:transition-none')).toBe(true)
   })
 
   it('hides glass intensity until Liquid Glass is on', async () => {

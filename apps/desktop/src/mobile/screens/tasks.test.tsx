@@ -243,7 +243,7 @@ function RouteProbe(): ReactNode {
   return <output data-testid="route">{JSON.stringify(route)}</output>
 }
 
-function renderScreen() {
+function renderScreen(newTaskRequested = false) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
@@ -251,7 +251,7 @@ function renderScreen() {
         {/* The screen floats its chrome over the scroller, so it needs the
             bounded height the mobile shell provides in production. */}
         <div style={{ height: 520 }}>
-          <MobileTasks />
+          <MobileTasks newTaskRequested={newTaskRequested} />
         </div>
         <RouteProbe />
       </RouterProvider>
@@ -407,8 +407,6 @@ describe('MobileTasks', () => {
     expect(hapticImpactLight).toHaveBeenCalledTimes(3)
 
     await user.click(view.getByRole('button', { name: 'dismiss-drawer' }))
-    await user.click(view.getByRole('button', { name: 'New task' }))
-    expect(hapticImpactLight).toHaveBeenCalledTimes(4)
     await view.unmount()
   })
 
@@ -666,13 +664,9 @@ describe('MobileTasks', () => {
     await view.unmount()
   })
 
-  it('adds a task to today’s daily from the floating plus button', async () => {
+  it('adds a task to today’s daily from the global capture request', async () => {
     getOpenTasks.mockResolvedValue([task({ text: 'buy milk' })])
-    const user = userEvent
-    const view = await renderScreen()
-
-    await view.findByText('buy milk')
-    await user.click(view.getByRole('button', { name: 'New task' }))
+    const view = await renderScreen(true)
 
     await waitFor(() => expect(insertTask).toHaveBeenCalledWith('daily/2026-06-14.md', 1))
     const input = asTextArea(await view.findByRole('textbox', { name: 'Task text' }))

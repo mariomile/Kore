@@ -147,6 +147,12 @@ describe('MobileAllNotes grid view', () => {
 
     await expect.element(page.getByText('Shop your health goals.')).toBeInTheDocument()
     expect(page.getByTestId('all-notes-grid').query()).not.toBeNull()
+    expect(
+      page
+        .getByRole('button', { name: 'Health Stacked' })
+        .element()
+        .classList.contains('shadow-sm'),
+    ).toBe(false)
 
     await page.getByRole('button', { name: 'Health Stacked' }).click()
     expect(JSON.parse(page.getByTestId('route').element().textContent ?? '{}')).toEqual({

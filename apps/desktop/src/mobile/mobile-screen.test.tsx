@@ -350,6 +350,24 @@ describe('MobileShell', () => {
     )
   })
 
+  it('slides one active indicator between navigation tabs', async () => {
+    const view = await mount({ kind: 'today' })
+    const indicator = view.getByTestId('mobile-tab-indicator').element()
+    const initialTransform = indicator.style.transform
+
+    expect(initialTransform).not.toBe('')
+    expect(Array.from(indicator.classList)).toContain('transition-[transform,width,height,opacity]')
+    expect(Array.from(indicator.classList)).toContain('top-0')
+    expect(Array.from(indicator.classList)).toContain('left-0')
+
+    await userEvent.click(view.getByRole('button', { name: 'All', exact: true }))
+
+    await waitFor(() => expect(indicator.style.transform).not.toBe(initialTransform))
+    expect(
+      view.getByRole('button', { name: 'All', exact: true }).element().getAttribute('aria-current'),
+    ).toBe('page')
+  })
+
   it.each(['Daily', 'All', 'Tasks'])('opens a new note from the %s capsule tab', async (label) => {
     const view = await mount({ kind: 'today' })
     await userEvent.click(view.getByRole('button', { name: label, exact: true }))

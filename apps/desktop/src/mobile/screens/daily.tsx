@@ -1,6 +1,5 @@
 import { useCallback, type ReactElement } from 'react'
 import { useToday } from '@/lib/use-today'
-import { AudioMemoFab } from '@/mobile/audio-memo-fab'
 import { CalendarStrip } from '@/mobile/calendar-strip'
 import { DayCarousel } from '@/mobile/day-carousel'
 import { MobileDayEvents } from '@/mobile/mobile-day-events'
@@ -73,7 +72,6 @@ export function MobileDaily({ date }: { date: string }): ReactElement {
         onSelect={select}
         onTarget={followSwipeTarget}
       />
-      <AudioMemoFab />
     </div>
   )
 }

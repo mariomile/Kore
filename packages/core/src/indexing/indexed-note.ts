@@ -103,8 +103,20 @@ import {
  * FTS body (`propertiesText`); existing rows carry neither until reprojected.
  * 22 — `tasks.due_time` (`@HH:MM` after the due-date wiki link): existing
  * task rows have a null due time until reprojected.
+ * 23 - `search_fts` rows are keyed by their `notes` rowid so deletes stop
+ * full-scanning the FTS table. Migration 0023 wipes the old rows; they come
+ * back aligned on the rebuild this bump forces.
  */
-export const PROJECTION_VERSION = 22
+export const PROJECTION_VERSION = 23
+
+/**
+ * The `index_meta` key holding the {@link PROJECTION_VERSION} the stored rows
+ * were built with. Stamped after every full rebuild; `index_clear` preserves
+ * `index_meta`, and the stamp is rewritten once the rebuild completes. It
+ * lives beside the version it stores so a reader can check the projection is
+ * current without importing the indexer.
+ */
+export const PROJECTION_VERSION_KEY = 'projection_version'
 
 /**
  * Precedence of the spellings a note answers to (`note_claims.tier`): the

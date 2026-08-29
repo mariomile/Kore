@@ -131,16 +131,13 @@ fn emit_note_moved<R: tauri::Runtime>(app: &tauri::AppHandle<R>, from: &str, to:
 
 // ---- commands --------------------------------------------------------------
 
-/// Open + migrate the index for the active graph (reads the root from state).
-/// Returns the new generation, which write commands must echo back. The
-/// generation bump and connection rebind happen under one lock, atomically.
-#[tauri::command]
-pub fn index_open(
-    graph: State<GraphState>,
-    index: State<IndexState>,
-    background_tasks: State<BackgroundTaskState>,
-) -> AppResult<u64> {
-    let _background_task = background_task::scoped(&background_tasks, "Reflect index open");
+/// Open + migrate the index for the active graph, returning the new
+/// generation. The generation bump and connection rebind happen under one
+/// lock, atomically.
+///
+/// Split from the command so the tests can drive it synchronously: the command
+/// is the IPC and threading shell, this is the operation.
+pub(super) fn open_index_for(graph: &GraphState, index: &IndexState) -> AppResult<u64> {
     let root = graph
         .0
         .lock()
@@ -151,27 +148,48 @@ pub fn index_open(
         .root
         .clone()
         .ok_or_else(AppError::no_graph)?;
-    let mut state = lock_state(&index)?;
+    let mut state = lock_state(index)?;
     state.generation += 1;
     // Drop the old connections before opening; if an open fails we return
     // with `conn = None` (reads then error) rather than a stale connection.
     // The root is rebound with the writer, under the same lock, so a
     // generation can never pair with another graph's root (see
     // `IndexInner::root`). The reader rebinds while the writer lock is still
-    // held (writer → reader lock order), after the writer created/migrated
+    // held (writer -> reader lock order), after the writer created/migrated
     // the file it opens read-only.
     state.conn = None;
     state.root = None;
     {
-        let mut read = lock_read(&index)?;
+        let mut read = lock_read(index)?;
         read.conn = None;
     }
     state.conn = Some(migrations::open_index_at(&root)?);
-    let mut read = lock_read(&index)?;
+    let mut read = lock_read(index)?;
     read.conn = Some(migrations::open_index_read_only_at(&root)?);
     read.generation = state.generation;
     state.root = Some(root);
     Ok(state.generation)
+}
+
+/// Open + migrate the index for the active graph (reads the root from state).
+/// Returns the new generation, which write commands must echo back.
+///
+/// Async because this runs schema migrations: real disk and SQLite work, on a
+/// connection whose 5s `busy_timeout` can be held by another process. The
+/// single lock hold that makes the generation bump atomic lives inside the
+/// closure, so it survives the hop intact.
+#[tauri::command]
+pub async fn index_open<R: tauri::Runtime>(
+    app: tauri::AppHandle<R>,
+    background_tasks: State<'_, BackgroundTaskState>,
+) -> AppResult<u64> {
+    let _background_task = background_task::scoped(&background_tasks, "Reflect index open");
+    crate::blocking::run_blocking(move || {
+        let graph = app.state::<GraphState>();
+        let index = app.state::<IndexState>();
+        open_index_for(&graph, &index)
+    })
+    .await
 }
 
 /// Apply a batch of note projections in a single transaction (shared by the
@@ -326,36 +344,49 @@ pub struct NoteMoveRequest {
 }
 
 #[tauri::command]
-pub fn note_move_indexed<R: tauri::Runtime>(
+pub async fn note_move_indexed<R: tauri::Runtime>(
     request: NoteMoveRequest,
     generation: u64,
     app: tauri::AppHandle<R>,
-    graph: State<GraphState>,
-    index: State<IndexState>,
-    background_tasks: State<BackgroundTaskState>,
+    background_tasks: State<'_, BackgroundTaskState>,
 ) -> AppResult<()> {
     let _background_task = background_task::scoped(&background_tasks, "Reflect note move");
-    let root = crate::fs::root_for_generation(&graph, generation)?;
-    {
-        let mut state = lock_state(&index)?;
-        let conn = state.conn.as_mut().ok_or_else(AppError::no_graph)?;
-        move_rows(conn, &request.from, &request.to, &request.to_address)?;
-        if let Err(err) = crate::fs::move_note_file(&root, &request.from, &request.to) {
-            // Compensate: the disk refused, so the rows go back. Best-effort —
-            // a failed compensation must surface the *original* error, and the
-            // reconcile heals any residue by id.
-            if let Err(comp) = move_rows(conn, &request.to, &request.from, &request.from_address) {
-                tracing::error!(
-                    ?comp,
-                    "rename compensation failed; reconcile will heal by id"
-                );
+    // Kept for the events fired after the hop; `request` itself moves into
+    // the closure below.
+    let from = request.from.clone();
+    let to = request.to.clone();
+    crate::blocking::run_blocking({
+        let app = app.clone();
+        move || {
+            let graph = app.state::<GraphState>();
+            let index = app.state::<IndexState>();
+            let root = crate::fs::root_for_generation(&graph, generation)?;
+            {
+                let mut state = lock_state(&index)?;
+                let conn = state.conn.as_mut().ok_or_else(AppError::no_graph)?;
+                move_rows(conn, &request.from, &request.to, &request.to_address)?;
+                if let Err(err) = crate::fs::move_note_file(&root, &request.from, &request.to) {
+                    // Compensate: the disk refused, so the rows go back. Best-effort —
+                    // a failed compensation must surface the *original* error, and the
+                    // reconcile heals any residue by id.
+                    if let Err(comp) =
+                        move_rows(conn, &request.to, &request.from, &request.from_address)
+                    {
+                        tracing::error!(
+                            ?comp,
+                            "rename compensation failed; reconcile will heal by id"
+                        );
+                    }
+                    return Err(err);
+                }
             }
-            return Err(err);
+            crate::fs::invalidate_file_catalog(&graph, &root);
+            Ok(())
         }
-    }
-    crate::fs::invalidate_file_catalog(&graph, &root);
+    })
+    .await?;
     emit_index_written(&app);
-    emit_note_moved(&app, &request.from, &request.to);
+    emit_note_moved(&app, &from, &to);
     Ok(())
 }
 
@@ -383,26 +414,37 @@ fn move_rows(
 /// `note_move_indexed` this is gated on the **index** generation like every
 /// other reconcile-path write — a superseded pass must no-op.
 #[tauri::command]
-pub fn index_move<R: tauri::Runtime>(
+pub async fn index_move<R: tauri::Runtime>(
     from: String,
     to: String,
     generation: u64,
     to_address: write::MovedNoteAddress,
     app: tauri::AppHandle<R>,
-    index: State<IndexState>,
-    background_tasks: State<BackgroundTaskState>,
+    background_tasks: State<'_, BackgroundTaskState>,
 ) -> AppResult<()> {
     let _background_task = background_task::scoped(&background_tasks, "Reflect index move");
-    {
-        let mut state = lock_state(&index)?;
-        if state.generation != generation {
-            return Ok(());
+    // Kept for the events fired after the hop; `from`/`to` themselves move
+    // into the closure below.
+    let event_from = from.clone();
+    let event_to = to.clone();
+    let moved = crate::blocking::run_blocking({
+        let app = app.clone();
+        move || {
+            let index = app.state::<IndexState>();
+            let mut state = lock_state(&index)?;
+            if state.generation != generation {
+                return Ok(false);
+            }
+            let conn = state.conn.as_mut().ok_or_else(AppError::no_graph)?;
+            move_rows(conn, &from, &to, &to_address)?;
+            Ok(true)
         }
-        let conn = state.conn.as_mut().ok_or_else(AppError::no_graph)?;
-        move_rows(conn, &from, &to, &to_address)?;
+    })
+    .await?;
+    if moved {
+        emit_index_written(&app);
+        emit_note_moved(&app, &event_from, &event_to);
     }
-    emit_index_written(&app);
-    emit_note_moved(&app, &from, &to);
     Ok(())
 }
 
@@ -476,40 +518,43 @@ pub struct IndexTouch {
 /// every pass forever. One transaction for the batch; a path whose row
 /// vanished in between updates nothing.
 #[tauri::command]
-pub fn index_touch(
+pub async fn index_touch<R: tauri::Runtime>(
     entries: Vec<IndexTouch>,
     generation: u64,
-    index: State<IndexState>,
-    background_tasks: State<BackgroundTaskState>,
+    app: tauri::AppHandle<R>,
+    background_tasks: State<'_, BackgroundTaskState>,
 ) -> AppResult<()> {
     let _background_task = background_task::scoped(&background_tasks, "Reflect index touch");
-    let mut state = lock_state(&index)?;
-    if state.generation != generation {
-        return Ok(());
-    }
-    let conn = state.conn.as_mut().ok_or_else(AppError::no_graph)?;
-    let tx = conn.transaction()?;
-    for entry in &entries {
-        write::touch_note(&tx, &entry.path, entry.mtime)?;
-    }
-    tx.commit()?;
-    Ok(())
+    crate::blocking::run_blocking(move || {
+        let index = app.state::<IndexState>();
+        let mut state = lock_state(&index)?;
+        if state.generation != generation {
+            return Ok(());
+        }
+        let conn = state.conn.as_mut().ok_or_else(AppError::no_graph)?;
+        let tx = conn.transaction()?;
+        for entry in &entries {
+            write::touch_note(&tx, &entry.path, entry.mtime)?;
+        }
+        tx.commit()?;
+        Ok(())
+    })
+    .await
 }
 
 /// Upsert one `index_meta` key (no-op if stale). The table is bookkeeping the
 /// TS policy layer owns — e.g. `syncIndex` stamps the projection version after
 /// a rebuild — and `index_clear` deliberately preserves it, so a marker can
 /// outlive the rows it describes. Reads go through the ordinary `db_query`.
-#[tauri::command]
-pub fn index_meta_set(
-    key: String,
-    value: String,
+///
+/// Split from the command so the tests can drive it synchronously.
+pub(super) fn set_index_meta_for(
+    index: &IndexState,
+    key: &str,
+    value: &str,
     generation: u64,
-    index: State<IndexState>,
-    background_tasks: State<BackgroundTaskState>,
 ) -> AppResult<()> {
-    let _background_task = background_task::scoped(&background_tasks, "Reflect index metadata");
-    let state = lock_state(&index)?;
+    let state = lock_state(index)?;
     if state.generation != generation {
         return Ok(());
     }
@@ -522,26 +567,49 @@ pub fn index_meta_set(
     Ok(())
 }
 
+#[tauri::command]
+pub async fn index_meta_set<R: tauri::Runtime>(
+    key: String,
+    value: String,
+    generation: u64,
+    app: tauri::AppHandle<R>,
+    background_tasks: State<'_, BackgroundTaskState>,
+) -> AppResult<()> {
+    let _background_task = background_task::scoped(&background_tasks, "Reflect index metadata");
+    crate::blocking::run_blocking(move || {
+        let index = app.state::<IndexState>();
+        set_index_meta_for(&index, &key, &value, generation)
+    })
+    .await
+}
+
 /// Wipe all derived tables (the TS layer then re-applies every note; no-op if
 /// stale). The `chat_*` tables are deliberately untouched — chat history is
 /// durable, not a rebuildable projection.
 #[tauri::command]
-pub fn index_clear<R: tauri::Runtime>(
+pub async fn index_clear<R: tauri::Runtime>(
     generation: u64,
     app: tauri::AppHandle<R>,
-    index: State<IndexState>,
-    background_tasks: State<BackgroundTaskState>,
+    background_tasks: State<'_, BackgroundTaskState>,
 ) -> AppResult<()> {
     let _background_task = background_task::scoped(&background_tasks, "Reflect index clear");
-    {
-        let state = lock_state(&index)?;
-        if state.generation != generation {
-            return Ok(());
+    let cleared = crate::blocking::run_blocking({
+        let app = app.clone();
+        move || {
+            let index = app.state::<IndexState>();
+            let state = lock_state(&index)?;
+            if state.generation != generation {
+                return Ok(false);
+            }
+            let conn = state.conn.as_ref().ok_or_else(AppError::no_graph)?;
+            write::clear_index(conn)?;
+            Ok(true)
         }
-        let conn = state.conn.as_ref().ok_or_else(AppError::no_graph)?;
-        write::clear_index(conn)?;
+    })
+    .await?;
+    if cleared {
+        emit_index_written(&app);
     }
-    emit_index_written(&app);
     Ok(())
 }
 
@@ -551,40 +619,48 @@ pub fn index_clear<R: tauri::Runtime>(
 /// Stale-generation writes are dropped like every other index write — a turn
 /// detached by a graph switch must not land in the new graph's history.
 #[tauri::command]
-pub fn chat_message_save(
+pub async fn chat_message_save<R: tauri::Runtime>(
     conversation: ChatConversation,
     message: ChatMessageRow,
     generation: u64,
-    index: State<IndexState>,
-    background_tasks: State<BackgroundTaskState>,
+    app: tauri::AppHandle<R>,
+    background_tasks: State<'_, BackgroundTaskState>,
 ) -> AppResult<()> {
     let _background_task = background_task::scoped(&background_tasks, "Reflect chat save");
-    let mut state = lock_state(&index)?;
-    if state.generation != generation {
-        return Ok(());
-    }
-    let conn = state.conn.as_mut().ok_or_else(AppError::no_graph)?;
-    let tx = conn.transaction()?;
-    chat_write::save_message(&tx, &conversation, &message)?;
-    tx.commit()?;
-    Ok(())
+    crate::blocking::run_blocking(move || {
+        let index = app.state::<IndexState>();
+        let mut state = lock_state(&index)?;
+        if state.generation != generation {
+            return Ok(());
+        }
+        let conn = state.conn.as_mut().ok_or_else(AppError::no_graph)?;
+        let tx = conn.transaction()?;
+        chat_write::save_message(&tx, &conversation, &message)?;
+        tx.commit()?;
+        Ok(())
+    })
+    .await
 }
 
 /// Delete a conversation and (via cascade) its messages (no-op if stale).
 #[tauri::command]
-pub fn chat_conversation_delete(
+pub async fn chat_conversation_delete<R: tauri::Runtime>(
     id: String,
     generation: u64,
-    index: State<IndexState>,
-    background_tasks: State<BackgroundTaskState>,
+    app: tauri::AppHandle<R>,
+    background_tasks: State<'_, BackgroundTaskState>,
 ) -> AppResult<()> {
     let _background_task = background_task::scoped(&background_tasks, "Reflect chat delete");
-    let state = lock_state(&index)?;
-    if state.generation != generation {
-        return Ok(());
-    }
-    let conn = state.conn.as_ref().ok_or_else(AppError::no_graph)?;
-    chat_write::delete_conversation(conn, &id)
+    crate::blocking::run_blocking(move || {
+        let index = app.state::<IndexState>();
+        let state = lock_state(&index)?;
+        if state.generation != generation {
+            return Ok(());
+        }
+        let conn = state.conn.as_ref().ok_or_else(AppError::no_graph)?;
+        chat_write::delete_conversation(conn, &id)
+    })
+    .await
 }
 
 /// Replace a note's embedding chunk set (diff applied in one transaction;

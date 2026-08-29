@@ -350,7 +350,6 @@ pub fn run() {
             fs::note_exists,
             fs::note_delete,
             fs::list_files,
-            fs::list_attachments,
             fs::vault_scan_stats,
             recents::recent_graphs,
             recents::forget_recent,
@@ -459,7 +458,7 @@ pub fn run() {
                 wake::install(app);
                 // Best-effort: a taken binding must not fail the launch.
                 // Arming from `.setup()` would replace the deep-link hook.
-                match settings::settings_load() {
+                match settings::load_settings() {
                     Ok(doc) => windows::sync_quick_capture_shortcut(app, &doc),
                     Err(err) => {
                         tracing::warn!(

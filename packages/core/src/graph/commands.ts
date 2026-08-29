@@ -336,14 +336,6 @@ export async function listFiles(generation?: number): Promise<FileMeta[]> {
   return await call('list_files', { generation }, z.array(fileMetaSchema))
 }
 
-/**
- * List supported local attachments anywhere in the vault, from the same
- * cached catalog as {@link listFiles}.
- */
-export async function listAttachments(generation?: number): Promise<FileMeta[]> {
-  return await call('list_attachments', { generation }, z.array(fileMetaSchema))
-}
-
 const vaultScanStatsSchema = z.object({
   notes: z.number(),
   attachments: z.number(),

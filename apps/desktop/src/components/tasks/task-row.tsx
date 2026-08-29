@@ -106,7 +106,7 @@ export function TaskRow({
     event.preventDefault()
     onSelect({ metaKey: event.metaKey, ctrlKey: event.ctrlKey, shiftKey: event.shiftKey })
   }
-  const selectFromRow = (event: MouseEvent<HTMLLIElement>): void => {
+  const selectFromRow = (event: MouseEvent<HTMLDivElement>): void => {
     if (editing) {
       return
     }
@@ -119,7 +119,7 @@ export function TaskRow({
   }
 
   return (
-    <li
+    <div
       data-task-key={taskKey(task)}
       onClick={selectFromRow}
       className={cn(
@@ -202,6 +202,6 @@ export function TaskRow({
             : task.noteTitle}
         </button>
       ) : null}
-    </li>
+    </div>
   )
 }

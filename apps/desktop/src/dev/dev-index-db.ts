@@ -224,7 +224,14 @@ export async function createDevIndexDb(): Promise<DevIndexDb> {
       const searchBody = [note.text, note.assetText, note.propertiesText]
         .filter((part) => part !== '')
         .join('\n')
-      run(db, 'INSERT INTO search_fts(path, title, body) VALUES(?, ?, ?)', [
+      // Keyed by the `notes` rowid so deletes never scan the FTS table, and
+      // read back from `notes` rather than from a last-insert-rowid: the child
+      // inserts above would each have moved that. The delete guards the
+      // insert, since a reused rowid may still hold an orphaned FTS row.
+      const noteRowid = db.selectValue('SELECT rowid FROM notes WHERE path = ?', [note.path])
+      run(db, 'DELETE FROM search_fts WHERE rowid = ?', [noteRowid])
+      run(db, 'INSERT INTO search_fts(rowid, path, title, body) VALUES(?, ?, ?, ?)', [
+        noteRowid,
         note.path,
         note.title,
         searchBody,
@@ -289,7 +296,10 @@ export async function createDevIndexDb(): Promise<DevIndexDb> {
         // converges on the reprojection that follows a healed move.
         run(db, 'UPDATE tag_types SET note_path = ? WHERE note_path = ?', [to, from])
         run(db, 'UPDATE embedding_chunks SET note_path = ? WHERE note_path = ?', [to, from])
-        run(db, 'UPDATE search_fts SET path = ? WHERE path = ?', [to, from])
+        // `UPDATE notes SET path` keeps the rowid, so only the stored column
+        // moves. Resolved through the destination: the notes row moved above.
+        const movedRowid = db.selectValue('SELECT rowid FROM notes WHERE path = ?', [to])
+        run(db, 'UPDATE search_fts SET path = ? WHERE rowid = ?', [to, movedRowid])
         db.exec('COMMIT')
       } catch (cause) {
         db.exec('ROLLBACK')
@@ -361,6 +371,11 @@ export async function createDevIndexDb(): Promise<DevIndexDb> {
 }
 
 function removeNote(db: Database, path: string): void {
+  // Read the rowid first: deleting the `notes` row is what makes the FTS row's
+  // key unrecoverable. An unknown path deletes nothing, as before.
+  const noteRowid = db.selectValue('SELECT rowid FROM notes WHERE path = ?', [path])
   run(db, 'DELETE FROM notes WHERE path = ?', [path])
-  run(db, 'DELETE FROM search_fts WHERE path = ?', [path])
+  if (noteRowid !== undefined) {
+    run(db, 'DELETE FROM search_fts WHERE rowid = ?', [noteRowid])
+  }
 }

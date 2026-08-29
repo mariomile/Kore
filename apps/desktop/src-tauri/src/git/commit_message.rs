@@ -3,6 +3,7 @@
 use std::path::Path;
 
 use git2::{Commit, Delta, DiffOptions, Repository, Tree};
+use reflect_note_policy::{first_h1, parse_frontmatter, split_frontmatter};
 
 use crate::error::AppResult;
 
@@ -299,7 +300,13 @@ fn note_label(path: &str) -> Option<String> {
 
 fn authored_note_title(source: &str) -> Option<AuthoredNoteTitle> {
     let split = split_frontmatter(source);
-    frontmatter_title(split.raw)
+    let frontmatter = parse_frontmatter(split.raw);
+    frontmatter
+        .title
+        .as_deref()
+        .map(str::trim)
+        .filter(|title| !title.is_empty())
+        .map(str::to_string)
         .or_else(|| first_h1(split.body))
         .map(|title| collapse_spaces(&title))
         .filter(|title| !title.is_empty())
@@ -307,169 +314,7 @@ fn authored_note_title(source: &str) -> Option<AuthoredNoteTitle> {
 }
 
 fn note_is_private(source: &str) -> bool {
-    split_frontmatter(source)
-        .raw
-        .is_some_and(frontmatter_private)
-}
-
-struct FrontmatterSplit<'source> {
-    raw: Option<&'source str>,
-    body: &'source str,
-}
-
-fn split_frontmatter(source: &str) -> FrontmatterSplit<'_> {
-    let no_block = FrontmatterSplit {
-        raw: None,
-        body: source,
-    };
-    let Some(open_len) = fence_line_len(source) else {
-        return no_block;
-    };
-    let rest = &source[open_len..];
-    if let Some(close_len) = fence_line_len(rest) {
-        return FrontmatterSplit {
-            raw: Some(""),
-            body: &rest[close_len..],
-        };
-    }
-
-    let mut search_from = 0;
-    while let Some(newline_at) = rest[search_from..].find('\n').map(|at| search_from + at) {
-        let line_start = newline_at + 1;
-        if let Some(close_len) = fence_line_len(&rest[line_start..]) {
-            let raw_end = if newline_at > 0 && rest.as_bytes()[newline_at - 1] == b'\r' {
-                newline_at - 1
-            } else {
-                newline_at
-            };
-            return FrontmatterSplit {
-                raw: Some(&rest[..raw_end]),
-                body: &rest[line_start + close_len..],
-            };
-        }
-        search_from = line_start;
-    }
-    no_block
-}
-
-fn fence_line_len(text: &str) -> Option<usize> {
-    let rest = text.strip_prefix("---")?;
-    let bytes = rest.as_bytes();
-    let mut index = 0;
-    while index < bytes.len() && (bytes[index] == b' ' || bytes[index] == b'\t') {
-        index += 1;
-    }
-    match bytes.get(index) {
-        None => Some(3 + index),
-        Some(b'\n') => Some(3 + index + 1),
-        Some(b'\r') if bytes.get(index + 1) == Some(&b'\n') => Some(3 + index + 2),
-        _ => None,
-    }
-}
-
-fn frontmatter_title(raw: Option<&str>) -> Option<String> {
-    frontmatter_scalar(raw?, "title").filter(|title| !title.trim().is_empty())
-}
-
-fn frontmatter_private(raw: &str) -> bool {
-    frontmatter_scalar(raw, "private")
-        .map(|value| {
-            matches!(
-                value.trim().to_lowercase().as_str(),
-                "true" | "yes" | "on" | "1"
-            )
-        })
-        .unwrap_or(false)
-}
-
-fn frontmatter_scalar(raw: &str, key: &str) -> Option<String> {
-    for line in raw.lines() {
-        let Some((candidate, value)) = line.split_once(':') else {
-            continue;
-        };
-        if candidate.trim() == key {
-            return Some(unquote_scalar(value.trim()));
-        }
-    }
-    None
-}
-
-fn unquote_scalar(value: &str) -> String {
-    let trimmed = value.trim();
-    if trimmed.len() >= 2 {
-        let bytes = trimmed.as_bytes();
-        let quote = bytes[0];
-        if quote == b'"' || quote == b'\'' {
-            if let Some(end) = trimmed[1..]
-                .bytes()
-                .position(|byte| byte == quote)
-                .map(|index| index + 1)
-            {
-                let trailing = trimmed[end + 1..].trim_start();
-                if trailing.is_empty() || trailing.starts_with('#') {
-                    return trimmed[1..end].to_string();
-                }
-            }
-        }
-    }
-    trimmed
-        .split_once(" #")
-        .map(|(head, _comment)| head)
-        .unwrap_or(trimmed)
-        .trim()
-        .to_string()
-}
-
-fn first_h1(body: &str) -> Option<String> {
-    let lines: Vec<&str> = body.lines().collect();
-    let mut in_fence = false;
-    for (index, line) in lines.iter().enumerate() {
-        let trimmed = line.trim_start();
-        if trimmed.starts_with("```") || trimmed.starts_with("~~~") {
-            in_fence = !in_fence;
-            continue;
-        }
-        if in_fence {
-            continue;
-        }
-        if let Some(heading) = atx_h1(trimmed) {
-            return Some(heading);
-        }
-        if index + 1 < lines.len() && is_setext_h1(lines[index + 1]) {
-            let heading = clean_heading_text(line);
-            if !heading.is_empty() {
-                return Some(heading);
-            }
-        }
-    }
-    None
-}
-
-fn atx_h1(line: &str) -> Option<String> {
-    let rest = line.strip_prefix('#')?;
-    if rest.starts_with('#') {
-        return None;
-    }
-    if !rest.is_empty() && !rest.starts_with([' ', '\t']) {
-        return None;
-    }
-    let heading = clean_heading_text(rest);
-    (!heading.is_empty()).then_some(heading)
-}
-
-fn is_setext_h1(line: &str) -> bool {
-    let trimmed = line.trim();
-    !trimmed.is_empty() && trimmed.chars().all(|character| character == '=')
-}
-
-fn clean_heading_text(raw: &str) -> String {
-    let text = raw
-        .trim()
-        .trim_end_matches('#')
-        .trim_end()
-        .trim_end_matches('#')
-        .trim();
-    text.to_string()
+    parse_frontmatter(split_frontmatter(source).raw).private
 }
 
 fn daily_date(path: &str) -> Option<&str> {

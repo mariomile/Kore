@@ -224,6 +224,27 @@ fn commit_does_not_leak_private_authored_titles() {
     assert_eq!(head_message(root), "Add private note");
 }
 
+/// Regression: `private` also accepts a YAML numeric `1` in float form, the
+/// same rule the canonical `coercePrivate` uses
+/// (`packages/core/src/markdown/model.ts`, `reflect-note-policy`'s
+/// `frontmatter` module) and the `private-float-one.md` parity fixture pins.
+/// Before the commit-message path called the shared crate, its own inline
+/// coercion recognized only `"true" | "yes" | "on" | "1"` strings, so a
+/// `private: 1.0` note's title leaked into the backup commit subject.
+#[test]
+fn commit_treats_a_float_one_private_flag_as_private() {
+    let fixture = fixture();
+    let root = &fixture.graph_a;
+
+    write(
+        root,
+        "notes/private-project.md",
+        "---\nprivate: 1.0\ntitle: Secret Plan\n---\n# Secret Heading\n",
+    );
+    commit_all(root, "Update notes", MAX_FILE_BYTES).unwrap();
+    assert_eq!(head_message(root), "Add private note");
+}
+
 #[test]
 fn commit_summarizes_note_batches() {
     let fixture = fixture();

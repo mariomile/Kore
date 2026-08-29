@@ -165,6 +165,41 @@ describe('nextOccurrenceAppends', () => {
     expect(nextOccurrenceAppends('+ [ ] buy milk\n', '+ [x] buy milk\n', today)).toEqual([])
   })
 
+  it('ignores an edit that leaves the checked tasks alone', () => {
+    // The keystroke case: a note holding a @repeat token gets text typed into
+    // it. Nothing was completed, so nothing spawns, and the gate returns before
+    // either parse runs.
+    const before = '+ [ ] water @repeat(daily)\n\nNotes: '
+    expect(nextOccurrenceAppends(before, `${before}buy a watering can`, today)).toEqual([])
+  })
+
+  it('does not spawn when the same change also shifts the task offset', () => {
+    // Deliberate and pre-existing: task identity is `markerOffset` plus an
+    // identical rest-of-line, so a change that both edits text above and checks
+    // the box does not read as a completion. The editor emits one document
+    // change per keystroke, so a real click on a checkbox never arrives fused
+    // with an edit above it.
+    expect(
+      nextOccurrenceAppends(
+        '# Plans\n\n+ [ ] water @repeat(daily)\n',
+        '# Plans and chores\n\n+ [x] water @repeat(daily)\n',
+        today,
+      ),
+    ).toEqual([])
+  })
+
+  it('still spawns when one task is checked and another unchecked at once', () => {
+    // Both counts stay at one, so a gate that compared how many tasks are
+    // checked would drop this. Comparing which lines are checked does not.
+    expect(
+      nextOccurrenceAppends(
+        '+ [ ] water @repeat(daily)\n+ [x] meds @repeat(daily)\n',
+        '+ [x] water @repeat(daily)\n+ [ ] meds @repeat(daily)\n',
+        today,
+      ),
+    ).toEqual(['+ [ ] water @repeat(daily) [[2026-08-23]]'])
+  })
+
   it('spawns once per completed repeat task in the same change', () => {
     expect(
       nextOccurrenceAppends(

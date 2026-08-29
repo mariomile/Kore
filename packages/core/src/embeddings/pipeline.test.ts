@@ -9,6 +9,7 @@ afterEach(() => {
 interface AppliedChunk {
   heading: string | null
   posFrom: number
+  posTo: number
   text: string
   contentHash: string
   vector: number[] | null
@@ -22,7 +23,18 @@ interface AppliedChunk {
  */
 function fakePipelineBridge(options: {
   content: string
-  storedRows: Array<{ content_hash: string; model_id: string }>
+  /**
+   * Rows the diff's `db_query` finds. Shaped like the real select, position
+   * metadata included: the pipeline compares it to decide whether an
+   * `embed_apply` would change anything at all.
+   */
+  storedRows: Array<{
+    content_hash: string
+    model_id: string
+    heading: string | null
+    pos_from: number
+    pos_to: number
+  }>
   descriptions?: Record<string, string>
   /** Report the note itself as iCloud-evicted (bytes not local). */
   evicted?: boolean
@@ -78,6 +90,15 @@ function fakePipelineBridge(options: {
 
 const MODEL = 'all-MiniLM-L6-v2'
 
+/**
+ * A stored row whose position metadata deliberately does not match what the
+ * pass would write, so these cases keep exercising the write path rather than
+ * the "already up to date" early return.
+ */
+function staleRow(contentHash: string, modelId = MODEL) {
+  return { content_hash: contentHash, model_id: modelId, heading: null, pos_from: -1, pos_to: -1 }
+}
+
 describe('embedNote', () => {
   it('never embeds a template — boilerplate must not reach retrieval', async () => {
     const { embedded, applied } = fakePipelineBridge({
@@ -123,14 +144,77 @@ describe('embedNote', () => {
     await embedNote({ path: 'notes/a.md', generation: 1, modelId: MODEL })
     const hash = first.applied[0]!.chunks[0]!.contentHash
 
+    // The stored row's position is stale, so the write still has something to
+    // do: reuse the vector, refresh the metadata.
+    const stored = first.applied[0]!.chunks[0]!
     const second = fakePipelineBridge({
       content,
-      storedRows: [{ content_hash: hash, model_id: MODEL }],
+      storedRows: [
+        {
+          content_hash: hash,
+          model_id: MODEL,
+          heading: stored.heading,
+          pos_from: stored.posFrom + 100,
+          pos_to: stored.posFrom + 200,
+        },
+      ],
     })
     const count = await embedNote({ path: 'notes/a.md', generation: 1, modelId: MODEL })
     expect(count).toBe(0)
     expect(second.embedded).toHaveLength(0) // nothing re-embedded
     expect(second.applied[0]!.chunks[0]!.vector).toBeNull() // metadata-only row
+  })
+
+  it('writes nothing at all when the stored rows already match', async () => {
+    // The launch path: the backfill walks an unchanged graph. Every chunk skips
+    // AND the stored metadata is already right, so `embed_apply` would be a
+    // writer-lock transaction full of no-op UPDATEs, shipping every chunk's
+    // full text over IPC to achieve nothing.
+    const content = '# One\n\nAlpha text.\n\n# Two\n\nBeta text.\n'
+    const first = fakePipelineBridge({ content, storedRows: [] })
+    await embedNote({ path: 'notes/a.md', generation: 1, modelId: MODEL })
+    const written = first.applied[0]!.chunks
+
+    const second = fakePipelineBridge({
+      content,
+      storedRows: written.map((chunk) => ({
+        content_hash: chunk.contentHash,
+        model_id: MODEL,
+        heading: chunk.heading,
+        pos_from: chunk.posFrom,
+        pos_to: chunk.posTo,
+      })),
+    })
+    expect(await embedNote({ path: 'notes/a.md', generation: 1, modelId: MODEL })).toBe(0)
+    expect(second.embedded).toHaveLength(0)
+    expect(second.applied).toHaveLength(0) // no embed_apply at all
+  })
+
+  it('still writes when the note shrank, so orphaned rows get dropped', async () => {
+    // Every surviving chunk skips, but there are more stored rows than chunks.
+    // Returning early here would strand the rows `apply_chunks` deletes.
+    const content = '# One\n\nAlpha text.\n'
+    const first = fakePipelineBridge({ content, storedRows: [] })
+    await embedNote({ path: 'notes/a.md', generation: 1, modelId: MODEL })
+    const kept = first.applied[0]!.chunks[0]!
+
+    const second = fakePipelineBridge({
+      content,
+      storedRows: [
+        {
+          content_hash: kept.contentHash,
+          model_id: MODEL,
+          heading: kept.heading,
+          pos_from: kept.posFrom,
+          pos_to: kept.posTo,
+        },
+        { content_hash: 'orphan', model_id: MODEL, heading: null, pos_from: 999, pos_to: 1000 },
+      ],
+    })
+    expect(await embedNote({ path: 'notes/a.md', generation: 1, modelId: MODEL })).toBe(0)
+    expect(second.embedded).toHaveLength(0)
+    expect(second.applied).toHaveLength(1) // the write that prunes the orphan
+    expect(second.applied[0]!.chunks).toHaveLength(1)
   })
 
   it('bounds native calls and preserves vector order in one atomic note write', async () => {
@@ -231,7 +315,7 @@ describe('embedNote', () => {
 
     const second = fakePipelineBridge({
       content,
-      storedRows: [{ content_hash: hash, model_id: 'old-model' }],
+      storedRows: [staleRow(hash, 'old-model')],
     })
     const count = await embedNote({ path: 'notes/a.md', generation: 1, modelId: MODEL })
     expect(count).toBe(1) // same hash, different model → new vector
@@ -252,7 +336,7 @@ describe('embedNote', () => {
     // other must re-embed (vector present), or apply_chunks errors loudly.
     const second = fakePipelineBridge({
       content: dup,
-      storedRows: [{ content_hash: hashes[0]!, model_id: MODEL }],
+      storedRows: [staleRow(hashes[0]!)],
     })
     const count = await embedNote({ path: 'notes/a.md', generation: 1, modelId: MODEL })
     expect(count).toBe(1)
@@ -297,7 +381,7 @@ describe('embedNote', () => {
     // chunks, and sidecars are untracked so nothing would restore them.
     const { embedded, applied } = fakePipelineBridge({
       content: IMAGE_NOTE,
-      storedRows: [{ content_hash: 'previously-stored', model_id: MODEL }],
+      storedRows: [staleRow('previously-stored')],
       evictedSidecars: ['assets/pic.png.reflect.md'],
     })
     const count = await embedNote({ path: 'notes/a.md', generation: 1, modelId: MODEL })
@@ -319,6 +403,9 @@ describe('embedNote', () => {
     const storedRows = first.applied[0]!.chunks.map((chunk) => ({
       content_hash: chunk.contentHash,
       model_id: MODEL,
+      heading: chunk.heading,
+      pos_from: chunk.posFrom,
+      pos_to: chunk.posTo,
     }))
 
     const second = fakePipelineBridge({ content: IMAGE_NOTE, storedRows, descriptions })
@@ -337,6 +424,9 @@ describe('embedNote', () => {
     const storedRows = first.applied[0]!.chunks.map((chunk) => ({
       content_hash: chunk.contentHash,
       model_id: MODEL,
+      heading: chunk.heading,
+      pos_from: chunk.posFrom,
+      pos_to: chunk.posTo,
     }))
 
     const second = fakePipelineBridge({

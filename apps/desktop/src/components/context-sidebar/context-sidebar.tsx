@@ -1,4 +1,4 @@
-import { useState, type ReactElement, type ReactNode } from 'react'
+import { lazy, Suspense, useState, type ReactElement, type ReactNode } from 'react'
 import {
   CalendarDays,
   Chat,
@@ -9,16 +9,27 @@ import {
   Terminal,
   type Icon,
 } from '@/components/icons'
-import { BrowserPane } from '@/components/browser/browser-pane'
 import { ChatScreen } from '@/components/chat/chat-screen'
 import { SidebarIconSlot } from '@/components/sidebar/sidebar-icon-slot'
-import { TerminalScreen } from '@/components/terminal/terminal-screen'
 import {
   DropdownMenu,
   DropdownMenuItem,
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+
+// Lazy here too, or this edge survives the route split: the sidebar can host
+// the terminal and browser panes, so a static import from here would pull xterm
+// and the browser pane back into the boot chunk regardless of what
+// route-content.tsx does.
+const BrowserPane = lazy(() =>
+  import('@/components/browser/browser-pane').then((module) => ({ default: module.BrowserPane })),
+)
+const TerminalScreen = lazy(() =>
+  import('@/components/terminal/terminal-screen').then((module) => ({
+    default: module.TerminalScreen,
+  })),
+)
 import { haptic } from '@/lib/haptics'
 import { useToday } from '@/lib/use-today'
 import { cn } from '@/lib/utils'
@@ -110,7 +121,11 @@ const PANELS: ContextPanelSpec[] = [
     Glyph: Globe,
     ownsScrolling: true,
     // Shares its session with the browser tab.
-    render: () => <BrowserPane />,
+    render: () => (
+      <Suspense fallback={null}>
+        <BrowserPane />
+      </Suspense>
+    ),
   },
   {
     id: 'terminal',
@@ -118,7 +133,11 @@ const PANELS: ContextPanelSpec[] = [
     Glyph: Terminal,
     ownsScrolling: true,
     // The same PTY as the terminal route's.
-    render: () => <TerminalScreen />,
+    render: () => (
+      <Suspense fallback={null}>
+        <TerminalScreen />
+      </Suspense>
+    ),
   },
 ]
 

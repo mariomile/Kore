@@ -1,9 +1,7 @@
 import { z } from 'zod'
 import type { ChatStreamEvent } from './chat/stream-chat'
-import { call } from '../ipc/invoke'
 import {
   agentCliPrompt,
-  runAgentCliCommand,
   streamAgentCliTurn,
   noteCardAndMentionRules,
   noteContentSafetyRules,
@@ -36,37 +34,6 @@ import type { StreamCliChatOptions } from './claude-cli'
 
 /** The model id meaning "whatever the CLI is configured to use". */
 export const CURSOR_CLI_DEFAULT_MODEL = 'default'
-
-/**
- * Check that the `cursor-agent` binary is installed and runnable; resolves
- * with its version string. This provider's whole "key validation".
- */
-export async function checkCursorCli(): Promise<string> {
-  return await call('agent_cli_check', { binary: 'cursor-agent' }, z.string())
-}
-
-export interface CursorAuthStatus {
-  loggedIn: boolean
-  /** The CLI's own status line ("Logged in as …", "Not logged in"). */
-  detail: string
-}
-
-/**
- * Whether the Cursor CLI holds credentials (`cursor-agent status`). The
- * command's exit code is not a reliable signal, so the answer is read from
- * the status text the way every integration does: a "logged in" line that
- * isn't "not logged in".
- */
-export async function cursorLoginStatus(): Promise<CursorAuthStatus> {
-  const result = await runAgentCliCommand({ binary: 'cursor-agent', args: ['status'] })
-  if (result.code === null) {
-    throw new Error(result.failure ?? 'could not run the Cursor CLI')
-  }
-  const joined = result.lines.join('\n')
-  const loggedIn = /logged in/i.test(joined) && !/not logged in/i.test(joined)
-  const detail = result.lines.find((line) => /logged/i.test(line))?.trim() ?? ''
-  return { loggedIn, detail }
-}
 
 /**
  * The run's declarative permissions, as the contents of the workspace's

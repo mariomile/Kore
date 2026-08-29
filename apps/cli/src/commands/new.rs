@@ -12,9 +12,10 @@ use std::fs;
 use std::io::Write;
 use std::path::Path;
 
+use reflect_note_policy::split_frontmatter;
+
 use crate::commands::output::{print_json, NewJson};
 use crate::error::CliError;
-use crate::frontmatter::split_frontmatter;
 use crate::graph::Graph;
 use crate::keys::fold_key;
 use crate::note_file::parse_note_meta;

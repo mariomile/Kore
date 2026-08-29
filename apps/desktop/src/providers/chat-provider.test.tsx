@@ -27,7 +27,7 @@ const core = vi.hoisted(() => ({
   streamChat: vi.fn<(options: StreamChatOptions) => AsyncGenerator<ChatStreamEvent>>(),
   streamCliAgentChat:
     vi.fn<(id: string, options: Record<string, unknown>) => AsyncGenerator<ChatStreamEvent>>(),
-  listPrivateNotePaths: vi.fn<() => Promise<string[]>>(),
+  listPrivateNotePaths: vi.fn<() => Promise<string[] | null>>(),
   loadAgentContext: vi.fn<(slug: string | null) => Promise<null>>(),
   aiApiKeyForConfig: vi.fn<(config: AiProviderConfig) => Promise<string | null>>(),
   getSecret: vi.fn<(name: string) => Promise<string | null>>(),
@@ -682,5 +682,77 @@ describe('ChatProvider model selection', () => {
     await vi.waitFor(() => expect(core.listChatConversations).toHaveBeenCalled())
 
     expect(session?.activeModel).toEqual(MODEL)
+  })
+})
+
+describe('ChatProvider private-note deny list', () => {
+  const CLAUDE: AiProviderConfig = {
+    id: 'c1',
+    provider: 'claude-cli',
+    model: 'default',
+    keyHint: '',
+  }
+
+  it('refuses a CLI turn when the index cannot say which notes are private', async () => {
+    settingsState.models = [CLAUDE]
+    settingsState.defaultId = 'c1'
+    // `null` is the rebuild window: the projection is wiped and refilling, so
+    // an empty list would be a partial answer wearing a complete answer's
+    // shape. The run must not start.
+    core.listPrivateNotePaths.mockResolvedValue(null)
+    const { act } = await renderProvider()
+    await vi.waitFor(() => expect(core.listChatConversations).toHaveBeenCalled())
+
+    await act(async () => {
+      await session?.send('summarise my week')
+    })
+
+    expect(core.streamCliAgentChat).not.toHaveBeenCalled()
+    expect(session?.turns.at(-1)?.parts).toContainEqual({
+      kind: 'notice',
+      tone: 'error',
+      text: 'Couldn’t confirm which notes are private, so this run was refused. If the index is still building, try again in a moment.',
+    })
+  })
+
+  it('starts the run and forwards the deny list once the index can answer', async () => {
+    settingsState.models = [CLAUDE]
+    settingsState.defaultId = 'c1'
+    core.listPrivateNotePaths.mockResolvedValue(['notes/diary.md'])
+    core.streamCliAgentChat.mockImplementation(() =>
+      (async function* (): AsyncGenerator<ChatStreamEvent> {
+        yield { type: 'complete', messages: [{ role: 'assistant', content: 'Done.' }] }
+      })(),
+    )
+    const { act } = await renderProvider()
+    await vi.waitFor(() => expect(core.listChatConversations).toHaveBeenCalled())
+
+    await act(async () => {
+      await session?.send('summarise my week')
+    })
+
+    expect(core.streamCliAgentChat).toHaveBeenCalledTimes(1)
+    expect(core.streamCliAgentChat.mock.lastCall?.[1]['privateNotePaths']).toEqual([
+      'notes/diary.md',
+    ])
+  })
+
+  it('runs on a clean vault, where an empty list is a complete answer', async () => {
+    settingsState.models = [CLAUDE]
+    settingsState.defaultId = 'c1'
+    core.listPrivateNotePaths.mockResolvedValue([])
+    core.streamCliAgentChat.mockImplementation(() =>
+      (async function* (): AsyncGenerator<ChatStreamEvent> {
+        yield { type: 'complete', messages: [{ role: 'assistant', content: 'Done.' }] }
+      })(),
+    )
+    const { act } = await renderProvider()
+    await vi.waitFor(() => expect(core.listChatConversations).toHaveBeenCalled())
+
+    await act(async () => {
+      await session?.send('summarise my week')
+    })
+
+    expect(core.streamCliAgentChat).toHaveBeenCalledTimes(1)
   })
 })

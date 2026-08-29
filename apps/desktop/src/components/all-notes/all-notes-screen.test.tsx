@@ -60,18 +60,22 @@ vi.mock('@/lib/windows/open-in-new-window', async (importOriginal) => ({
 const HEALTH_MTIME = new Date(2020, 0, 15, 12, 0).getTime()
 const TOKYO_MTIME = new Date(2020, 0, 10, 12, 0).getTime()
 
+// `tags` is the `group_concat` column the list query returns, unit-separated,
+// null for an untagged note.
 const noteRows = [
   {
     path: 'notes/health.md',
     title: 'Health Stacked',
     mtime: HEALTH_MTIME,
     preview: 'Shop your health goals.',
+    tags: 'link',
   },
   {
     path: 'notes/tokyo.md',
     title: 'Tokyo Gâteau',
     mtime: TOKYO_MTIME,
     preview: 'Dandelion chocolate.',
+    tags: 'link',
   },
 ]
 const taggedDailyRow = {
@@ -79,12 +83,8 @@ const taggedDailyRow = {
   title: 'June 9, 2026',
   mtime: TOKYO_MTIME,
   preview: 'Daily travel notes.',
+  tags: 'travel',
 }
-const tagRows = [
-  { note_path: 'notes/health.md', tag: 'link' },
-  { note_path: 'notes/tokyo.md', tag: 'link' },
-  { note_path: 'daily/2026-06-09.md', tag: 'travel' },
-]
 const facetRows = [
   { tag: 'book', count: 3 },
   { tag: 'travel', count: 2 },
@@ -99,6 +99,7 @@ const manyNoteRows = Array.from({ length: 1000 }, (_, index) => ({
   title: `Note ${index}`,
   mtime: 1_000_000 - index,
   preview: '',
+  tags: null,
 }))
 
 function mockManyNotes(): void {
@@ -127,21 +128,19 @@ beforeEach(() => {
     }
     const sql = String(args['sql'])
     const params = args['params'] as unknown[]
-    if (sql.includes('group by')) {
-      return facetRows
-    }
+    // The list query selects `"preview"` and now folds its tags in with
+    // `group_concat`, so it carries a `group by` of its own: the facet query is
+    // the one that groups WITHOUT selecting a preview.
     if (sql.includes('"preview"')) {
-      // A tag-filtered list starts from the folded tag key — only `travel`
-      // has matches in this fixture.
-      if (sql.includes('from "tags"')) {
+      // A tag-filtered list narrows with an EXISTS on the folded tag key —
+      // only `travel` has matches in this fixture.
+      if (sql.includes('exists')) {
         return params.includes('travel') ? [taggedDailyRow] : []
       }
       return noteRows
     }
-    if (sql.includes('from "tags"')) {
-      // The per-note tags fetch (a join, not an IN list); rows for unlisted
-      // paths are ignored by the grouping, so always answer in full.
-      return tagRows
+    if (sql.includes('group by')) {
+      return facetRows
     }
     return []
   })
@@ -233,11 +232,13 @@ describe('AllNotesScreen', () => {
         return null
       }
       const sql = String(args['sql'])
+      if (sql.includes('"preview"')) {
+        return [
+          { path: 'notes/legacy.md', title: 'Legacy Note', mtime: 0, preview: '', tags: null },
+        ]
+      }
       if (sql.includes('group by')) {
         return facetRows
-      }
-      if (sql.includes('"preview"')) {
-        return [{ path: 'notes/legacy.md', title: 'Legacy Note', mtime: 0, preview: '' }]
       }
       return []
     })
@@ -462,20 +463,20 @@ describe('AllNotesScreen — selection and bulk trash', () => {
 
   it('range-selects rows with Shift-click', async () => {
     const rows = [
-      { path: 'notes/a.md', title: 'Note A', mtime: 3, preview: 'alpha' },
-      { path: 'notes/b.md', title: 'Note B', mtime: 2, preview: 'bravo' },
-      { path: 'notes/c.md', title: 'Note C', mtime: 1, preview: 'charlie' },
+      { path: 'notes/a.md', title: 'Note A', mtime: 3, preview: 'alpha', tags: null },
+      { path: 'notes/b.md', title: 'Note B', mtime: 2, preview: 'bravo', tags: null },
+      { path: 'notes/c.md', title: 'Note C', mtime: 1, preview: 'charlie', tags: null },
     ]
     mockInvoke.mockImplementation(async (command, args) => {
       if (command !== 'db_query') {
         return null
       }
       const sql = String(args['sql'])
+      if (sql.includes('"preview"')) {
+        return sql.includes('exists') ? [] : rows
+      }
       if (sql.includes('group by')) {
         return facetRows
-      }
-      if (sql.includes('"preview"')) {
-        return sql.includes('from "tags"') ? [] : rows
       }
       return []
     })
@@ -609,14 +610,11 @@ describe('AllNotesScreen — selection and bulk trash', () => {
         return null
       }
       const sql = String(args['sql'])
+      if (sql.includes('"preview"')) {
+        return sql.includes('exists') ? [] : noteRows
+      }
       if (sql.includes('group by')) {
         return facetRows
-      }
-      if (sql.includes('"preview"')) {
-        return sql.includes('from "tags"') ? [] : noteRows
-      }
-      if (sql.includes('from "tags"')) {
-        return tagRows
       }
       return []
     })
@@ -652,14 +650,11 @@ describe('AllNotesScreen — selection and bulk trash', () => {
         return null
       }
       const sql = String(args['sql'])
+      if (sql.includes('"preview"')) {
+        return sql.includes('exists') ? [] : noteRows
+      }
       if (sql.includes('group by')) {
         return facetRows
-      }
-      if (sql.includes('"preview"')) {
-        return sql.includes('from "tags"') ? [] : noteRows
-      }
-      if (sql.includes('from "tags"')) {
-        return tagRows
       }
       return []
     })

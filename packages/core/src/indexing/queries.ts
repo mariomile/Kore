@@ -1,6 +1,7 @@
 import { sql } from 'kysely'
 import { foldTag, normalizeWikiTarget, resolved, unresolved, type Resolution } from '../markdown'
 import { db } from './db'
+import { PROJECTION_VERSION, PROJECTION_VERSION_KEY } from './indexed-note'
 import { inClauseChunks } from './query-utils'
 export {
   getBacklinks,
@@ -257,6 +258,20 @@ export async function getIndexMeta(key: string): Promise<string | null> {
     .select('value')
     .executeTakeFirst()
   return row?.value ?? null
+}
+
+/**
+ * Whether the stored rows were built by the current {@link PROJECTION_VERSION}.
+ *
+ * The one place that comparison is made. A rebuild wipes the projection before
+ * repopulating it one note at a time, so between the wipe and the stamp every
+ * table is empty or partial: a reader that treats "no rows" as "no such notes"
+ * is wrong for that whole window. Callers deriving a privacy decision from the
+ * projection must gate on this and refuse rather than proceed on a partial
+ * answer.
+ */
+export async function isProjectionCurrent(): Promise<boolean> {
+  return (await getIndexMeta(PROJECTION_VERSION_KEY)) === String(PROJECTION_VERSION)
 }
 
 /** What a pass knows about an indexed note without reading its file. */

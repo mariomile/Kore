@@ -76,7 +76,16 @@ export function useNoteMentionAutocomplete(
     void (async () => {
       try {
         if (privatePathsRef.current === null) {
-          privatePathsRef.current = new Set(await listPrivateNotePaths().catch(() => []))
+          // Leave the ref null when the index cannot answer, so the next
+          // keystroke asks again instead of caching an empty set for the
+          // rest of the session. Suggestions stay unfiltered meanwhile:
+          // this list is a convenience, and the hard block is downstream
+          // in `resolveNoteMentions`, which refuses a private note's
+          // content at send time however it was mentioned.
+          const paths = await listPrivateNotePaths().catch(() => null)
+          if (paths !== null) {
+            privatePathsRef.current = new Set(paths)
+          }
         }
         const hits: SearchHit[] = await searchNotes(query, 12)
         if (seq !== searchSeq.current) {

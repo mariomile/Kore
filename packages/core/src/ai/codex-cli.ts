@@ -1,6 +1,4 @@
-import { z } from 'zod'
 import type { ChatStreamEvent } from './chat/stream-chat'
-import { call } from '../ipc/invoke'
 import { agentCliFailureMessage, isAgentCliRuntimeFailure } from './agent-cli-failure'
 import {
   agentCliPrompt,
@@ -58,14 +56,6 @@ export const CODEX_CLI_DEFAULT_MODEL = 'default'
 
 /** The custom permission profile name the run selects. */
 const PROFILE = 'reflect_chat'
-
-/**
- * Check that the `codex` binary is installed and runnable; resolves with
- * its version string. This provider's whole "key validation".
- */
-export async function checkCodexCli(): Promise<string> {
-  return await call('agent_cli_check', { binary: 'codex' }, z.string())
-}
 
 export interface CodexAuthStatus {
   loggedIn: boolean

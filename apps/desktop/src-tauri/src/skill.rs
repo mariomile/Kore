@@ -14,7 +14,7 @@ use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 use sha2::{Digest, Sha256};
-use tauri::State;
+use tauri::{Manager, State};
 
 use crate::capture::atomic_write_to;
 use crate::error::{AppError, AppResult};
@@ -244,17 +244,32 @@ fn status_of(context: &SkillContext) -> AppResult<SkillStatus> {
 /// Command: the skill's name, target path, and install state for the open
 /// graph. Read-only.
 #[tauri::command]
-pub fn skill_status(state: State<GraphState>) -> AppResult<SkillStatus> {
-    let root = current_root(&state)?;
-    status_of(&context_for_graph(&root)?)
+pub async fn skill_status<R: tauri::Runtime>(app: tauri::AppHandle<R>) -> AppResult<SkillStatus> {
+    crate::blocking::run_blocking(move || {
+        let state = app.state::<GraphState>();
+        let root = current_root(&state)?;
+        status_of(&context_for_graph(&root)?)
+    })
+    .await
 }
 
 /// Command: write (or refresh) the graph's skill file. Generation-pinned so
 /// an install racing a graph switch can't write the wrong graph's skill.
 /// Refuses to touch a file we don't manage.
 #[tauri::command]
-pub fn skill_install(generation: u64, state: State<GraphState>) -> AppResult<SkillStatus> {
-    let root = root_for_generation(&state, generation)?;
+pub async fn skill_install<R: tauri::Runtime>(
+    generation: u64,
+    app: tauri::AppHandle<R>,
+) -> AppResult<SkillStatus> {
+    crate::blocking::run_blocking(move || skill_install_for(&app.state::<GraphState>(), generation))
+        .await
+}
+
+/// The install itself, off the command's threading shell so the whole
+/// classify-then-write sequence stays on one thread: the no-clobber create
+/// below is only meaningful if nothing re-classifies between the two.
+fn skill_install_for(state: &State<'_, GraphState>, generation: u64) -> AppResult<SkillStatus> {
+    let root = root_for_generation(state, generation)?;
     let context = context_for_graph(&root)?;
     let status = status_of(&context)?;
     match status.install_state {
@@ -295,8 +310,18 @@ fn atomic_create_new(path: &Path, contents: &str) -> AppResult<()> {
 /// Command: remove the graph's skill file (and its directory when that leaves
 /// it empty). Only removes files carrying our managed marker.
 #[tauri::command]
-pub fn skill_uninstall(generation: u64, state: State<GraphState>) -> AppResult<SkillStatus> {
-    let root = root_for_generation(&state, generation)?;
+pub async fn skill_uninstall<R: tauri::Runtime>(
+    generation: u64,
+    app: tauri::AppHandle<R>,
+) -> AppResult<SkillStatus> {
+    crate::blocking::run_blocking(move || {
+        skill_uninstall_for(&app.state::<GraphState>(), generation)
+    })
+    .await
+}
+
+fn skill_uninstall_for(state: &State<'_, GraphState>, generation: u64) -> AppResult<SkillStatus> {
+    let root = root_for_generation(state, generation)?;
     let context = context_for_graph(&root)?;
     let status = status_of(&context)?;
     match status.install_state {

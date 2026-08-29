@@ -69,8 +69,10 @@ The publish path is a bump followed by a build:
    `apps/desktop/CHANGELOG.md`, and advances
    `.github/release-please/manifest.stable.json` together. Only when no Release
    PR is open (nothing since the last release carried a `feat:`/`fix:` title)
-   hand-bump `version` in `apps/desktop/package.json` and merge that — never
-   hand-edit the changelog or the manifest.
+   do the same three edits by hand in one commit: `version` in
+   `apps/desktop/package.json`, its `apps/desktop/CHANGELOG.md` entry, and
+   `.github/release-please/manifest.stable.json`. Moving only the version fails
+   CI.
 3. Fast-forward the `release/dmg` pointer:
    `git push origin origin/master:release/dmg`.
 4. The **Release DMG** workflow (`.github/workflows/release-dmg.yml`) builds an

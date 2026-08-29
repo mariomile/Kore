@@ -104,11 +104,15 @@ retry the notarized **Release** workflow.
    `.github/release-please/manifest.stable.json`, all in one commit.
 
    Only when there is no Release PR (nothing since the last release carried a
-   `feat:`/`fix:` title) hand-edit `version` in `apps/desktop/package.json`,
-   patch by default, and merge that to `master`. Never hand-edit the changelog
-   or the manifest — a hand bump leaves the version released with no entry, and
-   the manifest lagging makes the next Release PR re-list commits that already
-   shipped.
+   `feat:`/`fix:` title) bump by hand — and by hand means doing everything the
+   Release PR does, in one commit: `version` in `apps/desktop/package.json`
+   (patch by default), the matching `apps/desktop/CHANGELOG.md` entry, and
+   `.github/release-please/manifest.stable.json`. Moving only the version is
+   what produced the drift this procedure now guards against: versions
+   published with no changelog entry, and a lagging manifest that makes the
+   next Release PR re-list commits that already shipped.
+   `release-please-workflow.test.mjs` fails CI when the three fall out of
+   step.
 3. Point the `release/dmg` branch at current `master`. It is a pointer, not
    history — `--force` is expected when previous pointer-retrigger commits
    sit on that branch:

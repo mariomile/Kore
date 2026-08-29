@@ -124,7 +124,11 @@ final class ShareState: ObservableObject {
 
     /// The non-Safari extraction paths: a URL attachment (title best-effort
     /// from a plain-text sibling), else plain text.
-    private static func extractPlain(
+    ///
+    /// Not `private`: `ShareIngressTests` (see `gen/apple/ShareExtensionTests`)
+    /// calls this directly to pin extraction behavior without needing a real
+    /// `NSExtensionContext`, which has no accessible test initializer.
+    static func extractPlain(
         from attachments: [NSItemProvider],
         completion: @escaping (SharedCapture?) -> Void
     ) {
@@ -198,7 +202,11 @@ final class ShareState: ObservableObject {
     /// Decode the JS preprocessor's results. `nil` for a malformed dictionary
     /// (or a page the preprocessor couldn't run on) — the caller then falls
     /// back to the plain URL/text attachments instead of failing the share.
-    private static func pageCapture(from item: NSSecureCoding?) -> SharedCapture? {
+    ///
+    /// Not `private`: `ShareIngressTests` (see `gen/apple/ShareExtensionTests`)
+    /// calls this directly to pin extraction behavior without needing a real
+    /// `NSExtensionContext`, which has no accessible test initializer.
+    static func pageCapture(from item: NSSecureCoding?) -> SharedCapture? {
         guard
             let dict = item as? NSDictionary,
             let results = dict[NSExtensionJavaScriptPreprocessingResultsKey] as? NSDictionary,

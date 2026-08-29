@@ -194,6 +194,17 @@ jobs:
       - name: Check iOS library
         run: cargo check -p reflect-open --lib --target aarch64-apple-ios --no-default-features
 
+      # CaptureInbox/ShareState (the share extension's capture-envelope
+      # encoder + extraction logic) are hand-written Swift with no Tauri
+      # dependency, unlike the two Tauri plugins under plugins/*/ios — those
+      # need the iOS build's generated .tauri/tauri-api and can't build
+      # standalone. ShareExtensionTests symlinks the real ShareExtension
+      # sources in (SwiftPM won't let a target's path escape the package
+      # root) so this pins the capture envelope's wire shape against
+      # packages/core/src/actions/capture-envelope.ts without copying them.
+      - name: Test ShareExtension capture ingress (Swift)
+        run: swift test --package-path apps/desktop/src-tauri/gen/apple/ShareExtensionTests
+
   # A single job for branch protection to require, instead of listing every
   # job (and every matrix shard) as a required status check.
   all-green:

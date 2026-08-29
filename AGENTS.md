@@ -2,6 +2,116 @@
 
 This document helps AI agents and automated systems interact with the Reflect repo safely and effectively. It summarizes setup, workflows, CI parity, testing, directories, and environment variables.
 
+Finish the current task with the minimum sufficient approach. Do not add
+engineering, abstractions, tests, or process that the requested outcome does not
+need. Planning can be rigorous, but execution should stay lean. If the clean
+design requires a broader change, stop and explain why instead of quietly
+expanding scope.
+
+### Execution discipline
+
+#### Workflow
+
+1. Understand the requirement before touching code. Do not change code and then
+   infer the intent from the result.
+2. Use stronger reasoning for planning or clarification when needed. Default to
+   lighter execution once the plan is clear.
+3. Do not spend reasoning on the entire session. Increase it only for a specific
+   decision that needs it.
+4. Work single-threaded by default. Split work across agents only after the task
+   has proven that parallel ownership will help.
+5. Enable only the skills the task actually needs. Do not install heavyweight
+   process skills for a small change.
+6. Before execution, write the smallest useful plan for non-trivial work:
+   - Goal
+   - Non-goals
+   - Acceptance criteria
+   - What stays untouched
+
+#### Failure modes
+
+Avoid these patterns:
+
+1. Fixing only the visible symptom before understanding the requirement.
+2. Piling patches, compatibility layers, duplicate implementations, or copies on
+   top of a root-cause fix that could have stayed clean.
+3. Redesigning an area repeatedly and making every maintenance pass expensive.
+4. Continuing from a false premise. Correct the premise before adding more
+   reasoning.
+5. Reading the code directly but using search or guessing instead of the evidence
+   already available.
+6. Adding tests as cover for expanded scope, new abstractions, or insufficient
+   understanding.
+
+#### Action boundaries
+
+Before starting, restate what the user wants, the intended scope, what is
+explicitly out of scope, and the definition of done when any of those are not
+already obvious from the request.
+
+Any irreversible operation requires explicit user authorization before execution.
+The following are normally reversible and do not require a separate confirmation
+when they are already within the requested scope:
+
+- Git revert, restore, or branch switch
+- Moving files to a backup directory inside the repo
+- Running tests, viewing diffs, generating plans, or read-only analysis
+
+Stop and switch to a smaller plan if you catch yourself:
+
+- Adding abstraction, framework, or configuration layers the task does not need
+- Designing for possible future use
+- Stacking constraints only to satisfy earlier constraints
+- Touching many unrelated files
+- Creating a second implementation to preserve obsolete logic
+- Using test additions as the reason to keep building
+
+#### Testing discipline
+
+Tests serve the current change's acceptance criteria and nothing else.
+
+1. Prefer the existing tests closest to the changed behavior.
+2. Do not add tests when existing tests already prove the change.
+3. Add a test only when existing tests cannot cover the changed behavior or the
+   user explicitly requested tests.
+4. New tests should cover at most the main path and one critical failure path.
+5. Do not expect tests to prove completeness.
+6. Do not backfill unrelated modules.
+7. Do not introduce new test frameworks or infrastructure.
+8. Do not write snapshot matrices, parameterized grids, or end-to-end suites
+   unless the request requires them.
+9. Do not test boundaries the current requirement did not ask for.
+10. Do not let test volume justify additional abstraction.
+
+Before adding a test, answer:
+
+- Which acceptance criterion does it verify?
+- Would existing tests miss this regression without it?
+- Is the test simpler than the implementation it protects?
+
+If test code becomes longer or more complex than the implementation, treat that
+as an overengineering warning.
+
+#### Model allocation
+
+- Requirement clarification and plan review: Stronger reasoning.
+- Writing or changing code and running tests: Medium-low or lighter execution.
+- If execution starts stacking architecture or expanding scope: Stop and rewrite
+  a minimal plan before continuing.
+
+#### Pre-completion checklist
+
+- Restated intent and acceptance criteria when they were not already explicit
+- Used the minimum sufficient approach
+- Marked non-goals clearly
+- Read the relevant code directly instead of guessing
+- Changed only the minimum file set
+- Ran the closest existing tests
+- Added no tests for scenarios outside the request
+- Added no new dependencies or directory structures
+- Kept the diff small, with no leftover debug code
+- Did not do extra work merely to make the result look more complete
+
 ### What is Reflect
 
 Reflect is a modern note‑taking tool with a TypeScript codebase. This repo contains Reflect V2, a rewrite of the original Reflect code-base to make it offline-first, markdown backed, and open source.

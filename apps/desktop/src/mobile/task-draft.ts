@@ -3,6 +3,9 @@ import {
   normalizeWikiTarget,
   scanInlineWikiLinks,
   setTaskDueDate,
+  taskContentPriority,
+  withTaskContentPriority,
+  type TaskPriority,
 } from '@reflect/core'
 
 /**
@@ -27,4 +30,14 @@ export function draftDueDate(content: string): string | null {
 /** The draft with its due-date link set to `isoDate`, or removed when null. */
 export function withDraftDueDate(content: string, isoDate: string | null): string {
   return isoDate === null ? clearTaskDueDate(content) : setTaskDueDate(content, isoDate)
+}
+
+/** The draft's priority — its leading `!`/`!!` marker, or null. */
+export function draftPriority(content: string): TaskPriority | null {
+  return taskContentPriority(content)
+}
+
+/** The draft with its priority marker set to `priority`, or removed when null. */
+export function withDraftPriority(content: string, priority: TaskPriority | null): string {
+  return withTaskContentPriority(content, priority)
 }

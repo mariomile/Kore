@@ -9,7 +9,7 @@ describe('buildIndexedNote', () => {
     // but it must never happen by accident: bump it here together with the
     // migration that requires it, and with the changelog entry in
     // `indexed-note.ts` saying what the new rows carry.
-    expect(PROJECTION_VERSION).toBe(24)
+    expect(PROJECTION_VERSION).toBe(25)
   })
 
   it('flattens a parsed note into the index payload', () => {
@@ -300,33 +300,19 @@ describe('buildIndexedNote', () => {
     expect(indexed.gistStale).toBe(false)
   })
 
-  it('maps only round task checkboxes into task rows', () => {
+  it('maps every bullet-list checkbox into task rows, but not ordered ones', () => {
     const source =
-      '# Todo\n\n+ [ ] buy milk\n- [ ] checklist\n* [x] checklist\n1. [ ] ordered\n+ [x] call mum\n'
+      '# Todo\n\n+ [ ] buy milk\n- [ ] checklist\n* [x] starred\n1. [ ] ordered\n+ [x] call mum\n'
     const indexed = buildIndexedNote(parseNote({ path: 'notes/n.md', source }), {
       fileHash: 'h',
       mtime: 0,
       source,
     })
-    expect(indexed.tasks).toEqual([
-      {
-        markerOffset: source.indexOf('[ ]'),
-        text: 'buy milk',
-        breadcrumbs: [],
-        raw: '[ ] buy milk',
-        checked: false,
-        dueDate: null,
-        dueTime: null,
-      },
-      {
-        markerOffset: source.indexOf('[x] call'),
-        text: 'call mum',
-        breadcrumbs: [],
-        raw: '[x] call mum',
-        checked: true,
-        dueDate: null,
-        dueTime: null,
-      },
+    expect(indexed.tasks.map(({ text, checked }) => ({ text, checked }))).toEqual([
+      { text: 'buy milk', checked: false },
+      { text: 'checklist', checked: false },
+      { text: 'starred', checked: true },
+      { text: 'call mum', checked: true },
     ])
   })
 

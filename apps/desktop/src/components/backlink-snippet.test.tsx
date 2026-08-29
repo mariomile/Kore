@@ -91,12 +91,16 @@ describe('BacklinkSnippet task checkboxes', () => {
     await view.unmount()
   })
 
-  it('leaves a square GFM checkbox read-only', async () => {
+  it('toggles a square checkbox too — both shapes live in the projection', async () => {
     const view = await renderSnippet()
     const boxes = view.container.querySelectorAll('input[type="checkbox"]')
     expect((boxes[1] as HTMLInputElement).checked).toBe(true)
     await userEvent.click(boxes[1]!, { force: true })
-    expect(toggleTask).not.toHaveBeenCalled()
+    await vi.waitFor(() => expect(toggleTask).toHaveBeenCalledTimes(1))
+    expect(toggleTask).toHaveBeenCalledWith(
+      { notePath: 'notes/meeting.md', markerOffset: 144, raw: '[x] square box' },
+      7,
+    )
     expect(operationFail).not.toHaveBeenCalled()
     await view.unmount()
   })
@@ -135,7 +139,7 @@ describe('BacklinkSnippet task checkboxes', () => {
     await view.unmount()
   })
 
-  it('renders checkboxes inert when the snippet has no round tasks', async () => {
+  it('toggles a square-only snippet through the same guarded path', async () => {
     const squareOnly: SnippetTask[] = [
       { markerOffset: 144, raw: '[x] square box', checked: true, round: false, text: 'square box' },
     ]
@@ -154,7 +158,11 @@ describe('BacklinkSnippet task checkboxes', () => {
     )
     const box = view.container.querySelector('input[type="checkbox"]')!
     await userEvent.click(box, { force: true })
-    expect(toggleTask).not.toHaveBeenCalled()
+    await vi.waitFor(() => expect(toggleTask).toHaveBeenCalledTimes(1))
+    expect(toggleTask).toHaveBeenCalledWith(
+      { notePath: 'notes/meeting.md', markerOffset: 144, raw: '[x] square box' },
+      7,
+    )
     await view.unmount()
   })
 })

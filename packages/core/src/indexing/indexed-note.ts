@@ -110,8 +110,12 @@ import {
  * the characters before the checkbox, so tasks written inside a blockquote or
  * a callout project like any other. Notes holding those tasks carry no rows
  * until reprojected, so the bump backfills them.
+ * 25 - square checkboxes (`- [ ]` / `* [ ]`) join the tasks projection: a
+ * checklist reaches the Tasks page whichever bullet it was written with.
+ * Notes holding only square checkboxes carry no task rows until reprojected,
+ * so the bump backfills them.
  */
-export const PROJECTION_VERSION = 24
+export const PROJECTION_VERSION = 25
 
 /**
  * The `index_meta` key holding the {@link PROJECTION_VERSION} the stored rows

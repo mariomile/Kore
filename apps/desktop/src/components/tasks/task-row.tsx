@@ -5,10 +5,12 @@ import {
   type MutableRefObject,
   type ReactElement,
 } from 'react'
-import { CheckCircle, Circle } from '@/components/icons'
+import { CheckCircle, Circle, Flag } from '@/components/icons'
 import type { OpenTask } from '@reflect/core'
+import { taskContentPriority } from '@reflect/core'
 import { getIsComposing } from '@meowdown/core'
 import { formatDayLabel } from '@/lib/dates'
+import { taskContent } from '@/lib/tasks/task-content'
 import { taskKey } from '@/lib/tasks/task-identity'
 import { useTaskCheckboxToggle } from '@/lib/tasks/use-task-checkbox-toggle'
 import { cn } from '@/lib/utils'
@@ -56,6 +58,8 @@ interface TaskRowProps {
   /** Holds the editing row's flush-then-convert trigger for the toolbar button. */
   convertControllerRef: MutableRefObject<(() => void) | null>
   onOpen: (notePath: string, event?: ModClickEvent) => void
+  /** Cycle this task's priority marker (the flag button): none → ! → !!. */
+  onCyclePriority: () => void
 }
 
 /**
@@ -89,6 +93,7 @@ export function TaskRow({
   onEditNavigate,
   convertControllerRef,
   onOpen,
+  onCyclePriority,
 }: TaskRowProps): ReactElement {
   const { settings } = useSettings()
   const { toggle, isPending } = useTaskCheckboxToggle(task)
@@ -96,6 +101,7 @@ export function TaskRow({
   const checkboxPending = isPending || taskActionPending
   const done = task.checked
   const label = task.text || 'Empty task'
+  const priority = taskContentPriority(taskContent(task.raw))
   const selectFromKeyboard = (event: KeyboardEvent<HTMLDivElement>): void => {
     if (getIsComposing()) {
       return
@@ -187,6 +193,31 @@ export function TaskRow({
           <TaskText task={task} />
         </div>
       )}
+      {!editing ? (
+        <button
+          type="button"
+          disabled={taskActionPending}
+          aria-label={`Priority: ${priority ?? 'none'} — click to cycle`}
+          title="Priority: none → ! → !!"
+          onClick={(event) => {
+            event.stopPropagation()
+            onCyclePriority()
+          }}
+          className={cn(
+            'flex h-6 shrink-0 items-center transition-opacity focus-visible:opacity-100 focus-visible:outline-none',
+            // Hidden until the row is hovered, except when a priority is set —
+            // then the colored flag doubles as the state indicator.
+            priority === null ? 'opacity-0 group-hover/task:opacity-100' : 'opacity-100',
+            priority === 'high'
+              ? 'text-destructive'
+              : priority === 'medium'
+                ? 'text-text-secondary'
+                : 'text-text-muted hover:text-text',
+          )}
+        >
+          <Flag aria-hidden className="size-[15px]" />
+        </button>
+      ) : null}
       {showSource ? (
         <button
           type="button"

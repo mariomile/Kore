@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, type ReactElement } from 'react'
 import { Chat, CheckCircle, NoteEdit, Notes, Plus } from '@/components/icons'
 import { cn } from '@/lib/utils'
 import { hapticImpactLight } from '@/mobile/haptics'
+import { useSlidingIndicator } from '@/mobile/use-sliding-indicator'
 import type { Route } from '@/routing/route'
 
 export type MobileTab = 'daily' | 'all' | 'tasks' | 'chat'
@@ -43,6 +44,8 @@ export function MobileTabBar({ tab, onSelect, onCapture }: MobileTabBarProps): R
   const navRef = useRef<HTMLElement | null>(null)
   const indicatorRef = useRef<HTMLSpanElement | null>(null)
 
+  useSlidingIndicator(navRef, indicatorRef, tab)
+
   useLayoutEffect(() => {
     const nav = navRef.current
     const root = document.documentElement
@@ -61,32 +64,6 @@ export function MobileTabBar({ tab, onSelect, onCapture }: MobileTabBarProps): R
       root.style.removeProperty('--mobile-tab-bar-height')
     }
   }, [])
-
-  useLayoutEffect(() => {
-    const nav = navRef.current
-    const indicator = indicatorRef.current
-    if (nav === null || indicator === null) {
-      return
-    }
-
-    const positionIndicator = (): void => {
-      const activeButton = nav.querySelector<HTMLElement>(`[data-mobile-tab="${CSS.escape(tab)}"]`)
-      if (activeButton === null) {
-        return
-      }
-      const navBounds = nav.getBoundingClientRect()
-      const buttonBounds = activeButton.getBoundingClientRect()
-      indicator.style.width = `${buttonBounds.width}px`
-      indicator.style.height = `${buttonBounds.height}px`
-      indicator.style.transform = `translate3d(${buttonBounds.left - navBounds.left}px, ${buttonBounds.top - navBounds.top}px, 0)`
-      indicator.style.opacity = '1'
-    }
-
-    positionIndicator()
-    const observer = new ResizeObserver(positionIndicator)
-    observer.observe(nav)
-    return () => observer.disconnect()
-  }, [tab])
 
   return (
     <nav
@@ -172,7 +149,7 @@ function TabButton({
   return (
     <button
       type="button"
-      data-mobile-tab={tab}
+      data-sliding-value={tab}
       aria-label={label}
       aria-current={active ? 'page' : undefined}
       // V1 parity: a light haptic on every tab press, including the two taps

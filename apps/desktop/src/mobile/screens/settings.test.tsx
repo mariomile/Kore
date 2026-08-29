@@ -233,6 +233,11 @@ describe('MobileSettings', () => {
     await mount()
 
     const corners = page.getByRole('radiogroup', { name: 'Corners' })
+    const indicator = corners.element().querySelector<HTMLElement>('[data-sliding-indicator]')
+    expect(indicator).not.toBeNull()
+    expect(indicator?.style.transform).not.toBe('')
+    expect(indicator?.classList.contains('motion-reduce:transition-none')).toBe(true)
+
     await user.click(corners.getByRole('radio', { name: 'Round' }))
     expect(updateSettings).toHaveBeenCalledWith({ uiRadius: 'round' })
 

@@ -136,6 +136,12 @@ describe('MobileAllNotes grid view', () => {
     await renderScreen()
     await expect.element(page.getByText('Health Stacked')).toBeInTheDocument()
 
+    const layout = page.getByRole('group', { name: 'Layout' }).element()
+    const indicator = layout.querySelector<HTMLElement>('[data-sliding-indicator]')
+    expect(indicator).not.toBeNull()
+    expect(indicator?.style.transform).not.toBe('')
+    expect(indicator?.classList.contains('motion-reduce:transition-none')).toBe(true)
+
     await page.getByRole('button', { name: 'Grid view' }).click()
     expect(updateSettings).toHaveBeenCalledWith({ allNotesView: 'grid' })
     expect(hapticImpactLight).toHaveBeenCalledOnce()

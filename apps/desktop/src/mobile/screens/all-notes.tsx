@@ -32,6 +32,7 @@ import type { NoteRowModel } from '@/mobile/swipeable-note-row'
 import { useArrivalFocus } from '@/mobile/use-arrival-focus'
 import { useBarHeightVar } from '@/mobile/use-bar-height'
 import { useSearchHeaderFocus } from '@/mobile/use-search-header-focus'
+import { useSlidingIndicator } from '@/mobile/use-sliding-indicator'
 import { useGraph } from '@/providers/graph-provider'
 import { useSettings } from '@/providers/settings-provider'
 import { routeForPath } from '@/routing/route'
@@ -329,34 +330,44 @@ interface AllNotesLayoutToggleProps {
 
 /** Compact list/grid switch — the same labels as desktop so the setting is one. */
 function AllNotesLayoutToggle({ view, onChange }: AllNotesLayoutToggleProps): ReactElement {
+  const controlRef = useRef<HTMLDivElement | null>(null)
+  const indicatorRef = useRef<HTMLSpanElement | null>(null)
+
+  useSlidingIndicator(controlRef, indicatorRef, view)
+
   return (
     <div
+      ref={controlRef}
       role="group"
       aria-label="Layout"
-      className="flex shrink-0 items-center gap-0.5 rounded-full bg-surface-hover p-0.5"
+      className="relative flex shrink-0 items-center gap-0.5 rounded-full bg-surface-hover p-0.5"
     >
+      <span
+        ref={indicatorRef}
+        data-sliding-indicator
+        aria-hidden
+        className="pointer-events-none absolute top-0 left-0 z-10 rounded-full bg-surface opacity-0 shadow-sm transition-[transform,width,height,opacity] duration-200 ease-swift motion-reduce:transition-none"
+      />
       <button
         type="button"
+        data-sliding-value="list"
         aria-label="List view"
         aria-pressed={view === 'list'}
         onClick={() => onChange('list')}
-        className={`flex size-11 items-center justify-center rounded-full transition-colors ${
-          view === 'list'
-            ? 'bg-surface text-text shadow-sm'
-            : 'text-text-muted hover:text-text-secondary'
+        className={`relative z-20 flex size-11 items-center justify-center rounded-full transition-colors duration-150 motion-reduce:transition-none ${
+          view === 'list' ? 'text-text' : 'text-text-muted hover:text-text-secondary'
         }`}
       >
         <List aria-hidden className="size-4" />
       </button>
       <button
         type="button"
+        data-sliding-value="grid"
         aria-label="Grid view"
         aria-pressed={view === 'grid'}
         onClick={() => onChange('grid')}
-        className={`flex size-11 items-center justify-center rounded-full transition-colors ${
-          view === 'grid'
-            ? 'bg-surface text-text shadow-sm'
-            : 'text-text-muted hover:text-text-secondary'
+        className={`relative z-20 flex size-11 items-center justify-center rounded-full transition-colors duration-150 motion-reduce:transition-none ${
+          view === 'grid' ? 'text-text' : 'text-text-muted hover:text-text-secondary'
         }`}
       >
         <LayoutGrid aria-hidden className="size-4" />

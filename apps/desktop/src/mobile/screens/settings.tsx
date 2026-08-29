@@ -161,7 +161,7 @@ export function MobileSettings(): ReactElement {
     settingsNeedle === '' || keywords.toLowerCase().includes(settingsNeedle)
   const showGraph = matches(`graph storage device icloud this device ${graph?.name ?? ''}`)
   const showAppearance = matches(
-    'appearance theme system light dark space ash graphite accent color red orange yellow green teal blue purple pink text size small medium large font sans serif mono spacing compact relaxed corners default round liquid glass intensity subtle balanced strong',
+    'appearance theme system light dark space ash graphite accent color red orange yellow green teal blue purple pink text size small medium large font sans serif mono spacing compact relaxed corners default round liquid glass intensity subtle balanced strong haptic feedback haptics vibration',
   )
   const showCalendar = isIos && matches('calendar events access open settings')
   const showEditor = matches(

@@ -143,6 +143,20 @@ describe('MobileSettings', () => {
     expect(policy.getBoundingClientRect().bottom).toBeLessThanOrEqual(window.innerHeight)
   })
 
+  it('filters settings by section and row labels', async () => {
+    const user = userEvent
+    await mount()
+
+    const search = page.getByRole('searchbox', { name: 'Search settings' })
+    await user.fill(search, 'privacy')
+
+    await expect.element(page.getByText('About', { exact: true })).toBeVisible()
+    await expect.element(page.getByText('Graph', { exact: true })).not.toBeInTheDocument()
+
+    await user.fill(search, 'not a setting')
+    await expect.element(page.getByText('No settings found')).toBeVisible()
+  })
+
   it('has no purchase or subscription actions on iOS', async () => {
     graphState.platform = 'ios'
     await mount()

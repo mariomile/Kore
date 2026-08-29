@@ -248,6 +248,19 @@ body {
   }
 }
 
+/* Match native iOS chrome while leaving the editor's explicit font preference
+   in control of note content. Drawers portal to body, so the platform marker
+   lives on the document root rather than a mobile React wrapper. */
+:root[data-mobile-platform='ios'] body {
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'SF Pro Text',
+    sans-serif;
+}
+
 /* One keyboard-focus treatment everywhere. Zero-specificity (`:where`) so any
    component rule below (the editor's `outline: none`, the palette input)
    can still opt out. */

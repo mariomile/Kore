@@ -31,6 +31,7 @@ import { SearchInput } from '@/mobile/search-input'
 import type { NoteRowModel } from '@/mobile/swipeable-note-row'
 import { useArrivalFocus } from '@/mobile/use-arrival-focus'
 import { useBarHeightVar } from '@/mobile/use-bar-height'
+import { useSearchHeaderFocus } from '@/mobile/use-search-header-focus'
 import { useGraph } from '@/providers/graph-provider'
 import { useSettings } from '@/providers/settings-provider'
 import { routeForPath } from '@/routing/route'
@@ -90,6 +91,7 @@ export function MobileAllNotes({
   filters,
   onFiltersChange,
 }: MobileAllNotesProps): ReactElement {
+  const searchHeaderFocus = useSearchHeaderFocus()
   const { graph } = useGraph()
   const { settings, updateSettings } = useSettings()
   const view = settings.allNotesView
@@ -186,7 +188,13 @@ export function MobileAllNotes({
         className="mobile-glass-bar absolute inset-x-0 top-0 z-30 space-y-2 px-4 pb-2"
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 0.25rem)' }}
       >
-        <h1 className="text-[28px] font-semibold tracking-tight">Notes</h1>
+        <h1
+          className={`overflow-hidden text-[28px] font-semibold tracking-tight transition-[height,opacity] duration-200 motion-reduce:transition-none ${
+            searchHeaderFocus.isFocused ? 'h-0 opacity-0' : 'h-9 opacity-100'
+          }`}
+        >
+          Notes
+        </h1>
         <div className="flex items-center gap-1">
           {tag !== null && (
             <Button
@@ -205,6 +213,8 @@ export function MobileAllNotes({
             aria-label="Search notes"
             value={query}
             onValueChange={onQueryChange}
+            onFocus={searchHeaderFocus.onFocus}
+            onBlur={searchHeaderFocus.onBlur}
           />
           <AllNotesLayoutToggle
             view={view}

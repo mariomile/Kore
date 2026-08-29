@@ -219,8 +219,10 @@ Kore/
 ├── crates/
 │   ├── index-schema/       # Shared SQLite migrations for <graph>/.reflect/index.sqlite
 │   │                       #   (one schema for the desktop writer + CLI reader)
-│   └── graph-paths/        # Shared graph-relative path classification + vault walker
-│                           #   (kept in lockstep with packages/core/src/graph/paths.ts)
+│   ├── graph-paths/        # Shared graph-relative path classification + vault walker
+│   │                       #   (kept in lockstep with packages/core/src/graph/paths.ts)
+│   └── note-policy/        # Shared frontmatter parsing + first-H1 title extraction
+│                           #   (one policy for the desktop backup path + CLI reader)
 ├── plugins/                # First-party Tauri 2 plugins: tauri-plugin-keyboard (iOS keyboard
 │                           #   pinning + haptics), tauri-plugin-recording (native audio memos)
 ├── fixtures/               # TS ↔ Rust parity corpora (fold keys, path classification,
@@ -228,7 +230,8 @@ Kore/
 ├── design-system/          # Design tokens + the Inter webfont (see design-system/readme.md)
 ├── docs/                   # Product/architecture docs + plans/, decisions/, contributing/, porting/
 ├── Cargo.toml              # Root Cargo workspace: reflect-open, reflect-cli, reflect-capture-host,
-│                           #   reflect-index-schema, reflect-graph-paths, and the two Tauri plugins
+│                           #   reflect-index-schema, reflect-graph-paths, reflect-note-policy, and
+│                           #   the two Tauri plugins
 └── turbo.json, pnpm-workspace.yaml
 ```
 

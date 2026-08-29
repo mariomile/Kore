@@ -1,12 +1,13 @@
 //! Tolerant, read-only frontmatter — the Rust mirror of
 //! `packages/core/src/markdown/frontmatter.ts` (split semantics) and
-//! `model.ts` (field coercions), restricted to the fields the CLI needs:
+//! `model.ts` (field coercions), restricted to the fields native code needs:
 //! `id`, `title`, `aliases`, `private`. Broken YAML degrades to "no
-//! frontmatter", never an unreadable note. The CLI never writes frontmatter.
+//! frontmatter", never an unreadable note. Neither native consumer writes
+//! frontmatter through this module.
 
 use saphyr::{LoadableYamlNode, Scalar, Yaml};
 
-/// The CLI's frontmatter subset. `private` follows the TS `coercePrivate`
+/// The shared frontmatter subset. `private` follows the TS `coercePrivate`
 /// rules exactly — it is the hard privacy block and must never drift.
 #[derive(Debug, Default, PartialEq)]
 pub struct Frontmatter {

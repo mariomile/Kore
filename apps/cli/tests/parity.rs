@@ -15,6 +15,7 @@ use reflect_cli::hash::hash_content;
 use reflect_cli::keys::fold_key;
 use reflect_cli::note_file::{parse_note_meta, walk_notes};
 use reflect_cli::search::build_fts_match;
+use reflect_note_policy::{parse_frontmatter, split_frontmatter};
 
 fn corpus_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../fixtures/parity")
@@ -93,6 +94,28 @@ fn note_derivations_match_the_ts_pipeline() {
             hash_content(&content),
             want["fileHash"].as_str().unwrap(),
             "{rel_path}: fileHash"
+        );
+    }
+}
+
+/// `note_derivations_match_the_ts_pipeline` above already covers `private`
+/// through `parse_note_meta`, which calls `reflect_note_policy` internally.
+/// This test calls `reflect_note_policy::parse_frontmatter` directly instead
+/// — the same entry point `apps/desktop/src-tauri/src/git/commit_message.rs`
+/// calls for its own privacy check on a staged blob. Pinning it here against
+/// the same corpus means the desktop backup path shares this test with the
+/// CLI and cannot drift from it silently.
+#[test]
+fn frontmatter_private_matches_the_ts_pipeline_via_the_shared_crate_directly() {
+    let corpus = corpus_dir();
+    let expected = load_expected();
+    for (rel_path, want) in expected["notes"].as_object().unwrap() {
+        let content = fs::read_to_string(corpus.join(rel_path)).unwrap();
+        let private = parse_frontmatter(split_frontmatter(&content).raw).private;
+        assert_eq!(
+            private,
+            want["private"].as_bool().unwrap(),
+            "{rel_path}: private (reflect_note_policy, called directly)"
         );
     }
 }

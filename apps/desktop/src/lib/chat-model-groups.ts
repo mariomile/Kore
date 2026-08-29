@@ -47,3 +47,17 @@ export function groupModelOptions(
   }
   return groups
 }
+
+/**
+ * The model name alone, for the composer's picker trigger: a provider-model
+ * label ("Anthropic · Claude Sonnet 4.5", "openai/gpt-5") carries the provider
+ * twice once the grouped list already names it, and the composer is where the
+ * least type belongs. Falls back to the label untouched when there is nothing
+ * to strip.
+ */
+export function shortModelLabel(label: string): string {
+  const separated = label.split(/\s·\s|\s—\s/).at(-1) ?? label
+  const trimmed = separated.trim()
+  const slashed = trimmed.includes('/') ? (trimmed.split('/').at(-1) ?? trimmed) : trimmed
+  return slashed.trim() === '' ? label : slashed.trim()
+}

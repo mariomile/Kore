@@ -1,4 +1,4 @@
-import { resolveWikiTarget } from '../../indexing'
+import { getNotePreview, resolveWikiTarget } from '../../indexing'
 import { readNote } from '../../graph/commands'
 import type { Resolution } from '../../markdown'
 import { buildReadOneNote } from './read-notes'
@@ -46,6 +46,72 @@ export function noteMentionTargets(text: string): string[] {
     }
   }
   return targets
+}
+
+/**
+ * What the composer shows for one `[[…]]` still sitting in the draft — the
+ * confirmation that the mention hooked the note the user meant, before the
+ * message goes out. Index-only: a title and the stored preview, never the
+ * file, so typing stays cheap and a private note contributes no content here
+ * either.
+ */
+export interface NoteMentionPreview {
+  /** The `[[…]]` target as typed (label part stripped). */
+  target: string
+  /** Resolved note path, or null when no note matches the target. */
+  path: string | null
+  /** The note's display title, or null when unresolved. */
+  title: string | null
+  /** The indexed preview line, empty when the note has none. */
+  preview: string
+  /**
+   * The note carries `private: true`. It still resolves — the user may well
+   * mean it — but the send refuses its content, so the chip says so instead
+   * of letting them find out from the reply.
+   */
+  isPrivate: boolean
+}
+
+/**
+ * Resolve the draft's mentions for display, in the order they were typed and
+ * under the same {@link MAX_NOTE_MENTIONS} cap the send applies — a sixth
+ * mention is not shown as hooked, because it would not be. Never throws: a
+ * target that cannot be resolved comes back with a null path so the chip can
+ * say "no note with this title".
+ */
+export async function previewNoteMentions(text: string): Promise<NoteMentionPreview[]> {
+  const previews: NoteMentionPreview[] = []
+  for (const target of noteMentionTargets(text)) {
+    const miss: NoteMentionPreview = {
+      target,
+      path: null,
+      title: null,
+      preview: '',
+      isPrivate: false,
+    }
+    try {
+      const resolution = await resolveWikiTarget(target)
+      if (resolution.kind !== 'resolved') {
+        previews.push(miss)
+        continue
+      }
+      const row = await getNotePreview(resolution.ref)
+      previews.push(
+        row === undefined
+          ? { ...miss, path: resolution.ref }
+          : {
+              target,
+              path: row.path,
+              title: row.title,
+              preview: row.preview,
+              isPrivate: row.isPrivate,
+            },
+      )
+    } catch {
+      previews.push(miss)
+    }
+  }
+  return previews
 }
 
 /** Resolve every mention in one user message. Never throws — a failed read

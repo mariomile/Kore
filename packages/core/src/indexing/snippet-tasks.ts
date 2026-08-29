@@ -1,5 +1,6 @@
 import type { SyntaxNode } from '@meowdown/markdown'
 import { parseBody } from '../markdown/grammar'
+import { isRoundTaskNode } from '../markdown/round-task'
 import { parseTaskMarker } from '../markdown/task-marker'
 
 /**
@@ -119,7 +120,6 @@ export function extractSnippetTasks(
       const lineEnd = lineEndRaw === -1 ? snippet.length : lineEndRaw
       const column = markerFrom - starts[line]!
       const origin = lineOrigins[line]
-      const bullet = snippet.slice(starts[line]!, markerFrom)
       const sourceLine = rawLineFor(snippet, starts, line, lineEnd, column, lineSourceTexts)
       let textStart = markerFrom + 3
       if (snippet[textStart] === ' ') {
@@ -131,7 +131,7 @@ export function extractSnippetTasks(
         // A `Task` node always carries a valid GFM marker; the parse is the
         // defensive read the toggle repeats against the live source.
         checked: marker?.checked === true,
-        round: /^[\t ]*\+[\t ]+$/.test(bullet),
+        round: isRoundTaskNode(snippet, node.node),
         text: snippet.slice(textStart, lineEnd),
       })
     },

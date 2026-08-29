@@ -10,6 +10,8 @@ import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { useGraphColors } from '@/hooks/use-graph-colors'
+import { useHomeDir } from '@/hooks/use-home-dir'
+import { displayGraphPath } from '@/lib/graph-path-display'
 import { cleanGraphName, graphNameFromRoot, isGraphNameTaken } from '@/lib/graph-names'
 import { ICLOUD_STATUS_QUERY_KEY } from '@/lib/query-client'
 import { graphColorCss } from '@/lib/graph-colors'
@@ -36,6 +38,7 @@ function isIcloudCapablePlatform(): boolean {
 export function GraphChooser(): ReactElement {
   const { recents, error, pickAndOpen, openRecent, createAt, forget } = useGraph()
   const { colorFor } = useGraphColors()
+  const home = useHomeDir()
   const icloudCapable = isIcloudCapablePlatform()
 
   return (
@@ -105,7 +108,9 @@ export function GraphChooser(): ReactElement {
                       <span className="block truncate text-sm font-medium text-text">
                         {recent.name}
                       </span>
-                      <span className="block truncate text-xs text-text-muted">{recent.root}</span>
+                      <span className="block truncate text-xs text-text-muted">
+                        {displayGraphPath(recent.root, home ?? undefined)}
+                      </span>
                     </span>
                   </button>
                   <Button

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { imageFilesFrom } from '@/lib/chat-attachments'
 import { useChatSession } from '@/providers/chat-provider'
 import { useRouter } from '@/routing/router'
+import { ChatHeader } from './chat-header'
 import { ChatInput } from './chat-input'
 import { ChatTurnList } from './chat-turn-list'
 
@@ -66,6 +67,7 @@ export function ChatScreen({ autoFocus = true }: ChatScreenProps = {}): ReactEle
         }
       }}
     >
+      <ChatHeader />
       <ChatTurnList />
       <ChatInput autoFocus={autoFocus} />
     </div>

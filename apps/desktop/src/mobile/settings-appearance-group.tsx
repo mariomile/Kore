@@ -35,6 +35,7 @@ const THEME_LABELS: Record<ThemePreference, string> = {
   paper: 'Paper',
   dark: 'Dark',
   graphite: 'Graphite',
+  ink: 'Ink',
   space: 'Space',
   midnight: 'Midnight',
 }

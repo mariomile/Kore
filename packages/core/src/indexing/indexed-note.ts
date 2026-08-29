@@ -106,8 +106,12 @@ import {
  * 23 - `search_fts` rows are keyed by their `notes` rowid so deletes stop
  * full-scanning the FTS table. Migration 0023 wipes the old rows; they come
  * back aligned on the rebuild this bump forces.
+ * 24 - a round task is recognised from its list item's own `+` mark instead of
+ * the characters before the checkbox, so tasks written inside a blockquote or
+ * a callout project like any other. Notes holding those tasks carry no rows
+ * until reprojected, so the bump backfills them.
  */
-export const PROJECTION_VERSION = 23
+export const PROJECTION_VERSION = 24
 
 /**
  * The `index_meta` key holding the {@link PROJECTION_VERSION} the stored rows

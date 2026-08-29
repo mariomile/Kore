@@ -192,6 +192,43 @@ export async function dailyDatesInRange(start: string, end: string): Promise<str
   return rows.flatMap((row) => (row.dailyDate === null ? [] : [row.dailyDate]))
 }
 
+/** One note's display row plus its indexed preview — the composer's mention chips. */
+export interface NotePreviewRow extends NoteRow {
+  /** The indexed row preview (`buildIndexedNote`; may be empty). */
+  preview: string
+}
+
+/**
+ * One note's row with its preview text, by graph-relative path, or `undefined`
+ * when the note has no indexed row yet. Private notes are returned like any
+ * other — the caller decides what to do with `isPrivate`; every surface that
+ * *sends* content re-checks the flag itself.
+ */
+export async function getNotePreview(path: string): Promise<NotePreviewRow | undefined> {
+  const row = await db
+    .selectFrom('notes')
+    .where('path', '=', path)
+    .select([
+      'path',
+      'title',
+      'dailyDate',
+      'preview',
+      'isPrivate',
+      'hasConflict',
+      'gistUrl',
+      'gistStale',
+    ])
+    .executeTakeFirst()
+  return row
+    ? {
+        ...row,
+        isPrivate: row.isPrivate !== 0,
+        hasConflict: row.hasConflict !== 0,
+        gistStale: row.gistStale !== 0,
+      }
+    : undefined
+}
+
 /** One daily-note row of a date-ranged listing (the AI chat's daily tool). */
 export interface DailyNoteRow {
   path: string

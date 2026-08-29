@@ -35,6 +35,22 @@ export {
   type CalloutMarker,
 } from './callout'
 export {
+  formatEmbedBlock,
+  parseEmbedBlocks,
+  type EmbedBlock,
+  type HtmlEmbed,
+  type UrlEmbed,
+} from './embed-block'
+export {
+  linkKind,
+  linkKindInfo,
+  LINK_KIND_FALLBACK,
+  LINK_KINDS,
+  videoPlayerUrl,
+  type LinkKind,
+  type LinkKindInfo,
+} from './link-kind'
+export {
   extractHeadingSection,
   formatNoteTransclusion,
   parseNoteTransclusions,

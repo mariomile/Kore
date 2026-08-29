@@ -1,6 +1,11 @@
 import { memo, useCallback, useMemo, useRef, useState, type ReactElement } from 'react'
 import type { ExitBoundaryHandler, SearchStatus } from '@meowdown/core'
-import { detectConflictMarkers, parseCollectionEmbeds, parseNoteTransclusions } from '@reflect/core'
+import {
+  detectConflictMarkers,
+  parseCollectionEmbeds,
+  parseEmbedBlocks,
+  parseNoteTransclusions,
+} from '@reflect/core'
 import { BacklinksPanel } from '@/components/backlinks-panel'
 import { UnlinkedMentionsPanel } from '@/components/unlinked-mentions-panel'
 import { ConflictNoteView } from '@/components/conflict-note-view'
@@ -23,11 +28,14 @@ import { resolveAssetFileLink, useAssetPersistence } from '@/editor/use-asset-pe
 import { useEditorAutocomplete } from '@/editor/use-editor-autocomplete'
 import { useNotePaneDocument } from '@/components/use-note-pane-document'
 import { useTagNavigation } from '@/editor/use-tag-navigation'
+import { BlockSwipeGestures } from '@/editor/block-swipe'
 import { CalloutHighlighter } from '@/editor/callout-highlighter'
 import { useCalloutSlashItems } from '@/editor/use-callout-slash-items'
 import { useCollectionSlashItems } from '@/editor/use-collection-slash-items'
+import { useEmbedSlashItems } from '@/editor/use-embed-slash-items'
 import { useTemplateSlashItems } from '@/editor/use-template-slash-items'
 import { EmbeddedCollection } from '@/components/notes/embedded-collection'
+import { EmbeddedMedia } from '@/components/notes/embedded-media'
 import { EmbeddedNote } from '@/components/notes/embedded-note'
 import { NoteAppearance } from '@/components/notes/note-appearance'
 import { useMarkdownLinkNavigation } from '@/editor/use-markdown-link-navigation'
@@ -185,13 +193,15 @@ export function NotePaneComponent({
   const templateSlashItems = useTemplateSlashItems(getEditor, path)
   const collectionSlashItems = useCollectionSlashItems(getEditor)
   const calloutSlashItems = useCalloutSlashItems(getEditor)
+  const embedSlashItems = useEmbedSlashItems(getEditor)
   const onSlashMenuSearch = useCallback(
     async (query: string) => [
       ...(await collectionSlashItems(query)),
       ...(await calloutSlashItems(query)),
+      ...(await embedSlashItems(query)),
       ...(await templateSlashItems(query)),
     ],
-    [collectionSlashItems, calloutSlashItems, templateSlashItems],
+    [collectionSlashItems, calloutSlashItems, embedSlashItems, templateSlashItems],
   )
   // Live body for embed parsing: typed markdown while this session's seed is
   // unchanged, otherwise the snapshot (a new session or an external reload).
@@ -207,6 +217,7 @@ export function NotePaneComponent({
       ? typedBody.markdown
       : document.initialContent
   const collectionEmbeds = useMemo(() => parseCollectionEmbeds(bodyMarkdown), [bodyMarkdown])
+  const mediaEmbeds = useMemo(() => parseEmbedBlocks(bodyMarkdown), [bodyMarkdown])
   const noteTransclusions = useMemo(() => parseNoteTransclusions(bodyMarkdown), [bodyMarkdown])
   const handleEditorChange = useCallback(
     (markdown: string) => {
@@ -423,12 +434,27 @@ export function NotePaneComponent({
       >
         <EditorAiKeymap onTrigger={aiMenu.openMenu} />
         <CalloutHighlighter />
+        {/* Touch only: the gutter grip is pointer-only and pinned off there,
+            so the sideways swipe is the only block-structure gesture a thumb
+            has. */}
+        {isTouchEditorSurface() ? <BlockSwipeGestures /> : null}
       </NoteEditor>
 
       {collectionEmbeds.length > 0 ? (
         <div className={gutterClassName}>
           {collectionEmbeds.map((embed, index) => (
             <EmbeddedCollection key={`${embed.tag}:${embed.view}:${index}`} embed={embed} />
+          ))}
+        </div>
+      ) : null}
+
+      {mediaEmbeds.length > 0 ? (
+        <div className={gutterClassName}>
+          {mediaEmbeds.map((block, index) => (
+            <EmbeddedMedia
+              key={`${block.kind}:${block.kind === 'url' ? block.url : index}:${index}`}
+              block={block}
+            />
           ))}
         </div>
       ) : null}

@@ -18,10 +18,12 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useGraphColors } from '@/hooks/use-graph-colors'
+import { useHomeDir } from '@/hooks/use-home-dir'
 import { keybindingFor } from '@/lib/commands/app-commands'
 import { runCommand } from '@/lib/commands/registry'
 import type { CommandContext } from '@/lib/commands/types'
 import { DEFAULT_GRAPH_COLOR, GRAPH_COLOR_OPTIONS } from '@/lib/graph-colors'
+import { displayGraphPath } from '@/lib/graph-path-display'
 import { cn } from '@/lib/utils'
 import { isMainWindow } from '@/lib/windows/window-role'
 import { useGraph } from '@/providers/graph-provider'
@@ -73,6 +75,7 @@ interface GraphFooterProps {
 export function GraphFooter({ graph, context }: GraphFooterProps): ReactElement {
   const { recents, indexing, openRecent, chooseGraph } = useGraph()
   const { colorFor, setColor } = useGraphColors()
+  const home = useHomeDir()
   const currentColor = colorFor(graph.root) ?? DEFAULT_GRAPH_COLOR
   const { backup } = useSync()
   const { route } = useRouter()
@@ -121,7 +124,7 @@ export function GraphFooter({ graph, context }: GraphFooterProps): ReactElement 
               />
             }
           />
-          <TooltipContent>{graph.root}</TooltipContent>
+          <TooltipContent>{displayGraphPath(graph.root, home ?? undefined)}</TooltipContent>
         </Tooltip>
         <DropdownMenuContent aria-label="Switch graph" side="top" sideOffset={6}>
           {recents.map((recent, index) => {

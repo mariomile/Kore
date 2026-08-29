@@ -20,6 +20,7 @@ import {
   UI_TEXT_SIZE_IDS,
 } from '@reflect/core'
 import {
+  Book,
   Contrast,
   Monitor,
   Moon,
@@ -51,6 +52,7 @@ const THEME_OPTIONS: ThemeOption[] = [
   { value: 'paper', label: 'Paper', icon: Notebook },
   { value: 'dark', label: 'Dark', icon: Moon },
   { value: 'graphite', label: 'Graphite', icon: Contrast },
+  { value: 'ink', label: 'Ink', icon: Book },
   { value: 'space', label: 'Space', icon: Sparkles },
   { value: 'midnight', label: 'Midnight', icon: MoonStars },
 ]

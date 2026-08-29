@@ -29,8 +29,8 @@
   // Keep in sync with themePreferenceSchema / DARK_THEME_IDS /
   // accentColorSchema / uiRadiusSchema / glassIntensitySchema in
   // packages/core/src/settings/schema.ts.
-  const PINNED_THEMES = ['light', 'ash', 'paper', 'dark', 'graphite', 'space', 'midnight']
-  const DARK_THEMES = ['dark', 'graphite', 'space', 'midnight']
+  const PINNED_THEMES = ['light', 'ash', 'paper', 'dark', 'graphite', 'ink', 'space', 'midnight']
+  const DARK_THEMES = ['dark', 'graphite', 'ink', 'space', 'midnight']
   const ACCENTS = [
     'indigo',
     'violet',

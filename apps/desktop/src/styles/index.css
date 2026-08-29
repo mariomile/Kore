@@ -554,6 +554,35 @@ html:root {
     400ms forwards;
 }
 
+/* The boot wordmark's sheen (AppBootScreen): a bright band travelling across
+   the letters. The text is painted by a gradient clipped to the glyphs, so the
+   effect is the type itself lighting up rather than an overlay on top of it —
+   and every stop is a theme token, so it reads correctly on paper and on ink.
+   `background-size` is wider than the box so the band can start and finish
+   fully outside the word. */
+.reflect-boot-mark {
+  background-image: linear-gradient(
+    100deg,
+    var(--text-muted) 0%,
+    var(--text-muted) 38%,
+    var(--text) 50%,
+    var(--text-muted) 62%,
+    var(--text-muted) 100%
+  );
+  background-size: 300% 100%;
+  background-position: 100% 0;
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+  animation: reflect-boot-sheen 2.2s var(--ease-in-out, ease-in-out) infinite;
+}
+
+@keyframes reflect-boot-sheen {
+  to {
+    background-position: -100% 0;
+  }
+}
+
 @keyframes reflect-note-loading-reveal {
   to {
     opacity: 1;

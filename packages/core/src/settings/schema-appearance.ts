@@ -8,9 +8,11 @@ import { z } from 'zod'
  * this app sits beside use (Cursor, Codex, Notion, Craft), not a palette of
  * hues. Light: `light` (pure white), `ash` (neutral grey page under white
  * cards), `paper` (warm cream). Dark: `dark` (the house cool charcoal),
- * `graphite` (a flat neutral grey), `space` (the marketing site's deep-space
- * purple), `midnight` (pure-black OLED). Colour comes from the accent, which
- * is a separate setting, so the surfaces can stay quiet.
+ * `graphite` (a flat neutral grey), `ink` (`paper`'s warm counterpart — the
+ * one dark variant that reads as a notebook rather than an editor), `space`
+ * (the marketing site's deep-space purple), `midnight` (pure-black OLED).
+ * Colour comes from the accent, which is a separate setting, so the surfaces
+ * can stay quiet.
  *
  * Persisted here so the choice survives relaunch. Listed in picker order:
  * the OS default, then light to dark.
@@ -22,6 +24,7 @@ const themePreferenceEnum = z.enum([
   'paper',
   'dark',
   'graphite',
+  'ink',
   'space',
   'midnight',
 ])
@@ -38,7 +41,13 @@ export const THEME_PREFERENCE_IDS = themePreferenceEnum.options
  * truth for the `.dark` class, `color-scheme`, and the light/dark toggle —
  * `public/theme-init.js` repeats the list because it cannot import.
  */
-export const DARK_THEME_IDS: readonly ThemePreference[] = ['dark', 'graphite', 'space', 'midnight']
+export const DARK_THEME_IDS: readonly ThemePreference[] = [
+  'dark',
+  'graphite',
+  'ink',
+  'space',
+  'midnight',
+]
 
 /**
  * The app accent color — the one saturated hue used for solid buttons,

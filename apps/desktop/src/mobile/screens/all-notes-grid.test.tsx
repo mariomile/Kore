@@ -167,6 +167,27 @@ describe('MobileAllNotes grid view', () => {
     })
   })
 
+  it('aligns the first card in each masonry column to the same top edge', async () => {
+    settingsState.allNotesView = 'grid'
+    searchWithFilters.mockResolvedValue([
+      hit({
+        preview:
+          'A deliberately long preview that wraps across several lines and makes this card much taller than its neighbor.',
+      }),
+      hit({
+        path: 'notes/short.md',
+        title: 'Short note',
+        highlightedTitle: 'Short note',
+        preview: '',
+      }),
+    ])
+    await renderScreen()
+
+    const cards = page.getByTestId('all-notes-grid').element().querySelectorAll('button')
+    expect(cards).toHaveLength(2)
+    expect(cards[0]?.getBoundingClientRect().top).toBe(cards[1]?.getBoundingClientRect().top)
+  })
+
   it('keeps free-text highlights on card titles', async () => {
     settingsState.allNotesView = 'grid'
     searchWithFilters.mockResolvedValue([

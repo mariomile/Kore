@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { CheckCircle, Microphone, NotePlus } from '@/components/icons'
+import { CheckCircle, Microphone, NoteEdit, NotePlus } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer'
 import { hapticImpactLight } from '@/mobile/haptics'
@@ -7,16 +7,27 @@ import { hapticImpactLight } from '@/mobile/haptics'
 interface MobileCaptureDrawerProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  onDaily: () => void
   onNote: () => void
   onTask: () => void
   onRecord: () => void
   recordingAvailable: boolean
 }
 
-/** The mobile capture hub for a note, task, or audio memo. */
+/**
+ * The mobile capture hub for a daily-note line, a standalone note, a task, or
+ * an audio memo.
+ *
+ * Daily leads because capture flows into the daily note by default
+ * (AGENTS.md — "Daily notes first"); Note is the deliberate exception, the
+ * one place on mobile that starts a standalone note. Task and Record already
+ * land on today — the Tasks screen inserts into today's daily target, and a
+ * memo files itself there — so those two need no separate destination.
+ */
 export function MobileCaptureDrawer({
   open,
   onOpenChange,
+  onDaily,
   onNote,
   onTask,
   onRecord,
@@ -32,7 +43,8 @@ export function MobileCaptureDrawer({
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent aria-label="New">
         <DrawerTitle className="sr-only">New</DrawerTitle>
-        <div className="grid grid-cols-3 gap-2 px-4 pt-2 pb-4">
+        <div className="grid grid-cols-2 gap-2 px-4 pt-2 pb-4">
+          <CaptureChoice label="Daily" icon={<NoteEdit />} onPress={() => choose(onDaily)} />
           <CaptureChoice label="Note" icon={<NotePlus />} onPress={() => choose(onNote)} />
           <CaptureChoice label="Task" icon={<CheckCircle />} onPress={() => choose(onTask)} />
           <CaptureChoice

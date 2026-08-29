@@ -135,6 +135,10 @@ export function MobileShell(): ReactElement {
       <MobileCaptureDrawer
         open={captureOpen}
         onOpenChange={setCaptureOpen}
+        // The same one-shot capture arrival as ⌘D and the Daily-tab
+        // double-tap: today's editor focused with the caret at the end of
+        // its content, ready to append.
+        onDaily={() => navigate({ kind: 'today' }, { focusEditor: true })}
         onNote={() => navigate({ kind: 'note', path: untitledNotePath() })}
         onTask={() => {
           setNewTaskRequested(true)

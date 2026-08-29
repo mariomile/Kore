@@ -1,18 +1,6 @@
-import { useMemo, useRef, useState, type ReactElement } from 'react'
-import {
-  ArrowUp,
-  Bot,
-  Close,
-  Note,
-  NotePlus,
-  Pencil,
-  Plus,
-  Sliders,
-  Stop,
-} from '@/components/icons'
-import { chatToMarkdown, createNoteWithTitle } from '@reflect/core'
+import { useMemo, useRef, type ReactElement } from 'react'
+import { ArrowUp, Bot, Close, Note, Pencil, Stop } from '@/components/icons'
 import { getIsComposing, isModEvent } from '@meowdown/core'
-import { ShortcutKeys } from '@/components/shortcut-keys'
 import {
   Attachment,
   AttachmentAction,
@@ -31,23 +19,16 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Textarea } from '@/components/ui/textarea'
-import { toast } from '@/components/ui/toast'
 import { useNoteMentionAutocomplete } from '@/hooks/use-note-mention-autocomplete'
 import { cn } from '@/lib/utils'
 import { imageFilesFrom } from '@/lib/chat-attachments'
-import { groupModelOptions } from '@/lib/chat-model-groups'
-import { keybindingFor } from '@/lib/commands/app-commands'
+import { groupModelOptions, shortModelLabel } from '@/lib/chat-model-groups'
 import { useChatSession } from '@/providers/chat-provider'
 import { conversationTitle } from '@/providers/chat-title'
-import { useGraph } from '@/providers/graph-provider'
 import { useSettings } from '@/providers/settings-provider'
 import { useRouter } from '@/routing/router'
-import { ChatHistoryMenu } from './chat-history-menu'
+import { ChatDraftMentions } from './chat-draft-mentions'
 import { useComposerHeightVar } from './use-composer-height'
-
-const NEW_CHAT_BINDING = keybindingFor('chat.new')
 
 interface ChatInputProps {
   /**
@@ -65,12 +46,14 @@ interface ChatInputProps {
  * full model list — and a send button that turns into stop while a turn
  * streams. Pasted images queue as attachments and preview above the
  * textarea — a message can be a photo alone, so Enter sends whenever there
- * is text *or* something attached. The history menu loads past
- * conversations; "New chat" appears once there's a conversation to leave.
+ * is text *or* something attached, and any note the draft has hooked with
+ * `[[…]]` shows as a chip ({@link ChatDraftMentions}).
+ *
+ * Everything about the *conversation* rather than the message — instructions,
+ * history, save as note, new chat — lives in {@link ChatHeader} instead.
  */
 export function ChatInput({ autoFocus = true }: ChatInputProps = {}): ReactElement {
   const {
-    turns,
     status,
     providers,
     modelOptions,
@@ -87,38 +70,15 @@ export function ChatInput({ autoFocus = true }: ChatInputProps = {}): ReactEleme
     removeQueued,
     sendQueuedNow,
     stop,
-    newChat,
-    instructions,
-    setInstructions,
   } = useChatSession()
-  const { graph } = useGraph()
   const { settings, updateSettings } = useSettings()
   const editsOn = settings.chatAllowEdits
   const { navigate } = useRouter()
-  const [savingNote, setSavingNote] = useState(false)
   const composerRef = useComposerHeightVar()
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
   const mention = useNoteMentionAutocomplete(textareaRef, setDraft)
   const streaming = status === 'streaming'
   const empty = draft.trim() === '' && attachments.length === 0
-
-  // Export the transcript as a regular note and open it. The note is a copy —
-  // the conversation stays in the chat history untouched.
-  const saveAsNote = async () => {
-    if (graph === null || savingNote) {
-      return
-    }
-    setSavingNote(true)
-    try {
-      const title = `Chat — ${conversationTitle(turns[0]?.userText ?? '')}`
-      const path = await createNoteWithTitle(title, graph.generation, chatToMarkdown(turns))
-      navigate({ kind: 'note', path })
-    } catch {
-      toast.add({ type: 'error', title: 'Could not save the chat as a note' })
-    } finally {
-      setSavingNote(false)
-    }
-  }
 
   const groups = useMemo(
     () => groupModelOptions(modelOptions, providers),
@@ -253,6 +213,7 @@ export function ChatInput({ autoFocus = true }: ChatInputProps = {}): ReactEleme
             </div>
           </div>
         ) : null}
+        <ChatDraftMentions draft={draft} />
         <textarea
           ref={textareaRef}
           value={draft}
@@ -310,7 +271,7 @@ export function ChatInput({ autoFocus = true }: ChatInputProps = {}): ReactEleme
             value={activeIndex >= 0 ? String(activeIndex) : ''}
             items={modelOptions.map((option, index) => ({
               value: String(index),
-              label: option.label,
+              label: shortModelLabel(option.label),
             }))}
             onValueChange={(value) => {
               const option = modelOptions[Number(value)]
@@ -319,12 +280,16 @@ export function ChatInput({ autoFocus = true }: ChatInputProps = {}): ReactEleme
               }
             }}
           >
+            {/* A quiet text affordance, not a control: picking a model is a
+                secondary action next to writing the message, so the trigger
+                carries the model name alone and only shows its chevron and
+                surface on hover or focus. */}
             <SelectTrigger
               aria-label="Model"
               size="sm"
-              className="w-auto max-w-64 border-none bg-transparent text-xs text-text-muted shadow-none"
+              className="h-6 w-auto max-w-44 gap-1 rounded-md border-none bg-transparent px-1.5 text-2xs text-text-muted shadow-none transition-colors duration-100 hover:bg-surface-hover hover:text-text-secondary data-[popup-open]:bg-surface-hover [&_svg]:opacity-0 [&_svg]:transition-opacity [&_svg]:duration-100 hover:[&_svg]:opacity-100 focus-visible:[&_svg]:opacity-100 data-[popup-open]:[&_svg]:opacity-100"
             >
-              <SelectValue placeholder="Choose a model" />
+              <SelectValue placeholder="Model" />
             </SelectTrigger>
             <SelectContent>
               {groups.map((group) => (
@@ -386,69 +351,6 @@ export function ChatInput({ autoFocus = true }: ChatInputProps = {}): ReactEleme
                 : 'Edit mode is off — chat only reads your notes. Turn on to let agent chat (Claude Code / Codex) create and edit notes.'}
             </TooltipContent>
           </Tooltip>
-          <Popover>
-            <PopoverTrigger
-              render={
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label="Conversation instructions"
-                  className={instructions.trim() !== '' ? 'text-accent' : undefined}
-                >
-                  <Sliders aria-hidden />
-                </Button>
-              }
-            />
-            <PopoverContent align="end" className="w-80 p-3">
-              <p className="text-sm font-medium text-text">Conversation instructions</p>
-              <Textarea
-                value={instructions}
-                onChange={(event) => setInstructions(event.target.value)}
-                placeholder="e.g. Answer in Italian, keep it to bullet points…"
-                aria-label="Conversation instructions"
-                rows={4}
-                className="mt-2 text-sm"
-              />
-              <p className="mt-2 text-xs text-text-muted">
-                Applies on top of your global system prompt, for this conversation only. Cleared by
-                New chat.
-              </p>
-            </PopoverContent>
-          </Popover>
-          <ChatHistoryMenu />
-          {turns.length > 0 && !streaming ? (
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label="Save chat as note"
-                    disabled={savingNote}
-                    onClick={() => void saveAsNote()}
-                  >
-                    <NotePlus aria-hidden />
-                  </Button>
-                }
-              />
-              <TooltipContent side="top">Save chat as note</TooltipContent>
-            </Tooltip>
-          ) : null}
-          {turns.length > 0 && !streaming ? (
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <Button variant="ghost" size="sm" onClick={newChat}>
-                    <Plus aria-hidden data-icon="inline-start" />
-                    New chat
-                  </Button>
-                }
-              />
-              <TooltipContent side="top">
-                New chat {NEW_CHAT_BINDING ? <ShortcutKeys binding={NEW_CHAT_BINDING} /> : null}
-              </TooltipContent>
-            </Tooltip>
-          ) : null}
           {streaming ? (
             <Button size="icon" className="rounded-full" aria-label="Stop" onClick={stop}>
               <Stop aria-hidden className="size-3 fill-current" />

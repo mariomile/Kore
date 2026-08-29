@@ -99,8 +99,10 @@ export {
   MAX_NOTE_MENTIONS,
   mentionContextBlock,
   noteMentionTargets,
+  previewNoteMentions,
   resolveNoteMentions,
   type NoteMentionDeps,
+  type NoteMentionPreview,
   type ResolvedNoteMention,
 } from '../ai/chat/mentions'
 export {

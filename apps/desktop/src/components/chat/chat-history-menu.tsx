@@ -50,7 +50,7 @@ export function ChatHistoryMenu(): ReactElement | null {
       />
       <DropdownMenuContent
         aria-label="Chat history"
-        side="top"
+        side="bottom"
         align="end"
         sideOffset={6}
         className="w-72"

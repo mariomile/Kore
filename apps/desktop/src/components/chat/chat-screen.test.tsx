@@ -25,8 +25,9 @@ import { isModEvent } from '@meowdown/core'
  * The chat view over a faked engine: the provider stack and screen are real,
  * `streamChat` is scripted. Covers the no-provider call-to-action, a full
  * grounded turn (user bubble → tool chip → cited answer), the model picker,
- * the plain-while-streaming text rendering, abort-on-unmount, New chat, and
- * photo attachments (drop → preview → image-only send).
+ * the plain-while-streaming text rendering, abort-on-unmount, the header's
+ * conversation controls (instructions, history, New chat), and photo
+ * attachments (drop → preview → image-only send).
  */
 
 const streamChat = vi.hoisted(() =>
@@ -247,6 +248,49 @@ describe('ChatScreen', () => {
       .element(view.getByRole('button', { name: /add an ai provider/i }))
       .toBeInTheDocument()
     expect(view.getByLabelText('Chat message').query()).toBeNull()
+  })
+
+  it('keeps the conversation controls in the header, out of the composer', async () => {
+    configureModel()
+    scriptTurn([
+      { type: 'text-delta', text: 'sure' },
+      { type: 'complete', messages: [{ role: 'assistant', content: 'sure' }] },
+    ])
+    const view = await renderChat()
+
+    // Before a first message: instructions and history only — nothing to leave
+    // and nothing to save yet.
+    // (The history menu itself is index-gated and stays out of this harness,
+    // which runs with no open index — chat-history-menu owns that rule.)
+    const header = page.getByRole('banner')
+    await expect.element(header.getByRole('button', { name: 'Chat instructions' })).toBeVisible()
+    expect(header.getByRole('button', { name: 'New chat' }).query()).toBeNull()
+
+    await probedSend?.('hello')
+
+    await expect.element(header.getByRole('button', { name: 'New chat' })).toBeVisible()
+    await expect
+      .element(header.getByRole('button', { name: 'Save chat as note' }))
+      .toBeInTheDocument()
+    // The composer keeps only what is about the message being written.
+    const composer = view.getByLabelText('Chat message').element().closest('div')
+    expect(composer?.querySelector('[aria-label="New chat"]')).toBeNull()
+    expect(composer?.querySelector('[aria-label="Chat history"]')).toBeNull()
+  })
+
+  it('edits both instruction layers from the chat, not only from Settings', async () => {
+    configureModel()
+    const view = await renderChat()
+
+    await userEvent.click(view.getByRole('button', { name: 'Chat instructions' }))
+    const always = view.getByLabelText('Always-on instructions')
+    await expect.element(always).toBeVisible()
+    await userEvent.fill(always, 'Reply in Italian.')
+    await userEvent.fill(view.getByLabelText('Conversation instructions'), 'Bullet points only.')
+    // Blur commits the persisted half; the per-conversation half is session state.
+    await userEvent.click(view.getByLabelText('Chat message'))
+
+    expect(updatedSettings.at(-1)).toEqual({ chatSystemPrompt: 'Reply in Italian.' })
   })
 
   it('runs a grounded turn: user bubble, search chip, cited answer', async () => {

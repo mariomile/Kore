@@ -159,9 +159,12 @@ before merging it.
 
 If no Release PR is open, nothing since the last release carried a `feat:` or
 `fix:` title (`chore:` and `docs:` alone do not earn a release). To ship anyway,
-hand-edit `version` in `apps/desktop/package.json` and merge that — but never
-hand-edit the changelog or the manifest, and expect that version to have no
-changelog entry.
+do by hand, in one commit, exactly what the Release PR would do: bump `version`
+in `apps/desktop/package.json`, add its `apps/desktop/CHANGELOG.md` entry, and
+advance `.github/release-please/manifest.stable.json`. Moving only the version
+is how a published version ends up with no changelog entry and the manifest
+ends up behind; `release-please-workflow.test.mjs` fails CI when the three fall
+out of step.
 
 ### Hotfix
 

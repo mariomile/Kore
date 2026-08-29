@@ -92,10 +92,11 @@ notarized **Release** workflow.
 2. Merge the open `chore: release X.Y.Z` PR — the one **Release PR** kept
    refreshed against `master`. Merging it *is* the bump: it moves `version` in
    `apps/desktop/package.json`, the changelog, and the release-please manifest
-   together. Only when there is no Release PR, hand-edit `version` in
-   `apps/desktop/package.json` (patch unless the user specifies otherwise) and
-   merge that to `master`; never hand-edit the changelog or the manifest.
-   Feature PRs must not touch any of the three.
+   together. Only when there is no Release PR, do the same three edits by hand
+   in one commit — `version` in `apps/desktop/package.json` (patch unless the
+   user specifies otherwise), its `apps/desktop/CHANGELOG.md` entry, and
+   `.github/release-please/manifest.stable.json`. Moving only the version fails
+   CI. Feature PRs must not touch any of the three.
 3. Point the `release/dmg` branch at current `master`. It is a pointer, not
    history — `--force` is expected when previous pointer-retrigger commits sit
    on that branch:

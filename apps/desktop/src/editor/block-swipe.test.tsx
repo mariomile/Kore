@@ -47,11 +47,19 @@ function touchEventOn(
   })
 }
 
-function swipe(target: Element, deltaX: number, deltaY: number): void {
-  target.dispatchEvent(touchEventOn(target, 'touchstart', 100, 200))
-  target.dispatchEvent(touchEventOn(target, 'touchmove', 100 + deltaX / 2, 200 + deltaY / 2))
-  target.dispatchEvent(touchEventOn(target, 'touchmove', 100 + deltaX, 200 + deltaY))
-  target.dispatchEvent(touchEventOn(target, 'touchend', 100 + deltaX, 200 + deltaY))
+function swipe(
+  target: Element,
+  deltaX: number,
+  deltaY: number,
+  coordinateTarget: Element = target,
+): void {
+  const bounds = coordinateTarget.getBoundingClientRect()
+  const startX = bounds.left + bounds.width / 2
+  const startY = bounds.top + bounds.height / 2
+  target.dispatchEvent(touchEventOn(target, 'touchstart', startX, startY))
+  target.dispatchEvent(touchEventOn(target, 'touchmove', startX + deltaX / 2, startY + deltaY / 2))
+  target.dispatchEvent(touchEventOn(target, 'touchmove', startX + deltaX, startY + deltaY))
+  target.dispatchEvent(touchEventOn(target, 'touchend', startX + deltaX, startY + deltaY))
 }
 
 async function renderList(onChange: (markdown: string) => void) {
@@ -76,24 +84,22 @@ afterEach(() => {
 })
 
 describe.skipIf(!CAN_SYNTHESIZE_TOUCH)('BlockSwipeGestures', () => {
-  it('nests the caret’s list item on a rightward swipe and lifts it back', async () => {
+  it('nests the touched list item even when the caret is elsewhere, then lifts it back', async () => {
     const onChange = vi.fn<(markdown: string) => void>()
     const { view, editable } = await renderList(onChange)
 
-    // Click into the second item so the command acts where the finger was.
-    await userEvent.click(view.getByText('second'))
+    await userEvent.click(view.getByText('first'))
     onChange.mockClear()
 
-    swipe(editable, SWIPE_COMMIT_PX + 20, 2)
+    swipe(editable, SWIPE_COMMIT_PX + 20, 2, view.getByText('second').element())
     await vi.waitFor(() => {
       expect(onChange).toHaveBeenCalled()
     })
     const indented = onChange.mock.calls.at(-1)?.[0] ?? ''
-    expect(indented).not.toBe(BASE_LIST)
-    expect(indented).toContain('second')
+    expect(indented).toBe('- first\n  - second\n')
 
     onChange.mockClear()
-    swipe(editable, -(SWIPE_COMMIT_PX + 20), 2)
+    swipe(editable, -(SWIPE_COMMIT_PX + 20), 2, view.getByText('second').element())
     await vi.waitFor(() => {
       expect(onChange.mock.calls.at(-1)?.[0]).toBe(BASE_LIST)
     })

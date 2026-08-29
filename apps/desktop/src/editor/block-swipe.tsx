@@ -9,6 +9,21 @@ interface ListCommands {
   dedentList?: () => void
 }
 
+interface SelectionClass<Selection, Position> {
+  near(position: Position): Selection
+}
+
+function selectionNear<Selection extends object, Position>(
+  selection: Selection,
+  position: Position,
+): Selection {
+  // ProseKit exposes the concrete selection instance but not its class through
+  // Meowdown. Every ProseMirror selection class inherits Selection.near.
+  const selectionClass = selection.constructor as typeof selection.constructor &
+    SelectionClass<Selection, Position>
+  return selectionClass.near(position)
+}
+
 /**
  * Craft-style block handling on touch.
  *
@@ -38,11 +53,13 @@ export function BlockSwipeGestures(): ReactElement | null {
       const dom = editor.view.dom
       let startX: number | null = null
       let startY: number | null = null
+      let startPosition: number | null = null
       let claimed = false
 
       const reset = (): void => {
         startX = null
         startY = null
+        startPosition = null
         claimed = false
       }
 
@@ -54,6 +71,10 @@ export function BlockSwipeGestures(): ReactElement | null {
         const touch = event.touches[0]
         startX = touch?.clientX ?? null
         startY = touch?.clientY ?? null
+        startPosition =
+          touch === undefined
+            ? null
+            : (editor.view.posAtCoords({ left: touch.clientX, top: touch.clientY })?.pos ?? null)
         claimed = false
       }
 
@@ -86,13 +107,19 @@ export function BlockSwipeGestures(): ReactElement | null {
           return
         }
         const swipe = classifyBlockSwipe(touch.clientX - startX, touch.clientY - startY)
+        const position = startPosition
         reset()
-        if (swipe === null) {
+        if (swipe === null || position === null) {
           return
         }
-        // The caret follows the touch, so the command lands on the line the
-        // finger was on; a swipe that lands nowhere indentable is a no-op the
-        // list commands refuse on their own.
+        const view = editor.view
+        const boundedPosition = Math.min(Math.max(position, 0), view.state.doc.content.size)
+        const selection = selectionNear(
+          view.state.selection,
+          view.state.doc.resolve(boundedPosition),
+        )
+        view.dispatch(view.state.tr.setSelection(selection))
+
         const commands = editor.commands as ListCommands
         if (swipe === 'indent') {
           commands.indentList?.()

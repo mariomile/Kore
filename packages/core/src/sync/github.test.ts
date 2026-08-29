@@ -367,15 +367,13 @@ describe('newRepoUrl', () => {
     expect(url.origin + url.pathname).toBe('https://github.com/new')
     expect(url.searchParams.get('name')).toBe('my notes-backup')
     expect(url.searchParams.get('visibility')).toBe('private')
-    expect(url.searchParams.get('description')).toBe('Reflect notes backup')
+    expect(url.searchParams.get('description')).toBe('Kore notes backup')
   })
 })
 
 describe('githubAppInstallUrl', () => {
-  it('points at the registered app’s installation page', () => {
-    expect(githubAppInstallUrl()).toBe(
-      'https://github.com/apps/reflect-github-app/installations/new',
-    )
+  it('does not direct Kore users to an upstream GitHub App', () => {
+    expect(() => githubAppInstallUrl()).toThrow('personal access token')
   })
 })
 

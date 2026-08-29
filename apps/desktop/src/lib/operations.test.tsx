@@ -83,7 +83,7 @@ describe('operations store', () => {
 
     act(() => {
       handle = startOperation('Install update', {
-        description: 'Reflect 1.2.3 is ready.',
+        description: 'Kore 1.2.3 is ready.',
         persistent: true,
         action: { label: 'Install', run },
       })
@@ -91,7 +91,7 @@ describe('operations store', () => {
 
     expect(result.current[0]).toMatchObject({
       label: 'Install update',
-      description: 'Reflect 1.2.3 is ready.',
+      description: 'Kore 1.2.3 is ready.',
       persistent: true,
       action: { label: 'Install', run },
     })

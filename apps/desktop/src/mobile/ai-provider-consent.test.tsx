@@ -17,7 +17,9 @@ describe('AiProviderConsent', () => {
     )
 
     await view.getByRole('button', { name: 'Privacy policy' }).click()
-    expect(openUrl).toHaveBeenCalledWith('https://reflect.app/privacy')
+    expect(openUrl).toHaveBeenCalledWith(
+      'https://github.com/mariomile/Kore/blob/master/docs/privacy.md',
+    )
   })
 
   it('reports checkbox changes to the owner', async () => {

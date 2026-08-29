@@ -5,7 +5,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { useMobileAudioMemo } from '@/mobile/audio-memo-provider'
 
 /**
- * The daily spine's record button, floating above the new-note FAB (V1
+ * The daily spine's record button, floating above the navigation capsules (V1
  * parity: voice capture is a first-class affordance, not a settings-adjacent
  * feature). Idle starts a memo, recording reads as the stop control, a
  * spinner carries the transcribe/save progress, and a failure turns it red —
@@ -37,7 +37,7 @@ export function AudioMemoFab(): ReactElement | null {
       className="fixed right-4 z-40 size-12 rounded-full shadow-lg"
       style={{
         bottom:
-          'calc(max(env(safe-area-inset-bottom), var(--keyboard-height, 0px)) + 4.25rem + 3.75rem)',
+          'calc(max(var(--mobile-tab-bar-height, 0px), calc(var(--keyboard-height, 0px) + 2.75rem)) + 0.75rem)',
       }}
       onClick={() => memo.toggle()}
     >

@@ -3,16 +3,11 @@ import { ReflectError } from '../errors'
 import { deleteSecret, getSecret, setSecret } from '../secrets/keychain'
 import { apiHeaders, JSON_HEADERS, readJson, type FetchFn } from './github-api'
 
-/**
- * The Reflect GitHub App's client id, used by the device flow. Public by
- * design — the device flow needs no client secret, even for refresh, so
- * there is no Reflect-hosted anything and nothing here is sensitive.
- * Registered 2026-06-11 (app id 4032425, owned by team-reflect).
- */
-export const GITHUB_APP_CLIENT_ID = 'Iv23liURhf4d0EazsLl4'
+/** Kore has no registered GitHub App; use the personal access token flow. */
+export const GITHUB_APP_CLIENT_ID: string = ''
 
-/** The app's public slug — `github.com/apps/<slug>`. */
-export const GITHUB_APP_SLUG = 'reflect-github-app'
+/** Public slug of Kore's GitHub App, once registered. */
+export const GITHUB_APP_SLUG: string = ''
 
 /**
  * Where the user grants the app access to repositories. Authorization
@@ -22,12 +17,15 @@ export const GITHUB_APP_SLUG = 'reflect-github-app'
  * here to grant it.
  */
 export function githubAppInstallUrl(): string {
+  if (!isDeviceFlowConfigured()) {
+    throw new ReflectError('auth', 'Connect GitHub using a personal access token.')
+  }
   return `https://github.com/apps/${GITHUB_APP_SLUG}/installations/new`
 }
 
 /** Whether the guided device flow is available (a GitHub App is registered). */
 export function isDeviceFlowConfigured(): boolean {
-  return GITHUB_APP_CLIENT_ID.length > 0
+  return GITHUB_APP_CLIENT_ID.length > 0 && GITHUB_APP_SLUG.length > 0
 }
 
 /** The keychain entry holding the GitHub credential (one per machine). */

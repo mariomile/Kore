@@ -1,88 +1,72 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect, test } from 'vitest'
 
 const scriptsDirectory = import.meta.dirname
 const repoRoot = join(scriptsDirectory, '..', '..', '..')
 const workflow = readFileSync(join(repoRoot, '.github', 'workflows', 'release-please.yml'), 'utf8')
+const releaseDmg = readFileSync(join(repoRoot, '.github', 'workflows', 'release-dmg.yml'), 'utf8')
 const stableConfig = JSON.parse(
   readFileSync(join(repoRoot, '.github', 'release-please', 'config.stable.json'), 'utf8'),
 )
-const betaConfig = JSON.parse(
-  readFileSync(join(repoRoot, '.github', 'release-please', 'config.beta.json'), 'utf8'),
+const manifest = JSON.parse(
+  readFileSync(join(repoRoot, '.github', 'release-please', 'manifest.stable.json'), 'utf8'),
 )
+const packageVersion = JSON.parse(
+  readFileSync(join(repoRoot, 'apps', 'desktop', 'package.json'), 'utf8'),
+).version
 
-test('the stable pass runs before the beta pass', () => {
-  // The stable Release PR advances manifest.beta.json, so the push that
-  // merges it must create the stable tag before the beta pass anchors on it.
-  const stablePass = workflow.indexOf('config-file: .github/release-please/config.stable.json')
-  const betaPass = workflow.indexOf('config-file: .github/release-please/config.beta.json')
-  expect(stablePass).toBeGreaterThan(-1)
-  expect(betaPass).toBeGreaterThan(stablePass)
+test('there is a single release channel', () => {
+  // A second release-please component tracking the same branch only produced a
+  // duplicate ledger: both Release PRs listed the same commits, and neither
+  // published anything. One channel, one changelog.
+  for (const path of [
+    ['.github', 'release-please', 'config.beta.json'],
+    ['.github', 'release-please', 'manifest.beta.json'],
+    ['apps', 'desktop', 'CHANGELOG.beta.md'],
+  ]) {
+    expect(existsSync(join(repoRoot, ...path))).toBe(false)
+  }
+  expect(workflow).not.toContain('config.beta.json')
+  expect(stableConfig.packages['.'].component).toBeUndefined()
+  expect(stableConfig.packages['.']['package-name']).toBe('reflect-open')
 })
 
-test('the stable Release PR advances the beta manifest', () => {
+test('release-please tags nothing and publishes nothing', () => {
+  // Publishing belongs to release-dmg.yml. When release-please also created
+  // releases they landed as untagged, asset-less drafts that the in-app
+  // updater could resolve as "latest".
+  expect(stableConfig['skip-github-release']).toBe(true)
+  expect(stableConfig.draft).toBeUndefined()
+  expect(stableConfig['force-tag-creation']).toBeUndefined()
+  expect(workflow).not.toContain('uses: ./.github/workflows/release.yml')
+  expect(workflow).not.toContain('uses: ./.github/workflows/testflight.yml')
+})
+
+test('the Release PR is the bump', () => {
+  // Merging it must move the one place the app version lives, so a published
+  // version can never lack its changelog entry.
+  expect(stableConfig['include-component-in-tag']).toBe(false)
+  expect(stableConfig.packages['.']['changelog-path']).toBe('apps/desktop/CHANGELOG.md')
   expect(stableConfig.packages['.']['extra-files']).toContainEqual({
     type: 'json',
-    path: '.github/release-please/manifest.beta.json',
-    jsonpath: "$['.']",
+    path: 'apps/desktop/package.json',
+    jsonpath: '$.version',
   })
 })
 
-test('the channels keep distinct release-please head branches', () => {
-  // The component becomes part of the head branch name, and release creation
-  // matches merged Release PRs by that component; identical components would
-  // make the two passes overwrite each other's PR.
-  expect(stableConfig.packages['.'].component).toBeUndefined()
-  expect(stableConfig.packages['.']['package-name']).toBe('reflect-open')
-  expect(betaConfig.packages['.'].component).toBe('reflect-open-beta')
+test('the manifest tracks the version the app actually ships', () => {
+  // A manifest behind package.json makes the next Release PR propose a version
+  // that renames releases already published, and re-lists their commits.
+  expect(manifest['.']).toBe(packageVersion)
 })
 
-test('both channels tag plain versions and draft their releases', () => {
-  for (const config of [stableConfig, betaConfig]) {
-    expect(config['include-component-in-tag']).toBe(false)
-    expect(config.draft).toBe(true)
-    expect(config['force-tag-creation']).toBe(true)
-  }
-  expect(betaConfig.versioning).toBe('prerelease')
-  expect(betaConfig['prerelease-type']).toBe('beta')
-  expect(stableConfig.versioning).toBeUndefined()
-})
-
-test('each channel chains its release into delivery', () => {
-  for (const channel of ['stable', 'beta']) {
-    expect(workflow).toContain(
-      `${channel}_created: \${{ steps.${channel}.outputs.releases_created }}`,
-    )
-    expect(workflow).toContain(`${channel}_tag: \${{ steps.${channel}.outputs.tag_name }}`)
-    expect(workflow).toContain(`${channel}_commit: \${{ steps.${channel}.outputs.sha }}`)
-    expect(workflow).toContain(`needs.release-please.outputs.${channel}_created == 'true'`)
-    expect(workflow).toContain(`tag: \${{ needs.release-please.outputs.${channel}_tag }}`)
-    expect(workflow).toContain(`commit: \${{ needs.release-please.outputs.${channel}_commit }}`)
-  }
-  expect(workflow).toContain('uses: ./.github/workflows/release.yml')
-  expect(workflow).toContain('uses: ./.github/workflows/testflight.yml')
+test('the tags release-please skips are created by the publish workflow', () => {
+  // skip-github-release still expects the releases to be tagged by something.
+  expect(releaseDmg).toContain('tagName: v__VERSION__')
 })
 
 test('release runs queue instead of cancelling', () => {
   expect(workflow).toContain('group: release-please')
   expect(workflow).toContain('cancel-in-progress: false')
-})
-
-test('the notarized and TestFlight jobs stay dormant without signing secrets', () => {
-  // This fork publishes through release-dmg.yml. Left ungated, these four
-  // macOS jobs fire on every release merge and fail their secret preflight,
-  // leaving a red check and a draft release behind. The pipeline is kept
-  // because docs/kore-apple-signing.md documents it as the supported
-  // prompt-free-install path: flipping the repository variable is the only
-  // step needed to turn it back on.
-  const gated = workflow.match(/if: vars\.APPLE_SIGNING_ENABLED == 'true' &&/g) ?? []
-  expect(gated).toHaveLength(4)
-  // The gate must be an addition, never a replacement: each job still has to
-  // wait for its own channel to have produced a release.
-  for (const channel of ['stable', 'beta']) {
-    expect(workflow).toContain(
-      `if: vars.APPLE_SIGNING_ENABLED == 'true' && needs.release-please.outputs.${channel}_created == 'true'`,
-    )
-  }
 })

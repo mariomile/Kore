@@ -60,6 +60,37 @@ describe('graph layout', () => {
     expect(isSettled(layout)).toBe(false)
   })
 
+  it('keeps a big graph inside a fittable span', () => {
+    // A vault-sized graph: mostly unlinked notes around a linked core. Before
+    // the per-tick travel cap this "settled" hundreds of thousands of units
+    // wide, which no zoom level could frame — the map read as an empty canvas.
+    const count = 1200
+    const layout = createGraphLayout(Array.from({ length: count }, (_, index) => `note-${index}`))
+    const linked = Math.floor(count * 0.4)
+    const edges = Array.from({ length: count * 2 }, (_, index) => ({
+      source: (index * 7) % linked,
+      target: (index * 13 + 1) % linked,
+      weight: 1,
+    }))
+    settleGraphLayout(layout, edges)
+
+    let minX = Infinity
+    let minY = Infinity
+    let maxX = -Infinity
+    let maxY = -Infinity
+    for (const node of layout.nodes) {
+      expect(Number.isFinite(node.x)).toBe(true)
+      expect(Number.isFinite(node.y)).toBe(true)
+      minX = Math.min(minX, node.x)
+      maxX = Math.max(maxX, node.x)
+      minY = Math.min(minY, node.y)
+      maxY = Math.max(maxY, node.y)
+    }
+    // Comfortably framed by the canvas's 0.15 minimum scale, with room to
+    // spare: a 1000px viewport shows a 6600-unit span at that zoom.
+    expect(Math.max(maxX - minX, maxY - minY)).toBeLessThan(6000)
+  })
+
   it('steps an empty layout without dividing by zero', () => {
     const layout = createGraphLayout([])
     stepGraphLayout(layout, [])

@@ -19,7 +19,7 @@ import { claudeMcpConfigJson, mcpSpawnEnv, type ResolvedMcpServer } from './mcp'
  * binary's protocol — arguments, tool lockdown, privacy deny rules, and
  * parsing its stream-json lines; the transport lives in `./agent-cli`.
  *
- * Grounding works differently from the BYOK engine: instead of Reflect's
+ * Grounding works differently from the BYOK engine: instead of Kore's
  * note tools, the CLI's own tools run inside the graph directory — `Read`
  * and `Glob` always, plus `Write` and `Edit` in chat edit mode. `Grep` is deliberately excluded — its matches would print
  * file *content*, and per-file permission rules can't filter it, so allowing
@@ -59,8 +59,8 @@ export function claudeCliSystemPrompt(options: {
   const allowEdits = options.allowEdits === true
   return [
     allowEdits
-      ? `You are Reflect’s agent, working inside the user’s personal note graph “${options.graphName}” — the current directory, a folder of markdown files the running app picks up live.`
-      : `You are Reflect’s assistant, answering inside the user’s personal note graph “${options.graphName}” — the current directory, a folder of markdown files.`,
+      ? `You are Kore’s agent, working inside the user’s personal note graph “${options.graphName}” — the current directory, a folder of markdown files the running app picks up live.`
+      : `You are Kore’s assistant, answering inside the user’s personal note graph “${options.graphName}” — the current directory, a folder of markdown files.`,
     `Today’s date is ${options.today}. Daily notes are daily/YYYY-MM-DD.md; other notes live under notes/ (file names are slugs of note titles); templates/ holds note templates and assets/ holds attachments.`,
     'Tasks in notes are round checkboxes: `+ [ ]` open, `+ [x]` done; a leading ! (medium) or !! (high) marks priority, and the first [[YYYY-MM-DD]] wiki link inside an item is its due date. Square `- [ ]` checkboxes are plain checklists, not tasks.',
     ...agentContextPromptLines(options.agentContext ?? null, {

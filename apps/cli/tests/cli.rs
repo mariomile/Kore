@@ -229,7 +229,7 @@ fn explicit_graph_flag_rejects_a_non_graph() {
         &["--graph", not_a_graph.path().to_str().unwrap(), "today"],
     );
     assert_eq!(output.status.code(), Some(1));
-    assert!(stderr(&output).contains("not a Reflect graph"));
+    assert!(stderr(&output).contains("not a Kore graph"));
 }
 
 #[test]
@@ -1010,7 +1010,7 @@ fn tasks_without_an_index_exits_4() {
     let fixture = graph();
     let output = reflect(&fixture, &["tasks"]);
     assert_eq!(output.status.code(), Some(4));
-    assert!(stderr(&output).contains("open this graph in Reflect"));
+    assert!(stderr(&output).contains("open this graph in Kore"));
 }
 
 // ---- capture ----------------------------------------------------------------

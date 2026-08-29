@@ -41,7 +41,7 @@ export function GraphChooser(): ReactElement {
   return (
     <ChooserShell>
       <div className="space-y-1.5 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight text-text">Welcome to Reflect</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-text">Welcome to Kore</h1>
         <p className="text-sm text-text-secondary">
           Your notes are plain Markdown files. Open an existing folder or choose where new notes
           live.

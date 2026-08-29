@@ -199,6 +199,8 @@ export interface TranscribeSessionPartsInput {
   session: AudioMemoSession
   provider: TranscriptionProvider
   apiKey: string
+  /** The speech-to-text model, already resolved against its default. */
+  model: string
   generation: number
   fetchFn?: typeof fetch | undefined
   /** Abort gate, consulted before and after every slow await. */
@@ -258,6 +260,7 @@ export async function transcribeSessionParts(
       const text = await transcribeAudio({
         provider: input.provider,
         apiKey: input.apiKey,
+        model: input.model,
         audio: new Blob([bytes], { type: part.memo.mimeType }),
         mimeType: part.memo.mimeType,
         fetchFn: input.fetchFn,

@@ -22,13 +22,13 @@ pub fn run(graph: &Graph, json: bool, note_arg: &str) -> Result<(), CliError> {
         IndexOpen::Opened(opened) => opened,
         IndexOpen::Missing => {
             return Err(CliError::NoIndex(format!(
-                "no index at {REFLECT_DIR}/{INDEX_FILE} — open this graph in Reflect to build it"
+                "no index at {REFLECT_DIR}/{INDEX_FILE} — open this graph in Kore to build it"
             )))
         }
         IndexOpen::Unusable(message) => return Err(CliError::NoIndex(message)),
     };
     if opened.newer_schema {
-        warn("the index schema is newer than this CLI — update Reflect");
+        warn("the index schema is newer than this CLI — update Kore");
     }
 
     let resolved = resolve_note(note_arg, &graph.root, Some(&opened.conn))?;
@@ -38,7 +38,7 @@ pub fn run(graph: &Graph, json: bool, note_arg: &str) -> Result<(), CliError> {
     let staleness = detect_staleness(&opened.conn, &graph.root)?;
     if staleness.is_stale() {
         warn(format!(
-            "the index may be stale ({} file(s) differ from it) — open the graph in Reflect to refresh",
+            "the index may be stale ({} file(s) differ from it) — open the graph in Kore to refresh",
             staleness.total()
         ));
     }

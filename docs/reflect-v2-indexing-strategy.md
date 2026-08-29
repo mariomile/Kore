@@ -1,5 +1,12 @@
 # Reflect V2 Indexing Strategy
 
+> **Kore next-wave direction (2026-08-27):** See the
+> [target architecture](kore-target-architecture.md), [roadmap](roadmap.md), and
+> [Plan 25](plans/25-personal-os.md). This document remains baseline/reference
+> material; the new target takes precedence for future scope. Keep current index
+> behavior and the durable chat exception. New jobs/grants/approvals/audit need
+> explicit durable storage and must never be erased by index rebuild.
+
 This document captures the current V2 indexing direction. It focuses on using a local database for fast lookup, search, backlinks, semantic search, and AI context while keeping markdown files as the durable source of truth.
 
 It complements [Reflect V2 Product Vision](./reflect-v2-product-vision.md).

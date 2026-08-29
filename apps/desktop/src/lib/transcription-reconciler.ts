@@ -7,6 +7,7 @@ import {
   subscribeFileChanges,
   type AiProvidersState,
   type ReconcileStop,
+  type TranscriptionModels,
 } from '@reflect/core'
 import { createBackgroundReconciler } from '@/lib/background-reconciler'
 import { startOperation } from '@/lib/operations'
@@ -45,6 +46,8 @@ export interface TranscriptionReconcilerOptions {
   getProviders: () => AiProvidersState
   /** Read lazily so a settings toggle applies to the next reconcile pass. */
   getTranscriptionFormat: () => boolean
+  /** Same lazy read for the speech-to-text model overrides. */
+  getTranscriptionModels: () => TranscriptionModels
 }
 
 /** Build the reconciler for one graph session. `dispose()` is terminal. */
@@ -92,6 +95,7 @@ export function createTranscriptionReconciler(
       providers: options.getProviders(),
       generation: options.generation,
       formatTranscript: options.getTranscriptionFormat(),
+      transcriptionModels: options.getTranscriptionModels(),
       fetchFn: providerFetch,
       isStale,
       onPending: (count) => setTranscribing(count > 0),

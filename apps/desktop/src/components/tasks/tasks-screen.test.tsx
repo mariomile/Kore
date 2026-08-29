@@ -123,7 +123,10 @@ vi.mock('@/lib/note-task', () => ({
 // Stub the real inline editor with the callback surface the row
 // wires up, so selection + edit/delete/cancel routing is testable here; the
 // editor's own commit/cancel decision is unit-tested via resolveTaskEdit.
-vi.mock('./task-editor', () => ({
+// The alias path, not './task-editor': a relative specifier here resolves
+// to a different module id than the one `task-row` imports, so the factory
+// never intercepted and every test below drove the real editor.
+vi.mock('@/components/tasks/task-editor', () => ({
   TaskEditor: ({
     task,
     onCommit,

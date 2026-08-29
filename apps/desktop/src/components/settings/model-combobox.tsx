@@ -59,6 +59,10 @@ export function ModelCombobox({
   const [open, setOpen] = useState(false)
   const [inputValue, setInputValue] = useState('')
   const filteredCountRef = useRef(models.length)
+  // The given list wins over the provider's chat catalog: a picker handed
+  // transcription models must not label them from models it never offered,
+  // and a custom id belongs to neither list — it shows as itself.
+  const label = models.find((model) => model.id === value)?.label ?? aiModelLabel(provider, value)
 
   const clearInput = () => setInputValue('')
   // Clear stale search text whenever the provider changes (popover close is
@@ -108,7 +112,7 @@ export function ModelCombobox({
             aria-label={ariaLabel}
             className="w-full justify-between font-normal"
           >
-            <span className="truncate">{aiModelLabel(provider, value)}</span>
+            <span className="truncate">{label}</span>
             <ChevronUpDown className="ml-2 size-4 shrink-0 opacity-50" />
           </Button>
         }

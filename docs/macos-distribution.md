@@ -104,117 +104,112 @@ deferred.
 
 ## Cutting a release (Release PRs)
 
-> **Kore fork:** GitHub Actions cannot create pull requests here, so the
-> Release PRs described below never open. Cut a Kore release by hand-bumping
-> `version` in `apps/desktop/package.json` only (never the changelogs or
-> `.github/release-please/` manifests), merging that to `master`, and
-> fast-forwarding the `release/dmg` pointer:
-> `git push origin origin/master:release/dmg`. The **Release DMG** workflow
-> builds updater artifacts from that pointer. Details:
-> [kore-apple-signing.md](kore-apple-signing.md#publishing-a-kore-release).
+> **Kore fork:** this fork publishes through the **Release DMG** workflow, not
+> the notarized **Release** workflow described further down. It also runs a
+> single release channel — upstream's parallel beta channel was removed, since
+> both channels tracked the same `master` and so produced two Release PRs
+> listing the same commits, neither of which ever published anything. The
+> sections below describe the single channel as this fork runs it; the
+> beta-specific upstream flow is gone.
 
 The version lives in one place: `version` in `apps/desktop/package.json`.
 `tauri.conf.json` points its `version` at that file, the crate version in
 `src-tauri/Cargo.toml` is frozen at `0.0.0`, and `Cargo.lock` never changes for a
 release. release-please maintains the version: on every push to `master`,
-`.github/workflows/release-please.yml` runs two release-please passes (one per
-channel) that keep two **Release PRs** open side by side:
+`.github/workflows/release-please.yml` keeps one **Release PR** open
+(`chore: release X.Y.Z`). Merging it bumps `apps/desktop/package.json`, prepends
+`apps/desktop/CHANGELOG.md` with the conventional-commit PR titles landed since
+the last release, and advances `.github/release-please/manifest.stable.json` —
+all in one squash commit.
 
-- The **beta** Release PR (`chore: release X.Y.Z-beta.N`) bumps
-  `apps/desktop/package.json`, advances `.github/release-please/manifest.beta.json`,
-  and prepends `apps/desktop/CHANGELOG.beta.md` with the conventional-commit PR titles
-  landed since the last beta release.
-- The **stable** Release PR (`chore: release X.Y.Z`) does the same with
-  `manifest.stable.json` and `apps/desktop/CHANGELOG.md`, aggregating everything since
-  the last stable release. It also advances `manifest.beta.json` to the stable
-  version, so the next beta cycle starts above the released version.
+**Merging the Release PR is the bump.** It is not the publish: release-please
+here runs with `skip-github-release`, so it creates neither a GitHub release nor
+a tag. Publishing is a second, deliberate step — fast-forward the `release/dmg`
+pointer to `master` and let **Release DMG** build it:
 
-**Merging a Release PR is the release, and the merge is the only human action.** Both
-Release PRs squash-merge (the default). release-please then creates a draft GitHub
-release (with its `v<version>` tag — `force-tag-creation`, so later release-please
-runs can always anchor on the previous release) and hands the tag name to the Release
-workflow, which builds, signs, notarizes, uploads the assets, and undrafts the
-release. Nothing is visible to users (and `releases/latest` does not move) until
-every asset is in place. The workflow resolves the release tag to its immutable
-commit once; the macOS, TestFlight, and feed sync jobs all check out that SHA rather
-than resolving a tag name independently.
+```bash
+git fetch origin master
+git push --force origin origin/master:release/dmg
+```
+
+`tauri-action` in that workflow creates the `v<version>` tag and the
+`Kore v<version>` release, uploads the DMG, the updater artifacts, and
+`latest.json`, and publishes it in one shot. `releases/latest` moves only when
+every asset is in place, which is what the in-app updater reads.
+
+Letting release-please create the release too is what left this repo with nine
+untagged, asset-less draft releases: it drafted them and handed the tag to the
+notarized **Release** workflow, which never ran successfully here. A draft the
+updater can resolve as "latest" is a live hazard, not just clutter — do not
+re-enable `draft` / `force-tag-creation` without moving publishing into that
+same pipeline.
 
 PRs created with `GITHUB_TOKEN` do not start `pull_request` workflows, so checks do
-not appear automatically on the bot-created Release PRs. Use the run-checks button
-before merging one.
+not appear automatically on the bot-created Release PR. Use the run-checks button
+before merging it.
 
-### Beta (the everyday release)
+### The everyday release
 
-1. Land PRs on `master` as usual.
-2. When it's time to ship, open the beta Release PR (`chore: release X.Y.Z-beta.N`),
-   polish the changelog if needed (edit the PR branch — release-please regenerates the
+1. Land PRs on `master` as usual, with conventional-commit titles.
+2. When it's time to ship, open the Release PR (`chore: release X.Y.Z`), polish
+   the changelog if needed (edit the PR branch — release-please regenerates the
    PR when new commits land, so polish last), and **merge it**.
-3. Everything else is automatic, ending with the `updater-beta` feed refresh and the
-   TestFlight upload. Installed Kore Beta apps pick up the update.
-4. The stable Release PR stays open and is rebased by the next push; merge it whenever
-   the channel is ready to graduate.
+3. Fast-forward `release/dmg` as above and watch **Release DMG**. Installed Kore
+   apps pick up the update from `latest.json`.
 
-### Stable
-
-1. Review the stable Release PR (`chore: release X.Y.Z`). Its changelog aggregates
-   every change since the last stable release, including everything already shipped
-   in betas.
-2. Run its checks, then **merge it** (squash, like any Release PR). The same pipeline
-   publishes the stable flavor and `releases/latest` moves.
-3. The merge supersedes the open beta Release PR: its diff now conflicts with
-   `master`, so it cannot merge by accident. Leave it alone; the next releasable
-   commit rewrites it in place to the next beta version (release-please reuses the
-   per-channel head branch). Closing it by hand is harmless.
-
-The stable release builds `master` as of the stable Release PR's merge, which may
-include commits that never shipped in a beta. To ship a beta-tested snapshot, merge
-the stable Release PR right after a healthy beta, before landing new work.
-
-If macOS publishing or TestFlight fails after a Release PR merged, the tag and GitHub
-release record already exist (the release may still be a draft): rerun
-**Actions → Release** or **Actions → TestFlight** on the release commit as
-appropriate.
+If no Release PR is open, nothing since the last release carried a `feat:` or
+`fix:` title (`chore:` and `docs:` alone do not earn a release). To ship anyway,
+do by hand, in one commit, exactly what the Release PR would do: bump `version`
+in `apps/desktop/package.json`, add its `apps/desktop/CHANGELOG.md` entry, and
+advance `.github/release-please/manifest.stable.json`. Moving only the version
+is how a published version ends up with no changelog entry and the manifest
+ends up behind; `release-please-workflow.test.mjs` fails CI when the three fall
+out of step.
 
 ### Hotfix
 
-A hotfix is a normal PR: land the `fix:` on `master`, then merge the stable Release
-PR that now offers the patch release. If `master` already carries unreleased work
-that must not ship in the fix, there is no Release PR shortcut: branch from the
-released tag, cherry-pick the fix, bump `version` in `apps/desktop/package.json` on
-that branch, run the manual fallback below on it, and land the fix on `master` as
-usual.
+A hotfix is a normal PR: land the `fix:` on `master`, then merge the Release PR
+that now offers the patch release and publish it. If `master` already carries
+unreleased work that must not ship in the fix, there is no Release PR shortcut:
+branch from the released tag, cherry-pick the fix, bump `version` in
+`apps/desktop/package.json` on that branch, publish from it, and land the fix on
+`master` as usual.
 
 ### Release automation files
 
-Each release-please state file is owned by one channel:
-
 | File | Written by |
 | --- | --- |
-| `.github/release-please/config.beta.json` | humans |
-| `.github/release-please/manifest.beta.json` | the beta Release PR, plus the stable Release PR (advancing it to the stable version) |
 | `.github/release-please/config.stable.json` | humans |
-| `.github/release-please/manifest.stable.json` | the stable Release PR |
-| `apps/desktop/CHANGELOG.beta.md` | the beta Release PR |
-| `apps/desktop/CHANGELOG.md` | the stable Release PR |
+| `.github/release-please/manifest.stable.json` | the Release PR |
+| `apps/desktop/CHANGELOG.md` | the Release PR |
+| `apps/desktop/package.json` (`version`) | the Release PR (hand-edited only when no Release PR is open) |
 
-The manifests are the per-channel source of truth for "last released version". Both
-Release PRs write `apps/desktop/package.json` (`version`); whichever merges second is
-regenerated on the next push, so there is nothing to reconcile by hand. Do not
-hand-edit the changelogs or manifests outside the flows above, and do not use
-`Release-As:` commit footers: human version interventions go through the manifest
-files (the no-Release-PR fallback below is the explicit exception), and a major
-graduation such as `1.0.0` is a one-time `release-as` in both config files. The first beta of
-a new cycle is tagged without a number (`v0.6.0-beta`, then `-beta.1`, `-beta.2`, …)
-— a release-please naming quirk, not a bug.
+The manifest is the source of truth for "last released version", and it must
+track what is actually published. When it lags — as it did at `0.30.0` while
+`0.30.6` was live — the next Release PR proposes a version that renames releases
+already out and re-lists commits users already have. Do not hand-edit the
+changelog or the manifest outside the flows above, and do not use `Release-As:`
+commit footers: version interventions go through the manifest file, and a major
+graduation such as `1.0.0` is a one-time `release-as` in the config.
+
+`.github/workflows/release.yml` (signed + notarized macOS) and
+`.github/workflows/testflight.yml` remain in the repo on `workflow_dispatch`
+only. Nothing chains into them automatically.
+
 
 ### Manual fallback (no Release PR)
 
-For this exceptional recovery path, merge a PR that sets `version` in
-`apps/desktop/package.json`, then run
-**Actions → Release → Run workflow** on that branch. The workflow derives the tag from
-the version, and publish creates the release (and its tag) itself via
-`gh release create`. Afterwards, sync that channel's manifest file with a follow-up PR
-so release-please continues from the right version.
+In this fork the fallback is **Actions → Release DMG → Run workflow**, which
+builds whatever `version` `apps/desktop/package.json` carries on the chosen ref
+and creates (or reuses) its `v<version>` tag and release — the same thing the
+`release/dmg` pointer push does, without the push. Afterwards, sync
+`.github/release-please/manifest.stable.json` with a follow-up PR so
+release-please continues from the right version.
+
+Upstream's equivalent is **Actions → Release → Run workflow** (signed +
+notarized); it derives the tag from the version and creates the release itself
+via `gh release create`. That path needs Apple Developer credentials this fork
+does not use day to day.
 
 ## Publishing to GitHub Releases
 
@@ -275,8 +270,12 @@ the beta feed, a plain version to the stable feed. The beta and dev flavor overl
 their own feeds, and `release-macos.mjs` pins the stable feed into stable builds at
 build time, so releases are branch-independent.
 
-Cutting a beta means merging the beta Release PR; a stable release means merging the
-stable Release PR (see [Cutting a release](#cutting-a-release-release-prs) above).
+**Not used in this fork.** The `updater-beta` feed belongs to the notarized
+`pnpm release:macos publish` path, and the parallel beta release channel that fed
+it was removed — there is one channel and one Release PR (see
+[Cutting a release](#cutting-a-release-release-prs) above). "Kore Beta" survives
+only as a *build flavor* (its own bundle id and icons, next section), not as a
+release channel.
 
 ## Build flavors (Kore / Kore Beta / Kore Dev)
 

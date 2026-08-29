@@ -19,7 +19,7 @@ import Foundation
   struct QuickNoteIntent: AppIntent {
     static var title: LocalizedStringResource = "Add quick note"
     static var description = IntentDescription(
-      "Append a one-line note to today's daily note in Reflect.")
+      "Append a one-line note to today's daily note in Kore.")
     static var openAppWhenRun = false
 
     /// Apple's default is `.alwaysAllowed` (runs on a locked device), and

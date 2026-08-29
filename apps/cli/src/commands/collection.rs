@@ -77,19 +77,19 @@ pub fn run(
         IndexOpen::Opened(opened) => opened,
         IndexOpen::Missing => {
             return Err(CliError::NoIndex(format!(
-                "no index at {REFLECT_DIR}/{INDEX_FILE} — open this graph in Reflect to build it"
+                "no index at {REFLECT_DIR}/{INDEX_FILE} — open this graph in Kore to build it"
             )))
         }
         IndexOpen::Unusable(message) => return Err(CliError::NoIndex(message)),
     };
     if opened.newer_schema {
-        warn("the index schema is newer than this CLI — update Reflect");
+        warn("the index schema is newer than this CLI — update Kore");
     }
 
     let staleness = detect_staleness(&opened.conn, &graph.root)?;
     if staleness.is_stale() {
         warn(format!(
-            "the index may be stale ({} file(s) differ from it) — open the graph in Reflect to refresh",
+            "the index may be stale ({} file(s) differ from it) — open the graph in Kore to refresh",
             staleness.total()
         ));
     }
@@ -109,7 +109,7 @@ pub fn run(
         })?;
     let Some(schema_json) = schema_json else {
         return Err(CliError::NotFound(format!(
-            "#{tag} has no type — configure the tag in Reflect to define its collection"
+            "#{tag} has no type — configure the tag in Kore to define its collection"
         )));
     };
     // Tolerant like the app: a mangled column reads as an empty schema, and

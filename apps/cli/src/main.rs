@@ -9,7 +9,7 @@ use clap::{Parser, Subcommand};
 use reflect_cli::error::CliError;
 use reflect_cli::{commands, graph};
 
-/// Read, discover, and capture notes in a Reflect graph.
+/// Read, discover, and capture notes in a Kore graph.
 ///
 /// The graph resolves from --graph, then $REFLECT_GRAPH, then the nearest
 /// ancestor of the current directory containing .reflect/. Notes marked
@@ -57,7 +57,7 @@ enum Command {
         /// A YYYY-MM-DD date, graph-relative path, note title, or alias
         note: String,
     },
-    /// Open a note in the Reflect app via its reflect:// deep link
+    /// Open a note in the Kore app via its reflect:// deep link
     Open {
         /// A YYYY-MM-DD date, graph-relative path, note title, or alias
         note: String,

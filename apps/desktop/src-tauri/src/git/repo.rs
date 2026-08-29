@@ -88,7 +88,7 @@ pub(super) fn signature(repo: &Repository) -> AppResult<Signature<'static>> {
     if let Ok(sig) = repo.signature() {
         return Ok(sig);
     }
-    Ok(Signature::now("Reflect", "backup@reflect.app")?)
+    Ok(Signature::now("Kore", "backup@kore.local")?)
 }
 
 /// Make sure graph repositories carry Reflect's safe ignore defaults. The graph

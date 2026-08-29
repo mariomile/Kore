@@ -1,11 +1,11 @@
-# Reflect Capture (Chrome extension)
+# Kore Capture (Chrome extension)
 
-Save the page you're reading into Reflect: ⌘⇧K saves immediately with default
+Save the page you're reading into Kore: ⌘⇧K saves immediately with default
 settings, including the stored page-text preference, while the toolbar button
 opens the capture popup for an optional note. Captures include the page URL,
 title, selection, screenshot, and optional page text when Chrome allows them,
 then hand off to the **installed desktop app** through a local native-messaging
-host. No Reflect-hosted services are involved, and capture works even while the
+host. No Kore-hosted services are involved, and capture works even while the
 app is closed: the host spools into the graph's capture inbox
 (`<graph>/.reflect/inbox/`), and the app drains it on next launch.
 [Plan 11](../../docs/plans/11-link-capture.md) is the design doc.
@@ -41,7 +41,7 @@ For the native hop to work, run the desktop app once (it writes the host
 manifests for detected browsers and the active-graph pointer file), then
 restart Chrome so it re-reads the manifests.
 
-### Troubleshooting: "Install Reflect to finish saving…" while Reflect is installed
+### Troubleshooting: "Install Kore to finish saving…" while Kore is installed
 
 That message is the `no-host` state — Chrome could not reach (or was not
 allowlisted by) the native-messaging host. Check, in order:
@@ -58,7 +58,7 @@ allowlisted by) the native-messaging host. Check, in order:
    `~/Library/Application Support/<browser>/NativeMessagingHosts/app.reflect.capture.json`.
    If Chrome was already open when that file appeared, restart Chrome.
 3. **A graph is selected** in the app. The `no-graph` variant of this message
-   ("Open Reflect and pick a graph first") means the host ran but has no active
+   ("Open Kore and pick a graph first") means the host ran but has no active
    graph to spool into.
 
 The capture is never lost while held — it stays queued and retries automatically
@@ -98,9 +98,9 @@ openssl rsa -in key.pem -pubout -outform DER | shasum -a 256 \
 
 `pnpm --filter @reflect/extension zip` produces a key-stripped,
 signed-on-upload package whose manifest declares only the permissions the code
-uses (see the justifications below). Upload updates to the existing
-[Reflect Capture listing](https://chromewebstore.google.com/detail/reflect-capture/ccabifmooehighoonjeiololjfofkhkd)
-in the [Developer Dashboard](https://chrome.google.com/webstore/devconsole).
+uses (see the justifications below). Kore has no Chrome Web Store listing yet.
+Use the unpacked extension for local development; publication requires a separate
+Kore listing in the [Developer Dashboard](https://chrome.google.com/webstore/devconsole).
 
 ### Build & upload
 
@@ -120,26 +120,26 @@ in the [Developer Dashboard](https://chrome.google.com/webstore/devconsole).
 **Single purpose** (one sentence, as the store requires):
 
 > Save the page you are reading — its link, selection, and a screenshot — into the
-> Reflect desktop app.
+> Kore desktop app.
 
 **Detailed description:**
 
-> Reflect Capture saves the page you're reading into Reflect with one click or a
+> Kore Capture saves the page you're reading into Kore with one click or a
 > keyboard shortcut (⌘⇧K / Ctrl+Shift+K).
 >
 > A capture includes the page's URL and title, your current text selection, and a
 > screenshot of the visible tab. Optionally, tick "Capture page text" to include the
 > page's readable text as well.
 >
-> Captures are handed to the **installed Reflect desktop app** over a local connection
-> on your own machine — there is no Reflect account and no Reflect server in the path.
+> Captures are handed to the **installed Kore desktop app** over a local connection
+> on your own machine — there is no Kore account and no Kore server in the path.
 > Capturing works even when the app is closed: the link is held and saved automatically
-> the next time Reflect runs. The extension stores no API keys and makes no AI or
+> the next time Kore runs. The extension stores no API keys and makes no AI or
 > network calls of its own.
 >
-> Requires the Reflect desktop app: https://github.com/team-reflect/reflect-open
+> Requires the Kore desktop app: https://github.com/mariomile/Kore
 
-**Privacy policy URL:** `https://github.com/team-reflect/reflect-open/blob/master/docs/privacy.md`
+**Privacy policy URL:** `https://github.com/mariomile/Kore/blob/master/docs/privacy.md`
 (the "Browser capture" section). Must be live on the public `master` branch before
 submission.
 
@@ -149,7 +149,7 @@ submission.
 - **Screenshots** — at least one 1280×800 (or 640×400) PNG of the capture popup over a
   real page. A ready-to-upload shot lives at
   `store-assets/screenshot-1280x800.png` (the popup over an article, showing the page
-  thumbnail, title, note field, and "Save to Reflect"). Refresh it when the popup UI
+  thumbnail, title, note field, and "Save to Kore"). Refresh it when the popup UI
   changes — resize a clean window grab with
   `magick <grab>.png -resize '1280x800!' store-assets/screenshot-1280x800.png`.
 
@@ -164,15 +164,15 @@ Each is reviewed individually; every permission below is exercised by the code:
 | `nativeMessaging` | The only output: hand each capture to the local `reflect-capture-host` the desktop app registers. No network is used. |
 | `storage` | Queue captures locally so a capture survives the app being closed and retries until it spools. |
 | `unlimitedStorage` | Queued captures embed a screenshot data URL, which can exceed the default storage quota while waiting for the app. |
-| `alarms` | A coarse retry timer so held captures flush once Reflect is installed/launched later. |
+| `alarms` | A coarse retry timer so held captures flush once Kore is installed/launched later. |
 
 ### Data-handling disclosures (Privacy practices tab)
 
 - **Data collected:** *Website content* (the captured page's URL, title, selection,
   screenshot, and — only when opted in — page text). Collected **only on an explicit
   user action**, never in the background.
-- **Where it goes:** to the user's own machine (the local Reflect desktop app). It is
-  **not** sent to Reflect or any third party.
+- **Where it goes:** to the user's own machine (the local Kore desktop app). It is
+  **not** sent to Kore or any third party.
 - The three required certifications are all true and can be affirmed:
   1. Data is **not** sold to third parties.
   2. Data is **not** used or transferred for purposes unrelated to the single purpose.

@@ -1,14 +1,17 @@
 import { useId, useState, type ReactElement } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import {
   aiProvider,
   aiProviderRequiresApiKey,
   errorMessage,
-  iapRestorePurchases,
   listNotes,
   normalizeChatSystemPrompt,
+  configuredTranscriptionProviders,
+  transcriptionModelFor,
+  TRANSCRIPTION_MODEL_OPTIONS,
   type AiPrompt,
   type AiProviderConfig,
+  type TranscriptionProvider,
 } from '@reflect/core'
 import { useAiPrompts } from '@/hooks/use-ai-prompts'
 import { useAiProviders } from '@/hooks/use-ai-providers'
@@ -22,22 +25,19 @@ import { AiPromptDrawer } from '@/mobile/ai-prompt-drawer'
 import { AiProviderActionsDrawer } from '@/mobile/ai-provider-actions-drawer'
 import { ChatSystemPromptDrawer } from '@/mobile/chat-system-prompt-drawer'
 import { ConnectGithubDrawer } from '@/mobile/connect-github-drawer'
-import { PRIVACY_POLICY_URL, TERMS_OF_USE_URL } from '@/mobile/legal-urls'
+import { PRIVACY_POLICY_URL } from '@/mobile/legal-urls'
 import { MobileCalendarSettings } from '@/mobile/mobile-calendar-settings'
 import { MobileScreenHeader } from '@/mobile/screen-header'
 import { useBarHeightVar } from '@/mobile/use-bar-height'
 import { MobileAppearanceGroup } from '@/mobile/settings-appearance-group'
 import {
   SettingsActionRow,
+  SettingsChipsRow,
   SettingsGroup,
   SettingsNavRow,
   SettingsSwitchRow,
   SettingsValueRow,
 } from '@/mobile/settings-list'
-import {
-  invalidateEntitlementQueries,
-  useActiveSubscription,
-} from '@/mobile/use-active-subscription'
 import { useMobileSyncStatus } from '@/mobile/use-sync-status'
 import { useGraph } from '@/providers/graph-provider'
 import { useSettings } from '@/providers/settings-provider'
@@ -61,31 +61,30 @@ function aiProviderValue(provider: AiProviderConfig, defaultProviderId: string |
  * GitHub for the local graph (the {@link ConnectGithubDrawer} sheet — iCloud
  * graphs sync through the container instead, Plan 21), and can disconnect.
  */
+/**
+ * The transcription models this provider offers as chips. A model typed on
+ * desktop is not in the curated list, so it rides along as its own chip —
+ * otherwise the row would render nothing selected while that model is the
+ * one actually transcribing.
+ */
+function transcriptionModelOptions(
+  provider: TranscriptionProvider,
+  current: string,
+): { value: string; label: string }[] {
+  const curated = TRANSCRIPTION_MODEL_OPTIONS[provider].map((model) => ({
+    value: model.id,
+    label: model.label,
+  }))
+  return curated.some((option) => option.value === current)
+    ? curated
+    : [...curated, { value: current, label: current }]
+}
+
 export function MobileSettings(): ReactElement {
   const { back, canBack, navigate } = useRouter()
   const { scopeRef, barRef } = useBarHeightVar('--mobile-header-height')
   const { graph, mobileStorageKind, platform } = useGraph()
   const isIos = platform === 'ios'
-  const { activeSubscription } = useActiveSubscription()
-  const queryClient = useQueryClient()
-  const [restorePending, setRestorePending] = useState(false)
-  const [restoreMessage, setRestoreMessage] = useState<string | null>(null)
-
-  const handleRestore = async (): Promise<void> => {
-    setRestorePending(true)
-    setRestoreMessage(null)
-    try {
-      const count = await iapRestorePurchases()
-      await invalidateEntitlementQueries(queryClient)
-      if (count === 0) {
-        setRestoreMessage('No previous purchase found for this Apple account.')
-      }
-    } catch {
-      setRestoreMessage('Restore failed. Check your connection and try again.')
-    } finally {
-      setRestorePending(false)
-    }
-  }
   const { settings, updateSettings } = useSettings()
   const version = useAppVersion()
   const sync = useSyncContext()
@@ -105,6 +104,10 @@ export function MobileSettings(): ReactElement {
   const [editingPrompt, setEditingPrompt] = useState<AiPrompt | 'new' | null>(null)
   const [promptOpen, setPromptOpen] = useState(false)
   const audioMemoDescriptionId = useId()
+  const transcriptionProviders = configuredTranscriptionProviders({
+    providers: settings.aiProviders,
+    defaultProviderId: settings.defaultAiProviderId,
+  })
   // The managed provider sticks around after close so the exit animation has
   // content; `manageOpen` alone drives visibility (the edit-sheet pattern).
   const [managedProvider, setManagedProvider] = useState<AiProviderConfig | null>(null)
@@ -259,6 +262,22 @@ export function MobileSettings(): ReactElement {
               descriptionId={audioMemoDescriptionId}
               onCheckedChange={(transcriptionFormat) => updateSettings({ transcriptionFormat })}
             />
+            {transcriptionProviders.map((provider) => (
+              <SettingsChipsRow
+                key={provider}
+                label={`${aiProvider(provider).label} model`}
+                value={transcriptionModelFor(settings.transcriptionModels, provider)}
+                options={transcriptionModelOptions(
+                  provider,
+                  transcriptionModelFor(settings.transcriptionModels, provider),
+                )}
+                onChange={(model) => {
+                  updateSettings({
+                    transcriptionModels: { ...settings.transcriptionModels, [provider]: model },
+                  })
+                }}
+              />
+            ))}
           </SettingsGroup>
 
           {repo !== null || status !== null || canConnect ? (
@@ -285,50 +304,6 @@ export function MobileSettings(): ReactElement {
                   onPress={() => void disconnect()}
                 />
               ) : null}
-            </SettingsGroup>
-          ) : null}
-
-          {isIos ? (
-            <SettingsGroup header="Subscription" footer={restoreMessage}>
-              <SettingsValueRow
-                label="Plan"
-                value={
-                  activeSubscription === 'monthly'
-                    ? 'Reflect Pro Monthly'
-                    : activeSubscription === 'yearly'
-                      ? 'Reflect Pro Yearly'
-                      : 'Free'
-                }
-              />
-              {activeSubscription === null ? (
-                // Clearing the snooze flips useShouldShowPaywall back to
-                // 'show', so the gate in mobile-app.tsx replaces the app with
-                // the paywall immediately.
-                <SettingsActionRow
-                  label="Upgrade to Pro"
-                  onPress={() => updateSettings({ paywallSnoozeUntil: 0 })}
-                />
-              ) : (
-                <SettingsActionRow
-                  label="Manage Subscription"
-                  onPress={() => {
-                    openUrlSync('https://apps.apple.com/account/subscriptions')
-                  }}
-                />
-              )}
-              <SettingsActionRow
-                label="Restore Purchases"
-                pending={restorePending}
-                onPress={() => {
-                  void handleRestore()
-                }}
-              />
-              <SettingsActionRow
-                label="Terms of Use"
-                onPress={() => {
-                  openUrlSync(TERMS_OF_USE_URL)
-                }}
-              />
             </SettingsGroup>
           ) : null}
 

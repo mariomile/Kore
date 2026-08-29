@@ -1,14 +1,14 @@
 import { cleanup, render } from 'vitest-browser-react'
 import { page, userEvent } from 'vitest/browser'
-import { afterEach, describe, expect, it, vi } from 'vitest'
-import { runDeviceFlow, setBridge } from '@reflect/core'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { isDeviceFlowConfigured, runDeviceFlow, setBridge } from '@reflect/core'
 import { fetch as tauriFetch } from '@tauri-apps/plugin-http'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { fireEvent } from '@/test-utils/fire-event'
 import '@/test-utils/locator'
 import { GithubAuthStep } from './github-auth-step'
 
-// The Reflect GitHub App is registered, so the device flow leads and the PAT
+// A configured GitHub App leads with the device flow; the PAT
 // path sits behind a "use a personal access token instead" toggle. The
 // keychain is the bridge fake; GET /user (instant token validation) goes
 // through the mocked Tauri HTTP plugin. The device-flow tests stub core's
@@ -24,10 +24,15 @@ vi.mock('@tauri-apps/plugin-opener', () => ({ openUrl: vi.fn(async () => {}) }))
 vi.mock('@reflect/core', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@reflect/core')>()),
   runDeviceFlow: vi.fn(),
+  isDeviceFlowConfigured: vi.fn(() => true),
 }))
 const httpFetch = vi.mocked(tauriFetch)
 const openedUrls = vi.mocked(openUrl)
 const mockFlow = vi.mocked(runDeviceFlow)
+
+beforeEach(() => {
+  vi.mocked(isDeviceFlowConfigured).mockReturnValue(true)
+})
 
 /** Switch the step from the device-flow lead to PAT entry. */
 async function switchToPat(): Promise<void> {
@@ -265,4 +270,14 @@ describe('GithubAuthStep', () => {
       expect(openedUrls).toHaveBeenCalledWith('https://github.com/login/device'),
     )
   })
+})
+
+it('offers a personal token directly when Kore has no GitHub App', async () => {
+  vi.mocked(isDeviceFlowConfigured).mockReturnValue(false)
+  fakeKeychain()
+  await render(<GithubAuthStep onAuthed={vi.fn()} />)
+  await expect.element(page.getByLabelText('Personal access token')).toBeVisible()
+  await expect
+    .element(page.getByRole('button', { name: 'Sign in with GitHub', exact: true }))
+    .not.toBeInTheDocument()
 })

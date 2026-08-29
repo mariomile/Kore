@@ -102,6 +102,7 @@ function reconcile(overrides: Partial<ReconcileAudioMemosInput> = {}) {
     providers: PROVIDERS,
     generation: 3,
     formatTranscript: false,
+    transcriptionModels: { openai: '', google: '' },
     ...overrides,
   })
 }

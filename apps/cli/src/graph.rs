@@ -41,7 +41,7 @@ fn explicit_graph(path: &Path, source: &str) -> Result<Graph, CliError> {
     }
     if !is_graph(path) {
         return Err(CliError::Runtime(format!(
-            "{source}: not a Reflect graph (no {REFLECT_DIR}/ directory): {}",
+            "{source}: not a Kore graph (no {REFLECT_DIR}/ directory): {}",
             path.display()
         )));
     }
@@ -80,7 +80,7 @@ mod tests {
     fn explicit_non_graph_is_an_error_not_a_fallthrough() {
         let dir = tempdir().unwrap();
         let err = explicit_graph(dir.path(), "--graph").unwrap_err();
-        assert!(err.to_string().contains("not a Reflect graph"));
+        assert!(err.to_string().contains("not a Kore graph"));
         assert_eq!(err.exit_code(), 1);
     }
 

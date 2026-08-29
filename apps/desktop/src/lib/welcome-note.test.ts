@@ -57,14 +57,14 @@ describe('ensureWelcomeNote', () => {
     expect(await ensureWelcomeNote(GENERATIONS)).toBe(true)
     expect(graph.written).toHaveLength(1)
     expect(graph.written[0]!.path).toBe(WELCOME_NOTE_PATH)
-    expect(WELCOME_NOTE_PATH).toBe('notes/how-to-use-reflect.md')
+    expect(WELCOME_NOTE_PATH).toBe('notes/how-to-use-kore.md')
     expect(graph.meta[WELCOME_SEEDED_META_KEY]).toBe('true')
 
     const { frontmatter, title } = parseNote({
       path: graph.written[0]!.path,
       source: graph.written[0]!.contents,
     })
-    expect(title).toBe('How to use Reflect')
+    expect(title).toBe('How to use Kore')
     expect(isPinned(frontmatter)).toBe(true)
     expect(frontmatter.id).toMatch(/^[0-9a-z]{26}$/)
     expect(graph.written[0]!.contents).toContain('[[Wiki Links]]')

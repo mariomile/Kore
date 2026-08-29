@@ -1,4 +1,4 @@
-//! `reflect` — read/discovery/capture CLI over a Reflect graph (Plan 14).
+//! `reflect` — read/discovery/capture CLI over a Kore graph (Plan 14).
 //!
 //! Self-contained: reads the graph's markdown files directly and opens
 //! `.reflect/index.sqlite` strictly read-only — no Node runtime, no running

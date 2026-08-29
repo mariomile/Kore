@@ -65,11 +65,15 @@ export function Sidebar({ graph, context }: SidebarProps): ReactElement {
             ride their own band above the window (see `WorkspaceContent`)
             rather than an inset carved out of this one, which is what leaves
             room for the pills, the lens and the mic on a single line. That
-            band collapses in fullscreen, when the lights are hidden. All
-            five read as one cluster against the band's left edge — they sit
-            inside window-drag-control so they stay clickable while the
-            stretch beyond them still drags the window. */}
-        <div data-tauri-drag-region className="flex h-11 flex-none items-center pl-3 pr-2">
+            band collapses in fullscreen, when the lights are hidden. The
+            surface pills hold the band's left edge and the lens and mic sit
+            against its right edge, with the draggable gap between them; both
+            clusters sit inside window-drag-control so they stay clickable
+            while that gap still drags the window. */}
+        <div
+          data-tauri-drag-region
+          className="flex h-11 flex-none items-center justify-between gap-2 pl-3 pr-2"
+        >
           <div className="window-drag-control flex min-w-0 items-center gap-0.5">
             <SidebarSurfaceSwitcher
               surface={surface}
@@ -82,6 +86,8 @@ export function Sidebar({ graph, context }: SidebarProps): ReactElement {
                 }
               }}
             />
+          </div>
+          <div className="window-drag-control flex flex-none items-center gap-0.5">
             <SidebarSearch onOpen={() => context.openPalette()} />
             <AudioMemoButton />
           </div>

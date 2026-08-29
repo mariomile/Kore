@@ -25,7 +25,7 @@ function statusPayload(): Record<string, unknown> {
   return {
     skillName: 'reflect-personal',
     skillPath: '/Users/me/.agents/skills/reflect-personal/SKILL.md',
-    cliPath: '/Applications/Reflect.app/Contents/MacOS/reflect',
+    cliPath: '/Applications/Kore.app/Contents/MacOS/reflect',
     installState,
   }
 }
@@ -99,7 +99,7 @@ describe('AgentsSection', () => {
     installState = 'conflict'
     await renderSection()
 
-    await expect.element(page.getByText(/Reflect doesn’t manage/)).toBeInTheDocument()
+    await expect.element(page.getByText(/Kore doesn’t manage/)).toBeInTheDocument()
     expect(page.getByRole('button', { name: 'Install skill' }).query()).toBeNull()
     expect(page.getByRole('button', { name: 'Remove' }).query()).toBeNull()
   })

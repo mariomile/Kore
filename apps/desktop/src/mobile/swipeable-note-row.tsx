@@ -67,10 +67,7 @@ export function SwipeableNoteRow({
   })
 
   return (
-    <div
-      className="relative overflow-hidden border-b border-border"
-      style={{ height: NOTE_ROW_HEIGHT }}
-    >
+    <div className="relative overflow-hidden" style={{ height: NOTE_ROW_HEIGHT }}>
       <div
         className="absolute inset-y-0 right-0 flex"
         style={{ width: actionWidth }}

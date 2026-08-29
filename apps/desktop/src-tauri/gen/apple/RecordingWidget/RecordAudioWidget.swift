@@ -33,7 +33,7 @@ struct RecordAudioWidget: Widget {
         .widgetBackgroundCompat()
     }
     .configurationDisplayName("Record audio memo")
-    .description("Start recording an audio memo in Reflect.")
+    .description("Start recording an audio memo in Kore.")
     .supportedFamilies([.accessoryCircular, .systemSmall])
   }
 }

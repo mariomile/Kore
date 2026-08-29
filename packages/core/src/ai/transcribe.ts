@@ -1,6 +1,8 @@
 import { z } from 'zod'
 import { bytesToBase64 } from '../lib/base64'
 import { ReflectError } from '../errors'
+import type { TranscriptionModels } from '../settings/schema'
+import type { AiModelOption } from './provider-catalog'
 import type { TranscriptionProvider } from './provider-config'
 import {
   httpError,
@@ -14,12 +16,14 @@ import {
 /**
  * BYOK audio transcription (audio memos): one segment-sized recording in,
  * plain text out. OpenAI is served by its dedicated transcription endpoint,
- * Gemini by a `generateContent` call with inline audio. Both run on fixed
- * transcription models — the configured entry only picks the provider and
- * key (see `pickTranscriptionConfig`); chat-model choices don't transfer
- * because chat models can't take this endpoint (OpenAI) or would bill
- * pro-tier rates for speech-to-text (Gemini). The shared HTTP substrate
- * (stale gate, timeouts, error ladder) is `ai/transcribe-http`.
+ * Gemini by a `generateContent` call with inline audio. The configured
+ * entry only picks the provider and key (see `pickTranscriptionConfig`);
+ * chat-model choices never transfer, because chat models can't take this
+ * endpoint (OpenAI) or would bill pro-tier rates for speech-to-text
+ * (Gemini). The transcription model is its own setting
+ * (`transcriptionModels`), defaulting to the constants below. The shared
+ * HTTP substrate (stale gate, timeouts, error ladder) is
+ * `ai/transcribe-http`.
  */
 
 export const OPENAI_TRANSCRIPTION_MODEL = 'gpt-4o-mini-transcribe'
@@ -39,9 +43,52 @@ export const GOOGLE_TRANSCRIPTION_MODEL = 'gemini-3.5-flash'
  */
 export const GOOGLE_TRANSCRIPTION_FALLBACK_MODEL = 'gemini-2.5-flash'
 
+/** The app's built-in transcription model per provider. */
+export const DEFAULT_TRANSCRIPTION_MODELS: Record<TranscriptionProvider, string> = {
+  openai: OPENAI_TRANSCRIPTION_MODEL,
+  google: GOOGLE_TRANSCRIPTION_MODEL,
+}
+
+/**
+ * Speech-to-text models offered in Settings, most capable first. The list is
+ * a shortcut, not a whitelist: the setting takes any model id the provider
+ * accepts, so a model released after this build is still reachable.
+ * `contextWindow` is inert here — transcription never budgets a history —
+ * and only satisfies the shared picker's option shape.
+ */
+export const TRANSCRIPTION_MODEL_OPTIONS: Record<TranscriptionProvider, AiModelOption[]> = {
+  openai: [
+    { id: OPENAI_TRANSCRIPTION_MODEL, label: 'GPT-4o mini Transcribe', contextWindow: 0 },
+    { id: 'gpt-4o-transcribe', label: 'GPT-4o Transcribe', contextWindow: 0 },
+    { id: OPENAI_TRANSCRIPTION_FALLBACK_MODEL, label: 'Whisper', contextWindow: 0 },
+  ],
+  google: [
+    { id: GOOGLE_TRANSCRIPTION_MODEL, label: 'Gemini 3.5 Flash', contextWindow: 0 },
+    { id: GOOGLE_TRANSCRIPTION_FALLBACK_MODEL, label: 'Gemini 2.5 Flash', contextWindow: 0 },
+  ],
+}
+
+/**
+ * The model a pass should send for `provider`: the user's choice when they
+ * made one, the built-in default otherwise.
+ */
+export function transcriptionModelFor(
+  models: TranscriptionModels,
+  provider: TranscriptionProvider,
+): string {
+  const chosen = models[provider].trim()
+  return chosen === '' ? DEFAULT_TRANSCRIPTION_MODELS[provider] : chosen
+}
+
 export interface TranscriptionRequest {
   provider: TranscriptionProvider
   apiKey: string
+  /**
+   * The model to transcribe with, already resolved against the provider's
+   * default by {@link transcriptionModelFor}. Required: leaving the fallback
+   * to this layer too would put the same rule in two places.
+   */
+  model: string
   /** The recording, as MediaRecorder produced it. */
   audio: Blob
   /** The recording's MIME type, possibly with codec parameters. */
@@ -122,7 +169,7 @@ async function transcribeWithOpenAi(request: TranscriptionRequest): Promise<stri
     )
   }
 
-  let response = await attempt(OPENAI_TRANSCRIPTION_MODEL)
+  let response = await attempt(request.model)
   let body = await response.text()
   if (!response.ok && isModelNotFound(body)) {
     response = await attempt(OPENAI_TRANSCRIPTION_FALLBACK_MODEL)
@@ -198,7 +245,7 @@ async function transcribeWithGemini(request: TranscriptionRequest): Promise<stri
       { timeoutMs: TRANSCRIPTION_TRANSFER_TIMEOUT_MS, isStale: request.isStale },
     )
 
-  let response = await attempt(GOOGLE_TRANSCRIPTION_MODEL)
+  let response = await attempt(request.model)
   let body = await response.text()
   // A 404 on the model path means Google retired the model.
   if (response.status === 404) {

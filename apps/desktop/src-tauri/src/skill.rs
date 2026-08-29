@@ -274,7 +274,7 @@ fn skill_install_for(state: &State<'_, GraphState>, generation: u64) -> AppResul
     let status = status_of(&context)?;
     match status.install_state {
         SkillInstallState::Conflict => Err(AppError::io(format!(
-            "{} exists but was not written by Reflect — move it aside first",
+            "{} exists but was not written by Kore — move it aside first",
             context.target.display()
         ))),
         SkillInstallState::Current => Ok(status),
@@ -327,7 +327,7 @@ fn skill_uninstall_for(state: &State<'_, GraphState>, generation: u64) -> AppRes
     match status.install_state {
         SkillInstallState::Missing => Ok(status),
         SkillInstallState::Conflict => Err(AppError::io(format!(
-            "{} was not written by Reflect — not removing it",
+            "{} was not written by Kore — not removing it",
             context.target.display()
         ))),
         SkillInstallState::Current | SkillInstallState::Stale => {

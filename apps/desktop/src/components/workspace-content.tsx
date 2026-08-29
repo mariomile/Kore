@@ -29,11 +29,13 @@ interface WorkspaceContentProps {
 /**
  * Everything inside the workspace's providers: two full-height sidebars — the
  * workspace rail on the left, the context rail (details, chat, calendar,
- * tags, browser, terminal) on the right — and between them the content
- * column: the tab bar over a floating note-pane card with all four corners
- * rounded. A sunken gutter keeps the card off the window's left, right,
- * and bottom edges so collapsing a rail does not send the sheet flush to
- * the screen. A collapsed rail unmounts — the layout snaps instead of
+ * browser, terminal) on the right — and between them the content column.
+ * Both the content column and the context rail are a 44px band (tab bar /
+ * panel switcher) over a floating card with all four corners rounded. A
+ * sunken gutter keeps every card off the window's edges so collapsing a
+ * rail does not send a sheet flush to the screen; the left rail stays flat,
+ * carrying the window's own ground. A collapsed rail unmounts — the layout
+ * snaps instead of
  * animating, and panels hosting live surfaces (the embedded browser)
  * release them. The always-mounted global surfaces (⌘K palette, find bar,
  * embeddings sync) ride inside the card with the route. Split from
@@ -96,7 +98,13 @@ export function WorkspaceContent({ graph }: WorkspaceContentProps): ReactElement
         <div aria-hidden data-testid="macos-traffic-light-band" className="h-7 flex-none" />
       ) : null}
 
-      <div className="flex min-h-0 flex-1">
+      {/* Every gap in this row is one pane's own left gutter, and the row
+          itself holds the window's right edge open. Nothing here has to know
+          whether its neighbour is mounted, so no gutter is conditional and
+          the `lg` breakpoint the context rail appears at stays the rail's
+          business alone. The workspace rail keeps no gutter: it is flat
+          sunken ground, not a card. */}
+      <div className="flex min-h-0 flex-1 pr-2">
         {collapsed ? undefined : (
           <aside
             id="workspace-sidebar"
@@ -110,7 +118,7 @@ export function WorkspaceContent({ graph }: WorkspaceContentProps): ReactElement
 
         <div className="flex min-w-0 flex-1 flex-col">
           <WorkspaceTabsStrip commandContext={commandContext} />
-          <div data-testid="note-pane-gutter" className="min-h-0 flex-1 px-2 pb-2">
+          <div data-testid="note-pane-gutter" className="min-h-0 flex-1 pl-2 pb-2">
             <div className="app-glass-card h-full overflow-hidden rounded-xl bg-surface">
               <AppShell className="bg-transparent">
                 <div className="relative flex h-full flex-col">

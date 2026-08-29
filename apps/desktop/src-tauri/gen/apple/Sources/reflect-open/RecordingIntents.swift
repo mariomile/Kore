@@ -4,7 +4,7 @@ import Foundation
   import AppIntents
 
   /// Siri / Shortcuts entry points for audio memos (audio-memos wave 3,
-  /// V1 parity: "Start recording in Reflect").
+  /// V1 parity: "Start recording in Kore").
   ///
   /// These compile into the app target, so `perform()` runs in the app's own
   /// process — but in a different module from the recording plugin (a static
@@ -16,7 +16,7 @@ import Foundation
   struct StartRecordingIntent: AppIntent {
     static var title: LocalizedStringResource = "Start recording"
     static var description = IntentDescription(
-      "Start recording an audio memo that Reflect transcribes into your daily note.")
+      "Start recording an audio memo that Kore transcribes into your daily note.")
     static var openAppWhenRun = true
 
     @MainActor
@@ -29,7 +29,7 @@ import Foundation
 
   struct StopRecordingSiriIntent: AppIntent {
     static var title: LocalizedStringResource = "Stop recording"
-    static var description = IntentDescription("Stop the audio memo Reflect is recording.")
+    static var description = IntentDescription("Stop the audio memo Kore is recording.")
     static var openAppWhenRun = false
 
     @MainActor

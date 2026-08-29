@@ -199,6 +199,35 @@ describe('SettingsScreen', () => {
     await expect.element(toggle).toHaveAttribute('aria-checked', 'false')
   })
 
+  it('offers a transcription model per configured provider, and persists the pick', async () => {
+    stored = {
+      aiProviders: [{ id: 'p1', provider: 'openai', label: 'OpenAI', model: 'gpt-5.6-sol' }],
+    }
+    await renderScreen()
+
+    const picker = page.getByRole('combobox', { name: /openai transcription model/i })
+    // Nothing chosen yet, so the picker shows the app's built-in default — by
+    // the label from the transcription list, not the chat catalog's fallback
+    // to the raw id.
+    await expect.element(picker).toHaveTextContent('GPT-4o mini Transcribe')
+
+    await picker.click()
+    await page.getByRole('option', { name: /whisper/i }).click()
+
+    await vi.waitFor(() =>
+      expect(saved.at(-1)).toMatchObject({
+        transcriptionModels: { openai: 'whisper-1', google: '' },
+      }),
+    )
+  })
+
+  it('points at AI providers when none can transcribe', async () => {
+    await renderScreen()
+    await expect
+      .element(page.getByText(/add an openai or google provider under ai providers/i))
+      .toBeVisible()
+  })
+
   it('confirms before forgetting the open graph from saved graphs', async () => {
     graph.current = { root: '/graphs/work', name: 'Work', generation: 1 }
     await renderScreen()

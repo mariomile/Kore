@@ -90,7 +90,7 @@ function micDeniedMessage(): string {
   const isMac = typeof navigator !== 'undefined' && navigator.userAgent.includes('Macintosh')
   return isMac
     ? 'Microphone access was denied. Allow it in System Settings → Privacy & Security → Microphone.'
-    : 'Microphone access was denied. Allow microphone access for Reflect in your system settings.'
+    : 'Microphone access was denied. Allow microphone access for Kore in your system settings.'
 }
 
 interface AudioMemoProviderProps {

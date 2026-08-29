@@ -146,11 +146,14 @@ describe('WorkspaceContent', () => {
     workspaceState.contextCollapsed = true
     const view = await render(<WorkspaceContent graph={GRAPH} />)
 
-    const gutter = view.getByTestId('note-pane-gutter').element()
-    const style = getComputedStyle(gutter)
-    expect(style.paddingLeft).toBe('8px')
-    expect(style.paddingRight).toBe('8px')
-    expect(style.paddingBottom).toBe('8px')
+    // The gap is what matters, not which element pays for it: the row holds
+    // the window's right edge open and each pane its own left gutter, so
+    // asserting one element's padding would just pin today's arrangement.
+    const card = view.getByTestId('note-pane-gutter').element().firstElementChild
+    const rect = card!.getBoundingClientRect()
+    expect(Math.round(rect.left)).toBe(8)
+    expect(Math.round(window.innerWidth - rect.right)).toBe(8)
+    expect(Math.round(window.innerHeight - rect.bottom)).toBe(8)
   })
 
   it('reserves the traffic-light band only while the lights occupy the top', async () => {

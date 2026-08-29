@@ -7,6 +7,11 @@ import { useRouter } from '@/routing/router'
 import { ChatInput } from './chat-input'
 import { ChatTurnList } from './chat-turn-list'
 
+interface ChatScreenProps {
+  /** Whether the composer takes focus on mount — see {@link ChatInput}. */
+  autoFocus?: boolean
+}
+
 /**
  * The dedicated chat view (Plan 10, revised: a full route, not a side panel).
  * Read-only first wave: the assistant answers questions grounded in the
@@ -18,7 +23,7 @@ import { ChatTurnList } from './chat-turn-list'
  * The whole view accepts dropped images — aiming for the composer exactly
  * shouldn't be required — and queues them as the next message's attachments.
  */
-export function ChatScreen(): ReactElement {
+export function ChatScreen({ autoFocus = true }: ChatScreenProps = {}): ReactElement {
   const { providers, attachImages } = useChatSession()
   const { navigate } = useRouter()
 
@@ -62,7 +67,7 @@ export function ChatScreen(): ReactElement {
       }}
     >
       <ChatTurnList />
-      <ChatInput />
+      <ChatInput autoFocus={autoFocus} />
     </div>
   )
 }

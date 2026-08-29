@@ -126,54 +126,6 @@ export function createAltoolListAppsArgs({ authArgs, bundleIdentifier }) {
   ]
 }
 
-/** Build the Sentry CLI args for native dSYMs only, without source bundles. */
-export function createSentryDebugFilesUploadArgs(path) {
-  return [
-    'debug-files',
-    'upload',
-    '--org',
-    'reflect-64',
-    '--project',
-    'reflect-open',
-    '--type',
-    'dsym',
-    '--no-sources',
-    '--wait-for',
-    '60',
-    path,
-  ]
-}
-
-/**
- * Accept only the production Reflect Sentry project configured in the clients.
- *
- * The org/project identity is asserted in three places that must rotate
- * together: here, `parseExceptionTelemetryDsn` in
- * `src/lib/exception-telemetry.ts` (WebView SDK), and the `dsn` constant in
- * `src-tauri/gen/apple/Sources/reflect-open/NativeDiagnostics.swift` (iOS
- * native SDK).
- */
-export function isProductionSentryDsn(value) {
-  return /^https:\/\/[0-9a-f]{32}@o463484\.ingest\.us\.sentry\.io\/4511705649971200$/.test(
-    value ?? '',
-  )
-}
-
-/**
- * Inspect Sentry upload credentials without exposing their values. The dSYM
- * upload needs the auth token; the DSN, when present for the WebView build,
- * must be the production project so official builds never report elsewhere.
- */
-export function inspectSentryUploadConfiguration(env = process.env) {
-  if (env.VITE_SENTRY_DSN && !isProductionSentryDsn(env.VITE_SENTRY_DSN)) {
-    return {
-      enabled: false,
-      error: 'VITE_SENTRY_DSN does not identify the production Reflect Sentry project',
-    }
-  }
-  return { enabled: Boolean(env.SENTRY_AUTH_TOKEN), error: null }
-}
-
 /** Parse every Mach-O UUID from `dwarfdump --uuid` output. */
 export function parseDwarfdumpUuids(output) {
   return output
@@ -537,38 +489,6 @@ function assertCurrentArchiveSymbols() {
  * dSYM, which `assertCurrentArchiveSymbols` has already UUID-matched to the
  * executable.
  */
-function assertNativeDiagnosticsLinkedIn() {
-  const symbols = capture('xcrun', ['nm', '-gUj', iosDsymBinary])
-  if (!symbols.includes('_reflect_start_native_diagnostics')) {
-    fail('the app binary does not contain the native diagnostics entry point')
-  }
-}
-
-function uploadNativeDebugFiles() {
-  const configuration = inspectSentryUploadConfiguration()
-  if (configuration.error !== null) {
-    fail(configuration.error)
-  }
-  if (!configuration.enabled) {
-    log('Sentry dSYM upload skipped (SENTRY_AUTH_TOKEN is not set)')
-    return
-  }
-
-  log('uploading native dSYM bundles from the current Xcode archive to Sentry…')
-  const result = spawnSync(
-    'pnpm',
-    ['exec', 'sentry-cli', ...createSentryDebugFilesUploadArgs(iosArchive)],
-    {
-      cwd: appDir,
-      stdio: 'inherit',
-      env: process.env,
-    },
-  )
-  if (result.status !== 0) {
-    fail('native Sentry dSYM upload failed; refusing to publish an unsymbolicated build')
-  }
-}
-
 function ensureReleaseTools() {
   ensureMacos()
   ensureTool('xcodebuild', ['-version'], 'Install Xcode and select it with `xcode-select`.')
@@ -576,11 +496,6 @@ function ensureReleaseTools() {
 }
 
 function runTauriIosBuild({ apiKeyCredentials, buildNumber, exportMethod, verbose }) {
-  // Checked before the long build so a bad configuration fails in seconds.
-  const sentryConfiguration = inspectSentryUploadConfiguration()
-  if (sentryConfiguration.error !== null) {
-    fail(sentryConfiguration.error)
-  }
   ensureReleaseTools()
   const args = createTauriIosBuildArgs({
     buildNumber,
@@ -613,8 +528,6 @@ function runTauriIosBuild({ apiKeyCredentials, buildNumber, exportMethod, verbos
   if (!ipa) fail(`tauri build succeeded, but no .ipa was found under ${iosBuildDir}`)
   assertIpaAppStoreMetadata(ipa)
   assertCurrentArchiveSymbols()
-  assertNativeDiagnosticsLinkedIn()
-  uploadNativeDebugFiles()
   log(`IPA: ${ipa} (${(statSync(ipa).size / (1024 * 1024)).toFixed(1)} MB)`)
   return ipa
 }
@@ -737,10 +650,6 @@ function testflight({ buildNumberFlag, exportMethod, wait, verbose }) {
 }
 
 function preflight({ buildNumberFlag }) {
-  const sentryConfiguration = inspectSentryUploadConfiguration()
-  if (sentryConfiguration.error !== null) {
-    fail(sentryConfiguration.error)
-  }
   ensureReleaseTools()
   resolveBuildNumber(buildNumberFlag, { required: true })
   const apiKeyCredentials = resolveApiKeyCredentials({ requirePrivateKey: false })
@@ -754,7 +663,6 @@ function preflight({ buildNumberFlag }) {
       }`,
     )
     log(`altool upload auth: ${uploadCredentials.source}`)
-    log(`Sentry uploads: ${sentryConfiguration.enabled ? 'configured' : 'disabled'}`)
     log(`xcodebuild: ${capture('xcodebuild', ['-version']).trim().replaceAll('\n', ' / ')}`)
     verifyAppStoreConnectAppRecord(uploadCredentials)
     log('preflight passed')

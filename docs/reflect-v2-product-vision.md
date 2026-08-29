@@ -1,5 +1,12 @@
 # Reflect V2 Product Vision
 
+> **Kore next-wave direction (2026-08-27):** See the
+> [target architecture](kore-target-architecture.md), [roadmap](roadmap.md), and
+> [Plan 25](plans/25-personal-os.md). This document remains baseline/reference
+> material; the new target takes precedence for future scope. Its note-first thesis
+> remains the foundation; structured knowledge, Connections and durable agents now
+> extend it.
+
 This document describes the intended direction for Reflect V2: an open-source, local-first, markdown-native rewrite of Reflect that preserves the strongest ideas from V1 while making substantial architectural and product changes.
 
 It is written for future implementation agents and engineers. It should be read alongside:

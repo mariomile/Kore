@@ -8,7 +8,7 @@ export interface GithubRepoRef {
 }
 
 /** The description stamped on backup repos we create or prefill. */
-export const BACKUP_REPO_DESCRIPTION = 'Reflect notes backup'
+export const BACKUP_REPO_DESCRIPTION = 'Kore notes backup'
 
 /**
  * The prefilled github.com/new URL — the universal "create the repo on the

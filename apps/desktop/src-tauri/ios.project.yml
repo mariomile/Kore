@@ -19,13 +19,6 @@ options:
   bundleIdPrefix: app.lore
   deploymentTarget:
     iOS: 16.0
-packages:
-  # Native crash/hang reporting (NativeDiagnostics.swift). Pinned exactly so
-  # upgrades are deliberate: any bump must re-audit the options set in
-  # NativeDiagnostics.swift.
-  Sentry:
-    url: https://github.com/getsentry/sentry-cocoa
-    exactVersion: 8.58.4
 fileGroups: [../../src]
 configs:
   debug: debug
@@ -177,12 +170,6 @@ targets:
       environmentVariables:
         RUST_BACKTRACE: full
         RUST_LOG: info
-      # Local StoreKit testing without App Store Connect: Xcode's Run action
-      # loads the subscription catalog from this file (path relative to this
-      # spec's directory). Only the Run action applies it; plain xcodebuild
-      # and `tauri ios dev` launches run without it, so the paywall shows
-      # "Could not load subscription options" there.
-      storeKitConfiguration: reflect-open-storekit.storekit
     settings:
       base:
         ENABLE_BITCODE: false
@@ -203,14 +190,6 @@ targets:
       # + the recording Live Activity; embedded and signed with the app.
       - target: RecordingWidget
         embed: true
-      # Sentry-Dynamic, not Sentry: the default product is a prebuilt STATIC
-      # xcframework, and Xcode 26 links it correctly but then embeds a
-      # synthesized stub Sentry.framework (a 49KB symbol-less dylib whose
-      # install name is a swbuild temp path) into Frameworks/. App Store
-      # Connect rejects that stub with ITMS-90035 "Invalid Signature", killing
-      # every TestFlight upload. The dynamic product embeds the real dylib.
-      - package: Sentry
-        product: Sentry-Dynamic
       - framework: libapp.a
         embed: false
       # libgit2 (vendored into libapp.a) needs zlib and iconv at the final

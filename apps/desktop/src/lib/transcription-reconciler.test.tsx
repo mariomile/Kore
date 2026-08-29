@@ -58,6 +58,7 @@ function create(
     generation: 3,
     getProviders: () => providers,
     getTranscriptionFormat,
+    getTranscriptionModels: () => ({ openai: '', google: '' }),
   })
   return reconciler
 }

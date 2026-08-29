@@ -49,6 +49,16 @@ import { useComposerHeightVar } from './use-composer-height'
 
 const NEW_CHAT_BINDING = keybindingFor('chat.new')
 
+interface ChatInputProps {
+  /**
+   * Whether the textarea takes focus on mount. True on the chat route —
+   * you navigated there to type. False in the context rail, where the panel
+   * is auxiliary: stealing focus would light the composer's focus border and
+   * pull the caret out of the note you were editing.
+   */
+  autoFocus?: boolean
+}
+
 /**
  * The composer: a textarea (Enter sends, Shift-Enter breaks, Esc stops a
  * streaming turn), the session's model picker — every configured provider's
@@ -58,7 +68,7 @@ const NEW_CHAT_BINDING = keybindingFor('chat.new')
  * is text *or* something attached. The history menu loads past
  * conversations; "New chat" appears once there's a conversation to leave.
  */
-export function ChatInput(): ReactElement {
+export function ChatInput({ autoFocus = true }: ChatInputProps = {}): ReactElement {
   const {
     turns,
     status,
@@ -289,7 +299,7 @@ export function ChatInput(): ReactElement {
           placeholder="Ask about your notes…"
           aria-label="Chat message"
           rows={2}
-          autoFocus
+          autoFocus={autoFocus}
           /* Opts out of the global :focus-visible outline (styles/index.css);
              the wrapper's focus-within border is the focus treatment here. */
           data-slot="textarea"

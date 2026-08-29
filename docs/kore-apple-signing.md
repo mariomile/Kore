@@ -61,23 +61,29 @@ steps below are only needed for iCloud sync and for installing on an iPhone.
 
 ## Publishing a Kore release
 
-GitHub Actions cannot open pull requests in this fork, so release-please's
-Release PRs never appear. The official publish path is:
+The publish path is a bump followed by a build:
 
 1. Merge the work that should ship to `master`.
-2. Hand-bump `version` in `apps/desktop/package.json` only — never the
-   changelogs (`apps/desktop/CHANGELOG.md`, `CHANGELOG.beta.md`) or the
-   manifests under `.github/release-please/`.
-3. Merge that bump to `master`.
-4. Fast-forward the `release/dmg` pointer:
+2. Merge the open `chore: release X.Y.Z` **Release PR**. That is the bump: it
+   moves `version` in `apps/desktop/package.json`, prepends
+   `apps/desktop/CHANGELOG.md`, and advances
+   `.github/release-please/manifest.stable.json` together. Only when no Release
+   PR is open (nothing since the last release carried a `feat:`/`fix:` title)
+   do the same three edits by hand in one commit: `version` in
+   `apps/desktop/package.json`, its `apps/desktop/CHANGELOG.md` entry, and
+   `.github/release-please/manifest.stable.json`. Moving only the version fails
+   CI.
+3. Fast-forward the `release/dmg` pointer:
    `git push origin origin/master:release/dmg`.
-5. The **Release DMG** workflow (`.github/workflows/release-dmg.yml`)
-   builds unsigned DMG plus signed updater artifacts from that pointer
-   and publishes them to the GitHub release the in-app updater polls.
+4. The **Release DMG** workflow (`.github/workflows/release-dmg.yml`) builds an
+   unsigned DMG plus signed updater artifacts from that pointer, creates the
+   `v<version>` tag, and publishes the GitHub release the in-app updater polls.
 
-Do not wait for a `chore: release …` bot PR. Between those hand-bumps the
-version in `package.json` stays put; feature PRs must not touch it.
+Step 3 is not optional: merging the Release PR publishes nothing on its own —
+release-please runs with `skip-github-release` here precisely so it cannot leave
+a tagless, asset-less draft release that the updater might resolve as "latest".
 
-See also the callout under [Cutting a release](macos-distribution.md#cutting-a-release-release-prs)
-in the distribution guide (that section still describes upstream's
-release-please flow, which this fork cannot run).
+Feature PRs must not touch the version, the changelog, or the manifest.
+
+See also [Cutting a release](macos-distribution.md#cutting-a-release-release-prs)
+in the distribution guide.

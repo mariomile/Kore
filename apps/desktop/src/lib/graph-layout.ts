@@ -43,6 +43,17 @@ const GRAVITY = 0.015
 const VELOCITY_DAMPING = 0.6
 const ALPHA_DECAY = 0.985
 const SETTLED_ALPHA = 0.02
+/**
+ * The furthest a node may travel in one tick, in layout units. Repulsion is
+ * summed over every neighbour inside the cutoff, so a dense cluster — a few
+ * thousand notes start packed on the spiral — produces a force large enough
+ * to fling nodes past the point where gravity can correct without
+ * overshooting. The map then oscillates outward and "settles" (alpha decays
+ * regardless) hundreds of thousands of units wide, far past any usable
+ * zoom. Capping travel per tick keeps the spread bounded and the picture
+ * fittable; it costs nothing on small graphs, which never reach the cap.
+ */
+const MAX_STEP = 24
 
 /** Deterministic starting positions on a golden-angle spiral. */
 export function createGraphLayout(ids: readonly string[]): GraphLayout {
@@ -170,6 +181,12 @@ export function stepGraphLayout(layout: GraphLayout, edges: readonly GraphLayout
   for (const node of nodes) {
     if (node.pinned) {
       continue
+    }
+    const speed = Math.hypot(node.vx, node.vy)
+    if (speed > MAX_STEP) {
+      const brake = MAX_STEP / speed
+      node.vx *= brake
+      node.vy *= brake
     }
     node.x += node.vx
     node.y += node.vy

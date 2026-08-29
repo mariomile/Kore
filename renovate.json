@@ -11,11 +11,6 @@
       "enabled": false
     },
     {
-      "description": "@sentry/cli must track the version @sentry/vite-plugin resolves. A major ahead installs a second platform binary package (tens of MB) for one dSYM upload in release-ios.mjs. Bump the major deliberately, alongside the plugin.",
-      "matchPackageNames": ["@sentry/cli"],
-      "allowedVersions": "<3"
-    },
-    {
       "matchPackageNames": ["@meowdown/*"],
       "groupName": "meowdown",
       "groupSlug": "meowdown",

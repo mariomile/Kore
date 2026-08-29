@@ -15,7 +15,7 @@ export const APP_REVIEW_STUB_KEY = 'sk-demo'
 
 export function stubTranscriptBody(): string {
   return (
-    "This is a demo transcription produced by Reflect's App Review demo key. " +
+    "This is a demo transcription produced by Kore's App Review demo key. " +
     'No audio left the device and no AI provider was called.\n\n' +
     `Demo transcript generated at ${new Date().toLocaleString()}.`
   )
@@ -23,8 +23,8 @@ export function stubTranscriptBody(): string {
 
 /** The canned reply every LLM surface streams in demo mode. */
 export const DEMO_REPLY_TEXT =
-  "This is Reflect's App Review demo mode. This reply was generated locally and nothing left the device. " +
-  'With a real API key, Reflect answers from your own notes, and notes marked private never leave the device.'
+  "This is Kore's App Review demo mode. This reply was generated locally and nothing left the device. " +
+  'With a real API key, Kore answers from your own notes, and notes marked private never leave the device.'
 
 const DEMO_USAGE: LanguageModelV3Usage = {
   inputTokens: {

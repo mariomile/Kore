@@ -10,7 +10,10 @@ import {
   chatSystemPromptSchema,
   defaultAiProviderIdSchema,
   memoryWriteApprovalSchema,
+  transcriptionFormatSchema,
+  transcriptionModelsSchema,
 } from './schema-ai'
+import { browserSearchEngineSchema, browserOpenLinksInAppSchema } from './schema-browser'
 import {
   accentColorSchema,
   chatTextSizeSchema,
@@ -51,6 +54,7 @@ import {
 
 export * from './schema-ai'
 export * from './schema-appearance'
+export * from './schema-browser'
 export * from './schema-collections'
 export * from './schema-editor'
 
@@ -219,14 +223,6 @@ export const semanticSearchEnabledSchema = z.boolean().catch(false)
 export const describeAssetsSchema = z.boolean().catch(true)
 
 /**
- * Whether audio-memo transcripts receive a best-effort AI formatting pass
- * before they are written as Markdown. On by default, matching the original
- * Reflect preference. Turning it off keeps the transcription provider's raw
- * body; transcript-derived title generation remains enabled.
- */
-export const transcriptionFormatSchema = z.boolean().catch(true)
-
-/**
  * Whether the user has finished the mobile onboarding choice (Plan 19, step
  * 6): iCloud Drive or this device. Off by default — a fresh install shows
  * the onboarding screen before anything seeds a graph. Once set, later
@@ -234,15 +230,6 @@ export const transcriptionFormatSchema = z.boolean().catch(true)
  * its own chooser, so this key is simply never read there.
  */
 export const mobileOnboardedSchema = z.boolean().catch(false)
-
-/**
- * Epoch milliseconds until which the iOS paywall stays dismissed after
- * "Remind me later" (0 = never dismissed). A first-rollout escape hatch: a
- * broken store must never lock users out of their notes, so the entitlement
- * gate stays open while this is in the future. Mobile-only; desktop never
- * reads it.
- */
-export const paywallSnoozeUntilSchema = z.number().catch(0)
 
 /**
  * Which storage root the mobile graph lives in (Plan 21): the app's iCloud
@@ -380,22 +367,6 @@ export const taskRemindersSchema = z.boolean().catch(false)
 export const quickCaptureEnabledSchema = z.boolean().catch(true)
 
 /**
- * Search engine used when the in-app browser's address bar is free text
- * rather than a URL. DuckDuckGo is the default (no tracking, no account).
- */
-export const browserSearchEngineSchema = z
-  .enum(['duckduckgo', 'google', 'bing'])
-  .catch('duckduckgo')
-
-export type BrowserSearchEngine = z.infer<typeof browserSearchEngineSchema>
-
-/**
- * Whether web links in notes open in the in-app browser. Off sends them to
- * the OS default browser. Alt-click always does the opposite of this choice.
- */
-export const browserOpenLinksInAppSchema = z.boolean().catch(true)
-
-/**
  * Move the legacy `openNoteTabs` document into the generalized `openTabs`
  * field at the untrusted JSON boundary. The legacy key is removed from the
  * parsed value so the next settings write completes the migration.
@@ -429,11 +400,11 @@ const settingsDocumentSchema = z.looseObject({
   semanticSearchEnabled: semanticSearchEnabledSchema,
   describeAssets: describeAssetsSchema,
   transcriptionFormat: transcriptionFormatSchema,
+  transcriptionModels: transcriptionModelsSchema,
   contactsEnabled: contactsEnabledSchema,
   mobileOnboarded: mobileOnboardedSchema,
   mobileStorage: mobileStorageKindSchema,
   mobileGraphName: mobileGraphNameSchema,
-  paywallSnoozeUntil: paywallSnoozeUntilSchema,
   theme: themePreferenceSchema,
   accentColor: accentColorSchema,
   customAccentColor: customAccentColorSchema,

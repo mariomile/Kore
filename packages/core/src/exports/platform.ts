@@ -233,6 +233,7 @@ export {
   semanticSearchEnabledSchema,
   describeAssetsSchema,
   transcriptionFormatSchema,
+  transcriptionModelsSchema,
   contactsEnabledSchema,
   THEME_PREFERENCE_IDS,
   themePreferenceSchema,
@@ -258,6 +259,8 @@ export {
   dateFormatSchema,
   weekStartDaySchema,
   browserSearchEngineSchema,
+  browserSearchHomeUrl,
+  browserSearchUrl,
   browserOpenLinksInAppSchema,
   weekStartDow,
   allNotesFilterTagsSchema,
@@ -288,6 +291,7 @@ export {
   type EditorFontFamily,
   type EditorLineSpacing,
   type SidebarWidthRange,
+  type TranscriptionModels,
   type ThemePreference,
   type AccentColor,
   type GlassIntensity,
@@ -393,12 +397,3 @@ export {
   type BrowserNavigatedEvent,
   type BrowserPageRead,
 } from '../browser/commands'
-export {
-  IAP_PRODUCT_IDS,
-  iapGetProducts,
-  iapPurchase,
-  iapRestorePurchases,
-  iapIsOwned,
-  subscribeIapPurchaseUpdated,
-  type IapProduct,
-} from '../ipc/iap-plugin'

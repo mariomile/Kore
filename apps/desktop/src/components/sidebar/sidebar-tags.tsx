@@ -19,13 +19,7 @@ import { SidebarDisclosure } from './sidebar-disclosure'
  * Hovering a row reveals "Configure tag" (TDR 0005), which edits the tag's
  * type — its property schema — in `tags/<key>.md`.
  */
-interface SidebarTagsProps {
-  /** Rendered instead of nothing when the graph has no tags yet (the right
-   * rail's Tags panel wants an honest empty state; the left rail hides). */
-  emptyNotice?: ReactElement
-}
-
-export function SidebarTags({ emptyNotice }: SidebarTagsProps = {}): ReactElement | null {
+export function SidebarTags(): ReactElement | null {
   const tags = useNoteTags()
   const { graph } = useGraph()
   const bridgeReady = useBridgeReady()
@@ -41,7 +35,7 @@ export function SidebarTags({ emptyNotice }: SidebarTagsProps = {}): ReactElemen
   const typedKeys = new Set((tagTypes ?? []).map((entry) => entry.tagKey))
 
   if (tags.length === 0) {
-    return emptyNotice ?? null
+    return null
   }
 
   return (

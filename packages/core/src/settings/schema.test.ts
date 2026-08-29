@@ -18,6 +18,7 @@ describe('settingsSchema', () => {
       semanticSearchEnabled: false,
       describeAssets: true,
       transcriptionFormat: true,
+      transcriptionModels: { openai: '', google: '' },
       uiRadius: 'default',
       uiDensity: 'default',
       uiTextSize: 'default',
@@ -26,7 +27,6 @@ describe('settingsSchema', () => {
       mobileOnboarded: false,
       mobileStorage: 'local',
       mobileGraphName: '',
-      paywallSnoozeUntil: 0,
       theme: 'system',
       accentColor: 'indigo',
       customAccentColor: '#4f46e5',
@@ -215,10 +215,6 @@ describe('settingsSchema', () => {
     expect(settingsSchema.parse({ calendarIds: [] }).calendarIds).toEqual([])
     expect(settingsSchema.parse({ mobileStorage: 'icloud' }).mobileStorage).toBe('icloud')
     expect(settingsSchema.parse({ mobileStorage: 'local' }).mobileStorage).toBe('local')
-    expect(settingsSchema.parse({ paywallSnoozeUntil: 1754820000000 }).paywallSnoozeUntil).toBe(
-      1754820000000,
-    )
-    expect(settingsSchema.parse({ paywallSnoozeUntil: 0 }).paywallSnoozeUntil).toBe(0)
     expect(
       settingsSchema.parse({ chatSystemPrompt: 'Answer as a Socratic coach.\nBe concise.' })
         .chatSystemPrompt,
@@ -326,8 +322,6 @@ describe('settingsSchema', () => {
     expect(settingsSchema.parse({ calendarIds: [7] }).calendarIds).toEqual([])
     expect(settingsSchema.parse({ mobileStorage: 'dropbox' }).mobileStorage).toBe('local')
     expect(settingsSchema.parse({ mobileStorage: 1 }).mobileStorage).toBe('local')
-    expect(settingsSchema.parse({ paywallSnoozeUntil: 'tomorrow' }).paywallSnoozeUntil).toBe(0)
-    expect(settingsSchema.parse({ paywallSnoozeUntil: null }).paywallSnoozeUntil).toBe(0)
     expect(settingsSchema.parse({ chatSystemPrompt: 42 }).chatSystemPrompt).toBe('')
   })
 
@@ -348,6 +342,7 @@ describe('settingsSchema', () => {
       semanticSearchEnabled: false,
       describeAssets: true,
       transcriptionFormat: true,
+      transcriptionModels: { openai: '', google: '' },
       uiRadius: 'default',
       uiDensity: 'default',
       uiTextSize: 'default',
@@ -356,7 +351,6 @@ describe('settingsSchema', () => {
       mobileOnboarded: false,
       mobileStorage: 'local',
       mobileGraphName: '',
-      paywallSnoozeUntil: 0,
       theme: 'system',
       accentColor: 'indigo',
       customAccentColor: '#4f46e5',

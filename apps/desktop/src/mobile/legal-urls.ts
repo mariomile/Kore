@@ -1,2 +1,1 @@
-export const TERMS_OF_USE_URL = 'https://reflect.app/terms'
-export const PRIVACY_POLICY_URL = 'https://reflect.app/privacy'
+export const PRIVACY_POLICY_URL = 'https://github.com/mariomile/Kore/blob/master/docs/privacy.md'

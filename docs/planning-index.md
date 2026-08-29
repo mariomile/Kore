@@ -1,6 +1,6 @@
 # Kore planning inventory
 
-**Updated:** 2026-08-29.
+**Updated:** 2026-08-30.
 **Scope:** Every Markdown document under `docs/`, plus root/implementation entry
 points listed below. Fixture Markdown, generated permission references, package
 changelogs and design specimens are not product planning documents.
@@ -8,6 +8,9 @@ changelogs and design specimens are not product planning documents.
 ## Read order and authority
 
 1. Current user request and repository `AGENTS.md` define scope and permissions.
+   [STATE.md](STATE.md) records what is currently in progress and the next step;
+   read it before starting or resuming program work, and update it whenever a
+   session moves the program.
 2. [Target architecture](kore-target-architecture.md) and
    [TDR 0006](decisions/0006-personal-os-boundaries.md) define the next-wave direction.
 3. [Roadmap](roadmap.md) orders work;
@@ -23,13 +26,15 @@ The source evidence in the target architecture was inspected at `ab96c077`.
 
 ## Catalog
 
-The inventory contains **95 documents under `docs/`**, including this index.
+The inventory contains **97 documents under `docs/`**, including this index.
 
 ### Active next-wave planning
 
 | File | Title / purpose | Planning role / status |
 |---|---|---|
-| [roadmap.md](roadmap.md) | Kore roadmap | Active priorities, gates, retained history; no delivery claim. |
+| [STATE.md](STATE.md) | Kore working state | What is in progress now and the next step; updated by every session that moves the program. |
+| [roadmap.md](roadmap.md) | Kore roadmap | Active priorities, slice build guidance, risk register, gates; no delivery claim. |
+| [delivery-log.md](delivery-log.md) | Kore delivery log | Historical shipped-work record moved out of the roadmap; reports, not certifications. |
 | [kore-target-architecture.md](kore-target-architecture.md) | Kore: Personal OS target architecture | Canonical next-wave architecture and source-verified gaps. |
 | [plans/25-personal-os.md](plans/25-personal-os.md) | Plan 25 — Kore Personal OS | Complete catalog: I01–I29, S1–S5, B01–B09, acceptance and traceability. |
 | [plans/26-account-safe-read.md](plans/26-account-safe-read.md) | Plan 26 — Account-safe read (Slice S1) | Bounded implementation plan for S1 (I01–I05, minimal I08, Gmail I09, setup I10); planned, nothing implemented. |

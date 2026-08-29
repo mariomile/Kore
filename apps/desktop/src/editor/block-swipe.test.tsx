@@ -10,14 +10,25 @@ import { SWIPE_COMMIT_PX } from './block-swipe-gestures'
  * The swipe wired to the live editor: it must move a list item, and it must
  * not take a gesture that was a scroll.
  *
- * Synthesizing the gesture needs the `Touch`/`TouchEvent` constructors, which
- * desktop WebKit does not implement — so this file's suite runs on the
- * Chromium leg and skips on the WebKit one. The thresholds it exercises are
- * pure and covered on every engine by `block-swipe-gestures.test.ts`; what is
- * engine-specific here is the event plumbing, not the decision.
+ * Synthesizing the gesture needs the `Touch`/`TouchEvent` constructors, so
+ * this file's suite runs on the Chromium leg and skips on the WebKit one.
+ * WebKit *defines* both globals and then throws `Illegal constructor` when you
+ * call them, so a `typeof` probe reports a capability that is not there — the
+ * only honest check is to construct one and see. The thresholds this file
+ * exercises are pure and covered on every engine by
+ * `block-swipe-gestures.test.ts`; what is engine-specific here is the event
+ * plumbing, not the decision.
  */
 
-const CAN_SYNTHESIZE_TOUCH = typeof Touch === 'function' && typeof TouchEvent === 'function'
+const CAN_SYNTHESIZE_TOUCH = ((): boolean => {
+  try {
+    const probe = document.createElement('div')
+    void new TouchEvent('touchstart', { touches: [new Touch({ identifier: 0, target: probe })] })
+    return true
+  } catch {
+    return false
+  }
+})()
 
 const BASE_LIST = '- first\n- second\n'
 

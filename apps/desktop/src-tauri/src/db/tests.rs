@@ -13,9 +13,8 @@ use super::query::run_query;
 use super::scan::scan_reconcile;
 use super::write::{
     apply_note, claim_tier, clear_index, move_note, remove_note, touch_note, IndexedAlias,
-    IndexedClaim,
-    IndexedEmail, IndexedLink, IndexedNote, IndexedProperty, IndexedTag, IndexedTagType,
-    IndexedTask, MovedNoteAddress,
+    IndexedClaim, IndexedEmail, IndexedLink, IndexedNote, IndexedProperty, IndexedTag,
+    IndexedTagType, IndexedTask, MovedNoteAddress,
 };
 
 fn migrated() -> Connection {
@@ -1265,12 +1264,10 @@ fn stale_generation_writes_are_dropped_end_to_end() {
         .unwrap_or_else(|err| panic!("{label}: {err:?}"))
     };
     super::set_index_meta_for(&app.state(), "k", "stale", stale)
-    .expect("stale meta set returns Ok");
+        .expect("stale meta set returns Ok");
     assert!(meta("after stale meta set").is_empty());
-    super::set_index_meta_for(&app.state(), "k", "v1", fresh)
-    .expect("fresh meta set");
-    super::set_index_meta_for(&app.state(), "k", "v2", fresh)
-    .expect("meta upsert");
+    super::set_index_meta_for(&app.state(), "k", "v1", fresh).expect("fresh meta set");
+    super::set_index_meta_for(&app.state(), "k", "v2", fresh).expect("meta upsert");
     assert_eq!(meta("after meta upsert")[0]["value"], Value::from("v2"));
 }
 

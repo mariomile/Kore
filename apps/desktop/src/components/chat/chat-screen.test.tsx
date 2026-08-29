@@ -461,6 +461,7 @@ describe('ChatScreen', () => {
     await view.getByRole('combobox', { name: 'Model' }).click()
 
     await expect.element(page.getByText('OpenAI')).toBeInTheDocument()
+    await expect.element(page.getByRole('option', { name: 'GPT-5.6 Sol' })).toBeVisible()
     const labels = page
       .getByRole('option')
       .elements()

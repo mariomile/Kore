@@ -145,19 +145,25 @@ fn assets_dir_for(
 /// Start a streamed asset upload: creates a temp file in the graph's staging
 /// dir and returns the upload id for `asset_upload_append`/`_commit`.
 #[tauri::command]
-pub fn asset_upload_begin(
+pub async fn asset_upload_begin<R: tauri::Runtime>(
     generation: u64,
-    state: State<GraphState>,
-    uploads: State<AssetUploads>,
+    app: tauri::AppHandle<R>,
 ) -> AppResult<String> {
-    // Process-local sequence: ids only need to be unique within this app run
-    // (the registry dies with the process), so a counter beats a uuid dep.
-    static NEXT_UPLOAD_ID: AtomicU64 = AtomicU64::new(1);
-    let root = root_for_generation(&state, generation)?;
-    let file = tempfile::NamedTempFile::new_in(staging_dir(&root)?)?;
-    let id = format!("upload-{}", NEXT_UPLOAD_ID.fetch_add(1, Ordering::Relaxed));
-    lock_uploads(&uploads)?.insert(id.clone(), Upload { generation, file });
-    Ok(id)
+    crate::blocking::run_blocking(move || {
+        // Process-local sequence: ids only need to be unique within this app run
+        // (the registry dies with the process), so a counter beats a uuid dep.
+        static NEXT_UPLOAD_ID: AtomicU64 = AtomicU64::new(1);
+        let state = app.state::<GraphState>();
+        let root = root_for_generation(&state, generation)?;
+        // Moves no bytes, but `staging_dir` can create the directory and the
+        // temp file is a real create: on a cold or synced volume that is the
+        // kind of I/O the main thread must not wait on.
+        let file = tempfile::NamedTempFile::new_in(staging_dir(&root)?)?;
+        let id = format!("upload-{}", NEXT_UPLOAD_ID.fetch_add(1, Ordering::Relaxed));
+        lock_uploads(&app.state::<AssetUploads>())?.insert(id.clone(), Upload { generation, file });
+        Ok(id)
+    })
+    .await
 }
 
 /// Append one chunk to an in-flight upload. The chunk is the **raw request

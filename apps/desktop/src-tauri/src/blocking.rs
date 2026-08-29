@@ -41,39 +41,9 @@ mod tests {
         ("app_platform", "lib.rs", "returns a compile-time constant"),
         ("app_version", "lib.rs", "returns a compile-time constant"),
         (
-            "asset_open",
-            "fs/mod.rs",
-            "DEBT (audit 1.8 and 2.1): filesystem work on the main thread",
-        ),
-        (
-            "asset_read",
-            "fs/mod.rs",
-            "DEBT (audit 1.8 and 2.1): filesystem work on the main thread",
-        ),
-        (
-            "asset_read_binary",
-            "fs/mod.rs",
-            "DEBT (audit 1.8 and 2.1): filesystem work on the main thread",
-        ),
-        (
-            "asset_reveal",
-            "fs/mod.rs",
-            "DEBT (audit 1.8 and 2.1): filesystem work on the main thread",
-        ),
-        (
             "asset_upload_abort",
             "fs/assets.rs",
-            "DEBT (audit 2.3): moves whole asset files on the main thread",
-        ),
-        (
-            "asset_upload_begin",
-            "fs/assets.rs",
-            "DEBT (audit 2.3): moves whole asset files on the main thread",
-        ),
-        (
-            "audio_memo_delete",
-            "fs/mod.rs",
-            "DEBT (audit 1.8 and 2.1): filesystem work on the main thread",
+            "removes one registry entry; the only I/O is unlinking a temp file this process just created",
         ),
         (
             "background_task_begin",
@@ -166,11 +136,6 @@ mod tests {
             "reads the cached EventKit authorization status; the queries themselves are async",
         ),
         (
-            "dir_list",
-            "fs/mod.rs",
-            "DEBT (audit 1.8 and 2.1): filesystem work on the main thread",
-        ),
-        (
             "embed_ensure",
             "embed_mobile.rs",
             "unsupported-platform stub: returns immediately, touches nothing",
@@ -191,34 +156,14 @@ mod tests {
             "unsupported-platform stub: returns immediately, touches nothing",
         ),
         (
-            "export_write",
-            "fs/mod.rs",
-            "DEBT (audit 1.8 and 2.1): filesystem work on the main thread",
-        ),
-        (
             "forget_recent",
             "recents.rs",
             "reads and writes a small in-memory list behind a mutex",
         ),
         (
-            "graph_create",
-            "fs/mod.rs",
-            "DEBT (audit 1.8 and 2.1): filesystem work on the main thread",
-        ),
-        (
-            "graph_delete",
-            "fs/mod.rs",
-            "DEBT (audit 1.8 and 2.1): filesystem work on the main thread",
-        ),
-        (
             "graph_import_cancel",
             "fs/mod.rs",
-            "DEBT (audit 1.8 and 2.1): filesystem work on the main thread",
-        ),
-        (
-            "graph_open",
-            "fs/mod.rs",
-            "DEBT (audit 1.8 and 2.1): filesystem work on the main thread",
+            "flips an atomic cancel flag; the import it cancels already runs off the main thread",
         ),
         (
             "haptic_feedback",
@@ -239,16 +184,6 @@ mod tests {
             "mobile_storage_local",
             "icloud/storage.rs",
             "reads a cached container path",
-        ),
-        (
-            "note_delete",
-            "fs/mod.rs",
-            "DEBT (audit 1.8 and 2.1): filesystem work on the main thread",
-        ),
-        (
-            "note_exists",
-            "fs/mod.rs",
-            "DEBT (audit 1.8 and 2.1): filesystem work on the main thread",
         ),
         (
             "pty_ack",
@@ -324,16 +259,6 @@ mod tests {
             "toggle_devtools",
             "devtools.rs",
             "toggles the webview inspector, a main-thread window operation",
-        ),
-        (
-            "transcript_cache_read",
-            "fs/mod.rs",
-            "DEBT (audit 1.8 and 2.1): filesystem work on the main thread",
-        ),
-        (
-            "transcript_cache_write",
-            "fs/mod.rs",
-            "DEBT (audit 1.8 and 2.1): filesystem work on the main thread",
         ),
         (
             "watch_start",

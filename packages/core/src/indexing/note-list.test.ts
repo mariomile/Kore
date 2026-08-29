@@ -16,30 +16,27 @@ afterEach(() => {
 })
 
 describe('listNotes', () => {
-  it('lists non-daily notes pinned-first then newest with stored previews and grouped tags', async () => {
-    mockInvoke
-      .mockResolvedValueOnce([
-        {
-          path: 'notes/pinned.md',
-          title: 'Pinned Plan',
-          mtime: 500,
-          preview: 'Always on top.',
-          is_pinned: 1,
-          pinned_order: 1,
-        },
-        {
-          path: 'notes/health.md',
-          title: 'Health Stacked',
-          mtime: 2000,
-          preview: 'Shop your health goals.',
-          is_pinned: 0,
-          pinned_order: null,
-        },
-      ])
-      .mockResolvedValueOnce([
-        { note_path: 'notes/health.md', tag: 'health' },
-        { note_path: 'notes/health.md', tag: 'link' },
-      ])
+  it('lists non-daily notes pinned-first then newest with stored previews and folded tags', async () => {
+    mockInvoke.mockResolvedValueOnce([
+      {
+        path: 'notes/pinned.md',
+        title: 'Pinned Plan',
+        mtime: 500,
+        preview: 'Always on top.',
+        is_pinned: 1,
+        pinned_order: 1,
+        tags: null,
+      },
+      {
+        path: 'notes/health.md',
+        title: 'Health Stacked',
+        mtime: 2000,
+        preview: 'Shop your health goals.',
+        is_pinned: 0,
+        pinned_order: null,
+        tags: 'health\u{1F}link',
+      },
+    ])
 
     const entries = await listNotes()
 
@@ -62,85 +59,82 @@ describe('listNotes', () => {
       },
     ])
 
+    // One query, not two: the tags ride along instead of arriving as their own
+    // uncapped listing to be stitched together in JS.
+    expect(mockInvoke).toHaveBeenCalledTimes(1)
     const [command, args] = mockInvoke.mock.calls[0]!
     expect(command).toBe('db_query')
     const sql = String(args['sql'])
-    // The snippet is the stored projection column — no note_text join, no
+    // The snippet is the stored projection column: no note_text join, no
     // per-query derivation.
     expect(sql).toContain('"preview"')
     expect(sql).not.toContain('note_text')
     // `kind = 'note'` excludes dailies (the stream is their home) and templates.
     expect(sql).toContain('"notes"."kind" = ?')
-    // Pinned notes lead (explicit order first), then recency — V1's list
-    // order, via the recallOrder helper shared with filtered-search.
+    // A left join, so a note with no tags still appears.
+    expect(sql).toContain('left join "tags"')
+    expect(sql).toContain('group_concat')
+    expect(sql).toContain('group by "notes"."path"')
+    // Pinned notes lead (explicit order first), then recency: V1's list order,
+    // via the recallOrder helper shared with filtered-search.
     const pinnedAt = sql.indexOf('"notes"."is_pinned" desc')
     const orderAt = sql.indexOf('"notes"."pinned_order" is null')
     const mtimeAt = sql.indexOf('"notes"."mtime" desc')
     expect(pinnedAt).toBeGreaterThan(-1)
     expect(orderAt).toBeGreaterThan(pinnedAt)
     expect(mtimeAt).toBeGreaterThan(orderAt)
-    expect(sql).not.toContain('exists')
     // Uncapped: the screen virtualizes instead.
     expect(sql).not.toContain('limit')
-
-    // The tag fetch joins the same note predicates — never a `note_path IN`
-    // list, whose per-row parameter would hit SQLite's bound-parameter
-    // ceiling on large graphs.
-    const [, tagArgs] = mockInvoke.mock.calls[1]!
-    const tagSql = String(tagArgs['sql'])
-    expect(tagSql).toContain('inner join "notes"')
-    expect(tagSql).toContain('"notes"."kind" = ?')
-    expect(tagSql).not.toContain(' in (')
-    expect(tagArgs['params']).toEqual(['note'])
+    // Never a `note_path IN (...)` list, whose per-row parameter would hit
+    // SQLite's bound-parameter ceiling on large graphs.
+    expect(sql).not.toContain(' in (')
+    expect(args['params']).toEqual(['note'])
   })
 
-  it('narrows both queries to one tag and includes tagged daily notes', async () => {
-    mockInvoke
-      .mockResolvedValueOnce([
-        {
-          path: 'notes/health.md',
-          title: 'Health Stacked',
-          mtime: 2000,
-          preview: '',
-          is_pinned: 0,
-          pinned_order: null,
-        },
-        {
-          path: 'daily/2026-06-09.md',
-          title: 'June 9, 2026',
-          mtime: 1500,
-          preview: 'Read a book.',
-          is_pinned: 0,
-          pinned_order: null,
-        },
-      ])
-      .mockResolvedValueOnce([{ note_path: 'daily/2026-06-09.md', tag: 'Book' }])
+  it('narrows to one tag with an EXISTS and includes tagged daily notes', async () => {
+    mockInvoke.mockResolvedValueOnce([
+      {
+        path: 'notes/health.md',
+        title: 'Health Stacked',
+        mtime: 2000,
+        preview: '',
+        is_pinned: 0,
+        pinned_order: null,
+        tags: null,
+      },
+      {
+        path: 'daily/2026-06-09.md',
+        title: 'June 9, 2026',
+        mtime: 1500,
+        preview: 'Read a book.',
+        is_pinned: 0,
+        pinned_order: null,
+        tags: 'Book',
+      },
+    ])
 
     const entries = await listNotes({ tag: 'Book' })
 
     expect(entries.map((entry) => entry.path)).toEqual(['notes/health.md', 'daily/2026-06-09.md'])
     expect(entries[1]?.tags).toEqual(['Book'])
 
-    expect(mockInvoke).toHaveBeenCalledTimes(2)
-    const [, listArgs] = mockInvoke.mock.calls[0]!
-    const listSql = String(listArgs['sql'])
-    expect(listSql).toContain('from "tags"')
-    expect(listSql).toContain('inner join "notes"')
-    expect(listSql).toContain('"tags"."tag_key"')
-    expect(listSql).not.toContain('exists')
-    expect(listSql).not.toContain('lower(')
-    expect(listArgs['params']).toEqual(['book', 'note', 'daily'])
-
-    const [, tagArgs] = mockInvoke.mock.calls[1]!
-    const tagSql = String(tagArgs['sql'])
-    expect(tagSql).toContain('inner join "tags" as "filter_tags"')
-    expect(tagSql).toContain('"filter_tags"."tag_key"')
-    expect(tagSql).not.toContain('exists')
-    expect(tagSql).not.toContain('lower(')
-    expect(tagArgs['params']).toEqual(['book', 'note', 'daily'])
+    expect(mockInvoke).toHaveBeenCalledTimes(1)
+    const [, args] = mockInvoke.mock.calls[0]!
+    const sql = String(args['sql'])
+    // An EXISTS, not a join on the filter tag: joining it would multiply the
+    // grouped rows for a note matching more than once, and the aggregate
+    // cannot be rescued by a `distinct` the way the old two-query shape was.
+    expect(sql).toContain('exists')
+    expect(sql).toContain('"filter_tags"."tag_key"')
+    expect(sql).not.toContain('inner join "tags" as "filter_tags"')
+    // Tag matching is the folded key, never SQLite's ASCII-only lower().
+    expect(sql).not.toContain('lower(')
+    // Kind first, then the folded tag: the EXISTS is appended after the kind
+    // narrowing, so the bound order follows the builder, not the SQL text.
+    expect(args['params']).toEqual(['note', 'daily', 'book'])
   })
 
-  it('skips the tag fetch entirely when no notes match', async () => {
+  it('returns nothing when no notes match, without a second round trip', async () => {
     mockInvoke.mockResolvedValue([])
     await expect(listNotes({ tag: 'nothing' })).resolves.toEqual([])
     expect(mockInvoke).toHaveBeenCalledTimes(1)

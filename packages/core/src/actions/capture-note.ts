@@ -4,6 +4,7 @@ import { readNote } from '../graph/commands'
 import { hashContent } from '../indexing/hash'
 import { wikiLinkSafe } from '../markdown/edit'
 import { parseFrontmatter, splitFrontmatter, upsertFrontmatter } from '../markdown/frontmatter'
+import { LINK_KIND_FALLBACK, linkKind, linkKindInfo } from '../markdown/link-kind'
 import type { Frontmatter } from '../markdown/model'
 import type { CaptureIdentity } from './capture-identity'
 import type { CaptureEnvelope } from './capture-envelope'
@@ -57,13 +58,27 @@ export function displayTitle(envelope: Pick<CaptureEnvelope, 'title' | 'url'>): 
   return title !== '' ? title : urlHost(envelope.url)
 }
 
+/** The metadata line's stable prefix — the anchor later edits locate. */
+const TYPE_PREFIX = '- Type: #link'
+
+/**
+ * The capture's `Type` metadata: always `#link`, plus the tag for what the URL
+ * points at when the classifier recognises it ({@link linkKind}). Both tags
+ * are real body tags, so the graph can list every capture *and* only the
+ * videos, and a captured repository stops looking like a captured article.
+ */
+function captureTypeLine(url: string): string {
+  const kind = linkKind(url)
+  return kind === LINK_KIND_FALLBACK ? TYPE_PREFIX : `${TYPE_PREFIX} #${linkKindInfo(kind).tag}`
+}
+
 function captureNoteBody(
   envelope: CaptureEnvelope,
   identity: CaptureIdentity,
   hasScreenshot: boolean,
 ): string {
   const title = displayTitle(envelope)
-  const metadata = [`- URL: ${envelope.url}`, '- Type: #link']
+  const metadata = [`- URL: ${envelope.url}`, captureTypeLine(envelope.url)]
   const metaDescription = envelope.metaDescription?.trim()
   if (metaDescription) {
     metadata.push(`- Description: ${metadataValue(metaDescription)}`)
@@ -237,7 +252,8 @@ export function retitleDailyEntry(
 
 /**
  * Insert or replace the description metadata bullet for link captures. The
- * raw body has a `- Type: #link` anchor.
+ * raw body's `- Type: #link` line is the anchor — matched by prefix, since a
+ * typed capture carries its kind tag after it ({@link captureTypeLine}).
  */
 export function withDescription(body: string, description: string): string {
   const line = `${DESCRIPTION_PREFIX}${metadataValue(description)}`
@@ -248,7 +264,9 @@ export function withDescription(body: string, description: string): string {
     metadataLines[descriptionLine] = line
     return `${metadataLines.join('\n')}${body.slice(metadataEnd)}`
   }
-  const typeLine = metadataLines.findIndex((candidate) => candidate.trimEnd() === '- Type: #link')
+  const typeLine = metadataLines.findIndex((candidate) =>
+    candidate.trimEnd().startsWith(TYPE_PREFIX),
+  )
   if (typeLine === -1) {
     throw new Error('capture note is missing Type metadata')
   }

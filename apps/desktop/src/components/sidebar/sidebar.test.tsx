@@ -85,7 +85,11 @@ vi.mock('@/providers/graph-provider', () => ({
     indexGeneration: 1,
     recents: [
       { root: '/notes', name: 'Notes', openedMs: 2 },
-      { root: '/work', name: 'Work', openedMs: 1 },
+      {
+        root: '/Users/mario/Library/Mobile Documents/iCloud~app~lore/Documents/Work',
+        name: 'Work',
+        openedMs: 1,
+      },
     ],
     indexing: false,
     openRecent,
@@ -463,8 +467,12 @@ describe('Sidebar', () => {
     expect(
       [...work.element().querySelectorAll('kbd')].map((keycap) => keycap.textContent),
     ).toContain('2')
+    await work.hover()
+    await expect.element(page.getByText('iCloud Drive › Kore › Work')).toBeVisible()
     await work.click()
-    expect(openRecent).toHaveBeenCalledWith('/work')
+    expect(openRecent).toHaveBeenCalledWith(
+      '/Users/mario/Library/Mobile Documents/iCloud~app~lore/Documents/Work',
+    )
 
     await view.getByRole('button', { name: /Notes/ }).click()
     await page.getByRole('menuitem', { name: /open another graph/i }).click()

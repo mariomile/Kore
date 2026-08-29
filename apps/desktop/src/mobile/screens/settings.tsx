@@ -29,6 +29,7 @@ import { PRIVACY_POLICY_URL } from '@/mobile/legal-urls'
 import { MobileCalendarSettings } from '@/mobile/mobile-calendar-settings'
 import { MobileScreenHeader } from '@/mobile/screen-header'
 import { SearchInput } from '@/mobile/search-input'
+import { matchesMobileSettingsSection } from '@/mobile/settings-search'
 import { useBarHeightVar } from '@/mobile/use-bar-height'
 import { MobileAppearanceGroup } from '@/mobile/settings-appearance-group'
 import {
@@ -156,34 +157,33 @@ export function MobileSettings(): ReactElement {
         ? 'This device'
         : undefined
   const backupAvailable = repo !== null || status !== null || canConnect
-  const settingsNeedle = settingsQuery.trim().toLowerCase()
-  const matches = (keywords: string): boolean =>
-    settingsNeedle === '' || keywords.toLowerCase().includes(settingsNeedle)
-  const showGraph = matches(`graph storage device icloud this device ${graph?.name ?? ''}`)
-  const showAppearance = matches(
-    'appearance theme system light dark space ash graphite accent color red orange yellow green teal blue purple pink text size small medium large font sans serif mono spacing compact relaxed corners default round liquid glass intensity subtle balanced strong',
+  const showGraph = matchesMobileSettingsSection(settingsQuery, 'graph', [graph?.name ?? ''])
+  const showAppearance = matchesMobileSettingsSection(settingsQuery, 'appearance')
+  const showCalendar = isIos && matchesMobileSettingsSection(settingsQuery, 'calendar')
+  const showEditor = matchesMobileSettingsSection(settingsQuery, 'editor')
+  const showAi = matchesMobileSettingsSection(
+    settingsQuery,
+    'ai',
+    providers.map((provider) => aiProvider(provider.provider).label),
   )
-  const showCalendar = isIos && matches('calendar events access open settings')
-  const showEditor = matches(
-    'editor smooth caret animation start bullet bullet after heading typography writing',
+  const showPrompts = matchesMobileSettingsSection(
+    settingsQuery,
+    'prompts',
+    prompts.map((prompt) => prompt.label),
   )
-  const showAi = matches(
-    `ai provider model system prompt api key ${providers
-      .map((provider) => aiProvider(provider.provider).label)
-      .join(' ')}`,
-  )
-  const showPrompts = matches(
-    `ai prompts custom prompt add prompt ${prompts.map((prompt) => prompt.label).join(' ')}`,
-  )
-  const showAudio = matches(
-    `audio memo transcription auto format model ${transcriptionProviders
-      .map((provider) => aiProvider(provider).label)
-      .join(' ')}`,
+  const showAudio = matchesMobileSettingsSection(
+    settingsQuery,
+    'audio',
+    transcriptionProviders.map((provider) => aiProvider(provider).label),
   )
   const showBackup =
     backupAvailable &&
-    matches(`backup sync github ${repo?.owner ?? ''} ${repo?.name ?? ''} ${status?.label ?? ''}`)
-  const showAbout = matches(`about notes version privacy policy ${version ?? ''}`)
+    matchesMobileSettingsSection(settingsQuery, 'backup', [
+      repo?.owner ?? '',
+      repo?.name ?? '',
+      status?.label ?? '',
+    ])
+  const showAbout = matchesMobileSettingsSection(settingsQuery, 'about', [version ?? ''])
   const hasMatches =
     showGraph ||
     showAppearance ||

@@ -157,6 +157,17 @@ describe('MobileSettings', () => {
     await expect.element(page.getByText('No settings found')).toBeVisible()
   })
 
+  it('finds Appearance by every named theme', async () => {
+    const user = userEvent
+    await mount()
+
+    for (const theme of ['Ink', 'Paper', 'Midnight']) {
+      await user.fill(page.getByRole('searchbox', { name: 'Search settings' }), theme)
+      await expect.element(page.getByText('Appearance', { exact: true })).toBeVisible()
+      await expect.element(page.getByText('Graph', { exact: true })).not.toBeInTheDocument()
+    }
+  })
+
   it('has no purchase or subscription actions on iOS', async () => {
     graphState.platform = 'ios'
     await mount()

@@ -1,10 +1,21 @@
-import { useState, type ReactElement } from 'react'
+import { lazy, Suspense, useState, type ReactElement } from 'react'
 import { CalendarDays, Chat, Globe, Hash, Info, Terminal, type Icon } from '@/components/icons'
-import { BrowserPane } from '@/components/browser/browser-pane'
 import { ChatScreen } from '@/components/chat/chat-screen'
 import { SidebarIconSlot } from '@/components/sidebar/sidebar-icon-slot'
 import { SidebarTags } from '@/components/sidebar/sidebar-tags'
-import { TerminalScreen } from '@/components/terminal/terminal-screen'
+
+// Lazy here too, or this edge survives the route split: the sidebar can host
+// the terminal and browser panes, so a static import from here would pull xterm
+// and the browser pane back into the boot chunk regardless of what
+// route-content.tsx does.
+const BrowserPane = lazy(() =>
+  import('@/components/browser/browser-pane').then((module) => ({ default: module.BrowserPane })),
+)
+const TerminalScreen = lazy(() =>
+  import('@/components/terminal/terminal-screen').then((module) => ({
+    default: module.TerminalScreen,
+  })),
+)
 import { haptic } from '@/lib/haptics'
 import { useToday } from '@/lib/use-today'
 import { cn } from '@/lib/utils'
@@ -103,13 +114,17 @@ export function ContextSidebar({ target }: ContextSidebarProps): ReactElement {
         // The browser owns its region (the embedded webview covers its
         // host), so no scroller — same shared session as the browser tab.
         <div className="mt-1 flex min-h-0 flex-1 flex-col">
-          <BrowserPane />
+          <Suspense fallback={null}>
+            <BrowserPane />
+          </Suspense>
         </div>
       ) : panel === 'terminal' ? (
         // The terminal owns its region too (xterm scrolls itself); the PTY
         // is the same session as the terminal route's.
         <div className="mt-1 flex min-h-0 flex-1 flex-col">
-          <TerminalScreen />
+          <Suspense fallback={null}>
+            <TerminalScreen />
+          </Suspense>
         </div>
       ) : panel === 'tags' ? (
         <div className="mt-1 min-h-0 flex-1 overflow-y-auto px-3 pb-4">

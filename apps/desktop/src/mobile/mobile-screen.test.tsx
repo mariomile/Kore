@@ -351,8 +351,8 @@ describe('MobileShell', () => {
   it.each(['Daily', 'All', 'Tasks'])('opens a new note from the %s capsule tab', async (label) => {
     const view = await mount({ kind: 'today' })
     await userEvent.click(view.getByRole('button', { name: label, exact: true }))
-    expect(view.getByRole('button', { name: 'New note' }).elements()).toHaveLength(1)
-    await userEvent.click(view.getByRole('button', { name: 'New note' }))
+    await userEvent.click(view.getByRole('button', { name: 'Create' }))
+    await userEvent.click(view.getByRole('button', { name: 'Note', exact: true }))
     await expect.element(view.getByRole('heading', { name: 'New note' })).toBeVisible()
     expect(editorProbe.focusCalls).toBeGreaterThan(0)
   })
@@ -689,9 +689,7 @@ describe('MobileShell', () => {
     await expect.element(view.getByRole('searchbox', { name: 'Search tasks' })).toBeVisible()
     // The fake bridge's index is empty, so the tab lands on its empty state.
     await expect.element(view.getByText('No tasks to show')).toHaveTextContent('No tasks to show')
-    const newTask = view.getByRole('button', { name: 'New task' }).element().getBoundingClientRect()
-    const nav = view.getByRole('navigation', { name: 'Sections' }).element().getBoundingClientRect()
-    expect(newTask.bottom).toBeLessThan(nav.top)
+    expect(view.getByRole('button', { name: 'New task' }).query()).toBeNull()
   })
 
   it('double-tapping Tasks selects the task search filter', async () => {
@@ -730,12 +728,12 @@ describe('MobileShell', () => {
 
     act(() => publishKeyboardHeight(316))
     expect(view.getByRole('navigation', { name: 'Sections' }).query()).toBeNull()
-    expect(view.getByRole('button', { name: 'New note' }).query()).toBeNull()
+    expect(view.getByRole('button', { name: 'Create' }).query()).toBeNull()
     expect(document.documentElement.style.getPropertyValue('--mobile-tab-bar-height')).toBe('')
 
     act(() => publishKeyboardHeight(0))
     await expect.element(view.getByRole('navigation', { name: 'Sections' })).toBeVisible()
-    await expect.element(view.getByRole('button', { name: 'New note' })).toBeVisible()
+    await expect.element(view.getByRole('button', { name: 'Create' })).toBeVisible()
   })
 
   it('gives the tab bar slot to the formatting toolbar only while an editor is focused', async () => {

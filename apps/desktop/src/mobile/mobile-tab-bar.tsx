@@ -27,7 +27,7 @@ export function tabRootFor(route: Route): MobileTab | null {
 interface MobileTabBarProps {
   tab: MobileTab
   onSelect: (tab: MobileTab) => void
-  onNewNote: () => void
+  onCapture: () => void
 }
 
 /**
@@ -39,7 +39,7 @@ interface MobileTabBarProps {
  * sit above it without hardcoding its size. The variable clears on unmount
  * (the keyboard-up state), leaving consumers their own fallback.
  */
-export function MobileTabBar({ tab, onSelect, onNewNote }: MobileTabBarProps): ReactElement {
+export function MobileTabBar({ tab, onSelect, onCapture }: MobileTabBarProps): ReactElement {
   const navRef = useRef<HTMLElement | null>(null)
 
   useLayoutEffect(() => {
@@ -102,10 +102,10 @@ export function MobileTabBar({ tab, onSelect, onNewNote }: MobileTabBarProps): R
           />
           <button
             type="button"
-            aria-label="New note"
+            aria-label="Create"
             onClick={() => {
               hapticImpactLight()
-              onNewNote()
+              onCapture()
             }}
             className="flex size-12 items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >

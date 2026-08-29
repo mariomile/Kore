@@ -27,7 +27,7 @@ export function FilterChip({
       aria-pressed={active}
       onClick={onClick}
       className={cn(
-        'flex h-7 shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-3 text-xs font-medium',
+        'flex h-11 shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-4 text-sm font-medium',
         active
           ? 'border-transparent bg-primary text-primary-foreground'
           : 'border-border text-text-muted',

@@ -119,7 +119,11 @@ export function MobileAllNotes({
     queryFn: () => listNoteTags(),
     enabled,
   })
-  const { data: hits } = useQuery({
+  const {
+    data: hits,
+    isError,
+    refetch,
+  } = useQuery({
     queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'mobile-all-notes', parsed],
     queryFn: () => searchWithFilters(parsed, searchPlanFor(parsed)),
     enabled,
@@ -182,12 +186,13 @@ export function MobileAllNotes({
         className="mobile-glass-bar absolute inset-x-0 top-0 z-30 space-y-2 px-4 pb-2"
         style={{ paddingTop: 'calc(env(safe-area-inset-top) + 0.25rem)' }}
       >
+        <h1 className="text-[28px] font-semibold tracking-tight">Notes</h1>
         <div className="flex items-center gap-1">
           {tag !== null && (
             <Button
               variant="ghost"
               size="icon"
-              className="-ml-2 size-9 shrink-0"
+              className="-ml-2 size-11 shrink-0"
               aria-label="Back"
               onClick={back}
             >
@@ -226,7 +231,19 @@ export function MobileAllNotes({
       </header>
       {/* Undefined hits mean "still fetching" only while the query can run —
           with no bridge/graph it never will, and the empty state is honest. */}
-      {enabled && hits === undefined ? (
+      {isError ? (
+        <div
+          role="alert"
+          className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center"
+          style={{ paddingTop: 'var(--mobile-header-height, 0px)' }}
+        >
+          <SearchOff className="size-6 text-text-muted" />
+          <p className="text-sm text-text-muted">Couldn’t load your notes.</p>
+          <Button variant="outline" onClick={() => void refetch()}>
+            Try again
+          </Button>
+        </div>
+      ) : enabled && hits === undefined ? (
         <div
           className="flex flex-1 items-center justify-center"
           style={{ paddingTop: 'var(--mobile-header-height, 0px)' }}
@@ -273,7 +290,7 @@ function TagSuggestions({
           role="option"
           aria-selected={false}
           onClick={() => onPick(facet)}
-          className="flex h-7 shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-border px-3 text-xs font-medium text-text-muted"
+          className="flex h-11 shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-border px-4 text-sm font-medium text-text-muted"
         >
           #{facet.tag}
           <span className="opacity-60">{facet.count}</span>
@@ -313,7 +330,7 @@ function AllNotesLayoutToggle({ view, onChange }: AllNotesLayoutToggleProps): Re
         aria-label="List view"
         aria-pressed={view === 'list'}
         onClick={() => onChange('list')}
-        className={`flex size-9 items-center justify-center rounded-full transition-colors ${
+        className={`flex size-11 items-center justify-center rounded-full transition-colors ${
           view === 'list'
             ? 'bg-surface text-text shadow-sm'
             : 'text-text-muted hover:text-text-secondary'
@@ -326,7 +343,7 @@ function AllNotesLayoutToggle({ view, onChange }: AllNotesLayoutToggleProps): Re
         aria-label="Grid view"
         aria-pressed={view === 'grid'}
         onClick={() => onChange('grid')}
-        className={`flex size-9 items-center justify-center rounded-full transition-colors ${
+        className={`flex size-11 items-center justify-center rounded-full transition-colors ${
           view === 'grid'
             ? 'bg-surface text-text shadow-sm'
             : 'text-text-muted hover:text-text-secondary'

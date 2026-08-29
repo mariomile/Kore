@@ -122,6 +122,16 @@ beforeEach(() => {
 })
 
 describe('MobileAllNotes grid view', () => {
+  it('shows a retry action when the note query fails', async () => {
+    searchWithFilters.mockRejectedValueOnce(new Error('index unavailable'))
+    await renderScreen()
+
+    await expect.element(page.getByText('Couldn’t load your notes.')).toBeVisible()
+    searchWithFilters.mockResolvedValueOnce([hit()])
+    await page.getByRole('button', { name: 'Try again' }).click()
+    await expect.element(page.getByText('Health Stacked')).toBeVisible()
+  })
+
   it('switches to the card grid through the layout toggle', async () => {
     await renderScreen()
     await expect.element(page.getByText('Health Stacked')).toBeInTheDocument()

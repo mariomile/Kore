@@ -1,12 +1,21 @@
 import { useState, type ReactElement, type ReactNode } from 'react'
-import { CalendarDays, Chat, Globe, Info, Plus, Terminal, type Icon } from '@/components/icons'
+import {
+  CalendarDays,
+  Chat,
+  Close,
+  Globe,
+  Info,
+  Plus,
+  Terminal,
+  type Icon,
+} from '@/components/icons'
 import { BrowserPane } from '@/components/browser/browser-pane'
 import { ChatScreen } from '@/components/chat/chat-screen'
 import { SidebarIconSlot } from '@/components/sidebar/sidebar-icon-slot'
 import { TerminalScreen } from '@/components/terminal/terminal-screen'
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
+  DropdownMenuItem,
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
@@ -126,8 +135,9 @@ interface ContextSidebarProps {
  * the same two-part shape as the content column's tab strip over the
  * note-pane card. A liquid-glass icon switcher picks which of {@link PANELS}
  * fills the card, and starts as Details alone plus the "+" that adds the
- * rest. Both the open set and the choice are per-window session state, not
- * persisted.
+ * rest. What the "+" opens is a real tab: it stays on the band until you
+ * close it, and only Details cannot be closed. Both the open set and the
+ * choice are per-window session state, not persisted.
  */
 export function ContextSidebar({ target }: ContextSidebarProps): ReactElement {
   const [opened, setOpened] = useState<ContextPanel[]>([])
@@ -148,18 +158,22 @@ export function ContextSidebar({ target }: ContextSidebarProps): ReactElement {
     }
   }
 
-  /** Opening a panel also shows it; closing the one on screen falls back to Details. */
-  const togglePanel = (id: ContextPanel): void => {
+  /** Opening a panel from the "+" also brings it up; re-picking an open one just shows it. */
+  const openPanel = (id: ContextPanel): void => {
     haptic('alignment')
-    if (opened.includes(id)) {
-      setOpened(opened.filter((entry) => entry !== id))
-      if (panel === id) {
-        setPanel(DEFAULT_PANEL)
-      }
-      return
+    if (!opened.includes(id)) {
+      setOpened([...opened, id])
     }
-    setOpened([...opened, id])
     setPanel(id)
+  }
+
+  /** Closing the tab on screen falls back to Details, the one tab that never closes. */
+  const closePanel = (id: ContextPanel): void => {
+    haptic('alignment')
+    setOpened(opened.filter((entry) => entry !== id))
+    if (panel === id) {
+      setPanel(DEFAULT_PANEL)
+    }
   }
 
   return (
@@ -169,41 +183,27 @@ export function ContextSidebar({ target }: ContextSidebarProps): ReactElement {
           band doubles as title-bar drag area; the switcher itself is lifted
           above the WindowDragRegion strip so its segments stay clickable. */}
       <div data-tauri-drag-region className="flex h-11 flex-none items-center px-3">
-        {/* The segments cluster centered at a fixed width instead of
-            stretching across the rail, so the glyphs stay close together at
-            any panel width. */}
-        <div className="window-drag-control flex w-full items-center justify-center gap-1">
+        {/* The tabs run from the rail's left edge, the same direction the
+            content column's strip fills, with the "+" trailing the last one
+            rather than the row centering itself around them. */}
+        <div className="window-drag-control flex w-full items-center justify-start gap-1">
           <div
             role="tablist"
             aria-label="Context panels"
             className="flex min-w-0 items-center gap-1"
           >
-            {segments.map(({ id, label, Glyph }) => (
-              <button
-                key={id}
-                type="button"
-                role="tab"
-                aria-selected={panel === id}
-                aria-label={label}
-                title={label}
-                onClick={() => {
-                  selectPanel(id)
-                }}
-                className={cn(
-                  // The segments have to fit the rail's 240px minimum, so they
-                  // give up width before the row overflows.
-                  'flex size-8 shrink items-center justify-center rounded-lg transition-colors duration-150 ease-swift',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
-                )}
-              >
-                <SidebarIconSlot>
-                  <Glyph className="size-[17px]" />
-                </SidebarIconSlot>
-              </button>
+            {segments.map((spec) => (
+              <PanelTab
+                key={spec.id}
+                spec={spec}
+                active={panel === spec.id}
+                onSelect={selectPanel}
+                onClose={spec.id === DEFAULT_PANEL ? undefined : closePanel}
+              />
             ))}
           </div>
 
-          <ContextPanelsPlusMenu opened={opened} onToggle={togglePanel} />
+          <ContextPanelsPlusMenu onOpen={openPanel} />
         </div>
       </div>
 
@@ -228,17 +228,91 @@ export function ContextSidebar({ target }: ContextSidebarProps): ReactElement {
   )
 }
 
-interface ContextPanelsPlusMenuProps {
-  opened: ContextPanel[]
-  onToggle: (id: ContextPanel) => void
+interface PanelTabProps {
+  spec: ContextPanelSpec
+  active: boolean
+  onSelect: (id: ContextPanel) => void
+  /** Left out for Details, the tab the rail always carries. */
+  onClose?: ((id: ContextPanel) => void) | undefined
 }
 
 /**
- * The switcher's "+": every panel the rail does not start with, ticked while
- * it has a segment. Picking an unticked one opens it and brings it up;
- * unticking one takes its segment back off the band.
+ * One tab on the switcher band: the panel's glyph, plus the close badge that
+ * takes it back off the band. The badge is noise on every tile at once, so it
+ * belongs to the tab you are pointing at or the one already on screen — and
+ * middle-click closes without aiming at it, as it does on the content strip.
  */
-function ContextPanelsPlusMenu({ opened, onToggle }: ContextPanelsPlusMenuProps): ReactElement {
+function PanelTab({
+  spec: { id, label, Glyph },
+  active,
+  onSelect,
+  onClose,
+}: PanelTabProps): ReactElement {
+  return (
+    <div
+      // Presentational so the tablist still sees tabs, not wrappers: the box
+      // exists to hang the close badge off the tab's corner.
+      role="presentation"
+      className="group relative flex shrink items-center"
+      onAuxClick={(event) => {
+        if (onClose && event.button === 1) {
+          event.preventDefault()
+          onClose(id)
+        }
+      }}
+    >
+      <button
+        type="button"
+        role="tab"
+        aria-selected={active}
+        aria-label={label}
+        title={label}
+        onClick={() => {
+          onSelect(id)
+        }}
+        className={cn(
+          // The tabs have to fit the rail's 240px minimum, so they give up
+          // width before the row overflows.
+          'flex size-8 shrink items-center justify-center rounded-lg transition-colors duration-150 ease-swift',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
+        )}
+      >
+        <SidebarIconSlot>
+          <Glyph className="size-[17px]" />
+        </SidebarIconSlot>
+      </button>
+      {onClose ? (
+        <button
+          type="button"
+          aria-label={`Close ${label}`}
+          title={`Close ${label}`}
+          onClick={() => {
+            onClose(id)
+          }}
+          className={cn(
+            'absolute -right-0.5 -top-0.5 z-10 flex size-3.5 items-center justify-center rounded-full',
+            'bg-surface-active text-text-muted ring-1 ring-border transition-opacity duration-150 ease-swift',
+            'hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
+            active ? '' : 'opacity-0 focus-visible:opacity-100 group-hover:opacity-100',
+          )}
+        >
+          <Close aria-hidden className="size-2.5" />
+        </button>
+      ) : null}
+    </div>
+  )
+}
+
+interface ContextPanelsPlusMenuProps {
+  onOpen: (id: ContextPanel) => void
+}
+
+/**
+ * The switcher's "+": every panel the rail does not start with. Picking one
+ * gives it a tab and brings it up; picking one that already has a tab just
+ * shows it, since the tab itself is what closes it again.
+ */
+function ContextPanelsPlusMenu({ onOpen }: ContextPanelsPlusMenuProps): ReactElement {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -260,19 +334,17 @@ function ContextPanelsPlusMenu({ opened, onToggle }: ContextPanelsPlusMenuProps)
           </button>
         }
       />
-      <DropdownMenuContent align="end" sideOffset={6} className="min-w-44">
+      <DropdownMenuContent align="start" sideOffset={6} className="min-w-44">
         {OPTIONAL_PANELS.map(({ id, label, Glyph }) => (
-          <DropdownMenuCheckboxItem
+          <DropdownMenuItem
             key={id}
-            checked={opened.includes(id)}
-            closeOnClick
-            onCheckedChange={() => {
-              onToggle(id)
+            onClick={() => {
+              onOpen(id)
             }}
           >
             <Glyph aria-hidden className="size-3.5" />
             {label}
-          </DropdownMenuCheckboxItem>
+          </DropdownMenuItem>
         ))}
       </DropdownMenuContent>
     </DropdownMenu>

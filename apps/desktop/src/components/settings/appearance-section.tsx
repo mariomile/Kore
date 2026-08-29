@@ -198,10 +198,10 @@ function SettingsRadioCards<T extends string>({
 
 /**
  * Theme picker as radio cards (the original app's idiom) plus the accent
- * color swatch row, the corner-radius steps, and the Liquid Glass switch with
- * its intensity. Edits the settings document directly — the ThemeProvider
- * applies whatever is persisted, so this section needs no theme context of
- * its own.
+ * color swatch row, the corner-radius steps, the Liquid Glass switch with its
+ * intensity, and the haptics switch. Edits the settings document directly —
+ * the ThemeProvider applies whatever is persisted, so this section needs no
+ * theme context of its own.
  */
 export function AppearanceSection(): ReactElement {
   const { settings, updateSettings } = useSettings()
@@ -423,6 +423,13 @@ export function AppearanceSection(): ReactElement {
           />
         </SettingsField>
       ) : null}
+
+      <SettingsSwitchField
+        legend="Haptic feedback"
+        description="Trackpad knocks when a switch flips, a panel snaps into place, or an action fails. Needs a Force Touch trackpad."
+        checked={settings.hapticFeedback}
+        onCheckedChange={(checked) => updateSettings({ hapticFeedback: checked })}
+      />
     </SettingsSection>
   )
 }

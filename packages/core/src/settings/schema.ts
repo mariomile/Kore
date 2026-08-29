@@ -367,6 +367,14 @@ export const taskRemindersSchema = z.boolean().catch(false)
 export const quickCaptureEnabledSchema = z.boolean().catch(true)
 
 /**
+ * Whether interactions answer with haptic feedback: the macOS trackpad knocks
+ * (a switch flipping, a drag snapping into place) and the light impacts iOS
+ * fires on taps, checkbox toggles, and confirmations. On by default; off
+ * silences both surfaces without touching any OS-level setting.
+ */
+export const hapticFeedbackSchema = z.boolean().catch(true)
+
+/**
  * Move the legacy `openNoteTabs` document into the generalized `openTabs`
  * field at the untrusted JSON boundary. The legacy key is removed from the
  * parsed value so the next settings write completes the migration.
@@ -429,6 +437,7 @@ const settingsDocumentSchema = z.looseObject({
   taskFilters: taskFiltersSchema,
   taskReminders: taskRemindersSchema,
   quickCaptureEnabled: quickCaptureEnabledSchema,
+  hapticFeedback: hapticFeedbackSchema,
   browserSearchEngine: browserSearchEngineSchema,
   browserOpenLinksInApp: browserOpenLinksInAppSchema,
   calendarEnabled: calendarEnabledSchema,

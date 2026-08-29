@@ -2,8 +2,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 /**
  * `hapticImpactLight` is fire-and-forget over the keyboard plugin's
- * `impact_light` command, and must fail soft where the plugin isn't
- * registered (desktop, browser dev): one warning, then no further IPC.
+ * `impact_light` command. It must obey the `hapticFeedback` setting, and
+ * fail soft where the plugin isn't registered (desktop, browser dev): one
+ * warning, then no further IPC.
  */
 
 const invokeMock = vi.fn<(command: string) => Promise<unknown>>()
@@ -35,6 +36,23 @@ describe('hapticImpactLight', () => {
 
     expect(invokeMock).toHaveBeenCalledTimes(2)
     expect(invokeMock).toHaveBeenCalledWith('plugin:keyboard|impact_light')
+  })
+
+  it('stays silent while the haptics setting is off', async () => {
+    invokeMock.mockResolvedValue(null)
+    // Same module registry as the import inside `loadHaptics` (both follow
+    // this `resetModules`), so the latch the test writes is the one the
+    // module under test reads.
+    const { setHapticsEnabled } = await import('@/lib/haptics-preference')
+    const hapticImpactLight = await loadHaptics()
+
+    setHapticsEnabled(false)
+    hapticImpactLight()
+    expect(invokeMock).not.toHaveBeenCalled()
+
+    setHapticsEnabled(true)
+    hapticImpactLight()
+    expect(invokeMock).toHaveBeenCalledOnce()
   })
 
   it('warns once and stops invoking after the bridge rejects', async () => {

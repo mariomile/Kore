@@ -2,10 +2,10 @@ import { render } from 'vitest-browser-react'
 import { describe, expect, it, vi } from 'vitest'
 
 /**
- * The right rail's panel switcher: Details follows the target (or shows the
- * empty state), Chat and Calendar swap in their surfaces, and every panel
- * renders inside the rail's own card. The panels themselves are mocked —
- * each has its own test.
+ * The right rail's panel switcher: the band starts as Details alone plus the
+ * "+", Details follows the target (or shows the empty state), the panels the
+ * "+" opens swap in their surfaces, and every panel renders inside the rail's
+ * own card. The panels themselves are mocked — each has its own test.
  */
 
 vi.mock('@/components/chat/chat-screen', () => ({
@@ -41,23 +41,53 @@ vi.mock('@/lib/use-today', () => ({
 
 const { ContextSidebar } = await import('./context-sidebar')
 
+/** Open a panel the way a user does: the "+" menu, then its tick. */
+async function openPanel(view: Awaited<ReturnType<typeof render>>, label: string): Promise<void> {
+  await view.getByRole('button', { name: 'Open a panel' }).click()
+  await view.getByRole('menuitemcheckbox', { name: label }).click()
+}
+
 describe('ContextSidebar', () => {
-  it('shows the target details and switches to chat and calendar', async () => {
+  it('starts with Details alone and adds panels through the "+"', async () => {
     const view = await render(<ContextSidebar target={{ kind: 'daily', date: '2026-08-17' }} />)
     expect(view.getByTestId('daily-details').element().textContent).toBe('2026-08-17')
 
-    await view.getByRole('tab', { name: 'Chat' }).click()
+    // Details is the whole band until the "+" adds to it.
+    await expect.element(view.getByRole('tab', { name: 'Details' })).toBeVisible()
+    for (const label of ['Chat', 'Calendar', 'Browser', 'Terminal']) {
+      expect(view.getByRole('tab', { name: label }).query()).toBeNull()
+    }
+
+    await openPanel(view, 'Chat')
     await expect.element(view.getByTestId('chat-panel')).toBeInTheDocument()
     // The rail is auxiliary: opening it must not pull the caret out of the note.
     await expect.element(view.getByTestId('chat-panel')).toHaveAttribute('data-autofocus', 'false')
     expect(view.getByTestId('daily-details').query()).toBeNull()
+    // An opened panel keeps its segment, so the band can switch back to it.
+    await expect.element(view.getByRole('tab', { name: 'Chat' })).toBeVisible()
 
-    await view.getByRole('tab', { name: 'Calendar' }).click()
+    await openPanel(view, 'Calendar')
     // The calendar panel anchors on the daily target's date.
     await expect.element(view.getByTestId('month-calendar')).toBeInTheDocument()
     expect(view.getByTestId('month-calendar').element().textContent).toBe('2026-08-17')
 
+    await view.getByRole('tab', { name: 'Chat' }).click()
+    await expect.element(view.getByTestId('chat-panel')).toBeInTheDocument()
+
     await view.getByRole('tab', { name: 'Details' }).click()
+    await expect.element(view.getByTestId('daily-details')).toBeInTheDocument()
+    await view.unmount()
+  })
+
+  it('closes a panel from the "+" and falls back to Details', async () => {
+    const view = await render(<ContextSidebar target={{ kind: 'daily', date: '2026-08-17' }} />)
+
+    await openPanel(view, 'Chat')
+    await expect.element(view.getByTestId('chat-panel')).toBeInTheDocument()
+
+    // Unticking the panel on screen takes its segment off the band.
+    await openPanel(view, 'Chat')
+    expect(view.getByRole('tab', { name: 'Chat' }).query()).toBeNull()
     await expect.element(view.getByTestId('daily-details')).toBeInTheDocument()
     await view.unmount()
   })
@@ -65,10 +95,10 @@ describe('ContextSidebar', () => {
   it('hosts the built-in browser and the terminal as panels', async () => {
     const view = await render(<ContextSidebar target={null} />)
 
-    await view.getByRole('tab', { name: 'Browser' }).click()
+    await openPanel(view, 'Browser')
     await expect.element(view.getByTestId('browser-panel')).toBeInTheDocument()
 
-    await view.getByRole('tab', { name: 'Terminal' }).click()
+    await openPanel(view, 'Terminal')
     await expect.element(view.getByTestId('terminal-panel')).toBeInTheDocument()
     expect(view.getByTestId('browser-panel').query()).toBeNull()
     await view.unmount()
@@ -76,7 +106,8 @@ describe('ContextSidebar', () => {
 
   it('leaves tags to the left rail', async () => {
     const view = await render(<ContextSidebar target={null} />)
-    expect(view.getByRole('tab', { name: 'Tags' }).query()).toBeNull()
+    await view.getByRole('button', { name: 'Open a panel' }).click()
+    expect(view.getByRole('menuitemcheckbox', { name: 'Tags' }).query()).toBeNull()
     await view.unmount()
   })
 
@@ -105,7 +136,7 @@ describe('ContextSidebar', () => {
     await expect.element(view.getByText('Open a note to see its details here.')).toBeVisible()
 
     // Without a daily target the calendar anchors on today.
-    await view.getByRole('tab', { name: 'Calendar' }).click()
+    await openPanel(view, 'Calendar')
     expect(view.getByTestId('month-calendar').element().textContent).toBe('2026-08-19')
     await view.unmount()
   })

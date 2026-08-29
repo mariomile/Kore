@@ -89,12 +89,13 @@ procedure. Do not diagnose Apple signing secrets, wait on TestFlight, or retry t
 notarized **Release** workflow.
 
 1. Confirm the work to ship is already on `origin/master`.
-2. Confirm `version` in `apps/desktop/package.json` is the version to publish.
-   If it still matches the last published `Kore v*` GitHub release, bump it
-   there only (patch unless the user specifies otherwise), merge that to
-   `master`, and continue. If a `chore: release X.Y.Z` PR is already open,
-   merging it is equivalent. Never edit changelogs or `.github/release-please/`
-   manifests as part of this step. Feature PRs must not touch the version.
+2. Merge the open `chore: release X.Y.Z` PR — the one **Release PR** kept
+   refreshed against `master`. Merging it *is* the bump: it moves `version` in
+   `apps/desktop/package.json`, the changelog, and the release-please manifest
+   together. Only when there is no Release PR, hand-edit `version` in
+   `apps/desktop/package.json` (patch unless the user specifies otherwise) and
+   merge that to `master`; never hand-edit the changelog or the manifest.
+   Feature PRs must not touch any of the three.
 3. Point the `release/dmg` branch at current `master`. It is a pointer, not
    history — `--force` is expected when previous pointer-retrigger commits sit
    on that branch:
@@ -105,8 +106,10 @@ notarized **Release** workflow.
    ```
 
 4. Watch the **Release DMG** workflow (`.github/workflows/release-dmg.yml`).
-   That build publishes `Kore v<version>` (unsigned Apple Silicon DMG plus
-   updater `latest.json`). That is the bump; it is done when that run succeeds.
+   That build creates the `v<version>` tag and publishes `Kore v<version>`
+   (unsigned Apple Silicon DMG plus updater `latest.json`). That is the bump;
+   it is done when that run succeeds. The Release PR workflow deliberately
+   tags and publishes nothing.
 
 Do not run `pnpm release:macos` or wait for `.github/workflows/release.yml`. See
 [AGENTS.md — Cutting a Kore release (bump)](AGENTS.md#cutting-a-kore-release-bump)

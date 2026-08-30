@@ -13,6 +13,8 @@ export interface CanvasNode {
   label: string
   inbound: number
   isDaily: boolean
+  /** Fill color (a tag's hue), or null for the neutral theme fill. */
+  color: string | null
 }
 
 export interface CanvasEdge {
@@ -24,6 +26,12 @@ export interface CanvasEdge {
 interface GraphMapCanvasProps {
   nodes: readonly CanvasNode[]
   edges: readonly CanvasEdge[]
+  /**
+   * Node ids the header search lights up, or null while no search is
+   * active. Read at draw time through a ref — a keystroke must repaint,
+   * never rebuild the layout.
+   */
+  matches?: ReadonlySet<string> | null
   /** Open a node's note (a clean click, not the end of a drag). */
   onOpen: (id: string) => void
 }
@@ -65,10 +73,23 @@ function nodeRadius(inbound: number): number {
  * only mark the frame dirty. Colors are read from the live design tokens at
  * draw time, so the map follows theme switches without any wiring.
  */
-export function GraphMapCanvas({ nodes, edges, onOpen }: GraphMapCanvasProps): ReactElement {
+export function GraphMapCanvas({
+  nodes,
+  edges,
+  matches = null,
+  onOpen,
+}: GraphMapCanvasProps): ReactElement {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const onOpenRef = useRef(onOpen)
   onOpenRef.current = onOpen
+  const matchesRef = useRef<ReadonlySet<string> | null>(matches)
+  matchesRef.current = matches
+  // Set by the main effect; lets a matches change repaint the settled
+  // canvas without rebuilding the layout (the effect keys on nodes/edges).
+  const invalidateRef = useRef<() => void>(() => {})
+  useEffect(() => {
+    invalidateRef.current()
+  }, [matches])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -99,6 +120,9 @@ export function GraphMapCanvas({ nodes, edges, onOpen }: GraphMapCanvasProps): R
     let hoverIndex: number | null = null
     let drag: DragState | null = null
     let dirty = true
+    invalidateRef.current = () => {
+      dirty = true
+    }
     /** Cleared once the viewer pans, zooms, or drags — auto-fitting stops there. */
     let autoFit = true
     /**
@@ -209,6 +233,13 @@ export function GraphMapCanvas({ nodes, edges, onOpen }: GraphMapCanvasProps): R
 
       const highlight = hoverIndex ?? drag?.nodeIndex ?? null
       const neighborhood = highlight === null ? null : neighborSets[highlight]
+      // The header search: matched nodes light accent, the rest recede.
+      // Hover spotlighting stays the stronger signal while it is active.
+      const searched = matchesRef.current
+      const isMatch = (index: number): boolean => {
+        const id = nodes[index]?.id
+        return searched !== null && id !== undefined && searched.has(id)
+      }
 
       // Edges first, under the nodes.
       for (const edge of layoutEdges) {
@@ -218,8 +249,10 @@ export function GraphMapCanvas({ nodes, edges, onOpen }: GraphMapCanvasProps): R
           continue
         }
         const lit = highlight !== null && (edge.source === highlight || edge.target === highlight)
+        const searchDim =
+          highlight === null && searched !== null && !(isMatch(edge.source) && isMatch(edge.target))
         ctx.strokeStyle = lit ? colorAccent : colorBorder
-        ctx.globalAlpha = lit ? 0.9 : highlight === null ? 1 : 0.35
+        ctx.globalAlpha = lit ? 0.9 : highlight !== null ? 0.35 : searchDim ? 0.2 : 1
         ctx.lineWidth = (lit ? 1.6 : 1) / viewport.scale
         ctx.beginPath()
         ctx.moveTo(source.x, source.y)
@@ -235,8 +268,12 @@ export function GraphMapCanvas({ nodes, edges, onOpen }: GraphMapCanvasProps): R
         const isHighlight = index === highlight
         const isNeighbor = neighborhood?.has(index) ?? false
         const dimmed = highlight !== null && !isHighlight && !isNeighbor
-        ctx.globalAlpha = dimmed ? 0.3 : 1
-        ctx.fillStyle = isHighlight ? colorAccent : meta.isDaily ? colorMuted : colorSecondary
+        const searchMiss = searched !== null && !isMatch(index)
+        ctx.globalAlpha = dimmed || searchMiss ? 0.3 : 1
+        ctx.fillStyle =
+          isHighlight || (searched !== null && isMatch(index))
+            ? colorAccent
+            : (meta.color ?? (meta.isDaily ? colorMuted : colorSecondary))
         ctx.beginPath()
         ctx.arc(node.x, node.y, nodeRadius(meta.inbound), 0, Math.PI * 2)
         ctx.fill()
@@ -253,7 +290,7 @@ export function GraphMapCanvas({ nodes, edges, onOpen }: GraphMapCanvasProps): R
       ctx.textBaseline = 'top'
       const placed: { x: number; y: number; w: number; h: number }[] = []
       const priority = (index: number): number =>
-        index === highlight ? 2 : neighborhood?.has(index) ? 1 : 0
+        index === highlight ? 3 : neighborhood?.has(index) ? 2 : isMatch(index) ? 1 : 0
       const order = [...layout.nodes.keys()].sort((a, b) => {
         const byPriority = priority(b) - priority(a)
         return byPriority !== 0 ? byPriority : (nodes[b]?.inbound ?? 0) - (nodes[a]?.inbound ?? 0)
@@ -267,8 +304,12 @@ export function GraphMapCanvas({ nodes, edges, onOpen }: GraphMapCanvasProps): R
         const isHighlight = index === highlight
         const isNeighbor = neighborhood?.has(index) ?? false
         const dimmed = highlight !== null && !isHighlight && !isNeighbor
+        const searchMiss = searched !== null && !isMatch(index)
         const wanted =
-          isHighlight || isNeighbor || ((labelAll || meta.inbound >= HUB_LABEL_INBOUND) && !dimmed)
+          isHighlight ||
+          isNeighbor ||
+          (searched !== null && isMatch(index) && !dimmed) ||
+          ((labelAll || meta.inbound >= HUB_LABEL_INBOUND) && !dimmed && !searchMiss)
         if (!wanted) {
           continue
         }
@@ -294,7 +335,7 @@ export function GraphMapCanvas({ nodes, edges, onOpen }: GraphMapCanvasProps): R
           }
         }
         placed.push(rect)
-        ctx.globalAlpha = dimmed ? 0.3 : 1
+        ctx.globalAlpha = dimmed || searchMiss ? 0.3 : 1
         ctx.fillStyle = isHighlight ? colorText : colorSecondary
         ctx.fillText(meta.label, node.x, rect.y)
       }

@@ -17,6 +17,8 @@ export interface GraphMapNode {
   dailyDate: string | null
   /** Resolved inbound link count — drives node size. */
   inbound: number
+  /** The note's first tag (folded-key order), or null — drives node color. */
+  tag: string | null
 }
 
 export interface GraphMapEdge {
@@ -33,7 +35,7 @@ export interface GraphMap {
 
 /** Load the whole link map from the active graph's index. */
 export async function getGraphMap(): Promise<GraphMap> {
-  const [noteRows, edgeRows] = await Promise.all([
+  const [noteRows, edgeRows, tagRows] = await Promise.all([
     db
       .selectFrom('notes')
       .where('kind', '!=', 'template')
@@ -48,6 +50,7 @@ export async function getGraphMap(): Promise<GraphMap> {
       .groupBy(['sourcePath', 'targetPath'])
       .select((eb) => ['sourcePath', 'targetPath', eb.fn.countAll<number>().as('weight')])
       .execute(),
+    db.selectFrom('tags').select(['notePath', 'tag']).orderBy(['notePath', 'tagKey']).execute(),
   ])
 
   // Edges whose endpoint rows vanished mid-reindex would strand the layout
@@ -65,12 +68,21 @@ export async function getGraphMap(): Promise<GraphMap> {
     inbound.set(target, (inbound.get(target) ?? 0) + Number(row.weight))
   }
 
+  // First tag per note in folded-key order — one stable color key per node.
+  const firstTag = new Map<string, string>()
+  for (const row of tagRows) {
+    if (!firstTag.has(row.notePath)) {
+      firstTag.set(row.notePath, row.tag)
+    }
+  }
+
   return {
     nodes: noteRows.map((row) => ({
       path: row.path,
       title: row.title,
       dailyDate: row.dailyDate,
       inbound: inbound.get(row.path) ?? 0,
+      tag: firstTag.get(row.path) ?? null,
     })),
     edges,
   }

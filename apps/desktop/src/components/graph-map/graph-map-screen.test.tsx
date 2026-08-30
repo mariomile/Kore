@@ -17,9 +17,9 @@ const { GraphMapScreen } = await import('./graph-map-screen')
 
 const MAP = {
   nodes: [
-    { path: 'notes/atlas.md', title: 'Atlas', dailyDate: null, inbound: 2 },
-    { path: 'notes/weekly.md', title: 'Weekly', dailyDate: null, inbound: 0 },
-    { path: 'daily/2026-08-20.md', title: '', dailyDate: '2026-08-20', inbound: 0 },
+    { path: 'notes/atlas.md', title: 'Atlas', dailyDate: null, inbound: 2, tag: 'plans' },
+    { path: 'notes/weekly.md', title: 'Weekly', dailyDate: null, inbound: 0, tag: null },
+    { path: 'daily/2026-08-20.md', title: '', dailyDate: '2026-08-20', inbound: 0, tag: null },
   ],
   edges: [
     { source: 'notes/weekly.md', target: 'notes/atlas.md', weight: 2 },
@@ -58,6 +58,21 @@ describe('GraphMapScreen', () => {
     getGraphMap.mockResolvedValue({ nodes: [], edges: [] })
     const view = await renderScreen()
     await expect.element(view.getByText(/Nothing to map yet/)).toBeVisible()
+    await view.unmount()
+  })
+
+  it('the header search counts the notes it lights up', async () => {
+    getGraphMap.mockResolvedValue(MAP)
+    const view = await renderScreen()
+    await expect.element(view.getByText('2 notes · 1 links')).toBeVisible()
+
+    await view.getByRole('searchbox', { name: 'Highlight notes' }).fill('atlas')
+    await expect.element(view.getByText(/1 highlighted/)).toBeVisible()
+
+    // Nothing matches: zero highlighted, the map itself stays put.
+    await view.getByRole('searchbox', { name: 'Highlight notes' }).fill('nope')
+    await expect.element(view.getByText(/0 highlighted/)).toBeVisible()
+    await expect.element(view.getByText(/2 notes · 1 links/)).toBeVisible()
     await view.unmount()
   })
 })

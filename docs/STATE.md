@@ -31,9 +31,15 @@ user. The S3 slice and its boundaries are recorded in
   non-http(s) pages refuse at the schema. B04's other polish (address bar,
   back/forward, reload) predates this pass — verified already shipped.
   Verified: strip suite 15/15, pane + context-rail suites 28/28 on
-  chromium (webkit in CI). Still open in the pass: B03 graph polish (local
-  view, tag coloring, search highlight), B05b/c (overflow menu, preview
-  tabs).
+  chromium (webkit in CI). Same pass, second slice — **graph polish
+  (B03b/c)**: nodes color by their first tag (folded-key order in core's
+  `getGraphMap`; stable hue hash over the theme-safe graph palette) and a
+  header search lights matching notes up in place (accent fill + label,
+  the rest recede; match count in the header; the canvas repaints through
+  a ref so a keystroke never rebuilds the layout). Verified: core
+  graph-map 2/2, screen suite 3/3 on chromium. Still open in the pass:
+  B03a local view (deliberately parked — it would change the node click
+  gesture, a UX call for the user), B05b/c (overflow menu, preview tabs).
 
 - [x] **Now item 4 implemented: S3 minimal durable runtime**
   ([TDR 0007](decisions/0007-durable-runtime-minimal.md)). One process-wide
@@ -133,10 +139,11 @@ user. The S3 slice and its boundaries are recorded in
 
 ## Session log
 
-- 2026-08-30 — Backlog-B first slice: tab drag-reorder (B05a) and browser
-  Clip to note (B04d, riding the existing capture-envelope pipeline with a
-  new `in-app-browser` source). Audited B03/B04/B05 against the code first:
-  B04's controls were already shipped; B03 remains fully open.
+- 2026-08-30 — Backlog-B pass: tab drag-reorder (B05a), browser Clip to
+  note (B04d, riding the existing capture-envelope pipeline with a new
+  `in-app-browser` source), graph tag colors + search highlight (B03b/c).
+  Audited B03/B04/B05 against the code first: B04's controls were already
+  shipped; B03a parked as a user UX call.
 - 2026-08-30 — Implemented Now 4, the S3-minimal durable runtime (TDR 0007):
   cross-window run lock, durable in-flight marker + launch recovery, Stop on
   a running routine, native scheduler tick. S3 pulled from Next to Now by

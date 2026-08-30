@@ -73,8 +73,9 @@ Cascade layer order, low to high priority.
   --text-2xs--line-height: 1.25;
   /* Shared subject size for regular-note titles and daily-note dates.
      Craft-register scale (Plan 28): the document title is the hero of the
-     page — 28px display weight, not a bigger body line. */
-  --text-note-subject: 1.75rem;
+     page — display weight, not a bigger body line. The size is the DS
+     `--text-subject` step, indirected like the shadows above. */
+  --text-note-subject: var(--ds-text-subject);
   --text-note-subject--line-height: 1.2;
   /* Shortcut-glyph font, via the same --ds-* indirection as the shadows. */
   --font-shortcut: var(--ds-font-shortcut);
@@ -137,6 +138,7 @@ Cascade layer order, low to high priority.
   --ds-shadow-pop: var(--shadow-pop);
   --ds-shadow-app-input: var(--shadow-app-input);
   --ds-text-2xs: var(--text-2xs);
+  --ds-text-subject: var(--text-subject);
   --ds-font-shortcut: var(--font-shortcut);
   --ds-ease-swift: var(--ease-swift);
 }
@@ -447,30 +449,31 @@ html:root {
 
 /* Heading weight and size compete with meowdown's `.ProseMirror h*` theme
    rules. meowdown is layered (`@layer meowdown`), so these unlayered rules win
-   without a `.ProseMirror` compound. (Margin and letter-spacing ride along; only
-   the size and weight actually clash with the theme.) */
+   without a `.ProseMirror` compound. One block per role, no self-overrides:
+   every heading shares the margin, section headings (H2/H3) carry prose
+   weight and tracking, and the subject (H1 / the note-title node / the daily
+   date) carries the display recipe.
+
+   The leading H1 is the document title. H2 and H3 step down the type scale
+   so a section heading reads as subordinate to the title, not a second one:
+   auto-appended sections (`## [[Links]]`, `## [[Audio memos]]`) land at H2;
+   H3 sits at body size, carried by weight rather than scale. */
 .reflect-editor h1,
+.reflect-editor h2,
+.reflect-editor h3 {
+  margin: 1.25em 0 0.4em;
+}
 .reflect-editor h2,
 .reflect-editor h3 {
   font-weight: 650;
   letter-spacing: var(--tracking-snug, -0.01em);
-  margin: 1.25em 0 0.4em;
 }
-/* At display size the subject needs display tracking, and a step more
-   weight than a prose heading (the daily subject's own rule below matches). */
 .reflect-editor h1,
 .reflect-editor .reflect-note-title {
+  @apply text-note-subject;
   font-weight: 700;
   letter-spacing: var(--tracking-tight, -0.02em);
 }
-/* The leading H1 is the document title: the regular-note subject, matching
-   the daily date subject. H2 and H3 step down the type scale so a section
-   heading reads as subordinate to the title, not a second one: auto-appended
-   sections (`## [[Links]]`, `## [[Audio memos]]`) land at H2, one size below the
-   subject; H3 sits at body size, carried by weight rather than scale. */
-.reflect-editor h1 {
-  @apply text-note-subject;
-} /* text-xl, 20px */
 .reflect-editor h2 {
   font-size: var(--text-lg, 1.125rem);
 } /* 18px */
@@ -480,8 +483,15 @@ html:root {
 .reflect-editor h1:first-child {
   margin-top: 0;
 }
-.reflect-editor .reflect-note-title {
-  @apply text-note-subject;
+
+/* Screen titles (Notes, the tag page) sit one step under the note subject —
+   a page heading, not a document's. One class so the next screen doesn't
+   invent a fourth headline size. */
+.app-page-title {
+  font-size: 1.625rem;
+  line-height: 1.25;
+  font-weight: 700;
+  letter-spacing: var(--tracking-tight, -0.02em);
 }
 
 /* The new-note flow's name field: ghost "Untitled" over the seeded empty H1
@@ -1000,17 +1010,19 @@ html[data-sidebar-resizing] aside {
    fade must not be more opaque than the surface it fades into. */
 .app-scroll-veil {
   position: absolute;
+  inset-inline: 0;
+  top: 0;
   pointer-events: none;
   opacity: 0;
-  transition: opacity 240ms var(--ds-ease-swift);
-}
-.app-scroll-veil[data-veiled] {
-  opacity: 1;
-}
-.app-scroll-veil::before {
-  content: '';
-  position: absolute;
-  inset: 0;
+  /* `visibility` drops the blur layers from the layer tree entirely at
+     rest — a surface that never scrolls pays nothing for its veil. The
+     flip back to hidden waits for the fade-out to finish. */
+  visibility: hidden;
+  transition:
+    opacity 240ms var(--ds-ease-swift),
+    visibility 0s linear 240ms;
+  /* The color fade is the element's own background; the blur bands are its
+     pseudos, so one node paints the whole veil. */
   background: linear-gradient(
     to bottom,
     color-mix(in srgb, var(--surface) var(--veil-surface, 100%), transparent) 0%,
@@ -1018,18 +1030,27 @@ html[data-sidebar-resizing] aside {
     transparent 100%
   );
 }
-.app-scroll-veil-soft,
-.app-scroll-veil-deep {
+.app-scroll-veil[data-veiled] {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 240ms var(--ds-ease-swift);
+}
+.app-scroll-veil::before,
+.app-scroll-veil::after {
+  content: '';
   position: absolute;
   inset: 0;
 }
-.app-scroll-veil-soft {
+/* The soft band is masked to the middle zone only: under the deep band's
+   opaque stretch its output is blurred over anyway, so snapshotting the
+   backdrop there twice would buy nothing. */
+.app-scroll-veil::before {
   -webkit-backdrop-filter: blur(3px);
   backdrop-filter: blur(3px);
-  -webkit-mask-image: linear-gradient(to bottom, black 30%, transparent 85%);
-  mask-image: linear-gradient(to bottom, black 30%, transparent 85%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 25%, black 45%, transparent 85%);
+  mask-image: linear-gradient(to bottom, transparent 25%, black 45%, transparent 85%);
 }
-.app-scroll-veil-deep {
+.app-scroll-veil::after {
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
   -webkit-mask-image: linear-gradient(to bottom, black 0%, transparent 55%);
@@ -1046,8 +1067,28 @@ html[data-sidebar-resizing] aside {
     var(--surface) calc(var(--veil-surface, 100%) * 0.82),
     transparent
   );
-  -webkit-backdrop-filter: blur(var(--layer-blur, 20px)) saturate(var(--layer-saturate, 140%));
-  backdrop-filter: blur(var(--layer-blur, 20px)) saturate(var(--layer-saturate, 140%));
+  /* An 82%-opaque fill shows ~18% of the backdrop: past ~8px the radius is
+     indistinguishable, and saturate() invisible — but this strip re-blurs
+     every scroll frame on the busiest list, so it stays cheap. */
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+/* The clamped card preview's bottom fade (note-card-preview.tsx): the card
+   sits on an opaque surface, so an ordinary gradient overlay reads the same
+   as the hover card's mask-image while costing no per-card transparency
+   layer — masks force WebKit into an offscreen buffer per element, fine for
+   one hover card, not for a grid of them. */
+.app-card-fade {
+  position: relative;
+}
+.app-card-fade::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 2.5rem;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, var(--surface));
 }
 
 /* ============================================================

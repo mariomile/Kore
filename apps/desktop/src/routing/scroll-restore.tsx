@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactElement, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, type ReactElement, type ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 import { useRouter } from './router'
 
@@ -41,12 +41,20 @@ export function ScrollRestored({
     }
   }, [entryId, savedScroll])
 
+  // Memoized so the callback keeps its identity across renders — an inline
+  // arrow would make React detach/re-attach it (null, then the element) on
+  // every commit, driving the caller's setter needlessly.
+  const mergedRef = useCallback(
+    (element: HTMLDivElement | null) => {
+      ref.current = element
+      elementRef?.(element)
+    },
+    [elementRef],
+  )
+
   return (
     <div
-      ref={(element) => {
-        ref.current = element
-        elementRef?.(element)
-      }}
+      ref={mergedRef}
       className={cn(className, 'relative')}
       onScroll={(event) => saveScrollState(event.currentTarget.scrollTop)}
     >

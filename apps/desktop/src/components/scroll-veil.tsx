@@ -1,4 +1,4 @@
-import { useCallback, useSyncExternalStore, type ReactElement } from 'react'
+import { memo, useCallback, useSyncExternalStore, type ReactElement } from 'react'
 import { cn } from '@/lib/utils'
 
 /** Scrolled past this, the veil is on; within it, the surface is at rest. */
@@ -12,9 +12,9 @@ interface ScrollVeilProps {
    */
   scrollElement: HTMLElement | null
   /**
-   * Placement on top of the stock `absolute` box — each surface sizes its own
-   * dissolve zone (e.g. `inset-x-0 top-0 h-12`) against a positioned wrapper
-   * that shares the scroll container's top edge.
+   * Sizing on top of the stock box (`absolute`, pinned to the wrapper's top
+   * edge, `h-12` deep). Surfaces only override to size a deliberate
+   * exception.
    */
   className?: string
 }
@@ -23,15 +23,18 @@ interface ScrollVeilProps {
  * The dissolve zone a scroll surface paints at its top edge (Plan 28,
  * Craft's register): scrolled content doesn't hard-clip at the container
  * boundary, it melts into the pane surface through a color fade over two
- * progressively-masked backdrop-blur bands. The veil only exists while the
- * container is actually scrolled — at rest it is transparent, so content
- * resting inside the zone (a grid's first row, a note's title) stays crisp
- * and nothing blurs a surface that isn't moving under it. Pure paint
- * otherwise: `pointer-events: none`, `aria-hidden`, and scrolling re-renders
- * only on the on/off flip (the scroll position is an external store; the
- * snapshot is the boolean).
+ * progressively-masked backdrop-blur bands (all painted by the one element's
+ * background and pseudos — see `.app-scroll-veil`). The veil only exists
+ * while the container is actually scrolled — at rest it is hidden outright,
+ * so resting content stays crisp and the blur layers cost nothing on
+ * surfaces that never scroll. Scrolling re-renders nothing but the on/off
+ * flip: the scroll position is an external store and the snapshot is the
+ * boolean.
  */
-export function ScrollVeil({ scrollElement, className }: ScrollVeilProps): ReactElement {
+export const ScrollVeil = memo(function ScrollVeil({
+  scrollElement,
+  className,
+}: ScrollVeilProps): ReactElement {
   const subscribe = useCallback(
     (onStoreChange: () => void) => {
       if (scrollElement === null) {
@@ -44,19 +47,17 @@ export function ScrollVeil({ scrollElement, className }: ScrollVeilProps): React
     },
     [scrollElement],
   )
-  const veiled = useSyncExternalStore(
-    subscribe,
-    () => scrollElement !== null && scrollElement.scrollTop > VEIL_THRESHOLD_PX,
+  const getSnapshot = useCallback(
+    () => (scrollElement?.scrollTop ?? 0) > VEIL_THRESHOLD_PX,
+    [scrollElement],
   )
+  const veiled = useSyncExternalStore(subscribe, getSnapshot)
 
   return (
     <div
       aria-hidden
       data-veiled={veiled ? 'true' : undefined}
-      className={cn('app-scroll-veil', className)}
-    >
-      <div className="app-scroll-veil-soft" />
-      <div className="app-scroll-veil-deep" />
-    </div>
+      className={cn('app-scroll-veil h-12', className)}
+    />
   )
-}
+})

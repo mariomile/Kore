@@ -53,7 +53,7 @@ export function SingleNoteView({ path, dailyDate, heading }: SingleNoteViewProps
       </ScrollRestored>
       {/* Scrolled content melts at the pane's top edge instead of clipping
           against it (Plan 28). */}
-      <ScrollVeil scrollElement={scrollElement} className="inset-x-0 top-0 h-10" />
+      <ScrollVeil scrollElement={scrollElement} />
       <NoteOutlineRail />
     </div>
   )

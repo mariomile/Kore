@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import { useSettings } from '@/providers/settings-provider'
 import type { ModClickEvent } from '@/lib/windows/open-in-new-window'
 import { ALL_NOTES_GRID, AllNotesRow } from './all-notes-row'
+import { TABLE_HEADER_CHROME } from './table-chrome'
 
 interface AllNotesTableProps {
   /** `undefined` while the index query settles (renders nothing, not "empty"). */
@@ -73,14 +74,7 @@ export function AllNotesTable({
   }
   return (
     <>
-      <div
-        className={cn(
-          ALL_NOTES_GRID,
-          // Glass, not paint (Plan 28): rows dissolve under the pinned header
-          // the way content dissolves under the grid's scroll veil.
-          'app-glass-row sticky top-0 z-10 border-b border-border py-3 text-[13px] font-medium leading-none text-text-secondary',
-        )}
-      >
+      <div className={cn(ALL_NOTES_GRID, TABLE_HEADER_CHROME)}>
         <span>Subject</span>
         <span>Snippet</span>
         <span className="text-right">Tags</span>

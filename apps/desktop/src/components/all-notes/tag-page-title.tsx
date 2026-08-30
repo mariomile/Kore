@@ -30,9 +30,7 @@ export function TagPageTitle({ tag, typed, onBack, onConfigure }: TagPageTitlePr
       <span aria-hidden className="text-sm text-text-muted">
         /
       </span>
-      <h1 className="min-w-0 truncate text-[1.625rem] font-bold tracking-[-0.02em] text-text">
-        #{tag}
-      </h1>
+      <h1 className="app-page-title min-w-0 truncate text-text">#{tag}</h1>
       {typed ? (
         <button
           type="button"

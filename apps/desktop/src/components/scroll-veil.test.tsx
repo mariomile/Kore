@@ -10,7 +10,7 @@ function Fixture(): ReactElement {
       <div ref={setElement} data-testid="scroller" className="h-40 overflow-auto">
         <div style={{ height: 2000 }} />
       </div>
-      <ScrollVeil scrollElement={element} className="inset-x-0 top-0 h-12" />
+      <ScrollVeil scrollElement={element} />
     </div>
   )
 }

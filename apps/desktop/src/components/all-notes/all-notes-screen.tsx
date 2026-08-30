@@ -254,7 +254,7 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
       />
       <header className="flex flex-none flex-wrap items-center justify-between gap-3 py-5 pl-12 pr-7">
         {tag === null ? (
-          <h1 className="text-[1.625rem] font-bold tracking-[-0.02em] text-text">Notes</h1>
+          <h1 className="app-page-title text-text">Notes</h1>
         ) : (
           <TagPageTitle
             tag={tag}
@@ -486,9 +486,7 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
         {/* Board and calendar scroll inside their own columns, and the
             list/table views pin a glass header row instead — the melt at the
             container's top edge belongs to the grid alone. */}
-        {view === 'grid' ? (
-          <ScrollVeil scrollElement={scrollElement} className="inset-x-0 top-0 h-12" />
-        ) : null}
+        {view === 'grid' ? <ScrollVeil scrollElement={scrollElement} /> : null}
       </div>
 
       <NoteTrashDialog

@@ -31,6 +31,7 @@ import { useOpenTaskCounts } from '@/hooks/use-open-task-counts'
 import { CollectionCell } from './collection-cell'
 import { collectionGridStyle, COLLECTION_GRID_CLASS } from './collection-grid'
 import { CollectionRow } from './collection-row'
+import { TABLE_HEADER_CHROME } from './table-chrome'
 
 interface CollectionTableProps {
   /** `undefined` while the collection query settles. */
@@ -187,15 +188,7 @@ export function CollectionTable({
   }
   return (
     <>
-      <div
-        style={gridStyle}
-        className={cn(
-          COLLECTION_GRID_CLASS,
-          // Glass, not paint (Plan 28) — same treatment as the All Notes
-          // table's pinned header.
-          'app-glass-row sticky top-0 z-10 border-b border-border py-3 text-[13px] font-medium leading-none text-text-secondary',
-        )}
-      >
+      <div style={gridStyle} className={cn(COLLECTION_GRID_CLASS, TABLE_HEADER_CHROME)}>
         {sortButton(TITLE_SORT_KEY, 'Title')}
         {type.properties.map((property) => (
           <span key={property.key} className="relative flex min-w-0 items-center">

@@ -115,7 +115,7 @@ describe('config builders', () => {
     const bare = claudeCliArgs({ model: 'default', systemPrompt: 'sp', settingsJson: '{}' })
     expect(bare).not.toContain('--mcp-config')
     expect(bare).toContain('--strict-mcp-config')
-    expect(codex).toContain('--ignore-user-config')
+    expect(codex.join(' ')).toContain('--disable plugins')
     expect(
       JSON.parse(claudeCliSettingsJson('/g', [], false)) as { permissions: { allow?: string[] } },
     ).not.toHaveProperty('permissions.allow')

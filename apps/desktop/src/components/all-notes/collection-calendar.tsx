@@ -239,7 +239,7 @@ export function CollectionCalendar({
                   }}
                   onDragEnd={endDrag}
                   className={cn(
-                    'cursor-grab rounded bg-surface-hover active:cursor-grabbing',
+                    'cursor-grab rounded-md bg-surface-hover active:cursor-grabbing',
                     draggingPath === entry.path && 'opacity-50',
                   )}
                 >

@@ -7,6 +7,15 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Typed cards say what they hold (Plan 28 slice 2). On a typed tag's
+  page, each grid card carries its note's property values as read-only
+  chips in schema order — select and status values in the same
+  deterministic badge hue the table and board use, dates in the user's
+  format, a checked checkbox as its name — capped at four so the card
+  stays a preview, not a row. This closes the queued "gallery view with
+  properties" ask. The board and calendar cards align to the same card
+  language (radius, padding), so the four views read as one family.
+
 - The Craft register lands (Plan 28 slice 1). Four moves at once, after a
   side-by-side against the reference shots showed the gap was the whole
   register, not one effect: note subjects and screen titles move to

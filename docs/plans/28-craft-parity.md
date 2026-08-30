@@ -94,9 +94,10 @@ Each slice is one PR, shippable alone, in priority order:
     wider columns, more padding. Constraint respected: the grid flows down
     CSS columns and WebKit fragments shadows/transforms across columns, so
     hover stays border+tint, no lift.
-- **Slice 2 — collection coherence.** Property chips on grid cards for
-  typed tags (absorbing the queued "gallery view with properties" item);
-  the board/calendar cards adopt the same card language.
+- **Slice 2 — collection coherence (shipped).** Property chips on grid
+  cards for typed tags (absorbing the queued "gallery view with
+  properties" item); the board/calendar cards adopt the same card
+  language.
 - **Slice 3 — chrome details.** Round quiet icon buttons normalized across
   screen headers; the daily date pill navigation (‹ date ›); the tab strip
   and panel edges lose their hard lines where the veil can carry the

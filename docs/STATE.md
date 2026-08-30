@@ -1,7 +1,7 @@
 # Kore working state
 
-**Updated:** 2026-08-30 at `c33195a6` (tag page #116 and schema-dialog
-redesign #118 merged; project-management slice 1 in flight).
+**Updated:** 2026-08-30 at `a6257c87` (projects slice 1 merged, #119;
+slice 2 — the portfolio pulse — in flight).
 **Rule:** Every session that moves the program updates this file before its
 summary: tick what became true and how it was verified, set the next step,
 refresh the date. What is done and what is next live here and only here. Why
@@ -26,6 +26,18 @@ sum/avg. Also still open: the live checks below. B05c preview tabs stays
 declined; the backlog-B pass is closed.
 
 ## What is true now
+
+- [x] **Projects slice 2: the portfolio pulse.** Collection rows now show
+  where work is waiting: the table's subject cell and the board's cards
+  carry a small open-task count badge — the same membership rule as the
+  Tasks panel (written in the note, or a task line linking it), read in
+  one batched `countOpenTasksForNotes` over the existing projections
+  (shared predicate with the panel read, chunked IN() lists, no schema,
+  no Rust). Zero renders nothing, so collections that never carry tasks
+  (books, people) stay clean. Verified: batch flow scenario on real SQL
+  (own+linked, completed excluded, due-date links ignored), badge tests
+  in the table and board suites, embedded-collection re-green,
+  `pnpm check` exit 0.
 
 - [x] **Projects slice 1: a task belongs to the project it links.** The
   gap the project-management analysis named — tasks live only in their
@@ -192,12 +204,11 @@ declined; the backlog-B pass is closed.
 
 ## Next step
 
-1. **Projects slice 2 — the portfolio pulse** (user decision 2026-08-30):
-   an "open tasks" count per row on a project-style collection (tasks
-   linking each row's note), riding the rollup extension below, so the
-   `#project` board shows where work is waiting. Slice 3 stays a
-   *recommendation only* per the automations principle: a suggested
-   weekly-review routine template on a future routines page.
+1. **Projects, remaining**: slice 3 stays a *recommendation only* per the
+   automations principle — a suggested weekly-review routine template on
+   a future routines page, whenever that page gets built. Consider a
+   Tasks-view "by project" grouping if the note panel proves not enough
+   in real use.
 2. **Collections UX pass, remaining slices** (user decision 2026-08-30,
    in recommendation order — the schema-dialog redesign the user asked
    for mid-pass shipped as slice 2): (a) an optional Notion-style
@@ -217,6 +228,9 @@ declined; the backlog-B pass is closed.
 
 ## Session log
 
+- 2026-08-30 — Projects slice 2: open-task count badges on collection
+  rows (table subject cell + board cards), one batched read sharing the
+  slice-1 membership predicate. Slice 1 (#119) merged the same session.
 - 2026-08-30 — Projects slice 1, from the project-management analysis the
   user approved: a task's own line linking `[[a note]]` makes it that
   note's task; every note's context rail gains the Tasks panel (own +

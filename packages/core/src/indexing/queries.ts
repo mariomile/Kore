@@ -13,6 +13,7 @@ export {
   type BacklinkSourceCursor,
 } from './queries-backlinks'
 export {
+  countOpenTasksForNotes,
   getCompletedTasks,
   getOpenTasks,
   getOpenTasksForNote,

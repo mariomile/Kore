@@ -264,6 +264,7 @@ export {
   type CollectionSort,
   type ListCollectionOptions,
   type CollectionValue,
+  countOpenTasksForNotes,
   getOpenTasks,
   getOpenTasksForNote,
   getCompletedTasks,

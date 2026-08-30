@@ -27,6 +27,7 @@ import { useOpenRelation } from '@/lib/tags/use-open-relation'
 import { cn } from '@/lib/utils'
 import { useSettings } from '@/providers/settings-provider'
 import type { ModClickEvent } from '@/lib/windows/open-in-new-window'
+import { useOpenTaskCounts } from '@/hooks/use-open-task-counts'
 import { CollectionCell } from './collection-cell'
 import { collectionGridStyle, COLLECTION_GRID_CLASS } from './collection-grid'
 import { CollectionRow } from './collection-row'
@@ -90,6 +91,9 @@ export function CollectionTable({
     () => type.properties.map((property) => columnAggregate(property, entries ?? [])),
     [type.properties, entries],
   )
+  // The rows' open-task badges (the project pulse) — one batched read.
+  const entryPaths = useMemo(() => (entries ?? []).map((entry) => entry.path), [entries])
+  const taskCounts = useOpenTaskCounts(entryPaths)
 
   const handleToggle = useCallback(
     (path: string, event: Pick<MouseEvent, 'shiftKey'>) =>
@@ -233,6 +237,7 @@ export function CollectionTable({
                 entry={entry}
                 gridStyle={gridStyle}
                 selected={isSelected(entry.path)}
+                openTasks={taskCounts[entry.path] ?? 0}
                 onSelect={clickSelect}
                 onToggle={handleToggle}
                 onOpen={onOpen}

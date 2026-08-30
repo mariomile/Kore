@@ -37,6 +37,7 @@ mod process_tree;
 mod quit;
 mod recents;
 mod routine_script;
+mod runtime;
 mod secrets;
 mod settings;
 mod skill;
@@ -300,6 +301,7 @@ pub fn run() {
         .manage(agent_cli::AgentCliStdinState::default())
         .manage(browser::BrowserState::default())
         .manage(pty::PtyState::default())
+        .manage(runtime::AgentRunLockState::default())
         .invoke_handler(tauri::generate_handler![
             app_version,
             app_platform,
@@ -311,6 +313,12 @@ pub fn run() {
             agent_cli::agent_cli_send,
             agent_cli::agent_cli_stdin_close,
             routine_script::routine_script_run,
+            runtime::agent_run_lock_acquire,
+            runtime::agent_run_lock_release,
+            runtime::agent_run_lock_reset,
+            runtime::routine_run_mark_started,
+            runtime::routine_run_mark_finished,
+            runtime::routine_run_inflight,
             icloud::storage::mobile_storage,
             icloud::storage::mobile_storage_local,
             icloud::storage::icloud_download_pending,
@@ -459,6 +467,9 @@ pub fn run() {
                 // (wake.rs).
                 #[cfg(target_os = "macos")]
                 wake::install(app);
+                // The webview's own routine interval throttles with a hidden
+                // window; the native minute tick keeps schedules firing.
+                runtime::spawn_routine_tick(app);
                 // Best-effort: a taken binding must not fail the launch.
                 // Arming from `.setup()` would replace the deep-link hook.
                 match settings::load_settings() {
@@ -563,6 +574,10 @@ pub fn run() {
                 if quit.settle(label) {
                     app.exit(0);
                 }
+                // A destroyed webview can never release the run-lock leases
+                // it holds or waits on — sweep them, or the lock would stay
+                // wedged for every surviving window.
+                app.state::<runtime::AgentRunLockState>().drop_window(label);
                 // Note windows adopt the main window's graph session and
                 // degrade silently without it (no indexing, sync, or rename
                 // propagation) — they close with their owner. `close()`, not

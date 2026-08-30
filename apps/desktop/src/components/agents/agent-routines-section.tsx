@@ -1,5 +1,5 @@
-import { useState, type ReactElement } from 'react'
-import { CalendarClock, History, Play, Trash } from '@/components/icons'
+import { useState, useSyncExternalStore, type ReactElement } from 'react'
+import { CalendarClock, History, Play, Stop, Trash } from '@/components/icons'
 import {
   MEMORY_CURATOR_PRESET,
   ROUTINE_MAX_CONSECUTIVE_FAILURES,
@@ -8,6 +8,11 @@ import {
 } from '@reflect/core'
 import { ROUTINE_RUN_NOW_EVENT } from '@/components/agent-routines-runner'
 import { Button } from '@/components/ui/button'
+import {
+  getRunningRoutine,
+  stopRunningRoutine,
+  subscribeRunningRoutine,
+} from '@/lib/agent-routine-running'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Switch } from '@/components/ui/switch'
 import { useSettings } from '@/providers/settings-provider'
@@ -43,6 +48,9 @@ export function AgentRoutinesSection({ profiles }: AgentRoutinesSectionProps): R
   const [historyId, setHistoryId] = useState<string | null>(null)
   const routines = settings.agentRoutines
   const historyRoutine = routines.find((routine) => routine.id === historyId) ?? null
+  // The run in flight right now, published by the runner (TDR 0007): its
+  // row swaps Run now for Stop and says so in the meta line.
+  const running = useSyncExternalStore(subscribeRunningRoutine, getRunningRoutine)
 
   const patch = (id: string, change: Partial<AgentRoutine>): void => {
     updateSettingsWith((current) => ({
@@ -96,8 +104,8 @@ export function AgentRoutinesSection({ profiles }: AgentRoutinesSectionProps): R
         <div className="min-w-0 flex-1">
           <h2 className="text-sm font-medium text-text">Automations</h2>
           <p className="text-xs text-text-muted">
-            Scheduled agent runs — they work the vault in edit mode while the app is open, and
-            journal what they did.
+            Scheduled agent runs — they work the vault in edit mode while Kore is running (the
+            window can stay closed), and journal what they did.
           </p>
         </div>
         {hasCurator ? null : (
@@ -125,7 +133,7 @@ export function AgentRoutinesSection({ profiles }: AgentRoutinesSectionProps): R
                     ? 'default assistant'
                     : (profiles.find((profile) => profile.slug === routine.agentSlug)?.name ??
                       routine.agentSlug)}{' '}
-                  · {lastRunLabel(routine.lastRunMs)}
+                  · {running?.id === routine.id ? 'running now' : lastRunLabel(routine.lastRunMs)}
                   {!routine.enabled &&
                   routine.consecutiveFailures >= ROUTINE_MAX_CONSECUTIVE_FAILURES
                     ? ' · paused after repeated failures'
@@ -148,15 +156,28 @@ export function AgentRoutinesSection({ profiles }: AgentRoutinesSectionProps): R
                   <History aria-hidden className="size-4" />
                 </Button>
               ) : null}
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                aria-label={`Run ${routine.name} now`}
-                onClick={() => runNow(routine.id)}
-              >
-                <Play aria-hidden className="size-4" />
-              </Button>
+              {running?.id === routine.id ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={`Stop ${routine.name}`}
+                  className="text-destructive"
+                  onClick={() => stopRunningRoutine(routine.id)}
+                >
+                  <Stop aria-hidden className="size-4" />
+                </Button>
+              ) : (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={`Run ${routine.name} now`}
+                  onClick={() => runNow(routine.id)}
+                >
+                  <Play aria-hidden className="size-4" />
+                </Button>
+              )}
               <Switch
                 aria-label={`${routine.name} enabled`}
                 checked={routine.enabled}

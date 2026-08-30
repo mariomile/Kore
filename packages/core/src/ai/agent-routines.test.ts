@@ -4,11 +4,14 @@ import {
   appendRoutineRun,
   collectionEventKind,
   collectionEventPromptSuffix,
+  interruptedRoutineRun,
   latestOccurrenceMs,
   routineFailureUpdate,
   routineIsDue,
   routineRetryDelayMs,
   routinesMatchingCollectionEvent,
+  INTERRUPTED_ROUTINE_RUN_ERROR,
+  ROUTINE_RETRY_BASE_MS,
   ROUTINE_RUN_HISTORY_LIMIT,
   type AgentRoutine,
   type RoutineRun,
@@ -239,5 +242,22 @@ describe('collectionEventPromptSuffix', () => {
     expect(collectionEventPromptSuffix('row-updated', 'books', 'notes/dune.md')).toBe(
       'A collection row was updated in #books: notes/dune.md',
     )
+  })
+})
+
+describe('interruptedRoutineRun', () => {
+  it('builds the failure entry recovery records for a run the process died under', () => {
+    const run = interruptedRoutineRun(1_234)
+    expect(run).toEqual({
+      startedMs: 1_234,
+      status: 'error',
+      error: INTERRUPTED_ROUTINE_RUN_ERROR,
+      changedPaths: [],
+    })
+    // It rides the normal failure machinery: the first interruption
+    // schedules a backoff retry rather than pausing the routine.
+    const update = routineFailureUpdate(0, 10_000)
+    expect(update.paused).toBe(false)
+    expect(update.retryAtMs).toBe(10_000 + ROUTINE_RETRY_BASE_MS)
   })
 })

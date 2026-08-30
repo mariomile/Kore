@@ -1,6 +1,6 @@
 import { addPluginListener, invoke, isTauri } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
-import { setBridge, type IpcBridge } from '@reflect/core'
+import { resetAgentRunLeases, setBridge, type IpcBridge } from '@reflect/core'
 
 /**
  * Adapts Tauri's IPC primitives to the `@reflect/core` bridge contract. This is
@@ -41,5 +41,9 @@ export const tauriBridge: IpcBridge = {
 export function installTauriBridge(): void {
   if (isTauri()) {
     setBridge(tauriBridge)
+    // A fresh JS context cannot release run-lock leases its predecessor
+    // took (dev reload, webview crash) — sweep this window's leases once
+    // per context or the process-wide lock stays wedged (TDR 0007).
+    void resetAgentRunLeases().catch(() => {})
   }
 }

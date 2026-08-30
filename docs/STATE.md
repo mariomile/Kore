@@ -1,6 +1,6 @@
 # Kore working state
 
-**Updated:** 2026-08-30 at `92220af4` (post-v0.37.1).
+**Updated:** 2026-08-30 at `06aaf78f` (post-v0.38.0).
 **Rule:** Every session that moves the program updates this file before its
 summary: tick what became true and how it was verified, set the next step,
 refresh the date. What is done and what is next live here and only here. Why
@@ -11,14 +11,31 @@ in the [delivery log](delivery-log.md); this file tracks only the active work.
 
 ## Current focus
 
-**Roadmap "Now" item 3: agent memory — recall and reusable skills.** Both
-halves are implemented (recall merged in #104, skills in review); what
-remains is exercising them against real usage with the user. Per the
-2026-08-30 app-first decision, the Personal OS foundations (S1/S2/S3) are
-deferred to Next; see the [roadmap](roadmap.md) for the full Now/Next/Later
-ladder.
+**Roadmap "Now" item 4: S3 minimal durable runtime** (entered from Next by
+user decision, 2026-08-30, together with a backlog-B polish pass to follow).
+Item 3 (agent memory: recall #104 + skills #106) is implemented and shipped
+in v0.38.0; what remains there is exercising it against real usage with the
+user. The S3 slice and its boundaries are recorded in
+[TDR 0007](decisions/0007-durable-runtime-minimal.md).
 
 ## What is true now
+
+- [x] **Now item 4 implemented: S3 minimal durable runtime**
+  ([TDR 0007](decisions/0007-durable-runtime-minimal.md)). One process-wide
+  FIFO run lock in Rust (leases per window, swept on window destroy and on
+  each fresh JS context) composed under `withAgentRunLock`, so chat edit
+  turns and routines serialize across every window; a durable in-flight
+  marker (atomic single slot under the app data dir) that recovery turns
+  into an "interrupted" failure entry with normal backoff on the next
+  launch, per graph; Stop on the running routine from the Agents screen
+  (abort reaches the native process-tree kill; no failure strike); and a
+  native minute tick so hidden-window throttling cannot starve schedules.
+  Deliberately out (R4): job tables, durable event-run queue, execution
+  with no webview, approval checkpoints. Verified: Rust lock/marker unit
+  tests, 5 new lock-composition tests and the interrupted-run test in core,
+  routines-section browser tests incl. the Stop row (chromium; webkit is
+  CI-only in this container), `cargo fmt`/`clippy -D warnings` clean,
+  typecheck green.
 
 - [x] **Now item 2 implemented: chat attachments out of base64.** Bytes go to
   `.reflect/chat-attachments/<conversation>/` at send time via new
@@ -56,7 +73,7 @@ ladder.
   never surfaces, off-vault silence, mention dedupe), full core suite
   2128/2128, chat browser suites green on both engines in CI.
 - [x] **Now item 3b implemented: user-taught vault skills**
-  (`agents/skills/`, this PR). One markdown file per skill (frontmatter
+  (`agents/skills/`, #106). One markdown file per skill (frontmatter
   `description:`, H1 name, steps); the prompt carries only the catalog —
   name, description, path — and the agent reads a skill on match
   (progressive disclosure, like memory digests). `private: true` hides a
@@ -85,16 +102,27 @@ ladder.
 
 ## Next step
 
-1. **Live checks with the user**: (a) Now 1: real MCP server + Tools toggle
+1. **Backlog-B polish pass** (user decision 2026-08-30, alongside S3): work
+   the executable-without-device items — B03 graph polish, B04 browser
+   controls/clip-to-note, B05 tab reorder/overflow — smallest useful slices
+   first.
+2. **Live checks with the user**: (a) Now 1: real MCP server + Tools toggle
    in a read-only conversation; (b) Now 2: send an image in chat, restart,
    confirm the restored conversation renders it from disk; (c) Now 3: ask a
    question a daily note answers and confirm the recalled passage shows up
    in the reply; teach a skill ("salvala come skill"), approve it from the
-   Agents screen, invoke it in a fresh conversation.
-2. **Memory follow-ups** that emerge from Now item 3 usage (roadmap Next).
+   Agents screen, invoke it in a fresh conversation; (d) Now 4: start a
+   routine, quit Kore mid-run, relaunch and see the interrupted entry +
+   retry; Stop a running routine from the Agents screen.
+3. **Memory follow-ups** that emerge from Now item 3 usage (roadmap Next).
 
 ## Session log
 
+- 2026-08-30 — Implemented Now 4, the S3-minimal durable runtime (TDR 0007):
+  cross-window run lock, durable in-flight marker + launch recovery, Stop on
+  a running routine, native scheduler tick. S3 pulled from Next to Now by
+  user decision (with a backlog-B polish pass queued next); v0.38.0 shipped
+  earlier in the session (recall + skills).
 - 2026-08-30 — Implemented Now 3a (automatic vault recall in chat, #104)
   and Now 3b (user-taught skills under `agents/skills/`, catalog in the
   prompt, teaching routed through the pending-approval queue). Scope for

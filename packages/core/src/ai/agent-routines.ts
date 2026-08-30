@@ -103,6 +103,32 @@ export function appendRoutineRun(runs: RoutineRun[], run: RoutineRun): RoutineRu
   return [run, ...runs].slice(0, ROUTINE_RUN_HISTORY_LIMIT)
 }
 
+/** What the ledger says for a run the process died under (TDR 0007). */
+export const INTERRUPTED_ROUTINE_RUN_ERROR =
+  'The app quit while this run was in flight; the run did not complete.'
+
+/**
+ * The history entry recovery records when the previous process left an
+ * in-flight marker: the run started but never settled. It counts as a
+ * failure on purpose — the work did not happen, so the normal backoff (and
+ * pause after three in a row) applies.
+ */
+export function interruptedRoutineRun(startedMs: number): RoutineRun {
+  return {
+    startedMs,
+    status: 'error',
+    error: INTERRUPTED_ROUTINE_RUN_ERROR,
+    changedPaths: [],
+  }
+}
+
+/**
+ * What the ledger says for a run the user stopped mid-flight. Recorded as an
+ * error entry (the run did not complete) but deliberately outside the strike
+ * counter: a deliberate stop is not the routine failing.
+ */
+export const STOPPED_ROUTINE_RUN_ERROR = 'Stopped from the Agents screen before it finished.'
+
 export const agentRoutineSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),

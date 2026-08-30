@@ -121,6 +121,17 @@ export {
 export { streamChat, type ChatStreamEvent, type StreamChatOptions } from '../ai/chat/stream-chat'
 export { withAgentRunLock } from '../ai/agent-run-lock'
 export {
+  acquireAgentRunLease,
+  inflightRoutineRun,
+  markRoutineRunFinished,
+  markRoutineRunStarted,
+  releaseAgentRunLease,
+  resetAgentRunLeases,
+  subscribeNativeRoutineTick,
+  NATIVE_ROUTINE_TICK_EVENT,
+  type InflightRoutineRun,
+} from '../ai/agent-runtime'
+export {
   loadAgentContext,
   listAgentProfiles,
   createAgentProfile,
@@ -151,6 +162,7 @@ export {
   appendRoutineRun,
   collectionEventKind,
   collectionEventPromptSuffix,
+  interruptedRoutineRun,
   isClockSchedule,
   isEventSchedule,
   latestOccurrenceMs,
@@ -158,8 +170,10 @@ export {
   routineIsDue,
   routineRetryDelayMs,
   routinesMatchingCollectionEvent,
+  INTERRUPTED_ROUTINE_RUN_ERROR,
   MEMORY_CURATOR_PRESET,
   ROUTINE_MAX_CONSECUTIVE_FAILURES,
+  STOPPED_ROUTINE_RUN_ERROR,
   ROUTINE_RETRY_BASE_MS,
   ROUTINE_RUN_HISTORY_LIMIT,
   ROUTINE_RUN_SUFFIX,

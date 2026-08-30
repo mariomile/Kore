@@ -23,6 +23,7 @@ vi.mock('@/providers/settings-provider', () => ({
 
 const { AgentRoutinesSection } = await import('./agent-routines-section')
 const { ROUTINE_RUN_NOW_EVENT } = await import('@/components/agent-routines-runner')
+const { setRunningRoutine } = await import('@/lib/agent-routine-running')
 
 const BRIEF: AgentRoutine = {
   id: 'brief',
@@ -79,6 +80,28 @@ describe('AgentRoutinesSection', () => {
     expect(fired.mock.results[0]?.value).toBe('brief')
     window.removeEventListener(ROUTINE_RUN_NOW_EVENT, fired)
     await view.unmount()
+  })
+
+  it('the running routine swaps Run now for Stop, and Stop reaches its abort', async () => {
+    reset([BRIEF])
+    const stop = vi.fn()
+    setRunningRoutine({ id: 'brief', stop })
+    try {
+      const view = await render(<AgentRoutinesSection profiles={[RILEY]} />)
+      await expect.element(view.getByText(/running now/)).toBeVisible()
+      expect(view.container.querySelector('[aria-label="Run Morning brief now"]')).toBeNull()
+      await view.getByRole('button', { name: 'Stop Morning brief' }).click()
+      expect(stop).toHaveBeenCalledOnce()
+      // The runner clears the slot when the run settles; the row goes back
+      // to Run now.
+      setRunningRoutine(null)
+      await expect
+        .element(view.getByRole('button', { name: 'Run Morning brief now' }))
+        .toBeVisible()
+      await view.unmount()
+    } finally {
+      setRunningRoutine(null)
+    }
   })
 
   it('adds the Memory curator preset with its weekly schedule', async () => {

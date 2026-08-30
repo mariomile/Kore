@@ -58,6 +58,12 @@ const chatSaveArgsSchema = z.object({
 })
 const chatDeleteArgsSchema = z.object({ id: z.string() })
 const browserArgsSchema = z.object({ url: z.url() })
+const leaseArgsSchema = z.object({ leaseId: z.number() })
+const inflightMarkArgsSchema = z.object({
+  generation: z.number(),
+  routineId: z.string(),
+  startedMs: z.number(),
+})
 
 /**
  * The in-browser stand-in for the Rust shell (dev builds only): answers the
@@ -89,6 +95,16 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
   // In-memory keychain stand-in so the AI-provider settings flow (and chat,
   // against a CORS-permissive provider) works end-to-end in the harness.
   const secrets = new Map<string, string>([[aiKeySecretName(demoProvider.id), APP_REVIEW_STUB_KEY]])
+  // TDR 0007 stand-ins: the run lock is honestly FIFO (one JS context, so
+  // effectively uncontended), and the in-flight slot lives in memory — a
+  // reload clears it, which in a browser harness is the truthful "no
+  // previous process" answer.
+  const runLock = {
+    next: 1,
+    held: null as number | null,
+    queue: [] as { id: number; grant: () => void }[],
+  }
+  let inflightRoutine: { routineId: string; startedMs: number } | null = null
 
   async function invoke(command: string, args: Record<string, unknown>): Promise<unknown> {
     switch (command) {
@@ -150,6 +166,45 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
         return null
       case 'capture_inbox_list':
         return []
+      case 'agent_run_lock_acquire': {
+        const id = runLock.next++
+        if (runLock.held === null && runLock.queue.length === 0) {
+          runLock.held = id
+          return id
+        }
+        await new Promise<void>((grant) => {
+          runLock.queue.push({ id, grant })
+        })
+        return id
+      }
+      case 'agent_run_lock_release': {
+        const { leaseId } = leaseArgsSchema.parse(args)
+        if (runLock.held === leaseId) {
+          // Hand over before granting: a sync acquire between the two must
+          // see the lock as taken.
+          const next = runLock.queue.shift()
+          runLock.held = next?.id ?? null
+          next?.grant()
+        } else {
+          runLock.queue = runLock.queue.filter((waiter) => waiter.id !== leaseId)
+        }
+        return null
+      }
+      case 'agent_run_lock_reset':
+        // One window in the harness: a fresh context clears everything.
+        runLock.held = null
+        runLock.queue = []
+        return null
+      case 'routine_run_mark_started': {
+        const marked = inflightMarkArgsSchema.parse(args)
+        inflightRoutine = { routineId: marked.routineId, startedMs: marked.startedMs }
+        return null
+      }
+      case 'routine_run_mark_finished':
+        inflightRoutine = null
+        return null
+      case 'routine_run_inflight':
+        return inflightRoutine
       case 'pty_open':
       case 'pty_write':
       case 'pty_ack':

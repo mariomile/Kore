@@ -46,6 +46,12 @@ In order. Sizes are relative complexity for agent-executed work, not time.
    when relevant, verified with concrete recall scenarios; (b) skills as
    user-taught reusable procedures, richer than today's per-graph skill file.
    Sharpen scope against real usage before building. Size: medium.
+4. **S3 minimal durable runtime** (entered from Next by user decision,
+   2026-08-30, together with a backlog-B polish pass): a run lock shared by
+   every window, a durable in-flight marker with launch recovery, a user
+   Stop that reaches the engine, and a native scheduler tick. Bounded by R4
+   — no queue generalization. Decision and boundaries in
+   [TDR 0007](decisions/0007-durable-runtime-minimal.md). Size: medium.
 
 ## Next
 
@@ -55,12 +61,9 @@ Ordered candidates; each enters Now by explicit decision.
   (keyboard/IME, chat with a real key, Siri/Action button, GitHub connect
   under suspension) gate any "mobile fast and powerful" claim. Requires the
   user and their device.
-- **S3 minimal durable runtime.** Native queue, job states, recovery; no
-  approval machinery until external writes exist. Two verified facts lower the
-  cost: the process already survives window close
-  (`prevent_exit`, `apps/desktop/src-tauri/src/lib.rs:536`) and agent CLIs
-  already spawn from Rust (`apps/desktop/src-tauri/src/agent_cli.rs`). Until
-  then, routines keep requiring the app open; accepted.
+- **S3 minimal durable runtime** — entered Now (item 4) by user decision on
+  2026-08-30; see [TDR 0007](decisions/0007-durable-runtime-minimal.md) for
+  what the slice includes and deliberately leaves out.
 - **S1/S2 Connections program** ([Plan 26](plans/26-account-safe-read.md)):
   deferred while MCP-via-CLI covers external access. Enters Now when
   multi-account isolation becomes a real need or MCP friction hurts.

@@ -15,7 +15,11 @@ import {
   listPrivateNotePaths,
   gitAgentSnapshot,
   gitChangedSince,
+  inflightRoutineRun,
+  interruptedRoutineRun,
   loadAgentContext,
+  markRoutineRunFinished,
+  markRoutineRunStarted,
   readNote,
   resolveMcpServers,
   routineIsDue,
@@ -23,15 +27,18 @@ import {
   runRoutineScriptTick,
   scanChangedMemoryPaths,
   subscribeIndexApplied,
+  subscribeNativeRoutineTick,
   subscribeOwnWrites,
   withAgentRunLock,
   streamCliAgentChat,
   ROUTINE_RUN_SUFFIX,
+  STOPPED_ROUTINE_RUN_ERROR,
   type AgentRoutine,
   type FileChange,
   type RoutineRun,
 } from '@reflect/core'
 import { toast } from '@/components/ui/toast'
+import { setRunningRoutine } from '@/lib/agent-routine-running'
 import { todayIso } from '@/lib/dates'
 import { useGraph } from '@/providers/graph-provider'
 import { useSettings } from '@/providers/settings-provider'
@@ -53,8 +60,10 @@ export const ROUTINE_RUN_NOW_EVENT = 'agent-routines:run-now'
 
 /**
  * The automations runner: an invisible resident of the workspace that fires
- * due agent routines (see `@reflect/core`'s `agent-routines`) while the app
- * is open. A due routine runs headless through the agent CLI providers in
+ * due agent routines (see `@reflect/core`'s `agent-routines`) while Kore
+ * runs — the closed main window is only hidden, and the native minute tick
+ * (TDR 0007) keeps schedules firing when a hidden window throttles JS
+ * timers. A due routine runs headless through the agent CLI providers in
  * edit mode — the same sandbox and memory digest as an edit-mode chat turn,
  * so private notes stay fenced and the run journals itself like any session.
  *
@@ -88,11 +97,28 @@ export function AgentRoutinesRunner(): null {
       }))
     }
 
-    const recordOutcome = (id: string, run: RoutineRun, promptSuffix?: string): void => {
+    const recordOutcome = (
+      id: string,
+      run: RoutineRun,
+      promptSuffix?: string,
+      stopped = false,
+    ): void => {
       updateSettingsWith((current) => ({
         agentRoutines: current.agentRoutines.map((routine) => {
           if (routine.id !== id) {
             return routine
+          }
+          if (stopped) {
+            // A deliberate stop from the Agents screen: the run ends in the
+            // history (with whatever it touched) but outside the strike
+            // counter — stopping a routine is not the routine failing.
+            return {
+              ...routine,
+              lastChangedPaths: run.changedPaths,
+              runs: appendRoutineRun(routine.runs, run),
+              retryAtMs: null,
+              retryContext: null,
+            }
           }
           if (run.status === 'skipped') {
             // A silent script tick: the script ran fine and saw nothing to
@@ -173,6 +199,10 @@ export function AgentRoutinesRunner(): null {
       }
       // Null until markRun: a skipped occurrence records no history entry.
       let startedMs: number | null = null
+      // The Agents screen's Stop button reaches the engine through this
+      // controller — the CLI transports kill their process tree on abort.
+      const controller = new AbortController()
+      setRunningRoutine({ id: routine.id, stop: () => controller.abort() })
       try {
         // Script mode: the tick's script runs first, deterministic and
         // model-free. A quiet tick (exit 0, no output or wakeAgent:false)
@@ -184,9 +214,13 @@ export function AgentRoutinesRunner(): null {
         let scriptContext: string | null = null
         if (script !== '') {
           // The occurrence is consumed by starting the script — a crash
-          // mid-script must not re-fire the routine every minute.
+          // mid-script must not re-fire the routine every minute. The
+          // durable marker travels with it: settings writes are debounced,
+          // so it is the only start record guaranteed to survive a process
+          // death, and recovery reads it on the next launch.
           startedMs = Date.now()
           markRun(routine.id, startedMs)
+          await markRoutineRunStarted(graph.generation, routine.id, startedMs).catch(() => {})
           const decision = decideScriptTick(await runRoutineScriptTick(script, graph.root))
           if (decision.kind === 'skip') {
             // Silent by design: history records the tick, nothing toasts.
@@ -239,6 +273,7 @@ export function AgentRoutinesRunner(): null {
         if (startedMs === null) {
           startedMs = Date.now()
           markRun(routine.id, startedMs)
+          await markRoutineRunStarted(graph.generation, routine.id, startedMs).catch(() => {})
         }
         // Same refusal as interactive chat: an unbuilt index cannot say
         // which notes are private, and a routine runs unattended, so
@@ -295,13 +330,19 @@ export function AgentRoutinesRunner(): null {
           agentContext: context,
           mcpServers,
           memoryWriteApproval: settingsRef.current.memoryWriteApproval,
+          signal: controller.signal,
         })
         let failure: string | null = null
+        let stopped = false
         for await (const event of events) {
           if (event.type === 'error') {
             failure = event.message
           }
+          if (event.type === 'aborted') {
+            stopped = true
+          }
         }
+        stopped = stopped || controller.signal.aborted
         const changed =
           snapshot === null ? [] : await gitChangedSince(snapshot, graph.generation).catch(() => [])
         const ledger = changed.filter((path) => path.toLowerCase().endsWith('.md'))
@@ -315,6 +356,16 @@ export function AgentRoutinesRunner(): null {
             title: `Routine “${routine.name}” wrote suspicious memory`,
             description: memoryWarnings[0] ?? '',
           })
+        }
+        if (stopped) {
+          recordOutcome(
+            routine.id,
+            { startedMs, status: 'error', error: STOPPED_ROUTINE_RUN_ERROR, changedPaths: ledger },
+            promptSuffix,
+            true,
+          )
+          toast.add({ title: `Routine “${routine.name}” stopped` })
+          return
         }
         recordOutcome(
           routine.id,
@@ -343,12 +394,31 @@ export function AgentRoutinesRunner(): null {
           })
         }
       } catch (cause: unknown) {
-        failRun(
-          routine,
-          startedMs,
-          { error: errorMessage(cause), description: errorMessage(cause) },
-          promptSuffix,
-        )
+        if (controller.signal.aborted && startedMs !== null) {
+          // A stop that surfaced as a throw (the engine died under the
+          // kill): same deliberate outcome, no failure strike.
+          recordOutcome(
+            routine.id,
+            { startedMs, status: 'error', error: STOPPED_ROUTINE_RUN_ERROR, changedPaths: [] },
+            promptSuffix,
+            true,
+          )
+          toast.add({ title: `Routine “${routine.name}” stopped` })
+        } else {
+          failRun(
+            routine,
+            startedMs,
+            { error: errorMessage(cause), description: errorMessage(cause) },
+            promptSuffix,
+          )
+        }
+      } finally {
+        setRunningRoutine(null)
+        if (startedMs !== null) {
+          // The run settled one way or another — recovery is only for runs
+          // the process was killed under, so clear the durable slot.
+          void markRoutineRunFinished().catch(() => {})
+        }
       }
     }
 
@@ -460,10 +530,42 @@ export function AgentRoutinesRunner(): null {
       await drainEventRuns()
     }
 
+    /**
+     * TDR 0007 recovery: a durable in-flight marker left by the previous
+     * process means that run never settled — the app quit (or died) under
+     * it. Record it as an interrupted failure so the normal backoff picks
+     * it up, then clear the slot. Once per graph root per session.
+     */
+    const recoveredRoots = new Set<string>()
+    async function recoverInterrupted(): Promise<void> {
+      const graph = graphRef.current
+      if (graph === null || recoveredRoots.has(graph.root)) {
+        return
+      }
+      recoveredRoots.add(graph.root)
+      const marker = await inflightRoutineRun(graph.generation).catch(() => null)
+      if (marker === null) {
+        return
+      }
+      const routine = settingsRef.current.agentRoutines.find(
+        (entry) => entry.id === marker.routineId,
+      )
+      if (routine !== undefined) {
+        recordOutcome(routine.id, interruptedRoutineRun(marker.startedMs))
+        toast.add({
+          type: 'error',
+          title: `Routine “${routine.name}” was interrupted`,
+          description: 'The app quit while it ran. It will retry shortly.',
+        })
+      }
+      await markRoutineRunFinished().catch(() => {})
+    }
+
     async function runDueRoutines(): Promise<void> {
       if (runningRef.current || graphRef.current === null) {
         return
       }
+      await recoverInterrupted()
       const now = new Date()
       const due = settingsRef.current.agentRoutines.filter((routine) => routineIsDue(routine, now))
       if (due.length === 0) {
@@ -501,6 +603,25 @@ export function AgentRoutinesRunner(): null {
     }
     check()
     const timer = setInterval(check, CHECK_INTERVAL_MS)
+    // The webview's own interval throttles (or suspends outright) while the
+    // window is hidden; the native minute tick (TDR 0007) keeps arriving
+    // through IPC and wakes it. Best-effort: hosts without it — tests,
+    // browser dev before the async bridge install — stay on the interval.
+    let tickDisposed = false
+    let unlistenTick: (() => void) | null = null
+    try {
+      void subscribeNativeRoutineTick(check)
+        .then((unlisten) => {
+          if (tickDisposed) {
+            unlisten()
+          } else {
+            unlistenTick = unlisten
+          }
+        })
+        .catch(() => {})
+    } catch {
+      // No bridge installed yet — then there is no native tick source either.
+    }
     window.addEventListener(ROUTINES_CHECK_EVENT, check)
     window.addEventListener(ROUTINE_RUN_NOW_EVENT, runNow)
     const unsubscribeOwnWrites = subscribeOwnWrites((path) => {
@@ -512,6 +633,8 @@ export function AgentRoutinesRunner(): null {
     void ensureEventTagsHydrated()
     return () => {
       clearInterval(timer)
+      tickDisposed = true
+      unlistenTick?.()
       window.removeEventListener(ROUTINES_CHECK_EVENT, check)
       window.removeEventListener(ROUTINE_RUN_NOW_EVENT, runNow)
       unsubscribeOwnWrites()

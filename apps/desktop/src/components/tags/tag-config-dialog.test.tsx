@@ -1,5 +1,6 @@
 import { render } from 'vitest-browser-react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { userEvent } from 'vitest/browser'
 import type { TagDefinitionState } from '@/lib/tags/tag-type-write'
 import { TagConfigDialog } from './tag-config-dialog'
 
@@ -119,6 +120,8 @@ describe('TagConfigDialog', () => {
     const onClose = vi.fn()
     const view = await render(<TagConfigDialog tag="book" onClose={onClose} />)
 
+    // The key editor folds behind its mono chip until asked for.
+    await view.getByRole('button', { name: 'Edit frontmatter key' }).click()
     const keyInput = view.getByRole('textbox', { name: 'Frontmatter key' })
     await keyInput.fill('writer')
     await view.getByRole('button', { name: 'Save' }).click()
@@ -158,12 +161,87 @@ describe('TagConfigDialog', () => {
     ]
     const view = await render(<TagConfigDialog tag="book" onClose={() => {}} />)
 
+    await view.getByRole('button', { name: 'Edit frontmatter key' }).click()
     await view.getByRole('textbox', { name: 'Frontmatter key' }).fill('writer')
     await view.getByRole('button', { name: 'Save' }).click()
     await view.getByRole('button', { name: 'Save without migrating' }).click()
 
     expect(saveTagType).toHaveBeenCalled()
     expect(commitNoteFrontmatter).not.toHaveBeenCalled()
+  })
+
+  it('seeds an empty schema from a preset and the views strip lights up', async () => {
+    const view = await render(<TagConfigDialog tag="book" onClose={() => {}} />)
+
+    await view.getByRole('button', { name: /Task board/ }).click()
+
+    const names = view.getByRole('textbox', { name: 'Property name' })
+    await expect.element(names.nth(0)).toHaveValue('Status')
+    await expect.element(names.nth(2)).toHaveValue('Priority')
+    // The preset carries a status and a date, so Board and Calendar light
+    // up in the strip — named after the property powering each.
+    await expect.element(view.getByText('Board · Status')).toBeInTheDocument()
+    await expect.element(view.getByText('Calendar · Due')).toBeInTheDocument()
+    // With rows on screen the presets step aside.
+    expect(view.getByRole('button', { name: /Task board/ }).query()).toBeNull()
+
+    await view.getByRole('button', { name: 'Save' }).click()
+    expect(saveTagType).toHaveBeenCalledWith(
+      'book',
+      [
+        {
+          name: 'Status',
+          key: 'status',
+          type: 'status',
+          options: ['Backlog', 'In progress', 'Done'],
+        },
+        { name: 'Due', key: 'due', type: 'date' },
+        { name: 'Priority', key: 'priority', type: 'select', options: ['High', 'Medium', 'Low'] },
+      ],
+      7,
+      null,
+    )
+  })
+
+  it('tells what the dark views still need while the schema cannot power them', async () => {
+    definition.current = {
+      path: 'tags/book.md',
+      exists: true,
+      needsConversion: false,
+      properties: [{ name: 'Author', key: 'author', type: 'text' }],
+      template: null,
+    }
+    const view = await render(<TagConfigDialog tag="book" onClose={() => {}} />)
+
+    // A lone text property powers the table and nothing else — each dark
+    // pill names the property type that would light it.
+    await expect.element(view.getByText('Table', { exact: true })).toBeInTheDocument()
+    await expect.element(view.getByText('Board — add a Select or Status')).toBeInTheDocument()
+    await expect.element(view.getByText('Calendar — add a Date')).toBeInTheDocument()
+  })
+
+  it('edits select options as chips and saves the survivors', async () => {
+    definition.current = {
+      path: 'tags/book.md',
+      exists: true,
+      needsConversion: false,
+      properties: [{ name: 'Status', key: 'status', type: 'select', options: ['to-read', 'done'] }],
+      template: null,
+    }
+    const view = await render(<TagConfigDialog tag="book" onClose={() => {}} />)
+
+    await expect.element(view.getByText('to-read')).toBeInTheDocument()
+    await view.getByRole('textbox', { name: 'Add option' }).fill('reading')
+    await userEvent.keyboard('{Enter}')
+    await view.getByRole('button', { name: 'Remove to-read' }).click()
+
+    await view.getByRole('button', { name: 'Save' }).click()
+    expect(saveTagType).toHaveBeenCalledWith(
+      'book',
+      [{ name: 'Status', key: 'status', type: 'select', options: ['done', 'reading'] }],
+      7,
+      null,
+    )
   })
 
   it('disables save while a row is invalid (duplicate key)', async () => {

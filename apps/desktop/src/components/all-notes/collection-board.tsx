@@ -6,6 +6,7 @@ import { PropertyValueEditor } from '@/components/tags/property-editors'
 import { selectOptionDotClass } from '@/components/tags/select-colors'
 import { useOptimisticMoves } from '@/hooks/use-optimistic-moves'
 import type { ModClickEvent } from '@/lib/windows/open-in-new-window'
+import { groupablePropertiesOf } from '@/lib/tags/schema-views'
 import { useCommitNoteProperties } from '@/lib/tags/use-commit-note-property'
 import { useCreateCollectionNote } from '@/lib/tags/use-create-collection-note'
 import { cn } from '@/lib/utils'
@@ -28,17 +29,9 @@ import { readCellValue } from './collection-cell'
  * property (visible, portable), ascending, missing ranks sort last. */
 export const BOARD_ORDER_KEY = 'order'
 
-/** The property types a board can group by. */
-const GROUPABLE_TYPES: ReadonlySet<TagProperty['type']> = new Set([
-  'select',
-  'status',
-  'checkbox',
-  'relation',
-])
-
 /** Every property the board can group by, schema order. */
 export function groupableProperties(type: TagType): TagProperty[] {
-  return type.properties.filter((property) => GROUPABLE_TYPES.has(property.type))
+  return groupablePropertiesOf(type.properties)
 }
 
 /** The board's default grouping property: the schema's first groupable. */

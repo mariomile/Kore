@@ -11,6 +11,7 @@ import { ChevronLeft, ChevronRight, Plus } from '@/components/icons'
 import { useOptimisticMoves } from '@/hooks/use-optimistic-moves'
 import { todayIso } from '@/lib/dates'
 import { addMonths, buildMonthGrid, monthLabel, monthOf, weekdayLabels } from '@/lib/month-grid'
+import { calendarPropertyOf } from '@/lib/tags/schema-views'
 import { useCommitNoteProperties } from '@/lib/tags/use-commit-note-property'
 import { useCreateCollectionNote } from '@/lib/tags/use-create-collection-note'
 import type { ModClickEvent } from '@/lib/windows/open-in-new-window'
@@ -27,7 +28,7 @@ import { readCellValue } from './collection-cell'
 
 /** The property the calendar places by: the schema's first `date`. */
 export function calendarProperty(type: { properties: readonly TagProperty[] }): TagProperty | null {
-  return type.properties.find((property) => property.type === 'date') ?? null
+  return calendarPropertyOf(type.properties)
 }
 
 /** Entries grouped by their calendar-date value under `property`. */

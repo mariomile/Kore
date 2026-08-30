@@ -253,6 +253,7 @@ describe('codexCliSystemPrompt edit mode', () => {
         agentMemory: { body: '- Project X ships Friday', truncated: false },
         sharedFacts: null,
         sharedLog: null,
+        skills: [],
         memoryPath: 'agents/riley/memory.md',
       },
     })

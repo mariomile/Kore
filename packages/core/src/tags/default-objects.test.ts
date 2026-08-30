@@ -45,8 +45,9 @@ describe('writeDefaultVaultObjects', () => {
       invoke: async (command, args) => {
         if (command === 'note_create') {
           created.push(String(args['path']))
-          // The second object already exists — find-or-create leaves it be.
-          return created.length === 2 ? { kind: 'exists' } : { kind: 'created', modifiedMs: 1 }
+          // The second object already exists — the no-clobber claim reports
+          // the collision and find-or-create leaves the file be.
+          return created.length === 2 ? { kind: 'collision' } : { kind: 'created', modifiedMs: 1 }
         }
         throw new Error(`unexpected command: ${command}`)
       },

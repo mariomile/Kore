@@ -7,6 +7,18 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- A tag is a page, not a filter state. Opening a tag — from the sidebar, the
+  All Notes pills, or the Custom menu — now lands on that tag's own page on
+  the same route: the tag is the title (with an "All notes" breadcrumb back),
+  the filter pills stay behind on the unfiltered view, the workspace tab
+  renames to `#tag`, and the sidebar highlights the tag's row instead of All
+  notes. A typed tag carries its schema gear beside the title — the
+  collection entry point that used to hide behind the sidebar's hover gear —
+  and an untyped tag offers a "Create a collection" call-to-action opening
+  the same schema dialog (TDR 0005). All Notes itself is unchanged, as are
+  every collection view, persisted preference, and the selection/trash
+  machinery, which all key off the route that did not move.
+
 - Agent memory the agent actually uses (v0.38.0). Chat recall: at send time
   the message's significant terms (bilingual stopwords; mentions, URLs and
   code stripped) drive one OR-composed FTS query over the index, and the

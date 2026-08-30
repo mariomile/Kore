@@ -293,7 +293,7 @@ describe('AllNotesScreen', () => {
     await view.unmount()
   })
 
-  it('renders pinned tags from settings as tabs and filters through the route', async () => {
+  it('renders pinned tags from settings as tabs and opens a tag as its own page', async () => {
     const view = await renderScreen()
     await expect.element(view.getByText('Health Stacked')).toBeInTheDocument()
 
@@ -301,8 +301,35 @@ describe('AllNotesScreen', () => {
     await view.getByRole('button', { name: '#book' }).click()
 
     expect(probedRoute(view)).toEqual({ kind: 'allNotes', tag: 'book' })
+    // The tag renders as its own page: the tag is the title and the filter
+    // tabs stay behind on the unfiltered view.
+    await expect.element(view.getByRole('heading', { name: '#book' })).toBeInTheDocument()
+    expect(view.getByRole('group', { name: 'Filter by tag' }).query()).toBeNull()
     await expect.element(view.getByText('No notes tagged #book.')).toBeInTheDocument()
     expect(view.getByText('Health Stacked').query()).toBeNull()
+
+    // The breadcrumb walks back to the unfiltered view, pills and all.
+    await view.getByRole('button', { name: 'All notes' }).click()
+    expect(probedRoute(view)).toEqual({ kind: 'allNotes', tag: null })
+    await expect.element(view.getByRole('heading', { name: 'Notes' })).toBeInTheDocument()
+    await expect.element(view.getByRole('button', { name: '#person' })).toBeInTheDocument()
+    await view.unmount()
+  })
+
+  it('offers Create a collection on an untyped tag page, opening the schema dialog', async () => {
+    const view = await renderScreen()
+    await expect.element(view.getByText('Health Stacked')).toBeInTheDocument()
+
+    await view.getByRole('button', { name: '#book' }).click()
+
+    // `#book` carries no type in this fixture, so the page offers the CTA
+    // in place of the header schema gear (TDR 0005).
+    const cta = view.getByRole('button', { name: 'Create a collection' })
+    await expect.element(cta).toBeInTheDocument()
+    expect(view.getByRole('button', { name: 'Configure #book' }).query()).toBeNull()
+
+    await cta.click()
+    await expect.element(page.getByText('Configure #book')).toBeInTheDocument()
     await view.unmount()
   })
 
@@ -389,10 +416,8 @@ describe('AllNotesScreen', () => {
     await expect.element(view.getByText('June 9, 2026')).toBeInTheDocument()
     await expect.element(view.getByText('Daily travel notes.')).toBeInTheDocument()
     expect(view.getByText('Health Stacked').query()).toBeNull()
-    // The trigger adopts the active custom tag.
-    await expect
-      .element(view.getByRole('button', { name: /#travel/, expanded: false }))
-      .toBeInTheDocument()
+    // The chosen tag becomes the page's own title.
+    await expect.element(view.getByRole('heading', { name: '#travel' })).toBeInTheDocument()
     await view.getByRole('button', { name: 'June 9, 2026' }).click()
     expect(probedRoute(view)).toEqual({ kind: 'daily', date: '2026-06-09' })
     await view.unmount()

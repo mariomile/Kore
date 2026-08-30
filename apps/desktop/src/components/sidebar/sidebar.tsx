@@ -123,8 +123,10 @@ export function Sidebar({ graph, context }: SidebarProps): ReactElement {
               // lit while editing one. A brand-new note is still an untitled
               // placeholder, though, and the "New note" row above owns that
               // highlight until the birth rename — so the two never light at once.
+              // A routed tag is the tag's own page: its row in the Tags section
+              // lights instead of this one.
               active={
-                route.kind === 'allNotes' ||
+                (route.kind === 'allNotes' && route.tag === null) ||
                 (route.kind === 'note' && !isUntitledNotePath(route.path) && !hasActivePinnedNote)
               }
               onClick={() => void runCommand('nav.allNotes', context)}

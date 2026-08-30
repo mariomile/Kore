@@ -1,7 +1,7 @@
 # Kore working state
 
-**Updated:** 2026-08-30 at `770f7a4a` (post-v0.39.0, third polish slice
-merged).
+**Updated:** 2026-08-30 at `8c45e530` (post-v0.40.0, advisories cleared;
+collections UX pass in flight).
 **Rule:** Every session that moves the program updates this file before its
 summary: tick what became true and how it was verified, set the next step,
 refresh the date. What is done and what is next live here and only here. Why
@@ -12,19 +12,34 @@ in the [delivery log](delivery-log.md); this file tracks only the active work.
 
 ## Current focus
 
-**The Now ladder is shipped; the program waits on live checks and the next
-decision.** v0.38.0 carried agent memory (recall #104 + skills #106),
-v0.39.0 carried the S3-minimal durable runtime
-([TDR 0007](decisions/0007-durable-runtime-minimal.md)) and the first two
-backlog-B polish slices; the third slice (tab list menu, graph ⌥click
-local view) is merged on master awaiting the next bump. What remains open:
-the live checks below with the user and whatever the next roadmap decision
-pulls in. B05c preview tabs was declined ("not for now", 2026-08-30) —
-the backlog-B pass is closed. Dependency advisories cleared the same day:
-esbuild pinned to the patched 0.28 line (GHSA-g7r4-m6w7-qqqr) and h2
-bumped past RUSTSEC-2026-0258; both audits report zero vulnerabilities.
+**Collections UX pass (user decision 2026-08-30).** The Now ladder shipped
+through v0.38.0–v0.40.0 (recall + skills, S3-minimal runtime per
+[TDR 0007](decisions/0007-durable-runtime-minimal.md), the backlog-B polish
+pass, advisories cleared). A state-of-collections analysis then established
+that the capability is real (working table/board/calendar, saved views,
+filters, CSV) while discoverability is the deficit, and the user approved
+building its recommendations, fused with their own ask: a tag should open
+as **its own page**, not as All Notes with a filter on. Slice 1 (this
+session) is that tag page; queued next are the optional properties header
+above the note body, a gallery view that shows properties, and rollup
+sum/avg. Also still open: the live checks below. B05c preview tabs stays
+declined; the backlog-B pass is closed.
 
 ## What is true now
+
+- [x] **Collections slice 1: the tag page.** A routed tag
+  (`{kind:'allNotes', tag}`) renders as the tag's own page: `#tag` is the
+  title with an "All notes" breadcrumb back, the filter pills stay on the
+  unfiltered view only, the workspace tab renames to `#tag` (same singleton
+  surface tab), and the sidebar lights the tag's row instead of All notes.
+  A typed tag shows its schema gear beside the title; an untyped one shows
+  a "Create a collection" CTA opening the same TagConfigDialog — the
+  discoverability fix the collections analysis called for. All Notes
+  (tag=null), every collection view, and all persisted per-tag preferences
+  are untouched; nothing about the route moved, so back/forward and scroll
+  memory hold. Verified: all-notes screen + collection-flow suites 35/35,
+  sidebar 32/32, tabs-strip and route-content suites green on chromium
+  (webkit in CI), `pnpm check` exit 0.
 
 - [x] **Backlog-B pass, first slice: tab drag-reorder (B05a) and browser
   Clip to note (B04d).** Tabs reorder by drag along the strip (dnd-kit, the
@@ -137,10 +152,12 @@ bumped past RUSTSEC-2026-0258; both audits report zero vulnerabilities.
 
 ## Next step
 
-1. **Backlog-B polish pass** (user decision 2026-08-30, alongside S3): work
-   the executable-without-device items — B03 graph polish, B04 browser
-   controls/clip-to-note, B05 tab reorder/overflow — smallest useful slices
-   first.
+1. **Collections UX pass, remaining slices** (user decision 2026-08-30,
+   in recommendation order): (a) an optional Notion-style properties
+   header above the note body for typed notes; (b) a gallery/card view
+   that shows properties (the grid ignores them today); (c) rollup
+   sum/avg/min/max beyond count. Each is its own PR; re-check appetite
+   with the user between slices.
 2. **Live checks with the user**: (a) Now 1: real MCP server + Tools toggle
    in a read-only conversation; (b) Now 2: send an image in chat, restart,
    confirm the restored conversation renders it from disk; (c) Now 3: ask a
@@ -153,6 +170,13 @@ bumped past RUSTSEC-2026-0258; both audits report zero vulnerabilities.
 
 ## Session log
 
+- 2026-08-30 — Collections slice 1: the tag page (tag as title +
+  breadcrumb, tab renamed `#tag`, schema gear in the header for typed
+  tags, "Create a collection" CTA for untyped ones; All Notes untouched).
+  Preceded by the state-of-collections analysis (capability real,
+  discoverability the deficit) and the user's decision to build the
+  recommendations, with the tag-as-page UX theirs. v0.40.0 shipped
+  mid-session (docs pass + advisory cleanup).
 - 2026-08-30 — Backlog-B third slice: list-all-tabs menu (B05b) and the
   graph local view (B03a) as ⌥click-to-focus — chosen over changing the
   primary click, which stays "open the note". v0.39.0 shipped mid-session

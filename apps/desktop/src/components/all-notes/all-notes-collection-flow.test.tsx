@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { userEvent } from 'vitest/browser'
+import { page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 import type { ReactElement } from 'react'
 import { setBridge } from '@reflect/core'
@@ -186,6 +186,19 @@ describe('Collection flow (fake bridge, no module mocks below the hooks)', () =>
     await expect.element(view.getByRole('button', { name: 'Sort by Status' })).toBeInTheDocument()
     await expect.element(view.getByText('Le Guin')).toBeInTheDocument()
     await expect.element(view.getByText('to-read')).toBeInTheDocument()
+    await view.unmount()
+  })
+
+  it('titles the typed tag page and opens the schema dialog from the header gear', async () => {
+    const view = await render(<Screen />)
+
+    // The routed tag is the page's own title, and — the tag being typed —
+    // the schema gear sits beside it, no hover needed (no CTA either).
+    await expect.element(view.getByRole('heading', { name: '#book' })).toBeInTheDocument()
+    expect(view.getByRole('button', { name: 'Create a collection' }).query()).toBeNull()
+    await view.getByRole('button', { name: 'Configure #book' }).click()
+
+    await expect.element(page.getByText('Configure #book')).toBeInTheDocument()
     await view.unmount()
   })
 

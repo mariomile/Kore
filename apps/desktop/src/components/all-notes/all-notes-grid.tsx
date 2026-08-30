@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import type { NoteListEntry } from '@reflect/core'
 import { Pin } from '@/components/icons'
+import { passivePreviewImageResolver } from '@/editor/preview-image-url'
 import { useAssetPersistence } from '@/editor/use-asset-persistence'
 import { formatRecencyLabel } from '@/lib/dates'
 import type { ModClickEvent } from '@/lib/windows/open-in-new-window'
@@ -17,10 +18,6 @@ interface AllNotesGridProps {
 
 /** How many cards mount at once; scrolling near the end reveals the next batch. */
 const GRID_CHUNK = 120
-
-function isSvgAsset(path: string): boolean {
-  return path.toLowerCase().endsWith('.svg')
-}
 
 /**
  * The All Notes masonry view (Plan 28, Craft's register): the same notes as
@@ -39,31 +36,17 @@ export function AllNotesGrid({ notes, tag, onOpen }: AllNotesGridProps): ReactEl
   const { settings } = useSettings()
   const { graph } = useGraph()
   const generation = graph?.generation ?? null
-  const graphRoot = graph?.root ?? null
   const [visibleCount, setVisibleCount] = useState(GRID_CHUNK)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
   const hasMore = notes !== undefined && notes.length > visibleCount
 
   // One resolver for every card: asset URLs are graph-relative, so nothing
-  // per-note is involved. Same passive-card boundary as the wiki-link hover
-  // preview: SVG is skipped and asset URLs carry the raster-only marker, so
-  // a mass surface of read-only previews can never start a network fetch.
-  const { resolveImageUrl } = useAssetPersistence(generation)
-  const resolvePreviewImageUrl = useCallback(
-    (src: string): string | null => {
-      if (/^https?:\/\//.test(src)) {
-        return resolveImageUrl(src)
-      }
-      if (isSvgAsset(src)) {
-        return null
-      }
-      const url = resolveImageUrl(src)
-      if (url === null) {
-        return null
-      }
-      return `${url}${url.includes('?') ? '&' : '?'}reflect-preview=raster`
-    },
-    [resolveImageUrl],
+  // per-note is involved. The passive no-network boundary is the wiki-link
+  // hover card's, shared — see editor/preview-image-url.ts.
+  const { resolveImageUrl, resolveAssetOpenPath } = useAssetPersistence(generation)
+  const resolvePreviewImageUrl = useMemo(
+    () => passivePreviewImageResolver({ resolveImageUrl, resolveAssetOpenPath }),
+    [resolveAssetOpenPath, resolveImageUrl],
   )
 
   useEffect(() => {
@@ -120,8 +103,6 @@ export function AllNotesGrid({ notes, tag, onOpen }: AllNotesGridProps): ReactEl
           <NoteCardPreview
             path={note.path}
             mtime={note.mtime}
-            generation={generation}
-            graphRoot={graphRoot}
             snippet={note.snippet}
             resolveImageUrl={resolvePreviewImageUrl}
           />

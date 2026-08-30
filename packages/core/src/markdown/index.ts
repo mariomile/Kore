@@ -101,7 +101,7 @@ export {
   TaskStaleError,
 } from './edit'
 export { retitleWikiLinks, type WikiLinkRetitleOptions } from './retitle'
-export { displayNoteTitle, wikiLinkTargetForTitle } from './note-title'
+export { displayNoteTitle, stripLeadingHeading, wikiLinkTargetForTitle } from './note-title'
 export { parseTaskMarker } from './task-marker'
 export {
   conflictMarkerBlockCount,

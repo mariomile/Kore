@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { displayNoteTitle, wikiLinkTargetForTitle } from './note-title'
+import { displayNoteTitle, stripLeadingHeading, wikiLinkTargetForTitle } from './note-title'
 
 describe('displayNoteTitle', () => {
   it('flattens wiki links to their alias and markdown links to their text', () => {
@@ -52,5 +52,21 @@ describe('wikiLinkTargetForTitle', () => {
     const title = 'Code `[[Ada Lovelace|Ada]]`'
     expect(displayNoteTitle(title)).toBe('Code `[[Ada Lovelace|Ada]]`')
     expect(wikiLinkTargetForTitle(title)).toBe('Code `Ada`')
+  })
+})
+
+describe('stripLeadingHeading', () => {
+  it('drops only an opening H1 line, blank lines before it allowed', () => {
+    expect(stripLeadingHeading('# Title\n\nBody line\n')).toBe('\nBody line\n')
+    expect(stripLeadingHeading('\n\n# Title\nBody\n')).toBe('Body\n')
+    expect(stripLeadingHeading('#\tTabbed title\nBody\n')).toBe('Body\n')
+  })
+
+  it('leaves deeper, later, or malformed headings as content', () => {
+    expect(stripLeadingHeading('## Section\nBody\n')).toBe('## Section\nBody\n')
+    expect(stripLeadingHeading('Intro\n# Not the title\n')).toBe('Intro\n# Not the title\n')
+    expect(stripLeadingHeading('#NoSpace is a tag-like line\n')).toBe(
+      '#NoSpace is a tag-like line\n',
+    )
   })
 })

@@ -1,7 +1,8 @@
-import { useCallback, type ReactNode } from 'react'
+import { useCallback, useMemo, type ReactNode } from 'react'
 import type { WikilinkHoverHit } from '@meowdown/core'
 import { resolveExistingWikiTarget, splitFrontmatter, type DateFormat } from '@reflect/core'
 import { WikiLinkHoverPreview } from '@/components/wiki-link-hover-preview'
+import { passivePreviewImageResolver } from '@/editor/preview-image-url'
 import { readExistingNoteSource } from '@/lib/read-existing-note-source'
 
 interface WikiLinkHoverPreviewOptions {
@@ -10,15 +11,6 @@ interface WikiLinkHoverPreviewOptions {
   dateFormat: DateFormat
   resolveImageUrl: (src: string) => string | null
   resolveAssetOpenPath: (src: string) => string | null
-}
-
-function isSvgAsset(path: string): boolean {
-  return path.toLowerCase().endsWith('.svg')
-}
-
-function previewRasterUrl(url: string): string {
-  const separator = url.includes('?') ? '&' : '?'
-  return `${url}${separator}reflect-preview=raster`
 }
 
 /**
@@ -36,19 +28,11 @@ export function useWikiLinkHoverPreview({
   resolveImageUrl,
   resolveAssetOpenPath,
 }: WikiLinkHoverPreviewOptions): (hit: WikilinkHoverHit) => Promise<ReactNode> {
-  const resolvePreviewImageUrl = useCallback(
-    (source: string): string | null => {
-      const assetPath = resolveAssetOpenPath(source)
-      // SVG can contain external subresource references. The filename check
-      // avoids an unnecessary request; the query also makes the asset protocol
-      // enforce a sniffed raster MIME allowlist, so renamed SVG bytes cannot
-      // bypass the passive card's no-network boundary.
-      if (assetPath === null || isSvgAsset(assetPath)) {
-        return null
-      }
-      const url = resolveImageUrl(assetPath)
-      return url === null ? null : previewRasterUrl(url)
-    },
+  // The passive no-network boundary, shared with the note-grid cards — see
+  // editor/preview-image-url.ts for why SVG is skipped and assets are
+  // raster-marked.
+  const resolvePreviewImageUrl = useMemo(
+    () => passivePreviewImageResolver({ resolveImageUrl, resolveAssetOpenPath }),
     [resolveAssetOpenPath, resolveImageUrl],
   )
 

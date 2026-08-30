@@ -343,7 +343,7 @@ export function DailyStream({ target }: DailyStreamProps): ReactElement {
       </div>
       {/* Scrolled days melt at the stream's top edge instead of clipping
         against it (Plan 28). */}
-      <ScrollVeil scrollElement={scrollElement} className="inset-x-0 top-0 h-12" />
+      <ScrollVeil scrollElement={scrollElement} />
     </div>
   )
 }

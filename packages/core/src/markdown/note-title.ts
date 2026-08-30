@@ -56,6 +56,18 @@ function renderEmbeddedWikiLinks(title: string): string | null {
 }
 
 /**
+ * The body without its leading H1 line, for surfaces that present the title
+ * separately — the note-grid card renders its own title row, so repeating
+ * the heading inside the preview would say the note's name twice. Only a
+ * level-1 ATX heading opening the body (blank lines before it allowed)
+ * counts as the title; any later or deeper heading is content and stays.
+ * The `#[ \t]` shape mirrors how the parser recognizes headings.
+ */
+export function stripLeadingHeading(body: string): string {
+  return body.replace(/^\s*#[ \t][^\n]*\n?/, '')
+}
+
+/**
  * The wiki-link target form of a title: embedded links flattened, then made
  * wiki-link safe. A title with no embedded links returns byte-for-byte, so an
  * ordinary title keeps its exact identity (`Project  Atlas` with two spaces

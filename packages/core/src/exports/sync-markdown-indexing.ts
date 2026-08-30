@@ -127,6 +127,7 @@ export {
   type NoteAppearance,
   type NoteIcon,
   displayNoteTitle,
+  stripLeadingHeading,
   wikiLinkTargetForTitle,
   scanInlineWikiLinks,
   scanInlineImages,

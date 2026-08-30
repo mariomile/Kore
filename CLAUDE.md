@@ -115,3 +115,9 @@ notarized **Release** workflow.
 Do not run `pnpm release:macos` or wait for `.github/workflows/release.yml`. See
 [AGENTS.md — Cutting a Kore release (bump)](AGENTS.md#cutting-a-kore-release-bump)
 for the same procedure.
+
+**Bump mobile** (TestFlight): point `release/testflight` at master, the same
+pointer gesture — `git push --force origin origin/master:release/testflight`.
+Needs the `APPLE_API_KEY` / `APPLE_API_ISSUER` / `APPLE_API_KEY_CONTENT`
+repository secrets; without them the run fails on its first step naming the
+missing ones. See [AGENTS.md — Cutting a mobile bump](AGENTS.md#cutting-a-mobile-bump-testflight).

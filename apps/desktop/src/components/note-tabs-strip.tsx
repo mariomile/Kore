@@ -11,6 +11,7 @@ import {
 import { horizontalListSortingStrategy, SortableContext, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Close, PanelLeft, PanelRight, Pin } from '@/components/icons'
+import { NoteTabsListMenu } from '@/components/note-tabs-list-menu'
 import { NoteTabsPlusMenu } from '@/components/note-tabs-plus-menu'
 import { OpenTabIcon } from '@/components/open-tab-icon'
 import { NavigateArrows } from '@/components/sidebar/navigate-arrows'
@@ -101,6 +102,7 @@ export function WorkspaceTabsStrip({ commandContext }: WorkspaceTabsStripProps):
         </DndContext>
 
         {commandContext ? <NoteTabsPlusMenu context={commandContext} /> : null}
+        <NoteTabsListMenu />
       </div>
 
       <div className="window-drag-control ml-auto flex items-center">

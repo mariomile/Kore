@@ -37,9 +37,16 @@ user. The S3 slice and its boundaries are recorded in
   header search lights matching notes up in place (accent fill + label,
   the rest recede; match count in the header; the canvas repaints through
   a ref so a keystroke never rebuilds the layout). Verified: core
-  graph-map 2/2, screen suite 3/3 on chromium. Still open in the pass:
-  B03a local view (deliberately parked — it would change the node click
-  gesture, a UX call for the user), B05b/c (overflow menu, preview tabs).
+  graph-map 2/2, screen suite 3/3 on chromium. Third slice — **B05b tab
+  list menu and B03a local view, in its non-breaking variant**: the strip
+  gains a list-all-tabs menu (every open tab by full title, active one
+  checked; hidden under two tabs) — the overflow affordance without
+  measurement logic — and ⌥-clicking a graph node focuses its two-hop
+  neighborhood (BFS in `graph-map-focus.ts`; "focused on X · Show all"
+  chip; plain click still opens the note, so no existing gesture moved).
+  Verified: focus helper 5/5, strip suite 16/16, screen suite 3/3 on
+  chromium. Still open, gated on the user: B05c preview tabs (it would
+  change what a single click means).
 
 - [x] **Now item 4 implemented: S3 minimal durable runtime**
   ([TDR 0007](decisions/0007-durable-runtime-minimal.md)). One process-wide
@@ -139,6 +146,11 @@ user. The S3 slice and its boundaries are recorded in
 
 ## Session log
 
+- 2026-08-30 — Backlog-B third slice: list-all-tabs menu (B05b) and the
+  graph local view (B03a) as ⌥click-to-focus — chosen over changing the
+  primary click, which stays "open the note". v0.39.0 shipped mid-session
+  (S3 + the first two polish slices). Only B05c (preview tabs) remains,
+  gated on the user.
 - 2026-08-30 — Backlog-B pass: tab drag-reorder (B05a), browser Clip to
   note (B04d, riding the existing capture-envelope pipeline with a new
   `in-app-browser` source), graph tag colors + search highlight (B03b/c).

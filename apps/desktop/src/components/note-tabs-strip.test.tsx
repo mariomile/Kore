@@ -386,6 +386,20 @@ describe('workspace tabs', () => {
     await view.unmount()
   })
 
+  it('the list menu names every open tab and jumps on click', async () => {
+    const view = await renderTabs()
+    // A single tab hides the menu — nothing worth listing.
+    expect(view.container.querySelector('[aria-label="List open tabs"]')).toBeNull()
+
+    await view.getByTestId('open-alpha').click()
+    await view.getByTestId('open-beta').click()
+    await view.getByRole('button', { name: 'List open tabs' }).click()
+    await expect.element(view.getByRole('menuitem', { name: /Alpha Plan/ })).toBeVisible()
+    await view.getByRole('menuitem', { name: /Alpha Plan/ }).click()
+    await vi.waitFor(() => expect(routeOf(view).path).toBe('notes/alpha.md'))
+    await view.unmount()
+  })
+
   it('moveTab drops the dragged tab at its target and the order persists', async () => {
     const view = await renderTabs()
     await view.getByTestId('open-alpha').click()

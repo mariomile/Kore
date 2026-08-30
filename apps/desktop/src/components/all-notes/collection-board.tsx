@@ -310,7 +310,7 @@ export function CollectionBoard({
           key={column.label}
           aria-label={column.label}
           className={cn(
-            'flex max-h-full w-60 flex-none flex-col rounded-lg bg-surface-hover/60 p-2',
+            'flex max-h-full w-60 flex-none flex-col rounded-xl bg-surface-hover/60 p-2',
             draggingPath !== null && dropLane === column.label && 'ring-2 ring-accent/60',
           )}
           onDragOver={(event) => {
@@ -378,7 +378,7 @@ export function CollectionBoard({
                       drop(column, entry.path)
                     }}
                     className={cn(
-                      'flex cursor-grab flex-col gap-1 rounded-md border border-border bg-surface p-2 shadow-sm active:cursor-grabbing',
+                      'flex cursor-grab flex-col gap-1 rounded-xl border border-border bg-surface p-2.5 shadow-sm active:cursor-grabbing',
                       draggingPath === entry.path && 'opacity-50',
                     )}
                   >

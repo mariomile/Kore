@@ -1,8 +1,8 @@
 # Kore working state
 
-**Updated:** 2026-08-30 at `3ae4fb1f` (v0.42.0 shipped with the default
-vault objects; Craft-parity pass — [Plan 28](plans/28-craft-parity.md) —
-opened, slice 1 in flight).
+**Updated:** 2026-08-30 at `c9839b96` (v0.43.1 shipped: Plan 28 slice 1 —
+the Craft register — plus its review consolidation; slice 2, typed-card
+property chips, in flight).
 **Rule:** Every session that moves the program updates this file before its
 summary: tick what became true and how it was verified, set the next step,
 refresh the date. What is done and what is next live here and only here. Why
@@ -24,8 +24,11 @@ air, space over hairlines, cards as documents, floating chrome — so
 slice 1 (this session) lands all four on the main surfaces: display-size
 subjects and screen titles, the daily stream's space-plus-one-hairline
 day grammar, live-preview grid cards, and the scroll veil with glass
-table headers. Queued: property chips on cards and board/calendar
-coherence, chrome details, editor block affordances via meowdown.
+table headers. Slice 2 followed in the
+same session: typed grid cards carry property chips (the table's badge
+hues, the user's date format), closing the gallery-view ask, with
+board/calendar aligned to the card language. Queued: chrome details,
+editor block affordances via meowdown.
 
 **Collections UX pass (user decision 2026-08-30).** The Now ladder shipped
 through v0.38.0–v0.40.0 (recall + skills, S3-minimal runtime per

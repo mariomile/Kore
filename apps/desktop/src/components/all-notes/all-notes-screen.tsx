@@ -138,7 +138,10 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
     queryFn: () => listNoteTags(),
     enabled,
   })
-  const collection = useCollection(collectionView ? tag : null, collectionSort)
+  // The grid isn't a collection view, but on a typed tag its cards carry
+  // property chips — so the projection loads there too (Plan 28 slice 2).
+  const collectionWanted = collectionView || (view === 'grid' && collectionAvailable)
+  const collection = useCollection(collectionWanted ? tag : null, collectionSort)
   // Property filters are ephemeral (unlike the persisted sort) and belong to
   // one tag's schema — a tag switch drops them at render time.
   const [collectionFilters, setCollectionFilters] = useState<CollectionFilter[]>([])
@@ -435,7 +438,13 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
             className="h-full overflow-auto"
           >
             {view === 'grid' ? (
-              <AllNotesGrid notes={notes} tag={tag} onOpen={openNote} />
+              <AllNotesGrid
+                notes={notes}
+                tag={tag}
+                type={collectionAvailable ? tagType : null}
+                entries={collectionAvailable ? filteredCollection : undefined}
+                onOpen={openNote}
+              />
             ) : collectionAvailable &&
               view === 'calendar' &&
               calendarDateProperty !== null &&

@@ -7,6 +7,22 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- The Craft register lands (Plan 28 slice 1). Four moves at once, after a
+  side-by-side against the reference shots showed the gap was the whole
+  register, not one effect: note subjects and screen titles move to
+  display size (28px, weight 700); daily-stream days separate by space
+  with Craft's one hairline under each date instead of full-width rules;
+  the All Notes grid cards render each note's real content — checkboxes,
+  chips, images — at the compact hover-card scale, upgrading from the
+  indexed snippet as they near the viewport, on radius-2xl surfaces; and
+  scrolled content melts instead of clipping, through a scroll veil (a
+  surface fade over two progressively-masked backdrop-blur bands, alive
+  only while scrolled) on the stream, the note view, and the grid, with
+  the list/table pinned headers turned to translucent glass. Pure paint
+  over the existing containers — no layout, routing, or virtualizer
+  change. The remaining slices (collection coherence, chrome details,
+  editor block affordances via meowdown) are recorded in Plan 28.
+
 - New vaults are born with their objects. A brand-new vault starts with
   four typed supertags under `tags/` — Project, Person, Company, Meeting —
   each an ordinary definition note (schema in frontmatter, a short

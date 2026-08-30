@@ -17,25 +17,29 @@ interface TagPageTitleProps {
  */
 export function TagPageTitle({ tag, typed, onBack, onConfigure }: TagPageTitleProps): ReactElement {
   return (
-    <div className="flex min-w-0 items-center gap-1.5">
+    // Craft register (Plan 28): the tag is the page's display-sized title;
+    // the breadcrumb reads as small quiet chrome beside it.
+    <div className="flex min-w-0 items-baseline gap-2">
       <button
         type="button"
         onClick={onBack}
-        className="text-[15px] font-medium text-text-muted transition-colors hover:text-text"
+        className="text-sm font-medium text-text-muted transition-colors hover:text-text"
       >
         All notes
       </button>
-      <span aria-hidden className="text-[15px] text-text-muted">
+      <span aria-hidden className="text-sm text-text-muted">
         /
       </span>
-      <h1 className="min-w-0 truncate text-[15px] font-semibold text-text">#{tag}</h1>
+      <h1 className="min-w-0 truncate text-[1.625rem] font-bold tracking-[-0.02em] text-text">
+        #{tag}
+      </h1>
       {typed ? (
         <button
           type="button"
           aria-label={`Configure #${tag}`}
           title="Configure collection"
           onClick={onConfigure}
-          className="flex size-6 shrink-0 items-center justify-center rounded-full text-text-muted transition-colors hover:text-text-secondary"
+          className="flex size-6 shrink-0 translate-y-0.5 items-center justify-center self-center rounded-full text-text-muted transition-colors hover:text-text-secondary"
         >
           <Settings aria-hidden className="size-3.5" />
         </button>

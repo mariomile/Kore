@@ -71,8 +71,11 @@ Cascade layer order, low to high priority.
   /* 12px chrome text (V1's `text-xs`; the DS `--text-xs` is 13px). */
   --text-2xs: var(--ds-text-2xs);
   --text-2xs--line-height: 1.25;
-  /* Shared subject size for regular-note titles and daily-note dates. */
-  --text-note-subject: var(--text-xl);
+  /* Shared subject size for regular-note titles and daily-note dates.
+     Craft-register scale (Plan 28): the document title is the hero of the
+     page — 28px display weight, not a bigger body line. */
+  --text-note-subject: 1.75rem;
+  --text-note-subject--line-height: 1.2;
   /* Shortcut-glyph font, via the same --ds-* indirection as the shadows. */
   --font-shortcut: var(--ds-font-shortcut);
 
@@ -453,6 +456,13 @@ html:root {
   letter-spacing: var(--tracking-snug, -0.01em);
   margin: 1.25em 0 0.4em;
 }
+/* At display size the subject needs display tracking, and a step more
+   weight than a prose heading (the daily subject's own rule below matches). */
+.reflect-editor h1,
+.reflect-editor .reflect-note-title {
+  font-weight: 700;
+  letter-spacing: var(--tracking-tight, -0.02em);
+}
 /* The leading H1 is the document title: the regular-note subject, matching
    the daily date subject. H2 and H3 step down the type scale so a section
    heading reads as subordinate to the title, not a second one: auto-appended
@@ -490,8 +500,8 @@ html:root {
 .reflect-daily-subject {
   @apply text-note-subject;
   font-family: var(--font-reading, var(--font-sans));
-  font-weight: 650;
-  letter-spacing: var(--tracking-snug, -0.01em);
+  font-weight: 700;
+  letter-spacing: var(--tracking-tight, -0.02em);
 }
 
 /* Chrome for meowdown's wiki-link hover card (its `className`, passed from
@@ -976,6 +986,70 @@ html[data-sidebar-resizing] aside {
   backdrop-filter: blur(var(--layer-blur, 20px)) saturate(var(--layer-saturate, 140%));
 }
 
+/* ---- Craft-register scroll chrome (Plan 28) ------------------------------
+   Desktop counterpart of the mobile glass bars above: scrolled content
+   dissolves at a surface's top edge instead of hard-clipping — a color fade
+   out of the pane surface stacked on two backdrop-blur bands of increasing
+   radius, each masked so the blur decays with distance from the edge (the
+   progressive-blur recipe). The veil exists only while the container is
+   scrolled (ScrollVeil flips `data-veiled`); at rest it is fully
+   transparent, so content resting inside the zone stays crisp and static
+   surfaces are never blurred. Rendered by components/scroll-veil.tsx.
+
+   `--veil-surface` exists for Liquid Glass: with a translucent pane the
+   fade must not be more opaque than the surface it fades into. */
+.app-scroll-veil {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 240ms var(--ds-ease-swift);
+}
+.app-scroll-veil[data-veiled] {
+  opacity: 1;
+}
+.app-scroll-veil::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--surface) var(--veil-surface, 100%), transparent) 0%,
+    color-mix(in srgb, var(--surface) calc(var(--veil-surface, 100%) * 0.72), transparent) 46%,
+    transparent 100%
+  );
+}
+.app-scroll-veil-soft,
+.app-scroll-veil-deep {
+  position: absolute;
+  inset: 0;
+}
+.app-scroll-veil-soft {
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+  -webkit-mask-image: linear-gradient(to bottom, black 30%, transparent 85%);
+  mask-image: linear-gradient(to bottom, black 30%, transparent 85%);
+}
+.app-scroll-veil-deep {
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  -webkit-mask-image: linear-gradient(to bottom, black 0%, transparent 55%);
+  mask-image: linear-gradient(to bottom, black 0%, transparent 55%);
+}
+
+/* A row pinned inside a veiled scroll container (the sticky table headers):
+   translucent over blur, so rows dissolve under it the way they dissolve
+   under the chrome — the same three knobs as `mobile-glass-bar`, mixed from
+   the pane surface. */
+.app-glass-row {
+  background: color-mix(
+    in srgb,
+    var(--surface) calc(var(--veil-surface, 100%) * 0.82),
+    transparent
+  );
+  -webkit-backdrop-filter: blur(var(--layer-blur, 20px)) saturate(var(--layer-saturate, 140%));
+  backdrop-filter: blur(var(--layer-blur, 20px)) saturate(var(--layer-saturate, 140%));
+}
+
 /* ============================================================
    Liquid Glass — activated by `data-glass="on"` on the root
    element (ThemeProvider, mirrored pre-paint by theme-init.js).
@@ -1069,4 +1143,7 @@ html[data-sidebar-resizing] aside {
   --popover: color-mix(in srgb, var(--surface) var(--glass-popover), transparent);
   --layer-blur: var(--glass-blur);
   --layer-saturate: var(--glass-popover-saturate);
+  /* The scroll veil fades toward the pane's translucent surface, not an
+     opaque one it no longer has. */
+  --veil-surface: var(--glass-surface);
 }

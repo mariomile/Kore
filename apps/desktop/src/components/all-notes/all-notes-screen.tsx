@@ -50,6 +50,7 @@ import { CollectionImportButton } from './collection-import'
 import { CollectionTable } from './collection-table'
 import { NoteListContextMenu } from '@/components/notes/note-context-menu'
 import { NoteTrashDialog } from '@/components/notes/note-trash-dialog'
+import { ScrollVeil } from '@/components/scroll-veil'
 import { NewNoteButton } from './new-note-button'
 import { TagPageTitle } from './tag-page-title'
 import { useAllNotesKeyboard } from './use-all-notes-keyboard'
@@ -251,9 +252,9 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
         onRequestTrash={openTrashConfirm}
         onDone={selection.clear}
       />
-      <header className="flex flex-none flex-wrap items-center justify-between gap-3 py-4 pl-12 pr-7">
+      <header className="flex flex-none flex-wrap items-center justify-between gap-3 py-5 pl-12 pr-7">
         {tag === null ? (
-          <h1 className="text-[15px] font-semibold text-text">Notes</h1>
+          <h1 className="text-[1.625rem] font-bold tracking-[-0.02em] text-text">Notes</h1>
         ) : (
           <TagPageTitle
             tag={tag}
@@ -422,63 +423,73 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
           data-note-path; the menu resolves the note from the click. It wraps
           the scroll container from OUTSIDE: its wrappers are display:contents,
           and the table's virtualizer measures its direct parent — a wrapper
-          between the two would hand it a zero-height viewport. */}
-      <NoteListContextMenu>
-        <div
-          ref={setScrollElement}
-          data-testid="all-notes-scroll"
-          onScroll={onScroll}
-          className="min-h-0 flex-1 overflow-auto"
-        >
-          {view === 'grid' ? (
-            <AllNotesGrid notes={notes} tag={tag} onOpen={openNote} />
-          ) : collectionAvailable &&
-            view === 'calendar' &&
-            calendarDateProperty !== null &&
-            tag !== null ? (
-            <CollectionCalendar
-              entries={filteredCollection}
-              property={calendarDateProperty}
-              tag={tag}
-              type={tagType}
-              onOpen={openNote}
-            />
-          ) : collectionAvailable &&
-            view === 'board' &&
-            boardGroupProperty !== null &&
-            tag !== null ? (
-            <CollectionBoard
-              entries={filteredCollection}
-              tag={tag}
-              type={tagType}
-              property={boardGroupProperty}
-              onOpen={openNote}
-            />
-          ) : view === 'table' && collectionAvailable && visibleTagType !== null ? (
-            <CollectionTable
-              entries={filteredCollection}
-              tag={tag}
-              type={visibleTagType}
-              selection={selection}
-              sort={collectionSort}
-              onSortChange={setCollectionSort}
-              columnWidths={columnWidths}
-              onColumnWidthChange={setColumnWidth}
-              onEditSchema={() => setEditingSchema(true)}
-              onOpen={openNote}
-              registerScrollToIndex={registerScrollToIndex}
-            />
-          ) : (
-            <AllNotesTable
-              notes={notes}
-              tag={tag}
-              selection={selection}
-              onOpen={openNote}
-              registerScrollToIndex={registerScrollToIndex}
-            />
-          )}
-        </div>
-      </NoteListContextMenu>
+          between the two would hand it a zero-height viewport. The positioned
+          wrapper here sits outside that pair, anchoring the scroll veil to
+          the container's top edge. */}
+      <div className="relative min-h-0 flex-1">
+        <NoteListContextMenu>
+          <div
+            ref={setScrollElement}
+            data-testid="all-notes-scroll"
+            onScroll={onScroll}
+            className="h-full overflow-auto"
+          >
+            {view === 'grid' ? (
+              <AllNotesGrid notes={notes} tag={tag} onOpen={openNote} />
+            ) : collectionAvailable &&
+              view === 'calendar' &&
+              calendarDateProperty !== null &&
+              tag !== null ? (
+              <CollectionCalendar
+                entries={filteredCollection}
+                property={calendarDateProperty}
+                tag={tag}
+                type={tagType}
+                onOpen={openNote}
+              />
+            ) : collectionAvailable &&
+              view === 'board' &&
+              boardGroupProperty !== null &&
+              tag !== null ? (
+              <CollectionBoard
+                entries={filteredCollection}
+                tag={tag}
+                type={tagType}
+                property={boardGroupProperty}
+                onOpen={openNote}
+              />
+            ) : view === 'table' && collectionAvailable && visibleTagType !== null ? (
+              <CollectionTable
+                entries={filteredCollection}
+                tag={tag}
+                type={visibleTagType}
+                selection={selection}
+                sort={collectionSort}
+                onSortChange={setCollectionSort}
+                columnWidths={columnWidths}
+                onColumnWidthChange={setColumnWidth}
+                onEditSchema={() => setEditingSchema(true)}
+                onOpen={openNote}
+                registerScrollToIndex={registerScrollToIndex}
+              />
+            ) : (
+              <AllNotesTable
+                notes={notes}
+                tag={tag}
+                selection={selection}
+                onOpen={openNote}
+                registerScrollToIndex={registerScrollToIndex}
+              />
+            )}
+          </div>
+        </NoteListContextMenu>
+        {/* Board and calendar scroll inside their own columns, and the
+            list/table views pin a glass header row instead — the melt at the
+            container's top edge belongs to the grid alone. */}
+        {view === 'grid' ? (
+          <ScrollVeil scrollElement={scrollElement} className="inset-x-0 top-0 h-12" />
+        ) : null}
+      </div>
 
       <NoteTrashDialog
         open={confirmingTrash}

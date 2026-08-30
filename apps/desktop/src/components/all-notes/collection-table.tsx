@@ -191,7 +191,9 @@ export function CollectionTable({
         style={gridStyle}
         className={cn(
           COLLECTION_GRID_CLASS,
-          'sticky top-0 z-10 border-b border-border bg-surface py-3 text-[13px] font-medium leading-none text-text-secondary shadow-sm',
+          // Glass, not paint (Plan 28) — same treatment as the All Notes
+          // table's pinned header.
+          'app-glass-row sticky top-0 z-10 border-b border-border py-3 text-[13px] font-medium leading-none text-text-secondary',
         )}
       >
         {sortButton(TITLE_SORT_KEY, 'Title')}

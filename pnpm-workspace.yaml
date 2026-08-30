@@ -3,6 +3,13 @@ packages:
   - packages/*
   - design-system
 
+# Nothing depends on esbuild directly (it floats in as vite's peer, range
+# ^0.27 || ^0.28), so the lockfile had frozen a 0.27 resolution that
+# GHSA-g7r4-m6w7-qqqr flags (dev-server file read on Windows). Pin the
+# patched line; drop the override once a direct dependent requires it.
+overrides:
+  esbuild: ^0.28.2
+
 allowBuilds:
   '@sentry/cli': true
   better-sqlite3: true

@@ -38,8 +38,9 @@ export interface SnippetTask {
   /** `[x]`/`[X]` → true, `[ ]` → false. */
   checked: boolean
   /**
-   * True for Reflect's round task syntax (a `+` bullet) — the only kind the
-   * Tasks projection covers and the only kind the snippet toggle writes.
+   * True for Reflect's round task syntax (a `+` bullet). Purely visual now —
+   * round and square checkboxes both project and both toggle; the flag only
+   * picks which checkbox the snippet draws.
    */
   round: boolean
   /** The line's content after the marker and one space — the view's click payload `text`. */

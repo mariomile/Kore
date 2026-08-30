@@ -35,6 +35,8 @@ interface TaskListProps {
   /** Holds the editing row's flush-then-convert trigger for the toolbar button. */
   convertControllerRef: MutableRefObject<(() => void) | null>
   onOpen: (notePath: string, event?: ModClickEvent) => void
+  /** Cycle one row's priority marker (the flag button): none → ! → !!. */
+  onCyclePriority: (task: OpenTask) => void
   /**
    * Hand the screen a way to scroll a flattened row index into view — a
    * virtualized off-screen row isn't in the DOM, so the keyboard nav can't
@@ -72,6 +74,7 @@ export function TaskList({
   onAdd,
   convertControllerRef,
   onOpen,
+  onCyclePriority,
   registerScrollToIndex,
 }: TaskListProps): ReactElement {
   const virtualizerRef = useRef<VirtualizerHandle>(null)
@@ -152,6 +155,7 @@ export function TaskList({
                   {...editHandlers(item.task)}
                   convertControllerRef={convertControllerRef}
                   onOpen={onOpen}
+                  onCyclePriority={() => onCyclePriority(item.task)}
                 />
               )
             }

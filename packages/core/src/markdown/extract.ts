@@ -11,7 +11,7 @@ import { foldTag } from './keys'
 import { parseInlineLink } from './link-syntax'
 import { headingLevelOf } from './node-types'
 import { buildPlainText, plainTextOfRange, unescapeMarkdownText } from './plain-text'
-import { isRoundTaskNode } from './round-task'
+import { taskListBullet } from './round-task'
 import { taskBreadcrumbs } from './task-breadcrumbs'
 import { firstDue } from './task-due'
 import { parseTaskMarker } from './task-marker'
@@ -142,9 +142,11 @@ function lineEndAfter(body: string, from: number): number {
 
 /**
  * Resolve a `Task` Lezer node (the marker starts at `from`) into a
- * {@link ParsedTask}, or `null` when the marker shape isn't Reflect's task
- * syntax. `text` is the marker line minus its syntax; `raw` is that physical
- * line verbatim from the marker onward for the write-back guard.
+ * {@link ParsedTask}, or `null` when the checkbox isn't a bullet-list task.
+ * Round (`+`) and square (`-`/`*`) checkboxes both project — a checklist
+ * belongs on the Tasks page whichever bullet it was written with. `text` is
+ * the marker line minus its syntax; `raw` is that physical line verbatim from
+ * the marker onward for the write-back guard.
  */
 function readTask(
   body: string,
@@ -155,7 +157,7 @@ function readTask(
   wikiLinks: WikiLink[],
 ): ParsedTask | null {
   const { from, to } = taskNode
-  if (!isRoundTaskNode(body, taskNode)) {
+  if (taskListBullet(body, taskNode) === null) {
     return null
   }
   const marker = parseTaskMarker(body.slice(from, from + 3))

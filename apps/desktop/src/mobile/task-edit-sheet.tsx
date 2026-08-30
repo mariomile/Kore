@@ -11,7 +11,7 @@ import {
 } from '@/components/icons'
 import { Priority } from '@meowdown/core'
 import { useKeymap } from '@meowdown/react'
-import type { OpenTask } from '@reflect/core'
+import type { OpenTask, TaskPriority } from '@reflect/core'
 import { Button } from '@/components/ui/button'
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer'
 import { markModeFromSyntax } from '@/editor/mark-mode'
@@ -23,7 +23,12 @@ import { addDaysIso, formatDayLabel } from '@/lib/dates'
 import type { TaskActions } from '@/lib/tasks/use-task-actions'
 import { cn } from '@/lib/utils'
 import { hapticImpactLight } from '@/mobile/haptics'
-import { draftDueDate, withDraftDueDate } from '@/mobile/task-draft'
+import {
+  draftDueDate,
+  draftPriority,
+  withDraftDueDate,
+  withDraftPriority,
+} from '@/mobile/task-draft'
 import { TaskScheduleGrid } from '@/mobile/task-schedule-grid'
 import { useTaskSheetFinalizer } from '@/mobile/use-task-sheet-finalizer'
 import { useGraph } from '@/providers/graph-provider'
@@ -110,6 +115,7 @@ export function MobileTaskEditSheet({
       },
     })
   const dueDate = draftDueDate(draft)
+  const priority = draftPriority(draft)
 
   const handleChange = (markdown: string): void => {
     liveDraftRef.current = { seed: editorSeed, markdown }
@@ -207,6 +213,16 @@ export function MobileTaskEditSheet({
     setShowCalendar((showing) => !showing)
   }
 
+  const setPriority = (next: TaskPriority | null): void => {
+    hapticImpactLight()
+    // Same draft rewrite as schedule(): setMarkdown is silent, so both
+    // mirrors are kept in step by hand.
+    const rewritten = withDraftPriority(readLiveDraft() ?? draft, next)
+    liveDraftRef.current = { seed: editorSeed, markdown: rewritten }
+    setDraft(rewritten)
+    editorRef.current?.setMarkdown(rewritten)
+  }
+
   return (
     <Drawer open={open} onOpenChange={handleOpenChange}>
       <DrawerContent
@@ -282,6 +298,18 @@ export function MobileTaskEditSheet({
           {showCalendar ? (
             <TaskScheduleGrid today={today} selected={dueDate} onPick={schedule} />
           ) : null}
+          <div className="flex flex-wrap items-center gap-1.5" aria-label="Priority">
+            <ScheduleChip
+              label="! Medium"
+              active={priority === 'medium'}
+              onClick={() => setPriority(priority === 'medium' ? null : 'medium')}
+            />
+            <ScheduleChip
+              label="!! High"
+              active={priority === 'high'}
+              onClick={() => setPriority(priority === 'high' ? null : 'high')}
+            />
+          </div>
           <div className="flex flex-col gap-1 border-t border-border pt-2">
             <Button
               variant="ghost"

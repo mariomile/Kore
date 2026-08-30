@@ -97,10 +97,10 @@ export const TEXT_CAPTURE_MAX_LENGTH = 10_000
  * What a text capture materializes as on the capture-day daily note. One
  * vocabulary end-to-end: the `reflect://append`/`reflect://checkbox`/
  * `reflect://task` URL verb IS the envelope kind IS the drain behavior
- * (`- ` bullet / `- [ ]` square checkbox / `+ [ ]` round task). Only the
- * round `+` task is projected into the Tasks view; `checkbox` is an inert
- * daily-note item, the same square-vs-round split the editor draws between a
- * plain checkbox and a real task.
+ * (`- ` bullet / `- [ ]` square checkbox / `+ [ ]` round task). Both checkbox
+ * shapes project into the Tasks view (projection v25); the two kinds now
+ * differ only in the bullet they write, matching the round-vs-square visuals
+ * the editor draws.
  */
 export const textCaptureKindSchema = z.enum(['append', 'checkbox', 'task'])
 

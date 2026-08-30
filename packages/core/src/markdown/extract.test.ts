@@ -294,9 +294,12 @@ describe('parseNote — tasks', () => {
     ])
   })
 
-  it('ignores square checklist and ordered checkbox items', () => {
-    const note = parse('- [ ] checklist\n* [x] checklist\n1. [ ] ordered\n')
-    expect(note.tasks).toEqual([])
+  it('projects square checklist items but not ordered checkboxes', () => {
+    const note = parse('- [ ] checklist\n* [x] starred\n1. [ ] ordered\n')
+    expect(note.tasks.map((task) => ({ text: task.text, checked: task.checked }))).toEqual([
+      { text: 'checklist', checked: false },
+      { text: 'starred', checked: true },
+    ])
   })
 
   it('projects round tasks written inside a callout', () => {
@@ -315,9 +318,9 @@ describe('parseNote — tasks', () => {
     ])
   })
 
-  it('still ignores square checklist items inside a callout', () => {
+  it('projects square checklist items inside a callout too', () => {
     const note = parse('> [!note] Packing\n> - [ ] passport\n')
-    expect(note.tasks).toEqual([])
+    expect(note.tasks).toEqual([expect.objectContaining({ text: 'passport', checked: false })])
   })
 
   it('keeps the raw line anchored to the marker inside a callout', () => {

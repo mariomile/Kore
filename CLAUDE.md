@@ -11,6 +11,10 @@ development cycle.
 Read ALL of it before starting ANY work. This is VERY important. You must read
 AGENTS.md in its entirety before continuing.
 
+For work on the Personal OS program (roadmap slices, Plans 25/26), also read
+[docs/STATE.md](docs/STATE.md) first and update it in the same session as any
+work that moves the program.
+
 Two names coexist on purpose and neither is a typo: **Reflect** is the upstream
 project this repo forked from (internal identifiers keep it — `@reflect/*`
 packages, `reflect-*` crates, the `reflect` CLI, `.reflect/`), while **Kore** is

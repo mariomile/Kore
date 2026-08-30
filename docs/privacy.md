@@ -106,6 +106,14 @@ practice. Both are covered by tests.
   up is the residual gap, and it closes as soon as the file is re-indexed.
 - **Off by default:** yes. Nothing runs until you configure a provider in Settings, and
   edit mode is a second, separate opt-in.
+- **MCP servers (a third opt-in, twice over):** servers you configure in Settings → MCP
+  servers can give agent chat external tools, which means chat content and the notes the
+  agent reads may reach those servers. They ride every edit-mode run, and a read-only
+  conversation only after you flip the composer's Tools toggle and confirm the dialog
+  that names the servers involved. That opt-in is per conversation and per session: New
+  chat, switching conversations, and restarting the app all turn it back off. Without
+  it, read-only chat stays what it always was, a zero-egress surface where nothing but
+  the model's own service sees content. Cursor never gets MCP either way.
 
 ## Apple Contacts (off by default)
 

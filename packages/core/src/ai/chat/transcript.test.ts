@@ -263,4 +263,24 @@ describe('userMessage', () => {
       content: [{ type: 'file', data: photo.dataUrl, mediaType: 'image/png' }],
     })
   })
+
+  it('degrades a path-only attachment (hydration failed) to the text alone', () => {
+    const onDisk: ChatAttachment = {
+      id: 'att-2',
+      name: 'dog.jpeg',
+      mediaType: 'image/jpeg',
+      path: '.reflect/chat-attachments/conv-1/att-2.jpeg',
+    }
+    expect(userMessage('what is this?', [onDisk])).toEqual({
+      role: 'user',
+      content: 'what is this?',
+    })
+    expect(userMessage('what are these?', [photo, onDisk])).toEqual({
+      role: 'user',
+      content: [
+        { type: 'file', data: photo.dataUrl, mediaType: 'image/png' },
+        { type: 'text', text: 'what are these?' },
+      ],
+    })
+  })
 })

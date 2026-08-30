@@ -1,5 +1,10 @@
 # Plan 26 — Account-safe read (Slice S1)
 
+> **Deferred 2026-08-30 (app-first decision, see [roadmap](../roadmap.md)):**
+> external access stays MCP-via-CLI for now; this slice enters the active
+> backlog when multi-account isolation becomes a real need or MCP friction
+> hurts. The plan below remains the bounded design for that moment.
+
 **Status:** Planned. Nothing below is implemented.
 **Updated:** 2026-08-29.
 **Delivers:** [Plan 25](25-personal-os.md) slice **S1** — initiatives I01–I05,
@@ -131,8 +136,29 @@ both are visible in the audit with the correct account attributed.
 Stubs cannot substitute for the live check, and the live check cannot substitute
 for the deterministic tests.
 
+## Suggested build order
+
+Split the slice in two so the contracts are proved before Google enters:
+
+1. **S1a — contracts on a stub.** Graph identity, Connection registry, grants,
+   resolver, and audit, exercised end to end against a stub connector that
+   implements `email.search` over fixture data. Every deterministic acceptance
+   test below runs in S1a; none of them needs Google.
+2. **S1b — the real provider.** Google OAuth, the Gmail adapter, and the live
+   check, behind the unchanged S1a contracts. The stub connector stays as the
+   permanent test double.
+
 ## Risks
 
+- **Google restricted scopes (see roadmap R1).** `gmail.readonly` is a Google
+  *restricted* scope: shipping it to arbitrary users requires OAuth
+  verification plus a CASA security assessment. S1b therefore uses a
+  bring-your-own Google Cloud client in testing mode, where refresh tokens
+  expire every seven days, so reconnect is a weekly reality, not an edge case.
+  The acceptance line "expired access tokens refresh" covers the hourly access
+  token; the seven-day refresh-token death lands on the reconnect path. Keep
+  the capability layer transport-agnostic so IMAP (app password) remains an
+  escape hatch for `email.search` if the OAuth friction proves too high.
 - **Scope pull toward writes.** "Just a draft" is a provider mutation and would
   pull the approval and idempotency contracts forward, out of order. Hold the
   line at read.

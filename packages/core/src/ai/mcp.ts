@@ -9,9 +9,10 @@ import { getSecret } from '../secrets/keychain'
  * OS keychain and are resolved at run start, so nothing secret ever sits in
  * settings, markdown, or Git.
  *
- * Servers ride only edit-mode runs: read-only chat stays a zero-egress
- * surface (nothing but the model sees note content), while an agent the
- * user has explicitly allowed to act gets its tools. Both CLIs receive the
+ * Servers ride runs the user opted into: every edit-mode run, and read-only
+ * chat only for a conversation whose Tools toggle the user explicitly
+ * confirmed (read-only chat stays a zero-egress surface by default; nothing
+ * but the model sees note content). Both CLIs receive the
  * configuration per run on the command line — Claude Code as one inline
  * `--mcp-config` JSON document (with `--strict-mcp-config`, so the user's
  * global MCP configuration never bleeds into a vault run), Codex as

@@ -160,6 +160,11 @@ Drawn from the product docs — read these for deeper context:
 
 ### Agent workflow
 
+- **Track program work in [docs/STATE.md](docs/STATE.md).** Read it before
+  starting or resuming work on the Personal OS program, and update it in the
+  same session as the work it records: tick what became true (with how it was
+  verified), set the next step, refresh the date. Work recorded only in a chat
+  summary is lost.
 - **Verify before answering.** When answering factual questions about what the code
   does, read the relevant source first and trace behavior to the final output. If
   you have not verified something, say so instead of guessing.

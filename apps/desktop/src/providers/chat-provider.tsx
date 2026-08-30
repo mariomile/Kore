@@ -9,6 +9,7 @@ import {
 } from 'react'
 import {
   chatModelOptions,
+  deleteChatAttachmentFiles,
   deleteChatConversation,
   errorMessage,
   hasBridge,
@@ -23,6 +24,7 @@ import {
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { toChatAttachment, type ChatAttachment } from '@/lib/chat-attachments'
 import { emitChatConversationDeleted } from '@/lib/chat-events'
+import { isNativeShell } from '@/lib/platform'
 import { isMobileSurface } from '@/lib/platform-surface'
 import { invalidateChatQueries } from '@/lib/query-client'
 import {
@@ -76,6 +78,11 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
   // prompt. Session state by design: the chat store's schema stays untouched,
   // and a restored conversation starts from the global prompt alone.
   const [instructions, setInstructions] = useState('')
+  // Whether THIS conversation may use the configured MCP servers in read-only
+  // chat. Session state like `instructions` by design: never persisted, reset
+  // by New chat and by opening a past conversation, so tools are re-armed
+  // only by an explicit user action each time.
+  const [chatTools, setChatTools] = useState(false)
   // Messages composed while a turn streams, waiting to ride after it. Ref
   // and state move together through `setQueue`: the auto-drain fires from a
   // stream's `finally`, which can run before React has re-rendered state.
@@ -117,6 +124,7 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
   const memoryWriteApprovalRef = useRef(settings.memoryWriteApproval)
   const mcpServersRef = useRef(settings.mcpServers)
   const instructionsRef = useRef(instructions)
+  const chatToolsRef = useRef(chatTools)
   useEffect(() => {
     turnsRef.current = turns
     attachmentsRef.current = attachments
@@ -130,6 +138,7 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
     memoryWriteApprovalRef.current = settings.memoryWriteApproval
     mcpServersRef.current = settings.mcpServers
     instructionsRef.current = instructions
+    chatToolsRef.current = chatTools
   })
 
   // The in-flight send, tracked synchronously — the no-concurrent-sends
@@ -204,9 +213,11 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
           lastSendSessionRef,
           turnsRef,
           conversationIdRef,
+          generationRef,
           instructionsRef,
           chatSystemPromptRef,
           chatAllowEditsRef,
+          chatToolsRef,
           activeAgentProfileRef,
           memoryWriteApprovalRef,
           mcpServersRef,
@@ -305,6 +316,7 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
     setTurns([])
     setAttachments([])
     setInstructions('')
+    setChatTools(false)
     setQueue([])
     const nextConversationId = crypto.randomUUID()
     conversationIdRef.current = nextConversationId
@@ -322,6 +334,7 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
       const session = sessionRef.current
       setAttachments([])
       setInstructions('')
+      setChatTools(false)
       setQueue([])
       try {
         const restored = await loadChatMessages(id)
@@ -357,6 +370,14 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
           await deleteChatConversation(id, generation)
         } catch (cause) {
           console.error('chat: deleting the conversation failed:', errorMessage(cause))
+        }
+        // The conversation's attachment files go with its rows; failing to
+        // sweep them leaves orphan images, not broken chat state (and the
+        // dev bridge has no files to sweep).
+        if (isNativeShell()) {
+          await deleteChatAttachmentFiles(id, generation).catch((cause: unknown) => {
+            console.error('chat: deleting attachment files failed:', errorMessage(cause))
+          })
         }
         invalidateChatQueries()
       }
@@ -412,6 +433,8 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
       newChat,
       instructions,
       setInstructions,
+      chatTools,
+      setChatTools,
       activeConversationId: conversationId,
       openConversation,
       deleteConversation,
@@ -435,6 +458,7 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
       stop,
       newChat,
       instructions,
+      chatTools,
       conversationId,
       openConversation,
       deleteConversation,

@@ -1,5 +1,10 @@
 # Plan 25 — Kore Personal OS
 
+> **Program deferred 2026-08-30 (app-first decision, see [roadmap](../roadmap.md)):**
+> Kore ships app quality and agent power first; this program resumes on an
+> explicit decision. The catalog below stays intact as the reference for that
+> future wave and is not the active backlog.
+
 **Status:** Planned; no target initiative is certified complete.
 **Updated:** 2026-08-27.
 **Goal:** Connect user-owned knowledge, structured data, accounts, agents, and
@@ -167,6 +172,11 @@ of planning. Plans 01–24 remain references for existing behavior and residual 
 
 ### I12 — Universal Resource layer and connector sync
 
+> **Re-scoped 2026-08-30 (roadmap decision):** the normalized Resource store is
+> not scheduled; retrieval is agent-led over capabilities (see I13 note). The
+> surviving piece is per-Connection sync cursors, deferred to I16 polling.
+> The scope below is retained as the source-traceable reference.
+
 - **Outcome:** External data has one retrievable, attributable representation.
 - **Features:** Object versus Resource separation; source+Connection+external-ID
   uniqueness; raw versus normalized data; provenance/trust; Resource links/API;
@@ -179,6 +189,14 @@ of planning. Plans 01–24 remain references for existing behavior and residual 
   Resources obey current grants and retain source/account/freshness.
 
 ### I13 — Universal search and Ask Kore
+
+> **Re-scoped 2026-08-30 (roadmap decision):** not built as a first-party
+> subsystem. The agent is the query planner: capabilities (`email.search`,
+> `calendar.search`, …) are exposed as chat tools, the agent fans out over
+> authorized accounts and synthesizes, and results render per-item
+> account/source provenance. ⌘K stays vault-only. Revisit only if agent-led
+> retrieval proves insufficient. The scope below is retained as the
+> source-traceable reference.
 
 - **Outcome:** One query answers from notes, Gmail, and Calendar, then more sources.
 - **Features:** Query/context planner, local index + Resource DB + live queries,
@@ -389,7 +407,7 @@ of planning. Plans 01–24 remain references for existing behavior and residual 
 | S1 — Account-safe read ([Plan 26](26-account-safe-read.md)) | I01–I05, minimal I08 audit, I09 Gmail and I10 setup: 2 Graphs, 2 Gmail, Chief of Staff/Product Agent, resolver, `email.search` | Live account isolation plus deterministic tests of forged IDs, revocation, secret-free handles and provenance | No browser, provider writes, event workflow, Entity Graph or new Database UI |
 | S2 — Second provider | Add two Google Calendar accounts through the same contracts | Both calendars aggregate only for authorized agent; no Gmail-specific domain change | No connector catalog expansion |
 | S3 — Durable execution | I06–I08/I23: native jobs, scheduler, locks, attempts, checkpoints; enable approved write capabilities only after gates | Start/close/reopen UI; state restored; runtime stays active; approval resumes exact action; uncertain send cannot duplicate | No claim of execution after runtime process termination or iOS suspension |
-| S4 — Connected retrieval | I12/I13: normalized Resources and notes + Gmail + Calendar search | Project query returns notes/email/events with account, source, freshness and partial errors | No Entity auto-merge |
+| S4 — Agent retrieval in chat (re-scoped 2026-08-30) | Capabilities as chat tools; provenance rendered on results | Agent answers a project query from notes/email/events with account and source attributed per item | No Resource store, no first-party search subsystem, no Entity auto-merge |
 | S5 — Structured knowledge | I14: extend current typed Collections and ID-backed relations | Existing Markdown round-trips; shared rows in views; references survive rename/move | No speculative replacement of Collections or formula platform |
 
 Source sections 130–134 describe these slices. Section 138 puts durable runtime

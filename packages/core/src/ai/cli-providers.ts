@@ -29,6 +29,17 @@ export function cliProviderSupportsEdits(id: CliAgentProviderId): boolean {
 }
 
 /**
+ * Whether the engine can mount the app's MCP servers on a run. Cursor cannot:
+ * its per-run `.cursor/cli.json` denies MCP by design (read-only posture),
+ * and BYOK engines never reach this predicate. Edit mode implies MCP support
+ * already (see {@link cliProviderSupportsEdits}); read-mode chat tools use
+ * this predicate directly.
+ */
+export function cliProviderSupportsMcp(id: CliAgentProviderId): boolean {
+  return id === 'claude-cli' || id === 'codex-cli'
+}
+
+/**
  * How the engine takes a message while a turn is streaming (bb's steer-mode
  * capability): 'inject' delivers it into the live session — context
  * preserved, no cancel-and-relaunch — while 'queue' engines can only wait

@@ -24,8 +24,21 @@ export interface ChatAttachment {
   name: string
   /** IANA media type, e.g. `image/png`. */
   mediaType: string
-  /** The image bytes as a `data:` URL — rendered as-is and sent to the provider. */
-  dataUrl: string
+  /**
+   * The image bytes as a `data:` URL. Present on a freshly attached image
+   * (the composer preview and the provider payload) and hydrated back from
+   * disk at send time for restored turns; absent on a persisted row whose
+   * bytes live at {@link ChatAttachment.path}, so a restored conversation
+   * no longer carries base64 on the heap.
+   */
+  dataUrl?: string | undefined
+  /**
+   * Graph-relative file the bytes were persisted to
+   * (`.reflect/chat-attachments/<conversation>/<attachment>.<ext>`), set
+   * once the send path lands them on disk. Legacy rows carry only
+   * {@link ChatAttachment.dataUrl}.
+   */
+  path?: string | undefined
 }
 
 /** One renderable slice of an assistant message. */
@@ -140,13 +153,20 @@ function settleTools(
  * the text — which may be absent entirely for a photo-only message.
  */
 export function userMessage(text: string, attachments: readonly ChatAttachment[]): ModelMessage {
-  if (attachments.length === 0) {
+  // Only hydrated attachments ride: a path-only attachment (restored from
+  // disk, hydration failed or skipped) degrades to the text alone rather
+  // than sending an empty payload the provider would reject.
+  const withBytes = attachments.filter(
+    (attachment): attachment is ChatAttachment & { dataUrl: string } =>
+      attachment.dataUrl !== undefined,
+  )
+  if (withBytes.length === 0) {
     return { role: 'user', content: text }
   }
   return {
     role: 'user',
     content: [
-      ...attachments.map((attachment) => ({
+      ...withBytes.map((attachment) => ({
         type: 'file' as const,
         data: attachment.dataUrl,
         mediaType: attachment.mediaType,

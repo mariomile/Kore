@@ -230,6 +230,7 @@ export {
   checkCliAgentProvider,
   cliProviderSteerMode,
   cliProviderSupportsEdits,
+  cliProviderSupportsMcp,
   isCliAgentProvider,
   streamCliAgentChat,
   type CliAgentProviderId,
@@ -262,6 +263,11 @@ export {
   saveChatMessage,
   type ChatConversation,
 } from '../ai/chat/store'
+export {
+  deleteChatAttachmentFiles,
+  persistChatAttachmentFile,
+  readChatAttachmentDataUrl,
+} from '../ai/chat/attachment-files'
 export {
   estimateTokens,
   fitToContextWindow,

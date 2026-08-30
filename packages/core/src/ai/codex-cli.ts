@@ -122,9 +122,12 @@ export function codexCliSystemPrompt(options: {
   allowEdits?: boolean | undefined
   agentContext?: AgentPromptContext | null | undefined
   memoryWriteApproval?: boolean | undefined
+  /** Names of MCP servers riding this run; the prompt must name them. */
+  mcpServerNames?: string[] | undefined
 }): string {
   const custom = options.customSystemPrompt.trim()
   const allowEdits = options.allowEdits === true
+  const mcpServerNames = options.mcpServerNames ?? []
   return [
     allowEdits
       ? `You are Kore’s agent, working inside the user’s personal note graph “${options.graphName}” — the working directory, a folder of markdown files the running app picks up live.`
@@ -140,6 +143,11 @@ export function codexCliSystemPrompt(options: {
     allowEdits
       ? '- When a question could be answered by the user’s notes, look them up before answering: list and read the markdown files.'
       : '- When a question could be answered by the user’s notes, look them up before answering: list and read the markdown files (read-only — never modify anything).',
+    ...(mcpServerNames.length > 0
+      ? [
+          `- The user turned on their configured external MCP tools for this conversation (servers: ${mcpServerNames.join(', ')}). Use them only when the user’s request needs them; the safety rules below still apply to everything you send them.`,
+        ]
+      : []),
     '- Some notes are private and reading them is denied by the sandbox. If a read is denied, tell the user the note is private — never speculate about its contents.',
     '- Ground answers in what you read. If the notes don’t cover something, say so plainly instead of guessing.',
     '- Cite every note you draw on with a wiki link of its exact title (its H1, or the file name without extension), e.g. [[Project Atlas]]. For daily notes use the date, e.g. [[2026-06-14]].',
@@ -235,6 +243,7 @@ export function streamCodexCliChat(options: StreamCliChatOptions): AsyncGenerato
     allowEdits: options.allowEdits,
     agentContext: options.agentContext,
     memoryWriteApproval: options.memoryWriteApproval,
+    mcpServerNames: (options.mcpServers ?? []).map((server) => server.name),
   })
   const userPrompt = `<instructions>\n${preamble}\n</instructions>\n\n${agentCliPrompt(options.messages)}`
   const parseState: CodexCliParseState = { sawAgentMessageDelta: false }

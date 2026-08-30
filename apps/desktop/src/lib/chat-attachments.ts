@@ -1,3 +1,4 @@
+import { convertFileSrc } from '@tauri-apps/api/core'
 import type { ChatAttachment } from '@reflect/core'
 import { base64Of } from '@/lib/base64'
 
@@ -15,6 +16,26 @@ import { base64Of } from '@/lib/base64'
  */
 
 export type { ChatAttachment } from '@reflect/core'
+
+/**
+ * The `<img src>` for an attachment: the in-memory `data:` URL while it has
+ * one (fresh this session), otherwise its on-disk file through the
+ * `reflect-asset://` protocol — which is what keeps a restored
+ * conversation's images off the base64 heap. Null when neither is available
+ * (a legacy-shaped row in a context with no open graph).
+ */
+export function chatAttachmentSrc(
+  attachment: ChatAttachment,
+  generation: number | null,
+): string | null {
+  if (attachment.dataUrl !== undefined) {
+    return attachment.dataUrl
+  }
+  if (attachment.path !== undefined && generation !== null) {
+    return convertFileSrc(`${generation}/${attachment.path}`, 'reflect-asset')
+  }
+  return null
+}
 
 /**
  * Long-edge cap for attached images. Providers tile images at roughly this

@@ -1,5 +1,6 @@
-import { useMemo, useRef, type ReactElement } from 'react'
-import { ArrowUp, Bot, Close, Note, Pencil, Stop } from '@/components/icons'
+import { useMemo, useRef, useState, type ReactElement } from 'react'
+import { ArrowUp, Bot, Close, Note, Pencil, Plug, Stop } from '@/components/icons'
+import { cliProviderSupportsMcp, isCliAgentProvider } from '@reflect/core'
 import { getIsComposing, isModEvent } from '@meowdown/core'
 import {
   Attachment,
@@ -9,6 +10,14 @@ import {
   AttachmentMedia,
 } from '@/components/ui/attachment'
 import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import {
   Select,
   SelectContent,
@@ -70,9 +79,23 @@ export function ChatInput({ autoFocus = true }: ChatInputProps = {}): ReactEleme
     removeQueued,
     sendQueuedNow,
     stop,
+    chatTools,
+    setChatTools,
   } = useChatSession()
   const { settings, updateSettings } = useSettings()
+  // Enabling external tools for the conversation goes through an explicit
+  // confirmation naming the servers; disabling is immediate.
+  const [toolsDialogOpen, setToolsDialogOpen] = useState(false)
   const editsOn = settings.chatAllowEdits
+  // The Tools toggle exists only where it could do something: an MCP-capable
+  // CLI engine (Claude Code / Codex — Cursor's per-run config denies MCP) and
+  // at least one enabled server configured in Settings.
+  const enabledMcpServers = settings.mcpServers.filter((server) => server.enabled)
+  const toolsAvailable =
+    activeModel !== null &&
+    isCliAgentProvider(activeModel.provider) &&
+    cliProviderSupportsMcp(activeModel.provider) &&
+    enabledMcpServers.length > 0
   const { navigate } = useRouter()
   const composerRef = useComposerHeightVar()
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
@@ -162,7 +185,7 @@ export function ChatInput({ autoFocus = true }: ChatInputProps = {}): ReactEleme
                 className="w-16 bg-surface"
               >
                 <AttachmentMedia variant="image" className="w-14">
-                  <img src={attachment.dataUrl} alt={attachment.name} />
+                  <img src={attachment.dataUrl ?? ''} alt={attachment.name} />
                 </AttachmentMedia>
                 <AttachmentActions className="!top-0 !right-0 -translate-y-1/2 translate-x-1/2">
                   <AttachmentAction
@@ -328,6 +351,35 @@ export function ChatInput({ autoFocus = true }: ChatInputProps = {}): ReactEleme
               </TooltipContent>
             </Tooltip>
           ) : null}
+          {toolsAvailable ? (
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label="Toggle external tools"
+                    aria-pressed={chatTools}
+                    onClick={() => {
+                      if (chatTools) {
+                        setChatTools(false)
+                        return
+                      }
+                      setToolsDialogOpen(true)
+                    }}
+                    className={chatTools ? 'text-accent' : undefined}
+                  >
+                    <Plug aria-hidden />
+                  </Button>
+                }
+              />
+              <TooltipContent>
+                {chatTools
+                  ? 'External tools are on for this conversation — agent chat can use your MCP servers. Turns off on New chat.'
+                  : 'External tools are off — this conversation is zero-egress. Turn on to let agent chat use your MCP servers.'}
+              </TooltipContent>
+            </Tooltip>
+          ) : null}
           <Tooltip>
             <TooltipTrigger
               render={
@@ -368,6 +420,38 @@ export function ChatInput({ autoFocus = true }: ChatInputProps = {}): ReactEleme
           )}
         </div>
       </div>
+      <Dialog open={toolsDialogOpen} onOpenChange={setToolsDialogOpen}>
+        <DialogContent className="w-[28rem]">
+          <DialogHeader>
+            <DialogTitle>Turn on external tools?</DialogTitle>
+            <DialogDescription>
+              For this conversation, agent chat can call your configured MCP{' '}
+              {enabledMcpServers.length === 1 ? 'server' : 'servers'} (
+              {enabledMcpServers.map((server) => server.name).join(', ')}). What you write and the
+              notes the agent reads may be sent to them. Private notes stay locked. Turns off on New
+              chat or when you switch conversations.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setToolsDialogOpen(false)
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                setChatTools(true)
+                setToolsDialogOpen(false)
+              }}
+            >
+              Turn on
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

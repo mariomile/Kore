@@ -11,6 +11,8 @@ import {
   gitChangedSince,
   withAgentRunLock,
   loadChatGraphContext,
+  persistChatAttachmentFile,
+  readChatAttachmentDataUrl,
   resolveMcpServers,
   mentionContextBlock,
   readNote,
@@ -19,11 +21,13 @@ import {
   scanChangedMemoryPaths,
   cliProviderSteerMode,
   cliProviderSupportsEdits,
+  cliProviderSupportsMcp,
   isCliAgentProvider,
   streamChat,
   streamCliAgentChat,
   userMessage,
   type AiProviderConfig,
+  type ChatAttachment as CoreChatAttachment,
   type ChatConversation,
   type ChatStreamEvent,
   type ChatTurn,
@@ -101,9 +105,13 @@ export interface ChatDeliverDeps {
   lastSendSessionRef: RefObject<number>
   turnsRef: RefObject<ChatTurn[]>
   conversationIdRef: RefObject<string>
+  /** The open index generation — pins attachment file writes and reads. */
+  generationRef: RefObject<number | null>
   instructionsRef: RefObject<string>
   chatSystemPromptRef: RefObject<string>
   chatAllowEditsRef: RefObject<boolean>
+  /** The conversation's read-mode external-tools opt-in (see chat context). */
+  chatToolsRef: RefObject<boolean>
   activeAgentProfileRef: RefObject<string | null>
   memoryWriteApprovalRef: RefObject<boolean>
   mcpServersRef: RefObject<McpServer[]>
@@ -129,9 +137,11 @@ export async function deliverChatTurn(
     lastSendSessionRef,
     turnsRef,
     conversationIdRef,
+    generationRef,
     instructionsRef,
     chatSystemPromptRef,
     chatAllowEditsRef,
+    chatToolsRef,
     activeAgentProfileRef,
     memoryWriteApprovalRef,
     mcpServersRef,
@@ -148,7 +158,24 @@ export async function deliverChatTurn(
   }
 
   const turnId = crypto.randomUUID()
-  const messages = [...buildHistory(turnsRef.current), userMessage(trimmed, attached)]
+  const generation = generationRef.current
+  // Attachment bytes land on disk before anything captures the turn: the
+  // persisted row then carries only the file path (the store strips the
+  // dataUrl), while this in-memory copy keeps its dataUrl for the session's
+  // rendering and provider payload. Best-effort per image — a failed write
+  // keeps that attachment on the legacy inline persistence.
+  const attachedWithFiles = await withPersistedAttachmentFiles(
+    conversationIdRef.current,
+    attached,
+    generation,
+  )
+  // Restored turns hold path-only attachments; a BYOK payload needs the
+  // bytes back. CLI engines never embed image bytes in their prompt, so the
+  // reads are skipped there.
+  const historyTurns = isCliAgentProvider(config.provider)
+    ? turnsRef.current
+    : await withHydratedAttachmentHistory(turnsRef.current, generation)
+  const messages = [...buildHistory(historyTurns), userMessage(trimmed, attachedWithFiles)]
   // The conversation's own instructions ride after the global prompt so a
   // per-chat tone or format override wins where the two disagree.
   const conversationInstructions = instructionsRef.current.trim()
@@ -172,7 +199,7 @@ export async function deliverChatTurn(
   let localTurn: ChatTurn = {
     id: turnId,
     userText: trimmed,
-    attachments: attached,
+    attachments: attachedWithFiles,
     parts: [],
     responseMessages: [],
     status: 'streaming',
@@ -242,7 +269,10 @@ export async function deliverChatTurn(
     // keep the text as typed.
     const mentionBlock = mentionContextBlock(await resolveNoteMentions(trimmed))
     if (mentionBlock !== '') {
-      messages[messages.length - 1] = userMessage(`${trimmed}\n\n${mentionBlock}`, attached)
+      messages[messages.length - 1] = userMessage(
+        `${trimmed}\n\n${mentionBlock}`,
+        attachedWithFiles,
+      )
     }
     // The active agent's soul + memories ride into every provider's
     // prompt; a failed read degrades to "nothing", never a blocked turn.
@@ -261,13 +291,18 @@ export async function deliverChatTurn(
         if (privateNotePaths === null) {
           return null
         }
-        // MCP tools ride only edit-mode runs: read-only chat stays a
-        // zero-egress surface. Secrets resolve from the keychain here,
-        // per run — never stored anywhere else.
-        // Cursor never joins edit mode (its write path is unverified),
-        // so the toggle silently means read-only there.
+        // MCP tools ride runs the user opted into: every edit-mode run,
+        // and a read-mode run only when this conversation's Tools toggle
+        // was explicitly confirmed (read-only chat stays zero-egress by
+        // default). Secrets resolve from the keychain here, per run —
+        // never stored anywhere else.
+        // Cursor never joins edit mode (its write path is unverified) and
+        // its per-run config denies MCP, so both switches silently mean
+        // plain read-only there.
         const allowEdits = chatAllowEditsRef.current && cliProviderSupportsEdits(config.provider)
-        const mcpServers = allowEdits
+        const mcpAllowed =
+          allowEdits || (chatToolsRef.current && cliProviderSupportsMcp(config.provider))
+        const mcpServers = mcpAllowed
           ? await resolveMcpServers(mcpServersRef.current).catch(() => [])
           : []
         return streamCliAgentChat(config.provider, {
@@ -416,4 +451,70 @@ export async function deliverChatTurn(
       }
     }
   }
+}
+
+/**
+ * Persist fresh attachment bytes to their on-disk files (native shell with
+ * an open index only — the dev bridge has no filesystem, and its rows keep
+ * the inline dataUrl). Best-effort per attachment.
+ */
+async function withPersistedAttachmentFiles(
+  conversationId: string,
+  attachments: ChatAttachment[],
+  generation: number | null,
+): Promise<CoreChatAttachment[]> {
+  if (!isNativeShell() || generation === null || attachments.length === 0) {
+    return attachments
+  }
+  return await Promise.all(
+    attachments.map(async (attachment) => {
+      try {
+        return await persistChatAttachmentFile(conversationId, attachment, generation)
+      } catch (cause) {
+        console.error('chat: persisting an attachment file failed:', errorMessage(cause))
+        return attachment
+      }
+    }),
+  )
+}
+
+/**
+ * Hydrate path-only attachments (restored turns) back into `data:` URLs for
+ * a provider payload. A failed read leaves the attachment path-only, and
+ * `userMessage` then degrades that turn to its text.
+ */
+async function withHydratedAttachmentHistory(
+  turns: ChatTurn[],
+  generation: number | null,
+): Promise<ChatTurn[]> {
+  if (generation === null) {
+    return turns
+  }
+  return await Promise.all(
+    turns.map(async (turn) => {
+      if (
+        !turn.attachments.some(
+          (attachment) => attachment.dataUrl === undefined && attachment.path !== undefined,
+        )
+      ) {
+        return turn
+      }
+      const attachments = await Promise.all(
+        turn.attachments.map(async (attachment) => {
+          const path = attachment.path
+          if (attachment.dataUrl !== undefined || path === undefined) {
+            return attachment
+          }
+          try {
+            const dataUrl = await readChatAttachmentDataUrl({ ...attachment, path }, generation)
+            return { ...attachment, dataUrl }
+          } catch (cause) {
+            console.error('chat: reading an attachment file failed:', errorMessage(cause))
+            return attachment
+          }
+        }),
+      )
+      return { ...turn, attachments }
+    }),
+  )
 }

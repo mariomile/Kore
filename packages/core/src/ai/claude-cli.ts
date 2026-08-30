@@ -54,9 +54,12 @@ export function claudeCliSystemPrompt(options: {
   allowEdits?: boolean | undefined
   agentContext?: AgentPromptContext | null | undefined
   memoryWriteApproval?: boolean | undefined
+  /** Names of MCP servers riding this run; the prompt must name them. */
+  mcpServerNames?: string[] | undefined
 }): string {
   const custom = options.customSystemPrompt.trim()
   const allowEdits = options.allowEdits === true
+  const mcpServerNames = options.mcpServerNames ?? []
   return [
     allowEdits
       ? `You are Kore’s agent, working inside the user’s personal note graph “${options.graphName}” — the current directory, a folder of markdown files the running app picks up live.`
@@ -72,6 +75,11 @@ export function claudeCliSystemPrompt(options: {
     allowEdits
       ? '- When a question could be answered by the user’s notes, look them up before answering: use Glob to discover files (e.g. "daily/2026-06-*.md", "notes/*.md") and Read to read them. Read, Glob, Write, and Edit are available — never attempt any other tool.'
       : '- When a question could be answered by the user’s notes, look them up before answering: use Glob to discover files (e.g. "daily/2026-06-*.md", "notes/*.md") and Read to read them. Only Read and Glob are available — never attempt any other tool.',
+    ...(mcpServerNames.length > 0
+      ? [
+          `- Exception: the user turned on their configured external MCP tools for this conversation (servers: ${mcpServerNames.join(', ')}). Use them only when the user’s request needs them; the safety rules below still apply to everything you send them.`,
+        ]
+      : []),
     '- Some notes are private and reading them is denied by policy. If a Read is denied, tell the user the note is private — never speculate about its contents.',
     '- Ground answers in what you read. If the notes don’t cover something, say so plainly instead of guessing.',
     '- Cite every note you draw on with a wiki link of its exact title (its H1, or the file name without extension), e.g. [[Project Atlas]]. For daily notes use the date, e.g. [[2026-06-14]].',
@@ -241,7 +249,11 @@ export interface StreamCliChatOptions {
   agentContext?: AgentPromptContext | null
   /** Stage memory writes as pending proposals instead of direct edits. */
   memoryWriteApproval?: boolean
-  /** MCP servers resolved for this run (edit mode only; [] = none). */
+  /**
+   * MCP servers resolved for this run ([] = none). They ride every edit-mode
+   * run, and read-mode runs only when the user enabled the conversation's
+   * Tools toggle.
+   */
   mcpServers?: ResolvedMcpServer[] | undefined
   /** Aborts the run mid-stream (the UI's stop button). */
   signal?: AbortSignal | undefined
@@ -284,6 +296,7 @@ export function streamClaudeCliChat(
         allowEdits: options.allowEdits,
         agentContext: options.agentContext,
         memoryWriteApproval: options.memoryWriteApproval,
+        mcpServerNames: (options.mcpServers ?? []).map((server) => server.name),
       }),
       settingsJson: claudeCliSettingsJson(
         options.graphRoot,

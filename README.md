@@ -49,8 +49,8 @@ another git remote are connected directly by the user.
   masonry view, template placeholders (`{{date}}`, `{{time}}`, `{{title}}`),
   task priorities and recurrence, saved searches, and an Insights dashboard.
 
-See [docs/roadmap.md](docs/roadmap.md) for the full changelog of the
-customization and what is planned next.
+See [docs/delivery-log.md](docs/delivery-log.md) for the full changelog of the
+customization, and [docs/roadmap.md](docs/roadmap.md) for what is planned next.
 
 ## Product planning
 
@@ -59,7 +59,8 @@ knowledge, multiple external accounts, persistent agents, structured Objects,
 and a durable execution runtime. This is planned direction, not a list of
 features already available in the installed app.
 
-- [Roadmap](docs/roadmap.md): Priorities, delivery gates, and retained fork history.
+- [Roadmap](docs/roadmap.md): Priorities, slice build guidance, risk register,
+  and delivery gates.
 - [Target architecture](docs/kore-target-architecture.md): Domain, runtime, privacy,
   storage, existing-source baseline, and unresolved design decisions.
 - [Plan 25](docs/plans/25-personal-os.md): All 29 initiatives, dependencies,

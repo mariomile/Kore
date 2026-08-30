@@ -264,6 +264,11 @@ export {
   type ChatConversation,
 } from '../ai/chat/store'
 export {
+  deleteChatAttachmentFiles,
+  persistChatAttachmentFile,
+  readChatAttachmentDataUrl,
+} from '../ai/chat/attachment-files'
+export {
   estimateTokens,
   fitToContextWindow,
   type ContextWindowOptions,

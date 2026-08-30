@@ -74,6 +74,33 @@ describe('saveChatMessage', () => {
       generation: 7,
     })
   })
+
+  it('strips the dataUrl from an attachment persisted to disk', async () => {
+    invoke.mockResolvedValue(null)
+    const onDisk: ChatTurn = {
+      ...turn,
+      attachments: [
+        {
+          id: 'att-1',
+          name: 'cat.png',
+          mediaType: 'image/png',
+          dataUrl: 'data:image/png;base64,iVBORw==',
+          path: '.reflect/chat-attachments/conv-1/att-1.png',
+        },
+      ],
+    }
+    await saveChatMessage({ conversation, turn: onDisk, createdMs: 2_000, generation: 7 })
+
+    const payload = invoke.mock.lastCall?.[1] as { message: { attachments: string } }
+    expect(JSON.parse(payload.message.attachments)).toEqual([
+      {
+        id: 'att-1',
+        name: 'cat.png',
+        mediaType: 'image/png',
+        path: '.reflect/chat-attachments/conv-1/att-1.png',
+      },
+    ])
+  })
 })
 
 describe('loadChatMessages', () => {

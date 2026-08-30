@@ -19,6 +19,21 @@ decision, the Personal OS foundations (S1/S2/S3) are deferred to Next; see the
 
 ## What is true now
 
+- [x] **Now item 2 implemented: chat attachments out of base64.** Bytes go to
+  `.reflect/chat-attachments/<conversation>/` at send time via new
+  generation-pinned Rust commands (closed path shape, atomic writes); the
+  persisted row keeps only the path; rendering rides a strict carve-out in
+  the `reflect-asset://` protocol; BYOK sends hydrate restored attachments
+  per send; conversation delete sweeps the directory; legacy inline rows
+  still load. Verified: 10 Rust unit tests (validators + protocol carve-out),
+  30 core tests, 64 browser tests on chromium (webkit locally green except
+  the known pre-existing model-picker flake, which is green on CI with
+  retries); `pnpm check` exit 0; `cargo fmt`/`clippy` clean.
+- [x] **Now item 2's measurement run.** Native embedding benchmark on the
+  current build (bounded mode, 32 texts × 5 cycles, cached model): peak
+  native footprint 515 MB, stable, no growth after idle model drop. Recorded
+  in [memory budgets](memory-budget.md).
+
 - [x] **Now item 1 implemented: MCP tools in read-only chat**
   ([Plan 27](plans/27-read-mode-mcp-tools.md)). Composer Tools toggle (Claude
   Code/Codex with at least one enabled server), confirmation dialog naming the
@@ -50,14 +65,17 @@ decision, the Personal OS foundations (S1/S2/S3) are deferred to Next; see the
 
 ## Next step
 
-1. **Live check of Now item 1**: with a real MCP server configured, flip the
-   Tools toggle in a read-only conversation and watch the agent call it (and
-   confirm a fresh conversation is back to zero-egress).
-2. **Now item 2**: chat image attachments out of base64, closing with the
-   one-time memory-budget measurement on the current build.
+1. **Live checks with the user**: (a) Now 1: real MCP server + Tools toggle
+   in a read-only conversation; (b) Now 2: send an image in chat, restart,
+   confirm the restored conversation renders it from disk.
+2. **Now item 3**: agent memory, recall + reusable skills; sharpen scope
+   against real usage before building.
 
 ## Session log
 
+- 2026-08-30 — Implemented Now 2 (attachments off base64, protocol carve-out,
+  conversation-delete sweep) and ran the never-run native memory benchmark on
+  the current build (peak 515 MB bounded).
 - 2026-08-30 — Implemented Plan 27 (MCP tools in read-only chat) behind the
   per-conversation Tools opt-in; privacy.md updated; tests green on both
   browser engines.

@@ -185,7 +185,10 @@ const attachmentsSchema = z.array(
     id: z.string(),
     name: z.string(),
     mediaType: z.string(),
-    dataUrl: z.string(),
+    // Modern rows carry `path` (bytes on disk); legacy rows carry only the
+    // inlined `dataUrl`. Either alone is a valid persisted attachment.
+    dataUrl: z.string().optional(),
+    path: z.string().optional(),
   }),
 )
 
@@ -224,7 +227,14 @@ export async function saveChatMessage(input: {
         id: input.turn.id,
         conversationId: input.conversation.id,
         userText: input.turn.userText,
-        attachments: JSON.stringify(input.turn.attachments),
+        // Bytes never enter a row that has them on disk: an attachment with
+        // a `path` persists without its in-memory `dataUrl`, which is what
+        // keeps restored conversations off the base64 heap.
+        attachments: JSON.stringify(
+          input.turn.attachments.map(({ dataUrl, ...attachment }) =>
+            attachment.path === undefined ? { ...attachment, dataUrl } : attachment,
+          ),
+        ),
         parts: JSON.stringify(input.turn.parts),
         responseMessages: JSON.stringify(input.turn.responseMessages),
         createdMs: input.createdMs,

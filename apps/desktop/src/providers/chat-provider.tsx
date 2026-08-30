@@ -9,6 +9,7 @@ import {
 } from 'react'
 import {
   chatModelOptions,
+  deleteChatAttachmentFiles,
   deleteChatConversation,
   errorMessage,
   hasBridge,
@@ -23,6 +24,7 @@ import {
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { toChatAttachment, type ChatAttachment } from '@/lib/chat-attachments'
 import { emitChatConversationDeleted } from '@/lib/chat-events'
+import { isNativeShell } from '@/lib/platform'
 import { isMobileSurface } from '@/lib/platform-surface'
 import { invalidateChatQueries } from '@/lib/query-client'
 import {
@@ -211,6 +213,7 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
           lastSendSessionRef,
           turnsRef,
           conversationIdRef,
+          generationRef,
           instructionsRef,
           chatSystemPromptRef,
           chatAllowEditsRef,
@@ -367,6 +370,14 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
           await deleteChatConversation(id, generation)
         } catch (cause) {
           console.error('chat: deleting the conversation failed:', errorMessage(cause))
+        }
+        // The conversation's attachment files go with its rows; failing to
+        // sweep them leaves orphan images, not broken chat state (and the
+        // dev bridge has no files to sweep).
+        if (isNativeShell()) {
+          await deleteChatAttachmentFiles(id, generation).catch((cause: unknown) => {
+            console.error('chat: deleting attachment files failed:', errorMessage(cause))
+          })
         }
         invalidateChatQueries()
       }

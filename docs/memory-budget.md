@@ -168,11 +168,21 @@ them. It costs no context — what the model sees is already trimmed to its
 budget by `fitToContextWindow`, from the newest turn backwards — and nothing is
 lost, because the full conversation stays in the database.
 
-**Still open:** image attachments are persisted and held as base64 `data:` URLs
-(`ChatAttachment.dataUrl`), which is both the `<img src>` and the provider
-payload. Moving the bytes to disk and handing the UI a file URL would take them
-off the heap entirely; it needs a storage location, a migration for existing
-rows, and an async read on the send path, so it has not been done.
+**Closed 2026-08-30:** image attachment bytes now land in
+`.reflect/chat-attachments/<conversation>/<attachment>.<ext>` at send time and
+the persisted row keeps only the path; a restored conversation renders the
+file through the `reflect-asset://` protocol and holds no base64. The bytes
+come back (per send, per image) only when a BYOK payload needs a restored
+turn's attachment; a fresh attachment keeps its in-memory `data:` URL for the
+session that created it. Legacy rows with inlined `dataUrl` still load and
+render; they age out of the history window rather than being migrated.
+Deleting a conversation sweeps its attachment directory.
+
+**Measured 2026-08-30** (current source, debug build, bounded mode, 32
+synthetic texts × 5 cycles, cached MiniLM): peak native footprint 515 MB,
+stable across cycles (513.7 → 515.3 MB), model load 190 MB, no growth after
+idle model drop across a 30s settle. Same order as the paired experiment
+above; the 0.28.9-style multi-GB peaks do not reproduce on the current build.
 
 ## Budgets
 

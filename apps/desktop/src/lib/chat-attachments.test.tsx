@@ -59,7 +59,7 @@ describe('toChatAttachment', () => {
     const attachment = await toChatAttachment(imageFile('image/png'))
 
     expect(attachment.mediaType).toBe('image/png')
-    expect(attachment.dataUrl.startsWith('data:image/png;base64,')).toBe(true)
+    expect(attachment.dataUrl?.startsWith('data:image/png;base64,')).toBe(true)
     expect(drawImage).not.toHaveBeenCalled()
   })
 
@@ -78,6 +78,6 @@ describe('toChatAttachment', () => {
     const attachment = await toChatAttachment(imageFile('image/tiff'))
 
     expect(attachment.mediaType).toBe('image/tiff')
-    expect(attachment.dataUrl.startsWith('data:image/tiff;base64,')).toBe(true)
+    expect(attachment.dataUrl?.startsWith('data:image/tiff;base64,')).toBe(true)
   })
 })

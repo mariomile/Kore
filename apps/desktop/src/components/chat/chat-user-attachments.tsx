@@ -1,6 +1,8 @@
 import type { ReactElement } from 'react'
 import type { ChatAttachment } from '@reflect/core'
 import { Attachment, AttachmentGroup, AttachmentMedia } from '@/components/ui/attachment'
+import { chatAttachmentSrc } from '@/lib/chat-attachments'
+import { useGraph } from '@/providers/graph-provider'
 
 interface ChatUserAttachmentsProps {
   attachments: readonly ChatAttachment[]
@@ -12,13 +14,20 @@ interface ChatUserAttachmentsProps {
 export function ChatUserAttachments({
   attachments,
 }: ChatUserAttachmentsProps): ReactElement | null {
+  const { indexGeneration } = useGraph()
   if (attachments.length === 0) {
     return null
   }
 
+  // Restored attachments render from their on-disk file via the asset
+  // protocol; fresh ones from the in-memory data URL (chatAttachmentSrc).
+  const renderable = attachments
+    .map((attachment) => ({ attachment, src: chatAttachmentSrc(attachment, indexGeneration) }))
+    .filter((entry): entry is { attachment: ChatAttachment; src: string } => entry.src !== null)
+
   return (
     <AttachmentGroup className="justify-end gap-2 overflow-visible py-0">
-      {attachments.map((attachment) => (
+      {renderable.map(({ attachment, src }) => (
         <Attachment
           key={attachment.id}
           className="min-w-0 border-none bg-transparent p-0"
@@ -27,7 +36,7 @@ export function ChatUserAttachments({
         >
           <AttachmentMedia className="aspect-auto h-auto max-h-48 w-auto max-w-full rounded-xl bg-transparent">
             <img
-              src={attachment.dataUrl}
+              src={src}
               alt={attachment.name}
               className="max-h-48 max-w-full rounded-xl object-contain"
             />

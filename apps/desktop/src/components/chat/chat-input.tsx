@@ -185,7 +185,7 @@ export function ChatInput({ autoFocus = true }: ChatInputProps = {}): ReactEleme
                 className="w-16 bg-surface"
               >
                 <AttachmentMedia variant="image" className="w-14">
-                  <img src={attachment.dataUrl} alt={attachment.name} />
+                  <img src={attachment.dataUrl ?? ''} alt={attachment.name} />
                 </AttachmentMedia>
                 <AttachmentActions className="!top-0 !right-0 -translate-y-1/2 translate-x-1/2">
                   <AttachmentAction

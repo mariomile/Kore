@@ -111,6 +111,8 @@ function installFakeBridge(): void {
           return storedFiles
         case 'vault_scan_stats':
           return { notes: storedFiles.length, attachments: 0, skipped: 0 }
+        case 'note_create':
+          return { kind: 'created', modifiedMs: 1 }
         case 'index_meta_set':
           metaStore[String(args['key'])] = String(args['value'])
           return null
@@ -319,7 +321,10 @@ describe('GraphProvider welcome seeding', () => {
 
     expect(result.current.status).toBe('ready')
     expect(invokeLog).toContain('note_write')
+    // The default objects land beside the welcome note, one create per tag.
+    expect(invokeLog.filter((entry) => entry === 'note_create')).toHaveLength(4)
     expect(metaStore['welcomeSeeded']).toBe('true')
+    expect(metaStore['defaultObjectsSeeded']).toBe('true')
   })
 
   it('never seeds a marked graph, even when it is empty (deleted notes stay deleted)', async () => {
@@ -334,6 +339,9 @@ describe('GraphProvider welcome seeding', () => {
     await vi.waitFor(() => expect(result.current.status).toBe('ready'))
 
     expect(invokeLog).not.toContain('note_write')
+    // An emptied, welcome-marked graph is not brand-new: the objects only mark.
+    expect(invokeLog).not.toContain('note_create')
+    await vi.waitFor(() => expect(metaStore['defaultObjectsSeeded']).toBe('true'))
   })
 
   it('marks an unmarked graph with existing notes without writing into it', async () => {
@@ -348,8 +356,10 @@ describe('GraphProvider welcome seeding', () => {
     await vi.waitFor(() => expect(result.current.status).toBe('ready'))
 
     expect(invokeLog).not.toContain('note_write')
+    expect(invokeLog).not.toContain('note_create')
     // Onboarding was considered: emptying this graph later won't re-seed.
     expect(metaStore['welcomeSeeded']).toBe('true')
+    expect(metaStore['defaultObjectsSeeded']).toBe('true')
   })
 })
 

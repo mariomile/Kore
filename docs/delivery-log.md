@@ -7,6 +7,18 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- New vaults are born with their objects. A brand-new vault starts with
+  four typed supertags under `tags/` — Project, Person, Company, Meeting —
+  each an ordinary definition note (schema in frontmatter, a short
+  explanatory body) the user can reshape or delete; nothing brings a
+  deleted one back. Seeding rides the welcome note's first-run mechanism:
+  one scan decides "brand-new" for the whole batch, one durable marker
+  per seed, and a vault that already has anything in it — an adopted
+  folder, an existing graph, an emptied one — is only ever marked, never
+  written into. The schema dialog's starter presets now derive from the
+  same definitions, so every default stays one click away on any tag.
+  Content, never behavior: no routine or workflow ships with them.
+
 - The portfolio shows where work is waiting. Collection rows carry an
   open-task count badge — on the table's subject cell and the board's
   cards — counting by the same rule as the note's Tasks panel: checkboxes

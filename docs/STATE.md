@@ -1,7 +1,7 @@
 # Kore working state
 
-**Updated:** 2026-08-30 at `a6257c87` (projects slice 1 merged, #119;
-slice 2 — the portfolio pulse — in flight).
+**Updated:** 2026-08-30 at `d201021e` (v0.41.0 shipped with the whole
+collections/projects pass; default vault objects in flight).
 **Rule:** Every session that moves the program updates this file before its
 summary: tick what became true and how it was verified, set the next step,
 refresh the date. What is done and what is next live here and only here. Why
@@ -26,6 +26,21 @@ sum/avg. Also still open: the live checks below. B05c preview tabs stays
 declined; the backlog-B pass is closed.
 
 ## What is true now
+
+- [x] **Default vault objects** (user ask, 2026-08-30): a brand-new vault
+  is born with four typed supertags under `tags/` — Project
+  (Status/Due/Priority), Person (Email/Company/Birthday/Phone), Company
+  (Website/Industry/Location), Meeting (Date/Attendees/Project) — each a
+  plain definition note with an explanatory body. Seeded by
+  `ensureFirstRunSeeds` (the welcome note's own mechanism, one scan, one
+  meta marker per seed): only a never-seen, completely empty vault gets
+  them; existing vaults — the user's included — are marked without a
+  write, and deleting an object never brings it back. The schema dialog's
+  presets now derive from the same `DEFAULT_VAULT_OBJECTS`, so a deleted
+  default is one click from returning on any tag. Content, never
+  behavior, per the automations principle. Verified: core source
+  round-trip + write tests, first-run suite 6/6, provider seeding suite,
+  dialog 8/8, `pnpm check` exit 0.
 
 - [x] **Projects slice 2: the portfolio pulse.** Collection rows now show
   where work is waiting: the table's subject cell and the board's cards
@@ -228,6 +243,11 @@ declined; the backlog-B pass is closed.
 
 ## Session log
 
+- 2026-08-30 — Default vault objects (Project, Person, Company, Meeting)
+  seeded into brand-new vaults through the welcome note's first-run
+  mechanism; dialog presets unified onto the same definitions. v0.41.0
+  shipped just before (the tag page, schema dialog, task↔project link,
+  and count badges all in one release).
 - 2026-08-30 — Projects slice 2: open-task count badges on collection
   rows (table subject cell + board cards), one batched read sharing the
   slice-1 membership predicate. Slice 1 (#119) merged the same session.

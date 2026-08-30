@@ -6,14 +6,18 @@ import {
   slugForTitle,
   upsertFrontmatter,
   vaultScanStats,
+  writeDefaultVaultObjects,
   writeNote,
 } from '@reflect/core'
 
 /**
- * The first-run seed (Plan 15 step 1): a brand-new graph gets one short,
- * pinned "How to use Kore" note. It doubles as the optional-setup surface —
- * backup and AI keys are pointers into Settings, not a wizard — so onboarding
- * never gates the editor and "skipping" is just not reading the note.
+ * The first-run seeds (Plan 15 step 1 + TDR 0005's default objects): a
+ * brand-new graph gets one short, pinned "How to use Kore" note and the
+ * default typed supertags (Project, Person, Company, Meeting under `tags/`).
+ * The welcome note doubles as the optional-setup surface — backup and AI
+ * keys are pointers into Settings, not a wizard — so onboarding never gates
+ * the editor and "skipping" is just not reading the note. The objects are
+ * plain deletable markdown: content, never behavior.
  */
 
 const WELCOME_TITLE = 'How to use Kore'
@@ -27,6 +31,11 @@ export const WELCOME_NOTE_PATH = notePath(slugForTitle(WELCOME_TITLE))
  * index rebuilds; only deleting `.reflect/` wholesale resets it.
  */
 export const WELCOME_SEEDED_META_KEY = 'welcomeSeeded'
+
+/** Same contract, one marker per seed: the default objects are considered
+ * independently, so a graph that predates them (welcome already marked) is
+ * marked without being written into. */
+export const DEFAULT_OBJECTS_SEEDED_META_KEY = 'defaultObjectsSeeded'
 
 const WELCOME_BODY = `# ${WELCOME_TITLE}
 
@@ -52,27 +61,46 @@ export interface EnsureWelcomeNoteOptions {
 }
 
 /**
- * Consider onboarding for this graph **exactly once** (find-or-create): when
- * the `welcomeSeeded` marker is absent, an **empty** graph gets the welcome
- * note, while any existing content means this is someone's data and only gets
- * marked. Empty means the scan found nothing at all — no notes, no
- * attachments, and nothing it had to skip: a folder of PDFs, or one whose
- * files were unreadable, must not be seeded into. Either way the marker lands,
- * so deleting the note — or emptying the graph entirely — never re-onboards.
- * The marker is stamped after the write: a failed seed retries on the next
- * open, and a retry that finds the note already on disk converges to marking.
- * Returns whether a seed happened.
+ * Consider every first-run seed for this graph **exactly once each**: when a
+ * seed's marker is absent, an **empty** graph gets its content, while any
+ * existing content means this is someone's data and only gets marked. Empty
+ * means the scan found nothing at all — no notes, no attachments, and
+ * nothing it had to skip: a folder of PDFs, or one whose files were
+ * unreadable, must not be seeded into. One scan decides for the whole batch,
+ * so the welcome note landing first cannot make the vault look non-empty to
+ * the default objects. Either way the markers land, so deleting a seeded
+ * note — or emptying the graph entirely — never re-seeds; a graph that
+ * predates a seed (its other markers already set) is marked without being
+ * written into. Markers are stamped after their writes: a failed seed
+ * retries on the next open, converging to marking once its files exist.
+ * Returns whether the graph was the brand-new case.
  */
-export async function ensureWelcomeNote(options: EnsureWelcomeNoteOptions): Promise<boolean> {
-  if ((await getIndexMeta(WELCOME_SEEDED_META_KEY)) !== null) {
+export async function ensureFirstRunSeeds(options: EnsureWelcomeNoteOptions): Promise<boolean> {
+  const [welcomeMarked, objectsMarked] = await Promise.all([
+    getIndexMeta(WELCOME_SEEDED_META_KEY),
+    getIndexMeta(DEFAULT_OBJECTS_SEEDED_META_KEY),
+  ])
+  if (welcomeMarked !== null && objectsMarked !== null) {
     return false
   }
   const stats = await vaultScanStats(options.fileGeneration)
-  const seeded = stats.notes === 0 && stats.attachments === 0 && stats.skipped === 0
-  if (seeded) {
-    const source = upsertFrontmatter(WELCOME_BODY, { id: newNoteId(), pinned: true })
-    await writeNote(WELCOME_NOTE_PATH, source, options.fileGeneration)
+  const empty = stats.notes === 0 && stats.attachments === 0 && stats.skipped === 0
+  // Brand-new means never considered before AND empty: a graph the welcome
+  // marker already knows — even one the user has since emptied — is not a
+  // new vault, so a later-added seed only ever records its marker there.
+  const brandNew = welcomeMarked === null && empty
+  if (welcomeMarked === null) {
+    if (empty) {
+      const source = upsertFrontmatter(WELCOME_BODY, { id: newNoteId(), pinned: true })
+      await writeNote(WELCOME_NOTE_PATH, source, options.fileGeneration)
+    }
+    await setIndexMeta(WELCOME_SEEDED_META_KEY, 'true', options.indexGeneration)
   }
-  await setIndexMeta(WELCOME_SEEDED_META_KEY, 'true', options.indexGeneration)
-  return seeded
+  if (objectsMarked === null) {
+    if (brandNew) {
+      await writeDefaultVaultObjects(options.fileGeneration)
+    }
+    await setIndexMeta(DEFAULT_OBJECTS_SEEDED_META_KEY, 'true', options.indexGeneration)
+  }
+  return brandNew
 }

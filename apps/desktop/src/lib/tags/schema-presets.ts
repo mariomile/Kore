@@ -1,4 +1,4 @@
-import type { TagProperty } from '@reflect/core'
+import { DEFAULT_VAULT_OBJECTS, type TagProperty } from '@reflect/core'
 
 /** One ready-made schema the config dialog can seed an empty tag with. */
 export interface TagSchemaPreset {
@@ -9,30 +9,25 @@ export interface TagSchemaPreset {
   properties: TagProperty[]
 }
 
+function presetFor(tag: string, properties: readonly TagProperty[]): TagSchemaPreset {
+  return {
+    id: tag.toLowerCase(),
+    name: tag,
+    summary: properties.map((property) => property.name).join(' · '),
+    properties: [...properties],
+  }
+}
+
 /**
  * Starter schemas for a tag with no type yet (TDR 0005): one click seeds the
  * draft rows — nothing is saved until the user says so, and every property
- * stays editable. Each preset deliberately includes a groupable property
- * (and, where natural, a date), so the board or calendar lights up in the
- * views strip immediately — the fastest honest answer to "how do I get a
- * kanban?". Keys here must stay clear of `RESERVED_FRONTMATTER_KEYS`.
+ * stays editable. The first four are the vault's default objects verbatim
+ * (`DEFAULT_VAULT_OBJECTS` is the single source of truth), so a deleted
+ * default is always one click from coming back on any tag; Reading list is
+ * the one extra. Keys must stay clear of `RESERVED_FRONTMATTER_KEYS`.
  */
 export const TAG_SCHEMA_PRESETS: TagSchemaPreset[] = [
-  {
-    id: 'tasks',
-    name: 'Task board',
-    summary: 'Status · Due · Priority',
-    properties: [
-      {
-        name: 'Status',
-        key: 'status',
-        type: 'status',
-        options: ['Backlog', 'In progress', 'Done'],
-      },
-      { name: 'Due', key: 'due', type: 'date' },
-      { name: 'Priority', key: 'priority', type: 'select', options: ['High', 'Medium', 'Low'] },
-    ],
-  },
+  ...DEFAULT_VAULT_OBJECTS.map((object) => presetFor(object.tag, object.properties)),
   {
     id: 'reading',
     name: 'Reading list',
@@ -41,16 +36,6 @@ export const TAG_SCHEMA_PRESETS: TagSchemaPreset[] = [
       { name: 'Author', key: 'author', type: 'text' },
       { name: 'Status', key: 'status', type: 'status', options: ['To read', 'Reading', 'Done'] },
       { name: 'Rating', key: 'rating', type: 'rating' },
-    ],
-  },
-  {
-    id: 'people',
-    name: 'People',
-    summary: 'Email · Company · Birthday',
-    properties: [
-      { name: 'Email', key: 'email', type: 'email' },
-      { name: 'Company', key: 'company', type: 'text' },
-      { name: 'Birthday', key: 'birthday', type: 'date' },
     ],
   },
 ]

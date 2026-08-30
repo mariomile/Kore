@@ -8,7 +8,7 @@ import {
   propertyRowValue,
   type TemplateEntry,
 } from '@reflect/core'
-import { Book, Checklist, Plus, User } from '@/components/icons'
+import { Book, Calendar, Chart, Folder, Plus, User } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -42,7 +42,13 @@ import { TagPropertyRow } from './tag-property-row'
 import { TagViewsStrip } from './tag-views-strip'
 
 /** The presets' row glyphs (kept here so the preset data stays plain). */
-const PRESET_ICONS = { tasks: Checklist, reading: Book, people: User } as const
+const PRESET_ICONS = {
+  project: Folder,
+  person: User,
+  company: Chart,
+  meeting: Calendar,
+  reading: Book,
+} as const
 
 interface TagConfigDialogProps {
   /** The tag being configured (display casing). */

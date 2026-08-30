@@ -16,11 +16,13 @@ import { z } from 'zod'
 
 /**
  * Where a link capture originated: the Chrome extension (through the
- * native-messaging host) or the iOS share extension (through the App Group
- * inbox the main app relays on foreground). Provenance only — every source
- * produces the same envelope shape.
+ * native-messaging host), the iOS share extension (through the App Group
+ * inbox the main app relays on foreground), or the in-app browser pane's
+ * Clip button (spooled directly by the desktop app — it never passes the
+ * native-messaging host, which keeps accepting only `extension` on its
+ * wire). Provenance only — every source produces the same envelope shape.
  */
-export const captureSourceSchema = z.enum(['extension', 'ios-share'])
+export const captureSourceSchema = z.enum(['extension', 'ios-share', 'in-app-browser'])
 
 /** Only web pages are capturable — `chrome://`, `file://` etc. never spool. */
 function isHttpUrl(value: string): boolean {

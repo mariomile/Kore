@@ -19,6 +19,12 @@ const browserEmbedNavigate = vi.hoisted(() => vi.fn<(url: string) => Promise<voi
 const browserEmbedBack = vi.hoisted(() => vi.fn<() => Promise<void>>())
 const browserEmbedForward = vi.hoisted(() => vi.fn<() => Promise<void>>())
 const browserEmbedReload = vi.hoisted(() => vi.fn<() => Promise<void>>())
+const browserEmbedRead = vi.hoisted(() =>
+  vi.fn<() => Promise<{ url: string; title: string; text: string; truncated: boolean }>>(),
+)
+const captureInboxSpool = vi.hoisted(() =>
+  vi.fn<(name: string, json: string, generation: number) => Promise<void>>(),
+)
 const subscribeBrowserNavigated = vi.hoisted(() => vi.fn(async () => () => {}))
 const isNativeShell = vi.hoisted(() => vi.fn(() => true))
 
@@ -31,11 +37,21 @@ vi.mock('@reflect/core', async (importOriginal) => ({
   browserEmbedBack,
   browserEmbedForward,
   browserEmbedReload,
+  browserEmbedRead,
+  captureInboxSpool,
   subscribeBrowserNavigated,
 }))
 vi.mock('@/lib/platform', () => ({
   isNativeShell,
 }))
+// The pane reads the graph context nullable-y; a default value stands in for
+// the provider so Clip has a generation to pin.
+vi.mock('@/providers/graph-context', async () => {
+  const { createContext } = await import('react')
+  return {
+    GraphContext: createContext({ graph: { root: '/g', name: 'g', generation: 7 } }),
+  }
+})
 const searchEngine = vi.hoisted(() => ({ current: 'duckduckgo' as 'duckduckgo' | 'google' }))
 vi.mock('@/providers/settings-provider', () => ({
   useSettings: () => ({
@@ -65,6 +81,47 @@ afterEach(() => {
 })
 
 describe('BrowserPane', () => {
+  it('Clip to note spools the shown page as a link-capture envelope', async () => {
+    browserEmbedRead.mockResolvedValue({
+      url: 'https://example.com/post',
+      title: 'A Post',
+      text: 'Body text',
+      truncated: false,
+    })
+    captureInboxSpool.mockResolvedValue(undefined)
+    const view = await render(<BrowserPane />)
+    await view.getByRole('button', { name: 'Clip to note' }).click()
+
+    await vi.waitFor(() => expect(captureInboxSpool).toHaveBeenCalledOnce())
+    const [name, json, generation] = captureInboxSpool.mock.calls[0]!
+    expect(generation).toBe(7)
+    const envelope = JSON.parse(json) as Record<string, unknown>
+    expect(name).toBe(`${String(envelope['id'])}.json`)
+    expect(envelope).toMatchObject({
+      version: 1,
+      url: 'https://example.com/post',
+      title: 'A Post',
+      contentText: 'Body text',
+      source: 'in-app-browser',
+    })
+    await view.unmount()
+  })
+
+  it('a non-web page refuses to clip instead of spooling junk', async () => {
+    browserEmbedRead.mockResolvedValue({
+      url: 'about:blank',
+      title: '',
+      text: '',
+      truncated: false,
+    })
+    const view = await render(<BrowserPane />)
+    await view.getByRole('button', { name: 'Clip to note' }).click()
+
+    await vi.waitFor(() => expect(browserEmbedRead).toHaveBeenCalled())
+    expect(captureInboxSpool).not.toHaveBeenCalled()
+    await view.unmount()
+  })
+
   it('docks the embedded webview over its host and closes it after unmount', async () => {
     const view = await render(<BrowserPane />)
 

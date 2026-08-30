@@ -1,5 +1,15 @@
 import type { OpenTab } from '@reflect/core'
-import type { MouseEvent, ReactElement } from 'react'
+import { useCallback, type CSSProperties, type MouseEvent, type ReactElement } from 'react'
+import {
+  closestCenter,
+  DndContext,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import { horizontalListSortingStrategy, SortableContext, useSortable } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { Close, PanelLeft, PanelRight, Pin } from '@/components/icons'
 import { NoteTabsPlusMenu } from '@/components/note-tabs-plus-menu'
 import { OpenTabIcon } from '@/components/open-tab-icon'
@@ -22,10 +32,27 @@ interface WorkspaceTabsStripProps {
  * final tab falls back to Daily through the provider.
  */
 export function WorkspaceTabsStrip({ commandContext }: WorkspaceTabsStripProps): ReactElement {
-  const { activeTab, activateTab, closeTab, togglePin } = useOpenTabs()
+  const { activeTab, activateTab, closeTab, togglePin, moveTab } = useOpenTabs()
   const items = useOpenTabItems()
   const { collapsed, toggleSidebar, contextCollapsed, toggleContextSidebar } = useSidebar()
   const activeKey = activeTab === null ? null : tabKey(activeTab)
+  // The 4px activation distance keeps plain clicks (activate), double clicks
+  // (pin) and middle clicks (close) intact — a drag only starts once the
+  // pointer actually travels. Same tuning as the sidebar's pinned shelf.
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent): void => {
+      if (event.over === null || event.active.id === event.over.id) {
+        return
+      }
+      const dragged = items.find((item) => tabKey(item.tab) === String(event.active.id))
+      const target = items.find((item) => tabKey(item.tab) === String(event.over?.id))
+      if (dragged !== undefined && target !== undefined) {
+        moveTab(dragged.tab, target.tab)
+      }
+    },
+    [items, moveTab],
+  )
 
   return (
     <div
@@ -55,16 +82,23 @@ export function WorkspaceTabsStrip({ commandContext }: WorkspaceTabsStripProps):
         aria-label="Workspace tabs"
         className="window-drag-control ml-1 flex min-w-0 flex-1 items-center gap-1 overflow-x-auto"
       >
-        {items.map((item) => (
-          <StripTab
-            key={tabKey(item.tab)}
-            item={item}
-            active={tabKey(item.tab) === activeKey}
-            onActivate={activateTab}
-            onClose={closeTab}
-            onTogglePin={togglePin}
-          />
-        ))}
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext
+            items={items.map((item) => tabKey(item.tab))}
+            strategy={horizontalListSortingStrategy}
+          >
+            {items.map((item) => (
+              <StripTab
+                key={tabKey(item.tab)}
+                item={item}
+                active={tabKey(item.tab) === activeKey}
+                onActivate={activateTab}
+                onClose={closeTab}
+                onTogglePin={togglePin}
+              />
+            ))}
+          </SortableContext>
+        </DndContext>
 
         {commandContext ? <NoteTabsPlusMenu context={commandContext} /> : null}
       </div>
@@ -136,6 +170,16 @@ interface StripTabProps {
 
 function StripTab({ item, active, onActivate, onClose, onTogglePin }: StripTabProps): ReactElement {
   const { tab, title } = item
+  // Drag-to-reorder: the whole pill is the handle (activation distance keeps
+  // clicks working); the drop lands in `moveTab` through the strip's
+  // DndContext. No overlay — the pill itself follows the pointer.
+  const { isDragging, listeners, setNodeRef, transform, transition } = useSortable({
+    id: tabKey(tab),
+  })
+  const sortableStyle: CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  }
   const handleAuxClick = (event: MouseEvent): void => {
     if (event.button === 1) {
       event.preventDefault()
@@ -145,6 +189,8 @@ function StripTab({ item, active, onActivate, onClose, onTogglePin }: StripTabPr
   if (tab.pinned) {
     return (
       <button
+        ref={setNodeRef}
+        style={sortableStyle}
         type="button"
         role="tab"
         aria-selected={active}
@@ -160,7 +206,9 @@ function StripTab({ item, active, onActivate, onClose, onTogglePin }: StripTabPr
         className={cn(
           pillClass(active),
           'shrink-0 px-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
+          isDragging && 'z-10 opacity-70',
         )}
+        {...listeners}
       >
         {tab.kind === 'note' ? (
           <Pin aria-hidden className="size-3 shrink-0" />
@@ -172,10 +220,17 @@ function StripTab({ item, active, onActivate, onClose, onTogglePin }: StripTabPr
   }
   return (
     <div
+      ref={setNodeRef}
+      style={sortableStyle}
       role="tab"
       aria-selected={active}
       onAuxClick={handleAuxClick}
-      className={cn(pillClass(active), 'group cursor-default pr-1')}
+      className={cn(
+        pillClass(active),
+        'group cursor-default pr-1',
+        isDragging && 'z-10 opacity-70',
+      )}
+      {...listeners}
     >
       <button
         type="button"

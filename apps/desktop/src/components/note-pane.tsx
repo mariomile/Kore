@@ -2,11 +2,9 @@ import { memo, useCallback, useMemo, useRef, useState, type ReactElement } from 
 import type { ExitBoundaryHandler, SearchStatus } from '@meowdown/core'
 import {
   detectConflictMarkers,
-  parseFrontmatter,
   parseCollectionEmbeds,
   parseEmbedBlocks,
   parseNoteTransclusions,
-  splitFrontmatter,
 } from '@reflect/core'
 import { BacklinksPanel } from '@/components/backlinks-panel'
 import { UnlinkedMentionsPanel } from '@/components/unlinked-mentions-panel'
@@ -218,10 +216,6 @@ export function NotePaneComponent({
     typedBody.seed === document.initialContent
       ? typedBody.markdown
       : document.initialContent
-  const privateNote = useMemo(
-    () => parseFrontmatter(splitFrontmatter(document.header).raw).data.private === true,
-    [document.header],
-  )
   const collectionEmbeds = useMemo(() => parseCollectionEmbeds(bodyMarkdown), [bodyMarkdown])
   const mediaEmbeds = useMemo(() => parseEmbedBlocks(bodyMarkdown), [bodyMarkdown])
   const noteTransclusions = useMemo(() => parseNoteTransclusions(bodyMarkdown), [bodyMarkdown])
@@ -460,7 +454,7 @@ export function NotePaneComponent({
             <EmbeddedMedia
               key={`${block.kind}:${block.kind === 'url' ? block.url : index}:${index}`}
               block={block}
-              privateNote={privateNote}
+              noteHeader={document.header}
             />
           ))}
         </div>

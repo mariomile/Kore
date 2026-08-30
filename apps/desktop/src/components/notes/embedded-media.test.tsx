@@ -21,7 +21,8 @@ function embedOf(body: string): EmbedBlock {
 }
 
 function renderEmbed(body: string, privateNote = false) {
-  return render(<EmbeddedMedia block={embedOf(body)} privateNote={privateNote} />)
+  const noteHeader = privateNote ? '---\nprivate: true\n---\n' : ''
+  return render(<EmbeddedMedia block={embedOf(body)} noteHeader={noteHeader} />)
 }
 
 describe('EmbeddedMedia', () => {

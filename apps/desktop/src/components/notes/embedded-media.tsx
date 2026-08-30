@@ -1,13 +1,13 @@
 import type { ReactElement } from 'react'
-import type { EmbedBlock } from '@reflect/core'
+import { parseFrontmatter, splitFrontmatter, type EmbedBlock } from '@reflect/core'
 import { Lock } from '@/components/icons'
 import { EmbeddedHtmlFrame } from './embedded-html-frame'
 import { EmbeddedLinkCard } from './embedded-link-card'
 
 interface EmbeddedMediaProps {
   block: EmbedBlock
-  /** Whether the containing note carries the hard `private: true` boundary. */
-  privateNote: boolean
+  /** Exact frontmatter bytes from the containing note. */
+  noteHeader: string
 }
 
 /**
@@ -18,7 +18,8 @@ interface EmbeddedMediaProps {
  * every time, so images, videos, and raw-HTML embeds all require an explicit
  * click. Private notes block the remote surface entirely.
  */
-export function EmbeddedMedia({ block, privateNote }: EmbeddedMediaProps): ReactElement {
+export function EmbeddedMedia({ block, noteHeader }: EmbeddedMediaProps): ReactElement {
+  const privateNote = parseFrontmatter(splitFrontmatter(noteHeader).raw).data.private === true
   if (privateNote) {
     return (
       <section className="mt-6 flex items-center gap-3 rounded-lg border border-border border-dashed px-3 py-2.5">

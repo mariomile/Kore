@@ -16,6 +16,8 @@ import {
   resolveMcpServers,
   mentionContextBlock,
   readNote,
+  recallContextBlock,
+  recallForMessage,
   resolveNoteMentions,
   saveChatMessage,
   scanChangedMemoryPaths,
@@ -267,10 +269,22 @@ export async function deliverChatTurn(
     // to a structured miss — the send always goes out. The block rides
     // the model-bound message alone: the bubble and the persisted turn
     // keep the text as typed.
-    const mentionBlock = mentionContextBlock(await resolveNoteMentions(trimmed))
-    if (mentionBlock !== '') {
+    const mentions = await resolveNoteMentions(trimmed)
+    const mentionBlock = mentionContextBlock(mentions)
+    // Beside the explicit mentions, the vault's own memory: one ranked FTS
+    // pass over the index surfaces the top passages touching this message,
+    // with provenance. Mentioned notes are excluded (their full content
+    // already rides the turn) and any failure degrades to no recall.
+    const recallBlock = recallContextBlock(
+      await recallForMessage(
+        trimmed,
+        mentions.map((mention) => mention.path),
+      ),
+    )
+    const contextBlock = [mentionBlock, recallBlock].filter((block) => block !== '').join('\n\n')
+    if (contextBlock !== '') {
       messages[messages.length - 1] = userMessage(
-        `${trimmed}\n\n${mentionBlock}`,
+        `${trimmed}\n\n${contextBlock}`,
         attachedWithFiles,
       )
     }

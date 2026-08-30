@@ -204,6 +204,7 @@ export {
   type FilteredSearchOptions,
   type SearchHit,
 } from './filtered-search'
+export { recallSearchHits, type RecallHit } from './recall-search'
 export {
   rewriteLinksForTitleChange,
   rewritePathLinksForMove,

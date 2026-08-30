@@ -76,7 +76,15 @@ export function useOpenTabItems(): OpenTabItem[] {
         case 'chat':
           return { tab, title: chatTitles.get(tab.conversationId) ?? 'New chat' }
         case 'surface':
-          return { tab, title: SURFACE_TAB_LABEL[tab.surface] }
+          // The All Notes surface routed to a tag is that tag's own page —
+          // the strip names the tag, not the generic surface.
+          return {
+            tab,
+            title:
+              tab.surface === 'allNotes' && tab.tag !== null
+                ? `#${tab.tag}`
+                : SURFACE_TAB_LABEL[tab.surface],
+          }
       }
     })
   }, [tabs, noteRows, conversations])

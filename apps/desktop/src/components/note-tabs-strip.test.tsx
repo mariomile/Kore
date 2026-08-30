@@ -236,6 +236,13 @@ function Probe(): ReactElement {
       >
         all notes
       </button>
+      <button
+        type="button"
+        data-testid="open-book-tag"
+        onClick={() => navigate({ kind: 'allNotes', tag: 'book' })}
+      >
+        book tag
+      </button>
       <button type="button" data-testid="open-tasks" onClick={() => navigate({ kind: 'tasks' })}>
         tasks
       </button>
@@ -576,6 +583,23 @@ describe('workspace tabs', () => {
         (tab) => tab.textContent === 'Tasks',
       ),
     ).toHaveLength(1)
+    await view.unmount()
+  })
+
+  it('names the All Notes tab after its routed tag', async () => {
+    const view = await renderTabs()
+    await view.getByTestId('open-all-notes').click()
+    await expect.element(view.getByRole('tab', { name: 'All notes' })).toBeVisible()
+
+    // A routed tag is that tag's own page, and the one surface tab renames —
+    // it does not spawn a second tab beside the generic label.
+    await view.getByTestId('open-book-tag').click()
+    await expect.element(view.getByRole('tab', { name: '#book' })).toBeVisible()
+    expect(view.getByRole('tab', { name: 'All notes' }).query()).toBeNull()
+
+    await view.getByTestId('open-all-notes').click()
+    await expect.element(view.getByRole('tab', { name: 'All notes' })).toBeVisible()
+    expect(view.getByRole('tab', { name: '#book' }).query()).toBeNull()
     await view.unmount()
   })
 

@@ -51,6 +51,7 @@ import { CollectionTable } from './collection-table'
 import { NoteListContextMenu } from '@/components/notes/note-context-menu'
 import { NoteTrashDialog } from '@/components/notes/note-trash-dialog'
 import { NewNoteButton } from './new-note-button'
+import { TagPageTitle } from './tag-page-title'
 import { useAllNotesKeyboard } from './use-all-notes-keyboard'
 import { useCollectionSavedViews, useCollectionViewSettings } from './use-collection-view-settings'
 import { isModEvent } from '@meowdown/core'
@@ -62,10 +63,16 @@ interface AllNotesScreenProps {
 
 /**
  * The All Notes screen (a routed view, like settings): every non-daily note,
- * newest first, filterable by tag. The active tag lives on the route so
- * back/forward and "open a note, come back" keep the filter. Daily notes are
- * deliberately absent from the unfiltered view, but appear when they match the
- * active tag.
+ * newest first. The active tag lives on the route so back/forward and "open a
+ * note, come back" keep it. Daily notes are deliberately absent from the
+ * unfiltered view, but appear when they match the active tag.
+ *
+ * A routed tag renders as that tag's own page rather than "All Notes with a
+ * filter on": the tag is the title (with an All notes breadcrumb back), the
+ * filter tabs stay on the unfiltered view only, a typed tag carries its
+ * schema gear in the header, and an untyped tag offers "Create a collection"
+ * in their place (TDR 0005) — the entry point that used to hide behind the
+ * sidebar's hover gear.
  *
  * Rows are multi-selectable (V1 parity): click to select (⌘ toggle, Shift
  * range), the indicator gutter toggles, the subject or a double-click opens.
@@ -232,7 +239,7 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
     <div
       ref={rootRef}
       tabIndex={-1}
-      aria-label="All notes"
+      aria-label={tag === null ? 'All notes' : `#${tag}`}
       // `relative`: the floating bulk bar positions against this root.
       className="relative flex h-full min-h-0 flex-col outline-none"
     >
@@ -245,9 +252,20 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
         onDone={selection.clear}
       />
       <header className="flex flex-none flex-wrap items-center justify-between gap-3 py-4 pl-12 pr-7">
-        <h1 className="text-[15px] font-semibold text-text">Notes</h1>
+        {tag === null ? (
+          <h1 className="text-[15px] font-semibold text-text">Notes</h1>
+        ) : (
+          <TagPageTitle
+            tag={tag}
+            typed={collectionAvailable}
+            onBack={() => handleFilterSelect(null)}
+            onConfigure={() => setEditingSchema(true)}
+          />
+        )}
         <div className="flex flex-wrap items-center gap-3">
-          <AllNotesFilters tag={tag} facets={facets ?? []} onSelect={handleFilterSelect} />
+          {tag === null ? (
+            <AllNotesFilters tag={tag} facets={facets ?? []} onSelect={handleFilterSelect} />
+          ) : null}
           {view === 'board' && boardProperties.length > 1 ? (
             <Select
               value={boardGroupProperty?.key ?? ''}
@@ -334,6 +352,19 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
                 <Download aria-hidden className="size-3.5" />
               </button>
             </>
+          ) : null}
+          {tag !== null && tagType === null ? (
+            // The untyped tag page's one call to action (TDR 0005): give the
+            // tag a schema and the collection views light up. `undefined`
+            // (type still loading) keeps it hidden — no flash on typed tags.
+            <button
+              type="button"
+              onClick={() => setEditingSchema(true)}
+              className="flex items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-1 text-sm font-medium text-accent-soft-text transition-opacity hover:opacity-80"
+            >
+              <Layers aria-hidden className="size-3.5" />
+              Create a collection
+            </button>
           ) : null}
           <div
             role="group"

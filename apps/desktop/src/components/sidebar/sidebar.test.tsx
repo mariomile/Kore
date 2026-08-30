@@ -228,7 +228,7 @@ async function renderSidebar(overrides?: Partial<CommandContext>, initialRoute?:
 }
 
 describe('Sidebar', () => {
-  it('lists tags with counts and opens the tag-filtered All Notes view', async () => {
+  it('lists tags with counts and opens the tag page', async () => {
     listNoteTags.mockResolvedValue([
       { tag: 'book', count: 3 },
       { tag: 'person', count: 1 },
@@ -239,14 +239,14 @@ describe('Sidebar', () => {
     await expect.element(tagRow).toBeVisible()
     await expect.element(view.getByRole('button', { name: /#person\s*1/i })).toBeVisible()
 
-    // Navigation happens through the live router: All Notes lights up once the
-    // tag-filtered route is current.
+    // Navigation happens through the live router: the routed tag is the
+    // tag's own page, so its row carries the highlight and the All notes
+    // nav row stays quiet.
     await tagRow.click()
-    await vi.waitFor(async () => {
-      await expect
-        .element(view.getByRole('button', { name: /all notes/i }))
-        .toHaveAttribute('aria-current', 'page')
-    })
+    await expect.element(view.getByTestId('route-probe')).toHaveTextContent('allNotes')
+    await expect
+      .element(view.getByRole('button', { name: /all notes/i }))
+      .not.toHaveAttribute('aria-current')
   })
 
   it('hides the Tags section while the graph has no tags', async () => {
@@ -305,6 +305,13 @@ describe('Sidebar', () => {
     await expect
       .element(view.getByRole('button', { name: /all notes/i }))
       .toHaveAttribute('aria-current', 'page')
+  })
+
+  it('All notes goes quiet on a routed tag — that is the tag page, not All', async () => {
+    const { view } = await renderSidebar(undefined, { kind: 'allNotes', tag: 'book' })
+    await expect
+      .element(view.getByRole('button', { name: /all notes/i }))
+      .not.toHaveAttribute('aria-current')
   })
 
   it('only "New note" — not "All notes" — lights for the untitled placeholder', async () => {

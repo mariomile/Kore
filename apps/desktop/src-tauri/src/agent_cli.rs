@@ -96,6 +96,42 @@ fn write_workspace_config(cwd: &str, config: &WorkspaceConfigFile) -> AppResult<
         .map_err(|err| AppError::io(format!("could not write {}: {err}", target.display())))
 }
 
+/// Provision the app-managed Codex home for isolated runs: a directory under
+/// app data holding only a copy of the user's `auth.json`. Pointing the
+/// child's `CODEX_HOME` here keeps the user's ~/.codex configuration (MCP
+/// servers, plugins, profiles) out of a vault run while the ChatGPT sign-in
+/// carries over. The copy is refreshed on every run and removed when the
+/// user has logged out, so the isolated home mirrors the real auth state.
+fn provision_isolated_codex_home(app: &tauri::AppHandle) -> AppResult<PathBuf> {
+    let home = app
+        .path()
+        .app_data_dir()
+        .map_err(|err| AppError::io(format!("no app data dir: {err}")))?
+        .join("codex-home");
+    std::fs::create_dir_all(&home)
+        .map_err(|err| AppError::io(format!("could not create {}: {err}", home.display())))?;
+
+    let user_home = std::env::var_os("CODEX_HOME")
+        .filter(|value| !value.is_empty())
+        .map(PathBuf::from)
+        .or_else(|| dirs::home_dir().map(|dir| dir.join(".codex")));
+    let source = user_home.map(|dir| dir.join("auth.json"));
+    let target = home.join("auth.json");
+    match source {
+        Some(source) if source.exists() => {
+            std::fs::copy(&source, &target).map_err(|err| {
+                AppError::io(format!("could not copy {}: {err}", source.display()))
+            })?;
+        }
+        _ => {
+            // Logged out (or no Codex install): drop any stale copy so the
+            // run reports the real auth state instead of an old token.
+            let _ = std::fs::remove_file(&target);
+        }
+    }
+    Ok(home)
+}
+
 /// Live child processes by request id, so a stop request can kill mid-run.
 ///
 /// Every run is spawned into its own process group and stopped through
@@ -347,6 +383,7 @@ pub async fn agent_cli_run(
     stream_stderr: Option<bool>,
     env: Option<HashMap<String, String>>,
     workspace_config: Option<WorkspaceConfigFile>,
+    isolated_codex_home: Option<bool>,
     keep_stdin_open: Option<bool>,
 ) -> AppResult<()> {
     let path = resolve_binary(binary)
@@ -358,6 +395,12 @@ pub async fn agent_cli_run(
             .ok_or_else(|| AppError::io("workspace config requires a working directory"))?;
         write_workspace_config(dir, config)?;
     }
+
+    let codex_home = if isolated_codex_home.unwrap_or(false) {
+        Some(provision_isolated_codex_home(&app)?)
+    } else {
+        None
+    };
 
     let mut command = Command::new(&path);
     command
@@ -372,6 +415,10 @@ pub async fn agent_cli_run(
     // spawns inherit these — the values never appear on any command line.
     if let Some(env) = env {
         command.envs(env);
+    }
+    // After MCP env so nothing can redirect the isolated home elsewhere.
+    if let Some(home) = codex_home.as_ref() {
+        command.env("CODEX_HOME", home);
     }
     // After MCP env so a secret named PATH cannot strip the GUI extras
     // `env node` needs to find Node next to npm-installed CLIs.

@@ -172,11 +172,28 @@ function tomlString(value: string): string {
 }
 
 /**
+ * Escape glob metacharacters so a literal path can sit inside a glob
+ * entry. A note titled `idea [draft].md` must not turn its deny entry into
+ * a character class that matches a different file — that would silently
+ * leave the private note readable.
+ */
+function globLiteral(value: string): string {
+  return value.replaceAll(/[[\]*?]/gu, (char) => (char === ']' ? '[]]' : `[${char}]`))
+}
+
+/**
  * The run's filesystem permissions as an inline TOML table: the graph
  * subtree readable, everything else on disk unreadable (the profile's base
- * is restricted), and explicit deny entries for private notes, the index
+ * is restricted; `:minimal` grants only the system paths needed to exec the
+ * sandboxed shell), and explicit deny entries for private notes, the index
  * database, and git history. Deny entries win over the read grant and are
  * enforced fail-closed by the sandbox.
+ *
+ * Every deny target is emitted twice — as an exact path and as a glob —
+ * because Codex 0.149's unified exec honors glob denies but ignores
+ * exact-path read denies (openai/codex#40555), while its compiled seatbelt
+ * profile honors both. The redundancy keeps the block fail-closed on either
+ * enforcement path.
  */
 export function codexCliFilesystemToml(
   graphRoot: string,
@@ -188,19 +205,32 @@ export function codexCliFilesystemToml(
   // matching may not recognize, silently weakening the deny list. Windows
   // accepts forward slashes everywhere the sandbox resolves paths.
   const root = graphRoot.replaceAll('\\', '/').replace(/\/+$/, '')
+  const globRoot = globLiteral(root)
+  const deny = (path: string, glob: string): string[] => [
+    `${tomlString(path)} = "deny"`,
+    `${tomlString(glob)} = "deny"`,
+  ]
   const entries = [
-    `${tomlString(`${root}/**`)} = ${allowEdits ? '"write"' : '"read"'}`,
+    // Without this the profile cannot even launch the sandboxed shell —
+    // Codex 0.149 no longer implies the minimal system paths (dyld, /bin)
+    // in a restricted profile, and every command aborts on spawn.
+    `":minimal" = "read"`,
+    `${tomlString(`${globRoot}/**`)} = ${allowEdits ? '"write"' : '"read"'}`,
     // Binary user data stays readable but never writable in edit mode: the
     // more specific entry overrides the subtree grant.
     ...(allowEdits
       ? [
-          `${tomlString(`${root}/assets/**`)} = "read"`,
-          `${tomlString(`${root}/audio-memos/**`)} = "read"`,
+          `${tomlString(`${globRoot}/assets/**`)} = "read"`,
+          `${tomlString(`${globRoot}/audio-memos/**`)} = "read"`,
         ]
       : []),
-    `${tomlString(`${root}/.reflect`)} = "deny"`,
-    `${tomlString(`${root}/.git`)} = "deny"`,
-    ...privateNotePaths.map((path) => `${tomlString(`${root}/${path}`)} = "deny"`),
+    ...deny(`${root}/.reflect`, `${globRoot}/.reflect/**`),
+    ...deny(`${root}/.git`, `${globRoot}/.git/**`),
+    ...privateNotePaths.flatMap((path) =>
+      // Trailing `*` over-denies same-prefix siblings, which is the safe
+      // direction: a private note must never fail open.
+      deny(`${root}/${path}`, `${globRoot}/${globLiteral(path)}*`),
+    ),
   ]
   return `{ ${entries.join(', ')} }`
 }
@@ -215,10 +245,17 @@ export function codexCliArgs(options: {
 }): string[] {
   return [
     'app-server',
-    // The user's ~/.codex/config.toml (their own MCP servers, profiles,
-    // approvals) must never bleed into a vault run; login credentials still
-    // come from CODEX_HOME, so the ChatGPT sign-in is untouched.
-    '--ignore-user-config',
+    // The user's ~/.codex (their own MCP servers, plugins, profiles,
+    // approvals) must never bleed into a vault run. `app-server` lost its
+    // `--ignore-user-config` flag in Codex 0.149, so isolation now comes
+    // from a private app-managed CODEX_HOME the Rust bridge provisions per
+    // run ({@link streamAgentCliTurn}'s `isolatedCodexHome`), with the
+    // user's `auth.json` copied in so the ChatGPT sign-in still works.
+    // Disabling plugins also keeps Codex from importing MCP servers and
+    // hooks from other agent installs (e.g. ~/.claude), which it discovers
+    // outside CODEX_HOME.
+    '--disable',
+    'plugins',
     // Headless: never pause the turn on an approval JSON-RPC request.
     '-c',
     'approval_policy="never"',
@@ -285,6 +322,7 @@ export function streamCodexCliChat(options: StreamCliChatOptions): AsyncGenerato
     })}\n`,
     cwd: options.graphRoot,
     env: mcpSpawnEnv(options.mcpServers ?? []),
+    isolatedCodexHome: true,
     keepStdinOpen: true,
     parseLine: (line) => parseCodexCliLine(line, parseState),
     startFailureMessage: 'Could not start the Codex CLI.',

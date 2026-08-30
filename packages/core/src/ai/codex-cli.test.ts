@@ -130,18 +130,34 @@ describe('parseCodexCliLine', () => {
 describe('codexCliFilesystemToml', () => {
   it('grants the graph subtree and denies private notes, index, and git', () => {
     const toml = codexCliFilesystemToml('/graphs/work/', ['notes/secret.md'])
+    expect(toml).toContain('":minimal" = "read"')
     expect(toml).toContain('"/graphs/work/**" = "read"')
     expect(toml).toContain('"/graphs/work/.reflect" = "deny"')
+    expect(toml).toContain('"/graphs/work/.reflect/**" = "deny"')
     expect(toml).toContain('"/graphs/work/.git" = "deny"')
+    expect(toml).toContain('"/graphs/work/.git/**" = "deny"')
     expect(toml).toContain('"/graphs/work/notes/secret.md" = "deny"')
+    expect(toml).toContain('"/graphs/work/notes/secret.md*" = "deny"')
   })
 
   it('edit mode grants write on the subtree while every deny stays', () => {
     const toml = codexCliFilesystemToml('/graphs/work', ['notes/secret.md'], true)
     expect(toml).toContain('"/graphs/work/**" = "write"')
+    expect(toml).toContain('"/graphs/work/assets/**" = "read"')
     expect(toml).toContain('"/graphs/work/.reflect" = "deny"')
+    expect(toml).toContain('"/graphs/work/.reflect/**" = "deny"')
     expect(toml).toContain('"/graphs/work/.git" = "deny"')
+    expect(toml).toContain('"/graphs/work/.git/**" = "deny"')
     expect(toml).toContain('"/graphs/work/notes/secret.md" = "deny"')
+    expect(toml).toContain('"/graphs/work/notes/secret.md*" = "deny"')
+  })
+
+  it('escapes glob metacharacters in private-note deny globs', () => {
+    // A note titled `idea [draft].md` must not turn its glob deny into a
+    // character class matching some other file — that would fail open.
+    const toml = codexCliFilesystemToml('/graphs/work', ['notes/idea [draft].md'])
+    expect(toml).toContain('"/graphs/work/notes/idea [draft].md" = "deny"')
+    expect(toml).toContain('"/graphs/work/notes/idea [[]draft[]].md*" = "deny"')
   })
 
   it('forward-slashes a Windows root and escapes TOML string characters', () => {
@@ -161,7 +177,10 @@ describe('codexCliArgs', () => {
       privateNotePaths: [],
     })
     expect(args[0]).toBe('app-server')
-    expect(args).toContain('--ignore-user-config')
+    // `--ignore-user-config` was removed in Codex 0.149; isolation now comes
+    // from the bridge-provisioned CODEX_HOME plus disabled plugins.
+    expect(args).not.toContain('--ignore-user-config')
+    expect(args.join(' ')).toContain('--disable plugins')
     expect(args.join(' ')).toContain('approval_policy="never"')
     expect(args.join(' ')).toContain('default_permissions="reflect_chat"')
     expect(args.join(' ')).toContain('permissions.reflect_chat.filesystem=')
@@ -192,6 +211,7 @@ describe('codexAppServerHandshakePrompt', () => {
     expect(prompt).toContain('"method":"initialize"')
     expect(prompt).toContain('"name":"lore"')
     expect(prompt).toContain('"title":"Kore"')
+    expect(prompt).toContain('"version"')
     expect(prompt).toContain('"method":"initialized"')
     expect(prompt).toContain('"method":"thread/start"')
     expect(prompt).toContain('"cwd":"/g"')
@@ -350,10 +370,13 @@ describe('streamCodexCliChat', () => {
     await Promise.resolve()
     const requestId = requestIdOf(fake)
 
-    expect(fake.runs[0]).toMatchObject({ binary: 'codex', cwd: '/g', keepStdinOpen: true })
-    expect(fake.runs[0]?.['args']).toEqual(
-      expect.arrayContaining(['app-server', '--ignore-user-config']),
-    )
+    expect(fake.runs[0]).toMatchObject({
+      binary: 'codex',
+      cwd: '/g',
+      isolatedCodexHome: true,
+      keepStdinOpen: true,
+    })
+    expect(fake.runs[0]?.['args']).toEqual(expect.arrayContaining(['app-server', '--disable']))
     expect(String(fake.runs[0]?.['prompt'])).toContain('"method":"initialize"')
     expect(String(fake.runs[0]?.['prompt'])).not.toContain('hello')
 

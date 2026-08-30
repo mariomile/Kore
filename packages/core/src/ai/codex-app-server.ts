@@ -50,7 +50,9 @@ export function codexAppServerHandshakePrompt(options: {
     jsonRpcLine({
       method: 'initialize',
       id: CODEX_INITIALIZE_ID,
-      params: { clientInfo: { name: 'lore', title: 'Kore' } },
+      // `version` is required by the app-server's `initialize` schema; it
+      // only feeds the user-agent string, so a stable constant is enough.
+      params: { clientInfo: { name: 'lore', title: 'Kore', version: '1.0.0' } },
     }),
     jsonRpcLine({ method: 'initialized', params: {} }),
     jsonRpcLine({

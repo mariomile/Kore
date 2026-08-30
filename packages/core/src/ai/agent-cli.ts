@@ -244,6 +244,14 @@ export interface AgentCliTurnOptions {
    * `.cursor/cli.json`) rather than a flag.
    */
   workspaceConfig?: { relativePath: string; contents: string } | undefined
+  /**
+   * Run Codex against a private, app-managed CODEX_HOME instead of the
+   * user's ~/.codex. The bridge provisions the directory and copies the
+   * user's `auth.json` into it before the spawn, so the ChatGPT sign-in
+   * carries over while the user's own config (MCP servers, plugins,
+   * profiles) stays out of the run.
+   */
+  isolatedCodexHome?: boolean | undefined
   /** Parse one stdout line into a chunk, or null for noise. */
   parseLine: (line: string) => AgentCliChunk | null
   /** Message when the spawn itself fails without a specific cause. */
@@ -358,6 +366,7 @@ export async function* streamAgentCliTurn(
       cwd: options.cwd,
       env: options.env ?? null,
       workspaceConfig: options.workspaceConfig ?? null,
+      isolatedCodexHome: options.isolatedCodexHome === true,
       keepStdinOpen,
     })
   } catch (cause) {

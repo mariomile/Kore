@@ -26,7 +26,7 @@ Sizes are relative complexity for agent-executed work, not calendar time.
 | S1 — Account-safe read ([Plan 26](plans/26-account-safe-read.md)) | I01–I05, minimal I08 audit, Gmail half of I09, setup half of I10 | Large: new `core` domain module, Rust OAuth, settings UI, shared schemas | Permission model fails closed on a real multi-account workflow, before any runtime work |
 | S2 — Second provider | Two Google Calendar accounts through the same contracts | Small–medium: one adapter, no domain change allowed | Contracts generalize; no Gmail-specific exception |
 | S3 — Durable execution | I06–I08/I23: native jobs, scheduler, locks, checkpoints | Large: schema migration, new Rust runtime boundary, touches shared types | Work survives webview lifecycle; writes unblock only here |
-| S4 — Connected retrieval | I12/I13: normalized Resources, notes + Gmail + Calendar search | Large: index schema extension, query planner, search UI | One attributable answer from mixed sources |
+| S4 — Agent retrieval in chat | Capabilities exposed as agent tools; provenance rendered on results (re-scoped 2026-08-30, see below) | Small: chat tool wiring plus provenance UI, no new store | One attributable answer from mixed sources, produced by the agent |
 | S5 — Structured knowledge | I14: typed Collections extended with ID-backed relations | Medium–large: gated on the relation serialization decision | Markdown round-trips; references survive rename/move |
 
 S1/S2 are early read-only architecture proofs; they do not complete the P0
@@ -74,10 +74,17 @@ scheduler, queue, and lock currently living in
 
 ### S4 / S5 — build guidance
 
-- S4: extend `crates/index-schema` with a resources table keyed by
-  source + connection + external ID rather than adding a second store. Define an
-  explicit latency budget (R11): local results render immediately, live-source
-  results stream in labeled per source, each connector under its own timeout.
+- S4 (re-scoped 2026-08-30): unified search is **not built as a first-party
+  subsystem**. The agent is the query planner: it already holds `email.search`
+  and `calendar.search` as authorized capabilities and fans out, merges, and
+  synthesizes natively. S4 is therefore only: expose the capabilities as chat
+  tools, render per-item account/source provenance on results, and keep ⌘K as
+  vault-only search. I13's planner/merger/ranker and I12's normalized Resource
+  store are not scheduled; the only surviving I12 piece is per-Connection sync
+  cursors, which land with I16 polling when automations need them. Accepted
+  tradeoff: agent-led retrieval is live-only, slower, and costs tokens per
+  query; right for a single-user agent-native product. Revisit only if
+  agent-led retrieval proves insufficient in practice.
 - S5: settle relation serialization first. Suggested shape: `[[wiki links]]`
   stay canonical in Markdown, the stable ULID rides beside the readable value in
   frontmatter properties, and the index resolves both. Write the external-edit
@@ -95,7 +102,7 @@ distinguishes existing code from remaining work.
 | 1 | P0 | I01–I06, I23, I29 | Graph/domain identity, global Connections, multi-account, grants, capabilities, credentials and stable Object references; fail-closed authorization |
 | 2 | P0 | I07–I08 | Native durable jobs, queue/scheduler, global locks, retries, approvals and audit; survive webview lifecycle |
 | 3 | P1 | I09–I11 | Two Gmail + two Calendar + two Graphs; restricted Product Agent and cross-Graph Chief of Staff; understandable setup, scoped memory/models/skills |
-| 4 | P1 | I12–I13 | Normalized Resources before universal search/Ask Kore; notes + email + calendar with source/account/freshness |
+| 4 | P1 | I12–I13 (re-scoped) | Agent-led retrieval over capabilities with provenance; no first-party search subsystem, no Resource store; sync cursors only, deferred to I16 |
 | 5 | P1 | I14 | Extend existing typed Collections into stable Objects/Databases, references and views |
 | 6 | P2 | I15–I19, I24 | Advanced calculations/views, external-event automations, Browser Profiles, Entity graph, Action Center, then additional connectors |
 | 7 | P3 | I20–I23 | Controlled external MCP, headless runtime and mobile control; separate knowledge/runtime/secrets sync |
@@ -171,9 +178,10 @@ design before their initiative starts; cautions are cheap if remembered early.
   `auth_context`. Define it (transport plus authorization method) before the
   registry schema lands, or the schema either allows real duplicates or blocks
   the legitimate second transport.
-- **R11 — Ask Kore has no latency budget (I13, source §76–77).** Fan-out to
-  five live sources merged synchronously reads as a multi-second search box. Set
-  per-connector timeouts and stream partials, labeled cached versus live.
+- **R11 — resolved by the 2026-08-30 S4 re-scope.** The source's synchronous
+  multi-source search box (I13, §76–77) had no latency budget; it is no longer
+  built. Agent-led retrieval streams tool calls in chat, where latency is
+  visible and expected. Kept for the record.
 - **R12 — The metrics list implies an observability stack (I19, source §62/§95).**
   Keep counters and durations in SQLite surfaced by the Action Center; drop the
   org-grade time-series checklist.
@@ -201,6 +209,8 @@ Webview closure is not runtime termination, and iOS is not an always-on executor
 
 No new Space primitive, fifty-connector expansion, independent Database rewrite,
 mandatory hosted backend, or collaboration before single-user foundations.
+No first-party universal-search subsystem: retrieval across sources is
+agent-led over capabilities (2026-08-30 decision, see S4 build guidance).
 Existing simple rollups remain; expanded formulas depend on stable relations.
 The supplied temporary MCP adapter/compatibility proposal conflicts with
 repository policy and needs an explicit cutover decision before implementation.

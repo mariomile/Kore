@@ -42,5 +42,9 @@ fixture data. No Google, no writes, no background execution.
 
 ## Session log
 
+- 2026-08-30 — S4 re-scoped by decision: no first-party universal-search
+  subsystem; the agent is the query planner over capabilities, I12's Resource
+  store dropped (sync cursors survive, deferred to I16), R11 resolved. Recorded
+  in roadmap and Plan 25 I12/I13 notes.
 - 2026-08-30 — Roadmap/spec review and doc restructure; risk register added;
   S1a named as first work item. No application code changed.

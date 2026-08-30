@@ -106,6 +106,14 @@ export {
   type ResolvedNoteMention,
 } from '../ai/chat/mentions'
 export {
+  recallContextBlock,
+  recallForMessage,
+  recallTermsFromMessage,
+  RECALL_MAX_HITS,
+  type RecallDeps,
+} from '../ai/chat/recall'
+export { type RecallHit } from '../indexing'
+export {
   loadChatGraphContext,
   MAX_CONTEXT_TAGS,
   type GraphContextDeps,

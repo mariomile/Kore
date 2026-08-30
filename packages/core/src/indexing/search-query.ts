@@ -79,6 +79,26 @@ export function buildFtsMatch(query: string): string | null {
 }
 
 /**
+ * Build the *recall* `MATCH` expression: the same per-term word-prefix groups
+ * as {@link buildFtsMatch}, joined with `OR` instead of `AND`. Chat recall
+ * wants graded relevance — bm25 already rewards a note matching more of the
+ * message's terms — where the search box wants every term satisfied. Returns
+ * `null` when no term is tokenizable (nothing for FTS to see).
+ */
+export function buildRecallFtsMatch(terms: string[]): string | null {
+  const tokenizable = terms.filter(isTokenizable)
+  if (tokenizable.length === 0) {
+    return null
+  }
+  return tokenizable
+    .map((term) => {
+      const literal = quoteFtsLiteral(term)
+      return `(title : ${literal}* OR body : ${literal}*)`
+    })
+    .join(' OR ')
+}
+
+/**
  * Scripts written without spaces between words (Han, kana, Hangul, Thai, …).
  * FTS5's `unicode61` tokenizer only segments at non-alphanumeric characters,
  * so a title run in these scripts indexes as ONE token and a shorter query

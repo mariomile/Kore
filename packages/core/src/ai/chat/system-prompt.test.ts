@@ -158,6 +158,7 @@ describe('chatSystemPrompt agent memory', () => {
         agentMemory: null,
         sharedFacts: null,
         sharedLog: null,
+        skills: [],
         memoryPath: 'agents/assistant/memory.md',
       },
     })

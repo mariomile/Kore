@@ -126,6 +126,7 @@ describe('agentContextPromptLines', () => {
     agentMemory: { body: 'x'.repeat(AGENT_MEMORY_MAX_CHARS), truncated: true },
     sharedFacts: { body: '- [certain] Kore is the app — riley, 2026-08-20', truncated: false },
     sharedLog: { body: '## 2026-08-19 — riley\n- shipped viewer', truncated: false },
+    skills: [],
     memoryPath: 'agents/riley/memory.md',
   }
 
@@ -152,7 +153,9 @@ describe('agentContextPromptLines', () => {
       '\n',
     )
     expect(lines).toContain('agents/memory/pending.md')
-    expect(lines).toContain('do NOT edit agents/user.md or agents/memory/facts.md directly')
+    expect(lines).toContain(
+      'do NOT edit agents/user.md, agents/memory/facts.md, or anything under agents/skills/ directly',
+    )
     expect(lines).toContain('are exempt')
   })
 

@@ -7,6 +7,18 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Scrolled content melts, it no longer clips (Plan 28 slice 1, the first
+  Craft-parity slice). The daily stream, the note view, and All Notes'
+  grid paint a scroll veil at their top edge — a surface fade over two
+  progressively-masked backdrop-blur bands that exists only while the
+  container is scrolled — and the list/table views translate the same
+  idea to their pinned header rows, now translucent glass instead of
+  opaque paint. Pure paint over the existing containers: no layout,
+  routing, or virtualizer change, and the veil's one listener flips a
+  boolean. The direction, the Craft→web mapping, and the remaining
+  slices (live-preview cards, chrome details, editor block affordances)
+  are recorded in Plan 28.
+
 - New vaults are born with their objects. A brand-new vault starts with
   four typed supertags under `tags/` — Project, Person, Company, Meeting —
   each an ordinary definition note (schema in frontmatter, a short

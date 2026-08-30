@@ -10,6 +10,7 @@ import {
 import { Virtualizer, type VirtualizerHandle } from 'virtua'
 import { dailyPath } from '@reflect/core'
 import { NotePane } from '@/components/note-pane'
+import { ScrollVeil } from '@/components/scroll-veil'
 import type { NoteEditorHandle } from '@/editor/note-editor'
 import { formatDayLabel, todayIso } from '@/lib/dates'
 import { cn } from '@/lib/utils'
@@ -63,6 +64,9 @@ export function DailyStream({ target }: DailyStreamProps): ReactElement {
   const data = useMemo(() => Array.from({ length: dayWindow.count }), [dayWindow.count])
   const [scrollIndex, setScrollIndex] = useState<number>(dayWindow.anchorIndex)
   const [focusIndex, setFocusIndex] = useState<number>(dayWindow.anchorIndex)
+  // For the veil: the scroll element itself, in state, so its listener
+  // attaches on the first real mount.
+  const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(null)
   const today = useToday()
   const targetDate = target.kind === 'today' ? today : target.date
   const { settings } = useSettings()
@@ -251,81 +255,89 @@ export function DailyStream({ target }: DailyStreamProps): ReactElement {
   }, [warm, focusIndex, scrollIndex, dayWindow.count])
 
   return (
-    <div
-      data-testid="daily-stream"
-      className="h-full overflow-auto"
-      onScroll={(event) => saveScrollState(event.currentTarget.scrollTop)}
-      // An explicit click/touch picks its own focus target — a focus still
-      // pending for a day whose editor hasn't mounted yet must not steal the
-      // caret later. Typing is deliberately not a cancel: ⌘D-then-type should
-      // still land focus in today once its editor mounts.
-      onPointerDownCapture={() => {
-        focusPending.current = null
-        pendingFocusRef.current = null
-      }}
-    >
-      <Virtualizer
-        ref={virtualizerRef}
-        data={data}
-        itemSize={ESTIMATED_DAY_HEIGHT}
-        bufferSize={warm ? 2 * ESTIMATED_DAY_HEIGHT : 0}
-        keepMounted={keepMounted}
-        shift={true}
-        onScroll={onScrollOffset}
-      >
-        {(_, index) => {
-          const date = dateAtIndex(dayWindow, index)
-          const isToday = date === today
-          // V1's daily-note sizing: past days hug their content (an empty day
-          // collapses to a short row), while today and future days reserve
-          // most of a viewport of writing room. ISO dates compare lexically.
-          const isPast = date < today
-          const pendingFocus = focusPending.current
-          const focusSelection =
-            pendingFocus !== null && pendingFocus.date === date ? pendingFocus.selection : null
-          const autoFocus = focusSelection !== null
-          return (
-            <section
-              key={date}
-              data-index={index}
-              className="border-b border-border py-6"
-              // Focus entering this row (clicking its editor, tabbing in) makes
-              // it the day the sidebar describes.
-              onFocusCapture={() => {
-                setFocusedDailyDate(date)
-                setFocusIndex(index)
-              }}
-            >
-              {/* V1 renders the date as the note's H1-sized subject, with
-                  today's tinted brand (its `highlightSubject`). */}
-              <h2
-                className={cn(
-                  'reflect-daily-subject mb-3',
-                  CONTENT_GUTTER,
-                  isToday && 'text-accent',
-                )}
-                onClick={() => handleSubjectClick(date)}
-              >
-                {formatDayLabel(date, settings.dateFormat)}
-              </h2>
-              <NotePane
-                path={dailyPath(date)}
-                dailyDate={date}
-                registerHandle={registerHandle}
-                onExitBoundary={handleExitBoundary}
-                lazy
-                autoFocus={autoFocus}
-                autoFocusSelection={focusSelection ?? 'start'}
-                onAutoFocused={consumeFocus}
-                gutterClassName={CONTENT_GUTTER}
-                editorClassName={isPast ? 'min-h-[100px]' : 'min-h-[60vh]'}
-              />
-            </section>
-          )
+    // The wrapper anchors the scroll veil to the stream's top edge; the
+    // scrolling element itself keeps the testid and every handler.
+    <div className="relative h-full">
+      <div
+        ref={setScrollElement}
+        data-testid="daily-stream"
+        className="h-full overflow-auto"
+        onScroll={(event) => saveScrollState(event.currentTarget.scrollTop)}
+        // An explicit click/touch picks its own focus target — a focus still
+        // pending for a day whose editor hasn't mounted yet must not steal the
+        // caret later. Typing is deliberately not a cancel: ⌘D-then-type should
+        // still land focus in today once its editor mounts.
+        onPointerDownCapture={() => {
+          focusPending.current = null
+          pendingFocusRef.current = null
         }}
-      </Virtualizer>
-      {/* Trailing room so the last day isn't pinned to the viewport bottom */}
-      <div aria-hidden className="h-60" />
+      >
+        <Virtualizer
+          ref={virtualizerRef}
+          data={data}
+          itemSize={ESTIMATED_DAY_HEIGHT}
+          bufferSize={warm ? 2 * ESTIMATED_DAY_HEIGHT : 0}
+          keepMounted={keepMounted}
+          shift={true}
+          onScroll={onScrollOffset}
+        >
+          {(_, index) => {
+            const date = dateAtIndex(dayWindow, index)
+            const isToday = date === today
+            // V1's daily-note sizing: past days hug their content (an empty day
+            // collapses to a short row), while today and future days reserve
+            // most of a viewport of writing room. ISO dates compare lexically.
+            const isPast = date < today
+            const pendingFocus = focusPending.current
+            const focusSelection =
+              pendingFocus !== null && pendingFocus.date === date ? pendingFocus.selection : null
+            const autoFocus = focusSelection !== null
+            return (
+              <section
+                key={date}
+                data-index={index}
+                className="border-b border-border py-6"
+                // Focus entering this row (clicking its editor, tabbing in) makes
+                // it the day the sidebar describes.
+                onFocusCapture={() => {
+                  setFocusedDailyDate(date)
+                  setFocusIndex(index)
+                }}
+              >
+                {/* V1 renders the date as the note's H1-sized subject, with
+                  today's tinted brand (its `highlightSubject`). */}
+                <h2
+                  className={cn(
+                    'reflect-daily-subject mb-3',
+                    CONTENT_GUTTER,
+                    isToday && 'text-accent',
+                  )}
+                  onClick={() => handleSubjectClick(date)}
+                >
+                  {formatDayLabel(date, settings.dateFormat)}
+                </h2>
+                <NotePane
+                  path={dailyPath(date)}
+                  dailyDate={date}
+                  registerHandle={registerHandle}
+                  onExitBoundary={handleExitBoundary}
+                  lazy
+                  autoFocus={autoFocus}
+                  autoFocusSelection={focusSelection ?? 'start'}
+                  onAutoFocused={consumeFocus}
+                  gutterClassName={CONTENT_GUTTER}
+                  editorClassName={isPast ? 'min-h-[100px]' : 'min-h-[60vh]'}
+                />
+              </section>
+            )
+          }}
+        </Virtualizer>
+        {/* Trailing room so the last day isn't pinned to the viewport bottom */}
+        <div aria-hidden className="h-60" />
+      </div>
+      {/* Scrolled days melt at the stream's top edge instead of clipping
+        against it (Plan 28). */}
+      <ScrollVeil scrollElement={scrollElement} className="inset-x-0 top-0 h-12" />
     </div>
   )
 }

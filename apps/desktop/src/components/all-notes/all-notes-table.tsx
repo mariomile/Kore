@@ -76,7 +76,9 @@ export function AllNotesTable({
       <div
         className={cn(
           ALL_NOTES_GRID,
-          'sticky top-0 z-10 border-b border-border bg-surface py-3 text-[13px] font-medium leading-none text-text-secondary shadow-sm',
+          // Glass, not paint (Plan 28): rows dissolve under the pinned header
+          // the way content dissolves under the grid's scroll veil.
+          'app-glass-row sticky top-0 z-10 border-b border-border py-3 text-[13px] font-medium leading-none text-text-secondary',
         )}
       >
         <span>Subject</span>

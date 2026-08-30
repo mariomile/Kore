@@ -35,6 +35,13 @@ review) from a future routines page, never preinstall or auto-enable one.
 
 In order. Sizes are relative complexity for agent-executed work, not time.
 
+**Craft parity (user decision, 2026-08-30):** Kore converges on Craft's
+visual and interaction register — dissolving scroll edges instead of
+clipped bars, live-preview cards, quiet circular chrome, one motion
+register — with the left sidebar explicitly staying Kore's own and no
+structural change. Sliced in [Plan 28](plans/28-craft-parity.md); slice 1
+(the scroll veil) shipped in this wave.
+
 **2026-08-30: all four items below shipped** (1–2 earlier in the day, 3 in
 v0.38.0, 4 in v0.39.0 with the backlog-B polish pass; details in the
 [delivery log](delivery-log.md), live state in [STATE.md](STATE.md)). Now

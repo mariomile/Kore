@@ -1,6 +1,7 @@
-import type { ReactElement, ReactNode } from 'react'
+import { useState, type ReactElement, type ReactNode } from 'react'
 import { NotePane } from '@/components/note-pane'
 import { NoteOutlineRail } from '@/components/notes/note-outline-rail'
+import { ScrollVeil } from '@/components/scroll-veil'
 import { ScrollRestored } from '@/routing/scroll-restore'
 
 interface SingleNoteViewProps {
@@ -29,11 +30,14 @@ interface SingleNoteViewProps {
  * included) focuses it.
  */
 export function SingleNoteView({ path, dailyDate, heading }: SingleNoteViewProps): ReactElement {
+  // For the veil: the element itself, in state, so the veil's listener
+  // attaches once ScrollRestored's container exists.
+  const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(null)
   return (
     // The relative wrapper pins the floating outline rail to the viewport
     // edge of the pane while the note itself scrolls beneath it.
     <div className="relative h-full">
-      <ScrollRestored className="h-full overflow-auto px-0">
+      <ScrollRestored className="h-full overflow-auto px-0" elementRef={setScrollElement}>
         <div className="mx-auto flex min-h-full w-full max-w-full flex-col py-8">
           {heading}
           <NotePane
@@ -47,6 +51,9 @@ export function SingleNoteView({ path, dailyDate, heading }: SingleNoteViewProps
           />
         </div>
       </ScrollRestored>
+      {/* Scrolled content melts at the pane's top edge instead of clipping
+          against it (Plan 28). */}
+      <ScrollVeil scrollElement={scrollElement} className="inset-x-0 top-0 h-10" />
       <NoteOutlineRail />
     </div>
   )

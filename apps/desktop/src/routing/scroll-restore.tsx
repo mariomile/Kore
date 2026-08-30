@@ -5,6 +5,12 @@ import { useRouter } from './router'
 interface ScrollRestoredProps {
   className?: string
   children: ReactNode
+  /**
+   * Hands the scroll element itself to the caller (a stable setter) — the
+   * ScrollVeil hookup, which needs the element to listen to, not a ref that
+   * may still be null when its effect runs.
+   */
+  elementRef?: (element: HTMLDivElement | null) => void
 }
 
 /**
@@ -18,7 +24,11 @@ interface ScrollRestoredProps {
  * with the content. Without it they escape to the workspace column at their
  * static offsets, overflowing the frame into a second scrollbar.
  */
-export function ScrollRestored({ className, children }: ScrollRestoredProps): ReactElement {
+export function ScrollRestored({
+  className,
+  children,
+  elementRef,
+}: ScrollRestoredProps): ReactElement {
   const { entryId, saveScrollState, savedScroll } = useRouter()
   const ref = useRef<HTMLDivElement | null>(null)
 
@@ -33,7 +43,10 @@ export function ScrollRestored({ className, children }: ScrollRestoredProps): Re
 
   return (
     <div
-      ref={ref}
+      ref={(element) => {
+        ref.current = element
+        elementRef?.(element)
+      }}
       className={cn(className, 'relative')}
       onScroll={(event) => saveScrollState(event.currentTarget.scrollTop)}
     >

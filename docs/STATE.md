@@ -1,7 +1,8 @@
 # Kore working state
 
-**Updated:** 2026-08-30 at `d201021e` (v0.41.0 shipped with the whole
-collections/projects pass; default vault objects in flight).
+**Updated:** 2026-08-30 at `3ae4fb1f` (v0.42.0 shipped with the default
+vault objects; Craft-parity pass — [Plan 28](plans/28-craft-parity.md) —
+opened, slice 1 in flight).
 **Rule:** Every session that moves the program updates this file before its
 summary: tick what became true and how it was verified, set the next step,
 refresh the date. What is done and what is next live here and only here. Why
@@ -11,6 +12,16 @@ direction in [Plan 25](plans/25-personal-os.md). The full shipped history stays
 in the [delivery log](delivery-log.md); this file tracks only the active work.
 
 ## Current focus
+
+**Craft parity (user decision 2026-08-30, [Plan 28](plans/28-craft-parity.md)).**
+With Craft screenshots as the reference, the direction is set: Kore
+converges on Craft's visual and interaction register — dissolving scroll
+edges, live-preview cards, quiet circular chrome, one motion register —
+without touching structure (the left sidebar explicitly stays Kore's own).
+Slice 1 (this session) is the scroll veil: content melts under the chrome
+on the daily stream, the note view, and All Notes, whose pinned table
+headers turn to glass. Queued: live-preview cards (absorbing the gallery
+backlog item), chrome details, editor block affordances via meowdown.
 
 **Collections UX pass (user decision 2026-08-30).** The Now ladder shipped
 through v0.38.0–v0.40.0 (recall + skills, S3-minimal runtime per

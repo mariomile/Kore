@@ -148,8 +148,9 @@ pub async fn agent_run_lock_acquire(
 
 /// Command: release a lease taken by [`agent_run_lock_acquire`]. Idempotent —
 /// releasing a lease that is gone (window reset already swept it) is a no-op.
+/// Async to stay off the main thread; the body is an in-memory queue op.
 #[tauri::command]
-pub fn agent_run_lock_release(
+pub async fn agent_run_lock_release(
     lease_id: u64,
     state: tauri::State<'_, AgentRunLockState>,
 ) -> AppResult<()> {
@@ -161,8 +162,9 @@ pub fn agent_run_lock_release(
 /// bootstrap calls it once per JS context: after a dev reload or crash the
 /// new context cannot release its predecessor's leases, and without the
 /// sweep the lock would stay wedged until the window closed.
+/// Async to stay off the main thread; the body is an in-memory queue op.
 #[tauri::command]
-pub fn agent_run_lock_reset(
+pub async fn agent_run_lock_reset(
     window: tauri::Window,
     state: tauri::State<'_, AgentRunLockState>,
 ) -> AppResult<()> {

@@ -14,6 +14,13 @@ interface MobileCaptureDrawerProps {
   recordingAvailable: boolean
 }
 
+interface CaptureChoiceProps {
+  label: string
+  icon: ReactElement
+  disabled?: boolean
+  onPress: () => void
+}
+
 /**
  * The mobile capture hub for a daily-note line, a standalone note, a task, or
  * an audio memo.
@@ -64,12 +71,7 @@ function CaptureChoice({
   icon,
   disabled = false,
   onPress,
-}: {
-  label: string
-  icon: ReactElement
-  disabled?: boolean
-  onPress: () => void
-}): ReactElement {
+}: CaptureChoiceProps): ReactElement {
   return (
     <Button
       type="button"

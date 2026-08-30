@@ -153,7 +153,9 @@ export function GraphFooter({ graph, context }: GraphFooterProps): ReactElement 
                     </DropdownMenuItem>
                   }
                 />
-                <TooltipContent side="right">{recent.root}</TooltipContent>
+                <TooltipContent side="right">
+                  {displayGraphPath(recent.root, home ?? undefined)}
+                </TooltipContent>
               </Tooltip>
             )
           })}

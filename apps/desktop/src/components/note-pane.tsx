@@ -460,6 +460,7 @@ export function NotePaneComponent({
             <EmbeddedMedia
               key={`${block.kind}:${block.kind === 'url' ? block.url : index}:${index}`}
               block={block}
+              noteHeader={document.header}
             />
           ))}
         </div>

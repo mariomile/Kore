@@ -25,6 +25,7 @@ export const LINK_KINDS = [
   'link',
 ] as const
 
+/** One conservative URL category inferred without a network request. */
 export type LinkKind = (typeof LINK_KINDS)[number]
 
 /** What an unrecognised — or unparseable — URL classifies as. */

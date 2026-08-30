@@ -20,20 +20,21 @@ function embedOf(body: string): EmbedBlock {
   return block
 }
 
+function renderEmbed(body: string, privateNote = false) {
+  const noteHeader = privateNote ? '---\nprivate: true\n---\n' : ''
+  return render(<EmbeddedMedia block={embedOf(body)} noteHeader={noteHeader} />)
+}
+
 describe('EmbeddedMedia', () => {
   it('names the kind and the readable URL for a repository', async () => {
-    const view = await render(
-      <EmbeddedMedia block={embedOf('https://github.com/mariomile/Kore')} />,
-    )
+    const view = await renderEmbed('https://github.com/mariomile/Kore')
 
     await expect.element(view.getByText('Repository')).toBeVisible()
     await expect.element(view.getByText('github.com/mariomile/Kore')).toBeVisible()
   })
 
   it('holds a video behind Play instead of loading the player on open', async () => {
-    const view = await render(
-      <EmbeddedMedia block={embedOf('https://www.youtube.com/watch?v=dQw4w9WgXcQ')} />,
-    )
+    const view = await renderEmbed('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
 
     await expect.element(view.getByText('Video')).toBeVisible()
     expect(document.querySelector('iframe')).toBeNull()
@@ -45,20 +46,35 @@ describe('EmbeddedMedia', () => {
   })
 
   it('offers no Play for a video with no known player', async () => {
-    const view = await render(<EmbeddedMedia block={embedOf('https://example.com/clip.mp4')} />)
+    const view = await renderEmbed('https://example.com/clip.mp4')
 
     await expect.element(view.getByText('Video')).toBeVisible()
     expect(view.getByRole('button', { name: 'Play' }).query()).toBeNull()
   })
 
-  it('renders an image directly — it is the content', async () => {
-    const view = await render(<EmbeddedMedia block={embedOf('https://example.com/photo.png')} />)
+  it('holds an image behind Show instead of loading it on open', async () => {
+    const view = await renderEmbed('https://example.com/photo.png')
+
+    expect(view.getByRole('img').query()).toBeNull()
+
+    await userEvent.click(view.getByRole('button', { name: 'Show' }))
 
     await expect.element(view.getByRole('img')).toBeVisible()
   })
 
+  it('never offers a remote load from a private note', async () => {
+    const view = await renderEmbed('https://example.com/photo.png', true)
+
+    await expect
+      .element(view.getByText('Remote embeds are disabled for private notes.'))
+      .toBeVisible()
+    expect(view.getByRole('img').query()).toBeNull()
+    expect(view.getByRole('button', { name: 'Show' }).query()).toBeNull()
+    expect(view.getByRole('button', { name: /Open example.com/ }).query()).toBeNull()
+  })
+
   it('opens the link through the app’s one routing rule', async () => {
-    const view = await render(<EmbeddedMedia block={embedOf('https://example.com/some/page')} />)
+    const view = await renderEmbed('https://example.com/some/page')
 
     await userEvent.click(view.getByRole('button', { name: 'Open example.com/some/page' }))
 
@@ -66,9 +82,7 @@ describe('EmbeddedMedia', () => {
   })
 
   it('sandboxes a raw-HTML embed and loads it only on request', async () => {
-    const view = await render(
-      <EmbeddedMedia block={embedOf('<iframe src="https://example.com"></iframe>')} />,
-    )
+    const view = await renderEmbed('<iframe src="https://example.com"></iframe>')
 
     await expect.element(view.getByText('HTML embed')).toBeVisible()
     expect(document.querySelector('iframe')).toBeNull()

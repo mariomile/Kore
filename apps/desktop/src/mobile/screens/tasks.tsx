@@ -26,6 +26,11 @@ import { useGraph } from '@/providers/graph-provider'
 import { routeForPath } from '@/routing/route'
 import { useRouter } from '@/routing/router'
 
+interface MobileTasksProps {
+  newTaskRequested?: boolean
+  onNewTaskConsumed?: () => void
+}
+
 /**
  * The Tasks tab (V1 mobile's third tab over Plan 18's shipped data layer): every
  * open task across the graph in desktop's exact groups — Current / Overdue /
@@ -42,10 +47,7 @@ import { useRouter } from '@/routing/router'
 export function MobileTasks({
   newTaskRequested = false,
   onNewTaskConsumed = () => {},
-}: {
-  newTaskRequested?: boolean
-  onNewTaskConsumed?: () => void
-}): ReactElement {
+}: MobileTasksProps): ReactElement {
   const { graph } = useGraph()
   const { navigate, arrivalSeq, arrivalFocusEditor } = useRouter()
   const { scopeRef, barRef } = useBarHeightVar('--mobile-header-height')

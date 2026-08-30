@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState, type ReactElement } from 'react'
-import { CHAT_SYSTEM_PROMPT_MAX_LENGTH, normalizeChatSystemPrompt } from '@reflect/core'
+import type { ReactElement } from 'react'
+import { CHAT_SYSTEM_PROMPT_MAX_LENGTH } from '@reflect/core'
 import { Sliders } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useChatSession } from '@/providers/chat-provider'
 import { useSettings } from '@/providers/settings-provider'
+import { useChatSystemPromptDraft } from './use-chat-system-prompt-draft'
 
 /**
  * Both layers of chat instructions, one popover, beside the chat itself.
@@ -21,44 +22,10 @@ import { useSettings } from '@/providers/settings-provider'
 export function ChatInstructionsMenu(): ReactElement {
   const { instructions, setInstructions } = useChatSession()
   const { settings, updateSettings } = useSettings()
-
-  // The persisted prompt is edited as a draft and written on close: writing on
-  // every keystroke would round-trip the whole settings document per character.
-  const [draft, setDraft] = useState(settings.chatSystemPrompt)
-  const [dirty, setDirty] = useState(false)
-  const draftRef = useRef(draft)
-  const dirtyRef = useRef(dirty)
-  const updateSettingsRef = useRef(updateSettings)
-  const shown = dirty ? draft : settings.chatSystemPrompt
-
-  useEffect(() => {
-    updateSettingsRef.current = updateSettings
-  }, [updateSettings])
-
-  const savePrompt = (): void => {
-    if (!dirtyRef.current) {
-      return
-    }
-    const normalized = normalizeChatSystemPrompt(draftRef.current)
-    draftRef.current = normalized
-    dirtyRef.current = false
-    setDraft(normalized)
-    setDirty(false)
-    updateSettingsRef.current({ chatSystemPrompt: normalized })
-  }
-
-  // A pending edit must survive the popover — and the screen — going away.
-  useEffect(
-    () => () => {
-      if (dirtyRef.current) {
-        dirtyRef.current = false
-        updateSettingsRef.current({
-          chatSystemPrompt: normalizeChatSystemPrompt(draftRef.current),
-        })
-      }
-    },
-    [],
-  )
+  const promptDraft = useChatSystemPromptDraft({
+    persistedPrompt: settings.chatSystemPrompt,
+    updateSettings,
+  })
 
   const active = instructions.trim() !== '' || settings.chatSystemPrompt.trim() !== ''
 
@@ -66,7 +33,7 @@ export function ChatInstructionsMenu(): ReactElement {
     <Popover
       onOpenChange={(open) => {
         if (!open) {
-          savePrompt()
+          promptDraft.save()
         }
       }}
     >
@@ -92,14 +59,9 @@ export function ChatInstructionsMenu(): ReactElement {
       <PopoverContent align="end" className="w-80 p-3">
         <p className="text-sm font-medium text-text">Always on</p>
         <Textarea
-          value={shown}
-          onChange={(event) => {
-            draftRef.current = event.target.value
-            dirtyRef.current = true
-            setDraft(event.target.value)
-            setDirty(true)
-          }}
-          onBlur={savePrompt}
+          value={promptDraft.value}
+          onChange={(event) => promptDraft.update(event.target.value)}
+          onBlur={promptDraft.save}
           placeholder="e.g. Write like a colleague, not a chatbot…"
           aria-label="Always-on instructions"
           maxLength={CHAT_SYSTEM_PROMPT_MAX_LENGTH}

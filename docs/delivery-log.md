@@ -7,6 +7,16 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- The portfolio shows where work is waiting. Collection rows carry an
+  open-task count badge — on the table's subject cell and the board's
+  cards — counting by the same rule as the note's Tasks panel: checkboxes
+  written in the note plus tasks anywhere whose line links it. One
+  batched read over the existing projections; zero renders nothing, so
+  collections that never carry tasks stay clean. With the tag page, the
+  Tasks panel, and this, the project loop closes: capture a task in any
+  note with `[[the project]]`, find it on the project's page, and see
+  from the `#project` board which project needs attention.
+
 - A task belongs to the project it links. Tasks used to belong only to
   the note they were written in, so "all tasks of project X" had no
   answer once tasks scattered across daily notes. Now a task's own line

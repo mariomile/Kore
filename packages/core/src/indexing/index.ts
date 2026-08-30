@@ -72,6 +72,7 @@ export {
   getNote,
   getNotePreview,
   getNotesByTag,
+  countOpenTasksForNotes,
   getOpenTasks,
   getOpenTasksForNote,
   getCompletedTasks,

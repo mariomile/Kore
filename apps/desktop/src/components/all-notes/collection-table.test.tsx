@@ -20,6 +20,10 @@ const openRelation = vi.hoisted(() => vi.fn())
 vi.mock('@/lib/tags/use-open-relation', () => ({
   useOpenRelation: () => openRelation,
 }))
+const taskCounts = vi.hoisted(() => ({ current: {} as Record<string, number> }))
+vi.mock('@/hooks/use-open-task-counts', () => ({
+  useOpenTaskCounts: () => taskCounts.current,
+}))
 
 const clickSelect = vi.fn()
 
@@ -75,6 +79,7 @@ const ENTRIES: CollectionEntry[] = [
 beforeEach(() => {
   clickSelect.mockClear()
   commitProperty.mockClear()
+  taskCounts.current = {}
 })
 
 describe('CollectionTable', () => {
@@ -101,6 +106,29 @@ describe('CollectionTable', () => {
     await expect.element(view.getByLabelText('Checked', { exact: true })).toBeInTheDocument()
     // Dune's missing author renders an empty cell, its unread box unchecked.
     await expect.element(view.getByLabelText('Unchecked', { exact: true })).toBeInTheDocument()
+  })
+
+  it('shows an open-task badge on rows that have one, and nothing on the rest', async () => {
+    taskCounts.current = { 'notes/dispossessed.md': 3 }
+    const view = await render(
+      <CollectionTable
+        entries={ENTRIES}
+        tag="book"
+        type={BOOK_TYPE}
+        selection={selection()}
+        sort={null}
+        columnWidths={{}}
+        onColumnWidthChange={() => {}}
+        onEditSchema={() => {}}
+        onSortChange={() => {}}
+        onOpen={() => {}}
+        registerScrollToIndex={() => {}}
+      />,
+    )
+
+    await expect.element(view.getByTitle('3 open tasks')).toBeInTheDocument()
+    // Dune has no open tasks — no zero badge, no badge at all.
+    expect(view.getByTitle(/open task/).elements()).toHaveLength(1)
   })
 
   it('shows a mismatched value raw with the warning tint', async () => {

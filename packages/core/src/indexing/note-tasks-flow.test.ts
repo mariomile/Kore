@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { setBridge } from '../ipc/bridge'
-import { getOpenTasksForNote } from './queries-tasks'
+import { countOpenTasksForNotes, getOpenTasksForNote } from './queries-tasks'
 import { applyProjection, connectIndex, openMigratedIndex, project } from './flow-test-harness'
 
 /**
@@ -97,5 +97,38 @@ describe('getOpenTasksForNote', () => {
     await expect(getOpenTasksForNote('daily/2026-09-01.md')).resolves.toEqual([])
     const projectTasks = await getOpenTasksForNote('notes/casa-nuova.md')
     expect(projectTasks.map((task) => [task.dueDate, task.linked])).toEqual([['2026-09-01', true]])
+  })
+})
+
+describe('countOpenTasksForNotes', () => {
+  it('counts own and linked open tasks per note, by the same membership rule', async () => {
+    applyProjection(database, project('notes/casa-nuova.md', PROJECT_SOURCE, 1))
+    applyProjection(database, project('notes/lavoro.md', '# Lavoro\n', 2))
+    applyProjection(database, project('daily/2026-09-01.md', 'Day note.\n', 3))
+    applyProjection(
+      database,
+      project(
+        'daily/2026-08-30.md',
+        [
+          '+ [ ] chiama il geometra [[Casa Nuova]]',
+          '+ [ ] report [[Lavoro]] entro [[2026-09-01]]',
+          '+ [x] già fatto [[Lavoro]]',
+          '+ [ ] commissione senza progetto',
+        ].join('\n'),
+        4,
+      ),
+    )
+
+    const counts = await countOpenTasksForNotes([
+      'notes/casa-nuova.md',
+      'notes/lavoro.md',
+      'daily/2026-09-01.md',
+      'notes/missing.md',
+    ])
+
+    // Casa Nuova: one own checkbox + one linked; Lavoro: one linked (the
+    // completed one excluded); the daily note counts nothing — its link is
+    // a due date; absent notes are simply absent.
+    expect(counts).toEqual({ 'notes/casa-nuova.md': 2, 'notes/lavoro.md': 1 })
   })
 })

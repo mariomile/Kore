@@ -5,12 +5,15 @@ import { cn } from '@/lib/utils'
 import type { ModClickEvent } from '@/lib/windows/open-in-new-window'
 import { useSettings } from '@/providers/settings-provider'
 import { COLLECTION_GRID_CLASS } from './collection-grid'
+import { CollectionTaskBadge } from './collection-task-badge'
 
 interface CollectionRowProps {
   entry: CollectionEntry
   /** The table's shared data-driven column template. */
   gridStyle: CSSProperties
   selected: boolean
+  /** Open tasks belonging to this row's note (0 renders nothing). */
+  openTasks: number
   onSelect: (path: string, event: Pick<MouseEvent, 'metaKey' | 'ctrlKey' | 'shiftKey'>) => void
   onToggle: (path: string, event: Pick<MouseEvent, 'shiftKey'>) => void
   onOpen: (path: string, event?: ModClickEvent) => void
@@ -27,6 +30,7 @@ export const CollectionRow = memo(function CollectionRow({
   entry,
   gridStyle,
   selected,
+  openTasks,
   onSelect,
   onToggle,
   onOpen,
@@ -84,11 +88,12 @@ export const CollectionRow = memo(function CollectionRow({
         }}
         onDoubleClick={(event) => event.stopPropagation()}
         className={cn(
-          'truncate text-left text-[13px] font-medium focus-visible:outline-none',
+          'flex min-w-0 items-center gap-1.5 text-left text-[13px] font-medium focus-visible:outline-none',
           selected ? 'text-accent' : 'text-text',
         )}
       >
-        {entry.title}
+        <span className="min-w-0 truncate">{entry.title}</span>
+        {openTasks > 0 ? <CollectionTaskBadge count={openTasks} /> : null}
       </button>
       {children}
       <span className="whitespace-nowrap text-right text-[13px] tabular-nums text-text-secondary">

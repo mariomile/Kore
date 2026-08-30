@@ -29,6 +29,10 @@ vi.mock('@/hooks/use-template-values', () => ({
     time: '2:15 PM',
   }),
 }))
+const taskCounts = vi.hoisted(() => ({ current: {} as Record<string, number> }))
+vi.mock('@/hooks/use-open-task-counts', () => ({
+  useOpenTaskCounts: () => taskCounts.current,
+}))
 
 const BOOK_TYPE: TagType = {
   properties: [
@@ -63,6 +67,7 @@ const ENTRIES: CollectionEntry[] = [
 beforeEach(() => {
   commitProperties.mockClear()
   createNoteIfAbsent.mockClear()
+  taskCounts.current = {}
 })
 
 describe('groupableProperties / boardProperty', () => {
@@ -202,6 +207,14 @@ describe('CollectionBoard', () => {
     await expect.element(view.getByRole('region', { name: 'No Status' })).toBeInTheDocument()
     await view.getByRole('button', { name: 'Dune' }).click()
     expect(onOpen).toHaveBeenCalledWith('notes/dune.md', expect.anything())
+  })
+
+  it('shows an open-task badge on cards whose note has one', async () => {
+    taskCounts.current = { 'notes/dune.md': 2 }
+    const view = await renderBoard(ENTRIES)
+
+    await expect.element(view.getByTitle('2 open tasks')).toBeInTheDocument()
+    expect(view.getByTitle(/open task/).elements()).toHaveLength(1)
   })
 
   it('drags a card into another lane: one commit, and the card moves at once', async () => {

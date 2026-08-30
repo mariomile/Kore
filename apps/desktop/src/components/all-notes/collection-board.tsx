@@ -4,6 +4,7 @@ import type { CollectionEntry, CollectionValue, TagProperty, TagType } from '@re
 import { Plus } from '@/components/icons'
 import { PropertyValueEditor } from '@/components/tags/property-editors'
 import { selectOptionDotClass } from '@/components/tags/select-colors'
+import { useOpenTaskCounts } from '@/hooks/use-open-task-counts'
 import { useOptimisticMoves } from '@/hooks/use-optimistic-moves'
 import type { ModClickEvent } from '@/lib/windows/open-in-new-window'
 import { groupablePropertiesOf } from '@/lib/tags/schema-views'
@@ -11,6 +12,7 @@ import { useCommitNoteProperties } from '@/lib/tags/use-commit-note-property'
 import { useCreateCollectionNote } from '@/lib/tags/use-create-collection-note'
 import { cn } from '@/lib/utils'
 import { readCellValue } from './collection-cell'
+import { CollectionTaskBadge } from './collection-task-badge'
 
 /**
  * The Collection's kanban board (TDR 0005): the same rows as the table,
@@ -227,6 +229,9 @@ export function CollectionBoard({
   const commitProperties = useCommitNoteProperties()
   const createNote = useCreateCollectionNote(tag, type)
   const { moves, record } = useOptimisticMoves<BoardMove>(entries)
+  // The cards' open-task badges (the project pulse) — one batched read.
+  const entryPaths = useMemo(() => (entries ?? []).map((entry) => entry.path), [entries])
+  const taskCounts = useOpenTaskCounts(entryPaths)
   // The dragged card's path lives in React state, not only in the
   // DataTransfer: `dragover` cannot read the payload (spec), and gating the
   // handlers on it keeps foreign drags (files onto the window) refused.
@@ -377,13 +382,18 @@ export function CollectionBoard({
                       draggingPath === entry.path && 'opacity-50',
                     )}
                   >
-                    <button
-                      type="button"
-                      onClick={(event) => onOpen(entry.path, event)}
-                      className="truncate text-left text-[13px] font-medium text-text hover:underline"
-                    >
-                      {entry.title}
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={(event) => onOpen(entry.path, event)}
+                        className="min-w-0 flex-1 truncate text-left text-[13px] font-medium text-text hover:underline"
+                      >
+                        {entry.title}
+                      </button>
+                      {(taskCounts[entry.path] ?? 0) > 0 ? (
+                        <CollectionTaskBadge count={taskCounts[entry.path] ?? 0} />
+                      ) : null}
+                    </div>
                     <PropertyValueEditor
                       property={property}
                       value={entry.properties[property.key]}

@@ -52,6 +52,9 @@ vi.mock('@/lib/tags/use-commit-note-property', () => ({
 vi.mock('@/lib/tags/use-open-relation', () => ({
   useOpenRelation: () => vi.fn(),
 }))
+vi.mock('@/hooks/use-open-task-counts', () => ({
+  useOpenTaskCounts: () => ({}),
+}))
 vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({ graph: { root: '/g', name: 'g', generation: 1 } }),
 }))

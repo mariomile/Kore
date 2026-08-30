@@ -252,9 +252,9 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
         onRequestTrash={openTrashConfirm}
         onDone={selection.clear}
       />
-      <header className="flex flex-none flex-wrap items-center justify-between gap-3 py-4 pl-12 pr-7">
+      <header className="flex flex-none flex-wrap items-center justify-between gap-3 py-5 pl-12 pr-7">
         {tag === null ? (
-          <h1 className="text-[15px] font-semibold text-text">Notes</h1>
+          <h1 className="text-[1.625rem] font-bold tracking-[-0.02em] text-text">Notes</h1>
         ) : (
           <TagPageTitle
             tag={tag}

@@ -296,7 +296,10 @@ export function DailyStream({ target }: DailyStreamProps): ReactElement {
               <section
                 key={date}
                 data-index={index}
-                className="border-b border-border py-6"
+                // Days separate by space and each date's own hairline
+                // (Craft's grammar, Plan 28) — no full-width rule between
+                // rows.
+                className="py-8"
                 // Focus entering this row (clicking its editor, tabbing in) makes
                 // it the day the sidebar describes.
                 onFocusCapture={() => {
@@ -304,17 +307,20 @@ export function DailyStream({ target }: DailyStreamProps): ReactElement {
                   setFocusIndex(index)
                 }}
               >
-                {/* V1 renders the date as the note's H1-sized subject, with
-                  today's tinted brand (its `highlightSubject`). */}
+                {/* The date is the day's display-sized subject, today tinted
+                  brand. The hairline under it belongs to the content column
+                  (the inner span), not the pane edge. */}
                 <h2
                   className={cn(
-                    'reflect-daily-subject mb-3',
+                    'reflect-daily-subject mb-4',
                     CONTENT_GUTTER,
                     isToday && 'text-accent',
                   )}
                   onClick={() => handleSubjectClick(date)}
                 >
-                  {formatDayLabel(date, settings.dateFormat)}
+                  <span className="block border-b border-border pb-3">
+                    {formatDayLabel(date, settings.dateFormat)}
+                  </span>
                 </h2>
                 <NotePane
                   path={dailyPath(date)}

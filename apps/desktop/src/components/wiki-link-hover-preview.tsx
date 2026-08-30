@@ -1,6 +1,7 @@
-import { useLayoutEffect, useState, type ReactElement } from 'react'
+import type { ReactElement } from 'react'
 import { dateFromDailyPath, type DateFormat } from '@reflect/core'
 import { MarkdownPreview } from '@/editor/markdown-preview'
+import { useOverflowing } from '@/hooks/use-overflowing'
 import { formatDayLabel } from '@/lib/dates'
 import { cn } from '@/lib/utils'
 
@@ -10,39 +11,6 @@ interface WikiLinkHoverPreviewProps {
   markdown: string
   dateFormat: DateFormat
   resolveImageUrl: (src: string) => string | null
-}
-
-/**
- * Whether the clamped preview box is taller than its content allows, so the
- * bottom clip is real. Observed rather than computed once — image loads and
- * font swaps change the content height after mount. The element lives in
- * state (not a ref) so the observer attaches on mount and re-attaches if the
- * node is replaced.
- */
-function useOverflowing(): {
-  setRoot: (root: HTMLDivElement | null) => void
-  overflowing: boolean
-} {
-  const [root, setRoot] = useState<HTMLDivElement | null>(null)
-  const [overflowing, setOverflowing] = useState(false)
-
-  useLayoutEffect(() => {
-    if (root === null || typeof ResizeObserver === 'undefined') {
-      return
-    }
-    const update = (): void => {
-      setOverflowing(root.scrollHeight > root.clientHeight + 1)
-    }
-    update()
-    const observer = new ResizeObserver(update)
-    observer.observe(root)
-    for (const child of root.children) {
-      observer.observe(child)
-    }
-    return () => observer.disconnect()
-  }, [root])
-
-  return { setRoot, overflowing }
 }
 
 /**

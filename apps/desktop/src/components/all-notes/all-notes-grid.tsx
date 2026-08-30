@@ -1,9 +1,12 @@
-import { useEffect, useRef, useState, type ReactElement } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react'
 import type { NoteListEntry } from '@reflect/core'
 import { Pin } from '@/components/icons'
+import { useAssetPersistence } from '@/editor/use-asset-persistence'
 import { formatRecencyLabel } from '@/lib/dates'
 import type { ModClickEvent } from '@/lib/windows/open-in-new-window'
+import { useGraph } from '@/providers/graph-provider'
 import { useSettings } from '@/providers/settings-provider'
+import { NoteCardPreview } from './note-card-preview'
 
 interface AllNotesGridProps {
   notes: readonly NoteListEntry[] | undefined
@@ -15,21 +18,53 @@ interface AllNotesGridProps {
 /** How many cards mount at once; scrolling near the end reveals the next batch. */
 const GRID_CHUNK = 120
 
+function isSvgAsset(path: string): boolean {
+  return path.toLowerCase().endsWith('.svg')
+}
+
 /**
- * The All Notes masonry view: the same notes as the table, as preview cards
- * flowing down CSS columns (cards keep their natural height, columns fill
- * left to right). A reading layout, not a management one — cards open on
- * click (⌘-click in a new window); multi-select and its keyboard shortcuts
- * stay with the table view. CSS columns own the layout, so instead of the
- * table's row virtualizer the grid mounts in chunks: a sentinel below the
- * cards reveals the next {@link GRID_CHUNK} as it scrolls into reach — a
- * many-thousand-note graph never mounts every card at once.
+ * The All Notes masonry view (Plan 28, Craft's register): the same notes as
+ * the table, as live-preview cards — each note's actual rendered content at
+ * the compact hover-card scale — flowing down CSS columns (cards keep their
+ * natural height, columns fill left to right). A reading layout, not a
+ * management one — cards open on click (⌘-click in a new window);
+ * multi-select and its keyboard shortcuts stay with the table view. CSS
+ * columns own the layout, so instead of the table's row virtualizer the grid
+ * mounts in chunks: a sentinel below the cards reveals the next
+ * {@link GRID_CHUNK} as it scrolls into reach — a many-thousand-note graph
+ * never mounts every card at once (and each card upgrades from snippet to
+ * preview only as it nears the viewport).
  */
 export function AllNotesGrid({ notes, tag, onOpen }: AllNotesGridProps): ReactElement | null {
   const { settings } = useSettings()
+  const { graph } = useGraph()
+  const generation = graph?.generation ?? null
+  const graphRoot = graph?.root ?? null
   const [visibleCount, setVisibleCount] = useState(GRID_CHUNK)
   const sentinelRef = useRef<HTMLDivElement | null>(null)
   const hasMore = notes !== undefined && notes.length > visibleCount
+
+  // One resolver for every card: asset URLs are graph-relative, so nothing
+  // per-note is involved. Same passive-card boundary as the wiki-link hover
+  // preview: SVG is skipped and asset URLs carry the raster-only marker, so
+  // a mass surface of read-only previews can never start a network fetch.
+  const { resolveImageUrl } = useAssetPersistence(generation)
+  const resolvePreviewImageUrl = useCallback(
+    (src: string): string | null => {
+      if (/^https?:\/\//.test(src)) {
+        return resolveImageUrl(src)
+      }
+      if (isSvgAsset(src)) {
+        return null
+      }
+      const url = resolveImageUrl(src)
+      if (url === null) {
+        return null
+      }
+      return `${url}${url.includes('?') ? '&' : '?'}reflect-preview=raster`
+    },
+    [resolveImageUrl],
+  )
 
   useEffect(() => {
     const sentinel = sentinelRef.current
@@ -62,7 +97,7 @@ export function AllNotesGrid({ notes, tag, onOpen }: AllNotesGridProps): ReactEl
     )
   }
   return (
-    <div className="columns-[15rem] gap-4 px-12 py-6 [column-fill:balance]">
+    <div className="columns-[17rem] gap-5 px-12 pb-10 pt-2 [column-fill:balance]">
       {notes.slice(0, visibleCount).map((note) => (
         <button
           key={note.path}
@@ -74,22 +109,23 @@ export function AllNotesGrid({ notes, tag, onOpen }: AllNotesGridProps): ReactEl
           // No shadow or hover lift: box shadows and transforms fragment
           // across CSS columns in WebKit, painting stray slivers at column
           // tops — a border tint carries the hover affordance instead.
-          className="group mb-4 block w-full break-inside-avoid rounded-[10px] border border-border bg-surface p-4 text-left transition-colors duration-150 ease-swift hover:border-border-strong hover:bg-surface-hover focus-visible:ring-2 focus-visible:ring-focus-ring"
+          className="group mb-5 block w-full break-inside-avoid rounded-2xl border border-border bg-surface p-5 text-left transition-colors duration-150 ease-swift hover:border-border-strong hover:bg-surface-hover focus-visible:ring-2 focus-visible:ring-focus-ring"
         >
           <div className="flex items-start justify-between gap-2">
-            <h2 className="min-w-0 text-[13px] font-semibold leading-snug text-text">
-              {note.title}
-            </h2>
+            <h2 className="min-w-0 text-sm font-semibold leading-snug text-text">{note.title}</h2>
             {note.isPinned ? (
               <Pin aria-label="Pinned" className="mt-0.5 size-3 shrink-0 text-text-muted" />
             ) : null}
           </div>
-          {note.snippet !== '' ? (
-            <p className="mt-2 line-clamp-4 text-xs leading-relaxed text-text-secondary">
-              {note.snippet}
-            </p>
-          ) : null}
-          <div className="mt-3 flex flex-wrap items-center gap-1.5">
+          <NoteCardPreview
+            path={note.path}
+            mtime={note.mtime}
+            generation={generation}
+            graphRoot={graphRoot}
+            snippet={note.snippet}
+            resolveImageUrl={resolvePreviewImageUrl}
+          />
+          <div className="mt-3.5 flex flex-wrap items-center gap-1.5">
             {note.tags.slice(0, 3).map((noteTag) => (
               <span
                 key={noteTag}

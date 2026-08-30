@@ -18,10 +18,14 @@ With Craft screenshots as the reference, the direction is set: Kore
 converges on Craft's visual and interaction register — dissolving scroll
 edges, live-preview cards, quiet circular chrome, one motion register —
 without touching structure (the left sidebar explicitly stays Kore's own).
-Slice 1 (this session) is the scroll veil: content melts under the chrome
-on the daily stream, the note view, and All Notes, whose pinned table
-headers turn to glass. Queued: live-preview cards (absorbing the gallery
-backlog item), chrome details, editor block affordances via meowdown.
+A side-by-side against the reference shots (user correction, same day)
+established the gap is the whole register, not one effect — scale and
+air, space over hairlines, cards as documents, floating chrome — so
+slice 1 (this session) lands all four on the main surfaces: display-size
+subjects and screen titles, the daily stream's space-plus-one-hairline
+day grammar, live-preview grid cards, and the scroll veil with glass
+table headers. Queued: property chips on cards and board/calendar
+coherence, chrome details, editor block affordances via meowdown.
 
 **Collections UX pass (user decision 2026-08-30).** The Now ladder shipped
 through v0.38.0–v0.40.0 (recall + skills, S3-minimal runtime per

@@ -38,7 +38,7 @@ export function SingleNoteView({ path, dailyDate, heading }: SingleNoteViewProps
     // edge of the pane while the note itself scrolls beneath it.
     <div className="relative h-full">
       <ScrollRestored className="h-full overflow-auto px-0" elementRef={setScrollElement}>
-        <div className="mx-auto flex min-h-full w-full max-w-full flex-col py-8">
+        <div className="mx-auto flex min-h-full w-full max-w-full flex-col pt-14 pb-8">
           {heading}
           <NotePane
             path={path}

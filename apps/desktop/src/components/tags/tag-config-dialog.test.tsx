@@ -173,7 +173,9 @@ describe('TagConfigDialog', () => {
   it('seeds an empty schema from a preset and the views strip lights up', async () => {
     const view = await render(<TagConfigDialog tag="book" onClose={() => {}} />)
 
-    await view.getByRole('button', { name: /Task board/ }).click()
+    // The presets are the vault's default objects (plus Reading list), so a
+    // deleted default is one click from coming back on any tag.
+    await view.getByRole('button', { name: /^Project Status/ }).click()
 
     const names = view.getByRole('textbox', { name: 'Property name' })
     await expect.element(names.nth(0)).toHaveValue('Status')
@@ -183,7 +185,7 @@ describe('TagConfigDialog', () => {
     await expect.element(view.getByText('Board · Status')).toBeInTheDocument()
     await expect.element(view.getByText('Calendar · Due')).toBeInTheDocument()
     // With rows on screen the presets step aside.
-    expect(view.getByRole('button', { name: /Task board/ }).query()).toBeNull()
+    expect(view.getByRole('button', { name: /^Project Status/ }).query()).toBeNull()
 
     await view.getByRole('button', { name: 'Save' }).click()
     expect(saveTagType).toHaveBeenCalledWith(
@@ -193,7 +195,7 @@ describe('TagConfigDialog', () => {
           name: 'Status',
           key: 'status',
           type: 'status',
-          options: ['Backlog', 'In progress', 'Done'],
+          options: ['Planned', 'Active', 'On hold', 'Done'],
         },
         { name: 'Due', key: 'due', type: 'date' },
         { name: 'Priority', key: 'priority', type: 'select', options: ['High', 'Medium', 'Low'] },

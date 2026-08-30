@@ -65,6 +65,10 @@ beforeEach(() => {
           return []
         case 'vault_scan_stats':
           return { notes: 0, attachments: 0, skipped: 0 }
+        case 'note_create':
+          // The empty-vault stats above make every opened graph brand-new, so
+          // the first-run seeds (welcome note + default objects) write here.
+          return { kind: 'created', modifiedMs: 1 }
         case 'settings_load':
           return storedSettings
         default:

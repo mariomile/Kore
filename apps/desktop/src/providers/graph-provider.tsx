@@ -24,7 +24,7 @@ import {
   dropSimilarNotesQueries,
   throttledInvalidateIndexQueries,
 } from '@/lib/query-client'
-import { ensureWelcomeNote } from '@/lib/welcome-note'
+import { ensureFirstRunSeeds } from '@/lib/welcome-note'
 import { closeSecondaryWindows } from '@/lib/windows/close-secondary-windows'
 import { isMainWindow, requireMainWindow } from '@/lib/windows/window-role'
 import { GraphContext, type GraphContextValue, type GraphStatus } from './graph-context'
@@ -218,19 +218,20 @@ export function GraphProvider({
           setIndexReady(false)
           setStatus('ready')
           opened = true
-          // Onboarding, considered exactly once per graph (the `welcomeSeeded`
-          // meta marker): an empty graph gets the pinned "How to use Reflect"
-          // note. Needs the index for the marker, so a graph whose index failed
+          // Onboarding, considered exactly once per graph (the per-seed meta
+          // markers): an empty graph gets the pinned "How to use Kore" note
+          // and the default objects (Project, Person, Company, Meeting).
+          // Needs the index for the markers, so a graph whose index failed
           // to open simply tries again next time. On all launches after the
-          // first, ensureWelcomeNote returns immediately (marker already set),
-          // so it no longer blocks time-to-first-workspace-paint. The note must
-          // land before the reconcile indexes files — index.sync starts in the
-          // .finally so it always runs after the seed attempt.
+          // first, ensureFirstRunSeeds returns immediately (markers set),
+          // so it no longer blocks time-to-first-workspace-paint. The seeds
+          // must land before the reconcile indexes files — index.sync starts
+          // in the .finally so it always runs after the seed attempt.
           // Best-effort — a failed seed must never block opening.
           if (generation !== null) {
-            ensureWelcomeNote({ fileGeneration: info.generation, indexGeneration: generation })
+            ensureFirstRunSeeds({ fileGeneration: info.generation, indexGeneration: generation })
               .catch((err) => {
-                console.error('welcome seed failed:', errorMessage(err))
+                console.error('first-run seed failed:', errorMessage(err))
               })
               .finally(() => {
                 if (seq === openSeq.current) {

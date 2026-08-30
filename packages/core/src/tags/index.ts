@@ -48,3 +48,9 @@ export {
   type CollectionEmbed,
   type CollectionEmbedView,
 } from './collection-embed'
+export {
+  DEFAULT_VAULT_OBJECTS,
+  defaultObjectSource,
+  writeDefaultVaultObjects,
+  type DefaultVaultObject,
+} from './default-objects'

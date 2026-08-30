@@ -1,6 +1,12 @@
 name: TestFlight
 
 on:
+  # The mobile bump, mirroring release/dmg: pointing this branch at master
+  # builds that commit and uploads it to TestFlight. A pointer, not history —
+  # `git push --force origin origin/master:release/testflight`. This is the
+  # trigger automation uses; the manual dispatch below stays for one-off runs.
+  push:
+    branches: [release/testflight]
   workflow_dispatch:
     inputs:
       export_method:
@@ -16,9 +22,9 @@ on:
         required: true
         type: boolean
         default: true
-  # Called by release-please.yml so every published release also ships to
-  # TestFlight. workflow_call has no choice type; release-ios.mjs validates
-  # the export method.
+  # Kept for a future caller workflow; workflow_call has no choice type, so
+  # release-ios.mjs validates the export method. (No workflow calls this
+  # today — the DMG release deliberately does not gate on TestFlight.)
   workflow_call:
     inputs:
       commit:
@@ -112,8 +118,11 @@ jobs:
           APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
           APPLE_API_KEY_CONTENT: ${{ secrets.APPLE_API_KEY_CONTENT }}
-          EXPORT_METHOD: ${{ inputs.export_method }}
-          WAIT_FLAG: ${{ inputs.wait_for_processing && '--wait' || '' }}
+          # On a release/testflight push there are no inputs: default to the
+          # App Store Connect export and wait for processing, the same
+          # defaults the dispatch form carries.
+          EXPORT_METHOD: ${{ inputs.export_method || 'app-store-connect' }}
+          WAIT_FLAG: ${{ (github.event_name == 'push' || inputs.wait_for_processing) && '--wait' || '' }}
         run: |
           pnpm release:ios preflight --build-number="$BUILD_NUMBER"
           args=(testflight --build-number="$BUILD_NUMBER" --export-method="$EXPORT_METHOD")

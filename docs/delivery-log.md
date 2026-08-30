@@ -7,6 +7,23 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- The tag schema dialog teaches what it builds. Configuring a supertag
+  used to mean raw plumbing: an always-on frontmatter-key input, options
+  as comma-separated text, a flat 14-entry type list, and no hint that a
+  Select powers the kanban. Now a live views strip under the property
+  list shows which collection views the draft unlocks — lit pills name
+  the property powering Board or Calendar, dark ones say exactly what to
+  add — reading availability from the same predicates the board and
+  calendar themselves use, so the hint cannot drift. An empty schema
+  offers one-click starter presets (Task board, Reading list, People)
+  that seed editable rows without saving anything. Options became
+  removable chips in their real collection colors with an inline add
+  field; the frontmatter key folded behind a small mono chip that
+  auto-derives from the name (an invalid or duplicate key pops its
+  editor open); every property type carries a glyph; a freshly added row
+  focuses its name. The save, rename-migration and conversion flows are
+  untouched.
+
 - A tag is a page, not a filter state. Opening a tag — from the sidebar, the
   All Notes pills, or the Custom menu — now lands on that tag's own page on
   the same route: the tag is the title (with an "All notes" breadcrumb back),

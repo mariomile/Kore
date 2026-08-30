@@ -60,6 +60,13 @@ export function draftsFromSchema(properties: readonly TagProperty[]): PropertyDr
   }))
 }
 
+/** Draft rows for properties that were never stored (a preset seeding an
+ * empty schema): same shape, but `originalKey` stays null so saving them is
+ * a plain create, never a rename with a migration prompt. */
+export function draftsForNewSchema(properties: readonly TagProperty[]): PropertyDraft[] {
+  return draftsFromSchema(properties).map((draft) => ({ ...draft, originalKey: null }))
+}
+
 export function schemaFromDrafts(drafts: readonly PropertyDraft[]): TagProperty[] {
   return drafts.map((draft) => {
     const options = draft.options

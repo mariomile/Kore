@@ -1,7 +1,7 @@
 # Kore working state
 
-**Updated:** 2026-08-30 at `8c45e530` (post-v0.40.0, advisories cleared;
-collections UX pass in flight).
+**Updated:** 2026-08-30 at `a491f0ae` (tag page merged, #116; collections
+UX pass continues with the schema-dialog redesign).
 **Rule:** Every session that moves the program updates this file before its
 summary: tick what became true and how it was verified, set the next step,
 refresh the date. What is done and what is next live here and only here. Why
@@ -26,6 +26,27 @@ sum/avg. Also still open: the live checks below. B05c preview tabs stays
 declined; the backlog-B pass is closed.
 
 ## What is true now
+
+- [x] **Collections slice 2: the schema dialog earns its job** (user ask,
+  2026-08-30: "migliorare la UX/UI della pagina di creazione dei super
+  tag"). The Configure-tag dialog now teaches what it builds: a live
+  views strip under the property list says which collection views the
+  draft schema unlocks — lit pills name the property powering Board or
+  Calendar, dark ones say exactly what to add — reading availability from
+  the same predicates the board and calendar use (new
+  `lib/tags/schema-views.ts`, now their single source of truth). An empty
+  schema offers three one-click presets (Task board, Reading list,
+  People) that seed editable rows — the fastest honest path to a working
+  kanban. Property rows lost their plumbing: the frontmatter key folds
+  behind a mono chip (auto-derived from the name; an invalid or duplicate
+  key pops the editor open itself), select/status options are removable
+  chips in their real collection colors with an inline add field, the
+  type picker carries a glyph per type, and a freshly added row focuses
+  its name input. Save, rename-migration, and conversion flows unchanged.
+  Verified: dialog suite 9/9 (3 new tests), property-editors,
+  collection-board/calendar, collection-flow, embedded-collection and
+  all-notes screen suites all green on chromium (webkit in CI);
+  `pnpm check` exit 0.
 
 - [x] **Collections slice 1: the tag page.** A routed tag
   (`{kind:'allNotes', tag}`) renders as the tag's own page: `#tag` is the
@@ -153,11 +174,12 @@ declined; the backlog-B pass is closed.
 ## Next step
 
 1. **Collections UX pass, remaining slices** (user decision 2026-08-30,
-   in recommendation order): (a) an optional Notion-style properties
-   header above the note body for typed notes; (b) a gallery/card view
-   that shows properties (the grid ignores them today); (c) rollup
-   sum/avg/min/max beyond count. Each is its own PR; re-check appetite
-   with the user between slices.
+   in recommendation order — the schema-dialog redesign the user asked
+   for mid-pass shipped as slice 2): (a) an optional Notion-style
+   properties header above the note body for typed notes; (b) a
+   gallery/card view that shows properties (the grid ignores them
+   today); (c) rollup sum/avg/min/max beyond count. Each is its own PR;
+   re-check appetite with the user between slices.
 2. **Live checks with the user**: (a) Now 1: real MCP server + Tools toggle
    in a read-only conversation; (b) Now 2: send an image in chat, restart,
    confirm the restored conversation renders it from disk; (c) Now 3: ask a
@@ -170,6 +192,13 @@ declined; the backlog-B pass is closed.
 
 ## Session log
 
+- 2026-08-30 — Collections slice 2, on the user's ask: the tag schema
+  dialog redesigned — live views strip (Board/Calendar hints from the
+  board's and calendar's own predicates, extracted to
+  `lib/tags/schema-views.ts`), one-click starter presets on an empty
+  schema, options as colored chips, the frontmatter key folded behind a
+  chip, typed glyphs in the type picker. Tag page (#116) merged the same
+  session.
 - 2026-08-30 — Collections slice 1: the tag page (tag as title +
   breadcrumb, tab renamed `#tag`, schema gear in the header for typed
   tags, "Create a collection" CTA for untyped ones; All Notes untouched).

@@ -1,6 +1,7 @@
 # Kore working state
 
-**Updated:** 2026-08-30 at `06aaf78f` (post-v0.38.0).
+**Updated:** 2026-08-30 at `770f7a4a` (post-v0.39.0, third polish slice
+merged).
 **Rule:** Every session that moves the program updates this file before its
 summary: tick what became true and how it was verified, set the next step,
 refresh the date. What is done and what is next live here and only here. Why
@@ -11,12 +12,15 @@ in the [delivery log](delivery-log.md); this file tracks only the active work.
 
 ## Current focus
 
-**Roadmap "Now" item 4: S3 minimal durable runtime** (entered from Next by
-user decision, 2026-08-30, together with a backlog-B polish pass to follow).
-Item 3 (agent memory: recall #104 + skills #106) is implemented and shipped
-in v0.38.0; what remains there is exercising it against real usage with the
-user. The S3 slice and its boundaries are recorded in
-[TDR 0007](decisions/0007-durable-runtime-minimal.md).
+**The Now ladder is shipped; the program waits on live checks and the next
+decision.** v0.38.0 carried agent memory (recall #104 + skills #106),
+v0.39.0 carried the S3-minimal durable runtime
+([TDR 0007](decisions/0007-durable-runtime-minimal.md)) and the first two
+backlog-B polish slices; the third slice (tab list menu, graph ⌥click
+local view) is merged on master awaiting the next bump. What remains open:
+the live checks below with the user, the B05c preview-tabs decision (it
+changes what a single click on a tab means), and whatever the next roadmap
+decision pulls in.
 
 ## What is true now
 

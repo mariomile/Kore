@@ -7,6 +7,50 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Agent memory the agent actually uses (v0.38.0). Chat recall: at send time
+  the message's significant terms (bilingual stopwords; mentions, URLs and
+  code stripped) drive one OR-composed FTS query over the index, and the
+  top three passages ride the model-bound message with path, title and
+  date, fenced as vault data beside the mention block. Private notes are
+  excluded in the SQL itself — `search_fts` indexes them, so the palette's
+  local search still finds them while recall never surfaces one — and any
+  failure degrades to no recall, never a blocked send. User-taught skills:
+  one markdown file per skill under `agents/skills/` (frontmatter
+  description, H1 name, steps); prompts carry only the catalog and the
+  agent reads a skill on match; `private: true` hides one, and new or
+  changed skills route through the existing pending-approval queue, so no
+  durable instruction lands without review.
+
+- A minimal durable runtime under agent runs (v0.39.0, TDR 0007). One
+  process-wide FIFO run lock in Rust — chat edit turns and routines now
+  serialize across every window, so activity ledgers can no longer
+  cross-attribute; leases die with their webview and each fresh JS context
+  sweeps its own window's. One durable in-flight marker (atomic single
+  slot under the app data dir — the lock makes one slot correct): a run
+  the process was killed under resurfaces on the next launch as an
+  "interrupted" history entry with the normal backoff, instead of
+  vanishing. The running routine shows in the Agents screen with a Stop
+  that reaches the native process-tree kill (a user stop records history
+  without a failure strike), and a native minute tick keeps schedules
+  firing when a hidden window's JS timers throttle under App Nap.
+  Deliberately out, per the R4 bound: job tables, a durable event-run
+  queue, execution with no webview, approval checkpoints.
+
+- The backlog-B polish pass (v0.39.0 and the commits after it), closing
+  the follow-ups earlier entries left open. Tabs: drag to reorder along
+  the strip (clicks, double-click pin and middle-click close intact), and
+  a list-all-tabs menu — every open tab by full title, the active one
+  checked — as the overflow affordance. Browser: Clip to note, spooling
+  the same link-capture envelope the Chrome extension produces (new
+  `in-app-browser` source), so a clip rides the whole existing pipeline —
+  drain, dedup, daily-note placement, enrichment; the address bar,
+  back/forward and reload had already shipped. Graph: nodes colored by
+  their first tag (stable hue over the theme-safe palette), a header
+  search that lights matches up in place without rebuilding the layout,
+  and the local view — ⌥-click a node to focus its two-hop neighborhood,
+  with a "focused on … · Show all" chip; plain click still opens the note.
+  Preview-tab semantics remain open, gated on a product decision.
+
 - One release channel, and tagging that belongs to one workflow. Two
   release-please components tracked the same master branch, so the beta and
   stable Release PRs listed the same commits and neither published anything.

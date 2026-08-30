@@ -1,4 +1,12 @@
-import { useCallback, useLayoutEffect, useMemo, useRef, useState, type ReactElement } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactElement,
+} from 'react'
 import { Virtualizer, type VirtualizerHandle } from 'virtua'
 import { dailyPath } from '@reflect/core'
 import { NotePane } from '@/components/note-pane'
@@ -211,16 +219,36 @@ export function DailyStream({ target }: DailyStreamProps): ReactElement {
     setScrollIndex(scrollIndex)
   }, [])
 
+  // The first commit mounts only what the viewport shows; the full mounted
+  // window (±3 days and the scroll buffer) joins one painted frame later.
+  // Every extra row is a whole Meowdown editor — at boot the wide window
+  // mounted 7 editors for 2 visible days, and all 5 extra mounts sat between
+  // the user and the first paint. Two frames, not one: the first rAF fires
+  // before the mount commit paints. Past the flip the stream behaves exactly
+  // as before.
+  const [warm, setWarm] = useState(false)
+  useEffect(() => {
+    let second = 0
+    const first = requestAnimationFrame(() => {
+      second = requestAnimationFrame(() => setWarm(true))
+    })
+    return () => {
+      cancelAnimationFrame(first)
+      cancelAnimationFrame(second)
+    }
+  }, [])
+
   // Always keep a few rows above and below the viewport/focused row mounted
   const keepMounted = useMemo(() => {
+    const range = warm ? 3 : 1
     const keepMounted = new Set<number>()
     for (const referenceIndex of [focusIndex, scrollIndex]) {
-      for (let delta = -3; delta <= 3; delta++) {
+      for (let delta = -range; delta <= range; delta++) {
         keepMounted.add(clamp(referenceIndex + delta, 0, dayWindow.count - 1))
       }
     }
     return Array.from(keepMounted).sort()
-  }, [focusIndex, scrollIndex, dayWindow.count])
+  }, [warm, focusIndex, scrollIndex, dayWindow.count])
 
   return (
     <div
@@ -240,7 +268,7 @@ export function DailyStream({ target }: DailyStreamProps): ReactElement {
         ref={virtualizerRef}
         data={data}
         itemSize={ESTIMATED_DAY_HEIGHT}
-        bufferSize={2 * ESTIMATED_DAY_HEIGHT}
+        bufferSize={warm ? 2 * ESTIMATED_DAY_HEIGHT : 0}
         keepMounted={keepMounted}
         shift={true}
         onScroll={onScrollOffset}

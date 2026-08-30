@@ -37,6 +37,7 @@ export {
 export {
   formatEmbedBlock,
   parseEmbedBlocks,
+  scanBareUrlEmbeds,
   type EmbedBlock,
   type HtmlEmbed,
   type UrlEmbed,

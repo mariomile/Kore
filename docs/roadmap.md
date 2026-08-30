@@ -33,8 +33,10 @@ In order. Sizes are relative complexity for agent-executed work, not time.
 **2026-08-30: all four items below shipped** (1–2 earlier in the day, 3 in
 v0.38.0, 4 in v0.39.0 with the backlog-B polish pass; details in the
 [delivery log](delivery-log.md), live state in [STATE.md](STATE.md)). Now
-is empty until the pending live checks and the next explicit decision —
-the entries stay listed for the record until the next roadmap review.
+is empty until the pending live checks and the next explicit decision
+(B05c preview tabs was declined on 2026-08-30, closing the backlog-B
+pass) — the entries stay listed for the record until the next roadmap
+review.
 
 1. **MCP in read-only chat, behind explicit approval.** Today MCP servers ride
    agent chat in edit mode only; read-only chat is zero-egress by design.

@@ -18,9 +18,11 @@ v0.39.0 carried the S3-minimal durable runtime
 ([TDR 0007](decisions/0007-durable-runtime-minimal.md)) and the first two
 backlog-B polish slices; the third slice (tab list menu, graph ⌥click
 local view) is merged on master awaiting the next bump. What remains open:
-the live checks below with the user, the B05c preview-tabs decision (it
-changes what a single click on a tab means), and whatever the next roadmap
-decision pulls in.
+the live checks below with the user and whatever the next roadmap decision
+pulls in. B05c preview tabs was declined ("not for now", 2026-08-30) —
+the backlog-B pass is closed. Dependency advisories cleared the same day:
+esbuild pinned to the patched 0.28 line (GHSA-g7r4-m6w7-qqqr) and h2
+bumped past RUSTSEC-2026-0258; both audits report zero vulnerabilities.
 
 ## What is true now
 
@@ -49,8 +51,9 @@ decision pulls in.
   neighborhood (BFS in `graph-map-focus.ts`; "focused on X · Show all"
   chip; plain click still opens the note, so no existing gesture moved).
   Verified: focus helper 5/5, strip suite 16/16, screen suite 3/3 on
-  chromium. Still open, gated on the user: B05c preview tabs (it would
-  change what a single click means).
+  chromium. B05c preview tabs: **declined by the user (2026-08-30, "not
+  for now")** — a single click keeps opening a permanent tab; the backlog-B
+  pass is closed.
 
 - [x] **Now item 4 implemented: S3 minimal durable runtime**
   ([TDR 0007](decisions/0007-durable-runtime-minimal.md)). One process-wide

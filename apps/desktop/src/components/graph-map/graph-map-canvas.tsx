@@ -34,6 +34,11 @@ interface GraphMapCanvasProps {
   matches?: ReadonlySet<string> | null
   /** Open a node's note (a clean click, not the end of a drag). */
   onOpen: (id: string) => void
+  /**
+   * Focus a node's neighborhood (⌥-click; same clean-click rule). The
+   * screen owns what focusing means — the canvas only reports the gesture.
+   */
+  onFocus?: (id: string) => void
 }
 
 /** World→screen viewport: `screen = world * scale + offset`. */
@@ -78,10 +83,13 @@ export function GraphMapCanvas({
   edges,
   matches = null,
   onOpen,
+  onFocus,
 }: GraphMapCanvasProps): ReactElement {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const onOpenRef = useRef(onOpen)
   onOpenRef.current = onOpen
+  const onFocusRef = useRef(onFocus)
+  onFocusRef.current = onFocus
   const matchesRef = useRef<ReadonlySet<string> | null>(matches)
   matchesRef.current = matches
   // Set by the main effect; lets a matches change repaint the settled
@@ -432,7 +440,13 @@ export function GraphMapCanvas({
         if (!moved) {
           const id = nodes[nodeIndex]?.id
           if (id !== undefined) {
-            onOpenRef.current(id)
+            // ⌥ redirects the clean click from opening to focusing; without
+            // a focus handler the modifier falls through to open.
+            if (event.altKey && onFocusRef.current !== undefined) {
+              onFocusRef.current(id)
+            } else {
+              onOpenRef.current(id)
+            }
           }
         }
       }

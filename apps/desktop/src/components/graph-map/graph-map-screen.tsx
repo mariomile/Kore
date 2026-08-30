@@ -15,6 +15,7 @@ import { useGraph } from '@/providers/graph-provider'
 import { routeForPath } from '@/routing/route'
 import { useRouter } from '@/routing/router'
 import { GraphMapCanvas, type CanvasNode } from './graph-map-canvas'
+import { focusedGraphView } from './graph-map-focus'
 
 /** The label a node renders: title, else the daily date, else the file stem. */
 function nodeLabel(node: GraphMapNode): string {
@@ -38,6 +39,10 @@ export function GraphMapScreen(): ReactElement {
   const { navigate } = useRouter()
   const [showDailies, setShowDailies] = useState(false)
   const [query, setQuery] = useState('')
+  // The local view (B03a): ⌥-clicking a node focuses its neighborhood;
+  // ⌥-clicking it again — or Show all — returns to the whole map. Click
+  // alone keeps opening the note, untouched.
+  const [focusId, setFocusId] = useState<string | null>(null)
 
   const { data, isError } = useQuery({
     queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'graph-map'],
@@ -67,22 +72,31 @@ export function GraphMapScreen(): ReactElement {
     return { nodes, edges }
   }, [data, showDailies])
 
+  const shown = useMemo(
+    () => (view === null ? null : focusedGraphView(view, focusId)),
+    [view, focusId],
+  )
+  const focusNode =
+    focusId === null || shown === view
+      ? null
+      : (view?.nodes.find((node) => node.id === focusId) ?? null)
+
   // The header search lights matching notes up in place — a filter would
   // tear the layout apart, a highlight keeps the neighborhood readable.
   const matches = useMemo(() => {
     const folded = query.trim().toLowerCase()
-    if (folded === '' || view === null) {
+    if (folded === '' || shown === null) {
       return null
     }
     return new Set(
-      view.nodes
+      shown.nodes
         .filter(
           (node) =>
             node.label.toLowerCase().includes(folded) || node.id.toLowerCase().includes(folded),
         )
         .map((node) => node.id),
     )
-  }, [view, query])
+  }, [shown, query])
 
   if (isError) {
     return (
@@ -91,7 +105,7 @@ export function GraphMapScreen(): ReactElement {
       </p>
     )
   }
-  if (view === null) {
+  if (view === null || shown === null) {
     return <p className="px-6 py-8 text-sm text-text-muted">Loading…</p>
   }
 
@@ -100,9 +114,23 @@ export function GraphMapScreen(): ReactElement {
       <div className="flex flex-none items-baseline gap-3 px-6 pb-2 pt-6">
         <h1 className="text-2xl font-semibold tracking-tight text-text">Graph</h1>
         <span className="text-xs text-text-muted">
-          {view.nodes.length} notes · {view.edges.length} links
+          {shown.nodes.length} notes · {shown.edges.length} links
           {matches === null ? '' : ` · ${matches.size} highlighted`}
         </span>
+        {focusNode === null ? null : (
+          <span className="flex items-baseline gap-1.5 text-xs text-text-secondary">
+            focused on <span className="font-medium text-text">{focusNode.label}</span>
+            <button
+              type="button"
+              onClick={() => {
+                setFocusId(null)
+              }}
+              className="rounded font-medium text-[var(--accent)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+            >
+              Show all
+            </button>
+          </span>
+        )}
         <input
           type="search"
           value={query}
@@ -139,10 +167,13 @@ export function GraphMapScreen(): ReactElement {
       ) : (
         <div className="min-h-0 flex-1">
           <GraphMapCanvas
-            nodes={view.nodes}
-            edges={view.edges}
+            nodes={shown.nodes}
+            edges={shown.edges}
             matches={matches}
             onOpen={(path) => navigate(routeForPath(path))}
+            onFocus={(path) => {
+              setFocusId((current) => (current === path ? null : path))
+            }}
           />
         </div>
       )}

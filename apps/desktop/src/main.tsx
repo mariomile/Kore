@@ -10,6 +10,7 @@ import { EditorFontFamilyEffect } from '@/providers/editor-font-family'
 import { EditorFullWidthEffect } from '@/providers/editor-full-width'
 import { EditorLineSpacingEffect } from '@/providers/editor-line-spacing'
 import { EditorTextSizeEffect } from '@/providers/editor-text-size'
+import { HapticFeedbackEffect } from '@/providers/haptic-feedback'
 import { ChatTextSizeEffect } from '@/providers/chat-text-size'
 import { SettingsProvider } from '@/providers/settings-provider'
 import { UiTextSizeEffect } from '@/providers/ui-text-size'
@@ -44,6 +45,7 @@ createRoot(rootElement).render(
         <ChatTextSizeEffect />
         <EditorFontFamilyEffect />
         <EditorLineSpacingEffect />
+        <HapticFeedbackEffect />
         <ThemeProvider>
           <PlatformRoot />
         </ThemeProvider>

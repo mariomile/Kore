@@ -101,6 +101,8 @@ const LINE_SPACING_OPTIONS: readonly SegmentedOption<EditorLineSpacing>[] = [
  *
  * Only the choices that carry to a phone are offered: the custom accent
  * (a color input) stays desktop-configured, and the presets stand in for it.
+ * The haptics switch is the same shared key desktop exposes — off silences
+ * the taps, checkbox ticks, and confirmations this app fires.
  */
 export function MobileAppearanceGroup(): ReactElement {
   const { settings, updateSettings } = useSettings()
@@ -158,6 +160,11 @@ export function MobileAppearanceGroup(): ReactElement {
           onChange={(glassIntensity) => updateSettings({ glassIntensity })}
         />
       ) : null}
+      <SettingsSwitchRow
+        label="Haptic feedback"
+        checked={settings.hapticFeedback}
+        onCheckedChange={(hapticFeedback) => updateSettings({ hapticFeedback })}
+      />
     </SettingsGroup>
   )
 }

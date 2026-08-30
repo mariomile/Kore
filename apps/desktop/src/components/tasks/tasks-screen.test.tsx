@@ -640,6 +640,31 @@ describe('TasksScreen', () => {
     await view.unmount()
   })
 
+  it('cycles a task’s priority from the row’s flag button', async () => {
+    editTask.mockResolvedValue(undefined)
+    getOpenTasks.mockResolvedValue([
+      task({
+        notePath: 'notes/p.md',
+        markerOffset: 2,
+        raw: '[ ] first',
+        text: 'first',
+        noteTitle: 'P',
+      }),
+    ])
+    const view = await renderScreen()
+
+    await view.findByRole('button', { name: 'first' })
+    await userEvent.click(view.getByRole('button', { name: 'Priority: none — click to cycle' }))
+    await waitFor(() =>
+      expect(editTask).toHaveBeenCalledWith(
+        expect.objectContaining({ notePath: 'notes/p.md', markerOffset: 2 }),
+        '! first',
+        1,
+      ),
+    )
+    await view.unmount()
+  })
+
   it('commits, deletes, or cancels an inline edit through the editor', async () => {
     toggleTask.mockResolvedValue(undefined)
     editTask.mockResolvedValue(undefined)

@@ -17,15 +17,18 @@ import { ChatInstructionsMenu } from './chat-instructions-menu'
 const NEW_CHAT_BINDING = keybindingFor('chat.new')
 
 /**
- * The chat's top bar: which conversation is open on the left, and the
- * conversation-level controls on the right — instructions, history, save as
- * note, new chat.
+ * The chat's top bar: the conversation-level controls, trailing-aligned —
+ * instructions, history, save as note, new chat.
  *
  * These lived in the composer's bottom row, which put "leave this
  * conversation" next to "send this message" and pushed both under a growing
  * draft. The mobile Chat tab already carried them in its header; this is the
  * same arrangement for the desktop screen and the context rail, and the one
  * every chat app has trained people to reach for in the top-right corner.
+ *
+ * The bar carries no title and no rule under it: the tab that opened this
+ * surface already names it, and a hairline across the card cuts the panel in
+ * two on the dark themes this app is built around.
  */
 export function ChatHeader(): ReactElement {
   const { turns, status, newChat } = useChatSession()
@@ -54,10 +57,7 @@ export function ChatHeader(): ReactElement {
   }
 
   return (
-    <header className="flex h-10 flex-none items-center gap-1 border-b border-border px-2.5">
-      {/* The label stays "Chat", as on the mobile tab: a title derived from
-          the first message would sit directly above that same message. */}
-      <h2 className="min-w-0 flex-1 truncate text-xs font-medium text-text-secondary">Chat</h2>
+    <header className="flex h-10 flex-none items-center justify-end gap-1 px-2.5">
       <ChatInstructionsMenu />
       {settled ? (
         <Tooltip>

@@ -1,6 +1,6 @@
 # Kore planning inventory
 
-**Updated:** 2026-08-29.
+**Updated:** 2026-08-30.
 **Scope:** Every Markdown document under `docs/`, plus root/implementation entry
 points listed below. Fixture Markdown, generated permission references, package
 changelogs and design specimens are not product planning documents.
@@ -8,10 +8,15 @@ changelogs and design specimens are not product planning documents.
 ## Read order and authority
 
 1. Current user request and repository `AGENTS.md` define scope and permissions.
-2. [Target architecture](kore-target-architecture.md) and
-   [TDR 0006](decisions/0006-personal-os-boundaries.md) define the next-wave direction.
-3. [Roadmap](roadmap.md) orders work;
-   [Plan 25](plans/25-personal-os.md) owns initiative scope, dependencies and gates.
+   [STATE.md](STATE.md) records what is currently in progress and the next step;
+   read it before starting or resuming program work, and update it whenever a
+   session moves the program.
+2. [Roadmap](roadmap.md) orders active work (app-first Now/Next/Later,
+   decided 2026-08-30).
+3. [Target architecture](kore-target-architecture.md) and
+   [TDR 0006](decisions/0006-personal-os-boundaries.md) define the deferred
+   Personal OS direction; [Plan 25](plans/25-personal-os.md) owns that
+   program's initiative scope, dependencies and gates.
 4. [Supplied specification](kore-architecture-source.md) preserves all original
    requirements; Plan 25 maps every section and makes conflicts explicit.
 5. Earlier plans, decisions, grounding, and porting docs explain the baseline.
@@ -23,16 +28,19 @@ The source evidence in the target architecture was inspected at `ab96c077`.
 
 ## Catalog
 
-The inventory contains **95 documents under `docs/`**, including this index.
+The inventory contains **98 documents under `docs/`**, including this index.
 
 ### Active next-wave planning
 
 | File | Title / purpose | Planning role / status |
 |---|---|---|
-| [roadmap.md](roadmap.md) | Kore roadmap | Active priorities, gates, retained history; no delivery claim. |
+| [STATE.md](STATE.md) | Kore working state | What is in progress now and the next step; updated by every session that moves the program. |
+| [roadmap.md](roadmap.md) | Kore roadmap | App-first Now/Next/Later priorities, risk register, deferred Personal OS pointers; no delivery claim. |
+| [delivery-log.md](delivery-log.md) | Kore delivery log | Historical shipped-work record moved out of the roadmap; reports, not certifications. |
 | [kore-target-architecture.md](kore-target-architecture.md) | Kore: Personal OS target architecture | Canonical next-wave architecture and source-verified gaps. |
 | [plans/25-personal-os.md](plans/25-personal-os.md) | Plan 25 — Kore Personal OS | Complete catalog: I01–I29, S1–S5, B01–B09, acceptance and traceability. |
-| [plans/26-account-safe-read.md](plans/26-account-safe-read.md) | Plan 26 — Account-safe read (Slice S1) | Bounded implementation plan for S1 (I01–I05, minimal I08, Gmail I09, setup I10); planned, nothing implemented. |
+| [plans/26-account-safe-read.md](plans/26-account-safe-read.md) | Plan 26 — Account-safe read (Slice S1) | Bounded implementation plan for S1 (I01–I05, minimal I08, Gmail I09, setup I10); deferred by the app-first decision. |
+| [plans/27-read-mode-mcp-tools.md](plans/27-read-mode-mcp-tools.md) | Plan 27 — MCP tools in read-only chat | Roadmap Now item 1: per-conversation opt-in design and acceptance. |
 | [decisions/0006-personal-os-boundaries.md](decisions/0006-personal-os-boundaries.md) | TDR 0006 — Kore Personal OS boundaries | Accepted target boundaries D01–D10; implementation decisions remain open. |
 | [kore-architecture-source.md](kore-architecture-source.md) | Source: Lore product and technical architecture specification | Verbatim supplied input, 138 sections; reference, not implementation evidence. |
 | [planning-index.md](planning-index.md) | Kore planning inventory | This inventory and document precedence. |

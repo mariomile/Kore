@@ -151,14 +151,14 @@ describe('nextOccurrenceAppends', () => {
     expect(nextOccurrenceAppends('', '+ [x] water plants @repeat(daily)\n', today)).toEqual([])
   })
 
-  it('ignores square GFM checkboxes', () => {
+  it('spawns for a completed square checkbox too', () => {
     expect(
       nextOccurrenceAppends(
         '- [ ] water plants @repeat(daily)\n',
         '- [x] water plants @repeat(daily)\n',
         today,
       ),
-    ).toEqual([])
+    ).toEqual(['+ [ ] water plants @repeat(daily) [[2026-08-23]]'])
   })
 
   it('does not spawn for a task with no repeat token', () => {

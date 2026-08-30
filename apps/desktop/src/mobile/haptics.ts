@@ -1,4 +1,5 @@
 import { impactLight } from '@reflect/core'
+import { hapticsEnabled } from '@/lib/haptics-preference'
 
 let bridgeAvailable = true
 
@@ -9,12 +10,13 @@ let bridgeAvailable = true
  * `impact_light` command
  * (`plugins/tauri-plugin-keyboard`).
  *
- * Fire-and-forget and fail-soft: where the plugin isn't registered (desktop,
+ * Silent when the user has turned haptics off in settings. Otherwise
+ * fire-and-forget and fail-soft: where the plugin isn't registered (desktop,
  * browser dev) the first rejected invoke logs once and disables further
  * attempts, so taps never pay for a doomed IPC round-trip.
  */
 export function hapticImpactLight(): void {
-  if (!bridgeAvailable) {
+  if (!hapticsEnabled() || !bridgeAvailable) {
     return
   }
   void impactLight().catch((err: unknown) => {

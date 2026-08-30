@@ -88,6 +88,16 @@ export interface ChatContextValue {
   instructions: string
   /** Replace the conversation's instructions (the composer's popover). */
   setInstructions: (text: string) => void
+  /**
+   * Whether THIS conversation may use the configured MCP servers in
+   * read-only chat (edit mode always may). Session state like
+   * {@link ChatContextValue.instructions}: cleared by New chat and by
+   * opening a past conversation, never persisted, so a conversation never
+   * silently re-arms external tools.
+   */
+  chatTools: boolean
+  /** Flip the conversation's external-tools opt-in (the composer's toggle). */
+  setChatTools: (enabled: boolean) => void
   /** The persisted conversation the transcript belongs to. */
   activeConversationId: string
   /** Load a past conversation from the history. */

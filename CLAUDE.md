@@ -11,6 +11,10 @@ development cycle.
 Read ALL of it before starting ANY work. This is VERY important. You must read
 AGENTS.md in its entirety before continuing.
 
+For work on the Personal OS program (roadmap slices, Plans 25/26), also read
+[docs/STATE.md](docs/STATE.md) first and update it in the same session as any
+work that moves the program.
+
 Two names coexist on purpose and neither is a typo: **Reflect** is the upstream
 project this repo forked from (internal identifiers keep it — `@reflect/*`
 packages, `reflect-*` crates, the `reflect` CLI, `.reflect/`), while **Kore** is
@@ -115,3 +119,9 @@ notarized **Release** workflow.
 Do not run `pnpm release:macos` or wait for `.github/workflows/release.yml`. See
 [AGENTS.md — Cutting a Kore release (bump)](AGENTS.md#cutting-a-kore-release-bump)
 for the same procedure.
+
+**Bump mobile** (TestFlight): point `release/testflight` at master, the same
+pointer gesture — `git push --force origin origin/master:release/testflight`.
+Needs the `APPLE_API_KEY` / `APPLE_API_ISSUER` / `APPLE_API_KEY_CONTENT`
+repository secrets; without them the run fails on its first step naming the
+missing ones. See [AGENTS.md — Cutting a mobile bump](AGENTS.md#cutting-a-mobile-bump-testflight).

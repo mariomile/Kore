@@ -1,6 +1,8 @@
 # Kore: Personal OS target architecture
 
-**Status:** Adopted product direction; implementation and release gates remain open.
+**Status:** Adopted product direction; implementation and release gates remain
+open. Deferred 2026-08-30 by the app-first decision (see [roadmap](roadmap.md)):
+this remains the long-term direction, not the active backlog.
 **Updated:** 2026-08-27.
 **Scope:** Next development wave of this repository, not a new application.
 **Source:** [User-supplied Lore specification](kore-architecture-source.md), sections 1–138.
@@ -172,7 +174,8 @@ security-critical execution policy must be enforced by the native runtime.
 
 ## Delivery order and unresolved design decisions
 
-The [roadmap](roadmap.md) defines gates; [Plan 25](plans/25-personal-os.md) defines
+The [roadmap](roadmap.md) orders active work and defers this program;
+[Plan 25](plans/25-personal-os.md) defines
 the complete initiative catalog, first slices, acceptance tests, and source map.
 
 1. Establish Graph/Connection/Agent contracts, grants, capabilities, credentials,

@@ -156,7 +156,8 @@ function taskMarkerContent(raw: string): string {
  * Markdown task lines to append after `previousSource` became `nextSource` by
  * completing one or more `@repeat(...)` checkboxes and nothing else on those
  * lines. Empty when the change is a reopen, a content edit, a newly pasted
- * already-checked task, or a square GFM checkbox (which is not a Reflect task).
+ * already-checked task. Square checkboxes spawn too — they are tasks (v25);
+ * the spawned next occurrence is written in the app's own round syntax.
  *
  * Identity is `markerOffset` plus an identical rest-of-line, so deleting a
  * line above (which shifts later offsets) does not look like a completion.

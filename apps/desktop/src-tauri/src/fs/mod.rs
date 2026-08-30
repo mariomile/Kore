@@ -8,6 +8,7 @@
 
 pub mod asset_protocol;
 pub mod assets;
+pub mod chat_attachments;
 mod import;
 mod import_assets;
 mod io;

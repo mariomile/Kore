@@ -132,6 +132,13 @@ fn parse_request_path(request_path: &str) -> Result<(u64, &str), StatusCode> {
         .split_once('/')
         .ok_or(StatusCode::BAD_REQUEST)?;
     let generation: u64 = generation.parse().map_err(|_| StatusCode::BAD_REQUEST)?;
+    // Chat attachment files are the one carve-out from the "no hidden
+    // components" rule: their shape is closed (id segments plus a raster
+    // extension, validated below), so nothing else under `.reflect/` becomes
+    // reachable through it.
+    if super::chat_attachments::is_chat_attachment_rel(rel) {
+        return Ok((generation, rel));
+    }
     super::ensure_readable_attachment_path(rel).map_err(|_| StatusCode::FORBIDDEN)?;
     Ok((generation, rel))
 }
@@ -170,6 +177,27 @@ mod tests {
             parse_request_path("nope/assets/cat.png").unwrap_err(),
             StatusCode::BAD_REQUEST,
         );
+    }
+
+    #[test]
+    fn carves_out_chat_attachment_files_and_nothing_else_hidden() {
+        assert_eq!(
+            parse_request_path("3/.reflect/chat-attachments/conv-1/att-2.jpeg").unwrap(),
+            (3, ".reflect/chat-attachments/conv-1/att-2.jpeg"),
+        );
+        for path in [
+            "3/.reflect/chat-attachments/conv-1/att-2.svg",
+            "3/.reflect/chat-attachments/../index.db",
+            "3/.reflect/chat-attachments/conv-1",
+            "3/.reflect/index.db",
+            "3/.reflect/tmp/att.jpeg",
+        ] {
+            assert_eq!(
+                parse_request_path(path).unwrap_err(),
+                StatusCode::FORBIDDEN,
+                "{path} must stay forbidden"
+            );
+        }
     }
 
     #[test]

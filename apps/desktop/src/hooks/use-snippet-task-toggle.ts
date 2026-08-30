@@ -33,9 +33,9 @@ function anchorFor(tasks: readonly SnippetTask[], payload: TaskClickPayload): Sn
  * context. Routes through {@link toggleTask}: the same session-aware,
  * per-note-serialized, staleness-guarded path the Tasks view uses, so an open
  * source note keeps its live buffer and a drifted note refuses instead of
- * toggling the wrong line. Only round `+ [ ]` Reflect tasks toggle (V1's
- * contextHtml checkboxes were Reflect tasks); a square GFM box is plain
- * markdown, outside the tasks projection, and stays read-only. There is no
+ * toggling the wrong line. Round and square checkboxes both toggle — both
+ * live in the tasks projection (v25), so the guarded write-back locates
+ * either. There is no
  * optimistic flip: the write reindexes the source, which refreshes the
  * backlinks query and re-renders the snippet with the new marker.
  */
@@ -65,13 +65,10 @@ export function useSnippetTaskToggle(
         startOperation('Updating task').fail('The note has changed — try again in a moment.')
         return
       }
-      if (!anchor.round) {
-        return
-      }
       mutate({ notePath, task: anchor, generation })
     },
     [notePath, tasks, generation, isPending, mutate],
   )
 
-  return tasks.some((task) => task.round) ? handler : undefined
+  return tasks.length > 0 ? handler : undefined
 }

@@ -243,13 +243,21 @@ export function TasksScreen(): ReactElement {
       selection.clear()
     }
   }, [actions, selection, selectedTasks])
-  // Cycle the selection's priority marker (⌘⇧P): none → ! → !!. The rows stay
-  // in place (priority only reorders within a bucket), so keep the selection.
+  // Cycle one task's priority marker: none → ! → !!. The row stays in place
+  // (priority only reorders within a bucket). Shared by the row's flag button
+  // and the ⌘⇧P chord below.
+  const cycleRowPriority = useCallback(
+    (task: OpenTask) => {
+      actions.edit(task, cycleTaskContentPriority(taskContent(task.raw)))
+    },
+    [actions],
+  )
+  // ⌘⇧P cycles the whole selection's priority; the selection is kept.
   const onCyclePriority = useCallback(() => {
     for (const task of selectedTasks()) {
-      actions.edit(task, cycleTaskContentPriority(taskContent(task.raw)))
+      cycleRowPriority(task)
     }
-  }, [actions, selectedTasks])
+  }, [cycleRowPriority, selectedTasks])
   const openNote = useCallback(
     (path: string, event?: ModClickEvent) =>
       navigateNoteLink({
@@ -389,6 +397,7 @@ export function TasksScreen(): ReactElement {
             onAdd={onAdd}
             convertControllerRef={convertControllerRef}
             onOpen={openNote}
+            onCyclePriority={cycleRowPriority}
             registerScrollToIndex={registerScrollToIndex}
           />
         )}

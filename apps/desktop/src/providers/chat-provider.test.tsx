@@ -8,6 +8,7 @@ import type {
   ChatStreamEvent,
   ChatTurn,
   GraphInfo,
+  McpServer,
   Settings,
   StreamChatOptions,
 } from '@reflect/core'
@@ -49,6 +50,7 @@ const settingsState = vi.hoisted(() => ({
   selection: null as ChatModelSelection | null,
   semanticSearchEnabled: false,
   chatSystemPrompt: '',
+  mcpServers: [] as McpServer[],
 }))
 const updateSettings = vi.hoisted(() => vi.fn<(patch: Partial<Settings>) => void>())
 // Stateful like the real provider: a chatModelSelection patch re-renders with
@@ -65,6 +67,7 @@ vi.mock('@/providers/settings-provider', async () => {
           chatModelSelection: selection,
           semanticSearchEnabled: settingsState.semanticSearchEnabled,
           chatSystemPrompt: settingsState.chatSystemPrompt,
+          mcpServers: settingsState.mcpServers,
         },
         updateSettings: (patch: Partial<Settings>) => {
           updateSettings(patch)
@@ -138,6 +141,7 @@ beforeEach(() => {
   settingsState.selection = null
   settingsState.semanticSearchEnabled = false
   settingsState.chatSystemPrompt = ''
+  settingsState.mcpServers = []
   core.hasBridge.mockReturnValue(true)
   core.aiApiKeyForConfig.mockResolvedValue('sk-test')
   core.getSecret.mockResolvedValue('sk-test')
@@ -651,6 +655,81 @@ describe('ChatProvider mid-turn steering', () => {
     await act(async () => {
       await sendDone
     })
+  })
+})
+
+describe('ChatProvider read-mode external tools', () => {
+  const CLAUDE: AiProviderConfig = {
+    id: 'c1',
+    provider: 'claude-cli',
+    model: 'default',
+    keyHint: '',
+  }
+  const LINEAR: McpServer = {
+    id: 's1',
+    name: 'linear',
+    transport: { kind: 'http', url: 'https://mcp.linear.app' },
+    envKeys: [],
+    enabled: true,
+  }
+
+  function scriptCliTurn() {
+    core.streamCliAgentChat.mockImplementation(() =>
+      (async function* (): AsyncGenerator<ChatStreamEvent> {
+        yield { type: 'complete', messages: [{ role: 'assistant', content: 'Done.' }] }
+      })(),
+    )
+  }
+
+  beforeEach(() => {
+    settingsState.models = [CLAUDE]
+    settingsState.defaultId = 'c1'
+    settingsState.mcpServers = [LINEAR]
+    scriptCliTurn()
+  })
+
+  it('keeps a read-mode turn zero-egress until the conversation opts in', async () => {
+    const { act } = await renderProvider()
+    await vi.waitFor(() => expect(core.listChatConversations).toHaveBeenCalled())
+
+    expect(session?.chatTools).toBe(false)
+    await act(async () => {
+      await session?.send('search my mail')
+    })
+
+    expect(core.streamCliAgentChat.mock.lastCall?.[1]['mcpServers']).toEqual([])
+  })
+
+  it('mounts the resolved servers once the conversation opted in', async () => {
+    const { act } = await renderProvider()
+    await vi.waitFor(() => expect(core.listChatConversations).toHaveBeenCalled())
+
+    await act(async () => {
+      session?.setChatTools(true)
+    })
+    await act(async () => {
+      await session?.send('search my mail')
+    })
+
+    expect(core.streamCliAgentChat.mock.lastCall?.[1]['mcpServers']).toEqual([
+      { name: 'linear', transport: { kind: 'http', url: 'https://mcp.linear.app' }, env: {} },
+    ])
+    expect(core.streamCliAgentChat.mock.lastCall?.[1]['allowEdits']).not.toBe(true)
+  })
+
+  it('New chat turns the opt-in back off', async () => {
+    const { act } = await renderProvider()
+    await vi.waitFor(() => expect(core.listChatConversations).toHaveBeenCalled())
+
+    await act(async () => {
+      session?.setChatTools(true)
+    })
+    expect(session?.chatTools).toBe(true)
+    await act(async () => {
+      session?.newChat()
+    })
+
+    expect(session?.chatTools).toBe(false)
   })
 })
 

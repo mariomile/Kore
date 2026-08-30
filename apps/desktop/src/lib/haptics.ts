@@ -1,4 +1,5 @@
 import { hapticFeedback, type HapticPattern } from '@reflect/core'
+import { hapticsEnabled } from '@/lib/haptics-preference'
 import { isMacosDesktop } from '@/lib/platform'
 
 /**
@@ -6,12 +7,13 @@ import { isMacosDesktop } from '@/lib/platform'
  * physically: a toggle flipping (`level-change`), a drag snapping into place
  * or hitting its limit (`alignment`), a failure knock (`generic`).
  *
- * macOS-only by gate (the Rust side is a no-op elsewhere anyway, this just
- * skips the IPC round-trip), and silent under `prefers-reduced-motion`: the
- * CSS kill-switch can't reach native feedback, so the gate lives here.
+ * Silent when the user has turned haptics off in settings, macOS-only by
+ * gate (the Rust side is a no-op elsewhere anyway, this just skips the IPC
+ * round-trip), and silent under `prefers-reduced-motion`: the CSS
+ * kill-switch can't reach native feedback, so the gate lives here.
  */
 export function haptic(pattern: HapticPattern): void {
-  if (!isMacosDesktop) {
+  if (!hapticsEnabled() || !isMacosDesktop) {
     return
   }
   try {

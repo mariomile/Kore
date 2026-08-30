@@ -160,6 +160,11 @@ Drawn from the product docs — read these for deeper context:
 
 ### Agent workflow
 
+- **Track program work in [docs/STATE.md](docs/STATE.md).** Read it before
+  starting or resuming work on the Personal OS program, and update it in the
+  same session as the work it records: tick what became true (with how it was
+  verified), set the next step, refresh the date. Work recorded only in a chat
+  summary is lost.
 - **Verify before answering.** When answering factual questions about what the code
   does, read the relevant source first and trace behavior to the final output. If
   you have not verified something, say so instead of guessing.
@@ -244,8 +249,26 @@ resolve as "latest".
 
 Do not run `pnpm release:macos` or wait for `.github/workflows/release.yml`
 (signed + notarized macOS + TestFlight). That pipeline is a separate
-upstream path this fork does not use for day-to-day publishes; it and
-`testflight.yml` stay available on `workflow_dispatch` only.
+upstream path this fork does not use for day-to-day publishes.
+
+### Cutting a mobile bump (TestFlight)
+
+When the user says **bump mobile** (or asks to ship the iPhone build), point
+the `release/testflight` branch at current `master` — the same pointer
+pattern as `release/dmg`:
+
+```bash
+git fetch origin master
+git push --force origin origin/master:release/testflight
+```
+
+That fires the **TestFlight** workflow (`.github/workflows/testflight.yml`):
+an iOS build on a macOS runner, uploaded to App Store Connect with an
+App-Store-Connect export and a UTC-timestamp build number. It requires the
+`APPLE_API_KEY`, `APPLE_API_ISSUER`, and `APPLE_API_KEY_CONTENT` repository
+secrets (see docs/ios-testflight.md); the run fails on its first step,
+naming the missing ones, when they are not configured. The desktop bump
+never gates on this — mobile and desktop publish independently.
 
 Daily loop:
 

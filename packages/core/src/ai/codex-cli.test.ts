@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import type { ModelMessage } from 'ai'
 import { setBridge } from '../ipc/bridge'
-import { cliProviderSteerMode } from './cli-providers'
+import { cliProviderSteerMode, cliProviderSupportsMcp } from './cli-providers'
 import {
   codexAppServerHandshakePrompt,
   codexCliArgs,
@@ -21,6 +21,14 @@ describe('cliProviderSteerMode', () => {
     expect(cliProviderSteerMode('claude-cli')).toBe('inject')
     expect(cliProviderSteerMode('codex-cli')).toBe('inject')
     expect(cliProviderSteerMode('cursor-cli')).toBe('queue')
+  })
+})
+
+describe('cliProviderSupportsMcp', () => {
+  it('mounts MCP for Claude Code and Codex, never Cursor', () => {
+    expect(cliProviderSupportsMcp('claude-cli')).toBe(true)
+    expect(cliProviderSupportsMcp('codex-cli')).toBe(true)
+    expect(cliProviderSupportsMcp('cursor-cli')).toBe(false)
   })
 })
 
@@ -160,6 +168,21 @@ describe('codexCliArgs', () => {
     expect(args).not.toContain('exec')
     expect(args).not.toContain('--json')
     expect(args.at(-1)).not.toBe('-')
+    expect(args.join(' ')).not.toContain('mcp_servers')
+  })
+
+  it('read mode with MCP servers mounts them while the sandbox stays read-only', () => {
+    const args = codexCliArgs({
+      model: 'gpt-5.5',
+      graphRoot: '/g',
+      privateNotePaths: [],
+      mcpServers: [
+        { name: 'linear', transport: { kind: 'stdio', command: 'linear-mcp', args: [] }, env: {} },
+      ],
+    })
+    const joined = args.join(' ')
+    expect(joined).toContain('mcp_servers.linear.command="linear-mcp"')
+    expect(joined).toContain('"/g/**" = "read"')
   })
 })
 
@@ -194,6 +217,18 @@ describe('codexCliSystemPrompt', () => {
     expect(prompt).toContain('“Work”')
     expect(prompt).toContain('read-only')
     expect(prompt.endsWith('Answer in Italian.')).toBe(true)
+    expect(prompt).not.toContain('external MCP tools')
+  })
+
+  it('names the MCP servers only when they ride the run', () => {
+    const prompt = codexCliSystemPrompt({
+      today: '2026-06-14',
+      graphName: 'Work',
+      customSystemPrompt: '',
+      mcpServerNames: ['linear'],
+    })
+    expect(prompt).toContain('external MCP tools')
+    expect(prompt).toContain('linear')
   })
 })
 

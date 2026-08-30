@@ -1,7 +1,7 @@
 const SETTINGS_SEARCH_TERMS = {
   graph: 'graph storage device icloud this device',
   appearance:
-    'appearance theme system light ash paper dark graphite ink space midnight accent color red orange yellow green teal blue purple pink text size small medium large font sans serif mono spacing compact relaxed corners default round liquid glass intensity subtle balanced strong',
+    'appearance theme system light ash paper dark graphite ink space midnight accent color red orange yellow green teal blue purple pink text size small medium large font sans serif mono spacing compact relaxed corners default round liquid glass intensity subtle balanced strong haptic feedback haptics vibration',
   calendar: 'calendar events access open settings',
   editor: 'editor smooth caret animation start bullet bullet after heading typography writing',
   ai: 'ai provider model system prompt api key',

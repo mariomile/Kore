@@ -4,6 +4,7 @@ import {
   detectConflictMarkers,
   parseCollectionEmbeds,
   parseEmbedBlocks,
+  scanBareUrlEmbeds,
   parseNoteTransclusions,
 } from '@reflect/core'
 import { BacklinksPanel } from '@/components/backlinks-panel'
@@ -217,7 +218,12 @@ export function NotePaneComponent({
       ? typedBody.markdown
       : document.initialContent
   const collectionEmbeds = useMemo(() => parseCollectionEmbeds(bodyMarkdown), [bodyMarkdown])
-  const mediaEmbeds = useMemo(() => parseEmbedBlocks(bodyMarkdown), [bodyMarkdown])
+  // Fenced embeds first, then bare URLs standing alone as their own
+  // paragraph — pasting a link on an empty line is enough to get its card.
+  const mediaEmbeds = useMemo(
+    () => [...parseEmbedBlocks(bodyMarkdown), ...scanBareUrlEmbeds(bodyMarkdown)],
+    [bodyMarkdown],
+  )
   const noteTransclusions = useMemo(() => parseNoteTransclusions(bodyMarkdown), [bodyMarkdown])
   const handleEditorChange = useCallback(
     (markdown: string) => {

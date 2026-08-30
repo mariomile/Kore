@@ -7,7 +7,7 @@ import { resolveOrCreateNoteWithTitle } from '../graph/create-note'
 import { resolveExistingWikiTarget } from '../graph/resolve-existing-wiki-target'
 import { normalizeWikiTarget, parseNote } from '../markdown'
 import { setBridge } from '../ipc/bridge'
-import { buildIndexedNote, type IndexedNote } from './indexed-note'
+import { buildIndexedNote, encodeTaskBreadcrumbs, type IndexedNote } from './indexed-note'
 import type { suggestWikiLinkTargets } from './queries'
 
 /**
@@ -126,6 +126,24 @@ export function applyProjection(database: DatabaseSync, indexed: IndexedNote): v
   const insertTag = database.prepare('INSERT INTO tags(note_path, tag, tag_key) VALUES (?, ?, ?)')
   for (const tag of indexed.tags) {
     insertTag.run(indexed.path, tag.tag, tag.tagKey)
+  }
+
+  const insertTask = database.prepare(
+    `INSERT INTO tasks(
+      note_path, marker_offset, text, raw, checked, breadcrumbs, due_date, due_time
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+  )
+  for (const task of indexed.tasks) {
+    insertTask.run(
+      indexed.path,
+      task.markerOffset,
+      task.text,
+      task.raw,
+      Number(task.checked),
+      encodeTaskBreadcrumbs(task.breadcrumbs),
+      task.dueDate,
+      task.dueTime,
+    )
   }
 }
 

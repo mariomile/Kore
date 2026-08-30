@@ -26,6 +26,11 @@ Speed is a guardrail, not a workstream: no dedicated performance push without a
 measured pain, but known open items get closed (see Now) and regressions are
 treated as bugs.
 
+**Automations principle (user decision, 2026-08-30):** Kore ships **no default
+routines or workflows**. Every automation is created explicitly by the user;
+the app may at most *recommend* routine templates (e.g. a weekly project
+review) from a future routines page, never preinstall or auto-enable one.
+
 ## Now
 
 In order. Sizes are relative complexity for agent-executed work, not time.

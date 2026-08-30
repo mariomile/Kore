@@ -1,7 +1,7 @@
 # Kore working state
 
-**Updated:** 2026-08-30 at `a491f0ae` (tag page merged, #116; collections
-UX pass continues with the schema-dialog redesign).
+**Updated:** 2026-08-30 at `c33195a6` (tag page #116 and schema-dialog
+redesign #118 merged; project-management slice 1 in flight).
 **Rule:** Every session that moves the program updates this file before its
 summary: tick what became true and how it was verified, set the next step,
 refresh the date. What is done and what is next live here and only here. Why
@@ -26,6 +26,25 @@ sum/avg. Also still open: the live checks below. B05c preview tabs stays
 declined; the backlog-B pass is closed.
 
 ## What is true now
+
+- [x] **Projects slice 1: a task belongs to the project it links.** The
+  gap the project-management analysis named — tasks live only in their
+  note, so "all tasks of project X" was unanswerable — closes with a
+  line-level rule: an open task belongs to a note when its own line
+  wiki-links it (`+ [ ] call the surveyor [[House]]` in a daily note) or
+  when it is written in the note itself. `getOpenTasksForNote` reads it
+  from the existing `tasks` × `backlinks` projections (link-to-line
+  containment matched in TS over the shared UTF-16 offsets; calendar
+  `[[YYYY-MM-DD]]` targets stay due dates, never references — no schema
+  change, no Rust), and every regular note's context rail gains a Tasks
+  panel: own tasks first, then linked ones naming their source note
+  (click jumps there), checkbox completing through the Tasks view's own
+  commit. Recorded product principle the same day: **no default
+  routines** — automations are always user-created; a future routines
+  page may only recommend templates (roadmap). Verified: 4 real-SQL flow
+  scenarios on the production migration chain (containment across astral
+  chars, dedupe, due-date exclusion, completed excluded), section suite
+  3/3 + context-rail suites 14/14 on chromium, `pnpm check` exit 0.
 
 - [x] **Collections slice 2: the schema dialog earns its job** (user ask,
   2026-08-30: "migliorare la UX/UI della pagina di creazione dei super
@@ -173,14 +192,20 @@ declined; the backlog-B pass is closed.
 
 ## Next step
 
-1. **Collections UX pass, remaining slices** (user decision 2026-08-30,
+1. **Projects slice 2 — the portfolio pulse** (user decision 2026-08-30):
+   an "open tasks" count per row on a project-style collection (tasks
+   linking each row's note), riding the rollup extension below, so the
+   `#project` board shows where work is waiting. Slice 3 stays a
+   *recommendation only* per the automations principle: a suggested
+   weekly-review routine template on a future routines page.
+2. **Collections UX pass, remaining slices** (user decision 2026-08-30,
    in recommendation order — the schema-dialog redesign the user asked
    for mid-pass shipped as slice 2): (a) an optional Notion-style
    properties header above the note body for typed notes; (b) a
    gallery/card view that shows properties (the grid ignores them
    today); (c) rollup sum/avg/min/max beyond count. Each is its own PR;
    re-check appetite with the user between slices.
-2. **Live checks with the user**: (a) Now 1: real MCP server + Tools toggle
+3. **Live checks with the user**: (a) Now 1: real MCP server + Tools toggle
    in a read-only conversation; (b) Now 2: send an image in chat, restart,
    confirm the restored conversation renders it from disk; (c) Now 3: ask a
    question a daily note answers and confirm the recalled passage shows up
@@ -188,10 +213,15 @@ declined; the backlog-B pass is closed.
    Agents screen, invoke it in a fresh conversation; (d) Now 4: start a
    routine, quit Kore mid-run, relaunch and see the interrupted entry +
    retry; Stop a running routine from the Agents screen.
-3. **Memory follow-ups** that emerge from Now item 3 usage (roadmap Next).
+4. **Memory follow-ups** that emerge from Now item 3 usage (roadmap Next).
 
 ## Session log
 
+- 2026-08-30 — Projects slice 1, from the project-management analysis the
+  user approved: a task's own line linking `[[a note]]` makes it that
+  note's task; every note's context rail gains the Tasks panel (own +
+  linked, checkbox completes). Product principle recorded in the roadmap:
+  no default routines, ever — user-created only, recommendations at most.
 - 2026-08-30 — Collections slice 2, on the user's ask: the tag schema
   dialog redesigned — live views strip (Board/Calendar hints from the
   board's and calendar's own predicates, extracted to

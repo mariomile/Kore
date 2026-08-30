@@ -7,6 +7,23 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- A task belongs to the project it links. Tasks used to belong only to
+  the note they were written in, so "all tasks of project X" had no
+  answer once tasks scattered across daily notes. Now a task's own line
+  wiki-linking a note makes it that note's task, and every regular
+  note's context rail carries a Tasks panel: the note's own open
+  checkboxes first, then every open task anywhere that links it — each
+  naming its source note (click jumps there), each completable in place
+  through the same commit the Tasks view uses. Membership is computed
+  from the existing tasks and backlinks projections (link-to-line
+  containment over the parser's shared UTF-16 offsets; a calendar
+  `[[YYYY-MM-DD]]` link stays a due date, never a reference), so no
+  schema or Rust changed. With the tag page and collections this closes
+  the project loop: `#project` board for the portfolio, the project's
+  note for its tasks, capture anywhere in between. The companion product
+  principle is recorded in the roadmap: no default routines ship, ever —
+  automations are user-created, recommended at most.
+
 - The tag schema dialog teaches what it builds. Configuring a supertag
   used to mean raw plumbing: an always-on frontmatter-key input, options
   as comma-separated text, a flat 14-entry type list, and no hint that a

@@ -23,8 +23,12 @@ practice. Both are covered by tests.
 - **What:** your chat messages and configured system prompt, plus what the model's
   tools read from your graph: search snippets, note content, and note listings. The
   configured prompt is stored in the device's ordinary settings file and is sent with
-  every chat turn. Private notes are dropped from every tool result, and reading one is
-  refused outright — the model sees a refusal, not the content. That protection cannot
+  every chat turn. Kore also attaches context it assembles itself to the message it
+  sends: the full content of notes you `[[mention]]`, and (since v0.38) up to three
+  short passages automatically recalled from your vault as relevant to what you wrote,
+  each with its note's path and date. Private notes are excluded from recall in the
+  query itself, contribute only a refusal when mentioned, and are dropped from every
+  tool result — the model sees a refusal, not the content. That protection cannot
   identify note content you manually paste into a message or the configured prompt.
 - **When:** only while you use chat (⌘J). No background calls.
 

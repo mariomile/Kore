@@ -1,5 +1,10 @@
 # Plan 25 — Kore Personal OS
 
+> **Program deferred 2026-08-30 (app-first decision, see [roadmap](../roadmap.md)):**
+> Kore ships app quality and agent power first; this program resumes on an
+> explicit decision. The catalog below stays intact as the reference for that
+> future wave and is not the active backlog.
+
 **Status:** Planned; no target initiative is certified complete.
 **Updated:** 2026-08-27.
 **Goal:** Connect user-owned knowledge, structured data, accounts, agents, and

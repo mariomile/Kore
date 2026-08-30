@@ -11,10 +11,12 @@ changelogs and design specimens are not product planning documents.
    [STATE.md](STATE.md) records what is currently in progress and the next step;
    read it before starting or resuming program work, and update it whenever a
    session moves the program.
-2. [Target architecture](kore-target-architecture.md) and
-   [TDR 0006](decisions/0006-personal-os-boundaries.md) define the next-wave direction.
-3. [Roadmap](roadmap.md) orders work;
-   [Plan 25](plans/25-personal-os.md) owns initiative scope, dependencies and gates.
+2. [Roadmap](roadmap.md) orders active work (app-first Now/Next/Later,
+   decided 2026-08-30).
+3. [Target architecture](kore-target-architecture.md) and
+   [TDR 0006](decisions/0006-personal-os-boundaries.md) define the deferred
+   Personal OS direction; [Plan 25](plans/25-personal-os.md) owns that
+   program's initiative scope, dependencies and gates.
 4. [Supplied specification](kore-architecture-source.md) preserves all original
    requirements; Plan 25 maps every section and makes conflicts explicit.
 5. Earlier plans, decisions, grounding, and porting docs explain the baseline.
@@ -33,7 +35,7 @@ The inventory contains **97 documents under `docs/`**, including this index.
 | File | Title / purpose | Planning role / status |
 |---|---|---|
 | [STATE.md](STATE.md) | Kore working state | What is in progress now and the next step; updated by every session that moves the program. |
-| [roadmap.md](roadmap.md) | Kore roadmap | Active priorities, slice build guidance, risk register, gates; no delivery claim. |
+| [roadmap.md](roadmap.md) | Kore roadmap | App-first Now/Next/Later priorities, risk register, deferred Personal OS pointers; no delivery claim. |
 | [delivery-log.md](delivery-log.md) | Kore delivery log | Historical shipped-work record moved out of the roadmap; reports, not certifications. |
 | [kore-target-architecture.md](kore-target-architecture.md) | Kore: Personal OS target architecture | Canonical next-wave architecture and source-verified gaps. |
 | [plans/25-personal-os.md](plans/25-personal-os.md) | Plan 25 — Kore Personal OS | Complete catalog: I01–I29, S1–S5, B01–B09, acceptance and traceability. |

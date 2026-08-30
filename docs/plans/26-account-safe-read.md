@@ -1,5 +1,10 @@
 # Plan 26 — Account-safe read (Slice S1)
 
+> **Deferred 2026-08-30 (app-first decision, see [roadmap](../roadmap.md)):**
+> external access stays MCP-via-CLI for now; this slice enters the active
+> backlog when multi-account isolation becomes a real need or MCP friction
+> hurts. The plan below remains the bounded design for that moment.
+
 **Status:** Planned. Nothing below is implemented.
 **Updated:** 2026-08-29.
 **Delivers:** [Plan 25](25-personal-os.md) slice **S1** — initiatives I01–I05,

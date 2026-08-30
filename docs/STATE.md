@@ -5,46 +5,57 @@
 summary: tick what became true and how it was verified, set the next step,
 refresh the date. What is done and what is next live here and only here. Why
 things are built this way lives in [docs/decisions/](decisions/); what the
-product is lives in the [target architecture](kore-target-architecture.md) and
-[Plan 25](plans/25-personal-os.md). The full shipped history stays in the
-[delivery log](delivery-log.md); this file tracks only the active wave.
+product is lives in the [roadmap](roadmap.md) (app-first) with the Personal OS
+direction in [Plan 25](plans/25-personal-os.md). The full shipped history stays
+in the [delivery log](delivery-log.md); this file tracks only the active work.
 
 ## Current focus
 
-**S1a — contracts on a stub** (first half of
-[Plan 26](plans/26-account-safe-read.md), per its suggested build order):
-Graph identity, Connection registry, grants, deterministic resolver, and
-minimal audit, proved end to end against a stub `email.search` connector over
-fixture data. No Google, no writes, no background execution.
+**Roadmap "Now" item 1: MCP in read-only chat behind explicit approval.**
+Outcome: "search my mail" in a normal chat via the user's configured MCP
+servers, with zero-egress remaining the default. Per the 2026-08-30 app-first
+decision, the Personal OS foundations (S1/S2/S3) are deferred to Next; see the
+[roadmap](roadmap.md) for the full Now/Next/Later ladder.
 
 ## What is true now
 
-- [x] Planning docs restructured: roadmap rewritten around slices with build
-  guidance and risk register R1–R13, shipped history moved to the delivery log,
-  Plan 26 gains the S1a/S1b split and the Google restricted-scope risk.
-  Verified: all relative links in the touched docs resolve.
+- [x] App-first reprioritization decided with the user (grilling session,
+  2026-08-30) and recorded in the roadmap: Now = read-mode MCP, chat
+  attachments off base64 + budget measurement, agent memory recall/skills;
+  Next = device-pass session, minimal S3, Connections program; Later = the
+  rest of the Personal OS program, intact and decision-gated.
+- [x] S4 re-scoped by decision: no first-party universal-search subsystem; the
+  agent is the query planner over capabilities. Recorded in roadmap and Plan 25
+  I12/I13 notes.
+- [x] Planning docs restructured: roadmap rewritten (app-first Now/Next/Later,
+  risk register R1–R13), shipped history moved to the delivery log, Plan 26
+  gains the S1a/S1b split and the Google restricted-scope risk. Verified: all
+  relative links in the touched docs resolve; `pnpm check` exit 0.
 - [x] Plan 26's starting-point facts re-verified at `029f728f`: no stable Graph
-  ID exists (grep for `graphId` outside UI locals), no
-  `ConnectorDefinition`/`GraphConnectionGrant`/`email.search` symbols anywhere
-  in `packages/core` or `src-tauri`. Nothing of S1 is implemented.
+  ID, no `ConnectorDefinition`/`GraphConnectionGrant`/`email.search` symbols in
+  `packages/core` or `src-tauri`. Nothing of S1 is implemented.
 - [x] Two S3-relevant facts verified in source: the desktop process survives
   window close (`prevent_exit`, `apps/desktop/src-tauri/src/lib.rs:536`) and
   agent CLI processes spawn from Rust (`apps/desktop/src-tauri/src/agent_cli.rs`).
 
 ## Next step
 
-1. **Step 0 of Plan 26 (blocking): settle the Graph ID home.** Recommendation
-   on the table: committed `.kore/graph.json` with a lowercase ULID, local
-   settings cache in front, first-opened folder keeps the ID on duplication.
-   Record the decision as a TDR in `docs/decisions/` before writing code.
-2. Then S1a proper: the Graph/Connection/grant schemas in `packages/core`, the
-   resolver, the stub connector, and Plan 26's deterministic acceptance tests.
+1. **Privacy design note for read-mode MCP** (blocking Now item 1): how the
+   per-conversation opt-in and visible approval preserve the zero-egress
+   default of read-only chat; where the approval lives in the UI; which
+   existing edit-mode MCP plumbing is reused. Then implement.
+2. Then Now item 2: chat image attachments out of base64, closing with the
+   one-time memory-budget measurement on the current build.
 
 ## Session log
 
+- 2026-08-30 — Grilling session with the user: app-first decided; S1/S2/S3
+  deferred to Next; mobile confirmed as capture/read companion (remote control
+  later); semantic search desktop-only; S5 stays later; agent memory work
+  scoped to recall + skills; first item = read-mode MCP with approval.
+  Roadmap rewritten as Now/Next/Later.
 - 2026-08-30 — S4 re-scoped by decision: no first-party universal-search
   subsystem; the agent is the query planner over capabilities, I12's Resource
-  store dropped (sync cursors survive, deferred to I16), R11 resolved. Recorded
-  in roadmap and Plan 25 I12/I13 notes.
-- 2026-08-30 — Roadmap/spec review and doc restructure; risk register added;
-  S1a named as first work item. No application code changed.
+  store dropped (sync cursors survive, deferred to I16), R11 resolved.
+- 2026-08-30 — Roadmap/spec review and doc restructure; risk register added.
+  No application code changed.

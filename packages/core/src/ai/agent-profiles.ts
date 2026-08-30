@@ -4,6 +4,12 @@ import { slugForTitle } from '../markdown/slug'
 import { createNoteIfAbsent, listFiles, readNote } from '../graph/commands'
 import { journalTailDigest, memoryDigest } from './memory-digest'
 import {
+  AGENT_SKILLS_DIR,
+  listVaultSkills,
+  vaultSkillsPromptLines,
+  type VaultSkill,
+} from './vault-skills'
+import {
   newAgentMemorySeed,
   newAgentSoulSeed,
   newSharedFactsSeed,
@@ -13,6 +19,7 @@ import {
 
 export * from './agent-profile-seeds'
 export * from './agent-memory-pending'
+export * from './vault-skills'
 
 /**
  * Agent profiles (Hermes-agent model, vault-native): the `agents/` folder
@@ -218,6 +225,8 @@ export interface AgentPromptContext {
   sharedFacts: AgentFile | null
   /** The tail of the shared session journal ({@link AGENT_SHARED_LOG_PATH}). */
   sharedLog: AgentFile | null
+  /** The user-taught skill catalog (`agents/skills/`), possibly empty. */
+  skills: VaultSkill[]
   /** Where this run's agent keeps its own memory (exists or not yet). */
   memoryPath: string
 }
@@ -237,7 +246,7 @@ export async function loadAgentContext(activeSlug: string | null): Promise<Agent
     }
   }
   const memoryPath = agentMemoryPath(profile?.slug ?? DEFAULT_AGENT_SLUG)
-  const [soul, userMemory, agentMemory, sharedFacts, sharedLog] = await Promise.all([
+  const [soul, userMemory, agentMemory, sharedFacts, sharedLog, skills] = await Promise.all([
     profile === null
       ? Promise.resolve(null)
       : loadAgentFile(profile.soulPath, AGENT_SOUL_MAX_CHARS),
@@ -245,8 +254,9 @@ export async function loadAgentContext(activeSlug: string | null): Promise<Agent
     loadAgentFile(memoryPath, AGENT_MEMORY_MAX_CHARS, { digest: true }),
     loadAgentFile(AGENT_SHARED_FACTS_PATH, AGENT_SHARED_FACTS_MAX_CHARS, { digest: true }),
     loadAgentFile(AGENT_SHARED_LOG_PATH, AGENT_SHARED_LOG_MAX_CHARS, { takeTail: true }),
+    listVaultSkills(),
   ])
-  return { profile, soul, userMemory, agentMemory, sharedFacts, sharedLog, memoryPath }
+  return { profile, soul, userMemory, agentMemory, sharedFacts, sharedLog, skills, memoryPath }
 }
 
 /**
@@ -317,6 +327,7 @@ export function agentContextPromptLines(
       lines.push(`[summary of a longer file — read ${memoryPath} when you need the rest]`)
     }
   }
+  lines.push(...vaultSkillsPromptLines(context?.skills ?? []))
   lines.push(
     '',
     'Recall: this digest is only the hot set — the vault itself is your long-term memory. Memory sections marked as summaries elide detail on purpose: read the named file when a turn needs it. When the digest lacks context, search the notes (dailies, linked notes, older journal entries) before concluding you don’t know.',
@@ -324,7 +335,7 @@ export function agentContextPromptLines(
   if (!options.canEdit) {
     lines.push(
       '',
-      `Memory upkeep: you cannot edit notes in this mode. When you learn something durable, say so and suggest the exact line — for ${AGENT_USER_MEMORY_PATH} when it is about the user, ${AGENT_SHARED_FACTS_PATH} when every agent should know it, or ${memoryPath} for your own note-to-self — never claim to have saved it.`,
+      `Memory upkeep: you cannot edit notes in this mode. When you learn something durable, say so and suggest the exact line — for ${AGENT_USER_MEMORY_PATH} when it is about the user, ${AGENT_SHARED_FACTS_PATH} when every agent should know it, or ${memoryPath} for your own note-to-self — never claim to have saved it. When the user asks to save a procedure as a skill, draft the full ${AGENT_SKILLS_DIR}/<slug>.md file for them to create.`,
     )
     return lines
   }
@@ -334,11 +345,12 @@ export function agentContextPromptLines(
     `- Facts about the user (preferences, context, how they like to work) → ${AGENT_USER_MEMORY_PATH}.`,
     `- Facts and decisions every agent should know (project state, conventions, "we chose X over Y") → ${AGENT_SHARED_FACTS_PATH}, one bullet per fact, tagged with confidence and signed: "- [certain|likely|speculative] <fact> — ${signature}, <YYYY-MM-DD>". Update or remove a stale bullet in place instead of adding a contradicting one.`,
     `- Your own lessons and working state → ${memoryPath}.`,
+    `- A repeatable procedure the user teaches you ("save this as a skill", or a workflow you refined together) → its own file ${AGENT_SKILLS_DIR}/<slug>.md: frontmatter with a one-line \`description:\` saying when to use it, an H1 name, then the steps. Update the existing file when refining a skill; never fork a near-duplicate.`,
     `- End of a session in which you changed notes or learned something: append one short entry to ${AGENT_SHARED_LOG_PATH} — "## <YYYY-MM-DD> — ${signature}" plus two or three bullets on what you did and learned.`,
     'Keep every memory file short and curated — merge and rewrite instead of appending forever — and never store secrets or the content of private notes.',
     ...(options.writeApproval === true
       ? [
-          `Memory writes need the user's approval: do NOT edit ${AGENT_USER_MEMORY_PATH} or ${AGENT_SHARED_FACTS_PATH} directly. Instead, append a proposal section to ${AGENT_PENDING_MEMORY_PATH}: a heading "## <YYYY-MM-DD> ${signature} → <target path>" followed by the bullet lines to add. The user approves or discards each proposal from the Agents screen. The session journal (${AGENT_SHARED_LOG_PATH}) and your own memory file are exempt — write those directly.`,
+          `Memory writes need the user's approval: do NOT edit ${AGENT_USER_MEMORY_PATH}, ${AGENT_SHARED_FACTS_PATH}, or anything under ${AGENT_SKILLS_DIR}/ directly. Instead, append a proposal section to ${AGENT_PENDING_MEMORY_PATH}: a heading "## <YYYY-MM-DD> ${signature} → <target path>" followed by the lines to add (for a new skill, the whole file body). The user approves or discards each proposal from the Agents screen. The session journal (${AGENT_SHARED_LOG_PATH}) and your own memory file are exempt — write those directly.`,
         ]
       : []),
   )

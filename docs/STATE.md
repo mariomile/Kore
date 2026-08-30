@@ -1,6 +1,6 @@
 # Kore working state
 
-**Updated:** 2026-08-30 at `029f728f` (v0.34.0).
+**Updated:** 2026-08-30 at `92220af4` (post-v0.37.1).
 **Rule:** Every session that moves the program updates this file before its
 summary: tick what became true and how it was verified, set the next step,
 refresh the date. What is done and what is next live here and only here. Why
@@ -11,11 +11,12 @@ in the [delivery log](delivery-log.md); this file tracks only the active work.
 
 ## Current focus
 
-**Roadmap "Now" item 1: MCP in read-only chat behind explicit approval.**
-Outcome: "search my mail" in a normal chat via the user's configured MCP
-servers, with zero-egress remaining the default. Per the 2026-08-30 app-first
-decision, the Personal OS foundations (S1/S2/S3) are deferred to Next; see the
-[roadmap](roadmap.md) for the full Now/Next/Later ladder.
+**Roadmap "Now" item 3: agent memory — recall and reusable skills.** Both
+halves are implemented (recall merged in #104, skills in review); what
+remains is exercising them against real usage with the user. Per the
+2026-08-30 app-first decision, the Personal OS foundations (S1/S2/S3) are
+deferred to Next; see the [roadmap](roadmap.md) for the full Now/Next/Later
+ladder.
 
 ## What is true now
 
@@ -44,6 +45,25 @@ decision, the Personal OS foundations (S1/S2/S3) are deferred to Next; see the
   on chromium and webkit; `pnpm check` exit 0. Not yet exercised against a
   live MCP server in the running app.
 
+- [x] **Now item 3a implemented: automatic vault recall in chat** (#104).
+  At send time the message's significant terms (bilingual stopwords,
+  mentions/URLs/code stripped) drive one OR-composed FTS query; the top
+  three passages ride the model-bound message with provenance, fenced as
+  vault data beside the mention block. Private notes excluded at the SQL
+  level; mentioned notes left to their mention; failures degrade to no
+  recall. Verified: 11 unit tests, 5 real-SQL scenarios on the dev
+  bridge's SQLite (daily-note recall with date, bm25 ranking, private
+  never surfaces, off-vault silence, mention dedupe), full core suite
+  2128/2128, chat browser suites green on both engines in CI.
+- [x] **Now item 3b implemented: user-taught vault skills**
+  (`agents/skills/`, this PR). One markdown file per skill (frontmatter
+  `description:`, H1 name, steps); the prompt carries only the catalog —
+  name, description, path — and the agent reads a skill on match
+  (progressive disclosure, like memory digests). `private: true` hides a
+  skill; under write approval, new/changed skills route through the
+  existing pending-proposal queue (the approve path already creates a
+  missing target), so R7's user-review holds. Not yet exercised in a live
+  conversation.
 - [x] App-first reprioritization decided with the user (grilling session,
   2026-08-30) and recorded in the roadmap: Now = read-mode MCP, chat
   attachments off base64 + budget measurement, agent memory recall/skills;
@@ -67,11 +87,19 @@ decision, the Personal OS foundations (S1/S2/S3) are deferred to Next; see the
 
 1. **Live checks with the user**: (a) Now 1: real MCP server + Tools toggle
    in a read-only conversation; (b) Now 2: send an image in chat, restart,
-   confirm the restored conversation renders it from disk.
-2. **Now item 3**: agent memory, recall + reusable skills; sharpen scope
-   against real usage before building.
+   confirm the restored conversation renders it from disk; (c) Now 3: ask a
+   question a daily note answers and confirm the recalled passage shows up
+   in the reply; teach a skill ("salvala come skill"), approve it from the
+   Agents screen, invoke it in a fresh conversation.
+2. **Memory follow-ups** that emerge from Now item 3 usage (roadmap Next).
 
 ## Session log
+
+- 2026-08-30 — Implemented Now 3a (automatic vault recall in chat, #104)
+  and Now 3b (user-taught skills under `agents/skills/`, catalog in the
+  prompt, teaching routed through the pending-approval queue). Scope for
+  item 3 sharpened with the user before building (recall first, both
+  halves).
 
 - 2026-08-30 — Implemented Now 2 (attachments off base64, protocol carve-out,
   conversation-delete sweep) and ran the never-run native memory benchmark on

@@ -54,3 +54,25 @@ export const GRAPH_COLOR_OPTIONS: GraphColorOption[] = GRAPH_COLOR_IDS.map((id) 
 export function graphColorCss(color: GraphColor | undefined): string {
   return GRAPH_COLOR_CSS[color ?? DEFAULT_GRAPH_COLOR]
 }
+
+/**
+ * The eight fixed hues (indigo excluded — its `var(--accent)` cannot paint a
+ * canvas, and the accent is the graph view's highlight color) reused as the
+ * tag palette: the Graph view colors a node by its first tag.
+ */
+const TAG_HUES: string[] = GRAPH_COLOR_IDS.filter((id) => id !== 'indigo').map(
+  (id) => GRAPH_COLOR_CSS[id],
+)
+
+/**
+ * A stable hue for a tag key: the same tag colors the same across sessions
+ * and machines (plain string hash, nothing persisted). Callers pass the
+ * folded key so `#Reading` and `#reading` share a hue.
+ */
+export function tagColorCss(tagKey: string): string {
+  let hash = 0
+  for (const char of tagKey) {
+    hash = (hash * 31 + (char.codePointAt(0) ?? 0)) >>> 0
+  }
+  return TAG_HUES[hash % TAG_HUES.length] ?? TAG_HUES[0]!
+}

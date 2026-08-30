@@ -1,7 +1,14 @@
 import { useMemo, useState, type ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { displayNoteTitle, getGraphMap, noteFileStem, type GraphMapNode } from '@reflect/core'
+import {
+  displayNoteTitle,
+  foldTag,
+  getGraphMap,
+  noteFileStem,
+  type GraphMapNode,
+} from '@reflect/core'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
+import { tagColorCss } from '@/lib/graph-colors'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { cn } from '@/lib/utils'
 import { useGraph } from '@/providers/graph-provider'
@@ -30,6 +37,7 @@ export function GraphMapScreen(): ReactElement {
   const bridgeReady = useBridgeReady()
   const { navigate } = useRouter()
   const [showDailies, setShowDailies] = useState(false)
+  const [query, setQuery] = useState('')
 
   const { data, isError } = useQuery({
     queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'graph-map'],
@@ -48,6 +56,9 @@ export function GraphMapScreen(): ReactElement {
         label: nodeLabel(node),
         inbound: node.inbound,
         isDaily: node.dailyDate !== null,
+        // One hue per first tag: clusters that share a topic read as one
+        // color. Untagged notes keep the neutral fill.
+        color: node.tag === null ? null : tagColorCss(foldTag(node.tag)),
       }))
     const kept = new Set(nodes.map((node) => node.id))
     const edges = data.edges
@@ -55,6 +66,23 @@ export function GraphMapScreen(): ReactElement {
       .map((edge) => ({ source: edge.source, target: edge.target, weight: edge.weight }))
     return { nodes, edges }
   }, [data, showDailies])
+
+  // The header search lights matching notes up in place — a filter would
+  // tear the layout apart, a highlight keeps the neighborhood readable.
+  const matches = useMemo(() => {
+    const folded = query.trim().toLowerCase()
+    if (folded === '' || view === null) {
+      return null
+    }
+    return new Set(
+      view.nodes
+        .filter(
+          (node) =>
+            node.label.toLowerCase().includes(folded) || node.id.toLowerCase().includes(folded),
+        )
+        .map((node) => node.id),
+    )
+  }, [view, query])
 
   if (isError) {
     return (
@@ -73,10 +101,22 @@ export function GraphMapScreen(): ReactElement {
         <h1 className="text-2xl font-semibold tracking-tight text-text">Graph</h1>
         <span className="text-xs text-text-muted">
           {view.nodes.length} notes · {view.edges.length} links
+          {matches === null ? '' : ` · ${matches.size} highlighted`}
         </span>
+        <input
+          type="search"
+          value={query}
+          aria-label="Highlight notes"
+          spellCheck={false}
+          onChange={(event) => {
+            setQuery(event.target.value)
+          }}
+          placeholder="Highlight notes…"
+          className="ml-auto h-7 w-48 rounded-md border border-border bg-input-bg px-2.5 text-xs text-text placeholder:text-text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+        />
         <label
           className={cn(
-            'ml-auto flex cursor-default items-center gap-1.5 text-xs font-medium',
+            'flex cursor-default items-center gap-1.5 text-xs font-medium',
             showDailies ? 'text-text' : 'text-text-secondary',
           )}
         >
@@ -101,6 +141,7 @@ export function GraphMapScreen(): ReactElement {
           <GraphMapCanvas
             nodes={view.nodes}
             edges={view.edges}
+            matches={matches}
             onOpen={(path) => navigate(routeForPath(path))}
           />
         </div>

@@ -15,7 +15,7 @@ describe('getGraphMap', () => {
   it('maps notes to nodes and resolved links to weighted edges', async () => {
     const database = openMigratedIndex()
     try {
-      seed(database, 'notes/atlas.md', '# Atlas\n\nThe plan.\n')
+      seed(database, 'notes/atlas.md', '# Atlas\n\n#zeta #alpha\n\nThe plan.\n')
       seed(
         database,
         'notes/weekly.md',
@@ -34,6 +34,11 @@ describe('getGraphMap', () => {
       ])
       const atlas = map.nodes.find((node) => node.path === 'notes/atlas.md')
       expect(atlas?.inbound).toBe(3) // two from weekly + one from the daily
+      // One stable color key per node: the first tag in folded-key order;
+      // untagged notes carry null.
+      expect(atlas?.tag).toBe('alpha')
+      const weekly = map.nodes.find((node) => node.path === 'notes/weekly.md')
+      expect(weekly?.tag).toBeNull()
       const daily = map.nodes.find((node) => node.dailyDate === '2026-08-20')
       expect(daily).toBeDefined()
 

@@ -168,10 +168,23 @@ setBridge({
 
 function Probe(): ReactElement {
   const { route, navigate } = useRouter()
-  const { nextTab, previousTab, closeActiveTab } = useOpenTabs()
+  const { nextTab, previousTab, closeActiveTab, moveTab, tabs } = useOpenTabs()
   return (
     <div>
       <output data-testid="route">{JSON.stringify(route)}</output>
+      <button
+        type="button"
+        data-testid="move-last-first"
+        onClick={() => {
+          const last = tabs.at(-1)
+          const first = tabs[0]
+          if (last !== undefined && first !== undefined) {
+            moveTab(last, first)
+          }
+        }}
+      >
+        move last first
+      </button>
       <button
         type="button"
         data-testid="open-alpha"
@@ -370,6 +383,25 @@ describe('workspace tabs', () => {
     await view.getByTestId('close-active').click()
     await vi.waitFor(() => expect(routeOf(view).kind).toBe('today'))
     expect(view.getByRole('tab', { name: /Beta Review/ }).query()).toBeNull()
+    await view.unmount()
+  })
+
+  it('moveTab drops the dragged tab at its target and the order persists', async () => {
+    const view = await renderTabs()
+    await view.getByTestId('open-alpha').click()
+    await view.getByTestId('open-beta').click()
+    await expect.element(view.getByRole('tab', { name: /Beta Review/ })).toBeVisible()
+
+    // Strip order starts Daily · Alpha · Beta; dropping the last tab on the
+    // first (what a drag to the front resolves to) leads with Beta.
+    await view.getByTestId('move-last-first').click()
+    await vi.waitFor(() => {
+      const first = view.getByRole('tablist').element().querySelector('[role="tab"]')
+      expect(first?.textContent ?? '').toContain('Beta Review')
+    })
+    // The reorder is the persisted strip order, not a render artifact.
+    const stored = settingsStore.get().openTabs['/g'] ?? []
+    expect(stored[0]).toMatchObject({ kind: 'note', path: 'notes/beta.md' })
     await view.unmount()
   })
 

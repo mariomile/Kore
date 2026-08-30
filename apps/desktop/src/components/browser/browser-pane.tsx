@@ -1,20 +1,24 @@
-import { useEffect, useRef, useState, type ReactElement } from 'react'
+import { use, useEffect, useRef, useState, type ReactElement } from 'react'
 import {
   browserEmbedBack,
   browserEmbedBounds,
   browserEmbedClose,
   browserEmbedForward,
   browserEmbedNavigate,
+  browserEmbedRead,
   browserEmbedReload,
   browserEmbedShow,
   browserSearchHomeUrl,
   browserSearchUrl,
+  captureInboxSpool,
   errorMessage,
   subscribeBrowserNavigated,
   type BrowserEmbedRect,
   type BrowserSearchEngine,
 } from '@reflect/core'
-import { ArrowLeft, ArrowRight, ExternalLink, Refresh } from '@/components/icons'
+import { ArrowLeft, ArrowRight, Bookmark, ExternalLink, Refresh } from '@/components/icons'
+import { toast } from '@/components/ui/toast'
+import { buildBrowserClipEnvelope, BROWSER_CLIP_MAX_CHARS } from '@/lib/browser-clip'
 import {
   browserSessionUrl,
   setBrowserSessionUrl,
@@ -23,6 +27,7 @@ import {
 import { openUrlSync } from '@/lib/open-url'
 import { isNativeShell } from '@/lib/platform'
 import { cn } from '@/lib/utils'
+import { GraphContext } from '@/providers/graph-context'
 import { useSettings } from '@/providers/settings-provider'
 
 /** Turn address-bar text into a navigable web URL (or a search for it). */
@@ -80,6 +85,10 @@ interface BrowserPaneProps {
  */
 export function BrowserPane({ className }: BrowserPaneProps): ReactElement {
   const { settings } = useSettings()
+  // Nullable on purpose: the pane mounts in two hosts, and a tree without
+  // the graph provider (tests, transient boot states) just cannot clip.
+  const graph = use(GraphContext)?.graph ?? null
+  const [clipping, setClipping] = useState(false)
   const hostRef = useRef<HTMLDivElement>(null)
   // A session that has not navigated yet opens on the chosen engine's front
   // page. The docking effect runs once on mount, so it reads the home
@@ -178,6 +187,28 @@ export function BrowserPane({ className }: BrowserPaneProps): ReactElement {
     })
   }
 
+  // Clip the shown page into the capture inbox — the same envelope the
+  // Chrome extension spools, so it rides the whole existing pipeline (drain,
+  // dedup, daily-note placement, enrichment). The schema refuses non-http(s)
+  // pages; that surfaces as the error toast.
+  const clip = async (): Promise<void> => {
+    const generation = graph?.generation
+    if (generation === undefined || clipping) {
+      return
+    }
+    setClipping(true)
+    try {
+      const page = await browserEmbedRead({ maxChars: BROWSER_CLIP_MAX_CHARS })
+      const envelope = buildBrowserClipEnvelope(page)
+      await captureInboxSpool(`${envelope.id}.json`, JSON.stringify(envelope), generation)
+      toast.add({ title: 'Clipped to today’s daily note' })
+    } catch (cause: unknown) {
+      toast.add({ type: 'error', title: 'Clip failed', description: errorMessage(cause) })
+    } finally {
+      setClipping(false)
+    }
+  }
+
   if (error !== null) {
     return (
       <div
@@ -251,6 +282,18 @@ export function BrowserPane({ className }: BrowserPaneProps): ReactElement {
           className="h-7 min-w-0 flex-1 rounded-md border border-border bg-input-bg px-2.5 text-xs text-text placeholder:text-text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
           placeholder="Search or enter address"
         />
+        <button
+          type="button"
+          aria-label="Clip to note"
+          title="Clip to note — saves this page to today’s daily note"
+          disabled={clipping}
+          onClick={() => {
+            void clip()
+          }}
+          className={cn(toolbarButtonClass, clipping && 'opacity-50')}
+        >
+          <Bookmark aria-hidden className="size-3.5" />
+        </button>
         <button
           type="button"
           aria-label="Open in default browser"

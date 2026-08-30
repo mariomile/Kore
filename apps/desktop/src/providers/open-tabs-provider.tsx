@@ -46,6 +46,12 @@ export interface OpenTabsValue {
   closeTab: (tab: OpenTab) => void
   /** Pin/unpin a tab (pinned tabs collapse to an icon, leading the strip). */
   togglePin: (tab: OpenTab) => void
+  /**
+   * Drop `tab` at `target`'s strip position (drag reorder). Works in strip
+   * coordinates; since the strip regroups pinned-first on read, a drop
+   * across the pin boundary clamps to the tab's own group edge.
+   */
+  moveTab: (tab: OpenTab, target: OpenTab) => void
   /** Drop a note tab that no longer resolves (rename/delete healing). */
   pruneTab: (path: string) => void
   /** Cycle across open tabs; wraps at the ends. */
@@ -66,6 +72,7 @@ const EMPTY: OpenTabsValue = {
   activateTab: () => {},
   closeTab: () => {},
   togglePin: () => {},
+  moveTab: () => {},
   pruneTab: () => {},
   nextTab: () => {},
   previousTab: () => {},
@@ -192,6 +199,28 @@ export function OpenTabsProvider({ children }: { children: ReactNode }): ReactEl
     [updateTabs],
   )
 
+  const moveTab = useCallback(
+    (tab: OpenTab, target: OpenTab) => {
+      updateTabs((graphTabs) => {
+        // Work in strip coordinates — that is the order the user dragged in.
+        // The moved array becomes the stored order; `stripOrder` on read
+        // regroups pinned-first, so both groups keep their dragged order and
+        // a cross-group drop settles at the tab's own group boundary.
+        const ordered = stripOrder(graphTabs)
+        const from = ordered.findIndex((open) => tabsEqual(open, tab))
+        const to = ordered.findIndex((open) => tabsEqual(open, target))
+        if (from === -1 || to === -1 || from === to) {
+          return graphTabs
+        }
+        const next = [...ordered]
+        const [moved] = next.splice(from, 1)
+        next.splice(to, 0, moved!)
+        return next
+      })
+    },
+    [updateTabs],
+  )
+
   const pruneTab = useCallback(
     (path: string) => {
       updateTabs((graphTabs) =>
@@ -278,6 +307,7 @@ export function OpenTabsProvider({ children }: { children: ReactNode }): ReactEl
       activateTab,
       closeTab,
       togglePin,
+      moveTab,
       pruneTab,
       nextTab,
       previousTab,
@@ -290,6 +320,7 @@ export function OpenTabsProvider({ children }: { children: ReactNode }): ReactEl
       activateTab,
       closeTab,
       togglePin,
+      moveTab,
       pruneTab,
       nextTab,
       previousTab,

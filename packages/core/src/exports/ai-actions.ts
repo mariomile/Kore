@@ -230,6 +230,7 @@ export {
   checkCliAgentProvider,
   cliProviderSteerMode,
   cliProviderSupportsEdits,
+  cliProviderSupportsMcp,
   isCliAgentProvider,
   streamCliAgentChat,
   type CliAgentProviderId,

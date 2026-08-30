@@ -151,6 +151,29 @@ describe('claudeCliArgs', () => {
     })
     expect(args.join(' ')).toContain('--tools Read,Glob,Write,Edit')
   })
+
+  it('read mode with MCP servers mounts the config but keeps read-only tools', () => {
+    const args = claudeCliArgs({
+      model: 'default',
+      systemPrompt: 'sys',
+      settingsJson: '{}',
+      mcpServers: [
+        { name: 'linear', transport: { kind: 'http', url: 'https://mcp.linear.app' }, env: {} },
+      ],
+    })
+    expect(args.join(' ')).toContain('--tools Read,Glob')
+    expect(args.join(' ')).not.toContain('Write')
+    expect(args).toContain('--strict-mcp-config')
+    const configIndex = args.indexOf('--mcp-config')
+    expect(configIndex).toBeGreaterThan(-1)
+    expect(args[configIndex + 1]).toContain('linear')
+  })
+
+  it('read mode without MCP servers carries no MCP config at all', () => {
+    const args = claudeCliArgs({ model: 'default', systemPrompt: 'sys', settingsJson: '{}' })
+    expect(args).toContain('--strict-mcp-config')
+    expect(args).not.toContain('--mcp-config')
+  })
 })
 
 describe('claudeCliSystemPrompt', () => {
@@ -165,6 +188,18 @@ describe('claudeCliSystemPrompt', () => {
     expect(prompt).toContain('Read')
     expect(prompt).toContain('Glob')
     expect(prompt.endsWith('Answer in Italian.')).toBe(true)
+    expect(prompt).not.toContain('external MCP tools')
+  })
+
+  it('names the MCP servers only when they ride the run', () => {
+    const prompt = claudeCliSystemPrompt({
+      today: '2026-06-14',
+      graphName: 'Work',
+      customSystemPrompt: '',
+      mcpServerNames: ['linear', 'github'],
+    })
+    expect(prompt).toContain('external MCP tools')
+    expect(prompt).toContain('linear, github')
   })
 
   it('edit mode carries the editing rules and the injected memory', () => {

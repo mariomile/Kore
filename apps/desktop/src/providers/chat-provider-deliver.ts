@@ -19,6 +19,7 @@ import {
   scanChangedMemoryPaths,
   cliProviderSteerMode,
   cliProviderSupportsEdits,
+  cliProviderSupportsMcp,
   isCliAgentProvider,
   streamChat,
   streamCliAgentChat,
@@ -104,6 +105,8 @@ export interface ChatDeliverDeps {
   instructionsRef: RefObject<string>
   chatSystemPromptRef: RefObject<string>
   chatAllowEditsRef: RefObject<boolean>
+  /** The conversation's read-mode external-tools opt-in (see chat context). */
+  chatToolsRef: RefObject<boolean>
   activeAgentProfileRef: RefObject<string | null>
   memoryWriteApprovalRef: RefObject<boolean>
   mcpServersRef: RefObject<McpServer[]>
@@ -132,6 +135,7 @@ export async function deliverChatTurn(
     instructionsRef,
     chatSystemPromptRef,
     chatAllowEditsRef,
+    chatToolsRef,
     activeAgentProfileRef,
     memoryWriteApprovalRef,
     mcpServersRef,
@@ -261,13 +265,18 @@ export async function deliverChatTurn(
         if (privateNotePaths === null) {
           return null
         }
-        // MCP tools ride only edit-mode runs: read-only chat stays a
-        // zero-egress surface. Secrets resolve from the keychain here,
-        // per run — never stored anywhere else.
-        // Cursor never joins edit mode (its write path is unverified),
-        // so the toggle silently means read-only there.
+        // MCP tools ride runs the user opted into: every edit-mode run,
+        // and a read-mode run only when this conversation's Tools toggle
+        // was explicitly confirmed (read-only chat stays zero-egress by
+        // default). Secrets resolve from the keychain here, per run —
+        // never stored anywhere else.
+        // Cursor never joins edit mode (its write path is unverified) and
+        // its per-run config denies MCP, so both switches silently mean
+        // plain read-only there.
         const allowEdits = chatAllowEditsRef.current && cliProviderSupportsEdits(config.provider)
-        const mcpServers = allowEdits
+        const mcpAllowed =
+          allowEdits || (chatToolsRef.current && cliProviderSupportsMcp(config.provider))
+        const mcpServers = mcpAllowed
           ? await resolveMcpServers(mcpServersRef.current).catch(() => [])
           : []
         return streamCliAgentChat(config.provider, {

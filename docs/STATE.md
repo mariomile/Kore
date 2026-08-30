@@ -19,6 +19,16 @@ decision, the Personal OS foundations (S1/S2/S3) are deferred to Next; see the
 
 ## What is true now
 
+- [x] **Now item 1 implemented: MCP tools in read-only chat**
+  ([Plan 27](plans/27-read-mode-mcp-tools.md)). Composer Tools toggle (Claude
+  Code/Codex with at least one enabled server), confirmation dialog naming the
+  servers, per-conversation ephemeral opt-in reset by New chat and
+  conversation switch, delivery gate `allowEdits || (chatTools &&
+  cliProviderSupportsMcp)`, prompt lines naming the servers, privacy.md
+  updated. Verified: 42 core CLI tests and 28 chat-provider browser tests pass
+  on chromium and webkit; `pnpm check` exit 0. Not yet exercised against a
+  live MCP server in the running app.
+
 - [x] App-first reprioritization decided with the user (grilling session,
   2026-08-30) and recorded in the roadmap: Now = read-mode MCP, chat
   attachments off base64 + budget measurement, agent memory recall/skills;
@@ -40,15 +50,17 @@ decision, the Personal OS foundations (S1/S2/S3) are deferred to Next; see the
 
 ## Next step
 
-1. **Privacy design note for read-mode MCP** (blocking Now item 1): how the
-   per-conversation opt-in and visible approval preserve the zero-egress
-   default of read-only chat; where the approval lives in the UI; which
-   existing edit-mode MCP plumbing is reused. Then implement.
-2. Then Now item 2: chat image attachments out of base64, closing with the
+1. **Live check of Now item 1**: with a real MCP server configured, flip the
+   Tools toggle in a read-only conversation and watch the agent call it (and
+   confirm a fresh conversation is back to zero-egress).
+2. **Now item 2**: chat image attachments out of base64, closing with the
    one-time memory-budget measurement on the current build.
 
 ## Session log
 
+- 2026-08-30 — Implemented Plan 27 (MCP tools in read-only chat) behind the
+  per-conversation Tools opt-in; privacy.md updated; tests green on both
+  browser engines.
 - 2026-08-30 — Grilling session with the user: app-first decided; S1/S2/S3
   deferred to Next; mobile confirmed as capture/read companion (remote control
   later); semantic search desktop-only; S5 stays later; agent memory work

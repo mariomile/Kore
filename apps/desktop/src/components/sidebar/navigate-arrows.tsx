@@ -9,9 +9,8 @@ const BACK_BINDING = keybindingFor('history.back')
 const FORWARD_BINDING = keybindingFor('history.forward')
 
 const BUTTON_CLASS =
-  'rounded-md p-1 text-text-muted transition-colors duration-100 ' +
-  'hover:bg-surface-hover hover:text-text disabled:opacity-50 ' +
-  'disabled:hover:bg-transparent disabled:hover:text-text-muted'
+  'app-icon-button text-text-muted hover:text-text ' +
+  'disabled:opacity-50 disabled:hover:text-text-muted'
 
 /**
  * The sidebar's back/forward history arrows (the original app's

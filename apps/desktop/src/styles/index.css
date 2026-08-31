@@ -494,6 +494,30 @@ html:root {
   letter-spacing: var(--tracking-tight, -0.02em);
 }
 
+/* The quiet round icon button all header chrome shares (Craft register,
+   Plan 28 slice 3): a grey glyph that gains a soft circular wash on hover.
+   Shape and motion only — call sites keep their own text colors (several
+   dim by state), and disabled styling stays a per-site concern. */
+.app-icon-button {
+  display: flex;
+  width: 1.75rem;
+  height: 1.75rem;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  transition:
+    color 150ms var(--ds-ease-swift),
+    background-color 150ms var(--ds-ease-swift),
+    transform 150ms var(--ds-ease-swift);
+}
+.app-icon-button:hover:not(:disabled) {
+  background-color: var(--surface-hover);
+}
+.app-icon-button:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
 /* The new-note flow's name field: ghost "Untitled" over the seeded empty H1
    (`editor/title-placeholder.ts`) without occupying layout, so the caret
    blinks at the line start as if the ghost text weren't there. */

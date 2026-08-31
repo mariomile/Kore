@@ -1,9 +1,9 @@
 # Kore working state
 
-**Updated:** 2026-08-31 at `5ac7257b` (Plan 28 slice 2 — typed-card
-property chips — merged; instant note opens in flight: warm content cache +
-desktop iCloud note materialization, from the user's "Loading note…"
-report).
+**Updated:** 2026-08-31 at `b84d11fb` (instant note opens merged — warm
+content cache + desktop iCloud materialization, from the user's "Loading
+note…" report; Plan 28 slice 3 — chrome details: `.app-icon-button`
+normalization + the daily ‹ date › pill — in flight).
 **Rule:** Every session that moves the program updates this file before its
 summary: tick what became true and how it was verified, set the next step,
 refresh the date. What is done and what is next live here and only here. Why
@@ -28,8 +28,13 @@ day grammar, live-preview grid cards, and the scroll veil with glass
 table headers. Slice 2 followed in the
 same session: typed grid cards carry property chips (the table's badge
 hues, the user's date format), closing the gallery-view ask, with
-board/calendar aligned to the card language. Queued: chrome details,
-editor block affordances via meowdown.
+board/calendar aligned to the card language. Slice 3 (2026-08-31): header
+icon buttons normalized onto one round quiet recipe, and the daily
+stream's floating ‹ date › pill (follows the focused day, hops days,
+label jumps to today); the line audit found strip/panel edges already
+clean, so the sticky table header's one hairline stays deliberate.
+Queued: slice 4 — editor block affordances via meowdown + the
+assistant/context panel's quiet sectioned-rows look.
 
 **Collections UX pass (user decision 2026-08-30).** The Now ladder shipped
 through v0.38.0–v0.40.0 (recall + skills, S3-minimal runtime per

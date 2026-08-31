@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   addDaysIso,
   formatDayLabel,
+  formatDayPillLabel,
   formatFullDate,
   formatRecencyLabel,
   formatShortDate,
@@ -45,6 +46,15 @@ describe('dates', () => {
     expect(formatFullDate(new Date(2026, 5, 10), 'iso')).toBe('2026-06-10')
     expect(formatFullDate(new Date(2026, 0, 1), 'mdy')).toBe('January 1st, 2026')
     expect(formatFullDate(new Date(2026, 0, 22), 'dmy')).toBe('22nd January, 2026')
+  })
+
+  it('formatDayPillLabel is month-and-day, gaining the year only away from it', () => {
+    const now = new Date(2026, 5, 10)
+    expect(formatDayPillLabel('2026-06-09', 'mdy', now)).toBe('Jun 9')
+    expect(formatDayPillLabel('2026-06-09', 'dmy', now)).toBe('9 Jun')
+    expect(formatDayPillLabel('2026-06-09', 'iso', now)).toBe('2026-06-09')
+    expect(formatDayPillLabel('2025-12-31', 'mdy', now)).toBe('Dec 31, 2025')
+    expect(formatDayPillLabel('2025-12-31', 'dmy', now)).toBe('31 Dec 2025')
   })
 
   it('formatShortDate renders compact dates per the date format', () => {

@@ -158,7 +158,7 @@ export function CollectionImportButton({ tag, type }: CollectionImportButtonProp
         aria-label="Import CSV into the collection"
         title="Import CSV"
         onClick={() => inputRef.current?.click()}
-        className="flex size-6 items-center justify-center rounded-full text-text-muted transition-colors hover:text-text-secondary"
+        className="app-icon-button text-text-muted hover:text-text"
       >
         <Inbox aria-hidden className="size-3.5" />
       </button>

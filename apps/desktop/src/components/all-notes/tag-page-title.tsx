@@ -37,7 +37,7 @@ export function TagPageTitle({ tag, typed, onBack, onConfigure }: TagPageTitlePr
           aria-label={`Configure #${tag}`}
           title="Configure collection"
           onClick={onConfigure}
-          className="flex size-6 shrink-0 translate-y-0.5 items-center justify-center self-center rounded-full text-text-muted transition-colors hover:text-text-secondary"
+          className="app-icon-button translate-y-0.5 self-center text-text-muted hover:text-text"
         >
           <Settings aria-hidden className="size-3.5" />
         </button>

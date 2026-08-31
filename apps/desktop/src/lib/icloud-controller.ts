@@ -1,7 +1,9 @@
 import {
   applyIndexChanges,
   emitFileChanges,
+  errorMessage,
   icloudConflictsScan,
+  icloudDownloadPending,
   icloudWatchStart,
   icloudWatchStop,
   isNotePath,
@@ -63,6 +65,18 @@ export interface IcloudControllerOptions {
    * desktop (the `notify` watcher already reports file events).
    */
   emitFileChangesFromWatch: boolean
+  /**
+   * Ask iCloud to download every pending note placeholder on start and on
+   * each resume (fire-and-forget; the `notify` watcher indexes arrivals as
+   * ordinary upserts). Desktop passes true: Optimize Mac Storage evicts note
+   * files behind the app's back, and an evicted note otherwise materializes
+   * *inside* `note_read` when the user opens it — a blocking on-demand
+   * download where an instant open should be. Notes only — assets keep the
+   * OS's eviction choice; markdown is small enough to always keep local.
+   * Mobile passes false: its refresh hook owns the richer nudge + poll +
+   * reconcile sequence there.
+   */
+  materializeNotes: boolean
 }
 
 export interface IcloudController {
@@ -101,7 +115,7 @@ export interface IcloudController {
  * conflict, the same as any external edit.
  */
 export function createIcloudController(options: IcloudControllerOptions): IcloudController {
-  const { graph, indexGeneration, emitFileChangesFromWatch } = options
+  const { graph, indexGeneration, emitFileChangesFromWatch, materializeNotes } = options
   let disposed = false
   let baselinePending = true
   const disposers: Array<() => void> = []
@@ -140,6 +154,17 @@ export function createIcloudController(options: IcloudControllerOptions): Icloud
 
   function scanSuspended(): boolean {
     return emitFileChangesFromWatch && document.visibilityState === 'hidden'
+  }
+
+  /**
+   * Fire-and-forget download request for every pending note placeholder.
+   * Requesting an in-flight download is a no-op for the OS, so repeating on
+   * each resume is safe; a failure is logged and retried by the next resume.
+   */
+  function requestNoteMaterialization(): void {
+    void icloudDownloadPending(graph.root, 'notes').catch((err: unknown) => {
+      console.error('iCloud note download request failed:', errorMessage(err))
+    })
   }
 
   function scheduleScan(
@@ -399,9 +424,17 @@ export function createIcloudController(options: IcloudControllerOptions): Icloud
           // `notify` watcher plus the wake-time reconcile, not this query.
           void restartWatch()
         }
+        if (materializeNotes) {
+          // The OS may have evicted notes while the app was in the
+          // background; re-warm them before the user opens one.
+          requestNoteMaterialization()
+        }
         scheduleScan()
       }),
     )
+    if (materializeNotes) {
+      requestNoteMaterialization()
+    }
     // The adoption baseline + any conflicts that accrued while closed.
     scheduleScan()
   }

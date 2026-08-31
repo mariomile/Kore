@@ -1,8 +1,9 @@
 # Kore working state
 
-**Updated:** 2026-08-30 at `c9839b96` (v0.43.1 shipped: Plan 28 slice 1 —
-the Craft register — plus its review consolidation; slice 2, typed-card
-property chips, in flight).
+**Updated:** 2026-08-31 at `5ac7257b` (Plan 28 slice 2 — typed-card
+property chips — merged; instant note opens in flight: warm content cache +
+desktop iCloud note materialization, from the user's "Loading note…"
+report).
 **Rule:** Every session that moves the program updates this file before its
 summary: tick what became true and how it was verified, set the next step,
 refresh the date. What is done and what is next live here and only here. Why
@@ -44,6 +45,21 @@ sum/avg. Also still open: the live checks below. B05c preview tabs stays
 declined; the backlog-B pass is closed.
 
 ## What is true now
+
+- [x] **Notes open instantly** (user report, 2026-08-31: "Loading note…"
+  visible on some opens; "le note dovrebbero aprirsi instantaneamente").
+  Root causes found and fixed in the open path: reopening a note re-read
+  it over IPC every time (now: an in-memory per-graph content cache serves
+  the pane's first read, verified against disk immediately through the
+  existing external-change reconciliation — stale serves self-heal under
+  the same clean-adopt / dirty-conflict contract as any external edit),
+  and on desktop an iCloud-evicted note (Optimize Mac Storage) downloaded
+  *inside* `note_read` on open (now: the iCloud controller requests
+  pending note downloads on start and every resume, notes only, mirroring
+  mobile's policy — the vault re-warms in the background). Verified: cache
+  suite 4/4 (node), warm-open suite 3/3 + full note-document suite 38/38
+  and iCloud controller 19/19 (chromium), typecheck + lint clean, dev
+  E2E smoke (open → type → rename → tab hop → reopen keeps content).
 
 - [x] **Default vault objects** (user ask, 2026-08-30): a brand-new vault
   is born with four typed supertags under `tags/` — Project

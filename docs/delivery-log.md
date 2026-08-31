@@ -7,6 +7,21 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Notes open instantly (user report: "Loading note…" on some opens). Two
+  causes, two fixes. Reopening a note paid a fresh IPC read every time: a
+  small in-memory content cache (per graph, watcher-invalidated,
+  own-write-aware) now serves a pane's first read, so tab switches and
+  back-navigation render the editor without waiting on IPC — optimistically,
+  with an immediate disk verify through the existing external-change
+  reconciliation (a clean buffer adopts differences silently, a dirty one
+  parks the conflict banner). And on desktop, iCloud-evicted notes
+  (Optimize Mac Storage) used to materialize *inside* `note_read` — a
+  blocking download exactly where the open should be instant; the iCloud
+  controller now requests pending note downloads on start and each resume
+  (notes only; assets keep the OS's eviction choice), mirroring mobile's
+  existing policy, so the vault re-warms in the background before a click
+  can hit it.
+
 - Typed cards say what they hold (Plan 28 slice 2). On a typed tag's
   page, each grid card carries its note's property values as read-only
   chips in schema order — select and status values in the same

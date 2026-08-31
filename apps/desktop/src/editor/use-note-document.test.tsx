@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderHook } from 'vitest-browser-react'
 import { setBridge, upsertFrontmatter } from '@reflect/core'
 import { onNoteMoved } from '@/lib/note-moves'
+import { enableNoteContentCache } from './note-content-cache'
 import { flushOpenDocuments } from './open-documents'
 import type { NoteEditorHandle } from './note-editor'
 import { useNoteDocument } from './use-note-document'
@@ -1133,5 +1134,87 @@ describe('useNoteDocument', () => {
     await act(() => result.current.keepMine())
     await vi.waitFor(() => expect(writes).toContain('# My unsaved edit\n'))
     expect(result.current.conflict).toBeNull()
+  })
+})
+
+describe('useNoteDocument warm opens', () => {
+  /** Park every `note_read`; the release resolves them all with `content`. */
+  function parkReads() {
+    const parked: Array<(content: string) => void> = []
+    mockInvoke.mockImplementation(async (command, args) => {
+      if (command === 'note_read') {
+        return await new Promise<string>((resolve) => {
+          parked.push(resolve)
+        })
+      }
+      if (command === 'note_write') {
+        const contents = (args as { contents: string }).contents
+        disk = contents
+        writes.push(contents)
+        return null
+      }
+      return null
+    })
+    return (content: string) => {
+      for (const resolve of parked.splice(0)) {
+        resolve(content)
+      }
+    }
+  }
+
+  it('a cold open fills the cache; the reopen is ready before disk answers', async () => {
+    const disable = enableNoteContentCache()
+    try {
+      const first = await readyHook() // cold: reads '# Hello\n' and caches it
+      await first.unmount()
+
+      const releaseReads = parkReads()
+      const hook = await renderHook(() => useNoteDocument('notes/a.md', 1))
+      // Ready with the cached content while the disk read is still parked —
+      // this is the instant-open contract (no IPC on the visible path).
+      await vi.waitFor(() => expect(hook.result.current.status).toBe('ready'))
+      expect(hook.result.current.initialContent).toBe('# Hello\n')
+
+      // The warm serve verified against disk in the background: a newer file
+      // is adopted silently into the clean buffer.
+      releaseReads('# Newer on disk\n')
+      await vi.waitFor(() => expect(hook.result.current.initialContent).toBe('# Newer on disk\n'))
+      expect(hook.result.current.conflict).toBeNull()
+      expect(hook.result.current.dirty).toBe(false)
+      await hook.unmount()
+    } finally {
+      disable()
+    }
+  })
+
+  it('a stale warm serve under a dirty buffer parks the disk content as a conflict', async () => {
+    const disable = enableNoteContentCache()
+    try {
+      const first = await readyHook()
+      await first.unmount()
+
+      const releaseReads = parkReads()
+      const hook = await renderHook(() => useNoteDocument('notes/a.md', 1))
+      await vi.waitFor(() => expect(hook.result.current.status).toBe('ready'))
+
+      // The user starts typing on the served content before the verify lands.
+      await hook.act(() => hook.result.current.onEditorChange('# Hello typed on\n'))
+      expect(hook.result.current.conflict).toBeNull()
+
+      // Disk turns out newer: the same parking contract as any external edit.
+      releaseReads('# Changed elsewhere\n')
+      await vi.waitFor(() => expect(hook.result.current.conflict).toBe('# Changed elsewhere\n'))
+      await hook.unmount()
+    } finally {
+      disable()
+    }
+  })
+
+  it('without the lifecycle mounted, opens keep reading disk first', async () => {
+    parkReads()
+    const hook = await renderHook(() => useNoteDocument('notes/a.md', 1))
+    await hook.act(async () => {})
+    expect(hook.result.current.status).toBe('loading') // no cache to serve from
+    await hook.unmount()
   })
 })

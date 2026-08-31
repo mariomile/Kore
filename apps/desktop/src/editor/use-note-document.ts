@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { readNote, writeNote, type FileChange } from '@reflect/core'
 import { useFileChanges } from '@/lib/use-file-changes'
 import { createDocumentBinding, type DocumentBinding } from './document-binding'
+import { cacheNoteContent, getCachedNoteContent } from './note-content-cache'
 import type { NoteEditorHandle } from './note-editor'
 import { createRenameCoordinator } from './rename-coordinator'
 import { createNoteSession, INITIAL_NOTE_SNAPSHOT, type NoteSessionSnapshot } from './note-session'
@@ -99,6 +100,27 @@ export function useNoteDocument(
     if (!path) {
       return
     }
+    // Warm open: the session's *first* read may be served from the in-memory
+    // content cache, so reopening a note renders without waiting on IPC (or,
+    // for an iCloud-evicted file, on the blocking on-demand download inside
+    // `note_read`). Every later read — reconciliation included — goes to
+    // disk, and refills the cache on the way back.
+    let firstRead = true
+    let servedWarm = false
+    const read = (forPath: string): Promise<string> => {
+      if (firstRead) {
+        firstRead = false
+        const warm = getCachedNoteContent(forPath)
+        if (warm !== undefined) {
+          servedWarm = true
+          return Promise.resolve(warm)
+        }
+      }
+      return readNote(forPath).then((content) => {
+        cacheNoteContent(forPath, content)
+        return content
+      })
+    }
     const { session, created } = binding.bind(path, {
       // The auto-rename lifecycle (Plan 07b/17) is owned by the coordinator —
       // the tracker, the rewrite chain, alias placement, and the file move.
@@ -114,14 +136,19 @@ export function useNoteDocument(
         createNoteSession({
           path,
           io: {
-            read: readNote,
+            read,
             write: canWrite
               ? (forPath, contents) => {
                   const current = generationRef.current
                   if (current === null) {
                     return Promise.reject(new Error('no graph generation available for save'))
                   }
-                  return writeNote(forPath, contents, current)
+                  return writeNote(forPath, contents, current).then(() => {
+                    // The landed save is the freshest content for this path;
+                    // recording it here keeps a just-edited note warm past
+                    // the watcher echo of our own write.
+                    cacheNoteContent(forPath, contents)
+                  })
                 }
               : null,
           },
@@ -145,6 +172,15 @@ export function useNoteDocument(
     })
     if (created) {
       session.load()
+      if (servedWarm) {
+        // A warm serve is optimistic: verify against disk through the
+        // ordinary external-change path. `load()` defers this until its
+        // (already-settled) read commits; the reconcile then re-reads the
+        // file — a matching read is a no-op, a newer one is adopted into a
+        // clean buffer or parked as a conflict under a dirty one, exactly
+        // like any external edit.
+        session.externalChanged()
+      }
     }
     return () => binding.unbind(path)
   }, [binding, path, canWrite, createIfMissing, trackRenames, missingSeed])

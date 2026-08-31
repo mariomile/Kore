@@ -4,6 +4,7 @@ import { PaletteProvider } from '@/components/command-palette/palette-provider'
 import { EnableLocalSyncDialog } from '@/components/enable-local-sync-dialog'
 import { NoteWindowContent } from '@/components/note-window-content'
 import { WorkspaceContent } from '@/components/workspace-content'
+import { useNoteContentCache } from '@/hooks/use-note-content-cache'
 import { getInitialWindowRoute } from '@/lib/windows/initial-window-route'
 import { isMainWindow } from '@/lib/windows/window-role'
 import { AssetDescribeProvider } from '@/providers/asset-describe-provider'
@@ -34,6 +35,9 @@ interface GraphWorkspaceProps {
  * fresh history.
  */
 export function GraphWorkspace({ graph }: GraphWorkspaceProps): ReactElement {
+  // Warm note opens for this graph (both window kinds): reopening a note is
+  // served from the in-memory content cache instead of waiting on IPC.
+  useNoteContentCache(graph.root)
   // A note window's first route is its ⌘-clicked target (seeded by the boot
   // hook) — starting on the default today route would flash the daily note
   // until the deep link navigated.

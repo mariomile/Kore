@@ -85,6 +85,10 @@ export function SyncProvider({ graph, children }: SyncProviderProps): ReactEleme
       graph,
       indexGeneration,
       emitFileChangesFromWatch: isMobileSurface(),
+      // Desktop keeps note markdown local (Optimize Mac Storage evicts it
+      // behind the app's back, and an evicted note blocks its open on an
+      // on-demand download); mobile's refresh hook owns the nudge there.
+      materializeNotes: !isMobileSurface(),
     })
     void icloud.start()
     return () => {

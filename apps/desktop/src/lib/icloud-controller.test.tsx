@@ -80,6 +80,8 @@ beforeEach(() => {
         }
         case 'note_read':
           return '# merged\n'
+        case 'icloud_download_pending':
+          return 0
         default:
           return null
       }
@@ -101,11 +103,12 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-function controller(overrides: { emit?: boolean } = {}) {
+function controller(overrides: { emit?: boolean; materialize?: boolean } = {}) {
   active = createIcloudController({
     graph: GRAPH,
     indexGeneration: 3,
     emitFileChangesFromWatch: overrides.emit ?? false,
+    materializeNotes: overrides.materialize ?? false,
   })
   return active
 }
@@ -151,6 +154,27 @@ describe('isICloudRoot', () => {
 })
 
 describe('createIcloudController', () => {
+  it('materializes pending notes on start and again on resume when asked', async () => {
+    const icloud = controller({ materialize: true })
+    await icloud.start()
+    const nudges = () => invoked.filter(([command]) => command === 'icloud_download_pending')
+    expect(nudges()).toEqual([['icloud_download_pending', { root: GRAPH.root, notesOnly: true }]])
+
+    // A refocus re-warms whatever the OS evicted in the background (past the
+    // resume dedupe window).
+    await vi.advanceTimersByTimeAsync(2_000)
+    window.dispatchEvent(new Event('focus'))
+    expect(nudges()).toHaveLength(2)
+  })
+
+  it('never requests downloads when materialization is off (mobile owns it)', async () => {
+    const icloud = controller({ emit: true })
+    await icloud.start()
+    await vi.advanceTimersByTimeAsync(2_000)
+    window.dispatchEvent(new Event('focus'))
+    expect(invoked.some(([command]) => command === 'icloud_download_pending')).toBe(false)
+  })
+
   it('starts the watch and runs one baseline sweep', async () => {
     const icloud = controller({ emit: true })
     await icloud.start()

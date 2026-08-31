@@ -4,20 +4,20 @@ import { PropertyValueEditor } from '@/components/tags/property-editors'
 import { useCommitNoteProperty } from '@/lib/tags/use-commit-note-property'
 import { useNoteTypedProperties } from '@/lib/tags/use-note-typed-properties'
 import { useOpenRelation } from '@/lib/tags/use-open-relation'
-import { SidebarSection } from './sidebar-section'
 
-interface NotePropertiesSectionProps {
-  /** Graph-relative path of the note the sidebar describes. */
+interface NotePropertiesHeaderProps {
+  /** Graph-relative path of the note the pane is editing. */
   path: string
 }
 
 /**
- * The note's typed properties (TDR 0005): the union of its tags' schemas,
- * each field editable in place through the shared property editors. Hidden
- * entirely while the note carries no typed tag — like the outline, an empty
- * panel would be furniture.
+ * The row page's fields (Plan 29 N1): a note carrying a typed tag presents
+ * its properties above the body, each editable in place through the same
+ * per-type editors the Collection table and the context rail use — one write
+ * channel, three surfaces. Renders nothing while the note carries no typed
+ * tag, so ordinary notes keep their clean top edge.
  */
-export function NotePropertiesSection({ path }: NotePropertiesSectionProps): ReactElement | null {
+export function NotePropertiesHeader({ path }: NotePropertiesHeaderProps): ReactElement | null {
   const commitProperty = useCommitNoteProperty()
   const openRelation = useOpenRelation()
   const { properties, values } = useNoteTypedProperties(path)
@@ -27,11 +27,11 @@ export function NotePropertiesSection({ path }: NotePropertiesSectionProps): Rea
   }
 
   return (
-    <SidebarSection storageKey="note-properties" title="Properties">
+    <section aria-label="Properties" className="mb-5 border-b border-border pb-4">
       <ul className="space-y-0.5">
         {properties.map((property) => (
           <li key={property.key} className="flex min-h-7 items-center gap-2">
-            <span className="w-24 shrink-0 truncate text-[13px] text-text-muted">
+            <span className="w-32 shrink-0 truncate text-[13px] text-text-muted">
               {property.name}
             </span>
             <PropertyValueEditor
@@ -39,13 +39,12 @@ export function NotePropertiesSection({ path }: NotePropertiesSectionProps): Rea
               value={values?.[property.key]}
               onCommit={(value) => commitProperty(path, property.key, value)}
               onOpenRelation={openRelation}
-              align="end"
             >
               <PropertyFieldValue property={property} value={values?.[property.key]} />
             </PropertyValueEditor>
           </li>
         ))}
       </ul>
-    </SidebarSection>
+    </section>
   )
 }

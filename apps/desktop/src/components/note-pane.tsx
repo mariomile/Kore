@@ -32,6 +32,7 @@ import { useTagNavigation } from '@/editor/use-tag-navigation'
 import { BlockSwipeGestures } from '@/editor/block-swipe'
 import { CalloutHighlighter } from '@/editor/callout-highlighter'
 import { LinkPreviewCards } from '@/editor/link-preview-cards'
+import { NotePropertiesHeader } from '@/components/notes/note-properties-header'
 import { useNoteRow } from '@/hooks/use-note-row'
 import { useCalloutSlashItems } from '@/editor/use-callout-slash-items'
 import { useCollectionSlashItems } from '@/editor/use-collection-slash-items'
@@ -395,6 +396,14 @@ export function NotePaneComponent({
         resolveImageUrl={resolveImageUrl}
         gutterClassName={gutterClassName}
       />
+
+      {/* The row page's fields (Plan 29 N1). Daily notes are a stream, not a
+          row — a daily that merely mentions a typed tag grows no header. */}
+      {!dailyNote ? (
+        <div className={gutterClassName}>
+          <NotePropertiesHeader path={path} />
+        </div>
+      ) : null}
 
       <NoteEditor
         // Keyed on the session, not the path: a rename retargets the live

@@ -97,9 +97,17 @@ vi.mock('@/providers/graph-provider', () => ({
     chooseGraph,
   }),
 }))
+// The shelf order the rail renders — a test flips it to assert the stored
+// arrangement drives the stack.
+const sidebarSections = vi.hoisted(() => ({ order: ['open', 'pinned', 'tags'] }))
 vi.mock('@/providers/settings-provider', () => ({
   useSettings: () => ({
-    settings: { dateFormat: 'mdy', graphColors: {}, collectionSorts: {} },
+    settings: {
+      dateFormat: 'mdy',
+      graphColors: {},
+      collectionSorts: {},
+      sidebarSections: sidebarSections.order,
+    },
     updateSettings: () => {},
     updateSettingsWith,
   }),
@@ -152,6 +160,7 @@ beforeEach(() => {
   deleteConversation.mockClear()
   newChat.mockClear()
   listNoteTags.mockReset().mockResolvedValue([])
+  sidebarSections.order = ['open', 'pinned', 'tags']
   audioMemo.available = true
   audioMemo.unavailableReason = null
   audioMemo.toggle.mockReset()
@@ -247,6 +256,23 @@ describe('Sidebar', () => {
     await expect
       .element(view.getByRole('button', { name: /all notes/i }))
       .not.toHaveAttribute('aria-current')
+  })
+
+  it('stacks the shelves in the stored order', async () => {
+    getPinnedNotes.mockResolvedValue([
+      { path: 'notes/roadmap.md', title: 'Roadmap', dailyDate: null },
+    ])
+    listNoteTags.mockResolvedValue([{ tag: 'book', count: 3 }])
+    sidebarSections.order = ['tags', 'pinned', 'open']
+    const { view } = await renderSidebar()
+
+    await expect.element(view.getByRole('button', { name: /#book\s*3/i })).toBeVisible()
+    const shelves = [...view.container.querySelectorAll('section[aria-label]')].map((section) =>
+      section.getAttribute('aria-label'),
+    )
+    // Open lists the window's tabs and there are none here, so it renders
+    // nothing while still holding its place in the stored order.
+    expect(shelves).toEqual(['Tags', 'Pinned notes'])
   })
 
   it('hides the Tags section while the graph has no tags', async () => {

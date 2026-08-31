@@ -49,6 +49,7 @@ import {
   editorSmoothCaretAnimationSchema,
   editorSpellCheckSchema,
   editorTextSizeSchema,
+  sidebarSectionsSchema,
   sidebarWidthSchema,
 } from './schema-editor'
 
@@ -404,6 +405,7 @@ const settingsDocumentSchema = z.looseObject({
   editorFontFamily: editorFontFamilySchema,
   editorLineSpacing: editorLineSpacingSchema,
   sidebarWidth: sidebarWidthSchema,
+  sidebarSections: sidebarSectionsSchema,
   contextSidebarWidth: contextSidebarWidthSchema,
   semanticSearchEnabled: semanticSearchEnabledSchema,
   describeAssets: describeAssetsSchema,

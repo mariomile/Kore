@@ -9,7 +9,7 @@ import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { cn } from '@/lib/utils'
 import { useGraph } from '@/providers/graph-provider'
 import { useRouter } from '@/routing/router'
-import { SidebarDisclosure } from './sidebar-disclosure'
+import { SidebarSortableSection } from './sidebar-sortable-section'
 
 /**
  * The sidebar's Tags section: every tag carried by a non-daily note, with its
@@ -39,7 +39,7 @@ export function SidebarTags(): ReactElement | null {
   }
 
   return (
-    <SidebarDisclosure storageKey="tags" title="Tags" label="Tags">
+    <SidebarSortableSection id="tags" title="Tags" label="Tags">
       <ul className="mt-2 flex flex-col space-y-1">
         {tags.map((facet) => {
           const active = activeTagKey !== null && foldTag(facet.tag) === activeTagKey
@@ -83,6 +83,6 @@ export function SidebarTags(): ReactElement | null {
       {configuring !== null ? (
         <TagConfigDialog tag={configuring} onClose={() => setConfiguring(null)} />
       ) : null}
-    </SidebarDisclosure>
+    </SidebarSortableSection>
   )
 }

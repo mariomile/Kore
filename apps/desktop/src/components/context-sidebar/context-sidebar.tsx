@@ -10,7 +10,7 @@ import {
   type Icon,
 } from '@/components/icons'
 import { ChatScreen } from '@/components/chat/chat-screen'
-import { SidebarIconSlot } from '@/components/sidebar/sidebar-icon-slot'
+import { tabCloseClass, tabPillClass } from '@/components/tab-pill'
 import {
   DropdownMenu,
   DropdownMenuItem,
@@ -209,7 +209,9 @@ export function ContextSidebar({ target }: ContextSidebarProps): ReactElement {
           <div
             role="tablist"
             aria-label="Context panels"
-            className="flex min-w-0 items-center gap-1"
+            // Scrolls rather than clipping once the pills can give up no more
+            // width — the same overflow the content strip's tab row has.
+            className="flex min-w-0 items-center gap-1 overflow-x-auto"
           >
             {segments.map((spec) => (
               <PanelTab
@@ -256,9 +258,10 @@ interface PanelTabProps {
 }
 
 /**
- * One tab on the switcher band: the panel's glyph, plus the close badge that
- * takes it back off the band. The badge is noise on every tile at once, so it
- * belongs to the tab you are pointing at or the one already on screen — and
+ * One tab on the switcher band — the same pill the content column's strip
+ * draws (`tabPillClass`), carrying the panel's glyph, its name, and the close
+ * that takes it back off the band. The close is noise on every tab at once, so
+ * it belongs to the tab you are pointing at or the one already on screen — and
  * middle-click closes without aiming at it, as it does on the content strip.
  */
 function PanelTab({
@@ -269,10 +272,11 @@ function PanelTab({
 }: PanelTabProps): ReactElement {
   return (
     <div
-      // Presentational so the tablist still sees tabs, not wrappers: the box
-      // exists to hang the close badge off the tab's corner.
+      // Presentational so the tablist still sees tabs, not wrappers: the pill
+      // is the box the label and the close share, and its own name would
+      // otherwise swallow both.
       role="presentation"
-      className="group relative flex shrink items-center"
+      className={cn(tabPillClass(active), 'group cursor-default', onClose && 'pr-1')}
       onAuxClick={(event) => {
         if (onClose && event.button === 1) {
           event.preventDefault()
@@ -284,21 +288,16 @@ function PanelTab({
         type="button"
         role="tab"
         aria-selected={active}
-        aria-label={label}
         title={label}
         onClick={() => {
           onSelect(id)
         }}
-        className={cn(
-          // The tabs have to fit the rail's 240px minimum, so they give up
-          // width before the row overflows.
-          'flex size-8 shrink items-center justify-center rounded-lg transition-colors duration-150 ease-swift',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
-        )}
+        // The tabs have to fit the rail's 240px minimum, so the label gives up
+        // width before the row overflows.
+        className="flex min-w-0 flex-1 items-center gap-1.5 rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
       >
-        <SidebarIconSlot>
-          <Glyph className="size-[17px]" />
-        </SidebarIconSlot>
+        <Glyph aria-hidden className="size-3 shrink-0" />
+        <span className="truncate">{label}</span>
       </button>
       {onClose ? (
         <button
@@ -308,14 +307,9 @@ function PanelTab({
           onClick={() => {
             onClose(id)
           }}
-          className={cn(
-            'absolute -right-0.5 -top-0.5 z-10 flex size-3.5 items-center justify-center rounded-full',
-            'bg-surface-active text-text-muted ring-1 ring-border transition-opacity duration-150 ease-swift',
-            'hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
-            active ? '' : 'opacity-0 focus-visible:opacity-100 group-hover:opacity-100',
-          )}
+          className={tabCloseClass(active)}
         >
-          <Close aria-hidden className="size-2.5" />
+          <Close aria-hidden className="size-3" />
         </button>
       ) : null}
     </div>
@@ -340,16 +334,12 @@ function ContextPanelsPlusMenu({ onOpen }: ContextPanelsPlusMenuProps): ReactEle
             type="button"
             aria-label="Open a panel"
             title="Open a panel"
-            className={cn(
-              // The "+" never gives up its width: it is the only way back to
-              // the panels the band is not carrying.
-              'flex size-8 shrink-0 items-center justify-center rounded-lg transition-colors duration-150 ease-swift',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
-            )}
+            // The same quiet round button the content strip's "+" is, and it
+            // never gives up its width: it is the only way back to the panels
+            // the band is not carrying.
+            className="flex size-6 shrink-0 items-center justify-center rounded-md text-text-muted transition-[color,background-color,transform] duration-150 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-surface-hover hover:text-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring active:scale-[0.97]"
           >
-            <SidebarIconSlot>
-              <Plus className="size-[17px]" />
-            </SidebarIconSlot>
+            <Plus aria-hidden className="size-3.5" />
           </button>
         }
       />

@@ -152,3 +152,36 @@ export const sidebarWidthSchema = sidebarWidthValueSchema(SIDEBAR_WIDTH_RANGE)
  * independent of it because the two panels carry different content densities.
  */
 export const contextSidebarWidthSchema = sidebarWidthValueSchema(CONTEXT_SIDEBAR_WIDTH_RANGE)
+
+/**
+ * The workspace sidebar's reorderable shelves, in the order they stack under
+ * the fixed navigation. A closed set of ids — the sections themselves live in
+ * the app; this key only records the arrangement the user dragged them into.
+ */
+const sidebarSectionEnum = z.enum(['open', 'pinned', 'tags'])
+
+export type SidebarSection = z.infer<typeof sidebarSectionEnum>
+
+/** Every shelf id, in the order a fresh install stacks them. */
+export const SIDEBAR_SECTION_IDS: readonly SidebarSection[] = sidebarSectionEnum.options
+
+/**
+ * The stored shelf order, normalized to a complete list: unknown or duplicate
+ * entries are dropped and any shelf the document does not mention is appended
+ * in {@link SIDEBAR_SECTION_IDS} order. That makes the parsed value directly
+ * renderable — the sidebar never has to reconcile it — and means a shelf added
+ * in a later version simply joins the end of an existing user's arrangement.
+ */
+export const sidebarSectionsSchema = z
+  .array(z.unknown())
+  .catch([])
+  .transform((entries) => {
+    const ordered: SidebarSection[] = []
+    for (const entry of entries) {
+      const parsed = sidebarSectionEnum.safeParse(entry)
+      if (parsed.success && !ordered.includes(parsed.data)) {
+        ordered.push(parsed.data)
+      }
+    }
+    return [...ordered, ...SIDEBAR_SECTION_IDS.filter((id) => !ordered.includes(id))]
+  })

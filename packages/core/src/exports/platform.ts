@@ -291,6 +291,8 @@ export {
   type EditorFontFamily,
   type EditorLineSpacing,
   type SidebarWidthRange,
+  type SidebarSection,
+  SIDEBAR_SECTION_IDS,
   type TranscriptionModels,
   type ThemePreference,
   type AccentColor,

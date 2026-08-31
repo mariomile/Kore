@@ -102,6 +102,31 @@ export async function suggestWikiLinkTargets(
 }
 
 /**
+ * {@link suggestWikiLinkTargets} narrowed to one collection: only notes
+ * carrying `tagKey` (a folded tag) are candidates, so a typed `relation`
+ * offers its target collection's rows and nothing else. Same verification
+ * contract — every offered target is proven to resolve. No date generation:
+ * a fuzzy date is a navigation affordance, not a row of the collection.
+ */
+export async function suggestRelationTargets(
+  query: string,
+  tagKey: string,
+  limit = 8,
+): Promise<WikiLinkSuggestionResult> {
+  if (limit <= 0) {
+    return { suggestions: [], claimedTargetKeys: [], queryReadsAsDate: false }
+  }
+  const result = await queryWikiTargetCandidates(query, undefined, tagKey)
+  return await verifyWikiSuggestionAddresses(
+    result.candidates,
+    result.candidateTargetKeys,
+    limit,
+    normalizeWikiTarget(query).key,
+    result.queryReadsAsDate,
+  )
+}
+
+/**
  * Return a verified wiki-link suggestion for one indexed note path. This is
  * the path-first counterpart to text search: it uses the same canonical title,
  * `note_keys` winner checks, rich-title address, and alias rescue.
@@ -127,9 +152,14 @@ export async function getWikiAddressForPath(path: string): Promise<WikiLinkSugge
 async function queryWikiTargetCandidates(
   query: string,
   dateGen?: DateSuggestionContext,
+  memberOfTagKey?: string,
 ): Promise<WikiTargetCandidateResult> {
   const normalized = normalizeWikiTarget(query)
   const key = normalized.key
+  const memberPaths =
+    memberOfTagKey === undefined
+      ? undefined
+      : db.selectFrom('tags').where('tagKey', '=', memberOfTagKey).select('notePath')
 
   let titleQuery = db
     .selectFrom('notes')
@@ -137,6 +167,9 @@ async function queryWikiTargetCandidates(
     .select(['path', 'title', 'titleKey', 'dailyDate', 'mtime'])
     .orderBy('mtime', 'desc')
     .limit(50)
+  if (memberPaths !== undefined) {
+    titleQuery = titleQuery.where('path', 'in', memberPaths)
+  }
   if (key !== '') {
     titleQuery = titleQuery.where(sql<boolean>`title_key LIKE ${likeContains(key)} ESCAPE '\\'`)
   }
@@ -144,7 +177,7 @@ async function queryWikiTargetCandidates(
 
   let aliases: AliasCandidate[] = []
   if (key !== '') {
-    aliases = await db
+    let aliasQuery = db
       .selectFrom('aliases')
       .innerJoin('notes', 'notes.path', 'aliases.notePath')
       .where('notes.kind', '!=', 'template')
@@ -160,7 +193,10 @@ async function queryWikiTargetCandidates(
       ])
       .orderBy('notes.mtime', 'desc')
       .limit(50)
-      .execute()
+    if (memberPaths !== undefined) {
+      aliasQuery = aliasQuery.where('notes.path', 'in', memberPaths)
+    }
+    aliases = await aliasQuery.execute()
   }
 
   // Rank the full bounded candidate set before address verification. Filtering

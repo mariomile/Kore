@@ -84,6 +84,67 @@ describe('parseTagTypeFrontmatter', () => {
   })
 })
 
+describe('typed relation targets', () => {
+  it('round-trips a relation target through frontmatter and the codec', () => {
+    const parsed = parseTagTypeFrontmatter(
+      frontmatter({
+        lore: 'tag',
+        properties: [
+          { name: 'Company', key: 'company', type: 'relation', target: 'company' },
+          { name: 'Authors', key: 'authors', type: 'relations', target: 'person' },
+        ],
+      }),
+    )
+    expect(parsed?.properties).toEqual([
+      { name: 'Company', key: 'company', type: 'relation', target: 'company' },
+      { name: 'Authors', key: 'authors', type: 'relations', target: 'person' },
+    ])
+    const type: TagType = { properties: parsed?.properties ?? [] }
+    expect(decodeTagTypeJson(encodeTagTypeJson(type))).toEqual(type)
+  })
+
+  it('round-trips a reverse relation config', () => {
+    const parsed = parseTagTypeFrontmatter(
+      frontmatter({
+        lore: 'tag',
+        properties: [
+          {
+            name: 'People',
+            key: 'people',
+            type: 'reverse',
+            reverse: { tag: 'person', property: 'company' },
+          },
+        ],
+      }),
+    )
+    expect(parsed?.properties).toEqual([
+      {
+        name: 'People',
+        key: 'people',
+        type: 'reverse',
+        reverse: { tag: 'person', property: 'company' },
+      },
+    ])
+    const type: TagType = { properties: parsed?.properties ?? [] }
+    expect(decodeTagTypeJson(encodeTagTypeJson(type))).toEqual(type)
+  })
+
+  it('tolerates a targetless relation and an empty target', () => {
+    const parsed = parseTagTypeFrontmatter(
+      frontmatter({
+        lore: 'tag',
+        properties: [
+          { name: 'Series', key: 'series', type: 'relation' },
+          { name: 'Broken', key: 'broken', type: 'relation', target: '' },
+        ],
+      }),
+    )
+    // The empty target fails the per-entry parse (min length 1), and per the
+    // tolerant contract the malformed entry is dropped, never the schema.
+    expect(parsed?.properties).toEqual([{ name: 'Series', key: 'series', type: 'relation' }])
+  })
+})
+
 describe('schema_json codec', () => {
   it('round-trips a schema', () => {
     const type: TagType = {

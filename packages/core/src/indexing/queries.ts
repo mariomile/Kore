@@ -23,6 +23,7 @@ export {
 export {
   getWikiAddressForPath,
   suggestTags,
+  suggestRelationTargets,
   suggestWikiLinkTargets,
   suggestWikiTargets,
   type TagSuggestion,

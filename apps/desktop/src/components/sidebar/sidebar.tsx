@@ -15,11 +15,9 @@ import { GraphFooter } from './graph-footer'
 import { SidebarChatSection } from './sidebar-chat-section'
 import { SidebarItem } from './sidebar-item'
 import { SidebarMeetingsSection } from './sidebar-meetings-section'
-import { SidebarOpenTabs } from './sidebar-open-notes'
-import { SidebarPinned } from './sidebar-pinned'
 import { SidebarSearch } from './sidebar-search'
+import { SidebarSections } from './sidebar-sections'
 import { SidebarSurfaceSwitcher } from './sidebar-surface-switcher'
-import { SidebarTags } from './sidebar-tags'
 import { readSidebarSurface, storeSidebarSurface, type SidebarSurface } from './sidebar-surface'
 
 interface SidebarProps {
@@ -33,12 +31,13 @@ interface SidebarProps {
  * Chat/Meetings icon toggles, and the ever-present search + audio-memo
  * icons) and the graph-switcher footer are fixtures; between them the rail
  * is one of three surfaces — Home (the classic navigation plus the
- * Open/Pinned/Tags shelves), Chat (the AI conversation list), and Meetings
- * (the coming week's calendar events). Picking Chat also opens the chat
- * screen, since its rail is only useful beside the conversation. Most
- * nav rows run registered commands so a binding and its behavior stay one
- * definition; the Daily notes row is a capture gesture like `Mod-D` — it asks
- * the stream to focus today with the caret at the end, ready to append.
+ * Open/Pinned/Tags shelves, which the user can drag into any order), Chat
+ * (the AI conversation list), and Meetings (the coming week's calendar
+ * events). Picking Chat also opens the chat screen, since its rail is only
+ * useful beside the conversation. Most nav rows run registered commands so a
+ * binding and its behavior stay one definition; the Daily notes row is a
+ * capture gesture like `Mod-D` — it asks the stream to focus today with the
+ * caret at the end, ready to append.
  * (Sidebar collapse stays on `Mod-\` via the command registry.)
  */
 export function Sidebar({ graph, context }: SidebarProps): ReactElement {
@@ -165,9 +164,7 @@ export function Sidebar({ graph, context }: SidebarProps): ReactElement {
             )}
           </nav>
           <div className="mt-1 min-h-0 flex-1 overflow-y-auto pb-2">
-            <SidebarOpenTabs />
-            <SidebarPinned />
-            <SidebarTags />
+            <SidebarSections />
           </div>
         </>
       )}

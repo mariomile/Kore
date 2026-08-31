@@ -817,6 +817,93 @@ html:root {
   cursor: zoom-in;
 }
 
+/* Link preview cards (LinkPreviewCards): a line holding nothing but a pasted
+   URL reads as a card instead of a naked link. meowdown has no card node and
+   the file keeps a plain markdown link — the host stamps the scraped copy onto
+   the anchor, and everything below is drawn from those attributes: `::before`
+   is the title, `::after` the site and description, and the anchor's own text
+   (the URL itself, still selectable and editable) is the footer line. Both
+   pseudo-elements sort ahead of that anonymous text item, which flexbox pins
+   at order 0. The anchor therefore carries the URL line's own quiet type, and
+   the pseudo-elements scale back up from it. */
+.reflect-editor a.md-link[data-link-card] {
+  --link-card-thumb: 8.5rem;
+  /* Sunken against the editor canvas, so the card reads as an object on the
+     page rather than a bordered hole in it. */
+  --link-card-surface: var(--surface-sunken);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.3em;
+  box-sizing: border-box;
+  min-height: 5rem;
+  margin: 0.4em 0;
+  padding: 0.75em 0.9em;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg, 8px);
+  background-color: var(--link-card-surface);
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 0.75em;
+  line-height: 1.45;
+  white-space: nowrap;
+  text-decoration: none;
+  transition:
+    background-color 120ms var(--ease-swift, ease),
+    border-color 120ms var(--ease-swift, ease);
+}
+.reflect-editor a.md-link[data-link-card]:hover {
+  --link-card-surface: var(--surface-active);
+  border-color: var(--border-strong);
+}
+.reflect-editor a.md-link[data-link-card]::before,
+.reflect-editor a.md-link[data-link-card]::after {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: normal;
+  font-size: 1.2em;
+  line-height: 1.35;
+}
+.reflect-editor a.md-link[data-link-card]::before {
+  content: attr(data-link-card-title);
+  order: -1;
+  -webkit-line-clamp: 2;
+  color: var(--text);
+  font-weight: 600;
+}
+.reflect-editor a.md-link[data-link-card]::after {
+  content: attr(data-link-card-site) ' · ' attr(data-link-card-description);
+  order: -1;
+  -webkit-line-clamp: 2;
+  color: var(--text-secondary);
+}
+/* A page that says nothing but its name: the site alone, with no separator
+   left dangling after it. */
+.reflect-editor a.md-link[data-link-card][data-link-card-description='']::after {
+  content: attr(data-link-card-site);
+}
+/* The page's own image, held to a strip down the right edge. The gradient
+   layer paints over everything left of that strip, so a panoramic image can
+   never creep under the text. */
+.reflect-editor a.md-link[data-link-card='image'] {
+  padding-right: calc(var(--link-card-thumb) + 0.9em);
+  background-image:
+    linear-gradient(
+      to right,
+      var(--link-card-surface) calc(100% - var(--link-card-thumb)),
+      rgba(0, 0, 0, 0) calc(100% - var(--link-card-thumb))
+    ),
+    var(--link-card-image);
+  background-repeat: no-repeat, no-repeat;
+  background-position:
+    left center,
+    right center;
+  background-size:
+    100% 100%,
+    auto 100%;
+}
+
 /* Editor image lightbox: zoom the clicked image into the full-window preview
    and back via the View Transition API (an instant swap where unsupported).
    The root snapshot is suppressed so only the image animates. */

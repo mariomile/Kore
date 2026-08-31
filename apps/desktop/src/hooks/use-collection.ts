@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import {
+  attachReverseRelations,
   attachRollups,
   foldTag,
   getTagType,
@@ -45,7 +46,9 @@ export function useCollection(
       if (type === null) {
         return rows
       }
-      return await attachRollups(rows, type)
+      // Derived cells in reading order: rollups first, then the reverse
+      // columns — both view-only, neither ever written to frontmatter.
+      return await attachReverseRelations(await attachRollups(rows, type), type)
     },
     enabled: bridgeReady && graph !== null && tag !== null,
   })

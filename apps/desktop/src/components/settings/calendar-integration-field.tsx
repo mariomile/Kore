@@ -145,7 +145,7 @@ export function CalendarIntegrationField(): ReactElement | null {
                 </Button>
               }
             />
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="w-[32rem]">
               <DialogHeader>
                 <DialogTitle>Choose calendars</DialogTitle>
                 <DialogDescription>

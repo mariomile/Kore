@@ -1,5 +1,7 @@
 import { useState, type ReactElement } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import {
+  listTagTypes,
   propertyKeyForName,
   rollupAggregationSchema,
   tagPropertyTypeSchema,
@@ -8,6 +10,7 @@ import {
 import {
   ArrowDown,
   ArrowUp,
+  ArrowUturnRight,
   Calendar,
   Chart,
   CheckCircle,
@@ -34,6 +37,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { useBridgeReady } from '@/hooks/use-bridge-ready'
+import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
+import { useGraph } from '@/providers/graph-provider'
 import { OptionsChipsEditor } from './options-chips-editor'
 import { FIELD_LABEL_CLASS, PROPERTY_TYPE_LABELS, type PropertyDraft } from './tag-config-drafts'
 
@@ -53,6 +59,7 @@ const PROPERTY_TYPE_ICONS: Record<TagPropertyType, Icon> = {
   email: Inbox,
   rating: Star,
   rollup: Chart,
+  reverse: ArrowUturnRight,
 }
 
 export interface TagPropertyRowProps {
@@ -88,7 +95,18 @@ export function TagPropertyRow({
   const [keyEditing, setKeyEditing] = useState(false)
   const hasOptions =
     draft.type === 'select' || draft.type === 'multiselect' || draft.type === 'status'
+  const isRelation = draft.type === 'relation' || draft.type === 'relations'
   const keyOpen = keyEditing || keyInvalid
+  // The typed tags a relation can point at — the same rows the sidebar's Tags
+  // section queries, so the cache is shared. Only fetched while the row needs
+  // the selector.
+  const { graph } = useGraph()
+  const bridgeReady = useBridgeReady()
+  const { data: tagTypes } = useQuery({
+    queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'tag-types'],
+    queryFn: () => listTagTypes(),
+    enabled: (isRelation || draft.type === 'reverse') && bridgeReady && graph !== null,
+  })
   return (
     <div className="flex flex-col gap-1.5 rounded-md border border-border p-2.5">
       <div className="flex items-center gap-1.5">
@@ -170,6 +188,95 @@ export function TagPropertyRow({
             value={draft.options}
             onChange={(options) => updateDraft(draft.rowId, { options })}
           />
+        </div>
+      ) : null}
+      {isRelation ? (
+        <label className="flex items-center gap-1.5">
+          <span className={FIELD_LABEL_CLASS}>Target</span>
+          <Select
+            value={draft.target === '' ? '__any' : draft.target}
+            items={{
+              __any: 'Any note',
+              ...Object.fromEntries(
+                (tagTypes ?? []).map((entry) => [entry.tagKey, `#${entry.tagKey}`]),
+              ),
+              ...(draft.target === '' ? {} : { [draft.target]: `#${draft.target}` }),
+            }}
+            onValueChange={(next) => {
+              if (typeof next === 'string') {
+                updateDraft(draft.rowId, { target: next === '__any' ? '' : next })
+              }
+            }}
+          >
+            <SelectTrigger className="w-44" aria-label="Relation target">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__any">Any note</SelectItem>
+              {(tagTypes ?? [])
+                .map((entry) => entry.tagKey)
+                .map((tagKey) => (
+                  <SelectItem key={tagKey} value={tagKey}>
+                    #{tagKey}
+                  </SelectItem>
+                ))}
+              {/* A stored target whose tag lost its type still shows, so
+                  opening the dialog cannot silently drop it. */}
+              {draft.target !== '' &&
+              !(tagTypes ?? []).some((entry) => entry.tagKey === draft.target) ? (
+                <SelectItem value={draft.target}>#{draft.target}</SelectItem>
+              ) : null}
+            </SelectContent>
+          </Select>
+        </label>
+      ) : null}
+      {draft.type === 'reverse' ? (
+        <div className="flex items-center gap-1.5">
+          <label className="flex flex-1 items-center gap-1.5">
+            <span className={FIELD_LABEL_CLASS}>Of</span>
+            <Select
+              value={draft.reverseTag === '' ? '__none' : draft.reverseTag}
+              items={{
+                __none: 'Pick a collection',
+                ...Object.fromEntries(
+                  (tagTypes ?? []).map((entry) => [entry.tagKey, `#${entry.tagKey}`]),
+                ),
+                ...(draft.reverseTag === '' ? {} : { [draft.reverseTag]: `#${draft.reverseTag}` }),
+              }}
+              onValueChange={(next) => {
+                if (typeof next === 'string') {
+                  updateDraft(draft.rowId, { reverseTag: next === '__none' ? '' : next })
+                }
+              }}
+            >
+              <SelectTrigger className="flex-1" aria-label="Reverse collection">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(tagTypes ?? []).map((entry) => (
+                  <SelectItem key={entry.tagKey} value={entry.tagKey}>
+                    #{entry.tagKey}
+                  </SelectItem>
+                ))}
+                {draft.reverseTag !== '' &&
+                !(tagTypes ?? []).some((entry) => entry.tagKey === draft.reverseTag) ? (
+                  <SelectItem value={draft.reverseTag}>#{draft.reverseTag}</SelectItem>
+                ) : null}
+              </SelectContent>
+            </Select>
+          </label>
+          <label className="flex flex-1 items-center gap-1.5">
+            <span className={FIELD_LABEL_CLASS}>Via</span>
+            <Input
+              value={draft.reverseProperty}
+              aria-label="Reverse relation key"
+              placeholder="company"
+              className="flex-1 font-mono text-xs"
+              onChange={(event) =>
+                updateDraft(draft.rowId, { reverseProperty: event.target.value })
+              }
+            />
+          </label>
         </div>
       ) : null}
       {draft.type === 'rollup' ? (

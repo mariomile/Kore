@@ -155,9 +155,12 @@ export function TagConfigDialog({ tag, onClose }: TagConfigDialogProps): ReactEl
         originalKey: null,
         type: 'text',
         options: '',
+        target: '',
         rollupRelation: '',
         rollupProperty: '',
         rollupAggregation: 'count',
+        reverseTag: '',
+        reverseProperty: '',
       },
     ])
     setFocusRowId(nextRowId)
@@ -244,7 +247,7 @@ export function TagConfigDialog({ tag, onClose }: TagConfigDialogProps): ReactEl
         if (!isOpen) onClose()
       }}
     >
-      <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-xl overflow-y-auto">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] w-[min(48rem,92vw)] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Configure #{foldTag(tag)}</DialogTitle>
           <DialogDescription>

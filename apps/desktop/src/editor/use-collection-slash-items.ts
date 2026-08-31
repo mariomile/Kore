@@ -30,7 +30,9 @@ export function useCollectionSlashItems(
         keywords: ['collection', 'embed', 'database', entry.tagKey],
         onSelect: () => {
           const editor = getEditor()
-          editor?.insertMarkdown(`${formatCollectionEmbed({ tag: entry.tagKey, view: 'table' })}\n`)
+          editor?.insertMarkdown(
+            `${formatCollectionEmbed({ tag: entry.tagKey, view: 'table', sort: null, filters: [] })}\n`,
+          )
         },
       }))
     },

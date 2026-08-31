@@ -179,6 +179,17 @@ describe('Collection flow (fake bridge, no module mocks below the hooks)', () =>
     await view.unmount()
   })
 
+  it('has one table on a typed tag: a stored list renders the collection, unoffered', async () => {
+    // The global default is 'list' — on a typed tag that must land on the
+    // collection table, and the switcher must not offer a second table.
+    settingsState.allNotesView = 'list'
+    const view = await render(<Screen />)
+
+    await expect.element(view.getByRole('button', { name: 'Sort by Author' })).toBeInTheDocument()
+    expect(view.getByRole('button', { name: 'List view' }).query()).toBeNull()
+    await view.unmount()
+  })
+
   it('renders schema columns with stored values from the compiled SQL', async () => {
     const view = await render(<Screen />)
 

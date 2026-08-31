@@ -63,7 +63,7 @@ export function AssetViewerDialog({
         if (!isOpen) onClose()
       }}
     >
-      <DialogContent className="flex h-[85vh] w-[min(64rem,92vw)] max-w-none flex-col gap-3 p-4 sm:max-w-none">
+      <DialogContent className="flex h-[85vh] w-[min(64rem,92vw)] flex-col gap-3 p-4">
         <DialogHeader className="flex-none">
           <div className="flex items-center gap-3 pr-8">
             <DialogTitle className="min-w-0 truncate text-sm font-semibold">{fileName}</DialogTitle>

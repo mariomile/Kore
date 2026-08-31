@@ -377,7 +377,10 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
           >
             {(
               [
-                { mode: 'list', label: 'List view', Glyph: List, available: true },
+                // On a typed tag the collection table IS the page's table
+                // (see use-collection-view-settings), so the plain list view
+                // is not offered beside it.
+                { mode: 'list', label: 'List view', Glyph: List, available: !collectionAvailable },
                 { mode: 'grid', label: 'Grid view', Glyph: LayoutGrid, available: true },
                 {
                   mode: 'table',

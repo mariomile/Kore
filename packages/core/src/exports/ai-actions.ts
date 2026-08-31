@@ -363,6 +363,7 @@ export {
   type ReconcileCaptureEnrichmentOutcome,
 } from '../actions/capture'
 export { parsePageMeta, scrapePageMeta, type PageMeta } from '../actions/meta-scrape'
+export { parseLinkPreview, loadLinkPreview, type LinkPreview } from '../actions/link-preview'
 export { linkUnlinkedMention, type LinkMentionOutcome } from '../actions/link-mention'
 export {
   calendarAuthorizationStatus,

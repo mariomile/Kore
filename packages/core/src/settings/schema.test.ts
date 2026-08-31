@@ -14,6 +14,7 @@ describe('settingsSchema', () => {
       editorFontFamily: 'sans',
       editorLineSpacing: 'normal',
       sidebarWidth: 260,
+      sidebarSections: ['open', 'pinned', 'tags'],
       contextSidebarWidth: 320,
       semanticSearchEnabled: false,
       describeAssets: true,
@@ -344,6 +345,7 @@ describe('settingsSchema', () => {
       editorFontFamily: 'sans',
       editorLineSpacing: 'normal',
       sidebarWidth: 260,
+      sidebarSections: ['open', 'pinned', 'tags'],
       contextSidebarWidth: 320,
       semanticSearchEnabled: false,
       describeAssets: true,
@@ -605,6 +607,24 @@ describe('settingsSchema', () => {
       ],
     })
     expect('openNoteTabs' in parsed).toBe(false)
+  })
+
+  it('normalizes the sidebar shelf order to a complete list', () => {
+    // A reordered document keeps its arrangement.
+    expect(
+      settingsSchema.parse({ sidebarSections: ['tags', 'open', 'pinned'] }).sidebarSections,
+    ).toEqual(['tags', 'open', 'pinned'])
+    // Unknown and duplicate entries drop; unmentioned shelves join the end in
+    // their default order, so a shelf added later cannot go missing.
+    expect(
+      settingsSchema.parse({ sidebarSections: ['tags', 'tags', 'ghost'] }).sidebarSections,
+    ).toEqual(['tags', 'open', 'pinned'])
+    // A non-array value degrades to the whole default order.
+    expect(settingsSchema.parse({ sidebarSections: 'tags' }).sidebarSections).toEqual([
+      'open',
+      'pinned',
+      'tags',
+    ])
   })
 
   it('accepts note, chat, and route tabs while dropping a malformed graph list', () => {

@@ -79,6 +79,7 @@ export {
   getPinnedNotes,
   getWikiAddressForPath,
   suggestWikiTargets,
+  suggestRelationTargets,
   suggestWikiLinkTargets,
   suggestTags,
   getIndexedFileFacts,
@@ -198,7 +199,7 @@ export {
   type ListCollectionOptions,
   type CollectionValue,
 } from './collections'
-export { attachRollups, type RollupLookup } from './rollups'
+export { attachRollups, attachReverseRelations, type RollupLookup } from './rollups'
 export { parseSearchQuery, type ParsedSearchQuery, type SearchFilters } from './filter-query'
 export {
   searchNotes,

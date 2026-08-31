@@ -1,9 +1,9 @@
 # Kore working state
 
-**Updated:** 2026-08-31 at `7837981a` (Plan 28 slice 3 — chrome details —
-merged after the instant-note-opens fix; slice 4's app side — grouped
-context-rail sections + the soft selected-block field — in flight; the
-remaining meowdown-side handle work is recorded in Plan 28).
+**Updated:** 2026-08-31 at `f6c07bb`+ (Plan 29 opened — collections as
+databases; slice R1, typed relations, shipped on the sidebar-improvements
+branch together with the tag-page cleanup, link-preview cards, and the
+sidebar shelf work).
 **Rule:** Every session that moves the program updates this file before its
 summary: tick what became true and how it was verified, set the next step,
 refresh the date. What is done and what is next live here and only here. Why
@@ -13,6 +13,43 @@ direction in [Plan 25](plans/25-personal-os.md). The full shipped history stays
 in the [delivery log](delivery-log.md); this file tracks only the active work.
 
 ## Current focus
+
+**Collections as databases (user decision 2026-08-31, [Plan 29](plans/29-collections-database.md)).**
+Collections must behave like real databases — relating to one another, Notion
+databases / Tana supertags as the reference. Slice R1 (typed relations)
+shipped this session: a `relation`/`relations` property can declare a
+`target: <tag>`; its picker then offers only that collection's rows through
+`suggestRelationTargets` (the same verified `[[` addresses, scoped through the
+`tags` projection) plus a "Create in #target" entry that births a titled row
+carrying the tag and links it in one gesture (verified: schema round-trip +
+scoped-suggester flow tests, dialog save test, and a hand-driven dev-app run —
+typing #person/#book, pointing Company at a target, creating a row from the
+picker). The save path bug this found — `frontmatterPatchToYaml` spelling the
+schema block key-by-key and dropping the new field — is fixed and pinned by a
+serializer test. N1 followed in the same session: a note carrying a typed
+tag presents its fields above the body (`NotePropertiesHeader`, sharing the
+rail section's hook and field face — one write channel, three surfaces),
+skipped on daily notes; verified by component tests and a dev-app run
+editing a field in place. R2 and R3 landed next, same session: a `reverse`
+property type ("rows of #tag whose property links here") computed view-only
+by `attachReverseRelations` from the existing projections — absent when
+nothing links, so footers count honestly — with its Of/Via config in the
+schema dialog (verified: unit tests plus a dev-app run where #book grew a
+People column listing the #person rows whose `company` links each book);
+and rollups gained sum/average/min/max over numeric sources (unit-tested;
+the dialog's aggregation picker lists them from the schema enum). M1 was then decided by the
+user (2026-08-31): **the hashtag is the supertag** — writing `#tag`
+anywhere, a daily included, deliberately makes the note an instance, so
+membership stays as derived and no row/mention split is built. V1a shipped
+after it: the ` ```collection ` fence gained `sort:` and `filter:` lines
+(the filter menu's vocabulary, tolerant parse, serializer round-trip,
+applied through the same `applyCollectionFilters` as the tag page —
+verified by core round-trip tests, a widget component test, and a dev-app
+slash-insert). Still queued: V1b (table row grouping — its own slice), T1
+(created/updated, person, phone; formulas last, projection-only). The same
+session also landed the tag-page cleanup (breadcrumb title, one table per
+typed tag, delineated grid cards), pasted-link preview cards, readable
+scrolling tabs, and the dialog-width root fix.
 
 **Craft parity (user decision 2026-08-30, [Plan 28](plans/28-craft-parity.md)).**
 With Craft screenshots as the reference, the direction is set: Kore

@@ -17,9 +17,9 @@ import { formatDayLabel } from '@/lib/dates'
 import { useSettings } from '@/providers/settings-provider'
 import { routeForPath, routesEqual } from '@/routing/route'
 import { useRouter } from '@/routing/router'
-import { SidebarDisclosure } from './sidebar-disclosure'
 import { SidebarPinnedRowPreview } from './sidebar-pinned-row-preview'
 import { SidebarSortablePinnedRow } from './sidebar-sortable-pinned-row'
+import { SidebarSortableSection } from './sidebar-sortable-section'
 
 /**
  * The sidebar's Pinned section (the Mac app's "Pinned notes" shelf):
@@ -58,7 +58,7 @@ export function SidebarPinned(): ReactElement | null {
   }
 
   return (
-    <SidebarDisclosure storageKey="pinned" title="Pinned notes" label="Pinned notes">
+    <SidebarSortableSection id="pinned" title="Pinned notes" label="Pinned notes">
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
@@ -90,6 +90,6 @@ export function SidebarPinned(): ReactElement | null {
           )}
         </DragOverlay>
       </DndContext>
-    </SidebarDisclosure>
+    </SidebarSortableSection>
   )
 }

@@ -50,7 +50,11 @@ function DialogContent({
       <DialogPrimitive.Popup
         data-slot="dialog-content"
         className={cn(
-          'fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-popover p-4 text-sm text-popover-foreground shadow-pop ring-1 ring-foreground/10 duration-150 ease-swift outline-none sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95',
+          // The default width is a plain `w-*`, and the only cap is the
+          // viewport clamp: a `sm:max-w-sm` default sat in a variant that
+          // `cn` cannot merge away, so every caller's own width lost to it
+          // above 640px and each dialog rendered at the 24rem default.
+          'fixed top-1/2 left-1/2 z-50 grid w-96 max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-popover p-4 text-sm text-popover-foreground shadow-pop ring-1 ring-foreground/10 duration-150 ease-swift outline-none data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95',
           className,
         )}
         {...props}

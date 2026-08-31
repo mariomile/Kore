@@ -157,6 +157,28 @@ export function computeRollup(
       }
       return { text: unique.join(', '), number: unique.length }
     }
+    case 'sum':
+    case 'average':
+    case 'min':
+    case 'max': {
+      // Numeric aggregations read only sources that carry a number; a related
+      // note with text where a number belongs is skipped, never coerced.
+      const numbers = sources.flatMap((source) => (source.number === null ? [] : [source.number]))
+      if (numbers.length === 0) {
+        return { text: '', number: null }
+      }
+      const total = numbers.reduce((sum, value) => sum + value, 0)
+      const result =
+        aggregation === 'sum'
+          ? total
+          : aggregation === 'average'
+            ? total / numbers.length
+            : aggregation === 'min'
+              ? Math.min(...numbers)
+              : Math.max(...numbers)
+      const rounded = Number.isSafeInteger(result) ? result : Math.round(result * 100) / 100
+      return { text: String(rounded), number: rounded }
+    }
   }
 }
 

@@ -187,7 +187,7 @@ function AddMcpServerDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[28rem]">
+      <DialogContent className="w-[34rem]">
         <DialogHeader>
           <DialogTitle>Add MCP server</DialogTitle>
         </DialogHeader>

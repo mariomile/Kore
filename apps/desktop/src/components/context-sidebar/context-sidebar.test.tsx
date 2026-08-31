@@ -152,11 +152,16 @@ describe('ContextSidebar', () => {
     await view.unmount()
   })
 
-  it('panel switcher icons sit in liquid-glass tiles', async () => {
+  it('draws its panels as ordinary tabs — named, not icon-only tiles', async () => {
     const view = await render(<ContextSidebar target={null} />)
     const details = view.getByRole('tab', { name: 'Details' })
-    expect(details.element().querySelector('.sidebar-icon-slot')).not.toBeNull()
     await expect.element(details).toHaveAttribute('aria-selected', 'true')
+    // The panel's name is on the tab itself, the same pill the workspace
+    // strip draws, rather than hidden behind an icon.
+    await expect.element(details.getByText('Details')).toBeVisible()
+
+    await openPanel(view, 'Chat')
+    await expect.element(view.getByRole('tab', { name: 'Chat' }).getByText('Chat')).toBeVisible()
     await view.unmount()
   })
 

@@ -16,11 +16,13 @@ export {
   relationTarget,
   rollupAggregationSchema,
   rollupConfigSchema,
+  reverseConfigSchema,
   type TagProperty,
   type TagPropertyType,
   type TagType,
   type RollupAggregation,
   type RollupConfig,
+  type ReverseConfig,
 } from './tag-type'
 export {
   isEmailValue,

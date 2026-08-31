@@ -15,6 +15,7 @@ import { NoteTabsListMenu } from '@/components/note-tabs-list-menu'
 import { NoteTabsPlusMenu } from '@/components/note-tabs-plus-menu'
 import { OpenTabIcon } from '@/components/open-tab-icon'
 import { NavigateArrows } from '@/components/sidebar/navigate-arrows'
+import { tabCloseClass, tabPillClass, useTabScrollIntoView } from '@/components/tab-pill'
 import { useOpenTabItems, type OpenTabItem } from '@/hooks/use-open-tab-items'
 import type { CommandContext } from '@/lib/commands/types'
 import { cn } from '@/lib/utils'
@@ -149,18 +150,6 @@ function PanelToggle({ side, collapsed, onToggle, label }: PanelToggleProps): Re
   )
 }
 
-function pillClass(active: boolean): string {
-  return cn(
-    'flex h-7 min-w-0 max-w-[12rem] shrink items-center gap-1.5 rounded-lg px-3 text-xs font-medium',
-    'transition-all duration-150 ease-swift active:scale-[0.97]',
-    // The active tab is the raised white pill on the app-background band —
-    // the same recipe as the context rail's active segment.
-    active
-      ? 'border border-border bg-surface text-text shadow-sm'
-      : 'text-text-secondary hover:bg-surface-hover hover:text-text',
-  )
-}
-
 interface StripTabProps {
   item: OpenTabItem
   active: boolean
@@ -177,6 +166,13 @@ function StripTab({ item, active, onActivate, onClose, onTogglePin }: StripTabPr
   const { isDragging, listeners, setNodeRef, transform, transition } = useSortable({
     id: tabKey(tab),
   })
+  const scrollRef = useTabScrollIntoView(active)
+  // One element, two owners: dnd-kit measures the pill, and the strip scrolls
+  // the selected one back into view.
+  const setTabRef = (element: HTMLElement | null): void => {
+    setNodeRef(element)
+    scrollRef.current = element
+  }
   const sortableStyle: CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -190,7 +186,7 @@ function StripTab({ item, active, onActivate, onClose, onTogglePin }: StripTabPr
   if (tab.pinned) {
     return (
       <button
-        ref={setNodeRef}
+        ref={setTabRef}
         style={sortableStyle}
         type="button"
         role="tab"
@@ -205,8 +201,9 @@ function StripTab({ item, active, onActivate, onClose, onTogglePin }: StripTabPr
         }}
         onAuxClick={handleAuxClick}
         className={cn(
-          pillClass(active),
-          'shrink-0 px-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
+          tabPillClass(active),
+          // A pinned tab is its icon: no label, so no room to hold open for one.
+          'min-w-0 shrink-0 px-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
           isDragging && 'z-10 opacity-70',
         )}
         {...listeners}
@@ -221,13 +218,13 @@ function StripTab({ item, active, onActivate, onClose, onTogglePin }: StripTabPr
   }
   return (
     <div
-      ref={setNodeRef}
+      ref={setTabRef}
       style={sortableStyle}
       role="tab"
       aria-selected={active}
       onAuxClick={handleAuxClick}
       className={cn(
-        pillClass(active),
+        tabPillClass(active),
         'group cursor-default pr-1',
         isDragging && 'z-10 opacity-70',
       )}
@@ -252,11 +249,7 @@ function StripTab({ item, active, onActivate, onClose, onTogglePin }: StripTabPr
           event.stopPropagation()
           onClose(tab)
         }}
-        className={cn(
-          'flex size-4 shrink-0 items-center justify-center rounded text-text-muted transition-[color,background-color,opacity] duration-150 ease-swift hover:bg-surface-active hover:text-text',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
-          active ? '' : 'opacity-0 focus-visible:opacity-100 group-hover:opacity-100',
-        )}
+        className={tabCloseClass(active)}
       >
         <Close aria-hidden className="size-3" />
       </button>

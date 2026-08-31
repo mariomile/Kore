@@ -444,6 +444,11 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
       case 'quick_capture_show':
       case 'quick_capture_hide':
         return null
+      case 'capture_meta_fetch':
+        // The browser harness has no network. Answering with a canned page
+        // keeps link previews renderable in the dev preview — the same shape
+        // the real scrape parses.
+        return devPageHtml(String(args.url ?? ''))
 
       default:
         console.error(`[dev-bridge] unimplemented command "${command}"`, args)
@@ -461,6 +466,35 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
     listen: async () => () => {},
     listenPlugin: async () => {},
   }
+}
+
+/**
+ * A stand-in page for `capture_meta_fetch`: the meta tags a link preview reads,
+ * filled from the requested URL so every dev card is legibly about its link.
+ */
+function devPageHtml(url: string): string {
+  let host = 'example.com'
+  let path = ''
+  try {
+    const parsed = new URL(url)
+    host = parsed.hostname.replace(/^www\./, '')
+    path = parsed.pathname.replaceAll('/', ' ').trim()
+  } catch {
+    // A malformed URL never reaches the real primitive either; the defaults
+    // still produce a parsable page.
+  }
+  const title = path === '' ? host : `${path} — ${host}`
+  // A real http(s) image, since a preview only takes those: the harness's own
+  // origin serves one, so the dev card shows a thumbnail without a network.
+  const thumbnail = new URL('/vite.svg', window.location.origin).href
+  return [
+    '<!doctype html><html><head>',
+    `<title>${title}</title>`,
+    `<meta property="og:description" content="A seeded description for ${host}, so the dev preview shows the card exactly as the app draws it.">`,
+    `<meta property="og:site_name" content="${host}">`,
+    `<meta property="og:image" content="${thumbnail}">`,
+    '</head><body></body></html>',
+  ].join('')
 }
 
 /** Mirrors `MTIME_TRUST_AGE_MS` in core's hash.ts and Rust's scan.rs. */

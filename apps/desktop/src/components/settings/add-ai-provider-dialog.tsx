@@ -138,7 +138,7 @@ export function AddAiProviderDialog({ onAdd, onClose }: AddAiProviderDialogProps
         if (!isOpen) onClose()
       }}
     >
-      <DialogContent showCloseButton={false} className="max-w-md">
+      <DialogContent showCloseButton={false} className="w-[32rem]">
         <DialogHeader>
           <DialogTitle>Add AI provider</DialogTitle>
           <DialogDescription>

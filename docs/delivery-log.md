@@ -7,6 +7,18 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- The context rail and the selected block go quiet (Plan 28 slice 4, app
+  side). Every context-sidebar section body — note actions, properties,
+  tasks, outline, history, similar notes, day events, published URL —
+  becomes Craft's grouped rows: a soft raised container on the rail's
+  sunken ground, the quiet label above it, rows keeping their hover wash
+  inside; one edit in the shared `SidebarSection` reaches all eight. In
+  the editor, the selected block reads as a soft tinted field: the
+  `--meowdown-node-outline` seam moves to a 45%-translucent accent so the
+  wash carries the state. The per-block ellipsis beside the drag grip is
+  meowdown-repo work (hashed classes, deliberately not a seam) and is
+  recorded as queued there in Plan 28.
+
 - Chrome details land the Craft register's third slice (Plan 28 slice 3).
   Header icon buttons converge on one `.app-icon-button` recipe — a 28px
   circle whose hover is a soft wash appearing — across All Notes' action

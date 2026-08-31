@@ -297,8 +297,11 @@ html:root {
   --meowdown-table-border: var(--border);
   --meowdown-table-header-bg: var(--surface-sunken, rgb(0 0 0 / 5%));
   --meowdown-font-mono: var(--font-mono, monospace);
-  /* Selection: meowdown defaults warm; Reflect keeps its blue-violet accent. */
-  --meowdown-node-outline: var(--accent);
+  /* Selection: meowdown defaults warm; Reflect keeps its blue-violet accent.
+     The node outline is deliberately translucent (Plan 28 slice 4): a
+     selected block reads as Craft's soft tinted field, not a hard ring —
+     the wash carries the state, the faint ring only sharpens its edge. */
+  --meowdown-node-outline: color-mix(in srgb, var(--accent) 45%, transparent);
   --meowdown-node-selection: var(--accent-soft, rgb(99 102 241 / 12%));
   --meowdown-selection: var(--accent-soft, rgb(99 102 241 / 12%));
   /* Floating menus (top layer): background is Reflect's surface; the highlighted

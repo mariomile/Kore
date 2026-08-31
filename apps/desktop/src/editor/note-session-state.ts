@@ -196,6 +196,8 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
     header = doc.header
     buffer = doc.body
     disk = content
+    status = 'ready'
+    error = null
     dirty = false
     missing = false // external content means the file exists on disk now
     // Re-gate: the content may have introduced (or removed) syntax the editor

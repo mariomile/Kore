@@ -51,6 +51,8 @@ import { useGraph } from '@/providers/graph-provider'
 import { useNoteSearchQuery, useNoteSearchReport } from '@/providers/note-find-provider'
 import { useSettings } from '@/providers/settings-provider'
 
+const KORE_LOADING_ICON = new URL('../../src-tauri/icons/64x64.png', import.meta.url).href
+
 interface NotePaneProps {
   /** Graph-relative path of the note to edit. */
   path: string
@@ -289,19 +291,22 @@ export function NotePaneComponent({
   }, [dailyDate, onExitBoundary])
 
   if (document.status === 'loading') {
-    // `reflect-note-loading` keeps the hint invisible for the first beat:
-    // local reads resolve in milliseconds, and the text flashing on every
-    // daily-stream row reads as flicker while the stream anchors.
+    // Keep fast local reads invisible; a genuinely slow read gets one quiet,
+    // branded progress mark without collapsing the editor's reserved space.
     return (
       <div
+        role="status"
+        aria-label="Opening note"
         className={cn(
-          'reflect-note-loading px-1 py-2 text-sm text-text-muted',
+          'reflect-note-loading flex items-center justify-center px-1 py-2',
           gutterClassName,
           editorClassName,
           className,
         )}
       >
-        Loading note…
+        <span aria-hidden className="reflect-note-loading-mark">
+          <img src={KORE_LOADING_ICON} alt="" className="size-8" />
+        </span>
       </div>
     )
   }

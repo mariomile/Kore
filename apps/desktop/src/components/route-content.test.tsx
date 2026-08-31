@@ -218,6 +218,30 @@ describe('RouteContent', () => {
     await view.unmount()
   })
 
+  it('shows the Kore progress mark only while a note is opening', async () => {
+    let resolveRead: ((content: string) => void) | undefined
+    const originalInvoke = mockInvoke.getMockImplementation()
+    mockInvoke.mockImplementation(async (command, args) => {
+      if (command === 'note_read') {
+        return await new Promise<string>((resolve) => {
+          resolveRead = resolve
+        })
+      }
+      return await originalInvoke?.(command, args)
+    })
+
+    const view = await renderRoute({ kind: 'note', path: 'notes/slow.md' })
+    const loading = page.getByRole('status', { name: 'Opening note' })
+    await expect.element(loading).toBeInTheDocument()
+    expect(loading.element().querySelector('.reflect-note-loading-mark img')).not.toBeNull()
+
+    resolveRead?.('# Ready\n')
+
+    await expect.element(page.getByTestId('fake-editor')).toHaveTextContent('# Ready')
+    await expect.element(loading).not.toBeInTheDocument()
+    await view.unmount()
+  })
+
   it('tracks an adopted nested note retitle while keeping its path', async () => {
     const path = 'Projects/exist.md'
     files[path] = '# Old Title\n'

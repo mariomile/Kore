@@ -32,6 +32,7 @@ export const tagPropertyTypeSchema = z.enum([
   'email',
   'rating',
   'rollup',
+  'reverse',
 ])
 export type TagPropertyType = z.infer<typeof tagPropertyTypeSchema>
 
@@ -72,7 +73,16 @@ export function relationTarget(value: string): string | null {
  * lives under in each note — shared across tags Obsidian-style, so two types
  * declaring `author` read and write the same value.
  */
-export const rollupAggregationSchema = z.enum(['count', 'empty', 'original', 'unique'])
+export const rollupAggregationSchema = z.enum([
+  'count',
+  'empty',
+  'original',
+  'unique',
+  'sum',
+  'average',
+  'min',
+  'max',
+])
 export type RollupAggregation = z.infer<typeof rollupAggregationSchema>
 
 /** View-only rollup: which relation to follow, which related property to read. */
@@ -82,6 +92,17 @@ export const rollupConfigSchema = z.object({
   aggregation: rollupAggregationSchema,
 })
 export type RollupConfig = z.infer<typeof rollupConfigSchema>
+
+/**
+ * View-only reverse relation: "rows of `tag` whose `property` links here" —
+ * Notion's two-way feel without writing both sides. Configured on the
+ * definition alone; computed from the index, never stored on member notes.
+ */
+export const reverseConfigSchema = z.object({
+  tag: z.string().min(1),
+  property: z.string().min(1),
+})
+export type ReverseConfig = z.infer<typeof reverseConfigSchema>
 
 export const tagPropertySchema = z.object({
   /** Display label ("Read on"). */
@@ -104,6 +125,8 @@ export const tagPropertySchema = z.object({
    * on member notes — markdown stays the source of truth (TDR 0005).
    */
   rollup: rollupConfigSchema.optional(),
+  /** View-only reverse-relation config ({@link reverseConfigSchema}). */
+  reverse: reverseConfigSchema.optional(),
 })
 export type TagProperty = z.infer<typeof tagPropertySchema>
 

@@ -49,12 +49,15 @@ CLI. What separates it from "a database" is relational and presentational:
   and links it in one gesture. The target scopes the picker, never the value:
   a stored link pointing elsewhere still displays and survives. Storage is
   unchanged — the value stays a wiki link, the target one schema key.
-- **R2 — Reverse relations (view-only).** A property type configured on the
-  definition alone: "rows of `#book` whose `author` links here", computed from
-  the existing `links`/`note_properties` projections — Notion's two-way feel
-  without writing both sides.
-- **R3 — Rollup sum/avg/min/max** over typed relations (extends the existing
-  rollup contract; already queued in STATE).
+- **R2 — Reverse relations (view-only)** *(shipped this wave)*. The `reverse`
+  property type, configured on the definition alone ("rows of `tag` whose
+  `property` links here", the dialog's Of/Via), computed by
+  `attachReverseRelations` from the collection + resolution the forward
+  direction already maintains — Notion's two-way feel without writing both
+  sides. Absent when nothing links, so footers count honestly.
+- **R3 — Rollup sum/avg/min/max** *(shipped this wave)*: numeric
+  aggregations over sources that carry a number (never coerced), rounded to
+  two decimals for display.
 - **M1 — Membership.** Decide the row/mention split (default the collection to
   non-daily notes carrying the tag, with mentions listed apart) — a semantic
   change, taken to the user before building. Line-level supertags à la Tana
@@ -65,4 +68,4 @@ CLI. What separates it from "a database" is relational and presentational:
 - **T1 — created/updated (from the index, read-only), person, phone;**
   formulas last, projection-only, per I15.
 
-Order: R1 → N1 → R2 → R3, then M1 once decided; V1/T1 opportunistic.
+Order: R1 → N1 → R2 → R3 (all shipped); M1 once decided; V1/T1 next.

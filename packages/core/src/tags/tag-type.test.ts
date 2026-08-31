@@ -103,6 +103,32 @@ describe('typed relation targets', () => {
     expect(decodeTagTypeJson(encodeTagTypeJson(type))).toEqual(type)
   })
 
+  it('round-trips a reverse relation config', () => {
+    const parsed = parseTagTypeFrontmatter(
+      frontmatter({
+        lore: 'tag',
+        properties: [
+          {
+            name: 'People',
+            key: 'people',
+            type: 'reverse',
+            reverse: { tag: 'person', property: 'company' },
+          },
+        ],
+      }),
+    )
+    expect(parsed?.properties).toEqual([
+      {
+        name: 'People',
+        key: 'people',
+        type: 'reverse',
+        reverse: { tag: 'person', property: 'company' },
+      },
+    ])
+    const type: TagType = { properties: parsed?.properties ?? [] }
+    expect(decodeTagTypeJson(encodeTagTypeJson(type))).toEqual(type)
+  })
+
   it('tolerates a targetless relation and an empty target', () => {
     const parsed = parseTagTypeFrontmatter(
       frontmatter({

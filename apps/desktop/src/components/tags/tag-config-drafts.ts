@@ -20,6 +20,9 @@ export interface PropertyDraft {
   rollupRelation: string
   rollupProperty: string
   rollupAggregation: RollupAggregation
+  /** A reverse relation's linking collection and its relation key. */
+  reverseTag: string
+  reverseProperty: string
 }
 
 /** A key rename awaiting the migrate-or-not decision, with its blast radius. */
@@ -44,6 +47,7 @@ export const PROPERTY_TYPE_LABELS: Record<TagPropertyType, string> = {
   email: 'Email',
   rating: 'Rating',
   rollup: 'Rollup',
+  reverse: 'Reverse relation',
 }
 
 export const FIELD_LABEL_CLASS = 'text-xs font-medium text-text-secondary'
@@ -60,6 +64,8 @@ export function draftsFromSchema(properties: readonly TagProperty[]): PropertyDr
     rollupRelation: property.rollup?.relation ?? '',
     rollupProperty: property.rollup?.property ?? '',
     rollupAggregation: property.rollup?.aggregation ?? 'count',
+    reverseTag: property.reverse?.tag ?? '',
+    reverseProperty: property.reverse?.property ?? '',
   }))
 }
 
@@ -80,6 +86,12 @@ export function schemaFromDrafts(drafts: readonly PropertyDraft[]): TagProperty[
       draft.type === 'select' || draft.type === 'multiselect' || draft.type === 'status'
     const hasTarget =
       (draft.type === 'relation' || draft.type === 'relations') && draft.target.trim() !== ''
+    const reverse =
+      draft.type === 'reverse' &&
+      draft.reverseTag.trim() !== '' &&
+      draft.reverseProperty.trim() !== ''
+        ? { tag: draft.reverseTag.trim(), property: draft.reverseProperty.trim() }
+        : undefined
     const rollup =
       draft.type === 'rollup' &&
       draft.rollupRelation.trim() !== '' &&
@@ -97,6 +109,7 @@ export function schemaFromDrafts(drafts: readonly PropertyDraft[]): TagProperty[
       ...(hasOptions && options.length > 0 ? { options } : {}),
       ...(hasTarget ? { target: draft.target.trim() } : {}),
       ...(rollup === undefined ? {} : { rollup }),
+      ...(reverse === undefined ? {} : { reverse }),
     }
   })
 }

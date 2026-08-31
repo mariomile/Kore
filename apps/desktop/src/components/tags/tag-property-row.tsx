@@ -10,6 +10,7 @@ import {
 import {
   ArrowDown,
   ArrowUp,
+  ArrowUturnRight,
   Calendar,
   Chart,
   CheckCircle,
@@ -58,6 +59,7 @@ const PROPERTY_TYPE_ICONS: Record<TagPropertyType, Icon> = {
   email: Inbox,
   rating: Star,
   rollup: Chart,
+  reverse: ArrowUturnRight,
 }
 
 export interface TagPropertyRowProps {
@@ -103,7 +105,7 @@ export function TagPropertyRow({
   const { data: tagTypes } = useQuery({
     queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'tag-types'],
     queryFn: () => listTagTypes(),
-    enabled: isRelation && bridgeReady && graph !== null,
+    enabled: (isRelation || draft.type === 'reverse') && bridgeReady && graph !== null,
   })
   return (
     <div className="flex flex-col gap-1.5 rounded-md border border-border p-2.5">
@@ -227,6 +229,55 @@ export function TagPropertyRow({
             </SelectContent>
           </Select>
         </label>
+      ) : null}
+      {draft.type === 'reverse' ? (
+        <div className="flex items-center gap-1.5">
+          <label className="flex flex-1 items-center gap-1.5">
+            <span className={FIELD_LABEL_CLASS}>Of</span>
+            <Select
+              value={draft.reverseTag === '' ? '__none' : draft.reverseTag}
+              items={{
+                __none: 'Pick a collection',
+                ...Object.fromEntries(
+                  (tagTypes ?? []).map((entry) => [entry.tagKey, `#${entry.tagKey}`]),
+                ),
+                ...(draft.reverseTag === '' ? {} : { [draft.reverseTag]: `#${draft.reverseTag}` }),
+              }}
+              onValueChange={(next) => {
+                if (typeof next === 'string') {
+                  updateDraft(draft.rowId, { reverseTag: next === '__none' ? '' : next })
+                }
+              }}
+            >
+              <SelectTrigger className="flex-1" aria-label="Reverse collection">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {(tagTypes ?? []).map((entry) => (
+                  <SelectItem key={entry.tagKey} value={entry.tagKey}>
+                    #{entry.tagKey}
+                  </SelectItem>
+                ))}
+                {draft.reverseTag !== '' &&
+                !(tagTypes ?? []).some((entry) => entry.tagKey === draft.reverseTag) ? (
+                  <SelectItem value={draft.reverseTag}>#{draft.reverseTag}</SelectItem>
+                ) : null}
+              </SelectContent>
+            </Select>
+          </label>
+          <label className="flex flex-1 items-center gap-1.5">
+            <span className={FIELD_LABEL_CLASS}>Via</span>
+            <Input
+              value={draft.reverseProperty}
+              aria-label="Reverse relation key"
+              placeholder="company"
+              className="flex-1 font-mono text-xs"
+              onChange={(event) =>
+                updateDraft(draft.rowId, { reverseProperty: event.target.value })
+              }
+            />
+          </label>
+        </div>
       ) : null}
       {draft.type === 'rollup' ? (
         <div className="flex flex-col gap-1.5">

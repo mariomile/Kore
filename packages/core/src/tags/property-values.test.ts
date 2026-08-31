@@ -65,3 +65,26 @@ describe('computeRollup', () => {
     expect(computeRollup('unique', sources)).toEqual({ text: '4, 2', number: 2 })
   })
 })
+
+describe('numeric rollup aggregations', () => {
+  const sources = [
+    { empty: false, text: '4', number: 4 },
+    { empty: false, text: 'n/a', number: null },
+    { empty: true, text: '', number: null },
+    { empty: false, text: '5', number: 5 },
+  ]
+
+  it('sums, averages, and bounds only the sources that carry a number', () => {
+    expect(computeRollup('sum', sources)).toEqual({ text: '9', number: 9 })
+    expect(computeRollup('average', sources)).toEqual({ text: '4.5', number: 4.5 })
+    expect(computeRollup('min', sources)).toEqual({ text: '4', number: 4 })
+    expect(computeRollup('max', sources)).toEqual({ text: '5', number: 5 })
+  })
+
+  it('stays blank with no numeric source at all', () => {
+    expect(computeRollup('sum', [{ empty: false, text: 'x', number: null }])).toEqual({
+      text: '',
+      number: null,
+    })
+  })
+})

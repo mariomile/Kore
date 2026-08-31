@@ -1,6 +1,17 @@
-import { computeRollup, extractRelationTargets, rollupSourceFromValue, type TagType } from '../tags'
+import {
+  computeRollup,
+  extractRelationTargets,
+  relationValue,
+  rollupSourceFromValue,
+  type TagType,
+} from '../tags'
 import { resolveWikiTarget } from './queries'
-import { getNoteProperties, type CollectionEntry, type CollectionValue } from './collections'
+import {
+  getNoteProperties,
+  listCollection,
+  type CollectionEntry,
+  type CollectionValue,
+} from './collections'
 
 export interface RollupLookup {
   resolveWikiTarget: typeof resolveWikiTarget
@@ -87,4 +98,98 @@ export async function attachRollups(
     next.push({ ...entry, properties })
   }
   return next
+}
+
+export interface ReverseLookup {
+  resolveWikiTarget: typeof resolveWikiTarget
+  listCollection: typeof listCollection
+}
+
+const defaultReverseLookup: ReverseLookup = {
+  resolveWikiTarget,
+  listCollection,
+}
+
+/**
+ * Attach view-only reverse-relation cells onto collection rows: for each
+ * `reverse` property ("rows of `tag` whose `property` links here"), the cell
+ * lists the linking rows as wiki links. Like rollups, never written — the
+ * synthetic list lives only on the in-memory row, computed from the same
+ * index projections the forward direction already maintains.
+ */
+export async function attachReverseRelations(
+  entries: readonly CollectionEntry[],
+  type: TagType,
+  lookup: ReverseLookup = defaultReverseLookup,
+): Promise<CollectionEntry[]> {
+  const reverses = type.properties.filter(
+    (property) => property.type === 'reverse' && property.reverse !== undefined,
+  )
+  if (reverses.length === 0 || entries.length === 0) {
+    return [...entries]
+  }
+
+  // One resolution per distinct target string across every linking row.
+  const resolved = new Map<string, Promise<string | null>>()
+  function pathFor(target: string): Promise<string | null> {
+    const cached = resolved.get(target)
+    if (cached !== undefined) {
+      return cached
+    }
+    const pending = lookup
+      .resolveWikiTarget(target)
+      .then((resolution) => (resolution.kind === 'resolved' ? resolution.ref : null))
+    resolved.set(target, pending)
+    return pending
+  }
+
+  // linksByPath: for each reverse property, this collection's paths → the
+  // titles of the other collection's rows whose configured property resolves
+  // here — insertion order follows the linking collection's own order.
+  const linksByProperty = new Map<string, Map<string, string[]>>()
+  for (const property of reverses) {
+    const config = property.reverse
+    if (config === undefined) {
+      continue
+    }
+    const linking = await lookup.listCollection(config.tag, null)
+    const byPath = new Map<string, string[]>()
+    await Promise.all(
+      linking.map(async (row) => {
+        const targets = extractRelationTargets(row.properties[config.property])
+        const paths = await Promise.all(targets.map(pathFor))
+        for (const path of paths) {
+          if (path !== null) {
+            const bucket = byPath.get(path)
+            if (bucket === undefined) {
+              byPath.set(path, [row.title])
+            } else if (!bucket.includes(row.title)) {
+              bucket.push(row.title)
+            }
+          }
+        }
+      }),
+    )
+    linksByProperty.set(property.key, byPath)
+  }
+
+  return entries.map((entry) => {
+    const properties = { ...entry.properties }
+    for (const property of reverses) {
+      const titles = linksByProperty.get(property.key)?.get(entry.path) ?? []
+      if (titles.length === 0) {
+        // Absent, not an empty list: the footer counts present keys as
+        // filled, and a hand-written frontmatter value under a reverse key
+        // must not show through as if the view computed it.
+        delete properties[property.key]
+      } else {
+        properties[property.key] = {
+          value: JSON.stringify(titles.map((title) => relationValue(title))),
+          valueType: 'list',
+          valueNumber: titles.length,
+        }
+      }
+    }
+    return { ...entry, properties }
+  })
 }

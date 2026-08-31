@@ -11,6 +11,12 @@ describe('frontmatterPatchToYaml', () => {
         tagSchema: [
           { name: 'Company', key: 'company', type: 'relation', target: 'company' },
           { name: 'Status', key: 'status', type: 'select', options: ['to-read'] },
+          {
+            name: 'People',
+            key: 'people',
+            type: 'reverse',
+            reverse: { tag: 'person', property: 'company' },
+          },
         ],
       }),
     ).toEqual({
@@ -18,6 +24,12 @@ describe('frontmatterPatchToYaml', () => {
       properties: [
         { name: 'Company', key: 'company', type: 'relation', target: 'company' },
         { name: 'Status', key: 'status', type: 'select', options: ['to-read'] },
+        {
+          name: 'People',
+          key: 'people',
+          type: 'reverse',
+          reverse: { tag: 'person', property: 'company' },
+        },
       ],
     })
   })

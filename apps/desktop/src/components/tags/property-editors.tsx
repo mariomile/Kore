@@ -27,6 +27,7 @@ export function PropertyValueEditor(props: PropertyEditorProps): ReactElement {
     case 'relations':
       return <MultiRelationPropertyEditor {...props} />
     case 'rollup':
+    case 'reverse':
       return <>{props.children}</>
     default:
       return <InputPropertyEditor {...props} />

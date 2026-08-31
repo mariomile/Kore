@@ -159,6 +159,8 @@ export function TagConfigDialog({ tag, onClose }: TagConfigDialogProps): ReactEl
         rollupRelation: '',
         rollupProperty: '',
         rollupAggregation: 'count',
+        reverseTag: '',
+        reverseProperty: '',
       },
     ])
     setFocusRowId(nextRowId)

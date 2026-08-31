@@ -26,9 +26,21 @@ scoped-suggester flow tests, dialog save test, and a hand-driven dev-app run —
 typing #person/#book, pointing Company at a target, creating a row from the
 picker). The save path bug this found — `frontmatterPatchToYaml` spelling the
 schema block key-by-key and dropping the new field — is fixed and pinned by a
-serializer test. Queued next, in order: N1 (properties above the note body),
-R2 (view-only reverse relations), R3 (rollup sum/avg/min/max), then M1
-(row-vs-mention membership — needs the user's call on semantics). The same
+serializer test. N1 followed in the same session: a note carrying a typed
+tag presents its fields above the body (`NotePropertiesHeader`, sharing the
+rail section's hook and field face — one write channel, three surfaces),
+skipped on daily notes; verified by component tests and a dev-app run
+editing a field in place. R2 and R3 landed next, same session: a `reverse`
+property type ("rows of #tag whose property links here") computed view-only
+by `attachReverseRelations` from the existing projections — absent when
+nothing links, so footers count honestly — with its Of/Via config in the
+schema dialog (verified: unit tests plus a dev-app run where #book grew a
+People column listing the #person rows whose `company` links each book);
+and rollups gained sum/average/min/max over numeric sources (unit-tested;
+the dialog's aggregation picker lists them from the schema enum). Still
+queued: M1 (row-vs-mention membership — needs the user's call on
+semantics), V1 (embed filter/sort keys, table grouping), T1
+(created/updated, person, phone; formulas last, projection-only). The same
 session also landed the tag-page cleanup (breadcrumb title, one table per
 typed tag, delineated grid cards), pasted-link preview cards, readable
 scrolling tabs, and the dialog-width root fix.

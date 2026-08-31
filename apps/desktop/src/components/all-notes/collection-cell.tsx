@@ -56,6 +56,7 @@ export function readCellValue(
       // one); a bare string still reads as a human reference, not an error.
       return { text: relationDisplay(raw) ?? raw, checked: false, mismatch: false }
     }
+    case 'reverse':
     case 'relations': {
       if (value.valueType === 'string') {
         // A single link under a multi-relation reads as a one-entry list.

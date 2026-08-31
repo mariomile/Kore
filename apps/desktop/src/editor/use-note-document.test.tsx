@@ -1084,6 +1084,29 @@ describe('useNoteDocument', () => {
     await vi.waitFor(() => expect(hook.result.current.status).toBe('error'))
   })
 
+  it('recovers when an iCloud note arrives after the initial read timed out', async () => {
+    let timedOut = false
+    mockInvoke.mockImplementation(async (command) => {
+      if (command === 'note_read') {
+        if (!timedOut) {
+          timedOut = true
+          throw { kind: 'io', message: 'Operation timed out (os error 60)' }
+        }
+        return '# Downloaded from iCloud\n'
+      }
+      return null
+    })
+
+    const hook = await renderHook(() => useNoteDocument('daily/2026-08-30.md', 1))
+    await vi.waitFor(() => expect(hook.result.current.status).toBe('error'))
+
+    await hook.act(() => emitChange?.([{ path: 'daily/2026-08-30.md', kind: 'upsert' }]))
+
+    await vi.waitFor(() => expect(hook.result.current.status).toBe('ready'))
+    expect(hook.result.current.error).toBeNull()
+    expect(hook.result.current.initialContent).toBe('# Downloaded from iCloud\n')
+  })
+
   it('a same-graph generation bump keeps unsaved edits and saves with the new generation', async () => {
     vi.useFakeTimers()
     try {

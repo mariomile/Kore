@@ -591,14 +591,35 @@ html:root {
 }
 
 /* NotePane's loading placeholder: hold the editor's reserved space silently,
-   revealing the hint text only when a load is genuinely slow. Local note
-   reads resolve in milliseconds, and "Loading note…" flashing on every
-   daily-stream row reads as flicker while the stream anchors. Opacity only,
-   so the placeholder must keep its layout size either way. */
+   revealing Kore only when a load is genuinely slow. Opacity only, so the
+   placeholder keeps its layout size while a fast local read completes. */
 .reflect-note-loading {
   opacity: 0;
-  animation: reflect-note-loading-reveal var(--duration-slow, 300ms) var(--ease-standard, ease)
-    400ms forwards;
+  animation: reflect-note-loading-reveal 160ms var(--ease-standard, ease) 180ms forwards;
+}
+
+/* A compositor-only reflection crosses the real Kore app icon. */
+.reflect-note-loading-mark {
+  position: relative;
+  display: inline-flex;
+  overflow: hidden;
+  border-radius: 22%;
+  box-shadow: var(--shadow-sm);
+}
+
+.reflect-note-loading-mark::after {
+  position: absolute;
+  inset: -35% -80%;
+  content: '';
+  background: linear-gradient(
+    105deg,
+    transparent 38%,
+    color-mix(in srgb, var(--text-on-inverse) 72%, transparent) 50%,
+    transparent 62%
+  );
+  transform: translate3d(-55%, 0, 0);
+  animation: reflect-note-logo-sheen 1.6s var(--ease-in-out, ease-in-out) infinite;
+  pointer-events: none;
 }
 
 /* The boot wordmark's sheen (AppBootScreen): a bright band travelling across
@@ -633,6 +654,12 @@ html:root {
 @keyframes reflect-note-loading-reveal {
   to {
     opacity: 1;
+  }
+}
+
+@keyframes reflect-note-logo-sheen {
+  to {
+    transform: translate3d(55%, 0, 0);
   }
 }
 

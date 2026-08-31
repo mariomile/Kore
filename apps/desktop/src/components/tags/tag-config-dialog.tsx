@@ -155,6 +155,7 @@ export function TagConfigDialog({ tag, onClose }: TagConfigDialogProps): ReactEl
         originalKey: null,
         type: 'text',
         options: '',
+        target: '',
         rollupRelation: '',
         rollupProperty: '',
         rollupAggregation: 'count',

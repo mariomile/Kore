@@ -15,6 +15,8 @@ export interface PropertyDraft {
   originalKey: string | null
   type: TagPropertyType
   options: string
+  /** A relation's target tag ('' = any note). */
+  target: string
   rollupRelation: string
   rollupProperty: string
   rollupAggregation: RollupAggregation
@@ -54,6 +56,7 @@ export function draftsFromSchema(properties: readonly TagProperty[]): PropertyDr
     originalKey: property.key,
     type: property.type,
     options: property.options?.join(', ') ?? '',
+    target: property.target ?? '',
     rollupRelation: property.rollup?.relation ?? '',
     rollupProperty: property.rollup?.property ?? '',
     rollupAggregation: property.rollup?.aggregation ?? 'count',
@@ -75,6 +78,8 @@ export function schemaFromDrafts(drafts: readonly PropertyDraft[]): TagProperty[
       .filter((option) => option !== '')
     const hasOptions =
       draft.type === 'select' || draft.type === 'multiselect' || draft.type === 'status'
+    const hasTarget =
+      (draft.type === 'relation' || draft.type === 'relations') && draft.target.trim() !== ''
     const rollup =
       draft.type === 'rollup' &&
       draft.rollupRelation.trim() !== '' &&
@@ -90,6 +95,7 @@ export function schemaFromDrafts(drafts: readonly PropertyDraft[]): TagProperty[
       key: draft.key,
       type: draft.type,
       ...(hasOptions && options.length > 0 ? { options } : {}),
+      ...(hasTarget ? { target: draft.target.trim() } : {}),
       ...(rollup === undefined ? {} : { rollup }),
     }
   })

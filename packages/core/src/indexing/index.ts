@@ -79,6 +79,7 @@ export {
   getPinnedNotes,
   getWikiAddressForPath,
   suggestWikiTargets,
+  suggestRelationTargets,
   suggestWikiLinkTargets,
   suggestTags,
   getIndexedFileFacts,

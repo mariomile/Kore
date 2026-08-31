@@ -92,6 +92,14 @@ export const tagPropertySchema = z.object({
   /** Choices for `select` / `multiselect` / `status`; ignored for other types. */
   options: z.array(z.string()).optional(),
   /**
+   * For `relation` / `relations`: the typed tag whose collection the picker
+   * offers (the tag name, no `#`; folded on use). Absent = any note. The
+   * target scopes the *picker*, never the value: a stored link pointing
+   * elsewhere still displays and survives, like every value the schema
+   * didn't write. Ignored for other types.
+   */
+  target: z.string().min(1).optional(),
+  /**
    * View-only rollup config. Stored on the tag definition, never as a value
    * on member notes — markdown stays the source of truth (TDR 0005).
    */

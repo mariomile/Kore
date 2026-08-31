@@ -9,7 +9,10 @@ import {
   CommandList,
 } from '@/components/ui/command'
 import { Popover, PopoverContent } from '@/components/ui/popover'
+import { useGraph } from '@/providers/graph-provider'
 import {
+  createRelationRow,
+  creatableRowTitle,
   EditorTrigger,
   useRelationSuggestions,
   type PropertyEditorProps,
@@ -21,6 +24,12 @@ import {
  * (`suggestWikiLinkTargets` — every offered target is proven to resolve),
  * and the committed value is the wiki link `[[insertText]]`, so the
  * reference reads the same inside and outside the app.
+ *
+ * A typed relation (the schema names a `target` tag) narrows the picker to
+ * that collection's rows and adds a "Create" entry that births a new row —
+ * a titled note carrying the tag — and links it in one gesture. The scope is
+ * the picker's, never the value's: a stored link pointing elsewhere still
+ * displays and survives.
  */
 export function RelationPropertyEditor({
   property,
@@ -32,12 +41,24 @@ export function RelationPropertyEditor({
 }: PropertyEditorProps): ReactElement {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
+  const { graph } = useGraph()
   const currentTarget = value === undefined ? null : relationTarget(value.value)
-  const suggestions = useRelationSuggestions(open, query)
+  const suggestions = useRelationSuggestions(open, query, property.target)
+  const newRowTitle = property.target === undefined ? null : creatableRowTitle(query)
+  const canCreate =
+    newRowTitle !== null &&
+    graph !== null &&
+    !suggestions.some((suggestion) => suggestion.title.toLowerCase() === newRowTitle.toLowerCase())
 
   const choose = (insertText: string): void => {
     onCommit(relationValue(insertText))
     setOpen(false)
+  }
+  const createAndChoose = async (): Promise<void> => {
+    if (property.target === undefined || newRowTitle === null || graph === null) {
+      return
+    }
+    choose(await createRelationRow(property.target, newRowTitle, graph.generation))
   }
   const clear = (): void => {
     onCommit(undefined)
@@ -61,7 +82,9 @@ export function RelationPropertyEditor({
           <CommandInput
             value={query}
             onValueChange={setQuery}
-            placeholder="Link to a note…"
+            placeholder={
+              property.target === undefined ? 'Link to a note…' : `Link a #${property.target} row…`
+            }
             autoFocus
           />
           <CommandList>
@@ -92,6 +115,13 @@ export function RelationPropertyEditor({
                   ) : null}
                 </CommandItem>
               ))}
+              {canCreate ? (
+                <CommandItem value="__create" onSelect={() => void createAndChoose()}>
+                  <span className="min-w-0 flex-1 truncate">
+                    Create “{newRowTitle}” in #{property.target}
+                  </span>
+                </CommandItem>
+              ) : null}
               {value !== undefined ? (
                 <CommandItem value="__clear" onSelect={clear}>
                   <span className="text-text-muted">Clear</span>

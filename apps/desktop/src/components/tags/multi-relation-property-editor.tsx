@@ -11,7 +11,10 @@ import {
 } from '@/components/ui/command'
 import { Popover, PopoverContent } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
+import { useGraph } from '@/providers/graph-provider'
 import {
+  createRelationRow,
+  creatableRowTitle,
   EditorTrigger,
   editorSeedList,
   useRelationSuggestions,
@@ -34,11 +37,24 @@ export function MultiRelationPropertyEditor({
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [localLinks, setLocalLinks] = useState<string[] | null>(null)
+  const { graph } = useGraph()
   // Each entry is a stored `[[Target]]` value; a bare string (hand-written
   // YAML) still participates, keyed by its own text.
   const links = localLinks ?? editorSeedList(value)
   const targetOf = (link: string): string => relationTarget(link) ?? link
-  const suggestions = useRelationSuggestions(open, query)
+  const suggestions = useRelationSuggestions(open, query, property.target)
+  // Same "Create in #target" entry as the single relation's picker.
+  const newRowTitle = property.target === undefined ? null : creatableRowTitle(query)
+  const canCreate =
+    newRowTitle !== null &&
+    graph !== null &&
+    !suggestions.some((suggestion) => suggestion.title.toLowerCase() === newRowTitle.toLowerCase())
+  const createAndToggle = async (): Promise<void> => {
+    if (property.target === undefined || newRowTitle === null || graph === null) {
+      return
+    }
+    toggle(await createRelationRow(property.target, newRowTitle, graph.generation))
+  }
 
   const toggle = (insertText: string): void => {
     const candidate = relationValue(insertText)
@@ -71,7 +87,9 @@ export function MultiRelationPropertyEditor({
           <CommandInput
             value={query}
             onValueChange={setQuery}
-            placeholder="Link notes…"
+            placeholder={
+              property.target === undefined ? 'Link notes…' : `Link #${property.target} rows…`
+            }
             autoFocus
           />
           <CommandList>
@@ -119,6 +137,13 @@ export function MultiRelationPropertyEditor({
                     </CommandItem>
                   )
                 })}
+              {canCreate ? (
+                <CommandItem value="__create" onSelect={() => void createAndToggle()}>
+                  <span className="min-w-0 flex-1 truncate">
+                    Create “{newRowTitle}” in #{property.target}
+                  </span>
+                </CommandItem>
+              ) : null}
               {links.length > 0 ? (
                 <CommandItem value="__clear" onSelect={clear}>
                   <span className="text-text-muted">Clear</span>

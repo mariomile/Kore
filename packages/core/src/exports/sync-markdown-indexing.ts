@@ -301,6 +301,8 @@ export {
   recallSearchHits,
   searchNotes,
   suggestWikiTargets,
+  getWikiAddressForPath,
+  suggestRelationTargets,
   suggestWikiLinkTargets,
   suggestTags,
   generateDateSuggestions,

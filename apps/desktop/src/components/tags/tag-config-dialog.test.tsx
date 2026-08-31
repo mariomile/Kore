@@ -1,8 +1,21 @@
 import { render } from 'vitest-browser-react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { userEvent } from 'vitest/browser'
+import type { ComponentProps, ReactElement } from 'react'
 import type { TagDefinitionState } from '@/lib/tags/tag-type-write'
 import { TagConfigDialog } from './tag-config-dialog'
+
+/** The dialog under a real query client — the target selector queries tag types. */
+function Dialog(props: ComponentProps<typeof TagConfigDialog>): ReactElement {
+  return (
+    <QueryClientProvider
+      client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+    >
+      <TagConfigDialog {...props} />
+    </QueryClientProvider>
+  )
+}
 
 const definition = vi.hoisted(() => ({
   current: {
@@ -27,10 +40,15 @@ const templates = vi.hoisted(() => ({
   current: [] as { path: string; title: string; mtime: number }[],
 }))
 const commitNoteFrontmatter = vi.hoisted(() => vi.fn(async () => {}))
+const tagTypesRows = vi.hoisted(() => ({
+  current: [] as { tagKey: string; notePath: string }[],
+}))
 vi.mock('@reflect/core', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@reflect/core')>()),
+  hasBridge: () => true,
   listNotesWithProperty: async () => propertyUses.current,
   listTemplates: async () => templates.current,
+  listTagTypes: async () => tagTypesRows.current,
 }))
 vi.mock('@/lib/note-frontmatter', () => ({ commitNoteFrontmatter }))
 vi.mock('@/providers/graph-provider', () => ({
@@ -51,6 +69,7 @@ beforeEach(() => {
   }
   propertyUses.current = []
   templates.current = []
+  tagTypesRows.current = []
   saveTagType.mockClear()
   invalidateQueries.mockClear()
   commitNoteFrontmatter.mockClear()
@@ -66,7 +85,7 @@ describe('TagConfigDialog', () => {
       template: null,
     }
     const onClose = vi.fn()
-    const view = await render(<TagConfigDialog tag="Book" onClose={onClose} />)
+    const view = await render(<Dialog tag="Book" onClose={onClose} />)
 
     await expect.element(view.getByRole('textbox', { name: 'Property name' })).toHaveValue('Author')
 
@@ -89,6 +108,39 @@ describe('TagConfigDialog', () => {
     expect(onClose).toHaveBeenCalled()
   })
 
+  it('types a relation at a target collection and saves it into the schema', async () => {
+    definition.current = {
+      path: 'tags/book.md',
+      exists: true,
+      needsConversion: false,
+      properties: [{ name: 'Author', key: 'author', type: 'text' }],
+      template: null,
+    }
+    tagTypesRows.current = [
+      { tagKey: 'person', notePath: 'tags/person.md' },
+      { tagKey: 'company', notePath: 'tags/company.md' },
+    ]
+    const view = await render(<Dialog tag="Book" onClose={() => {}} />)
+
+    // Author becomes a relation; the Target selector appears with the typed
+    // tags, defaulting to "Any note".
+    await view.getByRole('combobox', { name: 'Property type' }).click()
+    await view.getByRole('option', { name: 'Relation', exact: true }).click()
+    const target = view.getByRole('combobox', { name: 'Relation target' })
+    await expect.element(target).toBeVisible()
+    await target.click()
+    await view.getByRole('option', { name: '#person' }).click()
+
+    await view.getByRole('button', { name: 'Save' }).click()
+
+    expect(saveTagType).toHaveBeenCalledWith(
+      'Book',
+      [{ name: 'Author', key: 'author', type: 'relation', target: 'person' }],
+      7,
+      null,
+    )
+  })
+
   it('offers conversion when an unmarked note occupies the definition path', async () => {
     definition.current = {
       path: 'tags/book.md',
@@ -97,7 +149,7 @@ describe('TagConfigDialog', () => {
       properties: [],
       template: null,
     }
-    const view = await render(<TagConfigDialog tag="book" onClose={() => {}} />)
+    const view = await render(<Dialog tag="book" onClose={() => {}} />)
 
     await expect.element(view.getByText('Saving converts it', { exact: false })).toBeInTheDocument()
     await expect.element(view.getByRole('button', { name: 'Convert & save' })).toBeEnabled()
@@ -118,7 +170,7 @@ describe('TagConfigDialog', () => {
       },
     ]
     const onClose = vi.fn()
-    const view = await render(<TagConfigDialog tag="book" onClose={onClose} />)
+    const view = await render(<Dialog tag="book" onClose={onClose} />)
 
     // The key editor folds behind its mono chip until asked for.
     await view.getByRole('button', { name: 'Edit frontmatter key' }).click()
@@ -159,7 +211,7 @@ describe('TagConfigDialog', () => {
         value: { value: 'Frank Herbert', valueType: 'string', valueNumber: null },
       },
     ]
-    const view = await render(<TagConfigDialog tag="book" onClose={() => {}} />)
+    const view = await render(<Dialog tag="book" onClose={() => {}} />)
 
     await view.getByRole('button', { name: 'Edit frontmatter key' }).click()
     await view.getByRole('textbox', { name: 'Frontmatter key' }).fill('writer')
@@ -171,7 +223,7 @@ describe('TagConfigDialog', () => {
   })
 
   it('seeds an empty schema from a preset and the views strip lights up', async () => {
-    const view = await render(<TagConfigDialog tag="book" onClose={() => {}} />)
+    const view = await render(<Dialog tag="book" onClose={() => {}} />)
 
     // The presets are the vault's default objects (plus Reading list), so a
     // deleted default is one click from coming back on any tag.
@@ -213,7 +265,7 @@ describe('TagConfigDialog', () => {
       properties: [{ name: 'Author', key: 'author', type: 'text' }],
       template: null,
     }
-    const view = await render(<TagConfigDialog tag="book" onClose={() => {}} />)
+    const view = await render(<Dialog tag="book" onClose={() => {}} />)
 
     // A lone text property powers the table and nothing else — each dark
     // pill names the property type that would light it.
@@ -230,7 +282,7 @@ describe('TagConfigDialog', () => {
       properties: [{ name: 'Status', key: 'status', type: 'select', options: ['to-read', 'done'] }],
       template: null,
     }
-    const view = await render(<TagConfigDialog tag="book" onClose={() => {}} />)
+    const view = await render(<Dialog tag="book" onClose={() => {}} />)
 
     await expect.element(view.getByText('to-read')).toBeInTheDocument()
     await view.getByRole('textbox', { name: 'Add option' }).fill('reading')
@@ -254,7 +306,7 @@ describe('TagConfigDialog', () => {
       properties: [{ name: 'Author', key: 'author', type: 'text' }],
       template: null,
     }
-    const view = await render(<TagConfigDialog tag="book" onClose={() => {}} />)
+    const view = await render(<Dialog tag="book" onClose={() => {}} />)
 
     await view.getByRole('button', { name: 'Add property' }).click()
     const names = view.getByRole('textbox', { name: 'Property name' })

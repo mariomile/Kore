@@ -1,9 +1,9 @@
 # Kore working state
 
-**Updated:** 2026-08-31 at `7837981a` (Plan 28 slice 3 — chrome details —
-merged after the instant-note-opens fix; slice 4's app side — grouped
-context-rail sections + the soft selected-block field — in flight; the
-remaining meowdown-side handle work is recorded in Plan 28).
+**Updated:** 2026-08-31 at `f6c07bb`+ (Plan 29 opened — collections as
+databases; slice R1, typed relations, shipped on the sidebar-improvements
+branch together with the tag-page cleanup, link-preview cards, and the
+sidebar shelf work).
 **Rule:** Every session that moves the program updates this file before its
 summary: tick what became true and how it was verified, set the next step,
 refresh the date. What is done and what is next live here and only here. Why
@@ -13,6 +13,25 @@ direction in [Plan 25](plans/25-personal-os.md). The full shipped history stays
 in the [delivery log](delivery-log.md); this file tracks only the active work.
 
 ## Current focus
+
+**Collections as databases (user decision 2026-08-31, [Plan 29](plans/29-collections-database.md)).**
+Collections must behave like real databases — relating to one another, Notion
+databases / Tana supertags as the reference. Slice R1 (typed relations)
+shipped this session: a `relation`/`relations` property can declare a
+`target: <tag>`; its picker then offers only that collection's rows through
+`suggestRelationTargets` (the same verified `[[` addresses, scoped through the
+`tags` projection) plus a "Create in #target" entry that births a titled row
+carrying the tag and links it in one gesture (verified: schema round-trip +
+scoped-suggester flow tests, dialog save test, and a hand-driven dev-app run —
+typing #person/#book, pointing Company at a target, creating a row from the
+picker). The save path bug this found — `frontmatterPatchToYaml` spelling the
+schema block key-by-key and dropping the new field — is fixed and pinned by a
+serializer test. Queued next, in order: N1 (properties above the note body),
+R2 (view-only reverse relations), R3 (rollup sum/avg/min/max), then M1
+(row-vs-mention membership — needs the user's call on semantics). The same
+session also landed the tag-page cleanup (breadcrumb title, one table per
+typed tag, delineated grid cards), pasted-link preview cards, readable
+scrolling tabs, and the dialog-width root fix.
 
 **Craft parity (user decision 2026-08-30, [Plan 28](plans/28-craft-parity.md)).**
 With Craft screenshots as the reference, the direction is set: Kore

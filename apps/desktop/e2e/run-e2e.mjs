@@ -112,7 +112,7 @@ try {
   await page.screenshot({ path: `${SHOTS}02-grid.png` })
 
   await step('a grid card opens its note', async () => {
-    await page.getByText('Atomic Habits', { exact: true }).first().click()
+    await page.locator('[data-note-path="notes/atomic-habits.md"]').click()
     await page.getByText('Systems over goals. Make it obvious').first().waitFor()
   })
 
@@ -179,7 +179,7 @@ try {
   await page.screenshot({ path: `${SHOTS}05-linked.png` })
 
   await step('the visited notes ride the tab strip and switch on click', async () => {
-    const strip = page.getByRole('tablist', { name: 'Open notes' })
+    const strip = page.getByRole('tablist', { name: 'Workspace tabs' })
     await strip.waitFor()
     await strip.getByRole('tab', { name: 'Daily notes' }).waitFor()
     await strip.getByRole('tab', { name: /Quarterly Goals/ }).waitFor()
@@ -227,7 +227,7 @@ try {
     await dialog.waitFor({ state: 'detached' })
   })
 
-  await step('a web link routes through the in-app browser command', async () => {
+  await step('a web link routes into the in-app browser tab', async () => {
     await page.getByRole('navigation', { name: 'Primary' }).getByText('Daily notes').click()
     // The seeded link lives four days back — jump there via the rail calendar
     // (cells carry their full formatted date as the accessible name).
@@ -239,36 +239,29 @@ try {
       .click()
     const link = page.getByText('Local-first software').first()
     await link.waitFor()
-    // The dev bridge stands in for the Tauri browser window with a popup
-    // (window.open); record instead of opening so the run stays headless.
-    await page.evaluate(() => {
-      window.__openedUrls = []
-      window.open = (url) => {
-        window.__openedUrls.push(String(url))
-        return null
-      }
-    })
     // In the editor, mod-click is the open gesture (a plain click places
     // the caret).
     await link.click({ modifiers: ['ControlOrMeta'] })
-    await page.waitForFunction(() => (window.__openedUrls ?? []).length > 0, undefined, {
-      timeout: 10000,
-    })
-    const opened = await page.evaluate(() => window.__openedUrls)
-    if (!String(opened[0]).includes('inkandswitch.com')) {
-      throw new Error(`expected the note's link, got ${JSON.stringify(opened)}`)
-    }
+    const activeTab = page.locator('[role="tab"][aria-selected="true"]')
+    await activeTab.getByText('Browser', { exact: true }).waitFor()
+    await page.getByText('The built-in browser is available in the desktop app.').waitFor()
   })
 
   await step('an agent profile is born with a soul and becomes active', async () => {
-    await page.getByRole('navigation', { name: 'Primary' }).getByText('Agents').click()
+    const openAgents = async () => {
+      await page.getByRole('button', { name: 'Search' }).click()
+      const palette = page.getByRole('dialog', { name: 'Command palette' })
+      await palette.getByPlaceholder('Search notes, or > for commands…').fill('>Agents')
+      await palette.getByText('Agents', { exact: true }).click()
+    }
+    await openAgents()
     await page.getByRole('button', { name: 'New agent' }).click()
     await page.getByLabel('Agent name').fill('Riley')
     await page.getByRole('button', { name: 'Create agent' }).click()
     // Creation opens the seeded soul for editing…
     await page.getByText('You are Riley, an agent living in this vault.').first().waitFor()
     // …and the profile is active back on the Agents screen.
-    await page.getByRole('navigation', { name: 'Primary' }).getByText('Agents').click()
+    await openAgents()
     await page.getByText('agents/riley').waitFor()
     await page.getByText('Active', { exact: true }).waitFor()
   })

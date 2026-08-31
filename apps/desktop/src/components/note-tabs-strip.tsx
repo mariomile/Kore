@@ -15,7 +15,7 @@ import { NoteTabsListMenu } from '@/components/note-tabs-list-menu'
 import { NoteTabsPlusMenu } from '@/components/note-tabs-plus-menu'
 import { OpenTabIcon } from '@/components/open-tab-icon'
 import { NavigateArrows } from '@/components/sidebar/navigate-arrows'
-import { tabCloseClass, tabPillClass } from '@/components/tab-pill'
+import { tabCloseClass, tabPillClass, useTabScrollIntoView } from '@/components/tab-pill'
 import { useOpenTabItems, type OpenTabItem } from '@/hooks/use-open-tab-items'
 import type { CommandContext } from '@/lib/commands/types'
 import { cn } from '@/lib/utils'
@@ -166,6 +166,13 @@ function StripTab({ item, active, onActivate, onClose, onTogglePin }: StripTabPr
   const { isDragging, listeners, setNodeRef, transform, transition } = useSortable({
     id: tabKey(tab),
   })
+  const scrollRef = useTabScrollIntoView(active)
+  // One element, two owners: dnd-kit measures the pill, and the strip scrolls
+  // the selected one back into view.
+  const setTabRef = (element: HTMLElement | null): void => {
+    setNodeRef(element)
+    scrollRef.current = element
+  }
   const sortableStyle: CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -179,7 +186,7 @@ function StripTab({ item, active, onActivate, onClose, onTogglePin }: StripTabPr
   if (tab.pinned) {
     return (
       <button
-        ref={setNodeRef}
+        ref={setTabRef}
         style={sortableStyle}
         type="button"
         role="tab"
@@ -195,7 +202,8 @@ function StripTab({ item, active, onActivate, onClose, onTogglePin }: StripTabPr
         onAuxClick={handleAuxClick}
         className={cn(
           tabPillClass(active),
-          'shrink-0 px-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
+          // A pinned tab is its icon: no label, so no room to hold open for one.
+          'min-w-0 shrink-0 px-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
           isDragging && 'z-10 opacity-70',
         )}
         {...listeners}
@@ -210,7 +218,7 @@ function StripTab({ item, active, onActivate, onClose, onTogglePin }: StripTabPr
   }
   return (
     <div
-      ref={setNodeRef}
+      ref={setTabRef}
       style={sortableStyle}
       role="tab"
       aria-selected={active}

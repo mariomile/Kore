@@ -10,7 +10,7 @@ import {
   type Icon,
 } from '@/components/icons'
 import { ChatScreen } from '@/components/chat/chat-screen'
-import { tabCloseClass, tabPillClass } from '@/components/tab-pill'
+import { tabCloseClass, tabPillClass, useTabScrollIntoView } from '@/components/tab-pill'
 import {
   DropdownMenu,
   DropdownMenuItem,
@@ -270,8 +270,10 @@ function PanelTab({
   onSelect,
   onClose,
 }: PanelTabProps): ReactElement {
+  const scrollRef = useTabScrollIntoView<HTMLDivElement>(active)
   return (
     <div
+      ref={scrollRef}
       // Presentational so the tablist still sees tabs, not wrappers: the pill
       // is the box the label and the close share, and its own name would
       // otherwise swallow both.

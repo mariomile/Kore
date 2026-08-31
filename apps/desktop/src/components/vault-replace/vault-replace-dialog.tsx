@@ -74,7 +74,7 @@ export function VaultReplaceDialog({
 
   return (
     <Dialog open={open} onOpenChange={isBusy ? () => {} : onOpenChange}>
-      <DialogContent className="flex h-[70vh] w-[min(44rem,92vw)] max-w-none flex-col gap-0 overflow-hidden p-0 sm:max-w-none">
+      <DialogContent className="flex h-[70vh] w-[min(44rem,92vw)] flex-col gap-0 overflow-hidden p-0">
         <div className="flex-none border-b border-border px-4 py-3">
           <DialogTitle>Replace in vault</DialogTitle>
         </div>

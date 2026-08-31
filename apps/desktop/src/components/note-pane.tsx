@@ -31,6 +31,8 @@ import { useNotePaneDocument } from '@/components/use-note-pane-document'
 import { useTagNavigation } from '@/editor/use-tag-navigation'
 import { BlockSwipeGestures } from '@/editor/block-swipe'
 import { CalloutHighlighter } from '@/editor/callout-highlighter'
+import { LinkPreviewCards } from '@/editor/link-preview-cards'
+import { useNoteRow } from '@/hooks/use-note-row'
 import { useCalloutSlashItems } from '@/editor/use-callout-slash-items'
 import { useCollectionSlashItems } from '@/editor/use-collection-slash-items'
 import { useEmbedSlashItems } from '@/editor/use-embed-slash-items'
@@ -173,6 +175,10 @@ export function NotePaneComponent({
   const onNoteLinkClick = useMarkdownLinkNavigation(generation, path)
   const onTagClick = useTagNavigation()
   const { onWikilinkSearch, onTagSearch } = useEditorAutocomplete()
+  // The index's privacy flag for this note, overlay-backed so an in-app
+  // "Mark as private" takes effect immediately. Null until it resolves, which
+  // the link-preview gate below reads as "not known to be public".
+  const noteRow = useNoteRow(path)
 
   const bindEditor = document.bindEditor
   const aiEditorRef = useRef<NoteEditorHandle | null>(null)
@@ -440,6 +446,10 @@ export function NotePaneComponent({
       >
         <EditorAiKeymap onTrigger={aiMenu.openMenu} />
         <CalloutHighlighter />
+        {/* Fetching a link's preview reaches the linked host, so a private
+            note previews nothing — and an unresolved row counts as private,
+            the same fail-closed rule the AI menu applies. */}
+        <LinkPreviewCards enabled={noteRow?.isPrivate === false} />
         {/* Touch only: the gutter grip is pointer-only and pinned off there,
             so the sideways swipe is the only block-structure gesture a thumb
             has. */}

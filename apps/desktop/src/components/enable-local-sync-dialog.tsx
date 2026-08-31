@@ -106,7 +106,7 @@ export function EnableLocalSyncDialog(): ReactElement | null {
         }
       }}
     >
-      <DialogContent showCloseButton={false} className="sm:max-w-md">
+      <DialogContent showCloseButton={false} className="w-[30rem]">
         <DialogHeader>
           <DialogTitle>Sync this folder across devices?</DialogTitle>
           <DialogDescription>

@@ -62,7 +62,9 @@ CLI. What separates it from "a database" is relational and presentational:
   non-daily notes carrying the tag, with mentions listed apart) — a semantic
   change, taken to the user before building. Line-level supertags à la Tana
   would be Meowdown work and are out of scope here.
-- **N1 — Properties above the note body** (queued in STATE): the row page.
+- **N1 — Properties above the note body** *(shipped this wave)*: the row
+  page — `NotePropertiesHeader`, sharing the rail section's hook and field
+  face, skipped on daily notes.
 - **V1 — Embeds with `filter:`/`sort:` keys** (portable text, like `view:`),
   and table row grouping.
 - **T1 — created/updated (from the index, read-only), person, phone;**

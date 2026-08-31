@@ -110,11 +110,18 @@ Each slice is one PR, shippable alone, in priority order:
   slice 1's floating-card layout carries separation by surface, and the
   one hairline the sticky table header keeps is legibility over scrolled
   rows, kept deliberately.
-- **Slice 4 — editor block affordances and the assistant panel.** Hover
-  drag-handle + ellipsis and the soft selected-block field, Craft-style —
-  this bottoms out in meowdown (per CLAUDE.md: fix it there); the app side
-  is theming through the existing `--meowdown-*` seams. The chat/context
-  panel adopts the quiet sectioned-rows look.
+- **Slice 4 — editor block affordances and the context panel (app side
+  shipped).** The selected block reads as Craft's soft tinted field: the
+  `--meowdown-node-outline` seam moves to a 45%-translucent accent, so the
+  wash carries the state and the ring only sharpens its edge. The context
+  rail adopts the grouped-rows register: every `SidebarSection` body (note
+  actions, properties, tasks, outline, history, similar, events,
+  published) becomes a soft raised container on the sunken rail — quiet
+  label above, rows with their hover wash inside. The hover drag-handle
+  already renders quiet from meowdown; what remains — the per-block
+  ellipsis button beside the grip, and any handle geometry polish — lives
+  in the meowdown repo (its classes are hashed CSS modules, deliberately
+  not a seam) and is queued there, per CLAUDE.md's fix-it-there rule.
 
 Colors need no slice: `graphite`/`ash` exist as theme variants today, and the
 default themes keep their identity — Craft parity is structure and motion,

@@ -45,7 +45,12 @@ export function SidebarSection({ storageKey, title, children }: SidebarSectionPr
           <Chevron aria-hidden className="size-3" />
         </span>
       </button>
-      {open ? <div className="px-2">{children}</div> : null}
+      {open ? (
+        // Craft's grouped-rows register (Plan 28 slice 4): the section body
+        // is a soft raised container on the rail's sunken ground — the label
+        // stays quiet chrome above it, rows keep their own hover wash inside.
+        <div className="mx-2 rounded-xl border border-border/60 bg-surface p-1">{children}</div>
+      ) : null}
     </section>
   )
 }

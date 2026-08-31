@@ -1,9 +1,9 @@
 # Kore working state
 
-**Updated:** 2026-08-31 at `b84d11fb` (instant note opens merged — warm
-content cache + desktop iCloud materialization, from the user's "Loading
-note…" report; Plan 28 slice 3 — chrome details: `.app-icon-button`
-normalization + the daily ‹ date › pill — in flight).
+**Updated:** 2026-08-31 at `7837981a` (Plan 28 slice 3 — chrome details —
+merged after the instant-note-opens fix; slice 4's app side — grouped
+context-rail sections + the soft selected-block field — in flight; the
+remaining meowdown-side handle work is recorded in Plan 28).
 **Rule:** Every session that moves the program updates this file before its
 summary: tick what became true and how it was verified, set the next step,
 refresh the date. What is done and what is next live here and only here. Why
@@ -33,8 +33,11 @@ icon buttons normalized onto one round quiet recipe, and the daily
 stream's floating ‹ date › pill (follows the focused day, hops days,
 label jumps to today); the line audit found strip/panel edges already
 clean, so the sticky table header's one hairline stays deliberate.
-Queued: slice 4 — editor block affordances via meowdown + the
-assistant/context panel's quiet sectioned-rows look.
+Slice 4's app side (same day): the context rail's sections become
+grouped rows (one edit in the shared SidebarSection), and the selected
+block softens to Craft's tinted field via the `--meowdown-node-outline`
+seam. Remaining, in the meowdown repo: the per-block ellipsis beside the
+drag grip.
 
 **Collections UX pass (user decision 2026-08-30).** The Now ladder shipped
 through v0.38.0–v0.40.0 (recall + skills, S3-minimal runtime per

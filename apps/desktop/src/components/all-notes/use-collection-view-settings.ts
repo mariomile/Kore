@@ -70,12 +70,18 @@ export function useCollectionViewSettings(
   // next; the toggles write per-tag there, global elsewhere.
   const requestedView =
     (tagKey === null ? undefined : settings.collectionViewModes[tagKey]) ?? settings.allNotesView
+  // A typed tag has exactly one table — the collection's own. The plain
+  // notes list belongs to untyped pages, so a stored (or default) 'list'
+  // renders as the collection table here, and the switcher never offers two
+  // tables side by side.
   const view =
     (requestedView === 'table' && !collectionAvailable) ||
     (requestedView === 'board' && !boardAvailable) ||
     (requestedView === 'calendar' && !calendarAvailable)
       ? 'list'
-      : requestedView
+      : requestedView === 'list' && collectionAvailable
+        ? 'table'
+        : requestedView
   const setViewMode = useCallback(
     (mode: AllNotesView) => {
       if (tagKey === null) {

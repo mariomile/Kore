@@ -110,8 +110,11 @@ export function AllNotesGrid({
             }}
             // No shadow or hover lift: box shadows and transforms fragment
             // across CSS columns in WebKit, painting stray slivers at column
-            // tops — a border tint carries the hover affordance instead.
-            className="group mb-5 block w-full break-inside-avoid rounded-2xl border border-border bg-surface p-5 text-left transition-colors duration-150 ease-swift hover:border-border-strong hover:bg-surface-hover focus-visible:ring-2 focus-visible:ring-focus-ring"
+            // tops — a border tint carries the hover affordance instead. The
+            // sunken surface (not the page's own `surface`) is what draws the
+            // card's outline in dark themes, where the hairline border alone
+            // all but vanished.
+            className="group mb-5 block w-full break-inside-avoid rounded-2xl border border-border bg-surface-sunken p-5 text-left transition-colors duration-150 ease-swift hover:border-border-strong focus-visible:ring-2 focus-visible:ring-focus-ring"
           >
             <div className="flex items-start justify-between gap-2">
               <h2 className="min-w-0 text-sm font-semibold leading-snug text-text">{note.title}</h2>

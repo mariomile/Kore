@@ -58,16 +58,24 @@ CLI. What separates it from "a database" is relational and presentational:
 - **R3 — Rollup sum/avg/min/max** *(shipped this wave)*: numeric
   aggregations over sources that carry a number (never coerced), rounded to
   two decimals for display.
-- **M1 — Membership.** Decide the row/mention split (default the collection to
-  non-daily notes carrying the tag, with mentions listed apart) — a semantic
-  change, taken to the user before building. Line-level supertags à la Tana
-  would be Meowdown work and are out of scope here.
+- **M1 — Membership** *(decided 2026-08-31, user)*: **the hashtag is the
+  supertag.** Writing `#tag` anywhere — a daily note included — deliberately
+  makes that note an instance, so membership stays exactly what TDR 0004/0005
+  derive from the body and no row/mention split is built. An instance with
+  empty columns is a row awaiting values, not noise.
 - **N1 — Properties above the note body** *(shipped this wave)*: the row
   page — `NotePropertiesHeader`, sharing the rail section's hook and field
   face, skipped on daily notes.
-- **V1 — Embeds with `filter:`/`sort:` keys** (portable text, like `view:`),
-  and table row grouping.
+- **V1a — Embeds with `sort:`/`filter:` lines** *(shipped this wave)*: the
+  fence gained `sort: <key> [asc|desc]` and `filter:` lines in the filter
+  menu's vocabulary (`key = v`, `key ~ v`, `key > n`, `key < n`,
+  `key is empty`, `key is set`) — parsed tolerantly (a malformed line is
+  skipped, never the fence), round-tripped by the serializer, applied by the
+  widget through the same `applyCollectionFilters` the tag page uses. A
+  linked, arranged view in portable text.
+- **V1b — Table row grouping** (still queued): its own careful slice — the
+  virtualized table needs group header rows.
 - **T1 — created/updated (from the index, read-only), person, phone;**
   formulas last, projection-only, per I15.
 
-Order: R1 → N1 → R2 → R3 (all shipped); M1 once decided; V1/T1 next.
+Order: R1 → N1 → R2 → R3 → V1a (all shipped); M1 decided, no build; V1b/T1 next.

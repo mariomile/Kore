@@ -37,9 +37,15 @@ nothing links, so footers count honestly — with its Of/Via config in the
 schema dialog (verified: unit tests plus a dev-app run where #book grew a
 People column listing the #person rows whose `company` links each book);
 and rollups gained sum/average/min/max over numeric sources (unit-tested;
-the dialog's aggregation picker lists them from the schema enum). Still
-queued: M1 (row-vs-mention membership — needs the user's call on
-semantics), V1 (embed filter/sort keys, table grouping), T1
+the dialog's aggregation picker lists them from the schema enum). M1 was then decided by the
+user (2026-08-31): **the hashtag is the supertag** — writing `#tag`
+anywhere, a daily included, deliberately makes the note an instance, so
+membership stays as derived and no row/mention split is built. V1a shipped
+after it: the ` ```collection ` fence gained `sort:` and `filter:` lines
+(the filter menu's vocabulary, tolerant parse, serializer round-trip,
+applied through the same `applyCollectionFilters` as the tag page —
+verified by core round-trip tests, a widget component test, and a dev-app
+slash-insert). Still queued: V1b (table row grouping — its own slice), T1
 (created/updated, person, phone; formulas last, projection-only). The same
 session also landed the tag-page cleanup (breadcrumb title, one table per
 typed tag, delineated grid cards), pasted-link preview cards, readable

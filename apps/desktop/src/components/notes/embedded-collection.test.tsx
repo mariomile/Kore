@@ -17,6 +17,15 @@ const ENTRIES: CollectionEntry[] = [
       author: { value: 'Herbert', valueType: 'string', valueNumber: null },
     },
   },
+  {
+    path: 'notes/dispossessed.md',
+    title: 'The Dispossessed',
+    mtime: 2,
+    isPinned: false,
+    properties: {
+      author: { value: 'Le Guin', valueType: 'string', valueNumber: null },
+    },
+  },
 ]
 
 vi.mock('@/hooks/use-tag-type', async (importOriginal) => ({
@@ -60,8 +69,25 @@ vi.mock('@/providers/graph-provider', () => ({
 }))
 
 describe('EmbeddedCollection', () => {
+  it('applies the fence’s filter lines to the rows it shows', async () => {
+    const view = await render(
+      <EmbeddedCollection
+        embed={{
+          tag: 'book',
+          view: 'table',
+          sort: null,
+          filters: [{ key: 'author', operator: 'is', text: 'Herbert' }],
+        }}
+      />,
+    )
+    await expect.element(view.getByText('Dune')).toBeInTheDocument()
+    expect(view.getByText('The Dispossessed').query()).toBeNull()
+  })
+
   it('renders the live table for a typed tag fence', async () => {
-    const view = await render(<EmbeddedCollection embed={{ tag: 'book', view: 'table' }} />)
+    const view = await render(
+      <EmbeddedCollection embed={{ tag: 'book', view: 'table', sort: null, filters: [] }} />,
+    )
     const root = view.getByTestId('collection-embed')
     await expect.element(root).toBeInTheDocument()
     await expect.element(root).toHaveAttribute('data-collection-tag', 'book')

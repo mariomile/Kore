@@ -10,6 +10,7 @@ import { ExternalLink } from '@/components/icons'
 import { CollectionBoard, groupableProperties } from '@/components/all-notes/collection-board'
 import { calendarProperty, CollectionCalendar } from '@/components/all-notes/collection-calendar'
 import { CollectionTable } from '@/components/all-notes/collection-table'
+import { applyCollectionFilters } from '@/components/all-notes/collection-filter-menu'
 import { TagConfigDialog } from '@/components/tags/tag-config-dialog'
 import { useCollection } from '@/hooks/use-collection'
 import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'
@@ -40,10 +41,20 @@ export function EmbeddedCollection({ embed }: EmbeddedCollectionProps): ReactEle
   const tagType = useTagType(embed.tag)
   const { navigate } = useRouter()
   const navigateNoteLink = useNoteLinkNavigation()
-  const [sort, setSort] = useState<CollectionSort | null>(null)
+  // The fence's own arrangement seeds the widget; a header click still
+  // re-sorts this render of it (the fence text is not rewritten).
+  const [sort, setSort] = useState<CollectionSort | null>(embed.sort)
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({})
   const [editingSchema, setEditingSchema] = useState(false)
-  const entries = useCollection(tagType ? embed.tag : null, sort)
+  const unfiltered = useCollection(tagType ? embed.tag : null, sort)
+  const entries = useMemo(() => {
+    if (unfiltered === undefined || tagType === null || tagType === undefined) {
+      return unfiltered
+    }
+    // The fence's filter lines share the filter menu's vocabulary, so the
+    // one applier serves both surfaces.
+    return applyCollectionFilters(tagType, unfiltered, embed.filters)
+  }, [unfiltered, tagType, embed.filters])
   const orderedPaths = useMemo(() => (entries ?? []).map((entry) => entry.path), [entries])
   const selection = useListSelection(orderedPaths)
 

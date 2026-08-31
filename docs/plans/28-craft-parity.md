@@ -98,10 +98,18 @@ Each slice is one PR, shippable alone, in priority order:
   cards for typed tags (absorbing the queued "gallery view with
   properties" item); the board/calendar cards adopt the same card
   language.
-- **Slice 3 — chrome details.** Round quiet icon buttons normalized across
-  screen headers; the daily date pill navigation (‹ date ›); the tab strip
-  and panel edges lose their hard lines where the veil can carry the
-  separation.
+- **Slice 3 — chrome details (shipped).** One `.app-icon-button` recipe —
+  a 28px circle whose hover is a soft wash appearing — replaces the mixed
+  square/round one-off buttons across the header chrome (All Notes'
+  export/columns/views/import cluster, the tag page's gear, the tab
+  strip's rail toggles, the history arrows). The daily stream gains
+  Craft's ‹ date › pill: floating quiet chrome over the veil that names
+  the day being read (focused day first, routed day as fallback), hops to
+  adjacent days, and jumps back to today from its label. The line audit
+  the slice called for found the strip and panel edges already clean —
+  slice 1's floating-card layout carries separation by surface, and the
+  one hairline the sticky table header keeps is legibility over scrolled
+  rows, kept deliberately.
 - **Slice 4 — editor block affordances and the assistant panel.** Hover
   drag-handle + ellipsis and the soft selected-block field, Craft-style —
   this bottoms out in meowdown (per CLAUDE.md: fix it there); the app side

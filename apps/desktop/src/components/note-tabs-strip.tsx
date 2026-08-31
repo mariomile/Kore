@@ -140,8 +140,7 @@ function PanelToggle({ side, collapsed, onToggle, label }: PanelToggleProps): Re
       aria-pressed={!collapsed}
       onClick={onToggle}
       className={cn(
-        'flex size-6 shrink-0 items-center justify-center rounded-md transition-[color,background-color,transform] duration-150 ease-[cubic-bezier(0.32,0.72,0,1)]',
-        'hover:bg-surface-hover hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring active:scale-[0.97]',
+        'app-icon-button hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
         collapsed ? 'text-text-muted' : 'text-text-secondary',
       )}
     >

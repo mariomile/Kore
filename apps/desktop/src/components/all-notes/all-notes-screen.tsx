@@ -313,7 +313,7 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
                   <PopoverTrigger
                     aria-label="Columns"
                     title="Show or hide columns"
-                    className="flex size-6 items-center justify-center rounded-full text-text-muted transition-colors hover:text-text-secondary"
+                    className="app-icon-button text-text-muted hover:text-text"
                   >
                     <Sliders aria-hidden className="size-3.5" />
                   </PopoverTrigger>
@@ -351,7 +351,7 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
                 onClick={() => {
                   void runCollectionExport(tag, tagType, filteredCollection ?? [])
                 }}
-                className="flex size-6 items-center justify-center rounded-full text-text-muted transition-colors hover:text-text-secondary"
+                className="app-icon-button text-text-muted hover:text-text"
               >
                 <Download aria-hidden className="size-3.5" />
               </button>

@@ -52,10 +52,8 @@ export function CollectionViewsMenu({
         aria-pressed={views.length > 0}
         title="Saved views"
         className={cn(
-          'flex size-6 items-center justify-center rounded-full transition-colors',
-          views.length > 0
-            ? 'text-text-secondary hover:text-text'
-            : 'text-text-muted hover:text-text-secondary',
+          'app-icon-button hover:text-text',
+          views.length > 0 ? 'text-text-secondary' : 'text-text-muted',
         )}
       >
         <Bookmark aria-hidden className="size-3.5" />

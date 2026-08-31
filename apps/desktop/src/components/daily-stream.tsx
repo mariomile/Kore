@@ -10,6 +10,7 @@ import {
 import { Virtualizer, type VirtualizerHandle } from 'virtua'
 import { dailyPath } from '@reflect/core'
 import { NotePane } from '@/components/note-pane'
+import { DailyDatePill } from '@/components/daily-date-pill'
 import { ScrollVeil } from '@/components/scroll-veil'
 import type { NoteEditorHandle } from '@/editor/note-editor'
 import { formatDayLabel, todayIso } from '@/lib/dates'
@@ -344,6 +345,12 @@ export function DailyStream({ target }: DailyStreamProps): ReactElement {
       {/* Scrolled days melt at the stream's top edge instead of clipping
         against it (Plan 28). */}
       <ScrollVeil scrollElement={scrollElement} />
+      {/* Floating day navigation (Plan 28 slice 3): quiet chrome the days
+        pass under — the pill subscribes to the focused day itself so the
+        stream keeps consuming only the setter. */}
+      <div className="pointer-events-none absolute right-5 top-3 z-10">
+        <DailyDatePill />
+      </div>
     </div>
   )
 }

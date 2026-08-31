@@ -7,6 +7,21 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Chrome details land the Craft register's third slice (Plan 28 slice 3).
+  Header icon buttons converge on one `.app-icon-button` recipe — a 28px
+  circle whose hover is a soft wash appearing — across All Notes' action
+  cluster, the tag page's gear, the tab strip's rail toggles, and the
+  history arrows, replacing four one-off shapes. The daily stream gains
+  Craft's ‹ date › navigation pill: floating quiet chrome over the scroll
+  veil that names the day being read (the focused day, falling back to
+  the routed one), hops to adjacent days, and jumps back to today from
+  its label — subscribed to focus by itself, so the stream keeps its
+  setter-only contract and day-to-day focus moves never re-render the
+  editors. The slice's line audit found the tab strip and panel edges
+  already clean after slice 1's floating-card layout; the sticky table
+  header keeps its one hairline deliberately (legibility over scrolled
+  rows).
+
 - Notes open instantly (user report: "Loading note…" on some opens). Two
   causes, two fixes. Reopening a note paid a fresh IPC read every time: a
   small in-memory content cache (per graph, watcher-invalidated,

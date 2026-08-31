@@ -41,6 +41,27 @@ export function formatDayLabel(date: string, dateFormat: DateFormat): string {
 }
 
 /**
+ * The daily pill's compact label (Plan 28 slice 3): `Aug 31` for `mdy`,
+ * `31 Aug` for `dmy`, gaining the year only away from the current one;
+ * `iso` keeps the daily-note key itself. `now` is injectable for tests.
+ */
+export function formatDayPillLabel(
+  date: string,
+  dateFormat: DateFormat,
+  now: Date = new Date(),
+): string {
+  if (dateFormat === 'iso') {
+    return date
+  }
+  const parsed = parseIsoDate(date)
+  const sameYear = parsed.getFullYear() === now.getFullYear()
+  if (dateFormat === 'dmy') {
+    return format(parsed, sameYear ? 'd MMM' : 'd MMM yyyy')
+  }
+  return format(parsed, sameYear ? 'MMM d' : 'MMM d, yyyy')
+}
+
+/**
  * Compact date for inline chips (the Tasks view's `[[YYYY-MM-DD]]` due link,
  * V1's blue date): `12/31/2025` for `mdy`, `31/12/2025` for `dmy`, and
  * `2025-12-31` for `iso`.

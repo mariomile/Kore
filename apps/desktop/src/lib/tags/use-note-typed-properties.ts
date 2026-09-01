@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
+  getNote,
   getNoteProperties,
   listNoteTagTypes,
   localCalendarDate,
@@ -8,7 +9,6 @@ import {
   type TagProperty,
 } from '@reflect/core'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
-import { useNoteRow } from '@/hooks/use-note-row'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { useGraph } from '@/providers/graph-provider'
 
@@ -44,10 +44,6 @@ export function useNoteTypedProperties(path: string): NoteTypedProperties {
     enabled,
   })
 
-  // The `updated` fields are a view over the index's mtime, exactly like the
-  // collection rows' cells (attachTimestampColumns) — never a stored value.
-  const mtime = useNoteRow(path)?.mtime ?? 0
-
   const properties = useMemo(() => {
     const union: TagProperty[] = []
     const claimed = new Set<string>()
@@ -61,6 +57,18 @@ export function useNoteTypedProperties(path: string): NoteTypedProperties {
     }
     return union
   }, [tagTypes])
+
+  // The `updated` fields are a view over the index's mtime, exactly like the
+  // collection rows' cells (attachTimestampColumns) — never a stored value.
+  // Fetched only when the schema union actually declares one (same query key
+  // as `useNoteRowState`, so a mounted row consumer shares the cache).
+  const wantsMtime = properties.some((property) => property.type === 'updated')
+  const { data: row } = useQuery({
+    queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'note', path],
+    queryFn: async () => (await getNote(path)) ?? null,
+    enabled: enabled && wantsMtime,
+  })
+  const mtime = row?.mtime ?? 0
 
   const overlaid = useMemo(() => {
     if (values === undefined || !properties.some((property) => property.type === 'updated')) {

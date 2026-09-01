@@ -32,7 +32,7 @@ describe('QuickCaptureRoot', () => {
     await render(<QuickCaptureRoot />)
     const input = page.getByLabelText("Capture a line to today's note")
     await userEvent.fill(input, 'call Alex')
-    await userEvent.click(page.getByRole('button', { name: 'Save' }))
+    await userEvent.click(page.getByRole('button', { name: 'Add' }))
 
     await vi.waitFor(() => expect(captureInboxSpool).toHaveBeenCalledTimes(1))
     const [name, json, generation] = captureInboxSpool.mock.calls[0]!

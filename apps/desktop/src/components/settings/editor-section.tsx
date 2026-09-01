@@ -10,6 +10,7 @@ import { useSettings } from '@/providers/settings-provider'
 import { SettingsField } from './field'
 import { KeyboardShortcutsField } from './keyboard-shortcuts-field'
 import { SettingsOptionCard } from './option-card'
+import { QuickEntryShortcutField } from './quick-entry-shortcut-field'
 import { SettingsSection } from './section'
 import { SettingsSwitchField } from './switch-field'
 
@@ -314,11 +315,13 @@ export function EditorSection(): ReactElement {
       />
 
       <SettingsSwitchField
-        legend="Global quick capture"
-        description="A system-wide shortcut (Shift+Space with ⌘ or Ctrl) opens a mini window that appends a line to today's note, even when Kore is in the background."
+        legend="Quick Entry"
+        description="Open a focused window from anywhere and add a line to today's note."
         checked={settings.quickCaptureEnabled}
         onCheckedChange={(checked) => updateSettings({ quickCaptureEnabled: checked })}
       />
+
+      <QuickEntryShortcutField />
 
       <KeyboardShortcutsField />
     </SettingsSection>

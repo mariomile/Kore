@@ -368,6 +368,34 @@ export const taskRemindersSchema = z.boolean().catch(false)
  */
 export const quickCaptureEnabledSchema = z.boolean().catch(true)
 
+/** The keyboard-native default used by the desktop Quick Entry window. */
+export const DEFAULT_QUICK_CAPTURE_SHORTCUT = 'Mod-Shift-Slash'
+
+const QUICK_CAPTURE_MODIFIERS = new Set(['Mod', 'Ctrl', 'Alt', 'Shift'])
+const QUICK_CAPTURE_KEYS =
+  /^(?:[A-Z0-9]|F(?:[1-9]|1[0-2])|Space|Slash|Backslash|Comma|Period|Semicolon|Quote|BracketLeft|BracketRight|Minus|Equal|Backquote|Arrow(?:Up|Down|Left|Right))$/
+
+/** Whether a persisted Quick Entry binding is safe to register system-wide. */
+export function isQuickCaptureShortcut(value: string): boolean {
+  const parts = value.split('-')
+  const key = parts.pop()
+  if (key === undefined || !QUICK_CAPTURE_KEYS.test(key) || parts.length === 0) {
+    return false
+  }
+  const uniqueModifiers = new Set(parts)
+  return (
+    uniqueModifiers.size === parts.length &&
+    parts.every((part) => QUICK_CAPTURE_MODIFIERS.has(part)) &&
+    parts.some((part) => part === 'Mod' || part === 'Ctrl' || part === 'Alt')
+  )
+}
+
+/** User-remappable desktop shortcut for opening Quick Entry. */
+export const quickCaptureShortcutSchema = z
+  .string()
+  .refine(isQuickCaptureShortcut)
+  .catch(DEFAULT_QUICK_CAPTURE_SHORTCUT)
+
 /**
  * Whether interactions answer with haptic feedback: the macOS trackpad knocks
  * (a switch flipping, a drag snapping into place) and the light impacts iOS
@@ -441,6 +469,7 @@ const settingsDocumentSchema = z.looseObject({
   taskFilters: taskFiltersSchema,
   taskReminders: taskRemindersSchema,
   quickCaptureEnabled: quickCaptureEnabledSchema,
+  quickCaptureShortcut: quickCaptureShortcutSchema,
   hapticFeedback: hapticFeedbackSchema,
   browserSearchEngine: browserSearchEngineSchema,
   browserOpenLinksInApp: browserOpenLinksInAppSchema,

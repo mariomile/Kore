@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { CHAT_SYSTEM_PROMPT_MAX_LENGTH, DEFAULT_SETTINGS, settingsSchema } from './schema'
+import {
+  CHAT_SYSTEM_PROMPT_MAX_LENGTH,
+  DEFAULT_QUICK_CAPTURE_SHORTCUT,
+  DEFAULT_SETTINGS,
+  settingsSchema,
+} from './schema'
 
 describe('settingsSchema', () => {
   it('defaults every key on an empty document (fresh install)', () => {
@@ -35,6 +40,7 @@ describe('settingsSchema', () => {
       glassIntensity: 'regular',
       taskReminders: false,
       quickCaptureEnabled: true,
+      quickCaptureShortcut: DEFAULT_QUICK_CAPTURE_SHORTCUT,
       hapticFeedback: true,
       browserSearchEngine: 'duckduckgo',
       browserOpenLinksInApp: true,
@@ -84,6 +90,7 @@ describe('settingsSchema', () => {
     expect(DEFAULT_SETTINGS.contextSidebarWidth).toBe(320)
     expect(DEFAULT_SETTINGS.semanticSearchEnabled).toBe(false)
     expect(DEFAULT_SETTINGS.quickCaptureEnabled).toBe(true)
+    expect(DEFAULT_SETTINGS.quickCaptureShortcut).toBe('Mod-Shift-Slash')
     expect(DEFAULT_SETTINGS.hapticFeedback).toBe(true)
     expect(DEFAULT_SETTINGS.browserSearchEngine).toBe('duckduckgo')
     expect(DEFAULT_SETTINGS.browserOpenLinksInApp).toBe(true)
@@ -191,6 +198,9 @@ describe('settingsSchema', () => {
     expect(settingsSchema.parse({ semanticSearchEnabled: false }).semanticSearchEnabled).toBe(false)
     expect(settingsSchema.parse({ quickCaptureEnabled: true }).quickCaptureEnabled).toBe(true)
     expect(settingsSchema.parse({ quickCaptureEnabled: false }).quickCaptureEnabled).toBe(false)
+    expect(settingsSchema.parse({ quickCaptureShortcut: 'Mod-Alt-K' }).quickCaptureShortcut).toBe(
+      'Mod-Alt-K',
+    )
     expect(settingsSchema.parse({ hapticFeedback: true }).hapticFeedback).toBe(true)
     expect(settingsSchema.parse({ hapticFeedback: false }).hapticFeedback).toBe(false)
     expect(settingsSchema.parse({ browserSearchEngine: 'google' }).browserSearchEngine).toBe(
@@ -298,6 +308,12 @@ describe('settingsSchema', () => {
     expect(settingsSchema.parse({ semanticSearchEnabled: 1 }).semanticSearchEnabled).toBe(false)
     expect(settingsSchema.parse({ quickCaptureEnabled: 'yes' }).quickCaptureEnabled).toBe(true)
     expect(settingsSchema.parse({ quickCaptureEnabled: 0 }).quickCaptureEnabled).toBe(true)
+    expect(settingsSchema.parse({ quickCaptureShortcut: 'Shift-K' }).quickCaptureShortcut).toBe(
+      DEFAULT_QUICK_CAPTURE_SHORTCUT,
+    )
+    expect(settingsSchema.parse({ quickCaptureShortcut: 'Mod-Escape' }).quickCaptureShortcut).toBe(
+      DEFAULT_QUICK_CAPTURE_SHORTCUT,
+    )
     expect(settingsSchema.parse({ hapticFeedback: 'off' }).hapticFeedback).toBe(true)
     expect(settingsSchema.parse({ hapticFeedback: 0 }).hapticFeedback).toBe(true)
     expect(settingsSchema.parse({ browserSearchEngine: 'yahoo' }).browserSearchEngine).toBe(
@@ -367,6 +383,7 @@ describe('settingsSchema', () => {
       glassIntensity: 'regular',
       taskReminders: false,
       quickCaptureEnabled: true,
+      quickCaptureShortcut: DEFAULT_QUICK_CAPTURE_SHORTCUT,
       hapticFeedback: true,
       browserSearchEngine: 'duckduckgo',
       browserOpenLinksInApp: true,

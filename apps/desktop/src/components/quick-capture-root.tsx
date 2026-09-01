@@ -9,6 +9,8 @@ import {
 import { captureInboxSpool, errorMessage, hideQuickCapture, windowBootstrap } from '@reflect/core'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Kbd } from '@/components/kbd'
+import { ArrowRight, NotePlus } from '@/components/icons'
 import {
   TEXT_CAPTURE_MAX_LENGTH,
   buildGlobalShortcutEnvelope,
@@ -17,7 +19,7 @@ import {
 import { installQuitFlush } from '@/lib/quit-flush'
 
 /**
- * The desktop global-shortcut surface: a frameless bar that appends one
+ * The desktop global-shortcut surface: a focused Quick Entry window that appends one
  * line to today's daily note via the capture inbox. It never boots the
  * graph workspace — the main window owns indexing, sync, and the drain.
  */
@@ -70,32 +72,61 @@ export function QuickCaptureRoot(): ReactElement {
   }
 
   return (
-    <div className="flex h-screen w-screen items-center bg-background px-3">
-      <div aria-hidden data-tauri-drag-region className="h-full w-3 shrink-0" />
-      <form className="flex min-w-0 flex-1 items-center gap-2" onSubmit={onSubmit}>
-        <Input
-          ref={inputRef}
-          value={text}
-          maxLength={TEXT_CAPTURE_MAX_LENGTH}
-          disabled={pending}
-          placeholder="Add to today…"
-          aria-label="Capture a line to today's note"
-          onChange={(event) => setText(event.target.value)}
-          onKeyDown={onKeyDown}
-          className="h-10"
-        />
-        <Button type="submit" size="sm" disabled={pending || foldQuickCaptureText(text) === ''}>
-          Save
-        </Button>
-      </form>
-      {error !== null ? (
-        <p
-          className="ml-2 max-w-[10rem] shrink-0 truncate text-xs text-red-700 dark:text-red-300"
-          role="alert"
+    <div className="h-screen w-screen bg-background p-2">
+      <section className="flex h-full flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-pop">
+        <header
+          data-tauri-drag-region
+          className="flex h-12 shrink-0 items-center gap-2.5 border-b border-border px-3.5"
         >
-          {error}
-        </p>
-      ) : null}
+          <span className="flex size-7 items-center justify-center rounded-lg bg-accent-soft text-accent-soft-text">
+            <NotePlus className="size-4" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-sm font-medium text-text">Quick Entry</h1>
+            <p className="text-xs text-text-muted">Saved to today&apos;s note</p>
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-text-muted">
+            <Kbd>esc</Kbd>
+            <span>Close</span>
+          </div>
+        </header>
+
+        <form className="flex min-h-0 flex-1 flex-col px-3.5 py-3" onSubmit={onSubmit}>
+          <div className="flex min-w-0 flex-1 items-center gap-2.5">
+            <Input
+              ref={inputRef}
+              value={text}
+              maxLength={TEXT_CAPTURE_MAX_LENGTH}
+              disabled={pending}
+              placeholder="What do you want to remember?"
+              aria-label="Capture a line to today's note"
+              onChange={(event) => setText(event.target.value)}
+              onKeyDown={onKeyDown}
+              className="h-9 flex-1 border-0 bg-transparent px-0 text-base shadow-none focus-visible:border-transparent focus-visible:ring-0 md:text-base dark:bg-transparent"
+            />
+            <Button
+              type="submit"
+              size="sm"
+              disabled={pending || foldQuickCaptureText(text) === ''}
+              className="gap-1.5"
+            >
+              {pending ? 'Adding…' : 'Add'}
+              <ArrowRight className="size-3.5" />
+            </Button>
+          </div>
+          <div className="mt-1 flex min-h-4 items-center text-xs text-text-muted">
+            {error !== null ? (
+              <p className="truncate text-destructive" role="alert">
+                {error}
+              </p>
+            ) : (
+              <p>
+                Press <Kbd className="mx-1">↩</Kbd> to add
+              </p>
+            )}
+          </div>
+        </form>
+      </section>
     </div>
   )
 }

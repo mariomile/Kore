@@ -34,6 +34,17 @@ const KEY_SYMBOLS: Record<string, string> = {
   arrowleft: '←',
   arrowright: '→',
   space: '␣',
+  slash: '/',
+  backslash: '\\',
+  comma: ',',
+  period: '.',
+  semicolon: ';',
+  quote: "'",
+  bracketleft: '[',
+  bracketright: ']',
+  minus: '-',
+  equal: '=',
+  backquote: '`',
   tab: '⇥',
 }
 

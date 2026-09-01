@@ -365,6 +365,38 @@ describe('SettingsScreen', () => {
     )
   })
 
+  it('disables Quick Entry and records a new global shortcut', async () => {
+    await renderScreen()
+    const quickEntry = page.getByRole('switch', { name: 'Quick Entry' })
+    await expect.element(quickEntry).toHaveAttribute('aria-checked', 'true')
+
+    await quickEntry.click()
+
+    await expect.element(quickEntry).toHaveAttribute('aria-checked', 'false')
+    await vi.waitFor(() => expect(saved.at(-1)).toMatchObject({ quickCaptureEnabled: false }))
+
+    const shortcut = page.getByRole('button', { name: 'Quick Entry shortcut' })
+    await shortcut.click()
+    await expect.element(shortcut).toHaveAttribute('aria-pressed', 'true')
+    shortcut.element().dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'k',
+        code: 'KeyK',
+        metaKey: true,
+        shiftKey: true,
+        bubbles: true,
+      }),
+    )
+
+    await expect.element(shortcut).toHaveAttribute('aria-pressed', 'false')
+    await vi.waitFor(() =>
+      expect(saved.at(-1)).toMatchObject({
+        quickCaptureEnabled: false,
+        quickCaptureShortcut: 'Mod-Shift-K',
+      }),
+    )
+  })
+
   it('reflects a persisted default-bullet opt-out', async () => {
     stored = { editorDefaultBullet: false }
     await renderScreen()

@@ -11,7 +11,7 @@
 
 use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
-use std::sync::{Arc, Mutex, MutexGuard, Once};
+use std::sync::{Arc, Mutex, MutexGuard, Once, OnceLock};
 
 use serde::Serialize;
 use tauri::{Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
@@ -630,9 +630,12 @@ pub fn window_bootstrap(
     })
 }
 
-/// The system-wide binding that raises the quick-capture window.
+/// The system-wide binding that raises the Quick Entry window on a fresh install.
 #[cfg(desktop)]
-const QUICK_CAPTURE_SHORTCUT: &str = "CommandOrControl+Shift+Space";
+const DEFAULT_QUICK_CAPTURE_BINDING: &str = "Mod-Shift-Slash";
+
+#[cfg(desktop)]
+static QUICK_CAPTURE_REGISTRATION: OnceLock<Mutex<Option<String>>> = OnceLock::new();
 
 /// Whether the user left global quick capture on. Missing or invalid values
 /// follow the frontend schema's `.catch(true)`.
@@ -642,6 +645,44 @@ fn quick_capture_enabled(settings: &crate::settings::SettingsDoc) -> bool {
         settings.get("quickCaptureEnabled"),
         Some(serde_json::Value::Bool(false))
     )
+}
+
+/// Translate Kore's portable keybinding form into the native plugin's syntax.
+#[cfg(desktop)]
+fn global_shortcut_for_binding(binding: &str) -> Option<String> {
+    let parts = binding.split('-').collect::<Vec<_>>();
+    if parts.len() < 2
+        || !parts[..parts.len() - 1]
+            .iter()
+            .any(|part| matches!(*part, "Mod" | "Ctrl" | "Alt"))
+    {
+        return None;
+    }
+
+    let native = parts
+        .into_iter()
+        .map(|part| match part {
+            "Mod" => "CommandOrControl",
+            other => other,
+        })
+        .collect::<Vec<_>>()
+        .join("+");
+    native
+        .parse::<tauri_plugin_global_shortcut::Shortcut>()
+        .ok()?;
+    Some(native)
+}
+
+#[cfg(desktop)]
+fn quick_capture_shortcut(settings: &crate::settings::SettingsDoc) -> String {
+    settings
+        .get("quickCaptureShortcut")
+        .and_then(serde_json::Value::as_str)
+        .and_then(global_shortcut_for_binding)
+        .unwrap_or_else(|| {
+            global_shortcut_for_binding(DEFAULT_QUICK_CAPTURE_BINDING)
+                .expect("the built-in Quick Entry shortcut must be valid")
+        })
 }
 
 /// Register or drop the system-wide shortcut to match the saved setting.
@@ -654,11 +695,33 @@ pub(crate) fn sync_quick_capture_shortcut<R: tauri::Runtime>(
     use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
     let manager = app.global_shortcut();
-    if quick_capture_enabled(settings) {
-        if manager.is_registered(QUICK_CAPTURE_SHORTCUT) {
+    let desired = quick_capture_enabled(settings).then(|| quick_capture_shortcut(settings));
+    let registration = QUICK_CAPTURE_REGISTRATION.get_or_init(|| Mutex::new(None));
+    let mut current = registration
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+
+    if current.as_ref() == desired.as_ref() {
+        if match desired.as_ref() {
+            Some(shortcut) => manager.is_registered(shortcut.as_str()),
+            None => true,
+        } {
             return;
         }
-        if let Err(err) = manager.on_shortcut(QUICK_CAPTURE_SHORTCUT, |app, _, event| {
+    }
+
+    if let Some(registered) = current.as_ref() {
+        if manager.is_registered(registered.as_str()) {
+            if let Err(err) = manager.unregister(registered.as_str()) {
+                tracing::warn!(error = %err, "failed to unregister Quick Entry shortcut");
+                return;
+            }
+        }
+        *current = None;
+    }
+
+    if let Some(shortcut) = desired {
+        if let Err(err) = manager.on_shortcut(shortcut.as_str(), |app, _, event| {
             if event.state != ShortcutState::Pressed {
                 return;
             }
@@ -669,13 +732,9 @@ pub(crate) fn sync_quick_capture_shortcut<R: tauri::Runtime>(
                 }
             });
         }) {
-            tracing::warn!(error = %err, "global quick-capture shortcut unavailable");
-        }
-        return;
-    }
-    if manager.is_registered(QUICK_CAPTURE_SHORTCUT) {
-        if let Err(err) = manager.unregister(QUICK_CAPTURE_SHORTCUT) {
-            tracing::warn!(error = %err, "failed to unregister quick-capture shortcut");
+            tracing::warn!(shortcut, error = %err, "global Quick Entry shortcut unavailable");
+        } else {
+            *current = Some(shortcut);
         }
     }
 }
@@ -738,8 +797,8 @@ fn create_quick_capture_window<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> 
     let revealed = Arc::new(Once::new());
 
     let builder = WebviewWindowBuilder::new(app, QUICK_CAPTURE_LABEL, WebviewUrl::default())
-        .title("Quick capture")
-        .inner_size(480.0, 88.0)
+        .title("Quick Entry")
+        .inner_size(520.0, 152.0)
         .resizable(false)
         .decorations(false)
         .always_on_top(true)
@@ -776,6 +835,21 @@ fn create_quick_capture_window<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(desktop)]
+    #[test]
+    fn quick_capture_binding_translates_only_supported_global_shortcuts() {
+        assert_eq!(
+            global_shortcut_for_binding("Mod-Shift-Slash").as_deref(),
+            Some("CommandOrControl+Shift+Slash")
+        );
+        assert_eq!(
+            global_shortcut_for_binding("Mod-Alt-K").as_deref(),
+            Some("CommandOrControl+Alt+K")
+        );
+        assert_eq!(global_shortcut_for_binding("Shift-K"), None);
+        assert_eq!(global_shortcut_for_binding("Mod-NotAKey"), None);
+    }
 
     /// Read `--surface-app` out of one scope of the design-system token sheet.
     ///

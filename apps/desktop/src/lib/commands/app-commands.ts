@@ -100,15 +100,14 @@ const APP_COMMANDS: AppCommand[] = [
   },
   {
     id: 'capture.quick',
-    title: 'Quick capture to today',
+    title: 'Quick Entry',
     keywords: ['inbox', 'append', 'today', 'global', 'shortcut'],
-    keybinding: 'Mod-Shift-c',
     run: () => {
       if (!isNativeShell()) {
         return
       }
       void showQuickCapture().catch((cause: unknown) => {
-        startOperation('Quick capture').fail(errorMessage(cause))
+        startOperation('Quick Entry').fail(errorMessage(cause))
       })
     },
   },

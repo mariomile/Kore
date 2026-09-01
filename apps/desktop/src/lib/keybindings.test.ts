@@ -20,6 +20,7 @@ describe('formatBinding', () => {
   it('maps named keys to symbols', () => {
     expect(formatBinding('Mod-Enter', true)).toEqual(['⌘', '↩'])
     expect(formatBinding('Mod-ArrowUp', false)).toEqual(['Ctrl', '↑'])
+    expect(formatBinding('Mod-Shift-Slash', true)).toEqual(['⌘', '⇧', '/'])
     expect(formatBinding('Escape', true)).toEqual(['esc'])
   })
 

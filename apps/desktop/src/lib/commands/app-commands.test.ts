@@ -144,8 +144,8 @@ describe('keybindingFor', () => {
     expect(keybindingFor('audioMemo.toggle')).toBe('Mod-Shift-r')
   })
 
-  it('capture.quick is bound to Mod-Shift-c', () => {
-    expect(keybindingFor('capture.quick')).toBe('Mod-Shift-c')
+  it('leaves Quick Entry activation to the remappable global shortcut', () => {
+    expect(keybindingFor('capture.quick')).toBeNull()
   })
 
   it('dev.toggleDevtools is bound to Mod-Shift-i', () => {

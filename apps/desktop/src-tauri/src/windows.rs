@@ -790,22 +790,20 @@ fn create_quick_capture_window<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> 
         return Err(AppError::io("the app is quitting"));
     }
 
-    let background = app
-        .get_webview_window(MAIN_WINDOW_LABEL)
-        .map(|window| theme_background_color(&window))
-        .unwrap_or(SURFACE_APP_LIGHT);
     let revealed = Arc::new(Once::new());
 
     let builder = WebviewWindowBuilder::new(app, QUICK_CAPTURE_LABEL, WebviewUrl::default())
         .title("Quick Entry")
-        .inner_size(504.0, 136.0)
+        .inner_size(520.0, 152.0)
         .resizable(false)
         .decorations(false)
+        .transparent(true)
+        .shadow(false)
         .always_on_top(true)
         .skip_taskbar(true)
         .visible(false)
         .center()
-        .background_color(background)
+        .background_color(tauri::webview::Color(0, 0, 0, 0))
         .on_page_load({
             let revealed = Arc::clone(&revealed);
             move |window, payload| {

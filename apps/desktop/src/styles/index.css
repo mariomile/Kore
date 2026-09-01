@@ -192,6 +192,12 @@ body,
   height: 100%;
 }
 
+html[data-window-role='quick-capture'],
+html[data-window-role='quick-capture'] body,
+html[data-window-role='quick-capture'] #root {
+  background: transparent;
+}
+
 /* The app frame (AppShell) never scrolls (every route mounts its own scroll
    container), so the document scroller must never engage. Without this,
    reaching an inner pane's scroll boundary chains the gesture up to <body>

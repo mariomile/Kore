@@ -5,6 +5,7 @@ import { queryClient } from '@/lib/query-client'
 import { registerAppCommands } from '@/lib/commands/app-commands'
 import { installNativeMenu } from '@/lib/native-menu/menu'
 import { installTauriBridge } from '@/lib/tauri-bridge'
+import { isQuickCaptureWindow } from '@/lib/windows/window-role'
 import { PlatformRoot, warmPlatformRoot } from '@/platform-root'
 import { EditorFontFamilyEffect } from '@/providers/editor-font-family'
 import { EditorFullWidthEffect } from '@/providers/editor-full-width'
@@ -18,6 +19,9 @@ import { ThemeProvider } from '@/providers/theme-provider'
 import '@/styles/index.css'
 
 installTauriBridge()
+if (isQuickCaptureWindow()) {
+  document.documentElement.dataset.windowRole = 'quick-capture'
+}
 // Start the platform resolve + surface-chunk fetch (and, on mobile, the
 // iCloud-container resolve) now, ahead of React's first render — the lazy
 // gate in PlatformRoot would otherwise serialize all of it behind the mount.

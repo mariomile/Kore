@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react'
 import type { TagProperty } from '@reflect/core'
 import { Calendar, Layers, LayoutTemplate, type Icon } from '@/components/icons'
-import { calendarPropertyOf, groupablePropertiesOf } from '@/lib/tags/schema-views'
+import { boardGroupablePropertiesOf, calendarPropertyOf } from '@/lib/tags/schema-views'
 import { FIELD_LABEL_CLASS } from './tag-config-drafts'
 
 interface TagViewsStripProps {
@@ -28,7 +28,7 @@ interface ViewPill {
  * Status and watch Board light up before saving anything.
  */
 export function TagViewsStrip({ properties }: TagViewsStripProps): ReactElement {
-  const groupable = groupablePropertiesOf(properties)
+  const groupable = boardGroupablePropertiesOf(properties)
   const dateProperty = calendarPropertyOf(properties)
   const pills: ViewPill[] = [
     {

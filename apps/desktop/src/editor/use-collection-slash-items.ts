@@ -31,7 +31,7 @@ export function useCollectionSlashItems(
         onSelect: () => {
           const editor = getEditor()
           editor?.insertMarkdown(
-            `${formatCollectionEmbed({ tag: entry.tagKey, view: 'table', sort: null, filters: [] })}\n`,
+            `${formatCollectionEmbed({ tag: entry.tagKey, view: 'table', sort: null, group: null, filters: [] })}\n`,
           )
         },
       }))

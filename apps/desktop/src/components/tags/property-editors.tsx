@@ -23,11 +23,17 @@ export function PropertyValueEditor(props: PropertyEditorProps): ReactElement {
     case 'multiselect':
       return <SelectPropertyEditor {...props} />
     case 'relation':
+    case 'person':
       return <RelationPropertyEditor {...props} />
     case 'relations':
       return <MultiRelationPropertyEditor {...props} />
     case 'rollup':
     case 'reverse':
+    case 'formula':
+    // `created` is a one-time stamp, `updated` a view over the index's
+    // mtime — read-only faces, like the derived columns above.
+    case 'created':
+    case 'updated':
       return <>{props.children}</>
     default:
       return <InputPropertyEditor {...props} />

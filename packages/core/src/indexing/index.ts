@@ -188,6 +188,7 @@ export {
   listTagTypes,
   listCollection,
   TITLE_SORT_KEY,
+  effectiveCollectionSort,
   UPDATED_SORT_KEY,
   listNoteTagTypes,
   getNoteProperties,
@@ -199,7 +200,13 @@ export {
   type ListCollectionOptions,
   type CollectionValue,
 } from './collections'
-export { attachRollups, attachReverseRelations, type RollupLookup } from './rollups'
+export {
+  attachRollups,
+  attachReverseRelations,
+  attachTimestampColumns,
+  attachFormulaColumns,
+  type RollupLookup,
+} from './rollups'
 export { parseSearchQuery, type ParsedSearchQuery, type SearchFilters } from './filter-query'
 export {
   searchNotes,

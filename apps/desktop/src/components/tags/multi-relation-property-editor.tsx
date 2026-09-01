@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from 'react'
-import { relationDisplay, relationTarget, relationValue } from '@reflect/core'
+import { relationDisplay, relationTarget, relationTargetOf, relationValue } from '@reflect/core'
 import { Check } from '@/components/icons'
 import {
   Command,
@@ -42,18 +42,20 @@ export function MultiRelationPropertyEditor({
   // YAML) still participates, keyed by its own text.
   const links = localLinks ?? editorSeedList(value)
   const targetOf = (link: string): string => relationTarget(link) ?? link
-  const suggestions = useRelationSuggestions(open, query, property.target)
+  // `person` scopes to its default collection even with no explicit target.
+  const target = relationTargetOf(property)
+  const suggestions = useRelationSuggestions(open, query, target)
   // Same "Create in #target" entry as the single relation's picker.
-  const newRowTitle = property.target === undefined ? null : creatableRowTitle(query)
+  const newRowTitle = target === undefined ? null : creatableRowTitle(query)
   const canCreate =
     newRowTitle !== null &&
     graph !== null &&
     !suggestions.some((suggestion) => suggestion.title.toLowerCase() === newRowTitle.toLowerCase())
   const createAndToggle = async (): Promise<void> => {
-    if (property.target === undefined || newRowTitle === null || graph === null) {
+    if (target === undefined || newRowTitle === null || graph === null) {
       return
     }
-    toggle(await createRelationRow(property.target, newRowTitle, graph.generation))
+    toggle(await createRelationRow(target, newRowTitle, graph.generation))
   }
 
   const toggle = (insertText: string): void => {
@@ -87,9 +89,7 @@ export function MultiRelationPropertyEditor({
           <CommandInput
             value={query}
             onValueChange={setQuery}
-            placeholder={
-              property.target === undefined ? 'Link notes…' : `Link #${property.target} rows…`
-            }
+            placeholder={target === undefined ? 'Link notes…' : `Link #${target} rows…`}
             autoFocus
           />
           <CommandList>
@@ -140,7 +140,7 @@ export function MultiRelationPropertyEditor({
               {canCreate ? (
                 <CommandItem value="__create" onSelect={() => void createAndToggle()}>
                   <span className="min-w-0 flex-1 truncate">
-                    Create “{newRowTitle}” in #{property.target}
+                    Create “{newRowTitle}” in #{target}
                   </span>
                 </CommandItem>
               ) : null}

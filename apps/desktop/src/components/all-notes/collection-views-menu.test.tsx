@@ -10,6 +10,7 @@ const VIEWS: SavedCollectionView[] = [
     view: 'board',
     sort: null,
     group: 'status',
+    tableGroup: null,
     filters: [{ key: 'status', operator: 'is', text: 'to-read' }],
   },
 ]

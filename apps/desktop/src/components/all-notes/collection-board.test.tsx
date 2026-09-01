@@ -1,12 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
-import type { CollectionEntry, CollectionValue, TagType } from '@reflect/core'
+import type { CollectionEntry, CollectionValue, TagProperty, TagType } from '@reflect/core'
 import {
   boardColumns,
   boardProperty,
   CollectionBoard,
   groupableProperties,
   rankForInsertion,
+  tableGroupRows,
 } from './collection-board'
 
 const commitProperties = vi.hoisted(() => vi.fn())
@@ -137,6 +138,88 @@ describe('boardColumns', () => {
   })
 })
 
+const TOPICS: TagProperty = {
+  name: 'Topics',
+  key: 'topics',
+  type: 'multiselect',
+  options: ['sci-fi', 'utopia'],
+}
+
+function list(values: string[]): CollectionValue {
+  return { value: JSON.stringify(values), valueType: 'list', valueNumber: values.length }
+}
+
+describe('boardColumns — multiselect lanes', () => {
+  it('puts a card in every lane its list carries, declared options first', () => {
+    const rows = [
+      entry('notes/dispossessed.md', 'The Dispossessed', { topics: list(['sci-fi', 'utopia']) }),
+      entry('notes/dune.md', 'Dune', { topics: list(['sci-fi', 'desert']) }),
+      entry('notes/lathe.md', 'The Lathe of Heaven'),
+    ]
+    const columns = boardColumns(rows, TOPICS)
+    expect(columns.map((column) => column.label)).toEqual([
+      'sci-fi',
+      'utopia',
+      'desert',
+      'No Topics',
+    ])
+    expect(columns[0]?.entries.map((row) => row.title)).toEqual(['The Dispossessed', 'Dune'])
+    expect(columns[1]?.entries.map((row) => row.title)).toEqual(['The Dispossessed'])
+    expect(columns[2]?.entries.map((row) => row.title)).toEqual(['Dune'])
+    expect(columns[3]?.entries.map((row) => row.title)).toEqual(['The Lathe of Heaven'])
+  })
+})
+
+describe('CollectionBoard — multiselect lanes', () => {
+  it('moving between lanes drops the source option and gains the target', async () => {
+    const rows = [entry('notes/dune.md', 'Dune', { topics: list(['sci-fi', 'desert']) })]
+    const view = await renderBoard(rows, () => {}, TOPICS)
+    // Dune lives in both the sci-fi and desert lanes — the first occurrence.
+    const source = await card(view, 'Dune', 0)
+    const target = view.getByRole('region', { name: 'utopia', exact: true }).element()
+
+    await dragTo(source, target)
+
+    expect(commitProperties).toHaveBeenCalledWith('notes/dune.md', {
+      topics: ['desert', 'utopia'],
+    })
+  })
+
+  it('dropping on the unset lane removes only the source option', async () => {
+    const rows = [entry('notes/dune.md', 'Dune', { topics: list(['sci-fi', 'desert']) })]
+    const view = await renderBoard(rows, () => {}, TOPICS)
+    const source = await card(view, 'Dune', 0)
+    const unset = view.getByRole('region', { name: 'No Topics' }).element()
+
+    await dragTo(source, unset)
+
+    expect(commitProperties).toHaveBeenCalledWith('notes/dune.md', { topics: ['desert'] })
+  })
+})
+
+describe('tableGroupRows', () => {
+  it('keeps the incoming (sorted) order inside groups, ignoring board ranks', () => {
+    const rows = [
+      entry('notes/z.md', 'Z', { status: stored('done', 'string'), order: stored('1', 'number') }),
+      entry('notes/a.md', 'A', { status: stored('done', 'string'), order: stored('9', 'number') }),
+    ]
+    const groups = tableGroupRows(rows, STATUS)
+    const done = groups.find((group) => group.label === 'done')
+    expect(done?.entries.map((row) => row.title)).toEqual(['Z', 'A'])
+  })
+
+  it('drops lanes nothing lives in — declared options and the unset tail alike', () => {
+    const groups = tableGroupRows(
+      [
+        entry('notes/dune.md', 'Dune', { status: stored('to-read', 'string') }),
+        entry('notes/stray.md', 'Stray', { status: stored('abandoned', 'string') }),
+      ],
+      STATUS,
+    )
+    expect(groups.map((group) => group.label)).toEqual(['to-read', 'abandoned'])
+  })
+})
+
 describe('rankForInsertion', () => {
   const ranked = (rank: number | null, path: string): CollectionEntry =>
     entry(path, path, rank === null ? {} : { order: stored(String(rank), 'number') })
@@ -171,14 +254,18 @@ async function dragTo(card: Element, target: Element): Promise<void> {
   await tick()
 }
 
-function renderBoard(entries: CollectionEntry[], onOpen: (path: string) => void = () => {}) {
+function renderBoard(
+  entries: CollectionEntry[],
+  onOpen: (path: string) => void = () => {},
+  property: TagProperty = STATUS,
+) {
   return render(
     <div style={{ height: '100vh' }}>
       <CollectionBoard
         entries={entries}
         tag="book"
         type={BOOK_TYPE}
-        property={STATUS}
+        property={property}
         onOpen={onOpen}
       />
     </div>,
@@ -190,8 +277,10 @@ function renderBoard(entries: CollectionEntry[], onOpen: (path: string) => void 
 async function card(
   view: Awaited<ReturnType<typeof renderBoard>>,
   title: string,
+  /** Which occurrence, for a multiselect card living in several lanes. */
+  index = 0,
 ): Promise<Element> {
-  const button = view.getByRole('button', { name: title })
+  const button = view.getByRole('button', { name: title }).nth(index)
   await expect.element(button).toBeInTheDocument()
   return button.element().closest('article')!
 }

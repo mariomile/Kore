@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from 'react'
-import { relationTarget, relationValue } from '@reflect/core'
+import { relationTarget, relationTargetOf, relationValue } from '@reflect/core'
 import {
   Command,
   CommandEmpty,
@@ -43,8 +43,10 @@ export function RelationPropertyEditor({
   const [query, setQuery] = useState('')
   const { graph } = useGraph()
   const currentTarget = value === undefined ? null : relationTarget(value.value)
-  const suggestions = useRelationSuggestions(open, query, property.target)
-  const newRowTitle = property.target === undefined ? null : creatableRowTitle(query)
+  // `person` scopes to its default collection even with no explicit target.
+  const target = relationTargetOf(property)
+  const suggestions = useRelationSuggestions(open, query, target)
+  const newRowTitle = target === undefined ? null : creatableRowTitle(query)
   const canCreate =
     newRowTitle !== null &&
     graph !== null &&
@@ -55,10 +57,10 @@ export function RelationPropertyEditor({
     setOpen(false)
   }
   const createAndChoose = async (): Promise<void> => {
-    if (property.target === undefined || newRowTitle === null || graph === null) {
+    if (target === undefined || newRowTitle === null || graph === null) {
       return
     }
-    choose(await createRelationRow(property.target, newRowTitle, graph.generation))
+    choose(await createRelationRow(target, newRowTitle, graph.generation))
   }
   const clear = (): void => {
     onCommit(undefined)
@@ -82,9 +84,7 @@ export function RelationPropertyEditor({
           <CommandInput
             value={query}
             onValueChange={setQuery}
-            placeholder={
-              property.target === undefined ? 'Link to a note…' : `Link a #${property.target} row…`
-            }
+            placeholder={target === undefined ? 'Link to a note…' : `Link a #${target} row…`}
             autoFocus
           />
           <CommandList>
@@ -118,7 +118,7 @@ export function RelationPropertyEditor({
               {canCreate ? (
                 <CommandItem value="__create" onSelect={() => void createAndChoose()}>
                   <span className="min-w-0 flex-1 truncate">
-                    Create “{newRowTitle}” in #{property.target}
+                    Create “{newRowTitle}” in #{target}
                   </span>
                 </CommandItem>
               ) : null}

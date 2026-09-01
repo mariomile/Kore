@@ -92,6 +92,7 @@ export function frontmatterPatchToYaml(patch: FrontmatterPatch): Record<string, 
       ...(property.target === undefined ? {} : { target: property.target }),
       ...(property.rollup === undefined ? {} : { rollup: property.rollup }),
       ...(property.reverse === undefined ? {} : { reverse: property.reverse }),
+      ...(property.formula === undefined ? {} : { formula: property.formula }),
     }))
   }
   if (patch.tagTemplate !== undefined) {

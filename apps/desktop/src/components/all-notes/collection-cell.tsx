@@ -48,7 +48,8 @@ export function readCellValue(
       return value.valueType === 'number'
         ? { text: raw, checked: false, mismatch: false }
         : { text: raw, checked: false, mismatch: true }
-    case 'relation': {
+    case 'relation':
+    case 'person': {
       if (value.valueType !== 'string') {
         return { text: raw, checked: false, mismatch: true }
       }
@@ -135,7 +136,9 @@ export function CollectionCell({ property, value, selected }: CollectionCellProp
   const reading = readCellValue(property, value)
   // Storage stays honest ISO; only the face follows the user's date format.
   const text =
-    property.type === 'date' && !reading.mismatch && isCalendarDate(reading.text)
+    (property.type === 'date' || property.type === 'created' || property.type === 'updated') &&
+    !reading.mismatch &&
+    isCalendarDate(reading.text)
       ? formatShortDate(reading.text, settings.dateFormat)
       : reading.text
   if (property.type === 'checkbox' && !reading.mismatch) {
@@ -169,6 +172,20 @@ export function CollectionCell({ property, value, selected }: CollectionCellProp
       </span>
     )
   }
+  // A person reads as who it is: an initials disc in the accent wash, the
+  // same face wherever the value shows.
+  if (property.type === 'person' && !reading.mismatch && reading.text !== '') {
+    return (
+      <span className="flex min-w-0 items-center gap-1.5">
+        <PersonBadge name={reading.text} />
+        <span
+          className={cn('truncate text-[13px]', selected ? 'text-accent' : 'text-text-secondary')}
+        >
+          {reading.text}
+        </span>
+      </span>
+    )
+  }
   return (
     <span
       className={cn(
@@ -185,6 +202,28 @@ export function CollectionCell({ property, value, selected }: CollectionCellProp
       title={reading.mismatch ? 'Value does not match the property type' : undefined}
     >
       {text}
+    </span>
+  )
+}
+
+/** The initials a person disc shows: first letters of the first two words. */
+export function personInitials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter((word) => word !== '')
+    .slice(0, 2)
+    .map((word) => (word[0] ?? '').toLocaleUpperCase())
+    .join('')
+}
+
+/** The `person` value's initials disc, shared by cells and chips. */
+export function PersonBadge({ name }: { name: string }): ReactElement {
+  return (
+    <span
+      aria-hidden
+      className="flex size-4 shrink-0 items-center justify-center rounded-full bg-accent-soft text-[9px] font-semibold leading-none text-accent-soft-text"
+    >
+      {personInitials(name)}
     </span>
   )
 }

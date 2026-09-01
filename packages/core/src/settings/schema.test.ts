@@ -68,6 +68,7 @@ describe('settingsSchema', () => {
       savedSearches: [],
       collectionSorts: {},
       collectionGroups: {},
+      collectionTableGroups: {},
       collectionColumns: {},
       collectionViewModes: {},
       collectionSavedViews: {},
@@ -399,10 +400,22 @@ describe('settingsSchema', () => {
       savedSearches: [],
       collectionSorts: {},
       collectionGroups: {},
+      collectionTableGroups: {},
       collectionColumns: {},
       collectionViewModes: {},
       collectionSavedViews: {},
       futureKey: true,
+    })
+  })
+
+  describe('collectionSavedViews', () => {
+    it('applies a pre-V1b saved view as ungrouped rows (tableGroup defaults null)', () => {
+      const parsed = settingsSchema.parse({
+        collectionSavedViews: {
+          book: [{ id: 'v1', name: 'Queue', view: 'table', sort: null, group: null, filters: [] }],
+        },
+      })
+      expect(parsed.collectionSavedViews['book']?.[0]?.tableGroup).toBeNull()
     })
   })
 

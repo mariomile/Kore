@@ -36,6 +36,7 @@ const NOTE = {
   hasConflict: true,
   gistUrl: null,
   gistStale: false,
+  mtime: 0,
 }
 
 let queryClient: QueryClient

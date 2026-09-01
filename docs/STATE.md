@@ -1,9 +1,8 @@
 # Kore working state
 
-**Updated:** 2026-08-31 at `f6c07bb`+ (Plan 29 opened — collections as
-databases; slice R1, typed relations, shipped on the sidebar-improvements
-branch together with the tag-page cleanup, link-preview cards, and the
-sidebar shelf work).
+**Updated:** 2026-09-01 at `eb8c7ff`+ (Plan 29 complete: after V1b and T1,
+the same session lands V2a multiselect board lanes, V2b `group:` in the
+embed fence, and T2 formulas — projection-only per I15).
 **Rule:** Every session that moves the program updates this file before its
 summary: tick what became true and how it was verified, set the next step,
 refresh the date. What is done and what is next live here and only here. Why
@@ -45,11 +44,41 @@ after it: the ` ```collection ` fence gained `sort:` and `filter:` lines
 (the filter menu's vocabulary, tolerant parse, serializer round-trip,
 applied through the same `applyCollectionFilters` as the tag page —
 verified by core round-trip tests, a widget component test, and a dev-app
-slash-insert). Still queued: V1b (table row grouping — its own slice), T1
-(created/updated, person, phone; formulas last, projection-only). The same
-session also landed the tag-page cleanup (breadcrumb title, one table per
-typed tag, delineated grid cards), pasted-link preview cards, readable
-scrolling tabs, and the dialog-width root fix.
+slash-insert). The same session also landed the tag-page cleanup
+(breadcrumb title, one table per typed tag, delineated grid cards),
+pasted-link preview cards, readable scrolling tabs, and the dialog-width
+root fix; all of it shipped as v0.44.0. V1b and T1 followed (2026-09-01):
+the table gained a per-tag "Group by" whose shelves are the board's own
+lanes minus rank-sort and empty lanes (`tableGroupRows`; saved views
+snapshot the nullable `tableGroup`; selection order and shelves computed
+once in the screen), and four property types landed with vault-honest
+semantics — `created` as a frontmatter stamp written only when Kore births
+the row (filesystem birthtime lies under git/iCloud sync; imports and
+hand-tagged notes keep their own history), `updated` as a pure view over
+the indexed mtime (`attachTimestampColumns` + the `$updated` sort
+sentinel via `effectiveCollectionSort`), `person` as a relation scoped to
+`#person` (`relationTargetOf`, create-from-picker, initials disc, board
+lanes), `phone` as tel-input text (verified: core stamp/attach/sort units,
+schema round-trip, settings tolerance for pre-V1b saved views, browser
+tests for the grouped table, person picker, read-only stamp editors, CSV
+import skipping view-only columns — plus `pnpm check` and the full suites).
+The queue then emptied in the same session: **V2a** — the board lanes by
+`multiselect` too (a card in every lane its list carries; a drop gains the
+target option and sheds the lane it left, so a two-lane card moved out of
+one honestly stays in the other; board-only, since duplicate rows have no
+place in the table's flat selection order), **V2b** — the fence gained
+`group: <key>` (tolerant parse, serializer round-trip, applied through the
+same `tableGroupRows` as the tag page), and **T2** — `formula` columns per
+I15: a small pure evaluator (`evaluateFormula`: literals, `prop("key")`,
+arithmetic, comparisons, boolean logic, `if`/`concat`/`round`/`abs`/
+`min`/`max`/`length`/`empty`/`format`) attached last in the derived chain
+so expressions read rollups/reverse/timestamps; formulas evaluate one
+shared snapshot (no ordering effects, no cycles), errors are deterministic
+cell text, nothing executes side effects or I/O, and nothing lands in
+frontmatter. Verified: evaluator + attach + embed round-trip + board-lane
+units, browser tests for the grouped embed and multiselect drops, `pnpm
+check`, and the full suites. **Plan 29's slices are complete** — formulas
+date functions, per-group aggregates, timeline/gallery are future scope.
 
 **Craft parity (user decision 2026-08-30, [Plan 28](plans/28-craft-parity.md)).**
 With Craft screenshots as the reference, the direction is set: Kore
@@ -303,13 +332,10 @@ declined; the backlog-B pass is closed.
    a future routines page, whenever that page gets built. Consider a
    Tasks-view "by project" grouping if the note panel proves not enough
    in real use.
-2. **Collections UX pass, remaining slices** (user decision 2026-08-30,
-   in recommendation order — the schema-dialog redesign the user asked
-   for mid-pass shipped as slice 2): (a) an optional Notion-style
-   properties header above the note body for typed notes; (b) a
-   gallery/card view that shows properties (the grid ignores them
-   today); (c) rollup sum/avg/min/max beyond count. Each is its own PR;
-   re-check appetite with the user between slices.
+2. **Collections** ([Plan 29](plans/29-collections-database.md)) is
+   complete through T2 — the UX pass's a/b/c and every planned slice
+   shipped. New scope (formula date functions, per-group table
+   aggregates, timeline/gallery views) waits for a fresh user decision.
 3. **Live checks with the user**: (a) Now 1: real MCP server + Tools toggle
    in a read-only conversation; (b) Now 2: send an image in chat, restart,
    confirm the restored conversation renders it from disk; (c) Now 3: ask a
@@ -321,6 +347,19 @@ declined; the backlog-B pass is closed.
 4. **Memory follow-ups** that emerge from Now item 3 usage (roadmap Next).
 
 ## Session log
+
+- 2026-09-01 — Plan 29 V2a + V2b + T2: multiselect board lanes (per-card
+  drop writes, list overlay), `group:` in the collection fence (applied by
+  the embedded table), and formula columns (pure `evaluateFormula`,
+  attached last, deterministic errors, I15's no-side-effects contract).
+  Plan 29's slices complete.
+- 2026-09-01 — Plan 29 V1b + T1: table row grouping (per-tag "Group by",
+  board-lane shelves without rank-sort or empty lanes, saved-view
+  `tableGroup`, keyboard nav mapped through the grouped order) and the
+  created/updated/person/phone property types (created = creation-time
+  frontmatter stamp, updated = view over indexed mtime with the `$updated`
+  sort reroute, person = `#person`-scoped relation with initials disc,
+  phone = tel text). v0.44.0 had shipped the first wave just before.
 
 - 2026-08-30 — Default vault objects (Project, Person, Company, Meeting)
   seeded into brand-new vaults through the welcome note's first-run

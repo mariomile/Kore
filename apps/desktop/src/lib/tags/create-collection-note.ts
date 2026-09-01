@@ -1,6 +1,7 @@
 import {
   appendBodyTag,
   createNoteIfAbsent,
+  createdStampValues,
   expandTemplatePlaceholders,
   isTemplatePath,
   newNoteId,
@@ -47,7 +48,9 @@ export async function createTypedCollectionNote(
   return await createCollectionNote(
     tag,
     generation,
-    properties,
+    // A row born in the app carries its `created` stamps (Plan 29 T1);
+    // values the caller already set (a lane, a day) win over the stamp.
+    { ...createdStampValues(type), ...properties },
     await bodyForCollectionCreate(type, values, generation),
   )
 }

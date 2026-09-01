@@ -87,6 +87,37 @@ describe('saveTagType', () => {
     expect(writeNote).not.toHaveBeenCalled()
   })
 
+  it('seeds a fresh definition with every schema field — target, reverse, formula', async () => {
+    createNoteIfAbsent.mockResolvedValue({ kind: 'created', modifiedMs: 1 })
+
+    await saveTagType(
+      'Book',
+      [
+        { name: 'Company', key: 'company', type: 'relation', target: 'company' },
+        {
+          name: 'People',
+          key: 'people',
+          type: 'reverse',
+          reverse: { tag: 'person', property: 'company' },
+        },
+        {
+          name: 'With VAT',
+          key: 'with-vat',
+          type: 'formula',
+          formula: { expression: 'round(prop("price") * 1.22, 2)' },
+        },
+      ],
+      3,
+    )
+
+    // The seed once forked from the update serializer and silently dropped
+    // exactly these keys on freshly created collections.
+    const [, contents] = createNoteIfAbsent.mock.calls[0] as unknown as [string, string, number]
+    expect(contents).toContain('target: company')
+    expect(contents).toContain('tag: person')
+    expect(contents).toContain('expression:')
+  })
+
   it('routes an existing definition through an open editor session', async () => {
     createNoteIfAbsent.mockResolvedValue({ kind: 'exists' })
     const commitFrontmatter = vi.fn(async () => true)

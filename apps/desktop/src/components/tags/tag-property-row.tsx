@@ -11,20 +11,25 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUturnRight,
+  Calculator,
   Calendar,
+  CalendarClock,
   Chart,
   CheckCircle,
   ChevronUpDown,
   Flag,
   Graph,
   Hash,
+  History,
   Inbox,
   Link,
   List,
   Paperclip,
   Pencil,
+  Phone,
   Star,
   Trash,
+  User,
   WikiLink,
   type Icon,
 } from '@/components/icons'
@@ -49,15 +54,20 @@ const PROPERTY_TYPE_ICONS: Record<TagPropertyType, Icon> = {
   number: Hash,
   checkbox: CheckCircle,
   date: Calendar,
+  created: CalendarClock,
+  updated: History,
   select: ChevronUpDown,
   multiselect: List,
   url: Link,
   relation: WikiLink,
   relations: Graph,
+  person: User,
   status: Flag,
   files: Paperclip,
   email: Inbox,
+  phone: Phone,
   rating: Star,
+  formula: Calculator,
   rollup: Chart,
   reverse: ArrowUturnRight,
 }
@@ -228,6 +238,20 @@ export function TagPropertyRow({
               ) : null}
             </SelectContent>
           </Select>
+        </label>
+      ) : null}
+      {draft.type === 'formula' ? (
+        <label className="flex items-center gap-1.5">
+          <span className={FIELD_LABEL_CLASS}>Expression</span>
+          <Input
+            value={draft.formulaExpression}
+            aria-label="Formula expression"
+            placeholder='prop("price") * 1.22'
+            className="flex-1 font-mono text-xs"
+            onChange={(event) =>
+              updateDraft(draft.rowId, { formulaExpression: event.target.value })
+            }
+          />
         </label>
       ) : null}
       {draft.type === 'reverse' ? (

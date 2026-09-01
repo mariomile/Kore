@@ -9,7 +9,8 @@ vi.mock('@reflect/core', async (importOriginal) => ({
   readNote,
 }))
 
-const { bodyForCollectionCreate, createCollectionNote } = await import('./create-collection-note')
+const { bodyForCollectionCreate, createCollectionNote, createTypedCollectionNote } =
+  await import('./create-collection-note')
 
 const VALUES = {
   title: '',
@@ -55,6 +56,26 @@ describe('createCollectionNote', () => {
     expect(seed).toContain('# Template')
     expect(seed).toContain('#book')
     expect(seed).toContain('finished: 2026-08-10')
+  })
+})
+
+describe('createTypedCollectionNote', () => {
+  it('stamps created properties with today, and a caller value wins over the stamp', async () => {
+    const type = {
+      properties: [
+        { name: 'Started', key: 'started', type: 'created' as const },
+        { name: 'Status', key: 'status', type: 'select' as const, options: ['done'] },
+      ],
+    }
+    await createTypedCollectionNote('book', 1, { status: 'done' }, type, VALUES)
+    const [, seed] = createNoteIfAbsent.mock.calls[0] as unknown as [string, string, number]
+    expect(seed).toMatch(/started: \d{4}-\d{2}-\d{2}/)
+    expect(seed).toContain('status: done')
+
+    createNoteIfAbsent.mockClear()
+    await createTypedCollectionNote('book', 1, { started: '2020-05-05' }, type, VALUES)
+    const [, second] = createNoteIfAbsent.mock.calls[0] as unknown as [string, string, number]
+    expect(second).toContain('started: 2020-05-05')
   })
 })
 

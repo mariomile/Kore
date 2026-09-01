@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { TagProperty } from '@reflect/core'
-import { readCellValue } from './collection-cell'
+import { personInitials, readCellValue } from './collection-cell'
 
 const relation: TagProperty = { name: 'Series', key: 'series', type: 'relation' }
 const relations: TagProperty = { name: 'Authors', key: 'authors', type: 'relations' }
@@ -116,5 +116,36 @@ describe('readCellValue extra types', () => {
       checked: false,
       mismatch: false,
     })
+  })
+})
+
+describe('readCellValue — Plan 29 T1 types', () => {
+  it('reads a person like a single relation: link title first, list mismatches', () => {
+    const person: TagProperty = { name: 'Owner', key: 'owner', type: 'person' }
+    expect(
+      readCellValue(person, { value: '[[Ada Lovelace]]', valueType: 'string', valueNumber: null }),
+    ).toEqual({ text: 'Ada Lovelace', checked: false, mismatch: false })
+    expect(
+      readCellValue(person, { value: '["[[A]]"]', valueType: 'list', valueNumber: 1 }),
+    ).toEqual({ text: '["[[A]]"]', checked: false, mismatch: true })
+  })
+
+  it('reads phone and the timestamp stamps as plain text', () => {
+    const phone: TagProperty = { name: 'Phone', key: 'phone-number', type: 'phone' }
+    expect(
+      readCellValue(phone, { value: '+39 02 1234', valueType: 'string', valueNumber: null }),
+    ).toEqual({ text: '+39 02 1234', checked: false, mismatch: false })
+    const created: TagProperty = { name: 'Started', key: 'started', type: 'created' }
+    expect(
+      readCellValue(created, { value: '2026-08-31', valueType: 'string', valueNumber: null }),
+    ).toEqual({ text: '2026-08-31', checked: false, mismatch: false })
+  })
+})
+
+describe('personInitials', () => {
+  it('takes the first letters of the first two words, uppercased', () => {
+    expect(personInitials('Ada Lovelace')).toBe('AL')
+    expect(personInitials('ada')).toBe('A')
+    expect(personInitials('Ursula K. Le Guin')).toBe('UK')
   })
 })

@@ -7,10 +7,11 @@ import { selectOptionDotClass } from '@/components/tags/select-colors'
 import { useOpenTaskCounts } from '@/hooks/use-open-task-counts'
 import { useOptimisticMoves } from '@/hooks/use-optimistic-moves'
 import type { ModClickEvent } from '@/lib/windows/open-in-new-window'
-import { groupablePropertiesOf } from '@/lib/tags/schema-views'
+import { boardGroupablePropertiesOf } from '@/lib/tags/schema-views'
 import { useCommitNoteProperties } from '@/lib/tags/use-commit-note-property'
 import { useCreateCollectionNote } from '@/lib/tags/use-create-collection-note'
 import { cn } from '@/lib/utils'
+import { editorSeedList } from '@/components/tags/property-editor-shared'
 import { readCellValue } from './collection-cell'
 import { CollectionTaskBadge } from './collection-task-badge'
 
@@ -33,7 +34,7 @@ export const BOARD_ORDER_KEY = 'order'
 
 /** Every property the board can group by, schema order. */
 export function groupableProperties(type: TagType): TagProperty[] {
-  return groupablePropertiesOf(type.properties)
+  return boardGroupablePropertiesOf(type.properties)
 }
 
 /** The board's default grouping property: the schema's first groupable. */
@@ -41,7 +42,7 @@ export function boardProperty(type: TagType): TagProperty | null {
   return groupableProperties(type)[0] ?? null
 }
 
-interface BoardColumn {
+export interface BoardColumn {
   /** Column title (an option, a live value, checked/not, or "No <name>"). */
   label: string
   /** The frontmatter value a drop into this lane writes (`null` clears). */
@@ -137,6 +138,47 @@ export function boardColumns(
     ]
   }
 
+  if (property.type === 'multiselect') {
+    // One lane per option, and a card in *every* lane its list carries —
+    // Notion's multi-select board. The unset lane keeps rows with an empty
+    // (or missing) list; a drop's write is computed per card, since a lane
+    // value alone cannot express add-this-remove-that on a list.
+    const optionGroups = new Map<string, CollectionEntry[]>()
+    for (const option of property.options ?? []) {
+      optionGroups.set(option, [])
+    }
+    for (const entry of entries) {
+      const values = editorSeedList(entry.properties[property.key])
+      if (values.length === 0) {
+        unset.push(entry)
+        continue
+      }
+      for (const option of values) {
+        const bucket = optionGroups.get(option)
+        if (bucket === undefined) {
+          optionGroups.set(option, [entry])
+        } else {
+          bucket.push(entry)
+        }
+      }
+    }
+    for (const [label, group] of optionGroups) {
+      columns.push({
+        label,
+        commit: label,
+        color: selectOptionDotClass(label),
+        entries: sortByRank(group),
+      })
+    }
+    columns.push({
+      label: `No ${property.name}`,
+      commit: null,
+      color: null,
+      entries: sortByRank(unset),
+    })
+    return columns
+  }
+
   // select / relation: lanes keyed by the display text.
   const groups = new Map<string, { commit: unknown; entries: CollectionEntry[] }>()
   if (property.type === 'select' || property.type === 'status') {
@@ -167,7 +209,7 @@ export function boardColumns(
     }
   }
   const lanes = [...groups]
-  if (property.type === 'relation') {
+  if (property.type === 'relation' || property.type === 'person') {
     lanes.sort(([a], [b]) => a.localeCompare(b))
   }
   for (const [label, group] of lanes) {
@@ -187,6 +229,28 @@ export function boardColumns(
   return columns
 }
 
+/**
+ * The table's row groups (Plan 29 V1b): the board's lanes — same labels,
+ * same declared-options order, same trailing "No <name>" — with two
+ * table-shaped differences. Rows keep the incoming (sorted) order instead
+ * of the board's manual rank, and a lane nothing lives in disappears: a
+ * table renders no empty shelf to drop onto.
+ */
+export function tableGroupRows(
+  entries: readonly CollectionEntry[],
+  property: TagProperty,
+): BoardColumn[] {
+  const order = new Map(entries.map((entry, index) => [entry.path, index]))
+  return boardColumns(entries, property)
+    .map((column) => ({
+      ...column,
+      entries: [...column.entries].sort(
+        (a, b) => (order.get(a.path) ?? 0) - (order.get(b.path) ?? 0),
+      ),
+    }))
+    .filter((column) => column.entries.length > 0)
+}
+
 /** One optimistic move: the lane value plus the positional rank, if any. */
 interface BoardMove {
   group: unknown
@@ -195,6 +259,11 @@ interface BoardMove {
 
 /** A committed value as the stored row the overlay projects it to. */
 function overlayValue(value: unknown): CollectionValue | null {
+  if (Array.isArray(value)) {
+    // The projection's own list shape (JSON array text), so the optimistic
+    // card reads exactly like the re-indexed row will.
+    return { value: JSON.stringify(value), valueType: 'list', valueNumber: value.length }
+  }
   if (typeof value === 'boolean') {
     return { value: String(value), valueType: 'boolean', valueNumber: null }
   }
@@ -236,6 +305,9 @@ export function CollectionBoard({
   // DataTransfer: `dragover` cannot read the payload (spec), and gating the
   // handlers on it keeps foreign drags (files onto the window) refused.
   const [draggingPath, setDraggingPath] = useState<string | null>(null)
+  // The lane the drag started from — a multiselect move must know which
+  // option to remove, since the card may live in several lanes at once.
+  const [draggingFrom, setDraggingFrom] = useState<string | null>(null)
   const [dropLane, setDropLane] = useState<string | null>(null)
 
   const effectiveEntries = useMemo(
@@ -270,12 +342,14 @@ export function CollectionBoard({
 
   const endDrag = (): void => {
     setDraggingPath(null)
+    setDraggingFrom(null)
     setDropLane(null)
   }
 
   /** Land a drop: onto a lane (append) or before `targetPath`'s card. */
   const drop = (column: BoardColumn, targetPath: string | null): void => {
     const path = draggingPath
+    const from = draggingFrom
     endDrag()
     if (path === null || path === targetPath) {
       return
@@ -285,6 +359,28 @@ export function CollectionBoard({
     const index =
       targetPath === null ? others.length : others.findIndex((entry) => entry.path === targetPath)
     const rank = index < 0 ? null : rankForInsertion(others, index)
+    if (property.type === 'multiselect') {
+      // Move between lanes = drop the source option, gain the target's; onto
+      // the unset lane = drop the source option only (the card honestly
+      // stays in any *other* lane it carries).
+      if (from === column.label && rank === null) {
+        return
+      }
+      const current = editorSeedList(
+        effectiveEntries.find((entry) => entry.path === path)?.properties[property.key],
+      )
+      const target = typeof column.commit === 'string' ? column.commit : null
+      const next = current.filter((value) => value !== from && value !== target)
+      if (target !== null) {
+        next.push(target)
+      }
+      record(path, { group: next.length > 0 ? next : null, rank })
+      commitProperties(path, {
+        [property.key]: next.length > 0 ? next : undefined,
+        ...(rank !== null ? { [BOARD_ORDER_KEY]: rank } : {}),
+      })
+      return
+    }
     if (sameLane && rank === null) {
       return
     }
@@ -297,7 +393,11 @@ export function CollectionBoard({
 
   /** Create a note born in `column`: tagged, with the lane's value set. */
   const createInLane = async (column: BoardColumn): Promise<void> => {
-    const path = await createNote(column.commit === null ? {} : { [property.key]: column.commit })
+    const laneValue =
+      property.type === 'multiselect' && typeof column.commit === 'string'
+        ? [column.commit]
+        : column.commit
+    const path = await createNote(laneValue === null ? {} : { [property.key]: laneValue })
     if (path !== null) {
       onOpen(path)
     }
@@ -358,6 +458,7 @@ export function CollectionBoard({
                     draggable
                     onDragStart={(event) => {
                       setDraggingPath(entry.path)
+                      setDraggingFrom(column.label)
                       event.dataTransfer.setData('text/plain', entry.path)
                       event.dataTransfer.effectAllowed = 'move'
                     }}

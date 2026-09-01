@@ -1,8 +1,11 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
+  evaluateFormula,
+  getNote,
   getNoteProperties,
   listNoteTagTypes,
+  localCalendarDate,
   type CollectionValue,
   type TagProperty,
 } from '@reflect/core'
@@ -56,5 +59,67 @@ export function useNoteTypedProperties(path: string): NoteTypedProperties {
     return union
   }, [tagTypes])
 
-  return { properties, values }
+  // The `updated` fields are a view over the index's mtime, exactly like the
+  // collection rows' cells (attachTimestampColumns) — never a stored value.
+  // Fetched only when the schema union actually declares one (same query key
+  // as `useNoteRowState`, so a mounted row consumer shares the cache).
+  const wantsMtime = properties.some((property) => property.type === 'updated')
+  const { data: row } = useQuery({
+    queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'note', path],
+    queryFn: async () => (await getNote(path)) ?? null,
+    enabled: enabled && wantsMtime,
+  })
+  const mtime = row?.mtime ?? 0
+
+  const overlaid = useMemo(() => {
+    const derived = properties.some(
+      (property) => property.type === 'updated' || property.type === 'formula',
+    )
+    if (values === undefined || !derived) {
+      return values
+    }
+    const next = { ...values }
+    for (const property of properties) {
+      if (property.type !== 'updated') {
+        continue
+      }
+      if (mtime > 0) {
+        next[property.key] = {
+          value: localCalendarDate(new Date(mtime)),
+          valueType: 'string',
+          valueNumber: null,
+        }
+      } else {
+        delete next[property.key]
+      }
+    }
+    // Formulas read the same snapshot the collection rows do — the stored
+    // values plus the mtime overlay above, never each other.
+    const snapshot = { ...next }
+    for (const property of properties) {
+      const expression = property.type === 'formula' ? property.formula?.expression : undefined
+      if (expression === undefined) {
+        continue
+      }
+      const result = evaluateFormula(expression, snapshot)
+      if ('error' in result) {
+        next[property.key] = {
+          value: `#ERROR (${result.error})`,
+          valueType: 'string',
+          valueNumber: null,
+        }
+      } else if (result.text === '' && result.number === null) {
+        delete next[property.key]
+      } else {
+        next[property.key] = {
+          value: result.text,
+          valueType: result.number === null ? 'string' : 'number',
+          valueNumber: result.number,
+        }
+      }
+    }
+    return next
+  }, [values, properties, mtime])
+
+  return { properties, values: overlaid }
 }

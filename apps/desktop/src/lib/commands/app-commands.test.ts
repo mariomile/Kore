@@ -124,6 +124,7 @@ function noteRow(isPrivate: boolean): NoteRow {
     hasConflict: false,
     gistUrl: null,
     gistStale: false,
+    mtime: 0,
   }
 }
 

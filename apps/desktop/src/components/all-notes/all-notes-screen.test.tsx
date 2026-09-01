@@ -41,6 +41,7 @@ vi.mock('@/providers/settings-provider', () => ({
       allNotesFilterTags: ['book', 'person'],
       collectionSorts: {},
       collectionGroups: {},
+      collectionTableGroups: {},
       collectionColumns: {},
       collectionViewModes: {},
       collectionSavedViews: {},

@@ -1,6 +1,8 @@
 import {
   computeRollup,
+  evaluateFormula,
   extractRelationTargets,
+  localCalendarDate,
   relationValue,
   rollupSourceFromValue,
   type TagType,
@@ -187,6 +189,87 @@ export async function attachReverseRelations(
           value: JSON.stringify(titles.map((title) => relationValue(title))),
           valueType: 'list',
           valueNumber: titles.length,
+        }
+      }
+    }
+    return { ...entry, properties }
+  })
+}
+
+/**
+ * Attach view-only `updated` cells from the row's indexed mtime (Plan 29
+ * T1). Like the other derived columns, never written to frontmatter — and
+ * synchronous, since the source rides the entry itself. A zero mtime (a row
+ * the index hasn't stamped yet) stays absent, and a hand-written frontmatter
+ * value under an `updated` key never shows through as if the view computed
+ * it — the same honesty contract as the reverse columns.
+ */
+export function attachTimestampColumns(
+  entries: readonly CollectionEntry[],
+  type: TagType,
+): CollectionEntry[] {
+  const updated = type.properties.filter((property) => property.type === 'updated')
+  if (updated.length === 0) {
+    return [...entries]
+  }
+  return entries.map((entry) => {
+    const properties = { ...entry.properties }
+    for (const property of updated) {
+      if (entry.mtime > 0) {
+        properties[property.key] = {
+          value: localCalendarDate(new Date(entry.mtime)),
+          valueType: 'string',
+          valueNumber: null,
+        }
+      } else {
+        delete properties[property.key]
+      }
+    }
+    return { ...entry, properties }
+  })
+}
+
+/**
+ * Attach view-only formula cells (Plan 29 T2): each `formula` property
+ * evaluates over the row's cells *as handed in* — run this last, so
+ * rollups, reverse links, and timestamp columns are visible to expressions.
+ * Formulas never see each other: every one reads the same snapshot, so
+ * there are no ordering effects and no cycles. Errors are deterministic
+ * text in the cell (`#ERROR (…)`), and a hand-written frontmatter value
+ * under a formula key never shows through as if the view computed it.
+ */
+export function attachFormulaColumns(
+  entries: readonly CollectionEntry[],
+  type: TagType,
+): CollectionEntry[] {
+  const formulas = type.properties.filter(
+    (property) => property.type === 'formula' && property.formula !== undefined,
+  )
+  if (formulas.length === 0) {
+    return [...entries]
+  }
+  return entries.map((entry) => {
+    const properties = { ...entry.properties }
+    for (const property of formulas) {
+      const expression = property.formula?.expression
+      if (expression === undefined) {
+        continue
+      }
+      const result = evaluateFormula(expression, entry.properties)
+      if ('error' in result) {
+        properties[property.key] = {
+          value: `#ERROR (${result.error})`,
+          valueType: 'string',
+          valueNumber: null,
+        }
+      } else if (result.text === '' && result.number === null) {
+        // An empty result reads as an empty cell, so footers count honestly.
+        delete properties[property.key]
+      } else {
+        properties[property.key] = {
+          value: result.text,
+          valueType: result.number === null ? 'string' : 'number',
+          valueNumber: result.number,
         }
       }
     }

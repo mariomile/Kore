@@ -111,9 +111,11 @@ export const SOLAR_ICONS = {
 
   // AI, chat, and integrations
   Bot: 'bot-linear',
+  Calculator: 'calculator-minimalistic-linear',
   Chart: 'chart-2-linear',
   Chat: 'chat-round-linear',
   Inbox: 'inbox-linear',
+  Phone: 'phone-linear',
   Plug: 'plug-circle-linear',
   Settings: 'settings-minimalistic-linear',
   Sparkles: 'stars-linear',

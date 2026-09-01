@@ -33,6 +33,11 @@ export const tagPropertyTypeSchema = z.enum([
   'rating',
   'rollup',
   'reverse',
+  'created',
+  'updated',
+  'person',
+  'phone',
+  'formula',
 ])
 export type TagPropertyType = z.infer<typeof tagPropertyTypeSchema>
 
@@ -104,6 +109,15 @@ export const reverseConfigSchema = z.object({
 })
 export type ReverseConfig = z.infer<typeof reverseConfigSchema>
 
+/**
+ * View-only formula config: the expression `evaluateFormula` runs over the
+ * row's own values. Stored on the definition alone, never on member notes.
+ */
+export const formulaConfigSchema = z.object({
+  expression: z.string().min(1),
+})
+export type FormulaConfig = z.infer<typeof formulaConfigSchema>
+
 export const tagPropertySchema = z.object({
   /** Display label ("Read on"). */
   name: z.string().min(1),
@@ -113,9 +127,10 @@ export const tagPropertySchema = z.object({
   /** Choices for `select` / `multiselect` / `status`; ignored for other types. */
   options: z.array(z.string()).optional(),
   /**
-   * For `relation` / `relations`: the typed tag whose collection the picker
-   * offers (the tag name, no `#`; folded on use). Absent = any note. The
-   * target scopes the *picker*, never the value: a stored link pointing
+   * For `relation` / `relations` / `person`: the typed tag whose collection
+   * the picker offers (the tag name, no `#`; folded on use). Absent = any
+   * note for the relations, `person` for a person ({@link relationTargetOf}).
+   * The target scopes the *picker*, never the value: a stored link pointing
    * elsewhere still displays and survives, like every value the schema
    * didn't write. Ignored for other types.
    */
@@ -127,8 +142,26 @@ export const tagPropertySchema = z.object({
   rollup: rollupConfigSchema.optional(),
   /** View-only reverse-relation config ({@link reverseConfigSchema}). */
   reverse: reverseConfigSchema.optional(),
+  /** View-only formula config ({@link formulaConfigSchema}). */
+  formula: formulaConfigSchema.optional(),
 })
 export type TagProperty = z.infer<typeof tagPropertySchema>
+
+/** The collection `person` pickers default to: the meeting flow's own
+ * convention for people notes (`- Type: #person`). */
+export const PERSON_DEFAULT_TARGET = 'person'
+
+/**
+ * The collection a relation-shaped property's picker offers: the declared
+ * `target` for `relation` / `relations`, and `#person` (overridable through
+ * the same schema key) for `person`. `undefined` = any note.
+ */
+export function relationTargetOf(property: TagProperty): string | undefined {
+  if (property.type === 'person') {
+    return property.target ?? PERSON_DEFAULT_TARGET
+  }
+  return property.type === 'relation' || property.type === 'relations' ? property.target : undefined
+}
 
 /** A tag's schema: the ordered property list a Collection renders as columns. */
 export interface TagType {

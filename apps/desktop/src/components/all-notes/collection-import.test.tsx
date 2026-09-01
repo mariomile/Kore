@@ -49,3 +49,34 @@ describe('parseCollectionCsv', () => {
     expect(parseCollectionCsv('', BOOK_TYPE)).toEqual([])
   })
 })
+
+describe('parseCollectionCsv — Plan 29 T1 types', () => {
+  const TYPED: TagType = {
+    properties: [
+      { name: 'Owner', key: 'owner', type: 'person' },
+      { name: 'Started', key: 'started', type: 'created' },
+      { name: 'Touched', key: 'touched', type: 'updated' },
+      {
+        name: 'Books',
+        key: 'books',
+        type: 'reverse',
+        reverse: { tag: 'book', property: 'owner' },
+      },
+    ],
+  }
+
+  it('links a person cell, imports created, and never imports view-only columns', () => {
+    const csv = [
+      'Title,Owner,Started,Touched,Books',
+      'Standup,Ada Lovelace,2020-01-01,2026-08-31,"A, B"',
+    ].join('\n')
+    expect(parseCollectionCsv(csv, TYPED)).toEqual([
+      {
+        title: 'Standup',
+        // `touched` (updated) and `books` (reverse) are computed views; a
+        // CSV's created date is history and imports verbatim.
+        properties: { owner: '[[Ada Lovelace]]', started: '2020-01-01' },
+      },
+    ])
+  })
+})

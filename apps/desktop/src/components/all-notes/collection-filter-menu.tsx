@@ -48,6 +48,8 @@ export function operatorsFor(property: TagProperty): CollectionFilterOperator[] 
     case 'number':
     case 'rating':
     case 'date':
+    case 'created':
+    case 'updated':
       return ['is', 'gt', 'lt', 'empty', 'notEmpty']
     case 'select':
     case 'status':

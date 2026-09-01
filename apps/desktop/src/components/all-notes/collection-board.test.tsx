@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
-import type { CollectionEntry, CollectionValue, TagType } from '@reflect/core'
+import type { CollectionEntry, CollectionValue, TagProperty, TagType } from '@reflect/core'
 import {
   boardColumns,
   boardProperty,
@@ -138,6 +138,64 @@ describe('boardColumns', () => {
   })
 })
 
+const TOPICS: TagProperty = {
+  name: 'Topics',
+  key: 'topics',
+  type: 'multiselect',
+  options: ['sci-fi', 'utopia'],
+}
+
+function list(values: string[]): CollectionValue {
+  return { value: JSON.stringify(values), valueType: 'list', valueNumber: values.length }
+}
+
+describe('boardColumns — multiselect lanes', () => {
+  it('puts a card in every lane its list carries, declared options first', () => {
+    const rows = [
+      entry('notes/dispossessed.md', 'The Dispossessed', { topics: list(['sci-fi', 'utopia']) }),
+      entry('notes/dune.md', 'Dune', { topics: list(['sci-fi', 'desert']) }),
+      entry('notes/lathe.md', 'The Lathe of Heaven'),
+    ]
+    const columns = boardColumns(rows, TOPICS)
+    expect(columns.map((column) => column.label)).toEqual([
+      'sci-fi',
+      'utopia',
+      'desert',
+      'No Topics',
+    ])
+    expect(columns[0]?.entries.map((row) => row.title)).toEqual(['The Dispossessed', 'Dune'])
+    expect(columns[1]?.entries.map((row) => row.title)).toEqual(['The Dispossessed'])
+    expect(columns[2]?.entries.map((row) => row.title)).toEqual(['Dune'])
+    expect(columns[3]?.entries.map((row) => row.title)).toEqual(['The Lathe of Heaven'])
+  })
+})
+
+describe('CollectionBoard — multiselect lanes', () => {
+  it('moving between lanes drops the source option and gains the target', async () => {
+    const rows = [entry('notes/dune.md', 'Dune', { topics: list(['sci-fi', 'desert']) })]
+    const view = await renderBoard(rows, () => {}, TOPICS)
+    const source = view.getByRole('region', { name: 'sci-fi', exact: true }).element()
+    const target = view.getByRole('region', { name: 'utopia', exact: true }).element()
+
+    await dragTo(source.querySelector('article')!, target)
+
+    expect(commitProperties).toHaveBeenCalledWith('notes/dune.md', {
+      topics: ['desert', 'utopia'],
+    })
+  })
+
+  it('dropping on the unset lane removes only the source option', async () => {
+    const rows = [entry('notes/dune.md', 'Dune', { topics: list(['sci-fi', 'desert']) })]
+    const view = await renderBoard(rows, () => {}, TOPICS)
+    const source = view.getByRole('region', { name: 'sci-fi', exact: true }).element()
+    const unset = view.getByRole('region', { name: 'No Topics' }).element()
+
+    await dragTo(source.querySelector('article')!, unset)
+
+    expect(commitProperties).toHaveBeenCalledWith('notes/dune.md', { topics: ['desert'] })
+  })
+})
+
 describe('tableGroupRows', () => {
   it('keeps the incoming (sorted) order inside groups, ignoring board ranks', () => {
     const rows = [
@@ -195,14 +253,18 @@ async function dragTo(card: Element, target: Element): Promise<void> {
   await tick()
 }
 
-function renderBoard(entries: CollectionEntry[], onOpen: (path: string) => void = () => {}) {
+function renderBoard(
+  entries: CollectionEntry[],
+  onOpen: (path: string) => void = () => {},
+  property: TagProperty = STATUS,
+) {
   return render(
     <div style={{ height: '100vh' }}>
       <CollectionBoard
         entries={entries}
         tag="book"
         type={BOOK_TYPE}
-        property={STATUS}
+        property={property}
         onOpen={onOpen}
       />
     </div>,

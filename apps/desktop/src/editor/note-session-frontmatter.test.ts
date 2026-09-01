@@ -17,6 +17,12 @@ describe('frontmatterPatchToYaml', () => {
             type: 'reverse',
             reverse: { tag: 'person', property: 'company' },
           },
+          {
+            name: 'With VAT',
+            key: 'with-vat',
+            type: 'formula',
+            formula: { expression: 'prop("price") * 1.22' },
+          },
         ],
       }),
     ).toEqual({
@@ -29,6 +35,12 @@ describe('frontmatterPatchToYaml', () => {
           key: 'people',
           type: 'reverse',
           reverse: { tag: 'person', property: 'company' },
+        },
+        {
+          name: 'With VAT',
+          key: 'with-vat',
+          type: 'formula',
+          formula: { expression: 'prop("price") * 1.22' },
         },
       ],
     })

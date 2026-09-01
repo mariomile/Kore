@@ -204,6 +204,7 @@ export {
   attachRollups,
   attachReverseRelations,
   attachTimestampColumns,
+  attachFormulaColumns,
   type RollupLookup,
 } from './rollups'
 export { parseSearchQuery, type ParsedSearchQuery, type SearchFilters } from './filter-query'

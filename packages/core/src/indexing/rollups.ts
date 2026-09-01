@@ -1,5 +1,6 @@
 import {
   computeRollup,
+  evaluateFormula,
   extractRelationTargets,
   localCalendarDate,
   relationValue,
@@ -222,6 +223,54 @@ export function attachTimestampColumns(
         }
       } else {
         delete properties[property.key]
+      }
+    }
+    return { ...entry, properties }
+  })
+}
+
+/**
+ * Attach view-only formula cells (Plan 29 T2): each `formula` property
+ * evaluates over the row's cells *as handed in* — run this last, so
+ * rollups, reverse links, and timestamp columns are visible to expressions.
+ * Formulas never see each other: every one reads the same snapshot, so
+ * there are no ordering effects and no cycles. Errors are deterministic
+ * text in the cell (`#ERROR (…)`), and a hand-written frontmatter value
+ * under a formula key never shows through as if the view computed it.
+ */
+export function attachFormulaColumns(
+  entries: readonly CollectionEntry[],
+  type: TagType,
+): CollectionEntry[] {
+  const formulas = type.properties.filter(
+    (property) => property.type === 'formula' && property.formula !== undefined,
+  )
+  if (formulas.length === 0) {
+    return [...entries]
+  }
+  return entries.map((entry) => {
+    const properties = { ...entry.properties }
+    for (const property of formulas) {
+      const expression = property.formula?.expression
+      if (expression === undefined) {
+        continue
+      }
+      const result = evaluateFormula(expression, entry.properties)
+      if ('error' in result) {
+        properties[property.key] = {
+          value: `#ERROR (${result.error})`,
+          valueType: 'string',
+          valueNumber: null,
+        }
+      } else if (result.text === '' && result.number === null) {
+        // An empty result reads as an empty cell, so footers count honestly.
+        delete properties[property.key]
+      } else {
+        properties[property.key] = {
+          value: result.text,
+          valueType: result.number === null ? 'string' : 'number',
+          valueNumber: result.number,
+        }
       }
     }
     return { ...entry, properties }

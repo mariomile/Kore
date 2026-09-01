@@ -79,7 +79,12 @@ export function parseCollectionCsv(text: string, type: TagType): CsvNote[] {
     // View-only columns (and the mtime-backed stamp) never import — their
     // values are computed, not stored. `created` does: a CSV's historical
     // date is exactly the value the stamp must not overwrite.
-    if (property.type === 'rollup' || property.type === 'reverse' || property.type === 'updated') {
+    if (
+      property.type === 'rollup' ||
+      property.type === 'reverse' ||
+      property.type === 'updated' ||
+      property.type === 'formula'
+    ) {
       continue
     }
     const index = normalized.findIndex(

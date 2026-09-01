@@ -335,6 +335,12 @@ describe('relationTargetOf', () => {
         { name: 'Touched', key: 'touched', type: 'updated' },
         { name: 'Owner', key: 'owner', type: 'person', target: 'teammate' },
         { name: 'Phone', key: 'phone-number', type: 'phone' },
+        {
+          name: 'With VAT',
+          key: 'with-vat',
+          type: 'formula',
+          formula: { expression: 'prop("price") * 1.22' },
+        },
       ],
     }
     expect(decodeTagTypeJson(encodeTagTypeJson(type))).toEqual(type)

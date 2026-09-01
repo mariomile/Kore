@@ -37,6 +37,7 @@ export const tagPropertyTypeSchema = z.enum([
   'updated',
   'person',
   'phone',
+  'formula',
 ])
 export type TagPropertyType = z.infer<typeof tagPropertyTypeSchema>
 
@@ -108,6 +109,15 @@ export const reverseConfigSchema = z.object({
 })
 export type ReverseConfig = z.infer<typeof reverseConfigSchema>
 
+/**
+ * View-only formula config: the expression `evaluateFormula` runs over the
+ * row's own values. Stored on the definition alone, never on member notes.
+ */
+export const formulaConfigSchema = z.object({
+  expression: z.string().min(1),
+})
+export type FormulaConfig = z.infer<typeof formulaConfigSchema>
+
 export const tagPropertySchema = z.object({
   /** Display label ("Read on"). */
   name: z.string().min(1),
@@ -132,6 +142,8 @@ export const tagPropertySchema = z.object({
   rollup: rollupConfigSchema.optional(),
   /** View-only reverse-relation config ({@link reverseConfigSchema}). */
   reverse: reverseConfigSchema.optional(),
+  /** View-only formula config ({@link formulaConfigSchema}). */
+  formula: formulaConfigSchema.optional(),
 })
 export type TagProperty = z.infer<typeof tagPropertySchema>
 

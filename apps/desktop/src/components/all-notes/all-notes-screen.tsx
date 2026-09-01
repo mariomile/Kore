@@ -107,6 +107,7 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
     setCollectionSort,
     setCollectionGroup,
     tableGroupProperty,
+    tableGroupProperties,
     setTableGroup,
     hiddenColumns,
     columnWidths,
@@ -286,13 +287,13 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
           {tag === null ? (
             <AllNotesFilters tag={tag} facets={facets ?? []} onSelect={handleFilterSelect} />
           ) : null}
-          {view === 'table' && boardProperties.length > 0 ? (
+          {view === 'table' && tableGroupProperties.length > 0 ? (
             <Select
               value={tableGroupProperty?.key ?? '__none'}
               items={{
                 __none: 'No grouping',
                 ...Object.fromEntries(
-                  boardProperties.map((property) => [property.key, property.name]),
+                  tableGroupProperties.map((property) => [property.key, property.name]),
                 ),
               }}
               onValueChange={(value) => {
@@ -306,7 +307,7 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="__none">No grouping</SelectItem>
-                {boardProperties.map((property) => (
+                {tableGroupProperties.map((property) => (
                   <SelectItem key={property.key} value={property.key}>
                     {property.name}
                   </SelectItem>

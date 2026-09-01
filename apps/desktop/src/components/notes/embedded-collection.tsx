@@ -7,10 +7,15 @@ import {
 } from '@reflect/core'
 import { isModEvent } from '@meowdown/core'
 import { ExternalLink } from '@/components/icons'
-import { CollectionBoard, groupableProperties } from '@/components/all-notes/collection-board'
+import {
+  CollectionBoard,
+  groupableProperties,
+  tableGroupRows,
+} from '@/components/all-notes/collection-board'
 import { calendarProperty, CollectionCalendar } from '@/components/all-notes/collection-calendar'
 import { CollectionTable } from '@/components/all-notes/collection-table'
 import { applyCollectionFilters } from '@/components/all-notes/collection-filter-menu'
+import { groupablePropertiesOf } from '@/lib/tags/schema-views'
 import { TagConfigDialog } from '@/components/tags/tag-config-dialog'
 import { useCollection } from '@/hooks/use-collection'
 import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'
@@ -55,7 +60,27 @@ export function EmbeddedCollection({ embed }: EmbeddedCollectionProps): ReactEle
     // one applier serves both surfaces.
     return applyCollectionFilters(tagType, unfiltered, embed.filters)
   }, [unfiltered, tagType, embed.filters])
-  const orderedPaths = useMemo(() => (entries ?? []).map((entry) => entry.path), [entries])
+  // `group:` renders the fence's table with shelf rows (Plan 29 V1b) — only
+  // a key the schema declares as single-valued groupable; anything else
+  // stays flat, never a broken widget.
+  const groups = useMemo(() => {
+    if (embed.group === null || tagType === null || tagType === undefined) {
+      return null
+    }
+    const property = groupablePropertiesOf(tagType.properties).find(
+      (candidate) => candidate.key === embed.group,
+    )
+    return property === undefined || entries === undefined
+      ? null
+      : tableGroupRows(entries, property)
+  }, [embed.group, tagType, entries])
+  const orderedPaths = useMemo(
+    () =>
+      groups !== null
+        ? groups.flatMap((group) => group.entries.map((entry) => entry.path))
+        : (entries ?? []).map((entry) => entry.path),
+    [groups, entries],
+  )
   const selection = useListSelection(orderedPaths)
 
   const openNote = useCallback(
@@ -140,7 +165,7 @@ export function EmbeddedCollection({ embed }: EmbeddedCollectionProps): ReactEle
               setColumnWidths((current) => ({ ...current, [key]: rem }))
             }
             onEditSchema={() => setEditingSchema(true)}
-            groups={null}
+            groups={groups}
             onOpen={openNote}
             registerScrollToIndex={() => {}}
           />

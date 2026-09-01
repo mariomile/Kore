@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
+  evaluateFormula,
   getNote,
   getNoteProperties,
   listNoteTagTypes,
@@ -71,7 +72,10 @@ export function useNoteTypedProperties(path: string): NoteTypedProperties {
   const mtime = row?.mtime ?? 0
 
   const overlaid = useMemo(() => {
-    if (values === undefined || !properties.some((property) => property.type === 'updated')) {
+    const derived = properties.some(
+      (property) => property.type === 'updated' || property.type === 'formula',
+    )
+    if (values === undefined || !derived) {
       return values
     }
     const next = { ...values }
@@ -87,6 +91,31 @@ export function useNoteTypedProperties(path: string): NoteTypedProperties {
         }
       } else {
         delete next[property.key]
+      }
+    }
+    // Formulas read the same snapshot the collection rows do — the stored
+    // values plus the mtime overlay above, never each other.
+    const snapshot = { ...next }
+    for (const property of properties) {
+      const expression = property.type === 'formula' ? property.formula?.expression : undefined
+      if (expression === undefined) {
+        continue
+      }
+      const result = evaluateFormula(expression, snapshot)
+      if ('error' in result) {
+        next[property.key] = {
+          value: `#ERROR (${result.error})`,
+          valueType: 'string',
+          valueNumber: null,
+        }
+      } else if (result.text === '' && result.number === null) {
+        delete next[property.key]
+      } else {
+        next[property.key] = {
+          value: result.text,
+          valueType: result.number === null ? 'string' : 'number',
+          valueNumber: result.number,
+        }
       }
     }
     return next

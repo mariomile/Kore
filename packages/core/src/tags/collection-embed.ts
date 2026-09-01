@@ -38,6 +38,8 @@ export interface CollectionEmbed {
   readonly view: CollectionEmbedView
   /** The fence's own ordering, or `null` to leave the collection's default. */
   readonly sort: CollectionEmbedSort | null
+  /** `group: <key>` — the table's row grouping (Plan 29 V1b), `null` = flat. */
+  readonly group: string | null
   /** The fence's `filter:` lines, in order; malformed lines are skipped. */
   readonly filters: readonly CollectionEmbedFilter[]
 }
@@ -95,6 +97,7 @@ function parseCollectionEmbedBody(body: string): CollectionEmbed | null {
   let tag = ''
   let view: CollectionEmbedView = 'table'
   let sort: CollectionEmbedSort | null = null
+  let group: string | null = null
   const filters: CollectionEmbedFilter[] = []
   for (const rawLine of body.split(/\r?\n/)) {
     const line = rawLine.trim()
@@ -125,6 +128,9 @@ function parseCollectionEmbedBody(body: string): CollectionEmbed | null {
       view = value
     } else if (key === 'sort') {
       sort = parseEmbedSort(value) ?? sort
+    } else if (key === 'group') {
+      // Tolerant like every line: a malformed key is skipped, never the fence.
+      group = isPropertyKey(value) ? value : group
     } else if (key === 'filter') {
       const filter = parseEmbedFilter(value)
       if (filter !== null) {
@@ -135,7 +141,7 @@ function parseCollectionEmbedBody(body: string): CollectionEmbed | null {
   if (!isTagName(tag)) {
     return null
   }
-  return { tag, view, sort, filters }
+  return { tag, view, sort, group, filters }
 }
 
 /**
@@ -162,6 +168,9 @@ export function formatCollectionEmbed(embed: CollectionEmbed): string {
   }
   if (embed.sort !== null) {
     lines.push(`sort: ${embed.sort.key}${embed.sort.direction === 'desc' ? ' desc' : ''}`)
+  }
+  if (embed.group !== null) {
+    lines.push(`group: ${embed.group}`)
   }
   for (const filter of embed.filters) {
     if (filter.operator === 'empty' || filter.operator === 'notEmpty') {

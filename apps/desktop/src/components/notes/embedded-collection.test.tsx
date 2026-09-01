@@ -4,7 +4,10 @@ import type { CollectionEntry, TagType } from '@reflect/core'
 import { EmbeddedCollection } from './embedded-collection'
 
 const BOOK_TYPE: TagType = {
-  properties: [{ name: 'Author', key: 'author', type: 'text' }],
+  properties: [
+    { name: 'Author', key: 'author', type: 'text' },
+    { name: 'Status', key: 'status', type: 'select', options: ['reading', 'done'] },
+  ],
 }
 
 const ENTRIES: CollectionEntry[] = [
@@ -15,6 +18,7 @@ const ENTRIES: CollectionEntry[] = [
     isPinned: false,
     properties: {
       author: { value: 'Herbert', valueType: 'string', valueNumber: null },
+      status: { value: 'reading', valueType: 'string', valueNumber: null },
     },
   },
   {
@@ -76,6 +80,7 @@ describe('EmbeddedCollection', () => {
           tag: 'book',
           view: 'table',
           sort: null,
+          group: null,
           filters: [{ key: 'author', operator: 'is', text: 'Herbert' }],
         }}
       />,
@@ -86,7 +91,9 @@ describe('EmbeddedCollection', () => {
 
   it('renders the live table for a typed tag fence', async () => {
     const view = await render(
-      <EmbeddedCollection embed={{ tag: 'book', view: 'table', sort: null, filters: [] }} />,
+      <EmbeddedCollection
+        embed={{ tag: 'book', view: 'table', sort: null, group: null, filters: [] }}
+      />,
     )
     const root = view.getByTestId('collection-embed')
     await expect.element(root).toBeInTheDocument()
@@ -94,5 +101,15 @@ describe('EmbeddedCollection', () => {
     await expect.element(root).toHaveAttribute('data-collection-view', 'table')
     await expect.element(view.getByText('Dune')).toBeInTheDocument()
     await expect.element(view.getByText('Herbert')).toBeInTheDocument()
+  })
+
+  it('renders shelf rows for a fence with a group: line (Plan 29 V1b)', async () => {
+    const view = await render(
+      <EmbeddedCollection
+        embed={{ tag: 'book', view: 'table', sort: null, group: 'status', filters: [] }}
+      />,
+    )
+    await expect.element(view.getByRole('heading', { name: /reading\s*1/ })).toBeInTheDocument()
+    await expect.element(view.getByRole('heading', { name: /No Status\s*1/ })).toBeInTheDocument()
   })
 })

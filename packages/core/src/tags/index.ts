@@ -19,12 +19,14 @@ export {
   rollupAggregationSchema,
   rollupConfigSchema,
   reverseConfigSchema,
+  formulaConfigSchema,
   type TagProperty,
   type TagPropertyType,
   type TagType,
   type RollupAggregation,
   type RollupConfig,
   type ReverseConfig,
+  type FormulaConfig,
 } from './tag-type'
 export {
   isEmailValue,
@@ -41,6 +43,7 @@ export {
   type RollupResult,
 } from './property-values'
 export { localCalendarDate, createdStampValues } from './timestamps'
+export { evaluateFormula, type FormulaResult } from './formula'
 export {
   extractNoteProperties,
   type IndexedProperty,

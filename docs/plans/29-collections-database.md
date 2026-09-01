@@ -2,8 +2,9 @@
 
 **Status:** Direction set 2026-08-31 (user request: collections must be real
 databases — relating to one another, working like Notion databases or Tana
-supertags). R1/N1/R2/R3/V1a shipped in the first wave; V1b and T1 shipped
-2026-09-01. Formulas remain.
+supertags). R1/N1/R2/R3/V1a shipped in the first wave; V1b, T1, V2a
+(multiselect board lanes), V2b (`group:` in the embed fence), and T2
+(formulas) shipped 2026-09-01. The plan's slices are complete.
 **Outcome:** A typed tag behaves like a database of its own: its relations
 point at other collections (and can create their rows), its rows read as rows,
 and derived values stay views over the markdown truth.
@@ -110,7 +111,41 @@ CLI. What separates it from "a database" is relational and presentational:
     (is/>/</empty/set) and person/phone as text.
   Formulas stay queued — last, projection-only, per I15.
 
-Order: R1 → N1 → R2 → R3 → V1a → V1b → T1 (all shipped); M1 decided, no
-build. Remaining in this plan: formulas (projection-only), and two smaller
-view gaps if appetite returns — multiselect board lanes, `group:` in the
-embed fence.
+- **V2a — Multiselect board lanes** *(shipped 2026-09-01)*. The board also
+  lanes by a `multiselect`: one lane per declared option, a card in *every*
+  lane its list carries (Notion's multi-select board), strays trailing,
+  empty lists in the unset lane. A drop computes its write per card — gain
+  the target's option, drop the option of the lane the drag left — so a
+  card in two lanes moved out of one honestly stays in the other; a drop on
+  "No X" removes the source option alone. The optimistic overlay projects
+  lists in the projection's own JSON-array shape. Board-only on purpose:
+  the table's Group-by keeps the single-valued set (`GROUPABLE_TYPES` vs
+  `BOARD_GROUPABLE_TYPES`), because duplicate rows have no place in a flat
+  selection order.
+- **V2b — `group:` in the embed fence** *(shipped 2026-09-01)*. The fence
+  gained `group: <key>` — parsed tolerantly, round-tripped by the
+  serializer, applied by the embedded table through the same
+  `tableGroupRows` as the tag page (single-valued keys only; anything else
+  renders flat, never a broken widget).
+- **T2 — Formulas** *(shipped 2026-09-01, per I15)*: a `formula` property
+  whose `expression` a small pure evaluator (`evaluateFormula`) runs over
+  the row's *own* cells — literals, `prop("key")`, arithmetic (`+` also
+  concatenates), comparisons, `and`/`or`/`not`, and a compact function set
+  (`if`, `concat`, `round`, `abs`, `min`/`max`, `length`, `empty`,
+  `format`). View-only via `attachFormulaColumns`, run *last* in the
+  derived chain so expressions can read rollups, reverse links, and the
+  timestamp columns; formulas never see each other — every one evaluates
+  the same snapshot, so there are no ordering effects and no cycles (a
+  formula referencing a formula reads it as empty, deterministically).
+  Emptiness propagates the SQL-NULL way — numeric or boolean work over a
+  missing value yields an absent cell, never an error and never a phantom
+  zero; text work reads it as `''`, and `==` / `empty()` can test it.
+  Errors are deterministic cell text (`#ERROR (division by zero)`),
+  reserved for real mistakes; no side effects, no I/O — an expression
+  cannot bypass privacy (I15's done-when). The config is one `expression`
+  line in the schema dialog; the value never lands in frontmatter.
+
+Order: R1 → N1 → R2 → R3 → V1a → V1b → T1 → V2a → V2b → T2 (all shipped);
+M1 decided, no build. The plan is complete; anything further (per-group
+table aggregates, formula date functions, timeline/gallery views) is new
+scope for a future plan.

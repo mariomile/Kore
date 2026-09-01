@@ -8,6 +8,7 @@ import {
   type TagType,
 } from '@reflect/core'
 import { useSettings } from '@/providers/settings-provider'
+import { groupablePropertiesOf } from '@/lib/tags/schema-views'
 import { groupableProperties } from './collection-board'
 import { calendarProperty } from './collection-calendar'
 import type { CollectionFilter } from './collection-filter-menu'
@@ -31,6 +32,9 @@ export interface CollectionViewSettings {
   setCollectionGroup: (key: string) => void
   /** The table's row grouping (Plan 29 V1b) — `null` renders flat rows. */
   tableGroupProperty: TagProperty | null
+  /** What the table's Group-by offers: the single-valued groupables — the
+   * board's list-tolerant `multiselect` lanes have no flat-row analogue. */
+  tableGroupProperties: TagProperty[]
   setTableGroup: (key: string | null) => void
   hiddenColumns: Set<string>
   columnWidths: Record<string, number>
@@ -134,9 +138,13 @@ export function useCollectionViewSettings(
   // The table's row grouping (Plan 29 V1b): per-tag like the board's, but
   // absence means *flat* — no first-groupable fallback, since the flat table
   // is a first-class shape, not a degraded one.
+  const tableGroupProperties = useMemo(
+    () => (collectionAvailable ? groupablePropertiesOf(tagType.properties) : []),
+    [collectionAvailable, tagType],
+  )
   const savedTableGroupKey = tagKey === null ? undefined : settings.collectionTableGroups[tagKey]
   const tableGroupProperty =
-    boardProperties.find((property) => property.key === savedTableGroupKey) ?? null
+    tableGroupProperties.find((property) => property.key === savedTableGroupKey) ?? null
   const setTableGroup = useCallback(
     (key: string | null) => {
       if (tagKey === null) {
@@ -213,6 +221,7 @@ export function useCollectionViewSettings(
     setCollectionSort,
     setCollectionGroup,
     tableGroupProperty,
+    tableGroupProperties,
     setTableGroup,
     hiddenColumns,
     columnWidths,

@@ -5,24 +5,24 @@ describe('parseCollectionEmbeds', () => {
   it('reads tag and view from a fence', () => {
     expect(
       parseCollectionEmbeds('Intro\n\n```collection\ntag: books\nview: board\n```\n\nOutro\n'),
-    ).toEqual([{ tag: 'books', view: 'board', sort: null, filters: [] }])
+    ).toEqual([{ tag: 'books', view: 'board', sort: null, group: null, filters: [] }])
   })
 
   it('defaults the view to table and accepts a bare tag line', () => {
     expect(parseCollectionEmbeds('```collection\nbooks\n```\n')).toEqual([
-      { tag: 'books', view: 'table', sort: null, filters: [] },
+      { tag: 'books', view: 'table', sort: null, group: null, filters: [] },
     ])
   })
 
   it('accepts a bare #tag line as the tag, not a comment', () => {
     expect(parseCollectionEmbeds('```collection\n#books\n```\n')).toEqual([
-      { tag: 'books', view: 'table', sort: null, filters: [] },
+      { tag: 'books', view: 'table', sort: null, group: null, filters: [] },
     ])
   })
 
   it('strips a leading hash on the tag and quoted values', () => {
     expect(parseCollectionEmbeds('```collection\ntag: "#Books"\nview: "calendar"\n```\n')).toEqual([
-      { tag: 'Books', view: 'calendar', sort: null, filters: [] },
+      { tag: 'Books', view: 'calendar', sort: null, group: null, filters: [] },
     ])
   })
 
@@ -34,7 +34,7 @@ describe('parseCollectionEmbeds', () => {
       '```ts\ntag: books\n```',
     ].join('\n\n')
     expect(parseCollectionEmbeds(markdown)).toEqual([
-      { tag: 'projects', view: 'table', sort: null, filters: [] },
+      { tag: 'projects', view: 'table', sort: null, group: null, filters: [] },
     ])
   })
 
@@ -44,17 +44,17 @@ describe('parseCollectionEmbeds', () => {
         '```collection\ntag: a\n```\n\ntext\n\n```collection\ntag: b\nview: calendar\n```\n',
       ),
     ).toEqual([
-      { tag: 'a', view: 'table', sort: null, filters: [] },
-      { tag: 'b', view: 'calendar', sort: null, filters: [] },
+      { tag: 'a', view: 'table', sort: null, group: null, filters: [] },
+      { tag: 'b', view: 'calendar', sort: null, group: null, filters: [] },
     ])
   })
 })
 
 describe('formatCollectionEmbed', () => {
   it('omits the default table view', () => {
-    expect(formatCollectionEmbed({ tag: 'books', view: 'table', sort: null, filters: [] })).toBe(
-      '```collection\ntag: books\n```',
-    )
+    expect(
+      formatCollectionEmbed({ tag: 'books', view: 'table', sort: null, group: null, filters: [] }),
+    ).toBe('```collection\ntag: books\n```')
   })
 
   it('round-trips a non-default view', () => {
@@ -62,11 +62,12 @@ describe('formatCollectionEmbed', () => {
       tag: 'projects',
       view: 'board',
       sort: null,
+      group: null,
       filters: [],
     })
     expect(markdown).toBe('```collection\ntag: projects\nview: board\n```')
     expect(parseCollectionEmbeds(markdown)).toEqual([
-      { tag: 'projects', view: 'board', sort: null, filters: [] },
+      { tag: 'projects', view: 'board', sort: null, group: null, filters: [] },
     ])
   })
 })
@@ -90,6 +91,7 @@ describe('sort and filter lines (Plan 29 V1)', () => {
         tag: 'book',
         view: 'table',
         sort: { key: 'rating', direction: 'desc' },
+        group: null,
         filters: [
           { key: 'status', operator: 'is', text: 'reading' },
           { key: 'author', operator: 'contains', text: 'le guin' },
@@ -100,6 +102,18 @@ describe('sort and filter lines (Plan 29 V1)', () => {
       },
     ])
     expect(parseCollectionEmbeds(formatCollectionEmbed(parsed[0]!))).toEqual(parsed)
+  })
+
+  it('round-trips a group: line and skips a malformed one', () => {
+    const fence = ['```collection', 'tag: book', 'group: status', '```'].join('\n')
+    const parsed = parseCollectionEmbeds(fence)
+    expect(parsed).toEqual([
+      { tag: 'book', view: 'table', sort: null, group: 'status', filters: [] },
+    ])
+    expect(formatCollectionEmbed(parsed[0]!)).toBe(fence)
+    expect(
+      parseCollectionEmbeds(['```collection', 'tag: book', 'group: bad !key', '```'].join('\n')),
+    ).toEqual([{ tag: 'book', view: 'table', sort: null, group: null, filters: [] }])
   })
 
   it('skips malformed sort and filter lines without losing the fence', () => {
@@ -113,7 +127,7 @@ describe('sort and filter lines (Plan 29 V1)', () => {
       '```',
     ].join('\n')
     expect(parseCollectionEmbeds(fence)).toEqual([
-      { tag: 'book', view: 'table', sort: null, filters: [] },
+      { tag: 'book', view: 'table', sort: null, group: null, filters: [] },
     ])
   })
 })

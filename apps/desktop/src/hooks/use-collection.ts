@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import {
+  attachFormulaColumns,
   attachReverseRelations,
   attachRollups,
   attachTimestampColumns,
@@ -48,11 +49,14 @@ export function useCollection(
       if (type === null) {
         return rows
       }
-      // Derived cells in reading order: rollups first, then the reverse
-      // columns, then the mtime-backed timestamps — all view-only, none
-      // ever written to frontmatter.
-      return attachTimestampColumns(
-        await attachReverseRelations(await attachRollups(rows, type), type),
+      // Derived cells in reading order: rollups, then reverse columns, then
+      // the mtime-backed timestamps, then formulas (last, so expressions can
+      // read every derived cell) — all view-only, none written to frontmatter.
+      return attachFormulaColumns(
+        attachTimestampColumns(
+          await attachReverseRelations(await attachRollups(rows, type), type),
+          type,
+        ),
         type,
       )
     },

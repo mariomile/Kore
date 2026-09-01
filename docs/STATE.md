@@ -1,8 +1,8 @@
 # Kore working state
 
-**Updated:** 2026-09-01 at `eb9d6e1`+ (v0.44.0 shipped with Plan 29's first
-wave; V1b table row grouping and the T1 property types — created/updated,
-person, phone — land in this session's follow-up branch).
+**Updated:** 2026-09-01 at `eb8c7ff`+ (Plan 29 complete: after V1b and T1,
+the same session lands V2a multiselect board lanes, V2b `group:` in the
+embed fence, and T2 formulas — projection-only per I15).
 **Rule:** Every session that moves the program updates this file before its
 summary: tick what became true and how it was verified, set the next step,
 refresh the date. What is done and what is next live here and only here. Why
@@ -62,8 +62,23 @@ lanes), `phone` as tel-input text (verified: core stamp/attach/sort units,
 schema round-trip, settings tolerance for pre-V1b saved views, browser
 tests for the grouped table, person picker, read-only stamp editors, CSV
 import skipping view-only columns — plus `pnpm check` and the full suites).
-Still queued in Plan 29: formulas (last, projection-only), multiselect
-board lanes, `group:` in the embed fence.
+The queue then emptied in the same session: **V2a** — the board lanes by
+`multiselect` too (a card in every lane its list carries; a drop gains the
+target option and sheds the lane it left, so a two-lane card moved out of
+one honestly stays in the other; board-only, since duplicate rows have no
+place in the table's flat selection order), **V2b** — the fence gained
+`group: <key>` (tolerant parse, serializer round-trip, applied through the
+same `tableGroupRows` as the tag page), and **T2** — `formula` columns per
+I15: a small pure evaluator (`evaluateFormula`: literals, `prop("key")`,
+arithmetic, comparisons, boolean logic, `if`/`concat`/`round`/`abs`/
+`min`/`max`/`length`/`empty`/`format`) attached last in the derived chain
+so expressions read rollups/reverse/timestamps; formulas evaluate one
+shared snapshot (no ordering effects, no cycles), errors are deterministic
+cell text, nothing executes side effects or I/O, and nothing lands in
+frontmatter. Verified: evaluator + attach + embed round-trip + board-lane
+units, browser tests for the grouped embed and multiselect drops, `pnpm
+check`, and the full suites. **Plan 29's slices are complete** — formulas
+date functions, per-group aggregates, timeline/gallery are future scope.
 
 **Craft parity (user decision 2026-08-30, [Plan 28](plans/28-craft-parity.md)).**
 With Craft screenshots as the reference, the direction is set: Kore
@@ -317,11 +332,10 @@ declined; the backlog-B pass is closed.
    a future routines page, whenever that page gets built. Consider a
    Tasks-view "by project" grouping if the note panel proves not enough
    in real use.
-2. **Collections, remaining** ([Plan 29](plans/29-collections-database.md)
-   — the UX pass's a/b/c all shipped: properties header = N1, gallery
-   chips = Plan 28 slice 2, rollup aggregations = R3): formulas
-   (projection-only, per I15), multiselect board lanes, `group:` in the
-   embed fence. Re-check appetite with the user before each.
+2. **Collections** ([Plan 29](plans/29-collections-database.md)) is
+   complete through T2 — the UX pass's a/b/c and every planned slice
+   shipped. New scope (formula date functions, per-group table
+   aggregates, timeline/gallery views) waits for a fresh user decision.
 3. **Live checks with the user**: (a) Now 1: real MCP server + Tools toggle
    in a read-only conversation; (b) Now 2: send an image in chat, restart,
    confirm the restored conversation renders it from disk; (c) Now 3: ask a
@@ -334,6 +348,11 @@ declined; the backlog-B pass is closed.
 
 ## Session log
 
+- 2026-09-01 — Plan 29 V2a + V2b + T2: multiselect board lanes (per-card
+  drop writes, list overlay), `group:` in the collection fence (applied by
+  the embedded table), and formula columns (pure `evaluateFormula`,
+  attached last, deterministic errors, I15's no-side-effects contract).
+  Plan 29's slices complete.
 - 2026-09-01 — Plan 29 V1b + T1: table row grouping (per-tag "Group by",
   board-lane shelves without rank-sort or empty lanes, saved-view
   `tableGroup`, keyboard nav mapped through the grouped order) and the

@@ -2,12 +2,12 @@ import {
   createNoteIfAbsent,
   parseNote,
   parseTagTypeFrontmatter,
-  TAG_TYPE_MARKER,
   tagDefinitionPath,
   upsertFrontmatter,
   type TagProperty,
 } from '@reflect/core'
 import { commitNoteFrontmatter, readNoteSource } from '@/lib/note-frontmatter'
+import { frontmatterPatchToYaml } from '@/editor/note-session'
 
 /**
  * Reading and writing tag definition notes (TDR 0005). The schema lives in
@@ -69,17 +69,14 @@ export async function saveTagType(
   template: string | null = null,
 ): Promise<void> {
   const path = tagDefinitionPath(tag)
-  const seed = upsertFrontmatter('', {
-    lore: TAG_TYPE_MARKER,
-    properties: properties.map((property) => ({
-      name: property.name,
-      key: property.key,
-      type: property.type,
-      ...(property.options === undefined ? {} : { options: property.options }),
-      ...(property.rollup === undefined ? {} : { rollup: property.rollup }),
-    })),
-    ...(template === null ? {} : { template }),
-  })
+  // The seed rides the SAME serializer as the update path below — a schema
+  // field spelled in one place only. This exact fork once dropped `target`
+  // (and later `formula`) from freshly created collections while updates
+  // kept them.
+  const seed = upsertFrontmatter(
+    '',
+    frontmatterPatchToYaml({ tagSchema: properties, tagTemplate: template }),
+  )
   const created = await createNoteIfAbsent(path, seed, generation)
   if (created.kind === 'created') {
     return

@@ -23,6 +23,8 @@ export interface PropertyDraft {
   /** A reverse relation's linking collection and its relation key. */
   reverseTag: string
   reverseProperty: string
+  /** A formula's expression (view-only; empty = not configured). */
+  formulaExpression: string
 }
 
 /** A key rename awaiting the migrate-or-not decision, with its blast radius. */
@@ -50,6 +52,7 @@ export const PROPERTY_TYPE_LABELS: Record<TagPropertyType, string> = {
   email: 'Email',
   phone: 'Phone',
   rating: 'Rating',
+  formula: 'Formula',
   rollup: 'Rollup',
   reverse: 'Reverse relation',
 }
@@ -70,6 +73,7 @@ export function draftsFromSchema(properties: readonly TagProperty[]): PropertyDr
     rollupAggregation: property.rollup?.aggregation ?? 'count',
     reverseTag: property.reverse?.tag ?? '',
     reverseProperty: property.reverse?.property ?? '',
+    formulaExpression: property.formula?.expression ?? '',
   }))
 }
 
@@ -89,12 +93,17 @@ export function schemaFromDrafts(drafts: readonly PropertyDraft[]): TagProperty[
     const hasOptions =
       draft.type === 'select' || draft.type === 'multiselect' || draft.type === 'status'
     const hasTarget =
-      (draft.type === 'relation' || draft.type === 'relations') && draft.target.trim() !== ''
+      (draft.type === 'relation' || draft.type === 'relations' || draft.type === 'person') &&
+      draft.target.trim() !== ''
     const reverse =
       draft.type === 'reverse' &&
       draft.reverseTag.trim() !== '' &&
       draft.reverseProperty.trim() !== ''
         ? { tag: draft.reverseTag.trim(), property: draft.reverseProperty.trim() }
+        : undefined
+    const formula =
+      draft.type === 'formula' && draft.formulaExpression.trim() !== ''
+        ? { expression: draft.formulaExpression.trim() }
         : undefined
     const rollup =
       draft.type === 'rollup' &&
@@ -114,6 +123,7 @@ export function schemaFromDrafts(drafts: readonly PropertyDraft[]): TagProperty[
       ...(hasTarget ? { target: draft.target.trim() } : {}),
       ...(rollup === undefined ? {} : { rollup }),
       ...(reverse === undefined ? {} : { reverse }),
+      ...(formula === undefined ? {} : { formula }),
     }
   })
 }

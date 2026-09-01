@@ -11,6 +11,7 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUturnRight,
+  Calculator,
   Calendar,
   CalendarClock,
   Chart,
@@ -66,6 +67,7 @@ const PROPERTY_TYPE_ICONS: Record<TagPropertyType, Icon> = {
   email: Inbox,
   phone: Phone,
   rating: Star,
+  formula: Calculator,
   rollup: Chart,
   reverse: ArrowUturnRight,
 }
@@ -236,6 +238,20 @@ export function TagPropertyRow({
               ) : null}
             </SelectContent>
           </Select>
+        </label>
+      ) : null}
+      {draft.type === 'formula' ? (
+        <label className="flex items-center gap-1.5">
+          <span className={FIELD_LABEL_CLASS}>Expression</span>
+          <Input
+            value={draft.formulaExpression}
+            aria-label="Formula expression"
+            placeholder='prop("price") * 1.22'
+            className="flex-1 font-mono text-xs"
+            onChange={(event) =>
+              updateDraft(draft.rowId, { formulaExpression: event.target.value })
+            }
+          />
         </label>
       ) : null}
       {draft.type === 'reverse' ? (

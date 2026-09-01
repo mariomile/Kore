@@ -174,10 +174,11 @@ describe('CollectionBoard — multiselect lanes', () => {
   it('moving between lanes drops the source option and gains the target', async () => {
     const rows = [entry('notes/dune.md', 'Dune', { topics: list(['sci-fi', 'desert']) })]
     const view = await renderBoard(rows, () => {}, TOPICS)
-    const source = view.getByRole('region', { name: 'sci-fi', exact: true }).element()
+    // Dune lives in both the sci-fi and desert lanes — the first occurrence.
+    const source = await card(view, 'Dune', 0)
     const target = view.getByRole('region', { name: 'utopia', exact: true }).element()
 
-    await dragTo(source.querySelector('article')!, target)
+    await dragTo(source, target)
 
     expect(commitProperties).toHaveBeenCalledWith('notes/dune.md', {
       topics: ['desert', 'utopia'],
@@ -187,10 +188,10 @@ describe('CollectionBoard — multiselect lanes', () => {
   it('dropping on the unset lane removes only the source option', async () => {
     const rows = [entry('notes/dune.md', 'Dune', { topics: list(['sci-fi', 'desert']) })]
     const view = await renderBoard(rows, () => {}, TOPICS)
-    const source = view.getByRole('region', { name: 'sci-fi', exact: true }).element()
+    const source = await card(view, 'Dune', 0)
     const unset = view.getByRole('region', { name: 'No Topics' }).element()
 
-    await dragTo(source.querySelector('article')!, unset)
+    await dragTo(source, unset)
 
     expect(commitProperties).toHaveBeenCalledWith('notes/dune.md', { topics: ['desert'] })
   })
@@ -276,8 +277,10 @@ function renderBoard(
 async function card(
   view: Awaited<ReturnType<typeof renderBoard>>,
   title: string,
+  /** Which occurrence, for a multiselect card living in several lanes. */
+  index = 0,
 ): Promise<Element> {
-  const button = view.getByRole('button', { name: title })
+  const button = view.getByRole('button', { name: title }).nth(index)
   await expect.element(button).toBeInTheDocument()
   return button.element().closest('article')!
 }

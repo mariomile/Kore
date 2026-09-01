@@ -26,8 +26,10 @@ tauri-build = { version = "2.6.3", features = [] }
 # `devtools` compiles the web inspector into release builds too (it is otherwise
 # debug-only), so a shipped app stays debuggable — see `src/devtools.rs`.
 # `unstable` unlocks child webviews (`Window::add_child`), which back the
-# embedded in-app browser — see `src/browser.rs`.
-tauri = { version = "2.11.5", features = ["devtools", "unstable"] }
+# embedded in-app browser — see `src/browser.rs`. `macos-private-api` lets the
+# Quick Entry webview expose its rounded CSS surface through a transparent
+# native window instead of painting an opaque rectangular frame.
+tauri = { version = "2.11.5", features = ["devtools", "macos-private-api", "unstable"] }
 tauri-plugin-opener = "2.5.4"
 # Decodes `reflect-asset://` request paths (`fs/asset_protocol.rs`); the same
 # crate tauri itself uses for its protocol URLs.

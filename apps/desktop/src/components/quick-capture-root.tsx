@@ -72,8 +72,8 @@ export function QuickCaptureRoot(): ReactElement {
   }
 
   return (
-    <div className="h-screen w-screen bg-transparent">
-      <section className="flex h-full flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-pop">
+    <div className="h-screen w-screen bg-transparent p-2">
+      <section className="flex h-full flex-col overflow-hidden rounded-xl border border-border bg-surface">
         <header
           data-tauri-drag-region
           className="flex h-12 shrink-0 items-center gap-2.5 border-b border-border px-3.5"

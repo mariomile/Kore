@@ -701,13 +701,13 @@ pub(crate) fn sync_quick_capture_shortcut<R: tauri::Runtime>(
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner());
 
-    if current.as_ref() == desired.as_ref() {
-        if match desired.as_ref() {
+    if current.as_ref() == desired.as_ref()
+        && match desired.as_ref() {
             Some(shortcut) => manager.is_registered(shortcut.as_str()),
             None => true,
-        } {
-            return;
         }
+    {
+        return;
     }
 
     if let Some(registered) = current.as_ref() {

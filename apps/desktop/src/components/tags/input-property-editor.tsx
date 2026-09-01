@@ -66,7 +66,9 @@ export function InputPropertyEditor({
         ? 'date'
         : property.type === 'email'
           ? 'email'
-          : 'text'
+          : property.type === 'phone'
+            ? 'tel'
+            : 'text'
 
   return (
     <Popover

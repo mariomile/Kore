@@ -14,6 +14,8 @@ export {
   relationValue,
   relationDisplay,
   relationTarget,
+  relationTargetOf,
+  PERSON_DEFAULT_TARGET,
   rollupAggregationSchema,
   rollupConfigSchema,
   reverseConfigSchema,
@@ -38,6 +40,7 @@ export {
   type RollupSourceValue,
   type RollupResult,
 } from './property-values'
+export { localCalendarDate, createdStampValues } from './timestamps'
 export {
   extractNoteProperties,
   type IndexedProperty,

@@ -41,7 +41,7 @@ export function boardProperty(type: TagType): TagProperty | null {
   return groupableProperties(type)[0] ?? null
 }
 
-interface BoardColumn {
+export interface BoardColumn {
   /** Column title (an option, a live value, checked/not, or "No <name>"). */
   label: string
   /** The frontmatter value a drop into this lane writes (`null` clears). */
@@ -167,7 +167,7 @@ export function boardColumns(
     }
   }
   const lanes = [...groups]
-  if (property.type === 'relation') {
+  if (property.type === 'relation' || property.type === 'person') {
     lanes.sort(([a], [b]) => a.localeCompare(b))
   }
   for (const [label, group] of lanes) {
@@ -185,6 +185,28 @@ export function boardColumns(
     entries: sortByRank(unset),
   })
   return columns
+}
+
+/**
+ * The table's row groups (Plan 29 V1b): the board's lanes — same labels,
+ * same declared-options order, same trailing "No <name>" — with two
+ * table-shaped differences. Rows keep the incoming (sorted) order instead
+ * of the board's manual rank, and a lane nothing lives in disappears: a
+ * table renders no empty shelf to drop onto.
+ */
+export function tableGroupRows(
+  entries: readonly CollectionEntry[],
+  property: TagProperty,
+): BoardColumn[] {
+  const order = new Map(entries.map((entry, index) => [entry.path, index]))
+  return boardColumns(entries, property)
+    .map((column) => ({
+      ...column,
+      entries: [...column.entries].sort(
+        (a, b) => (order.get(a.path) ?? 0) - (order.get(b.path) ?? 0),
+      ),
+    }))
+    .filter((column) => column.entries.length > 0)
 }
 
 /** One optimistic move: the lane value plus the positional rank, if any. */

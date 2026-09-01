@@ -20,6 +20,7 @@ function noteRow(overrides: Partial<NoteRow> = {}): NoteRow {
     hasConflict: false,
     gistUrl: null,
     gistStale: false,
+    mtime: 0,
     ...overrides,
   }
 }

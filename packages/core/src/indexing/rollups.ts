@@ -1,6 +1,7 @@
 import {
   computeRollup,
   extractRelationTargets,
+  localCalendarDate,
   relationValue,
   rollupSourceFromValue,
   type TagType,
@@ -188,6 +189,39 @@ export async function attachReverseRelations(
           valueType: 'list',
           valueNumber: titles.length,
         }
+      }
+    }
+    return { ...entry, properties }
+  })
+}
+
+/**
+ * Attach view-only `updated` cells from the row's indexed mtime (Plan 29
+ * T1). Like the other derived columns, never written to frontmatter — and
+ * synchronous, since the source rides the entry itself. A zero mtime (a row
+ * the index hasn't stamped yet) stays absent, and a hand-written frontmatter
+ * value under an `updated` key never shows through as if the view computed
+ * it — the same honesty contract as the reverse columns.
+ */
+export function attachTimestampColumns(
+  entries: readonly CollectionEntry[],
+  type: TagType,
+): CollectionEntry[] {
+  const updated = type.properties.filter((property) => property.type === 'updated')
+  if (updated.length === 0) {
+    return [...entries]
+  }
+  return entries.map((entry) => {
+    const properties = { ...entry.properties }
+    for (const property of updated) {
+      if (entry.mtime > 0) {
+        properties[property.key] = {
+          value: localCalendarDate(new Date(entry.mtime)),
+          valueType: 'string',
+          valueNumber: null,
+        }
+      } else {
+        delete properties[property.key]
       }
     }
     return { ...entry, properties }

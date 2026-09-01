@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
-import { attachReverseRelations, attachRollups } from './rollups'
+import { attachReverseRelations, attachRollups, attachTimestampColumns } from './rollups'
+import { effectiveCollectionSort, UPDATED_SORT_KEY } from './collections'
 import type { CollectionEntry, CollectionValue } from './collections'
 import type { TagType } from '../tags'
 
@@ -88,5 +89,75 @@ describe('attachReverseRelations', () => {
     // No linkers: the key stays absent, so the footer never counts it filled.
     expect(rows[1]?.properties['people']).toBeUndefined()
     expect(listCollection).toHaveBeenCalledWith('person', null)
+  })
+})
+
+describe('attachTimestampColumns', () => {
+  const type: TagType = {
+    properties: [
+      { name: 'Touched', key: 'touched', type: 'updated' },
+      { name: 'Due', key: 'due', type: 'date' },
+    ],
+  }
+
+  it('fills updated cells from the row mtime and never touches other keys', () => {
+    const rows = attachTimestampColumns(
+      [
+        {
+          ...entry('notes/a.md', { due: cell('2026-01-01', 'string') }),
+          mtime: new Date(2026, 7, 31, 9, 30).getTime(),
+        },
+      ],
+      type,
+    )
+    expect(rows[0]?.properties['touched']).toEqual({
+      value: '2026-08-31',
+      valueType: 'string',
+      valueNumber: null,
+    })
+    expect(rows[0]?.properties['due']).toEqual(cell('2026-01-01', 'string'))
+  })
+
+  it('overrides a hand-written value and leaves an unstamped row absent', () => {
+    const rows = attachTimestampColumns(
+      [
+        {
+          ...entry('notes/a.md', { touched: cell('yesterday, by hand', 'string') }),
+          mtime: 0,
+        },
+      ],
+      type,
+    )
+    // A zero mtime deletes even a stored value: the view never passes a
+    // hand-written cell off as computed (the reverse columns' contract).
+    expect(rows[0]?.properties['touched']).toBeUndefined()
+  })
+})
+
+describe('effectiveCollectionSort', () => {
+  const type: TagType = {
+    properties: [
+      { name: 'Touched', key: 'touched', type: 'updated' },
+      { name: 'Due', key: 'due', type: 'date' },
+    ],
+  }
+
+  it('reroutes an updated-column sort onto the mtime sentinel', () => {
+    expect(effectiveCollectionSort(type, { key: 'touched', direction: 'desc' })).toEqual({
+      key: UPDATED_SORT_KEY,
+      direction: 'desc',
+    })
+  })
+
+  it('leaves every other sort (and no sort) alone', () => {
+    expect(effectiveCollectionSort(type, { key: 'due', direction: 'asc' })).toEqual({
+      key: 'due',
+      direction: 'asc',
+    })
+    expect(effectiveCollectionSort(type, null)).toBeNull()
+    expect(effectiveCollectionSort(null, { key: 'touched', direction: 'asc' })).toEqual({
+      key: 'touched',
+      direction: 'asc',
+    })
   })
 })

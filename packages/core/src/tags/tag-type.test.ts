@@ -9,6 +9,7 @@ import {
   propertyKeyForName,
   relationDisplay,
   relationTarget,
+  relationTargetOf,
   relationValue,
   tagDefinitionPath,
   tagNameForDefinitionPath,
@@ -305,6 +306,35 @@ describe('new property types', () => {
           type: 'rollup',
           rollup: { relation: 'author', property: 'score', aggregation: 'unique' },
         },
+      ],
+    }
+    expect(decodeTagTypeJson(encodeTagTypeJson(type))).toEqual(type)
+  })
+})
+
+describe('relationTargetOf', () => {
+  it('scopes person pickers to #person unless the schema overrides it', () => {
+    expect(relationTargetOf({ name: 'Owner', key: 'owner', type: 'person' })).toBe('person')
+    expect(
+      relationTargetOf({ name: 'Owner', key: 'owner', type: 'person', target: 'teammate' }),
+    ).toBe('teammate')
+  })
+
+  it('passes relation targets through and stays undefined elsewhere', () => {
+    expect(
+      relationTargetOf({ name: 'Author', key: 'author', type: 'relation', target: 'author' }),
+    ).toBe('author')
+    expect(relationTargetOf({ name: 'Author', key: 'author', type: 'relation' })).toBeUndefined()
+    expect(relationTargetOf({ name: 'Note', key: 'note', type: 'text' })).toBeUndefined()
+  })
+
+  it('round-trips the new property types through schema_json', () => {
+    const type: TagType = {
+      properties: [
+        { name: 'Started', key: 'started', type: 'created' },
+        { name: 'Touched', key: 'touched', type: 'updated' },
+        { name: 'Owner', key: 'owner', type: 'person', target: 'teammate' },
+        { name: 'Phone', key: 'phone-number', type: 'phone' },
       ],
     }
     expect(decodeTagTypeJson(encodeTagTypeJson(type))).toEqual(type)

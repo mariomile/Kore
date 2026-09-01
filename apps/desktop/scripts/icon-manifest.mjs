@@ -114,6 +114,7 @@ export const SOLAR_ICONS = {
   Chart: 'chart-2-linear',
   Chat: 'chat-round-linear',
   Inbox: 'inbox-linear',
+  Phone: 'phone-linear',
   Plug: 'plug-circle-linear',
   Settings: 'settings-minimalistic-linear',
   Sparkles: 'stars-linear',

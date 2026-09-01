@@ -140,6 +140,7 @@ export function EmbeddedCollection({ embed }: EmbeddedCollectionProps): ReactEle
               setColumnWidths((current) => ({ ...current, [key]: rem }))
             }
             onEditSchema={() => setEditingSchema(true)}
+            groups={null}
             onOpen={openNote}
             registerScrollToIndex={() => {}}
           />

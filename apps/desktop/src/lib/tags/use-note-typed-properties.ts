@@ -3,10 +3,12 @@ import { useQuery } from '@tanstack/react-query'
 import {
   getNoteProperties,
   listNoteTagTypes,
+  localCalendarDate,
   type CollectionValue,
   type TagProperty,
 } from '@reflect/core'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
+import { useNoteRow } from '@/hooks/use-note-row'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { useGraph } from '@/providers/graph-provider'
 
@@ -42,6 +44,10 @@ export function useNoteTypedProperties(path: string): NoteTypedProperties {
     enabled,
   })
 
+  // The `updated` fields are a view over the index's mtime, exactly like the
+  // collection rows' cells (attachTimestampColumns) — never a stored value.
+  const mtime = useNoteRow(path)?.mtime ?? 0
+
   const properties = useMemo(() => {
     const union: TagProperty[] = []
     const claimed = new Set<string>()
@@ -56,5 +62,27 @@ export function useNoteTypedProperties(path: string): NoteTypedProperties {
     return union
   }, [tagTypes])
 
-  return { properties, values }
+  const overlaid = useMemo(() => {
+    if (values === undefined || !properties.some((property) => property.type === 'updated')) {
+      return values
+    }
+    const next = { ...values }
+    for (const property of properties) {
+      if (property.type !== 'updated') {
+        continue
+      }
+      if (mtime > 0) {
+        next[property.key] = {
+          value: localCalendarDate(new Date(mtime)),
+          valueType: 'string',
+          valueNumber: null,
+        }
+      } else {
+        delete next[property.key]
+      }
+    }
+    return next
+  }, [values, properties, mtime])
+
+  return { properties, values: overlaid }
 }

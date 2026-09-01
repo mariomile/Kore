@@ -94,6 +94,7 @@ describe('CollectionTable', () => {
         columnWidths={{}}
         onColumnWidthChange={() => {}}
         onEditSchema={() => {}}
+        groups={null}
         onSortChange={() => {}}
         onOpen={() => {}}
         registerScrollToIndex={() => {}}
@@ -120,6 +121,7 @@ describe('CollectionTable', () => {
         columnWidths={{}}
         onColumnWidthChange={() => {}}
         onEditSchema={() => {}}
+        groups={null}
         onSortChange={() => {}}
         onOpen={() => {}}
         registerScrollToIndex={() => {}}
@@ -142,6 +144,7 @@ describe('CollectionTable', () => {
         columnWidths={{}}
         onColumnWidthChange={() => {}}
         onEditSchema={() => {}}
+        groups={null}
         onSortChange={() => {}}
         onOpen={() => {}}
         registerScrollToIndex={() => {}}
@@ -167,6 +170,7 @@ describe('CollectionTable', () => {
         columnWidths={{}}
         onColumnWidthChange={() => {}}
         onEditSchema={() => {}}
+        groups={null}
         onSortChange={onSortChange}
         onOpen={() => {}}
         registerScrollToIndex={() => {}}
@@ -186,6 +190,7 @@ describe('CollectionTable', () => {
         columnWidths={{}}
         onColumnWidthChange={() => {}}
         onEditSchema={() => {}}
+        groups={null}
         onSortChange={onSortChange}
         onOpen={() => {}}
         registerScrollToIndex={() => {}}
@@ -205,6 +210,7 @@ describe('CollectionTable', () => {
         columnWidths={{}}
         onColumnWidthChange={() => {}}
         onEditSchema={() => {}}
+        groups={null}
         onSortChange={onSortChange}
         onOpen={() => {}}
         registerScrollToIndex={() => {}}
@@ -226,6 +232,7 @@ describe('CollectionTable', () => {
         columnWidths={{}}
         onColumnWidthChange={() => {}}
         onEditSchema={() => {}}
+        groups={null}
         onSortChange={() => {}}
         onOpen={onOpen}
         registerScrollToIndex={() => {}}
@@ -269,6 +276,7 @@ describe('CollectionTable — built-in sorts, footer, add property', () => {
         columnWidths={{}}
         onColumnWidthChange={() => {}}
         onEditSchema={() => {}}
+        groups={null}
         onSortChange={onSortChange}
         onOpen={() => {}}
         registerScrollToIndex={() => {}}
@@ -292,6 +300,7 @@ describe('CollectionTable — built-in sorts, footer, add property', () => {
         columnWidths={{}}
         onColumnWidthChange={() => {}}
         onEditSchema={onEditSchema}
+        groups={null}
         onSortChange={() => {}}
         onOpen={() => {}}
         registerScrollToIndex={() => {}}
@@ -314,6 +323,7 @@ describe('CollectionTable — built-in sorts, footer, add property', () => {
         columnWidths={{ author: 20 }}
         onColumnWidthChange={() => {}}
         onEditSchema={() => {}}
+        groups={null}
         onSortChange={() => {}}
         onOpen={() => {}}
         registerScrollToIndex={() => {}}
@@ -322,5 +332,44 @@ describe('CollectionTable — built-in sorts, footer, add property', () => {
     const header = view.getByRole('button', { name: 'Sort by Title' }).element()
       .parentElement as HTMLElement
     expect(header.style.gridTemplateColumns).toContain('20rem')
+  })
+
+  it('renders shelf headers with counts between the grouped rows (Plan 29 V1b)', async () => {
+    const view = await render(
+      <CollectionTable
+        entries={ENTRIES}
+        tag="book"
+        type={BOOK_TYPE}
+        selection={selection()}
+        sort={null}
+        columnWidths={{}}
+        onColumnWidthChange={() => {}}
+        onEditSchema={() => {}}
+        groups={[
+          {
+            label: 'reading',
+            commit: 'reading',
+            color: 'bg-emerald-500',
+            entries: [ENTRIES[0] as CollectionEntry],
+          },
+          {
+            label: 'No Status',
+            commit: null,
+            color: null,
+            entries: [ENTRIES[1] as CollectionEntry],
+          },
+        ]}
+        onSortChange={() => {}}
+        onOpen={() => {}}
+        registerScrollToIndex={() => {}}
+      />,
+    )
+    await expect.element(view.getByRole('heading', { name: /reading\s*1/ })).toBeInTheDocument()
+    await expect.element(view.getByRole('heading', { name: /No Status\s*1/ })).toBeInTheDocument()
+    // The rows themselves still render under their shelves.
+    await expect.element(view.getByText('The Dispossessed')).toBeInTheDocument()
+    await expect.element(view.getByText('Dune')).toBeInTheDocument()
+    // The footer keeps counting the whole set, not the shelves.
+    await expect.element(view.getByText('2 notes')).toBeInTheDocument()
   })
 })

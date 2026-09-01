@@ -7,6 +7,7 @@ import {
   CollectionBoard,
   groupableProperties,
   rankForInsertion,
+  tableGroupRows,
 } from './collection-board'
 
 const commitProperties = vi.hoisted(() => vi.fn())
@@ -134,6 +135,29 @@ describe('boardColumns', () => {
     expect(columns.map((column) => column.label)).toEqual(['Dune Saga', 'Hainish', 'No Series'])
     // The lane commits the stored raw link, alias included.
     expect(columns[1]?.commit).toBe('[[Hainish Cycle|Hainish]]')
+  })
+})
+
+describe('tableGroupRows', () => {
+  it('keeps the incoming (sorted) order inside groups, ignoring board ranks', () => {
+    const rows = [
+      entry('notes/z.md', 'Z', { status: stored('done', 'string'), order: stored('1', 'number') }),
+      entry('notes/a.md', 'A', { status: stored('done', 'string'), order: stored('9', 'number') }),
+    ]
+    const groups = tableGroupRows(rows, STATUS)
+    const done = groups.find((group) => group.label === 'done')
+    expect(done?.entries.map((row) => row.title)).toEqual(['Z', 'A'])
+  })
+
+  it('drops lanes nothing lives in — declared options and the unset tail alike', () => {
+    const groups = tableGroupRows(
+      [
+        entry('notes/dune.md', 'Dune', { status: stored('to-read', 'string') }),
+        entry('notes/stray.md', 'Stray', { status: stored('abandoned', 'string') }),
+      ],
+      STATUS,
+    )
+    expect(groups.map((group) => group.label)).toEqual(['to-read', 'abandoned'])
   })
 })
 

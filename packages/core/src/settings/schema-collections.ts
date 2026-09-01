@@ -111,6 +111,9 @@ export const savedCollectionViewSchema = z.object({
   view: z.enum(COLLECTION_EMBED_VIEWS),
   sort: collectionSortSettingSchema.nullable().catch(null),
   group: z.string().nullable().catch(null),
+  /** The table's row grouping (Plan 29 V1b); `null` = flat rows. Absent in
+   * pre-V1b saves, so the catch keeps them applying as they always did. */
+  tableGroup: z.string().nullable().catch(null),
   filters: z
     .array(z.unknown())
     .catch([])
@@ -200,6 +203,26 @@ export const collectionColumnsSchema = z
 export type CollectionGroups = Record<string, string>
 
 export const collectionGroupsSchema = z
+  .record(z.string(), z.unknown())
+  .catch({})
+  .transform((entries) => {
+    const groups: CollectionGroups = {}
+    for (const [tagKey, value] of Object.entries(entries)) {
+      if (typeof value === 'string' && value !== '') {
+        groups[tagKey] = value
+      }
+    }
+    return groups
+  })
+
+/**
+ * The table view's row grouping per typed tag (folded tag key → property
+ * key), Plan 29 V1b. Unlike the board's ({@link collectionGroupsSchema}),
+ * absence means *ungrouped* — the flat table is the default, not the first
+ * groupable property. Same per-entry resilience; a key the schema no longer
+ * declares as groupable simply renders flat at view time.
+ */
+export const collectionTableGroupsSchema = z
   .record(z.string(), z.unknown())
   .catch({})
   .transform((entries) => {

@@ -2,6 +2,8 @@ import { useQuery } from '@tanstack/react-query'
 import {
   attachReverseRelations,
   attachRollups,
+  attachTimestampColumns,
+  effectiveCollectionSort,
   foldTag,
   getTagType,
   listCollection,
@@ -41,14 +43,18 @@ export function useCollection(
   const { data } = useQuery({
     queryKey: collectionQueryKey(graph?.root, tag ?? '', sort),
     queryFn: async () => {
-      const rows = await listCollection(tag ?? '', sort)
       const type = await getTagType(tag ?? '')
+      const rows = await listCollection(tag ?? '', effectiveCollectionSort(type, sort))
       if (type === null) {
         return rows
       }
       // Derived cells in reading order: rollups first, then the reverse
-      // columns — both view-only, neither ever written to frontmatter.
-      return await attachReverseRelations(await attachRollups(rows, type), type)
+      // columns, then the mtime-backed timestamps — all view-only, none
+      // ever written to frontmatter.
+      return attachTimestampColumns(
+        await attachReverseRelations(await attachRollups(rows, type), type),
+        type,
+      )
     },
     enabled: bridgeReady && graph !== null && tag !== null,
   })

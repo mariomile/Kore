@@ -42,7 +42,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { CollectionBoard } from './collection-board'
+import { CollectionBoard, tableGroupRows } from './collection-board'
 import { CollectionCalendar } from './collection-calendar'
 import { CollectionViewsMenu } from './collection-views-menu'
 import { runCollectionExport } from './collection-export'
@@ -106,6 +106,8 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
     collectionSort,
     setCollectionSort,
     setCollectionGroup,
+    tableGroupProperty,
+    setTableGroup,
     hiddenColumns,
     columnWidths,
     visibleTagType,
@@ -158,16 +160,28 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
     [collection, tagType, collectionFilters],
   )
 
+  // The table's row shelves (Plan 29 V1b), computed here — not in the table
+  // — so the selection's flat order below reads off the same grouping.
+  const tableGroups = useMemo(
+    () =>
+      view === 'table' && tableGroupProperty !== null && filteredCollection !== undefined
+        ? tableGroupRows(filteredCollection, tableGroupProperty)
+        : null,
+    [view, tableGroupProperty, filteredCollection],
+  )
+
   // Saved views: named bundles of mode + sort + grouping + filters, per tag.
   const { savedViews, saveCurrentView, deleteSavedView, applySavedView } = useCollectionSavedViews({
     tagKey,
     view,
     collectionSort,
     boardGroupProperty,
+    tableGroupProperty,
     collectionFilters,
     setViewMode,
     setCollectionSort,
     setCollectionGroup,
+    setTableGroup,
     setCollectionFilters,
   })
   const ready = notes !== undefined
@@ -177,10 +191,12 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
   // the collection's own order while the table view sorts by a property.
   const orderedPaths = useMemo(
     () =>
-      collectionView
-        ? (filteredCollection ?? []).map((entry) => entry.path)
-        : (notes ?? []).map((note) => note.path),
-    [collectionView, filteredCollection, notes],
+      tableGroups !== null
+        ? tableGroups.flatMap((group) => group.entries.map((entry) => entry.path))
+        : collectionView
+          ? (filteredCollection ?? []).map((entry) => entry.path)
+          : (notes ?? []).map((note) => note.path),
+    [tableGroups, collectionView, filteredCollection, notes],
   )
   const selection = useListSelection(orderedPaths)
   const openNote = useCallback(
@@ -269,6 +285,34 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
         <div className="flex flex-wrap items-center gap-3">
           {tag === null ? (
             <AllNotesFilters tag={tag} facets={facets ?? []} onSelect={handleFilterSelect} />
+          ) : null}
+          {view === 'table' && boardProperties.length > 0 ? (
+            <Select
+              value={tableGroupProperty?.key ?? '__none'}
+              items={{
+                __none: 'No grouping',
+                ...Object.fromEntries(
+                  boardProperties.map((property) => [property.key, property.name]),
+                ),
+              }}
+              onValueChange={(value) => {
+                if (typeof value === 'string' && value !== '') {
+                  setTableGroup(value === '__none' ? null : value)
+                }
+              }}
+            >
+              <SelectTrigger aria-label="Group by" data-size="sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none">No grouping</SelectItem>
+                {boardProperties.map((property) => (
+                  <SelectItem key={property.key} value={property.key}>
+                    {property.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           ) : null}
           {view === 'board' && boardProperties.length > 1 ? (
             <Select
@@ -481,6 +525,7 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
                 columnWidths={columnWidths}
                 onColumnWidthChange={setColumnWidth}
                 onEditSchema={() => setEditingSchema(true)}
+                groups={tableGroups}
                 onOpen={openNote}
                 registerScrollToIndex={registerScrollToIndex}
               />

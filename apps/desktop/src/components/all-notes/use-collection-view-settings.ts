@@ -29,6 +29,9 @@ export interface CollectionViewSettings {
   collectionSort: CollectionSort | null
   setCollectionSort: (sort: CollectionSort | null) => void
   setCollectionGroup: (key: string) => void
+  /** The table's row grouping (Plan 29 V1b) — `null` renders flat rows. */
+  tableGroupProperty: TagProperty | null
+  setTableGroup: (key: string | null) => void
   hiddenColumns: Set<string>
   columnWidths: Record<string, number>
   /** The tag's schema with hidden columns filtered out (the table renders this). */
@@ -128,6 +131,29 @@ export function useCollectionViewSettings(
     },
     [tagKey, updateSettingsWith],
   )
+  // The table's row grouping (Plan 29 V1b): per-tag like the board's, but
+  // absence means *flat* — no first-groupable fallback, since the flat table
+  // is a first-class shape, not a degraded one.
+  const savedTableGroupKey = tagKey === null ? undefined : settings.collectionTableGroups[tagKey]
+  const tableGroupProperty =
+    boardProperties.find((property) => property.key === savedTableGroupKey) ?? null
+  const setTableGroup = useCallback(
+    (key: string | null) => {
+      if (tagKey === null) {
+        return
+      }
+      updateSettingsWith((current) => {
+        const next = { ...current.collectionTableGroups }
+        if (key === null) {
+          delete next[tagKey]
+        } else {
+          next[tagKey] = key
+        }
+        return { collectionTableGroups: next }
+      })
+    },
+    [tagKey, updateSettingsWith],
+  )
   // Column layout (hidden keys, manual widths) is a persisted per-tag view
   // preference like the sort; the table renders the visible subset.
   const columnsSetting = tagKey === null ? undefined : settings.collectionColumns[tagKey]
@@ -186,6 +212,8 @@ export function useCollectionViewSettings(
     collectionSort,
     setCollectionSort,
     setCollectionGroup,
+    tableGroupProperty,
+    setTableGroup,
     hiddenColumns,
     columnWidths,
     visibleTagType,
@@ -200,10 +228,12 @@ export interface CollectionSavedViewsOptions {
   view: AllNotesView
   collectionSort: CollectionSort | null
   boardGroupProperty: TagProperty | null
+  tableGroupProperty: TagProperty | null
   collectionFilters: CollectionFilter[]
   setViewMode: (mode: AllNotesView) => void
   setCollectionSort: (sort: CollectionSort | null) => void
   setCollectionGroup: (key: string) => void
+  setTableGroup: (key: string | null) => void
   setCollectionFilters: (filters: CollectionFilter[]) => void
 }
 
@@ -224,10 +254,12 @@ export function useCollectionSavedViews(
     view,
     collectionSort,
     boardGroupProperty,
+    tableGroupProperty,
     collectionFilters,
     setViewMode,
     setCollectionSort,
     setCollectionGroup,
+    setTableGroup,
     setCollectionFilters,
   } = options
   const { settings, updateSettingsWith } = useSettings()
@@ -243,6 +275,7 @@ export function useCollectionSavedViews(
         view: collectionViewForAllNotesView(view),
         sort: collectionSort,
         group: boardGroupProperty?.key ?? null,
+        tableGroup: tableGroupProperty?.key ?? null,
         filters: [...collectionFilters],
       }
       updateSettingsWith((current) => ({
@@ -252,7 +285,15 @@ export function useCollectionSavedViews(
         },
       }))
     },
-    [tagKey, view, collectionSort, boardGroupProperty, collectionFilters, updateSettingsWith],
+    [
+      tagKey,
+      view,
+      collectionSort,
+      boardGroupProperty,
+      tableGroupProperty,
+      collectionFilters,
+      updateSettingsWith,
+    ],
   )
   const deleteSavedView = useCallback(
     (id: string) => {
@@ -281,9 +322,12 @@ export function useCollectionSavedViews(
       if (saved.group !== null) {
         setCollectionGroup(saved.group)
       }
+      // Unlike the board's grouping (which always has one), `null` is a real
+      // table state — applying a flat view un-groups.
+      setTableGroup(saved.tableGroup)
       setCollectionFilters([...saved.filters])
     },
-    [setViewMode, setCollectionSort, setCollectionGroup, setCollectionFilters],
+    [setViewMode, setCollectionSort, setCollectionGroup, setTableGroup, setCollectionFilters],
   )
   return { savedViews, saveCurrentView, deleteSavedView, applySavedView }
 }

@@ -54,6 +54,25 @@ export interface CollectionSort {
 export const TITLE_SORT_KEY = '$title'
 export const UPDATED_SORT_KEY = '$updated'
 
+/**
+ * The sort `listCollection` should actually run. An `updated` column stores
+ * nothing — its cells are attached from the row's mtime — so a sort on its
+ * key rides the built-in mtime sentinel instead of the (empty) property
+ * join, which would read every row as "missing, last".
+ */
+export function effectiveCollectionSort(
+  type: TagType | null,
+  sort: CollectionSort | null,
+): CollectionSort | null {
+  if (sort === null || type === null) {
+    return sort
+  }
+  const updated = type.properties.some(
+    (property) => property.type === 'updated' && property.key === sort.key,
+  )
+  return updated ? { key: UPDATED_SORT_KEY, direction: sort.direction } : sort
+}
+
 const propertyValueTypes: ReadonlySet<string> = new Set(['string', 'number', 'boolean', 'list'])
 
 function collectionValue(row: {

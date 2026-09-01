@@ -52,6 +52,7 @@ function cellValue(property: TagProperty, raw: string): unknown {
         .map((entry) => entry.trim())
         .filter((entry) => entry !== '')
     case 'relation':
+    case 'person':
       return relationValue(trimmed)
     case 'relations':
       return trimmed
@@ -75,7 +76,10 @@ export function parseCollectionCsv(text: string, type: TagType): CsvNote[] {
   const titleIndex = Math.max(normalized.indexOf('title'), 0)
   const columns = new Map<number, TagProperty>()
   for (const property of type.properties) {
-    if (property.type === 'rollup') {
+    // View-only columns (and the mtime-backed stamp) never import — their
+    // values are computed, not stored. `created` does: a CSV's historical
+    // date is exactly the value the stamp must not overwrite.
+    if (property.type === 'rollup' || property.type === 'reverse' || property.type === 'updated') {
       continue
     }
     const index = normalized.findIndex(

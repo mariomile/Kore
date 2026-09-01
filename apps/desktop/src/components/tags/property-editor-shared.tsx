@@ -2,8 +2,10 @@ import type { ReactElement, ReactNode } from 'react'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import {
   createNoteWithTitle,
+  createdStampValues,
   decodeStoredList,
   foldTag,
+  getTagType,
   getWikiAddressForPath,
   parseRating,
   suggestRelationTargets,
@@ -13,6 +15,7 @@ import {
   type WikiLinkSuggestion,
 } from '@reflect/core'
 import { PopoverTrigger } from '@/components/ui/popover'
+import { commitNoteFrontmatter } from '@/lib/note-frontmatter'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { useGraph } from '@/providers/graph-provider'
@@ -146,6 +149,16 @@ export async function createRelationRow(
   generation: number,
 ): Promise<string> {
   const path = await createNoteWithTitle(title, generation, `#${targetTag}`)
+  // A row born from the picker carries its `created` stamps too (Plan 29
+  // T1) — best-effort: a failed stamp never loses the created note.
+  try {
+    const stamps = createdStampValues(await getTagType(targetTag))
+    if (Object.keys(stamps).length > 0) {
+      await commitNoteFrontmatter(path, { properties: stamps }, generation)
+    }
+  } catch {
+    // The note exists; the stamp can be filled by hand.
+  }
   try {
     const address = await getWikiAddressForPath(path)
     return address?.insertText ?? title

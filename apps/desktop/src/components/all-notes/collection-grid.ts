@@ -23,6 +23,8 @@ function columnWidth(property: TagProperty, manualRem: number | undefined): stri
     case 'rating':
       return 'minmax(4rem, 6rem)'
     case 'date':
+    case 'created':
+    case 'updated':
       return 'minmax(6rem, 7rem)'
     default:
       return 'minmax(6rem, 1fr)'

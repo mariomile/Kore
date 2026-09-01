@@ -6,6 +6,7 @@ import type { CollectionValue, TagProperty, WikiLinkSuggestion } from '@reflect/
 import { PropertyValueEditor } from './property-editors'
 
 const relationSuggestions = vi.hoisted(() => ({ current: [] as WikiLinkSuggestion[] }))
+const scopedTargetKeys = vi.hoisted(() => ({ current: [] as string[] }))
 
 vi.mock('@reflect/core', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@reflect/core')>()),
@@ -14,6 +15,10 @@ vi.mock('@reflect/core', async (importOriginal) => ({
     claimedTargetKeys: [],
     queryReadsAsDate: false,
   }),
+  suggestRelationTargets: async (_query: string, tagKey: string) => {
+    scopedTargetKeys.current.push(tagKey)
+    return { suggestions: relationSuggestions.current, claimedTargetKeys: [] }
+  },
 }))
 vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({ graph: { root: '/g', generation: 1 } }),
@@ -281,6 +286,35 @@ describe('PropertyValueEditor', () => {
     await view.getByRole('textbox', { name: 'Attachments' }).fill('assets/scan.pdf, cover.png')
     await userEvent.keyboard('{Enter}')
     expect(onCommit).toHaveBeenCalledWith(['assets/scan.pdf', 'cover.png'])
+  })
+
+  it('scopes a person picker to #person and commits the link (Plan 29 T1)', async () => {
+    scopedTargetKeys.current = []
+    relationSuggestions.current = [
+      {
+        target: 'Ada Lovelace',
+        insertText: 'Ada Lovelace',
+        path: 'notes/ada.md',
+        title: 'Ada Lovelace',
+        alias: null,
+        date: null,
+      },
+    ]
+    const property: TagProperty = { name: 'Owner', key: 'owner', type: 'person' }
+    const view = await render(editor(property))
+
+    await view.getByRole('button', { name: 'Edit Owner' }).click()
+    await expect.element(view.getByPlaceholder('Link a #person row…')).toBeInTheDocument()
+    await view.getByRole('option', { name: 'Ada Lovelace' }).click()
+    expect(onCommit).toHaveBeenCalledWith('[[Ada Lovelace]]')
+    expect(scopedTargetKeys.current).toContain('person')
+  })
+
+  it('does not open an editor for the created and updated stamps', async () => {
+    const created: TagProperty = { name: 'Started', key: 'started', type: 'created' }
+    const view = await render(editor(created, stored('2026-08-31', 'string')))
+    await expect.element(view.getByRole('button', { name: 'Edit Started' })).not.toBeInTheDocument()
+    await expect.element(view.getByText('2026-08-31')).toBeInTheDocument()
   })
 
   it('does not open an editor for a view-only rollup', async () => {

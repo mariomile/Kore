@@ -13,6 +13,7 @@ export const GROUPABLE_TYPES: ReadonlySet<TagProperty['type']> = new Set([
   'status',
   'checkbox',
   'relation',
+  'person',
 ])
 
 /** Every property a board can group by, schema order. */

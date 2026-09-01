@@ -32,6 +32,7 @@ import { CollectionCell } from './collection-cell'
 import { collectionGridStyle, COLLECTION_GRID_CLASS } from './collection-grid'
 import { CollectionRow } from './collection-row'
 import { TABLE_HEADER_CHROME } from './table-chrome'
+import type { BoardColumn } from './collection-board'
 
 interface CollectionTableProps {
   /** `undefined` while the collection query settles. */
@@ -47,9 +48,20 @@ interface CollectionTableProps {
   onColumnWidthChange: (key: string, rem: number) => void
   /** Open the tag's schema dialog (the header's "+" — add a property). */
   onEditSchema: () => void
+  /**
+   * Row groups (Plan 29 V1b), already computed over `entries` by the screen
+   * so its selection order and these shelves can never disagree. `null` =
+   * the flat table.
+   */
+  groups: readonly BoardColumn[] | null
   onOpen: (path: string, event?: ModClickEvent) => void
   registerScrollToIndex: (scrollToIndex: (index: number) => void) => void
 }
+
+/** One virtualized line: a group's shelf header, or a note's row. */
+type TableItem =
+  | { kind: 'group'; label: string; color: string | null; count: number }
+  | { kind: 'row'; entry: CollectionEntry }
 
 /**
  * The Collection table (TDR 0005): the All Notes table's shape — sticky
@@ -69,6 +81,7 @@ export function CollectionTable({
   columnWidths,
   onColumnWidthChange,
   onEditSchema,
+  groups,
   onOpen,
   registerScrollToIndex,
 }: CollectionTableProps): ReactElement | null {
@@ -95,6 +108,32 @@ export function CollectionTable({
   // The rows' open-task badges (the project pulse) — one batched read.
   const entryPaths = useMemo(() => (entries ?? []).map((entry) => entry.path), [entries])
   const taskCounts = useOpenTaskCounts(entryPaths)
+  // Grouped, the virtualizer renders shelf headers between the rows; the
+  // index map turns the selection's flat row index back into an item index
+  // so keyboard navigation still pulls off-screen rows into view.
+  const { items, rowItemIndex } = useMemo(() => {
+    if (groups === null) {
+      return {
+        items: (entries ?? []).map((entry): TableItem => ({ kind: 'row', entry })),
+        rowItemIndex: null,
+      }
+    }
+    const list: TableItem[] = []
+    const indexes: number[] = []
+    for (const group of groups) {
+      list.push({
+        kind: 'group',
+        label: group.label,
+        color: group.color,
+        count: group.entries.length,
+      })
+      for (const entry of group.entries) {
+        indexes.push(list.length)
+        list.push({ kind: 'row', entry })
+      }
+    }
+    return { items: list, rowItemIndex: indexes }
+  }, [entries, groups])
 
   const handleToggle = useCallback(
     (path: string, event: Pick<MouseEvent, 'shiftKey'>) =>
@@ -109,11 +148,12 @@ export function CollectionTable({
 
   useEffect(() => {
     registerScrollToIndex((index) => {
-      if (index >= 0) {
-        virtualizerRef.current?.scrollToIndex(index, { align: 'nearest' })
+      const itemIndex = rowItemIndex === null ? index : (rowItemIndex[index] ?? -1)
+      if (itemIndex >= 0) {
+        virtualizerRef.current?.scrollToIndex(itemIndex, { align: 'nearest' })
       }
     })
-  }, [registerScrollToIndex])
+  }, [registerScrollToIndex, rowItemIndex])
 
   const cycleSort = (key: string): void => {
     if (sort === null || sort.key !== key) {
@@ -222,38 +262,58 @@ export function CollectionTable({
             ref={virtualizerRef}
             as="ul"
             item="li"
-            data={entries}
+            data={items}
             itemSize={rowHeight}
             bufferSize={10 * rowHeight}
           >
-            {(entry) => (
-              <CollectionRow
-                key={entry.path}
-                entry={entry}
-                gridStyle={gridStyle}
-                selected={isSelected(entry.path)}
-                openTasks={taskCounts[entry.path] ?? 0}
-                onSelect={clickSelect}
-                onToggle={handleToggle}
-                onOpen={onOpen}
-              >
-                {type.properties.map((property) => (
-                  <PropertyValueEditor
-                    key={property.key}
-                    property={property}
-                    value={entry.properties[property.key]}
-                    onCommit={(value) => commitProperty(entry.path, property.key, value)}
-                    onOpenRelation={openRelation}
-                  >
-                    <CollectionCell
+            {(item) =>
+              item.kind === 'group' ? (
+                <div
+                  key={`group:${item.label}`}
+                  role="heading"
+                  aria-level={2}
+                  // Width rides the grid template's own floor so the shelf
+                  // scrolls in step with the rows under a horizontal scroll.
+                  style={{ minWidth: gridStyle.minWidth }}
+                  className="flex h-(--row-height) select-none items-end gap-2 pb-1.5 pl-12 pr-7"
+                >
+                  {item.color === null ? null : (
+                    <span aria-hidden className={cn('mb-0.5 size-2 rounded-full', item.color)} />
+                  )}
+                  <span className="text-xs font-semibold leading-none text-text">{item.label}</span>
+                  <span className="text-xs leading-none tabular-nums text-text-muted">
+                    {item.count}
+                  </span>
+                </div>
+              ) : (
+                <CollectionRow
+                  key={item.entry.path}
+                  entry={item.entry}
+                  gridStyle={gridStyle}
+                  selected={isSelected(item.entry.path)}
+                  openTasks={taskCounts[item.entry.path] ?? 0}
+                  onSelect={clickSelect}
+                  onToggle={handleToggle}
+                  onOpen={onOpen}
+                >
+                  {type.properties.map((property) => (
+                    <PropertyValueEditor
+                      key={property.key}
                       property={property}
-                      value={entry.properties[property.key]}
-                      selected={isSelected(entry.path)}
-                    />
-                  </PropertyValueEditor>
-                ))}
-              </CollectionRow>
-            )}
+                      value={item.entry.properties[property.key]}
+                      onCommit={(value) => commitProperty(item.entry.path, property.key, value)}
+                      onOpenRelation={openRelation}
+                    >
+                      <CollectionCell
+                        property={property}
+                        value={item.entry.properties[property.key]}
+                        selected={isSelected(item.entry.path)}
+                      />
+                    </PropertyValueEditor>
+                  ))}
+                </CollectionRow>
+              )
+            }
           </Virtualizer>
           <div
             style={gridStyle}

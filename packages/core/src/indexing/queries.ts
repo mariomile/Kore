@@ -105,6 +105,8 @@ export interface NoteRow {
   gistUrl: string | null
   /** The body changed since it was last published — the "Republish" nudge. */
   gistStale: boolean
+  /** Last file modification, epoch ms — feeds the `updated` property face. */
+  mtime: number
 }
 
 /** Fetch a single note's row by graph-relative path, or `undefined` if absent. */
@@ -112,7 +114,16 @@ export async function getNote(path: string): Promise<NoteRow | undefined> {
   const row = await db
     .selectFrom('notes')
     .where('path', '=', path)
-    .select(['path', 'title', 'dailyDate', 'isPrivate', 'hasConflict', 'gistUrl', 'gistStale'])
+    .select([
+      'path',
+      'title',
+      'dailyDate',
+      'isPrivate',
+      'hasConflict',
+      'gistUrl',
+      'gistStale',
+      'mtime',
+    ])
     .executeTakeFirst()
   return row
     ? {
@@ -225,6 +236,7 @@ export async function getNotePreview(path: string): Promise<NotePreviewRow | und
       'hasConflict',
       'gistUrl',
       'gistStale',
+      'mtime',
     ])
     .executeTakeFirst()
   return row

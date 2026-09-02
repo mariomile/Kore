@@ -70,6 +70,37 @@ Stop and switch to a smaller plan if you catch yourself:
 
 Tests serve the current change's acceptance criteria and nothing else.
 
+##### Fast lane for small, localized changes
+
+Use this lane for copy, spacing, sizing, truncation, icon, color, and other
+small UI or behavior adjustments whose scope is already clear.
+
+1. Inspect only the directly relevant component and its nearest existing test
+   or established analogue. Do not reopen broad architecture or product
+   research unless the local evidence reveals a real dependency.
+2. Touch the smallest practical file set, normally no more than two or three
+   source/test files. Do not refactor adjacent code or redesign the underlying
+   abstraction.
+3. Run the closest existing targeted test and one typecheck (`pnpm typecheck`,
+   `pnpm check`, or the narrowest equivalent the package exposes).
+4. For a visual change, perform one focused rendered check at the affected
+   viewport/state. Do not run the full E2E suite or repeat screenshot passes
+   unless that check exposes a regression.
+5. Do not run a repository-wide lint, production build, full E2E suite, branch
+   workflow, PR, merge, bump, or release unless the user requested it or the
+   change proves broader than the fast-lane criteria.
+6. Start dev servers as persistent/background sessions and reuse an existing
+   healthy preview. Do not leave a turn blocked on a foreground dev server.
+7. If a targeted check fails, diagnose the cause before retrying. Do not cycle
+   through speculative patches or repeated test runs.
+8. Stop once the requested behavior, targeted check, typecheck, and (when
+   applicable) single visual check pass. Report broader validation as not run
+   by design.
+
+Exit the fast lane only when evidence shows the change affects shared state,
+data/schema, permissions, native behavior, build configuration, or multiple
+user flows. State that scope expansion before doing the broader work.
+
 1. Prefer the existing tests closest to the changed behavior.
 2. Do not add tests when existing tests already prove the change.
 3. Add a test only when existing tests cannot cover the changed behavior or the

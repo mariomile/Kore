@@ -12,6 +12,39 @@ interface LinkPreviewCardsProps {
   enabled: boolean
 }
 
+interface EditorDomObserver {
+  stop(): void
+  start(): void
+}
+
+function editorDomObserver(view: unknown): EditorDomObserver | null {
+  if (typeof view !== 'object' || view === null || !('domObserver' in view)) {
+    return null
+  }
+  const observer = view.domObserver
+  if (
+    typeof observer !== 'object' ||
+    observer === null ||
+    !('stop' in observer) ||
+    !('start' in observer)
+  ) {
+    return null
+  }
+  const stop = observer.stop
+  const start = observer.start
+  if (typeof stop !== 'function' || typeof start !== 'function') {
+    return null
+  }
+  return {
+    stop: () => {
+      stop.call(observer)
+    },
+    start: () => {
+      start.call(observer)
+    },
+  }
+}
+
 /**
  * The URL a line renders as a card, or `null` when the line is not one.
  *
@@ -44,16 +77,27 @@ function cssImageValue(imageUrl: string): string {
   return `url("${encodeURI(imageUrl)}")`
 }
 
+function setAttribute(anchor: HTMLElement, name: string, value: string): void {
+  if (anchor.getAttribute(name) !== value) {
+    anchor.setAttribute(name, value)
+  }
+}
+
 /** Hand the card its copy. CSS draws it; nothing here builds DOM. */
 function stamp(anchor: HTMLElement, preview: LinkPreview): void {
-  anchor.setAttribute('data-link-card', preview.imageUrl === null ? 'text' : 'image')
-  anchor.setAttribute('data-link-card-title', preview.title)
-  anchor.setAttribute('data-link-card-site', preview.siteName)
-  anchor.setAttribute('data-link-card-description', preview.description ?? '')
+  setAttribute(anchor, 'data-link-card', preview.imageUrl === null ? 'text' : 'image')
+  setAttribute(anchor, 'data-link-card-title', preview.title)
+  setAttribute(anchor, 'data-link-card-site', preview.siteName)
+  setAttribute(anchor, 'data-link-card-description', preview.description ?? '')
   if (preview.imageUrl === null) {
-    anchor.style.removeProperty('--link-card-image')
+    if (anchor.style.getPropertyValue('--link-card-image') !== '') {
+      anchor.style.removeProperty('--link-card-image')
+    }
   } else {
-    anchor.style.setProperty('--link-card-image', cssImageValue(preview.imageUrl))
+    const image = cssImageValue(preview.imageUrl)
+    if (anchor.style.getPropertyValue('--link-card-image') !== image) {
+      anchor.style.setProperty('--link-card-image', image)
+    }
   }
 }
 
@@ -117,7 +161,7 @@ export function LinkPreviewCards({ enabled }: LinkPreviewCardsProps): ReactEleme
               }
               resolved.set(url, answer)
               if (answer !== null) {
-                decorate(editor.view.dom)
+                decorateEditor()
               }
             })
           }
@@ -131,13 +175,27 @@ export function LinkPreviewCards({ enabled }: LinkPreviewCardsProps): ReactEleme
       }
     }
 
+    const decorateEditor = (): void => {
+      const root = editor.view.dom
+      // These attributes are presentation only. Keep ProseMirror's own DOM
+      // observer from reparsing them as document changes and replacing the
+      // identical link marks in a loop.
+      const editorObserver = editorDomObserver(editor.view)
+      editorObserver?.stop()
+      try {
+        decorate(root)
+      } finally {
+        editorObserver?.start()
+      }
+    }
+
     const cancelMount = whenEditorMounted(editor, () => {
       const root = editor.view.dom
-      decorate(root)
+      decorateEditor()
       // Attributes are deliberately not observed: the stamps above are our
       // own writes, and watching them would loop.
       observer = new MutationObserver(() => {
-        decorate(root)
+        decorateEditor()
       })
       observer.observe(root, { subtree: true, childList: true, characterData: true })
     })

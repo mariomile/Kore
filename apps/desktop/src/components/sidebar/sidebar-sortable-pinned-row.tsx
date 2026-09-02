@@ -72,7 +72,7 @@ export const SidebarSortablePinnedRow = memo(function SidebarSortablePinnedRow({
   )
 
   return (
-    <li className="-mx-2.5">
+    <li>
       <button
         ref={setNodeRef}
         type="button"

@@ -107,7 +107,6 @@ export {
   wikiEmbedKind,
   formatEmbedBlock,
   parseEmbedBlocks,
-  scanBareUrlEmbeds,
   linkKind,
   linkKindInfo,
   LINK_KIND_FALLBACK,

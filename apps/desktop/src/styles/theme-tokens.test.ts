@@ -52,6 +52,15 @@ describe('theme tokens', () => {
     expect(new Set(DARK_THEME_IDS).size).toBe(DARK_THEME_IDS.length)
   })
 
+  it('gives light inverse calendar surfaces a dark foreground', () => {
+    for (const theme of ['ink', 'graphite']) {
+      const scope = new RegExp(String.raw`\[data-theme='${theme}']\s*\{([^}]*)}`).exec(COLORS)?.[1]
+      expect(scope, theme).toBeDefined()
+      expect(scope, theme).toMatch(/--surface-inverse:\s*#[def][0-9a-f]{5};/)
+      expect(scope, theme).toMatch(/--text-on-inverse:\s*#[0-5][0-9a-f]{5};/)
+    }
+  })
+
   it('gives every accent a distinct value in both families', () => {
     // Two ids that resolve to the same `--accent` are two picker swatches that
     // do nothing different — the kind of thing only a side-by-side catches.

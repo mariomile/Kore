@@ -81,61 +81,6 @@ export function parseEmbedBlocks(markdown: string): EmbedBlock[] {
   return blocks
 }
 
-/**
- * Every bare URL standing alone as its own paragraph, as {@link UrlEmbed}s in
- * source order — the "paste a link, get a preview" path. A URL only embeds
- * when the *whole* trimmed line is the URL and the line is its own paragraph
- * (blank or start/end of note on both sides): a URL inside prose, a
- * `[text](url)` link, a list item, a quote, a heading, or anything inside a
- * fenced code block stays a plain link. Lines inside ` ```embed ` fences are
- * inside fences too, so a fence never double-renders through this scan.
- */
-export function scanBareUrlEmbeds(markdown: string): UrlEmbed[] {
-  const embeds: UrlEmbed[] = []
-  const lines = markdown.split(/\r?\n/)
-  let inFence = false
-  let fenceMark = ''
-  const blankAt = (index: number): boolean =>
-    index < 0 || index >= lines.length || lines[index]!.trim() === ''
-  for (let index = 0; index < lines.length; index++) {
-    const line = lines[index]!
-    const trimmed = line.trim()
-    const fence = /^(`{3,}|~{3,})/.exec(trimmed)
-    if (fence !== null) {
-      if (!inFence) {
-        inFence = true
-        fenceMark = fence[1]![0]!
-      } else if (fence[1]![0] === fenceMark) {
-        inFence = false
-      }
-      continue
-    }
-    if (inFence) {
-      continue
-    }
-    // An indented line is a code block or a nested list continuation.
-    if (/^(?: {4}|\t)/.test(line)) {
-      continue
-    }
-    if (!/^https?:\/\/\S+$/.test(trimmed)) {
-      continue
-    }
-    if (!blankAt(index - 1) || !blankAt(index + 1)) {
-      continue
-    }
-    try {
-      const parsed = new URL(trimmed)
-      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-        continue
-      }
-    } catch {
-      continue
-    }
-    embeds.push({ kind: 'url', url: trimmed, linkKind: linkKind(trimmed) })
-  }
-  return embeds
-}
-
 /** Serialize one embed as the fence that produces it. */
 export function formatEmbedBlock(block: EmbedBlock): string {
   const body = block.kind === 'url' ? block.url : block.html

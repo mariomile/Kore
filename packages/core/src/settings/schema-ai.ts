@@ -170,12 +170,15 @@ export function normalizeChatSystemPrompt(value: string): string {
  */
 export const chatSystemPromptSchema = z.string().catch('').transform(normalizeChatSystemPrompt)
 
-/**
- * Chat edit mode: whether agent-CLI chat may create and modify notes (the
- * BYOK engines stay read-only regardless). Off by default — writing is a
- * capability the user turns on deliberately, per graph settings document.
- */
-export const chatAllowEditsSchema = z.boolean().catch(false)
+/** The operating posture for AI chat. Filesystem access always stays inside the graph. */
+export const chatModeSchema = z.enum(['ask', 'edit', 'full-access', 'auto', 'plan']).catch('ask')
+
+export type ChatMode = z.infer<typeof chatModeSchema>
+
+/** Modes that need write-capable provider tools. */
+export function chatModeAllowsEdits(mode: ChatMode): boolean {
+  return mode === 'edit' || mode === 'full-access' || mode === 'auto'
+}
 
 /** The active agent profile's slug (`agents/<slug>/`), or null for none. */
 export const activeAgentProfileSchema = z.string().nullable().catch(null)

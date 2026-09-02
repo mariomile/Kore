@@ -119,7 +119,7 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
   const semanticSearchEnabled = settings.semanticSearchEnabled && !isMobileSurface()
   const semanticSearchEnabledRef = useRef(semanticSearchEnabled)
   const chatSystemPromptRef = useRef(settings.chatSystemPrompt)
-  const chatAllowEditsRef = useRef(settings.chatAllowEdits)
+  const chatModeRef = useRef(settings.chatMode)
   const activeAgentProfileRef = useRef(settings.activeAgentProfile)
   const memoryWriteApprovalRef = useRef(settings.memoryWriteApproval)
   const mcpServersRef = useRef(settings.mcpServers)
@@ -133,7 +133,7 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
     generationRef.current = indexGeneration
     semanticSearchEnabledRef.current = semanticSearchEnabled
     chatSystemPromptRef.current = settings.chatSystemPrompt
-    chatAllowEditsRef.current = settings.chatAllowEdits
+    chatModeRef.current = settings.chatMode
     activeAgentProfileRef.current = settings.activeAgentProfile
     memoryWriteApprovalRef.current = settings.memoryWriteApproval
     mcpServersRef.current = settings.mcpServers
@@ -216,7 +216,7 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
           generationRef,
           instructionsRef,
           chatSystemPromptRef,
-          chatAllowEditsRef,
+          chatModeRef,
           chatToolsRef,
           activeAgentProfileRef,
           memoryWriteApprovalRef,

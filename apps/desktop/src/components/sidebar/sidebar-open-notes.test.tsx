@@ -10,6 +10,7 @@ import type { OpenTabItem } from '@/hooks/use-open-tab-items'
 
 const tabs = vi.hoisted(() => ({
   items: [] as OpenTabItem[],
+  activeTab: null as OpenTabItem['tab'] | null,
 }))
 const closeTab = vi.hoisted(() => vi.fn())
 
@@ -17,7 +18,7 @@ vi.mock('@/hooks/use-open-tab-items', () => ({
   useOpenTabItems: () => tabs.items,
 }))
 vi.mock('@/providers/open-tabs-provider', () => ({
-  useOpenTabs: () => ({ activeTab: null, activateTab: () => {}, closeTab }),
+  useOpenTabs: () => ({ activeTab: tabs.activeTab, activateTab: () => {}, closeTab }),
 }))
 
 const { SidebarOpenTabs } = await import('./sidebar-open-notes')
@@ -32,6 +33,7 @@ function openNotes(count: number): OpenTabItem[] {
 beforeEach(() => {
   window.sessionStorage.clear()
   tabs.items = openNotes(10)
+  tabs.activeTab = null
   closeTab.mockClear()
 })
 
@@ -58,6 +60,21 @@ describe('SidebarOpenTabs', () => {
 
     await expect.element(view.getByRole('button', { name: 'Note 2', exact: true })).toBeVisible()
     expect(view.getByRole('button', { name: /show/i }).query()).toBeNull()
+    await view.unmount()
+  })
+
+  it('keeps active-row corners inside the disclosure clipping boundary', async () => {
+    tabs.items = openNotes(1)
+    tabs.activeTab = tabs.items[0]!.tab
+    const view = await render(<SidebarOpenTabs />)
+    const row = view.getByRole('button', { name: 'Note 0', exact: true }).element()
+    const clippingBoundary = row.parentElement?.parentElement?.parentElement?.parentElement
+    expect(clippingBoundary).not.toBeNull()
+
+    const rowBounds = row.getBoundingClientRect()
+    const boundaryBounds = clippingBoundary!.getBoundingClientRect()
+    expect(rowBounds.left).toBeGreaterThanOrEqual(boundaryBounds.left)
+    expect(rowBounds.right).toBeLessThanOrEqual(boundaryBounds.right)
     await view.unmount()
   })
 

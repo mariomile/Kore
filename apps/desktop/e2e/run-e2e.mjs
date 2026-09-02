@@ -190,7 +190,7 @@ try {
       .click()
     await page.getByText('sync over Git.').first().waitFor()
     // The sidebar's Open section mirrors the same tabs.
-    await page.getByRole('heading', { name: 'Open' }).waitFor()
+    await page.getByRole('button', { name: 'Open', exact: true }).waitFor()
   })
   await page.screenshot({ path: `${SHOTS}06-tabs.png` })
 
@@ -231,7 +231,11 @@ try {
     await page.getByRole('navigation', { name: 'Primary' }).getByText('Daily notes').click()
     // The seeded link lives four days back — jump there via the rail calendar
     // (cells carry their full formatted date as the accessible name).
+    const today = new Date()
     const target = new Date(Date.now() - 4 * 86_400_000)
+    if (target.getMonth() !== today.getMonth() || target.getFullYear() !== today.getFullYear()) {
+      await page.getByRole('button', { name: 'Previous month' }).click()
+    }
     const month = target.toLocaleString('en-US', { month: 'long' })
     await page
       .getByRole('button', { name: new RegExp(`${month} ${target.getDate()}(?:st|nd|rd|th),`) })

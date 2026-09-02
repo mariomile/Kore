@@ -35,7 +35,7 @@ export function SidebarOpenTabs(): ReactElement | null {
 
   return (
     <SidebarSortableSection id="open" title="Open" label="Open">
-      <div className="-mx-2.5 mt-2">
+      <div className="mt-2">
         <ul className="space-y-0.5">
           {visible.map((item) => {
             const isActive = tabKey(item.tab) === activeKey

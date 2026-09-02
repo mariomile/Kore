@@ -1,6 +1,6 @@
 ### Purpose
 
-This document helps AI agents and automated systems interact with the Reflect repo safely and effectively. It summarizes setup, workflows, CI parity, testing, directories, and environment variables.
+This document helps AI agents and automated systems interact with the Kore repo safely and effectively. It summarizes setup, workflows, CI parity, testing, directories, and environment variables.
 
 Finish the current task with the minimum sufficient approach. Do not add
 engineering, abstractions, tests, or process that the requested outcome does not
@@ -143,9 +143,12 @@ as an overengineering warning.
 - Kept the diff small, with no leftover debug code
 - Did not do extra work merely to make the result look more complete
 
-### What is Reflect
+### What is Kore
 
-Reflect is a modern note‑taking tool with a TypeScript codebase. This repo contains Reflect V2, a rewrite of the original Reflect code-base to make it offline-first, markdown backed, and open source.
+Kore is an offline-first, Markdown-backed note-taking and agentic workspace built
+with TypeScript, React, Rust, and Tauri. It originated from Reflect V2, but Kore
+is the product and repository name; Reflect remains only in inherited internal
+identifiers and historical upstream documentation.
 
 ### Naming
 
@@ -179,8 +182,8 @@ Drawn from the product docs — read these for deeper context:
 - **Daily notes first.** The app opens to today's note. All capture flows into the daily note by default.
 - **Association over hierarchy.** `[[Wiki Links]]` replace folders. The note graph is the organizing model; there are no folders.
 - **Markdown is the source of truth.** Notes are `.md` files (`daily/YYYY-MM-DD.md`, `notes/`). SQLite under `.reflect/` is a rebuildable projection of the notes — with one durable exception: the `chat_*` tables hold AI chat history, which is not derivable from markdown. Index wipes and rebuilds must leave them untouched.
-- **No Reflect-hosted APIs.** LLM calls go directly to user-approved providers (OpenAI, Anthropic, etc.). Sync goes to GitHub/iCloud/Git. Never proxy through Reflect infrastructure.
-- **BYOK AI.** AI features use user-supplied keys. Never assume Reflect operates AI infrastructure.
+- **No Kore-hosted APIs.** LLM calls go directly to user-approved providers (OpenAI, Anthropic, etc.). Sync goes to GitHub/iCloud/Git. Never proxy through Kore infrastructure.
+- **BYOK AI.** AI features use user-supplied keys. Never assume Kore operates AI infrastructure.
 - **`private: true` is a hard block.** Notes with this frontmatter flag must never have their content sent to any external service — AI, transcription, or otherwise. Enforce at every call site.
 - **Keyboard-native UX.** Every core workflow must be reachable from the keyboard. This is product identity, not polish.
 - **Minimal UI.** Do less, and do it well. Don't add surfaces that compete with the editor.
@@ -359,7 +362,7 @@ Otherwise tauri-build fails with `resource path binaries/<name>-<triple> doesn't
 
 ### Repo layout
 
-Reflect is a **Turborepo + pnpm monorepo** around a **Tauri 2** desktop/mobile app: a
+Kore is a **Turborepo + pnpm monorepo** around a **Tauri 2** desktop/mobile app: a
 React + TypeScript frontend bundled by Vite, embedded in a Rust native shell. The Rust
 crates form a single **Cargo workspace** rooted at the repository root.
 
@@ -418,12 +421,12 @@ Kore/
 ### Related repos
 
 - **Meowdown:** the local checkout lives at `~/repos/meowdown`. Meowdown is the
-  first-party hybrid/live-preview Markdown editor that Reflect uses through
+  first-party hybrid/live-preview Markdown editor that Kore uses through
   `@meowdown/core` and `@meowdown/react`. When investigating editor behavior,
   markdown round-tripping, keybindings, slash menus, wiki links, task checkboxes,
   paste/drop handling, or mobile editor quirks, check that repo as well as this
   one. If the root cause is in Meowdown, fix it there and open the PR against the
-  Meowdown project rather than papering over it in Reflect.
+  Meowdown project rather than papering over it in Kore.
 
 **Design system**
 

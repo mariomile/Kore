@@ -45,7 +45,7 @@ describe('NotePropertiesHeader', () => {
     await expect.poll(() => view.container.textContent).toBe('')
   })
 
-  it('presents the row fields above the body and commits an edit in place', async () => {
+  it('presents the row fields and commits an edit in place', async () => {
     data.tagTypes = [
       {
         tagKey: 'book',

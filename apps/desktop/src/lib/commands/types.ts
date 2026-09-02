@@ -21,6 +21,10 @@ export interface CommandContext {
   notePath: () => string | null
   back: () => void
   forward: () => void
+  /** Undo the focused editor or native editable control. */
+  undo: () => void
+  /** Redo the focused editor or native editable control. */
+  redo: () => void
   /** Discard the current view's saved scroll offsets so it re-anchors when revisited. */
   clearScrollState: () => void
   toggleTheme: () => void

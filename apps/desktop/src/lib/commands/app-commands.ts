@@ -53,6 +53,18 @@ const GRAPH_SWITCH_COMMANDS: AppCommand[] = Array.from({ length: 9 }, (_, index)
 const APP_COMMANDS: AppCommand[] = [
   ...GRAPH_SWITCH_COMMANDS,
   {
+    id: 'edit.undo',
+    title: 'Undo',
+    keywords: ['history', 'back', 'revert'],
+    run: (context) => context.undo(),
+  },
+  {
+    id: 'edit.redo',
+    title: 'Redo',
+    keywords: ['history', 'forward', 'restore'],
+    run: (context) => context.redo(),
+  },
+  {
     id: 'nav.today',
     title: 'Go to today',
     keywords: ['daily', 'now'],

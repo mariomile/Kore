@@ -1,10 +1,7 @@
-import type { ComponentType, ReactElement, ReactNode } from 'react'
+import { useState, type ComponentType, type ReactElement } from 'react'
+import { SettingsNavigator } from './settings/settings-navigator'
 import { useVisibleSettingsGroups } from './settings/use-visible-settings-sections'
-import {
-  settingsGroupTitle,
-  type SettingsGroupId,
-  type SettingsSectionId,
-} from './settings/sections'
+import type { SettingsGroupId, SettingsSectionId } from './settings/sections'
 import { AboutSection } from './settings/about-section'
 import { AgentsSection } from './settings/agents-section'
 import { AiChatSection } from './settings/ai-chat-section'
@@ -25,30 +22,10 @@ import { SyncSection } from './settings/sync-section'
 import { TasksSection } from './settings/tasks-section'
 import { TemplatesSection } from './settings/templates-section'
 
-/** A labelled page segment: the registry group's name over its section cards. */
-function SettingsGroupBlock({
-  id,
-  children,
-}: {
-  id: SettingsGroupId
-  children: ReactNode
-}): ReactElement {
-  return (
-    <div className="mt-12 first:mt-0">
-      <p className="px-1 text-[11px] font-semibold uppercase tracking-wider text-text-muted">
-        {settingsGroupTitle(id)}
-      </p>
-      <div className="mt-3">{children}</div>
-    </div>
-  )
-}
-
 /**
- * The settings screen (a routed view, like notes — reached via ⌘, or the
- * palette's "Open settings"). Sections render in the grouped order of the
- * sections registry, each group under a small caps label; the sticky
- * navigator mirrors the same structure. Every control applies instantly
- * through the settings provider; there is no save button.
+ * The settings screen is a full workspace surface: a stable local sidebar
+ * selects one settings group at a time, and the page pane scrolls independently.
+ * Every control still applies instantly through the settings provider.
  */
 /** The section cards, keyed by the registry ids the navigator also uses. */
 const SECTION_COMPONENTS: Record<SettingsSectionId, ComponentType> = {
@@ -74,23 +51,39 @@ const SECTION_COMPONENTS: Record<SettingsSectionId, ComponentType> = {
 }
 
 export function SettingsScreen(): ReactElement {
-  // One visibility rule for the page and the navigator: both render from
-  // useVisibleSettingsGroups, so a gated section can never appear in one
-  // surface and not the other.
   const groups = useVisibleSettingsGroups()
+  const [activeGroupId, setActiveGroupId] = useState<SettingsGroupId>('general')
+  const activeGroup = groups.find((group) => group.id === activeGroupId) ?? groups[0]
+
   return (
-    <div aria-label="Settings">
-      <h1 className="text-lg font-semibold text-text">Settings</h1>
-      <div className="mt-6">
-        {groups.map((group) => (
-          <SettingsGroupBlock key={group.id} id={group.id}>
-            {group.sections.map((section) => {
-              const Section = SECTION_COMPONENTS[section.id]
-              return <Section key={section.id} />
-            })}
-          </SettingsGroupBlock>
-        ))}
-      </div>
+    <div aria-label="Settings" className="flex h-full min-h-0 overflow-hidden bg-surface-app">
+      <aside className="w-48 shrink-0 border-r border-border bg-surface-sunken/60 px-3 py-7">
+        <h1 className="px-2 text-base font-semibold text-text">Settings</h1>
+        <SettingsNavigator
+          groups={groups}
+          activeGroupId={activeGroupId}
+          onSelectGroup={setActiveGroupId}
+          className="mt-6"
+        />
+      </aside>
+
+      <main className="min-w-0 flex-1 overflow-y-auto" aria-live="polite">
+        {activeGroup === undefined ? null : (
+          <div className="mx-auto w-full max-w-3xl px-8 py-9 lg:px-12">
+            <header className="mb-8 border-b border-border pb-5">
+              <h2 className="text-xl font-semibold tracking-tight text-text">
+                {activeGroup.title}
+              </h2>
+            </header>
+            <div>
+              {activeGroup.sections.map((section) => {
+                const Section = SECTION_COMPONENTS[section.id]
+                return <Section key={section.id} />
+              })}
+            </div>
+          </div>
+        )}
+      </main>
     </div>
   )
 }

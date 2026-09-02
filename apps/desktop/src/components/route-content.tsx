@@ -31,11 +31,6 @@ const InsightsScreen = lazy(() =>
     default: module.InsightsScreen,
   })),
 )
-const SettingsNavigator = lazy(() =>
-  import('@/components/settings/settings-navigator').then((module) => ({
-    default: module.SettingsNavigator,
-  })),
-)
 const SettingsScreen = lazy(() =>
   import('@/components/settings-screen').then((module) => ({ default: module.SettingsScreen })),
 )
@@ -118,19 +113,7 @@ function RouteView(): ReactElement {
     // The graph-switcher route is a mobile settings sub-screen; on desktop
     // graph switching lives in the sidebar footer, so it renders as settings.
     case 'settings':
-      // The section navigator floats in the left gutter — absolutely
-      // positioned off the centered column so the column never shifts — and
-      // only renders when the container query says the gutter can fit it:
-      // the 42rem column plus a 12rem rail either side, with a little slack.
-      return (
-        <ScrollRestored className="@container h-full overflow-auto px-6 py-8">
-          <div className="relative mx-auto w-full max-w-2xl">
-            <div className="absolute inset-y-0 right-full hidden w-48 pr-8 @min-[68rem]:block">
-              <SettingsNavigator className="sticky top-8" />
-            </div>
-            <SettingsScreen />
-          </div>
-        </ScrollRestored>
-      )
+      // Settings owns its full-height page shell and independent content scroll.
+      return <SettingsScreen />
   }
 }

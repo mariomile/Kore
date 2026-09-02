@@ -71,6 +71,8 @@ vi.mock('@/components/note-pane', () => ({
         discardPendingReplacement: () => {},
         findNext: () => {},
         findPrevious: () => {},
+        undo: () => {},
+        redo: () => {},
       })
       return () => registerHandle(dailyDate, null)
     }, [dailyDate, registerHandle])

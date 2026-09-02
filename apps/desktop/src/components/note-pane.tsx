@@ -31,7 +31,7 @@ import { useTagNavigation } from '@/editor/use-tag-navigation'
 import { BlockSwipeGestures } from '@/editor/block-swipe'
 import { CalloutHighlighter } from '@/editor/callout-highlighter'
 import { LinkPreviewCards } from '@/editor/link-preview-cards'
-import { NotePropertiesHeader } from '@/components/notes/note-properties-header'
+import { EditorNoteProperties } from '@/editor/editor-note-properties'
 import { useNoteRow } from '@/hooks/use-note-row'
 import { useCalloutSlashItems } from '@/editor/use-callout-slash-items'
 import { useCollectionSlashItems } from '@/editor/use-collection-slash-items'
@@ -396,14 +396,6 @@ export function NotePaneComponent({
         gutterClassName={gutterClassName}
       />
 
-      {/* The row page's fields (Plan 29 N1). Daily notes are a stream, not a
-          row — a daily that merely mentions a typed tag grows no header. */}
-      {!dailyNote ? (
-        <div className={gutterClassName}>
-          <NotePropertiesHeader path={path} />
-        </div>
-      ) : null}
-
       <NoteEditor
         // Keyed on the session, not the path: a rename retargets the live
         // session under a new filename (Plan 17), and remounting the editor
@@ -452,6 +444,14 @@ export function NotePaneComponent({
         handleRef={handleRef}
         onExitBoundary={handleExitBoundary}
       >
+        {/* A row page's fields sit directly under its editable title. Daily
+            notes are a stream, so a typed tag mention grows no field header. */}
+        {!dailyNote ? (
+          <EditorNoteProperties
+            path={path}
+            {...(gutterClassName !== undefined ? { className: gutterClassName } : {})}
+          />
+        ) : null}
         <EditorAiKeymap onTrigger={aiMenu.openMenu} />
         <CalloutHighlighter />
         {/* Fetching a link's preview reaches the linked host, so a private

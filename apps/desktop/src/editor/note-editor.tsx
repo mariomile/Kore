@@ -107,6 +107,10 @@ export interface NoteEditorHandle {
   findNext(): void
   /** Select the previous find match, wrapping at the document start. */
   findPrevious(): void
+  /** Undo the latest editor transaction. */
+  undo(): void
+  /** Redo the latest undone editor transaction. */
+  redo(): void
 }
 
 interface NoteEditorProps {
@@ -324,6 +328,8 @@ export function NoteEditor({
       discardPendingReplacement: () => innerRef.current?.discardPendingReplacement(),
       findNext: () => innerRef.current?.findNext(),
       findPrevious: () => innerRef.current?.findPrevious(),
+      undo: () => innerRef.current?.editor?.commands.undo(),
+      redo: () => innerRef.current?.editor?.commands.redo(),
     }),
     [],
   )

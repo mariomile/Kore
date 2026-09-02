@@ -41,6 +41,8 @@ function editorHandle(): NoteEditorHandle {
     discardPendingReplacement: vi.fn(),
     findNext: vi.fn(),
     findPrevious: vi.fn(),
+    undo: vi.fn(),
+    redo: vi.fn(),
   }
 }
 

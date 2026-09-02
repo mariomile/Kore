@@ -3,6 +3,7 @@ import { getNote, parseNote, readNoteLocal } from '@reflect/core'
 import { getIsComposing } from '@meowdown/core'
 import { usePalette } from '@/components/command-palette/palette-provider'
 import { registerKeymap } from '@/editor/keymap'
+import { runFocusedEditorHistory } from '@/editor/editor-history'
 import { APP_COMMANDS } from '@/lib/commands/app-commands'
 import { runCommand } from '@/lib/commands/registry'
 import { todayIso } from '@/lib/dates'
@@ -231,6 +232,16 @@ export function useAppShortcuts(): CommandContext {
         focusedNotePathForRoute(routeRef.current, todayIso(), focusedDailyDateRef.current),
       back,
       forward,
+      undo: () =>
+        runFocusedEditorHistory(
+          focusedNotePathForRoute(routeRef.current, todayIso(), focusedDailyDateRef.current),
+          'undo',
+        ),
+      redo: () =>
+        runFocusedEditorHistory(
+          focusedNotePathForRoute(routeRef.current, todayIso(), focusedDailyDateRef.current),
+          'redo',
+        ),
       clearScrollState,
       toggleTheme: () => setTheme(isDarkResolvedTheme(resolvedTheme) ? 'light' : 'dark'),
       toggleSidebar,

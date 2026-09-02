@@ -22,6 +22,8 @@ function fakeEditor(): NoteEditorHandle & { inserted: string[] } {
     discardPendingReplacement: () => {},
     findNext: () => {},
     findPrevious: () => {},
+    undo: () => {},
+    redo: () => {},
   }
 }
 

@@ -88,6 +88,8 @@ function fakeContext(overrides?: Partial<CommandContext>) {
     notePath: () => notePathForRoute(route(), TODAY),
     back: vi.fn(),
     forward: vi.fn(),
+    undo: vi.fn(),
+    redo: vi.fn(),
     clearScrollState: vi.fn(),
     toggleTheme: vi.fn(),
     toggleSidebar: vi.fn(),
@@ -137,7 +139,20 @@ describe('keybindingFor', () => {
 
   it('returns null for unbound commands and unknown ids', () => {
     expect(keybindingFor('theme.toggle')).toBeNull() // a real command, no binding
+    expect(keybindingFor('edit.undo')).toBeNull() // the editor owns Mod-z in the webview
     expect(keybindingFor('no.such.command')).toBeNull()
+  })
+
+  it('routes native edit history commands through the focused control', async () => {
+    const undo = vi.fn()
+    const redo = vi.fn()
+    const { context } = fakeContext({ undo, redo })
+
+    await command('edit.undo').run(context)
+    await command('edit.redo').run(context)
+
+    expect(undo).toHaveBeenCalledOnce()
+    expect(redo).toHaveBeenCalledOnce()
   })
 
   it('audioMemo.toggle is bound to Mod-Shift-r', () => {

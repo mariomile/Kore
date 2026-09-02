@@ -18,7 +18,13 @@ type MenuCommandDispatch = (commandId: string) => void
 
 let current: MenuCommandDispatch | null = null
 
-const FocusedNoteMenuCommandSchema = z.enum(['note.find', 'note.findNext', 'note.findPrevious'])
+const FocusedNoteMenuCommandSchema = z.enum([
+  'edit.undo',
+  'edit.redo',
+  'note.find',
+  'note.findNext',
+  'note.findPrevious',
+])
 
 /** Native menu commands whose target is the focused note webview. */
 export type FocusedNoteMenuCommand = z.infer<typeof FocusedNoteMenuCommandSchema>
@@ -76,8 +82,8 @@ async function dispatchToFocusedWindow(commandId: FocusedNoteMenuCommand): Promi
 }
 
 /**
- * Forward a native menu activation to the focused webview. Find commands are
- * note-window-local; all other commands retain the main workspace dispatcher.
+ * Forward a native menu activation to the focused webview. Editor and Find
+ * commands are note-window-local; all others retain the main dispatcher.
  */
 export function dispatchMenuCommand(commandId: string): void {
   const focusedNoteCommand = FocusedNoteMenuCommandSchema.safeParse(commandId)
@@ -88,7 +94,7 @@ export function dispatchMenuCommand(commandId: string): void {
   current?.(commandId)
 }
 
-/** Listen for native Find menu commands routed to this focused note window. */
+/** Listen for native editor menu commands routed to this focused note window. */
 export async function listenForFocusedNoteMenuCommands(
   dispatch: (commandId: FocusedNoteMenuCommand) => void,
 ): Promise<UnlistenFn> {

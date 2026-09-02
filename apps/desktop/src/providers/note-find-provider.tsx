@@ -11,6 +11,7 @@ import {
 } from 'react'
 import { getIsComposing, type SearchStatus } from '@meowdown/core'
 import { noteEditorHandleFor } from '@/editor/editor-handle-registry'
+import { runFocusedEditorHistory } from '@/editor/editor-history'
 import {
   listenForFocusedNoteMenuCommands,
   type FocusedNoteMenuCommand,
@@ -160,6 +161,12 @@ export function NoteFindProvider({ children }: { children: ReactNode }): ReactEl
 
     function onMenuCommand(command: FocusedNoteMenuCommand): void {
       switch (command) {
+        case 'edit.undo':
+          runFocusedEditorHistory(notePath, 'undo')
+          break
+        case 'edit.redo':
+          runFocusedEditorHistory(notePath, 'redo')
+          break
         case 'note.find':
           openForPath(notePath)
           break

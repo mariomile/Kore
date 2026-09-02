@@ -84,7 +84,7 @@ describe('NoteEditor markdown syntax mode', () => {
 })
 
 describe('NoteEditor history', () => {
-  it('undoes typing with Command-Z', async () => {
+  it('undoes typing with the platform shortcut', async () => {
     const handleRef = createRef<NoteEditorHandle>()
     await render(<NoteEditor initialContent="Hello" handleRef={handleRef} />)
 
@@ -92,7 +92,10 @@ describe('NoteEditor history', () => {
     await userEvent.keyboard('{End} world')
     await expect.poll(() => handleRef.current?.getMarkdown()).toBe('Hello world\n')
 
-    await userEvent.keyboard('{Meta>}z{/Meta}')
+    const undoShortcut = /Mac|iPhone|iPad/.test(navigator.platform)
+      ? '{Meta>}z{/Meta}'
+      : '{Control>}z{/Control}'
+    await userEvent.keyboard(undoShortcut)
     await expect.poll(() => handleRef.current?.getMarkdown()).toBe('Hello\n')
   })
 })

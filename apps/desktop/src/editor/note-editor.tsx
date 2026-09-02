@@ -30,6 +30,7 @@ import {
   type WikilinkSearchHandler,
 } from '@meowdown/react'
 import { EditorInputTraits } from '@/editor/editor-input-traits'
+import { BlockActionToolbar } from '@/editor/block-action-toolbar'
 import { FormattingToolbarBridge } from '@/editor/formatting-toolbar-bridge'
 import {
   IMAGE_LIGHTBOX_TRANSITION_NAME,
@@ -496,6 +497,12 @@ export function NoteEditor({
         <FormattingToolbarBridge
           {...(saveFile !== undefined ? { saveFile: handleFilePaste } : {})}
         />
+        {blockHandle && !isTouchEditorSurface() ? (
+          <BlockActionToolbar
+            aiEnabled={onSelectionMenuSearch !== undefined}
+            onOpenAi={() => innerRef.current?.openSelectionMenu()}
+          />
+        ) : null}
         {renderWikilinkHoverCard !== undefined ? (
           <WikilinkHoverCard className="reflect-hover-card">
             {renderWikilinkHoverCard}

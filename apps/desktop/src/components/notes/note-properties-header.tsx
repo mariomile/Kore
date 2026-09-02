@@ -12,7 +12,7 @@ interface NotePropertiesHeaderProps {
 
 /**
  * The row page's fields (Plan 29 N1): a note carrying a typed tag presents
- * its properties above the body, each editable in place through the same
+ * its properties below the title and above the body, each editable in place through the same
  * per-type editors the Collection table and the context rail use — one write
  * channel, three surfaces. Renders nothing while the note carries no typed
  * tag, so ordinary notes keep their clean top edge.

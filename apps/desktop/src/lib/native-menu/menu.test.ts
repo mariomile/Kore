@@ -130,6 +130,8 @@ describe('appMenuLayout', () => {
     const editMenu = appMenuLayout().find((submenu) => submenu.text === 'Edit')
     expect(editMenu?.entries).toEqual(
       expect.arrayContaining([
+        { kind: 'command', commandId: 'edit.undo', text: undefined, keybinding: 'Mod-z' },
+        { kind: 'command', commandId: 'edit.redo', text: undefined, keybinding: 'Mod-Shift-z' },
         { kind: 'command', commandId: 'note.find', text: undefined },
         { kind: 'command', commandId: 'note.findNext', text: undefined },
         { kind: 'command', commandId: 'note.findPrevious', text: undefined },
@@ -174,6 +176,29 @@ describe('installNativeMenu', () => {
     expect(isNativeMenuInstalled()).toBe(true)
   })
 
+  it('routes native Undo and Redo accelerators into editor history commands', async () => {
+    const dispatch = vi.fn()
+    setMenuCommandDispatch(dispatch)
+
+    await installNativeMenu()
+
+    const editMenu = submenuNew.mock.calls
+      .map(([options]) => options)
+      .find((options) => options.text === 'Edit')
+    const undo = editMenu?.items.find((item) => item.id === 'edit.undo')
+    const redo = editMenu?.items.find((item) => item.id === 'edit.redo')
+
+    expect(undo).toMatchObject({ text: 'Undo', accelerator: 'CmdOrCtrl+Z' })
+    expect(redo).toMatchObject({ text: 'Redo', accelerator: 'CmdOrCtrl+Shift+Z' })
+
+    undo?.action?.('edit.undo')
+    redo?.action?.('edit.redo')
+    await vi.waitFor(() => {
+      expect(dispatch).toHaveBeenNthCalledWith(1, 'edit.undo')
+      expect(dispatch).toHaveBeenNthCalledWith(2, 'edit.redo')
+    })
+  })
+
   it('leaves the main window’s app-wide menu intact when a note window boots', async () => {
     isMainWindow.mockReturnValue(false)
 
@@ -201,6 +226,26 @@ describe('focused note menu dispatch', () => {
         { kind: 'WebviewWindow', label: 'note-1' },
         'reflect://focused-note-menu-command',
         'note.find',
+      )
+    })
+    expect(dispatch).not.toHaveBeenCalled()
+  })
+
+  it('routes Undo to the focused secondary note window', async () => {
+    const dispatch = vi.fn()
+    setMenuCommandDispatch(dispatch)
+    getAllWebviewWindows.mockResolvedValue([
+      { label: 'main', isFocused: vi.fn(async () => false) },
+      { label: 'note-1', isFocused: vi.fn(async () => true) },
+    ])
+
+    dispatchMenuCommand('edit.undo')
+
+    await vi.waitFor(() => {
+      expect(emitTo).toHaveBeenCalledWith(
+        { kind: 'WebviewWindow', label: 'note-1' },
+        'reflect://focused-note-menu-command',
+        'edit.undo',
       )
     })
     expect(dispatch).not.toHaveBeenCalled()

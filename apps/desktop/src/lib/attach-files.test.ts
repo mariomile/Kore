@@ -18,6 +18,8 @@ function contextFor(notePath: string | null, generation: number | null): Command
     notePath: () => notePath,
     back: vi.fn(),
     forward: vi.fn(),
+    undo: vi.fn(),
+    redo: vi.fn(),
     toggleTheme: vi.fn(),
     toggleSidebar: vi.fn(),
     toggleContextSidebar: vi.fn(),
@@ -60,6 +62,8 @@ function editorHandle(): NoteEditorHandle & {
     discardPendingReplacement: () => {},
     findNext: () => {},
     findPrevious: () => {},
+    undo: () => {},
+    redo: () => {},
   }
 }
 

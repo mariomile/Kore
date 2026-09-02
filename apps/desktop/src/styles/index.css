@@ -20,6 +20,19 @@ Cascade layer order, low to high priority.
    ThemeProvider on <html>. */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Kore keeps scrolling as an interaction, not as persistent chrome. Hide the
+   native indicators everywhere while preserving wheel, trackpad, touch, and
+   programmatic scrolling on every overflow container. */
+@layer base {
+  * {
+    scrollbar-width: none;
+  }
+
+  *::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 /* Controls that sit inside the overlaid macOS title-bar drag strip must share
    the strip's z-index so they win by tree order without jumping above overlays. */
 @utility window-drag-control {
@@ -493,6 +506,30 @@ html:root {
   margin-top: 0;
 }
 
+/* Typed note fields live below the editable H1 without becoming part of the
+   Markdown document. The host slot is an editor sibling; its measured height
+   extends the title's normal bottom margin so the body continues beneath it. */
+.reflect-note-properties-host {
+  position: relative;
+}
+.reflect-note-properties-slot {
+  position: absolute;
+  z-index: 1;
+  right: 0;
+  left: 0;
+  visibility: hidden;
+  padding-bottom: 1rem;
+}
+.reflect-note-properties-slot[data-positioned='true'] {
+  visibility: visible;
+}
+.reflect-note-properties-slot > [aria-label='Properties'] {
+  margin-bottom: 0;
+}
+.reflect-editor.reflect-editor-has-properties > h1:first-child {
+  margin-bottom: calc(0.4em + var(--reflect-note-properties-space, 0px));
+}
+
 /* Screen titles (Notes, the tag page) sit one step under the note subject —
    a page heading, not a document's. One class so the next screen doesn't
    invent a fourth headline size. */
@@ -833,7 +870,7 @@ html:root {
    at order 0. The anchor therefore carries the URL line's own quiet type, and
    the pseudo-elements scale back up from it. */
 .reflect-editor a.md-link[data-link-card] {
-  --link-card-thumb: 8.5rem;
+  --link-card-thumb: clamp(13rem, 38%, 16rem);
   /* Sunken against the editor canvas, so the card reads as an object on the
      page rather than a bordered hole in it. */
   --link-card-surface: var(--surface-sunken);
@@ -842,7 +879,7 @@ html:root {
   justify-content: center;
   gap: 0.3em;
   box-sizing: border-box;
-  min-height: 5rem;
+  min-height: 8.5rem;
   margin: 0.4em 0;
   padding: 0.75em 0.9em;
   border: 1px solid var(--border);
@@ -889,9 +926,9 @@ html:root {
 .reflect-editor a.md-link[data-link-card][data-link-card-description='']::after {
   content: attr(data-link-card-site);
 }
-/* The page's own image, held to a strip down the right edge. The gradient
-   layer paints over everything left of that strip, so a panoramic image can
-   never creep under the text. */
+/* The page's own image gets a generous right-hand field. `contain` preserves
+   the whole image instead of cropping its sides; the surface layer masks the
+   text column if an unusually panoramic source reaches beyond that field. */
 .reflect-editor a.md-link[data-link-card='image'] {
   padding-right: calc(var(--link-card-thumb) + 0.9em);
   background-image:
@@ -907,7 +944,7 @@ html:root {
     right center;
   background-size:
     100% 100%,
-    auto 100%;
+    contain;
 }
 
 /* Editor image lightbox: zoom the clicked image into the full-window preview

@@ -1,7 +1,6 @@
-import { useEffect, useState, type ReactElement, type ReactNode } from 'react'
+import { useState, type ReactElement, type ReactNode } from 'react'
 import { ChevronDown } from '@/components/icons'
 import { cn } from '@/lib/utils'
-import { SETTINGS_SECTION_EXPAND_EVENT } from './section-scrolling'
 import { settingsSectionDomId, settingsSectionTitle, type SettingsSectionId } from './sections'
 
 /**
@@ -50,25 +49,11 @@ interface SettingsSectionProps {
  *
  * The heading doubles as a disclosure: clicking it folds the card away so a
  * long settings page can be tidied down to its headings. The choice sticks
- * per section (localStorage), starts expanded, and a navigator jump to a
- * collapsed card re-opens it through the expand event.
+ * per section (localStorage) and starts expanded.
  */
 export function SettingsSection({ id, children }: SettingsSectionProps): ReactElement {
   const title = settingsSectionTitle(id)
   const [collapsed, setCollapsed] = useState(() => readCollapsed(id))
-
-  useEffect(() => {
-    const onExpandRequest = (event: Event): void => {
-      if (event instanceof CustomEvent && event.detail === id) {
-        setCollapsed(false)
-        writeCollapsed(id, false)
-      }
-    }
-    window.addEventListener(SETTINGS_SECTION_EXPAND_EVENT, onExpandRequest)
-    return () => {
-      window.removeEventListener(SETTINGS_SECTION_EXPAND_EVENT, onExpandRequest)
-    }
-  }, [id])
 
   const toggle = (): void => {
     const next = !collapsed

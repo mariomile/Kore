@@ -12,7 +12,6 @@ import { SettingsProvider } from '@/providers/settings-provider'
 import { UpdateProvider } from '@/providers/update-provider'
 import { RouterProvider } from '@/routing/router'
 import { expectLocatorToHaveCount } from '@/test-utils/expect'
-import { requestSettingsSectionExpand } from './settings/section-scrolling'
 import { ShortcutsDialog } from './shortcuts-dialog'
 import { SettingsScreen } from './settings-screen'
 
@@ -95,8 +94,8 @@ function installFakeBridge(): void {
 
 let queryClient: QueryClient
 
-function renderScreen() {
-  return render(
+async function renderScreen(settingsPage = 'General') {
+  const view = await render(
     <QueryClientProvider client={queryClient}>
       <SettingsProvider>
         <UpdateProvider autoCheck={false}>
@@ -114,6 +113,10 @@ function renderScreen() {
       </SettingsProvider>
     </QueryClientProvider>,
   )
+  if (settingsPage !== 'General') {
+    await page.getByRole('button', { name: settingsPage, exact: true }).click()
+  }
+  return view
 }
 
 function radio(name: RegExp): Locator {
@@ -149,34 +152,27 @@ afterEach(() => {
 })
 
 describe('SettingsScreen', () => {
-  it('collapses a section from its heading and re-opens it on a navigator jump', async () => {
+  it('uses the local sidebar to switch between settings pages', async () => {
     await renderScreen()
-    const section = page.getByRole('region', { name: 'Appearance' })
-    const toggle = section.getByRole('button', { name: 'Appearance' })
-    await expect.element(toggle).toHaveAttribute('aria-expanded', 'true')
+    await expect.element(page.getByRole('heading', { name: 'General' })).toBeVisible()
+    expect(page.getByRole('region', { name: 'AI providers' }).query()).toBeNull()
 
-    await toggle.click()
+    await page.getByRole('button', { name: 'AI & agents', exact: true }).click()
 
-    await expect.element(toggle).toHaveAttribute('aria-expanded', 'false')
-    // The card's controls fold away; the heading (and its anchor id) stay.
-    expect(radio(/^ash/i).query()).toBeNull()
-
-    // A navigator jump to a collapsed card asks it to open again.
-    requestSettingsSectionExpand('appearance')
-
-    await expect.element(toggle).toHaveAttribute('aria-expanded', 'true')
-    await expect.element(radio(/^ash/i)).toBeInTheDocument()
+    await expect.element(page.getByRole('heading', { name: 'AI & agents' })).toBeVisible()
+    await expect.element(page.getByRole('region', { name: 'AI providers' })).toBeVisible()
+    expect(page.getByRole('region', { name: 'Appearance' }).query()).toBeNull()
   })
 
   it('shows update controls when the native bridge is available', async () => {
-    await renderScreen()
+    await renderScreen('Application')
     await expect
       .element(page.getByRole('button', { name: /check for updates/i }))
       .toBeInTheDocument()
   })
 
   it('persists the default-on transcription auto-format preference', async () => {
-    await renderScreen()
+    await renderScreen('AI & agents')
     const toggle = page.getByRole('switch', { name: /transcription auto-format/i })
     await expect.element(toggle).toHaveAttribute('aria-checked', 'true')
     const descriptionId = toggle.element().getAttribute('aria-describedby')
@@ -193,7 +189,7 @@ describe('SettingsScreen', () => {
 
   it('reflects a persisted transcription auto-format opt-out', async () => {
     stored = { transcriptionFormat: false }
-    await renderScreen()
+    await renderScreen('AI & agents')
 
     const toggle = page.getByRole('switch', { name: /transcription auto-format/i })
     await expect.element(toggle).toHaveAttribute('aria-checked', 'false')
@@ -203,7 +199,7 @@ describe('SettingsScreen', () => {
     stored = {
       aiProviders: [{ id: 'p1', provider: 'openai', label: 'OpenAI', model: 'gpt-5.6-sol' }],
     }
-    await renderScreen()
+    await renderScreen('AI & agents')
 
     const picker = page.getByRole('combobox', { name: /openai transcription model/i })
     // Nothing chosen yet, so the picker shows the app's built-in default — by
@@ -222,7 +218,7 @@ describe('SettingsScreen', () => {
   })
 
   it('points at AI providers when none can transcribe', async () => {
-    await renderScreen()
+    await renderScreen('AI & agents')
     await expect
       .element(page.getByText(/add an openai or google provider under ai providers/i))
       .toBeVisible()
@@ -230,7 +226,7 @@ describe('SettingsScreen', () => {
 
   it('confirms before forgetting the open graph from saved graphs', async () => {
     graph.current = { root: '/graphs/work', name: 'Work', generation: 1 }
-    await renderScreen()
+    await renderScreen('Application')
 
     const section = page.getByRole('region', { name: 'Danger zone' })
     await section.getByRole('button', { name: /forget graph/i }).click()
@@ -246,7 +242,7 @@ describe('SettingsScreen', () => {
 
   it('requires typing the graph name before deleting the graph', async () => {
     graph.current = { root: '/graphs/work', name: 'Work', generation: 1 }
-    await renderScreen()
+    await renderScreen('Application')
 
     const section = page.getByRole('region', { name: 'Danger zone' })
     await section.getByRole('button', { name: /delete graph/i }).click()
@@ -574,7 +570,7 @@ describe('SettingsScreen', () => {
   })
 
   it('adds an All Notes filter tag, normalized, and persists it', async () => {
-    await renderScreen()
+    await renderScreen('Notes')
     const input = page.getByLabelText('Add filter tag')
 
     await input.fill(' #Meeting ')
@@ -589,7 +585,7 @@ describe('SettingsScreen', () => {
   })
 
   it('rejects a tag name outside the #tag grammar with an inline error', async () => {
-    await renderScreen()
+    await renderScreen('Notes')
     const input = page.getByLabelText('Add filter tag')
 
     await input.fill('my tag')
@@ -603,7 +599,7 @@ describe('SettingsScreen', () => {
 
   it('ignores adding a duplicate filter tag', async () => {
     stored = { allNotesFilterTags: ['book'] }
-    await renderScreen()
+    await renderScreen('Notes')
     // Defaults render before the disk document lands — wait for hydration
     // (the stored list has no `person`) so the click edits the loaded list.
     await expectLocatorToHaveCount(page.getByText('#person'), 0)
@@ -617,7 +613,7 @@ describe('SettingsScreen', () => {
 
   it('removes a filter tag and persists the rest', async () => {
     stored = { allNotesFilterTags: ['book', 'person'] }
-    await renderScreen()
+    await renderScreen('Notes')
     // Wait for hydration (the stored list has no `link`), not just defaults.
     await expectLocatorToHaveCount(page.getByText('#link'), 0)
     await expect.element(page.getByText('#book')).toBeInTheDocument()
@@ -631,7 +627,7 @@ describe('SettingsScreen', () => {
   })
 
   it('enabling semantic search persists the opt-in', async () => {
-    await renderScreen()
+    await renderScreen('Notes')
     const enable = page.getByRole('button', { name: /enable semantic search/i })
 
     await enable.click()
@@ -649,7 +645,7 @@ describe('SettingsScreen', () => {
   it('shows byte-level progress while the model downloads', async () => {
     stored = { semanticSearchEnabled: true }
     embedStatus = { status: 'loading', progress: { downloaded: 45_000_000, total: 90_000_000 } }
-    await renderScreen()
+    await renderScreen('Notes')
 
     const bar = page.getByRole('progressbar', { name: /model download/i })
     await expect.element(bar).toHaveAttribute('aria-valuenow', '50')
@@ -661,7 +657,7 @@ describe('SettingsScreen', () => {
   it('shows the downloaded model once ready and persists a disable', async () => {
     stored = { semanticSearchEnabled: true }
     embedStatus = { status: 'ready', model: 'all-MiniLM-L6-v2' }
-    await renderScreen()
+    await renderScreen('Notes')
 
     await expect
       .element(page.getByText(/model downloaded \(all-MiniLM-L6-v2\)/i))
@@ -681,7 +677,7 @@ describe('SettingsScreen', () => {
 
   it('re-enabling after a failed load retries the download', async () => {
     embedStatus = { status: 'failed', message: 'offline' }
-    await renderScreen()
+    await renderScreen('Notes')
     const enable = page.getByRole('button', { name: /enable semantic search/i })
 
     await enable.click()
@@ -698,7 +694,7 @@ describe('SettingsScreen', () => {
   it('surfaces a failed load with retry and disable affordances', async () => {
     stored = { semanticSearchEnabled: true }
     embedStatus = { status: 'failed', message: 'no disk space' }
-    await renderScreen()
+    await renderScreen('Notes')
 
     await expect.element(page.getByRole('alert')).toBeInTheDocument()
     await expect.element(page.getByText(/no disk space/i)).toBeInTheDocument()
@@ -715,7 +711,7 @@ describe('SettingsScreen', () => {
 
   it('rebuilding the index wipes and re-applies the projection through the bridge', async () => {
     try {
-      await renderScreen()
+      await renderScreen('Notes')
 
       await page.getByRole('button', { name: /rebuild index/i }).click()
 
@@ -731,7 +727,7 @@ describe('SettingsScreen', () => {
 
   it('disables the index rebuild until a graph index is open', async () => {
     graph.indexGeneration = null
-    await renderScreen()
+    await renderScreen('Notes')
     const button = page.getByRole('button', { name: /rebuild index/i })
     await expect.element(button).toBeDisabled()
   })
@@ -754,7 +750,7 @@ describe('SettingsScreen', () => {
 
   it('reflects and persists the AI chat system prompt', async () => {
     stored = { chatSystemPrompt: 'Answer as a careful research partner.' }
-    await renderScreen()
+    await renderScreen('AI & agents')
     const textarea = page.getByRole('textbox', { name: 'System prompt' })
     await expect.element(textarea).toHaveValue('Answer as a careful research partner.')
 
@@ -770,7 +766,7 @@ describe('SettingsScreen', () => {
 
   it('restores the default AI chat prompt', async () => {
     stored = { chatSystemPrompt: 'Always answer in haiku.' }
-    await renderScreen()
+    await renderScreen('AI & agents')
     const section = page.getByRole('region', { name: 'AI chat' })
     await expect.element(section.getByRole('textbox')).toHaveValue('Always answer in haiku.')
 
@@ -780,7 +776,7 @@ describe('SettingsScreen', () => {
   })
 
   it('keeps long AI prompts scrollable within the viewport', async () => {
-    await renderScreen()
+    await renderScreen('AI & agents')
     const section = page.getByRole('region', { name: 'AI prompts' })
 
     await section.getByRole('button', { name: /add prompt/i }).click()
@@ -796,7 +792,7 @@ describe('SettingsScreen', () => {
   })
 
   it('adding an AI prompt persists the full document', async () => {
-    await renderScreen()
+    await renderScreen('AI & agents')
     const section = page.getByRole('region', { name: 'AI prompts' })
 
     await section.getByRole('button', { name: /add prompt/i }).click()
@@ -833,7 +829,7 @@ describe('SettingsScreen', () => {
         { id: 'p1', label: 'Translate to French', body: '{{selectedText}}', mode: 'replace' },
       ],
     }
-    await renderScreen()
+    await renderScreen('AI & agents')
     const section = page.getByRole('region', { name: 'AI prompts' })
     const remove = section.getByRole('button', {
       name: /remove translate to french/i,
@@ -850,7 +846,7 @@ describe('SettingsScreen', () => {
         { id: 'p1', label: 'Translate to French', body: '{{selectedText}}', mode: 'replace' },
       ],
     }
-    await renderScreen()
+    await renderScreen('AI & agents')
     const section = page.getByRole('region', { name: 'AI prompts' })
     const edit = section.getByRole('button', { name: /edit translate to french/i })
 

@@ -25,7 +25,13 @@ import { dispatchMenuCommand } from './dispatch'
 type PredefinedItem = PredefinedMenuItemOptions['item']
 
 export type AppMenuEntry =
-  | { kind: 'command'; commandId: string; text?: string | undefined }
+  | {
+      kind: 'command'
+      commandId: string
+      text?: string | undefined
+      /** Menu-only binding when the editor already owns the web keymap. */
+      keybinding?: string | undefined
+    }
   | { kind: 'predefined'; item: PredefinedItem; text?: string | undefined }
 
 export interface AppSubmenuLayout {
@@ -45,8 +51,13 @@ export function isNativeMenuInstalled(): boolean {
   return nativeMenuInstalled
 }
 
-function command(commandId: string, text?: string): AppMenuEntry {
-  return { kind: 'command', commandId, text }
+function command(commandId: string, text?: string, keybinding?: string): AppMenuEntry {
+  return {
+    kind: 'command',
+    commandId,
+    text,
+    ...(keybinding !== undefined ? { keybinding } : {}),
+  }
 }
 
 function predefined(item: PredefinedItem, text?: string): AppMenuEntry {
@@ -91,8 +102,11 @@ export function appMenuLayout(): AppSubmenuLayout[] {
     {
       text: 'Edit',
       entries: [
-        predefined('Undo'),
-        predefined('Redo'),
+        // AppKit's predefined Undo/Redo target the WKWebView's native undo
+        // manager, while Meowdown owns history inside ProseMirror. Route the
+        // native accelerators back into the focused editor instead.
+        command('edit.undo', undefined, 'Mod-z'),
+        command('edit.redo', undefined, 'Mod-Shift-z'),
         separator(),
         predefined('Cut'),
         predefined('Copy'),
@@ -141,14 +155,13 @@ export function appMenuLayout(): AppSubmenuLayout[] {
   ]
 }
 
-function menuItemOptions(commandId: string, text?: string): MenuItemOptions {
+function menuItemOptions(commandId: string, text?: string, keybinding?: string): MenuItemOptions {
   const appCommand = APP_COMMANDS.find((candidate) => candidate.id === commandId)
   if (!appCommand) {
     throw new Error(`native menu references unknown command: ${commandId}`)
   }
-  const accelerator = appCommand.keybinding
-    ? bindingToAccelerator(appCommand.keybinding)
-    : undefined
+  const binding = keybinding ?? appCommand.keybinding
+  const accelerator = binding ? bindingToAccelerator(binding) : undefined
   return {
     id: appCommand.id,
     text: text ?? appCommand.title,
@@ -159,7 +172,7 @@ function menuItemOptions(commandId: string, text?: string): MenuItemOptions {
 
 function entryOptions(entry: AppMenuEntry): MenuItemOptions | PredefinedMenuItemOptions {
   return entry.kind === 'command'
-    ? menuItemOptions(entry.commandId, entry.text)
+    ? menuItemOptions(entry.commandId, entry.text, entry.keybinding)
     : { item: entry.item, ...(entry.text !== undefined ? { text: entry.text } : {}) }
 }
 

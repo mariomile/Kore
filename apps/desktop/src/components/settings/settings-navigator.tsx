@@ -1,109 +1,47 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactElement } from 'react'
+import type { ReactElement } from 'react'
 import { cn } from '@/lib/utils'
-import { scrollToSettingsSection } from './section-scrolling'
-import type { SettingsSectionId } from './sections'
-import { useActiveSettingsSection } from './use-active-settings-section'
-import { useVisibleSettingsGroups } from './use-visible-settings-sections'
-
-/** Where the sliding marker sits, in the rail's own coordinates. */
-interface MarkerPosition {
-  top: number
-  height: number
-}
+import type { SettingsGroupId } from './sections'
+import type { VisibleSettingsGroup } from './use-visible-settings-sections'
 
 interface SettingsNavigatorProps {
+  groups: readonly VisibleSettingsGroup[]
+  activeGroupId: SettingsGroupId
+  onSelectGroup: (id: SettingsGroupId) => void
   className?: string
 }
 
 /**
- * The sticky "on this page" rail beside the settings column: the registry's
- * groups as small caps labels, one entry per registered section under them,
- * with an accent marker that slides along a hairline track to the section
- * currently being read. Clicking an entry smooth-scrolls the page to its
- * card. The settings route only shows the rail when the gutter is wide
- * enough (a container query), so it must cope with mounting at
- * `display: none` — the marker re-measures when the rail gains a size.
+ * Settings' local page navigation. Groups are the pages: section-level
+ * controls stay together instead of becoming one long document of anchors.
  */
-export function SettingsNavigator({ className }: SettingsNavigatorProps): ReactElement {
-  const navRef = useRef<HTMLElement | null>(null)
-  const itemRefs = useRef(new Map<SettingsSectionId, HTMLButtonElement>())
-  const activeId = useActiveSettingsSection(navRef)
-  const groups = useVisibleSettingsGroups()
-  const [marker, setMarker] = useState<MarkerPosition | null>(null)
-
-  const measure = useCallback((): void => {
-    const item = itemRefs.current.get(activeId)
-    if (!item || item.offsetHeight === 0) {
-      setMarker(null)
-      return
-    }
-    setMarker({ top: item.offsetTop, height: item.offsetHeight })
-  }, [activeId])
-
-  useLayoutEffect(() => {
-    measure()
-  }, [measure])
-
-  useEffect(() => {
-    const nav = navRef.current
-    if (!nav) {
-      return
-    }
-    const resizeObserver = new ResizeObserver(() => measure())
-    resizeObserver.observe(nav)
-    return () => resizeObserver.disconnect()
-  }, [measure])
-
+export function SettingsNavigator({
+  groups,
+  activeGroupId,
+  onSelectGroup,
+  className,
+}: SettingsNavigatorProps): ReactElement {
   return (
-    <nav ref={navRef} aria-label="Settings sections" className={cn('text-[13px]', className)}>
-      <div className="relative flex flex-col border-l border-border">
-        {marker !== null && (
-          <span
-            aria-hidden
-            className="absolute -left-px top-0 w-0.5 rounded-full bg-accent transition-[transform,height] duration-200 ease-out motion-reduce:transition-none"
-            style={{ transform: `translateY(${marker.top}px)`, height: `${marker.height}px` }}
-          />
-        )}
-        {groups.map((group) => (
-          <div key={group.id} className="flex flex-col pb-2 last:pb-0">
-            <span
-              aria-hidden
-              className="truncate py-1 pl-4 pr-2 text-[10px] font-semibold uppercase tracking-wider text-text-muted"
-            >
-              {group.title}
-            </span>
-            {group.sections.map((section) => {
-              const isActive = section.id === activeId
-              return (
-                <button
-                  key={section.id}
-                  type="button"
-                  ref={(node) => {
-                    if (node) {
-                      itemRefs.current.set(section.id, node)
-                    } else {
-                      itemRefs.current.delete(section.id)
-                    }
-                  }}
-                  aria-current={isActive ? 'location' : undefined}
-                  onClick={() => {
-                    if (navRef.current) {
-                      scrollToSettingsSection(navRef.current, section.id)
-                    }
-                  }}
-                  className={cn(
-                    'truncate rounded-r-md py-1 pl-4 pr-2 text-left outline-none transition-colors duration-200',
-                    'focus-visible:ring-2 focus-visible:ring-ring/50',
-                    isActive ? 'text-text' : 'text-text-secondary hover:text-text',
-                  )}
-                >
-                  {section.title}
-                </button>
-              )
-            })}
-          </div>
-        ))}
-      </div>
+    <nav aria-label="Settings pages" className={cn('flex flex-col gap-1', className)}>
+      {groups.map((group) => {
+        const isActive = group.id === activeGroupId
+        return (
+          <button
+            key={group.id}
+            type="button"
+            aria-current={isActive ? 'page' : undefined}
+            onClick={() => onSelectGroup(group.id)}
+            className={cn(
+              'rounded-md px-2.5 py-2 text-left text-[13px] font-medium outline-none transition-colors duration-150',
+              'focus-visible:ring-2 focus-visible:ring-focus-ring',
+              isActive
+                ? 'bg-surface-active text-text'
+                : 'text-text-secondary hover:bg-surface-hover hover:text-text',
+            )}
+          >
+            {group.title}
+          </button>
+        )
+      })}
     </nav>
   )
 }

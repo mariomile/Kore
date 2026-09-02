@@ -83,6 +83,23 @@ describe('NoteEditor markdown syntax mode', () => {
   })
 })
 
+describe('NoteEditor history', () => {
+  it('undoes typing with the platform shortcut', async () => {
+    const handleRef = createRef<NoteEditorHandle>()
+    await render(<NoteEditor initialContent="Hello" handleRef={handleRef} />)
+
+    await pmRoot.click()
+    await userEvent.keyboard('{End} world')
+    await expect.poll(() => handleRef.current?.getMarkdown()).toBe('Hello world\n')
+
+    const undoShortcut = /Mac|iPhone|iPad/.test(navigator.platform)
+      ? '{Meta>}z{/Meta}'
+      : '{Control>}z{/Control}'
+    await userEvent.keyboard(undoShortcut)
+    await expect.poll(() => handleRef.current?.getMarkdown()).toBe('Hello\n')
+  })
+})
+
 describe('NoteEditor wiki-link hover card', () => {
   it('does not mount the optional card without a host renderer', async () => {
     await render(<NoteEditor initialContent="see [[Note]] here" />)

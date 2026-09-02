@@ -65,7 +65,7 @@ describe('settingsSchema', () => {
       defaultAiProviderId: null,
       chatModelSelection: null,
       chatSystemPrompt: '',
-      chatAllowEdits: false,
+      chatMode: 'ask',
       activeAgentProfile: null,
       agentRoutines: [],
       mcpServers: [],
@@ -119,7 +119,7 @@ describe('settingsSchema', () => {
     expect(DEFAULT_SETTINGS.defaultAiProviderId).toBeNull()
     expect(DEFAULT_SETTINGS.chatModelSelection).toBeNull()
     expect(DEFAULT_SETTINGS.chatSystemPrompt).toBe('')
-    expect(DEFAULT_SETTINGS.chatAllowEdits).toBe(false)
+    expect(DEFAULT_SETTINGS.chatMode).toBe('ask')
     expect(DEFAULT_SETTINGS.activeAgentProfile).toBeNull()
     expect(DEFAULT_SETTINGS.memoryWriteApproval).toBe(false)
     expect(DEFAULT_SETTINGS.aiPrompts).toEqual([])
@@ -408,7 +408,7 @@ describe('settingsSchema', () => {
       defaultAiProviderId: null,
       chatModelSelection: null,
       chatSystemPrompt: '',
-      chatAllowEdits: false,
+      chatMode: 'ask',
       activeAgentProfile: null,
       agentRoutines: [],
       mcpServers: [],
@@ -616,6 +616,18 @@ describe('settingsSchema', () => {
         settingsSchema.parse({ chatModelSelection: { configId: '', modelId: 'gpt-5.5' } })
           .chatModelSelection,
       ).toBeNull()
+    })
+  })
+
+  describe('chatMode', () => {
+    it('accepts every supported mode', () => {
+      for (const chatMode of ['ask', 'edit', 'full-access', 'auto', 'plan'] as const) {
+        expect(settingsSchema.parse({ chatMode }).chatMode).toBe(chatMode)
+      }
+    })
+
+    it('falls back to Ask for an invalid mode', () => {
+      expect(settingsSchema.parse({ chatMode: 'unrestricted' }).chatMode).toBe('ask')
     })
   })
 

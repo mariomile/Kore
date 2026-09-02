@@ -279,6 +279,8 @@ export {
   defaultAiProviderIdSchema,
   chatModelSelectionSchema,
   chatSystemPromptSchema,
+  chatModeSchema,
+  chatModeAllowsEdits,
   CHAT_SYSTEM_PROMPT_MAX_LENGTH,
   normalizeChatSystemPrompt,
   aiPromptModeSchema,
@@ -330,6 +332,7 @@ export {
   type OpenAiCompatibleProviderConfig,
   type ClaudeCliProviderConfig,
   type CodexCliProviderConfig,
+  type ChatMode,
   type AiPrompt,
   type AiPromptMode,
 } from '../settings/schema'

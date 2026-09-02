@@ -89,7 +89,7 @@ vi.mock('@/providers/settings-provider', async () => {
           defaultAiProviderId: settingsState.defaultId,
           chatModelSelection: selection,
           chatSystemPrompt: '',
-          chatAllowEdits: false,
+          chatMode: 'ask',
           activeAgentProfile: null,
           mcpServers: [],
         },
@@ -509,6 +509,17 @@ describe('ChatScreen', () => {
     await expect.element(picked).toHaveAttribute('aria-selected', 'true')
   })
 
+  it('starts note context from the composer add menu', async () => {
+    configureModel()
+    const view = await renderChat()
+
+    await view.getByRole('button', { name: 'Add context' }).click()
+    await expect.element(page.getByText('Upload images', { exact: true })).toBeVisible()
+    await page.getByRole('menuitem', { name: /Mention a note/ }).click()
+
+    await expect.element(view.getByLabelText('Chat message')).toHaveValue('@')
+  })
+
   it('sends the graph overview context with each turn', async () => {
     configureModel()
     scriptTurn([
@@ -812,13 +823,14 @@ describe('ChatScreen', () => {
     expect(streamChat).not.toHaveBeenCalled()
   })
 
-  it('the edit-mode toggle renders off and patches the setting on click', async () => {
+  it('the chat mode selector starts in Ask and persists Edit', async () => {
     configureModel()
     const view = await renderChat()
-    const toggle = view.getByRole('button', { name: 'Toggle edit mode' })
-    await expect.element(toggle).toHaveAttribute('aria-pressed', 'false')
-    await toggle.click()
-    expect(updatedSettings).toContainEqual({ chatAllowEdits: true })
+    const selector = view.getByRole('combobox', { name: 'Chat mode' })
+    await expect.element(selector).toHaveTextContent('Ask')
+    await selector.click()
+    await view.getByRole('option', { name: 'Edit' }).click()
+    expect(updatedSettings).toContainEqual({ chatMode: 'edit' })
   })
 
   it('promotes a ::note directive to a card that opens the note', async () => {

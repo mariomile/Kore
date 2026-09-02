@@ -250,9 +250,8 @@ export interface StreamCliChatOptions {
   /** Stage memory writes as pending proposals instead of direct edits. */
   memoryWriteApproval?: boolean
   /**
-   * MCP servers resolved for this run ([] = none). They ride every edit-mode
-   * run, and read-mode runs only when the user enabled the conversation's
-   * Tools toggle.
+   * MCP servers resolved for this run ([] = none). The caller supplies them
+   * only when the user enabled Tools or selected Full Access.
    */
   mcpServers?: ResolvedMcpServer[] | undefined
   /** Aborts the run mid-stream (the UI's stop button). */

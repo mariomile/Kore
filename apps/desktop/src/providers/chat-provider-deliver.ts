@@ -24,6 +24,7 @@ import {
   cliProviderSteerMode,
   cliProviderSupportsEdits,
   cliProviderSupportsMcp,
+  chatModeAllowsEdits,
   isCliAgentProvider,
   streamChat,
   streamCliAgentChat,
@@ -31,6 +32,7 @@ import {
   type AiProviderConfig,
   type ChatAttachment as CoreChatAttachment,
   type ChatConversation,
+  type ChatMode,
   type ChatStreamEvent,
   type ChatTurn,
   type GraphInfo,
@@ -111,8 +113,8 @@ export interface ChatDeliverDeps {
   generationRef: RefObject<number | null>
   instructionsRef: RefObject<string>
   chatSystemPromptRef: RefObject<string>
-  chatAllowEditsRef: RefObject<boolean>
-  /** The conversation's read-mode external-tools opt-in (see chat context). */
+  chatModeRef: RefObject<ChatMode>
+  /** The conversation's external-tools opt-in (see chat context). */
   chatToolsRef: RefObject<boolean>
   activeAgentProfileRef: RefObject<string | null>
   memoryWriteApprovalRef: RefObject<boolean>
@@ -142,7 +144,7 @@ export async function deliverChatTurn(
     generationRef,
     instructionsRef,
     chatSystemPromptRef,
-    chatAllowEditsRef,
+    chatModeRef,
     chatToolsRef,
     activeAgentProfileRef,
     memoryWriteApprovalRef,
@@ -181,7 +183,17 @@ export async function deliverChatTurn(
   // The conversation's own instructions ride after the global prompt so a
   // per-chat tone or format override wins where the two disagree.
   const conversationInstructions = instructionsRef.current.trim()
-  const customSystemPrompt = [chatSystemPromptRef.current.trim(), conversationInstructions]
+  const modeInstruction =
+    chatModeRef.current === 'plan'
+      ? 'Plan mode: analyze the request and return a concrete plan. Do not make changes.'
+      : chatModeRef.current === 'auto'
+        ? 'Auto mode: decide whether the request needs explanation, planning, or direct changes. Make changes only when they are needed to complete the request.'
+        : ''
+  const customSystemPrompt = [
+    chatSystemPromptRef.current.trim(),
+    conversationInstructions,
+    modeInstruction,
+  ]
     .filter((part) => part !== '')
     .join('\n\n')
   // Everything the settle-time save needs, captured now: a turn detached
@@ -241,7 +253,7 @@ export async function deliverChatTurn(
   const editRun =
     isCliAgentProvider(config.provider) &&
     cliProviderSupportsEdits(config.provider) &&
-    chatAllowEditsRef.current
+    chatModeAllowsEdits(chatModeRef.current)
       ? { generation: graph.generation }
       : null
   // Edit-mode runs are serialized across the app (chat and automations
@@ -305,17 +317,17 @@ export async function deliverChatTurn(
         if (privateNotePaths === null) {
           return null
         }
-        // MCP tools ride runs the user opted into: every edit-mode run,
-        // and a read-mode run only when this conversation's Tools toggle
-        // was explicitly confirmed (read-only chat stays zero-egress by
-        // default). Secrets resolve from the keychain here, per run —
-        // never stored anywhere else.
+        // MCP tools ride runs the user opted into through the conversation's
+        // Tools toggle or Full Access mode. Secrets resolve from the keychain
+        // here, per run — never stored anywhere else.
         // Cursor never joins edit mode (its write path is unverified) and
         // its per-run config denies MCP, so both switches silently mean
         // plain read-only there.
-        const allowEdits = chatAllowEditsRef.current && cliProviderSupportsEdits(config.provider)
+        const allowEdits =
+          chatModeAllowsEdits(chatModeRef.current) && cliProviderSupportsEdits(config.provider)
         const mcpAllowed =
-          allowEdits || (chatToolsRef.current && cliProviderSupportsMcp(config.provider))
+          cliProviderSupportsMcp(config.provider) &&
+          (chatModeRef.current === 'full-access' || chatToolsRef.current)
         const mcpServers = mcpAllowed
           ? await resolveMcpServers(mcpServersRef.current).catch(() => [])
           : []
@@ -380,7 +392,7 @@ export async function deliverChatTurn(
         agentContext,
         // The write tool routes through the session-safe frontmatter
         // channel, pinned to the graph generation of this turn.
-        allowEdits: chatAllowEditsRef.current,
+        allowEdits: chatModeAllowsEdits(chatModeRef.current),
         toolDeps: {
           // The embedded browser is a desktop capability: the typed
           // answer here is what makes the browse tools refuse honestly

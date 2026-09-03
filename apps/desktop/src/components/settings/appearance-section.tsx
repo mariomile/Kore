@@ -401,7 +401,7 @@ export function AppearanceSection(): ReactElement {
 
       <SettingsSwitchField
         legend="Liquid Glass"
-        description="Translucent, blurred surfaces over an accent-tinted backdrop — works with every theme."
+        description="Uses the native macOS 26 material behind Kore’s navigation chrome."
         checked={settings.liquidGlass}
         onCheckedChange={(checked) => updateSettings({ liquidGlass: checked })}
       />
@@ -409,7 +409,7 @@ export function AppearanceSection(): ReactElement {
       {settings.liquidGlass ? (
         <SettingsField
           legend="Glass intensity"
-          description="How far the tint and blur go. Subtle keeps a busy vault readable behind the chrome."
+          description="Adjusts the translucency of menus and popovers above the system material."
         >
           <SettingsRadioCards
             name="glass-intensity"

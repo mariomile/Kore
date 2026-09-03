@@ -10,6 +10,7 @@
         "height": 650,
         "titleBarStyle": "Overlay",
         "hiddenTitle": true,
+        "transparent": true,
         "dragDropEnabled": false,
         "visible": false
       }

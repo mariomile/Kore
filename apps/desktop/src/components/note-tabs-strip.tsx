@@ -66,7 +66,7 @@ export function WorkspaceTabsStrip({ commandContext }: WorkspaceTabsStripProps):
         // The traffic lights ride their own band above the whole window
         // (see `WorkspaceContent`), so the bar keeps its left edge even with
         // the rail collapsed.
-        'flex h-11 w-full flex-none items-center gap-1 bg-surface-sunken pl-1 pr-2.5',
+        'app-window-chrome flex h-11 w-full flex-none items-center gap-1 bg-surface-sunken pl-1 pr-2.5',
       )}
     >
       <div className="window-drag-control flex items-center">

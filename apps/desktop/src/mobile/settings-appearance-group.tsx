@@ -2,14 +2,12 @@ import type { ReactElement } from 'react'
 import {
   ACCENT_COLOR_IDS,
   ACCENT_SWATCH_HEX,
-  GLASS_INTENSITY_IDS,
   THEME_PREFERENCE_IDS,
   UI_RADIUS_IDS,
   type AccentColor,
   type EditorFontFamily,
   type EditorLineSpacing,
   type EditorTextSize,
-  type GlassIntensity,
   type ThemePreference,
   type UiRadius,
 } from '@reflect/core'
@@ -55,16 +53,6 @@ const UI_RADIUS_OPTIONS: readonly SegmentedOption<UiRadius>[] = UI_RADIUS_IDS.ma
   value: id,
   label: UI_RADIUS_LABELS[id],
 }))
-
-const GLASS_INTENSITY_LABELS: Record<GlassIntensity, string> = {
-  subtle: 'Subtle',
-  regular: 'Regular',
-  strong: 'Strong',
-}
-
-const GLASS_INTENSITY_OPTIONS: readonly SegmentedOption<GlassIntensity>[] = GLASS_INTENSITY_IDS.map(
-  (id) => ({ value: id, label: GLASS_INTENSITY_LABELS[id] }),
-)
 
 // Swatch fills come from the shared `ACCENT_SWATCH_HEX` map. The `custom`
 // accent is desktop-configured; mobile offers the presets.
@@ -145,21 +133,6 @@ export function MobileAppearanceGroup(): ReactElement {
         options={UI_RADIUS_OPTIONS}
         onChange={(uiRadius) => updateSettings({ uiRadius })}
       />
-      <SettingsSwitchRow
-        label="Liquid Glass"
-        checked={settings.liquidGlass}
-        onCheckedChange={(liquidGlass) => updateSettings({ liquidGlass })}
-      />
-      {/* Intensity is meaningless while glass is off, and the setting
-          survives the switch — the row returns to the chosen level. */}
-      {settings.liquidGlass ? (
-        <SettingsChipsRow
-          label="Glass intensity"
-          value={settings.glassIntensity}
-          options={GLASS_INTENSITY_OPTIONS}
-          onChange={(glassIntensity) => updateSettings({ glassIntensity })}
-        />
-      ) : null}
       <SettingsSwitchRow
         label="Haptic feedback"
         checked={settings.hapticFeedback}

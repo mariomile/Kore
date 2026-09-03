@@ -31,6 +31,8 @@ mod graph_gitignore;
 mod haptics;
 mod icloud;
 mod link_preview;
+#[cfg(desktop)]
+mod liquid_glass;
 mod menu;
 mod process_memory;
 mod process_tree;
@@ -240,10 +242,14 @@ pub fn run() {
     let builder = {
         let revealed = std::sync::Arc::clone(&revealed_main);
         builder.on_page_load(move |webview, payload| {
-            if webview.label() != windows::MAIN_WINDOW_LABEL {
+            if !matches!(payload.event(), tauri::webview::PageLoadEvent::Finished) {
                 return;
             }
-            if !matches!(payload.event(), tauri::webview::PageLoadEvent::Finished) {
+            match settings::load_settings() {
+                Ok(doc) => liquid_glass::sync_from_settings(webview.app_handle(), &doc),
+                Err(err) => tracing::warn!(error = ?err, "settings load failed; Liquid Glass was not applied"),
+            }
+            if webview.label() != windows::MAIN_WINDOW_LABEL {
                 return;
             }
             revealed.call_once(|| {
@@ -473,7 +479,9 @@ pub fn run() {
                 // Best-effort: a taken binding must not fail the launch.
                 // Arming from `.setup()` would replace the deep-link hook.
                 match settings::load_settings() {
-                    Ok(doc) => windows::sync_quick_capture_shortcut(app, &doc),
+                    Ok(doc) => {
+                        windows::sync_quick_capture_shortcut(app, &doc);
+                    }
                     Err(err) => {
                         tracing::warn!(
                             error = ?err,

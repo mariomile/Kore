@@ -85,7 +85,10 @@ pub async fn settings_save<R: tauri::Runtime>(
     let written = settings.clone();
     crate::blocking::run_blocking(move || save_to(&store_path()?, &written)).await?;
     #[cfg(desktop)]
-    crate::windows::sync_quick_capture_shortcut(&app, &settings);
+    {
+        crate::windows::sync_quick_capture_shortcut(&app, &settings);
+        crate::liquid_glass::sync_from_settings(&app, &settings);
+    }
     #[cfg(not(desktop))]
     let _ = app;
     Ok(())

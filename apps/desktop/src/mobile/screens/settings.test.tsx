@@ -261,28 +261,6 @@ describe('MobileSettings', () => {
     expect(indicator?.classList.contains('motion-reduce:transition-none')).toBe(true)
   })
 
-  it('hides glass intensity until Liquid Glass is on', async () => {
-    const user = userEvent
-    await mount()
-
-    await expect
-      .element(page.getByRole('radiogroup', { name: 'Glass intensity' }))
-      .not.toBeInTheDocument()
-
-    await user.click(page.getByRole('switch', { name: 'Liquid Glass' }))
-    expect(updateSettings).toHaveBeenCalledWith({ liquidGlass: true })
-  })
-
-  it('writes the glass intensity while Liquid Glass is on', async () => {
-    const user = userEvent
-    settingsState.current = { ...DEFAULT_SETTINGS, liquidGlass: true }
-    await mount()
-
-    const intensity = page.getByRole('radiogroup', { name: 'Glass intensity' })
-    await user.click(intensity.getByRole('radio', { name: 'Strong' }))
-    expect(updateSettings).toHaveBeenCalledWith({ glassIntensity: 'strong' })
-  })
-
   it('toggles the editor switches', async () => {
     const user = userEvent
     await mount()

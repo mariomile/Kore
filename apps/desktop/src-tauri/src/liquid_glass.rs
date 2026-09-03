@@ -9,6 +9,7 @@
 use serde_json::{Map, Value};
 use tauri::{AppHandle, Runtime};
 
+#[cfg(target_os = "macos")]
 const SETTING_KEY: &str = "liquidGlass";
 
 #[cfg(target_os = "macos")]
@@ -67,25 +68,17 @@ pub(crate) fn sync_from_settings<R: Runtime>(_app: &AppHandle<R>, _settings: &Ma
 
 #[cfg(target_os = "macos")]
 fn native_glass_available() -> bool {
-    use std::ffi::CStr;
-
     use objc2::runtime::AnyClass;
 
-    // SAFETY: The byte string is statically NUL-terminated and has no
-    // interior NUL bytes.
-    let class_name = unsafe { CStr::from_bytes_with_nul_unchecked(b"NSGlassEffectView\0") };
-    AnyClass::get(class_name).is_some()
+    AnyClass::get(c"NSGlassEffectView").is_some()
 }
 
 #[cfg(target_os = "macos")]
 unsafe fn set_enabled(view_address: usize, enabled: bool) {
-    use std::ffi::CStr;
-
     use objc2::{msg_send, runtime::AnyClass, runtime::AnyObject};
     use objc2_foundation::NSRect;
 
-    let class_name = CStr::from_bytes_with_nul_unchecked(b"NSGlassEffectView\0");
-    let Some(glass_class) = AnyClass::get(class_name) else {
+    let Some(glass_class) = AnyClass::get(c"NSGlassEffectView") else {
         return;
     };
 

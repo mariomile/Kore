@@ -10,6 +10,7 @@ import {
   THEME_PREFERENCE_CACHE_KEY,
   THEME_DENSITY_CACHE_KEY,
   THEME_RADIUS_CACHE_KEY,
+  VISUAL_THEME_CACHE_KEY,
 } from '@/lib/theme-cache'
 import { SETTINGS_QUERY_KEY, SettingsProvider, useSettings } from './settings-provider'
 import { ThemeProvider, useTheme } from './theme-provider'
@@ -122,6 +123,7 @@ beforeEach(() => {
   localStorage.removeItem(THEME_PREFERENCE_CACHE_KEY)
   localStorage.removeItem(THEME_ACCENT_CACHE_KEY)
   localStorage.removeItem(THEME_RADIUS_CACHE_KEY)
+  localStorage.removeItem(VISUAL_THEME_CACHE_KEY)
   localStorage.removeItem(THEME_GLASS_LEVEL_CACHE_KEY)
   localStorage.removeItem(THEME_DENSITY_CACHE_KEY)
   queryClient = new QueryClient({
@@ -136,13 +138,14 @@ afterEach(() => {
   localStorage.removeItem(THEME_PREFERENCE_CACHE_KEY)
   localStorage.removeItem(THEME_ACCENT_CACHE_KEY)
   localStorage.removeItem(THEME_RADIUS_CACHE_KEY)
+  localStorage.removeItem(VISUAL_THEME_CACHE_KEY)
   localStorage.removeItem(THEME_GLASS_LEVEL_CACHE_KEY)
   document.documentElement.className = originalClassName
   document.documentElement.style.colorScheme = originalColorScheme
   document.documentElement.removeAttribute('data-theme')
   document.documentElement.removeAttribute('data-accent')
   document.documentElement.removeAttribute('data-radius')
-  document.documentElement.removeAttribute('data-glass')
+  document.documentElement.removeAttribute('data-visual-theme')
   document.documentElement.removeAttribute('data-glass-level')
   document.documentElement.removeAttribute('data-density')
   document.documentElement.style.removeProperty('--row-height')
@@ -281,25 +284,23 @@ describe('ThemeProvider', () => {
     expect(localStorage.getItem(THEME_RADIUS_CACHE_KEY)).toBe('default')
   })
 
-  it('carries the glass intensity only while Liquid Glass is on', async () => {
-    stored = { theme: 'light', liquidGlass: true, glassIntensity: 'strong' }
+  it('applies the selected visual theme and scopes its glass intensity', async () => {
+    stored = { theme: 'light', visualTheme: 'liquid-glass', glassIntensity: 'strong' }
 
     const { result, act } = await renderHook(
       () => ({ theme: useTheme(), settings: useSettings() }),
       { wrapper },
     )
     await settleLoad(act)
-    expect(document.documentElement.getAttribute('data-glass')).toBe('on')
+    expect(document.documentElement.getAttribute('data-visual-theme')).toBe('liquid-glass')
     expect(document.documentElement.getAttribute('data-glass-level')).toBe('strong')
     expect(localStorage.getItem(THEME_GLASS_LEVEL_CACHE_KEY)).toBe('strong')
 
-    // Turning glass off drops the level with it: a stale `data-glass-level`
-    // would still match the intensity rules if glass came back through a
-    // different path.
+    // Returning to the Default theme drops the glass-only level.
     await act(() => {
-      result.current.settings.updateSettings({ liquidGlass: false })
+      result.current.settings.updateSettings({ visualTheme: 'default' })
     })
-    expect(document.documentElement.getAttribute('data-glass')).toBeNull()
+    expect(document.documentElement.getAttribute('data-visual-theme')).toBe('default')
     expect(document.documentElement.getAttribute('data-glass-level')).toBeNull()
     // The chosen intensity survives the round trip, so switching glass back on
     // returns to it rather than to the default.

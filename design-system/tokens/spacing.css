@@ -122,6 +122,17 @@
   --radius-2xl: 1.5rem; /* 24px */
 }
 
+/* Visual themes own their geometry. This comes after the user radius scopes so
+   Liquid Glass stays consistently soft instead of becoming a mixed style. */
+:root[data-visual-theme='liquid-glass'] {
+  --radius: 0.875rem;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 0.875rem;
+  --radius-xl: 1.125rem;
+  --radius-2xl: 1.5rem;
+}
+
 /* ============================================================
    DENSITY — `data-density` on the document root (settings →
    Appearance). Like the radius scopes above: `default` declares

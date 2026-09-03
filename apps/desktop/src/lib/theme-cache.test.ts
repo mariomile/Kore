@@ -4,11 +4,11 @@ import { describe, expect, it } from 'vitest'
 import { ACCENT_COLOR_IDS, DARK_THEME_IDS, UI_RADIUS_IDS } from '@reflect/core'
 import {
   THEME_ACCENT_CACHE_KEY,
-  THEME_GLASS_CACHE_KEY,
   THEME_GLASS_LEVEL_CACHE_KEY,
   THEME_DENSITY_CACHE_KEY,
   THEME_PREFERENCE_CACHE_KEY,
   THEME_RADIUS_CACHE_KEY,
+  VISUAL_THEME_CACHE_KEY,
 } from './theme-cache'
 
 /**
@@ -34,10 +34,10 @@ describe('THEME_ACCENT_CACHE_KEY', () => {
   })
 })
 
-describe('THEME_GLASS_CACHE_KEY', () => {
+describe('VISUAL_THEME_CACHE_KEY', () => {
   it('matches the key the early theme script reads', () => {
     const script = readFileSync(THEME_INIT_PATH, 'utf8')
-    expect(script).toContain(`'${THEME_GLASS_CACHE_KEY}'`)
+    expect(script).toContain(`'${VISUAL_THEME_CACHE_KEY}'`)
   })
 })
 

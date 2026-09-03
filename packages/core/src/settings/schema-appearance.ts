@@ -127,18 +127,25 @@ export const customAccentColorSchema = z
   .catch(DEFAULT_CUSTOM_ACCENT)
 
 /**
- * Liquid Glass: translucent, blurred chrome over an accent-tinted backdrop.
- * Orthogonal to the theme — it restyles the surfaces of whichever theme is
- * active rather than being a theme of its own. Off by default.
+ * The product's visual language. Color schemes remain independently
+ * selectable, while each visual theme owns the surfaces, geometry and native
+ * material layered over that palette.
  */
-export const liquidGlassSchema = z.boolean().catch(false)
+const visualThemeEnum = z.enum(['default', 'liquid-glass'])
+
+export const visualThemeSchema = visualThemeEnum.catch('default')
+
+export type VisualTheme = z.infer<typeof visualThemeSchema>
+
+/** Every visual theme id, in picker order. */
+export const VISUAL_THEME_IDS = visualThemeEnum.options
 
 /**
  * How far Liquid Glass goes when it is on: `subtle` barely tints and blurs
  * (readable on a busy vault), `regular` is the original look, and `strong`
  * leans into the backdrop. A separate key from the on/off switch so turning
  * glass off and back on returns to the intensity the user chose. Ignored
- * entirely while {@link liquidGlassSchema} is false.
+ * entirely while {@link visualThemeSchema} is `default`.
  */
 const glassIntensityEnum = z.enum(['subtle', 'regular', 'strong'])
 

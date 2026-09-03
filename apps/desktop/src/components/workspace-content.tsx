@@ -118,10 +118,7 @@ export function WorkspaceContent({ graph }: WorkspaceContentProps): ReactElement
 
         <div className="flex min-w-0 flex-1 flex-col">
           <WorkspaceTabsStrip commandContext={commandContext} />
-          <div
-            data-testid="note-pane-gutter"
-            className="note-pane-gutter min-h-0 flex-1 pl-2 pb-2"
-          >
+          <div data-testid="note-pane-gutter" className="note-pane-gutter min-h-0 flex-1 pl-2 pb-2">
             <div className="app-glass-card h-full overflow-hidden rounded-xl bg-surface">
               <AppShell className="bg-transparent">
                 <div className="relative flex h-full flex-col">

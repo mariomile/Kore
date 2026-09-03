@@ -103,6 +103,7 @@ objc2-foundation = { version = "0.3.2", default-features = false, features = [
   "NSEnumerator",
   "NSError",
   "NSNotification",
+  "NSGeometry",
   "NSObject",
   "NSOperation",
   "NSString",

@@ -1,5 +1,19 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
+  "app": {
+    "windows": [
+      {
+        "title": "Kore",
+        "width": 1300,
+        "height": 650,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "transparent": true,
+        "dragDropEnabled": false,
+        "visible": false
+      }
+    ]
+  },
   "bundle": {
     "externalBin": ["binaries/reflect", "binaries/reflect-capture-host"],
     "macOS": {

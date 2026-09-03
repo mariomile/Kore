@@ -84,7 +84,7 @@ export function WorkspaceContent({ graph }: WorkspaceContentProps): ReactElement
   const trafficLightBand = useMacosTrafficLightInset()
 
   return (
-    <div className="flex h-screen w-screen flex-col overflow-hidden bg-surface-sunken text-text">
+    <div className="app-window-ground flex h-screen w-screen flex-col overflow-hidden bg-surface-sunken text-text">
       {/* The macOS traffic lights get a band of their own across the whole
           window, rather than an inset carved out of whichever pane reaches
           the left edge. That inset cost the workspace rail 80 of its 260
@@ -109,7 +109,7 @@ export function WorkspaceContent({ graph }: WorkspaceContentProps): ReactElement
           <aside
             id="workspace-sidebar"
             aria-label="Workspace"
-            className="relative flex w-[var(--sidebar-width)] shrink-0 flex-col overflow-hidden bg-surface-sunken"
+            className="app-window-chrome relative flex w-[var(--sidebar-width)] shrink-0 flex-col overflow-hidden bg-surface-sunken"
           >
             <Sidebar graph={graph} context={commandContext} />
             <SidebarResizeHandle panel="workspace" />
@@ -145,7 +145,7 @@ export function WorkspaceContent({ graph }: WorkspaceContentProps): ReactElement
           <aside
             id="context-sidebar"
             aria-label="Context"
-            className="relative hidden w-[var(--context-sidebar-width)] shrink-0 overflow-hidden bg-surface-sunken lg:flex lg:flex-col"
+            className="app-window-chrome relative hidden w-[var(--context-sidebar-width)] shrink-0 overflow-hidden bg-surface-sunken lg:flex lg:flex-col"
           >
             <SidebarResizeHandle panel="context" />
             <ContextSidebar target={contextTarget} />

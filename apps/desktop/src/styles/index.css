@@ -1276,10 +1276,10 @@ html[data-sidebar-resizing] aside {
 }
 
 /* ============================================================
-   Liquid Glass — activated by `data-glass="on"` on the root
+   Liquid Glass — selected with `data-visual-theme="liquid-glass"` on the root
    element (ThemeProvider, mirrored pre-paint by theme-init.js).
-   Orthogonal to themes: it restyles whichever theme's tokens are
-   active. On macOS 26+, the native shell places `NSGlassEffectView`
+   It owns geometry and surface treatment while the separate color scheme
+   supplies its base palette. On macOS 26+, the native shell places `NSGlassEffectView`
    behind Tauri's content view; only the window ground and navigation chrome
    become transparent so the system material can show through.
 
@@ -1287,37 +1287,37 @@ html[data-sidebar-resizing] aside {
    native material (menus and popovers); the window material itself
    remains system-owned.
    ============================================================ */
-:root[data-glass='on'][data-native-glass='on'] {
+:root[data-visual-theme='liquid-glass'][data-native-glass='on'] {
   --glass-popover: 76%;
   --glass-blur: 28px;
   --glass-saturate: 150%;
   --glass-popover-saturate: 160%;
 }
 /* A restrained web-layer treatment over the system material. */
-:root[data-glass='on'][data-native-glass='on'][data-glass-level='subtle'] {
+:root[data-visual-theme='liquid-glass'][data-native-glass='on'][data-glass-level='subtle'] {
   --glass-popover: 88%;
   --glass-blur: 14px;
   --glass-saturate: 120%;
   --glass-popover-saturate: 130%;
 }
 /* Stronger separation for web-layer menus and popovers. */
-:root[data-glass='on'][data-native-glass='on'][data-glass-level='strong'] {
+:root[data-visual-theme='liquid-glass'][data-native-glass='on'][data-glass-level='strong'] {
   --glass-popover: 62%;
   --glass-blur: 40px;
   --glass-saturate: 180%;
   --glass-popover-saturate: 190%;
 }
-:root[data-glass='on'][data-native-glass='on'] body {
+:root[data-visual-theme='liquid-glass'][data-native-glass='on'] body {
   background: transparent;
 }
-:root[data-glass='on'][data-native-glass='on'] .app-window-ground,
-:root[data-glass='on'][data-native-glass='on'] .app-window-chrome {
+:root[data-visual-theme='liquid-glass'][data-native-glass='on'] .app-window-ground,
+:root[data-visual-theme='liquid-glass'][data-native-glass='on'] .app-window-chrome {
   background-color: transparent;
 }
 /* Floating layers (menus, selects, dialogs, the palette) get the strongest
    glass: they hover over real content. Retuning the shared knobs reaches every
    one of them — including the palette, which paints its own surface. */
-:root[data-glass='on'][data-native-glass='on'] {
+:root[data-visual-theme='liquid-glass'][data-native-glass='on'] {
   --popover: color-mix(in srgb, var(--surface) var(--glass-popover), transparent);
   --layer-blur: var(--glass-blur);
   --layer-saturate: var(--glass-popover-saturate);

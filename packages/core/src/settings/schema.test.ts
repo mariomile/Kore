@@ -36,7 +36,7 @@ describe('settingsSchema', () => {
       theme: 'system',
       accentColor: 'indigo',
       customAccentColor: '#4f46e5',
-      liquidGlass: false,
+      visualTheme: 'default',
       glassIntensity: 'regular',
       taskReminders: false,
       quickCaptureEnabled: true,
@@ -165,6 +165,8 @@ describe('settingsSchema', () => {
     expect(settingsSchema.parse({ theme: 'paper' }).theme).toBe('paper')
     expect(settingsSchema.parse({ theme: 'ash' }).theme).toBe('ash')
     expect(settingsSchema.parse({ theme: 'graphite' }).theme).toBe('graphite')
+    expect(settingsSchema.parse({ visualTheme: 'default' }).visualTheme).toBe('default')
+    expect(settingsSchema.parse({ visualTheme: 'liquid-glass' }).visualTheme).toBe('liquid-glass')
     expect(settingsSchema.parse({ accentColor: 'teal' }).accentColor).toBe('teal')
     expect(settingsSchema.parse({ accentColor: 'lime' }).accentColor).toBe('lime')
     expect(settingsSchema.parse({ accentColor: 'slate' }).accentColor).toBe('slate')
@@ -280,6 +282,8 @@ describe('settingsSchema', () => {
     expect(settingsSchema.parse({ contextSidebarWidth: 9000 }).contextSidebarWidth).toBe(800)
     expect(settingsSchema.parse({ theme: 'chartreuse' }).theme).toBe('system')
     expect(settingsSchema.parse({ theme: 7 }).theme).toBe('system')
+    expect(settingsSchema.parse({ visualTheme: 'neon' }).visualTheme).toBe('default')
+    expect(settingsSchema.parse({ visualTheme: true }).visualTheme).toBe('default')
     expect(settingsSchema.parse({ uiRadius: 'pill' }).uiRadius).toBe('default')
     expect(settingsSchema.parse({ uiRadius: 8 }).uiRadius).toBe('default')
     expect(settingsSchema.parse({ uiDensity: 'cosy' }).uiDensity).toBe('default')
@@ -379,7 +383,7 @@ describe('settingsSchema', () => {
       theme: 'system',
       accentColor: 'indigo',
       customAccentColor: '#4f46e5',
-      liquidGlass: false,
+      visualTheme: 'default',
       glassIntensity: 'regular',
       taskReminders: false,
       quickCaptureEnabled: true,

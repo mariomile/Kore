@@ -20,12 +20,12 @@ import {
   customAccentColorSchema,
   dateFormatSchema,
   glassIntensitySchema,
-  liquidGlassSchema,
   themePreferenceSchema,
   timeFormatSchema,
   uiDensitySchema,
   uiRadiusSchema,
   uiTextSizeSchema,
+  visualThemeSchema,
   weekStartDaySchema,
 } from './schema-appearance'
 import {
@@ -447,7 +447,7 @@ const settingsDocumentSchema = z.looseObject({
   theme: themePreferenceSchema,
   accentColor: accentColorSchema,
   customAccentColor: customAccentColorSchema,
-  liquidGlass: liquidGlassSchema,
+  visualTheme: visualThemeSchema,
   glassIntensity: glassIntensitySchema,
   uiRadius: uiRadiusSchema,
   uiDensity: uiDensitySchema,

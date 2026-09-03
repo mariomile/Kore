@@ -4,6 +4,7 @@ import type {
   ThemePreference,
   UiDensity,
   UiRadius,
+  VisualTheme,
 } from '@reflect/core'
 
 /**
@@ -62,20 +63,19 @@ export function writeCachedAccentColor(accentColor: AccentColor): void {
 }
 
 /**
- * Where the Liquid Glass switch is mirrored for the next launch, same
+ * Where the visual theme is mirrored for the next launch, same
  * contract as {@link THEME_PREFERENCE_CACHE_KEY}: `public/theme-init.js`
  * repeats this literal because it cannot import, and `theme-cache.test.ts`
  * guards the pair.
  */
-export const THEME_GLASS_CACHE_KEY = 'reflect.theme.glass'
+export const VISUAL_THEME_CACHE_KEY = 'reflect.theme.visual'
 
 /**
- * Mirror the persisted Liquid Glass switch so the first painted frame already
- * carries the glass backdrop. Best-effort like the other mirrors — an
- * unreadable cache just paints opaque surfaces until settings load.
+ * Mirror the persisted visual theme so the first painted frame already carries
+ * its geometry and surface treatment. Best-effort like the other mirrors.
  */
-export function writeCachedLiquidGlass(enabled: boolean): void {
-  mirror(THEME_GLASS_CACHE_KEY, enabled ? 'on' : 'off')
+export function writeCachedVisualTheme(theme: VisualTheme): void {
+  mirror(VISUAL_THEME_CACHE_KEY, theme)
 }
 
 /**

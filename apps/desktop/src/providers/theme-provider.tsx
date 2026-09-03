@@ -13,7 +13,7 @@ import { deriveAccentTokens } from '@/lib/accent-color'
 import {
   writeCachedAccentColor,
   writeCachedGlassIntensity,
-  writeCachedLiquidGlass,
+  writeCachedVisualTheme,
   writeCachedThemePreference,
   writeCachedUiDensity,
   writeCachedUiRadius,
@@ -73,7 +73,7 @@ export function ThemeProvider({ children }: ThemeProviderProps): ReactElement {
   const theme = settings.theme
   const accentColor = settings.accentColor
   const customAccentColor = settings.customAccentColor
-  const liquidGlass = settings.liquidGlass
+  const visualTheme = settings.visualTheme
   const glassIntensity = settings.glassIntensity
   const uiRadius = settings.uiRadius
   const uiDensity = settings.uiDensity
@@ -113,15 +113,10 @@ export function ThemeProvider({ children }: ThemeProviderProps): ReactElement {
     root.classList.toggle('dark', dark)
     root.setAttribute('data-theme', resolvedTheme)
     root.setAttribute('data-accent', accentColor)
-    // Liquid Glass restyles the active theme's surfaces (translucent, blurred
-    // chrome over a tinted backdrop) — an orthogonal switch, not a theme. The
-    // intensity rides along as its own attribute so the stylesheet can pick a
-    // blur/tint pair without a rule per theme.
-    if (liquidGlass) {
-      root.setAttribute('data-glass', 'on')
+    root.setAttribute('data-visual-theme', visualTheme)
+    if (visualTheme === 'liquid-glass') {
       root.setAttribute('data-glass-level', glassIntensity)
     } else {
-      root.removeAttribute('data-glass')
       root.removeAttribute('data-glass-level')
     }
     // The default radius is the design system's own geometry, so it declares
@@ -163,7 +158,7 @@ export function ThemeProvider({ children }: ThemeProviderProps): ReactElement {
     resolvedTheme,
     accentColor,
     customAccentColor,
-    liquidGlass,
+    visualTheme,
     glassIntensity,
     uiRadius,
     uiDensity,
@@ -178,11 +173,11 @@ export function ThemeProvider({ children }: ThemeProviderProps): ReactElement {
     }
     writeCachedThemePreference(theme)
     writeCachedAccentColor(accentColor)
-    writeCachedLiquidGlass(liquidGlass)
+    writeCachedVisualTheme(visualTheme)
     writeCachedGlassIntensity(glassIntensity)
     writeCachedUiRadius(uiRadius)
     writeCachedUiDensity(uiDensity)
-  }, [loadOutcome, theme, accentColor, liquidGlass, glassIntensity, uiRadius, uiDensity])
+  }, [loadOutcome, theme, accentColor, visualTheme, glassIntensity, uiRadius, uiDensity])
 
   const setTheme = useCallback((next: Theme) => updateSettings({ theme: next }), [updateSettings])
 

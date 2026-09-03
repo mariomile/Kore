@@ -10,7 +10,7 @@ use serde_json::{Map, Value};
 use tauri::{AppHandle, Runtime};
 
 #[cfg(target_os = "macos")]
-const SETTING_KEY: &str = "liquidGlass";
+const SETTING_KEY: &str = "visualTheme";
 
 #[cfg(target_os = "macos")]
 pub(crate) fn sync_from_settings<R: Runtime>(app: &AppHandle<R>, settings: &Map<String, Value>) {
@@ -18,17 +18,12 @@ pub(crate) fn sync_from_settings<R: Runtime>(app: &AppHandle<R>, settings: &Map<
 
     let enabled = settings
         .get(SETTING_KEY)
-        .and_then(Value::as_bool)
-        .unwrap_or(false);
+        .and_then(Value::as_str)
+        .is_some_and(|theme| theme == "liquid-glass");
     let available = native_glass_available();
 
     for window in app.webview_windows().into_values() {
         if window.label() == crate::windows::QUICK_CAPTURE_LABEL {
-            continue;
-        }
-
-        if !available {
-            let _ = window.eval("document.documentElement.removeAttribute('data-native-glass')");
             continue;
         }
 
@@ -41,18 +36,19 @@ pub(crate) fn sync_from_settings<R: Runtime>(app: &AppHandle<R>, settings: &Map<
         };
 
         let label = window.label().to_owned();
+        let glass_enabled = enabled && available;
         if let Err(error) = window.run_on_main_thread(move || {
             // SAFETY: Tauri owns this NSView for the lifetime of the window,
             // and all AppKit hierarchy mutations run on the main thread. The
             // view stays the NSWindow content view; replacing it breaks Tao's
             // resize-event invariant, so the material is only a subview.
-            unsafe { set_enabled(view_address, enabled) };
+            unsafe { set_enabled(view_address, glass_enabled) };
         }) {
             tracing::warn!(%error, window = label, "Liquid Glass could not reach the main thread");
             continue;
         }
 
-        let marker_script = if enabled {
+        let marker_script = if glass_enabled {
             "document.documentElement.setAttribute('data-native-glass','on')"
         } else {
             "document.documentElement.removeAttribute('data-native-glass')"
@@ -78,11 +74,19 @@ unsafe fn set_enabled(view_address: usize, enabled: bool) {
     use objc2::{msg_send, runtime::AnyClass, runtime::AnyObject};
     use objc2_foundation::NSRect;
 
+    let content_view = view_address as *mut AnyObject;
+    let window: *mut AnyObject = msg_send![content_view, window];
+    if !window.is_null() {
+        // The NSWindow shadow includes a visible perimeter keyline. Kore's
+        // window chrome must stay borderless in every appearance mode.
+        let _: () = msg_send![window, setHasShadow: false];
+        let _: () = msg_send![window, invalidateShadow];
+    }
+
     let Some(glass_class) = AnyClass::get(c"NSGlassEffectView") else {
         return;
     };
 
-    let content_view = view_address as *mut AnyObject;
     let subviews: *mut AnyObject = msg_send![content_view, subviews];
     let count: usize = msg_send![subviews, count];
     let mut installed_glass = std::ptr::null_mut();

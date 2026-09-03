@@ -8,6 +8,7 @@ import type {
   UiDensity,
   UiRadius,
   UiTextSize,
+  VisualTheme,
 } from '@reflect/core'
 import {
   ACCENT_COLOR_IDS,
@@ -55,6 +56,36 @@ const THEME_OPTIONS: ThemeOption[] = [
   { value: 'ink', label: 'Ink', icon: Book },
   { value: 'space', label: 'Space', icon: Sparkles },
   { value: 'midnight', label: 'Midnight', icon: MoonStars },
+]
+
+const VISUAL_THEME_OPTIONS: readonly {
+  value: VisualTheme
+  label: string
+  preview: ReactNode
+}[] = [
+  {
+    value: 'default',
+    label: 'Default',
+    preview: (
+      <span aria-hidden className="flex h-8 w-14 gap-1 rounded-md border border-current p-1">
+        <span className="w-3 rounded-sm bg-current opacity-30" />
+        <span className="flex-1 rounded-sm bg-current opacity-15" />
+      </span>
+    ),
+  },
+  {
+    value: 'liquid-glass',
+    label: 'Liquid Glass',
+    preview: (
+      <span
+        aria-hidden
+        className="flex h-8 w-14 gap-1 rounded-xl border border-current bg-gradient-to-br from-current/25 to-transparent p-1 shadow-sm"
+      >
+        <span className="w-3 rounded-lg bg-current opacity-25" />
+        <span className="flex-1 rounded-lg border border-current opacity-40" />
+      </span>
+    ),
+  },
 ]
 
 type PresetAccentColor = Exclude<AccentColor, 'custom'>
@@ -197,9 +228,8 @@ function SettingsRadioCards<T extends string>({
 }
 
 /**
- * Theme picker as radio cards (the original app's idiom) plus the accent
- * color swatch row, the corner-radius steps, the Liquid Glass switch with its
- * intensity, and the haptics switch. Edits the settings document directly —
+ * Visual-theme and color-scheme pickers plus the accent color, optional
+ * geometry controls, Liquid Glass intensity, and haptics. Edits the settings document directly —
  * the ThemeProvider applies whatever is persisted, so this section needs no
  * theme context of its own.
  */
@@ -210,6 +240,23 @@ export function AppearanceSection(): ReactElement {
     <SettingsSection id="appearance">
       <SettingsField
         legend="Theme"
+        description="Changes Kore’s surfaces, materials, and geometry as one coherent style."
+      >
+        <SettingsRadioCards
+          name="visual-theme"
+          value={settings.visualTheme}
+          options={VISUAL_THEME_OPTIONS.map(({ value, label, preview }) => ({
+            value,
+            label,
+            adornment: preview,
+          }))}
+          onChange={(visualTheme) => updateSettings({ visualTheme })}
+          columns="grid-cols-2"
+        />
+      </SettingsField>
+
+      <SettingsField
+        legend="Color scheme"
         description="System follows your OS appearance. Saved with your settings."
       >
         <SettingsRadioCards
@@ -301,32 +348,31 @@ export function AppearanceSection(): ReactElement {
         </div>
       </SettingsField>
 
-      <SettingsField
-        legend="Corners"
-        description="How round every surface is — buttons, cards, dialogs, and inputs move together."
-      >
-        <SettingsRadioCards
-          name="ui-radius"
-          value={settings.uiRadius}
-          options={UI_RADIUS_IDS.map((radius) => ({
-            value: radius,
-            label: RADIUS_OPTIONS[radius].label,
-            // The labels repeat elsewhere on this screen (the editor
-            // text-size steps are also Small/Default), so the accessible
-            // name carries the field.
-            ariaLabel: `Corners: ${RADIUS_OPTIONS[radius].label}`,
-            adornment: (
-              <span
-                aria-hidden
-                className="h-5 w-8 border-[1.5px] border-current"
-                style={{ borderRadius: RADIUS_OPTIONS[radius].preview }}
-              />
-            ),
-          }))}
-          onChange={(uiRadius) => updateSettings({ uiRadius })}
-          columns="grid-cols-4"
-        />
-      </SettingsField>
+      {settings.visualTheme === 'default' ? (
+        <SettingsField
+          legend="Corners"
+          description="How round every surface is — buttons, cards, dialogs, and inputs move together."
+        >
+          <SettingsRadioCards
+            name="ui-radius"
+            value={settings.uiRadius}
+            options={UI_RADIUS_IDS.map((radius) => ({
+              value: radius,
+              label: RADIUS_OPTIONS[radius].label,
+              ariaLabel: `Corners: ${RADIUS_OPTIONS[radius].label}`,
+              adornment: (
+                <span
+                  aria-hidden
+                  className="h-5 w-8 border-[1.5px] border-current"
+                  style={{ borderRadius: RADIUS_OPTIONS[radius].preview }}
+                />
+              ),
+            }))}
+            onChange={(uiRadius) => updateSettings({ uiRadius })}
+            columns="grid-cols-4"
+          />
+        </SettingsField>
+      ) : null}
 
       <SettingsField
         legend="Text size"
@@ -399,14 +445,7 @@ export function AppearanceSection(): ReactElement {
         />
       </SettingsField>
 
-      <SettingsSwitchField
-        legend="Liquid Glass"
-        description="Uses the native macOS 26 material behind Kore’s navigation chrome."
-        checked={settings.liquidGlass}
-        onCheckedChange={(checked) => updateSettings({ liquidGlass: checked })}
-      />
-
-      {settings.liquidGlass ? (
+      {settings.visualTheme === 'liquid-glass' ? (
         <SettingsField
           legend="Glass intensity"
           description="Adjusts the translucency of menus and popovers above the system material."

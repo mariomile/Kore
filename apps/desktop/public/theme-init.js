@@ -9,7 +9,7 @@
 // (`src/providers/theme-provider.tsx`) mirrors it into localStorage for the
 // next launch. A pinned theme wins here; `system`, a first launch, and an
 // unreadable cache all fall back to the OS preference. The accent color, the
-// corner radius and the Liquid Glass switch are mirrored the same way; each
+// corner radius and the visual theme are mirrored the same way; each
 // absent value just paints its default. ThemeProvider re-applies the real
 // values once settings load.
 {
@@ -17,8 +17,8 @@
   const PREFERENCE_KEY = 'reflect.theme.preference'
   // Keep in sync with THEME_ACCENT_CACHE_KEY in src/lib/theme-cache.ts.
   const ACCENT_KEY = 'reflect.theme.accent'
-  // Keep in sync with THEME_GLASS_CACHE_KEY in src/lib/theme-cache.ts.
-  const GLASS_KEY = 'reflect.theme.glass'
+  // Keep in sync with VISUAL_THEME_CACHE_KEY in src/lib/theme-cache.ts.
+  const VISUAL_THEME_KEY = 'reflect.theme.visual'
   // Keep in sync with THEME_GLASS_LEVEL_CACHE_KEY in src/lib/theme-cache.ts.
   const GLASS_LEVEL_KEY = 'reflect.theme.glass-level'
   // Keep in sync with THEME_RADIUS_CACHE_KEY in src/lib/theme-cache.ts.
@@ -84,8 +84,9 @@
   if (density) {
     document.documentElement.setAttribute('data-density', density)
   }
-  if (cached(GLASS_KEY, ['on', 'off']) === 'on') {
-    document.documentElement.setAttribute('data-glass', 'on')
+  const visualTheme = cached(VISUAL_THEME_KEY, ['default', 'liquid-glass']) ?? 'default'
+  document.documentElement.setAttribute('data-visual-theme', visualTheme)
+  if (visualTheme === 'liquid-glass') {
     document.documentElement.setAttribute(
       'data-glass-level',
       cached(GLASS_LEVEL_KEY, GLASS_LEVELS) ?? 'regular',

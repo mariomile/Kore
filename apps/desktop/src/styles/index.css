@@ -1275,6 +1275,10 @@ html[data-sidebar-resizing] aside {
   background: linear-gradient(to bottom, transparent, var(--surface));
 }
 
+:root:not([data-visual-theme='liquid-glass']) .note-pane-gutter {
+  background: linear-gradient(to right, var(--surface-sunken) 0 0.5rem, transparent 0.5rem);
+}
+
 /* ============================================================
    Liquid Glass — selected with `data-visual-theme="liquid-glass"` on the root
    element (ThemeProvider, mirrored pre-paint by theme-init.js).

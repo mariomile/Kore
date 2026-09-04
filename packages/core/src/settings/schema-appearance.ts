@@ -27,6 +27,7 @@ const themePreferenceEnum = z.enum([
   'ink',
   'space',
   'midnight',
+  'codex',
 ])
 
 export const themePreferenceSchema = themePreferenceEnum.catch('system')
@@ -47,6 +48,7 @@ export const DARK_THEME_IDS: readonly ThemePreference[] = [
   'ink',
   'space',
   'midnight',
+  'codex',
 ]
 
 /**
@@ -131,7 +133,7 @@ export const customAccentColorSchema = z
  * selectable, while each visual theme owns the surfaces, geometry and native
  * material layered over that palette.
  */
-const visualThemeEnum = z.enum(['default', 'liquid-glass'])
+const visualThemeEnum = z.enum(['default', 'liquid-glass', 'flat'])
 
 export const visualThemeSchema = visualThemeEnum.catch('default')
 

@@ -56,6 +56,7 @@ const THEME_OPTIONS: ThemeOption[] = [
   { value: 'ink', label: 'Ink', icon: Book },
   { value: 'space', label: 'Space', icon: Sparkles },
   { value: 'midnight', label: 'Midnight', icon: MoonStars },
+  { value: 'codex', label: 'Codex', icon: Contrast },
 ]
 
 const VISUAL_THEME_OPTIONS: readonly {
@@ -83,6 +84,17 @@ const VISUAL_THEME_OPTIONS: readonly {
       >
         <span className="w-3 rounded-lg bg-current opacity-25" />
         <span className="flex-1 rounded-lg border border-current opacity-40" />
+      </span>
+    ),
+  },
+  {
+    value: 'flat',
+    label: 'Flat',
+    preview: (
+      <span aria-hidden className="flex h-8 w-14 overflow-hidden border border-current">
+        <span className="w-3 border-r border-current bg-current/20" />
+        <span className="flex-1" />
+        <span className="w-3 border-l border-current bg-current/20" />
       </span>
     ),
   },
@@ -251,7 +263,7 @@ export function AppearanceSection(): ReactElement {
             adornment: preview,
           }))}
           onChange={(visualTheme) => updateSettings({ visualTheme })}
-          columns="grid-cols-2"
+          columns="grid-cols-1 sm:grid-cols-3"
         />
       </SettingsField>
 
@@ -348,10 +360,14 @@ export function AppearanceSection(): ReactElement {
         </div>
       </SettingsField>
 
-      {settings.visualTheme === 'default' ? (
+      {settings.visualTheme !== 'liquid-glass' ? (
         <SettingsField
           legend="Corners"
-          description="How round every surface is — buttons, cards, dialogs, and inputs move together."
+          description={
+            settings.visualTheme === 'flat'
+              ? 'Rounds controls, cards, and dialogs. Workspace panels stay square in Flat.'
+              : 'How round every surface is — buttons, cards, dialogs, and inputs move together.'
+          }
         >
           <SettingsRadioCards
             name="ui-radius"

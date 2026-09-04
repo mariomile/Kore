@@ -104,7 +104,7 @@ export function WorkspaceContent({ graph }: WorkspaceContentProps): ReactElement
           the `lg` breakpoint the context rail appears at stays the rail's
           business alone. The workspace rail keeps no gutter: it is flat
           sunken ground, not a card. */}
-      <div className="flex min-h-0 flex-1 pr-2">
+      <div className="workspace-frame flex min-h-0 flex-1 pr-2">
         {collapsed ? undefined : (
           <aside
             id="workspace-sidebar"
@@ -116,9 +116,12 @@ export function WorkspaceContent({ graph }: WorkspaceContentProps): ReactElement
           </aside>
         )}
 
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="workspace-main flex min-w-0 flex-1 flex-col">
           <WorkspaceTabsStrip commandContext={commandContext} />
-          <div data-testid="note-pane-gutter" className="note-pane-gutter min-h-0 flex-1 pl-2 pb-2">
+          <div
+            data-testid="note-pane-gutter"
+            className="workspace-pane-gutter min-h-0 flex-1 pl-2 pb-2"
+          >
             <div className="app-glass-card h-full overflow-hidden rounded-xl bg-surface">
               <AppShell className="bg-transparent">
                 <div className="relative flex h-full flex-col">

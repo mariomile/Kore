@@ -94,10 +94,26 @@ beforeEach(async () => {
 })
 
 afterEach(async () => {
+  document.documentElement.removeAttribute('data-visual-theme')
   await page.viewport(900, 600)
 })
 
 describe('WorkspaceContent', () => {
+  it('makes Flat panels square and flush with the bottom and right window edges', async () => {
+    document.documentElement.setAttribute('data-visual-theme', 'flat')
+    const view = await render(<WorkspaceContent graph={GRAPH} />)
+    const note = view.getByTestId('note-pane-gutter').element().firstElementChild!
+    const context = view.getByTestId('context-pane-gutter').element().firstElementChild!
+    expect(getComputedStyle(note).borderRadius).toBe('0px')
+    expect(getComputedStyle(context).borderRadius).toBe('0px')
+    expect(note.getBoundingClientRect().bottom).toBe(window.innerHeight)
+    expect(context.getBoundingClientRect().bottom).toBe(window.innerHeight)
+    expect(context.getBoundingClientRect().right).toBe(window.innerWidth)
+    expect(note.getBoundingClientRect().right).toBe(
+      view.getByRole('complementary', { name: 'Context' }).element().getBoundingClientRect().left,
+    )
+  })
+
   it('collapses each rail independently and restores it', async () => {
     const view = await render(<WorkspaceContent graph={GRAPH} />)
 

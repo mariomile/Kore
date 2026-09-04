@@ -1275,12 +1275,44 @@ html[data-sidebar-resizing] aside {
   background: linear-gradient(to bottom, transparent, var(--surface));
 }
 
-:root:not([data-visual-theme='liquid-glass']) .note-pane-gutter {
-  background: linear-gradient(
-    to right,
-    var(--surface-sunken) 0 calc(0.5rem + var(--radius-xl)),
-    transparent calc(0.5rem + var(--radius-xl))
-  );
+/* Composite the existing sidebar tone once for the whole frame. Sunken can
+   be translucent (Midnight): painting it again on each rail creates seams. */
+:root:not([data-visual-theme='liquid-glass']) .app-window-ground {
+  background:
+    linear-gradient(var(--surface-sunken), var(--surface-sunken)),
+    linear-gradient(var(--surface-sunken), var(--surface-sunken)), var(--surface-app);
+}
+
+:root:not([data-visual-theme='liquid-glass']) .app-window-chrome {
+  background: transparent;
+}
+
+/* Flat keeps the context rail's internal resize lane, but paints it as part
+   of the continuous rail rather than a gap around a floating card. */
+:root[data-visual-theme='flat'] .workspace-frame {
+  padding-right: 0;
+}
+:root[data-visual-theme='flat'] .workspace-main {
+  background: var(--surface-app);
+}
+:root[data-visual-theme='flat'] #workspace-sidebar + .workspace-main,
+:root[data-visual-theme='flat'] #context-sidebar {
+  border-left: 1px solid var(--border);
+}
+:root[data-visual-theme='flat'] .workspace-pane-gutter {
+  padding-bottom: 0;
+}
+:root[data-visual-theme='flat'] .workspace-main > .workspace-pane-gutter {
+  padding-left: 0;
+}
+:root[data-visual-theme='flat'] .workspace-pane-gutter > .app-glass-card {
+  border-radius: 0;
+  background: transparent;
+}
+
+:root[data-theme='codex'] #workspace-sidebar [aria-current='page'] {
+  background: var(--surface-active);
+  color: var(--text);
 }
 
 /* ============================================================

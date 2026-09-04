@@ -29,8 +29,18 @@
   // Keep in sync with themePreferenceSchema / DARK_THEME_IDS /
   // accentColorSchema / uiRadiusSchema / glassIntensitySchema in
   // packages/core/src/settings/schema.ts.
-  const PINNED_THEMES = ['light', 'ash', 'paper', 'dark', 'graphite', 'ink', 'space', 'midnight']
-  const DARK_THEMES = ['dark', 'graphite', 'ink', 'space', 'midnight']
+  const PINNED_THEMES = [
+    'light',
+    'ash',
+    'paper',
+    'dark',
+    'graphite',
+    'ink',
+    'space',
+    'midnight',
+    'codex',
+  ]
+  const DARK_THEMES = ['dark', 'graphite', 'ink', 'space', 'midnight', 'codex']
   const ACCENTS = [
     'indigo',
     'violet',
@@ -84,7 +94,7 @@
   if (density) {
     document.documentElement.setAttribute('data-density', density)
   }
-  const visualTheme = cached(VISUAL_THEME_KEY, ['default', 'liquid-glass']) ?? 'default'
+  const visualTheme = cached(VISUAL_THEME_KEY, ['default', 'liquid-glass', 'flat']) ?? 'default'
   document.documentElement.setAttribute('data-visual-theme', visualTheme)
   if (visualTheme === 'liquid-glass') {
     document.documentElement.setAttribute(

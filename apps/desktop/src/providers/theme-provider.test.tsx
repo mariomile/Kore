@@ -296,6 +296,13 @@ describe('ThemeProvider', () => {
     expect(document.documentElement.getAttribute('data-glass-level')).toBe('strong')
     expect(localStorage.getItem(THEME_GLASS_LEVEL_CACHE_KEY)).toBe('strong')
 
+    await act(() => {
+      result.current.settings.updateSettings({ visualTheme: 'flat' })
+    })
+    expect(document.documentElement.getAttribute('data-visual-theme')).toBe('flat')
+    expect(document.documentElement.getAttribute('data-glass-level')).toBeNull()
+    expect(localStorage.getItem(VISUAL_THEME_CACHE_KEY)).toBe('flat')
+
     // Returning to the Default theme drops the glass-only level.
     await act(() => {
       result.current.settings.updateSettings({ visualTheme: 'default' })

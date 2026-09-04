@@ -78,9 +78,10 @@ describe('applyCollectionFilters', () => {
       { key: 'rating', operator: 'gt', text: '4' },
     ]
     expect(applyCollectionFilters(BOOK_TYPE, ROWS, filters, 'all')).toEqual([])
-    expect(applyCollectionFilters(BOOK_TYPE, ROWS, filters, 'any').map((row) => row.path)).toEqual(
-      ['a', 'b'],
-    )
+    expect(applyCollectionFilters(BOOK_TYPE, ROWS, filters, 'any').map((row) => row.path)).toEqual([
+      'a',
+      'b',
+    ])
   })
 
   it('combines an equality OR with an extra condition on the same property', () => {

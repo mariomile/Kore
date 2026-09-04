@@ -53,7 +53,14 @@ describe('parseCollectionEmbeds', () => {
 describe('formatCollectionEmbed', () => {
   it('omits the default table view', () => {
     expect(
-      formatCollectionEmbed({ tag: 'books', view: 'table', sorts: [], group: null, filters: [], match: 'all' }),
+      formatCollectionEmbed({
+        tag: 'books',
+        view: 'table',
+        sorts: [],
+        group: null,
+        filters: [],
+        match: 'all',
+      }),
     ).toBe('```collection\ntag: books\n```')
   })
 

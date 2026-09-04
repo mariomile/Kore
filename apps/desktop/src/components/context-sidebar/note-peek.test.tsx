@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { describe, expect, it, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
-import { setBridge } from '@reflect/core'
+import { DEFAULT_SETTINGS, setBridge } from '@reflect/core'
 import { NotePeek } from './note-peek'
 
 /**
@@ -10,7 +10,8 @@ import { NotePeek } from './note-peek'
  * stubbed; the peek's own job is title + body + Open.
  */
 const navigate = vi.fn()
-vi.mock('@/routing/router', () => ({
+vi.mock('@/routing/router', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/routing/router')>()),
   useRouter: () => ({ navigate }),
 }))
 vi.mock('@/editor/use-wiki-link-navigation', () => ({
@@ -21,6 +22,10 @@ vi.mock('@/editor/use-asset-persistence', () => ({
 }))
 vi.mock('@/components/context-sidebar/note-properties-section', () => ({
   NotePropertiesSection: () => <div data-testid="peek-properties" />,
+}))
+vi.mock('@/providers/settings-provider', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/providers/settings-provider')>()),
+  useSettings: () => ({ settings: DEFAULT_SETTINGS, updateSettings: vi.fn() }),
 }))
 vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({ graph: { root: '/g', generation: 1 } }),
@@ -53,7 +58,9 @@ describe('NotePeek', () => {
       </QueryClientProvider>,
     )
     await expect.element(view.getByRole('heading', { name: 'Solaris' })).toBeInTheDocument()
-    await expect.element(view.getByText('A planet that thinks.', { exact: false })).toBeInTheDocument()
+    await expect
+      .element(view.getByText('A planet that thinks.', { exact: false }))
+      .toBeInTheDocument()
     await expect.element(view.getByTestId('peek-properties')).toBeInTheDocument()
 
     await view.getByRole('button', { name: 'Open' }).click()

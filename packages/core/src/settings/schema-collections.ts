@@ -119,30 +119,30 @@ export const savedCollectionViewSchema = z.preprocess(
       ? { ...value, sorts: (value as { sort: unknown }).sort ?? [] }
       : value,
   z.object({
-  id: z.string().min(1),
-  name: z.string().min(1),
-  view: z.enum(COLLECTION_EMBED_VIEWS),
-  /** The sort chain; pre-chain saves carried one `sort` object or null. */
-  sorts: collectionSortChainSchema.catch([]),
-  group: z.string().nullable().catch(null),
-  /** How the filters combine: every one must hold, or any one. */
-  match: z.enum(['all', 'any']).catch('all'),
-  /** The table's row grouping (Plan 29 V1b); `null` = flat rows. Absent in
-   * pre-V1b saves, so the catch keeps them applying as they always did. */
-  tableGroup: z.string().nullable().catch(null),
-  filters: z
-    .array(z.unknown())
-    .catch([])
-    .transform((entries) => {
-      const filters: SavedCollectionViewFilter[] = []
-      for (const entry of entries) {
-        const parsed = savedViewFilterSchema.safeParse(entry)
-        if (parsed.success) {
-          filters.push(parsed.data)
+    id: z.string().min(1),
+    name: z.string().min(1),
+    view: z.enum(COLLECTION_EMBED_VIEWS),
+    /** The sort chain; pre-chain saves carried one `sort` object or null. */
+    sorts: collectionSortChainSchema.catch([]),
+    group: z.string().nullable().catch(null),
+    /** How the filters combine: every one must hold, or any one. */
+    match: z.enum(['all', 'any']).catch('all'),
+    /** The table's row grouping (Plan 29 V1b); `null` = flat rows. Absent in
+     * pre-V1b saves, so the catch keeps them applying as they always did. */
+    tableGroup: z.string().nullable().catch(null),
+    filters: z
+      .array(z.unknown())
+      .catch([])
+      .transform((entries) => {
+        const filters: SavedCollectionViewFilter[] = []
+        for (const entry of entries) {
+          const parsed = savedViewFilterSchema.safeParse(entry)
+          if (parsed.success) {
+            filters.push(parsed.data)
+          }
         }
-      }
-      return filters
-    }),
+        return filters
+      }),
   }),
 )
 export type SavedCollectionView = z.infer<typeof savedCollectionViewSchema>

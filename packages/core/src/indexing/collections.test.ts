@@ -219,7 +219,9 @@ describe('compareCollectionEntries', () => {
   })
 
   it('sorts on the built-in sentinels and keeps newest first on a full tie', () => {
-    const byTitle = [...rows].sort(compareCollectionEntries([{ key: TITLE_SORT_KEY, direction: 'desc' }]))
+    const byTitle = [...rows].sort(
+      compareCollectionEntries([{ key: TITLE_SORT_KEY, direction: 'desc' }]),
+    )
     expect(byTitle.map((entry) => entry.path)).toEqual(['d', 'c', 'b', 'a'])
     const tied = [...rows].sort(compareCollectionEntries([{ key: 'missing', direction: 'asc' }]))
     expect(tied.map((entry) => entry.path)).toEqual(['d', 'c', 'b', 'a'])

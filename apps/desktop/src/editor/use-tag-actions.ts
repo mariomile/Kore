@@ -1,14 +1,6 @@
 import { useCallback, useState } from 'react'
-import {
-  bodyHasTag,
-  convertTaggedLineToNote,
-  isDaily,
-  readNote,
-  splitFrontmatter,
-  stripLeadingHeading,
-  writeNote,
-} from '@reflect/core'
-import { createTypedCollectionNote } from '@/lib/tags/create-collection-note'
+import { bodyHasTag, convertTaggedLineToNote, isDaily, splitFrontmatter } from '@reflect/core'
+import { createTitledCollectionNote } from '@/lib/tags/create-collection-note'
 import { useTagType } from '@/hooks/use-tag-type'
 import { useTemplateValues } from '@/hooks/use-template-values'
 import { useGraph } from '@/providers/graph-provider'
@@ -31,15 +23,6 @@ function anchorPointFromEvent(event: MouseEvent | KeyboardEvent): { x: number; y
   }
   const rect = (event.target instanceof HTMLElement ? event.target : null)?.getBoundingClientRect()
   return rect ? { x: rect.left, y: rect.bottom } : { x: 0, y: 0 }
-}
-
-/** Overwrite `path`'s leading H1 with `title`, keeping the rest of the body. */
-async function retitleNote(path: string, title: string, generation: number): Promise<void> {
-  const source = await readNote(path, generation)
-  const { raw, body } = splitFrontmatter(source)
-  const nextBody = `# ${title}\n${stripLeadingHeading(body)}`
-  const nextSource = raw === null ? nextBody : `---\n${raw}\n---\n${nextBody}`
-  await writeNote(path, nextSource, generation)
 }
 
 /**
@@ -78,7 +61,11 @@ export function useTagActions(
         navigateToTag(tag)
         return
       }
-      setMenu({ tag, ...anchorPointFromEvent(event) })
+      // The editor reports the click on mouseup; the gesture's own `click`
+      // event is still to come, and a popover that mounted in between reads
+      // it as an outside press and closes at once. Open after it has passed.
+      const anchor = anchorPointFromEvent(event)
+      setTimeout(() => setMenu({ tag, ...anchor }), 0)
     },
     [daily, navigateToTag],
   )
@@ -106,15 +93,15 @@ export function useTagActions(
       return
     }
     const { title, replacementLine } = convertTaggedLineToNote(lines[lineIndex]!, active.tag)
-    const templateValues = await resolveTemplateValues(null)
-    const notePath = await createTypedCollectionNote(
+    // The same birth as the table's "+ New" line: a slug path, one H1, the
+    // tag, the type's stamps and template.
+    const notePath = await createTitledCollectionNote(
       active.tag,
       graph.generation,
-      {},
+      title,
       tagType,
-      templateValues,
+      await resolveTemplateValues(null),
     )
-    await retitleNote(notePath, title, graph.generation)
     lines[lineIndex] = replacementLine
     const nextBody = lines.join('\n')
     const nextSource = raw === null ? nextBody : `---\n${raw}\n---\n${nextBody}`

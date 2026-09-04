@@ -30,6 +30,12 @@ describe('convertTaggedLineToNote', () => {
     })
   })
 
+  it('flattens wiki links inside the line so the title is itself linkable', () => {
+    const result = convertTaggedLineToNote('Lunch with [[James Clear|James]] #person', 'person')
+    expect(result.title).toBe('Lunch with James')
+    expect(result.replacementLine).toBe('[[Lunch with James]] #person')
+  })
+
   it('leaves other tags on the line untouched', () => {
     expect(convertTaggedLineToNote('Standup with Sarah #meeting #urgent', 'meeting')).toEqual({
       title: 'Standup with Sarah #urgent',

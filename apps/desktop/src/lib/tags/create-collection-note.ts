@@ -8,12 +8,14 @@ import {
   newNoteId,
   readNote,
   splitFrontmatter,
+  stripLeadingHeading,
   untitledNotePath,
   untitledNoteSeed,
   upsertFrontmatter,
   type TagType,
   type TemplatePlaceholderValues,
 } from '@reflect/core'
+import { commitNoteFrontmatter } from '@/lib/note-frontmatter'
 
 /**
  * Birth a note as a collection row: untitled seed (or the type's bound
@@ -69,10 +71,19 @@ export async function createTitledCollectionNote(
   type: TagType | null | undefined,
   values: TemplatePlaceholderValues,
 ): Promise<string> {
-  const body = await bodyForCollectionCreate(type, { ...values, title }, generation)
+  // `createNoteWithTitle` writes the H1 and mints the `id:` itself, so the
+  // template (or untitled seed) contributes only its body under the title.
+  const seed = await bodyForCollectionCreate(type, { ...values, title }, generation)
+  // The untitled seed's placeholder H1 is a bare `#` (no trailing space, by
+  // the serializer's round-trip form), which the heading stripper ignores.
+  const body = stripLeadingHeading(splitFrontmatter(seed).body.replace(/^\s*#\n/, '')).trim()
+  const tagged = appendBodyTag(body, tag) ?? body
+  const path = await createNoteWithTitle(title, generation, tagged)
   const stamps = createdStampValues(type)
-  const seeded = Object.keys(stamps).length === 0 ? body : upsertFrontmatter(body, stamps)
-  return await createNoteWithTitle(title, generation, appendBodyTag(seeded, tag) ?? seeded)
+  if (Object.keys(stamps).length > 0) {
+    await commitNoteFrontmatter(path, { properties: stamps }, generation)
+  }
+  return path
 }
 
 /**

@@ -185,6 +185,40 @@ the discoverability deficit the collections analysis had named.
   reading that; only surfaces that render a collection substitute the
   empty schema.
 
+## Amendment B (2026-09-04) — The table is the schema's everyday door; the daily loop
+
+User decision after a gap review against Tana and Notion: the data model
+was ahead of the gestures. This amendment records the gestures, not new
+storage.
+
+- **Schema edits from the table.** The header's "+" takes a name and a
+  type and appends the property (`addTagProperty`, the dialog's own
+  writer); a column's menu sorts, hides, edits (the dialog), or deletes it.
+  The dialog remains the only place for options, targets, rollups, and
+  formulas.
+- **Rows from the table.** The last line is "+ New": a title typed there
+  births a note at a slug path with the tag, the type's `created` stamps,
+  and its template body — nothing is written until Enter.
+- **Sort is a chain.** `collectionSorts[tag]` and a saved view's `sorts`
+  are arrays (a pre-chain single object parses as a one-key chain); the
+  fence takes repeated `sort:` lines. SQL orders by the head; a longer
+  chain re-sorts the materialized rows with the same semantics
+  (`compareCollectionEntries`).
+- **Filters match all or any.** A second condition shows an All/Any
+  switch; the fence takes `match: any`; saved views carry `match`.
+- **The side peek.** Exactly one selected row on All Notes or a tag page
+  previews in the context rail's Details panel (title, fields, body,
+  Open) through a per-window store (`peek-store.ts`); the route itself
+  still carries no note.
+- **The tag page shows its definition body.** `tags/<name>.md`'s body
+  renders under the header with an Edit link — one page per supertag,
+  Tana's shape.
+- **A daily line becomes a row.** Clicking a `#tag` inside a daily offers
+  "Turn this line into a #tag note": the line's text (tag stripped) titles
+  a new note carrying the tag, and the line becomes `[[Title]] #tag`, so
+  the daily keeps its pointer and its membership. The note stays the
+  instance; block-level instances remain undecided.
+
 ## Known consequences
 
 - Retitling a definition note through the ordinary rename pipeline would move

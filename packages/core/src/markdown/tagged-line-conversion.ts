@@ -1,4 +1,5 @@
 import { foldTag } from './keys'
+import { wikiLinkTargetForTitle } from './note-title'
 
 /** The same tag grammar `body-tag.ts` scans for, anchored to one candidate. */
 const TAG_TOKEN = /(?:^|\s)#(\p{L}[\p{L}\p{N}/_-]*)/gu
@@ -20,9 +21,11 @@ export interface TaggedLineConversion {
  * The title is the line's text with every occurrence of `#tag` (fold-matched,
  * so `#Meeting` and `#meeting` both count) removed and whitespace collapsed —
  * "Untitled" when nothing is left, matching the app's normal untitled-note
- * seed. The replacement keeps the line's leading list marker (if any) and the
- * tag itself, so the daily stays a member of the collection through a wiki
- * link instead of losing the row.
+ * seed. Wiki links inside the line flatten to their text, so the title can
+ * itself be a wiki link target (`[[Lunch with [[Sam]]]]` is no link). The
+ * replacement keeps the line's leading list marker (if any) and the tag
+ * itself, so the daily stays a member of the collection through a wiki link
+ * instead of losing the row.
  *
  * Pure and unit-tested; the caller owns locating the line and writing it back.
  */
@@ -35,7 +38,7 @@ export function convertTaggedLineToNote(line: string, tag: string): TaggedLineCo
     .replaceAll(TAG_TOKEN, (full, tagName: string) => (foldTag(tagName) === wanted ? '' : full))
     .replaceAll(/\s+/g, ' ')
     .trim()
-  const title = withoutTag === '' ? 'Untitled' : withoutTag
+  const title = withoutTag === '' ? 'Untitled' : wikiLinkTargetForTitle(withoutTag)
   return {
     title,
     replacementLine: `${marker}[[${title}]] #${tag}`,

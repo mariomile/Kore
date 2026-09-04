@@ -115,7 +115,14 @@ describe('EmbeddedCollection', () => {
   it('renders shelf rows for a fence with a group: line (Plan 29 V1b)', async () => {
     const view = await render(
       <EmbeddedCollection
-        embed={{ tag: 'book', view: 'table', sorts: [], group: 'status', filters: [], match: 'all' }}
+        embed={{
+          tag: 'book',
+          view: 'table',
+          sorts: [],
+          group: 'status',
+          filters: [],
+          match: 'all',
+        }}
       />,
     )
     await expect.element(view.getByRole('heading', { name: /reading\s*1/ })).toBeInTheDocument()

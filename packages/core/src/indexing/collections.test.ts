@@ -3,11 +3,13 @@ import { setBridge } from '../ipc/bridge'
 import {
   getNoteProperties,
   getTagType,
+  compareCollectionEntries,
   listCollection,
   listNoteTagTypes,
   listTagTypes,
   TITLE_SORT_KEY,
   UPDATED_SORT_KEY,
+  type CollectionEntry,
 } from './collections'
 
 // A fake bridge resolves `db_query` so the tests exercise the real compiled
@@ -144,7 +146,7 @@ describe('listCollection', () => {
 
   it('sorts on a property with missing values last and the numeric key first', async () => {
     mockInvoke.mockResolvedValueOnce([]).mockResolvedValueOnce([])
-    await listCollection('book', { key: 'rating', direction: 'desc' })
+    await listCollection('book', [{ key: 'rating', direction: 'desc' }])
 
     const [, args] = mockInvoke.mock.calls[0]!
     const sql = String(args['sql'])
@@ -160,14 +162,14 @@ describe('listCollection', () => {
 
   it('sorts on the built-in Title and Updated sentinels without a join', async () => {
     mockInvoke.mockResolvedValueOnce([]).mockResolvedValueOnce([])
-    await listCollection('book', { key: TITLE_SORT_KEY, direction: 'asc' })
+    await listCollection('book', [{ key: TITLE_SORT_KEY, direction: 'asc' }])
     const titleSql = String(mockInvoke.mock.calls[0]![1]['sql'])
     expect(titleSql).toContain('"notes"."title" collate nocase asc')
     expect(titleSql).not.toContain('sort_property')
 
     mockInvoke.mockClear()
     mockInvoke.mockResolvedValueOnce([]).mockResolvedValueOnce([])
-    await listCollection('book', { key: UPDATED_SORT_KEY, direction: 'desc' })
+    await listCollection('book', [{ key: UPDATED_SORT_KEY, direction: 'desc' }])
     const updatedSql = String(mockInvoke.mock.calls[0]![1]['sql'])
     expect(updatedSql).toContain('"notes"."mtime" desc')
     expect(updatedSql).not.toContain('sort_property')
@@ -175,7 +177,7 @@ describe('listCollection', () => {
 
   it('prefilters private rows in SQL when asked', async () => {
     mockInvoke.mockResolvedValueOnce([]).mockResolvedValueOnce([])
-    await listCollection('book', null, { excludePrivate: true })
+    await listCollection('book', [], { excludePrivate: true })
     const sql = String(mockInvoke.mock.calls[0]![1]['sql'])
     expect(sql).toContain('"notes"."is_private" =')
   })
@@ -184,5 +186,42 @@ describe('listCollection', () => {
     mockInvoke.mockResolvedValueOnce([])
     expect(await listCollection('book')).toEqual([])
     expect(mockInvoke).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('compareCollectionEntries', () => {
+  const row = (
+    path: string,
+    mtime: number,
+    properties: CollectionEntry['properties'],
+  ): CollectionEntry => ({ path, title: path, mtime, isPinned: false, properties })
+  const rows = [
+    row('a', 1, { status: { value: 'done', valueType: 'string', valueNumber: null } }),
+    row('b', 2, {
+      status: { value: 'done', valueType: 'string', valueNumber: null },
+      rating: { value: '5', valueType: 'number', valueNumber: 5 },
+    }),
+    row('c', 3, {
+      status: { value: 'active', valueType: 'string', valueNumber: null },
+      rating: { value: '3', valueType: 'number', valueNumber: 3 },
+    }),
+    row('d', 4, {}),
+  ]
+
+  it('breaks the first key’s ties with the second, missing values last', () => {
+    const sorted = [...rows].sort(
+      compareCollectionEntries([
+        { key: 'status', direction: 'asc' },
+        { key: 'rating', direction: 'desc' },
+      ]),
+    )
+    expect(sorted.map((entry) => entry.path)).toEqual(['c', 'b', 'a', 'd'])
+  })
+
+  it('sorts on the built-in sentinels and keeps newest first on a full tie', () => {
+    const byTitle = [...rows].sort(compareCollectionEntries([{ key: TITLE_SORT_KEY, direction: 'desc' }]))
+    expect(byTitle.map((entry) => entry.path)).toEqual(['d', 'c', 'b', 'a'])
+    const tied = [...rows].sort(compareCollectionEntries([{ key: 'missing', direction: 'asc' }]))
+    expect(tied.map((entry) => entry.path)).toEqual(['d', 'c', 'b', 'a'])
   })
 })

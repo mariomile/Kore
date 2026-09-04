@@ -836,7 +836,7 @@ describe('list_collection', () => {
       readNoteFn: async () => 'a public body\n',
     })
     const output = await runCollection(tools, { tag: 'book', sortBy: 'rating', limit: 2 })
-    expect(seenSorts).toEqual([{ key: 'rating', direction: 'asc' }])
+    expect(seenSorts).toEqual([[{ key: 'rating', direction: 'asc' }]])
     if (!output.ok) {
       throw new Error(`unexpected refusal: ${output.error}`)
     }

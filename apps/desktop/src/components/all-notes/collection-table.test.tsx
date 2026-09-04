@@ -97,7 +97,7 @@ describe('CollectionTable', () => {
         tag="book"
         type={BOOK_TYPE}
         selection={selection()}
-        sort={null}
+        sorts={[]}
         columnWidths={{}}
         onColumnWidthChange={() => {}}
         onEditSchema={() => {}}
@@ -127,7 +127,7 @@ describe('CollectionTable', () => {
         tag="book"
         type={BOOK_TYPE}
         selection={selection()}
-        sort={null}
+        sorts={[]}
         columnWidths={{}}
         onColumnWidthChange={() => {}}
         onEditSchema={() => {}}
@@ -153,7 +153,7 @@ describe('CollectionTable', () => {
         tag="book"
         type={BOOK_TYPE}
         selection={selection()}
-        sort={null}
+        sorts={[]}
         columnWidths={{}}
         onColumnWidthChange={() => {}}
         onEditSchema={() => {}}
@@ -182,7 +182,7 @@ describe('CollectionTable', () => {
         tag="book"
         type={BOOK_TYPE}
         selection={selection()}
-        sort={null}
+        sorts={[]}
         columnWidths={{}}
         onColumnWidthChange={() => {}}
         onEditSchema={() => {}}
@@ -196,7 +196,7 @@ describe('CollectionTable', () => {
       />,
     )
     await view.getByRole('button', { name: /Sort by Rating/ }).click()
-    expect(onSortChange).toHaveBeenLastCalledWith({ key: 'rating', direction: 'asc' })
+    expect(onSortChange).toHaveBeenLastCalledWith([{ key: 'rating', direction: 'asc' }])
     await view.unmount()
 
     const ascending = await render(
@@ -205,7 +205,7 @@ describe('CollectionTable', () => {
         tag="book"
         type={BOOK_TYPE}
         selection={selection()}
-        sort={{ key: 'rating', direction: 'asc' }}
+        sorts={[{ key: 'rating', direction: 'asc' }]}
         columnWidths={{}}
         onColumnWidthChange={() => {}}
         onEditSchema={() => {}}
@@ -219,7 +219,7 @@ describe('CollectionTable', () => {
       />,
     )
     await ascending.getByRole('button', { name: /Sort by Rating/ }).click()
-    expect(onSortChange).toHaveBeenLastCalledWith({ key: 'rating', direction: 'desc' })
+    expect(onSortChange).toHaveBeenLastCalledWith([{ key: 'rating', direction: 'desc' }])
     await ascending.unmount()
 
     const descending = await render(
@@ -228,7 +228,7 @@ describe('CollectionTable', () => {
         tag="book"
         type={BOOK_TYPE}
         selection={selection()}
-        sort={{ key: 'rating', direction: 'desc' }}
+        sorts={[{ key: 'rating', direction: 'desc' }]}
         columnWidths={{}}
         onColumnWidthChange={() => {}}
         onEditSchema={() => {}}
@@ -242,7 +242,7 @@ describe('CollectionTable', () => {
       />,
     )
     await descending.getByRole('button', { name: /Sort by Rating/ }).click()
-    expect(onSortChange).toHaveBeenLastCalledWith(null)
+    expect(onSortChange).toHaveBeenLastCalledWith([])
   })
 
   it('opens a note from its subject and an editor from a property cell', async () => {
@@ -253,7 +253,7 @@ describe('CollectionTable', () => {
         tag="book"
         type={BOOK_TYPE}
         selection={selection()}
-        sort={null}
+        sorts={[]}
         columnWidths={{}}
         onColumnWidthChange={() => {}}
         onEditSchema={() => {}}
@@ -300,7 +300,7 @@ describe('CollectionTable — built-in sorts, footer, add property', () => {
         tag="book"
         type={BOOK_TYPE}
         selection={selection()}
-        sort={null}
+        sorts={[]}
         columnWidths={{}}
         onColumnWidthChange={() => {}}
         onEditSchema={() => {}}
@@ -314,9 +314,9 @@ describe('CollectionTable — built-in sorts, footer, add property', () => {
       />,
     )
     await view.getByRole('button', { name: 'Sort by Title' }).click()
-    expect(onSortChange).toHaveBeenLastCalledWith({ key: '$title', direction: 'asc' })
+    expect(onSortChange).toHaveBeenLastCalledWith([{ key: '$title', direction: 'asc' }])
     await view.getByRole('button', { name: 'Sort by Updated' }).click()
-    expect(onSortChange).toHaveBeenLastCalledWith({ key: '$updated', direction: 'asc' })
+    expect(onSortChange).toHaveBeenLastCalledWith([{ key: '$updated', direction: 'asc' }])
   })
 
   it('renders the aggregate footer and the add-property entry point', async () => {
@@ -327,7 +327,7 @@ describe('CollectionTable — built-in sorts, footer, add property', () => {
         tag="book"
         type={BOOK_TYPE}
         selection={selection()}
-        sort={null}
+        sorts={[]}
         columnWidths={{}}
         onColumnWidthChange={() => {}}
         onEditSchema={onEditSchema}
@@ -356,7 +356,7 @@ describe('CollectionTable — built-in sorts, footer, add property', () => {
         tag="book"
         type={BOOK_TYPE}
         selection={selection()}
-        sort={null}
+        sorts={[]}
         columnWidths={{}}
         onColumnWidthChange={() => {}}
         onEditSchema={() => {}}
@@ -385,7 +385,7 @@ describe('CollectionTable — built-in sorts, footer, add property', () => {
         tag="book"
         type={BOOK_TYPE}
         selection={selection()}
-        sort={null}
+        sorts={[]}
         columnWidths={{}}
         onColumnWidthChange={() => {}}
         onEditSchema={() => {}}
@@ -401,7 +401,7 @@ describe('CollectionTable — built-in sorts, footer, add property', () => {
     )
     await view.getByRole('button', { name: 'Column options for Author' }).click()
     await page.getByRole('menuitem', { name: 'Sort descending' }).click()
-    expect(onSortChange).toHaveBeenCalledWith({ key: 'author', direction: 'desc' })
+    expect(onSortChange).toHaveBeenCalledWith([{ key: 'author', direction: 'desc' }])
 
     await view.getByRole('button', { name: 'Column options for Author' }).click()
     await page.getByRole('menuitem', { name: 'Hide column' }).click()
@@ -420,7 +420,7 @@ describe('CollectionTable — built-in sorts, footer, add property', () => {
         tag="book"
         type={BOOK_TYPE}
         selection={selection()}
-        sort={null}
+        sorts={[]}
         columnWidths={{}}
         onColumnWidthChange={() => {}}
         onEditSchema={() => {}}
@@ -455,7 +455,7 @@ describe('CollectionTable — built-in sorts, footer, add property', () => {
         tag="book"
         type={BOOK_TYPE}
         selection={selection()}
-        sort={null}
+        sorts={[]}
         columnWidths={{ author: 20 }}
         onColumnWidthChange={() => {}}
         onEditSchema={() => {}}
@@ -480,7 +480,7 @@ describe('CollectionTable — built-in sorts, footer, add property', () => {
         tag="book"
         type={BOOK_TYPE}
         selection={selection()}
-        sort={null}
+        sorts={[]}
         columnWidths={{}}
         onColumnWidthChange={() => {}}
         onEditSchema={() => {}}

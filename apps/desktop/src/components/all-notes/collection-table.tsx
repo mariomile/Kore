@@ -45,8 +45,9 @@ interface CollectionTableProps {
   /** The tag's schema, hidden columns already filtered out. */
   type: TagType
   selection: ListSelection
-  sort: CollectionSort | null
-  onSortChange: (sort: CollectionSort | null) => void
+  /** The sort chain; the second key breaks the first's ties. Empty = recall order. */
+  sorts: readonly CollectionSort[]
+  onSortChange: (sorts: readonly CollectionSort[]) => void
   /** Manual column widths (rem, per property key) — a header-edge drag. */
   columnWidths: Record<string, number>
   onColumnWidthChange: (key: string, rem: number) => void
@@ -88,7 +89,7 @@ export function CollectionTable({
   tag,
   type,
   selection,
-  sort,
+  sorts,
   onSortChange,
   columnWidths,
   onColumnWidthChange,
@@ -198,14 +199,24 @@ export function CollectionTable({
     })
   }, [registerScrollToIndex, rowItemIndex])
 
+  // A header click owns the whole chain: asc → desc → off on this key alone.
+  const primary = sorts[0] ?? null
   const cycleSort = (key: string): void => {
-    if (sort === null || sort.key !== key) {
-      onSortChange({ key, direction: 'asc' })
-    } else if (sort.direction === 'asc') {
-      onSortChange({ key, direction: 'desc' })
+    if (primary === null || primary.key !== key || sorts.length > 1) {
+      onSortChange([{ key, direction: 'asc' }])
+    } else if (primary.direction === 'asc') {
+      onSortChange([{ key, direction: 'desc' }])
     } else {
-      onSortChange(null)
+      onSortChange([])
     }
+  }
+  /** A column menu's sort: the head of a new chain, or the next link of this one. */
+  const sortBy = (key: string, direction: 'asc' | 'desc', then: boolean): void => {
+    onSortChange(
+      then
+        ? [...sorts.filter((sort) => sort.key !== key), { key, direction }]
+        : [{ key, direction }],
+    )
   }
 
   const startResize = (key: string) => (event: ReactPointerEvent<HTMLElement>) => {
@@ -235,14 +246,17 @@ export function CollectionTable({
   }
 
   const sortButton = (key: string, name: string, className?: string): ReactNode => {
-    const active = sort?.key === key
+    const position = sorts.findIndex((sort) => sort.key === key)
+    const sort = position === -1 ? null : sorts[position]!
+    const active = sort !== null
     // A plain button carries no columnheader role, so `aria-sort` wouldn't
-    // apply — the sort state rides the accessible name.
+    // apply — the sort state rides the accessible name; a link past the
+    // chain's head says so.
     const sortState = !active
       ? ''
-      : sort.direction === 'asc'
-        ? ', sorted ascending'
-        : ', sorted descending'
+      : `${sort.direction === 'asc' ? ', sorted ascending' : ', sorted descending'}${
+          position > 0 ? ` (then by, ${position + 1})` : ''
+        }`
     return (
       <button
         type="button"
@@ -261,6 +275,11 @@ export function CollectionTable({
           ) : (
             <ArrowDown aria-hidden className="size-3 shrink-0" />
           )
+        ) : null}
+        {position > 0 ? (
+          <span aria-hidden className="text-2xs tabular-nums text-text-muted">
+            {position + 1}
+          </span>
         ) : null}
       </button>
     )
@@ -312,7 +331,8 @@ export function CollectionTable({
             {sortButton(property.key, property.name)}
             <ColumnHeaderMenu
               property={property}
-              onSort={(direction) => onSortChange({ key: property.key, direction })}
+              onSort={(direction, then) => sortBy(property.key, direction, then)}
+              sorted={sorts.length > 0}
               onHide={onHideColumn === undefined ? undefined : () => onHideColumn(property.key)}
               onEditSchema={onEditSchema}
               onDelete={() => onDeleteProperty(property.key)}

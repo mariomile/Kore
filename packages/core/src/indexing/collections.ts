@@ -55,22 +55,82 @@ export const TITLE_SORT_KEY = '$title'
 export const UPDATED_SORT_KEY = '$updated'
 
 /**
- * The sort `listCollection` should actually run. An `updated` column stores
+ * The sorts `listCollection` should actually run. An `updated` column stores
  * nothing — its cells are attached from the row's mtime — so a sort on its
  * key rides the built-in mtime sentinel instead of the (empty) property
  * join, which would read every row as "missing, last".
  */
-export function effectiveCollectionSort(
+export function effectiveCollectionSorts(
   type: TagType | null,
-  sort: CollectionSort | null,
-): CollectionSort | null {
-  if (sort === null || type === null) {
-    return sort
+  sorts: readonly CollectionSort[],
+): CollectionSort[] {
+  if (type === null) {
+    return [...sorts]
   }
-  const updated = type.properties.some(
-    (property) => property.type === 'updated' && property.key === sort.key,
+  return sorts.map((sort) =>
+    type.properties.some((property) => property.type === 'updated' && property.key === sort.key)
+      ? { key: UPDATED_SORT_KEY, direction: sort.direction }
+      : sort,
   )
-  return updated ? { key: UPDATED_SORT_KEY, direction: sort.direction } : sort
+}
+
+/** One cell as the sort sees it: a number when the row stored one, else its text. */
+function sortValue(entry: CollectionEntry, key: string): number | string | null {
+  if (key === TITLE_SORT_KEY) {
+    return entry.title
+  }
+  if (key === UPDATED_SORT_KEY) {
+    return entry.mtime
+  }
+  const value = entry.properties[key]
+  if (value === undefined || value.value === '') {
+    return null
+  }
+  return value.valueNumber ?? value.value
+}
+
+/**
+ * A comparator for a sort chain — the second key breaks the first's ties,
+ * and so on — with the SQL ordering's semantics on every key: missing
+ * values last regardless of direction, numbers before strings, strings
+ * case-insensitive; a fully tied pair keeps newest-first.
+ */
+export function compareCollectionEntries(
+  sorts: readonly CollectionSort[],
+): (left: CollectionEntry, right: CollectionEntry) => number {
+  return (left, right) => {
+    for (const sort of sorts) {
+      const a = sortValue(left, sort.key)
+      const b = sortValue(right, sort.key)
+      if (a === null && b === null) {
+        continue
+      }
+      if (a === null) {
+        return 1
+      }
+      if (b === null) {
+        return -1
+      }
+      const sign = sort.direction === 'desc' ? -1 : 1
+      if (typeof a === 'number' && typeof b === 'number') {
+        if (a !== b) {
+          return (a - b) * sign
+        }
+        continue
+      }
+      if (typeof a === 'number') {
+        return -1
+      }
+      if (typeof b === 'number') {
+        return 1
+      }
+      const order = a.localeCompare(b, undefined, { sensitivity: 'base' })
+      if (order !== 0) {
+        return order * sign
+      }
+    }
+    return right.mtime - left.mtime
+  }
 }
 
 const propertyValueTypes: ReadonlySet<string> = new Set(['string', 'number', 'boolean', 'list'])
@@ -230,10 +290,13 @@ export interface ListCollectionOptions {
  */
 export async function listCollection(
   tag: string,
-  sort: CollectionSort | null = null,
+  sorts: readonly CollectionSort[] = [],
   options: ListCollectionOptions = {},
 ): Promise<CollectionEntry[]> {
   const tagKey = foldTag(tag)
+  // SQL orders by the chain's head; a longer chain re-sorts the (uncapped,
+  // fully materialized) rows in memory below with the same semantics.
+  const sort = sorts[0] ?? null
   let baseQuery = db
     .selectFrom('tags')
     .innerJoin('notes', 'notes.path', 'tags.notePath')
@@ -322,11 +385,12 @@ export async function listCollection(
     propertiesByPath.set(row.notePath, properties)
   }
 
-  return rows.map((row) => ({
+  const entries = rows.map((row) => ({
     path: row.path,
     title: row.title,
     mtime: row.mtime,
     isPinned: row.isPinned !== 0,
     properties: propertiesByPath.get(row.path) ?? {},
   }))
+  return sorts.length > 1 ? entries.sort(compareCollectionEntries(sorts)) : entries
 }

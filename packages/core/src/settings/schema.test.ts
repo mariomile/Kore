@@ -431,6 +431,15 @@ describe('settingsSchema', () => {
     })
   })
 
+  describe('collectionSorts', () => {
+    it('parses a pre-chain single sort as a one-key chain', () => {
+      const parsed = settingsSchema.parse({
+        collectionSorts: { book: { key: 'rating', direction: 'desc' }, bad: 'nope' },
+      })
+      expect(parsed.collectionSorts).toEqual({ book: [{ key: 'rating', direction: 'desc' }] })
+    })
+  })
+
   describe('collectionSavedViews', () => {
     it('applies a pre-V1b saved view as ungrouped rows (tableGroup defaults null)', () => {
       const parsed = settingsSchema.parse({

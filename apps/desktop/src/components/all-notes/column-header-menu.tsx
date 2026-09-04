@@ -11,7 +11,10 @@ import {
 
 interface ColumnHeaderMenuProps {
   property: TagProperty
-  onSort: (direction: 'asc' | 'desc') => void
+  /** `then` appends this key to the chain instead of starting a new one. */
+  onSort: (direction: 'asc' | 'desc', then: boolean) => void
+  /** Whether a chain exists to append to — "Then by" only shows when it does. */
+  sorted: boolean
   /** Absent where columns cannot hide (the embedded fence). */
   onHide?: (() => void) | undefined
   onEditSchema: () => void
@@ -26,6 +29,7 @@ interface ColumnHeaderMenuProps {
 export function ColumnHeaderMenu({
   property,
   onSort,
+  sorted,
   onHide,
   onEditSchema,
   onDelete,
@@ -45,14 +49,26 @@ export function ColumnHeaderMenu({
         }
       />
       <DropdownMenuContent align="start" sideOffset={4} className="w-48">
-        <DropdownMenuItem onClick={() => onSort('asc')}>
+        <DropdownMenuItem onClick={() => onSort('asc', false)}>
           <ArrowUp aria-hidden className="size-3.5" />
           Sort ascending
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onSort('desc')}>
+        <DropdownMenuItem onClick={() => onSort('desc', false)}>
           <ArrowDown aria-hidden className="size-3.5" />
           Sort descending
         </DropdownMenuItem>
+        {sorted ? (
+          <>
+            <DropdownMenuItem onClick={() => onSort('asc', true)}>
+              <ArrowUp aria-hidden className="size-3.5" />
+              Then by, ascending
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onSort('desc', true)}>
+              <ArrowDown aria-hidden className="size-3.5" />
+              Then by, descending
+            </DropdownMenuItem>
+          </>
+        ) : null}
         <DropdownMenuSeparator />
         {onHide === undefined ? null : (
           <DropdownMenuItem onClick={onHide}>

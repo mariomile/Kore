@@ -32,12 +32,17 @@ export interface CollectionFilter {
   text: string
 }
 
+/** How the filters combine: every one must hold (`all`), or any one (`any`). */
+export type CollectionFilterMatch = 'all' | 'any'
+
 interface CollectionFilterMenuProps {
   type: TagType
   /** The unfiltered rows — the value inventory is derived from them. */
   entries: readonly CollectionEntry[] | undefined
   filters: readonly CollectionFilter[]
   onChange: (filters: CollectionFilter[]) => void
+  match: CollectionFilterMatch
+  onMatchChange: (match: CollectionFilterMatch) => void
 }
 
 const MAX_VALUES_PER_PROPERTY = 12
@@ -102,20 +107,30 @@ function matches(property: TagProperty, entry: CollectionEntry, filter: Collecti
 }
 
 /**
- * Apply the active filters: equality picks on the same property OR together
- * ("status is done, or reading"), every other condition must hold, and
- * properties AND across each other — so `status: done|reading AND rating > 3`
- * reads the way it looks.
+ * Apply the active filters. Matching `all`: equality picks on the same
+ * property OR together ("status is done, or reading"), every other condition
+ * must hold, and properties AND across each other — so `status: done|reading
+ * AND rating > 3` reads the way it looks. Matching `any`: a row stays when
+ * any one condition holds.
  */
 export function applyCollectionFilters(
   type: TagType,
   entries: readonly CollectionEntry[],
   filters: readonly CollectionFilter[],
+  match: CollectionFilterMatch = 'all',
 ): CollectionEntry[] {
   if (filters.length === 0) {
     return [...entries]
   }
   const propertiesByKey = new Map(type.properties.map((property) => [property.key, property]))
+  if (match === 'any') {
+    return entries.filter((entry) =>
+      filters.some((filter) => {
+        const property = propertiesByKey.get(filter.key)
+        return property !== undefined && matches(property, entry, filter)
+      }),
+    )
+  }
   const byKey = new Map<string, CollectionFilter[]>()
   for (const filter of filters) {
     byKey.set(filter.key, [...(byKey.get(filter.key) ?? []), filter])
@@ -159,6 +174,8 @@ export function CollectionFilterMenu({
   entries,
   filters,
   onChange,
+  match,
+  onMatchChange,
 }: CollectionFilterMenuProps): ReactElement | null {
   const [open, setOpen] = useState(false)
   // Every property joins the condition builder — a checkbox filters as
@@ -240,6 +257,19 @@ export function CollectionFilterMenu({
 
   return (
     <div className="flex items-center gap-1.5">
+      {filters.length > 1 ? (
+        // Two conditions raise the question the chips alone cannot answer:
+        // must every one hold, or any one? One press flips it.
+        <button
+          type="button"
+          aria-label={match === 'all' ? 'Matching all filters' : 'Matching any filter'}
+          title={match === 'all' ? 'Every filter must hold' : 'Any filter is enough'}
+          onClick={() => onMatchChange(match === 'all' ? 'any' : 'all')}
+          className="rounded-full px-2 py-1 text-xs font-medium text-text-muted transition-colors hover:bg-surface-hover hover:text-text"
+        >
+          {match === 'all' ? 'All' : 'Any'}
+        </button>
+      ) : null}
       {filters.map((filter) => (
         <button
           key={`${filter.key}:${filter.operator}:${filter.text}`}

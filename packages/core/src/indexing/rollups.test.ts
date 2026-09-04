@@ -5,7 +5,7 @@ import {
   attachRollups,
   attachTimestampColumns,
 } from './rollups'
-import { effectiveCollectionSort, UPDATED_SORT_KEY } from './collections'
+import { effectiveCollectionSorts, UPDATED_SORT_KEY } from './collections'
 import type { CollectionEntry, CollectionValue } from './collections'
 import type { TagType } from '../tags'
 
@@ -93,7 +93,7 @@ describe('attachReverseRelations', () => {
     })
     // No linkers: the key stays absent, so the footer never counts it filled.
     expect(rows[1]?.properties['people']).toBeUndefined()
-    expect(listCollection).toHaveBeenCalledWith('person', null)
+    expect(listCollection).toHaveBeenCalledWith('person', [])
   })
 })
 
@@ -139,7 +139,7 @@ describe('attachTimestampColumns', () => {
   })
 })
 
-describe('effectiveCollectionSort', () => {
+describe('effectiveCollectionSorts', () => {
   const type: TagType = {
     properties: [
       { name: 'Touched', key: 'touched', type: 'updated' },
@@ -148,22 +148,19 @@ describe('effectiveCollectionSort', () => {
   }
 
   it('reroutes an updated-column sort onto the mtime sentinel', () => {
-    expect(effectiveCollectionSort(type, { key: 'touched', direction: 'desc' })).toEqual({
-      key: UPDATED_SORT_KEY,
-      direction: 'desc',
-    })
+    expect(effectiveCollectionSorts(type, [{ key: 'touched', direction: 'desc' }])).toEqual([
+      { key: UPDATED_SORT_KEY, direction: 'desc' },
+    ])
   })
 
   it('leaves every other sort (and no sort) alone', () => {
-    expect(effectiveCollectionSort(type, { key: 'due', direction: 'asc' })).toEqual({
-      key: 'due',
-      direction: 'asc',
-    })
-    expect(effectiveCollectionSort(type, null)).toBeNull()
-    expect(effectiveCollectionSort(null, { key: 'touched', direction: 'asc' })).toEqual({
-      key: 'touched',
-      direction: 'asc',
-    })
+    expect(effectiveCollectionSorts(type, [{ key: 'due', direction: 'asc' }])).toEqual([
+      { key: 'due', direction: 'asc' },
+    ])
+    expect(effectiveCollectionSorts(type, [])).toEqual([])
+    expect(effectiveCollectionSorts(null, [{ key: 'touched', direction: 'asc' }])).toEqual([
+      { key: 'touched', direction: 'asc' },
+    ])
   })
 })
 

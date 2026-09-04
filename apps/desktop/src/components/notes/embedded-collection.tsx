@@ -57,7 +57,7 @@ export function EmbeddedCollection({ embed }: EmbeddedCollectionProps): ReactEle
   const navigateNoteLink = useNoteLinkNavigation()
   // The fence's own arrangement seeds the widget; a header click still
   // re-sorts this render of it (the fence text is not rewritten).
-  const [sort, setSort] = useState<CollectionSort | null>(embed.sort)
+  const [sorts, setSorts] = useState<readonly CollectionSort[]>(embed.sorts)
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({})
   const [editingSchema, setEditingSchema] = useState(false)
   const { graph } = useGraph()
@@ -67,15 +67,15 @@ export function EmbeddedCollection({ embed }: EmbeddedCollectionProps): ReactEle
     () => queryClient.invalidateQueries({ queryKey: tagTypeQueryKey(graph?.root, embed.tag) }),
     [queryClient, graph?.root, embed.tag],
   )
-  const unfiltered = useCollection(tagType === undefined ? null : embed.tag, sort)
+  const unfiltered = useCollection(tagType === undefined ? null : embed.tag, sorts)
   const entries = useMemo(() => {
     if (unfiltered === undefined || tagType === undefined) {
       return unfiltered
     }
     // The fence's filter lines share the filter menu's vocabulary, so the
     // one applier serves both surfaces.
-    return applyCollectionFilters(tagType, unfiltered, embed.filters)
-  }, [unfiltered, tagType, embed.filters])
+    return applyCollectionFilters(tagType, unfiltered, embed.filters, embed.match)
+  }, [unfiltered, tagType, embed.filters, embed.match])
   // `group:` renders the fence's table with shelf rows (Plan 29 V1b) — only
   // a key the schema declares as single-valued groupable; anything else
   // stays flat, never a broken widget.
@@ -169,8 +169,8 @@ export function EmbeddedCollection({ embed }: EmbeddedCollectionProps): ReactEle
             tag={embed.tag}
             type={tagType}
             selection={selection}
-            sort={sort}
-            onSortChange={setSort}
+            sorts={sorts}
+            onSortChange={setSorts}
             columnWidths={columnWidths}
             onColumnWidthChange={(key, rem) =>
               setColumnWidths((current) => ({ ...current, [key]: rem }))

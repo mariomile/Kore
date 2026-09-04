@@ -48,7 +48,15 @@ export const collectionSortSettingSchema = z.object({
 })
 export type CollectionSortSetting = z.infer<typeof collectionSortSettingSchema>
 
-export type CollectionSorts = Record<string, CollectionSortSetting>
+/**
+ * A sort chain: the second key breaks the first's ties. Stored as an array;
+ * a pre-chain single object still parses as a one-key chain.
+ */
+export const collectionSortChainSchema = z
+  .union([z.array(collectionSortSettingSchema), collectionSortSettingSchema])
+  .transform((value) => (Array.isArray(value) ? value : [value]))
+
+export type CollectionSorts = Record<string, CollectionSortSetting[]>
 
 /**
  * The Collection view's sort per folded tag key (TDR 0005) — a view
@@ -63,8 +71,8 @@ export const collectionSortsSchema = z
   .transform((entries) => {
     const sorts: CollectionSorts = {}
     for (const [tagKey, value] of Object.entries(entries)) {
-      const parsed = collectionSortSettingSchema.safeParse(value)
-      if (parsed.success) {
+      const parsed = collectionSortChainSchema.safeParse(value)
+      if (parsed.success && parsed.data.length > 0) {
         sorts[tagKey] = parsed.data
       }
     }
@@ -105,12 +113,20 @@ export type SavedCollectionViewFilter = z.infer<typeof savedViewFilterSchema>
  * board grouping, and filters — applying it restores the whole lens in one
  * click. Malformed filters drop individually; a malformed view drops whole.
  */
-export const savedCollectionViewSchema = z.object({
+export const savedCollectionViewSchema = z.preprocess(
+  (value) =>
+    typeof value === 'object' && value !== null && 'sort' in value && !('sorts' in value)
+      ? { ...value, sorts: (value as { sort: unknown }).sort ?? [] }
+      : value,
+  z.object({
   id: z.string().min(1),
   name: z.string().min(1),
   view: z.enum(COLLECTION_EMBED_VIEWS),
-  sort: collectionSortSettingSchema.nullable().catch(null),
+  /** The sort chain; pre-chain saves carried one `sort` object or null. */
+  sorts: collectionSortChainSchema.catch([]),
   group: z.string().nullable().catch(null),
+  /** How the filters combine: every one must hold, or any one. */
+  match: z.enum(['all', 'any']).catch('all'),
   /** The table's row grouping (Plan 29 V1b); `null` = flat rows. Absent in
    * pre-V1b saves, so the catch keeps them applying as they always did. */
   tableGroup: z.string().nullable().catch(null),
@@ -127,7 +143,8 @@ export const savedCollectionViewSchema = z.object({
       }
       return filters
     }),
-})
+  }),
+)
 export type SavedCollectionView = z.infer<typeof savedCollectionViewSchema>
 
 /** Saved views per folded tag key, per-entry resilient at both levels. */

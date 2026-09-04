@@ -29,6 +29,7 @@ import { tagTypeQueryKey, useTagType } from '@/hooks/use-tag-type'
 import { useTemplateValues } from '@/hooks/use-template-values'
 import { createTitledCollectionNote } from '@/lib/tags/create-collection-note'
 import { addTagProperty, removeTagProperty } from '@/lib/tags/schema-edits'
+import { setPeekPath } from '@/lib/selection/peek-store'
 import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'
 import { allNotesQueryKey, allNotesTagsQueryKey } from '@/lib/notes/all-notes-query'
 import type { ModClickEvent } from '@/lib/windows/open-in-new-window'
@@ -46,6 +47,7 @@ import {
   applyCollectionFilters,
   CollectionFilterMenu,
   type CollectionFilter,
+  type CollectionFilterMatch,
 } from './collection-filter-menu'
 import {
   Select,
@@ -118,8 +120,8 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
     view,
     setViewMode,
     collectionView,
-    collectionSort,
-    setCollectionSort,
+    collectionSorts,
+    setCollectionSorts,
     setCollectionGroup,
     tableGroupProperty,
     tableGroupProperties,
@@ -219,21 +221,23 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
   // The grid isn't a collection view, but on a typed tag its cards carry
   // property chips — so the projection loads there too (Plan 28 slice 2).
   const collectionWanted = collectionView || (view === 'grid' && collectionAvailable)
-  const collection = useCollection(collectionWanted ? tag : null, collectionSort)
+  const collection = useCollection(collectionWanted ? tag : null, collectionSorts)
   // Property filters are ephemeral (unlike the persisted sort) and belong to
   // one tag's schema — a tag switch drops them at render time.
   const [collectionFilters, setCollectionFilters] = useState<CollectionFilter[]>([])
+  const [filterMatch, setFilterMatch] = useState<CollectionFilterMatch>('all')
   const [filterTag, setFilterTag] = useState(tag)
   if (filterTag !== tag) {
     setFilterTag(tag)
     setCollectionFilters([])
+    setFilterMatch('all')
   }
   const filteredCollection = useMemo(
     () =>
       collection === undefined || tagType === undefined
         ? collection
-        : applyCollectionFilters(tagType, collection, collectionFilters),
-    [collection, tagType, collectionFilters],
+        : applyCollectionFilters(tagType, collection, collectionFilters, filterMatch),
+    [collection, tagType, collectionFilters, filterMatch],
   )
 
   // The table's row shelves (Plan 29 V1b), computed here — not in the table
@@ -250,15 +254,17 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
   const { savedViews, saveCurrentView, deleteSavedView, applySavedView } = useCollectionSavedViews({
     tagKey,
     view,
-    collectionSort,
+    collectionSorts,
     boardGroupProperty,
     tableGroupProperty,
     collectionFilters,
+    filterMatch,
     setViewMode,
-    setCollectionSort,
+    setCollectionSorts,
     setCollectionGroup,
     setTableGroup,
     setCollectionFilters,
+    setFilterMatch,
   })
   const ready = notes !== undefined
   const { onScroll } = useScrollRestoration(scrollElement, ready)
@@ -330,6 +336,14 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
   useEffect(() => {
     rootRef.current?.focus({ preventScroll: true })
   }, [])
+
+  // Exactly one selected row is the side peek: the context rail previews it
+  // (Details has nothing else to say on this route). Cleared on the way out.
+  const peekPath = selectedPaths.length === 1 ? (selectedPaths[0] ?? null) : null
+  useEffect(() => {
+    setPeekPath(peekPath)
+    return () => setPeekPath(null)
+  }, [peekPath])
 
   return (
     <div
@@ -420,6 +434,8 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
                 entries={collection}
                 filters={collectionFilters}
                 onChange={setCollectionFilters}
+                match={filterMatch}
+                onMatchChange={setFilterMatch}
               />
               <CollectionViewsMenu
                 views={savedViews}
@@ -582,8 +598,8 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
                 tag={tag}
                 type={visibleTagType}
                 selection={selection}
-                sort={collectionSort}
-                onSortChange={setCollectionSort}
+                sorts={collectionSorts}
+                onSortChange={setCollectionSorts}
                 columnWidths={columnWidths}
                 onColumnWidthChange={setColumnWidth}
                 onEditSchema={() => setEditingSchema(true)}

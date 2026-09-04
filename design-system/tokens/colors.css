@@ -228,6 +228,21 @@
   --input-bg: rgba(255, 255, 255, 0.05);
 }
 
+/* CODEX — opaque neutral surfaces sampled from the reference interface. */
+:root[data-theme='codex'] {
+  --surface: #060606;
+  --surface-app: #060606;
+  --surface-sunken: #0c0c0c;
+  --surface-hover: #1b1b1b;
+  --surface-active: #1b1b1b;
+  --text: #ededed;
+  --text-secondary: #9e9e9e;
+  --text-muted: #686868;
+  --border: #141414;
+  --border-strong: #454545;
+  --input-bg: #090909;
+}
+
 /* PAPER — a warm cream writing surface on the light family. */
 :root[data-theme='paper'] {
   --surface: #fdfbf6;

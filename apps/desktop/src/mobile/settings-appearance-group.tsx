@@ -36,6 +36,7 @@ const THEME_LABELS: Record<ThemePreference, string> = {
   ink: 'Ink',
   space: 'Space',
   midnight: 'Midnight',
+  codex: 'Codex',
 }
 
 const THEME_OPTIONS: readonly SegmentedOption<ThemePreference>[] = THEME_PREFERENCE_IDS.map(

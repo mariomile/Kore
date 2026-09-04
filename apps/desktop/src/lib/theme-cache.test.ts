@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
-import { ACCENT_COLOR_IDS, DARK_THEME_IDS, UI_RADIUS_IDS } from '@reflect/core'
+import { ACCENT_COLOR_IDS, DARK_THEME_IDS, UI_RADIUS_IDS, VISUAL_THEME_IDS } from '@reflect/core'
 import {
   THEME_ACCENT_CACHE_KEY,
   THEME_GLASS_LEVEL_CACHE_KEY,
@@ -38,6 +38,9 @@ describe('VISUAL_THEME_CACHE_KEY', () => {
   it('matches the key the early theme script reads', () => {
     const script = readFileSync(THEME_INIT_PATH, 'utf8')
     expect(script).toContain(`'${VISUAL_THEME_CACHE_KEY}'`)
+    for (const theme of VISUAL_THEME_IDS) {
+      expect(script).toContain(`'${theme}'`)
+    }
   })
 })
 

@@ -233,7 +233,10 @@ export function ContextSidebar({ target }: ContextSidebarProps): ReactElement {
           embedded browser's native child webview covers the card, so a
           divider sharing those pixels would be unreachable whenever the
           Browser panel is up. */}
-      <div data-testid="context-pane-gutter" className="min-h-0 flex-1 pl-2 pb-2">
+      <div
+        data-testid="context-pane-gutter"
+        className="workspace-pane-gutter min-h-0 flex-1 pl-2 pb-2"
+      >
         <div className="app-glass-card flex h-full min-h-0 flex-col overflow-hidden rounded-xl bg-surface">
           <div
             className={cn(

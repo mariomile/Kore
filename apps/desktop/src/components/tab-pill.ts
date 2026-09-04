@@ -14,7 +14,7 @@ import { cn } from '@/lib/utils'
  */
 export function tabPillClass(active: boolean): string {
   return cn(
-    'flex h-7 max-w-[12rem] shrink items-center gap-1.5 rounded-lg px-3 text-xs font-medium',
+    'workspace-tab-pill flex h-7 max-w-[12rem] shrink items-center gap-1.5 rounded-lg px-3 text-xs font-medium',
     TAB_PILL_MIN_WIDTH,
     'transition-all duration-150 ease-swift active:scale-[0.97]',
     active

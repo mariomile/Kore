@@ -174,6 +174,14 @@ export interface TagType {
 }
 
 /**
+ * The schema of a tag with no definition note: every tag is a collection
+ * (its notes are the rows), and this is the zero-property shape a surface
+ * reads while `tags/<name>.md` does not exist yet — the first property added
+ * writes it.
+ */
+export const EMPTY_TAG_TYPE: TagType = { properties: [] }
+
+/**
  * Frontmatter keys a tag schema may never claim: the app's own metadata plus
  * the definition-note keys themselves. Kept here (not in `properties.ts`)
  * because both the schema validator and the indexer share the one set.

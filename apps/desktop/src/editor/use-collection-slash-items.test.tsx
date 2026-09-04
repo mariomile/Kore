@@ -2,16 +2,16 @@ import { renderHook } from 'vitest-browser-react'
 import { describe, expect, it, vi } from 'vitest'
 import type { NoteEditorHandle } from './note-editor'
 
-const listTagTypes = vi.hoisted(() =>
+const listNoteTags = vi.hoisted(() =>
   vi.fn(async () => [
-    { tagKey: 'book', notePath: 'tags/book.md', type: { properties: [] } },
-    { tagKey: 'project', notePath: 'tags/project.md', type: { properties: [] } },
+    { tag: 'Book', count: 2 },
+    { tag: 'project', count: 1 },
   ]),
 )
 const hasBridge = vi.hoisted(() => vi.fn(() => true))
 vi.mock('@reflect/core', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@reflect/core')>()),
-  listTagTypes,
+  listNoteTags,
   hasBridge,
 }))
 vi.mock('@/providers/graph-provider', () => ({
@@ -45,7 +45,7 @@ function fakeEditor(): NoteEditorHandle & { inserted: string[] } {
 }
 
 describe('useCollectionSlashItems', () => {
-  it('lists typed tags and inserts a collection fence on select', async () => {
+  it('lists every tag (folded) and inserts a collection fence on select', async () => {
     const editor = fakeEditor()
     const { result } = await renderHook(() => useCollectionSlashItems(() => editor))
 

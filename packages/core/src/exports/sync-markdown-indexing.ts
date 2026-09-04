@@ -128,6 +128,8 @@ export {
   displayNoteTitle,
   stripLeadingHeading,
   wikiLinkTargetForTitle,
+  convertTaggedLineToNote,
+  type TaggedLineConversion,
   scanInlineWikiLinks,
   scanInlineImages,
   scanInlineSegments,

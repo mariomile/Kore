@@ -66,6 +66,7 @@ import { NoteListContextMenu } from '@/components/notes/note-context-menu'
 import { NoteTrashDialog } from '@/components/notes/note-trash-dialog'
 import { ScrollVeil } from '@/components/scroll-veil'
 import { NewNoteButton } from './new-note-button'
+import { TagPageDescription } from './tag-page-description'
 import { TagPageTitle } from './tag-page-title'
 import { useAllNotesKeyboard } from './use-all-notes-keyboard'
 import { useCollectionSavedViews, useCollectionViewSettings } from './use-collection-view-settings'
@@ -547,6 +548,7 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
           <NewNoteButton tag={tag} />
         </div>
       </header>
+      <TagPageDescription tag={tag} />
       {/* One context menu for the whole list — rows and cards carry
           data-note-path; the menu resolves the note from the click. It wraps
           the scroll container from OUTSIDE: its wrappers are display:contents,

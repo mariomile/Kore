@@ -17,6 +17,7 @@ import type {
   MarkMode,
   SearchStatus,
   StartPendingReplacementOptions,
+  TagClickPayload,
   WikilinkHoverHit,
 } from '@meowdown/core'
 import {
@@ -190,8 +191,12 @@ interface NoteEditorProps {
    * resolution for the currently hovered link.
    */
   renderWikilinkHoverCard?: WikilinkHoverRenderer
-  /** Click on an inline `#tag`. The tag name arrives without the leading `#`. */
-  onTagClick?: (tag: string) => void
+  /**
+   * Click on an inline `#tag`. The tag name arrives without the leading `#`,
+   * plus the originating click/key `event` — hosts that need a click-anchored
+   * menu (e.g. a daily note's "turn into a note") position from it.
+   */
+  onTagClick?: (tag: string, event: MouseEvent | KeyboardEvent) => void
   /** Search notes for the `[[` autocomplete menu. */
   onWikilinkSearch?: WikilinkSearchHandler
   /** Search tags for the `#` autocomplete menu. */
@@ -349,7 +354,7 @@ export function NoteEditor({
     [],
   )
   const handleTagClick = useCallback(
-    (payload: { tag: string }) => onTagClickRef.current?.(payload.tag),
+    (payload: TagClickPayload) => onTagClickRef.current?.(payload.tag, payload.event),
     [],
   )
   const handleResolveImageUrl = useCallback(

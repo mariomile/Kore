@@ -101,6 +101,7 @@ export {
 } from './edit'
 export { retitleWikiLinks, type WikiLinkRetitleOptions } from './retitle'
 export { displayNoteTitle, stripLeadingHeading, wikiLinkTargetForTitle } from './note-title'
+export { convertTaggedLineToNote, type TaggedLineConversion } from './tagged-line-conversion'
 export { parseTaskMarker } from './task-marker'
 export {
   conflictMarkerBlockCount,

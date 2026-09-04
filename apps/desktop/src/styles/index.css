@@ -1292,11 +1292,13 @@ html[data-sidebar-resizing] aside {
 :root[data-visual-theme='flat'] .workspace-frame {
   padding-right: 0;
 }
-:root[data-visual-theme='flat'] .workspace-main {
-  background: var(--surface-app);
+:root[data-visual-theme='flat'] .workspace-tab-pill {
+  border-radius: 9999px;
 }
-:root[data-visual-theme='flat'] #workspace-sidebar + .workspace-main,
-:root[data-visual-theme='flat'] #context-sidebar {
+:root[data-visual-theme='flat'] .workspace-main {
+  background: var(--surface);
+}
+:root[data-visual-theme='flat'] #workspace-sidebar + .workspace-main {
   border-left: 1px solid var(--border);
 }
 :root[data-visual-theme='flat'] .workspace-pane-gutter {

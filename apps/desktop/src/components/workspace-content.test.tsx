@@ -95,17 +95,26 @@ beforeEach(async () => {
 
 afterEach(async () => {
   document.documentElement.removeAttribute('data-visual-theme')
+  document.documentElement.removeAttribute('data-theme')
   await page.viewport(900, 600)
 })
 
 describe('WorkspaceContent', () => {
   it('makes Flat panels square and flush with the bottom and right window edges', async () => {
     document.documentElement.setAttribute('data-visual-theme', 'flat')
+    document.documentElement.setAttribute('data-theme', 'midnight')
     const view = await render(<WorkspaceContent graph={GRAPH} />)
     const note = view.getByTestId('note-pane-gutter').element().firstElementChild!
     const context = view.getByTestId('context-pane-gutter').element().firstElementChild!
     expect(getComputedStyle(note).borderRadius).toBe('0px')
     expect(getComputedStyle(context).borderRadius).toBe('0px')
+    expect(getComputedStyle(document.querySelector('.workspace-main')!).backgroundColor).toBe(
+      'rgb(10, 10, 10)',
+    )
+    expect(
+      getComputedStyle(view.getByRole('complementary', { name: 'Context' }).element())
+        .borderLeftWidth,
+    ).toBe('0px')
     expect(note.getBoundingClientRect().bottom).toBe(window.innerHeight)
     expect(context.getBoundingClientRect().bottom).toBe(window.innerHeight)
     expect(context.getBoundingClientRect().right).toBe(window.innerWidth)

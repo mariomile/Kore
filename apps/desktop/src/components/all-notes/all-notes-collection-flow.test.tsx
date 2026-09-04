@@ -204,10 +204,9 @@ describe('Collection flow (fake bridge, no module mocks below the hooks)', () =>
   it('titles the typed tag page and opens the schema dialog from the header gear', async () => {
     const view = await render(<Screen />)
 
-    // The routed tag is the page's own title, and — the tag being typed —
-    // the schema gear sits beside it, no hover needed (no CTA either).
+    // The routed tag is the page's own title, and the schema gear sits
+    // beside it, no hover needed.
     await expect.element(view.getByRole('heading', { name: '#book' })).toBeInTheDocument()
-    expect(view.getByRole('button', { name: 'Create a collection' }).query()).toBeNull()
     await view.getByRole('button', { name: 'Configure #book' }).click()
 
     await expect.element(page.getByText('Configure #book')).toBeInTheDocument()

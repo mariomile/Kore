@@ -143,6 +143,22 @@ beforeEach(() => {
     if (sql.includes('group by')) {
       return facetRows
     }
+    // Every tag is a collection: a tag page reads its rows through the
+    // collection query (from "tags", by folded key) — no schema needed.
+    // Only `travel` has a row here, the tagged daily; property and tag-type
+    // reads fall through to the empty default.
+    if (sql.includes('from "tags"') && sql.includes('"tag_key" = ?')) {
+      return params.includes('travel')
+        ? [
+            {
+              path: taggedDailyRow.path,
+              title: taggedDailyRow.title,
+              mtime: TOKYO_MTIME,
+              isPinned: 0,
+            },
+          ]
+        : []
+    }
     return []
   })
 })
@@ -317,19 +333,23 @@ describe('AllNotesScreen', () => {
     await view.unmount()
   })
 
-  it('offers Create a collection on an untyped tag page, opening the schema dialog', async () => {
+  it('renders a tag with no definition note as a collection table, with the schema gear', async () => {
     const view = await renderScreen()
     await expect.element(view.getByText('Health Stacked')).toBeInTheDocument()
 
     await view.getByRole('button', { name: '#book' }).click()
 
-    // `#book` carries no type in this fixture, so the page offers the CTA
-    // in place of the header schema gear (TDR 0005).
-    const cta = view.getByRole('button', { name: 'Create a collection' })
-    await expect.element(cta).toBeInTheDocument()
-    expect(view.getByRole('button', { name: 'Configure #book' }).query()).toBeNull()
+    // `#book` has no definition note in this fixture, yet every tag is a
+    // collection: the page is the zero-property table (Title and Updated),
+    // no "Create a collection" step, and the header gear plus the table's
+    // "+" both open the schema dialog.
+    await expect.element(view.getByRole('button', { name: 'Sort by Title' })).toBeInTheDocument()
+    await expect.element(view.getByRole('button', { name: 'Sort by Updated' })).toBeInTheDocument()
+    expect(view.getByRole('button', { name: 'Create a collection' }).query()).toBeNull()
+    expect(view.getByRole('button', { name: 'List view' }).query()).toBeNull()
+    await expect.element(view.getByRole('button', { name: 'Add property' })).toBeInTheDocument()
 
-    await cta.click()
+    await view.getByRole('button', { name: 'Configure #book' }).click()
     await expect.element(page.getByText('Configure #book')).toBeInTheDocument()
     await view.unmount()
   })
@@ -414,8 +434,9 @@ describe('AllNotesScreen', () => {
     await page.getByRole('option', { name: /#travel/ }).click()
 
     expect(probedRoute(view)).toEqual({ kind: 'allNotes', tag: 'travel' })
+    // The tag page is its collection table: the tagged daily is a row (a
+    // title, no preview), the untagged notes are not.
     await expect.element(view.getByText('June 9, 2026')).toBeInTheDocument()
-    await expect.element(view.getByText('Daily travel notes.')).toBeInTheDocument()
     expect(view.getByText('Health Stacked').query()).toBeNull()
     // The chosen tag becomes the page's own title.
     await expect.element(view.getByRole('heading', { name: '#travel' })).toBeInTheDocument()
@@ -600,7 +621,7 @@ describe('AllNotesScreen — selection and bulk trash', () => {
     await page.getByRole('option', { name: /#travel/ }).click()
     await expect.element(view.getByText('June 9, 2026')).toBeInTheDocument()
 
-    await view.getByText('Daily travel notes.').click()
+    await view.getByRole('button', { name: 'Select note' }).click()
     expect(view.getByRole('button', { name: /Trash \(/ }).query()).toBeNull()
 
     await userEvent.keyboard('{Meta>}{Backspace}{/Meta}')

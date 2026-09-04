@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { foldTag, isDaily, listNotes, listNoteTags } from '@reflect/core'
+import { EMPTY_TAG_TYPE, foldTag, isDaily, listNotes, listNoteTags } from '@reflect/core'
 import {
   Calendar,
   Check,
@@ -70,8 +70,9 @@ interface AllNotesScreenProps {
  *
  * A routed tag renders as that tag's own page rather than "All Notes with a
  * filter on": the tag is the title (with an All notes breadcrumb back), the
- * filter tabs stay on the unfiltered view only, a typed tag carries its
- * schema gear in the header, and an untyped tag offers "Create a collection"
+ * filter tabs stay on the unfiltered view only, and the schema gear sits in
+ * the header. Every tag is a collection: a tag with no definition note
+ * renders the same table over a zero-property schema, and the header's "+"
  * in their place (TDR 0005) — the entry point that used to hide behind the
  * sidebar's hover gear.
  *
@@ -86,11 +87,13 @@ interface AllNotesScreenProps {
  */
 export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
   const { graph } = useGraph()
-  // The Collection view exists only while the routed tag has a type (TDR
-  // 0005); everywhere else a stored 'table' renders as 'list' — never a
-  // broken surface.
-  const tagType = useTagType(tag)
-  const collectionAvailable = tag !== null && tagType !== null && tagType !== undefined
+  // Every tag is a collection (TDR 0005, amended): a tag with no definition
+  // note reads as the zero-property schema, so the table always exists on a
+  // tag route. Only the unfiltered list (no tag) has no collection, and a
+  // stored 'table' renders as 'list' there — never a broken surface.
+  const loadedTagType = useTagType(tag)
+  const tagType = loadedTagType === null ? EMPTY_TAG_TYPE : loadedTagType
+  const collectionAvailable = tag !== null && tagType !== undefined
   const tagKey = tag === null ? null : foldTag(tag)
   // The persisted per-tag view preferences: active layout, sort, board
   // grouping, and the table's column layout — see use-collection-view-settings.
@@ -155,7 +158,7 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
   }
   const filteredCollection = useMemo(
     () =>
-      collection === undefined || tagType === null || tagType === undefined
+      collection === undefined || tagType === undefined
         ? collection
         : applyCollectionFilters(tagType, collection, collectionFilters),
     [collection, tagType, collectionFilters],
@@ -278,7 +281,6 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
         ) : (
           <TagPageTitle
             tag={tag}
-            typed={collectionAvailable}
             onBack={() => handleFilterSelect(null)}
             onConfigure={() => setEditingSchema(true)}
           />
@@ -353,7 +355,7 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
                 onSave={saveCurrentView}
                 onDelete={deleteSavedView}
               />
-              {view === 'table' ? (
+              {view === 'table' && tagType.properties.length > 0 ? (
                 <Popover>
                   <PopoverTrigger
                     aria-label="Columns"
@@ -402,19 +404,6 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
               </button>
             </>
           ) : null}
-          {tag !== null && tagType === null ? (
-            // The untyped tag page's one call to action (TDR 0005): give the
-            // tag a schema and the collection views light up. `undefined`
-            // (type still loading) keeps it hidden — no flash on typed tags.
-            <button
-              type="button"
-              onClick={() => setEditingSchema(true)}
-              className="flex items-center gap-1.5 rounded-full bg-accent-soft px-2.5 py-1 text-sm font-medium text-accent-soft-text transition-opacity hover:opacity-80"
-            >
-              <Layers aria-hidden className="size-3.5" />
-              Create a collection
-            </button>
-          ) : null}
           <div
             role="group"
             aria-label="Layout"
@@ -422,7 +411,7 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
           >
             {(
               [
-                // On a typed tag the collection table IS the page's table
+                // On a tag route the collection table IS the page's table
                 // (see use-collection-view-settings), so the plain list view
                 // is not offered beside it.
                 { mode: 'list', label: 'List view', Glyph: List, available: !collectionAvailable },

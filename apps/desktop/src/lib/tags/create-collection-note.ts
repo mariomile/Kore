@@ -1,6 +1,7 @@
 import {
   appendBodyTag,
   createNoteIfAbsent,
+  createNoteWithTitle,
   createdStampValues,
   expandTemplatePlaceholders,
   isTemplatePath,
@@ -53,6 +54,25 @@ export async function createTypedCollectionNote(
     { ...createdStampValues(type), ...properties },
     await bodyForCollectionCreate(type, values, generation),
   )
+}
+
+/**
+ * Birth a row already titled — the table's "+ New" line: a note named
+ * `title` at a slug path (like every create-from-title), carrying the tag,
+ * the type's `created` stamps, and its bound template's body with the
+ * title expanded into it. Returns the path.
+ */
+export async function createTitledCollectionNote(
+  tag: string,
+  generation: number,
+  title: string,
+  type: TagType | null | undefined,
+  values: TemplatePlaceholderValues,
+): Promise<string> {
+  const body = await bodyForCollectionCreate(type, { ...values, title }, generation)
+  const stamps = createdStampValues(type)
+  const seeded = Object.keys(stamps).length === 0 ? body : upsertFrontmatter(body, stamps)
+  return await createNoteWithTitle(title, generation, appendBodyTag(seeded, tag) ?? seeded)
 }
 
 /**

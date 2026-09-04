@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { EMPTY_TAG_TYPE, foldTag, isDaily, listNotes, listNoteTags } from '@reflect/core'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  EMPTY_TAG_TYPE,
+  errorMessage,
+  foldTag,
+  isDaily,
+  listNotes,
+  listNoteTags,
+  type TagPropertyType,
+} from '@reflect/core'
 import {
   Calendar,
   Check,
@@ -13,10 +21,14 @@ import {
 } from '@/components/icons'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { TagConfigDialog } from '@/components/tags/tag-config-dialog'
+import { toast } from '@/components/ui/toast'
 import { cn } from '@/lib/utils'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { useCollection } from '@/hooks/use-collection'
-import { useTagType } from '@/hooks/use-tag-type'
+import { tagTypeQueryKey, useTagType } from '@/hooks/use-tag-type'
+import { useTemplateValues } from '@/hooks/use-template-values'
+import { createTitledCollectionNote } from '@/lib/tags/create-collection-note'
+import { addTagProperty, removeTagProperty } from '@/lib/tags/schema-edits'
 import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'
 import { allNotesQueryKey, allNotesTagsQueryKey } from '@/lib/notes/all-notes-query'
 import type { ModClickEvent } from '@/lib/windows/open-in-new-window'
@@ -118,8 +130,68 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
     setColumnWidth,
     toggleColumnHidden,
   } = useCollectionViewSettings(tagKey, collectionAvailable ? tagType : null)
-  // The "+" in the table header opens the tag's schema dialog in place.
+  // The schema dialog, opened from the header gear or a column's menu.
   const [editingSchema, setEditingSchema] = useState(false)
+  const queryClient = useQueryClient()
+  const resolveTemplateValues = useTemplateValues()
+  // The one-gesture schema edits (the header's "+", a column's Delete): the
+  // same writer as the dialog, then the type query refreshes in place.
+  const refreshTagType = useCallback(async () => {
+    if (tag !== null) {
+      await queryClient.invalidateQueries({ queryKey: tagTypeQueryKey(graph?.root, tag) })
+    }
+  }, [queryClient, graph?.root, tag])
+  const addProperty = useCallback(
+    async (name: string, propertyType: TagPropertyType) => {
+      if (tag === null || graph === null) {
+        return
+      }
+      await addTagProperty(tag, graph.generation, name, propertyType)
+      await refreshTagType()
+    },
+    [tag, graph, refreshTagType],
+  )
+  const deleteProperty = useCallback(
+    async (key: string) => {
+      if (tag === null || graph === null) {
+        return
+      }
+      try {
+        await removeTagProperty(tag, graph.generation, key)
+        await refreshTagType()
+      } catch (error) {
+        toast.add({
+          type: 'error',
+          title: "Couldn't delete the property",
+          description: errorMessage(error),
+        })
+      }
+    },
+    [tag, graph, refreshTagType],
+  )
+  const createRow = useCallback(
+    async (title: string) => {
+      if (tag === null || graph === null) {
+        return
+      }
+      try {
+        await createTitledCollectionNote(
+          tag,
+          graph.generation,
+          title,
+          tagType,
+          await resolveTemplateValues(null),
+        )
+      } catch (error) {
+        toast.add({
+          type: 'error',
+          title: "Couldn't create the note",
+          description: errorMessage(error),
+        })
+      }
+    },
+    [tag, graph, tagType, resolveTemplateValues],
+  )
   const { navigate } = useRouter()
   const navigateNoteLink = useNoteLinkNavigation()
   // The scroll container lives in state, not a ref, so scroll restoration
@@ -515,6 +587,10 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
                 columnWidths={columnWidths}
                 onColumnWidthChange={setColumnWidth}
                 onEditSchema={() => setEditingSchema(true)}
+                onAddProperty={addProperty}
+                onDeleteProperty={deleteProperty}
+                onHideColumn={toggleColumnHidden}
+                onCreateRow={createRow}
                 groups={tableGroups}
                 onOpen={openNote}
                 registerScrollToIndex={registerScrollToIndex}

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { userEvent } from 'vitest/browser'
+import { page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 import type { CollectionEntry, TagType } from '@reflect/core'
 import type { ListSelection } from '@/lib/selection/use-list-selection'
@@ -76,7 +76,14 @@ const ENTRIES: CollectionEntry[] = [
   },
 ]
 
+const addProperty = vi.fn(async () => {})
+const deleteProperty = vi.fn(async () => {})
+const createRow = vi.fn(async () => {})
+
 beforeEach(() => {
+  addProperty.mockClear()
+  deleteProperty.mockClear()
+  createRow.mockClear()
   clickSelect.mockClear()
   commitProperty.mockClear()
   taskCounts.current = {}
@@ -94,6 +101,9 @@ describe('CollectionTable', () => {
         columnWidths={{}}
         onColumnWidthChange={() => {}}
         onEditSchema={() => {}}
+        onAddProperty={addProperty}
+        onDeleteProperty={deleteProperty}
+        onCreateRow={createRow}
         groups={null}
         onSortChange={() => {}}
         onOpen={() => {}}
@@ -121,6 +131,9 @@ describe('CollectionTable', () => {
         columnWidths={{}}
         onColumnWidthChange={() => {}}
         onEditSchema={() => {}}
+        onAddProperty={addProperty}
+        onDeleteProperty={deleteProperty}
+        onCreateRow={createRow}
         groups={null}
         onSortChange={() => {}}
         onOpen={() => {}}
@@ -144,6 +157,9 @@ describe('CollectionTable', () => {
         columnWidths={{}}
         onColumnWidthChange={() => {}}
         onEditSchema={() => {}}
+        onAddProperty={addProperty}
+        onDeleteProperty={deleteProperty}
+        onCreateRow={createRow}
         groups={null}
         onSortChange={() => {}}
         onOpen={() => {}}
@@ -170,6 +186,9 @@ describe('CollectionTable', () => {
         columnWidths={{}}
         onColumnWidthChange={() => {}}
         onEditSchema={() => {}}
+        onAddProperty={addProperty}
+        onDeleteProperty={deleteProperty}
+        onCreateRow={createRow}
         groups={null}
         onSortChange={onSortChange}
         onOpen={() => {}}
@@ -190,6 +209,9 @@ describe('CollectionTable', () => {
         columnWidths={{}}
         onColumnWidthChange={() => {}}
         onEditSchema={() => {}}
+        onAddProperty={addProperty}
+        onDeleteProperty={deleteProperty}
+        onCreateRow={createRow}
         groups={null}
         onSortChange={onSortChange}
         onOpen={() => {}}
@@ -210,6 +232,9 @@ describe('CollectionTable', () => {
         columnWidths={{}}
         onColumnWidthChange={() => {}}
         onEditSchema={() => {}}
+        onAddProperty={addProperty}
+        onDeleteProperty={deleteProperty}
+        onCreateRow={createRow}
         groups={null}
         onSortChange={onSortChange}
         onOpen={() => {}}
@@ -232,6 +257,9 @@ describe('CollectionTable', () => {
         columnWidths={{}}
         onColumnWidthChange={() => {}}
         onEditSchema={() => {}}
+        onAddProperty={addProperty}
+        onDeleteProperty={deleteProperty}
+        onCreateRow={createRow}
         groups={null}
         onSortChange={() => {}}
         onOpen={onOpen}
@@ -276,6 +304,9 @@ describe('CollectionTable — built-in sorts, footer, add property', () => {
         columnWidths={{}}
         onColumnWidthChange={() => {}}
         onEditSchema={() => {}}
+        onAddProperty={addProperty}
+        onDeleteProperty={deleteProperty}
+        onCreateRow={createRow}
         groups={null}
         onSortChange={onSortChange}
         onOpen={() => {}}
@@ -300,6 +331,9 @@ describe('CollectionTable — built-in sorts, footer, add property', () => {
         columnWidths={{}}
         onColumnWidthChange={() => {}}
         onEditSchema={onEditSchema}
+        onAddProperty={addProperty}
+        onDeleteProperty={deleteProperty}
+        onCreateRow={createRow}
         groups={null}
         onSortChange={() => {}}
         onOpen={() => {}}
@@ -308,8 +342,110 @@ describe('CollectionTable — built-in sorts, footer, add property', () => {
     )
     await expect.element(view.getByText('2 notes')).toBeInTheDocument()
     await expect.element(view.getByText('Σ 4.5', { exact: true })).toBeInTheDocument()
+    // The "+" is a name and a type; "More options" is the door to the dialog.
     await view.getByRole('button', { name: 'Add property' }).click()
+    await expect.element(page.getByLabelText('Property name')).toBeInTheDocument()
+    await page.getByRole('button', { name: 'More options…' }).click()
     expect(onEditSchema).toHaveBeenCalled()
+  })
+
+  it('adds a property from the header with a name and a type', async () => {
+    const view = await render(
+      <CollectionTable
+        entries={ENTRIES}
+        tag="book"
+        type={BOOK_TYPE}
+        selection={selection()}
+        sort={null}
+        columnWidths={{}}
+        onColumnWidthChange={() => {}}
+        onEditSchema={() => {}}
+        onAddProperty={addProperty}
+        onDeleteProperty={deleteProperty}
+        onCreateRow={createRow}
+        groups={null}
+        onSortChange={() => {}}
+        onOpen={() => {}}
+        registerScrollToIndex={() => {}}
+      />,
+    )
+    await view.getByRole('button', { name: 'Add property' }).click()
+    await page.getByLabelText('Property name').fill('Genre')
+    await userEvent.keyboard('{Enter}')
+    await expect.poll(() => addProperty.mock.calls.length).toBe(1)
+    expect(addProperty).toHaveBeenCalledWith('Genre', 'text')
+  })
+
+  it('sorts, hides, and deletes a property from its column menu', async () => {
+    const onSortChange = vi.fn()
+    const onHideColumn = vi.fn()
+    const view = await render(
+      <CollectionTable
+        entries={ENTRIES}
+        tag="book"
+        type={BOOK_TYPE}
+        selection={selection()}
+        sort={null}
+        columnWidths={{}}
+        onColumnWidthChange={() => {}}
+        onEditSchema={() => {}}
+        onAddProperty={addProperty}
+        onDeleteProperty={deleteProperty}
+        onHideColumn={onHideColumn}
+        onCreateRow={createRow}
+        groups={null}
+        onSortChange={onSortChange}
+        onOpen={() => {}}
+        registerScrollToIndex={() => {}}
+      />,
+    )
+    await view.getByRole('button', { name: 'Column options for Author' }).click()
+    await page.getByRole('menuitem', { name: 'Sort descending' }).click()
+    expect(onSortChange).toHaveBeenCalledWith({ key: 'author', direction: 'desc' })
+
+    await view.getByRole('button', { name: 'Column options for Author' }).click()
+    await page.getByRole('menuitem', { name: 'Hide column' }).click()
+    expect(onHideColumn).toHaveBeenCalledWith('author')
+
+    await view.getByRole('button', { name: 'Column options for Rating' }).click()
+    await page.getByRole('menuitem', { name: 'Delete property' }).click()
+    await expect.poll(() => deleteProperty.mock.calls.length).toBe(1)
+    expect(deleteProperty).toHaveBeenCalledWith('rating')
+  })
+
+  it('births a titled row from the "+ New" line, and Escape abandons it', async () => {
+    const view = await render(
+      <CollectionTable
+        entries={ENTRIES}
+        tag="book"
+        type={BOOK_TYPE}
+        selection={selection()}
+        sort={null}
+        columnWidths={{}}
+        onColumnWidthChange={() => {}}
+        onEditSchema={() => {}}
+        onAddProperty={addProperty}
+        onDeleteProperty={deleteProperty}
+        onCreateRow={createRow}
+        groups={null}
+        onSortChange={() => {}}
+        onOpen={() => {}}
+        registerScrollToIndex={() => {}}
+      />,
+    )
+    await view.getByRole('button', { name: 'New row' }).click()
+    await view.getByLabelText('New row title').fill('Solaris')
+    await userEvent.keyboard('{Enter}')
+    await expect.poll(() => createRow.mock.calls.length).toBe(1)
+    expect(createRow).toHaveBeenCalledWith('Solaris')
+    // Back to the "+ New" line once the row is born.
+    await expect.element(view.getByRole('button', { name: 'New row' })).toBeInTheDocument()
+
+    await view.getByRole('button', { name: 'New row' }).click()
+    await view.getByLabelText('New row title').fill('Abandoned')
+    await userEvent.keyboard('{Escape}')
+    await expect.element(view.getByRole('button', { name: 'New row' })).toBeInTheDocument()
+    expect(createRow).toHaveBeenCalledTimes(1)
   })
 
   it('applies a manual column width to the grid template', async () => {
@@ -323,6 +459,9 @@ describe('CollectionTable — built-in sorts, footer, add property', () => {
         columnWidths={{ author: 20 }}
         onColumnWidthChange={() => {}}
         onEditSchema={() => {}}
+        onAddProperty={addProperty}
+        onDeleteProperty={deleteProperty}
+        onCreateRow={createRow}
         groups={null}
         onSortChange={() => {}}
         onOpen={() => {}}
@@ -345,6 +484,9 @@ describe('CollectionTable — built-in sorts, footer, add property', () => {
         columnWidths={{}}
         onColumnWidthChange={() => {}}
         onEditSchema={() => {}}
+        onAddProperty={addProperty}
+        onDeleteProperty={deleteProperty}
+        onCreateRow={createRow}
         groups={[
           {
             label: 'reading',

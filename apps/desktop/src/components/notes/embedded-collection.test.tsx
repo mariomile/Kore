@@ -1,7 +1,15 @@
 import { describe, expect, it, vi } from 'vitest'
-import { render } from 'vitest-browser-react'
+import { render as renderBare } from 'vitest-browser-react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import type { ReactElement } from 'react'
 import type { CollectionEntry, TagType } from '@reflect/core'
 import { EmbeddedCollection } from './embedded-collection'
+
+/** The widget reads the query client for its schema edits; the rest is mocked. */
+function render(element: ReactElement): ReturnType<typeof renderBare> {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return renderBare(<QueryClientProvider client={client}>{element}</QueryClientProvider>)
+}
 
 const BOOK_TYPE: TagType = {
   properties: [

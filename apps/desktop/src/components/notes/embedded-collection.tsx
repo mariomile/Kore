@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState, type ReactElement } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import {
   EMPTY_TAG_TYPE,
   foldTag,
@@ -20,10 +21,14 @@ import { groupablePropertiesOf } from '@/lib/tags/schema-views'
 import { TagConfigDialog } from '@/components/tags/tag-config-dialog'
 import { useCollection } from '@/hooks/use-collection'
 import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'
-import { useTagType } from '@/hooks/use-tag-type'
+import { tagTypeQueryKey, useTagType } from '@/hooks/use-tag-type'
+import { useTemplateValues } from '@/hooks/use-template-values'
+import { createTitledCollectionNote } from '@/lib/tags/create-collection-note'
+import { addTagProperty, removeTagProperty } from '@/lib/tags/schema-edits'
 import { useListSelection } from '@/lib/selection/use-list-selection'
 import type { ModClickEvent } from '@/lib/windows/open-in-new-window'
 import { cn } from '@/lib/utils'
+import { useGraph } from '@/providers/graph-provider'
 import { useRouter } from '@/routing/router'
 import { routeForPath } from '@/routing/route'
 
@@ -55,6 +60,13 @@ export function EmbeddedCollection({ embed }: EmbeddedCollectionProps): ReactEle
   const [sort, setSort] = useState<CollectionSort | null>(embed.sort)
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({})
   const [editingSchema, setEditingSchema] = useState(false)
+  const { graph } = useGraph()
+  const queryClient = useQueryClient()
+  const resolveTemplateValues = useTemplateValues()
+  const refreshTagType = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: tagTypeQueryKey(graph?.root, embed.tag) }),
+    [queryClient, graph?.root, embed.tag],
+  )
   const unfiltered = useCollection(tagType === undefined ? null : embed.tag, sort)
   const entries = useMemo(() => {
     if (unfiltered === undefined || tagType === undefined) {
@@ -164,6 +176,32 @@ export function EmbeddedCollection({ embed }: EmbeddedCollectionProps): ReactEle
               setColumnWidths((current) => ({ ...current, [key]: rem }))
             }
             onEditSchema={() => setEditingSchema(true)}
+            onAddProperty={async (name, propertyType) => {
+              if (graph === null) {
+                return
+              }
+              await addTagProperty(embed.tag, graph.generation, name, propertyType)
+              await refreshTagType()
+            }}
+            onDeleteProperty={async (key) => {
+              if (graph === null) {
+                return
+              }
+              await removeTagProperty(embed.tag, graph.generation, key)
+              await refreshTagType()
+            }}
+            onCreateRow={async (title) => {
+              if (graph === null) {
+                return
+              }
+              await createTitledCollectionNote(
+                embed.tag,
+                graph.generation,
+                title,
+                tagType,
+                await resolveTemplateValues(null),
+              )
+            }}
             groups={groups}
             onOpen={openNote}
             registerScrollToIndex={() => {}}

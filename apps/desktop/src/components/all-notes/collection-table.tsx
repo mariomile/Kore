@@ -4,6 +4,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type KeyboardEvent,
   type MouseEvent,
   type PointerEvent as ReactPointerEvent,
   type ReactElement,
@@ -17,6 +18,7 @@ import {
   type CollectionEntry,
   type CollectionSort,
   type TagProperty,
+  type TagPropertyType,
   type TagType,
 } from '@reflect/core'
 import { ArrowDown, ArrowUp, Plus } from '@/components/icons'
@@ -28,7 +30,9 @@ import { cn } from '@/lib/utils'
 import { useSettings } from '@/providers/settings-provider'
 import type { ModClickEvent } from '@/lib/windows/open-in-new-window'
 import { useOpenTaskCounts } from '@/hooks/use-open-task-counts'
+import { AddPropertyPopover } from './add-property-popover'
 import { CollectionCell } from './collection-cell'
+import { ColumnHeaderMenu } from './column-header-menu'
 import { collectionGridStyle, COLLECTION_GRID_CLASS } from './collection-grid'
 import { CollectionRow } from './collection-row'
 import { TABLE_HEADER_CHROME } from './table-chrome'
@@ -46,8 +50,16 @@ interface CollectionTableProps {
   /** Manual column widths (rem, per property key) — a header-edge drag. */
   columnWidths: Record<string, number>
   onColumnWidthChange: (key: string, rem: number) => void
-  /** Open the tag's schema dialog (the header's "+" — add a property). */
+  /** Open the tag's schema dialog (options, targets, rollups, formulas). */
   onEditSchema: () => void
+  /** Append a property from the header's "+" (name and type, nothing else). */
+  onAddProperty: (name: string, type: TagPropertyType) => Promise<void>
+  /** Drop a property from a column's menu. */
+  onDeleteProperty: (key: string) => Promise<void>
+  /** Hide a column from its menu; absent where columns cannot hide. */
+  onHideColumn?: ((key: string) => void) | undefined
+  /** Birth a row titled `title` from the table's last line. */
+  onCreateRow: (title: string) => Promise<void>
   /**
    * Row groups (Plan 29 V1b), already computed over `entries` by the screen
    * so its selection order and these shelves can never disagree. `null` =
@@ -81,6 +93,10 @@ export function CollectionTable({
   columnWidths,
   onColumnWidthChange,
   onEditSchema,
+  onAddProperty,
+  onDeleteProperty,
+  onHideColumn,
+  onCreateRow,
   groups,
   onOpen,
   registerScrollToIndex,
@@ -99,6 +115,33 @@ export function CollectionTable({
   )
   const commitProperty = useCommitNoteProperty()
   const openRelation = useOpenRelation()
+  // The "+ New" line: a title typed in place becomes a row (the note is born
+  // on Enter, never on focus, so an abandoned line leaves no file behind).
+  const [draftTitle, setDraftTitle] = useState<string | null>(null)
+  const [creating, setCreating] = useState(false)
+  const commitDraft = async (): Promise<void> => {
+    const title = (draftTitle ?? '').trim()
+    if (title === '' || creating) {
+      setDraftTitle(null)
+      return
+    }
+    setCreating(true)
+    try {
+      await onCreateRow(title)
+      setDraftTitle(null)
+    } finally {
+      setCreating(false)
+    }
+  }
+  const onDraftKeyDown = (event: KeyboardEvent<HTMLInputElement>): void => {
+    if (event.key === 'Enter') {
+      event.preventDefault()
+      void commitDraft()
+    } else if (event.key === 'Escape') {
+      event.preventDefault()
+      setDraftTitle(null)
+    }
+  }
   // The footer sums are O(rows × columns): memoized so a selection click or
   // a resize drag's per-pointermove re-render reuses them.
   const aggregates = useMemo(
@@ -226,13 +269,54 @@ export function CollectionTable({
   if (entries === undefined) {
     return null
   }
+  // The last line of the table is always the next row.
+  const newRow =
+    draftTitle === null ? (
+      <button
+        type="button"
+        aria-label="New row"
+        onClick={() => setDraftTitle('')}
+        style={{ minWidth: gridStyle.minWidth }}
+        className="flex h-(--row-height) w-full items-center gap-1.5 pl-12 pr-7 text-[13px] text-text-muted transition-colors hover:bg-surface-hover hover:text-text-secondary"
+      >
+        <Plus aria-hidden className="size-3" />
+        New
+      </button>
+    ) : (
+      <div
+        style={{ minWidth: gridStyle.minWidth }}
+        className="flex h-(--row-height) items-center pl-12 pr-7"
+      >
+        <input
+          autoFocus
+          aria-label="New row title"
+          placeholder="Title, then Enter"
+          value={draftTitle}
+          disabled={creating}
+          onChange={(event) => setDraftTitle(event.target.value)}
+          onKeyDown={onDraftKeyDown}
+          onBlur={() => void commitDraft()}
+          className="w-full bg-transparent text-[13px] font-medium text-text outline-none placeholder:text-text-muted"
+        />
+      </div>
+    )
   return (
     <>
       <div style={gridStyle} className={cn(COLLECTION_GRID_CLASS, TABLE_HEADER_CHROME)}>
         {sortButton(TITLE_SORT_KEY, 'Title')}
         {type.properties.map((property) => (
-          <span key={property.key} className="relative flex min-w-0 items-center">
+          <span
+            key={property.key}
+            className="group/header relative flex min-w-0 items-center gap-1"
+          >
             {sortButton(property.key, property.name)}
+            <ColumnHeaderMenu
+              property={property}
+              onSort={(direction) => onSortChange({ key: property.key, direction })}
+              onHide={onHideColumn === undefined ? undefined : () => onHideColumn(property.key)}
+              onEditSchema={onEditSchema}
+              onDelete={() => onDeleteProperty(property.key)}
+            />
             <span
               role="separator"
               aria-label={`Resize ${property.name}`}
@@ -243,19 +327,14 @@ export function CollectionTable({
         ))}
         <span className="flex items-center justify-end gap-1.5">
           {sortButton(UPDATED_SORT_KEY, 'Updated', 'justify-end text-right')}
-          <button
-            type="button"
-            aria-label="Add property"
-            title="Add a property"
-            onClick={onEditSchema}
-            className="flex size-4 shrink-0 items-center justify-center rounded text-text-muted hover:text-text-secondary"
-          >
-            <Plus aria-hidden className="size-3" />
-          </button>
+          <AddPropertyPopover onAdd={onAddProperty} onEditSchema={onEditSchema} />
         </span>
       </div>
       {entries.length === 0 ? (
-        <p className="py-8 pl-12 pr-7 text-sm text-text-muted">No notes tagged #{tag}.</p>
+        <>
+          <p className="py-8 pl-12 pr-7 text-sm text-text-muted">No notes tagged #{tag}.</p>
+          {newRow}
+        </>
       ) : (
         <>
           <Virtualizer
@@ -315,6 +394,7 @@ export function CollectionTable({
               )
             }
           </Virtualizer>
+          {newRow}
           <div
             style={gridStyle}
             className={cn(

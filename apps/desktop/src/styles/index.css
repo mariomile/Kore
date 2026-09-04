@@ -1276,7 +1276,11 @@ html[data-sidebar-resizing] aside {
 }
 
 :root:not([data-visual-theme='liquid-glass']) .note-pane-gutter {
-  background: linear-gradient(to right, var(--surface-sunken) 0 0.5rem, transparent 0.5rem);
+  background: linear-gradient(
+    to right,
+    var(--surface-sunken) 0 calc(0.5rem + var(--radius-xl)),
+    transparent calc(0.5rem + var(--radius-xl))
+  );
 }
 
 /* ============================================================

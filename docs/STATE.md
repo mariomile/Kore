@@ -1,7 +1,8 @@
 # Kore working state
 
-**Updated:** 2026-09-04 at `0eb4d6e4`+ (every tag is a collection: the
-"Create a collection" step is gone; TDR 0005 Amendment A).
+**Updated:** 2026-09-05, audit reliability fixes integrated with `f0de5ec5`
+(every tag is a collection; TDR 0005 Amendment A). Merge and desktop release
+validation in progress.
 **Rule:** Every session that moves the program updates this file before its
 summary: tick what became true and how it was verified, set the next step,
 refresh the date. What is done and what is next live here and only here. Why
@@ -9,6 +10,44 @@ things are built this way lives in [docs/decisions/](decisions/); what the
 product is lives in the [roadmap](roadmap.md) (app-first) with the Personal OS
 direction in [Plan 25](plans/25-personal-os.md). The full shipped history stays
 in the [delivery log](delivery-log.md); this file tracks only the active work.
+
+## Audit remediation — 2026-09-04
+
+- [x] Recall rechecks each candidate's live privacy flag; missing/unreadable
+  files fail closed. The outbound context uses the `CloudSafe` boundary.
+- [x] Chat captures conversation, generation, permissions and cancellation
+  before attachment I/O. A new chat cannot inherit the pending send.
+- [x] Routines are bound to their graph. Existing unassigned routines require
+  explicit assignment, remain paused after assignment, and cannot auto-run.
+  Graph changes/unmount abort active scripts; queued work rechecks ownership.
+- [x] Script Stop reaches the native process during the preliminary tick.
+  The timeout remains active until streams close, with bounded output draining
+  and process-tree cleanup. Native lease failures prevent edit-mode execution.
+- [x] Settings → Sync & data provides graph archive export/restore: graph
+  files, consistent SQLite snapshot (saved chats), chat images and automation
+  definitions. Restore creates a new graph and pauses imported automations.
+  Provider keys, device settings and Git history are excluded. Unsafe ZIP paths,
+  symlinks and oversized archives are rejected; the archive must be saved outside
+  the graph. Git file sync is explicitly described as excluding chat history.
+- [x] Chat shows persisted, expandable context sources. First-run guidance now
+  covers capture → ask → verify, subscriptions/BYOK, collections and agents.
+  README, onboarding and privacy documentation agree about backup scope.
+
+**Validation:** Targeted TypeScript logic and browser tests cover recall privacy,
+chat identity/persistence, routine ownership/cancellation, backup actions and
+source disclosure in the full chat screen. Rust tests pass for script timeout/
+Stop and ZIP round-trip (the actual migrated SQLite schema, notes and images),
+plus unsafe-path rejection. `pnpm check`, `pnpm build` and `cargo fmt --all --check`
+pass. Settings were inspected in the browser preview at 1280 and 900 px widths;
+archive commands were tested natively and their UI with mocked dialogs. Existing
+non-blocking large-file and bundle-size warnings remain. The preview also emitted
+the existing ResizeObserver notification already listed in `allowed-console.ts`;
+no layout failure was observed.
+
+**Next:** Review this local change set, then validate native file dialogs end to
+end, real-provider runs and iPhone behavior before a release. Those live checks
+are not claimed complete. No dependencies, release version or release manifests
+were changed. The broader Personal OS roadmap below is unchanged.
 
 ## Current focus
 

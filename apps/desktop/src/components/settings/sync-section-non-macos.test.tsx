@@ -33,6 +33,9 @@ vi.mock('@/providers/graph-provider', () => ({
     openRecent: vi.fn(async () => true),
   }),
 }))
+vi.mock('@/providers/settings-provider', () => ({
+  useSettings: () => ({ settings: { agentRoutines: [] } }),
+}))
 vi.mock('@/providers/sync-provider', () => ({
   useSync: () => ({
     backup: { phase: 'disconnected' },

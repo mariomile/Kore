@@ -1,5 +1,9 @@
-import { describe, expect, it } from 'vitest'
-import { decideScriptTick, type ScriptTickOutcome } from './routine-script'
+import { afterEach, describe, expect, it } from 'vitest'
+import { decideScriptTick, runRoutineScriptTick, type ScriptTickOutcome } from './routine-script'
+
+import { setBridge } from '../ipc/bridge'
+
+afterEach(() => setBridge(null))
 
 function outcome(overrides: Partial<ScriptTickOutcome>): ScriptTickOutcome {
   return { code: 0, stdout: '', stderr: '', timedOut: false, ...overrides }
@@ -40,4 +44,21 @@ describe('decideScriptTick', () => {
       kind: 'fail',
     })
   })
+})
+
+it('stops a cancellation that arrives during preparation before dispatching the script', async () => {
+  const controller = new AbortController()
+  const commands: string[] = []
+  setBridge({
+    invoke: async (command) => {
+      commands.push(command)
+      if (command === 'routine_script_prepare') controller.abort()
+      return command === 'routine_script_run' ? outcome({}) : null
+    },
+    listen: async () => () => {},
+  })
+  await expect(runRoutineScriptTick('echo hello', 7, controller.signal)).rejects.toMatchObject({
+    name: 'AbortError',
+  })
+  expect(commands).toEqual(['routine_script_prepare', 'routine_script_stop', 'routine_script_run'])
 })

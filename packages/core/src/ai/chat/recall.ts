@@ -1,4 +1,7 @@
 import { recallSearchHits, type RecallHit } from '../../indexing'
+import { readNote } from '../../graph/commands'
+import { parseNote } from '../../markdown/extract'
+import { cloudSafeRecallHits, type CloudSafe } from '../checkers'
 import { noteMentionTargets } from './mentions'
 
 /**
@@ -268,6 +271,7 @@ export function recallTermsFromMessage(text: string): string[] {
 /** Injectable effects, defaulted to the live index. */
 export interface RecallDeps {
   searchFn?: (terms: string[], limit?: number) => Promise<RecallHit[]>
+  readNoteFn?: (path: string) => Promise<string>
 }
 
 /**
@@ -280,7 +284,7 @@ export async function recallForMessage(
   text: string,
   excludePaths: readonly (string | null)[] = [],
   deps: RecallDeps = {},
-): Promise<RecallHit[]> {
+): Promise<CloudSafe<RecallHit>[]> {
   const terms = recallTermsFromMessage(text)
   if (terms.length === 0) {
     return []
@@ -291,11 +295,20 @@ export async function recallForMessage(
   const mentionTargets = new Set(noteMentionTargets(text).map((target) => target.toLowerCase()))
   const excluded = new Set(excludePaths.filter((path): path is string => path !== null))
   const searchFn = deps.searchFn ?? recallSearchHits
+  const readNoteFn = deps.readNoteFn ?? readNote
   try {
     const hits = await searchFn(terms)
-    return hits
-      .filter((hit) => !excluded.has(hit.path) && !mentionTargets.has(hit.title.toLowerCase()))
-      .slice(0, RECALL_MAX_HITS)
+    const candidates = hits.filter(
+      (hit) => !excluded.has(hit.path) && !mentionTargets.has(hit.title.toLowerCase()),
+    )
+    const safe = await cloudSafeRecallHits(candidates, async (path) => {
+      try {
+        return parseNote({ path, source: await readNoteFn(path) }).frontmatter.private
+      } catch {
+        return true
+      }
+    })
+    return safe.slice(0, RECALL_MAX_HITS)
   } catch {
     return []
   }
@@ -306,7 +319,7 @@ export async function recallForMessage(
  * `mentionContextBlock`'s fencing: provenance in attributes, content as
  * data. Empty when there is nothing to recall — no block, no noise.
  */
-export function recallContextBlock(hits: RecallHit[]): string {
+export function recallContextBlock(hits: readonly CloudSafe<RecallHit>[]): string {
   if (hits.length === 0) {
     return ''
   }

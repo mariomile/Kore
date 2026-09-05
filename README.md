@@ -149,9 +149,12 @@ in the app or add [any SSH git remote](docs/generic-git-remotes.md).
 By default, note content stays on the device. External calls only happen
 after you configure a provider, connect a git remote, or use a platform sync
 service. `private: true` in a note's frontmatter is a hard block: that note's
-content never reaches AI or any other external service — enforced for the
+content never reaches AI or other content-processing services — enforced for the
 CLI providers at the sandbox level, not by prompt. See
-[docs/privacy.md](docs/privacy.md) for the full model.
+[docs/privacy.md](docs/privacy.md) for the full model. User-enabled file sync
+and backups include private notes. Git sync excludes chat history and chat
+attachments; use Settings → Sync & data → Graph archive on Mac to export and restore
+notes, saved chats, attachments and graph automations together.
 
 ## Project Layout
 

@@ -33,6 +33,7 @@ const core = vi.hoisted(() => ({
   aiApiKeyForConfig: vi.fn<(config: AiProviderConfig) => Promise<string | null>>(),
   getSecret: vi.fn<(name: string) => Promise<string | null>>(),
   hasBridge: vi.fn<() => boolean>(),
+  readChatAttachmentDataUrl: vi.fn<() => Promise<string>>(),
   loadChatGraphContext: vi.fn<(graphName: string) => Promise<null>>(),
   listChatConversations: vi.fn<(limit?: number) => Promise<ChatConversation[]>>(),
   loadChatMessages: vi.fn<(id: string) => Promise<ChatTurn[]>>(),
@@ -155,6 +156,50 @@ beforeEach(() => {
 })
 
 describe('ChatProvider persistence', () => {
+  it('keeps a preparing send in its original conversation when New chat interrupts attachment hydration', async () => {
+    let release: (value: string) => void = () => {}
+    core.readChatAttachmentDataUrl.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          release = resolve
+        }),
+    )
+    core.loadChatMessages.mockResolvedValue([
+      {
+        ...RESTORED_TURN,
+        attachments: [
+          {
+            id: 'image',
+            name: 'image.png',
+            mediaType: 'image/png',
+            path: '.reflect/chat-attachments/conv-1/image.png',
+          },
+        ],
+      },
+    ])
+    core.listChatConversations.mockResolvedValue([conversation()])
+    const { act } = await renderProvider()
+    await vi.waitFor(() => expect(session?.activeConversationId).toBe('conv-1'))
+    let sending: Promise<void> | undefined
+    await act(async () => {
+      sending = session?.send('Continue with this image')
+      await Promise.resolve()
+    })
+    await vi.waitFor(() => expect(core.readChatAttachmentDataUrl).toHaveBeenCalled())
+    await act(() => {
+      session?.newChat()
+    })
+    release('data:image/png;base64,AA==')
+    await act(async () => {
+      await sending
+    })
+    expect(session?.turns).toEqual([])
+    expect(core.streamChat).not.toHaveBeenCalled()
+    for (const [input] of core.saveChatMessage.mock.calls) {
+      expect(input).toMatchObject({ conversation: { id: 'conv-1' } })
+    }
+  })
+
   it('resumes the latest conversation when it is fresh enough', async () => {
     core.listChatConversations.mockResolvedValue([conversation()])
     await renderProvider()

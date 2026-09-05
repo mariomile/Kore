@@ -35,6 +35,10 @@ const turn: ChatTurn = {
   ],
   parts: [
     {
+      kind: 'context',
+      notes: [{ path: 'notes/a.md', title: 'Cats', excerpt: 'A cat', source: 'recall' }],
+    },
+    {
       kind: 'tool',
       call: { tool: 'search', toolCallId: 'tool-1', query: 'cat' },
       result: {

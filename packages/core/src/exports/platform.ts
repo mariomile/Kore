@@ -198,6 +198,7 @@ export {
   promoteCaptureScreenshot,
 } from '../graph/commands'
 export { createAsset, importAsset } from '../graph/assets'
+export { exportGraphBackup, restoreGraphBackup } from '../graph/backup'
 export { assetFileName } from '../graph/asset-names'
 export {
   newNoteId,

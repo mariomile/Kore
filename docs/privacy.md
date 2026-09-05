@@ -5,8 +5,9 @@ index is SQLite in `.reflect/` beside them, and **no Kore-hosted server exists i
 path** — there is no product analytics and no account. Kore does not send exception diagnostics or product analytics. Every network call the app can make is listed here, with what it carries.
 
 The one hard rule sits above all of it: **a note with `private: true` frontmatter never
-has its content sent to any external service.** Two different mechanisms enforce it,
-and it is worth knowing which one you are relying on.
+has its content sent to AI or other content-processing services.** User-enabled
+file sync and backups include private notes; the flag is not an exclusion from
+your own backups. Two mechanisms enforce the content-processing boundary.
 
 For everything the app sends itself, it is the `CloudSafe` type brand in
 `packages/core/src/ai/`: content for a provider cannot even be constructed from a private
@@ -27,7 +28,8 @@ practice. Both are covered by tests.
   sends: the full content of notes you `[[mention]]`, and (since v0.38) up to three
   short passages automatically recalled from your vault as relevant to what you wrote,
   each with its note's path and date. Private notes are excluded from recall in the
-  query itself, contribute only a refusal when mentioned, and are dropped from every
+  query itself and rechecked against the live file before sending. Missing or
+  unreadable notes are excluded. Private mentions contribute only a refusal, and are dropped from every
   tool result — the model sees a refusal, not the content. That protection cannot
   identify note content you manually paste into a message or the configured prompt.
 - **When:** only while you use chat (⌘J). No background calls.
@@ -58,12 +60,28 @@ practice. Both are covered by tests.
 
 - **Where:** the git repository you connect — GitHub guided in-app (created **private**
   by default; a public repo requires explicit confirmation), or any git host over SSH.
-- **What:** the whole graph as git commits — including notes marked `private: true`.
+- **What:** graph files as git commits — including notes marked `private: true`.
+  The ignored `.reflect/` directory is excluded: Git sync does not include chat
+  history or chat attachments.
   The privacy flag blocks *services that read your content*; backup is your own
   repository, and excluding private notes from it would silently lose them.
 - **When:** after you connect, on the background backup cadence and on "Back up now".
 - GitHub sign-in uses your personal access token; the token is stored
   in the OS keychain.
+
+## Graph archives (manual, on Mac)
+
+Settings → Sync & data → Graph archive exports a ZIP containing graph files, a
+consistent SQLite snapshot (including saved chats), chat attachments and the
+graph's automation definitions. Private notes are included. No provider key,
+device-wide settings or Git history is exported. The archive is not encrypted;
+store it in a location you trust, outside the graph folder. Finish active chats
+before exporting; unsaved response text is not part of the database snapshot.
+
+Restore extracts into a new directory and opens it as a separate graph. Existing
+graphs are not overwritten. Imported automations are bound to the restored graph
+and paused for review. Archives with unsafe paths, symlinks, more than 100,000
+entries or more than 20 GiB of uncompressed data are refused.
 
 ## Browser capture (the Chrome extension)
 

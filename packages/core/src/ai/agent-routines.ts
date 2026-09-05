@@ -131,6 +131,8 @@ export const STOPPED_ROUTINE_RUN_ERROR = 'Stopped from the Agents screen before 
 
 export const agentRoutineSchema = z.object({
   id: z.string().min(1),
+  /** Explicit destination. Unassigned routines cannot run until the user binds them. */
+  graphRoot: z.string().min(1).nullable().catch(null),
   name: z.string().min(1),
   /** The agent profile that runs it (its soul/memory ride along), or null. */
   agentSlug: z.string().nullable().catch(null),
@@ -208,7 +210,7 @@ export function latestOccurrenceMs(schedule: ClockSchedule, now: Date): number {
  * Monday morning when the laptop reopens.
  */
 export function routineIsDue(routine: AgentRoutine, now: Date): boolean {
-  if (!routine.enabled) {
+  if (!routine.enabled || routine.graphRoot === null) {
     return false
   }
   // A pending failure retry outranks the schedule: the occurrence was

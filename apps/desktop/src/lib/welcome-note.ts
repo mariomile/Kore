@@ -39,16 +39,23 @@ export const DEFAULT_OBJECTS_SEEDED_META_KEY = 'defaultObjectsSeeded'
 
 const WELCOME_BODY = `# ${WELCOME_TITLE}
 
-Kore is a daily notebook: press ⌘D any time to land on today's note and write.
+Kore keeps your notes in Markdown and lets your own AI work with them.
+Start with today's note (⌘D). Everything else is optional.
 
-- **Link as you think.** Type \`[[\` and a title — [[Wiki Links]] connect notes. There are no folders.
-- **Find anything.** ⌘K searches your whole graph; ⌘/ lists every shortcut.
-- **Your files.** Every note is a markdown file in this folder, portable forever.
+## Try one useful loop
 
-When you want more, open Settings (⌘,):
+1. **Capture.** Write a decision in today's note. Add a title inside \`[[double brackets]]\` to connect it to a project or person.
+2. **Ask.** In Settings → AI & agents, connect Claude Code or Codex with your subscription, or add a provider API key. Open chat (⌘J) and ask about that decision.
+3. **Verify.** Expand **Context used** under the reply to see the notes included with your question. Open a source to check the answer.
 
-- **Backup** — free, private backup of your graph to GitHub.
-- **AI providers** — add your own API key to chat with your notes (⌘J). Notes marked private never leave this device.
+## When you want more
+
+- **Find notes:** ⌘K searches your graph; ⌘/ lists shortcuts.
+- **Collections:** open a tag from the sidebar to view its notes. Configure properties to organize projects, people, companies or meetings.
+- **Agents:** give an assistant its own instructions. Create an automation only when you want scheduled work; each automation belongs to one graph.
+- **Protect your work:** Settings → Sync & data distinguishes Git file sync from a graph archive. An archive also includes saved chats, their images and this graph's automations.
+
+Notes marked \`private: true\` are blocked from AI and content-processing services. They are still included in backups and any file sync you enable. Keep backups private. Provider keys stay in the OS keychain and are not exported.
 
 This note is pinned to the sidebar — unpin it (⌘O) when you're done.
 `

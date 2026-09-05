@@ -278,7 +278,7 @@ describe('NoteEditor tag click', () => {
 
     await pmRoot.getByText('#book').click()
     await vi.waitFor(() => {
-      expect(onTagClick).toHaveBeenCalledWith('book')
+      expect(onTagClick).toHaveBeenCalledWith('book', expect.anything())
     })
   })
 })

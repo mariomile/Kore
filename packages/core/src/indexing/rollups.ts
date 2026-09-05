@@ -154,7 +154,7 @@ export async function attachReverseRelations(
     if (config === undefined) {
       continue
     }
-    const linking = await lookup.listCollection(config.tag, null)
+    const linking = await lookup.listCollection(config.tag, [])
     const byPath = new Map<string, string[]>()
     await Promise.all(
       linking.map(async (row) => {

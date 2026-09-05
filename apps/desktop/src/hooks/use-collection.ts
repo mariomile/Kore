@@ -4,7 +4,7 @@ import {
   attachReverseRelations,
   attachRollups,
   attachTimestampColumns,
-  effectiveCollectionSort,
+  effectiveCollectionSorts,
   foldTag,
   getTagType,
   listCollection,
@@ -19,15 +19,14 @@ import { useGraph } from '@/providers/graph-provider'
 export function collectionQueryKey(
   root: string | undefined,
   tag: string,
-  sort: CollectionSort | null,
-): readonly [string, string | undefined, string, string, string | null, string | null] {
+  sorts: readonly CollectionSort[],
+): readonly [string, string | undefined, string, string, string] {
   return [
     INDEX_QUERY_SCOPE,
     root,
     'collection',
     foldTag(tag),
-    sort?.key ?? null,
-    sort?.direction ?? null,
+    sorts.map((sort) => `${sort.key}:${sort.direction}`).join(','),
   ]
 }
 
@@ -37,15 +36,15 @@ export function collectionQueryKey(
  */
 export function useCollection(
   tag: string | null,
-  sort: CollectionSort | null,
+  sorts: readonly CollectionSort[],
 ): CollectionEntry[] | undefined {
   const { graph } = useGraph()
   const bridgeReady = useBridgeReady()
   const { data } = useQuery({
-    queryKey: collectionQueryKey(graph?.root, tag ?? '', sort),
+    queryKey: collectionQueryKey(graph?.root, tag ?? '', sorts),
     queryFn: async () => {
       const type = await getTagType(tag ?? '')
-      const rows = await listCollection(tag ?? '', effectiveCollectionSort(type, sort))
+      const rows = await listCollection(tag ?? '', effectiveCollectionSorts(type, sorts))
       if (type === null) {
         return rows
       }

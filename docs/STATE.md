@@ -1,8 +1,9 @@
 # Kore working state
 
-**Updated:** 2026-09-05, audit reliability fixes integrated with `f0de5ec5`
-(every tag is a collection; TDR 0005 Amendment A). Merge and desktop release
-validation in progress.
+**Updated:** 2026-09-05, collections daily loop integrated with `50f69fec`
+(Kore 0.51.0, audit fixes released). Schema edits and rows from the table,
+sort chains, any/all filters, side peek, tag descriptions and daily line to
+note are pending PR #168 integration validation (TDR 0005 Amendments A and B).
 **Rule:** Every session that moves the program updates this file before its
 summary: tick what became true and how it was verified, set the next step,
 refresh the date. What is done and what is next live here and only here. Why
@@ -157,6 +158,23 @@ sum/avg. Also still open: the live checks below. B05c preview tabs stays
 declined; the backlog-B pass is closed.
 
 ## What is true now
+
+- [x] **Collections: the daily loop** (user decision 2026-09-04 after the
+  gap review against Tana and Notion; [TDR 0005 Amendment B](decisions/0005-tag-types-and-collections.md)).
+  Slice 1, the table: the header "+" adds a property by name and type,
+  each column has a menu (sort, then-by, hide, edit, delete), the last
+  line "+ New" births a titled row. Slice 2, the Tana loop: the tag page
+  renders its definition note's body with an Edit link; clicking a `#tag`
+  in a daily offers "Turn this line into a #tag note" (line text titles
+  the note, the line becomes `[[Title]] #tag`). Slice 3: sort chains
+  (settings, saved views, repeated `sort:` fence lines), an All/Any filter
+  switch (`match: any` in the fence), and the side peek (one selected row
+  previews in the context rail). Verified: collection-table 16/16,
+  filter-menu, embed, peek, tag-description, tag-actions suites plus the
+  wide perimeter (core + editor + all-notes + notes + tags + sidebar:
+  225 files, 2804 tests) on Chromium, changed `.test.tsx` on WebKit,
+  `pnpm check` exit 0, and a dev-app run on `#link` (added a column,
+  created a row, peeked it).
 
 - [x] **Every tag is a collection** (user decision 2026-09-04, Tana as the
   reference; [TDR 0005 Amendment A](decisions/0005-tag-types-and-collections.md)).
@@ -398,6 +416,9 @@ declined; the backlog-B pass is closed.
 
 ## Session log
 
+- 2026-09-04 — Collections daily loop, three slices on one branch
+  (schema edits and rows from the table; tag page description + daily
+  line to note; sort chains, any/all, side peek). TDR 0005 Amendment B.
 - 2026-09-04 — Every tag is a collection: zero-property schema substituted
   at the collection surfaces (`EMPTY_TAG_TYPE`), CTA and typed glyph
   removed, fence and slash menu opened to all tags. TDR 0005 Amendment A.

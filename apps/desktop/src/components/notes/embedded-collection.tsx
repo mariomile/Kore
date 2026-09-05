@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState, type ReactElement } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import {
   EMPTY_TAG_TYPE,
   foldTag,
@@ -20,10 +21,14 @@ import { groupablePropertiesOf } from '@/lib/tags/schema-views'
 import { TagConfigDialog } from '@/components/tags/tag-config-dialog'
 import { useCollection } from '@/hooks/use-collection'
 import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'
-import { useTagType } from '@/hooks/use-tag-type'
+import { tagTypeQueryKey, useTagType } from '@/hooks/use-tag-type'
+import { useTemplateValues } from '@/hooks/use-template-values'
+import { createTitledCollectionNote } from '@/lib/tags/create-collection-note'
+import { addTagProperty, removeTagProperty } from '@/lib/tags/schema-edits'
 import { useListSelection } from '@/lib/selection/use-list-selection'
 import type { ModClickEvent } from '@/lib/windows/open-in-new-window'
 import { cn } from '@/lib/utils'
+import { useGraph } from '@/providers/graph-provider'
 import { useRouter } from '@/routing/router'
 import { routeForPath } from '@/routing/route'
 
@@ -52,18 +57,25 @@ export function EmbeddedCollection({ embed }: EmbeddedCollectionProps): ReactEle
   const navigateNoteLink = useNoteLinkNavigation()
   // The fence's own arrangement seeds the widget; a header click still
   // re-sorts this render of it (the fence text is not rewritten).
-  const [sort, setSort] = useState<CollectionSort | null>(embed.sort)
+  const [sorts, setSorts] = useState<readonly CollectionSort[]>(embed.sorts)
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({})
   const [editingSchema, setEditingSchema] = useState(false)
-  const unfiltered = useCollection(tagType === undefined ? null : embed.tag, sort)
+  const { graph } = useGraph()
+  const queryClient = useQueryClient()
+  const resolveTemplateValues = useTemplateValues()
+  const refreshTagType = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: tagTypeQueryKey(graph?.root, embed.tag) }),
+    [queryClient, graph?.root, embed.tag],
+  )
+  const unfiltered = useCollection(tagType === undefined ? null : embed.tag, sorts)
   const entries = useMemo(() => {
     if (unfiltered === undefined || tagType === undefined) {
       return unfiltered
     }
     // The fence's filter lines share the filter menu's vocabulary, so the
     // one applier serves both surfaces.
-    return applyCollectionFilters(tagType, unfiltered, embed.filters)
-  }, [unfiltered, tagType, embed.filters])
+    return applyCollectionFilters(tagType, unfiltered, embed.filters, embed.match)
+  }, [unfiltered, tagType, embed.filters, embed.match])
   // `group:` renders the fence's table with shelf rows (Plan 29 V1b) — only
   // a key the schema declares as single-valued groupable; anything else
   // stays flat, never a broken widget.
@@ -157,13 +169,39 @@ export function EmbeddedCollection({ embed }: EmbeddedCollectionProps): ReactEle
             tag={embed.tag}
             type={tagType}
             selection={selection}
-            sort={sort}
-            onSortChange={setSort}
+            sorts={sorts}
+            onSortChange={setSorts}
             columnWidths={columnWidths}
             onColumnWidthChange={(key, rem) =>
               setColumnWidths((current) => ({ ...current, [key]: rem }))
             }
             onEditSchema={() => setEditingSchema(true)}
+            onAddProperty={async (name, propertyType) => {
+              if (graph === null) {
+                return
+              }
+              await addTagProperty(embed.tag, graph.generation, name, propertyType)
+              await refreshTagType()
+            }}
+            onDeleteProperty={async (key) => {
+              if (graph === null) {
+                return
+              }
+              await removeTagProperty(embed.tag, graph.generation, key)
+              await refreshTagType()
+            }}
+            onCreateRow={async (title) => {
+              if (graph === null) {
+                return
+              }
+              await createTitledCollectionNote(
+                embed.tag,
+                graph.generation,
+                title,
+                tagType,
+                await resolveTemplateValues(null),
+              )
+            }}
             groups={groups}
             onOpen={openNote}
             registerScrollToIndex={() => {}}

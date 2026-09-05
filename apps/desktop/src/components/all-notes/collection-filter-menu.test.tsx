@@ -71,6 +71,19 @@ describe('applyCollectionFilters', () => {
     expect(paths([{ key: 'status', operator: 'notEmpty', text: '' }])).toEqual(['a', 'b'])
   })
 
+  it('matching any keeps a row when one condition holds', () => {
+    // No row is both unread and rated above 4; each row satisfies one.
+    const filters: CollectionFilter[] = [
+      { key: 'status', operator: 'is', text: 'to-read' },
+      { key: 'rating', operator: 'gt', text: '4' },
+    ]
+    expect(applyCollectionFilters(BOOK_TYPE, ROWS, filters, 'all')).toEqual([])
+    expect(applyCollectionFilters(BOOK_TYPE, ROWS, filters, 'any').map((row) => row.path)).toEqual([
+      'a',
+      'b',
+    ])
+  })
+
   it('combines an equality OR with an extra condition on the same property', () => {
     expect(
       paths([
@@ -86,7 +99,14 @@ describe('CollectionFilterMenu', () => {
   it('adds a builder condition and renders it as a removable chip', async () => {
     const onChange = vi.fn()
     const view = await render(
-      <CollectionFilterMenu type={BOOK_TYPE} entries={ROWS} filters={[]} onChange={onChange} />,
+      <CollectionFilterMenu
+        type={BOOK_TYPE}
+        entries={ROWS}
+        filters={[]}
+        onChange={onChange}
+        match="all"
+        onMatchChange={() => {}}
+      />,
     )
 
     await view.getByRole('button', { name: 'Filter by property' }).click()
@@ -108,6 +128,8 @@ describe('CollectionFilterMenu', () => {
         entries={ROWS}
         filters={[{ key: 'rating', operator: 'gt', text: '4' }]}
         onChange={onChange}
+        match="all"
+        onMatchChange={() => {}}
       />,
     )
 

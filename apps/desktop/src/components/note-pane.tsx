@@ -27,7 +27,8 @@ import { NoteEditor, type NoteEditorHandle } from '@/editor/note-editor'
 import { resolveAssetFileLink, useAssetPersistence } from '@/editor/use-asset-persistence'
 import { useEditorAutocomplete } from '@/editor/use-editor-autocomplete'
 import { useNotePaneDocument } from '@/components/use-note-pane-document'
-import { useTagNavigation } from '@/editor/use-tag-navigation'
+import { TagActionsMenu } from '@/editor/tag-actions-menu'
+import { useTagActions } from '@/editor/use-tag-actions'
 import { BlockSwipeGestures } from '@/editor/block-swipe'
 import { CalloutHighlighter } from '@/editor/callout-highlighter'
 import { LinkPreviewCards } from '@/editor/link-preview-cards'
@@ -175,7 +176,6 @@ export function NotePaneComponent({
   })
   const onWikiLinkClick = useWikiLinkNavigation(generation)
   const onNoteLinkClick = useMarkdownLinkNavigation(generation, path)
-  const onTagClick = useTagNavigation()
   const { onWikilinkSearch, onTagSearch } = useEditorAutocomplete()
   // The index's privacy flag for this note, overlay-backed so an in-app
   // "Mark as private" takes effect immediately. Null until it resolves, which
@@ -239,6 +239,13 @@ export function NotePaneComponent({
     },
     [document],
   )
+  const {
+    menu: tagMenu,
+    closeMenu: closeTagMenu,
+    onTagClick,
+    openTag,
+    convertLineToNote,
+  } = useTagActions(path, getEditor, handleEditorChange)
   const handleRef = useCallback(
     (handle: NoteEditorHandle | null) => {
       bindEditor(handle)
@@ -463,6 +470,15 @@ export function NotePaneComponent({
             has. */}
         {isTouchEditorSurface() ? <BlockSwipeGestures /> : null}
       </NoteEditor>
+
+      <TagActionsMenu
+        state={tagMenu}
+        onClose={closeTagMenu}
+        onOpenTag={openTag}
+        onConvert={() => {
+          void convertLineToNote()
+        }}
+      />
 
       {collectionEmbeds.length > 0 ? (
         <div className={gutterClassName}>

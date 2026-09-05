@@ -140,7 +140,7 @@ export function MobileAllNotes({
   // only indexes the fetched values; the display line is formatted lazily
   // for the hits actually rendered, not the whole collection.
   const tagType = useTagType(tag)
-  const collection = useCollection(tagType != null ? tag : null, null)
+  const collection = useCollection(tagType != null ? tag : null, [])
   const collectionProperties = useMemo(
     () =>
       tagType == null || collection === undefined

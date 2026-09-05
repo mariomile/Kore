@@ -92,7 +92,7 @@ export interface NoteToolDeps {
   getTagTypeFn?: (tag: string) => Promise<TagType | null>
   listCollectionFn?: (
     tag: string,
-    sort: CollectionSort | null,
+    sorts: readonly CollectionSort[],
     options?: ListCollectionOptions,
   ) => Promise<CollectionEntry[]>
   /** Attach view-only rollup cells onto collection rows (list_collection). */
@@ -253,15 +253,15 @@ export function buildNoteTools(options: BuildNoteToolsOptions = {}): NoteTools {
         if (type === null) {
           return { ok: false, tag, error: UNTYPED_TAG_ERROR }
         }
-        const sort: CollectionSort | null =
-          sortBy != null && sortBy !== '' ? { key: sortBy, direction: direction ?? 'asc' } : null
+        const sorts: CollectionSort[] =
+          sortBy != null && sortBy !== '' ? [{ key: sortBy, direction: direction ?? 'asc' }] : []
         // Private rows are dropped in SQL before the cap, so a private row
         // never even consumes a slot; the gate then re-checks every survivor
         // live against the note on disk, failing closed. The limit rides
         // into the SQL too (one extra row detects truncation) so a huge
         // collection never materializes for a 30-row page.
         const max = limit ?? DEFAULT_COLLECTION_LIMIT
-        const publicRows = await listCollectionFn(tag, sort, {
+        const publicRows = await listCollectionFn(tag, sorts, {
           excludePrivate: true,
           limit: max + 1,
         })

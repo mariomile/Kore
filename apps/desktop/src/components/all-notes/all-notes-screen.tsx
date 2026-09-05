@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { EMPTY_TAG_TYPE, foldTag, isDaily, listNotes, listNoteTags } from '@reflect/core'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  EMPTY_TAG_TYPE,
+  errorMessage,
+  foldTag,
+  isDaily,
+  listNotes,
+  listNoteTags,
+  type TagPropertyType,
+} from '@reflect/core'
 import {
   Calendar,
   Check,
@@ -13,10 +21,15 @@ import {
 } from '@/components/icons'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { TagConfigDialog } from '@/components/tags/tag-config-dialog'
+import { toast } from '@/components/ui/toast'
 import { cn } from '@/lib/utils'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { useCollection } from '@/hooks/use-collection'
-import { useTagType } from '@/hooks/use-tag-type'
+import { tagTypeQueryKey, useTagType } from '@/hooks/use-tag-type'
+import { useTemplateValues } from '@/hooks/use-template-values'
+import { createTitledCollectionNote } from '@/lib/tags/create-collection-note'
+import { addTagProperty, removeTagProperty } from '@/lib/tags/schema-edits'
+import { setPeekPath } from '@/lib/selection/peek-store'
 import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'
 import { allNotesQueryKey, allNotesTagsQueryKey } from '@/lib/notes/all-notes-query'
 import type { ModClickEvent } from '@/lib/windows/open-in-new-window'
@@ -34,6 +47,7 @@ import {
   applyCollectionFilters,
   CollectionFilterMenu,
   type CollectionFilter,
+  type CollectionFilterMatch,
 } from './collection-filter-menu'
 import {
   Select,
@@ -52,6 +66,7 @@ import { NoteListContextMenu } from '@/components/notes/note-context-menu'
 import { NoteTrashDialog } from '@/components/notes/note-trash-dialog'
 import { ScrollVeil } from '@/components/scroll-veil'
 import { NewNoteButton } from './new-note-button'
+import { TagPageDescription } from './tag-page-description'
 import { TagPageTitle } from './tag-page-title'
 import { useAllNotesKeyboard } from './use-all-notes-keyboard'
 import { useCollectionSavedViews, useCollectionViewSettings } from './use-collection-view-settings'
@@ -106,8 +121,8 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
     view,
     setViewMode,
     collectionView,
-    collectionSort,
-    setCollectionSort,
+    collectionSorts,
+    setCollectionSorts,
     setCollectionGroup,
     tableGroupProperty,
     tableGroupProperties,
@@ -118,8 +133,68 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
     setColumnWidth,
     toggleColumnHidden,
   } = useCollectionViewSettings(tagKey, collectionAvailable ? tagType : null)
-  // The "+" in the table header opens the tag's schema dialog in place.
+  // The schema dialog, opened from the header gear or a column's menu.
   const [editingSchema, setEditingSchema] = useState(false)
+  const queryClient = useQueryClient()
+  const resolveTemplateValues = useTemplateValues()
+  // The one-gesture schema edits (the header's "+", a column's Delete): the
+  // same writer as the dialog, then the type query refreshes in place.
+  const refreshTagType = useCallback(async () => {
+    if (tag !== null) {
+      await queryClient.invalidateQueries({ queryKey: tagTypeQueryKey(graph?.root, tag) })
+    }
+  }, [queryClient, graph?.root, tag])
+  const addProperty = useCallback(
+    async (name: string, propertyType: TagPropertyType) => {
+      if (tag === null || graph === null) {
+        return
+      }
+      await addTagProperty(tag, graph.generation, name, propertyType)
+      await refreshTagType()
+    },
+    [tag, graph, refreshTagType],
+  )
+  const deleteProperty = useCallback(
+    async (key: string) => {
+      if (tag === null || graph === null) {
+        return
+      }
+      try {
+        await removeTagProperty(tag, graph.generation, key)
+        await refreshTagType()
+      } catch (error) {
+        toast.add({
+          type: 'error',
+          title: "Couldn't delete the property",
+          description: errorMessage(error),
+        })
+      }
+    },
+    [tag, graph, refreshTagType],
+  )
+  const createRow = useCallback(
+    async (title: string) => {
+      if (tag === null || graph === null) {
+        return
+      }
+      try {
+        await createTitledCollectionNote(
+          tag,
+          graph.generation,
+          title,
+          tagType,
+          await resolveTemplateValues(null),
+        )
+      } catch (error) {
+        toast.add({
+          type: 'error',
+          title: "Couldn't create the note",
+          description: errorMessage(error),
+        })
+      }
+    },
+    [tag, graph, tagType, resolveTemplateValues],
+  )
   const { navigate } = useRouter()
   const navigateNoteLink = useNoteLinkNavigation()
   // The scroll container lives in state, not a ref, so scroll restoration
@@ -147,21 +222,23 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
   // The grid isn't a collection view, but on a typed tag its cards carry
   // property chips — so the projection loads there too (Plan 28 slice 2).
   const collectionWanted = collectionView || (view === 'grid' && collectionAvailable)
-  const collection = useCollection(collectionWanted ? tag : null, collectionSort)
+  const collection = useCollection(collectionWanted ? tag : null, collectionSorts)
   // Property filters are ephemeral (unlike the persisted sort) and belong to
   // one tag's schema — a tag switch drops them at render time.
   const [collectionFilters, setCollectionFilters] = useState<CollectionFilter[]>([])
+  const [filterMatch, setFilterMatch] = useState<CollectionFilterMatch>('all')
   const [filterTag, setFilterTag] = useState(tag)
   if (filterTag !== tag) {
     setFilterTag(tag)
     setCollectionFilters([])
+    setFilterMatch('all')
   }
   const filteredCollection = useMemo(
     () =>
       collection === undefined || tagType === undefined
         ? collection
-        : applyCollectionFilters(tagType, collection, collectionFilters),
-    [collection, tagType, collectionFilters],
+        : applyCollectionFilters(tagType, collection, collectionFilters, filterMatch),
+    [collection, tagType, collectionFilters, filterMatch],
   )
 
   // The table's row shelves (Plan 29 V1b), computed here — not in the table
@@ -178,15 +255,17 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
   const { savedViews, saveCurrentView, deleteSavedView, applySavedView } = useCollectionSavedViews({
     tagKey,
     view,
-    collectionSort,
+    collectionSorts,
     boardGroupProperty,
     tableGroupProperty,
     collectionFilters,
+    filterMatch,
     setViewMode,
-    setCollectionSort,
+    setCollectionSorts,
     setCollectionGroup,
     setTableGroup,
     setCollectionFilters,
+    setFilterMatch,
   })
   const ready = notes !== undefined
   const { onScroll } = useScrollRestoration(scrollElement, ready)
@@ -258,6 +337,14 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
   useEffect(() => {
     rootRef.current?.focus({ preventScroll: true })
   }, [])
+
+  // Exactly one selected row is the side peek: the context rail previews it
+  // (Details has nothing else to say on this route). Cleared on the way out.
+  const peekPath = selectedPaths.length === 1 ? (selectedPaths[0] ?? null) : null
+  useEffect(() => {
+    setPeekPath(peekPath)
+    return () => setPeekPath(null)
+  }, [peekPath])
 
   return (
     <div
@@ -348,6 +435,8 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
                 entries={collection}
                 filters={collectionFilters}
                 onChange={setCollectionFilters}
+                match={filterMatch}
+                onMatchChange={setFilterMatch}
               />
               <CollectionViewsMenu
                 views={savedViews}
@@ -459,6 +548,7 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
           <NewNoteButton tag={tag} />
         </div>
       </header>
+      <TagPageDescription tag={tag} />
       {/* One context menu for the whole list — rows and cards carry
           data-note-path; the menu resolves the note from the click. It wraps
           the scroll container from OUTSIDE: its wrappers are display:contents,
@@ -510,11 +600,15 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
                 tag={tag}
                 type={visibleTagType}
                 selection={selection}
-                sort={collectionSort}
-                onSortChange={setCollectionSort}
+                sorts={collectionSorts}
+                onSortChange={setCollectionSorts}
                 columnWidths={columnWidths}
                 onColumnWidthChange={setColumnWidth}
                 onEditSchema={() => setEditingSchema(true)}
+                onAddProperty={addProperty}
+                onDeleteProperty={deleteProperty}
+                onHideColumn={toggleColumnHidden}
+                onCreateRow={createRow}
                 groups={tableGroups}
                 onOpen={openNote}
                 registerScrollToIndex={registerScrollToIndex}

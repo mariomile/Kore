@@ -36,12 +36,14 @@ export interface CollectionEmbed {
   /** Tag name as authored (without `#`). */
   readonly tag: string
   readonly view: CollectionEmbedView
-  /** The fence's own ordering, or `null` to leave the collection's default. */
-  readonly sort: CollectionEmbedSort | null
+  /** The `sort:` lines in order — a chain, later keys breaking earlier ties. */
+  readonly sorts: readonly CollectionEmbedSort[]
   /** `group: <key>` — the table's row grouping (Plan 29 V1b), `null` = flat. */
   readonly group: string | null
   /** The fence's `filter:` lines, in order; malformed lines are skipped. */
   readonly filters: readonly CollectionEmbedFilter[]
+  /** `match: any` makes the filters alternatives; the default is every one. */
+  readonly match: 'all' | 'any'
 }
 
 /** `sort:` line value → {@link CollectionEmbedSort}, or null when malformed. */
@@ -96,8 +98,9 @@ function isCollectionEmbedView(value: string): value is CollectionEmbedView {
 function parseCollectionEmbedBody(body: string): CollectionEmbed | null {
   let tag = ''
   let view: CollectionEmbedView = 'table'
-  let sort: CollectionEmbedSort | null = null
+  const sorts: CollectionEmbedSort[] = []
   let group: string | null = null
+  let match: 'all' | 'any' = 'all'
   const filters: CollectionEmbedFilter[] = []
   for (const rawLine of body.split(/\r?\n/)) {
     const line = rawLine.trim()
@@ -127,7 +130,12 @@ function parseCollectionEmbedBody(body: string): CollectionEmbed | null {
     } else if (key === 'view' && isCollectionEmbedView(value)) {
       view = value
     } else if (key === 'sort') {
-      sort = parseEmbedSort(value) ?? sort
+      const sort = parseEmbedSort(value)
+      if (sort !== null) {
+        sorts.push(sort)
+      }
+    } else if (key === 'match') {
+      match = value.toLowerCase() === 'any' ? 'any' : 'all'
     } else if (key === 'group') {
       // Tolerant like every line: a malformed key is skipped, never the fence.
       group = isPropertyKey(value) ? value : group
@@ -141,7 +149,7 @@ function parseCollectionEmbedBody(body: string): CollectionEmbed | null {
   if (!isTagName(tag)) {
     return null
   }
-  return { tag, view, sort, group, filters }
+  return { tag, view, sorts, group, filters, match }
 }
 
 /**
@@ -166,11 +174,14 @@ export function formatCollectionEmbed(embed: CollectionEmbed): string {
   if (embed.view !== 'table') {
     lines.push(`view: ${embed.view}`)
   }
-  if (embed.sort !== null) {
-    lines.push(`sort: ${embed.sort.key}${embed.sort.direction === 'desc' ? ' desc' : ''}`)
+  for (const sort of embed.sorts) {
+    lines.push(`sort: ${sort.key}${sort.direction === 'desc' ? ' desc' : ''}`)
   }
   if (embed.group !== null) {
     lines.push(`group: ${embed.group}`)
+  }
+  if (embed.match === 'any') {
+    lines.push('match: any')
   }
   for (const filter of embed.filters) {
     if (filter.operator === 'empty' || filter.operator === 'notEmpty') {

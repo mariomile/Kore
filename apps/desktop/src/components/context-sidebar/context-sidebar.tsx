@@ -37,6 +37,8 @@ import { DailyContextSidebar } from './daily-context-sidebar'
 import { DailyEventsSection } from './daily-events-section'
 import { DayCalendar } from './day-calendar'
 import { NoteContextSidebar } from './note-context-sidebar'
+import { NotePeek } from './note-peek'
+import { usePeekPath } from '@/lib/selection/peek-store'
 import type { ContextSidebarTarget } from './sidebar-route'
 
 type ContextPanel = 'details' | 'chat' | 'calendar' | 'browser' | 'terminal'
@@ -51,6 +53,8 @@ const DEFAULT_PANEL: ContextPanel = 'details'
 /** What a panel's body gets to describe: the route's note, and the day. */
 interface PanelContext {
   target: ContextSidebarTarget | null
+  /** The row a list is pointing at — the side peek — on routes without a note. */
+  peekPath: string | null
   /** The day the Calendar panel anchors on. */
   calendarDate: string
   today: string
@@ -80,11 +84,15 @@ const PANELS: ContextPanelSpec[] = [
     label: 'Details',
     Glyph: Info,
     ownsScrolling: false,
-    render: ({ target }) =>
+    render: ({ target, peekPath }) =>
       target === null ? (
-        <div className="flex h-full items-center justify-center px-6 text-center text-xs text-text-muted">
-          Open a note to see its details here.
-        </div>
+        peekPath === null ? (
+          <div className="flex h-full items-center justify-center px-6 text-center text-xs text-text-muted">
+            Open a note to see its details here.
+          </div>
+        ) : (
+          <NotePeek path={peekPath} />
+        )
       ) : target.kind === 'daily' ? (
         <DailyContextSidebar date={target.date} />
       ) : (
@@ -162,6 +170,7 @@ export function ContextSidebar({ target }: ContextSidebarProps): ReactElement {
   const [opened, setOpened] = useState<ContextPanel[]>([])
   const [panel, setPanel] = useState<ContextPanel>(DEFAULT_PANEL)
   const today = useToday()
+  const peekPath = usePeekPath()
   // The calendar panel anchors on the described day when there is one, so it
   // matches what the Details panel would show on a daily route.
   const calendarDate = target?.kind === 'daily' ? target.date : today
@@ -244,7 +253,7 @@ export function ContextSidebar({ target }: ContextSidebarProps): ReactElement {
               active.ownsScrolling ? 'flex flex-col' : 'overflow-y-auto',
             )}
           >
-            {active.render({ target, calendarDate, today })}
+            {active.render({ target, peekPath, calendarDate, today })}
           </div>
         </div>
       </div>

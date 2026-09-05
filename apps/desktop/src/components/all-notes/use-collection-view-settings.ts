@@ -11,10 +11,12 @@ import { useSettings } from '@/providers/settings-provider'
 import { groupablePropertiesOf } from '@/lib/tags/schema-views'
 import { groupableProperties } from './collection-board'
 import { calendarProperty } from './collection-calendar'
-import type { CollectionFilter } from './collection-filter-menu'
+import type { CollectionFilter, CollectionFilterMatch } from './collection-filter-menu'
 
 /** Stable empty widths map, so an untouched tag never re-keys the memo. */
 const EMPTY_WIDTHS: Record<string, number> = {}
+/** Stable empty chain, so an unsorted tag never re-keys the collection query. */
+const EMPTY_SORTS: readonly CollectionSort[] = []
 
 /** The persisted view preferences the All Notes screen renders from. */
 export interface CollectionViewSettings {
@@ -27,8 +29,9 @@ export interface CollectionViewSettings {
   setViewMode: (mode: AllNotesView) => void
   /** The views that render collection rows instead of the notes list. */
   collectionView: boolean
-  collectionSort: CollectionSort | null
-  setCollectionSort: (sort: CollectionSort | null) => void
+  /** The sort chain — the second key breaks the first's ties; empty = recall order. */
+  collectionSorts: readonly CollectionSort[]
+  setCollectionSorts: (sorts: readonly CollectionSort[]) => void
   setCollectionGroup: (key: string) => void
   /** The table's row grouping (Plan 29 V1b) — `null` renders flat rows. */
   tableGroupProperty: TagProperty | null
@@ -104,21 +107,21 @@ export function useCollectionViewSettings(
   )
   // The views that render collection rows instead of the notes list.
   const collectionView = view === 'table' || view === 'board' || view === 'calendar'
-  // The sort is a persisted per-tag view preference (like task filters):
-  // leaving and returning to a collection keeps its order.
-  const collectionSort: CollectionSort | null =
-    tagKey === null ? null : (settings.collectionSorts[tagKey] ?? null)
-  const setCollectionSort = useCallback(
-    (sort: CollectionSort | null) => {
+  // The sort chain is a persisted per-tag view preference (like task
+  // filters): leaving and returning to a collection keeps its order.
+  const collectionSorts: readonly CollectionSort[] =
+    tagKey === null ? EMPTY_SORTS : (settings.collectionSorts[tagKey] ?? EMPTY_SORTS)
+  const setCollectionSorts = useCallback(
+    (sorts: readonly CollectionSort[]) => {
       if (tagKey === null) {
         return
       }
       updateSettingsWith((current) => {
         const next = { ...current.collectionSorts }
-        if (sort === null) {
+        if (sorts.length === 0) {
           delete next[tagKey]
         } else {
-          next[tagKey] = sort
+          next[tagKey] = [...sorts]
         }
         return { collectionSorts: next }
       })
@@ -218,8 +221,8 @@ export function useCollectionViewSettings(
     view,
     setViewMode,
     collectionView,
-    collectionSort,
-    setCollectionSort,
+    collectionSorts,
+    setCollectionSorts,
     setCollectionGroup,
     tableGroupProperty,
     tableGroupProperties,
@@ -236,15 +239,17 @@ export function useCollectionViewSettings(
 export interface CollectionSavedViewsOptions {
   tagKey: string | null
   view: AllNotesView
-  collectionSort: CollectionSort | null
+  collectionSorts: readonly CollectionSort[]
   boardGroupProperty: TagProperty | null
   tableGroupProperty: TagProperty | null
   collectionFilters: CollectionFilter[]
+  filterMatch: CollectionFilterMatch
   setViewMode: (mode: AllNotesView) => void
-  setCollectionSort: (sort: CollectionSort | null) => void
+  setCollectionSorts: (sorts: readonly CollectionSort[]) => void
   setCollectionGroup: (key: string) => void
   setTableGroup: (key: string | null) => void
   setCollectionFilters: (filters: CollectionFilter[]) => void
+  setFilterMatch: (match: CollectionFilterMatch) => void
 }
 
 /** What `useCollectionSavedViews` hands the CollectionViewsMenu. */
@@ -262,15 +267,17 @@ export function useCollectionSavedViews(
   const {
     tagKey,
     view,
-    collectionSort,
+    collectionSorts,
     boardGroupProperty,
     tableGroupProperty,
     collectionFilters,
+    filterMatch,
     setViewMode,
-    setCollectionSort,
+    setCollectionSorts,
     setCollectionGroup,
     setTableGroup,
     setCollectionFilters,
+    setFilterMatch,
   } = options
   const { settings, updateSettingsWith } = useSettings()
   const savedViews = tagKey === null ? [] : (settings.collectionSavedViews[tagKey] ?? [])
@@ -283,10 +290,11 @@ export function useCollectionSavedViews(
         id: crypto.randomUUID(),
         name,
         view: collectionViewForAllNotesView(view),
-        sort: collectionSort,
+        sorts: [...collectionSorts],
         group: boardGroupProperty?.key ?? null,
         tableGroup: tableGroupProperty?.key ?? null,
         filters: [...collectionFilters],
+        match: filterMatch,
       }
       updateSettingsWith((current) => ({
         collectionSavedViews: {
@@ -298,10 +306,11 @@ export function useCollectionSavedViews(
     [
       tagKey,
       view,
-      collectionSort,
+      collectionSorts,
       boardGroupProperty,
       tableGroupProperty,
       collectionFilters,
+      filterMatch,
       updateSettingsWith,
     ],
   )
@@ -328,7 +337,7 @@ export function useCollectionSavedViews(
   const applySavedView = useCallback(
     (saved: SavedCollectionView) => {
       setViewMode(saved.view)
-      setCollectionSort(saved.sort)
+      setCollectionSorts(saved.sorts)
       if (saved.group !== null) {
         setCollectionGroup(saved.group)
       }
@@ -336,8 +345,16 @@ export function useCollectionSavedViews(
       // table state — applying a flat view un-groups.
       setTableGroup(saved.tableGroup)
       setCollectionFilters([...saved.filters])
+      setFilterMatch(saved.match)
     },
-    [setViewMode, setCollectionSort, setCollectionGroup, setTableGroup, setCollectionFilters],
+    [
+      setViewMode,
+      setCollectionSorts,
+      setCollectionGroup,
+      setTableGroup,
+      setCollectionFilters,
+      setFilterMatch,
+    ],
   )
   return { savedViews, saveCurrentView, deleteSavedView, applySavedView }
 }

@@ -1990,3 +1990,25 @@ fn new_with_tags_and_sets_births_a_typed_row() {
     assert_eq!(bad.status.code(), Some(2));
     assert!(!fixture.root().join("notes/bad.md").exists());
 }
+
+#[test]
+fn a_missed_note_suggests_near_titles_from_the_index() {
+    let fixture = graph();
+    fixture.write_note("notes/messiah.md", "# Dune Messiah\n");
+    fixture.write_note(
+        "notes/secret.md",
+        "---\nprivate: true\n---\n# Dune Secret\n",
+    );
+    fixture.build_index();
+    let missed = reflect(&fixture, &["show", "Dune"]);
+    assert_eq!(missed.status.code(), Some(3));
+    let message = stderr(&missed);
+    assert!(message.contains("did you mean: Dune Messiah"), "{message}");
+    assert!(
+        !message.contains("Secret"),
+        "private title leaked: {message}"
+    );
+    let no_hint = reflect(&fixture, &["set", "Zzz", "a=b"]);
+    assert_eq!(no_hint.status.code(), Some(3));
+    assert!(!stderr(&no_hint).contains("did you mean"));
+}

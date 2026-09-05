@@ -1,7 +1,10 @@
 //! The commands. Shared rules live here: stdout carries only data, warnings
-//! go to stderr, and `show`/`path`/`open` degrade to a file scan when the
-//! index is missing or unusable (`search` and `tasks` are the commands that
-//! require it). `capture` is the one command that writes.
+//! go to stderr, and the resolving commands (`show`/`path`/`open`/
+//! `properties`/`set`/`tag`/`append`) degrade to a file scan when the index
+//! is missing or unusable, while the listing commands require it
+//! (`require_index`). The writing commands (`capture`, `append`, `new`,
+//! `set`, `tag`, `untag`, `done`) are atomic and structural — see the crate
+//! doc.
 
 pub mod append;
 pub mod backlinks;

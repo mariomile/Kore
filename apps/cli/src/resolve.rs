@@ -168,9 +168,17 @@ pub fn resolve_note(
         None => scan_lookup(root, &key)?,
     };
     match matches.split_first() {
-        None => Err(CliError::NotFound(format!(
-            "no note matching '{trimmed}' (by date, path, title, or alias)"
-        ))),
+        None => {
+            if let Some(conn) = conn {
+                let near = near_misses(conn, &key)?;
+                if !near.is_empty() {
+                    eprintln!("reflect: did you mean: {}", near.join(", "));
+                }
+            }
+            Err(CliError::NotFound(format!(
+                "no note matching '{trimmed}' (by date, path, title, or alias)"
+            )))
+        }
         Some((first, rest)) => {
             if !rest.is_empty() {
                 eprintln!(
@@ -184,6 +192,25 @@ pub fn resolve_note(
             })
         }
     }
+}
+
+/// Up to three public titles that contain the failed key's first term at a
+/// word start — the hint an agent needs to retry with the right spelling
+/// (the search's title-recall rule, one term).
+fn near_misses(conn: &Connection, key: &str) -> Result<Vec<String>, CliError> {
+    let Some(term) = key.split_whitespace().next() else {
+        return Ok(Vec::new());
+    };
+    let mut statement = conn.prepare(
+        "SELECT title FROM notes
+         WHERE is_private = 0 AND kind != 'template'
+           AND instr(' ' || title_key, ?1) > 0
+         ORDER BY length(title_key), title_key LIMIT 3",
+    )?;
+    let titles = statement
+        .query_map([format!(" {term}")], |row| row.get::<_, String>(0))?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(titles)
 }
 
 #[cfg(test)]

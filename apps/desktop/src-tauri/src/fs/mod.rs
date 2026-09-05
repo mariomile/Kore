@@ -6,6 +6,7 @@
 //! (path-traversal guard, [`resolve`]). Writes are atomic (temp file + rename,
 //! [`io`]) and deletes go to the OS trash. Parsing/indexing live in later plans.
 
+mod asset_identity;
 pub mod asset_protocol;
 pub mod assets;
 pub mod chat_attachments;
@@ -609,6 +610,21 @@ pub async fn transcript_cache_write<R: tauri::Runtime>(
         let root = root_for_generation(&state, generation)?;
         fs::write(transcript_cache_file(&root, &name)?, contents)?;
         Ok(())
+    })
+    .await
+}
+
+/// Compute an attachment's current content identity without transferring its bytes to JS.
+#[tauri::command]
+pub async fn asset_content_identity<R: tauri::Runtime>(
+    path: String,
+    generation: u64,
+    app: tauri::AppHandle<R>,
+) -> AppResult<String> {
+    ensure_readable_attachment_path(&path)?;
+    crate::blocking::run_blocking(move || {
+        let root = root_for_generation(&app.state::<GraphState>(), generation)?;
+        asset_identity::content_identity(fs::File::open(resolve(&root, &path)?)?)
     })
     .await
 }

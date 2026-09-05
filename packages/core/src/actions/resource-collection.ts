@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { isAppError } from '../errors'
-import { createNoteIfAbsent, listDir, readNote, writeNote } from '../graph/commands'
+import { assetContentIdentity, createNoteIfAbsent, readNote, writeNote } from '../graph/commands'
 import { hashContent } from '../indexing/hash'
 import { parseNote } from '../markdown/extract'
 import { upsertFrontmatter } from '../markdown/frontmatter'
@@ -13,6 +13,8 @@ export interface ResourceOrigin {
   generation: number
   sourcePath: string
   private: boolean
+  /** Desktop metadata updates must respect an open editor's live buffer. */
+  updateSources?: (path: string, sourceLink: string, generation: number) => Promise<void>
 }
 
 const labels: Record<ResourceKind, string> = {
@@ -134,6 +136,10 @@ async function saveCard(
   const meta = parseNote({ path, source: existing }).frontmatter
   if (meta['resourceTarget'] !== target)
     throw new Error('Resource note identity no longer matches its source')
+  if (origin.updateSources !== undefined) {
+    await origin.updateSources(path, sourceLink, origin.generation)
+    return
+  }
   const sources = sourcesSchema.parse(meta['sources'] ?? [])
   if (!sources.includes(sourceLink)) {
     await writeNote(
@@ -168,20 +174,31 @@ export async function collectResourceFile(
   const identity = await fileIdentity(file)
   const path = `notes/resource-${await hashContent(`${origin.private}:file:${identity}`)}.md`
   return await serializeResource(`${origin.generation}:${path}`, async () => {
-    const source = await existingSource(path, origin.generation)
-    let target: string | null = null
-    if (source !== null) {
-      target = assetSchema.parse(parseNote({ path, source }).frontmatter['resourceTarget'])
-      const entries = await listDir('assets', origin.generation)
-      if (!entries.some((entry) => entry.path === target)) {
-        throw new Error(
-          'The collected file is missing from the vault; restore it before adding it again',
+    // A user may edit or delete the binary outside Kore. Preserve that card and
+    // choose the next free slot rather than reuse different bytes or overwrite it.
+    for (let suffix = 0; ; suffix += 1) {
+      const candidate = suffix === 0 ? path : path.replace(/\.md$/, `-${suffix + 1}.md`)
+      const source = await existingSource(candidate, origin.generation)
+      if (source !== null) {
+        const target = assetSchema.safeParse(
+          parseNote({ path: candidate, source }).frontmatter['resourceTarget'],
         )
+        if (!target.success) continue
+        let currentIdentity: string | null
+        try {
+          currentIdentity = await assetContentIdentity(target.data, origin.generation)
+        } catch (cause) {
+          if (!isAppError(cause) || cause.kind !== 'notFound') throw cause
+          currentIdentity = null
+        }
+        if (currentIdentity !== identity) continue
+        await saveCard(candidate, resourceFileKind(file), target.data, file.name, origin)
+        return target.data
       }
+      const target = await upload()
+      if (target === null) return null
+      await saveCard(candidate, resourceFileKind(file), target, file.name, origin)
+      return target
     }
-    target ??= await upload()
-    if (target === null) return null
-    await saveCard(path, resourceFileKind(file), target, file.name, origin)
-    return target
   })
 }

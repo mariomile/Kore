@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { createNoteIfAbsent, listDir, readNote, writeNote } from '../graph/commands'
+import { assetContentIdentity, createNoteIfAbsent, readNote, writeNote } from '../graph/commands'
 import { isReflectManagedNote } from '../graph/note-management'
 import { parseNote } from '../markdown/extract'
 import { collectResourceFile, collectResourceLink, resourceUrl } from './resource-collection'
 
 vi.mock('../graph/commands', () => ({
   createNoteIfAbsent: vi.fn(),
-  listDir: vi.fn(),
+  assetContentIdentity: vi.fn(),
   readNote: vi.fn(),
   writeNote: vi.fn(),
 }))
@@ -29,7 +29,9 @@ beforeEach(() => {
   vi.mocked(writeNote).mockImplementation(async (path, source) => {
     notes.set(path, source)
   })
-  vi.mocked(listDir).mockResolvedValue([{ path: 'assets/report.pdf', size: 4, modifiedMs: 1 }])
+  vi.mocked(assetContentIdentity).mockResolvedValue(
+    '9301e03c30e2cf887e4db0290ad2a3938068ccde687bb32920fa12b5c0b4da24',
+  )
 })
 
 describe('automatic resource collections', () => {
@@ -70,6 +72,26 @@ describe('automatic resource collections', () => {
     ).toBe(true)
     expect(notes.has('tags/image.md')).toBe(true)
     expect(notes.has('tags/file.md')).toBe(true)
+  })
+
+  it('preserves an externally edited binary and reuses the newly saved original on later pastes', async () => {
+    const file = new File(['data'], 'report.pdf', { type: 'application/pdf' })
+    const upload = vi
+      .fn()
+      .mockResolvedValueOnce('assets/report.pdf')
+      .mockResolvedValue('assets/report-2.pdf')
+    await collectResourceFile(file, origin, upload)
+    vi.mocked(assetContentIdentity).mockImplementation(async (path) =>
+      path === 'assets/report.pdf'
+        ? 'changed-content'
+        : '9301e03c30e2cf887e4db0290ad2a3938068ccde687bb32920fa12b5c0b4da24',
+    )
+    expect(await collectResourceFile(file, origin, upload)).toBe('assets/report-2.pdf')
+    expect(await collectResourceFile(file, origin, upload)).toBe('assets/report-2.pdf')
+    expect(upload).toHaveBeenCalledTimes(2)
+    const cards = [...notes.values()].filter((source) => source.includes('#pdf\n'))
+    expect(cards).toHaveLength(2)
+    expect(cards.some((source) => source.includes('resourceTarget: assets/report.pdf'))).toBe(true)
   })
 
   it('isolates private origins and refuses unsafe URLs or failed writes', async () => {

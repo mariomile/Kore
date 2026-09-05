@@ -31,8 +31,20 @@ appeared in the Link table with its URL, saved date and origin. Manual binary
 upload is blocked by the existing dev bridge's unimplemented `asset_upload_begin`;
 real native upload is not claimed verified.
 
-**Next:** Native file paste/drop smoke check before release. Version and release
-manifests are unchanged.
+**Review remediation (PR #173):** Three findings corrected before merge:
+existing-card origins now commit through the live document session; native
+bounded hashing verifies saved asset bytes before reuse and preserves externally
+modified files/cards; collection failures are surfaced without blocking the
+capture inbox. Focused regressions cover dirty annotations, stale graph sessions,
+modified binaries and a failed collection followed by a valid capture.
+
+**Revalidation:** 158 targeted TypeScript/browser tests, `pnpm check`, `pnpm build`,
+the native cross-language hash parity test, Rust formatting and desktop clippy
+passed. The native development build compiled; automated UI attachment to Kore
+Dev was unavailable, so manual native paste/drop is still not claimed verified.
+
+**Next:** Merge the reviewed PR after fresh aggregate CI, then use the Release PR
+and Release DMG workflow for the requested bump. No feature-branch version edits.
 
 ## Audit remediation — 2026-09-04
 

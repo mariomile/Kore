@@ -13,6 +13,7 @@ import {
 import { createBackgroundReconciler } from '@/lib/background-reconciler'
 import { startOperation } from '@/lib/operations'
 import { providerFetch } from '@/lib/provider-fetch'
+import { appendResourceSource } from '@/lib/resource-sources'
 
 /**
  * The link-capture lifecycle for one graph session. Built on
@@ -96,8 +97,14 @@ export function createCaptureController(options: CaptureControllerOptions): Capt
         return
       }
     }
-    const drained = await drainCaptureInbox({ generation: options.generation, isStale })
+    const drained = await drainCaptureInbox({
+      generation: options.generation,
+      isStale,
+      updateResourceSources: (path, sourceLink, generation) =>
+        appendResourceSource(path, sourceLink, generation, isStale),
+    })
     surfaceStop('Saving link capture', drained.stopped)
+    surfaceStop('Collecting captured link', drained.collectionFailures?.[0] ?? null)
     if (isStale()) {
       return
     }

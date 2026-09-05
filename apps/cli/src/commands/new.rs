@@ -14,13 +14,20 @@ use std::path::Path;
 
 use reflect_note_policy::split_frontmatter;
 
+use crate::body_tag::{append_body_tag, is_tag_name};
 use crate::commands::output::{print_json, NewJson};
+use crate::commands::properties::property_json;
+use crate::commands::{open_index_for_resolution, warn};
 use crate::error::CliError;
+use crate::frontmatter_write::{patch_source, Patch};
 use crate::graph::Graph;
 use crate::keys::fold_key;
+use crate::keys::fold_tag;
 use crate::note_file::parse_note_meta;
 use crate::paths::today_date;
+use crate::schema::{parse_assignments, union_schema, TagSchema};
 use crate::slug::slug_for_title;
+use crate::write::read_stdin;
 
 /// Far beyond any real graph's same-slug population; fail loud instead of
 /// spinning (`create-note.ts`'s `MAX_CREATE_ATTEMPTS`).
@@ -157,19 +164,76 @@ fn create_noclobber(path: &Path, contents: &str) -> Result<bool, CliError> {
     }
 }
 
-pub fn run(graph: &Graph, json: bool, title: &str, template: Option<&str>) -> Result<(), CliError> {
+/// Where a new note's body comes from, in precedence order.
+fn seed_body(
+    graph: &Graph,
+    template: Option<&str>,
+    stdin: bool,
+    schema: &TagSchema,
+) -> Result<Option<String>, CliError> {
+    if stdin {
+        if template.is_some() {
+            return Err(CliError::Usage(
+                "give the body on stdin (--stdin) or from --template, not both".to_string(),
+            ));
+        }
+        let body = read_stdin()?;
+        return Ok((!body.trim().is_empty()).then_some(body));
+    }
+    if let Some(template_arg) = template {
+        return Ok(Some(template_body(&graph.root, template_arg)?));
+    }
+    // A typed tag's bound template seeds its rows, like the table's "+ New"
+    // (`createTitledCollectionNote`); a missing file just means no seed.
+    if let Some(bound) = &schema.template {
+        return Ok(template_body(&graph.root, bound).ok());
+    }
+    Ok(None)
+}
+
+pub fn run(
+    graph: &Graph,
+    json: bool,
+    title: &str,
+    template: Option<&str>,
+    tag_args: &[String],
+    sets: &[String],
+    stdin: bool,
+) -> Result<(), CliError> {
     let title = title.trim();
     if title.is_empty() {
         return Err(CliError::Runtime("the note needs a title".to_string()));
     }
+    let mut tags: Vec<String> = Vec::new();
+    for tag_arg in tag_args {
+        let tag = tag_arg.trim().trim_start_matches('#');
+        if !is_tag_name(tag) {
+            return Err(CliError::Usage(format!(
+                "'{tag_arg}' is not a tag name (a letter, then letters, digits, /, _ or -)"
+            )));
+        }
+        if !tags
+            .iter()
+            .any(|existing| fold_tag(existing) == fold_tag(tag))
+        {
+            tags.push(tag.to_string());
+        }
+    }
+    let index = open_index_for_resolution(&graph.root);
+    let schema = match &index {
+        Some(open) => union_schema(&open.conn, &tags)?,
+        None => {
+            if !sets.is_empty() {
+                warn("no index — values are written as text (open the graph in Kore to type them)");
+            }
+            TagSchema::default()
+        }
+    };
 
-    let content = match template {
+    let content = match seed_body(graph, template, stdin, &schema)? {
         None => format!("# {title}\n"),
-        Some(template_arg) => {
-            let body = expand_placeholders(
-                &template_body(&graph.root, template_arg)?,
-                &template_values(title),
-            );
+        Some(seed) => {
+            let body = expand_placeholders(&seed, &template_values(title));
             let body = body.trim_start_matches(['\n', '\r']);
             // A template that opens with its own H1 owns the note's structure
             // (it can title through {{title}}); otherwise the title leads.
@@ -185,6 +249,27 @@ pub fn run(graph: &Graph, json: bool, title: &str, template: Option<&str>) -> Re
             }
         }
     };
+    let mut content = content;
+    for tag in &tags {
+        if let Some(tagged) = append_body_tag(&content, tag) {
+            content = tagged;
+        }
+    }
+    let mut values = parse_assignments(&schema, sets)?;
+    for (key, stamp) in schema.created_stamps() {
+        if !values.iter().any(|(present, _)| *present == key) {
+            values.push((key, stamp));
+        }
+    }
+    let patch: Patch = values
+        .iter()
+        .map(|(key, value)| (key.clone(), Some(value.clone())))
+        .collect();
+    let content = patch_source(&content, &patch)?;
+    let mut properties = serde_json::Map::new();
+    for (key, value) in &values {
+        properties.insert(key.clone(), property_json(value));
+    }
 
     let slug = slug_for_title(title);
     for ordinal in 1..=MAX_CREATE_ATTEMPTS {
@@ -203,6 +288,8 @@ pub fn run(graph: &Graph, json: bool, title: &str, template: Option<&str>) -> Re
                 path: &rel_path,
                 absolute_path: absolute.display().to_string(),
                 title,
+                tags: &tags,
+                properties,
             });
         }
         println!("{}", absolute.display());

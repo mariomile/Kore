@@ -180,6 +180,64 @@ pub struct NewJson<'a> {
     pub path: &'a str,
     pub absolute_path: String,
     pub title: &'a str,
+    /// The `--tag`s written as trailing `#tag` lines.
+    pub tags: &'a [String],
+    /// The frontmatter values written (`--set` plus `created` stamps).
+    pub properties: serde_json::Map<String, serde_json::Value>,
+}
+
+/// `set`: the frontmatter keys written and removed.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SetJson<'a> {
+    pub path: &'a str,
+    pub absolute_path: String,
+    /// The values as written (typed JSON).
+    pub set: serde_json::Map<String, serde_json::Value>,
+    pub unset: &'a [String],
+}
+
+/// `tag`: whether the trailing tag line was added.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TagWriteJson<'a> {
+    pub path: &'a str,
+    pub tag: &'a str,
+    /// False when the body already carried the tag.
+    pub added: bool,
+    /// `created` stamps written because the tag is typed.
+    pub stamped: serde_json::Map<String, serde_json::Value>,
+}
+
+/// `untag`: whether a trailing tag line was removed.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UntagJson<'a> {
+    pub path: &'a str,
+    pub tag: &'a str,
+    pub removed: bool,
+}
+
+/// `done`: the task whose marker was toggled.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DoneJson<'a> {
+    pub path: &'a str,
+    pub text: &'a str,
+    pub checked: bool,
+}
+
+/// `append`: where the block landed.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AppendJson<'a> {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub date: Option<&'a str>,
+    pub path: &'a str,
+    pub absolute_path: String,
+    /// True when this append created the daily note.
+    pub created: bool,
+    pub bytes_appended: usize,
 }
 
 /// `info`: the graph and its index at a glance (works without an index).

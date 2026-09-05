@@ -3,9 +3,11 @@
 //! index is missing or unusable (`search` and `tasks` are the commands that
 //! require it). `capture` is the one command that writes.
 
+pub mod append;
 pub mod backlinks;
 pub mod capture;
 pub mod collection;
+pub mod done;
 pub mod info;
 pub mod links;
 pub mod list;
@@ -15,7 +17,9 @@ pub mod path;
 pub mod properties;
 pub mod recent;
 pub mod search;
+pub mod set;
 pub mod show;
+pub mod tag;
 pub mod tags;
 pub mod tasks;
 pub mod today;
@@ -31,7 +35,7 @@ use crate::error::CliError;
 use crate::index::{detect_staleness, open_read_only, IndexOpen, OpenIndex, Staleness};
 use crate::note_file::read_note;
 
-fn warn(message: impl Display) {
+pub(crate) fn warn(message: impl Display) {
     eprintln!("reflect: warning: {message}");
 }
 
@@ -86,4 +90,25 @@ fn require_index(root: &Path) -> Result<(OpenIndex, Staleness), CliError> {
         ));
     }
     Ok((opened, staleness))
+}
+
+/// Resolve a `<note>` argument to an existing, non-private file for a write
+/// (dailies must exist too — `capture`/`append` are the commands that
+/// create them). Index-assisted when the index is open.
+pub(crate) fn resolve_existing(
+    root: &Path,
+    note_arg: &str,
+    conn: Option<&rusqlite::Connection>,
+) -> Result<String, CliError> {
+    let resolved = crate::resolve::resolve_note(note_arg, root, conn)?;
+    if let crate::resolve::ResolvedNote::Daily { date, rel_path } = &resolved {
+        if !root.join(rel_path).is_file() {
+            return Err(CliError::NotFound(format!(
+                "no daily note for {date} ({rel_path})"
+            )));
+        }
+    }
+    let rel_path = resolved.rel_path().to_string();
+    crate::note_file::ensure_not_private(root, &rel_path)?;
+    Ok(rel_path)
 }

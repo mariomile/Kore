@@ -17,36 +17,7 @@ use crate::commands::{still_public_on_disk, warn};
 use crate::error::CliError;
 use crate::graph::Graph;
 use crate::index::{detect_staleness, open_read_only, IndexOpen};
-
-/// One schema entry of `tag_types.schema_json` — the fields the CLI surfaces.
-/// Serde mirrors `tagPropertySchema` (`packages/core/src/tags/tag-type.ts`);
-/// unknown fields are ignored so a newer app schema still lists.
-#[derive(serde::Deserialize)]
-struct SchemaProperty {
-    name: String,
-    key: String,
-    #[serde(rename = "type")]
-    kind: String,
-}
-
-/// The two on-disk forms of `tag_types.schema_json`, mirroring
-/// `decodeTagTypeJson`: a bare property array, or `{properties, template}`
-/// once the tag carries a new-row template.
-#[derive(serde::Deserialize)]
-#[serde(untagged)]
-enum SchemaJson {
-    Properties(Vec<SchemaProperty>),
-    Object { properties: Vec<SchemaProperty> },
-}
-
-impl SchemaJson {
-    fn into_properties(self) -> Vec<SchemaProperty> {
-        match self {
-            SchemaJson::Properties(properties) => properties,
-            SchemaJson::Object { properties } => properties,
-        }
-    }
-}
+use crate::schema::{decode_schema, SchemaProperty};
 
 /// Decode a stored `note_properties` row into a typed JSON value, mirroring
 /// `propertyRowValue` (`packages/core/src/indexing/collections.ts`).
@@ -113,11 +84,8 @@ pub fn run(
         )));
     };
     // Tolerant like the app: a mangled column reads as an empty schema, and
-    // the rows still list. Both stored forms decode — a templated tag writes
-    // the object shape (`decodeTagTypeJson`), not the bare array.
-    let schema: Vec<SchemaProperty> = serde_json::from_str::<SchemaJson>(&schema_json)
-        .map(SchemaJson::into_properties)
-        .unwrap_or_default();
+    // the rows still list.
+    let schema: Vec<SchemaProperty> = decode_schema(&schema_json).properties;
 
     // Mirrors `listCollection`: missing sort values last regardless of
     // direction, then the numeric key, then the string form, case-insensitive.

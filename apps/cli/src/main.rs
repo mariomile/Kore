@@ -77,7 +77,11 @@ enum Command {
     /// Append a list item to today's daily note (or --to any note)
     Capture {
         /// The text of the item (one line; line breaks collapse to spaces)
-        text: String,
+        #[arg(required_unless_present = "stdin")]
+        text: Option<String>,
+        /// Read the text from stdin instead of the argument
+        #[arg(long, conflicts_with = "text")]
+        stdin: bool,
         /// Append an open task (`+ [ ]`) instead of a plain bullet
         #[arg(long)]
         task: bool,
@@ -144,6 +148,62 @@ enum Command {
         /// with {{date}}/{{date:iso}}/{{time}}/{{title}} expanded
         #[arg(long, value_name = "TEMPLATE")]
         template: Option<String>,
+        /// Tag the note (repeatable; a typed tag seeds its template and stamps `created`)
+        #[arg(long = "tag", value_name = "TAG")]
+        tags: Vec<String>,
+        /// Set a frontmatter property (repeatable), typed by the tags' schemas
+        #[arg(long = "set", value_name = "KEY=VALUE")]
+        sets: Vec<String>,
+        /// Read the body from stdin (placed under the H1)
+        #[arg(long, conflicts_with = "template")]
+        stdin: bool,
+    },
+    /// Set frontmatter properties, typed by the note's tag schemas
+    Set {
+        /// A YYYY-MM-DD date, graph-relative path, note title, or alias
+        note: String,
+        /// key=value pairs (lists comma-separated; relations by title)
+        #[arg(value_name = "KEY=VALUE")]
+        assignments: Vec<String>,
+        /// Remove a property (repeatable)
+        #[arg(long = "unset", value_name = "KEY")]
+        unset: Vec<String>,
+    },
+    /// Add a #tag to a note as a trailing line (typed tags stamp `created`)
+    Tag {
+        /// A YYYY-MM-DD date, graph-relative path, note title, or alias
+        note: String,
+        /// The tag (with or without the #)
+        tag: String,
+    },
+    /// Remove a note's trailing #tag line (inline tags in prose are left alone)
+    Untag {
+        /// A YYYY-MM-DD date, graph-relative path, note title, or alias
+        note: String,
+        /// The tag (with or without the #)
+        tag: String,
+    },
+    /// Tick a task off by its text (or back on with --undo)
+    Done {
+        /// The task's text (exact, else a unique part of it)
+        text: String,
+        /// Only tasks in this note
+        #[arg(long = "in", value_name = "NOTE")]
+        in_note: Option<String>,
+        /// Reopen a completed task instead
+        #[arg(long)]
+        undo: bool,
+    },
+    /// Append a markdown block to a note (after one blank line)
+    Append {
+        /// A YYYY-MM-DD date, graph-relative path, note title, or alias
+        note: String,
+        /// The markdown to append
+        #[arg(required_unless_present = "stdin")]
+        text: Option<String>,
+        /// Read the markdown from stdin instead of the argument
+        #[arg(long, conflicts_with = "text")]
+        stdin: bool,
     },
 }
 
@@ -156,9 +216,19 @@ fn run(cli: &Cli) -> Result<(), CliError> {
         Command::Path { note } => commands::path::run(&graph, cli.json, note),
         Command::Open { note, print } => commands::open::run(&graph, cli.json, note, *print),
         Command::Tasks { all, limit } => commands::tasks::run(&graph, cli.json, *all, *limit),
-        Command::Capture { text, task, to } => {
-            commands::capture::run(&graph, cli.json, text, *task, to.as_deref())
-        }
+        Command::Capture {
+            text,
+            stdin,
+            task,
+            to,
+        } => commands::capture::run(
+            &graph,
+            cli.json,
+            text.as_deref(),
+            *stdin,
+            *task,
+            to.as_deref(),
+        ),
         Command::Backlinks { note } => commands::backlinks::run(&graph, cli.json, note),
         Command::Recent { limit } => commands::recent::run(&graph, cli.json, *limit),
         Command::Collection {
@@ -174,8 +244,35 @@ fn run(cli: &Cli) -> Result<(), CliError> {
         }
         Command::Properties { note } => commands::properties::run(&graph, cli.json, note),
         Command::Links { note } => commands::links::run(&graph, cli.json, note),
-        Command::New { title, template } => {
-            commands::new::run(&graph, cli.json, title, template.as_deref())
+        Command::New {
+            title,
+            template,
+            tags,
+            sets,
+            stdin,
+        } => commands::new::run(
+            &graph,
+            cli.json,
+            title,
+            template.as_deref(),
+            tags,
+            sets,
+            *stdin,
+        ),
+        Command::Set {
+            note,
+            assignments,
+            unset,
+        } => commands::set::run(&graph, cli.json, note, assignments, unset),
+        Command::Tag { note, tag } => commands::tag::run_tag(&graph, cli.json, note, tag),
+        Command::Untag { note, tag } => commands::tag::run_untag(&graph, cli.json, note, tag),
+        Command::Done {
+            text,
+            in_note,
+            undo,
+        } => commands::done::run(&graph, cli.json, text, in_note.as_deref(), *undo),
+        Command::Append { note, text, stdin } => {
+            commands::append::run(&graph, cli.json, note, text.as_deref(), *stdin)
         }
     }
 }

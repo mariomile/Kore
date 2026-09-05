@@ -17,9 +17,11 @@
 //! The resolved file's own frontmatter is checked, never just the index row,
 //! so a stale index can't leak a just-flagged note.
 
+pub mod body_tag;
 pub mod commands;
 pub mod error;
 pub mod frontmatter_values;
+pub mod frontmatter_write;
 pub mod graph;
 pub mod hash;
 pub mod index;
@@ -27,5 +29,7 @@ pub mod keys;
 pub mod note_file;
 pub mod paths;
 pub mod resolve;
+pub mod schema;
 pub mod search;
 pub mod slug;
+pub mod write;

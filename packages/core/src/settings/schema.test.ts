@@ -660,7 +660,6 @@ describe('settingsSchema', () => {
       '/g': [
         { kind: 'note', path: 'notes/alpha.md', pinned: true },
         { kind: 'note', path: 'notes/beta.md', pinned: false },
-        { kind: 'surface', surface: 'settings', pinned: false },
       ],
     })
     expect('openNoteTabs' in parsed).toBe(false)
@@ -708,6 +707,24 @@ describe('settingsSchema', () => {
         { kind: 'surface', surface: 'tasks', pinned: false },
       ],
       '/broken': [],
+    })
+  })
+
+  it('drops retired settings tabs without discarding the rest of the session', () => {
+    const parsed = settingsSchema.parse({
+      openTabs: {
+        '/g': [
+          { kind: 'surface', surface: 'daily', date: null, pinned: false },
+          { kind: 'surface', surface: 'settings', pinned: true },
+          { kind: 'note', path: 'notes/alpha.md', pinned: false },
+        ],
+      },
+    })
+    expect(parsed.openTabs).toEqual({
+      '/g': [
+        { kind: 'surface', surface: 'daily', date: null, pinned: false },
+        { kind: 'note', path: 'notes/alpha.md', pinned: false },
+      ],
     })
   })
 })

@@ -111,9 +111,11 @@ function RouteView(): ReactElement {
       )
     case 'graphs':
     // The graph-switcher route is a mobile settings sub-screen; on desktop
-    // graph switching lives in the sidebar footer, so it renders as settings.
+    // graph switching lives in the sidebar footer, so it renders as the
+    // same full-page settings workspace.
     case 'settings':
-      // Settings owns its full-height page shell and independent content scroll.
+      // Settings owns the window: a local sidebar and independent content
+      // scroll, covering the workspace chrome rather than joining the strip.
       return <SettingsScreen />
   }
 }

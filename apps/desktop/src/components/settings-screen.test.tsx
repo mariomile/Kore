@@ -10,7 +10,7 @@ import { NoteTemplatesProvider } from '@/providers/note-templates-provider'
 import { ShortcutsProvider } from '@/providers/shortcuts-provider'
 import { SettingsProvider } from '@/providers/settings-provider'
 import { UpdateProvider } from '@/providers/update-provider'
-import { RouterProvider } from '@/routing/router'
+import { RouterProvider, useRouter } from '@/routing/router'
 import { expectLocatorToHaveCount } from '@/test-utils/expect'
 import { ShortcutsDialog } from './shortcuts-dialog'
 import { SettingsScreen } from './settings-screen'
@@ -162,6 +162,33 @@ describe('SettingsScreen', () => {
     await expect.element(page.getByRole('heading', { name: 'AI & agents' })).toBeVisible()
     await expect.element(page.getByRole('region', { name: 'AI providers' })).toBeVisible()
     expect(page.getByRole('region', { name: 'Appearance' }).query()).toBeNull()
+  })
+
+  it('closes to today when nothing is behind the page', async () => {
+    function RouteProbe() {
+      const { route } = useRouter()
+      return <output data-testid="route">{route.kind}</output>
+    }
+    await render(
+      <QueryClientProvider client={queryClient}>
+        <SettingsProvider>
+          <UpdateProvider autoCheck={false}>
+            <RouterProvider initialRoute={{ kind: 'settings' }}>
+              <ShortcutsProvider>
+                <NoteTemplatesProvider>
+                  <SettingsScreen />
+                  <RouteProbe />
+                </NoteTemplatesProvider>
+              </ShortcutsProvider>
+            </RouterProvider>
+          </UpdateProvider>
+        </SettingsProvider>
+      </QueryClientProvider>,
+    )
+
+    await expect.element(page.getByTestId('route')).toHaveTextContent('settings')
+    await page.getByRole('button', { name: 'Close settings' }).click()
+    await vi.waitFor(() => expect(page.getByTestId('route')).toHaveTextContent('today'))
   })
 
   it('shows update controls when the native bridge is available', async () => {

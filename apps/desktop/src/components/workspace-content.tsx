@@ -16,10 +16,12 @@ import { SidebarResizeHandle } from '@/components/sidebar-resize-handle'
 import { TemplateCreateDialog } from '@/components/templates/template-create-dialog'
 import { TemplatePicker } from '@/components/templates/template-picker'
 import { registerInAppBrowserOpener, setBrowserSessionUrl } from '@/lib/browser-session'
+import type { CommandContext } from '@/lib/commands/types'
 import { useMacosTrafficLightInset } from '@/lib/use-macos-traffic-light-inset'
 import { useDailyContextTarget } from '@/providers/focused-daily-provider'
 import { useSidebar } from '@/providers/sidebar-provider'
 import { useAppShortcuts } from '@/routing/app-shortcuts'
+import { isSettingsPage } from '@/routing/route'
 import { useRouter } from '@/routing/router'
 
 interface WorkspaceContentProps {
@@ -37,14 +39,14 @@ interface WorkspaceContentProps {
  * carrying the window's own ground. A collapsed rail unmounts — the layout
  * snaps instead of
  * animating, and panels hosting live surfaces (the embedded browser)
- * release them. The always-mounted global surfaces (⌘K palette, find bar,
- * embeddings sync) ride inside the card with the route. Split from
- * {@link GraphWorkspace} because these hooks need the providers it mounts.
+ * release them. The always-mounted global surfaces (⌘K palette, embeddings
+ * sync) sit on the window so they still work when Settings covers the frame.
+ * Find stays in the note pane. Split from {@link GraphWorkspace} because
+ * these hooks need the providers it mounts.
  */
 export function WorkspaceContent({ graph }: WorkspaceContentProps): ReactElement {
-  const { collapsed, contextCollapsed } = useSidebar()
   const commandContext = useAppShortcuts()
-  const { navigate } = useRouter()
+  const { navigate, route } = useRouter()
   // Web links land in the built-in browser tab: the workspace registers the
   // opener that plain modules (the editor's link handler) route through.
   useEffect(
@@ -82,6 +84,7 @@ export function WorkspaceContent({ graph }: WorkspaceContentProps): ReactElement
   // the panel follows the focused day and snaps back on navigation.
   const contextTarget = useDailyContextTarget()
   const trafficLightBand = useMacosTrafficLightInset()
+  const settingsPage = isSettingsPage(route)
 
   return (
     <div className="app-window-ground flex h-screen w-screen flex-col overflow-hidden bg-surface-sunken text-text">
@@ -98,63 +101,96 @@ export function WorkspaceContent({ graph }: WorkspaceContentProps): ReactElement
         <div aria-hidden data-testid="macos-traffic-light-band" className="h-7 flex-none" />
       ) : null}
 
-      {/* Every gap in this row is one pane's own left gutter, and the row
-          itself holds the window's right edge open. Nothing here has to know
-          whether its neighbour is mounted, so no gutter is conditional and
-          the `lg` breakpoint the context rail appears at stays the rail's
-          business alone. The workspace rail keeps no gutter: it is flat
-          sunken ground, not a card. */}
-      <div className="workspace-frame flex min-h-0 flex-1 pr-2">
-        {collapsed ? undefined : (
-          <aside
-            id="workspace-sidebar"
-            aria-label="Workspace"
-            className="app-window-chrome relative flex w-[var(--sidebar-width)] shrink-0 flex-col overflow-hidden bg-surface-sunken"
-          >
-            <Sidebar graph={graph} context={commandContext} />
-            <SidebarResizeHandle panel="workspace" />
-          </aside>
-        )}
+      {settingsPage ? (
+        <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+          <RouteContent />
+        </div>
+      ) : (
+        <WorkspaceFrame
+          graph={graph}
+          commandContext={commandContext}
+          contextTarget={contextTarget}
+        />
+      )}
 
-        <div className="workspace-main flex min-w-0 flex-1 flex-col">
-          <WorkspaceTabsStrip commandContext={commandContext} />
-          <div
-            data-testid="note-pane-gutter"
-            className="workspace-pane-gutter min-h-0 flex-1 pl-2 pb-2"
-          >
-            <div className="app-glass-card h-full overflow-hidden rounded-xl bg-surface">
-              <AppShell className="bg-transparent">
-                <div className="relative flex h-full flex-col">
-                  <div className="min-h-0 flex-1">
-                    <RouteContent />
-                  </div>
+      <CommandPalette context={commandContext} />
+      <ShortcutsDialog />
+      <VaultReplaceMount />
+      <TemplatePicker context={commandContext} />
+      <TemplateCreateDialog context={commandContext} />
+      <EmbeddingsSync />
+      <AgentRoutinesRunner />
+      <TaskRemindersRunner />
+    </div>
+  )
+}
 
-                  <NoteFindBar />
-                  <CommandPalette context={commandContext} />
-                  <ShortcutsDialog />
-                  <VaultReplaceMount />
-                  <TemplatePicker context={commandContext} />
-                  <TemplateCreateDialog context={commandContext} />
-                  <EmbeddingsSync />
-                  <AgentRoutinesRunner />
-                  <TaskRemindersRunner />
+interface WorkspaceFrameProps {
+  graph: GraphInfo
+  commandContext: CommandContext
+  contextTarget: ReturnType<typeof useDailyContextTarget>
+}
+
+/**
+ * The two-rail workspace around the note pane. Settings is a full-page
+ * workspace, not a tab inside this frame.
+ */
+function WorkspaceFrame({
+  graph,
+  commandContext,
+  contextTarget,
+}: WorkspaceFrameProps): ReactElement {
+  const { collapsed, contextCollapsed } = useSidebar()
+
+  return (
+    // Every gap in this row is one pane's own left gutter, and the row
+    // itself holds the window's right edge open. Nothing here has to know
+    // whether its neighbour is mounted, so no gutter is conditional and
+    // the `lg` breakpoint the context rail appears at stays the rail's
+    // business alone. The workspace rail keeps no gutter: it is flat
+    // sunken ground, not a card.
+    <div className="workspace-frame flex min-h-0 flex-1 pr-2">
+      {collapsed ? undefined : (
+        <aside
+          id="workspace-sidebar"
+          aria-label="Workspace"
+          className="app-window-chrome relative flex w-[var(--sidebar-width)] shrink-0 flex-col overflow-hidden bg-surface-sunken"
+        >
+          <Sidebar graph={graph} context={commandContext} />
+          <SidebarResizeHandle panel="workspace" />
+        </aside>
+      )}
+
+      <div className="workspace-main flex min-w-0 flex-1 flex-col">
+        <WorkspaceTabsStrip commandContext={commandContext} />
+        <div
+          data-testid="note-pane-gutter"
+          className="workspace-pane-gutter min-h-0 flex-1 pl-2 pb-2"
+        >
+          <div className="app-glass-card h-full overflow-hidden rounded-xl bg-surface">
+            <AppShell className="bg-transparent">
+              <div className="relative flex h-full flex-col">
+                <div className="min-h-0 flex-1">
+                  <RouteContent />
                 </div>
-              </AppShell>
-            </div>
+
+                <NoteFindBar />
+              </div>
+            </AppShell>
           </div>
         </div>
-
-        {contextCollapsed ? undefined : (
-          <aside
-            id="context-sidebar"
-            aria-label="Context"
-            className="app-window-chrome relative hidden w-[var(--context-sidebar-width)] shrink-0 overflow-hidden bg-surface-sunken lg:flex lg:flex-col"
-          >
-            <SidebarResizeHandle panel="context" />
-            <ContextSidebar target={contextTarget} />
-          </aside>
-        )}
       </div>
+
+      {contextCollapsed ? undefined : (
+        <aside
+          id="context-sidebar"
+          aria-label="Context"
+          className="app-window-chrome relative hidden w-[var(--context-sidebar-width)] shrink-0 overflow-hidden bg-surface-sunken lg:flex lg:flex-col"
+        >
+          <SidebarResizeHandle panel="context" />
+          <ContextSidebar target={contextTarget} />
+        </aside>
+      )}
     </div>
   )
 }

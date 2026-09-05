@@ -1,7 +1,7 @@
-import { useState, type ComponentType, type ReactElement } from 'react'
-import { SettingsNavigator } from './settings/settings-navigator'
-import { useVisibleSettingsGroups } from './settings/use-visible-settings-sections'
-import type { SettingsGroupId, SettingsSectionId } from './settings/sections'
+import { useCallback, useEffect, useState, type ComponentType, type ReactElement } from 'react'
+import { Close } from '@/components/icons'
+import { Button } from '@/components/ui/button'
+import { useRouter } from '@/routing/router'
 import { AboutSection } from './settings/about-section'
 import { AgentsSection } from './settings/agents-section'
 import { AiChatSection } from './settings/ai-chat-section'
@@ -18,16 +18,13 @@ import { ImportSection } from './settings/import-section'
 import { IntegrationsSection } from './settings/integrations-section'
 import { McpSection } from './settings/mcp-section'
 import { SearchSection } from './settings/search-section'
+import type { SettingsGroupId, SettingsSectionId } from './settings/sections'
+import { SettingsNavigator } from './settings/settings-navigator'
 import { SyncSection } from './settings/sync-section'
 import { TasksSection } from './settings/tasks-section'
 import { TemplatesSection } from './settings/templates-section'
+import { useVisibleSettingsGroups } from './settings/use-visible-settings-sections'
 
-/**
- * The settings screen is a full workspace surface: a stable local sidebar
- * selects one settings group at a time, and the page pane scrolls independently.
- * Every control still applies instantly through the settings provider.
- */
-/** The section cards, keyed by the registry ids the navigator also uses. */
 const SECTION_COMPONENTS: Record<SettingsSectionId, ComponentType> = {
   appearance: AppearanceSection,
   editor: EditorSection,
@@ -50,15 +47,54 @@ const SECTION_COMPONENTS: Record<SettingsSectionId, ComponentType> = {
   destructive: DestructiveSection,
 }
 
+/**
+ * The settings screen is a full-page workspace: a stable local sidebar
+ * selects one settings group at a time, and the page pane scrolls independently.
+ * It is not a strip tab — opening it covers the workspace chrome, and Close
+ * (or Escape) returns to the previous route. Every control still applies
+ * instantly through the settings provider.
+ */
 export function SettingsScreen(): ReactElement {
   const groups = useVisibleSettingsGroups()
+  const { back, canBack, navigate } = useRouter()
   const [activeGroupId, setActiveGroupId] = useState<SettingsGroupId>('general')
   const activeGroup = groups.find((group) => group.id === activeGroupId) ?? groups[0]
+  const closeSettings = useCallback((): void => {
+    if (canBack) {
+      back()
+      return
+    }
+    navigate({ kind: 'today' })
+  }, [back, canBack, navigate])
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent): void {
+      if (event.key !== 'Escape' || event.defaultPrevented) {
+        return
+      }
+      event.preventDefault()
+      closeSettings()
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [closeSettings])
 
   return (
     <div aria-label="Settings" className="flex h-full min-h-0 overflow-hidden bg-surface-app">
       <aside className="w-48 shrink-0 border-r border-border bg-surface-sunken/60 px-3 py-7">
-        <h1 className="px-2 text-base font-semibold text-text">Settings</h1>
+        <div className="flex items-center justify-between gap-2 px-2">
+          <h1 className="text-base font-semibold text-text">Settings</h1>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Close settings"
+            onClick={closeSettings}
+            className="text-text-muted hover:text-text-secondary"
+          >
+            <Close aria-hidden className="size-3.5" />
+          </Button>
+        </div>
         <SettingsNavigator
           groups={groups}
           activeGroupId={activeGroupId}

@@ -31,7 +31,8 @@ interface WorkspaceTabsStripProps {
 /**
  * The content column's browser-style tab bar. Every workspace page is a
  * closable tab; pinned tabs collapse to their semantic icon, and closing the
- * final tab falls back to Daily through the provider.
+ * final tab falls back to Daily through the provider. Settings is a full-page
+ * workspace and never joins the strip.
  */
 export function WorkspaceTabsStrip({ commandContext }: WorkspaceTabsStripProps): ReactElement {
   const { activeTab, activateTab, closeTab, togglePin, moveTab } = useOpenTabs()

@@ -207,10 +207,30 @@ describe('app commands', () => {
     expect(context.toggleAudioMemo).toHaveBeenCalled()
   })
 
-  it('settings.open navigates to the settings screen', async () => {
+  it('settings.open navigates to the settings screen, and again closes it', async () => {
     const { context, navigated } = fakeContext()
     await command('settings.open').run(context)
     expect(navigated).toEqual([{ kind: 'settings' }])
+    expect(context.back).not.toHaveBeenCalled()
+
+    const { context: onSettings, navigated: closed } = fakeContext({
+      route: () => ({ kind: 'settings' }),
+    })
+    await command('settings.open').run(onSettings)
+    expect(onSettings.back).toHaveBeenCalledTimes(1)
+    expect(closed).toEqual([])
+  })
+
+  it('tabs.close leaves the settings page instead of closing a tab', async () => {
+    const { context } = fakeContext({ route: () => ({ kind: 'settings' }) })
+    await command('tabs.close').run(context)
+    expect(context.back).toHaveBeenCalledTimes(1)
+    expect(context.closeActiveTab).not.toHaveBeenCalled()
+
+    const { context: onToday } = fakeContext()
+    await command('tabs.close').run(onToday)
+    expect(onToday.closeActiveTab).toHaveBeenCalledTimes(1)
+    expect(onToday.back).not.toHaveBeenCalled()
   })
 
   it('note Find commands use the shared window-scoped capabilities', async () => {

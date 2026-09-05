@@ -75,7 +75,8 @@ export * from './schema-editor'
  * Singleton workspace pages that join notes and conversations in the desktop
  * tab strip. Route payloads such as the focused daily date, collection tag, or
  * search query live on the corresponding tab while identity remains the
- * surface name.
+ * surface name. Settings is a full-page workspace, not a tab, so it is not a
+ * surface here — stored `settings` tabs are dropped on parse.
  */
 export const workspaceSurfaceSchema = z.enum([
   'daily',
@@ -85,7 +86,6 @@ export const workspaceSurfaceSchema = z.enum([
   'insights',
   'graphMap',
   'agents',
-  'settings',
   'terminal',
   'browser',
 ])
@@ -170,9 +170,25 @@ const openSearchTabStoredSchema = z.object({
 
 const openStaticSurfaceTabStoredSchema = z.object({
   kind: z.literal('surface'),
-  surface: z.enum(['tasks', 'insights', 'graphMap', 'agents', 'settings', 'terminal', 'browser']),
+  surface: z.enum(['tasks', 'insights', 'graphMap', 'agents', 'terminal', 'browser']),
   pinned: z.boolean().catch(false),
 }) satisfies z.ZodType<OpenStaticSurfaceTab>
+
+/**
+ * Settings used to be a workspace tab. Drop stored entries so a restored
+ * session keeps the rest of the strip instead of failing the whole list.
+ */
+function dropRetiredSettingsTabs(value: unknown): unknown {
+  if (!Array.isArray(value)) {
+    return value
+  }
+  return value.filter((entry) => {
+    if (typeof entry !== 'object' || entry === null) {
+      return true
+    }
+    return !('surface' in entry && entry.surface === 'settings')
+  })
+}
 
 /** Pre-surface shape: `{ path, pinned }` with no `kind`. */
 const legacyOpenNoteTabSchema = z
@@ -201,7 +217,10 @@ export const openTabSchema: z.ZodType<OpenTab> = z.union([
 ])
 
 export const openTabsSchema = z
-  .record(z.string(), z.array(openTabSchema).catch([]))
+  .record(
+    z.string(),
+    z.preprocess(dropRetiredSettingsTabs, z.array(openTabSchema).catch([])),
+  )
   // An array is also an object to `z.record` (index keys) — the pre-keying
   // shape must degrade to "no sessions", not to a graph named "0".
   .refine((value) => !Array.isArray(value))

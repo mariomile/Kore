@@ -528,14 +528,10 @@ describe('workspace tabs', () => {
     await view.unmount()
   })
 
-  it('opening settings or browser adds a tab; closing it leaves the page', async () => {
+  it('opening settings does not add a tab; browser still does', async () => {
     const view = await renderTabs()
     await view.getByTestId('open-settings').click()
     await vi.waitFor(() => expect(routeOf(view).kind).toBe('settings'))
-    await expect.element(view.getByRole('tab', { name: /Settings/ })).toBeVisible()
-
-    await view.getByRole('button', { name: 'Close Settings' }).first().click()
-    await vi.waitFor(() => expect(routeOf(view).kind).toBe('today'))
     expect(view.getByRole('tab', { name: /Settings/ }).query()).toBeNull()
 
     await view.getByTestId('open-browser').click()
@@ -568,7 +564,6 @@ describe('workspace tabs', () => {
       ['open-insights', 'Insights'],
       ['open-graph', 'Graph'],
       ['open-agents', 'Agents'],
-      ['open-settings', 'Settings'],
       ['open-terminal', 'Terminal'],
       ['open-browser', 'Browser'],
     ] as const

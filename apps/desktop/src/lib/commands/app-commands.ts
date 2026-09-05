@@ -4,7 +4,7 @@ import { isNativeShell } from '@/lib/platform'
 import { isMobileSurface } from '@/lib/platform-surface'
 import { rebuildIndexVisibly } from '@/lib/rebuild-index'
 import { openRouteInNewWindow } from '@/lib/windows/open-in-new-window'
-import { routeForPath, type Route } from '@/routing/route'
+import { isSettingsPage, routeForPath, type Route } from '@/routing/route'
 import { NOTE_ACTION_COMMANDS } from './note-action-commands'
 import { registerCommands } from './registry'
 import type { AppCommand, CommandContext } from './types'
@@ -302,14 +302,26 @@ const APP_COMMANDS: AppCommand[] = [
     title: 'Close tab',
     keywords: ['tab', 'close', 'open', 'workspace'],
     keybinding: 'Mod-w',
-    run: (context) => context.closeActiveTab(),
+    run: (context) => {
+      if (isSettingsPage(context.route())) {
+        context.back()
+        return
+      }
+      context.closeActiveTab()
+    },
   },
   {
     id: 'settings.open',
     title: 'Open settings',
     keywords: ['preferences', 'config', 'options'],
     keybinding: 'Mod-,',
-    run: (context) => context.navigate({ kind: 'settings' }),
+    run: (context) => {
+      if (isSettingsPage(context.route())) {
+        context.back()
+        return
+      }
+      context.navigate({ kind: 'settings' })
+    },
   },
   {
     id: 'shortcuts.show',

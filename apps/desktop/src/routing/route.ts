@@ -46,6 +46,17 @@ export function isDesktopOnlyRoute(route: Route): boolean {
   return route.kind === 'terminal' || route.kind === 'browser'
 }
 
+/**
+ * Desktop settings takes over the window as a full page, not a workspace tab.
+ * The `graphs` route is the mobile graph-switcher; on desktop it renders as
+ * the same settings page.
+ */
+export function isSettingsPage(
+  route: Route,
+): route is Extract<Route, { kind: 'settings' | 'graphs' }> {
+  return route.kind === 'settings' || route.kind === 'graphs'
+}
+
 /** Structural route equality (used to avoid pushing no-op history entries). */
 export function routesEqual(a: Route, b: Route): boolean {
   if (a.kind !== b.kind) {

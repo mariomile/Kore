@@ -1,5 +1,5 @@
 import { isDaily, isTemplatePath, type OpenTab, type WorkspaceSurface } from '@reflect/core'
-import { routeForPath, routesEqual, type Route } from '@/routing/route'
+import { isSettingsPage, routeForPath, routesEqual, type Route } from '@/routing/route'
 
 /**
  * Identity of a strip tab, stable across pin toggles and mutable route state.
@@ -53,6 +53,9 @@ export function openTabForRoute(
   route: Route,
   conversationId: string | null = null,
 ): OpenTab | null {
+  if (isSettingsPage(route)) {
+    return null
+  }
   switch (route.kind) {
     case 'note':
       return isTabbableNotePath(route.path)
@@ -72,12 +75,9 @@ export function openTabForRoute(
     case 'insights':
     case 'graphMap':
     case 'agents':
-    case 'settings':
     case 'terminal':
     case 'browser':
       return { kind: 'surface', surface: route.kind, pinned: false }
-    case 'graphs':
-      return { kind: 'surface', surface: 'settings', pinned: false }
   }
 }
 
@@ -104,8 +104,6 @@ export function routeForOpenTab(tab: OpenTab): Route {
       return { kind: 'graphMap' }
     case 'agents':
       return { kind: 'agents' }
-    case 'settings':
-      return { kind: 'settings' }
     case 'terminal':
       return { kind: 'terminal' }
     case 'browser':
@@ -122,7 +120,6 @@ export const SURFACE_TAB_LABEL: Record<WorkspaceSurface, string> = {
   insights: 'Insights',
   graphMap: 'Graph',
   agents: 'Agents',
-  settings: 'Settings',
   terminal: 'Terminal',
   browser: 'Browser',
 }

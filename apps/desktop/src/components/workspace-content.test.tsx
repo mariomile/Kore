@@ -3,6 +3,7 @@ import { page } from 'vitest/browser'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { GraphInfo } from '@reflect/core'
 import type { ContextSidebarTarget } from '@/components/context-sidebar/sidebar-route'
+import type { Route } from '@/routing/route'
 
 interface WorkspaceState {
   collapsed: boolean
@@ -16,6 +17,10 @@ const workspaceState = vi.hoisted<WorkspaceState>(() => ({
   target: { kind: 'daily', date: '2026-07-11' },
 }))
 const trafficLights = vi.hoisted(() => ({ inset: false }))
+const routerState = vi.hoisted(() => ({
+  route: { kind: 'today' } as Route,
+  navigate: vi.fn(),
+}))
 
 vi.mock('@/components/command-palette/command-palette', () => ({
   CommandPalette: () => null,
@@ -76,7 +81,7 @@ vi.mock('@/routing/app-shortcuts', () => ({ useAppShortcuts: () => ({}) }))
 // test runs without a RouterProvider.
 vi.mock('@/routing/router', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/routing/router')>()),
-  useRouter: () => ({ navigate: vi.fn() }),
+  useRouter: () => routerState,
 }))
 
 const { WorkspaceContent } = await import('./workspace-content')
@@ -88,6 +93,7 @@ beforeEach(async () => {
   workspaceState.contextCollapsed = false
   workspaceState.target = { kind: 'daily', date: '2026-07-11' }
   trafficLights.inset = false
+  routerState.route = { kind: 'today' }
   // The context sidebar is `hidden lg:block`, so it only renders on a
   // desktop-width viewport.
   await page.viewport(1280, 800)
@@ -188,5 +194,15 @@ describe('WorkspaceContent', () => {
     trafficLights.inset = true
     await view.rerender(<WorkspaceContent graph={GRAPH} />)
     await expect.element(view.getByTestId('macos-traffic-light-band')).toBeInTheDocument()
+  })
+
+  it('covers the workspace chrome when settings is open', async () => {
+    routerState.route = { kind: 'settings' }
+    const view = await render(<WorkspaceContent graph={GRAPH} />)
+
+    expect(view.getByRole('complementary', { name: 'Workspace' }).query()).toBeNull()
+    expect(view.getByRole('complementary', { name: 'Context' }).query()).toBeNull()
+    expect(view.getByTestId('note-pane-gutter').query()).toBeNull()
+    await expect.element(page.getByText('Route content')).toBeInTheDocument()
   })
 })

@@ -42,16 +42,8 @@ describe('openTabForRoute', () => {
       query: 'alpha',
       pinned: false,
     })
-    expect(openTabForRoute({ kind: 'settings' })).toEqual({
-      kind: 'surface',
-      surface: 'settings',
-      pinned: false,
-    })
-    expect(openTabForRoute({ kind: 'graphs' })).toEqual({
-      kind: 'surface',
-      surface: 'settings',
-      pinned: false,
-    })
+    expect(openTabForRoute({ kind: 'settings' })).toBeNull()
+    expect(openTabForRoute({ kind: 'graphs' })).toBeNull()
     expect(openTabForRoute({ kind: 'browser' })).toEqual({
       kind: 'surface',
       surface: 'browser',
@@ -74,9 +66,6 @@ describe('routeForOpenTab', () => {
     expect(routeForOpenTab({ kind: 'note', path: 'notes/alpha.md', pinned: false })).toEqual({
       kind: 'note',
       path: 'notes/alpha.md',
-    })
-    expect(routeForOpenTab({ kind: 'surface', surface: 'settings', pinned: false })).toEqual({
-      kind: 'settings',
     })
     expect(routeForOpenTab({ kind: 'surface', surface: 'browser', pinned: false })).toEqual({
       kind: 'browser',

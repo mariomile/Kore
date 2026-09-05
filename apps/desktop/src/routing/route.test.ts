@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   effectiveDailyDate,
   focusedNotePathForRoute,
+  isSettingsPage,
   notePathForRoute,
   routeForPath,
   routesEqual,
@@ -100,5 +101,14 @@ describe('focusedNotePathForRoute', () => {
       'notes/a.md',
     )
     expect(focusedNotePathForRoute({ kind: 'settings' }, TODAY, '2026-06-01')).toBeNull()
+  })
+})
+
+describe('isSettingsPage', () => {
+  it('treats settings and the desktop graphs alias as the full-page workspace', () => {
+    expect(isSettingsPage({ kind: 'settings' })).toBe(true)
+    expect(isSettingsPage({ kind: 'graphs' })).toBe(true)
+    expect(isSettingsPage({ kind: 'today' })).toBe(false)
+    expect(isSettingsPage({ kind: 'agents' })).toBe(false)
   })
 })

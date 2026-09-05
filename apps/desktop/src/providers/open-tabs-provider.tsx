@@ -30,7 +30,8 @@ import { useRouter } from '@/routing/router'
  * root — the settings document is global, and unkeyed tabs would leak into
  * other graphs) so a relaunch restores the session. Notes and conversations
  * have distinct identities; workspace pages are singleton tabs whose latest
- * route payload is retained.
+ * route payload is retained. Settings is a full-page workspace and is not a
+ * tab.
  */
 
 export interface OpenTabsValue {

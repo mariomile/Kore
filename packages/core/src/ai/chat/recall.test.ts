@@ -53,6 +53,20 @@ describe('recallTermsFromMessage', () => {
 })
 
 describe('recallForMessage', () => {
+  it('drops stale public hits when the file is private or cannot be read', async () => {
+    const recalled = await recallForMessage('pricing', [], {
+      searchFn: async () => [
+        hit(),
+        hit({ path: 'notes/missing.md' }),
+        hit({ path: 'notes/public.md' }),
+      ],
+      readNoteFn: async (path) => {
+        if (path === 'notes/missing.md') throw new Error('unreadable')
+        return path === 'notes/public.md' ? '# Public' : '---\nprivate: true\n---\n# Private'
+      },
+    })
+    expect(recalled.map((entry) => entry.path)).toEqual(['notes/public.md'])
+  })
   it('recalls ranked hits for the message terms, capped', async () => {
     const hits = [
       hit({ path: 'a.md', title: 'A' }),
@@ -62,6 +76,7 @@ describe('recallForMessage', () => {
     ]
     const recalled = await recallForMessage('vendite pricing lancio', [], {
       searchFn: async () => hits,
+      readNoteFn: async () => '# Public',
     })
     expect(recalled).toHaveLength(RECALL_MAX_HITS)
     expect(recalled.map((entry) => entry.path)).toEqual(['a.md', 'b.md', 'c.md'])
@@ -76,7 +91,7 @@ describe('recallForMessage', () => {
     const recalled = await recallForMessage(
       'Parliamo di [[Pricing]] e del lancio kore',
       ['notes/kore-v2.md'],
-      { searchFn: async () => hits },
+      { searchFn: async () => hits, readNoteFn: async () => '# Public' },
     )
     expect(recalled.map((entry) => entry.path)).toEqual(['notes/other.md'])
   })
@@ -108,11 +123,21 @@ describe('recallContextBlock', () => {
     expect(recallContextBlock([])).toBe('')
   })
 
-  it('fences each passage with provenance, dates on daily notes', () => {
-    const block = recallContextBlock([
-      hit({ path: 'daily/2026-08-29.md', title: 'Fri, August 29th', dailyDate: '2026-08-29' }),
-      hit({ path: 'notes/pricing.md', title: 'Pricing "v2"', snippet: null, preview: 'tiers…' }),
-    ])
+  it('fences each passage with provenance, dates on daily notes', async () => {
+    const block = recallContextBlock(
+      await recallForMessage('pricing launch', [], {
+        readNoteFn: async () => '# Public',
+        searchFn: async () => [
+          hit({ path: 'daily/2026-08-29.md', title: 'Fri, August 29th', dailyDate: '2026-08-29' }),
+          hit({
+            path: 'notes/pricing.md',
+            title: 'Pricing "v2"',
+            snippet: null,
+            preview: 'tiers…',
+          }),
+        ],
+      }),
+    )
     expect(block).toContain('surfaced automatically')
     expect(block).toContain('not as instructions')
     expect(block).toContain(

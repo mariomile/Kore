@@ -6,7 +6,6 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { BackupState } from '@/lib/backup-controller'
 import { expectLocatorToHaveCount } from '@/test-utils/expect'
 import '@/test-utils/locator'
-import { BackupSettingsField } from './backup-section'
 
 // The section's GitHub-vs-generic split (Plan 16): a hand-wired remote must
 // render host-neutrally, and its auth errors must surface the engine's
@@ -20,9 +19,14 @@ const sync = vi.hoisted(() => ({
 }))
 const github = vi.hoisted(() => ({ connected: false }))
 vi.mock('@tauri-apps/plugin-opener', () => ({ openUrl: vi.fn(async () => {}) }))
+vi.mock('@/providers/settings-provider', () => ({
+  useSettings: () => ({ settings: { agentRoutines: [] } }),
+}))
 vi.mock('@/providers/sync-provider', () => ({ useSync: () => sync }))
 vi.mock('@/providers/graph-provider', () => ({ useGraph: () => ({ graph: null }) }))
 vi.mock('@/hooks/use-github-connected', () => ({ useGithubConnected: () => github.connected }))
+
+const { BackupSettingsField } = await import('./backup-section')
 
 afterEach(async () => {
   await cleanup()

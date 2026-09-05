@@ -11,6 +11,7 @@
 //! the `chat_*` tables ([`chat_write`]) hold durable chat history — deleting
 //! the file loses those.
 
+pub mod backup;
 mod chat_write;
 mod embed_write;
 mod migrations;

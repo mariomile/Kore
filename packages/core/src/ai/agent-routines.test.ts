@@ -23,6 +23,7 @@ const WEDNESDAY_NOON = new Date(2026, 7, 26, 12, 0, 0)
 function routine(overrides: Partial<AgentRoutine>): AgentRoutine {
   return {
     id: 'r1',
+    graphRoot: '/g',
     name: 'Test',
     agentSlug: null,
     prompt: 'do the thing',
@@ -38,6 +39,10 @@ function routine(overrides: Partial<AgentRoutine>): AgentRoutine {
     ...overrides,
   }
 }
+
+it('does not schedule an unassigned routine', () => {
+  expect(routineIsDue(routine({ graphRoot: null }), WEDNESDAY_NOON)).toBe(false)
+})
 
 describe('latestOccurrenceMs', () => {
   it('finds today’s time when it has passed, yesterday’s when not', () => {

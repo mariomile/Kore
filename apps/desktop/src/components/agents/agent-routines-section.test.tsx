@@ -25,8 +25,13 @@ const { AgentRoutinesSection } = await import('./agent-routines-section')
 const { ROUTINE_RUN_NOW_EVENT } = await import('@/components/agent-routines-runner')
 const { setRunningRoutine } = await import('@/lib/agent-routine-running')
 
+vi.mock('@/providers/graph-provider', () => ({
+  useGraph: () => ({ graph: { root: '/g', name: 'Work' } }),
+}))
+
 const BRIEF: AgentRoutine = {
   id: 'brief',
+  graphRoot: '/g',
   name: 'Morning brief',
   agentSlug: 'riley',
   prompt: 'Prepare the daily brief.',
@@ -56,6 +61,22 @@ function reset(routines: AgentRoutine[]): void {
 }
 
 describe('AgentRoutinesSection', () => {
+  it('hides other graphs and requires explicit assignment before an unbound routine can run', async () => {
+    reset([
+      { ...BRIEF, id: 'other', name: 'Other graph', graphRoot: '/other' },
+      { ...BRIEF, graphRoot: null },
+    ])
+    const view = await render(<AgentRoutinesSection profiles={[]} />)
+    await expect.element(view.getByText('Other graph', { exact: true })).not.toBeInTheDocument()
+    await expect.element(view.getByRole('button', { name: 'Run Morning brief now' })).toBeDisabled()
+    await view.getByRole('button', { name: 'Assign to this graph' }).click()
+    expect(updated.at(-1)?.agentRoutines?.find((entry) => entry.id === 'brief')).toMatchObject({
+      graphRoot: '/g',
+      enabled: false,
+    })
+    await view.unmount()
+  })
+
   it('lists a routine with its schedule, agent, and controls', async () => {
     reset([BRIEF])
     const view = await render(<AgentRoutinesSection profiles={[RILEY]} />)

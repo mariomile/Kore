@@ -6,6 +6,7 @@ import { Marker, MarkerContent } from '@/components/ui/marker'
 import { MarkdownPreview } from '@/editor/markdown-preview'
 import { cn } from '@/lib/utils'
 import { ChatChangesCard } from './chat-changes-card'
+import { ChatContextSources } from './chat-context-sources'
 import { ChatNoteCard } from './chat-note-card'
 import { ChatToolChip } from './chat-tool-chip'
 
@@ -61,6 +62,8 @@ export function ChatAssistantPart({
       return <ChatToolChip part={part} />
     case 'changes':
       return <ChatChangesCard paths={part.paths} />
+    case 'context':
+      return <ChatContextSources notes={part.notes} />
     case 'steer':
       // A message the user steered into the live turn — rendered where the
       // reply split around it, styled like a compact user bubble.

@@ -9,9 +9,13 @@
 //! would leave grandchildren running past the tick. `process_tree` owns that
 //! sequence (terminate, grace, kill, reap).
 
+use std::collections::HashMap;
 use std::io::Read;
 use std::process::{Command, Stdio};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
+use tauri::{Manager, State};
 
 use serde::Serialize;
 
@@ -36,17 +40,102 @@ pub struct ScriptTickOutcome {
     pub timed_out: bool,
 }
 
-/// Run one routine script to completion (or its deadline) and report.
-#[tauri::command]
-pub async fn routine_script_run(
-    command: String,
-    cwd: String,
-    timeout_ms: Option<u64>,
-) -> AppResult<ScriptTickOutcome> {
-    crate::blocking::run_blocking(move || run_script(&command, &cwd, timeout_ms)).await
+/// Prepared cancellation slots, registered before the caller can request Stop.
+#[derive(Default)]
+pub struct RoutineScriptState(Mutex<HashMap<String, (Arc<AtomicBool>, bool)>>);
+
+impl RoutineScriptState {
+    pub fn cancel_all(&self) {
+        if let Ok(slots) = self.0.lock() {
+            for (cancelled, _) in slots.values() {
+                cancelled.store(true, Ordering::SeqCst);
+            }
+        }
+    }
 }
 
-fn run_script(script: &str, cwd: &str, timeout_ms: Option<u64>) -> AppResult<ScriptTickOutcome> {
+#[tauri::command]
+pub fn routine_script_prepare(
+    request_id: String,
+    state: State<'_, RoutineScriptState>,
+) -> AppResult<()> {
+    let mut slots = state
+        .0
+        .lock()
+        .map_err(|_| AppError::io("script state poisoned"))?;
+    if request_id.is_empty() || request_id.len() > 128 || slots.contains_key(&request_id) {
+        return Err(AppError::io("invalid or duplicate script request"));
+    }
+    slots.insert(request_id, (Arc::new(AtomicBool::new(false)), false));
+    Ok(())
+}
+
+#[tauri::command]
+pub fn routine_script_stop(
+    request_id: String,
+    state: State<'_, RoutineScriptState>,
+) -> AppResult<()> {
+    if let Some((cancelled, _)) = state
+        .0
+        .lock()
+        .map_err(|_| AppError::io("script state poisoned"))?
+        .get(&request_id)
+    {
+        cancelled.store(true, Ordering::SeqCst);
+    }
+    Ok(())
+}
+
+/// Run the prepared script in the generation-pinned graph, then release its slot.
+#[tauri::command]
+pub async fn routine_script_run<R: tauri::Runtime>(
+    request_id: String,
+    command: String,
+    generation: u64,
+    timeout_ms: Option<u64>,
+    app: tauri::AppHandle<R>,
+) -> AppResult<ScriptTickOutcome> {
+    let cancelled = {
+        let state = app.state::<RoutineScriptState>();
+        let mut slots = state
+            .0
+            .lock()
+            .map_err(|_| AppError::io("script state poisoned"))?;
+        let (cancelled, running) = slots
+            .get_mut(&request_id)
+            .ok_or_else(|| AppError::io("script was not prepared"))?;
+        if *running {
+            return Err(AppError::io("script is already running"));
+        }
+        *running = true;
+        Arc::clone(cancelled)
+    };
+    let worker_app = app.clone();
+    let outcome = crate::blocking::run_blocking(move || {
+        let root = crate::fs::root_for_generation(
+            &worker_app.state::<crate::fs::GraphState>(),
+            generation,
+        )?;
+        run_script(&command, &root.to_string_lossy(), timeout_ms, &cancelled)
+    })
+    .await;
+    app.state::<RoutineScriptState>()
+        .0
+        .lock()
+        .map_err(|_| AppError::io("script state poisoned"))?
+        .remove(&request_id);
+    outcome
+}
+
+fn run_script(
+    script: &str,
+    cwd: &str,
+    timeout_ms: Option<u64>,
+    cancelled: &AtomicBool,
+) -> AppResult<ScriptTickOutcome> {
+    if cancelled.load(Ordering::SeqCst) {
+        return Err(AppError::io("script stopped"));
+    }
     if script.trim().is_empty() {
         return Err(AppError::io("the routine script is empty"));
     }
@@ -70,28 +159,47 @@ fn run_script(script: &str, cwd: &str, timeout_ms: Option<u64>) -> AppResult<Scr
     let deadline = Instant::now() + timeout;
     let mut timed_out = false;
     let code = loop {
+        if cancelled.load(Ordering::SeqCst) {
+            process_tree::terminate_tree(&mut child);
+            return Err(AppError::io("script stopped"));
+        }
         match child.try_wait() {
-            Ok(Some(status)) => break status.code(),
-            Ok(None) => {
-                if Instant::now() >= deadline {
-                    timed_out = true;
-                    process_tree::terminate_tree(&mut child);
-                    break None;
-                }
-                std::thread::sleep(Duration::from_millis(POLL_MS));
+            Ok(Some(status)) if stdout.is_finished() && stderr.is_finished() => {
+                break status.code()
             }
+            Ok(_) => {}
             Err(err) => {
+                process_tree::terminate_tree(&mut child);
                 return Err(AppError::io(format!(
                     "could not wait for the script: {err}"
                 )));
             }
         }
+        if Instant::now() >= deadline {
+            timed_out = true;
+            break None;
+        }
+        std::thread::sleep(Duration::from_millis(POLL_MS));
     };
+    // Also sweep descendants of a shell that exited before its children.
+    process_tree::terminate_tree(&mut child);
+    let drain_deadline = Instant::now() + Duration::from_millis(250);
+    while !(stdout.is_finished() && stderr.is_finished()) && Instant::now() < drain_deadline {
+        std::thread::sleep(Duration::from_millis(POLL_MS));
+    }
 
     Ok(ScriptTickOutcome {
         code,
-        stdout: stdout.join().unwrap_or_default(),
-        stderr: stderr.join().unwrap_or_default(),
+        stdout: if stdout.is_finished() {
+            stdout.join().unwrap_or_default()
+        } else {
+            String::new()
+        },
+        stderr: if stderr.is_finished() {
+            stderr.join().unwrap_or_default()
+        } else {
+            String::new()
+        },
         timed_out,
     })
 }
@@ -141,6 +249,31 @@ fn drain_capped<R: Read + Send + 'static>(pipe: Option<R>) -> std::thread::JoinH
 #[cfg(all(test, unix))]
 mod tests {
     use super::*;
+
+    fn run_script(script: &str, cwd: &str, timeout: Option<u64>) -> AppResult<ScriptTickOutcome> {
+        super::run_script(script, cwd, timeout, &AtomicBool::new(false))
+    }
+
+    #[test]
+    fn background_child_cannot_hold_the_pipes_past_the_deadline() {
+        let started = Instant::now();
+        let outcome = run_script("sleep 30 &", &tmp(), Some(100)).unwrap();
+        assert!(outcome.timed_out);
+        assert!(started.elapsed() < Duration::from_secs(3));
+    }
+
+    #[test]
+    fn stop_terminates_the_script_before_its_deadline() {
+        let cancelled = Arc::new(AtomicBool::new(false));
+        let request = Arc::clone(&cancelled);
+        let worker =
+            std::thread::spawn(move || super::run_script("sleep 30", &tmp(), None, &request));
+        std::thread::sleep(Duration::from_millis(100));
+        let started = Instant::now();
+        cancelled.store(true, Ordering::SeqCst);
+        assert!(worker.join().unwrap().is_err());
+        assert!(started.elapsed() < Duration::from_secs(3));
+    }
 
     fn tmp() -> String {
         std::env::temp_dir().to_string_lossy().into_owned()

@@ -1,4 +1,5 @@
 import type { RetrievalHit } from '../embeddings/retrieve'
+import type { RecallHit } from '../indexing/recall-search'
 
 /**
  * The AI domain's privacy gate (Plan 10). `private: true` is a hard block:
@@ -110,6 +111,18 @@ export async function cloudSafeSearchHits(
     snippet: hit.snippet,
     heading: hit.heading,
   }))
+}
+
+/** Gate automatic recall against live files before a passage enters a prompt. */
+export async function cloudSafeRecallHits(
+  hits: readonly RecallHit[],
+  isPrivateLive: (path: string) => Promise<boolean>,
+): Promise<CloudSafe<RecallHit>[]> {
+  return await gateAndMint(
+    hits.map((hit) => ({ ...hit, isPrivate: false })),
+    isPrivateLive,
+    ({ isPrivate: _isPrivate, ...hit }) => hit,
+  )
 }
 
 /** One note-listing entry as an external service may see it. */

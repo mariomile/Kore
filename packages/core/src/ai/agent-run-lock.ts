@@ -11,9 +11,8 @@ import { acquireAgentRunLease, releaseAgentRunLease } from './agent-runtime'
  * Two layers, composed: the module-level tail serializes runs within this
  * JS context, and the native lease (TDR 0007) serializes across every
  * window of the process — a chat turn in a note window and a routine in the
- * main window queue behind one another. Hosts without the native command
- * (tests, plain-browser dev) degrade to the local layer alone, which is the
- * whole pre-0007 behavior.
+ * main window queue behind one another. Only hosts without a bridge use
+ * the local layer alone; a failed native lease must prevent execution.
  */
 
 let tail: Promise<void> = Promise.resolve()
@@ -26,16 +25,16 @@ export async function withAgentRunLock<T>(work: () => Promise<T>): Promise<T> {
     release = resolve
   })
   await previous
-  // The local tail is already held, so this context sends the native side
-  // at most one acquire at a time. Any failure — no bridge, a host without
-  // the command — degrades to local-only rather than blocking the run.
-  const lease = hasBridge() ? await acquireAgentRunLease().catch(() => null) : null
   try {
-    return await work()
-  } finally {
-    if (lease !== null) {
-      void releaseAgentRunLease(lease).catch(() => {})
+    const lease = hasBridge() ? await acquireAgentRunLease() : null
+    try {
+      return await work()
+    } finally {
+      if (lease !== null) {
+        await releaseAgentRunLease(lease)
+      }
     }
+  } finally {
     release()
   }
 }

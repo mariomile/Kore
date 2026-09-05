@@ -1,13 +1,9 @@
 import { useState, type ReactElement } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { foldTag, listTagTypes } from '@reflect/core'
-import { Layers, Settings } from '@/components/icons'
+import { foldTag } from '@reflect/core'
+import { Settings } from '@/components/icons'
 import { TagConfigDialog } from '@/components/tags/tag-config-dialog'
-import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { useNoteTags } from '@/hooks/use-note-tags'
-import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { cn } from '@/lib/utils'
-import { useGraph } from '@/providers/graph-provider'
 import { useRouter } from '@/routing/router'
 import { SidebarSortableSection } from './sidebar-sortable-section'
 
@@ -16,23 +12,15 @@ import { SidebarSortableSection } from './sidebar-sortable-section'
  * note count, alphabetical. A row opens All Notes filtered to that tag — the
  * same view its filter tabs land on, so the section is navigation, not a new
  * surface. Hidden entirely while the graph has no tags, like the Pinned shelf.
- * Hovering a row reveals "Configure tag" (TDR 0005), which edits the tag's
- * type — its property schema — in `tags/<key>.md`.
+ * Every tag is a collection, so no row is marked as one; hovering a row
+ * reveals "Configure tag" (TDR 0005), which edits the tag's property schema
+ * in `tags/<key>.md`.
  */
 export function SidebarTags(): ReactElement | null {
   const tags = useNoteTags()
-  const { graph } = useGraph()
-  const bridgeReady = useBridgeReady()
   const { route, navigate } = useRouter()
   const [configuring, setConfiguring] = useState<string | null>(null)
   const activeTagKey = route.kind === 'allNotes' && route.tag !== null ? foldTag(route.tag) : null
-  // Which tags are types (TDR 0005) — those rows carry the collection glyph.
-  const { data: tagTypes } = useQuery({
-    queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'tag-types'],
-    queryFn: () => listTagTypes(),
-    enabled: bridgeReady && graph !== null,
-  })
-  const typedKeys = new Set((tagTypes ?? []).map((entry) => entry.tagKey))
 
   if (tags.length === 0) {
     return null
@@ -57,12 +45,6 @@ export function SidebarTags(): ReactElement | null {
               >
                 <span className="flex min-w-0 flex-1 items-center gap-1.5 py-1 px-2.5 text-left">
                   <span className="min-w-0 truncate text-xs font-medium">#{facet.tag}</span>
-                  {typedKeys.has(foldTag(facet.tag)) ? (
-                    <Layers
-                      aria-label="Has a collection"
-                      className="size-3 shrink-0 text-text-muted"
-                    />
-                  ) : null}
                 </span>
                 <span className="shrink-0 px-2.5 text-2xs tabular-nums text-text-muted transition-opacity duration-150 group-hover:opacity-0 group-focus-within:opacity-0">
                   {facet.count}

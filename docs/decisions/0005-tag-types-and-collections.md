@@ -7,7 +7,8 @@
 > They do not authorize rewriting existing wiki-link properties or moving schema
 > ownership from Markdown to SQLite without the recorded serialization decision.
 
-- **Status:** Accepted
+- **Status:** Accepted — amended 2026-09-04 (Amendment A below: every tag
+  is a collection)
 - **Date:** 2026-08-23
 - **Scope:** The tag-type model (Tana-style supertags): per-tag property
   schemas, the `note_properties`/`tag_types` index projections, and the
@@ -150,6 +151,39 @@ lanes at once needs duplication semantics worth their own design); formula
 and rollup properties (derived values contradict frontmatter-as-truth — if
 ever, they belong in the projection only); person/contact and created-at
 property types; dragging calendar entries between days.
+
+## Amendment A (2026-09-04) — Every tag is a collection
+
+**Supersedes** the "untyped tags keep TDR 0004's model in full: no stored
+entity, no CRUD UI" clause above, and Decision 3's "offered when the routed
+tag has a type". The storage contract (Decisions 1 and 2) is unchanged.
+
+User decision, with Tana as the reference: a tag *is* a collection the
+moment it is written; a schema is optional metadata on it, not the ticket
+in. Before this, a tag page listed notes and offered "Create a collection",
+and only saving a schema lit the table — a step Tana never asks for, and
+the discoverability deficit the collections analysis had named.
+
+- **Zero-property schema at the UI boundary.** A tag with no definition
+  note reads as `EMPTY_TAG_TYPE` (`{ properties: [] }`) on every collection
+  surface: the tag page, the embedded fence, the `/` menu. The table renders
+  Title and Updated over the rows the collection query already returned
+  for any tag (dailies included, per the 2026-08-31 "hashtag is the
+  supertag" decision). Board and calendar stay gated on a groupable or date
+  property, exactly as before.
+- **The definition note is born lazily.** The header gear and the table's
+  "+" open the same schema dialog on any tag; the first save writes
+  `tags/<name>.md` as Decision 1 specifies. Nothing is written until then,
+  so a passing `#idea` in a daily costs no file.
+- **No "typed" distinction is shown.** The "Create a collection" pill and
+  the sidebar's "Has a collection" glyph are gone; the tag page no longer
+  offers a plain list beside its table (a zero-property table *is* the
+  list). The sidebar's hover "Configure tag" stays.
+- **Not changed:** `getTagType` still returns `null` for an absent
+  definition — consumers that need to know whether a schema *exists*
+  (the new-note template binding, property editors, mobile card chips) keep
+  reading that; only surfaces that render a collection substitute the
+  empty schema.
 
 ## Known consequences
 

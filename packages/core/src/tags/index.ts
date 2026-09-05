@@ -1,5 +1,6 @@
 export {
   TAG_TYPE_MARKER,
+  EMPTY_TAG_TYPE,
   RESERVED_FRONTMATTER_KEYS,
   tagPropertyTypeSchema,
   tagPropertySchema,

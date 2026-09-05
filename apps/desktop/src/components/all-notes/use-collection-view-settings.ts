@@ -48,8 +48,9 @@ export interface CollectionViewSettings {
  * The All Notes screen's persisted view preferences for one routed tag (or
  * the global list): the active layout, the collection sort, the board
  * grouping, and the table's column layout — each read from and written to
- * settings. `tagType` is the routed tag's schema, already narrowed to `null`
- * whenever the Collection views are unavailable (untyped tag, or no tag).
+ * settings. `tagType` is the routed tag's schema (zero properties while the
+ * tag has no definition note), `null` only on the unfiltered list, where the
+ * Collection views are unavailable.
  */
 export function useCollectionViewSettings(
   tagKey: string | null,
@@ -77,8 +78,8 @@ export function useCollectionViewSettings(
   // next; the toggles write per-tag there, global elsewhere.
   const requestedView =
     (tagKey === null ? undefined : settings.collectionViewModes[tagKey]) ?? settings.allNotesView
-  // A typed tag has exactly one table — the collection's own. The plain
-  // notes list belongs to untyped pages, so a stored (or default) 'list'
+  // A tag has exactly one table — the collection's own. The plain notes
+  // list belongs to the unfiltered page, so a stored (or default) 'list'
   // renders as the collection table here, and the switcher never offers two
   // tables side by side.
   const view =

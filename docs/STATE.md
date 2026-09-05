@@ -1,7 +1,8 @@
 # Kore working state
 
-**Updated:** 2026-09-04, local audit fixes on `mario-codex/audit-reliability-fixes`
-(based on `origin/master`, app version 0.50.1; no release performed).
+**Updated:** 2026-09-05, audit reliability fixes integrated with `f0de5ec5`
+(every tag is a collection; TDR 0005 Amendment A). Merge and desktop release
+validation in progress.
 **Rule:** Every session that moves the program updates this file before its
 summary: tick what became true and how it was verified, set the next step,
 refresh the date. What is done and what is next live here and only here. Why
@@ -156,6 +157,18 @@ sum/avg. Also still open: the live checks below. B05c preview tabs stays
 declined; the backlog-B pass is closed.
 
 ## What is true now
+
+- [x] **Every tag is a collection** (user decision 2026-09-04, Tana as the
+  reference; [TDR 0005 Amendment A](decisions/0005-tag-types-and-collections.md)).
+  A tag page opens as its collection table whether or not `tags/<name>.md`
+  exists — Title and Updated over the rows, the header gear and the
+  table's "+" open the schema dialog, and the first saved property writes
+  the definition note. The "Create a collection" pill, the plain list view
+  on tag pages, and the sidebar's "Has a collection" glyph are removed; the
+  ` ```collection ` fence and the `/` menu accept every tag. Verified:
+  all-notes screen + collection-flow + embedded-collection + slash-items
+  suites on chromium and webkit (42/42), the wider all-notes/tags/sidebar/
+  notes/core-tags run 288/288, `pnpm check` clean.
 
 - [x] **Notes open instantly** (user report, 2026-08-31: "Loading note…"
   visible on some opens; "le note dovrebbero aprirsi instantaneamente").
@@ -385,6 +398,9 @@ declined; the backlog-B pass is closed.
 
 ## Session log
 
+- 2026-09-04 — Every tag is a collection: zero-property schema substituted
+  at the collection surfaces (`EMPTY_TAG_TYPE`), CTA and typed glyph
+  removed, fence and slash menu opened to all tags. TDR 0005 Amendment A.
 - 2026-09-01 — Plan 29 V2a + V2b + T2: multiselect board lanes (per-card
   drop writes, list overlay), `group:` in the collection fence (applied by
   the embedded table), and formula columns (pure `evaluateFormula`,

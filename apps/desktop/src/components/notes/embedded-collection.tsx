@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState, type ReactElement } from 'react'
 import {
+  EMPTY_TAG_TYPE,
   foldTag,
   type CollectionEmbed,
   type CollectionEmbedView,
@@ -43,7 +44,10 @@ const VIEW_LABEL: Record<CollectionEmbedView, string> = {
  * needs a property the tag does not declare.
  */
 export function EmbeddedCollection({ embed }: EmbeddedCollectionProps): ReactElement {
-  const tagType = useTagType(embed.tag)
+  // Every tag is a collection: a tag without a definition note embeds as
+  // the zero-property table, and its "+" writes the schema in place.
+  const loadedTagType = useTagType(embed.tag)
+  const tagType = loadedTagType === null ? EMPTY_TAG_TYPE : loadedTagType
   const { navigate } = useRouter()
   const navigateNoteLink = useNoteLinkNavigation()
   // The fence's own arrangement seeds the widget; a header click still
@@ -51,9 +55,9 @@ export function EmbeddedCollection({ embed }: EmbeddedCollectionProps): ReactEle
   const [sort, setSort] = useState<CollectionSort | null>(embed.sort)
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({})
   const [editingSchema, setEditingSchema] = useState(false)
-  const unfiltered = useCollection(tagType ? embed.tag : null, sort)
+  const unfiltered = useCollection(tagType === undefined ? null : embed.tag, sort)
   const entries = useMemo(() => {
-    if (unfiltered === undefined || tagType === null || tagType === undefined) {
+    if (unfiltered === undefined || tagType === undefined) {
       return unfiltered
     }
     // The fence's filter lines share the filter menu's vocabulary, so the
@@ -64,7 +68,7 @@ export function EmbeddedCollection({ embed }: EmbeddedCollectionProps): ReactEle
   // a key the schema declares as single-valued groupable; anything else
   // stays flat, never a broken widget.
   const groups = useMemo(() => {
-    if (embed.group === null || tagType === null || tagType === undefined) {
+    if (embed.group === null || tagType === undefined) {
       return null
     }
     const property = groupablePropertiesOf(tagType.properties).find(
@@ -92,9 +96,8 @@ export function EmbeddedCollection({ embed }: EmbeddedCollectionProps): ReactEle
     [navigateNoteLink],
   )
 
-  const boardProperty =
-    tagType !== null && tagType !== undefined ? (groupableProperties(tagType)[0] ?? null) : null
-  const dateProperty = tagType !== null && tagType !== undefined ? calendarProperty(tagType) : null
+  const boardProperty = tagType !== undefined ? (groupableProperties(tagType)[0] ?? null) : null
+  const dateProperty = tagType !== undefined ? calendarProperty(tagType) : null
   const view: CollectionEmbedView =
     embed.view === 'board' && boardProperty === null
       ? 'table'
@@ -132,10 +135,6 @@ export function EmbeddedCollection({ embed }: EmbeddedCollectionProps): ReactEle
       >
         {tagType === undefined ? (
           <p className="px-3 py-6 text-sm text-text-muted">Loading collection…</p>
-        ) : tagType === null ? (
-          <p className="px-3 py-6 text-sm text-text-muted">
-            #{embed.tag} is not a typed tag, so it has no collection to embed.
-          </p>
         ) : view === 'calendar' && dateProperty !== null ? (
           <CollectionCalendar
             entries={entries}

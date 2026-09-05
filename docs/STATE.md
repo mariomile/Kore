@@ -1,6 +1,6 @@
 # Kore working state
 
-**Updated:** 2026-09-05, collections daily loop integrated with `50f69fec`
+**Updated:** 2026-09-05, Plan 30 (CLI agent parity) implemented locally; collections daily loop integrated with `50f69fec`
 (Kore 0.51.0, audit fixes released). Schema edits and rows from the table,
 sort chains, any/all filters, side peek, tag descriptions and daily line to
 note are pending PR #168 integration validation (TDR 0005 Amendments A and B).
@@ -11,6 +11,43 @@ things are built this way lives in [docs/decisions/](decisions/); what the
 product is lives in the [roadmap](roadmap.md) (app-first) with the Personal OS
 direction in [Plan 25](plans/25-personal-os.md). The full shipped history stays
 in the [delivery log](delivery-log.md); this file tracks only the active work.
+
+## CLI agent parity — 2026-09-05
+
+[Plan 30](plans/30-cli-agent-parity.md), user decision 2026-09-05: the
+`reflect` CLI grows read completeness (`info`, `tags`, `list`, `properties`,
+`links`), structured writes (`set`, `tag`/`untag`, `done`, `append`, typed
+`new`, `capture --stdin`), and a refreshed agent skill. This reverses Plan 14's
+"no write CLI" by user decision; writes stay atomic, structural, and never
+overwrite. Binary stays `reflect`.
+
+- [x] Layer 1 — read completeness: `info`, `tags`, `list`, `properties`,
+  `links` (verified: 5 integration tests against the real binary and index
+  fixtures, incl. private-note exclusion and the on-disk privacy re-check).
+- [x] Layer 2 — structured writes: `set` (schema-typed, top-level-key splice
+  re-parsed and read back before the atomic write), `tag`/`untag`, `done`,
+  `append`, `new --tag/--set/--stdin`, `capture --stdin`, exit `2` for values
+  a command cannot honour (verified: 19 unit tests on the splice, coercion
+  and tag grammar; 5 integration tests covering typed coercion, reserved and
+  view-only refusals, idempotent tag, inline-tag refusal, task ambiguity and
+  drift, daily creation; plus a hand-driven run of the built binary on a
+  scratch graph: new → set → tag/untag → append → capture → properties).
+- [x] Layer 3 — "did you mean" titles on a missed `<note>` (index-backed,
+  private excluded; 1 integration test), `graph-skill.md` rewritten around
+  discover → read → write (desktop `skill` tests 6/6), `docs/cli.md` with
+  every new shape and the coercion table.
+
+**Validation:** `cargo test -p reflect-cli`: 67 unit + 64 integration green;
+one pre-existing test (`capture_joins_todays_trailing_list`) fails only on
+macOS because it compares a `/var` path against its `/private/var`
+canonical form — unrelated, not touched, green on Linux CI. `cargo fmt
+--check` and `cargo clippy -p reflect-cli --all-targets -D warnings` clean.
+No TypeScript changed, so `pnpm check` is unaffected.
+
+**Next:** open the PR (title `feat(cli): agent parity — discovery and typed
+writes`), then a live pass with a real agent through the installed skill on
+an actual graph: create a typed row, set a relation, tick a task, and confirm
+the app's table shows each change.
 
 ## Automatic resource collections — 2026-09-05
 

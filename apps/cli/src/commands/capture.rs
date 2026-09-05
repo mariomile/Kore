@@ -13,8 +13,6 @@
 //! fresh list.
 
 use std::fs;
-use std::io::Write;
-use std::path::Path;
 
 use crate::commands::{
     open_index_for_resolution,
@@ -25,14 +23,7 @@ use crate::graph::Graph;
 use crate::note_file::ensure_not_private;
 use crate::paths::{daily_path, date_from_daily_path, today_date};
 use crate::resolve::{resolve_note, ResolvedNote};
-
-/// The note's own line ending, from its first line break (LF for new files).
-fn line_ending(content: &str) -> &'static str {
-    match content.find('\n') {
-        Some(index) if index > 0 && content.as_bytes()[index - 1] == b'\r' => "\r\n",
-        _ => "\n",
-    }
-}
+use crate::write::{atomic_write, line_ending, read_stdin};
 
 /// The `-`, `+` or `*` of the trailing top-level bullet list, when the note's
 /// last non-blank line is one of its items.
@@ -64,28 +55,23 @@ pub fn append_item(content: &str, text: &str, task: bool) -> String {
     }
 }
 
-/// Write through a sibling temp file + rename so a crash mid-write can never
-/// leave a half-written daily note behind.
-fn atomic_write(path: &Path, contents: &str) -> Result<(), CliError> {
-    let dir = path
-        .parent()
-        .ok_or_else(|| CliError::Runtime(format!("no parent directory for {}", path.display())))?;
-    fs::create_dir_all(dir)?;
-    let mut tmp = tempfile::NamedTempFile::new_in(dir)?;
-    tmp.write_all(contents.as_bytes())?;
-    tmp.flush()?;
-    tmp.persist(path)
-        .map_err(|err| CliError::Runtime(err.to_string()))?;
-    Ok(())
-}
-
 pub fn run(
     graph: &Graph,
     json: bool,
-    text: &str,
+    text: Option<&str>,
+    stdin: bool,
     task: bool,
     to: Option<&str>,
 ) -> Result<(), CliError> {
+    let text = match (text, stdin) {
+        (Some(text), false) => text.to_string(),
+        (None, true) => read_stdin()?,
+        _ => {
+            return Err(CliError::Usage(
+                "give the text as an argument or on stdin (--stdin), not both".to_string(),
+            ))
+        }
+    };
     // One item is one line: embedded line breaks would smuggle arbitrary
     // markdown structure past the list-item contract.
     let text = text

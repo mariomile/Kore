@@ -17,6 +17,7 @@ reflect-graph-paths = { workspace = true }
 reflect-note-policy = { workspace = true }
 clap = { version = "4.6.1", features = ["derive"] }
 jiff = "0.2.28"
+saphyr = "0.0.6"
 sha2 = { workspace = true }
 unicode-normalization = "0.1.24"
 unicode-general-category = "1.0.0"

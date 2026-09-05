@@ -188,7 +188,7 @@ describe('SettingsScreen', () => {
 
     await expect.element(page.getByTestId('route')).toHaveTextContent('settings')
     await page.getByRole('button', { name: 'Close settings' }).click()
-    await vi.waitFor(() => expect(page.getByTestId('route')).toHaveTextContent('today'))
+    await expect.element(page.getByTestId('route')).toHaveTextContent('today')
   })
 
   it('shows update controls when the native bridge is available', async () => {

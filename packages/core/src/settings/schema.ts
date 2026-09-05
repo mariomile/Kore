@@ -178,16 +178,13 @@ const openStaticSurfaceTabStoredSchema = z.object({
  * Settings used to be a workspace tab. Drop stored entries so a restored
  * session keeps the rest of the strip instead of failing the whole list.
  */
+const retiredSettingsTabSchema = z.object({ surface: z.literal('settings') })
+
 function dropRetiredSettingsTabs(value: unknown): unknown {
   if (!Array.isArray(value)) {
     return value
   }
-  return value.filter((entry) => {
-    if (typeof entry !== 'object' || entry === null) {
-      return true
-    }
-    return !('surface' in entry && entry.surface === 'settings')
-  })
+  return value.filter((entry) => !retiredSettingsTabSchema.safeParse(entry).success)
 }
 
 /** Pre-surface shape: `{ path, pinned }` with no `kind`. */
@@ -217,10 +214,7 @@ export const openTabSchema: z.ZodType<OpenTab> = z.union([
 ])
 
 export const openTabsSchema = z
-  .record(
-    z.string(),
-    z.preprocess(dropRetiredSettingsTabs, z.array(openTabSchema).catch([])),
-  )
+  .record(z.string(), z.preprocess(dropRetiredSettingsTabs, z.array(openTabSchema).catch([])))
   // An array is also an object to `z.record` (index keys) — the pre-keying
   // shape must degrade to "no sessions", not to a graph named "0".
   .refine((value) => !Array.isArray(value))

@@ -55,7 +55,7 @@ impl RoutineScriptState {
 }
 
 #[tauri::command]
-pub fn routine_script_prepare(
+pub async fn routine_script_prepare(
     request_id: String,
     state: State<'_, RoutineScriptState>,
 ) -> AppResult<()> {
@@ -71,7 +71,7 @@ pub fn routine_script_prepare(
 }
 
 #[tauri::command]
-pub fn routine_script_stop(
+pub async fn routine_script_stop(
     request_id: String,
     state: State<'_, RoutineScriptState>,
 ) -> AppResult<()> {

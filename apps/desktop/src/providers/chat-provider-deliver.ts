@@ -163,30 +163,20 @@ export async function deliverChatTurn(
 
   const turnId = crypto.randomUUID()
   const generation = generationRef.current
-  // Attachment bytes land on disk before anything captures the turn: the
-  // persisted row then carries only the file path (the store strips the
-  // dataUrl), while this in-memory copy keeps its dataUrl for the session's
-  // rendering and provider payload. Best-effort per image — a failed write
-  // keeps that attachment on the legacy inline persistence.
-  const attachedWithFiles = await withPersistedAttachmentFiles(
-    conversationIdRef.current,
-    attached,
-    generation,
-  )
-  // Restored turns hold path-only attachments; a BYOK payload needs the
-  // bytes back. CLI engines never embed image bytes in their prompt, so the
-  // reads are skipped there.
-  const historyTurns = isCliAgentProvider(config.provider)
-    ? turnsRef.current
-    : await withHydratedAttachmentHistory(turnsRef.current, generation)
-  const messages = [...buildHistory(historyTurns), userMessage(trimmed, attachedWithFiles)]
+  const history = turnsRef.current
+  const chatMode = chatModeRef.current
+  const chatTools = chatToolsRef.current
+  const agentProfile = activeAgentProfileRef.current
+  const memoryWriteApproval = memoryWriteApprovalRef.current
+  const mcpServerSettings = mcpServersRef.current
+  const semanticSearchEnabled = semanticSearchEnabledRef.current
   // The conversation's own instructions ride after the global prompt so a
   // per-chat tone or format override wins where the two disagree.
   const conversationInstructions = instructionsRef.current.trim()
   const modeInstruction =
-    chatModeRef.current === 'plan'
+    chatMode === 'plan'
       ? 'Plan mode: analyze the request and return a concrete plan. Do not make changes.'
-      : chatModeRef.current === 'auto'
+      : chatMode === 'auto'
         ? 'Auto mode: decide whether the request needs explanation, planning, or direct changes. Make changes only when they are needed to complete the request.'
         : ''
   const customSystemPrompt = [
@@ -213,7 +203,7 @@ export async function deliverChatTurn(
   let localTurn: ChatTurn = {
     id: turnId,
     userText: trimmed,
-    attachments: attachedWithFiles,
+    attachments: attached,
     parts: [],
     responseMessages: [],
     status: 'streaming',
@@ -253,209 +243,251 @@ export async function deliverChatTurn(
   const editRun =
     isCliAgentProvider(config.provider) &&
     cliProviderSupportsEdits(config.provider) &&
-    chatModeAllowsEdits(chatModeRef.current)
+    chatModeAllowsEdits(chatMode)
       ? { generation: graph.generation }
       : null
-  // Edit-mode runs are serialized across the app (chat and automations
-  // share one FIFO lock): overlapping runs would cross-attribute each
-  // other's changes in the activity ledger. `releaseRunLock` resolves
-  // the promise the next queued run awaits; the finally below releases.
-  let releaseRunLock: () => void = () => {}
-  if (editRun) {
-    await new Promise<void>((acquired) => {
-      void withAgentRunLock(
-        () =>
-          new Promise<void>((resolve) => {
-            releaseRunLock = resolve
-            acquired()
-          }),
+  const run = async (): Promise<void> => {
+    controller.signal.throwIfAborted()
+    const snapshot = editRun ? await gitAgentSnapshot(editRun.generation).catch(() => null) : null
+    try {
+      // Replace the initial inline attachment with a file-backed snapshot: the
+      // next persisted row carries only the file path (the store strips the
+      // dataUrl), while this in-memory copy keeps its dataUrl for the session's
+      // rendering and provider payload. Best-effort per image — a failed write
+      // keeps that attachment on the legacy inline persistence.
+      const attachedWithFiles = await withPersistedAttachmentFiles(
+        sendConversationId,
+        attached,
+        generation,
       )
-    })
-  }
-  const snapshot = editRun ? await gitAgentSnapshot(editRun.generation).catch(() => null) : null
-
-  try {
-    // [[Mentions]] resolve to the notes' current content at send time,
-    // so the model grounds on what each note says *now*. Private notes
-    // contribute their refusal only, and a failed resolution degrades
-    // to a structured miss — the send always goes out. The block rides
-    // the model-bound message alone: the bubble and the persisted turn
-    // keep the text as typed.
-    const mentions = await resolveNoteMentions(trimmed)
-    const mentionBlock = mentionContextBlock(mentions)
-    // Beside the explicit mentions, the vault's own memory: one ranked FTS
-    // pass over the index surfaces the top passages touching this message,
-    // with provenance. Mentioned notes are excluded (their full content
-    // already rides the turn) and any failure degrades to no recall.
-    const recallBlock = recallContextBlock(
-      await recallForMessage(
+      // Restored turns hold path-only attachments; a BYOK payload needs the
+      // bytes back. CLI engines never embed image bytes in their prompt, so the
+      // reads are skipped there.
+      const historyTurns = isCliAgentProvider(config.provider)
+        ? history
+        : await withHydratedAttachmentHistory(history, generation)
+      const messages = [...buildHistory(historyTurns), userMessage(trimmed, attachedWithFiles)]
+      updateTurn((turn) => ({ ...turn, attachments: attachedWithFiles }))
+      if (attached.length > 0) {
+        persistTurn(conversationMeta(), localTurn, turnCreatedMs)
+      }
+      controller.signal.throwIfAborted()
+      // [[Mentions]] resolve to the notes' current content at send time,
+      // so the model grounds on what each note says *now*. Private notes
+      // contribute their refusal only, and a failed resolution degrades
+      // to a structured miss — the send always goes out. The block rides
+      // the model-bound message alone: the bubble and the persisted turn
+      // keep the text as typed.
+      const mentions = await resolveNoteMentions(trimmed)
+      const mentionBlock = mentionContextBlock(mentions)
+      // Beside the explicit mentions, the vault's own memory: one ranked FTS
+      // pass over the index surfaces the top passages touching this message,
+      // with provenance. Mentioned notes are excluded (their full content
+      // already rides the turn) and any failure degrades to no recall.
+      const recalled = await recallForMessage(
         trimmed,
         mentions.map((mention) => mention.path),
-      ),
-    )
-    const contextBlock = [mentionBlock, recallBlock].filter((block) => block !== '').join('\n\n')
-    if (contextBlock !== '') {
-      messages[messages.length - 1] = userMessage(
-        `${trimmed}\n\n${contextBlock}`,
-        attachedWithFiles,
       )
-    }
-    // The active agent's soul + memories ride into every provider's
-    // prompt; a failed read degrades to "nothing", never a blocked turn.
-    const agentContext = await loadAgentContext(activeAgentProfileRef.current).catch(() => null)
-    const events = await (async () => {
-      if (isCliAgentProvider(config.provider)) {
-        // The subscription engines: the CLI reads the graph itself, so
-        // they need the private-note deny list, not an API key. Refusing
-        // is deliberate for both null answers — a failed read and an index
-        // that cannot answer yet are the same fact here, and running
-        // without a complete deny list would drop the privacy hard block.
-        const privateNotePaths = await listPrivateNotePaths().catch((cause: unknown) => {
-          console.error('private-note list failed:', errorMessage(cause))
-          return null
-        })
-        if (privateNotePaths === null) {
+      const recallBlock = recallContextBlock(recalled)
+      const contextBlock = [mentionBlock, recallBlock].filter((block) => block !== '').join('\n\n')
+      if (contextBlock !== '') {
+        const notes = [
+          ...mentions.flatMap((mention) =>
+            mention.path !== null && mention.content !== null
+              ? [
+                  {
+                    path: mention.path,
+                    title: mention.title ?? mention.path,
+                    excerpt: mention.content.slice(0, 280),
+                    source: 'mention' as const,
+                  },
+                ]
+              : [],
+          ),
+          ...recalled.map((hit) => ({
+            path: hit.path,
+            title: hit.title,
+            excerpt: (hit.snippet ?? hit.preview).slice(0, 280),
+            source: 'recall' as const,
+          })),
+        ]
+        if (notes.length > 0) {
+          updateTurn((turn) => ({ ...turn, parts: [...turn.parts, { kind: 'context', notes }] }))
+        }
+        messages[messages.length - 1] = userMessage(
+          `${trimmed}\n\n${contextBlock}`,
+          attachedWithFiles,
+        )
+      }
+      // The active agent's soul + memories ride into every provider's
+      // prompt; a failed read degrades to "nothing", never a blocked turn.
+      const agentContext = await loadAgentContext(agentProfile).catch(() => null)
+      controller.signal.throwIfAborted()
+      const events = await (async () => {
+        if (isCliAgentProvider(config.provider)) {
+          // The subscription engines: the CLI reads the graph itself, so
+          // they need the private-note deny list, not an API key. Refusing
+          // is deliberate for both null answers — a failed read and an index
+          // that cannot answer yet are the same fact here, and running
+          // without a complete deny list would drop the privacy hard block.
+          const privateNotePaths = await listPrivateNotePaths().catch((cause: unknown) => {
+            console.error('private-note list failed:', errorMessage(cause))
+            return null
+          })
+          if (privateNotePaths === null) {
+            return null
+          }
+          // MCP tools ride runs the user opted into through the conversation's
+          // Tools toggle or Full Access mode. Secrets resolve from the keychain
+          // here, per run — never stored anywhere else.
+          // Cursor never joins edit mode (its write path is unverified) and
+          // its per-run config denies MCP, so both switches silently mean
+          // plain read-only there.
+          const allowEdits =
+            chatModeAllowsEdits(chatMode) && cliProviderSupportsEdits(config.provider)
+          const mcpAllowed =
+            cliProviderSupportsMcp(config.provider) && (chatMode === 'full-access' || chatTools)
+          const mcpServers = mcpAllowed
+            ? await resolveMcpServers(mcpServerSettings).catch(() => [])
+            : []
+          controller.signal.throwIfAborted()
+          return streamCliAgentChat(config.provider, {
+            model: config.model,
+            messages,
+            today: todayIso(),
+            customSystemPrompt,
+            graphRoot: graph.root,
+            graphName: graph.name,
+            privateNotePaths,
+            allowEdits,
+            mcpServers,
+            agentContext,
+            memoryWriteApproval: memoryWriteApproval,
+            signal: controller.signal,
+            // Inject-capable engines expose mid-turn steering: the steer
+            // lands in the live session AND in the transcript as its own
+            // part, right where the reply text splits around it.
+            steering:
+              cliProviderSteerMode(config.provider) === 'inject'
+                ? {
+                    onSteerReady: (inject) => {
+                      activeSend.steer = async (steerText: string) => {
+                        await inject(steerText)
+                        updateTurn((turn) => ({
+                          ...turn,
+                          parts: [...turn.parts, { kind: 'steer', text: steerText }],
+                        }))
+                      }
+                    },
+                  }
+                : undefined,
+          })
+        }
+        // The graph overview degrades to null (prompt without the block)
+        // rather than blocking the turn — a cold index shouldn't kill chat.
+        const [apiKey, context] = await Promise.all([
+          aiApiKeyForConfig(config),
+          loadChatGraphContext(graph.name).catch((cause: unknown) => {
+            console.error('chat graph context failed:', errorMessage(cause))
+            return null
+          }),
+        ])
+        if (apiKey === null) {
+          applyEvent({
+            type: 'error',
+            message: 'No API key found for this provider — re-add it in Settings → AI providers.',
+            messages: [],
+          })
           return null
         }
-        // MCP tools ride runs the user opted into through the conversation's
-        // Tools toggle or Full Access mode. Secrets resolve from the keychain
-        // here, per run — never stored anywhere else.
-        // Cursor never joins edit mode (its write path is unverified) and
-        // its per-run config denies MCP, so both switches silently mean
-        // plain read-only there.
-        const allowEdits =
-          chatModeAllowsEdits(chatModeRef.current) && cliProviderSupportsEdits(config.provider)
-        const mcpAllowed =
-          cliProviderSupportsMcp(config.provider) &&
-          (chatModeRef.current === 'full-access' || chatToolsRef.current)
-        const mcpServers = mcpAllowed
-          ? await resolveMcpServers(mcpServersRef.current).catch(() => [])
-          : []
-        return streamCliAgentChat(config.provider, {
-          model: config.model,
+        controller.signal.throwIfAborted()
+        return streamChat({
+          config,
+          apiKey,
+          fetchFn: providerFetch,
           messages,
           today: todayIso(),
+          semanticSearchEnabled: semanticSearchEnabled,
           customSystemPrompt,
-          graphRoot: graph.root,
-          graphName: graph.name,
-          privateNotePaths,
-          allowEdits,
-          mcpServers,
+          context,
           agentContext,
-          memoryWriteApproval: memoryWriteApprovalRef.current,
+          // The write tool routes through the session-safe frontmatter
+          // channel, pinned to the graph generation of this turn.
+          allowEdits: chatModeAllowsEdits(chatMode),
+          toolDeps: {
+            // The embedded browser is a desktop capability: the typed
+            // answer here is what makes the browse tools refuse honestly
+            // on mobile and in the web harness.
+            browsingAvailable: isNativeShell() && !isMobileSurface(),
+          },
           signal: controller.signal,
-          // Inject-capable engines expose mid-turn steering: the steer
-          // lands in the live session AND in the transcript as its own
-          // part, right where the reply text splits around it.
-          steering:
-            cliProviderSteerMode(config.provider) === 'inject'
-              ? {
-                  onSteerReady: (inject) => {
-                    activeSend.steer = async (steerText: string) => {
-                      await inject(steerText)
-                      updateTurn((turn) => ({
-                        ...turn,
-                        parts: [...turn.parts, { kind: 'steer', text: steerText }],
-                      }))
-                    }
-                  },
-                }
-              : undefined,
         })
+      })()
+      if (events === null) {
+        if (isCliAgentProvider(config.provider)) {
+          applyEvent({
+            type: 'error',
+            message:
+              'Couldn’t confirm which notes are private, so this run was refused. If the index is still building, try again in a moment.',
+            messages: [],
+          })
+        }
+        return
       }
-      // The graph overview degrades to null (prompt without the block)
-      // rather than blocking the turn — a cold index shouldn't kill chat.
-      const [apiKey, context] = await Promise.all([
-        aiApiKeyForConfig(config),
-        loadChatGraphContext(graph.name).catch((cause: unknown) => {
-          console.error('chat graph context failed:', errorMessage(cause))
-          return null
-        }),
-      ])
-      if (apiKey === null) {
-        applyEvent({
-          type: 'error',
-          message: 'No API key found for this provider — re-add it in Settings → AI providers.',
-          messages: [],
-        })
-        return null
+      for await (const event of events) {
+        // Every terminal event carries the turn's messages — for a stopped or
+        // failed turn that's the completed steps plus partial text, so the
+        // derived history matches what stayed on screen.
+        if (event.type === 'complete' || event.type === 'aborted' || event.type === 'error') {
+          updateTurn((turn) => ({ ...turn, responseMessages: event.messages }))
+        }
+        // `complete` is folded too: appendEvent backstops a reply-less turn
+        // with a notice, so the chips never settle into silence.
+        applyEvent(event)
       }
-      return streamChat({
-        config,
-        apiKey,
-        fetchFn: providerFetch,
-        messages,
-        today: todayIso(),
-        semanticSearchEnabled: semanticSearchEnabledRef.current,
-        customSystemPrompt,
-        context,
-        agentContext,
-        // The write tool routes through the session-safe frontmatter
-        // channel, pinned to the graph generation of this turn.
-        allowEdits: chatModeAllowsEdits(chatModeRef.current),
-        toolDeps: {
-          // The embedded browser is a desktop capability: the typed
-          // answer here is what makes the browse tools refuse honestly
-          // on mobile and in the web harness.
-          browsingAvailable: isNativeShell() && !isMobileSurface(),
-        },
-        signal: controller.signal,
-      })
-    })()
-    if (events === null) {
-      if (isCliAgentProvider(config.provider)) {
-        applyEvent({
-          type: 'error',
-          message:
-            'Couldn’t confirm which notes are private, so this run was refused. If the index is still building, try again in a moment.',
-          messages: [],
-        })
+    } finally {
+      // Close the ledger: whatever differs from the pre-run snapshot is
+      // what this run touched. Shown in the turn and persisted with it.
+      if (editRun && snapshot !== null) {
+        const changed = await gitChangedSince(snapshot, editRun.generation).catch(() => [])
+        const paths = changed.filter((path) => path.toLowerCase().endsWith('.md'))
+        if (paths.length > 0) {
+          updateTurn((turn) => ({ ...turn, parts: [...turn.parts, { kind: 'changes', paths }] }))
+        }
+        // The memory-write scanner: prompts forbid storing instructions
+        // and secrets in memory, this checks what actually landed there.
+        // A finding is a review pointer for the user, never a rollback.
+        const warnings = await scanChangedMemoryPaths(paths, readNote).catch(() => [])
+        if (warnings.length > 0) {
+          updateTurn((turn) => ({
+            ...turn,
+            parts: [
+              ...turn.parts,
+              {
+                kind: 'notice',
+                tone: 'error',
+                text: `Memory write check — review these lines:\n${warnings.join('\n')}`,
+              },
+            ],
+          }))
+        }
       }
-      return
     }
-    for await (const event of events) {
-      // Every terminal event carries the turn's messages — for a stopped or
-      // failed turn that's the completed steps plus partial text, so the
-      // derived history matches what stayed on screen.
-      if (event.type === 'complete' || event.type === 'aborted' || event.type === 'error') {
-        updateTurn((turn) => ({ ...turn, responseMessages: event.messages }))
-      }
-      // `complete` is folded too: appendEvent backstops a reply-less turn
-      // with a notice, so the chips never settle into silence.
-      applyEvent(event)
+  }
+
+  try {
+    if (editRun) {
+      await withAgentRunLock(run)
+    } else {
+      await run()
     }
   } catch (cause) {
-    // streamChat normalizes its own failures; this guards the seams around
-    // it (keychain read, event application) so the UI never sticks.
-    applyEvent({ type: 'error', message: errorMessage(cause), messages: [] })
+    applyEvent(
+      controller.signal.aborted
+        ? { type: 'aborted', messages: [] }
+        : { type: 'error', message: errorMessage(cause), messages: [] },
+    )
   } finally {
-    // Close the ledger: whatever differs from the pre-run snapshot is
-    // what this run touched. Shown in the turn and persisted with it.
-    if (editRun && snapshot !== null) {
-      const changed = await gitChangedSince(snapshot, editRun.generation).catch(() => [])
-      const paths = changed.filter((path) => path.toLowerCase().endsWith('.md'))
-      if (paths.length > 0) {
-        updateTurn((turn) => ({ ...turn, parts: [...turn.parts, { kind: 'changes', paths }] }))
-      }
-      // The memory-write scanner: prompts forbid storing instructions
-      // and secrets in memory, this checks what actually landed there.
-      // A finding is a review pointer for the user, never a rollback.
-      const warnings = await scanChangedMemoryPaths(paths, readNote).catch(() => [])
-      if (warnings.length > 0) {
-        updateTurn((turn) => ({
-          ...turn,
-          parts: [
-            ...turn.parts,
-            {
-              kind: 'notice',
-              tone: 'error',
-              text: `Memory write check — review these lines:\n${warnings.join('\n')}`,
-            },
-          ],
-        }))
-      }
-    }
-    releaseRunLock()
     updateTurn((turn) => ({ ...turn, status: 'done' }))
     persistTurn(conversationMeta(), localTurn, turnCreatedMs)
     // Only release the slot if it's still ours: a turn detached by New

@@ -16,6 +16,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Switch } from '@/components/ui/switch'
 import { useSettings } from '@/providers/settings-provider'
+import { useGraph } from '@/providers/graph-provider'
 import { scheduleLabel } from './agent-routine-schedule'
 import { NewRoutineDialog } from './new-routine-dialog'
 
@@ -44,9 +45,12 @@ interface AgentRoutinesSectionProps {
  */
 export function AgentRoutinesSection({ profiles }: AgentRoutinesSectionProps): ReactElement {
   const { settings, updateSettingsWith } = useSettings()
+  const { graph } = useGraph()
   const [createOpen, setCreateOpen] = useState(false)
   const [historyId, setHistoryId] = useState<string | null>(null)
-  const routines = settings.agentRoutines
+  const routines = settings.agentRoutines.filter(
+    (routine) => routine.graphRoot === null || routine.graphRoot === graph?.root,
+  )
   const historyRoutine = routines.find((routine) => routine.id === historyId) ?? null
   // The run in flight right now, published by the runner (TDR 0007): its
   // row swaps Run now for Stop and says so in the meta line.
@@ -61,6 +65,7 @@ export function AgentRoutinesSection({ profiles }: AgentRoutinesSectionProps): R
   }
 
   const add = (routine: AgentRoutine): void => {
+    if (graph === null) return
     updateSettingsWith((current) => ({ agentRoutines: [...current.agentRoutines, routine] }))
   }
 
@@ -79,6 +84,7 @@ export function AgentRoutinesSection({ profiles }: AgentRoutinesSectionProps): R
   const addCurator = (): void => {
     add({
       id: crypto.randomUUID(),
+      graphRoot: graph?.root ?? null,
       name: MEMORY_CURATOR_PRESET.name,
       agentSlug: null,
       prompt: MEMORY_CURATOR_PRESET.prompt,
@@ -104,8 +110,8 @@ export function AgentRoutinesSection({ profiles }: AgentRoutinesSectionProps): R
         <div className="min-w-0 flex-1">
           <h2 className="text-sm font-medium text-text">Automations</h2>
           <p className="text-xs text-text-muted">
-            Scheduled agent runs — they work the vault in edit mode while Kore is running (the
-            window can stay closed), and journal what they did.
+            Automations run only in {graph?.name ?? 'this graph'}, while it is open in Kore. The
+            window can stay closed. Runs and their changes appear here.
           </p>
         </div>
         {hasCurator ? null : (
@@ -145,6 +151,24 @@ export function AgentRoutinesSection({ profiles }: AgentRoutinesSectionProps): R
                     : ''}
                 </p>
               </div>
+              {routine.graphRoot === null ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={graph === null}
+                  onClick={() =>
+                    patch(routine.id, {
+                      graphRoot: graph?.root ?? null,
+                      enabled: false,
+                      retryAtMs: null,
+                      retryContext: null,
+                    })
+                  }
+                >
+                  Assign to this graph
+                </Button>
+              ) : null}
               {routine.runs.length > 0 ? (
                 <Button
                   type="button"
@@ -173,6 +197,7 @@ export function AgentRoutinesSection({ profiles }: AgentRoutinesSectionProps): R
                   variant="ghost"
                   size="icon-sm"
                   aria-label={`Run ${routine.name} now`}
+                  disabled={routine.graphRoot === null}
                   onClick={() => runNow(routine.id)}
                 >
                   <Play aria-hidden className="size-4" />
@@ -180,7 +205,8 @@ export function AgentRoutinesSection({ profiles }: AgentRoutinesSectionProps): R
               )}
               <Switch
                 aria-label={`${routine.name} enabled`}
-                checked={routine.enabled}
+                checked={routine.graphRoot !== null && routine.enabled}
+                disabled={routine.graphRoot === null}
                 onCheckedChange={(checked) =>
                   // Re-enabling forgives the strikes that paused it —
                   // otherwise the next failure would pause it again at once.
@@ -213,6 +239,7 @@ export function AgentRoutinesSection({ profiles }: AgentRoutinesSectionProps): R
       ) : null}
 
       <NewRoutineDialog
+        graphRoot={graph?.root ?? ''}
         open={createOpen}
         onOpenChange={setCreateOpen}
         profiles={profiles}

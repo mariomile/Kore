@@ -308,9 +308,12 @@ pub fn run() {
         .manage(browser::BrowserState::default())
         .manage(pty::PtyState::default())
         .manage(runtime::AgentRunLockState::default())
+        .manage(routine_script::RoutineScriptState::default())
         .invoke_handler(tauri::generate_handler![
             app_version,
             app_platform,
+            db::backup::graph_backup_export,
+            db::backup::graph_backup_restore,
             background_task::background_task_begin,
             background_task::background_task_end,
             agent_cli::agent_cli_check,
@@ -318,6 +321,8 @@ pub fn run() {
             agent_cli::agent_cli_stop,
             agent_cli::agent_cli_send,
             agent_cli::agent_cli_stdin_close,
+            routine_script::routine_script_prepare,
+            routine_script::routine_script_stop,
             routine_script::routine_script_run,
             runtime::agent_run_lock_acquire,
             runtime::agent_run_lock_release,
@@ -567,6 +572,7 @@ pub fn run() {
             // as long as the user's session lasts, with no window left to
             // stop them from (see `process_tree`).
             tauri::RunEvent::Exit => {
+                app.state::<routine_script::RoutineScriptState>().cancel_all();
                 app.state::<agent_cli::AgentCliState>().terminate_all();
                 app.state::<pty::PtyState>().close_all();
             }

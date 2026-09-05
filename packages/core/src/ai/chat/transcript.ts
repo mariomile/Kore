@@ -48,6 +48,11 @@ export type AssistantPart =
   | { kind: 'notice'; tone: 'error' | 'info'; text: string }
   /** Notes an edit-mode agent run touched (vs its pre-run snapshot). */
   | { kind: 'changes'; paths: string[] }
+  /** The note context actually included with this turn, kept for inspection. */
+  | {
+      kind: 'context'
+      notes: { path: string; title: string; excerpt: string; source: 'mention' | 'recall' }[]
+    }
   /** A user message steered into the live turn mid-run (inject engines). */
   | { kind: 'steer'; text: string }
 

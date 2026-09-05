@@ -72,14 +72,16 @@ describe('withAgentRunLock', () => {
     ])
   })
 
-  it('degrades to the local lock when the host lacks the command', async () => {
+  it('refuses work when the native lease fails and leaves the queue usable', async () => {
     const invoke = vi.fn().mockRejectedValue(new Error('command not found'))
     setBridge({ invoke, listen: async () => () => {} })
     const work = vi.fn().mockResolvedValue('done')
-    await expect(withAgentRunLock(work)).resolves.toBe('done')
-    expect(work).toHaveBeenCalledOnce()
+    await expect(withAgentRunLock(work)).rejects.toThrow('command not found')
+    expect(work).not.toHaveBeenCalled()
     // No lease was granted, so nothing to release.
     expect(invoke).toHaveBeenCalledTimes(1)
+    installLeaseBridge()
+    await expect(withAgentRunLock(work)).resolves.toBe('done')
   })
 
   it('runs without any bridge at all (tests, plain-browser dev)', async () => {

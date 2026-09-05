@@ -87,6 +87,17 @@ export function AgentRoutinesRunner(): null {
   })
 
   useEffect(() => {
+    let disposed = false
+    let activeController: AbortController | null = null
+    const isCurrentGraph = (routine: AgentRoutine): boolean =>
+      !disposed && routine.graphRoot !== null && routine.graphRoot === graphRef.current?.root
+    const reportRunnerError = (cause: unknown): void => {
+      toast.add({
+        type: 'error',
+        title: 'Automation could not run',
+        description: errorMessage(cause),
+      })
+    }
     const markRun = (id: string, startedMs: number): void => {
       updateSettingsWith((current) => ({
         agentRoutines: current.agentRoutines.map((routine) =>
@@ -192,9 +203,19 @@ export function AgentRoutinesRunner(): null {
       })
     }
 
-    async function runRoutine(routine: AgentRoutine, promptSuffix?: string): Promise<void> {
+    async function runRoutine(
+      candidate: AgentRoutine,
+      promptSuffix?: string,
+      manual = false,
+    ): Promise<void> {
+      const routine = settingsRef.current.agentRoutines.find((entry) => entry.id === candidate.id)
       const graph = graphRef.current
-      if (graph === null) {
+      if (
+        routine === undefined ||
+        !isCurrentGraph(routine) ||
+        (!manual && !routine.enabled) ||
+        graph === null
+      ) {
         return
       }
       // Null until markRun: a skipped occurrence records no history entry.
@@ -202,6 +223,7 @@ export function AgentRoutinesRunner(): null {
       // The Agents screen's Stop button reaches the engine through this
       // controller — the CLI transports kill their process tree on abort.
       const controller = new AbortController()
+      activeController = controller
       setRunningRoutine({ id: routine.id, stop: () => controller.abort() })
       try {
         // Script mode: the tick's script runs first, deterministic and
@@ -220,8 +242,10 @@ export function AgentRoutinesRunner(): null {
           // death, and recovery reads it on the next launch.
           startedMs = Date.now()
           markRun(routine.id, startedMs)
-          await markRoutineRunStarted(graph.generation, routine.id, startedMs).catch(() => {})
-          const decision = decideScriptTick(await runRoutineScriptTick(script, graph.root))
+          await markRoutineRunStarted(graph.generation, routine.id, startedMs)
+          const decision = decideScriptTick(
+            await runRoutineScriptTick(script, graph.generation, controller.signal),
+          )
           if (decision.kind === 'skip') {
             // Silent by design: history records the tick, nothing toasts.
             recordOutcome(routine.id, {
@@ -243,6 +267,7 @@ export function AgentRoutinesRunner(): null {
           }
           scriptContext = decision.context
         }
+        controller.signal.throwIfAborted()
         const context = await loadAgentContext(routine.agentSlug)
         // Automations write the vault, so only edit-capable engines run
         // them — Cursor's read-only integration never does.
@@ -273,7 +298,7 @@ export function AgentRoutinesRunner(): null {
         if (startedMs === null) {
           startedMs = Date.now()
           markRun(routine.id, startedMs)
-          await markRoutineRunStarted(graph.generation, routine.id, startedMs).catch(() => {})
+          await markRoutineRunStarted(graph.generation, routine.id, startedMs)
         }
         // Same refusal as interactive chat: an unbuilt index cannot say
         // which notes are private, and a routine runs unattended, so
@@ -298,6 +323,7 @@ export function AgentRoutinesRunner(): null {
         // Activity ledger baseline: commit pending changes so the run's
         // touches diff cleanly against a restorable version.
         const snapshot = await gitAgentSnapshot(graph.generation).catch(() => null)
+        controller.signal.throwIfAborted()
         const events = streamCliAgentChat(provider, {
           // The pinned model only makes sense on the pinned provider — on a
           // fallback provider it would name a model that engine doesn't have.
@@ -413,11 +439,12 @@ export function AgentRoutinesRunner(): null {
           )
         }
       } finally {
+        activeController = null
         setRunningRoutine(null)
         if (startedMs !== null) {
           // The run settled one way or another — recovery is only for runs
           // the process was killed under, so clear the durable slot.
-          void markRoutineRunFinished().catch(() => {})
+          await markRoutineRunFinished().catch(reportRunnerError)
         }
       }
     }
@@ -446,7 +473,7 @@ export function AgentRoutinesRunner(): null {
       }
       const tags: string[] = []
       for (const routine of settingsRef.current.agentRoutines) {
-        if (routine.enabled && isEventSchedule(routine.schedule)) {
+        if (isCurrentGraph(routine) && routine.enabled && isEventSchedule(routine.schedule)) {
           tags.push(routine.schedule.tag)
         }
       }
@@ -465,7 +492,7 @@ export function AgentRoutinesRunner(): null {
     }
 
     async function drainEventRuns(): Promise<void> {
-      if (runningRef.current || graphRef.current === null) {
+      if (disposed || runningRef.current || graphRef.current === null) {
         return
       }
       const next = pendingEventRuns.shift()
@@ -500,7 +527,7 @@ export function AgentRoutinesRunner(): null {
       for (const tag of eventTags) {
         currentByTag.set(foldTag(tag), new Set(await getNotesByTag(tag)))
       }
-      const routines = settingsRef.current.agentRoutines
+      const routines = settingsRef.current.agentRoutines.filter(isCurrentGraph)
       const previousByTag = new Map<string, Set<string>>()
       for (const tag of eventTags) {
         const folded = foldTag(tag)
@@ -548,7 +575,7 @@ export function AgentRoutinesRunner(): null {
         return
       }
       const routine = settingsRef.current.agentRoutines.find(
-        (entry) => entry.id === marker.routineId,
+        (entry) => entry.id === marker.routineId && isCurrentGraph(entry),
       )
       if (routine !== undefined) {
         recordOutcome(routine.id, interruptedRoutineRun(marker.startedMs))
@@ -562,17 +589,16 @@ export function AgentRoutinesRunner(): null {
     }
 
     async function runDueRoutines(): Promise<void> {
-      if (runningRef.current || graphRef.current === null) {
-        return
-      }
-      await recoverInterrupted()
-      const now = new Date()
-      const due = settingsRef.current.agentRoutines.filter((routine) => routineIsDue(routine, now))
-      if (due.length === 0) {
+      if (disposed || runningRef.current || graphRef.current === null) {
         return
       }
       runningRef.current = true
       try {
+        await recoverInterrupted()
+        const now = new Date()
+        const due = settingsRef.current.agentRoutines.filter(
+          (routine) => isCurrentGraph(routine) && routineIsDue(routine, now),
+        )
         for (const routine of due) {
           // Edit-mode agent runs are serialized app-wide (the chat holds the
           // same lock) so concurrent runs can't cross-attribute ledgers. A
@@ -586,20 +612,21 @@ export function AgentRoutinesRunner(): null {
     }
 
     const check = (): void => {
-      void runDueRoutines()
+      void runDueRoutines().catch(reportRunnerError)
     }
     const runNow = (event: Event): void => {
       const id = event instanceof CustomEvent ? String(event.detail ?? '') : ''
       const routine = settingsRef.current.agentRoutines.find((entry) => entry.id === id)
-      if (routine === undefined || runningRef.current) {
+      if (routine === undefined || !isCurrentGraph(routine) || runningRef.current) {
         return
       }
       runningRef.current = true
-      void withAgentRunLock(() => runRoutine(routine))
+      void withAgentRunLock(() => runRoutine(routine, undefined, true))
         .finally(() => {
           runningRef.current = false
         })
         .then(() => drainEventRuns())
+        .catch(reportRunnerError)
     }
     check()
     const timer = setInterval(check, CHECK_INTERVAL_MS)
@@ -628,10 +655,12 @@ export function AgentRoutinesRunner(): null {
       ownWrites.add(path)
     })
     const unsubscribeIndexApplied = subscribeIndexApplied((changes, appliedGeneration) => {
-      void handleIndexApplied(changes, appliedGeneration)
+      void handleIndexApplied(changes, appliedGeneration).catch(reportRunnerError)
     })
-    void ensureEventTagsHydrated()
+    void ensureEventTagsHydrated().catch(reportRunnerError)
     return () => {
+      disposed = true
+      activeController?.abort()
       clearInterval(timer)
       tickDisposed = true
       unlistenTick?.()
@@ -640,9 +669,9 @@ export function AgentRoutinesRunner(): null {
       unsubscribeOwnWrites()
       unsubscribeIndexApplied()
     }
-    // Refs carry the live settings/graph; the loop itself never re-arms.
+    // Settings stay live through refs; changing graphs aborts the old run and queue.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [graph?.generation])
 
   return null
 }

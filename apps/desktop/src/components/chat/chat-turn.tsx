@@ -54,7 +54,7 @@ export function ChatTurn({ turn }: ChatTurnProps): ReactElement {
 
       <Message align="start">
         <MessageContent className="group/assistant-response w-fit max-w-full gap-2">
-          {turn.parts.length === 0 && turn.status === 'streaming' ? (
+          {turn.parts.every((part) => part.kind === 'context') && turn.status === 'streaming' ? (
             <Marker className="animate-pulse text-sm text-text-muted">
               <MarkerContent>Thinking…</MarkerContent>
             </Marker>

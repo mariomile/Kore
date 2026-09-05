@@ -49,6 +49,9 @@ vi.mock('@/lib/platform', () => ({ isMacosDesktop: true, isNativeShell: () => tr
 vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({ graph: graph.current, openRecent: graph.openRecent }),
 }))
+vi.mock('@/providers/settings-provider', () => ({
+  useSettings: () => ({ settings: { agentRoutines: [] } }),
+}))
 vi.mock('@/providers/sync-provider', () => ({ useSync: () => sync }))
 vi.mock('@/lib/windows/open-in-new-window', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/windows/open-in-new-window')>()),

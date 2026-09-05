@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { WEEKDAY_LABELS } from './agent-routine-schedule'
 
 interface NewRoutineDialogProps {
+  graphRoot: string
   open: boolean
   onOpenChange: (open: boolean) => void
   profiles: AgentProfile[]
@@ -22,6 +23,7 @@ interface NewRoutineDialogProps {
 
 /** Name + prompt + agent + schedule → one settings-backed routine. */
 export function NewRoutineDialog({
+  graphRoot,
   open,
   onOpenChange,
   profiles,
@@ -54,6 +56,7 @@ export function NewRoutineDialog({
     }
     onCreate({
       id: crypto.randomUUID(),
+      graphRoot,
       name: name.trim(),
       agentSlug: agentSlug === 'none' ? null : agentSlug,
       prompt: prompt.trim(),

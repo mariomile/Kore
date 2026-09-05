@@ -9,6 +9,7 @@ import { SettingsField } from '@/components/settings/field'
 import { GithubSignOutRow } from '@/components/settings/github-sign-out-row'
 import { SyncForkNotice } from '@/components/settings/sync-fork-notice'
 import { Button } from '@/components/ui/button'
+import { GraphBackupSection } from './graph-backup-section'
 import { useAsyncAction } from '@/hooks/use-async-action'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { useGithubConnected } from '@/hooks/use-github-connected'
@@ -22,7 +23,7 @@ import { useSync, type BackupState } from '@/providers/sync-provider'
 function statusLine(backup: Extract<BackupState, { phase: 'connected' }>): string {
   switch (backup.status.state) {
     case 'idle':
-      return 'Backed up'
+      return 'Files synced'
     case 'syncing':
       return 'Backing up…'
     case 'offline':
@@ -128,8 +129,8 @@ export function BackupSettingsField(): ReactElement {
         legend={genericRemote ? 'Backup' : 'GitHub sync'}
         description={
           genericRemote
-            ? 'This graph backs up to its own git remote. Edits back up automatically a few moments after you stop typing.'
-            : 'Back up this graph to a GitHub repository. Edits back up automatically a few moments after you stop typing.'
+            ? 'Sync graph files to your git remote. Includes private notes; chat history and chat attachments are excluded. Use a graph archive below to preserve them.'
+            : 'Sync graph files to GitHub. Includes private notes; chat history and chat attachments are excluded. Use a graph archive below to preserve them.'
         }
       >
         <div className="mt-3 flex flex-col gap-2">
@@ -214,6 +215,7 @@ export function BackupSettingsField(): ReactElement {
           ) : null}
         </div>
       </SettingsField>
+      <GraphBackupSection />
       {connectOpen ? (
         <ConnectGithubDialog
           suggestedRepoName={suggestRepoName(graph?.name)}

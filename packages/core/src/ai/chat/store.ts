@@ -131,6 +131,17 @@ const partSchema = z.discriminatedUnion('kind', [
   }),
   z.object({ kind: z.literal('notice'), tone: z.enum(['error', 'info']), text: z.string() }),
   z.object({ kind: z.literal('changes'), paths: z.array(z.string()) }),
+  z.object({
+    kind: z.literal('context'),
+    notes: z.array(
+      z.object({
+        path: z.string(),
+        title: z.string(),
+        excerpt: z.string(),
+        source: z.enum(['mention', 'recall']),
+      }),
+    ),
+  }),
   z.object({ kind: z.literal('steer'), text: z.string() }),
 ])
 

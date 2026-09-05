@@ -30,13 +30,35 @@ export const ROUTINE_SCRIPT_TIMEOUT_MS = 30_000
 /** Run one routine script in the graph root, output capped Rust-side. */
 export async function runRoutineScriptTick(
   script: string,
-  graphRoot: string,
+  generation: number,
+  signal: AbortSignal,
 ): Promise<ScriptTickOutcome> {
-  return await call(
-    'routine_script_run',
-    { command: script, cwd: graphRoot, timeoutMs: ROUTINE_SCRIPT_TIMEOUT_MS },
-    scriptTickOutcomeSchema,
-  )
+  signal.throwIfAborted()
+  const requestId = crypto.randomUUID()
+  await call('routine_script_prepare', { requestId }, z.null())
+  const cancellation: { stopping: Promise<void> | null } = { stopping: null }
+  const stop = (): void => {
+    cancellation.stopping ??= call('routine_script_stop', { requestId }, z.null()).then(() => {})
+    // The rejection is joined below, after the run settles.
+    void cancellation.stopping.catch(() => {})
+  }
+  signal.addEventListener('abort', stop, { once: true })
+  try {
+    if (signal.aborted) {
+      stop()
+      await cancellation.stopping
+    }
+    const outcome = await call(
+      'routine_script_run',
+      { requestId, command: script, generation, timeoutMs: ROUTINE_SCRIPT_TIMEOUT_MS },
+      scriptTickOutcomeSchema,
+    )
+    signal.throwIfAborted()
+    return outcome
+  } finally {
+    signal.removeEventListener('abort', stop)
+    await cancellation.stopping
+  }
 }
 
 export type ScriptTickDecision =

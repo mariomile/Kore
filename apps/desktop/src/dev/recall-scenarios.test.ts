@@ -16,7 +16,10 @@ import { createDevIndexDb, type DevIndexDb } from '@/dev/dev-index-db'
  * app uses, via the dev bridge's SQLite.
  */
 
+const sources = new Map<string, string>()
+
 function indexed(path: string, source: string): IndexedNote {
+  sources.set(path, source)
   return buildIndexedNote(parseNote({ path, source }), {
     fileHash: `hash:${path}`,
     mtime: 1_700_000_000_000,
@@ -30,6 +33,9 @@ beforeEach(async () => {
   db = await createDevIndexDb()
   setBridge({
     invoke: async (command, args) => {
+      if (command === 'note_read') {
+        return sources.get(String(args['path']))
+      }
       if (command !== 'db_query') {
         throw new Error(`Unexpected command: ${command}`)
       }

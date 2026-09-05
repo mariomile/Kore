@@ -7,7 +7,7 @@ import {
   type ReactNode,
   type Ref,
 } from 'react'
-import { errorMessage, type TimeFormat } from '@reflect/core'
+import { resourceUrl, errorMessage, type TimeFormat } from '@reflect/core'
 import type {
   AcceptPendingReplacementOptions,
   ExitBoundaryHandler,
@@ -163,6 +163,8 @@ interface NoteEditorProps {
    * and `[name](dest)` for everything else.
    */
   saveFile?: (file: File) => Promise<string | null>
+  /** Observe a standalone URL paste without changing the editor paste behavior. */
+  onUrlPaste?: (url: string) => void
   /**
    * Claim a `[label](url)` link as a file attachment, rendered as an inline
    * file pill instead of a plain link. Clicking a pill routes through the
@@ -257,6 +259,7 @@ export function NoteEditor({
   resolveAssetOpenPath,
   openAsset,
   saveFile,
+  onUrlPaste,
   resolveFileLink,
   resolveFileInfo,
   onWikiLinkClick,
@@ -459,68 +462,80 @@ export function NoteEditor({
 
   return (
     <>
-      <MeowdownEditor
-        handleRef={innerRef}
-        mode={markMode}
-        initialMarkdown={initialContent}
-        // On the touch surface spellcheck is pinned off regardless of the
-        // setting: iOS derives the keyboard's smart-quotes/smart-dashes traits
-        // from it at focus time, and smart punctuation corrupts markdown
-        // syntax ([[ wiki links, code spans, --- fences) — Plan 19 gate.
-        // Autocorrect is independent and stays on (EditorInputTraits).
-        spellCheck={isTouchEditorSurface() ? false : spellCheck}
-        searchQuery={searchQuery ?? ''}
-        {...(onSearchChange !== undefined ? { onSearchChange } : {})}
-        // Reflect's implementation-neutral `12h`/`24h` maps to meowdown's
-        // `12`/`24` here at the boundary, like `markModeFromSyntax`.
-        timeFormat={timeFormat === '24h' ? '24' : '12'}
-        caretGlide={smoothCaretAnimation}
-        bulletAfterHeading={bulletAfterHeading}
-        // Pinned off on the touch surface regardless of the caller: the grip is
-        // revealed on hover and drag-reorders blocks with a pointer, neither of
-        // which a touch webview can express. Turning it off also drops the drop
-        // indicator, which meowdown gates on the same prop.
-        blockHandle={isTouchEditorSurface() ? false : blockHandle}
-        editorClassName={cn('reflect-editor', className)}
-        {...(titlePlaceholder !== undefined ? { placeholder: titlePlaceholder } : {})}
-        onDocChange={handleDocChange}
-        onWikilinkClick={handleWikilinkClick}
-        onTagClick={handleTagClick}
-        onLinkClick={handleLinkClick}
-        onImageClick={handleImageClick}
-        {...(onWikilinkSearch !== undefined ? { onWikilinkSearch } : {})}
-        {...(onTagSearch !== undefined ? { onTagSearch } : {})}
-        {...(onSelectionMenuSearch !== undefined ? { onSelectionMenuSearch } : {})}
-        {...(pendingReplacementActions !== undefined ? { pendingReplacementActions } : {})}
-        {...(onPendingReplacementResolve !== undefined ? { onPendingReplacementResolve } : {})}
-        {...(onSlashMenuSearch !== undefined ? { onSlashMenuSearch } : {})}
-        resolveImageUrl={handleResolveImageUrl}
-        resolveWikiEmbed={resolveWikiEmbed}
-        onFilePaste={handleFilePaste}
-        {...(resolveFileLink !== undefined ? { resolveFileLink } : {})}
-        resolveFileInfo={handleResolveFileInfo}
-        onFileClick={handleFileClick}
-        onExitBoundary={handleExitBoundary}
+      <div
+        className="contents"
+        onPasteCapture={(event) => {
+          if (event.clipboardData.files.length > 0) return
+          const target = event.target
+          if (!(target instanceof HTMLElement) || !target.closest('[contenteditable="true"]'))
+            return
+          const url = resourceUrl(event.clipboardData.getData('text/plain'))
+          if (url !== null) onUrlPaste?.(url)
+        }}
       >
-        <EditorInputTraits />
-        {/* Only a pane that persists files gets the toolbar's attach button;
+        <MeowdownEditor
+          handleRef={innerRef}
+          mode={markMode}
+          initialMarkdown={initialContent}
+          // On the touch surface spellcheck is pinned off regardless of the
+          // setting: iOS derives the keyboard's smart-quotes/smart-dashes traits
+          // from it at focus time, and smart punctuation corrupts markdown
+          // syntax ([[ wiki links, code spans, --- fences) — Plan 19 gate.
+          // Autocorrect is independent and stays on (EditorInputTraits).
+          spellCheck={isTouchEditorSurface() ? false : spellCheck}
+          searchQuery={searchQuery ?? ''}
+          {...(onSearchChange !== undefined ? { onSearchChange } : {})}
+          // Reflect's implementation-neutral `12h`/`24h` maps to meowdown's
+          // `12`/`24` here at the boundary, like `markModeFromSyntax`.
+          timeFormat={timeFormat === '24h' ? '24' : '12'}
+          caretGlide={smoothCaretAnimation}
+          bulletAfterHeading={bulletAfterHeading}
+          // Pinned off on the touch surface regardless of the caller: the grip is
+          // revealed on hover and drag-reorders blocks with a pointer, neither of
+          // which a touch webview can express. Turning it off also drops the drop
+          // indicator, which meowdown gates on the same prop.
+          blockHandle={isTouchEditorSurface() ? false : blockHandle}
+          editorClassName={cn('reflect-editor', className)}
+          {...(titlePlaceholder !== undefined ? { placeholder: titlePlaceholder } : {})}
+          onDocChange={handleDocChange}
+          onWikilinkClick={handleWikilinkClick}
+          onTagClick={handleTagClick}
+          onLinkClick={handleLinkClick}
+          onImageClick={handleImageClick}
+          {...(onWikilinkSearch !== undefined ? { onWikilinkSearch } : {})}
+          {...(onTagSearch !== undefined ? { onTagSearch } : {})}
+          {...(onSelectionMenuSearch !== undefined ? { onSelectionMenuSearch } : {})}
+          {...(pendingReplacementActions !== undefined ? { pendingReplacementActions } : {})}
+          {...(onPendingReplacementResolve !== undefined ? { onPendingReplacementResolve } : {})}
+          {...(onSlashMenuSearch !== undefined ? { onSlashMenuSearch } : {})}
+          resolveImageUrl={handleResolveImageUrl}
+          resolveWikiEmbed={resolveWikiEmbed}
+          onFilePaste={handleFilePaste}
+          {...(resolveFileLink !== undefined ? { resolveFileLink } : {})}
+          resolveFileInfo={handleResolveFileInfo}
+          onFileClick={handleFileClick}
+          onExitBoundary={handleExitBoundary}
+        >
+          <EditorInputTraits />
+          {/* Only a pane that persists files gets the toolbar's attach button;
             `handleFilePaste` is the same handler meowdown pastes through. */}
-        <FormattingToolbarBridge
-          {...(saveFile !== undefined ? { saveFile: handleFilePaste } : {})}
-        />
-        {blockHandle && !isTouchEditorSurface() ? (
-          <BlockActionToolbar
-            aiEnabled={onSelectionMenuSearch !== undefined}
-            onOpenAi={() => innerRef.current?.openSelectionMenu()}
+          <FormattingToolbarBridge
+            {...(saveFile !== undefined ? { saveFile: handleFilePaste } : {})}
           />
-        ) : null}
-        {renderWikilinkHoverCard !== undefined ? (
-          <WikilinkHoverCard className="reflect-hover-card">
-            {renderWikilinkHoverCard}
-          </WikilinkHoverCard>
-        ) : null}
-        {children}
-      </MeowdownEditor>
+          {blockHandle && !isTouchEditorSurface() ? (
+            <BlockActionToolbar
+              aiEnabled={onSelectionMenuSearch !== undefined}
+              onOpenAi={() => innerRef.current?.openSelectionMenu()}
+            />
+          ) : null}
+          {renderWikilinkHoverCard !== undefined ? (
+            <WikilinkHoverCard className="reflect-hover-card">
+              {renderWikilinkHoverCard}
+            </WikilinkHoverCard>
+          ) : null}
+          {children}
+        </MeowdownEditor>
+      </div>
       <ImageLightbox
         image={lightboxImage}
         onClose={closeLightbox}

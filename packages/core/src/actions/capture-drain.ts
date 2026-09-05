@@ -1,3 +1,4 @@
+import { collectResourceLink } from './resource-collection'
 import { errorMessage, isAppError, toAppError } from '../errors'
 import {
   captureInboxList,
@@ -238,9 +239,15 @@ export async function drainCaptureInbox(
           hasScreenshot,
           status,
           selectionHash,
+          private: notePrivate(dailySource),
         }),
         input.generation,
       )
+      await collectResourceLink(envelope.url, displayTitle(envelope), {
+        generation: input.generation,
+        sourcePath: identity.notePath,
+        private: notePrivate(dailySource),
+      })
       const freshTitle = displayTitle(envelope)
       let updatedDaily = dailySource
       if (existing !== null) {

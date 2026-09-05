@@ -2,6 +2,7 @@ import { vi } from 'vitest'
 import { describePage } from '../ai/describe-page'
 import type { AiProvidersState } from '../ai/provider-config'
 import {
+  createNoteIfAbsent,
   captureInboxList,
   captureInboxRead,
   captureInboxReject,
@@ -114,6 +115,11 @@ export function reconcile(overrides: Partial<ReconcileCaptureEnrichmentInput> = 
 /** Reset the maps and point every mocked command at them; call from `beforeEach`. */
 export function wireCaptureMocks(): void {
   vi.clearAllMocks()
+  vi.mocked(createNoteIfAbsent).mockImplementation(async (path, source) => {
+    if (files.has(path)) return { kind: 'collision' }
+    files.set(path, source)
+    return { kind: 'created', modifiedMs: 1 }
+  })
   files.clear()
   spool.clear()
   rejected.clear()

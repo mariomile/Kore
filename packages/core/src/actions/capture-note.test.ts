@@ -76,7 +76,7 @@ describe('capture note type metadata', () => {
       IDENTITY,
       { hasScreenshot: false, status: 'done' },
     )
-    expect(source).toContain('- Type: #link #repo')
+    expect(source).toContain('- Type: #capture #repo')
   })
 
   it('keeps the bare tag for a link it cannot classify', async () => {
@@ -84,8 +84,8 @@ describe('capture note type metadata', () => {
       hasScreenshot: false,
       status: 'done',
     })
-    expect(source).toContain('- Type: #link\n')
-    expect(source).not.toContain('- Type: #link #')
+    expect(source).toContain('- Type: #capture\n')
+    expect(source).not.toContain('- Type: #capture #')
   })
 
   it('still finds the Type anchor when the capture is typed', () => {

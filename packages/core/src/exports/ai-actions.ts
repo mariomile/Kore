@@ -420,3 +420,11 @@ export {
   type ReconcileAssetDescriptionsInput,
   type ReconcileAssetDescriptionsOutcome,
 } from '../actions/asset-description'
+
+export {
+  collectResourceLink,
+  collectResourceFile,
+  resourceUrl,
+  resourceFileKind,
+  type ResourceOrigin,
+} from '../actions/resource-collection'

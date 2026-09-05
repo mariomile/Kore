@@ -582,3 +582,28 @@ describe('NoteEditor file paste', () => {
     expect(handleRef.current?.getMarkdown()).toBe('\n')
   })
 })
+
+describe('resource URL paste', () => {
+  it('observes a standalone URL while keeping the normal editor insertion', async () => {
+    const onUrlPaste = vi.fn()
+    const handleRef = createRef<NoteEditorHandle>()
+    await render(<NoteEditor initialContent="" onUrlPaste={onUrlPaste} handleRef={handleRef} />)
+    await pmRoot.click()
+    const clipboard = new DataTransfer()
+    clipboard.setData('text/plain', 'https://example.com/page')
+    pmRoot
+      .element()
+      .dispatchEvent(
+        new ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData: clipboard }),
+      )
+    await vi.waitFor(() => expect(onUrlPaste).toHaveBeenCalledWith('https://example.com/page'))
+    expect(handleRef.current?.getMarkdown()).toContain('https://example.com/page')
+    clipboard.setData('text/plain', 'Read https://example.com/other for details')
+    pmRoot
+      .element()
+      .dispatchEvent(
+        new ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData: clipboard }),
+      )
+    expect(onUrlPaste).toHaveBeenCalledTimes(1)
+  })
+})

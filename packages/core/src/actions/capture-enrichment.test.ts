@@ -26,6 +26,7 @@ import type { CaptureEnvelope } from './capture-envelope'
 const ensureBacklinkTargetMock = vi.hoisted(() => vi.fn())
 
 vi.mock('../graph/commands', () => ({
+  createNoteIfAbsent: vi.fn(),
   captureInboxList: vi.fn(),
   captureInboxRead: vi.fn(),
   captureInboxReject: vi.fn(),
@@ -205,7 +206,7 @@ describe('reconcileCaptureEnrichment', () => {
     expect(outcome).toEqual({ pending: 1, enriched: 1, skipped: 0, stopped: null })
     const note = files.get(IDENTITY.notePath) ?? ''
     expect(note).toContain(
-      '- Type: #link\n- Description: An AI description of the page.\n\n## Selection',
+      '- Type: #capture\n- Description: An AI description of the page.\n\n## Selection',
     )
     expect(note).not.toContain('A scraped description.')
     expect(note).toContain('- Description: A line from the captured article.')

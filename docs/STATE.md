@@ -12,6 +12,28 @@ product is lives in the [roadmap](roadmap.md) (app-first) with the Personal OS
 direction in [Plan 25](plans/25-personal-os.md). The full shipped history stays
 in the [delivery log](delivery-log.md); this file tracks only the active work.
 
+## Automatic resource collections — 2026-09-05
+
+- New standalone URL pastes create one `#link` card per URL and privacy scope.
+  Capture snapshots retain their text/screenshots under `#capture` and are
+  linked from the canonical card's Sources property.
+- New pasted/dropped files create `#image`, `#pdf`, or `#file` cards. Bounded
+  content hashing reuses the binary on repeat insertion. Existing schemas and
+  card annotations are preserved; private origins get separate private cards.
+- Resource filenames remain stable when their display titles change. Images
+  default to the existing grid; explicit saved view preferences still win.
+- Scope: New insertions only, no historical migration or new AI/OCR pipeline.
+
+**Validation:** 185 targeted logic/browser tests passed, including capture
+reconciliation, resource deduplication/privacy, editor paste and collection UI.
+`pnpm check` and `pnpm build` passed. In the browser dev graph, a pasted URL
+appeared in the Link table with its URL, saved date and origin. Manual binary
+upload is blocked by the existing dev bridge's unimplemented `asset_upload_begin`;
+real native upload is not claimed verified.
+
+**Next:** Native file paste/drop smoke check before release. Version and release
+manifests are unchanged.
+
 ## Audit remediation — 2026-09-04
 
 - [x] Recall rechecks each candidate's live privacy flag; missing/unreadable

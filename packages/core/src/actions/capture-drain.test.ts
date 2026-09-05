@@ -21,6 +21,7 @@ import type { TextCaptureEnvelope } from './capture-envelope'
 const ensureBacklinkTargetMock = vi.hoisted(() => vi.fn())
 
 vi.mock('../graph/commands', () => ({
+  createNoteIfAbsent: vi.fn(),
   captureInboxList: vi.fn(),
   captureInboxRead: vi.fn(),
   captureInboxReject: vi.fn(),
@@ -71,7 +72,7 @@ describe('drainCaptureInbox', () => {
     expect(note).toContain('captureScreenshot: assets/capture-2026-06-11-153022-845-7c9e.jpg')
     expect(note).toContain('# An article')
     expect(note).toContain('- URL: https://example.com/article')
-    expect(note).toContain('- Type: #link')
+    expect(note).toContain('- Type: #capture')
     expect(note).not.toContain('Highlights')
     expect(note).toContain('## Note\n\ncheck later')
     expect(note).toContain('## Selection\n\nquoted text')
@@ -110,7 +111,7 @@ describe('drainCaptureInbox', () => {
     expect(note).toContain('captureSource: ios-share')
     // Whitespace-folded onto the one metadata line, right where enrichment
     // will replace it in place.
-    expect(note).toContain('- Type: #link\n- Description: A page about examples.')
+    expect(note).toContain('- Type: #capture\n- Description: A page about examples.')
     expect(note).toContain('captureStatus: pending')
   })
 

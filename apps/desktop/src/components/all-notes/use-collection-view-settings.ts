@@ -80,7 +80,8 @@ export function useCollectionViewSettings(
   // preference — the board you left on one tag doesn't chase you onto the
   // next; the toggles write per-tag there, global elsewhere.
   const requestedView =
-    (tagKey === null ? undefined : settings.collectionViewModes[tagKey]) ?? settings.allNotesView
+    (tagKey === null ? undefined : settings.collectionViewModes[tagKey]) ??
+    (tagKey === 'image' ? 'grid' : settings.allNotesView)
   // A tag has exactly one table — the collection's own. The plain notes
   // list belongs to the unfiltered page, so a stored (or default) 'list'
   // renders as the collection table here, and the switcher never offers two

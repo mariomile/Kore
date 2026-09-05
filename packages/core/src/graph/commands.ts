@@ -472,3 +472,12 @@ export async function forgetRecent(root: string): Promise<void> {
 export async function deleteGraph(generation: number): Promise<void> {
   await call('graph_delete', { generation }, voidSchema)
 }
+
+/** Read a graph-pinned attachment identity without loading its binary into JS. */
+export async function assetContentIdentity(path: string, generation: number): Promise<string> {
+  return await call(
+    'asset_content_identity',
+    { path, generation },
+    z.string().regex(/^[a-f0-9]{64}$/),
+  )
+}

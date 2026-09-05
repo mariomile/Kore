@@ -12,6 +12,40 @@ product is lives in the [roadmap](roadmap.md) (app-first) with the Personal OS
 direction in [Plan 25](plans/25-personal-os.md). The full shipped history stays
 in the [delivery log](delivery-log.md); this file tracks only the active work.
 
+## Automatic resource collections — 2026-09-05
+
+- New standalone URL pastes create one `#link` card per URL and privacy scope.
+  Capture snapshots retain their text/screenshots under `#capture` and are
+  linked from the canonical card's Sources property.
+- New pasted/dropped files create `#image`, `#pdf`, or `#file` cards. Bounded
+  content hashing reuses the binary on repeat insertion. Existing schemas and
+  card annotations are preserved; private origins get separate private cards.
+- Resource filenames remain stable when their display titles change. Images
+  default to the existing grid; explicit saved view preferences still win.
+- Scope: New insertions only, no historical migration or new AI/OCR pipeline.
+
+**Validation:** 185 targeted logic/browser tests passed, including capture
+reconciliation, resource deduplication/privacy, editor paste and collection UI.
+`pnpm check` and `pnpm build` passed. In the browser dev graph, a pasted URL
+appeared in the Link table with its URL, saved date and origin. Manual binary
+upload is blocked by the existing dev bridge's unimplemented `asset_upload_begin`;
+real native upload is not claimed verified.
+
+**Review remediation (PR #173):** Three findings corrected before merge:
+existing-card origins now commit through the live document session; native
+bounded hashing verifies saved asset bytes before reuse and preserves externally
+modified files/cards; collection failures are surfaced without blocking the
+capture inbox. Focused regressions cover dirty annotations, stale graph sessions,
+modified binaries and a failed collection followed by a valid capture.
+
+**Revalidation:** 158 targeted TypeScript/browser tests, `pnpm check`, `pnpm build`,
+the native cross-language hash parity test, Rust formatting and desktop clippy
+passed. The native development build compiled; automated UI attachment to Kore
+Dev was unavailable, so manual native paste/drop is still not claimed verified.
+
+**Next:** Merge the reviewed PR after fresh aggregate CI, then use the Release PR
+and Release DMG workflow for the requested bump. No feature-branch version edits.
+
 ## Audit remediation — 2026-09-04
 
 - [x] Recall rechecks each candidate's live privacy flag; missing/unreadable

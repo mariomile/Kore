@@ -21,6 +21,7 @@ import type { TextCaptureEnvelope } from './capture-envelope'
 const ensureBacklinkTargetMock = vi.hoisted(() => vi.fn())
 
 vi.mock('../graph/commands', () => ({
+  createNoteIfAbsent: vi.fn(),
   captureInboxList: vi.fn(),
   captureInboxRead: vi.fn(),
   captureInboxReject: vi.fn(),
@@ -53,6 +54,29 @@ beforeEach(() => {
 })
 
 describe('drainCaptureInbox', () => {
+  it('drains valid captures even when an unsupported resource URL cannot be collected', async () => {
+    addSpool(envelope({ url: 'https://user:secret@example.com/', title: 'Credential URL' }), {
+      screenshot: false,
+      modifiedMs: 100,
+    })
+    addSpool(envelope({ id: '00000000-0000-4000-8000-000000000002', title: 'Next capture' }), {
+      screenshot: false,
+      modifiedMs: 200,
+    })
+
+    const outcome = await drain()
+
+    expect(outcome.drained).toBe(2)
+    expect(outcome.stopped).toBeNull()
+    expect(outcome.collectionFailures).toHaveLength(1)
+    expect(outcome.collectionFailures?.[0]?.message).toBe('Only HTTP(S) links can be collected')
+    expect(files.get(IDENTITY.notePath)).toContain('captureUrl: https://user:secret@example.com/')
+    expect(files.get(DAILY)).toContain('|Credential URL]]')
+    expect(files.get(DAILY)).toContain('|Next capture]]')
+    expect([...files.values()].some((source) => source.includes('#link\n'))).toBe(true)
+    expect(spool.size).toBe(0)
+  })
+
   it('writes the capture note, daily entry, and asset — then removes the spool', async () => {
     addSpool(envelope({ selection: 'quoted text', note: 'check later' }))
 
@@ -71,7 +95,7 @@ describe('drainCaptureInbox', () => {
     expect(note).toContain('captureScreenshot: assets/capture-2026-06-11-153022-845-7c9e.jpg')
     expect(note).toContain('# An article')
     expect(note).toContain('- URL: https://example.com/article')
-    expect(note).toContain('- Type: #link')
+    expect(note).toContain('- Type: #capture')
     expect(note).not.toContain('Highlights')
     expect(note).toContain('## Note\n\ncheck later')
     expect(note).toContain('## Selection\n\nquoted text')
@@ -110,7 +134,7 @@ describe('drainCaptureInbox', () => {
     expect(note).toContain('captureSource: ios-share')
     // Whitespace-folded onto the one metadata line, right where enrichment
     // will replace it in place.
-    expect(note).toContain('- Type: #link\n- Description: A page about examples.')
+    expect(note).toContain('- Type: #capture\n- Description: A page about examples.')
     expect(note).toContain('captureStatus: pending')
   })
 

@@ -18,6 +18,7 @@ const subscribeFileChanges = vi.hoisted(() =>
   vi.fn<(handler: (changes: readonly FileChange[]) => void) => Promise<() => void>>(),
 )
 const failOperation = vi.hoisted(() => vi.fn<(message: string) => void>())
+const appendResourceSource = vi.hoisted(() => vi.fn(async () => {}))
 
 vi.mock('@reflect/core', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@reflect/core')>()),
@@ -29,6 +30,7 @@ vi.mock('@reflect/core', async (importOriginal) => ({
 vi.mock('@/lib/provider-fetch', () => ({
   providerFetch: vi.fn(),
 }))
+vi.mock('@/lib/resource-sources', () => ({ appendResourceSource }))
 vi.mock('@/lib/operations', () => ({
   startOperation: () => ({ progress: vi.fn(), done: vi.fn(), fail: failOperation }),
 }))
@@ -117,6 +119,30 @@ describe('createCaptureController (shared-inbox relay)', () => {
     expect(drainCaptureInbox).toHaveBeenCalledTimes(1)
     expect(reconcileCaptureEnrichment).toHaveBeenCalledTimes(1)
     expect(failOperation).not.toHaveBeenCalled()
+  })
+
+  it('surfaces collection failures without blocking enrichment and forwards session updates', async () => {
+    drainCaptureInbox.mockResolvedValue(
+      drained({ collectionFailures: [{ reason: 'io', message: 'Resource card write failed' }] }),
+    )
+    create().start()
+    await flush()
+
+    expect(failOperation).toHaveBeenCalledWith('Resource card write failed')
+    expect(reconcileCaptureEnrichment).toHaveBeenCalledTimes(1)
+    const input = drainCaptureInbox.mock.calls[0]?.[0]
+    await input?.updateResourceSources?.('notes/resource.md', '[[notes/capture]]', 3)
+    expect(appendResourceSource).toHaveBeenCalledWith(
+      'notes/resource.md',
+      '[[notes/capture]]',
+      3,
+      input?.isStale,
+    )
+
+    controller?.schedule()
+    await flush()
+    expect(failOperation).toHaveBeenCalledTimes(1)
+    expect(reconcileCaptureEnrichment).toHaveBeenCalledTimes(2)
   })
 
   it('schedules a pass when the app becomes visible again (mobile resume)', async () => {

@@ -24,6 +24,7 @@ import {
 } from '@/editor/editor-handle-registry'
 import { markModeFromSyntax } from '@/editor/mark-mode'
 import { NoteEditor, type NoteEditorHandle } from '@/editor/note-editor'
+import { useResourceCollection } from '@/editor/use-resource-collection'
 import { resolveAssetFileLink, useAssetPersistence } from '@/editor/use-asset-persistence'
 import { useEditorAutocomplete } from '@/editor/use-editor-autocomplete'
 import { useNotePaneDocument } from '@/components/use-note-pane-document'
@@ -154,6 +155,7 @@ export function NotePaneComponent({
   const { document, dailyNote } = useNotePaneDocument(path, generation, lazy, dailyDate)
   const { resolveImageUrl, resolveAssetOpenPath, openAsset, saveFile, resolveFileInfo, saveError } =
     useAssetPersistence(generation, path)
+  const resources = useResourceCollection(generation, path, document.header, saveFile)
   // PDF and HTML attachments open in the in-app viewer; everything else keeps
   // the OS-open path. The viewer's "Open externally" routes back to openAsset.
   const [viewerAssetPath, setViewerAssetPath] = useState<string | null>(null)
@@ -423,7 +425,8 @@ export function NotePaneComponent({
         resolveImageUrl={resolveImageUrl}
         resolveAssetOpenPath={resolveAssetOpenPath}
         openAsset={openOrViewAsset}
-        saveFile={saveFile}
+        saveFile={resources.saveFile}
+        onUrlPaste={resources.saveUrl}
         // Claims `assets/…` links (what saveFile inserts for a dropped
         // non-image file) so they render as file pills, sized by
         // resolveFileInfo.

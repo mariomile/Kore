@@ -59,10 +59,10 @@ export function displayTitle(envelope: Pick<CaptureEnvelope, 'title' | 'url'>): 
 }
 
 /** The metadata line's stable prefix — the anchor later edits locate. */
-const TYPE_PREFIX = '- Type: #link'
+const TYPE_PREFIX = '- Type: #capture'
 
 /**
- * The capture's `Type` metadata: always `#link`, plus the tag for what the URL
+ * The snapshot's `Type` metadata: always `#capture`, plus the tag for what the URL
  * points at when the classifier recognises it ({@link linkKind}). Both tags
  * are real body tags, so the graph can list every capture *and* only the
  * videos, and a captured repository stops looking like a captured article.
@@ -131,11 +131,17 @@ function firstSectionStart(body: string): number {
 export async function captureNoteSource(
   envelope: CaptureEnvelope,
   identity: CaptureIdentity,
-  options: { hasScreenshot: boolean; status: CaptureStatus; selectionHash?: string | undefined },
+  options: {
+    hasScreenshot: boolean
+    status: CaptureStatus
+    selectionHash?: string | undefined
+    private?: boolean
+  },
 ): Promise<string> {
   const body = captureNoteBody(envelope, identity, options.hasScreenshot)
   return upsertFrontmatter(body, {
     aliases: [identity.base],
+    ...(options.private ? { private: true } : {}),
     captureUrl: envelope.url,
     capturedAt: envelope.capturedAt,
     captureSource: envelope.source,
@@ -264,8 +270,10 @@ export function withDescription(body: string, description: string): string {
     metadataLines[descriptionLine] = line
     return `${metadataLines.join('\n')}${body.slice(metadataEnd)}`
   }
-  const typeLine = metadataLines.findIndex((candidate) =>
-    candidate.trimEnd().startsWith(TYPE_PREFIX),
+  const typeLine = metadataLines.findIndex(
+    (candidate) =>
+      candidate.trimEnd().startsWith(TYPE_PREFIX) ||
+      candidate.trimEnd().startsWith('- Type: #link'),
   )
   if (typeLine === -1) {
     throw new Error('capture note is missing Type metadata')

@@ -1,3 +1,4 @@
+import { collectResourceLink } from './resource-collection'
 import { errorMessage, isAppError, toAppError } from '../errors'
 import {
   captureInboxList,
@@ -60,6 +61,8 @@ export interface DrainCaptureInboxInput {
   isStale?: () => boolean
   /** Clock for the orphan sweep; injectable for tests. */
   now?: () => number
+  /** Update resource origins through an open document session when available. */
+  updateResourceSources?: (path: string, sourceLink: string, generation: number) => Promise<void>
 }
 
 export interface DrainCaptureInboxOutcome {
@@ -77,6 +80,8 @@ export interface DrainCaptureInboxOutcome {
   invalid: number
   /** Why spool files remain, or `null` when the inbox drained. */
   stopped: ReconcileStop | null
+  /** Resource cards that failed independently of the durable capture save. */
+  collectionFailures?: ReconcileStop[]
 }
 
 interface SameDayCapture {
@@ -169,6 +174,7 @@ export async function drainCaptureInbox(
   let drained = 0
   let deduped = 0
   let invalid = 0
+  const collectionFailures: ReconcileStop[] = []
   const stale = (): boolean => input.isStale?.() === true
   const outcome = (stopped: ReconcileStop | null): DrainCaptureInboxOutcome => ({
     pending: spools.length,
@@ -176,6 +182,7 @@ export async function drainCaptureInbox(
     deduped,
     invalid,
     stopped,
+    ...(collectionFailures.length > 0 ? { collectionFailures } : {}),
   })
 
   for (const spool of spools) {
@@ -238,9 +245,20 @@ export async function drainCaptureInbox(
           hasScreenshot,
           status,
           selectionHash,
+          private: notePrivate(dailySource),
         }),
         input.generation,
       )
+      try {
+        await collectResourceLink(envelope.url, displayTitle(envelope), {
+          generation: input.generation,
+          sourcePath: identity.notePath,
+          private: notePrivate(dailySource),
+          ...(input.updateResourceSources ? { updateSources: input.updateResourceSources } : {}),
+        })
+      } catch (cause) {
+        collectionFailures.push({ reason: toAppError(cause).kind, message: errorMessage(cause) })
+      }
       const freshTitle = displayTitle(envelope)
       let updatedDaily = dailySource
       if (existing !== null) {

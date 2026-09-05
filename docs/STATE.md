@@ -1,6 +1,6 @@
 # Kore working state
 
-**Updated:** 2026-09-05, collections daily loop integrated with `50f69fec`
+**Updated:** 2026-09-05, Plan 30 (CLI agent parity) opened; collections daily loop integrated with `50f69fec`
 (Kore 0.51.0, audit fixes released). Schema edits and rows from the table,
 sort chains, any/all filters, side peek, tag descriptions and daily line to
 note are pending PR #168 integration validation (TDR 0005 Amendments A and B).
@@ -11,6 +11,22 @@ things are built this way lives in [docs/decisions/](decisions/); what the
 product is lives in the [roadmap](roadmap.md) (app-first) with the Personal OS
 direction in [Plan 25](plans/25-personal-os.md). The full shipped history stays
 in the [delivery log](delivery-log.md); this file tracks only the active work.
+
+## CLI agent parity — 2026-09-05
+
+[Plan 30](plans/30-cli-agent-parity.md), user decision 2026-09-05: the
+`reflect` CLI grows read completeness (`info`, `tags`, `list`, `properties`,
+`links`), structured writes (`set`, `tag`/`untag`, `done`, `append`, typed
+`new`, `capture --stdin`), and a refreshed agent skill. This reverses Plan 14's
+"no write CLI" by user decision; writes stay atomic, structural, and never
+overwrite. Binary stays `reflect`.
+
+- [ ] Layer 1 — read completeness
+- [ ] Layer 2 — structured writes (frontmatter splice + verify)
+- [ ] Layer 3 — near-miss hints, `graph-skill.md`, `docs/cli.md`
+
+**Next:** implement layer 1 (`commands/info.rs` first), integration tests in
+`apps/cli/tests/cli.rs`.
 
 ## Automatic resource collections — 2026-09-05
 

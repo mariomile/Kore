@@ -182,6 +182,106 @@ pub struct NewJson<'a> {
     pub title: &'a str,
 }
 
+/// `info`: the graph and its index at a glance (works without an index).
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InfoJson {
+    pub root: String,
+    pub cli_version: &'static str,
+    pub index: IndexInfoJson,
+    /// Null when the index is absent or unusable.
+    pub counts: Option<CountsJson>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IndexInfoJson {
+    pub present: bool,
+    pub usable: bool,
+    pub newer_schema: bool,
+    pub stale: bool,
+    pub stale_files: usize,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CountsJson {
+    pub notes: i64,
+    pub dailies: i64,
+    pub tags: i64,
+}
+
+/// `tags`: every tag with its public note count and whether it is typed.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TagsJson {
+    pub stale: bool,
+    pub tags: Vec<TagJson>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TagJson {
+    pub tag: String,
+    pub count: i64,
+    /// True when `tags/<tag>.md` declares a schema (a collection).
+    pub typed: bool,
+    /// The definition note's path when the tag is typed.
+    pub definition: Option<String>,
+}
+
+/// `list`: notes newest first, with their tags.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ListJson {
+    pub stale: bool,
+    pub notes: Vec<ListNoteJson>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ListNoteJson {
+    pub path: String,
+    pub title: String,
+    /// `daily` or `note`.
+    pub kind: String,
+    /// RFC 3339 UTC timestamp of the last indexed update.
+    pub updated_at: String,
+    pub tags: Vec<String>,
+}
+
+/// `properties`: a note's frontmatter as typed property values.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PropertiesJson<'a> {
+    pub path: &'a str,
+    pub title: &'a str,
+    pub aliases: &'a [String],
+    pub pinned: bool,
+    /// From the index when it is open; empty otherwise.
+    pub tags: Vec<String>,
+    pub properties: serde_json::Map<String, serde_json::Value>,
+}
+
+/// `links`: the wiki links a note makes, resolved when a target exists.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LinksJson<'a> {
+    pub path: &'a str,
+    pub stale: bool,
+    pub links: Vec<LinkJson>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LinkJson {
+    /// The link's target text as written (`[[target]]`).
+    pub target: String,
+    /// The resolved note's path, or null when no note answers to the target.
+    pub path: Option<String>,
+    pub title: Option<String>,
+}
+
 pub fn print_json<T: Serialize>(value: &T) -> Result<(), CliError> {
     let json = serde_json::to_string_pretty(value)
         .map_err(|err| CliError::Runtime(format!("could not serialize output: {err}")))?;

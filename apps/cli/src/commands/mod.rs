@@ -6,12 +6,17 @@
 pub mod backlinks;
 pub mod capture;
 pub mod collection;
+pub mod info;
+pub mod links;
+pub mod list;
 pub mod new;
 pub mod open;
 pub mod path;
+pub mod properties;
 pub mod recent;
 pub mod search;
 pub mod show;
+pub mod tags;
 pub mod tasks;
 pub mod today;
 
@@ -20,7 +25,10 @@ mod output;
 use std::fmt::Display;
 use std::path::Path;
 
-use crate::index::{open_read_only, IndexOpen, OpenIndex};
+use reflect_index_schema::{INDEX_FILE, REFLECT_DIR};
+
+use crate::error::CliError;
+use crate::index::{detect_staleness, open_read_only, IndexOpen, OpenIndex, Staleness};
 use crate::note_file::read_note;
 
 fn warn(message: impl Display) {
@@ -52,4 +60,30 @@ fn open_index_for_resolution(root: &Path) -> Option<OpenIndex> {
             None
         }
     }
+}
+
+/// Open the index for a command that cannot work without it (exit 4 when
+/// missing or unusable), warn about a newer schema, and measure staleness
+/// (warned once here; the JSON shapes carry it as `stale`).
+fn require_index(root: &Path) -> Result<(OpenIndex, Staleness), CliError> {
+    let opened = match open_read_only(root) {
+        IndexOpen::Opened(opened) => opened,
+        IndexOpen::Missing => {
+            return Err(CliError::NoIndex(format!(
+                "no index at {REFLECT_DIR}/{INDEX_FILE} — open this graph in Kore to build it"
+            )))
+        }
+        IndexOpen::Unusable(message) => return Err(CliError::NoIndex(message)),
+    };
+    if opened.newer_schema {
+        warn("the index schema is newer than this CLI — update Kore");
+    }
+    let staleness = detect_staleness(&opened.conn, root)?;
+    if staleness.is_stale() {
+        warn(format!(
+            "the index may be stale ({} file(s) differ from it) — open the graph in Kore to refresh",
+            staleness.total()
+        ));
+    }
+    Ok((opened, staleness))
 }

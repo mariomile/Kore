@@ -110,6 +110,32 @@ enum Command {
         #[arg(long, default_value_t = 100)]
         limit: usize,
     },
+    /// The graph and its index at a glance (works without an index)
+    Info,
+    /// List every tag with its note count and whether it is a collection
+    Tags,
+    /// List notes newest first, with their tags
+    List {
+        /// Only notes carrying this tag (without the #)
+        #[arg(long, value_name = "TAG")]
+        tag: Option<String>,
+        /// Only this kind of note: daily or note
+        #[arg(long, value_name = "KIND")]
+        kind: Option<String>,
+        /// Maximum number of notes
+        #[arg(long, default_value_t = 50)]
+        limit: usize,
+    },
+    /// Print a note's frontmatter properties (typed), aliases, and tags
+    Properties {
+        /// A YYYY-MM-DD date, graph-relative path, note title, or alias
+        note: String,
+    },
+    /// List the wiki links a note makes, resolved through the index
+    Links {
+        /// A YYYY-MM-DD date, graph-relative path, note title, or alias
+        note: String,
+    },
     /// Create a note under notes/ with a title-derived filename
     New {
         /// The note's title (becomes the H1 and the filename slug)
@@ -141,6 +167,13 @@ fn run(cli: &Cli) -> Result<(), CliError> {
             desc,
             limit,
         } => commands::collection::run(&graph, cli.json, tag, sort.as_deref(), *desc, *limit),
+        Command::Info => commands::info::run(&graph, cli.json),
+        Command::Tags => commands::tags::run(&graph, cli.json),
+        Command::List { tag, kind, limit } => {
+            commands::list::run(&graph, cli.json, tag.as_deref(), kind.as_deref(), *limit)
+        }
+        Command::Properties { note } => commands::properties::run(&graph, cli.json, note),
+        Command::Links { note } => commands::links::run(&graph, cli.json, note),
         Command::New { title, template } => {
             commands::new::run(&graph, cli.json, title, template.as_deref())
         }

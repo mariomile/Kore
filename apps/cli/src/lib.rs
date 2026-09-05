@@ -19,6 +19,7 @@
 
 pub mod commands;
 pub mod error;
+pub mod frontmatter_values;
 pub mod graph;
 pub mod hash;
 pub mod index;

@@ -16,7 +16,10 @@ import { AllNotesScreen } from './all-notes-screen'
  */
 
 const settingsState = vi.hoisted(
-  (): { allNotesView: 'list' | 'table' | 'board'; collectionGroups: Record<string, string> } => ({
+  (): {
+    allNotesView: 'list' | 'table' | 'board' | 'grid'
+    collectionGroups: Record<string, string>
+  } => ({
     allNotesView: 'table',
     collectionGroups: {},
   }),
@@ -295,6 +298,26 @@ describe('Collection flow (fake bridge, no module mocks below the hooks)', () =>
       expect(write![1]['path']).toBe('notes/dune.md')
       expect(String(write![1]['contents'])).toContain('status: done')
     })
+    await view.unmount()
+  })
+
+  it('keeps collection tools in the header on the card grid', async () => {
+    settingsState.allNotesView = 'grid'
+    const view = await render(<Screen />)
+
+    await expect
+      .element(view.getByRole('button', { name: 'Filter by property' }))
+      .toBeInTheDocument()
+    await expect.element(view.getByRole('button', { name: 'Saved views' })).toBeInTheDocument()
+    await expect
+      .element(view.getByRole('button', { name: 'Import CSV into the collection' }))
+      .toBeInTheDocument()
+    await expect
+      .element(view.getByRole('button', { name: 'Export collection as CSV' }))
+      .toBeInTheDocument()
+    expect(view.getByRole('button', { name: 'Columns' }).query()).toBeNull()
+    await expect.element(view.getByRole('heading', { name: '#book' })).toBeInTheDocument()
+    expect(view.getByRole('button', { name: 'All notes' }).query()).toBeNull()
     await view.unmount()
   })
 })

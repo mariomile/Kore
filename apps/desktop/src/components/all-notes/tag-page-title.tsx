@@ -4,34 +4,20 @@ import { Settings } from '@/components/icons'
 interface TagPageTitleProps {
   /** The routed tag (display casing), the page's identity. */
   tag: string
-  onBack: () => void
   onConfigure: () => void
 }
 
 /**
- * The tag page's identity block: an All notes breadcrumb back to the
- * unfiltered view, the tag as the path's current segment, and the schema
- * gear, always visible rather than hover-revealed (TDR 0005) — every tag is
- * a collection, so every tag page can configure one.
- *
- * The whole line is one quiet breadcrumb, not a headline: the tag names where
- * you are inside All Notes, and a display-sized `#tag` over its own table
- * shouted the same thing the rows already say.
+ * The tag page's identity: the tag as the heading (same display size as
+ * All notes' "Notes"), with the schema gear always visible rather than
+ * hover-revealed (TDR 0005) — every tag is a collection, so every tag page
+ * can configure one. Back to the unfiltered list is the sidebar's All notes,
+ * not a breadcrumb here.
  */
-export function TagPageTitle({ tag, onBack, onConfigure }: TagPageTitleProps): ReactElement {
+export function TagPageTitle({ tag, onConfigure }: TagPageTitleProps): ReactElement {
   return (
     <div className="flex min-w-0 items-center gap-2">
-      <button
-        type="button"
-        onClick={onBack}
-        className="text-sm font-medium text-text-muted transition-colors hover:text-text"
-      >
-        All notes
-      </button>
-      <span aria-hidden className="text-sm text-text-muted">
-        /
-      </span>
-      <h1 className="min-w-0 truncate text-sm font-semibold text-text">#{tag}</h1>
+      <h1 className="app-page-title min-w-0 truncate text-text">#{tag}</h1>
       <button
         type="button"
         aria-label={`Configure #${tag}`}

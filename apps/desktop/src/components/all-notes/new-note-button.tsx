@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react'
 import { errorMessage } from '@reflect/core'
+import { Plus } from '@/components/icons'
 import { toast } from '@/components/ui/toast'
 import { useTemplateValues } from '@/hooks/use-template-values'
 import { useTagType } from '@/hooks/use-tag-type'
@@ -23,16 +24,19 @@ interface NewNoteButtonProps {
 
 /**
  * The All Notes header's primary action — the same fresh-note route as ⌘N
- * (created lazily on the first keystroke), with the binding taught inline.
- * Under a tag filter the file is created eagerly instead, seeded with the
- * tag (and the type's bound template, when it names one), so the new note
- * is a member of the collection immediately.
+ * (created lazily on the first keystroke). Under a tag filter the file is
+ * created eagerly instead, seeded with the tag (and the type's bound
+ * template, when it names one), so the new note is a member of the
+ * collection immediately. A round "+" matches the rest of the header chrome;
+ * the binding lives on the tooltip.
  */
 export function NewNoteButton({ tag = null }: NewNoteButtonProps): ReactElement {
   const { navigate } = useRouter()
   const { graph } = useGraph()
   const tagType = useTagType(tag)
   const resolveTemplateValues = useTemplateValues()
+  const shortcut = NEW_NOTE_BINDING !== null ? formatBindingLabel(NEW_NOTE_BINDING) : null
+  const label = shortcut !== null ? `New note ${shortcut}` : 'New note'
 
   const createTagged = async (activeTag: string): Promise<void> => {
     if (graph === null) {
@@ -59,6 +63,8 @@ export function NewNoteButton({ tag = null }: NewNoteButtonProps): ReactElement 
   return (
     <button
       type="button"
+      aria-label="New note"
+      title={label}
       onClick={() => {
         if (tag === null) {
           navigate(newNoteRoute())
@@ -66,14 +72,9 @@ export function NewNoteButton({ tag = null }: NewNoteButtonProps): ReactElement 
           void createTagged(tag)
         }
       }}
-      className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-sm font-medium text-text-secondary transition-colors duration-100 hover:bg-surface-hover hover:text-text"
+      className="app-icon-button text-text-muted hover:text-text"
     >
-      New note
-      {NEW_NOTE_BINDING !== null ? (
-        <span aria-hidden className="rounded px-1 py-px text-[11px] font-medium text-text-muted">
-          {formatBindingLabel(NEW_NOTE_BINDING)}
-        </span>
-      ) : null}
+      <Plus aria-hidden className="size-3.5" />
     </button>
   )
 }

@@ -1,9 +1,10 @@
 # Kore working state
 
-**Updated:** 2026-09-06, Plan 30 (CLI agent parity) on PR #175 after review fixes; collections daily loop integrated with `50f69fec`
-(Kore 0.51.0, audit fixes released). Schema edits and rows from the table,
-sort chains, any/all filters, side peek, tag descriptions and daily line to
-note are pending PR #168 integration validation (TDR 0005 Amendments A and B).
+**Updated:** 2026-09-06, collection tag-page chrome (heading, tools on every
+layout, + new, masonry align). Plan 30 CLI follow-up is on `t3code/cli-fresh-write-resolution`.
+Schema edits and rows from the table, sort chains, any/all filters, side peek,
+tag descriptions and daily line to note are pending PR #168 integration
+validation (TDR 0005 Amendments A and B).
 **Rule:** Every session that moves the program updates this file before its
 summary: tick what became true and how it was verified, set the next step,
 refresh the date. What is done and what is next live here and only here. Why
@@ -493,6 +494,18 @@ declined; the backlog-B pass is closed.
   window close (`prevent_exit`, `apps/desktop/src-tauri/src/lib.rs:536`) and
   agent CLI processes spawn from Rust (`apps/desktop/src-tauri/src/agent_cli.rs`).
 
+## Collection tag-page chrome — 2026-09-06
+
+A tag page is the collection: `#tag` is the heading (no "All notes /"
+breadcrumb), collection tools (filter, saved views, import, export) stay in
+the header on every layout — not only the table — and New note is a round
+`+`. Masonry cards sit on an `auto-fill` grid (`items-start`, masonry rows
+where the engine supports them) so leftover width stays on the right instead
+of opening a gap between cards. Column visibility stays table-only.
+
+**Validation:** all-notes screen + collection-flow 38/38 on Chromium and
+WebKit; `pnpm check` exit 0.
+
 ## Next step
 
 1. **Projects, remaining**: slice 3 stays a *recommendation only* per the
@@ -516,6 +529,11 @@ declined; the backlog-B pass is closed.
 
 ## Session log
 
+- 2026-09-06 — Collection tag-page chrome: `#tag` heading only, collection
+  tools on every layout, header New note as `+`, masonry cards on an
+  `auto-fill` grid so leftover width does not gap between cards. Verified:
+  all-notes screen + collection-flow 38/38 chromium and webkit, `pnpm check`
+  exit 0.
 - 2026-09-04 — Collections daily loop, three slices on one branch
   (schema edits and rows from the table; tag page description + daily
   line to note; sort chains, any/all, side peek). TDR 0005 Amendment B.

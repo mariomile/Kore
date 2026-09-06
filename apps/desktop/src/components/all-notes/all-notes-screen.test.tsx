@@ -775,4 +775,45 @@ describe('AllNotesScreen grid view', () => {
     expect(cards[0]?.getBoundingClientRect().top).toBe(cards[1]?.getBoundingClientRect().top)
     await view.unmount()
   })
+
+  it('stretches a body-less card to the height of its taller row neighbor', async () => {
+    settingsState.allNotesView = 'grid'
+    mockInvoke.mockImplementation(async (command, args) => {
+      if (command !== 'db_query') {
+        return null
+      }
+      const sql = String(args['sql'])
+      if (sql.includes('"preview"')) {
+        return [
+          {
+            path: 'notes/long.md',
+            title: 'Long note',
+            mtime: HEALTH_MTIME,
+            preview:
+              'A deliberately long preview that wraps across several lines and makes this card much taller than a neighbor that has no body at all.',
+            tags: null,
+          },
+          {
+            path: 'notes/empty.md',
+            title: 'Empty note',
+            mtime: TOKYO_MTIME,
+            preview: '',
+            tags: null,
+          },
+        ]
+      }
+      return []
+    })
+    const view = await renderScreen()
+
+    await expect.element(view.getByTestId('all-notes-grid')).toBeInTheDocument()
+    await expect.element(view.getByText('Empty note')).toBeInTheDocument()
+    const cards = view.getByTestId('all-notes-grid').element().querySelectorAll('button')
+    expect(cards).toHaveLength(2)
+    const tall = cards[0]?.getBoundingClientRect()
+    const empty = cards[1]?.getBoundingClientRect()
+    expect(tall?.top).toBe(empty?.top)
+    expect(empty?.height).toBe(tall?.height)
+    await view.unmount()
+  })
 })

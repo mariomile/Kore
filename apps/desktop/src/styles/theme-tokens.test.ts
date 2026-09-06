@@ -56,7 +56,7 @@ describe('theme tokens', () => {
     // House `dark` used to paint the selected day with the brand indigo
     // (`#7b7ef4`), so the calendar was the one chrome surface that ignored
     // the grayscale selection idiom. Inverse of `--text` / `--surface`.
-    const dark = /\n\.dark \{\n([^}]*)}/.exec(COLORS)?.[1]
+    const dark = /\n\.dark \{\n([^}]*)\}/.exec(COLORS)?.[1]
     expect(dark).toBeDefined()
     expect(dark).toMatch(/--surface-inverse:\s*#[def][0-9a-f]{5};/)
     expect(dark).toMatch(/--text-on-inverse:\s*#[0-5][0-9a-f]{5};/)

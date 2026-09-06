@@ -1,8 +1,8 @@
 # Kore working state
 
-**Updated:** 2026-09-06, Type field Bugbot fixes (tag-only hide, removeBodyTag
-newlines and excluded markup). Plan 30 CLI follow-up is on
-`t3code/cli-fresh-write-resolution`.
+**Updated:** 2026-09-06, Cursor CLI chat: drop retried assistant snapshots and
+treat `WritableIterable is closed` as a stream teardown, not a failed turn.
+Plan 30 CLI follow-up is on `t3code/cli-fresh-write-resolution`.
 Schema edits and rows from the table, sort chains, any/all filters, side peek,
 tag descriptions and daily line to note are pending PR #168 integration
 validation (TDR 0005 Amendments A and B).
@@ -13,6 +13,27 @@ things are built this way lives in [docs/decisions/](decisions/); what the
 product is lives in the [roadmap](roadmap.md) (app-first) with the Personal OS
 direction in [Plan 25](plans/25-personal-os.md). The full shipped history stays
 in the [delivery log](delivery-log.md); this file tracks only the active work.
+
+## Cursor CLI stream teardown — 2026-09-06
+
+User report: Cursor (subscription) chat on "hei" repeated the greeting three
+times then failed with `RetriableError: WritableIterable is closed`. That
+string is an upstream `cursor-agent` stream teardown (often after a successful
+answer, with the same assistant block replayed). Kore was concatenating every
+`assistant` event as a new paragraph and surfacing the teardown as a turn
+error.
+
+- [x] Parser keeps one copy of a retried/flushed assistant snapshot, strips a
+  leaked WritableIterable trailer, and treats a teardown `result` as success
+  when answer text already streamed.
+- [x] The chat stream completes with that answer instead of a red error; if
+  nothing streamed, the user sees a retry prompt rather than the internal
+  exception.
+
+**Validation:** `packages/core/src/ai/cursor-cli.test.ts` (parser + fake-bridge
+stream). Live `cursor-agent` not available in this environment.
+
+**Next:** bump, then a live send in Kore Brain on Cursor Auto.
 
 ## CLI agent parity — 2026-09-05
 
@@ -532,6 +553,10 @@ WebKit; `pnpm check` exit 0.
 
 ## Session log
 
+- 2026-09-06 — Cursor CLI chat: identical assistant snapshots from
+  `cursor-agent` retries/flushes are no longer concatenated, and
+  `WritableIterable is closed` after a real answer completes the turn
+  instead of failing it. Verified: cursor-cli parser + stream tests.
 - 2026-09-06 — Note Type field: a typed note's properties header (and the
   rail) lead with Type chips for each schema-bearing tag; removing a chip
   strips `#tag` from the body. Two typed tags both show; their fields still

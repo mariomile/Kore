@@ -129,12 +129,55 @@ export function cursorCliArgs(options: {
 }
 
 /**
- * Parse one `cursor-agent --output-format stream-json` NDJSON line.
- * Assistant messages arrive whole per turn segment; `result` ends the run
- * and carries the error flag. System/init, user echoes, thinking, and tool
- * events are activity, not answer text, and are dropped.
+ * Cursor's `cursor-agent` leaks this internal stream teardown as assistant
+ * text and/or a failed `result` — often after the model already answered
+ * (retries then replay the same block). Known upstream; we strip it and
+ * keep the answer when we have one.
  */
-export function parseCursorCliLine(line: string): AgentCliChunk | null {
+const CURSOR_TRANSIENT_STREAM_ERROR = /WritableIterable is closed/i
+
+/** Shown when the stream dies before any answer text arrived. */
+export const CURSOR_CLI_STREAM_DROPPED_MESSAGE =
+  'The Cursor CLI stream dropped. Send the message again.'
+
+/** Whether a CLI error string is Cursor's transient stream teardown. */
+export function isCursorTransientStreamError(text: string | null | undefined): boolean {
+  return typeof text === 'string' && CURSOR_TRANSIENT_STREAM_ERROR.test(text)
+}
+
+function stripCursorTransientStreamError(text: string): string {
+  const lines = text.split('\n')
+  while (lines.length > 0 && CURSOR_TRANSIENT_STREAM_ERROR.test(lines.at(-1) ?? '')) {
+    lines.pop()
+    while (lines.at(-1) === '') {
+      lines.pop()
+    }
+  }
+  return lines.join('\n')
+}
+
+/**
+ * Mutable parse state so a retried or flushed assistant snapshot is not
+ * appended again. Cursor emits one complete message per tool-call segment,
+ * then often repeats that same block (pre-tool flush, end-of-turn flush, or
+ * an internal retry after the WritableIterable stream teardown).
+ */
+export interface CursorCliParseState {
+  lastText: string
+}
+
+/**
+ * Parse one `cursor-agent --output-format stream-json` NDJSON line.
+ * Assistant messages arrive whole per turn segment; identical or prefix
+ * snapshots of the last segment are dropped (or extended as a delta).
+ * `result` ends the run and carries the error flag. System/init, user
+ * echoes, thinking, and tool events are activity, not answer text, and
+ * are dropped.
+ */
+export function parseCursorCliLine(
+  line: string,
+  state: CursorCliParseState = { lastText: '' },
+): AgentCliChunk | null {
   let parsed: unknown
   try {
     parsed = JSON.parse(line)
@@ -158,24 +201,52 @@ export function parseCursorCliLine(line: string): AgentCliChunk | null {
   }
   const data = event.data
   if (data.type === 'assistant' && data.message !== undefined) {
-    const text = data.message.content
+    const raw = data.message.content
       .filter((block) => block.type === 'text' && block.text !== undefined)
       .map((block) => block.text)
       .join('')
-    return text === '' ? null : { type: 'text-block', text }
+    const text = stripCursorTransientStreamError(raw)
+    if (text === '') {
+      return null
+    }
+    if (text === state.lastText) {
+      return null
+    }
+    if (state.lastText !== '' && text.startsWith(state.lastText)) {
+      const delta = text.slice(state.lastText.length)
+      state.lastText = text
+      return delta === '' ? null : { type: 'text-delta', text: delta }
+    }
+    if (state.lastText.startsWith(text)) {
+      return null
+    }
+    state.lastText = text
+    return { type: 'text-block', text }
   }
   if (data.type === 'result') {
+    const raw = data.result ?? null
+    const transient = data.is_error === true && isCursorTransientStreamError(raw)
+    if (transient && state.lastText !== '') {
+      return { type: 'result', isError: false, message: null }
+    }
+    if (transient) {
+      return { type: 'result', isError: true, message: CURSOR_CLI_STREAM_DROPPED_MESSAGE }
+    }
     return {
       type: 'result',
       isError: data.is_error === true,
-      message: data.result ?? null,
+      message: raw,
     }
   }
   return null
 }
 
+function isUnexpectedCliExit(message: string): boolean {
+  return message === 'The CLI exited unexpectedly.'
+}
+
 /** Run one chat turn through the Cursor CLI (see `./agent-cli`). */
-export function streamCursorCliChat(
+export async function* streamCursorCliChat(
   options: StreamCliChatOptions,
 ): AsyncGenerator<ChatStreamEvent> {
   const preamble = cursorCliSystemPrompt({
@@ -185,7 +256,8 @@ export function streamCursorCliChat(
     agentContext: options.agentContext,
     memoryWriteApproval: options.memoryWriteApproval,
   })
-  return streamAgentCliTurn({
+  const state: CursorCliParseState = { lastText: '' }
+  const stream = streamAgentCliTurn({
     binary: 'cursor-agent',
     args: cursorCliArgs({
       model: options.model,
@@ -200,8 +272,27 @@ export function streamCursorCliChat(
       relativePath: '.cursor/cli.json',
       contents: cursorCliPermissionsJson(options.privateNotePaths),
     },
-    parseLine: parseCursorCliLine,
+    parseLine: (line) => parseCursorCliLine(line, state),
     startFailureMessage: 'Could not start the Cursor CLI.',
     signal: options.signal,
   })
+  for await (const event of stream) {
+    if (event.type !== 'error') {
+      yield event
+      continue
+    }
+    const hasAnswer = event.messages.length > 0
+    if (
+      hasAnswer &&
+      (isCursorTransientStreamError(event.message) || isUnexpectedCliExit(event.message))
+    ) {
+      yield { type: 'complete', messages: event.messages }
+      return
+    }
+    if (isCursorTransientStreamError(event.message)) {
+      yield { ...event, message: CURSOR_CLI_STREAM_DROPPED_MESSAGE }
+      return
+    }
+    yield event
+  }
 }

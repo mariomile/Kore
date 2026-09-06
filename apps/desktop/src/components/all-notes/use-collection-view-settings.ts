@@ -1,7 +1,8 @@
-import { useCallback, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import {
-  collectionViewForAllNotesView,
+  collectionPageViewForAllNotesView,
   type AllNotesView,
+  type CollectionPageView,
   type CollectionSort,
   type SavedCollectionView,
   type TagProperty,
@@ -12,11 +13,20 @@ import { groupablePropertiesOf } from '@/lib/tags/schema-views'
 import { groupableProperties } from './collection-board'
 import { calendarProperty } from './collection-calendar'
 import type { CollectionFilter, CollectionFilterMatch } from './collection-filter-menu'
+import {
+  LIVE_COLLECTION_VIEW_ID,
+  collectionViewLabel,
+  resolveActiveCollectionViewId,
+  savedViewLensKey,
+  uniqueCollectionViewName,
+} from './collection-view-model'
 
 /** Stable empty widths map, so an untouched tag never re-keys the memo. */
 const EMPTY_WIDTHS: Record<string, number> = {}
 /** Stable empty chain, so an unsorted tag never re-keys the collection query. */
 const EMPTY_SORTS: readonly CollectionSort[] = []
+/** Stable empty saved-view list, so an unfiltered page never re-keys the effect. */
+const EMPTY_SAVED_VIEWS: SavedCollectionView[] = []
 
 /** The persisted view preferences the All Notes screen renders from. */
 export interface CollectionViewSettings {
@@ -76,12 +86,14 @@ export function useCollectionViewSettings(
   // The calendar needs a date property to place rows by.
   const calendarDateProperty = collectionAvailable ? calendarProperty(tagType) : null
   const calendarAvailable = calendarDateProperty !== null
-  // On a tag route, that tag's own persisted view mode wins over the global
-  // preference — the board you left on one tag doesn't chase you onto the
-  // next; the toggles write per-tag there, global elsewhere.
+  // On a tag route the collection defaults to its table (Notion's database
+  // shape). `#image` stays a card grid — it is a resource collection of
+  // binaries. The unfiltered All Notes page still uses the global list/grid
+  // preference. A per-tag `collectionViewModes` entry always wins.
   const requestedView =
-    (tagKey === null ? undefined : settings.collectionViewModes[tagKey]) ??
-    (tagKey === 'image' ? 'grid' : settings.allNotesView)
+    tagKey === null
+      ? settings.allNotesView
+      : (settings.collectionViewModes[tagKey] ?? (tagKey === 'image' ? 'grid' : 'table'))
   // A tag has exactly one table — the collection's own. The plain notes
   // list belongs to the unfiltered page, so a stored (or default) 'list'
   // renders as the collection table here, and the switcher never offers two
@@ -243,6 +255,7 @@ export interface CollectionSavedViewsOptions {
   collectionSorts: readonly CollectionSort[]
   boardGroupProperty: TagProperty | null
   tableGroupProperty: TagProperty | null
+  calendarAvailable: boolean
   collectionFilters: CollectionFilter[]
   filterMatch: CollectionFilterMatch
   setViewMode: (mode: AllNotesView) => void
@@ -253,15 +266,34 @@ export interface CollectionSavedViewsOptions {
   setFilterMatch: (match: CollectionFilterMatch) => void
 }
 
-/** What `useCollectionSavedViews` hands the CollectionViewsMenu. */
+/** What `useCollectionSavedViews` hands the collection view tab bar. */
 export interface CollectionSavedViews {
-  savedViews: SavedCollectionView[]
-  saveCurrentView: (name: string) => void
-  deleteSavedView: (id: string) => void
+  tabs: SavedCollectionView[]
+  activeViewId: string
   applySavedView: (saved: SavedCollectionView) => void
+  addView: (view: CollectionPageView) => void
+  deleteSavedView: (id: string) => void
 }
 
-/** Saved views: named bundles of mode + sort + grouping + filters, per tag. */
+function liveLens(options: {
+  view: AllNotesView
+  collectionSorts: readonly CollectionSort[]
+  boardGroupProperty: TagProperty | null
+  tableGroupProperty: TagProperty | null
+  collectionFilters: CollectionFilter[]
+  filterMatch: CollectionFilterMatch
+}): Pick<SavedCollectionView, 'view' | 'sorts' | 'group' | 'tableGroup' | 'match' | 'filters'> {
+  return {
+    view: collectionPageViewForAllNotesView(options.view),
+    sorts: [...options.collectionSorts],
+    group: options.boardGroupProperty?.key ?? null,
+    tableGroup: options.tableGroupProperty?.key ?? null,
+    filters: [...options.collectionFilters],
+    match: options.filterMatch,
+  }
+}
+
+/** Saved views: named tabs of mode + sort + grouping + filters, per tag. */
 export function useCollectionSavedViews(
   options: CollectionSavedViewsOptions,
 ): CollectionSavedViews {
@@ -271,6 +303,7 @@ export function useCollectionSavedViews(
     collectionSorts,
     boardGroupProperty,
     tableGroupProperty,
+    calendarAvailable,
     collectionFilters,
     filterMatch,
     setViewMode,
@@ -281,62 +314,54 @@ export function useCollectionSavedViews(
     setFilterMatch,
   } = options
   const { settings, updateSettingsWith } = useSettings()
-  const savedViews = tagKey === null ? [] : (settings.collectionSavedViews[tagKey] ?? [])
-  const saveCurrentView = useCallback(
-    (name: string) => {
-      if (tagKey === null) {
-        return
-      }
-      const entry: SavedCollectionView = {
-        id: crypto.randomUUID(),
-        name,
-        view: collectionViewForAllNotesView(view),
-        sorts: [...collectionSorts],
-        group: boardGroupProperty?.key ?? null,
-        tableGroup: tableGroupProperty?.key ?? null,
-        filters: [...collectionFilters],
-        match: filterMatch,
-      }
-      updateSettingsWith((current) => ({
-        collectionSavedViews: {
-          ...current.collectionSavedViews,
-          [tagKey]: [...(current.collectionSavedViews[tagKey] ?? []), entry],
-        },
-      }))
-    },
-    [
-      tagKey,
-      view,
-      collectionSorts,
-      boardGroupProperty,
-      tableGroupProperty,
-      collectionFilters,
-      filterMatch,
-      updateSettingsWith,
-    ],
-  )
-  const deleteSavedView = useCallback(
-    (id: string) => {
+  const savedViews =
+    tagKey === null
+      ? EMPTY_SAVED_VIEWS
+      : (settings.collectionSavedViews?.[tagKey] ?? EMPTY_SAVED_VIEWS)
+  const storedActiveId = tagKey === null ? undefined : settings.collectionActiveViewId?.[tagKey]
+  const pageView = collectionPageViewForAllNotesView(view)
+  const resolvedActiveId = resolveActiveCollectionViewId(savedViews, storedActiveId, pageView)
+  const switchingRef = useRef(false)
+  const appliedTagRef = useRef<string | null>(null)
+
+  const persistViews = useCallback(
+    (views: SavedCollectionView[], activeId: string) => {
       if (tagKey === null) {
         return
       }
       updateSettingsWith((current) => {
-        const remaining = (current.collectionSavedViews[tagKey] ?? []).filter(
-          (entry) => entry.id !== id,
-        )
-        const next = { ...current.collectionSavedViews }
-        if (remaining.length === 0) {
-          delete next[tagKey]
+        const nextViews = { ...(current.collectionSavedViews ?? {}) }
+        if (views.length === 0) {
+          delete nextViews[tagKey]
         } else {
-          next[tagKey] = remaining
+          nextViews[tagKey] = views
         }
-        return { collectionSavedViews: next }
+        return {
+          collectionSavedViews: nextViews,
+          collectionActiveViewId: {
+            ...(current.collectionActiveViewId ?? {}),
+            [tagKey]: activeId,
+          },
+        }
       })
     },
     [tagKey, updateSettingsWith],
   )
+
   const applySavedView = useCallback(
     (saved: SavedCollectionView) => {
+      if (saved.id === LIVE_COLLECTION_VIEW_ID) {
+        return
+      }
+      switchingRef.current = true
+      if (tagKey !== null) {
+        updateSettingsWith((current) => ({
+          collectionActiveViewId: {
+            ...(current.collectionActiveViewId ?? {}),
+            [tagKey]: saved.id,
+          },
+        }))
+      }
       setViewMode(saved.view)
       setCollectionSorts(saved.sorts)
       if (saved.group !== null) {
@@ -349,6 +374,8 @@ export function useCollectionSavedViews(
       setFilterMatch(saved.match)
     },
     [
+      tagKey,
+      updateSettingsWith,
       setViewMode,
       setCollectionSorts,
       setCollectionGroup,
@@ -357,5 +384,166 @@ export function useCollectionSavedViews(
       setFilterMatch,
     ],
   )
-  return { savedViews, saveCurrentView, deleteSavedView, applySavedView }
+
+  const addView = useCallback(
+    (nextView: CollectionPageView) => {
+      if (tagKey === null) {
+        return
+      }
+      if (nextView === 'board' && boardGroupProperty === null) {
+        return
+      }
+      if (nextView === 'calendar' && !calendarAvailable) {
+        return
+      }
+      const current = liveLens({
+        view,
+        collectionSorts,
+        boardGroupProperty,
+        tableGroupProperty,
+        collectionFilters,
+        filterMatch,
+      })
+      const existing = savedViews
+      const seeded: SavedCollectionView[] =
+        existing.length === 0
+          ? [
+              {
+                id: crypto.randomUUID(),
+                name: collectionViewLabel(current.view),
+                ...current,
+              },
+            ]
+          : [...existing]
+      const created: SavedCollectionView = {
+        id: crypto.randomUUID(),
+        name: uniqueCollectionViewName(
+          collectionViewLabel(nextView),
+          seeded.map((entry) => entry.name),
+        ),
+        view: nextView,
+        sorts: current.sorts,
+        group: current.group,
+        tableGroup: current.tableGroup,
+        filters: current.filters,
+        match: current.match,
+      }
+      switchingRef.current = true
+      persistViews([...seeded, created], created.id)
+      applySavedView(created)
+    },
+    [
+      tagKey,
+      boardGroupProperty,
+      calendarAvailable,
+      view,
+      collectionSorts,
+      tableGroupProperty,
+      collectionFilters,
+      filterMatch,
+      savedViews,
+      persistViews,
+      applySavedView,
+    ],
+  )
+
+  const deleteSavedView = useCallback(
+    (id: string) => {
+      if (tagKey === null || savedViews.length <= 1) {
+        return
+      }
+      const remaining = savedViews.filter((entry) => entry.id !== id)
+      const fallback = remaining[0]
+      if (fallback === undefined) {
+        return
+      }
+      switchingRef.current = true
+      persistViews(
+        remaining,
+        resolvedActiveId === id ? fallback.id : (resolvedActiveId ?? fallback.id),
+      )
+      if (resolvedActiveId === id) {
+        applySavedView(fallback)
+      }
+    },
+    [tagKey, savedViews, persistViews, resolvedActiveId, applySavedView],
+  )
+
+  useEffect(() => {
+    if (tagKey === null || savedViews.length === 0) {
+      appliedTagRef.current = tagKey
+      return
+    }
+    const active = savedViews.find((entry) => entry.id === resolvedActiveId) ?? savedViews[0]
+    if (active === undefined) {
+      return
+    }
+    if (appliedTagRef.current !== tagKey) {
+      applySavedView(active)
+      appliedTagRef.current = tagKey
+      return
+    }
+    if (switchingRef.current) {
+      switchingRef.current = false
+      return
+    }
+    const coerced =
+      (active.view === 'board' && boardGroupProperty === null) ||
+      (active.view === 'calendar' && !calendarAvailable)
+    const next = liveLens({
+      view,
+      collectionSorts,
+      boardGroupProperty,
+      tableGroupProperty,
+      collectionFilters,
+      filterMatch,
+    })
+    if (coerced) {
+      next.view = active.view
+    }
+    if (savedViewLensKey(active) === savedViewLensKey(next)) {
+      return
+    }
+    persistViews(
+      savedViews.map((entry) => (entry.id === active.id ? { ...entry, ...next } : entry)),
+      active.id,
+    )
+  }, [
+    tagKey,
+    savedViews,
+    resolvedActiveId,
+    applySavedView,
+    boardGroupProperty,
+    calendarAvailable,
+    view,
+    collectionSorts,
+    tableGroupProperty,
+    collectionFilters,
+    filterMatch,
+    persistViews,
+  ])
+
+  const tabs: SavedCollectionView[] =
+    savedViews.length > 0
+      ? savedViews
+      : [
+          {
+            id: LIVE_COLLECTION_VIEW_ID,
+            name: collectionViewLabel(pageView),
+            ...liveLens({
+              view,
+              collectionSorts,
+              boardGroupProperty,
+              tableGroupProperty,
+              collectionFilters,
+              filterMatch,
+            }),
+          },
+        ]
+  const activeViewId =
+    savedViews.length > 0
+      ? (resolvedActiveId ?? tabs[0]?.id ?? LIVE_COLLECTION_VIEW_ID)
+      : LIVE_COLLECTION_VIEW_ID
+
+  return { tabs, activeViewId, applySavedView, addView, deleteSavedView }
 }

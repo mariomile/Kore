@@ -1,4 +1,3 @@
-import { useRef, type ReactElement } from 'react'
 import {
   appendBodyTag,
   createNoteIfAbsent,
@@ -10,12 +9,10 @@ import {
   type TagProperty,
   type TagType,
 } from '@reflect/core'
-import { Inbox } from '@/components/icons'
 import { toast } from '@/components/ui/toast'
 import { parseCsv, sniffCsvDelimiter } from '@/lib/csv'
 import { startOperation } from '@/lib/operations'
 import { invalidateOnNextIndexApply } from '@/lib/tags/use-commit-note-property'
-import { useGraph } from '@/providers/graph-provider'
 
 /**
  * CSV → collection (TDR 0005): the export's inverse. Columns match schema
@@ -112,65 +109,40 @@ export function parseCollectionCsv(text: string, type: TagType): CsvNote[] {
   return notes
 }
 
-interface CollectionImportButtonProps {
-  tag: string
-  type: TagType
+/** Create one tagged note per CSV row through the ordinary create channel. */
+export async function importCollectionCsv(
+  tag: string,
+  type: TagType,
+  generation: number,
+  text: string,
+): Promise<number> {
+  const notes = parseCollectionCsv(text, type)
+  for (const note of notes) {
+    const body = `# ${note.title}\n`
+    const tagged = appendBodyTag(body, tag) ?? body
+    const source = upsertFrontmatter(tagged, { id: newNoteId(), ...note.properties })
+    await createNoteIfAbsent(untitledNotePath(), source, generation)
+  }
+  invalidateOnNextIndexApply()
+  return notes.length
 }
 
-/** The header's Import-CSV entry: a native file picker, then one new tagged
- * note per row through the ordinary create channel. */
-export function CollectionImportButton({ tag, type }: CollectionImportButtonProps): ReactElement {
-  const { graph } = useGraph()
-  const inputRef = useRef<HTMLInputElement | null>(null)
-
-  const importFile = async (file: File): Promise<void> => {
-    if (graph === null) {
-      return
-    }
-    const operation = startOperation('Importing CSV')
-    try {
-      const notes = parseCollectionCsv(await file.text(), type)
-      for (const note of notes) {
-        const body = `# ${note.title}\n`
-        const tagged = appendBodyTag(body, tag) ?? body
-        const source = upsertFrontmatter(tagged, { id: newNoteId(), ...note.properties })
-        await createNoteIfAbsent(untitledNotePath(), source, graph.generation)
-      }
-      invalidateOnNextIndexApply()
-      operation.done()
-      toast.add({
-        type: 'info',
-        title: `Imported ${notes.length} ${notes.length === 1 ? 'note' : 'notes'} into #${tag}`,
-      })
-    } catch (cause) {
-      operation.fail(errorMessage(cause))
-    }
+/** Run {@link importCollectionCsv} behind the operations line and a toast. */
+export async function importCollectionCsvFile(
+  tag: string,
+  type: TagType,
+  generation: number,
+  file: File,
+): Promise<void> {
+  const operation = startOperation('Importing CSV')
+  try {
+    const count = await importCollectionCsv(tag, type, generation, await file.text())
+    operation.done()
+    toast.add({
+      type: 'info',
+      title: `Imported ${count} ${count === 1 ? 'note' : 'notes'} into #${tag}`,
+    })
+  } catch (cause) {
+    operation.fail(errorMessage(cause))
   }
-
-  return (
-    <>
-      <input
-        ref={inputRef}
-        type="file"
-        accept=".csv,text/csv"
-        className="hidden"
-        onChange={(event) => {
-          const file = event.target.files?.[0]
-          event.target.value = ''
-          if (file !== undefined) {
-            void importFile(file)
-          }
-        }}
-      />
-      <button
-        type="button"
-        aria-label="Import CSV into the collection"
-        title="Import CSV"
-        onClick={() => inputRef.current?.click()}
-        className="app-icon-button text-text-muted hover:text-text"
-      >
-        <Inbox aria-hidden className="size-3.5" />
-      </button>
-    </>
-  )
 }

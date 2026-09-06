@@ -530,17 +530,11 @@ html:root {
   margin-bottom: calc(0.4em + var(--reflect-note-properties-space, 0px));
 }
 
-/* Membership `#tag` lines sit in Type above the body. Hide a leading or
-   trailing paragraph that is only tag marks so the hashtag is not duplicated
-   under the properties (TDR 0005 still stores it in the markdown). Inline
-   mentions in a sentence stay visible. */
-.reflect-editor.reflect-editor-has-properties
-  > h1:first-child
-  + p:has(.md-tag):not(:has(:not(.md-tag))),
-.reflect-editor.reflect-editor-has-properties > p:first-child:has(.md-tag):not(:has(:not(.md-tag))),
-.reflect-editor.reflect-editor-has-properties > p:last-child:has(.md-tag):not(:has(:not(.md-tag))) {
-  display: none;
-}
+/* Membership `#tag` lines sit in Type above the body. Leading or trailing
+   tag-only paragraphs are collapsed from editor-note-properties via a
+   stylesheet on the meowdown host (nth-child). CSS `:has` cannot tell a
+   tag-only line from a sentence that mentions a tag, and a class on the
+   ProseMirror node is stripped on the next view flush. */
 
 /* Screen titles (Notes, the tag page) sit one step under the note subject —
    a page heading, not a document's. One class so the next screen doesn't

@@ -13,6 +13,12 @@ describe('bodyHasTag', () => {
     expect(bodyHasTag('see https://x.test/a#book', 'book')).toBe(false)
     expect(bodyHasTag('a#book', 'book')).toBe(false)
   })
+
+  it('does not treat a hit the indexer would skip as membership', () => {
+    expect(bodyHasTag('```\n#book\n```\n', 'book')).toBe(false)
+    expect(bodyHasTag('use `see #book` here\n', 'book')).toBe(false)
+    expect(bodyHasTag('See [[Page #book]]\n', 'book')).toBe(false)
+  })
 })
 
 describe('appendBodyTag', () => {
@@ -37,6 +43,10 @@ describe('appendBodyTag', () => {
   it('does not open an empty note with a blank line', () => {
     expect(appendBodyTag('', 'book')).toBe('#book\n')
     expect(appendBodyTag('\n\n  \n', 'book')).toBe('#book\n')
+  })
+
+  it('appends when the only existing hash sits in a code fence', () => {
+    expect(appendBodyTag('```\n#book\n```\n', 'book')).toBe('```\n#book\n```\n\n#book\n')
   })
 
   it('collapses a trailing blank run instead of stacking on it', () => {
@@ -95,5 +105,17 @@ describe('removeBodyTag', () => {
     const tagged = appendBodyTag('Some prose.\n', 'book')
     expect(tagged).not.toBeNull()
     expect(removeBodyTag(tagged as string, 'book')).toBe('Some prose.\n')
+  })
+
+  it('keeps the newline when the tag opens a later line', () => {
+    expect(removeBodyTag('Para one.\n#book\nPara two.\n', 'book')).toBe('Para one.\n\nPara two.\n')
+  })
+
+  it('leaves fenced code, inline code, and wiki targets untouched', () => {
+    expect(removeBodyTag('real #book\n\n```\n#book\n```\n', 'book')).toBe(
+      'real\n\n```\n#book\n```\n',
+    )
+    expect(removeBodyTag('use `see #book` here\n\n#book\n', 'book')).toBe('use `see #book` here\n')
+    expect(removeBodyTag('See [[Page #book]].\n\n#book\n', 'book')).toBe('See [[Page #book]].\n')
   })
 })

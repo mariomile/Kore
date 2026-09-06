@@ -1,7 +1,8 @@
 # Kore working state
 
-**Updated:** 2026-09-06, note Type field for typed tags (removable
-supertag chips). Plan 30 CLI follow-up is on `t3code/cli-fresh-write-resolution`.
+**Updated:** 2026-09-06, Type field Bugbot fixes (tag-only hide, removeBodyTag
+newlines and excluded markup). Plan 30 CLI follow-up is on
+`t3code/cli-fresh-write-resolution`.
 Schema edits and rows from the table, sort chains, any/all filters, side peek,
 tag descriptions and daily line to note are pending PR #168 integration
 validation (TDR 0005 Amendments A and B).
@@ -535,9 +536,11 @@ WebKit; `pnpm check` exit 0.
   rail) lead with Type chips for each schema-bearing tag; removing a chip
   strips `#tag` from the body. Two typed tags both show; their fields still
   union with first-key-wins. Leading/trailing tag-only paragraphs hide
-  under the properties so the hashtag is not duplicated. Verified: body-tag
-  17/17 node; properties header + rail 5/5 chromium and webkit; session
-  fakes 38/38 node; `pnpm typecheck` exit 0.
+  under the properties so the hashtag is not duplicated — collapsed via a
+  host stylesheet after a text-node check (CSS `:has` cannot see prose).
+  `removeBodyTag` keeps newlines and skips code/wiki hits the indexer
+  ignores. Verified: body-tag 21/21 node; tag-membership + editor hide 5/5
+  chromium and webkit; `pnpm typecheck` exit 0.
 - 2026-09-06 — All-notes masonry: body-less cards stretch to the row's
   tallest neighbor (`h-full` column flex, `min-h-64` floor) so they do not
   leave holes in engines without CSS masonry. Verified: all-notes screen

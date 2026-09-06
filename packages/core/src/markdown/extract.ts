@@ -70,6 +70,25 @@ function isTagExcludedNode(name: string): boolean {
   )
 }
 
+/**
+ * Body offsets {@link collectTags} skips: fenced/indented/inline code, URLs,
+ * and wiki targets. Tag edits that claim to drop only indexed tokens must
+ * consult the same ranges, or a Type-chip remove rewrites example markup.
+ */
+export function tagExcludedRanges(body: string): Span[] {
+  const ranges: Span[] = []
+  parseBody(body).iterate({
+    enter: (node) => {
+      if (isTagExcludedNode(node.name)) {
+        ranges.push({ from: node.from, to: node.to })
+        return false
+      }
+      return true
+    },
+  })
+  return ranges
+}
+
 function isLiteralPlainTextNode(name: string): boolean {
   return name === 'InlineCode' || name === 'FencedCode' || name === 'CodeBlock'
 }

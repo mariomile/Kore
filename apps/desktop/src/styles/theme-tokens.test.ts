@@ -52,7 +52,16 @@ describe('theme tokens', () => {
     expect(new Set(DARK_THEME_IDS).size).toBe(DARK_THEME_IDS.length)
   })
 
-  it('gives light inverse calendar surfaces a dark foreground', () => {
+  it('gives dark inverse calendar surfaces a light square and dark number', () => {
+    // House `dark` used to paint the selected day with the brand indigo
+    // (`#7b7ef4`), so the calendar was the one chrome surface that ignored
+    // the grayscale selection idiom. Inverse of `--text` / `--surface`.
+    const dark = /\n\.dark \{\n([^}]*)\}/.exec(COLORS)?.[1]
+    expect(dark).toBeDefined()
+    expect(dark).toMatch(/--surface-inverse:\s*#[def][0-9a-f]{5};/)
+    expect(dark).toMatch(/--text-on-inverse:\s*#[0-5][0-9a-f]{5};/)
+    expect(dark).not.toMatch(/--surface-inverse:\s*#7b7ef4;/)
+
     for (const theme of ['ink', 'graphite']) {
       const scope = new RegExp(String.raw`\[data-theme='${theme}']\s*\{([^}]*)}`).exec(COLORS)?.[1]
       expect(scope, theme).toBeDefined()

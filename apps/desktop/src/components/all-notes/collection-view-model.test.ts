@@ -3,6 +3,7 @@ import type { SavedCollectionView } from '@reflect/core'
 import {
   LIVE_COLLECTION_VIEW_ID,
   collectionViewLabel,
+  collectionViewsAppliedKey,
   resolveActiveCollectionViewId,
   uniqueCollectionViewName,
 } from './collection-view-model'
@@ -22,6 +23,17 @@ describe('uniqueCollectionViewName', () => {
     expect(uniqueCollectionViewName('Board', ['Table'])).toBe('Board')
     expect(uniqueCollectionViewName('Board', ['Board'])).toBe('Board 2')
     expect(uniqueCollectionViewName('Board', ['Board', 'Board 2'])).toBe('Board 3')
+  })
+})
+
+describe('collectionViewsAppliedKey', () => {
+  it('treats hydrating saved views as a new tab set, not an edit of the live tab', () => {
+    expect(collectionViewsAppliedKey(null, [])).toBeNull()
+    expect(collectionViewsAppliedKey('book', [])).toBe('book:live')
+    expect(collectionViewsAppliedKey('book', ['v1', 'v2'])).toBe('book:v1,v2')
+    expect(collectionViewsAppliedKey('book', [])).not.toBe(
+      collectionViewsAppliedKey('book', ['v1']),
+    )
   })
 })
 

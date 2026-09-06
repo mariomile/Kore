@@ -16,6 +16,7 @@ import type { CollectionFilter, CollectionFilterMatch } from './collection-filte
 import {
   LIVE_COLLECTION_VIEW_ID,
   collectionViewLabel,
+  collectionViewsAppliedKey,
   resolveActiveCollectionViewId,
   savedViewLensKey,
   uniqueCollectionViewName,
@@ -322,7 +323,7 @@ export function useCollectionSavedViews(
   const pageView = collectionPageViewForAllNotesView(view)
   const resolvedActiveId = resolveActiveCollectionViewId(savedViews, storedActiveId, pageView)
   const switchingRef = useRef(false)
-  const appliedTagRef = useRef<string | null>(null)
+  const appliedKeyRef = useRef<string | null>(null)
   const resolvedActiveIdRef = useRef(resolvedActiveId)
   resolvedActiveIdRef.current = resolvedActiveId
 
@@ -470,17 +471,21 @@ export function useCollectionSavedViews(
   )
 
   useEffect(() => {
+    const nextKey = collectionViewsAppliedKey(
+      tagKey,
+      savedViews.map((entry) => entry.id),
+    )
     if (tagKey === null || savedViews.length === 0) {
-      appliedTagRef.current = tagKey
+      appliedKeyRef.current = nextKey
       return
     }
     const active = savedViews.find((entry) => entry.id === resolvedActiveId) ?? savedViews[0]
     if (active === undefined) {
       return
     }
-    if (appliedTagRef.current !== tagKey) {
+    if (appliedKeyRef.current !== nextKey) {
       applySavedView(active)
-      appliedTagRef.current = tagKey
+      appliedKeyRef.current = nextKey
       return
     }
     if (switchingRef.current) {

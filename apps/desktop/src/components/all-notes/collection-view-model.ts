@@ -3,6 +3,25 @@ import type { CollectionPageView, SavedCollectionView } from '@reflect/core'
 /** Sentinel id for the unpersisted tab a collection shows before any view is added. */
 export const LIVE_COLLECTION_VIEW_ID = '__live'
 
+/**
+ * Identity of the tab set currently on screen. The unpersisted live tab
+ * (`${tag}:live`) is distinct from any saved-view list, so hydrating
+ * `collectionSavedViews` after `DEFAULT_SETTINGS` is treated as a new set
+ * (apply) rather than an edit of the live lens (write-back).
+ */
+export function collectionViewsAppliedKey(
+  tagKey: string | null,
+  savedViewIds: readonly string[],
+): string | null {
+  if (tagKey === null) {
+    return null
+  }
+  if (savedViewIds.length === 0) {
+    return `${tagKey}:live`
+  }
+  return `${tagKey}:${savedViewIds.join(',')}`
+}
+
 /** Display name for a collection page view type (the tab's default label). */
 export function collectionViewLabel(view: CollectionPageView): string {
   switch (view) {

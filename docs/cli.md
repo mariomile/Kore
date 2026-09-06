@@ -75,8 +75,11 @@ just-flagged note.
 | 3 | note or task not found, ambiguous, or private |
 | 4 | search index missing or unusable (every index-backed command: `search`, `tasks`, `backlinks`, `recent`, `collection`, `tags`, `list`, `links`, `done`) |
 
-A `<note>` that resolves to nothing prints up to three "did you mean" titles
-on stderr (from the index, private notes excluded).
+Titles and aliases resolve through the index when it is open and fall back
+to a scan of the files on a miss, so a note created a moment ago resolves
+before the app re-indexes. A `<note>` that resolves to nothing prints up to
+three "did you mean" titles on stderr (from the index, private notes
+excluded).
 
 ## Commands
 
@@ -482,15 +485,16 @@ the leading `#` is optional). Private notes are refused.
 
 ### `reflect done <text> [--in <note>] [--undo] [--json]`
 
-Ticks a task off by its text: an exact (case-insensitive) match among the
-graph's open tasks, else a unique substring match; `--in` narrows to one
-note, `--undo` reopens a completed task. Zero or several matches exit `3`
-(the candidates are listed on stderr). Requires the index (exit `4`) to
-find the task; the file on disk is the truth for the write — the marker
-line the index recorded must still be present exactly once as a list item
-outside fenced code (at its old offset or moved), else the command refuses
-(exit `1`) rather than toggling the wrong line. Only the three marker
-characters change.
+Ticks a task off by its text: an exact (case-insensitive) match, else a
+unique substring match; `--undo` reopens a completed task. Zero or several
+matches exit `3` (the candidates are listed on stderr). Graph-wide, the
+index's tasks projection finds the task (exit `4` without it); with
+`--in <note>` the note's own lines do, so a task captured a moment ago is
+tickable before the app re-indexes. The file on disk is the truth for the
+write — the marker line must be present exactly once as a list item
+outside fenced code (at its indexed offset or moved), else the command
+refuses (exit `1`) rather than toggling the wrong line. Only the three
+marker characters change.
 
 ```jsonc
 // reflect done "pay bill" --in 2026-09-05 --json

@@ -341,3 +341,49 @@ fn values_a_command_cannot_honour_are_usage_errors() {
     assert_eq!(reflect(&fixture, &["new", "   "]).status.code(), Some(2));
     assert_eq!(reflect(&fixture, &["set", "A"]).status.code(), Some(2));
 }
+
+#[test]
+fn a_note_created_after_indexing_resolves_by_title_and_its_task_ticks_by_in() {
+    let fixture = graph();
+    fixture.write_note("notes/old.md", "# Old\n");
+    fixture.build_index();
+
+    // Created after the index was built: the index knows nothing about it.
+    let created = json(&reflect(&fixture, &["new", "Fresh Note", "--json"]));
+    assert_eq!(created["path"], "notes/fresh-note.md");
+    let shown = reflect(&fixture, &["show", "Fresh Note"]);
+    assert_eq!(shown.status.code(), Some(0), "{}", stderr(&shown));
+    assert!(!stderr(&shown).contains("did you mean"));
+
+    let captured = reflect(
+        &fixture,
+        &["capture", "--task", "call Ann", "--to", "Fresh Note"],
+    );
+    assert_eq!(captured.status.code(), Some(0));
+    let done = json(&reflect(
+        &fixture,
+        &["done", "call ann", "--in", "Fresh Note", "--json"],
+    ));
+    assert_eq!(done["checked"], true);
+    assert!(read(&fixture, "notes/fresh-note.md").ends_with("+ [x] call Ann\n"));
+    let undone = json(&reflect(
+        &fixture,
+        &["done", "call Ann", "--in", "Fresh Note", "--undo", "--json"],
+    ));
+    assert_eq!(undone["checked"], false);
+
+    // Graph-wide, the index is still the source and still required.
+    let graph_wide = reflect(&fixture, &["done", "call Ann"]);
+    assert_eq!(graph_wide.status.code(), Some(3), "{}", stderr(&graph_wide));
+    fs::remove_file(fixture.root().join(".reflect/index.sqlite")).unwrap();
+    assert_eq!(
+        reflect(&fixture, &["done", "call Ann"]).status.code(),
+        Some(4)
+    );
+    assert_eq!(
+        reflect(&fixture, &["done", "call Ann", "--in", "Fresh Note"])
+            .status
+            .code(),
+        Some(0)
+    );
+}

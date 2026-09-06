@@ -2,8 +2,8 @@
 //! `resolveWikiLink` (`packages/core/src/markdown/resolve.ts`) with a path
 //! convenience first-class for a CLI: calendar-valid `YYYY-MM-DD` → explicit
 //! graph path → title fold-key → alias fold-key → filename-stem fold-key.
-//! Index-backed when the index is open; otherwise a file scan derives the
-//! same keys.
+//! Index-backed when the index is open, with a file scan deriving the same
+//! keys on a miss (or with no index at all).
 
 use std::path::{Component, Path, PathBuf};
 
@@ -163,10 +163,16 @@ pub fn resolve_note(
         return Ok(ResolvedNote::File { rel_path });
     }
     let key = fold_key(trimmed);
-    let matches = match conn {
+    // The index answers first; a miss falls back to the files, because the
+    // index lags every write by a re-index — a note created a moment ago is
+    // exactly the one an agent addresses next.
+    let mut matches = match conn {
         Some(conn) => index_lookup(conn, &key)?,
-        None => scan_lookup(root, &key)?,
+        None => Vec::new(),
     };
+    if matches.is_empty() {
+        matches = scan_lookup(root, &key)?;
+    }
     match matches.split_first() {
         None => {
             if let Some(conn) = conn {

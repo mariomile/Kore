@@ -32,6 +32,7 @@ overwrite. Binary stays `reflect`.
   view-only refusals, idempotent tag, inline-tag refusal, task ambiguity and
   drift, daily creation; plus a hand-driven run of the built binary on a
   scratch graph: new → set → tag/untag → append → capture → properties).
+- [x] Live pass on a real graph (see below).
 - [x] Layer 3 — "did you mean" titles on a missed `<note>` (index-backed,
   private excluded; 1 integration test), `graph-skill.md` rewritten around
   discover → read → write (desktop `skill` tests 6/6), `docs/cli.md` with
@@ -56,10 +57,26 @@ green (the macOS-only `/private/var` comparison in
 fmt --check` and `cargo clippy -p reflect-cli --all-targets -D warnings`
 clean. No TypeScript changed, so `pnpm check` is unaffected.
 
-**Next:** open the PR (title `feat(cli): agent parity — discovery and typed
-writes`), then a live pass with a real agent through the installed skill on
-an actual graph: create a typed row, set a relation, tick a task, and confirm
-the app's table shows each change.
+**Shipped:** PR #175 squash-merged to master on 2026-09-06 after the
+independent review.
+
+**Live pass (2026-09-06, real graph "Kore Brain" on iCloud, Kore 0.54.0
+open):** through the release binary — `info`/`tags`/`collection` read the
+five typed tags; `new --tag person --set company=DeepAgent …` birthed a row
+with `[[DeepAgent]]`, a validated date and `#person`; `set` typed a phone,
+refused a bad date (exit 2); `tag`/`untag` round-tripped; `append --stdin`
+and `capture --task` landed; `done --in` ticked the task; the app re-indexed
+each write within seconds (`list`, `search`, `tasks` saw them). The test
+note was removed afterwards. Two lags surfaced and are fixed in the
+follow-up branch `t3code/cli-fresh-write-resolution`: a just-created note
+did not resolve by title until the re-index (resolver now scans files on an
+index miss), and `done` could not see a just-captured task (`done --in`
+now reads the note itself; graph-wide `done` still needs the index).
+Verified: 71 unit + 74 integration tests incl. the new lag regression,
+fmt/clippy clean.
+
+**Next:** merge the follow-up PR; then bump, so the installed app carries
+the new CLI and the refreshed skill (Settings → Agents installs it).
 
 ## Automatic resource collections — 2026-09-05
 

@@ -64,8 +64,11 @@ Discover first, then read, then write. Every command takes `--json`.
 - Add `--json` to any command for stable machine-readable output — the field
   names and exit codes are the supported automation contract.
 - `<note>` resolves in order: `YYYY-MM-DD` date, graph-relative path, title,
-  then alias (case-insensitive). A miss prints "did you mean" titles on
-  stderr.
+  then alias (case-insensitive) — a note you just created resolves right
+  away. A miss prints "did you mean" titles on stderr.
+- The app re-indexes a few seconds after a write. Reads that need the index
+  (`search`, `tasks`, `list`, `collection`) may lag that long; `done --in
+  <note>` and every `<note>` resolution read the file itself and never lag.
 - stdout carries only data; warnings and errors go to stderr.
 
 ## Exit codes

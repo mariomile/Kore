@@ -124,12 +124,14 @@
   --surface-app: #101013;
   --surface-hover: rgba(255, 255, 255, 0.045);
   --surface-active: rgba(255, 255, 255, 0.07);
-  --surface-inverse: #7b7ef4;
+  /* Inverse of the canvas (same pair as `--text` / `--surface`), not the
+     brand indigo. The selected calendar day is the only consumer. */
+  --surface-inverse: #ededf0;
 
   --text: #ededf0;
   --text-secondary: #9fa1a7;
   --text-muted: #66686f;
-  --text-on-inverse: hsl(210 40% 98%);
+  --text-on-inverse: #17171b;
 
   --border: rgba(255, 255, 255, 0.075);
   --border-strong: rgba(255, 255, 255, 0.14);

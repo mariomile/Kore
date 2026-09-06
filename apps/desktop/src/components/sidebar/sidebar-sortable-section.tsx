@@ -1,7 +1,7 @@
-import type { CSSProperties, ReactElement, ReactNode } from 'react'
+import type { ReactElement, ReactNode } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
 import type { SidebarSection } from '@reflect/core'
+import { sortableTranslateStyle } from '@/lib/sortable-translate'
 import { cn } from '@/lib/utils'
 import { SidebarDisclosure } from './sidebar-disclosure'
 
@@ -32,10 +32,7 @@ export function SidebarSortableSection({
 }: SidebarSortableSectionProps): ReactElement {
   const { isDragging, listeners, setNodeRef, setActivatorNodeRef, transform, transition } =
     useSortable({ id })
-  const style: CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  }
+  const style = sortableTranslateStyle(transform, transition)
   return (
     <div ref={setNodeRef} style={style} className={cn(isDragging && 'relative z-10 opacity-70')}>
       <SidebarDisclosure

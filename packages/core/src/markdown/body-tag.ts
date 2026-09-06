@@ -83,7 +83,10 @@ export function removeBodyTag(source: string, tag: string): string | null {
     }
   }
   nextBody += body.slice(cursor)
-  nextBody = nextBody.replaceAll(/[ \t]+\n/g, '\n').replace(/^\n+/, '').replaceAll(/\n{3,}/g, '\n\n')
+  nextBody = nextBody
+    .replaceAll(/[ \t]+\n/g, '\n')
+    .replace(/^\n+/, '')
+    .replaceAll(/\n{3,}/g, '\n\n')
   if (nextBody.trim() === '') {
     nextBody = ''
   } else {

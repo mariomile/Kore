@@ -534,7 +534,9 @@ html:root {
    trailing paragraph that is only tag marks so the hashtag is not duplicated
    under the properties (TDR 0005 still stores it in the markdown). Inline
    mentions in a sentence stay visible. */
-.reflect-editor.reflect-editor-has-properties > h1:first-child + p:has(.md-tag):not(:has(:not(.md-tag))),
+.reflect-editor.reflect-editor-has-properties
+  > h1:first-child
+  + p:has(.md-tag):not(:has(:not(.md-tag))),
 .reflect-editor.reflect-editor-has-properties > p:first-child:has(.md-tag):not(:has(:not(.md-tag))),
 .reflect-editor.reflect-editor-has-properties > p:last-child:has(.md-tag):not(:has(:not(.md-tag))) {
   display: none;

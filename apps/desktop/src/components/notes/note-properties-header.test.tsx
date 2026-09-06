@@ -81,7 +81,9 @@ describe('NotePropertiesHeader', () => {
       {
         tagKey: 'project',
         notePath: 'tags/project.md',
-        type: { properties: [{ name: 'Status', key: 'status', type: 'select', options: ['to do'] }] },
+        type: {
+          properties: [{ name: 'Status', key: 'status', type: 'select', options: ['to do'] }],
+        },
       },
       {
         tagKey: 'person',

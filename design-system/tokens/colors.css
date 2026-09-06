@@ -71,13 +71,13 @@
   --surface-app: #f7f7f8; /* whole-app background        */
   --surface-hover: rgba(18, 19, 23, 0.045); /* menu/list hover — 4.5% ink  */
   --surface-active: rgba(18, 19, 23, 0.06); /* selected rows — 6% ink      */
-  --surface-inverse: hsl(222.2 47.4% 11.2%); /* selected calendar square  */
+  --surface-inverse: hsl(222.2 47.4% 11.2%);
 
   --text: #17181c; /* primary copy                */
   --text-secondary: #6b6f76; /* note titles, meta           */
   --text-muted: #9a9ea7; /* placeholders, shortcuts     */
   --text-on-brand: #ffffff;
-  --text-on-inverse: hsl(210 40% 98%); /* number on selected square   */
+  --text-on-inverse: hsl(210 40% 98%);
 
   --border: rgba(18, 19, 23, 0.07); /* hairline dividers — 7% ink  */
   --border-strong: rgba(18, 19, 23, 0.13); /* input outlines              */
@@ -124,8 +124,6 @@
   --surface-app: #101013;
   --surface-hover: rgba(255, 255, 255, 0.045);
   --surface-active: rgba(255, 255, 255, 0.07);
-  /* Inverse of the canvas (same pair as `--text` / `--surface`), not the
-     brand indigo. The selected calendar day is the only consumer. */
   --surface-inverse: #ededf0;
 
   --text: #ededf0;

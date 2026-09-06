@@ -29,14 +29,15 @@ const HEADER_BUTTON_CLASS =
   'cursor-default rounded-md transition-colors duration-100 hover:bg-surface-hover hover:text-text'
 
 /**
- * Compact month calendar in the old app's visual idiom: weeks start per the
- * week-start setting, the selected day sits on a 32px inverse square (today
- * on a grey one), and days that already have a daily note carry a dot marker
- * revealed while the pointer is over the calendar (an indexed `dailyDate`
- * row — daily files exist only once written, so a row means real content).
- * Clicking a day navigates to it; modifier-clicking opens that daily note in
- * a secondary window. The month view follows the selected day, and the
- * calendar glyph between the month arrows jumps back to today.
+ * Compact month calendar: weeks start per the week-start setting, the
+ * selected day (and today) sit on the same quiet `surface-active` wash the
+ * rest of the chrome uses — not an inverse or accent fill — and days that
+ * already have a daily note carry a dot marker revealed while the pointer is
+ * over the calendar (an indexed `dailyDate` row — daily files exist only
+ * once written, so a row means real content). Clicking a day navigates to
+ * it; modifier-clicking opens that daily note in a secondary window. The
+ * month view follows the selected day, and the calendar glyph between the
+ * month arrows jumps back to today.
  */
 export function DayCalendar({ selectedDate, today }: DayCalendarProps): ReactElement {
   const { navigate } = useRouter()
@@ -145,13 +146,9 @@ export function DayCalendar({ selectedDate, today }: DayCalendarProps): ReactEle
                     )}
                   >
                     {isSelected || isToday ? (
-                      // The 32px rounded square behind the day number.
                       <span
                         aria-hidden
-                        className={cn(
-                          'absolute left-1/2 top-1/2 -ml-4 -mt-4 block h-8 w-8 rounded-md',
-                          isSelected ? 'bg-surface-inverse' : 'bg-surface-active',
-                        )}
+                        className="absolute left-1/2 top-1/2 -ml-4 -mt-4 block h-8 w-8 rounded-md bg-surface-active"
                       />
                     ) : null}
 
@@ -163,12 +160,7 @@ export function DayCalendar({ selectedDate, today }: DayCalendarProps): ReactEle
                       />
                     ) : null}
 
-                    <span
-                      className={cn(
-                        'relative block tabular-nums',
-                        isSelected && 'font-bold text-text-on-inverse',
-                      )}
-                    >
+                    <span className={cn('relative block tabular-nums', isSelected && 'font-bold')}>
                       {Number(cell.date.slice(8, 10))}
                     </span>
                   </button>

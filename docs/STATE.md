@@ -533,8 +533,8 @@ WebKit; `pnpm check` exit 0.
 
 - 2026-09-06 — All-notes masonry: body-less cards stretch to the row's
   tallest neighbor (`h-full` column flex, `min-h-64` floor) so they do not
-  leave holes in engines without CSS masonry. Verified: targeted all-notes
-  grid tests (pending in this session).
+  leave holes in engines without CSS masonry. Verified: all-notes screen
+  30/30 on Chromium and WebKit; `pnpm typecheck` exit 0.
 - 2026-09-06 — Collection tag-page chrome: `#tag` heading only, collection
   tools on every layout, header New note as `+`, masonry cards on an
   `auto-fill` grid so leftover width does not gap between cards. Verified:

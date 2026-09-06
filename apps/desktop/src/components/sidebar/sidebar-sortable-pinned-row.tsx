@@ -1,6 +1,5 @@
-import { memo, useCallback, type CSSProperties, type MouseEvent, type ReactElement } from 'react'
+import { memo, useCallback, type MouseEvent, type ReactElement } from 'react'
 import { useSortable } from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
 import { useQueryClient } from '@tanstack/react-query'
 import { displayNoteTitle, errorMessage } from '@reflect/core'
 import type { PinnedNote } from '@reflect/core'
@@ -10,6 +9,7 @@ import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'
 import { openNativeContextMenu } from '@/lib/native-menu/context-menu'
 import { unpinNote } from '@/lib/note-pin'
 import { startOperation } from '@/lib/operations'
+import { sortableTranslateStyle } from '@/lib/sortable-translate'
 import { useGraph } from '@/providers/graph-provider'
 import { useSettings } from '@/providers/settings-provider'
 import { routeForPath, routesEqual } from '@/routing/route'
@@ -38,10 +38,7 @@ export const SidebarSortablePinnedRow = memo(function SidebarSortablePinnedRow({
   const { isDragging, listeners, setNodeRef, transform, transition } = useSortable({
     id: note.path,
   })
-  const style: CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  }
+  const style = sortableTranslateStyle(transform, transition)
   const handleContextMenu = useCallback(
     (event: MouseEvent<HTMLButtonElement>): void => {
       event.preventDefault()

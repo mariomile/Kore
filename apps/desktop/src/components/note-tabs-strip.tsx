@@ -1,5 +1,5 @@
 import type { OpenTab } from '@reflect/core'
-import { useCallback, type CSSProperties, type MouseEvent, type ReactElement } from 'react'
+import { useCallback, type MouseEvent, type ReactElement } from 'react'
 import {
   closestCenter,
   DndContext,
@@ -9,7 +9,6 @@ import {
   type DragEndEvent,
 } from '@dnd-kit/core'
 import { horizontalListSortingStrategy, SortableContext, useSortable } from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
 import { Close, PanelLeft, PanelRight, Pin } from '@/components/icons'
 import { NoteTabsListMenu } from '@/components/note-tabs-list-menu'
 import { NoteTabsPlusMenu } from '@/components/note-tabs-plus-menu'
@@ -18,6 +17,7 @@ import { NavigateArrows } from '@/components/sidebar/navigate-arrows'
 import { tabCloseClass, tabPillClass, useTabScrollIntoView } from '@/components/tab-pill'
 import { useOpenTabItems, type OpenTabItem } from '@/hooks/use-open-tab-items'
 import type { CommandContext } from '@/lib/commands/types'
+import { sortableTranslateStyle } from '@/lib/sortable-translate'
 import { cn } from '@/lib/utils'
 import { tabKey } from '@/providers/open-tab'
 import { useOpenTabs } from '@/providers/open-tabs-provider'
@@ -174,10 +174,7 @@ function StripTab({ item, active, onActivate, onClose, onTogglePin }: StripTabPr
     setNodeRef(element)
     scrollRef.current = element
   }
-  const sortableStyle: CSSProperties = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  }
+  const sortableStyle = sortableTranslateStyle(transform, transition)
   const handleAuxClick = (event: MouseEvent): void => {
     if (event.button === 1) {
       event.preventDefault()

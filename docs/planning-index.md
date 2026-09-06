@@ -41,6 +41,7 @@ The inventory contains **98 documents under `docs/`**, including this index.
 | [plans/25-personal-os.md](plans/25-personal-os.md) | Plan 25 — Kore Personal OS | Complete catalog: I01–I29, S1–S5, B01–B09, acceptance and traceability. |
 | [plans/26-account-safe-read.md](plans/26-account-safe-read.md) | Plan 26 — Account-safe read (Slice S1) | Bounded implementation plan for S1 (I01–I05, minimal I08, Gmail I09, setup I10); deferred by the app-first decision. |
 | [plans/27-read-mode-mcp-tools.md](plans/27-read-mode-mcp-tools.md) | Plan 27 — MCP tools in read-only chat | Roadmap Now item 1: per-conversation opt-in design and acceptance. |
+| [plans/30-cli-agent-parity.md](plans/30-cli-agent-parity.md) | Plan 30 — CLI agent parity | `reflect` CLI grows discovery (`info`/`tags`/`list`/`properties`/`links`) and structured writes (`set`/`tag`/`done`/`append`, typed `new`) so agents never hand-edit YAML. |
 | [decisions/0006-personal-os-boundaries.md](decisions/0006-personal-os-boundaries.md) | TDR 0006 — Kore Personal OS boundaries | Accepted target boundaries D01–D10; implementation decisions remain open. |
 | [kore-architecture-source.md](kore-architecture-source.md) | Source: Lore product and technical architecture specification | Verbatim supplied input, 138 sections; reference, not implementation evidence. |
 | [planning-index.md](planning-index.md) | Kore planning inventory | This inventory and document precedence. |

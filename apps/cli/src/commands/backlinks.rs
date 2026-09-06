@@ -7,41 +7,18 @@
 
 use std::collections::HashMap;
 
-use reflect_index_schema::{INDEX_FILE, REFLECT_DIR};
-
 use crate::commands::output::{print_json, BacklinkJson, BacklinksJson};
-use crate::commands::{still_public_on_disk, warn};
+use crate::commands::{require_index, still_public_on_disk};
 use crate::error::CliError;
 use crate::graph::Graph;
-use crate::index::{detect_staleness, open_read_only, IndexOpen};
 use crate::note_file::{ensure_not_private, parse_note_meta};
 use crate::resolve::resolve_note;
 
 pub fn run(graph: &Graph, json: bool, note_arg: &str) -> Result<(), CliError> {
-    let opened = match open_read_only(&graph.root) {
-        IndexOpen::Opened(opened) => opened,
-        IndexOpen::Missing => {
-            return Err(CliError::NoIndex(format!(
-                "no index at {REFLECT_DIR}/{INDEX_FILE} — open this graph in Kore to build it"
-            )))
-        }
-        IndexOpen::Unusable(message) => return Err(CliError::NoIndex(message)),
-    };
-    if opened.newer_schema {
-        warn("the index schema is newer than this CLI — update Kore");
-    }
-
+    let (opened, staleness) = require_index(&graph.root)?;
     let resolved = resolve_note(note_arg, &graph.root, Some(&opened.conn))?;
     let rel_path = resolved.rel_path().to_string();
     ensure_not_private(&graph.root, &rel_path)?;
-
-    let staleness = detect_staleness(&opened.conn, &graph.root)?;
-    if staleness.is_stale() {
-        warn(format!(
-            "the index may be stale ({} file(s) differ from it) — open the graph in Kore to refresh",
-            staleness.total()
-        ));
-    }
 
     let mut statement = opened.conn.prepare(
         "SELECT backlinks.source_path, notes.title, COUNT(*)

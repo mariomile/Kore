@@ -3,38 +3,15 @@
 //! never builds or repairs the index — that's the desktop app's job). A stale
 //! index warns and still returns rows.
 
-use reflect_index_schema::{INDEX_FILE, REFLECT_DIR};
-
 use crate::commands::output::{print_json, HitJson, SearchJson};
-use crate::commands::{still_public_on_disk, warn};
+use crate::commands::{require_index, still_public_on_disk};
 use crate::error::CliError;
 use crate::graph::Graph;
-use crate::index::{detect_staleness, open_read_only, IndexOpen};
 use crate::keys::fold_key;
 use crate::search::{build_fts_match, search_index, SearchHit};
 
 pub fn run(graph: &Graph, json: bool, query: &str, limit: usize) -> Result<(), CliError> {
-    let opened = match open_read_only(&graph.root) {
-        IndexOpen::Opened(opened) => opened,
-        IndexOpen::Missing => {
-            let message = format!(
-                "no search index at {REFLECT_DIR}/{INDEX_FILE} — open this graph in Kore to build it"
-            );
-            return Err(CliError::NoIndex(message));
-        }
-        IndexOpen::Unusable(message) => return Err(CliError::NoIndex(message)),
-    };
-    if opened.newer_schema {
-        warn("the index schema is newer than this CLI — update Kore");
-    }
-
-    let staleness = detect_staleness(&opened.conn, &graph.root)?;
-    if staleness.is_stale() {
-        warn(format!(
-            "the index may be stale ({} file(s) differ from it) — open the graph in Kore to refresh",
-            staleness.total()
-        ));
-    }
+    let (opened, staleness) = require_index(&graph.root)?;
 
     let hits: Vec<SearchHit> = match build_fts_match(query) {
         Some(match_expr) => search_index(&opened.conn, &match_expr, &fold_key(query), limit)?,

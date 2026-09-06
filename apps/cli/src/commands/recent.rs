@@ -4,35 +4,13 @@
 //! re-checked on disk so a note flagged private after the last index run
 //! never surfaces.
 
-use reflect_index_schema::{INDEX_FILE, REFLECT_DIR};
-
 use crate::commands::output::{print_json, RecentJson, RecentNoteJson};
-use crate::commands::{still_public_on_disk, warn};
+use crate::commands::{require_index, still_public_on_disk};
 use crate::error::CliError;
 use crate::graph::Graph;
-use crate::index::{detect_staleness, open_read_only, IndexOpen};
 
 pub fn run(graph: &Graph, json: bool, limit: usize) -> Result<(), CliError> {
-    let opened = match open_read_only(&graph.root) {
-        IndexOpen::Opened(opened) => opened,
-        IndexOpen::Missing => {
-            return Err(CliError::NoIndex(format!(
-                "no index at {REFLECT_DIR}/{INDEX_FILE} — open this graph in Kore to build it"
-            )))
-        }
-        IndexOpen::Unusable(message) => return Err(CliError::NoIndex(message)),
-    };
-    if opened.newer_schema {
-        warn("the index schema is newer than this CLI — update Kore");
-    }
-
-    let staleness = detect_staleness(&opened.conn, &graph.root)?;
-    if staleness.is_stale() {
-        warn(format!(
-            "the index may be stale ({} file(s) differ from it) — open the graph in Kore to refresh",
-            staleness.total()
-        ));
-    }
+    let (opened, staleness) = require_index(&graph.root)?;
 
     let mut statement = opened.conn.prepare(
         "SELECT path, title, updated_at FROM notes

@@ -6,6 +6,7 @@
 //! through this; `reflect set` verifies its own write through it.
 
 use saphyr::{LoadableYamlNode, Scalar, Yaml};
+use serde::ser::{SerializeSeq, Serializer};
 use serde::Serialize;
 
 /// The app's own frontmatter keys — never properties, never writable through
@@ -30,13 +31,73 @@ pub fn is_reserved_key(key: &str) -> bool {
 }
 
 /// One property value as the index would type it.
-#[derive(Debug, Clone, PartialEq, Serialize)]
-#[serde(untagged)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum PropertyValue {
     String(String),
     Number(f64),
     Bool(bool),
     List(Vec<String>),
+}
+
+/// The one JSON form of a property value, shared by every `--json` shape:
+/// integral numbers print as integers (`4`, never `4.0`), lists as arrays.
+impl Serialize for PropertyValue {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match self {
+            PropertyValue::String(text) => serializer.serialize_str(text),
+            PropertyValue::Number(number) if is_integral(*number) => {
+                serializer.serialize_i64(*number as i64)
+            }
+            PropertyValue::Number(number) => serializer.serialize_f64(*number),
+            PropertyValue::Bool(flag) => serializer.serialize_bool(*flag),
+            PropertyValue::List(items) => {
+                let mut sequence = serializer.serialize_seq(Some(items.len()))?;
+                for item in items {
+                    sequence.serialize_element(item)?;
+                }
+                sequence.end()
+            }
+        }
+    }
+}
+
+impl PropertyValue {
+    /// Decode a stored `note_properties` row, mirroring `propertyRowValue`
+    /// (`packages/core/src/indexing/collections.ts`): a mangled number or
+    /// list falls back to its string form rather than failing the row.
+    pub fn from_row(value: &str, value_type: &str, value_number: Option<f64>) -> PropertyValue {
+        match value_type {
+            "number" => value_number
+                .filter(|number| number.is_finite())
+                .map(PropertyValue::Number)
+                .unwrap_or_else(|| PropertyValue::String(value.to_string())),
+            "boolean" => PropertyValue::Bool(value == "true"),
+            "list" => serde_json::from_str::<Vec<String>>(value)
+                .map(PropertyValue::List)
+                .unwrap_or_else(|_| PropertyValue::String(value.to_string())),
+            _ => PropertyValue::String(value.to_string()),
+        }
+    }
+
+    /// The value as `serde_json::Value`, through the one serializer above.
+    pub fn to_json(&self) -> serde_json::Value {
+        serde_json::to_value(self).unwrap_or(serde_json::Value::Null)
+    }
+}
+
+/// Properties keyed by name as a JSON object (the `properties` field of the
+/// `--json` shapes).
+pub fn properties_json<'a>(
+    properties: impl IntoIterator<Item = (&'a String, &'a PropertyValue)>,
+) -> serde_json::Map<String, serde_json::Value> {
+    properties
+        .into_iter()
+        .map(|(key, value)| (key.clone(), value.to_json()))
+        .collect()
+}
+
+fn is_integral(value: f64) -> bool {
+    value.fract() == 0.0 && value.abs() < 1e15
 }
 
 /// The top-level mapping of a frontmatter block, or `None` when the YAML is
@@ -54,7 +115,8 @@ pub fn parse_mapping(raw: &str) -> Option<saphyr::Mapping<'_>> {
 }
 
 /// A YAML scalar as the JS `String(value)` the indexer stores for list
-/// entries; `None` for anything that isn't a finite scalar.
+/// entries (and the text of a scalar mapping key); `None` for anything that
+/// isn't a finite scalar.
 fn scalar_text(node: &Yaml) -> Option<String> {
     match node {
         Yaml::Value(Scalar::String(text)) => Some(text.to_string()),
@@ -70,7 +132,7 @@ fn scalar_text(node: &Yaml) -> Option<String> {
 
 /// JS `String(number)`: integral floats print without a fraction.
 pub fn format_number(value: f64) -> String {
-    if value.fract() == 0.0 && value.abs() < 1e15 {
+    if is_integral(value) {
         format!("{}", value as i64)
     } else {
         value.to_string()
@@ -100,17 +162,8 @@ pub fn property_value(node: &Yaml) -> Option<PropertyValue> {
 pub fn entries<'a>(mapping: &'a saphyr::Mapping<'a>) -> Vec<(String, &'a Yaml<'a>)> {
     mapping
         .iter()
-        .filter_map(|(key, value)| Some((scalar_key(key)?, value)))
+        .filter_map(|(key, value)| Some((scalar_text(key)?, value)))
         .collect()
-}
-
-fn scalar_key(node: &Yaml) -> Option<String> {
-    match node {
-        Yaml::Value(Scalar::String(text)) => Some(text.to_string()),
-        Yaml::Value(Scalar::Integer(number)) => Some(number.to_string()),
-        Yaml::Value(Scalar::Boolean(flag)) => Some(flag.to_string()),
-        _ => None,
-    }
 }
 
 /// Every non-reserved property of a frontmatter block, in document order.
@@ -165,6 +218,24 @@ mod tests {
                     PropertyValue::List(vec!["a".into(), "2".into()])
                 ),
             ]
+        );
+    }
+
+    #[test]
+    fn json_form_prints_integral_numbers_as_integers() {
+        assert_eq!(PropertyValue::Number(4.0).to_json(), serde_json::json!(4));
+        assert_eq!(PropertyValue::Number(4.5).to_json(), serde_json::json!(4.5));
+        assert_eq!(
+            PropertyValue::from_row("[\"a\",\"b\"]", "list", None).to_json(),
+            serde_json::json!(["a", "b"])
+        );
+        assert_eq!(
+            PropertyValue::from_row("4", "number", Some(4.0)),
+            PropertyValue::Number(4.0)
+        );
+        assert_eq!(
+            PropertyValue::from_row("oops", "list", None),
+            PropertyValue::String("oops".into())
         );
     }
 

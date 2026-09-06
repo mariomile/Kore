@@ -12,6 +12,7 @@ use crate::commands::output::{print_json, DoneJson};
 use crate::commands::{require_index, resolve_existing, still_public_on_disk};
 use crate::error::CliError;
 use crate::graph::Graph;
+use crate::keys::fold_key;
 use crate::write::atomic_write;
 
 struct Candidate {
@@ -23,20 +24,36 @@ struct Candidate {
 
 /// Byte offsets of every line that is a bullet task whose marker line
 /// equals `raw` — the positions the marker could legitimately have moved to.
+/// Lines inside fenced code (``` or ~~~) never count: a sample of a task in a
+/// code block is text, not a task, which is what the app's re-parse guard
+/// (`locateTaskMarker`) also refuses to toggle.
 fn marker_positions(source: &str, raw: &str) -> Vec<usize> {
     let mut positions = Vec::new();
     let mut line_start = 0;
+    let mut fence: Option<&str> = None;
     for line in source.split_inclusive('\n') {
         let content = line.trim_end_matches(['\n', '\r']);
-        let indent = content.len() - content.trim_start().len();
-        let after_indent = &content[indent..];
-        if let Some(rest) = after_indent
-            .strip_prefix(['-', '+', '*'])
-            .and_then(|rest| rest.strip_prefix([' ', '\t']))
-        {
-            let marker_at = content.len() - rest.len();
-            if rest == raw {
-                positions.push(line_start + marker_at);
+        let trimmed = content.trim_start();
+        match fence {
+            Some(open) => {
+                if trimmed.starts_with(open) {
+                    fence = None;
+                }
+            }
+            None => {
+                if let Some(open) = ["```", "~~~"]
+                    .into_iter()
+                    .find(|open| trimmed.starts_with(open))
+                {
+                    fence = Some(open);
+                } else if let Some(rest) = trimmed
+                    .strip_prefix(['-', '+', '*'])
+                    .and_then(|rest| rest.strip_prefix([' ', '\t']))
+                {
+                    if rest == raw {
+                        positions.push(line_start + content.len() - rest.len());
+                    }
+                }
             }
         }
         line_start += line.len();
@@ -44,19 +61,11 @@ fn marker_positions(source: &str, raw: &str) -> Vec<usize> {
     positions
 }
 
-fn toggle_marker(source: &str, offset: usize, checked: bool) -> Result<String, CliError> {
-    let marker = source.get(offset..offset + 3).unwrap_or("");
-    if !matches!(marker, "[ ]" | "[x]" | "[X]") {
-        return Err(CliError::Runtime(format!(
-            "no task marker at offset {offset} — reopen the graph in Kore to refresh the index"
-        )));
-    }
+/// Splice the three marker characters at `offset` (a position
+/// `marker_positions` produced, so a marker is there by construction).
+fn toggle_marker(source: &str, offset: usize, checked: bool) -> String {
     let next = if checked { "[x]" } else { "[ ]" };
-    Ok(format!(
-        "{}{next}{}",
-        &source[..offset],
-        &source[offset + 3..]
-    ))
+    format!("{}{next}{}", &source[..offset], &source[offset + 3..])
 }
 
 pub fn run(
@@ -93,15 +102,15 @@ pub fn run(
     })?;
     let candidates: Vec<Candidate> = rows.collect::<Result<_, _>>()?;
 
-    let folded = wanted.to_lowercase();
+    let folded = fold_key(wanted);
     let exact: Vec<&Candidate> = candidates
         .iter()
-        .filter(|candidate| candidate.text.trim().to_lowercase() == folded)
+        .filter(|candidate| fold_key(&candidate.text) == folded)
         .collect();
     let matches = if exact.is_empty() {
         candidates
             .iter()
-            .filter(|candidate| candidate.text.to_lowercase().contains(&folded))
+            .filter(|candidate| fold_key(&candidate.text).contains(&folded))
             .collect::<Vec<_>>()
     } else {
         exact
@@ -147,7 +156,7 @@ pub fn run(
             }
         }
     };
-    let next = toggle_marker(&source, offset, !undo)?;
+    let next = toggle_marker(&source, offset, !undo);
     atomic_write(&absolute, &next)?;
 
     if json {
@@ -166,17 +175,20 @@ mod tests {
     use super::*;
 
     #[test]
-    fn finds_marker_positions_by_the_indexed_raw_line() {
+    fn finds_marker_positions_by_the_indexed_raw_line_outside_code_fences() {
         let source = "# T\n+ [ ] pay bill\n  - [ ] pay bill\n+ [x] other\nprose [ ] pay bill\n";
         assert_eq!(marker_positions(source, "[ ] pay bill"), vec![6, 23]);
         assert_eq!(marker_positions(source, "[x] other"), vec![38]);
         assert!(marker_positions(source, "[ ] nope").is_empty());
+        let fenced = "# T\n```md\n+ [ ] pay bill\n```\n~~~\n+ [ ] pay bill\n~~~\n+ [ ] pay bill\n";
+        assert_eq!(marker_positions(fenced, "[ ] pay bill"), vec![54]);
     }
 
     #[test]
     fn toggles_only_the_marker() {
-        let source = "+ [ ] pay bill\n";
-        assert_eq!(toggle_marker(source, 2, true).unwrap(), "+ [x] pay bill\n");
-        assert!(toggle_marker(source, 0, true).is_err());
+        assert_eq!(
+            toggle_marker("+ [ ] pay bill\n", 2, true),
+            "+ [x] pay bill\n"
+        );
     }
 }

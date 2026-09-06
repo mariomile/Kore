@@ -20,15 +20,6 @@ pub fn run(
 ) -> Result<(), CliError> {
     let (opened, staleness) = require_index(&graph.root)?;
     let tag_key = tag.map(|tag| fold_tag(tag.trim_start_matches('#')));
-    let kind = match kind {
-        None => None,
-        Some(kind @ ("daily" | "note")) => Some(kind),
-        Some(other) => {
-            return Err(CliError::Runtime(format!(
-                "unknown kind '{other}' — expected daily or note"
-            )))
-        }
-    };
 
     // Filters are applied in SQL through nullable parameters (`?1 IS NULL OR
     // …`) so one statement serves every combination.

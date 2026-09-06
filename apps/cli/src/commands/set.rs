@@ -5,16 +5,16 @@
 //! types refused. The block is spliced key by key and verified before the
 //! atomic write; the body is never touched. A private note is refused.
 
-use std::fs;
-
 use crate::commands::output::{print_json, SetJson};
-use crate::commands::properties::{indexed_tags, property_json};
-use crate::commands::{open_index_for_resolution, resolve_existing, warn};
+use crate::commands::{open_index_for_resolution, resolve_existing};
 use crate::error::CliError;
+use crate::frontmatter_values::properties_json;
 use crate::frontmatter_write::{patch_source, Patch};
 use crate::graph::Graph;
-use crate::schema::{is_property_key, parse_assignments, union_schema, TagSchema};
-use crate::write::atomic_write;
+use crate::schema::{
+    is_property_key, parse_assignments, schema_for_note, warn_untyped_writes, TagSchema,
+};
+use crate::write::update_note;
 
 pub fn run(
     graph: &Graph,
@@ -34,43 +34,45 @@ pub fn run(
                 "'{key}' is not a writable property key"
             )));
         }
+        if assignments.iter().any(|assignment| {
+            assignment
+                .split_once('=')
+                .is_some_and(|(set, _)| set.trim() == key)
+        }) {
+            return Err(CliError::Usage(format!(
+                "'{key}' is both set and --unset — pick one"
+            )));
+        }
     }
 
     let index = open_index_for_resolution(&graph.root);
     let rel_path = resolve_existing(&graph.root, note_arg, index.as_ref().map(|open| &open.conn))?;
     let schema = match &index {
-        Some(open) => union_schema(&open.conn, &indexed_tags(&open.conn, &rel_path)?)?,
+        Some(open) => schema_for_note(&open.conn, &rel_path)?,
         None => {
             if !assignments.is_empty() {
-                warn("no index — values are written as text (open the graph in Kore to type them)");
+                warn_untyped_writes();
             }
             TagSchema::default()
         }
     };
     let values = parse_assignments(&schema, assignments)?;
 
-    let absolute = graph.root.join(&rel_path);
-    let source = fs::read_to_string(&absolute)
-        .map_err(|err| CliError::Runtime(format!("could not read {rel_path}: {err}")))?;
     let mut patch: Patch = values
         .iter()
         .map(|(key, value)| (key.clone(), Some(value.clone())))
         .collect();
     patch.extend(unset.iter().map(|key| (key.clone(), None)));
-    let patched = patch_source(&source, &patch)?;
-    if patched != source {
-        atomic_write(&absolute, &patched)?;
-    }
+    update_note(&graph.root, &rel_path, |source| {
+        patch_source(source, &patch)
+    })?;
 
+    let absolute = graph.root.join(&rel_path);
     if json {
-        let mut set = serde_json::Map::new();
-        for (key, value) in &values {
-            set.insert(key.clone(), property_json(value));
-        }
         return print_json(&SetJson {
             path: &rel_path,
             absolute_path: absolute.display().to_string(),
-            set,
+            set: properties_json(values.iter().map(|(key, value)| (key, value))),
             unset,
         });
     }

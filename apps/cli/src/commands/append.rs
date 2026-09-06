@@ -13,7 +13,7 @@ use crate::graph::Graph;
 use crate::note_file::ensure_not_private;
 use crate::paths::date_from_daily_path;
 use crate::resolve::{resolve_note, ResolvedNote};
-use crate::write::{atomic_write, line_ending, read_stdin};
+use crate::write::{atomic_write, line_ending, text_or_stdin};
 
 /// `content` with `block` appended after one blank line (none when the note
 /// is empty), normalized to the note's line ending.
@@ -38,15 +38,7 @@ pub fn run(
     text: Option<&str>,
     stdin: bool,
 ) -> Result<(), CliError> {
-    let block = match (text, stdin) {
-        (Some(text), false) => text.to_string(),
-        (None, true) => read_stdin()?,
-        _ => {
-            return Err(CliError::Usage(
-                "give the text as an argument or on stdin (--stdin), not both".to_string(),
-            ))
-        }
-    };
+    let block = text_or_stdin(text, stdin)?;
     if block.trim().is_empty() {
         return Err(CliError::Usage(
             "nothing to append — the text is empty".to_string(),

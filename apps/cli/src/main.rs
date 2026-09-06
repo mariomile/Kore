@@ -123,8 +123,8 @@ enum Command {
         /// Only notes carrying this tag (without the #)
         #[arg(long, value_name = "TAG")]
         tag: Option<String>,
-        /// Only this kind of note: daily or note
-        #[arg(long, value_name = "KIND")]
+        /// Only this kind of note
+        #[arg(long, value_name = "KIND", value_parser = ["daily", "note"])]
         kind: Option<String>,
         /// Maximum number of notes
         #[arg(long, default_value_t = 50)]

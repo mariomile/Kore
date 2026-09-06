@@ -10,15 +10,15 @@
 //!
 //! Like the app, an existing block that does not parse as a YAML mapping is
 //! refused: re-serializing a partial parse would drop bytes the user wrote.
-
-use reflect_note_policy::split_frontmatter;
-use saphyr::{Scalar, Yaml};
+//! One known divergence from the app: a trailing `# comment` on the very line
+//! being patched goes with the old value (the app's document model keeps it).
 
 use crate::error::CliError;
 use crate::frontmatter_values::{
     entries, format_number, parse_mapping, property_value, PropertyValue,
 };
 use crate::write::line_ending;
+use reflect_note_policy::split_frontmatter;
 
 /// One key to set (`Some`) or delete (`None`).
 pub type Patch = Vec<(String, Option<PropertyValue>)>;
@@ -105,14 +105,20 @@ fn top_level_key(line: &str) -> Option<String> {
 }
 
 /// `[start, end)` line indexes of the block a top-level key occupies: its own
-/// line plus every following line that is blank or indented, minus trailing
-/// blank lines (they separate keys and stay put).
+/// line plus every following line that is blank or indented — or, when the
+/// key line carries no value, a zero-indent `- item` (YAML lets a block
+/// sequence sit at its parent's indentation, and hand-written and imported
+/// vaults use that form constantly) — minus trailing blank lines (they
+/// separate keys and stay put).
 fn key_span(lines: &[&str], start: usize) -> (usize, usize) {
+    let value_less = lines[start].trim_end().ends_with(':');
     let mut end = start + 1;
     while end < lines.len() {
         let line = lines[end];
-        let continuation =
-            line.trim().is_empty() || line.starts_with(' ') || line.starts_with('\t');
+        let continuation = line.trim().is_empty()
+            || line.starts_with(' ')
+            || line.starts_with('\t')
+            || (value_less && (line == "-" || line.starts_with("- ")));
         if !continuation {
             break;
         }
@@ -168,23 +174,36 @@ fn patch_block(raw: &str, patch: &Patch, ending: &str) -> Option<String> {
     Some(lines.join(ending))
 }
 
-/// Read one key back from a parsed block as the value the patch intended.
-fn read_back(raw: &str, key: &str) -> Option<PropertyValue> {
-    let mapping = parse_mapping(raw)?;
-    entries(&mapping)
-        .into_iter()
-        .find(|(candidate, _)| candidate == key)
-        .and_then(|(_, node)| property_value(node))
-}
-
-/// Whether the parsed block still carries `key` at all (a deleted key must
-/// be gone, not merely untyped).
-fn has_key(raw: &str, key: &str) -> bool {
-    parse_mapping(raw).is_some_and(|mapping| {
-        mapping
-            .get(&Yaml::Value(Scalar::String(key.into())))
-            .is_some()
-    })
+/// Read the patched block back and check every patched key: a set key must
+/// type as the value intended, a deleted key must be gone. A block that no
+/// longer parses as a mapping fails every key — it is the one outcome that
+/// must never reach disk.
+fn verify(raw: &str, patch: &Patch) -> Result<(), CliError> {
+    let Some(mapping) = parse_mapping(raw) else {
+        return Err(CliError::Runtime(
+            "the patched frontmatter would no longer parse — nothing was changed".to_string(),
+        ));
+    };
+    let present = entries(&mapping);
+    for (key, value) in patch {
+        let found = present.iter().find(|(candidate, _)| candidate == key);
+        match (value, found) {
+            (Some(expected), Some((_, node)))
+                if property_value(node).as_ref() == Some(expected) => {}
+            (Some(_), _) => {
+                return Err(CliError::Runtime(format!(
+                "frontmatter write for '{key}' did not read back as written — nothing was changed"
+            )))
+            }
+            (None, None) => {}
+            (None, Some(_)) => {
+                return Err(CliError::Runtime(format!(
+                    "frontmatter key '{key}' could not be removed — nothing was changed"
+                )))
+            }
+        }
+    }
+    Ok(())
 }
 
 /// Apply `patch` to a note's full source, returning the new source. The body
@@ -203,26 +222,8 @@ pub fn patch_source(source: &str, patch: &Patch) -> Result<String, CliError> {
         ));
     }
     let next_raw = patch_block(existing_raw, patch, ending);
-
     if let Some(raw) = &next_raw {
-        for (key, value) in patch {
-            match value {
-                Some(expected) => {
-                    if read_back(raw, key).as_ref() != Some(expected) {
-                        return Err(CliError::Runtime(format!(
-                            "frontmatter write for '{key}' did not read back as written — nothing was changed"
-                        )));
-                    }
-                }
-                None => {
-                    if has_key(raw, key) {
-                        return Err(CliError::Runtime(format!(
-                            "frontmatter key '{key}' could not be removed — nothing was changed"
-                        )));
-                    }
-                }
-            }
-        }
+        verify(raw, patch)?;
     }
 
     let body = split.body;
@@ -252,7 +253,7 @@ mod tests {
     }
 
     #[test]
-    fn replaces_a_scalar_in_place_keeping_neighbours_and_comments() {
+    fn replaces_a_scalar_in_place_keeping_neighbours_but_not_its_own_trailing_comment() {
         let source = "---\n# the id\nid: abc\nrating: 3 # old\nauthor: Le Guin\n---\n# Body\n";
         let patched =
             patch_source(source, &vec![set("rating", PropertyValue::Number(4.5))]).unwrap();
@@ -283,6 +284,27 @@ mod tests {
     }
 
     #[test]
+    fn zero_indent_block_sequences_are_one_key() {
+        let source = "---\ntitle: Seq\ngenres:\n- a\n- b\nauthor: X\n---\n# Seq\n";
+        let removed = patch_source(source, &vec![("genres".to_string(), None)]).unwrap();
+        assert_eq!(removed, "---\ntitle: Seq\nauthor: X\n---\n# Seq\n");
+        let replaced = patch_source(source, &vec![set("genres", text("noir"))]).unwrap();
+        assert_eq!(
+            replaced,
+            "---\ntitle: Seq\ngenres: noir\nauthor: X\n---\n# Seq\n"
+        );
+    }
+
+    #[test]
+    fn a_patch_that_breaks_the_block_is_refused() {
+        // Deleting an anchor leaves its alias dangling: the block stops
+        // parsing, and that must fail the write rather than count as removed.
+        let source = "---\nbase: &b 1\nother: *b\n---\nbody\n";
+        let error = patch_source(source, &vec![("base".to_string(), None)]).unwrap_err();
+        assert!(error.to_string().contains("no longer parse"), "{error}");
+    }
+
+    #[test]
     fn deleting_the_last_key_removes_the_block() {
         let source = "---\nrating: 3\n---\nbody\n";
         let patched = patch_source(source, &vec![("rating".to_string(), None)]).unwrap();
@@ -302,10 +324,7 @@ mod tests {
         assert_eq!(render_string("- item"), "\"- item\"");
         assert_eq!(render_string(""), "\"\"");
         let patched = patch_source("body\n", &vec![set("title-ish", text("4.5"))]).unwrap();
-        assert_eq!(
-            read_back(split_frontmatter(&patched).raw.unwrap(), "title-ish"),
-            Some(text("4.5"))
-        );
+        assert_eq!(patched, "---\ntitle-ish: \"4.5\"\n---\nbody\n");
     }
 
     #[test]

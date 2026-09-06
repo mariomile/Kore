@@ -15,17 +15,17 @@ use std::path::Path;
 use reflect_note_policy::split_frontmatter;
 
 use crate::body_tag::{append_body_tag, is_tag_name};
+use crate::commands::open_index_for_resolution;
 use crate::commands::output::{print_json, NewJson};
-use crate::commands::properties::property_json;
-use crate::commands::{open_index_for_resolution, warn};
 use crate::error::CliError;
+use crate::frontmatter_values::properties_json;
 use crate::frontmatter_write::{patch_source, Patch};
 use crate::graph::Graph;
 use crate::keys::fold_key;
 use crate::keys::fold_tag;
 use crate::note_file::parse_note_meta;
 use crate::paths::today_date;
-use crate::schema::{parse_assignments, union_schema, TagSchema};
+use crate::schema::{parse_assignments, union_schema, warn_untyped_writes, TagSchema};
 use crate::slug::slug_for_title;
 use crate::write::read_stdin;
 
@@ -202,7 +202,7 @@ pub fn run(
 ) -> Result<(), CliError> {
     let title = title.trim();
     if title.is_empty() {
-        return Err(CliError::Runtime("the note needs a title".to_string()));
+        return Err(CliError::Usage("the note needs a title".to_string()));
     }
     let mut tags: Vec<String> = Vec::new();
     for tag_arg in tag_args {
@@ -224,7 +224,7 @@ pub fn run(
         Some(open) => union_schema(&open.conn, &tags)?,
         None => {
             if !sets.is_empty() {
-                warn("no index — values are written as text (open the graph in Kore to type them)");
+                warn_untyped_writes();
             }
             TagSchema::default()
         }
@@ -266,10 +266,7 @@ pub fn run(
         .map(|(key, value)| (key.clone(), Some(value.clone())))
         .collect();
     let content = patch_source(&content, &patch)?;
-    let mut properties = serde_json::Map::new();
-    for (key, value) in &values {
-        properties.insert(key.clone(), property_json(value));
-    }
+    let properties = properties_json(values.iter().map(|(key, value)| (key, value)));
 
     let slug = slug_for_title(title);
     for ordinal in 1..=MAX_CREATE_ATTEMPTS {

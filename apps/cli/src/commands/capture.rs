@@ -23,7 +23,7 @@ use crate::graph::Graph;
 use crate::note_file::ensure_not_private;
 use crate::paths::{daily_path, date_from_daily_path, today_date};
 use crate::resolve::{resolve_note, ResolvedNote};
-use crate::write::{atomic_write, line_ending, read_stdin};
+use crate::write::{atomic_write, line_ending, text_or_stdin};
 
 /// The `-`, `+` or `*` of the trailing top-level bullet list, when the note's
 /// last non-blank line is one of its items.
@@ -63,15 +63,7 @@ pub fn run(
     task: bool,
     to: Option<&str>,
 ) -> Result<(), CliError> {
-    let text = match (text, stdin) {
-        (Some(text), false) => text.to_string(),
-        (None, true) => read_stdin()?,
-        _ => {
-            return Err(CliError::Usage(
-                "give the text as an argument or on stdin (--stdin), not both".to_string(),
-            ))
-        }
-    };
+    let text = text_or_stdin(text, stdin)?;
     // One item is one line: embedded line breaks would smuggle arbitrary
     // markdown structure past the list-item contract.
     let text = text

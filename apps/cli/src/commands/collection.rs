@@ -9,32 +9,14 @@
 
 use std::collections::HashMap;
 
-use reflect_index_schema::{INDEX_FILE, REFLECT_DIR};
 use rusqlite::params;
 
 use crate::commands::output::{print_json, CollectionJson, CollectionNoteJson, PropertyJson};
-use crate::commands::{still_public_on_disk, warn};
+use crate::commands::{require_index, still_public_on_disk};
 use crate::error::CliError;
+use crate::frontmatter_values::PropertyValue;
 use crate::graph::Graph;
-use crate::index::{detect_staleness, open_read_only, IndexOpen};
 use crate::schema::{decode_schema, SchemaProperty};
-
-/// Decode a stored `note_properties` row into a typed JSON value, mirroring
-/// `propertyRowValue` (`packages/core/src/indexing/collections.ts`).
-fn typed_value(value: &str, value_type: &str, value_number: Option<f64>) -> serde_json::Value {
-    match value_type {
-        "number" => value_number
-            .and_then(serde_json::Number::from_f64)
-            .map(serde_json::Value::Number)
-            .unwrap_or_else(|| serde_json::Value::String(value.to_string())),
-        "boolean" => serde_json::Value::Bool(value == "true"),
-        "list" => serde_json::from_str::<serde_json::Value>(value)
-            .ok()
-            .filter(serde_json::Value::is_array)
-            .unwrap_or_else(|| serde_json::Value::String(value.to_string())),
-        _ => serde_json::Value::String(value.to_string()),
-    }
-}
 
 pub fn run(
     graph: &Graph,
@@ -44,26 +26,7 @@ pub fn run(
     desc: bool,
     limit: usize,
 ) -> Result<(), CliError> {
-    let opened = match open_read_only(&graph.root) {
-        IndexOpen::Opened(opened) => opened,
-        IndexOpen::Missing => {
-            return Err(CliError::NoIndex(format!(
-                "no index at {REFLECT_DIR}/{INDEX_FILE} — open this graph in Kore to build it"
-            )))
-        }
-        IndexOpen::Unusable(message) => return Err(CliError::NoIndex(message)),
-    };
-    if opened.newer_schema {
-        warn("the index schema is newer than this CLI — update Kore");
-    }
-
-    let staleness = detect_staleness(&opened.conn, &graph.root)?;
-    if staleness.is_stale() {
-        warn(format!(
-            "the index may be stale ({} file(s) differ from it) — open the graph in Kore to refresh",
-            staleness.total()
-        ));
-    }
+    let (opened, staleness) = require_index(&graph.root)?;
 
     let tag_key = crate::keys::fold_tag(tag);
     let schema_json: Option<String> = opened
@@ -154,10 +117,10 @@ pub fn run(
         )?;
         for row in property_rows {
             let (path, key, value, value_type, value_number) = row?;
-            properties_by_path
-                .entry(path)
-                .or_default()
-                .insert(key, typed_value(&value, &value_type, value_number));
+            properties_by_path.entry(path).or_default().insert(
+                key,
+                PropertyValue::from_row(&value, &value_type, value_number).to_json(),
+            );
         }
     }
 

@@ -443,11 +443,13 @@ are written as text; without an index everything is text (warned once).
 
 Reserved keys (`id`, `title`, `aliases`, `private`, `pinned`, `gist`,
 `ignoredContacts`, `lore`, `properties`, `template`, `cover`, `icon`) are
-refused (exit `2`); `--unset` removes a key. The block is patched one
-top-level key at a time — every other line, comment and quoting stays as
-written — then re-parsed and read back before the atomic write; a block
-that is not valid YAML is refused untouched (exit `1`). A private note is
-refused (exit `3`). stdout prints the note's absolute path.
+refused (exit `2`); `--unset` removes a key (naming a key in both is exit
+`2`). The block is patched one top-level key at a time — every other line,
+comment and quoting stays as written; a `# comment` on the patched line
+itself goes with the old value — then re-parsed and every patched key read
+back before the atomic write. A block that is not valid YAML, or one the
+patch would leave unparseable, is refused untouched (exit `1`). A private
+note is refused (exit `3`). stdout prints the note's absolute path.
 
 ```jsonc
 // reflect set Dune rating=4 read=yes "author=Frank Herbert" --unset draft --json
@@ -485,9 +487,10 @@ graph's open tasks, else a unique substring match; `--in` narrows to one
 note, `--undo` reopens a completed task. Zero or several matches exit `3`
 (the candidates are listed on stderr). Requires the index (exit `4`) to
 find the task; the file on disk is the truth for the write — the marker
-line the index recorded must still be present exactly once (at its old
-offset or moved), else the command refuses (exit `1`) rather than toggling
-the wrong line. Only the three marker characters change.
+line the index recorded must still be present exactly once as a list item
+outside fenced code (at its old offset or moved), else the command refuses
+(exit `1`) rather than toggling the wrong line. Only the three marker
+characters change.
 
 ```jsonc
 // reflect done "pay bill" --in 2026-09-05 --json

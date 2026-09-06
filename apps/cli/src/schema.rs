@@ -83,6 +83,28 @@ pub fn load_schema(conn: &Connection, tag: &str) -> Result<Option<TagSchema>, Cl
     Ok(schema_json.as_deref().map(decode_schema))
 }
 
+/// The tags the index knows for a note, display-cased, one per key.
+pub fn note_tags(conn: &Connection, rel_path: &str) -> Result<Vec<String>, CliError> {
+    let mut statement = conn.prepare(
+        "SELECT min(tag) FROM tags WHERE note_path = ?1 GROUP BY tag_key ORDER BY tag_key",
+    )?;
+    let tags = statement
+        .query_map([rel_path], |row| row.get::<_, String>(0))?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(tags)
+}
+
+/// The schema a note's property writes are typed by: the union of the
+/// schemas of every tag the index knows it carries.
+pub fn schema_for_note(conn: &Connection, rel_path: &str) -> Result<TagSchema, CliError> {
+    union_schema(conn, &note_tags(conn, rel_path)?)
+}
+
+/// Said once by `set`/`new` when there is no index to type values with.
+pub fn warn_untyped_writes() {
+    warn("no index — values are written as text (open the graph in Kore to type them)");
+}
+
 /// The union schema of several tags: the first declaration of a key wins,
 /// like two types sharing `author` Obsidian-style.
 pub fn union_schema(conn: &Connection, tags: &[String]) -> Result<TagSchema, CliError> {
@@ -142,6 +164,21 @@ fn relation_value(target: &str) -> String {
         target.to_string()
     } else {
         format!("[[{target}]]")
+    }
+}
+
+/// `select`-family values outside the declared options are written anyway
+/// (the app tolerates them) but flagged, so a typo does not pass silently.
+fn warn_unknown_options(property: &SchemaProperty, key: &str, values: &[String]) {
+    let Some(options) = &property.options else {
+        return;
+    };
+    for value in values {
+        if !options.contains(value) {
+            warn(format!(
+                "{key}: '{value}' is not one of the declared options"
+            ));
+        }
     }
 }
 
@@ -212,32 +249,26 @@ pub fn coerce(
         )),
         "multiselect" | "files" => {
             let items = split_list(trimmed, key)?;
-            if let Some(options) = &property.options {
-                for item in &items {
-                    if !options.contains(item) {
-                        warn(format!(
-                            "{key}: '{item}' is not one of the declared options"
-                        ));
-                    }
-                }
-            }
+            warn_unknown_options(property, key, &items);
             Ok(PropertyValue::List(items))
         }
         "select" | "status" => {
-            if let Some(options) = &property.options {
-                if !options.iter().any(|option| option == trimmed) {
-                    warn(format!(
-                        "{key}: '{trimmed}' is not one of the declared options"
-                    ));
-                }
-            }
+            warn_unknown_options(property, key, std::slice::from_ref(&trimmed.to_string()));
             Ok(PropertyValue::String(trimmed.to_string()))
         }
         "updated" | "rollup" | "reverse" | "formula" => Err(CliError::Usage(format!(
             "{key}: a {} property is computed by Kore and cannot be set",
             property.kind
         ))),
-        _ => Ok(PropertyValue::String(trimmed.to_string())),
+        "text" | "url" | "email" | "phone" => Ok(PropertyValue::String(trimmed.to_string())),
+        // A type this CLI does not know (a newer app schema): text is the
+        // only honest write, and the app shows a mismatch tint if it is not.
+        other => {
+            warn(format!(
+                "{key}: unknown property type '{other}' — written as text"
+            ));
+            Ok(PropertyValue::String(trimmed.to_string()))
+        }
     }
 }
 

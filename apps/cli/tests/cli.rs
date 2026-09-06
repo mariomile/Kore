@@ -1,150 +1,18 @@
-//! End-to-end tests: run the real `reflect` binary against fixture graphs.
-//! Index fixtures are built with the shared `reflect-index-schema` migrations
-//! plus direct row inserts that mirror the desktop's `apply_note` write path
-//! (`apps/desktop/src-tauri/src/db/write.rs`), so the CLI is tested against
-//! the schema the app actually writes.
+//! End-to-end tests for the CLI's read and discovery surface, run against the
+//! real `reflect` binary and the fixture graphs in `common`.
+
+mod common;
 
 use std::fs;
-use std::path::{Path, PathBuf};
-use std::process::{Command, Output};
+use std::process::Command;
 
 use rusqlite::params;
 use tempfile::TempDir;
 
-use reflect_cli::hash::hash_content;
-use reflect_cli::keys::fold_key;
-use reflect_cli::note_file::parse_note_meta;
+use common::*;
 use reflect_cli::paths::{daily_path, today_date};
 
-/// `note_claims.tier` values (the desktop's `claim_tier`): lower wins.
-const TIER_DAILY_DATE: i64 = 1;
-const TIER_TITLE: i64 = 2;
-const TIER_ALIAS: i64 = 3;
-const TIER_BASENAME: i64 = 4;
-
-struct Fixture {
-    dir: TempDir,
-}
-
-impl Fixture {
-    fn root(&self) -> &Path {
-        self.dir.path()
-    }
-
-    fn write_note(&self, rel_path: &str, content: &str) -> PathBuf {
-        let absolute = self.root().join(rel_path);
-        fs::create_dir_all(absolute.parent().unwrap()).unwrap();
-        fs::write(&absolute, content).unwrap();
-        absolute
-    }
-
-    /// Index every note on disk the way the desktop pipeline would: derived
-    /// title/aliases/private, content hash, file mtime, FTS row.
-    fn build_index(&self) {
-        let conn = reflect_index_schema::open_index_at(self.root()).unwrap();
-        for note in reflect_cli::note_file::walk_notes(self.root()) {
-            let content = fs::read_to_string(self.root().join(&note.rel_path)).unwrap();
-            let meta = parse_note_meta(&note.rel_path, &content);
-            let daily_date = reflect_cli::paths::date_from_daily_path(&note.rel_path);
-            let kind = if daily_date.is_some() {
-                "daily"
-            } else {
-                "note"
-            };
-            conn.execute(
-                "INSERT INTO notes(path, id, title, title_key, kind, daily_date, is_private,
-                                   is_pinned, pinned_order, file_hash, mtime, updated_at, preview)
-                 VALUES(?1, ?8, ?2, ?3, ?9, ?4, ?5, 0, NULL, ?6, ?7, ?7, '')",
-                params![
-                    note.rel_path,
-                    meta.title,
-                    fold_key(&meta.title),
-                    daily_date,
-                    i64::from(meta.private),
-                    hash_content(&content),
-                    note.mtime_ms as i64,
-                    meta.id,
-                    kind,
-                ],
-            )
-            .unwrap();
-            for alias in &meta.aliases {
-                conn.execute(
-                    "INSERT INTO aliases(note_path, alias, alias_key) VALUES(?1, ?2, ?3)",
-                    params![note.rel_path, alias, fold_key(alias)],
-                )
-                .unwrap();
-            }
-            // The spellings this note answers to, mirroring the desktop's
-            // `projectNoteClaims`: date, title, aliases, filename stem, first
-            // claim of a key wins.
-            let stem = {
-                let filename = note.rel_path.rsplit('/').next().unwrap_or(&note.rel_path);
-                filename.strip_suffix(".md").unwrap_or(filename)
-            };
-            let mut claims: Vec<(String, i64)> = Vec::new();
-            let claim = |claims: &mut Vec<(String, i64)>, key: String, tier: i64| {
-                if !key.is_empty() && !claims.iter().any(|(existing, _)| *existing == key) {
-                    claims.push((key, tier));
-                }
-            };
-            if let Some(date) = daily_date {
-                // Calendar-valid only: an impossible `daily/2026-02-31.md` is
-                // an ordinary note and must never claim a date.
-                if reflect_cli::paths::parse_calendar_date(date).is_some() {
-                    claim(&mut claims, date.to_string(), TIER_DAILY_DATE);
-                }
-            }
-            claim(&mut claims, fold_key(&meta.title), TIER_TITLE);
-            for alias in &meta.aliases {
-                claim(&mut claims, fold_key(alias), TIER_ALIAS);
-            }
-            claim(&mut claims, fold_key(stem), TIER_BASENAME);
-            for (key, tier) in &claims {
-                conn.execute(
-                    "INSERT INTO note_claims(note_path, key, tier) VALUES(?1, ?2, ?3)",
-                    params![note.rel_path, key, tier],
-                )
-                .unwrap();
-            }
-            conn.execute(
-                "INSERT INTO search_fts(path, title, body) VALUES(?1, ?2, ?3)",
-                params![note.rel_path, meta.title, content],
-            )
-            .unwrap();
-        }
-    }
-}
-
 /// A graph with the standard layout but no index file.
-fn graph() -> Fixture {
-    let dir = TempDir::new().unwrap();
-    for sub in [".reflect", "daily", "notes"] {
-        fs::create_dir_all(dir.path().join(sub)).unwrap();
-    }
-    Fixture { dir }
-}
-
-fn reflect(fixture: &Fixture, args: &[&str]) -> Output {
-    Command::new(env!("CARGO_BIN_EXE_reflect"))
-        .args(args)
-        .current_dir(fixture.root())
-        .env_remove("REFLECT_GRAPH")
-        .output()
-        .unwrap()
-}
-
-fn stdout(output: &Output) -> String {
-    String::from_utf8(output.stdout.clone()).unwrap()
-}
-
-fn stderr(output: &Output) -> String {
-    String::from_utf8(output.stderr.clone()).unwrap()
-}
-
-fn json(output: &Output) -> serde_json::Value {
-    serde_json::from_str(&stdout(output)).unwrap()
-}
 
 // ---- today ------------------------------------------------------------------
 
@@ -541,7 +409,7 @@ fn search_without_an_index_exits_4() {
     fixture.write_note("notes/a.md", "anything\n");
     let output = reflect(&fixture, &["search", "anything"]);
     assert_eq!(output.status.code(), Some(4));
-    assert!(stderr(&output).contains("no search index"));
+    assert!(stderr(&output).contains("no index at"));
 }
 
 #[test]
@@ -907,36 +775,6 @@ fn scan_resolution_agrees_with_the_index_on_stems() {
 
 // ---- tasks ------------------------------------------------------------------
 
-impl Fixture {
-    /// Insert one task row the way the desktop projection would.
-    fn insert_task(
-        &self,
-        rel_path: &str,
-        offset: i64,
-        text: &str,
-        checked: bool,
-        due: Option<&str>,
-        due_time: Option<&str>,
-    ) {
-        let conn =
-            rusqlite::Connection::open(self.root().join(".reflect").join("index.sqlite")).unwrap();
-        conn.execute(
-            "INSERT INTO tasks(note_path, marker_offset, text, raw, checked, due_date, due_time)
-             VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7)",
-            params![
-                rel_path,
-                offset,
-                text,
-                format!("[ ] {text}"),
-                i64::from(checked),
-                due,
-                due_time
-            ],
-        )
-        .unwrap();
-    }
-}
-
 #[test]
 fn tasks_lists_open_tasks_and_excludes_private_notes() {
     let fixture = graph();
@@ -1023,7 +861,12 @@ fn capture_joins_todays_trailing_list() {
 
     let output = reflect(&fixture, &["capture", "two"]);
     assert!(output.status.success(), "stderr: {}", stderr(&output));
-    assert_eq!(stdout(&output).trim_end(), absolute.display().to_string());
+    // The CLI prints the canonical path (macOS: `/private/var/…` for a
+    // `/var/…` temp dir), so compare canonical forms.
+    assert_eq!(
+        stdout(&output).trim_end(),
+        absolute.canonicalize().unwrap().display().to_string()
+    );
     assert_eq!(
         fs::read_to_string(&absolute).unwrap(),
         "# Plans\n\n- one\n- two\n"
@@ -1075,21 +918,6 @@ fn capture_rejects_empty_text_and_collapses_line_breaks() {
 }
 
 // ---- backlinks --------------------------------------------------------------
-
-impl Fixture {
-    /// Insert one wiki link the way the desktop projection would.
-    fn insert_wiki_link(&self, source: &str, target_title: &str, pos: i64) {
-        let conn =
-            rusqlite::Connection::open(self.root().join(".reflect").join("index.sqlite")).unwrap();
-        conn.execute(
-            "INSERT INTO links(source_path, kind, target_raw, target_key, alias,
-                               pos_from, pos_to, target_path_key)
-             VALUES(?1, 'wiki', ?2, ?3, NULL, ?4, ?4, NULL)",
-            params![source, target_title, fold_key(target_title), pos],
-        )
-        .unwrap();
-    }
-}
 
 #[test]
 fn backlinks_lists_linking_notes_and_excludes_private_sources() {
@@ -1401,60 +1229,6 @@ fn capture_to_resolves_titles_dates_and_refuses_private_targets() {
 
 // ---- Plan 30: discovery ------------------------------------------------------
 
-impl Fixture {
-    fn index_conn(&self) -> rusqlite::Connection {
-        rusqlite::Connection::open(self.root().join(".reflect").join("index.sqlite")).unwrap()
-    }
-
-    /// Mirror the desktop's tag projection: one row per tag occurrence.
-    fn insert_tag(&self, rel_path: &str, tag: &str) {
-        self.index_conn()
-            .execute(
-                "INSERT INTO tags(note_path, tag, tag_key) VALUES(?1, ?2, ?3)",
-                params![rel_path, tag, tag.to_lowercase()],
-            )
-            .unwrap();
-    }
-
-    /// A typed tag: its definition note row plus the `tag_types` schema.
-    fn insert_tag_type(&self, tag: &str, schema_json: &str) {
-        let conn = self.index_conn();
-        let path = format!("tags/{tag}.md");
-        conn.execute(
-            "INSERT OR IGNORE INTO notes(path, id, title, title_key, kind, is_private, is_pinned,
-                                         file_hash, mtime, updated_at, preview)
-             VALUES(?1, ?2, ?3, ?3, 'tag', 0, 0, 'x', 0, 0, '')",
-            params![path, format!("tag-{tag}"), tag],
-        )
-        .unwrap();
-        conn.execute(
-            "INSERT INTO tag_types(tag_key, note_path, schema_json) VALUES(?1, ?2, ?3)",
-            params![tag.to_lowercase(), path, schema_json],
-        )
-        .unwrap();
-    }
-
-    /// One outgoing wiki link, the way the desktop projects `[[target]]`.
-    fn insert_link(&self, source: &str, target: &str, position: i64) {
-        self.index_conn()
-            .execute(
-                "INSERT INTO links(source_path, kind, target_raw, target_key, alias, pos_from, pos_to)
-                 VALUES(?1, 'wiki', ?2, ?3, NULL, ?4, ?4)",
-                params![source, target, fold_key(target), position],
-            )
-            .unwrap();
-    }
-
-    fn set_updated(&self, rel_path: &str, updated_ms: i64) {
-        self.index_conn()
-            .execute(
-                "UPDATE notes SET updated_at = ?2 WHERE path = ?1",
-                params![rel_path, updated_ms],
-            )
-            .unwrap();
-    }
-}
-
 #[test]
 fn info_reports_the_missing_index_then_counts_once_built() {
     let fixture = graph();
@@ -1600,7 +1374,7 @@ fn list_filters_by_tag_and_kind_and_drops_notes_flagged_private_on_disk() {
     assert!(stderr(&after).contains("stale"));
 
     let bad_kind = reflect(&fixture, &["list", "--kind", "page"]);
-    assert_eq!(bad_kind.status.code(), Some(1));
+    assert_eq!(bad_kind.status.code(), Some(2), "clap rejects the value");
 }
 
 #[test]
@@ -1665,10 +1439,10 @@ fn links_resolves_targets_and_drops_private_ones() {
     assert_eq!(missing.status.code(), Some(4));
 
     fixture.build_index();
-    fixture.insert_link("notes/dune.md", "Frank Herbert", 10);
-    fixture.insert_link("notes/dune.md", "Arrakis", 30);
-    fixture.insert_link("notes/dune.md", "Frank Herbert", 50);
-    fixture.insert_link("notes/dune.md", "Secret", 70);
+    fixture.insert_wiki_link("notes/dune.md", "Frank Herbert", 10);
+    fixture.insert_wiki_link("notes/dune.md", "Arrakis", 30);
+    fixture.insert_wiki_link("notes/dune.md", "Frank Herbert", 50);
+    fixture.insert_wiki_link("notes/dune.md", "Secret", 70);
 
     let value = json(&reflect(&fixture, &["links", "Dune", "--json"]));
     assert_eq!(value["path"], "notes/dune.md");
@@ -1686,309 +1460,6 @@ fn links_resolves_targets_and_drops_private_ones() {
 
     let private_source = reflect(&fixture, &["links", "notes/secret.md"]);
     assert_eq!(private_source.status.code(), Some(3));
-}
-
-// ---- Plan 30: structured writes -------------------------------------------
-
-fn reflect_stdin(fixture: &Fixture, args: &[&str], input: &str) -> Output {
-    use std::io::Write;
-    let mut child = Command::new(env!("CARGO_BIN_EXE_reflect"))
-        .args(args)
-        .current_dir(fixture.root())
-        .env_remove("REFLECT_GRAPH")
-        .stdin(std::process::Stdio::piped())
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped())
-        .spawn()
-        .unwrap();
-    child
-        .stdin
-        .take()
-        .unwrap()
-        .write_all(input.as_bytes())
-        .unwrap();
-    child.wait_with_output().unwrap()
-}
-
-fn read(fixture: &Fixture, rel_path: &str) -> String {
-    fs::read_to_string(fixture.root().join(rel_path)).unwrap()
-}
-
-const BOOK_SCHEMA: &str = r#"[
-  {"name":"Author","key":"author","type":"relation","target":"person"},
-  {"name":"Rating","key":"rating","type":"rating"},
-  {"name":"Read","key":"read","type":"checkbox"},
-  {"name":"Read on","key":"read-on","type":"date"},
-  {"name":"Genres","key":"genres","type":"multiselect","options":["scifi","classic"]},
-  {"name":"Added","key":"added","type":"created"},
-  {"name":"Pages","key":"pages","type":"rollup","rollup":{"relation":"author","property":"x","aggregation":"count"}}
-]"#;
-
-#[test]
-fn set_writes_typed_values_through_the_tag_schema_and_keeps_the_rest() {
-    let fixture = graph();
-    fixture.write_note(
-        "notes/dune.md",
-        "---\n# identity\nid: 01abc\nrating: 2\ndraft: yes\n---\n# Dune\n\nBody stays.\n\n#book\n",
-    );
-    fixture.write_note("notes/secret.md", "---\nprivate: true\n---\n# S\n#book\n");
-    fixture.build_index();
-    fixture.insert_tag("notes/dune.md", "book");
-    fixture.insert_tag("notes/secret.md", "book");
-    fixture.insert_tag_type("book", BOOK_SCHEMA);
-
-    let value = json(&reflect(
-        &fixture,
-        &[
-            "set",
-            "Dune",
-            "rating=4",
-            "read=yes",
-            "read-on=2026-01-02",
-            "author=Frank Herbert",
-            "genres=scifi, classic",
-            "note=Plain: text",
-            "--unset",
-            "draft",
-            "--json",
-        ],
-    ));
-    assert_eq!(value["path"], "notes/dune.md");
-    assert_eq!(
-        value["set"],
-        serde_json::json!({
-            "rating": 4, "read": true, "read-on": "2026-01-02",
-            "author": "[[Frank Herbert]]", "genres": ["scifi", "classic"], "note": "Plain: text"
-        })
-    );
-    assert_eq!(value["unset"], serde_json::json!(["draft"]));
-    assert_eq!(
-        read(&fixture, "notes/dune.md"),
-        "---\n# identity\nid: 01abc\nrating: 4\nread: true\nread-on: 2026-01-02\n\
-         author: \"[[Frank Herbert]]\"\ngenres:\n  - scifi\n  - classic\nnote: \"Plain: text\"\n---\n\
-         # Dune\n\nBody stays.\n\n#book\n"
-    );
-    // The written values read back typed through the CLI's own reader.
-    let properties = json(&reflect(&fixture, &["properties", "Dune", "--json"]));
-    assert_eq!(properties["properties"]["rating"], 4);
-    assert_eq!(properties["properties"]["read"], true);
-    assert!(properties["properties"].get("draft").is_none());
-
-    let bad_rating = reflect(&fixture, &["set", "Dune", "rating=9"]);
-    assert_eq!(bad_rating.status.code(), Some(2));
-    let reserved = reflect(&fixture, &["set", "Dune", "private=true"]);
-    assert_eq!(reserved.status.code(), Some(2));
-    let view_only = reflect(&fixture, &["set", "Dune", "pages=3"]);
-    assert_eq!(view_only.status.code(), Some(2));
-    assert!(stderr(&view_only).contains("computed"));
-    let private = reflect(&fixture, &["set", "notes/secret.md", "rating=1"]);
-    assert_eq!(private.status.code(), Some(3));
-    assert!(read(&fixture, "notes/secret.md").contains("private: true\n---\n# S"));
-
-    // No index: still writes, as text, with a warning.
-    fs::remove_file(fixture.root().join(".reflect/index.sqlite")).unwrap();
-    let untyped = reflect(&fixture, &["set", "notes/dune.md", "year=1965", "--json"]);
-    assert_eq!(untyped.status.code(), Some(0));
-    assert!(stderr(&untyped).contains("no index"));
-    assert_eq!(json(&untyped)["set"]["year"], "1965");
-    assert!(read(&fixture, "notes/dune.md").contains("year: \"1965\"\n"));
-}
-
-#[test]
-fn tag_appends_a_trailing_line_and_stamps_created_and_untag_removes_only_that() {
-    let fixture = graph();
-    fixture.write_note("notes/dune.md", "---\nid: 01abc\n---\n# Dune\n\nBody.\n");
-    fixture.write_note("notes/emma.md", "# Emma\nA #book about manners.\n");
-    fixture.build_index();
-    fixture.insert_tag_type("book", BOOK_SCHEMA);
-
-    let value = json(&reflect(&fixture, &["tag", "Dune", "#Book", "--json"]));
-    assert_eq!(value["added"], true);
-    let today = reflect_cli::paths::today_date();
-    assert_eq!(value["stamped"]["added"], today);
-    assert_eq!(
-        read(&fixture, "notes/dune.md"),
-        format!("---\nid: 01abc\nadded: {today}\n---\n# Dune\n\nBody.\n\n#Book\n")
-    );
-    let again = json(&reflect(&fixture, &["tag", "Dune", "book", "--json"]));
-    assert_eq!(again["added"], false, "idempotent: {again}");
-    assert_eq!(again["stamped"], serde_json::json!({}));
-
-    let removed = json(&reflect(&fixture, &["untag", "Dune", "book", "--json"]));
-    assert_eq!(removed["removed"], true);
-    assert_eq!(
-        read(&fixture, "notes/dune.md"),
-        format!("---\nid: 01abc\nadded: {today}\n---\n# Dune\n\nBody.\n")
-    );
-    let absent = json(&reflect(&fixture, &["untag", "Dune", "book", "--json"]));
-    assert_eq!(absent["removed"], false);
-
-    let inline = reflect(&fixture, &["untag", "Emma", "book"]);
-    assert_eq!(inline.status.code(), Some(1));
-    assert!(stderr(&inline).contains("inline"));
-    assert_eq!(
-        read(&fixture, "notes/emma.md"),
-        "# Emma\nA #book about manners.\n"
-    );
-
-    let bad = reflect(&fixture, &["tag", "Dune", "2nd"]);
-    assert_eq!(bad.status.code(), Some(2));
-}
-
-#[test]
-fn done_toggles_the_marker_by_text_and_refuses_ambiguity_or_drift() {
-    let fixture = graph();
-    fixture.write_note(
-        "notes/project.md",
-        "# Project\n+ [ ] pay bill\n+ [ ] call Ann\n  - [ ] call Ann again\n+ [x] shipped\n",
-    );
-    fixture.write_note("daily/2026-06-11.md", "- [ ] pay bill\n");
-    fixture.build_index();
-    fixture.insert_task("notes/project.md", 12, "pay bill", false, None, None);
-    fixture.insert_task("notes/project.md", 27, "call Ann", false, None, None);
-    fixture.insert_task("notes/project.md", 44, "call Ann again", false, None, None);
-    fixture.insert_task("daily/2026-06-11.md", 2, "pay bill", false, None, None);
-    fixture.index_conn()
-        .execute(
-            "INSERT INTO tasks(note_path, marker_offset, text, raw, checked) VALUES('notes/project.md', 65, 'shipped', '[x] shipped', 1)",
-            [],
-        )
-        .unwrap();
-
-    let ambiguous = reflect(&fixture, &["done", "pay bill"]);
-    assert_eq!(ambiguous.status.code(), Some(3));
-    assert!(stderr(&ambiguous).contains("daily/2026-06-11.md\tpay bill"));
-
-    let value = json(&reflect(
-        &fixture,
-        &["done", "pay bill", "--in", "Project", "--json"],
-    ));
-    assert_eq!(
-        value,
-        serde_json::json!({"path": "notes/project.md", "text": "pay bill", "checked": true})
-    );
-    // Exact match beats the substring match; only the marker changed.
-    let value = json(&reflect(&fixture, &["done", "Call Ann", "--json"]));
-    assert_eq!(value["text"], "call Ann");
-    assert_eq!(
-        read(&fixture, "notes/project.md"),
-        "# Project\n+ [x] pay bill\n+ [x] call Ann\n  - [ ] call Ann again\n+ [x] shipped\n"
-    );
-    let undone = json(&reflect(&fixture, &["done", "shipped", "--undo", "--json"]));
-    assert_eq!(undone["checked"], false);
-    assert!(read(&fixture, "notes/project.md").contains("+ [ ] shipped\n"));
-
-    // The line moved: still found when it is the unique match…
-    fixture.write_note(
-        "notes/project.md",
-        "# Project\nIntro line.\n+ [x] pay bill\n+ [x] call Ann\n  - [ ] call Ann again\n+ [ ] shipped\n",
-    );
-    let moved = json(&reflect(&fixture, &["done", "again", "--json"]));
-    assert_eq!(moved["text"], "call Ann again");
-    assert!(read(&fixture, "notes/project.md").contains("  - [x] call Ann again\n"));
-    // …and refused when it is gone.
-    fixture.write_note("notes/project.md", "# Project\n+ [ ] something else\n");
-    // (The index still lists `shipped` as done — the CLI never re-indexes.)
-    let drifted = reflect(&fixture, &["done", "shipped", "--undo"]);
-    assert_eq!(drifted.status.code(), Some(1));
-    assert!(stderr(&drifted).contains("no longer matches"));
-
-    let nothing = reflect(&fixture, &["done", "nope"]);
-    assert_eq!(nothing.status.code(), Some(3));
-}
-
-#[test]
-fn append_adds_a_block_and_creates_dailies_and_capture_reads_stdin() {
-    let fixture = graph();
-    fixture.write_note("notes/dune.md", "# Dune\n\nBody.\n");
-    fixture.write_note("notes/secret.md", "---\nprivate: true\n---\n# S\n");
-
-    let value = json(&reflect_stdin(
-        &fixture,
-        &["append", "Dune", "--stdin", "--json"],
-        "## Notes\n\n- one\n- two\n",
-    ));
-    assert_eq!(value["path"], "notes/dune.md");
-    assert_eq!(value["created"], false);
-    assert_eq!(
-        read(&fixture, "notes/dune.md"),
-        "# Dune\n\nBody.\n\n## Notes\n\n- one\n- two\n"
-    );
-
-    let daily = json(&reflect(
-        &fixture,
-        &["append", "2026-06-11", "First entry", "--json"],
-    ));
-    assert_eq!(daily["created"], true);
-    assert_eq!(daily["date"], "2026-06-11");
-    assert_eq!(read(&fixture, "daily/2026-06-11.md"), "First entry\n");
-
-    let private = reflect(&fixture, &["append", "notes/secret.md", "x"]);
-    assert_eq!(private.status.code(), Some(3));
-    let missing = reflect(&fixture, &["append", "Nope", "x"]);
-    assert_eq!(missing.status.code(), Some(3));
-    let empty = reflect_stdin(&fixture, &["append", "Dune", "--stdin"], "  \n");
-    assert_eq!(empty.status.code(), Some(2));
-
-    let captured = json(&reflect_stdin(
-        &fixture,
-        &["capture", "--stdin", "--to", "Dune", "--json"],
-        "from\nstdin\n",
-    ));
-    assert_eq!(captured["item"], "- from stdin");
-    assert!(read(&fixture, "notes/dune.md").ends_with("- two\n- from stdin\n"));
-}
-
-#[test]
-fn new_with_tags_and_sets_births_a_typed_row() {
-    let fixture = graph();
-    fixture.write_note("templates/book.md", "---\nid: t\n---\nRating: {{title}}\n");
-    fixture.build_index();
-    fixture.insert_tag_type(
-        "book",
-        r#"{"properties":[{"name":"Rating","key":"rating","type":"rating"},{"name":"Added","key":"added","type":"created"}],"template":"templates/book.md"}"#,
-    );
-
-    let value = json(&reflect(
-        &fixture,
-        &[
-            "new",
-            "Left Hand",
-            "--tag",
-            "#book",
-            "--tag",
-            "idea",
-            "--set",
-            "rating=5",
-            "--json",
-        ],
-    ));
-    assert_eq!(value["path"], "notes/left-hand.md");
-    assert_eq!(value["tags"], serde_json::json!(["book", "idea"]));
-    let today = reflect_cli::paths::today_date();
-    assert_eq!(
-        value["properties"],
-        serde_json::json!({"rating": 5, "added": today})
-    );
-    assert_eq!(
-        read(&fixture, "notes/left-hand.md"),
-        format!("---\nrating: 5\nadded: {today}\n---\n# Left Hand\n\nRating: Left Hand\n\n#book\n\n#idea\n")
-    );
-
-    let from_stdin = json(&reflect_stdin(
-        &fixture,
-        &["new", "Plain", "--stdin", "--json"],
-        "Some body.\n",
-    ));
-    assert_eq!(from_stdin["properties"], serde_json::json!({}));
-    assert_eq!(read(&fixture, "notes/plain.md"), "# Plain\n\nSome body.\n");
-
-    let bad = reflect(
-        &fixture,
-        &["new", "Bad", "--tag", "book", "--set", "rating=nine"],
-    );
-    assert_eq!(bad.status.code(), Some(2));
-    assert!(!fixture.root().join("notes/bad.md").exists());
 }
 
 #[test]

@@ -1,6 +1,6 @@
 # Kore working state
 
-**Updated:** 2026-09-05, Plan 30 (CLI agent parity) implemented locally; collections daily loop integrated with `50f69fec`
+**Updated:** 2026-09-06, Plan 30 (CLI agent parity) on PR #175 after review fixes; collections daily loop integrated with `50f69fec`
 (Kore 0.51.0, audit fixes released). Schema edits and rows from the table,
 sort chains, any/all filters, side peek, tag descriptions and daily line to
 note are pending PR #168 integration validation (TDR 0005 Amendments A and B).
@@ -37,12 +37,24 @@ overwrite. Binary stays `reflect`.
   discover → read → write (desktop `skill` tests 6/6), `docs/cli.md` with
   every new shape and the coercion table.
 
-**Validation:** `cargo test -p reflect-cli`: 67 unit + 64 integration green;
-one pre-existing test (`capture_joins_todays_trailing_list`) fails only on
-macOS because it compares a `/var` path against its `/private/var`
-canonical form — unrelated, not touched, green on Linux CI. `cargo fmt
---check` and `cargo clippy -p reflect-cli --all-targets -D warnings` clean.
-No TypeScript changed, so `pnpm check` is unaffected.
+**Independent review (2026-09-06, strict code-quality pass):** three real
+defects found and fixed with regression tests — `set --unset` orphaned the
+items of a zero-indent block sequence (`genres:` / `- a`) and exit 0 because
+the verify step scored "no longer parses" as "key removed"; `set key=value`
+was a hard error on the same shape; `done` toggled task samples inside
+fenced code. Simplifications landed from the same review: the five older
+index-backed commands now use `require_index`; one `Serialize` for
+`PropertyValue` so `collection` and `properties` agree on numbers; tag/schema
+queries live in `schema.rs`; `update_note`/`text_or_stdin` in `write.rs`
+replace three copies of the read-patch-write choreography; `list --kind`
+validated by clap; integration tests split into `tests/common/mod.rs`,
+`tests/cli.rs` (reads) and `tests/writes.rs`.
+
+**Validation:** `cargo test -p reflect-cli`: 70 unit + 60 + 8 integration
+green (the macOS-only `/private/var` comparison in
+`capture_joins_todays_trailing_list` now canonicalizes both sides). `cargo
+fmt --check` and `cargo clippy -p reflect-cli --all-targets -D warnings`
+clean. No TypeScript changed, so `pnpm check` is unaffected.
 
 **Next:** open the PR (title `feat(cli): agent parity — discovery and typed
 writes`), then a live pass with a real agent through the installed skill on

@@ -27,11 +27,12 @@ const GRID_CHUNK = 120
 /**
  * The All Notes masonry view (Plan 28, Craft's register): the same notes as
  * the table, as live-preview cards — each note's actual rendered content at
- * the compact hover-card scale — flowing down CSS columns (cards keep their
- * natural height, columns fill left to right). A reading layout, not a
- * management one — cards open on click (⌘-click in a new window);
- * multi-select and its keyboard shortcuts stay with the table view. CSS
- * columns own the layout, so instead of the table's row virtualizer the grid
+ * the compact hover-card scale. Cards keep their natural height on a
+ * column grid (`auto-fill` so leftover width stays on the right instead of
+ * opening a hole between cards; `masonry` rows where the engine supports
+ * them). A reading layout, not a management one — cards open on click
+ * (⌘-click in a new window); multi-select and its keyboard shortcuts stay
+ * with the table view. Instead of the table's row virtualizer the grid
  * mounts in chunks: a sentinel below the cards reveals the next
  * {@link GRID_CHUNK} as it scrolls into reach — a many-thousand-note graph
  * never mounts every card at once (and each card upgrades from snippet to
@@ -97,7 +98,10 @@ export function AllNotesGrid({
     )
   }
   return (
-    <div className="columns-[17rem] gap-5 px-12 pb-10 pt-2 [column-fill:balance]">
+    <div
+      data-testid="all-notes-grid"
+      className="grid grid-cols-[repeat(auto-fill,minmax(17rem,1fr))] items-start gap-5 px-12 pb-10 pt-2 [grid-template-rows:masonry]"
+    >
       {notes.slice(0, visibleCount).map((note) => {
         const entry = type != null ? entryByPath.get(note.path) : undefined
         return (
@@ -108,13 +112,11 @@ export function AllNotesGrid({
             onClick={(event) => {
               onOpen(note.path, event)
             }}
-            // No shadow or hover lift: box shadows and transforms fragment
-            // across CSS columns in WebKit, painting stray slivers at column
-            // tops — a border tint carries the hover affordance instead. The
-            // sunken surface (not the page's own `surface`) is what draws the
-            // card's outline in dark themes, where the hairline border alone
-            // all but vanished.
-            className="group mb-5 block w-full break-inside-avoid rounded-2xl border border-border bg-surface-sunken p-5 text-left transition-colors duration-150 ease-swift hover:border-border-strong focus-visible:ring-2 focus-visible:ring-focus-ring"
+            // No shadow or hover lift: a border tint carries the hover
+            // affordance. The sunken surface (not the page's own `surface`)
+            // is what draws the card's outline in dark themes, where the
+            // hairline border alone all but vanished.
+            className="group w-full rounded-2xl border border-border bg-surface-sunken p-5 text-left transition-colors duration-150 ease-swift hover:border-border-strong focus-visible:ring-2 focus-visible:ring-focus-ring"
           >
             <div className="flex items-start justify-between gap-2">
               <h2 className="min-w-0 text-sm font-semibold leading-snug text-text">{note.title}</h2>
@@ -147,7 +149,7 @@ export function AllNotesGrid({
           </button>
         )
       })}
-      {hasMore ? <div ref={sentinelRef} aria-hidden className="h-px" /> : null}
+      {hasMore ? <div ref={sentinelRef} aria-hidden className="col-span-full h-px" /> : null}
     </div>
   )
 }

@@ -321,15 +321,12 @@ describe('AllNotesScreen', () => {
     // The tag renders as its own page: the tag is the title and the filter
     // tabs stay behind on the unfiltered view.
     await expect.element(view.getByRole('heading', { name: '#book' })).toBeInTheDocument()
+    expect(view.getByRole('button', { name: 'All notes' }).query()).toBeNull()
     expect(view.getByRole('group', { name: 'Filter by tag' }).query()).toBeNull()
     await expect.element(view.getByText('No notes tagged #book.')).toBeInTheDocument()
     expect(view.getByText('Health Stacked').query()).toBeNull()
-
-    // The breadcrumb walks back to the unfiltered view, pills and all.
-    await view.getByRole('button', { name: 'All notes' }).click()
-    expect(probedRoute(view)).toEqual({ kind: 'allNotes', tag: null })
-    await expect.element(view.getByRole('heading', { name: 'Notes' })).toBeInTheDocument()
-    await expect.element(view.getByRole('button', { name: '#person' })).toBeInTheDocument()
+    await expect.element(view.getByRole('button', { name: 'New note' })).toBeInTheDocument()
+    expect(view.getByRole('button', { name: 'New note' }).element().textContent?.trim()).toBe('')
     await view.unmount()
   })
 
@@ -763,8 +760,19 @@ describe('AllNotesScreen grid view', () => {
     await expect.element(view.getByText('Shop your health goals.')).toBeInTheDocument()
     expect(view.getByText('Updated').query()).toBeNull()
 
-    await view.getByText('Health Stacked').click()
+    await view.getByText('Shop your health goals.').click()
     expect(probedRoute(view)).toEqual({ kind: 'note', path: 'notes/health.md' })
+    await view.unmount()
+  })
+
+  it('aligns the first card in each masonry column to the same top edge', async () => {
+    settingsState.allNotesView = 'grid'
+    const view = await renderScreen()
+
+    await expect.element(view.getByTestId('all-notes-grid')).toBeInTheDocument()
+    const cards = view.getByTestId('all-notes-grid').element().querySelectorAll('button')
+    expect(cards.length).toBeGreaterThanOrEqual(2)
+    expect(cards[0]?.getBoundingClientRect().top).toBe(cards[1]?.getBoundingClientRect().top)
     await view.unmount()
   })
 })

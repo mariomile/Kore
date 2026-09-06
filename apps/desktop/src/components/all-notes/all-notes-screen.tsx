@@ -84,11 +84,11 @@ interface AllNotesScreenProps {
  * unfiltered view, but appear when they match the active tag.
  *
  * A routed tag renders as that tag's own page rather than "All Notes with a
- * filter on": the tag is the title (with an All notes breadcrumb back), the
- * filter tabs stay on the unfiltered view only, and the schema gear sits in
- * the header. Every tag is a collection: a tag with no definition note
- * renders the same table over a zero-property schema, and the header's "+"
- * in their place (TDR 0005) — the entry point that used to hide behind the
+ * filter on": the tag is the title, the filter tabs stay on the unfiltered
+ * view only, and the schema gear sits in the header. Every tag is a
+ * collection: a tag with no definition note renders the same table over a
+ * zero-property schema, and the header's collection tools stay on every
+ * layout (TDR 0005) — the entry point that used to hide behind the
  * sidebar's hover gear.
  *
  * Rows are multi-selectable (V1 parity): click to select (⌘ toggle, Shift
@@ -240,6 +240,16 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
         : applyCollectionFilters(tagType, collection, collectionFilters, filterMatch),
     [collection, tagType, collectionFilters, filterMatch],
   )
+  // Property filters belong to the collection, not the table: the card grid
+  // (and export) read the same filtered set so a filter applied on masonry
+  // actually hides cards.
+  const gridNotes = useMemo(() => {
+    if (notes === undefined || collectionFilters.length === 0 || filteredCollection === undefined) {
+      return notes
+    }
+    const allowed = new Set(filteredCollection.map((entry) => entry.path))
+    return notes.filter((note) => allowed.has(note.path))
+  }, [notes, collectionFilters, filteredCollection])
 
   // The table's row shelves (Plan 29 V1b), computed here — not in the table
   // — so the selection's flat order below reads off the same grouping.
@@ -366,11 +376,7 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
         {tag === null ? (
           <h1 className="app-page-title text-text">Notes</h1>
         ) : (
-          <TagPageTitle
-            tag={tag}
-            onBack={() => handleFilterSelect(null)}
-            onConfigure={() => setEditingSchema(true)}
-          />
+          <TagPageTitle tag={tag} onConfigure={() => setEditingSchema(true)} />
         )}
         <div className="flex flex-wrap items-center gap-3">
           {tag === null ? (
@@ -428,7 +434,7 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
               </SelectContent>
             </Select>
           ) : null}
-          {collectionView && collectionAvailable ? (
+          {collectionAvailable ? (
             <>
               <CollectionFilterMenu
                 type={tagType}
@@ -566,7 +572,7 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
           >
             {view === 'grid' ? (
               <AllNotesGrid
-                notes={notes}
+                notes={gridNotes}
                 tag={tag}
                 type={collectionAvailable ? tagType : null}
                 entries={collectionAvailable ? filteredCollection : undefined}

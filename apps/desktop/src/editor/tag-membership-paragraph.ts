@@ -41,24 +41,24 @@ export function membershipParagraphCss(root: HTMLElement): string {
   const last = root.querySelector(':scope > p:last-child')
   const children = [...root.children]
   const selectors: string[] = []
-  paragraphs.forEach((paragraph) => {
+  for (const paragraph of paragraphs) {
     if (!(paragraph instanceof HTMLElement)) {
-      return
+      continue
     }
     if (!isTagOnlyParagraph(paragraph)) {
-      return
+      continue
     }
     if (paragraph !== lead && paragraph !== first && paragraph !== last) {
-      return
+      continue
     }
     const childIndex = children.indexOf(paragraph) + 1
     if (childIndex === 0) {
-      return
+      continue
     }
     selectors.push(
       `.reflect-editor.reflect-editor-has-properties > :nth-child(${String(childIndex)})`,
     )
-  })
+  }
   if (selectors.length === 0) {
     return ''
   }

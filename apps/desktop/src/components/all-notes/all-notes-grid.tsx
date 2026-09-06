@@ -27,16 +27,17 @@ const GRID_CHUNK = 120
 /**
  * The All Notes masonry view (Plan 28, Craft's register): the same notes as
  * the table, as live-preview cards — each note's actual rendered content at
- * the compact hover-card scale. Cards keep their natural height on a
- * column grid (`auto-fill` so leftover width stays on the right instead of
- * opening a hole between cards; `masonry` rows where the engine supports
- * them). A reading layout, not a management one — cards open on click
- * (⌘-click in a new window); multi-select and its keyboard shortcuts stay
- * with the table view. Instead of the table's row virtualizer the grid
- * mounts in chunks: a sentinel below the cards reveals the next
- * {@link GRID_CHUNK} as it scrolls into reach — a many-thousand-note graph
- * never mounts every card at once (and each card upgrades from snippet to
- * preview only as it nears the viewport).
+ * the compact hover-card scale. On a column grid (`auto-fill` so leftover
+ * width stays on the right instead of opening a hole between cards;
+ * `masonry` rows where the engine supports them). Engines without masonry
+ * stretch every card to the row's tallest neighbor, so a body-less note
+ * fills the cell instead of leaving a hole. A reading layout, not a
+ * management one — cards open on click (⌘-click in a new window);
+ * multi-select and its keyboard shortcuts stay with the table view. Instead
+ * of the table's row virtualizer the grid mounts in chunks: a sentinel
+ * below the cards reveals the next {@link GRID_CHUNK} as it scrolls into
+ * reach — a many-thousand-note graph never mounts every card at once (and
+ * each card upgrades from snippet to preview only as it nears the viewport).
  */
 export function AllNotesGrid({
   notes,
@@ -100,7 +101,7 @@ export function AllNotesGrid({
   return (
     <div
       data-testid="all-notes-grid"
-      className="grid grid-cols-[repeat(auto-fill,minmax(17rem,1fr))] items-start gap-5 px-12 pb-10 pt-2 [grid-template-rows:masonry]"
+      className="grid grid-cols-[repeat(auto-fill,minmax(17rem,1fr))] gap-5 px-12 pb-10 pt-2 [grid-template-rows:masonry]"
     >
       {notes.slice(0, visibleCount).map((note) => {
         const entry = type != null ? entryByPath.get(note.path) : undefined
@@ -115,8 +116,10 @@ export function AllNotesGrid({
             // No shadow or hover lift: a border tint carries the hover
             // affordance. The sunken surface (not the page's own `surface`)
             // is what draws the card's outline in dark themes, where the
-            // hairline border alone all but vanished.
-            className="group w-full rounded-2xl border border-border bg-surface-sunken p-5 text-left transition-colors duration-150 ease-swift hover:border-border-strong focus-visible:ring-2 focus-visible:ring-focus-ring"
+            // hairline border alone all but vanished. `h-full` + column flex
+            // stretch a body-less card to the row so the title and footer
+            // do not sit on a stub with a hole beneath it.
+            className="group flex h-full min-h-64 w-full flex-col rounded-2xl border border-border bg-surface-sunken p-5 text-left transition-colors duration-150 ease-swift hover:border-border-strong focus-visible:ring-2 focus-visible:ring-focus-ring"
           >
             <div className="flex items-start justify-between gap-2">
               <h2 className="min-w-0 text-sm font-semibold leading-snug text-text">{note.title}</h2>
@@ -127,13 +130,15 @@ export function AllNotesGrid({
             {type != null && entry !== undefined ? (
               <CardPropertyChips type={type} entry={entry} />
             ) : null}
-            <NoteCardPreview
-              path={note.path}
-              mtime={note.mtime}
-              snippet={note.snippet}
-              resolveImageUrl={resolvePreviewImageUrl}
-            />
-            <div className="mt-3.5 flex flex-wrap items-center gap-1.5">
+            <div className="min-h-0 flex-1">
+              <NoteCardPreview
+                path={note.path}
+                mtime={note.mtime}
+                snippet={note.snippet}
+                resolveImageUrl={resolvePreviewImageUrl}
+              />
+            </div>
+            <div className="mt-auto flex flex-wrap items-center gap-1.5 pt-3.5">
               {note.tags.slice(0, 3).map((noteTag) => (
                 <span
                   key={noteTag}

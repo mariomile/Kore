@@ -1,17 +1,17 @@
 import type { ReactElement } from 'react'
 
+const KORE_MARK = new URL('./kore-mark.png', import.meta.url).href
+
 /**
  * What the window shows while the graph opens.
  *
  * Boot is short but not instant — the shell resolves the last graph, opens the
- * index, and waits on a first paint — and the word "Loading…" spends that time
- * saying nothing. The wordmark with a slow sheen crossing it says the same
- * thing an app's launch animation always says: it started, it is working, wait
- * a beat. The sheen is a masked gradient over the type rather than an image,
- * so it inherits the theme, needs no asset, and costs one compositor layer.
+ * index, and waits on a first paint. The gem mark (no app-icon squircle) sits
+ * at splash scale with a slow breathe so the wait reads as "started, working"
+ * rather than a blank frame. Light themes invert the grayscale artwork so the
+ * same asset stays a mark, not a white blob on paper.
  *
- * `prefers-reduced-motion` stops the sweep app-wide (styles/index.css), which
- * leaves the wordmark sitting still — still the right thing to show.
+ * `prefers-reduced-motion` stops the breathe app-wide (styles/index.css).
  */
 export function AppBootScreen(): ReactElement {
   return (
@@ -20,8 +20,8 @@ export function AppBootScreen(): ReactElement {
       aria-label="Opening your graph"
       className="flex h-screen w-screen items-center justify-center bg-surface-app"
     >
-      <span aria-hidden className="reflect-boot-mark text-2xl font-semibold tracking-tight">
-        Kore
+      <span aria-hidden className="reflect-boot-mark">
+        <img src={KORE_MARK} alt="" className="h-24 w-auto invert dark:invert-0" />
       </span>
     </div>
   )

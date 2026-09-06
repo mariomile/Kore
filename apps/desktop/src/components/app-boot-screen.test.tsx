@@ -9,15 +9,13 @@ describe('AppBootScreen', () => {
     await expect.element(view.getByRole('status', { name: 'Opening your graph' })).toBeVisible()
   })
 
-  it('paints the wordmark through the sheen, not as plain text', async () => {
-    await render(<AppBootScreen />)
+  it('paints the gem mark at splash scale, not the boxed app icon', async () => {
+    const view = await render(<AppBootScreen />)
 
-    const mark = document.querySelector('.reflect-boot-mark')
-    expect(mark?.textContent).toBe('Kore')
-    // The sheen clips a gradient to the glyphs; a solid color here would mean
-    // the animation is painting nothing. Both spellings are declared, and the
-    // two engines resolve different ones, so either satisfies this.
-    const style = getComputedStyle(mark!)
-    expect([style.backgroundClip, style.webkitBackgroundClip]).toContain('text')
+    const mark = view.getByRole('status', { name: 'Opening your graph' }).element()
+    const img = mark.querySelector('img')
+    expect(img).not.toBeNull()
+    expect(img?.getAttribute('src') ?? '').toContain('kore-mark')
+    expect(img?.className).toContain('h-24')
   })
 })

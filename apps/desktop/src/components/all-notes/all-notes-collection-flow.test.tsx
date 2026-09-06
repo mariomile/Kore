@@ -305,7 +305,9 @@ describe('Collection flow (fake bridge, no module mocks below the hooks)', () =>
     settingsState.allNotesView = 'grid'
     const view = await render(<Screen />)
 
-    await expect.element(view.getByRole('button', { name: 'Filter by property' })).toBeInTheDocument()
+    await expect
+      .element(view.getByRole('button', { name: 'Filter by property' }))
+      .toBeInTheDocument()
     await expect.element(view.getByRole('button', { name: 'Saved views' })).toBeInTheDocument()
     await expect
       .element(view.getByRole('button', { name: 'Import CSV into the collection' }))

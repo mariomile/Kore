@@ -503,8 +503,8 @@ the header on every layout — not only the table — and New note is a round
 where the engine supports them) so leftover width stays on the right instead
 of opening a gap between cards. Column visibility stays table-only.
 
-**Validation:** pending targeted all-notes screen + collection-flow tests and
-`pnpm check`.
+**Validation:** all-notes screen + collection-flow 38/38 on Chromium and
+WebKit; `pnpm check` exit 0.
 
 ## Next step
 
@@ -531,7 +531,9 @@ of opening a gap between cards. Column visibility stays table-only.
 
 - 2026-09-06 — Collection tag-page chrome: `#tag` heading only, collection
   tools on every layout, header New note as `+`, masonry cards on an
-  `auto-fill` grid so leftover width does not gap between cards.
+  `auto-fill` grid so leftover width does not gap between cards. Verified:
+  all-notes screen + collection-flow 38/38 chromium and webkit, `pnpm check`
+  exit 0.
 - 2026-09-04 — Collections daily loop, three slices on one branch
   (schema edits and rows from the table; tag page description + daily
   line to note; sort chains, any/all, side peek). TDR 0005 Amendment B.

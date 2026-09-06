@@ -23,6 +23,10 @@ vi.mock('@/hooks/use-bridge-ready', () => ({ useBridgeReady: () => true }))
 vi.mock('@/lib/tags/use-commit-note-property', () => ({
   useCommitNoteProperty: () => commitProperty,
 }))
+const removeTag = vi.hoisted(() => vi.fn())
+vi.mock('@/lib/tags/use-remove-note-tag', () => ({
+  useRemoveNoteTag: () => removeTag,
+}))
 vi.mock('@/lib/tags/use-open-relation', () => ({ useOpenRelation: () => vi.fn() }))
 
 function Subject(): ReactElement {
@@ -37,6 +41,7 @@ beforeEach(() => {
   data.tagTypes = []
   data.values = {}
   commitProperty.mockClear()
+  removeTag.mockClear()
 })
 
 describe('NotePropertiesHeader', () => {
@@ -69,5 +74,29 @@ describe('NotePropertiesHeader', () => {
 
     await view.getByRole('checkbox', { name: 'Read' }).click()
     expect(commitProperty).toHaveBeenCalledWith('notes/dispossessed.md', 'read', true)
+  })
+
+  it('lists Type chips for each typed tag and unsets one on remove', async () => {
+    data.tagTypes = [
+      {
+        tagKey: 'project',
+        notePath: 'tags/project.md',
+        type: { properties: [{ name: 'Status', key: 'status', type: 'select', options: ['to do'] }] },
+      },
+      {
+        tagKey: 'person',
+        notePath: 'tags/person.md',
+        type: { properties: [{ name: 'Company', key: 'company', type: 'text' }] },
+      },
+    ]
+    const view = await render(<Subject />)
+
+    const header = view.getByRole('region', { name: 'Properties' })
+    await expect.element(header.getByText('Type')).toBeInTheDocument()
+    await expect.element(header.getByText('#project')).toBeInTheDocument()
+    await expect.element(header.getByText('#person')).toBeInTheDocument()
+
+    await view.getByRole('button', { name: 'Remove #project' }).click()
+    expect(removeTag).toHaveBeenCalledWith('notes/dispossessed.md', 'project')
   })
 })

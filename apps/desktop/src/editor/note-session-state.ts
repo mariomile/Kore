@@ -474,6 +474,7 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
     updateFrontmatter,
     commitFrontmatter,
     ...taskCommits,
+    commitBodyTransform: commitBodyEdit,
     dispose,
     discard,
   }

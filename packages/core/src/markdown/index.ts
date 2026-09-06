@@ -68,7 +68,7 @@ export {
   type NoteIcon,
 } from './note-appearance'
 export { parseNote, isTagName, hasAuthoredTitle } from './extract'
-export { appendBodyTag, bodyHasTag } from './body-tag'
+export { appendBodyTag, bodyHasTag, removeBodyTag } from './body-tag'
 export {
   applyReplaceMatches,
   findReplaceMatches,

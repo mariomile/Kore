@@ -50,3 +50,47 @@ export function appendBodyTag(source: string, tag: string): string | null {
   const nextBody = trimmed === '' ? `#${tag}\n` : `${trimmed}\n\n#${tag}\n`
   return raw === null ? nextBody : `---\n${raw}\n---\n${nextBody}`
 }
+
+/**
+ * `source` with every `#tag` token the indexer would extract removed, or
+ * `null` when the note does not carry the tag — same null-vs-write contract
+ * as {@link appendBodyTag}. Inline mentions and trailing membership lines
+ * are the same fact (the hashtag is the supertag), so unsetting Type has
+ * to clear every occurrence or the note would stay in the collection.
+ *
+ * Surrounding whitespace of each token is consumed with it so "Reading
+ * #book tonight" becomes "Reading tonight", not a doubled space; leftover
+ * blank runs at the start, end, or between paragraphs collapse.
+ */
+export function removeBodyTag(source: string, tag: string): string | null {
+  const { raw, body } = splitFrontmatter(source)
+  const wanted = foldTag(tag)
+  if (!bodyHasTag(body, wanted)) {
+    return null
+  }
+  let nextBody = ''
+  let cursor = 0
+  for (const match of body.matchAll(TAG_ANYWHERE)) {
+    const name = match[1]!
+    const index = match.index ?? 0
+    if (foldTag(name) !== wanted) {
+      continue
+    }
+    nextBody += body.slice(cursor, index)
+    cursor = index + match[0].length
+    if (match[0].startsWith('#') && body[cursor] === ' ') {
+      cursor += 1
+    }
+  }
+  nextBody += body.slice(cursor)
+  nextBody = nextBody.replaceAll(/[ \t]+\n/g, '\n').replace(/^\n+/, '').replaceAll(/\n{3,}/g, '\n\n')
+  if (nextBody.trim() === '') {
+    nextBody = ''
+  } else {
+    nextBody = nextBody.replace(/\n+$/, '\n')
+    if (!nextBody.endsWith('\n')) {
+      nextBody += '\n'
+    }
+  }
+  return raw === null ? nextBody : `---\n${raw}\n---\n${nextBody}`
+}

@@ -64,6 +64,7 @@ export {
   appendBodyTag,
   applyReplaceMatches,
   bodyHasTag,
+  removeBodyTag,
   findReplaceMatches,
   appendTaskLine,
   appendTaskToContext,

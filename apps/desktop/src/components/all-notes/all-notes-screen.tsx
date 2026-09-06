@@ -9,16 +9,7 @@ import {
   listNoteTags,
   type TagPropertyType,
 } from '@reflect/core'
-import {
-  Calendar,
-  Check,
-  Download,
-  LayoutGrid,
-  LayoutTemplate,
-  Layers,
-  List,
-  Sliders,
-} from '@/components/icons'
+import { Check, LayoutGrid, List, Sliders } from '@/components/icons'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { TagConfigDialog } from '@/components/tags/tag-config-dialog'
 import { toast } from '@/components/ui/toast'
@@ -58,10 +49,9 @@ import {
 } from '@/components/ui/select'
 import { CollectionBoard, tableGroupRows } from './collection-board'
 import { CollectionCalendar } from './collection-calendar'
-import { CollectionViewsMenu } from './collection-views-menu'
-import { runCollectionExport } from './collection-export'
-import { CollectionImportButton } from './collection-import'
+import { CollectionOptionsMenu } from './collection-options-menu'
 import { CollectionTable } from './collection-table'
+import { CollectionViewTabs } from './collection-view-tabs'
 import { NoteListContextMenu } from '@/components/notes/note-context-menu'
 import { NoteTrashDialog } from '@/components/notes/note-trash-dialog'
 import { ScrollVeil } from '@/components/scroll-veil'
@@ -87,9 +77,10 @@ interface AllNotesScreenProps {
  * filter on": the tag is the title, the filter tabs stay on the unfiltered
  * view only, and the schema gear sits in the header. Every tag is a
  * collection: a tag with no definition note renders the same table over a
- * zero-property schema, and the header's collection tools stay on every
- * layout (TDR 0005) — the entry point that used to hide behind the
- * sidebar's hover gear.
+ * zero-property schema. Collection tools live on a Notion-style view bar
+ * (tabs + filter / columns / options) under the title on every layout
+ * (TDR 0005) — the entry point that used to hide behind the sidebar's
+ * hover gear.
  *
  * Rows are multi-selectable (V1 parity): click to select (⌘ toggle, Shift
  * range), the indicator gutter toggles, the subject or a double-click opens.
@@ -261,13 +252,15 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
     [view, tableGroupProperty, filteredCollection],
   )
 
-  // Saved views: named bundles of mode + sort + grouping + filters, per tag.
-  const { savedViews, saveCurrentView, deleteSavedView, applySavedView } = useCollectionSavedViews({
+  // Named collection tabs (TDR 0005): each is a mode + sort + grouping +
+  // filter bundle. An empty list is one synthetic Table (or the live layout).
+  const { tabs, activeViewId, applySavedView, addView, deleteSavedView } = useCollectionSavedViews({
     tagKey,
     view,
     collectionSorts,
     boardGroupProperty,
     tableGroupProperty,
+    calendarAvailable,
     collectionFilters,
     filterMatch,
     setViewMode,
@@ -378,160 +371,20 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
         ) : (
           <TagPageTitle tag={tag} onConfigure={() => setEditingSchema(true)} />
         )}
-        <div className="flex flex-wrap items-center gap-3">
-          {tag === null ? (
+        {tag === null ? (
+          <div className="flex flex-wrap items-center gap-3">
             <AllNotesFilters tag={tag} facets={facets ?? []} onSelect={handleFilterSelect} />
-          ) : null}
-          {view === 'table' && tableGroupProperties.length > 0 ? (
-            <Select
-              value={tableGroupProperty?.key ?? '__none'}
-              items={{
-                __none: 'No grouping',
-                ...Object.fromEntries(
-                  tableGroupProperties.map((property) => [property.key, property.name]),
-                ),
-              }}
-              onValueChange={(value) => {
-                if (typeof value === 'string' && value !== '') {
-                  setTableGroup(value === '__none' ? null : value)
-                }
-              }}
+            <div
+              role="group"
+              aria-label="Layout"
+              className="flex items-center gap-0.5 rounded-full bg-surface-hover p-0.5"
             >
-              <SelectTrigger aria-label="Group by" data-size="sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none">No grouping</SelectItem>
-                {tableGroupProperties.map((property) => (
-                  <SelectItem key={property.key} value={property.key}>
-                    {property.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : null}
-          {view === 'board' && boardProperties.length > 1 ? (
-            <Select
-              value={boardGroupProperty?.key ?? ''}
-              items={Object.fromEntries(
-                boardProperties.map((property) => [property.key, property.name]),
-              )}
-              onValueChange={(value) => {
-                if (typeof value === 'string' && value !== '') {
-                  setCollectionGroup(value)
-                }
-              }}
-            >
-              <SelectTrigger aria-label="Group by" data-size="sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {boardProperties.map((property) => (
-                  <SelectItem key={property.key} value={property.key}>
-                    {property.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : null}
-          {collectionAvailable ? (
-            <>
-              <CollectionFilterMenu
-                type={tagType}
-                entries={collection}
-                filters={collectionFilters}
-                onChange={setCollectionFilters}
-                match={filterMatch}
-                onMatchChange={setFilterMatch}
-              />
-              <CollectionViewsMenu
-                views={savedViews}
-                onApply={applySavedView}
-                onSave={saveCurrentView}
-                onDelete={deleteSavedView}
-              />
-              {view === 'table' && tagType.properties.length > 0 ? (
-                <Popover>
-                  <PopoverTrigger
-                    aria-label="Columns"
-                    title="Show or hide columns"
-                    className="app-icon-button text-text-muted hover:text-text"
-                  >
-                    <Sliders aria-hidden className="size-3.5" />
-                  </PopoverTrigger>
-                  <PopoverContent align="end" sideOffset={4} className="w-56 p-1">
-                    {tagType.properties.map((property) => {
-                      const hidden = hiddenColumns.has(property.key)
-                      return (
-                        <button
-                          key={property.key}
-                          type="button"
-                          role="menuitemcheckbox"
-                          aria-checked={!hidden}
-                          onClick={() => toggleColumnHidden(property.key)}
-                          className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-surface-hover"
-                        >
-                          <Check
-                            aria-hidden
-                            className={cn(
-                              'size-3.5 shrink-0',
-                              hidden ? 'opacity-0' : 'opacity-100',
-                            )}
-                          />
-                          <span className="min-w-0 flex-1 truncate text-left">{property.name}</span>
-                        </button>
-                      )
-                    })}
-                  </PopoverContent>
-                </Popover>
-              ) : null}
-              {tag !== null ? <CollectionImportButton tag={tag} type={tagType} /> : null}
-              <button
-                type="button"
-                aria-label="Export collection as CSV"
-                title="Export CSV"
-                onClick={() => {
-                  void runCollectionExport(tag, tagType, filteredCollection ?? [])
-                }}
-                className="app-icon-button text-text-muted hover:text-text"
-              >
-                <Download aria-hidden className="size-3.5" />
-              </button>
-            </>
-          ) : null}
-          <div
-            role="group"
-            aria-label="Layout"
-            className="flex items-center gap-0.5 rounded-full bg-surface-hover p-0.5"
-          >
-            {(
-              [
-                // On a tag route the collection table IS the page's table
-                // (see use-collection-view-settings), so the plain list view
-                // is not offered beside it.
-                { mode: 'list', label: 'List view', Glyph: List, available: !collectionAvailable },
-                { mode: 'grid', label: 'Grid view', Glyph: LayoutGrid, available: true },
-                {
-                  mode: 'table',
-                  label: 'Collection view',
-                  Glyph: Layers,
-                  available: collectionAvailable,
-                },
-                {
-                  mode: 'board',
-                  label: 'Board view',
-                  Glyph: LayoutTemplate,
-                  available: boardAvailable,
-                },
-                {
-                  mode: 'calendar',
-                  label: 'Calendar view',
-                  Glyph: Calendar,
-                  available: calendarAvailable,
-                },
-              ] as const
-            ).map(({ mode, label, Glyph, available }) =>
-              available ? (
+              {(
+                [
+                  { mode: 'list', label: 'List view', Glyph: List },
+                  { mode: 'grid', label: 'Grid view', Glyph: LayoutGrid },
+                ] as const
+              ).map(({ mode, label, Glyph }) => (
                 <button
                   key={mode}
                   type="button"
@@ -548,13 +401,126 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
                 >
                   <Glyph aria-hidden className="size-3.5" />
                 </button>
-              ) : null,
-            )}
+              ))}
+            </div>
+            <NewNoteButton tag={tag} />
           </div>
-          <NewNoteButton tag={tag} />
-        </div>
+        ) : null}
       </header>
       <TagPageDescription tag={tag} />
+      {collectionAvailable && tag !== null ? (
+        <div className="flex flex-none flex-wrap items-center justify-between gap-3 pb-3 pl-12 pr-7">
+          <CollectionViewTabs
+            tabs={tabs}
+            activeViewId={activeViewId}
+            boardAvailable={boardAvailable}
+            calendarAvailable={calendarAvailable}
+            onSelect={(tab) => {
+              if (tab.id !== activeViewId) {
+                applySavedView(tab)
+              }
+            }}
+            onAdd={addView}
+            onDelete={deleteSavedView}
+          />
+          <div className="flex flex-wrap items-center gap-3">
+            {view === 'table' && tableGroupProperties.length > 0 ? (
+              <Select
+                value={tableGroupProperty?.key ?? '__none'}
+                items={{
+                  __none: 'No grouping',
+                  ...Object.fromEntries(
+                    tableGroupProperties.map((property) => [property.key, property.name]),
+                  ),
+                }}
+                onValueChange={(value) => {
+                  if (typeof value === 'string' && value !== '') {
+                    setTableGroup(value === '__none' ? null : value)
+                  }
+                }}
+              >
+                <SelectTrigger aria-label="Group by" data-size="sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none">No grouping</SelectItem>
+                  {tableGroupProperties.map((property) => (
+                    <SelectItem key={property.key} value={property.key}>
+                      {property.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : null}
+            {view === 'board' && boardProperties.length > 1 ? (
+              <Select
+                value={boardGroupProperty?.key ?? ''}
+                items={Object.fromEntries(
+                  boardProperties.map((property) => [property.key, property.name]),
+                )}
+                onValueChange={(value) => {
+                  if (typeof value === 'string' && value !== '') {
+                    setCollectionGroup(value)
+                  }
+                }}
+              >
+                <SelectTrigger aria-label="Group by" data-size="sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {boardProperties.map((property) => (
+                    <SelectItem key={property.key} value={property.key}>
+                      {property.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : null}
+            <CollectionFilterMenu
+              type={tagType}
+              entries={collection}
+              filters={collectionFilters}
+              onChange={setCollectionFilters}
+              match={filterMatch}
+              onMatchChange={setFilterMatch}
+            />
+            {view === 'table' && tagType.properties.length > 0 ? (
+              <Popover>
+                <PopoverTrigger
+                  aria-label="Columns"
+                  title="Show or hide columns"
+                  className="app-icon-button text-text-muted hover:text-text"
+                >
+                  <Sliders aria-hidden className="size-3.5" />
+                </PopoverTrigger>
+                <PopoverContent align="end" sideOffset={4} className="w-56 p-1">
+                  {tagType.properties.map((property) => {
+                    const hidden = hiddenColumns.has(property.key)
+                    return (
+                      <button
+                        key={property.key}
+                        type="button"
+                        role="menuitemcheckbox"
+                        aria-checked={!hidden}
+                        onClick={() => toggleColumnHidden(property.key)}
+                        className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-surface-hover"
+                      >
+                        <Check
+                          aria-hidden
+                          className={cn('size-3.5 shrink-0', hidden ? 'opacity-0' : 'opacity-100')}
+                        />
+                        <span className="min-w-0 flex-1 truncate text-left">{property.name}</span>
+                      </button>
+                    )
+                  })}
+                </PopoverContent>
+              </Popover>
+            ) : null}
+            <CollectionOptionsMenu tag={tag} type={tagType} entries={filteredCollection ?? []} />
+            <NewNoteButton tag={tag} />
+          </div>
+        </div>
+      ) : null}
       {/* One context menu for the whole list — rows and cards carry
           data-note-path; the menu resolves the note from the click. It wraps
           the scroll container from OUTSIDE: its wrappers are display:contents,

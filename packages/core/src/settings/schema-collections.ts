@@ -32,13 +32,29 @@ export const allNotesViewSchema = allNotesViewValueSchema.catch('list')
 export type AllNotesView = z.infer<typeof allNotesViewSchema>
 
 /**
- * The collection view an All Notes view persists as: the note-centric list
- * and grid lenses collapse to the table; the collection lenses keep their
- * identity. The one mapping shared by saved views and their menu labels —
- * never re-spell it as a ternary.
+ * Layouts a collection page can persist as a named view (the tag-page tabs).
+ * Wider than {@link COLLECTION_EMBED_VIEWS}: the masonry grid is a page
+ * lens, not something a ` ```collection ` fence asks for.
+ */
+export const COLLECTION_PAGE_VIEWS = ['table', 'board', 'calendar', 'grid'] as const
+
+export type CollectionPageView = (typeof COLLECTION_PAGE_VIEWS)[number]
+
+/**
+ * The collection view an All Notes view persists as in an embed fence: the
+ * note-centric list and grid lenses collapse to the table; the collection
+ * lenses keep their identity.
  */
 export function collectionViewForAllNotesView(view: AllNotesView): CollectionEmbedView {
   return view === 'list' || view === 'grid' ? 'table' : view
+}
+
+/**
+ * The collection page tab an All Notes view persists as: list collapses to
+ * the table (a tag page has no separate list); grid stays grid.
+ */
+export function collectionPageViewForAllNotesView(view: AllNotesView): CollectionPageView {
+  return view === 'list' ? 'table' : view
 }
 
 /** One Collection's persisted sort: the property key and direction. */
@@ -121,7 +137,7 @@ export const savedCollectionViewSchema = z.preprocess(
   z.object({
     id: z.string().min(1),
     name: z.string().min(1),
-    view: z.enum(COLLECTION_EMBED_VIEWS),
+    view: z.enum(COLLECTION_PAGE_VIEWS),
     /** The sort chain; pre-chain saves carried one `sort` object or null. */
     sorts: collectionSortChainSchema.catch([]),
     group: z.string().nullable().catch(null),
@@ -146,6 +162,26 @@ export const savedCollectionViewSchema = z.preprocess(
   }),
 )
 export type SavedCollectionView = z.infer<typeof savedCollectionViewSchema>
+
+/**
+ * Which named collection view is selected, per folded tag key. Absent means
+ * the first saved view (or the synthetic live table when none are saved).
+ * Same per-entry resilience as {@link collectionViewModesSchema}.
+ */
+export const collectionActiveViewIdSchema = z
+  .record(z.string(), z.unknown())
+  .catch({})
+  .transform((entries) => {
+    const ids: Record<string, string> = {}
+    for (const [tagKey, value] of Object.entries(entries)) {
+      if (typeof value === 'string' && value !== '') {
+        ids[tagKey] = value
+      }
+    }
+    return ids
+  })
+
+export type CollectionActiveViewId = Record<string, string>
 
 /** Saved views per folded tag key, per-entry resilient at both levels. */
 export const collectionSavedViewsSchema = z

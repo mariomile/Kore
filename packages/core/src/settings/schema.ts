@@ -31,6 +31,7 @@ import {
 import {
   allNotesFilterTagsSchema,
   allNotesViewSchema,
+  collectionActiveViewIdSchema,
   collectionColumnsSchema,
   collectionGroupsSchema,
   collectionTableGroupsSchema,
@@ -479,6 +480,7 @@ const settingsDocumentSchema = z.looseObject({
   collectionColumns: collectionColumnsSchema,
   collectionViewModes: collectionViewModesSchema,
   collectionSavedViews: collectionSavedViewsSchema,
+  collectionActiveViewId: collectionActiveViewIdSchema,
   taskFilters: taskFiltersSchema,
   taskReminders: taskRemindersSchema,
   quickCaptureEnabled: quickCaptureEnabledSchema,

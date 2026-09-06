@@ -78,6 +78,7 @@ describe('settingsSchema', () => {
       collectionColumns: {},
       collectionViewModes: {},
       collectionSavedViews: {},
+      collectionActiveViewId: {},
     })
     expect(DEFAULT_SETTINGS.editorMarkdownSyntax).toBe('hide')
     expect(DEFAULT_SETTINGS.editorSpellCheck).toBe(true)
@@ -427,6 +428,7 @@ describe('settingsSchema', () => {
       collectionColumns: {},
       collectionViewModes: {},
       collectionSavedViews: {},
+      collectionActiveViewId: {},
       futureKey: true,
     })
   })
@@ -448,6 +450,38 @@ describe('settingsSchema', () => {
         },
       })
       expect(parsed.collectionSavedViews['book']?.[0]?.tableGroup).toBeNull()
+    })
+
+    it('accepts grid as a saved collection page view', () => {
+      const parsed = settingsSchema.parse({
+        collectionSavedViews: {
+          book: [{ id: 'v1', name: 'Cards', view: 'grid', sorts: [], group: null, filters: [] }],
+        },
+      })
+      expect(parsed.collectionSavedViews['book']?.[0]?.view).toBe('grid')
+    })
+  })
+
+  describe('collectionActiveViewId', () => {
+    it('passes valid tag-to-id entries through', () => {
+      expect(
+        settingsSchema.parse({ collectionActiveViewId: { book: 'v1', task: 'v2' } })
+          .collectionActiveViewId,
+      ).toEqual({ book: 'v1', task: 'v2' })
+    })
+
+    it('drops a corrupt entry without losing the rest', () => {
+      const parsed = settingsSchema.parse({
+        collectionActiveViewId: { book: 'v1', task: '', other: 42 },
+      })
+      expect(parsed.collectionActiveViewId).toEqual({ book: 'v1' })
+    })
+
+    it('degrades a missing or non-object value to the empty record', () => {
+      expect(settingsSchema.parse({}).collectionActiveViewId).toEqual({})
+      expect(settingsSchema.parse({ collectionActiveViewId: 'v1' }).collectionActiveViewId).toEqual(
+        {},
+      )
     })
   })
 

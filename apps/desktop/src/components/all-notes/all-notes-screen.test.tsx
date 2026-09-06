@@ -45,6 +45,7 @@ vi.mock('@/providers/settings-provider', () => ({
       collectionColumns: {},
       collectionViewModes: {},
       collectionSavedViews: {},
+      collectionActiveViewId: {},
       allNotesView: settingsState.allNotesView,
       uiDensity: 'default',
     },

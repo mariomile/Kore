@@ -18,10 +18,16 @@ import { AllNotesScreen } from './all-notes-screen'
 const settingsState = vi.hoisted(
   (): {
     allNotesView: 'list' | 'table' | 'board' | 'grid'
+    collectionViewModes: Record<string, 'list' | 'table' | 'board' | 'grid'>
     collectionGroups: Record<string, string>
+    collectionSavedViews: Record<string, unknown[]>
+    collectionActiveViewId: Record<string, string>
   } => ({
-    allNotesView: 'table',
+    allNotesView: 'list',
+    collectionViewModes: {},
     collectionGroups: {},
+    collectionSavedViews: {},
+    collectionActiveViewId: {},
   }),
 )
 const updateSettings = vi.hoisted(() => vi.fn())
@@ -45,8 +51,9 @@ vi.mock('@/providers/settings-provider', () => ({
       collectionGroups: settingsState.collectionGroups,
       collectionTableGroups: {},
       collectionColumns: {},
-      collectionViewModes: {},
-      collectionSavedViews: {},
+      collectionViewModes: settingsState.collectionViewModes,
+      collectionSavedViews: settingsState.collectionSavedViews,
+      collectionActiveViewId: settingsState.collectionActiveViewId,
       allNotesView: settingsState.allNotesView,
       uiDensity: 'default',
     },
@@ -106,8 +113,11 @@ const mockInvoke = vi.fn<(command: string, args: Record<string, unknown>) => Pro
 setBridge({ invoke: mockInvoke, listen: async () => () => {} })
 
 beforeEach(() => {
-  settingsState.allNotesView = 'table'
+  settingsState.allNotesView = 'list'
+  settingsState.collectionViewModes = {}
   settingsState.collectionGroups = {}
+  settingsState.collectionSavedViews = {}
+  settingsState.collectionActiveViewId = {}
   updateSettings.mockReset()
   updateSettingsWith.mockReset()
   mockInvoke.mockReset()
@@ -159,27 +169,63 @@ function Screen(): ReactElement {
 }
 
 describe('Collection flow (fake bridge, no module mocks below the hooks)', () => {
-  it('offers the Collection and Board toggles, persisting the view per tag', async () => {
+  it('defaults to the table tab and adds a board view from the plus menu', async () => {
     settingsState.allNotesView = 'list'
     const view = await render(<Screen />)
 
-    // The schema has a select property, so both typed views are offered; on
-    // a tag route the choice lands in collectionViewModes, not the global.
-    await view.getByRole('button', { name: 'Collection view' }).click()
-    const tableUpdater = updateSettingsWith.mock.calls.at(-1)?.[0] as (current: {
-      collectionViewModes: Record<string, string>
-    }) => unknown
-    expect(tableUpdater({ collectionViewModes: {} })).toEqual({
-      collectionViewModes: { book: 'table' },
+    await expect.element(view.getByRole('tab', { name: 'Table' })).toBeInTheDocument()
+    expect(view.getByRole('button', { name: 'Collection view' }).query()).toBeNull()
+    expect(view.getByRole('button', { name: 'Board view' }).query()).toBeNull()
+
+    await view.getByRole('button', { name: 'Add a view' }).click()
+    await view.getByRole('menuitem', { name: 'Board' }).click()
+
+    type ViewModesState = { collectionViewModes: Record<string, string> }
+    const boardMode = updateSettingsWith.mock.calls.find((call) => {
+      const updater = call[0] as ((current: ViewModesState) => Partial<ViewModesState>) | undefined
+      if (typeof updater !== 'function') {
+        return false
+      }
+      return updater({ collectionViewModes: {} }).collectionViewModes?.['book'] === 'board'
     })
-    await view.getByRole('button', { name: 'Board view' }).click()
-    const boardUpdater = updateSettingsWith.mock.calls.at(-1)?.[0] as (current: {
-      collectionViewModes: Record<string, string>
-    }) => unknown
-    expect(boardUpdater({ collectionViewModes: {} })).toEqual({
-      collectionViewModes: { book: 'board' },
-    })
+    expect(boardMode).toBeDefined()
     expect(updateSettings).not.toHaveBeenCalled()
+    await view.unmount()
+  })
+
+  it('surfaces already-saved views as tabs and selects the stored active id', async () => {
+    settingsState.collectionSavedViews = {
+      book: [
+        {
+          id: 'v1',
+          name: 'Queue',
+          view: 'table',
+          sorts: [],
+          group: null,
+          tableGroup: null,
+          match: 'all',
+          filters: [],
+        },
+        {
+          id: 'v2',
+          name: 'Kanban',
+          view: 'board',
+          sorts: [],
+          group: 'status',
+          tableGroup: null,
+          match: 'all',
+          filters: [],
+        },
+      ],
+    }
+    settingsState.collectionActiveViewId = { book: 'v2' }
+    settingsState.collectionViewModes = { book: 'board' }
+    const view = await render(<Screen />)
+
+    await expect.element(view.getByRole('tab', { name: 'Queue' })).toBeInTheDocument()
+    await expect
+      .element(view.getByRole('tab', { name: 'Kanban', selected: true }))
+      .toBeInTheDocument()
     await view.unmount()
   })
 
@@ -191,6 +237,7 @@ describe('Collection flow (fake bridge, no module mocks below the hooks)', () =>
 
     await expect.element(view.getByRole('button', { name: 'Sort by Author' })).toBeInTheDocument()
     expect(view.getByRole('button', { name: 'List view' }).query()).toBeNull()
+    await expect.element(view.getByRole('tab', { name: 'Table' })).toBeInTheDocument()
     await view.unmount()
   })
 
@@ -243,7 +290,7 @@ describe('Collection flow (fake bridge, no module mocks below the hooks)', () =>
   })
 
   it('regroups the board by the persisted Group-by choice', async () => {
-    settingsState.allNotesView = 'board'
+    settingsState.collectionViewModes = { book: 'board' }
     settingsState.collectionGroups = { book: 'priority' }
     const view = await render(<Screen />)
 
@@ -258,7 +305,7 @@ describe('Collection flow (fake bridge, no module mocks below the hooks)', () =>
   })
 
   it('picking a Group-by property persists the per-tag choice', async () => {
-    settingsState.allNotesView = 'board'
+    settingsState.collectionViewModes = { book: 'board' }
     const view = await render(<Screen />)
     await expect
       .element(view.getByRole('region', { name: 'to-read', exact: true }))
@@ -278,7 +325,7 @@ describe('Collection flow (fake bridge, no module mocks below the hooks)', () =>
   })
 
   it('groups the same rows into board lanes and writes a status change', async () => {
-    settingsState.allNotesView = 'board'
+    settingsState.collectionViewModes = { book: 'board' }
     const view = await render(<Screen />)
 
     await expect
@@ -301,23 +348,31 @@ describe('Collection flow (fake bridge, no module mocks below the hooks)', () =>
     await view.unmount()
   })
 
-  it('keeps collection tools in the header on the card grid', async () => {
-    settingsState.allNotesView = 'grid'
+  it('keeps collection tools on the view bar of the card grid', async () => {
+    settingsState.collectionViewModes = { book: 'grid' }
     const view = await render(<Screen />)
 
     await expect
       .element(view.getByRole('button', { name: 'Filter by property' }))
       .toBeInTheDocument()
-    await expect.element(view.getByRole('button', { name: 'Saved views' })).toBeInTheDocument()
+    await expect.element(view.getByRole('tab', { name: 'Grid' })).toBeInTheDocument()
+    expect(view.getByRole('button', { name: 'Saved views' }).query()).toBeNull()
     await expect
-      .element(view.getByRole('button', { name: 'Import CSV into the collection' }))
+      .element(view.getByRole('button', { name: 'Collection options' }))
       .toBeInTheDocument()
-    await expect
-      .element(view.getByRole('button', { name: 'Export collection as CSV' }))
-      .toBeInTheDocument()
+    expect(view.getByRole('button', { name: 'Import CSV into the collection' }).query()).toBeNull()
+    expect(view.getByRole('button', { name: 'Export collection as CSV' }).query()).toBeNull()
     expect(view.getByRole('button', { name: 'Columns' }).query()).toBeNull()
     await expect.element(view.getByRole('heading', { name: '#book' })).toBeInTheDocument()
     expect(view.getByRole('button', { name: 'All notes' }).query()).toBeNull()
+    await view.unmount()
+  })
+
+  it('tucks import and export behind the collection options menu', async () => {
+    const view = await render(<Screen />)
+    await view.getByRole('button', { name: 'Collection options' }).click()
+    await expect.element(view.getByRole('menuitem', { name: 'Import CSV' })).toBeInTheDocument()
+    await expect.element(view.getByRole('menuitem', { name: 'Export CSV' })).toBeInTheDocument()
     await view.unmount()
   })
 })

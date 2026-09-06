@@ -51,6 +51,7 @@ import { OptionsChipsEditor } from './options-chips-editor'
 import {
   FIELD_LABEL_CLASS,
   PROPERTY_TYPE_LABELS,
+  relationTargetSelectItems,
   relationTargetTags,
   type PropertyDraft,
 } from './tag-config-drafts'
@@ -224,8 +225,7 @@ export function TagPropertyRow({
             value={draft.target === '' ? '__any' : draft.target}
             items={{
               __any: 'Any note',
-              ...Object.fromEntries(targetTags.map((entry) => [entry.key, `#${entry.label}`])),
-              ...(draft.target === '' ? {} : { [draft.target]: `#${draft.target}` }),
+              ...relationTargetSelectItems(targetTags, draft.target),
             }}
             onValueChange={(next) => {
               if (typeof next === 'string') {
@@ -274,8 +274,7 @@ export function TagPropertyRow({
               value={draft.reverseTag === '' ? '__none' : draft.reverseTag}
               items={{
                 __none: 'Pick a collection',
-                ...Object.fromEntries(targetTags.map((entry) => [entry.key, `#${entry.label}`])),
-                ...(draft.reverseTag === '' ? {} : { [draft.reverseTag]: `#${draft.reverseTag}` }),
+                ...relationTargetSelectItems(targetTags, draft.reverseTag),
               }}
               onValueChange={(next) => {
                 if (typeof next === 'string') {

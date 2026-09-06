@@ -163,3 +163,22 @@ export function relationTargetTags(
   tags.sort((left, right) => left.key.localeCompare(right.key))
   return tags
 }
+
+/**
+ * Labels for the relation Target / reverse Of select. A stored key that is
+ * no longer in {@link tags} still appears so opening the dialog cannot drop
+ * it; a key that is present keeps the notes’ preferred casing.
+ */
+export function relationTargetSelectItems(
+  tags: readonly RelationTargetTag[],
+  storedKey: string,
+): Record<string, string> {
+  const items: Record<string, string> = {}
+  for (const tag of tags) {
+    items[tag.key] = `#${tag.label}`
+  }
+  if (storedKey !== '' && !(storedKey in items)) {
+    items[storedKey] = `#${storedKey}`
+  }
+  return items
+}

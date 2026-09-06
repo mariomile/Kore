@@ -535,8 +535,9 @@ WebKit; `pnpm check` exit 0.
   rail) lead with Type chips for each schema-bearing tag; removing a chip
   strips `#tag` from the body. Two typed tags both show; their fields still
   union with first-key-wins. Leading/trailing tag-only paragraphs hide
-  under the properties so the hashtag is not duplicated. Verified: pending
-  in this session.
+  under the properties so the hashtag is not duplicated. Verified: body-tag
+  17/17 node; properties header + rail 5/5 chromium and webkit; session
+  fakes 38/38 node; `pnpm typecheck` exit 0.
 - 2026-09-06 — All-notes masonry: body-less cards stretch to the row's
   tallest neighbor (`h-full` column flex, `min-h-64` floor) so they do not
   leave holes in engines without CSS masonry. Verified: all-notes screen

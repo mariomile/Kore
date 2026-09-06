@@ -43,12 +43,16 @@ const commitNoteFrontmatter = vi.hoisted(() => vi.fn(async () => {}))
 const tagTypesRows = vi.hoisted(() => ({
   current: [] as { tagKey: string; notePath: string }[],
 }))
+const noteTagsRows = vi.hoisted(() => ({
+  current: [] as { tag: string; count: number }[],
+}))
 vi.mock('@reflect/core', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@reflect/core')>()),
   hasBridge: () => true,
   listNotesWithProperty: async () => propertyUses.current,
   listTemplates: async () => templates.current,
   listTagTypes: async () => tagTypesRows.current,
+  listNoteTags: async () => noteTagsRows.current,
 }))
 vi.mock('@/lib/note-frontmatter', () => ({ commitNoteFrontmatter }))
 vi.mock('@/providers/graph-provider', () => ({
@@ -70,6 +74,7 @@ beforeEach(() => {
   propertyUses.current = []
   templates.current = []
   tagTypesRows.current = []
+  noteTagsRows.current = []
   saveTagType.mockClear()
   invalidateQueries.mockClear()
   commitNoteFrontmatter.mockClear()
@@ -139,6 +144,24 @@ describe('TagConfigDialog', () => {
       7,
       null,
     )
+  })
+
+  it('offers a tag that exists on notes even without a type definition', async () => {
+    definition.current = {
+      path: 'tags/skills.md',
+      exists: true,
+      needsConversion: false,
+      properties: [{ name: 'Topic', key: 'topic', type: 'relations' }],
+      template: null,
+    }
+    tagTypesRows.current = [{ tagKey: 'person', notePath: 'tags/person.md' }]
+    noteTagsRows.current = [{ tag: 'topic', count: 3 }]
+    const view = await render(<Dialog tag="skills" onClose={() => {}} />)
+
+    await view.getByRole('combobox', { name: 'Relation target' }).click()
+    await expect.element(view.getByRole('option', { name: '#topic' })).toBeInTheDocument()
+    await expect.element(view.getByRole('option', { name: '#person' })).toBeInTheDocument()
+    await view.unmount()
   })
 
   it('offers conversion when an unmarked note occupies the definition path', async () => {

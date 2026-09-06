@@ -1,6 +1,7 @@
 import { useState, type ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
+  listNoteTags,
   listTagTypes,
   propertyKeyForName,
   rollupAggregationSchema,
@@ -43,10 +44,16 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
+import { allNotesTagsQueryKey } from '@/lib/notes/all-notes-query'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { useGraph } from '@/providers/graph-provider'
 import { OptionsChipsEditor } from './options-chips-editor'
-import { FIELD_LABEL_CLASS, PROPERTY_TYPE_LABELS, type PropertyDraft } from './tag-config-drafts'
+import {
+  FIELD_LABEL_CLASS,
+  PROPERTY_TYPE_LABELS,
+  relationTargetTags,
+  type PropertyDraft,
+} from './tag-config-drafts'
 
 /** One glyph per property type, so the picker reads at a glance. */
 const PROPERTY_TYPE_ICONS: Record<TagPropertyType, Icon> = {
@@ -107,16 +114,26 @@ export function TagPropertyRow({
     draft.type === 'select' || draft.type === 'multiselect' || draft.type === 'status'
   const isRelation = draft.type === 'relation' || draft.type === 'relations'
   const keyOpen = keyEditing || keyInvalid
-  // The typed tags a relation can point at — the same rows the sidebar's Tags
-  // section queries, so the cache is shared. Only fetched while the row needs
-  // the selector.
+  // Relation targets are every tag the sidebar lists, plus typed collections
+  // that don't have rows yet. `listTagTypes` alone misses a tag that exists
+  // on notes but has no `tags/<name>.md` yet (Amendment A).
+  const needsTargets = isRelation || draft.type === 'reverse'
   const { graph } = useGraph()
   const bridgeReady = useBridgeReady()
+  const { data: noteTags } = useQuery({
+    queryKey: allNotesTagsQueryKey(graph?.root),
+    queryFn: () => listNoteTags(),
+    enabled: needsTargets && bridgeReady && graph !== null,
+  })
   const { data: tagTypes } = useQuery({
     queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'tag-types'],
     queryFn: () => listTagTypes(),
-    enabled: (isRelation || draft.type === 'reverse') && bridgeReady && graph !== null,
+    enabled: needsTargets && bridgeReady && graph !== null,
   })
+  const targetTags = relationTargetTags(
+    noteTags ?? [],
+    (tagTypes ?? []).map((entry) => entry.tagKey),
+  )
   return (
     <div className="flex flex-col gap-1.5 rounded-md border border-border p-2.5">
       <div className="flex items-center gap-1.5">
@@ -207,9 +224,7 @@ export function TagPropertyRow({
             value={draft.target === '' ? '__any' : draft.target}
             items={{
               __any: 'Any note',
-              ...Object.fromEntries(
-                (tagTypes ?? []).map((entry) => [entry.tagKey, `#${entry.tagKey}`]),
-              ),
+              ...Object.fromEntries(targetTags.map((entry) => [entry.key, `#${entry.label}`])),
               ...(draft.target === '' ? {} : { [draft.target]: `#${draft.target}` }),
             }}
             onValueChange={(next) => {
@@ -223,17 +238,14 @@ export function TagPropertyRow({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="__any">Any note</SelectItem>
-              {(tagTypes ?? [])
-                .map((entry) => entry.tagKey)
-                .map((tagKey) => (
-                  <SelectItem key={tagKey} value={tagKey}>
-                    #{tagKey}
-                  </SelectItem>
-                ))}
-              {/* A stored target whose tag lost its type still shows, so
-                  opening the dialog cannot silently drop it. */}
-              {draft.target !== '' &&
-              !(tagTypes ?? []).some((entry) => entry.tagKey === draft.target) ? (
+              {targetTags.map((entry) => (
+                <SelectItem key={entry.key} value={entry.key}>
+                  #{entry.label}
+                </SelectItem>
+              ))}
+              {/* A stored target whose tag is gone still shows, so opening
+                  the dialog cannot silently drop it. */}
+              {draft.target !== '' && !targetTags.some((entry) => entry.key === draft.target) ? (
                 <SelectItem value={draft.target}>#{draft.target}</SelectItem>
               ) : null}
             </SelectContent>
@@ -262,9 +274,7 @@ export function TagPropertyRow({
               value={draft.reverseTag === '' ? '__none' : draft.reverseTag}
               items={{
                 __none: 'Pick a collection',
-                ...Object.fromEntries(
-                  (tagTypes ?? []).map((entry) => [entry.tagKey, `#${entry.tagKey}`]),
-                ),
+                ...Object.fromEntries(targetTags.map((entry) => [entry.key, `#${entry.label}`])),
                 ...(draft.reverseTag === '' ? {} : { [draft.reverseTag]: `#${draft.reverseTag}` }),
               }}
               onValueChange={(next) => {
@@ -277,13 +287,13 @@ export function TagPropertyRow({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {(tagTypes ?? []).map((entry) => (
-                  <SelectItem key={entry.tagKey} value={entry.tagKey}>
-                    #{entry.tagKey}
+                {targetTags.map((entry) => (
+                  <SelectItem key={entry.key} value={entry.key}>
+                    #{entry.label}
                   </SelectItem>
                 ))}
                 {draft.reverseTag !== '' &&
-                !(tagTypes ?? []).some((entry) => entry.tagKey === draft.reverseTag) ? (
+                !targetTags.some((entry) => entry.key === draft.reverseTag) ? (
                   <SelectItem value={draft.reverseTag}>#{draft.reverseTag}</SelectItem>
                 ) : null}
               </SelectContent>

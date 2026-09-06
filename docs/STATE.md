@@ -1,11 +1,10 @@
 # Kore working state
 
-**Updated:** 2026-09-06, Cursor CLI chat: drop retried assistant snapshots and
-treat `WritableIterable is closed` as a stream teardown, not a failed turn.
+**Updated:** 2026-09-06, collection pages: Notion-style view tabs and a `...`
+options menu (PR #187). Schema edits and rows from the table, sort chains,
+any/all filters, side peek, tag descriptions and daily line to note are
+pending PR #168 integration validation (TDR 0005 Amendments A and B).
 Plan 30 CLI follow-up is on `t3code/cli-fresh-write-resolution`.
-Schema edits and rows from the table, sort chains, any/all filters, side peek,
-tag descriptions and daily line to note are pending PR #168 integration
-validation (TDR 0005 Amendments A and B).
 **Rule:** Every session that moves the program updates this file before its
 summary: tick what became true and how it was verified, set the next step,
 refresh the date. What is done and what is next live here and only here. Why
@@ -282,6 +281,16 @@ declined; the backlog-B pass is closed.
 
 ## What is true now
 
+- [x] **Collections: Notion-style chrome** (user decision 2026-09-06). A
+  tag page opens as a **table** (still `#image` → grid). Board, calendar,
+  and grid are named tabs you add with `+`, not always-on layout pills.
+  Saved views (`collectionSavedViews`) *are* the tabs; filter/sort/group
+  edits write back to the active one. Import CSV and Export CSV live in a
+  `...` options menu. Unfiltered All Notes stays list/grid. Verified:
+  schema setting tests, collection-view-model 6/6 (node), view-tabs +
+  collection-flow + all-notes-screen 44/44 on Chromium and WebKit,
+  `pnpm check` exit 0.
+
 - [x] **Collections: the daily loop** (user decision 2026-09-04 after the
   gap review against Tana and Notion; [TDR 0005 Amendment B](decisions/0005-tag-types-and-collections.md)).
   Slice 1, the table: the header "+" adds a property by name and type,
@@ -530,6 +539,22 @@ visibility stays table-only.
 **Validation:** all-notes screen + collection-flow 38/38 on Chromium and
 WebKit; `pnpm check` exit 0.
 
+## Collection Notion chrome — 2026-09-06
+
+Tag pages now look like a Notion database: a tab bar of views plus `+`
+Add a view (table / board / calendar / grid), and CSV import/export
+behind a `...` button (`aria-label="Collection options"`). Zero saved
+views still shows one synthetic tab named after the live layout and does
+not write until a second view is added. Existing `collectionSavedViews`
+become tabs with no data migration. New setting `collectionActiveViewId`
+(tag → view id). Layout pills and the bookmark Saved views menu are gone
+from tag routes; All Notes without a tag is unchanged.
+
+**Validation:** core `schema.test.ts` 37/37 (collectionActiveViewId +
+grid as a saved view); desktop `collection-view-model.test.ts` 6/6;
+browser `collection-view-tabs` + `all-notes-collection-flow` +
+`all-notes-screen` 44/44 on Chromium and WebKit; `pnpm check` exit 0.
+
 ## Next step
 
 1. **Projects, remaining**: slice 3 stays a *recommendation only* per the
@@ -538,9 +563,10 @@ WebKit; `pnpm check` exit 0.
    Tasks-view "by project" grouping if the note panel proves not enough
    in real use.
 2. **Collections** ([Plan 29](plans/29-collections-database.md)) is
-   complete through T2 — the UX pass's a/b/c and every planned slice
-   shipped. New scope (formula date functions, per-group table
-   aggregates, timeline/gallery views) waits for a fresh user decision.
+   complete through T2, plus the 2026-09-06 Notion chrome (view tabs +
+   `...` menu, PR #187). New scope (formula date functions, per-group
+   table aggregates, timeline/gallery views, tab rename) waits for a
+   fresh user decision.
 3. **Live checks with the user**: (a) Now 1: real MCP server + Tools toggle
    in a read-only conversation; (b) Now 2: send an image in chat, restart,
    confirm the restored conversation renders it from disk; (c) Now 3: ask a
@@ -553,6 +579,12 @@ WebKit; `pnpm check` exit 0.
 
 ## Session log
 
+- 2026-09-06 — Collection Notion chrome: tag pages default to a table,
+  other layouts are addable named tabs (`collectionSavedViews` +
+  `collectionActiveViewId`), Import/Export sit in `...`. All Notes
+  without a tag unchanged. Verified: schema 37/37, view-model 6/6,
+  collection browser suites 44/44 on Chromium and WebKit, `pnpm check`
+  exit 0.
 - 2026-09-06 — Cursor CLI chat: identical assistant snapshots from
   `cursor-agent` retries/flushes are no longer concatenated, and
   `WritableIterable is closed` after a real answer completes the turn

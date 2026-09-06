@@ -180,19 +180,52 @@ describe('Collection flow (fake bridge, no module mocks below the hooks)', () =>
     await view.getByRole('button', { name: 'Add a view' }).click()
     await view.getByRole('menuitem', { name: 'Board' }).click()
 
-    const boardMode = updateSettingsWith.mock.calls
-      .map(([updater]) => updater)
-      .find((updater) => {
-        if (typeof updater !== 'function') {
-          return false
-        }
-        const result = updater({ collectionViewModes: {} }) as {
-          collectionViewModes?: Record<string, string>
-        }
-        return result.collectionViewModes?.['book'] === 'board'
-      })
+    type ViewModesState = { collectionViewModes: Record<string, string> }
+    const boardMode = updateSettingsWith.mock.calls.find((call) => {
+      const updater = call[0] as ((current: ViewModesState) => Partial<ViewModesState>) | undefined
+      if (typeof updater !== 'function') {
+        return false
+      }
+      return updater({ collectionViewModes: {} }).collectionViewModes?.['book'] === 'board'
+    })
     expect(boardMode).toBeDefined()
     expect(updateSettings).not.toHaveBeenCalled()
+    await view.unmount()
+  })
+
+  it('surfaces already-saved views as tabs and selects the stored active id', async () => {
+    settingsState.collectionSavedViews = {
+      book: [
+        {
+          id: 'v1',
+          name: 'Queue',
+          view: 'table',
+          sorts: [],
+          group: null,
+          tableGroup: null,
+          match: 'all',
+          filters: [],
+        },
+        {
+          id: 'v2',
+          name: 'Kanban',
+          view: 'board',
+          sorts: [],
+          group: 'status',
+          tableGroup: null,
+          match: 'all',
+          filters: [],
+        },
+      ],
+    }
+    settingsState.collectionActiveViewId = { book: 'v2' }
+    settingsState.collectionViewModes = { book: 'board' }
+    const view = await render(<Screen />)
+
+    await expect.element(view.getByRole('tab', { name: 'Queue' })).toBeInTheDocument()
+    await expect
+      .element(view.getByRole('tab', { name: 'Kanban', selected: true }))
+      .toBeInTheDocument()
     await view.unmount()
   })
 

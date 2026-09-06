@@ -323,6 +323,8 @@ export function useCollectionSavedViews(
   const resolvedActiveId = resolveActiveCollectionViewId(savedViews, storedActiveId, pageView)
   const switchingRef = useRef(false)
   const appliedTagRef = useRef<string | null>(null)
+  const resolvedActiveIdRef = useRef(resolvedActiveId)
+  resolvedActiveIdRef.current = resolvedActiveId
 
   const persistViews = useCallback(
     (views: SavedCollectionView[], activeId: string) => {
@@ -458,15 +460,13 @@ export function useCollectionSavedViews(
         return
       }
       switchingRef.current = true
-      persistViews(
-        remaining,
-        resolvedActiveId === id ? fallback.id : (resolvedActiveId ?? fallback.id),
-      )
-      if (resolvedActiveId === id) {
+      const activeId = resolvedActiveIdRef.current
+      persistViews(remaining, activeId === id ? fallback.id : (activeId ?? fallback.id))
+      if (activeId === id) {
         applySavedView(fallback)
       }
     },
-    [tagKey, savedViews, persistViews, resolvedActiveId, applySavedView],
+    [tagKey, savedViews, persistViews, applySavedView],
   )
 
   useEffect(() => {

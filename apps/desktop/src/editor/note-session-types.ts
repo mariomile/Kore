@@ -221,6 +221,14 @@ export interface NoteSession {
    * A blank block is refused (`false`) — there is nothing to write.
    */
   commitBodyAppend: (block: string) => Promise<boolean>
+  /**
+   * Apply an out-of-editor rewrite of the live document (header + buffer),
+   * reflect it in the open editor, and flush now. Same gating, `false`-when-busy,
+   * and transactional revert as {@link NoteSession.commitTaskToggle}. Used to
+   * add or remove a body `#tag` from the note's Type field without racing the
+   * buffer.
+   */
+  commitBodyTransform: (transform: (full: string) => string) => Promise<boolean>
   /** Flush pending edits and detach: no further snapshots are emitted. */
   dispose: () => void
   /**

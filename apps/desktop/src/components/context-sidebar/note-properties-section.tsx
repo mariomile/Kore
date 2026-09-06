@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import { NoteTypeField } from '@/components/notes/note-type-field'
 import { PropertyFieldValue } from '@/components/tags/property-field-value'
 import { PropertyValueEditor } from '@/components/tags/property-editors'
 import { useCommitNoteProperty } from '@/lib/tags/use-commit-note-property'
@@ -12,23 +13,24 @@ interface NotePropertiesSectionProps {
 }
 
 /**
- * The note's typed properties (TDR 0005): the union of its tags' schemas,
- * each field editable in place through the shared property editors. Hidden
- * entirely while the note carries no typed tag — like the outline, an empty
- * panel would be furniture.
+ * The note's typed properties (TDR 0005): Type (the supertag) then the union
+ * of its tags' schemas, each field editable in place through the shared
+ * property editors. Hidden entirely while the note carries no typed tag — like
+ * the outline, an empty panel would be furniture.
  */
 export function NotePropertiesSection({ path }: NotePropertiesSectionProps): ReactElement | null {
   const commitProperty = useCommitNoteProperty()
   const openRelation = useOpenRelation()
-  const { properties, values } = useNoteTypedProperties(path)
+  const { tagTypes, properties, values } = useNoteTypedProperties(path)
 
-  if (properties.length === 0) {
+  if (tagTypes.length === 0 && properties.length === 0) {
     return null
   }
 
   return (
     <SidebarSection storageKey="note-properties" title="Properties">
       <ul className="space-y-0.5">
+        <NoteTypeField path={path} tagTypes={tagTypes} labelClassName="w-24" />
         {properties.map((property) => (
           <li key={property.key} className="flex min-h-7 items-center gap-2">
             <span className="w-24 shrink-0 truncate text-[13px] text-text-muted">

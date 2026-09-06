@@ -2,6 +2,10 @@ import { useLayoutEffect, useRef, type ReactElement } from 'react'
 import { useEditor } from '@meowdown/react'
 import { NotePropertiesHeader } from '@/components/notes/note-properties-header'
 import { cn } from '@/lib/utils'
+import {
+  applyMembershipParagraphCss,
+  clearMembershipParagraphCss,
+} from './tag-membership-paragraph'
 import { whenEditorMounted } from './when-editor-mounted'
 
 interface EditorNotePropertiesProps {
@@ -32,6 +36,7 @@ export function EditorNoteProperties({ path, className }: EditorNotePropertiesPr
     let host: HTMLElement | null = null
 
     function clearPlacement(): void {
+      clearMembershipParagraphCss(host)
       root?.classList.remove('reflect-editor-has-properties')
       root?.style.removeProperty('--reflect-note-properties-space')
       host?.classList.remove('reflect-note-properties-host')
@@ -63,6 +68,7 @@ export function EditorNoteProperties({ path, className }: EditorNotePropertiesPr
 
       host.classList.add('reflect-note-properties-host')
       root.classList.add('reflect-editor-has-properties')
+      applyMembershipParagraphCss(host, root)
       root.style.setProperty('--reflect-note-properties-space', `${space}px`)
       slotElement.style.setProperty('top', `${top}px`)
       slotElement.dataset.positioned = 'true'

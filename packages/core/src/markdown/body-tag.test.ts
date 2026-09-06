@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { parseNote } from './extract'
-import { appendBodyTag, bodyHasTag } from './body-tag'
+import { appendBodyTag, bodyHasTag, removeBodyTag } from './body-tag'
 
 describe('bodyHasTag', () => {
   it('matches the tag the index would extract, folded', () => {
@@ -12,6 +12,12 @@ describe('bodyHasTag', () => {
   it('does not match a hash that is not a tag', () => {
     expect(bodyHasTag('see https://x.test/a#book', 'book')).toBe(false)
     expect(bodyHasTag('a#book', 'book')).toBe(false)
+  })
+
+  it('does not treat a hit the indexer would skip as membership', () => {
+    expect(bodyHasTag('```\n#book\n```\n', 'book')).toBe(false)
+    expect(bodyHasTag('use `see #book` here\n', 'book')).toBe(false)
+    expect(bodyHasTag('See [[Page #book]]\n', 'book')).toBe(false)
   })
 })
 
@@ -39,6 +45,10 @@ describe('appendBodyTag', () => {
     expect(appendBodyTag('\n\n  \n', 'book')).toBe('#book\n')
   })
 
+  it('appends when the only existing hash sits in a code fence', () => {
+    expect(appendBodyTag('```\n#book\n```\n', 'book')).toBe('```\n#book\n```\n\n#book\n')
+  })
+
   it('collapses a trailing blank run instead of stacking on it', () => {
     expect(appendBodyTag('Some prose.\n\n\n\n', 'book')).toBe('Some prose.\n\n#book\n')
   })
@@ -57,5 +67,55 @@ describe('appendBodyTag', () => {
     expect(parseNote({ path: 'notes/a.md', source: source as string }).tags).toContain(
       'reading/queue',
     )
+  })
+})
+
+describe('removeBodyTag', () => {
+  it('returns null when the note does not carry the tag', () => {
+    expect(removeBodyTag('Some prose.\n', 'book')).toBeNull()
+  })
+
+  it('removes a trailing membership line and leaves the prose', () => {
+    expect(removeBodyTag('Some prose.\n\n#book\n', 'book')).toBe('Some prose.\n')
+  })
+
+  it('removes a leading membership line', () => {
+    expect(removeBodyTag('#project\n\nThe pitch.\n', 'project')).toBe('The pitch.\n')
+  })
+
+  it('removes an inline mention without leaving a doubled space', () => {
+    expect(removeBodyTag('Reading #book tonight\n', 'book')).toBe('Reading tonight\n')
+  })
+
+  it('clears every occurrence so the note leaves the collection', () => {
+    expect(removeBodyTag('#book\n\nSee also #Book later.\n', 'book')).toBe('See also later.\n')
+  })
+
+  it('preserves frontmatter and only edits the body', () => {
+    expect(removeBodyTag('---\ntitle: A\nid: xyz\n---\nSome prose.\n\n#book\n', 'book')).toBe(
+      '---\ntitle: A\nid: xyz\n---\nSome prose.\n',
+    )
+  })
+
+  it('leaves a sibling tag on the same membership line', () => {
+    expect(removeBodyTag('#project #person\n', 'project')).toBe('#person\n')
+  })
+
+  it('is the inverse of appendBodyTag on a trailing line', () => {
+    const tagged = appendBodyTag('Some prose.\n', 'book')
+    expect(tagged).not.toBeNull()
+    expect(removeBodyTag(tagged as string, 'book')).toBe('Some prose.\n')
+  })
+
+  it('keeps the newline when the tag opens a later line', () => {
+    expect(removeBodyTag('Para one.\n#book\nPara two.\n', 'book')).toBe('Para one.\n\nPara two.\n')
+  })
+
+  it('leaves fenced code, inline code, and wiki targets untouched', () => {
+    expect(removeBodyTag('real #book\n\n```\n#book\n```\n', 'book')).toBe(
+      'real\n\n```\n#book\n```\n',
+    )
+    expect(removeBodyTag('use `see #book` here\n\n#book\n', 'book')).toBe('use `see #book` here\n')
+    expect(removeBodyTag('See [[Page #book]].\n\n#book\n', 'book')).toBe('See [[Page #book]].\n')
   })
 })

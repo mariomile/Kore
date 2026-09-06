@@ -48,3 +48,28 @@ export async function commitNoteFrontmatter(
     await writeNote(path, patched, generation)
   }
 }
+
+/**
+ * Land a body rewrite on the note, returning once it has persisted. Routes
+ * through the live session when the note is open (so unsaved edits survive
+ * and the editor updates in place); otherwise transforms disk directly.
+ * A rewrite that changes nothing is a no-op.
+ */
+export async function commitNoteBodyTransform(
+  path: string,
+  transform: (source: string) => string,
+  generation: number,
+): Promise<void> {
+  const owner = openSession(path)
+  if (owner !== null) {
+    if (await owner.commitBodyTransform(transform)) {
+      return
+    }
+    throw new Error('The note is open and cannot take this edit right now.')
+  }
+  const onDisk = await readNoteOrEmpty(path)
+  const next = transform(onDisk)
+  if (next !== onDisk) {
+    await writeNote(path, next, generation)
+  }
+}

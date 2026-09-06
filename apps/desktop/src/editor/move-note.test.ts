@@ -43,6 +43,7 @@ function fakeSession(path: string) {
     commitTaskRemove: async () => false,
     commitTaskToBullet: async () => false,
     commitBodyAppend: async () => false,
+    commitBodyTransform: async () => false,
     dispose: () => {},
     discard: () => {},
   }

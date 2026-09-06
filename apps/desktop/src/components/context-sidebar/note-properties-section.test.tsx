@@ -23,6 +23,10 @@ vi.mock('@/hooks/use-bridge-ready', () => ({ useBridgeReady: () => true }))
 vi.mock('@/lib/tags/use-commit-note-property', () => ({
   useCommitNoteProperty: () => commitProperty,
 }))
+const removeTag = vi.hoisted(() => vi.fn())
+vi.mock('@/lib/tags/use-remove-note-tag', () => ({
+  useRemoveNoteTag: () => removeTag,
+}))
 vi.mock('@/lib/tags/use-open-relation', () => ({ useOpenRelation: () => vi.fn() }))
 
 function Subject(): ReactElement {
@@ -37,6 +41,7 @@ beforeEach(() => {
   data.tagTypes = []
   data.values = {}
   commitProperty.mockClear()
+  removeTag.mockClear()
 })
 
 describe('NotePropertiesSection', () => {
@@ -71,6 +76,8 @@ describe('NotePropertiesSection', () => {
 
     await expect.element(view.getByText('Author')).toBeInTheDocument()
     await expect.element(view.getByText('Le Guin')).toBeInTheDocument()
+    await expect.element(view.getByText('#book')).toBeInTheDocument()
+    await expect.element(view.getByText('#media')).toBeInTheDocument()
     expect(view.container.textContent).not.toContain('Creator')
 
     await view.getByRole('checkbox', { name: 'Read' }).click()

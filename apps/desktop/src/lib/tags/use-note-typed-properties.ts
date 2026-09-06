@@ -8,6 +8,7 @@ import {
   localCalendarDate,
   type CollectionValue,
   type TagProperty,
+  type TagTypeEntry,
 } from '@reflect/core'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
@@ -15,6 +16,8 @@ import { useGraph } from '@/providers/graph-provider'
 
 /** A note's typed fields: the schema union and the stored values by key. */
 export interface NoteTypedProperties {
+  /** Typed tags the note carries, in key order. Empty until they load. */
+  tagTypes: TagTypeEntry[]
   /** Empty while the note carries no typed tag (or nothing has loaded). */
   properties: TagProperty[]
   values: Record<string, CollectionValue> | undefined
@@ -121,5 +124,5 @@ export function useNoteTypedProperties(path: string): NoteTypedProperties {
     return next
   }, [values, properties, mtime])
 
-  return { properties, values: overlaid }
+  return { tagTypes: tagTypes ?? [], properties, values: overlaid }
 }

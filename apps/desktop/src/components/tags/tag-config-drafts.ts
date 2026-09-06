@@ -1,8 +1,9 @@
-import type {
-  CollectionValue,
-  RollupAggregation,
-  TagProperty,
-  TagPropertyType,
+import {
+  foldTag,
+  type CollectionValue,
+  type RollupAggregation,
+  type TagProperty,
+  type TagPropertyType,
 } from '@reflect/core'
 
 /** One schema row under edit; `options` stays comma-text until save. */
@@ -126,4 +127,58 @@ export function schemaFromDrafts(drafts: readonly PropertyDraft[]): TagProperty[
       ...(formula === undefined ? {} : { formula }),
     }
   })
+}
+
+/** One tag a relation (or reverse) can point at. `key` is folded; `label` is display casing. */
+export interface RelationTargetTag {
+  key: string
+  label: string
+}
+
+/**
+ * Tags a relation can target: every tag on notes (the sidebar list) plus
+ * typed collections that don't have rows yet. Display casing prefers the
+ * spelling notes actually use.
+ */
+export function relationTargetTags(
+  noteTags: readonly { tag: string }[],
+  typedKeys: readonly string[],
+): RelationTargetTag[] {
+  const labels = new Map<string, string>()
+  for (const key of typedKeys) {
+    if (key !== '') {
+      labels.set(key, key)
+    }
+  }
+  for (const { tag } of noteTags) {
+    const key = foldTag(tag)
+    if (key !== '') {
+      labels.set(key, tag)
+    }
+  }
+  const tags: RelationTargetTag[] = []
+  for (const [key, label] of labels) {
+    tags.push({ key, label })
+  }
+  tags.sort((left, right) => left.key.localeCompare(right.key))
+  return tags
+}
+
+/**
+ * Labels for the relation Target / reverse Of select. A stored key that is
+ * no longer in {@link tags} still appears so opening the dialog cannot drop
+ * it; a key that is present keeps the notes’ preferred casing.
+ */
+export function relationTargetSelectItems(
+  tags: readonly RelationTargetTag[],
+  storedKey: string,
+): Record<string, string> {
+  const items: Record<string, string> = {}
+  for (const tag of tags) {
+    items[tag.key] = `#${tag.label}`
+  }
+  if (storedKey !== '' && !(storedKey in items)) {
+    items[storedKey] = `#${storedKey}`
+  }
+  return items
 }

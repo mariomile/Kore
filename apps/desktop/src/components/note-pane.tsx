@@ -52,8 +52,6 @@ import { useGraph } from '@/providers/graph-provider'
 import { useNoteSearchQuery, useNoteSearchReport } from '@/providers/note-find-provider'
 import { useSettings } from '@/providers/settings-provider'
 
-const KORE_LOADING_ICON = new URL('../../src-tauri/icons/64x64.png', import.meta.url).href
-
 interface NotePaneProps {
   /** Graph-relative path of the note to edit. */
   path: string
@@ -119,6 +117,24 @@ interface NotePaneProps {
    * did, so the editor consumes the key.
    */
   onExitBoundary?: (date: string, direction: 'up' | 'down') => boolean
+}
+
+function NoteLoadingSkeleton(): ReactElement {
+  return (
+    <div
+      data-testid="note-loading-skeleton"
+      aria-hidden
+      className="flex w-full max-w-xl flex-col gap-3"
+    >
+      <div className="h-7 w-2/5 rounded-md bg-text-muted/15 motion-safe:animate-pulse" />
+      <div className="mt-5 flex flex-col gap-2.5">
+        <div className="h-3 w-full rounded-md bg-text-muted/10 motion-safe:animate-pulse" />
+        <div className="h-3 w-[94%] rounded-md bg-text-muted/10 motion-safe:animate-pulse" />
+        <div className="h-3 w-[88%] rounded-md bg-text-muted/10 motion-safe:animate-pulse" />
+        <div className="h-3 w-[72%] rounded-md bg-text-muted/10 motion-safe:animate-pulse" />
+      </div>
+    </div>
+  )
 }
 
 /**
@@ -294,22 +310,20 @@ export function NotePaneComponent({
   }, [dailyDate, onExitBoundary])
 
   if (document.status === 'loading') {
-    // Keep fast local reads invisible; a genuinely slow read gets one quiet,
-    // branded progress mark without collapsing the editor's reserved space.
+    // Keep fast local reads invisible; a genuinely slow read gets a layout
+    // skeleton instead of collapsing the editor's reserved space.
     return (
       <div
         role="status"
         aria-label="Opening note"
         className={cn(
-          'reflect-note-loading flex items-center justify-center px-1 py-2',
+          'reflect-note-loading flex flex-col px-1 py-2',
           gutterClassName,
           editorClassName,
           className,
         )}
       >
-        <span aria-hidden className="reflect-note-loading-mark">
-          <img src={KORE_LOADING_ICON} alt="" className="size-8" />
-        </span>
+        <NoteLoadingSkeleton />
       </div>
     )
   }

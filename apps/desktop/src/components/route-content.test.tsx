@@ -220,7 +220,7 @@ describe('RouteContent', () => {
     await view.unmount()
   })
 
-  it('shows the Kore progress mark only while a note is opening', async () => {
+  it('shows a note skeleton only while a note is opening', async () => {
     let resolveRead: ((content: string) => void) | undefined
     const originalInvoke = mockInvoke.getMockImplementation()
     mockInvoke.mockImplementation(async (command, args) => {
@@ -235,7 +235,8 @@ describe('RouteContent', () => {
     const view = await renderRoute({ kind: 'note', path: 'notes/slow.md' })
     const loading = page.getByRole('status', { name: 'Opening note' })
     await expect.element(loading).toBeInTheDocument()
-    expect(loading.element().querySelector('.reflect-note-loading-mark img')).not.toBeNull()
+    await expect.element(page.getByTestId('note-loading-skeleton')).toBeInTheDocument()
+    expect(loading.element().querySelector('img')).toBeNull()
 
     resolveRead?.('# Ready\n')
 

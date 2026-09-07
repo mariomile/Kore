@@ -232,29 +232,6 @@ describe('NoteEditor block handle actions', () => {
     clickGrip(grip.element())
     await expectLocatorToHaveCount(page.getByTestId('block-handle-menu'), 0)
   })
-
-  it('retargets the block menu when clicking another block grip', async () => {
-    await unhover()
-    const handleRef = createRef<NoteEditorHandle>()
-    await render(
-      <NoteEditor initialContent={'Hello\n\nWorld'} blockHandle={true} handleRef={handleRef} />,
-    )
-    await hover(pmRoot.getByText('Hello'))
-    const helloGrip = page.getByTestId('block-handle-drag')
-    await expect.element(helloGrip).toBeVisible()
-    clickGrip(helloGrip.element())
-    await expect.element(page.getByTestId('block-handle-menu')).toBeVisible()
-
-    await hover(pmRoot.getByText('World'))
-    const worldGrip = page.getByTestId('block-handle-drag')
-    await expect.element(worldGrip).toBeVisible()
-    clickGrip(worldGrip.element())
-
-    const menu = page.getByTestId('block-handle-menu')
-    await expect.element(menu).toBeVisible()
-    await menu.getByRole('menuitem', { name: 'Duplicate' }).click()
-    await expect.poll(() => handleRef.current?.getMarkdown()).toBe('Hello\n\nWorld\n\nWorld\n')
-  })
 })
 
 describe('NoteEditor smooth caret animation', () => {

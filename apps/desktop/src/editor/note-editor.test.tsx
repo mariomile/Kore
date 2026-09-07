@@ -55,6 +55,24 @@ function firePointer(element: Element, type: string, init: PointerEventInit): vo
   element.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, ...init }))
 }
 
+function clickGrip(element: Element): void {
+  firePointer(element, 'pointerdown', {
+    button: 0,
+    buttons: 1,
+    isPrimary: true,
+    pointerId: 1,
+    pointerType: 'mouse',
+  })
+  firePointer(element, 'pointerup', {
+    button: 0,
+    buttons: 0,
+    isPrimary: true,
+    pointerId: 1,
+    pointerType: 'mouse',
+  })
+  element.dispatchEvent(new MouseEvent('click', { bubbles: true, button: 0, cancelable: true }))
+}
+
 afterEach(() => {
   setPlatformSurface({ touchEditor: false, mobileApp: false })
   vi.clearAllMocks()
@@ -185,23 +203,7 @@ describe('NoteEditor block handle actions', () => {
     await hover(pmRoot.getByText('Hello'))
     const blockHandle = page.getByTestId('block-handle-drag')
     await expect.element(blockHandle).toBeVisible()
-    firePointer(blockHandle.element(), 'pointerdown', {
-      button: 0,
-      buttons: 1,
-      isPrimary: true,
-      pointerId: 1,
-      pointerType: 'mouse',
-    })
-    firePointer(blockHandle.element(), 'pointerup', {
-      button: 0,
-      buttons: 0,
-      isPrimary: true,
-      pointerId: 1,
-      pointerType: 'mouse',
-    })
-    blockHandle
-      .element()
-      .dispatchEvent(new MouseEvent('click', { bubbles: true, button: 0, cancelable: true }))
+    clickGrip(blockHandle.element())
 
     const menu = page.getByTestId('block-handle-menu')
     await expect.element(menu).toBeVisible()
@@ -211,6 +213,24 @@ describe('NoteEditor block handle actions', () => {
 
     await menu.getByRole('menuitem', { name: 'Duplicate' }).click()
     await expect.poll(() => handleRef.current?.getMarkdown()).toBe('Hello\n\nHello\n')
+  })
+
+  it('closes the block menu on a second grip click', async () => {
+    await unhover()
+    await render(<NoteEditor initialContent="Hello" blockHandle={true} />)
+    await hover(pmRoot.getByText('Hello'))
+    const blockHandle = page.getByTestId('block-handle-drag')
+    await expect.element(blockHandle).toBeVisible()
+    clickGrip(blockHandle.element())
+
+    const menu = page.getByTestId('block-handle-menu')
+    await expect.element(menu).toBeVisible()
+
+    await hover(pmRoot.getByText('Hello'))
+    const grip = page.getByTestId('block-handle-drag')
+    await expect.element(grip).toBeVisible()
+    clickGrip(grip.element())
+    await expect.element(menu).not.toBeVisible()
   })
 })
 

@@ -608,7 +608,9 @@ html:root {
 [data-testid='slash-menu']
   [value='Code block']:not([hidden])
   ~ :is([value^='Math'], [value='Table']):not([hidden]),
-[data-testid='slash-menu'] [value^='Math']:not([hidden]) ~ [value='Table']:not([hidden]) {
+[data-testid='slash-menu']
+  [value^='Math']:not([hidden])
+  ~ :is([value^='Math'], [value='Table']):not([hidden]) {
   --slash-lead: none;
   --slash-lead-space: 0px;
   --slash-lead-gap: 0px;

@@ -157,12 +157,22 @@ function statesEqual(left: BlockActionState | null, right: BlockActionState | nu
   )
 }
 
-function closestBlockHandle(target: EventTarget | null): HTMLElement | null {
-  if (!(target instanceof Element)) {
+function editorHostRoot(editor: TypedEditor): Element | null {
+  return editor.mounted ? editor.view.dom.closest('.meowdown') : null
+}
+
+function closestBlockHandle(
+  target: EventTarget | null,
+  editorRoot: Element | null,
+): HTMLElement | null {
+  if (!(target instanceof Element) || editorRoot === null) {
     return null
   }
   const handle = target.closest('[data-testid="block-handle-drag"], [data-testid="block-handle"]')
-  return handle instanceof HTMLElement ? handle : null
+  if (!(handle instanceof HTMLElement) || !editorRoot.contains(handle)) {
+    return null
+  }
+  return handle
 }
 
 function snapshotAnchor(element: HTMLElement): HandleMenu['anchor'] {
@@ -317,6 +327,9 @@ export function BlockActionToolbar({
   const [handleMenu, setHandleMenu] = useState<HandleMenu | null>(null)
   const pointerStart = useRef<{ x: number; y: number } | null>(null)
   const dragStarted = useRef(false)
+  const handleMenuOpenRef = useRef(false)
+  const skipClickToggle = useRef(false)
+  handleMenuOpenRef.current = handleMenu !== null
 
   useLayoutEffect(() => {
     let observer: MutationObserver | null = null
@@ -367,19 +380,23 @@ export function BlockActionToolbar({
 
   useEffect(() => {
     function onPointerDown(event: PointerEvent): void {
-      if (closestBlockHandle(event.target) === null) {
+      if (closestBlockHandle(event.target, editorHostRoot(editor)) === null) {
         return
       }
       pointerStart.current = { x: event.clientX, y: event.clientY }
       dragStarted.current = false
+      // Virtual-anchor menu: outside press closes it before this capture click.
+      skipClickToggle.current = handleMenuOpenRef.current
     }
     function onDragStart(event: DragEvent): void {
-      if (closestBlockHandle(event.target) !== null) {
+      if (closestBlockHandle(event.target, editorHostRoot(editor)) !== null) {
         dragStarted.current = true
       }
     }
     function onClick(event: MouseEvent): void {
-      const handle = closestBlockHandle(event.target)
+      const skip = skipClickToggle.current
+      skipClickToggle.current = false
+      const handle = closestBlockHandle(event.target, editorHostRoot(editor))
       if (handle === null || event.button !== 0) {
         return
       }
@@ -396,6 +413,10 @@ export function BlockActionToolbar({
       }
       event.preventDefault()
       event.stopPropagation()
+      if (skip) {
+        setHandleMenu(null)
+        return
+      }
       if (!editor.mounted) {
         return
       }
@@ -404,9 +425,7 @@ export function BlockActionToolbar({
         setHandleMenu(null)
         return
       }
-      setHandleMenu((current) =>
-        current === null ? { anchor: snapshotAnchor(handle), state: next } : null,
-      )
+      setHandleMenu({ anchor: snapshotAnchor(handle), state: next })
     }
     document.addEventListener('pointerdown', onPointerDown, { capture: true })
     document.addEventListener('dragstart', onDragStart, { capture: true })

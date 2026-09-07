@@ -230,7 +230,7 @@ describe('NoteEditor block handle actions', () => {
     const grip = page.getByTestId('block-handle-drag')
     await expect.element(grip).toBeVisible()
     clickGrip(grip.element())
-    await expect.element(menu).not.toBeVisible()
+    await expectLocatorToHaveCount(page.getByTestId('block-handle-menu'), 0)
   })
 })
 

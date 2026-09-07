@@ -30,6 +30,7 @@ export function useCollectionSlashItems(
           id: `collection:${tagKey}`,
           label: `Collection: #${tagKey}`,
           keywords: ['collection', 'embed', 'database', tagKey],
+          detail: 'Live collection view',
           onSelect: () => {
             const editor = getEditor()
             editor?.insertMarkdown(

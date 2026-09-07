@@ -1,4 +1,4 @@
-import { useLayoutEffect, useState, type ReactElement } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactElement } from 'react'
 import { useEditor } from '@meowdown/react'
 import type { EditorExtension, TypedEditor } from '@meowdown/core'
 import {
@@ -19,9 +19,14 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { whenEditorMounted } from './when-editor-mounted'
+
+const HANDLE_CLICK_PX = 5
 
 interface BlockActionState {
   readonly count: number
@@ -42,20 +47,49 @@ interface SelectedBlockRange {
   readonly to: number
 }
 
+interface HandleMenu {
+  readonly anchor: { getBoundingClientRect: () => DOMRect }
+  readonly state: BlockActionState
+}
+
 function selectionType(selection: { toJSON(): unknown }): unknown {
   const json = selection.toJSON()
   return typeof json === 'object' && json !== null && 'type' in json ? json.type : undefined
+}
+
+function selectedNodeRange(editor: TypedEditor): SelectedBlockRange | null {
+  const { selection } = editor.state
+  return selectionType(selection) === 'node'
+    ? { count: 1, from: selection.from, to: selection.to }
+    : null
+}
+
+function topLevelBlockAtCursor(editor: TypedEditor): SelectedBlockRange | null {
+  const { $from, $to } = editor.state.selection
+  if ($from.pos !== $to.pos && $from.depth === 0) {
+    return null
+  }
+  if ($from.depth === 0) {
+    const index = $from.index()
+    if (index >= editor.state.doc.childCount) {
+      return null
+    }
+    const node = editor.state.doc.child(index)
+    const from = $from.posAtIndex(index)
+    return { count: 1, from, to: from + node.nodeSize }
+  }
+  const from = $from.before(1)
+  const node = $from.node(1)
+  return { count: 1, from, to: from + node.nodeSize }
 }
 
 function selectedBlockRange(editor: TypedEditor): SelectedBlockRange | null {
   const { doc, selection } = editor.state
   const type = selectionType(selection)
 
-  if (type === 'node') {
-    return { count: 1, from: selection.from, to: selection.to }
-  }
-
-  if (selection.empty) {
+  // A node selection is the grip's job: clicking the handle opens the block
+  // menu. The bottom toolbar is only for a selection that spans blocks.
+  if (type === 'node' || selection.empty) {
     return null
   }
 
@@ -79,11 +113,7 @@ function selectedBlockRange(editor: TypedEditor): SelectedBlockRange | null {
     : { count: blocks.length, from: first.from, to: last.to }
 }
 
-function readBlockActionState(editor: TypedEditor): BlockActionState | null {
-  const range = selectedBlockRange(editor)
-  if (range === null) {
-    return null
-  }
+function capabilitiesForRange(editor: TypedEditor, range: SelectedBlockRange): BlockActionState {
   return {
     ...range,
     hasText: editor.state.doc.textBetween(range.from, range.to, '\n').trim() !== '',
@@ -94,6 +124,16 @@ function readBlockActionState(editor: TypedEditor): BlockActionState | null {
     canMoveUp: editor.commands.moveList.canExec('up'),
     canMoveDown: editor.commands.moveList.canExec('down'),
   }
+}
+
+function readBlockActionState(editor: TypedEditor): BlockActionState | null {
+  const range = selectedBlockRange(editor)
+  return range === null ? null : capabilitiesForRange(editor, range)
+}
+
+function readHandleBlockState(editor: TypedEditor): BlockActionState | null {
+  const range = selectedNodeRange(editor) ?? topLevelBlockAtCursor(editor)
+  return range === null ? null : capabilitiesForRange(editor, range)
 }
 
 function statesEqual(left: BlockActionState | null, right: BlockActionState | null): boolean {
@@ -117,6 +157,29 @@ function statesEqual(left: BlockActionState | null, right: BlockActionState | nu
   )
 }
 
+function editorHostRoot(editor: TypedEditor): Element | null {
+  return editor.mounted ? editor.view.dom.closest('.meowdown') : null
+}
+
+function closestBlockHandle(
+  target: EventTarget | null,
+  editorRoot: Element | null,
+): HTMLElement | null {
+  if (!(target instanceof Element) || editorRoot === null) {
+    return null
+  }
+  const handle = target.closest('[data-testid="block-handle-drag"], [data-testid="block-handle"]')
+  if (!(handle instanceof HTMLElement) || !editorRoot.contains(handle)) {
+    return null
+  }
+  return handle
+}
+
+function snapshotAnchor(element: HTMLElement): HandleMenu['anchor'] {
+  const rect = element.getBoundingClientRect()
+  return { getBoundingClientRect: () => new DOMRect(rect.x, rect.y, rect.width, rect.height) }
+}
+
 interface BlockActionToolbarProps {
   /** Whether this note may send its selected content to the configured AI provider. */
   aiEnabled: boolean
@@ -124,13 +187,150 @@ interface BlockActionToolbarProps {
   onOpenAi: () => void
 }
 
-/** Bottom-centered actions for one selected block or a selection spanning several blocks. */
+interface BlockActionMenuItemsProps {
+  readonly aiEnabled: boolean
+  readonly editor: TypedEditor
+  readonly onOpenAi: () => void
+  readonly onRan: () => void
+  readonly state: BlockActionState
+}
+
+function duplicateRange(editor: TypedEditor, state: BlockActionState): void {
+  const slice = editor.state.doc.slice(state.from, state.to)
+  editor.view.dispatch(editor.state.tr.replaceRange(state.to, state.to, slice).scrollIntoView())
+}
+
+function deleteRange(editor: TypedEditor, state: BlockActionState): void {
+  editor.view.dispatch(editor.state.tr.delete(state.from, state.to).scrollIntoView())
+}
+
+function BlockActionMenuItems({
+  aiEnabled,
+  editor,
+  onOpenAi,
+  onRan,
+  state,
+}: BlockActionMenuItemsProps): ReactElement {
+  const run = (command: () => void): void => {
+    command()
+    onRan()
+    editor.focus()
+  }
+  return (
+    <>
+      {aiEnabled && state.hasText ? (
+        <DropdownMenuItem
+          onClick={() => {
+            onOpenAi()
+            onRan()
+          }}
+        >
+          <Sparkles aria-hidden />
+          Ask AI
+        </DropdownMenuItem>
+      ) : null}
+      <DropdownMenuSub>
+        <DropdownMenuSubTrigger>Turn into</DropdownMenuSubTrigger>
+        <DropdownMenuSubContent className="w-44">
+          <DropdownMenuItem onClick={() => run(() => editor.commands.turnIntoText())}>
+            Text
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => run(() => editor.commands.setHeading({ level: 1 }))}>
+            Heading 1
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => run(() => editor.commands.setHeading({ level: 2 }))}>
+            Heading 2
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => run(() => editor.commands.setHeading({ level: 3 }))}>
+            Heading 3
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => run(() => editor.commands.wrapInList({ kind: 'bullet' }))}
+          >
+            Bullet list
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => run(() => editor.commands.wrapInList({ kind: 'ordered' }))}
+          >
+            Ordered list
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => run(() => editor.commands.wrapInCircleTask())}>
+            Task list
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => run(() => editor.commands.wrapInSquareTask())}>
+            Checkbox list
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => run(() => editor.commands.setBlockquote())}>
+            Quote
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => run(() => editor.commands.setCodeBlock())}>
+            Code
+          </DropdownMenuItem>
+        </DropdownMenuSubContent>
+      </DropdownMenuSub>
+      {state.canCycleList ? (
+        <DropdownMenuItem onClick={() => run(() => editor.commands.cycleBulletOrderedList())}>
+          <List aria-hidden />
+          Change list style
+        </DropdownMenuItem>
+      ) : null}
+      {state.canCycleChecklist ? (
+        <DropdownMenuItem onClick={() => run(() => editor.commands.cycleCheckableList())}>
+          <Checklist aria-hidden />
+          Change checklist style
+        </DropdownMenuItem>
+      ) : null}
+      {state.canDedent ? (
+        <DropdownMenuItem onClick={() => run(() => editor.commands.dedentList())}>
+          <ArrowLeft aria-hidden />
+          Outdent
+        </DropdownMenuItem>
+      ) : null}
+      {state.canIndent ? (
+        <DropdownMenuItem onClick={() => run(() => editor.commands.indentList())}>
+          <ArrowRight aria-hidden />
+          Indent
+        </DropdownMenuItem>
+      ) : null}
+      {state.canMoveUp ? (
+        <DropdownMenuItem onClick={() => run(() => editor.commands.moveList('up'))}>
+          <ArrowUp aria-hidden />
+          Move up
+        </DropdownMenuItem>
+      ) : null}
+      {state.canMoveDown ? (
+        <DropdownMenuItem onClick={() => run(() => editor.commands.moveList('down'))}>
+          <ArrowDown aria-hidden />
+          Move down
+        </DropdownMenuItem>
+      ) : null}
+      <DropdownMenuSeparator />
+      <DropdownMenuItem onClick={() => run(() => duplicateRange(editor, state))}>
+        <Copy aria-hidden />
+        Duplicate
+      </DropdownMenuItem>
+      <DropdownMenuItem variant="destructive" onClick={() => run(() => deleteRange(editor, state))}>
+        <Trash aria-hidden />
+        Delete
+      </DropdownMenuItem>
+    </>
+  )
+}
+
+/** Grip-click menu plus the multi-block toolbar. */
 export function BlockActionToolbar({
   aiEnabled,
   onOpenAi,
 }: BlockActionToolbarProps): ReactElement | null {
   const editor = useEditor<EditorExtension>()
   const [state, setState] = useState<BlockActionState | null>(null)
+  const [handleMenu, setHandleMenu] = useState<HandleMenu | null>(null)
+  const pointerStart = useRef<{ x: number; y: number } | null>(null)
+  const dragStarted = useRef(false)
+  const openMenuRangeRef = useRef<{ from: number; to: number } | null>(null)
+  const gripPressRange = useRef<{ from: number; to: number } | null>(null)
+  openMenuRangeRef.current =
+    handleMenu === null ? null : { from: handleMenu.state.from, to: handleMenu.state.to }
 
   useLayoutEffect(() => {
     let observer: MutationObserver | null = null
@@ -162,8 +362,6 @@ export function BlockActionToolbar({
       dom.addEventListener('keyup', syncAfterEditor)
       dom.addEventListener('pointerup', syncAfterEditor)
       observer = new MutationObserver(syncAfterEditor)
-      // Node selections are painted by toggling `ProseMirror-selectednode`.
-      // Inline and multi-block text selections arrive through `selectionchange`.
       observer.observe(dom, { attributeFilter: ['class'], attributes: true, subtree: true })
       sync()
     })
@@ -181,125 +379,184 @@ export function BlockActionToolbar({
     }
   }, [editor])
 
-  if (state === null) {
-    return null
+  useEffect(() => {
+    function onPointerDown(event: PointerEvent): void {
+      if (closestBlockHandle(event.target, editorHostRoot(editor)) === null) {
+        return
+      }
+      pointerStart.current = { x: event.clientX, y: event.clientY }
+      dragStarted.current = false
+      // Snapshot before ProseKit selects the hovered node and before the
+      // virtual-anchor menu dismisses on this outside press.
+      gripPressRange.current = openMenuRangeRef.current
+    }
+    function onDragStart(event: DragEvent): void {
+      if (closestBlockHandle(event.target, editorHostRoot(editor)) !== null) {
+        dragStarted.current = true
+      }
+    }
+    function onClick(event: MouseEvent): void {
+      const pressRange = gripPressRange.current
+      gripPressRange.current = null
+      const handle = closestBlockHandle(event.target, editorHostRoot(editor))
+      if (handle === null || event.button !== 0) {
+        return
+      }
+      const start = pointerStart.current
+      pointerStart.current = null
+      if (dragStarted.current) {
+        return
+      }
+      if (
+        start !== null &&
+        Math.hypot(event.clientX - start.x, event.clientY - start.y) > HANDLE_CLICK_PX
+      ) {
+        return
+      }
+      event.preventDefault()
+      event.stopPropagation()
+      if (!editor.mounted) {
+        return
+      }
+      const next = readHandleBlockState(editor)
+      if (next === null) {
+        setHandleMenu(null)
+        return
+      }
+      if (pressRange !== null && pressRange.from === next.from && pressRange.to === next.to) {
+        setHandleMenu(null)
+        return
+      }
+      setHandleMenu({ anchor: snapshotAnchor(handle), state: next })
+    }
+    document.addEventListener('pointerdown', onPointerDown, { capture: true })
+    document.addEventListener('dragstart', onDragStart, { capture: true })
+    document.addEventListener('click', onClick, { capture: true })
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown, { capture: true })
+      document.removeEventListener('dragstart', onDragStart, { capture: true })
+      document.removeEventListener('click', onClick, { capture: true })
+    }
+  }, [editor])
+
+  const closeHandleMenu = (): void => {
+    setHandleMenu(null)
+    if (editor.mounted) {
+      setState(readBlockActionState(editor))
+    }
   }
 
-  const run = (command: () => void): void => {
-    command()
-    setState(readBlockActionState(editor))
-    editor.focus()
-  }
-  const duplicate = (): void => {
-    const { from, to } = state
-    const slice = editor.state.doc.slice(from, to)
-    editor.view.dispatch(editor.state.tr.replaceRange(to, to, slice).scrollIntoView())
-    setState(readBlockActionState(editor))
-    editor.focus()
-  }
-  const remove = (): void => {
-    editor.view.dispatch(editor.state.tr.delete(state.from, state.to).scrollIntoView())
-    setState(readBlockActionState(editor))
-    editor.focus()
-  }
-  const countLabel = `${state.count} selected ${state.count === 1 ? 'block' : 'blocks'}`
+  const countLabel =
+    state === null ? '' : `${state.count} selected ${state.count === 1 ? 'block' : 'blocks'}`
 
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-6 z-40 flex justify-center">
-      <div
-        role="toolbar"
-        aria-label={`Block actions for ${countLabel}`}
-        className="animate-in fade-in-0 slide-in-from-bottom-2 pointer-events-auto flex items-center gap-0.5 rounded-full border border-border bg-popover p-1.5 shadow-pop duration-150 ease-swift"
+    <>
+      <DropdownMenu
+        open={handleMenu !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeHandleMenu()
+            editor.focus()
+          }
+        }}
       >
-        {aiEnabled && state.hasText ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            aria-label={`Ask AI about ${countLabel}`}
-            title="Ask AI"
-            onClick={onOpenAi}
+        {handleMenu !== null ? (
+          <DropdownMenuContent
+            align="start"
+            anchor={handleMenu.anchor}
+            className="w-56 min-w-56"
+            data-testid="block-handle-menu"
+            side="bottom"
+            sideOffset={6}
           >
-            <Sparkles aria-hidden className="size-4 text-accent" />
-          </Button>
+            <BlockActionMenuItems
+              aiEnabled={aiEnabled}
+              editor={editor}
+              onOpenAi={onOpenAi}
+              onRan={closeHandleMenu}
+              state={handleMenu.state}
+            />
+          </DropdownMenuContent>
         ) : null}
-        {state.canCycleList ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            aria-label={`Change list style for ${countLabel}`}
-            title="Change list style"
-            onClick={() => run(() => editor.commands.cycleBulletOrderedList())}
+      </DropdownMenu>
+      {state !== null && handleMenu === null ? (
+        <div className="pointer-events-none fixed inset-x-0 bottom-6 z-40 flex justify-center">
+          <div
+            role="toolbar"
+            aria-label={`Block actions for ${countLabel}`}
+            className="animate-in fade-in-0 slide-in-from-bottom-2 pointer-events-auto flex items-center gap-0.5 rounded-full border border-border bg-popover p-1.5 shadow-pop duration-150 ease-swift"
           >
-            <List aria-hidden className="size-4" />
-          </Button>
-        ) : null}
-        {state.canCycleChecklist ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            aria-label={`Change checklist style for ${countLabel}`}
-            title="Change checklist style"
-            onClick={() => run(() => editor.commands.cycleCheckableList())}
-          >
-            <Checklist aria-hidden className="size-4" />
-          </Button>
-        ) : null}
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
+            {aiEnabled && state.hasText ? (
               <Button
                 type="button"
                 variant="ghost"
                 size="icon-sm"
-                aria-label={`More actions for ${countLabel}`}
-                title="More block actions"
+                aria-label={`Ask AI about ${countLabel}`}
+                title="Ask AI"
+                onClick={onOpenAi}
               >
-                <MoreHorizontal aria-hidden className="size-4" />
+                <Sparkles aria-hidden className="size-4 text-accent" />
               </Button>
-            }
-          />
-          <DropdownMenuContent align="center" side="top" sideOffset={8} className="w-44">
-            {state.canDedent ? (
-              <DropdownMenuItem onClick={() => run(() => editor.commands.dedentList())}>
-                <ArrowLeft aria-hidden />
-                Outdent
-              </DropdownMenuItem>
             ) : null}
-            {state.canIndent ? (
-              <DropdownMenuItem onClick={() => run(() => editor.commands.indentList())}>
-                <ArrowRight aria-hidden />
-                Indent
-              </DropdownMenuItem>
+            {state.canCycleList ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                aria-label={`Change list style for ${countLabel}`}
+                title="Change list style"
+                onClick={() => {
+                  editor.commands.cycleBulletOrderedList()
+                  setState(readBlockActionState(editor))
+                  editor.focus()
+                }}
+              >
+                <List aria-hidden className="size-4" />
+              </Button>
             ) : null}
-            {state.canMoveUp ? (
-              <DropdownMenuItem onClick={() => run(() => editor.commands.moveList('up'))}>
-                <ArrowUp aria-hidden />
-                Move up
-              </DropdownMenuItem>
+            {state.canCycleChecklist ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                aria-label={`Change checklist style for ${countLabel}`}
+                title="Change checklist style"
+                onClick={() => {
+                  editor.commands.cycleCheckableList()
+                  setState(readBlockActionState(editor))
+                  editor.focus()
+                }}
+              >
+                <Checklist aria-hidden className="size-4" />
+              </Button>
             ) : null}
-            {state.canMoveDown ? (
-              <DropdownMenuItem onClick={() => run(() => editor.commands.moveList('down'))}>
-                <ArrowDown aria-hidden />
-                Move down
-              </DropdownMenuItem>
-            ) : null}
-            {state.canIndent || state.canDedent || state.canMoveUp || state.canMoveDown ? (
-              <DropdownMenuSeparator />
-            ) : null}
-            <DropdownMenuItem onClick={duplicate}>
-              <Copy aria-hidden />
-              Duplicate
-            </DropdownMenuItem>
-            <DropdownMenuItem variant="destructive" onClick={remove}>
-              <Trash aria-hidden />
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={`More actions for ${countLabel}`}
+                    title="More block actions"
+                  >
+                    <MoreHorizontal aria-hidden className="size-4" />
+                  </Button>
+                }
+              />
+              <DropdownMenuContent align="center" side="top" sideOffset={8} className="w-44">
+                <BlockActionMenuItems
+                  aiEnabled={false}
+                  editor={editor}
+                  onOpenAi={onOpenAi}
+                  onRan={() => setState(readBlockActionState(editor))}
+                  state={state}
+                />
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+      ) : null}
+    </>
   )
 }

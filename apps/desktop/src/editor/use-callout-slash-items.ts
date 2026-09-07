@@ -32,6 +32,7 @@ export function useCalloutSlashItems(
         id: `callout:${row.kind}`,
         label: row.label,
         keywords: row.keywords,
+        detail: 'Highlighted callout',
         onSelect: () => {
           getEditor()?.insertMarkdown(formatCalloutBlock(row.kind))
         },

@@ -408,13 +408,13 @@ export function BlockActionToolbar({
         current === null ? { anchor: snapshotAnchor(handle), state: next } : null,
       )
     }
-    document.addEventListener('pointerdown', onPointerDown, true)
-    document.addEventListener('dragstart', onDragStart, true)
-    document.addEventListener('click', onClick, true)
+    document.addEventListener('pointerdown', onPointerDown, { capture: true })
+    document.addEventListener('dragstart', onDragStart, { capture: true })
+    document.addEventListener('click', onClick, { capture: true })
     return () => {
-      document.removeEventListener('pointerdown', onPointerDown, true)
-      document.removeEventListener('dragstart', onDragStart, true)
-      document.removeEventListener('click', onClick, true)
+      document.removeEventListener('pointerdown', onPointerDown, { capture: true })
+      document.removeEventListener('dragstart', onDragStart, { capture: true })
+      document.removeEventListener('click', onClick, { capture: true })
     }
   }, [editor])
 

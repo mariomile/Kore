@@ -1,7 +1,5 @@
-import { createRef, useLayoutEffect } from 'react'
+import { createRef } from 'react'
 import { openUrl } from '@tauri-apps/plugin-opener'
-import type { EditorExtension, TypedEditor } from '@meowdown/core'
-import { useEditor } from '@meowdown/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
@@ -33,7 +31,6 @@ vi.mock('@/lib/windows/open-in-new-window', async (importOriginal) => ({
 }))
 
 const pmRoot = page.locate('.ProseMirror')
-const capturedEditor: { current: TypedEditor | null } = { current: null }
 
 const IMAGE_NOTE = 'A photo\n\n![Cat](assets/cat.png)'
 
@@ -54,20 +51,8 @@ function firePointer(element: Element, type: string, init: PointerEventInit): vo
   element.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, ...init }))
 }
 
-function EditorProbe(): null {
-  const editor = useEditor<EditorExtension>()
-  useLayoutEffect(() => {
-    capturedEditor.current = editor
-    return () => {
-      capturedEditor.current = null
-    }
-  }, [editor])
-  return null
-}
-
 afterEach(() => {
   setPlatformSurface({ touchEditor: false, mobileApp: false })
-  capturedEditor.current = null
   vi.clearAllMocks()
 })
 
@@ -203,7 +188,7 @@ describe('NoteEditor touch-surface input hygiene', () => {
     await expect.element(page.getByTestId('block-handle')).toBeVisible()
   })
 
-  it('shows contextual actions for a selected block', async () => {
+  it('opens block actions from the grip and converts the block', async () => {
     await unhover()
     const handleRef = createRef<NoteEditorHandle>()
     await render(
@@ -212,39 +197,37 @@ describe('NoteEditor touch-surface input hygiene', () => {
         blockHandle={true}
         handleRef={handleRef}
         onSelectionMenuSearch={() => []}
-      >
-        <EditorProbe />
-      </NoteEditor>,
+      />,
     )
     await hover(pmRoot.getByText('Hello'))
     const blockHandle = page.getByTestId('block-handle-drag')
     await expect.element(blockHandle).toBeVisible()
-    firePointer(blockHandle.element(), 'pointerdown', {
-      button: 0,
-      buttons: 1,
-      isPrimary: true,
-      pointerId: 1,
-      pointerType: 'mouse',
-    })
-    await expect
-      .poll(() => Object.hasOwn(capturedEditor.current?.state.selection ?? {}, 'node'))
-      .toBe(true)
+    await blockHandle.click()
 
-    const toolbar = page.getByRole('toolbar', { name: 'Block actions for 1 selected block' })
-    await expect.element(toolbar).toBeVisible()
-    await expect.element(toolbar.getByRole('button', { name: /Ask AI/ })).toBeVisible()
-    await expect.element(toolbar.getByRole('button', { name: /Change list style/ })).toBeVisible()
-    await expect
-      .element(toolbar.getByRole('button', { name: /Change checklist style/ }))
-      .toBeVisible()
+    const menu = page.getByTestId('block-handle-menu')
+    await expect.element(menu).toBeVisible()
+    await expect.element(menu.getByRole('menuitem', { name: 'Ask AI' })).toBeVisible()
+    await expect.element(menu.getByRole('menuitem', { name: 'Duplicate' })).toBeVisible()
+    await expect.element(menu.getByRole('menuitem', { name: 'Delete' })).toBeVisible()
 
-    await toolbar.getByRole('button', { name: /More actions/ }).click()
-    await expect.element(page.getByRole('menuitem', { name: 'Duplicate' })).toBeVisible()
-    await expect.element(page.getByRole('menuitem', { name: 'Delete' })).toBeVisible()
-    await userEvent.keyboard('{Escape}')
-
-    await toolbar.getByRole('button', { name: /Change checklist style/ }).click()
+    await menu.getByRole('menuitem', { name: 'Turn into' }).hover()
+    await page.getByRole('menuitem', { name: 'Checkbox list' }).click()
     await expect.poll(() => handleRef.current?.getMarkdown()).toBe('- [ ] Hello\n')
+  })
+
+  it('groups the slash menu into Notion-style sections', async () => {
+    await render(<NoteEditor initialContent="" />)
+    await pmRoot.click()
+    await userEvent.keyboard('/')
+    await expect.element(page.getByTestId('slash-menu')).toBeVisible()
+    await expect.element(page.getByText('Basic blocks')).toBeVisible()
+    await expect.element(page.getByText('Lists')).toBeVisible()
+    await expect.element(page.getByText('Media')).toBeVisible()
+
+    await userEvent.keyboard('table')
+    await expect.element(page.getByRole('option', { name: /table/i })).toBeVisible()
+    await expect.element(page.getByText('Media')).toBeVisible()
+    await expectLocatorToHaveCount(page.getByText('Basic blocks'), 0)
   })
 
   it('pins the block handle off on the touch surface', async () => {

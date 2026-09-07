@@ -33,6 +33,7 @@ import {
 import { EditorInputTraits } from '@/editor/editor-input-traits'
 import { BlockActionToolbar } from '@/editor/block-action-toolbar'
 import { FormattingToolbarBridge } from '@/editor/formatting-toolbar-bridge'
+import { SlashMenuLayout } from '@/editor/slash-menu-layout'
 import {
   IMAGE_LIGHTBOX_TRANSITION_NAME,
   ImageLightbox,
@@ -517,6 +518,7 @@ export function NoteEditor({
           onExitBoundary={handleExitBoundary}
         >
           <EditorInputTraits />
+          <SlashMenuLayout />
           {/* Only a pane that persists files gets the toolbar's attach button;
             `handleFilePaste` is the same handler meowdown pastes through. */}
           <FormattingToolbarBridge

@@ -330,6 +330,78 @@ html:root {
   --meowdown-danger: var(--destructive);
 }
 
+/* Notion-style `/` menu. meowdown renders a flat list in the top layer;
+   Kore injects section headers and these unlayered rules beat its hashed
+   module classes so groups, icons, and descriptions actually show. */
+[data-testid='slash-menu'] {
+  width: min(20.5rem, calc(100vw - 1.5rem));
+  padding: 0.375rem;
+}
+
+[data-slash-group-header] {
+  pointer-events: none;
+  padding: 0.5rem 0.5rem 0.25rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+  user-select: none;
+}
+
+[data-slash-group-header]:not([data-slash-group-first]) {
+  margin-top: 0.25rem;
+  border-top: 1px solid var(--border);
+  padding-top: 0.5rem;
+}
+
+[data-testid='slash-menu'] [role='option'][data-slash-icon] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 0.625rem;
+  align-items: center;
+  min-height: 2.5rem;
+  padding: 0.3125rem 0.5rem;
+  white-space: normal;
+}
+
+[data-testid='slash-menu'] [role='option'][data-slash-icon]::before {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.375rem;
+  background: var(--surface-sunken);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text-secondary);
+  content: attr(data-slash-icon);
+}
+
+[data-testid='slash-menu'] [role='option'][data-slash-icon] > span:first-of-type {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+[data-testid='slash-menu'] [role='option'][data-slash-desc]::after {
+  flex: 1 0 100%;
+  margin-top: 0.0625rem;
+  padding-left: calc(2.25rem + 0.625rem);
+  overflow: hidden;
+  font-size: 0.75rem;
+  line-height: 1.2;
+  color: var(--text-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  content: attr(data-slash-desc);
+}
+
+[data-testid='slash-menu'] [role='option'][data-slash-desc] > span:nth-of-type(2) {
+  display: none;
+}
+
 /* Editor reading size (Settings → Editor → "Text size"). The size lives in a
    variable on the document root so the `.reflect-editor` rules below resolve
    whatever the user picked; `EditorTextSizeEffect` mirrors the setting onto

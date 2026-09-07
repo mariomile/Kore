@@ -38,6 +38,7 @@ export function useTemplateSlashItems(
         label: template.title,
         // v1 parity: typing `/template` lists every template, whatever its name.
         keywords: ['template'],
+        detail: 'Insert a template',
         onSelect: () => {
           // Editor first, values second: the late-resolve rule above is about
           // the editor; the values always describe this pane's note.

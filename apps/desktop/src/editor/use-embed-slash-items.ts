@@ -29,6 +29,7 @@ export function useEmbedSlashItems(
         id: 'embed:url',
         label: 'Embed a link',
         keywords: ['embed', 'link', 'url', 'video', 'youtube', 'preview', 'bookmark'],
+        detail: 'Preview a URL',
         onSelect: () => {
           getEditor()?.insertMarkdown(
             `${formatEmbedBlock({ kind: 'url', url: URL_PLACEHOLDER, linkKind: 'link' })}\n`,
@@ -39,6 +40,7 @@ export function useEmbedSlashItems(
         id: 'embed:html',
         label: 'Embed HTML',
         keywords: ['embed', 'html', 'iframe', 'widget', 'raw'],
+        detail: 'Sandboxed HTML',
         onSelect: () => {
           getEditor()?.insertMarkdown(
             `${formatEmbedBlock({ kind: 'html', html: HTML_PLACEHOLDER })}\n`,

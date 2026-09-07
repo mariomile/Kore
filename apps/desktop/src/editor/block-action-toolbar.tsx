@@ -327,9 +327,10 @@ export function BlockActionToolbar({
   const [handleMenu, setHandleMenu] = useState<HandleMenu | null>(null)
   const pointerStart = useRef<{ x: number; y: number } | null>(null)
   const dragStarted = useRef(false)
-  const handleMenuOpenRef = useRef(false)
-  const skipClickToggle = useRef(false)
-  handleMenuOpenRef.current = handleMenu !== null
+  const openMenuRangeRef = useRef<{ from: number; to: number } | null>(null)
+  const gripPressRange = useRef<{ from: number; to: number } | null>(null)
+  openMenuRangeRef.current =
+    handleMenu === null ? null : { from: handleMenu.state.from, to: handleMenu.state.to }
 
   useLayoutEffect(() => {
     let observer: MutationObserver | null = null
@@ -385,8 +386,9 @@ export function BlockActionToolbar({
       }
       pointerStart.current = { x: event.clientX, y: event.clientY }
       dragStarted.current = false
-      // Virtual-anchor menu: outside press closes it before this capture click.
-      skipClickToggle.current = handleMenuOpenRef.current
+      // Snapshot before ProseKit selects the hovered node and before the
+      // virtual-anchor menu dismisses on this outside press.
+      gripPressRange.current = openMenuRangeRef.current
     }
     function onDragStart(event: DragEvent): void {
       if (closestBlockHandle(event.target, editorHostRoot(editor)) !== null) {
@@ -394,8 +396,8 @@ export function BlockActionToolbar({
       }
     }
     function onClick(event: MouseEvent): void {
-      const skip = skipClickToggle.current
-      skipClickToggle.current = false
+      const pressRange = gripPressRange.current
+      gripPressRange.current = null
       const handle = closestBlockHandle(event.target, editorHostRoot(editor))
       if (handle === null || event.button !== 0) {
         return
@@ -413,15 +415,15 @@ export function BlockActionToolbar({
       }
       event.preventDefault()
       event.stopPropagation()
-      if (skip) {
-        setHandleMenu(null)
-        return
-      }
       if (!editor.mounted) {
         return
       }
       const next = readHandleBlockState(editor)
       if (next === null) {
+        setHandleMenu(null)
+        return
+      }
+      if (pressRange !== null && pressRange.from === next.from && pressRange.to === next.to) {
         setHandleMenu(null)
         return
       }

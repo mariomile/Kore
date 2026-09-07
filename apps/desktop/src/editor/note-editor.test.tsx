@@ -143,22 +143,26 @@ describe('NoteEditor slash menu', () => {
   it('groups the slash menu into Notion-style sections', async () => {
     await render(<NoteEditor initialContent="" />)
     await pmRoot.click()
-    await userEvent.keyboard('/')
+    const selectAll = /Mac|iPhone|iPad/.test(navigator.platform)
+      ? '{Meta>}a{/Meta}'
+      : '{Control>}a{/Control}'
+
+    await userEvent.keyboard('/heading')
     const heading1 = page.locate('[data-testid="slash-menu"] [value="Heading 1"]')
     await expect.element(heading1).toBeVisible()
-    await expect.element(page.getByTestId('slash-menu')).toBeVisible()
-
-    const text = page.locate('[data-testid="slash-menu"] [value^="Text "]').element()
-    expect(slashPseudo(text, '::after')).toContain('Basic blocks')
+    expect(slashPseudo(heading1.element(), '::after')).toContain('Basic blocks')
     expect(slashPseudo(heading1.element(), '::before')).toContain('H1')
+    await expect
+      .element(page.locate('[data-testid="slash-menu"] [value="Bullet list"]'))
+      .not.toBeVisible()
 
-    const bullet = page.locate('[data-testid="slash-menu"] [value="Bullet list"]').element()
-    expect(slashPseudo(bullet, '::after')).toContain('Lists')
+    await userEvent.keyboard(`{Escape}${selectAll}/list`)
+    const bullet = page.locate('[data-testid="slash-menu"] [value="Bullet list"]')
+    await expect.element(bullet).toBeVisible()
+    expect(slashPseudo(bullet.element(), '::after')).toContain('Lists')
+    await expect.element(heading1).not.toBeVisible()
 
-    const code = page.locate('[data-testid="slash-menu"] [value="Code block"]').element()
-    expect(slashPseudo(code, '::after')).toContain('Media')
-
-    await userEvent.keyboard('table')
+    await userEvent.keyboard(`{Escape}${selectAll}/table`)
     const table = page.locate('[data-testid="slash-menu"] [value="Table"]')
     await expect.element(table).toBeVisible()
     expect(slashPseudo(table.element(), '::after')).toContain('Media')

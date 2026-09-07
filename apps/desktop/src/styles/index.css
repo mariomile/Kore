@@ -330,76 +330,362 @@ html:root {
   --meowdown-danger: var(--destructive);
 }
 
-/* Notion-style `/` menu. meowdown renders a flat list in the top layer;
-   Kore injects section headers and these unlayered rules beat its hashed
-   module classes so groups, icons, and descriptions actually show. */
+/* Notion-style `/` menu. meowdown owns a flat listbox in the top layer
+   (`prosekit-autocomplete-item` with a reflected `value` of
+   `label + keywords`). Mutating that DOM — even data attributes — closes
+   the popup, so grouping, icon tiles, and descriptions are CSS only.
+   Section labels sit on the first *visible* row of each group via sibling
+   cancellation; empty groups disappear with their filtered-out rows. */
 [data-testid='slash-menu'] {
   width: min(20.5rem, calc(100vw - 1.5rem));
-  padding: 0.375rem;
+  padding: 0.25rem 0.25rem 0.375rem;
 }
 
-[data-slash-group-header] {
-  pointer-events: none;
-  padding: 0.5rem 0.5rem 0.25rem;
-  font-size: 0.6875rem;
-  font-weight: 500;
-  letter-spacing: 0.02em;
-  color: var(--text-muted);
-  user-select: none;
-}
-
-[data-slash-group-header]:not([data-slash-group-first]) {
-  margin-top: 0.25rem;
-  border-top: 1px solid var(--border);
-  padding-top: 0.5rem;
-}
-
-[data-testid='slash-menu'] [role='option'][data-slash-icon] {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0 0.625rem;
+[data-testid='slash-menu'] [role='option']:not([hidden]) {
+  position: relative;
+  display: grid;
+  grid-template-columns: 2.25rem minmax(0, 1fr) auto;
   align-items: center;
-  min-height: 2.5rem;
-  padding: 0.3125rem 0.5rem;
+  column-gap: 0.625rem;
+  row-gap: 0;
+  min-height: 2.75rem;
+  margin-top: var(--slash-lead-gap, 0px);
+  border-top: var(--slash-lead-rule, none);
+  padding: 0.25rem 0.5rem;
+  padding-top: calc(0.25rem + var(--slash-lead-space, 0px));
   white-space: normal;
+  scroll-margin-top: var(--slash-lead-space, 0px);
 }
 
-[data-testid='slash-menu'] [role='option'][data-slash-icon]::before {
+[data-testid='slash-menu'] [role='option']:not([hidden])::before {
   display: flex;
+  grid-column: 1;
+  grid-row: 1 / span 2;
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
+  align-self: center;
   width: 2.25rem;
   height: 2.25rem;
+  border: 1px solid var(--border);
   border-radius: 0.375rem;
   background: var(--surface-sunken);
   font-size: 0.6875rem;
   font-weight: 600;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
   color: var(--text-secondary);
-  content: attr(data-slash-icon);
+  pointer-events: none;
 }
 
-[data-testid='slash-menu'] [role='option'][data-slash-icon] > span:first-of-type {
-  flex: 1 1 auto;
+[data-testid='slash-menu'] [role='option']::before {
+  content: 'T';
+}
+
+[data-testid='slash-menu'] [role='option']:not([hidden])::after {
+  position: absolute;
+  top: 0.3rem;
+  left: 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--text-muted);
+  pointer-events: none;
+  content: var(--slash-lead, none);
+}
+
+[data-testid='slash-menu'] [role='option'] > span:first-of-type {
+  display: flex;
+  grid-column: 2;
+  grid-row: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.0625rem;
   min-width: 0;
+  font-weight: 500;
 }
 
-[data-testid='slash-menu'] [role='option'][data-slash-desc]::after {
-  flex: 1 0 100%;
-  margin-top: 0.0625rem;
-  padding-left: calc(2.25rem + 0.625rem);
-  overflow: hidden;
+[data-testid='slash-menu'] [role='option'] > span:first-of-type::after {
   font-size: 0.75rem;
+  font-weight: 400;
   line-height: 1.2;
   color: var(--text-muted);
-  text-overflow: ellipsis;
   white-space: nowrap;
-  content: attr(data-slash-desc);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-[data-testid='slash-menu'] [role='option'][data-slash-desc] > span:nth-of-type(2) {
-  display: none;
+[data-testid='slash-menu'] [role='option'] > span:nth-of-type(2) {
+  grid-column: 2;
+  grid-row: 2;
+  max-width: none;
+  justify-self: start;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+[data-testid='slash-menu'] [role='option'] kbd {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+  font-size: 0.6875rem;
+  opacity: 0.7;
+}
+
+[data-testid='slash-menu'] [value='Heading 1']::before {
+  content: 'H1';
+}
+[data-testid='slash-menu'] [value='Heading 2']::before {
+  content: 'H2';
+}
+[data-testid='slash-menu'] [value='Heading 3']::before {
+  content: 'H3';
+}
+[data-testid='slash-menu'] [value='Heading 4']::before {
+  content: 'H4';
+}
+[data-testid='slash-menu'] [value='Blockquote']::before {
+  content: '“';
+}
+[data-testid='slash-menu'] [value='Bullet list']::before {
+  content: '•';
+}
+[data-testid='slash-menu'] [value='Ordered list']::before {
+  content: '1.';
+}
+[data-testid='slash-menu'] [value='Task list']::before {
+  content: '○';
+}
+[data-testid='slash-menu'] [value='Checkbox list']::before {
+  content: '☐';
+}
+[data-testid='slash-menu'] [value='Code block']::before {
+  content: '</>';
+}
+[data-testid='slash-menu'] [value^='Math']::before {
+  content: 'Σ';
+}
+[data-testid='slash-menu'] [value='Table']::before {
+  content: '⊞';
+}
+[data-testid='slash-menu'] [value='Now']::before {
+  content: ':';
+}
+[data-testid='slash-menu'] [value^='Attach file']::before {
+  content: '📎';
+}
+[data-testid='slash-menu'] [value^='Embed a link']::before {
+  content: 'URL';
+}
+[data-testid='slash-menu'] [value^='Embed HTML']::before {
+  content: '</>';
+}
+[data-testid='slash-menu'] [value^='Callout:']::before {
+  content: '!';
+}
+[data-testid='slash-menu'] [value^='Collection:']::before {
+  content: '#';
+}
+[data-testid='slash-menu'] [value$=' template']::before {
+  content: '▤';
+}
+
+[data-testid='slash-menu'] [value^='Text '] > span:first-of-type::after {
+  content: 'Just start writing';
+}
+[data-testid='slash-menu'] [value='Heading 1'] > span:first-of-type::after {
+  content: 'Large section heading';
+}
+[data-testid='slash-menu'] [value='Heading 2'] > span:first-of-type::after {
+  content: 'Medium section heading';
+}
+[data-testid='slash-menu'] [value='Heading 3'] > span:first-of-type::after {
+  content: 'Small section heading';
+}
+[data-testid='slash-menu'] [value='Heading 4'] > span:first-of-type::after {
+  content: 'Smaller heading';
+}
+[data-testid='slash-menu'] [value='Blockquote'] > span:first-of-type::after {
+  content: 'Capture a quote';
+}
+[data-testid='slash-menu'] [value='Bullet list'] > span:first-of-type::after {
+  content: 'Create a simple list';
+}
+[data-testid='slash-menu'] [value='Ordered list'] > span:first-of-type::after {
+  content: 'Create a numbered list';
+}
+[data-testid='slash-menu'] [value='Task list'] > span:first-of-type::after {
+  content: 'Track tasks with circles';
+}
+[data-testid='slash-menu'] [value='Checkbox list'] > span:first-of-type::after {
+  content: 'Track tasks with checkboxes';
+}
+[data-testid='slash-menu'] [value='Code block'] > span:first-of-type::after {
+  content: 'Capture a code snippet';
+}
+[data-testid='slash-menu'] [value^='Math'] > span:first-of-type::after {
+  content: 'Display a formula';
+}
+[data-testid='slash-menu'] [value='Table'] > span:first-of-type::after {
+  content: 'Add a table';
+}
+[data-testid='slash-menu'] [value='Now'] > span:first-of-type::after {
+  content: 'Insert the current time';
+}
+[data-testid='slash-menu'] [value^='Attach file'] > span:first-of-type::after {
+  content: 'Upload a file';
+}
+
+[data-testid='slash-menu'] [value^='Text ']:not([hidden]),
+[data-testid='slash-menu'] [value='Heading 1']:not([hidden]),
+[data-testid='slash-menu'] [value='Heading 2']:not([hidden]),
+[data-testid='slash-menu'] [value='Heading 3']:not([hidden]),
+[data-testid='slash-menu'] [value='Heading 4']:not([hidden]),
+[data-testid='slash-menu'] [value='Blockquote']:not([hidden]) {
+  --slash-lead: 'Basic blocks';
+  --slash-lead-space: 1.125rem;
+}
+
+[data-testid='slash-menu'] [value^='Text ']:not([hidden]) ~ :is(
+    [value='Heading 1'],
+    [value='Heading 2'],
+    [value='Heading 3'],
+    [value='Heading 4'],
+    [value='Blockquote']
+  ):not([hidden]),
+[data-testid='slash-menu'] [value='Heading 1']:not([hidden]) ~ :is(
+    [value='Heading 2'],
+    [value='Heading 3'],
+    [value='Heading 4'],
+    [value='Blockquote']
+  ):not([hidden]),
+[data-testid='slash-menu']
+  [value='Heading 2']:not([hidden])
+  ~ :is([value='Heading 3'], [value='Heading 4'], [value='Blockquote']):not([hidden]),
+[data-testid='slash-menu']
+  [value='Heading 3']:not([hidden])
+  ~ :is([value='Heading 4'], [value='Blockquote']):not([hidden]),
+[data-testid='slash-menu'] [value='Heading 4']:not([hidden]) ~ [value='Blockquote']:not([hidden]) {
+  --slash-lead: none;
+  --slash-lead-space: 0px;
+}
+
+[data-testid='slash-menu'] [value='Bullet list']:not([hidden]),
+[data-testid='slash-menu'] [value='Ordered list']:not([hidden]),
+[data-testid='slash-menu'] [value='Task list']:not([hidden]),
+[data-testid='slash-menu'] [value='Checkbox list']:not([hidden]) {
+  --slash-lead: 'Lists';
+  --slash-lead-space: 1.125rem;
+  --slash-lead-gap: 0.25rem;
+  --slash-lead-rule: 1px solid var(--border);
+}
+
+[data-testid='slash-menu'] [value='Bullet list']:not([hidden]) ~ :is(
+    [value='Ordered list'],
+    [value='Task list'],
+    [value='Checkbox list']
+  ):not([hidden]),
+[data-testid='slash-menu']
+  [value='Ordered list']:not([hidden])
+  ~ :is([value='Task list'], [value='Checkbox list']):not([hidden]),
+[data-testid='slash-menu'] [value='Task list']:not([hidden]) ~ [value='Checkbox list']:not([hidden]) {
+  --slash-lead: none;
+  --slash-lead-space: 0px;
+  --slash-lead-gap: 0px;
+  --slash-lead-rule: none;
+}
+
+[data-testid='slash-menu'] [value='Code block']:not([hidden]),
+[data-testid='slash-menu'] [value^='Math']:not([hidden]),
+[data-testid='slash-menu'] [value='Table']:not([hidden]) {
+  --slash-lead: 'Media';
+  --slash-lead-space: 1.125rem;
+  --slash-lead-gap: 0.25rem;
+  --slash-lead-rule: 1px solid var(--border);
+}
+
+[data-testid='slash-menu']
+  [value='Code block']:not([hidden])
+  ~ :is([value^='Math'], [value='Table']):not([hidden]),
+[data-testid='slash-menu'] [value^='Math']:not([hidden]) ~ [value='Table']:not([hidden]) {
+  --slash-lead: none;
+  --slash-lead-space: 0px;
+  --slash-lead-gap: 0px;
+  --slash-lead-rule: none;
+}
+
+[data-testid='slash-menu'] [value='Now']:not([hidden]) {
+  --slash-lead: 'Inline';
+  --slash-lead-space: 1.125rem;
+  --slash-lead-gap: 0.25rem;
+  --slash-lead-rule: 1px solid var(--border);
+}
+
+[data-testid='slash-menu'] [value^='Attach file']:not([hidden]) {
+  --slash-lead: 'Files';
+  --slash-lead-space: 1.125rem;
+  --slash-lead-gap: 0.25rem;
+  --slash-lead-rule: 1px solid var(--border);
+}
+
+[data-testid='slash-menu'] [value^='Collection:']:not([hidden]) {
+  --slash-lead: 'Collections';
+  --slash-lead-space: 1.125rem;
+  --slash-lead-gap: 0.25rem;
+  --slash-lead-rule: 1px solid var(--border);
+}
+
+[data-testid='slash-menu']
+  [value^='Collection:']:not([hidden])
+  ~ [value^='Collection:']:not([hidden]) {
+  --slash-lead: none;
+  --slash-lead-space: 0px;
+  --slash-lead-gap: 0px;
+  --slash-lead-rule: none;
+}
+
+[data-testid='slash-menu'] [value^='Callout:']:not([hidden]) {
+  --slash-lead: 'Callouts';
+  --slash-lead-space: 1.125rem;
+  --slash-lead-gap: 0.25rem;
+  --slash-lead-rule: 1px solid var(--border);
+}
+
+[data-testid='slash-menu'] [value^='Callout:']:not([hidden]) ~ [value^='Callout:']:not([hidden]) {
+  --slash-lead: none;
+  --slash-lead-space: 0px;
+  --slash-lead-gap: 0px;
+  --slash-lead-rule: none;
+}
+
+[data-testid='slash-menu'] [value^='Embed a link']:not([hidden]),
+[data-testid='slash-menu'] [value^='Embed HTML']:not([hidden]) {
+  --slash-lead: 'Embeds';
+  --slash-lead-space: 1.125rem;
+  --slash-lead-gap: 0.25rem;
+  --slash-lead-rule: 1px solid var(--border);
+}
+
+[data-testid='slash-menu']
+  [value^='Embed a link']:not([hidden])
+  ~ [value^='Embed HTML']:not([hidden]) {
+  --slash-lead: none;
+  --slash-lead-space: 0px;
+  --slash-lead-gap: 0px;
+  --slash-lead-rule: none;
+}
+
+[data-testid='slash-menu'] [value$=' template']:not([hidden]) {
+  --slash-lead: 'Templates';
+  --slash-lead-space: 1.125rem;
+  --slash-lead-gap: 0.25rem;
+  --slash-lead-rule: 1px solid var(--border);
+}
+
+[data-testid='slash-menu'] [value$=' template']:not([hidden]) ~ [value$=' template']:not([hidden]) {
+  --slash-lead: none;
+  --slash-lead-space: 0px;
+  --slash-lead-gap: 0px;
+  --slash-lead-rule: none;
 }
 
 /* Editor reading size (Settings → Editor → "Text size"). The size lives in a

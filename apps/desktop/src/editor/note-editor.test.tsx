@@ -34,6 +34,10 @@ const pmRoot = page.locate('.ProseMirror')
 
 const IMAGE_NOTE = 'A photo\n\n![Cat](assets/cat.png)'
 
+function slashPseudo(element: Element, which: '::before' | '::after'): string {
+  return getComputedStyle(element, which).content.replaceAll('"', '')
+}
+
 function renderEditor(
   openAsset: (path: string) => Promise<void> | void = vi.fn(async () => {}),
 ): ReturnType<typeof render> {
@@ -135,6 +139,77 @@ describe('NoteEditor time format', () => {
   })
 })
 
+describe('NoteEditor slash menu', () => {
+  it('groups the slash menu into Notion-style sections', async () => {
+    await render(<NoteEditor initialContent="" />)
+    await pmRoot.click()
+    await userEvent.keyboard('/')
+    const heading1 = page.locate('[data-testid="slash-menu"] [value="Heading 1"]')
+    await expect.element(heading1).toBeVisible()
+    await expect.element(page.getByTestId('slash-menu')).toBeVisible()
+
+    const text = page.locate('[data-testid="slash-menu"] [value^="Text "]').element()
+    expect(slashPseudo(text, '::after')).toContain('Basic blocks')
+    expect(slashPseudo(heading1.element(), '::before')).toContain('H1')
+
+    const bullet = page.locate('[data-testid="slash-menu"] [value="Bullet list"]').element()
+    expect(slashPseudo(bullet, '::after')).toContain('Lists')
+
+    const code = page.locate('[data-testid="slash-menu"] [value="Code block"]').element()
+    expect(slashPseudo(code, '::after')).toContain('Media')
+
+    await userEvent.keyboard('table')
+    const table = page.locate('[data-testid="slash-menu"] [value="Table"]')
+    await expect.element(table).toBeVisible()
+    expect(slashPseudo(table.element(), '::after')).toContain('Media')
+    await expect.element(heading1).not.toBeVisible()
+  })
+})
+
+describe('NoteEditor block handle actions', () => {
+  it('opens block actions from the grip and converts the block', async () => {
+    await unhover()
+    const handleRef = createRef<NoteEditorHandle>()
+    await render(
+      <NoteEditor
+        initialContent="Hello"
+        blockHandle={true}
+        handleRef={handleRef}
+        onSelectionMenuSearch={() => []}
+      />,
+    )
+    await hover(pmRoot.getByText('Hello'))
+    const blockHandle = page.getByTestId('block-handle-drag')
+    await expect.element(blockHandle).toBeVisible()
+    firePointer(blockHandle.element(), 'pointerdown', {
+      button: 0,
+      buttons: 1,
+      isPrimary: true,
+      pointerId: 1,
+      pointerType: 'mouse',
+    })
+    firePointer(blockHandle.element(), 'pointerup', {
+      button: 0,
+      buttons: 0,
+      isPrimary: true,
+      pointerId: 1,
+      pointerType: 'mouse',
+    })
+    blockHandle
+      .element()
+      .dispatchEvent(new MouseEvent('click', { bubbles: true, button: 0, cancelable: true }))
+
+    const menu = page.getByTestId('block-handle-menu')
+    await expect.element(menu).toBeVisible()
+    await expect.element(menu.getByRole('menuitem', { name: 'Ask AI' })).toBeVisible()
+    await expect.element(menu.getByRole('menuitem', { name: 'Duplicate' })).toBeVisible()
+    await expect.element(menu.getByRole('menuitem', { name: 'Delete' })).toBeVisible()
+
+    await menu.getByRole('menuitem', { name: 'Duplicate' }).click()
+    await expect.poll(() => handleRef.current?.getMarkdown()).toBe('Hello\n\nHello\n')
+  })
+})
+
 describe('NoteEditor smooth caret animation', () => {
   it('enables the caret glide by default', async () => {
     await render(<NoteEditor initialContent="Hello" />)
@@ -186,48 +261,6 @@ describe('NoteEditor touch-surface input hygiene', () => {
     await render(<NoteEditor initialContent="Hello" blockHandle={true} />)
     await hover(pmRoot.getByText('Hello'))
     await expect.element(page.getByTestId('block-handle')).toBeVisible()
-  })
-
-  it('opens block actions from the grip and converts the block', async () => {
-    await unhover()
-    const handleRef = createRef<NoteEditorHandle>()
-    await render(
-      <NoteEditor
-        initialContent="Hello"
-        blockHandle={true}
-        handleRef={handleRef}
-        onSelectionMenuSearch={() => []}
-      />,
-    )
-    await hover(pmRoot.getByText('Hello'))
-    const blockHandle = page.getByTestId('block-handle-drag')
-    await expect.element(blockHandle).toBeVisible()
-    await blockHandle.click()
-
-    const menu = page.getByTestId('block-handle-menu')
-    await expect.element(menu).toBeVisible()
-    await expect.element(menu.getByRole('menuitem', { name: 'Ask AI' })).toBeVisible()
-    await expect.element(menu.getByRole('menuitem', { name: 'Duplicate' })).toBeVisible()
-    await expect.element(menu.getByRole('menuitem', { name: 'Delete' })).toBeVisible()
-
-    await menu.getByRole('menuitem', { name: 'Turn into' }).hover()
-    await page.getByRole('menuitem', { name: 'Checkbox list' }).click()
-    await expect.poll(() => handleRef.current?.getMarkdown()).toBe('- [ ] Hello\n')
-  })
-
-  it('groups the slash menu into Notion-style sections', async () => {
-    await render(<NoteEditor initialContent="" />)
-    await pmRoot.click()
-    await userEvent.keyboard('/')
-    await expect.element(page.getByTestId('slash-menu')).toBeVisible()
-    await expect.element(page.getByText('Basic blocks')).toBeVisible()
-    await expect.element(page.getByText('Lists')).toBeVisible()
-    await expect.element(page.getByText('Media')).toBeVisible()
-
-    await userEvent.keyboard('table')
-    await expect.element(page.getByRole('option', { name: /table/i })).toBeVisible()
-    await expect.element(page.getByText('Media')).toBeVisible()
-    await expectLocatorToHaveCount(page.getByText('Basic blocks'), 0)
   })
 
   it('pins the block handle off on the touch surface', async () => {

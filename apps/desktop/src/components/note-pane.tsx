@@ -8,13 +8,12 @@ import {
 } from '@reflect/core'
 import { BacklinksPanel } from '@/components/backlinks-panel'
 import { UnlinkedMentionsPanel } from '@/components/unlinked-mentions-panel'
-import { ConflictNoteView } from '@/components/conflict-note-view'
 import { InlineAlert } from '@/components/inline-alert'
 import { NoteConflictBanner } from '@/components/note-conflict-banner'
 import { AssetViewerDialog, viewableAssetKind } from '@/components/asset-viewer-dialog'
 import { ProtectedNoteView } from '@/components/protected-note-view'
 import { SuggestedContactCard } from '@/components/suggested-contact-card'
-import { SyncConflictNotice } from '@/components/sync-conflict-notice'
+import { SyncConflictNotice, ConflictProtectedSection } from '@/components/sync-conflict-notice'
 import { EditorAiKeymap } from '@/editor/ai-menu/editor-ai-keymap'
 import { useEditorAiMenu } from '@/editor/ai-menu/use-editor-ai-menu'
 import { editorBodyWithDefaultBullet } from '@/editor/default-bullet'
@@ -34,7 +33,6 @@ import { BlockSwipeGestures } from '@/editor/block-swipe'
 import { CalloutHighlighter } from '@/editor/callout-highlighter'
 import { LinkPreviewCards } from '@/editor/link-preview-cards'
 import { EditorNoteProperties } from '@/editor/editor-note-properties'
-import { useConflictResolution } from '@/hooks/use-conflict-resolution'
 import { dailyConflictWritePath } from '@/hooks/use-daily-note-seed'
 import { useNoteRow } from '@/hooks/use-note-row'
 import { useCalloutSlashItems } from '@/editor/use-callout-slash-items'
@@ -561,35 +559,6 @@ export function NotePaneComponent({
         />
       ) : null}
     </div>
-  )
-}
-
-interface ConflictProtectedSectionProps {
-  path: string
-  content: string
-}
-
-/**
- * Conflicted notes share one resolver between the banner and the per-side
- * Keep actions, so a click on a version splices the same side the banner
- * would keep.
- */
-function ConflictProtectedSection({ path, content }: ConflictProtectedSectionProps): ReactElement {
-  const resolution = useConflictResolution(path)
-  return (
-    <>
-      <SyncConflictNotice path={path} className="mb-4" markersPresent resolution={resolution} />
-      <ConflictNoteView
-        content={content}
-        busy={resolution.busy}
-        onKeepOurs={() => {
-          void resolution.resolve('ours')
-        }}
-        onKeepTheirs={() => {
-          void resolution.resolve('theirs')
-        }}
-      />
-    </>
   )
 }
 

@@ -2,7 +2,7 @@ import type { ReactElement, ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Layers } from '@/components/icons'
 import { conflictMarkerBlockCount, conflictMarkerLabels, getNote, readNote } from '@reflect/core'
-import { CONFLICT_SIDE_DOT } from '@/components/conflict-note-view'
+import { CONFLICT_SIDE_DOT, ConflictNoteView } from '@/components/conflict-note-view'
 import { InlineAlert } from '@/components/inline-alert'
 import { Button } from '@/components/ui/button'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
@@ -178,5 +178,37 @@ function ResolveButton({
       )}
       {children}
     </Button>
+  )
+}
+
+interface ConflictProtectedSectionProps {
+  path: string
+  content: string
+}
+
+/**
+ * Conflicted notes share one resolver between the banner and the per-side
+ * Keep actions, so a click on a version splices the same side the banner
+ * would keep.
+ */
+export function ConflictProtectedSection({
+  path,
+  content,
+}: ConflictProtectedSectionProps): ReactElement {
+  const resolution = useConflictResolution(path)
+  return (
+    <>
+      <SyncConflictNotice path={path} className="mb-4" markersPresent resolution={resolution} />
+      <ConflictNoteView
+        content={content}
+        busy={resolution.busy}
+        onKeepOurs={() => {
+          void resolution.resolve('ours')
+        }}
+        onKeepTheirs={() => {
+          void resolution.resolve('theirs')
+        }}
+      />
+    </>
   )
 }

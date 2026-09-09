@@ -80,7 +80,7 @@ export function NoteCardPreview({
 
   const fallback =
     snippet === '' ? null : (
-      <p className="mt-2 line-clamp-4 text-xs leading-relaxed text-text-secondary">{snippet}</p>
+      <p className="line-clamp-4 text-xs leading-relaxed text-text-secondary">{snippet}</p>
     )
 
   if (body === undefined || body === null) {
@@ -93,8 +93,10 @@ export function NoteCardPreview({
     <div
       ref={setClampRoot}
       className={cn(
-        'reflect-hover-preview mt-2.5 max-h-56 overflow-hidden text-xs text-text-secondary',
-        overflowing && 'app-card-fade',
+        // Fill the grid's definite preview slot so the hover-card mask
+        // fades at the visible edge instead of shearing a line in half.
+        'reflect-hover-preview h-full min-h-0 overflow-hidden text-xs text-text-secondary',
+        overflowing && 'reflect-hover-preview-overflowing',
       )}
     >
       <div>

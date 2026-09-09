@@ -1586,7 +1586,7 @@ html[data-sidebar-resizing] aside {
 }
 
 /* The clamped card preview's bottom fade (note-card-preview.tsx): the card
-   sits on an opaque surface, so an ordinary gradient overlay reads the same
+   sits on `--surface-sunken`, so an ordinary gradient overlay reads the same
    as the hover card's mask-image while costing no per-card transparency
    layer — masks force WebKit into an offscreen buffer per element, fine for
    one hover card, not for a grid of them. */
@@ -1599,7 +1599,7 @@ html[data-sidebar-resizing] aside {
   inset: auto 0 0 0;
   height: 2.5rem;
   pointer-events: none;
-  background: linear-gradient(to bottom, transparent, var(--surface));
+  background: linear-gradient(to bottom, transparent, var(--surface-sunken));
 }
 
 /* Composite the existing sidebar tone once for the whole frame. Sunken can

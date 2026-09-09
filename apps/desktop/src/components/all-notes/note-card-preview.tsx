@@ -80,7 +80,7 @@ export function NoteCardPreview({
 
   const fallback =
     snippet === '' ? null : (
-      <p className="mt-2 line-clamp-4 text-xs leading-relaxed text-text-secondary">{snippet}</p>
+      <p className="line-clamp-4 text-xs leading-relaxed text-text-secondary">{snippet}</p>
     )
 
   if (body === undefined || body === null) {
@@ -93,7 +93,9 @@ export function NoteCardPreview({
     <div
       ref={setClampRoot}
       className={cn(
-        'reflect-hover-preview mt-2.5 max-h-56 overflow-hidden text-xs text-text-secondary',
+        // `h-full` fills the card's preview slot so a clamp shorter than
+        // max-h-56 still fades at the visible edge instead of overflowing it.
+        'reflect-hover-preview h-full min-h-0 max-h-56 overflow-hidden text-xs text-text-secondary',
         overflowing && 'app-card-fade',
       )}
     >

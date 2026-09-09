@@ -30,11 +30,11 @@ const SIDE_TONES: Record<'ours' | 'theirs', { header: string; block: string }> =
 interface ConflictNoteViewProps {
   /** The full file content (frontmatter included — honest display). */
   content: string
-  busy?: boolean
+  busy?: boolean | undefined
   /** Keep this device's side of every conflict block in the file. */
-  onKeepOurs?: () => void
+  onKeepOurs?: (() => void) | undefined
   /** Keep the other device's side of every conflict block in the file. */
-  onKeepTheirs?: () => void
+  onKeepTheirs?: (() => void) | undefined
 }
 
 /**
@@ -82,7 +82,7 @@ interface ConflictSideViewProps {
   side: ConflictSide
   tone: 'ours' | 'theirs'
   busy: boolean
-  onKeep?: () => void
+  onKeep?: (() => void) | undefined
 }
 
 function ConflictSideView({ side, tone, busy, onKeep }: ConflictSideViewProps): ReactElement {

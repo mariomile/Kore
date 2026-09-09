@@ -24,9 +24,9 @@ interface SyncConflictNoticeProps {
    * can lag (a just-synced daily, or a missing daily showing a conflicted
    * template seed), and the Keep actions must not wait on it.
    */
-  markersPresent?: boolean
+  markersPresent?: boolean | undefined
   /** Shared resolver when the conflict view's Keep actions use the same splice. */
-  resolution?: ConflictResolutionState
+  resolution?: ConflictResolutionState | undefined
 }
 
 /**

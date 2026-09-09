@@ -127,7 +127,9 @@ export function AllNotesGrid({
           >
             <div className="flex h-full min-h-0 min-w-0 w-full flex-col overflow-hidden rounded-2xl p-5">
               <div className="flex shrink-0 items-start justify-between gap-2">
-                <h2 className="min-w-0 text-sm font-semibold leading-snug text-text">{note.title}</h2>
+                <h2 className="min-w-0 text-sm font-semibold leading-snug text-text">
+                  {note.title}
+                </h2>
                 {note.isPinned ? (
                   <Pin aria-label="Pinned" className="mt-0.5 size-3 shrink-0 text-text-muted" />
                 ) : null}

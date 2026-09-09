@@ -1,5 +1,5 @@
 import { render } from 'vitest-browser-react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { ConflictNoteView } from './conflict-note-view'
 
 const CONFLICTED = [
@@ -45,5 +45,18 @@ describe('ConflictNoteView', () => {
 
     await expect.element(screen.getByText(/<<<<<<< this device/)).toBeInTheDocument()
     await expect.element(screen.getByText(/kept line/)).toBeInTheDocument()
+  })
+
+  it('keeps a side when its Keep action is used', async () => {
+    const onKeepOurs = vi.fn()
+    const onKeepTheirs = vi.fn()
+    const screen = await render(
+      <ConflictNoteView content={CONFLICTED} onKeepOurs={onKeepOurs} onKeepTheirs={onKeepTheirs} />,
+    )
+
+    await screen.getByRole('button', { name: /keep “alex's macbook pro”/i }).click()
+    expect(onKeepOurs).toHaveBeenCalledOnce()
+    await screen.getByRole('button', { name: /keep “alex's iphone”/i }).click()
+    expect(onKeepTheirs).toHaveBeenCalledOnce()
   })
 })

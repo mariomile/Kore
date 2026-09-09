@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react'
 import { parseConflictMarkers, type ConflictSide } from '@reflect/core'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 /**
@@ -29,19 +30,30 @@ const SIDE_TONES: Record<'ours' | 'theirs', { header: string; block: string }> =
 interface ConflictNoteViewProps {
   /** The full file content (frontmatter included — honest display). */
   content: string
+  busy?: boolean
+  /** Keep this device's side of every conflict block in the file. */
+  onKeepOurs?: () => void
+  /** Keep the other device's side of every conflict block in the file. */
+  onKeepTheirs?: () => void
 }
 
 /**
  * The read-only view for a sync-conflicted note: the file's text rendered
  * verbatim, with each conflict block shown as a card whose two sides are
  * color-coded and labeled with the device names from the marker lines
- * (instead of raw `<<<<<<<` noise). Display only — resolution is still the
- * raw-file splice in `useConflictResolution`, and `parseConflictMarkers`
- * shares its state machine, so a highlighted side is exactly what the
- * matching "Keep" button keeps. An unterminated block renders verbatim as
- * text rather than pretending to be resolvable.
+ * (instead of raw `<<<<<<<` noise). Each side can keep that version — the
+ * same raw-file splice as the banner's Keep buttons, applied to every
+ * block in the file. `parseConflictMarkers` shares its state machine, so a
+ * highlighted side is exactly what the matching Keep action keeps. An
+ * unterminated block renders verbatim as text rather than pretending to be
+ * resolvable.
  */
-export function ConflictNoteView({ content }: ConflictNoteViewProps): ReactElement {
+export function ConflictNoteView({
+  content,
+  busy = false,
+  onKeepOurs,
+  onKeepTheirs,
+}: ConflictNoteViewProps): ReactElement {
   const segments = parseConflictMarkers(content)
   return (
     <div className="reflect-protected-note text-sm leading-relaxed">
@@ -52,8 +64,13 @@ export function ConflictNoteView({ content }: ConflictNoteViewProps): ReactEleme
           </pre>
         ) : (
           <div key={index} className="my-3 overflow-hidden rounded-lg border border-border">
-            <ConflictSideView side={segment.ours} tone="ours" />
-            <ConflictSideView side={segment.theirs} tone="theirs" />
+            <ConflictSideView side={segment.ours} tone="ours" busy={busy} onKeep={onKeepOurs} />
+            <ConflictSideView
+              side={segment.theirs}
+              tone="theirs"
+              busy={busy}
+              onKeep={onKeepTheirs}
+            />
           </div>
         ),
       )}
@@ -64,15 +81,30 @@ export function ConflictNoteView({ content }: ConflictNoteViewProps): ReactEleme
 interface ConflictSideViewProps {
   side: ConflictSide
   tone: 'ours' | 'theirs'
+  busy: boolean
+  onKeep?: () => void
 }
 
-function ConflictSideView({ side, tone }: ConflictSideViewProps): ReactElement {
+function ConflictSideView({ side, tone, busy, onKeep }: ConflictSideViewProps): ReactElement {
   const tones = SIDE_TONES[tone]
   return (
     <div className={cn('px-3 py-2', tones.block, tone === 'theirs' && 'border-t border-border')}>
       <div className={cn('mb-1 flex items-center gap-1.5 text-xs font-medium', tones.header)}>
         <span aria-hidden className={cn('size-2 rounded-full', CONFLICT_SIDE_DOT[tone])} />
-        {side.label}
+        <span className="min-w-0 flex-1 truncate">{side.label}</span>
+        {onKeep !== undefined ? (
+          <Button
+            type="button"
+            size="xs"
+            variant="outline"
+            disabled={busy}
+            aria-label={`Keep “${side.label}”`}
+            className="shrink-0"
+            onClick={onKeep}
+          >
+            Keep
+          </Button>
+        ) : null}
       </div>
       {side.text.length > 0 ? (
         <pre className="whitespace-pre-wrap">{side.text}</pre>

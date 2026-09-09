@@ -34,6 +34,8 @@ import { BlockSwipeGestures } from '@/editor/block-swipe'
 import { CalloutHighlighter } from '@/editor/callout-highlighter'
 import { LinkPreviewCards } from '@/editor/link-preview-cards'
 import { EditorNoteProperties } from '@/editor/editor-note-properties'
+import { useConflictResolution } from '@/hooks/use-conflict-resolution'
+import { dailyConflictWritePath } from '@/hooks/use-daily-note-seed'
 import { useNoteRow } from '@/hooks/use-note-row'
 import { useCalloutSlashItems } from '@/editor/use-callout-slash-items'
 import { useCollectionSlashItems } from '@/editor/use-collection-slash-items'
@@ -358,11 +360,19 @@ export function NotePaneComponent({
           resolveImageUrl={resolveImageUrl}
           gutterClassName={gutterClassName}
         />
-        <SyncConflictNotice path={path} className="mb-4" />
         {conflicted ? (
-          <ConflictNoteView content={document.initialContent} />
+          <ConflictProtectedSection
+            path={dailyConflictWritePath(path, {
+              dailyNote,
+              missing: document.missing,
+            })}
+            content={document.initialContent}
+          />
         ) : (
-          <ProtectedNoteView content={document.initialContent} />
+          <>
+            <SyncConflictNotice path={path} className="mb-4" />
+            <ProtectedNoteView content={document.initialContent} />
+          </>
         )}
         {showBacklinks ? (
           <>
@@ -551,6 +561,35 @@ export function NotePaneComponent({
         />
       ) : null}
     </div>
+  )
+}
+
+interface ConflictProtectedSectionProps {
+  path: string
+  content: string
+}
+
+/**
+ * Conflicted notes share one resolver between the banner and the per-side
+ * Keep actions, so a click on a version splices the same side the banner
+ * would keep.
+ */
+function ConflictProtectedSection({ path, content }: ConflictProtectedSectionProps): ReactElement {
+  const resolution = useConflictResolution(path)
+  return (
+    <>
+      <SyncConflictNotice path={path} className="mb-4" markersPresent resolution={resolution} />
+      <ConflictNoteView
+        content={content}
+        busy={resolution.busy}
+        onKeepOurs={() => {
+          void resolution.resolve('ours')
+        }}
+        onKeepTheirs={() => {
+          void resolution.resolve('theirs')
+        }}
+      />
+    </>
   )
 }
 

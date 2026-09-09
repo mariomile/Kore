@@ -186,6 +186,27 @@ describe('NoteEditor slash menu', () => {
     expect(slashPseudo(table.element(), '::after')).toContain('Media')
     await expect.element(heading1).not.toBeVisible()
   })
+
+  it('keeps consecutive slash rows from overlapping', async () => {
+    await render(<NoteEditor initialContent="" />)
+    await pmRoot.click()
+    await userEvent.keyboard('/')
+    const text = page.locate('[data-testid="slash-menu"] [value^="Text "]')
+    const heading1 = page.locate('[data-testid="slash-menu"] [value="Heading 1"]')
+    const bullet = page.locate('[data-testid="slash-menu"] [value="Bullet list"]')
+    const ordered = page.locate('[data-testid="slash-menu"] [value="Ordered list"]')
+    await expect.element(text).toBeVisible()
+    await expect.element(heading1).toBeVisible()
+    await expect.element(bullet).toBeVisible()
+    await expect.element(ordered).toBeVisible()
+
+    const textBox = text.element().getBoundingClientRect()
+    const headingBox = heading1.element().getBoundingClientRect()
+    const bulletBox = bullet.element().getBoundingClientRect()
+    const orderedBox = ordered.element().getBoundingClientRect()
+    expect(headingBox.top).toBeGreaterThanOrEqual(textBox.bottom)
+    expect(orderedBox.top).toBeGreaterThanOrEqual(bulletBox.bottom)
+  })
 })
 
 describe('NoteEditor block handle actions', () => {

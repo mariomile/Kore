@@ -340,20 +340,24 @@ html:root {
   width: min(20.5rem, calc(100vw - 1.5rem));
   max-height: min(24rem, calc(100vh - 4rem));
   padding: 0.25rem 0.25rem 0.375rem;
+  /* The popup is a flex column with a max-height. Without this, items
+     shrink to fit the viewport and the 2.25rem icon tiles overlap. */
+  gap: 0.125rem;
 }
 
 [data-testid='slash-menu'] [role='option']:not([hidden]) {
   position: relative;
   display: grid;
+  flex: 0 0 auto;
   grid-template-columns: 2.25rem minmax(0, 1fr) auto;
   align-items: center;
   column-gap: 0.625rem;
   row-gap: 0;
-  min-height: 2.75rem;
+  min-height: 3.25rem;
   margin-top: var(--slash-lead-gap, 0px);
   border-top: var(--slash-lead-rule, none);
-  padding: 0.25rem 0.5rem;
-  padding-top: calc(0.25rem + var(--slash-lead-space, 0px));
+  padding: 0.375rem 0.5rem;
+  padding-top: calc(0.375rem + var(--slash-lead-space, 0px));
   white-space: normal;
   scroll-margin-top: var(--slash-lead-space, 0px);
 }

@@ -118,14 +118,15 @@ export function AllNotesGrid({
             // is what draws the card's outline in dark themes, where the
             // hairline border alone all but vanished. `h-full` + column flex
             // stretch a body-less card to the row so the title and footer
-            // do not sit on a stub with a hole beneath it. Preview slot is
-            // `grow` (basis auto) so the clamped body contributes its height;
-            // `flex-1` zeroed that and the markdown painted through the
-            // footer. Clip on the inner shell — WebKit ignores overflow on
-            // <button>, and clipping the button would eat the focus ring.
+            // do not sit on a stub with a hole beneath it. The preview is
+            // absolutely filled in the leftover slot so overflow clips in a
+            // box of definite height (in-flow max-height was ignored inside
+            // the <button> on WebKit) — above the footer, never through it.
+            // Clip on this inner shell, not the button: that would eat the
+            // focus ring, and WebKit ignores overflow on <button> itself.
             className="group flex h-full min-h-64 w-full flex-col rounded-2xl border border-border bg-surface-sunken p-0 text-left transition-colors duration-150 ease-swift hover:border-border-strong focus-visible:ring-2 focus-visible:ring-focus-ring"
           >
-            <div className="flex h-full min-h-0 min-w-0 w-full flex-col overflow-hidden rounded-2xl p-5">
+            <div className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden rounded-2xl p-5">
               <div className="flex shrink-0 items-start justify-between gap-2">
                 <h2 className="min-w-0 text-sm font-semibold leading-snug text-text">
                   {note.title}
@@ -137,15 +138,20 @@ export function AllNotesGrid({
               {type != null && entry !== undefined ? (
                 <CardPropertyChips type={type} entry={entry} />
               ) : null}
-              <div className="mt-2.5 min-h-0 min-w-0 grow overflow-hidden">
-                <NoteCardPreview
-                  path={note.path}
-                  mtime={note.mtime}
-                  snippet={note.snippet}
-                  resolveImageUrl={resolvePreviewImageUrl}
-                />
+              <div className="relative mt-2.5 min-h-0 min-w-0 flex-1">
+                <div
+                  data-testid="note-card-preview-slot"
+                  className="absolute inset-0 overflow-hidden"
+                >
+                  <NoteCardPreview
+                    path={note.path}
+                    mtime={note.mtime}
+                    snippet={note.snippet}
+                    resolveImageUrl={resolvePreviewImageUrl}
+                  />
+                </div>
               </div>
-              <div className="mt-auto flex shrink-0 flex-wrap items-center gap-1.5 pt-3.5">
+              <div className="relative z-[1] mt-auto flex shrink-0 flex-wrap items-center gap-1.5 pt-3.5">
                 {note.tags.slice(0, 3).map((noteTag) => (
                   <span
                     key={noteTag}

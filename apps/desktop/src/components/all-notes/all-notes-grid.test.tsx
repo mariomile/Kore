@@ -13,11 +13,11 @@ vi.mock('@/providers/settings-provider', () => ({
 }))
 vi.mock('./note-card-preview', () => ({
   NoteCardPreview: () => (
-    <div
-      data-testid="note-card-preview"
-      className="h-full max-h-56"
-      style={{ minHeight: '14rem' }}
-    />
+    <div data-testid="note-card-preview">
+      {Array.from({ length: 40 }, (_, index) => (
+        <p key={index}>Overflow line {index} that must stay above the footer.</p>
+      ))}
+    </div>
   ),
 }))
 
@@ -40,15 +40,16 @@ describe('AllNotesGrid card clipping', () => {
 
     await expect.element(view.getByText('Log')).toBeInTheDocument()
     const card = view.getByRole('button', { name: /Log/ }).element()
-    const preview = view.getByTestId('note-card-preview').element()
+    const slot = view.getByTestId('note-card-preview-slot').element()
     const footer = view.getByText('company').element()
-    const previewBox = preview.getBoundingClientRect()
+    const slotBox = slot.getBoundingClientRect()
     const cardBox = card.getBoundingClientRect()
     const footerBox = footer.getBoundingClientRect()
-    expect(previewBox.bottom).toBeLessThanOrEqual(footerBox.top + 1)
-    expect(previewBox.bottom).toBeLessThanOrEqual(cardBox.bottom + 1)
-    expect(previewBox.left).toBeGreaterThanOrEqual(cardBox.left)
-    expect(previewBox.right).toBeLessThanOrEqual(cardBox.right + 1)
+    expect(slotBox.bottom).toBeLessThanOrEqual(footerBox.top + 1)
+    expect(slotBox.bottom).toBeLessThanOrEqual(cardBox.bottom + 1)
+    expect(slotBox.left).toBeGreaterThanOrEqual(cardBox.left)
+    expect(slotBox.right).toBeLessThanOrEqual(cardBox.right + 1)
+    expect(slot.scrollHeight).toBeGreaterThan(slot.clientHeight)
     await view.unmount()
   })
 })

@@ -93,10 +93,10 @@ export function NoteCardPreview({
     <div
       ref={setClampRoot}
       className={cn(
-        // `h-full` fills the card's preview slot so a clamp shorter than
-        // max-h-56 still fades at the visible edge instead of overflowing it.
-        'reflect-hover-preview h-full min-h-0 max-h-56 overflow-hidden text-xs text-text-secondary',
-        overflowing && 'app-card-fade',
+        // Fill the grid's definite preview slot so the hover-card mask
+        // fades at the visible edge instead of shearing a line in half.
+        'reflect-hover-preview h-full min-h-0 overflow-hidden text-xs text-text-secondary',
+        overflowing && 'reflect-hover-preview-overflowing',
       )}
     >
       <div>

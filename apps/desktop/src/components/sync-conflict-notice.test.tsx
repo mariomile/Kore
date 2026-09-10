@@ -54,10 +54,10 @@ afterEach(() => {
   vi.clearAllMocks()
 })
 
-async function renderNotice(): Promise<void> {
+async function renderNotice(markersPresent = false): Promise<void> {
   await render(
     <QueryClientProvider client={queryClient}>
-      <SyncConflictNotice path="notes/clash.md" />
+      <SyncConflictNotice path="notes/clash.md" markersPresent={markersPresent} />
     </QueryClientProvider>,
   )
 }
@@ -69,6 +69,22 @@ describe('SyncConflictNotice', () => {
 
     await vi.waitFor(() => expect(getNote).toHaveBeenCalled()) // let the query settle
     expect(page.getByText(/edited on two devices/i).query()).toBeNull()
+  })
+
+  it('offers resolution when the open file has markers even if the index flag is stale', async () => {
+    vi.mocked(getNote).mockResolvedValue({ ...NOTE, hasConflict: false })
+    await renderNotice(true)
+
+    await expect.element(page.getByText(/edited on two devices/i)).toBeInTheDocument()
+    await page.getByRole('button', { name: /keep this device’s version/i }).click()
+    expect(resolution.resolve).toHaveBeenCalledWith('ours')
+  })
+
+  it('offers resolution when the index has not yet seen the note', async () => {
+    vi.mocked(getNote).mockResolvedValue(undefined)
+    await renderNotice(true)
+
+    await expect.element(page.getByText(/edited on two devices/i)).toBeInTheDocument()
   })
 
   it('offers mine/theirs/both resolutions for a conflicted note', async () => {

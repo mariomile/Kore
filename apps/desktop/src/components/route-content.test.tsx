@@ -324,8 +324,8 @@ describe('RouteContent', () => {
 
     await expect.element(page.getByText(/edited on a/)).toBeVisible()
     await expect.element(page.getByTestId('fake-editor')).not.toBeInTheDocument()
-    await expect.element(page.getByText('this device')).toBeVisible()
-    await expect.element(page.getByText('other device')).toBeVisible()
+    await expect.element(page.getByText('this device', { exact: true })).toBeVisible()
+    await expect.element(page.getByText('other device', { exact: true })).toBeVisible()
     await expect.element(page.getByText(/edited on b/)).toBeVisible()
     await view.unmount()
   })

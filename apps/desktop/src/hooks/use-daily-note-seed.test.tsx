@@ -2,7 +2,7 @@ import { render } from 'vitest-browser-react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactElement } from 'react'
-import { useDailyNoteSeed } from './use-daily-note-seed'
+import { dailyConflictWritePath, useDailyNoteSeed } from './use-daily-note-seed'
 
 const readNote = vi.hoisted(() => vi.fn())
 const todayIso = vi.hoisted(() => vi.fn(() => '2026-08-22'))
@@ -62,9 +62,10 @@ describe('useDailyNoteSeed', () => {
     expect(readNote).not.toHaveBeenCalled()
   })
 
-  it('seeds days ahead, which can still be started', async () => {
-    await seedFor('2026-09-01')
-    await vi.waitFor(() => expect(readNote).toHaveBeenCalledWith('templates/daily.md'))
+  it('leaves days ahead unseeded until that morning', async () => {
+    const seed = await seedFor('2026-09-01')
+    expect(seed).toBe('<none>')
+    expect(readNote).not.toHaveBeenCalled()
   })
 
   it('yields nothing when the graph has no daily template', async () => {
@@ -91,19 +92,17 @@ describe('useDailyNoteSeed', () => {
     expect(view.getByTestId('seed').element().textContent).toBe('<none>')
   })
 
-  it('expands placeholders against the day the note belongs to, not today', async () => {
-    // Tomorrow's page opened tonight must not date itself today.
+  it('expands placeholders against the day the note belongs to', async () => {
     readNote.mockResolvedValue('# {{date}}\n\nLinked: [[{{date:iso}}]]\n')
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
     const view = await render(
       <QueryClientProvider client={client}>
-        <Probe date="2026-09-01" />
+        <Probe date="2026-08-22" />
       </QueryClientProvider>,
     )
     await vi.waitFor(() =>
-      expect(view.getByTestId('seed').element().textContent).toContain('2026-09-01'),
+      expect(view.getByTestId('seed').element().textContent).toContain('2026-08-22'),
     )
-    expect(view.getByTestId('seed').element().textContent).not.toContain('2026-08-22')
   })
 
   it('strips the template file own frontmatter', async () => {
@@ -118,5 +117,25 @@ describe('useDailyNoteSeed', () => {
       expect(view.getByTestId('seed').element().textContent).toContain('## Focus'),
     )
     expect(view.getByTestId('seed').element().textContent).not.toContain('Daily template')
+  })
+})
+
+describe('dailyConflictWritePath', () => {
+  it('resolves a missing daily against the template, not a file that does not exist', () => {
+    expect(dailyConflictWritePath('daily/2026-08-22.md', { dailyNote: true, missing: true })).toBe(
+      'templates/daily.md',
+    )
+  })
+
+  it('resolves an on-disk daily against itself', () => {
+    expect(dailyConflictWritePath('daily/2026-08-22.md', { dailyNote: true, missing: false })).toBe(
+      'daily/2026-08-22.md',
+    )
+  })
+
+  it('leaves ordinary notes on their own path', () => {
+    expect(dailyConflictWritePath('notes/clash.md', { dailyNote: false, missing: true })).toBe(
+      'notes/clash.md',
+    )
   })
 })

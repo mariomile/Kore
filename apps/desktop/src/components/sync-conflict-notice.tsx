@@ -2,11 +2,14 @@ import type { ReactElement, ReactNode } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Layers } from '@/components/icons'
 import { conflictMarkerBlockCount, conflictMarkerLabels, getNote, readNote } from '@reflect/core'
-import { CONFLICT_SIDE_DOT } from '@/components/conflict-note-view'
+import { CONFLICT_SIDE_DOT, ConflictNoteView } from '@/components/conflict-note-view'
 import { InlineAlert } from '@/components/inline-alert'
 import { Button } from '@/components/ui/button'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
-import { useConflictResolution } from '@/hooks/use-conflict-resolution'
+import {
+  useConflictResolution,
+  type ConflictResolutionState,
+} from '@/hooks/use-conflict-resolution'
 import { isMobileSurface } from '@/lib/platform-surface'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { cn } from '@/lib/utils'
@@ -16,6 +19,14 @@ interface SyncConflictNoticeProps {
   /** Graph-relative path of the open note. */
   path: string
   className?: string
+  /**
+   * True when the open file already contains conflict markers. The index flag
+   * can lag (a just-synced daily, or a missing daily showing a conflicted
+   * template seed), and the Keep actions must not wait on it.
+   */
+  markersPresent?: boolean | undefined
+  /** Shared resolver when the conflict view's Keep actions use the same splice. */
+  resolution?: ConflictResolutionState | undefined
 }
 
 /**
@@ -41,16 +52,20 @@ interface SyncConflictNoticeProps {
 export function SyncConflictNotice({
   path,
   className,
+  markersPresent = false,
+  resolution,
 }: SyncConflictNoticeProps): ReactElement | null {
   const { graph } = useGraph()
-  const { busy, error, resolve } = useConflictResolution(path)
+  const localResolution = useConflictResolution(path)
+  const { busy, error, resolve } = resolution ?? localResolution
   const bridgeReady = useBridgeReady()
   const { data } = useQuery({
     queryKey: [INDEX_QUERY_SCOPE, 'note-conflict', graph?.root, path],
     queryFn: async () => (await getNote(path)) ?? null,
     enabled: bridgeReady && graph !== null,
   })
-  const hasConflict = data?.hasConflict === true
+  const indexedConflict = data?.hasConflict === true
+  const visible = graph !== null && (indexedConflict || markersPresent)
   // The iCloud sweep labels marker sides with real device names (or the two
   // colliding filenames) — read them so the buttons say what they keep. The
   // Git path's generic `this device`/`other device` keeps the classic copy.
@@ -65,10 +80,10 @@ export function SyncConflictNotice({
         blocks: conflictMarkerBlockCount(source),
       }
     },
-    enabled: bridgeReady && graph !== null && hasConflict,
+    enabled: bridgeReady && visible,
   })
 
-  if (data == null || !hasConflict || graph === null) {
+  if (!visible) {
     return null
   }
   const labels = markerInfo?.labels ?? null
@@ -163,5 +178,37 @@ function ResolveButton({
       )}
       {children}
     </Button>
+  )
+}
+
+interface ConflictProtectedSectionProps {
+  path: string
+  content: string
+}
+
+/**
+ * Conflicted notes share one resolver between the banner and the per-side
+ * Keep actions, so a click on a version splices the same side the banner
+ * would keep.
+ */
+export function ConflictProtectedSection({
+  path,
+  content,
+}: ConflictProtectedSectionProps): ReactElement {
+  const resolution = useConflictResolution(path)
+  return (
+    <>
+      <SyncConflictNotice path={path} className="mb-4" markersPresent resolution={resolution} />
+      <ConflictNoteView
+        content={content}
+        busy={resolution.busy}
+        onKeepOurs={() => {
+          void resolution.resolve('ours')
+        }}
+        onKeepTheirs={() => {
+          void resolution.resolve('theirs')
+        }}
+      />
+    </>
   )
 }

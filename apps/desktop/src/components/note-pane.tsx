@@ -8,13 +8,12 @@ import {
 } from '@reflect/core'
 import { BacklinksPanel } from '@/components/backlinks-panel'
 import { UnlinkedMentionsPanel } from '@/components/unlinked-mentions-panel'
-import { ConflictNoteView } from '@/components/conflict-note-view'
 import { InlineAlert } from '@/components/inline-alert'
 import { NoteConflictBanner } from '@/components/note-conflict-banner'
 import { AssetViewerDialog, viewableAssetKind } from '@/components/asset-viewer-dialog'
 import { ProtectedNoteView } from '@/components/protected-note-view'
 import { SuggestedContactCard } from '@/components/suggested-contact-card'
-import { SyncConflictNotice } from '@/components/sync-conflict-notice'
+import { SyncConflictNotice, ConflictProtectedSection } from '@/components/sync-conflict-notice'
 import { EditorAiKeymap } from '@/editor/ai-menu/editor-ai-keymap'
 import { useEditorAiMenu } from '@/editor/ai-menu/use-editor-ai-menu'
 import { editorBodyWithDefaultBullet } from '@/editor/default-bullet'
@@ -34,6 +33,7 @@ import { BlockSwipeGestures } from '@/editor/block-swipe'
 import { CalloutHighlighter } from '@/editor/callout-highlighter'
 import { LinkPreviewCards } from '@/editor/link-preview-cards'
 import { EditorNoteProperties } from '@/editor/editor-note-properties'
+import { dailyConflictWritePath } from '@/hooks/use-daily-note-seed'
 import { useNoteRow } from '@/hooks/use-note-row'
 import { useCalloutSlashItems } from '@/editor/use-callout-slash-items'
 import { useCollectionSlashItems } from '@/editor/use-collection-slash-items'
@@ -358,11 +358,19 @@ export function NotePaneComponent({
           resolveImageUrl={resolveImageUrl}
           gutterClassName={gutterClassName}
         />
-        <SyncConflictNotice path={path} className="mb-4" />
         {conflicted ? (
-          <ConflictNoteView content={document.initialContent} />
+          <ConflictProtectedSection
+            path={dailyConflictWritePath(path, {
+              dailyNote,
+              missing: document.missing,
+            })}
+            content={document.initialContent}
+          />
         ) : (
-          <ProtectedNoteView content={document.initialContent} />
+          <>
+            <SyncConflictNotice path={path} className="mb-4" />
+            <ProtectedNoteView content={document.initialContent} />
+          </>
         )}
         {showBacklinks ? (
           <>

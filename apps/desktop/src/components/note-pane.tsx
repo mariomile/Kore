@@ -1,10 +1,13 @@
 import { memo, useCallback, useMemo, useRef, useState, type ReactElement } from 'react'
 import type { ExitBoundaryHandler, SearchStatus } from '@meowdown/core'
+import type { CodeBlockRenderer, SelectionJSON } from '@meowdown/react'
 import {
   detectConflictMarkers,
-  parseCollectionEmbeds,
+  formatCollectionEmbedBody,
+  parseCollectionEmbedBody,
   parseEmbedBlocks,
   parseNoteTransclusions,
+  type CollectionDefinition,
 } from '@reflect/core'
 import { BacklinksPanel } from '@/components/backlinks-panel'
 import { UnlinkedMentionsPanel } from '@/components/unlinked-mentions-panel'
@@ -36,10 +39,11 @@ import { LinkPreviewCards } from '@/editor/link-preview-cards'
 import { EditorNoteProperties } from '@/editor/editor-note-properties'
 import { useNoteRow } from '@/hooks/use-note-row'
 import { useCalloutSlashItems } from '@/editor/use-callout-slash-items'
-import { useCollectionSlashItems } from '@/editor/use-collection-slash-items'
+import { insertCollectionEmbed, useCollectionSlashItems } from '@/editor/use-collection-slash-items'
 import { useEmbedSlashItems } from '@/editor/use-embed-slash-items'
 import { useTemplateSlashItems } from '@/editor/use-template-slash-items'
 import { EmbeddedCollection } from '@/components/notes/embedded-collection'
+import { CollectionDefinitionDialog } from '@/components/notes/collection-definition-dialog'
 import { EmbeddedMedia } from '@/components/notes/embedded-media'
 import { EmbeddedNote } from '@/components/notes/embedded-note'
 import { NoteAppearance } from '@/components/notes/note-appearance'
@@ -217,8 +221,50 @@ export function NotePaneComponent({
   // through the registry ref at select time (a late resolve after the pane
   // unmounted must insert nowhere rather than somewhere stale).
   const getEditor = useCallback(() => registeredHandle.current?.handle ?? null, [])
+  const [creatingCollection, setCreatingCollection] = useState(false)
+  const collectionInsertionSelection = useRef<SelectionJSON | null>(null)
+  const openCreateCollection = useCallback(() => {
+    const editor = getEditor()
+    if (editor === null) {
+      return
+    }
+    collectionInsertionSelection.current = editor.getSelection?.() ?? null
+    setCreatingCollection(true)
+  }, [getEditor])
+  const closeCreateCollection = useCallback(() => {
+    collectionInsertionSelection.current = null
+    setCreatingCollection(false)
+  }, [])
+  const handleCollectionCreated = useCallback(
+    (definition: CollectionDefinition) => {
+      const editor = getEditor()
+      if (editor === null) {
+        return
+      }
+      const selection = collectionInsertionSelection.current
+      if (selection !== null) {
+        editor.setSelection(selection)
+      }
+      insertCollectionEmbed(editor, {
+        selection: {
+          kind: 'definition',
+          reference: definition.id ?? definition.path,
+        },
+        view: 'table',
+        sorts: [],
+        group: null,
+        filters: [],
+        match: 'all',
+      })
+    },
+    [getEditor],
+  )
+  const focusEditorAfterCollectionDialog = useCallback(() => {
+    getEditor()?.focus()
+    return false
+  }, [getEditor])
   const templateSlashItems = useTemplateSlashItems(getEditor, path)
-  const collectionSlashItems = useCollectionSlashItems(getEditor)
+  const collectionSlashItems = useCollectionSlashItems(getEditor, openCreateCollection)
   const calloutSlashItems = useCalloutSlashItems(getEditor)
   const embedSlashItems = useEmbedSlashItems(getEditor)
   const onSlashMenuSearch = useCallback(
@@ -243,7 +289,6 @@ export function NotePaneComponent({
     typedBody.seed === document.initialContent
       ? typedBody.markdown
       : document.initialContent
-  const collectionEmbeds = useMemo(() => parseCollectionEmbeds(bodyMarkdown), [bodyMarkdown])
   const mediaEmbeds = useMemo(() => parseEmbedBlocks(bodyMarkdown), [bodyMarkdown])
   const noteTransclusions = useMemo(() => parseNoteTransclusions(bodyMarkdown), [bodyMarkdown])
   const handleEditorChange = useCallback(
@@ -280,7 +325,7 @@ export function NotePaneComponent({
       if (dailyDate !== undefined) {
         registerHandle?.(dailyDate, handle)
       }
-      if (handle && autoFocus) {
+      if (handle && autoFocus && collectionInsertionSelection.current === null) {
         // By default the caret lands at the document start — for a seeded
         // new note that is the empty H1, so typing names the note. An `end`
         // selection moves it (and the scroll) to the note's content end.
@@ -308,6 +353,22 @@ export function NotePaneComponent({
       return onExitBoundary(dailyDate, direction)
     }
   }, [dailyDate, onExitBoundary])
+
+  const renderCodeBlock = useCallback<CodeBlockRenderer>(({ language, code, updateCode }) => {
+    if (language !== 'collection') {
+      return null
+    }
+    const embed = parseCollectionEmbedBody(code)
+    if (embed === null) {
+      return null
+    }
+    return (
+      <EmbeddedCollection
+        embed={embed}
+        onChange={(updatedEmbed) => updateCode(formatCollectionEmbedBody(updatedEmbed))}
+      />
+    )
+  }, [])
 
   if (document.status === 'loading') {
     // Keep fast local reads invisible; a genuinely slow read gets a layout
@@ -430,6 +491,7 @@ export function NotePaneComponent({
         spellCheck={settings.editorSpellCheck}
         searchQuery={searchQuery}
         onSearchChange={handleSearchChange}
+        renderCodeBlock={renderCodeBlock}
         smoothCaretAnimation={settings.editorSmoothCaretAnimation}
         timeFormat={settings.timeFormat}
         openLinksInApp={settings.browserOpenLinksInApp}
@@ -497,12 +559,12 @@ export function NotePaneComponent({
         }}
       />
 
-      {collectionEmbeds.length > 0 ? (
-        <div className={gutterClassName}>
-          {collectionEmbeds.map((embed, index) => (
-            <EmbeddedCollection key={`${embed.tag}:${embed.view}:${index}`} embed={embed} />
-          ))}
-        </div>
+      {creatingCollection ? (
+        <CollectionDefinitionDialog
+          onClose={closeCreateCollection}
+          onRestoreFocus={focusEditorAfterCollectionDialog}
+          onSaved={handleCollectionCreated}
+        />
       ) : null}
 
       {mediaEmbeds.length > 0 ? (

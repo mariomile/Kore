@@ -23,7 +23,7 @@ export type AllNotesFilterTags = z.infer<typeof allNotesFilterTagsSchema>
  * first select property, so it additionally needs one in the schema. Screens
  * without the prerequisite render `list`.
  */
-const ALL_NOTES_VIEWS = ['list', 'grid', ...COLLECTION_EMBED_VIEWS] as const
+const ALL_NOTES_VIEWS = ['list', ...COLLECTION_EMBED_VIEWS] as const
 
 const allNotesViewValueSchema = z.enum(ALL_NOTES_VIEWS)
 
@@ -33,8 +33,8 @@ export type AllNotesView = z.infer<typeof allNotesViewSchema>
 
 /**
  * Layouts a collection page can persist as a named view (the tag-page tabs).
- * Wider than {@link COLLECTION_EMBED_VIEWS}: the masonry grid is a page
- * lens, not something a ` ```collection ` fence asks for.
+ * Kept as the page-tab contract even though embedded collections now support
+ * the same four layouts.
  */
 export const COLLECTION_PAGE_VIEWS = ['table', 'board', 'calendar', 'grid'] as const
 
@@ -42,11 +42,11 @@ export type CollectionPageView = (typeof COLLECTION_PAGE_VIEWS)[number]
 
 /**
  * The collection view an All Notes view persists as in an embed fence: the
- * note-centric list and grid lenses collapse to the table; the collection
- * lenses keep their identity.
+ * note-centric list collapses to the table; the collection lenses keep their
+ * identity. The one mapping shared by saved views and their menu labels.
  */
 export function collectionViewForAllNotesView(view: AllNotesView): CollectionEmbedView {
-  return view === 'list' || view === 'grid' ? 'table' : view
+  return view === 'list' ? 'table' : view
 }
 
 /**

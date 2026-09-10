@@ -90,6 +90,59 @@ beforeEach(() => {
 })
 
 describe('CollectionTable', () => {
+  it('hides tag-schema actions when the host does not provide them', async () => {
+    const view = await render(
+      <CollectionTable
+        entries={ENTRIES}
+        tag="reading"
+        type={BOOK_TYPE}
+        selection={selection()}
+        sorts={[]}
+        columnWidths={{}}
+        onColumnWidthChange={() => {}}
+        onCreateRow={createRow}
+        groups={null}
+        onSortChange={() => {}}
+        onOpen={() => {}}
+        registerScrollToIndex={() => {}}
+      />,
+    )
+
+    expect(view.getByRole('button', { name: 'Add property' }).elements()).toHaveLength(0)
+    await view.getByRole('button', { name: 'Column options for Author' }).click()
+    expect(view.getByText('Edit property…').elements()).toHaveLength(0)
+    expect(view.getByText('Delete property').elements()).toHaveLength(0)
+    await expect.element(view.getByText('Sort ascending')).toBeInTheDocument()
+  })
+
+  it('keeps conflicting fields visible but read-only', async () => {
+    const view = await render(
+      <CollectionTable
+        entries={ENTRIES}
+        tag="reading"
+        type={BOOK_TYPE}
+        editableKeys={new Set(['rating', 'read'])}
+        rawKeys={new Set(['author'])}
+        selection={selection()}
+        sorts={[]}
+        columnWidths={{}}
+        onColumnWidthChange={() => {}}
+        onCreateRow={createRow}
+        groups={null}
+        onSortChange={() => {}}
+        onOpen={() => {}}
+        registerScrollToIndex={() => {}}
+      />,
+    )
+
+    await expect.element(view.getByText('Le Guin')).toBeInTheDocument()
+    await expect
+      .element(
+        view.getByTitle('Read-only because this collection has conflicting property types').first(),
+      )
+      .toBeInTheDocument()
+  })
+
   it('renders one column per schema property and the stored values', async () => {
     const view = await render(
       <CollectionTable

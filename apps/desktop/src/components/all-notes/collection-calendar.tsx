@@ -62,6 +62,9 @@ interface CollectionCalendarProps {
   tag: string
   /** The tag's type, so a new row can seed from a bound template. */
   type: TagType
+  /** Optional host creation path for reusable selections. Receives the date
+   * seed and returns the created path; tag collections use their native path. */
+  onCreateRow?: ((properties: Record<string, unknown>) => Promise<string | null>) | undefined
   onOpen: (path: string, event?: ModClickEvent) => void
 }
 
@@ -70,6 +73,7 @@ export function CollectionCalendar({
   property,
   tag,
   type,
+  onCreateRow,
   onOpen,
 }: CollectionCalendarProps): ReactElement {
   const weekStartDay = useSettings().settings.weekStartDay
@@ -134,7 +138,7 @@ export function CollectionCalendar({
   }
 
   const createOnDay = async (iso: string): Promise<void> => {
-    const path = await createNote({ [property.key]: iso })
+    const path = await (onCreateRow ?? createNote)({ [property.key]: iso })
     if (path !== null) {
       onOpen(path)
     }

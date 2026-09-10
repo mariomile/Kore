@@ -45,9 +45,20 @@ beforeEach(() => {
 })
 
 describe('NotePropertiesSection', () => {
-  it('renders nothing while the note carries no typed tag', async () => {
+  it('renders nothing while the note has no type or stored properties', async () => {
     const view = await render(<Subject />)
     await expect.poll(() => view.container.textContent).toBe('')
+  })
+
+  it('shows note-owned properties without adding a type', async () => {
+    data.values = {
+      status: { value: 'waiting', valueType: 'string', valueNumber: null },
+    }
+    const view = await render(<Subject />)
+
+    await expect.element(view.getByText('Status')).toBeInTheDocument()
+    await expect.element(view.getByText('waiting')).toBeInTheDocument()
+    expect(view.getByText('Type').elements()).toHaveLength(0)
   })
 
   it('renders the union of the tags’ schemas with current values, once per key', async () => {

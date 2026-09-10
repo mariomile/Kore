@@ -33,8 +33,8 @@ import { CollectionTaskBadge } from './collection-task-badge'
 export const BOARD_ORDER_KEY = 'order'
 
 /** Every property the board can group by, schema order. */
-export function groupableProperties(type: TagType): TagProperty[] {
-  return boardGroupablePropertiesOf(type.properties)
+export function groupableProperties(type: TagType, allowInferredText = false): TagProperty[] {
+  return boardGroupablePropertiesOf(type.properties, allowInferredText)
 }
 
 /** The board's default grouping property: the schema's first groupable. */
@@ -285,6 +285,9 @@ interface CollectionBoardProps {
   /** The grouping property — the screen only renders the board when
    * {@link boardProperty} found one, so it arrives resolved. */
   property: TagProperty
+  /** Optional host creation path for reusable selections. Receives the lane
+   * seed and returns the created path; tag collections use their native path. */
+  onCreateRow?: ((properties: Record<string, unknown>) => Promise<string | null>) | undefined
   onOpen: (path: string, event?: ModClickEvent) => void
 }
 
@@ -293,6 +296,7 @@ export function CollectionBoard({
   tag,
   type,
   property,
+  onCreateRow,
   onOpen,
 }: CollectionBoardProps): ReactElement {
   const commitProperties = useCommitNoteProperties()
@@ -397,7 +401,8 @@ export function CollectionBoard({
       property.type === 'multiselect' && typeof column.commit === 'string'
         ? [column.commit]
         : column.commit
-    const path = await createNote(laneValue === null ? {} : { [property.key]: laneValue })
+    const properties = laneValue === null ? {} : { [property.key]: laneValue }
+    const path = await (onCreateRow ?? createNote)(properties)
     if (path !== null) {
       onOpen(path)
     }

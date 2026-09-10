@@ -258,6 +258,7 @@ function renderBoard(
   entries: CollectionEntry[],
   onOpen: (path: string) => void = () => {},
   property: TagProperty = STATUS,
+  onCreateRow?: (properties: Record<string, unknown>) => Promise<string | null>,
 ) {
   return render(
     <div style={{ height: '100vh' }}>
@@ -266,6 +267,7 @@ function renderBoard(
         tag="book"
         type={BOOK_TYPE}
         property={property}
+        onCreateRow={onCreateRow}
         onOpen={onOpen}
       />
     </div>,
@@ -286,6 +288,17 @@ async function card(
 }
 
 describe('CollectionBoard', () => {
+  it('lets a reusable selection create a note with the lane seed', async () => {
+    const onCreateRow = vi.fn(async () => 'notes/selected.md')
+    const onOpen = vi.fn()
+    const view = await renderBoard([], onOpen, STATUS, onCreateRow)
+
+    await view.getByRole('button', { name: 'New note in done' }).click()
+
+    expect(onCreateRow).toHaveBeenCalledWith({ status: 'done' })
+    expect(onOpen).toHaveBeenCalledWith('notes/selected.md')
+  })
+
   it('renders lanes with dots and cards, and opens a note from its card', async () => {
     const onOpen = vi.fn()
     const view = await renderBoard(ENTRIES, onOpen)

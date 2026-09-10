@@ -43,4 +43,13 @@ describe('extractNoteProperties', () => {
       { key: 'finished', value: '2026-01-15', valueType: 'string', valueNumber: null },
     ])
   })
+
+  it('projects only the collection discovery marker from Kore-owned metadata', () => {
+    expect(
+      extract({
+        koreCollection: true,
+        kore: { collection: { version: 1, sources: { tags: ['project'] } } },
+      }),
+    ).toEqual([{ key: 'koreCollection', value: 'true', valueType: 'boolean', valueNumber: null }])
+  })
 })

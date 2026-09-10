@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
+  deriveCollectionPropertySchema,
   evaluateFormula,
   getNote,
   getNoteProperties,
@@ -14,23 +15,24 @@ import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { useGraph } from '@/providers/graph-provider'
 
-/** A note's typed fields: the schema union and the stored values by key. */
+/** A note's fields: tag declarations first, then note-owned loose values. */
 export interface NoteTypedProperties {
   /** Typed tags the note carries, in key order. Empty until they load. */
   tagTypes: TagTypeEntry[]
-  /** Empty while the note carries no typed tag (or nothing has loaded). */
+  /** Tag-declared fields followed by inferred note-owned fields. */
   properties: TagProperty[]
   values: Record<string, CollectionValue> | undefined
 }
 
 /**
- * The typed properties a note carries (TDR 0005), shared by every surface
+ * The properties a note carries (TDR 0005), shared by every surface
  * that renders a note as a row — the context rail's Properties section and
  * the properties header above the note body (Plan 29 N1).
  *
  * The union of the note's tag schemas comes back in tag-key order, then
  * property order; a key two tags declare renders once (the first declaration
- * wins), since the value under it is one frontmatter fact either way.
+ * wins). Stored frontmatter keys no schema claims follow as note-owned fields,
+ * so a reusable collection can add a property without turning it into a type.
  */
 export function useNoteTypedProperties(path: string): NoteTypedProperties {
   const { graph } = useGraph()
@@ -49,18 +51,11 @@ export function useNoteTypedProperties(path: string): NoteTypedProperties {
   })
 
   const properties = useMemo(() => {
-    const union: TagProperty[] = []
-    const claimed = new Set<string>()
-    for (const entry of tagTypes ?? []) {
-      for (const property of entry.type.properties) {
-        if (!claimed.has(property.key)) {
-          claimed.add(property.key)
-          union.push(property)
-        }
-      }
-    }
-    return union
-  }, [tagTypes])
+    return deriveCollectionPropertySchema(
+      tagTypes ?? [],
+      values === undefined ? [] : [{ properties: values }],
+    ).type.properties
+  }, [tagTypes, values])
 
   // The `updated` fields are a view over the index's mtime, exactly like the
   // collection rows' cells (attachTimestampColumns) — never a stored value.

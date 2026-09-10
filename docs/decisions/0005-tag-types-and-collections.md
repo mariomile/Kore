@@ -219,12 +219,80 @@ storage.
   the daily keeps its pointer and its membership. The note stays the
   instance; block-level instances remain undecided.
 
+## Amendment C (2026-09-09) — Reusable collections select notes; notes still own data
+
+A named collection can now combine notes without creating another kind of row
+or another schema owner. Its definition is an ordinary note with a stable `id`
+when available, an indexed scalar discovery marker, and readable namespaced
+configuration:
+
+```yaml
+---
+id: 01K...
+koreCollection: true
+kore:
+  collection:
+    version: 1
+    sources:
+      tags: [project, initiative]
+      relation: { key: project, target: "[[Kore]]" }
+      include: ["[[Loose note]]"]
+      exclude: ["[[Archived]]"]
+    create:
+      tag: project
+      properties: { status: active }
+---
+```
+
+Source tags are alternatives. The optional relation constrains automatic tag
+matches; explicit includes are then added, excludes are finally removed, and
+paths are deduplicated. A definition may also be relation-only or manual-only.
+New rows receive only the tag and property defaults explicitly written under
+`create`; values still live in the created note's own frontmatter and use the
+same session-aware write channel as every other property edit.
+
+The scalar marker uses the existing generic `note_properties` projection only
+to find the small set of definition files. The nested `kore.collection` object
+is the source of truth and is not exposed as a note property. There is no new
+directory, SQLite table, migration, or collection-owned property registry.
+
+An inline collection fence references the definition note by stable id, with a
+path fallback for older notes without ids, and keeps its view, sort, grouping,
+filters, and hidden columns in repeated readable lines. Existing `tag:` and
+bare-tag fences remain valid. Definition and manual-note resolution preserves ambiguity:
+duplicate ids or titles are reported instead of silently selecting one path.
+
+Columns are the union of schemas declared by tags actually represented in the
+selection and property keys present on the selected notes. Compatible fields
+share the existing editors. A key whose tag declarations disagree, or whose
+stored scalar/list type contradicts its declaration, stays visible with its raw
+value and is read-only until the conflict is resolved. Derived fields apply only
+to rows carrying the tag that declares them, so mixed collections do not invent
+formula, rollup, reverse, or timestamp values on unrelated notes.
+
+The product vocabulary and interfaces are:
+
+| Element | Contract |
+| --- | --- |
+| Graph | The portable Markdown-backed workspace. Notes, definitions, templates, and assets live here; SQLite is its rebuildable projection. |
+| Note | The one content/data unit. Daily, Project, Person, and Task are note variants or typed uses, not separate storage models; a checkbox remains content inside a note. |
+| Tag / supertag | One UI concept: note membership written as `#tag`, with an optional Markdown-owned property schema and new-note template. |
+| Note property | A value owned by that note's frontmatter. Every surface reads and edits the same value. |
+| Wiki link | A general graph reference in body or frontmatter. A typed `relation` uses the same `[[Target]]` identity with schema-defined editor and target hints. |
+| Collection | A reusable selection of existing notes. It combines tags, relation constraints, manual includes, and excludes without copying notes or owning values. |
+| View | The collection's presentation and arrangement: table, grid, board, or calendar, plus sort, grouping, filters, and hidden columns. |
+| Resource card | A note that describes and relates to a saved asset; the asset remains a referenced graph file. |
+| Template | Markdown used only to seed a new note; the created note owns the resulting content and properties. |
+| Agent / chat | An actor over the same graph, notes, properties, links, relations, collections, and views, subject to the existing privacy and edit gates. |
+
 ## Known consequences
 
-- Retitling a definition note through the ordinary rename pipeline would move
+- Retitling a tag-definition note through the ordinary rename pipeline would move
   it out of `tags/` and silently untype the tag. The tag config surface edits
   frontmatter in place and never retitles; a hand-move converges like any
-  external move (heal + reproject).
+  external move (heal + reproject). A reusable collection definition is an
+  ordinary note and remains referenced across renames when its fence stores the
+  note's stable id.
 - Case-variant duplicate definitions (`tags/Book.md` + `tags/book.md` on a
   case-sensitive FS) contend for one `tag_key`; the last indexed write wins
   (`INSERT OR REPLACE`) and the state converges when either file changes.

@@ -1,3 +1,4 @@
+import { COLLECTION_DEFINITION_MARKER_KEY } from './collection-definition'
 import { RESERVED_FRONTMATTER_KEYS } from './tag-type'
 import type { Frontmatter } from '../markdown'
 
@@ -40,7 +41,10 @@ function isScalar(value: unknown): value is string | number | boolean {
 export function extractNoteProperties(frontmatter: Frontmatter): IndexedProperty[] {
   const properties: IndexedProperty[] = []
   for (const [key, value] of Object.entries(frontmatter)) {
-    if (RESERVED_FRONTMATTER_KEYS.has(key)) {
+    // The collection marker is Kore-owned and cannot be edited as a generic
+    // property, but its real scalar value stays in this existing projection
+    // so definitions can be discovered without reading every note.
+    if (RESERVED_FRONTMATTER_KEYS.has(key) && key !== COLLECTION_DEFINITION_MARKER_KEY) {
       continue
     }
     if (isScalar(value)) {

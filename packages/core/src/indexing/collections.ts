@@ -1,6 +1,11 @@
 import { sql } from 'kysely'
 import { foldTag } from '../markdown'
-import { decodeStoredList, decodeTagTypeJson, type TagType } from '../tags'
+import {
+  COLLECTION_DEFINITION_MARKER_KEY,
+  decodeStoredList,
+  decodeTagTypeJson,
+  type TagType,
+} from '../tags'
 import { db } from './db'
 import { recallOrder } from './filtered-search'
 import type { IndexedPropertyValueType } from '../tags'
@@ -258,6 +263,9 @@ export async function getNoteProperties(path: string): Promise<Record<string, Co
     .execute()
   const properties: Record<string, CollectionValue> = {}
   for (const row of rows) {
+    if (row.key === COLLECTION_DEFINITION_MARKER_KEY) {
+      continue
+    }
     properties[row.key] = collectionValue(row)
   }
   return properties
@@ -380,6 +388,9 @@ export async function listCollection(
           .execute()
   const propertiesByPath = new Map<string, Record<string, CollectionValue>>()
   for (const row of propertyRows) {
+    if (row.key === COLLECTION_DEFINITION_MARKER_KEY) {
+      continue
+    }
     const properties = propertiesByPath.get(row.notePath) ?? {}
     properties[row.key] = collectionValue(row)
     propertiesByPath.set(row.notePath, properties)

@@ -214,6 +214,15 @@ export function RouterProvider({
         }
         return current
       }
+      // Settings is one overlay. Switching pages (navigator, palette Agents,
+      // the chat chip) replaces the current entry so Close, Escape, ⌘,, and
+      // ⌘W leave Settings in one step instead of walking the group stack.
+      if (currentEntry.route.kind === 'settings' && target.kind === 'settings') {
+        const stack = current.stack.map((entry, index) =>
+          index === current.index ? { ...entry, route: target } : entry,
+        )
+        return { ...current, stack }
+      }
       const dropped = current.stack.slice(current.index + 1)
       for (const entry of dropped) {
         scrollById.current.delete(entry.id) // truncated branch — free its offsets

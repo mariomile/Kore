@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useState, type ComponentType, type ReactElement } from 'react'
+import { useCallback, useEffect, type ComponentType, type ReactElement } from 'react'
 import { Close } from '@/components/icons'
 import { Button } from '@/components/ui/button'
+import { settingsGroupOf, settingsRoute } from '@/routing/route'
 import { useRouter } from '@/routing/router'
+import { AgentsScreen } from './agents/agents-screen'
 import { AboutSection } from './settings/about-section'
 import { AgentsSection } from './settings/agents-section'
 import { AiChatSection } from './settings/ai-chat-section'
@@ -18,7 +20,7 @@ import { ImportSection } from './settings/import-section'
 import { IntegrationsSection } from './settings/integrations-section'
 import { McpSection } from './settings/mcp-section'
 import { SearchSection } from './settings/search-section'
-import type { SettingsGroupId, SettingsSectionId } from './settings/sections'
+import type { SettingsSectionId } from './settings/sections'
 import { SettingsNavigator } from './settings/settings-navigator'
 import { SyncSection } from './settings/sync-section'
 import { TasksSection } from './settings/tasks-section'
@@ -39,6 +41,7 @@ const SECTION_COMPONENTS: Record<SettingsSectionId, ComponentType> = {
   'ai-prompts': AiPromptsSection,
   'audio-memos': AudioMemosSection,
   mcp: McpSection,
+  'agent-workspace': AgentsScreen,
   agents: AgentsSection,
   sync: SyncSection,
   integrations: IntegrationsSection,
@@ -56,9 +59,10 @@ const SECTION_COMPONENTS: Record<SettingsSectionId, ComponentType> = {
  */
 export function SettingsScreen(): ReactElement {
   const groups = useVisibleSettingsGroups()
-  const { back, canBack, navigate } = useRouter()
-  const [activeGroupId, setActiveGroupId] = useState<SettingsGroupId>('general')
-  const activeGroup = groups.find((group) => group.id === activeGroupId) ?? groups[0]
+  const { back, canBack, navigate, route } = useRouter()
+  const requestedGroup = settingsGroupOf(route)
+  const activeGroup = groups.find((group) => group.id === requestedGroup) ?? groups[0]
+  const activeGroupId = activeGroup?.id ?? 'general'
   const closeSettings = useCallback((): void => {
     if (canBack) {
       back()
@@ -98,7 +102,7 @@ export function SettingsScreen(): ReactElement {
         <SettingsNavigator
           groups={groups}
           activeGroupId={activeGroupId}
-          onSelectGroup={setActiveGroupId}
+          onSelectGroup={(id) => navigate(settingsRoute(id))}
           className="mt-6"
         />
       </aside>

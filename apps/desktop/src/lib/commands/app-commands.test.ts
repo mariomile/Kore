@@ -221,6 +221,12 @@ describe('app commands', () => {
     expect(closed).toEqual([])
   })
 
+  it('nav.agents opens Settings on the Agents page', async () => {
+    const { context, navigated } = fakeContext()
+    await command('nav.agents').run(context)
+    expect(navigated).toEqual([{ kind: 'settings', group: 'agents' }])
+  })
+
   it('tabs.close leaves the settings page instead of closing a tab', async () => {
     const { context } = fakeContext({ route: () => ({ kind: 'settings' }) })
     await command('tabs.close').run(context)

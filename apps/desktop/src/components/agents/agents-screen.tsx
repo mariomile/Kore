@@ -34,12 +34,12 @@ const PROFILES_QUERY_KEY = ['agent-profiles']
 const PENDING_QUERY_KEY = ['agent-pending-memory']
 
 /**
- * The Agents screen (Hermes-agent model): the shared "About you" profile the
- * agents keep about the user, plus one card per agent profile — each a
- * directory under `agents/` holding the profile's soul (identity and voice,
- * the user's file) and memory (the agent's own working notes). One profile
- * is active at a time; its soul and memories ride into every chat session.
- * Everything is plain markdown, so Soul/Memory open in the ordinary editor.
+ * Settings → Agents: the shared "About you" profile the agents keep about the
+ * user, plus one card per agent profile — each a directory under `agents/`
+ * holding the profile's soul (identity and voice, the user's file) and memory
+ * (the agent's own working notes). One profile is active at a time; its soul
+ * and memories ride into every chat session. Everything is plain markdown, so
+ * Soul/Memory open in the ordinary editor.
  */
 export function AgentsScreen(): ReactElement {
   const { graph } = useGraph()
@@ -160,18 +160,17 @@ export function AgentsScreen(): ReactElement {
 
   const list = profiles.data ?? []
   return (
-    <div className="mx-auto w-full max-w-2xl">
-      <header className="flex items-center gap-3">
-        <h1 className="text-lg font-semibold text-text">Agents</h1>
-        <Button type="button" size="sm" className="ml-auto" onClick={() => setCreateOpen(true)}>
+    <div>
+      <div className="flex items-start gap-3">
+        <p className="min-w-0 flex-1 text-sm text-text-secondary">
+          Each agent is a folder under <code>agents/</code>: a soul (who it is — your file) and a
+          memory (what it learns — its file). The active agent’s soul and memories ride into every
+          chat.
+        </p>
+        <Button type="button" size="sm" className="shrink-0" onClick={() => setCreateOpen(true)}>
           New agent
         </Button>
-      </header>
-      <p className="mt-1 text-sm text-text-secondary">
-        Each agent is a folder under <code>agents/</code>: a soul (who it is — your file) and a
-        memory (what it learns — its file). The active agent’s soul and memories ride into every
-        chat.
-      </p>
+      </div>
 
       <section className="mt-6 rounded-xl border border-border bg-surface p-4">
         <div className="flex items-center gap-3">

@@ -37,10 +37,10 @@ describe('SettingsNavigator', () => {
       .element(page.getByRole('button', { name: 'General' }))
       .toHaveAttribute('aria-current', 'page')
 
-    await page.getByRole('button', { name: 'AI & agents' }).click()
+    await page.getByRole('button', { name: 'AI' }).click()
 
     await expect
-      .element(page.getByRole('button', { name: 'AI & agents' }))
+      .element(page.getByRole('button', { name: 'AI' }))
       .toHaveAttribute('aria-current', 'page')
     await expect
       .element(page.getByRole('button', { name: 'General' }))

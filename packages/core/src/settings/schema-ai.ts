@@ -190,7 +190,7 @@ export const activeAgentProfileSchema = z.string().nullable().catch(null)
 export const memoryWriteApprovalSchema = z.boolean().catch(false)
 
 // Scheduled agent routines (automations) live in `ai/agent-routines.ts`;
-// the settings document stores them so the Agents screen and the background
+// the settings document stores them so Settings → Agents and the background
 // runner share one source of truth.
 
 /**

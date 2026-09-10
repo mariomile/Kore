@@ -127,7 +127,7 @@ export function interruptedRoutineRun(startedMs: number): RoutineRun {
  * error entry (the run did not complete) but deliberately outside the strike
  * counter: a deliberate stop is not the routine failing.
  */
-export const STOPPED_ROUTINE_RUN_ERROR = 'Stopped from the Agents screen before it finished.'
+export const STOPPED_ROUTINE_RUN_ERROR = 'Stopped from Settings → Agents before it finished.'
 
 export const agentRoutineSchema = z.object({
   id: z.string().min(1),
@@ -285,7 +285,7 @@ export const ROUTINE_RUN_SUFFIX = [
  * The memory curator — the first routine worth having (the maintenance pass
  * Notion's and Hermes's memory systems run): distills the journal into
  * facts, re-grades confidence, prunes the stale, and keeps every memory
- * file under its cap. Offered as a one-click preset in the Agents screen.
+ * file under its cap. Offered as a one-click preset in Settings → Agents.
  */
 export const MEMORY_CURATOR_PRESET: {
   name: string

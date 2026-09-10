@@ -757,12 +757,13 @@ describe('settingsSchema', () => {
     })
   })
 
-  it('drops retired settings tabs without discarding the rest of the session', () => {
+  it('drops retired settings and Agents tabs without discarding the rest of the session', () => {
     const parsed = settingsSchema.parse({
       openTabs: {
         '/g': [
           { kind: 'surface', surface: 'daily', date: null, pinned: false },
           { kind: 'surface', surface: 'settings', pinned: true },
+          { kind: 'surface', surface: 'agents', pinned: false },
           { kind: 'note', path: 'notes/alpha.md', pinned: false },
         ],
       },

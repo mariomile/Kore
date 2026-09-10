@@ -45,14 +45,14 @@ Start with today's note (⌘D). Everything else is optional.
 ## Try one useful loop
 
 1. **Capture.** Write a decision in today's note. Add a title inside \`[[double brackets]]\` to connect it to a project or person.
-2. **Ask.** In Settings → AI & agents, connect Claude Code or Codex with your subscription, or add a provider API key. Open chat (⌘J) and ask about that decision.
+2. **Ask.** In Settings → AI, connect Claude Code or Codex with your subscription, or add a provider API key. Open chat (⌘J) and ask about that decision.
 3. **Verify.** Expand **Context used** under the reply to see the notes included with your question. Open a source to check the answer.
 
 ## When you want more
 
 - **Find notes:** ⌘K searches your graph; ⌘/ lists shortcuts.
 - **Collections:** open a tag from the sidebar to view its notes. Configure properties to organize projects, people, companies or meetings.
-- **Agents:** give an assistant its own instructions. Create an automation only when you want scheduled work; each automation belongs to one graph.
+- **Agents:** in Settings → Agents, give an assistant its own instructions. Create an automation only when you want scheduled work; each automation belongs to one graph.
 - **Protect your work:** Settings → Sync & data distinguishes Git file sync from a graph archive. An archive also includes saved chats, their images and this graph's automations.
 
 Notes marked \`private: true\` are blocked from AI and content-processing services. They are still included in backups and any file sync you enable. Keep backups private. Provider keys stay in the OS keychain and are not exported.

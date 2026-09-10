@@ -22,7 +22,7 @@ function sectionIsVisible(
     return hasAppleIntegrations
   }
   if (id === 'agents') {
-    return isMacosDesktop && showAdvanced
+    return isMacosDesktop
   }
   if (id === 'search') {
     return showAdvanced
@@ -38,8 +38,9 @@ function useHasAppleIntegrations(): boolean {
 /**
  * The settings sections this platform actually shows, flat and in page
  * order. Integrations only exists where the OS frameworks do (macOS/iOS —
- * the Rust shell answers `unavailable` elsewhere). Agents is macOS-only.
- * Search (embeddings) and Agents stay hidden until the graph has enough notes.
+ * the Rust shell answers `unavailable` elsewhere). Agent skill install is
+ * macOS-only. Search (embeddings) stays hidden until the graph has enough
+ * notes. Agents is always listed — the welcome note points here.
  * The navigator must agree with the page, so both filter through here
  * rather than reading the registry directly.
  */

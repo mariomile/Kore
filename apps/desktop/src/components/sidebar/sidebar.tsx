@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from 'react'
-import { Checklist, Graph, Note, NoteEdit, Pencil, Terminal, User } from '@/components/icons'
+import { Checklist, Graph, Note, NoteEdit, Pencil, Terminal } from '@/components/icons'
 import { isUntitledNotePath, type GraphInfo } from '@reflect/core'
 import { AudioMemoButton } from '@/components/audio-memo/audio-memo-button'
 import { usePinnedNotes } from '@/hooks/use-pinned-notes'
@@ -10,7 +10,6 @@ import type { CommandContext } from '@/lib/commands/types'
 import { isMobileSurface } from '@/lib/platform-surface'
 import { notePathForRoute } from '@/routing/route'
 import { useRouter } from '@/routing/router'
-import { useShowAdvancedSurfaces } from '@/hooks/use-show-advanced-surfaces'
 import { GraphFooter } from './graph-footer'
 import { SidebarChatSection } from './sidebar-chat-section'
 import { SidebarItem } from './sidebar-item'
@@ -44,7 +43,6 @@ export function Sidebar({ graph, context }: SidebarProps): ReactElement {
   const { route } = useRouter()
   const today = useToday()
   const pinned = usePinnedNotes()
-  const showAdvanced = useShowAdvancedSurfaces()
   const [surface, setSurface] = useState<SidebarSurface>(readSidebarSurface)
   const currentNotePath = notePathForRoute(route, today)
   const hasActivePinnedNote =
@@ -137,15 +135,6 @@ export function Sidebar({ graph, context }: SidebarProps): ReactElement {
               active={route.kind === 'tasks'}
               onClick={() => void runCommand('nav.tasks', context)}
             />
-            {showAdvanced ? (
-              <SidebarItem
-                icon={<User className="size-3.5" />}
-                label="Agents"
-                binding={keybindingFor('nav.agents') ?? undefined}
-                active={route.kind === 'agents'}
-                onClick={() => void runCommand('nav.agents', context)}
-              />
-            ) : null}
             <SidebarItem
               icon={<Graph className="size-3.5" />}
               label="Graph"

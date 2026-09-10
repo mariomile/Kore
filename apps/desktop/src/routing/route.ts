@@ -10,6 +10,13 @@
 import { dailyPath, dateFromDailyPath, isDaily, type NoteListFilter } from '@reflect/core'
 import { isIsoDate } from '@/lib/dates'
 
+/**
+ * Settings navigator pages. Keep in lockstep with {@link SETTINGS_GROUPS}
+ * in `components/settings/sections.ts` — the screen treats an unknown id as
+ * General.
+ */
+export type SettingsRouteGroup = 'general' | 'notes' | 'ai' | 'agents' | 'data' | 'app'
+
 export type Route =
   | { kind: 'today' }
   | { kind: 'daily'; date: string }
@@ -21,9 +28,9 @@ export type Route =
   | { kind: 'insights' }
   // The link map over the whole graph (not the graph *switcher* below).
   | { kind: 'graphMap' }
-  // Agent profiles: souls, memories, and the shared user profile.
-  | { kind: 'agents' }
-  | { kind: 'settings' }
+  // Optional `group` selects a Settings navigator page. Omitted (or
+  // `'general'`) is the first page. Agents lives here, not as a workspace tab.
+  | { kind: 'settings'; group?: SettingsRouteGroup }
   // The graph-switcher screen — a mobile settings sub-screen; desktop renders
   // it as the settings screen (its switcher lives in the sidebar footer).
   | { kind: 'graphs' }
@@ -35,6 +42,18 @@ export type Route =
 
 /** A route that addresses one concrete note, including a dated daily note. */
 export type NoteRoute = Extract<Route, { kind: 'daily' | 'note' }>
+
+/** The Settings route for a navigator page. General omits `group`. */
+export function settingsRoute(
+  group: SettingsRouteGroup = 'general',
+): Extract<Route, { kind: 'settings' }> {
+  return group === 'general' ? { kind: 'settings' } : { kind: 'settings', group }
+}
+
+/** The Settings page a route is showing, or General when it isn't Settings. */
+export function settingsGroupOf(route: Route): SettingsRouteGroup {
+  return route.kind === 'settings' ? (route.group ?? 'general') : 'general'
+}
 
 /**
  * Routes only the desktop surface can render (a local PTY, a child
@@ -68,12 +87,12 @@ export function routesEqual(a: Route, b: Route): boolean {
     case 'chat':
     case 'insights':
     case 'graphMap':
-    case 'agents':
-    case 'settings':
     case 'graphs':
     case 'terminal':
     case 'browser':
       return true
+    case 'settings':
+      return settingsGroupOf(a) === settingsGroupOf(b)
     case 'daily':
       return a.date === (b as Extract<Route, { kind: 'daily' }>).date
     case 'note':

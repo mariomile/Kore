@@ -37,7 +37,7 @@ interface AgentRoutinesSectionProps {
 }
 
 /**
- * The Automations section of the Agents screen: scheduled agent runs over
+ * The Automations section of Settings → Agents: scheduled agent runs over
  * the vault. Definitions live in settings; the workspace's
  * `AgentRoutinesRunner` executes due ones while the app is open. "Run now"
  * clears the routine's last-run stamp and pokes the runner, so it fires

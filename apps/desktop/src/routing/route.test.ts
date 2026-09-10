@@ -6,6 +6,7 @@ import {
   notePathForRoute,
   routeForPath,
   routesEqual,
+  settingsRoute,
 } from './route'
 
 describe('routeForPath', () => {
@@ -54,6 +55,9 @@ describe('routesEqual', () => {
   it('treats singleton screens as equal to themselves', () => {
     expect(routesEqual({ kind: 'chat' }, { kind: 'chat' })).toBe(true)
     expect(routesEqual({ kind: 'chat' }, { kind: 'settings' })).toBe(false)
+    expect(routesEqual({ kind: 'settings' }, settingsRoute('general'))).toBe(true)
+    expect(routesEqual({ kind: 'settings' }, settingsRoute('agents'))).toBe(false)
+    expect(routesEqual(settingsRoute('agents'), { kind: 'settings', group: 'agents' })).toBe(true)
   })
 })
 
@@ -120,8 +124,8 @@ describe('focusedNotePathForRoute', () => {
 describe('isSettingsPage', () => {
   it('treats settings and the desktop graphs alias as the full-page workspace', () => {
     expect(isSettingsPage({ kind: 'settings' })).toBe(true)
+    expect(isSettingsPage({ kind: 'settings', group: 'agents' })).toBe(true)
     expect(isSettingsPage({ kind: 'graphs' })).toBe(true)
     expect(isSettingsPage({ kind: 'today' })).toBe(false)
-    expect(isSettingsPage({ kind: 'agents' })).toBe(false)
   })
 })

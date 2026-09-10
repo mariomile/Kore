@@ -80,7 +80,8 @@ export function GraphBackupSection(): ReactElement {
         throw new Error(`Backup restored to ${restored.root}, but the graph could not be opened.`)
       toast.add({
         title: 'Backup restored as a new graph',
-        description: 'Restored automations are paused. Review them in Agents before enabling.',
+        description:
+          'Restored automations are paused. Review them in Settings → Agents before enabling.',
       })
     })
   }

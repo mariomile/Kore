@@ -4,7 +4,7 @@ import { isNativeShell } from '@/lib/platform'
 import { isMobileSurface } from '@/lib/platform-surface'
 import { rebuildIndexVisibly } from '@/lib/rebuild-index'
 import { openRouteInNewWindow } from '@/lib/windows/open-in-new-window'
-import { isSettingsPage, routeForPath, type Route } from '@/routing/route'
+import { isSettingsPage, routeForPath, settingsRoute, type Route } from '@/routing/route'
 import { NOTE_ACTION_COMMANDS } from './note-action-commands'
 import { registerCommands } from './registry'
 import type { AppCommand, CommandContext } from './types'
@@ -186,8 +186,8 @@ const APP_COMMANDS: AppCommand[] = [
   {
     id: 'nav.agents',
     title: 'Agents',
-    keywords: ['agent', 'soul', 'memory', 'profiles', 'ai', 'persona'],
-    run: (context) => context.navigate({ kind: 'agents' }),
+    keywords: ['agent', 'soul', 'memory', 'profiles', 'ai', 'persona', 'settings', 'automations'],
+    run: (context) => context.navigate(settingsRoute('agents')),
   },
   {
     id: 'chat.open',

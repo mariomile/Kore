@@ -157,11 +157,39 @@ describe('SettingsScreen', () => {
     await expect.element(page.getByRole('heading', { name: 'General' })).toBeVisible()
     expect(page.getByRole('region', { name: 'AI providers' }).query()).toBeNull()
 
-    await page.getByRole('button', { name: 'AI & agents', exact: true }).click()
+    await page.getByRole('button', { name: 'AI', exact: true }).click()
 
-    await expect.element(page.getByRole('heading', { name: 'AI & agents' })).toBeVisible()
+    await expect.element(page.getByRole('heading', { name: 'AI', exact: true })).toBeVisible()
     await expect.element(page.getByRole('region', { name: 'AI providers' })).toBeVisible()
     expect(page.getByRole('region', { name: 'Appearance' }).query()).toBeNull()
+  })
+
+  it('opens the Agents page from the settings navigator', async () => {
+    await renderScreen('Agents')
+    await expect.element(page.getByRole('heading', { name: 'Agents', exact: true })).toBeVisible()
+    await expect.element(page.getByRole('button', { name: 'New agent' })).toBeVisible()
+    await expect.element(page.getByRole('heading', { name: 'About you' })).toBeVisible()
+  })
+
+  it('opens Settings on the Agents page when the route names that group', async () => {
+    await render(
+      <QueryClientProvider client={queryClient}>
+        <SettingsProvider>
+          <UpdateProvider autoCheck={false}>
+            <RouterProvider initialRoute={{ kind: 'settings', group: 'agents' }}>
+              <ShortcutsProvider>
+                <NoteTemplatesProvider>
+                  <SettingsScreen />
+                </NoteTemplatesProvider>
+              </ShortcutsProvider>
+            </RouterProvider>
+          </UpdateProvider>
+        </SettingsProvider>
+      </QueryClientProvider>,
+    )
+
+    await expect.element(page.getByRole('heading', { name: 'Agents', exact: true })).toBeVisible()
+    await expect.element(page.getByRole('button', { name: 'New agent' })).toBeVisible()
   })
 
   it('closes to today when nothing is behind the page', async () => {
@@ -199,7 +227,7 @@ describe('SettingsScreen', () => {
   })
 
   it('persists the default-on transcription auto-format preference', async () => {
-    await renderScreen('AI & agents')
+    await renderScreen('AI')
     const toggle = page.getByRole('switch', { name: /transcription auto-format/i })
     await expect.element(toggle).toHaveAttribute('aria-checked', 'true')
     const descriptionId = toggle.element().getAttribute('aria-describedby')
@@ -216,7 +244,7 @@ describe('SettingsScreen', () => {
 
   it('reflects a persisted transcription auto-format opt-out', async () => {
     stored = { transcriptionFormat: false }
-    await renderScreen('AI & agents')
+    await renderScreen('AI')
 
     const toggle = page.getByRole('switch', { name: /transcription auto-format/i })
     await expect.element(toggle).toHaveAttribute('aria-checked', 'false')
@@ -226,7 +254,7 @@ describe('SettingsScreen', () => {
     stored = {
       aiProviders: [{ id: 'p1', provider: 'openai', label: 'OpenAI', model: 'gpt-5.6-sol' }],
     }
-    await renderScreen('AI & agents')
+    await renderScreen('AI')
 
     const picker = page.getByRole('combobox', { name: /openai transcription model/i })
     // Nothing chosen yet, so the picker shows the app's built-in default — by
@@ -245,7 +273,7 @@ describe('SettingsScreen', () => {
   })
 
   it('points at AI providers when none can transcribe', async () => {
-    await renderScreen('AI & agents')
+    await renderScreen('AI')
     await expect
       .element(page.getByText(/add an openai or google provider under ai providers/i))
       .toBeVisible()
@@ -777,7 +805,7 @@ describe('SettingsScreen', () => {
 
   it('reflects and persists the AI chat system prompt', async () => {
     stored = { chatSystemPrompt: 'Answer as a careful research partner.' }
-    await renderScreen('AI & agents')
+    await renderScreen('AI')
     const textarea = page.getByRole('textbox', { name: 'System prompt' })
     await expect.element(textarea).toHaveValue('Answer as a careful research partner.')
 
@@ -793,7 +821,7 @@ describe('SettingsScreen', () => {
 
   it('restores the default AI chat prompt', async () => {
     stored = { chatSystemPrompt: 'Always answer in haiku.' }
-    await renderScreen('AI & agents')
+    await renderScreen('AI')
     const section = page.getByRole('region', { name: 'AI chat' })
     await expect.element(section.getByRole('textbox')).toHaveValue('Always answer in haiku.')
 
@@ -803,7 +831,7 @@ describe('SettingsScreen', () => {
   })
 
   it('keeps long AI prompts scrollable within the viewport', async () => {
-    await renderScreen('AI & agents')
+    await renderScreen('AI')
     const section = page.getByRole('region', { name: 'AI prompts' })
 
     await section.getByRole('button', { name: /add prompt/i }).click()
@@ -819,7 +847,7 @@ describe('SettingsScreen', () => {
   })
 
   it('adding an AI prompt persists the full document', async () => {
-    await renderScreen('AI & agents')
+    await renderScreen('AI')
     const section = page.getByRole('region', { name: 'AI prompts' })
 
     await section.getByRole('button', { name: /add prompt/i }).click()
@@ -856,7 +884,7 @@ describe('SettingsScreen', () => {
         { id: 'p1', label: 'Translate to French', body: '{{selectedText}}', mode: 'replace' },
       ],
     }
-    await renderScreen('AI & agents')
+    await renderScreen('AI')
     const section = page.getByRole('region', { name: 'AI prompts' })
     const remove = section.getByRole('button', {
       name: /remove translate to french/i,
@@ -873,7 +901,7 @@ describe('SettingsScreen', () => {
         { id: 'p1', label: 'Translate to French', body: '{{selectedText}}', mode: 'replace' },
       ],
     }
-    await renderScreen('AI & agents')
+    await renderScreen('AI')
     const section = page.getByRole('region', { name: 'AI prompts' })
     const edit = section.getByRole('button', { name: /edit translate to french/i })
 

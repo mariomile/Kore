@@ -5,7 +5,7 @@ import { ADVANCED_SURFACE_NOTE_THRESHOLD, showAdvancedSurfaces } from '@/lib/pro
 import { useGraph } from '@/providers/graph-provider'
 
 /**
- * Whether agents, embeddings, and tag schema should be visible.
+ * Whether embeddings search and tag-schema chrome should be visible.
  * While the count is unknown we show the surfaces so Settings tests and a
  * mid-load settings page do not flicker empty.
  *

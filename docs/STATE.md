@@ -37,14 +37,16 @@ in the [delivery log](delivery-log.md); this file tracks only the active work.
   stable definition reference, table/grid/board/calendar view, sort, grouping,
   filters, and hidden columns as portable Markdown lines.
 
-**Validation:** Six core-focused test files, 70 tests green; core-only TypeScript
-and focused formatting/lint checks green. With local Meowdown core and React
-patches linked, `pnpm check`, `pnpm build`, and focused editor/collection tests
-passed. A rendered pass created a fresh Pagina progetto collection from `#book`
-OR `#link` plus manual Quarterly Goals, returned six original rows in the existing
-table styling, preserved board/grid behavior and note-owned Status propagation,
-and placed immediate `Prossimi passi` typing after the inline widget. TDR 0005
-Amendment C records the storage, ownership, and product vocabulary.
+**Validation:** After rebasing onto current master, a forced
+`pnpm install --frozen-lockfile` applied both checked-in Meowdown patches;
+`pnpm exec tsc -b --force`, `pnpm check`, and `pnpm build` passed. Fourteen
+focused core/editor/collection/property test files passed with 138 tests. The
+final rendered pass created a fresh Progetto verifica note, used `/collection`
+to create Materiali progetto from `#book` OR `#link` plus manual Quarterly
+Goals, returned six original rows in the existing table styling without raw
+configuration, and placed immediate `Prossimi passi` typing after the inline
+widget. TDR 0005 Amendment C records the storage, ownership, and product
+vocabulary.
 
 **Dependency boundary:** `pnpm-workspace.yaml` pins checked-in patches for
 `@meowdown/core@0.65.6` and `@meowdown/react@0.65.6`. They add
@@ -57,9 +59,8 @@ Remove these patches only after Kore upgrades to a released Meowdown version
 containing that PR and the frozen install, focused editor tests, `pnpm check`, and
 `pnpm build` pass without them.
 
-**Next:** Rebase onto current master, verify the frozen patched install and full
-Kore checks, then replace the patches with the first released Meowdown version
-containing PR #546. No release is claimed.
+**Next:** Replace the patches with the first released Meowdown version containing
+PR #546. No release is claimed.
 
 ## Cursor CLI stream teardown — 2026-09-06
 

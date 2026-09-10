@@ -29,7 +29,7 @@ export const SETTINGS_GROUPS = [
   },
   {
     id: 'ai',
-    title: 'AI & agents',
+    title: 'AI',
     sections: [
       { id: 'ai-providers', title: 'AI providers' },
       { id: 'ai-chat', title: 'AI chat' },

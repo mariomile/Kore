@@ -669,17 +669,22 @@ browser `collection-view-tabs` + `all-notes-collection-flow` +
   Settings → Agents. The command palette, the chat active-agent chip, and
   stored `agents` workspace tabs all land there (old tabs are dropped on parse).
 
-**Validation:** pending targeted tests this session.
+**Validation:** `pnpm typecheck` exit 0. Node: route, app-commands, open-tab,
+deep-links, schema, agent-routines, welcome-note (133 tests). Browser settings /
+sidebar / agents-screen / navigator: 99/99 on Chromium and WebKit. oxfmt +
+oxlint clean. The settings navigator lists a dedicated Agents page (profiles,
+About you, memory, automations); the sidebar has no Agents row.
 
-**Next:** verify in the desktop preview that the sidebar has no Agents row
-and Settings → Agents still creates/activates a profile.
+**Next:** merge, then bump.
 
 ## Session log
 
 - 2026-09-10 — Agents moved from the sidebar into Settings. The workspace
   Agents route and strip tab are gone; Settings carries a dedicated Agents
   page (profiles, memory, automations, CLI skill). Palette "Agents" and the
-  chat agent chip open that page.
+  chat agent chip open that page. The Settings AI group is labelled AI so
+  it does not sit next to a second Agents page. Verified: typecheck, targeted
+  node + Chromium/WebKit browser tests, and a Vite preview create/activate of Riley.
 
 - 2026-09-06 — Collection Notion chrome: tag pages default to a table,
   other layouts are addable named tabs (`collectionSavedViews` +

@@ -19,6 +19,40 @@ product is lives in the [roadmap](roadmap.md) (app-first) with the Personal OS
 direction in [Plan 25](plans/25-personal-os.md). The full shipped history stays
 in the [delivery log](delivery-log.md); this file tracks only the active work.
 
+## Bundled agent skills — 2026-09-10
+
+User decision (bundle in the app, not a separate repo): the one per-graph
+skill becomes four, all under `apps/desktop/src-tauri/skills/<name>/SKILL.md`
+and installed together by Settings → Agents into `~/.agents/skills/`.
+
+- [x] `reflect-<graph>` (per graph, rendered): CLI, root, privacy rules;
+  now points at the three format skills instead of restating them.
+- [x] `kore-markdown` (shared, verbatim): layout, titles, wiki links,
+  tags, tasks with priority/due, frontmatter keys, templates.
+- [x] `kore-collections` (shared): definition note, the 20 property types
+  and their YAML values, view-only columns (rollup/reverse/formula with the
+  formula language), rows, the ` ```collection ` fence grammar, reusable
+  collections (`kore.collection`), written from `tag-type.ts`,
+  `collection-embed.ts`, `formula.ts`, `collection-definition.ts`, TDR 0005.
+- [x] `kore-agent-memory` (shared): the `agents/` files, their owners and
+  formats (facts, log, pending proposals, souls, vault skills).
+- [x] `skill.rs` installs a set: per-skill status, conflicts reported per
+  skill while the others still install/uninstall; `SkillsStatus` shape
+  (`skillsRoot`, `cliPath`, `skills[]`) through `agent-skill.ts`; the
+  settings card lists each skill's state with one Install/Update/Remove.
+
+**Validation:** `cargo test -p reflect-open --lib skill` 7/7 (set shape,
+verbatim shared skills with no placeholders or graph paths, marker after
+frontmatter on all four, state machine, on-disk round trip with a foreign
+file surviving install and uninstall); `cargo fmt --check` and clippy
+clean; `pnpm check` exit 0; the two Agents-section browser suites 4/4 on
+Chromium and WebKit. Not exercised: a real install from the running app
+(needs the bump) and an agent task through the shared skills.
+
+**Next:** merge, bump, install from Settings → Agents on the real graph,
+and run one agent task through the shared skills (create a typed row by
+hand-written YAML following `kore-collections`, confirm the app renders it).
+
 ## Reusable mixed-note collections — 2026-09-09
 
 - [x] Named collection definitions remain ordinary notes with stable ids,

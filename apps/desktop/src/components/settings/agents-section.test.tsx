@@ -17,16 +17,25 @@ vi.mock('@/providers/graph-provider', () => ({
 
 type InstallState = 'missing' | 'current' | 'stale' | 'conflict'
 
-let installState: InstallState
+const SKILL_NAMES = ['reflect-personal', 'kore-markdown', 'kore-collections', 'kore-agent-memory']
+
+let installStates: Record<string, InstallState>
 let installCalls: Array<Record<string, unknown>>
 let uninstallCalls: Array<Record<string, unknown>>
 
+function setAll(state: InstallState): void {
+  installStates = Object.fromEntries(SKILL_NAMES.map((name) => [name, state]))
+}
+
 function statusPayload(): Record<string, unknown> {
   return {
-    skillName: 'reflect-personal',
-    skillPath: '/Users/me/.agents/skills/reflect-personal/SKILL.md',
+    skillsRoot: '/Users/me/.agents/skills',
     cliPath: '/Applications/Kore.app/Contents/MacOS/reflect',
-    installState,
+    skills: SKILL_NAMES.map((name) => ({
+      skillName: name,
+      skillPath: `/Users/me/.agents/skills/${name}/SKILL.md`,
+      installState: installStates[name],
+    })),
   }
 }
 
@@ -40,12 +49,20 @@ function installFakeBridge(): void {
           return statusPayload()
         case 'skill_install': {
           installCalls.push(args ?? {})
-          installState = 'current'
+          for (const name of SKILL_NAMES) {
+            if (installStates[name] !== 'conflict') {
+              installStates[name] = 'current'
+            }
+          }
           return statusPayload()
         }
         case 'skill_uninstall': {
           uninstallCalls.push(args ?? {})
-          installState = 'missing'
+          for (const name of SKILL_NAMES) {
+            if (installStates[name] !== 'conflict') {
+              installStates[name] = 'missing'
+            }
+          }
           return statusPayload()
         }
         default:
@@ -66,7 +83,7 @@ async function renderSection(): Promise<void> {
 }
 
 beforeEach(() => {
-  installState = 'missing'
+  setAll('missing')
   installFakeBridge()
 })
 
@@ -75,32 +92,42 @@ afterEach(() => {
 })
 
 describe('AgentsSection', () => {
-  it('installs the skill with the graph generation pinned', async () => {
+  it('installs every bundled skill with the graph generation pinned', async () => {
     await renderSection()
-    await page.getByRole('button', { name: 'Install skill' }).click()
+    for (const name of SKILL_NAMES) {
+      await expect.element(page.getByText(name)).toBeInTheDocument()
+    }
+    await page.getByRole('button', { name: 'Install skills' }).click()
 
-    await expect.element(page.getByText('Installed')).toBeInTheDocument()
     expect(installCalls).toEqual([{ generation: GRAPH.generation }])
-    await expect
-      .element(page.getByText('/Users/me/.agents/skills/reflect-personal/SKILL.md'))
-      .toBeInTheDocument()
+    await expect.element(page.getByText('/Users/me/.agents/skills')).toBeInTheDocument()
+    expect(page.getByRole('button', { name: 'Install skills' }).query()).toBeNull()
+    expect(page.getByText('Installed').all()).toHaveLength(SKILL_NAMES.length + 1)
   })
 
-  it('offers an update for a stale install and removal for any managed one', async () => {
-    installState = 'stale'
+  it('offers an update when one skill is stale and removal for any managed one', async () => {
+    setAll('current')
+    installStates['kore-collections'] = 'stale'
     await renderSection()
 
+    await expect.element(page.getByText('Update available')).toBeInTheDocument()
+    await expect.element(page.getByRole('button', { name: 'Update skills' })).toBeInTheDocument()
+
     await page.getByRole('button', { name: 'Remove' }).click()
-    await expect.element(page.getByRole('button', { name: 'Install skill' })).toBeInTheDocument()
+    await expect.element(page.getByRole('button', { name: 'Install skills' })).toBeInTheDocument()
     expect(uninstallCalls).toEqual([{ generation: GRAPH.generation }])
   })
 
-  it('refuses to touch an unmanaged file', async () => {
-    installState = 'conflict'
+  it('flags an unmanaged file per skill and still installs the others', async () => {
+    installStates['kore-markdown'] = 'conflict'
     await renderSection()
 
     await expect.element(page.getByText(/Kore doesn’t manage/)).toBeInTheDocument()
-    expect(page.getByRole('button', { name: 'Install skill' }).query()).toBeNull()
-    expect(page.getByRole('button', { name: 'Remove' }).query()).toBeNull()
+    await page.getByRole('button', { name: 'Install skills' }).click()
+
+    expect(installCalls).toEqual([{ generation: GRAPH.generation }])
+    await expect.element(page.getByText(/Kore doesn’t manage/)).toBeInTheDocument()
+    expect(page.getByText('Installed').all()).toHaveLength(SKILL_NAMES.length - 1)
+    expect(page.getByRole('button', { name: 'Install skills' }).query()).toBeNull()
   })
 })

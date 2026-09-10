@@ -69,6 +69,7 @@ export {
   agentSkillUninstall,
   type AgentSkillInstallState,
   type AgentSkillStatus,
+  type AgentSkillsStatus,
 } from '../app/agent-skill'
 export { chunkNote, type NoteChunk } from '../embeddings/chunk'
 export {

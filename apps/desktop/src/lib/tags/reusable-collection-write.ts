@@ -191,6 +191,21 @@ export async function stableCollectionReferenceForPath(path: string): Promise<st
     : path
 }
 
+/** Remove exclusions that resolve to notes explicitly included by path. */
+export async function removeReusableCollectionExclusionsForPaths(
+  exclusions: readonly string[],
+  includedPaths: readonly string[],
+): Promise<string[]> {
+  const included = new Set(includedPaths)
+  const resolutions = await Promise.all(
+    exclusions.map((reference) => resolveCollectionNoteReference(reference)),
+  )
+  return exclusions.filter((_, index) => {
+    const resolution = resolutions[index]
+    return resolution?.status !== 'resolved' || !included.has(resolution.path)
+  })
+}
+
 async function referencesResolvingToPath(
   references: readonly string[],
   path: string,

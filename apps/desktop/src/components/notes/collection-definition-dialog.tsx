@@ -35,6 +35,7 @@ import {
 import { toast } from '@/components/ui/toast'
 import {
   createReusableCollectionDefinition,
+  removeReusableCollectionExclusionsForPaths,
   saveReusableCollectionDefinition,
   stableCollectionReferenceForPath,
 } from '@/lib/tags/reusable-collection-write'
@@ -216,6 +217,10 @@ export function CollectionDefinitionDialog({
       const referenceFor = (path: string): string => references.get(path) ?? path
       const relationReference =
         relationPath === '' ? unresolvedRelation : referenceFor(relationPath)
+      const remainingExclusions = await removeReusableCollectionExclusionsForPaths(
+        initial.sources.exclude,
+        includedPaths,
+      )
       const config: CollectionDefinitionConfig = {
         version: 1,
         sources: {
@@ -224,7 +229,7 @@ export function CollectionDefinitionDialog({
             ? {}
             : { relation: { key: relationKey, target: relationReference } }),
           include: [...unresolvedIncludes, ...includedPaths.map(referenceFor)],
-          exclude: initial.sources.exclude,
+          exclude: remainingExclusions,
         },
         ...(defaultTag === '' && Object.keys(defaultProperties).length === 0
           ? {}

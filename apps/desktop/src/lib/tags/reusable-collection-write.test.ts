@@ -43,8 +43,12 @@ vi.mock('@/lib/note-frontmatter', () => ({
   readNoteSource,
 }))
 
-const { addReusableCollectionMember, createReusableCollectionRow, removeReusableCollectionMember } =
-  await import('./reusable-collection-write')
+const {
+  addReusableCollectionMember,
+  createReusableCollectionRow,
+  removeReusableCollectionExclusionsForPaths,
+  removeReusableCollectionMember,
+} = await import('./reusable-collection-write')
 
 const DEFINITION: CollectionDefinition = {
   id: 'collection-id',
@@ -167,6 +171,23 @@ describe('reusable collection writes', () => {
     const updated = transform(latestSource)
     expect(updated).toContain('- notes/dune.md')
     expect(updated).not.toContain('[[Dune]]')
+  })
+
+  it('clears excluded aliases for manually checked notes while preserving other references', async () => {
+    resolveCollectionNoteReference.mockImplementation(async (reference: string) => {
+      if (reference === 'missing') return { status: 'unresolved', reference }
+      return {
+        status: 'resolved',
+        path: reference === 'other-id' ? 'notes/other.md' : 'notes/dune.md',
+      }
+    })
+
+    await expect(
+      removeReusableCollectionExclusionsForPaths(
+        ['dune-id', '[[Dune]]', 'missing', 'other-id'],
+        ['notes/dune.md'],
+      ),
+    ).resolves.toEqual(['missing', 'other-id'])
   })
 
   it('manually includes a created row when its tag matches but its required relation does not', async () => {

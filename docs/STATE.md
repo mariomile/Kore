@@ -46,7 +46,8 @@ to create Materiali progetto from `#book` OR `#link` plus manual Quarterly
 Goals, returned six original rows in the existing table styling without raw
 configuration, and placed immediate `Prossimi passi` typing after the inline
 widget. TDR 0005 Amendment C records the storage, ownership, and product
-vocabulary.
+vocabulary. Bugbot's exclusion/reselection finding is covered by a focused
+six-test write-helper pass; `pnpm check` and `pnpm build` remained green.
 
 **Dependency boundary:** `pnpm-workspace.yaml` pins checked-in patches for
 `@meowdown/core@0.65.6` and `@meowdown/react@0.65.6`. They add

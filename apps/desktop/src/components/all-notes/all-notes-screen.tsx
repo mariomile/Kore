@@ -547,9 +547,7 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
             className="h-full overflow-auto"
           >
             {inbox && notes?.length === 0 ? (
-              <p className="py-8 pl-12 pr-7 text-sm text-text-muted">
-                Inbox is empty. All your notes have a supertag.
-              </p>
+              <p className="py-8 pl-12 pr-7 text-sm text-text-muted">Inbox is empty.</p>
             ) : view === 'grid' ? (
               <AllNotesGrid
                 notes={gridNotes}

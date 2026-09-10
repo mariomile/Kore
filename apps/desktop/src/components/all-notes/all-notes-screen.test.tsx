@@ -250,9 +250,7 @@ describe('AllNotesScreen', () => {
     rows[0]!.tagSchemas = '[null,"[]"]'
     await client.invalidateQueries({ queryKey: [INDEX_QUERY_SCOPE] })
     await expect.element(view.getByRole('button', { name: 'Inbox · 0' })).toBeVisible()
-    await expect
-      .element(view.getByText('Inbox is empty. All your notes have a supertag.'))
-      .toBeVisible()
+    await expect.element(view.getByText('Inbox is empty.')).toBeVisible()
 
     rows[0]!.tags = 'link'
     rows[0]!.tagSchemas = '[null]'

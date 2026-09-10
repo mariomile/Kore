@@ -70,6 +70,7 @@ const noteRows = [
     title: 'Health Stacked',
     mtime: HEALTH_MTIME,
     preview: 'Shop your health goals.',
+    tagSchemas: '[null]',
     tags: 'link',
   },
   {
@@ -77,6 +78,7 @@ const noteRows = [
     title: 'Tokyo Gâteau',
     mtime: TOKYO_MTIME,
     preview: 'Dandelion chocolate.',
+    tagSchemas: '[null]',
     tags: 'link',
   },
 ]
@@ -85,6 +87,7 @@ const taggedDailyRow = {
   title: 'June 9, 2026',
   mtime: TOKYO_MTIME,
   preview: 'Daily travel notes.',
+  tagSchemas: '[null]',
   tags: 'travel',
 }
 const facetRows = [
@@ -101,6 +104,7 @@ const manyNoteRows = Array.from({ length: 1000 }, (_, index) => ({
   title: `Note ${index}`,
   mtime: 1_000_000 - index,
   preview: '',
+  tagSchemas: '[null]',
   tags: null,
 }))
 
@@ -181,7 +185,7 @@ function OperationsProbe(): ReactElement {
 
 function RoutedScreen(): ReactElement {
   const { route } = useRouter()
-  return <AllNotesScreen tag={route.kind === 'allNotes' ? route.tag : null} />
+  return <AllNotesScreen filter={route.kind === 'allNotes' ? route.filter : { kind: 'all' }} />
 }
 
 /** Navigates to the already-active route — the sidebar-click-while-here case. */
@@ -191,7 +195,7 @@ function ReArrive(): ReactElement {
     <button
       type="button"
       data-testid="re-arrive"
-      onClick={() => navigate({ kind: 'allNotes', tag: null })}
+      onClick={() => navigate({ kind: 'allNotes', filter: { kind: 'all' } })}
     >
       re-arrive
     </button>
@@ -201,7 +205,7 @@ function ReArrive(): ReactElement {
 function renderScreen(client = new QueryClient({ defaultOptions: { queries: { retry: false } } })) {
   return render(
     <QueryClientProvider client={client}>
-      <RouterProvider initialRoute={{ kind: 'allNotes', tag: null }}>
+      <RouterProvider initialRoute={{ kind: 'allNotes', filter: { kind: 'all' } }}>
         {/* The screen fills its container (`h-full`); hand it the viewport
             height so the scroll container gets a real, bounded size. */}
         <div style={{ height: '100vh' }}>
@@ -220,6 +224,44 @@ function probedRoute(view: Awaited<ReturnType<typeof renderScreen>>): unknown {
 }
 
 describe('AllNotesScreen', () => {
+  it('keeps plain tags in Inbox and updates membership when the last supertag changes', async () => {
+    const rows = [
+      { ...noteRows[0]!, tags: 'link' },
+      { ...noteRows[1]!, tags: 'PrOjEcT', tagSchemas: '["[]"]' },
+    ]
+    mockInvoke.mockImplementation(async (command, args) => {
+      if (command !== 'db_query') return null
+      const sql = String(args['sql'])
+      if (sql.includes('"preview"')) return rows
+      return []
+    })
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const view = await renderScreen(client)
+    await expect.element(view.getByRole('button', { name: 'Inbox · 1' })).toBeVisible()
+    await view.getByRole('button', { name: 'Inbox · 1' }).click()
+    expect(probedRoute(view)).toEqual({ kind: 'allNotes', filter: { kind: 'inbox' } })
+    await expect.element(view.getByText('Health Stacked')).toBeVisible()
+    expect(view.getByText('Tokyo Gâteau').query()).toBeNull()
+    await expect
+      .element(view.getByRole('button', { name: 'All', exact: true }))
+      .toHaveAttribute('aria-pressed', 'false')
+
+    rows[0]!.tags = 'link\u{1F}project'
+    rows[0]!.tagSchemas = '[null,"[]"]'
+    await client.invalidateQueries({ queryKey: [INDEX_QUERY_SCOPE] })
+    await expect.element(view.getByRole('button', { name: 'Inbox · 0' })).toBeVisible()
+    await expect.element(view.getByText('Inbox is empty.')).toBeVisible()
+
+    rows[0]!.tags = 'link'
+    rows[0]!.tagSchemas = '[null]'
+    await client.invalidateQueries({ queryKey: [INDEX_QUERY_SCOPE] })
+    await expect.element(view.getByRole('button', { name: 'Inbox · 1' })).toBeVisible()
+    await expect.element(view.getByText('Health Stacked')).toBeVisible()
+    await view.getByRole('button', { name: 'All', exact: true }).click()
+    await expect.element(view.getByText('Tokyo Gâteau')).toBeVisible()
+    await view.unmount()
+  })
+
   it('lists non-daily notes with subject, snippet, tags, and updated columns', async () => {
     const view = await renderScreen()
 
@@ -252,7 +294,14 @@ describe('AllNotesScreen', () => {
       const sql = String(args['sql'])
       if (sql.includes('"preview"')) {
         return [
-          { path: 'notes/legacy.md', title: 'Legacy Note', mtime: 0, preview: '', tags: null },
+          {
+            path: 'notes/legacy.md',
+            title: 'Legacy Note',
+            mtime: 0,
+            preview: '',
+            tagSchemas: '[null]',
+            tags: null,
+          },
         ]
       }
       if (sql.includes('group by')) {
@@ -289,7 +338,7 @@ describe('AllNotesScreen', () => {
         path: 'notes/health.md',
       }),
     )
-    expect(probedRoute(view)).toEqual({ kind: 'allNotes', tag: null })
+    expect(probedRoute(view)).toEqual({ kind: 'allNotes', filter: { kind: 'all' } })
     expect(view.getByRole('button', { name: /Trash \(/ }).query()).toBeNull()
     await view.unmount()
   })
@@ -307,7 +356,7 @@ describe('AllNotesScreen', () => {
       }),
     )
     expect(openRouteInNewWindow).toHaveBeenCalledTimes(1)
-    expect(probedRoute(view)).toEqual({ kind: 'allNotes', tag: null })
+    expect(probedRoute(view)).toEqual({ kind: 'allNotes', filter: { kind: 'all' } })
     await view.unmount()
   })
 
@@ -318,7 +367,7 @@ describe('AllNotesScreen', () => {
     await expect.element(view.getByRole('button', { name: '#person' })).toBeInTheDocument()
     await view.getByRole('button', { name: '#book' }).click()
 
-    expect(probedRoute(view)).toEqual({ kind: 'allNotes', tag: 'book' })
+    expect(probedRoute(view)).toEqual({ kind: 'allNotes', filter: { kind: 'tag', tag: 'book' } })
     // The tag renders as its own page: the tag is the title and the filter
     // tabs stay behind on the unfiltered view.
     await expect.element(view.getByRole('heading', { name: '#book' })).toBeInTheDocument()
@@ -431,7 +480,7 @@ describe('AllNotesScreen', () => {
 
     await page.getByRole('option', { name: /#travel/ }).click()
 
-    expect(probedRoute(view)).toEqual({ kind: 'allNotes', tag: 'travel' })
+    expect(probedRoute(view)).toEqual({ kind: 'allNotes', filter: { kind: 'tag', tag: 'travel' } })
     // The tag page is its collection table: the tagged daily is a row (a
     // title, no preview), the untagged notes are not.
     await expect.element(view.getByText('June 9, 2026')).toBeInTheDocument()
@@ -458,7 +507,7 @@ describe('AllNotesScreen', () => {
     await input.fill('#zettel')
     await page.getByRole('option', { name: 'Filter by #zettel' }).click()
 
-    expect(probedRoute(view)).toEqual({ kind: 'allNotes', tag: 'zettel' })
+    expect(probedRoute(view)).toEqual({ kind: 'allNotes', filter: { kind: 'tag', tag: 'zettel' } })
     await expect.element(view.getByText('No notes tagged #zettel.')).toBeInTheDocument()
     await view.unmount()
   })
@@ -478,7 +527,7 @@ describe('AllNotesScreen', () => {
     expect(page.getByRole('option', { name: /Filter by/ }).query()).toBeNull()
 
     await page.getByRole('option', { name: /#travel/ }).click()
-    expect(probedRoute(view)).toEqual({ kind: 'allNotes', tag: 'travel' })
+    expect(probedRoute(view)).toEqual({ kind: 'allNotes', filter: { kind: 'tag', tag: 'travel' } })
     await view.unmount()
   })
 })
@@ -490,7 +539,7 @@ describe('AllNotesScreen — selection and bulk trash', () => {
 
     // Clicking the row body (the snippet, not a button) selects without opening.
     await view.getByText('Shop your health goals.').click()
-    expect(probedRoute(view)).toEqual({ kind: 'allNotes', tag: null })
+    expect(probedRoute(view)).toEqual({ kind: 'allNotes', filter: { kind: 'all' } })
     const trashButton = view.getByRole('button', { name: /Trash \(1\)/ })
     await expect.element(trashButton).toBeInTheDocument()
     // The bulk actions float over the list, never inside the header: three
@@ -508,9 +557,30 @@ describe('AllNotesScreen — selection and bulk trash', () => {
 
   it('range-selects rows with Shift-click', async () => {
     const rows = [
-      { path: 'notes/a.md', title: 'Note A', mtime: 3, preview: 'alpha', tags: null },
-      { path: 'notes/b.md', title: 'Note B', mtime: 2, preview: 'bravo', tags: null },
-      { path: 'notes/c.md', title: 'Note C', mtime: 1, preview: 'charlie', tags: null },
+      {
+        path: 'notes/a.md',
+        title: 'Note A',
+        mtime: 3,
+        preview: 'alpha',
+        tagSchemas: '[null]',
+        tags: null,
+      },
+      {
+        path: 'notes/b.md',
+        title: 'Note B',
+        mtime: 2,
+        preview: 'bravo',
+        tagSchemas: '[null]',
+        tags: null,
+      },
+      {
+        path: 'notes/c.md',
+        title: 'Note C',
+        mtime: 1,
+        preview: 'charlie',
+        tagSchemas: '[null]',
+        tags: null,
+      },
     ]
     mockInvoke.mockImplementation(async (command, args) => {
       if (command !== 'db_query') {
@@ -642,7 +712,7 @@ describe('AllNotesScreen — selection and bulk trash', () => {
         new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }),
       )
 
-    expect(probedRoute(view)).toEqual({ kind: 'allNotes', tag: null })
+    expect(probedRoute(view)).toEqual({ kind: 'allNotes', filter: { kind: 'all' } })
     await view.unmount()
   })
 
@@ -789,6 +859,7 @@ describe('AllNotesScreen grid view', () => {
           {
             path: 'notes/long.md',
             title: 'Long note',
+            tagSchemas: '[null]',
             mtime: HEALTH_MTIME,
             preview:
               'A deliberately long preview that wraps across several lines and makes this card much taller than a neighbor that has no body at all.',
@@ -799,6 +870,7 @@ describe('AllNotesScreen grid view', () => {
             title: 'Empty note',
             mtime: TOKYO_MTIME,
             preview: '',
+            tagSchemas: '[null]',
             tags: null,
           },
         ]

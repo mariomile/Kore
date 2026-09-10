@@ -190,7 +190,7 @@ function EmbeddedTagCollection({ embed, tag, onChange }: EmbeddedTagCollectionPr
           type="button"
           aria-label={`Open #${tag} in All Notes`}
           className="flex size-7 items-center justify-center rounded-full text-text-muted transition-colors hover:text-text"
-          onClick={() => navigate({ kind: 'allNotes', tag })}
+          onClick={() => navigate({ kind: 'allNotes', filter: { kind: 'tag', tag } })}
         >
           <ExternalLink aria-hidden className="size-3.5" />
         </button>

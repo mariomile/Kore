@@ -243,3 +243,5 @@ export {
   type TitleRenameRewriteOptions,
   type TitleRenameRewriteResult,
 } from './rename'
+
+export { noteListFilterSchema, type NoteListFilter } from './note-list-filter'

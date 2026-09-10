@@ -344,7 +344,7 @@ describe('RouteContent', () => {
   })
 
   it('renders the All Notes screen for the allNotes route, not the stream', async () => {
-    const view = await renderRoute({ kind: 'allNotes', tag: null })
+    const view = await renderRoute({ kind: 'allNotes', filter: { kind: 'all' } })
     await expect.element(page.getByLabelText('All notes')).toBeVisible()
     await expect.element(page.getByTestId('daily-stream')).not.toBeInTheDocument()
     // The pinned filter tabs come from settings; the table header renders

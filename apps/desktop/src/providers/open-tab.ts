@@ -66,7 +66,12 @@ export function openTabForRoute(
     case 'daily':
       return { kind: 'surface', surface: 'daily', date: route.date, pinned: false }
     case 'allNotes':
-      return { kind: 'surface', surface: 'allNotes', tag: route.tag, pinned: false }
+      return {
+        kind: 'surface',
+        surface: 'allNotes',
+        filter: route.filter,
+        pinned: false,
+      }
     case 'search':
       return { kind: 'surface', surface: 'search', query: route.query, pinned: false }
     case 'chat':
@@ -93,7 +98,7 @@ export function routeForOpenTab(tab: OpenTab): Route {
     case 'daily':
       return tab.date === null ? { kind: 'today' } : { kind: 'daily', date: tab.date }
     case 'allNotes':
-      return { kind: 'allNotes', tag: tab.tag }
+      return { kind: 'allNotes', filter: tab.filter }
     case 'search':
       return { kind: 'search', query: tab.query }
     case 'tasks':

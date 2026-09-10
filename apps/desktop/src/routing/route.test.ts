@@ -28,14 +28,27 @@ describe('routeForPath', () => {
 
 describe('routesEqual', () => {
   it('compares allNotes routes by their tag filter', () => {
-    expect(routesEqual({ kind: 'allNotes', tag: null }, { kind: 'allNotes', tag: null })).toBe(true)
-    expect(routesEqual({ kind: 'allNotes', tag: 'book' }, { kind: 'allNotes', tag: 'book' })).toBe(
-      true,
-    )
-    expect(routesEqual({ kind: 'allNotes', tag: 'book' }, { kind: 'allNotes', tag: null })).toBe(
+    expect(
+      routesEqual(
+        { kind: 'allNotes', filter: { kind: 'all' } },
+        { kind: 'allNotes', filter: { kind: 'all' } },
+      ),
+    ).toBe(true)
+    expect(
+      routesEqual(
+        { kind: 'allNotes', filter: { kind: 'tag', tag: 'book' } },
+        { kind: 'allNotes', filter: { kind: 'tag', tag: 'book' } },
+      ),
+    ).toBe(true)
+    expect(
+      routesEqual(
+        { kind: 'allNotes', filter: { kind: 'tag', tag: 'book' } },
+        { kind: 'allNotes', filter: { kind: 'all' } },
+      ),
+    ).toBe(false)
+    expect(routesEqual({ kind: 'allNotes', filter: { kind: 'all' } }, { kind: 'today' })).toBe(
       false,
     )
-    expect(routesEqual({ kind: 'allNotes', tag: null }, { kind: 'today' })).toBe(false)
   })
 
   it('treats singleton screens as equal to themselves', () => {
@@ -58,7 +71,7 @@ describe('notePathForRoute', () => {
   it('is null on screens that edit no note', () => {
     expect(notePathForRoute({ kind: 'search', query: 'x' }, TODAY)).toBeNull()
     expect(notePathForRoute({ kind: 'settings' }, TODAY)).toBeNull()
-    expect(notePathForRoute({ kind: 'allNotes', tag: null }, TODAY)).toBeNull()
+    expect(notePathForRoute({ kind: 'allNotes', filter: { kind: 'all' } }, TODAY)).toBeNull()
     expect(notePathForRoute({ kind: 'chat' }, TODAY)).toBeNull()
   })
 })

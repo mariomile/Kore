@@ -96,7 +96,7 @@ function TagRouteButton({ tag }: { tag: string }): ReactElement {
   return (
     <button
       type="button"
-      onClick={() => navigate({ kind: 'allNotes', tag })}
+      onClick={() => navigate({ kind: 'allNotes', filter: { kind: 'tag', tag } })}
       className="underline-offset-2 hover:text-text hover:underline"
     >
       #{tag}

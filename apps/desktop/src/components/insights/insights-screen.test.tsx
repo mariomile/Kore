@@ -84,7 +84,7 @@ describe('InsightsScreen', () => {
     await view.getByText('#book').click()
     await expect
       .element(view.getByTestId('route'))
-      .toHaveTextContent('{"kind":"allNotes","tag":"book"}')
+      .toHaveTextContent('{"kind":"allNotes","filter":{"kind":"tag","tag":"book"}}')
   })
 
   it('surfaces a failed load as an alert', async () => {

@@ -744,7 +744,12 @@ describe('settingsSchema', () => {
         { kind: 'surface', surface: 'daily', date: null, pinned: false },
         { kind: 'note', path: 'notes/alpha.md', pinned: true },
         { kind: 'chat', conversationId: 'conversation-1', pinned: false },
-        { kind: 'surface', surface: 'allNotes', tag: 'book', pinned: false },
+        {
+          kind: 'surface',
+          surface: 'allNotes',
+          filter: { kind: 'tag', tag: 'book' },
+          pinned: false,
+        },
         { kind: 'surface', surface: 'search', query: 'alpha', pinned: false },
         { kind: 'surface', surface: 'tasks', pinned: false },
       ],

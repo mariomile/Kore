@@ -20,7 +20,8 @@ export function SidebarTags(): ReactElement | null {
   const tags = useNoteTags()
   const { route, navigate } = useRouter()
   const [configuring, setConfiguring] = useState<string | null>(null)
-  const activeTagKey = route.kind === 'allNotes' && route.tag !== null ? foldTag(route.tag) : null
+  const activeTagKey =
+    route.kind === 'allNotes' && route.filter.kind === 'tag' ? foldTag(route.filter.tag) : null
 
   if (tags.length === 0) {
     return null
@@ -35,7 +36,9 @@ export function SidebarTags(): ReactElement | null {
             <li key={facet.tag} className="group relative">
               <button
                 type="button"
-                onClick={() => navigate({ kind: 'allNotes', tag: facet.tag })}
+                onClick={() =>
+                  navigate({ kind: 'allNotes', filter: { kind: 'tag', tag: facet.tag } })
+                }
                 className={cn(
                   'flex w-full items-center rounded-md leading-5 transition-colors duration-[50ms]',
                   active

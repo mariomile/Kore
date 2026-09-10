@@ -336,7 +336,10 @@ describe('Sidebar', () => {
   })
 
   it('All notes goes quiet on a routed tag — that is the tag page, not All', async () => {
-    const { view } = await renderSidebar(undefined, { kind: 'allNotes', tag: 'book' })
+    const { view } = await renderSidebar(undefined, {
+      kind: 'allNotes',
+      filter: { kind: 'tag', tag: 'book' },
+    })
     await expect
       .element(view.getByRole('button', { name: /all notes/i }))
       .not.toHaveAttribute('aria-current')

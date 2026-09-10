@@ -71,7 +71,7 @@ export function MobileScreen({
         <MobileAllNotes
           query={allQuery}
           onQueryChange={onAllQueryChange}
-          tag={route.tag}
+          tag={route.filter.kind === 'tag' ? route.filter.tag : null}
           filters={allFilters}
           onFiltersChange={onAllFiltersChange}
         />

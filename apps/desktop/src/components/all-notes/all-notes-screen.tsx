@@ -7,6 +7,7 @@ import {
   isDaily,
   listNotes,
   listNoteTags,
+  type NoteListFilter,
   type TagPropertyType,
 } from '@reflect/core'
 import { Check, LayoutGrid, List, Sliders } from '@/components/icons'
@@ -63,8 +64,7 @@ import { useCollectionSavedViews, useCollectionViewSettings } from './use-collec
 import { isModEvent } from '@meowdown/core'
 
 interface AllNotesScreenProps {
-  /** Active tag filter carried by the route (`null` = all non-daily notes). */
-  tag: string | null
+  filter: NoteListFilter
 }
 
 /**
@@ -91,7 +91,9 @@ interface AllNotesScreenProps {
  * so the header and filter bar stay put while the virtualized table scrolls,
  * wired to the router's per-entry scroll memory by hand.
  */
-export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
+export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
+  const tag = filter.kind === 'tag' ? filter.tag : null
+  const inbox = filter.kind === 'inbox'
   const { graph } = useGraph()
   // Every tag is a collection (TDR 0005, amended): a tag with no definition
   // note reads as the zero-property schema, so the table always exists on a
@@ -200,7 +202,7 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
   const bridgeReady = useBridgeReady()
   const enabled = bridgeReady && graph !== null
 
-  const { data: notes } = useQuery({
+  const { data: allNotes } = useQuery({
     queryKey: allNotesQueryKey(graph?.root, tag),
     queryFn: () => listNotes({ tag }),
     enabled,
@@ -210,6 +212,9 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
     queryFn: () => listNoteTags(),
     enabled,
   })
+  const inboxNotes = useMemo(() => allNotes?.filter((note) => note.isInbox), [allNotes])
+  const notes = inbox ? inboxNotes : allNotes
+
   // The grid isn't a collection view, but on a typed tag its cards carry
   // property chips — so the projection loads there too (Plan 28 slice 2).
   const collectionWanted = collectionView || (view === 'grid' && collectionAvailable)
@@ -294,7 +299,7 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
     [navigateNoteLink],
   )
   const handleFilterSelect = useCallback(
-    (next: string | null) => navigate({ kind: 'allNotes', tag: next }),
+    (next: NoteListFilter) => navigate({ kind: 'allNotes', filter: next }),
     [navigate],
   )
 
@@ -353,7 +358,7 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
     <div
       ref={rootRef}
       tabIndex={-1}
-      aria-label={tag === null ? 'All notes' : `#${tag}`}
+      aria-label={tag === null ? (inbox ? 'Inbox' : 'All notes') : `#${tag}`}
       // `relative`: the floating bulk bar positions against this root.
       className="relative flex h-full min-h-0 flex-col outline-none"
     >
@@ -367,13 +372,18 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
       />
       <header className="flex flex-none flex-wrap items-center justify-between gap-3 py-5 pl-12 pr-7">
         {tag === null ? (
-          <h1 className="app-page-title text-text">Notes</h1>
+          <h1 className="app-page-title text-text">{inbox ? 'Inbox' : 'Notes'}</h1>
         ) : (
           <TagPageTitle tag={tag} onConfigure={() => setEditingSchema(true)} />
         )}
         {tag === null ? (
           <div className="flex flex-wrap items-center gap-3">
-            <AllNotesFilters tag={tag} facets={facets ?? []} onSelect={handleFilterSelect} />
+            <AllNotesFilters
+              filter={filter}
+              facets={facets ?? []}
+              inboxCount={inboxNotes?.length}
+              onSelect={handleFilterSelect}
+            />
             <div
               role="group"
               aria-label="Layout"
@@ -536,7 +546,11 @@ export function AllNotesScreen({ tag }: AllNotesScreenProps): ReactElement {
             onScroll={onScroll}
             className="h-full overflow-auto"
           >
-            {view === 'grid' ? (
+            {inbox && notes?.length === 0 ? (
+              <p className="py-8 pl-12 pr-7 text-sm text-text-muted">
+                Inbox is empty. All your notes have a supertag.
+              </p>
+            ) : view === 'grid' ? (
               <AllNotesGrid
                 notes={gridNotes}
                 tag={tag}

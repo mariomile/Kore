@@ -14,7 +14,7 @@ export function useTagNavigation(): (tag: string) => void {
 
   return useCallback(
     (tag: string) => {
-      navigate({ kind: 'allNotes', tag })
+      navigate({ kind: 'allNotes', filter: { kind: 'tag', tag } })
     },
     [navigate],
   )

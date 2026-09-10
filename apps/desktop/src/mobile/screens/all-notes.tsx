@@ -236,7 +236,7 @@ export function MobileAllNotes({
             onFiltersChange={onFiltersChange}
             facets={facets ?? []}
             routeTag={tag}
-            onClearRouteTag={() => navigate({ kind: 'allNotes', tag: null })}
+            onClearRouteTag={() => navigate({ kind: 'allNotes', filter: { kind: 'all' } })}
           />
         )}
       </header>

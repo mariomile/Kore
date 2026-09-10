@@ -1,4 +1,7 @@
 import { sql } from 'kysely'
+import { z } from 'zod'
+import { isDaily } from '../graph/paths'
+import { decodeTagTypeJson } from '../tags/tag-type'
 import { foldTag } from '../markdown'
 import { db } from './db'
 import { recallOrder } from './filtered-search'
@@ -27,6 +30,11 @@ export interface NoteListEntry {
   isPinned: boolean
 }
 
+/** Indexed list row with its computed Inbox membership. */
+export interface ClassifiedNoteListEntry extends NoteListEntry {
+  isInbox: boolean
+}
+
 export interface NoteListOptions {
   /** Only notes carrying this tag (case-insensitive). `null` lists all. */
   tag?: string | null
@@ -38,7 +46,7 @@ export interface NoteListOptions {
  * Pinned notes appear first (explicit pin order, then unordered pins), then most
  * recently edited — V1's list order.
  */
-export async function listNotes(options: NoteListOptions = {}): Promise<NoteListEntry[]> {
+export async function listNotes(options: NoteListOptions = {}): Promise<ClassifiedNoteListEntry[]> {
   const tag = options.tag ?? null
 
   // One query, not two. The tags used to come back as their own uncapped
@@ -54,6 +62,7 @@ export async function listNotes(options: NoteListOptions = {}): Promise<NoteList
   let listQuery = db
     .selectFrom('notes')
     .leftJoin('tags', 'tags.notePath', 'notes.path')
+    .leftJoin('tagTypes', 'tagTypes.tagKey', 'tags.tagKey')
     .select([
       'notes.path',
       'notes.title',
@@ -66,6 +75,7 @@ export async function listNotes(options: NoteListOptions = {}): Promise<NoteList
       // the ASCII unit separator: the `#tag` grammar cannot produce a control
       // character, so it can never appear inside a tag and split one in half.
       sql<string | null>`group_concat("tags"."tag", char(31) ORDER BY "tags"."tag_key")`.as('tags'),
+      sql<string>`json_group_array("tag_types"."schema_json")`.as('tagSchemas'),
     ])
     .groupBy('notes.path')
 
@@ -94,7 +104,22 @@ export async function listNotes(options: NoteListOptions = {}): Promise<NoteList
     // case: splitting that string would hand back `['']`, a phantom empty tag.
     tags: row.tags === null ? [] : row.tags.split(TAG_SEPARATOR),
     isPinned: row.isPinned !== 0,
+    isInbox: !isDaily(row.path) && !hasValidTagSchema(row.tagSchemas),
   }))
+}
+
+/** Match the properties panel: a malformed schema does not make a tag typed. */
+function hasValidTagSchema(column: string): boolean {
+  const schemas = z.array(z.string().nullable()).parse(JSON.parse(column))
+  return schemas.some((schema) => {
+    if (schema === null) return false
+    try {
+      decodeTagTypeJson(schema)
+      return true
+    } catch {
+      return false
+    }
+  })
 }
 
 /** ASCII unit separator, the `char(31)` the tag `group_concat` joins on. */

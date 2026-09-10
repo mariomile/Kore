@@ -81,7 +81,7 @@ const APP_COMMANDS: AppCommand[] = [
     title: 'All notes',
     keywords: ['notes', 'list', 'browse', 'library'],
     keybinding: 'Mod-Shift-a',
-    run: (context) => context.navigate({ kind: 'allNotes', tag: null }),
+    run: (context) => context.navigate({ kind: 'allNotes', filter: { kind: 'all' } }),
   },
   {
     id: 'nav.tasks',

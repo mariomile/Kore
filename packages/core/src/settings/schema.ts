@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { noteListFilterSchema, type NoteListFilter } from '../indexing/note-list-filter'
 import { agentRoutinesSchema } from '../ai/agent-routines'
 import { mcpServersSchema } from '../ai/mcp'
 import {
@@ -115,7 +116,7 @@ export interface OpenDailyTab {
 export interface OpenAllNotesTab {
   kind: 'surface'
   surface: 'allNotes'
-  tag: string | null
+  filter: NoteListFilter
   pinned: boolean
 }
 
@@ -155,12 +156,23 @@ const openDailyTabStoredSchema = z.object({
   pinned: z.boolean().catch(false),
 }) satisfies z.ZodType<OpenDailyTab>
 
-const openAllNotesTabStoredSchema = z.object({
-  kind: z.literal('surface'),
-  surface: z.literal('allNotes'),
-  tag: z.string().nullable().catch(null),
-  pinned: z.boolean().catch(false),
-}) satisfies z.ZodType<OpenAllNotesTab>
+const openAllNotesTabStoredSchema = z
+  .object({
+    kind: z.literal('surface'),
+    surface: z.literal('allNotes'),
+    filter: noteListFilterSchema.optional(),
+    // Older installs stored a tag facet rather than an explicit filter.
+    tag: z.string().nullable().catch(null),
+    pinned: z.boolean().catch(false),
+  })
+  .transform(
+    ({ kind, surface, filter, tag, pinned }): OpenAllNotesTab => ({
+      kind,
+      surface,
+      filter: filter ?? (tag === null ? { kind: 'all' } : { kind: 'tag', tag }),
+      pinned,
+    }),
+  )
 
 const openSearchTabStoredSchema = z.object({
   kind: z.literal('surface'),

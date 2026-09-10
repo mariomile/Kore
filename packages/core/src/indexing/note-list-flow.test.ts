@@ -31,6 +31,35 @@ function addNote(path: string, source: string, mtime: number): void {
 }
 
 describe('listNotes against a real index', () => {
+  it('classifies Inbox from the same index snapshot, including empty supertag schemas', async () => {
+    addNote('notes/plain.md', '# Plain', 3000)
+    addNote('notes/typed.md', '# Typed\n\n#Project #topic', 2000)
+    addNote('daily/2026-09-10.md', '# Daily\n\n#project', 1000)
+    addNote('tags/project.md', '---\nlore: tag\n---\n# Project', 100)
+    database
+      .prepare('INSERT INTO tag_types (tag_key, note_path, schema_json) VALUES (?, ?, ?)')
+      .run('project', 'tags/project.md', '[]')
+
+    expect((await listNotes()).map(({ path, isInbox }) => ({ path, isInbox }))).toEqual([
+      { path: 'notes/plain.md', isInbox: true },
+      { path: 'notes/typed.md', isInbox: false },
+    ])
+    expect((await listNotes({ tag: 'project' })).every((note) => !note.isInbox)).toBe(true)
+    database
+      .prepare('DELETE FROM tags WHERE note_path = ? AND tag_key = ?')
+      .run('notes/typed.md', 'project')
+    expect((await listNotes()).every((note) => note.isInbox)).toBe(true)
+  })
+
+  it('treats malformed supertag schemas as untyped, like the properties panel', async () => {
+    addNote('notes/project.md', '# Project\n\n#project', 1000)
+    addNote('tags/project.md', '---\nlore: tag\n---\n# Project', 100)
+    database
+      .prepare('INSERT INTO tag_types (tag_key, note_path, schema_json) VALUES (?, ?, ?)')
+      .run('project', 'tags/project.md', '{"properties":42}')
+    expect((await listNotes())[0]!.isInbox).toBe(true)
+  })
+
   it('returns each note once with all of its tags, alphabetical by folded key', async () => {
     addNote('notes/health.md', '# Health\n\n#Zebra and #alpha and #Beta here.\n', 2000)
     addNote('notes/plain.md', '# Plain\n\nNo tags at all.\n', 1000)

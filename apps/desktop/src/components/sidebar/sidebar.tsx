@@ -125,7 +125,7 @@ export function Sidebar({ graph, context }: SidebarProps): ReactElement {
               // A routed tag is the tag's own page: its row in the Tags section
               // lights instead of this one.
               active={
-                (route.kind === 'allNotes' && route.tag === null) ||
+                (route.kind === 'allNotes' && route.filter.kind !== 'tag') ||
                 (route.kind === 'note' && !isUntitledNotePath(route.path) && !hasActivePinnedNote)
               }
               onClick={() => void runCommand('nav.allNotes', context)}

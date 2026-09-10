@@ -7,14 +7,14 @@
  * note route carries `path` — the reserved frontmatter `id` can join it later
  * without breaking the shape.
  */
-import { dailyPath, dateFromDailyPath, isDaily } from '@reflect/core'
+import { dailyPath, dateFromDailyPath, isDaily, type NoteListFilter } from '@reflect/core'
 import { isIsoDate } from '@/lib/dates'
 
 export type Route =
   | { kind: 'today' }
   | { kind: 'daily'; date: string }
   | { kind: 'note'; path: string }
-  | { kind: 'allNotes'; tag: string | null }
+  | { kind: 'allNotes'; filter: NoteListFilter }
   | { kind: 'search'; query: string }
   | { kind: 'tasks' }
   | { kind: 'chat' }
@@ -78,8 +78,14 @@ export function routesEqual(a: Route, b: Route): boolean {
       return a.date === (b as Extract<Route, { kind: 'daily' }>).date
     case 'note':
       return a.path === (b as Extract<Route, { kind: 'note' }>).path
-    case 'allNotes':
-      return a.tag === (b as Extract<Route, { kind: 'allNotes' }>).tag
+    case 'allNotes': {
+      const other = b as Extract<Route, { kind: 'allNotes' }>
+      return (
+        a.filter.kind === other.filter.kind &&
+        (a.filter.kind !== 'tag' ||
+          (other.filter.kind === 'tag' && a.filter.tag === other.filter.tag))
+      )
+    }
     case 'search':
       return a.query === (b as Extract<Route, { kind: 'search' }>).query
   }

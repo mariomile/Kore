@@ -159,9 +159,9 @@ function Screen(): ReactElement {
     <QueryClientProvider
       client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
     >
-      <RouterProvider initialRoute={{ kind: 'allNotes', tag: 'book' }}>
+      <RouterProvider initialRoute={{ kind: 'allNotes', filter: { kind: 'tag', tag: 'book' } }}>
         <div style={{ height: '100vh' }}>
-          <AllNotesScreen tag="book" />
+          <AllNotesScreen filter={{ kind: 'tag', tag: 'book' }} />
         </div>
       </RouterProvider>
     </QueryClientProvider>

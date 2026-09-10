@@ -24,7 +24,7 @@ function renderDescription(tag: string): ReactElement {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return (
     <QueryClientProvider client={client}>
-      <RouterProvider initialRoute={{ kind: 'allNotes', tag }}>
+      <RouterProvider initialRoute={{ kind: 'allNotes', filter: { kind: 'tag', tag } }}>
         <TagPageDescription tag={tag} />
       </RouterProvider>
     </QueryClientProvider>

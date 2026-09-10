@@ -71,7 +71,10 @@ export function MobileShell(): ReactElement {
     if (next === 'all') {
       // The double-tap is a search gesture: land on the tab with its search
       // input focused (the Daily tab's capture double-tap, All-flavored).
-      navigate({ kind: 'allNotes', tag: null }, doubleTap ? { focusEditor: true } : undefined)
+      navigate(
+        { kind: 'allNotes', filter: { kind: 'all' } },
+        doubleTap ? { focusEditor: true } : undefined,
+      )
       return
     }
 

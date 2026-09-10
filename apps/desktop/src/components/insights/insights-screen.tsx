@@ -61,7 +61,8 @@ export function InsightsScreen(): ReactElement {
   }
 
   const openNote = (path: string): void => navigate(routeForPath(path))
-  const openTag = (tag: string): void => navigate({ kind: 'allNotes', tag })
+  const openTag = (tag: string): void =>
+    navigate({ kind: 'allNotes', filter: { kind: 'tag', tag } })
   const maxTagCount = Math.max(1, ...data.topTags.map((facet) => facet.count))
 
   return (

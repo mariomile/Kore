@@ -1,8 +1,18 @@
 import { describe, expect, it } from 'vitest'
-import { untitledNotePath } from '@reflect/core'
+import { settingsSchema, untitledNotePath } from '@reflect/core'
+import { routesEqual } from '@/routing/route'
 import { openTabForRoute, routeForOpenTab, tabKey } from './open-tab'
 
 describe('openTabForRoute', () => {
+  it('preserves Inbox through stored tabs and distinguishes it from All', () => {
+    const route = { kind: 'allNotes', filter: { kind: 'inbox' } } as const
+    const tab = openTabForRoute(route)
+    const settings = settingsSchema.parse({ openTabs: { '/g': [tab] } })
+    const restored = settings.openTabs['/g']![0]!
+    expect(routeForOpenTab(restored)).toEqual(route)
+    expect(routesEqual(route, { kind: 'allNotes', filter: { kind: 'all' } })).toBe(false)
+  })
+
   it('opens notes immediately, including untitled placeholders', () => {
     expect(openTabForRoute({ kind: 'note', path: 'notes/alpha.md' })).toEqual({
       kind: 'note',
@@ -30,10 +40,10 @@ describe('openTabForRoute', () => {
       date: '2026-08-26',
       pinned: false,
     })
-    expect(openTabForRoute({ kind: 'allNotes', tag: 'book' })).toEqual({
+    expect(openTabForRoute({ kind: 'allNotes', filter: { kind: 'tag', tag: 'book' } })).toEqual({
       kind: 'surface',
       surface: 'allNotes',
-      tag: 'book',
+      filter: { kind: 'tag', tag: 'book' },
       pinned: false,
     })
     expect(openTabForRoute({ kind: 'search', query: 'alpha' })).toEqual({
@@ -77,10 +87,10 @@ describe('routeForOpenTab', () => {
       routeForOpenTab({
         kind: 'surface',
         surface: 'allNotes',
-        tag: 'book',
+        filter: { kind: 'tag', tag: 'book' },
         pinned: false,
       }),
-    ).toEqual({ kind: 'allNotes', tag: 'book' })
+    ).toEqual({ kind: 'allNotes', filter: { kind: 'tag', tag: 'book' } })
   })
 })
 

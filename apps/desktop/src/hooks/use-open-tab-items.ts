@@ -81,9 +81,11 @@ export function useOpenTabItems(): OpenTabItem[] {
           return {
             tab,
             title:
-              tab.surface === 'allNotes' && tab.tag !== null
-                ? `#${tab.tag}`
-                : SURFACE_TAB_LABEL[tab.surface],
+              tab.surface === 'allNotes' && tab.filter.kind === 'inbox'
+                ? 'Inbox'
+                : tab.surface === 'allNotes' && tab.filter.kind === 'tag'
+                  ? `#${tab.filter.tag}`
+                  : SURFACE_TAB_LABEL[tab.surface],
           }
       }
     })

@@ -43,7 +43,7 @@ async function renderMenu(path: string) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return await render(
     <QueryClientProvider client={client}>
-      <RouterProvider initialRoute={{ kind: 'allNotes', tag: null }}>
+      <RouterProvider initialRoute={{ kind: 'allNotes', filter: { kind: 'all' } }}>
         <NoteListContextMenu>
           {/* Two rows under ONE menu — the delegated shape the list uses. */}
           <div data-note-path={path}>A note row</div>

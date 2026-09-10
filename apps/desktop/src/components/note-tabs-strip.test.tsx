@@ -232,14 +232,14 @@ function Probe(): ReactElement {
       <button
         type="button"
         data-testid="open-all-notes"
-        onClick={() => navigate({ kind: 'allNotes', tag: null })}
+        onClick={() => navigate({ kind: 'allNotes', filter: { kind: 'all' } })}
       >
         all notes
       </button>
       <button
         type="button"
         data-testid="open-book-tag"
-        onClick={() => navigate({ kind: 'allNotes', tag: 'book' })}
+        onClick={() => navigate({ kind: 'allNotes', filter: { kind: 'tag', tag: 'book' } })}
       >
         book tag
       </button>

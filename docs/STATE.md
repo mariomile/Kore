@@ -46,8 +46,8 @@ verbatim shared skills with no placeholders or graph paths, marker after
 frontmatter on all four, state machine, on-disk round trip with a foreign
 file surviving install and uninstall); `cargo fmt --check` and clippy
 clean; `pnpm check` exit 0; the two Agents-section browser suites 4/4 on
-Chromium and WebKit. Not exercised: a real install from the running app
-(needs the bump) and an agent task through the shared skills.
+Chromium and WebKit. PR #204. Not exercised: a real install from the
+running app (needs the bump) and an agent task through the shared skills.
 
 **Next:** merge, bump, install from Settings → Agents on the real graph,
 and run one agent task through the shared skills (create a typed row by

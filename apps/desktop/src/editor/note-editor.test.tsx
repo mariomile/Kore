@@ -159,7 +159,7 @@ describe('NoteEditor time format', () => {
 
 describe('NoteEditor slash menu', () => {
   it('groups the slash menu into Notion-style sections', async () => {
-    await render(<NoteEditor initialContent="" />)
+    const view = await render(<NoteEditor initialContent="" />)
     await pmRoot.click()
     const selectAll = /Mac|iPhone|iPad/.test(navigator.platform)
       ? '{Meta>}a{/Meta}'
@@ -185,6 +185,34 @@ describe('NoteEditor slash menu', () => {
     await expect.element(table).toBeVisible()
     expect(slashPseudo(table.element(), '::after')).toContain('Media')
     await expect.element(heading1).not.toBeVisible()
+    await view.unmount()
+  })
+
+  it('keeps consecutive slash rows from overlapping', async () => {
+    const view = await render(<NoteEditor initialContent="" />)
+    await pmRoot.click()
+    const selectAll = /Mac|iPhone|iPad/.test(navigator.platform)
+      ? '{Meta>}a{/Meta}'
+      : '{Control>}a{/Control}'
+
+    await userEvent.keyboard('/heading')
+    const heading1 = page.locate('[data-testid="slash-menu"] [value="Heading 1"]:not([hidden])')
+    const heading2 = page.locate('[data-testid="slash-menu"] [value="Heading 2"]:not([hidden])')
+    await expect.element(heading1).toBeVisible()
+    await expect.element(heading2).toBeVisible()
+    expect(heading2.element().getBoundingClientRect().top).toBeGreaterThanOrEqual(
+      heading1.element().getBoundingClientRect().bottom,
+    )
+
+    await userEvent.keyboard(`{Escape}${selectAll}/list`)
+    const bullet = page.locate('[data-testid="slash-menu"] [value="Bullet list"]:not([hidden])')
+    const ordered = page.locate('[data-testid="slash-menu"] [value="Ordered list"]:not([hidden])')
+    await expect.element(bullet).toBeVisible()
+    await expect.element(ordered).toBeVisible()
+    expect(ordered.element().getBoundingClientRect().top).toBeGreaterThanOrEqual(
+      bullet.element().getBoundingClientRect().bottom,
+    )
+    await view.unmount()
   })
 })
 

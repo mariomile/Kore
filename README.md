@@ -44,7 +44,10 @@ another git remote are connected directly by the user.
   (with a one-click Memory curator) that keep the whole thing tidy — plus
   **MCP servers** configured in-app (tokens in the OS keychain, never on
   disk) that give agents external tools in edit mode. All of it plain
-  markdown under `agents/`, portable and versioned like any note.
+  markdown under `agents/`, portable and versioned like any note. Outside
+  the app, Settings → Agents installs skills that teach Claude Code, Codex,
+  and Cursor the `reflect` CLI and Kore's formats (markdown, collections,
+  agent memory).
 - **Everything else:** unlinked mentions with one-click linking, an All-notes
   masonry view, template placeholders (`{{date}}`, `{{time}}`, `{{title}}`),
   task priorities and recurrence, saved searches, and an Insights dashboard.

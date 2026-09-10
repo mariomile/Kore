@@ -21,6 +21,6 @@ describe('AgentsSection off macOS desktop', () => {
         <AgentsSection />
       </QueryClientProvider>,
     )
-    expect(page.getByText('Agent skill').query()).toBeNull()
+    expect(page.getByText('Agent skills').query()).toBeNull()
   })
 })

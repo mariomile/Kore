@@ -525,12 +525,20 @@ user asked for that. The intended loop is discover → read → write:
 row's keys and types, then `new`/`set`/`tag`/`done`/`append` instead of
 hand-written YAML.
 
-Settings → Agents installs a per-graph agent skill
-(`~/.agents/skills/reflect-<graph-slug>/SKILL.md`) that teaches coding agents
-this contract: the graph's root, the bundled CLI's path, the commands, and
-the privacy rules. The file carries a `reflect-managed` sha256 marker so the
-app can refresh its own installs without ever overwriting a hand-edited one
-(`apps/desktop/src-tauri/src/skill.rs`).
+Settings → Agents installs the bundled agent skills under
+`~/.agents/skills/` (`apps/desktop/src-tauri/skills/`, one folder each):
+
+| Skill | Teaches |
+|---|---|
+| `reflect-<graph-slug>` | This contract for one graph: its root, the bundled CLI's path, the commands, the privacy rules. Rendered per graph. |
+| `kore-markdown` | The note format: layout, titles, wiki links, tags, tasks, frontmatter, templates. |
+| `kore-collections` | Supertags and their schemas, property types and their YAML values, the ` ```collection ` fence, reusable collections. |
+| `kore-agent-memory` | The `agents/` folder: user profile, shared facts and log, souls, working memory, pending proposals, vault skills. |
+
+The shared three are installed once, verbatim; the graph skill points at
+them for formats. Every file carries a `reflect-managed` sha256 marker so
+the app can refresh its own installs without ever overwriting a hand-edited
+one (`apps/desktop/src-tauri/src/skill.rs`).
 
 ## Development notes
 

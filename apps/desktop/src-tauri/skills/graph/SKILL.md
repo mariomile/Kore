@@ -1,6 +1,6 @@
 ---
 name: {{SKILL_NAME}}
-description: Read, search, capture, and edit notes in the user's "{{GRAPH_NAME}}" Kore graph via the `reflect` CLI. Use when the user asks about their notes, daily notes, journal, tasks, or anything they may have written down in Kore.
+description: Read, search, capture, and edit notes in the user's "{{GRAPH_NAME}}" Kore graph via the `reflect` CLI. Use when the user asks about their notes, daily notes, journal, tasks, collections, or anything they may have written down in Kore. The kore-markdown, kore-collections, and kore-agent-memory skills carry the formats.
 ---
 
 # Kore graph: {{GRAPH_NAME}}
@@ -106,43 +106,14 @@ Use the CLI's writes — they are typed, atomic, and never overwrite:
 
 Only for in-place prose edits, edit the markdown file directly
 (`reflect path <note>` resolves it); the running app watches the files and
-picks every edit up live. Follow the graph's conventions so edits render as
-first-class notes:
+picks every edit up live.
 
-- **Layout.** Dailies are `daily/YYYY-MM-DD.md`; new notes go in
-  `notes/<kebab-case-title>.md`; templates in `templates/`; attachments in
-  `assets/`; tag definitions in `tags/<tag>.md`. Never write into
-  `.reflect/` (the app's index) or `assets/` by hand.
-- **Titles.** A note's title is its first `# H1`, or the file name without
-  `.md` when there is none. Dailies have no H1 — the date is the title.
-- **Wiki links.** `[[Exact Title]]` links notes; `[[YYYY-MM-DD]]` links a
-  daily. Backlinks and the graph view update automatically. Link generously —
-  association is the graph's organizing model.
-- **Tasks.** A task is a round checkbox: `+ [ ] text` open, `+ [x] text`
-  done. A leading `!` (medium) or `!!` (high) right after the marker sets
-  priority; the first `[[YYYY-MM-DD]]` inside the item is its due date.
-  Square `- [ ]` checkboxes are simple checklists and stay out of the
-  Tasks view.
-- **Frontmatter.** Optional YAML: `private: true` hides a note from AI and
-  this CLI; `aliases: [Other Name]` adds link targets. Never invent or edit
-  an `id:` — the app mints those. Never hand-write frontmatter you could
-  write with `reflect set`; preserve frontmatter you don't understand.
-- **Templates.** Files in `templates/` seed new notes; the placeholders
-  `{{date}}`, `{{date:iso}}`, `{{time}}`, and `{{title}}` fill on use.
-- **Agents.** The `agents/` folder is the graph's agent home, injected into
-  the app's own AI sessions too: `agents/user.md` holds durable facts about
-  the user; `agents/memory/facts.md` holds shared facts and decisions every
-  agent relies on (one bullet per fact, tagged `[certain|likely|speculative]`
-  and signed `— <agent>, <date>`, updated in place); `agents/memory/log.md`
-  is the shared session journal (append one `## <date> — <agent>` entry per
-  work session); each profile lives at `agents/<slug>/soul.md` (identity and
-  voice — the user's file, respect it) and `agents/<slug>/memory.md` (that
-  agent's own working memory). Read them before longer tasks and route what
-  you learn to the right file. If `agents/memory/pending.md` exists with
-  proposal sections, the vault uses write approval: stage user/shared-fact
-  changes there (`## <date> <agent> → <target>` + bullets) instead of
-  editing those two files directly. Keep every entry short and curated;
-  never store secrets or content from private notes.
+The formats are their own skills, installed beside this one by Kore:
+`kore-markdown` (layout, titles, wiki links, tags, tasks, frontmatter,
+templates), `kore-collections` (supertags, property types, the
+` ```collection ` fence, reusable collections), and `kore-agent-memory`
+(the `agents/` folder: user profile, shared facts, session log, souls,
+vault skills). Read the one a task touches before writing by hand.
 
 ## Git history
 

@@ -6,7 +6,7 @@ import {
   agentSkillStatus,
   agentSkillUninstall,
   errorMessage,
-  type AgentSkillStatus,
+  type AgentSkillsStatus,
 } from '@reflect/core'
 import { SettingsField } from '@/components/settings/field'
 import { SettingsSection } from '@/components/settings/section'
@@ -16,11 +16,12 @@ import { isMacosDesktop } from '@/lib/platform'
 import { useGraph } from '@/providers/graph-provider'
 
 /**
- * Settings → Agents: one-click install of a per-graph agent skill under
- * `~/.agents/skills/`. The skill is named after the graph and teaches coding
- * agents (Claude Code and friends) to read this graph through the bundled
- * `reflect` CLI. macOS desktop only, like the iCloud section — the navigator
- * hides the entry through the same gate (see use-visible-settings-sections).
+ * Settings → Agents: one-click install of the bundled agent skills under
+ * `~/.agents/skills/` — the graph's own skill (named after it; teaches
+ * coding agents to read this graph through the bundled `reflect` CLI) plus
+ * the shared format skills (markdown, collections, agent memory). macOS
+ * desktop only, like the iCloud section — the navigator hides the entry
+ * through the same gate (see use-visible-settings-sections).
  */
 export function AgentsSection(): ReactElement | null {
   const { graph } = useGraph()
@@ -39,7 +40,7 @@ export function AgentsSection(): ReactElement | null {
     return null
   }
 
-  async function run(action: (generation: number) => Promise<AgentSkillStatus>): Promise<void> {
+  async function run(action: (generation: number) => Promise<AgentSkillsStatus>): Promise<void> {
     if (graph === null) {
       return
     }
@@ -54,46 +55,70 @@ export function AgentsSection(): ReactElement | null {
     }
   }
 
-  const installed = status?.installState === 'current'
+  const skills = status?.skills ?? []
+  const installable = skills.filter(
+    (skill) => skill.installState === 'missing' || skill.installState === 'stale',
+  )
+  const managed = skills.filter(
+    (skill) => skill.installState === 'current' || skill.installState === 'stale',
+  )
+  const allInstalled =
+    skills.length > 0 && skills.every((skill) => skill.installState === 'current')
+  const anyStale = skills.some((skill) => skill.installState === 'stale')
   return (
     <SettingsSection id="agents">
       <SettingsField
-        legend="Agent skill"
-        description={`Teach Claude Code and other agents to read “${graph.name}” with the reflect CLI.`}
+        legend="Agent skills"
+        description={`Teach Claude Code and other agents to read and write “${graph.name}” with the reflect CLI, and the formats Kore uses: markdown, collections, agent memory.`}
       >
         {status !== undefined ? (
           <div className="mt-2 flex flex-col gap-2">
-            <p className="truncate font-mono text-xs text-text-muted" title={status.skillPath}>
-              {status.skillPath}
+            <p className="truncate font-mono text-xs text-text-muted" title={status.skillsRoot}>
+              {status.skillsRoot}
             </p>
-            {status.installState === 'conflict' ? (
-              <p className="text-xs text-destructive">
-                A file Kore doesn’t manage already exists there. Move it aside to install.
-              </p>
-            ) : (
-              <div className="flex items-center gap-2">
-                {installed ? (
-                  <span className="inline-flex items-center gap-1 text-xs text-text-secondary">
-                    <Check aria-hidden className="size-3.5" />
-                    Installed
-                  </span>
-                ) : (
-                  <Button size="xs" disabled={busy} onClick={() => void run(agentSkillInstall)}>
-                    {status.installState === 'stale' ? 'Update skill' : 'Install skill'}
-                  </Button>
-                )}
-                {status.installState !== 'missing' ? (
-                  <Button
-                    size="xs"
-                    variant="outline"
-                    disabled={busy}
-                    onClick={() => void run(agentSkillUninstall)}
-                  >
-                    Remove
-                  </Button>
-                ) : null}
-              </div>
-            )}
+            <ul className="flex flex-col gap-1">
+              {skills.map((skill) => (
+                <li key={skill.skillName} className="flex items-center gap-2 text-xs">
+                  <span className="font-mono">{skill.skillName}</span>
+                  {skill.installState === 'current' ? (
+                    <span className="inline-flex items-center gap-1 text-text-secondary">
+                      <Check aria-hidden className="size-3.5" />
+                      Installed
+                    </span>
+                  ) : skill.installState === 'stale' ? (
+                    <span className="text-text-secondary">Update available</span>
+                  ) : skill.installState === 'conflict' ? (
+                    <span className="text-destructive">
+                      A file Kore doesn’t manage is already there. Move it aside to install.
+                    </span>
+                  ) : (
+                    <span className="text-text-muted">Not installed</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+            <div className="flex items-center gap-2">
+              {allInstalled ? (
+                <span className="inline-flex items-center gap-1 text-xs text-text-secondary">
+                  <Check aria-hidden className="size-3.5" />
+                  Installed
+                </span>
+              ) : installable.length > 0 ? (
+                <Button size="xs" disabled={busy} onClick={() => void run(agentSkillInstall)}>
+                  {anyStale ? 'Update skills' : 'Install skills'}
+                </Button>
+              ) : null}
+              {managed.length > 0 ? (
+                <Button
+                  size="xs"
+                  variant="outline"
+                  disabled={busy}
+                  onClick={() => void run(agentSkillUninstall)}
+                >
+                  Remove
+                </Button>
+              ) : null}
+            </div>
             {error !== null ? <p className="text-xs text-destructive">{error}</p> : null}
           </div>
         ) : null}

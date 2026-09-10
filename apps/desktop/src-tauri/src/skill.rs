@@ -1,13 +1,16 @@
-//! Agent-skill install (Settings → Agents): writes a per-graph `SKILL.md`
-//! under `~/.agents/skills/` so coding agents (Claude Code and friends)
-//! discover the open graph and read it through the bundled `reflect` CLI.
+//! Agent-skill install (Settings → Agents): writes the bundled skills under
+//! `~/.agents/skills/` so coding agents (Claude Code and friends) discover
+//! the open graph, read it through the bundled `reflect` CLI, and know the
+//! formats Kore renders.
 //!
-//! The skill is named after the graph (`reflect-<slug>`), and the rendered
-//! content bakes in the graph root and the CLI's on-disk path. A managed
-//! marker — an HTML comment carrying the sha256 of the rendered template —
-//! makes updates safe: a file without the marker (or with the right marker
-//! but edited content) was not written by us and is never overwritten or
-//! deleted.
+//! Four skills ship in `../skills/`: one **per graph** (`reflect-<slug>`,
+//! rendered with the graph root and the CLI's on-disk path baked in) and
+//! three **shared** format skills (`kore-markdown`, `kore-collections`,
+//! `kore-agent-memory`) installed verbatim once, whichever graph is open. A
+//! managed marker — an HTML comment carrying the sha256 of the rendered
+//! content — makes updates safe: a file without the marker (or with the
+//! right marker but edited content) was not written by us and is never
+//! overwritten or deleted.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -20,9 +23,25 @@ use crate::capture::atomic_write_to;
 use crate::error::{AppError, AppResult};
 use crate::fs::{current_root, root_for_generation, GraphState};
 
-/// The bundled template; placeholders are `{{SKILL_NAME}}`, `{{GRAPH_NAME}}`,
-/// `{{GRAPH_ROOT}}`, and `{{CLI_PATH}}`.
-const SKILL_TEMPLATE: &str = include_str!("../skills/graph-skill.md");
+/// The per-graph skill template; placeholders are `{{SKILL_NAME}}`,
+/// `{{GRAPH_NAME}}`, `{{GRAPH_ROOT}}`, and `{{CLI_PATH}}`.
+const GRAPH_SKILL_TEMPLATE: &str = include_str!("../skills/graph/SKILL.md");
+
+/// The shared format skills, installed as-is under their own names.
+const SHARED_SKILLS: [(&str, &str); 3] = [
+    (
+        "kore-markdown",
+        include_str!("../skills/kore-markdown/SKILL.md"),
+    ),
+    (
+        "kore-collections",
+        include_str!("../skills/kore-collections/SKILL.md"),
+    ),
+    (
+        "kore-agent-memory",
+        include_str!("../skills/kore-agent-memory/SKILL.md"),
+    ),
+];
 
 const MANAGED_PREFIX: &str = "<!-- reflect-managed: sha256=";
 const MANAGED_SUFFIX: &str = " -->";
@@ -35,7 +54,7 @@ const CLI_BINARY: &str = if cfg!(windows) {
     "reflect"
 };
 
-/// Where the installed skill file stands relative to what this app would
+/// Where an installed skill file stands relative to what this app would
 /// write today.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -52,25 +71,39 @@ pub enum SkillInstallState {
     Conflict,
 }
 
-/// Answer for the settings card: where the skill goes, what it's called, and
-/// whether the file on disk is ours.
+/// One skill's name, target path, and install state.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SkillStatus {
     pub skill_name: String,
     pub skill_path: String,
-    pub cli_path: String,
     pub install_state: SkillInstallState,
 }
 
-/// Everything derived from the open graph that the three commands share.
+/// Answer for the settings card: where the skills go, which CLI they name,
+/// and where each one stands on disk (the per-graph skill first).
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SkillsStatus {
+    pub skills_root: String,
+    pub cli_path: String,
+    pub skills: Vec<SkillStatus>,
+}
+
+/// Everything derived for one skill that the three commands share.
 struct SkillContext {
     skill_name: String,
     dir: PathBuf,
     target: PathBuf,
-    cli_path: PathBuf,
     rendered_hash: String,
     managed_content: String,
+}
+
+/// The full install set for one open graph.
+struct SkillSet {
+    skills_root: PathBuf,
+    cli_path: PathBuf,
+    contexts: Vec<SkillContext>,
 }
 
 /// Kebab-case ASCII slug of a graph name; `"graph"` when nothing survives.
@@ -95,8 +128,13 @@ fn slugify(name: &str) -> String {
     }
 }
 
-fn render_skill(skill_name: &str, graph_name: &str, graph_root: &str, cli_path: &str) -> String {
-    SKILL_TEMPLATE
+fn render_graph_skill(
+    skill_name: &str,
+    graph_name: &str,
+    graph_root: &str,
+    cli_path: &str,
+) -> String {
+    GRAPH_SKILL_TEMPLATE
         .replace("{{SKILL_NAME}}", skill_name)
         .replace("{{GRAPH_NAME}}", graph_name)
         .replace("{{GRAPH_ROOT}}", graph_root)
@@ -191,36 +229,52 @@ fn cli_path() -> AppResult<PathBuf> {
     Ok(dir.join(CLI_BINARY))
 }
 
-fn context_for(root: &Path, skills_root: &Path, cli: PathBuf) -> SkillContext {
-    let graph_name = root
-        .file_name()
-        .map(|name| name.to_string_lossy().into_owned())
-        .unwrap_or_default();
-    let skill_name = format!("reflect-{}", slugify(&graph_name));
-    let rendered = render_skill(
-        &skill_name,
-        &graph_name,
-        &root.to_string_lossy(),
-        &cli.to_string_lossy(),
-    );
-    let rendered_hash = content_hash(&rendered);
-    let managed_content = insert_marker(&rendered, &rendered_hash);
-    let dir = skills_root.join(&skill_name);
+/// One skill's context from its final rendered text.
+fn skill_context(skills_root: &Path, skill_name: &str, rendered: &str) -> SkillContext {
+    let rendered_hash = content_hash(rendered);
+    let managed_content = insert_marker(rendered, &rendered_hash);
+    let dir = skills_root.join(skill_name);
     let target = dir.join("SKILL.md");
     SkillContext {
-        skill_name,
+        skill_name: skill_name.to_string(),
         dir,
         target,
-        cli_path: cli,
         rendered_hash,
         managed_content,
     }
 }
 
-fn context_for_graph(root: &Path) -> AppResult<SkillContext> {
+/// The install set for `root`: the per-graph skill first, then the shared
+/// format skills.
+fn skill_set(root: &Path, skills_root: &Path, cli: PathBuf) -> SkillSet {
+    let graph_name = root
+        .file_name()
+        .map(|name| name.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    let graph_skill_name = format!("reflect-{}", slugify(&graph_name));
+    let rendered = render_graph_skill(
+        &graph_skill_name,
+        &graph_name,
+        &root.to_string_lossy(),
+        &cli.to_string_lossy(),
+    );
+    let mut contexts = vec![skill_context(skills_root, &graph_skill_name, &rendered)];
+    contexts.extend(
+        SHARED_SKILLS
+            .iter()
+            .map(|(name, template)| skill_context(skills_root, name, template)),
+    );
+    SkillSet {
+        skills_root: skills_root.to_path_buf(),
+        cli_path: cli,
+        contexts,
+    }
+}
+
+fn skill_set_for_graph(root: &Path) -> AppResult<SkillSet> {
     let home = dirs::home_dir().ok_or_else(|| AppError::io("no home directory"))?;
     let skills_root = home.join(".agents").join("skills");
-    Ok(context_for(root, &skills_root, cli_path()?))
+    Ok(skill_set(root, &skills_root, cli_path()?))
 }
 
 fn status_of(context: &SkillContext) -> AppResult<SkillStatus> {
@@ -232,7 +286,6 @@ fn status_of(context: &SkillContext) -> AppResult<SkillStatus> {
     Ok(SkillStatus {
         skill_name: context.skill_name.clone(),
         skill_path: context.target.to_string_lossy().into_owned(),
-        cli_path: context.cli_path.to_string_lossy().into_owned(),
         install_state: classify(
             installed.as_deref(),
             &context.rendered_hash,
@@ -241,53 +294,65 @@ fn status_of(context: &SkillContext) -> AppResult<SkillStatus> {
     })
 }
 
-/// Command: the skill's name, target path, and install state for the open
-/// graph. Read-only.
+fn statuses_of(set: &SkillSet) -> AppResult<SkillsStatus> {
+    let skills = set
+        .contexts
+        .iter()
+        .map(status_of)
+        .collect::<AppResult<Vec<_>>>()?;
+    Ok(SkillsStatus {
+        skills_root: set.skills_root.to_string_lossy().into_owned(),
+        cli_path: set.cli_path.to_string_lossy().into_owned(),
+        skills,
+    })
+}
+
+/// Command: every bundled skill's name, target path, and install state for
+/// the open graph. Read-only.
 #[tauri::command]
-pub async fn skill_status<R: tauri::Runtime>(app: tauri::AppHandle<R>) -> AppResult<SkillStatus> {
+pub async fn skill_status<R: tauri::Runtime>(app: tauri::AppHandle<R>) -> AppResult<SkillsStatus> {
     crate::blocking::run_blocking(move || {
         let state = app.state::<GraphState>();
         let root = current_root(&state)?;
-        status_of(&context_for_graph(&root)?)
+        statuses_of(&skill_set_for_graph(&root)?)
     })
     .await
 }
 
-/// Command: write (or refresh) the graph's skill file. Generation-pinned so
-/// an install racing a graph switch can't write the wrong graph's skill.
-/// Refuses to touch a file we don't manage.
+/// Command: write (or refresh) every bundled skill file. Generation-pinned
+/// so an install racing a graph switch can't write the wrong graph's skill.
+/// A file we don't manage is left alone and reported as a conflict in the
+/// returned statuses; the other skills still install.
 #[tauri::command]
 pub async fn skill_install<R: tauri::Runtime>(
     generation: u64,
     app: tauri::AppHandle<R>,
-) -> AppResult<SkillStatus> {
+) -> AppResult<SkillsStatus> {
     crate::blocking::run_blocking(move || skill_install_for(&app.state::<GraphState>(), generation))
         .await
 }
 
-/// The install itself, off the command's threading shell so the whole
+/// The install itself, off the command's threading shell so each
 /// classify-then-write sequence stays on one thread: the no-clobber create
 /// below is only meaningful if nothing re-classifies between the two.
-fn skill_install_for(state: &State<'_, GraphState>, generation: u64) -> AppResult<SkillStatus> {
+fn skill_install_for(state: &State<'_, GraphState>, generation: u64) -> AppResult<SkillsStatus> {
     let root = root_for_generation(state, generation)?;
-    let context = context_for_graph(&root)?;
-    let status = status_of(&context)?;
-    match status.install_state {
-        SkillInstallState::Conflict => Err(AppError::io(format!(
-            "{} exists but was not written by Kore — move it aside first",
-            context.target.display()
-        ))),
-        SkillInstallState::Current => Ok(status),
+    let set = skill_set_for_graph(&root)?;
+    for context in &set.contexts {
+        install_one(context)?;
+    }
+    statuses_of(&set)
+}
+
+fn install_one(context: &SkillContext) -> AppResult<()> {
+    match status_of(context)?.install_state {
+        SkillInstallState::Conflict | SkillInstallState::Current => Ok(()),
         SkillInstallState::Missing => {
             // No-clobber create: a file appearing between the classify above
             // and this write fails loudly instead of being replaced.
-            atomic_create_new(&context.target, &context.managed_content)?;
-            status_of(&context)
+            atomic_create_new(&context.target, &context.managed_content)
         }
-        SkillInstallState::Stale => {
-            atomic_write_to(&context.target, &context.managed_content)?;
-            status_of(&context)
-        }
+        SkillInstallState::Stale => atomic_write_to(&context.target, &context.managed_content),
     }
 }
 
@@ -307,35 +372,37 @@ fn atomic_create_new(path: &Path, contents: &str) -> AppResult<()> {
     Ok(())
 }
 
-/// Command: remove the graph's skill file (and its directory when that leaves
-/// it empty). Only removes files carrying our managed marker.
+/// Command: remove every managed skill file (and its directory when that
+/// leaves it empty). Files without our managed marker are left in place.
 #[tauri::command]
 pub async fn skill_uninstall<R: tauri::Runtime>(
     generation: u64,
     app: tauri::AppHandle<R>,
-) -> AppResult<SkillStatus> {
+) -> AppResult<SkillsStatus> {
     crate::blocking::run_blocking(move || {
         skill_uninstall_for(&app.state::<GraphState>(), generation)
     })
     .await
 }
 
-fn skill_uninstall_for(state: &State<'_, GraphState>, generation: u64) -> AppResult<SkillStatus> {
+fn skill_uninstall_for(state: &State<'_, GraphState>, generation: u64) -> AppResult<SkillsStatus> {
     let root = root_for_generation(state, generation)?;
-    let context = context_for_graph(&root)?;
-    let status = status_of(&context)?;
-    match status.install_state {
-        SkillInstallState::Missing => Ok(status),
-        SkillInstallState::Conflict => Err(AppError::io(format!(
-            "{} was not written by Kore — not removing it",
-            context.target.display()
-        ))),
+    let set = skill_set_for_graph(&root)?;
+    for context in &set.contexts {
+        uninstall_one(context)?;
+    }
+    statuses_of(&set)
+}
+
+fn uninstall_one(context: &SkillContext) -> AppResult<()> {
+    match status_of(context)?.install_state {
+        SkillInstallState::Missing | SkillInstallState::Conflict => Ok(()),
         SkillInstallState::Current | SkillInstallState::Stale => {
             fs::remove_file(&context.target)?;
             // Only removes an empty directory — anything else the user put
             // beside the skill file survives.
             let _ = fs::remove_dir(&context.dir);
-            status_of(&context)
+            Ok(())
         }
     }
 }
@@ -353,17 +420,22 @@ mod tests {
         assert_eq!(slugify(""), "graph");
     }
 
-    fn test_context(dir: &Path, graph: &Path) -> SkillContext {
-        context_for(
+    fn test_set(dir: &Path, graph: &Path) -> SkillSet {
+        skill_set(
             graph,
             dir,
             PathBuf::from("/Applications/Reflect.app/Contents/MacOS/reflect"),
         )
     }
 
+    fn graph_context(set: &SkillSet) -> &SkillContext {
+        &set.contexts[0]
+    }
+
     #[test]
     fn render_bakes_in_the_graph_and_cli() {
-        let context = test_context(Path::new("/skills"), Path::new("/graphs/Personal"));
+        let set = test_set(Path::new("/skills"), Path::new("/graphs/Personal"));
+        let context = graph_context(&set);
         assert_eq!(context.skill_name, "reflect-personal");
         assert_eq!(
             context.target,
@@ -390,26 +462,71 @@ mod tests {
     }
 
     #[test]
-    fn marker_sits_after_the_frontmatter() {
-        let context = test_context(Path::new("/skills"), Path::new("/graphs/Personal"));
-        let close = context
-            .managed_content
-            .find("\n---\n")
-            .expect("frontmatter closes");
-        let marker = context
-            .managed_content
-            .find(MANAGED_PREFIX)
-            .expect("marker present");
-        assert!(marker > close, "marker must not sit above the frontmatter");
+    fn shared_skills_install_verbatim_under_their_own_names() {
+        let set = test_set(Path::new("/skills"), Path::new("/graphs/Personal"));
+        let names: Vec<&str> = set
+            .contexts
+            .iter()
+            .map(|context| context.skill_name.as_str())
+            .collect();
         assert_eq!(
-            managed_hash(&context.managed_content),
-            Some(context.rendered_hash.as_str())
+            names,
+            [
+                "reflect-personal",
+                "kore-markdown",
+                "kore-collections",
+                "kore-agent-memory"
+            ]
         );
+        for (context, (name, template)) in set.contexts[1..].iter().zip(SHARED_SKILLS) {
+            assert_eq!(
+                context.target,
+                Path::new("/skills").join(name).join("SKILL.md")
+            );
+            assert!(context.managed_content.contains(&format!("name: {name}")));
+            assert_eq!(
+                without_marker_line(&context.managed_content).as_deref(),
+                Some(template)
+            );
+            // Shared skills are graph-independent: no renderer placeholders,
+            // and nothing about this particular graph.
+            assert!(!template.contains("{{SKILL_NAME}}"));
+            assert!(!template.contains("{{GRAPH_ROOT}}"));
+            assert!(!context.managed_content.contains("/graphs/Personal"));
+        }
+        // Every shared skill's frontmatter declares the name agents load it by.
+        for (name, template) in SHARED_SKILLS {
+            assert!(
+                template.starts_with(&format!("---\nname: {name}\n")),
+                "{name}"
+            );
+        }
+    }
+
+    #[test]
+    fn marker_sits_after_the_frontmatter() {
+        let set = test_set(Path::new("/skills"), Path::new("/graphs/Personal"));
+        for context in &set.contexts {
+            let close = context
+                .managed_content
+                .find("\n---\n")
+                .expect("frontmatter closes");
+            let marker = context
+                .managed_content
+                .find(MANAGED_PREFIX)
+                .expect("marker present");
+            assert!(marker > close, "marker must not sit above the frontmatter");
+            assert_eq!(
+                managed_hash(&context.managed_content),
+                Some(context.rendered_hash.as_str())
+            );
+        }
     }
 
     #[test]
     fn classify_walks_the_state_machine() {
-        let context = test_context(Path::new("/skills"), Path::new("/graphs/Personal"));
+        let set = test_set(Path::new("/skills"), Path::new("/graphs/Personal"));
+        let context = graph_context(&set);
         let hash = &context.rendered_hash;
         let managed = &context.managed_content;
 
@@ -431,14 +548,14 @@ mod tests {
         );
         // Rendered from other inputs (graph moved, template changed) → stale,
         // but only while the old install is untouched.
-        let moved = test_context(Path::new("/skills"), Path::new("/elsewhere/Personal"));
+        let moved = test_set(Path::new("/skills"), Path::new("/elsewhere/Personal"));
         assert_eq!(
-            classify(Some(&moved.managed_content), hash, managed),
+            classify(Some(&graph_context(&moved).managed_content), hash, managed),
             SkillInstallState::Stale
         );
         // A user-edited old install must stay a conflict — staleness never
         // downgrades edit protection (the marker validates its own body).
-        let stale_edited = format!("{}\nuser addition\n", moved.managed_content);
+        let stale_edited = format!("{}\nuser addition\n", graph_context(&moved).managed_content);
         assert_eq!(
             classify(Some(&stale_edited), hash, managed),
             SkillInstallState::Conflict
@@ -457,35 +574,73 @@ mod tests {
     #[test]
     fn install_round_trip_on_disk() {
         let temp = tempfile::tempdir().expect("tempdir");
-        let context = test_context(temp.path(), Path::new("/graphs/Personal"));
+        let set = test_set(temp.path(), Path::new("/graphs/Personal"));
 
+        let before = statuses_of(&set).expect("status");
+        assert_eq!(before.skills.len(), 4);
+        assert!(before
+            .skills
+            .iter()
+            .all(|skill| skill.install_state == SkillInstallState::Missing));
+
+        // A hand-written file where a shared skill would go survives the
+        // install untouched while the other three land.
+        let taken = &set.contexts[2];
+        std::fs::create_dir_all(&taken.dir).expect("mkdir");
+        std::fs::write(&taken.target, "# my own collections skill\n").expect("write");
+        for context in &set.contexts {
+            install_one(context).expect("install");
+        }
+        let after = statuses_of(&set).expect("status");
+        let states: Vec<SkillInstallState> = after
+            .skills
+            .iter()
+            .map(|skill| skill.install_state)
+            .collect();
         assert_eq!(
-            status_of(&context).expect("status").install_state,
-            SkillInstallState::Missing
+            states,
+            [
+                SkillInstallState::Current,
+                SkillInstallState::Current,
+                SkillInstallState::Conflict,
+                SkillInstallState::Current
+            ]
+        );
+        assert_eq!(
+            std::fs::read_to_string(&taken.target).expect("read"),
+            "# my own collections skill\n"
         );
 
-        atomic_write_to(&context.target, &context.managed_content).expect("write");
-        assert_eq!(
-            status_of(&context).expect("status").install_state,
-            SkillInstallState::Current
-        );
-
-        // A graph rename changes the slug-independent inputs → stale, and a
-        // rewrite with the new context heals it.
-        let renamed = context_for(
+        // A graph rename changes the per-graph skill's name; the shared
+        // skills are unaffected.
+        let renamed = skill_set(
             Path::new("/graphs/Personal Renamed"),
             temp.path(),
             PathBuf::from("/Applications/Reflect.app/Contents/MacOS/reflect"),
         );
-        assert_eq!(renamed.skill_name, "reflect-personal-renamed");
-
-        // User edits below the marker turn the file into a conflict.
-        let mut edited = context.managed_content.clone();
-        edited.push_str("\n## My notes\n");
-        std::fs::write(&context.target, &edited).expect("edit");
         assert_eq!(
-            status_of(&context).expect("status").install_state,
+            graph_context(&renamed).skill_name,
+            "reflect-personal-renamed"
+        );
+        assert_eq!(renamed.contexts[1].skill_name, "kore-markdown");
+
+        // User edits below the marker turn a managed file into a conflict.
+        let graph = graph_context(&set);
+        let mut edited = graph.managed_content.clone();
+        edited.push_str("\n## My notes\n");
+        std::fs::write(&graph.target, &edited).expect("edit");
+        assert_eq!(
+            status_of(graph).expect("status").install_state,
             SkillInstallState::Conflict
         );
+
+        // Uninstall removes only what we manage.
+        for context in &set.contexts {
+            uninstall_one(context).expect("uninstall");
+        }
+        assert!(graph.target.exists(), "edited file kept");
+        assert!(taken.target.exists(), "foreign file kept");
+        assert!(!set.contexts[1].target.exists());
+        assert!(!set.contexts[3].target.exists());
     }
 }

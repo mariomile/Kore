@@ -1,7 +1,8 @@
 # Kore working state
 
-**Updated:** 2026-09-10, Agents moved from the sidebar into Settings (profiles,
-memory, automations, plus the existing CLI skill install). Reusable mixed-note
+**Updated:** 2026-09-10, Settings Close after switching pages (Agents, AI, …)
+leaves Settings in one step. Agents moved from the sidebar into Settings in
+v0.62.0. Reusable mixed-note
 collections are implemented and verified through the rendered desktop flow;
 collection pages retain the Notion-style view tabs and options menu from
 PR #187. Kore now applies reproducible pnpm patches to Meowdown 0.65.6 for
@@ -668,17 +669,20 @@ browser `collection-view-tabs` + `all-notes-collection-flow` +
   memory, automations, and (on macOS) the CLI skill install live under
   Settings → Agents. The command palette, the chat active-agent chip, and
   stored `agents` workspace tabs all land there (old tabs are dropped on parse).
+  Shipped in v0.62.0.
+- [x] Switching Settings pages replaces the current history entry, so Close,
+  Escape, ⌘,, and ⌘W leave Settings in one step.
 
-**Validation:** `pnpm typecheck` exit 0. Node: route, app-commands, open-tab,
-deep-links, schema, agent-routines, welcome-note (133 tests). Browser settings /
-sidebar / agents-screen / navigator: 99/99 on Chromium and WebKit. oxfmt +
-oxlint clean. The settings navigator lists a dedicated Agents page (profiles,
-About you, memory, automations); the sidebar has no Agents row.
+**Validation:** router test: Settings → Agents, `back()` is today. Settings
+screen: Agents then Close lands on today.
 
-**Next:** merge, then bump.
+**Next:** merge the Close fix, then bump.
 
 ## Session log
 
+- 2026-09-10 — Settings Close after switching pages: navigating between
+  Settings groups replaces the current history entry instead of pushing, so
+  one back leaves Settings. Bugbot on #203.
 - 2026-09-10 — Agents moved from the sidebar into Settings. The workspace
   Agents route and strip tab are gone; Settings carries a dedicated Agents
   page (profiles, memory, automations, CLI skill). Palette "Agents" and the

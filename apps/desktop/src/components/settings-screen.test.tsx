@@ -219,6 +219,34 @@ describe('SettingsScreen', () => {
     await expect.element(page.getByTestId('route')).toHaveTextContent('today')
   })
 
+  it('Close leaves Settings after switching pages', async () => {
+    function RouteProbe() {
+      const { route } = useRouter()
+      return <output data-testid="route">{route.kind}</output>
+    }
+    await render(
+      <QueryClientProvider client={queryClient}>
+        <SettingsProvider>
+          <UpdateProvider autoCheck={false}>
+            <RouterProvider initialRoute={{ kind: 'settings' }}>
+              <ShortcutsProvider>
+                <NoteTemplatesProvider>
+                  <SettingsScreen />
+                  <RouteProbe />
+                </NoteTemplatesProvider>
+              </ShortcutsProvider>
+            </RouterProvider>
+          </UpdateProvider>
+        </SettingsProvider>
+      </QueryClientProvider>,
+    )
+
+    await page.getByRole('button', { name: 'Agents', exact: true }).click()
+    await expect.element(page.getByRole('heading', { name: 'Agents', exact: true })).toBeVisible()
+    await page.getByRole('button', { name: 'Close settings' }).click()
+    await expect.element(page.getByTestId('route')).toHaveTextContent('today')
+  })
+
   it('shows update controls when the native bridge is available', async () => {
     await renderScreen('Application')
     await expect

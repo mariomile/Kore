@@ -47,6 +47,16 @@ describe('router', () => {
     expect(result.current.route).toEqual({ kind: 'daily', date: '2026-06-08' })
   })
 
+  it('replaces the current entry when switching Settings pages', async () => {
+    const { result, act } = await routerHook()
+    await act(() => result.current.navigate({ kind: 'settings' }))
+    await act(() => result.current.navigate({ kind: 'settings', group: 'agents' }))
+    expect(result.current.route).toEqual({ kind: 'settings', group: 'agents' })
+    await act(() => result.current.back())
+    expect(result.current.route).toEqual({ kind: 'today' })
+    expect(result.current.canBack).toBe(false)
+  })
+
   it('re-navigating to the current route is a no-op (no stack growth)', async () => {
     const { result, act } = await routerHook()
     await act(() => result.current.navigate({ kind: 'daily', date: '2026-06-08' }))

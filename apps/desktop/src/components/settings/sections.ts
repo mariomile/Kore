@@ -1,8 +1,10 @@
+import type { SettingsRouteGroup } from '@/routing/route'
+
 /**
  * The canonical registry of settings page sections, organized in groups.
  * The section cards, the group headers, and the sticky navigator all render
  * from this one structure, so page order, group labels, and jump targets can
- * never drift apart.
+ * never drift apart. Group ids must stay aligned with {@link SettingsRouteGroup}.
  */
 export const SETTINGS_GROUPS = [
   {
@@ -34,8 +36,16 @@ export const SETTINGS_GROUPS = [
       { id: 'ai-prompts', title: 'AI prompts' },
       { id: 'audio-memos', title: 'Audio memos' },
       { id: 'mcp', title: 'MCP servers' },
+    ],
+  },
+  {
+    id: 'agents',
+    title: 'Agents',
+    sections: [
+      // Profiles, memory, and automations — the former workspace Agents screen.
+      { id: 'agent-workspace', title: 'Profiles' },
       // macOS only — installs files under ~/.agents for terminal coding agents.
-      { id: 'agents', title: 'Agents' },
+      { id: 'agents', title: 'Agent skill' },
     ],
   },
   {
@@ -56,7 +66,11 @@ export const SETTINGS_GROUPS = [
       { id: 'destructive', title: 'Danger zone' },
     ],
   },
-] as const
+] as const satisfies readonly {
+  readonly id: SettingsRouteGroup
+  readonly title: string
+  readonly sections: readonly { readonly id: string; readonly title: string }[]
+}[]
 
 /** One settings group (a page segment with a label over its section cards). */
 export type SettingsGroup = (typeof SETTINGS_GROUPS)[number]

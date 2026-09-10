@@ -370,10 +370,11 @@ describe('Sidebar', () => {
     expect(daily.element().querySelector('.sidebar-icon-slot')).not.toBeNull()
   })
 
-  it('offers Terminal after Graph on desktop', async () => {
+  it('offers Terminal after Graph on desktop, and no Agents row', async () => {
     const { view } = await renderSidebar()
     await expect.element(view.getByRole('button', { name: /graph/i })).toBeVisible()
     await expect.element(view.getByRole('button', { name: /terminal/i })).toBeVisible()
+    expect(view.getByRole('button', { name: /^agents$/i }).query()).toBeNull()
   })
 
   it('the mic button starts an audio memo', async () => {

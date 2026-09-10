@@ -8,16 +8,11 @@ import { TasksScreen } from '@/components/tasks/tasks-screen'
 import { useRouter } from '@/routing/router'
 import { ScrollRestored } from '@/routing/scroll-restore'
 
-// The six routes below are reached deliberately, never on boot, and one of
+// The five routes below are reached deliberately, never on boot, and one of
 // them (`terminal`) pulls xterm, 345 KB already minified. Statically imported
 // they all landed in `desktop-root`, which `warmPlatformRoot` fetches during
 // startup. The six eager ones above are the routes the app can open into or
 // that a keystroke reaches instantly, so they stay in the boot chunk.
-const AgentsScreen = lazy(() =>
-  import('@/components/agents/agents-screen').then((module) => ({
-    default: module.AgentsScreen,
-  })),
-)
 const BrowserPane = lazy(() =>
   import('@/components/browser/browser-pane').then((module) => ({ default: module.BrowserPane })),
 )
@@ -103,12 +98,6 @@ function RouteView(): ReactElement {
     case 'browser':
       // Owns no scroll container — the embedded webview covers its host.
       return <BrowserPane />
-    case 'agents':
-      return (
-        <ScrollRestored className="h-full overflow-auto px-6 py-8">
-          <AgentsScreen />
-        </ScrollRestored>
-      )
     case 'graphs':
     // The graph-switcher route is a mobile settings sub-screen; on desktop
     // graph switching lives in the sidebar footer, so it renders as the

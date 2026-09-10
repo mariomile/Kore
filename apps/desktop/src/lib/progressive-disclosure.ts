@@ -2,7 +2,7 @@
 export const ADVANCED_SURFACE_NOTE_THRESHOLD = 20
 
 /**
- * Search, Agents, and tag-schema chrome stay hidden until there is
+ * Search, Settings → Agents, and tag-schema chrome stay hidden until there is
  * enough material to configure.
  */
 export function showAdvancedSurfaces(noteCount: number): boolean {

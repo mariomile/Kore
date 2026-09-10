@@ -43,7 +43,7 @@ export function newAgentMemorySeed(name: string): string {
   return `# ${name.trim()} — Memory\n\nWorking notes this agent keeps for itself. It curates this file; feel free to edit or prune.\n`
 }
 
-/** The seeded shared user profile (created lazily from the Agents screen). */
+/** The seeded shared user profile (created lazily from Settings → Agents). */
 export function newUserMemorySeed(): string {
   return '# About you\n\nWhat your agents know about you — name, role, preferences, how you like to work. Agents keep this current; edit it any time.\n'
 }

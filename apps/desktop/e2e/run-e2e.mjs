@@ -264,7 +264,7 @@ try {
     await page.getByRole('button', { name: 'Create agent' }).click()
     // Creation opens the seeded soul for editing…
     await page.getByText('You are Riley, an agent living in this vault.').first().waitFor()
-    // …and the profile is active back on the Agents screen.
+    // …and the profile is active back on Settings → Agents.
     await openAgents()
     await page.getByText('agents/riley').waitFor()
     await page.getByText('Active', { exact: true }).waitFor()

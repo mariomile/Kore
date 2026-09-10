@@ -164,6 +164,34 @@ describe('SettingsScreen', () => {
     expect(page.getByRole('region', { name: 'Appearance' }).query()).toBeNull()
   })
 
+  it('opens the Agents page from the settings navigator', async () => {
+    await renderScreen('Agents')
+    await expect.element(page.getByRole('heading', { name: 'Agents' })).toBeVisible()
+    await expect.element(page.getByRole('button', { name: 'New agent' })).toBeVisible()
+    await expect.element(page.getByText('About you')).toBeVisible()
+  })
+
+  it('opens Settings on the Agents page when the route names that group', async () => {
+    await render(
+      <QueryClientProvider client={queryClient}>
+        <SettingsProvider>
+          <UpdateProvider autoCheck={false}>
+            <RouterProvider initialRoute={{ kind: 'settings', group: 'agents' }}>
+              <ShortcutsProvider>
+                <NoteTemplatesProvider>
+                  <SettingsScreen />
+                </NoteTemplatesProvider>
+              </ShortcutsProvider>
+            </RouterProvider>
+          </UpdateProvider>
+        </SettingsProvider>
+      </QueryClientProvider>,
+    )
+
+    await expect.element(page.getByRole('heading', { name: 'Agents' })).toBeVisible()
+    await expect.element(page.getByRole('button', { name: 'New agent' })).toBeVisible()
+  })
+
   it('closes to today when nothing is behind the page', async () => {
     function RouteProbe() {
       const { route } = useRouter()

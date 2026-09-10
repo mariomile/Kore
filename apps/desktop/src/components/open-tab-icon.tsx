@@ -10,7 +10,6 @@ import {
   Pencil,
   Search,
   Terminal,
-  User,
 } from '@/components/icons'
 
 interface OpenTabIconProps {
@@ -39,8 +38,6 @@ export function OpenTabIcon({ tab, className }: OpenTabIconProps): ReactElement 
       return <Chart aria-hidden className={className} />
     case 'graphMap':
       return <Graph aria-hidden className={className} />
-    case 'agents':
-      return <User aria-hidden className={className} />
     case 'terminal':
       return <Terminal aria-hidden className={className} />
     case 'browser':

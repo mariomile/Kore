@@ -79,7 +79,6 @@ export function openTabForRoute(
     case 'tasks':
     case 'insights':
     case 'graphMap':
-    case 'agents':
     case 'terminal':
     case 'browser':
       return { kind: 'surface', surface: route.kind, pinned: false }
@@ -107,8 +106,6 @@ export function routeForOpenTab(tab: OpenTab): Route {
       return { kind: 'insights' }
     case 'graphMap':
       return { kind: 'graphMap' }
-    case 'agents':
-      return { kind: 'agents' }
     case 'terminal':
       return { kind: 'terminal' }
     case 'browser':
@@ -124,7 +121,6 @@ export const SURFACE_TAB_LABEL: Record<WorkspaceSurface, string> = {
   tasks: 'Tasks',
   insights: 'Insights',
   graphMap: 'Graph',
-  agents: 'Agents',
   terminal: 'Terminal',
   browser: 'Browser',
 }

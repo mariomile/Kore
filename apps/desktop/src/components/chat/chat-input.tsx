@@ -35,6 +35,7 @@ import { groupModelOptions, shortModelLabel } from '@/lib/chat-model-groups'
 import { useChatSession } from '@/providers/chat-provider'
 import { conversationTitle } from '@/providers/chat-title'
 import { useSettings } from '@/providers/settings-provider'
+import { settingsRoute } from '@/routing/route'
 import { useRouter } from '@/routing/router'
 import { ChatDraftMentions } from './chat-draft-mentions'
 import { ChatContextMenu } from './chat-context-menu'
@@ -404,7 +405,7 @@ export function ChatInput({ autoFocus = true }: ChatInputProps = {}): ReactEleme
                     aria-label="Active agent"
                     className="h-6 max-w-32 gap-1 rounded-md px-1.5 text-xs text-text-secondary"
                     onClick={() => {
-                      navigate({ kind: 'agents' })
+                      navigate(settingsRoute('agents'))
                     }}
                   >
                     <Bot aria-hidden className="size-3.5" />

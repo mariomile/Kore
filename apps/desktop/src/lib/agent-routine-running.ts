@@ -1,6 +1,6 @@
 /**
  * The one routine run in flight right now, published by the runner for the
- * Agents screen: which routine is running and how to stop it. A tiny module
+ * Settings → Agents: which routine is running and how to stop it. A tiny module
  * store rather than React state because the runner and the screen live in
  * different trees; `useSyncExternalStore`-shaped. One slot is enough by
  * construction — runs hold the process-wide agent run lock.

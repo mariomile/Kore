@@ -1,11 +1,12 @@
 # Kore working state
 
-**Updated:** 2026-09-10, reusable mixed-note collections are implemented and
-verified through the rendered desktop flow; collection pages retain the
-Notion-style view tabs and options menu from PR #187. Kore now applies
-reproducible pnpm patches to Meowdown 0.65.6 for the core insertion API and
-React inline code-block renderer that are awaiting an upstream release.
-Cursor CLI chat drops retried assistant snapshots and treats
+**Updated:** 2026-09-10, Agents moved from the sidebar into Settings (profiles,
+memory, automations, plus the existing CLI skill install). Reusable mixed-note
+collections are implemented and verified through the rendered desktop flow;
+collection pages retain the Notion-style view tabs and options menu from
+PR #187. Kore now applies reproducible pnpm patches to Meowdown 0.65.6 for
+the core insertion API and React inline code-block renderer that are awaiting
+an upstream release. Cursor CLI chat drops retried assistant snapshots and treats
 `WritableIterable is closed` as a stream teardown, not a failed turn.
 Plan 30 CLI follow-up is on `t3code/cli-fresh-write-resolution`.
 Schema edits and rows from the table, sort chains, any/all filters, side peek,
@@ -655,13 +656,30 @@ browser `collection-view-tabs` + `all-notes-collection-flow` +
    in a read-only conversation; (b) Now 2: send an image in chat, restart,
    confirm the restored conversation renders it from disk; (c) Now 3: ask a
    question a daily note answers and confirm the recalled passage shows up
-   in the reply; teach a skill ("salvala come skill"), approve it from the
-   Agents screen, invoke it in a fresh conversation; (d) Now 4: start a
+   in the reply; teach a skill ("salvala come skill"), approve it from
+   Settings → Agents, invoke it in a fresh conversation; (d) Now 4: start a
    routine, quit Kore mid-run, relaunch and see the interrupted entry +
-   retry; Stop a running routine from the Agents screen.
+   retry; Stop a running routine from Settings → Agents.
 4. **Memory follow-ups** that emerge from Now item 3 usage (roadmap Next).
 
+## Agents in Settings — 2026-09-10
+
+- [x] Agents is a Settings page, not a sidebar or strip tab. Profiles, shared
+  memory, automations, and (on macOS) the CLI skill install live under
+  Settings → Agents. The command palette, the chat active-agent chip, and
+  stored `agents` workspace tabs all land there (old tabs are dropped on parse).
+
+**Validation:** pending targeted tests this session.
+
+**Next:** verify in the desktop preview that the sidebar has no Agents row
+and Settings → Agents still creates/activates a profile.
+
 ## Session log
+
+- 2026-09-10 — Agents moved from the sidebar into Settings. The workspace
+  Agents route and strip tab are gone; Settings carries a dedicated Agents
+  page (profiles, memory, automations, CLI skill). Palette "Agents" and the
+  chat agent chip open that page.
 
 - 2026-09-06 — Collection Notion chrome: tag pages default to a table,
   other layouts are addable named tabs (`collectionSavedViews` +

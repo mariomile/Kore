@@ -62,7 +62,7 @@ export const AGENT_SHARED_LOG_PATH = 'agents/memory/log.md'
 /**
  * Staged memory writes awaiting the user's approval (when the approval
  * setting is on): agents append proposal sections here instead of touching
- * the memory files, and the Agents screen applies or discards each one.
+ * the memory files, and Settings → Agents applies or discards each one.
  */
 export const AGENT_PENDING_MEMORY_PATH = 'agents/memory/pending.md'
 
@@ -350,7 +350,7 @@ export function agentContextPromptLines(
     'Keep every memory file short and curated — merge and rewrite instead of appending forever — and never store secrets or the content of private notes.',
     ...(options.writeApproval === true
       ? [
-          `Memory writes need the user's approval: do NOT edit ${AGENT_USER_MEMORY_PATH}, ${AGENT_SHARED_FACTS_PATH}, or anything under ${AGENT_SKILLS_DIR}/ directly. Instead, append a proposal section to ${AGENT_PENDING_MEMORY_PATH}: a heading "## <YYYY-MM-DD> ${signature} → <target path>" followed by the lines to add (for a new skill, the whole file body). The user approves or discards each proposal from the Agents screen. The session journal (${AGENT_SHARED_LOG_PATH}) and your own memory file are exempt — write those directly.`,
+          `Memory writes need the user's approval: do NOT edit ${AGENT_USER_MEMORY_PATH}, ${AGENT_SHARED_FACTS_PATH}, or anything under ${AGENT_SKILLS_DIR}/ directly. Instead, append a proposal section to ${AGENT_PENDING_MEMORY_PATH}: a heading "## <YYYY-MM-DD> ${signature} → <target path>" followed by the lines to add (for a new skill, the whole file body). The user approves or discards each proposal from Settings → Agents. The session journal (${AGENT_SHARED_LOG_PATH}) and your own memory file are exempt — write those directly.`,
         ]
       : []),
   )

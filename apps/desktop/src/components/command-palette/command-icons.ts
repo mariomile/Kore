@@ -45,6 +45,7 @@ export const COMMAND_ICONS: Record<string, Icon> = {
   'theme.toggle': Contrast,
   'sidebar.toggle': PanelLeft,
   'settings.open': Settings,
+  'nav.agents': Settings,
   'semantic.enable': Sparkles,
   'index.rebuild': Refresh,
 }

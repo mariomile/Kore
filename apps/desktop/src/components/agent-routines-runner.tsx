@@ -50,7 +50,7 @@ const CHECK_INTERVAL_MS = 60_000
 export const ROUTINES_CHECK_EVENT = 'agent-routines:check'
 
 /**
- * "Run now" from the Agents screen: fires one routine immediately by id,
+ * "Run now" from Settings → Agents: fires one routine immediately by id,
  * dueness ignored. A dedicated event (with the id in `detail`) rather than
  * a dueness re-check, because the click handler dispatches before React has
  * flushed any settings change into the runner's ref — a re-check would see
@@ -120,7 +120,7 @@ export function AgentRoutinesRunner(): null {
             return routine
           }
           if (stopped) {
-            // A deliberate stop from the Agents screen: the run ends in the
+            // A deliberate stop from Settings → Agents: the run ends in the
             // history (with whatever it touched) but outside the strike
             // counter — stopping a routine is not the routine failing.
             return {
@@ -220,7 +220,7 @@ export function AgentRoutinesRunner(): null {
       }
       // Null until markRun: a skipped occurrence records no history entry.
       let startedMs: number | null = null
-      // The Agents screen's Stop button reaches the engine through this
+      // The Settings → Agents Stop button reaches the engine through this
       // controller — the CLI transports kill their process tree on abort.
       const controller = new AbortController()
       activeController = controller
@@ -408,7 +408,7 @@ export function AgentRoutinesRunner(): null {
             title: `Routine “${routine.name}” completed`,
             ...(ledger.length > 0
               ? {
-                  description: `${ledger.length} note${ledger.length === 1 ? '' : 's'} edited — see Agents → Automations.`,
+                  description: `${ledger.length} note${ledger.length === 1 ? '' : 's'} edited — see Settings → Agents → Automations.`,
                 }
               : {}),
           })

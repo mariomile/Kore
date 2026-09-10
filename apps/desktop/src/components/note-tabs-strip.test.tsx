@@ -256,9 +256,6 @@ function Probe(): ReactElement {
       <button type="button" data-testid="open-graph" onClick={() => navigate({ kind: 'graphMap' })}>
         graph
       </button>
-      <button type="button" data-testid="open-agents" onClick={() => navigate({ kind: 'agents' })}>
-        agents
-      </button>
       <button
         type="button"
         data-testid="open-settings"
@@ -563,7 +560,6 @@ describe('workspace tabs', () => {
       ['open-tasks', 'Tasks'],
       ['open-insights', 'Insights'],
       ['open-graph', 'Graph'],
-      ['open-agents', 'Agents'],
       ['open-terminal', 'Terminal'],
       ['open-browser', 'Browser'],
     ] as const

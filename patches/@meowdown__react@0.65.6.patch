@@ -1,0 +1,998 @@
+diff --git a/dist/index.d.ts b/dist/index.d.ts
+index 2a54f44d768baf22cac206dbf29cb3aa6c0ed58f..44f25105f1aaecd8705ee153640f835c011c6681 100644
+--- a/dist/index.d.ts
++++ b/dist/index.d.ts
+@@ -1,10 +1,30 @@
+ import { ReactElement, ReactNode, Ref } from "react";
+-import { AcceptPendingReplacementOptions, ExitBoundaryHandler, FileClickHandler, FileInfoResolver, FileLinkResolver, FilePasteOptions, FileViewOptions, ImageClickHandler, ImageOptions, LinkClickHandler, LinkCopyHandler, ListMarker, MarkMode, PendingReplacement, PendingReplacementOutcome, PlaceholderOptions, SearchStatusHandler, StartPendingReplacementOptions, TagClickHandler, TypedEditor, WikiEmbedResolver, WikilinkClickHandler, WikilinkHoverHit } from "@meowdown/core";
++import { AcceptPendingReplacementOptions, ExitBoundaryHandler, FileClickHandler, FileInfoResolver, FileLinkResolver, FilePasteOptions, FileViewOptions, ImageClickHandler, ImageOptions, InsertMarkdownOptions, LinkClickHandler, LinkCopyHandler, ListMarker, MarkMode, PendingReplacement, PendingReplacementOutcome, PlaceholderOptions, SearchStatusHandler, StartPendingReplacementOptions, TagClickHandler, TypedEditor, WikiEmbedResolver, WikilinkClickHandler, WikilinkHoverHit } from "@meowdown/core";
+ import { SelectionJSON, SelectionJSON as SelectionJSON$1 } from "@prosekit/core";
+ import { useEditor, useExtension, useKeymap } from "@prosekit/react";
+ //#region src/utils/date-format.d.ts
+ type TimeFormat = '12' | '24';
+ //#endregion
++//#region src/components/code-block-view.d.ts
++interface CodeBlockRenderOptions {
++  /**
++   * The language written after the opening fence, or an empty string.
++   */
++  language: string;
++  /**
++   * The code block body without its fences.
++   */
++  code: string;
++  /**
++   * Replace the block body as one undoable editor transaction.
++   */
++  updateCode: (code: string) => void;
++}
++/**
++ * Return custom content for a code block, or null to use Meowdown's built-in view.
++ */
++type CodeBlockRenderer = (options: CodeBlockRenderOptions) => ReactNode | null;
++//#endregion
+ //#region src/components/types.d.ts
+ /**
+  * A selection to restore: an exact JSON selection, or a document edge.
+@@ -39,7 +59,7 @@ interface EditorHandle {
+    * whitespace-only string is a no-op. Unlike `setMarkdown`, it fires
+    * `onDocChange`: the host cannot know the resulting document.
+    */
+-  insertMarkdown: (markdown: string) => void;
++  insertMarkdown: (markdown: string, options?: InsertMarkdownOptions) => void;
+   /**
+    * Returns the current Markdown and selection.
+    */
+@@ -277,6 +297,12 @@ interface EditorProps {
+    * `setState` on the handle do not fire it.
+    */
+   onDocChange?: VoidFunction;
++  /**
++   * Renders host-owned content in place of selected fenced code blocks. Return
++   * null to keep Meowdown's built-in source, toolbar, and preview. The callback
++   * is read once when the editor is created and should have a stable identity.
++   */
++  renderCodeBlock?: CodeBlockRenderer;
+   /**
+    * Searches host items for the slash menu, which opens when typing `/`.
+    * Receives the query (lowercased, punctuation stripped, may be empty) and
+@@ -508,7 +534,7 @@ interface EditorProps {
+  *
+  * Callbacks and resolvers should be stable; pass them via `useCallback`.
+  */
+-export declare function MeowdownEditor({ mode, initialMarkdown, onDocChange, onSlashMenuSearch, onTagSearch, onWikilinkSearch, onSelectionMenuSearch, selectionMenuAffordance, pendingReplacementActions, onPendingReplacementResolve, onWikilinkClick, onLinkClick, onLinkCopy, onTagClick, onExitBoundary, resolveImageUrl, resolveFileLink, resolveWikiEmbed, resolveFileInfo, onFileClick, onFilePaste, onFileSaveError, onImageClick, embedPaste, linkPaste, bulletAfterHeading, substitution, frontmatter, blockHandle, caretGlide, placeholder, readOnly, spellCheck, searchQuery, onSearchChange, timeFormat, editorClassName, wrapperClassName, handleRef, children }: EditorProps): ReactElement;
++export declare function MeowdownEditor({ mode, initialMarkdown, onDocChange, renderCodeBlock, onSlashMenuSearch, onTagSearch, onWikilinkSearch, onSelectionMenuSearch, selectionMenuAffordance, pendingReplacementActions, onPendingReplacementResolve, onWikilinkClick, onLinkClick, onLinkCopy, onTagClick, onExitBoundary, resolveImageUrl, resolveFileLink, resolveWikiEmbed, resolveFileInfo, onFileClick, onFilePaste, onFileSaveError, onImageClick, embedPaste, linkPaste, bulletAfterHeading, substitution, frontmatter, blockHandle, caretGlide, placeholder, readOnly, spellCheck, searchQuery, onSearchChange, timeFormat, editorClassName, wrapperClassName, handleRef, children }: EditorProps): ReactElement;
+ //#endregion
+ //#region src/components/markdown-view.d.ts
+ /**
+@@ -654,4 +680,4 @@ interface WikilinkHoverCardProps {
+  */
+ export declare function WikilinkHoverCard({ children, className }: WikilinkHoverCardProps): ReactNode;
+ //#endregion
+-export { type EditorHandle, type EditorMode, type EditorProps, type EditorStateSnapshot, type MarkdownViewProps, type PendingReplacementResolveHandler, type SelectionHint, type SelectionJSON, type SelectionMenuContext, type SelectionMenuItem, type SelectionMenuSearchHandler, type SlashMenuItem, type SlashMenuSearchHandler, type TagItem, type TagSearchHandler, type TaskClickHandler, type TaskClickPayload, type TimeFormat, type WikilinkHoverCardProps, type WikilinkItem, type WikilinkSearchHandler, useEditor, useExtension, useKeymap };
+\ No newline at end of file
++export { type CodeBlockRenderOptions, type CodeBlockRenderer, type EditorHandle, type EditorMode, type EditorProps, type EditorStateSnapshot, type MarkdownViewProps, type PendingReplacementResolveHandler, type SelectionHint, type SelectionJSON, type SelectionMenuContext, type SelectionMenuItem, type SelectionMenuSearchHandler, type SlashMenuItem, type SlashMenuSearchHandler, type TagItem, type TagSearchHandler, type TaskClickHandler, type TaskClickPayload, type TimeFormat, type WikilinkHoverCardProps, type WikilinkItem, type WikilinkSearchHandler, useEditor, useExtension, useKeymap };
+\ No newline at end of file
+diff --git a/dist/index.js b/dist/index.js
+index 3b77b2152ff32b20e8d57ea1300dd72eb62cfb3c..2189b0698bc12fb34263ac03ba7dfd9ebd7df64c 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -7,15 +7,15 @@ import { Selection, TextSelection } from "@prosekit/pm/state";
+ import { ProseKit, defineReactNodeView, useEditor, useEditor as useEditor$1, useEditorDerivedValue, useExtension, useExtension as useExtension$1, useKeymap } from "@prosekit/react";
+ import GithubSlugger from "github-slugger";
+ import { Combobox } from "@base-ui/react/combobox";
++import { Fragment as Fragment$1, Mark } from "@prosekit/pm/model";
+ import { CheckIcon, ChevronsUpDownIcon, CopyIcon, GripHorizontalIcon, GripVerticalIcon, PencilIcon, SparklesIcon, UnlinkIcon } from "lucide-react";
+-import { Fragment as Fragment$1, jsx, jsxs } from "react/jsx-runtime";
++import { Fragment as Fragment$2, jsx, jsxs } from "react/jsx-runtime";
+ import { BlockHandleDraggable, BlockHandlePopup, BlockHandlePositioner, BlockHandleRoot } from "@prosekit/react/block-handle";
+ import { DropIndicator } from "@prosekit/react/drop-indicator";
+ import { Popover } from "@base-ui/react/popover";
+ import { AutocompleteEmpty, AutocompleteItem, AutocompletePopup, AutocompletePositioner, AutocompleteRoot } from "@prosekit/react/autocomplete";
+ import { MenuItem, MenuPopup, MenuPositioner } from "@prosekit/react/menu";
+ import { TableHandleColumnMenuRoot, TableHandleColumnMenuTrigger, TableHandleColumnPopup, TableHandleColumnPositioner, TableHandleDragPreview, TableHandleDropIndicator, TableHandleRoot, TableHandleRowMenuRoot, TableHandleRowMenuTrigger, TableHandleRowPopup, TableHandleRowPositioner } from "@prosekit/react/table-handle";
+-import { Mark } from "@prosekit/pm/model";
+ import { BOOLEAN, OVERLOADED_BOOLEAN, getPropertyInfo, possibleStandardNames } from "react-property";
+ import { PreviewCard } from "@base-ui/react/preview-card";
+ 
+@@ -76,22 +76,23 @@ const NON_PROSE_PROPS = {
+ //#endregion
+ //#region src/components/code-block-view.module.css
+ var code_block_view_module_default = {
+-	"CopyButton": "meow_CopyButton_D3j_9q",
+-	"Empty": "meow_Empty_D3j_9q",
+-	"Item": "meow_Item_D3j_9q",
+-	"ItemIndicator": "meow_ItemIndicator_D3j_9q",
+-	"ItemText": "meow_ItemText_D3j_9q",
+-	"List": "meow_List_D3j_9q",
+-	"MermaidPreview": "meow_MermaidPreview_D3j_9q",
+-	"Popup": "meow_Popup_D3j_9q",
+-	"Positioner": "meow_Positioner_D3j_9q",
+-	"Preview": "meow_Preview_D3j_9q",
+-	"Root": "meow_Root_D3j_9q",
+-	"Search": "meow_Search_D3j_9q",
+-	"SearchRow": "meow_SearchRow_D3j_9q",
+-	"Toolbar": "meow_Toolbar_D3j_9q",
+-	"Trigger": "meow_Trigger_D3j_9q",
+-	"TriggerIcon": "meow_TriggerIcon_D3j_9q"
++	"CopyButton": "meow_CopyButton_yIBFUq",
++	"CustomContent": "meow_CustomContent_yIBFUq",
++	"Empty": "meow_Empty_yIBFUq",
++	"Item": "meow_Item_yIBFUq",
++	"ItemIndicator": "meow_ItemIndicator_yIBFUq",
++	"ItemText": "meow_ItemText_yIBFUq",
++	"List": "meow_List_yIBFUq",
++	"MermaidPreview": "meow_MermaidPreview_yIBFUq",
++	"Popup": "meow_Popup_yIBFUq",
++	"Positioner": "meow_Positioner_yIBFUq",
++	"Preview": "meow_Preview_yIBFUq",
++	"Root": "meow_Root_yIBFUq",
++	"Search": "meow_Search_yIBFUq",
++	"SearchRow": "meow_SearchRow_yIBFUq",
++	"Toolbar": "meow_Toolbar_yIBFUq",
++	"Trigger": "meow_Trigger_yIBFUq",
++	"TriggerIcon": "meow_TriggerIcon_yIBFUq"
+ };
+ 
+ //#endregion
+@@ -211,17 +212,34 @@ function MermaidRender(props) {
+ function CodeBlockView(props) {
+ 	const { node, view, getPos, decorations, selected, setAttrs, contentRef } = props;
+ 	const language = node.attrs.language || "";
+-	const isMath = language === "math";
+-	const isMermaid = language === "mermaid";
+ 	const code = node.textContent;
++	const updateCode = useCallback((nextCode) => {
++		const pos = getPos();
++		if (pos == null) return;
++		const currentNode = view.state.doc.nodeAt(pos);
++		if (currentNode?.type !== view.state.schema.nodes.codeBlock) return;
++		const from = pos + 1;
++		const to = from + currentNode.content.size;
++		const content = nextCode === "" ? Fragment$1.empty : view.state.schema.text(nextCode);
++		view.dispatch(view.state.tr.replaceWith(from, to, content));
++	}, [getPos, view]);
+ 	const caretInside = decorations.some(isCodeBlockPreviewHiddenDecoration);
++	const customContent = props.renderCodeBlock?.({
++		language,
++		code,
++		updateCode
++	}) ?? null;
++	const hasCustomContent = customContent !== null;
++	const customPreviewOnly = hasCustomContent && !caretInside;
++	const isMath = !hasCustomContent && language === "math";
++	const isMermaid = !hasCustomContent && language === "mermaid";
+ 	const katex = useKaTeX(isMath);
+ 	const mermaid = useBeautifulMermaid(isMermaid);
+ 	const showMathPreview = isMath && katex != null;
+ 	const showMermaidPreview = isMermaid && mermaid != null;
+ 	const showPreview = showMathPreview || showMermaidPreview;
+ 	const previewCode = useDeferredValue(showPreview ? code : "");
+-	const previewOnly = showPreview && !caretInside && code.trim() !== "";
++	const previewOnly = !hasCustomContent && showPreview && !caretInside && code.trim() !== "";
+ 	const focusSource = useCallback((event) => {
+ 		event.preventDefault();
+ 		const pos = getPos();
+@@ -235,6 +253,7 @@ function CodeBlockView(props) {
+ 	}, [setAttrs]);
+ 	return /* @__PURE__ */ jsxs("div", {
+ 		className: code_block_view_module_default.Root,
++		"data-custom": customPreviewOnly || void 0,
+ 		"data-preview": previewOnly || void 0,
+ 		children: [
+ 			/* @__PURE__ */ jsx("pre", {
+@@ -242,7 +261,13 @@ function CodeBlockView(props) {
+ 				"data-language": language,
+ 				...NON_PROSE_PROPS
+ 			}),
+-			selected ? null : /* @__PURE__ */ jsx(CodeBlockToolbar, {
++			hasCustomContent ? /* @__PURE__ */ jsx("div", {
++				className: code_block_view_module_default.CustomContent,
++				contentEditable: false,
++				"data-meowdown-code-block-custom": "",
++				...NON_PROSE_PROPS,
++				children: customContent
++			}) : !selected && /* @__PURE__ */ jsx(CodeBlockToolbar, {
+ 				code,
+ 				language,
+ 				setLanguage
+@@ -353,20 +378,26 @@ function CodeBlockToolbar({ code, language, setLanguage }) {
+ 
+ //#endregion
+ //#region src/extensions/code-block-view.ts
+-function defineCodeBlockView() {
++function defineCodeBlockView(renderCodeBlock) {
++	const component = (props) => {
++		return createElement(CodeBlockView, {
++			...props,
++			renderCodeBlock
++		});
++	};
+ 	return union(defineReactNodeView({
+ 		name: "codeBlock",
+ 		contentAs: "code",
+-		component: CodeBlockView
++		component
+ 	}), defineCodeBlockPreviewPlugin());
+ }
+ 
+ //#endregion
+ //#region src/components/block-handle.module.css
+ var block_handle_module_default = {
+-	"Draggable": "meow_Draggable_EvUpOG",
+-	"Popup": "meow_Popup_EvUpOG",
+-	"Positioner": "meow_Positioner_EvUpOG"
++	"Draggable": "meow_Draggable_ySUgXG",
++	"Popup": "meow_Popup_ySUgXG",
++	"Positioner": "meow_Positioner_ySUgXG"
+ };
+ 
+ //#endregion
+@@ -388,7 +419,7 @@ function BlockHandle() {
+ 
+ //#endregion
+ //#region src/components/drop-indicator.module.css
+-var drop_indicator_module_default = { "DropIndicator": "meow_DropIndicator_urNIwW" };
++var drop_indicator_module_default = { "DropIndicator": "meow_DropIndicator_Yb_kcG" };
+ 
+ //#endregion
+ //#region src/components/drop-indicator.tsx
+@@ -533,14 +564,14 @@ function useDelayedFlag(value, openDelay = OPEN_DELAY$1, closeDelay = CLOSE_DELA
+ //#endregion
+ //#region src/components/link-menu.module.css
+ var link_menu_module_default = {
+-	"Button": "meow_Button_IjcqKG",
+-	"Form": "meow_Form_IjcqKG",
+-	"Input": "meow_Input_IjcqKG",
+-	"Popup": "meow_Popup_IjcqKG",
+-	"Positioner": "meow_Positioner_IjcqKG",
+-	"Row": "meow_Row_IjcqKG",
+-	"SrOnly": "meow_SrOnly_IjcqKG",
+-	"Url": "meow_Url_IjcqKG"
++	"Button": "meow_Button_lqhgTq",
++	"Form": "meow_Form_lqhgTq",
++	"Input": "meow_Input_lqhgTq",
++	"Popup": "meow_Popup_lqhgTq",
++	"Positioner": "meow_Positioner_lqhgTq",
++	"Row": "meow_Row_lqhgTq",
++	"SrOnly": "meow_SrOnly_lqhgTq",
++	"Url": "meow_Url_lqhgTq"
+ };
+ 
+ //#endregion
+@@ -784,14 +815,14 @@ function LinkMenu({ onLinkClick, onLinkCopy }) {
+ //#endregion
+ //#region src/components/pending-replacement-preview.module.css
+ var pending_replacement_preview_module_default = {
+-	"AcceptButton": "meow_AcceptButton_DPJ5ia",
+-	"Button": "meow_Button_DPJ5ia",
+-	"Footer": "meow_Footer_DPJ5ia",
+-	"Popup": "meow_Popup_DPJ5ia",
+-	"Positioner": "meow_Positioner_DPJ5ia",
+-	"Spacer": "meow_Spacer_DPJ5ia",
+-	"Text": "meow_Text_DPJ5ia",
+-	"Waiting": "meow_Waiting_DPJ5ia"
++	"AcceptButton": "meow_AcceptButton_p6c2la",
++	"Button": "meow_Button_p6c2la",
++	"Footer": "meow_Footer_p6c2la",
++	"Popup": "meow_Popup_p6c2la",
++	"Positioner": "meow_Positioner_p6c2la",
++	"Spacer": "meow_Spacer_p6c2la",
++	"Text": "meow_Text_p6c2la",
++	"Waiting": "meow_Waiting_p6c2la"
+ };
+ 
+ //#endregion
+@@ -925,17 +956,17 @@ function PendingReplacementPreview({ actions, onResolve }) {
+ //#endregion
+ //#region src/components/selection-menu.module.css
+ var selection_menu_module_default = {
+-	"AffordanceButton": "meow_AffordanceButton_2_4Zjq",
+-	"AffordancePopup": "meow_AffordancePopup_2_4Zjq",
+-	"AffordancePositioner": "meow_AffordancePositioner_2_4Zjq",
+-	"Detail": "meow_Detail_2_4Zjq",
+-	"Empty": "meow_Empty_2_4Zjq",
+-	"Input": "meow_Input_2_4Zjq",
+-	"Item": "meow_Item_2_4Zjq",
+-	"Label": "meow_Label_2_4Zjq",
+-	"List": "meow_List_2_4Zjq",
+-	"Popup": "meow_Popup_2_4Zjq",
+-	"Positioner": "meow_Positioner_2_4Zjq"
++	"AffordanceButton": "meow_AffordanceButton_HCBtbW",
++	"AffordancePopup": "meow_AffordancePopup_HCBtbW",
++	"AffordancePositioner": "meow_AffordancePositioner_HCBtbW",
++	"Detail": "meow_Detail_HCBtbW",
++	"Empty": "meow_Empty_HCBtbW",
++	"Input": "meow_Input_HCBtbW",
++	"Item": "meow_Item_HCBtbW",
++	"Label": "meow_Label_HCBtbW",
++	"List": "meow_List_HCBtbW",
++	"Popup": "meow_Popup_HCBtbW",
++	"Positioner": "meow_Positioner_HCBtbW"
+ };
+ 
+ //#endregion
+@@ -1080,7 +1111,7 @@ function SelectionMenuPopup({ onSelectionMenuSearch, context, onClose }) {
+ 			if (item) selectItem(item);
+ 		}
+ 	}
+-	return /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx("input", {
++	return /* @__PURE__ */ jsxs(Fragment$2, { children: [/* @__PURE__ */ jsx("input", {
+ 		autoFocus: true,
+ 		className: selection_menu_module_default.Input,
+ 		value: query,
+@@ -1137,11 +1168,11 @@ function formatTime24(date) {
+ //#endregion
+ //#region src/components/autocomplete-menu.module.css
+ var autocomplete_menu_module_default = {
+-	"Detail": "meow_Detail_Dqll0G",
+-	"Item": "meow_Item_Dqll0G",
+-	"Label": "meow_Label_Dqll0G",
+-	"Popup": "meow_Popup_Dqll0G",
+-	"Positioner": "meow_Positioner_Dqll0G"
++	"Detail": "meow_Detail_GVTT1W",
++	"Item": "meow_Item_GVTT1W",
++	"Label": "meow_Label_GVTT1W",
++	"Popup": "meow_Popup_GVTT1W",
++	"Positioner": "meow_Positioner_GVTT1W"
+ };
+ 
+ //#endregion
+@@ -1239,7 +1270,7 @@ function SlashMenu({ timeFormat = "12", onSlashMenuSearch, onFilePaste, onFileSa
+ 				className: autocomplete_menu_module_default.Popup,
+ 				"data-testid": "slash-menu",
+ 				children: [
+-					!inTableCell && /* @__PURE__ */ jsxs(Fragment$1, { children: [
++					!inTableCell && /* @__PURE__ */ jsxs(Fragment$2, { children: [
+ 						/* @__PURE__ */ jsx(SlashMenuItem, {
+ 							label: "Text",
+ 							keywords: ["paragraph", "plain"],
+@@ -1342,13 +1373,13 @@ function SlashMenu({ timeFormat = "12", onSlashMenuSearch, onFilePaste, onFileSa
+ //#endregion
+ //#region src/components/table-handle.module.css
+ var table_handle_module_default = {
+-	"ColumnPopup": "meow_ColumnPopup_hpZLgq",
+-	"MenuItem": "meow_MenuItem_hpZLgq",
+-	"MenuPopup": "meow_MenuPopup_hpZLgq",
+-	"MenuPositioner": "meow_MenuPositioner_hpZLgq",
+-	"Positioner": "meow_Positioner_hpZLgq",
+-	"RowPopup": "meow_RowPopup_hpZLgq",
+-	"Trigger": "meow_Trigger_hpZLgq"
++	"ColumnPopup": "meow_ColumnPopup_L1pIlq",
++	"MenuItem": "meow_MenuItem_L1pIlq",
++	"MenuPopup": "meow_MenuPopup_L1pIlq",
++	"MenuPositioner": "meow_MenuPositioner_L1pIlq",
++	"Positioner": "meow_Positioner_L1pIlq",
++	"RowPopup": "meow_RowPopup_L1pIlq",
++	"Trigger": "meow_Trigger_L1pIlq"
+ };
+ 
+ //#endregion
+@@ -1442,7 +1473,7 @@ function TableHandle() {
+ 								onSelect: state.addTableColumnAfter.command,
+ 								children: /* @__PURE__ */ jsx("span", { children: "Insert Right" })
+ 							}),
+-							state.setTableColumnAlign.canExec && /* @__PURE__ */ jsxs(Fragment$1, { children: [
++							state.setTableColumnAlign.canExec && /* @__PURE__ */ jsxs(Fragment$2, { children: [
+ 								/* @__PURE__ */ jsx(ColumnAlignMenuItem, {
+ 									align: "left",
+ 									columnAlign: state.columnAlign,
+@@ -1727,14 +1758,14 @@ function findHeadingPosition(doc, fragment) {
+ 	});
+ 	return match;
+ }
+-function ProseKitEditor({ markMode = "focus", initialMarkdown, onDocChange, onSlashMenuSearch, onTagSearch, onWikilinkSearch, onSelectionMenuSearch, selectionMenuAffordance = true, pendingReplacementActions, onPendingReplacementResolve, onWikilinkClick, onLinkClick, onLinkCopy, onTagClick, onExitBoundary, resolveImageUrl, resolveFileLink, resolveWikiEmbed, resolveFileInfo, onFileClick, onFilePaste, onFileSaveError, onImageClick, embedPaste, linkPaste, bulletAfterHeading, substitution = true, frontmatter = false, blockHandle = true, placeholder, readOnly, spellCheck, searchQuery = "", onSearchChange, timeFormat, editorClassName, ref, children }) {
++function ProseKitEditor({ markMode = "focus", initialMarkdown, onDocChange, renderCodeBlock, onSlashMenuSearch, onTagSearch, onWikilinkSearch, onSelectionMenuSearch, selectionMenuAffordance = true, pendingReplacementActions, onPendingReplacementResolve, onWikilinkClick, onLinkClick, onLinkCopy, onTagClick, onExitBoundary, resolveImageUrl, resolveFileLink, resolveWikiEmbed, resolveFileInfo, onFileClick, onFilePaste, onFileSaveError, onImageClick, embedPaste, linkPaste, bulletAfterHeading, substitution = true, frontmatter = false, blockHandle = true, placeholder, readOnly, spellCheck, searchQuery = "", onSearchChange, timeFormat, editorClassName, ref, children }) {
+ 	const [editor] = useState(() => {
+ 		const baseExtension = defineEditorExtension({
+ 			resolveFileLink,
+ 			resolveWikiEmbed,
+ 			markMode
+ 		});
+-		const extension = union(baseExtension, defineCodeBlockView());
++		const extension = union(baseExtension, defineCodeBlockView(renderCodeBlock));
+ 		const editor = createEditor({ extension });
+ 		if (initialMarkdown) editor.setContent(markdownToDoc(initialMarkdown, {
+ 			nodes: editor.nodes,
+@@ -1800,8 +1831,8 @@ function ProseKitEditor({ markMode = "focus", initialMarkdown, onDocChange, onSl
+ 			const [markdown, selection] = getState();
+ 			replaceState(markdown, selection, false, true);
+ 		}
+-		function insertMarkdown(markdown) {
+-			editor.commands.insertMarkdown(markdown);
++		function insertMarkdown(markdown, options) {
++			editor.commands.insertMarkdown(markdown, options);
+ 		}
+ 		function setSelection(selection) {
+ 			setState(void 0, selection);
+@@ -1949,7 +1980,7 @@ const CARET_GLIDE_OFF = { "--meowdown-caret-glide": "0ms" };
+ *
+ * Callbacks and resolvers should be stable; pass them via `useCallback`.
+ */
+-function MeowdownEditor({ mode = "focus", initialMarkdown, onDocChange, onSlashMenuSearch, onTagSearch, onWikilinkSearch, onSelectionMenuSearch, selectionMenuAffordance = true, pendingReplacementActions, onPendingReplacementResolve, onWikilinkClick, onLinkClick, onLinkCopy, onTagClick, onExitBoundary, resolveImageUrl, resolveFileLink, resolveWikiEmbed, resolveFileInfo, onFileClick, onFilePaste, onFileSaveError, onImageClick, embedPaste = true, linkPaste = true, bulletAfterHeading = false, substitution = true, frontmatter = false, blockHandle = true, caretGlide = true, placeholder, readOnly, spellCheck, searchQuery, onSearchChange, timeFormat, editorClassName, wrapperClassName, handleRef, children }) {
++function MeowdownEditor({ mode = "focus", initialMarkdown, onDocChange, renderCodeBlock, onSlashMenuSearch, onTagSearch, onWikilinkSearch, onSelectionMenuSearch, selectionMenuAffordance = true, pendingReplacementActions, onPendingReplacementResolve, onWikilinkClick, onLinkClick, onLinkCopy, onTagClick, onExitBoundary, resolveImageUrl, resolveFileLink, resolveWikiEmbed, resolveFileInfo, onFileClick, onFilePaste, onFileSaveError, onImageClick, embedPaste = true, linkPaste = true, bulletAfterHeading = false, substitution = true, frontmatter = false, blockHandle = true, caretGlide = true, placeholder, readOnly, spellCheck, searchQuery, onSearchChange, timeFormat, editorClassName, wrapperClassName, handleRef, children }) {
+ 	const childRef = useRef(null);
+ 	useImperativeHandle(handleRef, () => {
+ 		function getMarkdown() {
+@@ -1958,8 +1989,8 @@ function MeowdownEditor({ mode = "focus", initialMarkdown, onDocChange, onSlashM
+ 		function setMarkdown(markdown) {
+ 			childRef.current?.setMarkdown(markdown);
+ 		}
+-		function insertMarkdown(markdown) {
+-			childRef.current?.insertMarkdown(markdown);
++		function insertMarkdown(markdown, options) {
++			childRef.current?.insertMarkdown(markdown, options);
+ 		}
+ 		function getState() {
+ 			return childRef.current?.getState() ?? ["", {
+@@ -2050,6 +2081,7 @@ function MeowdownEditor({ mode = "focus", initialMarkdown, onDocChange, onSlashM
+ 			markMode: mode,
+ 			initialMarkdown,
+ 			onDocChange,
++			renderCodeBlock,
+ 			onSlashMenuSearch,
+ 			onTagSearch,
+ 			onWikilinkSearch,
+@@ -2684,9 +2716,9 @@ function MarkdownView({ markdown, markMode = "hide", frontmatter = false, intera
+ //#endregion
+ //#region src/components/wikilink-hover-card.module.css
+ var wikilink_hover_card_module_default = {
+-	"Popup": "meow_Popup_HMEwgW",
+-	"Positioner": "meow_Positioner_HMEwgW",
+-	"Viewport": "meow_Viewport_HMEwgW"
++	"Popup": "meow_Popup_XWaCPW",
++	"Positioner": "meow_Positioner_XWaCPW",
++	"Viewport": "meow_Viewport_XWaCPW"
+ };
+ 
+ //#endregion
+diff --git a/dist/style.css b/dist/style.css
+index 24cd389e8b9519395df868939ba679efbb10bb69..017056bedf3c4fc37b316559c97d88d3e874feac 100644
+--- a/dist/style.css
++++ b/dist/style.css
+@@ -1,12 +1,25 @@
+-.meow_Root_D3j_9q {
++.meow_Root_yIBFUq {
+   position: relative;
+ }
+ 
+-.meow_Root_D3j_9q[data-preview] pre, .meow_Root_D3j_9q[data-preview] .meow_Toolbar_D3j_9q {
++.meow_Root_yIBFUq[data-preview] pre, .meow_Root_yIBFUq[data-custom] pre {
+   display: none;
+ }
+ 
+-.meow_Preview_D3j_9q {
++.meow_Root_yIBFUq .meow_CustomContent_yIBFUq ul:not(.meow_CustomContent_yIBFUq .ProseMirror ul), .meow_Root_yIBFUq .meow_CustomContent_yIBFUq ol:not(.meow_CustomContent_yIBFUq .ProseMirror ol) {
++  padding-left: 0;
++  list-style: none;
++}
++
++.meow_Root_yIBFUq .meow_CustomContent_yIBFUq li:not(.meow_CustomContent_yIBFUq .ProseMirror li) {
++  margin-top: 0;
++}
++
++.meow_Root_yIBFUq[data-preview] .meow_Toolbar_yIBFUq {
++  display: none;
++}
++
++.meow_Preview_yIBFUq {
+   text-align: center;
+   cursor: text;
+   -webkit-user-select: none;
+@@ -16,7 +29,7 @@
+   overflow-x: auto;
+ }
+ 
+-.meow_MermaidPreview_D3j_9q {
++.meow_MermaidPreview_yIBFUq {
+   text-align: initial;
+ 
+   &[data-error] {
+@@ -33,7 +46,7 @@
+   }
+ }
+ 
+-.meow_Toolbar_D3j_9q {
++.meow_Toolbar_yIBFUq {
+   z-index: 1;
+   user-select: none;
+   opacity: 0;
+@@ -47,12 +60,12 @@
+   right: .5rem;
+ }
+ 
+-.meow_Root_D3j_9q:hover .meow_Toolbar_D3j_9q, .meow_Root_D3j_9q:focus-within .meow_Toolbar_D3j_9q, .meow_Toolbar_D3j_9q[data-open] {
++.meow_Root_yIBFUq:hover .meow_Toolbar_yIBFUq, .meow_Root_yIBFUq:focus-within .meow_Toolbar_yIBFUq, .meow_Toolbar_yIBFUq[data-open] {
+   opacity: 1;
+   pointer-events: auto;
+ }
+ 
+-.meow_Trigger_D3j_9q {
++.meow_Trigger_yIBFUq {
+   box-sizing: border-box;
+   border: 1px solid var(--meowdown-border);
+   background: var(--meowdown-popover-bg);
+@@ -73,7 +86,7 @@
+   }
+ }
+ 
+-.meow_TriggerIcon_D3j_9q {
++.meow_TriggerIcon_yIBFUq {
+   display: flex;
+ 
+   & svg {
+@@ -83,7 +96,7 @@
+   }
+ }
+ 
+-.meow_CopyButton_D3j_9q {
++.meow_CopyButton_yIBFUq {
+   box-sizing: border-box;
+   border: 1px solid var(--meowdown-border);
+   background: var(--meowdown-popover-bg);
+@@ -112,12 +125,12 @@
+   }
+ }
+ 
+-.meow_Positioner_D3j_9q {
++.meow_Positioner_yIBFUq {
+   z-index: 50;
+   outline: none;
+ }
+ 
+-.meow_Popup_D3j_9q {
++.meow_Popup_yIBFUq {
+   box-sizing: border-box;
+   max-height: min(var(--available-height), 18rem);
+   border: 1px solid var(--meowdown-border);
+@@ -143,12 +156,12 @@
+   }
+ }
+ 
+-.meow_SearchRow_D3j_9q {
++.meow_SearchRow_yIBFUq {
+   border-bottom: 1px solid var(--meowdown-border);
+   padding: .35rem;
+ }
+ 
+-.meow_Search_D3j_9q {
++.meow_Search_yIBFUq {
+   box-sizing: border-box;
+   border: 1px solid var(--meowdown-border);
+   width: 100%;
+@@ -169,25 +182,25 @@
+   }
+ }
+ 
+-.meow_Empty_D3j_9q {
++.meow_Empty_yIBFUq {
+   color: var(--meowdown-muted);
+   text-align: center;
+   padding: .5rem;
+   font-size: .8rem;
+ }
+ 
+-.meow_Empty_D3j_9q:empty {
++.meow_Empty_yIBFUq:empty {
+   display: none;
+ }
+ 
+-.meow_List_D3j_9q {
++.meow_List_yIBFUq {
+   flex-direction: column;
+   padding: .25rem;
+   display: flex;
+   overflow-y: auto;
+ }
+ 
+-.meow_Item_D3j_9q {
++.meow_Item_yIBFUq {
+   box-sizing: border-box;
+   cursor: pointer;
+   border-radius: .35rem;
+@@ -205,7 +218,7 @@
+   }
+ }
+ 
+-.meow_ItemIndicator_D3j_9q {
++.meow_ItemIndicator_yIBFUq {
+   color: var(--meowdown-accent);
+   grid-column: 1;
+   display: flex;
+@@ -217,14 +230,14 @@
+   }
+ }
+ 
+-.meow_ItemText_D3j_9q {
++.meow_ItemText_yIBFUq {
+   text-overflow: ellipsis;
+   white-space: nowrap;
+   grid-column: 2;
+   min-width: 0;
+   overflow: hidden;
+ }
+-.meow_Positioner_EvUpOG {
++.meow_Positioner_ySUgXG {
+   z-index: 50;
+   width: min-content;
+   height: min-content;
+@@ -237,7 +250,7 @@
+   }
+ }
+ 
+-.meow_Popup_EvUpOG {
++.meow_Popup_ySUgXG {
+   box-sizing: border-box;
+   transform-origin: var(--transform-origin);
+   transition: opacity .1s, scale .1s;
+@@ -259,7 +272,7 @@
+   }
+ }
+ 
+-.meow_Draggable_EvUpOG {
++.meow_Draggable_ySUgXG {
+   box-sizing: border-box;
+   width: 1.25rem;
+   height: 1.5rem;
+@@ -281,18 +294,18 @@
+     display: block;
+   }
+ }
+-.meow_DropIndicator_urNIwW {
++.meow_DropIndicator_Yb_kcG {
+   z-index: 50;
+   background: var(--meowdown-accent);
+   transition: all .15s;
+ }
+-.meow_Positioner_IjcqKG {
++.meow_Positioner_lqhgTq {
+   z-index: 50;
+   width: min(20rem, 100vw - 1rem);
+   display: block;
+ }
+ 
+-.meow_Popup_IjcqKG {
++.meow_Popup_lqhgTq {
+   box-sizing: border-box;
+   border: 1px solid var(--meowdown-border);
+   background: var(--meowdown-popover-bg);
+@@ -305,13 +318,13 @@
+   box-shadow: 0 10px 15px -3px #0000001a, 0 4px 6px -4px #0000001a;
+ }
+ 
+-.meow_Row_IjcqKG {
++.meow_Row_lqhgTq {
+   align-items: center;
+   gap: .125rem;
+   display: flex;
+ }
+ 
+-.meow_Url_IjcqKG {
++.meow_Url_lqhgTq {
+   white-space: nowrap;
+   text-overflow: ellipsis;
+   min-width: 0;
+@@ -322,7 +335,7 @@
+   overflow: hidden;
+ }
+ 
+-.meow_Button_IjcqKG {
++.meow_Button_lqhgTq {
+   color: var(--meowdown-text);
+   cursor: pointer;
+   border-radius: .5rem;
+@@ -342,14 +355,14 @@
+   }
+ }
+ 
+-.meow_Form_IjcqKG {
++.meow_Form_lqhgTq {
+   flex-direction: column;
+   gap: .25rem;
+   padding: .25rem;
+   display: flex;
+ }
+ 
+-.meow_SrOnly_IjcqKG {
++.meow_SrOnly_lqhgTq {
+   clip: rect(0, 0, 0, 0);
+   border: 0;
+   width: 1px;
+@@ -360,7 +373,7 @@
+   overflow: hidden;
+ }
+ 
+-.meow_Input_IjcqKG {
++.meow_Input_lqhgTq {
+   box-sizing: border-box;
+   width: 100%;
+   font: inherit;
+@@ -375,13 +388,13 @@
+     outline-offset: -1px;
+   }
+ }
+-.meow_Positioner_DPJ5ia {
++.meow_Positioner_p6c2la {
+   z-index: 50;
+   width: min(30rem, 100vw - 1rem);
+   display: block;
+ }
+ 
+-.meow_Popup_DPJ5ia {
++.meow_Popup_p6c2la {
+   box-sizing: border-box;
+   border: 1px solid var(--meowdown-border);
+   background: var(--meowdown-popover-bg);
+@@ -393,7 +406,7 @@
+   box-shadow: 0 10px 15px -3px #0000001a, 0 4px 6px -4px #0000001a;
+ }
+ 
+-.meow_Text_DPJ5ia {
++.meow_Text_p6c2la {
+   white-space: pre-wrap;
+   overflow-wrap: break-word;
+   max-height: 14rem;
+@@ -402,11 +415,11 @@
+   overflow-y: auto;
+ }
+ 
+-.meow_Waiting_DPJ5ia {
++.meow_Waiting_p6c2la {
+   color: var(--meowdown-muted);
+ }
+ 
+-.meow_Footer_DPJ5ia {
++.meow_Footer_p6c2la {
+   border-top: 1px solid var(--meowdown-border);
+   flex-wrap: wrap;
+   align-items: center;
+@@ -415,11 +428,11 @@
+   display: flex;
+ }
+ 
+-.meow_Spacer_DPJ5ia {
++.meow_Spacer_p6c2la {
+   flex: 1;
+ }
+ 
+-.meow_Button_DPJ5ia {
++.meow_Button_p6c2la {
+   color: var(--meowdown-text);
+   white-space: nowrap;
+   cursor: pointer;
+@@ -433,7 +446,7 @@
+   }
+ }
+ 
+-.meow_AcceptButton_DPJ5ia {
++.meow_AcceptButton_p6c2la {
+   color: var(--meowdown-popover-bg);
+   background: var(--meowdown-accent);
+   white-space: nowrap;
+@@ -452,13 +465,13 @@
+     cursor: default;
+   }
+ }
+-.meow_Positioner_2_4Zjq {
++.meow_Positioner_HCBtbW {
+   z-index: 50;
+   width: min(18rem, 100vw - 1rem);
+   display: block;
+ }
+ 
+-.meow_Popup_2_4Zjq {
++.meow_Popup_HCBtbW {
+   box-sizing: border-box;
+   border: 1px solid var(--meowdown-border);
+   background: var(--meowdown-popover-bg);
+@@ -471,7 +484,7 @@
+   box-shadow: 0 10px 15px -3px #0000001a, 0 4px 6px -4px #0000001a;
+ }
+ 
+-.meow_Input_2_4Zjq {
++.meow_Input_HCBtbW {
+   box-sizing: border-box;
+   width: 100%;
+   font: inherit;
+@@ -488,14 +501,14 @@
+   }
+ }
+ 
+-.meow_List_2_4Zjq {
++.meow_List_HCBtbW {
+   flex-direction: column;
+   max-height: 16rem;
+   display: flex;
+   overflow-y: auto;
+ }
+ 
+-.meow_Item_2_4Zjq {
++.meow_Item_HCBtbW {
+   text-align: left;
+   color: var(--meowdown-text);
+   cursor: pointer;
+@@ -510,11 +523,11 @@
+   }
+ }
+ 
+-.meow_Label_2_4Zjq {
++.meow_Label_HCBtbW {
+   flex: none;
+ }
+ 
+-.meow_Detail_2_4Zjq {
++.meow_Detail_HCBtbW {
+   white-space: nowrap;
+   text-overflow: ellipsis;
+   min-width: 0;
+@@ -524,21 +537,21 @@
+   overflow: hidden;
+ }
+ 
+-.meow_Empty_2_4Zjq {
++.meow_Empty_HCBtbW {
+   color: var(--meowdown-muted);
+   padding: .375rem .5rem;
+ }
+ 
+-.meow_AffordancePositioner_2_4Zjq {
++.meow_AffordancePositioner_HCBtbW {
+   z-index: 40;
+   display: block;
+ }
+ 
+-.meow_AffordancePopup_2_4Zjq {
++.meow_AffordancePopup_HCBtbW {
+   display: flex;
+ }
+ 
+-.meow_AffordanceButton_2_4Zjq {
++.meow_AffordanceButton_HCBtbW {
+   color: var(--meowdown-muted);
+   background: var(--meowdown-popover-bg);
+   border: 1px solid var(--meowdown-border);
+@@ -559,7 +572,7 @@
+     height: .875rem;
+   }
+ }
+-.meow_Positioner_Dqll0G {
++.meow_Positioner_GVTT1W {
+   z-index: 50;
+   flex-direction: column;
+   width: min(24rem, 100vw - 1rem);
+@@ -568,7 +581,7 @@
+   overflow: visible;
+ }
+ 
+-.meow_Popup_Dqll0G {
++.meow_Popup_GVTT1W {
+   box-sizing: border-box;
+   overscroll-behavior: contain;
+   white-space: nowrap;
+@@ -588,7 +601,7 @@
+   box-shadow: 0 10px 15px -3px #0000001a, 0 4px 6px -4px #0000001a;
+ }
+ 
+-.meow_Item_Dqll0G {
++.meow_Item_GVTT1W {
+   box-sizing: border-box;
+   color: var(--meowdown-text);
+   white-space: nowrap;
+@@ -620,13 +633,13 @@
+   }
+ }
+ 
+-.meow_Label_Dqll0G {
++.meow_Label_GVTT1W {
+   text-overflow: ellipsis;
+   min-width: 0;
+   overflow: hidden;
+ }
+ 
+-.meow_Detail_Dqll0G {
++.meow_Detail_GVTT1W {
+   text-overflow: ellipsis;
+   max-width: 40%;
+   color: var(--meowdown-muted);
+@@ -634,7 +647,7 @@
+   font-size: .8125rem;
+   overflow: hidden;
+ }
+-.meow_Positioner_hpZLgq, .meow_MenuPositioner_hpZLgq {
++.meow_Positioner_L1pIlq, .meow_MenuPositioner_L1pIlq {
+   z-index: 50;
+   width: min-content;
+   height: min-content;
+@@ -647,15 +660,15 @@
+   }
+ }
+ 
+-.meow_ColumnPopup_hpZLgq {
++.meow_ColumnPopup_L1pIlq {
+   transform: translateY(50%);
+ }
+ 
+-.meow_RowPopup_hpZLgq {
++.meow_RowPopup_L1pIlq {
+   transform: translateX(50%);
+ }
+ 
+-.meow_ColumnPopup_hpZLgq, .meow_RowPopup_hpZLgq {
++.meow_ColumnPopup_L1pIlq, .meow_RowPopup_L1pIlq {
+   box-sizing: border-box;
+   transform-origin: var(--transform-origin);
+   transition: opacity .1s, scale .1s;
+@@ -677,7 +690,7 @@
+   }
+ }
+ 
+-.meow_Trigger_hpZLgq {
++.meow_Trigger_L1pIlq {
+   box-sizing: border-box;
+   border: 1px solid var(--meowdown-border);
+   background: var(--meowdown-popover-bg);
+@@ -703,7 +716,7 @@
+   }
+ }
+ 
+-.meow_MenuPopup_hpZLgq {
++.meow_MenuPopup_L1pIlq {
+   box-sizing: border-box;
+   overscroll-behavior: contain;
+   white-space: nowrap;
+@@ -738,7 +751,7 @@
+   }
+ }
+ 
+-.meow_MenuItem_hpZLgq {
++.meow_MenuItem_L1pIlq {
+   box-sizing: border-box;
+   color: var(--meowdown-text);
+   white-space: nowrap;
+@@ -781,7 +794,7 @@
+     display: block;
+   }
+ }
+-.meow_Positioner_HMEwgW {
++.meow_Positioner_XWaCPW {
+   z-index: 50;
+   width: var(--positioner-width);
+   height: var(--positioner-height);
+@@ -791,7 +804,7 @@
+   transition-timing-function: cubic-bezier(.22, 1, .36, 1);
+ }
+ 
+-.meow_Popup_HMEwgW {
++.meow_Popup_XWaCPW {
+   box-sizing: border-box;
+   pointer-events: none;
+   border: 1px solid var(--meowdown-border);
+@@ -806,16 +819,16 @@
+   box-shadow: 0 10px 15px -3px #0000001a, 0 4px 6px -4px #0000001a;
+ }
+ 
+-.meow_Popup_HMEwgW[data-closed] {
++.meow_Popup_XWaCPW[data-closed] {
+   transition: opacity .1s, transform .1s;
+ }
+ 
+-.meow_Popup_HMEwgW[data-starting-style], .meow_Popup_HMEwgW[data-ending-style] {
++.meow_Popup_XWaCPW[data-starting-style], .meow_Popup_XWaCPW[data-ending-style] {
+   opacity: 0;
+   transform: scale(.96);
+ }
+ 
+-.meow_Viewport_HMEwgW {
++.meow_Viewport_XWaCPW {
+   border-radius: inherit;
+   flex: 1;
+   min-width: 0;
+@@ -824,7 +837,7 @@
+ }
+ 
+ @media (prefers-reduced-motion: reduce) {
+-  .meow_Positioner_HMEwgW, .meow_Popup_HMEwgW {
++  .meow_Positioner_XWaCPW, .meow_Popup_XWaCPW {
+     transition: none;
+   }
+ }

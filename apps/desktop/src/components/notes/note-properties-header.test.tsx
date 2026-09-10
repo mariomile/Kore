@@ -45,9 +45,21 @@ beforeEach(() => {
 })
 
 describe('NotePropertiesHeader', () => {
-  it('renders nothing while the note carries no typed tag', async () => {
+  it('renders nothing while the note has no type or stored properties', async () => {
     const view = await render(<Subject />)
     await expect.poll(() => view.container.textContent).toBe('')
+  })
+
+  it('renders and edits a note-owned property without a typed tag', async () => {
+    data.values = {
+      follow_up: { value: 'Call Ada', valueType: 'string', valueNumber: null },
+    }
+    const view = await render(<Subject />)
+
+    const header = view.getByRole('region', { name: 'Properties' })
+    await expect.element(header.getByText('follow_up')).toBeInTheDocument()
+    await expect.element(header.getByText('Call Ada')).toBeInTheDocument()
+    expect(header.getByText('Type').elements()).toHaveLength(0)
   })
 
   it('presents the row fields and commits an edit in place', async () => {

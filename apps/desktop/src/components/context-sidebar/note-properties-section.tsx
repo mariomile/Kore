@@ -13,10 +13,9 @@ interface NotePropertiesSectionProps {
 }
 
 /**
- * The note's typed properties (TDR 0005): Type (the supertag) then the union
- * of its tags' schemas, each field editable in place through the shared
- * property editors. Hidden entirely while the note carries no typed tag — like
- * the outline, an empty panel would be furniture.
+ * The note's properties (TDR 0005): Type (the supertag), the union of its tags'
+ * schemas, then note-owned loose fields. Hidden only when the note has neither
+ * a typed tag nor a stored property.
  */
 export function NotePropertiesSection({ path }: NotePropertiesSectionProps): ReactElement | null {
   const commitProperty = useCommitNoteProperty()

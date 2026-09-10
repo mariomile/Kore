@@ -5,6 +5,14 @@ import {
   DEFAULT_SETTINGS,
   settingsSchema,
 } from './schema'
+import { collectionViewForAllNotesView } from './schema-collections'
+
+describe('collectionViewForAllNotesView', () => {
+  it('keeps grid as a collection view and maps only list to table', () => {
+    expect(collectionViewForAllNotesView('grid')).toBe('grid')
+    expect(collectionViewForAllNotesView('list')).toBe('table')
+  })
+})
 
 describe('settingsSchema', () => {
   it('defaults every key on an empty document (fresh install)', () => {

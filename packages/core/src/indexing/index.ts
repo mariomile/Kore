@@ -70,6 +70,7 @@ export {
   getLinkSources,
   getPathLinkSources,
   getNote,
+  getNoteIdsByPath,
   getNotePreview,
   getNotesByTag,
   countOpenTasksForNotes,
@@ -201,6 +202,22 @@ export {
   type ListCollectionOptions,
   type CollectionValue,
 } from './collections'
+export {
+  deriveCollectionPropertySchema,
+  type CollectionPropertySchema,
+  type CollectionSchemaConflict,
+  type CollectionSchemaField,
+} from './collection-schema'
+export {
+  listCollectionDefinitions,
+  listReusableCollection,
+  resolveCollectionDefinition,
+  resolveCollectionNoteReference,
+  type CollectionDefinitionResolution,
+  type CollectionDiagnostic,
+  type CollectionReferenceResolution,
+  type ReusableCollectionResult,
+} from './reusable-collections'
 export {
   attachRollups,
   attachReverseRelations,

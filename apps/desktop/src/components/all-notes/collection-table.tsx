@@ -52,13 +52,17 @@ interface CollectionTableProps {
   columnWidths: Record<string, number>
   onColumnWidthChange: (key: string, rem: number) => void
   /** Open the tag's schema dialog (options, targets, rollups, formulas). */
-  onEditSchema: () => void
+  onEditSchema?: (() => void) | undefined
   /** Append a property from the header's "+" (name and type, nothing else). */
-  onAddProperty: (name: string, type: TagPropertyType) => Promise<void>
+  onAddProperty?: ((name: string, type: TagPropertyType) => Promise<void>) | undefined
   /** Drop a property from a column's menu. */
-  onDeleteProperty: (key: string) => Promise<void>
+  onDeleteProperty?: ((key: string) => Promise<void>) | undefined
   /** Hide a column from its menu; absent where columns cannot hide. */
   onHideColumn?: ((key: string) => void) | undefined
+  /** Keys whose cells may edit. Absent keeps every property editable. */
+  editableKeys?: ReadonlySet<string> | undefined
+  /** Conflicting fields whose stored representation must remain visible raw. */
+  rawKeys?: ReadonlySet<string> | undefined
   /** Birth a row titled `title` from the table's last line. */
   onCreateRow: (title: string) => Promise<void>
   /**
@@ -97,6 +101,8 @@ export function CollectionTable({
   onAddProperty,
   onDeleteProperty,
   onHideColumn,
+  editableKeys,
+  rawKeys,
   onCreateRow,
   groups,
   onOpen,
@@ -335,7 +341,9 @@ export function CollectionTable({
               sorted={sorts.length > 0}
               onHide={onHideColumn === undefined ? undefined : () => onHideColumn(property.key)}
               onEditSchema={onEditSchema}
-              onDelete={() => onDeleteProperty(property.key)}
+              onDelete={
+                onDeleteProperty === undefined ? undefined : () => onDeleteProperty(property.key)
+              }
             />
             <span
               role="separator"
@@ -347,7 +355,9 @@ export function CollectionTable({
         ))}
         <span className="flex items-center justify-end gap-1.5">
           {sortButton(UPDATED_SORT_KEY, 'Updated', 'justify-end text-right')}
-          <AddPropertyPopover onAdd={onAddProperty} onEditSchema={onEditSchema} />
+          {onAddProperty !== undefined && onEditSchema !== undefined ? (
+            <AddPropertyPopover onAdd={onAddProperty} onEditSchema={onEditSchema} />
+          ) : null}
         </span>
       </div>
       {entries.length === 0 ? (
@@ -395,21 +405,39 @@ export function CollectionTable({
                   onToggle={handleToggle}
                   onOpen={onOpen}
                 >
-                  {type.properties.map((property) => (
-                    <PropertyValueEditor
-                      key={property.key}
-                      property={property}
-                      value={item.entry.properties[property.key]}
-                      onCommit={(value) => commitProperty(item.entry.path, property.key, value)}
-                      onOpenRelation={openRelation}
-                    >
+                  {type.properties.map((property) => {
+                    const value = item.entry.properties[property.key]
+                    const cell = rawKeys?.has(property.key) ? (
+                      <span className="min-w-0 truncate text-[13px] text-text-secondary">
+                        {value?.value ?? '—'}
+                      </span>
+                    ) : (
                       <CollectionCell
                         property={property}
-                        value={item.entry.properties[property.key]}
+                        value={value}
                         selected={isSelected(item.entry.path)}
                       />
-                    </PropertyValueEditor>
-                  ))}
+                    )
+                    return editableKeys === undefined || editableKeys.has(property.key) ? (
+                      <PropertyValueEditor
+                        key={property.key}
+                        property={property}
+                        value={value}
+                        onCommit={(value) => commitProperty(item.entry.path, property.key, value)}
+                        onOpenRelation={openRelation}
+                      >
+                        {cell}
+                      </PropertyValueEditor>
+                    ) : (
+                      <span
+                        key={property.key}
+                        title="Read-only because this collection has conflicting property types"
+                        className="min-w-0"
+                      >
+                        {cell}
+                      </span>
+                    )
+                  })}
                 </CollectionRow>
               )
             }

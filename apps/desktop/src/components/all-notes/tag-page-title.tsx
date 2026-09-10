@@ -21,7 +21,7 @@ export function TagPageTitle({ tag, onConfigure }: TagPageTitleProps): ReactElem
       <button
         type="button"
         aria-label={`Configure #${tag}`}
-        title="Configure collection"
+        title="Configure tag"
         onClick={onConfigure}
         className="app-icon-button text-text-muted hover:text-text"
       >

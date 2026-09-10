@@ -1,10 +1,16 @@
 # Kore working state
 
-**Updated:** 2026-09-06, collection pages: Notion-style view tabs and a `...`
-options menu (PR #187). Schema edits and rows from the table, sort chains,
-any/all filters, side peek, tag descriptions and daily line to note are
-pending PR #168 integration validation (TDR 0005 Amendments A and B).
+**Updated:** 2026-09-10, reusable mixed-note collections are implemented and
+verified through the rendered desktop flow; collection pages retain the
+Notion-style view tabs and options menu from PR #187. Kore now applies
+reproducible pnpm patches to Meowdown 0.65.6 for the core insertion API and
+React inline code-block renderer that are awaiting an upstream release.
+Cursor CLI chat drops retried assistant snapshots and treats
+`WritableIterable is closed` as a stream teardown, not a failed turn.
 Plan 30 CLI follow-up is on `t3code/cli-fresh-write-resolution`.
+Schema edits and rows from the table, sort chains, any/all filters, side peek,
+tag descriptions and daily line to note are pending PR #168 integration
+validation (TDR 0005 Amendments A and B).
 **Rule:** Every session that moves the program updates this file before its
 summary: tick what became true and how it was verified, set the next step,
 refresh the date. What is done and what is next live here and only here. Why
@@ -12,6 +18,50 @@ things are built this way lives in [docs/decisions/](decisions/); what the
 product is lives in the [roadmap](roadmap.md) (app-first) with the Personal OS
 direction in [Plan 25](plans/25-personal-os.md). The full shipped history stays
 in the [delivery log](delivery-log.md); this file tracks only the active work.
+
+## Reusable mixed-note collections — 2026-09-09
+
+- [x] Named collection definitions remain ordinary notes with stable ids,
+  `koreCollection: true` discovery metadata, and readable `kore.collection`
+  selection/defaults in frontmatter. The existing generic property projection
+  discovers candidates; there is no new directory, registry, migration, or
+  collection-owned schema.
+- [x] A definition selects the union of multiple tags, an optional relation
+  condition, and explicit manual notes, then applies excludes and path deduplication.
+  Stable-id/path/title ambiguity is reported rather than silently resolved.
+- [x] Mixed rows expose their own frontmatter values and a union of the schemas
+  from tags represented in the result. Incompatible declarations or stored value
+  types remain visible and read-only. Formula, rollup, reverse, and timestamp
+  values apply only to rows carrying the declaring tag.
+- [x] Collection fences keep legacy `tag:` and bare-tag forms while adding a
+  stable definition reference, table/grid/board/calendar view, sort, grouping,
+  filters, and hidden columns as portable Markdown lines.
+
+**Validation:** After rebasing onto current master, a forced
+`pnpm install --frozen-lockfile` applied both checked-in Meowdown patches;
+`pnpm exec tsc -b --force`, `pnpm check`, and `pnpm build` passed. Fourteen
+focused core/editor/collection/property test files passed with 138 tests. The
+final rendered pass created a fresh Progetto verifica note, used `/collection`
+to create Materiali progetto from `#book` OR `#link` plus manual Quarterly
+Goals, returned six original rows in the existing table styling without raw
+configuration, and placed immediate `Prossimi passi` typing after the inline
+widget. TDR 0005 Amendment C records the storage, ownership, and product
+vocabulary. Bugbot's exclusion/reselection finding is covered by a focused
+six-test write-helper pass; `pnpm check` and `pnpm build` remained green.
+
+**Dependency boundary:** `pnpm-workspace.yaml` pins checked-in patches for
+`@meowdown/core@0.65.6` and `@meowdown/react@0.65.6`. They add
+`InsertMarkdownOptions.selection = 'after-block'` and the React
+`CodeBlockRenderer` surface from
+[Meowdown PR #546](https://github.com/prosekit/meowdown/pull/546), commit
+`4e8c7fe36c409a0d05001cca0b1733c34c6d7b73` over base
+`9d2f5afb23c08d3497f00768678c3b9746f4d75a`.
+Remove these patches only after Kore upgrades to a released Meowdown version
+containing that PR and the frozen install, focused editor tests, `pnpm check`, and
+`pnpm build` pass without them.
+
+**Next:** Replace the patches with the first released Meowdown version containing
+PR #546. No release is claimed.
 
 ## Cursor CLI stream teardown — 2026-09-06
 

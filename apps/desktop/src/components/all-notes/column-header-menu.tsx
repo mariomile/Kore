@@ -17,8 +17,8 @@ interface ColumnHeaderMenuProps {
   sorted: boolean
   /** Absent where columns cannot hide (the embedded fence). */
   onHide?: (() => void) | undefined
-  onEditSchema: () => void
-  onDelete: () => Promise<void>
+  onEditSchema?: (() => void) | undefined
+  onDelete?: (() => Promise<void>) | undefined
 }
 
 /**
@@ -69,22 +69,30 @@ export function ColumnHeaderMenu({
             </DropdownMenuItem>
           </>
         ) : null}
-        <DropdownMenuSeparator />
+        {onHide !== undefined || onEditSchema !== undefined || onDelete !== undefined ? (
+          <DropdownMenuSeparator />
+        ) : null}
         {onHide === undefined ? null : (
           <DropdownMenuItem onClick={onHide}>
             <Close aria-hidden className="size-3.5" />
             Hide column
           </DropdownMenuItem>
         )}
-        <DropdownMenuItem onClick={onEditSchema}>
-          <Settings aria-hidden className="size-3.5" />
-          Edit property…
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem variant="destructive" onClick={() => void onDelete()}>
-          <Trash aria-hidden className="size-3.5" />
-          Delete property
-        </DropdownMenuItem>
+        {onEditSchema === undefined ? null : (
+          <DropdownMenuItem onClick={onEditSchema}>
+            <Settings aria-hidden className="size-3.5" />
+            Edit property…
+          </DropdownMenuItem>
+        )}
+        {onDelete === undefined ? null : (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem variant="destructive" onClick={() => void onDelete()}>
+              <Trash aria-hidden className="size-3.5" />
+              Delete property
+            </DropdownMenuItem>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   )

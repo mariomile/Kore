@@ -16,8 +16,8 @@ interface NotePropertiesHeaderProps {
  * its Type (the supertag, removable) then its properties below the title and
  * above the body, each editable in place through the same per-type editors the
  * Collection table and the context rail use — one write channel, three
- * surfaces. Renders nothing while the note carries no typed tag, so ordinary
- * notes keep their clean top edge.
+ * surfaces. Loose stored properties remain editable on ordinary notes without
+ * turning those notes into a type.
  */
 export function NotePropertiesHeader({ path }: NotePropertiesHeaderProps): ReactElement | null {
   const commitProperty = useCommitNoteProperty()

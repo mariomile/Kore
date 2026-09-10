@@ -11,7 +11,7 @@ import { isPropertyKey } from './tag-type'
  */
 
 /** Views an embed can ask for. Unknown values fall back to `table`. */
-export const COLLECTION_EMBED_VIEWS = ['table', 'board', 'calendar'] as const
+export const COLLECTION_EMBED_VIEWS = ['table', 'grid', 'board', 'calendar'] as const
 export type CollectionEmbedView = (typeof COLLECTION_EMBED_VIEWS)[number]
 
 /** `sort: <key> [asc|desc]` — `$title` / `$updated` ride as ordinary keys. */
@@ -31,10 +31,15 @@ export interface CollectionEmbedFilter {
   readonly text: string
 }
 
+/** The reusable selection rendered by one collection fence. */
+export type CollectionEmbedSelection =
+  | { readonly kind: 'tag'; readonly tag: string }
+  | { readonly kind: 'definition'; readonly reference: string }
+
 /** One collection fence parsed out of a note body. */
 export interface CollectionEmbed {
-  /** Tag name as authored (without `#`). */
-  readonly tag: string
+  /** A legacy tag collection or a reusable definition-note reference. */
+  readonly selection: CollectionEmbedSelection
   readonly view: CollectionEmbedView
   /** The `sort:` lines in order — a chain, later keys breaking earlier ties. */
   readonly sorts: readonly CollectionEmbedSort[]
@@ -44,6 +49,8 @@ export interface CollectionEmbed {
   readonly filters: readonly CollectionEmbedFilter[]
   /** `match: any` makes the filters alternatives; the default is every one. */
   readonly match: 'all' | 'any'
+  /** Property keys hidden in this inline view; absent keeps every column visible. */
+  readonly hidden?: readonly string[]
 }
 
 /** `sort:` line value → {@link CollectionEmbedSort}, or null when malformed. */
@@ -95,13 +102,14 @@ function isCollectionEmbedView(value: string): value is CollectionEmbedView {
   return (COLLECTION_EMBED_VIEWS as readonly string[]).includes(value)
 }
 
-function parseCollectionEmbedBody(body: string): CollectionEmbed | null {
-  let tag = ''
+export function parseCollectionEmbedBody(body: string): CollectionEmbed | null {
+  let selection: CollectionEmbedSelection | null = null
   let view: CollectionEmbedView = 'table'
   const sorts: CollectionEmbedSort[] = []
   let group: string | null = null
   let match: 'all' | 'any' = 'all'
   const filters: CollectionEmbedFilter[] = []
+  const hidden: string[] = []
   for (const rawLine of body.split(/\r?\n/)) {
     const line = rawLine.trim()
     if (line === '') {
@@ -112,8 +120,8 @@ function parseCollectionEmbedBody(body: string): CollectionEmbed | null {
       // A bare tag names the collection, with or without its `#` — only a
       // `#` line that is NOT a tag reads as a comment.
       const bare = line.replace(/^#/, '')
-      if (tag === '' && isTagName(bare)) {
-        tag = bare
+      if (selection === null && isTagName(bare)) {
+        selection = { kind: 'tag', tag: bare }
       }
       continue
     }
@@ -126,7 +134,12 @@ function parseCollectionEmbedBody(body: string): CollectionEmbed | null {
       .trim()
       .replaceAll(/^['"]|['"]$/g, '')
     if (key === 'tag') {
-      tag = value.replace(/^#/, '')
+      const tag = value.replace(/^#/, '')
+      if (isTagName(tag)) {
+        selection = { kind: 'tag', tag }
+      }
+    } else if (key === 'collection' && value !== '') {
+      selection = { kind: 'definition', reference: value }
     } else if (key === 'view' && isCollectionEmbedView(value)) {
       view = value
     } else if (key === 'sort') {
@@ -144,12 +157,22 @@ function parseCollectionEmbedBody(body: string): CollectionEmbed | null {
       if (filter !== null) {
         filters.push(filter)
       }
+    } else if (key === 'hide' && isPropertyKey(value) && !hidden.includes(value)) {
+      hidden.push(value)
     }
   }
-  if (!isTagName(tag)) {
+  if (selection === null) {
     return null
   }
-  return { tag, view, sorts, group, filters, match }
+  return {
+    selection,
+    view,
+    sorts,
+    group,
+    filters,
+    match,
+    ...(hidden.length === 0 ? {} : { hidden }),
+  }
 }
 
 /**
@@ -170,7 +193,16 @@ export function parseCollectionEmbeds(markdown: string): CollectionEmbed[] {
 
 /** Serialize one embed as a fence. Defaults (`table`, no sort/filters) are omitted. */
 export function formatCollectionEmbed(embed: CollectionEmbed): string {
-  const lines = ['```collection', `tag: ${embed.tag}`]
+  return `\`\`\`collection\n${formatCollectionEmbedBody(embed)}\n\`\`\``
+}
+
+/** Serialize only the contents of a collection fence. */
+export function formatCollectionEmbedBody(embed: CollectionEmbed): string {
+  const selection =
+    embed.selection.kind === 'tag'
+      ? `tag: ${embed.selection.tag}`
+      : `collection: ${embed.selection.reference}`
+  const lines = [selection]
   if (embed.view !== 'table') {
     lines.push(`view: ${embed.view}`)
   }
@@ -198,6 +230,10 @@ export function formatCollectionEmbed(embed: CollectionEmbed): string {
       lines.push(`filter: ${filter.key} ${glyph} ${filter.text}`)
     }
   }
-  lines.push('```')
+  for (const key of embed.hidden ?? []) {
+    if (isPropertyKey(key)) {
+      lines.push(`hide: ${key}`)
+    }
+  }
   return lines.join('\n')
 }

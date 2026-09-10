@@ -28,13 +28,25 @@ export const BOARD_GROUPABLE_TYPES: ReadonlySet<TagProperty['type']> = new Set([
 ])
 
 /** Every property the table can group rows by, schema order. */
-export function groupablePropertiesOf(properties: readonly TagProperty[]): TagProperty[] {
-  return properties.filter((property) => GROUPABLE_TYPES.has(property.type))
+export function groupablePropertiesOf(
+  properties: readonly TagProperty[],
+  allowInferredText = false,
+): TagProperty[] {
+  return properties.filter(
+    (property) =>
+      GROUPABLE_TYPES.has(property.type) || (allowInferredText && property.type === 'text'),
+  )
 }
 
 /** Every property a board can lane by, schema order. */
-export function boardGroupablePropertiesOf(properties: readonly TagProperty[]): TagProperty[] {
-  return properties.filter((property) => BOARD_GROUPABLE_TYPES.has(property.type))
+export function boardGroupablePropertiesOf(
+  properties: readonly TagProperty[],
+  allowInferredText = false,
+): TagProperty[] {
+  return properties.filter(
+    (property) =>
+      BOARD_GROUPABLE_TYPES.has(property.type) || (allowInferredText && property.type === 'text'),
+  )
 }
 
 /** The property a calendar places rows by: the schema's first `date`. */

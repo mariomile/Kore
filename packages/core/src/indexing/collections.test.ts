@@ -11,6 +11,7 @@ import {
   UPDATED_SORT_KEY,
   type CollectionEntry,
 } from './collections'
+import { deriveCollectionPropertySchema } from './collection-schema'
 
 // A fake bridge resolves `db_query` so the tests exercise the real compiled
 // SQL (snake_case columns, parameters) — the same harness note-list.test uses.
@@ -225,5 +226,42 @@ describe('compareCollectionEntries', () => {
     expect(byTitle.map((entry) => entry.path)).toEqual(['d', 'c', 'b', 'a'])
     const tied = [...rows].sort(compareCollectionEntries([{ key: 'missing', direction: 'asc' }]))
     expect(tied.map((entry) => entry.path)).toEqual(['d', 'c', 'b', 'a'])
+  })
+})
+
+describe('deriveCollectionPropertySchema', () => {
+  it('adds loose note fields and keeps incompatible shared keys read-only', () => {
+    const schema = deriveCollectionPropertySchema(
+      [
+        {
+          tagKey: 'project',
+          notePath: 'tags/project.md',
+          type: { properties: [{ name: 'Score', key: 'score', type: 'number' }] },
+        },
+        {
+          tagKey: 'review',
+          notePath: 'tags/review.md',
+          type: { properties: [{ name: 'Score', key: 'score', type: 'text' }] },
+        },
+      ],
+      [
+        {
+          properties: {
+            score: { value: 'high', valueType: 'string', valueNumber: null },
+            owner: { value: '[[Ada]]', valueType: 'string', valueNumber: null },
+          },
+        },
+      ],
+    )
+
+    expect(schema.fields).toEqual([
+      expect.objectContaining({ key: 'score', editable: false, conflict: 'schema' }),
+      expect.objectContaining({
+        key: 'owner',
+        property: { name: 'owner', key: 'owner', type: 'text' },
+        editable: true,
+        conflict: null,
+      }),
+    ])
   })
 })

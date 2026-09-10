@@ -188,4 +188,27 @@ describe('CollectionCalendar', () => {
     )
     expect(onOpen).toHaveBeenCalledWith('notes/new.md')
   })
+
+  it('lets a reusable selection create a note with the day seed', async () => {
+    const onCreateRow = vi.fn(async () => 'notes/selected.md')
+    const onOpen = vi.fn()
+    const iso = todayIso()
+    const view = await render(
+      <div style={{ height: '100vh' }}>
+        <CollectionCalendar
+          entries={[]}
+          property={FINISHED}
+          tag="book"
+          type={BOOK_TYPE}
+          onCreateRow={onCreateRow}
+          onOpen={onOpen}
+        />
+      </div>,
+    )
+
+    await view.getByRole('button', { name: `New note on ${iso}` }).click()
+
+    expect(onCreateRow).toHaveBeenCalledWith({ finished: iso })
+    expect(onOpen).toHaveBeenCalledWith('notes/selected.md')
+  })
 })

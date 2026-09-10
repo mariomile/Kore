@@ -14,6 +14,7 @@ import type {
   FileClickHandler,
   FileInfoResolver,
   FileLinkResolver,
+  InsertMarkdownOptions,
   MarkMode,
   SearchStatus,
   StartPendingReplacementOptions,
@@ -23,8 +24,10 @@ import type {
 import {
   MeowdownEditor,
   WikilinkHoverCard,
+  type CodeBlockRenderer,
   type EditorHandle,
   type PendingReplacementResolveHandler,
+  type SelectionJSON,
   type SelectionMenuSearchHandler,
   type SlashMenuSearchHandler,
   type TagSearchHandler,
@@ -84,14 +87,15 @@ export interface NoteEditorHandle {
    * this fires `onChange`, so the insertion flows into the save pipeline like
    * typing. Empty/whitespace-only markdown is a no-op.
    */
-  insertMarkdown(markdown: string): void
+  insertMarkdown(markdown: string, options?: InsertMarkdownOptions): void
   focus(): void
   /**
-   * Move the caret to a document edge and scroll it into view. Used for
-   * cross-note arrow navigation in the daily stream (jump to the end of the
-   * previous day / the start of the next day).
+   * Return the current editor selection. Positions belong to this mounted
+   * editor and can be restored after a host dialog temporarily takes focus.
    */
-  setSelection(position: 'start' | 'end'): void
+  getSelection?(): SelectionJSON
+  /** Restore an exact selection, or move the caret to a document edge. */
+  setSelection(selection: SelectionJSON | 'start' | 'end'): void
   /** The current selection's text (blocks separated by blank lines). */
   getSelectedText(): string
   /** Open the selection AI menu (no-op on an empty selection). */
@@ -235,6 +239,8 @@ interface NoteEditorProps {
   searchQuery?: string
   /** Called when this note's match count or selected match changes. */
   onSearchChange?: (status: SearchStatus) => void
+  /** Render selected fenced code blocks as host-owned widgets in document position. */
+  renderCodeBlock?: CodeBlockRenderer
   /** Imperative handle (React 19 ref-as-prop). */
   handleRef?: Ref<NoteEditorHandle>
   /**
@@ -278,6 +284,7 @@ export function NoteEditor({
   className,
   searchQuery,
   onSearchChange,
+  renderCodeBlock,
   handleRef,
 }: NoteEditorProps): ReactElement {
   const innerRef = useRef<EditorHandle>(null)
@@ -324,9 +331,10 @@ export function NoteEditor({
       setMarkdown: (markdown) => innerRef.current?.setMarkdown(markdown),
       // meowdown ≥0.33 collapses an active selection itself, so an insert
       // can never delete selected text — plain delegation is the whole story.
-      insertMarkdown: (markdown) => innerRef.current?.insertMarkdown(markdown),
+      insertMarkdown: (markdown, options) => innerRef.current?.insertMarkdown(markdown, options),
       focus: () => innerRef.current?.focus(),
-      setSelection: (position) => innerRef.current?.setSelection(position),
+      getSelection: () => innerRef.current?.getSelection() ?? { type: 'text', anchor: 0, head: 0 },
+      setSelection: (selection) => innerRef.current?.setSelection(selection),
       getSelectedText: () => innerRef.current?.getSelectedText() ?? '',
       openSelectionMenu: () => innerRef.current?.openSelectionMenu(),
       startPendingReplacement: (options) =>
@@ -498,6 +506,7 @@ export function NoteEditor({
           editorClassName={cn('reflect-editor', className)}
           {...(titlePlaceholder !== undefined ? { placeholder: titlePlaceholder } : {})}
           onDocChange={handleDocChange}
+          {...(renderCodeBlock !== undefined ? { renderCodeBlock } : {})}
           onWikilinkClick={handleWikilinkClick}
           onTagClick={handleTagClick}
           onLinkClick={handleLinkClick}

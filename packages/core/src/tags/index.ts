@@ -52,11 +52,24 @@ export {
 } from './properties'
 export {
   COLLECTION_EMBED_VIEWS,
+  formatCollectionEmbedBody,
   formatCollectionEmbed,
+  parseCollectionEmbedBody,
   parseCollectionEmbeds,
   type CollectionEmbed,
+  type CollectionEmbedSelection,
   type CollectionEmbedView,
 } from './collection-embed'
+export {
+  COLLECTION_DEFINITION_MARKER_KEY,
+  KORE_CONFIG_KEY,
+  collectionDefinitionConfigSchema,
+  parseCollectionDefinitionFrontmatter,
+  parseCollectionDefinitionSource,
+  updateCollectionDefinitionSource,
+  type CollectionDefinition,
+  type CollectionDefinitionConfig,
+} from './collection-definition'
 export {
   DEFAULT_VAULT_OBJECTS,
   defaultObjectSource,

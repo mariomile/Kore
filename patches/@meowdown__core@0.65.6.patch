@@ -1,0 +1,76 @@
+diff --git a/dist/index.d.ts b/dist/index.d.ts
+index e0b693fafb81a9c9eee901705c286e404e7f3ae0..ca04526833d23d337c69f3e881cc344b277675cf 100644
+--- a/dist/index.d.ts
++++ b/dist/index.d.ts
+@@ -394,6 +394,16 @@ interface LinkEditOptions {
+ type LinkEditHandler = (options: LinkEditOptions) => void;
+ export declare function defineLinkEditKeymap(onLinkEdit: LinkEditHandler): PlainExtension;
+ //#endregion
++//#region src/extensions/commands.d.ts
++interface InsertMarkdownOptions {
++  /**
++   * Where the caret lands after a code-block fragment. `after-block` keeps
++   * any paragraph suffix outside the inserted block and creates an ordinary
++   * following paragraph when needed.
++   */
++  selection?: 'end' | 'after-block';
++}
++//#endregion
+ //#region src/extensions/pending-replacement.d.ts
+ /**
+  * Where an accepted replacement lands relative to the source range.
+@@ -813,7 +823,7 @@ declare function defineEditorExtensionImpl(options: EditorExtensionOptions): imp
+   };
+ }>]>, import("@prosekit/core").PlainExtension, import("@prosekit/core").PlainExtension, import("@prosekit/core").PlainExtension, import("@prosekit/core").PlainExtension, import("@prosekit/core").PlainExtension, import("@prosekit/core").PlainExtension, import("@prosekit/core").BaseCommandsExtension, import("@prosekit/core").HistoryExtension, import("@prosekit/core").PlainExtension, import("@prosekit/core").PlainExtension, import("@prosekit/core").PlainExtension, import("@prosekit/core").Extension<{
+   Commands: {
+-    insertMarkdown: [markdown: string];
++    insertMarkdown: [markdown: string, options?: InsertMarkdownOptions | undefined];
+     insertTrigger: [text: string];
+     scrollIntoView: [];
+     selectText: [anchor: number, head?: number | undefined];
+@@ -1539,4 +1549,4 @@ export declare function getSelectedText(state: EditorState): string;
+  */
+ export declare function getVirtualElementFromRange(view: EditorView, range: PositionRange): VirtualElement;
+ //#endregion
+-export { type AcceptPendingReplacementOptions, type CheckRoundTripOptions, type CodeBlockAttrs, type CodeBlockFenceStyle, type CodeToken, type DocToMarkdownOptions, type EditorExtension, type EditorExtensionOptions, type EmbedDescriptor, type ExitBoundaryHandler, type ExitBoundaryOptions, type FileClickHandler, type FileClickPayload, type FileInfo, type FileInfoResolver, type FileLinkOptions, type FileLinkPayload, type FileLinkResolver, type FilePasteHandler, type FilePasteOptions, type FileSaveErrorHandler, type FileViewOptions, type FollowLinkHandlers, type ImageClickHandler, type ImageClickPayload, type ImageOptions, type InlineMarkContext, type InlineMarkOptions, type KaTeXRender, type LanguageItem, type LinkAttrs, type LinkClickHandler, type LinkClickPayload, type LinkCopyHandler, type LinkCopyPayload, type LinkEditHandler, type LinkEditOptions, type LinkHoverHandler, type LinkUnit, type ListMarker, type MarkChunk, type MarkMode, type MarkName, type MarkdownToDocOptions, type MdFileAttrs, type MdImageAttrs, type MdLinkTextAttrs, type MdMathAttrs, type MdWikilinkAttrs, type MeowdownCodeBlockAttrs, type MeowdownHTMLCommentAttrs, type MeowdownListAttrs, type MeowdownTableCellAttrs, type NodeName, type ParsedWikiEmbed, type PendingReplacement, type PendingReplacementEvent, type PendingReplacementHandler, type PendingReplacementMode, type PendingReplacementOutcome, type PlaceholderOptions, type PositionRange, Priority, type ReferenceDefinition, type ReferenceDefinitionIndex, type ReferenceDefinitions, type RoundTripFidelity, type SearchStatus, type SearchStatusHandler, type StartPendingReplacementOptions, type TableColumnAlign, type TagClickHandler, type TagClickPayload, type TypedEditor, type TypedMarkBuilders, type VirtualElement, type WikiEmbedOptions, type WikiEmbedResolution, type WikiEmbedResolver, type WikilinkClickHandler, type WikilinkClickPayload, type WikilinkHoverHandler, type WikilinkHoverHit, defineCodeBlockPreviewPlugin, definePlaceholder, defineReadonly, defineSearchStatusHandler, getSearchStatus, isCodeBlockPreviewHiddenDecoration, withPriority };
+\ No newline at end of file
++export { type AcceptPendingReplacementOptions, type CheckRoundTripOptions, type CodeBlockAttrs, type CodeBlockFenceStyle, type CodeToken, type DocToMarkdownOptions, type EditorExtension, type EditorExtensionOptions, type EmbedDescriptor, type ExitBoundaryHandler, type ExitBoundaryOptions, type FileClickHandler, type FileClickPayload, type FileInfo, type FileInfoResolver, type FileLinkOptions, type FileLinkPayload, type FileLinkResolver, type FilePasteHandler, type FilePasteOptions, type FileSaveErrorHandler, type FileViewOptions, type FollowLinkHandlers, type ImageClickHandler, type ImageClickPayload, type ImageOptions, type InlineMarkContext, type InlineMarkOptions, type InsertMarkdownOptions, type KaTeXRender, type LanguageItem, type LinkAttrs, type LinkClickHandler, type LinkClickPayload, type LinkCopyHandler, type LinkCopyPayload, type LinkEditHandler, type LinkEditOptions, type LinkHoverHandler, type LinkUnit, type ListMarker, type MarkChunk, type MarkMode, type MarkName, type MarkdownToDocOptions, type MdFileAttrs, type MdImageAttrs, type MdLinkTextAttrs, type MdMathAttrs, type MdWikilinkAttrs, type MeowdownCodeBlockAttrs, type MeowdownHTMLCommentAttrs, type MeowdownListAttrs, type MeowdownTableCellAttrs, type NodeName, type ParsedWikiEmbed, type PendingReplacement, type PendingReplacementEvent, type PendingReplacementHandler, type PendingReplacementMode, type PendingReplacementOutcome, type PlaceholderOptions, type PositionRange, Priority, type ReferenceDefinition, type ReferenceDefinitionIndex, type ReferenceDefinitions, type RoundTripFidelity, type SearchStatus, type SearchStatusHandler, type StartPendingReplacementOptions, type TableColumnAlign, type TagClickHandler, type TagClickPayload, type TypedEditor, type TypedMarkBuilders, type VirtualElement, type WikiEmbedOptions, type WikiEmbedResolution, type WikiEmbedResolver, type WikilinkClickHandler, type WikilinkClickPayload, type WikilinkHoverHandler, type WikilinkHoverHit, defineCodeBlockPreviewPlugin, definePlaceholder, defineReadonly, defineSearchStatusHandler, getSearchStatus, isCodeBlockPreviewHiddenDecoration, withPriority };
+\ No newline at end of file
+diff --git a/dist/index.js b/dist/index.js
+index d2c85ccf96608416f4e0f5bd192af665f7b92f41..35a4302a368c7933f1bd643ef1962ae4bb9ed6d3 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -2305,18 +2305,30 @@ function selectTextBetween($anchor, $head, bias) {
+ 		return true;
+ 	};
+ }
+-function insertMarkdown(markdown) {
++function insertMarkdown(markdown, options = {}) {
+ 	return (state, dispatch) => {
+ 		if (!markdown.trim()) return false;
+ 		const nodes = getNodeBuildersForSchema(state.schema);
+ 		const content = markdownToDoc(markdown, { nodes }).content;
+ 		if (content.childCount === 0) return false;
+-		const slice = content.childCount === 1 && isNodeOfType(content.child(0), "paragraph") ? new Slice(content, 1, 1) : new Slice(content, 0, Slice.maxOpen(content).openEnd);
++		const slice = content.childCount === 1 && isNodeOfType(content.child(0), "paragraph") ? new Slice(content, 1, 1) : options.selection === "after-block" ? new Slice(content, 0, 0) : new Slice(content, 0, Slice.maxOpen(content).openEnd);
+ 		if (dispatch) {
+ 			const tr = state.tr;
+ 			const selection = tr.selection;
+ 			if (!isTextSelection(selection) || !selection.empty) tr.setSelection(TextSelection.near(selection.$from));
+-			dispatch(tr.replaceSelection(slice).scrollIntoView());
++			tr.replaceSelection(slice);
++			if (options.selection === "after-block") {
++				const $selection = tr.selection.$from;
++				for (let depth = $selection.depth; depth > 0; depth -= 1) {
++					if (!isNodeOfType($selection.node(depth), "codeBlock")) continue;
++					const after = $selection.after(depth);
++					const nodeAfter = tr.doc.resolve(after).nodeAfter;
++					if (nodeAfter === null || !isNodeOfType(nodeAfter, "paragraph")) tr.insert(after, nodes.paragraph());
++					tr.setSelection(TextSelection.near(tr.doc.resolve(after), 1));
++					break;
++				}
++			}
++			dispatch(tr.scrollIntoView());
+ 		}
+ 		return true;
+ 	};

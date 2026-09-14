@@ -56,7 +56,7 @@ export function TemplatesSection(): ReactElement {
                   onClick={(event) =>
                     navigateNoteLink({
                       target: { kind: 'note', path: template.path },
-                      openInNewWindow: isModEvent(event),
+                      openInSplit: isModEvent(event),
                     })
                   }
                   className="min-w-0 flex-1 text-left"

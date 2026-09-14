@@ -325,7 +325,7 @@ describe('AllNotesScreen', () => {
     await view.unmount()
   })
 
-  it('opens a modifier-clicked note subject in a new window without selecting its row', async () => {
+  it('navigates a modifier-clicked note subject in place (no panes mounted)', async () => {
     const view = await renderScreen()
 
     await view
@@ -333,30 +333,9 @@ describe('AllNotesScreen', () => {
       .click({ modifiers: ['ControlOrMeta'] })
 
     await vi.waitFor(() =>
-      expect(openRouteInNewWindow).toHaveBeenCalledWith({
-        kind: 'note',
-        path: 'notes/health.md',
-      }),
+      expect(probedRoute(view)).toEqual({ kind: 'note', path: 'notes/health.md' }),
     )
-    expect(probedRoute(view)).toEqual({ kind: 'allNotes', filter: { kind: 'all' } })
     expect(view.getByRole('button', { name: /Trash \(/ }).query()).toBeNull()
-    await view.unmount()
-  })
-
-  it('keeps a modifier-double-click from navigating the current window', async () => {
-    const view = await renderScreen()
-    const subject = view.getByRole('button', { name: 'Health Stacked' })
-
-    await subject.dblClick({ modifiers: ['ControlOrMeta'] })
-
-    await vi.waitFor(() =>
-      expect(openRouteInNewWindow).toHaveBeenCalledWith({
-        kind: 'note',
-        path: 'notes/health.md',
-      }),
-    )
-    expect(openRouteInNewWindow).toHaveBeenCalledTimes(1)
-    expect(probedRoute(view)).toEqual({ kind: 'allNotes', filter: { kind: 'all' } })
     await view.unmount()
   })
 

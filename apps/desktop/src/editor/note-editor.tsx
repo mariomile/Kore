@@ -183,13 +183,13 @@ interface NoteEditorProps {
    * Mod-Enter key press that followed the link) — handlers read its
    * modifiers, e.g. ⌘-click opens the target in a new window.
    */
-  onWikiLinkClick?: (options: { target: string; openInNewWindow: boolean }) => void
+  onWikiLinkClick?: (options: { target: string; openInSplit: boolean }) => void
   /**
    * Click on a rendered Markdown link whose href is graph-local (scheme-less
    * and not an asset): a note link like `[Plan](./Plan.md)`. Receives the
    * authored href; the handler owns source-relative resolution.
    */
-  onNoteLinkClick?: (options: { href: string; openInNewWindow: boolean }) => void
+  onNoteLinkClick?: (options: { href: string; openInSplit: boolean }) => void
   /**
    * Resolve the passive body of Meowdown's editor-scoped wiki-link hover
    * card. Resolving `null` (missing, ambiguous, or unavailable targets)
@@ -361,7 +361,7 @@ export function NoteEditor({
 
   const handleWikilinkClick = useCallback(
     (payload: { target: string; event: MouseEvent | KeyboardEvent; mod: boolean }) =>
-      onWikiLinkClickRef.current?.({ target: payload.target, openInNewWindow: payload.mod }),
+      onWikiLinkClickRef.current?.({ target: payload.target, openInSplit: payload.mod }),
     [],
   )
   const handleTagClick = useCallback(
@@ -396,13 +396,13 @@ export function NoteEditor({
       // *addressing* link to a new window instead; a declined open (capture link, browser dev)
       // degrades to the normal dispatch.
       if (isDeepLinkUrl(href)) {
-        followDeepLink({ href, openInNewWindow: mod })
+        followDeepLink({ href, openInSplit: mod })
         return
       }
       if (!isOpenableExternalUrl(href)) {
         // A scheme-less local href is a note link; the host resolves it
         // against this note's own directory.
-        onNoteLinkClickRef.current?.({ href, openInNewWindow: mod })
+        onNoteLinkClickRef.current?.({ href, openInSplit: mod })
         return
       }
       // Web links follow the app's one routing rule (the in-app browser,

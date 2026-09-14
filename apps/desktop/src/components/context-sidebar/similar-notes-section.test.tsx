@@ -8,16 +8,11 @@ import { SimilarNotesSection } from './similar-notes-section'
 
 const relatedNotes = vi.hoisted(() => vi.fn())
 const readNote = vi.hoisted(() => vi.fn())
-const openRouteInNewWindow = vi.hoisted(() => vi.fn<() => Promise<boolean>>())
 vi.mock('@reflect/core', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@reflect/core')>()),
   hasBridge: () => true,
   readNote,
   relatedNotes,
-}))
-vi.mock('@/lib/windows/open-in-new-window', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/lib/windows/open-in-new-window')>()),
-  openRouteInNewWindow,
 }))
 vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({ graph: { root: '/g', name: 'g', generation: 1 } }),
@@ -52,7 +47,6 @@ beforeEach(() => {
   semanticSetting.enabled = true
   readNote.mockReset().mockResolvedValue('- daily entry\n')
   relatedNotes.mockReset().mockResolvedValue([])
-  openRouteInNewWindow.mockReset().mockResolvedValue(true)
 })
 
 describe('SimilarNotesSection', () => {
@@ -151,7 +145,7 @@ describe('SimilarNotesSection', () => {
     await view.unmount()
   })
 
-  it('opens a ⌘-clicked neighbor in a new window', async () => {
+  it('navigates a ⌘-clicked neighbor in place (no panes mounted)', async () => {
     relatedNotes.mockResolvedValue([
       {
         path: 'notes/gardening.md',
@@ -166,13 +160,7 @@ describe('SimilarNotesSection', () => {
 
     await view.getByRole('button', { name: 'Gardening' }).click({ modifiers: ['ControlOrMeta'] })
 
-    await vi.waitFor(() =>
-      expect(openRouteInNewWindow).toHaveBeenCalledWith({
-        kind: 'note',
-        path: 'notes/gardening.md',
-      }),
-    )
-    await expect.element(view.getByTestId('route')).toHaveTextContent('"kind":"today"')
+    await expect.element(view.getByTestId('route')).toHaveTextContent('notes/gardening.md')
     await view.unmount()
   })
 })

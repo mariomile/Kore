@@ -100,7 +100,7 @@ export function useOpenExternalLink(): LinkClickHandler {
     ({ href, event, mod }) => {
       event.preventDefault()
       if (isDeepLinkUrl(href)) {
-        followDeepLink({ href, openInNewWindow: mod })
+        followDeepLink({ href, openInSplit: mod })
         return
       }
       const altKey = 'altKey' in event && event.altKey

@@ -27,11 +27,11 @@ function reportUnavailableNoteTitle(title: string): void {
  * available, existing titles still use the read-only index resolver and
  * unresolved titles are a no-op.
  *
- * An `openInNewWindow` request (a ⌘-click or a spare-`mod` keyboard follow,
+ * An `openInSplit` request (a ⌘-click or a spare-`mod` keyboard follow,
  * decided at the editor boundary from meowdown's `mod` flag) opens the
- * resolved target in a secondary note window instead, falling back to
- * in-window navigation whenever the surface can't (browser dev, mobile), so
- * the request never makes a link do nothing.
+ * resolved target in the pane beside this one instead, falling back to
+ * in-place navigation on surfaces without panes, so the request never makes
+ * a link do nothing.
  *
  * Resolution is async, and the host pane can unmount or the user can act
  * again while it's in flight — a late navigate would yank the user somewhere
@@ -45,15 +45,15 @@ function reportUnavailableNoteTitle(title: string): void {
  */
 export function useWikiLinkNavigation(
   generation: number | null,
-): (options: { target: string; openInNewWindow: boolean }) => void {
+): (options: { target: string; openInSplit: boolean }) => void {
   const navigateNoteLink = useNoteLinkNavigation()
   const beginLinkIntent = useLinkIntentGuard()
 
   return useCallback(
-    ({ target, openInNewWindow }: { target: string; openInNewWindow: boolean }) => {
+    ({ target, openInSplit }: { target: string; openInSplit: boolean }) => {
       const isStale = beginLinkIntent()
       const open = (route: NoteRoute): void => {
-        navigateNoteLink({ target: route, openInNewWindow })
+        navigateNoteLink({ target: route, openInSplit })
       }
       void (async () => {
         try {

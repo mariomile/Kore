@@ -294,7 +294,7 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
     (path: string, event?: ModClickEvent) =>
       navigateNoteLink({
         target: routeForPath(path),
-        openInNewWindow: event !== undefined && isModEvent(event),
+        openInSplit: event !== undefined && isModEvent(event),
       }),
     [navigateNoteLink],
   )

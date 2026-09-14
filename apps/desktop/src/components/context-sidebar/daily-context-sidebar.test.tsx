@@ -2,12 +2,11 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { cleanup, render } from 'vitest-browser-react'
 import { page, userEvent } from 'vitest/browser'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import type { NoteRow } from '@reflect/core'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { formatDayLabel } from '@/lib/dates'
 import { monthLabel, monthOf } from '@/lib/month-grid'
-import type { NoteRoute } from '@/routing/route'
 import { RouterProvider, useRouter } from '@/routing/router'
 import { fireEvent } from '@/test-utils/fire-event'
 import '@/test-utils/locator'
@@ -17,7 +16,6 @@ const dailyDatesInRange = vi.hoisted(() => vi.fn())
 const relatedNotes = vi.hoisted(() => vi.fn())
 const readNote = vi.hoisted(() => vi.fn())
 const useNoteRow = vi.hoisted(() => vi.fn<(path: string) => NoteRow | null>(() => null))
-const openRouteInNewWindow = vi.hoisted(() => vi.fn<(route: NoteRoute) => Promise<boolean>>())
 vi.mock('@reflect/core', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@reflect/core')>()),
   hasBridge: () => true,
@@ -26,10 +24,6 @@ vi.mock('@reflect/core', async (importOriginal) => ({
   relatedNotes,
 }))
 vi.mock('@/hooks/use-note-row', () => ({ useNoteRow }))
-vi.mock('@/lib/windows/open-in-new-window', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/lib/windows/open-in-new-window')>()),
-  openRouteInNewWindow,
-}))
 vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({ graph: { root: '/g', name: 'g', generation: 1 } }),
 }))
@@ -79,7 +73,6 @@ beforeEach(() => {
   readNote.mockReset().mockResolvedValue('- daily entry\n')
   relatedNotes.mockReset().mockResolvedValue([])
   useNoteRow.mockReset().mockReturnValue(null)
-  openRouteInNewWindow.mockReset().mockResolvedValue(true)
 })
 
 afterEach(async () => {
@@ -109,57 +102,15 @@ describe('DailyContextSidebar calendar', () => {
     await view.unmount()
   })
 
-  it('modifier-click opens a day in a new window without moving the current window', async () => {
+  it('modifier-click navigates to a day in place (no panes mounted)', async () => {
     const view = await renderSidebar('2026-06-09')
     const day = page.getByRole('button', { name: formatDayLabel('2026-06-18', 'mdy') })
 
     fireEvent.click(day, { metaKey: true, ctrlKey: true })
 
-    await vi.waitFor(() =>
-      expect(openRouteInNewWindow).toHaveBeenCalledWith({
-        kind: 'daily',
-        date: '2026-06-18',
-      }),
-    )
-    expect(openRouteInNewWindow).toHaveBeenCalledTimes(1)
     await expect
       .element(page.getByTestId('route'))
-      .toHaveTextContent(JSON.stringify({ kind: 'today' }))
-    await view.unmount()
-  })
-
-  it('does not fall back after the calendar scope moves to another selected day', async () => {
-    let finishOpen: (opened: boolean) => void = () => {}
-    openRouteInNewWindow.mockReturnValue(
-      new Promise((resolve) => {
-        finishOpen = resolve
-      }),
-    )
-    const view = await renderSidebar('2026-06-09')
-    const day = page.getByRole('button', { name: formatDayLabel('2026-06-18', 'mdy') })
-
-    fireEvent.click(day, { metaKey: true, ctrlKey: true })
-    await vi.waitFor(() => expect(openRouteInNewWindow).toHaveBeenCalledTimes(1))
-    await view.rerender(
-      <TooltipProvider>
-        <QueryClientProvider
-          client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
-        >
-          <RouterProvider>
-            <DailyContextSidebar date="2026-06-10" />
-            <RouteProbe />
-          </RouterProvider>
-        </QueryClientProvider>
-      </TooltipProvider>,
-    )
-
-    await act(async () => {
-      finishOpen(false)
-    })
-
-    await expect
-      .element(page.getByTestId('route'))
-      .toHaveTextContent(JSON.stringify({ kind: 'today' }))
+      .toHaveTextContent(JSON.stringify({ kind: 'daily', date: '2026-06-18' }))
     await view.unmount()
   })
 

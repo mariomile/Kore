@@ -209,38 +209,11 @@ describe('CommandPalette', () => {
     expect(view.getByTestId('palette-overlay').query()).toBeNull()
   })
 
-  it('modifier-click opens one note window and closes the palette synchronously', async () => {
+  it('modifier-click navigates in place (no panes mounted) and closes the palette synchronously', async () => {
     suggestWikiTargets.mockResolvedValue([])
     searchWithFilters.mockResolvedValue([
       { path: 'notes/rust.md', title: 'Rust Notes', snippet: null, dailyDate: null },
     ])
-    let finishOpen: (opened: boolean) => void = () => {}
-    openRouteInNewWindow.mockReturnValue(
-      new Promise((resolve) => {
-        finishOpen = resolve
-      }),
-    )
-    const { view } = await renderPalette('rust')
-    const result = view.getByText('Rust Notes')
-
-    await result.click({ modifiers: ['ControlOrMeta'] })
-
-    expect(view.getByTestId('palette-overlay').query()).toBeNull()
-    expect(openRouteInNewWindow).toHaveBeenCalledTimes(1)
-    expect(openRouteInNewWindow).toHaveBeenCalledWith({
-      kind: 'note',
-      path: 'notes/rust.md',
-    })
-    expect(view.getByTestId('route').element().textContent).toBe(JSON.stringify({ kind: 'today' }))
-    finishOpen(true)
-  })
-
-  it('falls back in-window after a declined modifier-click even though the palette closed', async () => {
-    suggestWikiTargets.mockResolvedValue([])
-    searchWithFilters.mockResolvedValue([
-      { path: 'notes/rust.md', title: 'Rust Notes', snippet: null, dailyDate: null },
-    ])
-    openRouteInNewWindow.mockResolvedValue(false)
     const { view } = await renderPalette('rust')
     const result = view.getByText('Rust Notes')
 

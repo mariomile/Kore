@@ -24,7 +24,7 @@ interface SimilarNotesSectionProps {
  * daily and note context sidebars.
  */
 export function SimilarNotesSection({ path }: SimilarNotesSectionProps): ReactElement | null {
-  const navigateNoteLink = useNoteLinkNavigation(path)
+  const navigateNoteLink = useNoteLinkNavigation()
   const related = useSimilarNotes(path)
   if (related.length === 0) {
     return null
@@ -40,7 +40,7 @@ export function SimilarNotesSection({ path }: SimilarNotesSectionProps): ReactEl
               onClick={(event) =>
                 navigateNoteLink({
                   target: routeForPath(hit.path),
-                  openInNewWindow: isModEvent(event),
+                  openInSplit: isModEvent(event),
                 })
               }
               className="flex w-full items-center space-x-1 rounded-md px-3 py-1 leading-5 text-text-secondary transition-colors duration-100 hover:bg-surface-hover hover:text-text"

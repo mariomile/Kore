@@ -15,9 +15,9 @@ interface ChatNoteCardProps {
  * A note promoted to a card in an assistant reply: the model emits
  * `::note{path="…"}` on a line of its own (already validated by
  * `parseNoteDirectives`) and the renderer swaps the line for this — the
- * note's live title over its path, opening the note on click (⌘-click in a
- * new window). The transcript keeps the plain directive line, so copies and
- * exports stay portable markdown.
+ * note's live title over its path, opening the note on click (⌘-click opens
+ * it in the split pane beside this one). The transcript keeps the plain
+ * directive line, so copies and exports stay portable markdown.
  */
 export function ChatNoteCard({ path }: ChatNoteCardProps): ReactElement {
   const navigateNoteLink = useNoteLinkNavigation()
@@ -25,7 +25,7 @@ export function ChatNoteCard({ path }: ChatNoteCardProps): ReactElement {
   const title = displayNoteTitle(row?.title ?? noteDirectiveTitle(path))
 
   const open = (event: MouseEvent<HTMLButtonElement>): void => {
-    navigateNoteLink({ target: routeForPath(path), openInNewWindow: isModEvent(event) })
+    navigateNoteLink({ target: routeForPath(path), openInSplit: isModEvent(event) })
   }
 
   return (

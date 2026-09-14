@@ -24,12 +24,6 @@ vi.mock('@/lib/deep-links/intake', () => ({
   dispatchDeepLink: vi.fn(),
 }))
 
-const openDeepLinkInNewWindow = vi.hoisted(() => vi.fn<() => Promise<boolean>>())
-vi.mock('@/lib/windows/open-in-new-window', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/lib/windows/open-in-new-window')>()),
-  openDeepLinkInNewWindow,
-}))
-
 const pmRoot = page.locate('.ProseMirror')
 
 const IMAGE_NOTE = 'A photo\n\n![Cat](assets/cat.png)'
@@ -549,24 +543,12 @@ describe('NoteEditor link opening', () => {
     expect(openUrl).not.toHaveBeenCalled()
   })
 
-  it('⌘-click sends a reflect:// link to a new window instead of dispatching', async () => {
-    openDeepLinkInNewWindow.mockResolvedValue(true)
+  it('⌘-click dispatches a reflect:// link in place', async () => {
     await render(<NoteEditor initialContent="[note](reflect://note/abc123) here" />)
 
     await pmRoot.getByRole('link').click({ modifiers: ['ControlOrMeta'] })
     await vi.waitFor(() => {
-      expect(openDeepLinkInNewWindow).toHaveBeenCalledWith('reflect://note/abc123')
-    })
-    expect(dispatchDeepLink).not.toHaveBeenCalled()
-  })
-
-  it('a declined ⌘-click open degrades to the normal deep-link dispatch', async () => {
-    openDeepLinkInNewWindow.mockResolvedValue(false)
-    await render(<NoteEditor initialContent="[append](reflect://append?text=hi) here" />)
-
-    await pmRoot.getByRole('link').click({ modifiers: ['ControlOrMeta'] })
-    await vi.waitFor(() => {
-      expect(dispatchDeepLink).toHaveBeenCalledWith('reflect://append?text=hi')
+      expect(dispatchDeepLink).toHaveBeenCalledWith('reflect://note/abc123')
     })
   })
 })

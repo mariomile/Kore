@@ -17,12 +17,12 @@ import { routeForPath } from '@/routing/route'
 export function useMarkdownLinkNavigation(
   generation: number | null,
   sourcePath: string,
-): (options: { href: string; openInNewWindow: boolean }) => void {
+): (options: { href: string; openInSplit: boolean }) => void {
   const navigateNoteLink = useNoteLinkNavigation()
   const beginLinkIntent = useLinkIntentGuard()
 
   return useCallback(
-    ({ href, openInNewWindow }: { href: string; openInNewWindow: boolean }) => {
+    ({ href, openInSplit }: { href: string; openInSplit: boolean }) => {
       if (generation === null) {
         return
       }
@@ -34,7 +34,7 @@ export function useMarkdownLinkNavigation(
             return
           }
           if (resolution.kind === 'resolved') {
-            navigateNoteLink({ target: routeForPath(resolution.path), openInNewWindow })
+            navigateNoteLink({ target: routeForPath(resolution.path), openInSplit })
           } else if (resolution.kind === 'ambiguous') {
             reportAmbiguousNoteTitle('Opening link', href)
           } else if (resolution.kind === 'unavailable') {

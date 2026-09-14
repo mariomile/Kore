@@ -85,8 +85,8 @@ export function EmbeddedNote({
   })
 
   const openNote = useCallback(
-    (path: string, openInNewWindow: boolean) => {
-      navigateNoteLink({ target: routeForPath(path), openInNewWindow })
+    (path: string, openInSplit: boolean) => {
+      navigateNoteLink({ target: routeForPath(path), openInSplit })
     },
     [navigateNoteLink],
   )
@@ -122,8 +122,8 @@ export function EmbeddedNote({
         <MarkdownPreview
           content={data.markdown ?? ''}
           resolveImageUrl={resolveImageUrl}
-          onWikiLinkClick={({ target, openInNewWindow }) => {
-            onWikiLinkClick({ target, openInNewWindow })
+          onWikiLinkClick={({ target, openInSplit }) => {
+            onWikiLinkClick({ target, openInSplit })
           }}
         />
       </div>

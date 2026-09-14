@@ -8,9 +8,9 @@ describe('openTabForRoute', () => {
     const route = { kind: 'allNotes', filter: { kind: 'inbox' } } as const
     const tab = openTabForRoute(route)
     const settings = settingsSchema.parse({
-      openTabs: { '/g': [{ id: 'main', tabs: [tab], activeKey: null }] },
+      openTabs: { '/g': [{ id: 'main', panes: [{ id: 'main', tabs: [tab], activeKey: null }] }] },
     })
-    const restored = settings.openTabs['/g']![0]!.tabs[0]!
+    const restored = settings.openTabs['/g']![0]!.panes[0]!.tabs[0]!
     expect(routeForOpenTab(restored)).toEqual(route)
     expect(routesEqual(route, { kind: 'allNotes', filter: { kind: 'all' } })).toBe(false)
   })

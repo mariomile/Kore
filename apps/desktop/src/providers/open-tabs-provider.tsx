@@ -12,7 +12,8 @@ import { onChatConversationDeleted } from '@/lib/chat-events'
 import { onNoteMoved } from '@/lib/note-moves'
 import { useOptionalChatSession } from '@/providers/chat-provider'
 import { useGraph } from '@/providers/graph-provider'
-import { useOptionalPanes, useScopedPaneId } from '@/providers/panes-provider'
+import { flatPanes } from '@/providers/pane-layout'
+import { MAIN_COLUMN_ID, useOptionalPanes, useScopedPaneId } from '@/providers/panes-provider'
 import {
   openTabForRoute,
   routeForOpenTab,
@@ -118,7 +119,10 @@ export function OpenTabsProvider({
   const root = graph?.root ?? null
   const stored = settings.openTabs
   const pane = useMemo(
-    () => (root === null ? undefined : stored[root]?.find((entry) => entry.id === paneId)),
+    () =>
+      root === null
+        ? undefined
+        : flatPanes(stored[root] ?? []).find((entry) => entry.id === paneId),
     [stored, root, paneId],
   )
   const tabs = useMemo(() => stripOrder(pane?.tabs ?? []), [pane])
@@ -135,8 +139,8 @@ export function OpenTabsProvider({
         return
       }
       updateSettingsWith((current) => {
-        const graphPanes = current.openTabs[root] ?? []
-        const existing = graphPanes.find((entry) => entry.id === paneId)
+        const columns = current.openTabs[root] ?? []
+        const existing = flatPanes(columns).find((entry) => entry.id === paneId)
         const paneTabs = existing?.tabs ?? []
         const next = mutate(paneTabs)
         const nextActiveKey = activeKey ?? existing?.activeKey ?? null
@@ -151,12 +155,21 @@ export function OpenTabsProvider({
         }
         const updated: OpenPane = { id: paneId, tabs: next, activeKey: nextActiveKey }
         // A pane opened by the split gesture is persisted empty: its first
-        // visited route is what creates the entry here when it is missing.
-        const nextPanes =
+        // visited route is what creates the entry here when it is missing. It
+        // is appended to the first column, creating one when the layout is
+        // still empty (a fresh graph, before any pane has written anything).
+        const nextColumns =
           existing === undefined
-            ? [...graphPanes, updated]
-            : graphPanes.map((entry) => (entry.id === paneId ? updated : entry))
-        return { openTabs: { ...current.openTabs, [root]: nextPanes } }
+            ? columns.length === 0
+              ? [{ id: MAIN_COLUMN_ID, panes: [updated] }]
+              : columns.map((column, index) =>
+                  index === 0 ? { ...column, panes: [...column.panes, updated] } : column,
+                )
+            : columns.map((column) => ({
+                ...column,
+                panes: column.panes.map((entry) => (entry.id === paneId ? updated : entry)),
+              }))
+        return { openTabs: { ...current.openTabs, [root]: nextColumns } }
       })
     },
     [root, paneId, updateSettingsWith],

@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 import { useSyncExternalStore, type ReactElement } from 'react'
-import { setBridge, untitledNotePath, type OpenPane } from '@reflect/core'
+import { setBridge, untitledNotePath, type OpenColumn, type OpenPane } from '@reflect/core'
 import { SidebarOpenTabs } from '@/components/sidebar/sidebar-open-notes'
 import { emitChatConversationDeleted } from '@/lib/chat-events'
 import { emitNoteMoved } from '@/lib/note-moves'
@@ -26,7 +26,7 @@ const settingsStore = vi.hoisted(() => {
   // Panes are keyed by graph root (the settings document is global); the
   // mocked graph provider below serves root '/g', with the single 'main'
   // pane this suite mounts the provider for.
-  type PanesByGraph = Record<string, OpenPane[]>
+  type PanesByGraph = Record<string, OpenColumn[]>
   let state: { openTabs: PanesByGraph } = { openTabs: {} }
   const listeners = new Set<() => void>()
   return {
@@ -426,7 +426,7 @@ describe('workspace tabs', () => {
       expect(first?.textContent ?? '').toContain('Beta Review')
     })
     // The reorder is the persisted strip order, not a render artifact.
-    const stored = settingsStore.get().openTabs['/g']?.[0]?.tabs ?? []
+    const stored = settingsStore.get().openTabs['/g']?.[0]?.panes[0]?.tabs ?? []
     expect(stored[0]).toMatchObject({ kind: 'note', path: 'notes/beta.md' })
     await view.unmount()
   })
@@ -651,11 +651,16 @@ describe('workspace tabs', () => {
         '/g': [
           {
             id: 'main',
-            tabs: [
-              { kind: 'surface', surface: 'daily', date: null, pinned: false },
-              { kind: 'note', path: 'notes/alpha.md', pinned: false },
+            panes: [
+              {
+                id: 'main',
+                tabs: [
+                  { kind: 'surface', surface: 'daily', date: null, pinned: false },
+                  { kind: 'note', path: 'notes/alpha.md', pinned: false },
+                ],
+                activeKey: 'note:notes/alpha.md',
+              },
             ],
-            activeKey: 'note:notes/alpha.md',
           },
         ],
       },
@@ -706,7 +711,7 @@ function renderSplit() {
 }
 
 function panesOf(): OpenPane[] {
-  return settingsStore.get().openTabs['/g'] ?? []
+  return (settingsStore.get().openTabs['/g'] ?? []).flatMap((column) => column.panes)
 }
 
 describe('workspace tabs in a split', () => {
@@ -716,10 +721,15 @@ describe('workspace tabs in a split', () => {
         '/g': [
           {
             id: 'main',
-            tabs: [{ kind: 'surface', surface: 'daily', date: null, pinned: false }],
-            activeKey: 'surface:daily',
+            panes: [
+              {
+                id: 'main',
+                tabs: [{ kind: 'surface', surface: 'daily', date: null, pinned: false }],
+                activeKey: 'surface:daily',
+              },
+            ],
           },
-          SECOND_PANE,
+          { id: 'column-2', panes: [SECOND_PANE] },
         ],
       },
     })

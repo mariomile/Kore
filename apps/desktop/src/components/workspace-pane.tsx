@@ -92,7 +92,7 @@ export function PaneResizeHandle({ leftPaneId }: { leftPaneId: string }): ReactE
     try {
       handle.setPointerCapture(event.pointerId)
     } catch {
-      // Synthetic tests do not have a live pointer to capture.
+      // A synthetic pointerdown (tests) names no live pointer to capture.
     }
     const onMove = (move: PointerEvent): void => {
       left.style.flex = `0 0 ${Math.max(360, startWidth + move.clientX - startX)}px`
@@ -119,7 +119,7 @@ export function PaneResizeHandle({ leftPaneId }: { leftPaneId: string }): ReactE
       aria-label="Resize pane"
       data-left-pane={leftPaneId}
       onPointerDown={onPointerDown}
-      className="relative w-2 shrink-0 cursor-col-resize after:absolute after:inset-y-0 after:w-0.5 after:bg-border-strong after:opacity-0 hover:after:opacity-60"
+      className="relative w-2 shrink-0 cursor-col-resize touch-none after:absolute after:inset-y-0 after:w-0.5 after:bg-border-strong after:opacity-0 hover:after:opacity-60"
     />
   )
 }

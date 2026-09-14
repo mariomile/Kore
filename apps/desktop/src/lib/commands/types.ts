@@ -81,6 +81,10 @@ export interface CommandContext {
   previousTab: () => void
   /** Close the active workspace tab. */
   closeActiveTab: () => void
+  /** Close the active pane (never the last one). */
+  closePane: () => void
+  /** Move the active pane one column left or right. */
+  focusPane: (target: 'left' | 'right') => void
 }
 
 export interface AppCommand {

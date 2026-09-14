@@ -96,6 +96,8 @@ function stubCommandContext(): CommandContext {
     nextTab: () => {},
     previousTab: () => {},
     closeActiveTab: () => {},
+    closePane: () => {},
+    focusPane: () => {},
   }
 }
 

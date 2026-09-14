@@ -37,6 +37,8 @@ function fakeContext(overrides?: Partial<CommandContext>): CommandContext {
     nextTab: vi.fn(),
     previousTab: vi.fn(),
     closeActiveTab: vi.fn(),
+    closePane: vi.fn(),
+    focusPane: vi.fn(),
     ...overrides,
   }
 }

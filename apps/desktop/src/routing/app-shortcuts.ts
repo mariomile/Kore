@@ -188,6 +188,9 @@ export function useAppShortcuts(): CommandContext {
   // The getter, not the whole model: it reads the active pane through a ref,
   // so it is stable and a pane switch does not rebuild the command context.
   const activeFindActions = panes?.activeFindActions ?? null
+  // The whole panes model, read through a ref so pane.close/focusLeft/Right
+  // stay stable closures — the memo below never depends on `panes` directly.
+  const panesRef = useRef(panes)
 
   // Modal surfaces suppress app commands: nothing may navigate behind the
   // palette, the template dialogs, or Replace-in-vault (which could be
@@ -220,6 +223,7 @@ export function useAppShortcuts(): CommandContext {
     openRecentRef.current = openRecent
     routeRef.current = route
     focusedDailyDateRef.current = focusedDailyDate
+    panesRef.current = panes
   })
 
   const context = useMemo<CommandContext>(
@@ -315,6 +319,13 @@ export function useAppShortcuts(): CommandContext {
       nextTab: openTabs.nextTab,
       previousTab: openTabs.previousTab,
       closeActiveTab: openTabs.closeActiveTab,
+      closePane: () => {
+        const current = panesRef.current
+        current?.closePane(current.activePane.id)
+      },
+      focusPane: (target) => {
+        panesRef.current?.focusPane(target)
+      },
     }),
     [
       navigate,

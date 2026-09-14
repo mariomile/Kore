@@ -311,6 +311,26 @@ const APP_COMMANDS: AppCommand[] = [
     },
   },
   {
+    id: 'pane.close',
+    title: 'Close pane',
+    keywords: ['split', 'pane', 'column', 'close'],
+    run: (context) => context.closePane(),
+  },
+  {
+    id: 'pane.focusLeft',
+    title: 'Focus pane on the left',
+    keywords: ['split', 'pane', 'column', 'focus'],
+    keybinding: 'Alt-Mod-arrowleft',
+    run: (context) => context.focusPane('left'),
+  },
+  {
+    id: 'pane.focusRight',
+    title: 'Focus pane on the right',
+    keywords: ['split', 'pane', 'column', 'focus'],
+    keybinding: 'Alt-Mod-arrowright',
+    run: (context) => context.focusPane('right'),
+  },
+  {
     id: 'settings.open',
     title: 'Open settings',
     keywords: ['preferences', 'config', 'options'],

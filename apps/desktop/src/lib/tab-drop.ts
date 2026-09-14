@@ -46,7 +46,7 @@ export function zoneDropId(paneId: string, zone: DropZone): string {
 }
 
 // `@reflect/core` keeps its tab schema internal, so the payload is checked for
-// the one thing that makes it a tab — a `kind` discriminant — and typed from
+// the one thing that makes it a tab, a `kind` discriminant, and typed from
 // the sortable's own declaration.
 const tabShapeSchema = z.object({ kind: z.string() })
 const openTabValueSchema = z.custom<OpenTab>((value) => tabShapeSchema.safeParse(value).success)

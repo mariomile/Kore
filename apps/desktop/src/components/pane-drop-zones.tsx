@@ -19,7 +19,7 @@ interface PaneDropZonesProps {
  * The three regions a dragged tab can land on, over one pane's card: the
  * whole card takes the tab into this pane's strip, the right quarter and the
  * bottom 40% open a new pane beside or under it. They exist only while a drag
- * is in flight — an always-mounted overlay would swallow every click meant
+ * is in flight. An always-mounted overlay would swallow every click meant
  * for the editor underneath, and a droppable registered before its element
  * exists is measured as nothing and never wins a collision.
  */
@@ -29,7 +29,10 @@ export function PaneDropZones({ paneId }: PaneDropZonesProps): ReactElement | nu
     return null
   }
   // The edge zones sit over the centre one and win the collision, so the
-  // centre only has to cover the card.
+  // centre only has to cover the card. `right` and `below` overlap in the
+  // bottom right corner on purpose: both stay in play there and dnd-kit's
+  // own centre-distance sort breaks the tie, which sends a pointer in the
+  // corner to whichever edge it sits deeper in.
   return (
     <div data-testid="pane-drop-zones" className="absolute inset-0 z-20">
       <PaneDropZone paneId={paneId} zone="center" className="absolute inset-0 rounded-xl" />

@@ -35,6 +35,11 @@ interface WorkspaceTabsStripProps {
  * closable tab; pinned tabs collapse to their semantic icon, and closing the
  * final tab falls back to Daily through the provider. Settings is a full-page
  * workspace and never joins the strip.
+ *
+ * Requires a `DndContext` above it: dragging a pill belongs to the workspace
+ * frame's context (a pill travels between panes), and the `useDndMonitor`
+ * this strip listens with throws without one. Anything mounting the strip on
+ * its own, tests included, has to supply that context.
  */
 export function WorkspaceTabsStrip({
   commandContext,
@@ -189,7 +194,7 @@ function StripTab({
 }: StripTabProps): ReactElement {
   const { tab, title } = item
   // The whole pill is the handle (the frame's activation distance keeps
-  // clicks working). No overlay — the pill itself follows the pointer. The
+  // clicks working). No overlay: the pill itself follows the pointer. The
   // payload says which pane and which tab, so a drop anywhere in the frame
   // resolves to a reorder here or a move into another pane.
   const { isDragging, listeners, setNodeRef, transform, transition } = useSortable({

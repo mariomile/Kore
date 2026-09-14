@@ -1,12 +1,30 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
+import {
+  DndContext,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type Activators,
+  type DragEndEvent,
+  type SensorInstance,
+  type SensorOptions,
+  type SensorProps,
+} from '@dnd-kit/core'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
-import { Fragment, useSyncExternalStore, type ReactElement, type ReactNode } from 'react'
+import {
+  Fragment,
+  useCallback,
+  useState,
+  useSyncExternalStore,
+  type ReactElement,
+  type ReactNode,
+} from 'react'
 import { setBridge, type OpenColumn } from '@reflect/core'
 import type { CommandContext } from '@/lib/commands/types'
-import { zoneDropId } from '@/lib/tab-drop'
+import { resolveTabDrop, zoneDropId } from '@/lib/tab-drop'
+import { tabDropCollision } from '@/lib/tab-drop-collision'
 import { PanesProvider, usePanes } from '@/providers/panes-provider'
 import { SidebarProvider } from '@/providers/sidebar-provider'
 import { PaneDragContext } from './pane-drop-zones'
@@ -147,6 +165,132 @@ function DragHarness({ children }: { children: ReactNode }): ReactElement {
   return <DndContext sensors={sensors}>{children}</DndContext>
 }
 
+/** Viewport coordinates, the shape dnd-kit's sensors speak in. */
+interface Point {
+  x: number
+  y: number
+}
+
+interface DragControl {
+  move(coordinates: Point): void
+  end(): void
+}
+
+/**
+ * The drag the test drives. dnd-kit's own PointerSensor ignores synthetic
+ * `pointermove` events in this harness, so the drag is steered through a
+ * sensor of our own: it starts on `pointerdown` where the pointer is and
+ * hands the test the two calls dnd-kit would otherwise make from real
+ * pointer events. Everything downstream (measuring, collision, `onDragEnd`,
+ * the strip's monitor) is the real thing.
+ */
+let dragControl: DragControl | null = null
+/** What dnd-kit currently reports the drag is over, as ids, live. */
+let dragOverId: string | null = null
+
+class TestDragSensor implements SensorInstance {
+  autoScrollEnabled = false
+
+  static activators: Activators<SensorOptions> = [
+    { eventName: 'onPointerDown', handler: () => true },
+  ]
+
+  constructor(props: SensorProps<SensorOptions>) {
+    const { event } = props
+    dragControl = {
+      move: (coordinates) => {
+        props.onMove(coordinates)
+      },
+      end: () => {
+        props.onEnd()
+      },
+    }
+    props.onStart(
+      event instanceof PointerEvent ? { x: event.clientX, y: event.clientY } : { x: 0, y: 0 },
+    )
+  }
+}
+
+/** The frame's drag wiring: the same collision, resolver and pane call. */
+function DragFrame({ children }: { children: ReactNode }): ReactElement {
+  const { moveTab } = usePanes()
+  const [dragging, setDragging] = useState(false)
+  const sensors = useSensors(useSensor(TestDragSensor))
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent): void => {
+      setDragging(false)
+      const drop = resolveTabDrop(event.active, event.over)
+      if (drop?.kind === 'move') {
+        moveTab(drop.tab, { from: drop.from, to: drop.to })
+      }
+    },
+    [moveTab],
+  )
+  return (
+    <DndContext
+      sensors={sensors}
+      collisionDetection={tabDropCollision}
+      onDragStart={() => {
+        setDragging(true)
+      }}
+      onDragOver={(event) => {
+        dragOverId = event.over === null ? null : String(event.over.id)
+      }}
+      onDragCancel={() => {
+        setDragging(false)
+      }}
+      onDragEnd={handleDragEnd}
+    >
+      <PaneDragContext value={{ dragging }}>{children}</PaneDragContext>
+    </DndContext>
+  )
+}
+
+function renderDragFrame() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return render(
+    <QueryClientProvider client={client}>
+      <SidebarProvider>
+        <PanesProvider>
+          <DragFrame>
+            <PaneGrid />
+          </DragFrame>
+        </PanesProvider>
+      </SidebarProvider>
+    </QueryClientProvider>,
+  )
+}
+
+/** Press the pill, then let the caller steer the drag from its centre. */
+function startDrag(pill: Element): DragControl {
+  dragOverId = null
+  const rect = pill.getBoundingClientRect()
+  firePointer(pill, 'pointerdown', {
+    pointerId: 3,
+    isPrimary: true,
+    button: 0,
+    clientX: rect.left + rect.width / 2,
+    clientY: rect.top + rect.height / 2,
+  })
+  if (dragControl === null) {
+    throw new Error('the drag never started')
+  }
+  return dragControl
+}
+
+/**
+ * Move the pointer to the middle of `target` and wait until dnd-kit agrees
+ * the drag is over `expected`: `over` is settled a render after the move, and
+ * dropping before then would end the drag over nothing.
+ */
+async function dragOver(drag: DragControl, target: Element, expected: string): Promise<void> {
+  const rect = target.getBoundingClientRect()
+  drag.move({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 })
+  await vi.waitFor(() => {
+    expect(dragOverId).toBe(expected)
+  })
+}
+
 /** The same tree, with a drag in flight so every pane shows its zones. */
 function renderPanesDragging() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -223,6 +367,27 @@ const STACKED_PANES: OpenColumn[] = [
         id: 'pane-2',
         tabs: [{ kind: 'note', path: 'notes/beta.md', pinned: false }],
         activeKey: 'note:notes/beta.md',
+      },
+    ],
+  },
+]
+
+/**
+ * One pane holding two tabs: the strip a reorder rearranges. Both are
+ * surfaces, because a note tab whose file the index cannot resolve is pruned
+ * from the strip (`useOpenTabItems`), and this suite's bridge resolves none.
+ */
+const TWO_TAB_PANE: OpenColumn[] = [
+  {
+    id: 'main',
+    panes: [
+      {
+        id: 'main',
+        tabs: [
+          { kind: 'surface', surface: 'daily', date: null, pinned: false },
+          { kind: 'surface', surface: 'tasks', pinned: false },
+        ],
+        activeKey: 'surface:daily',
       },
     ],
   },
@@ -328,6 +493,63 @@ describe('WorkspacePane', () => {
         await expect.element(view.getByTestId(zoneDropId(paneId, zone))).toBeInTheDocument()
       }
     }
+
+    await view.unmount()
+  })
+
+  it("drops a pill on another pane's below zone and the tab moves into a new pane", async () => {
+    settingsStore.seed(SPLIT_PANES)
+    const view = await renderDragFrame()
+    const panes = view.getByTestId('workspace-pane').all()
+    const pill = panes[0]!.element().querySelector('[role="tab"]')!
+
+    const drag = startDrag(pill)
+    await vi.waitFor(() => {
+      expect(view.getByTestId('pane-drop-zones').all()).toHaveLength(2)
+    })
+    const zone = view.getByTestId(zoneDropId('pane-2', 'below')).element()
+    await dragOver(drag, zone, zoneDropId('pane-2', 'below'))
+    // The zone under the pointer says so.
+    expect(zone.className).toContain('ring-accent')
+    drag.end()
+
+    await vi.waitFor(() => {
+      const columns = settingsStore.get().openTabs[GRAPH_ROOT] ?? []
+      // The source gave up its only tab, so its column went with it; the
+      // dragged tab opened a new pane under the one it landed on.
+      expect(columns).toHaveLength(1)
+      expect(columns[0]!.panes.map((pane) => pane.tabs.map((tab) => tab.kind))).toEqual([
+        ['note'],
+        ['surface'],
+      ])
+    })
+
+    await view.unmount()
+  })
+
+  it('drops a pill on its own strip and the strip reorders', async () => {
+    settingsStore.seed(TWO_TAB_PANE)
+    const view = await renderDragFrame()
+    const pills = view
+      .getByTestId('workspace-pane')
+      .all()[0]!
+      .element()
+      .querySelectorAll('[role="tab"]')
+    expect(pills).toHaveLength(2)
+
+    const drag = startDrag(pills[1]!)
+    await dragOver(drag, pills[0]!, 'surface:daily')
+    drag.end()
+
+    await vi.waitFor(() => {
+      const panes = (settingsStore.get().openTabs[GRAPH_ROOT] ?? []).flatMap(
+        (column) => column.panes,
+      )
+      expect(panes).toHaveLength(1)
+      expect(
+        panes[0]!.tabs.map((tab) => (tab.kind === 'surface' ? tab.surface : tab.kind)),
+      ).toEqual(['tasks', 'daily'])
+    })
 
     await view.unmount()
   })

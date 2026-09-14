@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 import { Fragment, useSyncExternalStore, type ReactElement } from 'react'
-import { setBridge, type OpenPane } from '@reflect/core'
+import { setBridge, type OpenColumn } from '@reflect/core'
 import type { CommandContext } from '@/lib/commands/types'
 import { PanesProvider, usePanes } from '@/providers/panes-provider'
 import { SidebarProvider } from '@/providers/sidebar-provider'
@@ -21,7 +21,7 @@ const GRAPH_ROOT = '/g'
 
 const settingsStore = vi.hoisted(() => {
   interface Doc {
-    openTabs: Record<string, OpenPane[]>
+    openTabs: Record<string, OpenColumn[]>
   }
   let doc: Doc = { openTabs: {} }
   const listeners = new Set<() => void>()
@@ -37,8 +37,8 @@ const settingsStore = vi.hoisted(() => {
       doc = { ...doc, ...updater(doc) }
       for (const listener of listeners) listener()
     },
-    seed(panes: OpenPane[]): void {
-      doc = { openTabs: { [GRAPH_ROOT]: panes } }
+    seed(columns: OpenColumn[]): void {
+      doc = { openTabs: { [GRAPH_ROOT]: columns } }
       for (const listener of listeners) listener()
     },
   }
@@ -139,16 +139,26 @@ afterEach(() => {
   settingsStore.seed([])
 })
 
-const SPLIT_PANES: OpenPane[] = [
+const SPLIT_PANES: OpenColumn[] = [
   {
     id: 'main',
-    tabs: [{ kind: 'surface', surface: 'daily', date: null, pinned: false }],
-    activeKey: 'surface:daily',
+    panes: [
+      {
+        id: 'main',
+        tabs: [{ kind: 'surface', surface: 'daily', date: null, pinned: false }],
+        activeKey: 'surface:daily',
+      },
+    ],
   },
   {
-    id: 'pane-2',
-    tabs: [{ kind: 'note', path: 'notes/beta.md', pinned: false }],
-    activeKey: 'note:notes/beta.md',
+    id: 'column-2',
+    panes: [
+      {
+        id: 'pane-2',
+        tabs: [{ kind: 'note', path: 'notes/beta.md', pinned: false }],
+        activeKey: 'note:notes/beta.md',
+      },
+    ],
   },
 ]
 

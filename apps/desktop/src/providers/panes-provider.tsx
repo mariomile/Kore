@@ -9,22 +9,36 @@ import {
   type ReactElement,
   type ReactNode,
 } from 'react'
-import type { OpenPane } from '@reflect/core'
+import type { OpenColumn, OpenTab } from '@reflect/core'
 import { createValueStore, type ValueStore } from '@/lib/value-store'
 import { useGraph } from '@/providers/graph-provider'
 import type { NoteFindActions } from '@/providers/note-find-provider'
 import { openTabForRoute, routeForOpenTab, tabKey, tabsEqual } from '@/providers/open-tab'
+import {
+  addTabTo,
+  emptyPane,
+  findPane,
+  flatPanes,
+  insertPaneNextTo,
+  layoutIdsKey,
+  MAIN_PANE_ID,
+  removePane,
+  removeTabFrom,
+  restoredRoute,
+  type PaneLocation,
+  type PanePlacement,
+} from '@/providers/pane-layout'
 import { useSettings } from '@/providers/settings-provider'
 import type { Route } from '@/routing/route'
 import { createRouterStore, type RouterStore } from '@/routing/router-store'
 
 /**
- * The workspace's side-by-side panes (split panes design, 2026-09-14). The
- * pane *list* is the persisted per-graph `openTabs` entry (one `OpenPane`
- * per column, in order); the live stores behind each pane (router history,
- * focused daily day) are created here and outlive re-renders, and the active
- * pane is ephemeral. Tab contents are the `OpenTabsProvider`'s business; this
- * provider only creates and removes pane entries.
+ * The workspace's columns of panes (split panes design, 2026-09-14, part 2).
+ * The *layout* is the persisted per-graph `openTabs` entry; the live stores
+ * behind each pane (router history, focused daily day) are created here and
+ * outlive re-renders, and the active pane is ephemeral. Tab contents are the
+ * `OpenTabsProvider`'s business; this provider creates and removes pane
+ * entries, and moves a whole tab from one pane to another.
  */
 
 export interface WorkspacePaneHandle {
@@ -33,27 +47,52 @@ export interface WorkspacePaneHandle {
   readonly focusedDaily: ValueStore<string | null>
 }
 
+/** One column of the workspace: panes stacked top to bottom. */
+export interface WorkspaceColumn {
+  readonly id: string
+  readonly panes: readonly WorkspacePaneHandle[]
+}
+
+/** Where a dragged tab lands on a pane: its strip, or a new pane beside it. */
+export type DropZone = 'center' | 'right' | 'below'
+
+export type FocusDirection = 'left' | 'right' | 'up' | 'down'
+
 export interface PanesValue {
+  readonly columns: readonly WorkspaceColumn[]
+  /** Every pane, column-major: column 0 top to bottom, then column 1. */
   readonly panes: readonly WorkspacePaneHandle[]
   readonly activePane: WorkspacePaneHandle
   setActivePane(id: string): void
   /**
-   * Open `route` beside `from`: in the pane to its right, creating one at the
-   * end when `from` is the last. A route whose tab is already open in some
-   * pane (any column, `from` included) navigates and activates *that* pane
-   * instead, so a note or singleton surface is never mounted twice.
+   * Open `route` next to `from`: in the next column at the same row
+   * (`'right'`, the default) or in the next pane of `from`'s own column
+   * (`'below'`), creating that column or pane when there is none. A route
+   * whose tab is already open in some pane (`from` included) navigates and
+   * activates *that* pane instead, so a note or singleton surface is never
+   * mounted twice.
    */
-  openInPane(route: Route, options: { from: string }): void
+  openInPane(route: Route, options: { from: string; placement?: PanePlacement }): void
+  /**
+   * Move a whole tab out of `from`. `center` hands it to `to.paneId`'s strip;
+   * `right` and `below` create a new pane next to `to.paneId` for it. The
+   * target navigates to the tab and becomes active; a source left without
+   * tabs closes, and one still showing the moved tab falls back to its
+   * neighbour.
+   */
+  moveTab(tab: OpenTab, options: { from: string; to: { paneId: string; zone: DropZone } }): void
+  /** Move the active pane's active tab into a new pane beside or under it. */
+  moveActiveTab(direction: 'right' | 'down'): void
   /**
    * The id of the pane whose persisted tabs already hold `route`'s tab, or
-   * null when no live pane does. The spec's one rule about tab identity: a
-   * tab key lives in at most one pane, so callers route a link at its holder
-   * rather than opening a second editor session on the same path.
+   * null when no live pane does. A tab key lives in at most one pane, so
+   * callers route a link at its holder rather than opening a second editor
+   * session on the same path.
    */
   holderOf(route: Route): string | null
-  /** Close a pane; the last pane never closes. */
+  /** Close a pane (and its column when it empties); the last pane never closes. */
   closePane(id: string): void
-  focusPane(target: 'left' | 'right'): void
+  focusPane(target: FocusDirection): void
   /** A pane's Find actions, so window-level ⌘F/⌘G reach the active pane. */
   registerFindActions(id: string, actions: NoteFindActions | null): void
   activeFindActions(): NoteFindActions | null
@@ -62,10 +101,10 @@ export interface PanesValue {
 const PanesContext = createContext<PanesValue | null>(null)
 const PaneIdContext = createContext<string | null>(null)
 
-export const MAIN_PANE_ID = 'main'
+export { MAIN_COLUMN_ID, MAIN_PANE_ID, type PanePlacement } from '@/providers/pane-layout'
 
-/** Shared empty list, so "this graph has no panes yet" keeps a stable identity. */
-const NO_PANES: readonly OpenPane[] = []
+/** Shared empty list, so "this graph has no layout yet" keeps a stable identity. */
+const NO_COLUMNS: readonly OpenColumn[] = []
 
 interface PanesProviderProps {
   /** The first pane's launch route; defaults to today. */
@@ -81,29 +120,34 @@ function createPaneHandle(id: string, route: Route | undefined): WorkspacePaneHa
   }
 }
 
-/** The route a persisted pane reopens on: its last active tab, else nothing. */
-function restoredRoute(pane: OpenPane): Route | null {
-  if (pane.activeKey === null) {
-    return null
+/** Where a live pane sits in the grid, or null when it is not rendered. */
+function gridLocation(columns: readonly WorkspaceColumn[], paneId: string): PaneLocation | null {
+  for (const [column, entry] of columns.entries()) {
+    const row = entry.panes.findIndex((pane) => pane.id === paneId)
+    if (row !== -1) {
+      return { column, row }
+    }
   }
-  const active = pane.tabs.find((tab) => tabKey(tab) === pane.activeKey)
-  return active === undefined ? null : routeForOpenTab(active)
+  return null
 }
 
-function emptyPane(id: string): OpenPane {
-  return { id, tabs: [], activeKey: null }
+/** A column's pane at `row`, clamped to its last one. */
+function paneInColumn(
+  column: WorkspaceColumn | undefined,
+  row: number,
+): WorkspacePaneHandle | undefined {
+  return column === undefined ? undefined : column.panes[Math.min(row, column.panes.length - 1)]
 }
 
 export function PanesProvider({ initialRoute, children }: PanesProviderProps): ReactElement {
   const { settings, updateSettingsWith } = useSettings()
   const { graph } = useGraph()
   const root = graph?.root ?? null
-  const stored = root === null ? NO_PANES : (settings.openTabs[root] ?? NO_PANES)
+  const stored = root === null ? NO_COLUMNS : (settings.openTabs[root] ?? NO_COLUMNS)
 
   // Read inside memos and callbacks instead of depended on: `stored` is
   // rewritten on every tab write in any pane, and depending on it would give
-  // `PanesValue` (and the note-move subscription keyed off it) a new identity
-  // per navigation.
+  // `PanesValue` a new identity per navigation.
   const storedRef = useRef(stored)
   storedRef.current = stored
 
@@ -111,60 +155,56 @@ export function PanesProvider({ initialRoute, children }: PanesProviderProps): R
   const findActions = useRef(new Map<string, NoteFindActions>())
   // Note-move following is subscribed from an effect, never at construction,
   // so a StrictMode mount→cleanup→re-mount leaves each router connected
-  // exactly once. The unsubscribe per pane id lives here.
+  // exactly once: the unsubscribe per pane id lives here.
   const connections = useRef(new Map<string, () => void>())
 
-  // Pane 1 always launches on today (or the window's own initial route); a
-  // *restored* extra pane reopens its last active tab and is dropped when it
-  // has none. A pane this session already owns a handle for is kept whatever
-  // its persisted tabs say: a pane opened just now is empty until the tab
-  // strip fills it, and dropping it would undo the split mid-gesture.
-  // Handles are created once per id and reused across renders.
-  // The ordered ids first, as one string: that is everything the handle list
-  // depends on, and it survives the tab writes that rewrite `stored` on every
-  // navigation. A pane id is `main` or a uuid, so a newline cannot occur in
-  // one.
-  const paneIdsKey = useMemo(() => {
-    const restored = stored.filter(
-      (pane, position) =>
-        position === 0 || handles.current.has(pane.id) || restoredRoute(pane) !== null,
-    )
-    const ids = restored.length === 0 ? [MAIN_PANE_ID] : restored.map((pane) => pane.id)
-    return ids.join('\n')
-  }, [stored])
+  const layoutKey = useMemo(() => layoutIdsKey(stored, (id) => handles.current.has(id)), [stored])
 
-  const panes = useMemo<WorkspacePaneHandle[]>(
+  // Handles are created once per id and reused across renders. The first
+  // pane launches on today (or the window's own initial route); a *restored*
+  // pane reopens its last active tab.
+  const columns = useMemo<WorkspaceColumn[]>(
     () =>
-      paneIdsKey.split('\n').map((id, position) => {
-        const existing = handles.current.get(id)
-        if (existing !== undefined) {
-          return existing
+      layoutKey.split('|').map((entry, columnIndex) => {
+        const separator = entry.indexOf(':')
+        return {
+          id: entry.slice(0, separator),
+          panes: entry
+            .slice(separator + 1)
+            .split(',')
+            .map((id, paneIndex) => {
+              const existing = handles.current.get(id)
+              if (existing !== undefined) {
+                return existing
+              }
+              const first = columnIndex === 0 && paneIndex === 0
+              const persisted = findPane(storedRef.current, id)
+              const restored = persisted === null ? null : restoredRoute(persisted)
+              const handle = createPaneHandle(id, first ? initialRoute : (restored ?? undefined))
+              handles.current.set(id, handle)
+              return handle
+            }),
         }
-        const entry = storedRef.current.find((pane) => pane.id === id)
-        const restored = entry === undefined ? null : restoredRoute(entry)
-        const route = position === 0 ? initialRoute : (restored ?? undefined)
-        const handle = createPaneHandle(id, route)
-        handles.current.set(id, handle)
-        return handle
       }),
-    [paneIdsKey, initialRoute],
+    [layoutKey, initialRoute],
   )
 
-  // `panes` is never empty by construction (the memo synthesizes `main`).
+  const panes = useMemo(() => columns.flatMap((column) => column.panes), [columns])
+
+  // `panes` is never empty by construction (the key synthesizes `main`).
   const [activeId, setActiveId] = useState<string>(() => panes[0]!.id)
   const activePane = panes.find((pane) => pane.id === activeId) ?? panes[0]!
   // Correct a ghost active id (its pane never made it into the list: a write
   // skipped for a null graph root, a restored first pane whose id is not
   // `main`) while rendering, so the stored id and the resolved pane cannot
-  // drift apart. Every reader already goes through `activePane`; this only
-  // keeps the state itself honest.
+  // drift apart. Every reader already goes through `activePane`.
   if (activeId !== activePane.id) {
     setActiveId(activePane.id)
   }
 
   // Connect the live panes' routers to note moves, and drop the handles whose
   // pane entry disappeared from settings. The cleanup unsubscribes everything
-  // this run connected: the next run reconnects from scratch.
+  // this run connected; the next run reconnects from scratch.
   useEffect(() => {
     const live = new Set(panes.map((pane) => pane.id))
     for (const pane of panes) {
@@ -189,23 +229,28 @@ export function PanesProvider({ initialRoute, children }: PanesProviderProps): R
     }
   }, [panes])
 
-  const writePanes = useCallback(
-    (mutate: (panes: OpenPane[]) => OpenPane[]) => {
+  const writeLayout = useCallback(
+    (mutate: (columns: OpenColumn[]) => OpenColumn[]) => {
       if (root === null) {
         return
       }
       updateSettingsWith((current) => {
-        const graphPanes = current.openTabs[root] ?? []
-        const next = mutate(graphPanes)
-        return next === graphPanes ? {} : { openTabs: { ...current.openTabs, [root]: next } }
+        const graphColumns = current.openTabs[root] ?? []
+        // Nothing persisted yet: the live layout is the base, so a split
+        // writes the whole document rather than one lone pane.
+        const base =
+          graphColumns.length === 0
+            ? columns.map((column) => ({
+                id: column.id,
+                panes: column.panes.map((pane) => emptyPane(pane.id)),
+              }))
+            : graphColumns
+        const next = mutate(base)
+        return next === base ? {} : { openTabs: { ...current.openTabs, [root]: next } }
       })
     },
-    [root, updateSettingsWith],
+    [root, updateSettingsWith, columns],
   )
-
-  const setActivePane = useCallback((id: string) => {
-    setActiveId(id)
-  }, [])
 
   const holderOf = useCallback(
     (route: Route): string | null => {
@@ -216,7 +261,7 @@ export function PanesProvider({ initialRoute, children }: PanesProviderProps): R
       // Only rendered panes can hold a tab: a persisted pane the restore
       // filter dropped must not win the lookup, or the key would end up in
       // two persisted panes at once.
-      const openTabsById = new Map(storedRef.current.map((pane) => [pane.id, pane.tabs]))
+      const openTabsById = new Map(flatPanes(storedRef.current).map((p) => [p.id, p.tabs]))
       const holder = panes.find((pane) =>
         (openTabsById.get(pane.id) ?? []).some((open) => tabsEqual(open, tab)),
       )
@@ -225,8 +270,16 @@ export function PanesProvider({ initialRoute, children }: PanesProviderProps): R
     [panes],
   )
 
+  // The handle exists before the layout write, so the new pane can be
+  // activated and navigated in the same gesture.
+  const createPane = useCallback((route: Route | undefined): string => {
+    const id = `pane-${crypto.randomUUID()}`
+    handles.current.set(id, createPaneHandle(id, route))
+    return id
+  }, [])
+
   const openInPane = useCallback(
-    (route: Route, { from }: { from: string }) => {
+    (route: Route, { from, placement = 'right' }: { from: string; placement?: PanePlacement }) => {
       const holderId = holderOf(route)
       const holder = holderId === null ? undefined : panes.find((pane) => pane.id === holderId)
       if (holder !== undefined) {
@@ -234,27 +287,87 @@ export function PanesProvider({ initialRoute, children }: PanesProviderProps): R
         setActiveId(holder.id)
         return
       }
-      const fromIndex = panes.findIndex((pane) => pane.id === from)
-      const right = panes[fromIndex + 1]
-      if (right !== undefined) {
-        right.router.navigate(route)
-        setActiveId(right.id)
+      // The pane that already sits where the split would go takes the route.
+      const at = gridLocation(columns, from)
+      const target =
+        at === null
+          ? undefined
+          : placement === 'below'
+            ? columns[at.column]!.panes[at.row + 1]
+            : paneInColumn(columns[at.column + 1], at.row)
+      if (target !== undefined) {
+        target.router.navigate(route)
+        setActiveId(target.id)
         return
       }
-      const id = `pane-${crypto.randomUUID()}`
-      handles.current.set(id, createPaneHandle(id, route))
+      const id = createPane(route)
       setActiveId(id)
-      writePanes((graphPanes) => {
-        const base = graphPanes.length === 0 ? panes.map((pane) => emptyPane(pane.id)) : graphPanes
-        // `from` can be missing when the persisted list diverged from the
-        // `stored` snapshot (queued updaters draining against the loaded
-        // document): append rather than silently inserting at the front.
-        const fromIndex = base.findIndex((pane) => pane.id === from)
-        const insertAt = fromIndex === -1 ? base.length : fromIndex + 1
-        return [...base.slice(0, insertAt), emptyPane(id), ...base.slice(insertAt)]
+      writeLayout((current) => insertPaneNextTo(current, from, placement, emptyPane(id)))
+    },
+    [holderOf, panes, columns, createPane, writeLayout],
+  )
+
+  const moveTab = useCallback(
+    (tab: OpenTab, { from, to }: { from: string; to: { paneId: string; zone: DropZone } }) => {
+      if (to.zone === 'center' && to.paneId === from) {
+        return
+      }
+      // The source's strip as persisted: which tab it falls back to, and
+      // whether it empties, are decided before the write rewrites it.
+      const source = findPane(storedRef.current, from)
+      const sourceTabs = source?.tabs ?? []
+      const movedIndex = sourceTabs.findIndex((open) => tabsEqual(open, tab))
+      const remaining = sourceTabs.filter((open) => !tabsEqual(open, tab))
+      const fallback =
+        movedIndex === -1 ? null : (remaining[movedIndex] ?? remaining[movedIndex - 1] ?? null)
+      const sourceShowedTab = source !== null && source.activeKey === tabKey(tab)
+
+      const placement: PanePlacement | null = to.zone === 'center' ? null : to.zone
+      const created = placement === null ? null : createPane(routeForOpenTab(tab))
+      const targetId = created ?? to.paneId
+      // A source stripped of its last tab closes, unless it is the only pane
+      // left or the tab never reached its persisted strip.
+      const emptiesSource = movedIndex !== -1 && remaining.length === 0 && from !== targetId
+      const sourceSurvives = !emptiesSource || panes.length <= 1
+
+      writeLayout((current) => {
+        const withTarget =
+          created === null || placement === null
+            ? current
+            : insertPaneNextTo(current, to.paneId, placement, emptyPane(created))
+        const moved = addTabTo(removeTabFrom(withTarget, from, tab), targetId, tab)
+        return emptiesSource && flatPanes(moved).length > 1 ? removePane(moved, from) : moved
+      })
+
+      if (created === null) {
+        handles.current.get(targetId)?.router.navigate(routeForOpenTab(tab))
+      }
+      if (sourceSurvives && sourceShowedTab) {
+        handles.current
+          .get(from)
+          ?.router.navigate(fallback === null ? { kind: 'today' } : routeForOpenTab(fallback))
+      }
+      setActiveId(targetId)
+    },
+    [panes, createPane, writeLayout],
+  )
+
+  const moveActiveTab = useCallback(
+    (direction: 'right' | 'down') => {
+      const source = findPane(storedRef.current, activePane.id)
+      if (source === null || source.activeKey === null) {
+        return
+      }
+      const tab = source.tabs.find((open) => tabKey(open) === source.activeKey)
+      if (tab === undefined) {
+        return
+      }
+      moveTab(tab, {
+        from: activePane.id,
+        to: { paneId: activePane.id, zone: direction === 'right' ? 'right' : 'below' },
       })
     },
-    [holderOf, panes, writePanes],
+    [activePane, moveTab],
   )
 
   const closePane = useCallback(
@@ -262,30 +375,42 @@ export function PanesProvider({ initialRoute, children }: PanesProviderProps): R
       if (panes.length <= 1) {
         return
       }
-      const index = panes.findIndex((pane) => pane.id === id)
-      if (index === -1) {
+      const at = gridLocation(columns, id)
+      if (at === null) {
         return
       }
       if (id === activePane.id) {
-        const neighbor = panes[index + 1] ?? panes[index - 1]
-        if (neighbor !== undefined) {
-          setActiveId(neighbor.id)
+        // The focus falls back down the column, then up it, then to the same
+        // row of the column that takes this one's place.
+        const column = columns[at.column]!
+        const neighbour =
+          column.panes[at.row + 1] ??
+          column.panes[at.row - 1] ??
+          paneInColumn(columns[at.column + 1] ?? columns[at.column - 1], at.row)
+        if (neighbour !== undefined) {
+          setActiveId(neighbour.id)
         }
       }
-      writePanes((graphPanes) => graphPanes.filter((pane) => pane.id !== id))
+      writeLayout((current) => removePane(current, id))
     },
-    [panes, activePane, writePanes],
+    [panes, columns, activePane, writeLayout],
   )
 
   const focusPane = useCallback(
-    (target: 'left' | 'right') => {
-      const index = panes.findIndex((pane) => pane.id === activePane.id)
-      const next = panes[target === 'left' ? index - 1 : index + 1]
+    (target: FocusDirection) => {
+      const at = gridLocation(columns, activePane.id)
+      if (at === null) {
+        return
+      }
+      const next =
+        target === 'up' || target === 'down'
+          ? columns[at.column]!.panes[target === 'down' ? at.row + 1 : at.row - 1]
+          : paneInColumn(columns[target === 'right' ? at.column + 1 : at.column - 1], at.row)
       if (next !== undefined) {
         setActiveId(next.id)
       }
     },
-    [panes, activePane],
+    [columns, activePane],
   )
 
   const registerFindActions = useCallback((id: string, actions: NoteFindActions | null) => {
@@ -297,7 +422,7 @@ export function PanesProvider({ initialRoute, children }: PanesProviderProps): R
   }, [])
 
   // The *resolved* active pane, not the raw id: `activeId` can name a pane
-  // that never reached the persisted list (a write skipped for a null graph
+  // that never reached the persisted layout (a write skipped for a null graph
   // root, a restored first pane whose id is not `main`).
   const activeIdRef = useRef(activePane.id)
   useEffect(() => {
@@ -310,10 +435,13 @@ export function PanesProvider({ initialRoute, children }: PanesProviderProps): R
 
   const value = useMemo<PanesValue>(
     () => ({
+      columns,
       panes,
       activePane,
-      setActivePane,
+      setActivePane: setActiveId,
       openInPane,
+      moveTab,
+      moveActiveTab,
       holderOf,
       closePane,
       focusPane,
@@ -321,10 +449,12 @@ export function PanesProvider({ initialRoute, children }: PanesProviderProps): R
       activeFindActions,
     }),
     [
+      columns,
       panes,
       activePane,
-      setActivePane,
       openInPane,
+      moveTab,
+      moveActiveTab,
       holderOf,
       closePane,
       focusPane,

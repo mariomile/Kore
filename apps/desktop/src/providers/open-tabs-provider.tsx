@@ -12,8 +12,8 @@ import { onChatConversationDeleted } from '@/lib/chat-events'
 import { onNoteMoved } from '@/lib/note-moves'
 import { useOptionalChatSession } from '@/providers/chat-provider'
 import { useGraph } from '@/providers/graph-provider'
-import { flatPanes } from '@/providers/pane-layout'
-import { MAIN_COLUMN_ID, useOptionalPanes, useScopedPaneId } from '@/providers/panes-provider'
+import { findPane, MAIN_COLUMN_ID } from '@/providers/pane-layout'
+import { useOptionalPanes, useScopedPaneId } from '@/providers/panes-provider'
 import {
   openTabForRoute,
   routeForOpenTab,
@@ -119,10 +119,7 @@ export function OpenTabsProvider({
   const root = graph?.root ?? null
   const stored = settings.openTabs
   const pane = useMemo(
-    () =>
-      root === null
-        ? undefined
-        : flatPanes(stored[root] ?? []).find((entry) => entry.id === paneId),
+    () => (root === null ? undefined : (findPane(stored[root] ?? [], paneId) ?? undefined)),
     [stored, root, paneId],
   )
   const tabs = useMemo(() => stripOrder(pane?.tabs ?? []), [pane])
@@ -140,7 +137,7 @@ export function OpenTabsProvider({
       }
       updateSettingsWith((current) => {
         const columns = current.openTabs[root] ?? []
-        const existing = flatPanes(columns).find((entry) => entry.id === paneId)
+        const existing = findPane(columns, paneId) ?? undefined
         const paneTabs = existing?.tabs ?? []
         const next = mutate(paneTabs)
         const nextActiveKey = activeKey ?? existing?.activeKey ?? null

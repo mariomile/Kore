@@ -46,9 +46,9 @@ export function zoneDropId(paneId: string, zone: DropZone): string {
 }
 
 // `@reflect/core` keeps its tab schema internal, so the payload is checked for
-// the one thing that makes it a tab, a `kind` discriminant, and typed from
+// the one thing that makes it a tab, its `kind` discriminant, and typed from
 // the sortable's own declaration.
-const tabShapeSchema = z.object({ kind: z.string() })
+const tabShapeSchema = z.object({ kind: z.enum(['note', 'chat', 'surface']) })
 const openTabValueSchema = z.custom<OpenTab>((value) => tabShapeSchema.safeParse(value).success)
 
 const tabDragSchema = z.object({
@@ -117,4 +117,41 @@ export function resolveTabDrop(
     return null
   }
   return { kind: 'reorder', paneId: drag.data.paneId, tab: drag.data.tab, target: target.data.tab }
+}
+
+/** What `dropTab` needs of the chat session: nothing else of it is its business. */
+export interface TabDropChat {
+  readonly activeConversationId: string | null
+  readonly openConversation: ((id: string) => Promise<void>) | undefined
+}
+
+/** What `dropTab` needs of the pane model. */
+export interface TabDropPanes {
+  moveTab(tab: OpenTab, options: { from: string; to: { paneId: string; zone: DropZone } }): void
+}
+
+/**
+ * Carry out a resolved drop. A reorder is the strip's own business (it
+ * monitors the same drag-end event), so only a move lands here. A chat tab
+ * carries a conversation id but its route does not, so the session is
+ * switched *before* the move: the target pane navigates to `{ kind: 'chat' }`
+ * and would otherwise show whichever conversation was already active.
+ */
+export function dropTab(drop: TabDrop | null, chat: TabDropChat, panes: TabDropPanes): void {
+  if (drop?.kind !== 'move') {
+    return
+  }
+  const { tab } = drop
+  if (
+    tab.kind === 'chat' &&
+    tab.conversationId !== chat.activeConversationId &&
+    chat.openConversation !== undefined
+  ) {
+    const open = chat.openConversation
+    void open(tab.conversationId).then(() => {
+      panes.moveTab(tab, { from: drop.from, to: drop.to })
+    })
+    return
+  }
+  panes.moveTab(tab, { from: drop.from, to: drop.to })
 }

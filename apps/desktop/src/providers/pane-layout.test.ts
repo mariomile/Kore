@@ -5,6 +5,7 @@ import {
   emptyPane,
   insertColumn,
   insertPane,
+  layoutIdsKey,
   locate,
   removePane,
   removeTabFrom,
@@ -77,6 +78,37 @@ describe('pane layout', () => {
     })
     const empty = removeTabFrom(withoutB, 'main', NOTE_A)
     expect(empty[0]!.panes[0]).toEqual({ id: 'main', tabs: [], activeKey: null })
+  })
+
+  it('restores a stacked layout, dropping the panes with nothing to reopen', () => {
+    // A cold restart: no handle is live yet, so only the first pane of the
+    // first column (it launches the window) and the panes with a tab to
+    // reopen survive. The second column has neither, and goes with them.
+    const stored: OpenColumn[] = [
+      {
+        id: 'main',
+        panes: [
+          { id: 'main', tabs: [], activeKey: null },
+          { id: 'under', tabs: [NOTE_B], activeKey: 'note:notes/b.md' },
+        ],
+      },
+      {
+        id: 'column-2',
+        panes: [
+          { id: 'right', tabs: [], activeKey: null },
+          { id: 'right-below', tabs: [NOTE_A], activeKey: null },
+        ],
+      },
+    ]
+    expect(layoutIdsKey(stored, () => false)).toBe('main:main,under')
+  })
+
+  it('keeps a dropped pane whose handle is already live', () => {
+    const stored: OpenColumn[] = [
+      { id: 'main', panes: [{ id: 'main', tabs: [], activeKey: null }] },
+      { id: 'column-2', panes: [{ id: 'right', tabs: [], activeKey: null }] },
+    ]
+    expect(layoutIdsKey(stored, (id) => id === 'right')).toBe('main:main|column-2:right')
   })
 
   it('leaves the active key alone when another tab was showing', () => {

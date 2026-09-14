@@ -98,8 +98,6 @@ export interface PanesValue {
 const PanesContext = createContext<PanesValue | null>(null)
 const PaneIdContext = createContext<string | null>(null)
 
-export { MAIN_COLUMN_ID, MAIN_PANE_ID, type PanePlacement } from '@/providers/pane-layout'
-
 /** Shared empty list, so "this graph has no layout yet" keeps a stable identity. */
 const NO_COLUMNS: readonly OpenColumn[] = []
 

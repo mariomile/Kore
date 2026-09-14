@@ -23,7 +23,7 @@ import {
 } from 'react'
 import { setBridge, type OpenColumn } from '@reflect/core'
 import type { CommandContext } from '@/lib/commands/types'
-import { resolveTabDrop, zoneDropId } from '@/lib/tab-drop'
+import { dropTab, resolveTabDrop, zoneDropId } from '@/lib/tab-drop'
 import { tabDropCollision } from '@/lib/tab-drop-collision'
 import { PanesProvider, usePanes } from '@/providers/panes-provider'
 import { SidebarProvider } from '@/providers/sidebar-provider'
@@ -239,18 +239,19 @@ class TestDragSensor implements SensorInstance {
 
 /** The frame's drag wiring: the same collision, resolver and pane call. */
 function DragFrame({ children }: { children: ReactNode }): ReactElement {
-  const { moveTab } = usePanes()
+  const panes = usePanes()
   const [dragging, setDragging] = useState(false)
   const sensors = useSensors(useSensor(TestDragSensor))
   const handleDragEnd = useCallback(
     (event: DragEndEvent): void => {
       setDragging(false)
-      const drop = resolveTabDrop(event.active, event.over)
-      if (drop?.kind === 'move') {
-        moveTab(drop.tab, { from: drop.from, to: drop.to })
-      }
+      dropTab(
+        resolveTabDrop(event.active, event.over),
+        { activeConversationId: null, openConversation: undefined },
+        panes,
+      )
     },
-    [moveTab],
+    [panes],
   )
   return (
     <DndContext
@@ -476,7 +477,7 @@ describe('WorkspacePane', () => {
   it('a cancelled resize drag stops following the pointer', async () => {
     settingsStore.seed(SPLIT_PANES)
     const view = await renderPanes()
-    const handle = view.getByRole('separator', { name: 'Resize pane' }).element()
+    const handle = view.getByRole('separator', { name: 'Resize columns' }).element()
     const left = view.getByTestId('workspace-column').all()[0]!.element()
 
     firePointer(handle, 'pointerdown', { pointerId: 1, isPrimary: true, clientX: 500 })
@@ -496,7 +497,7 @@ describe('WorkspacePane', () => {
   it('a cancelled vertical resize drag stops following the pointer', async () => {
     settingsStore.seed(STACKED_PANES)
     const view = await renderPanes()
-    const handle = view.getByRole('separator', { name: 'Resize pane' }).element()
+    const handle = view.getByRole('separator', { name: 'Resize rows' }).element()
     expect(handle.getAttribute('aria-orientation')).toBe('horizontal')
     const above = view.getByTestId('workspace-pane').all()[0]!.element()
 

@@ -65,7 +65,6 @@ vi.mock('@/providers/focused-daily-provider', () => ({
 // around it is under test, so one stub pane stands in for the model and the
 // per-pane providers the real pane mounts.
 vi.mock('@/providers/panes-provider', () => ({
-  MAIN_PANE_ID: 'main',
   usePanes: () => ({
     panes: [{ id: 'main' }],
     columns: [{ id: 'main', panes: [{ id: 'main' }] }],

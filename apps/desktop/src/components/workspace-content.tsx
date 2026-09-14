@@ -17,10 +17,11 @@ import { PaneDragContext } from '@/components/pane-drop-zones'
 import { PaneResizeHandle } from '@/components/pane-resize-handle'
 import { WorkspacePane } from '@/components/workspace-pane'
 import { registerInAppBrowserOpener, setBrowserSessionUrl } from '@/lib/browser-session'
-import { resolveTabDrop } from '@/lib/tab-drop'
+import { dropTab, resolveTabDrop } from '@/lib/tab-drop'
 import { tabDropCollision } from '@/lib/tab-drop-collision'
 import type { CommandContext } from '@/lib/commands/types'
 import { useMacosTrafficLightInset } from '@/lib/use-macos-traffic-light-inset'
+import { useOptionalChatSession } from '@/providers/chat-provider'
 import { useDailyContextTarget } from '@/providers/focused-daily-provider'
 import { usePanes } from '@/providers/panes-provider'
 import { useSidebar } from '@/providers/sidebar-provider'
@@ -145,7 +146,14 @@ function WorkspaceFrame({
   contextTarget,
 }: WorkspaceFrameProps): ReactElement {
   const { collapsed, contextCollapsed } = useSidebar()
-  const { columns, moveTab } = usePanes()
+  const panes = usePanes()
+  const { columns } = panes
+  // A chat tab names its conversation, its route does not: dropping one into
+  // another pane has to switch the session first, or the target shows
+  // whichever conversation was already open.
+  const chatSession = useOptionalChatSession()
+  const activeConversationId = chatSession?.activeConversationId ?? null
+  const openConversation = chatSession?.openConversation
   // One drag context for every pane: a tab pill dragged out of one strip has
   // to reach the other panes' cards, which only a context above them all
   // sees. The rails keep their own (the sidebar's shelves reorder among
@@ -163,13 +171,14 @@ function WorkspaceFrame({
   const handleDragEnd = useCallback(
     (event: DragEndEvent): void => {
       setDragging(false)
-      const drop = resolveTabDrop(event.active, event.over)
       // A reorder is the strip's own business (it monitors the same event).
-      if (drop?.kind === 'move') {
-        moveTab(drop.tab, { from: drop.from, to: drop.to })
-      }
+      dropTab(
+        resolveTabDrop(event.active, event.over),
+        { activeConversationId, openConversation },
+        panes,
+      )
     },
-    [moveTab],
+    [activeConversationId, openConversation, panes],
   )
   const dragState = useMemo(() => ({ dragging }), [dragging])
 

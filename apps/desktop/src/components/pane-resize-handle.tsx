@@ -1,4 +1,5 @@
 import type { PointerEvent as ReactPointerEvent, ReactElement } from 'react'
+import { cn } from '@/lib/utils'
 
 interface PaneResizeHandleProps {
   /** `columns` divides two columns side by side, `rows` two panes stacked. */
@@ -51,13 +52,14 @@ export function PaneResizeHandle({ axis }: PaneResizeHandleProps): ReactElement 
     <div
       role="separator"
       aria-orientation={rows ? 'horizontal' : 'vertical'}
-      aria-label="Resize pane"
+      aria-label={rows ? 'Resize rows' : 'Resize columns'}
       onPointerDown={onPointerDown}
-      className={
+      className={cn(
+        'relative shrink-0 touch-none after:absolute after:bg-border-strong after:opacity-0 hover:after:opacity-60',
         rows
-          ? 'relative h-2 shrink-0 cursor-row-resize touch-none after:absolute after:inset-x-0 after:h-0.5 after:bg-border-strong after:opacity-0 hover:after:opacity-60'
-          : 'relative w-2 shrink-0 cursor-col-resize touch-none after:absolute after:inset-y-0 after:w-0.5 after:bg-border-strong after:opacity-0 hover:after:opacity-60'
-      }
+          ? 'h-2 cursor-row-resize after:inset-x-0 after:h-0.5'
+          : 'w-2 cursor-col-resize after:inset-y-0 after:w-0.5',
+      )}
     />
   )
 }

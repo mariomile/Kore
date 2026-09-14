@@ -4,7 +4,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { OpenColumn, OpenTab } from '@reflect/core'
 import { emitNoteMoved } from '@/lib/note-moves'
 import type { NoteFindActions } from '@/providers/note-find-provider'
-import { PanesProvider, usePanes } from './panes-provider'
+import type { Route } from '@/routing/route'
+import { PanesProvider, usePanes, type PanesValue } from './panes-provider'
 
 const GRAPH_ROOT = '/graph'
 
@@ -99,6 +100,21 @@ function seedPaneTabs(paneId: string, tabs: OpenTab[], activeKey: string | null)
   }))
 }
 
+/** A whole persisted layout, written before the provider ever renders. */
+function seedLayout(columns: OpenColumn[]): void {
+  settingsStore.update((current) => ({
+    openTabs: { ...current.openTabs, [GRAPH_ROOT]: columns },
+  }))
+}
+
+function noteTab(path: string): OpenTab {
+  return { kind: 'note', path, pinned: false }
+}
+
+function routeOf(panes: PanesValue, paneId: string): Route | undefined {
+  return panes.panes.find((pane) => pane.id === paneId)?.router.getSnapshot().route
+}
+
 function storedPane(paneId: string) {
   return (settingsStore.get().openTabs[GRAPH_ROOT] ?? [])
     .flatMap((column) => column.panes)
@@ -115,6 +131,40 @@ describe('PanesProvider', () => {
     expect(result.current.panes).toHaveLength(1)
     expect(result.current.columns).toHaveLength(1)
     expect(result.current.activePane.router.getSnapshot().route).toEqual({ kind: 'today' })
+  })
+
+  it('restores a stacked 2x2 layout, each pane on its own last tab', async () => {
+    // A cold start on a persisted grid: the first pane of the first column
+    // launches the window (today), every other pane reopens the tab it was
+    // showing.
+    seedLayout([
+      {
+        id: 'main',
+        panes: [
+          { id: 'main', tabs: [noteTab('notes/a.md')], activeKey: 'note:notes/a.md' },
+          { id: 'under', tabs: [noteTab('notes/b.md')], activeKey: 'note:notes/b.md' },
+        ],
+      },
+      {
+        id: 'column-2',
+        panes: [
+          { id: 'right', tabs: [noteTab('notes/c.md')], activeKey: 'note:notes/c.md' },
+          { id: 'right-below', tabs: [noteTab('notes/d.md')], activeKey: 'note:notes/d.md' },
+        ],
+      },
+    ])
+
+    const { result } = await renderHook(usePanes, { wrapper })
+
+    expect(result.current.columns.map((column) => column.id)).toEqual(['main', 'column-2'])
+    expect(result.current.columns.map((column) => column.panes.map((pane) => pane.id))).toEqual([
+      ['main', 'under'],
+      ['right', 'right-below'],
+    ])
+    expect(routeOf(result.current, 'main')).toEqual({ kind: 'today' })
+    expect(routeOf(result.current, 'under')).toEqual({ kind: 'note', path: 'notes/b.md' })
+    expect(routeOf(result.current, 'right')).toEqual({ kind: 'note', path: 'notes/c.md' })
+    expect(routeOf(result.current, 'right-below')).toEqual({ kind: 'note', path: 'notes/d.md' })
   })
 
   it('opens in a new pane to the right, then reuses it', async () => {

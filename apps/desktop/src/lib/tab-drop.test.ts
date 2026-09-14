@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import type { OpenTab } from '@reflect/core'
-import { resolveTabDrop, zoneDropId, type TabDragData, type ZoneDropData } from '@/lib/tab-drop'
+import {
+  dropTab,
+  resolveTabDrop,
+  zoneDropId,
+  type TabDragData,
+  type TabDrop,
+  type TabDropPanes,
+  type ZoneDropData,
+} from '@/lib/tab-drop'
 
 /**
  * The pure half of dragging a tab between panes: what a drag-end event means.
@@ -105,6 +113,15 @@ describe('resolveTabDrop', () => {
     expect(resolveTabDrop(held(tabData('main', alpha)), held('sidebar-item'))).toBeNull()
   })
 
+  it('ignores a tab payload whose kind is not one of ours', () => {
+    expect(
+      resolveTabDrop(
+        held({ kind: 'tab', paneId: 'main', tab: { kind: 'sidebar-shelf', path: 'notes/a.md' } }),
+        held(tabData('pane-2', beta)),
+      ),
+    ).toBeNull()
+  })
+
   it('ignores a tab payload whose tab is not a tab', () => {
     expect(
       resolveTabDrop(
@@ -112,5 +129,85 @@ describe('resolveTabDrop', () => {
         held(tabData('p', beta)),
       ),
     ).toBeNull()
+  })
+})
+
+describe('dropTab', () => {
+  const chatTab: OpenTab = { kind: 'chat', conversationId: 'conversation-2', pinned: false }
+
+  function fakePanes(): { moved: unknown[]; moveTab: TabDropPanes['moveTab'] } {
+    const moved: unknown[] = []
+    return {
+      moved,
+      moveTab(tab, options) {
+        moved.push({ tab, ...options })
+      },
+    }
+  }
+
+  function moveOf(tab: OpenTab): TabDrop {
+    return { kind: 'move', tab, from: 'main', to: { paneId: 'pane-2', zone: 'center' } }
+  }
+
+  it('does nothing for a reorder or for no drop at all', () => {
+    const panes = fakePanes()
+    dropTab(null, { activeConversationId: null, openConversation: undefined }, panes)
+    dropTab(
+      { kind: 'reorder', paneId: 'main', tab: alpha, target: beta },
+      { activeConversationId: null, openConversation: undefined },
+      panes,
+    )
+    expect(panes.moved).toEqual([])
+  })
+
+  it('moves a note tab straight away', () => {
+    const panes = fakePanes()
+    dropTab(moveOf(alpha), { activeConversationId: null, openConversation: undefined }, panes)
+    expect(panes.moved).toEqual([
+      { tab: alpha, from: 'main', to: { paneId: 'pane-2', zone: 'center' } },
+    ])
+  })
+
+  it('opens the conversation before moving a chat tab that is not the active one', async () => {
+    const panes = fakePanes()
+    const opened: string[] = []
+    dropTab(
+      moveOf(chatTab),
+      {
+        activeConversationId: 'conversation-1',
+        openConversation: (id) => {
+          opened.push(id)
+          return Promise.resolve()
+        },
+      },
+      panes,
+    )
+    expect(opened).toEqual(['conversation-2'])
+    // The move waits for the session switch: the target pane navigates to
+    // `{ kind: 'chat' }`, which names no conversation of its own.
+    expect(panes.moved).toEqual([])
+    await Promise.resolve()
+    expect(panes.moved).toEqual([
+      { tab: chatTab, from: 'main', to: { paneId: 'pane-2', zone: 'center' } },
+    ])
+  })
+
+  it('moves a chat tab of the active conversation without reopening it', () => {
+    const panes = fakePanes()
+    dropTab(
+      moveOf(chatTab),
+      {
+        activeConversationId: 'conversation-2',
+        openConversation: () => Promise.reject(new Error('must not reopen')),
+      },
+      panes,
+    )
+    expect(panes.moved).toHaveLength(1)
+  })
+
+  it('moves a chat tab when no chat session is mounted', () => {
+    const panes = fakePanes()
+    dropTab(moveOf(chatTab), { activeConversationId: null, openConversation: undefined }, panes)
+    expect(panes.moved).toHaveLength(1)
   })
 })

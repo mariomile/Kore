@@ -127,6 +127,14 @@ export function PanesProvider({ initialRoute, children }: PanesProviderProps): R
   // `panes` is never empty by construction (the memo synthesizes `main`).
   const [activeId, setActiveId] = useState<string>(() => panes[0]!.id)
   const activePane = panes.find((pane) => pane.id === activeId) ?? panes[0]!
+  // Correct a ghost active id (its pane never made it into the list: a write
+  // skipped for a null graph root, a restored first pane whose id is not
+  // `main`) while rendering, so the stored id and the resolved pane cannot
+  // drift apart. Every reader already goes through `activePane`; this only
+  // keeps the state itself honest.
+  if (activeId !== activePane.id) {
+    setActiveId(activePane.id)
+  }
 
   // Connect the live panes' routers to note moves, and drop the handles whose
   // pane entry disappeared from settings. The cleanup unsubscribes everything
@@ -177,11 +185,16 @@ export function PanesProvider({ initialRoute, children }: PanesProviderProps): R
     (route: Route, { from }: { from: string }) => {
       const tab = openTabForRoute(route)
       if (tab !== null) {
-        const holder = stored.find((pane) => pane.tabs.some((open) => tabsEqual(open, tab)))
-        const holderHandle = holder === undefined ? undefined : handles.current.get(holder.id)
-        if (holderHandle !== undefined) {
-          holderHandle.router.navigate(route)
-          setActiveId(holderHandle.id)
+        // Only rendered panes can hold a tab: a persisted pane the restore
+        // filter dropped must not win the lookup, or the key would end up in
+        // two persisted panes at once.
+        const openTabsById = new Map(stored.map((pane) => [pane.id, pane.tabs]))
+        const holder = panes.find((pane) =>
+          (openTabsById.get(pane.id) ?? []).some((open) => tabsEqual(open, tab)),
+        )
+        if (holder !== undefined) {
+          holder.router.navigate(route)
+          setActiveId(holder.id)
           return
         }
       }
@@ -197,7 +210,11 @@ export function PanesProvider({ initialRoute, children }: PanesProviderProps): R
       setActiveId(id)
       writePanes((graphPanes) => {
         const base = graphPanes.length === 0 ? panes.map((pane) => emptyPane(pane.id)) : graphPanes
-        const insertAt = base.findIndex((pane) => pane.id === from) + 1
+        // `from` can be missing when the persisted list diverged from the
+        // `stored` snapshot (queued updaters draining against the loaded
+        // document): append rather than silently inserting at the front.
+        const fromIndex = base.findIndex((pane) => pane.id === from)
+        const insertAt = fromIndex === -1 ? base.length : fromIndex + 1
         return [...base.slice(0, insertAt), emptyPane(id), ...base.slice(insertAt)]
       })
     },
@@ -213,7 +230,7 @@ export function PanesProvider({ initialRoute, children }: PanesProviderProps): R
       if (index === -1) {
         return
       }
-      if (id === activeId) {
+      if (id === activePane.id) {
         const neighbor = panes[index + 1] ?? panes[index - 1]
         if (neighbor !== undefined) {
           setActiveId(neighbor.id)
@@ -221,18 +238,18 @@ export function PanesProvider({ initialRoute, children }: PanesProviderProps): R
       }
       writePanes((graphPanes) => graphPanes.filter((pane) => pane.id !== id))
     },
-    [panes, activeId, writePanes],
+    [panes, activePane, writePanes],
   )
 
   const focusPane = useCallback(
     (target: 'left' | 'right') => {
-      const index = panes.findIndex((pane) => pane.id === activeId)
+      const index = panes.findIndex((pane) => pane.id === activePane.id)
       const next = panes[target === 'left' ? index - 1 : index + 1]
       if (next !== undefined) {
         setActiveId(next.id)
       }
     },
-    [panes, activeId],
+    [panes, activePane],
   )
 
   const registerFindActions = useCallback((id: string, actions: NoteFindActions | null) => {
@@ -243,9 +260,12 @@ export function PanesProvider({ initialRoute, children }: PanesProviderProps): R
     }
   }, [])
 
-  const activeIdRef = useRef(activeId)
+  // The *resolved* active pane, not the raw id: `activeId` can name a pane
+  // that never reached the persisted list (a write skipped for a null graph
+  // root, a restored first pane whose id is not `main`).
+  const activeIdRef = useRef(activePane.id)
   useEffect(() => {
-    activeIdRef.current = activeId
+    activeIdRef.current = activePane.id
   })
   const activeFindActions = useCallback(
     () => findActions.current.get(activeIdRef.current) ?? null,

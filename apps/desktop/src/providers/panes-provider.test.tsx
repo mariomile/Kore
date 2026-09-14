@@ -1,7 +1,9 @@
-import { useSyncExternalStore, type ReactNode } from 'react'
+import { StrictMode, useSyncExternalStore, type ReactNode } from 'react'
 import { renderHook } from 'vitest-browser-react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { OpenPane } from '@reflect/core'
+import { emitNoteMoved } from '@/lib/note-moves'
+import type { NoteFindActions } from '@/providers/note-find-provider'
 import { PanesProvider, usePanes } from './panes-provider'
 
 const GRAPH_ROOT = '/graph'
@@ -55,6 +57,23 @@ vi.mock('@/providers/graph-provider', () => ({
 
 function wrapper({ children }: { children: ReactNode }) {
   return <PanesProvider>{children}</PanesProvider>
+}
+
+function strictWrapper({ children }: { children: ReactNode }) {
+  return (
+    <StrictMode>
+      <PanesProvider>{children}</PanesProvider>
+    </StrictMode>
+  )
+}
+
+function stubFindActions(): NoteFindActions {
+  return {
+    openForPath: () => true,
+    next: () => {},
+    previous: () => {},
+    close: () => {},
+  }
 }
 
 afterEach(() => {
@@ -135,5 +154,67 @@ describe('PanesProvider', () => {
     expect(result.current.panes.map((pane) => pane.id)).toEqual([first])
     await act(() => result.current.closePane(first))
     expect(result.current.panes).toHaveLength(1)
+  })
+
+  it('follows a note move once per pane, even under StrictMode', async () => {
+    const { result, act } = await renderHook(usePanes, { wrapper: strictWrapper })
+    const first = result.current.activePane.id
+    await act(() =>
+      result.current.openInPane({ kind: 'note', path: 'notes/x.md' }, { from: first }),
+    )
+    const moved = result.current.activePane
+    expect(moved.id).not.toBe(first)
+    const before = moved.router.navigationRevision()
+
+    await act(() => {
+      emitNoteMoved('notes/x.md', 'notes/y.md')
+    })
+
+    expect(moved.router.getSnapshot().route).toEqual({ kind: 'note', path: 'notes/y.md' })
+    // A double subscription would advance the revision twice.
+    expect(moved.router.navigationRevision()).toBe(before + 1)
+  })
+
+  it('walks the active pane left and right', async () => {
+    const { result, act } = await renderHook(usePanes, { wrapper })
+    const first = result.current.activePane.id
+    await act(() =>
+      result.current.openInPane({ kind: 'note', path: 'notes/a.md' }, { from: first }),
+    )
+    const second = result.current.activePane.id
+
+    await act(() => result.current.focusPane('left'))
+    expect(result.current.activePane.id).toBe(first)
+    await act(() => result.current.focusPane('left'))
+    expect(result.current.activePane.id).toBe(first)
+
+    await act(() => result.current.focusPane('right'))
+    expect(result.current.activePane.id).toBe(second)
+    await act(() => result.current.focusPane('right'))
+    expect(result.current.activePane.id).toBe(second)
+  })
+
+  it('hands window-level Find to the active pane', async () => {
+    const { result, act } = await renderHook(usePanes, { wrapper })
+    const first = result.current.activePane.id
+    const firstActions = stubFindActions()
+    const secondActions = stubFindActions()
+
+    expect(result.current.activeFindActions()).toBeNull()
+    await act(() => result.current.registerFindActions(first, firstActions))
+    expect(result.current.activeFindActions()).toBe(firstActions)
+
+    await act(() =>
+      result.current.openInPane({ kind: 'note', path: 'notes/a.md' }, { from: first }),
+    )
+    const second = result.current.activePane.id
+    await act(() => result.current.registerFindActions(second, secondActions))
+    expect(result.current.activeFindActions()).toBe(secondActions)
+
+    await act(() => result.current.registerFindActions(second, null))
+    expect(result.current.activeFindActions()).toBeNull()
+
+    await act(() => result.current.setActivePane(first))
+    expect(result.current.activeFindActions()).toBe(firstActions)
   })
 })

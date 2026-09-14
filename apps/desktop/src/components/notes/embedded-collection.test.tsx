@@ -6,6 +6,18 @@ import type { CollectionEntry, TagType } from '@reflect/core'
 import { EmbeddedCollection } from './embedded-collection'
 
 const useReusableCollection = vi.hoisted(() => vi.fn())
+const writes = vi.hoisted(() => ({
+  addReusableCollectionMember: vi.fn().mockResolvedValue(undefined),
+  createReusableCollectionRow: vi.fn().mockResolvedValue('notes/new-note.md'),
+  removeReusableCollectionMember: vi.fn(),
+}))
+const navigateNoteLink = vi.hoisted(() => vi.fn())
+const showToast = vi.hoisted(() => vi.fn())
+vi.mock('@/lib/tags/reusable-collection-write', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/tags/reusable-collection-write')>()),
+  ...writes,
+}))
+vi.mock('@/components/ui/toast', () => ({ toast: { add: showToast } }))
 vi.mock('@/hooks/use-reusable-collection', () => ({ useReusableCollection }))
 
 /** The widget reads the query client for its schema edits; the rest is mocked. */
@@ -67,7 +79,10 @@ useReusableCollection.mockReturnValue({
     })),
   },
   diagnostics: [],
-  notes: ENTRIES.map((entry) => ({ ...entry, snippet: '', tags: ['book'] })),
+  notes: [
+    ...ENTRIES.map((entry) => ({ ...entry, snippet: '', tags: ['book'] })),
+    { path: 'notes/trip.md', title: 'Trip', snippet: '', tags: [], mtime: 3, isPinned: false },
+  ],
 })
 
 vi.mock('@/hooks/use-tag-type', async (importOriginal) => ({
@@ -79,7 +94,7 @@ vi.mock('@/hooks/use-collection', async (importOriginal) => ({
   useCollection: () => ENTRIES,
 }))
 vi.mock('@/hooks/use-note-link-navigation', () => ({
-  useNoteLinkNavigation: () => vi.fn(),
+  useNoteLinkNavigation: () => navigateNoteLink,
 }))
 vi.mock('@/routing/router', () => ({
   useRouter: () => ({ navigate: vi.fn() }),
@@ -141,6 +156,61 @@ describe('EmbeddedCollection', () => {
     expect(onChange).toHaveBeenCalledWith({ ...embed, view: 'board', group: 'author' })
   })
 
+  it('adds existing notes and creates notes from the grid without a creation dialog', async () => {
+    const view = await render(
+      <EmbeddedCollection
+        embed={{
+          selection: { kind: 'definition', reference: '01COLLECTION' },
+          view: 'grid',
+          sorts: [],
+          group: null,
+          filters: [],
+          match: 'all',
+        }}
+      />,
+    )
+    await view.getByRole('button', { name: 'Add existing notes' }).click()
+    await view.getByRole('button', { name: 'Trip', exact: true }).click()
+    expect(writes.addReusableCollectionMember).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Library' }),
+      'notes/trip.md',
+      1,
+    )
+    await view.getByRole('button', { name: 'New note', exact: true }).click()
+    await expect.poll(() => navigateNoteLink.mock.calls.length).toBeGreaterThan(0)
+    expect(writes.createReusableCollectionRow).toHaveBeenCalledWith(
+      expect.objectContaining({ generation: 1, properties: {} }),
+    )
+    expect(view.getByRole('dialog').query()).toBeNull()
+  })
+
+  it('allows retrying note creation when the write fails', async () => {
+    writes.createReusableCollectionRow.mockRejectedValueOnce(new Error('Disk unavailable'))
+    const view = await render(
+      <EmbeddedCollection
+        embed={{
+          selection: { kind: 'definition', reference: '01COLLECTION' },
+          view: 'grid',
+          sorts: [],
+          group: null,
+          filters: [],
+          match: 'all',
+        }}
+      />,
+    )
+    await view.getByRole('button', { name: 'New note', exact: true }).click()
+    await expect.poll(() => showToast.mock.calls.length).toBeGreaterThan(0)
+    expect(showToast).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Couldn't create the note" }),
+    )
+    await expect.element(view.getByRole('button', { name: 'New note', exact: true })).toBeEnabled()
+    const callsBeforeRetry = writes.createReusableCollectionRow.mock.calls.length
+    await view.getByRole('button', { name: 'New note', exact: true }).click()
+    await expect
+      .poll(() => writes.createReusableCollectionRow.mock.calls.length)
+      .toBe(callsBeforeRetry + 1)
+  })
+
   it('shows an unresolved named reference instead of an empty collection', async () => {
     useReusableCollection.mockReturnValueOnce({
       status: 'unresolved',
@@ -159,7 +229,7 @@ describe('EmbeddedCollection', () => {
       />,
     )
 
-    await expect.element(view.getByText(/could not be resolved/)).toBeInTheDocument()
+    await expect.element(view.getByText(/could not be found/)).toBeInTheDocument()
   })
 
   it('applies the fence’s filter lines to the rows it shows', async () => {

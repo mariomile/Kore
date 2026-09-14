@@ -14,6 +14,8 @@ import { Check, LayoutGrid, List, Sliders } from '@/components/icons'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { TagConfigDialog } from '@/components/tags/tag-config-dialog'
 import { toast } from '@/components/ui/toast'
+import { Button } from '@/components/ui/button'
+import { CreateCollectionForm } from '@/components/notes/create-collection-form'
 import { cn } from '@/lib/utils'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { useCollection } from '@/hooks/use-collection'
@@ -128,6 +130,7 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
   } = useCollectionViewSettings(tagKey, collectionAvailable ? tagType : null)
   // The schema dialog, opened from the header gear or a column's menu.
   const [editingSchema, setEditingSchema] = useState(false)
+  const [creatingCollection, setCreatingCollection] = useState(false)
   const queryClient = useQueryClient()
   const resolveTemplateValues = useTemplateValues()
   // The one-gesture schema edits (the header's "+", a column's Delete): the
@@ -414,9 +417,29 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
               ))}
             </div>
             <NewNoteButton tag={tag} />
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={graph === null}
+              onClick={() => setCreatingCollection(true)}
+            >
+              New collection
+            </Button>
           </div>
         ) : null}
       </header>
+      {creatingCollection && tag === null ? (
+        <div className="flex-none pl-12 pr-7">
+          <CreateCollectionForm
+            onCancel={() => setCreatingCollection(false)}
+            onCreated={(definition) => {
+              setCreatingCollection(false)
+              navigate({ kind: 'note', path: definition.path })
+            }}
+          />
+        </div>
+      ) : null}
       <TagPageDescription tag={tag} />
       {collectionAvailable && tag !== null ? (
         <div className="flex flex-none flex-wrap items-center justify-between gap-3 pb-3 pl-12 pr-7">

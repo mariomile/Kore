@@ -1,6 +1,6 @@
 import { memo, useCallback, useMemo, useRef, useState, type ReactElement } from 'react'
 import type { ExitBoundaryHandler, SearchStatus } from '@meowdown/core'
-import type { CodeBlockRenderer, SelectionJSON } from '@meowdown/react'
+import type { CodeBlockRenderer } from '@meowdown/react'
 import {
   detectConflictMarkers,
   formatCollectionEmbedBody,
@@ -43,7 +43,7 @@ import { insertCollectionEmbed, useCollectionSlashItems } from '@/editor/use-col
 import { useEmbedSlashItems } from '@/editor/use-embed-slash-items'
 import { useTemplateSlashItems } from '@/editor/use-template-slash-items'
 import { EmbeddedCollection } from '@/components/notes/embedded-collection'
-import { CollectionDefinitionDialog } from '@/components/notes/collection-definition-dialog'
+import { CreateCollectionForm } from '@/components/notes/create-collection-form'
 import { EmbeddedMedia } from '@/components/notes/embedded-media'
 import { EmbeddedNote } from '@/components/notes/embedded-note'
 import { NoteAppearance } from '@/components/notes/note-appearance'
@@ -221,29 +221,26 @@ export function NotePaneComponent({
   // through the registry ref at select time (a late resolve after the pane
   // unmounted must insert nowhere rather than somewhere stale).
   const getEditor = useCallback(() => registeredHandle.current?.handle ?? null, [])
-  const [creatingCollection, setCreatingCollection] = useState(false)
-  const collectionInsertionSelection = useRef<SelectionJSON | null>(null)
+  const [creatingCollection, setCreatingCollection] = useState<string | null>(null)
+  const collectionInsertionEditor = useRef<NoteEditorHandle | null>(null)
   const openCreateCollection = useCallback(() => {
     const editor = getEditor()
     if (editor === null) {
       return
     }
-    collectionInsertionSelection.current = editor.getSelection?.() ?? null
-    setCreatingCollection(true)
-  }, [getEditor])
+    collectionInsertionEditor.current = editor
+    setCreatingCollection(path)
+  }, [getEditor, path])
   const closeCreateCollection = useCallback(() => {
-    collectionInsertionSelection.current = null
-    setCreatingCollection(false)
-  }, [])
+    collectionInsertionEditor.current = null
+    setCreatingCollection(null)
+    getEditor()?.focus()
+  }, [getEditor])
   const handleCollectionCreated = useCallback(
     (definition: CollectionDefinition) => {
       const editor = getEditor()
-      if (editor === null) {
+      if (editor === null || editor !== collectionInsertionEditor.current) {
         return
-      }
-      const selection = collectionInsertionSelection.current
-      if (selection !== null) {
-        editor.setSelection(selection)
       }
       insertCollectionEmbed(editor, {
         selection: {
@@ -256,13 +253,10 @@ export function NotePaneComponent({
         filters: [],
         match: 'all',
       })
+      closeCreateCollection()
     },
-    [getEditor],
+    [getEditor, closeCreateCollection],
   )
-  const focusEditorAfterCollectionDialog = useCallback(() => {
-    getEditor()?.focus()
-    return false
-  }, [getEditor])
   const templateSlashItems = useTemplateSlashItems(getEditor, path)
   const collectionSlashItems = useCollectionSlashItems(getEditor, openCreateCollection)
   const calloutSlashItems = useCalloutSlashItems(getEditor)
@@ -325,7 +319,7 @@ export function NotePaneComponent({
       if (dailyDate !== undefined) {
         registerHandle?.(dailyDate, handle)
       }
-      if (handle && autoFocus && collectionInsertionSelection.current === null) {
+      if (handle && autoFocus && collectionInsertionEditor.current === null) {
         // By default the caret lands at the document start — for a seeded
         // new note that is the empty H1, so typing names the note. An `end`
         // selection moves it (and the scroll) to the note's content end.
@@ -488,6 +482,15 @@ export function NotePaneComponent({
         gutterClassName={gutterClassName}
       />
 
+      {creatingCollection === path ? (
+        <div className={gutterClassName}>
+          <CreateCollectionForm
+            onCancel={closeCreateCollection}
+            onCreated={handleCollectionCreated}
+          />
+        </div>
+      ) : null}
+
       <NoteEditor
         // Keyed on the session, not the path: a rename retargets the live
         // session under a new filename (Plan 17), and remounting the editor
@@ -566,14 +569,6 @@ export function NotePaneComponent({
           void convertLineToNote()
         }}
       />
-
-      {creatingCollection ? (
-        <CollectionDefinitionDialog
-          onClose={closeCreateCollection}
-          onRestoreFocus={focusEditorAfterCollectionDialog}
-          onSaved={handleCollectionCreated}
-        />
-      ) : null}
 
       {mediaEmbeds.length > 0 ? (
         <div className={gutterClassName}>

@@ -325,7 +325,7 @@ function EmbeddedReusableCollection({ embed, onChange }: EmbeddedCollectionProps
         : state.status === 'ambiguous'
           ? `Collection reference “${state.reference}” is ambiguous: ${state.candidates.join(', ')}`
           : state.status === 'unresolved'
-            ? `Collection “${state.reference}” could not be resolved.`
+            ? `Collection “${state.reference}” could not be found.`
             : `Couldn’t load this collection: ${state.message}`
     return (
       <section
@@ -444,55 +444,59 @@ function EmbeddedReusableCollection({ embed, onChange }: EmbeddedCollectionProps
             ))}
           </SelectContent>
         </Select>
-        <Select
-          value={view === 'board' ? (boardProperty?.key ?? '__none') : (embed.group ?? '__none')}
-          items={Object.fromEntries([
-            ...(view === 'board' ? [] : [['__none', 'No grouping']]),
-            ...groupable.map((property) => [property.key, property.name]),
-          ])}
-          onValueChange={(next) => {
-            if (typeof next === 'string') {
-              onChange?.({ ...embed, group: next === '__none' ? null : next })
-            }
-          }}
-        >
-          <SelectTrigger aria-label="Group collection" size="sm">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {view === 'board' ? null : <SelectItem value="__none">No grouping</SelectItem>}
-            {groupable.map((property) => (
-              <SelectItem key={property.key} value={property.key}>
-                {property.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            aria-label="Collection columns"
-            className="app-icon-button text-text-muted hover:text-text"
+        {groupable.length > 0 ? (
+          <Select
+            value={view === 'board' ? (boardProperty?.key ?? '__none') : (embed.group ?? '__none')}
+            items={Object.fromEntries([
+              ...(view === 'board' ? [] : [['__none', 'No grouping']]),
+              ...groupable.map((property) => [property.key, property.name]),
+            ])}
+            onValueChange={(next) => {
+              if (typeof next === 'string') {
+                onChange?.({ ...embed, group: next === '__none' ? null : next })
+              }
+            }}
           >
-            <Sliders aria-hidden className="size-3.5" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuLabel>Columns</DropdownMenuLabel>
-            {state.schema.type.properties.map((property) => (
-              <DropdownMenuCheckboxItem
-                key={property.key}
-                checked={!hidden.has(property.key)}
-                onCheckedChange={(checked) => {
-                  const nextHidden = new Set(hidden)
-                  if (checked) nextHidden.delete(property.key)
-                  else nextHidden.add(property.key)
-                  onChange?.({ ...embed, hidden: [...nextHidden] })
-                }}
-              >
-                {property.name}
-              </DropdownMenuCheckboxItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+            <SelectTrigger aria-label="Group collection" size="sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {view === 'board' ? null : <SelectItem value="__none">No grouping</SelectItem>}
+              {groupable.map((property) => (
+                <SelectItem key={property.key} value={property.key}>
+                  {property.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : null}
+        {fullType.properties.length > 0 ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              aria-label="Collection columns"
+              className="app-icon-button text-text-muted hover:text-text"
+            >
+              <Sliders aria-hidden className="size-3.5" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuLabel>Columns</DropdownMenuLabel>
+              {state.schema.type.properties.map((property) => (
+                <DropdownMenuCheckboxItem
+                  key={property.key}
+                  checked={!hidden.has(property.key)}
+                  onCheckedChange={(checked) => {
+                    const nextHidden = new Set(hidden)
+                    if (checked) nextHidden.delete(property.key)
+                    else nextHidden.add(property.key)
+                    onChange?.({ ...embed, hidden: [...nextHidden] })
+                  }}
+                >
+                  {property.name}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null}
         <button
           type="button"
           aria-label="Configure collection"
@@ -508,33 +512,39 @@ function EmbeddedReusableCollection({ embed, onChange }: EmbeddedCollectionProps
           view === 'table' && 'min-h-52',
         )}
       >
-        {view === 'table' ? (
-          <ReusableCollectionActions
-            notes={state.notes}
-            memberPaths={new Set(state.rows.map((entry) => entry.path))}
-            selectedPaths={[...selection.selected]}
-            onAdd={async (path) => {
-              if (graph === null) return
-              await addReusableCollectionMember(state.definition, path, graph.generation)
-              await refresh()
-            }}
-            onRemove={async (paths) => {
-              if (graph === null) return
-              for (const path of paths) {
-                await removeReusableCollectionMember(state.definition, path, graph.generation)
-              }
-              await refresh()
-            }}
-            onDone={selection.clear}
-          />
-        ) : null}
+        <ReusableCollectionActions
+          notes={state.notes.filter((note) => note.path !== state.definition.path)}
+          memberPaths={new Set(state.rows.map((entry) => entry.path))}
+          selectedPaths={view === 'table' ? [...selection.selected] : []}
+          onAdd={async (path) => {
+            if (graph === null) return
+            await addReusableCollectionMember(state.definition, path, graph.generation)
+            await refresh()
+          }}
+          onRemove={async (paths) => {
+            if (graph === null) return
+            for (const path of paths) {
+              await removeReusableCollectionMember(state.definition, path, graph.generation)
+            }
+            await refresh()
+          }}
+          onDone={selection.clear}
+          onCreate={
+            view === 'table'
+              ? undefined
+              : async () => {
+                  const path = await createRow()
+                  if (path !== null) openNote(path)
+                }
+          }
+        />
         {view === 'board' && boardProperty === null ? (
           <p className="px-3 py-6 text-sm text-text-muted">
-            Board view needs a compatible editable property for grouping.
+            To use Board view, add a supertag with a property to group these notes.
           </p>
         ) : view === 'calendar' && dateProperty === null ? (
           <p className="px-3 py-6 text-sm text-text-muted">
-            Calendar view needs a compatible date property.
+            To use Calendar view, add a supertag with a date property.
           </p>
         ) : view === 'grid' ? (
           <AllNotesGrid
@@ -565,6 +575,7 @@ function EmbeddedReusableCollection({ embed, onChange }: EmbeddedCollectionProps
         ) : (
           <CollectionTable
             entries={entries}
+            emptyMessage="No notes yet. Add an existing note or create one below."
             tag={state.definition.title}
             type={visibleType}
             editableKeys={editableKeys}

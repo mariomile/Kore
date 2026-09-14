@@ -13,10 +13,11 @@ export interface ReusableCollectionActionsProps {
   selectedPaths: readonly string[]
   onAdd: (path: string) => Promise<void>
   onRemove: (paths: readonly string[]) => Promise<void>
+  onCreate?: (() => Promise<void>) | undefined
   onDone: () => void
 }
 
-/** Membership and loose-property actions for a reusable collection table. */
+/** Membership actions for every reusable collection view, plus selected-row edits. */
 export function ReusableCollectionActions({
   notes,
   memberPaths,
@@ -24,8 +25,10 @@ export function ReusableCollectionActions({
   onAdd,
   onRemove,
   onDone,
+  onCreate,
 }: ReusableCollectionActionsProps): ReactElement {
   const [removing, setRemoving] = useState(false)
+  const [creating, setCreating] = useState(false)
   const commitProperties = useCommitNoteProperties()
 
   const remove = async (): Promise<void> => {
@@ -40,15 +43,14 @@ export function ReusableCollectionActions({
         title: "Couldn't remove the notes",
         description: errorMessage(cause),
       })
+    } finally {
       setRemoving(false)
     }
   }
 
   return (
     <div className="flex min-h-9 items-center justify-between gap-2 border-b border-border px-3 py-1.5">
-      {selectedPaths.length === 0 ? (
-        <span className="text-xs text-text-muted">Select rows to edit note properties.</span>
-      ) : (
+      {selectedPaths.length > 0 ? (
         <div className="flex items-center gap-2">
           <span className="text-xs font-medium text-text-secondary">
             {selectedPaths.length} selected
@@ -69,8 +71,29 @@ export function ReusableCollectionActions({
             Remove from collection
           </Button>
         </div>
-      )}
-      <AddNotePopover notes={notes} memberPaths={memberPaths} onAdd={onAdd} />
+      ) : null}
+      <div className="ml-auto flex items-center gap-2">
+        <AddNotePopover notes={notes} memberPaths={memberPaths} onAdd={onAdd} />
+        {onCreate ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            disabled={creating}
+            onClick={async () => {
+              setCreating(true)
+              try {
+                await onCreate()
+              } finally {
+                setCreating(false)
+              }
+            }}
+          >
+            <Plus className="size-3.5" />
+            {creating ? 'Creating…' : 'New note'}
+          </Button>
+        ) : null}
+      </div>
     </div>
   )
 }
@@ -99,9 +122,7 @@ function SetPropertyPopover({
       </PopoverTrigger>
       <PopoverContent align="start">
         <form className="space-y-2" onSubmit={submit}>
-          <p className="text-xs text-text-muted">
-            Writes a note-owned property to the selected original notes.
-          </p>
+          <p className="text-xs text-text-muted">Updates this property on all selected notes.</p>
           <Input
             aria-label="Property key"
             placeholder="status"
@@ -116,7 +137,7 @@ function SetPropertyPopover({
           />
           {key !== '' && !valid ? (
             <p role="alert" className="text-xs text-destructive">
-              Use a non-reserved property key.
+              Choose a property name such as status or author.
             </p>
           ) : null}
           <Button type="submit" size="sm" disabled={!valid}>
@@ -166,7 +187,7 @@ function AddNotePopover({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger render={<Button type="button" variant="ghost" size="sm" />}>
         <Plus className="size-3.5" />
-        Add notes
+        Add existing notes
       </PopoverTrigger>
       <PopoverContent align="end">
         <Input

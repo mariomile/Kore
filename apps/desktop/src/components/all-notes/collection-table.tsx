@@ -39,6 +39,8 @@ import { TABLE_HEADER_CHROME } from './table-chrome'
 import type { BoardColumn } from './collection-board'
 
 interface CollectionTableProps {
+  /** Empty-state copy for collections that are not selected by a tag. */
+  emptyMessage?: string | undefined
   /** `undefined` while the collection query settles. */
   entries: CollectionEntry[] | undefined
   tag: string
@@ -90,6 +92,7 @@ type TableItem =
  */
 export function CollectionTable({
   entries,
+  emptyMessage,
   tag,
   type,
   selection,
@@ -362,7 +365,9 @@ export function CollectionTable({
       </div>
       {entries.length === 0 ? (
         <>
-          <p className="py-8 pl-12 pr-7 text-sm text-text-muted">No notes tagged #{tag}.</p>
+          <p className="py-8 pl-12 pr-7 text-sm text-text-muted">
+            {emptyMessage ?? `No notes tagged #${tag}.`}
+          </p>
           {newRow}
         </>
       ) : (

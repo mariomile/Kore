@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { emitNoteMoved } from '@/lib/note-moves'
 import { createRouterStore } from './router-store'
 
 describe('createRouterStore', () => {
@@ -24,5 +25,17 @@ describe('createRouterStore', () => {
     store.back() // at the bottom of the stack: a true no-op
     expect(store.getSnapshot()).toBe(before)
     expect(store.navigationRevision()).toBe(0)
+  })
+
+  it('follows note moves only while connected', () => {
+    const store = createRouterStore({ kind: 'note', path: 'notes/a.md' })
+    const revisionBeforeConnect = store.navigationRevision()
+    const disconnect = store.connect()
+    emitNoteMoved('notes/a.md', 'notes/b.md')
+    expect(store.getSnapshot().route).toEqual({ kind: 'note', path: 'notes/b.md' })
+    expect(store.navigationRevision()).toBeGreaterThan(revisionBeforeConnect)
+    disconnect()
+    emitNoteMoved('notes/b.md', 'notes/c.md')
+    expect(store.getSnapshot().route).toEqual({ kind: 'note', path: 'notes/b.md' })
   })
 })

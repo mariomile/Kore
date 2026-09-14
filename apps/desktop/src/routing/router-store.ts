@@ -10,6 +10,9 @@ import { normalizeRoute, routesEqual, type Route } from './route'
  * pushes and truncates forward entries, `back`/`forward` move the cursor,
  * history entries carry scroll offsets, long-lived surfaces keep a surface
  * offset, and a note move rewrites every entry pointing at the old path.
+ * Note-move following is not wired up at construction: call `connect()` from
+ * a `useEffect` so it survives a StrictMode mount→cleanup→re-mount without
+ * ending up unsubscribed or double-subscribed.
  */
 
 export interface NavigateOptions {
@@ -40,8 +43,14 @@ export interface RouterStore {
   saveScrollState(offset: number): void
   clearScrollState(): void
   savedScroll(): number | null
-  /** Stop following note moves. Call once the store's pane is gone. */
-  dispose(): void
+  /**
+   * Start following note moves and return the unsubscribe. Idempotent: a
+   * second call while already connected returns the same unsubscribe instead
+   * of adding a second subscription. Not done at construction time, because a
+   * StrictMode mount→cleanup→re-mount around a `connect` effect must leave
+   * the store subscribed exactly once, not zero or two times.
+   */
+  connect(): () => void
 }
 
 interface HistoryEntry {
@@ -102,12 +111,19 @@ export function createRouterStore(initialRoute: Route = { kind: 'today' }): Rout
     revision += 1
     const target = normalizeRoute(route)
     const surface = scrollSurfaceForRoute(target)
+    // A surface restore only means something when coming from OFF the surface;
+    // the Daily tab clicked while already on the stream is an explicit
+    // re-anchor request, exactly like ⌘D.
     const returning =
       options?.restoreSurfaceScroll === true &&
       surface !== null &&
       scrollSurfaceForRoute(current().route) !== surface
     const restored = returning ? scrollBySurface.get(surface) : undefined
     if (surface !== null && restored === undefined) {
+      // An explicit arrival re-anchors the surface, making its saved offset
+      // stale — drop it so a later nav-tab return re-anchors too instead of
+      // resurrecting the pre-arrival position. Scrolling after the arrival
+      // repopulates it.
       scrollBySurface.delete(surface)
     }
     const entry = current()
@@ -115,19 +131,25 @@ export function createRouterStore(initialRoute: Route = { kind: 'today' }): Rout
       if (restored !== undefined) {
         scrollById.set(entry.id, restored)
       } else {
+        // No stack growth — but this is still an explicit arrival: forget the
+        // entry's saved offset so the view re-anchors to its target instead of
+        // restoring the old scroll position.
         scrollById.delete(entry.id)
       }
     } else if (entry.route.kind === 'settings' && target.kind === 'settings') {
+      // Settings is one overlay. Switching pages (navigator, palette Agents,
+      // the chat chip) replaces the current entry so Close, Escape, ⌘,, and
+      // ⌘W leave Settings in one step instead of walking the group stack.
       stack = stack.map((item, position) =>
         position === index ? { ...item, route: target } : item,
       )
     } else {
       for (const dropped of stack.slice(index + 1)) {
-        scrollById.delete(dropped.id)
+        scrollById.delete(dropped.id) // truncated branch — free its offsets
       }
       const id = nextId++
       if (restored !== undefined) {
-        scrollById.set(id, restored)
+        scrollById.set(id, restored) // seed the fresh entry with the surface offset
       }
       stack = [...stack.slice(0, index + 1), { id, route: target }]
       index = stack.length - 1
@@ -139,7 +161,7 @@ export function createRouterStore(initialRoute: Route = { kind: 'today' }): Rout
 
   function back(): void {
     if (index === 0) {
-      return
+      return // nothing behind us — must not advance the navigation revision
     }
     revision += 1
     arrivalFocusEditor = false
@@ -157,23 +179,36 @@ export function createRouterStore(initialRoute: Route = { kind: 'today' }): Rout
     emit()
   }
 
-  const stopFollowingMoves = onNoteMoved((from, to) => {
-    const entry = current()
-    if (entry.route.kind === 'note' && entry.route.path === from) {
+  function followNoteMove(from: string, to: string): void {
+    const active = current()
+    if (active.route.kind === 'note' && active.route.path === from) {
       revision += 1
     }
     let changed = false
-    stack = stack.map((entry) => {
-      if (entry.route.kind === 'note' && entry.route.path === from) {
+    stack = stack.map((item) => {
+      if (item.route.kind === 'note' && item.route.path === from) {
         changed = true
-        return { ...entry, route: { kind: 'note' as const, path: to } }
+        return { ...item, route: { kind: 'note' as const, path: to } }
       }
-      return entry
+      return item
     })
     if (changed) {
       emit()
     }
-  })
+  }
+
+  let disconnect: (() => void) | null = null
+
+  function connect(): () => void {
+    if (disconnect === null) {
+      const unsubscribe = onNoteMoved(followNoteMove)
+      disconnect = () => {
+        unsubscribe()
+        disconnect = null
+      }
+    }
+    return disconnect
+  }
 
   return {
     subscribe(listener) {
@@ -202,6 +237,6 @@ export function createRouterStore(initialRoute: Route = { kind: 'today' }): Rout
       }
     },
     savedScroll: () => scrollById.get(current().id) ?? null,
-    dispose: stopFollowingMoves,
+    connect,
   }
 }

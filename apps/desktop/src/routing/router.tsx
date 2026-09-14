@@ -83,6 +83,22 @@ interface RouterProviderProps {
 }
 
 /**
+ * Resolve which store a render binds to. `own` is `null` exactly when a
+ * `store` prop was supplied on mount, so this never falls through to
+ * creating a fresh store mid-lifetime: a provider cannot switch from a
+ * bound store to a private one (or back) after mounting.
+ */
+function resolveBoundStore(store: RouterStore | undefined, own: RouterStore | null): RouterStore {
+  if (store !== undefined) {
+    return store
+  }
+  if (own === null) {
+    throw new Error('RouterProvider cannot switch from a bound store to a private one')
+  }
+  return own
+}
+
+/**
  * Bind a {@link RouterStore} to the router context (Plan 06). Every consumer
  * keeps calling `useRouter()`; which pane it addresses is decided by the
  * nearest provider's store.
@@ -93,8 +109,8 @@ export function RouterProvider({
   children,
 }: RouterProviderProps): ReactElement {
   const [own] = useState(() => (store === undefined ? createRouterStore(initialRoute) : null))
-  const bound = store ?? own ?? createRouterStore(initialRoute)
-  useEffect(() => (own === null ? undefined : own.dispose), [own])
+  const bound = resolveBoundStore(store, own)
+  useEffect(() => (own === null ? undefined : own.connect()), [own])
   const snapshot = useSyncExternalStore(bound.subscribe, bound.getSnapshot, bound.getSnapshot)
   const value = useMemo<RouterValue>(
     () => ({

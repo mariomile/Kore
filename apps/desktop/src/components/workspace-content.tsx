@@ -141,7 +141,7 @@ function WorkspaceFrame({
   contextTarget,
 }: WorkspaceFrameProps): ReactElement {
   const { collapsed, contextCollapsed } = useSidebar()
-  const { panes } = usePanes()
+  const { columns } = usePanes()
 
   return (
     // Every gap in this row is one pane's own left gutter, and the row
@@ -162,10 +162,22 @@ function WorkspaceFrame({
         </aside>
       )}
 
-      {panes.map((pane, index) => (
-        <Fragment key={pane.id}>
-          {index > 0 ? <PaneResizeHandle /> : null}
-          <WorkspacePane pane={pane} commandContext={commandContext} />
+      {columns.map((column, columnIndex) => (
+        <Fragment key={column.id}>
+          {columnIndex > 0 ? <PaneResizeHandle axis="columns" /> : null}
+          <div data-testid="workspace-column" className="flex min-w-[360px] flex-1 flex-col">
+            {column.panes.map((pane, rowIndex) => (
+              <Fragment key={pane.id}>
+                {rowIndex > 0 ? <PaneResizeHandle axis="rows" /> : null}
+                <WorkspacePane
+                  pane={pane}
+                  commandContext={commandContext}
+                  showSidebarToggle={columnIndex === 0 && rowIndex === 0}
+                  showContextToggle={columnIndex === columns.length - 1 && rowIndex === 0}
+                />
+              </Fragment>
+            ))}
+          </div>
         </Fragment>
       ))}
 

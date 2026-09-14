@@ -66,7 +66,12 @@ vi.mock('@/providers/focused-daily-provider', () => ({
 // per-pane providers the real pane mounts.
 vi.mock('@/providers/panes-provider', () => ({
   MAIN_PANE_ID: 'main',
-  usePanes: () => ({ panes: [{ id: 'main' }], activePane: { id: 'main' }, setActivePane: vi.fn() }),
+  usePanes: () => ({
+    panes: [{ id: 'main' }],
+    columns: [{ id: 'main', panes: [{ id: 'main' }] }],
+    activePane: { id: 'main' },
+    setActivePane: vi.fn(),
+  }),
   useOptionalPanes: () => null,
   usePaneId: () => 'main',
   useScopedPaneId: () => 'main',

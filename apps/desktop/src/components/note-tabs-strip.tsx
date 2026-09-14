@@ -27,6 +27,13 @@ import { useSidebar } from '@/providers/sidebar-provider'
 interface WorkspaceTabsStripProps {
   /** Commands for the "+" menu (new note vs the built-in browser). */
   commandContext?: CommandContext
+  /**
+   * Each rail toggle belongs to the one strip nearest its rail: the first
+   * pane of the first column owns the sidebar toggle, the first pane of the
+   * last column the context one. A lone strip keeps both.
+   */
+  showSidebarToggle?: boolean
+  showContextToggle?: boolean
 }
 
 /**
@@ -35,7 +42,11 @@ interface WorkspaceTabsStripProps {
  * final tab falls back to Daily through the provider. Settings is a full-page
  * workspace and never joins the strip.
  */
-export function WorkspaceTabsStrip({ commandContext }: WorkspaceTabsStripProps): ReactElement {
+export function WorkspaceTabsStrip({
+  commandContext,
+  showSidebarToggle = true,
+  showContextToggle = true,
+}: WorkspaceTabsStripProps): ReactElement {
   const { activeTab, activateTab, closeTab, togglePin, moveTab } = useOpenTabs()
   const items = useOpenTabItems()
   const { collapsed, toggleSidebar, contextCollapsed, toggleContextSidebar } = useSidebar()
@@ -78,12 +89,14 @@ export function WorkspaceTabsStrip({ commandContext }: WorkspaceTabsStripProps):
       )}
     >
       <div className="window-drag-control flex items-center">
-        <PanelToggle
-          side="left"
-          collapsed={collapsed}
-          onToggle={toggleSidebar}
-          label="Toggle sidebar"
-        />
+        {showSidebarToggle ? (
+          <PanelToggle
+            side="left"
+            collapsed={collapsed}
+            onToggle={toggleSidebar}
+            label="Toggle sidebar"
+          />
+        ) : null}
         <NavigateArrows />
       </div>
 
@@ -115,14 +128,16 @@ export function WorkspaceTabsStrip({ commandContext }: WorkspaceTabsStripProps):
         <NoteTabsListMenu />
       </div>
 
-      <div className="window-drag-control ml-auto flex items-center">
-        <PanelToggle
-          side="right"
-          collapsed={contextCollapsed}
-          onToggle={toggleContextSidebar}
-          label="Toggle context panel"
-        />
-      </div>
+      {showContextToggle ? (
+        <div className="window-drag-control ml-auto flex items-center">
+          <PanelToggle
+            side="right"
+            collapsed={contextCollapsed}
+            onToggle={toggleContextSidebar}
+            label="Toggle context panel"
+          />
+        </div>
+      ) : null}
     </div>
   )
 }

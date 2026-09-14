@@ -14,16 +14,24 @@ import { RouterProvider } from '@/routing/router'
 interface WorkspacePaneProps {
   pane: WorkspacePaneHandle
   commandContext: CommandContext
+  /** The rail toggles belong to one strip only, not to every pane. */
+  showSidebarToggle: boolean
+  showContextToggle: boolean
 }
 
 /**
- * One column of the workspace: its own router history, tab strip, focused
+ * One pane of the workspace: its own router history, tab strip, focused
  * daily day, and Find session, bound to the pane's stores so everything
  * inside addresses this pane. Pointer or keyboard focus anywhere inside
  * makes it the active pane, which is what the chrome (sidebar, palette,
  * context rail) follows.
  */
-export function WorkspacePane({ pane, commandContext }: WorkspacePaneProps): ReactElement {
+export function WorkspacePane({
+  pane,
+  commandContext,
+  showSidebarToggle,
+  showContextToggle,
+}: WorkspacePaneProps): ReactElement {
   const { activePane, setActivePane } = usePanes()
   const active = activePane.id === pane.id
   const activate = useCallback(() => {
@@ -46,9 +54,13 @@ export function WorkspacePane({ pane, commandContext }: WorkspacePaneProps): Rea
                 data-active={active ? 'true' : undefined}
                 onPointerDownCapture={activate}
                 onFocusCapture={activate}
-                className="workspace-main flex min-w-[360px] flex-1 flex-col"
+                className="workspace-main flex min-h-0 min-w-0 flex-1 flex-col"
               >
-                <WorkspaceTabsStrip commandContext={commandContext} />
+                <WorkspaceTabsStrip
+                  commandContext={commandContext}
+                  showSidebarToggle={showSidebarToggle}
+                  showContextToggle={showContextToggle}
+                />
                 <div
                   data-testid="note-pane-gutter"
                   className="workspace-pane-gutter min-h-0 flex-1 pl-2 pb-2"

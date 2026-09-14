@@ -104,14 +104,27 @@ function stubCommandContext(): CommandContext {
 
 const COMMAND_CONTEXT = stubCommandContext()
 
-function PaneRow(): ReactElement {
-  const { panes } = usePanes()
+/** The same arrangement `WorkspaceFrame` builds: columns of stacked panes. */
+function PaneGrid(): ReactElement {
+  const { columns } = usePanes()
   return (
     <div className="flex">
-      {panes.map((pane, index) => (
-        <Fragment key={pane.id}>
-          {index > 0 ? <PaneResizeHandle /> : null}
-          <WorkspacePane pane={pane} commandContext={COMMAND_CONTEXT} />
+      {columns.map((column, columnIndex) => (
+        <Fragment key={column.id}>
+          {columnIndex > 0 ? <PaneResizeHandle axis="columns" /> : null}
+          <div data-testid="workspace-column" className="flex min-w-[360px] flex-1 flex-col">
+            {column.panes.map((pane, rowIndex) => (
+              <Fragment key={pane.id}>
+                {rowIndex > 0 ? <PaneResizeHandle axis="rows" /> : null}
+                <WorkspacePane
+                  pane={pane}
+                  commandContext={COMMAND_CONTEXT}
+                  showSidebarToggle={columnIndex === 0 && rowIndex === 0}
+                  showContextToggle={columnIndex === columns.length - 1 && rowIndex === 0}
+                />
+              </Fragment>
+            ))}
+          </div>
         </Fragment>
       ))}
     </div>
@@ -128,7 +141,7 @@ function renderPanes() {
     <QueryClientProvider client={client}>
       <SidebarProvider>
         <PanesProvider>
-          <PaneRow />
+          <PaneGrid />
         </PanesProvider>
       </SidebarProvider>
     </QueryClientProvider>,
@@ -153,6 +166,25 @@ const SPLIT_PANES: OpenColumn[] = [
   {
     id: 'column-2',
     panes: [
+      {
+        id: 'pane-2',
+        tabs: [{ kind: 'note', path: 'notes/beta.md', pinned: false }],
+        activeKey: 'note:notes/beta.md',
+      },
+    ],
+  },
+]
+
+/** One column holding two stacked panes: the row axis of the same grid. */
+const STACKED_PANES: OpenColumn[] = [
+  {
+    id: 'main',
+    panes: [
+      {
+        id: 'main',
+        tabs: [{ kind: 'surface', surface: 'daily', date: null, pinned: false }],
+        activeKey: 'surface:daily',
+      },
       {
         id: 'pane-2',
         tabs: [{ kind: 'note', path: 'notes/beta.md', pinned: false }],
@@ -188,7 +220,7 @@ describe('WorkspacePane', () => {
     settingsStore.seed(SPLIT_PANES)
     const view = await renderPanes()
     const handle = view.getByRole('separator', { name: 'Resize pane' }).element()
-    const left = view.getByTestId('workspace-pane').all()[0]!.element()
+    const left = view.getByTestId('workspace-column').all()[0]!.element()
 
     firePointer(handle, 'pointerdown', { pointerId: 1, isPrimary: true, clientX: 500 })
     firePointer(handle, 'pointermove', { pointerId: 1, clientX: 560 })
@@ -200,6 +232,42 @@ describe('WorkspacePane', () => {
     firePointer(handle, 'pointercancel', { pointerId: 1 })
     firePointer(handle, 'pointermove', { pointerId: 1, clientX: 900 })
     expect(left.style.flex).toBe(dragged)
+
+    await view.unmount()
+  })
+
+  it('a cancelled vertical resize drag stops following the pointer', async () => {
+    settingsStore.seed(STACKED_PANES)
+    const view = await renderPanes()
+    const handle = view.getByRole('separator', { name: 'Resize pane' }).element()
+    expect(handle.getAttribute('aria-orientation')).toBe('horizontal')
+    const above = view.getByTestId('workspace-pane').all()[0]!.element()
+
+    firePointer(handle, 'pointerdown', { pointerId: 1, isPrimary: true, clientY: 400 })
+    firePointer(handle, 'pointermove', { pointerId: 1, clientY: 460 })
+    const dragged = above.style.flex
+    expect(dragged).not.toBe('')
+
+    firePointer(handle, 'pointercancel', { pointerId: 1 })
+    firePointer(handle, 'pointermove', { pointerId: 1, clientY: 900 })
+    expect(above.style.flex).toBe(dragged)
+
+    await view.unmount()
+  })
+
+  it('gives each rail toggle to the one pane nearest its rail', async () => {
+    settingsStore.seed(SPLIT_PANES)
+    const view = await renderPanes()
+    const panes = view.getByTestId('workspace-pane').all()
+    expect(panes).toHaveLength(2)
+
+    const toggles = (index: number): string[] =>
+      Array.from(
+        panes[index]!.element().querySelectorAll('button[aria-label^="Toggle "]'),
+        (button) => button.getAttribute('aria-label') ?? '',
+      )
+    expect(toggles(0)).toEqual(['Toggle sidebar'])
+    expect(toggles(1)).toEqual(['Toggle context panel'])
 
     await view.unmount()
   })

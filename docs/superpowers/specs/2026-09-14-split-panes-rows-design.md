@@ -62,7 +62,8 @@ panes reopen their last active tab and are dropped when they have none.
 `WorkspaceFrame` renders columns as a flex row; each column is a flex column
 of `WorkspacePane`s. `PaneResizeHandle` gains `axis: 'columns' | 'rows'`
 (resizes the previous sibling's width or height; min 360px wide, 200px
-tall). Sizes are not persisted.
+tall). Every pane also carries a 200px minimum height, so the pane below a
+row handle can never be crushed to nothing. Sizes are not persisted.
 
 The tab strip holds only tabs, the "+" and list menus, and this pane's
 back/forward arrows (history is per pane). The sidebar toggle renders only in

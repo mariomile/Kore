@@ -1,44 +1,30 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
 import type { ReactElement } from 'react'
-import { isModEvent } from '@meowdown/core'
 import { RouterProvider, useRouter } from '@/routing/router'
 import { useNoteLinkNavigation } from './use-note-link-navigation'
 
-const openRouteInNewWindow = vi.hoisted(() => vi.fn<() => Promise<boolean>>())
+const openInPane = vi.hoisted(() => vi.fn())
+const holderOf = vi.hoisted(() => vi.fn<(route: unknown) => string | null>())
+const useOptionalPanes = vi.hoisted(() => vi.fn())
+const usePaneId = vi.hoisted(() => vi.fn())
 
-vi.mock('@/lib/windows/open-in-new-window', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/lib/windows/open-in-new-window')>()),
-  openRouteInNewWindow,
+vi.mock('@/providers/panes-provider', () => ({
+  useOptionalPanes,
+  usePaneId,
 }))
 
-function Links({ scopeKey }: { readonly scopeKey: string | undefined }): ReactElement {
-  const openNoteLink = useNoteLinkNavigation(scopeKey)
+function Link({ openInSplit }: { readonly openInSplit: boolean }): ReactElement {
+  const openNoteLink = useNoteLinkNavigation()
   return (
-    <>
-      <button
-        type="button"
-        onClick={(event) =>
-          openNoteLink({
-            target: { kind: 'note', path: 'notes/alpha.md' },
-            openInNewWindow: isModEvent(event),
-          })
-        }
-      >
-        Alpha
-      </button>
-      <button
-        type="button"
-        onClick={(event) =>
-          openNoteLink({
-            target: { kind: 'note', path: 'notes/bravo.md' },
-            openInNewWindow: isModEvent(event),
-          })
-        }
-      >
-        Bravo
-      </button>
-    </>
+    <button
+      type="button"
+      onClick={() =>
+        openNoteLink({ target: { kind: 'note', path: 'notes/alpha.md' }, openInSplit })
+      }
+    >
+      Alpha
+    </button>
   )
 }
 
@@ -47,25 +33,10 @@ function RouteProbe(): ReactElement {
   return <output data-testid="route">{JSON.stringify(route)}</output>
 }
 
-function ReopenCurrentRoute(): ReactElement {
-  const { navigate } = useRouter()
-  return (
-    <button type="button" onClick={() => navigate({ kind: 'allNotes', filter: { kind: 'all' } })}>
-      Reopen current route
-    </button>
-  )
-}
-
-interface HarnessProps {
-  readonly scopeKey?: string
-  readonly visible?: boolean
-}
-
-function Harness({ scopeKey, visible = true }: HarnessProps): ReactElement {
+function Harness({ openInSplit }: { readonly openInSplit: boolean }): ReactElement {
   return (
     <RouterProvider initialRoute={{ kind: 'allNotes', filter: { kind: 'all' } }}>
-      {visible ? <Links scopeKey={scopeKey} /> : null}
-      <ReopenCurrentRoute />
+      <Link openInSplit={openInSplit} />
       <RouteProbe />
     </RouterProvider>
   )
@@ -75,151 +46,77 @@ function route(view: Awaited<ReturnType<typeof render>>): unknown {
   return JSON.parse(view.getByTestId('route').element().textContent ?? 'null')
 }
 
-/** Lets a settled fallback promise run its continuation (and any React flush it would cause). */
-async function settle(): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, 50))
-}
-
 beforeEach(() => {
-  openRouteInNewWindow.mockReset().mockResolvedValue(true)
+  openInPane.mockReset()
+  holderOf.mockReset()
+  holderOf.mockReturnValue(null)
+  useOptionalPanes.mockReset()
+  usePaneId.mockReset()
 })
 
 describe('useNoteLinkNavigation', () => {
-  it('navigates a plain click in the current window', async () => {
-    const view = await render(<Harness />)
+  it('navigates in place on a plain click', async () => {
+    useOptionalPanes.mockReturnValue(null)
+    usePaneId.mockReturnValue('main')
+    const view = await render(<Harness openInSplit={false} />)
 
     await view.getByRole('button', { name: 'Alpha' }).click()
 
     await expect.poll(() => route(view)).toEqual({ kind: 'note', path: 'notes/alpha.md' })
-    expect(openRouteInNewWindow).not.toHaveBeenCalled()
+    expect(openInPane).not.toHaveBeenCalled()
   })
 
-  it('opens a modifier-click in a secondary window without navigating', async () => {
-    const view = await render(<Harness />)
+  it('navigates in place on a modifier click when no panes are mounted', async () => {
+    useOptionalPanes.mockReturnValue(null)
+    usePaneId.mockReturnValue('main')
+    const view = await render(<Harness openInSplit={true} />)
 
-    await view.getByRole('button', { name: 'Alpha' }).click({ modifiers: ['ControlOrMeta'] })
-
-    await vi.waitFor(() =>
-      expect(openRouteInNewWindow).toHaveBeenCalledWith({
-        kind: 'note',
-        path: 'notes/alpha.md',
-      }),
-    )
-    expect(route(view)).toEqual({ kind: 'allNotes', filter: { kind: 'all' } })
-  })
-
-  it('falls back to current-window navigation when a secondary window is declined', async () => {
-    openRouteInNewWindow.mockResolvedValue(false)
-    const view = await render(<Harness />)
-
-    await view.getByRole('button', { name: 'Alpha' }).click({ modifiers: ['ControlOrMeta'] })
+    await view.getByRole('button', { name: 'Alpha' }).click()
 
     await expect.poll(() => route(view)).toEqual({ kind: 'note', path: 'notes/alpha.md' })
+    expect(openInPane).not.toHaveBeenCalled()
   })
 
-  it('falls back to current-window navigation when a secondary window open rejects', async () => {
-    openRouteInNewWindow.mockRejectedValue(new Error('window creation failed'))
-    const view = await render(<Harness />)
+  it('opens the target in the pane beside this one on a modifier click', async () => {
+    useOptionalPanes.mockReturnValue({ openInPane, holderOf })
+    usePaneId.mockReturnValue('pane-left')
+    const view = await render(<Harness openInSplit={true} />)
 
-    await view.getByRole('button', { name: 'Alpha' }).click({ modifiers: ['ControlOrMeta'] })
+    await view.getByRole('button', { name: 'Alpha' }).click()
+
+    expect(openInPane).toHaveBeenCalledWith(
+      { kind: 'note', path: 'notes/alpha.md' },
+      { from: 'pane-left' },
+    )
+    expect(route(view)).toEqual({ kind: 'allNotes', filter: { kind: 'all' } })
+  })
+
+  it('sends a plain click to the pane that already holds the target', async () => {
+    // A tab key lives in at most one pane: navigating in place here would
+    // open a second editor session on the same path.
+    useOptionalPanes.mockReturnValue({ openInPane, holderOf })
+    holderOf.mockReturnValue('pane-right')
+    usePaneId.mockReturnValue('pane-left')
+    const view = await render(<Harness openInSplit={false} />)
+
+    await view.getByRole('button', { name: 'Alpha' }).click()
+
+    expect(openInPane).toHaveBeenCalledWith(
+      { kind: 'note', path: 'notes/alpha.md' },
+      { from: 'pane-left' },
+    )
+    expect(route(view)).toEqual({ kind: 'allNotes', filter: { kind: 'all' } })
+  })
+
+  it('navigates in place on a plain click when this pane already holds it', async () => {
+    useOptionalPanes.mockReturnValue({ openInPane, holderOf })
+    holderOf.mockReturnValue('pane-left')
+    usePaneId.mockReturnValue('pane-left')
+    const view = await render(<Harness openInSplit={false} />)
+
+    await view.getByRole('button', { name: 'Alpha' }).click()
 
     await expect.poll(() => route(view)).toEqual({ kind: 'note', path: 'notes/alpha.md' })
-  })
-
-  it('does not let an older failed open override a newer note-link intent', async () => {
-    let finishOpen: (opened: boolean) => void = () => {}
-    openRouteInNewWindow.mockReturnValue(
-      new Promise((resolve) => {
-        finishOpen = resolve
-      }),
-    )
-    const view = await render(<Harness />)
-
-    await view.getByRole('button', { name: 'Alpha' }).click({ modifiers: ['ControlOrMeta'] })
-    await vi.waitFor(() => expect(openRouteInNewWindow).toHaveBeenCalledTimes(1))
-    await view.getByRole('button', { name: 'Bravo' }).click()
-    await expect.poll(() => route(view)).toEqual({ kind: 'note', path: 'notes/bravo.md' })
-
-    finishOpen(false)
-    await settle()
-
-    expect(route(view)).toEqual({ kind: 'note', path: 'notes/bravo.md' })
-  })
-
-  it('does not let an older rejected open override a newer note-link intent', async () => {
-    let rejectOpen: (cause: Error) => void = () => {}
-    openRouteInNewWindow
-      .mockImplementationOnce(
-        () =>
-          new Promise((_resolve, reject) => {
-            rejectOpen = reject
-          }),
-      )
-      .mockResolvedValueOnce(true)
-    const view = await render(<Harness />)
-
-    await view.getByRole('button', { name: 'Alpha' }).click({ modifiers: ['ControlOrMeta'] })
-    await vi.waitFor(() => expect(openRouteInNewWindow).toHaveBeenCalledTimes(1))
-    await view.getByRole('button', { name: 'Bravo' }).click({ modifiers: ['ControlOrMeta'] })
-    await vi.waitFor(() => expect(openRouteInNewWindow).toHaveBeenCalledTimes(2))
-
-    rejectOpen(new Error('window creation failed'))
-    await settle()
-
-    expect(route(view)).toEqual({ kind: 'allNotes', filter: { kind: 'all' } })
-  })
-
-  it('does not fall back after another control re-navigates to the same route', async () => {
-    let finishOpen: (opened: boolean) => void = () => {}
-    openRouteInNewWindow.mockReturnValue(
-      new Promise((resolve) => {
-        finishOpen = resolve
-      }),
-    )
-    const view = await render(<Harness />)
-
-    await view.getByRole('button', { name: 'Alpha' }).click({ modifiers: ['ControlOrMeta'] })
-    await vi.waitFor(() => expect(openRouteInNewWindow).toHaveBeenCalledTimes(1))
-    await view.getByRole('button', { name: 'Reopen current route' }).click()
-    finishOpen(false)
-    await settle()
-
-    expect(route(view)).toEqual({ kind: 'allNotes', filter: { kind: 'all' } })
-  })
-
-  it('does not fall back after the host surface changes scope', async () => {
-    let finishOpen: (opened: boolean) => void = () => {}
-    openRouteInNewWindow.mockReturnValue(
-      new Promise((resolve) => {
-        finishOpen = resolve
-      }),
-    )
-    const view = await render(<Harness scopeKey="2026-07-10" />)
-
-    await view.getByRole('button', { name: 'Alpha' }).click({ modifiers: ['ControlOrMeta'] })
-    await vi.waitFor(() => expect(openRouteInNewWindow).toHaveBeenCalledTimes(1))
-    await view.rerender(<Harness scopeKey="2026-07-11" />)
-    finishOpen(false)
-    await settle()
-
-    expect(route(view)).toEqual({ kind: 'allNotes', filter: { kind: 'all' } })
-  })
-
-  it('does not navigate after the link host unmounts', async () => {
-    let finishOpen: (opened: boolean) => void = () => {}
-    openRouteInNewWindow.mockReturnValue(
-      new Promise((resolve) => {
-        finishOpen = resolve
-      }),
-    )
-    const view = await render(<Harness />)
-
-    await view.getByRole('button', { name: 'Alpha' }).click({ modifiers: ['ControlOrMeta'] })
-    await vi.waitFor(() => expect(openRouteInNewWindow).toHaveBeenCalledTimes(1))
-    await view.rerender(<Harness visible={false} />)
-    finishOpen(false)
-    await settle()
-
-    expect(route(view)).toEqual({ kind: 'allNotes', filter: { kind: 'all' } })
+    expect(openInPane).not.toHaveBeenCalled()
   })
 })

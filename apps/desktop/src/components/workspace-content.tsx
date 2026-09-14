@@ -1,13 +1,11 @@
-import { useEffect, type ReactElement } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useState, type ReactElement } from 'react'
+import { DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { subscribeBrowserNavigated, type GraphInfo } from '@reflect/core'
-import { AppShell } from '@/components/app-shell'
 import { CommandPalette } from '@/components/command-palette/command-palette'
 import { ContextSidebar } from '@/components/context-sidebar/context-sidebar'
 import { AgentRoutinesRunner } from '@/components/agent-routines-runner'
 import { TaskRemindersRunner } from '@/components/task-reminders-runner'
 import { EmbeddingsSync } from '@/components/embeddings-sync'
-import { NoteFindBar } from '@/components/note-find-bar'
-import { WorkspaceTabsStrip } from '@/components/note-tabs-strip'
 import { RouteContent } from '@/components/route-content'
 import { VaultReplaceMount } from '@/components/vault-replace/vault-replace-dialog'
 import { ShortcutsDialog } from '@/components/shortcuts-dialog'
@@ -15,10 +13,17 @@ import { Sidebar } from '@/components/sidebar/sidebar'
 import { SidebarResizeHandle } from '@/components/sidebar-resize-handle'
 import { TemplateCreateDialog } from '@/components/templates/template-create-dialog'
 import { TemplatePicker } from '@/components/templates/template-picker'
+import { PaneDragContext } from '@/components/pane-drop-zones'
+import { PaneResizeHandle } from '@/components/pane-resize-handle'
+import { WorkspacePane } from '@/components/workspace-pane'
 import { registerInAppBrowserOpener, setBrowserSessionUrl } from '@/lib/browser-session'
+import { dropTab, resolveTabDrop } from '@/lib/tab-drop'
+import { tabDropCollision } from '@/lib/tab-drop-collision'
 import type { CommandContext } from '@/lib/commands/types'
 import { useMacosTrafficLightInset } from '@/lib/use-macos-traffic-light-inset'
+import { useOptionalChatSession } from '@/providers/chat-provider'
 import { useDailyContextTarget } from '@/providers/focused-daily-provider'
+import { usePanes } from '@/providers/panes-provider'
 import { useSidebar } from '@/providers/sidebar-provider'
 import { useAppShortcuts } from '@/routing/app-shortcuts'
 import { isSettingsPage } from '@/routing/route'
@@ -141,6 +146,41 @@ function WorkspaceFrame({
   contextTarget,
 }: WorkspaceFrameProps): ReactElement {
   const { collapsed, contextCollapsed } = useSidebar()
+  const panes = usePanes()
+  const { columns } = panes
+  // A chat tab names its conversation, its route does not: dropping one into
+  // another pane has to switch the session first, or the target shows
+  // whichever conversation was already open.
+  const chatSession = useOptionalChatSession()
+  const activeConversationId = chatSession?.activeConversationId ?? null
+  const openConversation = chatSession?.openConversation
+  // One drag context for every pane: a tab pill dragged out of one strip has
+  // to reach the other panes' cards, which only a context above them all
+  // sees. The rails keep their own (the sidebar's shelves reorder among
+  // themselves), so this one wraps the columns row alone.
+  const [dragging, setDragging] = useState(false)
+  // The 4px activation distance keeps plain clicks (activate), double clicks
+  // (pin) and middle clicks (close) on the pills intact.
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
+  const handleDragStart = useCallback(() => {
+    setDragging(true)
+  }, [])
+  const handleDragCancel = useCallback(() => {
+    setDragging(false)
+  }, [])
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent): void => {
+      setDragging(false)
+      // A reorder is the strip's own business (it monitors the same event).
+      dropTab(
+        resolveTabDrop(event.active, event.over),
+        { activeConversationId, openConversation },
+        panes,
+      )
+    },
+    [activeConversationId, openConversation, panes],
+  )
+  const dragState = useMemo(() => ({ dragging }), [dragging])
 
   return (
     // Every gap in this row is one pane's own left gutter, and the row
@@ -161,25 +201,34 @@ function WorkspaceFrame({
         </aside>
       )}
 
-      <div className="workspace-main flex min-w-0 flex-1 flex-col">
-        <WorkspaceTabsStrip commandContext={commandContext} />
-        <div
-          data-testid="note-pane-gutter"
-          className="workspace-pane-gutter min-h-0 flex-1 pl-2 pb-2"
-        >
-          <div className="app-glass-card h-full overflow-hidden rounded-xl bg-surface">
-            <AppShell className="bg-transparent">
-              <div className="relative flex h-full flex-col">
-                <div className="min-h-0 flex-1">
-                  <RouteContent />
-                </div>
-
-                <NoteFindBar />
+      <DndContext
+        sensors={sensors}
+        collisionDetection={tabDropCollision}
+        onDragStart={handleDragStart}
+        onDragCancel={handleDragCancel}
+        onDragEnd={handleDragEnd}
+      >
+        <PaneDragContext value={dragState}>
+          {columns.map((column, columnIndex) => (
+            <Fragment key={column.id}>
+              {columnIndex > 0 ? <PaneResizeHandle axis="columns" /> : null}
+              <div data-testid="workspace-column" className="flex min-w-[360px] flex-1 flex-col">
+                {column.panes.map((pane, rowIndex) => (
+                  <Fragment key={pane.id}>
+                    {rowIndex > 0 ? <PaneResizeHandle axis="rows" /> : null}
+                    <WorkspacePane
+                      pane={pane}
+                      commandContext={commandContext}
+                      showSidebarToggle={columnIndex === 0 && rowIndex === 0}
+                      showContextToggle={columnIndex === columns.length - 1 && rowIndex === 0}
+                    />
+                  </Fragment>
+                ))}
               </div>
-            </AppShell>
-          </div>
-        </div>
-      </div>
+            </Fragment>
+          ))}
+        </PaneDragContext>
+      </DndContext>
 
       {contextCollapsed ? undefined : (
         <aside

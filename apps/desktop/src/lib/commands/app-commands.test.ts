@@ -112,6 +112,9 @@ function fakeContext(overrides?: Partial<CommandContext>) {
     nextTab: vi.fn(),
     previousTab: vi.fn(),
     closeActiveTab: vi.fn(),
+    closePane: vi.fn(),
+    focusPane: vi.fn(),
+    moveActiveTab: vi.fn(),
     ...overrides,
   }
   return { context, navigated, navigateOptions }
@@ -179,6 +182,11 @@ describe('keybindingFor', () => {
     expect(keybindingFor('note.openInNewWindow')).toBe('Mod-Shift-o')
   })
 
+  it('pane.focusLeft and pane.focusRight use the alt-arrow chords', () => {
+    expect(keybindingFor('pane.focusLeft')).toBe('Alt-Mod-arrowleft')
+    expect(keybindingFor('pane.focusRight')).toBe('Alt-Mod-arrowright')
+  })
+
   it('graph switch commands use macOS command-number bindings', () => {
     expect(keybindingFor('graph.switch1')).toBe('Meta-1')
     expect(keybindingFor('graph.switch9')).toBe('Meta-9')
@@ -237,6 +245,18 @@ describe('app commands', () => {
     await command('tabs.close').run(onToday)
     expect(onToday.closeActiveTab).toHaveBeenCalledTimes(1)
     expect(onToday.back).not.toHaveBeenCalled()
+  })
+
+  it('pane commands delegate to the shared panes-model capabilities', async () => {
+    const { context } = fakeContext()
+    await command('pane.close').run(context)
+    expect(context.closePane).toHaveBeenCalledTimes(1)
+
+    await command('pane.focusLeft').run(context)
+    expect(context.focusPane).toHaveBeenCalledWith('left')
+
+    await command('pane.focusRight').run(context)
+    expect(context.focusPane).toHaveBeenCalledWith('right')
   })
 
   it('note Find commands use the shared window-scoped capabilities', async () => {

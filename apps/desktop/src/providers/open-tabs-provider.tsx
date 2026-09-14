@@ -7,11 +7,13 @@ import {
   type ReactElement,
   type ReactNode,
 } from 'react'
-import type { OpenTab } from '@reflect/core'
+import type { OpenPane, OpenTab } from '@reflect/core'
 import { onChatConversationDeleted } from '@/lib/chat-events'
 import { onNoteMoved } from '@/lib/note-moves'
 import { useOptionalChatSession } from '@/providers/chat-provider'
 import { useGraph } from '@/providers/graph-provider'
+import { findPane, MAIN_COLUMN_ID } from '@/providers/pane-layout'
+import { useOptionalPanes, useScopedPaneId } from '@/providers/panes-provider'
 import {
   openTabForRoute,
   routeForOpenTab,
@@ -91,42 +93,83 @@ function createDailyTab(): OpenTab {
   return { kind: 'surface', surface: 'daily', date: null, pinned: false }
 }
 
-export function OpenTabsProvider({ children }: { children: ReactNode }): ReactElement {
+export function OpenTabsProvider({
+  paneId,
+  children,
+}: {
+  paneId: string
+  children: ReactNode
+}): ReactElement {
   const { settings, updateSettingsWith } = useSettings()
   const { graph } = useGraph()
   const { route, navigate } = useRouter()
   const chatSession = useOptionalChatSession()
+  const panes = useOptionalPanes()
+  const scopedPaneId = useScopedPaneId()
+  // In a paned workspace the chrome mounts a second binding of the active
+  // pane's tab model, for the palette's tab commands and the context rail.
+  // That mirror reads only: the pane's own binding owns every write, so a
+  // visited route is recorded once and a healing event fires once. A binding
+  // with no panes at all (the note window, tests) is the only binding there
+  // is and keeps doing both.
+  const mirrorsActivePane = scopedPaneId === null && panes !== null
   const activeConversationId = chatSession?.activeConversationId ?? null
   const openConversation = chatSession?.openConversation
 
   const root = graph?.root ?? null
   const stored = settings.openTabs
-  const tabs = useMemo(() => stripOrder(root === null ? [] : (stored[root] ?? [])), [stored, root])
+  const pane = useMemo(
+    () => (root === null ? undefined : (findPane(stored[root] ?? [], paneId) ?? undefined)),
+    [stored, root, paneId],
+  )
+  const tabs = useMemo(() => stripOrder(pane?.tabs ?? []), [pane])
 
-  // Every write goes through this: read the graph's own list, mutate, store
-  // it back under the graph root — other graphs' sessions stay untouched.
-  // Returning the same list means "no change" and writes nothing.
+  // Every write goes through this: read this pane's own list, mutate, store
+  // it back under the graph root — other panes and other graphs' sessions
+  // stay untouched. Returning the same list means "no change" and writes
+  // nothing. `activeKey` is passed only by the route effect, which is the one
+  // place that knows which tab the pane is showing; every other write keeps
+  // the stored key.
   const updateTabs = useCallback(
-    (mutate: (tabs: OpenTab[]) => OpenTab[]) => {
+    (mutate: (tabs: OpenTab[]) => OpenTab[], activeKey?: string) => {
       if (root === null) {
         return
       }
       updateSettingsWith((current) => {
-        const graphTabs = current.openTabs[root] ?? []
-        const next = mutate(graphTabs)
+        const columns = current.openTabs[root] ?? []
+        const existing = findPane(columns, paneId) ?? undefined
+        const paneTabs = existing?.tabs ?? []
+        const next = mutate(paneTabs)
+        const nextActiveKey = activeKey ?? existing?.activeKey ?? null
         // Element-wise check: a filter that dropped nothing or a map that
         // changed nothing is a no-op, and no-op settings writes churn
         // subscribers.
-        const unchanged =
-          next === graphTabs ||
-          (next.length === graphTabs.length && next.every((tab, index) => tab === graphTabs[index]))
-        if (unchanged) {
+        const tabsUnchanged =
+          next === paneTabs ||
+          (next.length === paneTabs.length && next.every((tab, index) => tab === paneTabs[index]))
+        if (existing !== undefined && tabsUnchanged && nextActiveKey === existing.activeKey) {
           return {}
         }
-        return { openTabs: { ...current.openTabs, [root]: next } }
+        const updated: OpenPane = { id: paneId, tabs: next, activeKey: nextActiveKey }
+        // A pane opened by the split gesture is persisted empty: its first
+        // visited route is what creates the entry here when it is missing. It
+        // is appended to the first column, creating one when the layout is
+        // still empty (a fresh graph, before any pane has written anything).
+        const nextColumns =
+          existing === undefined
+            ? columns.length === 0
+              ? [{ id: MAIN_COLUMN_ID, panes: [updated] }]
+              : columns.map((column, index) =>
+                  index === 0 ? { ...column, panes: [...column.panes, updated] } : column,
+                )
+            : columns.map((column) => ({
+                ...column,
+                panes: column.panes.map((entry) => (entry.id === paneId ? updated : entry)),
+              }))
+        return { openTabs: { ...current.openTabs, [root]: nextColumns } }
       })
     },
-    [root, updateSettingsWith],
+    [root, paneId, updateSettingsWith],
   )
 
   const routeTab = openTabForRoute(route, activeConversationId)
@@ -139,20 +182,20 @@ export function OpenTabsProvider({ children }: { children: ReactNode }): ReactEl
   // rapid navigations and mutable singleton payloads (date/tag/query) intact.
   useEffect(() => {
     const incoming = openTabForRoute(route, activeConversationId)
-    if (incoming === null) {
+    if (incoming === null || mirrorsActivePane) {
       return
     }
-    updateTabs((graphTabs) => {
-      const existing = graphTabs.find((tab) => tabsEqual(tab, incoming))
+    updateTabs((paneTabs) => {
+      const existing = paneTabs.find((tab) => tabsEqual(tab, incoming))
       if (existing === undefined) {
-        return [...graphTabs, incoming]
+        return [...paneTabs, incoming]
       }
       const updated = updateOpenTabRoute(existing, incoming)
       return tabStateEqual(existing, updated)
-        ? graphTabs
-        : graphTabs.map((tab) => (tabsEqual(tab, incoming) ? updated : tab))
-    })
-  }, [route, activeConversationId, updateTabs])
+        ? paneTabs
+        : paneTabs.map((tab) => (tabsEqual(tab, incoming) ? updated : tab))
+    }, tabKey(incoming))
+  }, [route, activeConversationId, mirrorsActivePane, updateTabs])
 
   const activateTab = useCallback(
     (tab: OpenTab) => {
@@ -173,6 +216,13 @@ export function OpenTabsProvider({ children }: { children: ReactNode }): ReactEl
 
   const closeTab = useCallback(
     (tab: OpenTab) => {
+      // Closing a split pane's last tab closes the column; the single-pane
+      // workspace keeps its Daily fallback instead of emptying the window.
+      const remainingCount = tabs.filter((open) => !tabsEqual(open, tab)).length
+      if (remainingCount === 0 && panes !== null && panes.panes.length > 1) {
+        panes.closePane(paneId)
+        return
+      }
       if (activeTab !== null && tabsEqual(tab, activeTab)) {
         // Move off the tab before dropping it: its strip neighbor, else Daily.
         const index = tabs.findIndex((open) => tabsEqual(open, tab))
@@ -183,18 +233,18 @@ export function OpenTabsProvider({ children }: { children: ReactNode }): ReactEl
           navigate({ kind: 'today' })
         }
       }
-      updateTabs((graphTabs) => {
-        const remaining = graphTabs.filter((open) => !tabsEqual(open, tab))
+      updateTabs((paneTabs) => {
+        const remaining = paneTabs.filter((open) => !tabsEqual(open, tab))
         return remaining.length === 0 ? [createDailyTab()] : remaining
       })
     },
-    [activeTab, tabs, activateTab, navigate, updateTabs],
+    [panes, paneId, activeTab, tabs, activateTab, navigate, updateTabs],
   )
 
   const togglePin = useCallback(
     (tab: OpenTab) => {
-      updateTabs((graphTabs) =>
-        graphTabs.map((open) => (tabsEqual(open, tab) ? { ...open, pinned: !open.pinned } : open)),
+      updateTabs((paneTabs) =>
+        paneTabs.map((open) => (tabsEqual(open, tab) ? { ...open, pinned: !open.pinned } : open)),
       )
     },
     [updateTabs],
@@ -202,16 +252,16 @@ export function OpenTabsProvider({ children }: { children: ReactNode }): ReactEl
 
   const moveTab = useCallback(
     (tab: OpenTab, target: OpenTab) => {
-      updateTabs((graphTabs) => {
+      updateTabs((paneTabs) => {
         // Work in strip coordinates — that is the order the user dragged in.
         // The moved array becomes the stored order; `stripOrder` on read
         // regroups pinned-first, so both groups keep their dragged order and
         // a cross-group drop settles at the tab's own group boundary.
-        const ordered = stripOrder(graphTabs)
+        const ordered = stripOrder(paneTabs)
         const from = ordered.findIndex((open) => tabsEqual(open, tab))
         const to = ordered.findIndex((open) => tabsEqual(open, target))
         if (from === -1 || to === -1 || from === to) {
-          return graphTabs
+          return paneTabs
         }
         const next = [...ordered]
         const [moved] = next.splice(from, 1)
@@ -224,49 +274,49 @@ export function OpenTabsProvider({ children }: { children: ReactNode }): ReactEl
 
   const pruneTab = useCallback(
     (path: string) => {
-      updateTabs((graphTabs) =>
-        graphTabs.filter((tab) => !(tab.kind === 'note' && tab.path === path)),
+      updateTabs((paneTabs) =>
+        paneTabs.filter((tab) => !(tab.kind === 'note' && tab.path === path)),
       )
     },
     [updateTabs],
   )
 
-  useEffect(
-    () =>
-      onNoteMoved((from, to) => {
-        updateTabs((graphTabs) => {
-          const moved = graphTabs.find((tab) => tab.kind === 'note' && tab.path === from)
-          if (moved === undefined) {
-            return graphTabs
-          }
-          const target = graphTabs.find((tab) => tab.kind === 'note' && tab.path === to)
-          if (target !== undefined) {
-            return graphTabs
-              .filter((tab) => tab !== moved)
-              .map((tab) =>
-                tab === target && moved.pinned && !target.pinned
-                  ? { ...target, pinned: true }
-                  : tab,
-              )
-          }
-          return graphTabs.map((tab) => (tab === moved ? { ...moved, path: to } : tab))
-        })
-      }),
-    [updateTabs],
-  )
-
-  useEffect(
-    () =>
-      onChatConversationDeleted((conversationId) => {
-        const deleted = tabs.find(
-          (tab) => tab.kind === 'chat' && tab.conversationId === conversationId,
-        )
-        if (deleted !== undefined) {
-          closeTab(deleted)
+  useEffect(() => {
+    if (mirrorsActivePane) {
+      return
+    }
+    return onNoteMoved((from, to) => {
+      updateTabs((paneTabs) => {
+        const moved = paneTabs.find((tab) => tab.kind === 'note' && tab.path === from)
+        if (moved === undefined) {
+          return paneTabs
         }
-      }),
-    [tabs, closeTab],
-  )
+        const target = paneTabs.find((tab) => tab.kind === 'note' && tab.path === to)
+        if (target !== undefined) {
+          return paneTabs
+            .filter((tab) => tab !== moved)
+            .map((tab) =>
+              tab === target && moved.pinned && !target.pinned ? { ...target, pinned: true } : tab,
+            )
+        }
+        return paneTabs.map((tab) => (tab === moved ? { ...moved, path: to } : tab))
+      })
+    })
+  }, [mirrorsActivePane, updateTabs])
+
+  useEffect(() => {
+    if (mirrorsActivePane) {
+      return
+    }
+    return onChatConversationDeleted((conversationId) => {
+      const deleted = tabs.find(
+        (tab) => tab.kind === 'chat' && tab.conversationId === conversationId,
+      )
+      if (deleted !== undefined) {
+        closeTab(deleted)
+      }
+    })
+  }, [mirrorsActivePane, tabs, closeTab])
 
   const cycle = useCallback(
     (step: 1 | -1) => {

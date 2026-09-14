@@ -133,7 +133,7 @@ vi.mock('@/editor/note-editor', async () => {
     }: {
       initialContent: string
       onChange?: (markdown: string) => void
-      onWikiLinkClick?: (options: { target: string; openInNewWindow: boolean }) => void
+      onWikiLinkClick?: (options: { target: string; openInSplit: boolean }) => void
       handleRef?: (handle: import('@/editor/note-editor').NoteEditorHandle | null) => void
     }) => {
       const areaRef = useRef<HTMLTextAreaElement | null>(null)
@@ -174,7 +174,7 @@ vi.mock('@/editor/note-editor', async () => {
           {onWikiLinkClick !== undefined ? (
             <button
               type="button"
-              onClick={() => onWikiLinkClick({ target: 'Other Note', openInNewWindow: false })}
+              onClick={() => onWikiLinkClick({ target: 'Other Note', openInSplit: false })}
             >
               fake-wikilink
             </button>

@@ -16,7 +16,7 @@ export function useOpenRelation(): (target: string) => void {
     (target: string) => {
       void resolveWikiTarget(target).then((resolution) => {
         if (resolution.kind === 'resolved') {
-          navigateNoteLink({ target: routeForPath(resolution.ref), openInNewWindow: false })
+          navigateNoteLink({ target: routeForPath(resolution.ref), openInSplit: false })
         } else {
           toast.add({
             type: 'info',

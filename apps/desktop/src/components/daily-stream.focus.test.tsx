@@ -87,6 +87,9 @@ vi.mock('@/components/note-pane', () => ({
   },
 }))
 vi.mock('@/providers/settings-provider', () => ({
+  // The stream reads the pane model to decide whether an arrival may take the
+  // caret, and that module's graph reaches back into this one's query key.
+  SETTINGS_QUERY_KEY: ['settings'] as const,
   useSettings: () => ({
     settings: { dateFormat: 'mdy' },
     updateSettings: async () => {},

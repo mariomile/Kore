@@ -212,7 +212,7 @@ function SetPropertyChip({
 export function ChatToolChip({ part }: ChatToolChipProps): ReactElement {
   const navigateNoteLink = useNoteLinkNavigation()
   const openNote = (path: string, event: MouseEvent<HTMLButtonElement>): void => {
-    navigateNoteLink({ target: routeForPath(path), openInNewWindow: isModEvent(event) })
+    navigateNoteLink({ target: routeForPath(path), openInSplit: isModEvent(event) })
   }
   const pending = isToolPending(part)
   const call = part.call

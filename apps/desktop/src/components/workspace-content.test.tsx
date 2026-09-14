@@ -1,6 +1,7 @@
 import { render } from 'vitest-browser-react'
 import { page } from 'vitest/browser'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { ReactNode } from 'react'
 import type { GraphInfo } from '@reflect/core'
 import type { ContextSidebarTarget } from '@/components/context-sidebar/sidebar-route'
 import type { Route } from '@/routing/route'
@@ -57,6 +58,30 @@ vi.mock('@/components/templates/template-create-dialog', () => ({
 vi.mock('@/components/templates/template-picker', () => ({ TemplatePicker: () => null }))
 vi.mock('@/providers/focused-daily-provider', () => ({
   useDailyContextTarget: () => workspaceState.target,
+  FocusedDailyProvider: ({ children }: { children: ReactNode }) => children,
+  FocusedDailyArrivalReset: () => null,
+}))
+// The pane row is `workspace-pane.test.tsx`'s subject; here only the frame
+// around it is under test, so one stub pane stands in for the model and the
+// per-pane providers the real pane mounts.
+vi.mock('@/providers/panes-provider', () => ({
+  usePanes: () => ({
+    panes: [{ id: 'main' }],
+    columns: [{ id: 'main', panes: [{ id: 'main' }] }],
+    activePane: { id: 'main' },
+    setActivePane: vi.fn(),
+    moveTab: vi.fn(),
+  }),
+  useOptionalPanes: () => null,
+  usePaneId: () => 'main',
+  useScopedPaneId: () => 'main',
+  PaneScope: ({ children }: { children: ReactNode }) => children,
+}))
+vi.mock('@/providers/open-tabs-provider', () => ({
+  OpenTabsProvider: ({ children }: { children: ReactNode }) => children,
+}))
+vi.mock('@/providers/note-find-provider', () => ({
+  NoteFindProvider: ({ children }: { children: ReactNode }) => children,
 }))
 vi.mock('@/providers/sidebar-provider', () => ({
   useSidebar: () => ({

@@ -41,6 +41,9 @@ function contextFor(notePath: string | null, generation: number | null): Command
     nextTab: vi.fn(),
     previousTab: vi.fn(),
     closeActiveTab: vi.fn(),
+    closePane: vi.fn(),
+    focusPane: vi.fn(),
+    moveActiveTab: vi.fn(),
     clearScrollState: vi.fn(),
   }
 }

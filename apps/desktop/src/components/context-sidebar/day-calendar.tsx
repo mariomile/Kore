@@ -35,13 +35,13 @@ const HEADER_BUTTON_CLASS =
  * already have a daily note carry a dot marker revealed while the pointer is
  * over the calendar (an indexed `dailyDate` row — daily files exist only
  * once written, so a row means real content). Clicking a day navigates to
- * it; modifier-clicking opens that daily note in a secondary window. The
- * month view follows the selected day, and the calendar glyph between the
- * month arrows jumps back to today.
+ * it; modifier-clicking opens that daily note in the split pane beside this
+ * one. The month view follows the selected day, and the calendar glyph
+ * between the month arrows jumps back to today.
  */
 export function DayCalendar({ selectedDate, today }: DayCalendarProps): ReactElement {
   const { navigate } = useRouter()
-  const navigateNoteLink = useNoteLinkNavigation(selectedDate)
+  const navigateNoteLink = useNoteLinkNavigation()
   const { graph } = useGraph()
   const { settings } = useSettings()
   const weekStartsOn = weekStartDow(settings.weekStartDay)
@@ -135,7 +135,7 @@ export function DayCalendar({ selectedDate, today }: DayCalendarProps): ReactEle
                     onClick={(event) =>
                       navigateNoteLink({
                         target: { kind: 'daily', date: cell.date },
-                        openInNewWindow: isModEvent(event),
+                        openInSplit: isModEvent(event),
                       })
                     }
                     className={cn(

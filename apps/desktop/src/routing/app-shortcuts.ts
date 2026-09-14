@@ -16,9 +16,9 @@ import { useAudioMemo } from '@/providers/audio-memo-provider'
 import { useChatSession } from '@/providers/chat-provider'
 import { useFocusedDailyDate } from '@/providers/focused-daily-provider'
 import { useGraph } from '@/providers/graph-provider'
-import { useNoteFindActions } from '@/providers/note-find-provider'
 import { useNoteTemplates } from '@/providers/note-templates-provider'
 import { useOpenTabs } from '@/providers/open-tabs-provider'
+import { useOptionalPanes } from '@/providers/panes-provider'
 import { useSettings } from '@/providers/settings-provider'
 import { useVaultReplaceDialog } from '@/providers/vault-replace-provider'
 import { useShortcuts } from '@/providers/shortcuts-provider'
@@ -182,11 +182,15 @@ export function useAppShortcuts(): CommandContext {
   const { updateSettings } = useSettings()
   // Safe no-op defaults outside OpenTabsProvider (secondary windows, tests).
   const openTabs = useOpenTabs()
-  const {
-    openForPath: openNoteFindForPath,
-    next: findNextInNote,
-    previous: findPreviousInNote,
-  } = useNoteFindActions()
+  // Find lives in each pane, so the window's ⌘F/⌘G resolve the active pane's
+  // session at call time rather than binding one provider's actions.
+  const panes = useOptionalPanes()
+  // The getter, not the whole model: it reads the active pane through a ref,
+  // so it is stable and a pane switch does not rebuild the command context.
+  const activeFindActions = panes?.activeFindActions ?? null
+  // The whole panes model, read through a ref so pane.close/focusLeft/Right
+  // stay stable closures: the memo below never depends on `panes` directly.
+  const panesRef = useRef(panes)
 
   // Modal surfaces suppress app commands: nothing may navigate behind the
   // palette, the template dialogs, or Replace-in-vault (which could be
@@ -219,6 +223,7 @@ export function useAppShortcuts(): CommandContext {
     openRecentRef.current = openRecent
     routeRef.current = route
     focusedDailyDateRef.current = focusedDailyDate
+    panesRef.current = panes
   })
 
   const context = useMemo<CommandContext>(
@@ -248,12 +253,16 @@ export function useAppShortcuts(): CommandContext {
       toggleContextSidebar,
       newChat,
       openNoteFind: () => {
-        openNoteFindForPath(
+        activeFindActions?.()?.openForPath(
           focusedNotePathForRoute(routeRef.current, todayIso(), focusedDailyDateRef.current),
         )
       },
-      findNextInNote,
-      findPreviousInNote,
+      findNextInNote: () => {
+        activeFindActions?.()?.next()
+      },
+      findPreviousInNote: () => {
+        activeFindActions?.()?.previous()
+      },
       switchGraph: (index) => {
         const recent = recentsRef.current[index]
         if (recent === undefined || recent.root === graphRootRef.current) {
@@ -310,6 +319,16 @@ export function useAppShortcuts(): CommandContext {
       nextTab: openTabs.nextTab,
       previousTab: openTabs.previousTab,
       closeActiveTab: openTabs.closeActiveTab,
+      closePane: () => {
+        const current = panesRef.current
+        current?.closePane(current.activePane.id)
+      },
+      focusPane: (target) => {
+        panesRef.current?.focusPane(target)
+      },
+      moveActiveTab: (direction) => {
+        panesRef.current?.moveActiveTab(direction)
+      },
     }),
     [
       navigate,
@@ -327,9 +346,7 @@ export function useAppShortcuts(): CommandContext {
       toggleContextSidebar,
       newChat,
       setChatDraft,
-      openNoteFindForPath,
-      findNextInNote,
-      findPreviousInNote,
+      activeFindActions,
       toggleAudioMemo,
       updateSettings,
       openTabs.nextTab,

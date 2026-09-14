@@ -6,6 +6,7 @@ import {
   FocusedDailyProvider,
   useDailyContextTarget,
   useFocusedDailyDate,
+  useResetFocusedDailyOnArrival,
   useSetFocusedDailyDate,
 } from './focused-daily-provider'
 
@@ -58,35 +59,71 @@ describe('useDailyContextTarget', () => {
     }
   }
 
-  it('follows the focused day, then snaps to the new routed day on navigation', async () => {
+  it('follows the focused day', async () => {
     const { result, act } = await renderHook(useHarness, { wrapper: routed })
-    // Nothing focused yet → the routed subject.
+    // Nothing focused yet, so the routed subject.
     expect(result.current.target).toEqual(ROUTED)
 
     await act(() => result.current.setFocused('2026-06-01'))
     expect(result.current.target).toEqual({ kind: 'daily', date: '2026-06-01' })
-
-    // Navigating to another day clears focus pre-paint, onto the new routed day.
-    await act(() => result.current.navigate({ kind: 'daily', date: '2026-06-05' }))
-    expect(result.current.target).toEqual({ kind: 'daily', date: '2026-06-05' })
   })
 
-  it('resets even when re-targeting the current entry (⌘D / calendar pick on it)', async () => {
+  it('reads only: clearing focus on arrival is the pane’s job', async () => {
     const { result, act } = await renderHook(useHarness, { wrapper: routed })
     await act(() => result.current.setFocused('2026-06-01'))
-    expect(result.current.target).toEqual({ kind: 'daily', date: '2026-06-01' })
 
-    // A no-op re-navigation bumps `arrivalSeq` without changing the entry; the
-    // reset keys off that, so focus still clears.
-    await act(() => result.current.navigate(ROUTED))
-    expect(result.current.target).toEqual(ROUTED)
+    // No reset here, so the focused day survives the navigation. The pane
+    // mounts `useResetFocusedDailyOnArrival` to clear it.
+    await act(() => result.current.navigate({ kind: 'daily', date: '2026-06-05' }))
+    expect(result.current.target).toEqual({ kind: 'daily', date: '2026-06-01' })
   })
 
   it('ignores the focused day off the daily views (a note route keeps its note)', async () => {
     const { result, act } = await renderHook(useHarness, { wrapper: routed })
     await act(() => result.current.navigate({ kind: 'note', path: 'notes/a.md' }))
-    // Focus set while on a note route is irrelevant — the sidebar stays the note.
+    // Focus set while on a note route is irrelevant: the sidebar stays the note.
     await act(() => result.current.setFocused('2026-06-01'))
     expect(result.current.target).toEqual({ kind: 'note', path: 'notes/a.md' })
+  })
+})
+
+describe('useResetFocusedDailyOnArrival', () => {
+  const ROUTED = { kind: 'daily', date: '2026-06-09' } as const
+
+  function routed({ children }: { children: ReactNode }) {
+    return (
+      <RouterProvider initialRoute={ROUTED}>
+        <FocusedDailyProvider>{children}</FocusedDailyProvider>
+      </RouterProvider>
+    )
+  }
+
+  function useHarness() {
+    useResetFocusedDailyOnArrival()
+    return {
+      focused: useFocusedDailyDate(),
+      setFocused: useSetFocusedDailyDate(),
+      navigate: useRouter().navigate,
+    }
+  }
+
+  it('clears the focused day on navigation', async () => {
+    const { result, act } = await renderHook(useHarness, { wrapper: routed })
+    await act(() => result.current.setFocused('2026-06-01'))
+    expect(result.current.focused).toBe('2026-06-01')
+
+    await act(() => result.current.navigate({ kind: 'daily', date: '2026-06-05' }))
+    expect(result.current.focused).toBeNull()
+  })
+
+  it('resets even when re-targeting the current entry (⌘D / calendar pick on it)', async () => {
+    const { result, act } = await renderHook(useHarness, { wrapper: routed })
+    await act(() => result.current.setFocused('2026-06-01'))
+    expect(result.current.focused).toBe('2026-06-01')
+
+    // A no-op re-navigation bumps `arrivalSeq` without changing the entry; the
+    // reset keys off that, so focus still clears.
+    await act(() => result.current.navigate(ROUTED))
+    expect(result.current.focused).toBeNull()
   })
 })

@@ -7,15 +7,10 @@ import { RouterProvider, useRouter } from '@/routing/router'
 import { TemplatesSection } from './templates-section'
 
 const listTemplates = vi.hoisted(() => vi.fn())
-const openRouteInNewWindow = vi.hoisted(() => vi.fn<() => Promise<boolean>>())
 
 vi.mock('@reflect/core', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@reflect/core')>()),
   listTemplates,
-}))
-vi.mock('@/lib/windows/open-in-new-window', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/lib/windows/open-in-new-window')>()),
-  openRouteInNewWindow,
 }))
 vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({ graph: { root: '/g', name: 'g', generation: 1 } }),
@@ -48,7 +43,6 @@ beforeEach(() => {
   listTemplates
     .mockReset()
     .mockResolvedValue([{ path: 'templates/weekly-review.md', title: 'Weekly review', mtime: 1 }])
-  openRouteInNewWindow.mockReset().mockResolvedValue(true)
 })
 
 describe('TemplatesSection note links', () => {
@@ -60,20 +54,15 @@ describe('TemplatesSection note links', () => {
     await expect
       .element(page.getByTestId('route'))
       .toHaveTextContent('note:templates/weekly-review.md')
-    expect(openRouteInNewWindow).not.toHaveBeenCalled()
   })
 
-  it('opens a ⌘-clicked template in a new window with its explicit note route', async () => {
+  it('navigates a ⌘-clicked template in place (no panes mounted) with its explicit note route', async () => {
     await renderSection()
 
     await page.getByText('templates/weekly-review.md').click({ modifiers: ['ControlOrMeta'] })
 
-    await vi.waitFor(() =>
-      expect(openRouteInNewWindow).toHaveBeenCalledWith({
-        kind: 'note',
-        path: 'templates/weekly-review.md',
-      }),
-    )
-    expect(page.getByTestId('route').element().textContent).toBe('settings')
+    await expect
+      .element(page.getByTestId('route'))
+      .toHaveTextContent('note:templates/weekly-review.md')
   })
 })

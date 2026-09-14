@@ -19,6 +19,7 @@ import {
 import { useToday } from '@/lib/use-today'
 import { isMainWindow } from '@/lib/windows/window-role'
 import { useFocusedDailyDate } from '@/providers/focused-daily-provider'
+import { useOptionalPanes, usePaneId } from '@/providers/panes-provider'
 import { focusedNotePathForRoute } from '@/routing/route'
 import { useRouter } from '@/routing/router'
 
@@ -227,6 +228,21 @@ export function NoteFindProvider({ children }: { children: ReactNode }): ReactEl
     () => ({ openForPath, next, previous, close }),
     [close, next, openForPath, previous],
   )
+  // Window-level ⌘F/⌘G address the *active* pane, so each pane's session
+  // publishes its actions into the pane model. No panes (the note window,
+  // mobile) means nothing to register.
+  const panes = useOptionalPanes()
+  const paneId = usePaneId()
+  useEffect(() => {
+    if (panes === null) {
+      return
+    }
+    panes.registerFindActions(paneId, actions)
+    return () => {
+      panes.registerFindActions(paneId, null)
+    }
+  }, [panes, paneId, actions])
+
   const findTarget = useMemo<FindTarget | null>(
     () => (target === null ? null : { path: target, query }),
     [query, target],

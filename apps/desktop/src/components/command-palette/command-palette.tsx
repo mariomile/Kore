@@ -117,7 +117,7 @@ export function CommandPalette({ context }: CommandPaletteProps): ReactElement |
     pendingNoteClickRef.current = null
     navigateNoteLink({
       target: routeForPath(entry.path),
-      openInNewWindow: pendingClick?.path === entry.path && isModEvent(pendingClick.event),
+      openInSplit: pendingClick?.path === entry.path && isModEvent(pendingClick.event),
     })
     closePalette()
   }

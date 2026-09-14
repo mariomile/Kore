@@ -160,7 +160,7 @@ function EmbeddedTagCollection({ embed, tag, onChange }: EmbeddedTagCollectionPr
     (path: string, event?: ModClickEvent) =>
       navigateNoteLink({
         target: routeForPath(path),
-        openInNewWindow: event !== undefined && isModEvent(event),
+        openInSplit: event !== undefined && isModEvent(event),
       }),
     [navigateNoteLink],
   )
@@ -293,7 +293,7 @@ function EmbeddedReusableCollection({ embed, onChange }: EmbeddedCollectionProps
     (path: string, event?: ModClickEvent) =>
       navigateNoteLink({
         target: routeForPath(path),
-        openInNewWindow: event !== undefined && isModEvent(event),
+        openInSplit: event !== undefined && isModEvent(event),
       }),
     [navigateNoteLink],
   )

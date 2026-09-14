@@ -1,13 +1,6 @@
 import type { OpenTab } from '@reflect/core'
-import { useCallback, type MouseEvent, type ReactElement } from 'react'
-import {
-  closestCenter,
-  DndContext,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from '@dnd-kit/core'
+import { useMemo, type MouseEvent, type ReactElement } from 'react'
+import { useDndMonitor, type DragEndEvent } from '@dnd-kit/core'
 import { horizontalListSortingStrategy, SortableContext, useSortable } from '@dnd-kit/sortable'
 import { Close, PanelLeft, PanelRight, Pin } from '@/components/icons'
 import { NoteTabsListMenu } from '@/components/note-tabs-list-menu'
@@ -18,14 +11,23 @@ import { tabCloseClass, tabPillClass, useTabScrollIntoView } from '@/components/
 import { useOpenTabItems, type OpenTabItem } from '@/hooks/use-open-tab-items'
 import type { CommandContext } from '@/lib/commands/types'
 import { sortableTranslateStyle } from '@/lib/sortable-translate'
+import { resolveTabDrop } from '@/lib/tab-drop'
 import { cn } from '@/lib/utils'
 import { tabKey } from '@/providers/open-tab'
 import { useOpenTabs } from '@/providers/open-tabs-provider'
+import { useOptionalPanes, usePaneId } from '@/providers/panes-provider'
 import { useSidebar } from '@/providers/sidebar-provider'
 
 interface WorkspaceTabsStripProps {
   /** Commands for the "+" menu (new note vs the built-in browser). */
   commandContext?: CommandContext
+  /**
+   * Each rail toggle belongs to the one strip nearest its rail: the first
+   * pane of the first column owns the sidebar toggle, the first pane of the
+   * last column the context one. A lone strip keeps both.
+   */
+  showSidebarToggle?: boolean
+  showContextToggle?: boolean
 }
 
 /**
@@ -33,28 +35,42 @@ interface WorkspaceTabsStripProps {
  * closable tab; pinned tabs collapse to their semantic icon, and closing the
  * final tab falls back to Daily through the provider. Settings is a full-page
  * workspace and never joins the strip.
+ *
+ * Requires a `DndContext` above it: dragging a pill belongs to the workspace
+ * frame's context (a pill travels between panes), and the `useDndMonitor`
+ * this strip listens with throws without one. Anything mounting the strip on
+ * its own, tests included, has to supply that context.
  */
-export function WorkspaceTabsStrip({ commandContext }: WorkspaceTabsStripProps): ReactElement {
+export function WorkspaceTabsStrip({
+  commandContext,
+  showSidebarToggle = true,
+  showContextToggle = true,
+}: WorkspaceTabsStripProps): ReactElement {
   const { activeTab, activateTab, closeTab, togglePin, moveTab } = useOpenTabs()
   const items = useOpenTabItems()
   const { collapsed, toggleSidebar, contextCollapsed, toggleContextSidebar } = useSidebar()
   const activeKey = activeTab === null ? null : tabKey(activeTab)
-  // The 4px activation distance keeps plain clicks (activate), double clicks
-  // (pin) and middle clicks (close) intact — a drag only starts once the
-  // pointer actually travels. Same tuning as the sidebar's pinned shelf.
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
-  const handleDragEnd = useCallback(
-    (event: DragEndEvent): void => {
-      if (event.over === null || event.active.id === event.over.id) {
-        return
-      }
-      const dragged = items.find((item) => tabKey(item.tab) === String(event.active.id))
-      const target = items.find((item) => tabKey(item.tab) === String(event.over?.id))
-      if (dragged !== undefined && target !== undefined) {
-        moveTab(dragged.tab, target.tab)
-      }
-    },
-    [items, moveTab],
+  // An inactive column still shows which tab it is on, but quietly: only the
+  // active pane's selected pill reads as selected. No panes (the note window,
+  // tests) means the one strip is always the active one.
+  const panes = useOptionalPanes()
+  const paneId = usePaneId()
+  const paneActive = panes === null || panes.activePane.id === paneId
+  // Dragging is the frame's `DndContext` (one for the whole columns row, so a
+  // pill can travel between panes); a drop that stayed inside this strip
+  // comes back here as a reorder.
+  useDndMonitor(
+    useMemo(
+      () => ({
+        onDragEnd(event: DragEndEvent): void {
+          const drop = resolveTabDrop(event.active, event.over)
+          if (drop?.kind === 'reorder' && drop.paneId === paneId) {
+            moveTab(drop.tab, drop.target)
+          }
+        },
+      }),
+      [paneId, moveTab],
+    ),
   )
 
   return (
@@ -71,12 +87,14 @@ export function WorkspaceTabsStrip({ commandContext }: WorkspaceTabsStripProps):
       )}
     >
       <div className="window-drag-control flex items-center">
-        <PanelToggle
-          side="left"
-          collapsed={collapsed}
-          onToggle={toggleSidebar}
-          label="Toggle sidebar"
-        />
+        {showSidebarToggle ? (
+          <PanelToggle
+            side="left"
+            collapsed={collapsed}
+            onToggle={toggleSidebar}
+            label="Toggle sidebar"
+          />
+        ) : null}
         <NavigateArrows />
       </div>
 
@@ -85,36 +103,38 @@ export function WorkspaceTabsStrip({ commandContext }: WorkspaceTabsStripProps):
         aria-label="Workspace tabs"
         className="window-drag-control ml-1 flex min-w-0 flex-1 items-center gap-1 overflow-x-auto"
       >
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext
-            items={items.map((item) => tabKey(item.tab))}
-            strategy={horizontalListSortingStrategy}
-          >
-            {items.map((item) => (
-              <StripTab
-                key={tabKey(item.tab)}
-                item={item}
-                active={tabKey(item.tab) === activeKey}
-                onActivate={activateTab}
-                onClose={closeTab}
-                onTogglePin={togglePin}
-              />
-            ))}
-          </SortableContext>
-        </DndContext>
+        <SortableContext
+          items={items.map((item) => tabKey(item.tab))}
+          strategy={horizontalListSortingStrategy}
+        >
+          {items.map((item) => (
+            <StripTab
+              key={tabKey(item.tab)}
+              item={item}
+              paneId={paneId}
+              active={tabKey(item.tab) === activeKey}
+              paneActive={paneActive}
+              onActivate={activateTab}
+              onClose={closeTab}
+              onTogglePin={togglePin}
+            />
+          ))}
+        </SortableContext>
 
         {commandContext ? <NoteTabsPlusMenu context={commandContext} /> : null}
         <NoteTabsListMenu />
       </div>
 
-      <div className="window-drag-control ml-auto flex items-center">
-        <PanelToggle
-          side="right"
-          collapsed={contextCollapsed}
-          onToggle={toggleContextSidebar}
-          label="Toggle context panel"
-        />
-      </div>
+      {showContextToggle ? (
+        <div className="window-drag-control ml-auto flex items-center">
+          <PanelToggle
+            side="right"
+            collapsed={contextCollapsed}
+            onToggle={toggleContextSidebar}
+            label="Toggle context panel"
+          />
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -153,19 +173,33 @@ function PanelToggle({ side, collapsed, onToggle, label }: PanelToggleProps): Re
 
 interface StripTabProps {
   item: OpenTabItem
+  /** The pane this strip belongs to: it travels with the drag payload. */
+  paneId: string
   active: boolean
+  /** False in a pane the user is not in: its selected pill stays muted. */
+  paneActive: boolean
   onActivate: (tab: OpenTab) => void
   onClose: (tab: OpenTab) => void
   onTogglePin: (tab: OpenTab) => void
 }
 
-function StripTab({ item, active, onActivate, onClose, onTogglePin }: StripTabProps): ReactElement {
+function StripTab({
+  item,
+  paneId,
+  active,
+  paneActive,
+  onActivate,
+  onClose,
+  onTogglePin,
+}: StripTabProps): ReactElement {
   const { tab, title } = item
-  // Drag-to-reorder: the whole pill is the handle (activation distance keeps
-  // clicks working); the drop lands in `moveTab` through the strip's
-  // DndContext. No overlay — the pill itself follows the pointer.
+  // The whole pill is the handle (the frame's activation distance keeps
+  // clicks working). No overlay: the pill itself follows the pointer. The
+  // payload says which pane and which tab, so a drop anywhere in the frame
+  // resolves to a reorder here or a move into another pane.
   const { isDragging, listeners, setNodeRef, transform, transition } = useSortable({
     id: tabKey(tab),
+    data: { kind: 'tab', paneId, tab },
   })
   const scrollRef = useTabScrollIntoView(active)
   // One element, two owners: dnd-kit measures the pill, and the strip scrolls
@@ -200,6 +234,7 @@ function StripTab({ item, active, onActivate, onClose, onTogglePin }: StripTabPr
         onAuxClick={handleAuxClick}
         className={cn(
           tabPillClass(active),
+          active && !paneActive && 'text-text-muted',
           // A pinned tab is its icon: no label, so no room to hold open for one.
           'min-w-0 shrink-0 px-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
           isDragging && 'z-10 opacity-70',
@@ -223,6 +258,7 @@ function StripTab({ item, active, onActivate, onClose, onTogglePin }: StripTabPr
       onAuxClick={handleAuxClick}
       className={cn(
         tabPillClass(active),
+        active && !paneActive && 'text-text-muted',
         'group cursor-default pr-1',
         isDragging && 'z-10 opacity-70',
       )}

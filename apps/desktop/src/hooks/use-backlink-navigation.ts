@@ -16,7 +16,7 @@ export interface BacklinkNavigation {
    * mounted), anything else opens the note. The arrival never requests focus
    * — on mobile that would raise the keyboard through the stack animation;
    * desktop autofocuses note arrivals anyway. `event` (desktop) lets ⌘-click
-   * open a new window; mobile taps omit it.
+   * open the note in the pane beside this one; mobile taps omit it.
    */
   openSource: (path: string, event?: ModClickEvent) => void
   /**
@@ -42,7 +42,7 @@ export function useBacklinkNavigation(): BacklinkNavigation {
     (target: string, event?: ModClickEvent) => {
       navigateNoteLink({
         target: routeForPath(target),
-        openInNewWindow: event !== undefined && isModEvent(event),
+        openInSplit: event !== undefined && isModEvent(event),
       })
     },
     [navigateNoteLink],
@@ -51,7 +51,7 @@ export function useBacklinkNavigation(): BacklinkNavigation {
   const navigateWikiLink = useWikiLinkNavigation(graph?.generation ?? null)
   const { resolveImageUrl } = useAssetPersistence(graph?.generation ?? null)
   const onWikilinkClick = useCallback<WikilinkClickHandler>(
-    (payload) => navigateWikiLink({ target: payload.target, openInNewWindow: payload.mod }),
+    (payload) => navigateWikiLink({ target: payload.target, openInSplit: payload.mod }),
     [navigateWikiLink],
   )
   const resolveImageUrlStable = useCallback(

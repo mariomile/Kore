@@ -25,7 +25,7 @@ function ConflictedNoteLink({ note }: ConflictedNoteLinkProps): ReactElement {
         onClick={(event) =>
           navigateNoteLink({
             target: { kind: 'note', path: note.path },
-            openInNewWindow: isModEvent(event),
+            openInSplit: isModEvent(event),
           })
         }
       >

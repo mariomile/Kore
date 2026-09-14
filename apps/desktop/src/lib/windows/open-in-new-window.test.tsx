@@ -14,7 +14,7 @@ vi.mock('@/lib/platform', async (importOriginal) => ({
 }))
 vi.mock('@/lib/platform-surface', () => ({ isMobileSurface }))
 
-import { openDeepLinkInNewWindow, openRouteInNewWindow } from './open-in-new-window'
+import { openRouteInNewWindow } from './open-in-new-window'
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -70,22 +70,5 @@ describe('openRouteInNewWindow', () => {
     await expect(openRouteInNewWindow({ kind: 'note', path: 'notes/foo.md' })).resolves.toBe(false)
     expect(error).toHaveBeenCalled()
     error.mockRestore()
-  })
-})
-
-describe('openDeepLinkInNewWindow', () => {
-  it('opens addressing links verbatim', async () => {
-    await expect(openDeepLinkInNewWindow('reflect://note/Some%20Note')).resolves.toBe(true)
-    expect(openNoteWindow).toHaveBeenCalledWith('reflect://note/Some%20Note')
-  })
-
-  it('declines capture links — they are writes, not places', async () => {
-    await expect(openDeepLinkInNewWindow('reflect://append?text=hi')).resolves.toBe(false)
-    expect(openNoteWindow).not.toHaveBeenCalled()
-  })
-
-  it('declines malformed links', async () => {
-    await expect(openDeepLinkInNewWindow('reflect://nonsense/x')).resolves.toBe(false)
-    expect(openNoteWindow).not.toHaveBeenCalled()
   })
 })

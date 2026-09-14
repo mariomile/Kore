@@ -46,7 +46,6 @@ const resolveWikiTarget = vi.hoisted(() =>
 const loadChatGraphContext = vi.hoisted(() =>
   vi.fn<(graphName: string, deps?: GraphContextDeps) => Promise<CloudSafe<CloudGraphContext>>>(),
 )
-const openRouteInNewWindow = vi.hoisted(() => vi.fn<() => Promise<boolean>>())
 const searchNotes = vi.hoisted(() =>
   vi.fn<(query: string, limit?: number) => Promise<{ path: string; title: string }[]>>(),
 )
@@ -64,11 +63,6 @@ vi.mock('@reflect/core', async (importOriginal) => ({
   listPrivateNotePaths,
   resolveNoteMentions,
 }))
-vi.mock('@/lib/windows/open-in-new-window', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/lib/windows/open-in-new-window')>()),
-  openRouteInNewWindow,
-}))
-
 const settingsState = vi.hoisted(() => ({
   models: [] as AiProviderConfig[],
   defaultId: null as string | null,
@@ -118,7 +112,7 @@ vi.mock('@/editor/markdown-preview', () => ({
     onWikiLinkClick,
   }: {
     content: string
-    onWikiLinkClick?: (options: { target: string; openInNewWindow: boolean }) => void
+    onWikiLinkClick?: (options: { target: string; openInSplit: boolean }) => void
   }) => {
     const wikiTargets = Array.from(
       content.matchAll(/\[\[([^\]|]+)(?:\|[^\]]*)?\]\]/g),
@@ -131,7 +125,7 @@ vi.mock('@/editor/markdown-preview', () => ({
           <button
             key={target}
             type="button"
-            onClick={(event) => onWikiLinkClick?.({ target, openInNewWindow: isModEvent(event) })}
+            onClick={(event) => onWikiLinkClick?.({ target, openInSplit: isModEvent(event) })}
           >
             Open {target}
           </button>
@@ -165,7 +159,6 @@ beforeEach(() => {
     kind: 'resolved',
     ref: `notes/${target.toLowerCase()}.md`,
   }))
-  openRouteInNewWindow.mockReset().mockResolvedValue(true)
   searchNotes.mockReset().mockResolvedValue([])
   listPrivateNotePaths.mockReset().mockResolvedValue([])
   resolveNoteMentions.mockReset().mockResolvedValue([])
@@ -368,7 +361,7 @@ describe('ChatScreen', () => {
     expect(writeText).toHaveBeenCalledWith('It ships in June. [[Atlas]]')
   })
 
-  it('opens ⌘-clicked tool-result and read-note links in new windows', async () => {
+  it('navigates ⌘-clicked tool-result and read-note links in place (no panes mounted)', async () => {
     configureModel()
     scriptTurn([
       { type: 'tool-call', call: { tool: 'search', toolCallId: 'tool-1', query: 'atlas' } },
@@ -401,17 +394,14 @@ describe('ChatScreen', () => {
     await view
       .getByRole('button', { name: 'Atlas', exact: true })
       .click({ modifiers: ['ControlOrMeta'] })
+
+    await vi.waitFor(() => expect(probedRoute).toEqual({ kind: 'note', path: 'notes/atlas.md' }))
+
     await view
       .getByRole('button', { name: 'Brief', exact: true })
       .click({ modifiers: ['ControlOrMeta'] })
 
-    await vi.waitFor(() =>
-      expect(openRouteInNewWindow.mock.calls).toEqual([
-        [{ kind: 'note', path: 'notes/atlas.md' }],
-        [{ kind: 'note', path: 'notes/brief.md' }],
-      ]),
-    )
-    expect(probedRoute).toEqual({ kind: 'today' })
+    await vi.waitFor(() => expect(probedRoute).toEqual({ kind: 'note', path: 'notes/brief.md' }))
   })
 
   it('opens cited wiki links from settled chat markdown', async () => {
@@ -431,7 +421,7 @@ describe('ChatScreen', () => {
     await vi.waitFor(() => expect(probedRoute).toEqual({ kind: 'note', path: 'notes/atlas.md' }))
   })
 
-  it('opens ⌘-clicked cited wiki links in a new window', async () => {
+  it('navigates ⌘-clicked cited wiki links in place (no panes mounted)', async () => {
     configureModel()
     scriptTurn([
       { type: 'text-delta', text: 'See [[Atlas]].' },
@@ -445,13 +435,7 @@ describe('ChatScreen', () => {
     await userEvent.type(view.getByLabelText('Chat message'), 'what should I open?{Enter}')
     await view.getByRole('button', { name: 'Open Atlas' }).click({ modifiers: ['ControlOrMeta'] })
 
-    await vi.waitFor(() =>
-      expect(openRouteInNewWindow).toHaveBeenCalledWith({
-        kind: 'note',
-        path: 'notes/atlas.md',
-      }),
-    )
-    expect(probedRoute).toEqual({ kind: 'today' })
+    await vi.waitFor(() => expect(probedRoute).toEqual({ kind: 'note', path: 'notes/atlas.md' }))
   })
 
   it('offers the provider catalog in the picker, keeping a custom model selectable', async () => {

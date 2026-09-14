@@ -495,7 +495,7 @@ describe('TasksScreen', () => {
     await view.unmount()
   })
 
-  it('opens a modifier-clicked task source in a new window without selecting the row', async () => {
+  it('navigates a modifier-clicked task source in place (no panes mounted) without selecting the row', async () => {
     getOpenTasks.mockResolvedValue([
       task({
         notePath: 'notes/p.md',
@@ -513,17 +513,15 @@ describe('TasksScreen', () => {
     })
 
     await waitFor(() =>
-      expect(openRouteInNewWindow).toHaveBeenCalledWith({
-        kind: 'note',
-        path: 'notes/p.md',
-      }),
+      expect(view.getByTestId('route').element().textContent).toBe(
+        JSON.stringify({ kind: 'note', path: 'notes/p.md' }),
+      ),
     )
-    expect(view.getByTestId('route').element().textContent).toBe('{"kind":"today"}')
     expect(view.queryByTestId('task-editor')).toBeNull()
     await view.unmount()
   })
 
-  it('opens a modifier-clicked note-group title in a new window', async () => {
+  it('navigates a modifier-clicked note-group title in place (no panes mounted)', async () => {
     getOpenTasks.mockResolvedValue([
       task({ notePath: 'notes/p.md', text: 'project task', noteTitle: 'Project' }),
     ])
@@ -535,12 +533,10 @@ describe('TasksScreen', () => {
     })
 
     await waitFor(() =>
-      expect(openRouteInNewWindow).toHaveBeenCalledWith({
-        kind: 'note',
-        path: 'notes/p.md',
-      }),
+      expect(view.getByTestId('route').element().textContent).toBe(
+        JSON.stringify({ kind: 'note', path: 'notes/p.md' }),
+      ),
     )
-    expect(view.getByTestId('route').element().textContent).toBe('{"kind":"today"}')
     await view.unmount()
   })
 

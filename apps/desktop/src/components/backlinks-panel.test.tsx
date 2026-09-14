@@ -17,7 +17,6 @@ const { getBacklinksWithContext, getBacklinksPage } = vi.hoisted(() => {
   return { getBacklinksWithContext, getBacklinksPage }
 })
 const resolveOrCreateNoteWithTitle = vi.hoisted(() => vi.fn())
-const openRouteInNewWindow = vi.hoisted(() => vi.fn<() => Promise<boolean>>())
 vi.mock('@reflect/core', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@reflect/core')>()),
   hasBridge: () => true,
@@ -32,10 +31,6 @@ vi.mock('@/providers/settings-provider', () => ({
     settings: { browserOpenLinksInApp: true },
     updateSettings: () => {},
   }),
-}))
-vi.mock('@/lib/windows/open-in-new-window', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/lib/windows/open-in-new-window')>()),
-  openRouteInNewWindow,
 }))
 
 function RouteProbe(): ReactNode {
@@ -64,7 +59,6 @@ beforeEach(() => {
   getBacklinksWithContext.mockReset()
   getBacklinksPage.mockClear()
   resolveOrCreateNoteWithTitle.mockReset()
-  openRouteInNewWindow.mockReset().mockResolvedValue(true)
 })
 
 describe('BacklinksPanel', () => {
@@ -167,7 +161,7 @@ describe('BacklinksPanel', () => {
     await view.unmount()
   })
 
-  it('opens a ⌘-clicked backlink source in a new window', async () => {
+  it('navigates a ⌘-clicked backlink source in place (no panes mounted)', async () => {
     getBacklinksWithContext.mockResolvedValue([
       {
         sourcePath: 'notes/meeting.md',
@@ -181,13 +175,7 @@ describe('BacklinksPanel', () => {
 
     await view.getByText('Meeting Notes').click({ modifiers: ['ControlOrMeta'] })
 
-    await vi.waitFor(() =>
-      expect(openRouteInNewWindow).toHaveBeenCalledWith({
-        kind: 'note',
-        path: 'notes/meeting.md',
-      }),
-    )
-    await expect.element(view.getByTestId('route')).toHaveTextContent('"today"')
+    await expect.element(view.getByTestId('route')).toHaveTextContent('notes/meeting.md')
     await view.unmount()
   })
 

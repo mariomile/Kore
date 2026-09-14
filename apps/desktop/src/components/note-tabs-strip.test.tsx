@@ -1,14 +1,17 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
-import { useSyncExternalStore, type ReactElement } from 'react'
-import { setBridge, untitledNotePath, type OpenTab } from '@reflect/core'
+import { useSyncExternalStore, type ReactElement, type ReactNode } from 'react'
+import { setBridge, untitledNotePath, type OpenColumn, type OpenPane } from '@reflect/core'
 import { SidebarOpenTabs } from '@/components/sidebar/sidebar-open-notes'
 import { emitChatConversationDeleted } from '@/lib/chat-events'
 import { emitNoteMoved } from '@/lib/note-moves'
 import { OpenTabsProvider, useOpenTabs } from '@/providers/open-tabs-provider'
+import { PaneScope, PanesProvider } from '@/providers/panes-provider'
 import { SidebarProvider } from '@/providers/sidebar-provider'
+import { tabKey } from '@/providers/open-tab'
 import { routeForPath } from '@/routing/route'
 import { RouterProvider, useRouter } from '@/routing/router'
 import { WorkspaceTabsStrip } from './note-tabs-strip'
@@ -21,14 +24,15 @@ import { WorkspaceTabsStrip } from './note-tabs-strip'
  */
 
 const settingsStore = vi.hoisted(() => {
-  // Tabs are keyed by graph root (the settings document is global); the
-  // mocked graph provider below serves root '/g'.
-  type TabsByGraph = Record<string, OpenTab[]>
-  let state: { openTabs: TabsByGraph } = { openTabs: {} }
+  // Panes are keyed by graph root (the settings document is global); the
+  // mocked graph provider below serves root '/g', with the single 'main'
+  // pane this suite mounts the provider for.
+  type PanesByGraph = Record<string, OpenColumn[]>
+  let state: { openTabs: PanesByGraph } = { openTabs: {} }
   const listeners = new Set<() => void>()
   return {
     get: () => state,
-    set(patch: Partial<{ openTabs: TabsByGraph }>) {
+    set(patch: Partial<{ openTabs: PanesByGraph }>) {
       if (Object.keys(patch).length === 0) {
         return
       }
@@ -85,18 +89,23 @@ const chatStore = vi.hoisted(() => {
 
 vi.mock('@/providers/settings-provider', async () => {
   const { useSyncExternalStore } = await import('react')
+  // Stable identities, like the real provider's `useCallback` writers: an
+  // updater that changed every render would re-run every effect that depends
+  // on it on every settings write.
+  const updateSettings = (patch: object) => {
+    settingsStore.set(patch)
+  }
+  const updateSettingsWith = (updater: (current: object) => object) => {
+    settingsStore.set(updater(settingsStore.get()))
+  }
   return {
     useSettings: () => ({
       settings: useSyncExternalStore(
         (listener: () => void) => settingsStore.subscribe(listener),
         () => settingsStore.get(),
       ),
-      updateSettings: (patch: object) => {
-        settingsStore.set(patch)
-      },
-      updateSettingsWith: (updater: (current: object) => object) => {
-        settingsStore.set(updater(settingsStore.get()))
-      },
+      updateSettings,
+      updateSettingsWith,
     }),
   }
 })
@@ -304,11 +313,24 @@ function Probe(): ReactElement {
   )
 }
 
+/**
+ * The frame's drag context, as the strip sees it: the 4px activation distance
+ * is what keeps a plain click on a pill a click.
+ */
+function DragHarness({ children }: { children: ReactNode }): ReactElement {
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
+  return <DndContext sensors={sensors}>{children}</DndContext>
+}
+
 function renderTabs() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
-      <GraphHarness />
+      {/* The strip monitors the frame's drag context; mounted alone it still
+        needs one above it. */}
+      <DragHarness>
+        <GraphHarness />
+      </DragHarness>
     </QueryClientProvider>,
   )
 }
@@ -321,7 +343,7 @@ function GraphHarness(): ReactElement {
   return (
     <RouterProvider key={root} initialRoute={{ kind: 'today' }}>
       <SidebarProvider>
-        <OpenTabsProvider>
+        <OpenTabsProvider paneId="main">
           <WorkspaceTabsStrip />
           <SidebarOpenTabs />
           <Probe />
@@ -418,7 +440,7 @@ describe('workspace tabs', () => {
       expect(first?.textContent ?? '').toContain('Beta Review')
     })
     // The reorder is the persisted strip order, not a render artifact.
-    const stored = settingsStore.get().openTabs['/g'] ?? []
+    const stored = settingsStore.get().openTabs['/g']?.[0]?.panes[0]?.tabs ?? []
     expect(stored[0]).toMatchObject({ kind: 'note', path: 'notes/beta.md' })
     await view.unmount()
   })
@@ -641,8 +663,19 @@ describe('workspace tabs', () => {
     settingsStore.set({
       openTabs: {
         '/g': [
-          { kind: 'surface', surface: 'daily', date: null, pinned: false },
-          { kind: 'note', path: 'notes/alpha.md', pinned: false },
+          {
+            id: 'main',
+            panes: [
+              {
+                id: 'main',
+                tabs: [
+                  { kind: 'surface', surface: 'daily', date: null, pinned: false },
+                  { kind: 'note', path: 'notes/alpha.md', pinned: false },
+                ],
+                activeKey: 'note:notes/alpha.md',
+              },
+            ],
+          },
         ],
       },
     })
@@ -653,6 +686,93 @@ describe('workspace tabs', () => {
     await vi.waitFor(() => expect(routeOf(view).kind).toBe('today'))
     expect(view.getByRole('tab', { name: /Alpha Plan/ }).query()).toBeNull()
     await expect.element(view.getByRole('tab', { name: 'Daily notes' })).toBeVisible()
+    await view.unmount()
+  })
+})
+
+/**
+ * The same provider inside a two-pane workspace: writes must land in this
+ * pane's slice, and emptying the strip must close the column instead of
+ * falling back to Daily.
+ */
+
+const SECOND_PANE = {
+  id: 'pane-2',
+  tabs: [{ kind: 'note', path: 'notes/beta.md', pinned: false }],
+  activeKey: 'note:notes/beta.md',
+} as const satisfies OpenPane
+
+function renderSplit() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return render(
+    <QueryClientProvider client={client}>
+      <DragHarness>
+        <RouterProvider initialRoute={{ kind: 'today' }}>
+          <SidebarProvider>
+            <PanesProvider>
+              {/* The pane's own binding, the one that owns the writes: in the
+              app it always sits inside the pane's scope. */}
+              <PaneScope id="main">
+                <OpenTabsProvider paneId="main">
+                  <WorkspaceTabsStrip />
+                  <Probe />
+                </OpenTabsProvider>
+              </PaneScope>
+            </PanesProvider>
+          </SidebarProvider>
+        </RouterProvider>
+      </DragHarness>
+    </QueryClientProvider>,
+  )
+}
+
+function panesOf(): OpenPane[] {
+  return (settingsStore.get().openTabs['/g'] ?? []).flatMap((column) => column.panes)
+}
+
+describe('workspace tabs in a split', () => {
+  beforeEach(() => {
+    settingsStore.set({
+      openTabs: {
+        '/g': [
+          {
+            id: 'main',
+            panes: [
+              {
+                id: 'main',
+                tabs: [{ kind: 'surface', surface: 'daily', date: null, pinned: false }],
+                activeKey: 'surface:daily',
+              },
+            ],
+          },
+          { id: 'column-2', panes: [SECOND_PANE] },
+        ],
+      },
+    })
+  })
+
+  it('writes tabs and the active key into its own pane only', async () => {
+    const view = await renderSplit()
+    await view.getByTestId('open-alpha').click()
+
+    await vi.waitFor(() => {
+      const [main] = panesOf()
+      expect(main?.tabs.map((tab) => tabKey(tab))).toEqual(['surface:daily', 'note:notes/alpha.md'])
+      expect(main?.activeKey).toBe('note:notes/alpha.md')
+    })
+    // The other column is untouched: no tab leaks across panes.
+    expect(panesOf()[1]).toEqual(SECOND_PANE)
+    // And the strip shows this pane's tabs, not the other pane's note.
+    expect(view.getByRole('tab', { name: /Beta Review/ }).query()).toBeNull()
+    await view.unmount()
+  })
+
+  it('closing the last tab closes the pane instead of falling back to Daily', async () => {
+    const view = await renderSplit()
+    await expect.element(view.getByRole('tab', { name: 'Daily notes' })).toBeVisible()
+
+    await view.getByTestId('close-active').click()
+    await vi.waitFor(() => expect(panesOf().map((pane) => pane.id)).toEqual(['pane-2']))
     await view.unmount()
   })
 })

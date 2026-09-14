@@ -7,7 +7,6 @@ import { registerInAppBrowserOpener, resetBrowserSessionForTests } from '@/lib/b
 import { dispatchDeepLink } from '@/lib/deep-links/intake'
 import { useOpenExternalLink, preferOsBrowser } from '@/editor/open-external-link'
 
-const openDeepLinkInNewWindow = vi.hoisted(() => vi.fn<() => Promise<boolean>>())
 const openBrowserWindow = vi.hoisted(() => vi.fn<() => Promise<void>>())
 const settingsState = vi.hoisted(() => ({
   browserOpenLinksInApp: true,
@@ -23,10 +22,6 @@ vi.mock('@reflect/core', async (importOriginal) => ({
 
 vi.mock('@/lib/deep-links/intake', () => ({
   dispatchDeepLink: vi.fn(),
-}))
-vi.mock('@/lib/windows/open-in-new-window', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/lib/windows/open-in-new-window')>()),
-  openDeepLinkInNewWindow,
 }))
 vi.mock('@/providers/settings-provider', () => ({
   useSettings: () => ({
@@ -46,7 +41,6 @@ function click(href: string, metaKey = false, altKey = false): MouseEvent {
 beforeEach(async () => {
   vi.clearAllMocks()
   settingsState.browserOpenLinksInApp = true
-  openDeepLinkInNewWindow.mockResolvedValue(true)
   openBrowserWindow.mockResolvedValue(undefined)
   const { result } = await renderHook(() => useOpenExternalLink())
   openExternalLink = result.current
@@ -142,17 +136,7 @@ describe('openExternalLink', () => {
     expect(openUrl).not.toHaveBeenCalled()
   })
 
-  it('⌘-clicks a rendered reflect:// link into a secondary window', async () => {
-    click('reflect://note/abc123', true)
-
-    await vi.waitFor(() =>
-      expect(openDeepLinkInNewWindow).toHaveBeenCalledWith('reflect://note/abc123'),
-    )
-    expect(dispatchDeepLink).not.toHaveBeenCalled()
-  })
-
-  it('falls back to in-window dispatch when a rendered deep link cannot open a window', async () => {
-    openDeepLinkInNewWindow.mockResolvedValue(false)
+  it('⌘-clicks a rendered reflect:// link into the in-app deep-link intake', async () => {
     click('reflect://note/abc123', true)
 
     await vi.waitFor(() => expect(dispatchDeepLink).toHaveBeenCalledWith('reflect://note/abc123'))

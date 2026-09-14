@@ -11,7 +11,7 @@ import {
   type Settings,
 } from '@reflect/core'
 import type { CommandContext } from '@/lib/commands/types'
-import type { NoteRoute, Route } from '@/routing/route'
+import type { Route } from '@/routing/route'
 import type { ReactElement } from 'react'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { UpdateProvider } from '@/providers/update-provider'
@@ -29,7 +29,6 @@ const listNoteTags = vi.hoisted(() =>
   vi.fn<() => Promise<{ tag: string; count: number }[]>>(async () => []),
 )
 const revealItemInDir = vi.hoisted(() => vi.fn<(path: string) => Promise<void>>(async () => {}))
-const openRouteInNewWindow = vi.hoisted(() => vi.fn<(route: NoteRoute) => Promise<boolean>>())
 const openRecent = vi.hoisted(() => vi.fn())
 const pickAndOpen = vi.hoisted(() => vi.fn())
 const chooseGraph = vi.hoisted(() => vi.fn())
@@ -70,10 +69,6 @@ vi.mock('@/providers/chat-provider', () => ({
   }),
 }))
 vi.mock('@tauri-apps/plugin-opener', () => ({ revealItemInDir }))
-vi.mock('@/lib/windows/open-in-new-window', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/lib/windows/open-in-new-window')>()),
-  openRouteInNewWindow,
-}))
 vi.mock('@/lib/native-menu/context-menu', () => ({ openNativeContextMenu }))
 vi.mock('@/lib/note-pin', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/note-pin')>()),
@@ -165,7 +160,6 @@ beforeEach(() => {
   audioMemo.unavailableReason = null
   audioMemo.toggle.mockReset()
   revealItemInDir.mockClear()
-  openRouteInNewWindow.mockReset().mockResolvedValue(true)
   openRecent.mockClear()
   pickAndOpen.mockClear()
   chooseGraph.mockClear()
@@ -216,6 +210,9 @@ async function renderSidebar(overrides?: Partial<CommandContext>, initialRoute?:
     nextTab: vi.fn(),
     previousTab: vi.fn(),
     closeActiveTab: vi.fn(),
+    closePane: vi.fn(),
+    focusPane: vi.fn(),
+    moveActiveTab: vi.fn(),
     ...overrides,
   }
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -414,7 +411,7 @@ describe('Sidebar', () => {
     await expect.element(roadmap).toHaveAttribute('aria-current', 'page')
   })
 
-  it('modifier-click opens a pinned note in a new window without changing routes', async () => {
+  it('modifier-click navigates to a pinned note in place (no panes mounted)', async () => {
     getPinnedNotes.mockResolvedValue([
       { path: 'notes/roadmap.md', title: 'Roadmap', dailyDate: null },
     ])
@@ -423,14 +420,7 @@ describe('Sidebar', () => {
 
     await roadmap.click({ modifiers: ['ControlOrMeta'] })
 
-    await vi.waitFor(() =>
-      expect(openRouteInNewWindow).toHaveBeenCalledWith({
-        kind: 'note',
-        path: 'notes/roadmap.md',
-      }),
-    )
-    expect(openRouteInNewWindow).toHaveBeenCalledTimes(1)
-    await expect.element(roadmap).not.toHaveAttribute('aria-current')
+    await expect.element(view.getByTestId('route-probe')).toHaveTextContent('note')
   })
 
   it('renders wiki links in pinned note titles as display text', async () => {

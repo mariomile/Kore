@@ -2,6 +2,7 @@ import { useState, type ReactElement, type ReactNode } from 'react'
 import { NotePane } from '@/components/note-pane'
 import { NoteOutlineRail } from '@/components/notes/note-outline-rail'
 import { ScrollVeil } from '@/components/scroll-veil'
+import { usePaneIsActive } from '@/providers/panes-provider'
 import { ScrollRestored } from '@/routing/scroll-restore'
 
 interface SingleNoteViewProps {
@@ -33,6 +34,17 @@ export function SingleNoteView({ path, dailyDate, heading }: SingleNoteViewProps
   // For the veil: the element itself, in state, so the veil's listener
   // attaches once ScrollRestored's container exists.
   const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(null)
+  // Only the active pane's arrivals take the caret. A background pane that
+  // re-navigates (the source of a moved tab falling back to its neighbour)
+  // would otherwise focus its editor last and win both the caret and the
+  // activation that the move just handed to the target pane. The answer is
+  // latched per arrival, so a pane that merely becomes active later does not
+  // yank the caret out of whatever the user just clicked.
+  const paneIsActive = usePaneIsActive()
+  const [arrival, setArrival] = useState({ path, autoFocus: paneIsActive })
+  if (arrival.path !== path) {
+    setArrival({ path, autoFocus: paneIsActive })
+  }
   return (
     // The relative wrapper pins the floating outline rail to the viewport
     // edge of the pane while the note itself scrolls beneath it.
@@ -44,7 +56,7 @@ export function SingleNoteView({ path, dailyDate, heading }: SingleNoteViewProps
             path={path}
             {...(dailyDate !== undefined ? { dailyDate } : {})}
             lazy
-            autoFocus
+            autoFocus={arrival.autoFocus}
             className="flex grow flex-col"
             gutterClassName="reflect-content-gutter"
             editorClassName="grow"

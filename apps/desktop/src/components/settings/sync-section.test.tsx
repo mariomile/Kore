@@ -32,8 +32,6 @@ const sync = vi.hoisted(() => ({
   backUpNow: vi.fn(async () => {}),
 }))
 
-const openRouteInNewWindow = vi.hoisted(() => vi.fn<() => Promise<boolean>>())
-
 vi.mock('@reflect/core', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@reflect/core')>()),
   hasBridge: () => true,
@@ -53,10 +51,6 @@ vi.mock('@/providers/settings-provider', () => ({
   useSettings: () => ({ settings: { agentRoutines: [] } }),
 }))
 vi.mock('@/providers/sync-provider', () => ({ useSync: () => sync }))
-vi.mock('@/lib/windows/open-in-new-window', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/lib/windows/open-in-new-window')>()),
-  openRouteInNewWindow,
-}))
 
 async function renderSection(): Promise<void> {
   await render(
@@ -93,7 +87,6 @@ beforeEach(() => {
   core.conflictedNotes = []
   core.duplicateIds = []
   sync.backup = { phase: 'disconnected' }
-  openRouteInNewWindow.mockReset().mockResolvedValue(true)
 })
 
 afterEach(() => {
@@ -171,7 +164,7 @@ describe('SyncSection', () => {
     await expect.element(page.getByTestId('route')).toHaveTextContent('notes/conflicted.md')
   })
 
-  it('opens a ⌘-clicked conflicted note in a new window', async () => {
+  it('navigates a ⌘-clicked conflicted note in place (no panes mounted)', async () => {
     core.conflictedNotes = [{ path: 'notes/conflicted.md', title: 'Conflicted note' }]
     sync.backup = {
       phase: 'connected',
@@ -187,12 +180,6 @@ describe('SyncSection', () => {
       .getByRole('button', { name: /Conflicted note.*notes\/conflicted\.md/ })
       .click({ modifiers: ['ControlOrMeta'] })
 
-    await vi.waitFor(() =>
-      expect(openRouteInNewWindow).toHaveBeenCalledWith({
-        kind: 'note',
-        path: 'notes/conflicted.md',
-      }),
-    )
-    expect(page.getByTestId('route').element().textContent).toBe('settings')
+    await expect.element(page.getByTestId('route')).toHaveTextContent('notes/conflicted.md')
   })
 })

@@ -22,10 +22,11 @@ interface MarkdownPreviewProps {
   resolveImageUrl?: (src: string) => string | null
   /**
    * Navigate a clicked `[[wiki link]]` target. Omitted, links render as
-   * inert chips (the palette preview's behavior). `event` carries the
-   * originating click so handlers can honor ⌘-click (open in new window).
+   * inert chips (the palette preview's behavior). `openInSplit` carries the
+   * ⌘/Ctrl the click held, so the host can open the target in the pane
+   * beside this one.
    */
-  onWikiLinkClick?: (options: { target: string; openInNewWindow: boolean }) => void
+  onWikiLinkClick?: (options: { target: string; openInSplit: boolean }) => void
   /**
    * Whether rendered links, images, and task checkboxes can be activated
    * (default true). A passive preview renders no anchors, focusable controls,
@@ -66,7 +67,7 @@ export function MarkdownPreview({
   )
   const onWikilinkClickStable = useCallback(
     (payload: { target: string; event: MouseEvent | KeyboardEvent; mod: boolean }) =>
-      navigateRef.current?.({ target: payload.target, openInNewWindow: payload.mod }),
+      navigateRef.current?.({ target: payload.target, openInSplit: payload.mod }),
     [],
   )
 

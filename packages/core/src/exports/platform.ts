@@ -322,6 +322,7 @@ export {
   type OpenNoteTab,
   type OpenChatTab,
   type OpenTab,
+  type OpenPane,
   type OpenSurfaceTab,
   type OpenDailyTab,
   type OpenAllNotesTab,

@@ -137,6 +137,14 @@ export type OpenSurfaceTab = OpenDailyTab | OpenAllNotesTab | OpenSearchTab | Op
 
 export type OpenTab = OpenNoteTab | OpenChatTab | OpenSurfaceTab
 
+/** One workspace pane's persisted tab strip and the tab it last showed. */
+export interface OpenPane {
+  readonly id: string
+  readonly tabs: OpenTab[]
+  /** `tabKey` of the pane's active tab, or null when it has none yet. */
+  readonly activeKey: string | null
+}
+
 const openNoteTabStoredSchema = z.object({
   kind: z.literal('note'),
   path: z.string(),
@@ -229,8 +237,19 @@ export const openTabSchema: z.ZodType<OpenTab> = z.union([
   legacyOpenNoteTabSchema,
 ])
 
+const openPaneSchema: z.ZodType<OpenPane> = z.object({
+  id: z.string().min(1),
+  tabs: z.preprocess(dropRetiredWorkspaceTabs, z.array(openTabSchema).catch([])),
+  activeKey: z.string().nullable().catch(null),
+})
+
+/**
+ * Per graph root, the ordered panes of the workspace, each with its tab
+ * strip. A malformed pane (including the pre-pane flat tab list) drops the
+ * graph's panes rather than restoring half a session.
+ */
 export const openTabsSchema = z
-  .record(z.string(), z.preprocess(dropRetiredWorkspaceTabs, z.array(openTabSchema).catch([])))
+  .record(z.string(), z.array(openPaneSchema).catch([]))
   // An array is also an object to `z.record` (index keys) — the pre-keying
   // shape must degrade to "no sessions", not to a graph named "0".
   .refine((value) => !Array.isArray(value))

@@ -71,6 +71,7 @@ vi.mock('@/providers/panes-provider', () => ({
     columns: [{ id: 'main', panes: [{ id: 'main' }] }],
     activePane: { id: 'main' },
     setActivePane: vi.fn(),
+    moveTab: vi.fn(),
   }),
   useOptionalPanes: () => null,
   usePaneId: () => 'main',

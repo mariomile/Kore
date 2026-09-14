@@ -1,4 +1,5 @@
-import { Fragment, useEffect, type ReactElement } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useState, type ReactElement } from 'react'
+import { DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
 import { subscribeBrowserNavigated, type GraphInfo } from '@reflect/core'
 import { CommandPalette } from '@/components/command-palette/command-palette'
 import { ContextSidebar } from '@/components/context-sidebar/context-sidebar'
@@ -12,9 +13,12 @@ import { Sidebar } from '@/components/sidebar/sidebar'
 import { SidebarResizeHandle } from '@/components/sidebar-resize-handle'
 import { TemplateCreateDialog } from '@/components/templates/template-create-dialog'
 import { TemplatePicker } from '@/components/templates/template-picker'
+import { PaneDragContext } from '@/components/pane-drop-zones'
 import { PaneResizeHandle } from '@/components/pane-resize-handle'
 import { WorkspacePane } from '@/components/workspace-pane'
 import { registerInAppBrowserOpener, setBrowserSessionUrl } from '@/lib/browser-session'
+import { resolveTabDrop } from '@/lib/tab-drop'
+import { tabDropCollision } from '@/lib/tab-drop-collision'
 import type { CommandContext } from '@/lib/commands/types'
 import { useMacosTrafficLightInset } from '@/lib/use-macos-traffic-light-inset'
 import { useDailyContextTarget } from '@/providers/focused-daily-provider'
@@ -141,7 +145,33 @@ function WorkspaceFrame({
   contextTarget,
 }: WorkspaceFrameProps): ReactElement {
   const { collapsed, contextCollapsed } = useSidebar()
-  const { columns } = usePanes()
+  const { columns, moveTab } = usePanes()
+  // One drag context for every pane: a tab pill dragged out of one strip has
+  // to reach the other panes' cards, which only a context above them all
+  // sees. The rails keep their own (the sidebar's shelves reorder among
+  // themselves), so this one wraps the columns row alone.
+  const [dragging, setDragging] = useState(false)
+  // The 4px activation distance keeps plain clicks (activate), double clicks
+  // (pin) and middle clicks (close) on the pills intact.
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
+  const handleDragStart = useCallback(() => {
+    setDragging(true)
+  }, [])
+  const handleDragCancel = useCallback(() => {
+    setDragging(false)
+  }, [])
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent): void => {
+      setDragging(false)
+      const drop = resolveTabDrop(event.active, event.over)
+      // A reorder is the strip's own business (it monitors the same event).
+      if (drop?.kind === 'move') {
+        moveTab(drop.tab, { from: drop.from, to: drop.to })
+      }
+    },
+    [moveTab],
+  )
+  const dragState = useMemo(() => ({ dragging }), [dragging])
 
   return (
     // Every gap in this row is one pane's own left gutter, and the row
@@ -162,24 +192,34 @@ function WorkspaceFrame({
         </aside>
       )}
 
-      {columns.map((column, columnIndex) => (
-        <Fragment key={column.id}>
-          {columnIndex > 0 ? <PaneResizeHandle axis="columns" /> : null}
-          <div data-testid="workspace-column" className="flex min-w-[360px] flex-1 flex-col">
-            {column.panes.map((pane, rowIndex) => (
-              <Fragment key={pane.id}>
-                {rowIndex > 0 ? <PaneResizeHandle axis="rows" /> : null}
-                <WorkspacePane
-                  pane={pane}
-                  commandContext={commandContext}
-                  showSidebarToggle={columnIndex === 0 && rowIndex === 0}
-                  showContextToggle={columnIndex === columns.length - 1 && rowIndex === 0}
-                />
-              </Fragment>
-            ))}
-          </div>
-        </Fragment>
-      ))}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={tabDropCollision}
+        onDragStart={handleDragStart}
+        onDragCancel={handleDragCancel}
+        onDragEnd={handleDragEnd}
+      >
+        <PaneDragContext value={dragState}>
+          {columns.map((column, columnIndex) => (
+            <Fragment key={column.id}>
+              {columnIndex > 0 ? <PaneResizeHandle axis="columns" /> : null}
+              <div data-testid="workspace-column" className="flex min-w-[360px] flex-1 flex-col">
+                {column.panes.map((pane, rowIndex) => (
+                  <Fragment key={pane.id}>
+                    {rowIndex > 0 ? <PaneResizeHandle axis="rows" /> : null}
+                    <WorkspacePane
+                      pane={pane}
+                      commandContext={commandContext}
+                      showSidebarToggle={columnIndex === 0 && rowIndex === 0}
+                      showContextToggle={columnIndex === columns.length - 1 && rowIndex === 0}
+                    />
+                  </Fragment>
+                ))}
+              </div>
+            </Fragment>
+          ))}
+        </PaneDragContext>
+      </DndContext>
 
       {contextCollapsed ? undefined : (
         <aside

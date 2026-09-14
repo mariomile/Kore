@@ -1,12 +1,15 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
-import { Fragment, useSyncExternalStore, type ReactElement } from 'react'
+import { Fragment, useSyncExternalStore, type ReactElement, type ReactNode } from 'react'
 import { setBridge, type OpenColumn } from '@reflect/core'
 import type { CommandContext } from '@/lib/commands/types'
+import { zoneDropId } from '@/lib/tab-drop'
 import { PanesProvider, usePanes } from '@/providers/panes-provider'
 import { SidebarProvider } from '@/providers/sidebar-provider'
+import { PaneDragContext } from './pane-drop-zones'
 import { PaneResizeHandle } from './pane-resize-handle'
 import { WorkspacePane } from './workspace-pane'
 
@@ -135,15 +138,46 @@ function firePointer(element: Element, type: string, init: PointerEventInit): vo
   element.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, ...init }))
 }
 
+/**
+ * The frame's drag context, as the strip sees it: the 4px activation distance
+ * is what keeps a plain click on a pill a click.
+ */
+function DragHarness({ children }: { children: ReactNode }): ReactElement {
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
+  return <DndContext sensors={sensors}>{children}</DndContext>
+}
+
+/** The same tree, with a drag in flight so every pane shows its zones. */
+function renderPanesDragging() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return render(
+    <QueryClientProvider client={client}>
+      <DragHarness>
+        <PaneDragContext value={{ dragging: true }}>
+          <SidebarProvider>
+            <PanesProvider>
+              <PaneGrid />
+            </PanesProvider>
+          </SidebarProvider>
+        </PaneDragContext>
+      </DragHarness>
+    </QueryClientProvider>,
+  )
+}
+
 function renderPanes() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
-      <SidebarProvider>
-        <PanesProvider>
-          <PaneGrid />
-        </PanesProvider>
-      </SidebarProvider>
+      {/* Every pane's strip monitors the frame's drag context, and the drop
+        zones register in it. */}
+      <DragHarness>
+        <SidebarProvider>
+          <PanesProvider>
+            <PaneGrid />
+          </PanesProvider>
+        </SidebarProvider>
+      </DragHarness>
     </QueryClientProvider>,
   )
 }
@@ -277,6 +311,23 @@ describe('WorkspacePane', () => {
       ).filter((label) => railLabels.includes(label))
     expect(rails(0)).toEqual(['Toggle sidebar'])
     expect(rails(1)).toEqual(['Toggle context panel'])
+
+    await view.unmount()
+  })
+
+  it('shows three drop zones over every pane only while a tab is dragging', async () => {
+    settingsStore.seed(SPLIT_PANES)
+    const idle = await renderPanes()
+    expect(idle.getByTestId('pane-drop-zones').all()).toHaveLength(0)
+    await idle.unmount()
+
+    const view = await renderPanesDragging()
+    expect(view.getByTestId('pane-drop-zones').all()).toHaveLength(2)
+    for (const paneId of ['main', 'pane-2']) {
+      for (const zone of ['center', 'right', 'below'] as const) {
+        await expect.element(view.getByTestId(zoneDropId(paneId, zone))).toBeInTheDocument()
+      }
+    }
 
     await view.unmount()
   })

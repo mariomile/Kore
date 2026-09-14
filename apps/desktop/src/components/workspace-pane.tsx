@@ -2,6 +2,7 @@ import { useCallback, type ReactElement } from 'react'
 import { AppShell } from '@/components/app-shell'
 import { NoteFindBar } from '@/components/note-find-bar'
 import { WorkspaceTabsStrip } from '@/components/note-tabs-strip'
+import { PaneDropZones } from '@/components/pane-drop-zones'
 import { RouteContent } from '@/components/route-content'
 import type { CommandContext } from '@/lib/commands/types'
 import { cn } from '@/lib/utils'
@@ -81,6 +82,9 @@ export function WorkspacePane({
                         </div>
 
                         <NoteFindBar />
+                        {/* Only mounted while a tab is in flight, so nothing
+                          sits between the pointer and the editor otherwise. */}
+                        <PaneDropZones paneId={pane.id} />
                       </div>
                     </AppShell>
                   </div>

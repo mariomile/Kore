@@ -1,13 +1,6 @@
 import type { OpenTab } from '@reflect/core'
-import { useCallback, type MouseEvent, type ReactElement } from 'react'
-import {
-  closestCenter,
-  DndContext,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from '@dnd-kit/core'
+import { useMemo, type MouseEvent, type ReactElement } from 'react'
+import { useDndMonitor, type DragEndEvent } from '@dnd-kit/core'
 import { horizontalListSortingStrategy, SortableContext, useSortable } from '@dnd-kit/sortable'
 import { Close, PanelLeft, PanelRight, Pin } from '@/components/icons'
 import { NoteTabsListMenu } from '@/components/note-tabs-list-menu'
@@ -18,6 +11,7 @@ import { tabCloseClass, tabPillClass, useTabScrollIntoView } from '@/components/
 import { useOpenTabItems, type OpenTabItem } from '@/hooks/use-open-tab-items'
 import type { CommandContext } from '@/lib/commands/types'
 import { sortableTranslateStyle } from '@/lib/sortable-translate'
+import { resolveTabDrop } from '@/lib/tab-drop'
 import { cn } from '@/lib/utils'
 import { tabKey } from '@/providers/open-tab'
 import { useOpenTabs } from '@/providers/open-tabs-provider'
@@ -57,22 +51,21 @@ export function WorkspaceTabsStrip({
   const panes = useOptionalPanes()
   const paneId = usePaneId()
   const paneActive = panes === null || panes.activePane.id === paneId
-  // The 4px activation distance keeps plain clicks (activate), double clicks
-  // (pin) and middle clicks (close) intact — a drag only starts once the
-  // pointer actually travels. Same tuning as the sidebar's pinned shelf.
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
-  const handleDragEnd = useCallback(
-    (event: DragEndEvent): void => {
-      if (event.over === null || event.active.id === event.over.id) {
-        return
-      }
-      const dragged = items.find((item) => tabKey(item.tab) === String(event.active.id))
-      const target = items.find((item) => tabKey(item.tab) === String(event.over?.id))
-      if (dragged !== undefined && target !== undefined) {
-        moveTab(dragged.tab, target.tab)
-      }
-    },
-    [items, moveTab],
+  // Dragging is the frame's `DndContext` (one for the whole columns row, so a
+  // pill can travel between panes); a drop that stayed inside this strip
+  // comes back here as a reorder.
+  useDndMonitor(
+    useMemo(
+      () => ({
+        onDragEnd(event: DragEndEvent): void {
+          const drop = resolveTabDrop(event.active, event.over)
+          if (drop?.kind === 'reorder' && drop.paneId === paneId) {
+            moveTab(drop.tab, drop.target)
+          }
+        },
+      }),
+      [paneId, moveTab],
+    ),
   )
 
   return (
@@ -105,24 +98,23 @@ export function WorkspaceTabsStrip({
         aria-label="Workspace tabs"
         className="window-drag-control ml-1 flex min-w-0 flex-1 items-center gap-1 overflow-x-auto"
       >
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext
-            items={items.map((item) => tabKey(item.tab))}
-            strategy={horizontalListSortingStrategy}
-          >
-            {items.map((item) => (
-              <StripTab
-                key={tabKey(item.tab)}
-                item={item}
-                active={tabKey(item.tab) === activeKey}
-                paneActive={paneActive}
-                onActivate={activateTab}
-                onClose={closeTab}
-                onTogglePin={togglePin}
-              />
-            ))}
-          </SortableContext>
-        </DndContext>
+        <SortableContext
+          items={items.map((item) => tabKey(item.tab))}
+          strategy={horizontalListSortingStrategy}
+        >
+          {items.map((item) => (
+            <StripTab
+              key={tabKey(item.tab)}
+              item={item}
+              paneId={paneId}
+              active={tabKey(item.tab) === activeKey}
+              paneActive={paneActive}
+              onActivate={activateTab}
+              onClose={closeTab}
+              onTogglePin={togglePin}
+            />
+          ))}
+        </SortableContext>
 
         {commandContext ? <NoteTabsPlusMenu context={commandContext} /> : null}
         <NoteTabsListMenu />
@@ -176,6 +168,8 @@ function PanelToggle({ side, collapsed, onToggle, label }: PanelToggleProps): Re
 
 interface StripTabProps {
   item: OpenTabItem
+  /** The pane this strip belongs to: it travels with the drag payload. */
+  paneId: string
   active: boolean
   /** False in a pane the user is not in: its selected pill stays muted. */
   paneActive: boolean
@@ -186,6 +180,7 @@ interface StripTabProps {
 
 function StripTab({
   item,
+  paneId,
   active,
   paneActive,
   onActivate,
@@ -193,11 +188,13 @@ function StripTab({
   onTogglePin,
 }: StripTabProps): ReactElement {
   const { tab, title } = item
-  // Drag-to-reorder: the whole pill is the handle (activation distance keeps
-  // clicks working); the drop lands in `moveTab` through the strip's
-  // DndContext. No overlay — the pill itself follows the pointer.
+  // The whole pill is the handle (the frame's activation distance keeps
+  // clicks working). No overlay — the pill itself follows the pointer. The
+  // payload says which pane and which tab, so a drop anywhere in the frame
+  // resolves to a reorder here or a move into another pane.
   const { isDragging, listeners, setNodeRef, transform, transition } = useSortable({
     id: tabKey(tab),
+    data: { kind: 'tab', paneId, tab },
   })
   const scrollRef = useTabScrollIntoView(active)
   // One element, two owners: dnd-kit measures the pill, and the strip scrolls

@@ -1,8 +1,9 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
-import { useSyncExternalStore, type ReactElement } from 'react'
+import { useSyncExternalStore, type ReactElement, type ReactNode } from 'react'
 import { setBridge, untitledNotePath, type OpenColumn, type OpenPane } from '@reflect/core'
 import { SidebarOpenTabs } from '@/components/sidebar/sidebar-open-notes'
 import { emitChatConversationDeleted } from '@/lib/chat-events'
@@ -312,11 +313,24 @@ function Probe(): ReactElement {
   )
 }
 
+/**
+ * The frame's drag context, as the strip sees it: the 4px activation distance
+ * is what keeps a plain click on a pill a click.
+ */
+function DragHarness({ children }: { children: ReactNode }): ReactElement {
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
+  return <DndContext sensors={sensors}>{children}</DndContext>
+}
+
 function renderTabs() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
-      <GraphHarness />
+      {/* The strip monitors the frame's drag context; mounted alone it still
+        needs one above it. */}
+      <DragHarness>
+        <GraphHarness />
+      </DragHarness>
     </QueryClientProvider>,
   )
 }
@@ -692,20 +706,22 @@ function renderSplit() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
-      <RouterProvider initialRoute={{ kind: 'today' }}>
-        <SidebarProvider>
-          <PanesProvider>
-            {/* The pane's own binding, the one that owns the writes: in the
+      <DragHarness>
+        <RouterProvider initialRoute={{ kind: 'today' }}>
+          <SidebarProvider>
+            <PanesProvider>
+              {/* The pane's own binding, the one that owns the writes: in the
               app it always sits inside the pane's scope. */}
-            <PaneScope id="main">
-              <OpenTabsProvider paneId="main">
-                <WorkspaceTabsStrip />
-                <Probe />
-              </OpenTabsProvider>
-            </PaneScope>
-          </PanesProvider>
-        </SidebarProvider>
-      </RouterProvider>
+              <PaneScope id="main">
+                <OpenTabsProvider paneId="main">
+                  <WorkspaceTabsStrip />
+                  <Probe />
+                </OpenTabsProvider>
+              </PaneScope>
+            </PanesProvider>
+          </SidebarProvider>
+        </RouterProvider>
+      </DragHarness>
     </QueryClientProvider>,
   )
 }

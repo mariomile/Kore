@@ -212,6 +212,7 @@ async function renderSidebar(overrides?: Partial<CommandContext>, initialRoute?:
     closeActiveTab: vi.fn(),
     closePane: vi.fn(),
     focusPane: vi.fn(),
+    moveActiveTab: vi.fn(),
     ...overrides,
   }
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })

@@ -326,6 +326,9 @@ export function useAppShortcuts(): CommandContext {
       focusPane: (target) => {
         panesRef.current?.focusPane(target)
       },
+      moveActiveTab: (direction) => {
+        panesRef.current?.moveActiveTab(direction)
+      },
     }),
     [
       navigate,

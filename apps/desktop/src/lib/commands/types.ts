@@ -1,3 +1,4 @@
+import type { FocusDirection } from '@/providers/panes-provider'
 import type { Route } from '@/routing/route'
 import type { NavigateOptions } from '@/routing/router'
 
@@ -83,8 +84,10 @@ export interface CommandContext {
   closeActiveTab: () => void
   /** Close the active pane (never the last one). */
   closePane: () => void
-  /** Move the active pane one column left or right. */
-  focusPane: (target: 'left' | 'right') => void
+  /** Move focus to the adjacent pane in the given direction. */
+  focusPane: (target: FocusDirection) => void
+  /** Move the active tab into a new pane split off in the given direction. */
+  moveActiveTab: (direction: 'right' | 'down') => void
 }
 
 export interface AppCommand {

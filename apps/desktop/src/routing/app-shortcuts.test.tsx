@@ -20,6 +20,7 @@ const findNextInNote = vi.hoisted(() => vi.fn())
 const findPreviousInNote = vi.hoisted(() => vi.fn())
 const closePane = vi.hoisted(() => vi.fn())
 const focusPane = vi.hoisted(() => vi.fn())
+const moveActiveTab = vi.hoisted(() => vi.fn())
 
 vi.mock('@/lib/windows/open-in-new-window', () => ({ openRouteInNewWindow }))
 // ⌘F/⌘G reach the active pane's Find session through the panes model.
@@ -29,6 +30,7 @@ vi.mock('@/providers/panes-provider', async (importOriginal) => ({
     activePane: { id: 'main' },
     closePane,
     focusPane,
+    moveActiveTab,
     activeFindActions: () => ({
       openForPath: openNoteFindForPath,
       next: findNextInNote,
@@ -87,6 +89,7 @@ beforeEach(() => {
   findPreviousInNote.mockClear()
   closePane.mockClear()
   focusPane.mockClear()
+  moveActiveTab.mockClear()
 })
 
 function shortcutsHook() {
@@ -281,6 +284,14 @@ describe('app shortcuts', () => {
     await act(() => press('ArrowRight', { altKey: true }))
 
     expect(focusPane).toHaveBeenCalledWith('right')
+  })
+
+  it('⌥⌘⇧↓ moves the active tab to a new pane below', async () => {
+    const { act } = await shortcutsHook()
+
+    await act(() => press('ArrowDown', { altKey: true, shiftKey: true }))
+
+    expect(moveActiveTab).toHaveBeenCalledWith('down')
   })
 
   it('defers ⌘K to a focused editor that already handled it', async () => {

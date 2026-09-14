@@ -127,6 +127,7 @@ async function renderPalette(query: string, context?: Partial<CommandContext>) {
     closeActiveTab: vi.fn(),
     closePane: vi.fn(),
     focusPane: vi.fn(),
+    moveActiveTab: vi.fn(),
     ...context,
   }
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })

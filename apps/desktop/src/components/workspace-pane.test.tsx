@@ -120,6 +120,7 @@ function stubCommandContext(): CommandContext {
     closeActiveTab: () => {},
     closePane: () => {},
     focusPane: () => {},
+    moveActiveTab: () => {},
   }
 }
 

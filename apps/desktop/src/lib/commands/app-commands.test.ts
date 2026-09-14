@@ -114,6 +114,7 @@ function fakeContext(overrides?: Partial<CommandContext>) {
     closeActiveTab: vi.fn(),
     closePane: vi.fn(),
     focusPane: vi.fn(),
+    moveActiveTab: vi.fn(),
     ...overrides,
   }
   return { context, navigated, navigateOptions }

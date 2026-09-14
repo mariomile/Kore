@@ -355,6 +355,34 @@ describe('PanesProvider', () => {
     })
   })
 
+  it('moves the only tab of the only pane and leaves no trace of the old pane', async () => {
+    const { result, act } = await renderHook(usePanes, { wrapper })
+    const closing = result.current.activePane
+    const first = closing.id
+    const revision = closing.router.navigationRevision()
+    await act(() =>
+      seedPaneTabs(first, [{ kind: 'note', path: 'notes/a.md', pinned: false }], 'note:notes/a.md'),
+    )
+
+    await act(() => result.current.moveActiveTab('right'))
+
+    expect(result.current.columns).toHaveLength(1)
+    expect(result.current.columns[0]!.panes).toHaveLength(1)
+    // The emptied pane is gone from the document, and its router was left
+    // alone: navigating it to today after the write would let its own
+    // OpenTabsProvider persist the arrival and resurrect the pane.
+    expect(storedPane(first)).toBeUndefined()
+    expect(closing.router.navigationRevision()).toBe(revision)
+    expect(result.current.activePane.id).not.toBe(first)
+    expect(result.current.activePane.router.getSnapshot().route).toEqual({
+      kind: 'note',
+      path: 'notes/a.md',
+    })
+    expect(storedPane(result.current.activePane.id)?.tabs).toEqual([
+      { kind: 'note', path: 'notes/a.md', pinned: false },
+    ])
+  })
+
   it('follows a note move once per pane, even under StrictMode', async () => {
     const { result, act } = await renderHook(usePanes, { wrapper: strictWrapper })
     const first = result.current.activePane.id

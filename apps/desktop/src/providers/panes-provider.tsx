@@ -37,8 +37,8 @@ import { createRouterStore, type RouterStore } from '@/routing/router-store'
  * The *layout* is the persisted per-graph `openTabs` entry; the live stores
  * behind each pane (router history, focused daily day) are created here and
  * outlive re-renders, and the active pane is ephemeral. Tab contents are the
- * `OpenTabsProvider`'s business; this provider creates and removes pane
- * entries, and moves a whole tab from one pane to another.
+ * `OpenTabsProvider`'s business; this provider owns pane entries and moves a
+ * whole tab from one pane to another.
  */
 
 export interface WorkspacePaneHandle {
@@ -55,7 +55,6 @@ export interface WorkspaceColumn {
 
 /** Where a dragged tab lands on a pane: its strip, or a new pane beside it. */
 export type DropZone = 'center' | 'right' | 'below'
-
 export type FocusDirection = 'left' | 'right' | 'up' | 'down'
 
 export interface PanesValue {
@@ -65,20 +64,18 @@ export interface PanesValue {
   readonly activePane: WorkspacePaneHandle
   setActivePane(id: string): void
   /**
-   * Open `route` next to `from`: in the next column at the same row
-   * (`'right'`, the default) or in the next pane of `from`'s own column
-   * (`'below'`), creating that column or pane when there is none. A route
-   * whose tab is already open in some pane (`from` included) navigates and
-   * activates *that* pane instead, so a note or singleton surface is never
-   * mounted twice.
+   * Open `route` next to `from`: the next column at the same row (`'right'`,
+   * the default) or the next pane of `from`'s own column (`'below'`),
+   * creating that column or pane when there is none. A route whose tab is
+   * already open in some pane (`from` included) navigates and activates
+   * *that* pane instead, so nothing is ever mounted twice.
    */
   openInPane(route: Route, options: { from: string; placement?: PanePlacement }): void
   /**
    * Move a whole tab out of `from`. `center` hands it to `to.paneId`'s strip;
    * `right` and `below` create a new pane next to `to.paneId` for it. The
    * target navigates to the tab and becomes active; a source left without
-   * tabs closes, and one still showing the moved tab falls back to its
-   * neighbour.
+   * tabs closes, one still showing the moved tab falls back to its neighbour.
    */
   moveTab(tab: OpenTab, options: { from: string; to: { paneId: string; zone: DropZone } }): void
   /** Move the active pane's active tab into a new pane beside or under it. */
@@ -122,13 +119,9 @@ function createPaneHandle(id: string, route: Route | undefined): WorkspacePaneHa
 
 /** Where a live pane sits in the grid, or null when it is not rendered. */
 function gridLocation(columns: readonly WorkspaceColumn[], paneId: string): PaneLocation | null {
-  for (const [column, entry] of columns.entries()) {
-    const row = entry.panes.findIndex((pane) => pane.id === paneId)
-    if (row !== -1) {
-      return { column, row }
-    }
-  }
-  return null
+  const column = columns.findIndex((entry) => entry.panes.some((pane) => pane.id === paneId))
+  const row = column === -1 ? -1 : columns[column]!.panes.findIndex((pane) => pane.id === paneId)
+  return row === -1 ? null : { column, row }
 }
 
 /** A column's pane at `row`, clamped to its last one. */
@@ -252,6 +245,10 @@ export function PanesProvider({ initialRoute, children }: PanesProviderProps): R
     [root, updateSettingsWith, columns],
   )
 
+  const setActivePane = useCallback((id: string) => {
+    setActiveId(id)
+  }, [])
+
   const holderOf = useCallback(
     (route: Route): string | null => {
       const tab = openTabForRoute(route)
@@ -260,8 +257,10 @@ export function PanesProvider({ initialRoute, children }: PanesProviderProps): R
       }
       // Only rendered panes can hold a tab: a persisted pane the restore
       // filter dropped must not win the lookup, or the key would end up in
-      // two persisted panes at once.
-      const openTabsById = new Map(flatPanes(storedRef.current).map((p) => [p.id, p.tabs]))
+      // two panes at once.
+      const openTabsById = new Map(
+        flatPanes(storedRef.current).map((entry) => [entry.id, entry.tabs]),
+      )
       const holder = panes.find((pane) =>
         (openTabsById.get(pane.id) ?? []).some((open) => tabsEqual(open, tab)),
       )
@@ -325,10 +324,10 @@ export function PanesProvider({ initialRoute, children }: PanesProviderProps): R
       const placement: PanePlacement | null = to.zone === 'center' ? null : to.zone
       const created = placement === null ? null : createPane(routeForOpenTab(tab))
       const targetId = created ?? to.paneId
-      // A source stripped of its last tab closes, unless it is the only pane
-      // left or the tab never reached its persisted strip.
+      // A source stripped of its last tab closes: the target is always
+      // another pane, so the layout never runs out. A tab that never reached
+      // the source's persisted strip closes nothing.
       const emptiesSource = movedIndex !== -1 && remaining.length === 0 && from !== targetId
-      const sourceSurvives = !emptiesSource || panes.length <= 1
 
       writeLayout((current) => {
         const withTarget =
@@ -336,20 +335,22 @@ export function PanesProvider({ initialRoute, children }: PanesProviderProps): R
             ? current
             : insertPaneNextTo(current, to.paneId, placement, emptyPane(created))
         const moved = addTabTo(removeTabFrom(withTarget, from, tab), targetId, tab)
-        return emptiesSource && flatPanes(moved).length > 1 ? removePane(moved, from) : moved
+        return emptiesSource ? removePane(moved, from) : moved
       })
 
       if (created === null) {
         handles.current.get(targetId)?.router.navigate(routeForOpenTab(tab))
       }
-      if (sourceSurvives && sourceShowedTab) {
+      // Never navigate a pane the write removed: its OpenTabsProvider would
+      // persist the arrival and resurrect the pane.
+      if (!emptiesSource && sourceShowedTab) {
         handles.current
           .get(from)
           ?.router.navigate(fallback === null ? { kind: 'today' } : routeForOpenTab(fallback))
       }
       setActiveId(targetId)
     },
-    [panes, createPane, writeLayout],
+    [createPane, writeLayout],
   )
 
   const moveActiveTab = useCallback(
@@ -438,7 +439,7 @@ export function PanesProvider({ initialRoute, children }: PanesProviderProps): R
       columns,
       panes,
       activePane,
-      setActivePane: setActiveId,
+      setActivePane,
       openInPane,
       moveTab,
       moveActiveTab,
@@ -452,6 +453,7 @@ export function PanesProvider({ initialRoute, children }: PanesProviderProps): R
       columns,
       panes,
       activePane,
+      setActivePane,
       openInPane,
       moveTab,
       moveActiveTab,

@@ -76,9 +76,34 @@ vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({ graph: { root: GRAPH_ROOT, name: 'g', generation: 1 }, indexing: false }),
 }))
 vi.mock('@/providers/chat-provider', () => ({ useOptionalChatSession: () => null }))
-vi.mock('@/components/route-content', () => ({
-  RouteContent: () => <div data-testid="route-content">Route content</div>,
-}))
+/**
+ * The routed view, reduced to the one behaviour that matters here: a note
+ * route focuses its editor when the pane arrives on it. The stand-in latches
+ * the same rule `SingleNoteView` does, namely that an arrival takes the caret
+ * only when its pane is the active one, so a pane that focuses out of turn
+ * shows up as the wrong pane ending active, exactly as it does in the app.
+ */
+vi.mock('@/components/route-content', async () => {
+  const { useEffect, useRef, useState } = await import('react')
+  const { usePaneIsActive } = await import('@/providers/panes-provider')
+  const { useRouter } = await import('@/routing/router')
+  function RouteContent(): ReactElement {
+    const editor = useRef<HTMLInputElement>(null)
+    const { arrivalSeq } = useRouter()
+    const paneIsActive = usePaneIsActive()
+    const [arrival, setArrival] = useState({ seq: arrivalSeq, focus: paneIsActive })
+    if (arrival.seq !== arrivalSeq) {
+      setArrival({ seq: arrivalSeq, focus: paneIsActive })
+    }
+    useEffect(() => {
+      if (arrival.focus) {
+        editor.current?.focus()
+      }
+    }, [arrival])
+    return <input ref={editor} data-testid="route-content" readOnly value="Route content" />
+  }
+  return { RouteContent }
+})
 vi.mock('@/components/note-find-bar', () => ({ NoteFindBar: () => null }))
 
 setBridge({
@@ -310,6 +335,38 @@ function renderPanesDragging() {
   )
 }
 
+/** A control outside every pane, so pressing it activates no pane by itself. */
+function MoveTabDownButton(): ReactElement {
+  const { moveActiveTab } = usePanes()
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        moveActiveTab('down')
+      }}
+    >
+      Move tab down
+    </button>
+  )
+}
+
+/** The same tree, plus the command that moves the active tab into a split. */
+function renderMovableFrame() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return render(
+    <QueryClientProvider client={client}>
+      <DragHarness>
+        <SidebarProvider>
+          <PanesProvider>
+            <MoveTabDownButton />
+            <PaneGrid />
+          </PanesProvider>
+        </SidebarProvider>
+      </DragHarness>
+    </QueryClientProvider>,
+  )
+}
+
 function renderPanes() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
@@ -523,6 +580,30 @@ describe('WorkspacePane', () => {
         ['note'],
         ['surface'],
       ])
+    })
+
+    await view.unmount()
+  })
+
+  it('moving the active tab down leaves the new pane active and focused', async () => {
+    settingsStore.seed(TWO_TAB_PANE)
+    const view = await renderMovableFrame()
+    expect(view.getByTestId('workspace-pane').all()).toHaveLength(1)
+
+    // Outside every pane, so pressing it changes no pane's activation itself.
+    await userEvent.click(view.getByRole('button', { name: 'Move tab down' }))
+
+    await vi.waitFor(() => {
+      expect(view.getByTestId('workspace-pane').all()).toHaveLength(2)
+    })
+    const panes = view.getByTestId('workspace-pane').all()
+    // The source survives on its remaining tab and re-navigates to it. Its
+    // arrival must not pull the caret, and with it the activation, back out
+    // of the pane the tab just moved into.
+    await vi.waitFor(() => {
+      expect(panes[1]!.element().getAttribute('data-active')).toBe('true')
+      expect(panes[0]!.element().getAttribute('data-active')).toBeNull()
+      expect(panes[1]!.element().contains(document.activeElement)).toBe(true)
     })
 
     await view.unmount()

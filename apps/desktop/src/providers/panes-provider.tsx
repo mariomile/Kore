@@ -498,3 +498,15 @@ export function usePaneId(): string {
   const panes = use(PanesContext)
   return scoped ?? panes?.activePane.id ?? MAIN_PANE_ID
 }
+
+/**
+ * Whether the enclosing pane is the one the chrome follows. True wherever no
+ * pane model is mounted (mobile, the note window). Routed views read it to
+ * decide whether an arrival may take the caret: a pane the user is not in must
+ * never pull focus out of the pane they are in.
+ */
+export function usePaneIsActive(): boolean {
+  const panes = use(PanesContext)
+  const paneId = usePaneId()
+  return panes === null || panes.activePane.id === paneId
+}

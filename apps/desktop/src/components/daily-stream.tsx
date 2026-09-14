@@ -19,6 +19,7 @@ import { useSettings } from '@/providers/settings-provider'
 import { useToday } from '@/lib/use-today'
 import { createDayWindow, dateAtIndex, indexOfDate, neighborDate } from '@/lib/day-window'
 import { useSetFocusedDailyDate } from '@/providers/focused-daily-provider'
+import { usePaneIsActive } from '@/providers/panes-provider'
 import { useRouter } from '@/routing/router'
 import { clamp } from '@ocavue/utils'
 
@@ -89,6 +90,16 @@ export function DailyStream({ target }: DailyStreamProps): ReactElement {
   useLayoutEffect(() => {
     arrivalFocusEditorRef.current = arrivalFocusEditor
   }, [arrivalFocusEditor])
+
+  // Mirrored the same way, and for the same reason the note route latches it:
+  // only the active pane's arrival may take the caret. The source pane of a
+  // moved tab re-navigates to its neighbour in the very commit that hands the
+  // activation to the target, and its stream must not focus its way back.
+  const paneIsActive = usePaneIsActive()
+  const paneIsActiveRef = useRef(paneIsActive)
+  useLayoutEffect(() => {
+    paneIsActiveRef.current = paneIsActive
+  }, [paneIsActive])
 
   // Only the day navigated to receives focus, once per navigation — a row that
   // scrolls offscreen and back must not steal focus from wherever the user is.
@@ -211,10 +222,9 @@ export function DailyStream({ target }: DailyStreamProps): ReactElement {
     }
     const target = targetDateRef.current
     pendingFocusRef.current = null
-    focusPending.current = {
-      date: target,
-      selection: arrivalFocusEditorRef.current ? 'end' : 'start',
-    }
+    focusPending.current = paneIsActiveRef.current
+      ? { date: target, selection: arrivalFocusEditorRef.current ? 'end' : 'start' }
+      : null
     virtualizerRef.current?.scrollToIndex(indexOfDate(dayWindow, target), { align: 'start' })
   }, [arrivalSeq, entryId, dayWindow, savedScroll])
 

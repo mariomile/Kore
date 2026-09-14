@@ -185,6 +185,9 @@ export function useAppShortcuts(): CommandContext {
   // Find lives in each pane, so the window's ⌘F/⌘G resolve the active pane's
   // session at call time rather than binding one provider's actions.
   const panes = useOptionalPanes()
+  // The getter, not the whole model: it reads the active pane through a ref,
+  // so it is stable and a pane switch does not rebuild the command context.
+  const activeFindActions = panes?.activeFindActions ?? null
 
   // Modal surfaces suppress app commands: nothing may navigate behind the
   // palette, the template dialogs, or Replace-in-vault (which could be
@@ -246,17 +249,15 @@ export function useAppShortcuts(): CommandContext {
       toggleContextSidebar,
       newChat,
       openNoteFind: () => {
-        panes
-          ?.activeFindActions()
-          ?.openForPath(
-            focusedNotePathForRoute(routeRef.current, todayIso(), focusedDailyDateRef.current),
-          )
+        activeFindActions?.()?.openForPath(
+          focusedNotePathForRoute(routeRef.current, todayIso(), focusedDailyDateRef.current),
+        )
       },
       findNextInNote: () => {
-        panes?.activeFindActions()?.next()
+        activeFindActions?.()?.next()
       },
       findPreviousInNote: () => {
-        panes?.activeFindActions()?.previous()
+        activeFindActions?.()?.previous()
       },
       switchGraph: (index) => {
         const recent = recentsRef.current[index]
@@ -331,7 +332,7 @@ export function useAppShortcuts(): CommandContext {
       toggleContextSidebar,
       newChat,
       setChatDraft,
-      panes,
+      activeFindActions,
       toggleAudioMemo,
       updateSettings,
       openTabs.nextTab,

@@ -2,12 +2,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
-import { useSyncExternalStore, type ReactElement } from 'react'
+import { Fragment, useSyncExternalStore, type ReactElement } from 'react'
 import { setBridge, type OpenPane } from '@reflect/core'
 import type { CommandContext } from '@/lib/commands/types'
 import { PanesProvider, usePanes } from '@/providers/panes-provider'
 import { SidebarProvider } from '@/providers/sidebar-provider'
-import { WorkspacePane } from './workspace-pane'
+import { PaneResizeHandle, WorkspacePane } from './workspace-pane'
 
 /**
  * Two panes side by side: a click anywhere inside one makes it the active
@@ -105,11 +105,18 @@ function PaneRow(): ReactElement {
   const { panes } = usePanes()
   return (
     <div className="flex">
-      {panes.map((pane) => (
-        <WorkspacePane key={pane.id} pane={pane} commandContext={COMMAND_CONTEXT} />
+      {panes.map((pane, index) => (
+        <Fragment key={pane.id}>
+          {index > 0 ? <PaneResizeHandle leftPaneId={panes[index - 1]!.id} /> : null}
+          <WorkspacePane pane={pane} commandContext={COMMAND_CONTEXT} />
+        </Fragment>
       ))}
     </div>
   )
+}
+
+function firePointer(element: Element, type: string, init: PointerEventInit): void {
+  element.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, ...init }))
 }
 
 function renderPanes() {
@@ -129,20 +136,22 @@ afterEach(() => {
   settingsStore.seed([])
 })
 
+const SPLIT_PANES: OpenPane[] = [
+  {
+    id: 'main',
+    tabs: [{ kind: 'surface', surface: 'daily', date: null, pinned: false }],
+    activeKey: 'surface:daily',
+  },
+  {
+    id: 'pane-2',
+    tabs: [{ kind: 'note', path: 'notes/beta.md', pinned: false }],
+    activeKey: 'note:notes/beta.md',
+  },
+]
+
 describe('WorkspacePane', () => {
   it('clicking inside a pane makes it the active one', async () => {
-    settingsStore.seed([
-      {
-        id: 'main',
-        tabs: [{ kind: 'surface', surface: 'daily', date: null, pinned: false }],
-        activeKey: 'surface:daily',
-      },
-      {
-        id: 'pane-2',
-        tabs: [{ kind: 'note', path: 'notes/beta.md', pinned: false }],
-        activeKey: 'note:notes/beta.md',
-      },
-    ])
+    settingsStore.seed(SPLIT_PANES)
     const view = await renderPanes()
     const panes = view.getByTestId('workspace-pane').all()
     expect(panes).toHaveLength(2)
@@ -158,6 +167,26 @@ describe('WorkspacePane', () => {
     await userEvent.click(panes[0]!)
     await expect.element(panes[0]!).toHaveAttribute('data-active', 'true')
     expect(panes[1]!.element().getAttribute('data-active')).toBeNull()
+
+    await view.unmount()
+  })
+
+  it('a cancelled resize drag stops following the pointer', async () => {
+    settingsStore.seed(SPLIT_PANES)
+    const view = await renderPanes()
+    const handle = view.getByRole('separator', { name: 'Resize pane' }).element()
+    const left = view.getByTestId('workspace-pane').all()[0]!.element()
+
+    firePointer(handle, 'pointerdown', { pointerId: 1, isPrimary: true, clientX: 500 })
+    firePointer(handle, 'pointermove', { pointerId: 1, clientX: 560 })
+    const dragged = left.style.flex
+    expect(dragged).not.toBe('')
+
+    // The OS claims the gesture: the column must not keep tracking the
+    // pointer across whatever moves come next.
+    firePointer(handle, 'pointercancel', { pointerId: 1 })
+    firePointer(handle, 'pointermove', { pointerId: 1, clientX: 900 })
+    expect(left.style.flex).toBe(dragged)
 
     await view.unmount()
   })

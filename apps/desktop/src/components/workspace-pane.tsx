@@ -89,16 +89,28 @@ export function PaneResizeHandle({ leftPaneId }: { leftPaneId: string }): ReactE
     }
     const startX = event.clientX
     const startWidth = left.getBoundingClientRect().width
-    handle.setPointerCapture(event.pointerId)
+    try {
+      handle.setPointerCapture(event.pointerId)
+    } catch {
+      // Synthetic tests do not have a live pointer to capture.
+    }
     const onMove = (move: PointerEvent): void => {
       left.style.flex = `0 0 ${Math.max(360, startWidth + move.clientX - startX)}px`
     }
-    const onUp = (): void => {
+    // Every way the drag can end tears the same listeners down: a pointerup,
+    // a gesture the OS claims (pointercancel), or capture lost some other
+    // way. Missing one leaves a live pointermove that keeps resizing the
+    // column from a stale start on the next hover.
+    const stop = (): void => {
       handle.removeEventListener('pointermove', onMove)
-      handle.removeEventListener('pointerup', onUp)
+      handle.removeEventListener('pointerup', stop)
+      handle.removeEventListener('pointercancel', stop)
+      handle.removeEventListener('lostpointercapture', stop)
     }
     handle.addEventListener('pointermove', onMove)
-    handle.addEventListener('pointerup', onUp)
+    handle.addEventListener('pointerup', stop)
+    handle.addEventListener('pointercancel', stop)
+    handle.addEventListener('lostpointercapture', stop)
   }
   return (
     <div

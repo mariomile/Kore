@@ -252,6 +252,12 @@ describe('WorkspacePane', () => {
     firePointer(handle, 'pointermove', { pointerId: 1, clientY: 900 })
     expect(above.style.flex).toBe(dragged)
 
+    // The handle clamps only the pane it drags. The pane below keeps its own
+    // floor, so a divider dragged to the bottom cannot crush it to nothing.
+    for (const pane of view.getByTestId('workspace-pane').all()) {
+      expect(getComputedStyle(pane.element()).minHeight).toBe('200px')
+    }
+
     await view.unmount()
   })
 
@@ -261,13 +267,16 @@ describe('WorkspacePane', () => {
     const panes = view.getByTestId('workspace-pane').all()
     expect(panes).toHaveLength(2)
 
-    const toggles = (index: number): string[] =>
+    // Only the two rail labels: "Toggle " also prefixes buttons that belong
+    // to the routed content, which say nothing about where the rails are.
+    const railLabels = ['Toggle sidebar', 'Toggle context panel']
+    const rails = (index: number): string[] =>
       Array.from(
-        panes[index]!.element().querySelectorAll('button[aria-label^="Toggle "]'),
+        panes[index]!.element().querySelectorAll('button[aria-label]'),
         (button) => button.getAttribute('aria-label') ?? '',
-      )
-    expect(toggles(0)).toEqual(['Toggle sidebar'])
-    expect(toggles(1)).toEqual(['Toggle context panel'])
+      ).filter((label) => railLabels.includes(label))
+    expect(rails(0)).toEqual(['Toggle sidebar'])
+    expect(rails(1)).toEqual(['Toggle context panel'])
 
     await view.unmount()
   })

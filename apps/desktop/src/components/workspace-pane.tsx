@@ -49,12 +49,15 @@ export function WorkspacePane({
           <FocusedDailyArrivalReset />
           <OpenTabsProvider paneId={pane.id}>
             <NoteFindProvider>
+              {/* The row handle clamps only the pane it drags, so the floor
+                lives on the pane itself: without it, dragging a divider to
+                the bottom crushes the pane below to nothing. */}
               <div
                 data-testid="workspace-pane"
                 data-active={active ? 'true' : undefined}
                 onPointerDownCapture={activate}
                 onFocusCapture={activate}
-                className="workspace-main flex min-h-0 min-w-0 flex-1 flex-col"
+                className="workspace-main flex min-h-[200px] min-w-0 flex-1 flex-col"
               >
                 <WorkspaceTabsStrip
                   commandContext={commandContext}

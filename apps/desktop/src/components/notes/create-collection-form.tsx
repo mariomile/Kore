@@ -20,6 +20,7 @@ export function CreateCollectionForm({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const submitting = useRef(false)
+  const created = useRef<CollectionDefinition | null>(null)
 
   const submit = async (event: FormEvent): Promise<void> => {
     event.preventDefault()
@@ -28,11 +29,14 @@ export function CreateCollectionForm({
     setSaving(true)
     setError(null)
     try {
-      const definition = await createReusableCollectionDefinition(
-        name.trim(),
-        { version: 1, sources: { tags: [], include: [], exclude: [] } },
-        graph.generation,
-      )
+      const definition =
+        created.current ??
+        (await createReusableCollectionDefinition(
+          name.trim(),
+          { version: 1, sources: { tags: [], include: [], exclude: [] } },
+          graph.generation,
+        ))
+      created.current = definition
       onCreated(definition)
     } catch (cause) {
       setError(errorMessage(cause))

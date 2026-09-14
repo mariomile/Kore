@@ -55,6 +55,12 @@ import { cn } from '@/lib/utils'
 import { useGraph } from '@/providers/graph-provider'
 import { useNoteSearchQuery, useNoteSearchReport } from '@/providers/note-find-provider'
 import { useSettings } from '@/providers/settings-provider'
+import { toast } from '@/components/ui/toast'
+
+interface CollectionCreation {
+  path: string
+  editor: NoteEditorHandle
+}
 
 interface NotePaneProps {
   /** Graph-relative path of the note to edit. */
@@ -221,15 +227,16 @@ export function NotePaneComponent({
   // through the registry ref at select time (a late resolve after the pane
   // unmounted must insert nowhere rather than somewhere stale).
   const getEditor = useCallback(() => registeredHandle.current?.handle ?? null, [])
-  const [creatingCollection, setCreatingCollection] = useState<string | null>(null)
-  const collectionInsertionEditor = useRef<NoteEditorHandle | null>(null)
+  const [creatingCollection, setCreatingCollection] = useState<CollectionCreation | null>(null)
+  const collectionInsertionEditor = useRef<CollectionCreation | null>(null)
   const openCreateCollection = useCallback(() => {
     const editor = getEditor()
     if (editor === null) {
       return
     }
-    collectionInsertionEditor.current = editor
-    setCreatingCollection(path)
+    const creation = { path, editor }
+    collectionInsertionEditor.current = creation
+    setCreatingCollection(creation)
   }, [getEditor, path])
   const closeCreateCollection = useCallback(() => {
     collectionInsertionEditor.current = null
@@ -238,8 +245,18 @@ export function NotePaneComponent({
   }, [getEditor])
   const handleCollectionCreated = useCallback(
     (definition: CollectionDefinition) => {
+      const currentCreation = collectionInsertionEditor.current === creatingCollection
+      if (currentCreation) {
+        collectionInsertionEditor.current = null
+        setCreatingCollection(null)
+      }
       const editor = getEditor()
-      if (editor === null || editor !== collectionInsertionEditor.current) {
+      if (!currentCreation || editor === null || editor !== creatingCollection?.editor) {
+        toast.add({
+          type: 'info',
+          title: 'Collection created',
+          description: 'The original editor changed. You can open the collection from All notes.',
+        })
         return
       }
       insertCollectionEmbed(editor, {
@@ -253,9 +270,9 @@ export function NotePaneComponent({
         filters: [],
         match: 'all',
       })
-      closeCreateCollection()
+      editor.focus()
     },
-    [getEditor, closeCreateCollection],
+    [getEditor, creatingCollection],
   )
   const templateSlashItems = useTemplateSlashItems(getEditor, path)
   const collectionSlashItems = useCollectionSlashItems(getEditor, openCreateCollection)
@@ -482,7 +499,7 @@ export function NotePaneComponent({
         gutterClassName={gutterClassName}
       />
 
-      {creatingCollection === path ? (
+      {creatingCollection?.path === path ? (
         <div className={gutterClassName}>
           <CreateCollectionForm
             onCancel={closeCreateCollection}

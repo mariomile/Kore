@@ -30,6 +30,8 @@ describe('inline collection creation', () => {
       1,
     )
     expect(onCreated).toHaveBeenCalledWith(definition)
+    await view.getByRole('button', { name: 'Create collection' }).click()
+    expect(create).toHaveBeenCalledTimes(1)
   })
 
   it('keeps the name and reports a failed save without navigating away', async () => {

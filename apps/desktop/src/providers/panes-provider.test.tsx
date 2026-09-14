@@ -143,6 +143,34 @@ describe('PanesProvider', () => {
     expect(result.current.activePane.id).toBe(first)
   })
 
+  it('keeps one identity across a pane’s navigations and tab writes', async () => {
+    const { result, act } = await renderHook(usePanes, { wrapper })
+    const value = result.current
+    const first = value.activePane.id
+
+    // What a navigation really does in the app: the router moves and the
+    // pane’s OpenTabsProvider records the visit in settings. Neither may
+    // rebuild the pane handles, or every pane’s note-move subscription
+    // would be torn down and resubscribed on each keystroke-free navigation.
+    await act(() => {
+      value.activePane.router.navigate({ kind: 'note', path: 'notes/a.md' })
+      settingsStore.update((current) => ({
+        openTabs: {
+          ...current.openTabs,
+          [GRAPH_ROOT]: [
+            {
+              id: first,
+              tabs: [{ kind: 'note', path: 'notes/a.md', pinned: false }],
+              activeKey: 'note:notes/a.md',
+            },
+          ],
+        },
+      }))
+    })
+
+    expect(result.current).toBe(value)
+  })
+
   it('closes a pane but never the last one', async () => {
     const { result, act } = await renderHook(usePanes, { wrapper })
     const first = result.current.activePane.id

@@ -22,8 +22,9 @@ interface MarkdownPreviewProps {
   resolveImageUrl?: (src: string) => string | null
   /**
    * Navigate a clicked `[[wiki link]]` target. Omitted, links render as
-   * inert chips (the palette preview's behavior). `event` carries the
-   * originating click so handlers can honor ⌘-click (open in new window).
+   * inert chips (the palette preview's behavior). `openInSplit` carries the
+   * ⌘/Ctrl the click held, so the host can open the target in the pane
+   * beside this one.
    */
   onWikiLinkClick?: (options: { target: string; openInSplit: boolean }) => void
   /**

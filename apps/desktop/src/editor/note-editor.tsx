@@ -179,9 +179,9 @@ interface NoteEditorProps {
   /** Resolve the file size a rendered file pill shows next to its name. */
   resolveFileInfo?: FileInfoResolver
   /**
-   * Click on a `[[wiki link]]`. `event` is the originating click (or the
-   * Mod-Enter key press that followed the link) — handlers read its
-   * modifiers, e.g. ⌘-click opens the target in a new window.
+   * Click on a `[[wiki link]]`. `openInSplit` comes from the originating
+   * click (or the Mod-Enter key press that followed the link) holding
+   * ⌘/Ctrl: the host opens the target in the pane beside this one.
    */
   onWikiLinkClick?: (options: { target: string; openInSplit: boolean }) => void
   /**
@@ -390,13 +390,13 @@ export function NoteEditor({
         })
         return
       }
-      // A `reflect://` link routes through the in-app deep-link pipeline —
+      // A `reflect://` link routes through the in-app deep-link pipeline:
       // the OS opener would deny the scheme (and a round-trip could land on
-      // another installed flavor). ⌘-click or a spare-`mod` keyboard follow sends an
-      // *addressing* link to a new window instead; a declined open (capture link, browser dev)
-      // degrades to the normal dispatch.
+      // another installed flavor). It always dispatches in place, modifier or
+      // not, because a deep link can be a write (a capture link) rather than
+      // a place to open beside this one.
       if (isDeepLinkUrl(href)) {
-        followDeepLink({ href, openInSplit: mod })
+        followDeepLink({ href })
         return
       }
       if (!isOpenableExternalUrl(href)) {

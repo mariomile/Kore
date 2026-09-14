@@ -16,7 +16,7 @@ interface BacklinkSourceGroupProps {
   expanded: boolean
   /**
    * Open the source note (the panel wires this to the router). The click
-   * event rides along so ⌘-click can open a new window.
+   * event rides along so ⌘-click can open it in the pane beside this one.
    */
   onOpen: (path: string, event?: ModClickEvent) => void
   /** Navigate a clicked `[[wiki link]]` inside a snippet to its target. */

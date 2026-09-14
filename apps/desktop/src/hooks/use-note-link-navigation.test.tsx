@@ -5,6 +5,7 @@ import { RouterProvider, useRouter } from '@/routing/router'
 import { useNoteLinkNavigation } from './use-note-link-navigation'
 
 const openInPane = vi.hoisted(() => vi.fn())
+const holderOf = vi.hoisted(() => vi.fn<(route: unknown) => string | null>())
 const useOptionalPanes = vi.hoisted(() => vi.fn())
 const usePaneId = vi.hoisted(() => vi.fn())
 
@@ -47,6 +48,8 @@ function route(view: Awaited<ReturnType<typeof render>>): unknown {
 
 beforeEach(() => {
   openInPane.mockReset()
+  holderOf.mockReset()
+  holderOf.mockReturnValue(null)
   useOptionalPanes.mockReset()
   usePaneId.mockReset()
 })
@@ -75,7 +78,7 @@ describe('useNoteLinkNavigation', () => {
   })
 
   it('opens the target in the pane beside this one on a modifier click', async () => {
-    useOptionalPanes.mockReturnValue({ openInPane })
+    useOptionalPanes.mockReturnValue({ openInPane, holderOf })
     usePaneId.mockReturnValue('pane-left')
     const view = await render(<Harness openInSplit={true} />)
 
@@ -86,5 +89,34 @@ describe('useNoteLinkNavigation', () => {
       { from: 'pane-left' },
     )
     expect(route(view)).toEqual({ kind: 'allNotes', filter: { kind: 'all' } })
+  })
+
+  it('sends a plain click to the pane that already holds the target', async () => {
+    // A tab key lives in at most one pane: navigating in place here would
+    // open a second editor session on the same path.
+    useOptionalPanes.mockReturnValue({ openInPane, holderOf })
+    holderOf.mockReturnValue('pane-right')
+    usePaneId.mockReturnValue('pane-left')
+    const view = await render(<Harness openInSplit={false} />)
+
+    await view.getByRole('button', { name: 'Alpha' }).click()
+
+    expect(openInPane).toHaveBeenCalledWith(
+      { kind: 'note', path: 'notes/alpha.md' },
+      { from: 'pane-left' },
+    )
+    expect(route(view)).toEqual({ kind: 'allNotes', filter: { kind: 'all' } })
+  })
+
+  it('navigates in place on a plain click when this pane already holds it', async () => {
+    useOptionalPanes.mockReturnValue({ openInPane, holderOf })
+    holderOf.mockReturnValue('pane-left')
+    usePaneId.mockReturnValue('pane-left')
+    const view = await render(<Harness openInSplit={false} />)
+
+    await view.getByRole('button', { name: 'Alpha' }).click()
+
+    await expect.poll(() => route(view)).toEqual({ kind: 'note', path: 'notes/alpha.md' })
+    expect(openInPane).not.toHaveBeenCalled()
   })
 })

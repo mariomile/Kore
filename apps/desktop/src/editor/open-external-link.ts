@@ -97,10 +97,10 @@ export function useOpenExternalLink(): LinkClickHandler {
   const followDeepLink = useFollowDeepLink()
   const openLinksInApp = useSettings().settings.browserOpenLinksInApp
   return useCallback<LinkClickHandler>(
-    ({ href, event, mod }) => {
+    ({ href, event }) => {
       event.preventDefault()
       if (isDeepLinkUrl(href)) {
-        followDeepLink({ href, openInSplit: mod })
+        followDeepLink({ href })
         return
       }
       const altKey = 'altKey' in event && event.altKey

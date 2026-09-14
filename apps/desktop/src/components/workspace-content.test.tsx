@@ -59,6 +59,7 @@ vi.mock('@/components/templates/template-picker', () => ({ TemplatePicker: () =>
 vi.mock('@/providers/focused-daily-provider', () => ({
   useDailyContextTarget: () => workspaceState.target,
   FocusedDailyProvider: ({ children }: { children: ReactNode }) => children,
+  FocusedDailyArrivalReset: () => null,
 }))
 // The pane row is `workspace-pane.test.tsx`'s subject; here only the frame
 // around it is under test, so one stub pane stands in for the model and the
@@ -68,6 +69,7 @@ vi.mock('@/providers/panes-provider', () => ({
   usePanes: () => ({ panes: [{ id: 'main' }], activePane: { id: 'main' }, setActivePane: vi.fn() }),
   useOptionalPanes: () => null,
   usePaneId: () => 'main',
+  useScopedPaneId: () => 'main',
   PaneScope: ({ children }: { children: ReactNode }) => children,
 }))
 vi.mock('@/providers/open-tabs-provider', () => ({

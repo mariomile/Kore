@@ -44,6 +44,13 @@ export interface PanesValue {
    * instead, so a note or singleton surface is never mounted twice.
    */
   openInPane(route: Route, options: { from: string }): void
+  /**
+   * The id of the pane whose persisted tabs already hold `route`'s tab, or
+   * null when no live pane does. The spec's one rule about tab identity: a
+   * tab key lives in at most one pane, so callers route a link at its holder
+   * rather than opening a second editor session on the same path.
+   */
+  holderOf(route: Route): string | null
   /** Close a pane; the last pane never closes. */
   closePane(id: string): void
   focusPane(target: 'left' | 'right'): void
@@ -93,6 +100,13 @@ export function PanesProvider({ initialRoute, children }: PanesProviderProps): R
   const root = graph?.root ?? null
   const stored = root === null ? NO_PANES : (settings.openTabs[root] ?? NO_PANES)
 
+  // Read inside memos and callbacks instead of depended on: `stored` is
+  // rewritten on every tab write in any pane, and depending on it would give
+  // `PanesValue` (and the note-move subscription keyed off it) a new identity
+  // per navigation.
+  const storedRef = useRef(stored)
+  storedRef.current = stored
+
   const handles = useRef(new Map<string, WorkspacePaneHandle>())
   const findActions = useRef(new Map<string, NoteFindActions>())
   // Note-move following is subscribed from an effect, never at construction,
@@ -106,23 +120,35 @@ export function PanesProvider({ initialRoute, children }: PanesProviderProps): R
   // its persisted tabs say: a pane opened just now is empty until the tab
   // strip fills it, and dropping it would undo the split mid-gesture.
   // Handles are created once per id and reused across renders.
-  const panes = useMemo<WorkspacePaneHandle[]>(() => {
+  // The ordered ids first, as one string: that is everything the handle list
+  // depends on, and it survives the tab writes that rewrite `stored` on every
+  // navigation. A pane id is `main` or a uuid, so a newline cannot occur in
+  // one.
+  const paneIdsKey = useMemo(() => {
     const restored = stored.filter(
       (pane, position) =>
         position === 0 || handles.current.has(pane.id) || restoredRoute(pane) !== null,
     )
-    const entries = restored.length === 0 ? [emptyPane(MAIN_PANE_ID)] : restored
-    return entries.map((pane, position) => {
-      const existing = handles.current.get(pane.id)
-      if (existing !== undefined) {
-        return existing
-      }
-      const route = position === 0 ? initialRoute : (restoredRoute(pane) ?? undefined)
-      const handle = createPaneHandle(pane.id, route)
-      handles.current.set(pane.id, handle)
-      return handle
-    })
-  }, [stored, initialRoute])
+    const ids = restored.length === 0 ? [MAIN_PANE_ID] : restored.map((pane) => pane.id)
+    return ids.join('\n')
+  }, [stored])
+
+  const panes = useMemo<WorkspacePaneHandle[]>(
+    () =>
+      paneIdsKey.split('\n').map((id, position) => {
+        const existing = handles.current.get(id)
+        if (existing !== undefined) {
+          return existing
+        }
+        const entry = storedRef.current.find((pane) => pane.id === id)
+        const restored = entry === undefined ? null : restoredRoute(entry)
+        const route = position === 0 ? initialRoute : (restored ?? undefined)
+        const handle = createPaneHandle(id, route)
+        handles.current.set(id, handle)
+        return handle
+      }),
+    [paneIdsKey, initialRoute],
+  )
 
   // `panes` is never empty by construction (the memo synthesizes `main`).
   const [activeId, setActiveId] = useState<string>(() => panes[0]!.id)
@@ -181,22 +207,32 @@ export function PanesProvider({ initialRoute, children }: PanesProviderProps): R
     setActiveId(id)
   }, [])
 
+  const holderOf = useCallback(
+    (route: Route): string | null => {
+      const tab = openTabForRoute(route)
+      if (tab === null) {
+        return null
+      }
+      // Only rendered panes can hold a tab: a persisted pane the restore
+      // filter dropped must not win the lookup, or the key would end up in
+      // two persisted panes at once.
+      const openTabsById = new Map(storedRef.current.map((pane) => [pane.id, pane.tabs]))
+      const holder = panes.find((pane) =>
+        (openTabsById.get(pane.id) ?? []).some((open) => tabsEqual(open, tab)),
+      )
+      return holder?.id ?? null
+    },
+    [panes],
+  )
+
   const openInPane = useCallback(
     (route: Route, { from }: { from: string }) => {
-      const tab = openTabForRoute(route)
-      if (tab !== null) {
-        // Only rendered panes can hold a tab: a persisted pane the restore
-        // filter dropped must not win the lookup, or the key would end up in
-        // two persisted panes at once.
-        const openTabsById = new Map(stored.map((pane) => [pane.id, pane.tabs]))
-        const holder = panes.find((pane) =>
-          (openTabsById.get(pane.id) ?? []).some((open) => tabsEqual(open, tab)),
-        )
-        if (holder !== undefined) {
-          holder.router.navigate(route)
-          setActiveId(holder.id)
-          return
-        }
+      const holderId = holderOf(route)
+      const holder = holderId === null ? undefined : panes.find((pane) => pane.id === holderId)
+      if (holder !== undefined) {
+        holder.router.navigate(route)
+        setActiveId(holder.id)
+        return
       }
       const fromIndex = panes.findIndex((pane) => pane.id === from)
       const right = panes[fromIndex + 1]
@@ -218,7 +254,7 @@ export function PanesProvider({ initialRoute, children }: PanesProviderProps): R
         return [...base.slice(0, insertAt), emptyPane(id), ...base.slice(insertAt)]
       })
     },
-    [stored, panes, writePanes],
+    [holderOf, panes, writePanes],
   )
 
   const closePane = useCallback(
@@ -278,6 +314,7 @@ export function PanesProvider({ initialRoute, children }: PanesProviderProps): R
       activePane,
       setActivePane,
       openInPane,
+      holderOf,
       closePane,
       focusPane,
       registerFindActions,
@@ -288,6 +325,7 @@ export function PanesProvider({ initialRoute, children }: PanesProviderProps): R
       activePane,
       setActivePane,
       openInPane,
+      holderOf,
       closePane,
       focusPane,
       registerFindActions,
@@ -312,6 +350,11 @@ export function useOptionalPanes(): PanesValue | null {
   return use(PanesContext)
 }
 
+/** The id of the enclosing pane, or null outside any `PaneScope`. */
+export function useScopedPaneId(): string | null {
+  return use(PaneIdContext)
+}
+
 /** Mark a subtree as rendering inside one pane. */
 export function PaneScope({ id, children }: { id: string; children: ReactNode }): ReactElement {
   return <PaneIdContext value={id}>{children}</PaneIdContext>
@@ -319,7 +362,7 @@ export function PaneScope({ id, children }: { id: string; children: ReactNode })
 
 /** The id of the enclosing pane, or the active pane's id outside any pane. */
 export function usePaneId(): string {
-  const scoped = use(PaneIdContext)
+  const scoped = useScopedPaneId()
   const panes = use(PanesContext)
   return scoped ?? panes?.activePane.id ?? MAIN_PANE_ID
 }

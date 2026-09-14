@@ -189,7 +189,7 @@ export function useAppShortcuts(): CommandContext {
   // so it is stable and a pane switch does not rebuild the command context.
   const activeFindActions = panes?.activeFindActions ?? null
   // The whole panes model, read through a ref so pane.close/focusLeft/Right
-  // stay stable closures — the memo below never depends on `panes` directly.
+  // stay stable closures: the memo below never depends on `panes` directly.
   const panesRef = useRef(panes)
 
   // Modal surfaces suppress app commands: nothing may navigate behind the

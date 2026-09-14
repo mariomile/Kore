@@ -1,6 +1,5 @@
 import { errorMessage, openNoteWindow } from '@reflect/core'
 import { deepLinkForRoute } from '@/lib/deep-links/format'
-import { parseDeepLink } from '@/lib/deep-links/parse'
 import { isNativeShell } from '@/lib/platform'
 import { isMobileSurface } from '@/lib/platform-surface'
 import type { Route } from '@/routing/route'
@@ -37,23 +36,6 @@ export async function openRouteInNewWindow(route: Route): Promise<boolean> {
     return false
   }
   return await openWindowFor(link)
-}
-
-/**
- * Open an in-note `reflect://` link in a secondary window — only links that
- * *address* something (navigate / openNote). Capture links (append, task)
- * are writes, not places: a modifier click still dispatches them normally.
- * Same false-not-throw contract as {@link openRouteInNewWindow}.
- */
-export async function openDeepLinkInNewWindow(href: string): Promise<boolean> {
-  if (!isNativeShell() || isMobileSurface()) {
-    return false
-  }
-  const link = parseDeepLink(href)
-  if (link === null || link.kind === 'capture') {
-    return false
-  }
-  return await openWindowFor(href)
 }
 
 async function openWindowFor(link: string): Promise<boolean> {

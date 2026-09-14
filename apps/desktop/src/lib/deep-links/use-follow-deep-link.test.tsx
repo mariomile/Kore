@@ -20,27 +20,19 @@ beforeEach(() => {
 })
 
 describe('useFollowDeepLink', () => {
-  it('dispatches a plain follow in place', async () => {
+  it('dispatches an addressing link in place', async () => {
     await render(<Host />)
 
-    followDeepLink?.({ href: 'reflect://note/older', openInSplit: false })
-
-    expect(dispatchDeepLink).toHaveBeenCalledWith('reflect://note/older')
-  })
-
-  it('dispatches a modifier follow in place instead of opening a window', async () => {
-    await render(<Host />)
-
-    followDeepLink?.({ href: 'reflect://note/older', openInSplit: true })
+    followDeepLink?.({ href: 'reflect://note/older' })
 
     expect(dispatchDeepLink).toHaveBeenCalledWith('reflect://note/older')
     expect(dispatchDeepLink).toHaveBeenCalledTimes(1)
   })
 
-  it('dispatches a capture link regardless of the modifier', async () => {
+  it('dispatches a capture link, which is a write rather than a place', async () => {
     await render(<Host />)
 
-    followDeepLink?.({ href: 'reflect://append?text=captured', openInSplit: true })
+    followDeepLink?.({ href: 'reflect://append?text=captured' })
 
     expect(dispatchDeepLink).toHaveBeenCalledWith('reflect://append?text=captured')
   })

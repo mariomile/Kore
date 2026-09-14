@@ -12,6 +12,11 @@ export type NoteLinkNavigation = (options: { target: NoteRoute; openInSplit: boo
  * note in the pane beside this one; otherwise navigate in place. Surfaces
  * without panes (the secondary note window, mobile) navigate in place either
  * way, so the modifier can never make a link do nothing.
+ *
+ * A target another pane already holds goes to that pane whatever the
+ * modifier said. Navigating in place would put the same tab key in two
+ * panes, and the open-documents registry is keyed by path: two editor
+ * sessions on one file, either of which can lose the other's edits.
  */
 export function useNoteLinkNavigation(): NoteLinkNavigation {
   const { navigate } = useRouter()
@@ -20,9 +25,12 @@ export function useNoteLinkNavigation(): NoteLinkNavigation {
 
   return useCallback(
     ({ target, openInSplit }) => {
-      if (openInSplit && panes !== null) {
-        panes.openInPane(target, { from: paneId })
-        return
+      if (panes !== null) {
+        const holder = panes.holderOf(target)
+        if (openInSplit || (holder !== null && holder !== paneId)) {
+          panes.openInPane(target, { from: paneId })
+          return
+        }
       }
       navigate(target)
     },

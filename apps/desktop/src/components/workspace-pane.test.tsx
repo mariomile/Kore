@@ -7,12 +7,13 @@ import { setBridge, type OpenPane } from '@reflect/core'
 import type { CommandContext } from '@/lib/commands/types'
 import { PanesProvider, usePanes } from '@/providers/panes-provider'
 import { SidebarProvider } from '@/providers/sidebar-provider'
-import { PaneResizeHandle, WorkspacePane } from './workspace-pane'
+import { PaneResizeHandle } from './pane-resize-handle'
+import { WorkspacePane } from './workspace-pane'
 
 /**
  * Two panes side by side: a click anywhere inside one makes it the active
  * pane, which is what the chrome follows. The routed content and the Find
- * bar are stubbed — the pane's own wiring (its router, tab, and Find stores)
+ * bar are stubbed: the pane's own wiring (its router, tab, and Find stores)
  * is what this covers, not what a route renders inside it.
  */
 
@@ -109,7 +110,7 @@ function PaneRow(): ReactElement {
     <div className="flex">
       {panes.map((pane, index) => (
         <Fragment key={pane.id}>
-          {index > 0 ? <PaneResizeHandle leftPaneId={panes[index - 1]!.id} /> : null}
+          {index > 0 ? <PaneResizeHandle /> : null}
           <WorkspacePane pane={pane} commandContext={COMMAND_CONTEXT} />
         </Fragment>
       ))}

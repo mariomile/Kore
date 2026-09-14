@@ -12,7 +12,8 @@ import { Sidebar } from '@/components/sidebar/sidebar'
 import { SidebarResizeHandle } from '@/components/sidebar-resize-handle'
 import { TemplateCreateDialog } from '@/components/templates/template-create-dialog'
 import { TemplatePicker } from '@/components/templates/template-picker'
-import { PaneResizeHandle, WorkspacePane } from '@/components/workspace-pane'
+import { PaneResizeHandle } from '@/components/pane-resize-handle'
+import { WorkspacePane } from '@/components/workspace-pane'
 import { registerInAppBrowserOpener, setBrowserSessionUrl } from '@/lib/browser-session'
 import type { CommandContext } from '@/lib/commands/types'
 import { useMacosTrafficLightInset } from '@/lib/use-macos-traffic-light-inset'
@@ -163,7 +164,7 @@ function WorkspaceFrame({
 
       {panes.map((pane, index) => (
         <Fragment key={pane.id}>
-          {index > 0 ? <PaneResizeHandle leftPaneId={panes[index - 1]!.id} /> : null}
+          {index > 0 ? <PaneResizeHandle /> : null}
           <WorkspacePane pane={pane} commandContext={commandContext} />
         </Fragment>
       ))}

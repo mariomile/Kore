@@ -8,7 +8,7 @@ import { SidebarOpenTabs } from '@/components/sidebar/sidebar-open-notes'
 import { emitChatConversationDeleted } from '@/lib/chat-events'
 import { emitNoteMoved } from '@/lib/note-moves'
 import { OpenTabsProvider, useOpenTabs } from '@/providers/open-tabs-provider'
-import { PanesProvider } from '@/providers/panes-provider'
+import { PaneScope, PanesProvider } from '@/providers/panes-provider'
 import { SidebarProvider } from '@/providers/sidebar-provider'
 import { tabKey } from '@/providers/open-tab'
 import { routeForPath } from '@/routing/route'
@@ -690,10 +690,14 @@ function renderSplit() {
       <RouterProvider initialRoute={{ kind: 'today' }}>
         <SidebarProvider>
           <PanesProvider>
-            <OpenTabsProvider paneId="main">
-              <WorkspaceTabsStrip />
-              <Probe />
-            </OpenTabsProvider>
+            {/* The pane's own binding, the one that owns the writes: in the
+              app it always sits inside the pane's scope. */}
+            <PaneScope id="main">
+              <OpenTabsProvider paneId="main">
+                <WorkspaceTabsStrip />
+                <Probe />
+              </OpenTabsProvider>
+            </PaneScope>
           </PanesProvider>
         </SidebarProvider>
       </RouterProvider>

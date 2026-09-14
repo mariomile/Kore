@@ -12,7 +12,7 @@ import { onChatConversationDeleted } from '@/lib/chat-events'
 import { onNoteMoved } from '@/lib/note-moves'
 import { useOptionalChatSession } from '@/providers/chat-provider'
 import { useGraph } from '@/providers/graph-provider'
-import { useOptionalPanes } from '@/providers/panes-provider'
+import { useOptionalPanes, useScopedPaneId } from '@/providers/panes-provider'
 import {
   openTabForRoute,
   routeForOpenTab,
@@ -104,6 +104,14 @@ export function OpenTabsProvider({
   const { route, navigate } = useRouter()
   const chatSession = useOptionalChatSession()
   const panes = useOptionalPanes()
+  const scopedPaneId = useScopedPaneId()
+  // In a paned workspace the chrome mounts a second binding of the active
+  // pane's tab model, for the palette's tab commands and the context rail.
+  // That mirror reads only: the pane's own binding owns every write, so a
+  // visited route is recorded once and a healing event fires once. A binding
+  // with no panes at all (the note window, tests) is the only binding there
+  // is and keeps doing both.
+  const mirrorsActivePane = scopedPaneId === null && panes !== null
   const activeConversationId = chatSession?.activeConversationId ?? null
   const openConversation = chatSession?.openConversation
 
@@ -164,7 +172,7 @@ export function OpenTabsProvider({
   // rapid navigations and mutable singleton payloads (date/tag/query) intact.
   useEffect(() => {
     const incoming = openTabForRoute(route, activeConversationId)
-    if (incoming === null) {
+    if (incoming === null || mirrorsActivePane) {
       return
     }
     updateTabs((paneTabs) => {
@@ -177,7 +185,7 @@ export function OpenTabsProvider({
         ? paneTabs
         : paneTabs.map((tab) => (tabsEqual(tab, incoming) ? updated : tab))
     }, tabKey(incoming))
-  }, [route, activeConversationId, updateTabs])
+  }, [route, activeConversationId, mirrorsActivePane, updateTabs])
 
   const activateTab = useCallback(
     (tab: OpenTab) => {
@@ -263,42 +271,42 @@ export function OpenTabsProvider({
     [updateTabs],
   )
 
-  useEffect(
-    () =>
-      onNoteMoved((from, to) => {
-        updateTabs((paneTabs) => {
-          const moved = paneTabs.find((tab) => tab.kind === 'note' && tab.path === from)
-          if (moved === undefined) {
-            return paneTabs
-          }
-          const target = paneTabs.find((tab) => tab.kind === 'note' && tab.path === to)
-          if (target !== undefined) {
-            return paneTabs
-              .filter((tab) => tab !== moved)
-              .map((tab) =>
-                tab === target && moved.pinned && !target.pinned
-                  ? { ...target, pinned: true }
-                  : tab,
-              )
-          }
-          return paneTabs.map((tab) => (tab === moved ? { ...moved, path: to } : tab))
-        })
-      }),
-    [updateTabs],
-  )
-
-  useEffect(
-    () =>
-      onChatConversationDeleted((conversationId) => {
-        const deleted = tabs.find(
-          (tab) => tab.kind === 'chat' && tab.conversationId === conversationId,
-        )
-        if (deleted !== undefined) {
-          closeTab(deleted)
+  useEffect(() => {
+    if (mirrorsActivePane) {
+      return
+    }
+    return onNoteMoved((from, to) => {
+      updateTabs((paneTabs) => {
+        const moved = paneTabs.find((tab) => tab.kind === 'note' && tab.path === from)
+        if (moved === undefined) {
+          return paneTabs
         }
-      }),
-    [tabs, closeTab],
-  )
+        const target = paneTabs.find((tab) => tab.kind === 'note' && tab.path === to)
+        if (target !== undefined) {
+          return paneTabs
+            .filter((tab) => tab !== moved)
+            .map((tab) =>
+              tab === target && moved.pinned && !target.pinned ? { ...target, pinned: true } : tab,
+            )
+        }
+        return paneTabs.map((tab) => (tab === moved ? { ...moved, path: to } : tab))
+      })
+    })
+  }, [mirrorsActivePane, updateTabs])
+
+  useEffect(() => {
+    if (mirrorsActivePane) {
+      return
+    }
+    return onChatConversationDeleted((conversationId) => {
+      const deleted = tabs.find(
+        (tab) => tab.kind === 'chat' && tab.conversationId === conversationId,
+      )
+      if (deleted !== undefined) {
+        closeTab(deleted)
+      }
+    })
+  }, [mirrorsActivePane, tabs, closeTab])
 
   const cycle = useCallback(
     (step: 1 | -1) => {

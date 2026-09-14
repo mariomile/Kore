@@ -30,7 +30,7 @@ interface GraphWorkspaceProps {
 
 /**
  * The main surface once a graph is open (Plan 06): mounts the per-graph
- * providers — the ⌘K palette, the sidebar state, and the router — around
+ * providers (the ⌘K palette, the sidebar state, and the router) around
  * {@link WorkspaceContent}. The app opens to today's daily note, the
  * chronological spine. Keyed by the graph root so switching graphs starts a
  * fresh history.
@@ -53,7 +53,7 @@ export function GraphWorkspace({ graph }: GraphWorkspaceProps): ReactElement {
             {/* Tabs and the focused day are per pane; the chrome reads the
               active one. The V1 import lives above the routed views so
               closing settings can't orphan a running import; main window
-              only — its dialog is the import's single face. */}
+              only: its dialog is the import's single face. */}
             <ActivePaneChrome>
               <V1ImportProvider graph={graph}>
                 <WorkspaceContent graph={graph} />
@@ -72,7 +72,7 @@ export function GraphWorkspace({ graph }: GraphWorkspaceProps): ReactElement {
     <RouterProvider key={graph.root} {...(initialRoute !== null ? { initialRoute } : {})}>
       <WorkspaceProviders graph={graph}>
         {/* A ⌘-clicked note window is chrome-free: the routed view only, no
-          sidebar/palette shell, no tab strip — so it carries its own
+          sidebar/palette shell, no tab strip, so it carries its own
           focused-day and Find sessions rather than a pane's. */}
         <FocusedDailyProvider>
           <NoteFindProvider>
@@ -141,6 +141,10 @@ function ActivePaneRouter({ children }: { children: ReactNode }): ReactElement {
  * The rest of the active pane's state for the chrome: the focused day the
  * context rail describes and the tab model the palette's tab commands drive.
  * Below {@link ChatProvider}, which `OpenTabsProvider` reads.
+ *
+ * This binding is read-mostly. The pane's own binding of the same pane id
+ * owns the writes (the route-to-tab record, the note-move and chat-deleted
+ * healing); running them from here too would do each one twice.
  */
 function ActivePaneChrome({ children }: { children: ReactNode }): ReactElement {
   const { activePane } = usePanes()

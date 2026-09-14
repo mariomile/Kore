@@ -27,7 +27,7 @@ function mount(onOpen: OnOpen) {
 }
 
 describe('BacklinkSourceGroup', () => {
-  it('forwards the click event so ⌘-click can open a new window', async () => {
+  it('forwards the click event so ⌘-click can open the note in a split', async () => {
     const onOpen = vi.fn<OnOpen>()
     await mount(onOpen)
 

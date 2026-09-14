@@ -58,22 +58,18 @@ and an ordinary routed note both open through the same mechanism described
 below. The command is also exposed in the native Window menu.
 
 1. A mod-click (the platform's mod key: Cmd on Apple, Ctrl elsewhere), or a
-   Mod+Enter press on a selected link unit, asks for a new window. Each UI
-   boundary turns its own gesture into the explicit `openInNewWindow` flag
-   the navigation chain carries, and one definition backs them all:
-   meowdown's `isModEvent` reads plain DOM row clicks, and the editor's own
-   `mod` follow flag comes from the same helper (a caret follow, which since
-   meowdown 0.65 fires only with the caret strictly inside a tag or
-   Markdown link, consumed its mod key as the trigger and reports false).
-   The flag then resolves the target as usual. Resolved note
-   references share `useNoteLinkNavigation`, which applies the convention and
-   delegates to `openRouteInNewWindow`; raw in-note links use
-   `openDeepLinkInNewWindow` (`src/lib/windows/open-in-new-window.ts`). Routes
+   Mod+Enter press on a selected link unit, no longer asks for a window: it
+   opens the note in the pane beside the current one (split panes, see
+   `docs/superpowers/specs/2026-09-14-split-panes-design.md`). Each UI
+   boundary turns its gesture into the `openInSplit` flag that
+   `useNoteLinkNavigation` carries to `PanesProvider.openInPane`. Raw in-note
+   `reflect://` links always dispatch in place. Secondary windows are opened
+   only by the `note.openInNewWindow` command (Cmd/Ctrl+Shift+O), the native
+   Window menu, and the note context menu, all of which call
+   `openRouteInNewWindow` (`src/lib/windows/open-in-new-window.ts`). Routes
    serialize through the existing deep-link grammar (`deepLinkForRoute`);
    capture links (`append`, `task`) are writes, not places, and never
-   window-ify. A declined or failed open falls back to in-window navigation
-   while its originating link intent remains current; a newer navigation drops
-   the late fallback instead of pulling the source window somewhere stale.
+   window-ify.
 2. `open_note_window` (`src-tauri/src/windows.rs`) refuses without an open
    graph, after a graph switch, or while a quit is in flight. An app-wide
    creation gate serializes target selection and Tauri's non-atomic native

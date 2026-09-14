@@ -32,7 +32,7 @@ const GRID_CHUNK = 120
  * `masonry` rows where the engine supports them). Engines without masonry
  * stretch every card to the row's tallest neighbor, so a body-less note
  * fills the cell instead of leaving a hole. A reading layout, not a
- * management one — cards open on click (⌘-click in the pane beside this one);
+ * management one: cards open on click (⌘-click in the pane beside this one);
  * multi-select and its keyboard shortcuts stay with the table view. Instead
  * of the table's row virtualizer the grid mounts in chunks: a sentinel
  * below the cards reveals the next {@link GRID_CHUNK} as it scrolls into

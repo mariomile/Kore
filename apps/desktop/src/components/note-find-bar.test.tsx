@@ -18,7 +18,12 @@ import {
 import { RouterProvider } from '@/routing/router'
 import { NoteFindBar } from './note-find-bar'
 
-vi.mock('@/lib/windows/window-role', () => ({ isMainWindow: () => true }))
+// Partial: the Find provider now reaches the panes model, whose graph
+// provider imports the rest of this module.
+vi.mock('@/lib/windows/window-role', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/windows/window-role')>()),
+  isMainWindow: () => true,
+}))
 
 const NOTE_PATH = 'notes/find-me.md'
 

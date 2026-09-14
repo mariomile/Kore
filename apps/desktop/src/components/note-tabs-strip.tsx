@@ -21,6 +21,7 @@ import { sortableTranslateStyle } from '@/lib/sortable-translate'
 import { cn } from '@/lib/utils'
 import { tabKey } from '@/providers/open-tab'
 import { useOpenTabs } from '@/providers/open-tabs-provider'
+import { useOptionalPanes, usePaneId } from '@/providers/panes-provider'
 import { useSidebar } from '@/providers/sidebar-provider'
 
 interface WorkspaceTabsStripProps {
@@ -39,6 +40,12 @@ export function WorkspaceTabsStrip({ commandContext }: WorkspaceTabsStripProps):
   const items = useOpenTabItems()
   const { collapsed, toggleSidebar, contextCollapsed, toggleContextSidebar } = useSidebar()
   const activeKey = activeTab === null ? null : tabKey(activeTab)
+  // An inactive column still shows which tab it is on, but quietly: only the
+  // active pane's selected pill reads as selected. No panes (the note window,
+  // tests) means the one strip is always the active one.
+  const panes = useOptionalPanes()
+  const paneId = usePaneId()
+  const paneActive = panes === null || panes.activePane.id === paneId
   // The 4px activation distance keeps plain clicks (activate), double clicks
   // (pin) and middle clicks (close) intact — a drag only starts once the
   // pointer actually travels. Same tuning as the sidebar's pinned shelf.
@@ -95,6 +102,7 @@ export function WorkspaceTabsStrip({ commandContext }: WorkspaceTabsStripProps):
                 key={tabKey(item.tab)}
                 item={item}
                 active={tabKey(item.tab) === activeKey}
+                paneActive={paneActive}
                 onActivate={activateTab}
                 onClose={closeTab}
                 onTogglePin={togglePin}
@@ -154,12 +162,21 @@ function PanelToggle({ side, collapsed, onToggle, label }: PanelToggleProps): Re
 interface StripTabProps {
   item: OpenTabItem
   active: boolean
+  /** False in a pane the user is not in: its selected pill stays muted. */
+  paneActive: boolean
   onActivate: (tab: OpenTab) => void
   onClose: (tab: OpenTab) => void
   onTogglePin: (tab: OpenTab) => void
 }
 
-function StripTab({ item, active, onActivate, onClose, onTogglePin }: StripTabProps): ReactElement {
+function StripTab({
+  item,
+  active,
+  paneActive,
+  onActivate,
+  onClose,
+  onTogglePin,
+}: StripTabProps): ReactElement {
   const { tab, title } = item
   // Drag-to-reorder: the whole pill is the handle (activation distance keeps
   // clicks working); the drop lands in `moveTab` through the strip's
@@ -200,6 +217,7 @@ function StripTab({ item, active, onActivate, onClose, onTogglePin }: StripTabPr
         onAuxClick={handleAuxClick}
         className={cn(
           tabPillClass(active),
+          active && !paneActive && 'text-text-muted',
           // A pinned tab is its icon: no label, so no room to hold open for one.
           'min-w-0 shrink-0 px-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
           isDragging && 'z-10 opacity-70',
@@ -223,6 +241,7 @@ function StripTab({ item, active, onActivate, onClose, onTogglePin }: StripTabPr
       onAuxClick={handleAuxClick}
       className={cn(
         tabPillClass(active),
+        active && !paneActive && 'text-text-muted',
         'group cursor-default pr-1',
         isDragging && 'z-10 opacity-70',
       )}

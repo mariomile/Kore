@@ -20,11 +20,16 @@ const findNextInNote = vi.hoisted(() => vi.fn())
 const findPreviousInNote = vi.hoisted(() => vi.fn())
 
 vi.mock('@/lib/windows/open-in-new-window', () => ({ openRouteInNewWindow }))
-vi.mock('@/providers/note-find-provider', () => ({
-  useNoteFindActions: () => ({
-    openForPath: openNoteFindForPath,
-    next: findNextInNote,
-    previous: findPreviousInNote,
+// ⌘F/⌘G reach the active pane's Find session through the panes model.
+vi.mock('@/providers/panes-provider', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/providers/panes-provider')>()),
+  useOptionalPanes: () => ({
+    activeFindActions: () => ({
+      openForPath: openNoteFindForPath,
+      next: findNextInNote,
+      previous: findPreviousInNote,
+      close: () => {},
+    }),
   }),
 }))
 

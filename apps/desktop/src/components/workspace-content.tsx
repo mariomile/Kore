@@ -1,13 +1,10 @@
-import { useEffect, type ReactElement } from 'react'
+import { Fragment, useEffect, type ReactElement } from 'react'
 import { subscribeBrowserNavigated, type GraphInfo } from '@reflect/core'
-import { AppShell } from '@/components/app-shell'
 import { CommandPalette } from '@/components/command-palette/command-palette'
 import { ContextSidebar } from '@/components/context-sidebar/context-sidebar'
 import { AgentRoutinesRunner } from '@/components/agent-routines-runner'
 import { TaskRemindersRunner } from '@/components/task-reminders-runner'
 import { EmbeddingsSync } from '@/components/embeddings-sync'
-import { NoteFindBar } from '@/components/note-find-bar'
-import { WorkspaceTabsStrip } from '@/components/note-tabs-strip'
 import { RouteContent } from '@/components/route-content'
 import { VaultReplaceMount } from '@/components/vault-replace/vault-replace-dialog'
 import { ShortcutsDialog } from '@/components/shortcuts-dialog'
@@ -15,10 +12,12 @@ import { Sidebar } from '@/components/sidebar/sidebar'
 import { SidebarResizeHandle } from '@/components/sidebar-resize-handle'
 import { TemplateCreateDialog } from '@/components/templates/template-create-dialog'
 import { TemplatePicker } from '@/components/templates/template-picker'
+import { PaneResizeHandle, WorkspacePane } from '@/components/workspace-pane'
 import { registerInAppBrowserOpener, setBrowserSessionUrl } from '@/lib/browser-session'
 import type { CommandContext } from '@/lib/commands/types'
 import { useMacosTrafficLightInset } from '@/lib/use-macos-traffic-light-inset'
 import { useDailyContextTarget } from '@/providers/focused-daily-provider'
+import { usePanes } from '@/providers/panes-provider'
 import { useSidebar } from '@/providers/sidebar-provider'
 import { useAppShortcuts } from '@/routing/app-shortcuts'
 import { isSettingsPage } from '@/routing/route'
@@ -141,6 +140,7 @@ function WorkspaceFrame({
   contextTarget,
 }: WorkspaceFrameProps): ReactElement {
   const { collapsed, contextCollapsed } = useSidebar()
+  const { panes } = usePanes()
 
   return (
     // Every gap in this row is one pane's own left gutter, and the row
@@ -161,25 +161,12 @@ function WorkspaceFrame({
         </aside>
       )}
 
-      <div className="workspace-main flex min-w-0 flex-1 flex-col">
-        <WorkspaceTabsStrip commandContext={commandContext} />
-        <div
-          data-testid="note-pane-gutter"
-          className="workspace-pane-gutter min-h-0 flex-1 pl-2 pb-2"
-        >
-          <div className="app-glass-card h-full overflow-hidden rounded-xl bg-surface">
-            <AppShell className="bg-transparent">
-              <div className="relative flex h-full flex-col">
-                <div className="min-h-0 flex-1">
-                  <RouteContent />
-                </div>
-
-                <NoteFindBar />
-              </div>
-            </AppShell>
-          </div>
-        </div>
-      </div>
+      {panes.map((pane, index) => (
+        <Fragment key={pane.id}>
+          {index > 0 ? <PaneResizeHandle leftPaneId={panes[index - 1]!.id} /> : null}
+          <WorkspacePane pane={pane} commandContext={commandContext} />
+        </Fragment>
+      ))}
 
       {contextCollapsed ? undefined : (
         <aside

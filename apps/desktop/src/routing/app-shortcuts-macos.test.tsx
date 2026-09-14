@@ -21,11 +21,15 @@ const findNextInNote = vi.hoisted(() => vi.fn())
 const findPreviousInNote = vi.hoisted(() => vi.fn())
 
 vi.mock('@/lib/platform', () => ({ isMacosDesktop: true, isNativeShell: () => false }))
-vi.mock('@/providers/note-find-provider', () => ({
-  useNoteFindActions: () => ({
-    openForPath: openNoteFindForPath,
-    next: findNextInNote,
-    previous: findPreviousInNote,
+vi.mock('@/providers/panes-provider', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/providers/panes-provider')>()),
+  useOptionalPanes: () => ({
+    activeFindActions: () => ({
+      openForPath: openNoteFindForPath,
+      next: findNextInNote,
+      previous: findPreviousInNote,
+      close: () => {},
+    }),
   }),
 }))
 

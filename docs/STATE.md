@@ -1,7 +1,9 @@
 # Kore working state
 
-**Updated:** 2026-09-10, Settings Close after switching pages (Agents, AI, …)
-leaves Settings in one step. Agents moved from the sidebar into Settings in
+**Updated:** 2026-09-14, split panes: the desktop workspace shows N note
+columns side by side, each with its own tab strip and history; ⌘-click on a
+note link opens it in the pane to the right. Settings Close after switching
+pages (Agents, AI, …) leaves Settings in one step. Agents moved from the sidebar into Settings in
 v0.62.0. Reusable mixed-note
 collections are implemented and verified through the rendered desktop flow;
 collection pages retain the Notion-style view tabs and options menu from
@@ -663,6 +665,32 @@ browser `collection-view-tabs` + `all-notes-collection-flow` +
    retry; Stop a running routine from Settings → Agents.
 4. **Memory follow-ups** that emerge from Now item 3 usage (roadmap Next).
 
+## Split panes — 2026-09-14
+
+- [x] The desktop workspace renders N panes side by side
+  ([spec](superpowers/specs/2026-09-14-split-panes-design.md)). The router's
+  history is an external store (`createRouterStore`) so one `RouterProvider`
+  binds per pane and another binds the chrome to the active pane; every
+  `useRouter()` consumer is untouched. `PanesProvider` owns the pane list and
+  the active pane; tabs persist per pane (`openTabs[root]: OpenPane[]`, old
+  flat lists reset once). A tab key lives in at most one pane; the last pane
+  never closes; closing a pane's last tab closes the pane.
+- [x] ⌘-click on any note link opens it in the pane to the right (creating it),
+  or focuses the pane that already shows it. "Open in new window" stays on
+  ⌘⇧O and the note context menu (meowdown's click payload has no shift flag,
+  so no ⌘⇧-click). ⌥⌘← / ⌥⌘→ move the active pane; `pane.close` is a
+  palette command. The context rail, palette, and note commands follow the
+  active pane.
+
+**Validation:** `pnpm check` exit 0; browser suites (routing, providers,
+workspace pane/content, tab strip, hooks, deep links, palette) 336/336 on
+Chromium and WebKit; node 93/93; core settings 39/39; dev-app run: ⌘-click
+opens a second column, a second ⌘-click reuses it, click/⌥⌘arrows move the
+active pane, ⌘W on the last tab closes the column.
+
+**Next:** open the PR; then decide whether the second pane's strip should
+drop the duplicated sidebar toggles and nav arrows.
+
 ## Agents in Settings — 2026-09-10
 
 - [x] Agents is a Settings page, not a sidebar or strip tab. Profiles, shared
@@ -680,6 +708,11 @@ screen: Agents then Close lands on today.
 
 ## Session log
 
+- 2026-09-14 — Split panes: N note columns per window with per-pane tab
+  strips and history, ⌘-click opens a link in the neighbouring pane, ⌥⌘←/→
+  switch panes. Router history moved to an external store to make it
+  possible. Verified: `pnpm check`, targeted Chromium + WebKit suites, dev-app
+  run.
 - 2026-09-10 — Settings Close after switching pages: navigating between
   Settings groups replaces the current history entry instead of pushing, so
   one back leaves Settings. Bugbot on #203.

@@ -729,47 +729,64 @@ describe('settingsSchema', () => {
         '/g': [
           {
             id: 'main',
-            activeKey: null,
-            tabs: [
-              { kind: 'surface', surface: 'daily', date: null, pinned: false },
-              { kind: 'note', path: 'notes/alpha.md', pinned: true },
-              { kind: 'chat', conversationId: 'conversation-1', pinned: false },
-              { kind: 'surface', surface: 'allNotes', tag: 'book', pinned: false },
-              { kind: 'surface', surface: 'search', query: 'alpha', pinned: false },
-              { kind: 'surface', surface: 'tasks', pinned: false },
+            panes: [
+              {
+                id: 'main',
+                activeKey: null,
+                tabs: [
+                  { kind: 'surface', surface: 'daily', date: null, pinned: false },
+                  { kind: 'note', path: 'notes/alpha.md', pinned: true },
+                  { kind: 'chat', conversationId: 'conversation-1', pinned: false },
+                  { kind: 'surface', surface: 'allNotes', tag: 'book', pinned: false },
+                  { kind: 'surface', surface: 'search', query: 'alpha', pinned: false },
+                  { kind: 'surface', surface: 'tasks', pinned: false },
+                ],
+              },
             ],
           },
         ],
-        '/broken': [{ id: 'main', activeKey: null, tabs: [{ kind: 'chat', pinned: false }] }],
+        '/broken': [
+          {
+            id: 'main',
+            panes: [{ id: 'main', activeKey: null, tabs: [{ kind: 'chat', pinned: false }] }],
+          },
+        ],
       },
     })
     expect(parsed.openTabs).toEqual({
       '/g': [
         {
           id: 'main',
-          activeKey: null,
-          tabs: [
-            { kind: 'surface', surface: 'daily', date: null, pinned: false },
-            { kind: 'note', path: 'notes/alpha.md', pinned: true },
-            { kind: 'chat', conversationId: 'conversation-1', pinned: false },
+          panes: [
             {
-              kind: 'surface',
-              surface: 'allNotes',
-              filter: { kind: 'tag', tag: 'book' },
-              pinned: false,
+              id: 'main',
+              activeKey: null,
+              tabs: [
+                { kind: 'surface', surface: 'daily', date: null, pinned: false },
+                { kind: 'note', path: 'notes/alpha.md', pinned: true },
+                { kind: 'chat', conversationId: 'conversation-1', pinned: false },
+                {
+                  kind: 'surface',
+                  surface: 'allNotes',
+                  filter: { kind: 'tag', tag: 'book' },
+                  pinned: false,
+                },
+                { kind: 'surface', surface: 'search', query: 'alpha', pinned: false },
+                { kind: 'surface', surface: 'tasks', pinned: false },
+              ],
             },
-            { kind: 'surface', surface: 'search', query: 'alpha', pinned: false },
-            { kind: 'surface', surface: 'tasks', pinned: false },
           ],
         },
       ],
-      '/broken': [{ id: 'main', activeKey: null, tabs: [] }],
+      '/broken': [{ id: 'main', panes: [{ id: 'main', activeKey: null, tabs: [] }] }],
     })
   })
 
   it('drops a pre-pane flat tab list instead of resurrecting it', () => {
     const parsed = settingsSchema.parse({
-      openTabs: { '/graph': [{ kind: 'note', path: 'notes/a.md', pinned: false }] },
+      openTabs: {
+        '/graph': [{ id: 'main', tabs: [{ kind: 'note', path: 'notes/a.md', pinned: false }] }],
+      },
     })
     expect(parsed.openTabs).toEqual({ '/graph': [] })
   })
@@ -780,12 +797,17 @@ describe('settingsSchema', () => {
         '/g': [
           {
             id: 'main',
-            activeKey: null,
-            tabs: [
-              { kind: 'surface', surface: 'daily', date: null, pinned: false },
-              { kind: 'surface', surface: 'settings', pinned: true },
-              { kind: 'surface', surface: 'agents', pinned: false },
-              { kind: 'note', path: 'notes/alpha.md', pinned: false },
+            panes: [
+              {
+                id: 'main',
+                activeKey: null,
+                tabs: [
+                  { kind: 'surface', surface: 'daily', date: null, pinned: false },
+                  { kind: 'surface', surface: 'settings', pinned: true },
+                  { kind: 'surface', surface: 'agents', pinned: false },
+                  { kind: 'note', path: 'notes/alpha.md', pinned: false },
+                ],
+              },
             ],
           },
         ],
@@ -795,10 +817,15 @@ describe('settingsSchema', () => {
       '/g': [
         {
           id: 'main',
-          activeKey: null,
-          tabs: [
-            { kind: 'surface', surface: 'daily', date: null, pinned: false },
-            { kind: 'note', path: 'notes/alpha.md', pinned: false },
+          panes: [
+            {
+              id: 'main',
+              activeKey: null,
+              tabs: [
+                { kind: 'surface', surface: 'daily', date: null, pinned: false },
+                { kind: 'note', path: 'notes/alpha.md', pinned: false },
+              ],
+            },
           ],
         },
       ],

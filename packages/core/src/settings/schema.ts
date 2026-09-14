@@ -145,6 +145,12 @@ export interface OpenPane {
   readonly activeKey: string | null
 }
 
+/** One workspace column: a stack of panes rendered top to bottom. */
+export interface OpenColumn {
+  readonly id: string
+  readonly panes: OpenPane[]
+}
+
 const openNoteTabStoredSchema = z.object({
   kind: z.literal('note'),
   path: z.string(),
@@ -243,13 +249,19 @@ const openPaneSchema: z.ZodType<OpenPane> = z.object({
   activeKey: z.string().nullable().catch(null),
 })
 
+const openColumnSchema: z.ZodType<OpenColumn> = z.object({
+  id: z.string().min(1),
+  panes: z.array(openPaneSchema),
+})
+
 /**
- * Per graph root, the ordered panes of the workspace, each with its tab
- * strip. A malformed pane (including the pre-pane flat tab list) drops the
- * graph's panes rather than restoring half a session.
+ * Per graph root, the ordered columns of the workspace, each a stack of
+ * panes with its own tab strip. A malformed column (including the pre-column
+ * flat pane list) drops the graph's layout rather than restoring half a
+ * session.
  */
 export const openTabsSchema = z
-  .record(z.string(), z.array(openPaneSchema).catch([]))
+  .record(z.string(), z.array(openColumnSchema).catch([]))
   // An array is also an object to `z.record` (index keys) — the pre-keying
   // shape must degrade to "no sessions", not to a graph named "0".
   .refine((value) => !Array.isArray(value))

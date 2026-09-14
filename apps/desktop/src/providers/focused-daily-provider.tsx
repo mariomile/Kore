@@ -3,6 +3,7 @@ import {
   use,
   useLayoutEffect,
   useState,
+  useSyncExternalStore,
   type ReactElement,
   type ReactNode,
 } from 'react'
@@ -11,6 +12,7 @@ import {
   type ContextSidebarTarget,
 } from '@/components/context-sidebar/sidebar-route'
 import { useToday } from '@/lib/use-today'
+import { createValueStore, type ValueStore } from '@/lib/value-store'
 import { effectiveDailyDate } from '@/routing/route'
 import { useRouter } from '@/routing/router'
 
@@ -35,11 +37,38 @@ import { useRouter } from '@/routing/router'
 const FocusedDailyDateContext = createContext<string | null>(null)
 const SetFocusedDailyDateContext = createContext<(date: string | null) => void>(() => {})
 
+interface FocusedDailyProviderProps {
+  /** Shared with the pane's chrome binding; omitted, the provider owns one. */
+  store?: ValueStore<string | null> | undefined
+  children: ReactNode
+}
+
+/**
+ * Resolve which store a render binds to. `own` is `null` exactly when a
+ * `store` prop was supplied on mount, so this never falls through to
+ * creating a fresh store mid-lifetime: a provider cannot switch from a
+ * bound store to a private one (or back) after mounting.
+ */
+function resolveBoundStore(
+  store: ValueStore<string | null> | undefined,
+  own: ValueStore<string | null> | null,
+): ValueStore<string | null> {
+  if (store !== undefined) {
+    return store
+  }
+  if (own === null) {
+    throw new Error('FocusedDailyProvider cannot switch from a bound store to a private one')
+  }
+  return own
+}
+
 /** Provides the focused-day state to the workspace shell and the daily stream. */
-export function FocusedDailyProvider({ children }: { children: ReactNode }): ReactElement {
-  const [focusedDate, setFocusedDate] = useState<string | null>(null)
+export function FocusedDailyProvider({ store, children }: FocusedDailyProviderProps): ReactElement {
+  const [own] = useState(() => (store === undefined ? createValueStore<string | null>(null) : null))
+  const bound = resolveBoundStore(store, own)
+  const focusedDate = useSyncExternalStore(bound.subscribe, bound.get, bound.get)
   return (
-    <SetFocusedDailyDateContext value={setFocusedDate}>
+    <SetFocusedDailyDateContext value={bound.set}>
       <FocusedDailyDateContext value={focusedDate}>{children}</FocusedDailyDateContext>
     </SetFocusedDailyDateContext>
   )

@@ -164,7 +164,9 @@ function EmbeddedTagCollection({ embed, tag, onChange }: EmbeddedTagCollectionPr
       }),
     [navigateNoteLink],
   )
-  const boardProperty = tagType !== undefined ? (groupableProperties(tagType)[0] ?? null) : null
+  const boardProperties = tagType === undefined ? [] : groupableProperties(tagType)
+  const boardProperty =
+    boardProperties.find((property) => property.key === embed.group) ?? boardProperties[0] ?? null
   const dateProperty = tagType !== undefined ? calendarProperty(tagType) : null
   const view: CollectionEmbedView =
     embed.view === 'board' && boardProperty === null
@@ -172,6 +174,13 @@ function EmbeddedTagCollection({ embed, tag, onChange }: EmbeddedTagCollectionPr
       : embed.view === 'calendar' && dateProperty === null
         ? 'table'
         : embed.view
+  const availableViews = VIEW_OPTIONS.filter(
+    (option) =>
+      (option !== 'board' || boardProperty !== null) &&
+      (option !== 'calendar' || dateProperty !== null),
+  )
+  const groupProperties =
+    view === 'board' ? boardProperties : groupablePropertiesOf(tagType?.properties ?? [])
 
   return (
     <section
@@ -195,6 +204,73 @@ function EmbeddedTagCollection({ embed, tag, onChange }: EmbeddedTagCollectionPr
           <ExternalLink aria-hidden className="size-3.5" />
         </button>
       </header>
+      {tagType !== undefined && onChange ? (
+        <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2">
+          <CollectionFilterMenu
+            type={tagType}
+            entries={unfiltered}
+            filters={embed.filters}
+            onChange={(filters) => onChange({ ...embed, filters })}
+            match={embed.match}
+            onMatchChange={(match) => onChange({ ...embed, match })}
+          />
+          <Select
+            value={view}
+            items={Object.fromEntries(availableViews.map((option) => [option, VIEW_LABEL[option]]))}
+            onValueChange={(next) => {
+              const nextView = availableViews.find((option) => option === next)
+              if (nextView !== undefined) {
+                onChange({
+                  ...embed,
+                  view: nextView,
+                  group: nextView === 'board' ? (boardProperty?.key ?? null) : embed.group,
+                })
+              }
+            }}
+          >
+            <SelectTrigger aria-label="Collection view" size="sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {availableViews.map((option) => (
+                <SelectItem key={option} value={option}>
+                  {VIEW_LABEL[option]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {(view === 'table' || view === 'board') && groupProperties.length > 0 ? (
+            <Select
+              value={
+                view === 'board'
+                  ? boardProperty?.key
+                  : (groupProperties.find((property) => property.key === embed.group)?.key ??
+                    '__none')
+              }
+              items={Object.fromEntries([
+                ...(view === 'board' ? [] : [['__none', 'No grouping']]),
+                ...groupProperties.map((property) => [property.key, property.name]),
+              ])}
+              onValueChange={(next) => {
+                if (typeof next === 'string')
+                  onChange({ ...embed, group: next === '__none' ? null : next })
+              }}
+            >
+              <SelectTrigger aria-label="Group collection" size="sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {view === 'board' ? null : <SelectItem value="__none">No grouping</SelectItem>}
+                {groupProperties.map((property) => (
+                  <SelectItem key={property.key} value={property.key}>
+                    {property.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : null}
+        </div>
+      ) : null}
       <div
         className={cn(
           'max-h-[min(28rem,70vh)] min-h-40 overflow-auto',

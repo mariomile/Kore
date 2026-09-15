@@ -6,6 +6,7 @@ import type { CollectionEntry, TagType } from '@reflect/core'
 import { EmbeddedCollection } from './embedded-collection'
 
 const useReusableCollection = vi.hoisted(() => vi.fn())
+const useTagType = vi.hoisted(() => vi.fn())
 vi.mock('@/hooks/use-reusable-collection', () => ({ useReusableCollection }))
 
 /** The widget reads the query client for its schema edits; the rest is mocked. */
@@ -20,6 +21,8 @@ const BOOK_TYPE: TagType = {
     { name: 'Status', key: 'status', type: 'select', options: ['reading', 'done'] },
   ],
 }
+
+useTagType.mockReturnValue(BOOK_TYPE)
 
 const ENTRIES: CollectionEntry[] = [
   {
@@ -72,7 +75,7 @@ useReusableCollection.mockReturnValue({
 
 vi.mock('@/hooks/use-tag-type', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/hooks/use-tag-type')>()),
-  useTagType: () => BOOK_TYPE,
+  useTagType,
 }))
 vi.mock('@/hooks/use-collection', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/hooks/use-collection')>()),
@@ -139,6 +142,60 @@ describe('EmbeddedCollection', () => {
     await view.getByRole('combobox', { name: 'Collection view' }).click()
     await view.getByRole('option', { name: 'Board', exact: true }).click()
     expect(onChange).toHaveBeenCalledWith({ ...embed, view: 'board', group: 'author' })
+  })
+
+  it('persists tag view, grouping, and filter controls in the embed', async () => {
+    const onChange = vi.fn()
+    const embed = {
+      selection: { kind: 'tag' as const, tag: 'book' },
+      view: 'table' as const,
+      sorts: [],
+      group: null,
+      filters: [],
+      match: 'all' as const,
+    }
+    const view = await render(<EmbeddedCollection embed={embed} onChange={onChange} />)
+    await view.getByRole('combobox', { name: 'Group collection' }).click()
+    await view.getByRole('option', { name: 'Status', exact: true }).click()
+    expect(onChange).toHaveBeenCalledWith({ ...embed, group: 'status' })
+    await view.getByRole('combobox', { name: 'Collection view' }).click()
+    expect(view.getByRole('option', { name: 'Calendar', exact: true }).query()).toBeNull()
+    await view.getByRole('option', { name: 'Board', exact: true }).click()
+    expect(onChange).toHaveBeenCalledWith({ ...embed, view: 'board', group: 'status' })
+    await view.getByRole('button', { name: 'Filter by property', exact: true }).click()
+    await view.getByRole('option', { name: 'Herbert', exact: true }).click()
+    expect(onChange).toHaveBeenCalledWith({
+      ...embed,
+      filters: [{ key: 'author', operator: 'is', text: 'Herbert' }],
+    })
+  })
+
+  it('groups a tag board using the saved property rather than the first eligible property', async () => {
+    useTagType.mockReturnValueOnce({
+      properties: [
+        ...BOOK_TYPE.properties,
+        { name: 'Priority', key: 'priority', type: 'select', options: ['High', 'Low'] },
+      ],
+    })
+    const view = await render(
+      <EmbeddedCollection
+        embed={{
+          selection: { kind: 'tag', tag: 'book' },
+          view: 'board',
+          group: 'priority',
+          sorts: [],
+          filters: [],
+          match: 'all',
+        }}
+      />,
+    )
+    await expect
+      .element(view.getByRole('heading', { name: 'High', exact: true }))
+      .toBeInTheDocument()
+    await expect
+      .element(view.getByRole('heading', { name: 'No Priority', exact: true }))
+      .toBeInTheDocument()
+    expect(view.getByRole('heading', { name: 'reading', exact: true }).query()).toBeNull()
   })
 
   it('shows an unresolved named reference instead of an empty collection', async () => {

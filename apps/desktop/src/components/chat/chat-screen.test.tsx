@@ -326,6 +326,46 @@ describe('ChatScreen', () => {
     expect(options?.messages.at(-1)).toEqual({ role: 'user', content: 'when does atlas ship?' })
   })
 
+  it('renders a proposed tag icon as a review card once the turn settles', async () => {
+    configureModel()
+    scriptTurn([
+      { type: 'tool-call', call: { tool: 'tags', toolCallId: 'tool-1' } },
+      { type: 'tool-result', result: { tool: 'tags', toolCallId: 'tool-1', count: 7 } },
+      { type: 'tool-call', call: { tool: 'tagIcons', toolCallId: 'tool-2' } },
+      { type: 'tool-result', result: { tool: 'tagIcons', toolCallId: 'tool-2', count: 217 } },
+      { type: 'tool-call', call: { tool: 'setTagIcon', toolCallId: 'tool-3', tag: 'company' } },
+      {
+        type: 'tool-result',
+        result: {
+          tool: 'setTagIcon',
+          toolCallId: 'tool-3',
+          tag: 'company',
+          path: 'tags/company.md',
+          icon: 'icon:buildings',
+          previousIcon: null,
+          error: null,
+          decision: 'pending',
+        },
+      },
+      { type: 'text-delta', text: 'Proposed the buildings symbol for #company — accept to apply.' },
+      {
+        type: 'complete',
+        messages: [{ role: 'assistant', content: 'Proposed the buildings symbol for #company.' }],
+      },
+    ])
+    const view = await renderChat()
+
+    await userEvent.type(view.getByLabelText('Chat message'), 'give #company a building icon{Enter}')
+
+    await expect.element(view.getByText(/Listed the tags · 7 tags/)).toBeInTheDocument()
+    await expect.element(view.getByText(/Looked up the app’s icons · 217 icons/)).toBeInTheDocument()
+    const card = view.getByRole('group', { name: 'Proposed an icon for Company' })
+    await expect.element(card).toBeVisible()
+    await expect.element(card.getByText('buildings')).toBeVisible()
+    await expect.element(card.getByRole('button', { name: 'Accept' })).toBeVisible()
+    await expect.element(card.getByRole('button', { name: 'Reject' })).toBeVisible()
+  })
+
   it('copies a settled reply as the markdown the model wrote', async () => {
     configureModel()
     scriptTurn([

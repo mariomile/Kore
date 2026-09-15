@@ -17,6 +17,9 @@ const closeTab = vi.hoisted(() => vi.fn())
 vi.mock('@/hooks/use-open-tab-items', () => ({
   useOpenTabItems: () => tabs.items,
 }))
+vi.mock('@/hooks/use-tag-icons', () => ({
+  useTagIcons: () => new Map<string, string>(),
+}))
 vi.mock('@/providers/open-tabs-provider', () => ({
   useOpenTabs: () => ({ activeTab: tabs.activeTab, activateTab: () => {}, closeTab }),
 }))

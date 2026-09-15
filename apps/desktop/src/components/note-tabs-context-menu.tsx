@@ -1,6 +1,6 @@
 import { useState, type ReactElement, type ReactNode } from 'react'
 import type { OpenTab } from '@reflect/core'
-import { Close, Pin, PinOff } from '@/components/icons'
+import { ArrowDown, ArrowRight, Close, Pin, PinOff } from '@/components/icons'
 import {
   ContextMenu,
   ContextMenuContent,
@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/context-menu'
 import { tabKey, tabsEqual } from '@/providers/open-tab'
 import { useOpenTabs } from '@/providers/open-tabs-provider'
+import { useOptionalPanes, usePaneId } from '@/providers/panes-provider'
 
 /** The attribute a tab pill carries so the strip's menu knows which tab. */
 export const TAB_KEY_ATTRIBUTE = 'data-tab-key'
@@ -58,6 +59,10 @@ export function TabContextMenu({ children }: TabContextMenuProps): ReactElement 
 function TabContextMenuItems({ tab }: { tab: OpenTab }): ReactElement {
   const { tabs, togglePin, closeTab, closeOtherTabs, closeTabsToRight, closeAllTabs } =
     useOpenTabs()
+  // Splits exist only inside the workspace frame; the note window mounts no
+  // panes provider and simply offers no split entries.
+  const panes = useOptionalPanes()
+  const paneId = usePaneId()
   const index = tabs.findIndex((open) => tabsEqual(open, tab))
   const hasOtherUnpinned = tabs.some((open) => !open.pinned && !tabsEqual(open, tab))
   const hasUnpinnedToRight = index !== -1 && tabs.slice(index + 1).some((open) => !open.pinned)
@@ -73,6 +78,28 @@ function TabContextMenuItems({ tab }: { tab: OpenTab }): ReactElement {
         {tab.pinned ? <PinOff aria-hidden /> : <Pin aria-hidden />}
         {tab.pinned ? 'Unpin' : 'Pin'}
       </ContextMenuItem>
+
+      {panes !== null ? (
+        <>
+          <ContextMenuSeparator />
+          <ContextMenuItem
+            onClick={() => {
+              panes.moveTab(tab, { from: paneId, to: { paneId, zone: 'right' } })
+            }}
+          >
+            <ArrowRight aria-hidden />
+            Open to the right
+          </ContextMenuItem>
+          <ContextMenuItem
+            onClick={() => {
+              panes.moveTab(tab, { from: paneId, to: { paneId, zone: 'below' } })
+            }}
+          >
+            <ArrowDown aria-hidden />
+            Open below
+          </ContextMenuItem>
+        </>
+      ) : null}
 
       <ContextMenuSeparator />
 

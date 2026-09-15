@@ -291,8 +291,8 @@ function EmbeddedTagCollection({ embed, tag, onChange }: EmbeddedTagCollectionPr
       ) : null}
       <div
         className={cn(
-          'max-h-[min(28rem,70vh)] min-h-40 overflow-auto pt-3 [&>div]:px-3 [&>div]:pb-3',
-          view === 'table' && 'min-h-52',
+          'max-h-[min(28rem,70vh)] min-h-40 overflow-auto pt-3',
+          view === 'table' ? 'min-h-52' : '[&>div]:px-3 [&>div]:pb-3',
         )}
       >
         {tagType === undefined ? (

@@ -10,7 +10,15 @@ import {
   type TagType,
 } from '@reflect/core'
 import { isModEvent } from '@meowdown/core'
-import { ExternalLink, Settings, Sliders } from '@/components/icons'
+import {
+  Calendar,
+  ExternalLink,
+  Layers,
+  LayoutGrid,
+  LayoutTemplate,
+  Settings,
+  Sliders,
+} from '@/components/icons'
 import { AllNotesGrid } from '@/components/all-notes/all-notes-grid'
 import {
   CollectionBoard,
@@ -74,6 +82,8 @@ const VIEW_LABEL: Record<CollectionEmbedView, string> = {
   board: 'Board',
   calendar: 'Calendar',
 }
+
+const VIEW_GLYPH = { table: Layers, grid: LayoutGrid, board: LayoutTemplate, calendar: Calendar }
 
 const VIEW_OPTIONS: readonly CollectionEmbedView[] = ['table', 'grid', 'board', 'calendar']
 
@@ -179,6 +189,7 @@ function EmbeddedTagCollection({ embed, tag, onChange }: EmbeddedTagCollectionPr
       (option !== 'board' || boardProperty !== null) &&
       (option !== 'calendar' || dateProperty !== null),
   )
+  const ViewGlyph = VIEW_GLYPH[view]
   const groupProperties =
     view === 'board' ? boardProperties : groupablePropertiesOf(tagType?.properties ?? [])
 
@@ -188,32 +199,26 @@ function EmbeddedTagCollection({ embed, tag, onChange }: EmbeddedTagCollectionPr
       data-testid="collection-embed"
       data-collection-tag={foldTag(tag)}
       data-collection-view={view}
-      className="mt-6 overflow-hidden rounded-lg border border-border"
+      className="my-5 min-w-0 overflow-hidden rounded-lg border border-border/60 bg-background"
     >
-      <header className="flex items-center justify-between gap-3 border-b border-border px-3 py-2">
+      <header className="flex items-center justify-between gap-3 px-3 pt-3 pb-1">
         <div className="min-w-0">
-          <p className="truncate text-sm font-medium text-text">#{tag}</p>
-          <p className="text-2xs text-text-muted">{VIEW_LABEL[view]}</p>
+          <p className="truncate text-sm font-medium text-text">
+            <span className="mr-0.5 text-text-muted">#</span>
+            {tag}
+          </p>
         </div>
         <button
           type="button"
           aria-label={`Open #${tag} in All Notes`}
-          className="flex size-7 items-center justify-center rounded-full text-text-muted transition-colors hover:text-text"
+          className="flex size-7 shrink-0 items-center justify-center rounded-md text-text-muted transition-colors hover:bg-surface-hover hover:text-text focus-visible:outline-2 focus-visible:outline-ring"
           onClick={() => navigate({ kind: 'allNotes', filter: { kind: 'tag', tag } })}
         >
           <ExternalLink aria-hidden className="size-3.5" />
         </button>
       </header>
       {tagType !== undefined && onChange ? (
-        <div className="flex flex-wrap items-center gap-2 border-b border-border px-3 py-2">
-          <CollectionFilterMenu
-            type={tagType}
-            entries={unfiltered}
-            filters={embed.filters}
-            onChange={(filters) => onChange({ ...embed, filters })}
-            match={embed.match}
-            onMatchChange={(match) => onChange({ ...embed, match })}
-          />
+        <div className="flex flex-wrap items-center gap-2 border-b border-border/60 px-3 pb-2">
           <Select
             value={view}
             items={Object.fromEntries(availableViews.map((option) => [option, VIEW_LABEL[option]]))}
@@ -228,7 +233,12 @@ function EmbeddedTagCollection({ embed, tag, onChange }: EmbeddedTagCollectionPr
               }
             }}
           >
-            <SelectTrigger aria-label="Collection view" size="sm">
+            <SelectTrigger
+              aria-label="Collection view"
+              size="sm"
+              className="gap-1.5 border-transparent bg-surface-hover px-2 text-text dark:bg-surface-hover"
+            >
+              <ViewGlyph aria-hidden className="size-3.5" />
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -239,6 +249,14 @@ function EmbeddedTagCollection({ embed, tag, onChange }: EmbeddedTagCollectionPr
               ))}
             </SelectContent>
           </Select>
+          <CollectionFilterMenu
+            type={tagType}
+            entries={unfiltered}
+            filters={embed.filters}
+            onChange={(filters) => onChange({ ...embed, filters })}
+            match={embed.match}
+            onMatchChange={(match) => onChange({ ...embed, match })}
+          />
           {(view === 'table' || view === 'board') && groupProperties.length > 0 ? (
             <Select
               value={
@@ -273,8 +291,8 @@ function EmbeddedTagCollection({ embed, tag, onChange }: EmbeddedTagCollectionPr
       ) : null}
       <div
         className={cn(
-          'max-h-[min(28rem,70vh)] min-h-40 overflow-auto',
-          view === 'table' && 'min-h-52',
+          'max-h-[min(28rem,70vh)] min-h-40 overflow-auto pt-3',
+          view === 'table' ? 'min-h-52' : '[&>div]:px-3 [&>div]:pb-3',
         )}
       >
         {tagType === undefined ? (

@@ -299,13 +299,13 @@ describe('AllNotesScreen', () => {
     await expect.element(view.getByText('Health Stacked')).toBeInTheDocument()
 
     // Default sort (Last updated) puts the more recently edited note first.
-    const defaultOrder = view
-      .getByRole('button', { name: /Health Stacked|Tokyo Gâteau/ })
-      .elements()
-    expect(defaultOrder.map((element) => element.textContent)).toEqual([
-      'Health Stacked',
-      'Tokyo Gâteau',
-    ])
+    // Polled: the virtualized rows mount a frame after the first text lands.
+    const rowTitles = (screen: typeof view): string[] =>
+      screen
+        .getByRole('button', { name: /Health Stacked|Tokyo Gâteau/ })
+        .elements()
+        .map((element) => element.textContent ?? '')
+    await expect.poll(() => rowTitles(view)).toEqual(['Health Stacked', 'Tokyo Gâteau'])
 
     await view.getByRole('combobox', { name: 'Sort' }).click()
     await view.getByRole('option', { name: 'Title Z to A' }).click()
@@ -315,13 +315,7 @@ describe('AllNotesScreen', () => {
     settingsState.allNotesSort = 'title-desc'
     const reordered = await renderScreen()
     await expect.element(reordered.getByText('Tokyo Gâteau')).toBeInTheDocument()
-    const newOrder = reordered
-      .getByRole('button', { name: /Health Stacked|Tokyo Gâteau/ })
-      .elements()
-    expect(newOrder.map((element) => element.textContent)).toEqual([
-      'Tokyo Gâteau',
-      'Health Stacked',
-    ])
+    await expect.poll(() => rowTitles(reordered)).toEqual(['Tokyo Gâteau', 'Health Stacked'])
     await reordered.unmount()
   })
 
@@ -400,7 +394,7 @@ describe('AllNotesScreen', () => {
     expect(probedRoute(view)).toEqual({ kind: 'allNotes', filter: { kind: 'tag', tag: 'book' } })
     // The tag renders as its own page: the tag is the title and the filter
     // tabs stay behind on the unfiltered view.
-    await expect.element(view.getByRole('heading', { name: '#book' })).toBeInTheDocument()
+    await expect.element(view.getByRole('heading', { name: 'Book' })).toBeInTheDocument()
     expect(view.getByRole('button', { name: 'All notes' }).query()).toBeNull()
     expect(view.getByRole('group', { name: 'Filter by tag' }).query()).toBeNull()
     await expect.element(view.getByText('No notes tagged #book.')).toBeInTheDocument()
@@ -516,7 +510,7 @@ describe('AllNotesScreen', () => {
     await expect.element(view.getByText('June 9, 2026')).toBeInTheDocument()
     expect(view.getByText('Health Stacked').query()).toBeNull()
     // The chosen tag becomes the page's own title.
-    await expect.element(view.getByRole('heading', { name: '#travel' })).toBeInTheDocument()
+    await expect.element(view.getByRole('heading', { name: 'Travel' })).toBeInTheDocument()
     await view.getByRole('button', { name: 'June 9, 2026' }).click()
     expect(probedRoute(view)).toEqual({ kind: 'daily', date: '2026-06-09' })
     await view.unmount()

@@ -41,6 +41,19 @@ streams text only).
 daily note and accept it from the keyboard; watch that the open editor takes
 the patch without losing the caret.
 
+## Supertag names and symbol icons — 2026-09-15
+
+Follow-up on `t3code/supertag-display-name-icons`: chrome names a supertag
+`Book`, not `#book` (sidebar Tags, tag page title, tab strip and Open
+rows, via `tagDisplayName`); the sidebar row always carries an icon, the
+`#` glyph until one is picked; the picker offers the app's symbol icons
+(stored as `icon:<name>`, resolved by `tag-symbol-icons.ts`) beside the
+emoji grid. `parseNoteIcon` gained the `symbol` kind, so a definition
+note's own header renders the symbol too. Verified: `pnpm check` exit 0,
+touched suites green on Chromium and WebKit, gestures done in the dev
+bridge. Hashtag chips inside notes and the All Notes filter tabs still
+show `#tag` on purpose.
+
 ## Supertag icons, All Notes sort, tab menu — 2026-09-15
 
 PR #213 (`t3code/supertag-icons-note-sorting-tab-actions`): supertag emoji

@@ -12,10 +12,21 @@ const WIKI_TARGET_RE = /^!?\[\[([^\]|#\n]+)(?:#[^\]|\n]*)?(?:\|[^\]]*)?\]\]$/
 const HTTP_URL_RE = /^https?:\/\//i
 const MAX_EMOJI_UNITS = 16
 
-/** An emoji/short glyph, or a graph-relative (or https) image. */
+/**
+ * An emoji/short glyph, one of the app's own symbol icons (`icon:<name>`,
+ * resolved by the host's icon set), or a graph-relative (or https) image.
+ */
 export type NoteIcon =
   | { readonly kind: 'emoji'; readonly glyph: string }
+  | { readonly kind: 'symbol'; readonly name: string }
   | { readonly kind: 'image'; readonly src: string }
+
+const SYMBOL_ICON_RE = /^icon:([a-z][a-z0-9-]*)$/
+
+/** Serialize a symbol icon name to its `icon:` frontmatter value. */
+export function symbolIconValue(name: string): string {
+  return `icon:${name}`
+}
 
 /** Cover and icon parsed from a note's frontmatter. */
 export interface NoteAppearance {
@@ -59,6 +70,10 @@ export function parseNoteIcon(value: unknown): NoteIcon | null {
   }
   if (isImageTarget(target)) {
     return { kind: 'image', src: target }
+  }
+  const symbol = SYMBOL_ICON_RE.exec(target)
+  if (symbol?.[1] !== undefined) {
+    return { kind: 'symbol', name: symbol[1] }
   }
   if (target.includes('/') || target.includes('\\') || target.includes('\n')) {
     return null

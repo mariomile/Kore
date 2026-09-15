@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { isTemplatePath, TAGS_DIR } from '../graph/paths'
-import { foldTag, isTagName, parseNoteIcon, type Frontmatter } from '../markdown'
+import { foldTag, isTagName, parseNoteIcon, symbolIconValue, type Frontmatter } from '../markdown'
 
 /**
  * Tag types (TDR 0005): a tag becomes a *type* when the graph carries a
@@ -172,10 +172,11 @@ export interface TagType {
    */
   template?: string
   /**
-   * The tag's emoji glyph (`icon:` on the definition note, the same key any
-   * note uses for its own icon). Shown wherever the tag is named: sidebar,
-   * tag page, the Type chips. Absent when the definition sets none; image
-   * icons stay the definition note's own and never reach the tag.
+   * The tag's icon (`icon:` on the definition note, the same key any note
+   * uses for its own icon): an emoji glyph or a symbol reference
+   * (`icon:<name>`). Shown wherever the tag is named: sidebar, tag page, the
+   * Type chips. Absent when the definition sets none; image icons stay the
+   * definition note's own and never reach the tag.
    */
   icon?: string
 }
@@ -259,7 +260,7 @@ export function parseTagTypeFrontmatter(frontmatter: Frontmatter): TagType | nul
     typeof templateRaw === 'string' && isTemplatePath(templateRaw.trim())
       ? templateRaw.trim()
       : undefined
-  const icon = tagIconGlyph(frontmatter['icon'])
+  const icon = tagIconValue(frontmatter['icon'])
   return {
     properties,
     ...(template === undefined ? {} : { template }),
@@ -267,10 +268,26 @@ export function parseTagTypeFrontmatter(frontmatter: Frontmatter): TagType | nul
   }
 }
 
-/** The emoji glyph an `icon:` value names, or `undefined` for none/images. */
-function tagIconGlyph(value: unknown): string | undefined {
+/**
+ * The stored form of an `icon:` value a tag can carry (emoji glyph or
+ * `icon:<name>` symbol), or `undefined` for none and for images.
+ */
+function tagIconValue(value: unknown): string | undefined {
   const parsed = parseNoteIcon(value)
-  return parsed?.kind === 'emoji' ? parsed.glyph : undefined
+  if (parsed?.kind === 'emoji') {
+    return parsed.glyph
+  }
+  return parsed?.kind === 'symbol' ? symbolIconValue(parsed.name) : undefined
+}
+
+/**
+ * How a tag is named on chrome that is not a hashtag (sidebar rows, tab
+ * strip, page titles): the display casing with its first letter upper-cased,
+ * no `#`. `project/atlas` stays `Project/atlas`.
+ */
+export function tagDisplayName(tag: string): string {
+  const trimmed = tag.trim().replace(/^#+/, '')
+  return trimmed.charAt(0).toLocaleUpperCase() + trimmed.slice(1)
 }
 
 /**
@@ -303,7 +320,7 @@ export function decodeTagTypeJson(column: string): TagType {
     .parse(parsed)
   const template =
     object.template !== undefined && isTemplatePath(object.template) ? object.template : undefined
-  const icon = tagIconGlyph(object.icon)
+  const icon = tagIconValue(object.icon)
   return {
     properties: object.properties,
     ...(template === undefined ? {} : { template }),

@@ -1,7 +1,8 @@
 import { useState, type ReactElement } from 'react'
-import { foldTag } from '@reflect/core'
+import { foldTag, tagDisplayName } from '@reflect/core'
 import { Settings } from '@/components/icons'
 import { TagConfigDialog } from '@/components/tags/tag-config-dialog'
+import { TagIcon } from '@/components/tags/tag-icon'
 import { useNoteTags } from '@/hooks/use-note-tags'
 import { useTagIcons } from '@/hooks/use-tag-icons'
 import { cn } from '@/lib/utils'
@@ -50,12 +51,10 @@ export function SidebarTags(): ReactElement | null {
                 )}
               >
                 <span className="flex min-w-0 flex-1 items-center gap-1.5 py-1 px-2.5 text-left">
-                  {icon !== undefined ? (
-                    <span aria-hidden className="shrink-0 text-xs leading-none">
-                      {icon}
-                    </span>
-                  ) : null}
-                  <span className="min-w-0 truncate text-xs font-medium">#{facet.tag}</span>
+                  <TagIcon icon={icon} className="size-3.5" emojiClassName="text-xs" />
+                  <span className="min-w-0 truncate text-xs font-medium">
+                    {tagDisplayName(facet.tag)}
+                  </span>
                 </span>
                 <span className="shrink-0 px-2.5 text-2xs tabular-nums text-text-muted transition-opacity duration-150 group-hover:opacity-0 group-focus-within:opacity-0">
                   {facet.count}

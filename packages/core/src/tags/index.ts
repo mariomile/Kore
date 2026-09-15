@@ -11,6 +11,7 @@ export {
   decodeTagTypeJson,
   tagNameForDefinitionPath,
   tagDefinitionPath,
+  tagDisplayName,
   isTagDefinitionNote,
   relationValue,
   relationDisplay,

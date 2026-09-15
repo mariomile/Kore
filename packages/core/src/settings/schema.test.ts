@@ -57,6 +57,7 @@ describe('settingsSchema', () => {
       weekStartDay: 'monday',
       allNotesFilterTags: ['book', 'link', 'person'],
       allNotesView: 'list',
+      allNotesSort: 'updated-desc',
       openTabs: {},
       taskFilters: {
         pinned: true,
@@ -121,6 +122,7 @@ describe('settingsSchema', () => {
     expect(DEFAULT_SETTINGS.dateFormat).toBe('mdy')
     expect(DEFAULT_SETTINGS.weekStartDay).toBe('monday')
     expect(DEFAULT_SETTINGS.allNotesFilterTags).toEqual(['book', 'link', 'person'])
+    expect(DEFAULT_SETTINGS.allNotesSort).toBe('updated-desc')
     expect(DEFAULT_SETTINGS.calendarEnabled).toBe(false)
     expect(DEFAULT_SETTINGS.calendarIds).toEqual([])
     expect(DEFAULT_SETTINGS.graphColors).toEqual({})
@@ -235,6 +237,10 @@ describe('settingsSchema', () => {
       'meeting',
     ])
     expect(settingsSchema.parse({ allNotesFilterTags: [] }).allNotesFilterTags).toEqual([])
+    expect(settingsSchema.parse({ allNotesSort: 'updated-desc' }).allNotesSort).toBe('updated-desc')
+    expect(settingsSchema.parse({ allNotesSort: 'updated-asc' }).allNotesSort).toBe('updated-asc')
+    expect(settingsSchema.parse({ allNotesSort: 'title-asc' }).allNotesSort).toBe('title-asc')
+    expect(settingsSchema.parse({ allNotesSort: 'title-desc' }).allNotesSort).toBe('title-desc')
     expect(settingsSchema.parse({ calendarEnabled: true }).calendarEnabled).toBe(true)
     expect(settingsSchema.parse({ calendarEnabled: false }).calendarEnabled).toBe(false)
     expect(settingsSchema.parse({ calendarIds: ['cal-1', 'cal-2'] }).calendarIds).toEqual([
@@ -355,6 +361,8 @@ describe('settingsSchema', () => {
       'link',
       'person',
     ])
+    expect(settingsSchema.parse({ allNotesSort: 'random' }).allNotesSort).toBe('updated-desc')
+    expect(settingsSchema.parse({ allNotesSort: 42 }).allNotesSort).toBe('updated-desc')
     expect(settingsSchema.parse({ calendarEnabled: 'yes' }).calendarEnabled).toBe(false)
     expect(settingsSchema.parse({ calendarEnabled: 1 }).calendarEnabled).toBe(false)
     expect(settingsSchema.parse({ calendarIds: 'cal-1' }).calendarIds).toEqual([])
@@ -407,6 +415,7 @@ describe('settingsSchema', () => {
       weekStartDay: 'monday',
       allNotesFilterTags: ['book', 'link', 'person'],
       allNotesView: 'list',
+      allNotesSort: 'updated-desc',
       openTabs: {},
       taskFilters: {
         pinned: true,

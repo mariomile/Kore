@@ -62,6 +62,11 @@ export interface FrontmatterPatch {
    * definition). `null` deletes the key; omitted leaves whatever is there.
    */
   tagTemplate?: string | null
+  /**
+   * The tag's emoji (`icon:` on the definition, the note-icon key). `null`
+   * deletes the key; omitted leaves whatever is there.
+   */
+  tagIcon?: string | null
 }
 
 /**
@@ -97,6 +102,9 @@ export function frontmatterPatchToYaml(patch: FrontmatterPatch): Record<string, 
   }
   if (patch.tagTemplate !== undefined) {
     yaml['template'] = patch.tagTemplate === null ? undefined : patch.tagTemplate
+  }
+  if (patch.tagIcon !== undefined) {
+    yaml['icon'] = patch.tagIcon === null ? undefined : patch.tagIcon
   }
   if (patch.id !== undefined) {
     yaml['id'] = patch.id

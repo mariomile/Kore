@@ -314,6 +314,8 @@ export {
   type BrowserSearchEngine,
   type AllNotesFilterTags,
   type AllNotesView,
+  type AllNotesSort,
+  ALL_NOTES_SORTS,
   collectionViewForAllNotesView,
   collectionPageViewForAllNotesView,
   COLLECTION_PAGE_VIEWS,

@@ -31,6 +31,7 @@ import {
 } from './schema-appearance'
 import {
   allNotesFilterTagsSchema,
+  allNotesSortSchema,
   allNotesViewSchema,
   collectionActiveViewIdSchema,
   collectionColumnsSchema,
@@ -518,6 +519,7 @@ const settingsDocumentSchema = z.looseObject({
   weekStartDay: weekStartDaySchema,
   allNotesFilterTags: allNotesFilterTagsSchema,
   allNotesView: allNotesViewSchema,
+  allNotesSort: allNotesSortSchema,
   openTabs: openTabsSchema,
   savedSearches: savedSearchesSchema,
   collectionSorts: collectionSortsSchema,

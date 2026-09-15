@@ -4,6 +4,8 @@ import { Settings } from '@/components/icons'
 interface TagPageTitleProps {
   /** The routed tag (display casing), the page's identity. */
   tag: string
+  /** The tag's emoji icon, when its definition sets one. */
+  icon?: string | undefined
   onConfigure: () => void
 }
 
@@ -14,9 +16,14 @@ interface TagPageTitleProps {
  * can configure one. Back to the unfiltered list is the sidebar's All notes,
  * not a breadcrumb here.
  */
-export function TagPageTitle({ tag, onConfigure }: TagPageTitleProps): ReactElement {
+export function TagPageTitle({ tag, icon, onConfigure }: TagPageTitleProps): ReactElement {
   return (
     <div className="flex min-w-0 items-center gap-2">
+      {icon !== undefined ? (
+        <span aria-hidden className="shrink-0 text-2xl leading-none">
+          {icon}
+        </span>
+      ) : null}
       <h1 className="app-page-title min-w-0 truncate text-text">#{tag}</h1>
       <button
         type="button"

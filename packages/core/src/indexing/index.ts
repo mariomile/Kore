@@ -155,6 +155,7 @@ export {
   type RecentNoteRow,
   type RecentNotesOptions,
 } from './note-list'
+export { sortNoteList } from './note-list-sort'
 export {
   rankWikiSuggestions,
   mergeDateSuggestions,

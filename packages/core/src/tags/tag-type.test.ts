@@ -83,6 +83,20 @@ describe('parseTagTypeFrontmatter', () => {
       ),
     ).toEqual({ properties: [] })
   })
+
+  it('reads an emoji icon and ignores image or malformed icons', () => {
+    expect(
+      parseTagTypeFrontmatter(frontmatter({ lore: 'tag', icon: '📚', properties: [] })),
+    ).toEqual({ properties: [], icon: '📚' })
+    expect(
+      parseTagTypeFrontmatter(
+        frontmatter({ lore: 'tag', icon: 'attachments/cover.png', properties: [] }),
+      ),
+    ).toEqual({ properties: [] })
+    expect(parseTagTypeFrontmatter(frontmatter({ lore: 'tag', icon: 7, properties: [] }))).toEqual({
+      properties: [],
+    })
+  })
 })
 
 describe('typed relation targets', () => {
@@ -155,6 +169,19 @@ describe('schema_json codec', () => {
       ],
     }
     expect(decodeTagTypeJson(encodeTagTypeJson(type))).toEqual(type)
+  })
+
+  it('round-trips an icon alongside the template', () => {
+    const type: TagType = {
+      properties: [],
+      template: 'templates/book.md',
+      icon: '📚',
+    }
+    expect(decodeTagTypeJson(encodeTagTypeJson(type))).toEqual(type)
+    expect(decodeTagTypeJson(encodeTagTypeJson({ properties: [], icon: '📚' }))).toEqual({
+      properties: [],
+      icon: '📚',
+    })
   })
 
   it('rejects a mangled column instead of guessing', () => {

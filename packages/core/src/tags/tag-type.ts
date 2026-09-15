@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { isTemplatePath, TAGS_DIR } from '../graph/paths'
-import { foldTag, isTagName, type Frontmatter } from '../markdown'
+import { foldTag, isTagName, parseNoteIcon, type Frontmatter } from '../markdown'
 
 /**
  * Tag types (TDR 0005): a tag becomes a *type* when the graph carries a
@@ -171,6 +171,13 @@ export interface TagType {
    * seeded from. Absent when the type does not bind one.
    */
   template?: string
+  /**
+   * The tag's emoji glyph (`icon:` on the definition note, the same key any
+   * note uses for its own icon). Shown wherever the tag is named: sidebar,
+   * tag page, the Type chips. Absent when the definition sets none; image
+   * icons stay the definition note's own and never reach the tag.
+   */
+  icon?: string
 }
 
 /**
@@ -252,7 +259,18 @@ export function parseTagTypeFrontmatter(frontmatter: Frontmatter): TagType | nul
     typeof templateRaw === 'string' && isTemplatePath(templateRaw.trim())
       ? templateRaw.trim()
       : undefined
-  return template === undefined ? { properties } : { properties, template }
+  const icon = tagIconGlyph(frontmatter['icon'])
+  return {
+    properties,
+    ...(template === undefined ? {} : { template }),
+    ...(icon === undefined ? {} : { icon }),
+  }
+}
+
+/** The emoji glyph an `icon:` value names, or `undefined` for none/images. */
+function tagIconGlyph(value: unknown): string | undefined {
+  const parsed = parseNoteIcon(value)
+  return parsed?.kind === 'emoji' ? parsed.glyph : undefined
 }
 
 /**
@@ -261,10 +279,14 @@ export function parseTagTypeFrontmatter(frontmatter: Frontmatter): TagType | nul
  * reader of the column goes through this pair).
  */
 export function encodeTagTypeJson(type: TagType): string {
-  if (type.template === undefined) {
+  if (type.template === undefined && type.icon === undefined) {
     return JSON.stringify(type.properties)
   }
-  return JSON.stringify({ properties: type.properties, template: type.template })
+  return JSON.stringify({
+    properties: type.properties,
+    ...(type.template === undefined ? {} : { template: type.template }),
+    ...(type.icon === undefined ? {} : { icon: type.icon }),
+  })
 }
 
 export function decodeTagTypeJson(column: string): TagType {
@@ -276,12 +298,17 @@ export function decodeTagTypeJson(column: string): TagType {
     .object({
       properties: z.array(tagPropertySchema),
       template: z.string().min(1).optional(),
+      icon: z.string().min(1).optional(),
     })
     .parse(parsed)
-  if (object.template !== undefined && isTemplatePath(object.template)) {
-    return { properties: object.properties, template: object.template }
+  const template =
+    object.template !== undefined && isTemplatePath(object.template) ? object.template : undefined
+  const icon = tagIconGlyph(object.icon)
+  return {
+    properties: object.properties,
+    ...(template === undefined ? {} : { template }),
+    ...(icon === undefined ? {} : { icon }),
   }
-  return { properties: object.properties }
 }
 
 /**

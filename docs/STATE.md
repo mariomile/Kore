@@ -1,6 +1,14 @@
 # Kore working state
 
-**Updated:** 2026-09-14, split panes part 2: panes stack vertically inside
+**Updated:** 2026-09-15, uncommitted on `t3code/c47ba3fd`: supertag emoji
+icons (`icon:` on `tags/<key>.md`, carried in `schema_json`, picker in Configure
+tag, shown in sidebar, tag page title, and Type chips), an All Notes sort
+select (`allNotesSort`, pinned first), and a tab right-click menu (Pin, Close,
+Close others, Close to the right, Close all; pinned tabs survive). Verified:
+`pnpm check` exit 0, touched suites green on Chromium and WebKit, and the
+three gestures done in the browser dev bridge. Known test smell: the
+`noteRows` fixture in `all-notes-screen.test.tsx` omits `isPinned`, so every
+row reads as pinned; untouched. 2026-09-14, split panes part 2: panes stack vertically inside
 columns, a tab moves to a new pane below or beside by drag or ⌥⌘⇧arrows,
 rail toggles render once. Part 1 gave N side-by-side columns with per-pane
 tab strips and history; ⌘-click on a note link opens it in the pane to the

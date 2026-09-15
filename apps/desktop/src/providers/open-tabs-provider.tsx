@@ -62,6 +62,12 @@ export interface OpenTabsValue {
   previousTab: () => void
   /** Close the active tab (`⌘W`). */
   closeActiveTab: () => void
+  /** Close every unpinned tab except `tab`; pinned tabs always survive. */
+  closeOtherTabs: (tab: OpenTab) => void
+  /** Close every unpinned tab after `tab` in strip order. */
+  closeTabsToRight: (tab: OpenTab) => void
+  /** Close every unpinned tab, same empty-pane/Daily fallback as `closeTab`. */
+  closeAllTabs: () => void
 }
 
 /**
@@ -80,6 +86,9 @@ const EMPTY: OpenTabsValue = {
   nextTab: () => {},
   previousTab: () => {},
   closeActiveTab: () => {},
+  closeOtherTabs: () => {},
+  closeTabsToRight: () => {},
+  closeAllTabs: () => {},
 }
 
 const OpenTabsContext = createContext<OpenTabsValue>(EMPTY)
@@ -91,6 +100,11 @@ function stripOrder(tabs: OpenTab[]): OpenTab[] {
 
 function createDailyTab(): OpenTab {
   return { kind: 'surface', surface: 'daily', date: null, pinned: false }
+}
+
+/** The tabs a bulk close would drop: unpinned tabs matching `predicate` — pinned tabs always survive. */
+function closableTabs(tabs: OpenTab[], predicate: (tab: OpenTab) => boolean): OpenTab[] {
+  return tabs.filter((tab) => !tab.pinned && predicate(tab))
 }
 
 export function OpenTabsProvider({
@@ -350,6 +364,72 @@ export function OpenTabsProvider({
     }
   }, [activeTab, closeTab])
 
+  /** Closes `toClose`, activating `fallback` first if it removed the active tab. */
+  const closeMany = useCallback(
+    (toClose: OpenTab[], fallback: () => void) => {
+      if (toClose.length === 0) {
+        return
+      }
+      if (activeTab !== null && toClose.some((open) => tabsEqual(open, activeTab))) {
+        fallback()
+      }
+      updateTabs((paneTabs) =>
+        paneTabs.filter((open) => !toClose.some((closed) => tabsEqual(closed, open))),
+      )
+    },
+    [activeTab, updateTabs],
+  )
+
+  const closeOtherTabs = useCallback(
+    (tab: OpenTab) => {
+      closeMany(
+        closableTabs(tabs, (open) => !tabsEqual(open, tab)),
+        () => {
+          activateTab(tab)
+        },
+      )
+    },
+    [tabs, activateTab, closeMany],
+  )
+
+  const closeTabsToRight = useCallback(
+    (tab: OpenTab) => {
+      const index = tabs.findIndex((open) => tabsEqual(open, tab))
+      const after = index === -1 ? [] : tabs.slice(index + 1)
+      closeMany(
+        closableTabs(after, () => true),
+        () => {
+          activateTab(tab)
+        },
+      )
+    },
+    [tabs, activateTab, closeMany],
+  )
+
+  const closeAllTabs = useCallback(() => {
+    const toClose = closableTabs(tabs, () => true)
+    if (toClose.length === 0) {
+      return
+    }
+    const remaining = tabs.filter((open) => !toClose.some((closed) => tabsEqual(closed, open)))
+    // Closing a split pane's last tab closes the column, same as `closeTab`.
+    if (remaining.length === 0 && panes !== null && panes.panes.length > 1) {
+      panes.closePane(paneId)
+      return
+    }
+    if (activeTab !== null && toClose.some((open) => tabsEqual(open, activeTab))) {
+      if (remaining.length > 0) {
+        activateTab(remaining[0]!)
+      } else {
+        navigate({ kind: 'today' })
+      }
+    }
+    updateTabs((paneTabs) => {
+      const next = paneTabs.filter((open) => !toClose.some((closed) => tabsEqual(closed, open)))
+      return next.length === 0 ? [createDailyTab()] : next
+    })
+  }, [tabs, activeTab, panes, paneId, activateTab, navigate, updateTabs])
+
   const value = useMemo(
     (): OpenTabsValue => ({
       tabs,
@@ -363,6 +443,9 @@ export function OpenTabsProvider({
       nextTab,
       previousTab,
       closeActiveTab,
+      closeOtherTabs,
+      closeTabsToRight,
+      closeAllTabs,
     }),
     [
       tabs,
@@ -376,6 +459,9 @@ export function OpenTabsProvider({
       nextTab,
       previousTab,
       closeActiveTab,
+      closeOtherTabs,
+      closeTabsToRight,
+      closeAllTabs,
     ],
   )
 

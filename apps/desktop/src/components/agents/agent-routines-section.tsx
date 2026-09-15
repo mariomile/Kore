@@ -1,10 +1,13 @@
 import { useState, useSyncExternalStore, type ReactElement } from 'react'
-import { CalendarClock, History, Play, Stop, Trash } from '@/components/icons'
+import { CalendarClock, History, Pencil, Play, Stop, Trash } from '@/components/icons'
 import {
+  instantiateRoutinePreset,
   MEMORY_CURATOR_PRESET,
   ROUTINE_MAX_CONSECUTIVE_FAILURES,
+  WEEKLY_REVIEW_PRESET,
   type AgentProfile,
   type AgentRoutine,
+  type AgentRoutinePreset,
 } from '@reflect/core'
 import { ROUTINE_RUN_NOW_EVENT } from '@/components/agent-routines-runner'
 import { Button } from '@/components/ui/button'
@@ -31,6 +34,12 @@ function lastRunLabel(lastRunMs: number | null): string {
   return days === 1 ? 'ran yesterday' : `ran ${days} days ago`
 }
 
+type RoutineDialog =
+  | { kind: 'closed' }
+  | { kind: 'new' }
+  | { kind: 'preset'; preset: AgentRoutinePreset }
+  | { kind: 'edit'; routine: AgentRoutine }
+
 interface AgentRoutinesSectionProps {
   /** The graph's profiles, for the "runs as" picker. */
   profiles: AgentProfile[]
@@ -41,12 +50,13 @@ interface AgentRoutinesSectionProps {
  * the vault. Definitions live in settings; the workspace's
  * `AgentRoutinesRunner` executes due ones while the app is open. "Run now"
  * clears the routine's last-run stamp and pokes the runner, so it fires
- * within a second instead of at the next minute tick.
+ * within a second instead of at the next minute tick. Recommended templates
+ * (Memory curator, Weekly review) are offered here and never auto-installed.
  */
 export function AgentRoutinesSection({ profiles }: AgentRoutinesSectionProps): ReactElement {
   const { settings, updateSettingsWith } = useSettings()
   const { graph } = useGraph()
-  const [createOpen, setCreateOpen] = useState(false)
+  const [dialog, setDialog] = useState<RoutineDialog>({ kind: 'closed' })
   const [historyId, setHistoryId] = useState<string | null>(null)
   const routines = settings.agentRoutines.filter(
     (routine) => routine.graphRoot === null || routine.graphRoot === graph?.root,
@@ -64,9 +74,23 @@ export function AgentRoutinesSection({ profiles }: AgentRoutinesSectionProps): R
     }))
   }
 
-  const add = (routine: AgentRoutine): void => {
-    if (graph === null) return
-    updateSettingsWith((current) => ({ agentRoutines: [...current.agentRoutines, routine] }))
+  // Editing merges only the dialog's fields onto the live entry: a run that
+  // starts or settles while the dialog is open must keep its lastRunMs, runs,
+  // and retry/pause state instead of being overwritten by the opened snapshot.
+  const save = (routine: AgentRoutine): void => {
+    const { name, prompt, script, agentSlug, schedule } = routine
+    updateSettingsWith((current) => {
+      const exists = current.agentRoutines.some((entry) => entry.id === routine.id)
+      return {
+        agentRoutines: exists
+          ? current.agentRoutines.map((entry) =>
+              entry.id === routine.id
+                ? { ...entry, name, prompt, script, agentSlug, schedule }
+                : entry,
+            )
+          : [...current.agentRoutines, routine],
+      }
+    })
   }
 
   const remove = (id: string): void => {
@@ -82,46 +106,57 @@ export function AgentRoutinesSection({ profiles }: AgentRoutinesSectionProps): R
   }
 
   const addCurator = (): void => {
-    add({
-      id: crypto.randomUUID(),
-      graphRoot: graph?.root ?? null,
-      name: MEMORY_CURATOR_PRESET.name,
-      agentSlug: null,
-      prompt: MEMORY_CURATOR_PRESET.prompt,
-      script: null,
-      schedule: MEMORY_CURATOR_PRESET.schedule,
-      enabled: true,
-      // Starts from the next occurrence; "Run now" is there for the eager.
-      lastRunMs: Date.now(),
-      lastChangedPaths: [],
-      runs: [],
-      consecutiveFailures: 0,
-      retryAtMs: null,
-      retryContext: null,
-    })
+    save(
+      instantiateRoutinePreset(MEMORY_CURATOR_PRESET, {
+        id: crypto.randomUUID(),
+        graphRoot: graph?.root ?? null,
+        nowMs: Date.now(),
+      }),
+    )
   }
 
   const hasCurator = routines.some((routine) => routine.name === MEMORY_CURATOR_PRESET.name)
+  const hasWeeklyReview = routines.some((routine) => routine.name === WEEKLY_REVIEW_PRESET.name)
+  const dialogOpen = dialog.kind !== 'closed'
+  const dialogKey =
+    dialog.kind === 'edit'
+      ? dialog.routine.id
+      : dialog.kind === 'preset'
+        ? dialog.preset.name
+        : dialog.kind
 
   return (
     <section className="mt-3 rounded-xl border border-border bg-surface p-4">
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <CalendarClock aria-hidden className="size-5 text-text-muted" />
         <div className="min-w-0 flex-1">
           <h2 className="text-sm font-medium text-text">Automations</h2>
           <p className="text-xs text-text-muted">
             Automations run only in {graph?.name ?? 'this graph'}, while it is open in Kore. The
-            window can stay closed. Runs and their changes appear here.
+            window can stay closed. Runs and their changes appear here. Suggested templates are
+            never added until you choose them.
           </p>
         </div>
-        {hasCurator ? null : (
-          <Button type="button" variant="outline" size="sm" onClick={addCurator}>
-            Add Memory curator
+        <div className="flex flex-wrap items-center gap-2">
+          {hasCurator ? null : (
+            <Button type="button" variant="outline" size="sm" onClick={addCurator}>
+              Add Memory curator
+            </Button>
+          )}
+          {hasWeeklyReview ? null : (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setDialog({ kind: 'preset', preset: WEEKLY_REVIEW_PRESET })}
+            >
+              Add Weekly review
+            </Button>
+          )}
+          <Button type="button" size="sm" onClick={() => setDialog({ kind: 'new' })}>
+            New automation
           </Button>
-        )}
-        <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
-          New automation
-        </Button>
+        </div>
       </div>
 
       {routines.length > 0 ? (
@@ -180,6 +215,15 @@ export function AgentRoutinesSection({ profiles }: AgentRoutinesSectionProps): R
                   <History aria-hidden className="size-4" />
                 </Button>
               ) : null}
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                aria-label={`Edit ${routine.name}`}
+                onClick={() => setDialog({ kind: 'edit', routine })}
+              >
+                <Pencil aria-hidden className="size-4" />
+              </Button>
               {running?.id === routine.id ? (
                 <Button
                   type="button"
@@ -239,13 +283,18 @@ export function AgentRoutinesSection({ profiles }: AgentRoutinesSectionProps): R
       ) : null}
 
       <NewRoutineDialog
+        key={dialogKey}
         graphRoot={graph?.root ?? ''}
-        open={createOpen}
-        onOpenChange={setCreateOpen}
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          if (!open) setDialog({ kind: 'closed' })
+        }}
         profiles={profiles}
-        onCreate={(routine) => {
-          add(routine)
-          setCreateOpen(false)
+        editing={dialog.kind === 'edit' ? dialog.routine : null}
+        preset={dialog.kind === 'preset' ? dialog.preset : null}
+        onSave={(routine) => {
+          save(routine)
+          setDialog({ kind: 'closed' })
         }}
       />
       {historyRoutine !== null ? (

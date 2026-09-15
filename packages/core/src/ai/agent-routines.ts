@@ -282,16 +282,51 @@ export const ROUTINE_RUN_SUFFIX = [
 ].join('\n')
 
 /**
+ * A recommended automation: name, prompt, and schedule. Presets are never
+ * written into settings on their own — Settings → Agents offers them, and
+ * only an explicit user create materializes one (the automations principle).
+ */
+export interface AgentRoutinePreset {
+  readonly name: string
+  readonly prompt: string
+  readonly schedule: RoutineSchedule
+}
+
+/**
+ * Turn a recommended preset into a settings-backed routine. `lastRunMs` is
+ * `nowMs` so a just-added weekly/daily preset is not due until the *next*
+ * occurrence; "Run now" is there for the eager. Nothing here persists —
+ * the caller appends the result to `agentRoutines`.
+ */
+export function instantiateRoutinePreset(
+  preset: AgentRoutinePreset,
+  options: { id: string; graphRoot: string | null; nowMs: number },
+): AgentRoutine {
+  return {
+    id: options.id,
+    graphRoot: options.graphRoot,
+    name: preset.name,
+    agentSlug: null,
+    prompt: preset.prompt,
+    script: null,
+    schedule: preset.schedule,
+    enabled: true,
+    lastRunMs: options.nowMs,
+    lastChangedPaths: [],
+    runs: [],
+    consecutiveFailures: 0,
+    retryAtMs: null,
+    retryContext: null,
+  }
+}
+
+/**
  * The memory curator — the first routine worth having (the maintenance pass
  * Notion's and Hermes's memory systems run): distills the journal into
  * facts, re-grades confidence, prunes the stale, and keeps every memory
  * file under its cap. Offered as a one-click preset in Settings → Agents.
  */
-export const MEMORY_CURATOR_PRESET: {
-  name: string
-  prompt: string
-  schedule: RoutineSchedule
-} = {
+export const MEMORY_CURATOR_PRESET: AgentRoutinePreset = {
   name: 'Memory curator',
   schedule: { kind: 'weekly', weekday: 0, time: '18:00' },
   prompt: [
@@ -302,5 +337,33 @@ export const MEMORY_CURATOR_PRESET: {
     '3. Trim agents/user.md to what is still true about the user.',
     '4. If any memory file is near its size cap, consolidate it: merge overlapping bullets, rewrite verbose ones shorter.',
     '5. If the journal has grown very long, compress entries older than a month into a single summary entry; leave recent entries untouched.',
+  ].join('\n'),
+}
+
+/**
+ * Weekly review — a recommended template, never preinstalled. Rereads the
+ * week's daily notes, surfaces open tasks and `[[projects]]`, and writes
+ * one markdown note. Offered from Settings → Agents; the user customizes
+ * and enables it. Markdown in, markdown out.
+ */
+export const WEEKLY_REVIEW_PRESET: AgentRoutinePreset = {
+  name: 'Weekly review',
+  schedule: { kind: 'weekly', weekday: 0, time: '17:00' },
+  prompt: [
+    'You are this vault’s weekly review. Produce one markdown note for the week that just ended. Markdown in, markdown out — no other store.',
+    '',
+    '1. Read the last seven daily notes (`daily/YYYY-MM-DD.md`). Skip any note whose frontmatter has `private: true` — do not read, quote, summarize, or send that content.',
+    '2. From those days, and from notes they wiki-link that are not private, collect:',
+    '   - Open tasks (`+ [ ]`, and `- [ ]` / `* [ ]` checkboxes). Group them by the project they belong to: a task belongs to a note when it is written in that note or its line wiki-links it (`[[Project]]`). A calendar-valid `[[YYYY-MM-DD]]` is a due date, never a project.',
+    '   - Recurring people, `#project` notes, and themes from the dailies.',
+    '3. Write or replace `notes/Weekly review YYYY-MM-DD.md` dated with today (the review day). Use this shape:',
+    '',
+    '   # Weekly review YYYY-MM-DD',
+    '   ## What happened',
+    '   ## Open tasks by project',
+    '   ## Carry forward',
+    '',
+    '   Wiki-link the dailies, the source notes of tasks, and the projects. Do not invent notes or tasks. Do not edit daily notes. If the review note for today already exists, update it in place.',
+    '4. Finish. The run suffix will journal what you did; do not write a second summary note.',
   ].join('\n'),
 }

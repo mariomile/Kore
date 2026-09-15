@@ -1,5 +1,24 @@
 # Kore working state
 
+## Supertag views only — 2026-09-15
+
+The user withdrew the standalone-collection direction. Supertags remain the
+only structure users create; notes can embed live views of tagged notes.
+
+- [x] Reverted the inline standalone-collection creation work.
+- [x] Removed standalone creation and named-definition choices from the slash menu;
+  entries now say `Supertag: #tag` and insert the existing portable tag fence.
+- [x] Inline filters, grouping, and supported Table/Grid/Board/Calendar controls
+  persist in the tag embed. Board uses the selected grouping property.
+
+Validation: 10 focused browser tests, `pnpm check`, and `pnpm build` passed.
+Rendered dev-graph QA verified slash insertion, table grouping, board rendering,
+filtering, and persistence after navigating away and reopening the note.
+
+Existing definition markdown remains readable; no migration or data deletion.
+The earlier mixed-note collection implementation below is historical context,
+not the current product direction. No merge or release requested.
+
 **Updated:** 2026-09-14, split panes part 2: panes stack vertically inside
 columns, a tab moves to a new pane below or beside by drag or ⌥⌘⇧arrows,
 rail toggles render once. Part 1 gave N side-by-side columns with per-pane

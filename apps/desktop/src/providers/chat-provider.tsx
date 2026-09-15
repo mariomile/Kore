@@ -299,9 +299,13 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
       try {
         await active.steer(trimmed)
       } catch {
-        // The run settled or stopped between the check and the write —
-        // the message queues like any busy-time send would have.
-        enqueue(trimmed, [])
+        // The run settled or stopped before taking the message — it queues
+        // like any busy-time send would have, but only in the conversation
+        // it was typed into: after New chat or a switch it is let go, as
+        // the queue itself is.
+        if (sessionRef.current === active.session) {
+          enqueue(trimmed, [])
+        }
       }
     },
     [enqueue, queue],

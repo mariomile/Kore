@@ -570,15 +570,20 @@ export async function deliverChatTurn(
   } finally {
     updateTurn((turn) => ({ ...turn, status: 'done' }))
     persistTurn(conversationMeta(), localTurn, turnCreatedMs)
+    // Steers the run never took (it died before arming) settle now, whoever
+    // owns the slot — their senders must not wait forever. They join the
+    // queue only below, while this is still the live conversation; a turn
+    // detached by New chat or a switch drops them, as New chat drops the
+    // queue itself.
+    const unsentSteers = steerRelay.unsent()
     // Only release the slot if it's still ours: a turn detached by New
     // chat must not, while winding down, unhook the controller a newer
     // turn has since registered — Stop and the unmount abort always have
     // to target the live stream.
     if (activeSendRef.current === activeSend) {
       activeSendRef.current = null
-      // A steer the run never took (it died before arming) is not lost:
-      // it joins the queue, ahead of nothing — the user typed it first.
-      const unsentSteers = steerRelay.unsent()
+      // An unsent steer is not lost: it joins the queue ahead of anything
+      // queued later — the user typed it first.
       if (unsentSteers.length > 0 && sessionRef.current === activeSend.session) {
         setQueue([
           ...unsentSteers.map((text) => ({ id: crypto.randomUUID(), text, attachments: [] })),

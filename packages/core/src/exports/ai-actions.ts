@@ -66,6 +66,7 @@ export {
   buildNoteTools,
   formatPropertyPreview,
   MAX_DAILY_NOTE_DAYS,
+  PRIVATE_NOTE_EDIT_ERROR,
   type EditNoteOutput,
   type ListDailyNotesOutput,
   type ListRecentNotesOutput,

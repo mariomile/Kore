@@ -1,5 +1,11 @@
 import { useCallback } from 'react'
-import { applyNoteEdit, isAppError, readNote, type NoteEdit } from '@reflect/core'
+import {
+  applyNoteEdit,
+  isAppError,
+  PRIVATE_NOTE_EDIT_ERROR,
+  readNote,
+  type NoteEdit,
+} from '@reflect/core'
 import { openSession } from '@/editor/open-documents'
 import { commitNoteBodyTransform } from '@/lib/note-frontmatter'
 import { invalidateOnNextIndexApply } from '@/lib/tags/use-commit-note-property'
@@ -40,10 +46,11 @@ function serializePerPath(path: string, task: () => Promise<void>): Promise<void
  * updates in place with its unsaved edits intact, a closed one is patched on
  * disk — and re-validates the hunk against the note as it is *now*: a
  * passage that no longer matches refuses with {@link STALE_NOTE_EDIT_MESSAGE}
- * rather than landing somewhere else, and a note deleted since the proposal
+ * rather than landing somewhere else, a note deleted since the proposal
  * refuses rather than being recreated (an append has no passage to anchor
- * on, so the note's existence is its one guard). Rejects with the failure;
- * the caller shows it.
+ * on, so the note's existence is its one guard), and a note marked private
+ * since the proposal refuses like the tool would have. Rejects with the
+ * failure; the caller shows it.
  */
 export function useApplyNoteEdit(): (path: string, edit: NoteEdit) => Promise<void> {
   const { graph } = useGraph()
@@ -63,7 +70,11 @@ export function useApplyNoteEdit(): (path: string, edit: NoteEdit) => Promise<vo
           (source) => {
             const result = applyNoteEdit(source, edit)
             if (!result.ok) {
-              throw new Error(STALE_NOTE_EDIT_MESSAGE)
+              // The privacy hard block holds at the write too: a note made
+              // private since the proposal refuses in its own words.
+              throw new Error(
+                result.error === PRIVATE_NOTE_EDIT_ERROR ? result.error : STALE_NOTE_EDIT_MESSAGE,
+              )
             }
             return result.after
           },

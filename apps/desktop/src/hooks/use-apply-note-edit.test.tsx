@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderHook } from 'vitest-browser-react'
+import { PRIVATE_NOTE_EDIT_ERROR } from '@reflect/core'
 
 /** A stand-in disk: read, yield to the event loop, then write — the real race window. */
 const disk = vi.hoisted(() => ({ content: '', missing: false }))
@@ -53,5 +54,14 @@ describe('useApplyNoteEdit', () => {
       result.current('daily/d.md', { oldText: '', newText: '- four\n' }),
     ).rejects.toThrow(STALE_NOTE_EDIT_MESSAGE)
     expect(disk.content).toBe('# Day\n\n- one\n- two\n')
+  })
+
+  it('refuses a note that turned private after the proposal', async () => {
+    disk.content = '---\nprivate: true\n---\n# Day\n\n- one\n'
+    const { result } = await renderHook(() => useApplyNoteEdit())
+    await expect(
+      result.current('daily/d.md', { oldText: '- one', newText: '- uno' }),
+    ).rejects.toThrow(PRIVATE_NOTE_EDIT_ERROR)
+    expect(disk.content).toBe('---\nprivate: true\n---\n# Day\n\n- one\n')
   })
 })

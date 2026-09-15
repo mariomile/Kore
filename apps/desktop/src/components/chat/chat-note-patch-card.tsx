@@ -26,6 +26,13 @@ import { useChatSession } from '@/providers/chat-provider'
 /** Every review card carries `data-chat-patch`, so focus can hop between pending ones. */
 const CARD_SELECTOR = '[data-chat-patch]'
 
+/**
+ * Proposals whose decision is in flight, by tool call. Module-wide rather
+ * than per card instance: a card remounted mid-write (switch away and back)
+ * still reads as pending, and must not take the same decision twice.
+ */
+const inFlightDecisions = new Set<string>()
+
 interface ChatNotePatchCardProps {
   result: Extract<NoteToolResult, { tool: 'editNote' }>
   /** The owning turn's status — a decision is taken only once it settled. */
@@ -56,7 +63,6 @@ export function ChatNotePatchCard({
   const rootRef = useRef<HTMLDivElement | null>(null)
   const sawStreaming = useRef(false)
   const [busy, setBusy] = useState(false)
-  const inFlight = useRef(false)
   const [applyError, setApplyError] = useState<string | null>(null)
   const decidable = result.decision === 'pending' && turnStatus === 'done' && !busy
   const diff = diffLines(result.oldText, result.newText)
@@ -92,19 +98,19 @@ export function ChatNotePatchCard({
   }
 
   /**
-   * Take the card's one decision slot, binding its recorder. The ref makes
-   * the check synchronous: a second key landing before React re-renders
-   * `busy` (Enter then Backspace in one breath) finds the slot taken.
+   * Take the proposal's one decision slot, binding its recorder. The check
+   * is synchronous, so a second key landing before React re-renders `busy`
+   * (Enter then Backspace in one breath) finds the slot taken.
    */
   function claimDecision(): NoteEditDecisionRecorder | null {
-    if (!decidable || inFlight.current) {
+    if (!decidable || inFlightDecisions.has(result.toolCallId)) {
       return null
     }
     // Bind the decision's home before any write: a conversation switch or
     // New chat mid-write must not leave an applied edit recorded as pending.
     const record = bindNoteEditDecision(result.toolCallId)
     if (record !== null) {
-      inFlight.current = true
+      inFlightDecisions.add(result.toolCallId)
     }
     return record
   }
@@ -121,9 +127,10 @@ export function ChatNotePatchCard({
       record('accepted')
       focusNext()
     } catch (cause) {
+      // A failed apply leaves the proposal pending and open to another try.
       setApplyError(errorMessage(cause))
-      inFlight.current = false
     } finally {
+      inFlightDecisions.delete(result.toolCallId)
       setBusy(false)
     }
   }
@@ -134,6 +141,7 @@ export function ChatNotePatchCard({
       return
     }
     record('rejected')
+    inFlightDecisions.delete(result.toolCallId)
     focusNext()
   }
 

@@ -1,4 +1,5 @@
-import { splitFrontmatter } from '../../markdown/frontmatter'
+import { parseFrontmatter, splitFrontmatter } from '../../markdown/frontmatter'
+import { PRIVATE_NOTE_EDIT_ERROR } from './tools-io'
 
 /**
  * The one edit shape the chat's `edit_note` tool proposes and the user
@@ -43,10 +44,16 @@ function countOccurrences(haystack: string, needle: string): number {
 /**
  * Apply `edit` to the note `source`, returning the whole note (frontmatter
  * untouched) or a refusal. The replaced passage must occur exactly once in
- * the body; an append lands after the body's last line.
+ * the body; an append lands after the body's last line. A note whose
+ * frontmatter says `private: true` refuses outright — the privacy hard block
+ * holds at the write as much as at the proposal, so a note made private
+ * between the two never takes an assistant's edit.
  */
 export function applyNoteEdit(source: string, edit: NoteEdit): NoteEditResult {
-  const { body, bodyOffset } = splitFrontmatter(source)
+  const { raw, body, bodyOffset } = splitFrontmatter(source)
+  if (parseFrontmatter(raw).data.private) {
+    return { ok: false, error: PRIVATE_NOTE_EDIT_ERROR }
+  }
   const header = source.slice(0, bodyOffset)
   let nextBody: string
   if (edit.oldText === '') {

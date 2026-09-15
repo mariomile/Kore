@@ -5,6 +5,7 @@ import {
   EDIT_TEXT_AMBIGUOUS_ERROR,
   EDIT_TEXT_NOT_FOUND_ERROR,
 } from './note-edit'
+import { PRIVATE_NOTE_EDIT_ERROR } from './tools-io'
 
 const NOTE =
   '---\ntitle: Atlas\nprivate: false\n---\n# Atlas\n\n- call the surveyor\n- book flights\n'
@@ -34,6 +35,18 @@ describe('applyNoteEdit', () => {
     expect(applyNoteEdit(NOTE, { oldText: '# Atlas', newText: '# Atlas' })).toEqual({
       ok: false,
       error: EDIT_NO_CHANGE_ERROR,
+    })
+  })
+
+  it('refuses a note that is private now, whatever the edit', () => {
+    const source = '---\nprivate: true\n---\n# Diary\n\n- one\n'
+    expect(applyNoteEdit(source, { oldText: '- one', newText: '- uno' })).toEqual({
+      ok: false,
+      error: PRIVATE_NOTE_EDIT_ERROR,
+    })
+    expect(applyNoteEdit(source, { oldText: '', newText: '- two\n' })).toEqual({
+      ok: false,
+      error: PRIVATE_NOTE_EDIT_ERROR,
     })
   })
 

@@ -51,6 +51,7 @@ export {
   cloudSafeNoteListings,
   cloudSafeSearchHits,
   cloudSafeSelection,
+  cloudSafeTagListings,
   isPrivateNoteError,
   PrivateNoteError,
   type CloudAssetDescription,
@@ -60,6 +61,8 @@ export {
   type CloudSafe,
   type CloudSearchHit,
   type CloudSendable,
+  type CloudTagListing,
+  type TagListingCandidate,
 } from '../ai/checkers'
 export {
   applyNoteEdit,
@@ -67,6 +70,7 @@ export {
   formatPropertyPreview,
   MAX_DAILY_NOTE_DAYS,
   PRIVATE_NOTE_EDIT_ERROR,
+  TAG_DEFINITION_UNMARKED_ERROR,
   type EditNoteOutput,
   type ListDailyNotesOutput,
   type ListRecentNotesOutput,

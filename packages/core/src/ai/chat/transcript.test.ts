@@ -324,4 +324,25 @@ describe('settleNoteEdit', () => {
     expect(settled[2]).toBe(refused)
     expect(settleNoteEdit([refused], 'e2', 'rejected')[0]).toBe(refused)
   })
+
+  it('records a decision on a proposed tag icon the same way', () => {
+    const iconProposal: AssistantPart = {
+      kind: 'tool',
+      call: { tool: 'setTagIcon', toolCallId: 't1', tag: 'company' },
+      result: {
+        tool: 'setTagIcon',
+        toolCallId: 't1',
+        tag: 'company',
+        path: 'tags/company.md',
+        icon: 'icon:buildings',
+        previousIcon: null,
+        error: null,
+        decision: 'pending',
+      },
+      error: null,
+    }
+    const settled = settleNoteEdit([proposal, iconProposal], 't1', 'rejected')
+    expect(settled[0]).toBe(proposal)
+    expect(settled[1]).toMatchObject({ result: { tool: 'setTagIcon', decision: 'rejected' } })
+  })
 })

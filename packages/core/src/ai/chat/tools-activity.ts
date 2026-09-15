@@ -44,6 +44,9 @@ export type NoteToolCall =
   | { tool: 'collection'; toolCallId: string; tag: string }
   | { tool: 'setProperty'; toolCallId: string; path: string; key: string }
   | { tool: 'editNote'; toolCallId: string; path: string }
+  | { tool: 'tags'; toolCallId: string }
+  | { tool: 'tagIcons'; toolCallId: string }
+  | { tool: 'setTagIcon'; toolCallId: string; tag: string }
   | { tool: 'browse'; toolCallId: string; url: string }
   | { tool: 'readPage'; toolCallId: string }
 
@@ -82,6 +85,20 @@ export type NoteToolResult =
       /** The proposed hunk (both empty on a refusal). */
       oldText: string
       newText: string
+      error: string | null
+      decision: NoteEditDecision
+    }
+  | { tool: 'tags'; toolCallId: string; count: number }
+  | { tool: 'tagIcons'; toolCallId: string; count: number }
+  | {
+      tool: 'setTagIcon'
+      toolCallId: string
+      tag: string
+      /** The definition note the accept writes (empty on a refusal). */
+      path: string
+      /** The proposed icon (`null` clears) and the one it replaces. */
+      icon: string | null
+      previousIcon: string | null
       error: string | null
       decision: NoteEditDecision
     }
@@ -133,6 +150,12 @@ export function noteToolCall(part: TypedToolCall<NoteTools>): NoteToolCall | nul
       }
     case 'edit_note':
       return { tool: 'editNote', toolCallId: part.toolCallId, path: part.input.path }
+    case 'list_tags':
+      return { tool: 'tags', toolCallId: part.toolCallId }
+    case 'list_tag_icons':
+      return { tool: 'tagIcons', toolCallId: part.toolCallId }
+    case 'set_tag_icon':
+      return { tool: 'setTagIcon', toolCallId: part.toolCallId, tag: part.input.tag }
     case 'open_web_page':
       return { tool: 'browse', toolCallId: part.toolCallId, url: part.input.url }
     case 'read_web_page':
@@ -251,6 +274,34 @@ export function noteToolResult(part: TypedToolResult<NoteTools>): NoteToolResult
             path: output.path,
             oldText: '',
             newText: '',
+            error: output.error,
+            decision: 'pending',
+          }
+    }
+    case 'list_tags':
+      return { tool: 'tags', toolCallId: part.toolCallId, count: part.output.tags.length }
+    case 'list_tag_icons':
+      return { tool: 'tagIcons', toolCallId: part.toolCallId, count: part.output.icons.length }
+    case 'set_tag_icon': {
+      const output = part.output
+      return output.ok
+        ? {
+            tool: 'setTagIcon',
+            toolCallId: part.toolCallId,
+            tag: output.tag,
+            path: output.path,
+            icon: output.icon,
+            previousIcon: output.previousIcon,
+            error: null,
+            decision: 'pending',
+          }
+        : {
+            tool: 'setTagIcon',
+            toolCallId: part.toolCallId,
+            tag: output.tag,
+            path: '',
+            icon: null,
+            previousIcon: null,
             error: output.error,
             decision: 'pending',
           }

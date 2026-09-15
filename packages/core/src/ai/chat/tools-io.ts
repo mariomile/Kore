@@ -1,6 +1,12 @@
 import { z } from 'zod'
-import type { TagProperty } from '../../tags'
-import type { CloudCollectionRow, CloudNoteListing, CloudSafe, CloudSearchHit } from '../checkers'
+import type { TagProperty, TagSymbolIconEntry } from '../../tags'
+import type {
+  CloudCollectionRow,
+  CloudNoteListing,
+  CloudSafe,
+  CloudSearchHit,
+  CloudTagListing,
+} from '../checkers'
 
 /**
  * The note tools' wire contract: input schemas, output shapes, and the
@@ -97,6 +103,45 @@ export function formatPropertyPreview(value: SetNotePropertyValue): string {
   }
   return String(value)
 }
+
+export interface ListTagsOutput {
+  /** Every tag over non-private notes, gated like every other listing. */
+  tags: CloudSafe<CloudTagListing>[]
+}
+
+export interface ListTagIconsOutput {
+  /** Every symbol icon the app draws, by stored name, with a semantic hint. */
+  icons: readonly TagSymbolIconEntry[]
+}
+
+/**
+ * A proposed tag-icon change — the tag, its definition note, the icon to
+ * store (`null` clears) and the one it replaces — or a refusal telling the
+ * model what to fix. The user accepts or rejects it in chat; nothing is
+ * written here.
+ */
+export type SetTagIconOutput =
+  | { ok: true; tag: string; path: string; icon: string | null; previousIcon: string | null }
+  | { ok: false; tag: string; error: string }
+
+/** `set_tag_icon` refusals, read verbatim by both model and card. */
+export const TAG_ICON_UNCHANGED_ERROR = 'The tag already has this icon.'
+export const TAG_DEFINITION_UNMARKED_ERROR =
+  'A regular note lives at this tag’s definition path (tags/<tag>.md), so the tag cannot be configured from chat — the user can convert it from the tag’s page.'
+
+export const setTagIconInput = z.object({
+  tag: z.string().min(1).describe('The tag to change (case-insensitive, without the #)'),
+  icon: z
+    .string()
+    .nullable()
+    .describe(
+      'A symbol name from list_tag_icons (e.g. "buildings"), or one emoji. ' +
+        'Pass null to remove the tag’s icon.',
+    ),
+})
+
+export const listTagsInput = z.object({})
+export const listTagIconsInput = z.object({})
 
 /** `edit_note` refusal for a path no note lives at. */
 export const EDIT_NOTE_MISSING_ERROR = 'No note exists at this path.'

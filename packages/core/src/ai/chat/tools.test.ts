@@ -24,11 +24,14 @@ import {
   RESERVED_PROPERTY_ERROR,
   PRIVATE_NOTE_EDIT_ERROR,
   MISSING_VALUE_ERROR,
+  TAG_DEFINITION_UNMARKED_ERROR,
+  TAG_ICON_UNCHANGED_ERROR,
   formatPropertyPreview,
   noteToolCall,
   noteToolResult,
   type EditNoteOutput,
   type SetNotePropertyOutput,
+  type SetTagIconOutput,
   type ListCollectionOutput,
   type ListDailyNotesOutput,
   type ListRecentNotesOutput,
@@ -36,7 +39,7 @@ import {
   type SearchNotesOutput,
 } from './tools'
 import type { CollectionEntry } from '../../indexing/collections'
-import type { TagType } from '../../tags'
+import { TAG_SYMBOL_CATALOG, UNKNOWN_TAG_ICON_ERROR, type TagType } from '../../tags'
 
 const CALL: ToolExecutionOptions<Record<string, unknown>> = {
   toolCallId: 'call-1',
@@ -1098,5 +1101,205 @@ describe('edit_note', () => {
       error: PRIVATE_NOTE_EDIT_ERROR,
       decision: 'pending',
     })
+  })
+})
+
+describe('tag tools', () => {
+  /** Execute `set_tag_icon` directly, asserting a non-streaming output. */
+  async function runSetTagIcon(
+    tools: NoteTools,
+    input: { tag: string; icon: string | null },
+  ): Promise<SetTagIconOutput> {
+    const execute = tools.set_tag_icon.execute
+    if (!execute) {
+      throw new Error('set_tag_icon has no execute')
+    }
+    const output = await execute(input, CALL)
+    if (isAsyncIterable(output)) {
+      throw new Error('unexpected streaming tool output')
+    }
+    return output
+  }
+
+  const DEFINITION = '---\nlore: tag\nicon: icon:folder\nproperties: []\n---\n# Company\n'
+
+  it('lists tags over public notes only, re-checking each definition live', async () => {
+    const listOptions: unknown[] = []
+    const tools = buildNoteTools({
+      listNoteTagsFn: async (options) => {
+        listOptions.push(options)
+        return [
+          { tag: 'Company', count: 3 },
+          { tag: 'decision', count: 1 },
+        ]
+      },
+      listTagTypesFn: async (options) => {
+        listOptions.push(options)
+        return [
+          {
+            tagKey: 'company',
+            notePath: 'tags/company.md',
+            type: { properties: [{ name: 'Website', key: 'website', type: 'url' }], icon: '🏢' },
+          },
+          { tagKey: 'meeting', notePath: 'tags/meeting.md', type: { properties: [], icon: '📅' } },
+        ]
+      },
+      // The meeting definition turned private after the index ran: its icon
+      // (that note's content) must not ship, while the tag itself may.
+      readNoteFn: async (path) =>
+        path === 'tags/meeting.md'
+          ? '---\nlore: tag\nprivate: true\n---\n'
+          : '---\nlore: tag\n---\n',
+    })
+    const execute = tools.list_tags.execute
+    if (!execute) {
+      throw new Error('list_tags has no execute')
+    }
+    expect(await execute({}, CALL)).toEqual({
+      tags: [
+        { tag: 'Company', notes: 3, icon: '🏢', properties: 1 },
+        { tag: 'decision', notes: 1, icon: null, properties: 0 },
+        { tag: 'meeting', notes: 0, icon: null, properties: 0 },
+      ],
+    })
+    // Both index reads asked SQL to drop private rows before anything reached here.
+    expect(listOptions).toEqual([{ excludePrivate: true }, { excludePrivate: true }])
+  })
+
+  it('exposes the icon catalog, which is what set_tag_icon validates against', async () => {
+    const tools = buildNoteTools({ allowEdits: true, readNoteFn: async () => DEFINITION })
+    const execute = tools.list_tag_icons.execute
+    if (!execute) {
+      throw new Error('list_tag_icons has no execute')
+    }
+    const output = await execute({}, CALL)
+    if (isAsyncIterable(output)) {
+      throw new Error('unexpected streaming tool output')
+    }
+    expect(output.icons).toBe(TAG_SYMBOL_CATALOG)
+    expect(output.icons.some((entry) => entry.name === 'buildings')).toBe(true)
+    expect(await runSetTagIcon(tools, { tag: '#company', icon: 'building-2' })).toEqual({
+      ok: false,
+      tag: 'company',
+      error: UNKNOWN_TAG_ICON_ERROR,
+    })
+  })
+
+  it('proposes a catalog icon against the live definition without writing', async () => {
+    const tools = buildNoteTools({ allowEdits: true, readNoteFn: async () => DEFINITION })
+    expect(await runSetTagIcon(tools, { tag: 'Company', icon: 'buildings' })).toEqual({
+      ok: true,
+      tag: 'Company',
+      path: 'tags/company.md',
+      icon: 'icon:buildings',
+      previousIcon: 'icon:folder',
+    })
+    expect(await runSetTagIcon(tools, { tag: 'company', icon: null })).toMatchObject({
+      ok: true,
+      icon: null,
+      previousIcon: 'icon:folder',
+    })
+    expect(await runSetTagIcon(tools, { tag: 'company', icon: 'icon:folder' })).toEqual({
+      ok: false,
+      tag: 'company',
+      error: TAG_ICON_UNCHANGED_ERROR,
+    })
+    // A tag with no definition yet: the accept creates it.
+    const fresh = buildNoteTools({
+      allowEdits: true,
+      readNoteFn: async () => {
+        throw { kind: 'notFound', message: 'no such note' }
+      },
+    })
+    expect(await runSetTagIcon(fresh, { tag: 'decision', icon: '✅' })).toEqual({
+      ok: true,
+      tag: 'decision',
+      path: 'tags/decision.md',
+      icon: '✅',
+      previousIcon: null,
+    })
+  })
+
+  it('refuses disabled edits, junk tags, private definitions, and unmarked notes', async () => {
+    let reads = 0
+    const disabled = buildNoteTools({
+      readNoteFn: async () => {
+        reads += 1
+        return DEFINITION
+      },
+    })
+    expect(await runSetTagIcon(disabled, { tag: 'company', icon: 'buildings' })).toEqual({
+      ok: false,
+      tag: 'company',
+      error: EDITS_DISABLED_ERROR,
+    })
+    expect(reads).toBe(0)
+    const tools = buildNoteTools({ allowEdits: true, readNoteFn: async () => DEFINITION })
+    expect(await runSetTagIcon(tools, { tag: 'not a tag', icon: 'buildings' })).toEqual({
+      ok: false,
+      tag: 'not a tag',
+      error: INVALID_COLLECTION_TAG_ERROR,
+    })
+    const privateTools = buildNoteTools({
+      allowEdits: true,
+      readNoteFn: async () => `---\nlore: tag\nprivate: true\n---\n${PRIVATE_BODY}\n`,
+    })
+    expect(await runSetTagIcon(privateTools, { tag: 'diary', icon: 'lock' })).toEqual({
+      ok: false,
+      tag: 'diary',
+      error: PRIVATE_NOTE_EDIT_ERROR,
+    })
+    const unmarked = buildNoteTools({ allowEdits: true, readNoteFn: async () => '# Company\n' })
+    expect(await runSetTagIcon(unmarked, { tag: 'company', icon: 'buildings' })).toEqual({
+      ok: false,
+      tag: 'company',
+      error: TAG_DEFINITION_UNMARKED_ERROR,
+    })
+  })
+
+  it('maps a proposal onto a pending review card and a refusal onto a chip', () => {
+    const input = { tag: 'company', icon: 'buildings' }
+    expect(
+      noteToolCall({
+        type: 'tool-call',
+        toolCallId: 't1',
+        toolName: 'set_tag_icon',
+        input,
+      } as never),
+    ).toEqual({ tool: 'setTagIcon', toolCallId: 't1', tag: 'company' })
+    const output: SetTagIconOutput = {
+      ok: true,
+      tag: 'company',
+      path: 'tags/company.md',
+      icon: 'icon:buildings',
+      previousIcon: null,
+    }
+    expect(
+      noteToolResult({
+        type: 'tool-result',
+        toolCallId: 't1',
+        toolName: 'set_tag_icon',
+        input,
+        output,
+      } as never),
+    ).toEqual({
+      tool: 'setTagIcon',
+      toolCallId: 't1',
+      tag: 'company',
+      path: 'tags/company.md',
+      icon: 'icon:buildings',
+      previousIcon: null,
+      error: null,
+      decision: 'pending',
+    })
+    expect(
+      noteToolResult({
+        type: 'tool-result',
+        toolCallId: 't2',
+        toolName: 'set_tag_icon',
+        input,
+        output: { ok: false, tag: 'company', error: UNKNOWN_TAG_ICON_ERROR },
+      } as never),
+    ).toMatchObject({ tool: 'setTagIcon', error: UNKNOWN_TAG_ICON_ERROR, decision: 'pending' })
   })
 })

@@ -77,7 +77,7 @@ export function chatSystemPrompt({
 
 /** The propose-then-review contract of the write tools, sent only when edits are allowed. */
 const EDIT_GUIDANCE =
-  '- When the user asks you to change a note, propose the change instead of describing it: edit_note replaces one exact passage of a note’s body (read the note first and copy oldText verbatim; an empty oldText appends), set_note_property changes one frontmatter property. Each proposal appears in chat as a diff the user accepts or rejects — nothing is written until they accept, so never say a change is saved, and keep the reply around a proposal short. Private notes cannot be changed.'
+  '- When the user asks you to change a note, propose the change instead of describing it: edit_note replaces one exact passage of a note’s body (read the note first and copy oldText verbatim; an empty oldText appends), set_note_property changes one frontmatter property. Each proposal appears in chat as a diff the user accepts or rejects — nothing is written until they accept, so never say a change is saved, and keep the reply around a proposal short. Private notes cannot be changed.\n- To change how a tag looks, call list_tags for its current icon and list_tag_icons for the symbol names the app can draw, then propose with set_tag_icon using one of those names exactly (or a single emoji) — never a guessed name, and never by editing the tags/ definition note by hand.'
 
 /** The search-specific prompt rule, matching the active retrieval mode. */
 function searchNotesGuidance(semanticSearchEnabled: boolean): string {

@@ -2,7 +2,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { DatabaseSync } from 'node:sqlite'
 import { setBridge } from '../ipc/bridge'
 import { applyProjection, connectIndex, openMigratedIndex, project } from './flow-test-harness'
-import { listNotes } from './note-list'
+import { listTagTypes } from './collections'
+import { listNotes, listNoteTags } from './note-list'
 
 /**
  * The All Notes list against a real SQLite built from the production migration
@@ -108,6 +109,39 @@ describe('listNotes against a real index', () => {
     expect((await listNotes()).map((entry) => entry.path)).toEqual([
       'notes/old-pin.md',
       'notes/fresh.md',
+    ])
+  })
+})
+
+describe('tag listings for outbound surfaces against a real index', () => {
+  it('drops tags only private notes carry, counts public notes only, hides private definitions', async () => {
+    addNote('notes/public-a.md', '# A\n\n#company #decision', 3000)
+    addNote('notes/public-b.md', '# B\n\n#company', 2000)
+    addNote('notes/secret.md', '---\nprivate: true\n---\n# Secret\n\n#company #diary', 1000)
+    addNote('tags/company.md', '---\nlore: tag\nicon: icon:buildings\n---\n# Company', 100)
+    addNote('tags/diary.md', '---\nlore: tag\nprivate: true\nicon: 🔒\n---\n# Diary', 100)
+    const insertType = database.prepare(
+      'INSERT INTO tag_types (tag_key, note_path, schema_json) VALUES (?, ?, ?)',
+    )
+    insertType.run('company', 'tags/company.md', '{"properties":[],"icon":"icon:buildings"}')
+    insertType.run('diary', 'tags/diary.md', '{"properties":[],"icon":"🔒"}')
+
+    // The user's own sidebar still sees everything.
+    expect(await listNoteTags()).toEqual([
+      { tag: 'company', count: 3 },
+      { tag: 'decision', count: 1 },
+      { tag: 'diary', count: 1 },
+    ])
+    expect((await listTagTypes()).map((entry) => entry.tagKey)).toEqual(['company', 'diary'])
+
+    // Outbound: no `diary` (only a private note carries it), `company`
+    // counted without the private note, the private definition gone.
+    expect(await listNoteTags({ excludePrivate: true })).toEqual([
+      { tag: 'company', count: 2 },
+      { tag: 'decision', count: 1 },
+    ])
+    expect((await listTagTypes({ excludePrivate: true })).map((entry) => entry.tagKey)).toEqual([
+      'company',
     ])
   })
 })

@@ -185,17 +185,31 @@ export interface NoteTagFacet {
   count: number
 }
 
+export interface ListNoteTagsOptions {
+  /**
+   * Count non-private notes only. Outbound surfaces (the AI tools) pass
+   * this so a tag carried solely by `private: true` notes never reaches
+   * their layer and no count reveals a private note; the user's own sidebar
+   * omits it — privacy blocks external services, not their screen.
+   */
+  excludePrivate?: boolean
+}
+
 /**
  * Every tag carried by at least one non-daily note, with how many such notes
  * carry it, alphabetical. Grouped on the stored `tag_key`, matching the tag
  * filter (and the `#tag` search token): `#Book` and `#book` are one facet,
  * displayed with one deterministic casing.
  */
-export async function listNoteTags(): Promise<NoteTagFacet[]> {
-  return await db
+export async function listNoteTags(options: ListNoteTagsOptions = {}): Promise<NoteTagFacet[]> {
+  let query = db
     .selectFrom('tags')
     .innerJoin('notes', 'notes.path', 'tags.notePath')
     .where('notes.kind', '=', 'note')
+  if (options.excludePrivate === true) {
+    query = query.where('notes.isPrivate', '=', 0)
+  }
+  return await query
     .select([sql<string>`min(tags.tag)`.as('tag'), sql<number>`count(*)`.as('count')])
     .groupBy('tags.tagKey')
     .orderBy('tags.tagKey')

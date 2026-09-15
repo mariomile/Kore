@@ -193,6 +193,29 @@ describe('loadChatMessages', () => {
     expect(turns[0]?.parts).toEqual(parts)
   })
 
+  it('round-trips a proposed tag icon with the user’s decision', async () => {
+    const parts = [
+      {
+        kind: 'tool',
+        call: { tool: 'setTagIcon', toolCallId: 'tool-5', tag: 'company' },
+        result: {
+          tool: 'setTagIcon',
+          toolCallId: 'tool-5',
+          tag: 'company',
+          path: 'tags/company.md',
+          icon: 'icon:buildings',
+          previousIcon: '🏢',
+          error: null,
+          decision: 'accepted',
+        },
+        error: null,
+      },
+    ]
+    invoke.mockResolvedValue([messageRow({ parts: JSON.stringify(parts) })])
+    const turns = await loadChatMessages('conv-1')
+    expect(turns[0]?.parts).toEqual(parts)
+  })
+
   it('drops a row whose parts fail validation', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
     invoke.mockResolvedValue([messageRow({ parts: JSON.stringify([{ kind: 'mystery' }]) })])

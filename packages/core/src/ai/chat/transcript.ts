@@ -53,7 +53,7 @@ export type AssistantPart =
       kind: 'context'
       notes: { path: string; title: string; excerpt: string; source: 'mention' | 'recall' }[]
     }
-  /** A user message steered into the live turn mid-run (inject engines). */
+  /** A user message steered into the live turn mid-run. */
   | { kind: 'steer'; text: string }
 
 /** One user message and everything the assistant did in response. */
@@ -82,6 +82,9 @@ export function isToolPending(part: Extract<AssistantPart, { kind: 'tool' }>): b
  */
 export const NO_REPLY_NOTICE =
   'I couldn’t finish answering — try narrowing your question or asking again.'
+
+/** How a tool call cut short by a steer settles in its chip. */
+export const STEER_INTERRUPTED = 'Interrupted — steered.'
 
 /** Whether the parts already carry something the user can read as a reply. */
 function hasRenderableReply(parts: AssistantPart[]): boolean {
@@ -120,6 +123,11 @@ export function appendEvent(parts: AssistantPart[], event: ChatStreamEvent): Ass
         ...settleTools(parts, event.message),
         { kind: 'notice', tone: 'error', text: event.message },
       ]
+    case 'steer':
+      // The steer cut the leg in flight: a tool call still pending there
+      // was dropped from the history (never paired with a result), so its
+      // chip settles rather than spinning on into the next leg.
+      return [...settleTools(parts, STEER_INTERRUPTED), { kind: 'steer', text: event.text }]
     case 'aborted':
       return [...settleTools(parts, 'Stopped.'), { kind: 'notice', tone: 'info', text: 'Stopped.' }]
     case 'complete':

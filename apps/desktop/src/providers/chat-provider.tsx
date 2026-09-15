@@ -9,6 +9,7 @@ import {
 } from 'react'
 import {
   chatModelOptions,
+  chatProviderCanSteer,
   deleteChatAttachmentFiles,
   deleteChatConversation,
   errorMessage,
@@ -106,6 +107,7 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
     { providers, defaultProviderId: settings.defaultAiProviderId },
     settings.chatModelSelection,
   )
+  const canSteer = activeModel !== null && chatProviderCanSteer(activeModel.provider)
 
   // Read at call time, not captured: send() can fire long after the render
   // that created it.
@@ -240,7 +242,15 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
     deliverRef.current = deliver
   }, [deliver])
 
-  const send = useCallback(
+  /** Park one message for after the streaming turn (or via its card). */
+  const enqueue = useCallback(
+    (text: string, attached: ChatAttachment[]) => {
+      setQueue([...queuedRef.current, { id: crypto.randomUUID(), text, attachments: attached }])
+    },
+    [setQueue],
+  )
+
+  const queue = useCallback(
     async (text: string): Promise<void> => {
       const trimmed = text.trim()
       const attached = attachmentsRef.current
@@ -252,39 +262,41 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
       setDraft('')
       setAttachments([])
       if (activeSendRef.current?.session === sessionRef.current) {
-        // A turn is streaming: queue instead of silently dropping the
-        // message. It rides when the turn settles (or via its card).
-        setQueue([
-          ...queuedRef.current,
-          { id: crypto.randomUUID(), text: trimmed, attachments: attached },
-        ])
+        enqueue(trimmed, attached)
         return
       }
       await deliver(trimmed, attached)
     },
-    [deliver, setQueue],
+    [deliver, enqueue],
   )
 
-  const steer = useCallback(
+  const send = useCallback(
     async (text: string): Promise<void> => {
       const trimmed = text.trim()
-      if (trimmed === '') {
+      const attached = attachmentsRef.current
+      const active = activeSendRef.current
+      // Steering carries text alone — an image rides the queue instead,
+      // and so does a message for a queue-only engine.
+      if (
+        trimmed === '' ||
+        attached.length > 0 ||
+        active === null ||
+        active.session !== sessionRef.current ||
+        active.steer === undefined
+      ) {
+        await queue(text)
         return
       }
-      const active = activeSendRef.current
-      if (active !== null && active.session === sessionRef.current && active.steer !== undefined) {
-        setDraft('')
-        try {
-          await active.steer(trimmed)
-          return
-        } catch {
-          // The run settled or stopped between the check and the write —
-          // fall through: the message queues like any busy-time send.
-        }
+      setDraft('')
+      try {
+        await active.steer(trimmed)
+      } catch {
+        // The run settled or stopped between the check and the write —
+        // the message queues like any busy-time send would have.
+        enqueue(trimmed, [])
       }
-      await send(trimmed)
     },
-    [send],
+    [enqueue, queue],
   )
 
   const removeQueued = useCallback(
@@ -478,7 +490,8 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
       attachImages,
       removeAttachment,
       send,
-      steer,
+      canSteer,
+      queue,
       queued,
       removeQueued,
       sendQueuedNow,
@@ -505,7 +518,8 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
       attachImages,
       removeAttachment,
       send,
-      steer,
+      canSteer,
+      queue,
       queued,
       removeQueued,
       sendQueuedNow,

@@ -60,7 +60,8 @@ const CHAT_MODES: ReadonlyArray<{ value: ChatMode; label: string }> = [
 ]
 
 /**
- * The composer: a textarea (Enter sends, Shift-Enter breaks, Esc stops a
+ * The composer: a textarea (Enter sends — or steers the reply already
+ * streaming; ⌘-Enter queues for after it; Shift-Enter breaks; Esc stops a
  * streaming turn), the session's model picker — every configured provider's
  * full model list — and a send button that turns into stop while a turn
  * streams. Pasted images queue as attachments and preview above the
@@ -84,7 +85,8 @@ export function ChatInput({ autoFocus = true }: ChatInputProps = {}): ReactEleme
     attachImages,
     removeAttachment,
     send,
-    steer,
+    canSteer,
+    queue,
     queued,
     removeQueued,
     sendQueuedNow,
@@ -125,14 +127,16 @@ export function ChatInput({ autoFocus = true }: ChatInputProps = {}): ReactEleme
 
   // The draft lives in the provider (it must survive the screen unmounting —
   // on mobile every tab switch does that), and a send that goes through
-  // clears it there. Sending while a turn streams queues the message — the
-  // provider parks it as a card above the composer until the turn settles.
+  // clears it there. Sending while a turn streams steers it when the engine
+  // can (the hint above the textarea says so); otherwise the provider parks
+  // the message as a card above the composer until the turn settles.
   const submit = () => {
     if (empty) {
       return
     }
     void send(draft)
   }
+  const steeringHint = streaming && canSteer && draft.trim() !== '' && attachments.length === 0
 
   const startNoteMention = (): void => {
     const textarea = textareaRef.current
@@ -155,6 +159,11 @@ export function ChatInput({ autoFocus = true }: ChatInputProps = {}): ReactEleme
     <div ref={composerRef} className="absolute inset-x-0 bottom-0 z-10 px-5 pb-5">
       <div className="mx-auto w-full max-w-3xl">
         <div className="rounded-[1.25rem] border border-border bg-popover shadow-md transition-colors duration-150 ease-swift focus-within:border-border-focus">
+          {steeringHint ? (
+            <p className="px-4 pt-3.5 text-xs text-text-muted">
+              Steering — Enter sends to the current reply · ⌘↩ queues it for after
+            </p>
+          ) : null}
           {queued.length > 0 ? (
             <div className="flex flex-col gap-1.5 px-4 pt-3.5">
               <p className="text-xs text-text-muted">
@@ -291,8 +300,8 @@ export function ChatInput({ autoFocus = true }: ChatInputProps = {}): ReactEleme
                   }
                   if (event.key === 'Enter' && !event.shiftKey && isModEvent(event)) {
                     event.preventDefault()
-                    if (draft.trim() !== '') {
-                      void steer(draft)
+                    if (!empty) {
+                      void queue(draft)
                     }
                     return
                   }

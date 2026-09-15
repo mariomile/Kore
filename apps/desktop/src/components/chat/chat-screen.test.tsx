@@ -719,7 +719,40 @@ describe('ChatScreen', () => {
     await expect.element(view.getByText('two', { exact: true })).toBeInTheDocument()
   })
 
-  it('parks a mid-stream message as a queued card, discarded on demand', async () => {
+  it('Enter mid-stream steers the reply: the hint says so, the message lands in the turn', async () => {
+    configureModel()
+    const steers: string[] = []
+    streamChat.mockImplementation((options) => {
+      options.steering?.onSteerReady(async (text) => {
+        steers.push(text)
+      })
+      return (async function* (): AsyncGenerator<ChatStreamEvent> {
+        yield { type: 'text-delta', text: 'Thinking…' }
+        // Never settles — the turn streams for the whole test.
+        await new Promise<never>(() => {})
+      })()
+    })
+    const view = await renderChat()
+
+    await userEvent.type(view.getByLabelText('Chat message'), 'first{Enter}')
+    await expect.element(view.getByText('Thinking…')).toBeInTheDocument()
+    await userEvent.type(view.getByLabelText('Chat message'), 'second')
+    // The composer promises what Enter will do before it is pressed.
+    await expect
+      .element(
+        view.getByText('Steering — Enter sends to the current reply · ⌘↩ queues it for after'),
+      )
+      .toBeInTheDocument()
+    await userEvent.keyboard('{Enter}')
+
+    // Delivered into the live turn — no card, no second run, composer clear.
+    await vi.waitFor(() => expect(steers).toEqual(['second']))
+    expect(streamChat).toHaveBeenCalledTimes(1)
+    expect(view.getByText(/Queued —/).query()).toBeNull()
+    await expect.element(view.getByLabelText('Chat message')).toHaveValue('')
+  })
+
+  it('⌘-Enter mid-stream parks the message as a queued card, discarded on demand', async () => {
     configureModel()
     streamChat.mockImplementation(() =>
       (async function* (): AsyncGenerator<ChatStreamEvent> {
@@ -731,7 +764,13 @@ describe('ChatScreen', () => {
     const view = await renderChat()
 
     await userEvent.type(view.getByLabelText('Chat message'), 'first{Enter}')
-    await userEvent.type(view.getByLabelText('Chat message'), 'second{Enter}')
+    await expect.element(view.getByText('Thinking…')).toBeInTheDocument()
+    await userEvent.type(view.getByLabelText('Chat message'), 'second')
+    await userEvent.keyboard(
+      /Mac|iPhone|iPad/.test(navigator.platform)
+        ? '{Meta>}{Enter}{/Meta}'
+        : '{Control>}{Enter}{/Control}',
+    )
 
     await expect
       .element(view.getByText('Queued — sends when the reply finishes'))

@@ -128,7 +128,12 @@ export {
   MAX_CONTEXT_TAGS,
   type GraphContextDeps,
 } from '../ai/chat/graph-context'
-export { streamChat, type ChatStreamEvent, type StreamChatOptions } from '../ai/chat/stream-chat'
+export {
+  streamChat,
+  type ChatSteering,
+  type ChatStreamEvent,
+  type StreamChatOptions,
+} from '../ai/chat/stream-chat'
 export { withAgentRunLock } from '../ai/agent-run-lock'
 export {
   acquireAgentRunLease,
@@ -262,6 +267,7 @@ export {
   CURSOR_CLI_DEFAULT_MODEL,
 } from '../ai/cursor-cli'
 export {
+  chatProviderCanSteer,
   checkCliAgentProvider,
   cliProviderSteerMode,
   cliProviderSupportsEdits,
@@ -287,6 +293,7 @@ export {
   isToolPending,
   NO_REPLY_NOTICE,
   settleNoteEdit,
+  STEER_INTERRUPTED,
   userMessage,
   type AssistantPart,
   type ChatAttachment,

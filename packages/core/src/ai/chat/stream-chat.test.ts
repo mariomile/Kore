@@ -348,6 +348,178 @@ describe('streamChatTurn', () => {
     expect(outbound).toContain('call-2')
   })
 
+  describe('steering', () => {
+    /**
+     * A leg that streams `text` and then holds the stream open until the
+     * call's abort signal fires — the shape a steer interrupts, and how a
+     * real provider fetch behaves: the request errors out when aborted.
+     */
+    function heldTextTurn(text: string): LanguageModelV3StreamResult {
+      return {
+        stream: new ReadableStream<LanguageModelV3StreamPart>({
+          start(controller) {
+            controller.enqueue({ type: 'stream-start', warnings: [] })
+            controller.enqueue({ type: 'text-start', id: 'text-1' })
+            controller.enqueue({ type: 'text-delta', id: 'text-1', delta: text })
+          },
+        }),
+      }
+    }
+
+    /** Like {@link sequence}, but each leg's stream tears down on abort. */
+    function abortableSequence(
+      results: LanguageModelV3StreamResult[],
+    ): (options: { abortSignal?: AbortSignal }) => Promise<LanguageModelV3StreamResult> {
+      const next = sequence(results)
+      return async ({ abortSignal }) => {
+        const result = await next()
+        return {
+          ...result,
+          stream: new ReadableStream<LanguageModelV3StreamPart>({
+            async start(controller) {
+              const reader = result.stream.getReader()
+              const onAbort = () => {
+                controller.error(new DOMException('aborted', 'AbortError'))
+                void reader.cancel()
+              }
+              abortSignal?.addEventListener('abort', onAbort, { once: true })
+              for (;;) {
+                const chunk = await reader.read()
+                if (chunk.done) {
+                  break
+                }
+                controller.enqueue(chunk.value)
+              }
+              abortSignal?.removeEventListener('abort', onAbort)
+              if (abortSignal?.aborted !== true) {
+                controller.close()
+              }
+            },
+          }),
+        }
+      }
+    }
+
+    const OPTIONS = {
+      messages: [{ role: 'user', content: 'plan a trip to the coast' }] as ModelMessage[],
+      today: '2026-06-11',
+      semanticSearchEnabled: true,
+      customSystemPrompt: '',
+      context: null,
+    }
+
+    it('keeps the partial reply, appends the steer, and continues the same turn', async () => {
+      const model = new MockLanguageModelV3({
+        doStream: abortableSequence([
+          heldTextTurn('The coast is lovely in'),
+          textTurn('Mountains, then.'),
+        ]),
+      })
+      let steer: ((text: string) => Promise<void>) | null = null
+      const events = streamChatTurn(model, {
+        ...OPTIONS,
+        steering: {
+          onSteerReady: (inject) => {
+            steer = inject
+          },
+        },
+      })
+
+      const seen: ChatStreamEvent[] = []
+      // Pull until the first leg's text is on screen, then steer.
+      const first = await events.next()
+      seen.push(first.value as ChatStreamEvent)
+      expect(seen[0]).toEqual({ type: 'text-delta', text: 'The coast is lovely in' })
+      if (steer === null) {
+        expect.unreachable('steering was never armed')
+      }
+      await (steer as (text: string) => Promise<void>)('actually, mountains')
+      for await (const event of events) {
+        seen.push(event)
+      }
+
+      // One turn: partial text → the steer, where the reply split → the
+      // continuation → a single terminal event.
+      expect(seen.map((event) => event.type)).toEqual([
+        'text-delta',
+        'steer',
+        'text-delta',
+        'complete',
+      ])
+      expect(seen[1]).toEqual({ type: 'steer', text: 'actually, mountains' })
+      expect(seen[2]).toEqual({ type: 'text-delta', text: 'Mountains, then.' })
+
+      // The second leg saw the whole story in order: the question, what was
+      // already said, then the steer.
+      expect(model.doStreamCalls).toHaveLength(2)
+      const secondPrompt = model.doStreamCalls[1]?.prompt ?? []
+      const conversation = secondPrompt
+        .filter((message) => message.role !== 'system')
+        .map((message) => `${message.role}:${JSON.stringify(message.content)}`)
+      expect(conversation).toHaveLength(3)
+      expect(conversation[0]).toMatch(/^user:.*plan a trip to the coast/)
+      expect(conversation[1]).toMatch(/^assistant:.*The coast is lovely in/)
+      expect(conversation[2]).toMatch(/^user:.*actually, mountains/)
+
+      // And the turn's history carries every leg with the steer between.
+      const complete = seen.at(-1)
+      if (complete?.type !== 'complete') {
+        expect.unreachable('expected a terminal complete event')
+      }
+      expect(complete.messages.map((message) => message.role)).toEqual([
+        'assistant',
+        'user',
+        'assistant',
+      ])
+      expect(JSON.stringify(complete.messages[0])).toContain('The coast is lovely in')
+      expect(complete.messages[1]).toEqual({ role: 'user', content: 'actually, mountains' })
+      expect(JSON.stringify(complete.messages[2])).toContain('Mountains, then.')
+    })
+
+    it('Stop during a steered leg ends the turn with everything so far', async () => {
+      const model = new MockLanguageModelV3({
+        doStream: abortableSequence([heldTextTurn('First leg'), heldTextTurn('Second leg')]),
+      })
+      const controller = new AbortController()
+      let steer: ((text: string) => Promise<void>) | null = null
+      const events = streamChatTurn(model, {
+        ...OPTIONS,
+        signal: controller.signal,
+        steering: {
+          onSteerReady: (inject) => {
+            steer = inject
+          },
+        },
+      })
+      const seen: ChatStreamEvent[] = []
+      seen.push((await events.next()).value as ChatStreamEvent)
+      await (steer as unknown as (text: string) => Promise<void>)('go on differently')
+      seen.push((await events.next()).value as ChatStreamEvent)
+      seen.push((await events.next()).value as ChatStreamEvent)
+      expect(seen.map((event) => event.type)).toEqual(['text-delta', 'steer', 'text-delta'])
+
+      controller.abort()
+      for await (const event of events) {
+        seen.push(event)
+      }
+      const last = seen.at(-1)
+      if (last?.type !== 'aborted') {
+        expect.unreachable('expected a terminal aborted event')
+      }
+      expect(last.messages.map((message) => message.role)).toEqual([
+        'assistant',
+        'user',
+        'assistant',
+      ])
+      expect(JSON.stringify(last.messages.at(-1))).toContain('Second leg')
+
+      // Once settled, a steer is refused so the caller can queue instead.
+      await expect(
+        (steer as unknown as (text: string) => Promise<void>)('too late'),
+      ).rejects.toThrow()
+    })
+  })
+
   it('disables tools on the final step so a tool-bound turn still answers', async () => {
     // Every gathering step calls a tool; the model only writes its answer
     // once tools are disabled on the last permitted step. Without that force,

@@ -40,6 +40,7 @@ export function MobileChatComposer(): ReactElement {
     attachImages,
     removeAttachment,
     send,
+    canSteer,
     stop,
   } = useChatSession()
   const [modelOpen, setModelOpen] = useState(false)
@@ -48,11 +49,14 @@ export function MobileChatComposer(): ReactElement {
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const streaming = status === 'streaming'
   const empty = draft.trim() === '' && attachments.length === 0
+  // While a reply streams, a typed message can steer it (text only — see
+  // the session's `send`); the button beside Stop says so.
+  const steering = streaming && canSteer && draft.trim() !== '' && attachments.length === 0
 
   useArrivalFocus({ arrivalSeq, arrivalFocusEditor, target: textareaRef })
 
   const submit = (): void => {
-    if (streaming || empty) {
+    if ((streaming && !steering) || empty) {
       return
     }
     void send(draft)
@@ -68,6 +72,11 @@ export function MobileChatComposer(): ReactElement {
       style={{ bottom: 'var(--mobile-tab-bar-height, 0px)' }}
     >
       <div className="rounded-2xl border border-border bg-popover shadow-md transition-colors duration-150 ease-swift focus-within:border-border-focus">
+        {steering ? (
+          <p className="px-3.5 pt-2.5 text-xs text-text-muted">
+            Steering — sent to the current reply
+          </p>
+        ) : null}
         {attachments.length > 0 ? (
           <AttachmentGroup className="flex-wrap gap-2 overflow-visible px-3 pt-3">
             {attachments.map((attachment) => (
@@ -145,9 +154,22 @@ export function MobileChatComposer(): ReactElement {
           </button>
           <div className="flex-1" />
           {streaming ? (
-            <Button size="icon" className="rounded-full" aria-label="Stop" onClick={stop}>
-              <Stop aria-hidden className="size-3 fill-current" />
-            </Button>
+            <>
+              {steering ? (
+                <Button size="icon" className="rounded-full" aria-label="Steer" onClick={submit}>
+                  <ArrowUp aria-hidden />
+                </Button>
+              ) : null}
+              <Button
+                size="icon"
+                variant={steering ? 'ghost' : 'default'}
+                className="rounded-full"
+                aria-label="Stop"
+                onClick={stop}
+              >
+                <Stop aria-hidden className="size-3 fill-current" />
+              </Button>
+            </>
           ) : (
             <Button
               size="icon"

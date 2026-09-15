@@ -21,6 +21,7 @@ import {
   resolveNoteMentions,
   saveChatMessage,
   scanChangedMemoryPaths,
+  chatProviderCanSteer,
   cliProviderSteerMode,
   cliProviderSupportsEdits,
   cliProviderSupportsMcp,
@@ -52,11 +53,79 @@ export interface ActiveSend {
   controller: AbortController
   session: number
   /**
-   * Delivers one more user message into the live turn (inject-capable
-   * engines only — set once the run is spawned). Rejects when the run no
-   * longer accepts input; the caller then queues instead.
+   * Delivers one more user message into the live turn. Present from the
+   * start on every steer-capable engine ({@link chatProviderCanSteer}): a
+   * steer that arrives before the engine is live waits for it, then rides.
+   * Rejects when the run no longer accepts input; the caller then queues
+   * instead.
    */
   steer?: (text: string) => Promise<void>
+}
+
+interface SteerRelay {
+  /**
+   * Deliver one steer. Resolves once the engine has taken it (or once
+   * {@link SteerRelay.unsent} handed it to the queue); rejects when the
+   * engine refused it — the caller then queues it.
+   */
+  steer: (text: string) => Promise<void>
+  /** Hook up the live engine; steers that waited ride now, in send order. */
+  arm: (inject: (text: string) => Promise<void>, afterInject?: (text: string) => void) => void
+  /**
+   * Steers still waiting for an engine that never armed, for the queue.
+   * Their callers are told the message rode — the queue now owns it.
+   */
+  unsent: () => string[]
+}
+
+/**
+ * Bridges the composer's steer to the engine's inject function, which only
+ * exists once the run is live: steers before that wait and are flushed on
+ * arming, one after the other so they land in send order; steers after go
+ * straight through. Whatever never rode (the run died before arming) is
+ * handed back at settle time.
+ */
+function createSteerRelay(): SteerRelay {
+  let deliver: ((text: string) => Promise<void>) | null = null
+  let waiting: { text: string; resolve: () => void; reject: (cause: unknown) => void }[] = []
+  return {
+    steer: (text) => {
+      const live = deliver
+      if (live !== null) {
+        return live(text)
+      }
+      return new Promise<void>((resolve, reject) => {
+        waiting.push({ text, resolve, reject })
+      })
+    },
+    arm: (inject, afterInject) => {
+      const live = async (text: string): Promise<void> => {
+        await inject(text)
+        afterInject?.(text)
+      }
+      deliver = live
+      const flush = waiting
+      waiting = []
+      void (async () => {
+        for (const entry of flush) {
+          try {
+            await live(entry.text)
+            entry.resolve()
+          } catch (cause) {
+            entry.reject(cause)
+          }
+        }
+      })()
+    },
+    unsent: () => {
+      const left = waiting
+      waiting = []
+      for (const entry of left) {
+        entry.resolve()
+      }
+      return left.map((entry) => entry.text)
+    },
+  }
 }
 
 /**
@@ -124,6 +193,8 @@ export interface ChatDeliverDeps {
   deliverRef: RefObject<((text: string, attached: ChatAttachment[]) => Promise<void>) | null>
   setTurns: Dispatch<SetStateAction<ChatTurn[]>>
   setQueue: (next: QueuedChatMessage[]) => void
+  /** Whether the turn being started takes steers (its engine, not the picker's). */
+  setLiveCanSteer: (canSteer: boolean) => void
   persistTurn: (conversation: ChatConversation, turn: ChatTurn, createdMs: number) => void
 }
 
@@ -154,6 +225,7 @@ export async function deliverChatTurn(
     deliverRef,
     setTurns,
     setQueue,
+    setLiveCanSteer,
     persistTurn,
   } = deps
   const config = activeModelRef.current
@@ -229,11 +301,15 @@ export async function deliverChatTurn(
   persistTurn(conversationMeta(), localTurn, turnCreatedMs)
 
   const controller = new AbortController()
-  const activeSend: NonNullable<typeof activeSendRef.current> = {
+  const steerRelay = createSteerRelay()
+  const canSteer = chatProviderCanSteer(config.provider)
+  const activeSend: ActiveSend = {
     controller,
     session: sessionRef.current,
+    ...(canSteer ? { steer: steerRelay.steer } : {}),
   }
   activeSendRef.current = activeSend
+  setLiveCanSteer(canSteer)
   lastSendSessionRef.current = activeSend.session
 
   // The activity ledger's baseline: before an edit-mode agent run,
@@ -366,18 +442,18 @@ export async function deliverChatTurn(
             signal: controller.signal,
             // Inject-capable engines expose mid-turn steering: the steer
             // lands in the live session AND in the transcript as its own
-            // part, right where the reply text splits around it.
+            // part, right where the reply text splits around it. (The CLI
+            // transports emit no `steer` event, so the part is added here.)
             steering:
               cliProviderSteerMode(config.provider) === 'inject'
                 ? {
                     onSteerReady: (inject) => {
-                      activeSend.steer = async (steerText: string) => {
-                        await inject(steerText)
+                      steerRelay.arm(inject, (steerText) => {
                         updateTurn((turn) => ({
                           ...turn,
                           parts: [...turn.parts, { kind: 'steer', text: steerText }],
                         }))
-                      }
+                      })
                     },
                   }
                 : undefined,
@@ -421,6 +497,10 @@ export async function deliverChatTurn(
             browsingAvailable: isNativeShell() && !isMobileSurface(),
           },
           signal: controller.signal,
+          // The engine cuts the leg in flight, keeps its partial output,
+          // and continues on the combined history; it yields the `steer`
+          // event itself, exactly where the reply split.
+          steering: { onSteerReady: (inject) => steerRelay.arm(inject) },
         })
       })()
       if (events === null) {
@@ -490,12 +570,26 @@ export async function deliverChatTurn(
   } finally {
     updateTurn((turn) => ({ ...turn, status: 'done' }))
     persistTurn(conversationMeta(), localTurn, turnCreatedMs)
+    // Steers the run never took (it died before arming) settle now, whoever
+    // owns the slot — their senders must not wait forever. They join the
+    // queue only below, while this is still the live conversation; a turn
+    // detached by New chat or a switch drops them, as New chat drops the
+    // queue itself.
+    const unsentSteers = steerRelay.unsent()
     // Only release the slot if it's still ours: a turn detached by New
     // chat must not, while winding down, unhook the controller a newer
     // turn has since registered — Stop and the unmount abort always have
     // to target the live stream.
     if (activeSendRef.current === activeSend) {
       activeSendRef.current = null
+      // An unsent steer is not lost: it joins the queue ahead of anything
+      // queued later — the user typed it first.
+      if (unsentSteers.length > 0 && sessionRef.current === activeSend.session) {
+        setQueue([
+          ...unsentSteers.map((text) => ({ id: crypto.randomUUID(), text, attachments: [] })),
+          ...queuedRef.current,
+        ])
+      }
       // Auto-drain the queue only when the turn settled naturally in
       // this conversation. A Stop (or New chat / a switch, which also
       // abort) means the user changed their mind — queued messages stay

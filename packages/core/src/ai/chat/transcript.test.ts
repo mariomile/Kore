@@ -5,6 +5,7 @@ import {
   buildHistory,
   NO_REPLY_NOTICE,
   settleNoteEdit,
+  STEER_INTERRUPTED,
   userMessage,
   type AssistantPart,
   type ChatAttachment,
@@ -23,6 +24,26 @@ describe('appendEvent', () => {
         { type: 'text-delta', text: 'world' },
       ]),
     ).toEqual([{ kind: 'text', text: 'Hello world' }])
+  })
+
+  it('places a steer where the reply split and settles a tool it cut short', () => {
+    const parts = fold([
+      { type: 'text-delta', text: 'Looking… ' },
+      { type: 'tool-call', call: { tool: 'search', toolCallId: 'tool-1', query: 'coast' } },
+      { type: 'steer', text: 'actually, mountains' },
+      { type: 'text-delta', text: 'Mountains, then.' },
+    ])
+    expect(parts).toEqual([
+      { kind: 'text', text: 'Looking… ' },
+      {
+        kind: 'tool',
+        call: { tool: 'search', toolCallId: 'tool-1', query: 'coast' },
+        result: null,
+        error: STEER_INTERRUPTED,
+      },
+      { kind: 'steer', text: 'actually, mountains' },
+      { kind: 'text', text: 'Mountains, then.' },
+    ])
   })
 
   it('keeps text around tool activity as separate parts', () => {

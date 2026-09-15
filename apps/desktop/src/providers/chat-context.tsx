@@ -60,25 +60,33 @@ export interface ChatContextValue {
   /** Drop one queued image. */
   removeAttachment: (id: string) => void
   /**
-   * Send one user message (text, queued images, or both) and stream the
-   * turn. While a turn is already streaming the message queues instead —
-   * see {@link ChatContextValue.queued}.
+   * Send one user message (text, queued images, or both). Nothing
+   * streaming: the message starts a turn. A turn streaming: the message
+   * *steers* it when the engine can ({@link ChatContextValue.canSteer}) —
+   * delivered into the live reply now, the partial output kept, and shown
+   * in the transcript where the reply split around it. Otherwise (a
+   * queue-only engine, an image attached, or the run refused it) the
+   * message queues — see {@link ChatContextValue.queued}.
    */
   send: (text: string) => Promise<void>
   /**
-   * Steer the live turn (⌘-Enter): on an inject-capable engine (Claude
-   * Code) the message is delivered into the running session and applied at
-   * the next turn boundary — context preserved, nothing cancelled — and
-   * shows in the transcript where the reply split around it. When the
-   * engine can't inject (or nothing is streaming), this degrades to
-   * {@link ChatContextValue.send}: the message queues or sends normally.
+   * Whether a message sent while the current model streams reaches the
+   * live reply (BYOK engines, Claude Code, Codex) rather than waiting for
+   * it to finish (Cursor CLI). Drives what the composer promises.
    */
-  steer: (text: string) => Promise<void>
+  canSteer: boolean
   /**
-   * Messages sent while a turn was streaming, in send order. Each delivers
-   * automatically when the streaming turn settles naturally; stopping the
-   * turn parks them instead — every card can then be sent or discarded by
-   * hand. Cleared by New chat and by opening a past conversation.
+   * Hold one user message for after the reply (⌘-Enter): the explicit
+   * alternative to steering. Nothing streaming: same as
+   * {@link ChatContextValue.send}.
+   */
+  queue: (text: string) => Promise<void>
+  /**
+   * Messages held for after the streaming turn, in send order. Each
+   * delivers automatically when the streaming turn settles naturally;
+   * stopping the turn parks them instead — every card can then be sent or
+   * discarded by hand. Cleared by New chat and by opening a past
+   * conversation.
    */
   queued: QueuedChatMessage[]
   /** Discard one queued message. */

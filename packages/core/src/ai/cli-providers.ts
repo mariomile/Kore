@@ -50,6 +50,18 @@ export function cliProviderSteerMode(id: CliAgentProviderId): 'inject' | 'queue'
   return id === 'cursor-cli' ? 'queue' : 'inject'
 }
 
+/**
+ * Whether a message sent while this provider's turn streams can steer the
+ * live reply, rather than only wait for it to finish. Every BYOK engine can
+ * (the chat engine restarts its generation on the combined history — see
+ * `streamChatTurn`); CLI engines can when they inject
+ * ({@link cliProviderSteerMode}). Hosts use this to decide what Enter does
+ * mid-turn and what the composer promises.
+ */
+export function chatProviderCanSteer(id: AiProviderId): boolean {
+  return !isCliAgentProvider(id) || cliProviderSteerMode(id) === 'inject'
+}
+
 /** The binary each provider's CLI check runs. */
 const CLI_AGENT_BINARY: Record<CliAgentProviderId, AgentCliBinary> = {
   'claude-cli': 'claude',

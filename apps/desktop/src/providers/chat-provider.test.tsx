@@ -554,7 +554,7 @@ describe('ChatProvider message queue', () => {
     return () => release()
   }
 
-  it('queues a message sent mid-stream and drains it when the turn settles', async () => {
+  it('holds a message queued mid-stream (⌘-Enter) and drains it when the turn settles', async () => {
     const release = gatedFirstTurn()
     const { act } = await renderProvider()
     await vi.waitFor(() => expect(core.listChatConversations).toHaveBeenCalled())
@@ -564,7 +564,7 @@ describe('ChatProvider message queue', () => {
       firstDone = session?.send('first question')
       await Promise.resolve()
     })
-    await act(() => session?.send('second question'))
+    await act(() => session?.queue('second question'))
 
     // Not dropped, not streamed — parked, with the composer cleared.
     expect(session?.queued.map((entry) => entry.text)).toEqual(['second question'])
@@ -597,7 +597,7 @@ describe('ChatProvider message queue', () => {
       firstDone = session?.send('first question')
       await Promise.resolve()
     })
-    await act(() => session?.send('second question'))
+    await act(() => session?.queue('second question'))
     await act(() => session?.stop())
     release()
     await act(async () => {
@@ -629,8 +629,8 @@ describe('ChatProvider message queue', () => {
       firstDone = session?.send('first question')
       await Promise.resolve()
     })
-    await act(() => session?.send('second question'))
-    await act(() => session?.send('third question'))
+    await act(() => session?.queue('second question'))
+    await act(() => session?.queue('third question'))
     expect(session?.queued).toHaveLength(2)
 
     const secondId = session?.queued[0]?.id ?? ''
@@ -693,12 +693,13 @@ describe('ChatProvider mid-turn steering', () => {
     return state
   }
 
-  it('injects into the live turn instead of queueing, and shows it in the transcript', async () => {
+  it('a send mid-turn injects into the live run instead of queueing, and shows in the transcript', async () => {
     settingsState.models = [CLAUDE]
     settingsState.defaultId = 'c1'
     const cli = scriptSteerableTurn()
     const { act } = await renderProvider()
     await vi.waitFor(() => expect(core.listChatConversations).toHaveBeenCalled())
+    expect(session?.canSteer).toBe(true)
 
     let sendDone: Promise<void> | undefined
     await act(async () => {
@@ -707,10 +708,10 @@ describe('ChatProvider mid-turn steering', () => {
     })
     await vi.waitFor(() => expect(core.streamCliAgentChat).toHaveBeenCalled())
 
-    await act(() => session?.steer('actually, do it differently'))
+    await act(() => session?.send('actually, do it differently'))
 
     // Delivered into the running process — not queued, no second run.
-    expect(cli.steers).toEqual(['actually, do it differently'])
+    await vi.waitFor(() => expect(cli.steers).toEqual(['actually, do it differently']))
     expect(session?.queued).toEqual([])
     expect(core.streamCliAgentChat).toHaveBeenCalledTimes(1)
     // And visible in the turn, where the reply splits around it.
@@ -724,6 +725,69 @@ describe('ChatProvider mid-turn steering', () => {
       await sendDone
     })
     expect(session?.turns.at(-1)?.status).toBe('done')
+  })
+
+  it('a steer on a BYOK turn rides the engine (which yields the steer event itself)', async () => {
+    const engine = { steers: [] as string[], release: () => {} }
+    core.streamChat.mockImplementation((options) => {
+      options.steering?.onSteerReady(async (text) => {
+        engine.steers.push(text)
+      })
+      return (async function* (): AsyncGenerator<ChatStreamEvent> {
+        yield { type: 'text-delta', text: 'Working…' }
+        await new Promise<void>((resolve) => {
+          engine.release = resolve
+        })
+        yield { type: 'complete', messages: [{ role: 'assistant', content: 'Done.' }] }
+      })()
+    })
+    const { act } = await renderProvider()
+    await vi.waitFor(() => expect(core.listChatConversations).toHaveBeenCalled())
+    expect(session?.canSteer).toBe(true)
+
+    let sendDone: Promise<void> | undefined
+    await act(async () => {
+      sendDone = session?.send('start the work')
+      await Promise.resolve()
+    })
+    await vi.waitFor(() => expect(core.streamChat).toHaveBeenCalled())
+    await act(() => session?.send('actually, mountains'))
+
+    await vi.waitFor(() => expect(engine.steers).toEqual(['actually, mountains']))
+    expect(session?.queued).toEqual([])
+    expect(core.streamChat).toHaveBeenCalledTimes(1)
+    // The BYOK engine emits the `steer` event at the split point — the
+    // provider adds no part of its own, so nothing shows twice.
+    expect(session?.turns.at(-1)?.parts.filter((part) => part.kind === 'steer')).toEqual([])
+
+    engine.release()
+    await act(async () => {
+      await sendDone
+    })
+  })
+
+  it('⌘-Enter holds the message for after the reply instead of steering', async () => {
+    settingsState.models = [CLAUDE]
+    settingsState.defaultId = 'c1'
+    const cli = scriptSteerableTurn()
+    const { act } = await renderProvider()
+    await vi.waitFor(() => expect(core.listChatConversations).toHaveBeenCalled())
+
+    let sendDone: Promise<void> | undefined
+    await act(async () => {
+      sendDone = session?.send('start the work')
+      await Promise.resolve()
+    })
+    await vi.waitFor(() => expect(core.streamCliAgentChat).toHaveBeenCalled())
+    await act(() => session?.queue('and then this'))
+
+    expect(cli.steers).toEqual([])
+    expect(session?.queued.map((entry) => entry.text)).toEqual(['and then this'])
+
+    cli.release()
+    await act(async () => {
+      await sendDone
+    })
   })
 
   it('falls back to the queue when the run refuses the steer', async () => {
@@ -742,7 +806,7 @@ describe('ChatProvider mid-turn steering', () => {
 
     // The run settled or stopped between the check and the write.
     cli.refuse = true
-    await act(() => session?.steer('too late for this one'))
+    await act(() => session?.send('too late for this one'))
 
     expect(cli.steers).toEqual([])
     expect(session?.queued.map((entry) => entry.text)).toEqual(['too late for this one'])

@@ -41,11 +41,13 @@ export function useApplyTagIcon(): (change: TagIconChange) => Promise<void> {
         throw new Error('No graph is open.')
       }
       const definition = await readTagDefinition(tag)
-      if (definition.exists) {
-        // Same channel `readTagDefinition` read from (live session first), so
-        // a `private: true` typed and not yet saved still blocks the write.
-        const { raw } = splitFrontmatter(await readNoteSource(definition.path))
-        if (parseFrontmatter(raw).data.private) {
+      // Same channel `readTagDefinition` read from (live session first), so a
+      // `private: true` typed and not yet saved still blocks the write. A
+      // missing definition reads as empty on that channel — that is the
+      // brand-new tag `saveTagType` creates, not a regular note to refuse.
+      const source = await readNoteSource(definition.path)
+      if (source.trim() !== '') {
+        if (parseFrontmatter(splitFrontmatter(source).raw).data.private) {
           throw new Error(PRIVATE_NOTE_EDIT_ERROR)
         }
         if (definition.needsConversion) {

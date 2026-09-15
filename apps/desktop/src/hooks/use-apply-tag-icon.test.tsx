@@ -1,14 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderHook } from 'vitest-browser-react'
-import { PRIVATE_NOTE_EDIT_ERROR, TAG_DEFINITION_UNMARKED_ERROR } from '@reflect/core'
+import {
+  PRIVATE_NOTE_EDIT_ERROR,
+  TAG_DEFINITION_UNMARKED_ERROR,
+  type TagProperty,
+} from '@reflect/core'
 
 const definition = vi.hoisted(() => ({
   path: 'tags/company.md',
   exists: true,
   needsConversion: false,
-  properties: [{ name: 'Website', key: 'website', type: 'url' as const }],
-  template: 'templates/company.md' as string | null,
-  icon: '🏢' as string | null,
+  properties: [] as TagProperty[],
+  template: null as string | null,
+  icon: null as string | null,
 }))
 const source = vi.hoisted(() => ({ text: '---\nlore: tag\nicon: 🏢\n---\n' }))
 const saveTagType = vi.hoisted(() => vi.fn(async () => {}))
@@ -29,6 +33,8 @@ beforeEach(() => {
   saveTagType.mockClear()
   definition.exists = true
   definition.needsConversion = false
+  definition.properties = [{ name: 'Website', key: 'website', type: 'url' }]
+  definition.template = 'templates/company.md'
   definition.icon = '🏢'
   source.text = '---\nlore: tag\nicon: 🏢\n---\n'
 })
@@ -44,6 +50,20 @@ describe('useApplyTagIcon', () => {
       'templates/company.md',
       'icon:buildings',
     )
+  })
+
+  it('creates the definition for a tag that has none yet', async () => {
+    // A missing file reads as an empty note on the session-or-disk channel,
+    // which `readTagDefinition` reports as an unmarked note: that is the
+    // brand-new tag, not a regular note to refuse.
+    source.text = ''
+    definition.needsConversion = true
+    definition.properties = []
+    definition.template = null
+    definition.icon = null
+    const { result } = await renderHook(() => useApplyTagIcon())
+    await result.current({ tag: 'decision', icon: '✅', previousIcon: null })
+    expect(saveTagType).toHaveBeenCalledWith('decision', [], 7, null, '✅')
   })
 
   it('refuses a stale, private, or unmarked definition without writing', async () => {

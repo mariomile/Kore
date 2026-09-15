@@ -32,6 +32,11 @@ practice. Both are covered by tests.
   unreadable notes are excluded. Private mentions contribute only a refusal, and are dropped from every
   tool result — the model sees a refusal, not the content. That protection cannot
   identify note content you manually paste into a message or the configured prompt.
+- **Writes:** in Edit, Full Access, or Auto mode the model can *propose* changes —
+  one frontmatter property, or one passage of a note's body as a diff. A proposal
+  is a card in the conversation; nothing is written until you accept it, and the
+  decision is kept with the chat history. Private notes refuse proposals too: the
+  refusal is checked against the file at that moment and carries none of its content.
 - **When:** only while you use chat (⌘J). No background calls.
 
 ## Audio memos (off until you add a key)

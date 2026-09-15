@@ -1,5 +1,51 @@
 # Kore working state
 
+## Reviewable patches in chat — 2026-09-15
+
+The vault-agent gesture the feature list put first: the BYOK chat proposes
+a note edit as a diff and the user accepts or rejects it from the keyboard.
+
+- [x] `edit_note` tool beside `set_note_property` (`packages/core/src/ai/chat/tools.ts`):
+  path + exact body passage (`oldText`, empty = append) + `newText`. Validates
+  against the live note — edits allowed, not private (live frontmatter, the
+  refusal carries no content), passage found exactly once, non-empty change —
+  and returns the hunk as a proposal. It never writes. `applyNoteEdit`
+  (`note-edit.ts`) is the pure helper the tool and the desktop accept path
+  share; frontmatter is out of reach (the model only ever saw the body).
+- [x] The proposal is an `editNote` tool result carrying the user's decision
+  (`pending` / `accepted` / `rejected`), persisted with the turn through the
+  existing `chat_messages.parts` JSON (zod-validated on load, no schema change).
+  The system prompt explains the propose-then-review contract only when edits
+  are allowed.
+- [x] `ChatNotePatchCard`: note title, line diff (the history dialog's
+  rendering), Accept / Reject. Accept re-validates and lands through
+  `commitNoteBodyTransform` (open note updates in place, unsaved edits intact;
+  stale passage, deleted note, or a note turned private → refusal, nothing
+  written; applies to one note chain, so two accepts keep both hunks). The
+  first pending card takes focus when its reply settles; Enter accepts,
+  Backspace rejects, focus then moves to the next pending card or the
+  composer. Decisions only once the turn is done; the card binds its recorder
+  (`bindNoteEditDecision`) before the write, so a conversation switch
+  mid-write still lands the decision in the right row.
+
+**Untouched by design:** CLI engines (Claude Code / Codex / Cursor) and their
+post-hoc `ChatChangesCard` ledger; the editor's selection AI menu; note
+creation from the tool; multi-note patches.
+
+**Validation:** core `note-edit` 6/6, `tools` (edit_note 4 new), `transcript`,
+`store` (round-trip with decision), `system-prompt` — node suites green;
+browser `chat-note-patch-card` 5/5, `use-apply-note-edit` 3/3 (serialized
+accepts, stale / deleted / private refusals), `chat-provider` (bound
+decisions recorded after New chat), `chat-tool-chip`, `chat-screen` on
+Chromium, the touched suites on WebKit; `pnpm check` exit 0; one rendered
+check of the focused card; four Bugbot rounds on PR #220 addressed. Not
+exercised: a live provider run that actually calls `edit_note` (the dev
+harness's demo model streams text only).
+
+**Next:** merge, bump, then in Kore Brain on Edit mode ask for a change to a
+daily note and accept it from the keyboard; watch that the open editor takes
+the patch without losing the caret.
+
 ## Weekly review template — 2026-09-15
 
 Settings → Agents → Automations offers **Add Weekly review**: a recommended
@@ -823,10 +869,15 @@ screen: Agents then Close lands on today.
 
 ## Session log
 
+- 2026-09-15 — Reviewable patches in chat: `edit_note` proposes a body hunk
+  the user reviews as a diff card and accepts (Enter) or rejects (Backspace);
+  nothing written until accept, decision persisted with the turn, private
+  notes refused live. Verified: core + browser suites on both engines,
+  `pnpm check`.
+
 - 2026-09-15 — Weekly review as an opt-in Settings → Agents template
   (never default-on). Same automations runner; customize in the existing
   dialog; enable/disable/edit after create. Markdown review note out.
-
 
 - 2026-09-14 — Split panes part 2: columns of stacked panes, tab drag and
   keyboard moves between panes, rail toggles once per window, autofocus only

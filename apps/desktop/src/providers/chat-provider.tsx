@@ -15,6 +15,7 @@ import {
   hasBridge,
   loadChatMessages,
   resolveChatModel,
+  settleNoteEdit as settleNoteEditParts,
   type AiProviderConfig,
   type ChatConversation,
   type ChatModelSelection,
@@ -31,6 +32,7 @@ import {
   ChatContext,
   type ChatContextValue,
   type ChatStatus,
+  type NoteEditDecisionRecorder,
   type QueuedChatMessage,
 } from '@/providers/chat-context'
 import {
@@ -39,6 +41,7 @@ import {
   type ActiveSend,
 } from '@/providers/chat-provider-deliver'
 import { useGraph } from '@/providers/graph-provider'
+import { conversationTitle } from '@/providers/chat-title'
 import { useSettings } from '@/providers/settings-provider'
 import { useChatConversationRestore } from '@/providers/use-chat-conversation-restore'
 
@@ -310,6 +313,56 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
     activeSendRef.current?.controller.abort()
   }, [])
 
+  // The latest persisted copy of every turn that took a note-edit decision,
+  // by id, so a decision recorded after the turn left the screen persists on
+  // top of every earlier one instead of the pre-switch snapshot.
+  const detachedTurnsRef = useRef(new Map<string, ChatTurn>())
+
+  const bindNoteEditDecision = useCallback(
+    (toolCallId: string): NoteEditDecisionRecorder | null => {
+      const bound = turnsRef.current.find((candidate) =>
+        candidate.parts.some((part) => part.kind === 'tool' && part.call.toolCallId === toolCallId),
+      )
+      // Only a settled turn takes a decision: the card holds its buttons
+      // while a turn streams, because the stream's settle-time save would
+      // overwrite a decision recorded into the parts underneath it.
+      if (bound === undefined || bound.status !== 'done') {
+        return null
+      }
+      const conversationId = conversationIdRef.current
+      const title = conversationTitle(turnsRef.current[0]?.userText ?? '')
+      return (decision) => {
+        const settle = (turn: ChatTurn): ChatTurn => ({
+          ...turn,
+          parts: settleNoteEditParts(turn.parts, toolCallId, decision),
+        })
+        // The on-screen copy updates functionally, so a turn still streaming
+        // alongside keeps every queued update; the ref advances in step so a
+        // second decision on the same turn persists both.
+        turnsRef.current = turnsRef.current.map((turn) =>
+          turn.id === bound.id ? settle(turn) : turn,
+        )
+        setTurns((current) => current.map((turn) => (turn.id === bound.id ? settle(turn) : turn)))
+        // Persist the freshest copy: the live one while the conversation is
+        // still on screen; otherwise the user switched away during the write,
+        // and the decision still belongs to that row — settled on top of any
+        // earlier off-screen decision on the same turn, never on the stale
+        // bound snapshot alone.
+        const live = turnsRef.current.find((turn) => turn.id === bound.id)
+        const detached = detachedTurnsRef.current
+        const persisted = live ?? settle(detached.get(bound.id) ?? bound)
+        // Always the copy just persisted, on screen or not, so an on-screen
+        // decision is never undone by a later off-screen one.
+        detached.set(bound.id, persisted)
+        // Re-saving an existing row rewrites its parts alone (the conversation
+        // upsert only bumps updated_ms), so the timestamps here never land.
+        const now = Date.now()
+        persistTurn({ id: conversationId, title, createdMs: now, updatedMs: now }, persisted, now)
+      }
+    },
+    [persistTurn],
+  )
+
   const newChat = useCallback((): string => {
     activeSendRef.current?.controller.abort()
     sessionRef.current += 1
@@ -430,6 +483,7 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
       removeQueued,
       sendQueuedNow,
       stop,
+      bindNoteEditDecision,
       newChat,
       instructions,
       setInstructions,
@@ -456,6 +510,7 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
       removeQueued,
       sendQueuedNow,
       stop,
+      bindNoteEditDecision,
       newChat,
       instructions,
       chatTools,

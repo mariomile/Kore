@@ -27,6 +27,13 @@ export interface ReadAssetSummary {
   error: string | null
 }
 
+/**
+ * Where a proposed note edit stands with the user. `pending` until they
+ * act; the decision persists with the turn so a restored conversation shows
+ * what happened instead of offering the patch again.
+ */
+export type NoteEditDecision = 'pending' | 'accepted' | 'rejected'
+
 /** One tool invocation, as the transcript sees it. */
 export type NoteToolCall =
   | { tool: 'search'; toolCallId: string; query: string }
@@ -36,6 +43,7 @@ export type NoteToolCall =
   | { tool: 'dailies'; toolCallId: string; start: string; end: string }
   | { tool: 'collection'; toolCallId: string; tag: string }
   | { tool: 'setProperty'; toolCallId: string; path: string; key: string }
+  | { tool: 'editNote'; toolCallId: string; path: string }
   | { tool: 'browse'; toolCallId: string; url: string }
   | { tool: 'readPage'; toolCallId: string }
 
@@ -66,6 +74,16 @@ export type NoteToolResult =
       key: string
       error: string | null
       value: SetNotePropertyValue | null
+    }
+  | {
+      tool: 'editNote'
+      toolCallId: string
+      path: string
+      /** The proposed hunk (both empty on a refusal). */
+      oldText: string
+      newText: string
+      error: string | null
+      decision: NoteEditDecision
     }
   | {
       tool: 'browse'
@@ -113,6 +131,8 @@ export function noteToolCall(part: TypedToolCall<NoteTools>): NoteToolCall | nul
         path: part.input.path,
         key: part.input.key,
       }
+    case 'edit_note':
+      return { tool: 'editNote', toolCallId: part.toolCallId, path: part.input.path }
     case 'open_web_page':
       return { tool: 'browse', toolCallId: part.toolCallId, url: part.input.url }
     case 'read_web_page':
@@ -212,6 +232,28 @@ export function noteToolResult(part: TypedToolResult<NoteTools>): NoteToolResult
         error: output.ok ? null : output.error,
         value: output.ok ? output.value : null,
       }
+    }
+    case 'edit_note': {
+      const output = part.output
+      return output.ok
+        ? {
+            tool: 'editNote',
+            toolCallId: part.toolCallId,
+            path: output.path,
+            oldText: output.oldText,
+            newText: output.newText,
+            error: null,
+            decision: 'pending',
+          }
+        : {
+            tool: 'editNote',
+            toolCallId: part.toolCallId,
+            path: output.path,
+            oldText: '',
+            newText: '',
+            error: output.error,
+            decision: 'pending',
+          }
     }
     case 'open_web_page': {
       const output = part.output

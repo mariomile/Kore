@@ -275,6 +275,61 @@ describe('ChatProvider persistence', () => {
     expect(saved.turn.parts.at(-1)).toEqual(notice)
   })
 
+  it('records a note-edit decision into the turn it was bound to, even after New chat', async () => {
+    const proposal = {
+      tool: 'editNote' as const,
+      toolCallId: 'e1',
+      path: 'notes/a.md',
+      oldText: '- one',
+      newText: '- one\n- two',
+      error: null,
+      decision: 'pending' as const,
+    }
+    const second = { ...proposal, toolCallId: 'e2', oldText: '- two', newText: '- two\n- three' }
+    scriptTurn([
+      { type: 'tool-call', call: { tool: 'editNote', toolCallId: 'e1', path: 'notes/a.md' } },
+      { type: 'tool-result', result: proposal },
+      { type: 'tool-call', call: { tool: 'editNote', toolCallId: 'e2', path: 'notes/a.md' } },
+      { type: 'tool-result', result: second },
+      { type: 'text-delta', text: 'Proposed.' },
+      { type: 'complete', messages: [{ role: 'assistant', content: 'Proposed.' }] },
+    ])
+    const { act } = await renderProvider()
+    await vi.waitFor(() => expect(core.listChatConversations).toHaveBeenCalled())
+    await act(() => session?.send('add two'))
+    const conversationId = session?.activeConversationId
+
+    // Both bound while the conversation is on screen (a card binds before
+    // its async write), recorded after the user moved on to a fresh chat.
+    const recordFirst = session?.bindNoteEditDecision('e1') ?? null
+    const recordSecond = session?.bindNoteEditDecision('e2') ?? null
+    expect(recordFirst).not.toBeNull()
+    expect(recordSecond).not.toBeNull()
+    await act(() => {
+      session?.newChat()
+    })
+    core.saveChatMessage.mockClear()
+    await act(() => {
+      recordFirst?.('accepted')
+      recordSecond?.('rejected')
+    })
+
+    // The second save carries both decisions: neither reverts to pending.
+    expect(core.saveChatMessage).toHaveBeenCalledTimes(2)
+    expect(core.saveChatMessage.mock.calls[1]![0]).toMatchObject({
+      conversation: { id: conversationId },
+      turn: {
+        userText: 'add two',
+        parts: [
+          { kind: 'tool', result: { ...proposal, decision: 'accepted' } },
+          { kind: 'tool', result: { ...second, decision: 'rejected' } },
+          { kind: 'text', text: 'Proposed.' },
+        ],
+      },
+    })
+    expect(session?.bindNoteEditDecision('e1')).toBeNull()
+  })
+
   it('saves later turns into the restored conversation', async () => {
     core.listChatConversations.mockResolvedValue([conversation()])
     scriptTurn([{ type: 'complete', messages: [{ role: 'assistant', content: 'More.' }] }])

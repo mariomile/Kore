@@ -171,6 +171,28 @@ describe('loadChatMessages', () => {
     expect(turns[0]?.parts).toEqual(parts)
   })
 
+  it('round-trips a proposed note edit with the user’s decision', async () => {
+    const parts = [
+      {
+        kind: 'tool',
+        call: { tool: 'editNote', toolCallId: 'tool-4', path: 'notes/a.md' },
+        result: {
+          tool: 'editNote',
+          toolCallId: 'tool-4',
+          path: 'notes/a.md',
+          oldText: '- one',
+          newText: '- one\n- two',
+          error: null,
+          decision: 'accepted',
+        },
+        error: null,
+      },
+    ]
+    invoke.mockResolvedValue([messageRow({ parts: JSON.stringify(parts) })])
+    const turns = await loadChatMessages('conv-1')
+    expect(turns[0]?.parts).toEqual(parts)
+  })
+
   it('drops a row whose parts fail validation', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
     invoke.mockResolvedValue([messageRow({ parts: JSON.stringify([{ kind: 'mystery' }]) })])

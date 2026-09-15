@@ -98,6 +98,36 @@ export function formatPropertyPreview(value: SetNotePropertyValue): string {
   return String(value)
 }
 
+/** `edit_note` refusal for a path no note lives at. */
+export const EDIT_NOTE_MISSING_ERROR = 'No note exists at this path.'
+
+/** Cap on either side of one proposed edit — a whole-note rewrite is not a patch. */
+export const MAX_EDIT_TEXT_CHARS = 20_000
+
+/**
+ * A proposed body edit (the hunk alone, so the model and the review card
+ * share one compact record), or a refusal that tells the model what to fix.
+ */
+export type EditNoteOutput =
+  | { ok: true; path: string; oldText: string; newText: string }
+  | { ok: false; path: string; error: string }
+
+export const editNoteInput = z.object({
+  path: z.string().min(1).describe('Graph-relative note path (from search or listing results)'),
+  oldText: z
+    .string()
+    .max(MAX_EDIT_TEXT_CHARS)
+    .describe(
+      'The exact current text to replace, copied verbatim from read_notes (whitespace ' +
+        'included) and unique in the note. Pass an empty string to append newText at ' +
+        'the end of the note instead.',
+    ),
+  newText: z
+    .string()
+    .max(MAX_EDIT_TEXT_CHARS)
+    .describe('The replacement markdown (or, when oldText is empty, the text to append).'),
+})
+
 export const setNotePropertyInput = z.object({
   path: z.string().min(1).describe('Graph-relative note path (from search or listing results)'),
   key: z.string().min(1).describe('The frontmatter property key to write (e.g. "status")'),

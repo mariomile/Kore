@@ -19,11 +19,15 @@ import {
   MAX_DAILY_NOTE_DAYS,
   UNTYPED_TAG_ERROR,
   EDITS_DISABLED_ERROR,
+  EDIT_NOTE_MISSING_ERROR,
+  EDIT_TEXT_NOT_FOUND_ERROR,
   RESERVED_PROPERTY_ERROR,
   PRIVATE_NOTE_EDIT_ERROR,
   MISSING_VALUE_ERROR,
   formatPropertyPreview,
+  noteToolCall,
   noteToolResult,
+  type EditNoteOutput,
   type SetNotePropertyOutput,
   type ListCollectionOutput,
   type ListDailyNotesOutput,
@@ -975,6 +979,124 @@ describe('set_note_property', () => {
       key: 'private',
       error: RESERVED_PROPERTY_ERROR,
       value: null,
+    })
+  })
+})
+
+describe('edit_note', () => {
+  /** Execute `edit_note` directly, asserting a non-streaming output. */
+  async function runEditNote(
+    tools: NoteTools,
+    input: { path: string; oldText: string; newText: string },
+  ): Promise<EditNoteOutput> {
+    const execute = tools.edit_note.execute
+    if (!execute) {
+      throw new Error('edit_note has no execute')
+    }
+    const output = await execute(input, CALL)
+    if (isAsyncIterable(output)) {
+      throw new Error('unexpected streaming tool output')
+    }
+    return output
+  }
+
+  it('refuses when edits are disabled, without reading the note', async () => {
+    let reads = 0
+    const tools = buildNoteTools({
+      readNoteFn: async () => {
+        reads += 1
+        return '# A\n'
+      },
+    })
+    expect(
+      await runEditNote(tools, { path: 'notes/a.md', oldText: '# A', newText: '# B' }),
+    ).toEqual({ ok: false, path: 'notes/a.md', error: EDITS_DISABLED_ERROR })
+    expect(reads).toBe(0)
+  })
+
+  it('refuses a private note on its live frontmatter, leaking nothing of it', async () => {
+    const tools = buildNoteTools({
+      allowEdits: true,
+      readNoteFn: async () => `---\nprivate: true\n---\n# Diary\n\n${PRIVATE_BODY}\n`,
+    })
+    const output = await runEditNote(tools, {
+      path: PRIVATE_PATH,
+      oldText: PRIVATE_BODY,
+      newText: 'x',
+    })
+    expect(output).toEqual({ ok: false, path: PRIVATE_PATH, error: PRIVATE_NOTE_EDIT_ERROR })
+  })
+
+  it('reports a missing note and a passage that does not match', async () => {
+    const missing = buildNoteTools({
+      allowEdits: true,
+      readNoteFn: async () => {
+        throw { kind: 'notFound', message: 'no such note' }
+      },
+    })
+    expect(
+      await runEditNote(missing, { path: 'notes/gone.md', oldText: 'a', newText: 'b' }),
+    ).toEqual({ ok: false, path: 'notes/gone.md', error: EDIT_NOTE_MISSING_ERROR })
+    const tools = buildNoteTools({ allowEdits: true, readNoteFn: async () => '# A\n' })
+    expect(
+      await runEditNote(tools, { path: 'notes/a.md', oldText: '# Z', newText: '# B' }),
+    ).toEqual({ ok: false, path: 'notes/a.md', error: EDIT_TEXT_NOT_FOUND_ERROR })
+  })
+
+  it('proposes the hunk without writing, and maps it onto a pending review card', async () => {
+    const tools = buildNoteTools({ allowEdits: true, readNoteFn: async () => '# A\n\n- one\n' })
+    const output = await runEditNote(tools, {
+      path: 'notes/a.md',
+      oldText: '- one',
+      newText: '- one\n- two',
+    })
+    expect(output).toEqual({
+      ok: true,
+      path: 'notes/a.md',
+      oldText: '- one',
+      newText: '- one\n- two',
+    })
+    expect(
+      noteToolCall({
+        type: 'tool-call',
+        toolCallId: 'c1',
+        toolName: 'edit_note',
+        input: { path: 'notes/a.md', oldText: '- one', newText: '- one\n- two' },
+      } as never),
+    ).toEqual({ tool: 'editNote', toolCallId: 'c1', path: 'notes/a.md' })
+    expect(
+      noteToolResult({
+        type: 'tool-result',
+        toolCallId: 'c1',
+        toolName: 'edit_note',
+        input: { path: 'notes/a.md', oldText: '- one', newText: '- one\n- two' },
+        output,
+      } as never),
+    ).toEqual({
+      tool: 'editNote',
+      toolCallId: 'c1',
+      path: 'notes/a.md',
+      oldText: '- one',
+      newText: '- one\n- two',
+      error: null,
+      decision: 'pending',
+    })
+    expect(
+      noteToolResult({
+        type: 'tool-result',
+        toolCallId: 'c2',
+        toolName: 'edit_note',
+        input: { path: PRIVATE_PATH, oldText: 'a', newText: 'b' },
+        output: { ok: false, path: PRIVATE_PATH, error: PRIVATE_NOTE_EDIT_ERROR },
+      } as never),
+    ).toEqual({
+      tool: 'editNote',
+      toolCallId: 'c2',
+      path: PRIVATE_PATH,
+      oldText: '',
+      newText: '',
+      error: PRIVATE_NOTE_EDIT_ERROR,
+      decision: 'pending',
     })
   })
 })

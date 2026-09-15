@@ -57,6 +57,7 @@ const toolCallSchema = z.discriminatedUnion('tool', [
     path: z.string(),
     key: z.string(),
   }),
+  z.object({ tool: z.literal('editNote'), toolCallId: z.string(), path: z.string() }),
 ])
 
 const toolResultSchema = z.discriminatedUnion('tool', [
@@ -118,6 +119,15 @@ const toolResultSchema = z.discriminatedUnion('tool', [
     key: z.string(),
     error: z.string().nullable(),
     value: z.union([z.string(), z.number(), z.boolean(), z.array(z.string()), z.null()]),
+  }),
+  z.object({
+    tool: z.literal('editNote'),
+    toolCallId: z.string(),
+    path: z.string(),
+    oldText: z.string(),
+    newText: z.string(),
+    error: z.string().nullable(),
+    decision: z.enum(['pending', 'accepted', 'rejected']),
   }),
 ])
 

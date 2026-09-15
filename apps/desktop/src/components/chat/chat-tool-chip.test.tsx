@@ -5,7 +5,8 @@ import { ChatToolChip } from './chat-tool-chip'
 
 const commitProperty = vi.hoisted(() => vi.fn())
 
-vi.mock('@/lib/tags/use-commit-note-property', () => ({
+vi.mock('@/lib/tags/use-commit-note-property', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/tags/use-commit-note-property')>()),
   useCommitNoteProperty: () => commitProperty,
 }))
 vi.mock('@/hooks/use-note-link-navigation', () => ({

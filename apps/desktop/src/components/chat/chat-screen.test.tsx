@@ -355,10 +355,15 @@ describe('ChatScreen', () => {
     ])
     const view = await renderChat()
 
-    await userEvent.type(view.getByLabelText('Chat message'), 'give #company a building icon{Enter}')
+    await userEvent.type(
+      view.getByLabelText('Chat message'),
+      'give #company a building icon{Enter}',
+    )
 
     await expect.element(view.getByText(/Listed the tags · 7 tags/)).toBeInTheDocument()
-    await expect.element(view.getByText(/Looked up the app’s icons · 217 icons/)).toBeInTheDocument()
+    await expect
+      .element(view.getByText(/Looked up the app’s icons · 217 icons/))
+      .toBeInTheDocument()
     const card = view.getByRole('group', { name: 'Proposed an icon for Company' })
     await expect.element(card).toBeVisible()
     await expect.element(card.getByText('buildings')).toBeVisible()

@@ -1,5 +1,16 @@
 # Kore working state
 
+## Tag icon on open tabs, 217 symbol icons — 2026-09-15
+
+`t3code/tag-icons-open-and-more`: `OpenTabIcon` shows the tag's own icon for
+a tag page tab (Open shelf, strip pinned pill, tab list menu). Symbol icons
+now come from their own manifest (`TAG_SYMBOL_ICONS` in
+`scripts/icon-manifest.mjs`, 217 Solar linear glyphs) generated into
+`src/lib/tags/tag-symbol-icons.gen.tsx` by `pnpm --filter @reflect/desktop
+icons`; the picker gained a search box and a scrolling grid. Verified:
+`pnpm check` exit 0, sidebar/strip/dialog suites green on Chromium and
+WebKit, rocket icon picked and seen on the Open row in the dev bridge.
+
 ## Supertag names and symbol icons — 2026-09-15
 
 Follow-up on `t3code/supertag-display-name-icons`: chrome names a supertag

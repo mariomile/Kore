@@ -418,7 +418,7 @@ describe('TagConfigDialog', () => {
     await view.getByRole('button', { name: 'Tag icon' }).click()
     await view
       .getByRole('group', { name: 'Symbol icons' })
-      .getByRole('button', { name: 'folder' })
+      .getByRole('button', { name: 'folder', exact: true })
       .click()
     await view.getByRole('button', { name: 'Save' }).click()
 

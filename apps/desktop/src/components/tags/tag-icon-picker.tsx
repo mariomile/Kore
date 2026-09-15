@@ -83,12 +83,19 @@ function firstGlyph(text: string): string | null {
 export function TagIconPicker({ value, onChange }: TagIconPickerProps): ReactElement {
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState('')
+  const [query, setQuery] = useState('')
 
   const pick = (icon: string | null): void => {
     onChange(icon)
     setDraft('')
+    setQuery('')
     setOpen(false)
   }
+
+  const needle = query.trim().toLowerCase()
+  const symbols = Object.entries(TAG_SYMBOL_ICONS).filter(
+    ([name]) => needle === '' || name.includes(needle),
+  )
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -102,15 +109,26 @@ export function TagIconPicker({ value, onChange }: TagIconPickerProps): ReactEle
       >
         <TagIcon icon={value ?? undefined} className="size-4" emojiClassName="text-base" />
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-64 gap-2">
-        <div role="group" aria-label="Symbol icons" className="grid grid-cols-8 gap-0.5">
-          {Object.entries(TAG_SYMBOL_ICONS).map(([name, Glyph]) => {
+      <PopoverContent align="start" className="w-72 gap-2">
+        <Input
+          aria-label="Search icons"
+          placeholder="Search icons"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+        />
+        <div
+          role="group"
+          aria-label="Symbol icons"
+          className="grid max-h-40 grid-cols-9 gap-0.5 overflow-y-auto"
+        >
+          {symbols.map(([name, Glyph]) => {
             const stored = symbolIconValue(name)
             return (
               <button
                 key={name}
                 type="button"
                 aria-label={name}
+                title={name}
                 aria-pressed={stored === value}
                 onClick={() => pick(stored)}
                 className={cn(
@@ -123,7 +141,10 @@ export function TagIconPicker({ value, onChange }: TagIconPickerProps): ReactEle
             )
           })}
         </div>
-        <div role="group" aria-label="Suggested emoji" className="grid grid-cols-8 gap-0.5">
+        {symbols.length === 0 ? (
+          <p className="px-1 text-xs text-text-muted">No icon matches.</p>
+        ) : null}
+        <div role="group" aria-label="Suggested emoji" className="grid grid-cols-9 gap-0.5">
           {SUGGESTED_ICONS.map((icon) => (
             <button
               key={icon}

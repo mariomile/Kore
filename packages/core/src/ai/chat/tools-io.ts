@@ -1,6 +1,12 @@
 import { z } from 'zod'
 import type { TagProperty, TagSymbolIconEntry } from '../../tags'
-import type { CloudCollectionRow, CloudNoteListing, CloudSafe, CloudSearchHit } from '../checkers'
+import type {
+  CloudCollectionRow,
+  CloudNoteListing,
+  CloudSafe,
+  CloudSearchHit,
+  CloudTagListing,
+} from '../checkers'
 
 /**
  * The note tools' wire contract: input schemas, output shapes, and the
@@ -98,22 +104,9 @@ export function formatPropertyPreview(value: SetNotePropertyValue): string {
   return String(value)
 }
 
-/**
- * One tag as the model sees the graph's tag set: display casing, how many
- * (non-daily) notes carry it, the icon its definition stores (emoji or
- * `icon:<name>`), and how many schema properties its collection declares.
- * Names and counts only — never note content — so private notes count
- * like any other, exactly as the sidebar counts them.
- */
-export interface TagListing {
-  tag: string
-  notes: number
-  icon: string | null
-  properties: number
-}
-
 export interface ListTagsOutput {
-  tags: TagListing[]
+  /** Every tag over non-private notes, gated like every other listing. */
+  tags: CloudSafe<CloudTagListing>[]
 }
 
 export interface ListTagIconsOutput {

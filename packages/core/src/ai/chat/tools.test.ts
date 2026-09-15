@@ -1123,20 +1123,33 @@ describe('tag tools', () => {
 
   const DEFINITION = '---\nlore: tag\nicon: icon:folder\nproperties: []\n---\n# Company\n'
 
-  it('lists every tag with its icon and schema size, typed-but-empty tags included', async () => {
+  it('lists tags over public notes only, re-checking each definition live', async () => {
+    const listOptions: unknown[] = []
     const tools = buildNoteTools({
-      listNoteTagsFn: async () => [
-        { tag: 'Company', count: 3 },
-        { tag: 'decision', count: 1 },
-      ],
-      listTagTypesFn: async () => [
-        {
-          tagKey: 'company',
-          notePath: 'tags/company.md',
-          type: { properties: [{ name: 'Website', key: 'website', type: 'url' }], icon: '🏢' },
-        },
-        { tagKey: 'meeting', notePath: 'tags/meeting.md', type: { properties: [] } },
-      ],
+      listNoteTagsFn: async (options) => {
+        listOptions.push(options)
+        return [
+          { tag: 'Company', count: 3 },
+          { tag: 'decision', count: 1 },
+        ]
+      },
+      listTagTypesFn: async (options) => {
+        listOptions.push(options)
+        return [
+          {
+            tagKey: 'company',
+            notePath: 'tags/company.md',
+            type: { properties: [{ name: 'Website', key: 'website', type: 'url' }], icon: '🏢' },
+          },
+          { tagKey: 'meeting', notePath: 'tags/meeting.md', type: { properties: [], icon: '📅' } },
+        ]
+      },
+      // The meeting definition turned private after the index ran: its icon
+      // (that note's content) must not ship, while the tag itself may.
+      readNoteFn: async (path) =>
+        path === 'tags/meeting.md'
+          ? '---\nlore: tag\nprivate: true\n---\n'
+          : '---\nlore: tag\n---\n',
     })
     const execute = tools.list_tags.execute
     if (!execute) {
@@ -1149,6 +1162,8 @@ describe('tag tools', () => {
         { tag: 'meeting', notes: 0, icon: null, properties: 0 },
       ],
     })
+    // Both index reads asked SQL to drop private rows before anything reached here.
+    expect(listOptions).toEqual([{ excludePrivate: true }, { excludePrivate: true }])
   })
 
   it('exposes the icon catalog, which is what set_tag_icon validates against', async () => {

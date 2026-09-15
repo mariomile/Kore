@@ -1,7 +1,7 @@
 import { tool } from 'ai'
 import { isAppError } from '../../errors'
-import type { TagTypeEntry } from '../../indexing/collections'
-import type { NoteTagFacet } from '../../indexing/note-list'
+import type { ListTagTypesOptions, TagTypeEntry } from '../../indexing/collections'
+import type { ListNoteTagsOptions, NoteTagFacet } from '../../indexing/note-list'
 import { parseFrontmatter, splitFrontmatter } from '../../markdown/frontmatter'
 import { isTagName } from '../../markdown/extract'
 import { foldTag } from '../../markdown/keys'
@@ -11,6 +11,7 @@ import {
   resolveTagIconInput,
   tagDefinitionPath,
 } from '../../tags'
+import { cloudSafeTagListings, type TagListingCandidate } from '../checkers'
 import {
   EDITS_DISABLED_ERROR,
   INVALID_COLLECTION_TAG_ERROR,
@@ -23,7 +24,6 @@ import {
   type ListTagIconsOutput,
   type ListTagsOutput,
   type SetTagIconOutput,
-  type TagListing,
 } from './tools-io'
 import type { NoteTools } from './tools'
 
@@ -39,8 +39,10 @@ import type { NoteTools } from './tools'
 /** Injectable effects for the tag tools (a test seam, like {@link NoteToolDeps}). */
 export interface TagToolDeps {
   readNoteFn: (path: string) => Promise<string>
-  listNoteTagsFn: () => Promise<NoteTagFacet[]>
-  listTagTypesFn: () => Promise<TagTypeEntry[]>
+  listNoteTagsFn: (options: ListNoteTagsOptions) => Promise<NoteTagFacet[]>
+  listTagTypesFn: (options: ListTagTypesOptions) => Promise<TagTypeEntry[]>
+  /** The live privacy probe every outbound listing re-checks with (fail closed). */
+  isPrivateLive: (path: string) => Promise<boolean>
   allowEdits: boolean
 }
 
@@ -54,11 +56,21 @@ export function buildTagTools(deps: TagToolDeps): TagTools {
         'List every tag in the graph with how many notes carry it, the icon its ' +
         'definition stores (an emoji, or icon:<name> from list_tag_icons; null when ' +
         'none) and how many collection properties it declares. Call it before ' +
-        'changing a tag’s look or configuration, and to answer “which tags do I have”.',
+        'changing a tag’s look or configuration, and to answer “which tags do I have”. ' +
+        'Private notes are not counted.',
       inputSchema: listTagsInput,
       execute: async (): Promise<ListTagsOutput> => {
-        const [facets, types] = await Promise.all([deps.listNoteTagsFn(), deps.listTagTypesFn()])
-        return { tags: mergeTagListings(facets, types) }
+        // Private notes drop in SQL — a tag only they carry never reaches
+        // this layer, and no count reveals one — and a private definition's
+        // icon and schema drop with it; the gate then re-checks each
+        // remaining definition live, like every listing tool.
+        const [facets, types] = await Promise.all([
+          deps.listNoteTagsFn({ excludePrivate: true }),
+          deps.listTagTypesFn({ excludePrivate: true }),
+        ])
+        return {
+          tags: await cloudSafeTagListings(mergeTagListings(facets, types), deps.isPrivateLive),
+        }
       },
     }),
 
@@ -118,17 +130,18 @@ export function buildTagTools(deps: TagToolDeps): TagTools {
 export function mergeTagListings(
   facets: readonly NoteTagFacet[],
   types: readonly TagTypeEntry[],
-): TagListing[] {
-  const typeByKey = new Map(types.map((entry) => [entry.tagKey, entry.type]))
-  const listings = new Map<string, TagListing>()
+): TagListingCandidate[] {
+  const typeByKey = new Map(types.map((entry) => [entry.tagKey, entry]))
+  const listings = new Map<string, TagListingCandidate>()
   for (const facet of facets) {
     const key = foldTag(facet.tag)
-    const type = typeByKey.get(key)
+    const entry = typeByKey.get(key)
     listings.set(key, {
       tag: facet.tag,
       notes: facet.count,
-      icon: type?.icon ?? null,
-      properties: type?.properties.length ?? 0,
+      icon: entry?.type.icon ?? null,
+      properties: entry?.type.properties.length ?? 0,
+      definitionPath: entry?.notePath ?? null,
     })
   }
   for (const entry of types) {
@@ -138,6 +151,7 @@ export function mergeTagListings(
         notes: 0,
         icon: entry.type.icon ?? null,
         properties: entry.type.properties.length,
+        definitionPath: entry.notePath,
       })
     }
   }

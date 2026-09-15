@@ -197,13 +197,31 @@ function decodeTagTypeRows(
   return entries
 }
 
+export interface ListTagTypesOptions {
+  /**
+   * Drop types whose definition note is `private: true` (or is not in the
+   * `notes` index at all — fail closed). Outbound surfaces pass this: a
+   * private definition's icon and schema are that note's content.
+   */
+  excludePrivate?: boolean
+}
+
 /** Every typed tag, alphabetical by key. Mangled schema columns are skipped. */
-export async function listTagTypes(): Promise<TagTypeEntry[]> {
-  const rows = await db
-    .selectFrom('tagTypes')
-    .select(['tagKey', 'notePath', 'schemaJson'])
-    .orderBy('tagKey')
-    .execute()
+export async function listTagTypes(options: ListTagTypesOptions = {}): Promise<TagTypeEntry[]> {
+  const rows =
+    options.excludePrivate === true
+      ? await db
+          .selectFrom('tagTypes')
+          .innerJoin('notes', 'notes.path', 'tagTypes.notePath')
+          .where('notes.isPrivate', '=', 0)
+          .select(['tagTypes.tagKey', 'tagTypes.notePath', 'tagTypes.schemaJson'])
+          .orderBy('tagTypes.tagKey')
+          .execute()
+      : await db
+          .selectFrom('tagTypes')
+          .select(['tagKey', 'notePath', 'schemaJson'])
+          .orderBy('tagKey')
+          .execute()
   return decodeTagTypeRows(rows)
 }
 

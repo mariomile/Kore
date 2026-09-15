@@ -12,6 +12,7 @@ import {
   type CollectionEntry,
   type CollectionSort,
   type ListCollectionOptions,
+  type ListTagTypesOptions,
   type TagTypeEntry,
 } from '../../indexing/collections'
 import { attachRollups } from '../../indexing/rollups'
@@ -19,6 +20,7 @@ import { listDailyNotes, type DailyNoteRow, type DailyNotesRange } from '../../i
 import {
   listNoteTags,
   listRecentNotes,
+  type ListNoteTagsOptions,
   type NoteTagFacet,
   type RecentNoteRow,
   type RecentNotesOptions,
@@ -109,9 +111,9 @@ export interface NoteToolDeps {
   assetReferencingNotePathsFn?: (assetPath: string) => Promise<string[]>
   getTagTypeFn?: (tag: string) => Promise<TagType | null>
   /** Every tag carried by a note, with counts (list_tags). */
-  listNoteTagsFn?: () => Promise<NoteTagFacet[]>
+  listNoteTagsFn?: (options: ListNoteTagsOptions) => Promise<NoteTagFacet[]>
   /** Every typed tag with its schema (list_tags). */
-  listTagTypesFn?: () => Promise<TagTypeEntry[]>
+  listTagTypesFn?: (options: ListTagTypesOptions) => Promise<TagTypeEntry[]>
   listCollectionFn?: (
     tag: string,
     sorts: readonly CollectionSort[],
@@ -209,6 +211,7 @@ export function buildNoteTools(options: BuildNoteToolsOptions = {}): NoteTools {
     readNoteFn,
     listNoteTagsFn: options.listNoteTagsFn ?? listNoteTags,
     listTagTypesFn: options.listTagTypesFn ?? listTagTypes,
+    isPrivateLive,
     allowEdits: options.allowEdits === true,
   })
 

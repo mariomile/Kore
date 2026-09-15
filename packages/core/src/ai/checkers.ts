@@ -185,6 +185,54 @@ export async function cloudSafeCollectionRows(
   }))
 }
 
+/** One tag of the graph as an external service may see it. */
+export interface CloudTagListing {
+  tag: string
+  /** Non-private, non-daily notes carrying the tag. */
+  notes: number
+  /** The definition's stored icon (emoji or `icon:<name>`), or `null`. */
+  icon: string | null
+  /** How many schema properties the definition declares. */
+  properties: number
+}
+
+/**
+ * A tag listing before the gate: the facet over non-private notes, plus
+ * the definition note the icon and schema were read from (`null` for an
+ * untyped tag), so the gate can re-check that note live.
+ */
+export interface TagListingCandidate extends CloudTagListing {
+  definitionPath: string | null
+}
+
+/**
+ * Gate the tag list for an outbound payload. The counts are aggregates like
+ * {@link cloudSafeGraphContext}'s facets — privacy rests on the query having
+ * counted `is_private = 0` notes only, and the same index-lag window is
+ * accepted. The icon and schema size are a definition note's *content*, so
+ * they ride the live probe every listing gets: a definition that turned
+ * private since the index ran (or cannot be read — fail closed) has its
+ * icon and schema stripped, while the tag itself stays listed on the
+ * strength of the public notes that carry it.
+ */
+export async function cloudSafeTagListings(
+  entries: readonly TagListingCandidate[],
+  isPrivateLive: (path: string) => Promise<boolean>,
+): Promise<CloudSafe<CloudTagListing>[]> {
+  return await Promise.all(
+    entries.map(async (entry) => {
+      const definitionPrivate =
+        entry.definitionPath !== null && (await isPrivateLive(entry.definitionPath))
+      return mint({
+        tag: entry.tag,
+        notes: entry.notes,
+        icon: definitionPrivate ? null : entry.icon,
+        properties: definitionPrivate ? 0 : entry.properties,
+      })
+    }),
+  )
+}
+
 /** The graph-level prompt context as an external service may see it. */
 export interface CloudGraphContext {
   /** The graph's display name (its root folder name). */

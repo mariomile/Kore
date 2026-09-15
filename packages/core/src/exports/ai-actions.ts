@@ -51,6 +51,7 @@ export {
   cloudSafeNoteListings,
   cloudSafeSearchHits,
   cloudSafeSelection,
+  cloudSafeTagListings,
   isPrivateNoteError,
   PrivateNoteError,
   type CloudAssetDescription,
@@ -60,6 +61,8 @@ export {
   type CloudSafe,
   type CloudSearchHit,
   type CloudSendable,
+  type CloudTagListing,
+  type TagListingCandidate,
 } from '../ai/checkers'
 export {
   applyNoteEdit,

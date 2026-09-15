@@ -15,8 +15,6 @@ supersedes the earlier proposal for collection-owned schemas.
   Empty collections hide unavailable grouping/column controls and use plain copy.
 - [x] Independent review findings resolved: preserve live editor selection,
   and do not report durable creation as failed when indexing lags.
-- [x] Bugbot follow-up: a changed editor closes its completed creation form
-  and reports where to find the saved collection; retry reuses a saved definition.
 
 **Validation:** 48 targeted tests across creation, persistence, slash items,
 embedded collections, collection table, and existing tag flows; `pnpm check`

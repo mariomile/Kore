@@ -155,7 +155,6 @@ export function NoteHistoryDialog({
                       }}
                       className={cn(
                         'flex w-full flex-col rounded-md px-2 py-1.5 text-left transition-colors duration-100',
-                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
                         version.commit === selectedCommit
                           ? 'bg-surface-hover text-text'
                           : 'text-text-secondary hover:bg-surface-hover/60',
@@ -184,7 +183,6 @@ export function NoteHistoryDialog({
                     aria-pressed={view === candidate}
                     className={cn(
                       'h-6 rounded-md px-2 text-xs transition-colors duration-100',
-                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
                       view === candidate
                         ? 'bg-surface text-text shadow-sm'
                         : 'text-text-secondary hover:text-text',

@@ -279,7 +279,7 @@ export function BrowserPane({ className }: BrowserPaneProps): ReactElement {
             // Abandoned edits snap back to the page's real URL.
             setAddress(browserSessionUrl() ?? home)
           }}
-          className="h-7 min-w-0 flex-1 rounded-md border border-border bg-input-bg px-2.5 text-xs text-text placeholder:text-text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+          className="h-7 min-w-0 flex-1 rounded-md border border-border bg-input-bg px-2.5 text-xs text-text transition-colors placeholder:text-text-muted focus-visible:border-border-focus"
           placeholder="Search or enter address"
         />
         <button
@@ -313,4 +313,4 @@ export function BrowserPane({ className }: BrowserPaneProps): ReactElement {
 }
 
 const toolbarButtonClass =
-  'flex size-6 shrink-0 items-center justify-center rounded-md text-text-secondary transition-[color,background-color,transform] duration-150 ease-swift hover:bg-surface-hover hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring active:scale-[0.97]'
+  'flex size-6 shrink-0 items-center justify-center rounded-md text-text-secondary transition-[color,background-color,transform] duration-150 ease-swift hover:bg-surface-hover hover:text-text active:scale-[0.97]'

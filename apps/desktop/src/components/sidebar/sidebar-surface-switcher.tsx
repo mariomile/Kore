@@ -62,7 +62,7 @@ export function SidebarSurfaceSwitcher({
                     // narrow rail; collapsed pills keep their icon footprint.
                     active ? 'min-w-0' : 'flex-none',
                     'transition-all duration-200 ease-swift outline-none select-none',
-                    'focus-visible:ring-3 focus-visible:ring-ring/50 active:scale-[0.97]',
+                    'active:scale-[0.97]',
                     active
                       ? 'bg-surface-active text-text'
                       : 'text-text-muted hover:bg-surface-hover hover:text-text-secondary dark:hover:text-text',

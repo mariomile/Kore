@@ -37,7 +37,6 @@ export function tabCloseClass(active: boolean): string {
   return cn(
     'flex size-4 shrink-0 items-center justify-center rounded text-text-muted',
     'transition-[color,background-color,opacity] duration-150 ease-swift hover:bg-surface-active hover:text-text',
-    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
     active ? '' : 'opacity-0 focus-visible:opacity-100 group-hover:opacity-100',
   )
 }

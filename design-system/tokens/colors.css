@@ -88,7 +88,14 @@
   --accent-soft: var(--indigo-100); /* secondary button bg         */
   --accent-soft-text: var(--indigo-700);
 
+  /* Keyboard focus on controls (buttons, links, rows): the 2px outline. */
   --focus-ring: var(--indigo-500);
+  /* Focus on text entry (inputs, textareas, the chat composer): the field's
+     border steps up to this and nothing else lights — no accent, no ring.
+     Derived from `--text` so every theme and accent gets a neutral of its
+     own ink (warm on paper/ink, grey elsewhere) from this one declaration;
+     the cascade resolves `--text` on the root, where the theme scopes live. */
+  --border-focus: color-mix(in srgb, var(--text) 40%, transparent);
   --destructive: var(--red-500);
 
   --radius: 0.5rem; /* 8px — the house radius      */

@@ -33,7 +33,7 @@ export function ChatNoteCard({ path }: ChatNoteCardProps): ReactElement {
       type="button"
       aria-label={`Open note ${title}`}
       onClick={open}
-      className="group/note-card flex w-fit max-w-full items-center gap-2.5 rounded-lg border border-border bg-surface-sunken px-3 py-2 text-left transition-colors duration-100 hover:bg-surface-hover focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:outline-none"
+      className="group/note-card flex w-fit max-w-full items-center gap-2.5 rounded-lg border border-border bg-surface-sunken px-3 py-2 text-left transition-colors duration-100 hover:bg-surface-hover"
     >
       <Note aria-hidden className="size-4 shrink-0 text-text-muted" />
       <span className="min-w-0">

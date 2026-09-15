@@ -297,7 +297,7 @@ export function AppearanceSection(): ReactElement {
                 title={ACCENT_LABELS[accent]}
                 className={cn(
                   'flex size-8 cursor-pointer items-center justify-center rounded-full border transition-colors duration-100',
-                  'has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-focus-ring',
+                  'has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus-ring has-[:focus-visible]:outline-offset-2',
                   selected ? 'border-text' : 'border-transparent hover:border-border-strong',
                 )}
               >
@@ -322,7 +322,7 @@ export function AppearanceSection(): ReactElement {
             title="Custom"
             className={cn(
               'flex size-8 cursor-pointer items-center justify-center rounded-full border transition-colors duration-100',
-              'has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-focus-ring',
+              'has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-focus-ring has-[:focus-visible]:outline-offset-2',
               settings.accentColor === 'custom'
                 ? 'border-text'
                 : 'border-transparent hover:border-border-strong',

@@ -298,7 +298,6 @@ export function AgentsScreen(): ReactElement {
           aria-pressed={activeSlug === null}
           className={cn(
             'flex w-full items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors duration-100',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
             activeSlug === null
               ? 'border-border bg-surface shadow-sm'
               : 'border-transparent hover:bg-surface-hover',

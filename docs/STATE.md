@@ -1,5 +1,17 @@
 # Kore working state
 
+## New-note tab survives a fast rename; split from the tab menu — 2026-09-15
+
+Same branch as below. Root cause of the vanishing tab: the index trails the
+disk (watcher batches), so an untitled note born and renamed inside one
+batch had its tab path moved to a note the index did not know yet, and the
+open-tab pruning closed it. `useOpenTabItems` now prunes only after
+`noteExists` confirms the file is gone too (two strip tests: file present
+keeps the tab, file gone drops it). The tab menu gained "Open to the right"
+and "Open below" (`panes.moveTab`), offered only inside the workspace frame.
+Verified: `pnpm check` exit 0, strip suite 26/26 and open-notes on Chromium
+and WebKit, split done from the menu in the dev bridge.
+
 ## Tag icon on open tabs, 217 symbol icons — 2026-09-15
 
 `t3code/tag-icons-open-and-more`: `OpenTabIcon` shows the tag's own icon for

@@ -9,10 +9,13 @@ never preinstalled or default-on — empty settings stay `agentRoutines: []`,
 first-run still seeds only welcome + default objects. The existing New
 automation dialog prefills so the prompt/schedule/agent can be changed before
 Create; after that the usual enable/disable switch, Edit, Run now, and delete
-apply. Same runner, lock, and history as every other routine.
+apply. Same runner, lock, and history as every other routine. Edit saves only
+name/prompt/script/agent/schedule onto the live settings row (Bugbot), so a
+run that finishes while the dialog is open keeps its history.
 
 **Validation:** `packages/core` routine + settings tests 61/61; desktop
-automations section 13/13 on Chromium and WebKit; `pnpm check` exit 0.
+automations section 13/13 on Chromium and WebKit including the edit-vs-live-run
+regression; `pnpm check` exit 0.
 Not exercised: a live Run now against a real graph with BYOK.
 
 **Next:** merge, then add the template from Settings → Agents on a real graph

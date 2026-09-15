@@ -102,7 +102,7 @@ export function QuickCaptureRoot(): ReactElement {
               aria-label="Capture a line to today's note"
               onChange={(event) => setText(event.target.value)}
               onKeyDown={onKeyDown}
-              className="h-9 flex-1 border-0 bg-transparent px-0 text-base shadow-none focus-visible:border-transparent focus-visible:ring-0 md:text-base dark:bg-transparent"
+              className="h-9 flex-1 border-0 bg-transparent px-0 text-base shadow-none focus-visible:border-transparent md:text-base dark:bg-transparent"
             />
             <Button
               type="submit"

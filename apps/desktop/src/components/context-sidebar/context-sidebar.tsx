@@ -308,7 +308,7 @@ function PanelTab({
         }}
         // The tabs have to fit the rail's 240px minimum, so the label gives up
         // width before the row overflows.
-        className="flex min-w-0 flex-1 items-center gap-1.5 rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+        className="flex min-w-0 flex-1 items-center gap-1.5 rounded text-left"
       >
         <Glyph aria-hidden className="size-3 shrink-0" />
         <span className="truncate">{label}</span>
@@ -351,7 +351,7 @@ function ContextPanelsPlusMenu({ onOpen }: ContextPanelsPlusMenuProps): ReactEle
             // The same quiet round button the content strip's "+" is, and it
             // never gives up its width: it is the only way back to the panels
             // the band is not carrying.
-            className="flex size-6 shrink-0 items-center justify-center rounded-md text-text-muted transition-[color,background-color,transform] duration-150 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-surface-hover hover:text-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring active:scale-[0.97]"
+            className="flex size-6 shrink-0 items-center justify-center rounded-md text-text-muted transition-[color,background-color,transform] duration-150 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-surface-hover hover:text-text-secondary active:scale-[0.97]"
           >
             <Plus aria-hidden className="size-3.5" />
           </button>

@@ -121,7 +121,7 @@ export function MobileTabBar({ tab, onSelect, onCapture }: MobileTabBarProps): R
               hapticImpactLight()
               onCapture()
             }}
-            className="relative z-20 flex size-12 items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="relative z-20 flex size-12 items-center justify-center rounded-full"
           >
             <span className="flex size-8 items-center justify-center rounded-full bg-foreground text-background">
               <Plus aria-hidden className="size-6" />
@@ -159,7 +159,7 @@ function TabButton({
         onClick()
       }}
       className={cn(
-        'relative z-20 flex h-12 min-w-12 flex-1 items-center justify-center rounded-full outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none',
+        'relative z-20 flex h-12 min-w-12 flex-1 items-center justify-center rounded-full transition-colors duration-150 motion-reduce:transition-none',
         active ? 'text-foreground' : 'text-foreground/70 active:bg-foreground/5',
       )}
     >

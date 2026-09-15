@@ -164,7 +164,6 @@ export function AddAiProviderDialog({ onAdd, onClose }: AddAiProviderDialogProps
                   onClick={() => selectBrand(candidate)}
                   className={cn(
                     'flex flex-col items-center gap-1.5 rounded-lg border px-1 py-2.5 transition-all duration-150 ease-swift',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
                     selected
                       ? 'border-accent bg-accent-soft/40 text-text'
                       : 'border-border text-text-secondary hover:border-border-strong hover:text-text',
@@ -196,7 +195,6 @@ export function AddAiProviderDialog({ onAdd, onClose }: AddAiProviderDialogProps
                       onClick={() => selectMode(candidate)}
                       className={cn(
                         'flex h-7 flex-1 items-center justify-center rounded-md text-xs font-medium transition-all duration-150 ease-swift',
-                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
                         selected
                           ? 'bg-surface text-text shadow-sm'
                           : 'text-text-muted hover:text-text',

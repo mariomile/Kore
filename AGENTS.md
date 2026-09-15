@@ -439,6 +439,7 @@ nothing else: UI primitives are the shadcn components in
 - `design-system/tokens/`: CSS custom properties for color, typography, spacing, and motion
 - `design-system/styles.css`: global entry point that imports all tokens
 - `apps/desktop/src/components/ui/`: the shadcn components. Check here before building custom UI
+- `docs/design.md`: the design reference — principles, token usage, states (hover / focus / disabled), overlays, motion, do/don't
 - The fork's own design language is described in the README
 
 **Frontend ↔ Rust bridge**

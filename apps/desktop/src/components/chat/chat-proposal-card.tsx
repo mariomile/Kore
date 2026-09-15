@@ -164,7 +164,7 @@ export function ChatProposalCard({
       data-chat-patch=""
       data-decidable={decidable ? 'true' : 'false'}
       onKeyDown={onKeyDown}
-      className="mt-1 w-full max-w-full rounded-lg border border-border bg-surface-sunken p-2 outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+      className="mt-1 w-full max-w-full rounded-lg border border-border bg-surface-sunken p-2"
     >
       <p className="flex min-w-0 items-center gap-1.5 px-1 pb-1.5 text-xs text-text-muted">
         {header}

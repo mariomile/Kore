@@ -125,7 +125,7 @@ export function GraphMapScreen(): ReactElement {
               onClick={() => {
                 setFocusId(null)
               }}
-              className="rounded font-medium text-[var(--accent)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+              className="rounded font-medium text-[var(--accent)] hover:underline"
             >
               Show all
             </button>
@@ -140,7 +140,7 @@ export function GraphMapScreen(): ReactElement {
             setQuery(event.target.value)
           }}
           placeholder="Highlight notes…"
-          className="ml-auto h-7 w-48 rounded-md border border-border bg-input-bg px-2.5 text-xs text-text placeholder:text-text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+          className="ml-auto h-7 w-48 rounded-md border border-border bg-input-bg px-2.5 text-xs text-text transition-colors placeholder:text-text-muted focus-visible:border-border-focus"
         />
         <label
           className={cn(

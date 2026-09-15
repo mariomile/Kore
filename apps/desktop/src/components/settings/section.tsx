@@ -68,7 +68,7 @@ export function SettingsSection({ id, children }: SettingsSectionProps): ReactEl
           type="button"
           aria-expanded={!collapsed}
           onClick={toggle}
-          className="group flex w-full items-center gap-1.5 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+          className="group flex w-full items-center gap-1.5 rounded-md text-left"
         >
           <span>{title}</span>
           <ChevronDown

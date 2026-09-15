@@ -67,7 +67,7 @@ export function MobileChatComposer(): ReactElement {
       className="absolute inset-x-0 z-10 px-3 pb-2"
       style={{ bottom: 'var(--mobile-tab-bar-height, 0px)' }}
     >
-      <div className="rounded-2xl border border-border bg-popover shadow-md focus-within:border-ring">
+      <div className="rounded-2xl border border-border bg-popover shadow-md transition-colors duration-150 ease-swift focus-within:border-border-focus">
         {attachments.length > 0 ? (
           <AttachmentGroup className="flex-wrap gap-2 overflow-visible px-3 pt-3">
             {attachments.map((attachment) => (

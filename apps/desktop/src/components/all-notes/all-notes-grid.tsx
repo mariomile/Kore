@@ -124,7 +124,7 @@ export function AllNotesGrid({
             // the <button> on WebKit) — above the footer, never through it.
             // Clip on this inner shell, not the button: that would eat the
             // focus ring, and WebKit ignores overflow on <button> itself.
-            className="group flex h-full min-h-64 w-full flex-col rounded-2xl border border-border bg-surface-sunken p-0 text-left transition-colors duration-150 ease-swift hover:border-border-strong focus-visible:ring-2 focus-visible:ring-focus-ring"
+            className="group flex h-full min-h-64 w-full flex-col rounded-2xl border border-border bg-surface-sunken p-0 text-left transition-colors duration-150 ease-swift hover:border-border-strong"
           >
             <div className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden rounded-2xl p-5">
               <div className="flex shrink-0 items-start justify-between gap-2">

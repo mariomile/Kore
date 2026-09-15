@@ -61,6 +61,7 @@ Cascade layer order, low to high priority.
 
   --color-border: var(--border);
   --color-border-strong: var(--border-strong);
+  --color-border-focus: var(--border-focus);
   --color-input-bg: var(--input-bg);
 
   --color-accent: var(--accent);
@@ -285,12 +286,45 @@ body {
     sans-serif;
 }
 
-/* One keyboard-focus treatment everywhere. Zero-specificity (`:where`) so any
-   component rule below (the editor's `outline: none`, the palette input)
-   can still opt out. */
-:where(button, a, input, select, textarea, [tabindex]):focus-visible {
+/* ---- Focus (docs/design.md § States) ---------------------------------------
+   The one focus treatment for the whole app. Both rules are unlayered, so no
+   Tailwind utility can re-add a ring per component; `:where` keeps them at
+   zero specificity so a later plain selector can still opt out.
+
+   Controls — buttons, links, toggles, select triggers, tabs, focusable rows:
+   a 2px `--focus-ring` outline, offset 2px, on `:focus-visible` only. The
+   keyboard sees it, the mouse never does. 2px solid is the shape WCAG 2.2
+   SC 2.4.13 names as sufficient. */
+:where(button, a, input, select, summary, [role='button'], [tabindex]):focus-visible {
   outline: 2px solid var(--focus-ring);
-  outline-offset: 1px;
+  outline-offset: 2px;
+}
+
+/* Text entry — inputs, textareas, contenteditable editors, the cmdk input:
+   no outline and no ring, ever. `:focus-visible` matches a focused text field
+   on every click, not just keyboard entry, so a ring here is a highlight that
+   lights up whenever you type. The caret plus the field's border stepping to
+   `--border-focus` (set by the ui/ primitives) is the whole treatment;
+   borderless fields inside a frame (palette, find bar) show the caret alone.
+
+   Menu and list rows are focus-managed by their parent and already carry the
+   row highlight (`focus:bg-surface-hover`), the idiom Apple's HIG prescribes
+   for lists — a second box around the highlighted row is noise. The popup
+   surfaces that take focus on open (dialogs, menus, listboxes) are their own
+   indicator. */
+:where(
+  input:not([type='checkbox'], [type='radio'], [type='range'], [type='color'], [type='file']),
+  textarea,
+  [contenteditable]:not([contenteditable='false']),
+  [cmdk-input],
+  [cmdk-item],
+  [role^='menuitem'],
+  [role='option'],
+  [role='dialog'],
+  [role='menu'],
+  [role='listbox']
+):focus-visible {
+  outline: none;
 }
 
 /* ---- Editor (Plan 05) ------------------------------------------------------
@@ -1384,22 +1418,6 @@ html[data-sidebar-resizing] aside {
   transform: translateY(-0.06em);
 }
 
-/* ---- shadcn inputs (components/ui/) -------------------------------------
-   shadcn form controls carry their own focus-visible ring (border + ring
-   utilities), so the global outline above would stack a second ring on top.
-   Its rule is unlayered, so a Tailwind utility can't opt out, so do it here. */
-:where([data-slot='input'], [data-slot='textarea'], [cmdk-input]):focus-visible {
-  outline: none;
-}
-
-/* ---- Find in note ------------------------------------------------------
-   The pill is the focus treatment: it exists only while its input is focused,
-   so the global outline above would draw a second box inside it. Unlayered,
-   like the shadcn opt-out above, because a Tailwind utility cannot beat it. */
-.reflect-find-input:focus-visible {
-  outline: none;
-}
-
 /* ---- ⌘K palette (Plan 08) ---------------------------------------------- */
 /* The palette predates `bg-popover` and paints its own surface, so it borrows
    the same tokens rather than a second recipe: the popover fill, the shared
@@ -1422,7 +1440,6 @@ html[data-sidebar-resizing] aside {
   border-bottom: 1px solid var(--border, rgb(0 0 0 / 10%));
   background: transparent;
   font-size: 0.9375rem;
-  outline: none; /* the modal frame is the focus treatment */
 }
 .reflect-palette-list {
   max-height: 20rem;

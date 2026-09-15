@@ -41,7 +41,7 @@ export function NoteOutlineSection(): ReactElement | null {
               }}
               className={cn(
                 'block w-full truncate rounded-md py-1 pr-2 text-left text-[13px] transition-colors duration-100',
-                'hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
+                'hover:bg-surface-hover',
                 entry.level === shallowest ? 'font-medium text-text' : 'text-text-secondary',
               )}
             >

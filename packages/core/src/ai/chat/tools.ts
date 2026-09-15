@@ -1,5 +1,6 @@
 import { tool, type Tool } from 'ai'
 import type { z } from 'zod'
+import { isAppError } from '../../errors'
 import { readNote } from '../../graph/commands'
 import { retrieve, type RetrievalHit, type RetrieveOptions } from '../../embeddings/retrieve'
 import { assetReferencingNotePaths } from '../../indexing/asset-refs'
@@ -31,6 +32,7 @@ import {
   type BrowseWebOutput,
 } from './browse-web'
 import { buildReadOneAsset, readAssetsInput, type ReadAssetsOutput } from './read-assets'
+import { applyNoteEdit } from './note-edit'
 import { buildReadOneNote, readNotesInput, type ReadNotesOutput } from './read-notes'
 import {
   cloudSafeCollectionRows,
@@ -43,7 +45,9 @@ import {
   DEFAULT_COLLECTION_LIMIT,
   DEFAULT_RECENT_LIMIT,
   DEFAULT_SEARCH_LIMIT,
+  EDIT_NOTE_MISSING_ERROR,
   EDITS_DISABLED_ERROR,
+  editNoteInput,
   INVALID_COLLECTION_TAG_ERROR,
   INVALID_TAG_ERROR,
   listCollectionInput,
@@ -56,6 +60,7 @@ import {
   searchNotesInput,
   setNotePropertyInput,
   UNTYPED_TAG_ERROR,
+  type EditNoteOutput,
   type ListCollectionOutput,
   type ListDailyNotesOutput,
   type ListRecentNotesOutput,
@@ -66,6 +71,7 @@ import {
 
 export * from './tools-io'
 export * from './tools-activity'
+export * from './note-edit'
 
 /**
  * The read-only note tools the chat model can call (Plan 10, first wave).
@@ -120,8 +126,8 @@ export interface BuildNoteToolsOptions extends NoteToolDeps {
   semanticSearchEnabled?: boolean
   /**
    * Whether the user's "Allow edits" chat setting is on. Off (the default),
-   * `set_note_property` refuses with a corrective message — the tool set
-   * stays type-stable either way.
+   * `set_note_property` and `edit_note` refuse with a corrective message —
+   * the tool set stays type-stable either way.
    */
   allowEdits?: boolean | undefined
 }
@@ -317,6 +323,41 @@ export function buildNoteTools(options: BuildNoteToolsOptions = {}): NoteTools {
       },
     }),
 
+    edit_note: tool({
+      description:
+        'Propose one edit to a note’s markdown body: replace an exact passage with new ' +
+        'text, or append when oldText is empty. The user reviews the diff in chat and ' +
+        'accepts or rejects it — nothing is written until they accept, so never claim ' +
+        'the change is saved. Requires "Allow edits"; private notes are refused. Read ' +
+        'the note first and copy oldText verbatim; keep each edit to one passage and ' +
+        'propose several edits for several passages.',
+      inputSchema: editNoteInput,
+      execute: async ({ path, oldText, newText }): Promise<EditNoteOutput> => {
+        if (options.allowEdits !== true) {
+          return { ok: false, path, error: EDITS_DISABLED_ERROR }
+        }
+        let source: string
+        try {
+          source = await readNoteFn(path)
+        } catch (cause) {
+          if (isAppError(cause) && cause.kind === 'notFound') {
+            return { ok: false, path, error: EDIT_NOTE_MISSING_ERROR }
+          }
+          throw cause
+        }
+        // The privacy hard block on the live frontmatter, before the body is
+        // even matched: proposing an edit to a private note implies having
+        // read it, and the refusal carries none of its content.
+        if (parseFrontmatter(splitFrontmatter(source).raw).data.private) {
+          return { ok: false, path, error: PRIVATE_NOTE_EDIT_ERROR }
+        }
+        const applied = applyNoteEdit(source, { oldText, newText })
+        return applied.ok
+          ? { ok: true, path, oldText, newText }
+          : { ok: false, path, error: applied.error }
+      },
+    }),
+
     read_notes: tool({
       description:
         'Read the full markdown content of one or more notes by their graph-relative ' +
@@ -385,6 +426,7 @@ export type NoteTools = {
   list_daily_notes: Tool<z.infer<typeof listDailyNotesInput>, ListDailyNotesOutput>
   list_collection: Tool<z.infer<typeof listCollectionInput>, ListCollectionOutput>
   set_note_property: Tool<z.infer<typeof setNotePropertyInput>, SetNotePropertyOutput>
+  edit_note: Tool<z.infer<typeof editNoteInput>, EditNoteOutput>
   read_notes: Tool<z.infer<typeof readNotesInput>, ReadNotesOutput>
   read_assets: Tool<z.infer<typeof readAssetsInput>, ReadAssetsOutput>
   open_web_page: Tool<z.infer<typeof openWebPageInput>, BrowseWebOutput>

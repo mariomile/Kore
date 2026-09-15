@@ -33,6 +33,19 @@ describe('chatSystemPrompt', () => {
     expect(prompt).not.toContain('Graph overview')
   })
 
+  it('explains the propose-then-review write tools only when edits are allowed', () => {
+    const base = {
+      today: '2026-06-12',
+      context: null,
+      semanticSearchEnabled: true,
+      customSystemPrompt: '',
+    }
+    expect(chatSystemPrompt(base)).not.toContain('edit_note')
+    const editing = chatSystemPrompt({ ...base, allowEdits: true })
+    expect(editing).toContain('edit_note replaces one exact passage')
+    expect(editing).toContain('nothing is written until they accept')
+  })
+
   it('steers the model away from redundant searches and serial reads', () => {
     const prompt = chatSystemPrompt({
       today: '2026-06-12',

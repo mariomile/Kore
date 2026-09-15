@@ -1,6 +1,6 @@
 import type { ModelMessage } from 'ai'
 import type { ChatStreamEvent } from './stream-chat'
-import type { NoteToolCall, NoteToolResult } from './tools'
+import type { NoteEditDecision, NoteToolCall, NoteToolResult } from './tools'
 
 /**
  * The chat conversation model (Plan 10). A {@link ChatTurn} is the single
@@ -130,6 +130,29 @@ export function appendEvent(parts: AssistantPart[], event: ChatStreamEvent): Ass
         ? parts
         : [...parts, { kind: 'notice', tone: 'info', text: NO_REPLY_NOTICE }]
   }
+}
+
+/**
+ * Record the user's decision on the proposed note edit `toolCallId`
+ * (immutable). Parts that are not that edit, or whose edit was refused,
+ * pass through untouched — a refusal has nothing to accept.
+ */
+export function settleNoteEdit(
+  parts: AssistantPart[],
+  toolCallId: string,
+  decision: Exclude<NoteEditDecision, 'pending'>,
+): AssistantPart[] {
+  return parts.map((part): AssistantPart => {
+    if (
+      part.kind !== 'tool' ||
+      part.result?.tool !== 'editNote' ||
+      part.result.toolCallId !== toolCallId ||
+      part.result.error !== null
+    ) {
+      return part
+    }
+    return { ...part, result: { ...part.result, decision } }
+  })
 }
 
 /**

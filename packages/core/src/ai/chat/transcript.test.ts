@@ -4,6 +4,7 @@ import {
   appendEvent,
   buildHistory,
   NO_REPLY_NOTICE,
+  settleNoteEdit,
   userMessage,
   type AssistantPart,
   type ChatAttachment,
@@ -282,5 +283,45 @@ describe('userMessage', () => {
         { type: 'text', text: 'what are these?' },
       ],
     })
+  })
+})
+
+describe('settleNoteEdit', () => {
+  const proposal: AssistantPart = {
+    kind: 'tool',
+    call: { tool: 'editNote', toolCallId: 'e1', path: 'notes/a.md' },
+    result: {
+      tool: 'editNote',
+      toolCallId: 'e1',
+      path: 'notes/a.md',
+      oldText: 'a',
+      newText: 'b',
+      error: null,
+      decision: 'pending',
+    },
+    error: null,
+  }
+
+  it('records the decision on that edit alone and skips refusals', () => {
+    const refused: AssistantPart = {
+      kind: 'tool',
+      call: { tool: 'editNote', toolCallId: 'e2', path: 'notes/b.md' },
+      result: {
+        tool: 'editNote',
+        toolCallId: 'e2',
+        path: 'notes/b.md',
+        oldText: '',
+        newText: '',
+        error: 'nope',
+        decision: 'pending',
+      },
+      error: null,
+    }
+    const text: AssistantPart = { kind: 'text', text: 'Here you go.' }
+    const settled = settleNoteEdit([text, proposal, refused], 'e1', 'accepted')
+    expect(settled[0]).toBe(text)
+    expect(settled[1]).toMatchObject({ result: { decision: 'accepted' } })
+    expect(settled[2]).toBe(refused)
+    expect(settleNoteEdit([refused], 'e2', 'rejected')[0]).toBe(refused)
   })
 })

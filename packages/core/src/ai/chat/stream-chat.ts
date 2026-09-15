@@ -60,7 +60,7 @@ export interface StreamChatOptions {
   context: CloudSafe<CloudGraphContext> | null
   /** The active agent's soul + memories for the system prompt. */
   agentContext?: AgentPromptContext | null
-  /** The user's "Allow edits" chat setting — gates `set_note_property`. */
+  /** The user's "Allow edits" chat setting — gates `set_note_property` and `edit_note`. */
   allowEdits?: boolean | undefined
   /** Effect overrides for the note tools (the desktop's write channel). */
   toolDeps?: NoteToolDeps | undefined
@@ -94,6 +94,7 @@ export function streamChat(options: StreamChatOptions): AsyncGenerator<ChatStrea
       semanticSearchEnabled: options.semanticSearchEnabled,
       customSystemPrompt: options.customSystemPrompt,
       agentContext: options.agentContext ?? null,
+      allowEdits: options.allowEdits,
     }),
   })
   return streamChatTurn(languageModel(options.config, options.apiKey, options.fetchFn), {
@@ -123,7 +124,7 @@ export interface ChatTurnOptions {
   context: CloudSafe<CloudGraphContext> | null
   /** The active agent's soul + memories for the system prompt. */
   agentContext?: AgentPromptContext | null
-  /** The user's "Allow edits" chat setting — gates `set_note_property`. */
+  /** The user's "Allow edits" chat setting — gates `set_note_property` and `edit_note`. */
   allowEdits?: boolean | undefined
   /** Aborts the provider call mid-stream (the UI's stop button). */
   signal?: AbortSignal | undefined
@@ -169,6 +170,7 @@ export async function* streamChatTurn(
         semanticSearchEnabled: options.semanticSearchEnabled,
         customSystemPrompt: options.customSystemPrompt,
         agentContext: options.agentContext ?? null,
+        allowEdits: options.allowEdits,
       }),
       messages: options.messages,
       tools,

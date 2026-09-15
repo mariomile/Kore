@@ -607,12 +607,12 @@ describe('workspace tabs', () => {
     // A routed tag is that tag's own page, and the one surface tab renames —
     // it does not spawn a second tab beside the generic label.
     await view.getByTestId('open-book-tag').click()
-    await expect.element(view.getByRole('tab', { name: '#book' })).toBeVisible()
+    await expect.element(view.getByRole('tab', { name: 'Book' })).toBeVisible()
     expect(view.getByRole('tab', { name: 'All notes' }).query()).toBeNull()
 
     await view.getByTestId('open-all-notes').click()
     await expect.element(view.getByRole('tab', { name: 'All notes' })).toBeVisible()
-    expect(view.getByRole('tab', { name: '#book' }).query()).toBeNull()
+    expect(view.getByRole('tab', { name: 'Book' }).query()).toBeNull()
     await view.unmount()
   })
 

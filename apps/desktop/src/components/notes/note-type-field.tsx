@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react'
 import type { TagTypeEntry } from '@reflect/core'
 import { Close } from '@/components/icons'
+import { TagIcon } from '@/components/tags/tag-icon'
 import { useRemoveNoteTag } from '@/lib/tags/use-remove-note-tag'
 import { cn } from '@/lib/utils'
 
@@ -40,9 +41,11 @@ export function NoteTypeField({
           <li key={entry.tagKey}>
             <span className="inline-flex max-w-full items-center gap-0.5 rounded-full border border-border bg-surface-hover py-0.5 pl-2 pr-0.5 text-[13px] text-text-secondary">
               {entry.type.icon !== undefined ? (
-                <span aria-hidden className="mr-0.5 shrink-0 leading-none">
-                  {entry.type.icon}
-                </span>
+                <TagIcon
+                  icon={entry.type.icon}
+                  className="mr-0.5 size-3.5"
+                  emojiClassName="mr-0.5"
+                />
               ) : null}
               <span className="truncate">#{entry.tagKey}</span>
               <button

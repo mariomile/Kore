@@ -7,6 +7,7 @@ import {
   listChatConversations,
   noteFileStem,
   type OpenTab,
+  tagDisplayName,
 } from '@reflect/core'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { CHAT_QUERY_SCOPE, INDEX_QUERY_SCOPE } from '@/lib/query-client'
@@ -84,7 +85,7 @@ export function useOpenTabItems(): OpenTabItem[] {
               tab.surface === 'allNotes' && tab.filter.kind === 'inbox'
                 ? 'Inbox'
                 : tab.surface === 'allNotes' && tab.filter.kind === 'tag'
-                  ? `#${tab.filter.tag}`
+                  ? tagDisplayName(tab.filter.tag)
                   : SURFACE_TAB_LABEL[tab.surface],
           }
       }

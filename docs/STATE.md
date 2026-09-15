@@ -11,10 +11,9 @@ automation dialog prefills so the prompt/schedule/agent can be changed before
 Create; after that the usual enable/disable switch, Edit, Run now, and delete
 apply. Same runner, lock, and history as every other routine.
 
-**Validation:** targeted core routine + settings tests; desktop automations
-section tests (template opt-in, hide-once-added, edit preserves lastRunMs).
-`pnpm check` and both browser engines for the section suite are recorded
-after they run.
+**Validation:** `packages/core` routine + settings tests 61/61; desktop
+automations section 13/13 on Chromium and WebKit; `pnpm check` exit 0.
+Not exercised: a live Run now against a real graph with BYOK.
 
 **Next:** merge, then add the template from Settings → Agents on a real graph
 and Run now once with BYOK to confirm the review note lands.

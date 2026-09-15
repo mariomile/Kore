@@ -348,6 +348,11 @@ export {
   type AiPrompt,
   type AiPromptMode,
 } from '../settings/schema'
+export {
+  moveSavedCollectionView,
+  shiftSavedCollectionView,
+  type CollectionViewMoveDirection,
+} from '../settings/collection-views'
 export { loadSettings, saveSettings } from '../settings/commands'
 export {
   contactsAuthorizationSchema,

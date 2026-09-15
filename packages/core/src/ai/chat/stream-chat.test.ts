@@ -433,10 +433,13 @@ describe('streamChatTurn', () => {
       if (steer === null) {
         expect.unreachable('steering was never armed')
       }
-      await (steer as (text: string) => Promise<void>)('actually, mountains')
+      // The steer promise settles when the turn takes the message — which
+      // happens as the stream is consumed, so it is awaited afterwards.
+      const steered = (steer as (text: string) => Promise<void>)('actually, mountains')
       for await (const event of events) {
         seen.push(event)
       }
+      await expect(steered).resolves.toBeUndefined()
 
       // One turn: partial text → the steer, where the reply split → the
       // continuation → a single terminal event.
@@ -493,11 +496,19 @@ describe('streamChatTurn', () => {
       })
       const seen: ChatStreamEvent[] = []
       seen.push((await events.next()).value as ChatStreamEvent)
-      await (steer as unknown as (text: string) => Promise<void>)('go on differently')
+      const inject = steer as unknown as (text: string) => Promise<void>
+      // The steer's promise settles once the next leg has taken it.
+      const firstSteer = inject('go on differently')
       seen.push((await events.next()).value as ChatStreamEvent)
+      await expect(firstSteer).resolves.toBeUndefined()
       seen.push((await events.next()).value as ChatStreamEvent)
       expect(seen.map((event) => event.type)).toEqual(['text-delta', 'steer', 'text-delta'])
 
+      // A steer accepted just before Stop is never taken: its promise
+      // rejects so the caller can queue it — it does not vanish, and it
+      // does not ride the history as an unanswered user message.
+      const lateSteer = inject('and one more thing')
+      lateSteer.catch(() => {})
       controller.abort()
       for await (const event of events) {
         seen.push(event)
@@ -512,11 +523,12 @@ describe('streamChatTurn', () => {
         'assistant',
       ])
       expect(JSON.stringify(last.messages.at(-1))).toContain('Second leg')
+      expect(JSON.stringify(last.messages)).not.toContain('and one more thing')
+      expect(seen.filter((event) => event.type === 'steer')).toHaveLength(1)
+      await expect(lateSteer).rejects.toThrow()
 
       // Once settled, a steer is refused so the caller can queue instead.
-      await expect(
-        (steer as unknown as (text: string) => Promise<void>)('too late'),
-      ).rejects.toThrow()
+      await expect(inject('too late')).rejects.toThrow()
     })
   })
 

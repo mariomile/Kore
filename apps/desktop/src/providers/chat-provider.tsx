@@ -107,7 +107,14 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
     { providers, defaultProviderId: settings.defaultAiProviderId },
     settings.chatModelSelection,
   )
-  const canSteer = activeModel !== null && chatProviderCanSteer(activeModel.provider)
+  // While a turn streams, what Enter does is decided by the engine running
+  // it — the picker can change mid-turn without affecting that run — so the
+  // promise the composer makes follows the live turn, not the picker.
+  const [liveCanSteer, setLiveCanSteer] = useState(false)
+  const canSteer =
+    status === 'streaming'
+      ? liveCanSteer
+      : activeModel !== null && chatProviderCanSteer(activeModel.provider)
 
   // Read at call time, not captured: send() can fire long after the render
   // that created it.
@@ -231,6 +238,7 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
           deliverRef,
           setTurns,
           setQueue,
+          setLiveCanSteer,
           persistTurn,
         },
         trimmed,

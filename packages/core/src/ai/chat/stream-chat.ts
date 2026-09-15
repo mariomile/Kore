@@ -76,8 +76,10 @@ export interface StreamChatOptions {
  * that means cutting the in-flight generation at the SDK's safe point (the
  * completed steps stay paired, the interrupted step keeps its partial
  * text), appending the message as a user turn, and continuing on the
- * combined history — one turn, one transcript, nothing lost. The function
- * rejects once the turn has settled; callers then queue instead.
+ * combined history — one turn, one transcript, nothing lost. The promise
+ * resolves once the turn has taken the message and rejects when the turn
+ * ends without doing so (already settled, stopped, or failed first);
+ * callers then queue the message instead.
  */
 export interface ChatSteering {
   onSteerReady: (steer: (text: string) => Promise<void>) => void
@@ -152,6 +154,15 @@ export interface ChatTurnOptions {
   steering?: ChatSteering | undefined
 }
 
+/** Why a steer's promise rejects when the turn ended before taking it. */
+const STEER_TOO_LATE = 'The reply ended before the message could be steered in.'
+
+interface PendingSteer {
+  text: string
+  resolve: () => void
+  reject: (cause: Error) => void
+}
+
 /**
  * The engine under {@link streamChat}, taking a concrete model — the seam
  * tests drive with a mock model instead of a provider. The stream terminates
@@ -191,17 +202,30 @@ export async function* streamChatTurn(
 
   // What finished legs contributed, each followed by the steer that ended it.
   let settled: ModelMessage[] = []
-  // Steers received since the leg in flight started; they end that leg.
-  const pendingSteers: string[] = []
+  // Steers received since the leg in flight started; they end that leg. Each
+  // settles its caller's promise only once it is decided: resolved when the
+  // next leg takes it, rejected when the turn ends first (Stop, an error, a
+  // consumer that stopped listening) — the caller then queues it instead,
+  // so a message the user already sent is never silently dropped.
+  const pendingSteers: PendingSteer[] = []
+  const rejectPending = (message: string) => {
+    for (const steer of pendingSteers.splice(0)) {
+      steer.reject(new Error(message))
+    }
+  }
   let inFlight: AbortController | null = null
   let done = false
-  options.steering?.onSteerReady(async (text: string): Promise<void> => {
-    if (done) {
-      throw new Error('The reply has already finished.')
-    }
-    pendingSteers.push(text)
-    inFlight?.abort()
-  })
+  options.steering?.onSteerReady(
+    (text: string): Promise<void> =>
+      new Promise<void>((resolve, reject) => {
+        if (done) {
+          reject(new Error(STEER_TOO_LATE))
+          return
+        }
+        pendingSteers.push({ text, resolve, reject })
+        inFlight?.abort()
+      }),
+  )
 
   try {
     for (;;) {
@@ -223,21 +247,23 @@ export async function* streamChatTurn(
         controller.signal,
       )
       outer?.removeEventListener('abort', forwardAbort)
-      const steers = pendingSteers.splice(0)
       // A steer only redirects a leg the user did not stop and that did not
       // fail — a stopped turn stays stopped; an error is reported as such.
-      if (steers.length > 0 && outer?.aborted !== true && result.kind !== 'error') {
+      if (pendingSteers.length > 0 && outer?.aborted !== true && result.kind !== 'error') {
+        const steers = pendingSteers.splice(0)
         settled = [
           ...settled,
           ...result.messages,
-          ...steers.map((text): ModelMessage => ({ role: 'user', content: text })),
+          ...steers.map((steer): ModelMessage => ({ role: 'user', content: steer.text })),
         ]
-        for (const text of steers) {
-          yield { type: 'steer', text }
+        for (const steer of steers) {
+          steer.resolve()
+          yield { type: 'steer', text: steer.text }
         }
         continue
       }
       done = true
+      rejectPending(STEER_TOO_LATE)
       const messages = [...settled, ...result.messages]
       switch (result.kind) {
         case 'complete':
@@ -253,6 +279,7 @@ export async function* streamChatTurn(
     }
   } finally {
     done = true
+    rejectPending(STEER_TOO_LATE)
     // A consumer that stops iterating mid-leg takes the provider call down
     // with it.
     inFlight?.abort()

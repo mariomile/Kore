@@ -62,39 +62,69 @@ export interface ActiveSend {
   steer?: (text: string) => Promise<void>
 }
 
+interface SteerRelay {
+  /**
+   * Deliver one steer. Resolves once the engine has taken it (or once
+   * {@link SteerRelay.unsent} handed it to the queue); rejects when the
+   * engine refused it — the caller then queues it.
+   */
+  steer: (text: string) => Promise<void>
+  /** Hook up the live engine; steers that waited ride now, in send order. */
+  arm: (inject: (text: string) => Promise<void>, afterInject?: (text: string) => void) => void
+  /**
+   * Steers still waiting for an engine that never armed, for the queue.
+   * Their callers are told the message rode — the queue now owns it.
+   */
+  unsent: () => string[]
+}
+
 /**
  * Bridges the composer's steer to the engine's inject function, which only
  * exists once the run is live: steers before that wait and are flushed on
- * arming; steers after go straight through. Whatever never rode (the run
- * died before arming) is handed back at settle time.
+ * arming, one after the other so they land in send order; steers after go
+ * straight through. Whatever never rode (the run died before arming) is
+ * handed back at settle time.
  */
-function createSteerRelay(): {
-  steer: (text: string) => Promise<void>
-  arm: (inject: (text: string) => Promise<void>, afterInject?: (text: string) => void) => void
-  unsent: () => string[]
-} {
+function createSteerRelay(): SteerRelay {
   let deliver: ((text: string) => Promise<void>) | null = null
-  const waiting: string[] = []
+  let waiting: { text: string; resolve: () => void; reject: (cause: unknown) => void }[] = []
   return {
-    steer: async (text) => {
-      if (deliver === null) {
-        waiting.push(text)
-        return
+    steer: (text) => {
+      const live = deliver
+      if (live !== null) {
+        return live(text)
       }
-      await deliver(text)
+      return new Promise<void>((resolve, reject) => {
+        waiting.push({ text, resolve, reject })
+      })
     },
     arm: (inject, afterInject) => {
-      deliver = async (text) => {
+      const live = async (text: string): Promise<void> => {
         await inject(text)
         afterInject?.(text)
       }
-      for (const text of waiting.splice(0)) {
-        void deliver(text).catch(() => {
-          waiting.push(text)
-        })
-      }
+      deliver = live
+      const flush = waiting
+      waiting = []
+      void (async () => {
+        for (const entry of flush) {
+          try {
+            await live(entry.text)
+            entry.resolve()
+          } catch (cause) {
+            entry.reject(cause)
+          }
+        }
+      })()
     },
-    unsent: () => waiting.splice(0),
+    unsent: () => {
+      const left = waiting
+      waiting = []
+      for (const entry of left) {
+        entry.resolve()
+      }
+      return left.map((entry) => entry.text)
+    },
   }
 }
 
@@ -163,6 +193,8 @@ export interface ChatDeliverDeps {
   deliverRef: RefObject<((text: string, attached: ChatAttachment[]) => Promise<void>) | null>
   setTurns: Dispatch<SetStateAction<ChatTurn[]>>
   setQueue: (next: QueuedChatMessage[]) => void
+  /** Whether the turn being started takes steers (its engine, not the picker's). */
+  setLiveCanSteer: (canSteer: boolean) => void
   persistTurn: (conversation: ChatConversation, turn: ChatTurn, createdMs: number) => void
 }
 
@@ -193,6 +225,7 @@ export async function deliverChatTurn(
     deliverRef,
     setTurns,
     setQueue,
+    setLiveCanSteer,
     persistTurn,
   } = deps
   const config = activeModelRef.current
@@ -269,12 +302,14 @@ export async function deliverChatTurn(
 
   const controller = new AbortController()
   const steerRelay = createSteerRelay()
+  const canSteer = chatProviderCanSteer(config.provider)
   const activeSend: ActiveSend = {
     controller,
     session: sessionRef.current,
-    ...(chatProviderCanSteer(config.provider) ? { steer: steerRelay.steer } : {}),
+    ...(canSteer ? { steer: steerRelay.steer } : {}),
   }
   activeSendRef.current = activeSend
+  setLiveCanSteer(canSteer)
   lastSendSessionRef.current = activeSend.session
 
   // The activity ledger's baseline: before an edit-mode agent run,

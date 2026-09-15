@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { userEvent } from 'vitest/browser'
+import { page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 import { useSyncExternalStore, type ReactElement, type ReactNode } from 'react'
 import { setBridge, untitledNotePath, type OpenColumn, type OpenPane } from '@reflect/core'
@@ -686,6 +686,76 @@ describe('workspace tabs', () => {
     await vi.waitFor(() => expect(routeOf(view).kind).toBe('today'))
     expect(view.getByRole('tab', { name: /Alpha Plan/ }).query()).toBeNull()
     await expect.element(view.getByRole('tab', { name: 'Daily notes' })).toBeVisible()
+    await view.unmount()
+  })
+})
+
+/** Right-clicks a tab pill the way a user does; the menu opens on contextmenu. */
+async function openTabMenu(
+  view: Awaited<ReturnType<typeof renderTabs>>,
+  name: string | RegExp,
+): Promise<void> {
+  await userEvent.click(view.getByRole('tab', { name }), { button: 'right' })
+  await expect.element(page.getByRole('menu')).toBeInTheDocument()
+}
+
+describe('tab context menu', () => {
+  it('right-click on a tab shows the menu and Pin pins it', async () => {
+    const view = await renderTabs()
+    await view.getByTestId('open-alpha').click()
+
+    await openTabMenu(view, /Alpha Plan/)
+    await view.getByRole('menuitem', { name: 'Pin' }).click()
+
+    // Pinned: icon-only tab, labeled by the title.
+    await expect.element(view.getByRole('tab', { name: 'Alpha Plan' })).toBeVisible()
+    const pinned = view.getByRole('tab', { name: 'Alpha Plan' }).element()
+    expect(pinned.tagName).toBe('BUTTON')
+    await view.unmount()
+  })
+
+  it('Close others keeps the clicked tab plus a pinned one and removes the rest', async () => {
+    const view = await renderTabs()
+    await view.getByTestId('open-alpha').click()
+    await view.getByTestId('open-beta').click()
+    const betaLabel = view.getByRole('tab', { name: /Beta Review/ }).getByText('Beta Review')
+    await userEvent.dblClick(betaLabel)
+    await expect.element(view.getByRole('tab', { name: 'Beta Review' })).toBeVisible()
+
+    await openTabMenu(view, /Alpha Plan/)
+    await view.getByRole('menuitem', { name: 'Close others' }).click()
+
+    await expect.element(view.getByRole('tab', { name: /Alpha Plan/ })).toBeVisible()
+    await expect.element(view.getByRole('tab', { name: 'Beta Review' })).toBeVisible()
+    expect(view.getByRole('tab', { name: 'Daily notes' }).query()).toBeNull()
+    await view.unmount()
+  })
+
+  it('Close to the right removes only tabs after the clicked one', async () => {
+    const view = await renderTabs()
+    await view.getByTestId('open-alpha').click()
+    await view.getByTestId('open-beta').click()
+
+    await openTabMenu(view, /Alpha Plan/)
+    await view.getByRole('menuitem', { name: 'Close to the right' }).click()
+
+    await expect.element(view.getByRole('tab', { name: 'Daily notes' })).toBeVisible()
+    await expect.element(view.getByRole('tab', { name: /Alpha Plan/ })).toBeVisible()
+    expect(view.getByRole('tab', { name: /Beta Review/ }).query()).toBeNull()
+    await view.unmount()
+  })
+
+  it('Close all leaves only the Daily fallback when nothing is pinned', async () => {
+    const view = await renderTabs()
+    await view.getByTestId('open-alpha').click()
+    await view.getByTestId('open-beta').click()
+
+    await openTabMenu(view, /Alpha Plan/)
+    await view.getByRole('menuitem', { name: 'Close all' }).click()
+
+    await expect.element(view.getByRole('tab', { name: 'Daily notes' })).toBeVisible()
+    expect(view.getByRole('tab', { name: /Alpha Plan/ }).query()).toBeNull()
+    expect(view.getByRole('tab', { name: /Beta Review/ }).query()).toBeNull()
     await view.unmount()
   })
 })

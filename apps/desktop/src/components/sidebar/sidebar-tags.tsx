@@ -3,6 +3,7 @@ import { foldTag } from '@reflect/core'
 import { Settings } from '@/components/icons'
 import { TagConfigDialog } from '@/components/tags/tag-config-dialog'
 import { useNoteTags } from '@/hooks/use-note-tags'
+import { useTagIcons } from '@/hooks/use-tag-icons'
 import { cn } from '@/lib/utils'
 import { useRouter } from '@/routing/router'
 import { SidebarSortableSection } from './sidebar-sortable-section'
@@ -18,6 +19,7 @@ import { SidebarSortableSection } from './sidebar-sortable-section'
  */
 export function SidebarTags(): ReactElement | null {
   const tags = useNoteTags()
+  const icons = useTagIcons()
   const { route, navigate } = useRouter()
   const [configuring, setConfiguring] = useState<string | null>(null)
   const activeTagKey =
@@ -32,6 +34,7 @@ export function SidebarTags(): ReactElement | null {
       <ul className="mt-2 flex flex-col space-y-1">
         {tags.map((facet) => {
           const active = activeTagKey !== null && foldTag(facet.tag) === activeTagKey
+          const icon = icons.get(foldTag(facet.tag))
           return (
             <li key={facet.tag} className="group relative">
               <button
@@ -47,6 +50,11 @@ export function SidebarTags(): ReactElement | null {
                 )}
               >
                 <span className="flex min-w-0 flex-1 items-center gap-1.5 py-1 px-2.5 text-left">
+                  {icon !== undefined ? (
+                    <span aria-hidden className="shrink-0 text-xs leading-none">
+                      {icon}
+                    </span>
+                  ) : null}
                   <span className="min-w-0 truncate text-xs font-medium">#{facet.tag}</span>
                 </span>
                 <span className="shrink-0 px-2.5 text-2xs tabular-nums text-text-muted transition-opacity duration-150 group-hover:opacity-0 group-focus-within:opacity-0">

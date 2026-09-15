@@ -34,6 +34,8 @@ export interface TagDefinitionState {
   properties: TagProperty[]
   /** Bound template path for new rows, or `null` when the type names none. */
   template: string | null
+  /** The tag's emoji glyph, or `null` when the definition sets none. */
+  icon: string | null
 }
 
 /** Read the tag's definition state for the config dialog. */
@@ -43,7 +45,14 @@ export async function readTagDefinition(tag: string): Promise<TagDefinitionState
   try {
     source = await readNoteSource(path)
   } catch {
-    return { path, exists: false, needsConversion: false, properties: [], template: null }
+    return {
+      path,
+      exists: false,
+      needsConversion: false,
+      properties: [],
+      template: null,
+      icon: null,
+    }
   }
   const type = parseTagTypeFrontmatter(parseNote({ path, source }).frontmatter)
   return {
@@ -52,6 +61,7 @@ export async function readTagDefinition(tag: string): Promise<TagDefinitionState
     needsConversion: type === null,
     properties: type?.properties ?? [],
     template: type?.template ?? null,
+    icon: type?.icon ?? null,
   }
 }
 
@@ -67,6 +77,7 @@ export async function saveTagType(
   properties: readonly TagProperty[],
   generation: number,
   template: string | null = null,
+  icon: string | null = null,
 ): Promise<void> {
   const path = tagDefinitionPath(tag)
   // The seed rides the SAME serializer as the update path below — a schema
@@ -75,11 +86,15 @@ export async function saveTagType(
   // kept them.
   const seed = upsertFrontmatter(
     '',
-    frontmatterPatchToYaml({ tagSchema: properties, tagTemplate: template }),
+    frontmatterPatchToYaml({ tagSchema: properties, tagTemplate: template, tagIcon: icon }),
   )
   const created = await createNoteIfAbsent(path, seed, generation)
   if (created.kind === 'created') {
     return
   }
-  await commitNoteFrontmatter(path, { tagSchema: properties, tagTemplate: template }, generation)
+  await commitNoteFrontmatter(
+    path,
+    { tagSchema: properties, tagTemplate: template, tagIcon: icon },
+    generation,
+  )
 }

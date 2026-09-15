@@ -17,9 +17,14 @@ import { AllNotesScreen } from './all-notes-screen'
  */
 
 const settingsState = vi.hoisted(
-  (): { dateFormat: 'mdy' | 'dmy' | 'iso'; allNotesView: 'list' | 'grid' } => ({
+  (): {
+    dateFormat: 'mdy' | 'dmy' | 'iso'
+    allNotesView: 'list' | 'grid'
+    allNotesSort: 'updated-desc' | 'updated-asc' | 'title-asc' | 'title-desc'
+  } => ({
     dateFormat: 'mdy',
     allNotesView: 'list',
+    allNotesSort: 'updated-desc',
   }),
 )
 const updateSettings = vi.hoisted(() => vi.fn())
@@ -47,6 +52,7 @@ vi.mock('@/providers/settings-provider', () => ({
       collectionSavedViews: {},
       collectionActiveViewId: {},
       allNotesView: settingsState.allNotesView,
+      allNotesSort: settingsState.allNotesSort,
       uiDensity: 'default',
     },
     updateSettings,
@@ -125,6 +131,7 @@ beforeEach(() => {
   resetOperations()
   settingsState.dateFormat = 'mdy'
   settingsState.allNotesView = 'list'
+  settingsState.allNotesSort = 'updated-desc'
   updateSettings.mockReset()
   openRouteInNewWindow.mockReset().mockResolvedValue(true)
   mockInvoke.mockReset()
@@ -272,6 +279,50 @@ describe('AllNotesScreen', () => {
     await expect.element(view.getByText('1/15/2020')).toBeInTheDocument()
     await expect.element(view.getByText('1/10/2020')).toBeInTheDocument()
     await view.unmount()
+  })
+
+  it('sorts notes by the selected order and persists the choice', async () => {
+    // `isPinned` explicitly false: the shared fixture rows omit the column
+    // (undefined), which `listNotes` treats as pinned (`row.isPinned !== 0`)
+    // — that would keep both rows in fetch order regardless of sort.
+    const rows = [
+      { ...noteRows[0]!, isPinned: 0 },
+      { ...noteRows[1]!, isPinned: 0 },
+    ]
+    mockInvoke.mockImplementation(async (command, args) => {
+      if (command !== 'db_query') return null
+      const sql = String(args['sql'])
+      if (sql.includes('"preview"')) return rows
+      return []
+    })
+    const view = await renderScreen()
+    await expect.element(view.getByText('Health Stacked')).toBeInTheDocument()
+
+    // Default sort (Last updated) puts the more recently edited note first.
+    const defaultOrder = view
+      .getByRole('button', { name: /Health Stacked|Tokyo Gâteau/ })
+      .elements()
+    expect(defaultOrder.map((element) => element.textContent)).toEqual([
+      'Health Stacked',
+      'Tokyo Gâteau',
+    ])
+
+    await view.getByRole('combobox', { name: 'Sort' }).click()
+    await view.getByRole('option', { name: 'Title Z to A' }).click()
+    expect(updateSettings).toHaveBeenCalledWith({ allNotesSort: 'title-desc' })
+    await view.unmount()
+
+    settingsState.allNotesSort = 'title-desc'
+    const reordered = await renderScreen()
+    await expect.element(reordered.getByText('Tokyo Gâteau')).toBeInTheDocument()
+    const newOrder = reordered
+      .getByRole('button', { name: /Health Stacked|Tokyo Gâteau/ })
+      .elements()
+    expect(newOrder.map((element) => element.textContent)).toEqual([
+      'Tokyo Gâteau',
+      'Health Stacked',
+    ])
+    await reordered.unmount()
   })
 
   it('keeps ISO updated dates on one line', async () => {
@@ -808,7 +859,7 @@ describe('AllNotesScreen grid view', () => {
     // Card previews render (the table renders them too, but the grid has no
     // table columns — the Updated header is the table's marker).
     await expect.element(view.getByText('Shop your health goals.')).toBeInTheDocument()
-    expect(view.getByText('Updated').query()).toBeNull()
+    expect(view.getByText('Updated', { exact: true }).query()).toBeNull()
 
     await view.getByText('Shop your health goals.').click()
     expect(probedRoute(view)).toEqual({ kind: 'note', path: 'notes/health.md' })

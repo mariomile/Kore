@@ -335,6 +335,7 @@ export {
   listPrivateNotePaths,
   listDailyNotes,
   listNotes,
+  sortNoteList,
   noteListFilterSchema,
   type NoteListFilter,
   listNoteTags,

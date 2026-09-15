@@ -88,6 +88,17 @@ describe('NotePropertiesHeader', () => {
     expect(commitProperty).toHaveBeenCalledWith('notes/dispossessed.md', 'read', true)
   })
 
+  it('shows the tag icon on its Type chip', async () => {
+    data.tagTypes = [
+      { tagKey: 'book', notePath: 'tags/book.md', type: { properties: [], icon: '📚' } },
+    ]
+    const view = await render(<Subject />)
+
+    const header = view.getByRole('region', { name: 'Properties' })
+    await expect.element(header.getByText('#book')).toBeInTheDocument()
+    await expect.element(header.getByText('📚')).toBeInTheDocument()
+  })
+
   it('lists Type chips for each typed tag and unsets one on remove', async () => {
     data.tagTypes = [
       {

@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
+  ALL_NOTES_SORTS,
   EMPTY_TAG_TYPE,
   errorMessage,
   foldTag,
   isDaily,
   listNotes,
   listNoteTags,
+  sortNoteList,
+  type AllNotesSort,
   type NoteListFilter,
   type TagPropertyType,
 } from '@reflect/core'
@@ -29,6 +32,7 @@ import { useListSelection } from '@/lib/selection/use-list-selection'
 import { useScrollRestoration } from '@/lib/use-scroll-restoration'
 import { useScrollToIndexBridge } from '@/lib/use-scroll-to-index-bridge'
 import { useGraph } from '@/providers/graph-provider'
+import { useSettings } from '@/providers/settings-provider'
 import { routeForPath } from '@/routing/route'
 import { useRouter } from '@/routing/router'
 import { AllNotesBulkBar } from './all-notes-bulk-bar'
@@ -212,8 +216,14 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
     queryFn: () => listNoteTags(),
     enabled,
   })
+  const { settings, updateSettings } = useSettings()
+  const allNotesSort = settings.allNotesSort
   const inboxNotes = useMemo(() => allNotes?.filter((note) => note.isInbox), [allNotes])
-  const notes = inbox ? inboxNotes : allNotes
+  const unsortedNotes = inbox ? inboxNotes : allNotes
+  const notes = useMemo(
+    () => (unsortedNotes ? sortNoteList(unsortedNotes, allNotesSort) : unsortedNotes),
+    [unsortedNotes, allNotesSort],
+  )
 
   // The grid isn't a collection view, but on a typed tag its cards carry
   // property chips — so the projection loads there too (Plan 28 slice 2).
@@ -374,7 +384,7 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
         {tag === null ? (
           <h1 className="app-page-title text-text">{inbox ? 'Inbox' : 'Notes'}</h1>
         ) : (
-          <TagPageTitle tag={tag} onConfigure={() => setEditingSchema(true)} />
+          <TagPageTitle tag={tag} icon={tagType?.icon} onConfigure={() => setEditingSchema(true)} />
         )}
         {tag === null ? (
           <div className="flex flex-wrap items-center gap-3">
@@ -384,6 +394,33 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
               inboxCount={inboxNotes?.length}
               onSelect={handleFilterSelect}
             />
+            <Select
+              value={allNotesSort}
+              items={{
+                'updated-desc': 'Last updated',
+                'updated-asc': 'Oldest updated',
+                'title-asc': 'Title A to Z',
+                'title-desc': 'Title Z to A',
+              }}
+              onValueChange={(value) => {
+                if (
+                  typeof value === 'string' &&
+                  (ALL_NOTES_SORTS as readonly string[]).includes(value)
+                ) {
+                  updateSettings({ allNotesSort: value as AllNotesSort })
+                }
+              }}
+            >
+              <SelectTrigger aria-label="Sort" data-size="sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="updated-desc">Last updated</SelectItem>
+                <SelectItem value="updated-asc">Oldest updated</SelectItem>
+                <SelectItem value="title-asc">Title A to Z</SelectItem>
+                <SelectItem value="title-desc">Title Z to A</SelectItem>
+              </SelectContent>
+            </Select>
             <div
               role="group"
               aria-label="Layout"

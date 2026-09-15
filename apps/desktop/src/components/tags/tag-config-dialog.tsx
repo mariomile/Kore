@@ -38,6 +38,7 @@ import {
   type PendingRename,
   type PropertyDraft,
 } from './tag-config-drafts'
+import { TagIconPicker } from './tag-icon-picker'
 import { TagPropertyRow } from './tag-property-row'
 import { TagViewsStrip } from './tag-views-strip'
 
@@ -76,6 +77,7 @@ export function TagConfigDialog({ tag, onClose }: TagConfigDialogProps): ReactEl
   const [pendingRenames, setPendingRenames] = useState<PendingRename[] | null>(null)
   const [template, setTemplate] = useState<string | null>(null)
   const [templates, setTemplates] = useState<TemplateEntry[]>([])
+  const [icon, setIcon] = useState<string | null>(null)
 
   useEffect(() => {
     let active = true
@@ -96,6 +98,7 @@ export function TagConfigDialog({ tag, onClose }: TagConfigDialogProps): ReactEl
       setNextRowId(rows.length)
       setTemplate(definition.template)
       setTemplates(available)
+      setIcon(definition.icon)
       setLoading(false)
     })()
     return () => {
@@ -183,7 +186,7 @@ export function TagConfigDialog({ tag, onClose }: TagConfigDialogProps): ReactEl
     }
     setSaving(true)
     try {
-      await saveTagType(tag, schemaFromDrafts(drafts), graph.generation, template)
+      await saveTagType(tag, schemaFromDrafts(drafts), graph.generation, template, icon)
       if (migrate) {
         // Move each note's value to the new key through the ordinary patch
         // channel — the same write an inline edit makes, one note at a time.
@@ -265,6 +268,10 @@ export function TagConfigDialog({ tag, onClose }: TagConfigDialogProps): ReactEl
             its body is kept.
           </p>
         ) : null}
+        <div className="flex items-center gap-3">
+          <span className={FIELD_LABEL_CLASS}>Icon</span>
+          <TagIconPicker value={icon} onChange={setIcon} />
+        </div>
         <div className="flex flex-col gap-2" aria-busy={loading || undefined}>
           {!loading && drafts.length === 0 ? (
             <div className="flex flex-col gap-1 rounded-md bg-surface-hover p-2">

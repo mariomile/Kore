@@ -39,6 +39,11 @@ export function NoteTypeField({
         {tagTypes.map((entry) => (
           <li key={entry.tagKey}>
             <span className="inline-flex max-w-full items-center gap-0.5 rounded-full border border-border bg-surface-hover py-0.5 pl-2 pr-0.5 text-[13px] text-text-secondary">
+              {entry.type.icon !== undefined ? (
+                <span aria-hidden className="mr-0.5 shrink-0 leading-none">
+                  {entry.type.icon}
+                </span>
+              ) : null}
               <span className="truncate">#{entry.tagKey}</span>
               <button
                 type="button"

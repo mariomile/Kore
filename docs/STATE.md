@@ -1,5 +1,17 @@
 # Kore working state
 
+## Supertag icons, All Notes sort, tab menu — 2026-09-15
+
+PR #213 (`t3code/supertag-icons-note-sorting-tab-actions`): supertag emoji
+icons (`icon:` on `tags/<key>.md`, carried in `schema_json`, picker in
+Configure tag, shown in sidebar, tag page title, and Type chips), an All Notes
+sort select (`allNotesSort`, pinned first), and a tab right-click menu (Pin,
+Close, Close others, Close to the right, Close all; pinned tabs survive).
+Verified: `pnpm check` exit 0, touched suites green on Chromium and WebKit,
+the three gestures done in the browser dev bridge. Known test smell: the
+`noteRows` fixture in `all-notes-screen.test.tsx` omits `isPinned`, so every
+row reads as pinned; untouched.
+
 ## Supertag views only — 2026-09-15
 
 The user withdrew the standalone-collection direction. Supertags remain the

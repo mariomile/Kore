@@ -24,6 +24,7 @@ const definition = vi.hoisted(() => ({
     needsConversion: false,
     properties: [],
     template: null,
+    icon: null,
   } as TagDefinitionState,
 }))
 const saveTagType = vi.hoisted(() => vi.fn(async () => {}))
@@ -70,6 +71,7 @@ beforeEach(() => {
     needsConversion: false,
     properties: [],
     template: null,
+    icon: null,
   }
   propertyUses.current = []
   templates.current = []
@@ -88,6 +90,7 @@ describe('TagConfigDialog', () => {
       needsConversion: false,
       properties: [{ name: 'Author', key: 'author', type: 'text' }],
       template: null,
+      icon: null,
     }
     const onClose = vi.fn()
     const view = await render(<Dialog tag="Book" onClose={onClose} />)
@@ -108,6 +111,7 @@ describe('TagConfigDialog', () => {
       ],
       7,
       null,
+      null,
     )
     expect(invalidateQueries).toHaveBeenCalled()
     expect(onClose).toHaveBeenCalled()
@@ -120,6 +124,7 @@ describe('TagConfigDialog', () => {
       needsConversion: false,
       properties: [{ name: 'Author', key: 'author', type: 'text' }],
       template: null,
+      icon: null,
     }
     tagTypesRows.current = [
       { tagKey: 'person', notePath: 'tags/person.md' },
@@ -143,6 +148,7 @@ describe('TagConfigDialog', () => {
       [{ name: 'Author', key: 'author', type: 'relation', target: 'person' }],
       7,
       null,
+      null,
     )
   })
 
@@ -153,6 +159,7 @@ describe('TagConfigDialog', () => {
       needsConversion: false,
       properties: [{ name: 'Topic', key: 'topic', type: 'relations' }],
       template: null,
+      icon: null,
     }
     tagTypesRows.current = [{ tagKey: 'person', notePath: 'tags/person.md' }]
     noteTagsRows.current = [{ tag: 'topic', count: 3 }]
@@ -171,6 +178,7 @@ describe('TagConfigDialog', () => {
       needsConversion: true,
       properties: [],
       template: null,
+      icon: null,
     }
     const view = await render(<Dialog tag="book" onClose={() => {}} />)
 
@@ -185,6 +193,7 @@ describe('TagConfigDialog', () => {
       needsConversion: false,
       properties: [{ name: 'Author', key: 'author', type: 'text' }],
       template: null,
+      icon: null,
     }
     propertyUses.current = [
       {
@@ -211,6 +220,7 @@ describe('TagConfigDialog', () => {
       [{ name: 'Author', key: 'writer', type: 'text' }],
       7,
       null,
+      null,
     )
     expect(commitNoteFrontmatter).toHaveBeenCalledWith(
       'notes/dune.md',
@@ -227,6 +237,7 @@ describe('TagConfigDialog', () => {
       needsConversion: false,
       properties: [{ name: 'Author', key: 'author', type: 'text' }],
       template: null,
+      icon: null,
     }
     propertyUses.current = [
       {
@@ -277,6 +288,7 @@ describe('TagConfigDialog', () => {
       ],
       7,
       null,
+      null,
     )
   })
 
@@ -287,6 +299,7 @@ describe('TagConfigDialog', () => {
       needsConversion: false,
       properties: [{ name: 'Author', key: 'author', type: 'text' }],
       template: null,
+      icon: null,
     }
     const view = await render(<Dialog tag="book" onClose={() => {}} />)
 
@@ -304,6 +317,7 @@ describe('TagConfigDialog', () => {
       needsConversion: false,
       properties: [{ name: 'Status', key: 'status', type: 'select', options: ['to-read', 'done'] }],
       template: null,
+      icon: null,
     }
     const view = await render(<Dialog tag="book" onClose={() => {}} />)
 
@@ -318,6 +332,7 @@ describe('TagConfigDialog', () => {
       [{ name: 'Status', key: 'status', type: 'select', options: ['done', 'reading'] }],
       7,
       null,
+      null,
     )
   })
 
@@ -328,6 +343,7 @@ describe('TagConfigDialog', () => {
       needsConversion: false,
       properties: [{ name: 'Author', key: 'author', type: 'text' }],
       template: null,
+      icon: null,
     }
     const view = await render(<Dialog tag="book" onClose={() => {}} />)
 
@@ -337,5 +353,54 @@ describe('TagConfigDialog', () => {
 
     await expect.element(view.getByRole('button', { name: 'Save' })).toBeDisabled()
     expect(saveTagType).not.toHaveBeenCalled()
+  })
+
+  it('picks an icon and saves it with the schema', async () => {
+    definition.current = {
+      path: 'tags/book.md',
+      exists: true,
+      needsConversion: false,
+      properties: [{ name: 'Author', key: 'author', type: 'text' }],
+      template: null,
+      icon: null,
+    }
+    const view = await render(<Dialog tag="Book" onClose={() => {}} />)
+
+    await view.getByRole('button', { name: 'Tag icon' }).click()
+    await view.getByRole('button', { name: '📚' }).click()
+    await expect.element(view.getByRole('button', { name: 'Tag icon' })).toHaveTextContent('📚')
+
+    await view.getByRole('button', { name: 'Save' }).click()
+
+    expect(saveTagType).toHaveBeenCalledWith(
+      'Book',
+      [{ name: 'Author', key: 'author', type: 'text' }],
+      7,
+      null,
+      '📚',
+    )
+  })
+
+  it('takes any typed emoji and removes a stored icon', async () => {
+    definition.current = {
+      path: 'tags/book.md',
+      exists: true,
+      needsConversion: false,
+      properties: [],
+      template: null,
+      icon: '📚',
+    }
+    const view = await render(<Dialog tag="Book" onClose={() => {}} />)
+
+    await expect.element(view.getByRole('button', { name: 'Tag icon' })).toHaveTextContent('📚')
+    await view.getByRole('button', { name: 'Tag icon' }).click()
+    await view.getByRole('textbox', { name: 'Any emoji' }).fill('🦄')
+    await expect.element(view.getByRole('button', { name: 'Tag icon' })).toHaveTextContent('🦄')
+
+    await view.getByRole('button', { name: 'Tag icon' }).click()
+    await view.getByRole('button', { name: 'Remove icon' }).click()
+    await view.getByRole('button', { name: 'Save' }).click()
+
+    expect(saveTagType).toHaveBeenCalledWith('Book', [], 7, null, null)
   })
 })

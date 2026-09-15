@@ -32,6 +32,18 @@ export const allNotesViewSchema = allNotesViewValueSchema.catch('list')
 export type AllNotesView = z.infer<typeof allNotesViewSchema>
 
 /**
+ * The All Notes list's sort order: most/least recently updated (by `mtime`,
+ * the list's only recency signal — there is no `createdAt`), or title
+ * alphabetical either direction. Pinned notes always lead regardless of sort
+ * (see `sortNoteList`); this only orders the rest.
+ */
+export const ALL_NOTES_SORTS = ['updated-desc', 'updated-asc', 'title-asc', 'title-desc'] as const
+
+export const allNotesSortSchema = z.enum(ALL_NOTES_SORTS).catch('updated-desc')
+
+export type AllNotesSort = z.infer<typeof allNotesSortSchema>
+
+/**
  * Layouts a collection page can persist as a named view (the tag-page tabs).
  * Kept as the page-tab contract even though embedded collections now support
  * the same four layouts.

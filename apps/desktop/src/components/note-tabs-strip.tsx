@@ -3,6 +3,7 @@ import { useMemo, type MouseEvent, type ReactElement } from 'react'
 import { useDndMonitor, type DragEndEvent } from '@dnd-kit/core'
 import { horizontalListSortingStrategy, SortableContext, useSortable } from '@dnd-kit/sortable'
 import { Close, PanelLeft, PanelRight, Pin } from '@/components/icons'
+import { TabContextMenu } from '@/components/note-tabs-context-menu'
 import { NoteTabsListMenu } from '@/components/note-tabs-list-menu'
 import { NoteTabsPlusMenu } from '@/components/note-tabs-plus-menu'
 import { OpenTabIcon } from '@/components/open-tab-icon'
@@ -103,23 +104,25 @@ export function WorkspaceTabsStrip({
         aria-label="Workspace tabs"
         className="window-drag-control ml-1 flex min-w-0 flex-1 items-center gap-1 overflow-x-auto"
       >
-        <SortableContext
-          items={items.map((item) => tabKey(item.tab))}
-          strategy={horizontalListSortingStrategy}
-        >
-          {items.map((item) => (
-            <StripTab
-              key={tabKey(item.tab)}
-              item={item}
-              paneId={paneId}
-              active={tabKey(item.tab) === activeKey}
-              paneActive={paneActive}
-              onActivate={activateTab}
-              onClose={closeTab}
-              onTogglePin={togglePin}
-            />
-          ))}
-        </SortableContext>
+        <TabContextMenu>
+          <SortableContext
+            items={items.map((item) => tabKey(item.tab))}
+            strategy={horizontalListSortingStrategy}
+          >
+            {items.map((item) => (
+              <StripTab
+                key={tabKey(item.tab)}
+                item={item}
+                paneId={paneId}
+                active={tabKey(item.tab) === activeKey}
+                paneActive={paneActive}
+                onActivate={activateTab}
+                onClose={closeTab}
+                onTogglePin={togglePin}
+              />
+            ))}
+          </SortableContext>
+        </TabContextMenu>
 
         {commandContext ? <NoteTabsPlusMenu context={commandContext} /> : null}
         <NoteTabsListMenu />
@@ -225,6 +228,7 @@ function StripTab({
         aria-selected={active}
         aria-label={title}
         title={title}
+        data-tab-key={tabKey(tab)}
         onClick={() => {
           onActivate(tab)
         }}
@@ -255,6 +259,7 @@ function StripTab({
       style={sortableStyle}
       role="tab"
       aria-selected={active}
+      data-tab-key={tabKey(tab)}
       onAuxClick={handleAuxClick}
       className={cn(
         tabPillClass(active),

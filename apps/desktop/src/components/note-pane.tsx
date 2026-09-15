@@ -33,6 +33,7 @@ import { TagActionsMenu } from '@/editor/tag-actions-menu'
 import { useTagActions } from '@/editor/use-tag-actions'
 import { BlockSwipeGestures } from '@/editor/block-swipe'
 import { CalloutHighlighter } from '@/editor/callout-highlighter'
+import { CollectionFenceGuard } from '@/editor/collection-fence-guard'
 import { LinkPreviewCards } from '@/editor/link-preview-cards'
 import { EditorNoteProperties } from '@/editor/editor-note-properties'
 import { dailyConflictWritePath } from '@/hooks/use-daily-note-seed'
@@ -504,6 +505,7 @@ export function NotePaneComponent({
         ) : null}
         <EditorAiKeymap onTrigger={aiMenu.openMenu} />
         <CalloutHighlighter />
+        <CollectionFenceGuard />
         {/* Fetching a link's preview reaches the linked host, so a private
             note previews nothing — and an unresolved row counts as private,
             the same fail-closed rule the AI menu applies. */}

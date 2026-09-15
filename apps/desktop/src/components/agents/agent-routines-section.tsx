@@ -74,12 +74,20 @@ export function AgentRoutinesSection({ profiles }: AgentRoutinesSectionProps): R
     }))
   }
 
+  // Editing merges only the dialog's fields onto the live entry: a run that
+  // starts or settles while the dialog is open must keep its lastRunMs, runs,
+  // and retry/pause state instead of being overwritten by the opened snapshot.
   const save = (routine: AgentRoutine): void => {
+    const { name, prompt, script, agentSlug, schedule } = routine
     updateSettingsWith((current) => {
       const exists = current.agentRoutines.some((entry) => entry.id === routine.id)
       return {
         agentRoutines: exists
-          ? current.agentRoutines.map((entry) => (entry.id === routine.id ? routine : entry))
+          ? current.agentRoutines.map((entry) =>
+              entry.id === routine.id
+                ? { ...entry, name, prompt, script, agentSlug, schedule }
+                : entry,
+            )
           : [...current.agentRoutines, routine],
       }
     })

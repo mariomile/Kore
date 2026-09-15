@@ -1,5 +1,53 @@
 # Kore working state
 
+## The chat AI sees the icon set and proposes tag icons — 2026-09-15
+
+User ask ("dall'AI dobbiamo poter modificare tutto dell'app, come anche le
+icone"): in chat the model guessed icon names (`building-2`, `gavel`)
+because it could not see the app's icons, so the edits did nothing. Slice 1
+of the AI-app-control map (gap map in the project store,
+`docs/ai-app-control.md`): tags' appearance, with the model able to *see*
+valid values.
+
+- [x] Icon catalog generated into core: `TAG_SYMBOL_ICON_GROUPS` in
+  `apps/desktop/scripts/icon-manifest.mjs` (the old `// Group` comments
+  became keys, stored names unchanged) → `generate-icons.mjs` now also
+  writes `packages/core/src/tags/tag-symbol-catalog.gen.ts` (217 names, a
+  hint per glyph from group + Solar words). `resolveTagIconInput` accepts a
+  catalog name (bare or `icon:`-prefixed) or one emoji and refuses anything
+  else; a desktop test pins the catalog to the picker's `TAG_SYMBOL_ICONS`.
+- [x] Tools (`packages/core/src/ai/chat/tag-tools.ts`, registered in
+  `tools.ts`): `list_tags` (facets + typed definitions: count, icon, schema
+  size), `list_tag_icons` (the catalog), `set_tag_icon` (propose-only:
+  validates the name, reads the live definition — private → refusal, a
+  regular note at `tags/<tag>.md` → refusal, unchanged → refusal — returns
+  `{ tag, path, icon, previousIcon }`). Prompt line added under the edit
+  contract; `NoteToolResult.setTagIcon` carries a `decision`, persisted
+  through the same parts JSON (`settleNoteEdit` settles both proposals).
+- [x] Desktop: `ChatProposalCard` is the shell extracted from the note
+  patch card (focus, Enter/Backspace, decision binding); `ChatTagIconCard`
+  shows current → proposed glyph and accepts through `useApplyTagIcon` →
+  `saveTagType` (the Configure-tag writer), re-checking private / unmarked /
+  stale icon. Chips for the two listings.
+
+**Untouched by design:** supertag schema edits from chat (slice 2), a tag
+*color* (does not exist in the UI; graph hue is a name hash), the CLI
+engines' skill (they still cannot see the names — slice 7), any settings-
+or Rust-backed surface.
+
+**Validation:** core `tools` (+5), `tag-icon-catalog` 3/3, `transcript`,
+`store`, `system-prompt`, `stream-chat` green (node); browser
+`chat-tag-icon-card` 3/3, `use-apply-tag-icon` 2/2, catalog lockstep 1/1,
+`chat-note-patch-card` 5/5, `chat-screen` (new flow test) on Chromium and
+WebKit; wider chat + tags suites 116/116 on Chromium; `pnpm check` exit 0.
+Not exercised: a live provider turn calling `set_tag_icon` (the dev
+harness's demo model streams text only).
+
+**Next:** merge, bump, then in Kore Brain ask "give #company a buildings
+icon" and accept from the keyboard; watch the sidebar row change. Then
+slice 2: `set_tag_schema` with the dialog's rename migration extracted into
+`lib/tags`.
+
 ## Reviewable patches in chat — 2026-09-15
 
 The vault-agent gesture the feature list put first: the BYOK chat proposes
@@ -869,6 +917,11 @@ screen: Agents then Close lands on today.
 
 ## Session log
 
+- 2026-09-15 — The chat AI sees the tag icon set: a core icon catalog
+  generated from the icon manifest, `list_tags` / `list_tag_icons` /
+  `set_tag_icon` tools, a review card that writes through the Configure-tag
+  writer on Accept. Unknown icon names can never be written. Verified: core
+  + browser suites on both engines, `pnpm check`.
 - 2026-09-15 — Reviewable patches in chat: `edit_note` proposes a body hunk
   the user reviews as a diff card and accepts (Enter) or rejects (Backspace);
   nothing written until accept, decision persisted with the turn, private

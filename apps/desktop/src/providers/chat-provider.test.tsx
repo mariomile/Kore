@@ -285,9 +285,12 @@ describe('ChatProvider persistence', () => {
       error: null,
       decision: 'pending' as const,
     }
+    const second = { ...proposal, toolCallId: 'e2', oldText: '- two', newText: '- two\n- three' }
     scriptTurn([
       { type: 'tool-call', call: { tool: 'editNote', toolCallId: 'e1', path: 'notes/a.md' } },
       { type: 'tool-result', result: proposal },
+      { type: 'tool-call', call: { tool: 'editNote', toolCallId: 'e2', path: 'notes/a.md' } },
+      { type: 'tool-result', result: second },
       { type: 'text-delta', text: 'Proposed.' },
       { type: 'complete', messages: [{ role: 'assistant', content: 'Proposed.' }] },
     ])
@@ -296,25 +299,30 @@ describe('ChatProvider persistence', () => {
     await act(() => session?.send('add two'))
     const conversationId = session?.activeConversationId
 
-    // Bound while the conversation is on screen (the card binds before its
-    // async write), recorded after the user moved on to a fresh chat.
-    const record = session?.bindNoteEditDecision('e1') ?? null
-    expect(record).not.toBeNull()
+    // Both bound while the conversation is on screen (a card binds before
+    // its async write), recorded after the user moved on to a fresh chat.
+    const recordFirst = session?.bindNoteEditDecision('e1') ?? null
+    const recordSecond = session?.bindNoteEditDecision('e2') ?? null
+    expect(recordFirst).not.toBeNull()
+    expect(recordSecond).not.toBeNull()
     await act(() => {
       session?.newChat()
     })
     core.saveChatMessage.mockClear()
     await act(() => {
-      record?.('accepted')
+      recordFirst?.('accepted')
+      recordSecond?.('rejected')
     })
 
-    expect(core.saveChatMessage).toHaveBeenCalledOnce()
-    expect(core.saveChatMessage.mock.calls[0]![0]).toMatchObject({
+    // The second save carries both decisions: neither reverts to pending.
+    expect(core.saveChatMessage).toHaveBeenCalledTimes(2)
+    expect(core.saveChatMessage.mock.calls[1]![0]).toMatchObject({
       conversation: { id: conversationId },
       turn: {
         userText: 'add two',
         parts: [
           { kind: 'tool', result: { ...proposal, decision: 'accepted' } },
+          { kind: 'tool', result: { ...second, decision: 'rejected' } },
           { kind: 'text', text: 'Proposed.' },
         ],
       },

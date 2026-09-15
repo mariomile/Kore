@@ -313,6 +313,11 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
     activeSendRef.current?.controller.abort()
   }, [])
 
+  // Turns that took a note-edit decision after leaving the screen, by id:
+  // the latest settled copy, so a second off-screen decision on the same
+  // turn persists on top of the first instead of the pre-switch snapshot.
+  const detachedTurnsRef = useRef(new Map<string, ChatTurn>())
+
   const bindNoteEditDecision = useCallback(
     (toolCallId: string): NoteEditDecisionRecorder | null => {
       const bound = turnsRef.current.find((candidate) =>
@@ -339,17 +344,20 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
         )
         setTurns((current) => current.map((turn) => (turn.id === bound.id ? settle(turn) : turn)))
         // Persist the freshest copy: the live one while the conversation is
-        // still on screen, else the turn as bound — the user switched away
-        // during the write, and the decision still belongs to that row.
+        // still on screen; otherwise the user switched away during the write,
+        // and the decision still belongs to that row — settled on top of any
+        // earlier off-screen decision on the same turn, never on the stale
+        // bound snapshot alone.
         const live = turnsRef.current.find((turn) => turn.id === bound.id)
+        const detached = detachedTurnsRef.current
+        const persisted = live ?? settle(detached.get(bound.id) ?? bound)
+        if (live === undefined) {
+          detached.set(bound.id, persisted)
+        }
         // Re-saving an existing row rewrites its parts alone (the conversation
         // upsert only bumps updated_ms), so the timestamps here never land.
         const now = Date.now()
-        persistTurn(
-          { id: conversationId, title, createdMs: now, updatedMs: now },
-          live ?? settle(bound),
-          now,
-        )
+        persistTurn({ id: conversationId, title, createdMs: now, updatedMs: now }, persisted, now)
       }
     },
     [persistTurn],

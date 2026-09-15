@@ -237,6 +237,21 @@ describe('NoteEditor block handle actions', () => {
     await expect.poll(() => handleRef.current?.getMarkdown()).toBe('Hello\n\nHello\n')
   })
 
+  it('keeps the block menu open while the Turn into submenu is hovered', async () => {
+    await unhover()
+    await render(<NoteEditor initialContent="Hello" blockHandle={true} />)
+    await hover(pmRoot.getByText('Hello'))
+    const blockHandle = page.getByTestId('block-handle-drag')
+    await expect.element(blockHandle).toBeVisible()
+    clickGrip(blockHandle.element())
+
+    const menu = page.getByTestId('block-handle-menu')
+    await expect.element(menu).toBeVisible()
+    await menu.getByRole('menuitem', { name: 'Turn into' }).hover()
+    await expect.element(page.getByRole('menuitem', { name: 'Heading 1' })).toBeVisible()
+    await expect.element(menu).toBeVisible()
+  })
+
   it('closes the block menu on a second grip click', async () => {
     await unhover()
     await render(<NoteEditor initialContent="Hello" blockHandle={true} />)

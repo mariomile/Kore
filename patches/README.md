@@ -1,4 +1,17 @@
-# Meowdown compatibility patches
+# Dependency patches
+
+## Base UI
+
+`@base-ui/react@1.7.0`: backports [mui/base-ui#5645](https://github.com/mui/base-ui/pull/5645)
+(merged 2026-09-09, not yet in a release as of 1.8.0). Without it a root menu
+that has no `Menu.Trigger` (the block-handle menu opens on a virtual anchor)
+never registers its floating node id, so its first submenu looks like a
+sibling and closes the root with reason `sibling-open`. Drop the patch and its
+`patchedDependencies` entry once Kore is on a Base UI release that contains
+that PR and `note-editor.test.tsx` ("keeps the block menu open while the Turn
+into submenu is hovered") still passes.
+
+## Meowdown
 
 Kore currently patches the exact installed Meowdown 0.65.6 packages:
 

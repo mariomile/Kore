@@ -44,6 +44,14 @@ export {
   type RollupSourceValue,
   type RollupResult,
 } from './property-values'
+export {
+  TAG_SYMBOL_CATALOG,
+  UNKNOWN_TAG_ICON_ERROR,
+  isTagSymbolIconName,
+  resolveTagIconInput,
+  type TagIconResolution,
+  type TagSymbolIconEntry,
+} from './tag-icon-catalog'
 export { localCalendarDate, createdStampValues } from './timestamps'
 export { evaluateFormula, type FormulaResult } from './formula'
 export {

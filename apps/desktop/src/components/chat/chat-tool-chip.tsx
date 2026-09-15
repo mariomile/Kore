@@ -2,8 +2,10 @@ import { Fragment, useState, type MouseEvent, type ReactElement, type ReactNode 
 import {
   CalendarDays,
   Globe,
+  Hash,
   History,
   Layers,
+  LayoutGrid,
   Note,
   Paperclip,
   Pencil,
@@ -29,6 +31,7 @@ import { routeForPath } from '@/routing/route'
 import { useRouter } from '@/routing/router'
 import { isModEvent } from '@meowdown/core'
 import { ChatNotePatchCard } from './chat-note-patch-card'
+import { ChatTagIconCard } from './chat-tag-icon-card'
 
 interface ChatToolChipProps {
   part: Extract<AssistantPart, { kind: 'tool' }>
@@ -297,6 +300,43 @@ export function ChatToolChip({ part, turnStatus = 'done' }: ChatToolChipProps): 
         >
           {call.path}
         </button>
+        {failed !== null ? <span> — {failed}</span> : null}
+      </ChipFrame>
+    )
+  }
+
+  if (call.tool === 'tags') {
+    const result = part.result?.tool === 'tags' ? part.result : null
+    return (
+      <ChipFrame pending={pending} icon={<Hash aria-hidden className="size-3.5" />}>
+        Listed the tags{result !== null ? countSuffix(result.count, 'tag') : ''}
+        {part.error !== null ? ` — ${part.error}` : ''}
+      </ChipFrame>
+    )
+  }
+
+  if (call.tool === 'tagIcons') {
+    const result = part.result?.tool === 'tagIcons' ? part.result : null
+    return (
+      <ChipFrame pending={pending} icon={<LayoutGrid aria-hidden className="size-3.5" />}>
+        Looked up the app’s icons{result !== null ? countSuffix(result.count, 'icon') : ''}
+        {part.error !== null ? ` — ${part.error}` : ''}
+      </ChipFrame>
+    )
+  }
+
+  // set_tag_icon: a settled proposal is the review card; a pending call or a
+  // refusal stays a compact chip, since there is nothing to accept.
+  if (call.tool === 'setTagIcon') {
+    const result = part.result?.tool === 'setTagIcon' ? part.result : null
+    const failed = result?.error ?? part.error ?? null
+    if (result !== null && failed === null) {
+      return <ChatTagIconCard result={result} turnStatus={turnStatus} />
+    }
+    return (
+      <ChipFrame pending={pending} icon={<Hash aria-hidden className="size-3.5" />} wrap>
+        {failed === null ? 'Proposing an icon for' : 'Couldn’t propose an icon for'}{' '}
+        <TagRouteButton tag={call.tag} />
         {failed !== null ? <span> — {failed}</span> : null}
       </ChipFrame>
     )

@@ -7,15 +7,19 @@ import { assetReferencingNotePaths } from '../../indexing/asset-refs'
 import {
   getTagType,
   listCollection,
+  listTagTypes,
   propertyRowValue,
   type CollectionEntry,
   type CollectionSort,
   type ListCollectionOptions,
+  type TagTypeEntry,
 } from '../../indexing/collections'
 import { attachRollups } from '../../indexing/rollups'
 import { listDailyNotes, type DailyNoteRow, type DailyNotesRange } from '../../indexing/queries'
 import {
+  listNoteTags,
   listRecentNotes,
+  type NoteTagFacet,
   type RecentNoteRow,
   type RecentNotesOptions,
 } from '../../indexing/note-list'
@@ -34,6 +38,7 @@ import {
 import { buildReadOneAsset, readAssetsInput, type ReadAssetsOutput } from './read-assets'
 import { applyNoteEdit } from './note-edit'
 import { buildReadOneNote, readNotesInput, type ReadNotesOutput } from './read-notes'
+import { buildTagTools } from './tag-tools'
 import {
   cloudSafeCollectionRows,
   cloudSafeNoteListings,
@@ -53,25 +58,32 @@ import {
   listCollectionInput,
   listDailyNotesInput,
   listRecentNotesInput,
+  type listTagIconsInput,
+  type listTagsInput,
   MAX_DAILY_NOTE_DAYS,
   MISSING_VALUE_ERROR,
   PRIVATE_NOTE_EDIT_ERROR,
   RESERVED_PROPERTY_ERROR,
   searchNotesInput,
   setNotePropertyInput,
+  type setTagIconInput,
   UNTYPED_TAG_ERROR,
   type EditNoteOutput,
   type ListCollectionOutput,
   type ListDailyNotesOutput,
   type ListRecentNotesOutput,
+  type ListTagIconsOutput,
+  type ListTagsOutput,
   type SearchNotesOutput,
   type SetNotePropertyOutput,
   type SetNotePropertyValue,
+  type SetTagIconOutput,
 } from './tools-io'
 
 export * from './tools-io'
 export * from './tools-activity'
 export * from './note-edit'
+export { mergeTagListings, type TagToolDeps } from './tag-tools'
 
 /**
  * The read-only note tools the chat model can call (Plan 10, first wave).
@@ -96,6 +108,10 @@ export interface NoteToolDeps {
   listDailyNotesFn?: (range: DailyNotesRange) => Promise<DailyNoteRow[]>
   assetReferencingNotePathsFn?: (assetPath: string) => Promise<string[]>
   getTagTypeFn?: (tag: string) => Promise<TagType | null>
+  /** Every tag carried by a note, with counts (list_tags). */
+  listNoteTagsFn?: () => Promise<NoteTagFacet[]>
+  /** Every typed tag with its schema (list_tags). */
+  listTagTypesFn?: () => Promise<TagTypeEntry[]>
   listCollectionFn?: (
     tag: string,
     sorts: readonly CollectionSort[],
@@ -189,6 +205,12 @@ export function buildNoteTools(options: BuildNoteToolsOptions = {}): NoteTools {
   }
   const openWebPage = buildOpenWebPage(browseDeps, options.browsingAvailable ?? true)
   const readWebPage = buildReadWebPage(browseDeps, options.browsingAvailable ?? true)
+  const tagTools = buildTagTools({
+    readNoteFn,
+    listNoteTagsFn: options.listNoteTagsFn ?? listNoteTags,
+    listTagTypesFn: options.listTagTypesFn ?? listTagTypes,
+    allowEdits: options.allowEdits === true,
+  })
 
   return {
     search_notes: tool({
@@ -294,6 +316,8 @@ export function buildNoteTools(options: BuildNoteToolsOptions = {}): NoteTools {
         }
       },
     }),
+
+    ...tagTools,
 
     set_note_property: tool({
       description:
@@ -425,6 +449,9 @@ export type NoteTools = {
   list_recent_notes: Tool<z.infer<typeof listRecentNotesInput>, ListRecentNotesOutput>
   list_daily_notes: Tool<z.infer<typeof listDailyNotesInput>, ListDailyNotesOutput>
   list_collection: Tool<z.infer<typeof listCollectionInput>, ListCollectionOutput>
+  list_tags: Tool<z.infer<typeof listTagsInput>, ListTagsOutput>
+  list_tag_icons: Tool<z.infer<typeof listTagIconsInput>, ListTagIconsOutput>
+  set_tag_icon: Tool<z.infer<typeof setTagIconInput>, SetTagIconOutput>
   set_note_property: Tool<z.infer<typeof setNotePropertyInput>, SetNotePropertyOutput>
   edit_note: Tool<z.infer<typeof editNoteInput>, EditNoteOutput>
   read_notes: Tool<z.infer<typeof readNotesInput>, ReadNotesOutput>

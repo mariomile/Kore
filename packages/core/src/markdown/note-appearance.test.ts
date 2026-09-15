@@ -27,6 +27,11 @@ describe('parseNoteIcon', () => {
     })
   })
 
+  it('reads a symbol icon reference', () => {
+    expect(parseNoteIcon('icon:folder')).toEqual({ kind: 'symbol', name: 'folder' })
+    expect(parseNoteIcon('icon:Folder')).toEqual({ kind: 'emoji', glyph: 'icon:Folder' })
+  })
+
   it('rejects empty values, non-images, and non-http URLs', () => {
     expect(parseNoteIcon('')).toBeNull()
     expect(parseNoteIcon('   ')).toBeNull()

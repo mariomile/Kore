@@ -12,6 +12,7 @@ import {
   relationTargetOf,
   relationValue,
   tagDefinitionPath,
+  tagDisplayName,
   tagNameForDefinitionPath,
   type TagType,
 } from './tag-type'
@@ -82,6 +83,18 @@ describe('parseTagTypeFrontmatter', () => {
         frontmatter({ lore: 'tag', template: 'notes/not-a-template.md', properties: [] }),
       ),
     ).toEqual({ properties: [] })
+  })
+
+  it('reads a symbol icon reference and names a tag for chrome', () => {
+    expect(
+      parseTagTypeFrontmatter(frontmatter({ lore: 'tag', icon: 'icon:folder', properties: [] })),
+    ).toEqual({ properties: [], icon: 'icon:folder' })
+    expect(decodeTagTypeJson(encodeTagTypeJson({ properties: [], icon: 'icon:folder' }))).toEqual({
+      properties: [],
+      icon: 'icon:folder',
+    })
+    expect(tagDisplayName('book')).toBe('Book')
+    expect(tagDisplayName('#project/atlas')).toBe('Project/atlas')
   })
 
   it('reads an emoji icon and ignores image or malformed icons', () => {

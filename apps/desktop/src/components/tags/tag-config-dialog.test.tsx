@@ -403,4 +403,25 @@ describe('TagConfigDialog', () => {
 
     expect(saveTagType).toHaveBeenCalledWith('Book', [], 7, null, null)
   })
+
+  it('picks a symbol icon and stores it as an icon: reference', async () => {
+    definition.current = {
+      path: 'tags/book.md',
+      exists: true,
+      needsConversion: false,
+      properties: [],
+      template: null,
+      icon: null,
+    }
+    const view = await render(<Dialog tag="Book" onClose={() => {}} />)
+
+    await view.getByRole('button', { name: 'Tag icon' }).click()
+    await view
+      .getByRole('group', { name: 'Symbol icons' })
+      .getByRole('button', { name: 'folder', exact: true })
+      .click()
+    await view.getByRole('button', { name: 'Save' }).click()
+
+    expect(saveTagType).toHaveBeenCalledWith('Book', [], 7, null, 'icon:folder')
+  })
 })

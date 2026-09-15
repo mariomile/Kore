@@ -5,8 +5,10 @@ import {
   getNote,
   isUntitledNotePath,
   listChatConversations,
+  noteExists,
   noteFileStem,
   type OpenTab,
+  tagDisplayName,
 } from '@reflect/core'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { CHAT_QUERY_SCOPE, INDEX_QUERY_SCOPE } from '@/lib/query-client'
@@ -49,14 +51,28 @@ export function useOpenTabItems(): OpenTabItem[] {
     enabled: bridgeReady && graph !== null && hasChatTabs,
   })
 
+  // Healing: a tab whose note the index no longer knows is dropped — but
+  // only once the file is gone too. The index trails the disk (watcher
+  // batches), so a note born and renamed inside one batch resolves to
+  // nothing for a moment while its file is right there; pruning on the
+  // index alone closed exactly those tabs.
   useEffect(() => {
     if (!notesResolved || noteRows === undefined || indexing) {
       return
     }
+    let cancelled = false
     for (const path of notePaths) {
-      if (noteRows.get(path) === null && path !== activePath && !isUntitledNotePath(path)) {
-        pruneTab(path)
+      if (noteRows.get(path) !== null || path === activePath || isUntitledNotePath(path)) {
+        continue
       }
+      void noteExists(path).then((exists) => {
+        if (!cancelled && !exists) {
+          pruneTab(path)
+        }
+      })
+    }
+    return () => {
+      cancelled = true
     }
   }, [notesResolved, noteRows, indexing, notePaths, activePath, pruneTab])
 
@@ -84,7 +100,7 @@ export function useOpenTabItems(): OpenTabItem[] {
               tab.surface === 'allNotes' && tab.filter.kind === 'inbox'
                 ? 'Inbox'
                 : tab.surface === 'allNotes' && tab.filter.kind === 'tag'
-                  ? `#${tab.filter.tag}`
+                  ? tagDisplayName(tab.filter.tag)
                   : SURFACE_TAB_LABEL[tab.surface],
           }
       }

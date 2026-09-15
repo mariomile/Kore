@@ -18,6 +18,42 @@ Not exercised: a live Run now against a real graph with BYOK.
 **Next:** merge, then add the template from Settings → Agents on a real graph
 and Run now once with BYOK to confirm the review note lands.
 
+## New-note tab survives a fast rename; split from the tab menu — 2026-09-15
+
+Same branch as below. Root cause of the vanishing tab: the index trails the
+disk (watcher batches), so an untitled note born and renamed inside one
+batch had its tab path moved to a note the index did not know yet, and the
+open-tab pruning closed it. `useOpenTabItems` now prunes only after
+`noteExists` confirms the file is gone too (two strip tests: file present
+keeps the tab, file gone drops it). The tab menu gained "Open to the right"
+and "Open below" (`panes.moveTab`), offered only inside the workspace frame.
+Verified: `pnpm check` exit 0, strip suite 26/26 and open-notes on Chromium
+and WebKit, split done from the menu in the dev bridge.
+
+## Tag icon on open tabs, 217 symbol icons — 2026-09-15
+
+`t3code/tag-icons-open-and-more`: `OpenTabIcon` shows the tag's own icon for
+a tag page tab (Open shelf, strip pinned pill, tab list menu). Symbol icons
+now come from their own manifest (`TAG_SYMBOL_ICONS` in
+`scripts/icon-manifest.mjs`, 217 Solar linear glyphs) generated into
+`src/lib/tags/tag-symbol-icons.gen.tsx` by `pnpm --filter @reflect/desktop
+icons`; the picker gained a search box and a scrolling grid. Verified:
+`pnpm check` exit 0, sidebar/strip/dialog suites green on Chromium and
+WebKit, rocket icon picked and seen on the Open row in the dev bridge.
+
+## Supertag names and symbol icons — 2026-09-15
+
+Follow-up on `t3code/supertag-display-name-icons`: chrome names a supertag
+`Book`, not `#book` (sidebar Tags, tag page title, tab strip and Open
+rows, via `tagDisplayName`); the sidebar row always carries an icon, the
+`#` glyph until one is picked; the picker offers the app's symbol icons
+(stored as `icon:<name>`, resolved by `tag-symbol-icons.ts`) beside the
+emoji grid. `parseNoteIcon` gained the `symbol` kind, so a definition
+note's own header renders the symbol too. Verified: `pnpm check` exit 0,
+touched suites green on Chromium and WebKit, gestures done in the dev
+bridge. Hashtag chips inside notes and the All Notes filter tabs still
+show `#tag` on purpose.
+
 ## Supertag icons, All Notes sort, tab menu — 2026-09-15
 
 PR #213 (`t3code/supertag-icons-note-sorting-tab-actions`): supertag emoji

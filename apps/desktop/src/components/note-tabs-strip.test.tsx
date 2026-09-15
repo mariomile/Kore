@@ -148,9 +148,14 @@ const TITLES: Record<string, string> = {
   'notes/renamed.md': 'Renamed Note',
 }
 const UNTITLED_PATH = untitledNotePath()
+/** Paths present on disk, whether or not the index has caught up with them. */
+const DISK_FILES = new Set<string>()
 
 setBridge({
   invoke: async (command, args) => {
+    if (command === 'note_exists') {
+      return DISK_FILES.has(String(args['path']))
+    }
     if (command !== 'db_query') {
       return null
     }
@@ -575,6 +580,41 @@ describe('workspace tabs', () => {
     await view.unmount()
   })
 
+  it('keeps a renamed tab the index has not caught up with while its file exists', async () => {
+    // A birth rename can land before the watcher indexed the untitled file:
+    // the moved row is a no-op, so the new path resolves to nothing until
+    // the next batch. The file is there, so the tab must survive.
+    DISK_FILES.add('notes/fresh.md')
+    try {
+      const view = await renderTabs()
+      await view.getByTestId('open-untitled').click()
+      await expect.element(view.getByRole('tab', { name: 'Untitled' })).toBeVisible()
+
+      emitNoteMoved(UNTITLED_PATH, 'notes/fresh.md')
+      await vi.waitFor(() => expect(routeOf(view).path).toBe('notes/fresh.md'))
+      await view.getByTestId('open-alpha').click()
+      await expect.element(view.getByRole('tab', { name: /Alpha Plan/ })).toBeVisible()
+      await new Promise((resolve) => setTimeout(resolve, 300))
+      await expect.element(view.getByRole('tab', { name: /fresh/ })).toBeVisible()
+      await view.unmount()
+    } finally {
+      DISK_FILES.delete('notes/fresh.md')
+    }
+  })
+
+  it('drops a tab whose note is gone from both the index and the disk', async () => {
+    const view = await renderTabs()
+    await view.getByTestId('open-untitled').click()
+    await expect.element(view.getByRole('tab', { name: 'Untitled' })).toBeVisible()
+
+    emitNoteMoved(UNTITLED_PATH, 'notes/gone.md')
+    await vi.waitFor(() => expect(routeOf(view).path).toBe('notes/gone.md'))
+    await view.getByTestId('open-alpha').click()
+    await expect.element(view.getByRole('tab', { name: /Alpha Plan/ })).toBeVisible()
+    await vi.waitFor(() => expect(view.getByRole('tab', { name: /gone/ }).query()).toBeNull())
+    await view.unmount()
+  })
+
   it('opens every workspace surface as a deduplicated tab', async () => {
     const view = await renderTabs()
     const surfaces = [
@@ -607,12 +647,12 @@ describe('workspace tabs', () => {
     // A routed tag is that tag's own page, and the one surface tab renames —
     // it does not spawn a second tab beside the generic label.
     await view.getByTestId('open-book-tag').click()
-    await expect.element(view.getByRole('tab', { name: '#book' })).toBeVisible()
+    await expect.element(view.getByRole('tab', { name: 'Book' })).toBeVisible()
     expect(view.getByRole('tab', { name: 'All notes' }).query()).toBeNull()
 
     await view.getByTestId('open-all-notes').click()
     await expect.element(view.getByRole('tab', { name: 'All notes' })).toBeVisible()
-    expect(view.getByRole('tab', { name: '#book' }).query()).toBeNull()
+    expect(view.getByRole('tab', { name: 'Book' }).query()).toBeNull()
     await view.unmount()
   })
 
@@ -834,6 +874,27 @@ describe('workspace tabs in a split', () => {
     expect(panesOf()[1]).toEqual(SECOND_PANE)
     // And the strip shows this pane's tabs, not the other pane's note.
     expect(view.getByRole('tab', { name: /Beta Review/ }).query()).toBeNull()
+    await view.unmount()
+  })
+
+  it('the tab menu moves a tab into a new pane beside or below', async () => {
+    const view = await renderSplit()
+    await view.getByTestId('open-alpha').click()
+    await expect.element(view.getByRole('tab', { name: /Alpha Plan/ })).toBeVisible()
+
+    await openTabMenu(view, /Alpha Plan/)
+    await view.getByRole('menuitem', { name: 'Open to the right' }).click()
+
+    await vi.waitFor(() => {
+      const panes = panesOf()
+      const main = panes.find((pane) => pane.id === 'main')
+      expect(main?.tabs.map((tab) => tabKey(tab))).toEqual(['surface:daily'])
+      const holder = panes.find((pane) =>
+        pane.tabs.some((tab) => tabKey(tab) === 'note:notes/alpha.md'),
+      )
+      expect(holder).toBeDefined()
+      expect(holder?.id).not.toBe('main')
+    })
     await view.unmount()
   })
 

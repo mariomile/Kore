@@ -1,7 +1,9 @@
 # `@reflect/design-system`
 
 The tokens the app is built on: CSS custom properties for color, typography,
-spacing, radii, shadow and motion, plus the Inter Variable webfont.
+spacing, radii, shadow and motion, plus the Inter Variable webfont. How they
+combine — principles, states (hover / focus / disabled), overlays, motion,
+do/don't — is [docs/design.md](../docs/design.md).
 
 Consumers link one file, `styles.css`, which is an `@import` manifest over
 `tokens/` plus a minimal base layer. Both apps do this:

@@ -1,28 +1,5 @@
 # Kore working state
 
-## Inline collection creation — 2026-09-15
-
-Approved direction in [Collections coherence review](plans/collections-coherence-review.md):
-keep schemas in supertags and create simple collections without modals. This
-supersedes the earlier proposal for collection-owned schemas.
-
-- [x] All notes → New collection and editor slash → Create collection use an
-  inline name form; empty manual collections need no tag or defaults.
-- [x] New definitions contain their own collection view, so the named note
-  opens as a usable collection page. Immediate indexing prevents an unresolved
-  embed at creation; an indexing failure preserves successful creation.
-- [x] Add existing notes works across layouts; non-table views offer New note.
-  Empty collections hide unavailable grouping/column controls and use plain copy.
-- [x] Independent review findings resolved: preserve live editor selection,
-  and do not report durable creation as failed when indexing lags.
-
-**Validation:** 48 targeted tests across creation, persistence, slash items,
-embedded collections, collection table, and existing tag flows; `pnpm check`
-and `pnpm build` passed. Browser dev-graph QA verified All notes creation,
-adding an existing book, creating an untagged note, and slash creation with
-the embed rendered immediately, without a modal. No personal graph changes
-or native app update. **Next:** PR checks and user review; no bump requested.
-
 **Updated:** 2026-09-14, split panes part 2: panes stack vertically inside
 columns, a tab moves to a new pane below or beside by drag or ⌥⌘⇧arrows,
 rail toggles render once. Part 1 gave N side-by-side columns with per-pane

@@ -11,9 +11,6 @@ const readNote = vi.hoisted(() =>
 )
 const getNoteIdsByPath = vi.hoisted(() => vi.fn(async () => new Map<string, string | null>()))
 const getTagType = vi.hoisted(() => vi.fn(async () => null))
-const indexNote = vi.hoisted(() => vi.fn(async () => {}))
-const notify = vi.hoisted(() => vi.fn())
-vi.mock('@/components/ui/toast', () => ({ toast: { add: notify } }))
 const resolveCollectionNoteReference = vi.hoisted(() =>
   vi.fn<(reference: string) => Promise<CollectionReferenceResolution>>(async (reference) => ({
     status: 'resolved',
@@ -27,7 +24,6 @@ vi.mock('@reflect/core', async (importOriginal) => ({
   readNote,
   getNoteIdsByPath,
   getTagType,
-  indexNote,
   resolveCollectionNoteReference,
 }))
 const commitNoteBodyTransform = vi.hoisted(() =>
@@ -49,7 +45,6 @@ vi.mock('@/lib/note-frontmatter', () => ({
 
 const {
   addReusableCollectionMember,
-  createReusableCollectionDefinition,
   createReusableCollectionRow,
   removeReusableCollectionExclusionsForPaths,
   removeReusableCollectionMember,
@@ -72,8 +67,6 @@ beforeEach(() => {
   readNote.mockClear()
   getNoteIdsByPath.mockClear()
   getTagType.mockClear()
-  indexNote.mockClear()
-  notify.mockClear()
   resolveCollectionNoteReference.mockClear()
   commitNoteBodyTransform.mockClear()
   commitNoteFrontmatter.mockClear()
@@ -84,30 +77,6 @@ beforeEach(() => {
 })
 
 describe('reusable collection writes', () => {
-  it('opens a new definition as a collection page using its stable id', async () => {
-    await createReusableCollectionDefinition(
-      'Reading',
-      { version: 1, sources: { tags: [], include: [], exclude: [] } },
-      4,
-    )
-    const transform = commitNoteBodyTransform.mock.calls[0]![1]
-    const source = transform('---\nid: collection-id\n---\n# Reading\n')
-    expect(source).toContain('koreCollection: true')
-    expect(source).toContain('```collection\ncollection: collection-id\n```')
-    expect(source).toContain('# Reading')
-    expect(indexNote).toHaveBeenCalledWith('notes/new.md', { generation: 4 })
-    expect(commitNoteFrontmatter).not.toHaveBeenCalled()
-  })
-
-  it('returns the saved collection when immediate indexing fails', async () => {
-    indexNote.mockRejectedValueOnce(new Error('Index busy'))
-    await expect(
-      createReusableCollectionDefinition('Reading', DEFINITION.config, 4),
-    ).resolves.toMatchObject({ id: 'collection-id' })
-    expect(createNoteWithTitle).toHaveBeenCalledTimes(1)
-    expect(notify).toHaveBeenCalledWith(expect.objectContaining({ title: 'Collection saved' }))
-  })
-
   it('creates an original row with explicit defaults and manually includes it', async () => {
     readNoteSource.mockImplementation(async (path: string) =>
       path === 'notes/new.md' ? '---\nid: fresh-note-id\n---\n# Dune\n' : await readNote(),

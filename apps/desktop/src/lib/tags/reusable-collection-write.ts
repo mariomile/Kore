@@ -2,10 +2,8 @@ import {
   createNoteIfAbsent,
   createNoteWithTitle,
   foldTag,
-  formatCollectionEmbed,
   getNoteIdsByPath,
   getTagType,
-  indexNote,
   parseNote,
   parseCollectionDefinitionSource,
   readNote,
@@ -26,7 +24,6 @@ import {
   createTitledCollectionNote,
   createTypedCollectionNote,
 } from '@/lib/tags/create-collection-note'
-import { toast } from '@/components/ui/toast'
 
 /** Create an ordinary named note and mark its nested Kore config as a collection definition. */
 export async function createReusableCollectionDefinition(
@@ -35,34 +32,10 @@ export async function createReusableCollectionDefinition(
   generation: number,
 ): Promise<CollectionDefinition> {
   const path = await createNoteWithTitle(title.trim(), generation)
-  await commitNoteBodyTransform(
-    path,
-    (source) => {
-      const reference = parseNote({ path, source }).id ?? path
-      const embed = formatCollectionEmbed({
-        selection: { kind: 'definition', reference },
-        view: 'table',
-        sorts: [],
-        group: null,
-        filters: [],
-        match: 'all',
-      })
-      return `${updateCollectionDefinitionSource(source, config).trimEnd()}\n\n${embed}\n`
-    },
-    generation,
-  )
+  await saveReusableCollectionDefinition(path, config, generation)
   const definition = parseCollectionDefinitionSource(await readNote(path, generation), path)
   if (definition === null) {
     throw new Error("The collection definition couldn't be read after it was created.")
-  }
-  try {
-    await indexNote(path, { generation })
-  } catch {
-    toast.add({
-      type: 'warning',
-      title: 'Collection saved',
-      description: 'It will appear when indexing catches up. You do not need to create it again.',
-    })
   }
   return definition
 }

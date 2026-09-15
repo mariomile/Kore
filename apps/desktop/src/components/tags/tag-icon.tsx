@@ -8,9 +8,9 @@ interface TagIconProps {
   /** The tag's stored icon (emoji or `icon:<name>`), or undefined for none. */
   icon: string | undefined
   /** Sizing for the symbol glyph (`size-3.5` and the like). */
-  className?: string
+  className?: string | undefined
   /** Text sizing for an emoji; defaults to the symbol's box. */
-  emojiClassName?: string
+  emojiClassName?: string | undefined
 }
 
 /**

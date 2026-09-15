@@ -1,5 +1,7 @@
 import type { ReactElement } from 'react'
-import type { OpenTab } from '@reflect/core'
+import { foldTag, type OpenTab } from '@reflect/core'
+import { TagIcon } from '@/components/tags/tag-icon'
+import { useTagIcons } from '@/hooks/use-tag-icons'
 import {
   Chart,
   Chat,
@@ -17,8 +19,16 @@ interface OpenTabIconProps {
   className?: string
 }
 
-/** Render the semantic icon that identifies a workspace tab. */
+/**
+ * Render the semantic icon that identifies a workspace tab. A tag page tab
+ * carries the tag's own icon (or the `#` glyph), the same mark as its
+ * sidebar row.
+ */
 export function OpenTabIcon({ tab, className }: OpenTabIconProps): ReactElement {
+  const tagIcons = useTagIcons()
+  if (tab.kind === 'surface' && tab.surface === 'allNotes' && tab.filter.kind === 'tag') {
+    return <TagIcon icon={tagIcons.get(foldTag(tab.filter.tag))} className={className} />
+  }
   if (tab.kind === 'note') {
     return <Note aria-hidden className={className} />
   }

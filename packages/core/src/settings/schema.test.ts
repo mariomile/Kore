@@ -136,6 +136,10 @@ describe('settingsSchema', () => {
     expect(DEFAULT_SETTINGS.aiPrompts).toEqual([])
   })
 
+  it('does not preinstall recommended automations', () => {
+    expect(DEFAULT_SETTINGS.agentRoutines).toEqual([])
+  })
+
   it('accepts valid values', () => {
     expect(settingsSchema.parse({ editorMarkdownSyntax: 'show' }).editorMarkdownSyntax).toBe('show')
     expect(settingsSchema.parse({ editorMarkdownSyntax: 'hide' }).editorMarkdownSyntax).toBe('hide')

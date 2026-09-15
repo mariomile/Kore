@@ -1,5 +1,5 @@
 import { useState, type ReactElement } from 'react'
-import type { AgentProfile, AgentRoutine, RoutineSchedule } from '@reflect/core'
+import type { AgentProfile, AgentRoutine, AgentRoutinePreset, RoutineSchedule } from '@reflect/core'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -18,28 +18,78 @@ interface NewRoutineDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   profiles: AgentProfile[]
-  onCreate: (routine: AgentRoutine) => void
+  onSave: (routine: AgentRoutine) => void
+  /** When set, the dialog edits this routine instead of creating. */
+  editing?: AgentRoutine | null
+  /** Recommended template to prefill a new routine. Ignored when `editing` is set. */
+  preset?: AgentRoutinePreset | null
 }
 
-/** Name + prompt + agent + schedule → one settings-backed routine. */
+interface ScheduleFields {
+  kind: 'daily' | 'weekly' | 'event'
+  weekday: string
+  time: string
+  eventKind: 'row-created' | 'row-updated'
+  tag: string
+}
+
+function scheduleFields(schedule: RoutineSchedule | undefined): ScheduleFields {
+  if (schedule?.kind === 'weekly') {
+    return {
+      kind: 'weekly',
+      weekday: String(schedule.weekday),
+      time: schedule.time,
+      eventKind: 'row-created',
+      tag: '',
+    }
+  }
+  if (schedule?.kind === 'event') {
+    return {
+      kind: 'event',
+      weekday: '1',
+      time: '08:00',
+      eventKind: schedule.event,
+      tag: schedule.tag,
+    }
+  }
+  return {
+    kind: 'daily',
+    weekday: '1',
+    time: schedule?.kind === 'daily' ? schedule.time : '08:00',
+    eventKind: 'row-created',
+    tag: '',
+  }
+}
+
+/**
+ * Name + prompt + agent + schedule → one settings-backed routine. Prefills
+ * from a recommended preset or an existing routine; the parent remounts
+ * (via `key`) so opening a different seed starts a fresh form.
+ */
 export function NewRoutineDialog({
   graphRoot,
   open,
   onOpenChange,
   profiles,
-  onCreate,
+  onSave,
+  editing = null,
+  preset = null,
 }: NewRoutineDialogProps): ReactElement {
-  const [name, setName] = useState('')
-  const [prompt, setPrompt] = useState('')
-  const [script, setScript] = useState('')
-  const [agentSlug, setAgentSlug] = useState('none')
-  const [kind, setKind] = useState<'daily' | 'weekly' | 'event'>('daily')
-  const [weekday, setWeekday] = useState('1')
-  const [time, setTime] = useState('08:00')
-  const [eventKind, setEventKind] = useState<'row-created' | 'row-updated'>('row-created')
-  const [tag, setTag] = useState('')
+  const source = editing ?? preset
+  const initialSchedule = scheduleFields(source?.schedule)
+  const [name, setName] = useState(source?.name ?? '')
+  const [prompt, setPrompt] = useState(source?.prompt ?? '')
+  const [script, setScript] = useState(editing?.script ?? '')
+  const [agentSlug, setAgentSlug] = useState(editing?.agentSlug ?? 'none')
+  const [kind, setKind] = useState<'daily' | 'weekly' | 'event'>(initialSchedule.kind)
+  const [weekday, setWeekday] = useState(initialSchedule.weekday)
+  const [time, setTime] = useState(initialSchedule.time)
+  const [eventKind, setEventKind] = useState<'row-created' | 'row-updated'>(
+    initialSchedule.eventKind,
+  )
+  const [tag, setTag] = useState(initialSchedule.tag)
 
-  const create = (): void => {
+  const save = (): void => {
     if (name.trim() === '' || prompt.trim() === '') {
       return
     }
@@ -54,14 +104,20 @@ export function NewRoutineDialog({
     } else {
       schedule = kind === 'daily' ? { kind, time } : { kind, weekday: Number(weekday), time }
     }
-    onCreate({
-      id: crypto.randomUUID(),
-      graphRoot,
+    const fields = {
       name: name.trim(),
       agentSlug: agentSlug === 'none' ? null : agentSlug,
       prompt: prompt.trim(),
       script: script.trim() === '' ? null : script.trim(),
       schedule,
+    }
+    if (editing !== null) {
+      onSave({ ...editing, ...fields })
+      return
+    }
+    onSave({
+      id: crypto.randomUUID(),
+      graphRoot,
       enabled: true,
       lastRunMs: Date.now(),
       lastChangedPaths: [],
@@ -69,27 +125,21 @@ export function NewRoutineDialog({
       consecutiveFailures: 0,
       retryAtMs: null,
       retryContext: null,
+      ...fields,
     })
-    setName('')
-    setPrompt('')
-    setScript('')
-    setAgentSlug('none')
-    setKind('daily')
-    setTag('')
-    setEventKind('row-created')
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[28rem]">
         <DialogHeader>
-          <DialogTitle>New automation</DialogTitle>
+          <DialogTitle>{editing !== null ? 'Edit automation' : 'New automation'}</DialogTitle>
         </DialogHeader>
         <form
           className="flex flex-col gap-3"
           onSubmit={(event) => {
             event.preventDefault()
-            create()
+            save()
           }}
         >
           <Input
@@ -104,7 +154,7 @@ export function NewRoutineDialog({
             onChange={(event) => setPrompt(event.target.value)}
             placeholder="What should the agent do on each run?"
             aria-label="Automation prompt"
-            rows={4}
+            rows={preset !== null || editing !== null ? 8 : 4}
             className="text-sm"
           />
           <Select
@@ -211,7 +261,7 @@ export function NewRoutineDialog({
               name.trim() === '' || prompt.trim() === '' || (kind === 'event' && tag.trim() === '')
             }
           >
-            Create automation
+            {editing !== null ? 'Save automation' : 'Create automation'}
           </Button>
         </form>
       </DialogContent>

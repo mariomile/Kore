@@ -46,6 +46,27 @@ harness's demo model streams text only).
 daily note and accept it from the keyboard; watch that the open editor takes
 the patch without losing the caret.
 
+## Weekly review template — 2026-09-15
+
+Settings → Agents → Automations offers **Add Weekly review**: a recommended
+template (Sunday 17:00) that rereads the week's `daily/` notes, groups open
+tasks by `[[project]]`, and writes `notes/Weekly review YYYY-MM-DD.md`. It is
+never preinstalled or default-on — empty settings stay `agentRoutines: []`,
+first-run still seeds only welcome + default objects. The existing New
+automation dialog prefills so the prompt/schedule/agent can be changed before
+Create; after that the usual enable/disable switch, Edit, Run now, and delete
+apply. Same runner, lock, and history as every other routine. Edit saves only
+name/prompt/script/agent/schedule onto the live settings row (Bugbot), so a
+run that finishes while the dialog is open keeps its history.
+
+**Validation:** `packages/core` routine + settings tests 61/61; desktop
+automations section 13/13 on Chromium and WebKit including the edit-vs-live-run
+regression; `pnpm check` exit 0.
+Not exercised: a live Run now against a real graph with BYOK.
+
+**Next:** merge, then add the template from Settings → Agents on a real graph
+and Run now once with BYOK to confirm the review note lands.
+
 ## New-note tab survives a fast rename; split from the tab menu — 2026-09-15
 
 Same branch as below. Root cause of the vanishing tab: the index trails the
@@ -760,11 +781,9 @@ browser `collection-view-tabs` + `all-notes-collection-flow` +
 
 ## Next step
 
-1. **Projects, remaining**: slice 3 stays a *recommendation only* per the
-   automations principle — a suggested weekly-review routine template on
-   a future routines page, whenever that page gets built. Consider a
-   Tasks-view "by project" grouping if the note panel proves not enough
-   in real use.
+1. **Projects, remaining**: the weekly-review routine template now lives on
+   Settings → Agents (opt-in, never default-on). Consider a Tasks-view "by
+   project" grouping if the note panel proves not enough in real use.
 2. **Collections** ([Plan 29](plans/29-collections-database.md)) is
    complete through T2, plus the 2026-09-06 Notion chrome (view tabs +
    `...` menu, PR #187). New scope (formula date functions, per-group
@@ -855,6 +874,11 @@ screen: Agents then Close lands on today.
   nothing written until accept, decision persisted with the turn, private
   notes refused live. Verified: core + browser suites on both engines,
   `pnpm check`.
+
+- 2026-09-15 — Weekly review as an opt-in Settings → Agents template
+  (never default-on). Same automations runner; customize in the existing
+  dialog; enable/disable/edit after create. Markdown review note out.
+
 - 2026-09-14 — Split panes part 2: columns of stacked panes, tab drag and
   keyboard moves between panes, rail toggles once per window, autofocus only
   in the active pane. Verified: `pnpm check`, Chromium + WebKit + node +

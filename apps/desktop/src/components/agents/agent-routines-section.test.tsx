@@ -140,6 +140,75 @@ describe('AgentRoutinesSection', () => {
     await view.unmount()
   })
 
+  it('offers Weekly review as a template and creates it only after customize and submit', async () => {
+    reset([])
+    const view = await render(<AgentRoutinesSection profiles={[]} />)
+    await expect.element(view.getByRole('button', { name: 'Add Weekly review' })).toBeVisible()
+    expect(updated).toEqual([])
+
+    await view.getByRole('button', { name: 'Add Weekly review' }).click()
+    await expect.element(view.getByLabelText('Automation name')).toHaveValue('Weekly review')
+    const promptField = view.getByLabelText('Automation prompt')
+    expect((promptField.element() as HTMLTextAreaElement).value).toContain('daily/YYYY-MM-DD.md')
+    expect((promptField.element() as HTMLTextAreaElement).value).toContain('private: true')
+
+    await promptField.fill('Reread the week and list open tasks by project.')
+    await view.getByRole('button', { name: 'Create automation' }).click()
+    const added = updated.at(-1)?.agentRoutines?.[0]
+    expect(added).toMatchObject({
+      name: 'Weekly review',
+      prompt: 'Reread the week and list open tasks by project.',
+      agentSlug: null,
+      enabled: true,
+      schedule: { kind: 'weekly', weekday: 0, time: '17:00' },
+    })
+    expect(added?.lastRunMs).not.toBeNull()
+    await view.unmount()
+  })
+
+  it('hides Add Weekly review once that automation exists', async () => {
+    reset([{ ...BRIEF, name: 'Weekly review' }])
+    const view = await render(<AgentRoutinesSection profiles={[]} />)
+    expect(view.getByRole('button', { name: 'Add Weekly review' }).query()).toBeNull()
+    await view.unmount()
+  })
+
+  it('edits an existing automation without clobbering run state that changed while open', async () => {
+    const lastRunMs = 1_700_000_000_000
+    reset([{ ...BRIEF, lastRunMs, prompt: 'Prepare the daily brief.' }])
+    const view = await render(<AgentRoutinesSection profiles={[RILEY]} />)
+    await view.getByRole('button', { name: 'Edit Morning brief' }).click()
+    await expect.element(view.getByText('Edit automation')).toBeVisible()
+    await view.getByLabelText('Automation prompt').fill('A rewritten brief prompt.')
+    // A run settles while the dialog is open: the runner has moved the live
+    // routine past the snapshot the dialog was opened with.
+    const settledRun = {
+      startedMs: lastRunMs + 60_000,
+      status: 'ok' as const,
+      error: null,
+      changedPaths: ['daily/2026-09-15.md'],
+    }
+    settingsState.agentRoutines = [
+      {
+        ...BRIEF,
+        lastRunMs: lastRunMs + 60_000,
+        prompt: 'Prepare the daily brief.',
+        runs: [settledRun],
+        lastChangedPaths: ['daily/2026-09-15.md'],
+      },
+    ]
+    await view.getByRole('button', { name: 'Save automation' }).click()
+    expect(updated.at(-1)?.agentRoutines?.[0]).toMatchObject({
+      id: 'brief',
+      prompt: 'A rewritten brief prompt.',
+      lastRunMs: lastRunMs + 60_000,
+      runs: [settledRun],
+      lastChangedPaths: ['daily/2026-09-15.md'],
+      enabled: true,
+    })
+    await view.unmount()
+  })
+
   it('shows the run history dialog — outcomes, errors, and touched notes', async () => {
     reset([
       {

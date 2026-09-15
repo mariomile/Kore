@@ -4,6 +4,7 @@ import {
   appendRoutineRun,
   collectionEventKind,
   collectionEventPromptSuffix,
+  instantiateRoutinePreset,
   interruptedRoutineRun,
   latestOccurrenceMs,
   routineFailureUpdate,
@@ -13,6 +14,7 @@ import {
   INTERRUPTED_ROUTINE_RUN_ERROR,
   ROUTINE_RETRY_BASE_MS,
   ROUTINE_RUN_HISTORY_LIMIT,
+  WEEKLY_REVIEW_PRESET,
   type AgentRoutine,
   type RoutineRun,
 } from './agent-routines'
@@ -247,6 +249,30 @@ describe('collectionEventPromptSuffix', () => {
     expect(collectionEventPromptSuffix('row-updated', 'books', 'notes/dune.md')).toBe(
       'A collection row was updated in #books: notes/dune.md',
     )
+  })
+})
+
+describe('WEEKLY_REVIEW_PRESET', () => {
+  it('is a Sunday weekly clock schedule that reads dailies and writes a note', () => {
+    expect(WEEKLY_REVIEW_PRESET.name).toBe('Weekly review')
+    expect(WEEKLY_REVIEW_PRESET.schedule).toEqual({ kind: 'weekly', weekday: 0, time: '17:00' })
+    expect(WEEKLY_REVIEW_PRESET.prompt).toContain('daily/YYYY-MM-DD.md')
+    expect(WEEKLY_REVIEW_PRESET.prompt).toContain('private: true')
+    expect(WEEKLY_REVIEW_PRESET.prompt).toContain('+ [ ]')
+    expect(WEEKLY_REVIEW_PRESET.prompt).toContain('[[Project]]')
+    expect(WEEKLY_REVIEW_PRESET.prompt).toContain('notes/Weekly review YYYY-MM-DD.md')
+  })
+
+  it('is not due the moment it is added — lastRunMs stamps now so the next occurrence fires', () => {
+    const created = instantiateRoutinePreset(WEEKLY_REVIEW_PRESET, {
+      id: 'weekly',
+      graphRoot: '/g',
+      nowMs: WEDNESDAY_NOON.getTime(),
+    })
+    expect(created.enabled).toBe(true)
+    expect(created.script).toBeNull()
+    expect(created.lastRunMs).toBe(WEDNESDAY_NOON.getTime())
+    expect(routineIsDue(created, WEDNESDAY_NOON)).toBe(false)
   })
 })
 

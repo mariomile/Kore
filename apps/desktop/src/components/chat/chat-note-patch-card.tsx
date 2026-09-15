@@ -20,6 +20,7 @@ import { useApplyNoteEdit } from '@/hooks/use-apply-note-edit'
 import { useNoteRow } from '@/hooks/use-note-row'
 import { diffLines } from '@/lib/line-diff'
 import { cn } from '@/lib/utils'
+import type { NoteEditDecisionRecorder } from '@/providers/chat-context'
 import { useChatSession } from '@/providers/chat-provider'
 
 /** Every review card carries `data-chat-patch`, so focus can hop between pending ones. */
@@ -55,6 +56,7 @@ export function ChatNotePatchCard({
   const rootRef = useRef<HTMLDivElement | null>(null)
   const sawStreaming = useRef(false)
   const [busy, setBusy] = useState(false)
+  const inFlight = useRef(false)
   const [applyError, setApplyError] = useState<string | null>(null)
   const decidable = result.decision === 'pending' && turnStatus === 'done' && !busy
   const diff = diffLines(result.oldText, result.newText)
@@ -89,10 +91,26 @@ export function ChatNotePatchCard({
     target?.focus()
   }
 
-  async function accept(): Promise<void> {
-    // Bind the decision's home before the write: a conversation switch or
+  /**
+   * Take the card's one decision slot, binding its recorder. The ref makes
+   * the check synchronous: a second key landing before React re-renders
+   * `busy` (Enter then Backspace in one breath) finds the slot taken.
+   */
+  function claimDecision(): NoteEditDecisionRecorder | null {
+    if (!decidable || inFlight.current) {
+      return null
+    }
+    // Bind the decision's home before any write: a conversation switch or
     // New chat mid-write must not leave an applied edit recorded as pending.
-    const record = decidable ? bindNoteEditDecision(result.toolCallId) : null
+    const record = bindNoteEditDecision(result.toolCallId)
+    if (record !== null) {
+      inFlight.current = true
+    }
+    return record
+  }
+
+  async function accept(): Promise<void> {
+    const record = claimDecision()
     if (record === null) {
       return
     }
@@ -104,13 +122,14 @@ export function ChatNotePatchCard({
       focusNext()
     } catch (cause) {
       setApplyError(errorMessage(cause))
+      inFlight.current = false
     } finally {
       setBusy(false)
     }
   }
 
   function reject(): void {
-    const record = decidable ? bindNoteEditDecision(result.toolCallId) : null
+    const record = claimDecision()
     if (record === null) {
       return
     }

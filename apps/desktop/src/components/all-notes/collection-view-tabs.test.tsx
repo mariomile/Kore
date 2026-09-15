@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
+import { userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
+import { mouse } from 'vitest-browser-commands/playwright'
 import type { SavedCollectionView } from '@reflect/core'
 import { CollectionViewTabs } from './collection-view-tabs'
 
@@ -25,6 +27,8 @@ const BOARD: SavedCollectionView = {
   filters: [],
 }
 
+function noop(): void {}
+
 describe('CollectionViewTabs', () => {
   it('selects a tab and deletes one when more than one exists', async () => {
     const onSelect = vi.fn()
@@ -36,8 +40,10 @@ describe('CollectionViewTabs', () => {
         boardAvailable
         calendarAvailable={false}
         onSelect={onSelect}
-        onAdd={() => {}}
+        onAdd={noop}
         onDelete={onDelete}
+        onMove={noop}
+        onShift={noop}
       />,
     )
 
@@ -57,9 +63,11 @@ describe('CollectionViewTabs', () => {
         activeViewId="v1"
         boardAvailable
         calendarAvailable={false}
-        onSelect={() => {}}
+        onSelect={noop}
         onAdd={onAdd}
-        onDelete={() => {}}
+        onDelete={noop}
+        onMove={noop}
+        onShift={noop}
       />,
     )
 
@@ -78,9 +86,11 @@ describe('CollectionViewTabs', () => {
         activeViewId="v1"
         boardAvailable={false}
         calendarAvailable={false}
-        onSelect={() => {}}
+        onSelect={noop}
         onAdd={onAdd}
-        onDelete={() => {}}
+        onDelete={noop}
+        onMove={noop}
+        onShift={noop}
       />,
     )
 
@@ -89,6 +99,68 @@ describe('CollectionViewTabs', () => {
     await expect.element(view.getByRole('menuitem', { name: 'Calendar' })).toBeDisabled()
     await view.getByRole('menuitem', { name: 'Grid' }).click()
     expect(onAdd).toHaveBeenCalledWith('grid')
+    await view.unmount()
+  })
+
+  it('nudges a focused tab with Alt+Arrow and keeps a plain click a click', async () => {
+    const onSelect = vi.fn()
+    const onShift = vi.fn()
+    const view = await render(
+      <CollectionViewTabs
+        tabs={[TABLE, BOARD]}
+        activeViewId="v1"
+        boardAvailable
+        calendarAvailable={false}
+        onSelect={onSelect}
+        onAdd={noop}
+        onDelete={noop}
+        onMove={noop}
+        onShift={onShift}
+      />,
+    )
+
+    const board = view.getByRole('tab', { name: 'Board' })
+    ;(board.element() as HTMLElement).focus()
+    await userEvent.keyboard('{Alt>}{ArrowLeft}{/Alt}')
+    expect(onShift).toHaveBeenCalledWith('v2', 'left')
+    await userEvent.keyboard('{Alt>}{ArrowRight}{/Alt}')
+    expect(onShift).toHaveBeenCalledWith('v2', 'right')
+    // A bare arrow is not a move.
+    await userEvent.keyboard('{ArrowLeft}')
+    expect(onShift).toHaveBeenCalledTimes(2)
+    // The pill is its own drag handle, yet a click still selects.
+    await board.click()
+    expect(onSelect).toHaveBeenCalledWith(BOARD)
+    await view.unmount()
+  })
+
+  it('drops a dragged tab onto its neighbour', async () => {
+    const onMove = vi.fn()
+    const view = await render(
+      <CollectionViewTabs
+        tabs={[TABLE, BOARD]}
+        activeViewId="v1"
+        boardAvailable
+        calendarAvailable={false}
+        onSelect={noop}
+        onAdd={noop}
+        onDelete={noop}
+        onMove={onMove}
+        onShift={noop}
+      />,
+    )
+
+    const from = view.getByRole('tab', { name: 'Board' }).element().getBoundingClientRect()
+    const to = view.getByRole('tab', { name: 'Table' }).element().getBoundingClientRect()
+    await mouse.move(from.x + from.width / 2, from.y + from.height / 2)
+    await mouse.down()
+    // Past the 4px activation distance first, then onto the target in steps
+    // so the sortable context sees the pointer travel.
+    await mouse.move(from.x + from.width / 2 - 8, from.y + from.height / 2, { steps: 2 })
+    await mouse.move(to.x + 4, to.y + to.height / 2, { steps: 8 })
+    await mouse.up()
+
+    await vi.waitFor(() => expect(onMove).toHaveBeenCalledWith('v2', 'v1'))
     await view.unmount()
   })
 })

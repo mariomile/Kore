@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import {
   collectionPageViewForAllNotesView,
+  moveSavedCollectionView,
+  shiftSavedCollectionView,
   type AllNotesView,
   type CollectionPageView,
   type CollectionSort,
+  type CollectionViewMoveDirection,
   type SavedCollectionView,
   type TagProperty,
   type TagType,
@@ -274,6 +277,10 @@ export interface CollectionSavedViews {
   applySavedView: (saved: SavedCollectionView) => void
   addView: (view: CollectionPageView) => void
   deleteSavedView: (id: string) => void
+  /** Drops tab `id` into `targetId`'s slot (a drag landing); the selection is untouched. */
+  moveSavedView: (id: string, targetId: string) => void
+  /** Swaps tab `id` with its neighbour (a keyboard move); a no-op at the edges. */
+  shiftSavedView: (id: string, direction: CollectionViewMoveDirection) => void
 }
 
 function liveLens(options: {
@@ -470,6 +477,30 @@ export function useCollectionSavedViews(
     [tagKey, savedViews, persistViews, applySavedView],
   )
 
+  // Reordering only changes tab positions: ids stay, so the active id is
+  // re-persisted as is and the lens on screen never changes.
+  const persistReordered = useCallback(
+    (reordered: SavedCollectionView[] | null) => {
+      if (reordered === null) {
+        return
+      }
+      persistViews(reordered, resolvedActiveIdRef.current ?? reordered[0]!.id)
+    },
+    [persistViews],
+  )
+  const moveSavedView = useCallback(
+    (id: string, targetId: string) => {
+      persistReordered(moveSavedCollectionView(savedViews, id, targetId))
+    },
+    [savedViews, persistReordered],
+  )
+  const shiftSavedView = useCallback(
+    (id: string, direction: CollectionViewMoveDirection) => {
+      persistReordered(shiftSavedCollectionView(savedViews, id, direction))
+    },
+    [savedViews, persistReordered],
+  )
+
   useEffect(() => {
     const nextKey = collectionViewsAppliedKey(
       tagKey,
@@ -550,5 +581,13 @@ export function useCollectionSavedViews(
       ? (resolvedActiveId ?? tabs[0]?.id ?? LIVE_COLLECTION_VIEW_ID)
       : LIVE_COLLECTION_VIEW_ID
 
-  return { tabs, activeViewId, applySavedView, addView, deleteSavedView }
+  return {
+    tabs,
+    activeViewId,
+    applySavedView,
+    addView,
+    deleteSavedView,
+    moveSavedView,
+    shiftSavedView,
+  }
 }

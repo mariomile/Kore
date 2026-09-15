@@ -269,7 +269,15 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
 
   // Named collection tabs (TDR 0005): each is a mode + sort + grouping +
   // filter bundle. An empty list is one synthetic Table (or the live layout).
-  const { tabs, activeViewId, applySavedView, addView, deleteSavedView } = useCollectionSavedViews({
+  const {
+    tabs,
+    activeViewId,
+    applySavedView,
+    addView,
+    deleteSavedView,
+    moveSavedView,
+    shiftSavedView,
+  } = useCollectionSavedViews({
     tagKey,
     view,
     collectionSorts,
@@ -469,6 +477,8 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
             }}
             onAdd={addView}
             onDelete={deleteSavedView}
+            onMove={moveSavedView}
+            onShift={shiftSavedView}
           />
           <div className="flex flex-wrap items-center gap-3">
             {view === 'table' && tableGroupProperties.length > 0 ? (

@@ -7,7 +7,9 @@ export const LIVE_COLLECTION_VIEW_ID = '__live'
  * Identity of the tab set currently on screen. The unpersisted live tab
  * (`${tag}:live`) is distinct from any saved-view list, so hydrating
  * `collectionSavedViews` after `DEFAULT_SETTINGS` is treated as a new set
- * (apply) rather than an edit of the live lens (write-back).
+ * (apply) rather than an edit of the live lens (write-back). The key is
+ * order-independent: reordering tabs keeps the same set, so it neither
+ * re-applies nor writes back the active lens.
  */
 export function collectionViewsAppliedKey(
   tagKey: string | null,
@@ -19,7 +21,7 @@ export function collectionViewsAppliedKey(
   if (savedViewIds.length === 0) {
     return `${tagKey}:live`
   }
-  return `${tagKey}:${savedViewIds.join(',')}`
+  return `${tagKey}:${[...savedViewIds].sort().join(',')}`
 }
 
 /** Display name for a collection page view type (the tab's default label). */

@@ -35,6 +35,12 @@ describe('collectionViewsAppliedKey', () => {
       collectionViewsAppliedKey('book', ['v1']),
     )
   })
+
+  it('keeps the key stable across a reorder of the same tabs', () => {
+    expect(collectionViewsAppliedKey('book', ['v2', 'v1'])).toBe(
+      collectionViewsAppliedKey('book', ['v1', 'v2']),
+    )
+  })
 })
 
 describe('resolveActiveCollectionViewId', () => {

@@ -313,9 +313,9 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
     activeSendRef.current?.controller.abort()
   }, [])
 
-  // Turns that took a note-edit decision after leaving the screen, by id:
-  // the latest settled copy, so a second off-screen decision on the same
-  // turn persists on top of the first instead of the pre-switch snapshot.
+  // The latest persisted copy of every turn that took a note-edit decision,
+  // by id, so a decision recorded after the turn left the screen persists on
+  // top of every earlier one instead of the pre-switch snapshot.
   const detachedTurnsRef = useRef(new Map<string, ChatTurn>())
 
   const bindNoteEditDecision = useCallback(
@@ -351,9 +351,9 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
         const live = turnsRef.current.find((turn) => turn.id === bound.id)
         const detached = detachedTurnsRef.current
         const persisted = live ?? settle(detached.get(bound.id) ?? bound)
-        if (live === undefined) {
-          detached.set(bound.id, persisted)
-        }
+        // Always the copy just persisted, on screen or not, so an on-screen
+        // decision is never undone by a later off-screen one.
+        detached.set(bound.id, persisted)
         // Re-saving an existing row rewrites its parts alone (the conversation
         // upsert only bumps updated_ms), so the timestamps here never land.
         const now = Date.now()

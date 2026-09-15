@@ -243,9 +243,9 @@ describe('Sidebar', () => {
     ])
     const { view } = await renderSidebar()
 
-    const tagRow = view.getByRole('button', { name: /#book\s*3/i })
+    const tagRow = view.getByRole('button', { name: /Book\s*3/i })
     await expect.element(tagRow).toBeVisible()
-    await expect.element(view.getByRole('button', { name: /#person\s*1/i })).toBeVisible()
+    await expect.element(view.getByRole('button', { name: /Person\s*1/i })).toBeVisible()
 
     // Navigation happens through the live router: the routed tag is the
     // tag's own page, so its row carries the highlight and the All notes
@@ -265,7 +265,7 @@ describe('Sidebar', () => {
     sidebarSections.order = ['tags', 'pinned', 'open']
     const { view } = await renderSidebar()
 
-    await expect.element(view.getByRole('button', { name: /#book\s*3/i })).toBeVisible()
+    await expect.element(view.getByRole('button', { name: /Book\s*3/i })).toBeVisible()
     const shelves = [...view.container.querySelectorAll('section[aria-label]')].map((section) =>
       section.getAttribute('aria-label'),
     )

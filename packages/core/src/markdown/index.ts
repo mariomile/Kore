@@ -64,6 +64,7 @@ export {
   parseNoteAppearanceFromSource,
   parseNoteCover,
   parseNoteIcon,
+  symbolIconValue,
   type NoteAppearance,
   type NoteIcon,
 } from './note-appearance'

@@ -256,7 +256,7 @@ describe('Collection flow (fake bridge, no module mocks below the hooks)', () =>
 
     // The routed tag is the page's own title, and the schema gear sits
     // beside it, no hover needed.
-    await expect.element(view.getByRole('heading', { name: '#book' })).toBeInTheDocument()
+    await expect.element(view.getByRole('heading', { name: 'Book' })).toBeInTheDocument()
     await view.getByRole('button', { name: 'Configure #book' }).click()
 
     await expect.element(page.getByText('Configure #book')).toBeInTheDocument()
@@ -363,7 +363,7 @@ describe('Collection flow (fake bridge, no module mocks below the hooks)', () =>
     expect(view.getByRole('button', { name: 'Import CSV into the collection' }).query()).toBeNull()
     expect(view.getByRole('button', { name: 'Export collection as CSV' }).query()).toBeNull()
     expect(view.getByRole('button', { name: 'Columns' }).query()).toBeNull()
-    await expect.element(view.getByRole('heading', { name: '#book' })).toBeInTheDocument()
+    await expect.element(view.getByRole('heading', { name: 'Book' })).toBeInTheDocument()
     expect(view.getByRole('button', { name: 'All notes' }).query()).toBeNull()
     await view.unmount()
   })

@@ -1,9 +1,10 @@
 import { useState, type ReactElement } from 'react'
-import { parseNoteIcon } from '@reflect/core'
-import { Sparkles } from '@/components/icons'
+import { parseNoteIcon, symbolIconValue } from '@reflect/core'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { TAG_SYMBOL_ICONS } from '@/lib/tags/tag-symbol-icons'
 import { cn } from '@/lib/utils'
+import { TagIcon } from './tag-icon'
 
 /**
  * A short curated set; any other emoji comes through the free input below
@@ -53,7 +54,7 @@ const SUGGESTED_ICONS = [
 ] as const
 
 interface TagIconPickerProps {
-  /** The current glyph, or null when the tag has none. */
+  /** The current icon (emoji or `icon:<name>`), or null when the tag has none. */
   value: string | null
   onChange: (icon: string | null) => void
 }
@@ -74,9 +75,10 @@ function firstGlyph(text: string): string | null {
 }
 
 /**
- * The tag's icon control: the current glyph as the trigger, a popover with a
- * suggested grid plus a free field that takes any emoji (typed, pasted, or
- * from the OS palette). Stored as `icon:` on the definition note.
+ * The tag's icon control: the current icon as the trigger (the `#` glyph
+ * while none is set), a popover with the app's symbol icons, a suggested
+ * emoji grid, and a free field that takes any emoji (typed, pasted, or from
+ * the OS palette). Stored as `icon:` on the definition note.
  */
 export function TagIconPicker({ value, onChange }: TagIconPickerProps): ReactElement {
   const [open, setOpen] = useState(false)
@@ -94,14 +96,34 @@ export function TagIconPicker({ value, onChange }: TagIconPickerProps): ReactEle
         aria-label="Tag icon"
         title="Choose an icon"
         className={cn(
-          'flex size-8 items-center justify-center rounded-lg border border-input text-base transition-colors hover:bg-surface-hover',
+          'flex size-8 items-center justify-center rounded-lg border border-input transition-colors hover:bg-surface-hover',
           value === null && 'text-text-muted',
         )}
       >
-        {value ?? <Sparkles aria-hidden className="size-4" />}
+        <TagIcon icon={value ?? undefined} className="size-4" emojiClassName="text-base" />
       </PopoverTrigger>
       <PopoverContent align="start" className="w-64 gap-2">
-        <div role="group" aria-label="Suggested icons" className="grid grid-cols-8 gap-0.5">
+        <div role="group" aria-label="Symbol icons" className="grid grid-cols-8 gap-0.5">
+          {Object.entries(TAG_SYMBOL_ICONS).map(([name, Glyph]) => {
+            const stored = symbolIconValue(name)
+            return (
+              <button
+                key={name}
+                type="button"
+                aria-label={name}
+                aria-pressed={stored === value}
+                onClick={() => pick(stored)}
+                className={cn(
+                  'flex size-7 items-center justify-center rounded text-text-secondary hover:bg-surface-hover hover:text-text',
+                  stored === value && 'bg-surface-active text-text',
+                )}
+              >
+                <Glyph aria-hidden className="size-4" />
+              </button>
+            )
+          })}
+        </div>
+        <div role="group" aria-label="Suggested emoji" className="grid grid-cols-8 gap-0.5">
           {SUGGESTED_ICONS.map((icon) => (
             <button
               key={icon}

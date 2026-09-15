@@ -1,5 +1,6 @@
 import { useMemo, type ReactElement } from 'react'
 import { parseNoteAppearanceFromSource } from '@reflect/core'
+import { renderSymbolIcon } from '@/lib/tags/tag-symbol-icons'
 import { cn } from '@/lib/utils'
 
 interface NoteAppearanceProps {
@@ -24,11 +25,24 @@ export function NoteAppearance({
   const icon = appearance.icon
   const iconUrl = icon?.kind === 'image' ? resolveImageUrl(icon.src) : null
 
+  const symbolEl =
+    icon?.kind === 'symbol'
+      ? renderSymbolIcon(icon.name, {
+          'aria-hidden': true,
+          className: 'size-10 text-text-secondary',
+        })
+      : null
   const iconEl =
     icon === null ? null : icon.kind === 'emoji' ? (
       <div data-testid="note-icon" className="text-4xl leading-none" aria-label="Note icon">
         {icon.glyph}
       </div>
+    ) : icon.kind === 'symbol' ? (
+      symbolEl === null ? null : (
+        <div data-testid="note-icon" aria-label="Note icon">
+          {symbolEl}
+        </div>
+      )
     ) : iconUrl !== null ? (
       <img
         data-testid="note-icon"

@@ -1,5 +1,11 @@
 import { createContext, use } from 'react'
-import type { AiProviderConfig, ChatModelOption, ChatModelSelection, ChatTurn } from '@reflect/core'
+import type {
+  AiProviderConfig,
+  ChatModelOption,
+  ChatModelSelection,
+  ChatTurn,
+  NoteEditDecision,
+} from '@reflect/core'
 import type { ChatAttachment } from '@/lib/chat-attachments'
 
 /**
@@ -78,6 +84,13 @@ export interface ChatContextValue {
   sendQueuedNow: (id: string) => Promise<void>
   /** Abort the in-flight turn (partial text stays in the transcript). */
   stop: () => void
+  /**
+   * Record the user's decision on a proposed note edit (the review card's
+   * Accept / Reject) in its turn and persist it, so a restored conversation
+   * shows what happened instead of offering the patch again. The write to
+   * the note itself is the card's job; this only records the outcome.
+   */
+  settleNoteEdit: (toolCallId: string, decision: Exclude<NoteEditDecision, 'pending'>) => void
   /** Leave the conversation in history, start a fresh one, and return its id. */
   newChat: () => string
   /**

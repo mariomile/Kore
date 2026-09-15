@@ -15,6 +15,7 @@ import {
   isToolPending,
   formatPropertyPreview,
   type AssistantPart,
+  type ChatTurn,
   type NoteHitSummary,
   type NoteToolCall,
   type NoteToolResult,
@@ -27,9 +28,12 @@ import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'
 import { routeForPath } from '@/routing/route'
 import { useRouter } from '@/routing/router'
 import { isModEvent } from '@meowdown/core'
+import { ChatNotePatchCard } from './chat-note-patch-card'
 
 interface ChatToolChipProps {
   part: Extract<AssistantPart, { kind: 'tool' }>
+  /** The owning turn's status; a proposed edit takes decisions only once it is done. */
+  turnStatus?: ChatTurn['status']
 }
 
 /** ` · 3 notes` — the settled count suffix of a listing chip. */
@@ -209,7 +213,7 @@ function SetPropertyChip({
   )
 }
 
-export function ChatToolChip({ part }: ChatToolChipProps): ReactElement {
+export function ChatToolChip({ part, turnStatus = 'done' }: ChatToolChipProps): ReactElement {
   const navigateNoteLink = useNoteLinkNavigation()
   const openNote = (path: string, event: MouseEvent<HTMLButtonElement>): void => {
     navigateNoteLink({ target: routeForPath(path), openInSplit: isModEvent(event) })
@@ -272,6 +276,29 @@ export function ChatToolChip({ part }: ChatToolChipProps): ReactElement {
         pending={pending}
         onOpen={openNote}
       />
+    )
+  }
+
+  // edit_note: a settled proposal is the review card; a pending call or a
+  // refusal stays a compact chip, since there is nothing to accept.
+  if (call.tool === 'editNote') {
+    const result = part.result?.tool === 'editNote' ? part.result : null
+    const failed = result?.error ?? part.error ?? null
+    if (result !== null && failed === null) {
+      return <ChatNotePatchCard result={result} turnStatus={turnStatus} onOpen={openNote} />
+    }
+    return (
+      <ChipFrame pending={pending} icon={<Pencil aria-hidden className="size-3.5" />} wrap>
+        {failed === null ? 'Proposing an edit to' : 'Couldn’t propose an edit to'}{' '}
+        <button
+          type="button"
+          onClick={(event) => openNote(call.path, event)}
+          className="underline-offset-2 hover:text-text hover:underline"
+        >
+          {call.path}
+        </button>
+        {failed !== null ? <span> — {failed}</span> : null}
+      </ChipFrame>
     )
   }
 

@@ -59,7 +59,7 @@ export function ChatAssistantPart({
         </Bubble>
       )
     case 'tool':
-      return <ChatToolChip part={part} />
+      return <ChatToolChip part={part} turnStatus={status} />
     case 'changes':
       return <ChatChangesCard paths={part.paths} />
     case 'context':

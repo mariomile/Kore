@@ -15,11 +15,13 @@ import {
   hasBridge,
   loadChatMessages,
   resolveChatModel,
+  settleNoteEdit as settleNoteEditParts,
   type AiProviderConfig,
   type ChatConversation,
   type ChatModelSelection,
   type ChatTurn,
   type GraphInfo,
+  type NoteEditDecision,
 } from '@reflect/core'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { toChatAttachment, type ChatAttachment } from '@/lib/chat-attachments'
@@ -39,6 +41,7 @@ import {
   type ActiveSend,
 } from '@/providers/chat-provider-deliver'
 import { useGraph } from '@/providers/graph-provider'
+import { conversationTitle } from '@/providers/chat-title'
 import { useSettings } from '@/providers/settings-provider'
 import { useChatConversationRestore } from '@/providers/use-chat-conversation-restore'
 
@@ -310,6 +313,42 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
     activeSendRef.current?.controller.abort()
   }, [])
 
+  const settleNoteEdit = useCallback(
+    (toolCallId: string, decision: Exclude<NoteEditDecision, 'pending'>) => {
+      const current = turnsRef.current
+      const turn = current.find((candidate) =>
+        candidate.parts.some((part) => part.kind === 'tool' && part.call.toolCallId === toolCallId),
+      )
+      // Only a settled turn takes a decision: the card holds its buttons
+      // while a turn streams, because the stream's settle-time save would
+      // overwrite a decision recorded into the parts underneath it.
+      if (turn === undefined || turn.status !== 'done') {
+        return
+      }
+      const settled: ChatTurn = {
+        ...turn,
+        parts: settleNoteEditParts(turn.parts, toolCallId, decision),
+      }
+      const next = current.map((candidate) => (candidate.id === turn.id ? settled : candidate))
+      turnsRef.current = next
+      setTurns(next)
+      // Re-saving an existing row rewrites its parts alone (the conversation
+      // upsert only bumps updated_ms), so the timestamps here never land.
+      const now = Date.now()
+      persistTurn(
+        {
+          id: conversationIdRef.current,
+          title: conversationTitle(current[0]?.userText ?? ''),
+          createdMs: now,
+          updatedMs: now,
+        },
+        settled,
+        now,
+      )
+    },
+    [persistTurn],
+  )
+
   const newChat = useCallback((): string => {
     activeSendRef.current?.controller.abort()
     sessionRef.current += 1
@@ -430,6 +469,7 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
       removeQueued,
       sendQueuedNow,
       stop,
+      settleNoteEdit,
       newChat,
       instructions,
       setInstructions,
@@ -456,6 +496,7 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
       removeQueued,
       sendQueuedNow,
       stop,
+      settleNoteEdit,
       newChat,
       instructions,
       chatTools,

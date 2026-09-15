@@ -4,11 +4,14 @@ import { userEvent } from 'vitest/browser'
 import type { AssistantPart, NoteToolResult } from '@reflect/core'
 
 const applyNoteEdit = vi.hoisted(() => vi.fn<() => Promise<void>>())
-const settleNoteEdit = vi.hoisted(() => vi.fn())
+const recordDecision = vi.hoisted(() => vi.fn())
+const bindNoteEditDecision = vi.hoisted(() => vi.fn(() => recordDecision))
 const navigateNoteLink = vi.hoisted(() => vi.fn())
 
 vi.mock('@/hooks/use-apply-note-edit', () => ({ useApplyNoteEdit: () => applyNoteEdit }))
-vi.mock('@/providers/chat-provider', () => ({ useChatSession: () => ({ settleNoteEdit }) }))
+vi.mock('@/providers/chat-provider', () => ({
+  useChatSession: () => ({ bindNoteEditDecision }),
+}))
 vi.mock('@/hooks/use-note-row', () => ({
   useNoteRow: (path: string) => (path === 'notes/atlas.md' ? { title: 'Atlas' } : null),
 }))
@@ -49,7 +52,8 @@ function focusElement(element: Element): void {
 beforeEach(() => {
   applyNoteEdit.mockReset()
   applyNoteEdit.mockResolvedValue(undefined)
-  settleNoteEdit.mockClear()
+  recordDecision.mockClear()
+  bindNoteEditDecision.mockClear()
   navigateNoteLink.mockClear()
 })
 
@@ -70,7 +74,7 @@ describe('ChatNotePatchCard', () => {
         oldText: '- call the surveyor',
         newText: '- [ ] call the surveyor [[House]]',
       })
-      expect(settleNoteEdit).toHaveBeenCalledWith('e1', 'accepted')
+      expect(recordDecision).toHaveBeenCalledWith('accepted')
     })
     await view.unmount()
   })
@@ -79,7 +83,8 @@ describe('ChatNotePatchCard', () => {
     const view = await render(<ChatToolChip part={editPart()} turnStatus="done" />)
     focusElement(view.getByRole('group').element())
     await userEvent.keyboard('{Backspace}')
-    expect(settleNoteEdit).toHaveBeenCalledWith('e1', 'rejected')
+    expect(bindNoteEditDecision).toHaveBeenCalledWith('e1')
+    expect(recordDecision).toHaveBeenCalledWith('rejected')
     expect(applyNoteEdit).not.toHaveBeenCalled()
     await view.unmount()
   })
@@ -89,7 +94,7 @@ describe('ChatNotePatchCard', () => {
     const view = await render(<ChatToolChip part={editPart()} turnStatus="done" />)
     await view.getByRole('button', { name: 'Accept' }).click()
     await expect.element(view.getByRole('alert')).toHaveTextContent('The note changed')
-    expect(settleNoteEdit).not.toHaveBeenCalled()
+    expect(recordDecision).not.toHaveBeenCalled()
     await expect.element(view.getByRole('button', { name: 'Accept' })).toBeVisible()
     await view.unmount()
   })

@@ -17,6 +17,9 @@ import type { ChatAttachment } from '@/lib/chat-attachments'
 
 export type ChatStatus = 'idle' | 'streaming'
 
+/** Records one decision on a bound note edit (see {@link ChatContextValue.bindNoteEditDecision}). */
+export type NoteEditDecisionRecorder = (decision: Exclude<NoteEditDecision, 'pending'>) => void
+
 /** A message composed while a turn was streaming, waiting its turn. */
 export interface QueuedChatMessage {
   id: string
@@ -85,12 +88,16 @@ export interface ChatContextValue {
   /** Abort the in-flight turn (partial text stays in the transcript). */
   stop: () => void
   /**
-   * Record the user's decision on a proposed note edit (the review card's
-   * Accept / Reject) in its turn and persist it, so a restored conversation
-   * shows what happened instead of offering the patch again. The write to
-   * the note itself is the card's job; this only records the outcome.
+   * Bind a recorder for the user's decision on the proposed note edit
+   * `toolCallId` (the review card's Accept / Reject). Binding resolves the
+   * edit's turn and conversation *now*, so a decision recorded after an
+   * async write still lands in the right conversation even if the user
+   * switched away meanwhile; the recorder updates the turn on screen and
+   * persists it, so a restored conversation shows what happened instead of
+   * offering the patch again. Null when no settled turn carries the edit.
+   * The write to the note itself is the card's job.
    */
-  settleNoteEdit: (toolCallId: string, decision: Exclude<NoteEditDecision, 'pending'>) => void
+  bindNoteEditDecision: (toolCallId: string) => NoteEditDecisionRecorder | null
   /** Leave the conversation in history, start a fresh one, and return its id. */
   newChat: () => string
   /**

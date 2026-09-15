@@ -39,14 +39,16 @@ interface ChatNotePatchCardProps {
  * the decision with the turn; Reject records it alone. Keyboard-first: the
  * first pending card takes focus when its reply settles, Enter accepts,
  * Backspace rejects, and focus then moves on to the next pending card or
- * back to the composer.
+ * back to the composer. The card holds its buttons until the owning turn is
+ * done: a decision recorded into a streaming turn would be overwritten by
+ * its settle-time save.
  */
 export function ChatNotePatchCard({
   result,
   turnStatus,
   onOpen,
 }: ChatNotePatchCardProps): ReactElement {
-  const { settleNoteEdit } = useChatSession()
+  const { bindNoteEditDecision } = useChatSession()
   const applyNoteEdit = useApplyNoteEdit()
   const row = useNoteRow(result.path)
   const title = displayNoteTitle(row?.title ?? noteFileStem(result.path))
@@ -88,14 +90,17 @@ export function ChatNotePatchCard({
   }
 
   async function accept(): Promise<void> {
-    if (!decidable) {
+    // Bind the decision's home before the write: a conversation switch or
+    // New chat mid-write must not leave an applied edit recorded as pending.
+    const record = decidable ? bindNoteEditDecision(result.toolCallId) : null
+    if (record === null) {
       return
     }
     setBusy(true)
     setApplyError(null)
     try {
       await applyNoteEdit(result.path, { oldText: result.oldText, newText: result.newText })
-      settleNoteEdit(result.toolCallId, 'accepted')
+      record('accepted')
       focusNext()
     } catch (cause) {
       setApplyError(errorMessage(cause))
@@ -105,10 +110,11 @@ export function ChatNotePatchCard({
   }
 
   function reject(): void {
-    if (!decidable) {
+    const record = decidable ? bindNoteEditDecision(result.toolCallId) : null
+    if (record === null) {
       return
     }
-    settleNoteEdit(result.toolCallId, 'rejected')
+    record('rejected')
     focusNext()
   }
 

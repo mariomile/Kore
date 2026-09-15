@@ -21,7 +21,6 @@ import {
   type ChatModelSelection,
   type ChatTurn,
   type GraphInfo,
-  type NoteEditDecision,
 } from '@reflect/core'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { toChatAttachment, type ChatAttachment } from '@/lib/chat-attachments'
@@ -33,6 +32,7 @@ import {
   ChatContext,
   type ChatContextValue,
   type ChatStatus,
+  type NoteEditDecisionRecorder,
   type QueuedChatMessage,
 } from '@/providers/chat-context'
 import {
@@ -313,38 +313,44 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
     activeSendRef.current?.controller.abort()
   }, [])
 
-  const settleNoteEdit = useCallback(
-    (toolCallId: string, decision: Exclude<NoteEditDecision, 'pending'>) => {
-      const current = turnsRef.current
-      const turn = current.find((candidate) =>
+  const bindNoteEditDecision = useCallback(
+    (toolCallId: string): NoteEditDecisionRecorder | null => {
+      const bound = turnsRef.current.find((candidate) =>
         candidate.parts.some((part) => part.kind === 'tool' && part.call.toolCallId === toolCallId),
       )
       // Only a settled turn takes a decision: the card holds its buttons
       // while a turn streams, because the stream's settle-time save would
       // overwrite a decision recorded into the parts underneath it.
-      if (turn === undefined || turn.status !== 'done') {
-        return
+      if (bound === undefined || bound.status !== 'done') {
+        return null
       }
-      const settled: ChatTurn = {
-        ...turn,
-        parts: settleNoteEditParts(turn.parts, toolCallId, decision),
+      const conversationId = conversationIdRef.current
+      const title = conversationTitle(turnsRef.current[0]?.userText ?? '')
+      return (decision) => {
+        const settle = (turn: ChatTurn): ChatTurn => ({
+          ...turn,
+          parts: settleNoteEditParts(turn.parts, toolCallId, decision),
+        })
+        // The on-screen copy updates functionally, so a turn still streaming
+        // alongside keeps every queued update; the ref advances in step so a
+        // second decision on the same turn persists both.
+        turnsRef.current = turnsRef.current.map((turn) =>
+          turn.id === bound.id ? settle(turn) : turn,
+        )
+        setTurns((current) => current.map((turn) => (turn.id === bound.id ? settle(turn) : turn)))
+        // Persist the freshest copy: the live one while the conversation is
+        // still on screen, else the turn as bound — the user switched away
+        // during the write, and the decision still belongs to that row.
+        const live = turnsRef.current.find((turn) => turn.id === bound.id)
+        // Re-saving an existing row rewrites its parts alone (the conversation
+        // upsert only bumps updated_ms), so the timestamps here never land.
+        const now = Date.now()
+        persistTurn(
+          { id: conversationId, title, createdMs: now, updatedMs: now },
+          live ?? settle(bound),
+          now,
+        )
       }
-      const next = current.map((candidate) => (candidate.id === turn.id ? settled : candidate))
-      turnsRef.current = next
-      setTurns(next)
-      // Re-saving an existing row rewrites its parts alone (the conversation
-      // upsert only bumps updated_ms), so the timestamps here never land.
-      const now = Date.now()
-      persistTurn(
-        {
-          id: conversationIdRef.current,
-          title: conversationTitle(current[0]?.userText ?? ''),
-          createdMs: now,
-          updatedMs: now,
-        },
-        settled,
-        now,
-      )
     },
     [persistTurn],
   )
@@ -469,7 +475,7 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
       removeQueued,
       sendQueuedNow,
       stop,
-      settleNoteEdit,
+      bindNoteEditDecision,
       newChat,
       instructions,
       setInstructions,
@@ -496,7 +502,7 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
       removeQueued,
       sendQueuedNow,
       stop,
-      settleNoteEdit,
+      bindNoteEditDecision,
       newChat,
       instructions,
       chatTools,

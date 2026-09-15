@@ -275,6 +275,53 @@ describe('ChatProvider persistence', () => {
     expect(saved.turn.parts.at(-1)).toEqual(notice)
   })
 
+  it('records a note-edit decision into the turn it was bound to, even after New chat', async () => {
+    const proposal = {
+      tool: 'editNote' as const,
+      toolCallId: 'e1',
+      path: 'notes/a.md',
+      oldText: '- one',
+      newText: '- one\n- two',
+      error: null,
+      decision: 'pending' as const,
+    }
+    scriptTurn([
+      { type: 'tool-call', call: { tool: 'editNote', toolCallId: 'e1', path: 'notes/a.md' } },
+      { type: 'tool-result', result: proposal },
+      { type: 'text-delta', text: 'Proposed.' },
+      { type: 'complete', messages: [{ role: 'assistant', content: 'Proposed.' }] },
+    ])
+    const { act } = await renderProvider()
+    await vi.waitFor(() => expect(core.listChatConversations).toHaveBeenCalled())
+    await act(() => session?.send('add two'))
+    const conversationId = session?.activeConversationId
+
+    // Bound while the conversation is on screen (the card binds before its
+    // async write), recorded after the user moved on to a fresh chat.
+    const record = session?.bindNoteEditDecision('e1') ?? null
+    expect(record).not.toBeNull()
+    await act(() => {
+      session?.newChat()
+    })
+    core.saveChatMessage.mockClear()
+    await act(() => {
+      record?.('accepted')
+    })
+
+    expect(core.saveChatMessage).toHaveBeenCalledOnce()
+    expect(core.saveChatMessage.mock.calls[0]![0]).toMatchObject({
+      conversation: { id: conversationId },
+      turn: {
+        userText: 'add two',
+        parts: [
+          { kind: 'tool', result: { ...proposal, decision: 'accepted' } },
+          { kind: 'text', text: 'Proposed.' },
+        ],
+      },
+    })
+    expect(session?.bindNoteEditDecision('e1')).toBeNull()
+  })
+
   it('saves later turns into the restored conversation', async () => {
     core.listChatConversations.mockResolvedValue([conversation()])
     scriptTurn([{ type: 'complete', messages: [{ role: 'assistant', content: 'More.' }] }])

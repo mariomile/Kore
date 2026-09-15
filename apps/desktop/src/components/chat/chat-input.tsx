@@ -154,7 +154,7 @@ export function ChatInput({ autoFocus = true }: ChatInputProps = {}): ReactEleme
     // utility row below, matching their broader conversation scope.
     <div ref={composerRef} className="absolute inset-x-0 bottom-0 z-10 px-5 pb-5">
       <div className="mx-auto w-full max-w-3xl">
-        <div className="rounded-[1.25rem] border border-border bg-popover shadow-md transition-[border-color,box-shadow] duration-150 ease-swift focus-within:border-ring focus-within:shadow-lg">
+        <div className="rounded-[1.25rem] border border-border bg-popover shadow-md transition-colors duration-150 ease-swift focus-within:border-border-focus">
           {queued.length > 0 ? (
             <div className="flex flex-col gap-1.5 px-4 pt-3.5">
               <p className="text-xs text-text-muted">

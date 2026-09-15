@@ -165,7 +165,7 @@ function PanelToggle({ side, collapsed, onToggle, label }: PanelToggleProps): Re
       aria-pressed={!collapsed}
       onClick={onToggle}
       className={cn(
-        'app-icon-button hover:text-text focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
+        'app-icon-button hover:text-text',
         collapsed ? 'text-text-muted' : 'text-text-secondary',
       )}
     >
@@ -240,7 +240,7 @@ function StripTab({
           tabPillClass(active),
           active && !paneActive && 'text-text-muted',
           // A pinned tab is its icon: no label, so no room to hold open for one.
-          'min-w-0 shrink-0 px-2.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring',
+          'min-w-0 shrink-0 px-2.5',
           isDragging && 'z-10 opacity-70',
         )}
         {...listeners}
@@ -277,7 +277,7 @@ function StripTab({
         onDoubleClick={() => {
           onTogglePin(tab)
         }}
-        className="min-w-0 flex-1 truncate rounded text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+        className="min-w-0 flex-1 truncate rounded text-left"
       >
         {title}
       </button>

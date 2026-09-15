@@ -1,6 +1,8 @@
 import { useState, type ReactElement } from 'react'
 import { foldTag, isTagName } from '@reflect/core'
 import { Close } from '@/components/icons'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { useSettings } from '@/providers/settings-provider'
 import { SettingsField } from './field'
 import { SettingsSection } from './section'
@@ -86,7 +88,7 @@ export function AllNotesSection(): ReactElement {
           }}
           className="mt-3 flex gap-2"
         >
-          <input
+          <Input
             type="text"
             value={draft}
             onChange={(event) => {
@@ -96,14 +98,11 @@ export function AllNotesSection(): ReactElement {
             aria-label="Add filter tag"
             aria-invalid={draftError !== null}
             placeholder="Add a tag (e.g. book)"
-            className="w-full max-w-60 rounded-[7px] border border-border-strong bg-input-bg px-2.5 py-1.5 text-sm text-text shadow-input placeholder:text-text-muted"
+            className="max-w-60"
           />
-          <button
-            type="submit"
-            className="rounded-[7px] border border-border-strong bg-surface px-3 py-1.5 text-sm font-medium text-text-secondary shadow-input transition-colors duration-100 hover:bg-surface-hover hover:text-text"
-          >
+          <Button type="submit" variant="outline">
             Add
-          </button>
+          </Button>
         </form>
         {draftError !== null ? (
           <p role="alert" className="mt-2 text-xs text-destructive">

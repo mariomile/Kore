@@ -98,7 +98,7 @@ export function TaskScheduleCalendar({
                     aria-current={isToday ? 'date' : undefined}
                     onClick={() => pick(cell.date)}
                     className={cn(
-                      'relative m-0.5 size-8 rounded-md text-xs tabular-nums transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent',
+                      'relative m-0.5 size-8 rounded-md text-xs tabular-nums transition-colors hover:bg-surface-hover',
                       !cell.inMonth && !isToday && 'text-text-muted/40',
                       isToday && 'font-bold text-accent',
                     )}

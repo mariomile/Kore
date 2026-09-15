@@ -66,7 +66,7 @@ export function NoteHistorySection({ path }: NoteHistorySectionProps): ReactElem
                 onClick={() => {
                   openAt(version.commit)
                 }}
-                className="flex w-full items-baseline gap-2 rounded-md px-2 py-1 text-left transition-colors duration-100 hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+                className="flex w-full items-baseline gap-2 rounded-md px-2 py-1 text-left transition-colors duration-100 hover:bg-surface-hover"
               >
                 <span className="shrink-0 text-xs font-medium text-text">
                   {formatRecencyLabel(version.timeMs, settings)}
@@ -82,7 +82,7 @@ export function NoteHistorySection({ path }: NoteHistorySectionProps): ReactElem
                 onClick={() => {
                   openAt(null)
                 }}
-                className="w-full rounded-md px-2 py-1 text-left text-xs text-text-secondary transition-colors duration-100 hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+                className="w-full rounded-md px-2 py-1 text-left text-xs text-text-secondary transition-colors duration-100 hover:bg-surface-hover"
               >
                 All {versions.length} versions…
               </button>

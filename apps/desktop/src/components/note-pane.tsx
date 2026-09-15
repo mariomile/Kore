@@ -231,7 +231,7 @@ export function NotePaneComponent({
   const collectionInsertionEditor = useRef<CollectionCreation | null>(null)
   const openCreateCollection = useCallback(() => {
     const editor = getEditor()
-    if (editor === null || collectionInsertionEditor.current?.path === path) {
+    if (editor === null) {
       return
     }
     const creation = { path, editor }

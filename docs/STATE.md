@@ -20,22 +20,27 @@ a note edit as a diff and the user accepts or rejects it from the keyboard.
 - [x] `ChatNotePatchCard`: note title, line diff (the history dialog's
   rendering), Accept / Reject. Accept re-validates and lands through
   `commitNoteBodyTransform` (open note updates in place, unsaved edits intact;
-  stale passage → refusal, nothing written). The first pending card takes
-  focus when its reply settles; Enter accepts, Backspace rejects, focus then
-  moves to the next pending card or the composer. Decisions only once the turn
-  is done, recorded via the chat session's `settleNoteEdit`.
+  stale passage, deleted note, or a note turned private → refusal, nothing
+  written; applies to one note chain, so two accepts keep both hunks). The
+  first pending card takes focus when its reply settles; Enter accepts,
+  Backspace rejects, focus then moves to the next pending card or the
+  composer. Decisions only once the turn is done; the card binds its recorder
+  (`bindNoteEditDecision`) before the write, so a conversation switch
+  mid-write still lands the decision in the right row.
 
 **Untouched by design:** CLI engines (Claude Code / Codex / Cursor) and their
 post-hoc `ChatChangesCard` ledger; the editor's selection AI menu; note
 creation from the tool; multi-note patches.
 
-**Validation:** core `note-edit` 5/5, `tools` (edit_note 4 new), `transcript`,
-`store` (round-trip with decision), `system-prompt` — 103 node tests green;
-browser `chat-note-patch-card` 5/5 + `chat-tool-chip`, `chat-provider`,
-`chat-screen` on Chromium (67/67), the card + chip suites on WebKit; `pnpm
-check` exit 0; one rendered check of the focused card. Not exercised: a live
-provider run that actually calls `edit_note` (the dev harness's demo model
-streams text only).
+**Validation:** core `note-edit` 6/6, `tools` (edit_note 4 new), `transcript`,
+`store` (round-trip with decision), `system-prompt` — node suites green;
+browser `chat-note-patch-card` 5/5, `use-apply-note-edit` 3/3 (serialized
+accepts, stale / deleted / private refusals), `chat-provider` (bound
+decisions recorded after New chat), `chat-tool-chip`, `chat-screen` on
+Chromium, the touched suites on WebKit; `pnpm check` exit 0; one rendered
+check of the focused card; four Bugbot rounds on PR #220 addressed. Not
+exercised: a live provider run that actually calls `edit_note` (the dev
+harness's demo model streams text only).
 
 **Next:** merge, bump, then in Kore Brain on Edit mode ask for a change to a
 daily note and accept it from the keyboard; watch that the open editor takes

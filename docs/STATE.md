@@ -1,5 +1,24 @@
 # Kore working state
 
+## Weekly review template — 2026-09-15
+
+Settings → Agents → Automations offers **Add Weekly review**: a recommended
+template (Sunday 17:00) that rereads the week's `daily/` notes, groups open
+tasks by `[[project]]`, and writes `notes/Weekly review YYYY-MM-DD.md`. It is
+never preinstalled or default-on — empty settings stay `agentRoutines: []`,
+first-run still seeds only welcome + default objects. The existing New
+automation dialog prefills so the prompt/schedule/agent can be changed before
+Create; after that the usual enable/disable switch, Edit, Run now, and delete
+apply. Same runner, lock, and history as every other routine.
+
+**Validation:** targeted core routine + settings tests; desktop automations
+section tests (template opt-in, hide-once-added, edit preserves lastRunMs).
+`pnpm check` and both browser engines for the section suite are recorded
+after they run.
+
+**Next:** merge, then add the template from Settings → Agents on a real graph
+and Run now once with BYOK to confirm the review note lands.
+
 ## Supertag icons, All Notes sort, tab menu — 2026-09-15
 
 PR #213 (`t3code/supertag-icons-note-sorting-tab-actions`): supertag emoji
@@ -678,11 +697,9 @@ browser `collection-view-tabs` + `all-notes-collection-flow` +
 
 ## Next step
 
-1. **Projects, remaining**: slice 3 stays a *recommendation only* per the
-   automations principle — a suggested weekly-review routine template on
-   a future routines page, whenever that page gets built. Consider a
-   Tasks-view "by project" grouping if the note panel proves not enough
-   in real use.
+1. **Projects, remaining**: the weekly-review routine template now lives on
+   Settings → Agents (opt-in, never default-on). Consider a Tasks-view "by
+   project" grouping if the note panel proves not enough in real use.
 2. **Collections** ([Plan 29](plans/29-collections-database.md)) is
    complete through T2, plus the 2026-09-06 Notion chrome (view tabs +
    `...` menu, PR #187). New scope (formula date functions, per-group
@@ -767,6 +784,11 @@ screen: Agents then Close lands on today.
 **Next:** merge the Close fix, then bump.
 
 ## Session log
+
+- 2026-09-15 — Weekly review as an opt-in Settings → Agents template
+  (never default-on). Same automations runner; customize in the existing
+  dialog; enable/disable/edit after create. Markdown review note out.
+
 
 - 2026-09-14 — Split panes part 2: columns of stacked panes, tab drag and
   keyboard moves between panes, rail toggles once per window, autofocus only

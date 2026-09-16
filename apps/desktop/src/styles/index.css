@@ -1697,6 +1697,12 @@ html[data-sidebar-resizing] aside {
   --layer-saturate: var(--glass-popover-saturate);
 }
 
+/* A rendered collection fence never shows its source: the widget is the
+   whole block, and the caret is kept out of it by CollectionFenceGuard. */
+.reflect-editor div:has(> [data-meowdown-code-block-custom]) > pre {
+  display: none;
+}
+
 /* Embedded views use application typography, not Markdown heading styles. */
 .reflect-editor [data-testid='collection-embed'] h2.text-xs {
   margin: 0;

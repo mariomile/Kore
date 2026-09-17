@@ -23,6 +23,7 @@ import {
   type ChatTurn,
   type GraphInfo,
 } from '@reflect/core'
+import { toast } from '@/components/ui/toast'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { toChatAttachment, type ChatAttachment } from '@/lib/chat-attachments'
 import { emitChatConversationDeleted } from '@/lib/chat-events'
@@ -435,18 +436,40 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
 
   const deleteConversation = useCallback(
     async (id: string): Promise<void> => {
-      deletedConversationsRef.current.add(id)
+      if (deletedConversationsRef.current.has(id)) {
+        return
+      }
       const generation = generationRef.current
       if (hasBridge() && generation !== null) {
-        // Let any in-flight save for this conversation land first — the
-        // delete and a dispatched save are independent commands, so issuing
-        // the delete now could be overtaken in Rust and the save's upsert
-        // would resurrect the row. (The chain never rejects.)
-        await pendingSavesRef.current.get(id)
-        try {
+        // Put deletion IN the save chain, not just after a snapshot of it.
+        // Saves arriving during deletion wait for its outcome: on success
+        // their existing execution-time guard skips them; on failure they
+        // still persist. Never mark a conversation deleted before the DB
+        // accepts it, or a failed delete can silently discard a settled turn.
+        const queue = pendingSavesRef.current
+        const deletion = (queue.get(id) ?? Promise.resolve()).then(async () => {
+          if (deletedConversationsRef.current.has(id)) {
+            return
+          }
           await deleteChatConversation(id, generation)
+          deletedConversationsRef.current.add(id)
+        })
+        // Save-chain tails never reject. The caller below owns the error;
+        // queued saves must not inherit a failed deletion as a failed save.
+        queue.set(
+          id,
+          deletion.catch(() => {}),
+        )
+        try {
+          await deletion
         } catch (cause) {
           console.error('chat: deleting the conversation failed:', errorMessage(cause))
+          toast.add({
+            type: 'error',
+            title: "Couldn't delete the conversation",
+            description: errorMessage(cause),
+          })
+          return // keep the history, attachment files, and active conversation
         }
         // The conversation's attachment files go with its rows; failing to
         // sweep them leaves orphan images, not broken chat state (and the
@@ -457,6 +480,8 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
           })
         }
         invalidateChatQueries()
+      } else {
+        deletedConversationsRef.current.add(id)
       }
       if (id === conversationIdRef.current) {
         newChat()

@@ -94,6 +94,10 @@ export async function listNotes(options: NoteListOptions = {}): Promise<Classifi
     listQuery = listQuery.orderBy(order)
   }
   const rows = await listQuery.execute()
+  // A schema is shared by many notes. Validate each distinct definition once
+  // per result, including malformed definitions. A per-call cache cannot
+  // survive a schema edit or a graph switch and retains no parsed objects.
+  const schemaValidity = new Map<string, boolean>()
 
   return rows.map((row) => ({
     path: row.path,
@@ -104,19 +108,23 @@ export async function listNotes(options: NoteListOptions = {}): Promise<Classifi
     // case: splitting that string would hand back `['']`, a phantom empty tag.
     tags: row.tags === null ? [] : row.tags.split(TAG_SEPARATOR),
     isPinned: row.isPinned !== 0,
-    isInbox: !isDaily(row.path) && !hasValidTagSchema(row.tagSchemas),
+    isInbox: !isDaily(row.path) && !hasValidTagSchema(row.tagSchemas, schemaValidity),
   }))
 }
 
 /** Match the properties panel: a malformed schema does not make a tag typed. */
-function hasValidTagSchema(column: string): boolean {
+function hasValidTagSchema(column: string, validity: Map<string, boolean>): boolean {
   const schemas = z.array(z.string().nullable()).parse(JSON.parse(column))
   return schemas.some((schema) => {
     if (schema === null) return false
+    const cached = validity.get(schema)
+    if (cached !== undefined) return cached
     try {
       decodeTagTypeJson(schema)
+      validity.set(schema, true)
       return true
     } catch {
+      validity.set(schema, false)
       return false
     }
   })

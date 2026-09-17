@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactElement } from 'react'
+import { createGraphFrameScheduler } from '@/lib/graph-frame-scheduler'
 import {
   createGraphLayout,
   isSettled,
@@ -75,8 +76,8 @@ function nodeRadius(inbound: number): number {
  * layout. The simulation steps inside a requestAnimationFrame loop that goes
  * idle once the layout settles and every interaction is quiet — hover, drag
  * (nodes pin while held), wheel-zoom about the cursor, and background pans
- * only mark the frame dirty. Colors are read from the live design tokens at
- * draw time, so the map follows theme switches without any wiring.
+ * request a frame. Theme changes also request a repaint, without reheating
+ * the layout. Hidden documents pause and unmounted canvases cancel their work.
  */
 export function GraphMapCanvas({
   nodes,
@@ -127,10 +128,6 @@ export function GraphMapCanvas({
     const viewport: Viewport = { offsetX: 0, offsetY: 0, scale: 1 }
     let hoverIndex: number | null = null
     let drag: DragState | null = null
-    let dirty = true
-    invalidateRef.current = () => {
-      dirty = true
-    }
     /** Cleared once the viewer pans, zooms, or drags — auto-fitting stops there. */
     let autoFit = true
     /**
@@ -139,14 +136,27 @@ export function GraphMapCanvas({
      * whole map stays reachable instead of being clipped by the floor.
      */
     let minScale = MIN_SCALE
-    let disposed = false
+    const frames = createGraphFrameScheduler(() => {
+      if (layout.nodes.length > 0 && !isSettled(layout)) {
+        // Keep the existing two steps per frame and the same layout policy.
+        stepGraphLayout(layout, layoutEdges)
+        stepGraphLayout(layout, layoutEdges)
+        if (autoFit) {
+          fitView()
+        }
+      }
+      draw()
+      // Empty graphs never cool down, so they must not keep a loop alive.
+      return layout.nodes.length > 0 && !isSettled(layout)
+    })
+    invalidateRef.current = frames.request
 
     const dpr = window.devicePixelRatio || 1
     const resize = (): void => {
       const { clientWidth, clientHeight } = canvas
       surface.width = Math.max(1, Math.round(clientWidth * dpr))
       surface.height = Math.max(1, Math.round(clientHeight * dpr))
-      dirty = true
+      frames.request()
     }
     resize()
     // Fit the starting spiral immediately — before the simulation settles —
@@ -159,6 +169,13 @@ export function GraphMapCanvas({
       }
     })
     observer.observe(surface)
+    // Canvas pixels do not inherit CSS changes. A sleeping graph still has
+    // to follow the root attributes written by ThemeProvider.
+    const themeObserver = new MutationObserver(frames.request)
+    themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class', 'style', 'data-theme', 'data-accent', 'data-visual-theme'],
+    })
 
     /**
      * Frame the whole graph in the canvas. Called every frame while the
@@ -192,7 +209,6 @@ export function GraphMapCanvas({
       viewport.scale = scale
       viewport.offsetX = width / 2 - ((minX + maxX) / 2) * scale
       viewport.offsetY = height / 2 - ((minY + maxY) / 2) * scale
-      dirty = true
     }
 
     function toWorld(clientX: number, clientY: number): { x: number; y: number } {
@@ -350,27 +366,6 @@ export function GraphMapCanvas({
       ctx.globalAlpha = 1
     }
 
-    function frame(): void {
-      if (disposed) {
-        return
-      }
-      if (!isSettled(layout)) {
-        // A couple of steps per frame settles quicker without visible jumps.
-        stepGraphLayout(layout, layoutEdges)
-        stepGraphLayout(layout, layoutEdges)
-        dirty = true
-        if (autoFit) {
-          fitView()
-        }
-      }
-      if (dirty) {
-        dirty = false
-        draw()
-      }
-      requestAnimationFrame(frame)
-    }
-    requestAnimationFrame(frame)
-
     const handlePointerDown = (event: PointerEvent): void => {
       surface.setPointerCapture(event.pointerId)
       drag = {
@@ -386,7 +381,7 @@ export function GraphMapCanvas({
           node.pinned = true
         }
       }
-      dirty = true
+      frames.request()
     }
 
     const handlePointerMove = (event: PointerEvent): void => {
@@ -395,7 +390,7 @@ export function GraphMapCanvas({
         if (hit !== hoverIndex) {
           hoverIndex = hit
           surface.style.cursor = hit === null ? 'default' : 'pointer'
-          dirty = true
+          frames.request()
         }
         return
       }
@@ -423,7 +418,7 @@ export function GraphMapCanvas({
           reheatGraphLayout(layout, 0.3)
         }
       }
-      dirty = true
+      frames.request()
     }
 
     const handlePointerUp = (event: PointerEvent): void => {
@@ -450,7 +445,7 @@ export function GraphMapCanvas({
           }
         }
       }
-      dirty = true
+      frames.request()
     }
 
     const handleWheel = (event: WheelEvent): void => {
@@ -465,7 +460,7 @@ export function GraphMapCanvas({
       viewport.offsetX = pointX - ((pointX - viewport.offsetX) / viewport.scale) * nextScale
       viewport.offsetY = pointY - ((pointY - viewport.offsetY) / viewport.scale) * nextScale
       viewport.scale = nextScale
-      dirty = true
+      frames.request()
     }
 
     surface.addEventListener('pointerdown', handlePointerDown)
@@ -475,8 +470,10 @@ export function GraphMapCanvas({
     surface.addEventListener('wheel', handleWheel, { passive: false })
 
     return () => {
-      disposed = true
+      frames.dispose()
+      invalidateRef.current = () => {}
       observer.disconnect()
+      themeObserver.disconnect()
       surface.removeEventListener('pointerdown', handlePointerDown)
       surface.removeEventListener('pointermove', handlePointerMove)
       surface.removeEventListener('pointerup', handlePointerUp)

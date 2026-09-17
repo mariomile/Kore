@@ -56,17 +56,29 @@ const TURN: ChatTurn = {
   id: 'turn-1',
   userText: 'Edit this note',
   attachments: [
-    { id: 'image', name: 'image.png', mediaType: 'image/png', path: '.reflect/chat-attachments/conv-1/image.png' },
-  ],
-  parts: [{
-    kind: 'tool',
-    call: { tool: 'editNote', toolCallId: 'proposal', path: 'notes/test.md' },
-    result: {
-      tool: 'editNote', toolCallId: 'proposal', path: 'notes/test.md',
-      oldText: 'before', newText: 'after', error: null, decision: 'pending',
+    {
+      id: 'image',
+      name: 'image.png',
+      mediaType: 'image/png',
+      path: '.reflect/chat-attachments/conv-1/image.png',
     },
-    error: null,
-  }],
+  ],
+  parts: [
+    {
+      kind: 'tool',
+      call: { tool: 'editNote', toolCallId: 'proposal', path: 'notes/test.md' },
+      result: {
+        tool: 'editNote',
+        toolCallId: 'proposal',
+        path: 'notes/test.md',
+        oldText: 'before',
+        newText: 'after',
+        error: null,
+        decision: 'pending',
+      },
+      error: null,
+    },
+  ],
   responseMessages: [],
   status: 'done',
 }
@@ -82,14 +94,17 @@ beforeEach(() => {
 
 async function mount() {
   session = null
-  const rendered = await renderHook(() => {
-    session = useChatSession()
-    return session
-  }, {
-    wrapper: ({ children }: { children: ReactNode }) => (
-      <ChatProvider graph={GRAPH}>{children}</ChatProvider>
-    ),
-  })
+  const rendered = await renderHook(
+    () => {
+      session = useChatSession()
+      return session
+    },
+    {
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <ChatProvider graph={GRAPH}>{children}</ChatProvider>
+      ),
+    },
+  )
   await vi.waitFor(() => expect(session?.activeConversationId).toBe('conv-1'))
   return rendered
 }
@@ -97,9 +112,12 @@ async function mount() {
 it('keeps files and queued saves after a failed delete and allows retry', async () => {
   const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {})
   let rejectDelete: (error: Error) => void = () => {}
-  mocks.deleteChatConversation.mockImplementationOnce(() => new Promise((_, reject) => {
-    rejectDelete = reject
-  }))
+  mocks.deleteChatConversation.mockImplementationOnce(
+    () =>
+      new Promise((_, reject) => {
+        rejectDelete = reject
+      }),
+  )
   const { act } = await mount()
   let deleting: Promise<void> | undefined
   await act(async () => {
@@ -131,9 +149,12 @@ it('keeps files and queued saves after a failed delete and allows retry', async 
 
 it('does not let a queued save resurrect a successfully deleted conversation', async () => {
   let finishDelete: () => void = () => {}
-  mocks.deleteChatConversation.mockImplementationOnce(() => new Promise((resolve) => {
-    finishDelete = resolve
-  }))
+  mocks.deleteChatConversation.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finishDelete = resolve
+      }),
+  )
   const { act } = await mount()
   let deleting: Promise<void> | undefined
   await act(async () => {

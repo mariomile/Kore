@@ -456,7 +456,10 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
         })
         // Save-chain tails never reject. The caller below owns the error;
         // queued saves must not inherit a failed deletion as a failed save.
-        queue.set(id, deletion.catch(() => {}))
+        queue.set(
+          id,
+          deletion.catch(() => {}),
+        )
         try {
           await deletion
         } catch (cause) {

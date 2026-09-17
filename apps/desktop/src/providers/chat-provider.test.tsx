@@ -497,36 +497,55 @@ describe('ChatProvider persistence', () => {
     expect(core.saveChatMessage).toHaveBeenCalledTimes(1)
   })
 
-  it('lets an in-flight save land before deleting its conversation', async () => {
-    // The delete and a dispatched save are independent IPC commands with no
-    // ordering guarantee — the provider must hold the delete until the
-    // conversation's save chain settles, or the upsert could resurrect it.
-    let releaseSave: () => void = () => {}
-    core.saveChatMessage.mockImplementation(
-      () =>
-        new Promise<void>((resolve) => {
-          releaseSave = resolve
-        }),
-    )
+  it('waits for both pending saves before deleting its conversation', async () => {
+    // Gate the user-half and settled-turn writes independently. Releasing
+    // only the first must not dispatch deletion while the second is pending.
+    let releaseFirst: () => void = () => {}
+    let releaseSecond: () => void = () => {}
+    const firstSave = new Promise<void>((resolve) => {
+      releaseFirst = resolve
+    })
+    const secondSave = new Promise<void>((resolve) => {
+      releaseSecond = resolve
+    })
+    core.saveChatMessage
+      .mockImplementationOnce(() => firstSave)
+      .mockImplementationOnce(() => secondSave)
     scriptTurn([{ type: 'complete', messages: [{ role: 'assistant', content: 'Hi.' }] }])
     const { act } = await renderProvider()
-    await vi.waitFor(() => expect(core.listChatConversations).toHaveBeenCalled())
-
-    await act(() => session?.send('hello'))
-    const sentInto = core.saveChatMessage.mock.calls[0]![0] as { conversation: { id: string } }
-
     let deleteDone: Promise<void> | undefined
-    await act(async () => {
-      deleteDone = session?.deleteConversation(sentInto.conversation.id)
-      await Promise.resolve()
-    })
-    expect(core.deleteChatConversation).not.toHaveBeenCalled()
 
-    releaseSave()
-    await act(async () => {
-      await deleteDone
-    })
-    expect(core.deleteChatConversation).toHaveBeenCalledWith(sentInto.conversation.id, 7)
+    try {
+      await vi.waitFor(() => expect(core.listChatConversations).toHaveBeenCalled())
+      await act(() => session?.send('hello'))
+      expect(core.saveChatMessage).toHaveBeenCalledTimes(1)
+      const sentInto = core.saveChatMessage.mock.calls[0]![0] as { conversation: { id: string } }
+
+      await act(async () => {
+        deleteDone = session?.deleteConversation(sentInto.conversation.id)
+        await Promise.resolve()
+      })
+      expect(core.deleteChatConversation).not.toHaveBeenCalled()
+
+      releaseFirst()
+      await vi.waitFor(() => expect(core.saveChatMessage).toHaveBeenCalledTimes(2))
+      expect(core.deleteChatConversation).not.toHaveBeenCalled()
+
+      releaseSecond()
+      await act(async () => {
+        await deleteDone
+      })
+      expect(core.saveChatMessage).toHaveBeenCalledTimes(2)
+      expect(core.deleteChatConversation).toHaveBeenCalledExactlyOnceWith(sentInto.conversation.id, 7)
+      expect(session?.activeConversationId).not.toBe(sentInto.conversation.id)
+    } finally {
+      // A failed assertion must not leave gated promises behind for retries.
+      releaseFirst()
+      releaseSecond()
+      await act(async () => {
+        await deleteDone
+      })
+    }
   })
 })
 
@@ -810,6 +829,7 @@ describe('ChatProvider mid-turn steering', () => {
 
     expect(cli.steers).toEqual([])
     expect(session?.queued.map((entry) => entry.text)).toEqual(['too late for this one'])
+    expect(core.streamCliAgentChat).toHaveBeenCalledTimes(1)
     expect(session?.turns.at(-1)?.parts).not.toContainEqual({
       kind: 'steer',
       text: 'too late for this one',

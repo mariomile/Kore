@@ -536,7 +536,10 @@ describe('ChatProvider persistence', () => {
         await deleteDone
       })
       expect(core.saveChatMessage).toHaveBeenCalledTimes(2)
-      expect(core.deleteChatConversation).toHaveBeenCalledExactlyOnceWith(sentInto.conversation.id, 7)
+      expect(core.deleteChatConversation).toHaveBeenCalledExactlyOnceWith(
+        sentInto.conversation.id,
+        7,
+      )
       expect(session?.activeConversationId).not.toBe(sentInto.conversation.id)
     } finally {
       // A failed assertion must not leave gated promises behind for retries.

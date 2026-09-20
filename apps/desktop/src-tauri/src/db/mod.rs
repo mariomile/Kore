@@ -643,7 +643,21 @@ pub async fn chat_message_save<R: tauri::Runtime>(
     .await
 }
 
-/// Delete a conversation and (via cascade) its messages (no-op if stale).
+/// Delete only in the requested index session. Unlike background index writes,
+/// a user-requested delete must reject a stale generation: resolving a no-op
+/// would make the caller discard attachments and permanently suppress retries.
+fn delete_chat_conversation_for(index: &IndexState, id: &str, generation: u64) -> AppResult<()> {
+    let state = lock_state(index)?;
+    if state.generation != generation {
+        return Err(AppError::io(
+            "The index was reopened. Try deleting the conversation again.",
+        ));
+    }
+    let conn = state.conn.as_ref().ok_or_else(AppError::no_graph)?;
+    chat_write::delete_conversation(conn, id)
+}
+
+/// Delete a conversation and (via cascade) its messages; reject stale sessions.
 #[tauri::command]
 pub async fn chat_conversation_delete<R: tauri::Runtime>(
     id: String,
@@ -654,12 +668,7 @@ pub async fn chat_conversation_delete<R: tauri::Runtime>(
     let _background_task = background_task::scoped(&background_tasks, "Reflect chat delete");
     crate::blocking::run_blocking(move || {
         let index = app.state::<IndexState>();
-        let state = lock_state(&index)?;
-        if state.generation != generation {
-            return Ok(());
-        }
-        let conn = state.conn.as_ref().ok_or_else(AppError::no_graph)?;
-        chat_write::delete_conversation(conn, &id)
+        delete_chat_conversation_for(&index, &id, generation)
     })
     .await
 }
@@ -794,4 +803,45 @@ pub async fn db_query_batch<R: tauri::Runtime>(
         Ok(out)
     })
     .await
+}
+
+#[cfg(test)]
+#[test]
+fn stale_chat_delete_preserves_the_row_and_allows_current_session_retry() {
+    let mut conn = migrations::open_in_memory().expect("open");
+    migrations::migrate(&mut conn).expect("migrate");
+    conn.execute(
+        "INSERT INTO chat_conversations (id, title, created_ms, updated_ms)
+         VALUES ('conv-1', 'Saved conversation', 1, 1)",
+        [],
+    )
+    .expect("seed conversation");
+    let index = IndexState {
+        inner: Mutex::new(IndexInner {
+            generation: 2,
+            conn: Some(conn),
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
+    let count = || {
+        let state = lock_state(&index).expect("lock");
+        state
+            .conn
+            .as_ref()
+            .expect("connection")
+            .query_row("SELECT count(*) FROM chat_conversations", [], |row| {
+                row.get::<_, i64>(0)
+            })
+            .expect("count conversations")
+    };
+
+    assert!(matches!(
+        delete_chat_conversation_for(&index, "conv-1", 1),
+        Err(AppError::Io { .. })
+    ));
+    assert_eq!(count(), 1);
+    delete_chat_conversation_for(&index, "conv-1", 2).expect("retry in current session");
+    assert_eq!(count(), 0);
+    delete_chat_conversation_for(&index, "conv-1", 2).expect("already deleted is idempotent");
 }

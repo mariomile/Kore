@@ -64,7 +64,10 @@ cached `tsc -b`; CI's lint job caught the formatting, and re-running it
 clean surfaced a bad `valueType` in a new test and four `\u2019` escapes
 eslint refuses — all fixed in the second commit). Not exercised: a live provider turn calling
 `set_tag_schema` (the dev harness's demo model streams text only), and no
-rendered check of the card.
+rendered check of the card. The live check needs a **BYOK** model, same as
+the tag icon: `set_tag_schema` is one of the four tag tools `buildTagTools`
+registers on the BYOK path (`packages/core/src/ai/chat/tools.ts`), so a CLI
+engine edits the vault itself and shows the post-hoc Changes card instead.
 
 **Next:** merge, bump, then in Kore Brain ask "add a Read on date to #book"
 and accept from the keyboard; watch the tag's collection grow the column.
@@ -111,7 +114,11 @@ hue is a name hash), the CLI engines' skill (they still cannot see the names
 `chat-note-patch-card` 5/5, `chat-screen` (new flow test) on Chromium and
 WebKit; wider chat + tags suites 116/116 on Chromium; `pnpm check` exit 0.
 Not exercised: a live provider turn calling `set_tag_icon` (the dev
-harness's demo model streams text only).
+harness's demo model streams text only). The live check needs a **BYOK**
+model: the tag tools are registered on the BYOK tool path
+(`packages/core/src/ai/chat/tools.ts`), so a CLI engine (Claude Code /
+Codex / Cursor) edits the vault itself and shows the post-hoc Changes card
+instead, which never reaches this code.
 
 **Next:** merge, bump, then in Kore Brain ask "give #company a buildings
 icon" and accept from the keyboard; watch the sidebar row change. Slice 2
@@ -157,7 +164,8 @@ decisions recorded after New chat), `chat-tool-chip`, `chat-screen` on
 Chromium, the touched suites on WebKit; `pnpm check` exit 0; one rendered
 check of the focused card; four Bugbot rounds on PR #220 addressed. Not
 exercised: a live provider run that actually calls `edit_note` (the dev
-harness's demo model streams text only).
+harness's demo model streams text only). Same BYOK-only caveat as the tag
+icon slice above: on a CLI engine this tool is not in play at all.
 
 **Next:** merge, bump, then in Kore Brain on Edit mode ask for a change to a
 daily note and accept it from the keyboard; watch that the open editor takes
@@ -179,10 +187,19 @@ run that finishes while the dialog is open keeps its history.
 **Validation:** `packages/core` routine + settings tests 61/61; desktop
 automations section 13/13 on Chromium and WebKit including the edit-vs-live-run
 regression; `pnpm check` exit 0.
-Not exercised: a live Run now against a real graph with BYOK.
+Not exercised: a live Run now against a real graph.
+
+**Correction (2026-09-21):** an earlier version of these two lines said the
+live check needed BYOK. It does not, and cannot: the routine runner filters
+the configured providers to edit-capable **CLI** engines only — Claude Code
+or Codex — and fails the run with "No edit-capable CLI provider is
+configured for the woken run" when neither is set
+(`apps/desktop/src/components/agent-routines-runner.tsx`, the `configured` /
+`pinned` / `provider` block). A BYOK provider never runs a routine.
 
 **Next:** merge, then add the template from Settings → Agents on a real graph
-and Run now once with BYOK to confirm the review note lands.
+and Run now once, with Claude Code or Codex configured, to confirm the review
+note lands.
 
 ## New-note tab survives a fast rename; split from the tab menu — 2026-09-15
 
@@ -913,7 +930,13 @@ browser `collection-view-tabs` + `all-notes-collection-flow` +
    in the reply; teach a skill ("salvala come skill"), approve it from
    Settings → Agents, invoke it in a fresh conversation; (d) Now 4: start a
    routine, quit Kore mid-run, relaunch and see the interrupted entry +
-   retry; Stop a running routine from Settings → Agents.
+   retry; Stop a running routine from Settings → Agents. (e) the three chat
+   proposal tools, `edit_note`, `set_tag_icon` and `set_tag_schema`, each
+   accepted from the keyboard — all three need a **BYOK** model selected,
+   not a CLI engine. (f) the weekly-review Run now, which needs the
+   opposite: Claude Code or Codex, never BYOK. (g) the shared agent-skill
+   install from Settings → Agents → Agent skill, plus one agent task
+   through those skills.
 4. **Memory follow-ups** that emerge from Now item 3 usage (roadmap Next).
 
 ## Split panes part 2: columns of rows — 2026-09-14

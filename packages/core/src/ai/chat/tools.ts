@@ -69,6 +69,7 @@ import {
   searchNotesInput,
   setNotePropertyInput,
   type setTagIconInput,
+  type setTagSchemaInput,
   UNTYPED_TAG_ERROR,
   type EditNoteOutput,
   type ListCollectionOutput,
@@ -80,12 +81,13 @@ import {
   type SetNotePropertyOutput,
   type SetNotePropertyValue,
   type SetTagIconOutput,
+  type SetTagSchemaOutput,
 } from './tools-io'
 
 export * from './tools-io'
 export * from './tools-activity'
 export * from './note-edit'
-export { mergeTagListings, type TagToolDeps } from './tag-tools'
+export { mergeTagListings, resolveTagSchema, type TagToolDeps } from './tag-tools'
 
 /**
  * The read-only note tools the chat model can call (Plan 10, first wave).
@@ -455,6 +457,7 @@ export type NoteTools = {
   list_tags: Tool<z.infer<typeof listTagsInput>, ListTagsOutput>
   list_tag_icons: Tool<z.infer<typeof listTagIconsInput>, ListTagIconsOutput>
   set_tag_icon: Tool<z.infer<typeof setTagIconInput>, SetTagIconOutput>
+  set_tag_schema: Tool<z.infer<typeof setTagSchemaInput>, SetTagSchemaOutput>
   set_note_property: Tool<z.infer<typeof setNotePropertyInput>, SetNotePropertyOutput>
   edit_note: Tool<z.infer<typeof editNoteInput>, EditNoteOutput>
   read_notes: Tool<z.infer<typeof readNotesInput>, ReadNotesOutput>

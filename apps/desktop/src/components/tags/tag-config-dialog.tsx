@@ -1,13 +1,6 @@
 import { useEffect, useMemo, useState, type ReactElement } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import {
-  foldTag,
-  isPropertyKey,
-  listNotesWithProperty,
-  listTemplates,
-  propertyRowValue,
-  type TemplateEntry,
-} from '@reflect/core'
+import { foldTag, isPropertyKey, listTemplates, type TemplateEntry } from '@reflect/core'
 import { Book, Calendar, Chart, Folder, Plus, User } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import {
@@ -25,8 +18,12 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { toast } from '@/components/ui/toast'
-import { commitNoteFrontmatter } from '@/lib/note-frontmatter'
 import { TAG_SCHEMA_PRESETS, type TagSchemaPreset } from '@/lib/tags/schema-presets'
+import {
+  migratePropertyRenames,
+  planPropertyRenames,
+  type PendingRename,
+} from '@/lib/tags/schema-renames'
 import { readTagDefinition, saveTagType } from '@/lib/tags/tag-type-write'
 import { tagTypeQueryKey } from '@/hooks/use-tag-type'
 import { useGraph } from '@/providers/graph-provider'
@@ -35,7 +32,6 @@ import {
   draftsForNewSchema,
   draftsFromSchema,
   schemaFromDrafts,
-  type PendingRename,
   type PropertyDraft,
 } from './tag-config-drafts'
 import { TagIconPicker } from './tag-icon-picker'
@@ -188,22 +184,7 @@ export function TagConfigDialog({ tag, onClose }: TagConfigDialogProps): ReactEl
     try {
       await saveTagType(tag, schemaFromDrafts(drafts), graph.generation, template, icon)
       if (migrate) {
-        // Move each note's value to the new key through the ordinary patch
-        // channel — the same write an inline edit makes, one note at a time.
-        for (const rename of renames) {
-          for (const note of rename.notes) {
-            await commitNoteFrontmatter(
-              note.notePath,
-              {
-                properties: {
-                  [rename.from]: undefined,
-                  [rename.to]: propertyRowValue(note.value),
-                },
-              },
-              graph.generation,
-            )
-          }
-        }
+        await migratePropertyRenames(renames, graph.generation)
       }
       await queryClient.invalidateQueries({ queryKey: tagTypeQueryKey(graph.root, tag) })
       onClose()
@@ -224,22 +205,14 @@ export function TagConfigDialog({ tag, onClose }: TagConfigDialogProps): ReactEl
     // A changed key on a loaded row is a rename; when notes still carry the
     // old key, saving must not silently orphan their values — surface the
     // blast radius and let the user migrate (or explicitly not).
-    const renamed = drafts.filter(
-      (draft) => draft.originalKey !== null && draft.originalKey !== draft.key,
+    const affecting = await planPropertyRenames(
+      drafts
+        .filter((draft) => draft.originalKey !== null && draft.originalKey !== draft.key)
+        .map((draft) => ({ from: draft.originalKey!, to: draft.key })),
     )
-    if (renamed.length > 0) {
-      const withUses = await Promise.all(
-        renamed.map(async (draft) => ({
-          from: draft.originalKey!,
-          to: draft.key,
-          notes: await listNotesWithProperty(draft.originalKey!),
-        })),
-      )
-      const affecting = withUses.filter((rename) => rename.notes.length > 0)
-      if (affecting.length > 0) {
-        setPendingRenames(affecting)
-        return
-      }
+    if (affecting.length > 0) {
+      setPendingRenames(affecting)
+      return
     }
     await performSave([], false)
   }

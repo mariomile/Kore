@@ -141,9 +141,9 @@ export function appendEvent(parts: AssistantPart[], event: ChatStreamEvent): Ass
 }
 
 /**
- * Record the user's decision on the proposal `toolCallId` — a note edit or
- * a tag-icon change, the two tool results that carry a `decision`
- * (immutable). Parts that are not that proposal, or whose proposal was
+ * Record the user's decision on the proposal `toolCallId` — a note edit, a
+ * tag-icon change or a tag-schema change, the tool results that carry a
+ * `decision` (immutable). Parts that are not that proposal, or whose proposal was
  * refused, pass through untouched — a refusal has nothing to accept.
  */
 export function settleNoteEdit(
@@ -155,7 +155,9 @@ export function settleNoteEdit(
     if (
       part.kind !== 'tool' ||
       part.result === null ||
-      (part.result.tool !== 'editNote' && part.result.tool !== 'setTagIcon') ||
+      (part.result.tool !== 'editNote' &&
+        part.result.tool !== 'setTagIcon' &&
+        part.result.tool !== 'setTagSchema') ||
       part.result.toolCallId !== toolCallId ||
       part.result.error !== null
     ) {

@@ -1,6 +1,6 @@
 # Kore planning inventory
 
-**Updated:** 2026-08-30.
+**Updated:** 2026-09-21.
 **Scope:** Every Markdown document under `docs/`, plus root/implementation entry
 points listed below. Fixture Markdown, generated permission references, package
 changelogs and design specimens are not product planning documents.
@@ -28,7 +28,9 @@ The source evidence in the target architecture was inspected at `ab96c077`.
 
 ## Catalog
 
-The inventory contains **98 documents under `docs/`**, including this index.
+The inventory contains **109 documents under `docs/`**, including this index.
+The catalog below was built on 2026-08-30 and lists the documents that were
+present then plus the entries added since; it is not re-derived on every update.
 
 ### Active next-wave planning
 
@@ -36,11 +38,12 @@ The inventory contains **98 documents under `docs/`**, including this index.
 |---|---|---|
 | [STATE.md](STATE.md) | Kore working state | What is in progress now and the next step; updated by every session that moves the program. |
 | [roadmap.md](roadmap.md) | Kore roadmap | App-first Now/Next/Later priorities, risk register, deferred Personal OS pointers; no delivery claim. |
+| [ai-app-control.md](ai-app-control.md) | AI app control — gap map | What the chat AI and the CLI engines can change about the app itself, and what they cannot; slices 1 and 2 shipped; the settings keys are the largest remaining gap. |
 | [delivery-log.md](delivery-log.md) | Kore delivery log | Historical shipped-work record moved out of the roadmap; reports, not certifications. |
 | [kore-target-architecture.md](kore-target-architecture.md) | Kore: Personal OS target architecture | Canonical next-wave architecture and source-verified gaps. |
 | [plans/25-personal-os.md](plans/25-personal-os.md) | Plan 25 — Kore Personal OS | Complete catalog: I01–I29, S1–S5, B01–B09, acceptance and traceability. |
 | [plans/26-account-safe-read.md](plans/26-account-safe-read.md) | Plan 26 — Account-safe read (Slice S1) | Bounded implementation plan for S1 (I01–I05, minimal I08, Gmail I09, setup I10); deferred by the app-first decision. |
-| [plans/27-read-mode-mcp-tools.md](plans/27-read-mode-mcp-tools.md) | Plan 27 — MCP tools in read-only chat | Roadmap Now item 1: per-conversation opt-in design and acceptance. |
+| [plans/27-read-mode-mcp-tools.md](plans/27-read-mode-mcp-tools.md) | Plan 27 — MCP tools in read-only chat | Per-conversation opt-in design and acceptance; shipped, live check with a real server still pending (roadmap Now). |
 | [plans/30-cli-agent-parity.md](plans/30-cli-agent-parity.md) | Plan 30 — CLI agent parity | `reflect` CLI grows discovery (`info`/`tags`/`list`/`properties`/`links`) and structured writes (`set`/`tag`/`done`/`append`, typed `new`) so agents never hand-edit YAML. |
 | [decisions/0006-personal-os-boundaries.md](decisions/0006-personal-os-boundaries.md) | TDR 0006 — Kore Personal OS boundaries | Accepted target boundaries D01–D10; implementation decisions remain open. |
 | [kore-architecture-source.md](kore-architecture-source.md) | Source: Lore product and technical architecture specification | Verbatim supplied input, 138 sections; reference, not implementation evidence. |

@@ -32,6 +32,7 @@ import { useRouter } from '@/routing/router'
 import { isModEvent } from '@meowdown/core'
 import { ChatNotePatchCard } from './chat-note-patch-card'
 import { ChatTagIconCard } from './chat-tag-icon-card'
+import { ChatTagSchemaCard } from './chat-tag-schema-card'
 
 interface ChatToolChipProps {
   part: Extract<AssistantPart, { kind: 'tool' }>
@@ -336,6 +337,23 @@ export function ChatToolChip({ part, turnStatus = 'done' }: ChatToolChipProps): 
     return (
       <ChipFrame pending={pending} icon={<Hash aria-hidden className="size-3.5" />} wrap>
         {failed === null ? 'Proposing an icon for' : 'Couldn’t propose an icon for'}{' '}
+        <TagRouteButton tag={call.tag} />
+        {failed !== null ? <span> — {failed}</span> : null}
+      </ChipFrame>
+    )
+  }
+
+  // set_tag_schema: a settled proposal is the review card; a pending call or
+  // a refusal stays a compact chip, since there is nothing to accept.
+  if (call.tool === 'setTagSchema') {
+    const result = part.result?.tool === 'setTagSchema' ? part.result : null
+    const failed = result?.error ?? part.error ?? null
+    if (result !== null && failed === null) {
+      return <ChatTagSchemaCard result={result} turnStatus={turnStatus} />
+    }
+    return (
+      <ChipFrame pending={pending} icon={<Hash aria-hidden className="size-3.5" />} wrap>
+        {failed === null ? 'Proposing properties for' : 'Couldn’t propose properties for'}{' '}
         <TagRouteButton tag={call.tag} />
         {failed !== null ? <span> — {failed}</span> : null}
       </ChipFrame>

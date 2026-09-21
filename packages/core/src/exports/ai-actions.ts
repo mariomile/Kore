@@ -71,6 +71,12 @@ export {
   MAX_DAILY_NOTE_DAYS,
   PRIVATE_NOTE_EDIT_ERROR,
   TAG_DEFINITION_UNMARKED_ERROR,
+  TAG_SCHEMA_COMPUTED_ERROR,
+  TAG_SCHEMA_DUPLICATE_KEY_ERROR,
+  TAG_SCHEMA_KEY_ERROR,
+  TAG_SCHEMA_RENAME_ERROR,
+  TAG_SCHEMA_UNCHANGED_ERROR,
+  resolveTagSchema,
   type EditNoteOutput,
   type ListDailyNotesOutput,
   type ListRecentNotesOutput,
@@ -85,6 +91,7 @@ export {
   type ReadAssetSummary,
   type ReadNoteSummary,
   type SearchNotesOutput,
+  type SetTagSchemaOutput,
 } from '../ai/chat/tools'
 export {
   MAX_NOTE_CONTENT_CHARS,

@@ -2,6 +2,7 @@ import { z } from 'zod'
 import type { ModelMessage } from 'ai'
 import { db } from '../../indexing/db'
 import { call } from '../../ipc/invoke'
+import { tagPropertySchema } from '../../tags'
 import type { AssistantPart, ChatTurn } from './transcript'
 
 /**
@@ -61,6 +62,7 @@ const toolCallSchema = z.discriminatedUnion('tool', [
   z.object({ tool: z.literal('tags'), toolCallId: z.string() }),
   z.object({ tool: z.literal('tagIcons'), toolCallId: z.string() }),
   z.object({ tool: z.literal('setTagIcon'), toolCallId: z.string(), tag: z.string() }),
+  z.object({ tool: z.literal('setTagSchema'), toolCallId: z.string(), tag: z.string() }),
 ])
 
 const toolResultSchema = z.discriminatedUnion('tool', [
@@ -141,6 +143,17 @@ const toolResultSchema = z.discriminatedUnion('tool', [
     path: z.string(),
     icon: z.string().nullable(),
     previousIcon: z.string().nullable(),
+    error: z.string().nullable(),
+    decision: z.enum(['pending', 'accepted', 'rejected']),
+  }),
+  z.object({
+    tool: z.literal('setTagSchema'),
+    toolCallId: z.string(),
+    tag: z.string(),
+    path: z.string(),
+    properties: z.array(tagPropertySchema),
+    previousProperties: z.array(tagPropertySchema),
+    renames: z.array(z.object({ from: z.string(), to: z.string() })),
     error: z.string().nullable(),
     decision: z.enum(['pending', 'accepted', 'rejected']),
   }),

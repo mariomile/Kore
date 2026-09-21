@@ -1,15 +1,16 @@
 # Kore roadmap
 
-**Updated:** 2026-08-30.
-**Direction (decided 2026-08-30, app-first):** Kore is first the best
-local-first notes app with agents: fast and powerful on desktop, with the
+**Updated:** 2026-09-21, against `9ee8d04` (v0.70.2, released 2026-09-20).
+**Direction (decided 2026-08-30, app-first, unchanged):** Kore is first the
+best local-first notes app with agents: fast and powerful on desktop, with the
 iPhone app as an excellent capture and reading companion. The Personal OS
 program (multi-account Connections, grants, durable runtime) remains the
 adopted long-term direction but is **not the active backlog**; it resumes on an
 explicit decision, not by drift.
 **Status:** Nothing below is claimed as delivered. Shipped work is in the
-[delivery log](delivery-log.md); what is in progress right now is in
-[STATE.md](STATE.md).
+[delivery log](delivery-log.md); what is in flight right now, with its
+verification, is in [STATE.md](STATE.md) — that file wins over this one on any
+question of what is done.
 
 Read order: [planning inventory](planning-index.md),
 [target architecture](kore-target-architecture.md) (deferred direction), and
@@ -23,71 +24,103 @@ Now: 1. agents on the vault · 2. capture anywhere · 3. semantic search ·
 4. Collections · 5. automations · 6. calendar integration.
 
 Speed is a guardrail, not a workstream: no dedicated performance push without a
-measured pain, but known open items get closed (see Now) and regressions are
-treated as bugs.
+measured pain, but known open items get closed and regressions are treated as
+bugs.
 
 **Automations principle (user decision, 2026-08-30):** Kore ships **no default
 routines or workflows**. Every automation is created explicitly by the user;
-the app may at most *recommend* routine templates (e.g. a weekly review) from
-Settings → Agents, never preinstall or auto-enable one.
+the app may at most *recommend* routine templates (e.g. the weekly review that
+shipped in v0.68.0) from Settings → Agents, never preinstall or auto-enable
+one.
+
+## What closed since the last roadmap (2026-08-30 → 2026-09-20)
+
+The previous revision's Now list is spent — all four items shipped, and three
+programs finished behind them. Details and verification live in the
+[delivery log](delivery-log.md) and [STATE.md](STATE.md); this is the ledger,
+not the record.
+
+- **The four Now items shipped.** MCP tools in read-only chat behind a
+  per-conversation opt-in ([Plan 27](plans/27-read-mode-mcp-tools.md)), chat
+  attachments off base64 plus the never-run memory benchmark (515 MB peak,
+  [memory budgets](memory-budget.md)), agent memory as vault recall +
+  user-taught skills, and the S3-minimal durable runtime
+  ([TDR 0007](decisions/0007-durable-runtime-minimal.md)).
+- **Collections became databases.** [Plan 29](plans/29-collections-database.md)
+  is complete through T2: typed relations, reverse relations, rollups with
+  aggregation, grouping, formula columns, twenty property types, Notion-style
+  view tabs with `...` options, and tab reorder by drag or ⌥Arrow (v0.69.0).
+  The standalone-collection direction was **withdrawn by the user on
+  2026-09-15**: supertags are the only structure users create; notes embed live
+  views of tagged notes.
+- **Supertags got a face.** Display names without the hash, 217 symbol icons
+  with a searchable picker, icons on the sidebar, tag pages and open tabs.
+- **The CLI became an agent surface.** [Plan 30](plans/30-cli-agent-parity.md)
+  shipped all three layers — read completeness, structured writes, agent
+  ergonomics — verified by a live pass on the real graph, and four bundled
+  skills install from Settings → Agents.
+- **Split panes.** N columns of stacked panes, tab moves by drag and keyboard,
+  ⌘-click opens a link in the neighbouring pane.
+- **Chat became an editor.** `edit_note` proposes a body hunk the user accepts
+  with Enter or rejects with Backspace, nothing written before the accept
+  (v0.68.0); a message sent mid-stream steers the reply instead of queueing
+  (v0.70.0).
+- **Craft parity** ([Plan 28](plans/28-craft-parity.md)) landed slices 1–4 on
+  the app side. One item remains, in the Meowdown repo: the per-block ellipsis
+  beside the drag grip.
 
 ## Now
 
-In order. Sizes are relative complexity for agent-executed work, not time.
+The live thread, and the debts that outlived the wave above. Order below the
+first item is not settled — it needs a user decision, and this file will not
+invent one.
 
-**Craft parity (user decision, 2026-08-30):** Kore converges on Craft's
-visual and interaction register — dissolving scroll edges instead of
-clipped bars, live-preview cards, quiet circular chrome, one motion
-register — with the left sidebar explicitly staying Kore's own and no
-structural change. Sliced in [Plan 28](plans/28-craft-parity.md); slice 1
-(the scroll veil) shipped in this wave.
-
-**2026-08-30: all four items below shipped** (1–2 earlier in the day, 3 in
-v0.38.0, 4 in v0.39.0 with the backlog-B polish pass; details in the
-[delivery log](delivery-log.md), live state in [STATE.md](STATE.md)). Now
-is empty until the pending live checks and the next explicit decision
-(B05c preview tabs was declined on 2026-08-30, closing the backlog-B
-pass) — the entries stay listed for the record until the next roadmap
-review.
-
-1. **MCP in read-only chat, behind explicit approval.** Today MCP servers ride
-   agent chat in edit mode only; read-only chat is zero-egress by design.
-   Outcome: "search my mail" in a normal chat via the user's own MCP servers,
-   with no Connection program built. Constraint: zero-egress stays the default;
-   an explicit per-conversation opt-in with visible approval is required, so
-   this needs a short privacy design note before code. Size: small-medium.
-2. **Chat image attachments out of base64.** Attachments are held as base64
-   `data:` URLs in memory and DB (open item in
-   [memory budgets](memory-budget.md)); move them to disk with references.
-   Size: small-medium. Close with the one-time memory-budget measurement on the
-   current build, which has never been run.
-3. **Agent memory: reliable recall and reusable skills.** Two bounded halves:
-   (a) recall the agent can be trusted with: facts from vault/journal surface
-   when relevant, verified with concrete recall scenarios; (b) skills as
-   user-taught reusable procedures, richer than today's per-graph skill file.
-   Sharpen scope against real usage before building. Size: medium.
-4. **S3 minimal durable runtime** (entered from Next by user decision,
-   2026-08-30, together with a backlog-B polish pass): a run lock shared by
-   every window, a durable in-flight marker with launch recovery, a user
-   Stop that reaches the engine, and a native scheduler tick. Bounded by R4
-   — no queue generalization. Decision and boundaries in
-   [TDR 0007](decisions/0007-durable-runtime-minimal.md). Size: medium.
+1. **AI control of the app itself** (user ask, 2026-09-15: "dall'AI dobbiamo
+   poter modificare tutto dell'app, come anche le icone"). Slice 1 shipped in
+   v0.69.0: the chat AI sees the icon catalog and proposes a tag icon the user
+   accepts in chat. Slice 2 is `set_tag_schema` — the model changing a
+   supertag's properties, with the dialog's rename migration extracted into
+   `lib/tags`. The surface-by-surface inventory, and the rule every slice
+   follows (the model must be able to *see* the valid values before it writes),
+   is in [the gap map](ai-app-control.md). Size: medium per slice.
+2. **The live checks with the user.** Four features are implemented and
+   test-green but have never run against a real provider, a real server, or a
+   real device: (a) a real MCP server through the Tools toggle in a read-only
+   conversation; (b) an image sent in chat, app restarted, conversation
+   restored from disk; (c) a question a daily note answers, then teaching a
+   skill and invoking it in a fresh conversation; (d) a routine interrupted by
+   quitting mid-run, plus Stop from Settings → Agents. Nothing here is code
+   work; it is the difference between "tests pass" and "it works". Requires the
+   user.
+3. **iPhone device pass.** The accumulated physical-device checks
+   (keyboard/IME, chat with a real key, Siri/Action button, GitHub connect
+   under suspension) gate any "mobile fast and powerful" claim. Requires the
+   user and their device. Carried from Next, where it has sat since 2026-08-30.
+4. **Meowdown patch debt.** `pnpm-workspace.yaml` pins checked-in patches for
+   `@meowdown/core@0.65.6` and `@meowdown/react@0.65.6` (the insertion API and
+   the React code-block renderer from
+   [Meowdown PR #546](https://github.com/prosekit/meowdown/pull/546)). They come
+   out when a released Meowdown carries that PR and a frozen install plus
+   `pnpm check` and `pnpm build` pass without them. Size: small, gated
+   upstream.
 
 ## Next
 
 Ordered candidates; each enters Now by explicit decision.
 
-- **iPhone device-pass session.** The accumulated physical-device checks
-  (keyboard/IME, chat with a real key, Siri/Action button, GitHub connect
-  under suspension) gate any "mobile fast and powerful" claim. Requires the
-  user and their device.
-- **S3 minimal durable runtime** — entered Now (item 4) by user decision on
-  2026-08-30; see [TDR 0007](decisions/0007-durable-runtime-minimal.md) for
-  what the slice includes and deliberately leaves out.
+- **Collections, new scope.** [Plan 29](plans/29-collections-database.md) is
+  complete; formula date functions, per-group table aggregates, timeline and
+  gallery views, and view-tab rename are named but unbuilt, and wait for a
+  fresh user decision rather than drifting in.
+- **Split-pane follow-ups.** The pane divider's keyboard accessibility and the
+  ghost pane entries left in settings, both named when part 2 shipped.
+- **Tasks by project.** The weekly-review template covers the recurring pull;
+  a Tasks-view "by project" grouping waits on the note panel proving
+  insufficient in real use.
 - **S1/S2 Connections program** ([Plan 26](plans/26-account-safe-read.md)):
   deferred while MCP-via-CLI covers external access. Enters Now when
   multi-account isolation becomes a real need or MCP friction hurts.
-- **Memory follow-ups** that emerge from Now item 3.
+- **Memory follow-ups** that emerge from recall and skills in real use.
 
 ## Later and direction (decision-gated)
 
@@ -101,8 +134,9 @@ Ordered candidates; each enters Now by explicit decision.
   universal-search subsystem; the agent is the query planner over
   capabilities, with per-item provenance. Lands naturally with the Connections
   program.
-- **S5 structured knowledge** (stable-ID relations): current Collections
-  suffice until relations break in real use.
+- **S5 structured knowledge** (stable-ID relations): Plan 29's typed relations
+  and reverse relations cover today's need; revisit only when they break in
+  real use.
 - **Mobile semantic search**: desktop-only for now, by decision; mobile stays
   lexical.
 - **Mobile remote control** (I22): the natural evolution of the companion
@@ -199,8 +233,9 @@ cautions are cheap if remembered early.
 retains beta channel (parked), Cursor steering (provider-dependent),
 graph/browser/tab polish, Meowdown glyph alignment, mobile queue/device checks,
 Git HTTPS auth, and AI-assisted sync-conflict resolution. B07's device checks
-are absorbed by the device-pass session in Next. No bump, Apple signing,
-TestFlight, or release action is part of this update.
+are absorbed by the device-pass session in Now. Release mechanics (bump,
+Apple signing, TestFlight) are procedure, not backlog: see
+[CLAUDE.md](../CLAUDE.md#cutting-a-kore-release-bump).
 
 ## History
 

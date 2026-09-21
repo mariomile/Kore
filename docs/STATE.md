@@ -917,6 +917,17 @@ screen: Agents then Close lands on today.
 
 ## Session log
 
+- 2026-09-21 — Roadmap refreshed against v0.70.2: the 2026-08-30 Now list
+  (all four items) is recorded as closed along with Plan 29, Plan 30 and
+  split panes, and Now is now the AI-app-control thread, the four pending
+  live checks, the iPhone device pass and the Meowdown patch debt. Order
+  below the first item is left to the user rather than invented.
+  `docs/ai-app-control.md` — cited here since 2026-09-15 but never
+  committed — is rebuilt from the code at `9ee8d04`: the 13 chat tools,
+  the CLI surface, and the gaps (settings, views, automations, note
+  lifecycle). Only slices 1, 2 and 7 carry numbers, the ones this file
+  named; the rest is an unnumbered inventory. Docs only, no code changed.
+
 - 2026-09-15 — The chat AI sees the tag icon set: a core icon catalog
   generated from the icon manifest, `list_tags` / `list_tag_icons` /
   `set_tag_icon` tools, a review card that writes through the Configure-tag

@@ -216,7 +216,7 @@ describe('loadChatMessages', () => {
     expect(turns[0]?.parts).toEqual(parts)
   })
 
-  it('round-trips a proposed tag schema, its renames and the user\u2019s decision', async () => {
+  it('round-trips a proposed tag schema, its renames and the user’s decision', async () => {
     const parts = [
       {
         kind: 'tool',

@@ -59,7 +59,10 @@ Rust-backed surface.
 `schema-renames` 3/3, and the wider chat + tags suites 93/93 — **Chromium
 only**: this container ships no WebKit and Playwright cannot download one,
 so the second engine CI requires is unverified here and runs on the PR.
-`pnpm check` exit 0. Not exercised: a live provider turn calling
+`pnpm check` exit 0 (the first run of it reported a stale exit 0 against a
+cached `tsc -b`; CI's lint job caught the formatting, and re-running it
+clean surfaced a bad `valueType` in a new test and four `\u2019` escapes
+eslint refuses — all fixed in the second commit). Not exercised: a live provider turn calling
 `set_tag_schema` (the dev harness's demo model streams text only), and no
 rendered check of the card.
 

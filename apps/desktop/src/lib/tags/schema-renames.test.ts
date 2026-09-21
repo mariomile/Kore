@@ -16,7 +16,7 @@ const { planPropertyRenames, migratePropertyRenames } = await import('./schema-r
 
 /** One indexed property row, as `listNotesWithProperty` returns it. */
 function row(notePath: string, value: string): { notePath: string; value: CollectionValue } {
-  return { notePath, value: { value, valueType: 'text', valueNumber: null } }
+  return { notePath, value: { value, valueType: 'string', valueNumber: null } }
 }
 
 beforeEach(() => {

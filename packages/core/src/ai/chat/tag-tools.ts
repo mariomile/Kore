@@ -140,7 +140,7 @@ export function buildTagTools(deps: TagToolDeps): TagTools {
         'the fields every note carrying it gets. Pass the whole schema you want, in ' +
         'order: read the current one first (list_collection returns it) and repeat the ' +
         'properties you keep, because anything left out is proposed for removal. To ' +
-        'rename a property\u2019s key, set "replaces" to the old key so the notes\u2019 stored ' +
+        'rename a property’s key, set "replaces" to the old key so the notes’ stored ' +
         'values move with it. The user reviews the change in chat and accepts or ' +
         'rejects it — nothing is written until they accept, so never claim it is done. ' +
         'Requires "Allow edits".',

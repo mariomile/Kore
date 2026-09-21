@@ -116,7 +116,9 @@ describe('ChatTagSchemaCard', () => {
     await rejected.unmount()
 
     recordDecision.mockClear()
-    applyTagSchema.mockRejectedValue(new Error('The tag’s properties changed since this was proposed.'))
+    applyTagSchema.mockRejectedValue(
+      new Error('The tag’s properties changed since this was proposed.'),
+    )
     const failed = await render(<ChatToolChip part={schemaPart()} turnStatus="done" />)
     await failed.getByRole('button', { name: 'Accept' }).click()
     await expect.element(failed.getByRole('alert')).toHaveTextContent('properties changed')

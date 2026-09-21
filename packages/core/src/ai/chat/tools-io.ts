@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type { TagProperty, TagSymbolIconEntry } from '../../tags'
+import { tagPropertyTypeSchema, type TagProperty, type TagSymbolIconEntry } from '../../tags'
 import type {
   CloudCollectionRow,
   CloudNoteListing,
@@ -137,6 +137,86 @@ export const setTagIconInput = z.object({
     .describe(
       'A symbol name from list_tag_icons (e.g. "buildings"), or one emoji. ' +
         'Pass null to remove the tag’s icon.',
+    ),
+})
+
+/** Cap on one proposed schema — a tag with more columns than this is not a chat edit. */
+export const MAX_TAG_SCHEMA_PROPERTIES = 40
+
+/**
+ * A proposed tag-schema change: the definition note the accept writes, the
+ * resulting property list beside the one it replaces (so the card renders a
+ * real diff and the accept can detect drift), and the key renames whose
+ * stored values the accept migrates. A refusal instead when the model must
+ * fix something first. Nothing is written here.
+ */
+export type SetTagSchemaOutput =
+  | {
+      ok: true
+      tag: string
+      path: string
+      properties: TagProperty[]
+      previousProperties: TagProperty[]
+      renames: { from: string; to: string }[]
+    }
+  | { ok: false; tag: string; error: string }
+
+/** `set_tag_schema` refusals, read verbatim by both model and card. */
+export const TAG_SCHEMA_UNCHANGED_ERROR = 'The tag already has exactly this schema.'
+export const TAG_SCHEMA_KEY_ERROR =
+  'Every property needs a name and a frontmatter key made of letters, numbers, "-" or "_", and the key cannot be reserved app metadata (id, title, aliases, private, pinned, icon, properties…).'
+export const TAG_SCHEMA_DUPLICATE_KEY_ERROR =
+  'Two properties claim the same frontmatter key — each key appears once in a schema.'
+export const TAG_SCHEMA_COMPUTED_ERROR =
+  'Rollup, reverse and formula properties are computed from a configuration this tool cannot write — the user sets those up on the tag’s page. Keep the ones the tag already has (same key and type) and leave them out of new properties.'
+export const TAG_SCHEMA_RENAME_ERROR =
+  'A "replaces" key must name a property the tag’s schema has right now — list the tag’s collection first to see its keys.'
+
+const setTagSchemaProperty = z.object({
+  name: z.string().min(1).describe('Display label for the column and the note field ("Read on")'),
+  key: z
+    .string()
+    .nullish()
+    .describe(
+      'The frontmatter key the value lives under ("read-on"). Omit it to derive one ' +
+        'from the name. Keep an existing property’s key exactly, or the values stored ' +
+        'under it are orphaned.',
+    ),
+  type: tagPropertyTypeSchema.describe(
+    'The property’s value kind. rollup, reverse and formula are computed and cannot ' +
+      'be created here — carry an existing one over unchanged (same key and type) or ' +
+      'leave it out.',
+  ),
+  options: z
+    .array(z.string())
+    .nullish()
+    .describe('Choices for select, multiselect and status; ignored for other types.'),
+  target: z
+    .string()
+    .nullish()
+    .describe(
+      'For relation, relations and person: the tag whose notes the picker offers ' +
+        '(no #). Omit for any note.',
+    ),
+  replaces: z
+    .string()
+    .nullish()
+    .describe(
+      'Set only when this property renames an existing one: the key it had before. ' +
+        'Accepting then moves every note’s stored value to the new key.',
+    ),
+})
+
+export const setTagSchemaInput = z.object({
+  tag: z.string().min(1).describe('The tag to configure (case-insensitive, without the #)'),
+  properties: z
+    .array(setTagSchemaProperty)
+    .max(MAX_TAG_SCHEMA_PROPERTIES)
+    .describe(
+      'The tag’s whole schema after the change, in column order — not just what you ' +
+        'are adding. Read the current schema first (list_tags for the count, ' +
+        'list_collection for the keys) and repeat every property you are keeping; ' +
+        'anything you leave out is proposed for removal. An empty list clears the schema.',
     ),
 })
 

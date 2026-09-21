@@ -216,6 +216,33 @@ describe('loadChatMessages', () => {
     expect(turns[0]?.parts).toEqual(parts)
   })
 
+  it('round-trips a proposed tag schema, its renames and the user’s decision', async () => {
+    const parts = [
+      {
+        kind: 'tool',
+        call: { tool: 'setTagSchema', toolCallId: 'tool-6', tag: 'book' },
+        result: {
+          tool: 'setTagSchema',
+          toolCallId: 'tool-6',
+          tag: 'book',
+          path: 'tags/book.md',
+          properties: [
+            { name: 'Written by', key: 'written-by', type: 'text' },
+            { name: 'Status', key: 'status', type: 'select', options: ['Reading', 'Done'] },
+          ],
+          previousProperties: [{ name: 'Author', key: 'author', type: 'text' }],
+          renames: [{ from: 'author', to: 'written-by' }],
+          error: null,
+          decision: 'accepted',
+        },
+        error: null,
+      },
+    ]
+    invoke.mockResolvedValue([messageRow({ parts: JSON.stringify(parts) })])
+    const turns = await loadChatMessages('conv-1')
+    expect(turns[0]?.parts).toEqual(parts)
+  })
+
   it('drops a row whose parts fail validation', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
     invoke.mockResolvedValue([messageRow({ parts: JSON.stringify([{ kind: 'mystery' }]) })])

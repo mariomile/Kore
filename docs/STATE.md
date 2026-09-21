@@ -933,10 +933,10 @@ browser `collection-view-tabs` + `all-notes-collection-flow` +
    retry; Stop a running routine from Settings → Agents. (e) the three chat
    proposal tools, `edit_note`, `set_tag_icon` and `set_tag_schema`, each
    accepted from the keyboard — all three need a **BYOK** model selected,
-   not a CLI engine. (f) the
-   weekly-review Run now, which needs the opposite: Claude Code or Codex,
-   never BYOK. (g) the shared agent-skill install from Settings → Agents →
-   Agent skill, plus one agent task through those skills.
+   not a CLI engine. (f) the weekly-review Run now, which needs the
+   opposite: Claude Code or Codex, never BYOK. (g) the shared agent-skill
+   install from Settings → Agents → Agent skill, plus one agent task
+   through those skills.
 4. **Memory follow-ups** that emerge from Now item 3 usage (roadmap Next).
 
 ## Split panes part 2: columns of rows — 2026-09-14

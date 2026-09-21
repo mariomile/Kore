@@ -1,6 +1,6 @@
 # Kore roadmap
 
-**Updated:** 2026-09-21, against `9ee8d04` (v0.70.2, released 2026-09-20).
+**Updated:** 2026-09-21, against `d2c2506` (v0.70.2 plus AI-app-control slice 2).
 **Direction (decided 2026-08-30, app-first, unchanged):** Kore is first the
 best local-first notes app with agents: fast and powerful on desktop, with the
 iPhone app as an excellent capture and reading companion. The Personal OS
@@ -78,10 +78,12 @@ invent one.
 1. **AI control of the app itself** (user ask, 2026-09-15: "dall'AI dobbiamo
    poter modificare tutto dell'app, come anche le icone"). Slice 1 shipped in
    v0.69.0: the chat AI sees the icon catalog and proposes a tag icon the user
-   accepts in chat. Slice 2 is `set_tag_schema` — the model changing a
-   supertag's properties, with the dialog's rename migration extracted into
-   `lib/tags` — in flight in
-   [PR #237](https://github.com/mariomile/Kore/pull/237). The surface-by-surface inventory, and the rule every slice
+   accepts in chat. Slice 2 shipped in
+   [PR #237](https://github.com/mariomile/Kore/pull/237): `set_tag_schema` lets
+   the model change a supertag's properties, with the dialog's rename migration
+   extracted into `lib/tags`. Next is unchosen — the gap map's largest entry is
+   the 108 settings keys no tool can reach.
+   The surface-by-surface inventory, and the rule every slice
    follows (the model must be able to *see* the valid values before it writes),
    is in [the gap map](ai-app-control.md). Size: medium per slice.
 2. **The live checks with the user.** Four features are implemented and

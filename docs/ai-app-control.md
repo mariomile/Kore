@@ -1,6 +1,6 @@
 # AI app control — gap map
 
-**Updated:** 2026-09-21.
+**Updated:** 2026-09-21, against `d2c2506` (slice 2 merged).
 **Ask (user, 2026-09-15):** "dall'AI dobbiamo poter modificare tutto dell'app,
 come anche le icone" — the chat AI should be able to change the app itself, not
 only the prose inside notes.
@@ -8,10 +8,10 @@ only the prose inside notes.
 **Reconstruction note.** [STATE.md](STATE.md) cites this file as the gap map
 behind the tag-icon slice, but the document was never committed; it lived only
 in the project store. This is a rebuild from the code as it stands at
-`9ee8d04` (v0.70.2), not a recovery of the original text. Only three slice
-numbers survive on the record — **slice 1** (tag appearance, shipped),
-**slice 2** (`set_tag_schema`), and **slice 7** (the CLI engines' skill) — all
-three named in STATE's tag-icon entry. Everything else below is an inventory of
+`9ee8d04` (v0.70.2), not a recovery of the original text, brought forward to
+`d2c2506`. Only three slice numbers survive on the record — **slice 1** (tag
+appearance, shipped), **slice 2** (`set_tag_schema`, shipped), and **slice 7**
+(the CLI engines' skill) — all three named in STATE's tag-icon entry. Everything else below is an inventory of
 gaps, deliberately unnumbered: assigning an order is a user decision, not a
 reconstruction.
 
@@ -26,7 +26,7 @@ rejects. A writer without a listing is the failure mode, not a shortcut.
 
 ## What the chat AI can do today
 
-Thirteen tools at `9ee8d04`, registered in
+Fourteen tools at `d2c2506`, registered in
 `packages/core/src/ai/chat/tools.ts` (the tag three in `tag-tools.ts`). Read
 tools always available; write tools gated on `allowEdits` and refused on
 `private: true` notes.
@@ -37,11 +37,12 @@ tools always available; write tools gated on `allowEdits` and refused on
 
 **Propose (user accepts in chat, nothing written before):** `edit_note` (a body
 hunk, reviewed as a diff), `set_note_property` (one frontmatter key),
-`set_tag_icon` (slice 1).
+`set_tag_icon` (slice 1), `set_tag_schema` (slice 2).
 
 Everything the model writes lands through the app's own writer for that surface
-— `set_tag_icon` goes through `saveTagType`, the Configure-tag writer — so the
-validation the UI enforces is not duplicated in the tool.
+— `set_tag_icon` and `set_tag_schema` both go through `saveTagType`, the
+Configure-tag writer — so the validation the UI enforces is not duplicated in
+the tool.
 
 ## What the CLI engines can do today
 
@@ -57,17 +58,21 @@ Four bundled skills teach the formats
 That surface is the *vault*, not the app. No CLI command reaches a setting, a
 view, a routine, or an icon.
 
-## The gaps
+## Closed
 
 ### Supertag schema — slice 2 (named in STATE)
 
-At `9ee8d04` the model can read a schema (`list_tags` returns typed
-definitions) and change a tag's icon, but not its properties. A
-`set_tag_schema` tool needs the 20 property types as a listable vocabulary and
-the schema dialog's rename migration extracted out of the dialog into
-`lib/tags`, behind the same propose-and-accept card as the icon. **In flight in
-[PR #237](https://github.com/mariomile/Kore/pull/237)**; when that lands this
-section closes and the tool count above goes to fourteen.
+At `9ee8d04` the model could read a schema (`list_tags` returns typed
+definitions) and change a tag's icon, but not its properties. `set_tag_schema`
+closes that: it takes a tag's whole property list, returns it as a diff card
+the user accepts or rejects, and on accept writes through `saveTagType` and
+carries stored values across a renamed frontmatter key. The schema dialog's
+rename migration moved out of the dialog into
+`apps/desktop/src/lib/tags/schema-renames.ts`, so both surfaces run it.
+**Shipped in [PR #237](https://github.com/mariomile/Kore/pull/237)**, merged as
+`d2c2506`.
+
+## The gaps
 
 ### The CLI engines cannot see the catalogs — slice 7 (named in STATE)
 

@@ -992,10 +992,12 @@ screen: Agents then Close lands on today.
   live checks, the iPhone device pass and the Meowdown patch debt. Order
   below the first item is left to the user rather than invented.
   `docs/ai-app-control.md` — cited here since 2026-09-15 but never
-  committed — is rebuilt from the code at `9ee8d04`: the 13 chat tools,
+  committed — is rebuilt from the code at `9ee8d04`: the chat tools,
   the CLI surface, and the gaps (settings, views, automations, note
   lifecycle). Only slices 1, 2 and 7 carry numbers, the ones this file
   named; the rest is an unnumbered inventory. Docs only, no code changed.
+  Brought forward to `d2c2506` on merge: slice 2 shipped in #237, so both
+  files record it as closed and the tool count is fourteen.
 
 - 2026-09-15 — The chat AI sees the tag icon set: a core icon catalog
   generated from the icon manifest, `list_tags` / `list_tag_icons` /

@@ -27,7 +27,7 @@ rejects. A writer without a listing is the failure mode, not a shortcut.
 ## What the chat AI can do today
 
 Fourteen tools at `d2c2506`, registered in
-`packages/core/src/ai/chat/tools.ts` (the tag three in `tag-tools.ts`). Read
+`packages/core/src/ai/chat/tools.ts` (the tag four in `tag-tools.ts`). Read
 tools always available; write tools gated on `allowEdits` and refused on
 `private: true` notes.
 
@@ -71,6 +71,15 @@ rename migration moved out of the dialog into
 `apps/desktop/src/lib/tags/schema-renames.ts`, so both surfaces run it.
 **Shipped in [PR #237](https://github.com/mariomile/Kore/pull/237)**, merged as
 `d2c2506`.
+
+It meets this map's rule by a different route than slice 1, worth recording
+because the next slice has to pick one of the two. The icon slice needed a
+listing *tool* (`list_tag_icons`) because the catalog is 217 generated names.
+The 20 property types are a fixed `z.enum` in `tagPropertyTypeSchema`
+(`packages/core/src/tags/tag-type.ts`), inlined into `set_tag_schema`'s input
+schema, so the model reads the vocabulary off the tool signature and there is
+no `list_tag_property_types`. Small closed vocabularies can ride the input
+schema; large or generated ones still need their own listing tool.
 
 ## The gaps
 

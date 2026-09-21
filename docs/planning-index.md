@@ -38,7 +38,7 @@ present then plus the entries added since; it is not re-derived on every update.
 |---|---|---|
 | [STATE.md](STATE.md) | Kore working state | What is in progress now and the next step; updated by every session that moves the program. |
 | [roadmap.md](roadmap.md) | Kore roadmap | App-first Now/Next/Later priorities, risk register, deferred Personal OS pointers; no delivery claim. |
-| [ai-app-control.md](ai-app-control.md) | AI app control — gap map | What the chat AI and the CLI engines can change about the app itself, and what they cannot; slice 1 shipped, slice 2 is roadmap Now. |
+| [ai-app-control.md](ai-app-control.md) | AI app control — gap map | What the chat AI and the CLI engines can change about the app itself, and what they cannot; slices 1 and 2 shipped; the settings keys are the largest remaining gap. |
 | [delivery-log.md](delivery-log.md) | Kore delivery log | Historical shipped-work record moved out of the roadmap; reports, not certifications. |
 | [kore-target-architecture.md](kore-target-architecture.md) | Kore: Personal OS target architecture | Canonical next-wave architecture and source-verified gaps. |
 | [plans/25-personal-os.md](plans/25-personal-os.md) | Plan 25 — Kore Personal OS | Complete catalog: I01–I29, S1–S5, B01–B09, acceptance and traceability. |

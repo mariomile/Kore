@@ -81,11 +81,11 @@ invent one.
    accepts in chat. Slice 2 shipped in
    [PR #237](https://github.com/mariomile/Kore/pull/237): `set_tag_schema` lets
    the model change a supertag's properties, with the dialog's rename migration
-   extracted into `lib/tags`. Next is unchosen — the gap map's largest entry is
-   the 108 settings keys no tool can reach.
-   The surface-by-surface inventory, and the rule every slice
-   follows (the model must be able to *see* the valid values before it writes),
-   is in [the gap map](ai-app-control.md). Size: medium per slice.
+   extracted into `lib/tags`. Next is unchosen; the gap map's largest entry is
+   the 108 settings keys no tool can reach. That surface-by-surface inventory,
+   and the rule every slice follows (the model must be able to *see* the valid
+   values before it writes), is in [the gap map](ai-app-control.md). Size:
+   medium per slice.
 2. **The live checks with the user.** Four features are implemented and
    test-green but have never run against a real provider, a real server, or a
    real device: (a) a real MCP server through the Tools toggle in a read-only

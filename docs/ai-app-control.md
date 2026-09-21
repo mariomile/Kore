@@ -11,9 +11,9 @@ in the project store. This is a rebuild from the code as it stands at
 `9ee8d04` (v0.70.2), not a recovery of the original text, brought forward to
 `d2c2506`. Only three slice numbers survive on the record — **slice 1** (tag
 appearance, shipped), **slice 2** (`set_tag_schema`, shipped), and **slice 7**
-(the CLI engines' skill) — all three named in STATE's tag-icon entry. Everything else below is an inventory of
-gaps, deliberately unnumbered: assigning an order is a user decision, not a
-reconstruction.
+(the CLI engines' skill) — all three named in STATE's tag-icon entry.
+Everything else below is an inventory of gaps, deliberately unnumbered:
+assigning an order is a user decision, not a reconstruction.
 
 ## The rule this map applies
 

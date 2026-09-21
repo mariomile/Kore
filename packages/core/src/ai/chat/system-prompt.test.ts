@@ -41,9 +41,14 @@ describe('chatSystemPrompt', () => {
       customSystemPrompt: '',
     }
     expect(chatSystemPrompt(base)).not.toContain('edit_note')
+    expect(chatSystemPrompt(base)).not.toContain('set_tag_schema')
     const editing = chatSystemPrompt({ ...base, allowEdits: true })
     expect(editing).toContain('edit_note replaces one exact passage')
     expect(editing).toContain('nothing is written until they accept')
+    // The one way a schema proposal goes wrong is sending only the new
+    // property, which reads as "remove everything else" — so the rule says so.
+    expect(editing).toContain('set_tag_schema passing the whole list you want')
+    expect(editing).toContain('never send only the one you are adding')
   })
 
   it('steers the model away from redundant searches and serial reads', () => {

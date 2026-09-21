@@ -1,5 +1,72 @@
 # Kore working state
 
+## Chat can edit a supertag's schema — 2026-09-21
+
+Slice 2 of the AI-app-control map: after the icon (slice 1), what a tag
+*tracks*. The chat model proposes the tag's whole property list and the user
+accepts it from the keyboard, the same propose-then-review gesture as a note
+patch.
+
+- [x] Rename migration extracted out of `TagConfigDialog` into
+  `apps/desktop/src/lib/tags/schema-renames.ts`: `planPropertyRenames`
+  (which renames actually touch stored values) and `migratePropertyRenames`
+  (move each note's value through `commitNoteFrontmatter`). `PendingRename`
+  moved there from `tag-config-drafts.ts`; the dialog's `save` /
+  `performSave` now call the pair instead of carrying their own copy.
+- [x] Tool (`packages/core/src/ai/chat/tag-tools.ts`, wire contract in
+  `tools-io.ts`): `set_tag_schema` takes the tag's **whole** schema in
+  column order — a property left out is a removal — plus a per-property
+  `replaces` naming the key it renames. Propose-only: it validates (name +
+  key via `isPropertyKey`, a key derived from the name when absent,
+  duplicate keys, a `replaces` the live schema does not have), reads the
+  live definition (private → refusal, a regular note at `tags/<tag>.md` →
+  refusal, identical schema → refusal), and returns
+  `{ properties, previousProperties, renames }`. `resolveTagSchema` is the
+  pure resolver. Rollup / reverse / formula are **carried over by key and
+  type from the definition, never authored** — their config is the user's,
+  and a guessed one is worse than none.
+- [x] Desktop: `ChatTagSchemaCard` renders the proposal as a property diff
+  (`lib/tags/schema-diff.ts`: added / removed / changed / same, a rename
+  being one changed row rather than a removal beside an addition) inside the
+  shared `ChatProposalCard` shell. `useApplyTagSchema` writes through
+  `saveTagType` — the Configure-tag dialog's own writer, so icon and
+  template survive — after re-checking private / unmarked / stale, then
+  migrates the renames. Schema first, values second: a migration that dies
+  partway leaves values under a key the user can still see.
+- [x] Persistence and prompt: `setTagSchema` added to the tool call/result
+  unions, to the `chat_messages.parts` zod schema (reusing
+  `tagPropertySchema`, no DB schema change) and to `settleNoteEdit`, which
+  now settles three proposal kinds. The edit-contract prompt line tells the
+  model to read the current schema first and resend everything it keeps.
+
+**No Rust in this slice by design.** The layering rule puts capabilities in
+Rust and policy in TypeScript, and the capability this needs — a
+generation-gated frontmatter write — already exists (`createNoteIfAbsent` /
+`commitNoteFrontmatter`). What is new is entirely policy: what a chat model
+may propose, what it may never author, and what is re-checked at accept
+time. Adding a Rust command would have put a product rule behind the
+primitive.
+
+**Untouched by design:** rollup / reverse / formula *configuration* from
+chat (the user sets those up on the tag's page), a tag's bound template, tag
+creation and deletion, the CLI engines' skill (slice 7), any settings- or
+Rust-backed surface.
+
+**Validation:** core `tools` 65/65 (9 new `set_tag_schema` cases), `store`
+(round-trip with renames and decision), `transcript` (third proposal kind),
+`system-prompt`; core `ai/chat` + `tags` 262/262 on node. Browser:
+`chat-tag-schema-card` 4/4, `use-apply-tag-schema` 4/4, `schema-diff` 4/4,
+`schema-renames` 3/3, and the wider chat + tags suites 93/93 — **Chromium
+only**: this container ships no WebKit and Playwright cannot download one,
+so the second engine CI requires is unverified here and runs on the PR.
+`pnpm check` exit 0. Not exercised: a live provider turn calling
+`set_tag_schema` (the dev harness's demo model streams text only), and no
+rendered check of the card.
+
+**Next:** merge, bump, then in Kore Brain ask "add a Read on date to #book"
+and accept from the keyboard; watch the tag's collection grow the column.
+Then slice 3 of the AI-app-control map.
+
 ## The chat AI sees the icon set and proposes tag icons — 2026-09-15
 
 User ask ("dall'AI dobbiamo poter modificare tutto dell'app, come anche le
@@ -30,10 +97,10 @@ valid values.
   `saveTagType` (the Configure-tag writer), re-checking private / unmarked /
   stale icon. Chips for the two listings.
 
-**Untouched by design:** supertag schema edits from chat (slice 2), a tag
-*color* (does not exist in the UI; graph hue is a name hash), the CLI
-engines' skill (they still cannot see the names — slice 7), any settings-
-or Rust-backed surface.
+**Untouched by design:** supertag schema edits from chat (slice 2, shipped
+since — see the top section), a tag *color* (does not exist in the UI; graph
+hue is a name hash), the CLI engines' skill (they still cannot see the names
+— slice 7), any settings- or Rust-backed surface.
 
 **Validation:** core `tools` (+5), `tag-icon-catalog` 3/3, `transcript`,
 `store`, `system-prompt`, `stream-chat` green (node); browser
@@ -44,9 +111,8 @@ Not exercised: a live provider turn calling `set_tag_icon` (the dev
 harness's demo model streams text only).
 
 **Next:** merge, bump, then in Kore Brain ask "give #company a buildings
-icon" and accept from the keyboard; watch the sidebar row change. Then
-slice 2: `set_tag_schema` with the dialog's rename migration extracted into
-`lib/tags`.
+icon" and accept from the keyboard; watch the sidebar row change. Slice 2
+(`set_tag_schema`) is done — see the top section.
 
 ## Reviewable patches in chat — 2026-09-15
 

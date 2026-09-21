@@ -366,4 +366,26 @@ describe('settleNoteEdit', () => {
     expect(settled[0]).toBe(proposal)
     expect(settled[1]).toMatchObject({ result: { tool: 'setTagIcon', decision: 'rejected' } })
   })
+
+  it('records a decision on a proposed tag schema the same way', () => {
+    const schemaProposal: AssistantPart = {
+      kind: 'tool',
+      call: { tool: 'setTagSchema', toolCallId: 's1', tag: 'book' },
+      result: {
+        tool: 'setTagSchema',
+        toolCallId: 's1',
+        tag: 'book',
+        path: 'tags/book.md',
+        properties: [{ name: 'Author', key: 'author', type: 'text' }],
+        previousProperties: [],
+        renames: [],
+        error: null,
+        decision: 'pending',
+      },
+      error: null,
+    }
+    const settled = settleNoteEdit([proposal, schemaProposal], 's1', 'accepted')
+    expect(settled[0]).toBe(proposal)
+    expect(settled[1]).toMatchObject({ result: { tool: 'setTagSchema', decision: 'accepted' } })
+  })
 })

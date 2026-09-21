@@ -7,6 +7,20 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Chat can edit a supertag's schema (AI-app-control slice 2). The
+  propose-only `set_tag_schema` tool takes a tag's whole property list —
+  what the columns of its collection and the fields of its notes will be —
+  and returns it beside the schema it replaces plus any key renames, as a
+  proposal the user accepts or rejects from the keyboard in chat. Nothing
+  is written until they accept, and the accept re-checks the definition as
+  it is then: private definitions and regular notes at `tags/<tag>.md`
+  refuse, a schema that moved on refuses as stale. A renamed key carries
+  the notes' stored values with it, through the migration extracted out of
+  the Configure-tag dialog into `lib/tags/schema-renames.ts` so both
+  surfaces run the same two steps. Rollup, reverse and formula properties
+  are carried over by key and never authored from chat, since their config
+  is the user's.
+
 - The context rail and the selected block go quiet (Plan 28 slice 4, app
   side). Every context-sidebar section body — note actions, properties,
   tasks, outline, history, similar notes, day events, published URL —

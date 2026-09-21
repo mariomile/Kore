@@ -26,12 +26,18 @@ import {
   MISSING_VALUE_ERROR,
   TAG_DEFINITION_UNMARKED_ERROR,
   TAG_ICON_UNCHANGED_ERROR,
+  TAG_SCHEMA_COMPUTED_ERROR,
+  TAG_SCHEMA_DUPLICATE_KEY_ERROR,
+  TAG_SCHEMA_KEY_ERROR,
+  TAG_SCHEMA_RENAME_ERROR,
+  TAG_SCHEMA_UNCHANGED_ERROR,
   formatPropertyPreview,
   noteToolCall,
   noteToolResult,
   type EditNoteOutput,
   type SetNotePropertyOutput,
   type SetTagIconOutput,
+  type SetTagSchemaOutput,
   type ListCollectionOutput,
   type ListDailyNotesOutput,
   type ListRecentNotesOutput,
@@ -1301,5 +1307,338 @@ describe('tag tools', () => {
         output: { ok: false, tag: 'company', error: UNKNOWN_TAG_ICON_ERROR },
       } as never),
     ).toMatchObject({ tool: 'setTagIcon', error: UNKNOWN_TAG_ICON_ERROR, decision: 'pending' })
+  })
+})
+
+describe('set_tag_schema', () => {
+  type SchemaInput = Parameters<NoteTools['set_tag_schema']['execute'] & object>[0]
+
+  async function runSetTagSchema(
+    tools: NoteTools,
+    input: SchemaInput,
+  ): Promise<SetTagSchemaOutput> {
+    const execute = tools.set_tag_schema.execute
+    if (!execute) {
+      throw new Error('set_tag_schema has no execute')
+    }
+    const output = await execute(input, CALL)
+    if (isAsyncIterable(output)) {
+      throw new Error('unexpected streaming tool output')
+    }
+    return output
+  }
+
+  /** #book with two properties, one of them a select. */
+  const BOOK = [
+    '---',
+    'lore: tag',
+    'icon: 📚',
+    'properties:',
+    '  - name: Author',
+    '    key: author',
+    '    type: text',
+    '  - name: Status',
+    '    key: status',
+    '    type: select',
+    '    options:',
+    '      - Reading',
+    '      - Done',
+    '---',
+    '# Book',
+    '',
+  ].join('\n')
+
+  const AUTHOR = { name: 'Author', key: 'author', type: 'text' as const }
+  const STATUS = {
+    name: 'Status',
+    key: 'status',
+    type: 'select' as const,
+    options: ['Reading', 'Done'],
+  }
+
+  function bookTools(): NoteTools {
+    return buildNoteTools({ allowEdits: true, readNoteFn: async () => BOOK })
+  }
+
+  it('proposes the whole schema against the live definition without writing', async () => {
+    const output = await runSetTagSchema(bookTools(), {
+      tag: '#Book',
+      properties: [
+        { name: 'Author', key: 'author', type: 'text' },
+        { name: 'Status', key: 'status', type: 'select', options: ['Reading', 'Done'] },
+        { name: 'Read on', type: 'date' },
+      ],
+    })
+    expect(output).toEqual({
+      ok: true,
+      tag: 'Book',
+      path: 'tags/book.md',
+      properties: [AUTHOR, STATUS, { name: 'Read on', key: 'read-on', type: 'date' }],
+      previousProperties: [AUTHOR, STATUS],
+      renames: [],
+    })
+  })
+
+  it('treats a property left out as a removal, and an empty list as a cleared schema', async () => {
+    expect(
+      await runSetTagSchema(bookTools(), {
+        tag: 'book',
+        properties: [{ name: 'Author', key: 'author', type: 'text' }],
+      }),
+    ).toMatchObject({ ok: true, properties: [AUTHOR], previousProperties: [AUTHOR, STATUS] })
+    expect(await runSetTagSchema(bookTools(), { tag: 'book', properties: [] })).toMatchObject({
+      ok: true,
+      properties: [],
+      previousProperties: [AUTHOR, STATUS],
+    })
+  })
+
+  it('carries a rename through so the accept can migrate the stored values', async () => {
+    expect(
+      await runSetTagSchema(bookTools(), {
+        tag: 'book',
+        properties: [
+          { name: 'Written by', key: 'written-by', type: 'text', replaces: 'author' },
+          { name: 'Status', key: 'status', type: 'select', options: ['Reading', 'Done'] },
+        ],
+      }),
+    ).toMatchObject({
+      ok: true,
+      properties: [{ name: 'Written by', key: 'written-by', type: 'text' }, STATUS],
+      renames: [{ from: 'author', to: 'written-by' }],
+    })
+    // A key the schema does not have is a typo, not a rename — nothing to move.
+    expect(
+      await runSetTagSchema(bookTools(), {
+        tag: 'book',
+        properties: [{ name: 'Written by', key: 'written-by', type: 'text', replaces: 'writer' }],
+      }),
+    ).toEqual({ ok: false, tag: 'book', error: TAG_SCHEMA_RENAME_ERROR })
+  })
+
+  it('derives a missing key from the name and refuses names that yield none', async () => {
+    expect(
+      await runSetTagSchema(bookTools(), {
+        tag: 'book',
+        properties: [{ name: 'Read on', type: 'date' }],
+      }),
+    ).toMatchObject({ ok: true, properties: [{ name: 'Read on', key: 'read-on', type: 'date' }] })
+    for (const properties of [
+      [{ name: '···', type: 'text' as const }],
+      [{ name: 'Private', key: 'private', type: 'text' as const }],
+      [{ name: 'Title', key: 'has spaces', type: 'text' as const }],
+    ]) {
+      expect(await runSetTagSchema(bookTools(), { tag: 'book', properties })).toEqual({
+        ok: false,
+        tag: 'book',
+        error: TAG_SCHEMA_KEY_ERROR,
+      })
+    }
+  })
+
+  it('refuses two properties under one key', async () => {
+    expect(
+      await runSetTagSchema(bookTools(), {
+        tag: 'book',
+        properties: [
+          { name: 'Author', key: 'author', type: 'text' },
+          { name: 'Writer', key: 'author', type: 'text' },
+        ],
+      }),
+    ).toEqual({ ok: false, tag: 'book', error: TAG_SCHEMA_DUPLICATE_KEY_ERROR })
+  })
+
+  it('never authors a computed property, and carries an existing one over unchanged', async () => {
+    const withRollup = buildNoteTools({
+      allowEdits: true,
+      readNoteFn: async () =>
+        [
+          '---',
+          'lore: tag',
+          'properties:',
+          '  - name: Books',
+          '    key: books',
+          '    type: relations',
+          '  - name: Pages',
+          '    key: pages',
+          '    type: rollup',
+          '    rollup:',
+          '      relation: books',
+          '      property: pages',
+          '      aggregation: sum',
+          '---',
+          '',
+        ].join('\n'),
+    })
+    // The config is the user's: it rides along, and only the label may change.
+    expect(
+      await runSetTagSchema(withRollup, {
+        tag: 'shelf',
+        properties: [
+          { name: 'Books', key: 'books', type: 'relations' },
+          { name: 'Total pages', key: 'pages', type: 'rollup' },
+        ],
+      }),
+    ).toMatchObject({
+      ok: true,
+      properties: [
+        { name: 'Books', key: 'books', type: 'relations' },
+        {
+          name: 'Total pages',
+          key: 'pages',
+          type: 'rollup',
+          rollup: { relation: 'books', property: 'pages', aggregation: 'sum' },
+        },
+      ],
+    })
+    // A rollup under a key that has none, and a type swap onto one, both refuse.
+    expect(
+      await runSetTagSchema(withRollup, {
+        tag: 'shelf',
+        properties: [{ name: 'Words', key: 'words', type: 'rollup' }],
+      }),
+    ).toEqual({ ok: false, tag: 'shelf', error: TAG_SCHEMA_COMPUTED_ERROR })
+    expect(
+      await runSetTagSchema(withRollup, {
+        tag: 'shelf',
+        properties: [{ name: 'Books', key: 'books', type: 'formula' }],
+      }),
+    ).toEqual({ ok: false, tag: 'shelf', error: TAG_SCHEMA_COMPUTED_ERROR })
+  })
+
+  it('refuses a proposal identical to the schema the tag already has', async () => {
+    expect(
+      await runSetTagSchema(bookTools(), {
+        tag: 'book',
+        properties: [
+          { name: 'Author', key: 'author', type: 'text' },
+          { name: 'Status', key: 'status', type: 'select', options: ['Reading', 'Done'] },
+        ],
+      }),
+    ).toEqual({ ok: false, tag: 'book', error: TAG_SCHEMA_UNCHANGED_ERROR })
+    // Reordering the same properties is a change: the order is the column order.
+    expect(
+      await runSetTagSchema(bookTools(), {
+        tag: 'book',
+        properties: [
+          { name: 'Status', key: 'status', type: 'select', options: ['Reading', 'Done'] },
+          { name: 'Author', key: 'author', type: 'text' },
+        ],
+      }),
+    ).toMatchObject({ ok: true, properties: [STATUS, AUTHOR] })
+  })
+
+  it('refuses disabled edits, junk tags, private definitions, and unmarked notes', async () => {
+    let reads = 0
+    const disabled = buildNoteTools({
+      readNoteFn: async () => {
+        reads += 1
+        return BOOK
+      },
+    })
+    const properties = [{ name: 'Author', key: 'author', type: 'text' as const }]
+    expect(await runSetTagSchema(disabled, { tag: 'book', properties })).toEqual({
+      ok: false,
+      tag: 'book',
+      error: EDITS_DISABLED_ERROR,
+    })
+    expect(reads).toBe(0)
+    expect(await runSetTagSchema(bookTools(), { tag: 'not a tag', properties })).toEqual({
+      ok: false,
+      tag: 'not a tag',
+      error: INVALID_COLLECTION_TAG_ERROR,
+    })
+    const privateTools = buildNoteTools({
+      allowEdits: true,
+      readNoteFn: async () => `---\nlore: tag\nprivate: true\n---\n${PRIVATE_BODY}\n`,
+    })
+    expect(await runSetTagSchema(privateTools, { tag: 'diary', properties })).toEqual({
+      ok: false,
+      tag: 'diary',
+      error: PRIVATE_NOTE_EDIT_ERROR,
+    })
+    const unmarked = buildNoteTools({ allowEdits: true, readNoteFn: async () => '# Book\n' })
+    expect(await runSetTagSchema(unmarked, { tag: 'book', properties })).toEqual({
+      ok: false,
+      tag: 'book',
+      error: TAG_DEFINITION_UNMARKED_ERROR,
+    })
+  })
+
+  it('proposes the first schema of a tag with no definition note yet', async () => {
+    const fresh = buildNoteTools({
+      allowEdits: true,
+      readNoteFn: async () => {
+        throw { kind: 'notFound', message: 'no such note' }
+      },
+    })
+    expect(
+      await runSetTagSchema(fresh, {
+        tag: 'decision',
+        properties: [{ name: 'Decided on', type: 'date' }],
+      }),
+    ).toEqual({
+      ok: true,
+      tag: 'decision',
+      path: 'tags/decision.md',
+      properties: [{ name: 'Decided on', key: 'decided-on', type: 'date' }],
+      previousProperties: [],
+      renames: [],
+    })
+  })
+
+  it('maps a proposal onto a pending review card and a refusal onto a chip', () => {
+    const input = { tag: 'book', properties: [] }
+    expect(
+      noteToolCall({
+        type: 'tool-call',
+        toolCallId: 't1',
+        toolName: 'set_tag_schema',
+        input,
+      } as never),
+    ).toEqual({ tool: 'setTagSchema', toolCallId: 't1', tag: 'book' })
+    const output: SetTagSchemaOutput = {
+      ok: true,
+      tag: 'book',
+      path: 'tags/book.md',
+      properties: [AUTHOR],
+      previousProperties: [],
+      renames: [{ from: 'writer', to: 'author' }],
+    }
+    expect(
+      noteToolResult({
+        type: 'tool-result',
+        toolCallId: 't1',
+        toolName: 'set_tag_schema',
+        input,
+        output,
+      } as never),
+    ).toEqual({
+      tool: 'setTagSchema',
+      toolCallId: 't1',
+      tag: 'book',
+      path: 'tags/book.md',
+      properties: [AUTHOR],
+      previousProperties: [],
+      renames: [{ from: 'writer', to: 'author' }],
+      error: null,
+      decision: 'pending',
+    })
+    expect(
+      noteToolResult({
+        type: 'tool-result',
+        toolCallId: 't2',
+        toolName: 'set_tag_schema',
+        input,
+        output: { ok: false, tag: 'book', error: TAG_SCHEMA_UNCHANGED_ERROR },
+      } as never),
+    ).toMatchObject({
+      tool: 'setTagSchema',
+      properties: [],
+      previousProperties: [],
+      renames: [],
+      error: TAG_SCHEMA_UNCHANGED_ERROR,
+      decision: 'pending',
+    })
   })
 })

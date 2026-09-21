@@ -1,7 +1,7 @@
 import {
   useCallback,
   useImperativeHandle,
-  useLayoutEffect,
+  useInsertionEffect,
   useRef,
   type ReactElement,
   type ReactNode,
@@ -290,32 +290,35 @@ export function NoteEditor({
   const innerRef = useRef<EditorHandle>(null)
   const followDeepLink = useFollowDeepLink()
 
-  // Latest callbacks, read through refs so a changing prop identity never
-  // rebuilds meowdown's extensions (the uncontrolled-editor contract).
-  // TODO: This violates "Rule of hooks". Refactor this later.
-  const onChangeRef = useRef(onChange)
-  const onWikiLinkClickRef = useRef(onWikiLinkClick)
-  const onNoteLinkClickRef = useRef(onNoteLinkClick)
-  const onTagClickRef = useRef(onTagClick)
-  const resolveImageUrlRef = useRef(resolveImageUrl)
-  const resolveAssetOpenPathRef = useRef(resolveAssetOpenPath)
-  const openAssetRef = useRef(openAsset)
-  const saveFileRef = useRef(saveFile)
-  const resolveFileInfoRef = useRef(resolveFileInfo)
-  const onExitBoundaryRef = useRef(onExitBoundary)
-  const openLinksInAppRef = useRef(openLinksInApp)
-  useLayoutEffect(() => {
-    onChangeRef.current = onChange
-    onWikiLinkClickRef.current = onWikiLinkClick
-    onNoteLinkClickRef.current = onNoteLinkClick
-    onTagClickRef.current = onTagClick
-    resolveImageUrlRef.current = resolveImageUrl
-    resolveAssetOpenPathRef.current = resolveAssetOpenPath
-    openAssetRef.current = openAsset
-    saveFileRef.current = saveFile
-    resolveFileInfoRef.current = resolveFileInfo
-    onExitBoundaryRef.current = onExitBoundary
-    openLinksInAppRef.current = openLinksInApp
+  // The handlers below keep a stable identity for meowdown's lifetime — a new
+  // identity rebuilds its extensions, which an uncontrolled editor cannot
+  // absorb — so they read the current props from one latch instead of closing
+  // over them. `useEffectEvent` is React's answer to that shape, but an effect
+  // event may not be handed to another component and every one of these is a
+  // `<MeowdownEditor>` prop, so the latch stays explicit.
+  //
+  // It refreshes in an insertion effect rather than a layout effect because
+  // layout effects commit child-first: meowdown installs its extensions in one,
+  // and the reconfigured state can dispatch straight back into `onDocChange`.
+  // A parent layout effect would still be holding the previous render's
+  // callbacks at that point, so an edit could be saved through the handler of
+  // the note that was just navigated away from.
+  const latest = {
+    onChange,
+    onWikiLinkClick,
+    onNoteLinkClick,
+    onTagClick,
+    resolveImageUrl,
+    resolveAssetOpenPath,
+    openAsset,
+    saveFile,
+    resolveFileInfo,
+    onExitBoundary,
+    openLinksInApp,
+  }
+  const latestRef = useRef(latest)
+  useInsertionEffect(() => {
+    latestRef.current = latest
   })
 
   const {
@@ -351,29 +354,29 @@ export function NoteEditor({
   )
 
   const handleDocChange = useCallback(() => {
-    onChangeRef.current?.(innerRef.current?.getMarkdown() ?? '')
+    latestRef.current.onChange?.(innerRef.current?.getMarkdown() ?? '')
   }, [])
 
   const handleExitBoundary: ExitBoundaryHandler = useCallback(
-    (options) => onExitBoundaryRef.current?.(options) ?? false,
+    (options) => latestRef.current.onExitBoundary?.(options) ?? false,
     [],
   )
 
   const handleWikilinkClick = useCallback(
     (payload: { target: string; event: MouseEvent | KeyboardEvent; mod: boolean }) =>
-      onWikiLinkClickRef.current?.({ target: payload.target, openInSplit: payload.mod }),
+      latestRef.current.onWikiLinkClick?.({ target: payload.target, openInSplit: payload.mod }),
     [],
   )
   const handleTagClick = useCallback(
-    (payload: TagClickPayload) => onTagClickRef.current?.(payload.tag, payload.event),
+    (payload: TagClickPayload) => latestRef.current.onTagClick?.(payload.tag, payload.event),
     [],
   )
   const handleResolveImageUrl = useCallback(
-    (src: string) => resolveImageUrlRef.current?.(src) ?? undefined,
+    (src: string) => latestRef.current.resolveImageUrl?.(src) ?? undefined,
     [],
   )
   const handleFilePaste = useCallback(
-    async (file: File) => (await saveFileRef.current?.(file)) ?? undefined,
+    async (file: File) => (await latestRef.current.saveFile?.(file)) ?? undefined,
     [],
   )
   const handleLinkClick = useCallback(
@@ -383,9 +386,9 @@ export function NoteEditor({
       // A graph-relative `assets/…` href (an attachment link) opens through
       // the generation-pinned asset command, never the URL opener — which
       // would receive a meaningless relative string.
-      const assetPath = resolveAssetOpenPathRef.current?.(href) ?? null
+      const assetPath = latestRef.current.resolveAssetOpenPath?.(href) ?? null
       if (assetPath !== null) {
-        void Promise.resolve(openAssetRef.current?.(assetPath)).catch((cause) => {
+        void Promise.resolve(latestRef.current.openAsset?.(assetPath)).catch((cause) => {
           console.error('open asset failed:', errorMessage(cause))
         })
         return
@@ -402,14 +405,14 @@ export function NoteEditor({
       if (!isOpenableExternalUrl(href)) {
         // A scheme-less local href is a note link; the host resolves it
         // against this note's own directory.
-        onNoteLinkClickRef.current?.({ href, openInSplit: mod })
+        latestRef.current.onNoteLinkClick?.({ href, openInSplit: mod })
         return
       }
       // Web links follow the app's one routing rule (the in-app browser,
       // Alt inverts) — the same behavior as the static surfaces.
       const altKey = 'altKey' in event && event.altKey
       openExternalUrl(href, {
-        osBrowser: preferOsBrowser(altKey, openLinksInAppRef.current),
+        osBrowser: preferOsBrowser(altKey, latestRef.current.openLinksInApp),
       })
     },
     [followDeepLink],
@@ -422,7 +425,7 @@ export function NoteEditor({
     [handleLinkClick],
   )
   const handleResolveFileInfo: FileInfoResolver = useCallback(
-    (href) => resolveFileInfoRef.current?.(href),
+    (href) => latestRef.current.resolveFileInfo?.(href),
     [],
   )
   const handleImageClick = useCallback(
@@ -438,7 +441,7 @@ export function NoteEditor({
       alt: string
       event: MouseEvent | TouchEvent | KeyboardEvent
     }) => {
-      const displayUrl = resolveImageUrlRef.current?.(src) ?? null
+      const displayUrl = latestRef.current.resolveImageUrl?.(src) ?? null
       if (displayUrl === null) {
         return
       }
@@ -453,8 +456,8 @@ export function NoteEditor({
       openLightbox(sourceImage, {
         src: displayUrl,
         alt,
-        openPath: resolveAssetOpenPathRef.current?.(src) ?? null,
-        openImage: openAssetRef.current ?? null,
+        openPath: latestRef.current.resolveAssetOpenPath?.(src) ?? null,
+        openImage: latestRef.current.openAsset ?? null,
         transitionName: IMAGE_LIGHTBOX_TRANSITION_NAME,
       })
     },

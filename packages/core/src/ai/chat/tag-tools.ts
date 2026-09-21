@@ -6,10 +6,15 @@ import { parseFrontmatter, splitFrontmatter } from '../../markdown/frontmatter'
 import { isTagName } from '../../markdown/extract'
 import { foldTag } from '../../markdown/keys'
 import {
+  EMPTY_TAG_TYPE,
   TAG_SYMBOL_CATALOG,
+  isPropertyKey,
   parseTagTypeFrontmatter,
+  propertyKeyForName,
   resolveTagIconInput,
   tagDefinitionPath,
+  type TagProperty,
+  type TagType,
 } from '../../tags'
 import { cloudSafeTagListings, type TagListingCandidate } from '../checkers'
 import {
@@ -19,21 +24,30 @@ import {
   listTagsInput,
   PRIVATE_NOTE_EDIT_ERROR,
   setTagIconInput,
+  setTagSchemaInput,
   TAG_DEFINITION_UNMARKED_ERROR,
   TAG_ICON_UNCHANGED_ERROR,
+  TAG_SCHEMA_COMPUTED_ERROR,
+  TAG_SCHEMA_DUPLICATE_KEY_ERROR,
+  TAG_SCHEMA_KEY_ERROR,
+  TAG_SCHEMA_RENAME_ERROR,
+  TAG_SCHEMA_UNCHANGED_ERROR,
   type ListTagIconsOutput,
   type ListTagsOutput,
   type SetTagIconOutput,
+  type SetTagSchemaOutput,
 } from './tools-io'
 import type { NoteTools } from './tools'
 
 /**
  * The tag tools: what the graph's tags look like now (`list_tags`), which
- * icons the app can draw (`list_tag_icons`), and the propose-only
- * `set_tag_icon` whose proposal the user accepts or rejects in chat. Built
- * here, registered by `./tools`. The catalog is the whole point: a model
- * that cannot see the icon set guesses names, and a guessed name can never
- * be written — `resolveTagIconInput` refuses it.
+ * icons the app can draw (`list_tag_icons`), and the two propose-only
+ * writers whose proposals the user accepts or rejects in chat —
+ * `set_tag_icon` for a tag's look, `set_tag_schema` for the property list
+ * its collection renders as columns. Built here, registered by `./tools`.
+ * The catalog is the whole point of the first: a model that cannot see the
+ * icon set guesses names, and a guessed name can never be written —
+ * `resolveTagIconInput` refuses it.
  */
 
 /** Injectable effects for the tag tools (a test seam, like {@link NoteToolDeps}). */
@@ -46,9 +60,9 @@ export interface TagToolDeps {
   allowEdits: boolean
 }
 
-type TagTools = Pick<NoteTools, 'list_tags' | 'list_tag_icons' | 'set_tag_icon'>
+type TagTools = Pick<NoteTools, 'list_tags' | 'list_tag_icons' | 'set_tag_icon' | 'set_tag_schema'>
 
-/** Build the three tag tools over `deps`. */
+/** Build the four tag tools over `deps`. */
 export function buildTagTools(deps: TagToolDeps): TagTools {
   return {
     list_tags: tool({
@@ -108,17 +122,71 @@ export function buildTagTools(deps: TagToolDeps): TagTools {
           resolved = resolution.icon
         }
         const path = tagDefinitionPath(name)
-        const current = await readTagDefinitionIcon(path, deps.readNoteFn)
+        const current = await readTagDefinition(path, deps.readNoteFn)
         if (!current.ok) {
           return { ok: false, tag: name, error: current.error }
         }
-        if (current.icon === resolved) {
+        const previousIcon = current.type.icon ?? null
+        if (previousIcon === resolved) {
           return { ok: false, tag: name, error: TAG_ICON_UNCHANGED_ERROR }
         }
-        return { ok: true, tag: name, path, icon: resolved, previousIcon: current.icon }
+        return { ok: true, tag: name, path, icon: resolved, previousIcon }
+      },
+    }),
+
+    set_tag_schema: tool({
+      description:
+        'Propose the property schema of a tag — the columns its collection shows and ' +
+        'the fields every note carrying it gets. Pass the whole schema you want, in ' +
+        'order: read the current one first (list_collection returns it) and repeat the ' +
+        'properties you keep, because anything left out is proposed for removal. To ' +
+        'rename a property’s key, set "replaces" to the old key so the notes’ stored ' +
+        'values move with it. The user reviews the change in chat and accepts or ' +
+        'rejects it — nothing is written until they accept, so never claim it is done. ' +
+        'Requires "Allow edits".',
+      inputSchema: setTagSchemaInput,
+      execute: async ({ tag, properties }): Promise<SetTagSchemaOutput> => {
+        const name = tag.trim().replace(/^#+/, '')
+        if (!deps.allowEdits) {
+          return { ok: false, tag: name, error: EDITS_DISABLED_ERROR }
+        }
+        if (!isTagName(name)) {
+          return { ok: false, tag: name, error: INVALID_COLLECTION_TAG_ERROR }
+        }
+        const path = tagDefinitionPath(name)
+        const current = await readTagDefinition(path, deps.readNoteFn)
+        if (!current.ok) {
+          return { ok: false, tag: name, error: current.error }
+        }
+        const resolved = resolveTagSchema(properties, current.type)
+        if (!resolved.ok) {
+          return { ok: false, tag: name, error: resolved.error }
+        }
+        const previousProperties = current.type.properties
+        if (sameSchema(resolved.properties, previousProperties)) {
+          return { ok: false, tag: name, error: TAG_SCHEMA_UNCHANGED_ERROR }
+        }
+        return {
+          ok: true,
+          tag: name,
+          path,
+          properties: resolved.properties,
+          previousProperties,
+          renames: resolved.renames,
+        }
       },
     }),
   }
+}
+
+/**
+ * Is the proposal the schema the tag already has? Compared on the serialized
+ * form, which is exactly what a save would write — so a reordering, a
+ * renamed label or a changed option list all count as a change, and a
+ * round-tripped identical list does not.
+ */
+function sameSchema(proposed: readonly TagProperty[], current: readonly TagProperty[]): boolean {
+  return JSON.stringify(proposed) === JSON.stringify(current)
 }
 
 /**
@@ -160,25 +228,25 @@ export function mergeTagListings(
     .map(([, listing]) => listing)
 }
 
-type TagDefinitionIcon = { ok: true; icon: string | null } | { ok: false; error: string }
+type TagDefinitionRead = { ok: true; type: TagType } | { ok: false; error: string }
 
 /**
- * The icon a tag's definition note stores now (`null` for none, and for a
- * definition that does not exist yet — the accept path creates it). The two
+ * The tag type a definition note stores now — the empty type for a
+ * definition that does not exist yet, which the accept path creates. The two
  * refusals guard what a chat write must never do: read or touch a private
  * definition, or stamp the tag marker onto a regular note that merely lives
  * at the definition path (that conversion is the user's, from the tag page).
  */
-async function readTagDefinitionIcon(
+async function readTagDefinition(
   path: string,
   readNoteFn: (path: string) => Promise<string>,
-): Promise<TagDefinitionIcon> {
+): Promise<TagDefinitionRead> {
   let source: string
   try {
     source = await readNoteFn(path)
   } catch (cause) {
     if (isAppError(cause) && cause.kind === 'notFound') {
-      return { ok: true, icon: null }
+      return { ok: true, type: EMPTY_TAG_TYPE }
     }
     throw cause
   }
@@ -190,5 +258,84 @@ async function readTagDefinitionIcon(
   if (type === null) {
     return { ok: false, error: TAG_DEFINITION_UNMARKED_ERROR }
   }
-  return { ok: true, icon: type.icon ?? null }
+  return { ok: true, type }
+}
+
+/** The computed kinds: configured on the definition, never writable from chat. */
+const COMPUTED_PROPERTY_TYPES: ReadonlySet<string> = new Set(['rollup', 'reverse', 'formula'])
+
+/** One property as the model proposed it, before validation. */
+interface ProposedProperty {
+  name: string
+  key?: string | null | undefined
+  type: TagProperty['type']
+  options?: string[] | null | undefined
+  target?: string | null | undefined
+  replaces?: string | null | undefined
+}
+
+type SchemaResolution =
+  | { ok: true; properties: TagProperty[]; renames: { from: string; to: string }[] }
+  | { ok: false; error: string }
+
+/**
+ * Turn the model's proposed property list into the schema an accept would
+ * write, or the one refusal it has to fix first.
+ *
+ * The list is the tag's *whole* schema, so what the model leaves out is a
+ * removal — deliberate, and what the review card shows the user. Three
+ * things are decided here rather than trusted: a missing key is derived from
+ * the name the way the dialog derives it, a computed property is carried
+ * over from `current` by key (its stored config is the user's, and a guessed
+ * one would be worse than none), and a `replaces` key is checked against the
+ * schema as it is now — that is the rename whose stored values the accept
+ * migrates.
+ */
+export function resolveTagSchema(
+  proposed: readonly ProposedProperty[],
+  current: TagType,
+): SchemaResolution {
+  const byKey = new Map(current.properties.map((property) => [property.key, property]))
+  const properties: TagProperty[] = []
+  const renames: { from: string; to: string }[] = []
+  const claimed = new Set<string>()
+  for (const entry of proposed) {
+    const name = entry.name.trim()
+    const key = (entry.key ?? '').trim() === '' ? propertyKeyForName(name) : entry.key!.trim()
+    if (name === '' || !isPropertyKey(key)) {
+      return { ok: false, error: TAG_SCHEMA_KEY_ERROR }
+    }
+    if (claimed.has(key)) {
+      return { ok: false, error: TAG_SCHEMA_DUPLICATE_KEY_ERROR }
+    }
+    claimed.add(key)
+    const replaces = (entry.replaces ?? '').trim()
+    if (replaces !== '' && replaces !== key) {
+      if (!byKey.has(replaces)) {
+        return { ok: false, error: TAG_SCHEMA_RENAME_ERROR }
+      }
+      renames.push({ from: replaces, to: key })
+    }
+    if (COMPUTED_PROPERTY_TYPES.has(entry.type)) {
+      // Carried over, never authored: only the property already stored under
+      // this key, with this exact type, keeps its config. Anything else would
+      // be a guessed rollup/reverse/formula the user never configured.
+      const existing = byKey.get(key)
+      if (existing === undefined || existing.type !== entry.type) {
+        return { ok: false, error: TAG_SCHEMA_COMPUTED_ERROR }
+      }
+      properties.push({ ...existing, name })
+      continue
+    }
+    const options = (entry.options ?? []).map((option) => option.trim()).filter((o) => o !== '')
+    const target = (entry.target ?? '').trim().replace(/^#+/, '')
+    properties.push({
+      name,
+      key,
+      type: entry.type,
+      ...(options.length > 0 ? { options } : {}),
+      ...(target === '' ? {} : { target }),
+    })
+  }
+  return { ok: true, properties, renames }
 }

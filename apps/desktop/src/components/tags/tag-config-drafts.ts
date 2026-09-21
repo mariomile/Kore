@@ -1,6 +1,5 @@
 import {
   foldTag,
-  type CollectionValue,
   type RollupAggregation,
   type TagProperty,
   type TagPropertyType,
@@ -26,13 +25,6 @@ export interface PropertyDraft {
   reverseProperty: string
   /** A formula's expression (view-only; empty = not configured). */
   formulaExpression: string
-}
-
-/** A key rename awaiting the migrate-or-not decision, with its blast radius. */
-export interface PendingRename {
-  from: string
-  to: string
-  notes: { notePath: string; value: CollectionValue }[]
 }
 
 export const PROPERTY_TYPE_LABELS: Record<TagPropertyType, string> = {

@@ -1,4 +1,5 @@
 import type { TypedToolCall, TypedToolResult } from 'ai'
+import type { TagProperty } from '../../tags'
 import type { CloudNoteListing, CloudSearchHit } from '../checkers'
 import type { NoteTools } from './tools'
 import type { SetNotePropertyValue } from './tools-io'
@@ -47,6 +48,7 @@ export type NoteToolCall =
   | { tool: 'tags'; toolCallId: string }
   | { tool: 'tagIcons'; toolCallId: string }
   | { tool: 'setTagIcon'; toolCallId: string; tag: string }
+  | { tool: 'setTagSchema'; toolCallId: string; tag: string }
   | { tool: 'browse'; toolCallId: string; url: string }
   | { tool: 'readPage'; toolCallId: string }
 
@@ -99,6 +101,20 @@ export type NoteToolResult =
       /** The proposed icon (`null` clears) and the one it replaces. */
       icon: string | null
       previousIcon: string | null
+      error: string | null
+      decision: NoteEditDecision
+    }
+  | {
+      tool: 'setTagSchema'
+      toolCallId: string
+      tag: string
+      /** The definition note the accept writes (empty on a refusal). */
+      path: string
+      /** The proposed schema and the one it replaces (both empty on a refusal). */
+      properties: TagProperty[]
+      previousProperties: TagProperty[]
+      /** Key renames the accept migrates the stored values for. */
+      renames: { from: string; to: string }[]
       error: string | null
       decision: NoteEditDecision
     }
@@ -156,6 +172,8 @@ export function noteToolCall(part: TypedToolCall<NoteTools>): NoteToolCall | nul
       return { tool: 'tagIcons', toolCallId: part.toolCallId }
     case 'set_tag_icon':
       return { tool: 'setTagIcon', toolCallId: part.toolCallId, tag: part.input.tag }
+    case 'set_tag_schema':
+      return { tool: 'setTagSchema', toolCallId: part.toolCallId, tag: part.input.tag }
     case 'open_web_page':
       return { tool: 'browse', toolCallId: part.toolCallId, url: part.input.url }
     case 'read_web_page':
@@ -302,6 +320,32 @@ export function noteToolResult(part: TypedToolResult<NoteTools>): NoteToolResult
             path: '',
             icon: null,
             previousIcon: null,
+            error: output.error,
+            decision: 'pending',
+          }
+    }
+    case 'set_tag_schema': {
+      const output = part.output
+      return output.ok
+        ? {
+            tool: 'setTagSchema',
+            toolCallId: part.toolCallId,
+            tag: output.tag,
+            path: output.path,
+            properties: output.properties,
+            previousProperties: output.previousProperties,
+            renames: output.renames,
+            error: null,
+            decision: 'pending',
+          }
+        : {
+            tool: 'setTagSchema',
+            toolCallId: part.toolCallId,
+            tag: output.tag,
+            path: '',
+            properties: [],
+            previousProperties: [],
+            renames: [],
             error: output.error,
             decision: 'pending',
           }

@@ -80,7 +80,8 @@ invent one.
    v0.69.0: the chat AI sees the icon catalog and proposes a tag icon the user
    accepts in chat. Slice 2 is `set_tag_schema` — the model changing a
    supertag's properties, with the dialog's rename migration extracted into
-   `lib/tags`. The surface-by-surface inventory, and the rule every slice
+   `lib/tags` — in flight in
+   [PR #237](https://github.com/mariomile/Kore/pull/237). The surface-by-surface inventory, and the rule every slice
    follows (the model must be able to *see* the valid values before it writes),
    is in [the gap map](ai-app-control.md). Size: medium per slice.
 2. **The live checks with the user.** Four features are implemented and

@@ -26,9 +26,10 @@ rejects. A writer without a listing is the failure mode, not a shortcut.
 
 ## What the chat AI can do today
 
-Thirteen tools, registered in `packages/core/src/ai/chat/tools.ts` (the tag
-three in `tag-tools.ts`). Read tools always available; write tools gated on
-`allowEdits` and refused on `private: true` notes.
+Thirteen tools at `9ee8d04`, registered in
+`packages/core/src/ai/chat/tools.ts` (the tag three in `tag-tools.ts`). Read
+tools always available; write tools gated on `allowEdits` and refused on
+`private: true` notes.
 
 **Read:** `search_notes`, `list_recent_notes`, `list_daily_notes`,
 `list_collection`, `list_tags`, `list_tag_icons`, `read_notes`, `read_assets`,
@@ -60,11 +61,13 @@ view, a routine, or an icon.
 
 ### Supertag schema — slice 2 (named in STATE)
 
-The model can read a schema (`list_tags` returns typed definitions) and change
-a tag's icon, but not its properties. A `set_tag_schema` tool would need the
-20 property types as a listable vocabulary and the schema dialog's rename
-migration, which currently lives inside the dialog and would move to
-`lib/tags`. Same propose-and-accept card as the icon.
+At `9ee8d04` the model can read a schema (`list_tags` returns typed
+definitions) and change a tag's icon, but not its properties. A
+`set_tag_schema` tool needs the 20 property types as a listable vocabulary and
+the schema dialog's rename migration extracted out of the dialog into
+`lib/tags`, behind the same propose-and-accept card as the icon. **In flight in
+[PR #237](https://github.com/mariomile/Kore/pull/237)**; when that lands this
+section closes and the tool count above goes to fourteen.
 
 ### The CLI engines cannot see the catalogs — slice 7 (named in STATE)
 

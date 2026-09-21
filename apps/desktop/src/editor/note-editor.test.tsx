@@ -1,4 +1,4 @@
-import { createRef } from 'react'
+import { createRef, useLayoutEffect, type ReactElement } from 'react'
 import { openUrl } from '@tauri-apps/plugin-opener'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
@@ -670,5 +670,43 @@ describe('resource URL paste', () => {
         new ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData: clipboard }),
       )
     expect(onUrlPaste).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('latest callback props', () => {
+  it('routes a commit-time edit through the callbacks of the render that caused it', async () => {
+    const handleRef = createRef<NoteEditorHandle>()
+    const previousNoteOnChange = vi.fn()
+    const currentNoteOnChange = vi.fn()
+
+    // Stands in for anything mounted inside meowdown's context that dispatches
+    // from its own layout effect. Those run child-first, so the edit lands
+    // before NoteEditor's own commit-phase work for the same render.
+    function EditOnCommit({ armed }: { armed: boolean }): ReactElement | null {
+      useLayoutEffect(() => {
+        if (armed) handleRef.current?.insertMarkdown('edited')
+      }, [armed])
+      return null
+    }
+
+    const editor = await render(
+      <NoteEditor initialContent="" handleRef={handleRef} onChange={previousNoteOnChange}>
+        <EditOnCommit armed={false} />
+      </NoteEditor>,
+    )
+    await expect.element(pmRoot).toBeInTheDocument()
+
+    // One render swaps the handler and edits the document — the shape a note
+    // switch produces.
+    await editor.rerender(
+      <NoteEditor initialContent="" handleRef={handleRef} onChange={currentNoteOnChange}>
+        <EditOnCommit armed />
+      </NoteEditor>,
+    )
+
+    await vi.waitFor(() => {
+      expect(currentNoteOnChange).toHaveBeenCalled()
+    })
+    expect(previousNoteOnChange).not.toHaveBeenCalled()
   })
 })

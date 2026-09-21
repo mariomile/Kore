@@ -64,7 +64,10 @@ cached `tsc -b`; CI's lint job caught the formatting, and re-running it
 clean surfaced a bad `valueType` in a new test and four `\u2019` escapes
 eslint refuses — all fixed in the second commit). Not exercised: a live provider turn calling
 `set_tag_schema` (the dev harness's demo model streams text only), and no
-rendered check of the card.
+rendered check of the card. The live check needs a **BYOK** model, same as
+the tag icon: `set_tag_schema` is one of the four tag tools `buildTagTools`
+registers on the BYOK path (`packages/core/src/ai/chat/tools.ts`), so a CLI
+engine edits the vault itself and shows the post-hoc Changes card instead.
 
 **Next:** merge, bump, then in Kore Brain ask "add a Read on date to #book"
 and accept from the keyboard; watch the tag's collection grow the column.
@@ -927,9 +930,10 @@ browser `collection-view-tabs` + `all-notes-collection-flow` +
    in the reply; teach a skill ("salvala come skill"), approve it from
    Settings → Agents, invoke it in a fresh conversation; (d) Now 4: start a
    routine, quit Kore mid-run, relaunch and see the interrupted entry +
-   retry; Stop a running routine from Settings → Agents. (e) the two chat
-   proposal tools, `edit_note` and `set_tag_icon`, each accepted from the
-   keyboard — both need a **BYOK** model selected, not a CLI engine. (f) the
+   retry; Stop a running routine from Settings → Agents. (e) the three chat
+   proposal tools, `edit_note`, `set_tag_icon` and `set_tag_schema`, each
+   accepted from the keyboard — all three need a **BYOK** model selected,
+   not a CLI engine. (f) the
    weekly-review Run now, which needs the opposite: Claude Code or Codex,
    never BYOK. (g) the shared agent-skill install from Settings → Agents →
    Agent skill, plus one agent task through those skills.

@@ -26,6 +26,18 @@ export interface TagTypeEntry {
   type: TagType
 }
 
+/** A tag a note carries, with its schema when a definition declares one. */
+export interface NoteTagEntry {
+  /** Display casing, as first indexed across the graph. */
+  tag: string
+  /** Folded key — what membership and the definition path are keyed on. */
+  tagKey: string
+  /** The tag's schema, or `null` when no definition note declares one. */
+  type: TagType | null
+  /** The definition note (`tags/<name>.md`), or `null` when untyped. */
+  definitionPath: string | null
+}
+
 /** One property value on a collection row. */
 export interface CollectionValue {
   /** Canonical string form (JSON array text for lists). */
@@ -242,6 +254,48 @@ export async function listNoteTagTypes(path: string): Promise<TagTypeEntry[]> {
 }
 
 /**
+ * Every tag one note carries, schema-bearing or not, in key order. Since
+ * TDR 0005 Amendment A a tag *is* a collection whether or not a definition
+ * note declares properties, so the note's Type field lists them all; the
+ * property union above still comes from {@link listNoteTagTypes}, because an
+ * untyped tag declares nothing to union.
+ *
+ * A definition whose `schema_json` fails to parse degrades to `type: null`
+ * (the tag is still carried) rather than dropping the row, the same
+ * tolerance {@link listNoteTagTypes} applies.
+ */
+export async function listTagsOnNote(path: string): Promise<NoteTagEntry[]> {
+  const rows = await db
+    .selectFrom('tags')
+    .leftJoin('tagTypes', 'tagTypes.tagKey', 'tags.tagKey')
+    .where('tags.notePath', '=', path)
+    .select(['tags.tag', 'tags.tagKey', 'tagTypes.notePath', 'tagTypes.schemaJson'])
+    .orderBy('tags.tagKey')
+    .execute()
+  return rows.map((row) => {
+    const type = decodeTagTypeOrNull(row.schemaJson)
+    return {
+      tag: row.tag,
+      tagKey: row.tagKey,
+      type,
+      definitionPath: type === null ? null : row.notePath,
+    }
+  })
+}
+
+/** A stored schema, or `null` when there is none or it no longer parses. */
+function decodeTagTypeOrNull(schemaJson: string | null): TagType | null {
+  if (schemaJson === null) {
+    return null
+  }
+  try {
+    return decodeTagTypeJson(schemaJson)
+  } catch {
+    return null
+  }
+}
+
+/**
  * Every note carrying frontmatter key `key`, with its stored value — the
  * schema dialog's rename-migration source (values re-typed from the row:
  * the projection round-trips scalars and lists faithfully).
@@ -255,7 +309,10 @@ export async function listNotesWithProperty(
     .select(['notePath', 'value', 'valueType', 'valueNumber'])
     .orderBy('notePath')
     .execute()
-  return rows.map((row) => ({ notePath: row.notePath, value: collectionValue(row) }))
+  return rows.map((row) => ({
+    notePath: row.notePath,
+    value: collectionValue(row),
+  }))
 }
 
 /** The typed YAML value a stored property row round-trips to. */

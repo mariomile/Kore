@@ -1,5 +1,68 @@
 # Kore working state
 
+## The note's type is a field, not something you type — 2026-09-22
+
+User ask ("forse dovremmo far selezionare il tipo di nota senza far fare il
+Tag ovunque nella nota"): until now the only way to give a note a type was to
+write `#tag` into its prose. Every one of the six write paths (editor `#`
+autocomplete, bulk tag, collection "+ New", CSV import, the daily line
+gesture, `reflect tag`) went through `appendBodyTag`, and the Type field that
+already sat above the body could only *show* and *remove*. Slice A of the
+analysis in [tag-membership-note-type.md](tag-membership-note-type.md); the
+storage half (frontmatter as a second membership source) is untouched and
+stays a separate decision.
+
+- [x] Core read (`packages/core/src/indexing/collections.ts`):
+  `listTagsOnNote` left-joins a note's `tags` rows against `tag_types`, so
+  every carried tag comes back with its schema when one exists and
+  `type: null` when it does not. `listNoteTagTypes` is unchanged for the
+  property union; `useNoteTypedProperties` now derives that union from the
+  one new read instead of issuing a second query.
+- [x] Core write helper (`tags/timestamps.ts`): `missingCreatedStamps`
+  returns the `created` keys a note does not already carry. Hand-editing
+  `#tag` into markdown still stamps nothing — there is no gesture to hang it
+  on — but an explicit "this note is a #book" means the same as birthing the
+  row, which is already what `reflect tag` does (`missing_stamps` in
+  `apps/cli/src/commands/tag.rs`). A key the note already stores is never
+  moved.
+- [x] Desktop: `useAddNoteTag` mirrors `useRemoveNoteTag` and lands the tag
+  **and** its stamps in one `commitNoteBodyTransform`, so a half-applied
+  membership is impossible; `NoteTypePicker` offers schema-bearing tags first
+  ("Types"), then every other tag ranked by `suggestTags`, then the typed
+  query itself, since a Kore tag exists because a note carries it.
+- [x] The Type row now lists **every** tag, not only schema-bearing ones, and
+  the properties header renders on any ordinary note (dailies were already
+  excluded by `note-pane.tsx`; templates are excluded here) so the empty row
+  is always one click from the title. Widening the row also closes a live
+  hole: the editor collapses a leading or trailing tag-only paragraph
+  whenever the header renders, so before this a note with `status: active`
+  and a trailing `#idea` hid that tag with nothing left to show it. Bare, the
+  section drops its bottom rule rather than drawing a divider under every
+  title.
+
+**No Rust in this slice.** The capability — a generation-gated body rewrite —
+already exists; what is new is entirely which gesture writes it. The CLI's
+own `append_body_tag` mirror is untouched.
+
+**Untouched by design:** frontmatter membership (slice B, the decision
+TDR 0005 left open), a `set_note_type` chat tool (slice C), the editor's `#`
+autocomplete, and the tag-definition side of the schema dialog.
+
+**Validation:** core `collections` + `timestamps` 20/20 on node (4 new);
+browser `note-properties-header` 9/9 (4 new, covering the empty row, the
+template exclusion, the untyped chip and two picker paths),
+`use-add-note-tag` 4/4, `note-properties-section` 3/3, and every desktop
+browser suite 1448/1448 — **Chromium only**: this container
+ships no WebKit and Playwright cannot download one, so the second engine CI
+requires is unverified here and runs on the PR. Node 3272/3272 (the one
+`graph-layout` timeout was this container running two vitest projects at
+once; it passes alone). `pnpm check` exit 0. Not exercised: a rendered pass over the empty Type row in the real editor, where
+the properties slot is measured against the live H1.
+
+**Next:** merge, then set a type from the picker on a real note and watch the
+tag page's collection pick up the row. Slice B stays parked until the
+`tags:`-in-frontmatter count on the vault is known.
+
 ## Chat can edit a supertag's schema — 2026-09-21
 
 Slice 2 of the AI-app-control map: after the icon (slice 1), what a tag

@@ -1,3 +1,4 @@
+import { parseFrontmatter, splitFrontmatter } from '../markdown'
 import type { TagType } from './tag-type'
 
 /**
@@ -33,4 +34,33 @@ export function createdStampValues(
     }
   }
   return values
+}
+
+/**
+ * The `created` stamps a note does not already carry, for a membership the
+ * app itself writes (the Type picker, `reflect tag`). Editing `#tag` into the
+ * markdown by hand still stamps nothing — there is no gesture to hang it on —
+ * but an explicit "this note is a #book" carries the same meaning as birthing
+ * the row, so its `Added`-style column gets today's date. A key already in the
+ * frontmatter is left alone: the note's own value is the truth, and a second
+ * tagging must not move it.
+ */
+export function missingCreatedStamps(
+  source: string,
+  type: TagType | null | undefined,
+  at: Date = new Date(),
+): Record<string, string> {
+  const stamps = createdStampValues(type, at)
+  if (Object.keys(stamps).length === 0) {
+    return {}
+  }
+  const { data } = parseFrontmatter(splitFrontmatter(source).raw)
+  const present = data as Record<string, unknown>
+  const missing: Record<string, string> = {}
+  for (const [key, value] of Object.entries(stamps)) {
+    if (present[key] === undefined) {
+      missing[key] = value
+    }
+  }
+  return missing
 }

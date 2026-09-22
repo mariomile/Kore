@@ -7,6 +7,16 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- The note's type is a field. A note's Type row now sits above its body on
+  every ordinary note, empty or not, and a picker sets it: schema-bearing
+  tags first, then every other tag in the graph, then whatever the user
+  typed. Before, the only way to say what a note *was* had been to write
+  `#tag` into its prose. The membership still lands as `#tag` in the body
+  and the editor collapses that line, so the round trip is invisible, and a
+  tag's `created` columns are stamped in the same write. The row also lists
+  tags with no schema now, which closes a hole where a collapsed membership
+  line left a tag showing nowhere.
+
 - Chat can edit a supertag's schema (AI-app-control slice 2). The
   propose-only `set_tag_schema` tool takes a tag's whole property list —
   what the columns of its collection and the fields of its notes will be —

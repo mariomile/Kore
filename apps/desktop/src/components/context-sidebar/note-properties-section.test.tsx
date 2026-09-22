@@ -2,18 +2,20 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
 import type { ReactElement } from 'react'
-import type { CollectionValue, TagTypeEntry } from '@reflect/core'
+import type { CollectionValue, NoteTagEntry } from '@reflect/core'
 import { NotePropertiesSection } from './note-properties-section'
 
 const data = vi.hoisted(() => ({
-  tagTypes: [] as TagTypeEntry[],
+  tags: [] as NoteTagEntry[],
   values: {} as Record<string, CollectionValue>,
 }))
 const commitProperty = vi.hoisted(() => vi.fn())
 
 vi.mock('@reflect/core', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@reflect/core')>()),
-  listNoteTagTypes: async () => data.tagTypes,
+  listTagsOnNote: async () => data.tags,
+  listTagTypes: async () => [],
+  suggestTags: async () => [],
   getNoteProperties: async () => data.values,
 }))
 vi.mock('@/providers/graph-provider', () => ({
@@ -22,7 +24,10 @@ vi.mock('@/providers/graph-provider', () => ({
 vi.mock('@/hooks/use-bridge-ready', () => ({ useBridgeReady: () => true }))
 vi.mock('@/lib/tags/use-commit-note-property', () => ({
   useCommitNoteProperty: () => commitProperty,
+  invalidateOnNextIndexApply: () => {},
 }))
+const addTag = vi.hoisted(() => vi.fn(async () => {}))
+vi.mock('@/lib/tags/use-add-note-tag', () => ({ useAddNoteTag: () => addTag }))
 const removeTag = vi.hoisted(() => vi.fn())
 vi.mock('@/lib/tags/use-remove-note-tag', () => ({
   useRemoveNoteTag: () => removeTag,
@@ -38,19 +43,20 @@ function Subject(): ReactElement {
 }
 
 beforeEach(() => {
-  data.tagTypes = []
+  data.tags = []
   data.values = {}
   commitProperty.mockClear()
   removeTag.mockClear()
+  addTag.mockClear()
 })
 
 describe('NotePropertiesSection', () => {
-  it('renders nothing while the note has no type or stored properties', async () => {
+  it('renders nothing while the note carries no tag and no stored property', async () => {
     const view = await render(<Subject />)
     await expect.poll(() => view.container.textContent).toBe('')
   })
 
-  it('shows note-owned properties without adding a type', async () => {
+  it('shows note-owned properties, and the Type row offers one without inventing it', async () => {
     data.values = {
       status: { value: 'waiting', valueType: 'string', valueNumber: null },
     }
@@ -58,14 +64,15 @@ describe('NotePropertiesSection', () => {
 
     await expect.element(view.getByText('Status')).toBeInTheDocument()
     await expect.element(view.getByText('waiting')).toBeInTheDocument()
-    expect(view.getByText('Type').elements()).toHaveLength(0)
+    await expect.element(view.getByRole('button', { name: 'Set the type' })).toBeInTheDocument()
   })
 
   it('renders the union of the tags’ schemas with current values, once per key', async () => {
-    data.tagTypes = [
+    data.tags = [
       {
+        tag: 'book',
         tagKey: 'book',
-        notePath: 'tags/book.md',
+        definitionPath: 'tags/book.md',
         type: {
           properties: [
             { name: 'Author', key: 'author', type: 'text' },
@@ -74,8 +81,9 @@ describe('NotePropertiesSection', () => {
         },
       },
       {
+        tag: 'media',
         tagKey: 'media',
-        notePath: 'tags/media.md',
+        definitionPath: 'tags/media.md',
         // `author` again — must render once (the first declaration wins).
         type: { properties: [{ name: 'Creator', key: 'author', type: 'text' }] },
       },

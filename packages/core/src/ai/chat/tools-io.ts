@@ -220,6 +220,29 @@ export const setTagSchemaInput = z.object({
     ),
 })
 
+/**
+ * A proposed note-type change: the note, the tag whose membership the accept
+ * writes, and whether it is being taken off instead of put on. A refusal
+ * instead when the model must fix something first. Nothing is written here.
+ */
+export type SetNoteTypeOutput =
+  | { ok: true; path: string; tag: string; remove: boolean }
+  | { ok: false; path: string; tag: string; error: string }
+
+/** `set_note_type` refusals, read verbatim by both model and card. */
+export const NOTE_TYPE_UNCHANGED_ERROR = 'The note already carries this tag.'
+export const NOTE_TYPE_ABSENT_ERROR =
+  'The note does not carry this tag, so there is nothing to take off.'
+
+export const setNoteTypeInput = z.object({
+  path: z.string().min(1).describe('Graph-relative note path (from search or listing results)'),
+  tag: z
+    .string()
+    .min(1)
+    .describe('The tag the note should carry (case-insensitive, without the #)'),
+  remove: z.boolean().optional().describe('Take the tag off the note instead of putting it on'),
+})
+
 export const listTagsInput = z.object({})
 export const listTagIconsInput = z.object({})
 

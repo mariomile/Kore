@@ -5,9 +5,10 @@ import {
   evaluateFormula,
   getNote,
   getNoteProperties,
-  listNoteTagTypes,
+  listTagsOnNote,
   localCalendarDate,
   type CollectionValue,
+  type NoteTagEntry,
   type TagProperty,
   type TagTypeEntry,
 } from '@reflect/core'
@@ -17,7 +18,9 @@ import { useGraph } from '@/providers/graph-provider'
 
 /** A note's fields: tag declarations first, then note-owned loose values. */
 export interface NoteTypedProperties {
-  /** Typed tags the note carries, in key order. Empty until they load. */
+  /** Every tag the note carries, in key order. Empty until they load. */
+  tags: NoteTagEntry[]
+  /** The subset of {@link tags} whose definition declares a schema. */
   tagTypes: TagTypeEntry[]
   /** Tag-declared fields followed by inferred note-owned fields. */
   properties: TagProperty[]
@@ -39,11 +42,28 @@ export function useNoteTypedProperties(path: string): NoteTypedProperties {
   const bridgeReady = useBridgeReady()
   const enabled = bridgeReady && graph !== null
 
-  const { data: tagTypes } = useQuery({
-    queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'note-tag-types', path],
-    queryFn: () => listNoteTagTypes(path),
+  const { data: tags } = useQuery({
+    queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'note-tags', path],
+    queryFn: () => listTagsOnNote(path),
     enabled,
   })
+  // One read serves both: the Type row lists every tag, the property union
+  // only the ones a definition gave a schema.
+  const tagTypes = useMemo(
+    () =>
+      (tags ?? []).flatMap<TagTypeEntry>((entry) =>
+        entry.type === null || entry.definitionPath === null
+          ? []
+          : [
+              {
+                tagKey: entry.tagKey,
+                notePath: entry.definitionPath,
+                type: entry.type,
+              },
+            ],
+      ),
+    [tags],
+  )
   const { data: values } = useQuery({
     queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'note-properties', path],
     queryFn: () => getNoteProperties(path),
@@ -52,7 +72,7 @@ export function useNoteTypedProperties(path: string): NoteTypedProperties {
 
   const properties = useMemo(() => {
     return deriveCollectionPropertySchema(
-      tagTypes ?? [],
+      tagTypes,
       values === undefined ? [] : [{ properties: values }],
     ).type.properties
   }, [tagTypes, values])
@@ -119,5 +139,5 @@ export function useNoteTypedProperties(path: string): NoteTypedProperties {
     return next
   }, [values, properties, mtime])
 
-  return { tagTypes: tagTypes ?? [], properties, values: overlaid }
+  return { tags: tags ?? [], tagTypes, properties, values: overlaid }
 }

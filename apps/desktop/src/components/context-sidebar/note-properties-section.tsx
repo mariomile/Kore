@@ -13,23 +13,25 @@ interface NotePropertiesSectionProps {
 }
 
 /**
- * The note's properties (TDR 0005): Type (the supertag), the union of its tags'
- * schemas, then note-owned loose fields. Hidden only when the note has neither
- * a typed tag nor a stored property.
+ * The note's properties (TDR 0005): Type (the supertag, pickable), the union
+ * of its tags' schemas, then note-owned loose fields. Hidden only when the
+ * note carries neither a tag nor a stored property — unlike the properties
+ * header, the rail does not advertise an empty Type row, because the note's
+ * own page is where that offer belongs.
  */
 export function NotePropertiesSection({ path }: NotePropertiesSectionProps): ReactElement | null {
   const commitProperty = useCommitNoteProperty()
   const openRelation = useOpenRelation()
-  const { tagTypes, properties, values } = useNoteTypedProperties(path)
+  const { tags, properties, values } = useNoteTypedProperties(path)
 
-  if (tagTypes.length === 0 && properties.length === 0) {
+  if (tags.length === 0 && properties.length === 0) {
     return null
   }
 
   return (
     <SidebarSection storageKey="note-properties" title="Properties">
       <ul className="space-y-0.5">
-        <NoteTypeField path={path} tagTypes={tagTypes} labelClassName="w-24" />
+        <NoteTypeField path={path} tags={tags} labelClassName="w-24" />
         {properties.map((property) => (
           <li key={property.key} className="flex min-h-7 items-center gap-2">
             <span className="w-24 shrink-0 truncate text-[13px] text-text-muted">

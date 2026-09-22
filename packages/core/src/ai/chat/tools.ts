@@ -65,6 +65,7 @@ import {
   MAX_DAILY_NOTE_DAYS,
   MISSING_VALUE_ERROR,
   PRIVATE_NOTE_EDIT_ERROR,
+  type setNoteTypeInput,
   RESERVED_PROPERTY_ERROR,
   searchNotesInput,
   setNotePropertyInput,
@@ -80,6 +81,7 @@ import {
   type SearchNotesOutput,
   type SetNotePropertyOutput,
   type SetNotePropertyValue,
+  type SetNoteTypeOutput,
   type SetTagIconOutput,
   type SetTagSchemaOutput,
 } from './tools-io'
@@ -458,6 +460,7 @@ export type NoteTools = {
   list_tag_icons: Tool<z.infer<typeof listTagIconsInput>, ListTagIconsOutput>
   set_tag_icon: Tool<z.infer<typeof setTagIconInput>, SetTagIconOutput>
   set_tag_schema: Tool<z.infer<typeof setTagSchemaInput>, SetTagSchemaOutput>
+  set_note_type: Tool<z.infer<typeof setNoteTypeInput>, SetNoteTypeOutput>
   set_note_property: Tool<z.infer<typeof setNotePropertyInput>, SetNotePropertyOutput>
   edit_note: Tool<z.infer<typeof editNoteInput>, EditNoteOutput>
   read_notes: Tool<z.infer<typeof readNotesInput>, ReadNotesOutput>

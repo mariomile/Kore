@@ -24,6 +24,8 @@ import {
   RESERVED_PROPERTY_ERROR,
   PRIVATE_NOTE_EDIT_ERROR,
   MISSING_VALUE_ERROR,
+  NOTE_TYPE_ABSENT_ERROR,
+  NOTE_TYPE_UNCHANGED_ERROR,
   TAG_DEFINITION_UNMARKED_ERROR,
   TAG_ICON_UNCHANGED_ERROR,
   TAG_SCHEMA_COMPUTED_ERROR,
@@ -36,6 +38,7 @@ import {
   noteToolResult,
   type EditNoteOutput,
   type SetNotePropertyOutput,
+  type SetNoteTypeOutput,
   type SetTagIconOutput,
   type SetTagSchemaOutput,
   type ListCollectionOutput,
@@ -1638,6 +1641,161 @@ describe('set_tag_schema', () => {
       previousProperties: [],
       renames: [],
       error: TAG_SCHEMA_UNCHANGED_ERROR,
+      decision: 'pending',
+    })
+  })
+})
+
+describe('set_note_type', () => {
+  const BOOK = 'notes/dispossessed.md'
+
+  /** Execute `set_note_type` directly, asserting a non-streaming output. */
+  async function runSetNoteType(
+    tools: NoteTools,
+    input: { path: string; tag: string; remove?: boolean },
+  ): Promise<SetNoteTypeOutput> {
+    const execute = tools.set_note_type.execute
+    if (!execute) {
+      throw new Error('set_note_type has no execute')
+    }
+    const output = await execute(input, CALL)
+    if (isAsyncIterable(output)) {
+      throw new Error('unexpected streaming tool output')
+    }
+    return output
+  }
+
+  /** A tool set over one note's source, with edits allowed. */
+  function toolsOver(source: string): NoteTools {
+    return buildNoteTools({ allowEdits: true, readNoteFn: async () => source })
+  }
+
+  it('proposes a tag for a note that does not carry it, writing nothing', async () => {
+    let reads = 0
+    const tools = buildNoteTools({
+      allowEdits: true,
+      readNoteFn: async () => {
+        reads += 1
+        return '# The Dispossessed\n'
+      },
+    })
+    expect(await runSetNoteType(tools, { path: BOOK, tag: '#Book' })).toEqual({
+      ok: true,
+      path: BOOK,
+      tag: 'Book',
+      remove: false,
+    })
+    // The note was read to check membership, and only read.
+    expect(reads).toBe(1)
+  })
+
+  it('refuses a tag the note already carries, and a removal of one it does not', async () => {
+    const tagged = toolsOver('# The Dispossessed\n\n#book\n')
+    expect(await runSetNoteType(tagged, { path: BOOK, tag: 'BOOK' })).toEqual({
+      ok: false,
+      path: BOOK,
+      tag: 'BOOK',
+      error: NOTE_TYPE_UNCHANGED_ERROR,
+    })
+    expect(await runSetNoteType(tagged, { path: BOOK, tag: 'book', remove: true })).toEqual({
+      ok: true,
+      path: BOOK,
+      tag: 'book',
+      remove: true,
+    })
+    const bare = toolsOver('# The Dispossessed\n')
+    expect(await runSetNoteType(bare, { path: BOOK, tag: 'book', remove: true })).toEqual({
+      ok: false,
+      path: BOOK,
+      tag: 'book',
+      error: NOTE_TYPE_ABSENT_ERROR,
+    })
+  })
+
+  it('reads membership from the body only, never from a frontmatter tags key', async () => {
+    // TDR 0005: the hashtag is the supertag. A `tags:` key is data, not
+    // membership, so proposing #book over it is a real change, not a no-op.
+    const tools = toolsOver('---\ntags:\n  - book\n---\n# The Dispossessed\n')
+    expect(await runSetNoteType(tools, { path: BOOK, tag: 'book' })).toMatchObject({ ok: true })
+  })
+
+  it('refuses without "Allow edits", for a junk tag, a private note and a missing note', async () => {
+    const disabled = buildNoteTools({ readNoteFn: async () => '# The Dispossessed\n' })
+    expect(await runSetNoteType(disabled, { path: BOOK, tag: 'book' })).toEqual({
+      ok: false,
+      path: BOOK,
+      tag: 'book',
+      error: EDITS_DISABLED_ERROR,
+    })
+    expect(await runSetNoteType(toolsOver('# x\n'), { path: BOOK, tag: '*' })).toEqual({
+      ok: false,
+      path: BOOK,
+      tag: '*',
+      error: INVALID_COLLECTION_TAG_ERROR,
+    })
+    const private_ = toolsOver(`---\nprivate: true\n---\n# ${PRIVATE_TITLE}\n`)
+    const refusal = await runSetNoteType(private_, { path: PRIVATE_PATH, tag: 'book' })
+    expect(refusal).toEqual({
+      ok: false,
+      path: PRIVATE_PATH,
+      tag: 'book',
+      error: PRIVATE_NOTE_EDIT_ERROR,
+    })
+    expect(JSON.stringify(refusal)).not.toContain(PRIVATE_TITLE)
+    const missing = buildNoteTools({
+      allowEdits: true,
+      readNoteFn: async () => {
+        throw { kind: 'notFound', message: 'no such note' }
+      },
+    })
+    expect(await runSetNoteType(missing, { path: BOOK, tag: 'book' })).toEqual({
+      ok: false,
+      path: BOOK,
+      tag: 'book',
+      error: EDIT_NOTE_MISSING_ERROR,
+    })
+  })
+
+  it('maps a proposal onto a pending review card and a refusal onto a chip', () => {
+    const input = { path: BOOK, tag: 'book' }
+    expect(
+      noteToolCall({
+        type: 'tool-call',
+        toolCallId: 't1',
+        toolName: 'set_note_type',
+        input,
+      } as never),
+    ).toEqual({ tool: 'setNoteType', toolCallId: 't1', path: BOOK, tag: 'book' })
+    const output: SetNoteTypeOutput = { ok: true, path: BOOK, tag: 'book', remove: true }
+    expect(
+      noteToolResult({
+        type: 'tool-result',
+        toolCallId: 't1',
+        toolName: 'set_note_type',
+        input,
+        output,
+      } as never),
+    ).toEqual({
+      tool: 'setNoteType',
+      toolCallId: 't1',
+      path: BOOK,
+      tag: 'book',
+      remove: true,
+      error: null,
+      decision: 'pending',
+    })
+    expect(
+      noteToolResult({
+        type: 'tool-result',
+        toolCallId: 't2',
+        toolName: 'set_note_type',
+        input,
+        output: { ok: false, path: BOOK, tag: 'book', error: NOTE_TYPE_UNCHANGED_ERROR },
+      } as never),
+    ).toMatchObject({
+      tool: 'setNoteType',
+      remove: false,
+      error: NOTE_TYPE_UNCHANGED_ERROR,
       decision: 'pending',
     })
   })

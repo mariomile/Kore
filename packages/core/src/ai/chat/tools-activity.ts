@@ -49,6 +49,7 @@ export type NoteToolCall =
   | { tool: 'tagIcons'; toolCallId: string }
   | { tool: 'setTagIcon'; toolCallId: string; tag: string }
   | { tool: 'setTagSchema'; toolCallId: string; tag: string }
+  | { tool: 'setNoteType'; toolCallId: string; path: string; tag: string }
   | { tool: 'browse'; toolCallId: string; url: string }
   | { tool: 'readPage'; toolCallId: string }
 
@@ -119,6 +120,17 @@ export type NoteToolResult =
       decision: NoteEditDecision
     }
   | {
+      tool: 'setNoteType'
+      toolCallId: string
+      /** The note the accept writes. */
+      path: string
+      tag: string
+      /** Whether the proposal takes the tag off instead of putting it on. */
+      remove: boolean
+      error: string | null
+      decision: NoteEditDecision
+    }
+  | {
       tool: 'browse'
       toolCallId: string
       /** The final URL — the page's own after redirects, the requested one on failure. */
@@ -174,6 +186,13 @@ export function noteToolCall(part: TypedToolCall<NoteTools>): NoteToolCall | nul
       return { tool: 'setTagIcon', toolCallId: part.toolCallId, tag: part.input.tag }
     case 'set_tag_schema':
       return { tool: 'setTagSchema', toolCallId: part.toolCallId, tag: part.input.tag }
+    case 'set_note_type':
+      return {
+        tool: 'setNoteType',
+        toolCallId: part.toolCallId,
+        path: part.input.path,
+        tag: part.input.tag,
+      }
     case 'open_web_page':
       return { tool: 'browse', toolCallId: part.toolCallId, url: part.input.url }
     case 'read_web_page':
@@ -349,6 +368,18 @@ export function noteToolResult(part: TypedToolResult<NoteTools>): NoteToolResult
             error: output.error,
             decision: 'pending',
           }
+    }
+    case 'set_note_type': {
+      const output = part.output
+      return {
+        tool: 'setNoteType',
+        toolCallId: part.toolCallId,
+        path: output.path,
+        tag: output.tag,
+        remove: output.ok ? output.remove : false,
+        error: output.ok ? null : output.error,
+        decision: 'pending',
+      }
     }
     case 'open_web_page': {
       const output = part.output

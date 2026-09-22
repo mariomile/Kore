@@ -6,6 +6,7 @@ import {
   compareCollectionEntries,
   listCollection,
   listNoteTagTypes,
+  listTagsOnNote,
   listTagTypes,
   TITLE_SORT_KEY,
   UPDATED_SORT_KEY,
@@ -263,5 +264,29 @@ describe('deriveCollectionPropertySchema', () => {
         conflict: null,
       }),
     ])
+  })
+})
+
+describe('listTagsOnNote', () => {
+  it('left-joins every carried tag, typed or not, and drops a mangled schema to untyped', async () => {
+    mockInvoke.mockResolvedValueOnce([
+      { tag: 'Book', tag_key: 'book', note_path: 'tags/book.md', schema_json: bookSchema },
+      { tag: 'idea', tag_key: 'idea', note_path: null, schema_json: null },
+      { tag: 'broken', tag_key: 'broken', note_path: 'tags/broken.md', schema_json: '?' },
+    ])
+    const entries = await listTagsOnNote('notes/a.md')
+    expect(entries).toEqual([
+      {
+        tag: 'Book',
+        tagKey: 'book',
+        definitionPath: 'tags/book.md',
+        type: { properties: [{ name: 'Author', key: 'author', type: 'text' }] },
+      },
+      { tag: 'idea', tagKey: 'idea', definitionPath: null, type: null },
+      { tag: 'broken', tagKey: 'broken', definitionPath: null, type: null },
+    ])
+    const [, args] = mockInvoke.mock.calls[0]!
+    expect(String(args['sql'])).toContain('left join "tag_types"')
+    expect(args['params']).toEqual(['notes/a.md'])
   })
 })

@@ -1,5 +1,58 @@
 # Kore working state
 
+## Chat can say what a note is — 2026-09-22
+
+Slice C of the note-type work, and the third AI-app-control writer after the
+tag icon and the tag schema: the chat model could read tags (`list_tags`,
+`list_collection`) and configure them, but it could not put one *on* a note —
+asked to "make this a book" it had only `edit_note`, which means writing a
+hashtag into the user's prose. `set_note_type` is the gesture the Type field
+gained in the slice above, exposed as a proposal.
+
+- [x] Tool (`packages/core/src/ai/chat/tag-tools.ts`, contract in
+  `tools-io.ts`): `set_note_type(path, tag, remove?)` validates and returns a
+  proposal, never a write. It refuses without "Allow edits", on a tag the tag
+  grammar cannot produce, on a note that does not exist, on a `private: true`
+  note (read live, before anything about the note reaches the model), on a tag
+  the note already carries, and on a removal of one it does not. The
+  membership question is asked of the **body** — the same thing the indexer
+  scans and the accept's `appendBodyTag`/`removeBodyTag` will ask again — so a
+  note with `tags:` in its frontmatter is not treated as already typed. That
+  is slice B's boundary, and there is a test pinning it.
+- [x] Accept (`apps/desktop/src/hooks/use-apply-note-type.ts`): the Type
+  field's own write, reached through `commitNoteBodyTransform`, so a note
+  typed from chat is byte-identical to one typed from the picker, stamps
+  included. It re-reads the note on the channel the write goes through
+  (live session first): a `private: true` typed since the proposal refuses,
+  and membership that already moved the proposed way refuses as stale rather
+  than silently doing nothing. Unsetting a type stamps nothing.
+- [x] UI (`chat-note-type-card.tsx`) rides the shared `ChatProposalCard`
+  shell, so Enter accepts and Backspace rejects like every other proposal; a
+  pending call or a refusal stays a compact chip, since there is nothing to
+  accept. The decision persists with the turn (`store.ts`, `transcript.ts`),
+  so a restored conversation shows what happened instead of re-offering it.
+
+**No Rust in this slice**, and no new write path: the capability is the one
+slice A added.
+
+**Untouched by design:** frontmatter membership (slice B, the decision
+TDR 0005 left open) and the editor's `#` autocomplete. The tool proposes one
+tag per call, on purpose — a card the user reads in one line.
+
+**Validation:** core `tools` 70/70 (5 new) and `transcript` 20/20 (1 new);
+the whole node side 3287/3287 and the whole browser project 2033/2033, the
+8 new cases among them (`chat-note-type-card` 4/4 covering both directions,
+the refusal chip and a failed accept; `use-apply-note-type` 4/4 covering the
+stamped write, the removal, staleness and privacy) — **Chromium only**: this
+container ships no WebKit and Playwright cannot download one, so the second
+engine CI requires is unverified here and runs on the PR.
+`pnpm check` exit 0. Not exercised: a live model actually calling the tool
+(the dev harness's demo model streams text only).
+
+**Next:** merge, then ask the chat to type a real note and watch the tag
+page's collection pick up the row. Slice B stays parked until the
+`tags:`-in-frontmatter count on the vault is known.
+
 ## The note's type is a field, not something you type — 2026-09-22
 
 User ask ("forse dovremmo far selezionare il tipo di nota senza far fare il

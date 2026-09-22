@@ -26,8 +26,8 @@ rejects. A writer without a listing is the failure mode, not a shortcut.
 
 ## What the chat AI can do today
 
-Fourteen tools at `d2c2506`, registered in
-`packages/core/src/ai/chat/tools.ts` (the tag four in `tag-tools.ts`). Read
+Fifteen tools, registered in
+`packages/core/src/ai/chat/tools.ts` (the tag five in `tag-tools.ts`). Read
 tools always available; write tools gated on `allowEdits` and refused on
 `private: true` notes.
 
@@ -37,12 +37,14 @@ tools always available; write tools gated on `allowEdits` and refused on
 
 **Propose (user accepts in chat, nothing written before):** `edit_note` (a body
 hunk, reviewed as a diff), `set_note_property` (one frontmatter key),
-`set_tag_icon` (slice 1), `set_tag_schema` (slice 2).
+`set_tag_icon` (slice 1), `set_tag_schema` (slice 2), `set_note_type` (which
+tags a note carries, and so which collections it is in).
 
 Everything the model writes lands through the app's own writer for that surface
 — `set_tag_icon` and `set_tag_schema` both go through `saveTagType`, the
-Configure-tag writer — so the validation the UI enforces is not duplicated in
-the tool.
+Configure-tag writer, and `set_note_type` through the Type field's own
+`appendBodyTag`/`removeBodyTag` transform — so the validation the UI enforces
+is not duplicated in the tool.
 
 ## What the CLI engines can do today
 

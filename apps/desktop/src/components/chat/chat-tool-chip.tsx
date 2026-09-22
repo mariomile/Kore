@@ -31,6 +31,7 @@ import { routeForPath } from '@/routing/route'
 import { useRouter } from '@/routing/router'
 import { isModEvent } from '@meowdown/core'
 import { ChatNotePatchCard } from './chat-note-patch-card'
+import { ChatNoteTypeCard } from './chat-note-type-card'
 import { ChatTagIconCard } from './chat-tag-icon-card'
 import { ChatTagSchemaCard } from './chat-tag-schema-card'
 
@@ -355,6 +356,29 @@ export function ChatToolChip({ part, turnStatus = 'done' }: ChatToolChipProps): 
       <ChipFrame pending={pending} icon={<Hash aria-hidden className="size-3.5" />} wrap>
         {failed === null ? 'Proposing properties for' : 'Couldn’t propose properties for'}{' '}
         <TagRouteButton tag={call.tag} />
+        {failed !== null ? <span> — {failed}</span> : null}
+      </ChipFrame>
+    )
+  }
+
+  // set_note_type: a settled proposal is the review card; a pending call or
+  // a refusal stays a compact chip, since there is nothing to accept.
+  if (call.tool === 'setNoteType') {
+    const result = part.result?.tool === 'setNoteType' ? part.result : null
+    const failed = result?.error ?? part.error ?? null
+    if (result !== null && failed === null) {
+      return <ChatNoteTypeCard result={result} turnStatus={turnStatus} onOpen={openNote} />
+    }
+    return (
+      <ChipFrame pending={pending} icon={<Hash aria-hidden className="size-3.5" />} wrap>
+        {failed === null ? 'Proposing' : 'Couldn’t propose'} <TagRouteButton tag={call.tag} /> on{' '}
+        <button
+          type="button"
+          onClick={(event) => openNote(call.path, event)}
+          className="underline-offset-2 hover:text-text hover:underline"
+        >
+          {call.path}
+        </button>
         {failed !== null ? <span> — {failed}</span> : null}
       </ChipFrame>
     )

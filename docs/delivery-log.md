@@ -7,6 +7,15 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Chat can say what a note is. `set_note_type` proposes putting a tag on a
+  note, or taking one off, as a card the user accepts or rejects from the
+  keyboard; nothing is written before they accept. It is the Type field's own
+  write behind a proposal, so a note typed from chat matches one typed from
+  the picker, `created` stamps included, and the accept re-checks the note as
+  it is then — a note turned private refuses, membership that already moved
+  refuses as stale. Before this the model could read and configure tags but
+  had no way to put one on a note except writing the hashtag into the prose.
+
 - The note's type is a field. A note's Type row now sits above its body on
   every ordinary note, empty or not, and a picker sets it: schema-bearing
   tags first, then every other tag in the graph, then whatever the user

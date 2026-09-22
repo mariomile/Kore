@@ -388,4 +388,24 @@ describe('settleNoteEdit', () => {
     expect(settled[0]).toBe(proposal)
     expect(settled[1]).toMatchObject({ result: { tool: 'setTagSchema', decision: 'accepted' } })
   })
+
+  it('records a decision on a proposed note type the same way', () => {
+    const typeProposal: AssistantPart = {
+      kind: 'tool',
+      call: { tool: 'setNoteType', toolCallId: 'n1', path: 'notes/dispossessed.md', tag: 'book' },
+      result: {
+        tool: 'setNoteType',
+        toolCallId: 'n1',
+        path: 'notes/dispossessed.md',
+        tag: 'book',
+        remove: false,
+        error: null,
+        decision: 'pending',
+      },
+      error: null,
+    }
+    const settled = settleNoteEdit([proposal, typeProposal], 'n1', 'accepted')
+    expect(settled[0]).toBe(proposal)
+    expect(settled[1]).toMatchObject({ result: { tool: 'setNoteType', decision: 'accepted' } })
+  })
 })

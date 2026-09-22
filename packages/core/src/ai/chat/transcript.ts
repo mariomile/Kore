@@ -140,9 +140,21 @@ export function appendEvent(parts: AssistantPart[], event: ChatStreamEvent): Ass
   }
 }
 
+/** Whether a settled tool result is one of the proposals the user decides on. */
+function isProposal(
+  result: NoteToolResult,
+): result is Extract<NoteToolResult, { decision: NoteEditDecision }> {
+  return (
+    result.tool === 'editNote' ||
+    result.tool === 'setTagIcon' ||
+    result.tool === 'setTagSchema' ||
+    result.tool === 'setNoteType'
+  )
+}
+
 /**
  * Record the user's decision on the proposal `toolCallId` — a note edit, a
- * tag-icon change or a tag-schema change, the tool results that carry a
+ * tag-icon or tag-schema change, a note's type: the tool results that carry a
  * `decision` (immutable). Parts that are not that proposal, or whose proposal was
  * refused, pass through untouched — a refusal has nothing to accept.
  */
@@ -155,9 +167,7 @@ export function settleNoteEdit(
     if (
       part.kind !== 'tool' ||
       part.result === null ||
-      (part.result.tool !== 'editNote' &&
-        part.result.tool !== 'setTagIcon' &&
-        part.result.tool !== 'setTagSchema') ||
+      !isProposal(part.result) ||
       part.result.toolCallId !== toolCallId ||
       part.result.error !== null
     ) {

@@ -2,6 +2,7 @@ import { tool } from 'ai'
 import { isAppError } from '../../errors'
 import type { ListTagTypesOptions, TagTypeEntry } from '../../indexing/collections'
 import type { ListNoteTagsOptions, NoteTagFacet } from '../../indexing/note-list'
+import { bodyHasTag } from '../../markdown/body-tag'
 import { parseFrontmatter, splitFrontmatter } from '../../markdown/frontmatter'
 import { isTagName } from '../../markdown/extract'
 import { foldTag } from '../../markdown/keys'
@@ -18,11 +19,15 @@ import {
 } from '../../tags'
 import { cloudSafeTagListings, type TagListingCandidate } from '../checkers'
 import {
+  EDIT_NOTE_MISSING_ERROR,
   EDITS_DISABLED_ERROR,
   INVALID_COLLECTION_TAG_ERROR,
   listTagIconsInput,
   listTagsInput,
+  NOTE_TYPE_ABSENT_ERROR,
+  NOTE_TYPE_UNCHANGED_ERROR,
   PRIVATE_NOTE_EDIT_ERROR,
+  setNoteTypeInput,
   setTagIconInput,
   setTagSchemaInput,
   TAG_DEFINITION_UNMARKED_ERROR,
@@ -34,6 +39,7 @@ import {
   TAG_SCHEMA_UNCHANGED_ERROR,
   type ListTagIconsOutput,
   type ListTagsOutput,
+  type SetNoteTypeOutput,
   type SetTagIconOutput,
   type SetTagSchemaOutput,
 } from './tools-io'
@@ -41,10 +47,11 @@ import type { NoteTools } from './tools'
 
 /**
  * The tag tools: what the graph's tags look like now (`list_tags`), which
- * icons the app can draw (`list_tag_icons`), and the two propose-only
+ * icons the app can draw (`list_tag_icons`), and the three propose-only
  * writers whose proposals the user accepts or rejects in chat —
  * `set_tag_icon` for a tag's look, `set_tag_schema` for the property list
- * its collection renders as columns. Built here, registered by `./tools`.
+ * its collection renders as columns, and `set_note_type` for which tags a
+ * note carries at all. Built here, registered by `./tools`.
  * The catalog is the whole point of the first: a model that cannot see the
  * icon set guesses names, and a guessed name can never be written —
  * `resolveTagIconInput` refuses it.
@@ -60,9 +67,12 @@ export interface TagToolDeps {
   allowEdits: boolean
 }
 
-type TagTools = Pick<NoteTools, 'list_tags' | 'list_tag_icons' | 'set_tag_icon' | 'set_tag_schema'>
+type TagTools = Pick<
+  NoteTools,
+  'list_tags' | 'list_tag_icons' | 'set_tag_icon' | 'set_tag_schema' | 'set_note_type'
+>
 
-/** Build the four tag tools over `deps`. */
+/** Build the five tag tools over `deps`. */
 export function buildTagTools(deps: TagToolDeps): TagTools {
   return {
     list_tags: tool({
@@ -131,6 +141,56 @@ export function buildTagTools(deps: TagToolDeps): TagTools {
           return { ok: false, tag: name, error: TAG_ICON_UNCHANGED_ERROR }
         }
         return { ok: true, tag: name, path, icon: resolved, previousIcon }
+      },
+    }),
+
+    set_note_type: tool({
+      description:
+        'Propose what a note *is*: put a tag on it, or take one off with remove. A ' +
+        'tag is the note’s type and its collection membership at once, so this is how ' +
+        'a note becomes a #book or joins #project — never by writing the hashtag into ' +
+        'its text with edit_note. Accepting also fills in any created-date property ' +
+        'the type declares. The user reviews the change in chat and accepts or rejects ' +
+        'it — nothing is written until they accept, so never claim it is done. ' +
+        'Requires "Allow edits"; private notes are refused.',
+      inputSchema: setNoteTypeInput,
+      execute: async ({ path, tag, remove }): Promise<SetNoteTypeOutput> => {
+        const name = tag.trim().replace(/^#+/, '')
+        const off = remove === true
+        if (!deps.allowEdits) {
+          return { ok: false, path, tag: name, error: EDITS_DISABLED_ERROR }
+        }
+        if (!isTagName(name)) {
+          return { ok: false, path, tag: name, error: INVALID_COLLECTION_TAG_ERROR }
+        }
+        let source: string
+        try {
+          source = await deps.readNoteFn(path)
+        } catch (cause) {
+          if (isAppError(cause) && cause.kind === 'notFound') {
+            return { ok: false, path, tag: name, error: EDIT_NOTE_MISSING_ERROR }
+          }
+          throw cause
+        }
+        // The privacy hard block on the live frontmatter, like every other
+        // write: deciding what a private note *is* implies having read it.
+        const { raw, body } = splitFrontmatter(source)
+        if (parseFrontmatter(raw).data.private) {
+          return { ok: false, path, tag: name, error: PRIVATE_NOTE_EDIT_ERROR }
+        }
+        // Membership is what the indexer scans out of the body, so both
+        // "nothing to do" refusals ask the body — the same question the
+        // accept's `appendBodyTag`/`removeBodyTag` will ask again.
+        const carried = bodyHasTag(body, name)
+        if (carried !== off) {
+          return {
+            ok: false,
+            path,
+            tag: name,
+            error: off ? NOTE_TYPE_ABSENT_ERROR : NOTE_TYPE_UNCHANGED_ERROR,
+          }
+        }
+        return { ok: true, path, tag: name, remove: off }
       },
     }),
 

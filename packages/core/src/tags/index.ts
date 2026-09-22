@@ -52,7 +52,7 @@ export {
   type TagIconResolution,
   type TagSymbolIconEntry,
 } from './tag-icon-catalog'
-export { localCalendarDate, createdStampValues } from './timestamps'
+export { localCalendarDate, createdStampValues, missingCreatedStamps } from './timestamps'
 export { evaluateFormula, type FormulaResult } from './formula'
 export {
   extractNoteProperties,

@@ -63,6 +63,12 @@ const toolCallSchema = z.discriminatedUnion('tool', [
   z.object({ tool: z.literal('tagIcons'), toolCallId: z.string() }),
   z.object({ tool: z.literal('setTagIcon'), toolCallId: z.string(), tag: z.string() }),
   z.object({ tool: z.literal('setTagSchema'), toolCallId: z.string(), tag: z.string() }),
+  z.object({
+    tool: z.literal('setNoteType'),
+    toolCallId: z.string(),
+    path: z.string(),
+    tag: z.string(),
+  }),
 ])
 
 const toolResultSchema = z.discriminatedUnion('tool', [
@@ -154,6 +160,15 @@ const toolResultSchema = z.discriminatedUnion('tool', [
     properties: z.array(tagPropertySchema),
     previousProperties: z.array(tagPropertySchema),
     renames: z.array(z.object({ from: z.string(), to: z.string() })),
+    error: z.string().nullable(),
+    decision: z.enum(['pending', 'accepted', 'rejected']),
+  }),
+  z.object({
+    tool: z.literal('setNoteType'),
+    toolCallId: z.string(),
+    path: z.string(),
+    tag: z.string(),
+    remove: z.boolean(),
     error: z.string().nullable(),
     decision: z.enum(['pending', 'accepted', 'rejected']),
   }),

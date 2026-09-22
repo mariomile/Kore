@@ -1,5 +1,51 @@
 # Kore working state
 
+## Note editing reliability and similar-note previews — 2026-09-22
+
+The consolidation cycle protects property edits and makes tagged-line conversion
+act on the clicked line. Similar notes now reveal their existing retrieval
+heading and passage on keyboard focus or hover.
+
+- [x] Serialize frontmatter commits per graph generation and note, including
+  unopened notes. Generation-gated reads and writes preserve unrelated content;
+  a newly opened editor causes a visible retry error instead of a stale disk
+  write. Failed writes do not poison the queue. This is in-process protection,
+  not a cross-process or external-sync lock.
+- [x] Reject invalid ratings with a visible 1–5 integer validation message.
+  Enter and outside press preserve the stored value; Escape cancels and an
+  explicitly empty input still clears it.
+- [x] Focus short Select/Status menus so arrows and Enter work without a search
+  input; Escape restores focus to the trigger.
+- [x] Append asynchronously created relations to the latest selection without
+  restoring removed links or toggling an already selected target off.
+- [x] Map a clicked tag to its Markdown line through an undispatched editor
+  transaction. Conversion uses that exact line, including duplicate text, and
+  declines if the source has changed. If it changes after note creation, the
+  new note can remain unlinked; the updated source is preserved.
+- [x] Reveal the existing Similar notes heading/snippet on demand, with an
+  accessible description. Retrieval, caching, ranking and provider calls stay
+  unchanged.
+
+**Validation:** 98 focused tests across six files pass in Chromium and WebKit.
+The WebKit run exposed a test sending keys before focus transfer; the test now
+waits for the actual command root to be focused, and its 24-test property suite
+passes in both engines. The persistence
+regression rereads a real temporary file after overlapping property commits;
+IPC is mocked, so this does not prove native restart/sync behavior. Manual
+Chromium replay confirmed rating 4 survives invalid 6 and 2.5 (Enter/outside
+press), keyboard selection and focus return, and conversion of the second
+`#idea` line with the first unchanged. The Similar notes component screenshot
+was reviewed with a focused row showing its heading and passage. `pnpm check`
+(typecheck, formatting and lint) and `pnpm build` (desktop and extension) pass.
+
+**Native limitation:** `pnpm tauri:dev` compiled and launched the development
+binary, but the UI controller could not select that unbundled app. Native
+interaction, restart persistence, iPhone, external sync and live AI providers
+were not certified by this cycle.
+
+**Next:** Review this consolidation PR. Full-block extraction remains a separate
+product decision: define what stays in the source and the two-file Undo contract
+before implementation. No release/version bump is part of this cycle.
 ## Chat can say what a note is — 2026-09-22
 
 Slice C of the note-type work, and the third AI-app-control writer after the
@@ -115,7 +161,6 @@ the properties slot is measured against the live H1.
 **Next:** merge, then set a type from the picker on a real note and watch the
 tag page's collection pick up the row. Slice B stays parked until the
 `tags:`-in-frontmatter count on the vault is known.
-
 ## Chat can edit a supertag's schema — 2026-09-21
 
 Slice 2 of the AI-app-control map: after the icon (slice 1), what a tag

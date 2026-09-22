@@ -1,4 +1,5 @@
-import { useRef, useState, type KeyboardEvent, type ReactElement } from 'react'
+import { useId, useRef, useState, type KeyboardEvent, type ReactElement } from 'react'
+import { parseRating } from '@reflect/core'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent } from '@/components/ui/popover'
 import {
@@ -19,7 +20,9 @@ export function InputPropertyEditor({
 }: PropertyEditorProps): ReactElement {
   const [open, setOpen] = useState(false)
   const [draft, setDraft] = useState('')
-  // Esc closes the popover through Radix, which also blurs the input — the
+  const [validationError, setValidationError] = useState<string | null>(null)
+  const validationId = useId()
+  // Esc closes the popover, which also blurs the input — the
   // flag keeps that path a cancel instead of a phantom commit.
   const cancelled = useRef(false)
   // What the input opened with. An untouched draft never commits: a value
@@ -30,12 +33,20 @@ export function InputPropertyEditor({
 
   const inputRef = useRef<HTMLInputElement | null>(null)
 
-  const commit = (): void => {
+  const commit = (): boolean => {
     if (cancelled.current || draft === seed.current) {
-      return
+      return true
     }
-    cancelled.current = true // a blur following an Enter-commit is a no-op
     const trimmed = draft.trim()
+    if (
+      property.type === 'rating' &&
+      (inputRef.current?.validity.badInput === true ||
+        (trimmed !== '' && parseRating(Number(trimmed)) === null))
+    ) {
+      setValidationError('Enter a whole number from 1 to 5.')
+      inputRef.current?.focus()
+      return false
+    }
     // Unparseable numeric input is a typo, not a delete — keep the stored
     // value rather than erasing it. `badInput` catches the number-input case
     // where the DOM reports '' for half-typed input like `4e`, which would
@@ -45,11 +56,14 @@ export function InputPropertyEditor({
       ((trimmed !== '' && !Number.isFinite(Number(trimmed))) ||
         inputRef.current?.validity.badInput === true)
     ) {
+      cancelled.current = true
       setOpen(false)
-      return
+      return true
     }
+    cancelled.current = true // a blur following an Enter-commit is a no-op
     onCommit(typedValueForText(property, draft))
     setOpen(false)
+    return true
   }
   const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>): void => {
     if (event.key === 'Enter') {
@@ -57,6 +71,7 @@ export function InputPropertyEditor({
       commit()
     } else if (event.key === 'Escape') {
       cancelled.current = true
+      setValidationError(null)
     }
   }
   const inputType =
@@ -73,10 +88,19 @@ export function InputPropertyEditor({
   return (
     <Popover
       open={open}
-      onOpenChange={(next) => {
+      onOpenChange={(next, eventDetails) => {
+        if (!next && eventDetails.reason === 'escape-key') {
+          cancelled.current = true
+          setValidationError(null)
+        }
+        if (!next && !cancelled.current && !commit()) {
+          eventDetails.cancel()
+          return
+        }
         setOpen(next)
         if (next) {
           cancelled.current = false
+          setValidationError(null)
           seed.current =
             property.type === 'files' ? editorSeedList(value).join(', ') : editorSeedText(value)
           setDraft(seed.current)
@@ -94,11 +118,21 @@ export function InputPropertyEditor({
           step={property.type === 'rating' ? 1 : undefined}
           value={draft}
           aria-label={property.name}
+          aria-invalid={validationError !== null}
+          aria-describedby={validationError === null ? undefined : validationId}
           placeholder={property.name}
-          onChange={(event) => setDraft(event.target.value)}
+          onChange={(event) => {
+            setValidationError(null)
+            setDraft(event.target.value)
+          }}
           onKeyDown={handleKeyDown}
           onBlur={commit}
         />
+        {validationError === null ? null : (
+          <p id={validationId} role="alert" className="px-1 text-xs text-destructive">
+            {validationError}
+          </p>
+        )}
       </PopoverContent>
     </Popover>
   )

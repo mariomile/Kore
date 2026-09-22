@@ -8,9 +8,9 @@ import { isAppError, readNote } from '@reflect/core'
  * loading) — its post-load reconcile then adopts our write like any external
  * change.
  */
-export async function readNoteOrEmpty(path: string): Promise<string> {
+export async function readNoteOrEmpty(path: string, generation?: number): Promise<string> {
   try {
-    return await readNote(path)
+    return generation === undefined ? await readNote(path) : await readNote(path, generation)
   } catch (cause) {
     if (isAppError(cause) && cause.kind === 'notFound') {
       return ''

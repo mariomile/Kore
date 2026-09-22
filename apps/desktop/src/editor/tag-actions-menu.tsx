@@ -48,7 +48,8 @@ export function TagActionsMenu({
         <button
           type="button"
           onClick={onConvert}
-          className="flex w-full items-center rounded px-2 py-1.5 text-left text-sm hover:bg-surface-hover"
+          disabled={state.lineIndex === null}
+          className="flex w-full items-center rounded px-2 py-1.5 text-left text-sm hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-50"
         >
           Turn this line into a #{tag} note
         </button>

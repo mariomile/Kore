@@ -77,14 +77,14 @@ describe('SimilarNotesSection', () => {
     await view.unmount()
   })
 
-  it('renders the Similar notes section with one title-only row per neighbor', async () => {
+  it('shows an existing heading and snippet when a neighbor receives focus', async () => {
     relatedNotes.mockResolvedValue([
       {
         path: 'notes/rust.md',
         title: 'Rust',
         score: 0.9,
         snippet: 'borrow checker notes',
-        heading: null,
+        heading: 'Ownership and borrowing',
         isPrivate: false,
       },
       {
@@ -103,9 +103,12 @@ describe('SimilarNotesSection', () => {
     const rustRow = view.getByRole('button', { name: 'Rust' }).element()
     expect(rustRow.className).toContain('px-3')
     expect(rustRow.parentElement?.className ?? '').not.toContain('-mx-1')
-    // V1 rows are bare titles — snippets never render here.
+    // Passage details stay on demand instead of expanding every row at rest.
     expect(view.getByText('borrow checker notes').query()).toBeNull()
     expect(view.getByText('comptime experiments').query()).toBeNull()
+    rustRow.focus()
+    await expect.element(view.getByText('Ownership and borrowing')).toBeVisible()
+    await expect.element(view.getByText('borrow checker notes')).toBeVisible()
     await view.unmount()
   })
 

@@ -7,9 +7,15 @@ import { PropertyValueEditor } from './property-editors'
 
 const relationSuggestions = vi.hoisted(() => ({ current: [] as WikiLinkSuggestion[] }))
 const scopedTargetKeys = vi.hoisted(() => ({ current: [] as string[] }))
+const createNoteWithTitle = vi.hoisted(() => vi.fn())
+const getTagType = vi.hoisted(() => vi.fn())
+const getWikiAddressForPath = vi.hoisted(() => vi.fn())
 
 vi.mock('@reflect/core', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@reflect/core')>()),
+  createNoteWithTitle,
+  getTagType,
+  getWikiAddressForPath,
   suggestWikiLinkTargets: async () => ({
     suggestions: relationSuggestions.current,
     claimedTargetKeys: [],
@@ -25,10 +31,13 @@ vi.mock('@/providers/graph-provider', () => ({
 }))
 vi.mock('@/hooks/use-bridge-ready', () => ({ useBridgeReady: () => true }))
 
-const onCommit = vi.fn()
+const onCommit = vi.fn<(value: unknown) => void>()
 
 beforeEach(() => {
   onCommit.mockClear()
+  createNoteWithTitle.mockReset()
+  getTagType.mockReset().mockResolvedValue(null)
+  getWikiAddressForPath.mockReset()
 })
 
 function stored(value: string, valueType: CollectionValue['valueType']): CollectionValue {
@@ -142,6 +151,45 @@ describe('PropertyValueEditor', () => {
     expect(onCommit).toHaveBeenLastCalledWith(undefined)
   })
 
+  it('drives a short select with arrows, Enter, and Escape', async () => {
+    const property: TagProperty = {
+      name: 'Status',
+      key: 'status',
+      type: 'select',
+      options: ['to-read', 'done'],
+    }
+    const view = await render(editor(property))
+    const trigger = view.getByRole('button', { name: 'Edit Status' })
+
+    await trigger.click()
+    await vi.waitFor(() => {
+      expect(document.activeElement).toBe(document.querySelector('[cmdk-root]'))
+    })
+    await userEvent.keyboard('{ArrowDown}{Enter}')
+    expect(onCommit).toHaveBeenCalledWith('done')
+
+    onCommit.mockClear()
+    await trigger.click()
+    await userEvent.keyboard('{Escape}')
+    expect(onCommit).not.toHaveBeenCalled()
+    await expect.element(trigger).toHaveFocus()
+  })
+
+  it('keeps keyboard selection on the search input for long option lists', async () => {
+    const property: TagProperty = {
+      name: 'Status',
+      key: 'status',
+      type: 'select',
+      options: ['one', 'two', 'three', 'four', 'five', 'six', 'seven'],
+    }
+    const view = await render(editor(property))
+
+    await view.getByRole('button', { name: 'Edit Status' }).click()
+    await expect.element(view.getByPlaceholder('Search Status…')).toHaveFocus()
+    await userEvent.keyboard('{ArrowDown}{Enter}')
+    expect(onCommit).toHaveBeenCalledWith('two')
+  })
+
   it('Clear deletes the key even when the stored value is a mismatched list', async () => {
     const property: TagProperty = {
       name: 'Status',
@@ -212,6 +260,53 @@ describe('PropertyValueEditor', () => {
     expect(onCommit).toHaveBeenLastCalledWith(['[[Frank Herbert]]'])
   })
 
+  it('adds a delayed created relation to the latest selection once', async () => {
+    relationSuggestions.current = [
+      {
+        target: 'Frank Herbert',
+        insertText: 'Frank Herbert',
+        path: 'notes/herbert.md',
+        title: 'Frank Herbert',
+        alias: null,
+        date: null,
+      },
+    ]
+    let resolveCreate: ((path: string) => void) | undefined
+    createNoteWithTitle.mockImplementationOnce(
+      async () =>
+        await new Promise<string>((resolve) => {
+          resolveCreate = resolve
+        }),
+    )
+    getWikiAddressForPath.mockResolvedValue({ insertText: 'Octavia Butler' })
+    const property: TagProperty = {
+      name: 'Authors',
+      key: 'authors',
+      type: 'relations',
+      target: 'person',
+    }
+    const view = await render(editor(property, stored('["[[Le Guin]]"]', 'list')))
+
+    await view.getByRole('button', { name: 'Edit Authors' }).click()
+    const input = view.getByPlaceholder('Link #person rows…')
+    await input.fill('Octavia Butler')
+    await view.getByRole('option', { name: 'Create “Octavia Butler” in #person' }).click()
+
+    await input.fill('')
+    await view.getByRole('option', { name: 'Frank Herbert' }).click()
+    expect(onCommit).toHaveBeenLastCalledWith(['[[Le Guin]]', '[[Frank Herbert]]'])
+    await view.getByRole('option', { name: 'Le Guin' }).click()
+    expect(onCommit).toHaveBeenLastCalledWith(['[[Frank Herbert]]'])
+
+    await userEvent.keyboard('{Escape}')
+    await view.getByRole('button', { name: 'Edit Authors' }).click()
+
+    resolveCreate?.('notes/octavia-butler.md')
+    await expect
+      .poll(() => onCommit.mock.calls.at(-1)?.[0])
+      .toEqual(['[[Frank Herbert]]', '[[Octavia Butler]]'])
+  })
+
   it('deletes the key on the last unlink of a multi-relation', async () => {
     relationSuggestions.current = []
     const property: TagProperty = { name: 'Authors', key: 'authors', type: 'relations' }
@@ -276,6 +371,29 @@ describe('PropertyValueEditor', () => {
     await view.getByRole('spinbutton', { name: 'Score' }).fill('4')
     await userEvent.keyboard('{Enter}')
     expect(onCommit).toHaveBeenCalledWith(4)
+  })
+
+  it('keeps the previous rating and shows validation for invalid Enter and blur', async () => {
+    const property: TagProperty = { name: 'Score', key: 'score', type: 'rating' }
+    const view = await render(editor(property, stored('4', 'number')))
+
+    await view.getByRole('button', { name: 'Edit Score' }).click()
+    const input = view.getByRole('spinbutton', { name: 'Score' })
+    await input.fill('6')
+    await userEvent.keyboard('{Enter}')
+
+    expect(onCommit).not.toHaveBeenCalled()
+    await expect.element(view.getByText('Enter a whole number from 1 to 5.')).toBeInTheDocument()
+
+    await input.fill('7')
+    await userEvent.click(document.body)
+    expect(onCommit).not.toHaveBeenCalled()
+    await expect.element(input).toBeVisible()
+    await expect.element(view.getByText('Enter a whole number from 1 to 5.')).toBeVisible()
+
+    await input.fill('')
+    await userEvent.keyboard('{Enter}')
+    expect(onCommit).toHaveBeenCalledWith(undefined)
   })
 
   it('commits files as a list of paths', async () => {

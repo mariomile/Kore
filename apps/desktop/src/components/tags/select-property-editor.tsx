@@ -1,4 +1,4 @@
-import { useState, type ReactElement } from 'react'
+import { useRef, useState, type ReactElement } from 'react'
 import { Check } from '@/components/icons'
 import {
   Command,
@@ -21,6 +21,7 @@ export function SelectPropertyEditor({
   align,
 }: PropertyEditorProps): ReactElement {
   const [open, setOpen] = useState(false)
+  const commandRef = useRef<HTMLDivElement | null>(null)
   const multiple = property.type === 'multiselect'
   // Toggles work against a local copy seeded when the popover opens: the
   // `value` prop only refreshes after write → watcher → refetch, so two
@@ -29,6 +30,7 @@ export function SelectPropertyEditor({
   const [localSelected, setLocalSelected] = useState<string[] | null>(null)
   const selected = localSelected ?? editorSeedList(value)
   const options = [...new Set([...(property.options ?? []), ...selected])]
+  const searchable = options.length > 6
 
   const chooseSingle = (option: string): void => {
     // Re-picking the current value clears it — one gesture for set and unset.
@@ -56,9 +58,14 @@ export function SelectPropertyEditor({
       }}
     >
       <EditorTrigger name={property.name}>{children}</EditorTrigger>
-      <PopoverContent align={align ?? 'start'} sideOffset={4} className="w-56 p-0">
-        <Command label={`Choose ${property.name}`}>
-          {options.length > 6 ? <CommandInput placeholder={`Search ${property.name}…`} /> : null}
+      <PopoverContent
+        align={align ?? 'start'}
+        sideOffset={4}
+        className="w-56 p-0"
+        initialFocus={searchable ? true : commandRef}
+      >
+        <Command ref={commandRef} tabIndex={-1} label={`Choose ${property.name}`}>
+          {searchable ? <CommandInput placeholder={`Search ${property.name}…`} /> : null}
           <CommandList>
             <CommandEmpty>No options.</CommandEmpty>
             <CommandGroup>

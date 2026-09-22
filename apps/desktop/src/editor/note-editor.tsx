@@ -8,6 +8,7 @@ import {
   type Ref,
 } from 'react'
 import { resourceUrl, errorMessage, type TimeFormat } from '@reflect/core'
+import { docToMarkdown } from '@meowdown/core'
 import type {
   AcceptPendingReplacementOptions,
   ExitBoundaryHandler,
@@ -54,6 +55,46 @@ import { cn } from '@/lib/utils'
 import { resolveWikiEmbed } from '@/editor/resolve-wiki-embed'
 
 type WikilinkHoverRenderer = (hit: WikilinkHoverHit) => ReactNode | Promise<ReactNode>
+
+const TAG_LINE_MARKER = 'KORE-TAG-LINE-6F4C0D8A'
+
+function tagLineIndex(
+  handle: EditorHandle | null,
+  event: MouseEvent | KeyboardEvent,
+): number | null {
+  const editor = handle?.editor
+  if (handle === null || editor === undefined) {
+    return null
+  }
+  const source = handle.getMarkdown()
+  const { view } = editor
+  if (source.includes(TAG_LINE_MARKER) || docToMarkdown(view.state.doc) !== source) {
+    return null
+  }
+  let position = view.state.selection.from
+  if (event instanceof MouseEvent && event.target instanceof HTMLElement) {
+    const tag = event.target.closest('.md-tag')
+    if (tag === null || !view.dom.contains(tag)) {
+      return null
+    }
+    try {
+      position = view.posAtDOM(tag, 0)
+    } catch {
+      return null
+    }
+  }
+  try {
+    const markedSource = docToMarkdown(view.state.tr.insertText(TAG_LINE_MARKER, position).doc)
+    if (markedSource.replace(TAG_LINE_MARKER, '') !== source) {
+      return null
+    }
+    const lines = markedSource.split('\n')
+    const index = lines.findIndex((line) => line.includes(TAG_LINE_MARKER))
+    return index === -1 ? null : index
+  } catch {
+    return null
+  }
+}
 
 /**
  * Reflect's note editor: a thin wrapper over `@meowdown/react`'s
@@ -200,9 +241,11 @@ interface NoteEditorProps {
   /**
    * Click on an inline `#tag`. The tag name arrives without the leading `#`,
    * plus the originating click/key `event` — hosts that need a click-anchored
-   * menu (e.g. a daily note's "turn into a note") position from it.
+   * menu (e.g. a daily note's "turn into a note") position from it. The
+   * zero-based body `lineIndex` identifies the physical Markdown line; `null`
+   * safely disables line-specific actions when the editor cannot map it.
    */
-  onTagClick?: (tag: string, event: MouseEvent | KeyboardEvent) => void
+  onTagClick?: (tag: string, event: MouseEvent | KeyboardEvent, lineIndex: number | null) => void
   /** Search notes for the `[[` autocomplete menu. */
   onWikilinkSearch?: WikilinkSearchHandler
   /** Search tags for the `#` autocomplete menu. */
@@ -368,7 +411,12 @@ export function NoteEditor({
     [],
   )
   const handleTagClick = useCallback(
-    (payload: TagClickPayload) => latestRef.current.onTagClick?.(payload.tag, payload.event),
+    (payload: TagClickPayload) =>
+      latestRef.current.onTagClick?.(
+        payload.tag,
+        payload.event,
+        tagLineIndex(innerRef.current, payload.event),
+      ),
     [],
   )
   const handleResolveImageUrl = useCallback(

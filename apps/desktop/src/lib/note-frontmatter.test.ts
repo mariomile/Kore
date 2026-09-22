@@ -1,8 +1,13 @@
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { NoteSession } from '@/editor/note-session'
 
 const readNote = vi.hoisted(() => vi.fn<(path: string) => Promise<string>>())
-const writeNote = vi.hoisted(() => vi.fn(async () => {}))
+const writeNote = vi.hoisted(() =>
+  vi.fn<(path: string, contents: string, generation: number) => Promise<void>>(async () => {}),
+)
 const openSession = vi.hoisted(() => vi.fn<(path: string) => NoteSession | null>(() => null))
 
 vi.mock('@reflect/core', async (importOriginal) => ({
@@ -25,7 +30,7 @@ function fakeSession(options: { live?: string | null; canCommit?: boolean }) {
 
 beforeEach(() => {
   readNote.mockReset()
-  writeNote.mockClear()
+  writeNote.mockReset().mockResolvedValue(undefined)
   openSession.mockReset().mockReturnValue(null)
 })
 
@@ -59,6 +64,32 @@ describe('commitNoteFrontmatter', () => {
     expect(writeNote).not.toHaveBeenCalled()
   })
 
+  it('refuses a queued disk patch when the note opens before its turn', async () => {
+    let releaseOwner: ((committed: boolean) => void) | undefined
+    const firstOwner = {
+      commitFrontmatter: vi.fn(
+        async () =>
+          await new Promise<boolean>((resolve) => {
+            releaseOwner = resolve
+          }),
+      ),
+    } as unknown as NoteSession
+    const newOwner = fakeSession({ live: '# current\n' })
+    openSession.mockReturnValue(firstOwner)
+    const blocking = commitNoteFrontmatter('notes/a.md', { pinned: true }, 3)
+    await vi.waitFor(() => expect(firstOwner.commitFrontmatter).toHaveBeenCalled())
+
+    openSession.mockReturnValue(null)
+    const queued = commitNoteFrontmatter('notes/a.md', { properties: { rating: 4 } }, 3)
+    openSession.mockReturnValue(newOwner.session)
+    releaseOwner?.(true)
+
+    await expect(blocking).resolves.toBeUndefined()
+    await expect(queued).rejects.toThrow('The note opened before this edit could be saved')
+    expect(newOwner.commitFrontmatter).not.toHaveBeenCalled()
+    expect(writeNote).not.toHaveBeenCalled()
+  })
+
   it('falls back to a disk patch when the session declines the patch', async () => {
     openSession.mockReturnValue(fakeSession({ live: '# A\n', canCommit: false }).session)
     readNote.mockResolvedValue('# A\n')
@@ -74,6 +105,43 @@ describe('commitNoteFrontmatter', () => {
     await commitNoteFrontmatter('notes/a.md', { private: true }, 3)
 
     expect(writeNote).toHaveBeenCalledWith('notes/a.md', '---\nprivate: true\n---\n# A\n', 3)
+  })
+
+  it('serializes concurrent disk patches so both properties survive', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'kore-frontmatter-'))
+    const path = join(directory, 'a.md')
+    await writeFile(path, '---\nstatus: reading\n---\n# A\nBody\n')
+    readNote.mockImplementation(async (notePath) => await readFile(notePath, 'utf8'))
+    writeNote.mockImplementation(async (notePath, contents) => await writeFile(notePath, contents))
+
+    try {
+      await Promise.all([
+        commitNoteFrontmatter(path, { properties: { rating: 4 } }, 3),
+        commitNoteFrontmatter(path, { properties: { author: 'Le Guin' } }, 3),
+      ])
+
+      await expect(readFile(path, 'utf8')).resolves.toBe(
+        '---\nstatus: reading\nrating: 4\nauthor: Le Guin\n---\n# A\nBody\n',
+      )
+    } finally {
+      await rm(directory, { recursive: true })
+    }
+  })
+
+  it('continues the note queue after a failed write', async () => {
+    let disk = '# A\n'
+    const failure = new Error('disk full')
+    readNote.mockImplementation(async () => disk)
+    writeNote.mockRejectedValueOnce(failure).mockImplementationOnce(async (_path, contents) => {
+      disk = contents
+    })
+
+    const rejected = commitNoteFrontmatter('notes/a.md', { properties: { rating: 4 } }, 3)
+    const following = commitNoteFrontmatter('notes/a.md', { properties: { author: 'Le Guin' } }, 3)
+
+    await expect(rejected).rejects.toBe(failure)
+    await expect(following).resolves.toBeUndefined()
+    expect(disk).toBe('---\nauthor: Le Guin\n---\n# A\n')
   })
 
   it('writes nothing when the patch changes nothing', async () => {

@@ -1,4 +1,4 @@
-import { useState, type ReactElement } from 'react'
+import { useRef, useState, type ReactElement } from 'react'
 import { relationDisplay, relationTarget, relationTargetOf, relationValue } from '@reflect/core'
 import { Check } from '@/components/icons'
 import {
@@ -37,6 +37,7 @@ export function MultiRelationPropertyEditor({
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [localLinks, setLocalLinks] = useState<string[] | null>(null)
+  const latestLinks = useRef(editorSeedList(value))
   const { graph } = useGraph()
   // Each entry is a stored `[[Target]]` value; a bare string (hand-written
   // YAML) still participates, keyed by its own text.
@@ -55,18 +56,31 @@ export function MultiRelationPropertyEditor({
     if (target === undefined || newRowTitle === null || graph === null) {
       return
     }
-    toggle(await createRelationRow(target, newRowTitle, graph.generation))
+    append(await createRelationRow(target, newRowTitle, graph.generation))
   }
 
   const toggle = (insertText: string): void => {
     const candidate = relationValue(insertText)
-    const next = links.some((link) => targetOf(link) === targetOf(candidate))
-      ? links.filter((link) => targetOf(link) !== targetOf(candidate))
-      : [...links, candidate]
+    const next = latestLinks.current.some((link) => targetOf(link) === targetOf(candidate))
+      ? latestLinks.current.filter((link) => targetOf(link) !== targetOf(candidate))
+      : [...latestLinks.current, candidate]
+    latestLinks.current = next
     setLocalLinks(next)
     onCommit(next.length === 0 ? undefined : next)
   }
+  const append = (insertText: string): void => {
+    const candidate = relationValue(insertText)
+    if (latestLinks.current.some((link) => targetOf(link) === targetOf(candidate))) {
+      return
+    }
+    const next = [...latestLinks.current, candidate]
+    latestLinks.current = next
+    setLocalLinks(next)
+    onCommit(next)
+  }
   const clear = (): void => {
+    latestLinks.current = []
+    setLocalLinks([])
     onCommit(undefined)
     setOpen(false)
   }
@@ -76,7 +90,13 @@ export function MultiRelationPropertyEditor({
       open={open}
       onOpenChange={(next) => {
         setOpen(next)
-        setLocalLinks(next ? editorSeedList(value) : null)
+        if (next) {
+          const seed = editorSeedList(value)
+          latestLinks.current = seed
+          setLocalLinks(seed)
+        } else {
+          setLocalLinks(null)
+        }
         if (!next) {
           setQuery('')
         }

@@ -10,6 +10,8 @@ import { useTagNavigation } from './use-tag-navigation'
 
 export interface TagActionsMenuState {
   readonly tag: string
+  readonly lineIndex: number | null
+  readonly source: string | null
   /** Anchor coordinates in viewport space, from the originating click. */
   readonly x: number
   readonly y: number
@@ -41,7 +43,7 @@ export function useTagActions(
 ): {
   menu: TagActionsMenuState | null
   closeMenu: () => void
-  onTagClick: (tag: string, event: MouseEvent | KeyboardEvent) => void
+  onTagClick: (tag: string, event: MouseEvent | KeyboardEvent, lineIndex: number | null) => void
   openTag: (tag: string) => void
   convertLineToNote: () => Promise<void>
 } {
@@ -56,7 +58,7 @@ export function useTagActions(
   const closeMenu = useCallback(() => setMenu(null), [])
 
   const onTagClick = useCallback(
-    (tag: string, event: MouseEvent | KeyboardEvent) => {
+    (tag: string, event: MouseEvent | KeyboardEvent, lineIndex: number | null) => {
       if (!daily) {
         navigateToTag(tag)
         return
@@ -65,9 +67,10 @@ export function useTagActions(
       // event is still to come, and a popover that mounted in between reads
       // it as an outside press and closes at once. Open after it has passed.
       const anchor = anchorPointFromEvent(event)
-      setTimeout(() => setMenu({ tag, ...anchor }), 0)
+      const source = getEditorHandle()?.getMarkdown() ?? null
+      setTimeout(() => setMenu({ tag, lineIndex, source, ...anchor }), 0)
     },
-    [daily, navigateToTag],
+    [daily, navigateToTag, getEditorHandle],
   )
 
   const openTag = useCallback(
@@ -85,23 +88,39 @@ export function useTagActions(
       return
     }
     const source = handle.getMarkdown()
+    if (active.source === null || source !== active.source) {
+      closeMenu()
+      return
+    }
     const { raw, body } = splitFrontmatter(source)
     const lines = body.split('\n')
-    const lineIndex = lines.findIndex((line) => bodyHasTag(line, active.tag))
+    const { lineIndex } = active
     closeMenu()
-    if (lineIndex === -1) {
+    if (
+      lineIndex === null ||
+      lineIndex < 0 ||
+      lineIndex >= lines.length ||
+      !bodyHasTag(lines[lineIndex]!, active.tag)
+    ) {
       return
     }
     const { title, replacementLine } = convertTaggedLineToNote(lines[lineIndex]!, active.tag)
     // The same birth as the table's "+ New" line: a slug path, one H1, the
     // tag, the type's stamps and template.
+    const templateValues = await resolveTemplateValues(null)
+    if (handle.getMarkdown() !== source) {
+      return
+    }
     const notePath = await createTitledCollectionNote(
       active.tag,
       graph.generation,
       title,
       tagType,
-      await resolveTemplateValues(null),
+      templateValues,
     )
+    if (handle.getMarkdown() !== source) {
+      return
+    }
     lines[lineIndex] = replacementLine
     const nextBody = lines.join('\n')
     const nextSource = raw === null ? nextBody : `---\n${raw}\n---\n${nextBody}`

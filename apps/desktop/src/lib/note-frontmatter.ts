@@ -3,6 +3,26 @@ import { frontmatterPatchToYaml, type FrontmatterPatch } from '@/editor/note-ses
 import { openSession } from '@/editor/open-documents'
 import { readNoteOrEmpty } from '@/lib/note-read'
 
+const frontmatterWriteChains = new Map<string, Promise<unknown>>()
+
+/** Serialize this webview's frontmatter writes for one graph generation and
+ * note path. External processes and sync conflicts remain guarded elsewhere. */
+function serializeFrontmatterWrite<T>(key: string, write: () => Promise<T>): Promise<T> {
+  const previous = frontmatterWriteChains.get(key) ?? Promise.resolve()
+  const result = previous.then(write, write)
+  const settled = result.then(
+    () => {},
+    () => {},
+  )
+  frontmatterWriteChains.set(key, settled)
+  void settled.then(() => {
+    if (frontmatterWriteChains.get(key) === settled) {
+      frontmatterWriteChains.delete(key)
+    }
+  })
+  return result
+}
+
 /**
  * The single safe way to read and write a note's frontmatter from an in-app
  * action (pin, private, gist publish). Each used to hand-roll the same
@@ -39,14 +59,24 @@ export async function commitNoteFrontmatter(
   generation: number,
 ): Promise<void> {
   const owner = openSession(path)
-  if (owner !== null && (await owner.commitFrontmatter(patch))) {
-    return
-  }
-  const onDisk = await readNoteOrEmpty(path)
-  const patched = upsertFrontmatter(onDisk, frontmatterPatchToYaml(patch))
-  if (patched !== onDisk) {
-    await writeNote(path, patched, generation)
-  }
+  return await serializeFrontmatterWrite(`${generation}:${path}`, async () => {
+    const queuedOwner = openSession(path)
+    if (queuedOwner !== null && queuedOwner !== owner) {
+      throw new Error('The note opened before this edit could be saved. Try again.')
+    }
+    if (owner !== null && (await owner.commitFrontmatter(patch))) {
+      return
+    }
+    const onDisk = await readNoteOrEmpty(path, generation)
+    const ownerAfterRead = openSession(path)
+    if (ownerAfterRead !== null && ownerAfterRead !== owner) {
+      throw new Error('The note opened before this edit could be saved. Try again.')
+    }
+    const patched = upsertFrontmatter(onDisk, frontmatterPatchToYaml(patch))
+    if (patched !== onDisk) {
+      await writeNote(path, patched, generation)
+    }
+  })
 }
 
 /**

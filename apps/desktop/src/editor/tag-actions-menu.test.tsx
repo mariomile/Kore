@@ -15,7 +15,7 @@ describe('TagActionsMenu', () => {
     const onConvert = vi.fn()
     const view = await render(
       <TagActionsMenu
-        state={{ tag: 'meeting', x: 10, y: 20 }}
+        state={{ tag: 'meeting', lineIndex: 2, source: 'Standup #meeting\n', x: 10, y: 20 }}
         onClose={() => {}}
         onOpenTag={onOpenTag}
         onConvert={onConvert}

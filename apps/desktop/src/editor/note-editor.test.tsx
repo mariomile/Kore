@@ -355,7 +355,19 @@ describe('NoteEditor tag click', () => {
 
     await pmRoot.getByText('#book').click()
     await vi.waitFor(() => {
-      expect(onTagClick).toHaveBeenCalledWith('book', expect.anything())
+      expect(onTagClick).toHaveBeenCalledWith('book', expect.anything(), 0)
+    })
+  })
+
+  it('reports the exact source line for a clicked repeated tag', async () => {
+    const onTagClick = vi.fn()
+    await render(
+      <NoteEditor initialContent={'Same idea #idea\n\nSame idea #idea'} onTagClick={onTagClick} />,
+    )
+
+    await pmRoot.getByText('#idea').nth(1).click()
+    await vi.waitFor(() => {
+      expect(onTagClick).toHaveBeenCalledWith('idea', expect.anything(), 2)
     })
   })
 })

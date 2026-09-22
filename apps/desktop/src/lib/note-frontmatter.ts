@@ -61,19 +61,25 @@ export async function commitNoteFrontmatter(
   const owner = openSession(path)
   return await serializeFrontmatterWrite(`${generation}:${path}`, async () => {
     const queuedOwner = openSession(path)
-    if (queuedOwner !== null && queuedOwner !== owner) {
-      throw new Error('The note opened before this edit could be saved. Try again.')
+    if (queuedOwner !== owner) {
+      throw new Error("The note's editor changed before this edit could be saved. Try again.")
     }
     if (owner !== null && (await owner.commitFrontmatter(patch))) {
       return
     }
+    if (openSession(path) !== owner) {
+      throw new Error("The note's editor changed before this edit could be saved. Try again.")
+    }
     const onDisk = await readNoteOrEmpty(path, generation)
     const ownerAfterRead = openSession(path)
-    if (ownerAfterRead !== null && ownerAfterRead !== owner) {
-      throw new Error('The note opened before this edit could be saved. Try again.')
+    if (ownerAfterRead !== owner) {
+      throw new Error("The note's editor changed before this edit could be saved. Try again.")
     }
     const patched = upsertFrontmatter(onDisk, frontmatterPatchToYaml(patch))
     if (patched !== onDisk) {
+      if (openSession(path) !== owner) {
+        throw new Error("The note's editor changed before this edit could be saved. Try again.")
+      }
       await writeNote(path, patched, generation)
     }
   })

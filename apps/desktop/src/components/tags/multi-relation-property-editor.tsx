@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactElement } from 'react'
+import { useEffect, useRef, useState, type ReactElement } from 'react'
 import { relationDisplay, relationTarget, relationTargetOf, relationValue } from '@reflect/core'
 import { Check } from '@/components/icons'
 import {
@@ -38,6 +38,12 @@ export function MultiRelationPropertyEditor({
   const [query, setQuery] = useState('')
   const [localLinks, setLocalLinks] = useState<string[] | null>(null)
   const latestLinks = useRef(editorSeedList(value))
+  const openRef = useRef(false)
+  useEffect(() => {
+    if (!openRef.current) {
+      latestLinks.current = editorSeedList(value)
+    }
+  }, [value])
   const { graph } = useGraph()
   // Each entry is a stored `[[Target]]` value; a bare string (hand-written
   // YAML) still participates, keyed by its own text.
@@ -89,11 +95,10 @@ export function MultiRelationPropertyEditor({
     <Popover
       open={open}
       onOpenChange={(next) => {
+        openRef.current = next
         setOpen(next)
         if (next) {
-          const seed = editorSeedList(value)
-          latestLinks.current = seed
-          setLocalLinks(seed)
+          setLocalLinks(latestLinks.current)
         } else {
           setLocalLinks(null)
         }

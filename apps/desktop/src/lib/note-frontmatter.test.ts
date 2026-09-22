@@ -85,8 +85,37 @@ describe('commitNoteFrontmatter', () => {
     releaseOwner?.(true)
 
     await expect(blocking).resolves.toBeUndefined()
-    await expect(queued).rejects.toThrow('The note opened before this edit could be saved')
+    await expect(queued).rejects.toThrow(
+      "The note's editor changed before this edit could be saved",
+    )
     expect(newOwner.commitFrontmatter).not.toHaveBeenCalled()
+    expect(writeNote).not.toHaveBeenCalled()
+  })
+
+  it('refuses a queued patch when its captured session closes before its turn', async () => {
+    let releaseOwner: ((committed: boolean) => void) | undefined
+    const owner = {
+      commitFrontmatter: vi.fn(
+        async () =>
+          await new Promise<boolean>((resolve) => {
+            releaseOwner = resolve
+          }),
+      ),
+    } as unknown as NoteSession
+    openSession.mockReturnValue(owner)
+    const blocking = commitNoteFrontmatter('notes/a.md', { pinned: true }, 3)
+    await vi.waitFor(() => expect(owner.commitFrontmatter).toHaveBeenCalledOnce())
+
+    const queued = commitNoteFrontmatter('notes/a.md', { properties: { rating: 4 } }, 3)
+    openSession.mockReturnValue(null)
+    releaseOwner?.(true)
+
+    await expect(blocking).resolves.toBeUndefined()
+    await expect(queued).rejects.toThrow(
+      "The note's editor changed before this edit could be saved",
+    )
+    expect(owner.commitFrontmatter).toHaveBeenCalledOnce()
+    expect(readNote).not.toHaveBeenCalled()
     expect(writeNote).not.toHaveBeenCalled()
   })
 

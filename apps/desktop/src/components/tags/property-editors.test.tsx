@@ -298,6 +298,9 @@ describe('PropertyValueEditor', () => {
     await view.getByRole('option', { name: 'Le Guin' }).click()
     expect(onCommit).toHaveBeenLastCalledWith(['[[Frank Herbert]]'])
 
+    await userEvent.keyboard('{Escape}')
+    await view.getByRole('button', { name: 'Edit Authors' }).click()
+
     resolveCreate?.('notes/octavia-butler.md')
     await expect
       .poll(() => onCommit.mock.calls.at(-1)?.[0])

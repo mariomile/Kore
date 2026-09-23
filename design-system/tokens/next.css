@@ -28,15 +28,17 @@
   --text-on-accent: #ffffff;
 
   /* ---- Status (was: --destructive plus raw red/amber/emerald) --- */
-  /* Each tone is one ink (text and icons, >= 4.5:1 on --surface in
-     every light theme, Paper included) and one soft wash for a
-     background. `--success` and `--warning` are already read by the
+  /* Each tone is one ink (text and icons) and one soft wash for a
+     background. The ink holds 4.5:1 on --surface, on --surface-app and
+     on its own wash in every light theme, Paper included (tightest:
+     danger on the Paper wash, 4.83:1). Today's --destructive, red-500,
+     is 3.76:1 on white as text. `--success` and `--warning` are already read by the
      callouts in apps/desktop/src/styles/index.css, which fall back to
      #16a34a (3.3:1) and #ca8a04 (2.9:1) today because nothing
      defines them. */
-  --danger: #dc2626;
-  --warning: #b45309;
-  --success: #15803d;
+  --danger: #c42020;
+  --warning: #9a4a0a;
+  --success: #15703a;
   --info: var(--accent);
   --danger-soft: color-mix(in srgb, var(--danger) 10%, transparent);
   --warning-soft: color-mix(in srgb, var(--warning) 12%, transparent);

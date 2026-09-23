@@ -105,7 +105,8 @@ Ordered by user impact.
 3. **Callouts read tokens nobody defines.** `index.css` colors tip and warning
    callouts with `var(--success, #16a34a)` and `var(--warning, #ca8a04)`. Neither
    token exists, so the fallbacks always apply, at 3.30:1 and 2.94:1 on white
-   for the uppercase callout title.
+   for the uppercase callout title. `--destructive` itself is red-500, 3.76:1
+   on white as text.
 4. **No status tokens, so raw palette classes fill the gap.** 60 raw Tailwind
    color classes (red 34, amber 21, emerald/green 3, gray 2), mostly in settings
    (`add-ai-provider-dialog`, `backup-section`, `templates-section`) and mobile
@@ -138,7 +139,11 @@ Ordered by user impact.
     white canvas.
 11. **Motion off-scale.** 17 durations outside 100/150/300 (200 x13, 450 x2,
     250, 400), mostly mobile and the sidebar switcher.
-12. **Dead tokens.** Nothing in `apps/` or `packages/` reads `.reflect-space`,
+12. **The rulebook's type table no longer matches the editor.** design.md
+    lists weights 400/500/600 and a 20px note H2; `index.css` sets note H2 at
+    18px and H3 at 16px, both weight 650, the subject at 700, and
+    `.app-page-title` at 26px / 700, a size with no token.
+13. **Dead tokens.** Nothing in `apps/` or `packages/` reads `.reflect-space`,
     `--glass-*`, `--glow-purple`, `--display-*`, `--site-container`,
     `--bluegray-*`, `--near-white`, `--shadow-none`, `--tracking-wide`, or any
     `--space-N` (components use Tailwind's own spacing).
@@ -194,9 +199,11 @@ that paints a solid block with a label on it reads `--accent-fill` and
 near-black `#0b0b0e` wherever white falls under 4.5:1; every flipped pair clears
 4.6:1 (the tightest is dark violet at 4.64:1).
 
-Status inks are `#dc2626` / `#b45309` / `#15803d` on light (4.67:1 or better on
-Paper, the weakest light card) and `#f87171` / `#fbbf24` / `#4ade80` on dark
-(6.07:1 or better on Ink). `--info` is the accent. A status color means one
+Status inks are `#c42020` / `#9a4a0a` / `#15703a` on light and `#f87171` /
+`#fbbf24` / `#4ade80` on dark. Each holds 4.5:1 on `--surface`, on
+`--surface-app` and on its own soft wash in every theme (tightest: light danger
+on the Paper wash, 4.83:1), so a callout title or a danger button label passes
+too. `--info` is the accent. A status color means one
 thing and is never a category color.
 
 ### Type
@@ -207,16 +214,22 @@ thing and is never a category color.
 | `text-2xs`          | 12px | section headers, shortcut hints, meta       |
 | `text-xs`           | 13px | sidebar rows, captions, labels, table cells |
 | `text-sm`           | 14px | buttons, menu items, default chrome         |
-| `text-base`         | 16px | editor body (user-scalable)                 |
-| `text-lg`           | 18px | lead paragraphs                             |
-| `text-xl`           | 20px | note H2, screen titles                      |
-| `text-2xl`          | 24px | prose H1                                    |
+| `text-base`         | 16px | editor body (user-scalable), note H3        |
+| `text-lg`           | 18px | note H2                                     |
+| `text-xl`           | 20px | dialog and panel headings                   |
+| `text-2xl`          | 24px | screen titles (Notes, a tag page)           |
 | `text-note-subject` | 28px | note title, daily-note date                 |
 
 Nothing below 11px. No arbitrary sizes: `text-[13px]` is `text-xs`,
 `text-[9..11px]` is `text-3xs`, `text-[15px]` is `text-sm` in chrome or
-`text-base` in content, `text-[28px]` is `text-note-subject`. Weights stay 400 /
-500 / 600; `font-bold` (3 uses) becomes 600.
+`text-base` in content, `text-[28px]` is `text-note-subject`, and
+`.app-page-title` moves from 26px to `text-2xl` so it sits one clear step under
+the subject.
+
+Five weights, each with one job: 400 prose and body chrome, 500 buttons, nav and
+row titles, 600 dialog titles and labels that need emphasis, 650 note H2/H3, 700
+the subject and screen titles. Tracking `-0.011em` by default, `-0.02em` at 20px
+and up.
 
 ### Radius
 

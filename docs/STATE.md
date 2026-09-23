@@ -1,5 +1,30 @@
 # Kore working state
 
+## Design System 2 proposal — 2026-09-23
+
+Audit of the design system as the code uses it, and the next token contract
+built from it. Documentation and an unimported token file only; the app renders
+exactly as before.
+
+- [x] Inventory tokens, type, radius, elevation, motion and primitives against
+  their real usage; findings in [design-system-next.md](design-system-next.md).
+- [x] Measure contrast per theme and accent: 24 of 32 accent x family pairs fail
+  a white button label, Paper secondary text is 4.06:1, and the tip/warning
+  callouts read `--success`/`--warning`, which no file defines.
+- [x] Confirm by compiling `index.css` with Tailwind 4.3.3: `text-xs` renders
+  13px, bare `rounded` a fixed 4px that ignores the radius setting,
+  `rounded-md` 6px against the DS's 7px.
+- [x] Write `design-system/tokens/next.css` (accent fill vs. ink, status family,
+  rule, scrim and media roles, `text-3xs`, one derived radius ramp, contrast
+  corrections, per-accent label color). Not imported by `styles.css`.
+
+**Validation:** contrast values computed with the WCAG 2.x relative-luminance
+formula over the literal hexes in `colors.css`; usage counts by ripgrep over
+non-test sources on master `6bb57f6`. No app code changed, so no tests ran.
+
+**Next:** Mario decides whether to start migration phase 1 (import `next.css`,
+collapse the radius tables, repoint callouts and `hr`). Each phase is its own PR.
+
 ## Note editing reliability and similar-note previews — 2026-09-22
 
 The consolidation cycle protects property edits and makes tagged-line conversion

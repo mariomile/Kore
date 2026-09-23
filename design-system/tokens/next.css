@@ -1,0 +1,166 @@
+/* ============================================================
+   Kore Design System 2 — the next token contract
+   ------------------------------------------------------------
+   PROPOSAL. Not imported by styles.css, so nothing in the app
+   changes by merging this file. The spec, the audit it answers
+   and the migration order are in docs/design-system-next.md.
+
+   It is written as the layer that will sit after colors.css,
+   typography.css and spacing.css once adopted: it only ADDS
+   roles the app already reaches for without a token, and
+   CORRECTS the handful of values that fail their own contrast
+   rule. Every existing token name keeps its meaning.
+
+   Three tiers, and a component names only the last two:
+     1. Primitives — ramps and theme seeds (colors.css, as today)
+     2. Semantic   — surface / text / border / accent / status
+     3. Component  — control heights, overlay recipe, badge
+   ============================================================ */
+
+:root {
+  /* ---- Accent: fill vs. ink ------------------------------ */
+  /* `--accent` stays the accent as ink: links, focus ring, checked
+     states, the callout rule. A solid fill with a label on it reads
+     `--accent-fill` + `--text-on-accent`, because the lifted accent
+     every dark theme uses (#7b7ef4) leaves a white label at 3.4:1. */
+  --accent-fill: var(--accent);
+  --accent-fill-hover: var(--accent-hover);
+  --text-on-accent: #ffffff;
+
+  /* ---- Status (was: --destructive plus raw red/amber/emerald) --- */
+  /* Each tone is one ink (text and icons, >= 4.5:1 on --surface in
+     every light theme, Paper included) and one soft wash for a
+     background. `--success` and `--warning` are already read by the
+     callouts in apps/desktop/src/styles/index.css, which fall back to
+     #16a34a (3.3:1) and #ca8a04 (2.9:1) today because nothing
+     defines them. */
+  --danger: #dc2626;
+  --warning: #b45309;
+  --success: #15803d;
+  --info: var(--accent);
+  --danger-soft: color-mix(in srgb, var(--danger) 10%, transparent);
+  --warning-soft: color-mix(in srgb, var(--warning) 12%, transparent);
+  --success-soft: color-mix(in srgb, var(--success) 10%, transparent);
+  --info-soft: var(--accent-soft);
+  --destructive: var(--danger);
+
+  /* ---- Content rule and media ---------------------------- */
+  /* A thematic break in a note. Today it reads --coolgray-200/700,
+     a cool grey that ignores Paper, Ink and Space. */
+  --rule: color-mix(in srgb, var(--text) 16%, transparent);
+  /* Behind a sheet or drawer, and behind full-bleed media. */
+  --scrim: rgb(0 0 0 / 0.25);
+  --scrim-strong: rgb(0 0 0 / 0.8);
+  /* Controls drawn over a photo or video (the lightbox). */
+  --on-media: #ffffff;
+  --on-media-soft: rgb(255 255 255 / 0.15);
+  --on-media-hover: rgb(255 255 255 / 0.25);
+
+  /* ---- Type: the one missing step ------------------------ */
+  /* 11px for counters, badges and tab-strip meta. Replaces the
+     text-[9px] / [10px] / [11px] literals (19 uses) and the four
+     `font-size: 0.6875rem` rules already in index.css. */
+  --text-3xs: 0.6875rem;
+
+  /* ---- Radius: one ramp, derived from the house radius ---- */
+  /* Today two ramps disagree: the DS says md = 7px, the Tailwind
+     utilities compute md = 6px, and bare `rounded` is a fixed 4px
+     that ignores the Appearance radius setting. Adopting this means
+     `[data-radius]` sets only `--radius`, and the hand-written
+     per-scope tables in spacing.css are deleted. */
+  --radius-sm: max(0px, calc(var(--radius) - 4px));
+  --radius-md: max(0px, calc(var(--radius) - 2px));
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+
+  /* ---- Component tier ------------------------------------ */
+  --control-h-xs: 1.5rem; /* 24px  icon-xs, inline chips       */
+  --control-h-sm: 1.75rem; /* 28px  toolbar, small buttons       */
+  --control-h-md: 2rem; /* 32px  the default control           */
+  --control-h-lg: 2.25rem; /* 36px  dialog footers, onboarding   */
+  --control-h-touch: 2.75rem; /* 44px  every iPhone tap target   */
+  --icon-sm: 0.875rem; /* 14px  inside 28px controls             */
+  --icon-md: 1rem; /* 16px  everywhere else                      */
+  --badge-h: 1.25rem; /* 20px                                    */
+
+  /* The floating-layer recipe, named once: menus, popovers, dialogs,
+     tooltips and toasts. `--popover`, `--layer-blur` and
+     `--layer-saturate` already live in index.css; the edge was a
+     `ring-foreground/10` utility repeated per primitive. */
+  --overlay-edge: color-mix(in srgb, var(--text) 10%, transparent);
+}
+
+/* ---- Dark family ------------------------------------------ */
+.dark {
+  /* Keep the lifted #7b7ef4 as ink; fill with a deeper indigo so the
+     white label clears 5:1. */
+  --accent-fill: #5e5ce6;
+  --accent-fill-hover: #6461e9;
+
+  --danger: #f87171;
+  --warning: #fbbf24;
+  --success: #4ade80;
+  --danger-soft: color-mix(in srgb, var(--danger) 16%, transparent);
+  --warning-soft: color-mix(in srgb, var(--warning) 14%, transparent);
+  --success-soft: color-mix(in srgb, var(--success) 14%, transparent);
+}
+
+/* ---- Contrast corrections --------------------------------- */
+/* docs/design.md promises 4.5:1 for --text-secondary and treats
+   --text-muted as meta. Two themes miss: Paper's secondary text is
+   4.1:1 on its card and 3.9:1 on its page; Light and Paper muted
+   text sit under 3:1. These values clear 4.5:1 and 3:1 on both
+   --surface and --surface-app. */
+:root[data-theme='light'] {
+  --text-muted: #8a8e96;
+}
+:root[data-theme='paper'] {
+  --text-secondary: #7a6e5a;
+  --text-muted: #978a73;
+}
+
+/* ---- Label color per accent ------------------------------- */
+/* A solid accent button carries its label in `--text-on-accent`.
+   White where it clears 4.5:1, near-black where it does not. Of the
+   32 accent x family pairs, 24 fail a white label today. */
+:root[data-accent='teal'],
+:root[data-accent='green'],
+:root[data-accent='amber'],
+:root[data-accent='orange'],
+:root[data-accent='lime'],
+:root[data-accent='emerald'],
+:root[data-accent='cyan'],
+:root[data-accent='sky'],
+:root.dark[data-accent='purple'],
+:root.dark[data-accent='blue'],
+:root.dark[data-accent='rose'],
+:root.dark[data-accent='red'],
+:root.dark[data-accent='violet'],
+:root.dark[data-accent='pink'],
+:root.dark[data-accent='slate'] {
+  --text-on-accent: #0b0b0e;
+}
+/* A chosen accent fills with itself; only stock indigo on dark keeps
+   the deeper fill from the `.dark` block above. */
+:root.dark[data-accent]:not([data-accent='indigo']) {
+  --accent-fill: var(--accent);
+  --accent-fill-hover: var(--accent-hover);
+}
+/* Space keeps its own purple: #712fff carries a white label at 5.9:1. */
+:root.dark[data-theme='space'][data-accent='indigo'] {
+  --accent-fill: var(--purple-glow);
+  --accent-fill-hover: #7c3aed;
+}
+
+/* ============================================================
+   Retired on adoption (declared today, read by nothing in apps/
+   or packages/ — checked 2026-09-23):
+     .reflect-space, --glass-bg, --glass-border, --glow-purple,
+     --display-sm/md/lg, --site-container, --space-24,
+     --bluegray-50/100/500, --near-white, --shadow-none,
+     --tracking-wide, --space-1 … --space-24 (Tailwind's own
+     spacing scale is what components use).
+   Kept on purpose: --purple-* and --space-black feed the Space
+   theme; --coolgray-* and --indigo-* are the ramps aliases build on.
+   ============================================================ */

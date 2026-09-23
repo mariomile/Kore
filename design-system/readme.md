@@ -20,6 +20,8 @@ theme's token set.
 - `tokens/typography.css`: the type scale, weights and leading.
 - `tokens/spacing.css`: spacing, radii, shadow and motion.
 - `tokens/fonts.css`: the `@font-face` rules for `assets/fonts/`.
+- `tokens/next.css`: the proposed Design System 2 contract. Not imported by
+  `styles.css`; see [docs/design-system-next.md](../docs/design-system-next.md).
 
 ## What this is not
 

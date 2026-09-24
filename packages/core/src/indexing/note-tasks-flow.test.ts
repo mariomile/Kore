@@ -132,3 +132,20 @@ describe('countOpenTasksForNotes', () => {
     expect(counts).toEqual({ 'notes/casa-nuova.md': 2, 'notes/lavoro.md': 1 })
   })
 })
+
+describe('the SQL line bound', () => {
+  it('keeps a link at the end of an astral-heavy task line', async () => {
+    // Sixteen emoji make the line 16 UTF-16 units longer than its code-point
+    // count, so a bound in code points would end before the link starts.
+    applyProjection(database, project('notes/casa-nuova.md', '# Casa Nuova\n', 1))
+    applyProjection(
+      database,
+      project('notes/log.md', `+ [ ] ${'🚀'.repeat(16)} [[Casa Nuova]]\n`, 2),
+    )
+
+    await expect(getOpenTasksForNote('notes/casa-nuova.md')).resolves.toHaveLength(1)
+    await expect(countOpenTasksForNotes(['notes/casa-nuova.md'])).resolves.toEqual({
+      'notes/casa-nuova.md': 1,
+    })
+  })
+})

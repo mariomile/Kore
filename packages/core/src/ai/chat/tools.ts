@@ -235,9 +235,9 @@ export function buildNoteTools(options: BuildNoteToolsOptions = {}): NoteTools {
 
     list_recent_notes: tool({
       description:
-        'List the most recently edited notes, newest first — call it with no tag to see ' +
-        'what the user wrote or worked on lately. Pass a tag only to narrow to notes ' +
-        'carrying it. Daily notes are not included — use list_daily_notes for those. ' +
+        'List the most recently edited notes, newest first — call it with no type to see ' +
+        'what the user wrote or worked on lately. Pass a type only to narrow to notes ' +
+        'of that type. Daily notes are not included — use list_daily_notes for those. ' +
         'Private notes are excluded.',
       inputSchema: listRecentNotesInput,
       execute: async ({ limit, tag }): Promise<ListRecentNotesOutput> => {
@@ -275,10 +275,10 @@ export function buildNoteTools(options: BuildNoteToolsOptions = {}): NoteTools {
 
     list_collection: tool({
       description:
-        'List a typed tag’s collection: every note carrying the tag, as database rows ' +
-        'with the property values the tag’s schema declares (author, rating, status…). ' +
-        'Optionally sorted by a property key. Only works for tags with a type — the ' +
-        'refusal says so when there is none. Private notes are excluded.',
+        'List a type’s collection: every note of that type, as database rows with the ' +
+        'property values the type’s schema declares (author, rating, status…). ' +
+        'Optionally sorted by a property key. Only works for a type with a saved ' +
+        'definition — the refusal says so when there is none. Private notes are excluded.',
       inputSchema: listCollectionInput,
       execute: async ({ tag, sortBy, direction, limit }): Promise<ListCollectionOutput> => {
         if (!isTagName(tag)) {

@@ -77,10 +77,10 @@ export function buildTagTools(deps: TagToolDeps): TagTools {
   return {
     list_tags: tool({
       description:
-        'List every tag in the graph with how many notes carry it, the icon its ' +
+        'List every type in the graph with how many notes have it, the icon its ' +
         'definition stores (an emoji, or icon:<name> from list_tag_icons; null when ' +
         'none) and how many collection properties it declares. Call it before ' +
-        'changing a tag’s look or configuration, and to answer “which tags do I have”. ' +
+        'changing a type’s look or configuration, and to answer “which types do I have”. ' +
         'Private notes are not counted.',
       inputSchema: listTagsInput,
       execute: async (): Promise<ListTagsOutput> => {
@@ -100,7 +100,7 @@ export function buildTagTools(deps: TagToolDeps): TagTools {
 
     list_tag_icons: tool({
       description:
-        'List the symbol icons this app can draw for a tag — the only icon names ' +
+        'List the symbol icons this app can draw for a type — the only icon names ' +
         'set_tag_icon accepts besides a single emoji. Each entry is the stored name ' +
         'plus a short hint (theme group and glyph words). Pick from these names ' +
         'exactly; never invent one.',
@@ -110,7 +110,7 @@ export function buildTagTools(deps: TagToolDeps): TagTools {
 
     set_tag_icon: tool({
       description:
-        'Propose a new icon for a tag: a symbol name from list_tag_icons or one emoji ' +
+        'Propose a new icon for a type: a symbol name from list_tag_icons or one emoji ' +
         '(null removes it). The user reviews the change in chat and accepts or rejects ' +
         'it — nothing is written until they accept, so never claim it is done. Requires ' +
         '"Allow edits"; unknown icon names are refused, so list the icons first.',
@@ -146,9 +146,9 @@ export function buildTagTools(deps: TagToolDeps): TagTools {
 
     set_note_type: tool({
       description:
-        'Propose what a note *is*: put a tag on it, or take one off with remove. A ' +
-        'tag is the note’s type and its collection membership at once, so this is how ' +
-        'a note becomes a #book or joins #project — never by writing the hashtag into ' +
+        'Propose what a note *is*: give it a type, or take one off with remove. A ' +
+        'note’s type is also its collection membership, so this is how a note ' +
+        'becomes a #book or joins #project — never by writing the hashtag into ' +
         'its text with edit_note. Accepting also fills in any created-date property ' +
         'the type declares. The user reviews the change in chat and accepts or rejects ' +
         'it — nothing is written until they accept, so never claim it is done. ' +
@@ -196,8 +196,8 @@ export function buildTagTools(deps: TagToolDeps): TagTools {
 
     set_tag_schema: tool({
       description:
-        'Propose the property schema of a tag — the columns its collection shows and ' +
-        'the fields every note carrying it gets. Pass the whole schema you want, in ' +
+        'Propose the property schema of a type — the columns its collection shows and ' +
+        'the fields every note of that type gets. Pass the whole schema you want, in ' +
         'order: read the current one first (list_collection returns it) and repeat the ' +
         'properties you keep, because anything left out is proposed for removal. To ' +
         'rename a property’s key, set "replaces" to the old key so the notes’ stored ' +

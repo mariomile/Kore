@@ -45,7 +45,7 @@ export type ListRecentNotesOutput =
 
 /** The refusal text — one string, read verbatim by both model and chip. */
 export const INVALID_TAG_ERROR =
-  'Not a tag — omit the tag to list all recent notes. Tags are single words like "book" or "project/atlas".'
+  'Not a type — leave it out to list all recent notes. Type names are single words like "book" or "project/atlas".'
 
 export interface ListDailyNotesOutput {
   days: CloudSafe<CloudNoteListing>[]
@@ -72,11 +72,11 @@ export type ListCollectionOutput =
 
 /** Refusal for a `tag` input the tag grammar can never produce. */
 export const INVALID_COLLECTION_TAG_ERROR =
-  'Not a tag — tags are single words like "book" or "project/atlas".'
+  'Not a type — type names are single words like "book" or "project/atlas".'
 
 /** Refusal for a real tag that has no type definition (no collection). */
 export const UNTYPED_TAG_ERROR =
-  'This tag has no type, so it has no collection. Use list_recent_notes with the tag to list its notes instead.'
+  'This type has no definition yet, so it has no collection. Use list_recent_notes with the type to list its notes instead.'
 
 /** `set_note_property` refusals, read verbatim by both model and chip. */
 export const EDITS_DISABLED_ERROR =
@@ -125,18 +125,18 @@ export type SetTagIconOutput =
   | { ok: false; tag: string; error: string }
 
 /** `set_tag_icon` refusals, read verbatim by both model and card. */
-export const TAG_ICON_UNCHANGED_ERROR = 'The tag already has this icon.'
+export const TAG_ICON_UNCHANGED_ERROR = 'The type already has this icon.'
 export const TAG_DEFINITION_UNMARKED_ERROR =
-  'A regular note lives at this tag’s definition path (tags/<tag>.md), so the tag cannot be configured from chat — the user can convert it from the tag’s page.'
+  'A regular note lives at this type’s definition path (tags/<name>.md), so the type cannot be configured from chat — the user can convert it from the type’s page.'
 
 export const setTagIconInput = z.object({
-  tag: z.string().min(1).describe('The tag to change (case-insensitive, without the #)'),
+  tag: z.string().min(1).describe('The type to change (case-insensitive, without the #)'),
   icon: z
     .string()
     .nullable()
     .describe(
       'A symbol name from list_tag_icons (e.g. "buildings"), or one emoji. ' +
-        'Pass null to remove the tag’s icon.',
+        'Pass null to remove the type’s icon.',
     ),
 })
 
@@ -162,15 +162,15 @@ export type SetTagSchemaOutput =
   | { ok: false; tag: string; error: string }
 
 /** `set_tag_schema` refusals, read verbatim by both model and card. */
-export const TAG_SCHEMA_UNCHANGED_ERROR = 'The tag already has exactly this schema.'
+export const TAG_SCHEMA_UNCHANGED_ERROR = 'The type already has exactly this schema.'
 export const TAG_SCHEMA_KEY_ERROR =
   'Every property needs a name and a frontmatter key made of letters, numbers, "-" or "_", and the key cannot be reserved app metadata (id, title, aliases, private, pinned, icon, properties…).'
 export const TAG_SCHEMA_DUPLICATE_KEY_ERROR =
   'Two properties claim the same frontmatter key — each key appears once in a schema.'
 export const TAG_SCHEMA_COMPUTED_ERROR =
-  'Rollup, reverse and formula properties are computed from a configuration this tool cannot write — the user sets those up on the tag’s page. Keep the ones the tag already has (same key and type) and leave them out of new properties.'
+  'Rollup, reverse and formula properties are computed from a configuration this tool cannot write — the user sets those up on the type’s page. Keep the ones the type already has (same key and property type) and leave them out of new properties.'
 export const TAG_SCHEMA_RENAME_ERROR =
-  'A "replaces" key must name a property the tag’s schema has right now — list the tag’s collection first to see its keys.'
+  'A "replaces" key must name a property the type’s schema has right now — list the type’s collection first to see its keys.'
 
 const setTagSchemaProperty = z.object({
   name: z.string().min(1).describe('Display label for the column and the note field ("Read on")'),
@@ -195,7 +195,7 @@ const setTagSchemaProperty = z.object({
     .string()
     .nullish()
     .describe(
-      'For relation, relations and person: the tag whose notes the picker offers ' +
+      'For relation, relations and person: the type whose notes the picker offers ' +
         '(no #). Omit for any note.',
     ),
   replaces: z
@@ -208,12 +208,12 @@ const setTagSchemaProperty = z.object({
 })
 
 export const setTagSchemaInput = z.object({
-  tag: z.string().min(1).describe('The tag to configure (case-insensitive, without the #)'),
+  tag: z.string().min(1).describe('The type to configure (case-insensitive, without the #)'),
   properties: z
     .array(setTagSchemaProperty)
     .max(MAX_TAG_SCHEMA_PROPERTIES)
     .describe(
-      'The tag’s whole schema after the change, in column order — not just what you ' +
+      'The type’s whole schema after the change, in column order — not just what you ' +
         'are adding. Read the current schema first (list_tags for the count, ' +
         'list_collection for the keys) and repeat every property you are keeping; ' +
         'anything you leave out is proposed for removal. An empty list clears the schema.',
@@ -230,17 +230,17 @@ export type SetNoteTypeOutput =
   | { ok: false; path: string; tag: string; error: string }
 
 /** `set_note_type` refusals, read verbatim by both model and card. */
-export const NOTE_TYPE_UNCHANGED_ERROR = 'The note already carries this tag.'
+export const NOTE_TYPE_UNCHANGED_ERROR = 'The note already has this type.'
 export const NOTE_TYPE_ABSENT_ERROR =
-  'The note does not carry this tag, so there is nothing to take off.'
+  'The note does not have this type, so there is nothing to take off.'
 
 export const setNoteTypeInput = z.object({
   path: z.string().min(1).describe('Graph-relative note path (from search or listing results)'),
   tag: z
     .string()
     .min(1)
-    .describe('The tag the note should carry (case-insensitive, without the #)'),
-  remove: z.boolean().optional().describe('Take the tag off the note instead of putting it on'),
+    .describe('The type the note should have (case-insensitive, without the #)'),
+  remove: z.boolean().optional().describe('Take the type off the note instead of putting it on'),
 })
 
 export const listTagsInput = z.object({})
@@ -309,7 +309,7 @@ export const listRecentNotesInput = z.object({
     .string()
     .nullish()
     .describe(
-      'Only notes carrying this tag (case-insensitive, without the #). ' +
+      'Only notes of this type (case-insensitive, without the #). ' +
         'Omit, or pass null, to list all recent notes.',
     ),
 })
@@ -318,7 +318,7 @@ export const listCollectionInput = z.object({
   tag: z
     .string()
     .min(1)
-    .describe('The typed tag whose collection to list (case-insensitive, without the #)'),
+    .describe('The type whose collection to list (case-insensitive, without the #)'),
   sortBy: z
     .string()
     .nullish()

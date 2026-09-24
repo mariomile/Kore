@@ -76,9 +76,12 @@ Each slice is one PR, shippable alone, in priority order:
 - **Slice 1 — the register pass (this wave).** The four gap dimensions at
   once, on the main surfaces:
   - *Dissolve, don't clip*: `ScrollVeil` (components/scroll-veil.tsx), a
-    dissolve zone at a scroll container's top edge — surface fade over two
-    progressively-masked blur bands — that exists only while the container
-    is scrolled (one boolean flip, no per-frame work). On the daily
+    dissolve zone at a scroll container's top edge — a surface fade — that
+    exists only while the container is scrolled (one boolean flip, no
+    per-frame work). It first shipped over two masked backdrop-blur bands;
+    those were dropped (2026-09-24) after they measured at a quarter of the
+    daily stream's WebKit scroll frame rate, since a blur over scrolling
+    content is re-rendered every frame. On the daily
     stream, the note view, and All Notes' grid; the list/table pinned
     header rows switch from opaque paint to glass (`app-glass-row`).
   - *Scale*: the note subject (`--text-note-subject`) moves 20px → 28px at
@@ -134,5 +137,5 @@ not a forced palette swap.
   keyboard model, and persistence are untouched; this is a paint-and-motion
   program.
 - **No scroll listeners in hot paths.** The veil's one listener flips a
-  boolean; nothing repaints per scroll frame beyond what the compositor
-  already does for `backdrop-filter`.
+  boolean, and the veil itself carries no `backdrop-filter` — a blur over
+  scrolling content is repainted every frame.

@@ -1532,12 +1532,15 @@ html[data-sidebar-resizing] aside {
 /* ---- Craft-register scroll chrome (Plan 28) ------------------------------
    Desktop counterpart of the mobile glass bars above: scrolled content
    dissolves at a surface's top edge instead of hard-clipping — a color fade
-   out of the pane surface stacked on two backdrop-blur bands of increasing
-   radius, each masked so the blur decays with distance from the edge (the
-   progressive-blur recipe). The veil exists only while the container is
+   out of the pane surface. The veil exists only while the container is
    scrolled (ScrollVeil flips `data-veiled`); at rest it is fully
-   transparent, so content resting inside the zone stays crisp and static
-   surfaces are never blurred. Rendered by components/scroll-veil.tsx.
+   transparent, so content resting inside the zone stays crisp. Rendered by
+   components/scroll-veil.tsx.
+
+   No backdrop-filter: the veil sits over the scrolling content, so a blur
+   here is re-rendered on every scroll frame. Two masked blur bands cost a
+   quarter of the daily stream's scroll frame rate in WebKit at 2x, while
+   the fade alone costs nothing measurable.
 
    `--veil-surface` exists for Liquid Glass: with a translucent pane the
    fade must not be more opaque than the surface it fades into. */
@@ -1547,15 +1550,13 @@ html[data-sidebar-resizing] aside {
   top: 0;
   pointer-events: none;
   opacity: 0;
-  /* `visibility` drops the blur layers from the layer tree entirely at
-     rest — a surface that never scrolls pays nothing for its veil. The
-     flip back to hidden waits for the fade-out to finish. */
+  /* `visibility` drops the veil from the layer tree entirely at rest — a
+     surface that never scrolls pays nothing for it. The flip back to hidden
+     waits for the fade-out to finish. */
   visibility: hidden;
   transition:
     opacity 240ms var(--ds-ease-swift),
     visibility 0s linear 240ms;
-  /* The color fade is the element's own background; the blur bands are its
-     pseudos, so one node paints the whole veil. */
   background: linear-gradient(
     to bottom,
     color-mix(in srgb, var(--surface) var(--veil-surface, 100%), transparent) 0%,
@@ -1567,27 +1568,6 @@ html[data-sidebar-resizing] aside {
   opacity: 1;
   visibility: visible;
   transition: opacity 240ms var(--ds-ease-swift);
-}
-.app-scroll-veil::before,
-.app-scroll-veil::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-}
-/* The soft band is masked to the middle zone only: under the deep band's
-   opaque stretch its output is blurred over anyway, so snapshotting the
-   backdrop there twice would buy nothing. */
-.app-scroll-veil::before {
-  -webkit-backdrop-filter: blur(3px);
-  backdrop-filter: blur(3px);
-  -webkit-mask-image: linear-gradient(to bottom, transparent 25%, black 45%, transparent 85%);
-  mask-image: linear-gradient(to bottom, transparent 25%, black 45%, transparent 85%);
-}
-.app-scroll-veil::after {
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
-  -webkit-mask-image: linear-gradient(to bottom, black 0%, transparent 55%);
-  mask-image: linear-gradient(to bottom, black 0%, transparent 55%);
 }
 
 /* A row pinned inside a veiled scroll container (the sticky table headers):

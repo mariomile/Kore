@@ -30,8 +30,10 @@ a Mac.
 
 **Next:** the biggest remaining cost is Meowdown's editor mount (~45
 ProseMirror reconfigurations and 3 full redraws per editor, ~40% of the JS
-when scrolling into past days). Upstream fixed most of it in Meowdown #564;
-Kore can take it once PR #546 (`renderCodeBlock`) lands and Kore upgrades.
+when scrolling into past days). Meowdown #564 removes about half of it (the
+~20 `EditorExtensions` registrations and two of the redraws; ProseKit's
+web-component registrations remain). Kore can take it once PR #546
+(`renderCodeBlock`) lands and Kore upgrades.
 
 ## Note editing reliability and similar-note previews — 2026-09-22
 

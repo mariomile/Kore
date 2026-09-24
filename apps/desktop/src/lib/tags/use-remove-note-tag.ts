@@ -29,7 +29,7 @@ export function useRemoveNoteTag(): (path: string, tag: string) => void {
         .catch((error: unknown) => {
           toast.add({
             type: 'error',
-            title: "Couldn't remove the tag",
+            title: "Couldn't remove the type",
             description: errorMessage(error),
           })
         })

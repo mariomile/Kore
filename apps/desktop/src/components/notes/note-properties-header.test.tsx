@@ -174,7 +174,8 @@ describe('NotePropertiesHeader', () => {
     const view = await render(<Subject />)
 
     await view.getByRole('button', { name: 'Set the type' }).click()
-    await expect.element(view.getByText('Types')).toBeInTheDocument()
+    await expect.element(view.getByText('Types', { exact: true })).toBeInTheDocument()
+    await expect.element(view.getByText('Other types')).toBeInTheDocument()
     // `book` is typed, so it appears once, above the untyped suggestions.
     await expect.element(view.getByText('#idea')).toBeInTheDocument()
     expect(view.getByText('#book').elements()).toHaveLength(1)
@@ -194,6 +195,6 @@ describe('NotePropertiesHeader', () => {
 
     await view.getByRole('combobox').fill('idea')
     // Carried already: neither the list nor the "use it" row offers it again.
-    await expect.element(view.getByText('No matching tag.')).toBeInTheDocument()
+    await expect.element(view.getByText('No matching type.')).toBeInTheDocument()
   })
 })

@@ -51,7 +51,7 @@ Start with today's note (⌘D). Everything else is optional.
 ## When you want more
 
 - **Find notes:** ⌘K searches your graph; ⌘/ lists shortcuts.
-- **Collections:** open a tag from the sidebar to view its notes. Configure properties to organize projects, people, companies or meetings.
+- **Collections:** open a type from the sidebar to view its notes. Configure properties to organize projects, people, companies or meetings.
 - **Agents:** in Settings → Agents, give an assistant its own instructions. Create an automation only when you want scheduled work; each automation belongs to one graph.
 - **Protect your work:** Settings → Sync & data distinguishes Git file sync from a graph archive. An archive also includes saved chats, their images and this graph's automations.
 

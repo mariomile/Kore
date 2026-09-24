@@ -14,7 +14,7 @@ import { useGraph } from '@/providers/graph-provider'
 
 /** Shown when the tag's schema moved on between the proposal and the accept. */
 export const STALE_TAG_SCHEMA_MESSAGE =
-  'The tag’s properties changed since this was proposed, so nothing was written. Ask for a fresh proposal.'
+  'The type’s properties changed since this was proposed, so nothing was written. Ask for a fresh proposal.'
 
 /** One accepted `set_tag_schema` proposal: the schema to write, the one it replaces, the renames. */
 export interface TagSchemaChange {

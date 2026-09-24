@@ -59,13 +59,13 @@ describe('useCollectionSlashItems', () => {
     ).toEqual([
       {
         id: 'collection:book',
-        label: 'Supertag: #book',
-        keywords: ['supertag', 'tag', 'embed', 'list', 'book'],
+        label: 'Type: #book',
+        keywords: ['type', 'supertag', 'tag', 'embed', 'list', 'book'],
       },
       {
         id: 'collection:project',
-        label: 'Supertag: #project',
-        keywords: ['supertag', 'tag', 'embed', 'list', 'project'],
+        label: 'Type: #project',
+        keywords: ['type', 'supertag', 'tag', 'embed', 'list', 'project'],
       },
     ])
 

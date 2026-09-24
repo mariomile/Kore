@@ -16,7 +16,7 @@ import { useGraph } from '@/providers/graph-provider'
 
 /** Shown when the note's membership moved on between the proposal and the accept. */
 export const STALE_NOTE_TYPE_MESSAGE =
-  'The note’s tags changed since this was proposed, so nothing was written. Ask for a fresh proposal.'
+  'The note’s types changed since this was proposed, so nothing was written. Ask for a fresh proposal.'
 
 /** One accepted `set_note_type` proposal: the note, the tag, and which way it goes. */
 export interface NoteTypeChange {

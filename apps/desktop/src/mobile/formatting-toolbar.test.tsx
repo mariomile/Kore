@@ -66,7 +66,7 @@ describe('MobileFormattingToolbar', () => {
       'Cycle list style',
       'Cycle checklist and task',
       'Link note',
-      'Tag',
+      'Add type',
       'Outdent',
       'Indent',
       'Move up',
@@ -104,7 +104,7 @@ describe('MobileFormattingToolbar', () => {
     fireEvent.click(page.getByRole('button', { name: 'Link note' }))
     expect(toolbar.commands.insertTrigger).toHaveBeenCalledWith('[[')
 
-    fireEvent.click(page.getByRole('button', { name: 'Tag' }))
+    fireEvent.click(page.getByRole('button', { name: 'Add type' }))
     expect(toolbar.commands.insertTrigger).toHaveBeenCalledWith('#')
 
     fireEvent.click(page.getByRole('button', { name: 'Slash command' }))

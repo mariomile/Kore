@@ -126,7 +126,7 @@ export function NoteTypePicker({
             autoFocus
           />
           <CommandList>
-            <CommandEmpty>No matching tag.</CommandEmpty>
+            <CommandEmpty>No matching type.</CommandEmpty>
             {types.length > 0 ? (
               <CommandGroup heading="Types">
                 {types.map((option) => (
@@ -144,7 +144,7 @@ export function NoteTypePicker({
               </CommandGroup>
             ) : null}
             {others.length > 0 ? (
-              <CommandGroup heading={types.length > 0 ? 'Other tags' : 'Tags'}>
+              <CommandGroup heading={types.length > 0 ? 'Other types' : 'Types'}>
                 {others.map((option) => (
                   <CommandItem
                     key={option.tagKey}

@@ -26,7 +26,7 @@ export function TagPageTitle({ tag, icon, onConfigure }: TagPageTitleProps): Rea
       <button
         type="button"
         aria-label={`Configure #${tag}`}
-        title="Configure tag"
+        title="Configure type"
         onClick={onConfigure}
         className="app-icon-button text-text-muted hover:text-text"
       >

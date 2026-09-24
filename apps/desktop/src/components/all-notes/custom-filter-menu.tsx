@@ -48,11 +48,11 @@ export function CustomFilterMenu({
   const listed = facets.some((facet) => foldTag(facet.tag) === typedKey)
   const offerTyped = typed !== '' && !listed && isTagName(typed)
 
-  let emptyMessage = 'No matching tags.'
+  let emptyMessage = 'No matching types.'
   if (typed === '') {
-    emptyMessage = 'Type a tag to filter by.'
+    emptyMessage = 'Enter a type to filter by.'
   } else if (!isTagName(typed)) {
-    emptyMessage = 'Not a valid tag name.'
+    emptyMessage = 'Not a valid type name.'
   }
 
   return (
@@ -78,8 +78,8 @@ export function CustomFilterMenu({
         <ChevronDown aria-hidden className="size-3.5 shrink-0" />
       </PopoverTrigger>
       <PopoverContent align="end" sideOffset={6} className="w-56 p-0">
-        <Command label="Filter by another tag">
-          <CommandInput value={query} onValueChange={setQuery} placeholder="Filter by any tag…" />
+        <Command label="Filter by another type">
+          <CommandInput value={query} onValueChange={setQuery} placeholder="Filter by any type…" />
           <CommandList>
             {/* A force-mounted item never counts as a match, so cmdk would
                 show the empty state right above it — render one or the other. */}

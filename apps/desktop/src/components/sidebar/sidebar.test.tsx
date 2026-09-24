@@ -271,13 +271,13 @@ describe('Sidebar', () => {
     )
     // Open lists the window's tabs and there are none here, so it renders
     // nothing while still holding its place in the stored order.
-    expect(shelves).toEqual(['Tags', 'Pinned notes'])
+    expect(shelves).toEqual(['Types', 'Pinned notes'])
   })
 
-  it('hides the Tags section while the graph has no tags', async () => {
+  it('hides the Types section while the graph has no tags', async () => {
     const { view } = await renderSidebar()
     await vi.waitFor(() => expect(listNoteTags).toHaveBeenCalled())
-    expect(view.container.querySelector('[aria-label="Tags"]')).toBeNull()
+    expect(view.container.querySelector('[aria-label="Types"]')).toBeNull()
   })
 
   it('nav rows navigate, with Daily notes always re-anchoring to today', async () => {

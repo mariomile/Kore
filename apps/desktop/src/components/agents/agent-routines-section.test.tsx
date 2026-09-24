@@ -288,7 +288,7 @@ describe('AgentRoutinesSection', () => {
     await view.getByLabelText('Automation prompt').fill('Summarize the new book.')
     await view.getByLabelText('Schedule').click()
     await view.getByRole('option', { name: 'On collection event' }).click()
-    await view.getByLabelText('Collection tag').fill('books')
+    await view.getByLabelText('Collection type').fill('books')
     await view.getByRole('button', { name: 'Create automation' }).click()
     const added = updated.at(-1)?.agentRoutines?.[0]
     expect(added).toMatchObject({

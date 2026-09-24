@@ -366,9 +366,9 @@ describe('TagConfigDialog', () => {
     }
     const view = await render(<Dialog tag="Book" onClose={() => {}} />)
 
-    await view.getByRole('button', { name: 'Tag icon' }).click()
+    await view.getByRole('button', { name: 'Type icon' }).click()
     await view.getByRole('button', { name: '📚' }).click()
-    await expect.element(view.getByRole('button', { name: 'Tag icon' })).toHaveTextContent('📚')
+    await expect.element(view.getByRole('button', { name: 'Type icon' })).toHaveTextContent('📚')
 
     await view.getByRole('button', { name: 'Save' }).click()
 
@@ -392,12 +392,12 @@ describe('TagConfigDialog', () => {
     }
     const view = await render(<Dialog tag="Book" onClose={() => {}} />)
 
-    await expect.element(view.getByRole('button', { name: 'Tag icon' })).toHaveTextContent('📚')
-    await view.getByRole('button', { name: 'Tag icon' }).click()
+    await expect.element(view.getByRole('button', { name: 'Type icon' })).toHaveTextContent('📚')
+    await view.getByRole('button', { name: 'Type icon' }).click()
     await view.getByRole('textbox', { name: 'Any emoji' }).fill('🦄')
-    await expect.element(view.getByRole('button', { name: 'Tag icon' })).toHaveTextContent('🦄')
+    await expect.element(view.getByRole('button', { name: 'Type icon' })).toHaveTextContent('🦄')
 
-    await view.getByRole('button', { name: 'Tag icon' }).click()
+    await view.getByRole('button', { name: 'Type icon' }).click()
     await view.getByRole('button', { name: 'Remove icon' }).click()
     await view.getByRole('button', { name: 'Save' }).click()
 
@@ -415,7 +415,7 @@ describe('TagConfigDialog', () => {
     }
     const view = await render(<Dialog tag="Book" onClose={() => {}} />)
 
-    await view.getByRole('button', { name: 'Tag icon' }).click()
+    await view.getByRole('button', { name: 'Type icon' }).click()
     await view
       .getByRole('group', { name: 'Symbol icons' })
       .getByRole('button', { name: 'folder', exact: true })

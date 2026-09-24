@@ -94,7 +94,7 @@ export function AllNotesGrid({
   if (notes.length === 0) {
     return (
       <p className="px-12 py-10 text-sm text-text-muted">
-        {tag === null ? 'No notes yet.' : `No notes tagged #${tag}.`}
+        {tag === null ? 'No notes yet.' : `No #${tag} notes yet.`}
       </p>
     )
   }

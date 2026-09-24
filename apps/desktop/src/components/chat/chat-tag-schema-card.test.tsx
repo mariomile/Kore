@@ -117,7 +117,7 @@ describe('ChatTagSchemaCard', () => {
 
     recordDecision.mockClear()
     applyTagSchema.mockRejectedValue(
-      new Error('The tag’s properties changed since this was proposed.'),
+      new Error('The type’s properties changed since this was proposed.'),
     )
     const failed = await render(<ChatToolChip part={schemaPart()} turnStatus="done" />)
     await failed.getByRole('button', { name: 'Accept' }).click()
@@ -134,7 +134,7 @@ describe('ChatTagSchemaCard', () => {
           path: '',
           properties: [],
           previousProperties: [],
-          error: 'The tag already has exactly this schema.',
+          error: 'The type already has exactly this schema.',
         })}
         turnStatus="done"
       />,

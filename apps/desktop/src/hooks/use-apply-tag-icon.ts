@@ -12,7 +12,7 @@ import { useGraph } from '@/providers/graph-provider'
 
 /** Shown when the tag's icon moved on between the proposal and the accept. */
 export const STALE_TAG_ICON_MESSAGE =
-  'The tag’s icon changed since this was proposed, so nothing was written. Ask for a fresh proposal.'
+  'The type’s icon changed since this was proposed, so nothing was written. Ask for a fresh proposal.'
 
 /** One accepted `set_tag_icon` proposal: the tag, the icon to store, and the icon it replaces. */
 export interface TagIconChange {

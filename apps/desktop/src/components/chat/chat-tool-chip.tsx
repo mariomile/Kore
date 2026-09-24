@@ -311,7 +311,7 @@ export function ChatToolChip({ part, turnStatus = 'done' }: ChatToolChipProps): 
     const result = part.result?.tool === 'tags' ? part.result : null
     return (
       <ChipFrame pending={pending} icon={<Hash aria-hidden className="size-3.5" />}>
-        Listed the tags{result !== null ? countSuffix(result.count, 'tag') : ''}
+        Listed the types{result !== null ? countSuffix(result.count, 'type') : ''}
         {part.error !== null ? ` — ${part.error}` : ''}
       </ChipFrame>
     )

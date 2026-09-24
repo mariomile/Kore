@@ -74,7 +74,7 @@ export function InsightsScreen(): ReactElement {
         <StatTile label="Daily notes" value={data.dailyNoteCount} />
         <StatTile label="Open tasks" value={data.openTaskCount} />
         <StatTile label="Done tasks" value={data.completedTaskCount} />
-        <StatTile label="Tags" value={data.tagCount} />
+        <StatTile label="Types" value={data.tagCount} />
       </section>
 
       <section aria-label="Writing activity" className="mt-10">
@@ -114,8 +114,8 @@ export function InsightsScreen(): ReactElement {
       ) : null}
 
       {data.topTags.length > 0 ? (
-        <section aria-label="Top tags" className="mt-10">
-          <h2 className="text-2xs font-medium tracking-wide text-text-muted">Top tags</h2>
+        <section aria-label="Top types" className="mt-10">
+          <h2 className="text-2xs font-medium tracking-wide text-text-muted">Top types</h2>
           <ul className="mt-2 flex flex-col gap-1">
             {data.topTags.map((facet) => (
               <li key={facet.tag}>

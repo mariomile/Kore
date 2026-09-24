@@ -136,10 +136,10 @@ describe('ContextSidebar', () => {
     await view.unmount()
   })
 
-  it('leaves tags to the left rail', async () => {
+  it('leaves types to the left rail', async () => {
     const view = await render(<ContextSidebar target={null} />)
     await view.getByRole('button', { name: 'Open a panel' }).click()
-    expect(view.getByRole('menuitem', { name: 'Tags' }).query()).toBeNull()
+    expect(view.getByRole('menuitem', { name: 'Types' }).query()).toBeNull()
     await view.unmount()
   })
 

@@ -275,8 +275,8 @@ export function CollectionDefinitionDialog({
             {definition === undefined ? 'Create collection' : 'Configure collection'}
           </DialogTitle>
           <DialogDescription>
-            Reuse one selection of original notes. Tags are alternatives; a relation, when set, must
-            also match.
+            Reuse one selection of original notes. Types are alternatives; a relation, when set,
+            must also match.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-5">
@@ -291,7 +291,7 @@ export function CollectionDefinitionDialog({
               aria-label="Collection name"
             />
           </label>
-          <PickerSection label="Source tags" description="Match a note carrying any selected tag.">
+          <PickerSection label="Source types" description="Match a note of any selected type.">
             <div className="grid grid-cols-2 gap-1 sm:grid-cols-3">
               {availableTags.map((tag) => (
                 <label
@@ -416,16 +416,16 @@ export function CollectionDefinitionDialog({
               <Select
                 value={defaultTag || '__none'}
                 items={{
-                  __none: 'No default tag',
+                  __none: 'No default type',
                   ...Object.fromEntries(availableTags.map((tag) => [tag, `#${tag}`])),
                 }}
                 onValueChange={(value) => setDefaultTag(value === '__none' ? '' : String(value))}
               >
-                <SelectTrigger aria-label="Default tag" className="w-full">
+                <SelectTrigger aria-label="Default type" className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__none">No default tag</SelectItem>
+                  <SelectItem value="__none">No default type</SelectItem>
                   {availableTags.map((tag) => (
                     <SelectItem key={tag} value={tag}>
                       #{tag}

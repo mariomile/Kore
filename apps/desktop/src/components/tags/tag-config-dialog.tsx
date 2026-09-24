@@ -228,8 +228,8 @@ export function TagConfigDialog({ tag, onClose }: TagConfigDialogProps): ReactEl
         <DialogHeader>
           <DialogTitle>Configure #{foldTag(tag)}</DialogTitle>
           <DialogDescription>
-            Properties become columns of the tag's collection and fields on every note carrying the
-            tag. They are stored in{' '}
+            Properties become columns of the type's collection and fields on every note of this
+            type. They are stored in{' '}
             <code className="font-mono text-xs">tags/{foldTag(tag)}.md</code>, a note that syncs
             with the graph.
           </DialogDescription>
@@ -237,8 +237,8 @@ export function TagConfigDialog({ tag, onClose }: TagConfigDialogProps): ReactEl
         {needsConversion ? (
           <p className="rounded-md bg-surface-hover px-3 py-2 text-xs text-text-secondary">
             A note already exists at <code className="font-mono">tags/{foldTag(tag)}.md</code>.
-            Saving converts it into this tag's definition (adds the type marker to its frontmatter);
-            its body is kept.
+            Saving converts it into this type's definition (adds the type marker to its
+            frontmatter); its body is kept.
           </p>
         ) : null}
         <div className="flex items-center gap-3">

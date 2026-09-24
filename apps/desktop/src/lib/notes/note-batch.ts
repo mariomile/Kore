@@ -9,7 +9,7 @@ export interface NoteBatchGraph {
 }
 
 export interface NoteBatchOptions<T> {
-  /** The operations-toast label ("Tagging notes #reading"). */
+  /** The operations-toast label ("Adding type #reading"). */
   label: string
   /** The open graph, or null/undefined — reported as a failure, never thrown. */
   graph: NoteBatchGraph | null | undefined

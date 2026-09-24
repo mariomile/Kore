@@ -396,8 +396,8 @@ describe('AllNotesScreen', () => {
     // tabs stay behind on the unfiltered view.
     await expect.element(view.getByRole('heading', { name: 'Book' })).toBeInTheDocument()
     expect(view.getByRole('button', { name: 'All notes' }).query()).toBeNull()
-    expect(view.getByRole('group', { name: 'Filter by tag' }).query()).toBeNull()
-    await expect.element(view.getByText('No notes tagged #book.')).toBeInTheDocument()
+    expect(view.getByRole('group', { name: 'Filter by type' }).query()).toBeNull()
+    await expect.element(view.getByText('No #book notes yet.')).toBeInTheDocument()
     expect(view.getByText('Health Stacked').query()).toBeNull()
     await expect.element(view.getByRole('button', { name: 'New note' })).toBeInTheDocument()
     expect(view.getByRole('button', { name: 'New note' }).element().textContent?.trim()).toBe('')
@@ -521,7 +521,7 @@ describe('AllNotesScreen', () => {
     await expect.element(view.getByText('Health Stacked')).toBeInTheDocument()
 
     await view.getByRole('button', { name: 'Custom' }).click()
-    const input = page.getByPlaceholder('Filter by any tag…')
+    const input = page.getByPlaceholder('Filter by any type…')
 
     // An exact existing tag isn't duplicated as a "Filter by" item.
     await input.fill('travel')
@@ -532,7 +532,7 @@ describe('AllNotesScreen', () => {
     await page.getByRole('option', { name: 'Filter by #zettel' }).click()
 
     expect(probedRoute(view)).toEqual({ kind: 'allNotes', filter: { kind: 'tag', tag: 'zettel' } })
-    await expect.element(view.getByText('No notes tagged #zettel.')).toBeInTheDocument()
+    await expect.element(view.getByText('No #zettel notes yet.')).toBeInTheDocument()
     await view.unmount()
   })
 
@@ -541,7 +541,7 @@ describe('AllNotesScreen', () => {
     await expect.element(view.getByText('Health Stacked')).toBeInTheDocument()
 
     await view.getByRole('button', { name: 'Custom' }).click()
-    const input = page.getByPlaceholder('Filter by any tag…')
+    const input = page.getByPlaceholder('Filter by any type…')
     await input.fill('TRAVEL')
 
     // cmdk's default filter (command-score) folds case like `foldTag` does,

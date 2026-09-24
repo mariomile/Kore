@@ -10,13 +10,14 @@ import { useRouter } from '@/routing/router'
 import { SidebarSortableSection } from './sidebar-sortable-section'
 
 /**
- * The sidebar's Tags section: every tag carried by a non-daily note, with its
- * note count, alphabetical. A row opens All Notes filtered to that tag — the
- * same view its filter tabs land on, so the section is navigation, not a new
- * surface. Hidden entirely while the graph has no tags, like the Pinned shelf.
- * Every tag is a collection, so no row is marked as one; hovering a row
- * reveals "Configure tag" (TDR 0005), which edits the tag's property schema
- * in `tags/<key>.md`.
+ * The sidebar's Types section — user-facing copy calls a tag a type: every
+ * tag carried by a non-daily note, with its note count, alphabetical.
+ * A row opens All Notes filtered to that tag — the same view its filter tabs
+ * land on, so the section is navigation, not a new surface. Hidden entirely
+ * while the graph has no tags, like the Pinned shelf. Every tag is a
+ * collection, so no row is marked as one; hovering a row reveals its
+ * configure button (TDR 0005), which edits the tag's property schema in
+ * `tags/<key>.md`.
  */
 export function SidebarTags(): ReactElement | null {
   const tags = useNoteTags()
@@ -31,7 +32,7 @@ export function SidebarTags(): ReactElement | null {
   }
 
   return (
-    <SidebarSortableSection id="tags" title="Tags" label="Tags">
+    <SidebarSortableSection id="tags" title="Types" label="Types">
       <ul className="mt-2 flex flex-col space-y-1">
         {tags.map((facet) => {
           const active = activeTagKey !== null && foldTag(facet.tag) === activeTagKey

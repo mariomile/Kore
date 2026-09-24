@@ -100,7 +100,7 @@ export function TagIconPicker({ value, onChange }: TagIconPickerProps): ReactEle
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
-        aria-label="Tag icon"
+        aria-label="Type icon"
         title="Choose an icon"
         className={cn(
           'flex size-8 items-center justify-center rounded-lg border border-input transition-colors hover:bg-surface-hover',

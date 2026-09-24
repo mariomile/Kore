@@ -5,10 +5,9 @@ import {
   detectConflictMarkers,
   formatCollectionEmbedBody,
   parseCollectionEmbedBody,
-  parseEmbedBlocks,
-  parseNoteTransclusions,
 } from '@reflect/core'
 import { BacklinksPanel } from '@/components/backlinks-panel'
+import { parseBodyEmbeds, sameBodyEmbeds, type BodyEmbeds } from '@/components/body-embeds'
 import { UnlinkedMentionsPanel } from '@/components/unlinked-mentions-panel'
 import { InlineAlert } from '@/components/inline-alert'
 import { NoteConflictBanner } from '@/components/note-conflict-banner'
@@ -233,31 +232,41 @@ export function NotePaneComponent({
     ],
     [collectionSlashItems, calloutSlashItems, embedSlashItems, templateSlashItems],
   )
-  // Live body for embed parsing: typed markdown while this session's seed is
-  // unchanged, otherwise the snapshot (a new session or an external reload).
-  const [typedBody, setTypedBody] = useState<{
-    markdown: string
+  // The embeds under the body: the typed ones while this session's seed is
+  // unchanged, otherwise the snapshot's (a new session or an external
+  // reload). Typing lands in state only when the embeds themselves change:
+  // a state write per keystroke would re-render the pane, and the editor
+  // under it, on every key.
+  const seedEmbeds = useMemo(
+    () => parseBodyEmbeds(document.initialContent),
+    [document.initialContent],
+  )
+  const [typedEmbeds, setTypedEmbeds] = useState<{
+    embeds: BodyEmbeds
     epoch: number
     seed: string
   } | null>(null)
-  const bodyMarkdown =
-    typedBody !== null &&
-    typedBody.epoch === document.sessionEpoch &&
-    typedBody.seed === document.initialContent
-      ? typedBody.markdown
-      : document.initialContent
-  const mediaEmbeds = useMemo(() => parseEmbedBlocks(bodyMarkdown), [bodyMarkdown])
-  const noteTransclusions = useMemo(() => parseNoteTransclusions(bodyMarkdown), [bodyMarkdown])
+  const { media: mediaEmbeds, transclusions: noteTransclusions } =
+    typedEmbeds !== null &&
+    typedEmbeds.epoch === document.sessionEpoch &&
+    typedEmbeds.seed === document.initialContent
+      ? typedEmbeds.embeds
+      : seedEmbeds
   const handleEditorChange = useCallback(
     (markdown: string) => {
-      setTypedBody({
-        markdown,
-        epoch: document.sessionEpoch,
-        seed: document.initialContent,
+      const next = parseBodyEmbeds(markdown)
+      const epoch = document.sessionEpoch
+      const seed = document.initialContent
+      setTypedEmbeds((current) => {
+        const shown =
+          current !== null && current.epoch === epoch && current.seed === seed
+            ? current.embeds
+            : seedEmbeds
+        return sameBodyEmbeds(shown, next) ? current : { embeds: next, epoch, seed }
       })
       document.onEditorChange(markdown)
     },
-    [document],
+    [document, seedEmbeds],
   )
   const {
     menu: tagMenu,

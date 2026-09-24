@@ -109,7 +109,7 @@ export function useNoteBulkActions(): NoteBulkActions {
       if (wanted === '') {
         return { changed: 0, skipped: 0, blocked: [], ok: true }
       }
-      return await run(`Tagging notes #${wanted}`, paths, async (path, generation) => {
+      return await run(`Adding type #${wanted}`, paths, async (path, generation) => {
         if (openSession(path)?.isDirty() === true) {
           throw new Error('has unsaved changes')
         }

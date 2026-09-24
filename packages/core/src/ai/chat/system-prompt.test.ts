@@ -29,6 +29,7 @@ describe('chatSystemPrompt', () => {
     expect(prompt).toContain('Today’s date is 2026-06-12.')
     expect(prompt).toContain('Kore-created regular notes live under notes/')
     expect(prompt).toContain('Adopted notes may live at any eligible visible path')
+    expect(prompt).toContain('The app calls these types, so say “type” to the user')
     expect(prompt).toContain('Grounding rules:')
     expect(prompt).not.toContain('Graph overview')
   })
@@ -99,7 +100,7 @@ describe('chatSystemPrompt', () => {
     expect(prompt).toContain('Daily notes span 2026-01-02 to 2026-06-10.')
     expect(prompt).toContain('#Book (3), #health (1)')
     // The complete list is asserted as complete, so the model never guesses.
-    expect(prompt).toContain('These are the only tags')
+    expect(prompt).toContain('These are the only types')
   })
 
   it('softens the tag claim when the facet list was capped', () => {
@@ -109,9 +110,9 @@ describe('chatSystemPrompt', () => {
       semanticSearchEnabled: true,
       customSystemPrompt: '',
     })
-    expect(prompt).toContain('Most-used tags')
-    expect(prompt).toContain('More tags exist beyond these.')
-    expect(prompt).not.toContain('These are the only tags')
+    expect(prompt).toContain('Most-used types')
+    expect(prompt).toContain('More types exist beyond these.')
+    expect(prompt).not.toContain('These are the only types')
   })
 
   it('tells the model outright when no tags exist', () => {
@@ -121,7 +122,7 @@ describe('chatSystemPrompt', () => {
       semanticSearchEnabled: true,
       customSystemPrompt: '',
     })
-    expect(prompt).toContain('No tags are in use — never pass a tag filter.')
+    expect(prompt).toContain('No types are in use — never pass a type filter.')
   })
 
   it('omits the daily span when the graph has no daily notes', () => {

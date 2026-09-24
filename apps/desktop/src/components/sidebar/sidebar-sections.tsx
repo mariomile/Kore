@@ -28,7 +28,7 @@ function sectionForId(id: UniqueIdentifier): SidebarSection | null {
 }
 
 /**
- * The Home surface's shelves — Open, Pinned notes, Tags — stacked in the order
+ * The Home surface's shelves — Open, Pinned notes, Types — stacked in the order
  * the user dragged them into. Each header is its own drag handle (see
  * {@link import('./sidebar-sortable-section').SidebarSortableSection}) and the
  * drop persists through the `sidebarSections` setting, so the arrangement

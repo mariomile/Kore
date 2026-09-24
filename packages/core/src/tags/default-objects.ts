@@ -35,8 +35,8 @@ export const DEFAULT_VAULT_OBJECTS: DefaultVaultObject[] = [
       { name: 'Priority', key: 'priority', type: 'select', options: ['High', 'Medium', 'Low'] },
     ],
     body: [
-      'Tag a note with `#project` and it joins this collection — one note per',
-      'project, with the fields above. The tag page shows them as a table,',
+      'Give a note the `#project` type and it joins this collection — one note',
+      'per project, with the fields above. The type page shows them as a table,',
       'board, or calendar.',
       '',
       'A task anywhere whose line links a project belongs to it:',
@@ -56,7 +56,7 @@ export const DEFAULT_VAULT_OBJECTS: DefaultVaultObject[] = [
       { name: 'Phone', key: 'phone', type: 'text' },
     ],
     body: [
-      'Tag a note with `#person` to keep people as notes. The Company field',
+      'Give a note the `#person` type to keep people as notes. The Company field',
       'links a `[[company]]` note, and mentions across the vault collect on',
       "each person's page through backlinks.",
     ].join('\n'),
@@ -69,7 +69,7 @@ export const DEFAULT_VAULT_OBJECTS: DefaultVaultObject[] = [
       { name: 'Location', key: 'location', type: 'text' },
     ],
     body: [
-      'Tag a note with `#company` for organizations you deal with. Link',
+      'Give a note the `#company` type for organizations you deal with. Link',
       'people to their company through the Company field on `#person` notes.',
     ].join('\n'),
   },
@@ -81,7 +81,7 @@ export const DEFAULT_VAULT_OBJECTS: DefaultVaultObject[] = [
       { name: 'Project', key: 'project', type: 'relation' },
     ],
     body: [
-      'Tag a note with `#meeting` for meeting notes. The Date field places',
+      'Give a note the `#meeting` type for meeting notes. The Date field places',
       "them on this collection's calendar view; Attendees links the",
       '`[[people]]` who were there.',
     ].join('\n'),

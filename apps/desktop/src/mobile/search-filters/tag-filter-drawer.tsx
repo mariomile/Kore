@@ -30,11 +30,11 @@ export function TagFilterDrawer({
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent>
-        <DrawerTitle>Tags</DrawerTitle>
+        <DrawerTitle>Types</DrawerTitle>
         <DrawerBody className="px-4">
           <div className="flex flex-col">
             {facets.length === 0 && (
-              <p className="py-6 text-center text-sm text-text-muted">No tags yet</p>
+              <p className="py-6 text-center text-sm text-text-muted">No types yet</p>
             )}
             {facets.map((facet) => {
               const key = foldTag(facet.tag)

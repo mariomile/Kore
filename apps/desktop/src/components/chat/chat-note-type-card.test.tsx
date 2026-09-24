@@ -106,10 +106,10 @@ describe('ChatNoteTypeCard', () => {
     await rejected.unmount()
 
     recordDecision.mockClear()
-    applyNoteType.mockRejectedValue(new Error('The note’s tags changed since this was proposed.'))
+    applyNoteType.mockRejectedValue(new Error('The note’s types changed since this was proposed.'))
     const failed = await render(<ChatToolChip part={typePart()} turnStatus="done" />)
     await failed.getByRole('button', { name: 'Accept' }).click()
-    await expect.element(failed.getByRole('alert')).toHaveTextContent('tags changed')
+    await expect.element(failed.getByRole('alert')).toHaveTextContent('types changed')
     expect(recordDecision).not.toHaveBeenCalled()
     await failed.unmount()
   })
@@ -117,11 +117,11 @@ describe('ChatNoteTypeCard', () => {
   it('renders a refusal as a plain chip with nothing to accept', async () => {
     const refused = await render(
       <ChatToolChip
-        part={typePart({ error: 'The note already carries this tag.' })}
+        part={typePart({ error: 'The note already has this type.' })}
         turnStatus="done"
       />,
     )
-    await expect.element(refused.getByText(/already carries this tag/)).toBeVisible()
+    await expect.element(refused.getByText(/already has this type/)).toBeVisible()
     expect(refused.getByRole('group').query()).toBeNull()
     await refused.unmount()
   })

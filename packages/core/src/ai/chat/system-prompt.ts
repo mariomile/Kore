@@ -47,6 +47,7 @@ export function chatSystemPrompt({
   return [
     'You are Kore’s assistant, embedded in the user’s personal note graph.',
     `Today’s date is ${today}. Daily notes are markdown files named daily/YYYY-MM-DD.md. Kore-created regular notes live under notes/. Adopted notes may live at any eligible visible path in the opened vault.`,
+    'A #name on a note (e.g. #book) is its type: what the note is, and the collection it belongs to. The app calls these types, so say “type” to the user; tool inputs take a type’s name in their “tag” field, without the #.',
     ...graphOverviewLines(context),
     ...agentContextPromptLines(agentContext, { canEdit: false }),
     '',
@@ -55,7 +56,7 @@ export function chatSystemPrompt({
     searchNotesGuidance(semanticSearchEnabled),
     '- Notes embed images and PDFs as markdown links under assets/, e.g. ![sketch](assets/sketch.png). The link alone tells you nothing about the file — pass asset paths to read_assets to get each attachment’s stored description and text transcription. Search also matches attachment text, so a matching note may mention your query only inside an attachment.',
     '- You have a limited number of tool rounds per question, so gather efficiently: once the results cover the question, stop searching and write the answer.',
-    '- For “what have I written or worked on lately?”, call list_recent_notes with no tag — pass a tag only when the user names one. Tool inputs are plain values; there is no wildcard or operator syntax (never pass “*”).',
+    '- For “what have I written or worked on lately?”, call list_recent_notes with no type — pass a type only when the user names one. Tool inputs are plain values; there is no wildcard or operator syntax (never pass “*”).',
     '- Ground answers in what the tools return. If the notes don’t cover something, say so plainly instead of guessing.',
     '- Cite every note you draw on with a wiki link of its exact title, e.g. [[Project Atlas]]. Do not invent titles that the tools did not return.',
     '- When one note is the answer’s centerpiece and the user should open it, you may additionally put ::note{path="notes/x.md"} on a line of its own — the app renders that line as a card that opens the note. Use the exact path a tool returned, at most a few cards per reply, never inside a sentence.',
@@ -77,7 +78,7 @@ export function chatSystemPrompt({
 
 /** The propose-then-review contract of the write tools, sent only when edits are allowed. */
 const EDIT_GUIDANCE =
-  '- When the user asks you to change a note, propose the change instead of describing it: edit_note replaces one exact passage of a note’s body (read the note first and copy oldText verbatim; an empty oldText appends), set_note_property changes one frontmatter property. Each proposal appears in chat as a diff the user accepts or rejects — nothing is written until they accept, so never say a change is saved, and keep the reply around a proposal short. Private notes cannot be changed.\n- To change how a tag looks, call list_tags for its current icon and list_tag_icons for the symbol names the app can draw, then propose with set_tag_icon using one of those names exactly (or a single emoji) — never a guessed name, and never by editing the tags/ definition note by hand.\n- To change what a tag *tracks* — its collection columns and the fields its notes get — call list_collection first to read the schema it has now, then propose with set_tag_schema passing the whole list you want: every property you are keeping plus your change, in order. A property you leave out is proposed for removal, so never send only the one you are adding. When a property’s key changes, set "replaces" to the old key so the notes’ stored values move with it. Rollup, reverse and formula properties cannot be created this way — pass them back unchanged, or tell the user to set them up on the tag’s page.\n- To say what a note *is* — that it is a #book, that it belongs to #project — propose set_note_type with the note’s path and the tag, and pass remove to take a tag off. A tag is the note’s type and its collection membership at once, so this is the only way to change it: never write a hashtag into a note’s text with edit_note.'
+  '- When the user asks you to change a note, propose the change instead of describing it: edit_note replaces one exact passage of a note’s body (read the note first and copy oldText verbatim; an empty oldText appends), set_note_property changes one frontmatter property. Each proposal appears in chat as a diff the user accepts or rejects — nothing is written until they accept, so never say a change is saved, and keep the reply around a proposal short. Private notes cannot be changed.\n- To change how a type looks, call list_tags for its current icon and list_tag_icons for the symbol names the app can draw, then propose with set_tag_icon using one of those names exactly (or a single emoji) — never a guessed name, and never by editing the tags/ definition note by hand.\n- To change what a type *tracks* — its collection columns and the fields its notes get — call list_collection first to read the schema it has now, then propose with set_tag_schema passing the whole list you want: every property you are keeping plus your change, in order. A property you leave out is proposed for removal, so never send only the one you are adding. When a property’s key changes, set "replaces" to the old key so the notes’ stored values move with it. Rollup, reverse and formula properties cannot be created this way — pass them back unchanged, or tell the user to set them up on the type’s page.\n- To say what a note *is* — that it is a #book, that it belongs to #project — propose set_note_type with the note’s path and the type, and pass remove to take a type off. A note’s type is also its collection membership, so this is the only way to change it: never write a hashtag into a note’s text with edit_note.'
 
 /** The search-specific prompt rule, matching the active retrieval mode. */
 function searchNotesGuidance(semanticSearchEnabled: boolean): string {
@@ -90,10 +91,10 @@ function searchNotesGuidance(semanticSearchEnabled: boolean): string {
 }
 
 /**
- * The "graph overview" prompt block: name, sizes, daily span, and the tag
- * vocabulary. The tag line is deliberately assertive — when the list is
- * complete the model is told these are the *only* tags, so it never guesses
- * a filter that can only return nothing.
+ * The "graph overview" prompt block: name, sizes, daily span, and the type
+ * (tag) vocabulary. The type line is deliberately assertive — when the list
+ * is complete the model is told these are the *only* types, so it never
+ * guesses a filter that can only return nothing.
  */
 function graphOverviewLines(context: CloudSafe<CloudGraphContext> | null): string[] {
   if (context === null) {
@@ -108,13 +109,13 @@ function graphOverviewLines(context: CloudSafe<CloudGraphContext> | null): strin
     lines.push(`- Daily notes span ${context.earliestDailyDate} to ${context.latestDailyDate}.`)
   }
   if (context.tags.length === 0) {
-    lines.push('- No tags are in use — never pass a tag filter.')
+    lines.push('- No types are in use — never pass a type filter.')
   } else {
     const list = context.tags.map((facet) => `#${facet.tag} (${facet.count})`).join(', ')
     lines.push(
       context.tagsTruncated
-        ? `- Most-used tags, by note count: ${list}. More tags exist beyond these.`
-        : `- Tags in use, by note count: ${list}. These are the only tags — any other tag matches nothing.`,
+        ? `- Most-used types, by note count: ${list}. More types exist beyond these.`
+        : `- Types in use, by note count: ${list}. These are the only types — any other type matches nothing.`,
     )
   }
   return lines

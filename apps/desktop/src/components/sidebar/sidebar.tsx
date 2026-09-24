@@ -30,7 +30,7 @@ interface SidebarProps {
  * Chat/Meetings icon toggles, and the ever-present search + audio-memo
  * icons) and the graph-switcher footer are fixtures; between them the rail
  * is one of three surfaces — Home (the classic navigation plus the
- * Open/Pinned/Tags shelves, which the user can drag into any order), Chat
+ * Open/Pinned/Types shelves, which the user can drag into any order), Chat
  * (the AI conversation list), and Meetings (the coming week's calendar
  * events). Picking Chat also opens the chat screen, since its rail is only
  * useful beside the conversation. Most nav rows run registered commands so a
@@ -120,7 +120,7 @@ export function Sidebar({ graph, context }: SidebarProps): ReactElement {
               // lit while editing one. A brand-new note is still an untitled
               // placeholder, though, and the "New note" row above owns that
               // highlight until the birth rename — so the two never light at once.
-              // A routed tag is the tag's own page: its row in the Tags section
+              // A routed tag is the tag's own page: its row in the Types section
               // lights instead of this one.
               active={
                 (route.kind === 'allNotes' && route.filter.kind !== 'tag') ||

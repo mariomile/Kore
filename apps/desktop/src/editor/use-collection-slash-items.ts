@@ -39,9 +39,9 @@ export function useCollectionSlashItems(
         const tagKey = foldTag(facet.tag)
         return {
           id: `collection:${tagKey}`,
-          label: `Supertag: #${tagKey}`,
-          keywords: ['supertag', 'tag', 'embed', 'list', tagKey],
-          detail: 'Live view of tagged notes',
+          label: `Type: #${tagKey}`,
+          keywords: ['type', 'supertag', 'tag', 'embed', 'list', tagKey],
+          detail: 'Live view of this type’s notes',
           onSelect: () => {
             const editor = getEditor()
             if (editor !== null) {

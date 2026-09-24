@@ -224,8 +224,8 @@ export function NewRoutineDialog({
                 <Input
                   value={tag}
                   onChange={(change) => setTag(change.target.value)}
-                  placeholder="tag — e.g. books"
-                  aria-label="Collection tag"
+                  placeholder="type — e.g. books"
+                  aria-label="Collection type"
                   className="w-32"
                 />
               </>
@@ -250,10 +250,10 @@ export function NewRoutineDialog({
           <p className="text-xs text-text-muted">
             Runs through your Claude Code or Codex provider in edit mode, with the chosen agent’s
             soul and memory. Clock schedules need the app open at (or after) the time; collection
-            events fire while the app is open when a tagged row is created or updated. With a gate
-            script, each tick runs the script first in the vault folder: no output means nothing to
-            do — the tick is skipped silently and no AI runs — while output wakes the agent with it
-            as context.
+            events fire while the app is open when a row of that type is created or updated. With a
+            gate script, each tick runs the script first in the vault folder: no output means
+            nothing to do — the tick is skipped silently and no AI runs — while output wakes the
+            agent with it as context.
           </p>
           <Button
             type="submit"

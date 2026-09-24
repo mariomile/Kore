@@ -47,7 +47,7 @@ export function AllNotesFilters({
   return (
     <div
       role="group"
-      aria-label="Filter by tag"
+      aria-label="Filter by type"
       className="flex items-center gap-0.5 rounded-full bg-surface-hover p-0.5"
     >
       <FilterTab

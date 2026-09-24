@@ -77,12 +77,12 @@ export function AllNotesTable({
       <div className={cn(ALL_NOTES_GRID, TABLE_HEADER_CHROME)}>
         <span>Subject</span>
         <span>Snippet</span>
-        <span className="text-right">Tags</span>
+        <span className="text-right">Types</span>
         <span className="text-right">Updated</span>
       </div>
       {notes.length === 0 ? (
         <p className="py-8 pl-12 pr-7 text-sm text-text-muted">
-          {tag === null ? 'No notes yet.' : `No notes tagged #${tag}.`}
+          {tag === null ? 'No notes yet.' : `No #${tag} notes yet.`}
         </p>
       ) : (
         <Virtualizer

@@ -360,7 +360,7 @@ describe('ChatScreen', () => {
       'give #company a building icon{Enter}',
     )
 
-    await expect.element(view.getByText(/Listed the tags · 7 tags/)).toBeInTheDocument()
+    await expect.element(view.getByText(/Listed the types · 7 types/)).toBeInTheDocument()
     await expect
       .element(view.getByText(/Looked up the app’s icons · 217 icons/))
       .toBeInTheDocument()
@@ -602,7 +602,7 @@ describe('ChatScreen', () => {
           toolCallId: 'tool-3',
           tag: '*',
           notes: [],
-          error: 'Not a tag — omit the tag to list all recent notes.',
+          error: 'Not a type — leave it out to list all recent notes.',
         },
       },
       {
@@ -633,7 +633,7 @@ describe('ChatScreen', () => {
     await view.getByRole('button', { name: 'Atlas', exact: true }).click()
     expect(probedRoute).toEqual({ kind: 'note', path: 'notes/atlas.md' })
     // A refused listing shows the refusal, not a misleading count.
-    await expect.element(view.getByText(/Listed #\* notes — Not a tag/)).toBeInTheDocument()
+    await expect.element(view.getByText(/Listed #\* notes — Not a type/)).toBeInTheDocument()
     await expect
       .element(view.getByText(/Listed daily notes 2026-06-01 – 2026-06-11 · 2 days/))
       .toBeInTheDocument()

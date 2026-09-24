@@ -108,7 +108,7 @@ describe('FilterBar', () => {
       },
     })
 
-    await userEvent.click(view.getByRole('button', { name: 'Tags' }))
+    await userEvent.click(view.getByRole('button', { name: 'Types' }))
     await userEvent.click(view.getByRole('button', { name: /#Book/ }))
     await userEvent.click(view.getByRole('button', { name: /#work/ }))
 

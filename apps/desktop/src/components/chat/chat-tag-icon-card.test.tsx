@@ -81,7 +81,7 @@ describe('ChatTagIconCard', () => {
     await rejected.unmount()
 
     recordDecision.mockClear()
-    applyTagIcon.mockRejectedValue(new Error('The tag’s icon changed since this was proposed.'))
+    applyTagIcon.mockRejectedValue(new Error('The type’s icon changed since this was proposed.'))
     const failed = await render(<ChatToolChip part={iconPart()} turnStatus="done" />)
     await failed.getByRole('button', { name: 'Accept' }).click()
     await expect.element(failed.getByRole('alert')).toHaveTextContent('icon changed')

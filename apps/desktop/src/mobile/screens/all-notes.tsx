@@ -290,10 +290,10 @@ function TagSuggestions({
   onPick: (facet: NoteTagFacet) => void
 }): ReactElement {
   if (facets.length === 0) {
-    return <p className="pb-1 text-xs text-text-muted">No matching tags</p>
+    return <p className="pb-1 text-xs text-text-muted">No matching types</p>
   }
   return (
-    <div className="flex gap-1.5 overflow-x-auto pb-1" role="listbox" aria-label="Matching tags">
+    <div className="flex gap-1.5 overflow-x-auto pb-1" role="listbox" aria-label="Matching types">
       {facets.map((facet) => (
         <button
           key={facet.tag}

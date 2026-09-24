@@ -37,7 +37,7 @@ export function AllNotesSection(): ReactElement {
     // keeping the draft so the user can fix it.
     if (!isTagName(tag)) {
       setDraftError(
-        `"${tag}" can't be a tag — tags start with a letter and use letters, numbers, /, _ or -.`,
+        `"${tag}" can't be a type — type names start with a letter and use letters, numbers, /, _ or -.`,
       )
       return
     }
@@ -55,8 +55,8 @@ export function AllNotesSection(): ReactElement {
   return (
     <SettingsSection id="all-notes">
       <SettingsField
-        legend="Filter tags"
-        description="Tags pinned as one-click filters at the top of the All Notes screen."
+        legend="Filter types"
+        description="Types pinned as one-click filters at the top of the All Notes screen."
       >
         <ul className="mt-3 flex flex-wrap items-center gap-1.5">
           {tags.map((tag) => (
@@ -77,7 +77,7 @@ export function AllNotesSection(): ReactElement {
           ))}
           {tags.length === 0 ? (
             <li className="text-[13px] text-text-muted">
-              No pinned tags — the screen shows only the All tab and the Custom menu.
+              No pinned types — the screen shows only the All tab and the Custom menu.
             </li>
           ) : null}
         </ul>
@@ -95,9 +95,9 @@ export function AllNotesSection(): ReactElement {
               setDraft(event.target.value)
               setDraftError(null)
             }}
-            aria-label="Add filter tag"
+            aria-label="Add filter type"
             aria-invalid={draftError !== null}
-            placeholder="Add a tag (e.g. book)"
+            placeholder="Add a type (e.g. book)"
             className="max-w-60"
           />
           <Button type="submit" variant="outline">

@@ -362,7 +362,7 @@ export function CollectionTable({
       </div>
       {entries.length === 0 ? (
         <>
-          <p className="py-8 pl-12 pr-7 text-sm text-text-muted">No notes tagged #{tag}.</p>
+          <p className="py-8 pl-12 pr-7 text-sm text-text-muted">No #{tag} notes yet.</p>
           {newRow}
         </>
       ) : (

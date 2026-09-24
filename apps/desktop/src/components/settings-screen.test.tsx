@@ -654,7 +654,7 @@ describe('SettingsScreen', () => {
 
   it('adds an All Notes filter tag, normalized, and persists it', async () => {
     await renderScreen('Notes')
-    const input = page.getByLabelText('Add filter tag')
+    const input = page.getByLabelText('Add filter type')
 
     await input.fill(' #Meeting ')
     await page.getByRole('button', { name: 'Add', exact: true }).click()
@@ -669,12 +669,12 @@ describe('SettingsScreen', () => {
 
   it('rejects a tag name outside the #tag grammar with an inline error', async () => {
     await renderScreen('Notes')
-    const input = page.getByLabelText('Add filter tag')
+    const input = page.getByLabelText('Add filter type')
 
     await input.fill('my tag')
     await page.getByRole('button', { name: 'Add', exact: true }).click()
 
-    await expect.element(page.getByRole('alert')).toHaveTextContent(`"my tag" can't be a tag`)
+    await expect.element(page.getByRole('alert')).toHaveTextContent(`"my tag" can't be a type`)
     // The draft stays put for fixing, and nothing reaches the store.
     await expect.element(input).toHaveValue('my tag')
     await vi.waitFor(() => expect(saved).toEqual([]))
@@ -688,7 +688,7 @@ describe('SettingsScreen', () => {
     await expectLocatorToHaveCount(page.getByText('#person'), 0)
     await expect.element(page.getByText('#book')).toBeInTheDocument()
 
-    await page.getByLabelText('Add filter tag').fill('BOOK')
+    await page.getByLabelText('Add filter type').fill('BOOK')
     await page.getByRole('button', { name: 'Add', exact: true }).click()
 
     await vi.waitFor(() => expect(saved).toEqual([]))

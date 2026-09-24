@@ -22,14 +22,12 @@ interface ScrollVeilProps {
 /**
  * The dissolve zone a scroll surface paints at its top edge (Plan 28,
  * Craft's register): scrolled content doesn't hard-clip at the container
- * boundary, it melts into the pane surface through a color fade over two
- * progressively-masked backdrop-blur bands (all painted by the one element's
- * background and pseudos — see `.app-scroll-veil`). The veil only exists
- * while the container is actually scrolled — at rest it is hidden outright,
- * so resting content stays crisp and the blur layers cost nothing on
- * surfaces that never scroll. Scrolling re-renders nothing but the on/off
- * flip: the scroll position is an external store and the snapshot is the
- * boolean.
+ * boundary, it melts into the pane surface through a color fade (the
+ * element's background — see `.app-scroll-veil`, which also says why there
+ * is no blur). The veil only exists while the container is actually
+ * scrolled — at rest it is hidden outright, so resting content stays crisp.
+ * Scrolling re-renders nothing but the on/off flip: the scroll position is
+ * an external store and the snapshot is the boolean.
  */
 export const ScrollVeil = memo(function ScrollVeil({
   scrollElement,

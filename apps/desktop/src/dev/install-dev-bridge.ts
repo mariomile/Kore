@@ -25,7 +25,13 @@ export function installDevBridge(platform: AppPlatform): Promise<void> {
 
 async function install(platform: AppPlatform): Promise<void> {
   const index = await createDevIndexDb()
-  const files = createDevFileStore(seedGraphFiles())
+  // `?seed=large` swaps the demo graph for the profiling vault (thousands
+  // of notes); its module only loads when asked for.
+  const seed =
+    new URLSearchParams(window.location.search).get('seed') === 'large'
+      ? (await import('@/dev/seed-large-graph')).seedLargeGraphFiles()
+      : seedGraphFiles()
+  const files = createDevFileStore(seed)
   setBridge(createDevBridge({ platform, files, index }))
   // No watcher exists in plain-browser dev (the Rust watcher is desktop's
   // change source), so let the write commands echo their own changes —

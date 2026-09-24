@@ -1,5 +1,40 @@
 # Kore working state
 
+## Performance pass: daily scroll, typing, tag pages — 2026-09-24
+
+User report: editor and platform feel slower. Measured over a 3,384-note dev
+vault (`?seed=large`, `src/dev/seed-large-graph.ts`) with production
+bundles in headless Chromium and WebKit, and v0.50 / v0.60 / v0.67 / v0.70
+/ master compared on the same scenarios: **no regression** between v0.50 and
+master on scrolling, caret moves, typing, note open or palette. The costs are
+long-standing, so this pass removes the largest ones Kore owns.
+
+- [x] Scroll veil: no backdrop blur (fade kept). WebKit at 2x: scrolling in
+  a 400-block daily 39.7 → 48.7 fps, across past days 37.5 → 46.1 fps (three
+  runs each). Chromium is unaffected. `:has()` and the #225 focus rules
+  measured as noise.
+- [x] Task membership (`countOpenTasksForNotes`, `getOpenTasksForNote`):
+  the link-inside-task-line check is bounded in SQL (UTF-8 length ≥ UTF-16,
+  so a superset), exact check still in TS. 900 `#person` rows: 66,329 →
+  2,487 rows, the tag page's first rows 600 → 318 ms, longest frame
+  390 → 100 ms.
+- [x] Note pane no longer re-renders per keystroke (embeds reach state only
+  when they change): 11 → 2 pane renders per 10 keys; WebKit typing p95
+  37 → 26 ms.
+
+**Validation:** core `note-tasks-flow` 5/5 (node 22.22.2; node 22.14 lacks
+FTS5 in `node:sqlite`), `body-embeds` 2/2, eight pane/stream/veil/tasks
+browser files 45/45 on Chromium and WebKit, `pnpm check` exit 0. Linux
+headless WebKit is not macOS WKWebView: the veil gain is proven there, not on
+a Mac.
+
+**Next:** the biggest remaining cost is Meowdown's editor mount (~45
+ProseMirror reconfigurations and 3 full redraws per editor, ~40% of the JS
+when scrolling into past days). Meowdown #564 removes about half of it (the
+~20 `EditorExtensions` registrations and two of the redraws; ProseKit's
+web-component registrations remain). Kore can take it once PR #546
+(`renderCodeBlock`) lands and Kore upgrades.
+
 ## Note editing reliability and similar-note previews — 2026-09-22
 
 The consolidation cycle protects property edits and makes tagged-line conversion

@@ -1,3 +1,4 @@
+import { sql, type SqlBool } from 'kysely'
 import type { TaskMarker } from '../markdown'
 import { db } from './db'
 import { decodeTaskBreadcrumbs } from './indexed-note'
@@ -121,6 +122,16 @@ function linkInsideTaskLine(
   return linkPos >= markerOffset && linkPos < markerOffset + raw.length
 }
 
+/**
+ * The SQL side of {@link linkInsideTaskLine}, so a note with many tasks and
+ * many links does not return every (task × link) pair for TypeScript to
+ * discard. The bound uses the line's UTF-8 byte length, which is never less
+ * than its UTF-16 length: it can only admit extra rows, never drop one the
+ * exact check above would keep.
+ */
+const linkMayBeOnTaskLine = sql<SqlBool>`"backlinks"."pos_from" >= "tasks"."marker_offset"
+  and "backlinks"."pos_from" < "tasks"."marker_offset" + length(cast("tasks"."raw" as blob))`
+
 /** One of a note's open tasks: written in the note, or linking it by name. */
 export interface NoteTaskRef extends OpenTask {
   /** False for a task written in the note itself; true for a task elsewhere
@@ -153,6 +164,7 @@ export async function getOpenTasksForNote(path: string): Promise<NoteTaskRef[]> 
     .where('backlinks.kind', '=', 'wiki')
     .where('tasks.checked', '=', 0)
     .where('tasks.notePath', '!=', path)
+    .where(linkMayBeOnTaskLine)
     .select(['backlinks.posFrom as linkPos', 'backlinks.targetRaw as linkTarget'])
     .orderBy('notes.updatedAt', 'desc')
     .orderBy('tasks.notePath')
@@ -215,6 +227,7 @@ export async function countOpenTasksForNotes(
       .where('backlinks.targetPath', 'in', chunk)
       .where('tasks.checked', '=', 0)
       .whereRef('tasks.notePath', '!=', 'backlinks.targetPath')
+      .where(linkMayBeOnTaskLine)
       .select([
         'backlinks.targetPath',
         'backlinks.posFrom',

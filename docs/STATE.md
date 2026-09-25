@@ -10,11 +10,14 @@
   release-please creates or updates it. First version (#249) failed on the
   run where no Release PR changed (`fromJSON('')` in step env, which is
   evaluated before `if`); fixed by parsing the JSON in the script.
+- [x] #250: when no Release PR changed the dispatch step skips and the Release
+  PR workflow stays green (verified on the #250 merge).
+- [x] `master` protected (ruleset "Protect main"): no direct push, force-push
+  or deletion; every change through a PR with `all-green`. The old inert
+  "Ruleset 1" (no target branch) was removed.
 - [ ] Not yet seen live: the dispatched run reporting `all-green` on a Release
   PR. It happens on the next `feat`/`fix` merge. Manual fallback in AGENTS.md
   ("Cutting a Kore release").
-- [ ] `master` protection with `all-green` required: applied once the item
-  above is verified. Until then `master` blocks only force-push and deletion.
 
 ## Performance pass 2: release build and SQLite writer, 2026-09-25
 

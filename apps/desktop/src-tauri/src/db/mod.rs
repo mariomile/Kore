@@ -166,7 +166,11 @@ pub(super) fn open_index_for(graph: &GraphState, index: &IndexState) -> AppResul
     }
     state.conn = Some(migrations::open_index_at(&root)?);
     let mut read = lock_read(index)?;
-    read.conn = Some(migrations::open_index_read_only_at(&root)?);
+    let read_conn = migrations::open_index_read_only_at(&root)?;
+    // Core builds roughly a hundred distinct read queries; rusqlite's default
+    // of 16 cached statements would keep evicting the ones a view repeats.
+    read_conn.set_prepared_statement_cache_capacity(128);
+    read.conn = Some(read_conn);
     read.generation = state.generation;
     state.root = Some(root);
     Ok(state.generation)

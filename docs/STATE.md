@@ -28,6 +28,11 @@ first, one commit each.
   allows is reading `data_version`, which FTS5 issues internally for `MATCH`
   (a change counter; sets nothing). Measured with SQLite's re-prepare counter
   on a read-only index: 1 per query before, 0 after. No statement cache.
+  It also closes a pre-existing leak: table-valued pragmas prepare their
+  PRAGMA when stepped, which ran with no authorizer, so
+  `SELECT file FROM pragma_database_list()` returned the index path (reproduced
+  against the old pattern). Now denied; the test pins it. A second
+  independent review found no blocker.
 - [x] `release-dmg.yml` build job: `timeout-minutes: 120`, like
   `release.yml` and `testflight.yml`, since fat LTO slows the release link.
 

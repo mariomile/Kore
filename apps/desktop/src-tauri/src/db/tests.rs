@@ -830,15 +830,22 @@ fn read_bridge_refuses_attach_and_pragma() {
             .execute_batch("CREATE TABLE secret(x); INSERT INTO secret(x) VALUES ('exfiltrated');")
             .expect("seed secret");
     }
-    let attach = format!("ATTACH DATABASE '{}' AS evil", secret_db.display());
-    assert!(
-        run_query(&reader, &attach, &[]).is_err(),
-        "read bridge must refuse ATTACH"
-    );
-    assert!(
-        run_query(&reader, "PRAGMA foreign_keys = OFF", &[]).is_err(),
-        "read bridge must refuse PRAGMA"
-    );
+    // SQLite says "not authorized" when prepare is denied and "authorization
+    // denied" when a step is; either proves the authorizer is the reason.
+    let denied = |sql: &str| {
+        let err = run_query(&reader, sql, &[]).expect_err(sql);
+        assert!(format!("{err:?}").contains("authoriz"), "{sql}: {err:?}");
+    };
+    denied(&format!(
+        "ATTACH DATABASE '{}' AS evil",
+        secret_db.display()
+    ));
+    denied("PRAGMA foreign_keys = OFF");
+    // Table-valued pragmas prepare their PRAGMA when stepped; the authorizer
+    // must still be installed then (it leaks the index path otherwise).
+    denied("SELECT * FROM pragma_database_list()");
+    // The deliberate exception FTS5 needs: a read of the change counter.
+    assert!(run_query(&reader, "PRAGMA data_version", &[]).is_ok());
 
     // The guard stays installed and never blocks a legitimate read: an FTS
     // `MATCH` (which prepares FTS5's internal `PRAGMA data_version`) works on

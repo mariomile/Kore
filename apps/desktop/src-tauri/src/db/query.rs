@@ -91,7 +91,9 @@ pub(super) fn run_query(
 ) -> AppResult<Vec<Map<String, Value>>> {
     // This bridge is reachable from the (untrusted) webview, so it must run only
     // reads of our projection. On the read connection ([`open_read_connection`])
-    // the authorizer rejects ATTACH/DETACH/PRAGMA with `SQLITE_AUTH` here.
+    // the authorizer rejects ATTACH/DETACH/PRAGMA with `SQLITE_AUTH`, here at
+    // prepare or, for table-valued pragmas like `pragma_database_list()`, at
+    // the first step.
     let mut stmt = conn.prepare(sql)?;
     // `Statement::readonly()` rejects any remaining mutating statement so a
     // compromised/buggy caller can't write through the read bridge.

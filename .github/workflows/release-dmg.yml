@@ -43,6 +43,9 @@ jobs:
   build:
     name: Build and publish (macOS, Apple Silicon)
     runs-on: macos-latest
+    # Same ceiling as release.yml and testflight.yml: fat LTO makes the release
+    # link slow, and a hung build should fail instead of holding a runner.
+    timeout-minutes: 120
     env:
       # `secrets` is not allowed inside step `if:` expressions — surface the
       # presence of the updater key as an env flag instead.

@@ -22,6 +22,14 @@ first, one commit each.
   authorizer denies FTS5's internal `PRAGMA data_version` and breaks search.
   Allowing that PRAGMA to save an unmeasured parse was not worth a special
   case in the security policy. Found by an independent review.
+- [x] Read bridge parses each query once. The authorizer now stays installed
+  on the read connection (`query::open_read_connection`) instead of being
+  toggled per query, which had SQLite re-prepare every read. The one PRAGMA it
+  allows is reading `data_version`, which FTS5 issues internally for `MATCH`
+  (a change counter; sets nothing). Measured with SQLite's re-prepare counter
+  on a read-only index: 1 per query before, 0 after. No statement cache.
+- [x] `release-dmg.yml` build job: `timeout-minutes: 120`, like
+  `release.yml` and `testflight.yml`, since fat LTO slows the release link.
 
 **Validation:** `cargo fmt --check` clean; `cargo clippy -D warnings` on
 `reflect-open`, `reflect-index-schema`, `reflect-cli` clean; after the revert
@@ -30,7 +38,10 @@ first, one commit each.
 iOS `cargo check` fails in Tauri's Swift build script on this machine (the
 macOS 27 SDK lacks `CoreServices/CSIdentityBase.h`), before any Kore code
 compiles; the changes are platform-neutral Rust and CI runs that check. No
-runtime benchmark of the fsync gain was taken.
+runtime benchmark of the fsync gain was taken. Read-bridge follow-up:
+`db::` 69/69 (the ATTACH/PRAGMA test now runs on a real read connection and
+covers an FTS `MATCH` plus a later writer commit), clippy clean,
+`release-please-workflow` test 7/7.
 
 **Next:** upgrade Meowdown 0.65.6 → 0.74.x (mount cost fix #564
 is released; blocked only by the #546 patches), then local structured logging

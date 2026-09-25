@@ -1,5 +1,39 @@
 # Kore working state
 
+## Performance pass 2: release build and SQLite read path — 2026-09-25
+
+Follow-up to the audit of speed, footprint and bug surface. Simplest levers
+first, one commit each.
+
+- [x] Workspace `[profile.release]`: `codegen-units = 1`, `lto = "fat"`.
+  `panic` stays `unwind` (a panicking command must not abort the app); no
+  `strip` (iOS dSYM needs line tables). `reflect` CLI release binary
+  6,468,528 → 5,528,064 bytes (-14.5%); desktop `reflect-open` release
+  66,613,440 → 53,940,960 bytes (-19%), links with ONNX Runtime under fat
+  LTO. Release compile of the desktop crate: ~5 min locally.
+- [x] Index writer `PRAGMA synchronous=NORMAL` (WAL pairing: no per-commit
+  fsync; power loss may drop the last commits, never corrupts).
+  `mmap_size` rejected (the index can sit on iCloud; SIGBUS risk),
+  `cache_size` rejected (memory without a measured need).
+- [x] Read bridge uses `prepare_cached`, read connection cache capacity 128
+  (core has ~94 `selectFrom` sites; rusqlite default is 16).
+
+**Validation:** `cargo fmt --check` clean; `cargo clippy -D warnings` on
+`reflect-open`, `reflect-index-schema`, `reflect-cli` clean; `reflect-open`
+`db::` tests 69/69 (the open test now asserts `synchronous = 1`),
+`reflect-index-schema` 2/2, `reflect-cli` 145/145. **Not run locally:** the
+iOS `cargo check` fails in Tauri's Swift build script on this machine (the
+macOS 27 SDK lacks `CoreServices/CSIdentityBase.h`), before any Kore code
+compiles; the changes are platform-neutral Rust and CI runs that check. No
+runtime benchmark of the fsync or statement-cache gain was taken.
+
+**Next:** upgrade Meowdown 0.65.6 → 0.74.x (mount cost fix #564
+is released; blocked only by the #546 patches), then local structured logging
+and shrinking the console allowlist.
+
+**Doc drift:** AGENTS.md points Meowdown at `~/repos/meowdown`; that checkout
+does not exist on this machine.
+
 ## Performance pass: daily scroll, typing, tag pages — 2026-09-24
 
 User report: editor and platform feel slower. Measured over a 3,384-note dev

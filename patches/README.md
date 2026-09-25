@@ -29,12 +29,24 @@ published core 0.74.1 and react 0.73.1. The patch payloads are the built
 Upstream's `CodeBlockView` prop (#548) is not a replacement: it swaps the whole
 code-block view, and the default one is not exported.
 
-To regenerate: build `@meowdown/core` and `@meowdown/react` at the base and at
-the PR head, then copy the PR head's `dist/index.js`, `dist/index.d.ts` and
-(react) `dist/style.css` into `pnpm patch` edit directories and
-`pnpm patch-commit` them. CSS-module class hashes depend on the build path, so
-rewrite the local hashes to the published ones first: a local build of the
-base, with its hashes mapped, must equal the npm tarball byte for byte.
+To regenerate:
+
+1. In a Meowdown clone, `pnpm install` and build `@meowdown/core` and
+   `@meowdown/react` at the base commit, then at the PR head.
+2. CSS-module class names (`meow_<Name>_<hash>`) carry a hash of the build
+   path, so a local build differs from npm only in those hashes. Pair the
+   hashes of the local base build's `react/dist/style.css` with the npm
+   tarball's `style.css`, in document order: each local hash maps to exactly
+   one published hash. Applying the map to the local base build's
+   `index.js` and `style.css` must reproduce the tarball byte for byte;
+   then apply it to the PR head's files.
+3. `pnpm patch @meowdown/<pkg>@<version> --edit-dir <dir>`, copy the mapped
+   PR head `dist/index.js`, `dist/index.d.ts` and (react) `dist/style.css`
+   over it, and `pnpm patch-commit <dir>`.
+
+The react patch also renames `Fragment$1` to `Fragment$2` at a few call
+sites: the bundler's import numbering shifted in the PR build. It is not a
+behavior change.
 
 Delete both patch files and their `patchedDependencies` entries only after Kore
 uses a released Meowdown version containing PR #612 and passes a frozen install,

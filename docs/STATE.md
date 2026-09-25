@@ -55,8 +55,8 @@ covers an FTS `MATCH` plus a later writer commit), clippy clean,
   `CodeBlockView` (#548) cannot replace them: the default code-block view is
   not exported. Knock-on changes: React 19.3 (a Meowdown peer),
   `@prosekit/core` 0.13.3 and `@prosekit/pm` 0.1.20 so one copy of
-  prosemirror-model/transform/view is installed (two copies broke list and
-  menu commands), and the slash-menu section CSS matches Heading rows by
+  prosemirror-model/transform/view is installed (two copies broke list,
+  table and block-menu commands), and the slash-menu section CSS matches Heading rows by
   prefix, since those rows now carry search keywords (`Heading 1 h1`), the
   same way it already matched `Text`. Meowdown 0.73 also requires
   `@base-ui/react` ^1.8.0: Kore moved from 1.7.0 and its #5645 backport
@@ -85,8 +85,8 @@ iOS.
 
 **Next:** local structured logging and shrinking the console allowlist.
 
-**Doc drift:** AGENTS.md points Meowdown at `~/repos/meowdown`; that checkout
-does not exist on this machine.
+**Doc drift (fixed):** AGENTS.md pointed Meowdown at `~/repos/meowdown`,
+which did not exist; it now names the upstream repository instead.
 
 ## Performance pass: daily scroll, typing, tag pages — 2026-09-24
 

@@ -420,7 +420,8 @@ Kore/
 
 ### Related repos
 
-- **Meowdown:** the local checkout lives at `~/repos/meowdown`. Meowdown is the
+- **Meowdown:** [prosekit/meowdown](https://github.com/prosekit/meowdown); clone
+  it locally when investigating (no fixed checkout path is assumed). Meowdown is the
   first-party hybrid/live-preview Markdown editor that Kore uses through
   `@meowdown/core` and `@meowdown/react`. When investigating editor behavior,
   markdown round-tripping, keybindings, slash menus, wiki links, task checkboxes,

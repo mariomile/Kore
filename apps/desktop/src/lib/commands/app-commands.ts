@@ -1,4 +1,10 @@
-import { errorMessage, showQuickCapture, toggleDevtools, untitledNotePath } from '@reflect/core'
+import {
+  errorMessage,
+  revealLogs,
+  showQuickCapture,
+  toggleDevtools,
+  untitledNotePath,
+} from '@reflect/core'
 import { startOperation } from '@/lib/operations'
 import { isNativeShell } from '@/lib/platform'
 import { isMobileSurface } from '@/lib/platform-surface'
@@ -431,6 +437,22 @@ const APP_COMMANDS: AppCommand[] = [
       } catch {
         // Best effort — opening the inspector is never worth a surfaced failure.
       }
+    },
+  },
+  {
+    id: 'help.showLogs',
+    title: 'Show logs',
+    keywords: ['logs', 'log file', 'diagnostics', 'bug report', 'troubleshoot'],
+    // Opens the folder of local log files (`src-tauri/src/logs.rs`) a user
+    // attaches to a bug report. Plain-browser dev writes no log file, and iOS
+    // has no file manager to open it in.
+    run: () => {
+      if (!isNativeShell() || isMobileSurface()) {
+        return
+      }
+      void revealLogs().catch((cause: unknown) => {
+        startOperation('Show logs').fail(errorMessage(cause))
+      })
     },
   },
 ]

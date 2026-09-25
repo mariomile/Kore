@@ -33,6 +33,7 @@ mod icloud;
 mod link_preview;
 #[cfg(desktop)]
 mod liquid_glass;
+mod logs;
 mod menu;
 mod process_memory;
 mod process_tree;
@@ -145,17 +146,8 @@ fn app_platform() -> &'static str {
     }
 }
 
-/// Route `tracing` output to stderr, honoring `RUST_LOG` (default `info`).
-fn init_tracing() {
-    use tracing_subscriber::EnvFilter;
-    let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
-    // `try_init` so a second call (tests, mobile re-entry) is a no-op, not a panic.
-    let _ = tracing_subscriber::fmt().with_env_filter(filter).try_init();
-}
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    init_tracing();
     let builder = tauri::Builder::default();
 
     // Single-instance must be the first plugin so a second launch is caught
@@ -168,7 +160,10 @@ pub fn run() {
         windows::surface_main_window(app);
     }));
 
+    // Logging comes first after single-instance so the other plugins' setup
+    // already logs to the file (see `logs.rs`).
     let builder = builder
+        .plugin(logs::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
@@ -460,6 +455,8 @@ pub fn run() {
             windows::window_bootstrap,
             windows::close_note_windows,
             devtools::toggle_devtools,
+            logs::log_webview,
+            logs::logs_reveal,
             diagnostics::memory_report,
         ])
         .build(tauri::generate_context!())

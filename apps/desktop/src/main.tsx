@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClient } from '@/lib/query-client'
 import { registerAppCommands } from '@/lib/commands/app-commands'
+import { installLogForwarding } from '@/lib/log-forwarding'
 import { installNativeMenu } from '@/lib/native-menu/menu'
 import { installTauriBridge } from '@/lib/tauri-bridge'
 import { isQuickCaptureWindow } from '@/lib/windows/window-role'
@@ -19,6 +20,7 @@ import { ThemeProvider } from '@/providers/theme-provider'
 import '@/styles/index.css'
 
 installTauriBridge()
+installLogForwarding()
 if (isQuickCaptureWindow()) {
   document.documentElement.dataset.windowRole = 'quick-capture'
 }

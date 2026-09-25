@@ -63,6 +63,7 @@ export {
 } from '../app/background-task'
 export { WINDOW_NAVIGATE_EVENT, subscribeWindowNavigate } from '../app/window-events'
 export { toggleDevtools } from '../app/devtools'
+export { logWebview, revealLogs, type WebviewLogLevel } from '../app/logs'
 export {
   agentSkillStatus,
   agentSkillInstall,

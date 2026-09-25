@@ -689,9 +689,7 @@ html:root {
   --slash-lead-rule: 1px solid var(--border);
 }
 
-[data-testid='slash-menu']
-  [value^='Type: #']:not([hidden])
-  ~ [value^='Type: #']:not([hidden]) {
+[data-testid='slash-menu'] [value^='Type: #']:not([hidden]) ~ [value^='Type: #']:not([hidden]) {
   --slash-lead: none;
   --slash-lead-space: 0px;
   --slash-lead-gap: 0px;

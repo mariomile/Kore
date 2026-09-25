@@ -1,13 +1,14 @@
 # Kore working state
 
-## Performance pass 2: release build and SQLite read path — 2026-09-25
+## Performance pass 2: release build and SQLite writer — 2026-09-25
 
 Follow-up to the audit of speed, footprint and bug surface. Simplest levers
 first, one commit each.
 
 - [x] Workspace `[profile.release]`: `codegen-units = 1`, `lto = "fat"`.
   `panic` stays `unwind` (a panicking command must not abort the app); no
-  `strip` (iOS dSYM needs line tables). `reflect` CLI release binary
+  `strip = "symbols"` (it would remove the line tables the iOS build turns on
+  for the dSYM; otherwise Cargo already strips debug info). `reflect` CLI release binary
   6,468,528 → 5,528,064 bytes (-14.5%); desktop `reflect-open` release
   66,613,440 → 53,940,960 bytes (-19%), links with ONNX Runtime under fat
   LTO. Release compile of the desktop crate: ~5 min locally.
@@ -15,17 +16,21 @@ first, one commit each.
   fsync; power loss may drop the last commits, never corrupts).
   `mmap_size` rejected (the index can sit on iCloud; SIGBUS risk),
   `cache_size` rejected (memory without a measured need).
-- [x] Read bridge uses `prepare_cached`, read connection cache capacity 128
-  (core has ~94 `selectFrom` sites; rusqlite default is 16).
+- [x] Read-bridge statement cache: tried and reverted. `run_query` installs
+  its authorizer around each prepare, and `sqlite3_set_authorizer` expires
+  every prepared statement, so the cache re-parsed anyway. A permanent
+  authorizer denies FTS5's internal `PRAGMA data_version` and breaks search.
+  Allowing that PRAGMA to save an unmeasured parse was not worth a special
+  case in the security policy. Found by an independent review.
 
 **Validation:** `cargo fmt --check` clean; `cargo clippy -D warnings` on
-`reflect-open`, `reflect-index-schema`, `reflect-cli` clean; `reflect-open`
-`db::` tests 69/69 (the open test now asserts `synchronous = 1`),
+`reflect-open`, `reflect-index-schema`, `reflect-cli` clean; after the revert
+`reflect-open` `db::` tests 69/69 (the open test now asserts `synchronous = 1`),
 `reflect-index-schema` 2/2, `reflect-cli` 145/145. **Not run locally:** the
 iOS `cargo check` fails in Tauri's Swift build script on this machine (the
 macOS 27 SDK lacks `CoreServices/CSIdentityBase.h`), before any Kore code
 compiles; the changes are platform-neutral Rust and CI runs that check. No
-runtime benchmark of the fsync or statement-cache gain was taken.
+runtime benchmark of the fsync gain was taken.
 
 **Next:** upgrade Meowdown 0.65.6 → 0.74.x (mount cost fix #564
 is released; blocked only by the #546 patches), then local structured logging

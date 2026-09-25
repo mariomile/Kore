@@ -470,16 +470,22 @@ html:root {
   opacity: 0.7;
 }
 
-[data-testid='slash-menu'] [value^='Heading 1 ']::before {
+/*
+ * Slash rows expose only Meowdown's `value` attribute: the label followed by
+ * its search keywords. Built-in rows are matched on the full value, so a user
+ * template titled "Heading 1 ..." never picks up their badges or sections.
+ * Kore's own rows, whose labels and keywords Kore controls, match by prefix.
+ */
+[data-testid='slash-menu'] [value='Heading 1 h1']::before {
   content: 'H1';
 }
-[data-testid='slash-menu'] [value^='Heading 2 ']::before {
+[data-testid='slash-menu'] [value='Heading 2 h2']::before {
   content: 'H2';
 }
-[data-testid='slash-menu'] [value^='Heading 3 ']::before {
+[data-testid='slash-menu'] [value='Heading 3 h3']::before {
   content: 'H3';
 }
-[data-testid='slash-menu'] [value^='Heading 4 ']::before {
+[data-testid='slash-menu'] [value='Heading 4 h4']::before {
   content: 'H4';
 }
 [data-testid='slash-menu'] [value='Blockquote']::before {
@@ -500,7 +506,7 @@ html:root {
 [data-testid='slash-menu'] [value='Code block']::before {
   content: '</>';
 }
-[data-testid='slash-menu'] [value^='Math']::before {
+[data-testid='slash-menu'] [value='Math latex']::before {
   content: 'Σ';
 }
 [data-testid='slash-menu'] [value='Table']::before {
@@ -509,7 +515,7 @@ html:root {
 [data-testid='slash-menu'] [value='Now']::before {
   content: ':';
 }
-[data-testid='slash-menu'] [value^='Attach file']::before {
+[data-testid='slash-menu'] [value='Attach file attachment file upload']::before {
   content: '📎';
 }
 [data-testid='slash-menu'] [value^='Embed a link']::before {
@@ -528,19 +534,19 @@ html:root {
   content: '▤';
 }
 
-[data-testid='slash-menu'] [value^='Text '] > span:first-of-type::after {
+[data-testid='slash-menu'] [value='Text paragraph plain'] > span:first-of-type::after {
   content: 'Just start writing';
 }
-[data-testid='slash-menu'] [value^='Heading 1 '] > span:first-of-type::after {
+[data-testid='slash-menu'] [value='Heading 1 h1'] > span:first-of-type::after {
   content: 'Large section heading';
 }
-[data-testid='slash-menu'] [value^='Heading 2 '] > span:first-of-type::after {
+[data-testid='slash-menu'] [value='Heading 2 h2'] > span:first-of-type::after {
   content: 'Medium section heading';
 }
-[data-testid='slash-menu'] [value^='Heading 3 '] > span:first-of-type::after {
+[data-testid='slash-menu'] [value='Heading 3 h3'] > span:first-of-type::after {
   content: 'Small section heading';
 }
-[data-testid='slash-menu'] [value^='Heading 4 '] > span:first-of-type::after {
+[data-testid='slash-menu'] [value='Heading 4 h4'] > span:first-of-type::after {
   content: 'Smaller heading';
 }
 [data-testid='slash-menu'] [value='Blockquote'] > span:first-of-type::after {
@@ -561,7 +567,7 @@ html:root {
 [data-testid='slash-menu'] [value='Code block'] > span:first-of-type::after {
   content: 'Capture a code snippet';
 }
-[data-testid='slash-menu'] [value^='Math'] > span:first-of-type::after {
+[data-testid='slash-menu'] [value='Math latex'] > span:first-of-type::after {
   content: 'Display a formula';
 }
 [data-testid='slash-menu'] [value='Table'] > span:first-of-type::after {
@@ -570,45 +576,47 @@ html:root {
 [data-testid='slash-menu'] [value='Now'] > span:first-of-type::after {
   content: 'Insert the current time';
 }
-[data-testid='slash-menu'] [value^='Attach file'] > span:first-of-type::after {
+[data-testid='slash-menu']
+  [value='Attach file attachment file upload']
+  > span:first-of-type::after {
   content: 'Upload a file';
 }
 
-[data-testid='slash-menu'] [value^='Text ']:not([hidden]),
-[data-testid='slash-menu'] [value^='Heading 1 ']:not([hidden]),
-[data-testid='slash-menu'] [value^='Heading 2 ']:not([hidden]),
-[data-testid='slash-menu'] [value^='Heading 3 ']:not([hidden]),
-[data-testid='slash-menu'] [value^='Heading 4 ']:not([hidden]),
+[data-testid='slash-menu'] [value='Text paragraph plain']:not([hidden]),
+[data-testid='slash-menu'] [value='Heading 1 h1']:not([hidden]),
+[data-testid='slash-menu'] [value='Heading 2 h2']:not([hidden]),
+[data-testid='slash-menu'] [value='Heading 3 h3']:not([hidden]),
+[data-testid='slash-menu'] [value='Heading 4 h4']:not([hidden]),
 [data-testid='slash-menu'] [value='Blockquote']:not([hidden]) {
   --slash-lead: 'Basic blocks';
   --slash-lead-space: 1.125rem;
 }
 
 [data-testid='slash-menu']
-  [value^='Text ']:not([hidden])
+  [value='Text paragraph plain']:not([hidden])
   ~ :is(
-    [value^='Heading 1 '],
-    [value^='Heading 2 '],
-    [value^='Heading 3 '],
-    [value^='Heading 4 '],
+    [value='Heading 1 h1'],
+    [value='Heading 2 h2'],
+    [value='Heading 3 h3'],
+    [value='Heading 4 h4'],
     [value='Blockquote']
   ):not([hidden]),
 [data-testid='slash-menu']
-  [value^='Heading 1 ']:not([hidden])
+  [value='Heading 1 h1']:not([hidden])
   ~ :is(
-    [value^='Heading 2 '],
-    [value^='Heading 3 '],
-    [value^='Heading 4 '],
+    [value='Heading 2 h2'],
+    [value='Heading 3 h3'],
+    [value='Heading 4 h4'],
     [value='Blockquote']
   ):not([hidden]),
 [data-testid='slash-menu']
-  [value^='Heading 2 ']:not([hidden])
-  ~ :is([value^='Heading 3 '], [value^='Heading 4 '], [value='Blockquote']):not([hidden]),
+  [value='Heading 2 h2']:not([hidden])
+  ~ :is([value='Heading 3 h3'], [value='Heading 4 h4'], [value='Blockquote']):not([hidden]),
 [data-testid='slash-menu']
-  [value^='Heading 3 ']:not([hidden])
-  ~ :is([value^='Heading 4 '], [value='Blockquote']):not([hidden]),
+  [value='Heading 3 h3']:not([hidden])
+  ~ :is([value='Heading 4 h4'], [value='Blockquote']):not([hidden]),
 [data-testid='slash-menu']
-  [value^='Heading 4 ']:not([hidden])
+  [value='Heading 4 h4']:not([hidden])
   ~ [value='Blockquote']:not([hidden]) {
   --slash-lead: none;
   --slash-lead-space: 0px;
@@ -640,7 +648,7 @@ html:root {
 }
 
 [data-testid='slash-menu'] [value='Code block']:not([hidden]),
-[data-testid='slash-menu'] [value^='Math']:not([hidden]),
+[data-testid='slash-menu'] [value='Math latex']:not([hidden]),
 [data-testid='slash-menu'] [value='Table']:not([hidden]) {
   --slash-lead: 'Media';
   --slash-lead-space: 1.125rem;
@@ -650,10 +658,10 @@ html:root {
 
 [data-testid='slash-menu']
   [value='Code block']:not([hidden])
-  ~ :is([value^='Math'], [value='Table']):not([hidden]),
+  ~ :is([value='Math latex'], [value='Table']):not([hidden]),
 [data-testid='slash-menu']
-  [value^='Math']:not([hidden])
-  ~ :is([value^='Math'], [value='Table']):not([hidden]) {
+  [value='Math latex']:not([hidden])
+  ~ :is([value='Math latex'], [value='Table']):not([hidden]) {
   --slash-lead: none;
   --slash-lead-space: 0px;
   --slash-lead-gap: 0px;
@@ -667,7 +675,7 @@ html:root {
   --slash-lead-rule: 1px solid var(--border);
 }
 
-[data-testid='slash-menu'] [value^='Attach file']:not([hidden]) {
+[data-testid='slash-menu'] [value='Attach file attachment file upload']:not([hidden]) {
   --slash-lead: 'Files';
   --slash-lead-space: 1.125rem;
   --slash-lead-gap: 0.25rem;

@@ -166,7 +166,7 @@ pub(super) fn open_index_for(graph: &GraphState, index: &IndexState) -> AppResul
     }
     state.conn = Some(migrations::open_index_at(&root)?);
     let mut read = lock_read(index)?;
-    read.conn = Some(migrations::open_index_read_only_at(&root)?);
+    read.conn = Some(query::open_read_connection(&root)?);
     read.generation = state.generation;
     state.root = Some(root);
     Ok(state.generation)

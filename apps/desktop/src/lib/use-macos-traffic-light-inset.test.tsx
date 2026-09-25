@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { act } from 'react'
 import { renderHook } from 'vitest-browser-react'
 import { resetMacosFullscreenStore } from './macos-fullscreen-store'
 import { useMacosTrafficLightInset } from './use-macos-traffic-light-inset'
+import { act } from '@/test-utils/act'
 
 const windowMock = vi.hoisted(() => ({
   fullscreen: false,

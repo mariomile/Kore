@@ -1,4 +1,3 @@
-import { act } from 'react'
 import { cleanup, render } from 'vitest-browser-react'
 import { page } from 'vitest/browser'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -10,6 +9,7 @@ import {
 import { pickFiles } from '@/lib/pick-files'
 import { fireEvent } from '@/test-utils/fire-event'
 import { MobileFormattingToolbar } from './formatting-toolbar'
+import { act } from '@/test-utils/act'
 
 vi.mock('@/mobile/haptics', () => ({ hapticImpactLight: vi.fn() }))
 vi.mock('@/lib/pick-files', () => ({ pickFiles: vi.fn(async () => []) }))
@@ -58,7 +58,7 @@ describe('MobileFormattingToolbar', () => {
   it('renders V1 item order plus the dismiss button, with canExec-driven enablement', async () => {
     const toolbar = makeToolbar({ canDedent: false, canMoveUp: false })
     await render(<MobileFormattingToolbar />)
-    act(() => publishFormattingToolbar(owner, toolbar))
+    await act(() => publishFormattingToolbar(owner, toolbar))
 
     const buttons = page.getByRole('button').elements()
     expect(buttons.map((button) => button.getAttribute('aria-label'))).toEqual([
@@ -81,7 +81,7 @@ describe('MobileFormattingToolbar', () => {
 
   it('never lets a tap move focus out of the editor', async () => {
     await render(<MobileFormattingToolbar />)
-    act(() => publishFormattingToolbar(owner, makeToolbar()))
+    await act(() => publishFormattingToolbar(owner, makeToolbar()))
 
     const bullet = page.getByRole('button', { name: 'Cycle list style' })
     // fireEvent returns false when a handler called preventDefault — the
@@ -93,7 +93,7 @@ describe('MobileFormattingToolbar', () => {
   it('routes taps to the published commands', async () => {
     const toolbar = makeToolbar()
     await render(<MobileFormattingToolbar />)
-    act(() => publishFormattingToolbar(owner, toolbar))
+    await act(() => publishFormattingToolbar(owner, toolbar))
 
     fireEvent.click(page.getByRole('button', { name: 'Cycle list style' }))
     expect(toolbar.commands.cycleBulletOrderedList).toHaveBeenCalledOnce()
@@ -116,7 +116,7 @@ describe('MobileFormattingToolbar', () => {
 
   it('hides the image button for an editor that cannot persist files', async () => {
     await render(<MobileFormattingToolbar />)
-    act(() => publishFormattingToolbar(owner, makeToolbar({ canAttachFiles: false })))
+    await act(() => publishFormattingToolbar(owner, makeToolbar({ canAttachFiles: false })))
 
     expect(page.getByRole('button', { name: 'Insert image' }).query()).toBeNull()
   })
@@ -126,7 +126,7 @@ describe('MobileFormattingToolbar', () => {
     vi.mocked(pickFiles).mockResolvedValueOnce(picked)
     const toolbar = makeToolbar()
     await render(<MobileFormattingToolbar />)
-    act(() => publishFormattingToolbar(owner, toolbar))
+    await act(() => publishFormattingToolbar(owner, toolbar))
 
     fireEvent.click(page.getByRole('button', { name: 'Insert image' }))
 

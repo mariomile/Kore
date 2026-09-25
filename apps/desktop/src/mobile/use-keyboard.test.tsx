@@ -1,4 +1,3 @@
-import { act } from 'react'
 import { renderHook } from 'vitest-browser-react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
@@ -7,6 +6,7 @@ import {
   useKeyboardHeightVar,
   useKeyboardVisible,
 } from './use-keyboard'
+import { act } from '@/test-utils/act'
 
 /**
  * The keyboard-height store behind `--keyboard-height`: imperative consumers
@@ -31,10 +31,10 @@ describe('keyboard height store', () => {
     const view = await renderHook(() => useKeyboardVisible())
     expect(view.result.current).toBe(false)
 
-    act(() => publishKeyboardHeight(316))
+    await act(() => publishKeyboardHeight(316))
     expect(view.result.current).toBe(true)
 
-    act(() => publishKeyboardHeight(0))
+    await act(() => publishKeyboardHeight(0))
     expect(view.result.current).toBe(false)
     await view.unmount()
   })
@@ -43,7 +43,7 @@ describe('keyboard height store', () => {
     const first = await renderHook(() => useKeyboardVisible())
     const second = await renderHook(() => useKeyboardVisible())
     await first.unmount()
-    act(() => publishKeyboardHeight(280))
+    await act(() => publishKeyboardHeight(280))
     expect(second.result.current).toBe(true)
     await second.unmount()
   })
@@ -83,14 +83,14 @@ describe('useKeyboardHeightVar', () => {
     const view = await renderHook(() => useKeyboardHeightVar())
 
     viewport.height = 464
-    act(() => {
+    await act(() => {
       viewport.dispatchEvent(new Event('resize'))
     })
     expect(getKeyboardHeight()).toBe(336)
     expect(document.documentElement.style.getPropertyValue('--keyboard-height')).toBe('336px')
 
     viewport.height = 800
-    act(() => {
+    await act(() => {
       viewport.dispatchEvent(new Event('resize'))
     })
     expect(getKeyboardHeight()).toBe(0)
@@ -102,7 +102,7 @@ describe('useKeyboardHeightVar', () => {
     const view = await renderHook(() => useKeyboardHeightVar())
 
     viewport.height = 745
-    act(() => {
+    await act(() => {
       viewport.dispatchEvent(new Event('resize'))
     })
     expect(getKeyboardHeight()).toBe(0)
@@ -114,17 +114,17 @@ describe('useKeyboardHeightVar', () => {
     const view = await renderHook(() => useKeyboardHeightVar())
 
     viewport.height = 464
-    act(() => {
+    await act(() => {
       viewport.dispatchEvent(new Event('resize'))
     })
     expect(getKeyboardHeight()).toBe(336)
 
     // iOS 26.0: the keyboard closed, but the viewport still reports 464.
     vi.useFakeTimers()
-    act(() => {
+    await act(() => {
       document.dispatchEvent(new Event('focusout'))
     })
-    act(() => {
+    await act(() => {
       vi.advanceTimersByTime(1750)
     })
     expect(getKeyboardHeight()).toBe(0)

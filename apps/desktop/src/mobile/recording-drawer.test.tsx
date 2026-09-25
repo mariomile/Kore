@@ -1,8 +1,9 @@
-import { act, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { cleanup, render } from 'vitest-browser-react'
 import { userEvent } from 'vitest/browser'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent } from '@/test-utils/fire-event'
+import { act } from '@/test-utils/act'
 
 const memo = vi.hoisted(() => ({
   phase: 'recording' as 'idle' | 'requesting' | 'recording' | 'transcribing' | 'error',
@@ -76,14 +77,14 @@ describe('RecordingDrawer', () => {
     vi.useFakeTimers()
     const view = await render(<RecordingDrawer />)
 
-    act(() => {
+    await act(() => {
       fireEvent.click(view.getByRole('button', { name: 'Discard recording' }))
     })
-    act(() => {
+    await act(() => {
       vi.advanceTimersByTime(3000)
     })
 
-    act(() => {
+    await act(() => {
       fireEvent.click(view.getByRole('button', { name: 'Discard recording' }))
     })
 

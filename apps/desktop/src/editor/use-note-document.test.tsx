@@ -956,9 +956,15 @@ describe('useNoteDocument', () => {
       const hook = await renderHook(() => useNoteDocument('notes/a.md', 1))
       await hook.act(() => vi.advanceTimersByTimeAsync(0))
 
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
       await hook.act(() => hook.result.current.onEditorChange('# Edited\n'))
       await hook.act(() => vi.advanceTimersByTimeAsync(1000))
       expect(hook.result.current.error).toMatch(/disk full/)
+      expect(consoleError).toHaveBeenCalledWith(
+        'failed to save note:',
+        expect.objectContaining({ message: 'disk full' }),
+      )
+      consoleError.mockRestore()
       expect(hook.result.current.status).toBe('ready') // editing continues
 
       // The next (successful) save clears the surfaced error.

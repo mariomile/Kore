@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { cleanup, render } from 'vitest-browser-react'
 import { page } from 'vitest/browser'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, type ReactElement } from 'react'
+import type { ReactElement } from 'react'
 import { setBridge, upsertFrontmatter } from '@reflect/core'
 import { PaletteProvider, usePalette } from '@/components/command-palette/palette-provider'
 import { flushOpenDocuments } from '@/editor/open-documents'
@@ -12,6 +12,7 @@ import type { Route } from '@/routing/route'
 import { setPlatformSurface } from '@/lib/platform-surface'
 import '@/test-utils/locator'
 import { RouteContent } from './route-content'
+import { act } from '@/test-utils/act'
 
 /**
  * The route → view seam (Plan 06): non-daily notes must be just as editable as
@@ -165,6 +166,9 @@ beforeEach(() => {
     if (command === 'db_query') {
       return []
     }
+    if (command === 'note_exists') {
+      return false // no file already holds a new title's slug
+    }
     return null
   })
 })
@@ -251,7 +255,7 @@ describe('RouteContent', () => {
     const view = await renderRoute({ kind: 'note', path })
     await expect.element(page.getByLabelText(`Editing ${path}`)).toBeVisible()
 
-    act(() => editorProbe.onChange?.('# New Title\n'))
+    await act(() => editorProbe.onChange?.('# New Title\n'))
     await act(() => flushOpenDocuments())
 
     expect(files[path]).toBe(
@@ -293,7 +297,7 @@ describe('RouteContent', () => {
     const view = await renderRoute({ kind: 'note', path: NEW_NOTE_PATH })
     await expect.element(page.getByLabelText(`Editing ${NEW_NOTE_PATH}`)).toBeVisible()
 
-    act(() => editorProbe.onChange?.('# Manifesto\n'))
+    await act(() => editorProbe.onChange?.('# Manifesto\n'))
     await act(() => flushOpenDocuments())
 
     // The seed's header rides along: the file is born with its identity

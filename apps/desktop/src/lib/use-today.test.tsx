@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { act } from 'react'
 import { renderHook } from 'vitest-browser-react'
 import { useToday } from './use-today'
+import { act } from '@/test-utils/act'
 
 beforeEach(() => {
   vi.useFakeTimers()
@@ -19,12 +19,12 @@ describe('useToday', () => {
     const { result, unmount } = await renderHook(() => useToday())
     expect(result.current).toBe('2026-06-09')
 
-    act(() => {
+    await act(() => {
       vi.advanceTimersByTime(2 * 60 * 1000) // past midnight (+ the timer pad)
     })
     expect(result.current).toBe('2026-06-10')
 
-    act(() => {
+    await act(() => {
       vi.advanceTimersByTime(24 * 60 * 60 * 1000) // the timer re-armed
     })
     expect(result.current).toBe('2026-06-11')
@@ -46,7 +46,7 @@ describe('useToday', () => {
     // Simulated sleep: the wall clock jumps but no timer fires (DOM timers
     // run on a monotonic clock that pauses while the machine sleeps).
     vi.setSystemTime(new Date(2026, 5, 10, 9, 0, 0))
-    act(() => {
+    await act(() => {
       document.dispatchEvent(new Event('visibilitychange'))
     })
     expect(result.current).toBe('2026-06-10')
@@ -58,7 +58,7 @@ describe('useToday', () => {
     const { result, unmount } = await renderHook(() => useToday())
 
     vi.setSystemTime(new Date(2026, 5, 10, 9, 0, 0))
-    act(() => {
+    await act(() => {
       vi.advanceTimersByTime(60_000) // one heartbeat tick, no wake event at all
     })
     expect(result.current).toBe('2026-06-10')

@@ -82,6 +82,8 @@ beforeEach(() => {
           return '# merged\n'
         case 'icloud_download_pending':
           return 0
+        case 'db_query':
+          return [] // an empty index: the reindex prefetch finds no stored facts
         default:
           return null
       }
@@ -338,9 +340,15 @@ describe('createIcloudController', () => {
     await settleScan() // baseline (full) out of the way
 
     scanResults.push(new Error('container hiccup'))
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
     listeners.get('icloud:conflicts')?.(['notes/conflicted.md'])
     await settleScan()
     expect(scanCalls[1]?.scope).toBe('candidates')
+    expect(consoleError).toHaveBeenCalledWith(
+      'iCloud conflict sweep failed:',
+      expect.objectContaining({ message: 'container hiccup' }),
+    )
+    consoleError.mockRestore()
 
     listeners.get('icloud:conflicts')?.(['notes/conflicted.md'])
     await settleScan()
@@ -350,11 +358,17 @@ describe('createIcloudController', () => {
 
   it('a failed sweep re-queues its ingests and the adoption baseline', async () => {
     scanResults.push(new Error('container hiccup'))
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
     const icloud = controller()
     await icloud.start()
 
     emitFileChanges([{ path: 'notes/external.md', kind: 'upsert', modifiedMs: 2 }])
     await settleScan() // scan #1 (the sooner baseline timer wins): baseline + ingest — fails
+    expect(consoleError).toHaveBeenCalledWith(
+      'iCloud conflict sweep failed:',
+      expect.objectContaining({ message: 'container hiccup' }),
+    )
+    consoleError.mockRestore()
 
     emitFileChanges([{ path: 'notes/external.md', kind: 'upsert', modifiedMs: 3 }])
     await settleScan(INGEST_SETTLE_MS) // scan #2 retries both, on the ingest window

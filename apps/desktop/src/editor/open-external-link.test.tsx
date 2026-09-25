@@ -1,4 +1,3 @@
-import { act } from 'react'
 import { cleanup, renderHook } from 'vitest-browser-react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { LinkClickHandler } from '@meowdown/core'
@@ -6,6 +5,7 @@ import { openUrl } from '@tauri-apps/plugin-opener'
 import { registerInAppBrowserOpener, resetBrowserSessionForTests } from '@/lib/browser-session'
 import { dispatchDeepLink } from '@/lib/deep-links/intake'
 import { useOpenExternalLink, preferOsBrowser } from '@/editor/open-external-link'
+import { act } from '@/test-utils/act'
 
 const openBrowserWindow = vi.hoisted(() => vi.fn<() => Promise<void>>())
 const settingsState = vi.hoisted(() => ({
@@ -32,9 +32,9 @@ vi.mock('@/providers/settings-provider', () => ({
 
 let openExternalLink: LinkClickHandler
 
-function click(href: string, metaKey = false, altKey = false): MouseEvent {
+async function click(href: string, metaKey = false, altKey = false): Promise<MouseEvent> {
   const event = new MouseEvent('click', { cancelable: true, metaKey, altKey })
-  act(() => openExternalLink({ href, event, mod: metaKey }))
+  await act(() => openExternalLink({ href, event, mod: metaKey }))
   return event
 }
 
@@ -65,7 +65,7 @@ describe('preferOsBrowser', () => {
 
 describe('openExternalLink', () => {
   it('opens an http(s) link in the in-app browser window and blocks the frame navigation', async () => {
-    const event = click('https://example.com')
+    const event = await click('https://example.com')
 
     expect(openBrowserWindow).toHaveBeenCalledWith('https://example.com')
     expect(openUrl).not.toHaveBeenCalled()
@@ -73,7 +73,7 @@ describe('openExternalLink', () => {
   })
 
   it('⌘-click also opens the in-app browser — in the editor it IS the open gesture', async () => {
-    click('https://example.com', true)
+    await click('https://example.com', true)
 
     expect(openBrowserWindow).toHaveBeenCalledWith('https://example.com')
     expect(openUrl).not.toHaveBeenCalled()
@@ -84,7 +84,7 @@ describe('openExternalLink', () => {
     registerInAppBrowserOpener((url) => {
       opened.push(url)
     })
-    click('https://example.com')
+    await click('https://example.com')
 
     expect(opened).toEqual(['https://example.com'])
     expect(openBrowserWindow).not.toHaveBeenCalled()
@@ -92,7 +92,7 @@ describe('openExternalLink', () => {
   })
 
   it('Alt-click is the OS-browser escape hatch', async () => {
-    click('https://example.com', false, true)
+    await click('https://example.com', false, true)
 
     expect(openUrl).toHaveBeenCalledWith('https://example.com')
     expect(openBrowserWindow).not.toHaveBeenCalled()
@@ -102,7 +102,7 @@ describe('openExternalLink', () => {
     settingsState.browserOpenLinksInApp = false
     const { result } = await renderHook(() => useOpenExternalLink())
     openExternalLink = result.current
-    click('https://example.com')
+    await click('https://example.com')
 
     expect(openUrl).toHaveBeenCalledWith('https://example.com')
     expect(openBrowserWindow).not.toHaveBeenCalled()
@@ -112,7 +112,7 @@ describe('openExternalLink', () => {
     settingsState.browserOpenLinksInApp = false
     const { result } = await renderHook(() => useOpenExternalLink())
     openExternalLink = result.current
-    click('https://example.com', false, true)
+    await click('https://example.com', false, true)
 
     expect(openBrowserWindow).toHaveBeenCalledWith('https://example.com')
     expect(openUrl).not.toHaveBeenCalled()
@@ -122,7 +122,7 @@ describe('openExternalLink', () => {
     // The fallback logs the shell failure it is recovering from.
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
     openBrowserWindow.mockRejectedValue(new Error('no window for you'))
-    click('https://example.com')
+    await click('https://example.com')
 
     await vi.waitFor(() => expect(openUrl).toHaveBeenCalledWith('https://example.com'))
     expect(consoleError).toHaveBeenCalled()
@@ -130,20 +130,20 @@ describe('openExternalLink', () => {
   })
 
   it('routes a reflect:// link through the in-app deep-link intake, not the URL opener', async () => {
-    click('reflect://note/abc123')
+    await click('reflect://note/abc123')
 
     expect(dispatchDeepLink).toHaveBeenCalledWith('reflect://note/abc123')
     expect(openUrl).not.toHaveBeenCalled()
   })
 
   it('⌘-clicks a rendered reflect:// link into the in-app deep-link intake', async () => {
-    click('reflect://note/abc123', true)
+    await click('reflect://note/abc123', true)
 
     await vi.waitFor(() => expect(dispatchDeepLink).toHaveBeenCalledWith('reflect://note/abc123'))
   })
 
   it('opens a custom app scheme in its OS default app', async () => {
-    const event = click('x-devonthink-item://40C88434-68B6-4DCB-A258-754679764C3C')
+    const event = await click('x-devonthink-item://40C88434-68B6-4DCB-A258-754679764C3C')
 
     expect(openUrl).toHaveBeenCalledWith('x-devonthink-item://40C88434-68B6-4DCB-A258-754679764C3C')
     expect(event.defaultPrevented).toBe(true)
@@ -155,8 +155,8 @@ describe('openExternalLink', () => {
     ['data:text/html,<script>alert(1)</script>'],
     ['file:///etc/passwd'],
     ['blob:https://example.com/uuid'],
-  ])('drops the unsafe scheme %s without opening anything', (href) => {
-    const event = click(href)
+  ])('drops the unsafe scheme %s without opening anything', async (href) => {
+    const event = await click(href)
 
     expect(openUrl).not.toHaveBeenCalled()
     expect(dispatchDeepLink).not.toHaveBeenCalled()
@@ -164,7 +164,7 @@ describe('openExternalLink', () => {
   })
 
   it('drops a scheme-less relative href', async () => {
-    const event = click('notes/foo.md')
+    const event = await click('notes/foo.md')
 
     expect(openUrl).not.toHaveBeenCalled()
     expect(dispatchDeepLink).not.toHaveBeenCalled()

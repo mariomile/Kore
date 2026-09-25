@@ -1,7 +1,7 @@
-import { act } from 'react'
 import { cleanup, renderHook } from 'vitest-browser-react'
 import { afterEach, describe, expect, it } from 'vitest'
 import { useDailyArrivals, type DailyArrivalsOptions } from './use-daily-arrivals'
+import { act } from '@/test-utils/act'
 
 /**
  * The daily surface's arrival bookkeeping (extracted from MobileDaily). The
@@ -112,7 +112,7 @@ describe('useDailyArrivals', () => {
       arrivalFocusEditor: true,
       date: '2026-07-06',
     })
-    act(() => {
+    await act(() => {
       hook.result.current.consumeFocus()
     })
     expect(hook.result.current.focusDate).toBeNull()

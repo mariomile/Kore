@@ -1,7 +1,7 @@
-import { act } from 'react'
 import { cleanup, renderHook } from 'vitest-browser-react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { isRecordingSupported, useAudioRecorder } from './use-audio-recorder'
+import { act } from '@/test-utils/act'
 
 class FakeMediaRecorder {
   static instances: FakeMediaRecorder[] = []
@@ -79,7 +79,7 @@ describe('useAudioRecorder', () => {
     // WKWebView profile: webm unsupported, mp4 picked.
     expect(FakeMediaRecorder.instances[0]!.mimeType).toBe('audio/mp4')
 
-    act(() => {
+    await act(() => {
       vi.advanceTimersByTime(3000)
     })
     expect(result.current.elapsedMs).toBe(3000)
@@ -123,7 +123,7 @@ describe('useAudioRecorder', () => {
     await act(async () => {
       await result.current.start()
     })
-    act(() => {
+    await act(() => {
       vi.advanceTimersByTime(200)
     })
     const recording = await act(async () => await result.current.stop())
@@ -139,7 +139,7 @@ describe('useAudioRecorder', () => {
     await act(async () => {
       await result.current.start()
     })
-    act(() => {
+    await act(() => {
       result.current.cancel()
     })
     expect(result.current.status).toBe('idle')
@@ -200,7 +200,7 @@ describe('useAudioRecorder', () => {
 
     let firstStart: Promise<void> = Promise.resolve()
     let secondStart: Promise<void> = Promise.resolve()
-    act(() => {
+    await act(() => {
       firstStart = result.current.start()
       secondStart = result.current.start()
     })
@@ -226,11 +226,11 @@ describe('useAudioRecorder', () => {
     const { result } = await renderHook(() => useAudioRecorder())
 
     let pending: Promise<void> = Promise.resolve()
-    act(() => {
+    await act(() => {
       pending = result.current.start()
     })
     expect(result.current.status).toBe('requesting')
-    act(() => {
+    await act(() => {
       result.current.cancel()
     })
     await act(async () => {
@@ -249,7 +249,7 @@ describe('useAudioRecorder', () => {
     await act(async () => {
       await result.current.start()
     })
-    act(() => {
+    await act(() => {
       vi.advanceTimersByTime(3000)
     })
 
@@ -291,11 +291,11 @@ describe('useAudioRecorder', () => {
     await act(async () => {
       await result.current.start()
     })
-    act(() => {
+    await act(() => {
       vi.advanceTimersByTime(999)
     })
     expect(onMaxDuration).not.toHaveBeenCalled()
-    act(() => {
+    await act(() => {
       vi.advanceTimersByTime(5000)
     })
     expect(onMaxDuration).toHaveBeenCalledTimes(1)
@@ -314,7 +314,7 @@ describe('useAudioRecorder', () => {
     await act(async () => {
       await result.current.stop()
     })
-    act(() => {
+    await act(() => {
       vi.advanceTimersByTime(5000)
     })
     expect(onMaxDuration).not.toHaveBeenCalled()

@@ -21,6 +21,9 @@ vi.mock('@/components/ui/drawer', () => ({
   DrawerTitle: ({ children }: { children?: ReactNode }) => <h2>{children}</h2>,
 }))
 
+// Picking a month taps a haptic; the test browser has no haptics plugin.
+vi.mock('@/mobile/haptics', () => ({ hapticImpactLight: vi.fn() }))
+
 afterEach(cleanup)
 
 async function mount(overrides: Partial<Parameters<typeof MonthPickerDrawer>[0]> = {}) {

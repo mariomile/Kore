@@ -795,7 +795,10 @@ describe('commitTaskToggle', () => {
     await settled()
 
     h.failWrites('disk full')
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
     await expect(h.session.commitTaskToggle(firstTask(source))).rejects.toThrow('disk full')
+    expect(consoleError).toHaveBeenCalledWith('failed to save note:', expect.any(Error))
+    consoleError.mockRestore()
     // Transactional: nothing persisted, so the buffer and the editor revert to
     // the un-toggled line (no divergence with the rolled-back Tasks list).
     expect(h.session.content()).toBe('+ [ ] x\n')
@@ -855,7 +858,10 @@ describe('commitTaskEdit', () => {
     await settled()
 
     h.failWrites('disk full')
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
     await expect(h.session.commitTaskEdit(firstTask(source), 'y')).rejects.toThrow('disk full')
+    expect(consoleError).toHaveBeenCalledWith('failed to save note:', expect.any(Error))
+    consoleError.mockRestore()
     expect(h.session.content()).toBe('+ [ ] x\n')
     expect(h.applied.at(-1)).toBe('+ [ ] x\n')
     expect(h.snapshots.at(-1)?.error).toBeNull()
@@ -907,7 +913,10 @@ describe('commitTaskRemove', () => {
     await settled()
 
     h.failWrites('disk full')
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
     await expect(h.session.commitTaskRemove(firstTask(source))).rejects.toThrow('disk full')
+    expect(consoleError).toHaveBeenCalledWith('failed to save note:', expect.any(Error))
+    consoleError.mockRestore()
     expect(h.session.content()).toBe('+ [ ] x\n')
     expect(h.applied.at(-1)).toBe('+ [ ] x\n')
   })

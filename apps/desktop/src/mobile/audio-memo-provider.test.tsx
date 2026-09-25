@@ -1,4 +1,4 @@
-import { act, useState, type ReactElement, type ReactNode } from 'react'
+import { useState, type ReactElement, type ReactNode } from 'react'
 import { cleanup, renderHook } from 'vitest-browser-react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { setBridge } from '@reflect/core'
@@ -11,6 +11,7 @@ import type {
   Settings,
 } from '@reflect/core'
 import type { NativeRecorderResult } from '@/mobile/use-native-audio-recorder'
+import { act } from '@/test-utils/act'
 
 const captureAudioMemo = vi.hoisted(() =>
   vi.fn<(input: CaptureAudioMemoInput) => Promise<CaptureAudioMemoOutcome>>(),
@@ -80,6 +81,13 @@ vi.mock('@reflect/core', async (importOriginal) => ({
 }))
 
 vi.mock('@/lib/platform', () => ({ isMacosDesktop: false, isNativeShell: () => true }))
+// The native shell is on, so pin the window role instead of reading Tauri's
+// window metadata, which the test browser does not have.
+vi.mock('@/lib/windows/window-role', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/windows/window-role')>()),
+  isMainWindow: () => true,
+  requireMainWindow: () => true,
+}))
 
 vi.mock('@/lib/transcription-reconciler', () => ({
   createTranscriptionReconciler,
@@ -436,6 +444,9 @@ describe('MobileAudioMemoProvider', () => {
             },
           ],
         }
+      }
+      if (command === 'plugin:recording|actions_ready') {
+        return null // the mount's native-action handshake, unrelated to the scan
       }
       throw new Error(`unexpected invoke: ${command}`)
     })

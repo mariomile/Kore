@@ -23,6 +23,7 @@ const isNativeShell = vi.hoisted(() => vi.fn(() => true))
 const isMobileSurface = vi.hoisted(() => vi.fn(() => false))
 const openBrowserWindow = vi.hoisted(() => vi.fn(async () => undefined))
 const toggleDevtools = vi.hoisted(() => vi.fn(async () => undefined))
+const revealLogs = vi.hoisted(() => vi.fn(async () => undefined))
 const showQuickCapture = vi.hoisted(() => vi.fn(async () => undefined))
 const openRouteInNewWindow = vi.hoisted(() => vi.fn<() => Promise<boolean>>())
 const operationFail = vi.hoisted(() => vi.fn())
@@ -58,6 +59,7 @@ vi.mock('@reflect/core', async (importOriginal) => ({
   getNote,
   getPinnedNotes,
   toggleDevtools,
+  revealLogs,
   showQuickCapture,
   openBrowserWindow,
 }))
@@ -526,6 +528,35 @@ describe('app commands', () => {
     await expect(command('dev.toggleDevtools').run(context)).resolves.toBeUndefined()
     expect(toggleDevtools).not.toHaveBeenCalled()
     isNativeShell.mockReturnValue(true)
+  })
+
+  it('help.showLogs opens the log folder through the native shell', async () => {
+    isNativeShell.mockReturnValue(true)
+    revealLogs.mockClear()
+    const { context } = fakeContext()
+    await command('help.showLogs').run(context)
+    expect(revealLogs).toHaveBeenCalledTimes(1)
+  })
+
+  it('help.showLogs reports a folder that fails to open', async () => {
+    isNativeShell.mockReturnValue(true)
+    startOperation.mockClear()
+    operationFail.mockClear()
+    revealLogs.mockRejectedValueOnce({ kind: 'io', message: 'no file manager' })
+    const { context } = fakeContext()
+    await command('help.showLogs').run(context)
+    await vi.waitFor(() => expect(operationFail).toHaveBeenCalledTimes(1))
+    expect(startOperation).toHaveBeenCalledWith('Show logs')
+  })
+
+  it('help.showLogs no-ops on the mobile surface', async () => {
+    isNativeShell.mockReturnValue(true)
+    isMobileSurface.mockReturnValue(true)
+    revealLogs.mockClear()
+    const { context } = fakeContext()
+    await command('help.showLogs').run(context)
+    expect(revealLogs).not.toHaveBeenCalled()
+    isMobileSurface.mockReturnValue(false)
   })
 
   it('semantic.enable persists the opt-in through the context capability', async () => {

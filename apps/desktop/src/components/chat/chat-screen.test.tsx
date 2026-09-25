@@ -572,12 +572,15 @@ describe('ChatScreen', () => {
       { type: 'complete', messages: [{ role: 'assistant', content: 'Hi.' }] },
     ])
     const view = await renderChat()
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
 
     await userEvent.type(view.getByLabelText('Chat message'), 'hi{Enter}')
 
     await vi.waitFor(() => expect(streamChat).toHaveBeenCalledTimes(1))
     expect(streamChat.mock.lastCall?.[0].context).toBeNull()
     await expect.element(view.getByText('Hi.')).toBeInTheDocument()
+    expect(consoleError).toHaveBeenCalledWith('chat graph context failed:', 'index not open')
+    consoleError.mockRestore()
   })
 
   it('renders listing chips: recent notes by tag and a daily range', async () => {

@@ -1,7 +1,7 @@
 import { render } from 'vitest-browser-react'
 import { page } from 'vitest/browser'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, useEffect } from 'react'
+import { useEffect } from 'react'
 import { todayIso } from '@/lib/dates'
 import { createDayWindow, neighborDate } from '@/lib/day-window'
 import { RouterProvider, useRouter, type NavigateOptions } from '@/routing/router'
@@ -9,6 +9,7 @@ import type { Route } from '@/routing/route'
 import { fireEvent } from '@/test-utils/fire-event'
 import '@/test-utils/locator'
 import { DailyStream } from './daily-stream'
+import { act } from '@/test-utils/act'
 
 /**
  * The stream's arrival-focus contract: every fresh arrival autofocuses the
@@ -141,7 +142,7 @@ describe('DailyStream arrival focus', () => {
     const today = todayIso()
     const { view, navigate, anchored, paneFor } = await renderStream()
 
-    act(() => navigate({ kind: 'today' }, { focusEditor: true }))
+    await act(() => navigate({ kind: 'today' }, { focusEditor: true }))
     await anchored(today)
 
     const pane = paneFor(today)
@@ -196,8 +197,8 @@ describe('DailyStream arrival focus', () => {
 
     // A capture arrival first, so the follow-up proves the append intent is
     // one-shot rather than sticky.
-    act(() => navigate({ kind: 'today' }, { focusEditor: true }))
-    act(() => navigate({ kind: 'today' }))
+    await act(() => navigate({ kind: 'today' }, { focusEditor: true }))
+    await act(() => navigate({ kind: 'today' }))
     await anchored(today)
 
     const pane = paneFor(today)

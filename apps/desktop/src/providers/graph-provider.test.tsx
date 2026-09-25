@@ -13,6 +13,13 @@ vi.mock('@/lib/platform', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/platform')>()),
   isNativeShell: () => true,
 }))
+// The native shell is on, so pin the window role instead of reading Tauri's
+// window metadata, which the test browser does not have.
+vi.mock('@/lib/windows/window-role', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/windows/window-role')>()),
+  isMainWindow: () => true,
+  requireMainWindow: () => true,
+}))
 
 /**
  * Exercises the provider's open-ordering guards: overlapping opens are
@@ -111,6 +118,11 @@ function installFakeBridge(): void {
           return storedFiles
         case 'vault_scan_stats':
           return { notes: storedFiles.length, attachments: 0, skipped: 0 }
+        // The background index pass that follows an open: nothing to reindex.
+        case 'index_reconcile_scan':
+          return { total: storedFiles.length, candidates: [], orphans: [], stalePlaceholders: [] }
+        case 'note_read':
+          return ''
         case 'note_create':
           return { kind: 'created', modifiedMs: 1 }
         case 'index_meta_set':

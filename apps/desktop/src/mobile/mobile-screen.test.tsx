@@ -3,7 +3,7 @@ import { cleanup, render } from 'vitest-browser-react'
 import { page, userEvent } from 'vitest/browser'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { format } from 'date-fns'
-import { act, StrictMode, type ReactElement } from 'react'
+import { StrictMode, type ReactElement } from 'react'
 import { setBridge } from '@reflect/core'
 import { clearFormattingToolbar, publishFormattingToolbar } from '@/editor/formatting-toolbar-store'
 import { RouterProvider, useRouter } from '@/routing/router'
@@ -16,6 +16,7 @@ import '@/test-utils/locator'
 import { createWeekWindow, weekOf } from './calendar'
 import { MobileShell } from './mobile-shell'
 import { publishKeyboardHeight } from './use-keyboard'
+import { act } from '@/test-utils/act'
 
 const waitFor = vi.waitFor
 
@@ -279,25 +280,25 @@ function visibleLayer(view: BrowserView): HTMLElement {
  * Dispatch a pointer event the gesture hook can read.
  */
 async function firePointer(element: Element, type: string, init: PointerEventInit): Promise<void> {
-  act(() => {
+  await act(() => {
     element.dispatchEvent(new PointerEvent(type, { bubbles: true, cancelable: true, ...init }))
   })
 }
 
 async function finishAnimation(element: Element): Promise<void> {
-  act(() => {
+  await act(() => {
     fireEvent.animationEnd(element)
   })
 }
 
 async function finishTransition(element: Element): Promise<void> {
-  act(() => {
+  await act(() => {
     fireEvent.transitionEnd(element)
   })
 }
 
 async function fireClick(element: Element): Promise<void> {
-  act(() => {
+  await act(() => {
     fireEvent.click(element)
   })
 }
@@ -764,12 +765,12 @@ describe('MobileShell', () => {
     const view = await mount({ kind: 'today' })
     await expect.element(view.getByRole('navigation', { name: 'Sections' })).toBeVisible()
 
-    act(() => publishKeyboardHeight(316))
+    await act(() => publishKeyboardHeight(316))
     expect(view.getByRole('navigation', { name: 'Sections' }).query()).toBeNull()
     expect(view.getByRole('button', { name: 'New' }).query()).toBeNull()
     expect(document.documentElement.style.getPropertyValue('--mobile-tab-bar-height')).toBe('')
 
-    act(() => publishKeyboardHeight(0))
+    await act(() => publishKeyboardHeight(0))
     await expect.element(view.getByRole('navigation', { name: 'Sections' })).toBeVisible()
     await expect.element(view.getByRole('button', { name: 'New' })).toBeVisible()
   })
@@ -780,10 +781,10 @@ describe('MobileShell', () => {
 
     // Keyboard up with no focused editor (the All-tab search field): neither
     // the tab bar nor a dead-button toolbar.
-    act(() => publishKeyboardHeight(316))
+    await act(() => publishKeyboardHeight(316))
     expect(view.getByRole('toolbar', { name: 'Formatting' }).query()).toBeNull()
 
-    act(() =>
+    await act(() =>
       publishFormattingToolbar(owner, {
         capabilities: {
           canIndent: true,
@@ -809,7 +810,7 @@ describe('MobileShell', () => {
     await expect.element(view.getByRole('toolbar', { name: 'Formatting' })).toBeVisible()
     expect(view.getByRole('navigation', { name: 'Sections' }).query()).toBeNull()
 
-    act(() => {
+    await act(() => {
       clearFormattingToolbar(owner)
       publishKeyboardHeight(0)
     })
@@ -1063,7 +1064,7 @@ describe('MobileStack transitions & back-swipe', () => {
     await firePointer(stack, 'pointermove', { pointerId: 1, clientX: 600, clientY: 310 })
     await firePointer(stack, 'pointerup', { pointerId: 1, clientX: 600, clientY: 310 })
 
-    act(() => {
+    await act(() => {
       card.dispatchEvent(new Event('transitionend', { bubbles: true }))
       card.dispatchEvent(new Event('transitionend', { bubbles: true }))
     })

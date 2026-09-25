@@ -20,6 +20,8 @@ vi.mock('@/components/ui/drawer', () => ({
   DrawerContent: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
   DrawerTitle: ({ children }: { children?: ReactNode }) => <h2>{children}</h2>,
 }))
+// Sending taps a haptic; the test browser has no haptics plugin.
+vi.mock('@/mobile/haptics', () => ({ hapticImpactLight: vi.fn() }))
 
 afterEach(cleanup)
 

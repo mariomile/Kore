@@ -1,10 +1,11 @@
-import { act, createElement, type ReactNode } from 'react'
+import { createElement, type ReactNode } from 'react'
 import { renderHook } from 'vitest-browser-react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { setBridge } from '@reflect/core'
 import { resetOperations } from '@/lib/operations'
 import { useNoteTrash } from './use-note-trash'
+import { act } from '@/test-utils/act'
 
 interface GraphValue {
   graph: { root: string; name: string; generation: number } | null

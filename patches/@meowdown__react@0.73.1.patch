@@ -1,0 +1,322 @@
+diff --git a/dist/index.d.ts b/dist/index.d.ts
+index c2b882b2f29a0fcd0b87127eb964172cb741d807..5e9f38f03e4d9ffa9d74d20435bf8633f7b4d5f7 100644
+--- a/dist/index.d.ts
++++ b/dist/index.d.ts
+@@ -1,10 +1,33 @@
+ import { ComponentProps, ReactElement, ReactNode, Ref } from "react";
+-import { AcceptPendingReplacementOptions, ExitBoundaryHandler, FileClickHandler, FileInfoResolver, FileLinkResolver, FilePasteOptions, FileViewOptions, ImageClickHandler, ImageOptions, LinkClickHandler, LinkCopyHandler, LinkPreview, LinkPreviewResolver, LinkPreviewResolver as LinkPreviewResolver$1, ListMarker, MarkMode, PendingReplacement, PendingReplacementOutcome, PlaceholderOptions, SearchStatusHandler, StartPendingReplacementOptions, TagClickHandler, TypedEditor, WikiEmbedResolver, WikilinkClickHandler, WikilinkHoverHit, WikilinkResolver, XPostMediaClickHandler, XPostResolver, XPostResolver as XPostResolver$1, YouTubeVideoClickHandler, YouTubeVideoResolver, YouTubeVideoResolver as YouTubeVideoResolver$1 } from "@meowdown/core";
++import { AcceptPendingReplacementOptions, ExitBoundaryHandler, FileClickHandler, FileInfoResolver, FileLinkResolver, FilePasteOptions, FileViewOptions, ImageClickHandler, ImageOptions, InsertMarkdownOptions, LinkClickHandler, LinkCopyHandler, LinkPreview, LinkPreviewResolver, LinkPreviewResolver as LinkPreviewResolver$1, ListMarker, MarkMode, PendingReplacement, PendingReplacementOutcome, PlaceholderOptions, SearchStatusHandler, StartPendingReplacementOptions, TagClickHandler, TypedEditor, WikiEmbedResolver, WikilinkClickHandler, WikilinkHoverHit, WikilinkResolver, XPostMediaClickHandler, XPostResolver, XPostResolver as XPostResolver$1, YouTubeVideoClickHandler, YouTubeVideoResolver, YouTubeVideoResolver as YouTubeVideoResolver$1 } from "@meowdown/core";
+ import { SelectionJSON, SelectionJSON as SelectionJSON$1 } from "@prosekit/core";
+ import { ReactNodeViewComponent, ReactNodeViewComponent as ReactNodeViewComponent$1, useEditor, useExtension, useKeymap } from "@prosekit/react";
+ //#region src/utils/date-format.d.ts
+ type TimeFormat = '12' | '24';
+ //#endregion
++//#region src/components/code-block-view.d.ts
++/**
++ * Values passed to {@link CodeBlockRenderer}.
++ */
++interface CodeBlockRenderOptions {
++  /**
++   * The language written after the opening fence, or an empty string.
++   */
++  language: string;
++  /**
++   * The code block body without its fences.
++   */
++  code: string;
++  /**
++   * Replace the block body as one undoable editor transaction.
++   */
++  updateCode: (code: string) => void;
++}
++/**
++ * Return custom content for a code block, or null to use Meowdown's built-in view.
++ */
++type CodeBlockRenderer = (options: CodeBlockRenderOptions) => ReactNode | null;
++//#endregion
+ //#region src/components/types.d.ts
+ /**
+  * A selection to restore: an exact JSON selection, or a document edge.
+@@ -35,11 +58,12 @@ interface EditorHandle {
+    * undoable edit. An active selection collapses first and is never
+    * deleted - this is a host-initiated insert, not a paste. A lone paragraph is
+    * inserted inline at the cursor; anything else is inserted as blocks. The
+-   * cursor lands at the end of the inserted content. An empty or
++   * cursor lands at the end of the inserted content, or in the following
++   * paragraph when `options.selection` is `'after-block'`. An empty or
+    * whitespace-only string is a no-op. Unlike `setMarkdown`, it fires
+    * `onDocChange`: the host cannot know the resulting document.
+    */
+-  insertMarkdown: (markdown: string) => void;
++  insertMarkdown: (markdown: string, options?: InsertMarkdownOptions) => void;
+   /**
+    * Returns the current Markdown and selection.
+    */
+@@ -277,6 +301,13 @@ interface EditorProps {
+    * `setState` on the handle do not fire it.
+    */
+   onDocChange?: VoidFunction;
++  /**
++   * Renders host-owned content for selected fenced code blocks. Return null
++   * to keep the built-in source, toolbar, and preview. Ignored when
++   * `CodeBlockView` replaces the built-in view. Read each time that view
++   * renders; pass a stable function.
++   */
++  renderCodeBlock?: CodeBlockRenderer;
+   /**
+    * Searches host items for the slash menu, which opens when typing `/`.
+    * Receives the query (lowercased, punctuation stripped, may be empty) and
+@@ -563,7 +594,7 @@ interface EditorProps {
+  *
+  * Callbacks and resolvers should be stable; pass them via `useCallback`.
+  */
+-export declare function MeowdownEditor({ mode, initialMarkdown, onDocChange, onSlashMenuSearch, onTagSearch, onWikilinkSearch, onSelectionMenuSearch, selectionMenuAffordance, pendingReplacementActions, onPendingReplacementResolve, onWikilinkClick, onLinkClick, onLinkCopy, resolveLinkPreview, onTagClick, onExitBoundary, resolveImageUrl, resolveFileLink, resolveWikiEmbed, resolveWikilink, resolveFileInfo, resolveXPost, mediaUrlProtocols, resolveYouTubeVideo, onFileClick, onFilePaste, onFileSaveError, onImageClick, onXPostMediaClick, onYouTubeVideoClick, embedPaste, linkPaste, bulletAfterHeading, substitution, frontmatter, blockHandle, caretGlide, placeholder, readOnly, spellCheck, searchQuery, onSearchChange, timeFormat, editorClassName, wrapperClassName, CodeBlockView, handleRef, children }: EditorProps): ReactElement;
++export declare function MeowdownEditor({ mode, initialMarkdown, onDocChange, renderCodeBlock, onSlashMenuSearch, onTagSearch, onWikilinkSearch, onSelectionMenuSearch, selectionMenuAffordance, pendingReplacementActions, onPendingReplacementResolve, onWikilinkClick, onLinkClick, onLinkCopy, resolveLinkPreview, onTagClick, onExitBoundary, resolveImageUrl, resolveFileLink, resolveWikiEmbed, resolveWikilink, resolveFileInfo, resolveXPost, mediaUrlProtocols, resolveYouTubeVideo, onFileClick, onFilePaste, onFileSaveError, onImageClick, onXPostMediaClick, onYouTubeVideoClick, embedPaste, linkPaste, bulletAfterHeading, substitution, frontmatter, blockHandle, caretGlide, placeholder, readOnly, spellCheck, searchQuery, onSearchChange, timeFormat, editorClassName, wrapperClassName, CodeBlockView, handleRef, children }: EditorProps): ReactElement;
+ //#endregion
+ //#region src/components/markdown-view.d.ts
+ /**
+@@ -900,4 +931,4 @@ interface WikilinkHoverCardProps {
+  */
+ export declare function WikilinkHoverCard({ children, className }: WikilinkHoverCardProps): ReactNode;
+ //#endregion
+-export { type EditorHandle, type EditorMode, type EditorProps, type EditorStateSnapshot, type LightboxCloseOptions, type LightboxController, type LightboxFrameItem, type LightboxFrameProps, type LightboxImageItem, type LightboxImageProps, type LightboxItem, type LightboxRootProps, type LightboxVideoItem, type LightboxVideoProps, type LinkPreview, type LinkPreviewResolver, type MarkdownViewProps, type PendingReplacementResolveHandler, type ReactNodeViewComponent, type SelectionHint, type SelectionJSON, type SelectionMenuContext, type SelectionMenuItem, type SelectionMenuSearchHandler, type SlashMenuItem, type SlashMenuSearchHandler, type TagItem, type TagSearchHandler, type TaskClickHandler, type TaskClickPayload, type TimeFormat, type WikilinkHoverCardProps, type WikilinkItem, type WikilinkSearchHandler, type XPostResolver, type YouTubeVideoResolver, useEditor, useExtension, useKeymap };
+\ No newline at end of file
++export { type CodeBlockRenderOptions, type CodeBlockRenderer, type EditorHandle, type EditorMode, type EditorProps, type EditorStateSnapshot, type LightboxCloseOptions, type LightboxController, type LightboxFrameItem, type LightboxFrameProps, type LightboxImageItem, type LightboxImageProps, type LightboxItem, type LightboxRootProps, type LightboxVideoItem, type LightboxVideoProps, type LinkPreview, type LinkPreviewResolver, type MarkdownViewProps, type PendingReplacementResolveHandler, type ReactNodeViewComponent, type SelectionHint, type SelectionJSON, type SelectionMenuContext, type SelectionMenuItem, type SelectionMenuSearchHandler, type SlashMenuItem, type SlashMenuSearchHandler, type TagItem, type TagSearchHandler, type TaskClickHandler, type TaskClickPayload, type TimeFormat, type WikilinkHoverCardProps, type WikilinkItem, type WikilinkSearchHandler, type XPostResolver, type YouTubeVideoResolver, useEditor, useExtension, useKeymap };
+\ No newline at end of file
+diff --git a/dist/index.js b/dist/index.js
+index dda0d22efe8dd1b4483f042bd6af7739cea24a3a..bb0944676eca2f9af762f030c8a77ad159d65d80 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -7,8 +7,9 @@ import { Selection, TextSelection } from "@prosekit/pm/state";
+ import { ProseKit, defineReactNodeView, useEditor, useEditor as useEditor$1, useEditorDerivedValue, useExtension, useExtension as useExtension$1, useKeymap } from "@prosekit/react";
+ import GithubSlugger from "github-slugger";
+ import { Combobox } from "@base-ui/react/combobox";
++import { Fragment as Fragment$1, Mark } from "@prosekit/pm/model";
+ import { CheckIcon, ChevronsUpDownIcon, CopyIcon, Globe2Icon, GripHorizontalIcon, GripVerticalIcon, PencilIcon, SparklesIcon, UnlinkIcon } from "lucide-react";
+-import { Fragment as Fragment$1, jsx, jsxs } from "react/jsx-runtime";
++import { Fragment as Fragment$2, jsx, jsxs } from "react/jsx-runtime";
+ import { BlockHandleDraggable, BlockHandlePopup, BlockHandlePositioner, BlockHandleRoot } from "@prosekit/react/block-handle";
+ import { DropIndicator } from "@prosekit/react/drop-indicator";
+ import { Popover } from "@base-ui/react/popover";
+@@ -18,7 +19,6 @@ import { TableHandleColumnMenuRoot, TableHandleColumnMenuTrigger, TableHandleCol
+ import { X_POST_MEDIA_CLICK, registerXPost } from "@meowdown/embed/x";
+ import { YOUTUBE_VIDEO_CLICK, registerYouTubeVideo } from "@meowdown/embed/youtube";
+ import { matchEmbed } from "@meowdown/markdown";
+-import { Mark } from "@prosekit/pm/model";
+ import { BOOLEAN, OVERLOADED_BOOLEAN, getPropertyInfo, possibleStandardNames } from "react-property";
+ import { PreviewCard } from "@base-ui/react/preview-card";
+ 
+@@ -80,6 +80,7 @@ const NON_PROSE_PROPS = {
+ //#region src/components/code-block-view.module.css
+ var code_block_view_module_default = {
+ 	"CopyButton": "meow_CopyButton_D3j_9q",
++	"CustomContent": "meow_CustomContent_D3j_9q",
+ 	"Empty": "meow_Empty_D3j_9q",
+ 	"Item": "meow_Item_D3j_9q",
+ 	"ItemIndicator": "meow_ItemIndicator_D3j_9q",
+@@ -214,17 +215,34 @@ function MermaidRender(props) {
+ function CodeBlockView(props) {
+ 	const { node, view, getPos, decorations, selected, setAttrs, contentRef } = props;
+ 	const language = node.attrs.language || "";
+-	const isMath = language === "math";
+-	const isMermaid = language === "mermaid";
+ 	const code = node.textContent;
++	const updateCode = useCallback((nextCode) => {
++		const position = getPos();
++		if (position == null) return;
++		const currentNode = view.state.doc.nodeAt(position);
++		if (currentNode?.type !== view.state.schema.nodes.codeBlock) return;
++		const from = position + 1;
++		const to = from + currentNode.content.size;
++		const content = nextCode === "" ? Fragment$1.empty : view.state.schema.text(nextCode);
++		view.dispatch(view.state.tr.replaceWith(from, to, content));
++	}, [getPos, view]);
+ 	const caretInside = decorations.some(isCodeBlockPreviewHiddenDecoration);
++	const customContent = props.renderCodeBlock?.({
++		language,
++		code,
++		updateCode
++	}) ?? null;
++	const hasCustomContent = customContent !== null;
++	const customPreviewOnly = hasCustomContent && !caretInside;
++	const isMath = !hasCustomContent && language === "math";
++	const isMermaid = !hasCustomContent && language === "mermaid";
+ 	const katex = useKaTeX(isMath);
+ 	const mermaid = useBeautifulMermaid(isMermaid);
+ 	const showMathPreview = isMath && katex != null;
+ 	const showMermaidPreview = isMermaid && mermaid != null;
+ 	const showPreview = showMathPreview || showMermaidPreview;
+ 	const previewCode = useDeferredValue(showPreview ? code : "");
+-	const previewOnly = showPreview && !caretInside && code.trim() !== "";
++	const previewOnly = !hasCustomContent && showPreview && !caretInside && code.trim() !== "";
+ 	const focusSource = useCallback((event) => {
+ 		event.preventDefault();
+ 		const pos = getPos();
+@@ -238,6 +256,7 @@ function CodeBlockView(props) {
+ 	}, [setAttrs]);
+ 	return /* @__PURE__ */ jsxs("div", {
+ 		className: code_block_view_module_default.Root,
++		"data-custom": customPreviewOnly || void 0,
+ 		"data-preview": previewOnly || void 0,
+ 		children: [
+ 			/* @__PURE__ */ jsx("pre", {
+@@ -245,7 +264,13 @@ function CodeBlockView(props) {
+ 				"data-language": language,
+ 				...NON_PROSE_PROPS
+ 			}),
+-			selected ? null : /* @__PURE__ */ jsx(CodeBlockToolbar, {
++			hasCustomContent ? /* @__PURE__ */ jsx("div", {
++				className: code_block_view_module_default.CustomContent,
++				contentEditable: false,
++				"data-meowdown-code-block-custom": "",
++				...NON_PROSE_PROPS,
++				children: customContent
++			}) : !selected && /* @__PURE__ */ jsx(CodeBlockToolbar, {
+ 				code,
+ 				language,
+ 				setLanguage
+@@ -356,11 +381,28 @@ function CodeBlockToolbar({ code, language, setLanguage }) {
+ 
+ //#endregion
+ //#region src/extensions/code-block-view.ts
+-function defineCodeBlockView(component = CodeBlockView) {
++/**
++* Build the built-in code block view, reading `renderCodeBlock` when the view
++* renders so a later callback does not recreate the editor.
++*/
++function codeBlockViewWithRenderer(renderCodeBlock) {
++	return function CodeBlockNodeView(props) {
++		return createElement(CodeBlockView, {
++			...props,
++			renderCodeBlock: renderCodeBlock?.()
++		});
++	};
++}
++/**
++* React node view for `codeBlock`. Pass `component` to replace the built-in
++* view. `renderCodeBlock` customizes the built-in view and is ignored when
++* `component` is set.
++*/
++function defineCodeBlockView(component, renderCodeBlock) {
+ 	return union(defineReactNodeView({
+ 		name: "codeBlock",
+ 		contentAs: "code",
+-		component
++		component: component ?? codeBlockViewWithRenderer(renderCodeBlock)
+ 	}), defineCodeBlockPreviewPlugin());
+ }
+ 
+@@ -1195,7 +1237,7 @@ function SelectionMenuPopup({ onSelectionMenuSearch, context, onClose }) {
+ 			if (item) selectItem(item);
+ 		}
+ 	}
+-	return /* @__PURE__ */ jsxs(Fragment$1, { children: [/* @__PURE__ */ jsx("input", {
++	return /* @__PURE__ */ jsxs(Fragment$2, { children: [/* @__PURE__ */ jsx("input", {
+ 		autoFocus: true,
+ 		className: selection_menu_module_default.Input,
+ 		value: query,
+@@ -1354,7 +1396,7 @@ function SlashMenu({ timeFormat = "12", onSlashMenuSearch, onFilePaste, onFileSa
+ 				className: autocomplete_menu_module_default.Popup,
+ 				"data-testid": "slash-menu",
+ 				children: [
+-					!inTableCell && /* @__PURE__ */ jsxs(Fragment$1, { children: [
++					!inTableCell && /* @__PURE__ */ jsxs(Fragment$2, { children: [
+ 						/* @__PURE__ */ jsx(SlashMenuItem, {
+ 							label: "Text",
+ 							keywords: ["paragraph", "plain"],
+@@ -1563,7 +1605,7 @@ function TableHandle() {
+ 								onSelect: state.addTableColumnAfter.command,
+ 								children: /* @__PURE__ */ jsx("span", { children: "Insert Right" })
+ 							}),
+-							state.setTableColumnAlign.canExec && /* @__PURE__ */ jsxs(Fragment$1, { children: [
++							state.setTableColumnAlign.canExec && /* @__PURE__ */ jsxs(Fragment$2, { children: [
+ 								/* @__PURE__ */ jsx(ColumnAlignMenuItem, {
+ 									align: "left",
+ 									columnAlign: state.columnAlign,
+@@ -1848,7 +1890,7 @@ function findHeadingPosition(doc, fragment) {
+ 	});
+ 	return match;
+ }
+-function ProseKitEditor({ markMode = "focus", initialMarkdown, onDocChange, onSlashMenuSearch, onTagSearch, onWikilinkSearch, onSelectionMenuSearch, selectionMenuAffordance = true, pendingReplacementActions, onPendingReplacementResolve, onWikilinkClick, onLinkClick, onLinkCopy, resolveLinkPreview, onTagClick, onExitBoundary, resolveImageUrl, resolveFileLink, resolveWikiEmbed, resolveWikilink, resolveFileInfo, resolveXPost, mediaUrlProtocols, resolveYouTubeVideo, onFileClick, onFilePaste, onFileSaveError, onImageClick, onXPostMediaClick, onYouTubeVideoClick, embedPaste, linkPaste, bulletAfterHeading, substitution = true, frontmatter = false, blockHandle = true, placeholder, readOnly, spellCheck, searchQuery = "", onSearchChange, timeFormat, editorClassName, CodeBlockView, ref, children }) {
++function ProseKitEditor({ markMode = "focus", initialMarkdown, onDocChange, renderCodeBlock, onSlashMenuSearch, onTagSearch, onWikilinkSearch, onSelectionMenuSearch, selectionMenuAffordance = true, pendingReplacementActions, onPendingReplacementResolve, onWikilinkClick, onLinkClick, onLinkCopy, resolveLinkPreview, onTagClick, onExitBoundary, resolveImageUrl, resolveFileLink, resolveWikiEmbed, resolveWikilink, resolveFileInfo, resolveXPost, mediaUrlProtocols, resolveYouTubeVideo, onFileClick, onFilePaste, onFileSaveError, onImageClick, onXPostMediaClick, onYouTubeVideoClick, embedPaste, linkPaste, bulletAfterHeading, substitution = true, frontmatter = false, blockHandle = true, placeholder, readOnly, spellCheck, searchQuery = "", onSearchChange, timeFormat, editorClassName, CodeBlockView, ref, children }) {
+ 	const suppressDocChangeRef = useRef(false);
+ 	const handleDocChange = useMemo(() => {
+ 		if (!onDocChange) return;
+@@ -1917,9 +1959,11 @@ function ProseKitEditor({ markMode = "focus", initialMarkdown, onDocChange, onSl
+ 		editorClassName,
+ 		wikilinkEnabled
+ 	]);
++	const renderCodeBlockRef = useRef(renderCodeBlock);
++	renderCodeBlockRef.current = renderCodeBlock;
+ 	const [editor] = useState(() => {
+ 		const baseExtension = defineEditorExtension(config);
+-		const extension = CodeBlockView === false ? baseExtension : union(baseExtension, defineCodeBlockView(CodeBlockView));
++		const extension = CodeBlockView === false ? baseExtension : union(baseExtension, defineCodeBlockView(CodeBlockView, () => renderCodeBlockRef.current));
+ 		const editor = createEditor({ extension });
+ 		if (initialMarkdown) editor.setContent(markdownToDoc(initialMarkdown, {
+ 			nodes: editor.nodes,
+@@ -1984,8 +2028,8 @@ function ProseKitEditor({ markMode = "focus", initialMarkdown, onDocChange, onSl
+ 			const [markdown, selection] = getState();
+ 			replaceState(markdown, selection, false, true);
+ 		}
+-		function insertMarkdown(markdown) {
+-			editor.commands.insertMarkdown(markdown);
++		function insertMarkdown(markdown, options) {
++			editor.commands.insertMarkdown(markdown, options);
+ 		}
+ 		function setSelection(selection) {
+ 			setState(void 0, selection);
+@@ -2109,7 +2153,7 @@ const CARET_GLIDE_OFF = { "--meowdown-caret-glide": "0ms" };
+ *
+ * Callbacks and resolvers should be stable; pass them via `useCallback`.
+ */
+-function MeowdownEditor({ mode = "focus", initialMarkdown, onDocChange, onSlashMenuSearch, onTagSearch, onWikilinkSearch, onSelectionMenuSearch, selectionMenuAffordance = true, pendingReplacementActions, onPendingReplacementResolve, onWikilinkClick, onLinkClick, onLinkCopy, resolveLinkPreview, onTagClick, onExitBoundary, resolveImageUrl, resolveFileLink, resolveWikiEmbed, resolveWikilink, resolveFileInfo, resolveXPost, mediaUrlProtocols, resolveYouTubeVideo, onFileClick, onFilePaste, onFileSaveError, onImageClick, onXPostMediaClick, onYouTubeVideoClick, embedPaste = true, linkPaste = true, bulletAfterHeading = false, substitution = true, frontmatter = false, blockHandle = true, caretGlide = true, placeholder, readOnly, spellCheck, searchQuery, onSearchChange, timeFormat, editorClassName, wrapperClassName, CodeBlockView, handleRef, children }) {
++function MeowdownEditor({ mode = "focus", initialMarkdown, onDocChange, renderCodeBlock, onSlashMenuSearch, onTagSearch, onWikilinkSearch, onSelectionMenuSearch, selectionMenuAffordance = true, pendingReplacementActions, onPendingReplacementResolve, onWikilinkClick, onLinkClick, onLinkCopy, resolveLinkPreview, onTagClick, onExitBoundary, resolveImageUrl, resolveFileLink, resolveWikiEmbed, resolveWikilink, resolveFileInfo, resolveXPost, mediaUrlProtocols, resolveYouTubeVideo, onFileClick, onFilePaste, onFileSaveError, onImageClick, onXPostMediaClick, onYouTubeVideoClick, embedPaste = true, linkPaste = true, bulletAfterHeading = false, substitution = true, frontmatter = false, blockHandle = true, caretGlide = true, placeholder, readOnly, spellCheck, searchQuery, onSearchChange, timeFormat, editorClassName, wrapperClassName, CodeBlockView, handleRef, children }) {
+ 	const childRef = useRef(null);
+ 	useImperativeHandle(handleRef, () => {
+ 		function getMarkdown() {
+@@ -2118,8 +2162,8 @@ function MeowdownEditor({ mode = "focus", initialMarkdown, onDocChange, onSlashM
+ 		function setMarkdown(markdown) {
+ 			childRef.current?.setMarkdown(markdown);
+ 		}
+-		function insertMarkdown(markdown) {
+-			childRef.current?.insertMarkdown(markdown);
++		function insertMarkdown(markdown, options) {
++			childRef.current?.insertMarkdown(markdown, options);
+ 		}
+ 		function getState() {
+ 			return childRef.current?.getState() ?? ["", {
+@@ -2210,6 +2254,7 @@ function MeowdownEditor({ mode = "focus", initialMarkdown, onDocChange, onSlashM
+ 			markMode: mode,
+ 			initialMarkdown,
+ 			onDocChange,
++			renderCodeBlock,
+ 			onSlashMenuSearch,
+ 			onTagSearch,
+ 			onWikilinkSearch,
+diff --git a/dist/style.css b/dist/style.css
+index 7d739a383bc446d9a5305a906e21d5f30fd59b71..4b811f0bc1203592f52476fd96c8aae62cbbe555 100644
+--- a/dist/style.css
++++ b/dist/style.css
+@@ -2,7 +2,20 @@
+   position: relative;
+ }
+ 
+-.meow_Root_D3j_9q[data-preview] pre, .meow_Root_D3j_9q[data-preview] .meow_Toolbar_D3j_9q {
++.meow_Root_D3j_9q[data-preview] pre, .meow_Root_D3j_9q[data-custom] pre {
++  display: none;
++}
++
++.meow_Root_D3j_9q .meow_CustomContent_D3j_9q ul:not(.meow_CustomContent_D3j_9q .ProseMirror ul), .meow_Root_D3j_9q .meow_CustomContent_D3j_9q ol:not(.meow_CustomContent_D3j_9q .ProseMirror ol) {
++  padding-left: 0;
++  list-style: none;
++}
++
++.meow_Root_D3j_9q .meow_CustomContent_D3j_9q li:not(.meow_CustomContent_D3j_9q .ProseMirror li) {
++  margin-top: 0;
++}
++
++.meow_Root_D3j_9q[data-preview] .meow_Toolbar_D3j_9q {
+   display: none;
+ }
+ 

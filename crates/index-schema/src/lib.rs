@@ -171,7 +171,13 @@ mod schema {
         // Wait briefly for a cross-process lock to clear instead of failing
         // writes instantly with SQLITE_BUSY ("database is locked").
         conn.busy_timeout(std::time::Duration::from_secs(5))?;
-        conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;")?;
+        // `synchronous=NORMAL` is the recommended pairing with WAL: commits
+        // skip the per-transaction fsync (checkpoints still sync), so the
+        // database cannot corrupt; an OS crash or power loss may drop only the
+        // last few commits. An app crash loses nothing.
+        conn.execute_batch(
+            "PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL; PRAGMA foreign_keys=ON;",
+        )?;
         migrate(&mut conn)?;
         Ok(conn)
     }

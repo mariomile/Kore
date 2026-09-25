@@ -1,8 +1,9 @@
-import { act, type ReactElement, type ReactNode } from 'react'
+import type { ReactElement, ReactNode } from 'react'
 import { cleanup, render } from 'vitest-browser-react'
 import { page } from 'vitest/browser'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { GraphInfo } from '@reflect/core'
+import { act } from '@/test-utils/act'
 
 const useNoteRowState = vi.hoisted(() => vi.fn())
 const usePinnedNotes = vi.hoisted(() => vi.fn())
@@ -281,7 +282,7 @@ describe('NoteActionsMenu', () => {
     await view.getByRole('button', { name: 'Delete' }).click()
 
     const dialog = page.getByRole('dialog')
-    act(() => graphStore.set(null))
+    await act(() => graphStore.set(null))
     await dialog.getByRole('button', { name: 'Delete' }).click()
 
     await expect.element(dialog.getByText('No graph is open.')).toBeInTheDocument()

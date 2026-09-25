@@ -57,14 +57,19 @@ DEBUG=1 pnpm exec vitest --project browser path/to/test
 ## Console output fails tests
 
 `vitest-fail-on-console` turns any `console.warn` / `console.error` during a
-test into a failure, in every desktop project. Noise that predates the check
-is silenced by regex in `apps/desktop/src/test-utils/allowed-console.ts`.
+test into a failure, in every desktop project. The only exceptions are the
+two reasoned regexes in `apps/desktop/src/test-utils/allowed-console.ts`.
 The rules:
 
-- PRs may only shrink the allowlist (fix the warning, then delete its regex).
-- A new entry needs a stated reason in the PR.
-- An intentionally exercised error path should assert on the log instead:
-  `vi.spyOn(console, 'error').mockImplementation(() => {})`.
+- PRs may only shrink the allowlist; a new entry needs a stated reason.
+- An intentionally exercised error path asserts on the log:
+  `vi.spyOn(console, 'error').mockImplementation(() => {})`, then
+  `expect(spy).toHaveBeenCalledWith(...)`.
+- A log caused by an incomplete IPC fake is a fake bug: answer the command
+  with a response its schema accepts rather than tolerating the error.
+- Use `act` from `@/test-utils/act`, never React's directly, and await it:
+  React's own `act` outside `vitest-browser-react` warns that the
+  environment is not configured for it.
 
 ## Browser test conventions
 

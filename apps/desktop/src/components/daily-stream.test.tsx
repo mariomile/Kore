@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { cleanup, render } from 'vitest-browser-react'
 import { page } from 'vitest/browser'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { act, useEffect, useState, type ReactElement, type ReactNode } from 'react'
+import { useEffect, useState, type ReactElement, type ReactNode } from 'react'
 import { setBridge } from '@reflect/core'
 import { FocusedDailyProvider, useFocusedDailyDate } from '@/providers/focused-daily-provider'
 import { RouterProvider, useRouter } from '@/routing/router'
@@ -11,6 +11,7 @@ import { createDayWindow, dateAtIndex, indexOfDate } from '@/lib/day-window'
 import { fireEvent } from '@/test-utils/fire-event'
 import '@/test-utils/locator'
 import { DailyStream, ESTIMATED_DAY_HEIGHT } from './daily-stream'
+import { act } from '@/test-utils/act'
 
 /**
  * The stream's first-paint anchor: virtua must put the scroll element at the
@@ -221,7 +222,7 @@ describe('DailyStream', () => {
       return el as HTMLElement
     })
     const date = dateAtIndex(dayWindow, Number(row.getAttribute('data-index')))
-    act(() => {
+    await act(() => {
       fireEvent.focusIn(row)
     })
 

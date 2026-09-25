@@ -1,4 +1,3 @@
-import { act } from 'react'
 import { cleanup, renderHook } from 'vitest-browser-react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createDayWindow, dateAtIndex } from '@/lib/day-window'
@@ -9,6 +8,7 @@ import {
   useDayCarousel,
   type ReconcileInput,
 } from './use-day-carousel'
+import { act } from '@/test-utils/act'
 
 /**
  * The carousel's follow-the-route decision in isolation — Embla pointer
@@ -222,7 +222,7 @@ describe('useDayCarousel', () => {
     const { result, onSelect } = await mountCarousel()
 
     // Pointer-up: the target is known but the snap animation is still playing.
-    act(() => embla.selectAt(CENTER + 1))
+    await act(() => embla.selectAt(CENTER + 1))
 
     expect(result.current.selectedIndex).toBe(CENTER + 1)
     expect(onSelect).not.toHaveBeenCalled()
@@ -231,7 +231,7 @@ describe('useDayCarousel', () => {
   it('announces the target day at select, ahead of the settle-time report', async () => {
     const { onTarget, onSelect } = await mountCarousel()
 
-    act(() => embla.selectAt(CENTER + 1))
+    await act(() => embla.selectAt(CENTER + 1))
 
     // The strip (and its month title) follow this while the snap animates;
     // the route only moves at settle.
@@ -242,7 +242,7 @@ describe('useDayCarousel', () => {
   it('reports the landed day only when the swipe settles', async () => {
     const { result, onSelect } = await mountCarousel()
 
-    act(() => embla.settleAt(CENTER + 1))
+    await act(() => embla.settleAt(CENTER + 1))
 
     expect(onSelect).toHaveBeenCalledExactlyOnceWith('2026-06-13')
     expect(result.current.selectedIndex).toBe(CENTER + 1)
@@ -250,7 +250,7 @@ describe('useDayCarousel', () => {
 
   it('leaves the carousel alone when the settled swipe echoes back as `date`', async () => {
     const { rerender } = await mountCarousel()
-    act(() => embla.settleAt(CENTER + 1))
+    await act(() => embla.settleAt(CENTER + 1))
 
     await rerender({ date: '2026-06-13', navigationKey: '1:1:2026-06-13' })
 
@@ -274,7 +274,7 @@ describe('useDayCarousel', () => {
     // Pointer-up has aimed away from Today, but the route is still Today until
     // Embla settles. This is the window in which the fading Today button can
     // be tapped.
-    act(() => embla.selectAt(CENTER + 1))
+    await act(() => embla.selectAt(CENTER + 1))
     expect(result.current.selectedIndex).toBe(CENTER + 1)
 
     // The Today tap is a date-preserving router arrival. It must still issue
@@ -287,7 +287,7 @@ describe('useDayCarousel', () => {
     expect(onTarget).toHaveBeenCalledTimes(1)
     expect(onSelect).not.toHaveBeenCalled()
 
-    act(() => embla.settle())
+    await act(() => embla.settle())
     expect(onSelect).not.toHaveBeenCalled()
     expect(onTarget).toHaveBeenCalledTimes(1)
     expect(result.current.selectedIndex).toBe(CENTER)
@@ -297,7 +297,7 @@ describe('useDayCarousel', () => {
     const { result, onSelect } = await mountCarousel()
     const nearEnd = initialWindow.count - 10
 
-    act(() => embla.settleAt(nearEnd))
+    await act(() => embla.settleAt(nearEnd))
 
     const landed = dateAtIndex(initialWindow, nearEnd)
     expect(onSelect).toHaveBeenCalledExactlyOnceWith(landed)

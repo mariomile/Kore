@@ -1,5 +1,130 @@
 # Kore working state
 
+## Performance pass 2: release build and SQLite writer, 2026-09-25
+
+Follow-up to the audit of speed, footprint and bug surface. Simplest levers
+first, one commit each.
+
+- [x] Workspace `[profile.release]`: `codegen-units = 1`, `lto = "fat"`.
+  `panic` stays `unwind` (a panicking command must not abort the app); no
+  `strip = "symbols"` (it would remove the line tables the iOS build turns on
+  for the dSYM; otherwise Cargo already strips debug info). `reflect` CLI release binary
+  6,468,528 → 5,528,064 bytes (-14.5%); desktop `reflect-open` release
+  66,613,440 → 53,940,960 bytes (-19%), links with ONNX Runtime under fat
+  LTO. Release compile of the desktop crate: ~5 min locally.
+- [x] Index writer `PRAGMA synchronous=NORMAL` (WAL pairing: no per-commit
+  fsync; power loss may drop the last commits, never corrupts).
+  `mmap_size` rejected (the index can sit on iCloud; SIGBUS risk),
+  `cache_size` rejected (memory without a measured need).
+- [x] Read-bridge statement cache: tried and reverted. `run_query` installs
+  its authorizer around each prepare, and `sqlite3_set_authorizer` expires
+  every prepared statement, so the cache re-parsed anyway. A permanent
+  authorizer denies FTS5's internal `PRAGMA data_version` and breaks search.
+  Allowing that PRAGMA to save an unmeasured parse was not worth a special
+  case in the security policy. Found by an independent review.
+- [x] Read bridge parses each query once. The authorizer now stays installed
+  on the read connection (`query::open_read_connection`) instead of being
+  toggled per query, which had SQLite re-prepare every read. The one PRAGMA it
+  allows is reading `data_version`, which FTS5 issues internally for `MATCH`
+  (a change counter; sets nothing). Measured with SQLite's re-prepare counter
+  on a read-only index: 1 per query before, 0 after. No statement cache.
+  It also closes a pre-existing leak: table-valued pragmas prepare their
+  PRAGMA when stepped, which ran with no authorizer, so
+  `SELECT file FROM pragma_database_list()` returned the index path (reproduced
+  against the old pattern). Now denied; the test pins it. A second
+  independent review found no blocker.
+- [x] `release-dmg.yml` build job: `timeout-minutes: 120`, like
+  `release.yml` and `testflight.yml`, since fat LTO slows the release link.
+
+**Validation:** `cargo fmt --check` clean; `cargo clippy -D warnings` on
+`reflect-open`, `reflect-index-schema`, `reflect-cli` clean; after the revert
+`reflect-open` `db::` tests 69/69 (the open test now asserts `synchronous = 1`),
+`reflect-index-schema` 2/2, `reflect-cli` 145/145. **Not run locally:** the
+iOS `cargo check` fails in Tauri's Swift build script on this machine (the
+macOS 27 SDK lacks `CoreServices/CSIdentityBase.h`), before any Kore code
+compiles; the changes are platform-neutral Rust and CI runs that check. No
+runtime benchmark of the fsync gain was taken. Read-bridge follow-up:
+`db::` 69/69 (the ATTACH/PRAGMA test now runs on a real read connection and
+covers an FTS `MATCH` plus a later writer commit), clippy clean,
+`release-please-workflow` test 7/7.
+
+- [x] Meowdown upgraded: core 0.65.6 → 0.74.1, react → 0.73.1, markdown →
+  0.72.0, carrying the dynamic editor setup (#564). The two patches are
+  regenerated from PR #612 (the rebase of #546), whose base is exactly the
+  commit that published these versions; see `patches/README.md`. Upstream's
+  `CodeBlockView` (#548) cannot replace them: the default code-block view is
+  not exported. Knock-on changes: React 19.3 (a Meowdown peer),
+  `@prosekit/core` 0.13.3 and `@prosekit/pm` 0.1.20 so one copy of
+  prosemirror-model/transform/view is installed (two copies broke list,
+  table and block-menu commands), and the slash-menu section CSS matches Heading rows by
+  prefix, since those rows now carry search keywords (`Heading 1 h1`), the
+  same way it already matched `Text`. Meowdown 0.73 also requires
+  `@base-ui/react` ^1.8.0: Kore moved from 1.7.0 and its #5645 backport
+  patch applied unchanged, so one patched copy serves both.
+  Measured on `?seed=large` with Vite dev servers (dev React), scrolling 30
+  steps through past days in headless Chromium, 10 runs each, medians: JS
+  time 970 → 877 ms (-10%); total task time (~2.6 s) and the longest task
+  (~75 ms) unchanged. Smaller than the ~20% expected from the earlier
+  profile.
+
+- [x] Flaky test fixed: `similar-notes-section` "shows an existing heading
+  and snippet" failed in full Chromium runs because rows also reveal on
+  mouseenter and the pointer stays where the previous test left it.
+  Reproduced by rendering the rows under the pointer; the test now parks the
+  pointer with the shared `unhover` helper, which loads the `page.locate`
+  extension it needs by itself.
+
+**Validation (Meowdown + Base UI):** frozen install; `tsc -b --force` clean;
+node projects 3294/3294 (incl. core-browser); browser project on WebKit 2036
+passed + 2 skipped; on Chromium 2037/2038, the one failure being the flaky
+Similar notes test above (6/6 on both engines after the fix). An earlier
+WebKit run failed `collection-fence-guard` "jumps over the fence" once; it
+passed alone on the branch and on master (see the fix below). `pnpm check` exit 0 (pre-existing
+max-lines warnings only), `pnpm build` ok. Not checked: the native app and
+iOS.
+
+- [x] Code review fixes: built-in slash rows match their full `value`, so a
+  template titled "Heading 1 ..." no longer takes their badges and
+  sections; Type rows (labeled "Type: #tag" since #244, "Supertag:" before)
+  got their `#` icon and "Types" header back, verified in a rendered
+  headless check; React type packages follow React 19.3.
+- [x] Local logs: `logs.rs` installs the tracing subscriber from a small
+  internal plugin (stderr plus a daily `tracing-appender` file in the OS log
+  folder, 7 days kept); webview `console.warn`/`console.error`, uncaught
+  errors and unhandled rejections reach it through the async `log_webview`
+  command, tagged with the window; Help > Show logs opens the folder
+  (hidden on mobile). Lines may name note files and URLs, never bodies,
+  chat text or keys. Verified in Kore Dev (`pnpm tauri:dev`): the file
+  appeared under `~/Library/Logs/app.lore.desktop.dev/` with the Rust
+  startup lines, and a webview warning plus an unhandled rejection landed
+  in it; WebKit's `stack` omits the message, so errors log name + message
+  + stack. `Cargo.lock` gains only `tracing-appender` and `symlink`.
+- [x] Console allowlist 16 → 2 entries (ResizeObserver artifact, the
+  index's one-time rebuild notice). A shared `@/test-utils/act` (every act
+  awaited) removed React's act-environment warning from 128 tests; tests
+  that enable the native shell pin the window role; IPC fakes answer
+  valid responses; intentional failure paths assert their log. The
+  testing guide records the rules.
+- [x] `collection-fence-guard` WebKit flake: under suite load the arrow key
+  arrived before focus reached the editor (caret left at its start, 7);
+  the tests now wait for editor focus.
+- Reviewed and left as is: the two production `expect()`s the audit named
+  (`capture.rs` serializes a static JSON of strings; `icloud/sweep.rs` takes
+  the max of a sequence that always contains `current`).
+
+**Validation (review, logs, allowlist):** `pnpm check` exit 0; `cargo fmt`
+clean and workspace clippy 0 warnings; Chromium browser project 2041/2041
+twice in a row with the 2-entry allowlist; WebKit 2039 passed + 2 skipped
+after the fence-guard fix; node projects 3297/3297; the
+logging tests (Rust 1, command 3, forwarding 3 on both engines).
+
+**Next:** open the PR. Later, if needed: paginate `listNotes`/`getGraphMap`
+for very large vaults, and a native-shell E2E for file I/O, watcher,
+keychain and iCloud.
+
+**Doc drift (fixed):** AGENTS.md pointed Meowdown at `~/repos/meowdown`,
+which did not exist; it now names the upstream repository instead.
+
 ## Performance pass: daily scroll, typing, tag pages — 2026-09-24
 
 User report: editor and platform feel slower. Measured over a 3,384-note dev

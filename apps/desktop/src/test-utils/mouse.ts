@@ -1,6 +1,8 @@
 import { expect } from 'vitest'
 import { mouse } from 'vitest-browser-commands/playwright'
 import { page, type Locator } from 'vitest/browser'
+// `unhover` uses the `page.locate` extension; load it here so callers need not.
+import './locator'
 
 export interface HoverOptions {
   /**

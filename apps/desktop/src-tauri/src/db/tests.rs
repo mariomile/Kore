@@ -9,7 +9,7 @@ use serde_json::Value;
 use super::chat_write::{delete_conversation, save_message, ChatConversation, ChatMessageRow};
 use super::embed_write::{apply_chunks, remove_chunks, EmbeddedChunk};
 use super::migrations::{migrate, migrate_to, open_in_memory, open_index_at, validate_migrations};
-use super::query::run_query;
+use super::query::{open_read_connection, run_query};
 use super::scan::scan_reconcile;
 use super::write::{
     apply_note, claim_tier, clear_index, move_note, remove_note, touch_note, IndexedAlias,
@@ -815,9 +815,13 @@ fn read_bridge_refuses_attach_and_pragma() {
     // PRAGMAs as "read only", but neither reads *our* projection: an ATTACH
     // would let a caller open and SELECT from an arbitrary SQLite file on disk
     // (exfiltration), and `PRAGMA foreign_keys = OFF` would disable the cascades
-    // the write path depends on. The read bridge's authorizer denies both at
-    // prepare time (see `query::read_only_authorization`).
-    let conn = migrated();
+    // the write path depends on. The read connection's authorizer denies both
+    // at prepare time (see `query::read_only_authorization`).
+    let graph = tempfile::tempdir().expect("tempdir");
+    let writer = open_index_at(graph.path()).expect("open writer");
+    apply_note(&writer, &note("notes/a.md", "Quick", vec![])).unwrap();
+    let reader = open_read_connection(graph.path()).expect("open reader");
+
     let secret = tempfile::tempdir().expect("tempdir");
     let secret_db = secret.path().join("secret.sqlite");
     {
@@ -826,26 +830,32 @@ fn read_bridge_refuses_attach_and_pragma() {
             .execute_batch("CREATE TABLE secret(x); INSERT INTO secret(x) VALUES ('exfiltrated');")
             .expect("seed secret");
     }
-    let attach = format!("ATTACH DATABASE '{}' AS evil", secret_db.display());
-    assert!(
-        run_query(&conn, &attach, &[]).is_err(),
-        "read bridge must refuse ATTACH"
-    );
-    assert!(
-        run_query(&conn, "PRAGMA foreign_keys = OFF", &[]).is_err(),
-        "read bridge must refuse PRAGMA"
-    );
+    // SQLite says "not authorized" when prepare is denied and "authorization
+    // denied" when a step is; either proves the authorizer is the reason.
+    let denied = |sql: &str| {
+        let err = run_query(&reader, sql, &[]).expect_err(sql);
+        assert!(format!("{err:?}").contains("authoriz"), "{sql}: {err:?}");
+    };
+    denied(&format!(
+        "ATTACH DATABASE '{}' AS evil",
+        secret_db.display()
+    ));
+    denied("PRAGMA foreign_keys = OFF");
+    // Table-valued pragmas prepare their PRAGMA when stepped; the authorizer
+    // must still be installed then (it leaks the index path otherwise).
+    denied("SELECT * FROM pragma_database_list()");
+    // The deliberate exception FTS5 needs: a read of the change counter.
+    assert!(run_query(&reader, "PRAGMA data_version", &[]).is_ok());
 
-    // The guard is scoped per call and never blocks a legitimate read: indexing
-    // a note and reading it back (incl. an FTS MATCH) still works afterwards.
-    apply_note(&conn, &note("notes/a.md", "Quick", vec![])).unwrap();
-    let rows = run_query(
-        &conn,
-        "SELECT path FROM search_fts WHERE search_fts MATCH ?1",
-        &[Value::from("quick")],
-    )
-    .unwrap();
+    // The guard stays installed and never blocks a legitimate read: an FTS
+    // `MATCH` (which prepares FTS5's internal `PRAGMA data_version`) works on
+    // the fresh reader and keeps seeing the writer's new commits.
+    let fts = "SELECT path FROM search_fts WHERE search_fts MATCH ?1";
+    let rows = run_query(&reader, fts, &[Value::from("quick")]).unwrap();
     assert_eq!(rows.len(), 1);
+    apply_note(&writer, &note("notes/b.md", "Quick too", vec![])).unwrap();
+    let rows = run_query(&reader, fts, &[Value::from("quick")]).unwrap();
+    assert_eq!(rows.len(), 2);
 }
 
 #[test]
@@ -1130,6 +1140,11 @@ fn open_index_at_creates_migrates_and_reopens() {
         .query_row("PRAGMA journal_mode", [], |row| row.get(0))
         .unwrap();
     assert_eq!(journal, "wal");
+    // 1 = NORMAL (the default under WAL would be 2 = FULL).
+    let synchronous: i64 = conn
+        .query_row("PRAGMA synchronous", [], |row| row.get(0))
+        .unwrap();
+    assert_eq!(synchronous, 1);
     drop(conn);
 
     // Reopening an existing index is a no-op migration and preserves data.

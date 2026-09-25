@@ -54,6 +54,7 @@ tauri-plugin-dialog = "2.7.2"
 tauri-plugin-notification = "2.3.3"
 base64 = "0.23.0"
 tracing = "0.1.44"
+tracing-appender = "0.2.5"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
 keyring = { version = "3.6.3", features = [
   "apple-native",

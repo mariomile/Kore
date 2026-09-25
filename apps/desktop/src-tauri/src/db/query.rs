@@ -5,6 +5,8 @@
 //! but never write it — writes go through the transactional path in
 //! [`super::write`].
 
+use std::path::Path;
+
 use rusqlite::hooks::{AuthAction, AuthContext, Authorization};
 use rusqlite::{params_from_iter, Connection};
 use serde_json::{Map, Value};
@@ -24,13 +26,34 @@ use crate::error::{AppError, AppResult};
 ///
 /// Both are denied at prepare time. Everything else a read needs — `SELECT`,
 /// table/column reads, function calls, FTS5/vec0 `MATCH` — is allowed.
+///
+/// The one PRAGMA allowed is reading `data_version`: FTS5 prepares
+/// `PRAGMA main.data_version` internally while answering a `MATCH`, and the
+/// authorizer vets that statement too. It returns a change counter and sets
+/// nothing.
 fn read_only_authorization(context: AuthContext<'_>) -> Authorization {
     match context.action {
+        AuthAction::Pragma {
+            pragma_name,
+            pragma_value: None,
+        } if pragma_name.eq_ignore_ascii_case("data_version") => Authorization::Allow,
         AuthAction::Attach { .. } | AuthAction::Detach { .. } | AuthAction::Pragma { .. } => {
             Authorization::Deny
         }
         _ => Authorization::Allow,
     }
+}
+
+/// Open the read bridge's connection: the index read-only, guarded by
+/// [`read_only_authorization`] for its whole life. Installing the authorizer
+/// once matters: `sqlite3_set_authorizer` expires every prepared statement, so
+/// toggling it around each query made SQLite parse every read twice. This
+/// connection serves only [`run_query`]; writes (and their
+/// `PRAGMA defer_foreign_keys`) use the writer connection.
+pub(super) fn open_read_connection(root: &Path) -> AppResult<Connection> {
+    let conn = super::migrations::open_index_read_only_at(root)?;
+    conn.authorizer(Some(read_only_authorization))?;
+    Ok(conn)
 }
 
 fn json_to_sql(value: &Value) -> rusqlite::types::Value {
@@ -67,15 +90,11 @@ pub(super) fn run_query(
     params: &[Value],
 ) -> AppResult<Vec<Map<String, Value>>> {
     // This bridge is reachable from the (untrusted) webview, so it must run only
-    // reads of our projection. Install the authorizer (denies ATTACH/DETACH/
-    // PRAGMA — see `read_only_authorization`) around `prepare`, where SQLite
-    // evaluates it, then clear it. The guard is scoped to this call: the write
-    // path doesn't prepare here, so its legitimate `PRAGMA defer_foreign_keys`
-    // is never affected. `prepare` returns `SQLITE_AUTH` for a denied statement.
-    conn.authorizer(Some(read_only_authorization))?;
-    let prepared = conn.prepare(sql);
-    conn.authorizer(None::<fn(AuthContext<'_>) -> Authorization>)?;
-    let mut stmt = prepared?;
+    // reads of our projection. On the read connection ([`open_read_connection`])
+    // the authorizer rejects ATTACH/DETACH/PRAGMA with `SQLITE_AUTH`, here at
+    // prepare or, for table-valued pragmas like `pragma_database_list()`, at
+    // the first step.
+    let mut stmt = conn.prepare(sql)?;
     // `Statement::readonly()` rejects any remaining mutating statement so a
     // compromised/buggy caller can't write through the read bridge.
     if !stmt.readonly() {

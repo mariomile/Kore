@@ -1,4 +1,3 @@
-import { act } from 'react'
 import { cleanup, renderHook } from 'vitest-browser-react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { OpenTask } from '@reflect/core'
@@ -7,6 +6,7 @@ import { taskKey } from './task-identity'
 import type { TaskActions } from './use-task-actions'
 import type { TaskSelection } from './use-task-selection'
 import { useTaskKeyboard } from './use-task-keyboard'
+import { act } from '@/test-utils/act'
 
 function makeSelection(over: Partial<TaskSelection> = {}): TaskSelection {
   return {
@@ -108,18 +108,18 @@ async function flush(): Promise<void> {
   })
 }
 
-function press(
+async function press(
   target: EventTarget,
   key: string,
   mods: { metaKey?: boolean; shiftKey?: boolean } = {},
-): KeyboardEvent {
+): Promise<KeyboardEvent> {
   const event = new KeyboardEvent('keydown', {
     key,
     bubbles: true,
     cancelable: true,
     ...mods,
   })
-  act(() => {
+  await act(() => {
     target.dispatchEvent(event)
   })
   return event
@@ -128,21 +128,21 @@ function press(
 describe('useTaskKeyboard', () => {
   it('selects all on ⌘A and moves / extends with the arrows', async () => {
     const { selection } = await mount({})
-    const a = press(root, 'a', { metaKey: true })
+    const a = await press(root, 'a', { metaKey: true })
     expect(selection.selectAll).toHaveBeenCalled()
     expect(a.defaultPrevented).toBe(true)
 
-    press(root, 'ArrowDown')
+    await press(root, 'ArrowDown')
     expect(selection.move).toHaveBeenCalledWith(1)
-    press(root, 'ArrowUp')
+    await press(root, 'ArrowUp')
     expect(selection.move).toHaveBeenCalledWith(-1)
-    press(root, 'ArrowDown', { shiftKey: true })
+    await press(root, 'ArrowDown', { shiftKey: true })
     expect(selection.extend).toHaveBeenCalledWith(1)
   })
 
   it('works when nothing is focused (the body is on-surface)', async () => {
     const { selection } = await mount({})
-    press(document.body, 'a', { metaKey: true })
+    await press(document.body, 'a', { metaKey: true })
     expect(selection.selectAll).toHaveBeenCalled()
   })
 
@@ -154,17 +154,17 @@ describe('useTaskKeyboard', () => {
     })
     const { actions } = await mount({ selection, tasksByKey: new Map([['k', t]]) })
 
-    press(root, 'Enter', { metaKey: true })
+    await press(root, 'Enter', { metaKey: true })
     expect(actions.toggle).toHaveBeenCalledWith([t]) // complete, or reopen if checked
 
-    press(root, 'Backspace', { metaKey: true })
+    await press(root, 'Backspace', { metaKey: true })
     expect(actions.remove).toHaveBeenCalledWith([t])
     expect(selection.clear).toHaveBeenCalled()
   })
 
   it('archives on ⌘⇧↵ instead of toggling', async () => {
     const { actions } = await mount({})
-    press(root, 'Enter', { metaKey: true, shiftKey: true })
+    await press(root, 'Enter', { metaKey: true, shiftKey: true })
     expect(actions.archive).toHaveBeenCalled()
     expect(actions.toggle).not.toHaveBeenCalled()
   })
@@ -173,45 +173,45 @@ describe('useTaskKeyboard', () => {
     const input = document.createElement('input')
     root.appendChild(input)
     const { onToggleFilters } = await mount({})
-    press(root, 'e', { metaKey: true, shiftKey: true })
+    await press(root, 'e', { metaKey: true, shiftKey: true })
     expect(onToggleFilters).toHaveBeenCalledTimes(1)
     // Fires regardless of focus (it's a screen-level chord).
-    press(input, 'e', { metaKey: true, shiftKey: true })
+    await press(input, 'e', { metaKey: true, shiftKey: true })
     expect(onToggleFilters).toHaveBeenCalledTimes(2)
   })
 
   it('opens the schedule calendar on ⌘⇧S only when something is selected', async () => {
     const withNone = await mount({ selection: makeSelection({ selectedCount: 0 }) })
-    const noneEvent = press(root, 's', { metaKey: true, shiftKey: true })
+    const noneEvent = await press(root, 's', { metaKey: true, shiftKey: true })
     expect(withNone.onToggleSchedule).not.toHaveBeenCalled()
     expect(noneEvent.defaultPrevented).toBe(false)
 
     const withSel = await mount({ selection: makeSelection({ selectedCount: 2 }) })
-    const selEvent = press(root, 's', { metaKey: true, shiftKey: true })
+    const selEvent = await press(root, 's', { metaKey: true, shiftKey: true })
     expect(withSel.onToggleSchedule).toHaveBeenCalledTimes(1)
     expect(selEvent.defaultPrevented).toBe(true)
   })
 
   it('cycles the selection priority on ⌘⇧P only when something is selected', async () => {
     const withNone = await mount({ selection: makeSelection({ selectedCount: 0 }) })
-    const noneEvent = press(root, 'p', { metaKey: true, shiftKey: true })
+    const noneEvent = await press(root, 'p', { metaKey: true, shiftKey: true })
     expect(withNone.onCyclePriority).not.toHaveBeenCalled()
     expect(noneEvent.defaultPrevented).toBe(false)
 
     const withSel = await mount({ selection: makeSelection({ selectedCount: 2 }) })
-    const selEvent = press(root, 'p', { metaKey: true, shiftKey: true })
+    const selEvent = await press(root, 'p', { metaKey: true, shiftKey: true })
     expect(withSel.onCyclePriority).toHaveBeenCalledTimes(1)
     expect(selEvent.defaultPrevented).toBe(true)
   })
 
   it('converts the selection to bullets on ⌘⇧K only when something is selected', async () => {
     const withNone = await mount({ selection: makeSelection({ selectedCount: 0 }) })
-    const noneEvent = press(root, 'k', { metaKey: true, shiftKey: true })
+    const noneEvent = await press(root, 'k', { metaKey: true, shiftKey: true })
     expect(withNone.onConvertToBullet).not.toHaveBeenCalled()
     expect(noneEvent.defaultPrevented).toBe(false)
 
     const withSel = await mount({ selection: makeSelection({ selectedCount: 2 }) })
-    const selEvent = press(root, 'k', { metaKey: true, shiftKey: true })
+    const selEvent = await press(root, 'k', { metaKey: true, shiftKey: true })
     expect(withSel.onConvertToBullet).toHaveBeenCalledTimes(1)
     expect(selEvent.defaultPrevented).toBe(true)
   })
@@ -229,7 +229,7 @@ describe('useTaskKeyboard', () => {
       tasksByKey: new Map([['k', task()]]),
     })
 
-    press(editor, 'k', { metaKey: true, shiftKey: true })
+    await press(editor, 'k', { metaKey: true, shiftKey: true })
     // The editor's own keymap flushes the draft then converts — the screen handler
     // must not also fire (that's the data-loss race Bugbot flagged).
     expect(onConvertToBullet).not.toHaveBeenCalled()
@@ -253,7 +253,7 @@ describe('useTaskKeyboard', () => {
       ]),
     })
 
-    press(root, 'Backspace')
+    await press(root, 'Backspace')
     expect(actions.remove).toHaveBeenCalledWith([empty])
     // Lands on the previous row so the keyboard flow continues.
     expect(selection.clickSelect).toHaveBeenCalledWith(taskKey(a), {
@@ -282,7 +282,7 @@ describe('useTaskKeyboard', () => {
       ]),
     })
 
-    press(root, 'Backspace')
+    await press(root, 'Backspace')
     expect(actions.remove).not.toHaveBeenCalled()
   })
 
@@ -291,7 +291,7 @@ describe('useTaskKeyboard', () => {
       selection: makeSelection({ selectedCount: 1 }),
       query: 'milk',
     })
-    press(root, 'Escape')
+    await press(root, 'Escape')
     expect(selection.clear).toHaveBeenCalled()
     expect(setQuery).toHaveBeenCalledWith('')
   })
@@ -301,7 +301,7 @@ describe('useTaskKeyboard', () => {
       selection: makeSelection({ selectedCount: 0 }),
       query: '',
     })
-    const event = press(root, 'Escape')
+    const event = await press(root, 'Escape')
     expect(event.defaultPrevented).toBe(false)
     expect(selection.clear).not.toHaveBeenCalled()
   })
@@ -315,7 +315,7 @@ describe('useTaskKeyboard', () => {
       cancelable: true,
     })
     event.preventDefault() // a portaled menu handled it first
-    act(() => {
+    await act(() => {
       root.dispatchEvent(event)
     })
     expect(selection.selectAll).not.toHaveBeenCalled()
@@ -328,7 +328,7 @@ describe('useTaskKeyboard', () => {
     const item = document.createElement('div')
     menu.appendChild(item)
     document.body.appendChild(menu)
-    press(item, 'a', { metaKey: true })
+    await press(item, 'a', { metaKey: true })
     expect(selection.selectAll).not.toHaveBeenCalled()
     menu.remove()
   })
@@ -340,7 +340,7 @@ describe('useTaskKeyboard', () => {
     // shortcuts still work the moment you're on Tasks; see the body test above.)
     const sidebarButton = document.createElement('button')
     document.body.appendChild(sidebarButton)
-    press(sidebarButton, 'a', { metaKey: true })
+    await press(sidebarButton, 'a', { metaKey: true })
     expect(selection.selectAll).not.toHaveBeenCalled()
     sidebarButton.remove()
   })
@@ -357,7 +357,7 @@ describe('useTaskKeyboard', () => {
       today: '2026-06-15',
     })
 
-    const event = press(root, 'Enter')
+    const event = await press(root, 'Enter')
     expect(event.defaultPrevented).toBe(true)
     expect(insert).toHaveBeenCalledWith({
       notePath: 'daily/2026-06-15.md',
@@ -400,7 +400,7 @@ describe('useTaskKeyboard', () => {
       ]),
     })
 
-    press(root, 'Enter')
+    await press(root, 'Enter')
     expect(insert).toHaveBeenCalledWith({
       notePath: 'notes/a.md',
       noteTitle: 'A',
@@ -430,7 +430,7 @@ describe('useTaskKeyboard', () => {
       tasksByKey: new Map([['grouped', grouped]]),
     })
 
-    press(root, 'Enter')
+    await press(root, 'Enter')
     expect(insertAfter).toHaveBeenCalledWith(grouped, null, {
       notePath: 'notes/a.md',
       noteTitle: 'A',
@@ -458,7 +458,7 @@ describe('useTaskKeyboard', () => {
       tasksByKey: new Map([['k', deselected]]),
     })
 
-    press(root, 'Enter')
+    await press(root, 'Enter')
     expect(insert).toHaveBeenCalledWith({
       notePath: 'daily/2026-06-15.md',
       noteTitle: '2026-06-15',
@@ -481,8 +481,8 @@ describe('useTaskKeyboard', () => {
       tasksByKey: new Map([['k', task()]]),
     })
 
-    press(editor, 'Backspace', { metaKey: true })
-    press(editor, 'a', { metaKey: true })
+    await press(editor, 'Backspace', { metaKey: true })
+    await press(editor, 'a', { metaKey: true })
     expect(actions.remove).not.toHaveBeenCalled()
     expect(selection.selectAll).not.toHaveBeenCalled()
   })
@@ -494,10 +494,10 @@ describe('useTaskKeyboard', () => {
       selection: makeSelection({ selectedCount: 1 }),
     })
 
-    press(input, 'a', { metaKey: true })
+    await press(input, 'a', { metaKey: true })
     expect(selection.selectAll).not.toHaveBeenCalled()
 
-    press(input, 'Escape')
+    await press(input, 'Escape')
     expect(setQuery).toHaveBeenCalledWith('')
     expect(selection.clear).toHaveBeenCalled()
   })

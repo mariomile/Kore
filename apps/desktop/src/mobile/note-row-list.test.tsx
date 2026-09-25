@@ -1,8 +1,9 @@
-import { act, useState, type ReactElement } from 'react'
+import { useState, type ReactElement } from 'react'
 import { render } from 'vitest-browser-react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NoteRowList } from './note-row-list'
 import { SwipeableNoteRow, type NoteRowModel } from './swipeable-note-row'
+import { act } from '@/test-utils/act'
 
 vi.mock('@/providers/settings-provider', () => ({
   useSettings: () => ({ settings: { dateFormat: 'mdy', timeFormat: '12h' } }),
@@ -46,13 +47,13 @@ function SwipeHarness({ note = row() }: { note?: NoteRowModel }): ReactElement {
   )
 }
 
-function pointer(
+async function pointer(
   node: Element,
   type: 'pointerdown' | 'pointermove' | 'pointerup',
   clientX: number,
   clientY: number,
-): void {
-  act(() => {
+): Promise<void> {
+  await act(() => {
     node.dispatchEvent(
       new PointerEvent(type, {
         bubbles: true,
@@ -67,14 +68,14 @@ function pointer(
   })
 }
 
-function swipe(
+async function swipe(
   surface: Element,
   from: { x: number; y: number },
   to: { x: number; y: number },
-): void {
-  pointer(surface, 'pointerdown', from.x, from.y)
-  pointer(surface, 'pointermove', to.x, to.y)
-  pointer(surface, 'pointerup', to.x, to.y)
+): Promise<void> {
+  await pointer(surface, 'pointerdown', from.x, from.y)
+  await pointer(surface, 'pointermove', to.x, to.y)
+  await pointer(surface, 'pointerup', to.x, to.y)
   // A real touch sequence synthesizes a click after pointerup; dispatchEvent
   // does not, so mirror it to exercise the row's drag-click suppression.
   const touchSurface = surface as HTMLElement
@@ -119,7 +120,7 @@ describe('NoteRowList', () => {
     const surface = view.getByRole('button', { name: /Alpha.*First line/ }).element()
     const rect = surface.getBoundingClientRect()
 
-    swipe(
+    await swipe(
       surface,
       { x: rect.right - 20, y: rect.top + 32 },
       { x: rect.right - 120, y: rect.top + 32 },
@@ -136,7 +137,7 @@ describe('NoteRowList', () => {
     const surface = view.getByRole('button', { name: /Alpha.*First line/ }).element()
     const rect = surface.getBoundingClientRect()
 
-    swipe(
+    await swipe(
       surface,
       { x: rect.right - 20, y: rect.top + 12 },
       { x: rect.right - 22, y: rect.top + 52 },
@@ -151,7 +152,7 @@ describe('NoteRowList', () => {
     const surface = view.getByRole('button', { name: /Alpha.*First line/ }).element()
     const rect = surface.getBoundingClientRect()
 
-    swipe(
+    await swipe(
       surface,
       { x: rect.right - 20, y: rect.top + 32 },
       { x: rect.right - 120, y: rect.top + 32 },
@@ -168,7 +169,7 @@ describe('NoteRowList', () => {
     const view = await render(<SwipeHarness />)
     const surface = view.getByRole('button', { name: /Alpha.*First line/ }).element()
     const rect = surface.getBoundingClientRect()
-    swipe(
+    await swipe(
       surface,
       { x: rect.right - 20, y: rect.top + 32 },
       { x: rect.right - 120, y: rect.top + 32 },
@@ -186,7 +187,7 @@ describe('NoteRowList', () => {
     )
     const surface = view.getByRole('button', { name: /Alpha.*First line/ }).element()
     const rect = surface.getBoundingClientRect()
-    swipe(
+    await swipe(
       surface,
       { x: rect.right - 20, y: rect.top + 32 },
       { x: rect.right - 90, y: rect.top + 32 },
@@ -202,8 +203,8 @@ describe('NoteRowList', () => {
     const rect = surface.getBoundingClientRect()
 
     // No move/up reaches the row for this first armed touch.
-    pointer(surface, 'pointerdown', rect.right - 20, rect.top + 32)
-    swipe(
+    await pointer(surface, 'pointerdown', rect.right - 20, rect.top + 32)
+    await swipe(
       surface,
       { x: rect.right - 20, y: rect.top + 32 },
       { x: rect.right - 120, y: rect.top + 32 },

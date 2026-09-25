@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
 import { RouterProvider, useRouter } from '@/routing/router'
+import { unhover } from '@/test-utils/mouse'
 import { SimilarNotesSection } from './similar-notes-section'
 
 const relatedNotes = vi.hoisted(() => vi.fn())
@@ -96,6 +97,9 @@ describe('SimilarNotesSection', () => {
         isPrivate: false,
       },
     ])
+    // Rows reveal their passage on mouseenter too. In a full run the pointer
+    // stays wherever the previous test left it, so park it before rendering.
+    await unhover()
     const view = await renderSimilar('notes/languages.md')
     await expect.element(view.getByText('Rust')).toBeInTheDocument()
     await expect.element(view.getByText('Similar notes')).toBeInTheDocument()

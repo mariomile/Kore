@@ -73,8 +73,13 @@ describe('rebuildIndexVisibly', () => {
     rebuildIndex.mockImplementationOnce(async (options) => {
       options.onSkippedNote?.({ path: 'notes/bad.md', message: 'unexpected end of hex escape' })
     })
+    const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
     await expect(rebuildIndexVisibly(7)).resolves.toBeUndefined()
+    expect(consoleWarn).toHaveBeenCalledWith(
+      'Index rebuild skipped notes/bad.md: unexpected end of hex escape',
+    )
+    consoleWarn.mockRestore()
   })
 
   it('absorbs a failed rebuild and releases the in-flight guard', async () => {

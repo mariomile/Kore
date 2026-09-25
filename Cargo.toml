@@ -25,3 +25,14 @@ sha2 = "0.11.0"
 tempfile = "3.27.0"
 reflect-graph-paths = { path = "crates/graph-paths" }
 reflect-note-policy = { path = "crates/note-policy" }
+
+# Shipped builds trade compile time for a smaller, faster binary: one codegen
+# unit plus fat LTO lets rustc inline across crates (rusqlite, tauri, serde).
+# `panic` stays `unwind` on purpose: a panic inside one Tauri command fails that
+# command instead of aborting the whole app. Do not add `strip = "symbols"`: the
+# iOS build turns on line tables (CARGO_PROFILE_RELEASE_DEBUG in
+# apps/desktop/scripts/release-ios.mjs) for Xcode's dSYM, and stripping would
+# remove them. Without that variable Cargo already strips debug info.
+[profile.release]
+codegen-units = 1
+lto = "fat"

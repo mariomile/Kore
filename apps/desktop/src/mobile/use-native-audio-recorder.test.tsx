@@ -1,4 +1,3 @@
-import { act } from 'react'
 import { renderHook } from 'vitest-browser-react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { setBridge } from '@reflect/core'
@@ -7,6 +6,7 @@ import {
   releaseStagedPath,
   useNativeAudioRecorder,
 } from './use-native-audio-recorder'
+import { act } from '@/test-utils/act'
 
 const invoke = vi.fn<(command: string, args?: unknown) => Promise<unknown>>()
 
@@ -141,7 +141,7 @@ describe('useNativeAudioRecorder', () => {
     const { result } = await renderRecorder()
     await vi.waitFor(() => expect(pluginEvents.handlers.has('recordingLevel')).toBe(true))
 
-    act(() => {
+    await act(() => {
       pluginEvents.emit('recordingLevel', { level: 0.5, elapsedMs: 1200 })
     })
     expect(result.current.level).toBe(0)
@@ -149,7 +149,7 @@ describe('useNativeAudioRecorder', () => {
     await act(async () => {
       await result.current.start()
     })
-    act(() => {
+    await act(() => {
       pluginEvents.emit('recordingLevel', { level: 0.5, elapsedMs: 1200 })
     })
     expect(result.current.level).toBe(0.5)
@@ -224,6 +224,7 @@ describe('useNativeAudioRecorder', () => {
     })
     await renderRecorder()
     await vi.waitFor(() => expect(pluginEvents.handlers.has('recordingStopped')).toBe(true))
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
 
     await act(async () => {
       pluginEvents.emit('recordingStopped', {
@@ -238,6 +239,11 @@ describe('useNativeAudioRecorder', () => {
     // still notified so the recording UI closes rather than stranding.
     await vi.waitFor(() => expect(isStagedPathClaimed(path)).toBe(false))
     expect(onNativeStop).toHaveBeenCalledWith(null)
+    expect(consoleError).toHaveBeenCalledWith(
+      'reading a native-stopped recording failed:',
+      expect.objectContaining({ message: 'io error' }),
+    )
+    consoleError.mockRestore()
   })
 
   it('a native stop landing during start does not resurrect the recording', async () => {

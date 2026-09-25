@@ -1,0 +1,162 @@
+diff --git a/dist/index.d.ts b/dist/index.d.ts
+index c9a7398865634156e4ef521f1087f3ac4d671233..adf496ddcfe54eda18047c3def307963e5856fca 100644
+--- a/dist/index.d.ts
++++ b/dist/index.d.ts
+@@ -436,6 +436,21 @@ interface LinkEditOptions {
+ type LinkEditHandler = (options: LinkEditOptions) => void;
+ export declare function defineLinkEditKeymap(onLinkEdit: LinkEditHandler): PlainExtension;
+ //#endregion
++//#region src/extensions/commands.d.ts
++/**
++ * Where `insertMarkdown` leaves the caret.
++ */
++interface InsertMarkdownOptions {
++  /**
++   * `end` (the default) leaves the caret at the end of the inserted fragment.
++   * `after-block` closes the fragment so a paragraph suffix stays outside the
++   * block, then places the caret in the following paragraph. A missing
++   * paragraph is created with {@link insertDefaultBlockAt}, the same block
++   * `exitCodeBlockAtEnd` inserts.
++   */
++  selection?: 'end' | 'after-block';
++}
++//#endregion
+ //#region src/extensions/pending-replacement.d.ts
+ /**
+  * Where an accepted replacement lands relative to the source range.
+@@ -1281,7 +1296,7 @@ declare function defineEditorExtensionImpl(options: EditorExtensionOptions): imp
+   };
+ }>, import("@prosekit/core").PlainExtension, import("@prosekit/core").PlainExtension, import("@prosekit/core").PlainExtension, import("@prosekit/core").PlainExtension, import("@prosekit/core").PlainExtension, import("@prosekit/core").PlainExtension, import("@prosekit/core").PlainExtension, import("@prosekit/core").PlainExtension, import("@prosekit/core").PlainExtension, import("@prosekit/core").BaseCommandsExtension, import("@prosekit/core").HistoryExtension, import("@prosekit/core").PlainExtension, import("@prosekit/core").PlainExtension, import("@prosekit/core").Extension<{
+   Commands: {
+-    insertMarkdown: [markdown: string];
++    insertMarkdown: [markdown: string, options?: InsertMarkdownOptions | undefined];
+     insertTrigger: [text: string];
+     scrollIntoView: [];
+     selectText: [anchor: number, head?: number | undefined];
+@@ -1674,4 +1689,4 @@ export declare function getSelectedText(state: EditorState): string;
+  */
+ export declare function getVirtualElementFromRange(view: EditorView, range: PositionRange): VirtualElement;
+ //#endregion
+-export { type AcceptPendingReplacementOptions, type CheckRoundTripOptions, type CodeBlockAttrs, type CodeBlockFenceStyle, type CodeToken, type DocToMarkdownOptions, type EditorConfig, type EditorExtension, type EditorExtensionOptions, type ExitBoundaryHandler, type ExitBoundaryOptions, type FileClickHandler, type FileClickPayload, type FileInfo, type FileInfoResolver, type FileLinkOptions, type FileLinkPayload, type FileLinkResolver, type FilePasteHandler, type FilePasteOptions, type FileSaveErrorHandler, type FileViewOptions, type FollowLinkHandlers, type ImageClickHandler, type ImageClickPayload, type ImageOptions, type InlineMarkContext, type InlineMarkOptions, type KaTeXRender, type LanguageItem, type LinkAttrs, type LinkClickHandler, type LinkClickPayload, type LinkCopyHandler, type LinkCopyPayload, type LinkEditHandler, type LinkEditOptions, type LinkHoverHandler, type LinkHoverOptions, type LinkPreview, type LinkPreviewResolver, type LinkUnit, type ListMarker, type MarkChunk, type MarkMode, type MarkName, type MarkdownToDocOptions, type MdFileAttrs, type MdImageAttrs, type MdLinkTextAttrs, type MdMathAttrs, type MdWikilinkAttrs, type MeowdownCodeBlockAttrs, type MeowdownHTMLCommentAttrs, type MeowdownListAttrs, type MeowdownTableCellAttrs, type NodeName, type ParsedWikiEmbed, type PendingReplacement, type PendingReplacementEvent, type PendingReplacementHandler, type PendingReplacementMode, type PendingReplacementOutcome, type PlaceholderOptions, type PositionRange, type PostEmbedSnapshot, Priority, type ReferenceDefinition, type ReferenceDefinitionIndex, type ReferenceDefinitions, type RoundTripFidelity, type SearchStatus, type SearchStatusHandler, type StartPendingReplacementOptions, type TableColumnAlign, type TagClickHandler, type TagClickPayload, type TypedEditor, type TypedMarkBuilders, type VirtualElement, type WikiEmbedOptions, type WikiEmbedResolution, type WikiEmbedResolver, type WikilinkClickHandler, type WikilinkClickPayload, type WikilinkHoverHandler, type WikilinkHoverHit, type WikilinkOptions, type WikilinkPayload, type WikilinkResolution, type WikilinkResolver, type XPostMediaClickHandler, type XPostResolver, type YouTubeVideoClickHandler, type YouTubeVideoResolver, defineCodeBlockPreviewPlugin, definePlaceholder, defineSearchStatusHandler, getSearchStatus, isCodeBlockPreviewHiddenDecoration, withPriority };
+\ No newline at end of file
++export { type AcceptPendingReplacementOptions, type CheckRoundTripOptions, type CodeBlockAttrs, type CodeBlockFenceStyle, type CodeToken, type DocToMarkdownOptions, type EditorConfig, type EditorExtension, type EditorExtensionOptions, type ExitBoundaryHandler, type ExitBoundaryOptions, type FileClickHandler, type FileClickPayload, type FileInfo, type FileInfoResolver, type FileLinkOptions, type FileLinkPayload, type FileLinkResolver, type FilePasteHandler, type FilePasteOptions, type FileSaveErrorHandler, type FileViewOptions, type FollowLinkHandlers, type ImageClickHandler, type ImageClickPayload, type ImageOptions, type InlineMarkContext, type InlineMarkOptions, type InsertMarkdownOptions, type KaTeXRender, type LanguageItem, type LinkAttrs, type LinkClickHandler, type LinkClickPayload, type LinkCopyHandler, type LinkCopyPayload, type LinkEditHandler, type LinkEditOptions, type LinkHoverHandler, type LinkHoverOptions, type LinkPreview, type LinkPreviewResolver, type LinkUnit, type ListMarker, type MarkChunk, type MarkMode, type MarkName, type MarkdownToDocOptions, type MdFileAttrs, type MdImageAttrs, type MdLinkTextAttrs, type MdMathAttrs, type MdWikilinkAttrs, type MeowdownCodeBlockAttrs, type MeowdownHTMLCommentAttrs, type MeowdownListAttrs, type MeowdownTableCellAttrs, type NodeName, type ParsedWikiEmbed, type PendingReplacement, type PendingReplacementEvent, type PendingReplacementHandler, type PendingReplacementMode, type PendingReplacementOutcome, type PlaceholderOptions, type PositionRange, type PostEmbedSnapshot, Priority, type ReferenceDefinition, type ReferenceDefinitionIndex, type ReferenceDefinitions, type RoundTripFidelity, type SearchStatus, type SearchStatusHandler, type StartPendingReplacementOptions, type TableColumnAlign, type TagClickHandler, type TagClickPayload, type TypedEditor, type TypedMarkBuilders, type VirtualElement, type WikiEmbedOptions, type WikiEmbedResolution, type WikiEmbedResolver, type WikilinkClickHandler, type WikilinkClickPayload, type WikilinkHoverHandler, type WikilinkHoverHit, type WikilinkOptions, type WikilinkPayload, type WikilinkResolution, type WikilinkResolver, type XPostMediaClickHandler, type XPostResolver, type YouTubeVideoClickHandler, type YouTubeVideoResolver, defineCodeBlockPreviewPlugin, definePlaceholder, defineSearchStatusHandler, getSearchStatus, isCodeBlockPreviewHiddenDecoration, withPriority };
+\ No newline at end of file
+diff --git a/dist/index.js b/dist/index.js
+index 4cab7b49b6f166fda66cfc8d2afa7bedd898759b..84dd1be6e3a9642aae75b846090f8f53785678f4 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -2260,6 +2260,30 @@ function getCodeTokens(code, language) {
+ //#endregion
+ //#region src/extensions/code-block-exit.ts
+ /**
++* The parent's default block at `position`, when that parent can hold it.
++*/
++function defaultBlockAtPosition(doc, position) {
++	const $position = doc.resolve(position);
++	const parent = $position.parent;
++	const index = $position.index();
++	const type = defaultBlockAt(parent.contentMatchAt(index));
++	const block = type?.createAndFill();
++	if (!type || !block || !parent.canReplaceWith(index, index, type)) return null;
++	return block;
++}
++/**
++* Insert the parent's default block at `position` and place the caret inside
++* it. Shared by leaving a code block and by `insertMarkdown`'s `after-block`
++* selection, so both create that block the same way.
++*/
++function insertDefaultBlockAt(transaction, position) {
++	const block = defaultBlockAtPosition(transaction.doc, position);
++	if (!block) return false;
++	transaction.insert(position, block);
++	transaction.setSelection(TextSelection.create(transaction.doc, position + 1));
++	return true;
++}
++/**
+ * With the caret at the end of a code block, move it into the block below when
+ * that block is an empty paragraph, and into a new default block otherwise.
+ */
+@@ -2276,13 +2300,10 @@ const exitCodeBlockAtEnd = (state, dispatch) => {
+ 		dispatch?.(state.tr.setSelection(TextSelection.create(state.doc, after + 1)).scrollIntoView());
+ 		return true;
+ 	}
+-	const type = defaultBlockAt(container.contentMatchAt(indexAfter));
+-	const block = type?.createAndFill();
+-	if (!type || !block || !container.canReplaceWith(indexAfter, indexAfter, type)) return false;
+-	if (dispatch) {
+-		const tr = state.tr.insert(after, block);
+-		dispatch(tr.setSelection(TextSelection.create(tr.doc, after + 1)).scrollIntoView());
+-	}
++	if (!dispatch) return defaultBlockAtPosition(state.doc, after) !== null;
++	const transaction = state.tr;
++	if (!insertDefaultBlockAt(transaction, after)) return false;
++	dispatch(transaction.scrollIntoView());
+ 	return true;
+ };
+ function defineCodeBlockExitKeymap() {
+@@ -2369,18 +2390,59 @@ function selectTextBetween($anchor, $head, bias) {
+ 		return true;
+ 	};
+ }
+-function insertMarkdown(markdown) {
++function markdownSlice(content, options) {
++	if (content.childCount === 1 && isNodeOfType(content.child(0), "paragraph")) return new Slice(content, 1, 1);
++	if (options.selection === "after-block") return new Slice(content, 0, 0);
++	return new Slice(content, 0, Slice.maxOpen(content).openEnd);
++}
++/**
++* Put the caret in the paragraph after the code block that the closed slice
++* just inserted. Reuses a paragraph that already follows it.
++*/
++function placeCaretAfterInsertedCodeBlock(transaction) {
++	const located = locateInsertedCodeBlock(transaction);
++	if (!located) return;
++	const { after, followedByParagraph } = located;
++	if (followedByParagraph) {
++		transaction.setSelection(TextSelection.near(transaction.doc.resolve(after), 1));
++		return;
++	}
++	insertDefaultBlockAt(transaction, after);
++}
++function locateInsertedCodeBlock(transaction) {
++	const $from = transaction.selection.$from;
++	for (let depth = $from.depth; depth > 0; depth -= 1) {
++		if (!isNodeOfType($from.node(depth), "codeBlock")) continue;
++		return codeBlockBoundary(transaction, $from.after(depth));
++	}
++	if ($from.depth === 0) return null;
++	const container = $from.node(-1);
++	const index = $from.index(-1);
++	const previous = index > 0 ? container.child(index - 1) : null;
++	if (!previous || !isNodeOfType(previous, "codeBlock")) return null;
++	return codeBlockBoundary(transaction, $from.before());
++}
++function codeBlockBoundary(transaction, after) {
++	const nodeAfter = transaction.doc.resolve(after).nodeAfter;
++	return {
++		after,
++		followedByParagraph: nodeAfter !== null && isNodeOfType(nodeAfter, "paragraph")
++	};
++}
++function insertMarkdown(markdown, options = {}) {
+ 	return (state, dispatch) => {
+ 		if (!markdown.trim()) return false;
+ 		const nodes = getNodeBuildersForSchema(state.schema);
+ 		const content = markdownToDoc(markdown, { nodes }).content;
+ 		if (content.childCount === 0) return false;
+-		const slice = content.childCount === 1 && isNodeOfType(content.child(0), "paragraph") ? new Slice(content, 1, 1) : new Slice(content, 0, Slice.maxOpen(content).openEnd);
++		const slice = markdownSlice(content, options);
+ 		if (dispatch) {
+-			const tr = state.tr;
+-			const selection = tr.selection;
+-			if (!isTextSelection(selection) || !selection.empty) tr.setSelection(TextSelection.near(selection.$from));
+-			dispatch(tr.replaceSelection(slice).scrollIntoView());
++			const transaction = state.tr;
++			const selection = transaction.selection;
++			if (!isTextSelection(selection) || !selection.empty) transaction.setSelection(TextSelection.near(selection.$from));
++			transaction.replaceSelection(slice);
++			if (options.selection === "after-block") placeCaretAfterInsertedCodeBlock(transaction);
++			dispatch(transaction.scrollIntoView());
+ 		}
+ 		return true;
+ 	};

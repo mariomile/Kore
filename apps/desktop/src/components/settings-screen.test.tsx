@@ -47,6 +47,13 @@ vi.mock('@/lib/platform', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/platform')>()),
   isNativeShell: () => true,
 }))
+// The native shell is on, so pin the window role instead of reading Tauri's
+// window metadata, which the test browser does not have.
+vi.mock('@/lib/windows/window-role', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/windows/window-role')>()),
+  isMainWindow: () => true,
+  requireMainWindow: () => true,
+}))
 // The Import section only hands the picked zip to the workspace-level V1
 // import controller, which these screen tests don't mount.
 vi.mock('@/providers/v1-import-provider', () => ({

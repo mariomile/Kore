@@ -150,7 +150,7 @@ export function appMenuLayout(): AppSubmenuLayout[] {
     {
       text: 'Help',
       nsAppRole: 'help',
-      entries: [command('shortcuts.show')],
+      entries: [command('shortcuts.show'), command('help.showLogs')],
     },
   ]
 }

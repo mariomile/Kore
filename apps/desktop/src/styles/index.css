@@ -527,7 +527,7 @@ html:root {
 [data-testid='slash-menu'] [value^='Callout:']::before {
   content: '!';
 }
-[data-testid='slash-menu'] [value^='Collection:']::before {
+[data-testid='slash-menu'] [value^='Type: #']::before {
   content: '#';
 }
 [data-testid='slash-menu'] [value$=' template']::before {
@@ -682,16 +682,16 @@ html:root {
   --slash-lead-rule: 1px solid var(--border);
 }
 
-[data-testid='slash-menu'] [value^='Collection:']:not([hidden]) {
-  --slash-lead: 'Collections';
+[data-testid='slash-menu'] [value^='Type: #']:not([hidden]) {
+  --slash-lead: 'Types';
   --slash-lead-space: 1.125rem;
   --slash-lead-gap: 0.25rem;
   --slash-lead-rule: 1px solid var(--border);
 }
 
 [data-testid='slash-menu']
-  [value^='Collection:']:not([hidden])
-  ~ [value^='Collection:']:not([hidden]) {
+  [value^='Type: #']:not([hidden])
+  ~ [value^='Type: #']:not([hidden]) {
   --slash-lead: none;
   --slash-lead-space: 0px;
   --slash-lead-gap: 0px;

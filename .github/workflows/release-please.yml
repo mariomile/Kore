@@ -49,9 +49,13 @@ jobs:
       # the Release PR could not merge. workflow_dispatch is the documented
       # exception, so run CI on the Release PR branch explicitly; its checks
       # land on the PR's head commit.
+      # Step env is evaluated before `if`, so the PR JSON is parsed in the
+      # script: when no Release PR changed, `pr` is empty and the step skips.
       - name: Run CI on the Release PR
-        if: ${{ steps.stable.outputs.pr }}
+        if: steps.stable.outputs.pr != ''
         env:
           GH_TOKEN: ${{ github.token }}
-          BRANCH: ${{ fromJSON(steps.stable.outputs.pr).headBranchName }}
-        run: gh workflow run ci.yml --repo "$GITHUB_REPOSITORY" --ref "$BRANCH"
+          PR_JSON: ${{ steps.stable.outputs.pr }}
+        run: |
+          branch=$(jq -r '.headBranchName' <<<"$PR_JSON")
+          gh workflow run ci.yml --repo "$GITHUB_REPOSITORY" --ref "$branch"

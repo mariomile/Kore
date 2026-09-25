@@ -1,5 +1,21 @@
 # Kore working state
 
+## CI and branch protection, 2026-09-25
+
+- [x] CI on `master` no longer cancels superseded runs (only PR runs are
+  cancelled), so every master commit gets a result.
+- [x] The Release PR is opened with GITHUB_TOKEN, which starts no workflows:
+  its `pull_request` CI run had zero jobs and failed (0.73.0, 0.74.0).
+  `release-please.yml` now dispatches `ci.yml` on the Release PR branch after
+  release-please creates or updates it. First version (#249) failed on the
+  run where no Release PR changed (`fromJSON('')` in step env, which is
+  evaluated before `if`); fixed by parsing the JSON in the script.
+- [ ] Not yet seen live: the dispatched run reporting `all-green` on a Release
+  PR. It happens on the next `feat`/`fix` merge. Manual fallback in AGENTS.md
+  ("Cutting a Kore release").
+- [ ] `master` protection with `all-green` required: applied once the item
+  above is verified. Until then `master` blocks only force-push and deletion.
+
 ## Performance pass 2: release build and SQLite writer, 2026-09-25
 
 Follow-up to the audit of speed, footprint and bug surface. Simplest levers

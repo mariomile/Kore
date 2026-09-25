@@ -251,6 +251,10 @@ retry the notarized **Release** workflow.
    Merging it *is* the bump: it sets `version` in `apps/desktop/package.json`,
    prepends `apps/desktop/CHANGELOG.md`, and advances
    `.github/release-please/manifest.stable.json`, all in one commit.
+   `master` is protected: the Release PR merges only with the `all-green`
+   check. release-please dispatches CI on the Release PR branch itself; if the
+   PR shows no `all-green` run, start it by hand:
+   `gh workflow run ci.yml --ref release-please--branches--master--components--reflect-open`.
 
    Only when there is no Release PR (nothing since the last release carried a
    `feat:`/`fix:` title) bump by hand — and by hand means doing everything the

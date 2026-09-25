@@ -1,6 +1,6 @@
 # Kore working state
 
-## Performance pass 2: release build and SQLite writer — 2026-09-25
+## Performance pass 2: release build and SQLite writer, 2026-09-25
 
 Follow-up to the audit of speed, footprint and bug surface. Simplest levers
 first, one commit each.
@@ -48,9 +48,42 @@ runtime benchmark of the fsync gain was taken. Read-bridge follow-up:
 covers an FTS `MATCH` plus a later writer commit), clippy clean,
 `release-please-workflow` test 7/7.
 
-**Next:** upgrade Meowdown 0.65.6 → 0.74.x (mount cost fix #564
-is released; blocked only by the #546 patches), then local structured logging
-and shrinking the console allowlist.
+- [x] Meowdown upgraded: core 0.65.6 → 0.74.1, react → 0.73.1, markdown →
+  0.72.0, carrying the dynamic editor setup (#564). The two patches are
+  regenerated from PR #612 (the rebase of #546), whose base is exactly the
+  commit that published these versions; see `patches/README.md`. Upstream's
+  `CodeBlockView` (#548) cannot replace them: the default code-block view is
+  not exported. Knock-on changes: React 19.3 (a Meowdown peer),
+  `@prosekit/core` 0.13.3 and `@prosekit/pm` 0.1.20 so one copy of
+  prosemirror-model/transform/view is installed (two copies broke list and
+  menu commands), and the slash-menu section CSS matches Heading rows by
+  prefix, since those rows now carry search keywords (`Heading 1 h1`), the
+  same way it already matched `Text`. Meowdown 0.73 also requires
+  `@base-ui/react` ^1.8.0: Kore moved from 1.7.0 and its #5645 backport
+  patch applied unchanged, so one patched copy serves both.
+  Measured on `?seed=large` with Vite dev servers (dev React), scrolling 30
+  steps through past days in headless Chromium, 10 runs each, medians: JS
+  time 970 → 877 ms (-10%); total task time (~2.6 s) and the longest task
+  (~75 ms) unchanged. Smaller than the ~20% expected from the earlier
+  profile.
+
+- [x] Flaky test fixed: `similar-notes-section` "shows an existing heading
+  and snippet" failed in full Chromium runs because rows also reveal on
+  mouseenter and the pointer stays where the previous test left it.
+  Reproduced by rendering the rows under the pointer; the test now parks the
+  pointer in the far corner first.
+
+**Validation (Meowdown + Base UI):** frozen install; `tsc -b --force` clean;
+node projects 3294/3294 (incl. core-browser); browser project on WebKit 2036
+passed + 2 skipped; on Chromium 2037/2038, the one failure being the flaky
+Similar notes test above (6/6 on both engines after the fix). An earlier
+WebKit run failed `collection-fence-guard` "jumps over the fence" once; it
+passed 3/3 alone on the branch, 3/3 on master, and in two full WebKit runs,
+so it is load-flaky and untouched. `pnpm check` exit 0 (pre-existing
+max-lines warnings only), `pnpm build` ok. Not checked: the native app and
+iOS.
+
+**Next:** local structured logging and shrinking the console allowlist.
 
 **Doc drift:** AGENTS.md points Meowdown at `~/repos/meowdown`; that checkout
 does not exist on this machine.

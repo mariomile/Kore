@@ -160,7 +160,7 @@ describe('NoteEditor slash menu', () => {
       : '{Control>}a{/Control}'
 
     await userEvent.keyboard('/heading')
-    const heading1 = page.locate('[data-testid="slash-menu"] [value="Heading 1"]')
+    const heading1 = page.locate('[data-testid="slash-menu"] [value^="Heading 1 "]')
     await expect.element(heading1).toBeVisible()
     expect(slashPseudo(heading1.element(), '::after')).toContain('Basic blocks')
     expect(slashPseudo(heading1.element(), '::before')).toContain('H1')
@@ -190,8 +190,8 @@ describe('NoteEditor slash menu', () => {
       : '{Control>}a{/Control}'
 
     await userEvent.keyboard('/heading')
-    const heading1 = page.locate('[data-testid="slash-menu"] [value="Heading 1"]:not([hidden])')
-    const heading2 = page.locate('[data-testid="slash-menu"] [value="Heading 2"]:not([hidden])')
+    const heading1 = page.locate('[data-testid="slash-menu"] [value^="Heading 1 "]:not([hidden])')
+    const heading2 = page.locate('[data-testid="slash-menu"] [value^="Heading 2 "]:not([hidden])')
     await expect.element(heading1).toBeVisible()
     await expect.element(heading2).toBeVisible()
     expect(heading2.element().getBoundingClientRect().top).toBeGreaterThanOrEqual(

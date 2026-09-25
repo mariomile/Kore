@@ -470,16 +470,16 @@ html:root {
   opacity: 0.7;
 }
 
-[data-testid='slash-menu'] [value='Heading 1']::before {
+[data-testid='slash-menu'] [value^='Heading 1 ']::before {
   content: 'H1';
 }
-[data-testid='slash-menu'] [value='Heading 2']::before {
+[data-testid='slash-menu'] [value^='Heading 2 ']::before {
   content: 'H2';
 }
-[data-testid='slash-menu'] [value='Heading 3']::before {
+[data-testid='slash-menu'] [value^='Heading 3 ']::before {
   content: 'H3';
 }
-[data-testid='slash-menu'] [value='Heading 4']::before {
+[data-testid='slash-menu'] [value^='Heading 4 ']::before {
   content: 'H4';
 }
 [data-testid='slash-menu'] [value='Blockquote']::before {
@@ -531,16 +531,16 @@ html:root {
 [data-testid='slash-menu'] [value^='Text '] > span:first-of-type::after {
   content: 'Just start writing';
 }
-[data-testid='slash-menu'] [value='Heading 1'] > span:first-of-type::after {
+[data-testid='slash-menu'] [value^='Heading 1 '] > span:first-of-type::after {
   content: 'Large section heading';
 }
-[data-testid='slash-menu'] [value='Heading 2'] > span:first-of-type::after {
+[data-testid='slash-menu'] [value^='Heading 2 '] > span:first-of-type::after {
   content: 'Medium section heading';
 }
-[data-testid='slash-menu'] [value='Heading 3'] > span:first-of-type::after {
+[data-testid='slash-menu'] [value^='Heading 3 '] > span:first-of-type::after {
   content: 'Small section heading';
 }
-[data-testid='slash-menu'] [value='Heading 4'] > span:first-of-type::after {
+[data-testid='slash-menu'] [value^='Heading 4 '] > span:first-of-type::after {
   content: 'Smaller heading';
 }
 [data-testid='slash-menu'] [value='Blockquote'] > span:first-of-type::after {
@@ -575,10 +575,10 @@ html:root {
 }
 
 [data-testid='slash-menu'] [value^='Text ']:not([hidden]),
-[data-testid='slash-menu'] [value='Heading 1']:not([hidden]),
-[data-testid='slash-menu'] [value='Heading 2']:not([hidden]),
-[data-testid='slash-menu'] [value='Heading 3']:not([hidden]),
-[data-testid='slash-menu'] [value='Heading 4']:not([hidden]),
+[data-testid='slash-menu'] [value^='Heading 1 ']:not([hidden]),
+[data-testid='slash-menu'] [value^='Heading 2 ']:not([hidden]),
+[data-testid='slash-menu'] [value^='Heading 3 ']:not([hidden]),
+[data-testid='slash-menu'] [value^='Heading 4 ']:not([hidden]),
 [data-testid='slash-menu'] [value='Blockquote']:not([hidden]) {
   --slash-lead: 'Basic blocks';
   --slash-lead-space: 1.125rem;
@@ -587,24 +587,29 @@ html:root {
 [data-testid='slash-menu']
   [value^='Text ']:not([hidden])
   ~ :is(
-    [value='Heading 1'],
-    [value='Heading 2'],
-    [value='Heading 3'],
-    [value='Heading 4'],
+    [value^='Heading 1 '],
+    [value^='Heading 2 '],
+    [value^='Heading 3 '],
+    [value^='Heading 4 '],
     [value='Blockquote']
   ):not([hidden]),
 [data-testid='slash-menu']
-  [value='Heading 1']:not([hidden])
-  ~ :is([value='Heading 2'], [value='Heading 3'], [value='Heading 4'], [value='Blockquote']):not(
-    [hidden]
-  ),
+  [value^='Heading 1 ']:not([hidden])
+  ~ :is(
+    [value^='Heading 2 '],
+    [value^='Heading 3 '],
+    [value^='Heading 4 '],
+    [value='Blockquote']
+  ):not([hidden]),
 [data-testid='slash-menu']
-  [value='Heading 2']:not([hidden])
-  ~ :is([value='Heading 3'], [value='Heading 4'], [value='Blockquote']):not([hidden]),
+  [value^='Heading 2 ']:not([hidden])
+  ~ :is([value^='Heading 3 '], [value^='Heading 4 '], [value='Blockquote']):not([hidden]),
 [data-testid='slash-menu']
-  [value='Heading 3']:not([hidden])
-  ~ :is([value='Heading 4'], [value='Blockquote']):not([hidden]),
-[data-testid='slash-menu'] [value='Heading 4']:not([hidden]) ~ [value='Blockquote']:not([hidden]) {
+  [value^='Heading 3 ']:not([hidden])
+  ~ :is([value^='Heading 4 '], [value='Blockquote']):not([hidden]),
+[data-testid='slash-menu']
+  [value^='Heading 4 ']:not([hidden])
+  ~ [value='Blockquote']:not([hidden]) {
   --slash-lead: none;
   --slash-lead-space: 0px;
 }

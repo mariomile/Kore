@@ -37,6 +37,8 @@ describe('CollectionFenceGuard', () => {
     const handle = await renderNote()
     handle.setSelection({ type: 'text', anchor: 7, head: 7 })
     await pmRoot.click()
+    // A key sent before WebKit moves focus into the editor never reaches it.
+    await expect.element(pmRoot).toHaveFocus()
     handle.setSelection({ type: 'text', anchor: 7, head: 7 })
     await userEvent.keyboard('{ArrowDown}')
     // Positions 20–25 are the "after" paragraph; the fence spans 8–19.
@@ -46,6 +48,8 @@ describe('CollectionFenceGuard', () => {
   it('jumps over the fence when the caret moves up into it', async () => {
     const handle = await renderNote()
     await pmRoot.click()
+    // A key sent before WebKit moves focus into the editor never reaches it.
+    await expect.element(pmRoot).toHaveFocus()
     handle.setSelection({ type: 'text', anchor: 22, head: 22 })
     await userEvent.keyboard('{ArrowUp}')
     // Positions 1–7 are the "before" paragraph.

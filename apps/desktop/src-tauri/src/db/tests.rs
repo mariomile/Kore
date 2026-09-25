@@ -1130,6 +1130,11 @@ fn open_index_at_creates_migrates_and_reopens() {
         .query_row("PRAGMA journal_mode", [], |row| row.get(0))
         .unwrap();
     assert_eq!(journal, "wal");
+    // 1 = NORMAL (the default under WAL would be 2 = FULL).
+    let synchronous: i64 = conn
+        .query_row("PRAGMA synchronous", [], |row| row.get(0))
+        .unwrap();
+    assert_eq!(synchronous, 1);
     drop(conn);
 
     // Reopening an existing index is a no-op migration and preserves data.

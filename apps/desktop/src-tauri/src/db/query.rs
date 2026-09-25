@@ -72,13 +72,8 @@ pub(super) fn run_query(
     // evaluates it, then clear it. The guard is scoped to this call: the write
     // path doesn't prepare here, so its legitimate `PRAGMA defer_foreign_keys`
     // is never affected. `prepare` returns `SQLITE_AUTH` for a denied statement.
-    //
-    // Statements come from the connection's cache, so a repeated query (list
-    // refreshes, panels re-reading on every index change) skips re-parsing. A
-    // cache hit skips the authorizer, which is sound: only statements that
-    // already passed it are cached, and its verdict depends on the SQL text alone.
     conn.authorizer(Some(read_only_authorization))?;
-    let prepared = conn.prepare_cached(sql);
+    let prepared = conn.prepare(sql);
     conn.authorizer(None::<fn(AuthContext<'_>) -> Authorization>)?;
     let mut stmt = prepared?;
     // `Statement::readonly()` rejects any remaining mutating statement so a

@@ -71,19 +71,56 @@ covers an FTS `MATCH` plus a later writer commit), clippy clean,
   and snippet" failed in full Chromium runs because rows also reveal on
   mouseenter and the pointer stays where the previous test left it.
   Reproduced by rendering the rows under the pointer; the test now parks the
-  pointer in the far corner first.
+  pointer with the shared `unhover` helper, which loads the `page.locate`
+  extension it needs by itself.
 
 **Validation (Meowdown + Base UI):** frozen install; `tsc -b --force` clean;
 node projects 3294/3294 (incl. core-browser); browser project on WebKit 2036
 passed + 2 skipped; on Chromium 2037/2038, the one failure being the flaky
 Similar notes test above (6/6 on both engines after the fix). An earlier
 WebKit run failed `collection-fence-guard` "jumps over the fence" once; it
-passed 3/3 alone on the branch, 3/3 on master, and in two full WebKit runs,
-so it is load-flaky and untouched. `pnpm check` exit 0 (pre-existing
+passed alone on the branch and on master (see the fix below). `pnpm check` exit 0 (pre-existing
 max-lines warnings only), `pnpm build` ok. Not checked: the native app and
 iOS.
 
-**Next:** local structured logging and shrinking the console allowlist.
+- [x] Code review fixes: built-in slash rows match their full `value`, so a
+  template titled "Heading 1 ..." no longer takes their badges and
+  sections; Type rows (labeled "Type: #tag" since #244, "Supertag:" before)
+  got their `#` icon and "Types" header back, verified in a rendered
+  headless check; React type packages follow React 19.3.
+- [x] Local logs: `logs.rs` installs the tracing subscriber from a small
+  internal plugin (stderr plus a daily `tracing-appender` file in the OS log
+  folder, 7 days kept); webview `console.warn`/`console.error`, uncaught
+  errors and unhandled rejections reach it through the async `log_webview`
+  command, tagged with the window; Help > Show logs opens the folder
+  (hidden on mobile). Lines may name note files and URLs, never bodies,
+  chat text or keys. Verified in Kore Dev (`pnpm tauri:dev`): the file
+  appeared under `~/Library/Logs/app.lore.desktop.dev/` with the Rust
+  startup lines, and a webview warning plus an unhandled rejection landed
+  in it; WebKit's `stack` omits the message, so errors log name + message
+  + stack. `Cargo.lock` gains only `tracing-appender` and `symlink`.
+- [x] Console allowlist 16 → 2 entries (ResizeObserver artifact, the
+  index's one-time rebuild notice). A shared `@/test-utils/act` (every act
+  awaited) removed React's act-environment warning from 128 tests; tests
+  that enable the native shell pin the window role; IPC fakes answer
+  valid responses; intentional failure paths assert their log. The
+  testing guide records the rules.
+- [x] `collection-fence-guard` WebKit flake: under suite load the arrow key
+  arrived before focus reached the editor (caret left at its start, 7);
+  the tests now wait for editor focus.
+- Reviewed and left as is: the two production `expect()`s the audit named
+  (`capture.rs` serializes a static JSON of strings; `icloud/sweep.rs` takes
+  the max of a sequence that always contains `current`).
+
+**Validation (review, logs, allowlist):** `pnpm check` exit 0; `cargo fmt`
+clean and workspace clippy 0 warnings; Chromium browser project 2041/2041
+twice in a row with the 2-entry allowlist; WebKit 2039 passed + 2 skipped
+after the fence-guard fix; node projects 3297/3297; the
+logging tests (Rust 1, command 3, forwarding 3 on both engines).
+
+**Next:** open the PR. Later, if needed: paginate `listNotes`/`getGraphMap`
+for very large vaults, and a native-shell E2E for file I/O, watcher,
+keychain and iCloud.
 
 **Doc drift (fixed):** AGENTS.md pointed Meowdown at `~/repos/meowdown`,
 which did not exist; it now names the upstream repository instead.

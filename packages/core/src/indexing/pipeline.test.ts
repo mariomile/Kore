@@ -261,7 +261,57 @@ describe('rebuildIndex', () => {
     })
 
     expect(skipped).toEqual([{ path: 'notes/bad.md', message: 'unexpected end of hex escape' }])
-    expect(mockInvoke.mock.calls.some(([command]) => command === 'index_meta_set')).toBe(true)
+    expect(
+      mockInvoke.mock.calls
+        .filter(([command]) => command === 'index_meta_set')
+        .map(([, args]) => args['value']),
+    ).toEqual([''])
+  })
+
+  it('keeps healthy rows when a read fails, and stamps only after a healthy retry', async () => {
+    let unreadable = true
+    const original = mockInvoke.getMockImplementation()!
+    mockInvoke.mockImplementation(async (command, args) => {
+      if (command === 'list_files') {
+        return ['before', 'bad', 'after'].map((name) => ({
+          path: `notes/${name}.md`,
+          size: 1,
+          modifiedMs: 1,
+        }))
+      }
+      if (command === 'note_read' && args['path'] === 'notes/bad.md' && unreadable) {
+        throw new Error('permission denied')
+      }
+      return await original(command, args)
+    })
+    const onSkippedNote = vi.fn()
+    await rebuildIndex({ generation: 1, onSkippedNote })
+    expect(onSkippedNote).toHaveBeenCalledWith({
+      path: 'notes/bad.md',
+      message: 'permission denied',
+    })
+    expect(
+      mockInvoke.mock.calls.find(([command]) => command === 'index_apply_batch')?.[1],
+    ).toMatchObject({
+      notes: [{ path: 'notes/before.md' }, { path: 'notes/after.md' }],
+    })
+    expect(
+      mockInvoke.mock.calls
+        .filter(([command]) => command === 'index_meta_set')
+        .map(([, args]) => args['value']),
+    ).toEqual([''])
+
+    unreadable = false
+    mockInvoke.mockClear()
+    await rebuildIndex({ generation: 1, onSkippedNote })
+    expect(
+      mockInvoke.mock.calls.findLast(([command]) => command === 'index_meta_set')?.[1]['value'],
+    ).toBe(String(PROJECTION_VERSION))
+    expect(
+      mockInvoke.mock.calls.find(([command]) => command === 'index_apply_batch')?.[1],
+    ).toMatchObject({
+      notes: [{ path: 'notes/before.md' }, { path: 'notes/bad.md' }, { path: 'notes/after.md' }],
+    })
   })
 
   it('throws a single-note write failure when no skip callback is registered', async () => {

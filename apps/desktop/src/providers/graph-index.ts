@@ -211,6 +211,7 @@ export function createGraphIndex(options: GraphIndexOptions = {}): GraphIndex {
     const passStarted = performance.now()
     let passTotal = 0
     let passWorked = 0
+    let passSkipped = 0
     done = (async () => {
       // A subscription created but not yet adopted (superseded mid-flight, or a
       // later step threw) is torn down in `finally` so listeners can't leak.
@@ -223,6 +224,12 @@ export function createGraphIndex(options: GraphIndexOptions = {}): GraphIndex {
           generation,
           signal: controller.signal,
           ...(onMoved !== undefined ? { onMoved } : {}),
+          onSkippedNote: ({ path, message }) => {
+            passSkipped += 1
+            if (!controller.signal.aborted && !isStale() && !isSuspended()) {
+              onError?.('sync', new Error(`Could not index ${path}: ${message}`))
+            }
+          },
           // Guarded: `openGraph` swaps the Rust root *before* this pass is
           // stopped, so a superseded pass could otherwise request its old
           // paths against the newly opened graph.
@@ -248,7 +255,7 @@ export function createGraphIndex(options: GraphIndexOptions = {}): GraphIndex {
         // "finished" would misread as a fast healthy pass.
         if (!controller.signal.aborted && !isStale() && !isSuspended()) {
           console.info(
-            `index: pass finished in ${Math.round(performance.now() - passStarted)}ms — read ${passWorked} of ${passTotal} files`,
+            `index: pass finished in ${Math.round(performance.now() - passStarted)}ms — read ${passWorked} of ${passTotal} files, skipped ${passSkipped}`,
           )
         }
         if (isStale() || isSuspended()) {

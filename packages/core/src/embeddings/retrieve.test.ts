@@ -1,5 +1,11 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import { searchWithFilters } from '../indexing/filtered-search'
+import { embedTexts } from './commands'
+
+vi.mock('../indexing/filtered-search', () => ({ searchWithFilters: vi.fn() }))
+vi.mock('./commands', () => ({ embedTexts: vi.fn() }))
 import {
+  retrieve,
   bestChunkPerNote,
   fuseRanked,
   mergeNearestFirst,
@@ -141,4 +147,32 @@ describe('fuseRanked (reciprocal rank fusion)', () => {
     const fused = fuseRanked([[hit('p', { isPrivate: true })]], 5)
     expect(fused[0]!.isPrivate).toBe(true)
   })
+})
+
+// Admission queues must wait for the embedding even when the parallel SQL read fails.
+it('settles all hybrid work before rejecting a failed lexical read', async () => {
+  const lexicalError = new Error('index unavailable')
+  vi.mocked(searchWithFilters).mockRejectedValueOnce(lexicalError)
+  let finishEmbedding!: (reason: Error) => void
+  vi.mocked(embedTexts).mockImplementationOnce(
+    () =>
+      new Promise((_, reject) => {
+        finishEmbedding = reject
+      }),
+  )
+  const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+  let settled = false
+  const result = retrieve('pending').catch((cause: unknown) => {
+    settled = true
+    return cause
+  })
+  try {
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(settled).toBe(false)
+  } finally {
+    finishEmbedding(new Error('embedding unavailable'))
+    await result
+    log.mockRestore()
+  }
+  expect(await result).toBe(lexicalError)
 })

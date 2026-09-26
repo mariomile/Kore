@@ -1,4 +1,4 @@
-import { isAppError } from '../errors'
+import { errorMessage, isAppError } from '../errors'
 import { listFiles, readNote } from '../graph/commands'
 import { parseNote } from '../markdown'
 import {
@@ -153,10 +153,10 @@ export interface IndexPassOptions {
   /** Aborts the pass early when the active graph changes. */
   signal?: AbortSignal
   /**
-   * Called when a full rebuild cannot apply one note's projection even after
-   * retrying it outside the batch. The rebuild continues so one bad projection
-   * cannot leave the whole cache empty after `index_clear`. If omitted, that
-   * final single-note failure is thrown.
+   * Called when a note cannot be read/projected, or its projection cannot be
+   * written even after retrying outside the batch. A rebuild continues but
+   * remains unstamped so the next sync retries the incomplete projection.
+   * Without a callback, the failure is thrown.
    */
   onSkippedNote?: (note: SkippedIndexedNote) => void
   /**
@@ -221,7 +221,14 @@ export async function rebuildIndex(options: IndexPassOptions): Promise<void> {
     return
   }
   const files = await listFiles()
-  const batch = createIndexApplyBatch(generation, onSkippedNote)
+  let skipped = false
+  const reportSkipped = onSkippedNote
+    ? (note: SkippedIndexedNote): void => {
+        skipped = true
+        onSkippedNote(note)
+      }
+    : undefined
+  const batch = createIndexApplyBatch(generation, reportSkipped)
   const evicted: string[] = []
   let done = 0
   let worked = 0
@@ -246,12 +253,21 @@ export async function rebuildIndex(options: IndexPassOptions): Promise<void> {
       continue
     }
     worked += 1
-    const content = await readNote(file.path)
-    const fileHash = await hashContent(content)
-    const projection = await buildNoteProjection(file.path, content, {
-      fileHash,
-      mtime: file.modifiedMs,
-    })
+    let projection: IndexedNote
+    try {
+      const content = await readNote(file.path)
+      const fileHash = await hashContent(content)
+      projection = await buildNoteProjection(file.path, content, {
+        fileHash,
+        mtime: file.modifiedMs,
+      })
+    } catch (cause) {
+      if (reportSkipped === undefined) {
+        throw cause
+      }
+      reportSkipped({ path: file.path, message: errorMessage(cause) })
+      continue
+    }
     if (options.signal?.aborted) {
       return
     }
@@ -272,7 +288,9 @@ export async function rebuildIndex(options: IndexPassOptions): Promise<void> {
   // reconcile cheaply from here on. A superseded pass stamps into a stale
   // generation, which Rust drops: the next open then rebuilds again, which is
   // the safe direction to fail in.
-  await setIndexMeta(PROJECTION_VERSION_KEY, String(PROJECTION_VERSION), generation)
+  if (!skipped) {
+    await setIndexMeta(PROJECTION_VERSION_KEY, String(PROJECTION_VERSION), generation)
+  }
 }
 
 /**

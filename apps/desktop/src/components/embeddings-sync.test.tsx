@@ -53,7 +53,7 @@ beforeEach(() => {
   modelState.current = { status: 'ready', model: 'all-MiniLM-L6-v2' }
   onApplied = null
   unlisten.mockClear()
-  core.embedNote.mockClear()
+  core.embedNote.mockReset().mockResolvedValue({ written: 0 })
   core.embedRemove.mockClear()
   semantic.backfillEmbeddingsVisibly.mockReset()
   semantic.backfillEmbeddingsVisibly.mockImplementation(async () => 'completed')
@@ -157,6 +157,55 @@ describe('EmbeddingsSync', () => {
       modelId: 'all-MiniLM-L6-v2',
       isStale: expect.any(Function),
     })
+  })
+
+  it('bounds failed-job retries without dropping the rest of the batch or future changes', async () => {
+    const error = new Error('embedding failed')
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
+    core.embedNote
+      .mockRejectedValueOnce(error)
+      .mockResolvedValueOnce({ written: 1 })
+      .mockRejectedValueOnce(error)
+    try {
+      await render(<EmbeddingsSync />)
+      await vi.waitFor(() => expect(onApplied).not.toBeNull())
+      onApplied?.(
+        [
+          { kind: 'upsert', path: 'notes/bad.md' },
+          { kind: 'upsert', path: 'notes/healthy.md' },
+          { kind: 'remove', path: 'notes/deleted.md' },
+        ],
+        7,
+      )
+      await vi.waitFor(() => expect(core.embedNote).toHaveBeenCalledTimes(3))
+      expect(core.embedRemove).toHaveBeenCalledWith('notes/deleted.md', 7)
+      await flushQueue()
+      expect(core.embedNote).toHaveBeenCalledTimes(3)
+      expect(logged).toHaveBeenCalledTimes(1)
+      onApplied?.([{ kind: 'upsert', path: 'notes/bad.md' }], 7)
+      await vi.waitFor(() => expect(core.embedNote).toHaveBeenCalledTimes(4))
+    } finally {
+      logged.mockRestore()
+    }
+  })
+
+  it('lets a newer deletion replace the retry of an in-flight failed upsert', async () => {
+    let fail: (error: Error) => void = () => {}
+    core.embedNote.mockImplementationOnce(
+      () =>
+        new Promise((_, reject) => {
+          fail = reject
+        }),
+    )
+    await render(<EmbeddingsSync />)
+    await vi.waitFor(() => expect(onApplied).not.toBeNull())
+    onApplied?.([{ kind: 'upsert', path: 'notes/a.md' }], 7)
+    await vi.waitFor(() => expect(core.embedNote).toHaveBeenCalledTimes(1))
+    onApplied?.([{ kind: 'remove', path: 'notes/a.md' }], 7)
+    fail(new Error('removed while embedding'))
+    await vi.waitFor(() => expect(core.embedRemove).toHaveBeenCalledWith('notes/a.md', 7))
+    await flushQueue()
+    expect(core.embedNote).toHaveBeenCalledTimes(1)
   })
 
   it('pauses follow-up work the moment semantic search is disabled', async () => {

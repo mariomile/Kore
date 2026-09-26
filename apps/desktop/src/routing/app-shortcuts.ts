@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
+import { flushSync } from 'react-dom'
 import { getNote, parseNote, readNoteLocal } from '@reflect/core'
 import { getIsComposing } from '@meowdown/core'
 import { usePalette } from '@/components/command-palette/palette-provider'
@@ -371,7 +372,15 @@ export function useAppShortcuts(): CommandContext {
         }
         return false
       }
-      void runCommand(id, context)
+      if (id === 'palette.open') {
+        // Commit the focus handoff before native/menu dispatch returns, so
+        // another key cannot reach the note editor while React is still queued.
+        flushSync(() => {
+          void runCommand(id, context)
+        })
+      } else {
+        void runCommand(id, context)
+      }
       return true
     }
 

@@ -66,11 +66,11 @@ export function indexedNoteWeight(note: IndexedNote): number {
   return NOTE_OVERHEAD_BYTES + text + rows * PROJECTION_ROW_BYTES
 }
 
-/** One note omitted from a rebuild because its projection could not be written. */
+/** One note omitted from an index pass because it could not be read, projected, or written. */
 export interface SkippedIndexedNote {
   /** Graph-relative markdown path. */
   path: string
-  /** Displayable reason from the failed write. */
+  /** Displayable reason from the failed operation. */
   message: string
 }
 

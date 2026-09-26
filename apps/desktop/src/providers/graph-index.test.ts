@@ -65,6 +65,7 @@ describe('createGraphIndex', () => {
       // Always wired, even with no consumer: the pass-summary log reads the
       // progress counters through it.
       onFileProgress: expect.any(Function),
+      onSkippedNote: expect.any(Function),
     })
     expect(mockSubscribe).toHaveBeenCalledWith(5, onApplied, onMoved, expect.any(Function))
     // The initial reconcile is itself an index change: invalidate once there.
@@ -78,6 +79,23 @@ describe('createGraphIndex', () => {
       mockWatchStart.mock.invocationCallOrder[0]!,
     )
     expect(unlisten).not.toHaveBeenCalled() // retained as the active subscription
+  })
+
+  it('reports an incomplete pass and still starts live indexing', async () => {
+    mockSync.mockImplementationOnce(async (options) => {
+      options.onSkippedNote?.({ path: 'notes/bad.md', message: 'permission denied' })
+    })
+    const onError = vi.fn()
+    const onProgress = vi.fn()
+    const index = createGraphIndex({ onError, onProgress })
+    index.sync(5, () => false)
+    await index.settled()
+    expect(onError).toHaveBeenCalledWith(
+      'sync',
+      expect.objectContaining({ message: expect.stringContaining('notes/bad.md') }),
+    )
+    expect(mockWatchStart).toHaveBeenCalledTimes(1)
+    expect(onProgress).toHaveBeenLastCalledWith('live')
   })
 
   it('reports progress: reconciling → live; idle when closed', async () => {

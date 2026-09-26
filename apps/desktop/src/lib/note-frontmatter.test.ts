@@ -17,7 +17,8 @@ vi.mock('@reflect/core', async (importOriginal) => ({
 }))
 vi.mock('@/editor/open-documents', () => ({ openSession }))
 
-const { commitNoteFrontmatter, readNoteSource } = await import('./note-frontmatter')
+const { commitNoteBodyTransform, commitNoteFrontmatter, readNoteSource } =
+  await import('./note-frontmatter')
 
 function fakeSession(options: { live?: string | null; canCommit?: boolean }) {
   const commitFrontmatter = vi.fn(async () => options.canCommit ?? true)
@@ -32,6 +33,37 @@ beforeEach(() => {
   readNote.mockReset()
   writeNote.mockReset().mockResolvedValue(undefined)
   openSession.mockReset().mockReturnValue(null)
+})
+
+describe('commitNoteBodyTransform', () => {
+  it('serializes body and frontmatter writes so every concurrent edit survives', async () => {
+    let disk = '# A\nalpha beta\n'
+    readNote.mockImplementation(async () => disk)
+    writeNote.mockImplementation(async (_path, contents) => {
+      disk = contents
+    })
+
+    await Promise.all([
+      commitNoteBodyTransform('notes/a.md', (source) => source.replace('alpha', ''), 3),
+      commitNoteBodyTransform('notes/a.md', (source) => source.replace('beta', ''), 3),
+      commitNoteFrontmatter('notes/a.md', { pinned: true }, 3),
+    ])
+
+    expect(disk).toBe('---\npinned: true\n---\n# A\n \n')
+    expect(readNote).toHaveBeenCalledWith('notes/a.md', 3)
+  })
+
+  it('refuses a disk rewrite if an editor opens during the read', async () => {
+    readNote.mockImplementation(async () => {
+      openSession.mockReturnValue(fakeSession({ live: '# Unsaved\n' }).session)
+      return '# A\n'
+    })
+
+    await expect(
+      commitNoteBodyTransform('notes/a.md', (source) => `${source}Extra\n`, 3),
+    ).rejects.toThrow("The note's editor changed before this edit could be saved")
+    expect(writeNote).not.toHaveBeenCalled()
+  })
 })
 
 describe('readNoteSource', () => {

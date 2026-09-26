@@ -175,14 +175,21 @@ export async function retrieve(query: string, options?: RetrieveOptions): Promis
   // Hybrid degrades, never breaks: a failing semantic leg (embed error, vec
   // query error — even while the runtime claims ready) must not take lexical
   // search down with it. A failing lexical leg is a real error and throws.
-  const [lexical, semantic] = await Promise.all([
+  // Do not release callers' admission slots while the native embedding still runs.
+  const [lexical, semantic] = await Promise.allSettled([
     lexicalHits(query, limit),
-    semanticHits(query, limit).catch((cause): RetrievalHit[] => {
-      console.error('semantic leg failed; serving lexical only:', cause)
-      return []
-    }),
+    semanticHits(query, limit),
   ])
-  return withPrivacy(fuseRanked([lexical, semantic], limit), excludePrivateContent)
+  if (semantic.status === 'rejected') {
+    console.error('semantic leg failed; serving lexical only:', semantic.reason)
+  }
+  if (lexical.status === 'rejected') {
+    throw lexical.reason
+  }
+  return withPrivacy(
+    fuseRanked([lexical.value, semantic.status === 'fulfilled' ? semantic.value : []], limit),
+    excludePrivateContent,
+  )
 }
 
 /**

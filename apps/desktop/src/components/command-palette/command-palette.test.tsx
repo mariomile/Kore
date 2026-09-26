@@ -280,10 +280,11 @@ describe('CommandPalette', () => {
     expect(retrieve).not.toHaveBeenCalled()
   })
 
-  it('blends semantic hits once enabled and the model is ready', async () => {
+  it('replaces a transient lexical error with successful hybrid results', async () => {
     embedReady.value = true
     semanticSetting.enabled = true
     suggestWikiTargets.mockResolvedValue([])
+    searchWithFilters.mockRejectedValue(new Error('temporary index failure'))
     retrieve.mockClear().mockResolvedValue([
       {
         path: 'notes/rust.md',
@@ -297,6 +298,81 @@ describe('CommandPalette', () => {
     const { view } = await renderPalette('rust')
     await expect.element(view.getByText('Rust Notes')).toBeInTheDocument()
     expect(retrieve).toHaveBeenCalledWith('rust', { mode: 'hybrid' })
+    await expect
+      .element(view.getByText('Search unavailable — the index didn’t answer.'))
+      .not.toBeInTheDocument()
+  })
+
+  it('coalesces typed prefixes while showing lexical results before semantic completion', async () => {
+    embedReady.value = true
+    semanticSetting.enabled = true
+    suggestWikiTargets.mockResolvedValue([])
+    searchWithFilters.mockResolvedValue([
+      { path: 'notes/text.md', title: 'Immediate text match', dailyDate: null, snippet: null },
+    ])
+    let complete!: (value: never[]) => void
+    retrieve.mockReset().mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          complete = resolve
+        }),
+    )
+    const { view } = await renderPalette('')
+    const input = view.getByRole('combobox')
+    for (const prefix of [
+      'p',
+      'pe',
+      'per',
+      'perf',
+      'perfo',
+      'perfor',
+      'perform',
+      'performa',
+      'performan',
+      'performanc',
+      'performance',
+    ]) {
+      await input.fill(prefix)
+      await new Promise((resolve) => setTimeout(resolve, 80))
+    }
+    await vi.waitFor(() => expect(retrieve).toHaveBeenCalled())
+    expect(retrieve).toHaveBeenCalledTimes(1)
+    expect(retrieve).toHaveBeenLastCalledWith('performance', { mode: 'hybrid' })
+    await expect
+      .element(view.getByText('Immediate text match', { exact: true }))
+      .toBeInTheDocument()
+    complete([])
+  })
+
+  it('admits only the latest query after an active search and cancels queued work on close', async () => {
+    embedReady.value = true
+    semanticSetting.enabled = true
+    suggestWikiTargets.mockResolvedValue([])
+    searchWithFilters.mockResolvedValue([])
+    let complete!: (value: never[]) => void
+    retrieve.mockReset().mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          complete = resolve
+        }),
+    )
+    const { view } = await renderPalette('first')
+    await vi.waitFor(() => expect(retrieve).toHaveBeenCalledTimes(1))
+    const input = view.getByRole('combobox')
+    await input.fill('obsolete')
+    await new Promise((resolve) => setTimeout(resolve, 250))
+    await input.fill('latest')
+    await new Promise((resolve) => setTimeout(resolve, 250))
+    expect(retrieve).toHaveBeenCalledTimes(1)
+    complete([])
+    await vi.waitFor(() => expect(retrieve).toHaveBeenCalledTimes(2))
+    expect(retrieve).toHaveBeenLastCalledWith('latest', { mode: 'hybrid' })
+    await input.fill('closed')
+    await new Promise((resolve) => setTimeout(resolve, 250))
+    await userEvent.keyboard('{Escape}')
+    complete([])
+    await new Promise((resolve) => setTimeout(resolve, 250))
+    expect(retrieve).toHaveBeenCalledTimes(2)
   })
 
   it('previews the highlighted note and follows arrow-key selection', async () => {

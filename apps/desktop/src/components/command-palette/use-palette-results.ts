@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useMemo } from 'react'
+import { useDeferredValue, useEffect, useMemo, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { parseSearchQuery, retrieve, searchWithFilters, suggestWikiTargets } from '@reflect/core'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
@@ -13,10 +13,9 @@ import { buildPaletteSections, type PaletteSections } from './entries'
 
 /**
  * The palette's data layer (Plan 08), extracted so the component stays
- * presentational: query deferral, filter parsing, the two index queries
- * (title suggestions + the one search path, whose filters may be empty), and
- * the settled/failed accounting the empty-state needs. Plan 09's semantic
- * results join here, not in the component.
+ * presentational: title suggestions, immediate lexical results, and a delayed
+ * hybrid upgrade. Native hybrid work is serialized; superseded queries are
+ * discarded before admission rather than consuming embedding capacity.
  */
 
 export interface PaletteResults {
@@ -37,9 +36,10 @@ export function usePaletteResults(open: boolean, query: string): PaletteResults 
   const { settings } = useSettings()
   const embed = useEmbedStatus()
   const hybrid = settings.semanticSearchEnabled && embed.status === 'ready'
+  const activeHybrid = useRef<Promise<unknown> | null>(null)
 
-  // Defer the query the index sees: fast typing coalesces (the plan's
-  // debounce) while the input itself stays perfectly responsive.
+  // Keep expensive result rendering behind input; semantic admission has its
+  // own debounce because useDeferredValue does not bound request production.
   const trimmed = useDeferredValue(query.trim())
   // Filter tokens (#tag, is:daily, is:pinned, links:, linked-from:, updated:)
   // switch the search into constrained mode (Plan 08b); plain text is the same
@@ -91,43 +91,61 @@ export function usePaletteResults(open: boolean, query: string): PaletteResults 
     }
   }, [reloadIdleModel])
   const {
-    data: hits,
+    data: lexicalHits,
     isLoading: hitsLoading,
     isError: hitsError,
   } = useQuery({
+    queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'palette-search', 'lexical', trimmed],
+    queryFn: () => searchWithFilters(parsed),
+    enabled: searching && trimmed !== '',
+  })
+  const semanticQuery = searching && useHybrid && trimmed !== '' ? trimmed : null
+  const { data: hybridHits, isLoading: hybridLoading } = useQuery({
     queryKey: [
       INDEX_QUERY_SCOPE,
       graph?.root,
       'palette-search',
-      useHybrid ? 'hybrid' : 'lexical',
-      trimmed,
+      'hybrid',
+      graph?.generation,
+      semanticQuery,
     ],
-    queryFn: async () => {
-      if (!useHybrid) {
-        return await searchWithFilters(parsed)
+    queryFn: async ({ signal }) => {
+      // Consuming the query signal makes key changes (including close/disable)
+      // cancel obsolete consumers. Already admitted native work must finish,
+      // so keep its actual promise until completion even after cancellation.
+      await new Promise((resolve) => setTimeout(resolve, 180))
+      signal.throwIfAborted()
+      while (activeHybrid.current !== null) {
+        await activeHybrid.current.catch(() => {})
+        signal.throwIfAborted()
       }
-      // Adapt RetrievalHit → PaletteHit: semantic chunk text rides in
-      // the snippet slot (dailies fall back to their ISO-titled row — the
-      // retrieval contract doesn't carry dailyDate).
-      const hits = await retrieve(trimmed, { mode: 'hybrid' })
-      return hits.map((hit) => ({
-        path: hit.path,
-        title: hit.title,
-        dailyDate: null,
-        snippet: hit.snippet === '' ? null : hit.snippet,
-      }))
+      const request = retrieve(trimmed, { mode: 'hybrid' })
+      activeHybrid.current = request
+      try {
+        const hits = await request
+        return hits.map((hit) => ({
+          path: hit.path,
+          title: hit.title,
+          dailyDate: null,
+          snippet: hit.snippet === '' ? null : hit.snippet,
+        }))
+      } finally {
+        activeHybrid.current = null
+      }
     },
-    enabled: searching && trimmed !== '',
+    enabled: semanticQuery !== null,
   })
+  const hits = hybridHits ?? lexicalHits
 
   // "No results" must mean the index answered **the live query**: the active
   // fetches settled (isLoading, not isPending — a disabled query is forever
   // pending) *and* the deferred value has caught up. Opening pre-filled, the
   // deferred value can settle on the stale previous query first; that state
   // is "still answering", not "empty".
-  const resultsSettled = !suggestionsLoading && !hitsLoading && trimmed === query.trim()
+  const resultsSettled =
+    !suggestionsLoading && !hitsLoading && !hybridLoading && trimmed === query.trim()
   // An errored query is "settled" to TanStack but not an answer.
-  const searchFailed = suggestionsError || hitsError
+  const searchFailed = suggestionsError || (hybridHits === undefined && hitsError)
 
   const sections = useMemo(
     () =>

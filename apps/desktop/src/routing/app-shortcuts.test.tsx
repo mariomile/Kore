@@ -92,7 +92,12 @@ beforeEach(() => {
   moveActiveTab.mockClear()
 })
 
-function shortcutsHook() {
+function PaletteFocusProbe() {
+  const { open } = usePalette()
+  return open ? <input aria-label="Palette focus probe" autoFocus /> : null
+}
+
+function shortcutsHook(withPaletteFocus = false) {
   return renderHook(
     () => {
       useAppShortcuts()
@@ -110,7 +115,10 @@ function shortcutsHook() {
             <ShortcutsProvider>
               <VaultReplaceProvider>
                 <NoteTemplatesProvider>
-                  <SidebarProvider>{children}</SidebarProvider>
+                  <SidebarProvider>
+                    {children}
+                    {withPaletteFocus ? <PaletteFocusProbe /> : null}
+                  </SidebarProvider>
                 </NoteTemplatesProvider>
               </VaultReplaceProvider>
             </ShortcutsProvider>
@@ -247,6 +255,14 @@ describe('app shortcuts', () => {
     expect(result.current.palette.open).toBe(false)
     await act(() => press('k'))
     expect(result.current.palette.open).toBe(true)
+  })
+
+  it('moves focus before the next key can reach the previous editor', async () => {
+    const { act } = await shortcutsHook(true)
+    await act(() => {
+      press('k')
+      expect(document.activeElement?.getAttribute('aria-label')).toBe('Palette focus probe')
+    })
   })
 
   it('⌘F targets the current note and ⌘G traverses its matches', async () => {

@@ -89,7 +89,7 @@ export function EmbeddingsSync(): null {
       return
     }
     let active = true
-    const pendingFollow = new Map<string, 'upsert' | 'remove'>()
+    const pendingFollow = new Map<string, { kind: 'upsert' | 'remove'; retried: boolean }>()
     let followScheduled = false
 
     let scheduleFollow: () => void = () => {}
@@ -99,14 +99,27 @@ export function EmbeddingsSync(): null {
         while (active && pendingFollow.size > 0) {
           const jobs = [...pendingFollow]
           pendingFollow.clear()
-          for (const [path, kind] of jobs) {
+          for (const [path, job] of jobs) {
             if (!active) {
               return
             }
-            if (kind === 'remove') {
-              await embedRemove(path, generation)
-            } else {
-              await embedNote({ path, generation, modelId, isStale: () => !active }).then(() => {})
+            try {
+              if (job.kind === 'remove') {
+                await embedRemove(path, generation)
+              } else {
+                await embedNote({ path, generation, modelId, isStale: () => !active })
+              }
+            } catch (cause) {
+              if (!active || pendingFollow.has(path)) {
+                continue
+              }
+              // Retry once after the other paths, without overwriting a newer
+              // change (in particular, a deletion arriving during an upsert).
+              if (!job.retried) {
+                pendingFollow.set(path, { ...job, retried: true })
+              } else {
+                console.error(`embedding sync failed for ${path}:`, cause)
+              }
             }
           }
         }
@@ -153,7 +166,10 @@ export function EmbeddingsSync(): null {
         if (!isNotePath(change.path)) {
           continue // asset-file changes ride the same batches — never embedded
         }
-        pendingFollow.set(change.path, change.kind === 'remove' ? 'remove' : 'upsert')
+        pendingFollow.set(change.path, {
+          kind: change.kind === 'remove' ? 'remove' : 'upsert',
+          retried: false,
+        })
       }
       if (pendingFollow.size > 0) {
         scheduleFollow()

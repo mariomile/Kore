@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
 import { userEvent } from 'vitest/browser'
 import type { AssistantPart, NoteToolResult } from '@reflect/core'
+import { createNoteSession } from '@/editor/note-session'
 
 const applyNoteEdit = vi.hoisted(() => vi.fn<() => Promise<void>>())
 const recordDecision = vi.hoisted(() => vi.fn())
@@ -97,6 +98,63 @@ describe('ChatNotePatchCard', () => {
     expect(recordDecision).not.toHaveBeenCalled()
     await expect.element(view.getByRole('button', { name: 'Accept' })).toBeVisible()
     await view.unmount()
+  })
+
+  it('retries saving a retained append after typing without applying it twice, even after remount', async () => {
+    let disk = '# Atlas\n'
+    let failWrite = true
+    let ready = false
+    const session = createNoteSession({
+      path: 'notes/atlas.md',
+      io: {
+        read: async () => disk,
+        write: async (_path, contents) => {
+          if (failWrite) {
+            session.editorChanged(`${contents}USER TYPING\n`)
+            throw new Error('disk full')
+          }
+          disk = contents
+        },
+      },
+      classify: () => 'exact',
+      onSnapshot: (snapshot) => {
+        ready = snapshot.status === 'ready'
+      },
+      applyContent: () => {},
+      saveDebounceMs: 60_000,
+    })
+    session.load()
+    await vi.waitFor(() => expect(ready).toBe(true))
+    applyNoteEdit.mockImplementation(async () => {
+      await session.commitBodyTransform((source) => `${source}CHAT APPEND\n`)
+    })
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    let view = await render(
+      <ChatToolChip part={editPart({ oldText: '', newText: 'CHAT APPEND' })} turnStatus="done" />,
+    )
+    try {
+      await view.getByRole('button', { name: 'Accept' }).click()
+      await expect
+        .element(view.getByRole('alert'))
+        .toHaveTextContent('The edit is still in the note')
+      await expect.element(view.getByRole('button', { name: 'Reject' })).toBeDisabled()
+      expect(recordDecision).not.toHaveBeenCalled()
+      expect(disk).toBe('# Atlas\n')
+      await view.unmount()
+      view = await render(
+        <ChatToolChip part={editPart({ oldText: '', newText: 'CHAT APPEND' })} turnStatus="done" />,
+      )
+
+      failWrite = false
+      await view.getByRole('button', { name: 'Retry save' }).click()
+      await vi.waitFor(() => expect(recordDecision).toHaveBeenCalledWith('accepted'))
+      expect(applyNoteEdit).toHaveBeenCalledOnce()
+      expect(disk).toBe('# Atlas\nCHAT APPEND\nUSER TYPING\n')
+    } finally {
+      session.discard()
+      consoleError.mockRestore()
+      await view.unmount()
+    }
   })
 
   it('holds the buttons while the turn streams and hides them once decided', async () => {

@@ -3,21 +3,21 @@ import { frontmatterPatchToYaml, type FrontmatterPatch } from '@/editor/note-ses
 import { openSession } from '@/editor/open-documents'
 import { readNoteOrEmpty } from '@/lib/note-read'
 
-const frontmatterWriteChains = new Map<string, Promise<unknown>>()
+const noteWriteChains = new Map<string, Promise<unknown>>()
 
-/** Serialize this webview's frontmatter writes for one graph generation and
+/** Serialize this webview's note mutations for one graph generation and
  * note path. External processes and sync conflicts remain guarded elsewhere. */
-function serializeFrontmatterWrite<T>(key: string, write: () => Promise<T>): Promise<T> {
-  const previous = frontmatterWriteChains.get(key) ?? Promise.resolve()
+function serializeNoteWrite<T>(key: string, write: () => Promise<T>): Promise<T> {
+  const previous = noteWriteChains.get(key) ?? Promise.resolve()
   const result = previous.then(write, write)
   const settled = result.then(
     () => {},
     () => {},
   )
-  frontmatterWriteChains.set(key, settled)
+  noteWriteChains.set(key, settled)
   void settled.then(() => {
-    if (frontmatterWriteChains.get(key) === settled) {
-      frontmatterWriteChains.delete(key)
+    if (noteWriteChains.get(key) === settled) {
+      noteWriteChains.delete(key)
     }
   })
   return result
@@ -59,7 +59,7 @@ export async function commitNoteFrontmatter(
   generation: number,
 ): Promise<void> {
   const owner = openSession(path)
-  return await serializeFrontmatterWrite(`${generation}:${path}`, async () => {
+  return await serializeNoteWrite(`${generation}:${path}`, async () => {
     const queuedOwner = openSession(path)
     if (queuedOwner !== owner) {
       throw new Error("The note's editor changed before this edit could be saved. Try again.")
@@ -97,15 +97,23 @@ export async function commitNoteBodyTransform(
   generation: number,
 ): Promise<void> {
   const owner = openSession(path)
-  if (owner !== null) {
-    if (await owner.commitBodyTransform(transform)) {
-      return
+  return await serializeNoteWrite(`${generation}:${path}`, async () => {
+    if (openSession(path) !== owner) {
+      throw new Error("The note's editor changed before this edit could be saved. Try again.")
     }
-    throw new Error('The note is open and cannot take this edit right now.')
-  }
-  const onDisk = await readNoteOrEmpty(path)
-  const next = transform(onDisk)
-  if (next !== onDisk) {
-    await writeNote(path, next, generation)
-  }
+    if (owner !== null) {
+      if (await owner.commitBodyTransform(transform)) {
+        return
+      }
+      throw new Error('The note is open and cannot take this edit right now.')
+    }
+    const onDisk = await readNoteOrEmpty(path, generation)
+    if (openSession(path) !== owner) {
+      throw new Error("The note's editor changed before this edit could be saved. Try again.")
+    }
+    const next = transform(onDisk)
+    if (next !== onDisk) {
+      await writeNote(path, next, generation)
+    }
+  })
 }

@@ -1,6 +1,7 @@
 import { parseNote, TaskStaleError, type TaskMarker } from '@reflect/core'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createNoteSession, type NoteSessionSnapshot } from './note-session'
+import { NoteSaveRetryError } from './note-save-retry-error'
 import type { RoundTripFidelity } from './roundtrip'
 
 /** The first task's {@link TaskMarker} as the index records it. */
@@ -36,6 +37,7 @@ function harness(options?: {
   createIfMissing?: boolean
   missingSeed?: string
   reconcilePendingEditorInput?: () => void
+  beforeWrite?: () => Promise<void>
 }): Harness {
   const snapshots: NoteSessionSnapshot[] = []
   const writes: Array<{ path: string; contents: string }> = []
@@ -56,6 +58,7 @@ function harness(options?: {
         options?.write === false
           ? null
           : async (path, contents) => {
+              await options?.beforeWrite?.()
               if (writeFailure !== null) {
                 throw new Error(writeFailure)
               }
@@ -386,6 +389,90 @@ describe('frontmatter ownership (Plan 07b)', () => {
 
     await expect(h.session.commitFrontmatter({ pinned: true })).resolves.toBe(false)
     expect(h.writes).toEqual([])
+  })
+
+  it('rejects a failed frontmatter commit and allows retrying the unsaved patch', async () => {
+    const h = harness()
+    h.session.load()
+    await settled()
+    h.failWrites('disk full')
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      await expect(h.session.commitFrontmatter({ private: true })).rejects.toThrow('disk full')
+      expect(h.writes).toEqual([])
+      expect(h.snapshots.at(-1)).toMatchObject({ dirty: true, error: 'disk full' })
+
+      h.failWrites(null)
+      await expect(h.session.commitFrontmatter({ private: true })).resolves.toBe(true)
+      expect(h.writes.at(-1)?.contents).toBe('---\nprivate: true\n---\n# Hello\n')
+      expect(h.snapshots.at(-1)).toMatchObject({ dirty: false, error: null })
+    } finally {
+      consoleError.mockRestore()
+      h.session.discard()
+    }
+  })
+
+  it('keeps newer typing when a body transform write fails and saves it on retry', async () => {
+    let finishWrite: (() => void) | undefined
+    const h = harness({
+      disk: '# Hello\n',
+      beforeWrite: () =>
+        new Promise<void>((resolve) => {
+          finishWrite = resolve
+        }),
+    })
+    h.session.load()
+    await settled()
+    h.failWrites('disk full')
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      const commit = h.session.commitBodyTransform((source) => `${source}Transformed\n`)
+      const rejected = expect(commit).rejects.toThrow('disk full')
+      await Promise.resolve()
+      expect(finishWrite).toBeDefined()
+      h.session.editorChanged('# Hello\nTransformed\nNew typing\n')
+      finishWrite?.()
+      await rejected
+
+      expect(h.session.content()).toBe('# Hello\nTransformed\nNew typing\n')
+      expect(h.applied).toEqual(['# Hello\nTransformed\n'])
+      expect(h.snapshots.at(-1)).toMatchObject({ dirty: true, error: 'disk full' })
+      h.failWrites(null)
+      const retry = h.session.flush()
+      await Promise.resolve()
+      finishWrite?.()
+      await retry
+      expect(h.writes.at(-1)?.contents).toBe('# Hello\nTransformed\nNew typing\n')
+      expect(h.snapshots.at(-1)).toMatchObject({ dirty: false, error: null })
+    } finally {
+      consoleError.mockRestore()
+      h.session.discard()
+    }
+  })
+
+  it('acknowledges a retained edit already saved before the session closed', async () => {
+    const h = harness()
+    h.session.load()
+    await settled()
+    h.failWrites('disk full')
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      const commit = h.session.commitBodyTransform((source) => `${source}Append\n`)
+      h.session.editorChanged(`${h.session.content()}Typing\n`)
+      const failure: unknown = await commit.catch((cause: unknown) => cause)
+      expect(failure).toBeInstanceOf(NoteSaveRetryError)
+      if (!(failure instanceof NoteSaveRetryError)) {
+        throw new Error('expected a retained edit with a save retry')
+      }
+      h.failWrites(null)
+      await h.session.flush()
+      h.session.dispose()
+      await expect(failure.retrySave()).resolves.toBeUndefined()
+      expect(h.writes).toEqual([{ path: 'notes/a.md', contents: '# Hello\nAppend\nTyping\n' }])
+    } finally {
+      consoleError.mockRestore()
+      h.session.discard()
+    }
   })
 
   it('commitFrontmatter under a parked conflict writes through and refreshes the park', async () => {

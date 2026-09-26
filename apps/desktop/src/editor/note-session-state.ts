@@ -1,5 +1,6 @@
 import { detectConflictMarkers, errorMessage, isAppError, upsertFrontmatter } from '@reflect/core'
 import { splitDoc } from './note-session-doc'
+import { NoteSaveRetryError } from './note-save-retry-error'
 import { frontmatterPatchToYaml, type FrontmatterPatch } from './note-session-frontmatter'
 import { sameSnapshot } from './note-session-snapshot'
 import { createRepeatSpawner, createTaskCommits } from './note-session-tasks'
@@ -57,6 +58,7 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
   // Set by `discard` — tells `dispose` to skip its flush (the file is being
   // deleted, so rewriting it would recreate it).
   let discarded = false
+  let adoptionRevision = 0
 
   let lastEmitted: NoteSessionSnapshot | null = null
 
@@ -192,6 +194,7 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
 
   /** Adopt `content` as the new clean document state, re-gating protection. */
   function adoptCleanContent(content: string): void {
+    adoptionRevision += 1
     const doc = splitDoc(content)
     header = doc.header
     buffer = doc.body
@@ -282,6 +285,7 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
         // shows the template, but disk-comparison sees no difference, so
         // nothing is written until a real edit (the lazy no-litter contract).
         const adopted = fileMissing && missingSeed !== undefined ? missingSeed : content
+        adoptionRevision += 1
         const doc = splitDoc(adopted)
         header = doc.header
         buffer = doc.body
@@ -373,7 +377,11 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
       return false
     }
     if (conflict === null) {
+      const shouldPersist = dirty
       await flush()
+      if (shouldPersist && error !== null) {
+        throw new Error(error)
+      }
       return true
     }
     // Saves are paused: the patch above rides the in-memory header (landing
@@ -400,9 +408,9 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
    * edit (no write channel, disposed, protected/read-only, still loading, or a
    * parked conflict) so the caller refuses rather than clobber the buffer via disk.
    * `transform` runs before any mutation, so a `TaskStaleError` (the marker can't
-   * be located) propagates with nothing changed. And the write is all-or-nothing:
-   * a failed flush reverts the in-memory edit so the editor and the Tasks list
-   * can't diverge, then re-throws the failure.
+   * be located) propagates with nothing changed. A failed flush reverts the
+   * transform only if the document has not changed again; newer edits stay
+   * dirty with the save error visible so they can be retried without data loss.
    */
   async function commitBodyEdit(transform: (full: string) => string): Promise<boolean> {
     if (io.write === null || disposed || isProtected || status !== 'ready' || conflict !== null) {
@@ -414,6 +422,7 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
     header = doc.header
     buffer = doc.body
     applyToEditor(doc.body) // the open editor shows the edited line
+    const transformedContent = header + buffer
     dirty = header + buffer !== disk
     // A no-op edit (transform changed nothing) writes nothing, so a *prior*
     // surfaced save error must not be mistaken for this edit's failure.
@@ -421,15 +430,40 @@ export function createNoteSession(options: NoteSessionOptions): NoteSession {
     emit()
     await flush()
     // `flush()` resolves even when the write failed (captured in `error`, not
-    // thrown). Revert and surface the failure: it persists, or nothing changes.
+    // thrown). Never roll a newer edit back to the pre-transform snapshot.
     if (shouldPersist && error !== null) {
       const message = error
-      header = previousHeader
-      buffer = previousBuffer
-      applyToEditor(previousBuffer)
-      dirty = header + buffer !== disk
-      error = null
-      emit()
+      if (header + buffer === transformedContent) {
+        header = previousHeader
+        buffer = previousBuffer
+        applyToEditor(previousBuffer)
+        dirty = header + buffer !== disk
+        error = null
+        emit()
+      } else {
+        const retainedRevision = adoptionRevision
+        throw new NoteSaveRetryError(message, async () => {
+          if (adoptionRevision === retainedRevision && !dirty && error === null) {
+            return // autosave or the final close flush already persisted this edit
+          }
+          if (
+            disposed ||
+            isProtected ||
+            status !== 'ready' ||
+            conflict !== null ||
+            adoptionRevision !== retainedRevision
+          ) {
+            throw new Error('The note changed or closed. Review its contents before saving.')
+          }
+          await flush()
+          if (error !== null) {
+            throw new Error(error)
+          }
+          if (adoptionRevision !== retainedRevision || conflict !== null || discarded) {
+            throw new Error('The note changed before the edit could be saved. Review its contents.')
+          }
+        })
+      }
       throw new Error(message)
     }
     return true

@@ -10,6 +10,7 @@ import { Check, Close } from '@/components/icons'
 import { errorMessage, type ChatTurn, type NoteEditDecision } from '@reflect/core'
 import { Kbd } from '@/components/kbd'
 import { Button } from '@/components/ui/button'
+import { NoteSaveRetryError } from '@/editor/note-save-retry-error'
 import type { NoteEditDecisionRecorder } from '@/providers/chat-context'
 import { useChatSession } from '@/providers/chat-provider'
 
@@ -22,6 +23,7 @@ const CARD_SELECTOR = '[data-chat-patch]'
  * still reads as pending, and must not take the same decision twice.
  */
 const inFlightDecisions = new Set<string>()
+const pendingSaveRetries = new Map<string, NoteSaveRetryError>()
 
 interface ChatProposalCardProps {
   toolCallId: string
@@ -60,8 +62,17 @@ export function ChatProposalCard({
   const rootRef = useRef<HTMLDivElement | null>(null)
   const sawStreaming = useRef(false)
   const [busy, setBusy] = useState(false)
-  const [applyError, setApplyError] = useState<string | null>(null)
+  const [applyError, setApplyError] = useState<string | null>(
+    () => pendingSaveRetries.get(toolCallId)?.message ?? null,
+  )
+  const saveRetry = pendingSaveRetries.get(toolCallId)
   const decidable = decision === 'pending' && turnStatus === 'done' && !busy
+
+  useEffect(() => {
+    if (decision !== 'pending') {
+      pendingSaveRetries.delete(toolCallId)
+    }
+  }, [decision, toolCallId])
 
   // Take focus only for a proposal that just arrived in this session — a
   // restored conversation's old pending card must not grab the keyboard —
@@ -119,11 +130,19 @@ export function ChatProposalCard({
     setBusy(true)
     setApplyError(null)
     try {
-      await onAccept()
+      const retry = pendingSaveRetries.get(toolCallId)
+      if (retry === undefined) {
+        await onAccept()
+      } else {
+        await retry.retrySave()
+      }
+      pendingSaveRetries.delete(toolCallId)
       record('accepted')
       focusNext()
     } catch (cause) {
-      // A failed apply leaves the proposal pending and open to another try.
+      if (cause instanceof NoteSaveRetryError) {
+        pendingSaveRetries.set(toolCallId, cause)
+      }
       setApplyError(errorMessage(cause))
     } finally {
       inFlightDecisions.delete(toolCallId)
@@ -132,6 +151,11 @@ export function ChatProposalCard({
   }
 
   function reject(): void {
+    // The edit is already in the note; rejecting its proposal cannot undo it
+    // safely after the user has typed into the same document.
+    if (pendingSaveRetries.has(toolCallId)) {
+      return
+    }
     const record = claimDecision()
     if (record === null) {
       return
@@ -187,13 +211,13 @@ export function ChatProposalCard({
             }}
           >
             <Check aria-hidden />
-            {busy ? 'Applying…' : 'Accept'}
+            {busy ? 'Applying…' : saveRetry === undefined ? 'Accept' : 'Retry save'}
           </Button>
           <Button
             type="button"
             size="xs"
             variant="ghost"
-            disabled={busy}
+            disabled={busy || saveRetry !== undefined}
             onClick={(event) => {
               event.stopPropagation()
               reject()
@@ -206,7 +230,12 @@ export function ChatProposalCard({
             aria-hidden
             className="ml-auto flex items-center gap-1 text-2xs text-text-muted select-none"
           >
-            <Kbd>↵</Kbd> accept <Kbd>⌫</Kbd> reject
+            <Kbd>↵</Kbd> {saveRetry === undefined ? 'accept' : 'retry save'}
+            {saveRetry === undefined ? (
+              <>
+                <Kbd>⌫</Kbd> reject
+              </>
+            ) : null}
           </span>
         </div>
       ) : null}

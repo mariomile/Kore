@@ -279,10 +279,10 @@ export interface AgentCliTurnOptions {
    * steer means the run no longer accepts input — callers queue instead.
    *
    * How a steered message relates to `result` lines is per-engine:
-   * `next-turn` (Claude Code) treats each inject as a new turn with its
+   * `next-turn` treats each inject as a new turn with its
    * own result, so the transport waits for one extra result per steer;
-   * `same-turn` (Codex `turn/steer`) appends to the in-flight turn, so one
-   * result still ends the run.
+   * `same-turn` (Claude Code absorption and Codex `turn/steer`) allows one
+   * result to end input; remaining output is drained until process exit.
    */
   steering?:
     | {
@@ -290,7 +290,7 @@ export interface AgentCliTurnOptions {
         encodeLine: (text: string) => string
         /** Receives the live steer function once the process is spawned. */
         onReady: (steer: (text: string) => Promise<void>) => void
-        /** Defaults to `next-turn` (Claude Code's extra-result semantics). */
+        /** Defaults to `next-turn`; engines that absorb messages use `same-turn`. */
         resultMode?: 'next-turn' | 'same-turn'
       }
     | undefined

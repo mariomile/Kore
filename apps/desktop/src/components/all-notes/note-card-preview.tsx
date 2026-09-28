@@ -4,7 +4,6 @@ import { splitFrontmatter, stripLeadingHeading } from '@reflect/core'
 import { MarkdownPreview } from '@/editor/markdown-preview'
 import { useNearViewport } from '@/hooks/use-near-viewport'
 import { useOverflowing } from '@/hooks/use-overflowing'
-import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { readExistingNoteSource } from '@/lib/read-existing-note-source'
 import { useGraph } from '@/providers/graph-provider'
 import { cn } from '@/lib/utils'
@@ -28,7 +27,7 @@ function truncateAtBlockBoundary(body: string): string {
   if (body.length <= PREVIEW_SOURCE_BUDGET + 200) {
     return body
   }
-  const boundary = body.indexOf('\n\n', PREVIEW_SOURCE_BUDGET)
+  const boundary = body.slice(0, PREVIEW_SOURCE_BUDGET + 200).indexOf('\n\n', PREVIEW_SOURCE_BUDGET)
   return body.slice(0, boundary === -1 ? PREVIEW_SOURCE_BUDGET + 200 : boundary)
 }
 
@@ -62,9 +61,9 @@ export function NoteCardPreview({
 
   // `mtime` in the key makes each entry immutable, so the app default
   // (staleTime Infinity) holds; a note edit reaches the card as a new key
-  // via the refreshed list, and index invalidation can drop old entries.
+  // via the refreshed list. Unrelated index updates must not reread cards.
   const { data: body } = useQuery({
-    queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'note-card-preview', path, mtime],
+    queryKey: ['note-card-preview', graph?.root, generation, path, mtime],
     queryFn: async () => {
       if (generation === null) {
         return null

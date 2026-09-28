@@ -25,7 +25,7 @@ import { isModEvent } from '@meowdown/core'
  * The chat view over a faked engine: the provider stack and screen are real,
  * `streamChat` is scripted. Covers the no-provider call-to-action, a full
  * grounded turn (user bubble → tool chip → cited answer), the model picker,
- * the plain-while-streaming text rendering, abort-on-unmount, the header's
+ * markdown rendering while streaming, abort-on-unmount, the header's
  * conversation controls (instructions, history, New chat), and photo
  * attachments (drop → preview → image-only send).
  */
@@ -679,7 +679,7 @@ describe('ChatScreen', () => {
       .toBeInTheDocument()
   })
 
-  it('renders streaming text as plain text until the turn settles', async () => {
+  it('renders markdown while the reply is still streaming', async () => {
     configureModel()
     streamChat.mockImplementation(() =>
       (async function* (): AsyncGenerator<ChatStreamEvent> {
@@ -691,9 +691,9 @@ describe('ChatScreen', () => {
 
     await userEvent.type(view.getByLabelText('Chat message'), 'hi{Enter}')
 
-    // Visible immediately as plain text — never re-parsed per delta.
-    await expect.element(view.getByText('Streaming **markdown**')).toBeInTheDocument()
-    expect(view.getByTestId('markdown-preview').query()).toBeNull()
+    await expect
+      .element(view.getByTestId('markdown-preview'))
+      .toHaveTextContent('Streaming **markdown**')
     // Nothing to copy until the reply is whole.
     expect(view.getByRole('button', { name: 'Copy reply' }).query()).toBeNull()
   })
@@ -722,16 +722,18 @@ describe('ChatScreen', () => {
     await expect.element(view.getByText('two', { exact: true })).toBeInTheDocument()
   })
 
-  it('Enter mid-stream steers the reply: the hint says so, the message lands in the turn', async () => {
+  it('keeps the waiting indicator when Enter steers before any answer arrives', async () => {
     configureModel()
     const steers: string[] = []
     streamChat.mockImplementation((options) => {
-      options.steering?.onSteerReady(async (text) => {
-        steers.push(text)
+      const steered = new Promise<ChatStreamEvent>((resolve) => {
+        options.steering?.onSteerReady(async (text) => {
+          steers.push(text)
+          resolve({ type: 'steer', text })
+        })
       })
       return (async function* (): AsyncGenerator<ChatStreamEvent> {
-        yield { type: 'text-delta', text: 'Thinking…' }
-        // Never settles — the turn streams for the whole test.
+        yield await steered
         await new Promise<never>(() => {})
       })()
     })
@@ -753,6 +755,8 @@ describe('ChatScreen', () => {
     expect(streamChat).toHaveBeenCalledTimes(1)
     expect(view.getByText(/Queued —/).query()).toBeNull()
     await expect.element(view.getByLabelText('Chat message')).toHaveValue('')
+    await expect.element(view.getByText('second', { exact: true })).toBeInTheDocument()
+    await expect.element(view.getByText('Thinking…')).toBeInTheDocument()
   })
 
   it('⌘-Enter mid-stream parks the message as a queued card, discarded on demand', async () => {

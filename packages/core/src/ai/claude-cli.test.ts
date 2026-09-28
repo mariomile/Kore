@@ -366,7 +366,7 @@ describe('streamClaudeCliChat', () => {
     expect(fake.stops).toEqual([requestId])
   })
 
-  it('steers a live turn: injected message, split reply, one process', async () => {
+  it('finishes when Claude absorbs a steer into the active turn', async () => {
     const fake = installFakeCli()
     let steer: ((text: string) => Promise<void>) | null = null
     const stream = streamClaudeCliChat({
@@ -405,10 +405,8 @@ describe('streamClaudeCliChat', () => {
     expect(String(fake.sends[0]?.['line'])).toContain('actually, mountains')
     expect(fake.closes).toEqual([])
 
-    // The first turn's result only closes THAT turn — the run keeps going
-    // for the steered message, so stdin stays open and the stream lives on.
+    // Claude absorbs the message into this turn, so there is no extra result.
     const second = stream.next()
-    fake.emit?.(line(requestId, { type: 'result', is_error: false, result: 'Rivers…' }))
     fake.emit?.(
       line(requestId, {
         type: 'stream_event',
@@ -419,12 +417,13 @@ describe('streamClaudeCliChat', () => {
     expect((await second).value).toEqual({ type: 'text-delta', text: 'Mountains…' })
     expect(fake.closes).toEqual([])
 
-    // The steered turn's result ends the run: stdin closes, the process exits.
     const terminal = stream.next()
     fake.emit?.(line(requestId, { type: 'result', is_error: false, result: 'Mountains…' }))
+    await Promise.resolve()
+    // Exit depends on closing stdin; emitting done first would hide the hang.
+    expect(fake.closes).toContain(requestId)
     fake.emit?.({ kind: 'done', requestId, code: 0 })
     const settled = await terminal
-    expect(fake.closes).toContain(requestId)
 
     // One process for the whole exchange — the steer never relaunched it —
     // and the history keeps the real order: reply, steer, reply.
@@ -436,6 +435,51 @@ describe('streamClaudeCliChat', () => {
         { role: 'assistant', content: [{ type: 'text', text: 'Rivers…' }] },
         { role: 'user', content: 'actually, mountains' },
         { role: 'assistant', content: [{ type: 'text', text: 'Mountains…' }] },
+      ],
+    })
+  })
+
+  it('keeps draining a queued follow-up after the first result closes stdin', async () => {
+    const fake = installFakeCli()
+    let steer: ((text: string) => Promise<void>) | null = null
+    const stream = streamClaudeCliChat({
+      ...baseOptions,
+      steering: { onSteerReady: (inject) => (steer = inject) },
+    })
+    const first = stream.next()
+    await Promise.resolve()
+    const requestId = requestIdOf(fake)
+    fake.emit?.(
+      line(requestId, {
+        type: 'stream_event',
+        event: { type: 'content_block_delta', delta: { type: 'text_delta', text: 'First.' } },
+      }),
+    )
+    await first
+    if (steer === null) {
+      expect.unreachable('steering was never armed')
+    }
+    await (steer as (text: string) => Promise<void>)('follow up')
+
+    const second = stream.next()
+    fake.emit?.(line(requestId, { type: 'result', is_error: false, result: 'First.' }))
+    fake.emit?.(
+      line(requestId, {
+        type: 'stream_event',
+        event: { type: 'content_block_delta', delta: { type: 'text_delta', text: 'Second.' } },
+      }),
+    )
+    expect((await second).value).toEqual({ type: 'text-delta', text: 'Second.' })
+    expect(fake.closes).toContain(requestId)
+    const terminal = stream.next()
+    fake.emit?.(line(requestId, { type: 'result', is_error: false, result: 'Second.' }))
+    fake.emit?.({ kind: 'done', requestId, code: 0 })
+    expect((await terminal).value).toEqual({
+      type: 'complete',
+      messages: [
+        { role: 'assistant', content: [{ type: 'text', text: 'First.' }] },
+        { role: 'user', content: 'follow up' },
+        { role: 'assistant', content: [{ type: 'text', text: 'Second.' }] },
       ],
     })
   })

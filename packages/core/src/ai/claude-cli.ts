@@ -260,8 +260,8 @@ export interface StreamCliChatOptions {
    * Mid-turn steering, for engines whose steer mode is 'inject' (see
    * `cliProviderSteerMode`): once the run is live, `onSteerReady` receives
    * a function that delivers one more user message into the same session —
-   * the CLI applies it at the next turn boundary with full context, no
-   * cancel-and-relaunch. A rejected call means the run no longer accepts
+   * the CLI may absorb it into the active turn or queue a following turn
+   * with full context, no cancel-and-relaunch. A rejected call means the run no longer accepts
    * input (settled or stopped) — queue the message instead. Engines
    * without an injection channel ignore this.
    */
@@ -270,7 +270,7 @@ export interface StreamCliChatOptions {
 
 /**
  * One `--input-format stream-json` stdin line carrying a user message. The
- * streaming-input session applies each such line as its next user turn.
+ * streaming-input session may absorb the message into its active turn.
  */
 export function claudeStreamJsonUserLine(text: string): string {
   return JSON.stringify({
@@ -320,7 +320,12 @@ export function streamClaudeCliChat(
     signal: options.signal,
     steering:
       steering !== undefined
-        ? { encodeLine: claudeStreamJsonUserLine, onReady: steering.onSteerReady }
+        ? {
+            encodeLine: claudeStreamJsonUserLine,
+            onReady: steering.onSteerReady,
+            // Claude can absorb queued input into the active turn and emit one result.
+            resultMode: 'same-turn',
+          }
         : undefined,
   })
 }

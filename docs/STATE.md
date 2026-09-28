@@ -1,5 +1,92 @@
 # Kore working state
 
+## Chat and Inbox debugging, 2026-09-28
+
+- [x] Reproduced the installed 0.74.1 Claude chat hang: A mid-run message
+  was absorbed into the active turn, which emitted one final result. Kore
+  expected an extra result, kept stdin open, and never settled the turn.
+  Claude now uses the existing same-turn result mode; output still drains
+  until process exit. The absorbed-result regression failed before the fix;
+  the queued-follow-up test also preserves its output and history.
+- [x] Kept the waiting indicator visible after steering before any answer
+  arrives. The screen regression failed before the predicate correction.
+  A focused long-reply WebKit layout probe passed without scroller changes.
+- [x] Formatted assistant markdown during streaming as well as after
+  completion. The existing read-only preview reuses unchanged blocks;
+  growing text is deferred behind urgent input and final text flushes
+  immediately. Real-renderer WebKit coverage verifies bold text, list rows,
+  hidden delimiters and clickable wiki links before completion. The screen
+  and real-renderer regressions failed on the former plain-text branch.
+- [x] Removed unrelated index-update refetches of unchanged Inbox card
+  previews. Cache identity includes graph root, generation, path and mtime;
+  changed notes and reopened graphs still reload. Bounded previews to 1,400
+  characters even when a paragraph has no nearby block boundary. Both
+  defects and the graph-reopen boundary were verified with failing tests
+  before their fixes, then passing Chromium and WebKit checks.
+
+**Validation:** `pnpm check` and `pnpm build` passed; 101 focused tests in
+eight files passed (desktop browser tests on WebKit). Independent diff
+review found no actionable defect. Existing max-lines, Vite configuration
+and bundle-size warnings remain. No new dependencies or native code changes.
+The live-markdown follow-up passed 32 focused WebKit tests, a rendered
+visual check, typecheck and lint on the changed files. Final `pnpm check` and
+`pnpm build` passed again before publication.
+
+**Next:** Verify the fixes in a native build and measure the reported slow
+interaction. The live graph contained about 25 KB across 54 note/daily files;
+three previews exceeded the old budget. Those costs do not establish the
+cause of every perceived slowdown. CLI tool activity is still omitted from
+the transcript, so long tool runs show only the waiting indicator. Native QA
+used the installed 0.74.1 build; no new real provider request or installed-app
+replacement was made. Push, merge and the desktop bump were subsequently
+authorized; that publication does not establish a fix for the editor lag.
+
+### Editor lag investigation
+
+- Traced the editor, save session and exact Meowdown release (core 0.74.1,
+  react 0.73.1; upstream commit `7fd9427`). Ordinary typing does not rebuild
+  the editor extensions or re-render the whole note pane. Saves are debounced
+  by 800 ms; index query invalidation is throttled to 3 seconds. Full-document
+  serialization and changed-paragraph parsing run synchronously per edit.
+- A temporary WebKit browser probe used synthetic notes, a focused real
+  `NoteEditor`, block handles and spellcheck enabled, and 40 insertion
+  transactions per case (first 10 excluded). Median synchronous edit cost:
+  4.7K characters / 50 paragraphs: 1 ms; 47.5K / 500 paragraphs: 2 ms;
+  46.5K / one paragraph with inline formatting: 84 ms (p95 87 ms).
+  Disabling the serialization callback left the last case at 82 ms;
+  standalone serialization was at most 1 ms. Additional one-paragraph probes:
+  5.1K formatted characters: 7 ms (p95 9 ms); 20K: 30 ms (p95 45 ms);
+  48.5K plain characters: 34 ms (p95 36 ms). Long paragraphs reproduce a
+  bottleneck in the editor path, not the save callback. These are development
+  WebKit transaction measurements, not native key-to-paint latency or a
+  demonstrated recent regression. The diagnostic probe was removed.
+- The live graph's largest note was 5,154 characters and largest blank-line
+  segment 3,373; it does not match the large-paragraph stress case. The Mac
+  also showed about 15.5 GB of used swap before the probe, active swap I/O
+  (about 66 MB read / 84 MB written over 4 seconds), and a VM briefly above
+  300% CPU. System contention is a plausible contributor, not an established
+  cause. No unrelated processes were stopped or settings changed.
+
+**Editor status:** No speculative editor code change. The reported native lag
+still needs reproduction in the affected note/interaction; the isolated
+measurements do not establish its cause. All 103 existing editor/session tests
+passed (editor browser tests on WebKit). No application code changed for this
+editor investigation.
+
+**Native Computer follow-up:** Exercised the installed app through its UI in
+the new `QA Editor 28 settembre` note. Typing, exact text selection, word
+replacement and undo succeeded when each input was observed before the next
+command. The 24 synthetic paragraphs and corrected line remained after
+switching to the existing Alpha fixture and reopening the test note. Keyboard
+navigation moved the viewport back to the beginning. Mouse-scroll automation
+repeatedly returned `noWindowsAvailable` despite successful screenshots and
+keyboard input; clipboard calls timed out even though pasted text appeared.
+An initial immediate undo overlapped pending automated typing, so that result
+is not an editor defect. No reliable native latency measurement or editor
+freeze was established. The native chat still visibly showed raw Markdown
+and an active Stop button, consistent with the fixes not being installed.
+The clearly named synthetic QA note was retained; personal notes were not edited.
+
 ## CI and branch protection, 2026-09-25
 
 - [x] CI on `master` no longer cancels superseded runs (only PR runs are

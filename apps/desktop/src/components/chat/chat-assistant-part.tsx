@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react'
+import { useDeferredValue, type ReactElement } from 'react'
 import { CornerDownRight } from '@/components/icons'
 import { parseNoteDirectives, type AssistantPart, type ChatTurn } from '@reflect/core'
 import { Bubble, BubbleContent } from '@/components/ui/bubble'
@@ -11,49 +11,41 @@ import { ChatNoteCard } from './chat-note-card'
 import { ChatToolChip } from './chat-tool-chip'
 
 interface ChatAssistantPartProps {
-  index: number
-  lastIndex: number
   part: AssistantPart
   status: ChatTurn['status']
   onWikiLinkClick: (options: { target: string; openInSplit: boolean }) => void
 }
 
 /**
- * One assistant transcript part: streaming text, settled markdown, tool
+ * One assistant transcript part: live markdown, tool
  * activity, or a terminal notice.
  */
 export function ChatAssistantPart({
-  index,
-  lastIndex,
   part,
   status,
   onWikiLinkClick,
 }: ChatAssistantPartProps): ReactElement {
+  const deferredText = useDeferredValue(part.kind === 'text' ? part.text : '')
+
   switch (part.kind) {
     case 'text':
-      return status === 'streaming' && index === lastIndex ? (
-        <Bubble variant="ghost" className="max-w-full">
-          <BubbleContent className="reflect-chat-message max-w-full text-text">
-            <div className="whitespace-pre-wrap">{part.text}</div>
-          </BubbleContent>
-        </Bubble>
-      ) : (
+      return (
         <Bubble variant="ghost" className="max-w-full">
           <BubbleContent className="flex max-w-full flex-col gap-2 text-text">
-            {/* Settled text may carry ::note{…} directives — each becomes a
-                card that opens the note; the surrounding markdown renders
-                as before. Unsafe paths never leave the markdown. */}
-            {parseNoteDirectives(part.text).map((segment, segmentIndex) =>
-              segment.kind === 'note' ? (
-                <ChatNoteCard key={segmentIndex} path={segment.path} />
-              ) : (
-                <MarkdownPreview
-                  key={segmentIndex}
-                  content={segment.text}
-                  onWikiLinkClick={onWikiLinkClick}
-                  className="reflect-chat-message text-sm"
-                />
-              ),
+            {/* Defer growing markdown behind input; a settled turn flushes
+                its final text immediately. The preview reuses unchanged blocks. */}
+            {parseNoteDirectives(status === 'streaming' ? deferredText : part.text).map(
+              (segment, segmentIndex) =>
+                segment.kind === 'note' ? (
+                  <ChatNoteCard key={segmentIndex} path={segment.path} />
+                ) : (
+                  <MarkdownPreview
+                    key={segmentIndex}
+                    content={segment.text}
+                    onWikiLinkClick={onWikiLinkClick}
+                    className="reflect-chat-message text-sm"
+                  />
+                ),
             )}
           </BubbleContent>
         </Bubble>

@@ -272,6 +272,29 @@ describe('NoteEditor block handle actions', () => {
 })
 
 describe('NoteEditor smooth caret animation', () => {
+  it('places the caret immediately on block clicks and keeps keyboard gliding', async () => {
+    await render(<NoteEditor initialContent={'First block\n\nSecond block'} />)
+    await page.getByText('First block', { exact: true }).click()
+    const caret = page.getByTestId('virtual-caret')
+    await expect.element(caret).toBeVisible()
+    const element = caret.element()
+    const style = document.createElement('style')
+    // Keep transitions measurable despite the test browser's reduced-motion setting.
+    style.textContent = '.md-virtual-caret { transition: left 10s linear, top 10s linear; }'
+    element.parentElement?.append(style)
+    element.getBoundingClientRect()
+
+    await page.getByText('Second block', { exact: true }).click()
+    expect(
+      element.getAnimations().filter((animation) => animation instanceof CSSTransition),
+    ).toHaveLength(0)
+
+    await userEvent.keyboard('{ArrowLeft}')
+    expect(element.getAnimations().some((animation) => animation instanceof CSSTransition)).toBe(
+      true,
+    )
+  })
+
   it('enables the caret glide by default', async () => {
     await render(<NoteEditor initialContent="Hello" />)
     await pmRoot.click()

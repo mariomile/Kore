@@ -18,16 +18,24 @@ into submenu is hovered") still passes.
 Kore patches the exact installed `@meowdown/core@0.74.1` and
 `@meowdown/react@0.73.1` packages:
 
-- `@meowdown/core`: Adds the `insertMarkdown` `after-block` selection option.
+- `@meowdown/core`: Adds the `insertMarkdown` `after-block` selection option,
+  and makes pointer placement immediate while retaining keyboard caret gliding.
 - `@meowdown/react`: Adds the host `renderCodeBlock` callback, atomic `updateCode`,
   and the custom code-block presentation styles.
 
-Both come from [Meowdown PR #612](https://github.com/prosekit/meowdown/pull/612)
+The code-block changes come from [Meowdown PR #612](https://github.com/prosekit/meowdown/pull/612)
 (the rebase of #546), head `671687c`, whose base is `7fd9427`, the commit that
 published core 0.74.1 and react 0.73.1. The patch payloads are the built
 `dist/` files of that head, diffed against the published packages.
 Upstream's `CodeBlockView` prop (#548) is not a replacement: it swaps the whole
 code-block view, and the default one is not exported.
+
+The caret hunks backport [Meowdown PR #654](https://github.com/prosekit/meowdown/pull/654)
+(source commit `36deb24`). They add pointer/keyboard tracking to `VirtualCaretView`
+and reuse its existing no-transition placement path for pointer selections.
+Keep these hunks when regenerating the core patch until Kore consumes that fix
+from a released package. `note-editor.test.tsx` verifies immediate block clicks
+and the return to keyboard gliding against the installed patched package.
 
 To regenerate:
 
@@ -49,5 +57,5 @@ sites: the bundler's import numbering shifted in the PR build. It is not a
 behavior change.
 
 Delete both patch files and their `patchedDependencies` entries only after Kore
-uses a released Meowdown version containing PR #612 and passes a frozen install,
+uses a released Meowdown version containing PRs #612 and #654 and passes a frozen install,
 the focused editor tests, `pnpm check`, and `pnpm build` without the patches.

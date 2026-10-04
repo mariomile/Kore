@@ -7,7 +7,7 @@ on:
   pull_request:
     paths:
       - .github/workflows/editor-perf.yml
-      - scripts/perf/typing-bench.mjs
+      - apps/desktop/scripts/typing-bench.mjs
   workflow_dispatch:
 
 permissions:
@@ -49,7 +49,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Install probe
-        working-directory: probe/scripts/perf
+        working-directory: probe/apps/desktop/scripts
         run: |
           npm init -y >/dev/null
           npm install --no-save playwright@1.62.1
@@ -62,7 +62,7 @@ jobs:
           for i in $(seq 1 60); do curl -sf http://localhost:5173/ >/dev/null && break; sleep 2; done
 
       - name: Measure
-        working-directory: probe/scripts/perf
+        working-directory: probe/apps/desktop/scripts
         run: |
           for scenario in note large-daily; do
             for browser in webkit chromium; do

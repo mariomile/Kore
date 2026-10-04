@@ -2,7 +2,7 @@
 // the test suite). Drives a running `vite` dev server with Playwright and
 // measures, per keystroke, keydown → next frame + task (rAF then setTimeout).
 //
-//   node scripts/perf/typing-bench.mjs <baseUrl> <scenario> <browser> <label>
+//   node apps/desktop/scripts/typing-bench.mjs <baseUrl> <scenario> <browser> <label>
 //
 // Scenarios: `note` (small demo graph, the pinned "Kore V2" note, which has the
 // properties row under its title) and `large-daily` (`?seed=large`, typing in
@@ -35,9 +35,13 @@ await page.evaluate(() => {
     'keydown',
     () => {
       const t0 = performance.now()
-      requestAnimationFrame(() => setTimeout(() => window.__lat.push(performance.now() - t0), 0))
+      requestAnimationFrame(() =>
+        setTimeout(() => {
+          window.__lat.push(performance.now() - t0)
+        }, 0),
+      )
     },
-    true,
+    { capture: true },
   )
 })
 for (const key of keys) {
@@ -50,6 +54,15 @@ const all = await page.evaluate(() => window.__lat)
 const lat = all.slice(5).sort((a, b) => a - b)
 const q = (f) => Number(lat[Math.min(lat.length - 1, Math.floor(f * lat.length))].toFixed(1))
 console.log(
-  JSON.stringify({ label, scenario, browser: browserName, landed, n: lat.length, p50: q(0.5), p90: q(0.9), max: q(0.999) }),
+  JSON.stringify({
+    label,
+    scenario,
+    browser: browserName,
+    landed,
+    n: lat.length,
+    p50: q(0.5),
+    p90: q(0.9),
+    max: q(0.999),
+  }),
 )
 await browser.close()

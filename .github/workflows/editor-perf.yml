@@ -1,0 +1,76 @@
+name: Editor typing perf
+
+# One-off regression hunt: measures typing latency in WebKit (the engine of the
+# macOS Tauri webview) across releases, so the slow editor can be pinned to a
+# release without the user's Mac. Runs only when this probe changes.
+on:
+  pull_request:
+    paths:
+      - .github/workflows/editor-perf.yml
+      - scripts/perf/typing-bench.mjs
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bench:
+    strategy:
+      fail-fast: false
+      matrix:
+        ref: [v0.73.0, v0.74.0, v0.74.1, v0.74.3]
+    name: typing ${{ matrix.ref }}
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          path: probe
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ matrix.ref }}
+          path: app
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+        with:
+          package_json_file: app/package.json
+
+      - name: Install Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+
+      - name: Install app dependencies
+        working-directory: app
+        run: pnpm install --frozen-lockfile
+
+      - name: Install probe
+        working-directory: probe/scripts/perf
+        run: |
+          npm init -y >/dev/null
+          npm install --no-save playwright@1.62.1
+          npx playwright install webkit chromium
+
+      - name: Start the dev server
+        working-directory: app/apps/desktop
+        run: |
+          nohup pnpm exec vite --port 5173 --strictPort > /tmp/vite.log 2>&1 &
+          for i in $(seq 1 60); do curl -sf http://localhost:5173/ >/dev/null && break; sleep 2; done
+
+      - name: Measure
+        working-directory: probe/scripts/perf
+        run: |
+          for scenario in note large-daily; do
+            for browser in webkit chromium; do
+              for run in 1 2 3; do
+                node typing-bench.mjs http://localhost:5173 $scenario $browser ${{ matrix.ref }} | tee -a results.jsonl
+              done
+            done
+          done
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          cat results.jsonl >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"

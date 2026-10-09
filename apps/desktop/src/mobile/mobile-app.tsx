@@ -14,6 +14,7 @@ import {
 } from '@/mobile/use-keyboard'
 import { useTaskCheckboxHaptics } from '@/mobile/use-task-haptics'
 import { CaptureProvider } from '@/providers/capture-provider'
+import { ConnectorSyncProvider } from '@/providers/connector-sync-provider'
 import { ChatProvider } from '@/providers/chat-provider'
 import { useGraph } from '@/providers/graph-provider'
 import { SyncProvider } from '@/providers/sync-provider'
@@ -65,19 +66,22 @@ export function MobileApp(): ReactElement {
                   conversation and composer draft live here so the Chat tab
                   survives tab switches; semantic search is forced off on
                   this surface inside the provider. */}
-              <ChatProvider graph={graph}>
-                {/* Native recording over the shared capture pipeline — the
+              {/* Readwise, Granola …: same loop as desktop, resumed on foreground. */}
+              <ConnectorSyncProvider graph={graph}>
+                <ChatProvider graph={graph}>
+                  {/* Native recording over the shared capture pipeline — the
                     mobile leg of desktop's audio memos. Mounted here so the
                     queue, the reconciler, and the orphan scan survive tab
                     switches. */}
-                <MobileAudioMemoProvider graph={graph}>
-                  <MobileShell />
-                  <MobileStatusLayer />
-                  {/* Mounted beside the shell (not inside the daily screen)
+                  <MobileAudioMemoProvider graph={graph}>
+                    <MobileShell />
+                    <MobileStatusLayer />
+                    {/* Mounted beside the shell (not inside the daily screen)
                       so a live recording's sheet survives tab switches. */}
-                  <RecordingDrawer />
-                </MobileAudioMemoProvider>
-              </ChatProvider>
+                    <RecordingDrawer />
+                  </MobileAudioMemoProvider>
+                </ChatProvider>
+              </ConnectorSyncProvider>
             </CaptureProvider>
           </SyncProvider>
         </RouterProvider>

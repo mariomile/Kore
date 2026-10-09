@@ -11,6 +11,7 @@ import { AssetDescribeProvider } from '@/providers/asset-describe-provider'
 import { AudioMemoProvider } from '@/providers/audio-memo-provider'
 import { FocusedDailyProvider } from '@/providers/focused-daily-provider'
 import { CaptureProvider } from '@/providers/capture-provider'
+import { ConnectorSyncProvider } from '@/providers/connector-sync-provider'
 import { ChatProvider } from '@/providers/chat-provider'
 import { DeepLinkProvider } from '@/providers/deep-link-provider'
 import { NoteFindProvider } from '@/providers/note-find-provider'
@@ -112,7 +113,9 @@ function WorkspaceProviders({
                       (deep-link writes spool into the same inbox drain). */}
                     <DeepLinkProvider graph={graph}>
                       <AssetDescribeProvider graph={graph}>
-                        <ChatProvider graph={graph}>{children}</ChatProvider>
+                        <ConnectorSyncProvider graph={graph}>
+                          <ChatProvider graph={graph}>{children}</ChatProvider>
+                        </ConnectorSyncProvider>
                       </AssetDescribeProvider>
                     </DeepLinkProvider>
                   </CaptureProvider>

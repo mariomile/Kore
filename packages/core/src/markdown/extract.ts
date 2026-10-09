@@ -201,6 +201,31 @@ function inAnyRange(index: number, ranges: Span[]): boolean {
   return ranges.some((range) => index >= range.from && index < range.to)
 }
 
+/**
+ * The tag names a note's frontmatter `tags:` key declares — the second
+ * membership source beside body `#hashtags` (TDR 0005 amendment). Accepts the
+ * shapes Obsidian writes: a YAML list (`[a, b]` or a block list) or one string
+ * of comma- or space-separated names. A leading `#` is tolerated, and anything
+ * the `#tag` grammar would reject (a number, a name with spaces) is skipped,
+ * so a frontmatter tag is always one a body hashtag could also have produced.
+ */
+export function frontmatterTagNames(frontmatter: Readonly<Record<string, unknown>>): string[] {
+  const value = frontmatter['tags']
+  const entries =
+    typeof value === 'string' ? value.split(/[\s,]+/u) : Array.isArray(value) ? value : []
+  const names: string[] = []
+  for (const entry of entries) {
+    if (typeof entry !== 'string') {
+      continue
+    }
+    const name = entry.trim().replace(/^#+/u, '')
+    if (isTagName(name)) {
+      names.push(name)
+    }
+  }
+  return names
+}
+
 function collectTags(body: string, excluded: Span[], into: Map<string, string>): void {
   for (const match of body.matchAll(TAG_RE)) {
     // Both groups are mandatory in TAG_RE, so a match always populates them.
@@ -378,7 +403,15 @@ export function parseNote(input: { path: string; source: string }): ParsedNote {
     wikiLinks.unshift(...headerLinks)
   }
 
+  // Frontmatter first: a note's declared `tags:` are its types, and their
+  // spelling wins over a later inline mention of the same tag.
   const tags = new Map<string, string>()
+  for (const tag of frontmatterTagNames(frontmatter)) {
+    const key = foldTag(tag)
+    if (!tags.has(key)) {
+      tags.set(key, tag)
+    }
+  }
   collectTags(body, tagExcluded, tags)
 
   const tasks: ParsedTask[] = []

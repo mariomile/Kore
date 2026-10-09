@@ -50,13 +50,14 @@ at the top; a second H1 is body text.
 
 ## Tags
 
-A tag is written inline in the body: `#book`, `#sci-fi/classic`. Grammar:
-a letter, then letters, digits, `/`, `_`, `-`. Tags are not read from
-frontmatter (`tags:` there is an ordinary property, not membership).
-Writing `#tag` anywhere in a note, a daily included, makes the note a
-member of that tag's collection — "the hashtag is the supertag". The
-conventional place for a membership tag is one trailing line at the end
-of the body, which is what the app and the CLI write.
+A tag is written inline in the body (`#book`, `#sci-fi/classic`) or listed
+in frontmatter `tags:` (`tags: [book, sci-fi/classic]`, a block list, or a
+comma-separated string; a leading `#` is optional). Grammar: a letter, then
+letters, digits, `/`, `_`, `-`. Either source makes the note a member of
+that tag's collection, a daily included. `tags:` is membership, not an
+ordinary property. The app's Type field writes `tags:`; `reflect tag` and
+the editor write one trailing `#tag` line at the end of the body. To take a
+tag off, remove it from both places.
 
 ## Tasks
 

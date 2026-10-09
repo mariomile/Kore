@@ -7,6 +7,14 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Tags in frontmatter count. A note listed under `tags:` in its frontmatter
+  now belongs to that tag exactly as one carrying `#tag` in its text does:
+  tag sidebar, collections, filters and the tag page all see it. An Obsidian
+  vault whose taxonomy lives in `tags:` stops being invisible. Setting a
+  type from the Type field or from chat now writes `tags:` instead of a
+  hashtag line, and removing one clears it from both places; `reflect untag`
+  does the same.
+
 - Chat can say what a note is. `set_note_type` proposes putting a tag on a
   note, or taking one off, as a card the user accepts or rejects from the
   keyboard; nothing is written before they accept. It is the Type field's own

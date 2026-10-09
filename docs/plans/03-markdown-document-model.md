@@ -118,7 +118,8 @@ remark for portability.
 - **Note identity = path/title in the first wave** (decided 2026-06-09). `id` is reserved
   in the schema and resolution prefers it when present, but ids aren't auto-written yet.
 - **Tags = body `#tag` only** (decided 2026-06-09). A frontmatter `tags:` key passes through
-  untouched but isn't a tag source this wave.
+  untouched but isn't a tag source this wave. *(Superseded 2026-10-09 by TDR 0005
+  Amendment D.)*
 - **Edits are minimal-diff** to keep sync quiet.
 - **The extraction output is a stable, versioned interface** — Plan 04 depends on it.
 

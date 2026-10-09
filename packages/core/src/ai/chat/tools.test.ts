@@ -1712,11 +1712,17 @@ describe('set_note_type', () => {
     })
   })
 
-  it('reads membership from the body only, never from a frontmatter tags key', async () => {
-    // TDR 0005: the hashtag is the supertag. A `tags:` key is data, not
-    // membership, so proposing #book over it is a real change, not a no-op.
+  it('reads membership from frontmatter tags as well as the body', async () => {
+    // TDR 0005 amendment: `tags:` is membership, so a note typed there is
+    // already a #book and can be untyped.
     const tools = toolsOver('---\ntags:\n  - book\n---\n# The Dispossessed\n')
-    expect(await runSetNoteType(tools, { path: BOOK, tag: 'book' })).toMatchObject({ ok: true })
+    expect(await runSetNoteType(tools, { path: BOOK, tag: 'book' })).toMatchObject({
+      ok: false,
+      error: NOTE_TYPE_UNCHANGED_ERROR,
+    })
+    expect(await runSetNoteType(tools, { path: BOOK, tag: 'book', remove: true })).toMatchObject({
+      ok: true,
+    })
   })
 
   it('refuses without "Allow edits", for a junk tag, a private note and a missing note', async () => {

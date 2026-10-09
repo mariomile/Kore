@@ -38,15 +38,18 @@ beforeEach(() => {
 })
 
 describe('useAddNoteTag', () => {
-  it('appends the membership line to an untyped tag, stamping nothing', async () => {
-    expect(await setType('# The Dispossessed\n', 'idea')).toBe('# The Dispossessed\n\n#idea\n')
+  it('adds an untyped tag to frontmatter tags, stamping nothing and leaving the body alone', async () => {
+    expect(await setType('# The Dispossessed\n', 'idea')).toBe(
+      '---\ntags:\n  - idea\n---\n# The Dispossessed\n',
+    )
   })
 
   it('writes the tag and the type’s created stamps in one transform', async () => {
     tagType.value = { properties: [{ name: 'Added', key: 'added', type: 'created' }] }
     const next = await setType('# The Dispossessed\n')
-    expect(next).toContain('#book\n')
-    expect(next).toMatch(/^---\nadded: \d{4}-\d{2}-\d{2}\n---\n/)
+    expect(next).toMatch(
+      /^---\ntags:\n {2}- book\nadded: \d{4}-\d{2}-\d{2}\n---\n# The Dispossessed\n$/,
+    )
   })
 
   it('leaves a note that already carries the tag byte-identical', async () => {

@@ -6,9 +6,9 @@ import type { Span } from './model'
 /**
  * Adding a tag to a note's text, for the bulk-tag action.
  *
- * Tags in this app are inline `#hashtags` scanned from the body — frontmatter
- * has no `tags:` key the indexer reads (see `collectTags` in `extract.ts`), so
- * tagging means editing prose, not metadata. That makes idempotence the whole
+ * Body `#hashtags` are one of a note's two tag sources (the other is
+ * frontmatter `tags:`, see `note-tag.ts`); these helpers edit only the body,
+ * so tagging here means editing prose. That makes idempotence the whole
  * job: bulk-tagging the same selection twice must not append the tag twice,
  * and a note that already carries an indexed `#tag` must be left
  * byte-identical so it never shows up as changed.

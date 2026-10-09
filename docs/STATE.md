@@ -1,5 +1,54 @@
 # Kore working state
 
+## Frontmatter tags are membership (supertags slice B) — 2026-10-09
+
+User ask: make Kore able to replace Obsidian for the marioverse vault. The
+gap analysis found 3,940 of its ~5,100 notes carry tags only in frontmatter
+`tags:` (nested, `type/…`, `domain/…`) against 167 with any body `#tag`, so
+Kore's tag sidebar, collections and `tag:` filters saw almost nothing. That
+count was the evidence slice B was parked on; this slice ships it as
+TDR 0005 Amendment D.
+
+- [x] Read: `frontmatterTagNames` (`packages/core/src/markdown/extract.ts`)
+  turns `tags:` into names (flow or block list, or a comma/space-separated
+  string; leading `#` tolerated; anything the `#tag` grammar rejects
+  skipped). `parseNote` puts them ahead of body hashtags, so everything
+  downstream (tag table, collections, filters, tag page, counts) works
+  unchanged. `PROJECTION_VERSION` 26 and `PARSED_NOTE_VERSION` 7 rebuild the
+  projection on next open; no SQL migration.
+- [x] `tags` joins `RESERVED_FRONTMATTER_KEYS` (and the CLI's
+  `RESERVED_KEYS`): it is membership, no longer a `note_properties` column.
+- [x] Writes: new `addNoteTag` / `removeNoteTag` / `noteHasTag`
+  (`packages/core/src/markdown/note-tag.ts`). The Type picker
+  (`use-add-note-tag.ts`) and the chat's `set_note_type` accept
+  (`use-apply-note-type.ts`) now add to `tags:` instead of appending `#tag`
+  to the body; an existing list grows in place, comments kept. Removing a
+  type (Type chip X, `set_note_type remove`) clears both sources.
+  `set_note_type` asks both sources whether the note is typed; the test that
+  pinned the old body-only boundary is flipped.
+- [x] CLI: `reflect tag` leaves a note that declares the tag in `tags:`
+  alone; `reflect untag` drops the `tags:` entry (key deleted when empty)
+  before its trailing-line removal.
+- [x] Docs: TDR 0005 Amendment D, `kore-markdown` and `kore-collections`
+  skills, Plan 03 marked superseded on this point.
+
+**Untouched by design:** the editor's `#` autocomplete, the bulk action,
+collection "+ New" rows, CSV import and `reflect tag` still write the body
+hashtag, which stays valid. No hierarchy semantics for nested tags
+(`type/book` is one tag, as a body `#type/book` already was). Vault layout
+(daily notes, attachments, new-note folder) belongs to the "Profilo vault
+Obsidian" thread.
+
+**Validation:** core + desktop node project 122 files / 996 tests; browser
+tests for the five affected files (Type field header and rail, chat note-type
+card, `use-add-note-tag`, `use-apply-note-type`) 24/24 on **Chromium only**,
+WebKit left to CI (not installable in this container); `cargo test -p
+reflect-cli` and `cargo clippy -p reflect-cli --all-targets -D warnings`
+clean; `pnpm check` exit 0.
+
+**Next:** on Mario's Mac, open the vault and check that the tag sidebar and a
+`type/…` collection fill from frontmatter after the one-off reprojection.
+
 ## Chat and Inbox debugging, 2026-09-28
 
 - [x] Reproduced the installed 0.74.1 Claude chat hang: A mid-run message

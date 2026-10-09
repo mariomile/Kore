@@ -2,7 +2,7 @@ import { tool } from 'ai'
 import { isAppError } from '../../errors'
 import type { ListTagTypesOptions, TagTypeEntry } from '../../indexing/collections'
 import type { ListNoteTagsOptions, NoteTagFacet } from '../../indexing/note-list'
-import { bodyHasTag } from '../../markdown/body-tag'
+import { noteHasTag } from '../../markdown/note-tag'
 import { parseFrontmatter, splitFrontmatter } from '../../markdown/frontmatter'
 import { isTagName } from '../../markdown/extract'
 import { foldTag } from '../../markdown/keys'
@@ -174,14 +174,14 @@ export function buildTagTools(deps: TagToolDeps): TagTools {
         }
         // The privacy hard block on the live frontmatter, like every other
         // write: deciding what a private note *is* implies having read it.
-        const { raw, body } = splitFrontmatter(source)
+        const { raw } = splitFrontmatter(source)
         if (parseFrontmatter(raw).data.private) {
           return { ok: false, path, tag: name, error: PRIVATE_NOTE_EDIT_ERROR }
         }
-        // Membership is what the indexer scans out of the body, so both
-        // "nothing to do" refusals ask the body — the same question the
-        // accept's `appendBodyTag`/`removeBodyTag` will ask again.
-        const carried = bodyHasTag(body, name)
+        // Membership is what the indexer reads from body hashtags and
+        // frontmatter `tags:`, so both "nothing to do" refusals ask both —
+        // the same question the accept's `addNoteTag`/`removeNoteTag` asks.
+        const carried = noteHasTag(source, name)
         if (carried !== off) {
           return {
             ok: false,

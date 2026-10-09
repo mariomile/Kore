@@ -1,5 +1,36 @@
 # Kore working state
 
+## AI libraries load on first use, 2026-10-09
+
+- [x] Moved the AI SDK (`ai`) and the four provider packages (`@ai-sdk/*`)
+  out of startup. They were statically imported by six call sites through
+  `languageModel`, plus `streamText` and friends in the chat, selection
+  transform, page/asset description and audio-memo modules. Every runtime
+  use now goes through `loadAiSdk()` (`packages/core/src/ai/load-sdk.ts`)
+  or an `await import('@ai-sdk/<provider>')` in `languageModel`, which is
+  now async and loads only the configured provider. The note tools' `tool()`
+  is re-declared locally (`chat/define-tool.ts`, an identity function like
+  the SDK's). A provider that fails to load ends a chat or selection stream
+  with an `error` event instead of a synchronous throw.
+- [x] Added a `no-restricted-imports` rule in `eslint.config.js`: a value
+  import of `ai` or `@ai-sdk/*` outside tests fails lint. Type imports and
+  `await import()` stay allowed.
+
+**Measured** on a production `vite build`, following the static import
+graph from `index.html` plus each platform root chunk: desktop startup JS
+4.55 MB to 3.88 MB, iPhone 4.36 MB to 3.68 MB (about 670 KB less each);
+the AI packages' share of it went from about 566 KB to zero. Chromium
+script time to load the built page at 4x CPU throttle, median of 8 runs,
+two rounds: 458/468 ms before, 408/390 ms after. These are browser numbers;
+the Tauri webview (WebKit) was not measured here.
+
+**Validation:** `pnpm typecheck` and `pnpm lint` passed; core 2,311 tests
+and desktop 3,047 tests passed on Chromium. WebKit runs in CI only.
+
+**Next:** The first AI action after launch now pays the SDK download and
+parse once (local file, no network). Check on the Mac that the first chat
+reply and the first selection transform start without a visible pause.
+
 ## Chat and Inbox debugging, 2026-09-28
 
 - [x] Reproduced the installed 0.74.1 Claude chat hang: A mid-run message

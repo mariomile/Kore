@@ -1,4 +1,5 @@
-import { tool, type Tool } from 'ai'
+import type { Tool } from 'ai'
+import { tool } from './define-tool'
 import type { z } from 'zod'
 import { isAppError } from '../../errors'
 import { readNote } from '../../graph/commands'

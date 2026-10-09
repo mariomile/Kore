@@ -7,6 +7,12 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Kore starts lighter. The AI SDK and its provider packages, about 670 KB
+  of the JavaScript the app parsed at every launch on Mac and iPhone, now
+  load the first time an AI feature runs, and only the configured provider
+  is loaded. A lint rule keeps value imports of those packages out of
+  startup code.
+
 - Chat can say what a note is. `set_note_type` proposes putting a tag on a
   note, or taking one off, as a card the user accepts or rejects from the
   keyboard; nothing is written before they accept. It is the Type field's own

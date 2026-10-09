@@ -1,7 +1,7 @@
 import { sql } from 'kysely'
 import { foldTag, normalizeWikiTarget, resolved, unresolved, type Resolution } from '../markdown'
 import { db } from './db'
-import { PROJECTION_VERSION, PROJECTION_VERSION_KEY } from './indexed-note'
+import { PROJECTION_VERSION_KEY, projectionStamp } from './indexed-note'
 import { inClauseChunks } from './query-utils'
 export {
   getBacklinks,
@@ -318,7 +318,8 @@ export async function getIndexMeta(key: string): Promise<string | null> {
 }
 
 /**
- * Whether the stored rows were built by the current {@link PROJECTION_VERSION}.
+ * Whether the stored rows were built by the current {@link projectionStamp}
+ * (projection version and vault layout).
  *
  * The one place that comparison is made. A rebuild wipes the projection before
  * repopulating it one note at a time, so between the wipe and the stamp every
@@ -328,7 +329,7 @@ export async function getIndexMeta(key: string): Promise<string | null> {
  * answer.
  */
 export async function isProjectionCurrent(): Promise<boolean> {
-  return (await getIndexMeta(PROJECTION_VERSION_KEY)) === String(PROJECTION_VERSION)
+  return (await getIndexMeta(PROJECTION_VERSION_KEY)) === projectionStamp()
 }
 
 /** What a pass knows about an indexed note without reading its file. */

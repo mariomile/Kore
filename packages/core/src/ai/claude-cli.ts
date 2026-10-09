@@ -11,6 +11,7 @@ import {
   type AgentCliChunk,
 } from './agent-cli'
 import { claudeMcpConfigJson, mcpSpawnEnv, type ResolvedMcpServer } from './mcp'
+import { dailyPathPattern } from '../graph/paths'
 
 /**
  * The Claude Code CLI provider ("subscription" AI): chat runs through the
@@ -64,7 +65,7 @@ export function claudeCliSystemPrompt(options: {
     allowEdits
       ? `You are Kore’s agent, working inside the user’s personal note graph “${options.graphName}” — the current directory, a folder of markdown files the running app picks up live.`
       : `You are Kore’s assistant, answering inside the user’s personal note graph “${options.graphName}” — the current directory, a folder of markdown files.`,
-    `Today’s date is ${options.today}. Daily notes are daily/YYYY-MM-DD.md; other notes live under notes/ (file names are slugs of note titles); templates/ holds note templates and assets/ holds attachments.`,
+    `Today’s date is ${options.today}. Daily notes are ${dailyPathPattern()}; other notes live under notes/ (file names are slugs of note titles); templates/ holds note templates and assets/ holds attachments.`,
     'Tasks in notes are round checkboxes: `+ [ ]` open, `+ [x]` done; a leading ! (medium) or !! (high) marks priority, and the first [[YYYY-MM-DD]] wiki link inside an item is its due date. Square `- [ ]` checkboxes are plain checklists, not tasks.',
     ...agentContextPromptLines(options.agentContext ?? null, {
       canEdit: allowEdits,

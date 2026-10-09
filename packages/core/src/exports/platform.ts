@@ -108,6 +108,7 @@ export {
   ASSETS_DIR,
   AUDIO_MEMOS_DIR,
   dailyPath,
+  dailyPathPattern,
   notePath,
   templatePath,
   assetPath,
@@ -184,6 +185,9 @@ export {
   deleteNote,
   deleteAudioMemo,
   listFiles,
+  listAttachments,
+  readObsidianConfig,
+  type ObsidianConfig,
   vaultScanStats,
   type VaultScanStats,
   recentGraphs,
@@ -199,6 +203,21 @@ export {
   captureSharedInboxRelay,
   promoteCaptureScreenshot,
 } from '../graph/commands'
+export {
+  DEFAULT_VAULT_LAYOUT,
+  getVaultLayout,
+  setVaultLayout,
+  vaultLayoutFromObsidian,
+  type ObsidianConfigFiles,
+  type VaultLayout,
+} from '../graph/vault-layout'
+export { loadVaultLayout } from '../graph/load-vault-layout'
+export {
+  loadAttachmentIndex,
+  noteAttachmentAdded,
+  resolveAttachmentSource,
+  setAttachmentIndex,
+} from '../graph/attachment-index'
 export { createAsset, importAsset } from '../graph/assets'
 export { exportGraphBackup, restoreGraphBackup } from '../graph/backup'
 export { assetFileName } from '../graph/asset-names'

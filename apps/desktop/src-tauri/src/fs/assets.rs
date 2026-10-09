@@ -125,21 +125,30 @@ pub(super) fn staging_dir(root: &Path) -> AppResult<std::path::PathBuf> {
     Ok(dir)
 }
 
-/// Resolved `assets/` directory for a commit/import destination, traversal-
-/// and generation-guarded.
+/// Resolved destination directory for a commit/import, traversal- and
+/// generation-guarded: `assets/` by default, or the caller's graph-relative
+/// `dir` (an adopted vault's own attachment folder). Returns the directory and
+/// its graph-relative spelling for the returned path.
 fn assets_dir_for(
     state: &State<GraphState>,
     generation: u64,
     name: &str,
-) -> AppResult<std::path::PathBuf> {
+    dir: Option<&str>,
+) -> AppResult<(std::path::PathBuf, String)> {
     ensure_asset_name(name)?;
+    let rel_dir = dir.unwrap_or("assets").trim_matches('/').to_string();
+    if !reflect_graph_paths::is_safe_visible(&rel_dir) {
+        return Err(AppError::traversal(format!(
+            "asset folder must be a visible graph-relative path: {rel_dir:?}"
+        )));
+    }
     let root = root_for_generation(state, generation)?;
     // Resolve the target through the shared guard even though `name` is
     // already vetted — defense in depth, and it canonicalizes symlink games.
-    resolve(&root, &format!("assets/{name}"))?;
-    let dir = root.join("assets");
-    fs::create_dir_all(&dir)?;
-    Ok(dir)
+    resolve(&root, &format!("{rel_dir}/{name}"))?;
+    let abs_dir = root.join(&rel_dir);
+    fs::create_dir_all(&abs_dir)?;
+    Ok((abs_dir, rel_dir))
 }
 
 /// Start a streamed asset upload: creates a temp file in the graph's staging
@@ -209,13 +218,14 @@ pub async fn asset_upload_append<R: tauri::Runtime>(
 }
 
 /// Finish a streamed upload: fsync, then move the staged file into `assets/`
-/// under `desired_name` (or the first free `-2`-suffixed variant). Returns the
-/// final graph-relative `assets/…` path.
+/// (or `dir`, when given) under `desired_name` (or the first free
+/// `-2`-suffixed variant). Returns the final graph-relative path.
 #[tauri::command]
 pub async fn asset_upload_commit<R: tauri::Runtime>(
     id: String,
     desired_name: String,
     generation: u64,
+    dir: Option<String>,
     app: tauri::AppHandle<R>,
 ) -> AppResult<String> {
     crate::blocking::run_blocking(move || {
@@ -232,10 +242,11 @@ pub async fn asset_upload_commit<R: tauri::Runtime>(
         // Pin the root before persisting: after the file lands, a failed root
         // lookup would otherwise skip invalidation and strand a stale catalog.
         let root = root_for_generation(&state, generation)?;
-        let assets_dir = assets_dir_for(&state, generation, &desired_name)?;
+        let (assets_dir, rel_dir) =
+            assets_dir_for(&state, generation, &desired_name, dir.as_deref())?;
         let final_name = persist_unique(upload.file, &assets_dir, &desired_name)?;
         super::invalidate_file_catalog(&state, &root);
-        Ok(format!("assets/{final_name}"))
+        Ok(format!("{rel_dir}/{final_name}"))
     })
     .await
 }
@@ -313,6 +324,7 @@ pub async fn asset_import<R: tauri::Runtime>(
     source_path: String,
     desired_name: String,
     generation: u64,
+    dir: Option<String>,
     app: tauri::AppHandle<R>,
 ) -> AppResult<String> {
     crate::blocking::run_blocking(move || {
@@ -326,10 +338,11 @@ pub async fn asset_import<R: tauri::Runtime>(
         let root = root_for_generation(&state, generation)?;
         let mut temp = tempfile::NamedTempFile::new_in(staging_dir(&root)?)?;
         std::io::copy(&mut fs::File::open(source)?, temp.as_file_mut())?;
-        let assets_dir = assets_dir_for(&state, generation, &desired_name)?;
+        let (assets_dir, rel_dir) =
+            assets_dir_for(&state, generation, &desired_name, dir.as_deref())?;
         let final_name = persist_unique(temp, &assets_dir, &desired_name)?;
         super::invalidate_file_catalog(&state, &root);
-        Ok(format!("assets/{final_name}"))
+        Ok(format!("{rel_dir}/{final_name}"))
     })
     .await
 }

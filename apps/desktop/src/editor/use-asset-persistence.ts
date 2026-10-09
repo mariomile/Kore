@@ -7,6 +7,7 @@ import {
   errorMessage,
   listDir,
   openAsset as openAssetCommand,
+  resolveAttachmentSource,
   revealAsset as revealAssetCommand,
   type FileMeta,
 } from '@reflect/core'
@@ -32,33 +33,15 @@ const EXTENSION_BY_MIME: Record<string, string> = {
 }
 
 /**
- * True for a graph-relative `assets/…` path with no traversal segments. The
- * Rust shell already guards every *write* against traversal; this guards
- * *display and open* resolution so a crafted `assets/../…` reference in note
- * markdown is never handed to the asset protocol or the OS opener (defense
- * in depth).
- */
-export function isSafeAssetSource(sourcePath: string): boolean {
-  if (!sourcePath.startsWith('assets/') || sourcePath.includes('\\')) {
-    return false
-  }
-  return sourcePath
-    .split('/')
-    .every((segment, index) =>
-      index === 0
-        ? segment === 'assets'
-        : segment.length > 0 && segment !== '.' && segment !== '..',
-    )
-}
-
-/**
  * Claims a `[label](url)` markdown link as a file attachment when its
- * destination is a safe graph-relative `assets/…` path, so meowdown renders
- * it as a file pill instead of a plain link. Pure by contract (meowdown
- * caches and diffs parse results), which a stateless path check satisfies.
+ * destination resolves to an attachment in the vault (`assets/…`, an adopted
+ * vault's own folders, or an Obsidian-style bare file name), so meowdown
+ * renders it as a file pill instead of a plain link. Pure by contract
+ * (meowdown caches and diffs parse results): the answer depends only on the
+ * href and the graph's attachment catalog, both fixed while a note is open.
  */
 export function resolveAssetFileLink({ href }: FileLinkPayload): boolean {
-  return isSafeAssetSource(href)
+  return resolveAttachmentSource(href) !== null
 }
 
 /** The failed save the pane reports on: which banner copy, and the cause. */
@@ -118,10 +101,10 @@ export function useAssetPersistence(generation: number | null, path?: string): A
   // switch must not put its outcome on the *next* note's banner.
   const sessionEpoch = useRef(0)
   // File-pill sizes by graph-relative asset path, seeded by every save (the
-  // size is already in hand) and backfilled by one shared `assets/` listing,
-  // so a note full of pills stats the directory once, not once per pill.
+  // size is already in hand) and backfilled by one shared listing per folder,
+  // so a note full of pills stats each directory once, not once per pill.
   const sizeByAssetPath = useRef(new Map<string, number>())
-  const pendingAssetListing = useRef<Promise<FileMeta[]> | null>(null)
+  const pendingListings = useRef(new Map<string, Promise<FileMeta[]>>())
 
   useEffect(() => {
     return () => {
@@ -136,7 +119,7 @@ export function useAssetPersistence(generation: number | null, path?: string): A
       // flight for the old graph session writes into the orphaned instance,
       // never into the next session's cache.
       sizeByAssetPath.current = new Map()
-      pendingAssetListing.current = null
+      pendingListings.current = new Map()
     }
   }, [generation])
 
@@ -145,20 +128,17 @@ export function useAssetPersistence(generation: number | null, path?: string): A
       if (/^https?:\/\//.test(src)) {
         return src
       }
-      if (generation !== null && isSafeAssetSource(src)) {
-        return convertFileSrc(`${generation}/${src}`, 'reflect-asset')
-      }
-      return null
+      const attachment = generation === null ? null : resolveAttachmentSource(src)
+      return attachment === null
+        ? null
+        : convertFileSrc(`${generation}/${attachment}`, 'reflect-asset')
     },
     [generation],
   )
 
   const resolveAssetOpenPath = useCallback(
     (src: string): string | null => {
-      if (generation !== null && isSafeAssetSource(src)) {
-        return src
-      }
-      return null
+      return generation === null ? null : resolveAttachmentSource(src)
     },
     [generation],
   )
@@ -235,18 +215,24 @@ export function useAssetPersistence(generation: number | null, path?: string): A
 
   const resolveFileInfo = useCallback(
     async (href: string): Promise<FileInfo | undefined> => {
-      if (generation === null || !isSafeAssetSource(href)) {
+      const attachment = generation === null ? null : resolveAttachmentSource(href)
+      if (generation === null || attachment === null) {
         return undefined
       }
       // Captured before the await for the same session-scoping reason as in
       // saveFile.
       const cache = sizeByAssetPath.current
-      if (!cache.has(href)) {
-        pendingAssetListing.current ??= listDir('assets', generation).finally(() => {
-          pendingAssetListing.current = null
-        })
+      if (!cache.has(attachment)) {
+        const folder = attachment.slice(0, Math.max(0, attachment.lastIndexOf('/')))
+        let listing = pendingListings.current.get(folder)
+        if (listing === undefined) {
+          listing = listDir(folder, generation).finally(() => {
+            pendingListings.current.delete(folder)
+          })
+          pendingListings.current.set(folder, listing)
+        }
         try {
-          const entries = await pendingAssetListing.current
+          const entries = await listing
           for (const entry of entries) {
             cache.set(entry.path, entry.size)
           }
@@ -256,7 +242,7 @@ export function useAssetPersistence(generation: number | null, path?: string): A
           return undefined
         }
       }
-      const size = cache.get(href)
+      const size = cache.get(attachment)
       return size === undefined ? undefined : { size }
     },
     [generation],

@@ -12,12 +12,16 @@ const subscribeWindowNavigate = vi.hoisted(() =>
 const isMainWindow = vi.hoisted(() => vi.fn(() => false))
 const dispatchDeepLink = vi.hoisted(() => vi.fn())
 const throttledInvalidateIndexQueries = vi.hoisted(() => vi.fn())
+const loadVaultLayout = vi.hoisted(() => vi.fn())
+const loadAttachmentIndex = vi.hoisted(() => vi.fn())
 
 vi.mock('@reflect/core', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@reflect/core')>()),
   windowBootstrap,
   subscribeIndexWritten,
   subscribeWindowNavigate,
+  loadVaultLayout,
+  loadAttachmentIndex,
 }))
 vi.mock('@/lib/windows/window-role', () => ({ isMainWindow }))
 vi.mock('@/lib/deep-links/intake', () => ({ dispatchDeepLink }))

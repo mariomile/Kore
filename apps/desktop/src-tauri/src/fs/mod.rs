@@ -226,8 +226,9 @@ fn root_for(state: &State<GraphState>, generation: Option<u64>) -> AppResult<Pat
 /// an adopted vault keeps its images beside its notes. Classification is the
 /// shared `graph-paths` policy, so neither surface can serve a note, a hidden
 /// file, or a traversal path. Writes are deliberately untouched — Reflect
-/// only ever creates files under `assets/` and `audio-memos/`, and widening
-/// reads must not widen what Reflect will write.
+/// only ever creates files under `assets/`, `audio-memos/`, or the visible
+/// attachment folder an adopted vault names, and widening reads must not
+/// widen what Reflect will write.
 fn ensure_readable_attachment_path(path: &str) -> AppResult<()> {
     if reflect_graph_paths::is_attachment(path) {
         return Ok(());
@@ -1087,6 +1088,71 @@ pub async fn vault_scan_stats<R: tauri::Runtime>(
     .await
 }
 
+/// List every supported attachment in the vault (the catalog's other half
+/// beside [`list_files`]). Lets the frontend resolve a bare Obsidian
+/// `![[photo.png]]` embed to wherever that file lives. Pinned and async
+/// exactly like [`list_files`].
+#[tauri::command]
+pub async fn list_attachments<R: tauri::Runtime>(
+    generation: Option<u64>,
+    app: tauri::AppHandle<R>,
+) -> AppResult<Vec<FileMeta>> {
+    let generation = match generation {
+        Some(generation) => generation,
+        None => {
+            let state = app.state::<GraphState>();
+            current_graph_info(&state)?.generation
+        }
+    };
+    crate::blocking::run_blocking(move || {
+        let state = app.state::<GraphState>();
+        Ok(file_catalog(&state, Some(generation))?.attachments)
+    })
+    .await
+}
+
+/// The Obsidian settings files a vault carries, raw. `None` for a file that
+/// is absent (or not a regular file). Kore reads them only to adopt the
+/// vault's own layout; deciding what they mean is TypeScript's job.
+#[derive(Debug, Default, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ObsidianConfig {
+    pub daily_notes: Option<String>,
+    pub app: Option<String>,
+}
+
+/// Larger than any real Obsidian settings file; a bigger one is not read.
+const OBSIDIAN_CONFIG_MAX_BYTES: u64 = 256 * 1024;
+
+fn read_obsidian_config_file(root: &Path, name: &str) -> Option<String> {
+    let path = root.join(".obsidian").join(name);
+    let meta = fs::symlink_metadata(&path).ok()?;
+    if !meta.is_file() || meta.len() > OBSIDIAN_CONFIG_MAX_BYTES {
+        return None;
+    }
+    fs::read_to_string(&path).ok()
+}
+
+/// Read `.obsidian/daily-notes.json` and `.obsidian/app.json` from `root`.
+/// Fixed names only, never a caller-supplied path, so this cannot become a
+/// way to read arbitrary hidden files.
+pub(crate) fn read_obsidian_config(root: &Path) -> ObsidianConfig {
+    ObsidianConfig {
+        daily_notes: read_obsidian_config_file(root, "daily-notes.json"),
+        app: read_obsidian_config_file(root, "app.json"),
+    }
+}
+
+/// The open graph's Obsidian settings (see [`read_obsidian_config`]).
+#[tauri::command]
+pub async fn obsidian_config_read(
+    generation: Option<u64>,
+    state: State<'_, GraphState>,
+) -> AppResult<ObsidianConfig> {
+    let root = root_for(&state, generation)?;
+    crate::blocking::run_blocking(move || Ok(read_obsidian_config(&root))).await
+}
+
 /// The same note listing as [`list_files`], callable with a plain root — the
 /// iCloud conflict sweep and the index reconcile walk the disk fresh, outside
 /// the cache: reconcile's whole job is to re-verify what is actually there.
@@ -1154,6 +1220,29 @@ pub(crate) fn invalidate_file_catalog(state: &GraphState, root: &Path) {
             ?error,
             "graph state lock poisoned while invalidating catalog"
         ),
+    }
+}
+
+#[cfg(test)]
+mod obsidian_config_tests {
+    use super::*;
+
+    #[test]
+    fn reads_present_files_and_reports_absent_ones() {
+        let dir = tempfile::tempdir().unwrap();
+        assert_eq!(read_obsidian_config(dir.path()), ObsidianConfig::default());
+        fs::create_dir(dir.path().join(".obsidian")).unwrap();
+        fs::write(
+            dir.path().join(".obsidian/daily-notes.json"),
+            r#"{"folder":"Journal/Daily"}"#,
+        )
+        .unwrap();
+        let config = read_obsidian_config(dir.path());
+        assert_eq!(
+            config.daily_notes.as_deref(),
+            Some(r#"{"folder":"Journal/Daily"}"#)
+        );
+        assert_eq!(config.app, None);
     }
 }
 

@@ -38,6 +38,7 @@ describe('createAsset', () => {
       id: 'upload-1',
       desiredName: 'report.pdf',
       generation: 3,
+      dir: null,
     })
   })
 
@@ -81,6 +82,7 @@ describe('importAsset', () => {
       sourcePath: '/Users/me/Downloads/Q3 report.pdf',
       desiredName: 'q3-report.pdf',
       generation: 5,
+      dir: null,
     })
   })
 })

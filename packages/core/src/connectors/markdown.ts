@@ -9,18 +9,21 @@ const MAX_STEM_LENGTH = 120
 /**
  * A readable, filesystem-safe filename stem for `title`: spaces kept (the
  * Obsidian-style naming connector notes follow), unsafe characters dropped,
- * whitespace collapsed, no leading dot. Falls back to `fallback` when nothing
- * printable is left.
+ * whitespace collapsed, no leading dot. Falls back to `fallback`, cleaned the
+ * same way (it often carries a remote id), when nothing printable is left.
  */
 export function connectorFileStem(title: string, fallback: string): string {
-  const cleaned = title
+  return cleanStem(title) || cleanStem(fallback) || 'Untitled'
+}
+
+function cleanStem(text: string): string {
+  return text
     .replaceAll(UNSAFE_FILENAME_CHARS, ' ')
     .replaceAll(/\s+/g, ' ')
     .trim()
     .replace(/^\.+/, '')
     .slice(0, MAX_STEM_LENGTH)
     .trim()
-  return cleaned === '' ? fallback : cleaned
 }
 
 /** A title safe to use as a one-line H1. */

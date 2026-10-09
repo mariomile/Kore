@@ -1,5 +1,6 @@
 import { useEffect, useRef, type ReactElement } from 'react'
 import { createGraphFrameScheduler } from '@/lib/graph-frame-scheduler'
+import { createPaintPacer, paintCircles, paintEdges } from '@/lib/graph-paint'
 import {
   createGraphLayout,
   isSettled,
@@ -136,7 +137,9 @@ export function GraphMapCanvas({
      * whole map stays reachable instead of being clipped by the floor.
      */
     let minScale = MIN_SCALE
+    const pacePaint = createPaintPacer()
     const frames = createGraphFrameScheduler(() => {
+      const frameStart = performance.now()
       if (layout.nodes.length > 0 && !isSettled(layout)) {
         // Keep the existing two steps per frame and the same layout policy.
         stepGraphLayout(layout, layoutEdges)
@@ -145,9 +148,10 @@ export function GraphMapCanvas({
           fitView()
         }
       }
-      draw()
+      const moving = layout.nodes.length > 0 && !isSettled(layout)
+      pacePaint(frameStart, moving, draw)
       // Empty graphs never cool down, so they must not keep a loop alive.
-      return layout.nodes.length > 0 && !isSettled(layout)
+      return moving
     })
     invalidateRef.current = frames.request
 
@@ -265,43 +269,42 @@ export function GraphMapCanvas({
         return searched !== null && id !== undefined && searched.has(id)
       }
 
-      // Edges first, under the nodes.
-      for (const edge of layoutEdges) {
-        const source = layout.nodes[edge.source]
-        const target = layout.nodes[edge.target]
-        if (source === undefined || target === undefined) {
-          continue
-        }
-        const lit = highlight !== null && (edge.source === highlight || edge.target === highlight)
-        const searchDim =
-          highlight === null && searched !== null && !(isMatch(edge.source) && isMatch(edge.target))
-        ctx.strokeStyle = lit ? colorAccent : colorBorder
-        ctx.globalAlpha = lit ? 0.9 : highlight !== null ? 0.35 : searchDim ? 0.2 : 1
-        ctx.lineWidth = (lit ? 1.6 : 1) / viewport.scale
-        ctx.beginPath()
-        ctx.moveTo(source.x, source.y)
-        ctx.lineTo(target.x, target.y)
-        ctx.stroke()
-      }
-
-      for (const [index, node] of layout.nodes.entries()) {
-        const meta = nodes[index]
-        if (meta === undefined) {
-          continue
-        }
-        const isHighlight = index === highlight
-        const isNeighbor = neighborhood?.has(index) ?? false
-        const dimmed = highlight !== null && !isHighlight && !isNeighbor
-        const searchMiss = searched !== null && !isMatch(index)
-        ctx.globalAlpha = dimmed || searchMiss ? 0.3 : 1
-        ctx.fillStyle =
-          isHighlight || (searched !== null && isMatch(index))
-            ? colorAccent
-            : (meta.color ?? (meta.isDaily ? colorMuted : colorSecondary))
-        ctx.beginPath()
-        ctx.arc(node.x, node.y, nodeRadius(meta.inbound), 0, Math.PI * 2)
-        ctx.fill()
-      }
+      // Edges first, under the nodes; both passes batch their shapes.
+      paintEdges(
+        ctx,
+        layout.nodes,
+        layoutEdges,
+        (edge) => {
+          if (highlight !== null) {
+            return edge.source === highlight || edge.target === highlight ? 'lit' : 'context'
+          }
+          return searched !== null && !(isMatch(edge.source) && isMatch(edge.target))
+            ? 'searchDim'
+            : 'base'
+        },
+        { accent: colorAccent, border: colorBorder },
+        viewport.scale,
+      )
+      paintCircles(
+        ctx,
+        layout.nodes,
+        (index) => {
+          const meta = nodes[index]
+          const isHighlight = index === highlight
+          const isNeighbor = neighborhood?.has(index) ?? false
+          const accent = isHighlight || (searched !== null && isMatch(index))
+          return {
+            fill: accent
+              ? colorAccent
+              : (meta?.color ?? (meta?.isDaily === true ? colorMuted : colorSecondary)),
+            receded:
+              (highlight !== null && !isHighlight && !isNeighbor) ||
+              (searched !== null && !isMatch(index)),
+            accent,
+          }
+        },
+        (index) => nodeRadius(nodes[index]?.inbound ?? 0),
+      )
 
       // Labels in a second pass, above every circle, placed greedily in
       // priority order (the spotlight first, then hubs) — a label that would

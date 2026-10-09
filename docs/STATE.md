@@ -1436,6 +1436,27 @@ screen: Agents then Close lands on today.
 
 ## Session log
 
+- 2026-10-09 — Performance at the size of a real vault (~5,150 notes). A
+  deterministic Obsidian-shaped vault (`?seed=obsidian` in plain-browser dev,
+  `apps/desktop/src/dev/seed-obsidian-vault.ts`: dailies, CRM, MOCs, nested
+  frontmatter tags, aliases, path links, image embeds) and an opt-in bench
+  over the real core pipeline and index schema
+  (`KORE_BENCH=1 pnpm exec vitest run --project node apps/desktop/src/dev/vault-bench.test.ts`)
+  found three hot spots, now fixed. Search: FTS5 `snippet()`/`highlight()`
+  ran for every match before the limit; ranking now runs mark-free and a
+  second query marks only the returned rows (`+rowid IN`, so MATCH is not
+  re-run per row). Results are identical (checked on 28 queries); wasm query
+  time 186 → 41 ms for "growth", palette per-key p50 179 → 41 ms, max
+  668 → 89 ms. The CLI's `reflect search` got the same split. Graph: the
+  layout's cutoff grid degraded to O(n²) in a dense cluster; a Barnes–Hut
+  quadtree takes a step from ~174 to ~14 ms, and edges and circles paint
+  in batched paths, paced while the layout settles, so main-thread long
+  tasks in the first ~10 s of opening the map fell from 9.2 s to ~2 s.
+  All notes: `listNotes` skipped tag-schema JSON parsing for columns that
+  cannot hold one, 225 → 51 ms. Not done: first-index time (one-off,
+  dominated by wasm apply in dev), lazy-loading the AI provider SDKs out of
+  the boot chunk. WebKit is verified by CI, not locally.
+
 - 2026-09-21 — Roadmap refreshed against v0.70.2: the 2026-08-30 Now list
   (all four items) is recorded as closed along with Plan 29, Plan 30 and
   split panes, and Now is now the AI-app-control thread, the four pending

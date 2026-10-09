@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { buildFtsMatch, containsUnsegmentedScript, titleRecallNeedles } from './search-query'
+import {
+  buildBodyFtsMatch,
+  buildFtsMatch,
+  containsUnsegmentedScript,
+  titleRecallNeedles,
+} from './search-query'
 
 describe('buildFtsMatch', () => {
   it('returns null for an empty or whitespace-only query', () => {
@@ -53,6 +58,14 @@ describe('buildFtsMatch', () => {
     // though both carry the Unicode `Alphabetic` property.
     expect(buildFtsMatch('hello \u{345}')).toBe('(title : "hello"* OR body : "hello"*)')
     expect(buildFtsMatch('hello \u{24B6}')).toBe('(title : "hello"* OR body : "hello"*)')
+  })
+})
+
+describe('buildBodyFtsMatch', () => {
+  it('matches a body holding any term, with the same quoting as buildFtsMatch', () => {
+    expect(buildBodyFtsMatch('  ')).toBeNull()
+    expect(buildBodyFtsMatch('growth "loop"')).toBe('body : ("growth"* OR """loop"""*)')
+    expect(buildBodyFtsMatch('... ?')).toBe('body : ("..." "?")')
   })
 })
 

@@ -8,14 +8,20 @@ use crate::commands::{require_index, still_public_on_disk};
 use crate::error::CliError;
 use crate::graph::Graph;
 use crate::keys::fold_key;
-use crate::search::{build_fts_match, search_index, SearchHit};
+use crate::search::{build_body_fts_match, build_fts_match, search_index, SearchHit};
 
 pub fn run(graph: &Graph, json: bool, query: &str, limit: usize) -> Result<(), CliError> {
     let (opened, staleness) = require_index(&graph.root)?;
 
-    let hits: Vec<SearchHit> = match build_fts_match(query) {
-        Some(match_expr) => search_index(&opened.conn, &match_expr, &fold_key(query), limit)?,
-        None => Vec::new(),
+    let hits: Vec<SearchHit> = match (build_fts_match(query), build_body_fts_match(query)) {
+        (Some(match_expr), Some(body_match_expr)) => search_index(
+            &opened.conn,
+            &match_expr,
+            &body_match_expr,
+            &fold_key(query),
+            limit,
+        )?,
+        _ => Vec::new(),
     };
     let hits: Vec<SearchHit> = hits
         .into_iter()

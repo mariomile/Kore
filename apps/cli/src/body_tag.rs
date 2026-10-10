@@ -1,11 +1,14 @@
 //! Inline `#tag`s in a note's body — the Rust mirror of
 //! `packages/core/src/markdown/body-tag.ts` (`bodyHasTag`, `appendBodyTag`)
-//! and the tag grammar in `extract.ts`. Tags live in prose, never in
-//! frontmatter, so tagging appends one trailing line and untagging removes
-//! only such a line — prose is the user's.
+//! and the tag grammar in `extract.ts`. Tagging appends one trailing line and
+//! untagging removes only such a line — prose is the user's. Frontmatter
+//! `tags:` is the second membership source (`frontmatterTagNames`), read here
+//! so neither command misses a tag declared there.
 
+use saphyr::{Scalar, Yaml};
 use unicode_general_category::{get_general_category, GeneralCategory};
 
+use crate::frontmatter_values::parse_mapping;
 use crate::keys::fold_tag;
 use crate::write::line_ending;
 use reflect_note_policy::split_frontmatter;
@@ -38,6 +41,46 @@ pub fn is_tag_name(value: &str) -> bool {
         && chars.all(|character| {
             is_letter(character) || is_number(character) || matches!(character, '/' | '_' | '-')
         })
+}
+
+/// The entries of a frontmatter block's `tags:` key, as written: each list
+/// item that is a string, or the comma/space-separated words of a string
+/// value. Malformed YAML or any other shape yields none.
+pub fn frontmatter_tag_entries(raw: Option<&str>) -> Vec<String> {
+    let Some(mapping) = raw.and_then(parse_mapping) else {
+        return Vec::new();
+    };
+    match mapping.get(&Yaml::Value(Scalar::String("tags".into()))) {
+        Some(Yaml::Sequence(items)) => items
+            .iter()
+            .filter_map(|item| match item {
+                Yaml::Value(Scalar::String(text)) => Some(text.to_string()),
+                _ => None,
+            })
+            .collect(),
+        Some(Yaml::Value(Scalar::String(text))) => text
+            .split(|character: char| character == ',' || character.is_whitespace())
+            .filter(|word| !word.is_empty())
+            .map(str::to_string)
+            .collect(),
+        _ => Vec::new(),
+    }
+}
+
+/// The tag name a frontmatter entry declares (`#` tolerated), when the
+/// `#tag` grammar accepts it — the mirror of `frontmatterTagNames`.
+pub fn frontmatter_tag_name(entry: &str) -> Option<&str> {
+    let name = entry.trim().trim_start_matches('#');
+    is_tag_name(name).then_some(name)
+}
+
+/// Whether frontmatter `tags:` declares `tag`, folded the way the index folds it.
+pub fn frontmatter_has_tag(raw: Option<&str>, tag: &str) -> bool {
+    let wanted = fold_tag(tag);
+    frontmatter_tag_entries(raw)
+        .iter()
+        .filter_map(|entry| frontmatter_tag_name(entry))
+        .any(|name| fold_tag(name) == wanted)
 }
 
 /// Every `#tag` in `text` the grammar accepts: at the start or after

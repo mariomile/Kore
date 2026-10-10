@@ -285,6 +285,35 @@ The product vocabulary and interfaces are:
 | Template | Markdown used only to seed a new note; the created note owns the resulting content and properties. |
 | Agent / chat | An actor over the same graph, notes, properties, links, relations, collections, and views, subject to the existing privacy and edit gates. |
 
+## Amendment D (2026-10-09) — Frontmatter `tags:` is a second membership source
+
+A note's tags are now the **union** of body `#hashtags` and the frontmatter
+`tags:` key. The follow-up the last known consequence left open is decided:
+Obsidian vaults carry their taxonomy in `tags:` (3,940 of the 5,100 notes in
+the vault Kore is replacing Obsidian for, against 167 with any body tag), and
+reading only the body left that taxonomy invisible to tags, collections and
+filters.
+
+- **Shapes.** A YAML list (flow or block) or one string of comma- or
+  space-separated names, each with an optional leading `#`. Entries the `#tag`
+  grammar rejects (a number, a name with spaces) are skipped, so a frontmatter
+  tag is always one a body hashtag could have produced. The extractor is
+  `frontmatterTagNames` (`packages/core/src/markdown/extract.ts`), mirrored by
+  the CLI's `frontmatter_tag_entries` / `frontmatter_tag_name`.
+- **Order.** Frontmatter names come first and win the display casing over a
+  later inline mention of the same tag.
+- **`tags` is reserved.** It joins `RESERVED_FRONTMATTER_KEYS`, so it no longer
+  projects as a `note_properties` row and cannot be a schema property key.
+- **Writes.** The "this note is a #book" gestures, the Type field and the chat's
+  `set_note_type`, add the tag to `tags:` (`addNoteTag`), so typing a note no
+  longer touches its text. Removing a type clears it from both sources
+  (`removeNoteTag`). The editor, the bulk action, collection rows and
+  `reflect tag` still write the body hashtag, which stays valid forever; `reflect
+  tag` leaves a note already declaring the tag in `tags:` alone, and `reflect
+  untag` drops the `tags:` entry.
+- **Reprojection.** No SQL migration; `PROJECTION_VERSION` 26 and
+  `PARSED_NOTE_VERSION` 7 rebuild the projection on next open.
+
 ## Known consequences
 
 - Retitling a tag-definition note through the ordinary rename pipeline would move
@@ -301,8 +330,7 @@ The product vocabulary and interfaces are:
 - Tag notes are reachable by search and wiki links (intended: the supertag is
   a node); they stay out of All Notes, recents, and the daily stream via the
   existing `kind = 'note'` filters.
-- Obsidian's `tags:` frontmatter key is **not** adopted as a tag source: in
-  Reflect a tag is derived from `#tag` in the body (TDR 0004), so a vault
-  using frontmatter tags sees `tags:` projected as an ordinary
-  `note_properties` row, not as membership in a Collection. Widening tag
-  extraction to frontmatter is a possible follow-up, decided separately.
+- ~~Obsidian's `tags:` frontmatter key is **not** adopted as a tag source.~~
+  Superseded by Amendment D: `tags:` is membership. A vault that used `tags:`
+  as a data column loses that column, and notes already declaring `tags:`
+  join those tags' collections on the first open after the upgrade.

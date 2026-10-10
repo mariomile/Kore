@@ -18,7 +18,7 @@ import { useGraph } from '@/providers/graph-provider'
 
 /** One offered tag: what would be written, with its schema when it has one. */
 interface TypeOption {
-  /** The exact string `appendBodyTag` would write. */
+  /** The exact string `addNoteTag` would write. */
   tag: string
   tagKey: string
   type: TagType | null

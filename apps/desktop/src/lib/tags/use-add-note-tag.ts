@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import {
-  appendBodyTag,
+  addNoteTag,
   errorMessage,
   getTagType,
   missingCreatedStamps,
@@ -13,16 +13,14 @@ import { invalidateOnNextIndexApply } from './use-commit-note-property'
 
 /**
  * Set a tag on a note from the Type field — the write behind the type picker,
- * and the mirror of `useRemoveNoteTag`. The hashtag is still the supertag
- * (TDR 0005), so this appends `#tag` on its own trailing line exactly as the
- * editor, the bulk action and `reflect tag` do; the note's properties header
- * then shows it as a chip and the editor collapses the line, so the user sees
- * a field, not prose.
+ * and the mirror of `useRemoveNoteTag`. The tag lands in frontmatter `tags:`
+ * (TDR 0005 amendment), so typing a note never touches its text; the note's
+ * properties header shows it as a chip.
  *
  * The tag and the type's `created` stamps land in **one** transform, so a
  * half-applied membership is impossible: the note either joins the collection
  * with its stamps or stays byte-identical. A note that already carries the
- * tag is left alone (`appendBodyTag` returns null), stamps included — a
+ * tag from either source is left alone (`addNoteTag` returns null), stamps included — a
  * second set must not move an existing date.
  */
 export function useAddNoteTag(): (path: string, tag: string) => Promise<void> {
@@ -40,7 +38,7 @@ export function useAddNoteTag(): (path: string, tag: string) => Promise<void> {
         await commitNoteBodyTransform(
           path,
           (source) => {
-            const tagged = appendBodyTag(source, tag)
+            const tagged = addNoteTag(source, tag)
             if (tagged === null) {
               return source
             }

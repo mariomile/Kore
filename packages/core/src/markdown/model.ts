@@ -227,8 +227,10 @@ export interface ParsedTask extends TaskMarker {
  * 4 — task rows carry parent outline/list breadcrumbs.
  * 5 — `wikiLinks` includes frontmatter `[[…]]` occurrences (TDR 0005
  * relations), with file-absolute spans like every body link.
- * 6 — `tasks[].dueTime` from `@HH:MM` after the due-date link. */
-export const PARSED_NOTE_VERSION = 6
+ * 6 — `tasks[].dueTime` from `@HH:MM` after the due-date link.
+ * 7 — `tags` also carries the frontmatter `tags:` names, ahead of body
+ * hashtags (TDR 0005 amendment). */
+export const PARSED_NOTE_VERSION = 7
 
 /** The full parse of one note — the stable contract downstream plans depend on. */
 export interface ParsedNote {

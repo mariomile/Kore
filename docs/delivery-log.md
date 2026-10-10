@@ -7,6 +7,14 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Tags in frontmatter count. A note listed under `tags:` in its frontmatter
+  now belongs to that tag exactly as one carrying `#tag` in its text does:
+  tag sidebar, collections, filters and the tag page all see it. An Obsidian
+  vault whose taxonomy lives in `tags:` stops being invisible. Setting a
+  type from the Type field or from chat now writes `tags:` instead of a
+  hashtag line, and removing one clears it from both places; `reflect untag`
+  does the same.
+
 - Kore starts lighter. The AI SDK and its provider packages, about 670 KB
   of the JavaScript the app parsed at every launch on Mac and iPhone, now
   load the first time an AI feature runs, and only the configured provider

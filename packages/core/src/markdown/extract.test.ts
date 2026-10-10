@@ -165,9 +165,17 @@ describe('parseNote — links, assets, tags, text', () => {
     expect(note.tags).toEqual(['alpha', 'beta/sub'])
   })
 
-  it('ignores a frontmatter tags key as a tag source', () => {
-    const note = parse('---\ntags: [fromfm]\n---\nbody #real')
-    expect(note.tags).toEqual(['real'])
+  it('reads frontmatter tags ahead of body #tags, in every Obsidian shape', () => {
+    expect(parse('---\ntags: [fromfm, Real]\n---\nbody #real').tags).toEqual(['fromfm', 'Real'])
+    expect(parse('---\ntags:\n  - type/book\n  - "#domain/ai"\n---\n').tags).toEqual([
+      'type/book',
+      'domain/ai',
+    ])
+    expect(parse('---\ntags: alpha, beta gamma\n---\n').tags).toEqual(['alpha', 'beta', 'gamma'])
+  })
+
+  it('skips frontmatter tags the #tag grammar rejects', () => {
+    expect(parse('---\ntags: [2024, "two words", ok, {nested: 1}]\n---\n').tags).toEqual(['ok'])
   })
 
   it('produces collapsed plain text (markup stripped, wiki target+alias kept)', () => {

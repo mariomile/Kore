@@ -1,14 +1,15 @@
 import { useCallback } from 'react'
-import { errorMessage, removeBodyTag } from '@reflect/core'
+import { errorMessage, removeNoteTag } from '@reflect/core'
 import { toast } from '@/components/ui/toast'
 import { commitNoteBodyTransform } from '@/lib/note-frontmatter'
 import { useGraph } from '@/providers/graph-provider'
 import { invalidateOnNextIndexApply } from './use-commit-note-property'
 
 /**
- * Unset a typed tag on a note (TDR 0005: the hashtag is the supertag): strip
- * every `#tag` token from the body so the note leaves that collection. The
- * Type field's remove chip is the UI; this is the write.
+ * Unset a typed tag on a note: clear it from frontmatter `tags:` and strip
+ * every `#tag` token from the body, so the note leaves that collection
+ * whichever source put it there. The Type field's remove chip is the UI;
+ * this is the write.
  */
 export function useRemoveNoteTag(): (path: string, tag: string) => void {
   const { graph } = useGraph()
@@ -20,7 +21,7 @@ export function useRemoveNoteTag(): (path: string, tag: string) => void {
       }
       void commitNoteBodyTransform(
         path,
-        (source) => removeBodyTag(source, tag) ?? source,
+        (source) => removeNoteTag(source, tag) ?? source,
         generation,
       )
         .then(() => {

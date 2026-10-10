@@ -11,7 +11,8 @@ use serde::Serialize;
 
 /// The app's own frontmatter keys — never properties, never writable through
 /// `set` (`RESERVED_FRONTMATTER_KEYS`, `packages/core/src/tags/tag-type.ts`).
-pub const RESERVED_KEYS: [&str; 12] = [
+/// `tags` is tag membership, written by `tag` / `untag`, not a data column.
+pub const RESERVED_KEYS: [&str; 13] = [
     "id",
     "title",
     "aliases",
@@ -24,6 +25,7 @@ pub const RESERVED_KEYS: [&str; 12] = [
     "template",
     "cover",
     "icon",
+    "tags",
 ];
 
 pub fn is_reserved_key(key: &str) -> bool {
@@ -201,7 +203,7 @@ mod tests {
     #[test]
     fn extracts_scalars_and_scalar_lists_skipping_reserved_and_nested() {
         let raw = "id: abc\nauthor: Le Guin\nrating: 4.5\nyear: 1974\nread: true\n\
-                   tags:\n  - a\n  - 2\nnested:\n  x: 1\nempty: []\nnothing: null\n";
+                   genres:\n  - a\n  - 2\ntags: [skipped]\nnested:\n  x: 1\nempty: []\nnothing: null\n";
         let properties = extract_properties(Some(raw));
         assert_eq!(
             properties,
@@ -214,7 +216,7 @@ mod tests {
                 ("year".to_string(), PropertyValue::Number(1974.0)),
                 ("read".to_string(), PropertyValue::Bool(true)),
                 (
-                    "tags".to_string(),
+                    "genres".to_string(),
                     PropertyValue::List(vec!["a".into(), "2".into()])
                 ),
             ]

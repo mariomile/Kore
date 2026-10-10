@@ -39,7 +39,7 @@ hashtag, which stays valid. No hierarchy semantics for nested tags
 (daily notes, attachments, new-note folder) belongs to the "Profilo vault
 Obsidian" thread.
 
-**Validation:** core + desktop node project 122 files / 996 tests; browser
+**Validation:** `core-node` project 168 files / 2307 tests and desktop node project 122 files / 996 tests; browser
 tests for the five affected files (Type field header and rail, chat note-type
 card, `use-add-note-tag`, `use-apply-note-type`) 24/24 on **Chromium only**,
 WebKit left to CI (not installable in this container); `cargo test -p

@@ -1,5 +1,33 @@
 # Kore working state
 
+## Folders shelf in the sidebar, 2026-10-10
+
+User ask: make Kore outstanding for personal knowledge management. Mario's
+vault is organized by folder (`Active/Projects/<Project>/…`, `CRM/People`,
+`Input/Readwise`, `Knowledge`) and he browses projects by folder in
+Obsidian. Kore's principle is association over hierarchy, so this is a
+read-only way in, not folder management; whether to keep it is Mario's call
+(decision card in the project chat).
+
+- [x] Core: `getFolderTree` / `buildFolderTree` / `hasOwnFolders`
+  (`packages/core/src/indexing/folder-tree.ts`) group indexed note paths
+  into a tree, folders first, natural sort, with per-folder note counts.
+  Built from the index, so hidden folders and Obsidian-excluded files never
+  appear.
+- [x] Sidebar: a new **Folders** shelf (`sidebar-folders.tsx`), a sortable
+  section like Pinned and Types (new `folders` id in `sidebarSections`;
+  existing arrangements get it appended at the end). Folders expand per
+  session; a note row opens the note, ⌘-click opens it in a split. Only
+  expanded folders render. Nothing moves, renames or creates folders.
+- [x] Hidden for a Kore-shaped vault whose notes live only in `daily/`,
+  `notes/`, `templates/` and `tags/`.
+- Not done: revealing the open note in the tree, and any folder editing
+  (deliberately out of scope).
+
+**Validation:** core node tests (`folder-tree.test.ts`, settings schema) and
+the sidebar browser test on Chromium; typecheck and lint clean. WebKit is
+left to CI. Not tried on the real vault on the Mac.
+
 ## Obsidian vault profile, 2026-10-10
 
 - [x] Kore reads an adopted vault's `.obsidian/daily-notes.json` and

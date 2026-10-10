@@ -7,6 +7,13 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Browse the vault by folder. A Folders shelf in the sidebar shows the
+  vault's folders as a tree with note counts; expanding a folder lists its
+  notes and clicking one opens it (⌘-click opens it beside the current
+  note). It only browses: nothing is moved, renamed or created. Hidden
+  folders and Obsidian-excluded files stay out, and a vault that keeps
+  Kore's own `daily/` and `notes/` layout doesn't see the shelf at all.
+
 - Kore opens an Obsidian vault on its own terms. When the folder has an
   `.obsidian` settings folder, Kore reads it: today's note is the vault's
   own daily file (`Journal/Daily/09-10-2026.md`, not a new `daily/`

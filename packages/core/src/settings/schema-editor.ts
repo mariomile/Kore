@@ -158,7 +158,7 @@ export const contextSidebarWidthSchema = sidebarWidthValueSchema(CONTEXT_SIDEBAR
  * the fixed navigation. A closed set of ids — the sections themselves live in
  * the app; this key only records the arrangement the user dragged them into.
  */
-const sidebarSectionEnum = z.enum(['open', 'pinned', 'tags'])
+const sidebarSectionEnum = z.enum(['open', 'pinned', 'folders', 'tags'])
 
 export type SidebarSection = z.infer<typeof sidebarSectionEnum>
 

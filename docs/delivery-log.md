@@ -7,6 +7,11 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Obsidian canvases open in Kore. A vault's `.canvas` files show as a board
+  you can pan and zoom, with their text cards, note previews, images, links,
+  groups and labelled arrows in the colors set in Obsidian. Kore only reads
+  them, so the same canvases keep working in Obsidian.
+
 - Obsidian Bases work in Kore. A vault's `.base` files open as live views
   (tables, cards, lists and kanban boards) with their filters, formulas,
   sorting and grouping, and `![[Home.base#Projects]]` embeds render inside

@@ -1,5 +1,37 @@
 # Kore working state
 
+## Obsidian Canvas, read-only, 2026-10-10
+
+User ask (brainstorm, Mario 15:38): read-only Canvas. His vault has a few
+`.canvas` files (`_system/Vault Map.canvas`, `vault-overview`,
+`claudian-architecture`, project canvases) that Kore showed as bare
+attachments. Kore now draws them and never writes them.
+
+- [x] Core (`packages/core/src/canvas/`): a lenient JSON Canvas 1.0 parser
+  (text, file with `subpath`, link and group nodes; edges with sides, ends,
+  colors and labels; malformed or dangling entries skipped) and the edge
+  geometry (side anchors, the facing side when an edge names none, cubic
+  curves, arrowheads, label midpoint).
+- [x] Desktop and iPhone: a `canvas` route and tab (`Canvases` command lists
+  every canvas), a board that pans (scroll, drag, arrows) and zooms (pinch,
+  ⌘-scroll, `+`/`-`, `0` fits). Text cards render Markdown with live wiki
+  links; file cards preview the note (title only below 25% zoom), show
+  images, and open canvases and bases in Kore; link cards open on click
+  with nothing remote loaded on open. Preset and hex colors tint cards,
+  groups and edges. `[[X.canvas]]` links and attachment clicks open the
+  canvas.
+- [x] `.canvas` is an attachment extension (TS, Rust `graph-paths`, the
+  shared fixture).
+- Not done: pinch-zoom on iPhone (one-finger pan and the zoom buttons
+  work there), editing, `![[X.canvas]]` rendered inline in a note (it stays an
+  attachment chip that opens the canvas), group background images.
+
+**Validation:** core `canvas.test.ts` (parser, geometry), desktop browser
+`canvas-screen.test.tsx` and a rendered check of the board on Chromium;
+route/open-tab/deep-link/command suites; typecheck and lint clean. WebKit
+is left to CI. Not tried on the real canvases: next, Mario opens
+`_system/Vault Map.canvas` in Kore on the Mac.
+
 ## Obsidian Bases, 2026-10-10
 
 User ask: make Kore a PKM tool worth switching to. Mario's vault runs on

@@ -4,6 +4,7 @@ import type { CodeBlockRenderer } from '@meowdown/react'
 import {
   detectConflictMarkers,
   isBasePath,
+  isCanvasPath,
   formatCollectionEmbedBody,
   parseCollectionEmbedBody,
 } from '@reflect/core'
@@ -188,6 +189,10 @@ export function NotePaneComponent({
       // A `.base` chip opens Kore's own Base screen, not Obsidian.
       if (isBasePath(assetPath)) {
         navigate({ kind: 'base', path: assetPath, view: null })
+        return
+      }
+      if (isCanvasPath(assetPath)) {
+        navigate({ kind: 'canvas', path: assetPath })
         return
       }
       if (viewableAssetKind(assetPath) !== null) {

@@ -1,12 +1,15 @@
 import { useCallback } from 'react'
 import {
   errorMessage,
+  noteLinkHeading,
   normalizeWikiTarget,
   resolveExistingWikiTarget,
   resolveOrCreateNoteWithTitle,
   resolveWikiTarget,
+  wikiNoteReference,
 } from '@reflect/core'
 import { reportAmbiguousNoteTitle } from '@/editor/ambiguous-note-feedback'
+import { revealNoteHeading } from '@/editor/editor-handle-registry'
 import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'
 import { startOperation } from '@/lib/operations'
 import { useLinkIntentGuard } from '@/lib/windows/use-link-intent-guard'
@@ -33,6 +36,11 @@ function reportUnavailableNoteTitle(title: string): void {
  * in-place navigation on surfaces without panes, so the request never makes
  * a link do nothing.
  *
+ * A `#Heading` fragment (`[[Plan#Next steps]]`) scrolls the opened note to
+ * that heading once its editor is on screen. A bare `[[#Next steps]]` never
+ * leaves `sourcePath`: it scrolls the note it is written in, and is a no-op on
+ * surfaces that pass no source note.
+ *
  * Resolution is async, and the host pane can unmount or the user can act
  * again while it's in flight — a late navigate would yank the user somewhere
  * they've already left, so every navigation is gated on the shared link
@@ -40,20 +48,33 @@ function reportUnavailableNoteTitle(title: string): void {
  *
  * @param generation the open graph's write generation (`GraphInfo.generation`),
  *   or `null` when no graph is writable.
+ * @param sourcePath the note the links are written in, when the surface is
+ *   that note's own editor.
  * @returns a stable-per-`generation` click handler for the editor's wiki-link
  *   extension.
  */
 export function useWikiLinkNavigation(
   generation: number | null,
+  sourcePath?: string,
 ): (options: { target: string; openInSplit: boolean }) => void {
   const navigateNoteLink = useNoteLinkNavigation()
   const beginLinkIntent = useLinkIntentGuard()
 
   return useCallback(
     ({ target, openInSplit }: { target: string; openInSplit: boolean }) => {
+      const heading = noteLinkHeading(target)
+      if (wikiNoteReference(target)?.kind === 'self') {
+        if (heading !== null && sourcePath !== undefined) {
+          revealNoteHeading(sourcePath, heading)
+        }
+        return
+      }
       const isStale = beginLinkIntent()
-      const open = (route: NoteRoute): void => {
+      const open = (route: NoteRoute, path?: string): void => {
         navigateNoteLink({ target: route, openInSplit })
+        if (heading !== null && path !== undefined) {
+          revealNoteHeading(path, heading)
+        }
       }
       void (async () => {
         try {
@@ -67,11 +88,11 @@ export function useWikiLinkNavigation(
               if (isStale()) {
                 return
               }
-              open(
-                resolution.kind === 'resolved'
-                  ? routeForPath(resolution.ref)
-                  : { kind: 'daily', date: normalized.date },
-              )
+              if (resolution.kind === 'resolved') {
+                open(routeForPath(resolution.ref), resolution.ref)
+              } else {
+                open({ kind: 'daily', date: normalized.date })
+              }
               return
             }
 
@@ -80,7 +101,7 @@ export function useWikiLinkNavigation(
               return
             }
             if (resolution.kind === 'resolved') {
-              open(routeForPath(resolution.path))
+              open(routeForPath(resolution.path), resolution.path)
             } else if (resolution.kind === 'missing') {
               open({ kind: 'daily', date: normalized.date })
             } else if (resolution.kind === 'ambiguous') {
@@ -100,7 +121,7 @@ export function useWikiLinkNavigation(
             } else if (outcome.kind === 'unavailable') {
               reportUnavailableNoteTitle(normalized.raw)
             } else {
-              open(routeForPath(outcome.path))
+              open(routeForPath(outcome.path), outcome.path)
             }
             return
           }
@@ -113,7 +134,7 @@ export function useWikiLinkNavigation(
             // Deliberately no focus request: on mobile, focusing mid-arrival
             // raises the keyboard through the stack animation. Desktop
             // autofocuses note arrivals on its own.
-            open(routeForPath(resolution.ref))
+            open(routeForPath(resolution.ref), resolution.ref)
           }
         } catch (err) {
           console.error('wiki-link resolution failed:', err)
@@ -121,6 +142,6 @@ export function useWikiLinkNavigation(
         }
       })()
     },
-    [beginLinkIntent, generation, navigateNoteLink],
+    [beginLinkIntent, generation, navigateNoteLink, sourcePath],
   )
 }

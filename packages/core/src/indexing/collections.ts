@@ -152,7 +152,8 @@ export function compareCollectionEntries(
 
 const propertyValueTypes: ReadonlySet<string> = new Set(['string', 'number', 'boolean', 'list'])
 
-function collectionValue(row: {
+/** A stored `note_properties` row as its typed value; unknown types read as strings. */
+export function collectionValue(row: {
   value: string
   valueType: string
   valueNumber: number | null

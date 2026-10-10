@@ -64,6 +64,10 @@ export {
   dailyDatesInRange,
   getBacklinks,
   getBacklinksWithContext,
+  getNoteAncestors,
+  getNoteChildren,
+  getNoteParents,
+  PARENT_PROPERTY_KEY,
   getConflictedNotes,
   getDuplicateNoteIds,
   getIndexMeta,
@@ -88,6 +92,7 @@ export {
   listDailyNotes,
   resolveWikiTarget,
   type Backlink,
+  type HierarchyNote,
   type BacklinkContext,
   type BacklinkContextPage,
   type BacklinkContextPageOptions,
@@ -156,6 +161,13 @@ export {
   type RecentNotesOptions,
 } from './note-list'
 export { sortNoteList } from './note-list-sort'
+export {
+  buildFolderTree,
+  getFolderTree,
+  hasOwnFolders,
+  type FolderTreeFolder,
+  type FolderTreeNote,
+} from './folder-tree'
 export {
   rankWikiSuggestions,
   mergeDateSuggestions,

@@ -37,6 +37,59 @@ copies of all 34 real `.base` files parsed and ran every view without an
 error (not committed: it reads vault data). WebKit is left to CI. Next:
 Mario opens `Home` in Kore on the Mac.
 
+## Folders shelf in the sidebar, 2026-10-10
+
+User ask: make Kore outstanding for personal knowledge management. Mario's
+vault is organized by folder (`Active/Projects/<Project>/…`, `CRM/People`,
+`Input/Readwise`, `Knowledge`) and he browses projects by folder in
+Obsidian. Kore's principle is association over hierarchy, so this is a
+read-only way in, not folder management; whether to keep it is Mario's call
+(decision card in the project chat).
+
+- [x] Core: `getFolderTree` / `buildFolderTree` / `hasOwnFolders`
+  (`packages/core/src/indexing/folder-tree.ts`) group indexed note paths
+  into a tree, folders first, natural sort, with per-folder note counts.
+  Built from the index, so hidden folders and Obsidian-excluded files never
+  appear.
+- [x] Sidebar: a new **Folders** shelf (`sidebar-folders.tsx`), a sortable
+  section like Pinned and Types (new `folders` id in `sidebarSections`;
+  existing arrangements get it appended at the end). Folders expand per
+  session; a note row opens the note, ⌘-click opens it in a split. Only
+  expanded folders render. Nothing moves, renames or creates folders.
+- [x] Hidden for a Kore-shaped vault whose notes live only in `daily/`,
+  `notes/`, `templates/` and `tags/`.
+- Not done: revealing the open note in the tree, and any folder editing
+  (deliberately out of scope).
+
+**Validation:** core node tests (`folder-tree.test.ts`, settings schema) and
+the sidebar browser test on Chromium; typecheck and lint clean. WebKit is
+left to CI. Not tried on the real vault on the Mac.
+
+## Hierarchy from `up:`, 2026-10-10
+
+Part of the PKM review ("Kore come strumento PKM"): 2,449 notes in
+marioverse.ai carry `up:` pointing at a MOC, and Kore only counted it as a
+backlink.
+
+- [x] Core: `getNoteParents`, `getNoteAncestors`, `getNoteChildren`
+  (`packages/core/src/indexing/queries-hierarchy.ts`). They join the
+  backlinks view with the `up` row of `note_properties` and keep a link
+  only when its raw target is one the `up` value names, so `related:` and
+  body links never make a parent. No schema or projection change: frontmatter
+  links (v21) and properties were already indexed.
+- [x] Breadcrumb above the title (`NoteBreadcrumb`, in `NotePane`, so desktop
+  and iPhone both get it): first parent at each step, root first, stops at
+  a cycle or 32 levels.
+- [x] "Child notes (N)" above Incoming backlinks (`NoteChildrenPanel`, desktop
+  pane and mobile note screen): by title, first 20 then "Show all".
+- [x] The flow-test harness now writes `note_properties` rows too.
+
+**Validation:** new core flow test (breadcrumb, children, `related:` ignored,
+cycle); core indexing suite; mobile note screen and route tests on Chromium;
+checked on screen in the browser dev build with `?seed=obsidian` (Startup
+MOC shows "Product MOC" above its title and 255 child notes). WebKit left to
+CI. Not tried on the real vault.
+
 ## Obsidian vault profile, 2026-10-10
 
 - [x] Kore reads an adopted vault's `.obsidian/daily-notes.json` and

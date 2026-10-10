@@ -8,6 +8,8 @@ import {
   parseCollectionEmbedBody,
 } from '@reflect/core'
 import { BacklinksPanel } from '@/components/backlinks-panel'
+import { NoteBreadcrumb } from '@/components/note-breadcrumb'
+import { NoteChildrenPanel } from '@/components/note-children-panel'
 import { parseBodyEmbeds, sameBodyEmbeds, type BodyEmbeds } from '@/components/body-embeds'
 import { UnlinkedMentionsPanel } from '@/components/unlinked-mentions-panel'
 import { InlineAlert } from '@/components/inline-alert'
@@ -413,6 +415,7 @@ export function NotePaneComponent({
         )}
         {showBacklinks ? (
           <>
+            <NoteChildrenPanel key={path} path={path} />
             <BacklinksPanel path={path} />
             <UnlinkedMentionsPanel path={path} />
           </>
@@ -433,6 +436,8 @@ export function NotePaneComponent({
   return (
     <div className={cn('relative', className)} aria-label={`Editing ${path}`}>
       <div className={gutterClassName}>
+        <NoteBreadcrumb path={path} />
+
         {document.error !== null ? (
           <InlineAlert tone="error" className="mb-4">
             Saving failed: {document.error}. Your edits are kept in the editor and the next
@@ -581,6 +586,7 @@ export function NotePaneComponent({
 
       {showBacklinks ? (
         <div className={gutterClassName}>
+          <NoteChildrenPanel key={path} path={path} />
           <BacklinksPanel path={path} />
           <UnlinkedMentionsPanel path={path} />
         </div>

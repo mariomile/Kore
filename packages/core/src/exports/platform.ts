@@ -135,6 +135,7 @@ export {
 export {
   wikiNoteReference,
   markdownNoteReference,
+  noteLinkHeading,
   noteBasenameKey,
   type NoteReference,
 } from '../graph/note-reference'

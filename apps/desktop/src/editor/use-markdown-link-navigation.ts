@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
-import { errorMessage, resolveExistingMarkdownTarget } from '@reflect/core'
+import { errorMessage, noteLinkHeading, resolveExistingMarkdownTarget } from '@reflect/core'
 import { reportAmbiguousNoteTitle } from '@/editor/ambiguous-note-feedback'
+import { revealNoteHeading } from '@/editor/editor-handle-registry'
 import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'
 import { startOperation } from '@/lib/operations'
 import { useLinkIntentGuard } from '@/lib/windows/use-link-intent-guard'
@@ -12,7 +13,8 @@ import { routeForPath } from '@/routing/route'
  * resolves source-relative from `sourcePath` (vault-root for a leading `/`),
  * with the same branch shape as wiki links except that `missing` is a no-op:
  * an unqualified href has two candidate physical locations, so creation would
- * have to guess where the file belongs.
+ * have to guess where the file belongs. A `#heading` fragment scrolls the
+ * opened note to that heading, as it does for wiki links.
  */
 export function useMarkdownLinkNavigation(
   generation: number | null,
@@ -35,6 +37,10 @@ export function useMarkdownLinkNavigation(
           }
           if (resolution.kind === 'resolved') {
             navigateNoteLink({ target: routeForPath(resolution.path), openInSplit })
+            const heading = noteLinkHeading(href)
+            if (heading !== null) {
+              revealNoteHeading(resolution.path, heading)
+            }
           } else if (resolution.kind === 'ambiguous') {
             reportAmbiguousNoteTitle('Opening link', href)
           } else if (resolution.kind === 'unavailable') {

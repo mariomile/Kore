@@ -9,10 +9,9 @@ import { isNotePath, isSafeVisibleGraphPath } from './paths'
  * file wins, a note title is the fallback), and `self` is a bare `#Heading`
  * that never leaves its source note.
  *
- * A `#fragment` is stripped and discarded: it must not reach the lookup (or
- * `[[Plan#Next]]` would search for a note called `Plan#Next`), and Reflect
- * does not navigate to headings. Restoring that feature means returning the
- * stripped value from here, nothing more.
+ * A `#fragment` is stripped: it must not reach the lookup (or `[[Plan#Next]]`
+ * would search for a note called `Plan#Next`). Navigation reads it separately
+ * with {@link noteLinkHeading} and scrolls the opened note to that heading.
  */
 export type NoteReference =
   | { readonly kind: 'path'; readonly path: string }
@@ -170,6 +169,28 @@ export function markdownNoteReference(sourcePath: string, href: string): NoteRef
     rooted ? path.slice(1) : path,
   )
   return resolved === null ? null : { kind: 'path', path: resolved }
+}
+
+/**
+ * The heading a note link points at: the text after the first `#` of a wiki
+ * target (`[[Plan#Next steps]]`) or a Markdown href (`Plan.md#next-steps`),
+ * or null when there is none. Obsidian's nested form `[[Plan#Goals#Q4]]`
+ * names its last heading, and a block reference (`[[Plan#^a1b2]]`) is not a
+ * heading at all. The value is returned as authored; the editor matches it
+ * against heading text and GitHub-style slugs, percent-decoding first.
+ */
+export function noteLinkHeading(target: string): string | null {
+  const hash = target.indexOf('#')
+  if (hash === -1) {
+    return null
+  }
+  const heading = (
+    target
+      .slice(hash + 1)
+      .split('#')
+      .at(-1) ?? ''
+  ).trim()
+  return heading === '' || heading.startsWith('^') ? null : heading
 }
 
 /** The filename-stem key a note publishes as its weakest address. */

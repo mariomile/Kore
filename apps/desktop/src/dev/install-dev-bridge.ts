@@ -26,11 +26,15 @@ export function installDevBridge(platform: AppPlatform): Promise<void> {
 async function install(platform: AppPlatform): Promise<void> {
   const index = await createDevIndexDb()
   // `?seed=large` swaps the demo graph for the profiling vault (thousands
-  // of notes); its module only loads when asked for.
+  // of notes), `?seed=obsidian` for the Obsidian-shaped one; their modules
+  // only load when asked for.
+  const seedName = new URLSearchParams(window.location.search).get('seed')
   const seed =
-    new URLSearchParams(window.location.search).get('seed') === 'large'
+    seedName === 'large'
       ? (await import('@/dev/seed-large-graph')).seedLargeGraphFiles()
-      : seedGraphFiles()
+      : seedName === 'obsidian'
+        ? (await import('@/dev/seed-obsidian-vault')).seedObsidianVaultFiles()
+        : seedGraphFiles()
   const files = createDevFileStore(seed)
   setBridge(createDevBridge({ platform, files, index }))
   // No watcher exists in plain-browser dev (the Rust watcher is desktop's

@@ -80,6 +80,10 @@ describe('settingsSchema', () => {
       mcpServers: [],
       memoryWriteApproval: false,
       aiPrompts: [],
+      connectors: {
+        readwise: { enabled: false, folder: null, lastSyncedAt: null, importFrom: null },
+        granola: { enabled: false, folder: null, lastSyncedAt: null, importFrom: null },
+      },
       savedSearches: [],
       collectionSorts: {},
       collectionGroups: {},
@@ -442,6 +446,10 @@ describe('settingsSchema', () => {
       mcpServers: [],
       memoryWriteApproval: false,
       aiPrompts: [],
+      connectors: {
+        readwise: { enabled: false, folder: null, lastSyncedAt: null, importFrom: null },
+        granola: { enabled: false, folder: null, lastSyncedAt: null, importFrom: null },
+      },
       savedSearches: [],
       collectionSorts: {},
       collectionGroups: {},
@@ -842,6 +850,26 @@ describe('settingsSchema', () => {
           ],
         },
       ],
+    })
+  })
+})
+
+describe('connectors settings', () => {
+  it('keeps a valid entry and degrades a mangled one to off on its own', () => {
+    const parsed = settingsSchema.parse({
+      connectors: {
+        readwise: { enabled: true, folder: 'Library', lastSyncedAt: '2026-10-09T10:00:00.000Z' },
+        granola: { enabled: 'yes' },
+      },
+    })
+    expect(parsed.connectors).toEqual({
+      readwise: {
+        enabled: true,
+        folder: 'Library',
+        lastSyncedAt: '2026-10-09T10:00:00.000Z',
+        importFrom: null,
+      },
+      granola: { enabled: false, folder: null, lastSyncedAt: null, importFrom: null },
     })
   })
 })

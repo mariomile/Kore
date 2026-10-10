@@ -9,6 +9,8 @@
 //! `search-query.ts` is the TS twin). The CLI adds its privacy filter
 //! (`notes.is_private = 0`) and FTS5 `snippet()`.
 
+use std::collections::HashMap;
+
 use rusqlite::types::Value;
 use rusqlite::{params_from_iter, Connection};
 use unicode_normalization::char::is_combining_mark;
@@ -116,6 +118,32 @@ pub fn build_fts_match(query: &str) -> Option<String> {
     )
 }
 
+/// The body half of [`build_fts_match`], the twin of `buildBodyFtsMatch`
+/// (`search-query.ts`): rows whose body holds a word prefix of any term —
+/// exactly the rows where `snippet()` on the body column marks a match.
+/// Ranking asks "did the body match?" with this one extra FTS pass instead of
+/// a snippet per hit. `None` exactly when [`build_fts_match`] is.
+pub fn build_body_fts_match(query: &str) -> Option<String> {
+    let terms = search_terms(query);
+    if terms.is_empty() {
+        return None;
+    }
+    if !terms.iter().any(|term| is_tokenizable(term)) {
+        let phrases = terms
+            .into_iter()
+            .map(quote_fts_literal)
+            .collect::<Vec<_>>()
+            .join(" ");
+        return Some(format!("body : ({phrases})"));
+    }
+    let prefixes = terms
+        .into_iter()
+        .map(|term| format!("{}*", quote_fts_literal(term)))
+        .collect::<Vec<_>>()
+        .join(" OR ");
+    Some(format!("body : ({prefixes})"))
+}
+
 /// One search result row.
 #[derive(Debug)]
 pub struct SearchHit {
@@ -160,9 +188,15 @@ const RANK_EXPR: &str = "bm25(search_fts, 0, 10.0, 1.0)";
 /// recall keep an empty snippet and score `0`, while tokenizer-normalized title
 /// matches retain their lexical rank. The caller re-checks each hit's file
 /// frontmatter (the index row may lag a just-flagged note).
+///
+/// `snippet()` costs far more than the match, and a broad term matches most
+/// of a big graph, so the CTE carries only rowid and bm25: a second, body-only
+/// MATCH (`body_match_expr`, from [`build_body_fts_match`]) supplies the one
+/// fact ranking needs, and snippets are computed for the returned rows only.
 pub fn search_index(
     conn: &Connection,
     match_expr: &str,
+    body_match_expr: &str,
     title_key: &str,
     limit: usize,
 ) -> Result<Vec<SearchHit>, CliError> {
@@ -177,22 +211,28 @@ pub fn search_index(
         .collect::<Vec<String>>()
         .join(" AND ");
     let limit_parameter = needles.len() + 3;
+    let body_parameter = needles.len() + 4;
     let mut statement = conn.prepare(&format!(
         "WITH lexical AS MATERIALIZED (
-           SELECT path, snippet(search_fts, 2, char(1), char(2), '…', 12) AS snippet,
-                  {RANK_EXPR} AS rank
+           SELECT path, rowid AS fts_rowid, {RANK_EXPR} AS rank
            FROM search_fts
            WHERE search_fts MATCH ?1
+         ),
+         body_hits AS MATERIALIZED (
+           SELECT rowid AS fts_rowid
+           FROM search_fts
+           WHERE search_fts MATCH ?{body_parameter}
          )
-         SELECT notes.path, notes.title, coalesce(lexical.snippet, ''),
+         SELECT notes.path, notes.title, lexical.fts_rowid,
                 CASE
-                  WHEN instr(coalesce(lexical.snippet, ''), char(1)) > 0
+                  WHEN body_hits.fts_rowid IS NOT NULL
                     OR NOT ({title_term_predicate})
                     THEN coalesce(lexical.rank, 0)
                   ELSE 0
                 END AS effective_rank
          FROM notes
          LEFT JOIN lexical ON lexical.path = notes.path
+         LEFT JOIN body_hits ON body_hits.fts_rowid = lexical.fts_rowid
          WHERE (lexical.path IS NOT NULL OR ({title_term_predicate}))
            AND notes.is_private = 0 AND notes.kind != 'template'
          ORDER BY CASE
@@ -213,31 +253,85 @@ pub fn search_index(
     ];
     parameters.extend(needles.into_iter().map(Value::Text));
     parameters.push(Value::Integer(limit as i64));
+    parameters.push(Value::Text(body_match_expr.to_owned()));
     let rows = statement.query_map(params_from_iter(parameters), |row| {
-        let marked_snippet: String = row.get(2)?;
-        let has_body_match = marked_snippet.contains(HIGHLIGHT_START);
-        let snippet = if has_body_match {
-            marked_snippet.replace([HIGHLIGHT_START, HIGHLIGHT_END], "")
-        } else {
-            String::new()
-        };
-        Ok(SearchHit {
-            path: row.get(0)?,
-            title: row.get(1)?,
-            snippet,
-            score: row.get(3)?,
-        })
+        Ok((
+            row.get::<_, String>(0)?,
+            row.get::<_, String>(1)?,
+            row.get::<_, Option<i64>>(2)?,
+            row.get::<_, f64>(3)?,
+        ))
     })?;
-    let mut hits = Vec::new();
+    let mut ranked = Vec::new();
     for row in rows {
-        hits.push(row?);
+        ranked.push(row?);
     }
-    Ok(hits)
+    let rowids: Vec<i64> = ranked
+        .iter()
+        .filter_map(|(_, _, rowid, _)| *rowid)
+        .collect();
+    let snippets = body_snippets(conn, match_expr, &rowids)?;
+    Ok(ranked
+        .into_iter()
+        .map(|(path, title, rowid, score)| {
+            let marked = rowid
+                .and_then(|rowid| snippets.get(&rowid))
+                .map(String::as_str)
+                .unwrap_or("");
+            // An unmarked fragment means only the title matched: no snippet.
+            let snippet = if marked.contains(HIGHLIGHT_START) {
+                marked.replace([HIGHLIGHT_START, HIGHLIGHT_END], "")
+            } else {
+                String::new()
+            };
+            SearchHit {
+                path,
+                title,
+                snippet,
+                score,
+            }
+        })
+        .collect())
+}
+
+/// Marked body snippets for just the returned hits, keyed by FTS rowid: one
+/// MATCH pass whose rowid filter runs before `snippet()` is computed. The
+/// filter is written `+rowid` on purpose: as a plain rowid constraint FTS5
+/// would re-run the whole MATCH once per listed rowid, which for a short
+/// prefix costs more than a snippet for every hit.
+fn body_snippets(
+    conn: &Connection,
+    match_expr: &str,
+    rowids: &[i64],
+) -> Result<HashMap<i64, String>, CliError> {
+    if rowids.is_empty() {
+        return Ok(HashMap::new());
+    }
+    let placeholders = (0..rowids.len())
+        .map(|index| format!("?{}", index + 2))
+        .collect::<Vec<String>>()
+        .join(", ");
+    let mut statement = conn.prepare(&format!(
+        "SELECT rowid, snippet(search_fts, 2, char(1), char(2), '…', 12)
+         FROM search_fts
+         WHERE search_fts MATCH ?1 AND +rowid IN ({placeholders})",
+    ))?;
+    let mut parameters = vec![Value::Text(match_expr.to_owned())];
+    parameters.extend(rowids.iter().map(|rowid| Value::Integer(*rowid)));
+    let rows = statement.query_map(params_from_iter(parameters), |row| {
+        Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?))
+    })?;
+    let mut snippets = HashMap::new();
+    for row in rows {
+        let (rowid, snippet) = row?;
+        snippets.insert(rowid, snippet);
+    }
+    Ok(snippets)
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{build_fts_match, title_recall_needles};
+    use super::{build_body_fts_match, build_fts_match, title_recall_needles};
 
     /// Parity with `titleRecallNeedles` (`search-query.ts`): space-delimited
     /// terms anchor at word starts (leading space); unsegmented-script terms
@@ -247,6 +341,20 @@ mod tests {
         assert_eq!(title_recall_needles("tokyo 東京"), vec![" tokyo", "東京"]);
         assert_eq!(title_recall_needles("car"), vec![" car"]);
         assert_eq!(title_recall_needles(""), Vec::<String>::new());
+    }
+
+    /// Parity with `buildBodyFtsMatch` (`search-query.test.ts`).
+    #[test]
+    fn body_match_expressions_match_the_ts_builder() {
+        assert_eq!(build_body_fts_match("  "), None);
+        assert_eq!(
+            build_body_fts_match("growth \"loop\""),
+            Some("body : (\"growth\"* OR \"\"\"loop\"\"\"*)".to_string())
+        );
+        assert_eq!(
+            build_body_fts_match("... ?"),
+            Some("body : (\"...\" \"?\")".to_string())
+        );
     }
 
     /// Parity with `buildFtsMatch` (`search-query.test.ts`) — same inputs,

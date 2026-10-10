@@ -1,6 +1,7 @@
-import { isStepCount, streamText, type LanguageModel, type ModelMessage } from 'ai'
+import type { LanguageModel, ModelMessage } from 'ai'
 import { errorMessage } from '../../errors'
 import { languageModel } from '../language-model'
+import { loadAiSdk } from '../load-sdk'
 import { modelContextWindow } from '../provider-catalog'
 import type { AiProviderConfig } from '../../settings/schema'
 import type { CloudGraphContext, CloudSafe } from '../checkers'
@@ -102,9 +103,10 @@ export type ChatStreamEvent =
  * normalized {@link ChatStreamEvent}s. The history is first fitted to the
  * model's context budget ({@link fitToContextWindow}) — a long conversation
  * trims its oldest turns here rather than erroring at the provider. See
- * {@link streamChatTurn} for the stream's contract.
+ * {@link streamChatTurn} for the stream's contract; a provider that fails to
+ * load ends the stream with an `error` event like any other failure.
  */
-export function streamChat(options: StreamChatOptions): AsyncGenerator<ChatStreamEvent> {
+export async function* streamChat(options: StreamChatOptions): AsyncGenerator<ChatStreamEvent> {
   const messages = fitToContextWindow(options.messages, {
     contextWindow: modelContextWindow(options.config.provider, options.config.model),
     systemPrompt: chatSystemPrompt({
@@ -116,7 +118,14 @@ export function streamChat(options: StreamChatOptions): AsyncGenerator<ChatStrea
       allowEdits: options.allowEdits,
     }),
   })
-  return streamChatTurn(languageModel(options.config, options.apiKey, options.fetchFn), {
+  let model: LanguageModel
+  try {
+    model = await languageModel(options.config, options.apiKey, options.fetchFn)
+  } catch (cause) {
+    yield { type: 'error', message: errorMessage(cause), messages: [] }
+    return
+  }
+  yield* streamChatTurn(model, {
     messages,
     today: options.today,
     semanticSearchEnabled: options.semanticSearchEnabled,
@@ -319,6 +328,7 @@ async function* streamLeg(
       : [...stepMessages, { role: 'assistant', content: pendingText }]
 
   try {
+    const { isStepCount, streamText } = await loadAiSdk()
     const result = streamText({
       model,
       instructions: leg.instructions,

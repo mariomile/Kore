@@ -137,9 +137,12 @@ describe('searchWithFilters', () => {
         preview: 'Quokka facts.',
         mtime: 3000,
         is_pinned: 0,
-        fts_highlighted_title: '\u{1}Quokka\u{2}',
-        snippet: '\u{1}a\u{2} …',
+        fts_rowid: 7,
       },
+    ])
+    // Marking runs as a second query, for the returned page only.
+    mockInvoke.mockResolvedValueOnce([
+      { fts_rowid: 7, title: '\u{1}Quokka\u{2}', snippet: '\u{1}a\u{2} …' },
     ])
 
     const hits = await searchWithFilters(parseSearchQuery('quokka'))
@@ -162,7 +165,11 @@ describe('searchWithFilters', () => {
     const sql = String(args['sql']).toLowerCase()
     expect(sql).toContain('with "lexical" as materialized')
     expect(sql).toContain('search_fts match')
-    expect(sql).toContain('highlight(search_fts, 1')
+    // Snippets never run in the ranking query: a broad term matches most of
+    // the graph, and marking every hit is what made search slow at scale.
+    expect(sql).not.toContain('snippet(')
+    expect(sql).not.toContain('highlight(')
+    expect(sql).toContain('"body_hits" as materialized')
     // Exact/prefix/all-terms title rank leads, then title-boosted bm25 and the
     // deterministic pinned/recency/path tiebreakers.
     expect(sql).toContain('when "filtered_notes"."title_key" =')
@@ -179,7 +186,16 @@ describe('searchWithFilters', () => {
     // word-start-anchored recall needle.
     expect(params).toContain('quokka')
     expect(params).toContain('(title : "quokka"* OR body : "quokka"*)')
+    expect(params).toContain('body : ("quokka"*)')
     expect(params).toContain(' quokka')
+
+    const [markCommand, markArgs] = mockInvoke.mock.calls[1]!
+    expect(markCommand).toBe('db_query')
+    const markSql = String(markArgs['sql']).toLowerCase()
+    expect(markSql).toContain('highlight(search_fts, 1')
+    expect(markSql).toContain('snippet(search_fts, 2')
+    expect(markSql).toContain('+"search_fts"."rowid" in (?)')
+    expect(markArgs['params']).toContain(7)
   })
 
   it('folds the exact-title key the way titles were indexed', async () => {

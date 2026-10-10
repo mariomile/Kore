@@ -15,6 +15,7 @@ import {
   transcriptionModelsSchema,
 } from './schema-ai'
 import { browserSearchEngineSchema, browserOpenLinksInAppSchema } from './schema-browser'
+import { connectorsSchema } from './schema-connectors'
 import {
   accentColorSchema,
   chatTextSizeSchema,
@@ -60,6 +61,7 @@ import {
 export * from './schema-ai'
 export * from './schema-appearance'
 export * from './schema-browser'
+export * from './schema-connectors'
 export * from './schema-collections'
 export * from './schema-editor'
 
@@ -549,6 +551,7 @@ const settingsDocumentSchema = z.looseObject({
   agentRoutines: agentRoutinesSchema,
   mcpServers: mcpServersSchema,
   aiPrompts: aiPromptsSchema,
+  connectors: connectorsSchema,
 })
 
 export const settingsSchema = z.preprocess(migrateOpenTabs, settingsDocumentSchema)

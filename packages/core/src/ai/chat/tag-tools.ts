@@ -1,4 +1,4 @@
-import { tool } from 'ai'
+import { tool } from './define-tool'
 import { isAppError } from '../../errors'
 import type { ListTagTypesOptions, TagTypeEntry } from '../../indexing/collections'
 import type { ListNoteTagsOptions, NoteTagFacet } from '../../indexing/note-list'

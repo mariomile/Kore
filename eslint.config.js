@@ -18,6 +18,34 @@ export default defineESLintConfig(
     ignores: ['./design-system/', '**/.wxt/', '**/.output/', '**/src-tauri/gen/'],
   },
   {
+    // The AI SDK loads on first use (packages/core/src/ai/load-sdk.ts). A value
+    // import of it anywhere else puts ~550 KB back into the startup bundle;
+    // type imports and `await import()` are fine.
+    files: ['apps/**/*.ts', 'apps/**/*.tsx', 'packages/**/*.ts', 'packages/**/*.tsx'],
+    ignores: ['**/*.test.ts', '**/*.test.tsx', '**/test/**', '**/testing/**'],
+    rules: {
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'ai',
+              allowTypeImports: true,
+              message: 'Load the AI SDK on first use with loadAiSdk() from ai/load-sdk.',
+            },
+          ],
+          patterns: [
+            {
+              group: ['@ai-sdk/*'],
+              allowTypeImports: true,
+              message: 'Load AI provider packages on first use with await import().',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.mjs'],
     // Disable some rules temporarily
     linterOptions: {

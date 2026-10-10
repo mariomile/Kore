@@ -4,7 +4,7 @@ import { db } from './db'
 import { literalSearchQuery, type ParsedSearchQuery, type PropertyFilter } from './filter-query'
 import { resolveWikiTarget } from './queries'
 import { HIGHLIGHT_END, HIGHLIGHT_START } from './search'
-import { buildFtsMatch, buildTitleMatchSql } from './search-query'
+import { buildBodyFtsMatch, buildFtsMatch, buildTitleMatchSql } from './search-query'
 import { highlightTitle } from './title-highlight'
 
 /**
@@ -315,32 +315,43 @@ export async function searchWithFilters(
   // SQLite rejects `MATCH ... OR title_key LIKE ...`, and flattening an FTS
   // subquery under this notes-first join reruns MATCH for every note. An
   // explicitly materialized CTE computes lexical hits once, while the outer
-  // join safely admits title-recall-only rows and preserves FTS snippets.
-  // The admission OR can't use an index, so the ranked path scans the
-  // (filtered) notes table once per query — `instr` over titles is cheap at
-  // graph scale, and the FTS pass stays a single MATCH.
-  const lexicalDb = db.with(
-    (cte) => cte('lexical').materialized(),
-    (queryDb) =>
-      queryDb
-        .selectFrom('searchFts')
-        .select([
-          'searchFts.path',
-          sql<string>`highlight(search_fts, 1, ${HIGHLIGHT_START}, ${HIGHLIGHT_END})`.as(
-            'ftsHighlightedTitle',
-          ),
-          sql<string>`snippet(search_fts, 2, ${HIGHLIGHT_START}, ${HIGHLIGHT_END}, '…', 10)`.as(
-            'snippet',
-          ),
-          sql<number>`bm25(search_fts, 0, 10.0, 1.0)`.as('rank'),
-        ])
-        .where(sql<boolean>`search_fts MATCH ${match}`),
-  )
+  // join safely admits title-recall-only rows. The admission OR can't use an
+  // index, so the ranked path scans the (filtered) notes table once per
+  // query — `instr` over titles is cheap at graph scale, and the FTS pass
+  // stays a single MATCH.
+  //
+  // The CTE carries only rowid and bm25. `snippet()` and `highlight()` cost
+  // far more than the match itself, and a broad term matches most of a big
+  // graph, so marking runs only for the page of hits returned. Ranking needs
+  // one fact a snippet used to supply — whether the body matched at all —
+  // and a second, body-only MATCH answers that for every hit in one pass.
+  const lexicalDb = db
+    .with(
+      (cte) => cte('lexical').materialized(),
+      (queryDb) =>
+        queryDb
+          .selectFrom('searchFts')
+          .select([
+            'searchFts.path',
+            sql<number>`"search_fts"."rowid"`.as('ftsRowid'),
+            sql<number>`bm25(search_fts, 0, 10.0, 1.0)`.as('rank'),
+          ])
+          .where(sql<boolean>`search_fts MATCH ${match}`),
+    )
+    .with(
+      (cte) => cte('bodyHits').materialized(),
+      (queryDb) =>
+        queryDb
+          .selectFrom('searchFts')
+          .select(sql<number>`"search_fts"."rowid"`.as('ftsRowid'))
+          .where(sql<boolean>`search_fts MATCH ${buildBodyFtsMatch(parsed.text) ?? match}`),
+    )
   const filteredNotes = query.select('notes.titleKey').as('filteredNotes')
   const titleMatch = buildTitleMatchSql(sql.ref<string>('filteredNotes.titleKey'), parsed.text)
   let rankedQuery = lexicalDb
     .selectFrom(filteredNotes)
     .leftJoin('lexical', 'lexical.path', 'filteredNotes.path')
+    .leftJoin('bodyHits', 'bodyHits.ftsRowid', 'lexical.ftsRowid')
     .select([
       'filteredNotes.path',
       'filteredNotes.title',
@@ -348,8 +359,7 @@ export async function searchWithFilters(
       'filteredNotes.preview',
       'filteredNotes.mtime',
       'filteredNotes.isPinned',
-      'lexical.ftsHighlightedTitle',
-      'lexical.snippet',
+      'lexical.ftsRowid',
     ])
     .where(sql<boolean>`("lexical"."path" is not null or ${titleMatch.containsAllTerms})`)
     .orderBy(titleMatch.rank)
@@ -358,8 +368,7 @@ export async function searchWithFilters(
     // `cafe` -> `Café` retain lexical bm25 so they still outrank body hits.
     .orderBy(
       sql`case
-        when instr(coalesce("lexical"."snippet", ''), ${HIGHLIGHT_START}) > 0
-          or not (${titleMatch.containsAllTerms})
+        when "body_hits"."fts_rowid" is not null or not (${titleMatch.containsAllTerms})
         then coalesce("lexical"."rank", 0)
         else 0
       end`,
@@ -371,14 +380,58 @@ export async function searchWithFilters(
     rankedQuery = rankedQuery.limit(limit)
   }
   const rows = await rankedQuery.execute()
-  return rows.map(({ ftsHighlightedTitle, snippet, ...row }) => ({
-    ...row,
-    // SQLite returns an unmarked body fragment when only the title matched.
-    // That is not a search snippet and would be misleading in the result row.
-    snippet: snippet?.includes(HIGHLIGHT_START) === true ? snippet : null,
-    highlightedTitle: highlightTitle(row.title, parsed.text, ftsHighlightedTitle),
-    isPinned: row.isPinned !== 0,
-  }))
+  const marked = await lexicalMarks(
+    match,
+    rows.flatMap((row) => (row.ftsRowid === null ? [] : [row.ftsRowid])),
+  )
+  return rows.map(({ ftsRowid, ...row }) => {
+    const marks = ftsRowid === null ? undefined : marked.get(ftsRowid)
+    const snippet = marks?.snippet
+    return {
+      ...row,
+      // SQLite returns an unmarked body fragment when only the title matched.
+      // That is not a search snippet and would be misleading in the result row.
+      snippet: snippet?.includes(HIGHLIGHT_START) === true ? snippet : null,
+      highlightedTitle: highlightTitle(row.title, parsed.text, marks?.title ?? null),
+      isPinned: row.isPinned !== 0,
+    }
+  })
+}
+
+/** FTS-marked title and body snippet of one lexical hit. */
+interface LexicalMarks {
+  title: string
+  snippet: string
+}
+
+/**
+ * `highlight()`/`snippet()` for just the hits being shown, keyed by FTS rowid:
+ * one MATCH pass whose rowid filter runs before the result columns are
+ * computed, so only these rows pay for marking. The filter is written
+ * `+rowid` on purpose: as a plain rowid constraint FTS5 would re-run the whole
+ * MATCH once per listed rowid, which for a short prefix costs more than
+ * marking every hit.
+ */
+async function lexicalMarks(
+  match: string,
+  rowids: readonly number[],
+): Promise<Map<number, LexicalMarks>> {
+  if (rowids.length === 0) {
+    return new Map()
+  }
+  const rows = await db
+    .selectFrom('searchFts')
+    .select([
+      sql<number>`"search_fts"."rowid"`.as('ftsRowid'),
+      sql<string>`highlight(search_fts, 1, ${HIGHLIGHT_START}, ${HIGHLIGHT_END})`.as('title'),
+      sql<string>`snippet(search_fts, 2, ${HIGHLIGHT_START}, ${HIGHLIGHT_END}, '…', 10)`.as(
+        'snippet',
+      ),
+    ])
+    .where(sql<boolean>`search_fts MATCH ${match}`)
+    .where(sql<boolean>`+"search_fts"."rowid" in (${sql.join(rowids)})`)
+    .execute()
+  return new Map(rows.map(({ ftsRowid, title, snippet }) => [ftsRowid, { title, snippet }]))
 }
 
 /** A lexical/title search result: the note's path and title. */

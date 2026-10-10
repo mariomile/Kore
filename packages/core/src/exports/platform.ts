@@ -1,4 +1,5 @@
 export * from '../bases'
+export * from '../canvas'
 export {
   setBridge,
   hasBridge,
@@ -349,6 +350,7 @@ export {
   type SavedCollectionView,
   type OpenNoteTab,
   type OpenBaseTab,
+  type OpenCanvasTab,
   type OpenChatTab,
   type OpenTab,
   type OpenPane,

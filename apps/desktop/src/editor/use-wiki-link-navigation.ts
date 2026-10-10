@@ -2,6 +2,7 @@ import { useCallback } from 'react'
 import {
   errorMessage,
   isBasePath,
+  isCanvasPath,
   noteLinkHeading,
   normalizeWikiTarget,
   resolveAttachmentSource,
@@ -87,6 +88,14 @@ export function useWikiLinkNavigation(
         if (path !== null) {
           const view = target.includes('#') ? target.slice(target.indexOf('#') + 1).trim() : ''
           navigate({ kind: 'base', path, view: view === '' ? null : view })
+        }
+        return
+      }
+      // `[[Map.canvas]]` opens the canvas, never a note named after it.
+      if (isCanvasPath(target)) {
+        const path = resolveAttachmentSource(target.split('#')[0]?.trim() ?? target)
+        if (path !== null) {
+          navigate({ kind: 'canvas', path })
         }
         return
       }

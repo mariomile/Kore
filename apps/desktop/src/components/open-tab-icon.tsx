@@ -8,6 +8,7 @@ import {
   Checklist,
   Globe,
   Graph,
+  Layers,
   LayoutGrid,
   Note,
   Pencil,
@@ -38,6 +39,9 @@ export function OpenTabIcon({ tab, className }: OpenTabIconProps): ReactElement 
   }
   if (tab.kind === 'base') {
     return <LayoutGrid aria-hidden className={className} />
+  }
+  if (tab.kind === 'canvas') {
+    return <Layers aria-hidden className={className} />
   }
   switch (tab.surface) {
     case 'daily':

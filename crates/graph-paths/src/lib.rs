@@ -29,11 +29,12 @@ pub const RESERVED_NOTE_TREES: [&str; 2] = ["assets", "audio-memos"];
 /// script formats. Must stay identical to the TypeScript list in
 /// `packages/core/src/graph/paths.ts` and the fixture generator in
 /// `fixtures/gen-path-classification.mjs`.
-pub const ATTACHMENT_EXTENSIONS: [&str; 51] = [
-    "3gp", "7z", "avif", "base", "bmp", "csv", "doc", "docx", "epub", "flac", "gif", "gz", "heic",
-    "ics", "jpeg", "jpg", "json", "key", "log", "m4a", "mkv", "mov", "mp3", "mp4", "numbers",
-    "odp", "ods", "odt", "ogg", "ogv", "pages", "pdf", "png", "ppt", "pptx", "rtf", "svg", "tar",
-    "tif", "tiff", "tsv", "txt", "wav", "webm", "webp", "xls", "xlsx", "xml", "yaml", "yml", "zip",
+pub const ATTACHMENT_EXTENSIONS: [&str; 52] = [
+    "3gp", "7z", "avif", "base", "bmp", "canvas", "csv", "doc", "docx", "epub", "flac", "gif",
+    "gz", "heic", "ics", "jpeg", "jpg", "json", "key", "log", "m4a", "mkv", "mov", "mp3", "mp4",
+    "numbers", "odp", "ods", "odt", "ogg", "ogv", "pages", "pdf", "png", "ppt", "pptx", "rtf",
+    "svg", "tar", "tif", "tiff", "tsv", "txt", "wav", "webm", "webp", "xls", "xlsx", "xml", "yaml",
+    "yml", "zip",
 ];
 
 /// The kind of graph content represented by a safe relative wire path.

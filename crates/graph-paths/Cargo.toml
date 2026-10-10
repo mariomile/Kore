@@ -8,8 +8,12 @@ edition = "2021"
 # ripgrep's directory walker: per-entry errors, no symlink following, and
 # `.gitignore`-style pruning — the properties the vault walk is built on.
 ignore = "0.4"
+# Obsidian's `/regex/` exclusion filters (`.obsidian/app.json`).
+regex = "1"
+# Excluded notes stay listed when `private: true` (the privacy fence).
+reflect-note-policy = { workspace = true }
+serde_json = { workspace = true }
 
 [dev-dependencies]
 serde = { workspace = true }
-serde_json = { workspace = true }
 tempfile = { workspace = true }

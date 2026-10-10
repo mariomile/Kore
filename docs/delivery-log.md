@@ -7,6 +7,14 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Kore opens an Obsidian vault on its own terms. When the folder has an
+  `.obsidian` settings folder, Kore reads it: today's note is the vault's
+  own daily file (`Journal/Daily/09-10-2026.md`, not a new `daily/`
+  folder), `![[photo.png]]` embeds show the image wherever the vault keeps
+  it, pasted images go to the vault's attachment folder, and new notes land
+  in its new-note folder named after their title. Nothing in the vault is
+  rewritten to get there, and a vault without `.obsidian` works as before.
+
 - Tags in frontmatter count. A note listed under `tags:` in its frontmatter
   now belongs to that tag exactly as one carrying `#tag` in its text does:
   tag sidebar, collections, filters and the tag page all see it. An Obsidian

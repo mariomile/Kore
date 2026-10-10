@@ -2,6 +2,8 @@ import { z } from 'zod'
 import { echoLocalWrite } from '../indexing/local-write-echo'
 import { call, callBinary } from '../ipc/invoke'
 import { blobChunks } from '../lib/blob'
+import { noteAttachmentAdded } from './attachment-index'
+import { getVaultLayout } from './vault-layout'
 
 /** Commands that return `()` from Rust serialize as `null` over IPC. */
 const voidSchema = z.null()
@@ -17,7 +19,17 @@ const CHUNK_BYTES = 4 * 1024 * 1024
 const UPLOAD_ID_HEADER = 'x-upload-id'
 
 /**
- * Stream a pasted/dropped file's bytes into the graph's `assets/` folder as
+ * Where pasted and imported files land: the vault's own attachment folder
+ * when its layout names one (an Obsidian vault's `attachmentFolderPath`),
+ * otherwise Rust's default `assets/` (sent as `null`).
+ */
+function attachmentDir(): string | null {
+  return getVaultLayout().attachmentFolder
+}
+
+/**
+ * Stream a pasted/dropped file's bytes into the graph's `assets/` folder (or
+ * the vault's own attachment folder, see {@link attachmentDir}) as
  * `desiredName` — or the first free `-2`-suffixed variant; Rust decides the
  * final name race-free and returns it as a graph-relative `assets/…` path.
  * Bytes travel as raw binary IPC bodies in {@link CHUNK_BYTES} chunks staged
@@ -40,8 +52,13 @@ export async function createAsset(
         voidSchema,
       )
     }
-    const path = await call('asset_upload_commit', { id, desiredName, generation }, z.string())
+    const path = await call(
+      'asset_upload_commit',
+      { id, desiredName, generation, dir: attachmentDir() },
+      z.string(),
+    )
     echoLocalWrite({ path, kind: 'upsert', modifiedMs: Date.now() })
+    noteAttachmentAdded(path)
     return path
   } catch (error) {
     // Best-effort cleanup of the staged temp file; the original error is the
@@ -94,7 +111,12 @@ export async function importAsset(
   desiredName: string,
   generation: number,
 ): Promise<string> {
-  const path = await call('asset_import', { sourcePath, desiredName, generation }, z.string())
+  const path = await call(
+    'asset_import',
+    { sourcePath, desiredName, generation, dir: attachmentDir() },
+    z.string(),
+  )
   echoLocalWrite({ path, kind: 'upsert', modifiedMs: Date.now() })
+  noteAttachmentAdded(path)
   return path
 }

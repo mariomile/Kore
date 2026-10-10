@@ -336,6 +336,27 @@ export async function listFiles(generation?: number): Promise<FileMeta[]> {
   return await call('list_files', { generation }, z.array(fileMetaSchema))
 }
 
+/**
+ * Every supported attachment in the vault (any folder, not only `assets/`),
+ * from the same cached catalog as {@link listFiles}.
+ */
+export async function listAttachments(generation?: number): Promise<FileMeta[]> {
+  return await call('list_attachments', { generation }, z.array(fileMetaSchema))
+}
+
+const obsidianConfigSchema = z.object({
+  dailyNotes: z.string().nullable(),
+  app: z.string().nullable(),
+})
+
+/** The raw `.obsidian/daily-notes.json` and `app.json` of a vault (`null` when absent). */
+export type ObsidianConfig = z.infer<typeof obsidianConfigSchema>
+
+/** Read the open graph's Obsidian settings files, unparsed. */
+export async function readObsidianConfig(generation?: number): Promise<ObsidianConfig> {
+  return await call('obsidian_config_read', { generation }, obsidianConfigSchema)
+}
+
 const vaultScanStatsSchema = z.object({
   notes: z.number(),
   attachments: z.number(),

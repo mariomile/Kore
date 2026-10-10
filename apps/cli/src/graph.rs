@@ -27,6 +27,7 @@ fn canonical_graph(path: &Path) -> Result<Graph, CliError> {
     let root = path
         .canonicalize()
         .map_err(|err| CliError::Runtime(format!("cannot resolve {}: {err}", path.display())))?;
+    crate::paths::configure_for_graph(&root);
     Ok(Graph { root })
 }
 

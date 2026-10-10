@@ -369,6 +369,8 @@ pub fn run() {
             fs::note_delete,
             fs::list_files,
             fs::vault_scan_stats,
+            fs::list_attachments,
+            fs::obsidian_config_read,
             recents::recent_graphs,
             recents::forget_recent,
             settings::settings_load,

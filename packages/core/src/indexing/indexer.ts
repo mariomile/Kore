@@ -21,8 +21,8 @@ import { emitIndexApplied } from './index-applied'
 import { hashContent } from './hash'
 import {
   buildIndexedNote,
-  PROJECTION_VERSION,
   PROJECTION_VERSION_KEY,
+  projectionStamp,
   type IndexedNote,
 } from './indexed-note'
 import { detectExternalMoves } from './move-healing'
@@ -289,13 +289,13 @@ export async function rebuildIndex(options: IndexPassOptions): Promise<void> {
   // generation, which Rust drops: the next open then rebuilds again, which is
   // the safe direction to fail in.
   if (!skipped) {
-    await setIndexMeta(PROJECTION_VERSION_KEY, String(PROJECTION_VERSION), generation)
+    await setIndexMeta(PROJECTION_VERSION_KEY, projectionStamp(), generation)
   }
 }
 
 /**
  * The open-path sync: hash-reconcile when the stored rows were built by the
- * current {@link PROJECTION_VERSION}, full rebuild when they weren't (an older
+ * current {@link projectionStamp}, full rebuild when they weren't (an older
  * app wrote them, or the index has never been stamped). Reconcile compares
  * content hashes only, so it can never refresh rows whose *derivation* changed
  * — without this gate, columns added by a migration would keep their defaults
@@ -311,7 +311,7 @@ export async function syncIndex(options: IndexPassOptions): Promise<void> {
   // file) isn't persisting between launches — a pathology that would
   // otherwise be indistinguishable from a slow reconcile.
   console.warn(
-    `index: stored projection version ${stamped === null ? 'none' : `"${stamped}"`} ≠ ${PROJECTION_VERSION} — full rebuild`,
+    `index: stored projection version ${stamped === null ? 'none' : `"${stamped}"`} ≠ ${projectionStamp()} — full rebuild`,
   )
   return await rebuildIndex(options)
 }

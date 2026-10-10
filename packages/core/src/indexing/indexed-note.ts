@@ -7,6 +7,7 @@ import {
   isDaily,
   isTemplatePath,
 } from '../graph/paths'
+import { vaultLayoutIndexKey } from '../graph/vault-layout'
 import {
   detectConflictMarkers,
   extractEmailFields,
@@ -128,6 +129,18 @@ export const PROJECTION_VERSION = 26
  * current without importing the indexer.
  */
 export const PROJECTION_VERSION_KEY = 'projection_version'
+
+/**
+ * The value stamped under {@link PROJECTION_VERSION_KEY}: the version, plus
+ * the open graph's vault-layout fingerprint when it isn't Kore's default.
+ * Which files are dailies (and their dates) derives from the layout, so an
+ * index built under one layout is stale under another — adopting a vault's
+ * Obsidian daily-note settings rebuilds once, exactly like a version bump.
+ */
+export function projectionStamp(): string {
+  const layoutKey = vaultLayoutIndexKey()
+  return layoutKey === '' ? String(PROJECTION_VERSION) : `${PROJECTION_VERSION}+${layoutKey}`
+}
 
 /**
  * Precedence of the spellings a note answers to (`note_claims.tier`): the

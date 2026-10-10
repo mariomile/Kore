@@ -20,11 +20,11 @@ pub fn run(graph: &Graph, json: bool, note_arg: &str) -> Result<(), CliError> {
 
     if json {
         let date = match &resolved {
-            ResolvedNote::Daily { date, .. } => Some(date.as_str()),
+            ResolvedNote::Daily { date, .. } => Some(date.clone()),
             ResolvedNote::File { rel_path } => date_from_daily_path(rel_path),
         };
         return print_json(&PathJson {
-            date,
+            date: date.as_deref(),
             path: rel_path,
             absolute_path: absolute.display().to_string(),
             exists: absolute.is_file(),

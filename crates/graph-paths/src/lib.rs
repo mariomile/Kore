@@ -10,7 +10,10 @@
 
 use std::path::{Component, Path, PathBuf};
 
+mod obsidian;
 mod walk;
+
+pub use obsidian::{read_obsidian_file, ObsidianExclusions};
 
 pub use walk::{
     has_pruned_component, is_pruned_dir_name, walk_catalog, FileCatalog, FileEntry,

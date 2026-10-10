@@ -8,6 +8,8 @@ import {
   icloudRequestDownloads,
   isMobilePlatform,
   createGraph,
+  loadAttachmentIndex,
+  loadVaultLayout,
   openGraph,
   recentGraphs,
   type AppPlatform,
@@ -194,6 +196,18 @@ export function GraphProvider({
           const info = await openGraph(root)
           if (seq !== openSeq.current) {
             return false // superseded by a newer open
+          }
+          // Before the index opens and before 'ready': which files are dailies
+          // (and where today's lives) follows the vault's own Obsidian
+          // settings when it has them, and the index stamp records it. The
+          // attachment catalog lets bare `![[photo.png]]` embeds resolve on
+          // first paint; its walk is the one indexing needs anyway.
+          await Promise.all([
+            loadVaultLayout(info.generation),
+            loadAttachmentIndex(info.generation),
+          ])
+          if (seq !== openSeq.current) {
+            return false
           }
           const index = indexRef.current
           // Stop any prior reconcile and wait for it to fully settle before the

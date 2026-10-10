@@ -154,6 +154,10 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
         // `failed` is the designed recoverable "unavailable" state — semantic
         // search surfaces show it honestly instead of offering a download.
         return { status: 'failed', message: 'embeddings are unavailable in browser dev' }
+      case 'obsidian_config_read':
+        return { dailyNotes: null, app: null }
+      case 'list_attachments':
+        return []
       case 'vault_scan_stats':
         return { notes: files.list().length, attachments: 0, skipped: 0 }
       case 'forget_recent':

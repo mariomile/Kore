@@ -16,7 +16,7 @@ pub fn run(graph: &Graph, json: bool, note_arg: &str) -> Result<(), CliError> {
     let note = read_note(&graph.root, rel_path)?;
     if json {
         return print_json(&NoteJson {
-            date: date_from_daily_path(rel_path),
+            date: date_from_daily_path(rel_path).as_deref(),
             path: rel_path,
             absolute_path: graph.root.join(rel_path).display().to_string(),
             title: &note.meta.title,

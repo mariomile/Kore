@@ -3,8 +3,7 @@ import { flushSync } from 'react-dom'
 import { createRoot } from 'react-dom/client'
 import { MarkdownView } from '@meowdown/react'
 import { convertFileSrc } from '@tauri-apps/api/core'
-import { parseNote, splitFrontmatter } from '@reflect/core'
-import { isSafeAssetSource } from '@/editor/use-asset-persistence'
+import { parseNote, resolveAttachmentSource, splitFrontmatter } from '@reflect/core'
 import { exportFileName, runFileExport } from '@/lib/export-file'
 import { readNoteSource } from '@/lib/note-frontmatter'
 
@@ -217,9 +216,10 @@ export async function renderNoteBodyHtml(body: string, generation: number): Prom
             if (/^https?:\/\//.test(src)) {
               return src
             }
-            return isSafeAssetSource(src)
-              ? convertFileSrc(`${generation}/${src}`, 'reflect-asset')
-              : undefined
+            const attachment = resolveAttachmentSource(src)
+            return attachment === null
+              ? undefined
+              : convertFileSrc(`${generation}/${attachment}`, 'reflect-asset')
           },
           className: 'reflect-editor',
         }),

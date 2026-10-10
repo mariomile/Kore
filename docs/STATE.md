@@ -1,5 +1,49 @@
 # Kore working state
 
+## Obsidian vault profile, 2026-10-10
+
+- [x] Kore reads an adopted vault's `.obsidian/daily-notes.json` and
+  `app.json` at open (new `obsidian_config_read` command, fixed file names
+  only) and adopts its layout; a vault without them behaves as before.
+  Core owns the policy in `packages/core/src/graph/vault-layout.ts`.
+- [x] Daily notes follow the vault's folder and moment format
+  (`Journal/Daily/DD-MM-YYYY.md` in Mario's vault). `dailyPath`, `isDaily`
+  and `dateFromDailyPath` read the layout, so routing, the daily stream,
+  capture, meetings and the index agree. The index stamp carries the layout
+  fingerprint: adopting it rebuilds once; Kore's default stamp is unchanged.
+  Formats with weekday names or two-digit years keep Kore's default.
+- [x] Attachments: bare `![[photo.png]]`, partial `![[2024/x.png]]` and
+  vault-relative or percent-encoded paths resolve through the vault's
+  attachment catalog (new `list_attachments` command), preferring the
+  attachment folder. Pasted and imported files land in that folder
+  (`asset_upload_commit` / `asset_import` take an optional `dir`).
+- [x] New notes land in `newFileFolderPath` (`_inbox`) named after their
+  title (`Meeting Notes.md`, collisions `Meeting Notes 2.md`), and the
+  title-change rename keeps that shape. The `id:` frontmatter stays: Plan 17
+  rename tracking depends on it.
+- [x] The `reflect` CLI reads the same `daily-notes.json`
+  (`apps/cli/src/paths.rs`, `DailyLayout`), so `reflect today`, `capture`
+  and date arguments hit the vault's own dailies.
+- [x] Today's daily starts from the vault's template
+  (`_system/templates/Daily-Note`, copied whole with its frontmatter) and
+  Obsidian's `{{date:FORMAT}}` / `{{time:FORMAT}}` moment tokens expand.
+- [x] Notes matching Obsidian's `userIgnoreFilters` (prefixes and `/regex/`)
+  stay out of the vault walk and live watcher events; attachments under
+  them still list, so embeds keep rendering
+  (`crates/graph-paths/src/obsidian.rs`). A `private: true` note is never
+  excluded, so the agent CLIs' privacy fence (built from indexed private
+  notes) keeps covering it. A daily format whose literals would leave the
+  vault (`[../]YYYY`) is refused whole, in core and in the CLI.
+- Not done: bare-name lookups for files added outside Kore after open fall
+  back to the attachment folder until the next open.
+
+**Validation:** core node suite, desktop node suite and the desktop browser
+suite on Chromium; `cargo test` + `clippy` for `reflect-cli` and
+`reflect-graph-paths`. The desktop crate (`reflect-open`) cannot compile in
+the container (no GTK), so its two new commands and the watcher change get
+their first build in CI. WebKit is left to CI (it cannot run in the cloud
+container). Not tried against the real vault on the Mac.
+
 ## Frontmatter tags are membership (supertags slice B) — 2026-10-09
 
 User ask: make Kore able to replace Obsidian for the marioverse vault. The
@@ -1548,6 +1592,10 @@ screen: Agents then Close lands on today.
 **Next:** merge the Close fix, then bump.
 
 ## Session log
+
+- 2026-10-10 — Obsidian vault profile: daily notes, attachments and new
+  notes follow an adopted vault's `.obsidian` settings (see the section at
+  the top). Closes P0 items 1, 2 and 4 of the Kore-vs-Obsidian gap analysis.
 
 - 2026-10-09 — Performance at the size of a real vault (~5,150 notes). A
   deterministic Obsidian-shaped vault (`?seed=obsidian` in plain-browser dev,

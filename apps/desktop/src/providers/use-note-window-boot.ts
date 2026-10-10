@@ -2,6 +2,8 @@ import { useEffect } from 'react'
 import {
   errorMessage,
   isMobilePlatform,
+  loadAttachmentIndex,
+  loadVaultLayout,
   subscribeIndexWritten,
   subscribeWindowNavigate,
   windowBootstrap,
@@ -49,6 +51,12 @@ export function useNoteWindowBoot({ platform, onAdopted, onFailed }: NoteWindowB
     void (async () => {
       try {
         const boot = await windowBootstrap()
+        // Every window resolves daily paths and attachments itself; adopt
+        // the main window's vault layout before any route is computed.
+        await Promise.all([
+          loadVaultLayout(boot.graph.generation),
+          loadAttachmentIndex(boot.graph.generation),
+        ])
         // The pending deep link is drained server-side by the bootstrap, so
         // act on it even if this effect was superseded (StrictMode's probe
         // mount) — the route slot and the intake both outlive the effect,

@@ -1,9 +1,15 @@
+import { slugForTitle, titleFileStem } from '../markdown/slug'
+import { getVaultLayout, parseDailyFormat, type VaultLayout } from './vault-layout'
+
 /**
  * Pure helpers for the graph's on-disk path conventions (Plan 02). These build
  * and recognize **graph-relative** paths; the Rust layer owns the root and the
  * traversal guard. Shared by every later phase (daily notes, backlinks, CLI).
+ * Daily-note paths follow the open graph's {@link VaultLayout} (Kore's
+ * `daily/YYYY-MM-DD.md` unless an Obsidian vault declares its own).
  */
 
+/** Kore's own daily-note folder (the default layout's). */
 export const DAILY_DIR = 'daily'
 export const NOTES_DIR = 'notes'
 /** Note templates — indexed as their own kind, excluded from note surfaces. */
@@ -93,8 +99,6 @@ function asciiLowerCase(value: string): string {
   return value.replaceAll(/[A-Z]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) + 32))
 }
 
-/** Matches a daily-note path and captures its ISO date. */
-const DAILY_PATH_RE = /^daily\/(\d{4}-\d{2}-\d{2})\.md$/
 /** A bare ISO date (`YYYY-MM-DD`). */
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
@@ -120,6 +124,70 @@ export function isCalendarDate(date: string): boolean {
   )
 }
 
+/** A layout's daily-path codec, compiled once per layout. */
+interface DailyCodec {
+  readonly format: (year: string, month: string, day: string) => string
+  readonly pattern: RegExp
+  /** Capture-group order of the date fields in {@link pattern}. */
+  readonly fields: readonly ('year' | 'month' | 'day')[]
+}
+
+let codecCache: { layout: VaultLayout; codec: DailyCodec } | null = null
+
+function escapeRegExp(text: string): string {
+  return text.replaceAll(/[.*+?^${}()|[\]\\/]/g, String.raw`\$&`)
+}
+
+function dailyCodec(): DailyCodec {
+  const layout = getVaultLayout()
+  if (codecCache?.layout === layout) {
+    return codecCache.codec
+  }
+  // `vaultLayoutFromObsidian` only installs formats that parse; the ISO
+  // fallback covers a hand-built layout that slipped one through.
+  const parts = parseDailyFormat(layout.dailyFormat) ?? parseDailyFormat('YYYY-MM-DD') ?? []
+  const prefix = layout.dailyFolder === '' ? '' : `${layout.dailyFolder}/`
+  const fields: ('year' | 'month' | 'day')[] = []
+  let source = `^${escapeRegExp(prefix)}`
+  for (const part of parts) {
+    if (part.kind === 'literal') {
+      source += escapeRegExp(part.text)
+    } else {
+      fields.push(part.kind)
+      source +=
+        part.kind === 'year'
+          ? String.raw`(\d{4})`
+          : part.padded
+            ? String.raw`(\d{2})`
+            : String.raw`(\d{1,2})`
+    }
+  }
+  source += String.raw`\.md$`
+  const codec: DailyCodec = {
+    pattern: new RegExp(source),
+    fields,
+    format: (year, month, day) => {
+      const body = parts
+        .map((part) => {
+          switch (part.kind) {
+            case 'literal':
+              return part.text
+            case 'year':
+              return year
+            case 'month':
+              return part.padded ? month : String(Number(month))
+            case 'day':
+              return part.padded ? day : String(Number(day))
+          }
+        })
+        .join('')
+      return `${prefix}${body}.md`
+    },
+  }
+  codecCache = { layout, codec }
+  return codec
+}
+
 /** Graph-relative path to a daily note for an ISO `YYYY-MM-DD` date. */
 export function dailyPath(date: string): string {
   if (!ISO_DATE_RE.test(date)) {
@@ -128,7 +196,18 @@ export function dailyPath(date: string): string {
   if (!isCalendarDate(date)) {
     throw new Error(`dailyPath expects a valid calendar date, got: ${date}`)
   }
-  return `${DAILY_DIR}/${date}.md`
+  const [year, month, day] = date.split('-') as [string, string, string]
+  return dailyCodec().format(year, month, day)
+}
+
+/**
+ * A daily path pattern for prompts and docs, e.g. `daily/YYYY-MM-DD.md` or
+ * `Journal/Daily/DD-MM-YYYY.md`.
+ */
+export function dailyPathPattern(): string {
+  const layout = getVaultLayout()
+  const prefix = layout.dailyFolder === '' ? '' : `${layout.dailyFolder}/`
+  return `${prefix}${layout.dailyFormat.replaceAll(/\[([^\]]*)\]/g, '$1')}.md`
 }
 
 /**
@@ -146,9 +225,52 @@ export function foldGraphPath(path: string): string {
   return asciiLowerCase(path.normalize('NFC'))
 }
 
-/** Graph-relative path to a regular note for a filename slug (without `.md`). */
-export function notePath(slug: string): string {
-  return `${NOTES_DIR}/${slug}.md`
+/**
+ * Graph-relative path to a new regular note for a filename stem (without
+ * `.md`): `notes/<stem>.md` in Kore's layout, or the folder an adopted
+ * vault creates notes in.
+ */
+export function notePath(stem: string): string {
+  return `${newNoteFolderPrefix()}${stem}.md`
+}
+
+/** The new-note folder with its trailing slash (`notes/`), or `''` for the vault root. */
+export function newNoteFolderPrefix(): string {
+  const folder = getVaultLayout().newNoteFolder
+  return folder === '' ? '' : `${folder}/`
+}
+
+/**
+ * The filename stem a note titled `title` gets: Kore's slug
+ * (`meeting-notes`) or, in a vault that names files after titles, the
+ * title itself (`Meeting Notes`).
+ */
+export function noteFileStemForTitle(title: string): string {
+  return getVaultLayout().noteFileNames === 'title' ? titleFileStem(title) : slugForTitle(title)
+}
+
+/**
+ * The `ordinal`-th spelling in a filename stem's collision family: the stem
+ * itself, then `stem-2`, `stem-3`, … for slugs, or `Stem 2`, `Stem 3`, …
+ * for title filenames (Obsidian's own suffix shape).
+ */
+export function collisionStem(stem: string, ordinal: number): string {
+  if (ordinal === 1) {
+    return stem
+  }
+  return getVaultLayout().noteFileNames === 'title' ? `${stem} ${ordinal}` : `${stem}-${ordinal}`
+}
+
+/** Is `candidate` the `stem` collision family's member (`stem`, `stem-2`, …)? */
+export function isCollisionStemOf(candidate: string, stem: string): boolean {
+  if (candidate === stem) {
+    return true
+  }
+  const separator = getVaultLayout().noteFileNames === 'title' ? ' ' : '-'
+  return (
+    candidate.startsWith(`${stem}${separator}`) &&
+    /^\d+$/.test(candidate.slice(stem.length + separator.length))
+  )
 }
 
 /** Graph-relative path to a template for a filename slug (without `.md`). */
@@ -187,9 +309,12 @@ export function isAssetPath(path: string): boolean {
   return path.startsWith(`${ASSETS_DIR}/`) && !path.endsWith(DESCRIPTION_SUFFIX)
 }
 
-/** Is this graph-relative path a daily note (`daily/YYYY-MM-DD.md`)? */
+/**
+ * Is this graph-relative path a daily note in the open graph's layout
+ * (`daily/YYYY-MM-DD.md` by default)?
+ */
 export function isDaily(path: string): boolean {
-  return DAILY_PATH_RE.test(path)
+  return dateFromDailyPath(path) !== null
 }
 
 /**
@@ -267,9 +392,27 @@ export function isTemplatePath(path: string): boolean {
   return path.startsWith(`${TEMPLATES_DIR}/`) && isNotePath(path)
 }
 
-/** Extract the ISO date from a daily-note path, or `null` if it isn't one. */
+/**
+ * Extract the ISO date from a daily-note path, or `null` if it isn't one.
+ * The date is shape-checked, not calendar-checked (`daily/2026-02-31.md`
+ * yields `2026-02-31`; callers gate on {@link isCalendarDate}). A file whose
+ * name doesn't spell the date exactly as the layout would (an unpadded day
+ * under a padded format, or the reverse) is not a daily.
+ */
 export function dateFromDailyPath(path: string): string | null {
-  return DAILY_PATH_RE.exec(path)?.[1] ?? null
+  const codec = dailyCodec()
+  const match = codec.pattern.exec(path)
+  if (match === null) {
+    return null
+  }
+  const values: Record<'year' | 'month' | 'day', string> = { year: '', month: '', day: '' }
+  for (const [index, field] of codec.fields.entries()) {
+    values[field] = (match[index + 1] ?? '').padStart(2, '0')
+  }
+  if (codec.format(values.year, values.month, values.day) !== path) {
+    return null
+  }
+  return `${values.year}-${values.month}-${values.day}`
 }
 
 /**

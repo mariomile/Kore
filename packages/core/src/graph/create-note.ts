@@ -1,9 +1,8 @@
 import { ulid } from 'ulidx'
 import { upsertFrontmatter } from '../markdown/frontmatter'
-import { slugForTitle } from '../markdown/slug'
 import { createNoteIfAbsent } from './commands'
 import { wikiNoteReference } from './note-reference'
-import { notePath } from './paths'
+import { collisionStem, newNoteFolderPrefix, notePath, noteFileStemForTitle } from './paths'
 import {
   resolveExistingWikiTarget,
   type ExistingWikiTargetResolution,
@@ -54,8 +53,8 @@ export function untitledNotePath(): string {
   return notePath(newNoteId())
 }
 
-/** `notes/<26-char Crockford-base32 ULID>.md` — {@link untitledNotePath}'s shape. */
-const ULID_NOTE_PATH_RE = /^notes\/[0-7][0-9a-hjkmnp-tv-z]{25}\.md$/
+/** A 26-char Crockford-base32 ULID filename — {@link untitledNotePath}'s shape. */
+const ULID_NOTE_FILE_RE = /^[0-7][0-9a-hjkmnp-tv-z]{25}\.md$/
 
 /**
  * Is `path` a ULID placeholder name — a note born untitled that has not yet
@@ -63,7 +62,8 @@ const ULID_NOTE_PATH_RE = /^notes\/[0-7][0-9a-hjkmnp-tv-z]{25}\.md$/
  * row uses this to show as active while such a note is the current route.
  */
 export function isUntitledNotePath(path: string): boolean {
-  return ULID_NOTE_PATH_RE.test(path)
+  const prefix = newNoteFolderPrefix()
+  return path.startsWith(prefix) && ULID_NOTE_FILE_RE.test(path.slice(prefix.length))
 }
 
 /**
@@ -79,7 +79,7 @@ export async function createNoteWithTitle(
   body?: string,
 ): Promise<string> {
   const claimed = await claimNotePathForSlug(
-    slugForTitle(title),
+    noteFileStemForTitle(title),
     newNoteSource(title, body),
     generation,
   )
@@ -100,7 +100,7 @@ type ExistingTitleResolution = Exclude<ExistingWikiTargetResolution, { kind: 'mi
 
 /**
  * Claim the first free path in `slug`'s collision family (`slug.md`, then
- * `slug-2.md`, …) through the atomic no-clobber create — the one ordinal
+ * `slug-2.md`, … — see {@link collisionStem}) through the atomic no-clobber create — the one ordinal
  * convention both create entry points share. `onCollision` runs after each
  * lost claim; a non-null result short-circuits instead of trying the next
  * suffix (`resolveOrCreateNoteWithTitle` re-resolves the winner there).
@@ -123,7 +123,7 @@ async function claimNotePathForSlug(
   onCollision?: () => Promise<ExistingTitleResolution | null>,
 ): Promise<ResolveOrCreateNoteResult> {
   for (let ordinal = 1; ordinal <= MAX_CREATE_ATTEMPTS; ordinal += 1) {
-    const path = notePath(ordinal === 1 ? slug : `${slug}-${ordinal}`)
+    const path = notePath(collisionStem(slug, ordinal))
     const outcome = await createNoteIfAbsent(path, source, generation)
     if (outcome.kind === 'created') {
       return { kind: 'created', path }
@@ -174,7 +174,7 @@ export async function resolveOrCreateNoteWithTitle(
   // On a lost claim, re-resolve both projections before considering a
   // suffix: the winner may be the note this link meant.
   return await claimNotePathForSlug(
-    slugForTitle(title),
+    noteFileStemForTitle(title),
     newNoteSource(title, body),
     generation,
     async () => {

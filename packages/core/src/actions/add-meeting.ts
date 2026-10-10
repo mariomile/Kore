@@ -4,14 +4,13 @@ import { resolveAttendeeContact } from '../contacts/resolve'
 import { isAppError } from '../errors'
 import { noteExists, readNote, writeNote } from '../graph/commands'
 import { createNoteWithTitle } from '../graph/create-note'
-import { dailyPath, notePath } from '../graph/paths'
+import { dailyPath, notePath, noteFileStemForTitle } from '../graph/paths'
 import { resolveWikiTarget } from '../indexing/queries'
 import { appendListItemUnderHeading, wikiLinkSafe } from '../markdown/edit'
 import { canonicalEmails } from '../markdown/email-fields'
 import { parseNote } from '../markdown/extract'
 import { sectionEnd, topLevelHeadings } from '../markdown/heading-blocks'
 import { foldKey } from '../markdown/keys'
-import { slugForTitle } from '../markdown/slug'
 import { resolveMeetingAttendeeTargets, type ResolvedMeetingAttendee } from './resolve-attendees'
 
 /**
@@ -117,7 +116,7 @@ async function titleHasNote(title: string): Promise<boolean> {
   if (resolution.kind === 'resolved') {
     return true
   }
-  return await noteExists(notePath(slugForTitle(title)))
+  return await noteExists(notePath(noteFileStemForTitle(title)))
 }
 
 /**

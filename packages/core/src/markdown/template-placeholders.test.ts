@@ -36,4 +36,14 @@ describe('expandTemplatePlaceholders', () => {
     const recursive = { ...VALUES, title: '{{date}}' }
     expect(expandTemplatePlaceholders('{{title}}', recursive)).toBe('{{date}}')
   })
+
+  it('fills Obsidian moment-format date and time tokens', () => {
+    const now = new Date(2026, 7, 20, 9, 5)
+    expect(
+      expandTemplatePlaceholders(
+        '{{date:YYYY-MM-DD}} {{date:DD-MM-YYYY}} [[{{date:D.M.YY}}]] {{time:HH:mm}}',
+        { ...VALUES, now },
+      ),
+    ).toBe('2026-08-20 20-08-2026 [[20.8.26]] 09:05')
+  })
 })

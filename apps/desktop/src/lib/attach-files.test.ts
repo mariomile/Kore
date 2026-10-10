@@ -91,6 +91,7 @@ describe('attachFilesToNote', () => {
       sourcePath: '/Users/me/Q3 Report.pdf',
       desiredName: 'q3-report.pdf',
       generation: 4,
+      dir: null,
     })
     expect(handle.insertMarkdown).toHaveBeenCalledWith(
       '[Q3 Report.pdf](assets/q3-report.pdf)\n[archive.tar.gz](assets/archive-tar.gz)',

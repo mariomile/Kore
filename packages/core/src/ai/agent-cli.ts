@@ -3,6 +3,7 @@ import type { ModelMessage } from 'ai'
 import { getBridge } from '../ipc/bridge'
 import { call } from '../ipc/invoke'
 import type { ChatStreamEvent } from './chat/stream-chat'
+import { dailyPathPattern } from '../graph/paths'
 
 /**
  * Shared plumbing for the "subscription" AI providers — chat engines that
@@ -90,7 +91,7 @@ export function vaultEditRules(): string[] {
     'Editing rules (edit mode is on — you may create and modify notes):',
     '- Do the work directly: create and edit the markdown files to carry out the request, then summarize what changed, citing every touched note as a wiki link of its exact title.',
     '- Follow the vault’s conventions: new notes are notes/<kebab-case-title>.md with an H1 title; [[Exact Title]] links notes and [[YYYY-MM-DD]] links a daily; tasks are round checkboxes `+ [ ] text` (a leading ! or !! sets priority; the first [[YYYY-MM-DD]] inside the item is its due date), while square `- [ ]` checkboxes are plain checklists.',
-    '- Quick additions belong in today’s daily note (daily/YYYY-MM-DD.md — create it if missing): capture flows there by convention.',
+    `- Quick additions belong in today’s daily note (${dailyPathPattern()} — create it if missing): capture flows there by convention.`,
     '- Preserve frontmatter you don’t understand and never invent an `id:` — the app mints those.',
     '- Never write into .reflect/, .git/, assets/, or audio-memos/, and never touch private notes — the sandbox denies those writes; when a change would need one, say so instead of working around it.',
   ]

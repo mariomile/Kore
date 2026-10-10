@@ -31,6 +31,39 @@ and desktop 3,047 tests passed on Chromium. WebKit runs in CI only.
 parse once (local file, no network). Check on the Mac that the first chat
 reply and the first selection transform start without a visible pause.
 
+## Connectors: Readwise and Granola sync, 2026-10-09
+
+- [x] Added a connector library in `packages/core/src/connectors/`: a
+  `Connector` is a read-only source that yields markdown notes keyed by a
+  source id; the shared engine (`sync.ts`) places them under a per-connector
+  folder with Obsidian-style filenames (spaces kept), finds a note again by
+  its frontmatter id through `note_properties` and then by reading the file
+  at its natural path, and never writes over a file it did not create.
+  Connectors only add: Readwise appends highlights whose
+  `readwise.io/open/<id>` link the note lacks; Granola writes a meeting once.
+- [x] Readwise uses the export API (`Token` auth, `updatedAfter`,
+  `pageCursor`); Granola uses the public API with a personal `grn_` key
+  (`/v1/notes`, `created_after`, cursor pages, detail fetch only for unknown
+  meetings, 250 ms spacing for the 5 req/s limit). Both go through
+  `providerFetch`, so they work on desktop and iPhone.
+- [x] Per-device settings (`settings.connectors`: enabled, folder,
+  lastSyncedAt, importFrom); tokens in the keychain as `connector:<id>`.
+  Connecting verifies the token first. "Import past items" is off by
+  default: the floor is the connect time, so history the Obsidian plugins
+  already wrote is not duplicated.
+- [x] Sync runs in the main window on launch, every 15 minutes, on focus and
+  on iOS resume, plus "Sync now". Desktop: Settings → Sync & data →
+  Connectors. iPhone: Settings → Connectors.
+
+**Validation:** connector, engine and settings tests (core, node); the
+Connectors section and all mobile tests on Chromium. WebKit was left to CI
+(not runnable in this container). Neither API was called live: the Granola
+response fields come from its public docs and are parsed leniently.
+
+**Next:** Mario connects both on his Mac with real tokens and checks the
+first notes. Open questions: whether to import Granola transcripts, and
+which folders match his vault (the defaults are `Readwise/` and `Granola/`).
+
 ## Chat and Inbox debugging, 2026-09-28
 
 - [x] Reproduced the installed 0.74.1 Claude chat hang: A mid-run message
@@ -1466,6 +1499,27 @@ screen: Agents then Close lands on today.
 **Next:** merge the Close fix, then bump.
 
 ## Session log
+
+- 2026-10-09 — Performance at the size of a real vault (~5,150 notes). A
+  deterministic Obsidian-shaped vault (`?seed=obsidian` in plain-browser dev,
+  `apps/desktop/src/dev/seed-obsidian-vault.ts`: dailies, CRM, MOCs, nested
+  frontmatter tags, aliases, path links, image embeds) and an opt-in bench
+  over the real core pipeline and index schema
+  (`KORE_BENCH=1 pnpm exec vitest run --project node apps/desktop/src/dev/vault-bench.test.ts`)
+  found three hot spots, now fixed. Search: FTS5 `snippet()`/`highlight()`
+  ran for every match before the limit; ranking now runs mark-free and a
+  second query marks only the returned rows (`+rowid IN`, so MATCH is not
+  re-run per row). Results are identical (checked on 28 queries); wasm query
+  time 186 → 41 ms for "growth", palette per-key p50 179 → 41 ms, max
+  668 → 89 ms. The CLI's `reflect search` got the same split. Graph: the
+  layout's cutoff grid degraded to O(n²) in a dense cluster; a Barnes–Hut
+  quadtree takes a step from ~174 to ~14 ms, and edges and circles paint
+  in batched paths, paced while the layout settles, so main-thread long
+  tasks in the first ~10 s of opening the map fell from 9.2 s to ~2 s.
+  All notes: `listNotes` skipped tag-schema JSON parsing for columns that
+  cannot hold one, 225 → 51 ms. Not done: first-index time (one-off,
+  dominated by wasm apply in dev), lazy-loading the AI provider SDKs out of
+  the boot chunk. WebKit is verified by CI, not locally.
 
 - 2026-09-21 — Roadmap refreshed against v0.70.2: the 2026-08-30 Now list
   (all four items) is recorded as closed along with Plan 29, Plan 30 and

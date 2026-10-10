@@ -79,6 +79,23 @@ export function buildFtsMatch(query: string): string | null {
 }
 
 /**
+ * The body half of {@link buildFtsMatch}: rows whose body holds a word prefix
+ * of any term — exactly the rows where `snippet()` on the body column marks a
+ * match. Lets ranking ask "did the body match?" with one extra FTS pass instead
+ * of a snippet per hit. `null` exactly when {@link buildFtsMatch} is.
+ */
+export function buildBodyFtsMatch(query: string): string | null {
+  const terms = searchTerms(query)
+  if (terms.length === 0) {
+    return null
+  }
+  if (!terms.some(isTokenizable)) {
+    return `body : (${terms.map(quoteFtsLiteral).join(' ')})`
+  }
+  return `body : (${terms.map((term) => `${quoteFtsLiteral(term)}*`).join(' OR ')})`
+}
+
+/**
  * Build the *recall* `MATCH` expression: the same per-term word-prefix groups
  * as {@link buildFtsMatch}, joined with `OR` instead of `AND`. Chat recall
  * wants graded relevance — bm25 already rewards a note matching more of the

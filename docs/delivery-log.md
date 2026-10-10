@@ -13,6 +13,24 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
   is loaded. A lint rule keeps value imports of those packages out of
   startup code.
 
+- Kore stays fast on a vault of five thousand notes. Searching (the palette
+  and `reflect search`) now ranks without building snippets for every match
+  and highlights only the rows it shows, so typing a query answers in a
+  fraction of the time with the same results. The Graph view lays out with a
+  Barnes–Hut quadtree and paints in batches, so opening a dense map no longer
+  freezes the window while it settles. All notes lists faster too. A
+  synthetic Obsidian-shaped vault and an opt-in bench make the numbers
+  repeatable.
+
+- Readwise and Granola sync into the graph. Settings has a Connectors
+  section (desktop and iPhone) where a Readwise access token or a Granola API
+  key is verified and stored in the keychain; from then on highlights arrive
+  as one note per book or article and meetings as one note per meeting with
+  Granola's summary, in a folder of the user's choice, on launch, every 15
+  minutes and on return to the app. Kore only adds: new highlights are
+  appended, a meeting is written once, and files Kore didn't write are never
+  touched. Further sources plug into the same connector library.
+
 - Chat can say what a note is. `set_note_type` proposes putting a tag on a
   note, or taking one off, as a card the user accepts or rejects from the
   keyboard; nothing is written before they accept. It is the Type field's own

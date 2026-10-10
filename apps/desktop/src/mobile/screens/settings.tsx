@@ -25,6 +25,7 @@ import { AiPromptDrawer } from '@/mobile/ai-prompt-drawer'
 import { AiProviderActionsDrawer } from '@/mobile/ai-provider-actions-drawer'
 import { ChatSystemPromptDrawer } from '@/mobile/chat-system-prompt-drawer'
 import { ConnectGithubDrawer } from '@/mobile/connect-github-drawer'
+import { MobileConnectorsGroup } from '@/mobile/connectors-group'
 import { PRIVACY_POLICY_URL } from '@/mobile/legal-urls'
 import { MobileCalendarSettings } from '@/mobile/mobile-calendar-settings'
 import { MobileScreenHeader } from '@/mobile/screen-header'
@@ -183,6 +184,7 @@ export function MobileSettings(): ReactElement {
       repo?.name ?? '',
       status?.label ?? '',
     ])
+  const showConnectors = matchesMobileSettingsSection(settingsQuery, 'connectors')
   const showAbout = matchesMobileSettingsSection(settingsQuery, 'about', [version ?? ''])
   const hasMatches =
     showGraph ||
@@ -193,6 +195,7 @@ export function MobileSettings(): ReactElement {
     showPrompts ||
     showAudio ||
     showBackup ||
+    showConnectors ||
     showAbout
 
   return (
@@ -364,6 +367,8 @@ export function MobileSettings(): ReactElement {
               ) : null}
             </SettingsGroup>
           ) : null}
+
+          {showConnectors ? <MobileConnectorsGroup /> : null}
 
           {showAbout ? (
             <SettingsGroup header="About">

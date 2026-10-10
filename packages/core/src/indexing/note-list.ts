@@ -114,6 +114,12 @@ export async function listNotes(options: NoteListOptions = {}): Promise<Classifi
 
 /** Match the properties panel: a malformed schema does not make a tag typed. */
 function hasValidTagSchema(column: string, validity: Map<string, boolean>): boolean {
+  // Most rows carry no schema at all (`[null]`, or one null per untyped
+  // tag). A JSON array without a string has nothing to validate, and
+  // skipping the parse matters when the list holds thousands of notes.
+  if (!column.includes('"')) {
+    return false
+  }
   const schemas = z.array(z.string().nullable()).parse(JSON.parse(column))
   return schemas.some((schema) => {
     if (schema === null) return false

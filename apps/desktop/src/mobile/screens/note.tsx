@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react'
 import { isUntitledNotePath } from '@reflect/core'
+import { NoteChildrenPanel } from '@/components/note-children-panel'
 import { NotePane } from '@/components/note-pane'
 import { IncomingBacklinks } from '@/mobile/incoming-backlinks'
 import { MOBILE_CONTENT_GUTTER } from '@/mobile/mobile-content-gutter'
@@ -65,6 +66,7 @@ export function MobileNote({ path }: { path: string }): ReactElement {
         {/* The mobile section (touch chrome) replaces NotePane's built-in
             desktop panel; a daily-note backlink opens the Daily surface at
             that date rather than pushing another note screen. */}
+        <NoteChildrenPanel key={path} path={path} className={MOBILE_CONTENT_GUTTER} />
         <IncomingBacklinks path={path} className={cn(MOBILE_CONTENT_GUTTER, 'pb-4')} />
       </main>
     </div>

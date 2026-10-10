@@ -39,6 +39,11 @@ vi.mock('@/mobile/incoming-backlinks', () => ({
   IncomingBacklinks: () => null,
 }))
 
+// So does the child-notes section.
+vi.mock('@/components/note-children-panel', () => ({
+  NoteChildrenPanel: () => null,
+}))
+
 /**
  * Navigates to the note once (a real arrival, so the router's focus intent
  * is set exactly as a wiki-link tap would) and renders the screen the way

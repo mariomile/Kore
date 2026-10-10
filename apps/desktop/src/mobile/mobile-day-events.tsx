@@ -5,9 +5,9 @@ import {
   defaultAttendees,
   errorMessage,
   isContactsReadable,
+  noteFileStemForTitle,
   notePath,
   resolveWikiTarget,
-  slugForTitle,
   type CalendarEvent,
 } from '@reflect/core'
 import { Calendar } from '@/components/icons'
@@ -58,7 +58,8 @@ export function MobileDayEvents({ date }: MobileDayEventsProps): ReactElement | 
         generation,
       })
       const resolution = await resolveWikiTarget(title)
-      const path = resolution.kind === 'resolved' ? resolution.ref : notePath(slugForTitle(title))
+      const path =
+        resolution.kind === 'resolved' ? resolution.ref : notePath(noteFileStemForTitle(title))
       navigate({ kind: 'note', path })
     } catch (cause) {
       setError(errorMessage(cause))

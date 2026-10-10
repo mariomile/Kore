@@ -248,11 +248,16 @@ export async function rewritePathLinksForMove(
   io: PathLinkRewriteIo,
 ): Promise<PathLinkRewriteResult> {
   const to = toPath.replace(/\.md$/, '')
-  // The destination is a `slugForTitle` product today (lowercase word
-  // characters and hyphens); a caller handing over an arbitrary path must
+  // The destination is a `noteFileStemForTitle` product (a slug, or a title
+  // with link syntax stripped); a caller handing over an arbitrary path must
   // fail loudly rather than splice an unparseable target into user files.
-  if (/[[\]|\r\n#]/.test(to) || !to.includes('/')) {
+  if (/[[\]|\r\n#]/.test(to)) {
     throw new Error(`move destination has no wiki spelling: ${toPath}`)
+  }
+  // A vault-root destination has no path spelling distinct from its name:
+  // links to it are name links, which the title rewrite maintains.
+  if (!to.includes('/')) {
+    return { rewritten: [], failed: [] }
   }
   const fromPathKey = foldGraphPath(fromPath)
   const sources = (await io.pathLinkSources(fromPathKey))

@@ -1,5 +1,37 @@
 # Kore working state
 
+## Obsidian vault profile, 2026-10-10
+
+- [x] Kore reads an adopted vault's `.obsidian/daily-notes.json` and
+  `app.json` at open (new `obsidian_config_read` command, fixed file names
+  only) and adopts its layout; a vault without them behaves as before.
+  Core owns the policy in `packages/core/src/graph/vault-layout.ts`.
+- [x] Daily notes follow the vault's folder and moment format
+  (`Journal/Daily/DD-MM-YYYY.md` in Mario's vault). `dailyPath`, `isDaily`
+  and `dateFromDailyPath` read the layout, so routing, the daily stream,
+  capture, meetings and the index agree. The index stamp carries the layout
+  fingerprint: adopting it rebuilds once; Kore's default stamp is unchanged.
+  Formats with weekday names or two-digit years keep Kore's default.
+- [x] Attachments: bare `![[photo.png]]`, partial `![[2024/x.png]]` and
+  vault-relative or percent-encoded paths resolve through the vault's
+  attachment catalog (new `list_attachments` command), preferring the
+  attachment folder. Pasted and imported files land in that folder
+  (`asset_upload_commit` / `asset_import` take an optional `dir`).
+- [x] New notes land in `newFileFolderPath` (`_inbox`) named after their
+  title (`Meeting Notes.md`, collisions `Meeting Notes 2.md`), and the
+  title-change rename keeps that shape. The `id:` frontmatter stays: Plan 17
+  rename tracking depends on it.
+- Not done: the `reflect` CLI still assumes `daily/YYYY-MM-DD.md`;
+  Obsidian's `userIgnoreFilters` and daily template are not read (a
+  `.reflectignore` line covers the sidecars); bare-name lookups for files
+  added outside Kore after open fall back to the attachment folder until
+  the next open.
+
+**Validation:** core node suite, desktop node suite and the desktop browser
+suite on Chromium; `cargo clippy` and `cargo test -p reflect-open` for the
+two new commands. WebKit is left to CI (it cannot run in the cloud
+container). Not tried against the real vault on the Mac.
+
 ## Chat and Inbox debugging, 2026-09-28
 
 - [x] Reproduced the installed 0.74.1 Claude chat hang: A mid-run message
@@ -1435,6 +1467,10 @@ screen: Agents then Close lands on today.
 **Next:** merge the Close fix, then bump.
 
 ## Session log
+
+- 2026-10-10 — Obsidian vault profile: daily notes, attachments and new
+  notes follow an adopted vault's `.obsidian` settings (see the section at
+  the top). Closes P0 items 1, 2 and 4 of the Kore-vs-Obsidian gap analysis.
 
 - 2026-09-21 — Roadmap refreshed against v0.70.2: the 2026-08-30 Now list
   (all four items) is recorded as closed along with Plan 29, Plan 30 and

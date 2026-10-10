@@ -1,6 +1,17 @@
 import { afterEach, describe, expect, it } from 'vitest'
+import { titleFileStem } from '../markdown/slug'
 import { resolveAttachmentSource, setAttachmentIndex } from './attachment-index'
-import { dailyPath, dailyPathPattern, dateFromDailyPath, isDaily } from './paths'
+import { isUntitledNotePath, untitledNotePath } from './create-note'
+import { isReflectManagedNotePath } from './note-management'
+import {
+  collisionStem,
+  dailyPath,
+  dailyPathPattern,
+  dateFromDailyPath,
+  isDaily,
+  notePath,
+  noteFileStemForTitle,
+} from './paths'
 import {
   DEFAULT_VAULT_LAYOUT,
   parseDailyFormat,
@@ -20,7 +31,11 @@ const MARIOVERSE = vaultLayoutFromObsidian({
     format: 'DD-MM-YYYY',
     template: '_system/templates/Daily-Note',
   }),
-  app: JSON.stringify({ attachmentFolderPath: 'Resources/_attachments', newFileLocation: 'folder' }),
+  app: JSON.stringify({
+    attachmentFolderPath: 'Resources/_attachments',
+    newFileLocation: 'folder',
+    newFileFolderPath: '_inbox',
+  }),
 })
 
 describe('vaultLayoutFromObsidian', () => {
@@ -29,6 +44,8 @@ describe('vaultLayoutFromObsidian', () => {
       dailyFolder: 'Journal/Daily',
       dailyFormat: 'DD-MM-YYYY',
       attachmentFolder: 'Resources/_attachments',
+      newNoteFolder: '_inbox',
+      noteFileNames: 'title',
     })
   })
 
@@ -37,9 +54,9 @@ describe('vaultLayoutFromObsidian', () => {
     expect(
       vaultLayoutFromObsidian({
         dailyNotes: '{not json',
-        app: JSON.stringify({ attachmentFolderPath: './' }),
+        app: JSON.stringify({ attachmentFolderPath: './', newFileLocation: 'current' }),
       }),
-    ).toEqual(DEFAULT_VAULT_LAYOUT)
+    ).toEqual({ ...DEFAULT_VAULT_LAYOUT, noteFileNames: 'title' })
     // A format that can't name one file per day, or an unsafe folder.
     expect(
       vaultLayoutFromObsidian({ dailyNotes: JSON.stringify({ format: 'dddd' }), app: null }),
@@ -115,5 +132,33 @@ describe('resolveAttachmentSource', () => {
     expect(resolveAttachmentSource('assets/../secret.png')).toBeNull()
     expect(resolveAttachmentSource('x.png')).toBeNull()
     expect(resolveAttachmentSource('assets/x.png')).toBe('assets/x.png')
+  })
+})
+
+describe('new notes under an adopted layout', () => {
+  it('lands title-named notes in the vault’s new-note folder', () => {
+    setVaultLayout(MARIOVERSE)
+    expect(notePath(noteFileStemForTitle('Q3: plan / budget?'))).toBe('_inbox/Q3 plan budget.md')
+    expect(collisionStem('Meeting Notes', 2)).toBe('Meeting Notes 2')
+    const untitled = untitledNotePath()
+    expect(untitled.startsWith('_inbox/')).toBe(true)
+    expect(isUntitledNotePath(untitled)).toBe(true)
+    expect(isReflectManagedNotePath('_inbox/Meeting Notes.md')).toBe(true)
+    expect(isReflectManagedNotePath('notes/meeting-notes.md')).toBe(false)
+  })
+
+  it('keeps Kore’s slugs in Kore’s layout', () => {
+    expect(notePath(noteFileStemForTitle('Meeting Notes'))).toBe('notes/meeting-notes.md')
+    expect(collisionStem('meeting-notes', 2)).toBe('meeting-notes-2')
+  })
+})
+
+describe('titleFileStem', () => {
+  it('keeps the title, minus what a filename or wiki link cannot carry', () => {
+    expect(titleFileStem('Meeting Notes')).toBe('Meeting Notes')
+    expect(titleFileStem('[[Links]] #tag ^ref | x')).toBe('Links tag ref x')
+    expect(titleFileStem('.hidden')).toBe('hidden')
+    expect(titleFileStem('???')).toBe('Untitled')
+    expect(titleFileStem('CON')).toBe('CON note')
   })
 })

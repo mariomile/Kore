@@ -4,10 +4,15 @@ import { findNotesByPathKey, findWikiTargetMatch, type WikiTargetMatch } from '.
 import { parseNote } from '../markdown/extract'
 import { foldFallbackTitleKey, foldKey } from '../markdown/keys'
 import { normalizeWikiTarget } from '../markdown/resolve'
-import { slugForTitle } from '../markdown/slug'
 import { listFiles, readNote } from './commands'
 import { markdownNoteReference, wikiNoteReference, type NoteReference } from './note-reference'
-import { dailyPath, foldGraphPath, NOTES_DIR } from './paths'
+import {
+  dailyPath,
+  foldGraphPath,
+  isCollisionStemOf,
+  newNoteFolderPrefix,
+  noteFileStemForTitle,
+} from './paths'
 
 /** The side-effect-free outcome of resolving one existing note-link target. */
 export type ExistingWikiTargetResolution =
@@ -38,21 +43,18 @@ function resolutionForPaths(paths: readonly string[]): ExistingMatchResolution |
   return null
 }
 
-/** Does `path` belong to `slug.md`, `slug-2.md`, ... under `notes/`? */
+/**
+ * Does `path` belong to `slug.md`, `slug-2.md`, ... (or `Title.md`,
+ * `Title 2.md`, ...) directly in the new-note folder (`notes/`)?
+ */
 function isSlugFamilyPath(path: string, slug: string): boolean {
-  const prefix = `${NOTES_DIR}/`
+  const prefix = newNoteFolderPrefix()
   const suffix = '.md'
   if (!path.startsWith(prefix) || !path.endsWith(suffix)) {
     return false
   }
   const stem = path.slice(prefix.length, -suffix.length)
-  if (stem === slug) {
-    return true
-  }
-  if (!stem.startsWith(`${slug}-`)) {
-    return false
-  }
-  return /^\d+$/.test(stem.slice(slug.length + 1))
+  return !stem.includes('/') && isCollisionStemOf(stem, slug)
 }
 
 /**
@@ -65,7 +67,7 @@ async function matchTitleOnDisk(
   generation: number,
   listNoteFiles: ListNoteFiles,
 ): Promise<DiskTitleMatch> {
-  const slug = slugForTitle(title)
+  const slug = noteFileStemForTitle(title)
   const candidates = (await listNoteFiles())
     .filter((file) => isSlugFamilyPath(file.path, slug))
     .sort((left, right) => (left.path < right.path ? -1 : left.path > right.path ? 1 : 0))

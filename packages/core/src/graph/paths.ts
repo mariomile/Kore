@@ -1,3 +1,4 @@
+import { slugForTitle, titleFileStem } from '../markdown/slug'
 import { getVaultLayout, parseDailyFormat, type VaultLayout } from './vault-layout'
 
 /**
@@ -134,7 +135,7 @@ interface DailyCodec {
 let codecCache: { layout: VaultLayout; codec: DailyCodec } | null = null
 
 function escapeRegExp(text: string): string {
-  return text.replaceAll(/[.*+?^${}()|[\]\\/]/g, '\\$&')
+  return text.replaceAll(/[.*+?^${}()|[\]\\/]/g, String.raw`\$&`)
 }
 
 function dailyCodec(): DailyCodec {
@@ -153,10 +154,15 @@ function dailyCodec(): DailyCodec {
       source += escapeRegExp(part.text)
     } else {
       fields.push(part.kind)
-      source += part.kind === 'year' ? '(\\d{4})' : part.padded ? '(\\d{2})' : '(\\d{1,2})'
+      source +=
+        part.kind === 'year'
+          ? String.raw`(\d{4})`
+          : part.padded
+            ? String.raw`(\d{2})`
+            : String.raw`(\d{1,2})`
     }
   }
-  source += '\\.md$'
+  source += String.raw`\.md$`
   const codec: DailyCodec = {
     pattern: new RegExp(source),
     fields,
@@ -219,9 +225,52 @@ export function foldGraphPath(path: string): string {
   return asciiLowerCase(path.normalize('NFC'))
 }
 
-/** Graph-relative path to a regular note for a filename slug (without `.md`). */
-export function notePath(slug: string): string {
-  return `${NOTES_DIR}/${slug}.md`
+/**
+ * Graph-relative path to a new regular note for a filename stem (without
+ * `.md`): `notes/<stem>.md` in Kore's layout, or the folder an adopted
+ * vault creates notes in.
+ */
+export function notePath(stem: string): string {
+  return `${newNoteFolderPrefix()}${stem}.md`
+}
+
+/** The new-note folder with its trailing slash (`notes/`), or `''` for the vault root. */
+export function newNoteFolderPrefix(): string {
+  const folder = getVaultLayout().newNoteFolder
+  return folder === '' ? '' : `${folder}/`
+}
+
+/**
+ * The filename stem a note titled `title` gets: Kore's slug
+ * (`meeting-notes`) or, in a vault that names files after titles, the
+ * title itself (`Meeting Notes`).
+ */
+export function noteFileStemForTitle(title: string): string {
+  return getVaultLayout().noteFileNames === 'title' ? titleFileStem(title) : slugForTitle(title)
+}
+
+/**
+ * The `ordinal`-th spelling in a filename stem's collision family: the stem
+ * itself, then `stem-2`, `stem-3`, … for slugs, or `Stem 2`, `Stem 3`, …
+ * for title filenames (Obsidian's own suffix shape).
+ */
+export function collisionStem(stem: string, ordinal: number): string {
+  if (ordinal === 1) {
+    return stem
+  }
+  return getVaultLayout().noteFileNames === 'title' ? `${stem} ${ordinal}` : `${stem}-${ordinal}`
+}
+
+/** Is `candidate` the `stem` collision family's member (`stem`, `stem-2`, …)? */
+export function isCollisionStemOf(candidate: string, stem: string): boolean {
+  if (candidate === stem) {
+    return true
+  }
+  const separator = getVaultLayout().noteFileNames === 'title' ? ' ' : '-'
+  return (
+    candidate.startsWith(`${stem}${separator}`) &&
+    /^\d+$/.test(candidate.slice(stem.length + separator.length))
+  )
 }
 
 /** Graph-relative path to a template for a filename slug (without `.md`). */
@@ -357,9 +406,9 @@ export function dateFromDailyPath(path: string): string | null {
     return null
   }
   const values: Record<'year' | 'month' | 'day', string> = { year: '', month: '', day: '' }
-  codec.fields.forEach((field, index) => {
+  for (const [index, field] of codec.fields.entries()) {
     values[field] = (match[index + 1] ?? '').padStart(2, '0')
-  })
+  }
   if (codec.format(values.year, values.month, values.day) !== path) {
     return null
   }

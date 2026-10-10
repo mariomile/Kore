@@ -93,3 +93,37 @@ export function slugForTitle(title: string): string {
   }
   return capped
 }
+
+/** Characters no note filename may carry: path syntax, and Obsidian's link syntax. */
+const TITLE_FILENAME_STRIP_RE = /[*"\\/<>:|?#^[\]\p{Cc}]+/gu
+/** Title filenames are the title itself, so they get a roomier cap than slugs. */
+const MAX_TITLE_FILENAME_CHARS = 100
+
+/**
+ * The title-shaped filename stem an Obsidian vault uses (`Meeting Notes.md`,
+ * not `meeting-notes.md`): the title with the characters a filename or a
+ * wiki link can't carry removed, whitespace collapsed, and no leading dot
+ * (a hidden file). Case is kept. Never empty, never a Windows reserved name.
+ *
+ * ```ts
+ * titleFileStem('Meeting Notes')        // 'Meeting Notes'
+ * titleFileStem('Q3: plan / budget?')   // 'Q3 plan budget'
+ * ```
+ */
+export function titleFileStem(title: string): string {
+  const cleaned = title
+    .normalize('NFC')
+    .replaceAll(TITLE_FILENAME_STRIP_RE, ' ')
+    .replaceAll(/\s+/gu, ' ')
+    .trim()
+    .replace(/^\.+/, '')
+    .trim()
+  const capped = [...cleaned].slice(0, MAX_TITLE_FILENAME_CHARS).join('').trim()
+  if (capped === '') {
+    return 'Untitled'
+  }
+  if (WINDOWS_RESERVED.has(capped.toLowerCase())) {
+    return `${capped} note`
+  }
+  return capped
+}

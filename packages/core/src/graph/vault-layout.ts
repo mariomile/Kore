@@ -21,13 +21,23 @@ export interface VaultLayout {
    * place a bare `![[name.png]]` is looked up. `null` keeps Kore's `assets/`.
    */
   readonly attachmentFolder: string | null
+  /** Graph-relative folder new notes are created in (`''` is the vault root). */
+  readonly newNoteFolder: string
+  /**
+   * How a new note's filename derives from its title: Kore's lowercase
+   * `slug` (`meeting-notes.md`) or the `title` itself (`Meeting Notes.md`),
+   * as Obsidian names files.
+   */
+  readonly noteFileNames: 'slug' | 'title'
 }
 
-/** Kore's own layout: `daily/YYYY-MM-DD.md`, attachments under `assets/`. */
+/** Kore's own layout: `daily/YYYY-MM-DD.md`, `notes/<slug>.md`, attachments under `assets/`. */
 export const DEFAULT_VAULT_LAYOUT: VaultLayout = {
   dailyFolder: 'daily',
   dailyFormat: 'YYYY-MM-DD',
   attachmentFolder: null,
+  newNoteFolder: 'notes',
+  noteFileNames: 'slug',
 }
 
 let activeLayout: VaultLayout = DEFAULT_VAULT_LAYOUT
@@ -83,7 +93,7 @@ export function parseDailyFormat(format: string): readonly DailyFormatPart[] | n
       parts.push({ kind: 'month', padded: token === 'MM' })
     } else if (token === 'DD' || token === 'D') {
       parts.push({ kind: 'day', padded: token === 'DD' })
-    } else if (/^[A-Za-z]/.test(token)) {
+    } else if (/^[a-z]/i.test(token)) {
       return null
     } else {
       parts.push({ kind: 'literal', text: token })
@@ -99,7 +109,7 @@ export function parseDailyFormat(format: string): readonly DailyFormatPart[] | n
 
 /** Normalize a vault-relative folder: trims slashes; `null` when it is unsafe. */
 function normalizeFolder(folder: string): string | null {
-  const trimmed = folder.trim().replace(/^\/+|\/+$/g, '')
+  const trimmed = folder.trim().replaceAll(/^\/+|\/+$/g, '')
   if (trimmed === '') {
     return ''
   }
@@ -121,6 +131,8 @@ const obsidianDailyNotesSchema = z.object({
 /** The `.obsidian/app.json` keys Kore reads. */
 const obsidianAppSchema = z.object({
   attachmentFolderPath: z.string().optional(),
+  newFileLocation: z.string().optional(),
+  newFileFolderPath: z.string().optional(),
 })
 
 /** The raw `.obsidian` files {@link vaultLayoutFromObsidian} reads; `null` when absent. */
@@ -150,7 +162,11 @@ function parseJson<T>(source: string | null, schema: z.ZodType<T>): T | null {
  *   own defaults (vault root, `YYYY-MM-DD`) for the keys it omits;
  * - `app.json` `attachmentFolderPath` → the attachment folder, when it names
  *   a fixed folder (`./`-relative "next to the note" settings and the vault
- *   root keep `assets/`).
+ *   root keep `assets/`);
+ * - `app.json` itself → new notes are named after their title, as Obsidian
+ *   names them, and land in `newFileFolderPath` when `newFileLocation` is
+ *   `folder` (the vault root for `root`; Obsidian's "same folder as the
+ *   current file" has no fixed answer, so it keeps `notes/`).
  */
 export function vaultLayoutFromObsidian(files: ObsidianConfigFiles): VaultLayout {
   let layout = DEFAULT_VAULT_LAYOUT
@@ -163,6 +179,18 @@ export function vaultLayoutFromObsidian(files: ObsidianConfigFiles): VaultLayout
     }
   }
   const app = parseJson(files.app, obsidianAppSchema)
+  if (app !== null) {
+    layout = { ...layout, noteFileNames: 'title' }
+    const newFolder =
+      app.newFileLocation === 'root'
+        ? ''
+        : app.newFileLocation === 'folder'
+          ? normalizeFolder(app.newFileFolderPath ?? '')
+          : null
+    if (newFolder !== null) {
+      layout = { ...layout, newNoteFolder: newFolder }
+    }
+  }
   const attachments = app?.attachmentFolderPath?.trim() ?? ''
   if (attachments !== '' && !attachments.startsWith('./') && attachments !== '.') {
     const folder = normalizeFolder(attachments)

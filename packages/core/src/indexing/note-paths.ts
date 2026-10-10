@@ -1,5 +1,11 @@
 import { noteExists } from '../graph/commands'
-import { notePath, templatePath } from '../graph/paths'
+import {
+  collisionStem,
+  foldGraphPath,
+  notePath,
+  noteFileStemForTitle,
+  templatePath,
+} from '../graph/paths'
 import { slugForTitle } from '../markdown/slug'
 import { db } from './db'
 
@@ -21,6 +27,11 @@ import { db } from './db'
  * (`createNoteWithTitle`), where disk occupancy is the only authority.
  * See `docs/readable-filenames.md`.
  */
+
+/** Templates are always slug-named, whatever the vault does for notes. */
+function slugCollisionStem(slug: string, ordinal: number): string {
+  return ordinal === 1 ? slug : `${slug}-${ordinal}`
+}
 
 /** Is `path` already taken — indexed, or present on disk? */
 async function pathTaken(path: string): Promise<boolean> {
@@ -51,10 +62,14 @@ async function probeNotePath(
   taken: (candidate: string) => Promise<boolean>,
   currentPath: string | null,
   buildPath: (slug: string) => string = notePath,
+  suffixed: (slug: string, ordinal: number) => string = collisionStem,
 ): Promise<string> {
   for (let ordinal = 1; ordinal <= MAX_COLLISION_PROBES; ordinal += 1) {
-    const candidate = buildPath(ordinal === 1 ? slug : `${slug}-${ordinal}`)
-    if (candidate === currentPath) {
+    const candidate = buildPath(suffixed(slug, ordinal))
+    // Case-folded: title filenames keep the title's case, and a retitle that
+    // only changes case must not "collide" with its own file on a
+    // case-insensitive disk. The file keeps its current spelling.
+    if (currentPath !== null && foldGraphPath(candidate) === foldGraphPath(currentPath)) {
       return currentPath
     }
     if (!(await taken(candidate))) {
@@ -73,7 +88,7 @@ export async function availableTemplatePath(
   slug: string,
   taken: (path: string) => Promise<boolean> = pathTaken,
 ): Promise<string> {
-  return await probeNotePath(slug, taken, null, templatePath)
+  return await probeNotePath(slug, taken, null, templatePath, slugCollisionStem)
 }
 
 /**
@@ -87,7 +102,7 @@ export async function templateSlugPathForTitle(
   title: string,
   taken: (candidate: string) => Promise<boolean> = pathTaken,
 ): Promise<string> {
-  return await probeNotePath(slugForTitle(title), taken, path, templatePath)
+  return await probeNotePath(slugForTitle(title), taken, path, templatePath, slugCollisionStem)
 }
 
 /**
@@ -101,5 +116,5 @@ export async function slugPathForTitle(
   title: string,
   taken: (candidate: string) => Promise<boolean> = pathTaken,
 ): Promise<string> {
-  return await probeNotePath(slugForTitle(title), taken, path)
+  return await probeNotePath(noteFileStemForTitle(title), taken, path)
 }

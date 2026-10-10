@@ -348,6 +348,8 @@ export {
   type ChatMode,
   type AiPrompt,
   type AiPromptMode,
+  type ConnectorSettings,
+  type ConnectorsSettings,
 } from '../settings/schema'
 export {
   moveSavedCollectionView,
@@ -420,3 +422,21 @@ export {
   type BrowserNavigatedEvent,
   type BrowserPageRead,
 } from '../browser/commands'
+export {
+  CONNECTORS,
+  connectorById,
+  connectorSecretName,
+  type Connector,
+  type ConnectorId,
+} from '../connectors/registry'
+export {
+  normalizeConnectorFolder,
+  syncConnector,
+  type ConnectorSyncResult,
+  type SyncConnectorInput,
+} from '../connectors/sync'
+export {
+  connectConnector,
+  disconnectConnector,
+  isConnectorConnected,
+} from '../connectors/credentials'

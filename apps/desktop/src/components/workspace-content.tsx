@@ -127,7 +127,7 @@ export function WorkspaceContent({ graph }: WorkspaceContentProps): ReactElement
       <EmbeddingsSync />
       <AgentRoutinesRunner />
       <TaskRemindersRunner />
-      <VaultCompatNotice />
+      <VaultCompatNotice graph={graph} />
     </div>
   )
 }

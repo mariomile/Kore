@@ -1,8 +1,7 @@
 import { useEffect } from 'react'
-import { getVaultLayout } from '@reflect/core'
+import { getVaultLayout, type GraphInfo } from '@reflect/core'
 import { toast } from '@/components/ui/toast'
 import { useVaultCompatReport } from '@/hooks/use-vault-compat-report'
-import { useGraph } from '@/providers/graph-provider'
 import { settingsRoute } from '@/routing/route'
 import { useRouter } from '@/routing/router'
 
@@ -32,15 +31,18 @@ function markOffered(root: string): void {
  * (Settings → Sync & data → Obsidian compatibility). Once per vault, found
  * or not, so later launches never pay for a scan nobody asked for.
  */
-export function VaultCompatNotice(): null {
-  const { graph } = useGraph()
+interface VaultCompatNoticeProps {
+  readonly graph: GraphInfo
+}
+
+export function VaultCompatNotice({ graph }: VaultCompatNoticeProps): null {
   const { navigate } = useRouter()
-  const root = graph?.root ?? null
-  const eligible = root !== null && getVaultLayout().obsidian && !wasOffered(root)
-  const { report } = useVaultCompatReport(eligible)
+  const root = graph.root
+  const eligible = getVaultLayout().obsidian && !wasOffered(root)
+  const { report } = useVaultCompatReport(graph, eligible)
 
   useEffect(() => {
-    if (!eligible || root === null || report === null) {
+    if (!eligible || report === null) {
       return
     }
     markOffered(root)

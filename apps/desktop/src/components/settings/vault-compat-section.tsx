@@ -7,6 +7,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'
 import { useVaultCompatReport } from '@/hooks/use-vault-compat-report'
 import { cn } from '@/lib/utils'
+import { useGraph } from '@/providers/graph-provider'
 import { SettingsSection } from './section'
 
 interface CompatGroupRowProps {
@@ -88,7 +89,8 @@ function CompatGroupRow({ group }: CompatGroupRowProps): ReactElement {
  * Shown only for vaults with Obsidian settings. Nothing here changes a file.
  */
 export function VaultCompatSection(): ReactElement {
-  const { report, isScanning, error, rescan } = useVaultCompatReport()
+  const { graph } = useGraph()
+  const { report, isScanning, error, rescan } = useVaultCompatReport(graph)
 
   let summary: string
   if (error !== null) {

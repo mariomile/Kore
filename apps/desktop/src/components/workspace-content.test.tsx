@@ -37,6 +37,7 @@ vi.mock('@/components/context-sidebar/note-context-sidebar', () => ({
 vi.mock('@/components/embeddings-sync', () => ({ EmbeddingsSync: () => null }))
 vi.mock('@/components/agent-routines-runner', () => ({ AgentRoutinesRunner: () => null }))
 vi.mock('@/components/task-reminders-runner', () => ({ TaskRemindersRunner: () => null }))
+vi.mock('@/components/vault-compat/vault-compat-notice', () => ({ VaultCompatNotice: () => null }))
 vi.mock('@/components/note-find-bar', () => ({ NoteFindBar: () => null }))
 vi.mock('@/components/vault-replace/vault-replace-dialog', () => ({
   VaultReplaceMount: () => null,

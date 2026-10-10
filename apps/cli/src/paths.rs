@@ -133,10 +133,9 @@ impl DailyLayout {
 
     /// The layout for the graph at `root`.
     pub fn for_graph(root: &Path) -> Self {
-        let file = root.join(".obsidian").join("daily-notes.json");
-        match std::fs::read_to_string(file) {
-            Ok(json) => Self::from_obsidian_json(&json),
-            Err(_) => Self::default(),
+        match reflect_graph_paths::read_obsidian_file(root, "daily-notes.json") {
+            Some(json) => Self::from_obsidian_json(&json),
+            None => Self::default(),
         }
     }
 

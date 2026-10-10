@@ -1121,25 +1121,14 @@ pub struct ObsidianConfig {
     pub app: Option<String>,
 }
 
-/// Larger than any real Obsidian settings file; a bigger one is not read.
-const OBSIDIAN_CONFIG_MAX_BYTES: u64 = 256 * 1024;
-
-fn read_obsidian_config_file(root: &Path, name: &str) -> Option<String> {
-    let path = root.join(".obsidian").join(name);
-    let meta = fs::symlink_metadata(&path).ok()?;
-    if !meta.is_file() || meta.len() > OBSIDIAN_CONFIG_MAX_BYTES {
-        return None;
-    }
-    fs::read_to_string(&path).ok()
-}
-
 /// Read `.obsidian/daily-notes.json` and `.obsidian/app.json` from `root`.
-/// Fixed names only, never a caller-supplied path, so this cannot become a
-/// way to read arbitrary hidden files.
+/// Fixed names only, never a caller-supplied path, and never through a
+/// symlinked `.obsidian` (see `reflect_graph_paths::read_obsidian_file`), so
+/// this cannot become a way to read files outside the graph.
 pub(crate) fn read_obsidian_config(root: &Path) -> ObsidianConfig {
     ObsidianConfig {
-        daily_notes: read_obsidian_config_file(root, "daily-notes.json"),
-        app: read_obsidian_config_file(root, "app.json"),
+        daily_notes: reflect_graph_paths::read_obsidian_file(root, "daily-notes.json"),
+        app: reflect_graph_paths::read_obsidian_file(root, "app.json"),
     }
 }
 

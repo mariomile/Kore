@@ -17,7 +17,24 @@ use std::path::Path;
 use regex::{Regex, RegexBuilder};
 
 /// Larger than any real Obsidian settings file; a bigger one is not read.
-const APP_JSON_MAX_BYTES: u64 = 256 * 1024;
+const SETTINGS_MAX_BYTES: u64 = 256 * 1024;
+
+/// Read `<root>/.obsidian/<name>`, the one way Kore reads Obsidian settings.
+/// `None` unless `.obsidian` is a real directory (a symlinked one could
+/// point anywhere on disk) and `name` a regular file no larger than any real
+/// settings file. `name` is a fixed file name, never a caller's path.
+pub fn read_obsidian_file(root: &Path, name: &str) -> Option<String> {
+    let folder = root.join(".obsidian");
+    if !std::fs::symlink_metadata(&folder).is_ok_and(|meta| meta.is_dir()) {
+        return None;
+    }
+    let path = folder.join(name);
+    let meta = std::fs::symlink_metadata(&path).ok()?;
+    if !meta.is_file() || meta.len() > SETTINGS_MAX_BYTES {
+        return None;
+    }
+    std::fs::read_to_string(&path).ok()
+}
 
 /// The parsed exclusion list: path prefixes and `/regex/` filters.
 #[derive(Debug, Default)]
@@ -30,13 +47,7 @@ impl ObsidianExclusions {
     /// Exclusions from `<root>/.obsidian/app.json`; none when the file is
     /// absent, oversized, or malformed.
     pub fn load(root: &Path) -> Self {
-        let path = root.join(".obsidian").join("app.json");
-        let readable = std::fs::symlink_metadata(&path)
-            .is_ok_and(|meta| meta.is_file() && meta.len() <= APP_JSON_MAX_BYTES);
-        if !readable {
-            return Self::default();
-        }
-        std::fs::read_to_string(&path)
+        read_obsidian_file(root, "app.json")
             .map(|json| Self::from_app_json(&json))
             .unwrap_or_default()
     }
@@ -146,6 +157,29 @@ mod tests {
         assert!(exclusions.excludes_note(root, "Archive/old.md"));
         assert!(!exclusions.excludes_note(root, "Archive/secret.md"));
         assert!(!exclusions.excludes_note(root, "Archive/missing.md"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_symlinked_settings_folder_is_not_read() {
+        let outside = tempfile::tempdir().unwrap();
+        std::fs::write(
+            outside.path().join("app.json"),
+            r#"{"userIgnoreFilters":["x/"]}"#,
+        )
+        .unwrap();
+        let vault = tempfile::tempdir().unwrap();
+        std::os::unix::fs::symlink(outside.path(), vault.path().join(".obsidian")).unwrap();
+        assert_eq!(read_obsidian_file(vault.path(), "app.json"), None);
+        assert!(ObsidianExclusions::load(vault.path()).is_empty());
+
+        let real = tempfile::tempdir().unwrap();
+        std::fs::create_dir(real.path().join(".obsidian")).unwrap();
+        std::fs::write(real.path().join(".obsidian/app.json"), "{}").unwrap();
+        assert_eq!(
+            read_obsidian_file(real.path(), "app.json").as_deref(),
+            Some("{}")
+        );
     }
 
     #[test]

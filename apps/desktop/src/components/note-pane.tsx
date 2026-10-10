@@ -194,7 +194,7 @@ export function NotePaneComponent({
     resolveImageUrl,
     resolveAssetOpenPath,
   })
-  const onWikiLinkClick = useWikiLinkNavigation(generation)
+  const onWikiLinkClick = useWikiLinkNavigation(generation, path)
   const onNoteLinkClick = useMarkdownLinkNavigation(generation, path)
   const { onWikilinkSearch, onTagSearch } = useEditorAutocomplete()
   // The index's privacy flag for this note, overlay-backed so an in-app

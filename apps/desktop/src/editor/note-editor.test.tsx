@@ -745,3 +745,23 @@ describe('latest callback props', () => {
     expect(previousNoteOnChange).not.toHaveBeenCalled()
   })
 })
+
+describe('NoteEditor revealHeading', () => {
+  it('scrolls an unfocused editor to a linked heading', async () => {
+    const filler = Array.from({ length: 80 }, (_, index) => `Line ${index}`).join('\n\n')
+    const handle = createRef<NoteEditorHandle>()
+    const view = await render(
+      <div style={{ height: '300px', overflow: 'auto' }} data-testid="scroller">
+        <NoteEditor
+          initialContent={`# Title\n\n${filler}\n\n## Next steps\n\nBody\n\n${filler}`}
+          handleRef={handle}
+        />
+      </div>,
+    )
+    const scroller = view.getByTestId('scroller').element()
+
+    expect(handle.current?.revealHeading?.('Missing')).toBe(false)
+    expect(handle.current?.revealHeading?.('next-steps')).toBe(true)
+    await vi.waitFor(() => expect(scroller.scrollTop).toBeGreaterThan(500))
+  })
+})

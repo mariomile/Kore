@@ -50,7 +50,7 @@ pub fn run(
     let rel_path = resolved.rel_path().to_string();
     let date = match &resolved {
         ResolvedNote::Daily { date, .. } => Some(date.clone()),
-        ResolvedNote::File { .. } => date_from_daily_path(&rel_path).map(str::to_string),
+        ResolvedNote::File { .. } => date_from_daily_path(&rel_path),
     };
     ensure_not_private(&graph.root, &rel_path)?;
     let absolute = graph.root.join(&rel_path);

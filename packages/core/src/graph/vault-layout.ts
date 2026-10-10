@@ -17,6 +17,12 @@ export interface VaultLayout {
   /** Daily-note filename pattern in moment tokens (`YYYY`, `MM`, `M`, `DD`, `D`). */
   readonly dailyFormat: string
   /**
+   * Graph-relative template today's daily starts from. Kore's own
+   * `templates/daily.md` loses its frontmatter on the way in; a vault's
+   * Obsidian template is copied whole, frontmatter included, as Obsidian does.
+   */
+  readonly dailyTemplate: string
+  /**
    * Graph-relative folder pasted and dropped files land in, and the first
    * place a bare `![[name.png]]` is looked up. `null` keeps Kore's `assets/`.
    */
@@ -35,6 +41,7 @@ export interface VaultLayout {
 export const DEFAULT_VAULT_LAYOUT: VaultLayout = {
   dailyFolder: 'daily',
   dailyFormat: 'YYYY-MM-DD',
+  dailyTemplate: 'templates/daily.md',
   attachmentFolder: null,
   newNoteFolder: 'notes',
   noteFileNames: 'slug',
@@ -126,6 +133,7 @@ function normalizeFolder(folder: string): string | null {
 const obsidianDailyNotesSchema = z.object({
   folder: z.string().optional(),
   format: z.string().optional(),
+  template: z.string().optional(),
 })
 
 /** The `.obsidian/app.json` keys Kore reads. */
@@ -158,8 +166,8 @@ function parseJson<T>(source: string | null, schema: z.ZodType<T>): T | null {
  * its file is present and the value is usable, so a vault without
  * `.obsidian/` (or with a malformed file) keeps Kore's own layout:
  *
- * - `daily-notes.json` → daily folder and filename format, with Obsidian's
- *   own defaults (vault root, `YYYY-MM-DD`) for the keys it omits;
+ * - `daily-notes.json` → daily folder, filename format and template, with
+ *   Obsidian's own defaults (vault root, `YYYY-MM-DD`) for the keys it omits;
  * - `app.json` `attachmentFolderPath` → the attachment folder, when it names
  *   a fixed folder (`./`-relative "next to the note" settings and the vault
  *   root keep `assets/`);
@@ -176,6 +184,13 @@ export function vaultLayoutFromObsidian(files: ObsidianConfigFiles): VaultLayout
     const format = (daily.format ?? '').trim() || 'YYYY-MM-DD'
     if (folder !== null && parseDailyFormat(format) !== null) {
       layout = { ...layout, dailyFolder: folder, dailyFormat: format }
+    }
+    const template = normalizeFolder(daily.template ?? '')
+    if (template !== null && template !== '') {
+      layout = {
+        ...layout,
+        dailyTemplate: template.endsWith('.md') ? template : `${template}.md`,
+      }
     }
   }
   const app = parseJson(files.app, obsidianAppSchema)

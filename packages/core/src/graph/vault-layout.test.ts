@@ -43,6 +43,7 @@ describe('vaultLayoutFromObsidian', () => {
     expect(MARIOVERSE).toEqual({
       dailyFolder: 'Journal/Daily',
       dailyFormat: 'DD-MM-YYYY',
+      dailyTemplate: '_system/templates/Daily-Note.md',
       attachmentFolder: 'Resources/_attachments',
       newNoteFolder: '_inbox',
       noteFileNames: 'title',

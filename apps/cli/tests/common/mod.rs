@@ -91,7 +91,7 @@ impl Fixture {
             if let Some(date) = daily_date {
                 // Calendar-valid only: an impossible `daily/2026-02-31.md` is
                 // an ordinary note and must never claim a date.
-                if reflect_cli::paths::parse_calendar_date(date).is_some() {
+                if reflect_cli::paths::parse_calendar_date(&date).is_some() {
                     claim(&mut claims, date.to_string(), TIER_DAILY_DATE);
                 }
             }

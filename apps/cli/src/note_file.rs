@@ -198,7 +198,7 @@ fn derive_title(rel_path: &str, frontmatter: &Frontmatter, body: &str) -> String
         return heading;
     }
     if let Some(date) = date_from_daily_path(rel_path) {
-        return date.to_string();
+        return date;
     }
     basename(rel_path).to_string()
 }

@@ -21,15 +21,24 @@
   title (`Meeting Notes.md`, collisions `Meeting Notes 2.md`), and the
   title-change rename keeps that shape. The `id:` frontmatter stays: Plan 17
   rename tracking depends on it.
-- Not done: the `reflect` CLI still assumes `daily/YYYY-MM-DD.md`;
-  Obsidian's `userIgnoreFilters` and daily template are not read (a
-  `.reflectignore` line covers the sidecars); bare-name lookups for files
-  added outside Kore after open fall back to the attachment folder until
-  the next open.
+- [x] The `reflect` CLI reads the same `daily-notes.json`
+  (`apps/cli/src/paths.rs`, `DailyLayout`), so `reflect today`, `capture`
+  and date arguments hit the vault's own dailies.
+- [x] Today's daily starts from the vault's template
+  (`_system/templates/Daily-Note`, copied whole with its frontmatter) and
+  Obsidian's `{{date:FORMAT}}` / `{{time:FORMAT}}` moment tokens expand.
+- [x] Notes matching Obsidian's `userIgnoreFilters` (prefixes and `/regex/`)
+  stay out of the vault walk and live watcher events; attachments under
+  them still list, so embeds keep rendering
+  (`crates/graph-paths/src/obsidian.rs`).
+- Not done: bare-name lookups for files added outside Kore after open fall
+  back to the attachment folder until the next open.
 
 **Validation:** core node suite, desktop node suite and the desktop browser
-suite on Chromium; `cargo clippy` and `cargo test -p reflect-open` for the
-two new commands. WebKit is left to CI (it cannot run in the cloud
+suite on Chromium; `cargo test` + `clippy` for `reflect-cli` and
+`reflect-graph-paths`. The desktop crate (`reflect-open`) cannot compile in
+the container (no GTK), so its two new commands and the watcher change get
+their first build in CI. WebKit is left to CI (it cannot run in the cloud
 container). Not tried against the real vault on the Mac.
 
 ## Chat and Inbox debugging, 2026-09-28

@@ -27,7 +27,7 @@ use notify::{RecommendedWatcher, RecursiveMode};
 use notify_debouncer_full::{new_debouncer_opt, DebounceEventResult, Debouncer, FileIdCache};
 use reflect_graph_paths::{
     classify, evicted_logical_path, eviction_placeholder, has_pruned_component, is_pruned_dir_name,
-    wire_path, GraphPathKind,
+    wire_path, GraphPathKind, ObsidianExclusions,
 };
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, State};
@@ -207,8 +207,14 @@ fn collect_changes(paths: &[PathBuf], root: &Path) -> BatchEffects {
     let mut seen: std::collections::BTreeMap<String, FileChange> =
         std::collections::BTreeMap::new();
     let mut reconcile = false;
+    // The walk leaves out notes an Obsidian vault excludes; live events must
+    // not index them behind its back. Read once per batch.
+    let exclusions = ObsidianExclusions::load(root);
     for path in paths {
         if let Some(rel) = tracked_relpath(path, root) {
+            if classify(&rel) == Some(GraphPathKind::Note) && exclusions.excludes(&rel) {
+                continue;
+            }
             // Stat the *logical* path — for placeholder events it differs
             // from the event path, and it is what consumers read.
             let logical = root.join(&rel);

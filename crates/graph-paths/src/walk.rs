@@ -18,7 +18,7 @@ use ignore::WalkBuilder;
 
 use crate::{
     classify, evicted_logical_path, icloud_placeholder_target, is_dataless, wire_path,
-    GraphPathKind,
+    GraphPathKind, ObsidianExclusions,
 };
 
 /// Per-directory ignore file for user-configured exclusions, same syntax and
@@ -70,9 +70,12 @@ pub struct FileCatalog {
 /// vault's own `.gitignore` files (no repository required, no global or
 /// parent-directory rules) and [`REFLECT_IGNORE_FILE`] files prune subtrees;
 /// [`PRUNED_DIR_NAMES`] and `CACHEDIR.TAG`-tagged directories are always
-/// pruned. Every refusal is counted, never fatal: one unreadable directory
-/// costs that directory, not the listing.
+/// pruned. Notes an Obsidian vault excludes (`userIgnoreFilters`, see
+/// [`ObsidianExclusions`]) are left out; attachments never are. Every refusal
+/// is counted, never fatal: one unreadable directory costs that directory,
+/// not the listing.
 pub fn walk_catalog(root: &Path) -> FileCatalog {
+    let exclusions = ObsidianExclusions::load(root);
     let skipped = Arc::new(AtomicU32::new(0));
     let mut builder = WalkBuilder::new(root);
     builder
@@ -159,6 +162,9 @@ pub fn walk_catalog(root: &Path) -> FileCatalog {
             placeholder: placeholder || is_dataless(&meta),
         };
         match kind {
+            GraphPathKind::Note if exclusions.excludes(&file.path) => {
+                skipped.fetch_add(1, Ordering::Relaxed);
+            }
             GraphPathKind::Note => catalog.notes.push(file),
             GraphPathKind::Attachment => catalog.attachments.push(file),
         }
@@ -355,6 +361,34 @@ mod tests {
         write(root, "notes/a.md", "a");
 
         assert_eq!(note_paths(root), vec!["notes/a.md"]);
+    }
+
+    #[test]
+    fn obsidian_excluded_notes_drop_but_their_attachments_stay() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        write(
+            root,
+            ".obsidian/app.json",
+            r#"{"userIgnoreFilters":["Resources/_attachments/"]}"#,
+        );
+        write(root, "Resources/_attachments/photo.png.md", "sidecar");
+        write(root, "Resources/_attachments/photo.png", "png");
+        write(root, "notes/a.md", "a");
+
+        let catalog = walk_catalog(root);
+        let notes: Vec<_> = catalog
+            .notes
+            .iter()
+            .map(|file| file.path.as_str())
+            .collect();
+        let attachments: Vec<_> = catalog
+            .attachments
+            .iter()
+            .map(|file| file.path.as_str())
+            .collect();
+        assert_eq!(notes, vec!["notes/a.md"]);
+        assert_eq!(attachments, vec!["Resources/_attachments/photo.png"]);
     }
 
     #[test]

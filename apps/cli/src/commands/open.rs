@@ -32,11 +32,11 @@ pub fn run(graph: &Graph, json: bool, note_arg: &str, print: bool) -> Result<(),
     let launched = !print;
     if json {
         let date = match &resolved {
-            ResolvedNote::Daily { date, .. } => Some(date.as_str()),
+            ResolvedNote::Daily { date, .. } => Some(date.clone()),
             ResolvedNote::File { rel_path } => date_from_daily_path(rel_path),
         };
         print_json(&OpenJson {
-            date,
+            date: date.as_deref(),
             path: rel_path,
             url: &url,
             launched,
@@ -54,7 +54,8 @@ pub fn run(graph: &Graph, json: bool, note_arg: &str, print: bool) -> Result<(),
 /// desktop's "Copy deep link" preference order, minus the minting — the CLI
 /// never writes, so a note without an id gets the path form instead.
 fn deep_link_url(root: &Path, resolved: &ResolvedNote) -> String {
-    if let Some(date) = date_from_daily_path(resolved.rel_path()).and_then(parse_calendar_date) {
+    let daily_date = date_from_daily_path(resolved.rel_path());
+    if let Some(date) = daily_date.as_deref().and_then(parse_calendar_date) {
         // Calendar-validated: a daily/ file with an impossible date opens as
         // a plain note in the app, so it gets a note-form address below.
         return format!("reflect://daily/{date}");

@@ -94,10 +94,7 @@ pub fn run(
             let rel_path = resolved.rel_path().to_string();
             match resolved {
                 ResolvedNote::Daily { date, .. } => (Some(date), rel_path),
-                ResolvedNote::File { .. } => (
-                    date_from_daily_path(&rel_path).map(str::to_string),
-                    rel_path,
-                ),
+                ResolvedNote::File { .. } => (date_from_daily_path(&rel_path), rel_path),
             }
         }
     };

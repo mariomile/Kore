@@ -1,5 +1,38 @@
 # Kore working state
 
+## Connectors: Readwise and Granola sync, 2026-10-09
+
+- [x] Added a connector library in `packages/core/src/connectors/`: a
+  `Connector` is a read-only source that yields markdown notes keyed by a
+  source id; the shared engine (`sync.ts`) places them under a per-connector
+  folder with Obsidian-style filenames (spaces kept), finds a note again by
+  its frontmatter id through `note_properties` and then by reading the file
+  at its natural path, and never writes over a file it did not create.
+  Connectors only add: Readwise appends highlights whose
+  `readwise.io/open/<id>` link the note lacks; Granola writes a meeting once.
+- [x] Readwise uses the export API (`Token` auth, `updatedAfter`,
+  `pageCursor`); Granola uses the public API with a personal `grn_` key
+  (`/v1/notes`, `created_after`, cursor pages, detail fetch only for unknown
+  meetings, 250 ms spacing for the 5 req/s limit). Both go through
+  `providerFetch`, so they work on desktop and iPhone.
+- [x] Per-device settings (`settings.connectors`: enabled, folder,
+  lastSyncedAt, importFrom); tokens in the keychain as `connector:<id>`.
+  Connecting verifies the token first. "Import past items" is off by
+  default: the floor is the connect time, so history the Obsidian plugins
+  already wrote is not duplicated.
+- [x] Sync runs in the main window on launch, every 15 minutes, on focus and
+  on iOS resume, plus "Sync now". Desktop: Settings → Sync & data →
+  Connectors. iPhone: Settings → Connectors.
+
+**Validation:** connector, engine and settings tests (core, node); the
+Connectors section and all mobile tests on Chromium. WebKit was left to CI
+(not runnable in this container). Neither API was called live: the Granola
+response fields come from its public docs and are parsed leniently.
+
+**Next:** Mario connects both on his Mac with real tokens and checks the
+first notes. Open questions: whether to import Granola transcripts, and
+which folders match his vault (the defaults are `Readwise/` and `Granola/`).
+
 ## Chat and Inbox debugging, 2026-09-28
 
 - [x] Reproduced the installed 0.74.1 Claude chat hang: A mid-run message

@@ -1,3 +1,4 @@
+export * from '../bases'
 export {
   setBridge,
   hasBridge,
@@ -346,6 +347,7 @@ export {
   type CollectionPageView,
   type SavedCollectionView,
   type OpenNoteTab,
+  type OpenBaseTab,
   type OpenChatTab,
   type OpenTab,
   type OpenPane,

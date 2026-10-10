@@ -7,6 +7,12 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Obsidian Bases work in Kore. A vault's `.base` files open as live views
+  (tables, cards, lists and kanban boards) with their filters, formulas,
+  sorting and grouping, and `![[Home.base#Projects]]` embeds render inside
+  the note that holds them. Kore reads the files and never rewrites them, so
+  the same bases keep working in Obsidian.
+
 - Kore opens an Obsidian vault on its own terms. When the folder has an
   `.obsidian` settings folder, Kore reads it: today's note is the vault's
   own daily file (`Journal/Daily/09-10-2026.md`, not a new `daily/`

@@ -38,6 +38,7 @@ const ATTACHMENT_EXTENSIONS = new Set([
   '3gp',
   '7z',
   'avif',
+  'base',
   'bmp',
   'csv',
   'doc',

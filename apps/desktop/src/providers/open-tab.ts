@@ -12,6 +12,8 @@ export function tabKey(tab: OpenTab): string {
       return `note:${tab.path}`
     case 'chat':
       return `chat:${tab.conversationId}`
+    case 'base':
+      return `base:${tab.path ?? ''}`
     case 'surface':
       return `surface:${tab.surface}`
   }
@@ -76,6 +78,8 @@ export function openTabForRoute(
       return { kind: 'surface', surface: 'search', query: route.query, pinned: false }
     case 'chat':
       return conversationId === null ? null : { kind: 'chat', conversationId, pinned: false }
+    case 'base':
+      return { kind: 'base', path: route.path, view: route.view, pinned: false }
     case 'tasks':
     case 'insights':
     case 'graphMap':
@@ -92,6 +96,9 @@ export function routeForOpenTab(tab: OpenTab): Route {
   }
   if (tab.kind === 'chat') {
     return { kind: 'chat' }
+  }
+  if (tab.kind === 'base') {
+    return { kind: 'base', path: tab.path, view: tab.view }
   }
   switch (tab.surface) {
     case 'daily':

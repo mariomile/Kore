@@ -7,6 +7,15 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Kore stays fast on a vault of five thousand notes. Searching (the palette
+  and `reflect search`) now ranks without building snippets for every match
+  and highlights only the rows it shows, so typing a query answers in a
+  fraction of the time with the same results. The Graph view lays out with a
+  Barnes–Hut quadtree and paints in batches, so opening a dense map no longer
+  freezes the window while it settles. All notes lists faster too. A
+  synthetic Obsidian-shaped vault and an opt-in bench make the numbers
+  repeatable.
+
 - Readwise and Granola sync into the graph. Settings has a Connectors
   section (desktop and iPhone) where a Readwise access token or a Granola API
   key is verified and stored in the keychain; from then on highlights arrive

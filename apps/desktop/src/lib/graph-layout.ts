@@ -4,8 +4,8 @@
  * a cooling temperature so the map settles instead of jittering forever. No
  * dependency and fully deterministic: nodes start on a golden-angle spiral
  * (not random), so the same graph always settles into the same picture and
- * tests can assert on it. Repulsion is binned on a coarse grid with a cutoff
- * radius, keeping a step ~O(n·k) instead of O(n²) for large graphs.
+ * tests can assert on it. Repulsion runs through a Barnes–Hut quadtree with a
+ * cutoff radius, keeping a step ~O(n log n) instead of O(n²) for large graphs.
  */
 
 export interface GraphLayoutNode {
@@ -84,6 +84,167 @@ export function isSettled(layout: GraphLayout): boolean {
   return layout.alpha < SETTLED_ALPHA
 }
 
+/**
+ * Barnes–Hut opening angle: a quadtree cell narrower than this fraction of its
+ * distance acts as one body at its centre of mass. 0 would be the exact sum.
+ */
+const OPENING_ANGLE = 0.9
+/** A cell with at most this many nodes is summed exactly, never split. */
+const LEAF_CAPACITY = 8
+/** Split depth limit, so coincident nodes cannot recurse without end. */
+const MAX_DEPTH = 24
+
+/** One square of the repulsion quadtree, over node indexes. */
+interface QuadCell {
+  /** Top-left corner and side length. */
+  x: number
+  y: number
+  size: number
+  /** Node count and centre of mass — the cell's stand-in body when far. */
+  mass: number
+  centerX: number
+  centerY: number
+  /** The four quadrants, or null for a leaf. */
+  children: QuadCell[] | null
+  /** A leaf's node indexes (empty for a split cell). */
+  members: number[]
+}
+
+function buildQuadCell(
+  nodes: readonly GraphLayoutNode[],
+  members: number[],
+  x: number,
+  y: number,
+  size: number,
+  depth: number,
+): QuadCell {
+  let sumX = 0
+  let sumY = 0
+  for (const index of members) {
+    const node = nodes[index] as GraphLayoutNode
+    sumX += node.x
+    sumY += node.y
+  }
+  const cell: QuadCell = {
+    x,
+    y,
+    size,
+    mass: members.length,
+    centerX: sumX / members.length,
+    centerY: sumY / members.length,
+    children: null,
+    members,
+  }
+  if (members.length <= LEAF_CAPACITY || depth >= MAX_DEPTH) {
+    return cell
+  }
+  const half = size / 2
+  const quadrants: number[][] = [[], [], [], []]
+  for (const index of members) {
+    const node = nodes[index] as GraphLayoutNode
+    const quadrant = (node.x < x + half ? 0 : 1) + (node.y < y + half ? 0 : 2)
+    ;(quadrants[quadrant] as number[]).push(index)
+  }
+  cell.children = []
+  for (const [quadrant, quadrantMembers] of quadrants.entries()) {
+    if (quadrantMembers.length > 0) {
+      cell.children.push(
+        buildQuadCell(
+          nodes,
+          quadrantMembers,
+          x + (quadrant % 2) * half,
+          y + Math.floor(quadrant / 2) * half,
+          half,
+          depth + 1,
+        ),
+      )
+    }
+  }
+  cell.members = []
+  return cell
+}
+
+function buildQuadtree(nodes: readonly GraphLayoutNode[]): QuadCell {
+  let minX = Infinity
+  let minY = Infinity
+  let maxX = -Infinity
+  let maxY = -Infinity
+  for (const node of nodes) {
+    minX = Math.min(minX, node.x)
+    minY = Math.min(minY, node.y)
+    maxX = Math.max(maxX, node.x)
+    maxY = Math.max(maxY, node.y)
+  }
+  // A hair of padding keeps the max-edge nodes strictly inside the square.
+  const size = Math.max(maxX - minX, maxY - minY, 1) * 1.000001
+  return buildQuadCell(
+    nodes,
+    nodes.map((_, index) => index),
+    minX,
+    minY,
+    size,
+    0,
+  )
+}
+
+/** Repulsion on `nodes[index]` from one quadtree cell, summed into `force`. */
+function accumulateRepulsion(
+  nodes: readonly GraphLayoutNode[],
+  index: number,
+  cell: QuadCell,
+  force: { x: number; y: number },
+): void {
+  const node = nodes[index] as GraphLayoutNode
+  // Nothing in a cell whose box lies beyond the cutoff can reach the node.
+  const outsideX = Math.max(cell.x - node.x, 0, node.x - (cell.x + cell.size))
+  const outsideY = Math.max(cell.y - node.y, 0, node.y - (cell.y + cell.size))
+  if (outsideX * outsideX + outsideY * outsideY > REPULSION_CUTOFF * REPULSION_CUTOFF) {
+    return
+  }
+  if (cell.children === null) {
+    for (const otherIndex of cell.members) {
+      if (otherIndex === index) {
+        continue
+      }
+      const other = nodes[otherIndex] as GraphLayoutNode
+      let deltaX = node.x - other.x
+      let deltaY = node.y - other.y
+      let squared = deltaX * deltaX + deltaY * deltaY
+      if (squared === 0) {
+        // Coincident nodes (spiral start can't produce them, but drags
+        // can): nudge apart deterministically by index parity.
+        deltaX = index % 2 === 0 ? 0.5 : -0.5
+        deltaY = 0.5
+        squared = 0.5
+      }
+      if (squared > REPULSION_CUTOFF * REPULSION_CUTOFF) {
+        continue
+      }
+      const magnitude = REPULSION / squared
+      const distance = Math.sqrt(squared)
+      force.x += (deltaX / distance) * magnitude
+      force.y += (deltaY / distance) * magnitude
+    }
+    return
+  }
+  const deltaX = node.x - cell.centerX
+  const deltaY = node.y - cell.centerY
+  const squared = deltaX * deltaX + deltaY * deltaY
+  const containsNode = outsideX === 0 && outsideY === 0
+  if (!containsNode && cell.size * cell.size < OPENING_ANGLE * OPENING_ANGLE * squared) {
+    if (squared <= REPULSION_CUTOFF * REPULSION_CUTOFF) {
+      const magnitude = (REPULSION * cell.mass) / squared
+      const distance = Math.sqrt(squared)
+      force.x += (deltaX / distance) * magnitude
+      force.y += (deltaY / distance) * magnitude
+    }
+    return
+  }
+  for (const child of cell.children) {
+    accumulateRepulsion(nodes, index, child, force)
+  }
+}
+
 /** Advance the simulation one tick, mutating positions in place. */
 export function stepGraphLayout(layout: GraphLayout, edges: readonly GraphLayoutEdge[]): void {
   const { nodes } = layout
@@ -92,66 +253,21 @@ export function stepGraphLayout(layout: GraphLayout, edges: readonly GraphLayout
   }
   const alpha = layout.alpha
 
-  // Bin nodes on a coarse grid; only same-or-neighboring cells repel, which
-  // bounds each node's interactions to its local crowd.
-  const cellSize = REPULSION_CUTOFF
-  const cells = new Map<string, number[]>()
-  for (const [index, node] of nodes.entries()) {
-    const key = `${Math.floor(node.x / cellSize)}:${Math.floor(node.y / cellSize)}`
-    const bucket = cells.get(key)
-    if (bucket === undefined) {
-      cells.set(key, [index])
-    } else {
-      bucket.push(index)
-    }
-  }
-
+  // Repulsion through a Barnes–Hut quadtree: near nodes push exactly, far
+  // clusters push as one body, and anything past the cutoff not at all. A
+  // step stays ~O(n log n) even when thousands of notes crowd one region,
+  // where a flat cutoff grid degrades towards O(n²).
+  const tree = buildQuadtree(nodes)
+  const force = { x: 0, y: 0 }
   for (const [index, node] of nodes.entries()) {
     if (node.pinned) {
       continue
     }
-    let fx = -node.x * GRAVITY
-    let fy = -node.y * GRAVITY
-
-    const cellX = Math.floor(node.x / cellSize)
-    const cellY = Math.floor(node.y / cellSize)
-    for (let dx = -1; dx <= 1; dx += 1) {
-      for (let dy = -1; dy <= 1; dy += 1) {
-        const bucket = cells.get(`${cellX + dx}:${cellY + dy}`)
-        if (bucket === undefined) {
-          continue
-        }
-        for (const otherIndex of bucket) {
-          if (otherIndex === index) {
-            continue
-          }
-          const other = nodes[otherIndex]
-          if (other === undefined) {
-            continue
-          }
-          let deltaX = node.x - other.x
-          let deltaY = node.y - other.y
-          let squared = deltaX * deltaX + deltaY * deltaY
-          if (squared === 0) {
-            // Coincident nodes (spiral start can't produce them, but drags
-            // can): nudge apart deterministically by index parity.
-            deltaX = index % 2 === 0 ? 0.5 : -0.5
-            deltaY = 0.5
-            squared = 0.5
-          }
-          if (squared > REPULSION_CUTOFF * REPULSION_CUTOFF) {
-            continue
-          }
-          const force = REPULSION / squared
-          const distance = Math.sqrt(squared)
-          fx += (deltaX / distance) * force
-          fy += (deltaY / distance) * force
-        }
-      }
-    }
-
-    node.vx = (node.vx + fx * alpha) * VELOCITY_DAMPING
-    node.vy = (node.vy + fy * alpha) * VELOCITY_DAMPING
+    force.x = -node.x * GRAVITY
+    force.y = -node.y * GRAVITY
+    accumulateRepulsion(nodes, index, tree, force)
+    node.vx = (node.vx + force.x * alpha) * VELOCITY_DAMPING
+    node.vy = (node.vy + force.y * alpha) * VELOCITY_DAMPING
   }
 
   for (const edge of edges) {

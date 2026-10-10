@@ -118,7 +118,7 @@ describe('streamChat', () => {
     const customSystemPrompt = 'sentinel-custom-system-prompt-01jxq3'
     const messages: ModelMessage[] = [{ role: 'user', content: 'hello' }]
     const model = new MockLanguageModelV3({ doStream: sequence([textTurn('hi')]) })
-    languageModelMock.mockReturnValue(model)
+    languageModelMock.mockResolvedValue(model)
 
     await collect(
       streamChat({
@@ -147,6 +147,25 @@ describe('streamChat', () => {
 
     expect(model.doStreamCalls).toHaveLength(1)
     expect(JSON.stringify(model.doStreamCalls[0]?.prompt)).toContain(customSystemPrompt)
+  })
+
+  it('ends with an error event when the provider cannot be loaded', async () => {
+    languageModelMock.mockRejectedValue(new Error('provider failed to load'))
+
+    const events = await collect(
+      streamChat({
+        config: { id: 'cfg-openai', provider: 'openai', model: 'gpt-5.5', keyHint: 'wxyz1' },
+        apiKey: 'sk-live-key',
+        fetchFn: globalThis.fetch,
+        messages: [{ role: 'user', content: 'hello' }],
+        today: '2026-06-11',
+        semanticSearchEnabled: true,
+        customSystemPrompt: '',
+        context: null,
+      }),
+    )
+
+    expect(events).toEqual([{ type: 'error', message: 'provider failed to load', messages: [] }])
   })
 })
 

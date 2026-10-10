@@ -1,8 +1,9 @@
-import { streamText, type LanguageModel } from 'ai'
+import type { LanguageModel } from 'ai'
 import { errorMessage } from '../errors'
 import type { AiProviderConfig } from '../settings/schema'
 import type { CloudSafe } from './checkers'
 import { languageModel } from './language-model'
+import { loadAiSdk } from './load-sdk'
 import { renderSelectionPrompt } from './selection-prompts'
 
 /**
@@ -54,12 +55,19 @@ export type TransformStreamEvent =
  * Stream a selection transform from the user's configured provider, yielding
  * normalized {@link TransformStreamEvent}s. The stream terminates with exactly
  * one of `complete` (carrying the full accumulated text), `aborted`, or
- * `error`.
+ * `error` (also when the provider fails to load).
  */
-export function transformSelection(
+export async function* transformSelection(
   options: TransformSelectionOptions,
 ): AsyncGenerator<TransformStreamEvent> {
-  return streamTransformTurn(languageModel(options.config, options.apiKey, options.fetchFn), {
+  let model: LanguageModel
+  try {
+    model = await languageModel(options.config, options.apiKey, options.fetchFn)
+  } catch (cause) {
+    yield { type: 'error', message: errorMessage(cause) }
+    return
+  }
+  yield* streamTransformTurn(model, {
     prompt: renderSelectionPrompt(options.promptBody, options.selection),
     signal: options.signal,
   })
@@ -83,6 +91,7 @@ export async function* streamTransformTurn(
 ): AsyncGenerator<TransformStreamEvent> {
   let text = ''
   try {
+    const { streamText } = await loadAiSdk()
     const result = streamText({
       model,
       instructions: TRANSFORM_SYSTEM_PROMPT,

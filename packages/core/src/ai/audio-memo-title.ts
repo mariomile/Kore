@@ -1,9 +1,9 @@
-import { generateText, Output } from 'ai'
 import { z } from 'zod'
 import type { AiProvidersState } from './provider-config'
 import type { AiProviderConfig } from '../settings/schema'
 import { wikiLinkSafe } from '../markdown/edit'
 import { languageModel } from './language-model'
+import { loadAiSdk } from './load-sdk'
 import { clipAtWordBoundary } from './text'
 
 const TITLE_TIMEOUT_MS = 30_000
@@ -147,8 +147,9 @@ export async function generateAudioMemoTitle(
     return fallback
   }
   try {
+    const { generateText, Output } = await loadAiSdk()
     const result = await generateText({
-      model: languageModel(titleConfig, request.credentials.apiKey, request.fetchFn ?? fetch),
+      model: await languageModel(titleConfig, request.credentials.apiKey, request.fetchFn ?? fetch),
       output: Output.object({ schema: audioMemoTitleSchema }),
       prompt: titlePrompt(request.transcript),
       abortSignal: AbortSignal.timeout(TITLE_TIMEOUT_MS),

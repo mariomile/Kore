@@ -1,4 +1,3 @@
-import { generateText, Output } from 'ai'
 import { z } from 'zod'
 import {
   audioMemoEnrichmentConfig,
@@ -7,6 +6,7 @@ import {
   type AudioMemoEnrichmentCredentials,
 } from './audio-memo-title'
 import { languageModel } from './language-model'
+import { loadAiSdk } from './load-sdk'
 
 const FORMAT_TIMEOUT_MS = 60_000
 const NUMBER_SIGNATURE_PATTERN =
@@ -95,8 +95,9 @@ export async function formatAudioMemoTranscript(
   }
 
   try {
+    const { generateText, Output } = await loadAiSdk()
     const result = await generateText({
-      model: languageModel(config, request.credentials.apiKey, request.fetchFn ?? fetch),
+      model: await languageModel(config, request.credentials.apiKey, request.fetchFn ?? fetch),
       output: Output.object({ schema: formattedAudioMemoSchema }),
       instructions: FORMAT_SYSTEM_PROMPT,
       prompt: `Transcript JSON string:\n${JSON.stringify(request.transcript)}`,

@@ -7,6 +7,12 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Kore starts lighter. The AI SDK and its provider packages, about 670 KB
+  of the JavaScript the app parsed at every launch on Mac and iPhone, now
+  load the first time an AI feature runs, and only the configured provider
+  is loaded. A lint rule keeps value imports of those packages out of
+  startup code.
+
 - Kore stays fast on a vault of five thousand notes. Searching (the palette
   and `reflect search`) now ranks without building snippets for every match
   and highlights only the rows it shows, so typing a query answers in a

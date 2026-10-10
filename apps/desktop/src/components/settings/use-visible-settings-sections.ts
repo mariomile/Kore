@@ -1,3 +1,4 @@
+import { getVaultLayout } from '@reflect/core'
 import { useContactsAuthorization } from '@/hooks/use-contacts-authorization'
 import { useShowAdvancedSurfaces } from '@/hooks/use-show-advanced-surfaces'
 import { isMacosDesktop } from '@/lib/platform'
@@ -27,6 +28,9 @@ function sectionIsVisible(
   if (id === 'search') {
     return showAdvanced
   }
+  if (id === 'vault-compat') {
+    return getVaultLayout().obsidian
+  }
   return true
 }
 
@@ -40,7 +44,8 @@ function useHasAppleIntegrations(): boolean {
  * order. Integrations only exists where the OS frameworks do (macOS/iOS —
  * the Rust shell answers `unavailable` elsewhere). Agent skill install is
  * macOS-only. Search (embeddings) stays hidden until the graph has enough
- * notes. Agents is always listed — the welcome note points here.
+ * notes. Obsidian compatibility only exists for a vault Obsidian also opens.
+ * Agents is always listed — the welcome note points here.
  * The navigator must agree with the page, so both filter through here
  * rather than reading the registry directly.
  */

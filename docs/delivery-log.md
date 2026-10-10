@@ -7,6 +7,13 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- See what an Obsidian vault holds that Kore can't show yet. The first
+  time an Obsidian vault opens, Kore checks every note once and, if it
+  finds Dataview queries, Templater commands, Admonition blocks, Mermaid
+  diagram types it can't draw, or canvas and Excalidraw files, says so
+  with a link to the report in Settings → Sync & data. The report counts
+  each kind and lists the notes, one click away. It never changes a file.
+
 - Obsidian Bases work in Kore. A vault's `.base` files open as live views
   (tables, cards, lists and kanban boards) with their filters, formulas,
   sorting and grouping, and `![[Home.base#Projects]]` embeds render inside

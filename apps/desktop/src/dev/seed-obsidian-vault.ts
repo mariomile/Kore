@@ -449,5 +449,34 @@ export function seedObsidianVaultFiles(
       ...body(1 + Math.floor(random() * 4), 0.35),
     ].join('\n')
   }
+  files['.obsidian/app.json'] = JSON.stringify({ attachmentFolderPath: 'Resources/_attachments' })
+  // Plugin syntax the compatibility report lists (added last, so the random
+  // stream above, and every byte it produced, is unchanged).
+  files['_system/templates/Meeting.md'] = [
+    '---',
+    'created: <% tp.date.now("YYYY-MM-DD") %>',
+    '---',
+    '# <% tp.file.title %>',
+    '',
+  ].join('\n')
+  files['Active/Roadmap.md'] = [
+    '# Roadmap',
+    '',
+    '```dataview',
+    'TABLE status FROM "Active"',
+    '```',
+    '',
+    '```mermaid',
+    'gantt',
+    '  title Q4',
+    '```',
+    '',
+    '```ad-warning',
+    'Dates move.',
+    '```',
+    '',
+    'Planning board: ![[Roadmap.canvas]]',
+    '',
+  ].join('\n')
   return files
 }

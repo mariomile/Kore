@@ -1,4 +1,5 @@
 export * from '../bases'
+export * from '../vault-compat'
 export {
   setBridge,
   hasBridge,

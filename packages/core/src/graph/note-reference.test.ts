@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { markdownNoteReference, noteBasenameKey, wikiNoteReference } from './note-reference'
+import {
+  markdownNoteReference,
+  noteBasenameKey,
+  noteLinkHeading,
+  wikiNoteReference,
+} from './note-reference'
 
 describe('wikiNoteReference', () => {
   it('reads a bare target as a folded name key', () => {
@@ -179,5 +184,20 @@ describe('noteBasenameKey', () => {
     // NFD filename (as macOS reports it), NFC key: the fold normalizes.
     expect(noteBasenameKey('Cafe\u{301}.md')).toBe('caf\u{E9}')
     expect(noteBasenameKey('Caf\u{E9}.md')).toBe('caf\u{E9}')
+  })
+})
+
+describe('noteLinkHeading', () => {
+  it('reads the heading a link points at', () => {
+    expect(noteLinkHeading('Plan#Next steps')).toBe('Next steps')
+    expect(noteLinkHeading('#Next steps')).toBe('Next steps')
+    expect(noteLinkHeading('Plan.md#next-steps')).toBe('next-steps')
+    expect(noteLinkHeading('Plan#Goals#Q4')).toBe('Q4')
+  })
+
+  it('is null without a heading', () => {
+    expect(noteLinkHeading('Plan')).toBeNull()
+    expect(noteLinkHeading('Plan#')).toBeNull()
+    expect(noteLinkHeading('Plan#^a1b2')).toBeNull()
   })
 })

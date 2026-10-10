@@ -14,6 +14,19 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
   folders and Obsidian-excluded files stay out, and a vault that keeps
   Kore's own `daily/` and `notes/` layout doesn't see the shelf at all.
 
+- Notes show where they sit. A note whose frontmatter says
+  `up: "[[Parent]]"` (the Obsidian MOC convention) now shows its chain of
+  parents above the title, root first, each one a click away. A MOC lists
+  the notes whose `up:` points at it in a "Child notes" section above the
+  backlinks, on Mac and iPhone, so its contents stay current without
+  being written by hand. A `related:` link or a body mention is not a
+  parent; a loop in `up:` stops instead of repeating.
+
+- Links to a heading land on the heading. Clicking `[[Note#Heading]]` opens
+  the note scrolled to that heading, with the caret on it, instead of at the
+  top. Obsidian's nested `[[Note#Goals#Q4]]`, Markdown `Note.md#heading`
+  links and a same-note `[[#Heading]]` work the same way.
+
 - Kore opens an Obsidian vault on its own terms. When the folder has an
   `.obsidian` settings folder, Kore reads it: today's note is the vault's
   own daily file (`Journal/Daily/09-10-2026.md`, not a new `daily/`

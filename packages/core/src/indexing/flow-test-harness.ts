@@ -128,6 +128,19 @@ export function applyProjection(database: DatabaseSync, indexed: IndexedNote): v
     insertTag.run(indexed.path, tag.tag, tag.tagKey)
   }
 
+  const insertProperty = database.prepare(
+    'INSERT INTO note_properties(note_path, key, value, value_type, value_number) VALUES (?, ?, ?, ?, ?)',
+  )
+  for (const property of indexed.properties) {
+    insertProperty.run(
+      indexed.path,
+      property.key,
+      property.value,
+      property.valueType,
+      property.valueNumber,
+    )
+  }
+
   const insertTask = database.prepare(
     `INSERT INTO tasks(
       note_path, marker_offset, text, raw, checked, breadcrumbs, due_date, due_time

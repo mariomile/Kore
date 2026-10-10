@@ -56,6 +56,26 @@ import { resolveWikiEmbed } from '@/editor/resolve-wiki-embed'
 
 type WikilinkHoverRenderer = (hit: WikilinkHoverHit) => ReactNode | Promise<ReactNode>
 
+/**
+ * Meowdown's `revealHeading` moves the caret to the heading, but its scroll
+ * starts from the DOM selection, which sits outside an editor that has no
+ * focus (a link followed on mobile, or before the arrival autofocus), so the
+ * note's scroll container never moves. Scroll the heading element itself, to
+ * the top of the view the way Obsidian lands on a linked heading.
+ */
+function revealHeading(handle: EditorHandle | null, fragment: string): boolean {
+  if (handle?.revealHeading(fragment) !== true) {
+    return false
+  }
+  const view = handle.editor?.view
+  if (view !== undefined) {
+    const { node } = view.domAtPos(view.state.selection.head)
+    const element = node instanceof Element ? node : node.parentElement
+    element?.closest('h1, h2, h3, h4, h5, h6')?.scrollIntoView({ block: 'start' })
+  }
+  return true
+}
+
 const TAG_LINE_MARKER = 'KORE-TAG-LINE-6F4C0D8A'
 
 function tagLineIndex(
@@ -157,6 +177,11 @@ export interface NoteEditorHandle {
   undo(): void
   /** Redo the latest undone editor transaction. */
   redo(): void
+  /**
+   * Move the caret to the heading a link fragment names (text or slug) and
+   * scroll it into view; false when the note has no such heading.
+   */
+  revealHeading?(fragment: string): boolean
 }
 
 interface NoteEditorProps {
@@ -392,6 +417,7 @@ export function NoteEditor({
       findPrevious: () => innerRef.current?.findPrevious(),
       undo: () => innerRef.current?.editor?.commands.undo(),
       redo: () => innerRef.current?.editor?.commands.redo(),
+      revealHeading: (fragment) => revealHeading(innerRef.current, fragment),
     }),
     [],
   )

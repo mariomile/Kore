@@ -28,6 +28,31 @@ read-only way in, not folder management; whether to keep it is Mario's call
 the sidebar browser test on Chromium; typecheck and lint clean. WebKit is
 left to CI. Not tried on the real vault on the Mac.
 
+## Hierarchy from `up:`, 2026-10-10
+
+Part of the PKM review ("Kore come strumento PKM"): 2,449 notes in
+marioverse.ai carry `up:` pointing at a MOC, and Kore only counted it as a
+backlink.
+
+- [x] Core: `getNoteParents`, `getNoteAncestors`, `getNoteChildren`
+  (`packages/core/src/indexing/queries-hierarchy.ts`). They join the
+  backlinks view with the `up` row of `note_properties` and keep a link
+  only when its raw target is one the `up` value names, so `related:` and
+  body links never make a parent. No schema or projection change: frontmatter
+  links (v21) and properties were already indexed.
+- [x] Breadcrumb above the title (`NoteBreadcrumb`, in `NotePane`, so desktop
+  and iPhone both get it): first parent at each step, root first, stops at
+  a cycle or 32 levels.
+- [x] "Child notes (N)" above Incoming backlinks (`NoteChildrenPanel`, desktop
+  pane and mobile note screen): by title, first 20 then "Show all".
+- [x] The flow-test harness now writes `note_properties` rows too.
+
+**Validation:** new core flow test (breadcrumb, children, `related:` ignored,
+cycle); core indexing suite; mobile note screen and route tests on Chromium;
+checked on screen in the browser dev build with `?seed=obsidian` (Startup
+MOC shows "Product MOC" above its title and 255 child notes). WebKit left to
+CI. Not tried on the real vault.
+
 ## Obsidian vault profile, 2026-10-10
 
 - [x] Kore reads an adopted vault's `.obsidian/daily-notes.json` and
@@ -1620,6 +1645,19 @@ screen: Agents then Close lands on today.
 **Next:** merge the Close fix, then bump.
 
 ## Session log
+
+- 2026-10-10 — Links to a heading land on it. Following `[[Note#Heading]]`
+  (or `[[Note#Goals#Q4]]`, or a Markdown `Note.md#heading`) opens the note
+  and scrolls to that heading with the caret on it; a bare `[[#Heading]]`
+  scrolls the note it is written in. Core reads the fragment
+  (`noteLinkHeading` in `packages/core/src/graph/note-reference.ts`; block
+  refs `#^id` are not headings); the editor handle delegates to Meowdown's
+  `revealHeading` and scrolls the heading element itself, because Meowdown's
+  own scroll starts from the DOM selection and does nothing in an unfocused
+  editor. A reveal for a note not yet mounted waits in
+  `editor-handle-registry.ts` (5 s expiry). Closes P2 "heading links" of the
+  Kore-vs-Obsidian gap analysis (86 links in Mario's vault). Verified by a
+  browser test that scrolls an unfocused editor and a navigation test.
 
 - 2026-10-10 — Obsidian vault profile: daily notes, attachments and new
   notes follow an adopted vault's `.obsidian` settings (see the section at

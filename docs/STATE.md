@@ -1,5 +1,34 @@
 # Kore working state
 
+## Editable Bases, 2026-10-10
+
+User ask (brainstorm thread, 2026-10-10): make Bases a working surface, not
+just a view. Mario's CRM and project dashboards are bases, and changing a
+status meant opening the note.
+
+- [x] Core (`packages/core/src/bases/edit.ts`): `baseEditableKey` (plain
+  note properties only; `file.*`, `formula.*`, `this.*` and
+  `RESERVED_FRONTMATTER_KEYS` stay read-only), `baseCellEdit` (text,
+  number, boolean, list; any value holding a wikilink is read-only so a
+  text box can never mangle a link), `parseBaseCellInput` (keeps the cell's
+  type, empty clears the key) and `baseGroupDropValue` (a lane takes drops
+  only for a plain value; the empty lane clears). `runBaseView` now returns
+  `editKey` per column, `edit` per cell, `groupEditKey` and per-group
+  `dropValue`.
+- [x] Desktop and iPhone (`BaseViewContent`, so the Base screen and every
+  `![[X.base]]` embed): table cells edit in place (`BaseCellEditor`: click,
+  Enter or blur saves, Escape cancels, booleans are checkboxes); board cards
+  drag between lanes and write the grouped property. Writes go through
+  `useCommitNoteProperty`, the same session-or-disk channel as collection
+  cells. The `.base` file is still never written.
+- Not done: editing from cards/list layouts, adding notes from a base,
+  reordering within a lane (Obsidian has no rank to write).
+
+**Validation:** core `run-view.test.ts` (edit keys, read-only links, input
+parsing, lane drop values); desktop browser `base-screen.test.tsx` (edit,
+Escape, board drop) on Chromium; typecheck and lint clean. WebKit is left to
+CI. Not tried on the real vault.
+
 ## Obsidian Bases, 2026-10-10
 
 User ask: make Kore a PKM tool worth switching to. Mario's vault runs on

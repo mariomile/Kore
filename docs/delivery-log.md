@@ -7,6 +7,13 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Browse the vault by folder. A Folders shelf in the sidebar shows the
+  vault's folders as a tree with note counts; expanding a folder lists its
+  notes and clicking one opens it (⌘-click opens it beside the current
+  note). It only browses: nothing is moved, renamed or created. Hidden
+  folders and Obsidian-excluded files stay out, and a vault that keeps
+  Kore's own `daily/` and `notes/` layout doesn't see the shelf at all.
+
 - Notes show where they sit. A note whose frontmatter says
   `up: "[[Parent]]"` (the Obsidian MOC convention) now shows its chain of
   parents above the title, root first, each one a click away. A MOC lists

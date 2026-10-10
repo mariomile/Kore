@@ -30,7 +30,10 @@
 - [x] Notes matching Obsidian's `userIgnoreFilters` (prefixes and `/regex/`)
   stay out of the vault walk and live watcher events; attachments under
   them still list, so embeds keep rendering
-  (`crates/graph-paths/src/obsidian.rs`).
+  (`crates/graph-paths/src/obsidian.rs`). A `private: true` note is never
+  excluded, so the agent CLIs' privacy fence (built from indexed private
+  notes) keeps covering it. A daily format whose literals would leave the
+  vault (`[../]YYYY`) is refused whole, in core and in the CLI.
 - Not done: bare-name lookups for files added outside Kore after open fall
   back to the attachment folder until the next open.
 

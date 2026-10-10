@@ -129,6 +129,19 @@ function normalizeFolder(folder: string): string | null {
   return safe ? trimmed : null
 }
 
+/**
+ * The format's literals can spell path segments too (`[../]YYYY`): the
+ * formatted path must stay as safe as the folder. Digits never add a
+ * segment, so one sample date checks every date.
+ */
+function isSafeDailyPath(folder: string, parts: readonly DailyFormatPart[]): boolean {
+  const name = parts
+    .map((part) => (part.kind === 'literal' ? part.text : part.kind === 'year' ? '2024' : '1'))
+    .join('')
+  const sample = folder === '' ? name : `${folder}/${name}`
+  return normalizeFolder(sample) === sample
+}
+
 /** `.obsidian/daily-notes.json` — Obsidian omits keys left at their defaults. */
 const obsidianDailyNotesSchema = z.object({
   folder: z.string().optional(),
@@ -182,7 +195,8 @@ export function vaultLayoutFromObsidian(files: ObsidianConfigFiles): VaultLayout
   if (daily !== null) {
     const folder = normalizeFolder(daily.folder ?? '')
     const format = (daily.format ?? '').trim() || 'YYYY-MM-DD'
-    if (folder !== null && parseDailyFormat(format) !== null) {
+    const parts = parseDailyFormat(format)
+    if (folder !== null && parts !== null && isSafeDailyPath(folder, parts)) {
       layout = { ...layout, dailyFolder: folder, dailyFormat: format }
     }
     const template = normalizeFolder(daily.template ?? '')

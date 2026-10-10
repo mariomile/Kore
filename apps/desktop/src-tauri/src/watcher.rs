@@ -208,11 +208,12 @@ fn collect_changes(paths: &[PathBuf], root: &Path) -> BatchEffects {
         std::collections::BTreeMap::new();
     let mut reconcile = false;
     // The walk leaves out notes an Obsidian vault excludes; live events must
-    // not index them behind its back. Read once per batch.
+    // not index them behind its back (private ones excepted, as there).
+    // Read once per batch.
     let exclusions = ObsidianExclusions::load(root);
     for path in paths {
         if let Some(rel) = tracked_relpath(path, root) {
-            if classify(&rel) == Some(GraphPathKind::Note) && exclusions.excludes(&rel) {
+            if classify(&rel) == Some(GraphPathKind::Note) && exclusions.excludes_note(root, &rel) {
                 continue;
             }
             // Stat the *logical* path — for placeholder events it differs

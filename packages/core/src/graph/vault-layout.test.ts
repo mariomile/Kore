@@ -65,6 +65,21 @@ describe('vaultLayoutFromObsidian', () => {
     expect(
       vaultLayoutFromObsidian({ dailyNotes: JSON.stringify({ folder: '../x' }), app: null }),
     ).toEqual(DEFAULT_VAULT_LAYOUT)
+    // A format whose literals would climb out of the vault or into a hidden folder.
+    for (const format of [
+      '[../../tmp/]YYYY-MM-DD',
+      'YYYY/../../MM/DD',
+      '/YYYY-MM-DD',
+      '[.hidden/]YYYY-MM-DD',
+      String.raw`YYYY\MM\DD`,
+    ]) {
+      expect(
+        vaultLayoutFromObsidian({ dailyNotes: JSON.stringify({ format }), app: null }),
+      ).toEqual(DEFAULT_VAULT_LAYOUT)
+    }
+    expect(
+      vaultLayoutFromObsidian({ dailyNotes: JSON.stringify({ format: 'YYYY/MM/DD' }), app: null }),
+    ).toMatchObject({ dailyFolder: '', dailyFormat: 'YYYY/MM/DD' })
   })
 
   it('fills Obsidian’s own defaults for omitted keys (vault root, ISO)', () => {

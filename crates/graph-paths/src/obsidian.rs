@@ -6,6 +6,11 @@
 //! Only notes are excluded. Obsidian still resolves embeds from excluded
 //! folders, so attachments under an excluded path keep listing and an
 //! `![[photo.png]]` there keeps rendering.
+//!
+//! A `private: true` note is never excluded. The agent CLIs' privacy fence is
+//! built from the index's private notes, so a private note the walk dropped
+//! would lose its deny rule while staying readable on disk. Indexing it keeps
+//! it fenced; listing one extra note is the cheap side of that trade.
 
 use std::path::Path;
 
@@ -72,10 +77,26 @@ impl ObsidianExclusions {
             || self.patterns.iter().any(|pattern| pattern.is_match(wire))
     }
 
+    /// Does an exclusion drop the note at `wire` from the vault listing? An
+    /// excluded note that is `private: true`, or whose file can't be read to
+    /// tell, stays listed so the privacy fence keeps covering it.
+    pub fn excludes_note(&self, root: &Path, wire: &str) -> bool {
+        self.excludes(wire) && is_readably_public(&root.join(wire))
+    }
+
     /// No filters at all — the walk can skip the per-note check.
     pub fn is_empty(&self) -> bool {
         self.prefixes.is_empty() && self.patterns.is_empty()
     }
+}
+
+/// `true` only when the note reads and its frontmatter is not private.
+fn is_readably_public(path: &Path) -> bool {
+    let Ok(source) = std::fs::read_to_string(path) else {
+        return false;
+    };
+    let split = reflect_note_policy::split_frontmatter(&source);
+    !reflect_note_policy::parse_frontmatter(split.raw).private
 }
 
 /// `Some(regex)` for a `/…/flags` filter that compiles, `Some(None)` for one
@@ -108,6 +129,23 @@ mod tests {
         assert!(exclusions.excludes("Resources/_attachments/x.png.sidecar.md"));
         assert!(!exclusions.excludes("Knowledge/Archive/kept.md"));
         assert!(!exclusions.excludes("Resources/_attachments/x.md"));
+    }
+
+    #[test]
+    fn private_and_unreadable_notes_are_never_excluded() {
+        let dir = tempfile::tempdir().unwrap();
+        let root = dir.path();
+        std::fs::create_dir_all(root.join("Archive")).unwrap();
+        std::fs::write(root.join("Archive/old.md"), "# Old\n").unwrap();
+        std::fs::write(
+            root.join("Archive/secret.md"),
+            "---\nprivate: true\n---\n# Secret\n",
+        )
+        .unwrap();
+        let exclusions = ObsidianExclusions::from_app_json(r#"{"userIgnoreFilters":["Archive/"]}"#);
+        assert!(exclusions.excludes_note(root, "Archive/old.md"));
+        assert!(!exclusions.excludes_note(root, "Archive/secret.md"));
+        assert!(!exclusions.excludes_note(root, "Archive/missing.md"));
     }
 
     #[test]

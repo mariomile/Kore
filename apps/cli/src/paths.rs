@@ -114,7 +114,19 @@ impl DailyLayout {
             format => format,
         };
         match (normalize_folder(text("folder")), parse_daily_format(format)) {
-            (Some(folder), Some(parts)) if value.is_object() => Self { folder, parts },
+            (Some(folder), Some(parts)) if value.is_object() => {
+                let layout = Self { folder, parts };
+                // The format's literals can spell path segments too
+                // (`[../]YYYY`); the formatted path must stay as safe as the
+                // folder, or the layout is refused whole. Digits never add
+                // a segment, so one sample date checks every date.
+                let sample = layout.path_for("2024-01-01");
+                if normalize_folder(&sample).as_deref() == Some(sample.as_str()) {
+                    layout
+                } else {
+                    Self::default()
+                }
+            }
             _ => Self::default(),
         }
     }
@@ -315,6 +327,21 @@ mod tests {
             DailyLayout::from_obsidian_json(r#"{"folder":"../x"}"#),
             DailyLayout::default()
         );
+        for escaping in [
+            r#"{"format":"[../../tmp/]YYYY-MM-DD"}"#,
+            r#"{"format":"YYYY/../../MM/DD"}"#,
+            r#"{"format":"/YYYY-MM-DD"}"#,
+            r#"{"format":"[.hidden/]YYYY-MM-DD"}"#,
+            r#"{"format":"YYYY\MM\DD"}"#,
+        ] {
+            assert_eq!(
+                DailyLayout::from_obsidian_json(escaping),
+                DailyLayout::default(),
+                "{escaping}"
+            );
+        }
+        let nested = DailyLayout::from_obsidian_json(r#"{"format":"YYYY/MM/DD"}"#);
+        assert_eq!(nested.path_for("2026-10-09"), "2026/10/09.md");
     }
 
     #[test]

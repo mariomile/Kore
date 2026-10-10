@@ -162,7 +162,7 @@ pub fn walk_catalog(root: &Path) -> FileCatalog {
             placeholder: placeholder || is_dataless(&meta),
         };
         match kind {
-            GraphPathKind::Note if exclusions.excludes(&file.path) => {
+            GraphPathKind::Note if exclusions.excludes_note(root, &file.path) => {
                 skipped.fetch_add(1, Ordering::Relaxed);
             }
             GraphPathKind::Note => catalog.notes.push(file),

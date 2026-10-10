@@ -1,8 +1,10 @@
 import { useCallback } from 'react'
 import {
   errorMessage,
+  isBasePath,
   noteLinkHeading,
   normalizeWikiTarget,
+  resolveAttachmentSource,
   resolveExistingWikiTarget,
   resolveOrCreateNoteWithTitle,
   resolveWikiTarget,
@@ -14,6 +16,7 @@ import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'
 import { startOperation } from '@/lib/operations'
 import { useLinkIntentGuard } from '@/lib/windows/use-link-intent-guard'
 import { routeForPath, type NoteRoute } from '@/routing/route'
+import { useRouter } from '@/routing/router'
 
 function reportUnavailableNoteTitle(title: string): void {
   startOperation('Opening link').fail(
@@ -59,6 +62,7 @@ export function useWikiLinkNavigation(
 ): (options: { target: string; openInSplit: boolean }) => void {
   const navigateNoteLink = useNoteLinkNavigation()
   const beginLinkIntent = useLinkIntentGuard()
+  const { navigate } = useRouter()
 
   return useCallback(
     ({ target, openInSplit }: { target: string; openInSplit: boolean }) => {
@@ -75,6 +79,16 @@ export function useWikiLinkNavigation(
         if (heading !== null && path !== undefined) {
           revealNoteHeading(path, heading)
         }
+      }
+      // `[[Projects.base]]` opens the base; it must never create a note
+      // named after the file.
+      if (isBasePath(target)) {
+        const path = resolveAttachmentSource(target.split('#')[0]?.trim() ?? target)
+        if (path !== null) {
+          const view = target.includes('#') ? target.slice(target.indexOf('#') + 1).trim() : ''
+          navigate({ kind: 'base', path, view: view === '' ? null : view })
+        }
+        return
       }
       void (async () => {
         try {
@@ -142,6 +156,6 @@ export function useWikiLinkNavigation(
         }
       })()
     },
-    [beginLinkIntent, generation, navigateNoteLink, sourcePath],
+    [beginLinkIntent, generation, navigate, navigateNoteLink, sourcePath],
   )
 }

@@ -138,7 +138,18 @@ export interface OpenStaticSurfaceTab {
 
 export type OpenSurfaceTab = OpenDailyTab | OpenAllNotesTab | OpenSearchTab | OpenStaticSurfaceTab
 
-export type OpenTab = OpenNoteTab | OpenChatTab | OpenSurfaceTab
+/**
+ * An Obsidian base (`.base` file) or, with a null `path`, the list of every
+ * base in the vault. `view` is the selected view's name (null: the first).
+ */
+export interface OpenBaseTab {
+  kind: 'base'
+  path: string | null
+  view: string | null
+  pinned: boolean
+}
+
+export type OpenTab = OpenNoteTab | OpenChatTab | OpenSurfaceTab | OpenBaseTab
 
 /** One workspace pane's persisted tab strip and the tab it last showed. */
 export interface OpenPane {
@@ -165,6 +176,13 @@ const openChatTabStoredSchema = z.object({
   conversationId: z.string(),
   pinned: z.boolean().catch(false),
 }) satisfies z.ZodType<OpenChatTab>
+
+const openBaseTabStoredSchema = z.object({
+  kind: z.literal('base'),
+  path: z.string().nullable().catch(null),
+  view: z.string().nullable().catch(null),
+  pinned: z.boolean().catch(false),
+}) satisfies z.ZodType<OpenBaseTab>
 
 const openDailyTabStoredSchema = z.object({
   kind: z.literal('surface'),
@@ -239,6 +257,7 @@ const legacyOpenNoteTabSchema = z
 export const openTabSchema: z.ZodType<OpenTab> = z.union([
   openNoteTabStoredSchema,
   openChatTabStoredSchema,
+  openBaseTabStoredSchema,
   openDailyTabStoredSchema,
   openAllNotesTabStoredSchema,
   openSearchTabStoredSchema,

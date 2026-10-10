@@ -1,5 +1,42 @@
 # Kore working state
 
+## Obsidian Bases, 2026-10-10
+
+User ask: make Kore a PKM tool worth switching to. Mario's vault runs on
+Obsidian Bases: 34 `.base` files (his `Home` dashboard, CRM, projects,
+reading lists) and their `![[X.base#View]]` embeds, all invisible in Kore
+until now. Kore now reads them as is and never writes them.
+
+- [x] Core (`packages/core/src/bases/`): `.base` YAML parser (global and
+  per-view `filters` with `and`/`or`/`not`, `formulas`,
+  `properties.*.displayName`, views with `order`, `sort`, `limit`,
+  `groupBy`, plugin `groupOrder`), a Pratt parser and evaluator for the
+  Bases expression language (`file.*` fields, `hasTag` with nested
+  prefixes, `inFolder`, `hasLink`, `hasProperty`, links and backlinks,
+  dates and durations, string/number/list methods, `if`, `now`, `today`,
+  `date`, `duration`, `filter`/`map` with `value`/`index`), and
+  `runBaseView` down to display-ready cells. Rows come from five whole-table
+  index reads (`loadBaseRows`), so a 5,000-note vault is one IPC round.
+- [x] Desktop and iPhone: a `base` route and tab (`Bases` command lists
+  every base), view tabs, table/cards/list/board layouts. Plugin view types
+  map to the nearest layout (kanban to board, masonry/gallery to cards) and
+  say so. `![[X.base#View]]` renders live inside the note; `[[X.base]]`
+  links and attachment clicks open the base instead of a new note.
+- [x] `.base` is an attachment extension (TS, Rust `graph-paths`, the
+  shared fixture), so it lists, resolves by bare name and stays out of the
+  note index.
+- Not done: editing a base or its cells from Kore (read-only by design),
+  `file.embeds`/`file.properties` and plugin-only functions (they show the
+  cell error instead), map/calendar view types (table stand-in).
+
+**Validation:** core `run-view.test.ts` (expressions, dates, filters,
+formulas, kanban grouping, broken filters), desktop browser
+`base-screen.test.tsx` plus route/open-tab/deep-link/command suites on
+Chromium; typecheck and lint clean. A scratchpad run of the evaluator over
+copies of all 34 real `.base` files parsed and ran every view without an
+error (not committed: it reads vault data). WebKit is left to CI. Next:
+Mario opens `Home` in Kore on the Mac.
+
 ## Folders shelf in the sidebar, 2026-10-10
 
 User ask: make Kore outstanding for personal knowledge management. Mario's
@@ -1645,6 +1682,10 @@ screen: Agents then Close lands on today.
 **Next:** merge the Close fix, then bump.
 
 ## Session log
+
+- 2026-10-10 — Obsidian Bases: `.base` files open as live read-only views
+  and `![[X.base#View]]` embeds render inside notes (see the section at the
+  top).
 
 - 2026-10-10 — Links to a heading land on it. Following `[[Note#Heading]]`
   (or `[[Note#Goals#Q4]]`, or a Markdown `Note.md#heading`) opens the note

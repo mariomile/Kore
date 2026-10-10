@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
+  baseDisplayName,
   displayNoteTitle,
   getNote,
   isUntitledNotePath,
@@ -91,6 +92,8 @@ export function useOpenTabItems(): OpenTabItem[] {
           }
         case 'chat':
           return { tab, title: chatTitles.get(tab.conversationId) ?? 'New chat' }
+        case 'base':
+          return { tab, title: tab.path === null ? 'Bases' : baseDisplayName(tab.path) }
         case 'surface':
           // The All Notes surface routed to a tag is that tag's own page —
           // the strip names the tag, not the generic surface.

@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import { BaseScreen } from '@/components/bases/base-screen'
 import { useToday } from '@/lib/use-today'
 import { MobileAllNotes } from '@/mobile/screens/all-notes'
 import { MobileChat } from '@/mobile/screens/chat'
@@ -66,6 +67,8 @@ export function MobileScreen({
       return <MobileDaily key="daily" date={route.date} />
     case 'note':
       return <MobileNote key={route.path} path={route.path} />
+    case 'base':
+      return <BaseScreen key={route.path ?? 'bases'} path={route.path} view={route.view} />
     case 'allNotes':
       return (
         <MobileAllNotes

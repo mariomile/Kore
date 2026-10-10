@@ -7,6 +7,12 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Obsidian Bases work in Kore. A vault's `.base` files open as live views
+  (tables, cards, lists and kanban boards) with their filters, formulas,
+  sorting and grouping, and `![[Home.base#Projects]]` embeds render inside
+  the note that holds them. Kore reads the files and never rewrites them, so
+  the same bases keep working in Obsidian.
+
 - Browse the vault by folder. A Folders shelf in the sidebar shows the
   vault's folders as a tree with note counts; expanding a folder lists its
   notes and clicking one opens it (⌘-click opens it beside the current

@@ -3,6 +3,7 @@ import type { ExitBoundaryHandler, SearchStatus } from '@meowdown/core'
 import type { CodeBlockRenderer } from '@meowdown/react'
 import {
   detectConflictMarkers,
+  isBasePath,
   formatCollectionEmbedBody,
   parseCollectionEmbedBody,
 } from '@reflect/core'
@@ -43,6 +44,7 @@ import { useCalloutSlashItems } from '@/editor/use-callout-slash-items'
 import { useCollectionSlashItems } from '@/editor/use-collection-slash-items'
 import { useEmbedSlashItems } from '@/editor/use-embed-slash-items'
 import { useTemplateSlashItems } from '@/editor/use-template-slash-items'
+import { EmbeddedBase } from '@/components/notes/embedded-base'
 import { EmbeddedCollection } from '@/components/notes/embedded-collection'
 import { EmbeddedMedia } from '@/components/notes/embedded-media'
 import { EmbeddedNote } from '@/components/notes/embedded-note'
@@ -55,6 +57,7 @@ import { cn } from '@/lib/utils'
 import { useGraph } from '@/providers/graph-provider'
 import { useNoteSearchQuery, useNoteSearchReport } from '@/providers/note-find-provider'
 import { useSettings } from '@/providers/settings-provider'
+import { useRouter } from '@/routing/router'
 
 interface NotePaneProps {
   /** Graph-relative path of the note to edit. */
@@ -179,15 +182,21 @@ export function NotePaneComponent({
   // PDF and HTML attachments open in the in-app viewer; everything else keeps
   // the OS-open path. The viewer's "Open externally" routes back to openAsset.
   const [viewerAssetPath, setViewerAssetPath] = useState<string | null>(null)
+  const { navigate } = useRouter()
   const openOrViewAsset = useCallback(
     async (assetPath: string): Promise<void> => {
+      // A `.base` chip opens Kore's own Base screen, not Obsidian.
+      if (isBasePath(assetPath)) {
+        navigate({ kind: 'base', path: assetPath, view: null })
+        return
+      }
       if (viewableAssetKind(assetPath) !== null) {
         setViewerAssetPath(assetPath)
         return
       }
       await openAsset(assetPath)
     },
-    [openAsset],
+    [navigate, openAsset],
   )
   const renderWikilinkHoverCard = useWikiLinkHoverPreview({
     generation,
@@ -248,12 +257,15 @@ export function NotePaneComponent({
     epoch: number
     seed: string
   } | null>(null)
-  const { media: mediaEmbeds, transclusions: noteTransclusions } =
-    typedEmbeds !== null &&
-    typedEmbeds.epoch === document.sessionEpoch &&
-    typedEmbeds.seed === document.initialContent
-      ? typedEmbeds.embeds
-      : seedEmbeds
+  const {
+    media: mediaEmbeds,
+    transclusions: noteTransclusions,
+    bases: baseEmbeds,
+  } = typedEmbeds !== null &&
+  typedEmbeds.epoch === document.sessionEpoch &&
+  typedEmbeds.seed === document.initialContent
+    ? typedEmbeds.embeds
+    : seedEmbeds
   const handleEditorChange = useCallback(
     (markdown: string) => {
       const next = parseBodyEmbeds(markdown)
@@ -560,6 +572,14 @@ export function NotePaneComponent({
               sourcePath={path}
               resolveImageUrl={resolveImageUrl}
             />
+          ))}
+        </div>
+      ) : null}
+
+      {baseEmbeds.length > 0 ? (
+        <div className={gutterClassName}>
+          {baseEmbeds.map((embed, index) => (
+            <EmbeddedBase key={`${embed.target}:${embed.view ?? ''}:${index}`} embed={embed} />
           ))}
         </div>
       ) : null}

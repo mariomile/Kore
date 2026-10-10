@@ -28,6 +28,7 @@ export function contextSidebarTarget(route: Route, today: string): ContextSideba
     case 'graphs':
     case 'terminal':
     case 'browser':
+    case 'base':
       return null
   }
 }

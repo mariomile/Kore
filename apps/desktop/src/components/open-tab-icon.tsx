@@ -8,6 +8,7 @@ import {
   Checklist,
   Globe,
   Graph,
+  LayoutGrid,
   Note,
   Pencil,
   Search,
@@ -34,6 +35,9 @@ export function OpenTabIcon({ tab, className }: OpenTabIconProps): ReactElement 
   }
   if (tab.kind === 'chat') {
     return <Chat aria-hidden className={className} />
+  }
+  if (tab.kind === 'base') {
+    return <LayoutGrid aria-hidden className={className} />
   }
   switch (tab.surface) {
     case 'daily':

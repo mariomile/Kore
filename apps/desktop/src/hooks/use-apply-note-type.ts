@@ -1,12 +1,12 @@
 import { useCallback } from 'react'
 import {
-  appendBodyTag,
-  bodyHasTag,
+  addNoteTag,
   getTagType,
   missingCreatedStamps,
+  noteHasTag,
   parseFrontmatter,
   PRIVATE_NOTE_EDIT_ERROR,
-  removeBodyTag,
+  removeNoteTag,
   splitFrontmatter,
   upsertFrontmatter,
 } from '@reflect/core'
@@ -28,10 +28,9 @@ export interface NoteTypeChange {
 
 /**
  * Land a chat-proposed note type the user accepted (the review card's
- * Accept). The write is the Type field's own — `appendBodyTag` plus the
- * type's `created` stamps in one transform, or `removeBodyTag` — so a note
- * typed from chat is byte-identical to one typed from the picker; the
- * hashtag is still the supertag (TDR 0005).
+ * Accept). The write is the Type field's own — `addNoteTag` plus the
+ * type's `created` stamps in one transform, or `removeNoteTag` — so a note
+ * typed from chat is byte-identical to one typed from the picker.
  *
  * The note is re-checked as it is *now*, on the same channel the write goes
  * through (live session first): a `private: true` typed since the proposal
@@ -48,11 +47,11 @@ export function useApplyNoteType(): (change: NoteTypeChange) => Promise<void> {
         throw new Error('No graph is open.')
       }
       const source = await readNoteSource(path)
-      const { raw, body } = splitFrontmatter(source)
+      const { raw } = splitFrontmatter(source)
       if (parseFrontmatter(raw).data.private) {
         throw new Error(PRIVATE_NOTE_EDIT_ERROR)
       }
-      if (bodyHasTag(body, tag) !== remove) {
+      if (noteHasTag(source, tag) !== remove) {
         throw new Error(STALE_NOTE_TYPE_MESSAGE)
       }
       // Read the schema before the write, like the picker does: it decides
@@ -63,9 +62,9 @@ export function useApplyNoteType(): (change: NoteTypeChange) => Promise<void> {
         path,
         (current) => {
           if (remove) {
-            return removeBodyTag(current, tag) ?? current
+            return removeNoteTag(current, tag) ?? current
           }
-          const tagged = appendBodyTag(current, tag)
+          const tagged = addNoteTag(current, tag)
           if (tagged === null) {
             return current
           }

@@ -4,17 +4,23 @@
 //! like the app's bulk-tag action (`appendBodyTag`), stamping the type's
 //! `created` properties for a typed tag, and `untag` removes only such a
 //! standalone trailing line — a tag inside prose is the user's text and is
-//! refused, never edited. Both are idempotent and refuse private notes.
+//! refused, never edited. A tag declared in frontmatter `tags:` counts as
+//! membership too: `tag` leaves such a note alone and `untag` drops the
+//! entry. Both are idempotent and refuse private notes.
 
 use reflect_note_policy::split_frontmatter;
 
-use crate::body_tag::{append_body_tag, is_tag_name, remove_trailing_tag, Untag};
+use crate::body_tag::{
+    append_body_tag, frontmatter_has_tag, frontmatter_tag_entries, frontmatter_tag_name,
+    is_tag_name, remove_trailing_tag, Untag,
+};
 use crate::commands::output::{print_json, TagWriteJson, UntagJson};
 use crate::commands::{open_index_for_resolution, resolve_existing};
 use crate::error::CliError;
 use crate::frontmatter_values::{extract_properties, properties_json, PropertyValue};
 use crate::frontmatter_write::{patch_source, Patch};
 use crate::graph::Graph;
+use crate::keys::fold_tag;
 use crate::schema::{load_schema, TagSchema};
 use crate::write::update_note;
 
@@ -55,7 +61,9 @@ pub fn run_tag(graph: &Graph, json: bool, note_arg: &str, tag_arg: &str) -> Resu
     let mut added = false;
     let mut stamped: Vec<(String, PropertyValue)> = Vec::new();
     update_note(&graph.root, &rel_path, |source| {
-        let tagged = match append_body_tag(source, tag) {
+        // A tag declared in frontmatter `tags:` is already membership.
+        let declared = frontmatter_has_tag(split_frontmatter(source).raw, tag);
+        let tagged = match (!declared).then(|| append_body_tag(source, tag)).flatten() {
             Some(tagged) => {
                 added = true;
                 tagged
@@ -82,12 +90,29 @@ pub fn run_tag(graph: &Graph, json: bool, note_arg: &str, tag_arg: &str) -> Resu
     Ok(())
 }
 
+/// `source` with `tag` dropped from frontmatter `tags:` (the key deleted once
+/// it would be empty), or unchanged when frontmatter does not declare it.
+fn without_frontmatter_tag(source: &str, tag: &str) -> Result<String, CliError> {
+    let raw = split_frontmatter(source).raw;
+    if !frontmatter_has_tag(raw, tag) {
+        return Ok(source.to_string());
+    }
+    let wanted = fold_tag(tag);
+    let kept: Vec<String> = frontmatter_tag_entries(raw)
+        .into_iter()
+        .filter(|entry| frontmatter_tag_name(entry).is_none_or(|name| fold_tag(name) != wanted))
+        .collect();
+    let value = (!kept.is_empty()).then_some(PropertyValue::List(kept));
+    patch_source(source, &vec![("tags".to_string(), value)])
+}
+
 pub fn run_untag(graph: &Graph, json: bool, note_arg: &str, tag_arg: &str) -> Result<(), CliError> {
     let tag = tag_name(tag_arg)?;
     let index = open_index_for_resolution(&graph.root);
     let rel_path = resolve_existing(&graph.root, note_arg, index.as_ref().map(|open| &open.conn))?;
 
     let removed = update_note(&graph.root, &rel_path, |source| {
+        let source = &without_frontmatter_tag(source, tag)?;
         match remove_trailing_tag(source, tag) {
             Untag::Removed(next) => Ok(next),
             Untag::Absent => Ok(source.to_string()),

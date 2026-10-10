@@ -53,6 +53,8 @@ export const SETTINGS_GROUPS = [
     title: 'Sync & data',
     sections: [
       { id: 'sync', title: 'Sync' },
+      // Readwise, Granola …: sources that sync into the graph as notes.
+      { id: 'connectors', title: 'Connectors' },
       // Only shown where the OS frameworks exist — see use-visible-settings-sections.
       { id: 'integrations', title: 'Integrations' },
       { id: 'import', title: 'Import' },

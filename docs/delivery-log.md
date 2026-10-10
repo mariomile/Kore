@@ -15,6 +15,38 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
   in its new-note folder named after their title. Nothing in the vault is
   rewritten to get there, and a vault without `.obsidian` works as before.
 
+- Tags in frontmatter count. A note listed under `tags:` in its frontmatter
+  now belongs to that tag exactly as one carrying `#tag` in its text does:
+  tag sidebar, collections, filters and the tag page all see it. An Obsidian
+  vault whose taxonomy lives in `tags:` stops being invisible. Setting a
+  type from the Type field or from chat now writes `tags:` instead of a
+  hashtag line, and removing one clears it from both places; `reflect untag`
+  does the same.
+
+- Kore starts lighter. The AI SDK and its provider packages, about 670 KB
+  of the JavaScript the app parsed at every launch on Mac and iPhone, now
+  load the first time an AI feature runs, and only the configured provider
+  is loaded. A lint rule keeps value imports of those packages out of
+  startup code.
+
+- Kore stays fast on a vault of five thousand notes. Searching (the palette
+  and `reflect search`) now ranks without building snippets for every match
+  and highlights only the rows it shows, so typing a query answers in a
+  fraction of the time with the same results. The Graph view lays out with a
+  Barnes–Hut quadtree and paints in batches, so opening a dense map no longer
+  freezes the window while it settles. All notes lists faster too. A
+  synthetic Obsidian-shaped vault and an opt-in bench make the numbers
+  repeatable.
+
+- Readwise and Granola sync into the graph. Settings has a Connectors
+  section (desktop and iPhone) where a Readwise access token or a Granola API
+  key is verified and stored in the keychain; from then on highlights arrive
+  as one note per book or article and meetings as one note per meeting with
+  Granola's summary, in a folder of the user's choice, on launch, every 15
+  minutes and on return to the app. Kore only adds: new highlights are
+  appended, a meeting is written once, and files Kore didn't write are never
+  touched. Further sources plug into the same connector library.
+
 - Chat can say what a note is. `set_note_type` proposes putting a tag on a
   note, or taking one off, as a card the user accepts or rejects from the
   keyboard; nothing is written before they accept. It is the Type field's own

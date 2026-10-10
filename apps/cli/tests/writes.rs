@@ -117,6 +117,28 @@ fn tag_appends_a_trailing_line_and_stamps_created_and_untag_removes_only_that() 
 
     let bad = reflect(&fixture, &["tag", "Dune", "2nd"]);
     assert_eq!(bad.status.code(), Some(2));
+
+    // Frontmatter `tags:` is membership too: no body line, and untag drops it.
+    fixture.write_note(
+        "notes/arrival.md",
+        "---\ntags:\n  - type/film\n  - \"#Book\"\n---\n# Arrival\n",
+    );
+    let declared = json(&reflect(
+        &fixture,
+        &["tag", "notes/arrival.md", "book", "--json"],
+    ));
+    assert_eq!(declared["added"], false, "already declared: {declared}");
+    let cleared = json(&reflect(
+        &fixture,
+        &["untag", "notes/arrival.md", "book", "--json"],
+    ));
+    assert_eq!(cleared["removed"], true);
+    let arrival = read(&fixture, "notes/arrival.md");
+    assert!(arrival.contains("tags:\n  - type/film\n"), "{arrival}");
+    assert!(
+        !arrival.contains("Book") && !arrival.contains("#book"),
+        "{arrival}"
+    );
 }
 
 #[test]

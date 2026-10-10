@@ -45,12 +45,13 @@ describe('useApplyNoteType', () => {
   it('writes the tag and the type’s created stamps in one transform', async () => {
     tagType.value = { properties: [{ name: 'Added', key: 'added', type: 'created' }] }
     const next = await accept({ tag: 'book' })
-    expect(next).toContain('#book\n')
-    expect(next).toMatch(/^---\nadded: \d{4}-\d{2}-\d{2}\n---\n/)
+    expect(next).toMatch(
+      /^---\ntags:\n {2}- book\nadded: \d{4}-\d{2}-\d{2}\n---\n# The Dispossessed\n$/,
+    )
   })
 
-  it('strips the tag on a removal, stamping nothing', async () => {
-    source.text = '# The Dispossessed\n\n#book\n'
+  it('strips the tag from both sources on a removal, stamping nothing', async () => {
+    source.text = '---\ntags: [book]\n---\n# The Dispossessed\n\n#book\n'
     tagType.value = { properties: [{ name: 'Added', key: 'added', type: 'created' }] }
     expect(await accept({ tag: 'book', remove: true })).toBe('# The Dispossessed\n')
   })

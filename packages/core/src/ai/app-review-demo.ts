@@ -1,9 +1,9 @@
-import { simulateReadableStream } from 'ai'
 import type {
   LanguageModelV3,
   LanguageModelV3StreamPart,
   LanguageModelV3Usage,
 } from '@ai-sdk/provider'
+import { loadAiSdk } from './load-sdk'
 
 /**
  * The App Review demo key. App Store reviewers have no BYOK key, so this
@@ -53,8 +53,9 @@ export function createDemoModel(): LanguageModelV3 {
         usage: DEMO_USAGE,
         warnings: [],
       }),
-    doStream: () =>
-      Promise.resolve({
+    doStream: async () => {
+      const { simulateReadableStream } = await loadAiSdk()
+      return {
         stream: simulateReadableStream<LanguageModelV3StreamPart>({
           chunkDelayInMs: 10,
           chunks: [
@@ -75,6 +76,7 @@ export function createDemoModel(): LanguageModelV3 {
             },
           ],
         }),
-      }),
+      }
+    },
   }
 }

@@ -145,6 +145,10 @@ vi.mock('@/providers/settings-provider', () => ({
       defaultAiProviderId: null,
       chatSystemPrompt: '',
       aiPrompts: [],
+      connectors: {
+        readwise: { enabled: false, folder: null, lastSyncedAt: null, importFrom: null },
+        granola: { enabled: false, folder: null, lastSyncedAt: null, importFrom: null },
+      },
     },
     updateSettings: async () => {},
     updateSettingsWith: () => {},

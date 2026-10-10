@@ -191,7 +191,8 @@ export const EMPTY_TAG_TYPE: TagType = { properties: [] }
 
 /**
  * Frontmatter keys a tag schema may never claim: the app's own metadata plus
- * the definition-note keys themselves. Kept here (not in `properties.ts`)
+ * the definition-note keys themselves. `tags` is here because it is tag
+ * membership (TDR 0005 amendment), not a data column. Kept here (not in `properties.ts`)
  * because both the schema validator and the indexer share the one set.
  */
 export const RESERVED_FRONTMATTER_KEYS: ReadonlySet<string> = new Set([
@@ -209,6 +210,7 @@ export const RESERVED_FRONTMATTER_KEYS: ReadonlySet<string> = new Set([
   'icon',
   'kore',
   'koreCollection',
+  'tags',
 ])
 
 /** Property keys are plain YAML-safe identifiers, never reserved. */

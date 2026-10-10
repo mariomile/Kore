@@ -216,7 +216,7 @@ export {
   type VaultLayout,
 } from '../graph/vault-layout'
 export { loadVaultLayout } from '../graph/load-vault-layout'
-export { formatMoment } from '../markdown/template-placeholders'
+export { formatIsoDate, formatMoment } from '../markdown/template-placeholders'
 export {
   loadAttachmentIndex,
   noteAttachmentAdded,

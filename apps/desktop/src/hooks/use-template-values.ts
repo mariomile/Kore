@@ -1,7 +1,10 @@
 import { useCallback } from 'react'
 import {
   displayNoteTitle,
+  formatIsoDate,
+  formatMoment,
   getNote,
+  getVaultLayout,
   noteFileStem,
   type TemplatePlaceholderValues,
 } from '@reflect/core'
@@ -15,7 +18,7 @@ import { useSettings } from '@/providers/settings-provider'
  * picker. `{{title}}` is the target note's display title from the index (the
  * file stem while the row is loading or the index is rebuilding — the same
  * fallback the tab strip uses); the date and time honor the user's format
- * settings.
+ * settings, or the vault's own Obsidian Templates formats when it has them.
  */
 export function useTemplateValues(): (
   notePath: string | null,
@@ -35,11 +38,19 @@ export function useTemplateValues(): (
           // The index can be mid-rebuild; the stem still names the note.
         }
       }
+      const now = new Date()
+      const { templateDateFormat, templateTimeFormat } = getVaultLayout()
       return {
         title,
-        date: formatDayLabel(today, dateFormat),
+        date:
+          (templateDateFormat !== null ? formatIsoDate(today, templateDateFormat) : null) ??
+          formatDayLabel(today, dateFormat),
         dateIso: today,
-        time: formatTimeOfDay(new Date(), timeFormat),
+        time:
+          templateTimeFormat !== null
+            ? formatMoment(now, templateTimeFormat)
+            : formatTimeOfDay(now, timeFormat),
+        now,
       }
     },
     [dateFormat, timeFormat, today],

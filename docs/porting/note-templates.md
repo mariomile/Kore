@@ -56,7 +56,11 @@ build:
   autocomplete.
 
 Insertion is verbatim, matching v1: links, tags, tasks, and headings paste
-in as written. Frontmatter in a template file (if any) is not inserted.
+in as written. Frontmatter in a template file is not inserted as text; its
+properties merge into the note's own frontmatter instead, as Obsidian's
+Templates plugin does (missing keys added, lists merged, `title:` and `id:`
+skipped). An Obsidian vault's `.obsidian/templates.json` names its own
+templates folder and the `{{date}}`/`{{time}}` formats.
 
 ### Managing templates
 

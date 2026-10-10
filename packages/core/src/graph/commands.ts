@@ -347,9 +347,10 @@ export async function listAttachments(generation?: number): Promise<FileMeta[]> 
 const obsidianConfigSchema = z.object({
   dailyNotes: z.string().nullable(),
   app: z.string().nullable(),
+  templates: z.string().nullable(),
 })
 
-/** The raw `.obsidian/daily-notes.json` and `app.json` of a vault (`null` when absent). */
+/** The raw `.obsidian/daily-notes.json`, `app.json` and `templates.json` of a vault (`null` when absent). */
 export type ObsidianConfig = z.infer<typeof obsidianConfigSchema>
 
 /** Read the open graph's Obsidian settings files, unparsed. */

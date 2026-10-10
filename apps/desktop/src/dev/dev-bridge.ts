@@ -155,7 +155,7 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
         // search surfaces show it honestly instead of offering a download.
         return { status: 'failed', message: 'embeddings are unavailable in browser dev' }
       case 'obsidian_config_read':
-        return { dailyNotes: null, app: null }
+        return { dailyNotes: null, app: null, templates: null }
       case 'list_attachments':
         return []
       case 'vault_scan_stats':

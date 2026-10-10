@@ -1119,9 +1119,10 @@ pub async fn list_attachments<R: tauri::Runtime>(
 pub struct ObsidianConfig {
     pub daily_notes: Option<String>,
     pub app: Option<String>,
+    pub templates: Option<String>,
 }
 
-/// Read `.obsidian/daily-notes.json` and `.obsidian/app.json` from `root`.
+/// Read `.obsidian/daily-notes.json`, `app.json` and `templates.json` from `root`.
 /// Fixed names only, never a caller-supplied path, and never through a
 /// symlinked `.obsidian` (see `reflect_graph_paths::read_obsidian_file`), so
 /// this cannot become a way to read files outside the graph.
@@ -1129,6 +1130,7 @@ pub(crate) fn read_obsidian_config(root: &Path) -> ObsidianConfig {
     ObsidianConfig {
         daily_notes: reflect_graph_paths::read_obsidian_file(root, "daily-notes.json"),
         app: reflect_graph_paths::read_obsidian_file(root, "app.json"),
+        templates: reflect_graph_paths::read_obsidian_file(root, "templates.json"),
     }
 }
 
@@ -1232,6 +1234,7 @@ mod obsidian_config_tests {
             Some(r#"{"folder":"Journal/Daily"}"#)
         );
         assert_eq!(config.app, None);
+        assert_eq!(config.templates, None);
     }
 }
 

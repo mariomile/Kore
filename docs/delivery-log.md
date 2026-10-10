@@ -7,6 +7,16 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- An Obsidian vault's templates work in Kore. Kore reads the vault's
+  Templates settings (`.obsidian/templates.json`): the notes in its
+  templates folder (`_system/templates` in marioverse.ai) show up in
+  "Insert template" and the `/template` slash menu, and stay out of search,
+  All notes, tasks and the graph. Inserting one now also carries its
+  properties into the note, as Obsidian does: `tags:` and `up:` are added,
+  empty fields like `role:` appear ready to fill, lists merge, and anything
+  the note already says is kept. `{{date}}` and `{{time}}` follow the
+  vault's own formats (`DD-MM-YYYY`).
+
 - Notes show where they sit. A note whose frontmatter says
   `up: "[[Parent]]"` (the Obsidian MOC convention) now shows its chain of
   parents above the title, root first, each one a click away. A MOC lists

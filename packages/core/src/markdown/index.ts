@@ -133,3 +133,4 @@ export {
   type AsyncWikiLookup,
 } from './resolve'
 export { expandTemplatePlaceholders, type TemplatePlaceholderValues } from './template-placeholders'
+export { mergeTemplateFrontmatter } from './template-frontmatter'

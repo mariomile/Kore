@@ -43,7 +43,10 @@ export function useTemplateSlashItems(
           // Editor first, values second: the late-resolve rule above is about
           // the editor; the values always describe this pane's note.
           const editor = getEditor()
-          void valuesFor(notePath).then((values) => insertTemplate(template.path, editor, values))
+          const note = { path: notePath, generation: graph.generation }
+          void valuesFor(notePath).then((values) =>
+            insertTemplate(template.path, editor, values, note),
+          )
         },
       }))
     },

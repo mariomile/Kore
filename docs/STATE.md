@@ -1,5 +1,47 @@
 # Kore working state
 
+## Obsidian templates, 2026-10-10
+
+Next batch after 0.76.0 ("Prossimo giro di funzionalità"). marioverse.ai
+keeps 16 templates in `_system/templates` (Person, Company, Meeting,
+Project, Decision-Record, Weekly/Monthly…), named by
+`.obsidian/templates.json`. Kore only knew `templates/`, so the picker was
+empty, the templates were indexed as ordinary notes (their `- [ ]` lines
+in Tasks), and inserting one dropped its frontmatter, which for Person and
+Company is most of the template.
+
+- [x] `templates.json` joins the vault profile: `VaultLayout.templatesFolder`
+  (never the vault root) drives `isTemplatePath` and `templatePath`, and
+  `templateDateFormat` / `templateTimeFormat` drive `{{date}}` / `{{time}}`
+  in inserted templates and today's daily seed (Obsidian's defaults
+  `YYYY-MM-DD` / `HH:mm` when the file omits them). The folder is in the
+  index stamp, so adopting it rebuilds once. `obsidian_config_read`
+  returns the file raw.
+- [x] Inserting a template merges its frontmatter into the note
+  (`mergeTemplateFrontmatter`, `packages/core/src/markdown/template-frontmatter.ts`):
+  missing or empty keys take the template's value as written, lists merge,
+  filled keys keep the note's value, tags go through `addNoteTag`, `title:`
+  and `id:` never travel, placeholders expand in values. Malformed YAML on
+  either side leaves the note alone. This applies to Kore's own templates
+  too; one whose only frontmatter is its `title:` changes nothing.
+- Not done: the `reflect` CLI's `new --template` still reads `templates/`.
+  Creating or renaming a template in Settings names the file by slug even
+  in a title-named vault.
+
+**Validation:** new core tests (layout, merge) and the insert flow test;
+core node suite 175 files / 2,342 tests; the template slash-menu, graph
+chooser, graph provider and hooks browser tests on Chromium; typecheck and
+lint on the touched files. The merge ran over all 16 real templates from
+marioverse.ai (copied read-only): every one merged without error. Five of
+them (Meeting, Weekly, Monthly, Yearly, Decision-Record) carry keys like
+`"{ date:YYYY-MM-DD }":` from an old conversion; Kore copies those as
+written, as Obsidian would. WebKit and the desktop crate build are left to
+CI. Not tried in the app against the real vault.
+
+**Next:** on the Mac, `/template` in a new note in marioverse.ai should
+list the 16 templates; picking Person should fill `tags`, `up` and the
+empty CRM fields.
+
 ## Hierarchy from `up:`, 2026-10-10
 
 Part of the PKM review ("Kore come strumento PKM"): 2,449 notes in

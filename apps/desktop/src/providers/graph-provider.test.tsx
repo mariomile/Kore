@@ -119,7 +119,7 @@ function installFakeBridge(): void {
         case 'vault_scan_stats':
           return { notes: storedFiles.length, attachments: 0, skipped: 0 }
         case 'obsidian_config_read':
-          return { dailyNotes: null, app: null }
+          return { dailyNotes: null, app: null, templates: null }
         case 'list_attachments':
           return []
         // The background index pass that follows an open: nothing to reindex.

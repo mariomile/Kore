@@ -66,7 +66,7 @@ beforeEach(() => {
         case 'vault_scan_stats':
           return { notes: 0, attachments: 0, skipped: 0 }
         case 'obsidian_config_read':
-          return { dailyNotes: null, app: null }
+          return { dailyNotes: null, app: null, templates: null }
         case 'list_attachments':
           return []
         case 'note_create':

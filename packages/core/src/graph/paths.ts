@@ -12,7 +12,11 @@ import { getVaultLayout, parseDailyFormat, type VaultLayout } from './vault-layo
 /** Kore's own daily-note folder (the default layout's). */
 export const DAILY_DIR = 'daily'
 export const NOTES_DIR = 'notes'
-/** Note templates — indexed as their own kind, excluded from note surfaces. */
+/**
+ * Kore's own note-template folder (the default layout's) — templates are
+ * indexed as their own kind, excluded from note surfaces. An Obsidian vault
+ * can name another (`VaultLayout.templatesFolder`).
+ */
 export const TEMPLATES_DIR = 'templates'
 /**
  * Tag definition notes (TDR 0005) — `tags/<name>.md` with a `lore: tag`
@@ -275,7 +279,7 @@ export function isCollisionStemOf(candidate: string, stem: string): boolean {
 
 /** Graph-relative path to a template for a filename slug (without `.md`). */
 export function templatePath(slug: string): string {
-  return `${TEMPLATES_DIR}/${slug}.md`
+  return `${getVaultLayout().templatesFolder}/${slug}.md`
 }
 
 /** Graph-relative path to an attachment under `assets/`. */
@@ -387,9 +391,9 @@ export function mayContainNotes(path: string): boolean {
   return first !== undefined && !RESERVED_NOTE_TREES.has(asciiLowerCase(first))
 }
 
-/** Is this graph-relative path a note template (`.md` under `templates/`)? */
+/** Is this graph-relative path a note template (`.md` under the layout's templates folder)? */
 export function isTemplatePath(path: string): boolean {
-  return path.startsWith(`${TEMPLATES_DIR}/`) && isNotePath(path)
+  return path.startsWith(`${getVaultLayout().templatesFolder}/`) && isNotePath(path)
 }
 
 /**

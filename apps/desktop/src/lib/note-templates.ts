@@ -3,6 +3,7 @@ import {
   errorMessage,
   expandTemplatePlaceholders,
   hasAuthoredTitle,
+  mergeTemplateFrontmatter,
   parseNote,
   readNote,
   slugForTitle,
@@ -15,6 +16,7 @@ import {
 import { moveNoteCarryingSession } from '@/editor/move-note'
 import type { NoteEditorHandle } from '@/editor/note-editor'
 import { openSession } from '@/editor/open-documents'
+import { commitNoteBodyTransform } from '@/lib/note-frontmatter'
 import { startOperation } from '@/lib/operations'
 
 /**
@@ -36,23 +38,34 @@ export async function templateBody(path: string): Promise<string> {
 
 /**
  * Insert `path`'s body into `editor` at the cursor — placeholders expanded
- * against `values` (see `useTemplateValues`) — and refocus it. Every failure
- * is loud — a missing editor (the routed note is protected or still loading)
- * or a failed read must never be a silent nothing after the user picked a
- * template.
+ * against `values` (see `useTemplateValues`) — and refocus it. The template's
+ * frontmatter properties then merge into the `note`'s own (see
+ * `mergeTemplateFrontmatter`), as Obsidian's Templates plugin does. Every
+ * failure is loud — a missing editor (the routed note is protected or still
+ * loading) or a failed read must never be a silent nothing after the user
+ * picked a template.
  */
 export async function insertTemplate(
   path: string,
   editor: Pick<NoteEditorHandle, 'insertMarkdown' | 'focus'> | null,
   values: TemplatePlaceholderValues,
+  note: { path: string; generation: number } | null = null,
 ): Promise<void> {
   if (editor === null) {
     startOperation('Inserting template').fail('No open note to insert into')
     return
   }
   try {
-    editor.insertMarkdown(expandTemplatePlaceholders(await templateBody(path), values))
+    const source = await readNote(path)
+    editor.insertMarkdown(expandTemplatePlaceholders(splitFrontmatter(source).body, values))
     editor.focus()
+    if (note !== null) {
+      await commitNoteBodyTransform(
+        note.path,
+        (current) => mergeTemplateFrontmatter(current, source, values),
+        note.generation,
+      )
+    }
   } catch (cause) {
     startOperation('Inserting template').fail(errorMessage(cause))
   }

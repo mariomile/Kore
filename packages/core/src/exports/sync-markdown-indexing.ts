@@ -166,6 +166,7 @@ export {
   type WikiLookup,
   type AsyncWikiLookup,
   expandTemplatePlaceholders,
+  mergeTemplateFrontmatter,
   type TemplatePlaceholderValues,
   type ReplaceMatch,
 } from '../markdown'

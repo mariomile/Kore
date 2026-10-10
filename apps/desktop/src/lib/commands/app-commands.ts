@@ -202,6 +202,13 @@ const APP_COMMANDS: AppCommand[] = [
     run: (context) => context.navigate(settingsRoute('agents')),
   },
   {
+    id: 'nav.vaultCompat',
+    title: 'Obsidian compatibility report',
+    keywords: ['obsidian', 'vault', 'plugins', 'dataview', 'templater', 'canvas', 'unsupported'],
+    // The report is a Sync & data section, shown only for Obsidian vaults.
+    run: (context) => context.navigate(settingsRoute('data')),
+  },
+  {
     id: 'chat.open',
     title: 'Chat',
     keywords: ['ai', 'assistant', 'copilot', 'ask'],

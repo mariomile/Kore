@@ -7,6 +7,7 @@ import { AgentRoutinesRunner } from '@/components/agent-routines-runner'
 import { TaskRemindersRunner } from '@/components/task-reminders-runner'
 import { EmbeddingsSync } from '@/components/embeddings-sync'
 import { RouteContent } from '@/components/route-content'
+import { VaultCompatNotice } from '@/components/vault-compat/vault-compat-notice'
 import { VaultReplaceMount } from '@/components/vault-replace/vault-replace-dialog'
 import { ShortcutsDialog } from '@/components/shortcuts-dialog'
 import { Sidebar } from '@/components/sidebar/sidebar'
@@ -126,6 +127,7 @@ export function WorkspaceContent({ graph }: WorkspaceContentProps): ReactElement
       <EmbeddingsSync />
       <AgentRoutinesRunner />
       <TaskRemindersRunner />
+      <VaultCompatNotice graph={graph} />
     </div>
   )
 }

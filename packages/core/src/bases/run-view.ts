@@ -1,4 +1,11 @@
 import type { BaseDefinition, BaseFilter, BaseViewDefinition } from './base-file'
+import {
+  baseCellEdit,
+  baseEditableKey,
+  baseGroupDropValue,
+  type BaseCellEdit,
+  type BaseGroupDropValue,
+} from './edit'
 import { basePropertyValue, evaluateBaseExpression } from './evaluate'
 import {
   baseValueText,
@@ -22,6 +29,8 @@ export interface BaseColumn {
   /** Property id as written in the base (`file.name`, `formula.age`, `status`). */
   readonly id: string
   readonly label: string
+  /** The frontmatter key an edit writes; null for computed columns. */
+  readonly editKey: string | null
 }
 
 /** A note a cell links to. */
@@ -36,6 +45,8 @@ export interface BaseCell {
   readonly links: readonly BaseCellLink[]
   /** Set when the value failed to evaluate; `text` is empty then. */
   readonly error: string | null
+  /** How the cell edits in place; null when it is read-only. */
+  readonly edit: BaseCellEdit | null
 }
 
 export interface BaseResultRow {
@@ -49,6 +60,11 @@ export interface BaseResultGroup {
   /** Grouping value as text; `''` for notes without one. */
   readonly key: string
   readonly rows: readonly BaseResultRow[]
+  /**
+   * What a card dropped on this lane writes to {@link BaseViewResult.groupEditKey};
+   * null clears it, undefined means the lane takes no drops.
+   */
+  readonly dropValue: BaseGroupDropValue | undefined
 }
 
 export interface BaseViewResult {
@@ -65,6 +81,8 @@ export interface BaseViewResult {
   readonly groups: readonly BaseResultGroup[] | null
   /** Matching notes before `limit`. */
   readonly total: number
+  /** The frontmatter key the grouping reads, when cards can move between lanes. */
+  readonly groupEditKey: string | null
 }
 
 const NATIVE_LAYOUTS: Record<string, BaseLayout> = {
@@ -194,13 +212,24 @@ function safeValue(
   }
 }
 
-function cellFor(id: string, value: BaseValue | Error, row: BaseNoteRow): BaseCell {
+function cellFor(
+  id: string,
+  editKey: string | null,
+  value: BaseValue | Error,
+  row: BaseNoteRow,
+): BaseCell {
   if (value instanceof Error) {
-    return { text: '', links: [], error: value.message }
+    return { text: '', links: [], error: value.message, edit: null }
   }
   if (id === 'file.name' || id === 'file.basename' || id === 'file.path') {
-    return { text: row.title, links: [{ path: row.path, title: row.title }], error: null }
+    return {
+      text: row.title,
+      links: [{ path: row.path, title: row.title }],
+      error: null,
+      edit: null,
+    }
   }
+  const edit = editKey === null ? null : baseCellEdit(row.properties[editKey])
   const links: BaseCellLink[] = []
   const collect = (item: BaseValue): void => {
     if (typeof item === 'object' && item !== null) {
@@ -216,7 +245,7 @@ function cellFor(id: string, value: BaseValue | Error, row: BaseNoteRow): BaseCe
     }
   }
   collect(value)
-  return { text: baseValueText(value), links, error: null }
+  return { text: baseValueText(value), links, error: null, edit }
 }
 
 function sortValue(value: BaseValue | Error): BaseValue {
@@ -242,7 +271,11 @@ export function runBaseView(
 ): BaseViewResult {
   const view = definition.views[viewIndex] ?? definition.views[0]!
   const columnIds = view.order.length > 0 ? view.order : ['file.name']
-  const columns = columnIds.map((id) => ({ id, label: columnLabel(id, definition) }))
+  const columns = columnIds.map((id) => ({
+    id,
+    label: columnLabel(id, definition),
+    editKey: baseEditableKey(id),
+  }))
   const sortIds = view.sort.map((sort) => sort.property)
   if (view.groupBy !== null) {
     sortIds.push(view.groupBy.property)
@@ -286,10 +319,13 @@ export function runBaseView(
   const rows = limited.map(({ row, values }) => ({
     path: row.path,
     title: row.title,
-    cells: columnIds.map((id) => cellFor(id, values.get(id) ?? null, row)),
+    cells: columns.map((column) =>
+      cellFor(column.id, column.editKey, values.get(column.id) ?? null, row),
+    ),
   }))
 
   const { layout, approximated } = layoutFor(view)
+  const groupEditKey = view.groupBy === null ? null : baseEditableKey(view.groupBy.property)
   return {
     name: view.name,
     type: view.type,
@@ -297,8 +333,9 @@ export function runBaseView(
     approximated,
     columns,
     rows,
-    groups: view.groupBy === null ? null : groupRows(view.groupBy, limited, rows),
+    groups: view.groupBy === null ? null : groupRows(view.groupBy, groupEditKey, limited, rows),
     total: matched.length,
+    groupEditKey,
   }
 }
 
@@ -314,15 +351,23 @@ function compareNullsLast(left: BaseValue, right: BaseValue, direction: 'asc' | 
 
 function groupRows(
   groupBy: NonNullable<BaseViewDefinition['groupBy']>,
+  editKey: string | null,
   matched: readonly { row: BaseNoteRow; values: Map<string, BaseValue | Error> }[],
   rows: readonly BaseResultRow[],
 ): BaseResultGroup[] {
-  const groups = new Map<string, { value: BaseValue; rows: BaseResultRow[] }>()
+  const groups = new Map<
+    string,
+    { value: BaseValue; dropValue: BaseGroupDropValue | undefined; rows: BaseResultRow[] }
+  >()
   for (const [index, entry] of matched.entries()) {
     const raw = entry.values.get(groupBy.property) ?? null
     const value = raw instanceof Error ? null : raw
     const key = baseValueText(value)
-    const group = groups.get(key) ?? { value, rows: [] }
+    const dropValue =
+      editKey === null || raw instanceof Error
+        ? undefined
+        : baseGroupDropValue(entry.row.properties[editKey])
+    const group = groups.get(key) ?? { value, dropValue, rows: [] }
     group.rows.push(rows[index]!)
     groups.set(key, group)
   }
@@ -336,5 +381,5 @@ function groupRows(
       }
       return compareNullsLast(left.value, right.value, groupBy.direction)
     })
-    .map(([key, group]) => ({ key, rows: group.rows }))
+    .map(([key, group]) => ({ key, rows: group.rows, dropValue: group.dropValue }))
 }

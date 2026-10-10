@@ -1618,6 +1618,19 @@ screen: Agents then Close lands on today.
 
 ## Session log
 
+- 2026-10-10 — Links to a heading land on it. Following `[[Note#Heading]]`
+  (or `[[Note#Goals#Q4]]`, or a Markdown `Note.md#heading`) opens the note
+  and scrolls to that heading with the caret on it; a bare `[[#Heading]]`
+  scrolls the note it is written in. Core reads the fragment
+  (`noteLinkHeading` in `packages/core/src/graph/note-reference.ts`; block
+  refs `#^id` are not headings); the editor handle delegates to Meowdown's
+  `revealHeading` and scrolls the heading element itself, because Meowdown's
+  own scroll starts from the DOM selection and does nothing in an unfocused
+  editor. A reveal for a note not yet mounted waits in
+  `editor-handle-registry.ts` (5 s expiry). Closes P2 "heading links" of the
+  Kore-vs-Obsidian gap analysis (86 links in Mario's vault). Verified by a
+  browser test that scrolls an unfocused editor and a navigation test.
+
 - 2026-10-10 — Obsidian vault profile: daily notes, attachments and new
   notes follow an adopted vault's `.obsidian` settings (see the section at
   the top). Closes P0 items 1, 2 and 4 of the Kore-vs-Obsidian gap analysis.

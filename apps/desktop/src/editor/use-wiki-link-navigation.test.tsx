@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
 import type { ReactNode } from 'react'
+import {
+  registerNoteEditorHandle,
+  unregisterNoteEditorHandle,
+} from '@/editor/editor-handle-registry'
+import type { NoteEditorHandle } from '@/editor/note-editor'
 import { RouterProvider, useRouter } from '@/routing/router'
 import { useWikiLinkNavigation } from './use-wiki-link-navigation'
 
@@ -59,6 +64,23 @@ beforeEach(() => {
 })
 
 describe('useWikiLinkNavigation', () => {
+  it('scrolls the opened note to a linked heading once its editor mounts', async () => {
+    resolveOrCreateNoteWithTitle.mockResolvedValue({
+      kind: 'resolved',
+      path: 'notes/target.md',
+    })
+    const view = await renderHost()
+    lastHandler?.({ target: 'Target#Next steps', openInSplit: false })
+    await vi.waitFor(() => expect(currentRoute(view)).toContain('notes/target.md'))
+
+    const revealHeading = vi.fn(() => true)
+    const handle = { revealHeading } as unknown as NoteEditorHandle
+    registerNoteEditorHandle('notes/target.md', handle)
+    await vi.waitFor(() => expect(revealHeading).toHaveBeenCalledWith('Next steps'))
+    unregisterNoteEditorHandle('notes/target.md', handle)
+    await view.unmount()
+  })
+
   it('navigates to the resolved note', async () => {
     resolveOrCreateNoteWithTitle.mockResolvedValue({
       kind: 'resolved',

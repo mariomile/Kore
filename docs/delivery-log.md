@@ -15,6 +15,11 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
   being written by hand. A `related:` link or a body mention is not a
   parent; a loop in `up:` stops instead of repeating.
 
+- Links to a heading land on the heading. Clicking `[[Note#Heading]]` opens
+  the note scrolled to that heading, with the caret on it, instead of at the
+  top. Obsidian's nested `[[Note#Goals#Q4]]`, Markdown `Note.md#heading`
+  links and a same-note `[[#Heading]]` work the same way.
+
 - Kore opens an Obsidian vault on its own terms. When the folder has an
   `.obsidian` settings folder, Kore reads it: today's note is the vault's
   own daily file (`Journal/Daily/09-10-2026.md`, not a new `daily/`

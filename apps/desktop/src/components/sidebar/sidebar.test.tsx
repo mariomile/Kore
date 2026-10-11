@@ -5,7 +5,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   DEFAULT_SETTINGS,
   untitledNotePath,
+  buildFolderTree,
   type ChatConversation,
+  type FolderTreeFolder,
   type GraphInfo,
   type PinnedNote,
   type Settings,
@@ -27,6 +29,15 @@ const deleteConversation = vi.hoisted(() => vi.fn(async () => {}))
 const newChat = vi.hoisted(() => vi.fn(() => 'chat-new'))
 const listNoteTags = vi.hoisted(() =>
   vi.fn<() => Promise<{ tag: string; count: number }[]>>(async () => []),
+)
+const getFolderTree = vi.hoisted(() =>
+  vi.fn<() => Promise<FolderTreeFolder>>(async () => ({
+    path: '',
+    name: '',
+    folders: [],
+    notes: [],
+    noteCount: 0,
+  })),
 )
 const revealItemInDir = vi.hoisted(() => vi.fn<(path: string) => Promise<void>>(async () => {}))
 const openRecent = vi.hoisted(() => vi.fn())
@@ -56,6 +67,7 @@ vi.mock('@reflect/core', async (importOriginal) => ({
   hasBridge: () => true,
   getPinnedNotes,
   listNoteTags,
+  getFolderTree,
   listChatConversations,
   vaultScanStats: async () => ({ notes: 50, attachments: 0, skipped: 0 }),
 }))
@@ -94,7 +106,7 @@ vi.mock('@/providers/graph-provider', () => ({
 }))
 // The shelf order the rail renders — a test flips it to assert the stored
 // arrangement drives the stack.
-const sidebarSections = vi.hoisted(() => ({ order: ['open', 'pinned', 'tags'] }))
+const sidebarSections = vi.hoisted(() => ({ order: ['open', 'pinned', 'folders', 'tags'] }))
 vi.mock('@/providers/settings-provider', () => ({
   useSettings: () => ({
     settings: {
@@ -155,7 +167,8 @@ beforeEach(() => {
   deleteConversation.mockClear()
   newChat.mockClear()
   listNoteTags.mockReset().mockResolvedValue([])
-  sidebarSections.order = ['open', 'pinned', 'tags']
+  getFolderTree.mockReset().mockResolvedValue(buildFolderTree([]))
+  sidebarSections.order = ['open', 'pinned', 'folders', 'tags']
   audioMemo.available = true
   audioMemo.unavailableReason = null
   audioMemo.toggle.mockReset()
@@ -262,7 +275,7 @@ describe('Sidebar', () => {
       { path: 'notes/roadmap.md', title: 'Roadmap', dailyDate: null },
     ])
     listNoteTags.mockResolvedValue([{ tag: 'book', count: 3 }])
-    sidebarSections.order = ['tags', 'pinned', 'open']
+    sidebarSections.order = ['tags', 'pinned', 'open', 'folders']
     const { view } = await renderSidebar()
 
     await expect.element(view.getByRole('button', { name: /Book\s*3/i })).toBeVisible()
@@ -278,6 +291,35 @@ describe('Sidebar', () => {
     const { view } = await renderSidebar()
     await vi.waitFor(() => expect(listNoteTags).toHaveBeenCalled())
     expect(view.container.querySelector('[aria-label="Types"]')).toBeNull()
+  })
+
+  it('browses the vault by folder and opens a note from the tree', async () => {
+    getFolderTree.mockResolvedValue(
+      buildFolderTree([
+        { path: 'Active/Projects/Kore/Roadmap.md', title: 'Roadmap' },
+        { path: 'Active/Weekly.md', title: 'Weekly' },
+      ]),
+    )
+    const { view } = await renderSidebar()
+
+    const active = view.getByRole('button', { name: /Active\s*2/ })
+    await expect.element(active).toHaveAttribute('aria-expanded', 'false')
+    await active.click()
+    await view.getByRole('button', { name: /Projects\s*1/ }).click()
+    await view.getByRole('button', { name: /Kore\s*1/ }).click()
+    await view.getByRole('button', { name: 'Roadmap' }).click()
+
+    await expect.element(view.getByTestId('route-probe')).toHaveTextContent('note')
+    await expect
+      .element(view.getByRole('button', { name: 'Roadmap' }))
+      .toHaveAttribute('aria-current', 'page')
+  })
+
+  it("hides the Folders section for a vault that only uses Kore's own folders", async () => {
+    getFolderTree.mockResolvedValue(buildFolderTree([{ path: 'notes/idea.md', title: 'Idea' }]))
+    const { view } = await renderSidebar()
+    await vi.waitFor(() => expect(getFolderTree).toHaveBeenCalled())
+    expect(view.container.querySelector('[aria-label="Folders"]')).toBeNull()
   })
 
   it('nav rows navigate, with Daily notes always re-anchoring to today', async () => {

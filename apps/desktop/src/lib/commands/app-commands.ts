@@ -173,6 +173,18 @@ const APP_COMMANDS: AppCommand[] = [
     run: (context) => context.navigate({ kind: 'insights' }),
   },
   {
+    id: 'nav.bases',
+    title: 'Bases',
+    keywords: ['base', 'obsidian', 'views', 'dashboard', 'database', 'table', 'kanban'],
+    run: (context) => context.navigate({ kind: 'base', path: null, view: null }),
+  },
+  {
+    id: 'nav.canvases',
+    title: 'Canvases',
+    keywords: ['canvas', 'obsidian', 'board', 'whiteboard', 'map', 'diagram'],
+    run: (context) => context.navigate({ kind: 'canvas', path: null }),
+  },
+  {
     id: 'nav.graphMap',
     title: 'Graph',
     keywords: ['map', 'links', 'network', 'connections', 'visual'],
@@ -194,6 +206,13 @@ const APP_COMMANDS: AppCommand[] = [
     title: 'Agents',
     keywords: ['agent', 'soul', 'memory', 'profiles', 'ai', 'persona', 'settings', 'automations'],
     run: (context) => context.navigate(settingsRoute('agents')),
+  },
+  {
+    id: 'nav.vaultCompat',
+    title: 'Obsidian compatibility report',
+    keywords: ['obsidian', 'vault', 'plugins', 'dataview', 'templater', 'unsupported'],
+    // The report is a Sync & data section, shown only for Obsidian vaults.
+    run: (context) => context.navigate(settingsRoute('data')),
   },
   {
     id: 'chat.open',

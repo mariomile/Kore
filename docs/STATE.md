@@ -42,6 +42,170 @@ CI. Not tried in the app against the real vault.
 list the 16 templates; picking Person should fill `tags`, `up` and the
 empty CRM fields.
 
+## Obsidian compatibility report, 2026-10-10
+
+User ask (brainstorm, "Brainstorming prossime funzionalità"): when an
+Obsidian vault opens, show what Kore can't render and in which notes.
+Mario's vault has 22 community plugins; the ones with syntax worth
+reporting are Templater and Admonition, plus Dataview, Excalidraw and the
+Mermaid diagram types the editor's renderer refuses. Bases and canvases are
+not listed: Kore renders them (PRs #267 and #272).
+
+- [x] Core (`packages/core/src/vault-compat/`): `COMPAT_KINDS` is the one
+  list of unsupported kinds (Dataview, Templater, Admonition, unsupported
+  Mermaid types, Excalidraw); detection only reports kinds still on it, so
+  when Kore learns to render one, deleting its entry is the whole flip
+  (canvas was dropped this way once #272 merged). `detectCompatFindings` reads raw markdown (the index keeps plain
+  text, which has already lost code-block languages), skipping anything
+  quoted inside other code fences. `scanVaultCompat` reads every note
+  with eight reads in flight, skips iCloud-evicted notes, and never writes.
+- [x] `VaultLayout.obsidian`: true when `.obsidian/daily-notes.json` or
+  `app.json` exists. Gates the report.
+- [x] Desktop: Settings → Sync & data → Obsidian compatibility (counts per
+  kind, hint, expandable clickable note list, Rescan); command "Obsidian
+  compatibility report"; the first time an Obsidian vault opens, one scan
+  and a toast with "View report" (once per vault root, found or not).
+- [x] Browser dev: the dev bridge answers `obsidian_config_read` from
+  seeded `.obsidian/*.json`, and `?seed=obsidian` carries an app.json plus
+  two notes with plugin syntax.
+- Not done: iPhone (mobile Settings is a separate screen), Excalidraw
+  files that are not `.excalidraw.md` notes and that no note links to,
+  plugins whose syntax isn't known.
+
+**Validation:** core `detect.test.ts` and `vault-layout.test.ts`; desktop
+command, dev and settings/command-palette browser suites on Chromium;
+typecheck and lint clean. Manual pass on `?seed=obsidian` in Chromium:
+toast after open, report lists the seeded Dataview, Templater, Admonition,
+gantt notes, clicking one opens it (the gantt block shows the
+renderer's error, matching the report). WebKit left to CI. Not run on the
+real vault.
+
+## Obsidian Canvas, read-only, 2026-10-10
+
+User ask (brainstorm, Mario 15:38): read-only Canvas. His vault has a few
+`.canvas` files (`_system/Vault Map.canvas`, `vault-overview`,
+`claudian-architecture`, project canvases) that Kore showed as bare
+attachments. Kore now draws them and never writes them.
+
+- [x] Core (`packages/core/src/canvas/`): a lenient JSON Canvas 1.0 parser
+  (text, file with `subpath`, link and group nodes; edges with sides, ends,
+  colors and labels; malformed or dangling entries skipped) and the edge
+  geometry (side anchors, the facing side when an edge names none, cubic
+  curves, arrowheads, label midpoint).
+- [x] Desktop and iPhone: a `canvas` route and tab (`Canvases` command lists
+  every canvas), a board that pans (scroll, drag, arrows) and zooms (pinch,
+  ⌘-scroll, `+`/`-`, `0` fits). Text cards render Markdown with live wiki
+  links; file cards preview the note (title only below 25% zoom), show
+  images, and open canvases and bases in Kore; link cards open on click
+  with nothing remote loaded on open. Preset and hex colors tint cards,
+  groups and edges. `[[X.canvas]]` links and attachment clicks open the
+  canvas.
+- [x] `.canvas` is an attachment extension (TS, Rust `graph-paths`, the
+  shared fixture).
+- Not done: pinch-zoom on iPhone (one-finger pan and the zoom buttons
+  work there), editing, `![[X.canvas]]` rendered inline in a note (it stays an
+  attachment chip that opens the canvas), group background images.
+
+**Validation:** core `canvas.test.ts` (parser, geometry), desktop browser
+`canvas-screen.test.tsx` and a rendered check of the board on Chromium;
+route/open-tab/deep-link/command suites; typecheck and lint clean. WebKit
+is left to CI. Not tried on the real canvases: next, Mario opens
+`_system/Vault Map.canvas` in Kore on the Mac.
+
+## Editable Bases, 2026-10-10
+
+User ask (brainstorm thread, 2026-10-10): make Bases a working surface, not
+just a view. Mario's CRM and project dashboards are bases, and changing a
+status meant opening the note.
+
+- [x] Core (`packages/core/src/bases/edit.ts`): `baseEditableKey` (plain
+  note properties only; `file.*`, `formula.*`, `this.*` and
+  `RESERVED_FRONTMATTER_KEYS` stay read-only), `baseCellEdit` (text,
+  number, boolean, list; any value holding a wikilink is read-only so a
+  text box can never mangle a link), `parseBaseCellInput` (keeps the cell's
+  type, empty clears the key) and `baseGroupDropValue` (a lane takes drops
+  only for a plain value; the empty lane clears). `runBaseView` now returns
+  `editKey` per column, `edit` per cell, `groupEditKey` and per-group
+  `dropValue`.
+- [x] Desktop and iPhone (`BaseViewContent`, so the Base screen and every
+  `![[X.base]]` embed): table cells edit in place (`BaseCellEditor`: click,
+  Enter or blur saves, Escape cancels, booleans are checkboxes); board cards
+  drag between lanes and write the grouped property. Writes go through
+  `useCommitNoteProperty`, the same session-or-disk channel as collection
+  cells. The `.base` file is still never written.
+- Not done: editing from cards/list layouts, adding notes from a base,
+  reordering within a lane (Obsidian has no rank to write).
+
+**Validation:** core `run-view.test.ts` (edit keys, read-only links, input
+parsing, lane drop values); desktop browser `base-screen.test.tsx` (edit,
+Escape, board drop) on Chromium; typecheck and lint clean. WebKit is left to
+CI. Not tried on the real vault.
+
+## Obsidian Bases, 2026-10-10
+
+User ask: make Kore a PKM tool worth switching to. Mario's vault runs on
+Obsidian Bases: 34 `.base` files (his `Home` dashboard, CRM, projects,
+reading lists) and their `![[X.base#View]]` embeds, all invisible in Kore
+until now. Kore now reads them as is and never writes them.
+
+- [x] Core (`packages/core/src/bases/`): `.base` YAML parser (global and
+  per-view `filters` with `and`/`or`/`not`, `formulas`,
+  `properties.*.displayName`, views with `order`, `sort`, `limit`,
+  `groupBy`, plugin `groupOrder`), a Pratt parser and evaluator for the
+  Bases expression language (`file.*` fields, `hasTag` with nested
+  prefixes, `inFolder`, `hasLink`, `hasProperty`, links and backlinks,
+  dates and durations, string/number/list methods, `if`, `now`, `today`,
+  `date`, `duration`, `filter`/`map` with `value`/`index`), and
+  `runBaseView` down to display-ready cells. Rows come from five whole-table
+  index reads (`loadBaseRows`), so a 5,000-note vault is one IPC round.
+- [x] Desktop and iPhone: a `base` route and tab (`Bases` command lists
+  every base), view tabs, table/cards/list/board layouts. Plugin view types
+  map to the nearest layout (kanban to board, masonry/gallery to cards) and
+  say so. `![[X.base#View]]` renders live inside the note; `[[X.base]]`
+  links and attachment clicks open the base instead of a new note.
+- [x] `.base` is an attachment extension (TS, Rust `graph-paths`, the
+  shared fixture), so it lists, resolves by bare name and stays out of the
+  note index.
+- Not done: editing a base or its cells from Kore (read-only by design),
+  `file.embeds`/`file.properties` and plugin-only functions (they show the
+  cell error instead), map/calendar view types (table stand-in).
+
+**Validation:** core `run-view.test.ts` (expressions, dates, filters,
+formulas, kanban grouping, broken filters), desktop browser
+`base-screen.test.tsx` plus route/open-tab/deep-link/command suites on
+Chromium; typecheck and lint clean. A scratchpad run of the evaluator over
+copies of all 34 real `.base` files parsed and ran every view without an
+error (not committed: it reads vault data). WebKit is left to CI. Next:
+Mario opens `Home` in Kore on the Mac.
+
+## Folders shelf in the sidebar, 2026-10-10
+
+User ask: make Kore outstanding for personal knowledge management. Mario's
+vault is organized by folder (`Active/Projects/<Project>/…`, `CRM/People`,
+`Input/Readwise`, `Knowledge`) and he browses projects by folder in
+Obsidian. Kore's principle is association over hierarchy, so this is a
+read-only way in, not folder management; whether to keep it is Mario's call
+(decision card in the project chat).
+
+- [x] Core: `getFolderTree` / `buildFolderTree` / `hasOwnFolders`
+  (`packages/core/src/indexing/folder-tree.ts`) group indexed note paths
+  into a tree, folders first, natural sort, with per-folder note counts.
+  Built from the index, so hidden folders and Obsidian-excluded files never
+  appear.
+- [x] Sidebar: a new **Folders** shelf (`sidebar-folders.tsx`), a sortable
+  section like Pinned and Types (new `folders` id in `sidebarSections`;
+  existing arrangements get it appended at the end). Folders expand per
+  session; a note row opens the note, ⌘-click opens it in a split. Only
+  expanded folders render. Nothing moves, renames or creates folders.
+- [x] Hidden for a Kore-shaped vault whose notes live only in `daily/`,
+  `notes/`, `templates/` and `tags/`.
+- Not done: revealing the open note in the tree, and any folder editing
+  (deliberately out of scope).
+
+**Validation:** core node tests (`folder-tree.test.ts`, settings schema) and
+the sidebar browser test on Chromium; typecheck and lint clean. WebKit is
+left to CI. Not tried on the real vault on the Mac.
+
 ## Hierarchy from `up:`, 2026-10-10
 
 Part of the PKM review ("Kore come strumento PKM"): 2,449 notes in
@@ -1659,6 +1823,10 @@ screen: Agents then Close lands on today.
 **Next:** merge the Close fix, then bump.
 
 ## Session log
+
+- 2026-10-10 — Obsidian Bases: `.base` files open as live read-only views
+  and `![[X.base#View]]` embeds render inside notes (see the section at the
+  top).
 
 - 2026-10-10 — Links to a heading land on it. Following `[[Note#Heading]]`
   (or `[[Note#Goals#Q4]]`, or a Markdown `Note.md#heading`) opens the note

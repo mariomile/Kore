@@ -11,6 +11,7 @@ import {
 import { arrayMove, SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { SIDEBAR_SECTION_IDS, type SidebarSection } from '@reflect/core'
 import { useSettings } from '@/providers/settings-provider'
+import { SidebarFolders } from './sidebar-folders'
 import { SidebarOpenTabs } from './sidebar-open-notes'
 import { SidebarPinned } from './sidebar-pinned'
 import { SidebarTags } from './sidebar-tags'
@@ -19,6 +20,7 @@ import { SidebarTags } from './sidebar-tags'
 const SECTION_COMPONENTS: Record<SidebarSection, () => ReactElement | null> = {
   open: SidebarOpenTabs,
   pinned: SidebarPinned,
+  folders: SidebarFolders,
   tags: SidebarTags,
 }
 
@@ -28,8 +30,8 @@ function sectionForId(id: UniqueIdentifier): SidebarSection | null {
 }
 
 /**
- * The Home surface's shelves — Open, Pinned notes, Types — stacked in the order
- * the user dragged them into. Each header is its own drag handle (see
+ * The Home surface's shelves — Open, Pinned notes, Folders, Types — stacked in
+ * the order the user dragged them into. Each header is its own drag handle (see
  * {@link import('./sidebar-sortable-section').SidebarSortableSection}) and the
  * drop persists through the `sidebarSections` setting, so the arrangement
  * survives relaunch. The schema always hands back a complete list, so a shelf

@@ -41,6 +41,9 @@ const MARIOVERSE = vaultLayoutFromObsidian({
   templates: JSON.stringify({ folder: '_system/templates', dateFormat: 'DD-MM-YYYY' }),
 })
 
+/** Kore's layout, in a vault that has Obsidian settings Kore couldn't use. */
+const OBSIDIAN_DEFAULTS = { ...DEFAULT_VAULT_LAYOUT, obsidian: true }
+
 describe('vaultLayoutFromObsidian', () => {
   it('adopts the daily-notes folder and format and the attachment folder', () => {
     expect(MARIOVERSE).toEqual({
@@ -53,6 +56,7 @@ describe('vaultLayoutFromObsidian', () => {
       templatesFolder: '_system/templates',
       templateDateFormat: 'DD-MM-YYYY',
       templateTimeFormat: 'HH:mm',
+      obsidian: true,
     })
   })
 
@@ -69,14 +73,14 @@ describe('vaultLayoutFromObsidian', () => {
         dailyNotes: '{not json',
         app: JSON.stringify({ attachmentFolderPath: './', newFileLocation: 'current' }),
       }),
-    ).toEqual({ ...DEFAULT_VAULT_LAYOUT, noteFileNames: 'title' })
+    ).toEqual({ ...DEFAULT_VAULT_LAYOUT, noteFileNames: 'title', obsidian: true })
     // A format that can't name one file per day, or an unsafe folder.
     expect(
       vaultLayoutFromObsidian({ dailyNotes: JSON.stringify({ format: 'dddd' }), app: null }),
-    ).toEqual(DEFAULT_VAULT_LAYOUT)
+    ).toEqual(OBSIDIAN_DEFAULTS)
     expect(
       vaultLayoutFromObsidian({ dailyNotes: JSON.stringify({ folder: '../x' }), app: null }),
-    ).toEqual(DEFAULT_VAULT_LAYOUT)
+    ).toEqual(OBSIDIAN_DEFAULTS)
     // A format whose literals would climb out of the vault or into a hidden folder.
     for (const format of [
       '[../../tmp/]YYYY-MM-DD',
@@ -87,7 +91,7 @@ describe('vaultLayoutFromObsidian', () => {
     ]) {
       expect(
         vaultLayoutFromObsidian({ dailyNotes: JSON.stringify({ format }), app: null }),
-      ).toEqual(DEFAULT_VAULT_LAYOUT)
+      ).toEqual(OBSIDIAN_DEFAULTS)
     }
     expect(
       vaultLayoutFromObsidian({ dailyNotes: JSON.stringify({ format: 'YYYY/MM/DD' }), app: null }),

@@ -1,3 +1,6 @@
+export * from '../bases'
+export * from '../vault-compat'
+export * from '../canvas'
 export {
   setBridge,
   hasBridge,
@@ -347,6 +350,8 @@ export {
   type CollectionPageView,
   type SavedCollectionView,
   type OpenNoteTab,
+  type OpenBaseTab,
+  type OpenCanvasTab,
   type OpenChatTab,
   type OpenTab,
   type OpenPane,

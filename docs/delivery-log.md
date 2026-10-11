@@ -17,6 +17,39 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
   the note already says is kept. `{{date}}` and `{{time}}` follow the
   vault's own formats (`DD-MM-YYYY`).
 
+- See what an Obsidian vault holds that Kore can't show yet. The first
+  time an Obsidian vault opens, Kore checks every note once and, if it
+  finds Dataview queries, Templater commands, Admonition blocks, Mermaid
+  diagram types it can't draw, or Excalidraw drawings, says so
+  with a link to the report in Settings → Sync & data. The report counts
+  each kind and lists the notes, one click away. It never changes a file.
+
+- Obsidian canvases open in Kore. A vault's `.canvas` files show as a board
+  you can pan and zoom, with their text cards, note previews, images, links,
+  groups and labelled arrows in the colors set in Obsidian. Kore only reads
+  them, so the same canvases keep working in Obsidian.
+
+- Bases can be edited. In a base's table, a cell holding a note property
+  (a status, a priority, a date) edits in place: click, type, Enter; a
+  yes/no property is a checkbox. On a board, dragging a card to another
+  lane sets the property the board is grouped by. Every edit writes the
+  note's own frontmatter, so Obsidian sees the same value; the `.base`
+  file is still never touched. Computed columns (file fields, formulas)
+  and values holding a `[[link]]` stay read-only.
+
+- Obsidian Bases work in Kore. A vault's `.base` files open as live views
+  (tables, cards, lists and kanban boards) with their filters, formulas,
+  sorting and grouping, and `![[Home.base#Projects]]` embeds render inside
+  the note that holds them. Kore reads the files and never rewrites them, so
+  the same bases keep working in Obsidian.
+
+- Browse the vault by folder. A Folders shelf in the sidebar shows the
+  vault's folders as a tree with note counts; expanding a folder lists its
+  notes and clicking one opens it (⌘-click opens it beside the current
+  note). It only browses: nothing is moved, renamed or created. Hidden
+  folders and Obsidian-excluded files stay out, and a vault that keeps
+  Kore's own `daily/` and `notes/` layout doesn't see the shelf at all.
+
 - Notes show where they sit. A note whose frontmatter says
   `up: "[[Parent]]"` (the Obsidian MOC convention) now shows its chain of
   parents above the title, root first, each one a click away. A MOC lists

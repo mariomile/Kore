@@ -39,6 +39,12 @@ export type Route =
   // Desktop-only built-in browser (an embedded child webview; one shared
   // session with the context rail's Browser panel).
   | { kind: 'browser' }
+  // An Obsidian base (`.base` file), read-only. A null `path` lists every
+  // base in the vault; a null `view` shows the base's first view.
+  | { kind: 'base'; path: string | null; view: string | null }
+  // An Obsidian canvas (`.canvas` file), read-only. A null `path` lists
+  // every canvas in the vault.
+  | { kind: 'canvas'; path: string | null }
 
 /** A route that addresses one concrete note, including a dated daily note. */
 export type NoteRoute = Extract<Route, { kind: 'daily' | 'note' }>
@@ -107,6 +113,12 @@ export function routesEqual(a: Route, b: Route): boolean {
     }
     case 'search':
       return a.query === (b as Extract<Route, { kind: 'search' }>).query
+    case 'base': {
+      const other = b as Extract<Route, { kind: 'base' }>
+      return a.path === other.path && a.view === other.view
+    }
+    case 'canvas':
+      return a.path === (b as Extract<Route, { kind: 'canvas' }>).path
   }
 }
 

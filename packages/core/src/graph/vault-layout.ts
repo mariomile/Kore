@@ -48,6 +48,12 @@ export interface VaultLayout {
    */
   readonly templateDateFormat: string | null
   readonly templateTimeFormat: string | null
+  /**
+   * The vault carries Obsidian settings (`.obsidian/daily-notes.json`,
+   * `app.json` or `templates.json`), so it is shared with Obsidian and may hold plugin syntax
+   * Kore doesn't render (the compatibility report).
+   */
+  readonly obsidian: boolean
 }
 
 /** Kore's own layout: `daily/YYYY-MM-DD.md`, `notes/<slug>.md`, attachments under `assets/`. */
@@ -61,6 +67,7 @@ export const DEFAULT_VAULT_LAYOUT: VaultLayout = {
   templatesFolder: 'templates',
   templateDateFormat: null,
   templateTimeFormat: null,
+  obsidian: false,
 }
 
 let activeLayout: VaultLayout = DEFAULT_VAULT_LAYOUT
@@ -222,7 +229,10 @@ function parseJson<T>(source: string | null, schema: z.ZodType<T>): T | null {
  *   `{{date}}` and `{{time}}` expand to.
  */
 export function vaultLayoutFromObsidian(files: ObsidianConfigFiles): VaultLayout {
-  let layout = DEFAULT_VAULT_LAYOUT
+  let layout: VaultLayout = {
+    ...DEFAULT_VAULT_LAYOUT,
+    obsidian: files.dailyNotes !== null || files.app !== null || (files.templates ?? null) !== null,
+  }
   const daily = parseJson(files.dailyNotes, obsidianDailyNotesSchema)
   if (daily !== null) {
     const folder = normalizeFolder(daily.folder ?? '')

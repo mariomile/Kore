@@ -162,6 +162,13 @@ export {
 } from './note-list'
 export { sortNoteList } from './note-list-sort'
 export {
+  buildFolderTree,
+  getFolderTree,
+  hasOwnFolders,
+  type FolderTreeFolder,
+  type FolderTreeNote,
+} from './folder-tree'
+export {
   rankWikiSuggestions,
   mergeDateSuggestions,
   serializeWikiSuggestionAddress,

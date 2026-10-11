@@ -1,5 +1,6 @@
 import type { ReactElement } from 'react'
 import { baseDisplayName } from '@reflect/core'
+import { useCommitNoteProperty } from '@/lib/tags/use-commit-note-property'
 import { cn } from '@/lib/utils'
 import { routeForPath } from '@/routing/route'
 import { useRouter } from '@/routing/router'
@@ -14,8 +15,9 @@ interface BaseScreenProps {
 }
 
 /**
- * An Obsidian base, read-only: its views as tabs over the live vault. The
- * file is never written, so the same base keeps working in Obsidian.
+ * An Obsidian base: its views as tabs over the live vault. Cells edit the
+ * notes' own frontmatter; the `.base` file is never written, so the same
+ * base keeps working in Obsidian.
  */
 export function BaseScreen({ path, view }: BaseScreenProps): ReactElement {
   if (path === null) {
@@ -27,6 +29,7 @@ export function BaseScreen({ path, view }: BaseScreenProps): ReactElement {
 function BaseFileScreen({ path, view }: { path: string; view: string | null }): ReactElement {
   const { navigate } = useRouter()
   const state = useBaseView(path, view)
+  const commitProperty = useCommitNoteProperty()
   const openNote = (target: string): void => navigate(routeForPath(target))
 
   return (
@@ -65,7 +68,7 @@ function BaseFileScreen({ path, view }: { path: string; view: string | null }): 
           Couldn’t open this base: {state.message}
         </p>
       ) : (
-        <BaseViewContent result={state.result} onOpenNote={openNote} />
+        <BaseViewContent result={state.result} onOpenNote={openNote} onEdit={commitProperty} />
       )}
     </div>
   )

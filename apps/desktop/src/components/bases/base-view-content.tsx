@@ -1,23 +1,38 @@
-import type { ReactElement, ReactNode } from 'react'
-import type { BaseCell, BaseColumn, BaseResultRow, BaseViewResult } from '@reflect/core'
+import { useState, type ReactElement, type ReactNode } from 'react'
+import type {
+  BaseCell,
+  BaseColumn,
+  BaseResultGroup,
+  BaseResultRow,
+  BaseViewResult,
+} from '@reflect/core'
 import { cn } from '@/lib/utils'
+import { BaseCellEditor } from './base-cell-editor'
+
+/** Write `value` to the note's frontmatter `key`; `undefined` clears it. */
+export type BaseEditHandler = (path: string, key: string, value: unknown) => void
 
 interface BaseViewContentProps {
   result: BaseViewResult
   onOpenNote: (path: string) => void
   /** Embedded in a note: tighter padding, no stand-in notice. */
   compact?: boolean
+  /** Edits note properties in place; without it the view is read-only. */
+  onEdit?: BaseEditHandler
 }
 
 /**
- * One base view, read-only: a table, cards, a list or a board (a grouped
- * plugin `kanban`), with `groupBy` shown as sections. Every note title and
- * linked value opens its note.
+ * One base view: a table, cards, a list or a board (a grouped plugin
+ * `kanban`), with `groupBy` shown as sections. Every note title and linked
+ * value opens its note. With `onEdit`, table cells holding a note property
+ * edit in place and board cards move between lanes; both write the note's
+ * frontmatter, never the `.base` file.
  */
 export function BaseViewContent({
   result,
   onOpenNote,
   compact = false,
+  onEdit,
 }: BaseViewContentProps): ReactElement {
   const gutter = compact ? 'px-0' : 'px-12'
   if (result.rows.length === 0) {
@@ -40,32 +55,19 @@ export function BaseViewContent({
     return (
       <div>
         {notice}
-        <div className={cn('flex items-start gap-3 overflow-x-auto pb-4', gutter)}>
-          {result.groups.map((group) => (
-            <section
-              key={group.key}
-              aria-label={group.key === '' ? 'None' : group.key}
-              className="flex w-64 flex-none flex-col rounded-xl bg-surface-sunken p-2"
-            >
-              <header className="flex items-center gap-1.5 px-1.5 pb-2">
-                <h3 className="min-w-0 flex-1 truncate text-xs font-medium text-text-secondary">
-                  {group.key === '' ? 'None' : group.key}
-                </h3>
-                <span className="text-xs tabular-nums text-text-muted">{group.rows.length}</span>
-              </header>
-              <div className="flex flex-col gap-1.5">
-                {group.rows.map((row) => (
-                  <BaseCard
-                    key={row.path}
-                    row={row}
-                    columns={result.columns}
-                    onOpenNote={onOpenNote}
-                  />
-                ))}
-              </div>
-            </section>
-          ))}
-        </div>
+        <BaseBoard
+          groups={result.groups}
+          columns={result.columns}
+          gutter={gutter}
+          onOpenNote={onOpenNote}
+          onMove={
+            onEdit === undefined || result.groupEditKey === null
+              ? undefined
+              : (path, value) => {
+                  onEdit(path, result.groupEditKey!, value ?? undefined)
+                }
+          }
+        />
       </div>
     )
   }
@@ -93,6 +95,7 @@ export function BaseViewContent({
               rows={section.rows}
               columns={result.columns}
               onOpenNote={onOpenNote}
+              onEdit={onEdit}
             />
           </div>
         </section>
@@ -102,14 +105,98 @@ export function BaseViewContent({
   )
 }
 
+interface BaseBoardProps {
+  groups: readonly BaseResultGroup[]
+  columns: readonly BaseColumn[]
+  gutter: string
+  onOpenNote: (path: string) => void
+  /** Move a card to a lane by writing the lane's value; absent when read-only. */
+  onMove: ((path: string, value: BaseResultGroup['dropValue']) => void) | undefined
+}
+
+function BaseBoard({ groups, columns, gutter, onOpenNote, onMove }: BaseBoardProps): ReactElement {
+  const [dragging, setDragging] = useState<{ path: string; from: string } | null>(null)
+  const [over, setOver] = useState<string | null>(null)
+  return (
+    <div className={cn('flex items-start gap-3 overflow-x-auto pb-4', gutter)}>
+      {groups.map((group) => {
+        const label = group.key === '' ? 'None' : group.key
+        const accepts =
+          onMove !== undefined &&
+          group.dropValue !== undefined &&
+          dragging !== null &&
+          dragging.from !== group.key
+        return (
+          <section
+            key={group.key}
+            aria-label={label}
+            onDragOver={(event) => {
+              if (accepts) {
+                event.preventDefault()
+                event.dataTransfer.dropEffect = 'move'
+                setOver(group.key)
+              }
+            }}
+            onDragLeave={() => {
+              setOver((current) => (current === group.key ? null : current))
+            }}
+            onDrop={(event) => {
+              event.preventDefault()
+              if (accepts) {
+                onMove(dragging.path, group.dropValue)
+              }
+              setDragging(null)
+              setOver(null)
+            }}
+            className={cn(
+              'flex w-64 flex-none flex-col rounded-xl bg-surface-sunken p-2',
+              over === group.key && accepts && 'ring-1 ring-accent',
+            )}
+          >
+            <header className="flex items-center gap-1.5 px-1.5 pb-2">
+              <h3 className="min-w-0 flex-1 truncate text-xs font-medium text-text-secondary">
+                {label}
+              </h3>
+              <span className="text-xs tabular-nums text-text-muted">{group.rows.length}</span>
+            </header>
+            <div className="flex flex-col gap-1.5">
+              {group.rows.map((row) => (
+                <BaseCard
+                  key={row.path}
+                  row={row}
+                  columns={columns}
+                  onOpenNote={onOpenNote}
+                  dragging={dragging?.path === row.path}
+                  onDragStart={
+                    onMove === undefined
+                      ? undefined
+                      : () => {
+                          setDragging({ path: row.path, from: group.key })
+                        }
+                  }
+                  onDragEnd={() => {
+                    setDragging(null)
+                    setOver(null)
+                  }}
+                />
+              ))}
+            </div>
+          </section>
+        )
+      })}
+    </div>
+  )
+}
+
 interface BaseRowsProps {
   layout: BaseViewResult['layout']
   rows: readonly BaseResultRow[]
   columns: readonly BaseColumn[]
   onOpenNote: (path: string) => void
+  onEdit: BaseEditHandler | undefined
 }
 
-function BaseRows({ layout, rows, columns, onOpenNote }: BaseRowsProps): ReactElement {
+function BaseRows({ layout, rows, columns, onOpenNote, onEdit }: BaseRowsProps): ReactElement {
   if (layout === 'cards' || layout === 'board') {
     return (
       <div className="grid grid-cols-[repeat(auto-fill,minmax(14rem,1fr))] gap-2">
@@ -156,14 +243,27 @@ function BaseRows({ layout, rows, columns, onOpenNote }: BaseRowsProps): ReactEl
         <tbody>
           {rows.map((row) => (
             <tr key={row.path} className="border-b border-border/60 hover:bg-surface-hover">
-              {row.cells.map((cell, index) => (
-                <td
-                  key={columns[index]?.id ?? index}
-                  className="max-w-80 truncate py-1.5 pr-4 align-top"
-                >
-                  <CellValue cell={cell} onOpenNote={onOpenNote} />
-                </td>
-              ))}
+              {row.cells.map((cell, index) => {
+                const column = columns[index]
+                const key = column?.editKey ?? null
+                return (
+                  <td key={column?.id ?? index} className="max-w-80 truncate py-1.5 pr-4 align-top">
+                    {onEdit !== undefined && key !== null && cell.edit !== null ? (
+                      <BaseCellEditor
+                        edit={cell.edit}
+                        label={`${column?.label ?? key} of ${row.title}`}
+                        onCommit={(value) => {
+                          onEdit(row.path, key, value)
+                        }}
+                      >
+                        <CellValue cell={cell} onOpenNote={onOpenNote} />
+                      </BaseCellEditor>
+                    ) : (
+                      <CellValue cell={cell} onOpenNote={onOpenNote} />
+                    )}
+                  </td>
+                )
+              })}
             </tr>
           ))}
         </tbody>
@@ -180,9 +280,20 @@ interface BaseCardProps {
   row: BaseResultRow
   columns: readonly BaseColumn[]
   onOpenNote: (path: string) => void
+  /** Makes the card draggable (a board whose lanes take drops). */
+  onDragStart?: (() => void) | undefined
+  onDragEnd?: () => void
+  dragging?: boolean
 }
 
-function BaseCard({ row, columns, onOpenNote }: BaseCardProps): ReactElement {
+function BaseCard({
+  row,
+  columns,
+  onOpenNote,
+  onDragStart,
+  onDragEnd,
+  dragging = false,
+}: BaseCardProps): ReactElement {
   const details = row.cells.flatMap((cell, index) => {
     const column = columns[index]
     return column === undefined ||
@@ -192,7 +303,25 @@ function BaseCard({ row, columns, onOpenNote }: BaseCardProps): ReactElement {
       : [{ column, cell }]
   })
   return (
-    <article className="rounded-lg border border-border bg-surface px-3 py-2">
+    <article
+      data-note-path={row.path}
+      draggable={onDragStart !== undefined}
+      onDragStart={
+        onDragStart === undefined
+          ? undefined
+          : (event) => {
+              event.dataTransfer.setData('text/plain', row.path)
+              event.dataTransfer.effectAllowed = 'move'
+              onDragStart()
+            }
+      }
+      onDragEnd={onDragEnd}
+      className={cn(
+        'rounded-lg border border-border bg-surface px-3 py-2',
+        onDragStart !== undefined && 'cursor-grab active:cursor-grabbing',
+        dragging && 'opacity-50',
+      )}
+    >
       <NoteButton
         path={row.path}
         title={row.title}

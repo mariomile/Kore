@@ -210,7 +210,7 @@ const APP_COMMANDS: AppCommand[] = [
   {
     id: 'nav.vaultCompat',
     title: 'Obsidian compatibility report',
-    keywords: ['obsidian', 'vault', 'plugins', 'dataview', 'templater', 'canvas', 'unsupported'],
+    keywords: ['obsidian', 'vault', 'plugins', 'dataview', 'templater', 'unsupported'],
     // The report is a Sync & data section, shown only for Obsidian vaults.
     run: (context) => context.navigate(settingsRoute('data')),
   },

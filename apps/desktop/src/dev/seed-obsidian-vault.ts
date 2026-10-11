@@ -475,8 +475,6 @@ export function seedObsidianVaultFiles(
     'Dates move.',
     '```',
     '',
-    'Planning board: ![[Roadmap.canvas]]',
-    '',
   ].join('\n')
   return files
 }

@@ -2,10 +2,10 @@
  * What an Obsidian vault can hold that Kore does not render yet. The one list
  * the compatibility report is built from: detection ({@link detectCompatFindings})
  * only reports kinds named here, and the report keeps this order. When Kore
- * learns to render one (a `.canvas` view, say), deleting its entry drops it
- * from the report everywhere.
+ * learns to render one, deleting its entry drops it from the report everywhere.
  *
- * Bases (`.base`) are deliberately absent: Kore renders them.
+ * Bases (`.base`) and canvases (`.canvas`) are deliberately absent: Kore
+ * renders them.
  */
 export const COMPAT_KINDS = [
   {
@@ -27,11 +27,6 @@ export const COMPAT_KINDS = [
     id: 'mermaid',
     label: 'Unsupported Mermaid diagrams',
     hint: 'Flowcharts, sequence, class, state, ER and XY charts draw; other diagram types show an error.',
-  },
-  {
-    id: 'canvas',
-    label: 'Canvas links',
-    hint: 'Links and embeds of .canvas files do not open in Kore.',
   },
   {
     id: 'excalidraw',

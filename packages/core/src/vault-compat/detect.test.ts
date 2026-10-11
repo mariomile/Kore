@@ -39,7 +39,6 @@ describe('detectCompatFindings', () => {
       { kind: 'dataview', detail: null },
       { kind: 'admonition', detail: null },
       { kind: 'mermaid', detail: 'gantt' },
-      { kind: 'canvas', detail: null },
       { kind: 'excalidraw', detail: null },
     ])
   })
@@ -70,7 +69,7 @@ describe('buildVaultCompatReport', () => {
         {
           path: 'a/Board.md',
           findings: [
-            { kind: 'canvas', detail: null },
+            { kind: 'excalidraw', detail: null },
             { kind: 'dataview', detail: null },
           ],
         },
@@ -82,7 +81,7 @@ describe('buildVaultCompatReport', () => {
     ).toEqual([
       ['dataview', ['Board']],
       ['mermaid', ['Plan']],
-      ['canvas', ['Board']],
+      ['excalidraw', ['Board']],
     ])
     expect(report.groups[1]?.notes[0]?.details).toEqual(['pie'])
     expect(report).toMatchObject({ affectedNotes: 2, scanned: 10, skipped: 1 })

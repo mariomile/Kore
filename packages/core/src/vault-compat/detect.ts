@@ -48,9 +48,6 @@ function linkTargetKind(target: string): string | null {
     // Keep the raw target: a stray `%` is still a name.
   }
   const lower = decoded.toLowerCase()
-  if (lower.endsWith('.canvas')) {
-    return 'canvas'
-  }
   if (lower.endsWith('.excalidraw') || lower.endsWith('.excalidraw.md')) {
     return 'excalidraw'
   }
@@ -97,7 +94,7 @@ function fenceKind(fence: OpenFence): { kind: string; detail: string | null } | 
  * Everything in one note that Kore shows differently from Obsidian, from its
  * raw markdown: plugin code blocks (Dataview, Admonition), Mermaid diagram
  * types the renderer can't draw, Templater tags and inline Dataview outside
- * code, links to `.canvas` and Excalidraw files, and the note itself when it
+ * code, links to Excalidraw files, and the note itself when it
  * is an Excalidraw drawing. Each kind and detail is reported once per note,
  * and only kinds still in {@link COMPAT_KINDS}.
  */

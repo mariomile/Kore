@@ -85,7 +85,7 @@ function CompatGroupRow({ group }: CompatGroupRowProps): ReactElement {
 /**
  * Settings → Obsidian compatibility: a read-only report of what this vault
  * holds that Kore doesn't render (plugin code blocks, Templater tags, Mermaid
- * diagram types, canvas and Excalidraw files), with the notes that carry each.
+ * diagram types, Excalidraw drawings), with the notes that carry each.
  * Shown only for vaults with Obsidian settings. Nothing here changes a file.
  */
 export function VaultCompatSection(): ReactElement {

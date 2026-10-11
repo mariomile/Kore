@@ -7,6 +7,11 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Obsidian canvases open in Kore. A vault's `.canvas` files show as a board
+  you can pan and zoom, with their text cards, note previews, images, links,
+  groups and labelled arrows in the colors set in Obsidian. Kore only reads
+  them, so the same canvases keep working in Obsidian.
+
 - Bases can be edited. In a base's table, a cell holding a note property
   (a status, a priority, a date) edits in place: click, type, Enter; a
   yes/no property is a checkbox. On a board, dragging a card to another

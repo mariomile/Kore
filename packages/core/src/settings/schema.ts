@@ -149,7 +149,14 @@ export interface OpenBaseTab {
   pinned: boolean
 }
 
-export type OpenTab = OpenNoteTab | OpenChatTab | OpenSurfaceTab | OpenBaseTab
+/** An Obsidian canvas (`.canvas` file) or, with a null `path`, every canvas. */
+export interface OpenCanvasTab {
+  kind: 'canvas'
+  path: string | null
+  pinned: boolean
+}
+
+export type OpenTab = OpenNoteTab | OpenChatTab | OpenSurfaceTab | OpenBaseTab | OpenCanvasTab
 
 /** One workspace pane's persisted tab strip and the tab it last showed. */
 export interface OpenPane {
@@ -183,6 +190,12 @@ const openBaseTabStoredSchema = z.object({
   view: z.string().nullable().catch(null),
   pinned: z.boolean().catch(false),
 }) satisfies z.ZodType<OpenBaseTab>
+
+const openCanvasTabStoredSchema = z.object({
+  kind: z.literal('canvas'),
+  path: z.string().nullable().catch(null),
+  pinned: z.boolean().catch(false),
+}) satisfies z.ZodType<OpenCanvasTab>
 
 const openDailyTabStoredSchema = z.object({
   kind: z.literal('surface'),
@@ -258,6 +271,7 @@ export const openTabSchema: z.ZodType<OpenTab> = z.union([
   openNoteTabStoredSchema,
   openChatTabStoredSchema,
   openBaseTabStoredSchema,
+  openCanvasTabStoredSchema,
   openDailyTabStoredSchema,
   openAllNotesTabStoredSchema,
   openSearchTabStoredSchema,

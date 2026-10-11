@@ -40,6 +40,7 @@ const ATTACHMENT_EXTENSIONS = new Set([
   'avif',
   'base',
   'bmp',
+  'canvas',
   'csv',
   'doc',
   'docx',

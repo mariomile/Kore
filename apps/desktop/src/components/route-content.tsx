@@ -8,13 +8,18 @@ import { TasksScreen } from '@/components/tasks/tasks-screen'
 import { useRouter } from '@/routing/router'
 import { ScrollRestored } from '@/routing/scroll-restore'
 
-// The six routes below are reached deliberately, never on boot, and one of
+// The seven routes below are reached deliberately, never on boot, and one of
 // them (`terminal`) pulls xterm, 345 KB already minified. Statically imported
 // they all landed in `desktop-root`, which `warmPlatformRoot` fetches during
 // startup. The six eager ones above are the routes the app can open into or
 // that a keystroke reaches instantly, so they stay in the boot chunk.
 const BaseScreen = lazy(() =>
   import('@/components/bases/base-screen').then((module) => ({ default: module.BaseScreen })),
+)
+const CanvasScreen = lazy(() =>
+  import('@/components/canvas/canvas-screen').then((module) => ({
+    default: module.CanvasScreen,
+  })),
 )
 const BrowserPane = lazy(() =>
   import('@/components/browser/browser-pane').then((module) => ({ default: module.BrowserPane })),
@@ -104,6 +109,9 @@ function RouteView(): ReactElement {
     case 'base':
       // Owns its scroll container (wide tables scroll sideways inside it).
       return <BaseScreen path={route.path} view={route.view} />
+    case 'canvas':
+      // Owns its viewport: panning and zooming replace scrolling.
+      return <CanvasScreen path={route.path} />
     case 'graphs':
     // The graph-switcher route is a mobile settings sub-screen; on desktop
     // graph switching lives in the sidebar footer, so it renders as the

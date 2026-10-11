@@ -4,6 +4,7 @@ import { BaseViewContent } from '@/components/bases/base-view-content'
 import { useBaseView } from '@/components/bases/use-base-view'
 import { ExternalLink } from '@/components/icons'
 import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'
+import { useCommitNoteProperty } from '@/lib/tags/use-commit-note-property'
 import { routeForPath } from '@/routing/route'
 import { useRouter } from '@/routing/router'
 
@@ -21,6 +22,7 @@ export function EmbeddedBase({ embed }: EmbeddedBaseProps): ReactElement {
   const navigateNoteLink = useNoteLinkNavigation()
   const path = resolveAttachmentSource(embed.target)
   const state = useBaseView(path, embed.view)
+  const commitProperty = useCommitNoteProperty()
   const label = `${baseDisplayName(embed.target)}${embed.view === null ? '' : ` · ${embed.view}`}`
 
   return (
@@ -65,6 +67,7 @@ export function EmbeddedBase({ embed }: EmbeddedBaseProps): ReactElement {
           <BaseViewContent
             compact
             result={state.result}
+            onEdit={commitProperty}
             onOpenNote={(target) => {
               navigateNoteLink({ target: routeForPath(target), openInSplit: false })
             }}

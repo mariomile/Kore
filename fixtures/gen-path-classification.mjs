@@ -17,6 +17,7 @@ const ATTACHMENTS = new Set([
   'avif',
   'base',
   'bmp',
+  'canvas',
   'csv',
   'doc',
   'docx',

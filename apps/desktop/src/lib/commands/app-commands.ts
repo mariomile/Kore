@@ -179,6 +179,12 @@ const APP_COMMANDS: AppCommand[] = [
     run: (context) => context.navigate({ kind: 'base', path: null, view: null }),
   },
   {
+    id: 'nav.canvases',
+    title: 'Canvases',
+    keywords: ['canvas', 'obsidian', 'board', 'whiteboard', 'map', 'diagram'],
+    run: (context) => context.navigate({ kind: 'canvas', path: null }),
+  },
+  {
     id: 'nav.graphMap',
     title: 'Graph',
     keywords: ['map', 'links', 'network', 'connections', 'visual'],

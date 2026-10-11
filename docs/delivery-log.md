@@ -10,9 +10,22 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 - See what an Obsidian vault holds that Kore can't show yet. The first
   time an Obsidian vault opens, Kore checks every note once and, if it
   finds Dataview queries, Templater commands, Admonition blocks, Mermaid
-  diagram types it can't draw, or canvas and Excalidraw files, says so
+  diagram types it can't draw, or Excalidraw drawings, says so
   with a link to the report in Settings → Sync & data. The report counts
   each kind and lists the notes, one click away. It never changes a file.
+
+- Obsidian canvases open in Kore. A vault's `.canvas` files show as a board
+  you can pan and zoom, with their text cards, note previews, images, links,
+  groups and labelled arrows in the colors set in Obsidian. Kore only reads
+  them, so the same canvases keep working in Obsidian.
+
+- Bases can be edited. In a base's table, a cell holding a note property
+  (a status, a priority, a date) edits in place: click, type, Enter; a
+  yes/no property is a checkbox. On a board, dragging a card to another
+  lane sets the property the board is grouped by. Every edit writes the
+  note's own frontmatter, so Obsidian sees the same value; the `.base`
+  file is still never touched. Computed columns (file fields, formulas)
+  and values holding a `[[link]]` stay read-only.
 
 - Obsidian Bases work in Kore. A vault's `.base` files open as live views
   (tables, cards, lists and kanban boards) with their filters, formulas,

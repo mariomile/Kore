@@ -56,7 +56,8 @@ export function TemplatePicker({ context }: TemplatePickerProps): ReactElement |
     // The editor handle is claimed before the async value lookup: the values
     // must describe the note the command targeted, stale pane or not.
     const editor = noteEditorHandleFor(target)
-    void valuesFor(target).then((values) => insertTemplate(path, editor, values))
+    const note = graph === null ? null : { path: target, generation: graph.generation }
+    void valuesFor(target).then((values) => insertTemplate(path, editor, values, note))
   }
 
   return (

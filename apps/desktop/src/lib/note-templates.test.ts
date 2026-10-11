@@ -10,6 +10,11 @@ const availableTemplatePath = vi.hoisted(() => vi.fn(async () => 'templates/dail
 const templateSlugPathForTitle = vi.hoisted(() => vi.fn())
 const moveNoteCarryingSession = vi.hoisted(() => vi.fn(async () => undefined))
 const openSession = vi.hoisted(() => vi.fn(() => null))
+const commitNoteBodyTransform = vi.hoisted(() =>
+  vi.fn<(path: string, transform: (source: string) => string, generation: number) => Promise<void>>(
+    async () => undefined,
+  ),
+)
 const operationFail = vi.hoisted(() => vi.fn())
 const startOperation = vi.hoisted(() =>
   vi.fn(() => ({ progress: vi.fn(), done: vi.fn(), fail: operationFail })),
@@ -23,6 +28,7 @@ vi.mock('@reflect/core', async (importOriginal) => ({
 }))
 vi.mock('@/editor/move-note', () => ({ moveNoteCarryingSession }))
 vi.mock('@/editor/open-documents', () => ({ openSession }))
+vi.mock('@/lib/note-frontmatter', () => ({ commitNoteBodyTransform }))
 vi.mock('@/lib/operations', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/operations')>()),
   startOperation,
@@ -87,6 +93,21 @@ describe('insertTemplate', () => {
     expect(editor.inserted).toEqual([
       '# Atomic Habits\n\nWed, August 20th, 2026 9:41 AM [[2026-08-20]]\n',
     ])
+  })
+
+  it('merges the template’s properties into the note, as Obsidian does', async () => {
+    readNote.mockResolvedValueOnce('---\ntags:\n  - type/person\nrole:\n---\n> Who\n')
+    const editor = fakeEditor()
+    await insertTemplate('_system/templates/Person.md', editor, VALUES, {
+      path: '_inbox/Ada.md',
+      generation: 3,
+    })
+    expect(editor.inserted).toEqual(['> Who\n'])
+    const [path, transform, generation] = commitNoteBodyTransform.mock.calls[0]!
+    expect([path, generation]).toEqual(['_inbox/Ada.md', 3])
+    expect(transform('---\nid: 01J\n---\n# Ada\n')).toBe(
+      '---\nid: 01J\nrole:\ntags:\n  - type/person\n---\n# Ada\n',
+    )
   })
 
   it('fails loud when there is no editor to insert into', async () => {

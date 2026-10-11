@@ -36,8 +36,21 @@ export interface VaultLayout {
    */
   readonly noteFileNames: 'slug' | 'title'
   /**
-   * The vault carries Obsidian settings (`.obsidian/daily-notes.json` or
-   * `app.json`), so it is shared with Obsidian and may hold plugin syntax
+   * Graph-relative folder whose notes are templates: listed by the insert
+   * picker, indexed as their own kind and kept off note surfaces (search,
+   * All notes, tasks, graph). Never the vault root.
+   */
+  readonly templatesFolder: string
+  /**
+   * Moment format `{{date}}` and `{{time}}` expand to in a template, as the
+   * vault's Obsidian Templates settings declare. `null` keeps the user's
+   * Kore date and time format settings.
+   */
+  readonly templateDateFormat: string | null
+  readonly templateTimeFormat: string | null
+  /**
+   * The vault carries Obsidian settings (`.obsidian/daily-notes.json`,
+   * `app.json` or `templates.json`), so it is shared with Obsidian and may hold plugin syntax
    * Kore doesn't render (the compatibility report).
    */
   readonly obsidian: boolean
@@ -51,6 +64,9 @@ export const DEFAULT_VAULT_LAYOUT: VaultLayout = {
   attachmentFolder: null,
   newNoteFolder: 'notes',
   noteFileNames: 'slug',
+  templatesFolder: 'templates',
+  templateDateFormat: null,
+  templateTimeFormat: null,
   obsidian: false,
 }
 
@@ -72,13 +88,17 @@ export function setVaultLayout(layout: VaultLayout): void {
  * Empty for Kore's default, so existing indexes stay current.
  */
 export function vaultLayoutIndexKey(layout: VaultLayout = activeLayout): string {
+  const parts: string[] = []
   if (
-    layout.dailyFolder === DEFAULT_VAULT_LAYOUT.dailyFolder &&
-    layout.dailyFormat === DEFAULT_VAULT_LAYOUT.dailyFormat
+    layout.dailyFolder !== DEFAULT_VAULT_LAYOUT.dailyFolder ||
+    layout.dailyFormat !== DEFAULT_VAULT_LAYOUT.dailyFormat
   ) {
-    return ''
+    parts.push(`daily=${layout.dailyFolder}/${layout.dailyFormat}`)
   }
-  return `daily=${layout.dailyFolder}/${layout.dailyFormat}`
+  if (layout.templatesFolder !== DEFAULT_VAULT_LAYOUT.templatesFolder) {
+    parts.push(`templates=${layout.templatesFolder}`)
+  }
+  return parts.join(';')
 }
 
 /** One piece of a parsed daily format: a date field or literal text. */
@@ -163,10 +183,19 @@ const obsidianAppSchema = z.object({
   newFileFolderPath: z.string().optional(),
 })
 
+/** `.obsidian/templates.json` — the core Templates plugin's settings. */
+const obsidianTemplatesSchema = z.object({
+  folder: z.string().optional(),
+  dateFormat: z.string().optional(),
+  timeFormat: z.string().optional(),
+})
+
 /** The raw `.obsidian` files {@link vaultLayoutFromObsidian} reads; `null` when absent. */
 export interface ObsidianConfigFiles {
   readonly dailyNotes: string | null
   readonly app: string | null
+  /** Optional: a host that predates `templates.json` reading omits it. */
+  readonly templates?: string | null
 }
 
 function parseJson<T>(source: string | null, schema: z.ZodType<T>): T | null {
@@ -194,12 +223,15 @@ function parseJson<T>(source: string | null, schema: z.ZodType<T>): T | null {
  * - `app.json` itself → new notes are named after their title, as Obsidian
  *   names them, and land in `newFileFolderPath` when `newFileLocation` is
  *   `folder` (the vault root for `root`; Obsidian's "same folder as the
- *   current file" has no fixed answer, so it keeps `notes/`).
+ *   current file" has no fixed answer, so it keeps `notes/`);
+ * - `templates.json` → the templates folder (a vault-root setting keeps
+ *   `templates/`: every note would become a template) and the formats
+ *   `{{date}}` and `{{time}}` expand to.
  */
 export function vaultLayoutFromObsidian(files: ObsidianConfigFiles): VaultLayout {
   let layout: VaultLayout = {
     ...DEFAULT_VAULT_LAYOUT,
-    obsidian: files.dailyNotes !== null || files.app !== null,
+    obsidian: files.dailyNotes !== null || files.app !== null || (files.templates ?? null) !== null,
   }
   const daily = parseJson(files.dailyNotes, obsidianDailyNotesSchema)
   if (daily !== null) {
@@ -228,6 +260,20 @@ export function vaultLayoutFromObsidian(files: ObsidianConfigFiles): VaultLayout
           : null
     if (newFolder !== null) {
       layout = { ...layout, newNoteFolder: newFolder }
+    }
+  }
+  const templates = parseJson(files.templates ?? null, obsidianTemplatesSchema)
+  if (templates !== null) {
+    const folder = normalizeFolder(templates.folder ?? '')
+    if (folder !== null && folder !== '') {
+      layout = { ...layout, templatesFolder: folder }
+    }
+    const dateFormat = templates.dateFormat?.trim() ?? ''
+    const timeFormat = templates.timeFormat?.trim() ?? ''
+    layout = {
+      ...layout,
+      templateDateFormat: dateFormat === '' ? 'YYYY-MM-DD' : dateFormat,
+      templateTimeFormat: timeFormat === '' ? 'HH:mm' : timeFormat,
     }
   }
   const attachments = app?.attachmentFolderPath?.trim() ?? ''

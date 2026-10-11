@@ -9,8 +9,10 @@ import {
   dailyPathPattern,
   dateFromDailyPath,
   isDaily,
+  isTemplatePath,
   notePath,
   noteFileStemForTitle,
+  templatePath,
 } from './paths'
 import {
   DEFAULT_VAULT_LAYOUT,
@@ -36,6 +38,7 @@ const MARIOVERSE = vaultLayoutFromObsidian({
     newFileLocation: 'folder',
     newFileFolderPath: '_inbox',
   }),
+  templates: JSON.stringify({ folder: '_system/templates', dateFormat: 'DD-MM-YYYY' }),
 })
 
 /** Kore's layout, in a vault that has Obsidian settings Kore couldn't use. */
@@ -50,8 +53,17 @@ describe('vaultLayoutFromObsidian', () => {
       attachmentFolder: 'Resources/_attachments',
       newNoteFolder: '_inbox',
       noteFileNames: 'title',
+      templatesFolder: '_system/templates',
+      templateDateFormat: 'DD-MM-YYYY',
+      templateTimeFormat: 'HH:mm',
       obsidian: true,
     })
+  })
+
+  it('never makes the vault root the templates folder', () => {
+    expect(
+      vaultLayoutFromObsidian({ dailyNotes: null, app: null, templates: '{"folder":"/"}' }),
+    ).toMatchObject({ templatesFolder: 'templates', templateDateFormat: 'YYYY-MM-DD' })
   })
 
   it('keeps Kore’s layout without usable Obsidian settings', () => {
@@ -112,7 +124,14 @@ describe('daily paths under an adopted layout', () => {
     expect(isDaily('daily/2026-10-09.md')).toBe(false)
     expect(isDaily('Journal/Daily/Weekly review.md')).toBe(false)
     expect(dailyPathPattern()).toBe('Journal/Daily/DD-MM-YYYY.md')
-    expect(vaultLayoutIndexKey()).toBe('daily=Journal/Daily/DD-MM-YYYY')
+    expect(vaultLayoutIndexKey()).toBe('daily=Journal/Daily/DD-MM-YYYY;templates=_system/templates')
+  })
+
+  it('treats the vault’s templates folder as templates', () => {
+    setVaultLayout(MARIOVERSE)
+    expect(isTemplatePath('_system/templates/Person.md')).toBe(true)
+    expect(isTemplatePath('templates/person.md')).toBe(false)
+    expect(templatePath('Meeting')).toBe('_system/templates/Meeting.md')
   })
 
   it('requires the exact spelling of unpadded formats', () => {

@@ -75,7 +75,12 @@ describe('useTemplateSlashItems', () => {
 
     items[0]!.onSelect()
     await vi.waitFor(() =>
-      expect(insertTemplate).toHaveBeenCalledWith('templates/journal.md', editor, VALUES),
+      expect(insertTemplate).toHaveBeenCalledWith(
+        'templates/journal.md',
+        editor,
+        VALUES,
+        expect.objectContaining({ path: 'notes/plan.md' }),
+      ),
     )
   })
 
@@ -86,7 +91,12 @@ describe('useTemplateSlashItems', () => {
     const items = await result.current('')
     items[0]!.onSelect()
     await vi.waitFor(() =>
-      expect(insertTemplate).toHaveBeenCalledWith('templates/journal.md', null, VALUES),
+      expect(insertTemplate).toHaveBeenCalledWith(
+        'templates/journal.md',
+        null,
+        VALUES,
+        expect.objectContaining({ path: 'notes/plan.md' }),
+      ),
     )
   })
 

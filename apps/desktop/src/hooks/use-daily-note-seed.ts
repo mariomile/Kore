@@ -3,6 +3,8 @@ import { useQuery } from '@tanstack/react-query'
 import {
   DEFAULT_VAULT_LAYOUT,
   expandTemplatePlaceholders,
+  formatIsoDate,
+  formatMoment,
   getVaultLayout,
   readNote,
 } from '@reflect/core'
@@ -97,14 +99,20 @@ export function useDailyNoteSeed(date: string | null): string | undefined {
   if (!startable || date === null || template == null || template.trim() === '') {
     return undefined
   }
+  const { templateDateFormat, templateTimeFormat } = getVaultLayout()
   return expandTemplatePlaceholders(template, {
     // A daily note's title *is* its date. The seed only runs for today, so
     // these match, but the placeholders still take the note's date so a
     // slash-inserted copy of the same template stays consistent.
     title: formatDayLabel(date, dateFormat),
-    date: formatDayLabel(date, dateFormat),
+    date:
+      (templateDateFormat !== null ? formatIsoDate(date, templateDateFormat) : null) ??
+      formatDayLabel(date, dateFormat),
     dateIso: date,
-    time: formatTimeOfDay(mountedAt, timeFormat),
+    time:
+      templateTimeFormat !== null
+        ? formatMoment(mountedAt, templateTimeFormat)
+        : formatTimeOfDay(mountedAt, timeFormat),
     now: mountedAt,
   })
 }

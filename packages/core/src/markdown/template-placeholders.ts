@@ -105,6 +105,15 @@ function localDate(iso: string): Date | null {
   return date
 }
 
+/**
+ * An ISO `YYYY-MM-DD` day in a moment `format` (an Obsidian vault's
+ * Templates date format), or `null` when `iso` is not a date.
+ */
+export function formatIsoDate(iso: string, format: string): string | null {
+  const date = localDate(iso)
+  return date === null ? null : formatMoment(date, format)
+}
+
 /** Expand the known placeholders in a template body against `values`. */
 export function expandTemplatePlaceholders(
   body: string,

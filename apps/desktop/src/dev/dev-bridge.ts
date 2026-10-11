@@ -159,6 +159,7 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
         return {
           dailyNotes: files.read('.obsidian/daily-notes.json'),
           app: files.read('.obsidian/app.json'),
+          templates: files.read('.obsidian/templates.json'),
         }
       case 'list_attachments':
         return []

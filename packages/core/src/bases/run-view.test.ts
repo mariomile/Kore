@@ -3,6 +3,7 @@ import { parseBaseFile } from './base-file'
 import { evaluateBaseExpression } from './evaluate'
 import type { BaseNoteRow } from './values'
 import { createBaseVault, runBaseView } from './run-view'
+import { baseCellEdit, baseEditableKey, baseGroupDropValue, parseBaseCellInput } from './edit'
 
 const NOW = new Date(2026, 9, 10, 12, 0).getTime()
 const DAY = 86_400_000
@@ -135,6 +136,68 @@ views:
       ['active', ['Kore']],
       ['hold', ['Captoo']],
     ])
+    expect(result.groupEditKey).toBe('status')
+    expect(result.groups?.map((group) => group.dropValue)).toEqual(['active', 'hold'])
+  })
+
+  it('marks note-property cells editable and computed ones read-only', () => {
+    const view = parseBaseFile(`
+views:
+  - type: table
+    name: All
+    filters: file.inFolder("Active/Projects")
+    order: [file.name, note.status, priority, formula.x]
+formulas:
+  x: '1'
+`)
+    const result = runBaseView(view, 0, vault, NOW)
+    expect(result.columns.map((column) => column.editKey)).toEqual([
+      null,
+      'status',
+      'priority',
+      null,
+    ])
+    const ship = result.rows.find((entry) => entry.title === 'Ship bases')!
+    expect(ship.cells.map((cell) => cell.edit)).toEqual([
+      null,
+      { kind: 'text', value: 'in-progress' },
+      { kind: 'number', value: 2 },
+      null,
+    ])
+    const captoo = result.rows.find((entry) => entry.title === 'Captoo')!
+    expect(captoo.cells[2]!.edit).toEqual({ kind: 'text', value: '' })
+  })
+})
+
+describe('Bases cell editing', () => {
+  it('never edits computed columns or reserved keys', () => {
+    expect(baseEditableKey('file.mtime')).toBeNull()
+    expect(baseEditableKey('formula.age')).toBeNull()
+    expect(baseEditableKey('tags')).toBeNull()
+    expect(baseEditableKey('note.aliases')).toBeNull()
+    expect(baseEditableKey('note.Due date')).toBe('Due date')
+  })
+
+  it('keeps link values read-only', () => {
+    expect(baseCellEdit('[[Acme]]')).toBeNull()
+    expect(baseCellEdit(['[[A]]', 'b'])).toBeNull()
+    expect(baseCellEdit(['a', 'b'])).toEqual({ kind: 'list', value: ['a', 'b'] })
+    expect(baseCellEdit(true)).toEqual({ kind: 'boolean', value: true })
+  })
+
+  it('parses input back into the cell type and clears on empty', () => {
+    expect(parseBaseCellInput({ kind: 'number', value: 1 }, ' 42 ')).toBe(42)
+    expect(parseBaseCellInput({ kind: 'number', value: 1 }, 'soon')).toBe('soon')
+    expect(parseBaseCellInput({ kind: 'list', value: [] }, 'a, b,, c')).toEqual(['a', 'b', 'c'])
+    expect(parseBaseCellInput({ kind: 'text', value: 'x' }, '  ')).toBeUndefined()
+    expect(parseBaseCellInput({ kind: 'list', value: ['a'] }, '')).toBeUndefined()
+  })
+
+  it('lets a lane take drops only for a plain value', () => {
+    expect(baseGroupDropValue('active')).toBe('active')
+    expect(baseGroupDropValue(undefined)).toBeNull()
+    expect(baseGroupDropValue(['a'])).toBeUndefined()
+    expect(baseGroupDropValue('[[Acme]]')).toBeUndefined()
   })
 
   it('treats a broken filter as no match instead of failing the view', () => {

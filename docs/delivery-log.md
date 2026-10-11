@@ -7,6 +7,14 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Bases can be edited. In a base's table, a cell holding a note property
+  (a status, a priority, a date) edits in place: click, type, Enter; a
+  yes/no property is a checkbox. On a board, dragging a card to another
+  lane sets the property the board is grouped by. Every edit writes the
+  note's own frontmatter, so Obsidian sees the same value; the `.base`
+  file is still never touched. Computed columns (file fields, formulas)
+  and values holding a `[[link]]` stay read-only.
+
 - Obsidian Bases work in Kore. A vault's `.base` files open as live views
   (tables, cards, lists and kanban boards) with their filters, formulas,
   sorting and grouping, and `![[Home.base#Projects]]` embeds render inside

@@ -1,4 +1,5 @@
 export * from './base-file'
+export * from './edit'
 export * from './embeds'
 export { basePropertyValue, evaluateBaseExpression } from './evaluate'
 export * from './values'

@@ -35,6 +35,12 @@ export interface VaultLayout {
    * as Obsidian names files.
    */
   readonly noteFileNames: 'slug' | 'title'
+  /**
+   * The vault carries Obsidian settings (`.obsidian/daily-notes.json` or
+   * `app.json`), so it is shared with Obsidian and may hold plugin syntax
+   * Kore doesn't render (the compatibility report).
+   */
+  readonly obsidian: boolean
 }
 
 /** Kore's own layout: `daily/YYYY-MM-DD.md`, `notes/<slug>.md`, attachments under `assets/`. */
@@ -45,6 +51,7 @@ export const DEFAULT_VAULT_LAYOUT: VaultLayout = {
   attachmentFolder: null,
   newNoteFolder: 'notes',
   noteFileNames: 'slug',
+  obsidian: false,
 }
 
 let activeLayout: VaultLayout = DEFAULT_VAULT_LAYOUT
@@ -190,7 +197,10 @@ function parseJson<T>(source: string | null, schema: z.ZodType<T>): T | null {
  *   current file" has no fixed answer, so it keeps `notes/`).
  */
 export function vaultLayoutFromObsidian(files: ObsidianConfigFiles): VaultLayout {
-  let layout = DEFAULT_VAULT_LAYOUT
+  let layout: VaultLayout = {
+    ...DEFAULT_VAULT_LAYOUT,
+    obsidian: files.dailyNotes !== null || files.app !== null,
+  }
   const daily = parseJson(files.dailyNotes, obsidianDailyNotesSchema)
   if (daily !== null) {
     const folder = normalizeFolder(daily.folder ?? '')

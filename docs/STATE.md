@@ -1,5 +1,43 @@
 # Kore working state
 
+## Obsidian compatibility report, 2026-10-10
+
+User ask (brainstorm, "Brainstorming prossime funzionalità"): when an
+Obsidian vault opens, show what Kore can't render and in which notes.
+Mario's vault has 22 community plugins; the ones with syntax worth
+reporting are Templater and Admonition, plus Dataview, Excalidraw and the
+Mermaid diagram types the editor's renderer refuses. Bases and canvases are
+not listed: Kore renders them (PRs #267 and #272).
+
+- [x] Core (`packages/core/src/vault-compat/`): `COMPAT_KINDS` is the one
+  list of unsupported kinds (Dataview, Templater, Admonition, unsupported
+  Mermaid types, Excalidraw); detection only reports kinds still on it, so
+  when Kore learns to render one, deleting its entry is the whole flip
+  (canvas was dropped this way once #272 merged). `detectCompatFindings` reads raw markdown (the index keeps plain
+  text, which has already lost code-block languages), skipping anything
+  quoted inside other code fences. `scanVaultCompat` reads every note
+  with eight reads in flight, skips iCloud-evicted notes, and never writes.
+- [x] `VaultLayout.obsidian`: true when `.obsidian/daily-notes.json` or
+  `app.json` exists. Gates the report.
+- [x] Desktop: Settings → Sync & data → Obsidian compatibility (counts per
+  kind, hint, expandable clickable note list, Rescan); command "Obsidian
+  compatibility report"; the first time an Obsidian vault opens, one scan
+  and a toast with "View report" (once per vault root, found or not).
+- [x] Browser dev: the dev bridge answers `obsidian_config_read` from
+  seeded `.obsidian/*.json`, and `?seed=obsidian` carries an app.json plus
+  two notes with plugin syntax.
+- Not done: iPhone (mobile Settings is a separate screen), Excalidraw
+  files that are not `.excalidraw.md` notes and that no note links to,
+  plugins whose syntax isn't known.
+
+**Validation:** core `detect.test.ts` and `vault-layout.test.ts`; desktop
+command, dev and settings/command-palette browser suites on Chromium;
+typecheck and lint clean. Manual pass on `?seed=obsidian` in Chromium:
+toast after open, report lists the seeded Dataview, Templater, Admonition,
+gantt notes, clicking one opens it (the gantt block shows the
+renderer's error, matching the report). WebKit left to CI. Not run on the
+real vault.
+
 ## Obsidian Canvas, read-only, 2026-10-10
 
 User ask (brainstorm, Mario 15:38): read-only Canvas. His vault has a few

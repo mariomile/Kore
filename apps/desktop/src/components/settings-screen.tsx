@@ -26,6 +26,7 @@ import { SettingsNavigator } from './settings/settings-navigator'
 import { SyncSection } from './settings/sync-section'
 import { TasksSection } from './settings/tasks-section'
 import { TemplatesSection } from './settings/templates-section'
+import { VaultCompatSection } from './settings/vault-compat-section'
 import { useVisibleSettingsGroups } from './settings/use-visible-settings-sections'
 
 const SECTION_COMPONENTS: Record<SettingsSectionId, ComponentType> = {
@@ -48,6 +49,7 @@ const SECTION_COMPONENTS: Record<SettingsSectionId, ComponentType> = {
   connectors: ConnectorsSection,
   integrations: IntegrationsSection,
   import: ImportSection,
+  'vault-compat': VaultCompatSection,
   about: AboutSection,
   destructive: DestructiveSection,
 }

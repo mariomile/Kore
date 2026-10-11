@@ -155,7 +155,11 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
         // search surfaces show it honestly instead of offering a download.
         return { status: 'failed', message: 'embeddings are unavailable in browser dev' }
       case 'obsidian_config_read':
-        return { dailyNotes: null, app: null }
+        // Hidden files never list as notes, but a seed can still carry them.
+        return {
+          dailyNotes: files.read('.obsidian/daily-notes.json'),
+          app: files.read('.obsidian/app.json'),
+        }
       case 'list_attachments':
         return []
       case 'vault_scan_stats':

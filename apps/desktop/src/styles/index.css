@@ -992,6 +992,16 @@ html:root {
   color: var(--text-muted);
 }
 
+/* virtua sets an inline `pointer-events: none` on its item container while a
+   scroll is in flight. `pointer-events` is inherited, so each flip restyles
+   every element of every mounted day: one full Meowdown editor per day, a few
+   thousand elements each for a long daily, twice per scroll gesture. Pinning
+   the computed value keeps the flip from cascading (the container's inherited
+   style no longer changes), and the editors stay hoverable mid-scroll. */
+.reflect-daily-stream > div {
+  pointer-events: auto !important;
+}
+
 /* The daily note's date heading (V1 renders the date as the note's subject)
    without living inside the editor DOM. */
 .reflect-daily-subject {

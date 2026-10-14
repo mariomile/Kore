@@ -64,7 +64,6 @@ export function DailyStream({ target }: DailyStreamProps): ReactElement {
   // Per-row data is unused (the date is derived from the index); a stable array
   // of the window's length just tells virtua how many rows exist.
   const data = useMemo(() => Array.from({ length: dayWindow.count }), [dayWindow.count])
-  const [scrollIndex, setScrollIndex] = useState<number>(dayWindow.anchorIndex)
   const [focusIndex, setFocusIndex] = useState<number>(dayWindow.anchorIndex)
   // For the veil: the scroll element itself, in state, so its listener
   // attaches on the first real mount.
@@ -228,19 +227,10 @@ export function DailyStream({ target }: DailyStreamProps): ReactElement {
     virtualizerRef.current?.scrollToIndex(indexOfDate(dayWindow, target), { align: 'start' })
   }, [arrivalSeq, entryId, dayWindow, savedScroll])
 
-  const onScrollOffset = useCallback((offset: number) => {
-    const scrollIndex = virtualizerRef.current?.findItemIndex(offset)
-    if (scrollIndex == null) return
-    setScrollIndex(scrollIndex)
-  }, [])
-
-  // The first commit mounts only what the viewport shows; the full mounted
-  // window (±3 days and the scroll buffer) joins one painted frame later.
-  // Every extra row is a whole Meowdown editor — at boot the wide window
-  // mounted 7 editors for 2 visible days, and all 5 extra mounts sat between
-  // the user and the first paint. Two frames, not one: the first rAF fires
-  // before the mount commit paints. Past the flip the stream behaves exactly
-  // as before.
+  // The first commit mounts only what the viewport shows; the scroll buffer
+  // joins one painted frame later. Every extra row is a whole Meowdown
+  // editor, and every mount sat between the user and the first paint. Two
+  // frames, not one: the first rAF fires before the mount commit paints.
   const [warm, setWarm] = useState(false)
   useEffect(() => {
     let second = 0
@@ -253,17 +243,23 @@ export function DailyStream({ target }: DailyStreamProps): ReactElement {
     }
   }, [])
 
-  // Always keep a few rows above and below the viewport/focused row mounted
+  // The focused day and its direct neighbors stay mounted wherever the
+  // viewport goes: the caret (and an edit still flushing) lives in that
+  // editor, and ArrowUp/ArrowDown across a day boundary lands without a
+  // mount. Everything else is virtua's pixel-based range. Deliberately not
+  // anchored to the scroll position too: a day mounting above the viewport
+  // grows from its size estimate to its real height, virtua shifts the
+  // offset to compensate, the offset names a new row, and a window around
+  // that row mounts and unmounts more days, each growing again. With long
+  // days (an Obsidian vault's agent logs) that loop re-read and re-mounted
+  // the same notes hundreds of times in one scroll.
   const keepMounted = useMemo(() => {
-    const range = warm ? 3 : 1
     const keepMounted = new Set<number>()
-    for (const referenceIndex of [focusIndex, scrollIndex]) {
-      for (let delta = -range; delta <= range; delta++) {
-        keepMounted.add(clamp(referenceIndex + delta, 0, dayWindow.count - 1))
-      }
+    for (let delta = -1; delta <= 1; delta++) {
+      keepMounted.add(clamp(focusIndex + delta, 0, dayWindow.count - 1))
     }
-    return Array.from(keepMounted).sort()
-  }, [warm, focusIndex, scrollIndex, dayWindow.count])
+    return Array.from(keepMounted).sort((left, right) => left - right)
+  }, [focusIndex, dayWindow.count])
 
   return (
     // The wrapper anchors the scroll veil to the stream's top edge; the
@@ -272,7 +268,7 @@ export function DailyStream({ target }: DailyStreamProps): ReactElement {
       <div
         ref={setScrollElement}
         data-testid="daily-stream"
-        className="h-full overflow-auto"
+        className="reflect-daily-stream h-full overflow-auto"
         onScroll={(event) => saveScrollState(event.currentTarget.scrollTop)}
         // An explicit click/touch picks its own focus target — a focus still
         // pending for a day whose editor hasn't mounted yet must not steal the
@@ -290,7 +286,6 @@ export function DailyStream({ target }: DailyStreamProps): ReactElement {
           bufferSize={warm ? 2 * ESTIMATED_DAY_HEIGHT : 0}
           keepMounted={keepMounted}
           shift={true}
-          onScroll={onScrollOffset}
         >
           {(_, index) => {
             const date = dateAtIndex(dayWindow, index)

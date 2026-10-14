@@ -1824,6 +1824,23 @@ screen: Agents then Close lands on today.
 
 ## Session log
 
+- 2026-10-14 — Daily stream scrolling with long days. Measured in the
+  browser dev build on the Obsidian-shaped seed with 14 agent-log dailies
+  (~700 lines each) under `Journal/Daily/` (a local seed tweak, not
+  committed): scrolling 28,000 px back toward today blocked the main thread
+  ~5.5 s (median of 3) and scrolling into the past ~2.3 s, with some passes
+  re-reading and re-mounting the same days 300 to 1,400 times. Two causes in
+  `daily-stream.tsx`: `keepMounted` followed the scroll index as well as the
+  focused day, so a day growing from its 220 px estimate shifted the offset,
+  which moved the window, which mounted more days (a feedback loop); and
+  virtua's in-flight `pointer-events: none` on its container is inherited, so
+  every scroll start and stop restyled all mounted editors. Now only the
+  focused day ±1 is pinned (the rest is virtua's pixel range) and
+  `.reflect-daily-stream > div` pins `pointer-events: auto`. After: ~0.07 s
+  toward today, ~0.5 s into the past, 2 reads per pass (median of 9 runs).
+  Typing in a long daily was already fine (~5 to 8 ms of JS per key). Not
+  measured: WebKit/the native app on Mario's Mac.
+
 - 2026-10-10 — Obsidian Bases: `.base` files open as live read-only views
   and `![[X.base#View]]` embeds render inside notes (see the section at the
   top).

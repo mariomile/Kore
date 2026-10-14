@@ -7,6 +7,12 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Scrolling through daily notes no longer freezes on long days. The daily
+  stream used to keep re-opening the same days while you scrolled past long
+  ones, and restyled every open day each time a scroll started or stopped.
+  It now keeps only the day you're writing in (and its neighbours) open
+  outside the visible range.
+
 - An Obsidian vault's templates work in Kore. Kore reads the vault's
   Templates settings (`.obsidian/templates.json`): the notes in its
   templates folder (`_system/templates` in marioverse.ai) show up in

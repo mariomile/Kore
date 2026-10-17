@@ -23,6 +23,13 @@ pub fn fold_tag(value: &str) -> String {
     value.to_lowercase()
 }
 
+/// Graph-path folding — the Rust mirror of `foldGraphPath` (`graph/paths.ts`):
+/// NFC, then ASCII-only lowercase, the fold the indexer wrote to
+/// `notes.path_key`. Never [`fold_key`]: no trim, and non-ASCII case is kept.
+pub fn fold_graph_path(path: &str) -> String {
+    path.nfc().collect::<String>().to_ascii_lowercase()
+}
+
 /// Scripts written without spaces between words (Han, kana, Hangul, Thai, …).
 /// FTS5's `unicode61` tokenizer only segments at non-alphanumeric characters,
 /// so a title run in these scripts indexes as ONE token and a shorter query
@@ -59,7 +66,7 @@ pub fn contains_unsegmented_script(value: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{contains_unsegmented_script, fold_key, fold_tag};
+    use super::{contains_unsegmented_script, fold_graph_path, fold_key, fold_tag};
 
     /// Parity with `foldKey` (`keys.ts`): NFC + trim + Unicode lowercase. JS
     /// `toLowerCase` and Rust `to_lowercase` agree on all common inputs; known
@@ -78,6 +85,18 @@ mod tests {
         assert_eq!(fold_tag("Book"), "book");
         assert_eq!(fold_tag("Project/Atlas"), "project/atlas");
         assert_eq!(fold_tag(" Book "), " book ");
+    }
+
+    /// Parity with `foldGraphPath` (`graph/paths.ts`): NFC + ASCII lowercase
+    /// only, no trim.
+    #[test]
+    fn folds_graph_paths_like_the_ts_indexer() {
+        assert_eq!(
+            fold_graph_path("CRM/People/Mario.md"),
+            "crm/people/mario.md"
+        );
+        assert_eq!(fold_graph_path(" Ä/B.md"), " Ä/b.md");
+        assert_eq!(fold_graph_path("Cafe\u{301}.md"), "caf\u{e9}.md");
     }
 
     /// The shared corpus (`fixtures/fold-key-parity.json`) both sides fold;

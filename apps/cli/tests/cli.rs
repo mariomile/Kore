@@ -504,6 +504,163 @@ fn search_drops_a_note_flagged_private_after_indexing() {
     assert_eq!(stdout(&output), "", "a just-flagged note must not surface");
 }
 
+// ---- search operators (the palette grammar, `filter-query.ts`) ---------------
+
+/// The paths `kore search --json` returned, in order.
+fn search_paths(fixture: &Fixture, query: &str) -> Vec<String> {
+    let value = json(&kore(fixture, &["search", query, "--json"]));
+    value["results"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|hit| hit["path"].as_str().unwrap().to_string())
+        .collect()
+}
+
+/// A small vault shaped like an Obsidian one: CRM people, a journal, a project.
+fn operator_fixture() -> Fixture {
+    let fixture = graph();
+    fixture.write_note("CRM/People/Ada.md", "# Ada\nmet Ada about the roadmap\n");
+    fixture.write_note("CRM/People/Bob copy.md", "# Bob\nroadmap draft notes\n");
+    fixture.write_note(
+        "CRM/Companies/Acme.md",
+        "# Acme\nroadmap for next quarter\n",
+    );
+    fixture.write_note(
+        "Journal/2026-10-01.md",
+        "# Journal\nroadmap for next quarter thoughts\n",
+    );
+    fixture.write_note(
+        "notes/secret.md",
+        "---\nprivate: true\n---\n# Secret\nroadmap\n",
+    );
+    fixture.build_index();
+    fixture.insert_tag("CRM/People/Ada.md", "type/person");
+    fixture.insert_tag("CRM/People/Bob copy.md", "type/person");
+    fixture.insert_tag("CRM/People/Bob copy.md", "archive");
+    fixture.insert_tag("CRM/Companies/Acme.md", "type/company");
+    fixture.insert_tag("notes/secret.md", "type/person");
+    fixture
+}
+
+/// `tag:#type/person path:CRM/` — the live test from the app — filters the
+/// same way from the CLI, nested tags included, with no free text at all.
+#[test]
+fn search_filters_by_tag_and_path_with_no_text() {
+    let fixture = operator_fixture();
+    let mut people = search_paths(&fixture, "tag:#type/person path:CRM/");
+    people.sort();
+    assert_eq!(people, ["CRM/People/Ada.md", "CRM/People/Bob copy.md"]);
+
+    // `#type` also finds `#type/person` and `#type/company`.
+    let mut typed = search_paths(&fixture, "#type");
+    typed.sort();
+    assert_eq!(
+        typed,
+        [
+            "CRM/Companies/Acme.md",
+            "CRM/People/Ada.md",
+            "CRM/People/Bob copy.md"
+        ]
+    );
+    // Path containment is case-insensitive.
+    assert_eq!(
+        search_paths(&fixture, "path:crm/companies"),
+        ["CRM/Companies/Acme.md"]
+    );
+}
+
+#[test]
+fn search_combines_text_with_exclusions() {
+    let fixture = operator_fixture();
+    let mut hits = search_paths(&fixture, "roadmap -#archive -path:Journal");
+    hits.sort();
+    assert_eq!(hits, ["CRM/Companies/Acme.md", "CRM/People/Ada.md"]);
+
+    // `-draft` drops the note whose body says "draft"; `-file:copy` the file.
+    assert!(
+        !search_paths(&fixture, "roadmap -draft").contains(&"CRM/People/Bob copy.md".to_string())
+    );
+    let mut files = search_paths(&fixture, "roadmap -file:copy file:a");
+    files.sort();
+    assert_eq!(files, ["CRM/Companies/Acme.md", "CRM/People/Ada.md"]);
+}
+
+#[test]
+fn search_matches_exact_phrases_and_excludes_them() {
+    let fixture = operator_fixture();
+    let mut phrase = search_paths(&fixture, "\"next quarter\"");
+    phrase.sort();
+    assert_eq!(phrase, ["CRM/Companies/Acme.md", "Journal/2026-10-01.md"]);
+    // The words out of order are not the phrase.
+    assert!(search_paths(&fixture, "\"quarter next\"").is_empty());
+    assert_eq!(
+        search_paths(&fixture, "roadmap -\"next quarter\" -#archive"),
+        ["CRM/People/Ada.md"]
+    );
+}
+
+#[test]
+fn search_filters_by_property_and_link() {
+    let fixture = operator_fixture();
+    let conn = fixture.index_conn();
+    conn.execute(
+        "INSERT INTO note_properties(note_path, key, value, value_type, value_number)
+         VALUES('CRM/People/Ada.md', 'status', 'in progress', 'string', NULL)",
+        [],
+    )
+    .unwrap();
+    drop(conn);
+    fixture.insert_wiki_link("Journal/2026-10-01.md", "Ada", 0);
+
+    assert_eq!(
+        search_paths(&fixture, "[status:In Progress]"),
+        ["CRM/People/Ada.md"]
+    );
+    assert_eq!(search_paths(&fixture, "prop:status"), ["CRM/People/Ada.md"]);
+    assert_eq!(
+        search_paths(&fixture, "links:Ada"),
+        ["Journal/2026-10-01.md"]
+    );
+    assert_eq!(
+        search_paths(&fixture, "linked-from:Journal/2026-10-01.md"),
+        ["CRM/People/Ada.md"]
+    );
+    // A date resolves like a `[[2026-10-01]]` link: to the note claiming it
+    // (here a dated journal note outside `daily/`), not a constructed path.
+    fixture.insert_wiki_link("CRM/People/Ada.md", "2026-10-01", 1);
+    assert_eq!(
+        search_paths(&fixture, "links:2026-10-01"),
+        ["CRM/People/Ada.md"]
+    );
+    // A target that names no note matches nothing rather than being ignored.
+    assert!(search_paths(&fixture, "roadmap links:Nobody").is_empty());
+}
+
+#[test]
+fn search_operators_never_surface_or_reveal_private_notes() {
+    let fixture = operator_fixture();
+    assert!(!search_paths(&fixture, "#type/person").contains(&"notes/secret.md".to_string()));
+    let refused = kore(&fixture, &["search", "links:notes/secret.md"]);
+    assert_eq!(
+        refused.status.code(),
+        Some(3),
+        "stderr: {}",
+        stderr(&refused)
+    );
+}
+
+/// Half-formed operators stay plain text, as in the palette.
+#[test]
+fn search_keeps_half_formed_operators_as_text() {
+    let fixture = operator_fixture();
+    assert!(search_paths(&fixture, "path:").is_empty());
+    assert_eq!(
+        search_paths(&fixture, "roadmap -").len(),
+        search_paths(&fixture, "roadmap").len()
+    );
+}
+
 // ---- show / path ----------------------------------------------------------------
 
 #[test]

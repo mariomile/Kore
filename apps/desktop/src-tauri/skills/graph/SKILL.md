@@ -146,4 +146,7 @@ or exposing its current or historical content unless the user explicitly asks.
    <tag>` tell you the keys and types a row takes; `kore properties
    <note>` tells you what is there. Guessing a key creates an untyped stray.
 4. **Prefer search over enumeration.** `kore search` uses the app's own
-   ranked index; don't grep the whole graph when a search will do.
+   ranked index; don't grep the whole graph when a search will do. It
+   takes the app's operators: `kore search "tag:#type/person path:CRM/
+   -#archive"`, `"exact phrase"`, `-word`, `file:`, `[status:active]`,
+   `links:Note`, `is:daily`, `updated:>2026-01-01`.

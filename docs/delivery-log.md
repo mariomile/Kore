@@ -15,6 +15,13 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
   the read-only switch keeps all of it. Note links copied from the app
   (`kore://note/<id>`) now work with the `kore` command line too.
 
+- `kore search` and the MCP server's search tool understand the same
+  operators as the app's search: `tag:#type/person path:CRM/`,
+  `"exact phrase"`, `-word`, `-#tag`, `file:`, `[status:active]`,
+  `links:Note`, `is:daily`, `updated:>2026-01-01` and the rest. An agent
+  asking Kore for notes now gets the same answer you would get in ⌘K, and
+  filters alone list the matching notes newest first.
+
 - Note previews in All notes and search show the note's words, not
   leftovers from Obsidian plugins. Dataview queries, Templater tags,
   `%% comments %%`, code blocks and callout markers are skipped, so the

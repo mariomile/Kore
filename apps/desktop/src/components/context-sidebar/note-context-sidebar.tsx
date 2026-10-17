@@ -1,4 +1,5 @@
 import type { ReactElement } from 'react'
+import { LocalGraphSection } from './local-graph-section'
 import { NoteActionsSection } from './note-actions-section'
 import { NoteHistorySection } from './note-history-section'
 import { NoteOutlineSection } from './note-outline-section'
@@ -14,8 +15,8 @@ interface NoteContextSidebarProps {
 
 /**
  * An ordinary note's contextual sidebar: note actions, the note's own shape
- * (its heading outline, which hides itself when there are no headings), then
- * its semantic neighbors — the only place similar notes appear. Inbound links
+ * (its heading outline, which hides itself when there are no headings), its
+ * link neighborhood as a local graph, then its semantic neighbors — the only place similar notes appear. Inbound links
  * live under the note itself (the incoming-backlinks panel), not here.
  * Rendered in the AppShell's right region on `note` routes.
  */
@@ -27,6 +28,7 @@ export function NoteContextSidebar({ path }: NoteContextSidebarProps): ReactElem
         <NotePropertiesSection path={path} />
         <NoteTasksSection path={path} />
         <NoteOutlineSection />
+        <LocalGraphSection path={path} />
         <PublishedUrlSection path={path} />
         <SimilarNotesSection path={path} />
         <NoteHistorySection path={path} />

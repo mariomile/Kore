@@ -137,7 +137,8 @@ describe('listNotes', () => {
     expect(sql).not.toContain('lower(')
     // Kind first, then the folded tag: the EXISTS is appended after the kind
     // narrowing, so the bound order follows the builder, not the SQL text.
-    expect(args['params']).toEqual(['note', 'daily', 'book'])
+    // The folded tag twice more: the range covering tags nested under it.
+    expect(args['params']).toEqual(['note', 'daily', 'book', 'book/', 'book0'])
   })
 
   it('returns nothing when no notes match, without a second round trip', async () => {

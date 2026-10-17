@@ -2,8 +2,9 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { DatabaseSync } from 'node:sqlite'
 import { setBridge } from '../ipc/bridge'
 import { applyProjection, connectIndex, openMigratedIndex, project } from './flow-test-harness'
-import { listTagTypes } from './collections'
+import { listCollection, listTagTypes } from './collections'
 import { listNotes, listNoteTags } from './note-list'
+import { getTagTree, type TagTreeNode } from './tag-tree'
 
 /**
  * The All Notes list against a real SQLite built from the production migration
@@ -95,6 +96,28 @@ describe('listNotes against a real index', () => {
     expect(entries.map((entry) => entry.path)).toEqual(['daily/2026-08-29.md', 'notes/a.md'])
   })
 
+  it("lists a parent tag's notes together with every nested tag's, but not look-alikes", async () => {
+    addNote('notes/ai.md', '# AI\n\n#domain/ai and #domain/growth\n', 5000)
+    addNote('notes/deep.md', '# Deep\n\n#Domain/design/ux\n', 4000)
+    addNote('notes/own.md', '# Own\n\n#domain\n', 3000)
+    addNote('notes/sibling.md', '# Sibling\n\n#domains and #domain-x and #domain_y\n', 2000)
+
+    expect((await listNotes({ tag: 'Domain' })).map((entry) => entry.path)).toEqual([
+      'notes/ai.md',
+      'notes/deep.md',
+      'notes/own.md',
+    ])
+    expect((await listNotes({ tag: 'domain/design' })).map((entry) => entry.path)).toEqual([
+      'notes/deep.md',
+    ])
+    // The tag page's table rides the collection query: same set, each note once.
+    expect((await listCollection('domain')).map((entry) => entry.path)).toEqual([
+      'notes/ai.md',
+      'notes/deep.md',
+      'notes/own.md',
+    ])
+  })
+
   it('excludes daily notes from the unfiltered list', async () => {
     addNote('daily/2026-08-29.md', '# Friday\n\nA day.\n', 4000)
     addNote('notes/a.md', '# A\n\nA note.\n', 3000)
@@ -142,6 +165,32 @@ describe('tag listings for outbound surfaces against a real index', () => {
     ])
     expect((await listTagTypes({ excludePrivate: true })).map((entry) => entry.tagKey)).toEqual([
       'company',
+    ])
+  })
+})
+
+describe('the tag tree against a real index', () => {
+  it('nests tags on `/`, counting each non-daily note once per prefix', async () => {
+    addNote('notes/a.md', '# A\n\n#Domain/ai and #domain/design\n', 3000)
+    addNote('notes/b.md', '# B\n\n#domain/ai/agents and #solo\n', 2000)
+    addNote('notes/c.md', '# C\n\n#domain\n', 1000)
+    addNote('daily/2026-10-17.md', '# Today\n\n#domain/ai\n', 4000)
+
+    const tree = await getTagTree()
+
+    const shape = (nodes: readonly TagTreeNode[]): unknown =>
+      nodes.map((node) => [node.tag, node.name, node.count, shape(node.children)])
+    expect(shape(tree)).toEqual([
+      [
+        'Domain',
+        'Domain',
+        3,
+        [
+          ['Domain/ai', 'ai', 2, [['domain/ai/agents', 'agents', 1, []]]],
+          ['domain/design', 'design', 1, []],
+        ],
+      ],
+      ['solo', 'solo', 1, []],
     ])
   })
 })

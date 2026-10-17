@@ -6,11 +6,13 @@ import {
   DEFAULT_SETTINGS,
   untitledNotePath,
   buildFolderTree,
+  buildTagTree,
   type ChatConversation,
   type FolderTreeFolder,
   type GraphInfo,
   type PinnedNote,
   type Settings,
+  type TagTreeNode,
 } from '@reflect/core'
 import type { CommandContext } from '@/lib/commands/types'
 import type { Route } from '@/routing/route'
@@ -27,9 +29,7 @@ const listChatConversations = vi.hoisted(() =>
 const openConversation = vi.hoisted(() => vi.fn(async () => {}))
 const deleteConversation = vi.hoisted(() => vi.fn(async () => {}))
 const newChat = vi.hoisted(() => vi.fn(() => 'chat-new'))
-const listNoteTags = vi.hoisted(() =>
-  vi.fn<() => Promise<{ tag: string; count: number }[]>>(async () => []),
-)
+const getTagTree = vi.hoisted(() => vi.fn<() => Promise<TagTreeNode[]>>(async () => []))
 const getFolderTree = vi.hoisted(() =>
   vi.fn<() => Promise<FolderTreeFolder>>(async () => ({
     path: '',
@@ -66,7 +66,7 @@ vi.mock('@reflect/core', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@reflect/core')>()),
   hasBridge: () => true,
   getPinnedNotes,
-  listNoteTags,
+  getTagTree,
   getFolderTree,
   listChatConversations,
   vaultScanStats: async () => ({ notes: 50, attachments: 0, skipped: 0 }),
@@ -166,7 +166,7 @@ beforeEach(() => {
   openConversation.mockClear()
   deleteConversation.mockClear()
   newChat.mockClear()
-  listNoteTags.mockReset().mockResolvedValue([])
+  getTagTree.mockReset().mockResolvedValue([])
   getFolderTree.mockReset().mockResolvedValue(buildFolderTree([]))
   sidebarSections.order = ['open', 'pinned', 'folders', 'tags']
   audioMemo.available = true
@@ -187,7 +187,13 @@ beforeEach(() => {
  */
 function RouteProbe(): ReactElement {
   const { route } = useRouter()
-  return <div data-testid="route-probe">{route.kind}</div>
+  const tag = route.kind === 'allNotes' && route.filter.kind === 'tag' ? route.filter.tag : null
+  return (
+    <div data-testid="route-probe">
+      {route.kind}
+      {tag === null ? '' : `:${tag}`}
+    </div>
+  )
 }
 
 async function renderSidebar(overrides?: Partial<CommandContext>, initialRoute?: Route) {
@@ -250,10 +256,12 @@ async function renderSidebar(overrides?: Partial<CommandContext>, initialRoute?:
 
 describe('Sidebar', () => {
   it('lists tags with counts and opens the tag page', async () => {
-    listNoteTags.mockResolvedValue([
-      { tag: 'book', count: 3 },
-      { tag: 'person', count: 1 },
-    ])
+    getTagTree.mockResolvedValue(
+      buildTagTree([
+        { key: 'book', tag: 'book', count: 3 },
+        { key: 'person', tag: 'person', count: 1 },
+      ]),
+    )
     const { view } = await renderSidebar()
 
     const tagRow = view.getByRole('button', { name: /Book\s*3/i })
@@ -270,11 +278,35 @@ describe('Sidebar', () => {
       .not.toHaveAttribute('aria-current')
   })
 
+  it('nests tags on `/`, expands a parent, and opens a child by its full tag', async () => {
+    getTagTree.mockResolvedValue(
+      buildTagTree([
+        { key: 'domain', tag: 'domain', count: 5 },
+        { key: 'domain/ai', tag: 'domain/ai', count: 3 },
+        { key: 'domain/design', tag: 'domain/design', count: 2 },
+        { key: 'book', tag: 'book', count: 1 },
+      ]),
+    )
+    const { view } = await renderSidebar()
+
+    await expect.element(view.getByRole('button', { name: /^Domain\s*5$/ })).toBeVisible()
+    // Collapsed by default: children stay out of the rail.
+    await expectLocatorToHaveCount(view.getByRole('button', { name: /^Ai\s*3$/ }), 0)
+
+    await view.getByRole('button', { name: 'Expand #domain' }).click()
+    const child = view.getByRole('button', { name: /^Ai\s*3$/ })
+    await expect.element(child).toBeVisible()
+    await expect.element(view.getByRole('button', { name: /^Design\s*2$/ })).toBeVisible()
+
+    await child.click()
+    await expect.element(view.getByTestId('route-probe')).toHaveTextContent('allNotes:domain/ai')
+  })
+
   it('stacks the shelves in the stored order', async () => {
     getPinnedNotes.mockResolvedValue([
       { path: 'notes/roadmap.md', title: 'Roadmap', dailyDate: null },
     ])
-    listNoteTags.mockResolvedValue([{ tag: 'book', count: 3 }])
+    getTagTree.mockResolvedValue(buildTagTree([{ key: 'book', tag: 'book', count: 3 }]))
     sidebarSections.order = ['tags', 'pinned', 'open', 'folders']
     const { view } = await renderSidebar()
 
@@ -289,7 +321,7 @@ describe('Sidebar', () => {
 
   it('hides the Types section while the graph has no tags', async () => {
     const { view } = await renderSidebar()
-    await vi.waitFor(() => expect(listNoteTags).toHaveBeenCalled())
+    await vi.waitFor(() => expect(getTagTree).toHaveBeenCalled())
     expect(view.container.querySelector('[aria-label="Types"]')).toBeNull()
   })
 

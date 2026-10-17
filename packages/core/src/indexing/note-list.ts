@@ -5,6 +5,7 @@ import { decodeTagTypeJson } from '../tags/tag-type'
 import { foldTag } from '../markdown'
 import { db } from './db'
 import { recallOrder } from './filtered-search'
+import { carriesTagOrNested } from './tag-match'
 
 /**
  * The All Notes list: every regular note, pinned first then newest, optionally
@@ -36,7 +37,10 @@ export interface ClassifiedNoteListEntry extends NoteListEntry {
 }
 
 export interface NoteListOptions {
-  /** Only notes carrying this tag (case-insensitive). `null` lists all. */
+  /**
+   * Only notes carrying this tag or a tag nested under it (case-insensitive).
+   * `null` lists all.
+   */
   tag?: string | null
 }
 
@@ -55,7 +59,7 @@ export async function listNotes(options: NoteListOptions = {}): Promise<Classifi
   // trip, along with the per-row `serde_json::Map` the Rust query bridge builds
   // for each of those rows.
   //
-  // The tag filter is an `EXISTS` rather than a join: joining the filter tag
+  // The tag filter (the tag or any tag nested under it) is an `EXISTS` rather than a join: joining the filter tag
   // would multiply the grouped rows whenever a note matched more than once, and
   // the old `distinct()` that guarded against that cannot coexist with the
   // aggregate. `EXISTS` narrows without duplicating, so the grouping is exact.
@@ -82,13 +86,9 @@ export async function listNotes(options: NoteListOptions = {}): Promise<Classifi
   listQuery =
     tag === null
       ? listQuery.where('notes.kind', '=', 'note')
-      : listQuery.where('notes.kind', 'in', ['note', 'daily']).where(
-          sql<boolean>`exists (
-            select 1 from "tags" as "filter_tags"
-            where "filter_tags"."note_path" = "notes"."path"
-              and "filter_tags"."tag_key" = ${foldTag(tag)}
-          )`,
-        )
+      : listQuery
+          .where('notes.kind', 'in', ['note', 'daily'])
+          .where(carriesTagOrNested('"notes"."path"', tag))
 
   for (const order of recallOrder(true)) {
     listQuery = listQuery.orderBy(order)

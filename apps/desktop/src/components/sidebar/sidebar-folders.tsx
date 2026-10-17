@@ -1,5 +1,4 @@
-import { memo, useCallback, useState, type ReactElement } from 'react'
-import { z } from 'zod'
+import { memo, type ReactElement } from 'react'
 import { isModEvent } from '@meowdown/core'
 import {
   displayNoteTitle,
@@ -15,22 +14,9 @@ import { useToday } from '@/lib/use-today'
 import { notePathForRoute, routeForPath } from '@/routing/route'
 import { useRouter } from '@/routing/router'
 import { SidebarSortableSection } from './sidebar-sortable-section'
+import { useSessionExpanded } from './use-session-expanded'
 
 const EXPANDED_KEY = 'reflect.workspace-sidebar.folders.expanded'
-const expandedSchema = z.array(z.string()).catch([])
-
-/** The session's expanded folders — same per-session policy as the shelves. */
-function readExpanded(): ReadonlySet<string> {
-  const stored = window.sessionStorage.getItem(EXPANDED_KEY)
-  if (stored === null) {
-    return new Set()
-  }
-  try {
-    return new Set(expandedSchema.parse(JSON.parse(stored)))
-  } catch {
-    return new Set()
-  }
-}
 
 const ROW_CLASS =
   'flex w-full items-center gap-1.5 rounded-md py-1 pr-2.5 text-left leading-5 transition-colors duration-[50ms]'
@@ -56,17 +42,7 @@ export function SidebarFolders(): ReactElement | null {
   const tree = useFolderTree()
   const { route } = useRouter()
   const today = useToday()
-  const [expanded, setExpanded] = useState(readExpanded)
-  const toggle = useCallback((path: string): void => {
-    setExpanded((current) => {
-      const next = new Set(current)
-      if (!next.delete(path)) {
-        next.add(path)
-      }
-      window.sessionStorage.setItem(EXPANDED_KEY, JSON.stringify([...next]))
-      return next
-    })
-  }, [])
+  const [expanded, toggle] = useSessionExpanded(EXPANDED_KEY)
 
   if (tree === null || !hasOwnFolders(tree)) {
     return null

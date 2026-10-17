@@ -162,6 +162,14 @@ export {
 } from './note-list'
 export { sortNoteList } from './note-list-sort'
 export {
+  buildTagTree,
+  getTagTree,
+  hasNestedTags,
+  listTagTreeCounts,
+  type TagTreeCount,
+  type TagTreeNode,
+} from './tag-tree'
+export {
   buildFolderTree,
   getFolderTree,
   hasOwnFolders,

@@ -130,4 +130,15 @@ describe('AgentsSection', () => {
     expect(page.getByText('Installed').all()).toHaveLength(SKILL_NAMES.length - 1)
     expect(page.getByRole('button', { name: 'Install skills' }).query()).toBeNull()
   })
+
+  it('shows the MCP client config for this graph, read-only on request', async () => {
+    await renderSection()
+    const config = page.getByText(/"mcpServers"/)
+    await expect.element(config).toHaveTextContent('/Applications/Kore.app/Contents/MacOS/reflect')
+    await expect.element(config).toHaveTextContent('/graphs/Personal')
+    expect(config.element().textContent).not.toContain('--read-only')
+
+    await page.getByRole('switch', { name: 'Read-only' }).click()
+    await expect.element(config).toHaveTextContent('--read-only')
+  })
 })

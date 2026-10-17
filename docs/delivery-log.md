@@ -7,6 +7,13 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Connect Claude Desktop, Claude Code, Cursor or any MCP client to your
+  notes. `reflect mcp` serves the open graph as tools (search, read a note,
+  backlinks, tasks, today's daily, collections; capture, append, create,
+  set properties, tag, tick off a task), with private notes invisible as
+  everywhere else. Settings → Agents shows the config to paste, with a
+  read-only switch.
+
 - Scrolling through daily notes no longer freezes on long days. The daily
   stream used to keep re-opening the same days while you scrolled past long
   ones, and restyled every open day each time a scroll started or stopped.

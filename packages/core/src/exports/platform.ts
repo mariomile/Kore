@@ -71,7 +71,10 @@ export {
   agentSkillStatus,
   agentSkillInstall,
   agentSkillUninstall,
+  mcpClientSetup,
   type AgentSkillInstallState,
+  type McpClientSetup,
+  type McpClientSetupOptions,
   type AgentSkillStatus,
   type AgentSkillsStatus,
 } from '../app/agent-skill'

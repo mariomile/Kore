@@ -79,6 +79,7 @@ describe('parseNote — previewText', () => {
   it('drops callout markers but keeps the title and body', () => {
     expect(preview('> [!warning]- Heads up\n> The dates move.')).toBe('Heads up The dates move.')
     expect(preview('> > [!note] Nested\n> > body')).toBe('Nested body')
+    expect(preview('>   [!tip] Spaced\n> body')).toBe('Spaced body')
   })
 
   it('is the plain text when nothing is noise', () => {

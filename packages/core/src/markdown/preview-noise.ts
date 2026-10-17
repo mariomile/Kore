@@ -29,7 +29,7 @@ const TEMPLATER_TAG = /<%[\s\S]*?%>/g
 /** Obsidian comments: `%% … %%`, inline or across lines. */
 const OBSIDIAN_COMMENT = /%%[\s\S]*?%%/g
 /** A callout's type marker after its quote marks: `> [!note]`, `> [!faq]-`. */
-const CALLOUT_MARKER = /^(?:[ \t]*>[ \t]?)+(\[![^\]\n]+\][+-]?)/gm
+const CALLOUT_MARKER = /^(?:[ \t]*>)+[ \t]*(\[![^\]\n]+\][+-]?)/gm
 
 /** Is the tree node `name`, whose source is `text`, preview noise as a whole? */
 export function isPreviewNoiseNode(name: string, text: string): boolean {

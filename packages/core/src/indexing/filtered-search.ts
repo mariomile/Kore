@@ -4,7 +4,14 @@ import { db } from './db'
 import { literalSearchQuery, type ParsedSearchQuery, type PropertyFilter } from './filter-query'
 import { resolveWikiTarget } from './queries'
 import { HIGHLIGHT_END, HIGHLIGHT_START } from './search'
-import { buildBodyFtsMatch, buildFtsMatch, buildTitleMatchSql } from './search-query'
+import {
+  buildBodyFtsMatch,
+  buildBodyPhraseFtsMatch,
+  buildFtsMatch,
+  buildPhraseFtsMatch,
+  buildTitleMatchSql,
+} from './search-query'
+import { joinFts, operatorPredicates, tagMatchSql } from './search-operators-sql'
 import { highlightTitle } from './title-highlight'
 
 /**
@@ -152,7 +159,9 @@ export async function searchWithFilters(
     linkedFromPath = resolution.ref
   }
 
-  const match = buildFtsMatch(parsed.text)
+  // Phrases rank and highlight like typed words; the phrase predicate in
+  // operatorPredicates is what guarantees every hit actually contains them.
+  const match = joinFts([buildFtsMatch(parsed.text), buildPhraseFtsMatch(filters.phrases)], 'AND')
   // An explicit daily filter and the notes-only population contradict; the
   // filter is the user's latest word, so it wins.
   const notesOnly = options.notesOnly === true && !filters.dailyOnly
@@ -164,7 +173,7 @@ export async function searchWithFilters(
       .innerJoin('notes', 'notes.path', 'tags.notePath')
       .select(HIT_COLUMNS)
       // The length guard above guarantees a primary tag.
-      .where('tags.tagKey', '=', primaryTag!)
+      .where(tagMatchSql(sql.ref('tags.tagKey'), primaryTag!))
       .where('notes.kind', 'not in', ['template', 'tag'])
       .distinct()
 
@@ -174,7 +183,7 @@ export async function searchWithFilters(
           selectFrom('tags as filterTags')
             .select(sql<number>`1`.as('one'))
             .whereRef('filterTags.notePath', '=', 'notes.path')
-            .where('filterTags.tagKey', '=', tag),
+            .where(tagMatchSql(sql.ref('filterTags.tagKey'), tag)),
         ),
       )
     }
@@ -218,6 +227,9 @@ export async function searchWithFilters(
     for (const property of filters.properties) {
       taggedQuery = taggedQuery.where(propertyFilterSql(property))
     }
+    for (const predicate of operatorPredicates(filters)) {
+      taggedQuery = taggedQuery.where(predicate)
+    }
     if (limit !== null) {
       taggedQuery = taggedQuery.limit(limit)
     }
@@ -250,7 +262,7 @@ export async function searchWithFilters(
         selectFrom('tags')
           .select(sql<number>`1`.as('one'))
           .whereRef('tags.notePath', '=', 'notes.path')
-          .where('tags.tagKey', '=', tag),
+          .where(tagMatchSql(sql.ref('tags.tagKey'), tag)),
       ),
     )
   }
@@ -294,6 +306,9 @@ export async function searchWithFilters(
   for (const property of filters.properties) {
     query = query.where(propertyFilterSql(property))
   }
+  for (const predicate of operatorPredicates(filters)) {
+    query = query.where(predicate)
+  }
   if (match === null) {
     // No free text: a filtered recall feed, newest first.
     let recallQuery = query
@@ -325,6 +340,9 @@ export async function searchWithFilters(
   // graph, so marking runs only for the page of hits returned. Ranking needs
   // one fact a snippet used to supply — whether the body matched at all —
   // and a second, body-only MATCH answers that for every hit in one pass.
+  const bodyMatch =
+    joinFts([buildBodyFtsMatch(parsed.text), buildBodyPhraseFtsMatch(filters.phrases)], 'OR') ??
+    match
   const lexicalDb = db
     .with(
       (cte) => cte('lexical').materialized(),
@@ -344,7 +362,7 @@ export async function searchWithFilters(
         queryDb
           .selectFrom('searchFts')
           .select(sql<number>`"search_fts"."rowid"`.as('ftsRowid'))
-          .where(sql<boolean>`search_fts MATCH ${buildBodyFtsMatch(parsed.text) ?? match}`),
+          .where(sql<boolean>`search_fts MATCH ${bodyMatch}`),
     )
   const filteredNotes = query.select('notes.titleKey').as('filteredNotes')
   const titleMatch = buildTitleMatchSql(sql.ref<string>('filteredNotes.titleKey'), parsed.text)

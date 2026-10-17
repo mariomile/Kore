@@ -136,6 +136,7 @@ export function buildAllNotesSearch(
     text: parsed.text,
     filtered: parsed.filtered || routeTag !== null || hasActiveFilters(filters),
     filters: {
+      ...parsed.filters,
       tags,
       dailyOnly: parsed.filters.dailyOnly || filters.daily,
       pinnedOnly: parsed.filters.pinnedOnly || filters.pinned,
@@ -150,7 +151,6 @@ export function buildAllNotesSearch(
         parsed.filters.updatedBeforeMs,
         filters.updated?.beforeMs ?? null,
       ),
-      properties: parsed.filters.properties,
     },
   }
   return merged

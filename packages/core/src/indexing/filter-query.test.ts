@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { parseSearchQuery } from './filter-query'
+import { emptySearchFilters, parseSearchQuery } from './filter-query'
 
 function startOfLocalDay(date: string, days = 0): number {
   const [year, month, day] = date.split('-').map(Number)
@@ -12,16 +12,7 @@ describe('parseSearchQuery', () => {
     expect(parsed).toEqual({
       text: 'rust sqlite notes',
       filtered: false,
-      filters: {
-        tags: [],
-        dailyOnly: false,
-        pinnedOnly: false,
-        linksTo: null,
-        linkedFrom: null,
-        updatedAfterMs: null,
-        updatedBeforeMs: null,
-        properties: [],
-      },
+      filters: emptySearchFilters(),
     })
   })
 
@@ -130,5 +121,39 @@ describe('parseSearchQuery', () => {
     const parsed = parseSearchQuery('prop:=x prop:-bad=1 prop:status= plan')
     expect(parsed.filters.properties).toEqual([])
     expect(parsed.text).toBe('prop:=x prop:-bad=1 prop:status= plan')
+  })
+})
+
+describe('parseSearchQuery — Obsidian operators', () => {
+  it('parses phrases, exclusions, tag:, path:, file: and [prop:value]', () => {
+    const parsed = parseSearchQuery(
+      'roadmap "next quarter" -draft -"old plan" tag:#type/person -#archive path:CRM/ ' +
+        '-path:Journal file:Mario -file:copy [status:in progress] [rating]',
+    )
+    expect(parsed.text).toBe('roadmap')
+    expect(parsed.filtered).toBe(true)
+    expect(parsed.filters).toMatchObject({
+      phrases: ['next quarter'],
+      excludedTerms: ['draft'],
+      excludedPhrases: ['old plan'],
+      tags: ['type/person'],
+      excludedTags: ['archive'],
+      paths: ['CRM/'],
+      excludedPaths: ['Journal'],
+      files: ['Mario'],
+      excludedFiles: ['copy'],
+      properties: [
+        { key: 'status', value: 'in progress' },
+        { key: 'rating', value: null },
+      ],
+    })
+    expect(parseSearchQuery('tag:work').filters.tags).toEqual(['work'])
+    expect(parseSearchQuery('path:"Active Projects"').filters.paths).toEqual(['Active Projects'])
+  })
+
+  it('half-formed operators stay search text', () => {
+    const parsed = parseSearchQuery('a - b -- path: file: tag:#1 [[Wiki]] [bad key] "unclosed')
+    expect(parsed.filtered).toBe(false)
+    expect(parsed.text).toBe('a - b -- path: file: tag:#1 [[Wiki]] [bad key] "unclosed')
   })
 })

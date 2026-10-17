@@ -1,4 +1,4 @@
-import { foldTag } from '@reflect/core'
+import { foldTag, type NoteListFolder } from '@reflect/core'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 
 /**
@@ -16,12 +16,17 @@ import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 const ALL_NOTES = 'all-notes'
 const ALL_NOTES_TAGS = 'all-notes-tags'
 
-/** The list query key for one tag filter (`null` = all non-daily notes). */
+/**
+ * The list query key for one tag filter (`null` = all non-daily notes), or
+ * for a folder page — its folder and subfolder toggle ride the key's tail.
+ */
 export function allNotesQueryKey(
   root: string | undefined,
   tag: string | null,
-): [string, string | undefined, string, string | null] {
-  return [INDEX_QUERY_SCOPE, root, ALL_NOTES, tag === null ? null : foldTag(tag)]
+  folder: NoteListFolder | null = null,
+): (string | boolean | null | undefined)[] {
+  const key = [INDEX_QUERY_SCOPE, root, ALL_NOTES, tag === null ? null : foldTag(tag)]
+  return folder === null ? key : [...key, folder.path, folder.recursive]
 }
 
 /** The shared prefix of every All Notes list variant — for bulk cache patches. */

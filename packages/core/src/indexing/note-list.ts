@@ -1,4 +1,4 @@
-import { sql } from 'kysely'
+import { sql, type RawBuilder } from 'kysely'
 import { z } from 'zod'
 import { isDaily } from '../graph/paths'
 import { decodeTagTypeJson } from '../tags/tag-type'
@@ -37,22 +37,38 @@ export interface ClassifiedNoteListEntry extends NoteListEntry {
   isInbox: boolean
 }
 
+/** A folder page's population: one folder's notes, optionally with its subfolders'. */
+export interface NoteListFolder {
+  /** Graph-relative folder path (no trailing slash). */
+  readonly path: string
+  /** Include notes in every folder below `path`, not just its own. */
+  readonly recursive: boolean
+}
+
 export interface NoteListOptions {
   /**
    * Only notes carrying this tag or a tag nested under it (case-insensitive).
    * `null` lists all.
    */
   tag?: string | null
+  /**
+   * Only notes filed under this folder — every kind the folder tree shows,
+   * dailies and templates included, since the page mirrors the folder.
+   * Takes precedence over `tag`.
+   */
+  folder?: NoteListFolder | null
 }
 
 /**
  * Notes for the All Notes screen: unfiltered lists include non-daily notes only;
- * tag-filtered lists include both regular and daily notes carrying the tag.
+ * tag-filtered lists include both regular and daily notes carrying the tag; a
+ * folder page lists whatever is filed in the folder.
  * Pinned notes appear first (explicit pin order, then unordered pins), then most
  * recently edited — V1's list order.
  */
 export async function listNotes(options: NoteListOptions = {}): Promise<ClassifiedNoteListEntry[]> {
   const tag = options.tag ?? null
+  const folder = options.folder ?? null
 
   // One query, not two. The tags used to come back as their own uncapped
   // listing (roughly 9,000 rows on a 4,500-note graph) and were stitched to the
@@ -85,11 +101,13 @@ export async function listNotes(options: NoteListOptions = {}): Promise<Classifi
     .groupBy('notes.path')
 
   listQuery =
-    tag === null
-      ? listQuery.where('notes.kind', '=', 'note')
-      : listQuery
-          .where('notes.kind', 'in', ['note', 'daily'])
-          .where(carriesTagOrNested('"notes"."path"', tag))
+    folder !== null
+      ? listQuery.where(folderMembership(folder))
+      : tag === null
+        ? listQuery.where('notes.kind', '=', 'note')
+        : listQuery
+            .where('notes.kind', 'in', ['note', 'daily'])
+            .where(carriesTagOrNested('"notes"."path"', tag))
 
   for (const order of recallOrder(true)) {
     listQuery = listQuery.orderBy(order)
@@ -111,6 +129,21 @@ export async function listNotes(options: NoteListOptions = {}): Promise<Classifi
     isPinned: row.isPinned !== 0,
     isInbox: !isDaily(row.path) && !hasValidTagSchema(row.tagSchemas, schemaValidity),
   }))
+}
+
+/**
+ * The SQL predicate for "filed under `folder`": a path prefix compared with
+ * `substr`, not `LIKE`, so `_` and `%` in folder names match literally and
+ * case stays significant (the tree groups paths case-sensitively too).
+ * SQLite counts text in code points, hence `Array.from` for the length.
+ */
+function folderMembership(folder: NoteListFolder): RawBuilder<boolean> {
+  const prefix = folder.path === '' ? '' : `${folder.path}/`
+  const length = Array.from(prefix).length
+  const under = sql<boolean>`substr("notes"."path", 1, ${length}) = ${prefix}`
+  return folder.recursive
+    ? under
+    : sql<boolean>`${under} and instr(substr("notes"."path", ${length + 1}), '/') = 0`
 }
 
 /** Match the properties panel: a malformed schema does not make a tag typed. */

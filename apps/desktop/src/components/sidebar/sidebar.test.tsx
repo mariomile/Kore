@@ -334,16 +334,39 @@ describe('Sidebar', () => {
     )
     const { view } = await renderSidebar()
 
-    const active = view.getByRole('button', { name: /Active\s*2/ })
+    const active = view.getByRole('button', { name: 'Expand Active' })
     await expect.element(active).toHaveAttribute('aria-expanded', 'false')
     await active.click()
-    await view.getByRole('button', { name: /Projects\s*1/ }).click()
-    await view.getByRole('button', { name: /Kore\s*1/ }).click()
+    await view.getByRole('button', { name: 'Expand Projects' }).click()
+    await view.getByRole('button', { name: 'Expand Kore' }).click()
     await view.getByRole('button', { name: 'Roadmap' }).click()
 
     await expect.element(view.getByTestId('route-probe')).toHaveTextContent('note')
     await expect
       .element(view.getByRole('button', { name: 'Roadmap' }))
+      .toHaveAttribute('aria-current', 'page')
+  })
+
+  it("opens a folder's page from its name, and caps a long folder's rows", async () => {
+    getFolderTree.mockResolvedValue(
+      buildFolderTree(
+        Array.from({ length: 52 }, (_, index) => ({
+          path: `CRM/People/Person ${index}.md`,
+          title: `Person ${index}`,
+        })),
+      ),
+    )
+    const { view } = await renderSidebar()
+
+    await view.getByRole('button', { name: 'Expand CRM' }).click()
+    await view.getByRole('button', { name: 'Expand People' }).click()
+    await expect.element(view.getByRole('button', { name: 'Person 49', exact: true })).toBeVisible()
+    await expectLocatorToHaveCount(view.getByRole('button', { name: /^Person \d+$/ }), 50)
+
+    await view.getByRole('button', { name: 'Show all 52' }).click()
+    await expect.element(view.getByTestId('route-probe')).toHaveTextContent('allNotes')
+    await expect
+      .element(view.getByRole('button', { name: /People\s*52/ }))
       .toHaveAttribute('aria-current', 'page')
   })
 

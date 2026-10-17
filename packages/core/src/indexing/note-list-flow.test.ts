@@ -96,6 +96,23 @@ describe('listNotes against a real index', () => {
     expect(entries.map((entry) => entry.path)).toEqual(['daily/2026-08-29.md', 'notes/a.md'])
   })
 
+  it('lists a folder page: its own notes, or everything below it, matched literally', async () => {
+    addNote('CRM/People/Ada.md', '# Ada', 3000)
+    addNote('CRM/People/Deep/Bob.md', '# Bob', 2000)
+    addNote('CRM/Index.md', '# Index', 1000)
+    addNote('CRM_People/Eve.md', '# Eve', 500)
+    addNote('crm/people/Lower.md', '# Lower', 400)
+
+    const own = await listNotes({ folder: { path: 'CRM/People', recursive: false } })
+    expect(own.map((note) => note.path)).toEqual(['CRM/People/Ada.md'])
+    const below = await listNotes({ folder: { path: 'CRM', recursive: true } })
+    expect(below.map((note) => note.path)).toEqual([
+      'CRM/People/Ada.md',
+      'CRM/People/Deep/Bob.md',
+      'CRM/Index.md',
+    ])
+  })
+
   it("lists a parent tag's notes together with every nested tag's, but not look-alikes", async () => {
     addNote('notes/ai.md', '# AI\n\n#domain/ai and #domain/growth\n', 5000)
     addNote('notes/deep.md', '# Deep\n\n#Domain/design/ux\n', 4000)

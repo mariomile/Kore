@@ -240,6 +240,7 @@ export {
   untitledNotePath,
   isUntitledNotePath,
   createNoteWithTitle,
+  createNoteWithSource,
   resolveOrCreateNoteWithTitle,
   type ResolveOrCreateNoteResult,
 } from '../graph/create-note'

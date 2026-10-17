@@ -111,7 +111,9 @@ export function routesEqual(a: Route, b: Route): boolean {
       return (
         a.filter.kind === other.filter.kind &&
         (a.filter.kind !== 'tag' ||
-          (other.filter.kind === 'tag' && a.filter.tag === other.filter.tag))
+          (other.filter.kind === 'tag' && a.filter.tag === other.filter.tag)) &&
+        (a.filter.kind !== 'folder' ||
+          (other.filter.kind === 'folder' && a.filter.folder === other.filter.folder))
       )
     }
     case 'search':

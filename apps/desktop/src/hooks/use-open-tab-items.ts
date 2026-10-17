@@ -4,6 +4,7 @@ import {
   baseDisplayName,
   canvasDisplayName,
   displayNoteTitle,
+  folderDisplayName,
   getNote,
   isUntitledNotePath,
   listChatConversations,
@@ -107,7 +108,9 @@ export function useOpenTabItems(): OpenTabItem[] {
                 ? 'Inbox'
                 : tab.surface === 'allNotes' && tab.filter.kind === 'tag'
                   ? tagDisplayName(tab.filter.tag)
-                  : SURFACE_TAB_LABEL[tab.surface],
+                  : tab.surface === 'allNotes' && tab.filter.kind === 'folder'
+                    ? folderDisplayName(tab.filter.folder)
+                    : SURFACE_TAB_LABEL[tab.surface],
           }
       }
     })

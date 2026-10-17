@@ -1,25 +1,26 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  ALL_NOTES_SORTS,
   EMPTY_TAG_TYPE,
   errorMessage,
+  findFolder,
   foldTag,
   isDaily,
   listNotes,
   listNoteTags,
   sortNoteList,
-  type AllNotesSort,
   type NoteListFilter,
+  type NoteListFolder,
   type TagPropertyType,
 } from '@reflect/core'
-import { Check, LayoutGrid, List, Sliders } from '@/components/icons'
+import { Check, Sliders } from '@/components/icons'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { TagConfigDialog } from '@/components/tags/tag-config-dialog'
 import { toast } from '@/components/ui/toast'
 import { cn } from '@/lib/utils'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { useCollection } from '@/hooks/use-collection'
+import { useFolderTree } from '@/hooks/use-folder-tree'
 import { tagTypeQueryKey, useTagType } from '@/hooks/use-tag-type'
 import { useTemplateValues } from '@/hooks/use-template-values'
 import { createTitledCollectionNote } from '@/lib/tags/create-collection-note'
@@ -39,6 +40,7 @@ import { AllNotesBulkBar } from './all-notes-bulk-bar'
 import { AllNotesFilters } from './all-notes-filters'
 import { AllNotesGrid } from './all-notes-grid'
 import { AllNotesTable } from './all-notes-table'
+import { AllNotesViewControls } from './all-notes-view-controls'
 import {
   applyCollectionFilters,
   CollectionFilterMenu,
@@ -60,6 +62,10 @@ import { CollectionViewTabs } from './collection-view-tabs'
 import { NoteListContextMenu } from '@/components/notes/note-context-menu'
 import { NoteTrashDialog } from '@/components/notes/note-trash-dialog'
 import { ScrollVeil } from '@/components/scroll-veil'
+import { FolderPageControls } from './folder-page-controls'
+import { FolderPageTitle } from './folder-page-title'
+import { FolderSubfolders } from './folder-subfolders'
+import { NewFolderNoteButton } from './new-folder-note-button'
 import { NewNoteButton } from './new-note-button'
 import { TagPageDescription } from './tag-page-description'
 import { TagPageTitle } from './tag-page-title'
@@ -86,6 +92,11 @@ interface AllNotesScreenProps {
  * (TDR 0005) — the entry point that used to hide behind the sidebar's
  * hover gear.
  *
+ * A routed folder is that folder's page (Notion's page of child pages): a
+ * breadcrumb of its parents, its subfolders as chips, then its notes in the
+ * same list/grid as All notes, with a title filter, an include-subfolders
+ * switch, and a "+" that creates the note in the folder.
+ *
  * Rows are multi-selectable (V1 parity): click to select (⌘ toggle, Shift
  * range), the indicator gutter toggles, the subject or a double-click opens.
  * Keyboard shortcuts act on the selection — ↑/↓ (Shift to extend), ⌘A select
@@ -98,6 +109,24 @@ interface AllNotesScreenProps {
 export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
   const tag = filter.kind === 'tag' ? filter.tag : null
   const inbox = filter.kind === 'inbox'
+  const folderPath = filter.kind === 'folder' ? filter.folder : null
+  // A folder page's own lens — what it lists and the title filter — is
+  // ephemeral and belongs to one folder: moving to another resets both.
+  const [includeSubfolders, setIncludeSubfolders] = useState(false)
+  const [titleQuery, setTitleQuery] = useState('')
+  const [lensFolder, setLensFolder] = useState(folderPath)
+  if (lensFolder !== folderPath) {
+    setLensFolder(folderPath)
+    setIncludeSubfolders(false)
+    setTitleQuery('')
+  }
+  const folder = useMemo<NoteListFolder | null>(
+    () => (folderPath === null ? null : { path: folderPath, recursive: includeSubfolders }),
+    [folderPath, includeSubfolders],
+  )
+  const folderTree = useFolderTree()
+  const folderNode =
+    folderPath === null || folderTree === null ? null : findFolder(folderTree, folderPath)
   const { graph } = useGraph()
   // Every tag is a collection (TDR 0005, amended): a tag with no definition
   // note reads as the zero-property schema, so the table always exists on a
@@ -207,8 +236,8 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
   const enabled = bridgeReady && graph !== null
 
   const { data: allNotes } = useQuery({
-    queryKey: allNotesQueryKey(graph?.root, tag),
-    queryFn: () => listNotes({ tag }),
+    queryKey: allNotesQueryKey(graph?.root, tag, folder),
+    queryFn: () => listNotes({ tag, folder }),
     enabled,
   })
   const { data: facets } = useQuery({
@@ -216,10 +245,18 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
     queryFn: () => listNoteTags(),
     enabled,
   })
-  const { settings, updateSettings } = useSettings()
+  const { settings } = useSettings()
   const allNotesSort = settings.allNotesSort
   const inboxNotes = useMemo(() => allNotes?.filter((note) => note.isInbox), [allNotes])
-  const unsortedNotes = inbox ? inboxNotes : allNotes
+  const titleNeedle = titleQuery.trim().toLocaleLowerCase()
+  const matchingNotes = useMemo(
+    () =>
+      titleNeedle === ''
+        ? allNotes
+        : allNotes?.filter((note) => note.title.toLocaleLowerCase().includes(titleNeedle)),
+    [allNotes, titleNeedle],
+  )
+  const unsortedNotes = inbox ? inboxNotes : matchingNotes
   const notes = useMemo(
     () => (unsortedNotes ? sortNoteList(unsortedNotes, allNotesSort) : unsortedNotes),
     [unsortedNotes, allNotesSort],
@@ -376,7 +413,15 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
     <div
       ref={rootRef}
       tabIndex={-1}
-      aria-label={tag === null ? (inbox ? 'Inbox' : 'All notes') : `#${tag}`}
+      aria-label={
+        folderPath !== null
+          ? `Folder ${folderPath}`
+          : tag === null
+            ? inbox
+              ? 'Inbox'
+              : 'All notes'
+            : `#${tag}`
+      }
       // `relative`: the floating bulk bar positions against this root.
       className="relative flex h-full min-h-0 flex-col outline-none"
     >
@@ -389,79 +434,40 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
         onDone={selection.clear}
       />
       <header className="flex flex-none flex-wrap items-center justify-between gap-3 py-5 pl-12 pr-7">
-        {tag === null ? (
+        {folderPath !== null ? (
+          <FolderPageTitle folder={folderPath} />
+        ) : tag === null ? (
           <h1 className="app-page-title text-text">{inbox ? 'Inbox' : 'Notes'}</h1>
         ) : (
           <TagPageTitle tag={tag} icon={tagType?.icon} onConfigure={() => setEditingSchema(true)} />
         )}
         {tag === null ? (
           <div className="flex flex-wrap items-center gap-3">
-            <AllNotesFilters
-              filter={filter}
-              facets={facets ?? []}
-              inboxCount={inboxNotes?.length}
-              onSelect={handleFilterSelect}
-            />
-            <Select
-              value={allNotesSort}
-              items={{
-                'updated-desc': 'Last updated',
-                'updated-asc': 'Oldest updated',
-                'title-asc': 'Title A to Z',
-                'title-desc': 'Title Z to A',
-              }}
-              onValueChange={(value) => {
-                if (
-                  typeof value === 'string' &&
-                  (ALL_NOTES_SORTS as readonly string[]).includes(value)
-                ) {
-                  updateSettings({ allNotesSort: value as AllNotesSort })
-                }
-              }}
-            >
-              <SelectTrigger aria-label="Sort" data-size="sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="updated-desc">Last updated</SelectItem>
-                <SelectItem value="updated-asc">Oldest updated</SelectItem>
-                <SelectItem value="title-asc">Title A to Z</SelectItem>
-                <SelectItem value="title-desc">Title Z to A</SelectItem>
-              </SelectContent>
-            </Select>
-            <div
-              role="group"
-              aria-label="Layout"
-              className="flex items-center gap-0.5 rounded-full bg-surface-hover p-0.5"
-            >
-              {(
-                [
-                  { mode: 'list', label: 'List view', Glyph: List },
-                  { mode: 'grid', label: 'Grid view', Glyph: LayoutGrid },
-                ] as const
-              ).map(({ mode, label, Glyph }) => (
-                <button
-                  key={mode}
-                  type="button"
-                  aria-label={label}
-                  aria-pressed={view === mode}
-                  onClick={() => {
-                    setViewMode(mode)
-                  }}
-                  className={`flex size-6 items-center justify-center rounded-full transition-colors ${
-                    view === mode
-                      ? 'bg-surface text-text shadow-sm'
-                      : 'text-text-muted hover:text-text-secondary'
-                  }`}
-                >
-                  <Glyph aria-hidden className="size-3.5" />
-                </button>
-              ))}
-            </div>
-            <NewNoteButton tag={tag} />
+            {folderPath !== null ? (
+              <FolderPageControls
+                titleQuery={titleQuery}
+                onTitleQueryChange={setTitleQuery}
+                includeSubfolders={includeSubfolders}
+                onIncludeSubfoldersChange={setIncludeSubfolders}
+              />
+            ) : (
+              <AllNotesFilters
+                filter={filter}
+                facets={facets ?? []}
+                inboxCount={inboxNotes?.length}
+                onSelect={handleFilterSelect}
+              />
+            )}
+            <AllNotesViewControls view={view} onViewChange={setViewMode} />
+            {folderPath !== null ? (
+              <NewFolderNoteButton folder={folderPath} />
+            ) : (
+              <NewNoteButton tag={tag} />
+            )}
           </div>
         ) : null}
       </header>
+      <FolderSubfolders folder={folderNode} />
       <TagPageDescription tag={tag} />
       {collectionAvailable && tag !== null ? (
         <div className="flex flex-none flex-wrap items-center justify-between gap-3 pb-3 pl-12 pr-7">
@@ -595,6 +601,14 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
           >
             {inbox && notes?.length === 0 ? (
               <p className="py-8 pl-12 pr-7 text-sm text-text-muted">Inbox is empty.</p>
+            ) : folderPath !== null && notes?.length === 0 ? (
+              <p className="py-8 pl-12 pr-7 text-sm text-text-muted">
+                {titleNeedle !== ''
+                  ? 'No notes match the filter.'
+                  : includeSubfolders
+                    ? 'No notes in this folder.'
+                    : 'No notes directly in this folder.'}
+              </p>
             ) : view === 'grid' ? (
               <AllNotesGrid
                 notes={gridNotes}

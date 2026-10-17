@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { settingsSchema, untitledNotePath } from '@reflect/core'
+import { settingsSchema, untitledNotePath, type OpenTab } from '@reflect/core'
 import { routesEqual } from '@/routing/route'
 import { openTabForRoute, routeForOpenTab, tabKey } from './open-tab'
 
@@ -106,6 +106,19 @@ describe('tabKey', () => {
     )
     expect(tabKey({ kind: 'chat', conversationId: 'one', pinned: false })).not.toBe(
       tabKey({ kind: 'chat', conversationId: 'two', pinned: false }),
+    )
+  })
+
+  it('gives each folder page its own tab, apart from All notes', () => {
+    const folderTab = (folder: string): OpenTab => ({
+      kind: 'surface',
+      surface: 'allNotes',
+      filter: { kind: 'folder', folder },
+      pinned: false,
+    })
+    expect(tabKey(folderTab('CRM'))).not.toBe(tabKey(folderTab('CRM/People')))
+    expect(tabKey(folderTab('CRM'))).not.toBe(
+      tabKey({ kind: 'surface', surface: 'allNotes', filter: { kind: 'all' }, pinned: false }),
     )
   })
 })

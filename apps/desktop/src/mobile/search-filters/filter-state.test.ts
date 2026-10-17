@@ -111,6 +111,11 @@ describe('searchPlanFor', () => {
     expect(plan).toEqual({ limit: 50 })
   })
 
+  it('caps a phrase-only query as a ranked search too', () => {
+    const plan = searchPlanFor(buildAllNotesSearch('"next quarter"', EMPTY_ALL_NOTES_FILTERS, null))
+    expect(plan).toEqual({ limit: 50 })
+  })
+
   it('runs no-text queries as the list itself: uncapped, notes-only, pinned first', () => {
     const plan = searchPlanFor(buildAllNotesSearch('', EMPTY_ALL_NOTES_FILTERS, null))
     expect(plan).toEqual({ limit: null, pinnedFirst: true, notesOnly: true })

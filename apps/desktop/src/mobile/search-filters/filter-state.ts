@@ -160,13 +160,13 @@ export function buildAllNotesSearch(
 const SEARCH_LIMIT = 50
 
 /**
- * How the All tab runs a composed query: free text is a ranked, capped
- * search; without text the query is the list itself — uncapped (the screen
+ * How the All tab runs a composed query: free text (quoted phrases count) is
+ * a ranked, capped search; without text the query is the list itself — uncapped (the screen
  * virtualizes), notes-only (dailies live in the stream unless the Daily
  * filter asks for them), pinned first (V1's list order).
  */
 export function searchPlanFor(parsed: ParsedSearchQuery): FilteredSearchOptions {
-  return parsed.text !== ''
+  return parsed.text !== '' || parsed.filters.phrases.length > 0
     ? { limit: SEARCH_LIMIT }
     : { limit: null, pinnedFirst: true, notesOnly: true }
 }

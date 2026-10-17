@@ -13,7 +13,7 @@ use rusqlite::params;
 use tempfile::TempDir;
 
 use reflect_cli::hash::hash_content;
-use reflect_cli::keys::fold_key;
+use reflect_cli::keys::{fold_graph_path, fold_key};
 use reflect_cli::note_file::parse_note_meta;
 
 /// `note_claims.tier` values (the desktop's `claim_tier`): lower wins.
@@ -53,8 +53,9 @@ impl Fixture {
             };
             conn.execute(
                 "INSERT INTO notes(path, id, title, title_key, kind, daily_date, is_private,
-                                   is_pinned, pinned_order, file_hash, mtime, updated_at, preview)
-                 VALUES(?1, ?8, ?2, ?3, ?9, ?4, ?5, 0, NULL, ?6, ?7, ?7, '')",
+                                   is_pinned, pinned_order, file_hash, mtime, updated_at, preview,
+                                   path_key)
+                 VALUES(?1, ?8, ?2, ?3, ?9, ?4, ?5, 0, NULL, ?6, ?7, ?7, '', ?10)",
                 params![
                     note.rel_path,
                     meta.title,
@@ -65,6 +66,7 @@ impl Fixture {
                     note.mtime_ms as i64,
                     meta.id,
                     kind,
+                    fold_graph_path(&note.rel_path),
                 ],
             )
             .unwrap();

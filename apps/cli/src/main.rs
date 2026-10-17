@@ -41,7 +41,7 @@ enum Command {
     },
     /// Full-text search over the graph's search index
     Search {
-        /// Search terms (matched literally, ranked by relevance)
+        /// Search terms and the app's operators (#tag, "phrase", -word, path:, file:, [key:value], is:daily, links:, updated:)
         query: String,
         /// Maximum number of results
         #[arg(long, default_value_t = 20)]

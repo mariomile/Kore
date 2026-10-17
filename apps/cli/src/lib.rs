@@ -36,5 +36,6 @@ pub mod paths;
 pub mod resolve;
 pub mod schema;
 pub mod search;
+pub mod search_query;
 pub mod slug;
 pub mod write;

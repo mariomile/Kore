@@ -3,8 +3,8 @@ import { Plus } from '@/components/icons'
 import { cn } from '@/lib/utils'
 
 interface BaseNewRowProps {
-  /** Creates the note; the line stays busy until it resolves. */
-  onCreate: (title: string) => Promise<void>
+  /** Creates the note and resolves whether it was written; the line stays busy until then. */
+  onCreate: (title: string) => Promise<boolean>
   /** Names the place the note lands in, for the accessible label (a lane). */
   label?: string | undefined
   className?: string
@@ -13,7 +13,8 @@ interface BaseNewRowProps {
 /**
  * The "+ New" line at the end of a base table or board lane. The title is
  * typed in place and the note is born on Enter, never on focus, so an
- * abandoned line leaves no file behind. Escape, or leaving it empty, cancels.
+ * abandoned line leaves no file behind. Escape, or leaving it empty, cancels;
+ * a failed create keeps the typed title.
  */
 export function BaseNewRow({ onCreate, label, className }: BaseNewRowProps): ReactElement {
   const [draft, setDraft] = useState<string | null>(null)
@@ -28,8 +29,9 @@ export function BaseNewRow({ onCreate, label, className }: BaseNewRowProps): Rea
     }
     setCreating(true)
     try {
-      await onCreate(title)
-      setDraft(null)
+      if (await onCreate(title)) {
+        setDraft(null)
+      }
     } finally {
       setCreating(false)
     }

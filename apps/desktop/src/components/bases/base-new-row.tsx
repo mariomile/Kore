@@ -22,8 +22,12 @@ export function BaseNewRow({ onCreate, label, className }: BaseNewRowProps): Rea
   const name = label === undefined ? 'New note' : `New note in ${label}`
 
   const commit = async (): Promise<void> => {
+    // Disabling the input while creating blurs it, which calls back in here.
+    if (creating) {
+      return
+    }
     const title = (draft ?? '').trim()
-    if (title === '' || creating) {
+    if (title === '') {
       setDraft(null)
       return
     }

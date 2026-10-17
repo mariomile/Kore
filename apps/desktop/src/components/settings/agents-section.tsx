@@ -8,6 +8,7 @@ import {
   errorMessage,
   type AgentSkillsStatus,
 } from '@reflect/core'
+import { AgentsMcpField } from '@/components/settings/agents-mcp-field'
 import { SettingsField } from '@/components/settings/field'
 import { SettingsSection } from '@/components/settings/section'
 import { Button } from '@/components/ui/button'
@@ -19,7 +20,8 @@ import { useGraph } from '@/providers/graph-provider'
  * Settings → Agents: one-click install of the bundled agent skills under
  * `~/.agents/skills/` — the graph's own skill (named after it; teaches
  * coding agents to read this graph through the bundled `reflect` CLI) plus
- * the shared format skills (markdown, collections, agent memory). macOS
+ * the shared format skills (markdown, collections, agent memory), then the
+ * copyable `reflect mcp` setup for MCP clients ({@link AgentsMcpField}). macOS
  * desktop only, like the iCloud section — the navigator hides the entry
  * through the same gate (see use-visible-settings-sections).
  */
@@ -123,6 +125,9 @@ export function AgentsSection(): ReactElement | null {
           </div>
         ) : null}
       </SettingsField>
+      {status !== undefined ? (
+        <AgentsMcpField cliPath={status.cliPath} graphRoot={graph.root} graphName={graph.name} />
+      ) : null}
     </SettingsSection>
   )
 }

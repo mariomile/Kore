@@ -137,7 +137,8 @@ describe('listNotes', () => {
     expect(sql).not.toContain('lower(')
     // Kind first, then the folded tag: the EXISTS is appended after the kind
     // narrowing, so the bound order follows the builder, not the SQL text.
-    expect(args['params']).toEqual(['note', 'daily', 'book'])
+    // The folded tag twice more: the range covering tags nested under it.
+    expect(args['params']).toEqual(['note', 'daily', 'book', 'book/', 'book0'])
   })
 
   it('returns nothing when no notes match, without a second round trip', async () => {
@@ -199,10 +200,11 @@ describe('listRecentNotes', () => {
 })
 
 describe('listNoteTags', () => {
-  it('groups tags on the stored key over non-daily notes', async () => {
+  it('groups tags on the stored key over non-daily notes, dropping pure parent prefixes', async () => {
     mockInvoke.mockResolvedValue([
-      { tag: 'Book', count: 3 },
-      { tag: 'link', count: 12 },
+      { key: 'book', tag: 'Book', count: 3, used: 1 },
+      { key: 'domain', tag: 'domain', count: 4, used: 0 },
+      { key: 'link', tag: 'link', count: 12, used: 1 },
     ])
 
     const facets = await listNoteTags()
@@ -214,7 +216,7 @@ describe('listNoteTags', () => {
     const [command, args] = mockInvoke.mock.calls[0]!
     expect(command).toBe('db_query')
     const sql = String(args['sql'])
-    expect(sql).toContain('"notes"."kind" = ?')
-    expect(sql).toContain('group by "tags"."tag_key"')
+    expect(sql).toContain("notes.kind = 'note'")
+    expect(sql).toContain('GROUP BY key_prefix')
   })
 })

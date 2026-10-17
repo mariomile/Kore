@@ -7,7 +7,7 @@ use std::process::ExitCode;
 use clap::{Parser, Subcommand};
 
 use reflect_cli::error::CliError;
-use reflect_cli::{commands, graph};
+use reflect_cli::{commands, graph, mcp};
 
 /// Read, discover, and capture notes in a Kore graph.
 ///
@@ -205,6 +205,12 @@ enum Command {
         #[arg(long, conflicts_with = "text")]
         stdin: bool,
     },
+    /// Serve the graph to AI agents as an MCP server over stdio
+    Mcp {
+        /// Expose only the tools that read; refuse every write
+        #[arg(long)]
+        read_only: bool,
+    },
 }
 
 fn run(cli: &Cli) -> Result<(), CliError> {
@@ -273,6 +279,15 @@ fn run(cli: &Cli) -> Result<(), CliError> {
         } => commands::done::run(&graph, cli.json, text, in_note.as_deref(), *undo),
         Command::Append { note, text, stdin } => {
             commands::append::run(&graph, cli.json, note, text.as_deref(), *stdin)
+        }
+        Command::Mcp { read_only } => {
+            let runner = mcp::ProcessRunner {
+                exe: std::env::current_exe()?,
+                graph: graph.root.clone(),
+            };
+            let server = mcp::Server::new(runner, *read_only);
+            mcp::serve(&server, std::io::stdin().lock(), std::io::stdout().lock())?;
+            Ok(())
         }
     }
 }

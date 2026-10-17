@@ -5,6 +5,8 @@ import { decodeTagTypeJson } from '../tags/tag-type'
 import { foldTag } from '../markdown'
 import { db } from './db'
 import { recallOrder } from './filtered-search'
+import { carriesTagOrNested } from './tag-match'
+import { listUsedTagCounts } from './tag-tree'
 
 /**
  * The All Notes list: every regular note, pinned first then newest, optionally
@@ -44,7 +46,10 @@ export interface NoteListFolder {
 }
 
 export interface NoteListOptions {
-  /** Only notes carrying this tag (case-insensitive). `null` lists all. */
+  /**
+   * Only notes carrying this tag or a tag nested under it (case-insensitive).
+   * `null` lists all.
+   */
   tag?: string | null
   /**
    * Only notes filed under this folder — every kind the folder tree shows,
@@ -71,7 +76,7 @@ export async function listNotes(options: NoteListOptions = {}): Promise<Classifi
   // trip, along with the per-row `serde_json::Map` the Rust query bridge builds
   // for each of those rows.
   //
-  // The tag filter is an `EXISTS` rather than a join: joining the filter tag
+  // The tag filter (the tag or any tag nested under it) is an `EXISTS` rather than a join: joining the filter tag
   // would multiply the grouped rows whenever a note matched more than once, and
   // the old `distinct()` that guarded against that cannot coexist with the
   // aggregate. `EXISTS` narrows without duplicating, so the grouping is exact.
@@ -100,13 +105,9 @@ export async function listNotes(options: NoteListOptions = {}): Promise<Classifi
       ? listQuery.where(folderMembership(folder))
       : tag === null
         ? listQuery.where('notes.kind', '=', 'note')
-        : listQuery.where('notes.kind', 'in', ['note', 'daily']).where(
-            sql<boolean>`exists (
-            select 1 from "tags" as "filter_tags"
-            where "filter_tags"."note_path" = "notes"."path"
-              and "filter_tags"."tag_key" = ${foldTag(tag)}
-          )`,
-          )
+        : listQuery
+            .where('notes.kind', 'in', ['note', 'daily'])
+            .where(carriesTagOrNested('"notes"."path"', tag))
 
   for (const order of recallOrder(true)) {
     listQuery = listQuery.orderBy(order)
@@ -243,22 +244,12 @@ export interface ListNoteTagsOptions {
 }
 
 /**
- * Every tag carried by at least one non-daily note, with how many such notes
- * carry it, alphabetical. Grouped on the stored `tag_key`, matching the tag
- * filter (and the `#tag` search token): `#Book` and `#book` are one facet,
- * displayed with one deterministic casing.
+ * Every tag carried by at least one non-daily note, alphabetical, with how
+ * many such notes carry it or a tag nested under it — the count of notes the
+ * tag's page (the prefix-matching filter above) lists. Grouped on the stored
+ * `tag_key`, matching the tag filter (and the `#tag` search token): `#Book`
+ * and `#book` are one facet, displayed with one deterministic casing.
  */
 export async function listNoteTags(options: ListNoteTagsOptions = {}): Promise<NoteTagFacet[]> {
-  let query = db
-    .selectFrom('tags')
-    .innerJoin('notes', 'notes.path', 'tags.notePath')
-    .where('notes.kind', '=', 'note')
-  if (options.excludePrivate === true) {
-    query = query.where('notes.isPrivate', '=', 0)
-  }
-  return await query
-    .select([sql<string>`min(tags.tag)`.as('tag'), sql<number>`count(*)`.as('count')])
-    .groupBy('tags.tagKey')
-    .orderBy('tags.tagKey')
-    .execute()
+  return await listUsedTagCounts(options)
 }

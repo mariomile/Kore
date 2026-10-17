@@ -28,16 +28,16 @@ function fakeEditor(): NoteEditorHandle & { inserted: string[] } {
 }
 
 describe('useCalloutSlashItems', () => {
-  it('lists GitHub alert kinds and inserts a typed fence on select', async () => {
+  it('lists every callout kind and inserts a typed fence on select', async () => {
     const editor = fakeEditor()
     const { result } = await renderHook(() => useCalloutSlashItems(() => editor))
     const items = await result.current('')
-    expect(items.map((item) => item.id)).toEqual([
-      'callout:note',
-      'callout:tip',
-      'callout:important',
-      'callout:warning',
-      'callout:caution',
+    expect(items).toHaveLength(13)
+    expect(items.find((item) => item.id === 'callout:question')?.keywords).toEqual([
+      'callout',
+      'question',
+      'help',
+      'faq',
     ])
     items[0]!.onSelect()
     expect(editor.inserted).toEqual(['> [!NOTE]\n> \n'])

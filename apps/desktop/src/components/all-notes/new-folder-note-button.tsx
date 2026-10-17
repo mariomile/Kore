@@ -1,5 +1,5 @@
 import { useState, type FormEvent, type ReactElement } from 'react'
-import { createNoteInFolder, errorMessage, folderDisplayName } from '@reflect/core'
+import { createNoteWithSource, errorMessage, folderDisplayName, newNoteSource } from '@reflect/core'
 import { Plus } from '@/components/icons'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -39,7 +39,7 @@ export function NewFolderNoteButton({ folder }: NewFolderNoteButtonProps): React
     }
     setSaving(true)
     try {
-      const path = await createNoteInFolder(folder, title, graph.generation)
+      const path = await createNoteWithSource(title, newNoteSource(title), graph.generation, folder)
       setOpen(false)
       reset()
       navigate({ kind: 'note', path })

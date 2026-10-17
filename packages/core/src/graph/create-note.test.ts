@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { setBridge } from '../ipc/bridge'
 import {
-  createNoteInFolder,
+  createNoteWithSource,
   createNoteWithTitle,
   isUntitledNotePath,
   resolveOrCreateNoteWithTitle,
@@ -102,13 +102,12 @@ function bindBridge({
   return invoke
 }
 
-describe('createNoteInFolder', () => {
-  it('claims a title-derived path in the named folder, suffixed on collision', async () => {
-    bindBridge({ occupied: ['CRM/People/ada-lovelace.md'] })
+describe('createNoteWithSource', () => {
+  it('claims a collision-free path in the given folder', async () => {
+    bindBridge({ occupied: ['Projects/kore.md'] })
 
-    await expect(createNoteInFolder('CRM/People', 'Ada Lovelace', 7)).resolves.toBe(
-      'CRM/People/ada-lovelace-2.md',
-    )
+    expect(await createNoteWithSource('Kore', '# Kore\n', 7, 'Projects')).toBe('Projects/kore-2.md')
+    expect(await createNoteWithSource('Kore', '# Kore\n', 7, '')).toBe('kore.md')
   })
 })
 

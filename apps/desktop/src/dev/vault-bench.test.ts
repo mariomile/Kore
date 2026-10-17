@@ -3,6 +3,7 @@ import {
   getBacklinks,
   getBacklinksWithContext,
   getGraphMap,
+  getLocalGraph,
   listNotes,
   listRecentNotes,
   reconcileIndex,
@@ -113,5 +114,47 @@ describe.skipIf(process.env.KORE_BENCH === undefined)('obsidian-shaped vault ben
       `graph layout: ${map.nodes.length} nodes, ${edges.length} edges, ${steps.length} steps, ` +
         `${total.toFixed(0)} ms, step p50 ${(sorted[sorted.length >> 1] ?? 0).toFixed(1)} ms`,
     )
+
+    // The note sidebar's local graph: the busiest hub, the busiest daily,
+    // and an ordinary note, at both depths, plus the sidebar canvas's layout.
+    const busiest = (folder: string) =>
+      map.nodes
+        .filter((node) => node.path.startsWith(folder))
+        .reduce<(typeof map.nodes)[number] | undefined>(
+          (best, node) => (best === undefined || node.inbound > best.inbound ? node : best),
+          undefined,
+        )
+    const ordinary = map.nodes.find(
+      (node) => node.path.startsWith('Knowledge/') && node.inbound === 2,
+    )
+    for (const subject of [busiest(''), busiest('Journal/'), ordinary]) {
+      if (subject === undefined) {
+        continue
+      }
+      for (const depth of [1, 2] as const) {
+        const local = await phase(`getLocalGraph(${subject.path}, depth ${depth})`, () =>
+          getLocalGraph(subject.path, { depth, tags: depth === 2 }),
+        )
+        const localPosition = new Map(local.nodes.map((node, order) => [node.id, order]))
+        const localEdges = local.edges.flatMap((edge) => {
+          const source = localPosition.get(edge.source)
+          const target = localPosition.get(edge.target)
+          return source === undefined || target === undefined
+            ? []
+            : [{ source, target, weight: edge.weight }]
+        })
+        const localLayout = createGraphLayout(local.nodes.map((node) => node.id))
+        const started = performance.now()
+        let localSteps = 0
+        while (!isSettled(localLayout)) {
+          stepGraphLayout(localLayout, localEdges)
+          localSteps += 1
+        }
+        report(
+          `  ${local.nodes.length} nodes (+${local.hidden} hidden), ${local.edges.length} edges, ` +
+            `layout ${localSteps} steps ${(performance.now() - started).toFixed(1)} ms`,
+        )
+      }
+    }
   })
 })

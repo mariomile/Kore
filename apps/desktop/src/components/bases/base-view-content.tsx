@@ -1,13 +1,16 @@
 import { useState, type ReactElement, type ReactNode } from 'react'
-import type {
-  BaseCell,
-  BaseColumn,
-  BaseResultGroup,
-  BaseResultRow,
-  BaseViewResult,
+import {
+  baseNewNotePrefillForGroup,
+  type BaseCell,
+  type BaseColumn,
+  type BaseResultGroup,
+  type BaseResultRow,
+  type BaseViewResult,
 } from '@reflect/core'
 import { cn } from '@/lib/utils'
 import { BaseCellEditor } from './base-cell-editor'
+import { BaseNewRow } from './base-new-row'
+import type { BaseCreateHandler } from './use-create-base-note'
 
 /** Write `value` to the note's frontmatter `key`; `undefined` clears it. */
 export type BaseEditHandler = (path: string, key: string, value: unknown) => void
@@ -19,6 +22,8 @@ interface BaseViewContentProps {
   compact?: boolean
   /** Edits note properties in place; without it the view is read-only. */
   onEdit?: BaseEditHandler
+  /** Adds notes from the view ("+ New"); without it no note can be added. */
+  onCreate?: BaseCreateHandler
 }
 
 /**
@@ -26,17 +31,28 @@ interface BaseViewContentProps {
  * `kanban`), with `groupBy` shown as sections. Every note title and linked
  * value opens its note. With `onEdit`, table cells holding a note property
  * edit in place and board cards move between lanes; both write the note's
- * frontmatter, never the `.base` file.
+ * frontmatter, never the `.base` file. With `onCreate`, every layout (each
+ * grouped section, every board lane) ends in a "+ New" line whose note
+ * starts with what the view's filters and the lane imply.
  */
 export function BaseViewContent({
   result,
   onOpenNote,
   compact = false,
   onEdit,
+  onCreate,
 }: BaseViewContentProps): ReactElement {
   const gutter = compact ? 'px-0' : 'px-12'
+  const canCreate = onCreate !== undefined
+  const createIn = (dropValue: BaseResultGroup['dropValue']) => (title: string) =>
+    onCreate!(title, baseNewNotePrefillForGroup(result.newNote, result.groupEditKey, dropValue))
   if (result.rows.length === 0) {
-    return <p className={cn('py-6 text-sm text-text-muted', gutter)}>No notes match this view.</p>
+    return (
+      <div className={gutter}>
+        <p className="py-6 text-sm text-text-muted">No notes match this view.</p>
+        {canCreate ? <BaseNewRow onCreate={createIn(undefined)} /> : null}
+      </div>
+    )
   }
   const notice =
     result.approximated && !compact ? (
@@ -60,6 +76,7 @@ export function BaseViewContent({
           columns={result.columns}
           gutter={gutter}
           onOpenNote={onOpenNote}
+          onCreateIn={canCreate ? createIn : undefined}
           onMove={
             onEdit === undefined || result.groupEditKey === null
               ? undefined
@@ -74,8 +91,8 @@ export function BaseViewContent({
 
   const sections =
     result.groups === null
-      ? [{ key: null, rows: result.rows }]
-      : result.groups.map((group) => ({ key: group.key, rows: group.rows }))
+      ? [{ key: null, rows: result.rows, dropValue: undefined }]
+      : result.groups.map(({ key, rows, dropValue }) => ({ key, rows, dropValue }))
   return (
     <div>
       {notice}
@@ -97,6 +114,12 @@ export function BaseViewContent({
               onOpenNote={onOpenNote}
               onEdit={onEdit}
             />
+            {canCreate ? (
+              <BaseNewRow
+                onCreate={createIn(section.dropValue)}
+                label={sectionLabel(section.key)}
+              />
+            ) : null}
           </div>
         </section>
       ))}
@@ -112,9 +135,20 @@ interface BaseBoardProps {
   onOpenNote: (path: string) => void
   /** Move a card to a lane by writing the lane's value; absent when read-only. */
   onMove: ((path: string, value: BaseResultGroup['dropValue']) => void) | undefined
+  /** The "+ New" handler for a lane's value; absent when notes can't be added. */
+  onCreateIn:
+    | ((dropValue: BaseResultGroup['dropValue']) => (title: string) => Promise<boolean>)
+    | undefined
 }
 
-function BaseBoard({ groups, columns, gutter, onOpenNote, onMove }: BaseBoardProps): ReactElement {
+function BaseBoard({
+  groups,
+  columns,
+  gutter,
+  onOpenNote,
+  onMove,
+  onCreateIn,
+}: BaseBoardProps): ReactElement {
   const [dragging, setDragging] = useState<{ path: string; from: string } | null>(null)
   const [over, setOver] = useState<string | null>(null)
   return (
@@ -181,6 +215,13 @@ function BaseBoard({ groups, columns, gutter, onOpenNote, onMove }: BaseBoardPro
                 />
               ))}
             </div>
+            {onCreateIn !== undefined ? (
+              <BaseNewRow
+                onCreate={onCreateIn(group.dropValue)}
+                label={label}
+                className="mt-1 px-1.5"
+              />
+            ) : null}
           </section>
         )
       })}
@@ -270,6 +311,10 @@ function BaseRows({ layout, rows, columns, onOpenNote, onEdit }: BaseRowsProps):
       </table>
     </div>
   )
+}
+
+function sectionLabel(key: string | null): string | undefined {
+  return key === null ? undefined : key === '' ? 'None' : key
 }
 
 function isTitleColumn(column: BaseColumn | undefined): boolean {

@@ -1,37 +1,38 @@
 # Kore working state
 
-## Folder pages, 2026-10-17
+## MCP server for agents, 2026-10-17
 
-Autonomous run, second discovery round. A sidebar folder only expanded in
-place, so `CRM/People` in marioverse.ai dumped 600 rows into the sidebar and
-a folder could not be seen as a page.
+User ask (Mario, 2026-10-17, autonomous run): make Kore the second brain for
+humans *and* agents. Agents could already drive the graph through the
+`reflect` CLI plus the bundled skills, which only works for agents with a
+shell and a skill loader. Claude Desktop, Cursor and other MCP clients had no
+way in.
 
-- [x] A folder's name opens its page; the chevron still expands it. The page
-  is the All notes screen under a new `NoteListFilter` kind
-  (`{ kind: 'folder', folder }`): breadcrumb of parent folders, subfolders as
-  chips with counts, then the folder's notes in the same list/grid with the
-  shared sort, a title filter and an "Include subfolders" switch (both reset
-  per folder). Each folder keeps its own tab (`folder:<path>` tab key).
-- [x] `listNotes({ folder: { path, recursive } })` lists every kind filed in
-  the folder (dailies and templates included, matching the tree) with a
-  `substr` prefix match, so `_`/`%` match literally and case stays
-  significant.
-- [x] "+" on a folder page asks for a title and creates the note in that
-  folder (`createNoteInFolder`, vault naming rules and collision suffixes).
-  It is eager rather than ⌘N's lazy ULID note because only the new-note
-  folder renames a file after its first title.
-- [x] An expanded sidebar folder shows at most 50 note rows, then "Show all
-  N" to its page (the vault root is never capped).
-- Folders stay read-only: no create, rename or move.
+- [x] `reflect mcp` (`apps/cli/src/mcp.rs`): an MCP stdio server with 19 tools
+  (12 reading, 7 writing). Each tool runs one existing subcommand as a child
+  process with `--graph <root> --json`, so the JSON contracts, structural
+  writes and the private-note block are the CLI's own, with no second code
+  path. Argv only, positionals after `--`. Failed commands are
+  `isError` tool results; `--read-only` hides and refuses the writers.
+- [x] Settings → Agents → MCP server: the `mcpServers` JSON and the
+  `claude mcp add` line for the open graph (bundled CLI path from
+  `skill_status`), a read-only switch, copy buttons. Built by
+  `mcpClientSetup` in core. Nothing is written to any client's config.
+- [x] `docs/cli.md` § MCP server.
+- Not done: MCP resources/prompts (tools only), a remote (HTTP) transport,
+  writing the config into Claude Desktop for the user.
 
-**Validation:** core flow test on a real SQLite index (own vs recursive,
-literal `_`, case), `createNoteInFolder` and `findFolder` unit tests; sidebar
-and All notes browser tests on Chromium; typecheck and lint on touched
-files. In the dev build with `?seed=obsidian`: Show all 600 opens People in
-~0.2 s, CRM shows its two subfolders, "+" created `CRM/Acme Corp.md`.
-WebKit left to CI.
+**Validation:** Rust unit tests (argv mapping, tool errors, read-only,
+protocol negotiation) and an end-to-end session over the real binary
+(`apps/cli/tests/mcp.rs`: initialize, search hiding a private note,
+read_note refused on it, append written); `cargo clippy -p reflect-cli
+--all-targets -D warnings`, fmt; core `agent-skill.test.ts`; desktop
+`agents-section.test.tsx` on Chromium; typecheck, oxfmt, oxlint, eslint on
+touched files. WebKit left to CI. Not yet tried from a real MCP client.
 
-**Next:** on the Mac, open `CRM/People` from the Folders section.
+**Next:** on the Mac, copy the config from Settings → Agents into Claude
+Desktop (or run the `claude mcp add` line) and ask it something a note
+answers.
 
 ## Obsidian templates, 2026-10-10
 
@@ -1857,6 +1858,10 @@ screen: Agents then Close lands on today.
 
 ## Session log
 
+- 2026-10-17 — Autonomous discovery run. Most Obsidian blockers from the
+  2026-10-09 gap analysis are shipped; picked four slices: `reflect mcp`
+  (this thread), Obsidian search operators, the full Obsidian callout set
+  with folding, and new notes from a Base (each in its own thread and PR).
 - 2026-10-14 — Daily stream scrolling with long days. Measured in the
   browser dev build on the Obsidian-shaped seed with 14 agent-log dailies
   (~700 lines each) under `Journal/Daily/` (a local seed tweak, not

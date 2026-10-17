@@ -71,7 +71,10 @@ export {
   agentSkillStatus,
   agentSkillInstall,
   agentSkillUninstall,
+  mcpClientSetup,
   type AgentSkillInstallState,
+  type McpClientSetup,
+  type McpClientSetupOptions,
   type AgentSkillStatus,
   type AgentSkillsStatus,
 } from '../app/agent-skill'
@@ -236,7 +239,7 @@ export {
   untitledNotePath,
   isUntitledNotePath,
   createNoteWithTitle,
-  createNoteInFolder,
+  createNoteWithSource,
   resolveOrCreateNoteWithTitle,
   type ResolveOrCreateNoteResult,
 } from '../graph/create-note'

@@ -114,6 +114,9 @@ radius setting rescales everything together.
 - Semantic colors mean one thing each: `--destructive` for irreversible
   actions and errors, `--green-500` success, `--amber-500` warning. Do not
   color-code categories with them.
+- The callout hues (`--blue-500`, `--cyan-500`, `--orange-500`,
+  `--purple-500`) exist only to paint Obsidian callouts in their familiar
+  colors (`apps/desktop/src/styles/callouts.css`); no other surface uses them.
 - Icons inherit `currentColor`. Use `text-text-muted` for a resting icon,
   `text-text` on hover, `text-accent` only for an "on" state.
 

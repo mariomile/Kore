@@ -82,27 +82,27 @@ export async function createNoteWithTitle(
     noteFileStemForTitle(title),
     newNoteSource(title, body),
     generation,
+    null,
   )
   return claimed.path
 }
 
 /**
- * Create a note titled `title` directly in `folder` (a folder page's "New
- * note"), named by the vault's own rules — Kore's slug or Obsidian's title
- * filename, with the same collision suffixes. The file is born with its title
- * because a note outside the new-note folder is never auto-renamed, so the
- * lazy ULID placeholder ⌘N uses would keep its ULID name forever.
+ * Create a note titled `title` from a ready `source` (H1, `id:` and any
+ * frontmatter already in it) at a collision-free path named like every
+ * create-from-title. `folder` is graph-relative (`''` is the vault root);
+ * null keeps the vault's new-note folder. Returns the new path.
  */
-export async function createNoteInFolder(
-  folder: string,
+export async function createNoteWithSource(
   title: string,
+  source: string,
   generation: number,
+  folder: string | null,
 ): Promise<string> {
   const claimed = await claimNotePathForSlug(
     noteFileStemForTitle(title),
-    newNoteSource(title),
+    source,
     generation,
-    undefined,
     folder,
   )
   return claimed.path
@@ -123,8 +123,7 @@ type ExistingTitleResolution = Exclude<ExistingWikiTargetResolution, { kind: 'mi
 /**
  * Claim the first free path in `slug`'s collision family (`slug.md`, then
  * `slug-2.md`, … — see {@link collisionStem}) through the atomic no-clobber create — the one ordinal
- * convention every create entry point shares, in the new-note folder unless
- * `folder` names another. `onCollision` runs after each
+ * convention both create entry points share. `onCollision` runs after each
  * lost claim; a non-null result short-circuits instead of trying the next
  * suffix (`resolveOrCreateNoteWithTitle` re-resolves the winner there).
  */
@@ -132,21 +131,21 @@ async function claimNotePathForSlug(
   slug: string,
   source: string,
   generation: number,
-  onCollision?: undefined,
-  folder?: string | null,
+  folder: string | null,
 ): Promise<{ kind: 'created'; path: string }>
 async function claimNotePathForSlug(
   slug: string,
   source: string,
   generation: number,
+  folder: string | null,
   onCollision: () => Promise<ExistingTitleResolution | null>,
 ): Promise<ResolveOrCreateNoteResult>
 async function claimNotePathForSlug(
   slug: string,
   source: string,
   generation: number,
+  folder: string | null,
   onCollision?: () => Promise<ExistingTitleResolution | null>,
-  folder: string | null = null,
 ): Promise<ResolveOrCreateNoteResult> {
   for (let ordinal = 1; ordinal <= MAX_CREATE_ATTEMPTS; ordinal += 1) {
     const stem = collisionStem(slug, ordinal)
@@ -205,6 +204,7 @@ export async function resolveOrCreateNoteWithTitle(
     noteFileStemForTitle(title),
     newNoteSource(title, body),
     generation,
+    null,
     async () => {
       const collisionResolution = await resolveExistingWikiTarget(title, generation)
       return collisionResolution.kind === 'missing' ? null : collisionResolution

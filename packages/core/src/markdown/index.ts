@@ -28,9 +28,14 @@ export {
 } from './frontmatter'
 export { parseBody } from './grammar'
 export {
+  CALLOUT_ALIASES,
   CALLOUT_KINDS,
+  calloutLabel,
   formatCalloutBlock,
   parseCalloutMarker,
+  requoteCalloutBlock,
+  separateCalloutTitles,
+  type CalloutFold,
   type CalloutKind,
   type CalloutMarker,
 } from './callout'

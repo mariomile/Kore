@@ -126,6 +126,14 @@ export {
 } from './group-tasks'
 export { getGraphMap, type GraphMap, type GraphMapEdge, type GraphMapNode } from './graph-map'
 export {
+  getLocalGraph,
+  type LocalGraph,
+  type LocalGraphDepth,
+  type LocalGraphEdge,
+  type LocalGraphNode,
+  type LocalGraphOptions,
+} from './local-graph'
+export {
   loadGraphInsights,
   listPrivateNotePaths,
   type ActivityDay,
@@ -162,6 +170,14 @@ export {
   type RecentNotesOptions,
 } from './note-list'
 export { sortNoteList } from './note-list-sort'
+export {
+  buildTagTree,
+  getTagTree,
+  hasNestedTags,
+  listTagTreeCounts,
+  type TagTreeCount,
+  type TagTreeNode,
+} from './tag-tree'
 export {
   buildFolderTree,
   getFolderTree,
@@ -243,7 +259,14 @@ export {
   attachFormulaColumns,
   type RollupLookup,
 } from './rollups'
-export { parseSearchQuery, type ParsedSearchQuery, type SearchFilters } from './filter-query'
+export {
+  describeSearchFilters,
+  emptySearchFilters,
+  parseSearchQuery,
+  type ParsedSearchQuery,
+  type SearchFilterChip,
+  type SearchFilters,
+} from './filter-query'
 export {
   searchNotes,
   searchWithFilters,

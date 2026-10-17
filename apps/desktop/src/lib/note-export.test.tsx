@@ -58,6 +58,17 @@ describe('renderNoteBodyHtml', () => {
     expect(document.querySelectorAll('.reflect-editor')).toHaveLength(0)
   })
 
+  it('draws callouts with their title and prints folded ones open', async () => {
+    const html = await renderNoteBodyHtml('> [!faq]- Why export?\n> Because.\n', 1)
+    const host = document.createElement('div')
+    host.innerHTML = html
+    const quote = host.querySelector('blockquote')
+    expect(quote).toHaveAttribute('data-callout', 'question')
+    expect(quote).toHaveAttribute('data-callout-fold', 'none')
+    expect(quote?.firstElementChild).toHaveTextContent(/^Why export\?$/)
+    expect(quote).toHaveTextContent('Because.')
+  })
+
   it('keeps remote image URLs and drops nothing on unresolvable ones', async () => {
     const html = await renderNoteBodyHtml('![cat](https://example.com/cat.png)\n', 1)
     expect(html).toContain('https://example.com/cat.png')

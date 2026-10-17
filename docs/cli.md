@@ -32,6 +32,7 @@ reflect new <title>        # create notes/<slug>.md (--template, --tag, --set, -
 reflect set <note> k=v…    # write frontmatter properties typed by the tag schemas
 reflect tag <note> <tag>   # add a trailing #tag line (untag removes it)
 reflect done <text>        # tick a task off by its text (--undo reopens)
+reflect mcp                # serve the graph to MCP clients over stdio (--read-only)
 ```
 
 Built from `apps/cli` (`cargo build -p reflect-cli`); bundled with the desktop
@@ -539,6 +540,39 @@ The shared three are installed once, verbatim; the graph skill points at
 them for formats. Every file carries a `reflect-managed` sha256 marker so
 the app can refresh its own installs without ever overwriting a hand-edited
 one (`apps/desktop/src-tauri/src/skill.rs`).
+
+## MCP server
+
+`reflect mcp` speaks the Model Context Protocol (JSON-RPC over stdio,
+revisions 2025-06-18, 2025-03-26 and 2024-11-05), so Claude Desktop, Claude
+Code, Cursor, Codex and any other MCP client can use the graph as tools
+without a skill or a shell. Settings → Agents → MCP server shows the config
+to paste, with the bundled CLI path and the open graph's root filled in:
+
+```json
+{ "mcpServers": { "kore": { "command": "/Applications/Kore.app/Contents/MacOS/reflect",
+                            "args": ["--graph", "/path/to/graph", "mcp"] } } }
+```
+
+or, for Claude Code, `claude mcp add kore -- <cli> --graph <root> mcp`.
+
+Each tool runs one subcommand above as a child process with `--json`, so the
+output contract, the structural writes and the privacy rule are exactly the
+CLI's: a private note is as invisible to an MCP client as to `reflect show`.
+Arguments travel as argv after `--`, never through a shell. A command that
+fails (not found, private, no index) comes back as a tool result with
+`isError: true` and the CLI's message, not as a protocol error.
+
+| Tool | Runs |
+|---|---|
+| `search`, `read_note`, `today`, `backlinks`, `links`, `note_properties` | `search`, `show`, `today`, `backlinks`, `links`, `properties` |
+| `list_notes`, `recent_notes`, `list_tags`, `collection`, `list_tasks`, `graph_info` | `list`, `recent`, `tags`, `collection`, `tasks`, `info` |
+| `capture`, `append_to_note`, `create_note`, `set_properties` | `capture`, `append --stdin`, `new` (body on stdin), `set` |
+| `tag_note`, `untag_note`, `complete_task` | `tag`, `untag`, `done` |
+
+`--read-only` drops the writing tools (the last two rows) from `tools/list`
+and refuses them if called. Tools carry `readOnlyHint`
+annotations either way, so clients that confirm writes can tell them apart.
 
 ## Development notes
 

@@ -96,9 +96,10 @@ const taggedDailyRow = {
   tagSchemas: '[null]',
   tags: 'travel',
 }
+// Rows of the tag-prefix query `listNoteTags` rides (`used` marks whole tags).
 const facetRows = [
-  { tag: 'book', count: 3 },
-  { tag: 'travel', count: 2 },
+  { key: 'book', tag: 'book', count: 3, used: 1 },
+  { key: 'travel', tag: 'travel', count: 2, used: 1 },
 ]
 
 const mockInvoke = vi.fn<(command: string, args: Record<string, unknown>) => Promise<unknown>>()
@@ -152,7 +153,7 @@ beforeEach(() => {
       }
       return noteRows
     }
-    if (sql.includes('group by')) {
+    if (/group by/i.test(sql)) {
       return facetRows
     }
     // Every tag is a collection: a tag page reads its rows through the
@@ -352,7 +353,7 @@ describe('AllNotesScreen', () => {
           },
         ]
       }
-      if (sql.includes('group by')) {
+      if (/group by/i.test(sql)) {
         return facetRows
       }
       return []
@@ -664,7 +665,7 @@ describe('AllNotesScreen — selection and bulk trash', () => {
       if (sql.includes('"preview"')) {
         return sql.includes('exists') ? [] : rows
       }
-      if (sql.includes('group by')) {
+      if (/group by/i.test(sql)) {
         return facetRows
       }
       return []
@@ -802,7 +803,7 @@ describe('AllNotesScreen — selection and bulk trash', () => {
       if (sql.includes('"preview"')) {
         return sql.includes('exists') ? [] : noteRows
       }
-      if (sql.includes('group by')) {
+      if (/group by/i.test(sql)) {
         return facetRows
       }
       return []
@@ -842,7 +843,7 @@ describe('AllNotesScreen — selection and bulk trash', () => {
       if (sql.includes('"preview"')) {
         return sql.includes('exists') ? [] : noteRows
       }
-      if (sql.includes('group by')) {
+      if (/group by/i.test(sql)) {
         return facetRows
       }
       return []

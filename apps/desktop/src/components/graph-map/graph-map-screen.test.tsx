@@ -27,13 +27,13 @@ const MAP = {
   ],
 }
 
-function renderScreen() {
+function renderScreen(focus: string | null = null) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={client}>
       <RouterProvider initialRoute={{ kind: 'graphMap' }}>
         <div style={{ width: 800, height: 600 }}>
-          <GraphMapScreen />
+          <GraphMapScreen focus={focus} />
         </div>
       </RouterProvider>
     </QueryClientProvider>,
@@ -73,6 +73,17 @@ describe('GraphMapScreen', () => {
     await view.getByRole('searchbox', { name: 'Highlight notes' }).fill('nope')
     await expect.element(view.getByText(/0 highlighted/)).toBeVisible()
     await expect.element(view.getByText(/2 notes · 1 links/)).toBeVisible()
+    await view.unmount()
+  })
+
+  it('opens focused on the note the local graph handed off, even a daily', async () => {
+    getGraphMap.mockResolvedValue(MAP)
+    const view = await renderScreen('daily/2026-08-20.md')
+    // Dailies are hidden by default, but the focused one stays.
+    await expect.element(view.getByText('3 notes · 2 links')).toBeVisible()
+    await expect.element(view.getByText('2026-08-20', { exact: true })).toBeVisible()
+    await view.getByRole('button', { name: 'Show all' }).click()
+    await expect.element(view.getByText('2 notes · 1 links')).toBeVisible()
     await view.unmount()
   })
 })

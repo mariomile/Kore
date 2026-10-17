@@ -8,12 +8,12 @@ import {
   type GraphMapNode,
 } from '@reflect/core'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
+import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'
 import { tagColorCss } from '@/lib/graph-colors'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { cn } from '@/lib/utils'
 import { useGraph } from '@/providers/graph-provider'
 import { routeForPath } from '@/routing/route'
-import { useRouter } from '@/routing/router'
 import { GraphMapCanvas, type CanvasNode } from './graph-map-canvas'
 import { focusedGraphView } from './graph-map-focus'
 
@@ -25,6 +25,11 @@ function nodeLabel(node: GraphMapNode): string {
   return displayNoteTitle(node.title === '' ? noteFileStem(node.path) : node.title)
 }
 
+interface GraphMapScreenProps {
+  /** A note to open focused on (the local graph's "Open in Graph"), or null. */
+  focus?: string | null
+}
+
 /**
  * The Graph view: the whole graph's notes and resolved wiki links as a
  * force-directed map (docs/roadmap.md). Everything is computed locally from
@@ -33,16 +38,16 @@ function nodeLabel(node: GraphMapNode): string {
  * hidden by default (they mostly orbit as unlinked satellites and drown the
  * idea structure); the toggle brings them in, edges included.
  */
-export function GraphMapScreen(): ReactElement {
+export function GraphMapScreen({ focus = null }: GraphMapScreenProps): ReactElement {
   const { graph } = useGraph()
   const bridgeReady = useBridgeReady()
-  const { navigate } = useRouter()
+  const navigateNoteLink = useNoteLinkNavigation()
   const [showDailies, setShowDailies] = useState(false)
   const [query, setQuery] = useState('')
   // The local view (B03a): ⌥-clicking a node focuses its neighborhood;
   // ⌥-clicking it again — or Show all — returns to the whole map. Click
   // alone keeps opening the note, untouched.
-  const [focusId, setFocusId] = useState<string | null>(null)
+  const [focusId, setFocusId] = useState<string | null>(focus)
 
   const { data, isError } = useQuery({
     queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'graph-map'],
@@ -55,7 +60,8 @@ export function GraphMapScreen(): ReactElement {
       return null
     }
     const nodes: CanvasNode[] = data.nodes
-      .filter((node) => showDailies || node.dailyDate === null)
+      // A focused daily stays, or hiding dailies would unfocus it.
+      .filter((node) => showDailies || node.dailyDate === null || node.path === focusId)
       .map((node) => ({
         id: node.path,
         label: nodeLabel(node),
@@ -70,7 +76,7 @@ export function GraphMapScreen(): ReactElement {
       .filter((edge) => kept.has(edge.source) && kept.has(edge.target))
       .map((edge) => ({ source: edge.source, target: edge.target, weight: edge.weight }))
     return { nodes, edges }
-  }, [data, showDailies])
+  }, [data, showDailies, focusId])
 
   const shown = useMemo(
     () => (view === null ? null : focusedGraphView(view, focusId)),
@@ -113,13 +119,13 @@ export function GraphMapScreen(): ReactElement {
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex flex-none items-baseline gap-3 px-6 pb-2 pt-6">
         <h1 className="text-2xl font-semibold tracking-tight text-text">Graph</h1>
-        <span className="text-xs text-text-muted">
+        <span className="whitespace-nowrap text-xs text-text-muted">
           {shown.nodes.length} notes · {shown.edges.length} links
           {matches === null ? '' : ` · ${matches.size} highlighted`}
         </span>
         {focusNode === null ? null : (
-          <span className="flex items-baseline gap-1.5 text-xs text-text-secondary">
-            focused on <span className="font-medium text-text">{focusNode.label}</span>
+          <span className="flex min-w-0 items-baseline gap-1.5 whitespace-nowrap text-xs text-text-secondary">
+            focused on <span className="truncate font-medium text-text">{focusNode.label}</span>
             <button
               type="button"
               onClick={() => {
@@ -144,7 +150,7 @@ export function GraphMapScreen(): ReactElement {
         />
         <label
           className={cn(
-            'flex cursor-default items-center gap-1.5 text-xs font-medium',
+            'flex cursor-default items-center gap-1.5 whitespace-nowrap text-xs font-medium',
             showDailies ? 'text-text' : 'text-text-secondary',
           )}
         >
@@ -170,7 +176,9 @@ export function GraphMapScreen(): ReactElement {
             nodes={shown.nodes}
             edges={shown.edges}
             matches={matches}
-            onOpen={(path) => navigate(routeForPath(path))}
+            onOpen={(path, openInSplit) => {
+              navigateNoteLink({ target: routeForPath(path), openInSplit })
+            }}
             onFocus={(path) => {
               setFocusId((current) => (current === path ? null : path))
             }}

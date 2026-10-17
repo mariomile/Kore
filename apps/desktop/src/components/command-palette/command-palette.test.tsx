@@ -268,6 +268,26 @@ describe('CommandPalette', () => {
     await expect.element(view.getByTestId('route')).toHaveTextContent('2026-06-08')
   })
 
+  it('shows the Obsidian operators it understood as chips', async () => {
+    suggestWikiTargets.mockResolvedValue([])
+    searchWithFilters.mockResolvedValue([])
+    const { view } = await renderPalette('"next quarter" path:CRM/ -draft roadmap')
+    const chips = view.getByLabelText('Active search filters')
+    await expect.element(chips.getByText('"next quarter"')).toBeInTheDocument()
+    await expect.element(chips.getByText('path: CRM/')).toBeInTheDocument()
+    await expect.element(chips.getByText('−draft')).toBeInTheDocument()
+    expect(searchWithFilters).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text: 'roadmap',
+        filters: expect.objectContaining({
+          phrases: ['next quarter'],
+          paths: ['CRM/'],
+          excludedTerms: ['draft'],
+        }),
+      }),
+    )
+  })
+
   it('stays lexical when the model is ready but semantic search is disabled', async () => {
     embedReady.value = true
     semanticSetting.enabled = false

@@ -57,7 +57,7 @@ describe('searchWithFilters', () => {
     expect(sql).not.toContain('lower(')
     // The template/tag-definition exclusion rides every search path.
     expect(sql).toContain('"notes"."kind" not in (?, ?)')
-    expect(args['params']).toEqual(['work', 'template', 'tag', 12])
+    expect(args['params']).toEqual(['work', 'work/', 'work0', 'template', 'tag', 12])
   })
 
   it('keeps additional tag filters as indexed existence checks', async () => {
@@ -81,7 +81,17 @@ describe('searchWithFilters', () => {
     expect(sql).toContain('"filter_tags"."note_path" = "notes"."path"')
     expect(sql).toContain('"filter_tags"."tag_key"')
     expect(sql).not.toContain('search_fts')
-    expect(args['params']).toEqual(['work', 'template', 'tag', 'home', 12])
+    expect(args['params']).toEqual([
+      'work',
+      'work/',
+      'work0',
+      'template',
+      'tag',
+      'home',
+      'home/',
+      'home0',
+      12,
+    ])
   })
 
   it('applies non-tag filters on the tag-first recall path', async () => {
@@ -120,6 +130,8 @@ describe('searchWithFilters', () => {
     expect(sql).not.toContain('search_fts')
     expect(args['params']).toEqual([
       'work',
+      'work/',
+      'work0',
       'template',
       'tag',
       1,

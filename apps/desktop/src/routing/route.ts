@@ -27,7 +27,9 @@ export type Route =
   | { kind: 'chat' }
   | { kind: 'insights' }
   // The link map over the whole graph (not the graph *switcher* below).
-  | { kind: 'graphMap' }
+  // `focus` opens it on one note's neighborhood (the note sidebar's local
+  // graph hands off here).
+  | { kind: 'graphMap'; focus?: string }
   // Optional `group` selects a Settings navigator page. Omitted (or
   // `'general'`) is the first page. Agents lives here, not as a workspace tab.
   | { kind: 'settings'; group?: SettingsRouteGroup }
@@ -92,11 +94,12 @@ export function routesEqual(a: Route, b: Route): boolean {
     case 'tasks':
     case 'chat':
     case 'insights':
-    case 'graphMap':
     case 'graphs':
     case 'terminal':
     case 'browser':
       return true
+    case 'graphMap':
+      return a.focus === (b as Extract<Route, { kind: 'graphMap' }>).focus
     case 'settings':
       return settingsGroupOf(a) === settingsGroupOf(b)
     case 'daily':

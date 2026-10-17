@@ -34,7 +34,7 @@ function quoteFtsLiteral(term: string): string {
 }
 
 /** Whether `unicode61` finds any token in a term, i.e. whether FTS can see it. */
-function isTokenizable(term: string): boolean {
+export function isTokenizable(term: string): boolean {
   return FTS_TOKEN_CHAR_RE.test(term)
 }
 
@@ -93,6 +93,52 @@ export function buildBodyFtsMatch(query: string): string | null {
     return `body : (${terms.map(quoteFtsLiteral).join(' ')})`
   }
   return `body : (${terms.map((term) => `${quoteFtsLiteral(term)}*`).join(' OR ')})`
+}
+
+/**
+ * Exact-phrase `MATCH` groups (the palette's `"quoted"` operator): each phrase
+ * must appear, words in order, in the title or the body. No prefix operator —
+ * quoting asks for the words as typed. `null` when there are no phrases.
+ */
+export function buildPhraseFtsMatch(phrases: readonly string[]): string | null {
+  if (phrases.length === 0) {
+    return null
+  }
+  return phrases
+    .map((phrase) => {
+      const literal = quoteFtsLiteral(phrase)
+      return `(title : ${literal} OR body : ${literal})`
+    })
+    .join(' AND ')
+}
+
+/** The body half of {@link buildPhraseFtsMatch}: any phrase in the body. */
+export function buildBodyPhraseFtsMatch(phrases: readonly string[]): string | null {
+  if (phrases.length === 0) {
+    return null
+  }
+  return `body : (${phrases.map(quoteFtsLiteral).join(' OR ')})`
+}
+
+/**
+ * The exclusion set of the palette's `-word` / `-"phrase"` operators: rows
+ * whose title or body holds any word prefix or exact phrase. Terms FTS can't
+ * tokenize are dropped (they could only ever match nothing). `null` when
+ * nothing is left to exclude.
+ */
+export function buildExcludedFtsMatch(
+  terms: readonly string[],
+  phrases: readonly string[],
+): string | null {
+  const literals = [
+    ...terms.filter(isTokenizable).map((term) => `${quoteFtsLiteral(term)}*`),
+    ...phrases.filter(isTokenizable).map(quoteFtsLiteral),
+  ]
+  if (literals.length === 0) {
+    return null
+  }
+  const any = literals.join(' OR ')
+  return `title : (${any}) OR body : (${any})`
 }
 
 /**

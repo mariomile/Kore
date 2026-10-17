@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactElement } from 'react'
+import { isModEvent } from '@meowdown/core'
 import { createGraphFrameScheduler } from '@/lib/graph-frame-scheduler'
 import { createPaintPacer, paintCircles, paintEdges } from '@/lib/graph-paint'
 import {
@@ -17,6 +18,8 @@ export interface CanvasNode {
   isDaily: boolean
   /** Fill color (a tag's hue), or null for the neutral theme fill. */
   color: string | null
+  /** The note a local graph centers on: accent fill, name always shown. */
+  emphasis?: boolean
 }
 
 export interface CanvasEdge {
@@ -34,13 +37,23 @@ interface GraphMapCanvasProps {
    * never rebuild the layout.
    */
   matches?: ReadonlySet<string> | null
-  /** Open a node's note (a clean click, not the end of a drag). */
-  onOpen: (id: string) => void
+  /**
+   * Open a node's note (a clean click, not the end of a drag). `openInSplit`
+   * is the app-wide ⌘/Ctrl-click convention; callers without panes ignore it.
+   */
+  onOpen: (id: string, openInSplit: boolean) => void
   /**
    * Focus a node's neighborhood (⌥-click; same clean-click rule). The
    * screen owns what focusing means — the canvas only reports the gesture.
    */
   onFocus?: (id: string) => void
+  /**
+   * `modifier` leaves a plain wheel to the scroll container around the
+   * canvas (the note sidebar) and zooms only on a pinch or ⌘/Ctrl-wheel.
+   */
+  wheelZoom?: 'always' | 'modifier'
+  /** Accessible name of the canvas. */
+  label?: string
 }
 
 /** World→screen viewport: `screen = world * scale + offset`. */
@@ -86,12 +99,16 @@ export function GraphMapCanvas({
   matches = null,
   onOpen,
   onFocus,
+  wheelZoom = 'always',
+  label = 'Note graph',
 }: GraphMapCanvasProps): ReactElement {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const onOpenRef = useRef(onOpen)
   onOpenRef.current = onOpen
   const onFocusRef = useRef(onFocus)
   onFocusRef.current = onFocus
+  const wheelZoomRef = useRef(wheelZoom)
+  wheelZoomRef.current = wheelZoom
   const matchesRef = useRef<ReadonlySet<string> | null>(matches)
   matchesRef.current = matches
   // Set by the main effect; lets a matches change repaint the settled
@@ -292,7 +309,8 @@ export function GraphMapCanvas({
           const meta = nodes[index]
           const isHighlight = index === highlight
           const isNeighbor = neighborhood?.has(index) ?? false
-          const accent = isHighlight || (searched !== null && isMatch(index))
+          const accent =
+            isHighlight || meta?.emphasis === true || (searched !== null && isMatch(index))
           return {
             fill: accent
               ? colorAccent
@@ -317,7 +335,13 @@ export function GraphMapCanvas({
       ctx.textBaseline = 'top'
       const placed: { x: number; y: number; w: number; h: number }[] = []
       const priority = (index: number): number =>
-        index === highlight ? 3 : neighborhood?.has(index) ? 2 : isMatch(index) ? 1 : 0
+        index === highlight || nodes[index]?.emphasis === true
+          ? 3
+          : neighborhood?.has(index)
+            ? 2
+            : isMatch(index)
+              ? 1
+              : 0
       const order = [...layout.nodes.keys()].sort((a, b) => {
         const byPriority = priority(b) - priority(a)
         return byPriority !== 0 ? byPriority : (nodes[b]?.inbound ?? 0) - (nodes[a]?.inbound ?? 0)
@@ -328,7 +352,7 @@ export function GraphMapCanvas({
         if (node === undefined || meta === undefined) {
           continue
         }
-        const isHighlight = index === highlight
+        const isHighlight = index === highlight || meta.emphasis === true
         const isNeighbor = neighborhood?.has(index) ?? false
         const dimmed = highlight !== null && !isHighlight && !isNeighbor
         const searchMiss = searched !== null && !isMatch(index)
@@ -443,7 +467,7 @@ export function GraphMapCanvas({
             if (event.altKey && onFocusRef.current !== undefined) {
               onFocusRef.current(id)
             } else {
-              onOpenRef.current(id)
+              onOpenRef.current(id, isModEvent(event))
             }
           }
         }
@@ -452,6 +476,10 @@ export function GraphMapCanvas({
     }
 
     const handleWheel = (event: WheelEvent): void => {
+      // A trackpad pinch arrives as a ctrlKey wheel.
+      if (wheelZoomRef.current === 'modifier' && !event.ctrlKey && !event.metaKey) {
+        return
+      }
       event.preventDefault()
       const rect = surface.getBoundingClientRect()
       const pointX = event.clientX - rect.left
@@ -489,7 +517,7 @@ export function GraphMapCanvas({
     <canvas
       ref={canvasRef}
       role="img"
-      aria-label="Note graph"
+      aria-label={label}
       className="size-full touch-none select-none"
     />
   )

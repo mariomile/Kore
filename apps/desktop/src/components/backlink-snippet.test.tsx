@@ -166,3 +166,27 @@ describe('BacklinkSnippet task checkboxes', () => {
     await view.unmount()
   })
 })
+
+describe('BacklinkSnippet callouts', () => {
+  it('draws a dedented callout context as a callout, shown open', async () => {
+    const view = await render(
+      <QueryClientProvider
+        client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+      >
+        <BacklinkSnippet
+          text={'[!faq]- Why [[Roadmap]]?\nBecause.'}
+          notePath="notes/meeting.md"
+          tasks={[]}
+          onWikilinkClick={() => {}}
+          resolveImageUrl={() => undefined}
+        />
+      </QueryClientProvider>,
+    )
+    const quote = view.container.querySelector('blockquote')!
+    await expect.poll(() => quote.getAttribute('data-callout')).toBe('question')
+    expect(quote.hasAttribute('data-callout-folded')).toBe(false)
+    expect(quote.firstElementChild).not.toHaveTextContent('[!faq]')
+    expect(quote).toHaveTextContent('Because.')
+    await view.unmount()
+  })
+})

@@ -77,6 +77,9 @@ describe('search operators flow', () => {
     expect(await paths('meetup -draft -"analytical engine"')).toEqual([
       'CRM/Companies/Engine Works.md',
     ])
+    // A title holding the phrase ranks first, ahead of body-only hits.
+    const ranked = await searchWithFilters(parseSearchQuery('"engine"'))
+    expect(ranked[0]?.path).toBe('CRM/Companies/Engine Works.md')
     const [hit] = await searchWithFilters(parseSearchQuery('"engine meetup" path:People'))
     expect(hit?.snippet).toContain('engine')
   })

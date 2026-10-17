@@ -365,7 +365,10 @@ export async function searchWithFilters(
           .where(sql<boolean>`search_fts MATCH ${bodyMatch}`),
     )
   const filteredNotes = query.select('notes.titleKey').as('filteredNotes')
-  const titleMatch = buildTitleMatchSql(sql.ref<string>('filteredNotes.titleKey'), parsed.text)
+  // A phrase-only query ranks titles by its phrases: an empty text would
+  // fold to '' and tie every title (SQLite's `instr(x, '')` is always 1).
+  const titleText = parsed.text !== '' ? parsed.text : filters.phrases.join(' ')
+  const titleMatch = buildTitleMatchSql(sql.ref<string>('filteredNotes.titleKey'), titleText)
   let rankedQuery = lexicalDb
     .selectFrom(filteredNotes)
     .leftJoin('lexical', 'lexical.path', 'filteredNotes.path')
@@ -410,7 +413,7 @@ export async function searchWithFilters(
       // SQLite returns an unmarked body fragment when only the title matched.
       // That is not a search snippet and would be misleading in the result row.
       snippet: snippet?.includes(HIGHLIGHT_START) === true ? snippet : null,
-      highlightedTitle: highlightTitle(row.title, parsed.text, marks?.title ?? null),
+      highlightedTitle: highlightTitle(row.title, titleText, marks?.title ?? null),
       isPinned: row.isPinned !== 0,
     }
   })

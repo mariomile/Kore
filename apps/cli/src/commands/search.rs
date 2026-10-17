@@ -2,25 +2,98 @@
 //! one command that requires the index: missing/unusable is exit 4 (the CLI
 //! never builds or repairs the index — that's the desktop app's job). A stale
 //! index warns and still returns rows.
+//!
+//! The query speaks the palette's filter grammar (`search_query.rs`):
+//! `tag:#type/person path:CRM/ -draft "exact words"` filters and searches
+//! exactly as it does in the app. Only filters and no text list the
+//! matching notes newest first, like the palette. A `links:` /
+//! `linked-from:` target that resolves to nothing matches nothing; a
+//! private one is refused, like every other surface.
 
 use crate::commands::output::{print_json, HitJson, SearchJson};
 use crate::commands::{require_index, still_public_on_disk};
 use crate::error::CliError;
 use crate::graph::Graph;
 use crate::keys::fold_key;
-use crate::search::{build_body_fts_match, build_fts_match, search_index, SearchHit};
+use crate::note_file::ensure_not_private;
+use crate::resolve::resolve_note;
+use crate::search::{
+    build_body_fts_match, build_body_phrase_fts_match, build_fts_match, build_phrase_fts_match,
+    join_fts, recall_filtered, search_index, ResolvedFilters, SearchHit,
+};
+use crate::search_query::parse_search_query;
+
+/// A `links:` / `linked-from:` target as a graph path: `Ok(None)` when it
+/// names no note (the filter then matches nothing), refused when private.
+fn resolve_link_target(
+    graph: &Graph,
+    conn: &rusqlite::Connection,
+    target: Option<&str>,
+) -> Result<Option<Option<String>>, CliError> {
+    let Some(target) = target else {
+        return Ok(Some(None));
+    };
+    match resolve_note(target, &graph.root, Some(conn)) {
+        Ok(resolved) => {
+            let rel_path = resolved.rel_path().to_string();
+            ensure_not_private(&graph.root, &rel_path)?;
+            Ok(Some(Some(rel_path)))
+        }
+        Err(CliError::NotFound(_)) => Ok(None),
+        Err(error) => Err(error),
+    }
+}
 
 pub fn run(graph: &Graph, json: bool, query: &str, limit: usize) -> Result<(), CliError> {
     let (opened, staleness) = require_index(&graph.root)?;
+    let parsed = parse_search_query(query);
+    let filters = &parsed.filters;
 
-    let hits: Vec<SearchHit> = match (build_fts_match(query), build_body_fts_match(query)) {
-        (Some(match_expr), Some(body_match_expr)) => search_index(
-            &opened.conn,
-            &match_expr,
-            &body_match_expr,
-            &fold_key(query),
-            limit,
-        )?,
+    let links_to = resolve_link_target(graph, &opened.conn, filters.links_to.as_deref())?;
+    let linked_from = resolve_link_target(graph, &opened.conn, filters.linked_from.as_deref())?;
+    let hits: Vec<SearchHit> = match (links_to, linked_from) {
+        (Some(links_to_path), Some(linked_from_path)) => {
+            let resolved = ResolvedFilters {
+                filters,
+                links_to_path,
+                linked_from_path,
+            };
+            // Phrases rank like typed words; the phrase predicate is what
+            // guarantees every hit contains them.
+            let match_expr = join_fts(
+                &[
+                    build_fts_match(&parsed.text),
+                    build_phrase_fts_match(&filters.phrases),
+                ],
+                "AND",
+            );
+            let body_match_expr = join_fts(
+                &[
+                    build_body_fts_match(&parsed.text),
+                    build_body_phrase_fts_match(&filters.phrases),
+                ],
+                "OR",
+            );
+            // A phrase-only query ranks titles by its phrases.
+            let title_text = if parsed.text.is_empty() {
+                filters.phrases.join(" ")
+            } else {
+                parsed.text.clone()
+            };
+            match match_expr {
+                Some(match_expr) => search_index(
+                    &opened.conn,
+                    &match_expr,
+                    body_match_expr.as_deref().unwrap_or(&match_expr),
+                    &fold_key(&title_text),
+                    &resolved,
+                    limit,
+                )?,
+                None if parsed.filtered => recall_filtered(&opened.conn, &resolved, limit)?,
+                None => Vec::new(),
+            }
+        }
+        // A link target that names no note: nothing can match.
         _ => Vec::new(),
     };
     let hits: Vec<SearchHit> = hits

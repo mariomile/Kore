@@ -13,7 +13,8 @@ use crate::keys::fold_tag;
 use crate::write::line_ending;
 use reflect_note_policy::split_frontmatter;
 
-fn is_letter(character: char) -> bool {
+/// Unicode `\p{L}`, as the TS tag and property-key regexes spell it.
+pub fn is_letter(character: char) -> bool {
     matches!(
         get_general_category(character),
         GeneralCategory::UppercaseLetter
@@ -24,7 +25,8 @@ fn is_letter(character: char) -> bool {
     )
 }
 
-fn is_number(character: char) -> bool {
+/// Unicode `\p{N}`.
+pub fn is_number(character: char) -> bool {
     matches!(
         get_general_category(character),
         GeneralCategory::DecimalNumber

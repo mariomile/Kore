@@ -1,5 +1,39 @@
 # Kore working state
 
+## Search operators in the CLI and MCP, 2026-10-17
+
+Follow-up to #279 (Mario: "Continua"): the palette understood Obsidian's
+operators, but `kore search` matched every token literally, so an agent's
+`tag:#type/person path:CRM/` found nothing the app would.
+
+- [x] `apps/cli/src/search_query.rs`: `parse_search_query`, the Rust mirror
+  of `parseSearchQuery` (`filter-query.ts`), the whole grammar: `#tag`,
+  `is:`, `links:`, `linked-from:`, `updated:`, `prop:`, plus #279's
+  phrases, `-word`, `-"phrase"`, `tag:`, `-#tag`, `path:`, `file:` and
+  their negations, `[key]`, `[key:value]`. Unit tests are
+  `filter-query.test.ts` case for case.
+- [x] `search.rs`: every filter as a `notes` predicate (twin of
+  `operatorPredicates` and the `where` chain in `searchWithFilters`),
+  applied to ranked and title-recall rows alike; phrase and exclusion FTS
+  builders mirror `search-query.ts`. Filters with no text list notes newest
+  first, like the palette's recall feed. Phrases and exclusions match by
+  `search_fts.path`, not by rowid.
+- [x] `links:`/`linked-from:` resolve like `show`; no match means no
+  results, a private target is refused (exit 3). Results stay private-free.
+- [x] The MCP `search` tool runs `kore search`, so it gets the operators for
+  free; its description now lists them. `docs/cli.md` and the graph skill
+  document them.
+- Known difference kept from before: CLI search excludes templates but
+  still lists tag definition notes, the app excludes both.
+
+**Validation:** `cargo test -p reflect-cli` (parser unit tests, six new
+end-to-end search tests on an Obsidian-shaped fixture), `cargo clippy
+-p reflect-cli --all-targets -D warnings`, `cargo fmt --check`.
+
+**Next:** on the Mac, after the release, run
+`kore search "tag:#type/person path:CRM/"` against marioverse.ai and check
+it lists the same notes as ⌘K.
+
 ## Local graph in the note sidebar, 2026-10-17
 
 Autonomous run, third discovery round ("Giro autonomo di miglioramenti"):

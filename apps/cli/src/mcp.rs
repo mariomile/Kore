@@ -256,9 +256,9 @@ fn tools() -> Vec<Tool> {
     vec![
         Tool {
             name: "search",
-            description: "Full-text search over every note, ranked by relevance (title matches first). Returns paths, titles and snippets.",
+            description: "Full-text search over every note, ranked by relevance (title matches first). Returns paths, titles and snippets. The query takes Kore's search operators: #tag or tag:#tag (nested tags included), -#tag, \"exact phrase\", -word, path:CRM/, file:name, [key] or [key:value], is:daily, is:pinned, links:Note, linked-from:Note, updated:>YYYY-MM-DD. Filters alone list matching notes newest first.",
             read_only: true,
-            properties: || json!({ "query": { "type": "string", "description": "Search terms" }, "limit": limit_schema(20) }),
+            properties: || json!({ "query": { "type": "string", "description": "Search terms and operators, e.g. tag:#type/person path:CRM/ roadmap" }, "limit": limit_schema(20) }),
             required: &["query"],
             build: |args| {
                 let query = required_string(args, "query")?;

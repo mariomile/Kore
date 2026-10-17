@@ -7,6 +7,13 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- `kore search` and the MCP server's search tool understand the same
+  operators as the app's search: `tag:#type/person path:CRM/`,
+  `"exact phrase"`, `-word`, `-#tag`, `file:`, `[status:active]`,
+  `links:Note`, `is:daily`, `updated:>2026-01-01` and the rest. An agent
+  asking Kore for notes now gets the same answer you would get in ⌘K, and
+  filters alone list the matching notes newest first.
+
 - The command line is called `kore` now, like the app. The MCP config in
   Settings → Agents, the agent skills, `kore --help`, error messages,
   `$KORE_GRAPH` and copied note links (`kore://…`) all say Kore. Old

@@ -123,6 +123,27 @@ indexer. If files on disk diverge from the index (checked by mtime, then content
 hash), a staleness warning goes to stderr and `"stale": true` is set — results
 still return.
 
+The query speaks the same filter grammar as the app's search palette, so a
+query typed in either place returns the same notes:
+
+| Operator | Meaning |
+| --- | --- |
+| `#tag`, `tag:#tag`, `tag:tag` | carries the tag, nested tags included (`#type` finds `#type/person`) |
+| `-#tag`, `-tag:x` | does not carry the tag (or a nested one) |
+| `"exact phrase"` | the words in this order, in the title or body |
+| `-word`, `-"phrase"` | the title and body do not contain it |
+| `path:CRM/`, `-path:x` | the vault path contains (or does not contain) the text, case-insensitively; quote spaces: `path:"Active Projects"` |
+| `file:name`, `-file:x` | the file name contains (or does not contain) the text |
+| `[key]`, `[key:value]`, `prop:key`, `prop:key=value` | the frontmatter property exists, or equals the value case-insensitively (a list entry and a `[[value]]` relation match too) |
+| `is:daily`, `is:pinned` | daily notes only, pinned notes only |
+| `links:Note`, `linked-from:Note` | links to, or is linked from, the note (resolved like `show`); a target that names no note matches nothing, and a private one is refused (exit `3`) |
+| `updated:>YYYY-MM-DD`, `updated:<…`, `updated:…` | modified on or after, before, or during the local day |
+
+A half-formed token (`path:` with no value, an impossible date, `#123`) stays
+search text. A query of filters alone, such as `kore search "tag:#type/person
+path:CRM/"`, lists the matching notes newest first, with empty snippets and
+score `0`. Quote the whole query in the shell so `#` and `"` reach the CLI.
+
 ```jsonc
 // kore search "meeting notes" --json
 {

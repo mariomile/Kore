@@ -1,5 +1,6 @@
 import { lazy, Suspense, type ReactElement } from 'react'
 import { AllNotesScreen } from '@/components/all-notes/all-notes-screen'
+import { PaneErrorBoundary } from '@/components/pane-error-boundary'
 import { ChatScreen } from '@/components/chat/chat-screen'
 import { DailyStream } from '@/components/daily-stream'
 import { SearchRoute } from '@/components/search-route'
@@ -51,13 +52,21 @@ const TerminalScreen = lazy(() =>
  * workspace shell so this seam — the contract that non-daily notes are just as
  * editable as daily ones — is directly testable. The daily stream owns live
  * today tracking so route arrivals and the highlighted current day use the
- * same clock.
+ * same clock. Every route renders inside a {@link PaneErrorBoundary}, so a
+ * crash in one note or view stays in its pane instead of blanking the app.
  */
 export function RouteContent(): ReactElement {
+  const { route } = useRouter()
   return (
-    <Suspense fallback={null}>
-      <RouteView />
-    </Suspense>
+    <PaneErrorBoundary
+      resetKey={JSON.stringify(route)}
+      surface={route.kind}
+      path={'path' in route ? route.path : null}
+    >
+      <Suspense fallback={null}>
+        <RouteView />
+      </Suspense>
+    </PaneErrorBoundary>
   )
 }
 

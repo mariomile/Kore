@@ -474,7 +474,28 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
     // hooks mount cleanly in the harness.
     listen: async () => () => {},
     listenPlugin: async () => {},
+    // No custom URL scheme in a plain browser: an asset written this session
+    // loads as a `data:` URL, anything else (the seeded vaults' attachments
+    // are names only) resolves to null and renders as a missing image.
+    assetUrl: (_generation, path) => {
+      const contents = assets.get(path)
+      return contents === undefined ? null : `data:${imageMimeType(path)};base64,${contents}`
+    },
   }
+}
+
+const IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  gif: 'image/gif',
+  webp: 'image/webp',
+  svg: 'image/svg+xml',
+}
+
+function imageMimeType(path: string): string {
+  const extension = path.slice(path.lastIndexOf('.') + 1).toLowerCase()
+  return IMAGE_MIME_BY_EXTENSION[extension] ?? 'application/octet-stream'
 }
 
 /**

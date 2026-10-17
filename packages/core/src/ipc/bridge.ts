@@ -42,6 +42,14 @@ export interface IpcBridge {
     event: string,
     handler: (payload: unknown) => void,
   ) => Promise<void>
+  /**
+   * Build a URL an `<img>` can load for a graph-relative attachment in the
+   * given graph session, or null when this host cannot serve it. The real
+   * shell maps it to its `reflect-asset://` protocol; the browser dev bridge
+   * answers from its in-memory asset store. Optional: a host without it
+   * simply shows no attachment images (see {@link assetUrl}).
+   */
+  assetUrl?: (generation: number, path: string) => string | null
 }
 
 let activeBridge: IpcBridge | null = null
@@ -98,6 +106,16 @@ export function hasBridge(): boolean {
  */
 export function hasBinaryIpc(): boolean {
   return activeBridge !== null && activeBridge.invokeBinary !== undefined
+}
+
+/**
+ * The loadable URL for a graph-relative attachment, or null when no bridge
+ * is installed or the host cannot serve it. Never throws, so a renderer that
+ * resolves image sources during render cannot take its tree down over a
+ * missing host capability.
+ */
+export function assetUrl(generation: number, path: string): string | null {
+  return activeBridge?.assetUrl?.(generation, path) ?? null
 }
 
 /** The installed bridge; throws when called before {@link setBridge}. */

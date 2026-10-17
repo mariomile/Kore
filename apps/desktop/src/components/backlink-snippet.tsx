@@ -1,8 +1,9 @@
-import type { ReactElement } from 'react'
+import { useMemo, useRef, type ReactElement } from 'react'
 import { MarkdownView } from '@meowdown/react'
 import type { WikilinkClickHandler } from '@meowdown/core'
-import type { SnippetTask } from '@reflect/core'
+import { separateCalloutTitles, type SnippetTask } from '@reflect/core'
 import { useOpenExternalLink } from '@/editor/open-external-link'
+import { useCalloutDom } from '@/editor/use-callout-dom'
 import { useSnippetTaskToggle } from '@/hooks/use-snippet-task-toggle'
 
 interface BacklinkSnippetProps {
@@ -33,6 +34,8 @@ interface BacklinkSnippetProps {
  * (the `reflect-backlink-snippet` CSS keeps them inert-looking). The
  * `reflect-editor` class shares the editor's chip styling; the
  * `reflect-backlink-snippet` wrapper keeps it in the panel's compact line box.
+ * Callouts get their title, icon and color like any preview, always shown
+ * open for the same reason collapsed bullets are.
  */
 export function BacklinkSnippet({
   text,
@@ -43,11 +46,14 @@ export function BacklinkSnippet({
 }: BacklinkSnippetProps): ReactElement {
   const onTaskClick = useSnippetTaskToggle(notePath, tasks)
   const openExternalLink = useOpenExternalLink()
+  const markdown = useMemo(() => separateCalloutTitles(text), [text])
+  const hostRef = useRef<HTMLDivElement>(null)
+  useCalloutDom(hostRef, false)
   return (
-    <div className="reflect-backlink-snippet select-text text-xs text-text">
+    <div ref={hostRef} className="reflect-backlink-snippet select-text text-xs text-text">
       <MarkdownView
         className="reflect-editor"
-        markdown={text}
+        markdown={markdown}
         expandCollapsed
         onWikilinkClick={onWikilinkClick}
         onLinkClick={openExternalLink}

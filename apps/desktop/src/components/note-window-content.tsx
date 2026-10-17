@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react'
 import { dailyPath } from '@reflect/core'
 import { NoteFindBar } from '@/components/note-find-bar'
+import { PaneErrorBoundary } from '@/components/pane-error-boundary'
 import { RouteContent } from '@/components/route-content'
 import { SingleNoteView } from '@/components/single-note-view'
 import { useNoteRow } from '@/hooks/use-note-row'
@@ -39,17 +40,20 @@ export function NoteWindowContent(): ReactElement {
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-surface text-text">
       {dailyDate !== null ? (
-        <SingleNoteView
-          path={dailyPath(dailyDate)}
-          dailyDate={dailyDate}
-          heading={
-            // The stream's day label, standing in for the title a daily
-            // note doesn't carry.
-            <h2 className="reflect-daily-subject reflect-content-gutter mb-3">
-              {formatDayLabel(dailyDate, settings.dateFormat)}
-            </h2>
-          }
-        />
+        // RouteContent carries its own boundary; this branch bypasses it.
+        <PaneErrorBoundary resetKey={dailyDate} surface="daily" path={dailyPath(dailyDate)}>
+          <SingleNoteView
+            path={dailyPath(dailyDate)}
+            dailyDate={dailyDate}
+            heading={
+              // The stream's day label, standing in for the title a daily
+              // note doesn't carry.
+              <h2 className="reflect-daily-subject reflect-content-gutter mb-3">
+                {formatDayLabel(dailyDate, settings.dateFormat)}
+              </h2>
+            }
+          />
+        </PaneErrorBoundary>
       ) : (
         <RouteContent />
       )}

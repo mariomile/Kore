@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactElement } from 'react'
-import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import {
   displayNoteTitle,
   foldTag,
@@ -90,8 +90,10 @@ function LocalGraphBody({ path }: LocalGraphSectionProps): ReactElement {
     queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'local-graph', path, depth, tags],
     queryFn: () => getLocalGraph(path, { depth, tags }),
     enabled: bridgeReady && graph !== null,
-    // Switching depth keeps the old map up until the new one lands.
-    placeholderData: keepPreviousData,
+    // Switching depth or tags keeps this note's map up until the new one
+    // lands; switching notes never shows the previous note's neighborhood.
+    placeholderData: (previous, previousQuery) =>
+      previousQuery?.queryKey[3] === path ? previous : undefined,
   })
   // Index writes refetch this query; structural sharing hands back the same
   // object when nothing changed, so typing in the note never re-lays it out.

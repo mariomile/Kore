@@ -30,21 +30,27 @@ function RouteProbe(): ReactNode {
   return <output data-testid="route">{JSON.stringify(route)}</output>
 }
 
-function renderSection() {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(
+function tree(client: QueryClient, path: string): ReactNode {
+  return (
     <QueryClientProvider client={client}>
       <RouterProvider>
         <div style={{ width: 280 }}>
-          <LocalGraphSection path="notes/atlas.md" />
+          <LocalGraphSection path={path} />
         </div>
         <RouteProbe />
       </RouterProvider>
-    </QueryClientProvider>,
+    </QueryClientProvider>
   )
 }
 
+let client: QueryClient
+
+function renderSection() {
+  return render(tree(client, 'notes/atlas.md'))
+}
+
 beforeEach(() => {
+  client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   window.sessionStorage.clear()
   getLocalGraph.mockReset().mockResolvedValue(GRAPH)
 })
@@ -65,6 +71,15 @@ describe('LocalGraphSection', () => {
     await expect
       .element(view.getByTestId('route'))
       .toHaveTextContent('{"kind":"graphMap","focus":"notes/atlas.md"}')
+    await view.unmount()
+  })
+
+  it('never shows the previous note while the next one loads', async () => {
+    const view = await renderSection()
+    await expect.element(view.getByRole('img', { name: 'Local graph' })).toBeInTheDocument()
+    getLocalGraph.mockReturnValue(new Promise(() => {}))
+    await view.rerender(tree(client, 'notes/plan.md'))
+    await expect.element(view.getByRole('img', { name: 'Local graph' })).not.toBeInTheDocument()
     await view.unmount()
   })
 

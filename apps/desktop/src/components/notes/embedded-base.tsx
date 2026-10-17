@@ -24,7 +24,10 @@ export function EmbeddedBase({ embed }: EmbeddedBaseProps): ReactElement {
   const path = resolveAttachmentSource(embed.target)
   const state = useBaseView(path, embed.view)
   const commitProperty = useCommitNoteProperty()
-  const createNote = useCreateBaseNote()
+  const openNote = (target: string): void => {
+    navigateNoteLink({ target: routeForPath(target), openInSplit: false })
+  }
+  const createNote = useCreateBaseNote(state.status === 'ready' ? state : null, openNote)
   const label = `${baseDisplayName(embed.target)}${embed.view === null ? '' : ` · ${embed.view}`}`
 
   return (
@@ -71,9 +74,7 @@ export function EmbeddedBase({ embed }: EmbeddedBaseProps): ReactElement {
             result={state.result}
             onEdit={commitProperty}
             onCreate={createNote}
-            onOpenNote={(target) => {
-              navigateNoteLink({ target: routeForPath(target), openInSplit: false })
-            }}
+            onOpenNote={openNote}
           />
         )}
       </div>

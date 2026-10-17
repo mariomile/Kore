@@ -14,6 +14,7 @@ import {
   isTruthy,
   type BaseEvaluationContext,
   type BaseNoteRow,
+  type BasePropertyValue,
   type BaseValue,
 } from './values'
 
@@ -386,4 +387,35 @@ function groupRows(
       return compareNullsLast(left.value, right.value, groupBy.direction)
     })
     .map(([key, group]) => ({ key, rows: group.rows, dropValue: group.dropValue }))
+}
+
+/** A note just created from a view, before the index has read it. */
+export interface BaseCreatedNote {
+  readonly path: string
+  readonly title: string
+  readonly properties: Readonly<Record<string, BasePropertyValue>>
+  readonly tags: readonly string[]
+}
+
+/**
+ * Whether a note just created from the view at `viewIndex` will show in it:
+ * the view's filters run over the note as written (no links yet, created
+ * and modified `now`). False means a condition the prefill can't satisfy
+ * (`or`, `not`, dates, formulas) leaves it out.
+ */
+export function baseNoteFitsView(
+  definition: BaseDefinition,
+  viewIndex: number,
+  note: BaseCreatedNote,
+  now: number,
+): boolean {
+  const row: BaseNoteRow = {
+    ...note,
+    mtime: now,
+    ctime: now,
+    size: 0,
+    links: [],
+    backlinks: [],
+  }
+  return runBaseView(definition, viewIndex, createBaseVault([row]), now).total > 0
 }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { parseBaseFile } from './base-file'
+import { baseNoteFitsView } from './run-view'
 import { baseNewNotePrefill, baseNewNotePrefillForGroup, baseNewNoteSource } from './new-note'
 
 describe('baseNewNotePrefill', () => {
@@ -46,5 +47,23 @@ describe('baseNewNoteSource', () => {
     expect(source).toMatch(
       /^---\nid: [0-9a-z]{26}\nstatus: active\ntags:\n {2}- type\/project\n---\n# Ship it\n$/,
     )
+  })
+})
+
+describe('baseNoteFitsView', () => {
+  it('tells whether a new note passes the filters the prefill could not satisfy', () => {
+    const base = parseBaseFile(`
+filters: file.hasTag("type/project")
+views:
+  - type: table
+    filters:
+      or:
+        - status == "active"
+        - status == "hold"
+`)
+    const note = { path: 'notes/idea.md', title: 'Idea', tags: ['type/project'] }
+
+    expect(baseNoteFitsView(base, 0, { ...note, properties: { status: 'hold' } }, 0)).toBe(true)
+    expect(baseNoteFitsView(base, 0, { ...note, properties: {} }, 0)).toBe(false)
   })
 })

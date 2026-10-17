@@ -22,7 +22,7 @@ interface BaseViewContentProps {
   compact?: boolean
   /** Edits note properties in place; without it the view is read-only. */
   onEdit?: BaseEditHandler
-  /** Adds notes from a table or board ("+ New"); without it no row can be added. */
+  /** Adds notes from the view ("+ New"); without it no note can be added. */
   onCreate?: BaseCreateHandler
 }
 
@@ -31,8 +31,8 @@ interface BaseViewContentProps {
  * `kanban`), with `groupBy` shown as sections. Every note title and linked
  * value opens its note. With `onEdit`, table cells holding a note property
  * edit in place and board cards move between lanes; both write the note's
- * frontmatter, never the `.base` file. With `onCreate`, a table (each
- * grouped section) and every board lane end in a "+ New" line whose note
+ * frontmatter, never the `.base` file. With `onCreate`, every layout (each
+ * grouped section, every board lane) ends in a "+ New" line whose note
  * starts with what the view's filters and the lane imply.
  */
 export function BaseViewContent({
@@ -43,8 +43,7 @@ export function BaseViewContent({
   onCreate,
 }: BaseViewContentProps): ReactElement {
   const gutter = compact ? 'px-0' : 'px-12'
-  const canCreate =
-    onCreate !== undefined && (result.layout === 'table' || result.layout === 'board')
+  const canCreate = onCreate !== undefined
   const createIn = (dropValue: BaseResultGroup['dropValue']) => (title: string) =>
     onCreate!(title, baseNewNotePrefillForGroup(result.newNote, result.groupEditKey, dropValue))
   if (result.rows.length === 0) {

@@ -11,7 +11,7 @@ interface BaseNewRowProps {
 }
 
 /**
- * The "+ New" line at the end of a base table or board lane. The title is
+ * The "+ New" line at the end of a base view, section or board lane. The title is
  * typed in place and the note is born on Enter, never on focus, so an
  * abandoned line leaves no file behind. Escape, or leaving it empty, cancels;
  * a failed create keeps the typed title.

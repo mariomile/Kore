@@ -31,8 +31,8 @@ function BaseFileScreen({ path, view }: { path: string; view: string | null }): 
   const { navigate } = useRouter()
   const state = useBaseView(path, view)
   const commitProperty = useCommitNoteProperty()
-  const createNote = useCreateBaseNote()
   const openNote = (target: string): void => navigate(routeForPath(target))
+  const createNote = useCreateBaseNote(state.status === 'ready' ? state : null, openNote)
 
   return (
     <div className="flex h-full flex-col overflow-auto">

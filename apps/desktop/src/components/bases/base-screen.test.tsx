@@ -26,6 +26,8 @@ vi.mock('@/lib/tags/use-commit-note-property', () => ({
   useCommitNoteProperty: () => commitProperty,
   invalidateOnNextIndexApply: () => {},
 }))
+const toastAdd = vi.hoisted(() => vi.fn((_toast: { title?: string }) => 'toast-id'))
+vi.mock('@/components/ui/toast', () => ({ toast: { add: toastAdd, close: () => {} } }))
 vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({ graph: { root: '/g', name: 'g', generation: 1 } }),
 }))
@@ -64,6 +66,13 @@ views:
   - type: table
     name: Modifica
     order: [file.name, status, formula.label]
+  - type: list
+    name: Lista
+    filters:
+      or:
+        - status == "active"
+        - status == "hold"
+    order: [file.name]
   - type: kanban
     name: Board
     order: [file.name]
@@ -93,6 +102,7 @@ beforeEach(() => {
   listBaseFiles.mockReset().mockResolvedValue(['Home/Projects.base'])
   commitProperty.mockReset()
   createBaseNote.mockClear()
+  toastAdd.mockClear()
 })
 
 function drag(type: string, target: Element, data: DataTransfer): void {
@@ -177,6 +187,16 @@ describe('BaseScreen', () => {
       { folder: null, properties: { status: 'hold' }, tags: ['type/project'] },
       1,
     )
+    await Promise.resolve()
+    expect(toastAdd).not.toHaveBeenCalled()
+  })
+
+  it('adds a note from a list, saying when it falls outside the view', async () => {
+    const view = await renderScreen({ kind: 'base', path: 'Home/Projects.base', view: 'Lista' })
+    await view.getByRole('button', { name: 'New note' }).click()
+    await view.getByRole('textbox', { name: 'New note, title' }).fill('Idea')
+    await userEvent.keyboard('{Enter}')
+    await expect.poll(() => toastAdd.mock.calls[0]?.[0].title).toBe('Created “Idea”')
   })
 
   it('lists every base when no file is open', async () => {

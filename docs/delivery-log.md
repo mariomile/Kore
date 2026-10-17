@@ -7,6 +7,14 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Kore's MCP server now offers your notes, not just tools. In Claude Desktop
+  or Claude Code you can attach any note from the Kore server, and every
+  note an agent cites is a `kore://` link that opens it in Kore. Three
+  ready-made prompts: a daily review, a weekly review, and "connect a note",
+  which finds the notes it should link to. Private notes stay hidden and
+  the read-only switch keeps all of it. Note links copied from the app
+  (`kore://note/<id>`) now work with the `kore` command line too.
+
 - The command line is called `kore` now, like the app. The MCP config in
   Settings → Agents, the agent skills, `kore --help`, error messages,
   `$KORE_GRAPH` and copied note links (`kore://…`) all say Kore. Old

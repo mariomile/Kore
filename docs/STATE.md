@@ -1,5 +1,44 @@
 # Kore working state
 
+## MCP resources and prompts, 2026-10-17
+
+User ask (Mario, 2026-10-17, "Continua" on the next round): the `kore mcp`
+server from #277 only had tools. Add resources and prompts where they make
+an agent more useful on a second-brain vault, keeping private notes hidden
+and the read-only switch meaningful.
+
+- [x] Resources. Every note is a resource whose URI is the app's own deep
+  link, `kore://note/<encoded path>` (byte-for-byte `noteDeepLink`), so an
+  agent's citation opens the note in Kore and Claude Desktop / Claude Code
+  can attach any note. `resources/list` pages all public notes newest first
+  (1000 per page, from `kore list`), led by `kore://today` and
+  `kore://tasks`. Templates `kore://note/{note}` and `kore://daily/{date}`;
+  `resources/read` runs `kore show`/`today`/`tasks`, so a private or missing
+  note is a -32002 error with the CLI's message and no content.
+- [x] Prompts: `daily_review` (a day's daily note plus open tasks),
+  `weekly_review` (the last seven dailies, other notes changed this week,
+  open tasks) and `connect_note` (a note with its links and backlinks, asking
+  for missing links). They embed notes as resources and only ask the model
+  to read and propose, so `--read-only` keeps all three. Kept to three on
+  purpose: anything else is a question the chat can ask with the tools.
+- [x] `<note>` resolves a frontmatter `id` (index only, after date and path),
+  so a `kore://note/<id>` link copied from the app reads back through MCP and
+  works in every CLI command, like the app's `resolveNoteTarget`.
+- [x] Settings → Agents copy mentions notes and prompts; `docs/cli.md`.
+- Not done: `completion/complete` for prompt arguments, resource
+  subscriptions, an HTTP transport.
+
+**Validation:** Rust unit tests in `mcp.rs` (URI codec and parsing, paging,
+read errors, prompts under read-only, a review without its daily) and an
+end-to-end session over the real binary under `--read-only`
+(`apps/cli/tests/mcp.rs`: list hides the private note, read by path and by
+id, private read refused, `connect_note` lists the link); a CLI test for id
+resolution; `cargo test -p reflect-cli`, clippy `-D warnings`, fmt. Not yet
+tried from a real MCP client.
+
+**Next:** on the Mac, in Claude Desktop attach a note from the Kore server
+and run the `daily_review` prompt.
+
 ## Local graph in the note sidebar, 2026-10-17
 
 Autonomous run, third discovery round ("Giro autonomo di miglioramenti"):
@@ -2124,6 +2163,10 @@ screen: Agents then Close lands on today.
 
 ## Session log
 
+- 2026-10-17 — MCP resources and prompts: every note is a `kore://note/…`
+  resource (the app's deep link), `kore://today` and `kore://tasks`, three
+  read-only prompts (daily review, weekly review, connect a note), and the
+  CLI resolves frontmatter ids so copied app links read back.
 - 2026-10-17 — Renamed everything a user sees or types from `reflect` to
   `kore`: the CLI binary (`kore`, so the MCP config runs
   `Kore.app/Contents/MacOS/kore … mcp`), its help and error prefix,

@@ -140,9 +140,10 @@ impl Invocation {
     }
 
     fn option(mut self, name: &str, value: Option<String>) -> Self {
+        // `--name=value` in one entry: clap would read a separate value
+        // that starts with `-` as another flag.
         if let Some(value) = value {
-            self.args.push(format!("--{name}"));
-            self.args.push(value);
+            self.args.push(format!("--{name}={value}"));
         }
         self
     }
@@ -693,17 +694,14 @@ mod tests {
                     "properties": { "stage": "lead", "topics": ["a", "b"] } }),
         );
         let calls = recorder.calls.borrow();
-        assert_eq!(calls[0].0, ["search", "--limit", "5", "--", "-draft plans"]);
+        assert_eq!(calls[0].0, ["search", "--limit=5", "--", "-draft plans"]);
         assert_eq!(
             calls[1].0,
             [
                 "new",
-                "--tag",
-                "company",
-                "--set",
-                "stage=lead",
-                "--set",
-                "topics=a, b",
+                "--tag=company",
+                "--set=stage=lead",
+                "--set=topics=a, b",
                 "--stdin",
                 "--",
                 "Acme"

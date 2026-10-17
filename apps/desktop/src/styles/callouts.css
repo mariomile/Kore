@@ -1,0 +1,156 @@
+/* Obsidian callouts (`> [!note]- Title`). The file keeps a plain blockquote;
+   the live editor stamps it through ProseMirror decorations
+   (`editor/callout-highlighter.tsx`) and the read-only views through
+   `editor/callout-dom.ts`. Both land on the same attributes:
+
+   - `blockquote[data-callout=<kind>]`, plus `data-callout-fold` (none, open,
+     closed) and `data-callout-folded` while the body is hidden;
+   - the editor's title line is `.kore-callout-title` with an icon widget
+     (`.kore-callout-icon`) and a fold button (`.kore-callout-fold`);
+   - a read-only view's title is the blockquote's first paragraph
+     (`[data-callout-title]`), whose icon and chevron are pseudo-elements.
+
+   Icons are Solar `-linear` glyphs (the app's one icon family) inlined as
+   masks so the editor, the previews and a saved HTML export draw them from
+   CSS alone. */
+:root {
+  /* Solar pen-2-linear */
+  --callout-icon-note: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke='black' stroke-width='1.5'%3E%3Cpath stroke-linecap='round' d='M4 22H20'/%3E%3Cpath d='M13.8881 3.66293L14.6296 2.92142C15.8581 1.69286 17.85 1.69286 19.0786 2.92142C20.3071 4.14999 20.3071 6.14188 19.0786 7.37044L18.3371 8.11195M13.8881 3.66293C13.8881 3.66293 13.9807 5.23862 15.3711 6.62894C16.7614 8.01926 18.3371 8.11195 18.3371 8.11195M13.8881 3.66293L7.07106 10.4799C6.60933 10.9416 6.37846 11.1725 6.17992 11.4271C5.94571 11.7273 5.74491 12.0522 5.58107 12.396C5.44219 12.6874 5.33894 12.9972 5.13245 13.6167L4.25745 16.2417M4.25745 16.2417L4.04356 16.8833C3.94194 17.1882 4.02128 17.5243 4.2485 17.7515C4.47573 17.9787 4.81182 18.0581 5.11667 17.9564L5.75834 17.7426L8.38334 16.8675C9.00282 16.6611 9.31256 16.5578 9.60398 16.4189C9.94775 16.2551 10.2727 16.0543 10.5729 15.8201C10.8275 15.6215 11.0584 15.3907 11.5201 14.9289L18.3371 8.11195M5.75834 17.7426L4.25745 16.2417'/%3E%3C/g%3E%3C/svg%3E");
+  /* Solar clipboard-list-linear */
+  --callout-icon-abstract: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke='black' stroke-width='1.5'%3E%3Cpath d='M16 4.00195C18.175 4.01406 19.3529 4.11051 20.1213 4.87889C21 5.75757 21 7.17179 21 10.0002V16.0002C21 18.8286 21 20.2429 20.1213 21.1215C19.2426 22.0002 17.8284 22.0002 15 22.0002H9C6.17157 22.0002 4.75736 22.0002 3.87868 21.1215C3 20.2429 3 18.8286 3 16.0002V10.0002C3 7.17179 3 5.75757 3.87868 4.87889C4.64706 4.11051 5.82497 4.01406 8 4.00195'/%3E%3Cpath stroke-linecap='round' d='M10.5 14L17 14'/%3E%3Cpath stroke-linecap='round' d='M7 14H7.5'/%3E%3Cpath stroke-linecap='round' d='M7 10.5H7.5'/%3E%3Cpath stroke-linecap='round' d='M7 17.5H7.5'/%3E%3Cpath stroke-linecap='round' d='M10.5 10.5H17'/%3E%3Cpath stroke-linecap='round' d='M10.5 17.5H17'/%3E%3Cpath d='M8 3.5C8 2.67157 8.67157 2 9.5 2H14.5C15.3284 2 16 2.67157 16 3.5V4.5C16 5.32843 15.3284 6 14.5 6H9.5C8.67157 6 8 5.32843 8 4.5V3.5Z'/%3E%3C/g%3E%3C/svg%3E");
+  /* Solar info-circle-linear */
+  --callout-icon-info: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke='black' stroke-width='1.5'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath stroke-linecap='round' d='M12 17V11'/%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M12 8H12.0001'/%3E%3C/g%3E%3C/svg%3E");
+  /* Solar check-circle-linear */
+  --callout-icon-todo: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke='black' stroke-width='1.5'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M8.5 12.5L10.5 14.5L15.5 9.5'/%3E%3C/g%3E%3C/svg%3E");
+  /* Solar fire-linear */
+  --callout-icon-tip: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke='black' stroke-width='1.5'%3E%3Cpath d='M20 13.1111C20 20.2222 13.9556 22 10.9333 22C8.28889 22 3 20.2222 3 13.1111C3 10.3295 4.46147 8.46138 5.85996 7.39454C6.63841 6.80069 7.6304 7.39197 7.73017 8.36598L7.816 9.20382C7.92052 10.2241 8.84932 11.0606 9.70932 10.5017C11.3938 9.40705 12 6.7752 12 5.33334V5.00971C12 3.58 13.4438 2.65985 14.6023 3.49767C17.1653 5.35127 20 8.58427 20 13.1111Z'/%3E%3Cpath d='M8 18.4445C8 21.2889 10.4889 22 11.7333 22C12.8222 22 15 21.2889 15 18.4445C15 17.3435 14.4107 16.6002 13.8404 16.1713C13.4424 15.872 12.8828 16.1408 12.7459 16.6196C12.5675 17.2437 11.9228 17.636 11.5944 17.0759C11.2941 16.5638 11.2941 15.7957 11.2941 15.3334C11.2941 14.6968 10.6539 14.2847 10.1389 14.6589C9.10649 15.4091 8 16.6815 8 18.4445Z'/%3E%3C/g%3E%3C/svg%3E");
+  /* Solar check-read-linear */
+  --callout-icon-success: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke='black' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5'%3E%3Cpath d='M4 12.9L7.14286 16.5L15 7.5'/%3E%3Cpath d='M20 7.5625L11.4283 16.5625L11 16'/%3E%3C/g%3E%3C/svg%3E");
+  /* Solar question-circle-linear */
+  --callout-icon-question: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke='black' stroke-width='1.5'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath stroke-linecap='round' d='M10.125 8.875C10.125 7.83947 10.9645 7 12 7C13.0355 7 13.875 7.83947 13.875 8.875C13.875 9.56245 13.505 10.1635 12.9534 10.4899C12.478 10.7711 12 11.1977 12 11.75V13'/%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M12 16H12.0001'/%3E%3C/g%3E%3C/svg%3E");
+  /* Solar danger-triangle-linear */
+  --callout-icon-warning: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke='black' stroke-width='1.5'%3E%3Cpath d='M5.31171 10.7615C8.23007 5.58716 9.68925 3 12 3C14.3107 3 15.7699 5.58716 18.6883 10.7615L19.0519 11.4063C21.4771 15.7061 22.6897 17.856 21.5937 19.428C20.4978 21 17.7864 21 12.3637 21H11.6363C6.21356 21 3.50217 21 2.40626 19.428C1.31034 17.856 2.52291 15.7061 4.94805 11.4063L5.31171 10.7615Z'/%3E%3Cpath stroke-linecap='round' d='M12 8V13'/%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M12 16H12.0001'/%3E%3C/g%3E%3C/svg%3E");
+  /* Solar close-circle-linear */
+  --callout-icon-failure: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke='black' stroke-width='1.5'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cpath stroke-linecap='round' d='M14.5 9.50002L9.5 14.5M9.49998 9.5L14.5 14.5'/%3E%3C/g%3E%3C/svg%3E");
+  /* Solar bolt-linear */
+  --callout-icon-danger: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='black' stroke-width='1.5' d='M5.66953 9.91436L8.73167 5.77133C10.711 3.09327 11.7007 1.75425 12.6241 2.03721C13.5474 2.32018 13.5474 3.96249 13.5474 7.24712V7.55682C13.5474 8.74151 13.5474 9.33386 13.926 9.70541L13.946 9.72466C14.3327 10.0884 14.9492 10.0884 16.1822 10.0884C18.4011 10.0884 19.5106 10.0884 19.8855 10.7613C19.8917 10.7724 19.8977 10.7837 19.9036 10.795C20.2576 11.4784 19.6152 12.3475 18.3304 14.0857L15.2683 18.2287C13.2889 20.9067 12.2992 22.2458 11.3758 21.9628C10.4525 21.6798 10.4525 20.0375 10.4525 16.7528L10.4526 16.4433C10.4526 15.2585 10.4526 14.6662 10.074 14.2946L10.054 14.2754C9.6673 13.9117 9.05079 13.9117 7.81775 13.9117C5.59888 13.9117 4.48945 13.9117 4.1145 13.2387C4.10829 13.2276 4.10225 13.2164 4.09639 13.205C3.74244 12.5217 4.3848 11.6526 5.66953 9.91436Z'/%3E%3C/svg%3E");
+  /* Solar bug-linear */
+  --callout-icon-bug: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke='black' stroke-width='1.5'%3E%3Cpath d='M19 15V11.9375C19 9.76288 17.2371 8 15.0625 8H8.9375C6.76288 8 5 9.76288 5 11.9375V15C5 18.866 8.13401 22 12 22C15.866 22 19 18.866 19 15Z'/%3E%3Cpath d='M16.5 8.5V7.5C16.5 5.01472 14.4853 3 12 3C9.51472 3 7.5 5.01472 7.5 7.5V8.5'/%3E%3Cpath stroke-linecap='round' d='M19 14H22'/%3E%3Cpath stroke-linecap='round' d='M5 14H2'/%3E%3Cpath stroke-linecap='round' d='M14.5 3.5L17 2'/%3E%3Cpath stroke-linecap='round' d='M9.5 3.5L7 2'/%3E%3Cpath stroke-linecap='round' d='M20.5 20.0002L18.5 19.2002'/%3E%3Cpath stroke-linecap='round' d='M20.5 7.9998L18.5 8.7998'/%3E%3Cpath stroke-linecap='round' d='M3.5 20.0002L5.5 19.2002'/%3E%3Cpath stroke-linecap='round' d='M3.5 7.9998L5.5 8.7998'/%3E%3Cpath stroke-linecap='round' d='M12 21.5V15'/%3E%3C/g%3E%3C/svg%3E");
+  /* Solar list-linear */
+  --callout-icon-example: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke='black' stroke-linecap='round' stroke-width='1.5'%3E%3Cpath d='M20 7L4 7'/%3E%3Cpath d='M15 12L4 12'/%3E%3Cpath d='M9 17H4'/%3E%3C/g%3E%3C/svg%3E");
+  /* Solar chat-line-linear */
+  --callout-icon-quote: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='none' stroke='black' stroke-linecap='round' stroke-width='1.5'%3E%3Cpath d='M8 9H16'/%3E%3Cpath d='M8 12.5H13.5'/%3E%3Cpath d='M14.5972 19.2098C14.2595 19.4062 14.0492 19.7614 13.6288 20.4718L13.0867 21.3877C12.6035 22.204 11.3965 22.204 10.9133 21.3877L10.3712 20.4718C9.95073 19.7614 9.74049 19.4063 9.40279 19.2098C9.06509 19.0134 8.63992 19.0061 7.78958 18.9915C6.53422 18.9698 5.74689 18.8929 5.08658 18.6194C3.86144 18.1119 2.88807 17.1386 2.3806 15.9134C2 14.9946 2 13.8297 2 11.5V10.5C2 7.22657 2 5.58985 2.7368 4.38751C3.14908 3.71473 3.71473 3.14908 4.38751 2.7368C5.58985 2 7.22657 2 10.5 2H13.5C16.7734 2 18.4101 2 19.6125 2.7368C20.2853 3.14908 20.8509 3.71473 21.2632 4.38751C22 5.58985 22 7.22657 22 10.5V11.5C22 13.8297 22 14.9946 21.6194 15.9134C21.1119 17.1386 20.1386 18.1119 18.9134 18.6194C18.2531 18.8929 17.4658 18.9698 16.2104 18.9915C15.36 19.0061 14.9349 19.0134 14.5972 19.2098Z'/%3E%3C/g%3E%3C/svg%3E");
+  /* Solar alt-arrow-right-linear */
+  --callout-icon-fold: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='none' stroke='black' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M9 5L15 12L9 19'/%3E%3C/svg%3E");
+}
+
+.reflect-editor blockquote[data-callout] {
+  --callout-color: var(--blue-500);
+  --callout-icon: var(--callout-icon-note);
+  border-left: 3px solid var(--callout-color);
+  border-radius: 0 6px 6px 0;
+  background: color-mix(in oklab, var(--callout-color) 9%, transparent);
+  color: var(--text);
+  padding: 0.6em 1em;
+}
+
+.reflect-editor blockquote[data-callout='abstract'] {
+  --callout-color: var(--cyan-500);
+  --callout-icon: var(--callout-icon-abstract);
+}
+.reflect-editor blockquote[data-callout='info'] {
+  --callout-icon: var(--callout-icon-info);
+}
+.reflect-editor blockquote[data-callout='todo'] {
+  --callout-icon: var(--callout-icon-todo);
+}
+.reflect-editor blockquote[data-callout='tip'] {
+  --callout-color: var(--cyan-500);
+  --callout-icon: var(--callout-icon-tip);
+}
+.reflect-editor blockquote[data-callout='success'] {
+  --callout-color: var(--green-500);
+  --callout-icon: var(--callout-icon-success);
+}
+.reflect-editor blockquote[data-callout='question'] {
+  --callout-color: var(--amber-500);
+  --callout-icon: var(--callout-icon-question);
+}
+.reflect-editor blockquote[data-callout='warning'] {
+  --callout-color: var(--orange-500);
+  --callout-icon: var(--callout-icon-warning);
+}
+.reflect-editor blockquote[data-callout='failure'] {
+  --callout-color: var(--red-500);
+  --callout-icon: var(--callout-icon-failure);
+}
+.reflect-editor blockquote[data-callout='danger'] {
+  --callout-color: var(--red-500);
+  --callout-icon: var(--callout-icon-danger);
+}
+.reflect-editor blockquote[data-callout='bug'] {
+  --callout-color: var(--red-500);
+  --callout-icon: var(--callout-icon-bug);
+}
+.reflect-editor blockquote[data-callout='example'] {
+  --callout-color: var(--purple-500);
+  --callout-icon: var(--callout-icon-example);
+}
+.reflect-editor blockquote[data-callout='quote'] {
+  --callout-color: var(--coolgray-400);
+  --callout-icon: var(--callout-icon-quote);
+}
+
+/* The title: the editor's first line, or a read-only view's first paragraph. */
+.reflect-editor blockquote[data-callout] :is(.kore-callout-title, .kore-callout-label),
+.reflect-editor blockquote[data-callout] > [data-callout-title] {
+  color: var(--callout-color);
+  font-weight: 600;
+}
+
+.reflect-editor blockquote[data-callout] .kore-callout-icon,
+.reflect-editor blockquote[data-callout] > [data-callout-title]::before {
+  content: '';
+  display: inline-block;
+  width: 1.05em;
+  height: 1.05em;
+  margin-right: 0.4em;
+  vertical-align: -0.17em;
+  background-color: var(--callout-color);
+  mask: var(--callout-icon) center / contain no-repeat;
+}
+
+.reflect-editor blockquote[data-callout] .kore-callout-fold,
+.reflect-editor
+  blockquote[data-callout]:not([data-callout-fold='none'])
+  > [data-callout-title]::after {
+  content: '';
+  display: inline-block;
+  width: 0.9em;
+  height: 0.9em;
+  margin-left: 0.35em;
+  padding: 0;
+  border: 0;
+  vertical-align: -0.1em;
+  background-color: var(--callout-color);
+  mask: var(--callout-icon-fold) center / contain no-repeat;
+  transform: rotate(90deg);
+  transition: transform 120ms ease;
+  cursor: pointer;
+}
+
+.reflect-editor blockquote[data-callout][data-callout-folded] .kore-callout-fold,
+.reflect-editor blockquote[data-callout][data-callout-folded] > [data-callout-title]::after {
+  transform: none;
+}
+
+.reflect-editor blockquote[data-callout]:not([data-callout-fold='none']) > [data-callout-title] {
+  cursor: pointer;
+}
+
+/* The `[!type]±` token, hidden while the caret is off the title line. */
+.reflect-editor blockquote[data-callout] .kore-callout-marker,
+.reflect-editor blockquote[data-callout] .kore-callout-hidden,
+.reflect-editor blockquote[data-callout][data-callout-folded] > :not(:first-child) {
+  display: none;
+}

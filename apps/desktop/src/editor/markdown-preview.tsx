@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useRef, type ReactElement } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, type ReactElement } from 'react'
 import { MarkdownView } from '@meowdown/react'
+import { separateCalloutTitles } from '@reflect/core'
+import { decorateCallouts, toggleCalloutFromClick } from '@/editor/callout-dom'
 import { useOpenExternalLink } from '@/editor/open-external-link'
 import { cn } from '@/lib/utils'
 import { resolveWikiEmbed } from '@/editor/resolve-wiki-embed'
@@ -13,6 +15,10 @@ import { resolveWikiEmbed } from '@/editor/resolve-wiki-embed'
  *
  * `content` is live: changing it re-renders the preview, so one mounted preview
  * can follow a moving selection (the palette's preview pane).
+ *
+ * Obsidian callouts get their title, icon and color here too
+ * (`callout-dom.ts`); an interactive preview folds `[!x]-`/`[!x]+` callouts
+ * on a title click, in the view only.
  */
 
 interface MarkdownPreviewProps {
@@ -67,20 +73,61 @@ export function MarkdownPreview({
   )
   const onWikilinkClickStable = useCallback(
     (payload: { target: string; event: MouseEvent | KeyboardEvent; mod: boolean }) =>
-      navigateRef.current?.({ target: payload.target, openInSplit: payload.mod }),
+      navigateRef.current?.({
+        target: payload.target,
+        openInSplit: payload.mod,
+      }),
     [],
   )
 
+  const markdown = useMemo(() => separateCalloutTitles(content), [content])
+  const hostRef = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    const host = hostRef.current
+    if (host === null) {
+      return
+    }
+    decorateCallouts(host)
+    // MarkdownView may re-render its tree after this commit; our own text
+    // edits re-trigger this too, and decorateCallouts skips what it stamped.
+    const observer = new MutationObserver(() => {
+      decorateCallouts(host)
+    })
+    observer.observe(host, {
+      subtree: true,
+      childList: true,
+      characterData: true,
+    })
+    return () => {
+      observer.disconnect()
+    }
+  }, [])
+
   return (
-    <MarkdownView
-      markdown={content}
-      markMode="hide"
-      interactive={interactive}
-      resolveImageUrl={resolveImageUrlStable}
-      resolveWikiEmbed={resolveWikiEmbed}
-      {...(interactive ? { onLinkClick: openExternalLink } : {})}
-      {...(navigates ? { onWikilinkClick: onWikilinkClickStable } : {})}
-      className={cn('reflect-editor', className)}
-    />
+    <div
+      ref={hostRef}
+      className="contents"
+      {...(interactive
+        ? {
+            onClick: (event) => {
+              if (toggleCalloutFromClick(event.target)) {
+                event.preventDefault()
+                event.stopPropagation()
+              }
+            },
+          }
+        : {})}
+    >
+      <MarkdownView
+        markdown={markdown}
+        markMode="hide"
+        interactive={interactive}
+        resolveImageUrl={resolveImageUrlStable}
+        resolveWikiEmbed={resolveWikiEmbed}
+        {...(interactive ? { onLinkClick: openExternalLink } : {})}
+        {...(navigates ? { onWikilinkClick: onWikilinkClickStable } : {})}
+        className={cn('reflect-editor', className)}
+      />
+    </div>
   )
 }

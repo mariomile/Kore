@@ -1,24 +1,20 @@
 import { useCallback } from 'react'
 import type { SlashMenuItem, SlashMenuSearchHandler } from '@meowdown/react'
-import { CALLOUT_KINDS, formatCalloutBlock, type CalloutKind } from '@reflect/core'
+import { CALLOUT_ALIASES, CALLOUT_KINDS, formatCalloutBlock, type CalloutKind } from '@reflect/core'
 import type { NoteEditorHandle } from './note-editor'
 
-const CALLOUT_ROWS: { kind: CalloutKind; label: string; keywords: string[] }[] = [
-  { kind: 'note', label: 'Callout: Note', keywords: ['callout', 'note', 'info', 'alert'] },
-  { kind: 'tip', label: 'Callout: Tip', keywords: ['callout', 'tip', 'hint'] },
-  {
-    kind: 'important',
-    label: 'Callout: Important',
-    keywords: ['callout', 'important', 'alert'],
-  },
-  { kind: 'warning', label: 'Callout: Warning', keywords: ['callout', 'warning'] },
-  { kind: 'caution', label: 'Callout: Caution', keywords: ['callout', 'caution', 'danger'] },
-]
+function calloutKeywords(kind: CalloutKind): string[] {
+  const aliases = Object.entries(CALLOUT_ALIASES)
+    .filter(([, target]) => target === kind)
+    .map(([alias]) => alias)
+  return ['callout', kind, ...aliases]
+}
 
 /**
- * The editor's `/` menu rows for GitHub-style alert callouts. Selecting a
- * row inserts `> [!NOTE]` (etc.) markdown; meowdown stores it as a
- * blockquote, and {@link CalloutHighlighter} paints the kind.
+ * The editor's `/` menu rows for Obsidian callouts, one per kind (aliases
+ * match as keywords). Selecting a row inserts `> [!NOTE]` (etc.) markdown;
+ * meowdown stores it as a blockquote, and {@link CalloutHighlighter} paints
+ * the kind.
  *
  * `getEditor` is read at select time so a late resolve after the pane
  * unmounted inserts nowhere rather than somewhere stale.
@@ -28,13 +24,13 @@ export function useCalloutSlashItems(
 ): SlashMenuSearchHandler {
   return useCallback(
     async (_query: string): Promise<SlashMenuItem[]> =>
-      CALLOUT_ROWS.filter((row) => CALLOUT_KINDS.includes(row.kind)).map((row) => ({
-        id: `callout:${row.kind}`,
-        label: row.label,
-        keywords: row.keywords,
+      CALLOUT_KINDS.map((kind) => ({
+        id: `callout:${kind}`,
+        label: `Callout: ${kind.charAt(0).toUpperCase()}${kind.slice(1)}`,
+        keywords: calloutKeywords(kind),
         detail: 'Highlighted callout',
         onSelect: () => {
-          getEditor()?.insertMarkdown(formatCalloutBlock(row.kind))
+          getEditor()?.insertMarkdown(formatCalloutBlock(kind))
         },
       })),
     [getEditor],

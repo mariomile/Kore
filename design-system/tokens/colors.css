@@ -63,6 +63,12 @@
   --green-500: #22c55e; /* success                       */
   --amber-500: #f59e0b; /* warning                       */
 
+  /* ---- Callout hues (Obsidian's callout palette) ---------- */
+  --blue-500: #3b82f6; /* note, info, todo             */
+  --cyan-500: #06b6d4; /* abstract, tip                */
+  --orange-500: #f97316; /* warning                       */
+  --purple-500: #a855f7; /* example                       */
+
   /* ============================================================
      SEMANTIC ALIASES — light (default) app theme
      ============================================================ */

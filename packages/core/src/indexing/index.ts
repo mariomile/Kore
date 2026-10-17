@@ -248,7 +248,14 @@ export {
   attachFormulaColumns,
   type RollupLookup,
 } from './rollups'
-export { parseSearchQuery, type ParsedSearchQuery, type SearchFilters } from './filter-query'
+export {
+  describeSearchFilters,
+  emptySearchFilters,
+  parseSearchQuery,
+  type ParsedSearchQuery,
+  type SearchFilterChip,
+  type SearchFilters,
+} from './filter-query'
 export {
   searchNotes,
   searchWithFilters,

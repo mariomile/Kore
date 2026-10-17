@@ -1,6 +1,6 @@
 import { memo, useEffect, useRef, useState, type KeyboardEvent, type ReactElement } from 'react'
 import { Command } from 'cmdk'
-import { parseHighlights, parseSearchQuery } from '@reflect/core'
+import { describeSearchFilters, parseHighlights, parseSearchQuery } from '@reflect/core'
 import { Bookmark, BookmarkPlus, CalendarDays, Close, Note } from '@/components/icons'
 import { getIsComposing, isModEvent } from '@meowdown/core'
 import { Kbd } from '@/components/kbd'
@@ -18,6 +18,7 @@ import { COMMAND_ICONS, FALLBACK_COMMAND_ICON } from './command-icons'
 import type { NoteEntry } from './entries'
 import { NotePreview } from './note-preview'
 import { usePalette } from './palette-provider'
+import { SearchFilterChips } from './search-filter-chips'
 import { usePaletteResults } from './use-palette-results'
 
 /**
@@ -129,7 +130,8 @@ export function CommandPalette({ context }: CommandPaletteProps): ReactElement |
   const savedSearches = settings.savedSearches
   const trimmedQuery = query.trim()
   const alreadySaved = savedSearches.some((saved) => saved.query === trimmedQuery)
-  const offerSave = trimmedQuery !== '' && parseSearchQuery(trimmedQuery).filtered && !alreadySaved
+  const parsedQuery = parseSearchQuery(trimmedQuery)
+  const offerSave = trimmedQuery !== '' && parsedQuery.filtered && !alreadySaved
   const saveSearch = (): void => {
     updateSettings({
       savedSearches: [...savedSearches, { id: crypto.randomUUID(), query: trimmedQuery }],
@@ -199,6 +201,9 @@ export function CommandPalette({ context }: CommandPaletteProps): ReactElement |
             placeholder="Search notes, or > for commands…"
             className="reflect-palette-input"
           />
+          {splitLayout ? (
+            <SearchFilterChips chips={describeSearchFilters(parsedQuery.filters)} />
+          ) : null}
           <div className={cn(splitLayout && 'flex h-[min(60vh,36rem)]')}>
             <Command.List
               className={cn('reflect-palette-list', splitLayout && 'reflect-palette-list-split')}
@@ -369,6 +374,11 @@ export function CommandPalette({ context }: CommandPaletteProps): ReactElement |
             <span className="flex items-center gap-1.5">
               <Kbd>esc</Kbd> Close
             </span>
+            {splitLayout ? (
+              <span className="ml-auto truncate font-mono">
+                "phrase" -word tag: path: file: [prop:value]
+              </span>
+            ) : null}
           </div>
         </Command>
       </div>

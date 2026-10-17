@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { emptySearchFilters } from '@reflect/core'
 import {
   EMPTY_ALL_NOTES_FILTERS,
   buildAllNotesSearch,
@@ -62,6 +63,7 @@ describe('buildAllNotesSearch', () => {
     expect(parsed.text).toBe('quarterly')
     expect(parsed.filtered).toBe(true)
     expect(parsed.filters).toEqual({
+      ...emptySearchFilters(),
       tags: ['book'],
       dailyOnly: true,
       pinnedOnly: true,
@@ -71,7 +73,6 @@ describe('buildAllNotesSearch', () => {
       linkedFromPath: 'notes/hub.md',
       updatedAfterMs: 1000,
       updatedBeforeMs: null,
-      properties: [],
     })
   })
 
@@ -107,6 +108,11 @@ describe('buildAllNotesSearch', () => {
 describe('searchPlanFor', () => {
   it('caps ranked free-text searches', () => {
     const plan = searchPlanFor(buildAllNotesSearch('meeting', EMPTY_ALL_NOTES_FILTERS, null))
+    expect(plan).toEqual({ limit: 50 })
+  })
+
+  it('caps a phrase-only query as a ranked search too', () => {
+    const plan = searchPlanFor(buildAllNotesSearch('"next quarter"', EMPTY_ALL_NOTES_FILTERS, null))
     expect(plan).toEqual({ limit: 50 })
   })
 

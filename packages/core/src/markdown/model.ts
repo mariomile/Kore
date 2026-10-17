@@ -229,8 +229,10 @@ export interface ParsedTask extends TaskMarker {
  * relations), with file-absolute spans like every body link.
  * 6 — `tasks[].dueTime` from `@HH:MM` after the due-date link.
  * 7 — `tags` also carries the frontmatter `tags:` names, ahead of body
- * hashtags (TDR 0005 amendment). */
-export const PARSED_NOTE_VERSION = 7
+ * hashtags (TDR 0005 amendment).
+ * 8 — `previewText`: the plain text without code, comments, and Obsidian
+ * plugin syntax, for list-row previews. */
+export const PARSED_NOTE_VERSION = 8
 
 /** The full parse of one note — the stable contract downstream plans depend on. */
 export interface ParsedNote {
@@ -253,4 +255,10 @@ export interface ParsedNote {
   tasks: ParsedTask[]
   /** Plain-text rendering of the body for FTS (Plan 08) + AI context (Plan 10). */
   text: string
+  /**
+   * {@link text} minus what a reader never sees as prose: code and math blocks,
+   * HTML blocks and comments, Obsidian `%%` comments, Templater tags, inline
+   * Dataview queries, callout `[!type]` markers. Feeds the list-row preview only.
+   */
+  previewText: string
 }

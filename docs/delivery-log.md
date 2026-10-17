@@ -7,6 +7,57 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Every note now shows its local graph in the sidebar, like Obsidian's:
+  the note in the middle, what it links to and what links to it
+  (including `up:` and `related:`), with a switch to see two steps out
+  and to show tags. Click a note to open it, ⌘-click to open it beside
+  this one, or "Open in Graph" to explore the same neighborhood on the
+  full map. Hub notes keep their strongest links and say how many more
+  there are.
+
+- One note that fails to render no longer blanks the whole app. The note's
+  pane shows what went wrong with "Reload pane", "Reveal in Finder" and
+  "Copy path", while the sidebar, tabs and other panes keep working, and the
+  error is written to the app log. Previews (⌘K, hover cards) get the same
+  protection.
+
+- Folders open as pages. Click a folder's name in the sidebar to see it as
+  a page: its parent folders above the title, its subfolders as chips, and
+  its notes in the same list or grid as All notes, with a filter box and a
+  switch to include notes in subfolders. "+" creates a note right in that
+  folder. Long folders in the sidebar now stop at 50 notes with a "Show
+  all" link to the page.
+
+- Nested tags show as a tree. In the sidebar's Types section, `#domain/ai`
+  and `#domain/design` now sit under one expandable "Domain" row instead of
+  a long flat list, each showing just its own name. A parent's count covers
+  everything below it, and opening `#domain` lists every note tagged with
+  any `domain/…` tag, as in Obsidian.
+
+- Obsidian callouts render in full. Every Obsidian type (note, abstract,
+  info, todo, tip, success, question, warning, failure, danger, bug,
+  example, quote) and its aliases (`tldr`, `faq`, `cite`, …) gets its own
+  icon and color, a custom title replaces the type name, unknown types look
+  like a note, and `[!x]-` / `[!x]+` callouts fold with a click without
+  touching the file. They look the same in previews, transclusions, Canvas
+  cards, backlinks and HTML exports.
+
+- Search understands Obsidian's operators. In ⌘K (and All notes on
+  iPhone) `"exact phrase"` finds the words in order, `-word` leaves out
+  notes containing it, `tag:#type` matches `#type` and nested tags like
+  `#type/person`, `path:CRM/` and `file:name` narrow by folder and file
+  name, and `[status:active]` filters by a property. Each operator Kore
+  understood shows as a chip under the search box.
+
+- Add notes from a base, as in a Notion database. Every base view (table,
+  cards, list), each grouped section and every board lane end in "+ New": type a title,
+  press Enter, and the note is created already matching the view: the
+  base's tag, the status or other property its filters ask for, the lane's
+  value, and the folder the base reads from (otherwise the vault's usual
+  new-note folder). If the view's other conditions still leave the note
+  out, Kore says so and offers to open it. The `.base` file itself is never
+  changed.
+
 - Connect Claude Desktop, Claude Code, Cursor or any MCP client to your
   notes. `reflect mcp` serves the open graph as tools (search, read a note,
   backlinks, tasks, today's daily, collections; capture, append, create,

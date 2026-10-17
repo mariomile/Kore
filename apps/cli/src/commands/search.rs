@@ -10,6 +10,8 @@
 //! `linked-from:` target that resolves to nothing matches nothing; a
 //! private one is refused, like every other surface.
 
+use rusqlite::OptionalExtension;
+
 use crate::commands::output::{print_json, HitJson, SearchJson};
 use crate::commands::{require_index, still_public_on_disk};
 use crate::error::CliError;
@@ -25,6 +27,11 @@ use crate::search_query::parse_search_query;
 
 /// A `links:` / `linked-from:` target as a graph path: `Ok(None)` when it
 /// names no note (the filter then matches nothing), refused when private.
+/// The palette's `resolveWikiTarget` answers first — the ranked `note_keys`
+/// claim for the folded target, so a date finds the daily (wherever the
+/// vault keeps it) or a note titled with that date, exactly as `[[links]]`
+/// do. Only a miss falls back to `show`'s resolution, which adds explicit
+/// graph paths and notes the index has not caught up with.
 fn resolve_link_target(
     graph: &Graph,
     conn: &rusqlite::Connection,
@@ -33,15 +40,24 @@ fn resolve_link_target(
     let Some(target) = target else {
         return Ok(Some(None));
     };
-    match resolve_note(target, &graph.root, Some(conn)) {
-        Ok(resolved) => {
-            let rel_path = resolved.rel_path().to_string();
-            ensure_not_private(&graph.root, &rel_path)?;
-            Ok(Some(Some(rel_path)))
-        }
-        Err(CliError::NotFound(_)) => Ok(None),
-        Err(error) => Err(error),
-    }
+    let key = fold_key(target);
+    let claimed: Option<String> = conn
+        .query_row(
+            "SELECT note_path FROM note_keys WHERE key = ?1 LIMIT 1",
+            [&key],
+            |row| row.get(0),
+        )
+        .optional()?;
+    let rel_path = match claimed {
+        Some(rel_path) => rel_path,
+        None => match resolve_note(target, &graph.root, Some(conn)) {
+            Ok(resolved) => resolved.rel_path().to_string(),
+            Err(CliError::NotFound(_)) => return Ok(None),
+            Err(error) => return Err(error),
+        },
+    };
+    ensure_not_private(&graph.root, &rel_path)?;
+    Ok(Some(Some(rel_path)))
 }
 
 pub fn run(graph: &Graph, json: bool, query: &str, limit: usize) -> Result<(), CliError> {

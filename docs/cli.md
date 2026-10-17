@@ -136,7 +136,7 @@ query typed in either place returns the same notes:
 | `file:name`, `-file:x` | the file name contains (or does not contain) the text |
 | `[key]`, `[key:value]`, `prop:key`, `prop:key=value` | the frontmatter property exists, or equals the value case-insensitively (a list entry and a `[[value]]` relation match too) |
 | `is:daily`, `is:pinned` | daily notes only, pinned notes only |
-| `links:Note`, `linked-from:Note` | links to, or is linked from, the note (resolved like `show`); a target that names no note matches nothing, and a private one is refused (exit `3`) |
+| `links:Note`, `linked-from:Note` | links to, or is linked from, the note (resolved like a `[[Note]]` link, then like `show`); a target that names no note matches nothing, and a private one is refused (exit `3`) |
 | `updated:>YYYY-MM-DD`, `updated:<…`, `updated:…` | modified on or after, before, or during the local day |
 
 A half-formed token (`path:` with no value, an impossible date, `#123`) stays

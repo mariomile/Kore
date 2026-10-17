@@ -626,6 +626,13 @@ fn search_filters_by_property_and_link() {
         search_paths(&fixture, "linked-from:Journal/2026-10-01.md"),
         ["CRM/People/Ada.md"]
     );
+    // A date resolves like a `[[2026-10-01]]` link: to the note claiming it
+    // (here a dated journal note outside `daily/`), not a constructed path.
+    fixture.insert_wiki_link("CRM/People/Ada.md", "2026-10-01", 1);
+    assert_eq!(
+        search_paths(&fixture, "links:2026-10-01"),
+        ["CRM/People/Ada.md"]
+    );
     // A target that names no note matches nothing rather than being ignored.
     assert!(search_paths(&fixture, "roadmap links:Nobody").is_empty());
 }

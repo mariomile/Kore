@@ -168,13 +168,13 @@ describe('BacklinkSnippet task checkboxes', () => {
 })
 
 describe('BacklinkSnippet callouts', () => {
-  it('draws a callout with its title instead of the raw marker, shown open', async () => {
+  it('draws a dedented callout context as a callout, shown open', async () => {
     const view = await render(
       <QueryClientProvider
         client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
       >
         <BacklinkSnippet
-          text={'> [!faq]- Why [[Roadmap]]?\n> Because.'}
+          text={'[!faq]- Why [[Roadmap]]?\nBecause.'}
           notePath="notes/meeting.md"
           tasks={[]}
           onWikilinkClick={() => {}}

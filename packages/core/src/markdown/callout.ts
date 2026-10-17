@@ -162,3 +162,19 @@ export function separateCalloutTitles(markdown: string): string {
   }
   return out.join('\n')
 }
+
+/**
+ * A block lifted out of a callout keeps its `[!type]` marker line but loses
+ * the `> ` prefixes (the backlinks panel dedents a quoted paragraph). Put the
+ * quote back when the text opens with a marker, so it renders as the callout
+ * it came from; anything else is returned unchanged.
+ */
+export function requoteCalloutBlock(text: string): string {
+  if (parseCalloutMarker(text.split('\n', 1)[0] ?? '') === null) {
+    return text
+  }
+  return text
+    .split('\n')
+    .map((line) => (line === '' ? '>' : `> ${line}`))
+    .join('\n')
+}

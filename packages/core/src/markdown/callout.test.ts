@@ -3,6 +3,7 @@ import {
   calloutLabel,
   formatCalloutBlock,
   parseCalloutMarker,
+  requoteCalloutBlock,
   separateCalloutTitles,
 } from './callout'
 
@@ -96,5 +97,12 @@ describe('separateCalloutTitles', () => {
     expect(separateCalloutTitles(untouched)).toBe(untouched)
     const longFence = '````\n```\n> [!note] x\n> y\n````'
     expect(separateCalloutTitles(longFence)).toBe(longFence)
+  })
+})
+
+describe('requoteCalloutBlock', () => {
+  it('quotes a dedented callout paragraph again and leaves prose alone', () => {
+    expect(requoteCalloutBlock('[!faq]- Why?\nBecause.')).toBe('> [!faq]- Why?\n> Because.')
+    expect(requoteCalloutBlock('Plain [[Roadmap]] mention')).toBe('Plain [[Roadmap]] mention')
   })
 })

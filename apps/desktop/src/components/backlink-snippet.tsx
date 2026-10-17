@@ -1,7 +1,7 @@
 import { useMemo, useRef, type ReactElement } from 'react'
 import { MarkdownView } from '@meowdown/react'
 import type { WikilinkClickHandler } from '@meowdown/core'
-import { separateCalloutTitles, type SnippetTask } from '@reflect/core'
+import { requoteCalloutBlock, separateCalloutTitles, type SnippetTask } from '@reflect/core'
 import { useOpenExternalLink } from '@/editor/open-external-link'
 import { useCalloutDom } from '@/editor/use-callout-dom'
 import { useSnippetTaskToggle } from '@/hooks/use-snippet-task-toggle'
@@ -34,8 +34,9 @@ interface BacklinkSnippetProps {
  * (the `reflect-backlink-snippet` CSS keeps them inert-looking). The
  * `reflect-editor` class shares the editor's chip styling; the
  * `reflect-backlink-snippet` wrapper keeps it in the panel's compact line box.
- * Callouts get their title, icon and color like any preview, always shown
- * open for the same reason collapsed bullets are.
+ * A context lifted out of a callout arrives dedented, so it is quoted again
+ * (`requoteCalloutBlock`) and drawn like any preview's callout, always open
+ * for the same reason collapsed bullets are.
  */
 export function BacklinkSnippet({
   text,
@@ -46,7 +47,7 @@ export function BacklinkSnippet({
 }: BacklinkSnippetProps): ReactElement {
   const onTaskClick = useSnippetTaskToggle(notePath, tasks)
   const openExternalLink = useOpenExternalLink()
-  const markdown = useMemo(() => separateCalloutTitles(text), [text])
+  const markdown = useMemo(() => separateCalloutTitles(requoteCalloutBlock(text)), [text])
   const hostRef = useRef<HTMLDivElement>(null)
   useCalloutDom(hostRef, false)
   return (

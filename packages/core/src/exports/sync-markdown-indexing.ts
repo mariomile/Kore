@@ -105,6 +105,7 @@ export {
   calloutLabel,
   formatCalloutBlock,
   parseCalloutMarker,
+  requoteCalloutBlock,
   separateCalloutTitles,
   type CalloutFold,
   type CalloutKind,

@@ -47,19 +47,19 @@ enum Command {
         #[arg(long, default_value_t = 20)]
         limit: usize,
     },
-    /// Print a note, resolved by date, path, title, or alias
+    /// Print a note, resolved by date, path, id, title, or alias
     Show {
-        /// A YYYY-MM-DD date, graph-relative path, note title, or alias
+        /// A YYYY-MM-DD date, graph-relative path, note id, title, or alias
         note: String,
     },
     /// Resolve a note to its absolute path (for piping into editors/tools)
     Path {
-        /// A YYYY-MM-DD date, graph-relative path, note title, or alias
+        /// A YYYY-MM-DD date, graph-relative path, note id, title, or alias
         note: String,
     },
     /// Open a note in the Kore app via its kore:// deep link
     Open {
-        /// A YYYY-MM-DD date, graph-relative path, note title, or alias
+        /// A YYYY-MM-DD date, graph-relative path, note id, title, or alias
         note: String,
         /// Print the URL without launching the app
         #[arg(long)]
@@ -85,13 +85,13 @@ enum Command {
         /// Append an open task (`+ [ ]`) instead of a plain bullet
         #[arg(long)]
         task: bool,
-        /// Target note (date, path, title, or alias) instead of today's daily
+        /// Target note (date, path, id, title, or alias) instead of today's daily
         #[arg(long, value_name = "NOTE")]
         to: Option<String>,
     },
     /// List the notes linking to a note, from the search index
     Backlinks {
-        /// A YYYY-MM-DD date, graph-relative path, note title, or alias
+        /// A YYYY-MM-DD date, graph-relative path, note id, title, or alias
         note: String,
     },
     /// List the most recently updated notes, newest first
@@ -132,12 +132,12 @@ enum Command {
     },
     /// Print a note's frontmatter properties (typed), aliases, and tags
     Properties {
-        /// A YYYY-MM-DD date, graph-relative path, note title, or alias
+        /// A YYYY-MM-DD date, graph-relative path, note id, title, or alias
         note: String,
     },
     /// List the wiki links a note makes, resolved through the index
     Links {
-        /// A YYYY-MM-DD date, graph-relative path, note title, or alias
+        /// A YYYY-MM-DD date, graph-relative path, note id, title, or alias
         note: String,
     },
     /// Create a note under notes/ with a title-derived filename
@@ -160,7 +160,7 @@ enum Command {
     },
     /// Set frontmatter properties, typed by the note's tag schemas
     Set {
-        /// A YYYY-MM-DD date, graph-relative path, note title, or alias
+        /// A YYYY-MM-DD date, graph-relative path, note id, title, or alias
         note: String,
         /// key=value pairs (lists comma-separated; relations by title)
         #[arg(value_name = "KEY=VALUE")]
@@ -171,14 +171,14 @@ enum Command {
     },
     /// Add a #tag to a note as a trailing line (typed tags stamp `created`)
     Tag {
-        /// A YYYY-MM-DD date, graph-relative path, note title, or alias
+        /// A YYYY-MM-DD date, graph-relative path, note id, title, or alias
         note: String,
         /// The tag (with or without the #)
         tag: String,
     },
     /// Remove a note's trailing #tag line (inline tags in prose are left alone)
     Untag {
-        /// A YYYY-MM-DD date, graph-relative path, note title, or alias
+        /// A YYYY-MM-DD date, graph-relative path, note id, title, or alias
         note: String,
         /// The tag (with or without the #)
         tag: String,
@@ -196,7 +196,7 @@ enum Command {
     },
     /// Append a markdown block to a note (after one blank line)
     Append {
-        /// A YYYY-MM-DD date, graph-relative path, note title, or alias
+        /// A YYYY-MM-DD date, graph-relative path, note id, title, or alias
         note: String,
         /// The markdown to append
         #[arg(required_unless_present = "stdin")]

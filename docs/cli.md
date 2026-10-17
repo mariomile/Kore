@@ -20,7 +20,7 @@ kore links <note>          # the wiki links a note makes, resolved
 kore today                 # print today's daily note
 kore today --path          # its absolute path (works before the file exists)
 kore search <query>        # ranked full-text search over the index
-kore show <note>           # print a note by date, path, title, or alias
+kore show <note>           # print a note by date, path, id, title, or alias
 kore path <note>           # resolve a note to its absolute path
 kore open <note>           # open a note in the app (kore:// deep link)
 kore tasks                 # the graph's open tasks (--all includes done)
@@ -162,8 +162,10 @@ Resolves `<note>` and prints the raw markdown. Resolution order:
 1. A calendar-valid `YYYY-MM-DD` → that daily note.
 2. An explicit path (graph-relative like `notes/foo.md`, or absolute inside
    the graph).
-3. A title match (case-insensitive, trimmed).
-4. An alias match (from `aliases:` frontmatter, or a v1 subject-alias
+3. A frontmatter `id` (the form the app's "Copy deep link" puts in
+   `kore://note/<id>`), when the index is open.
+4. A title match (case-insensitive, trimmed).
+5. An alias match (from `aliases:` frontmatter, or a v1 subject-alias
    segment of a `//` title like `Charlotte MacCaw // Mum`).
 
 Works with or without the index — when the index is missing, titles/aliases
@@ -594,6 +596,27 @@ fails (not found, private, no index) comes back as a tool result with
 `--read-only` drops the writing tools (the last two rows) from `tools/list`
 and refuses them if called. Tools carry `readOnlyHint`
 annotations either way, so clients that confirm writes can tell them apart.
+
+Resources are the notes themselves, addressed by the app's deep links, so a
+URI an agent cites opens the note in Kore and a link copied from the app
+reads back:
+
+| URI | Reads |
+|---|---|
+| `kore://note/<note>` | `show` — a URI-encoded path, frontmatter id, title, or alias |
+| `kore://daily/<date>`, `kore://today` | `show <date>`, `today` |
+| `kore://tasks` | `tasks` (JSON) |
+
+`resources/list` pages every public note newest first (1000 a page, from
+`list`), as `kore://note/<encoded path>`, after `kore://today` and
+`kore://tasks`. A private or missing note is a `-32002` error carrying the
+CLI's message.
+
+Prompts embed notes as resources and only ask the model to read and
+propose, so `--read-only` keeps them: `daily_review` (`date`, default
+today: the daily note and open tasks), `weekly_review` (the last seven
+dailies, other notes changed since, open tasks) and `connect_note` (`note`:
+the note with its links and backlinks, asking which links are missing).
 
 ## Development notes
 

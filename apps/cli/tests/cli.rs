@@ -690,6 +690,28 @@ fn show_resolves_by_title_alias_date_and_path() {
 }
 
 #[test]
+fn show_resolves_a_frontmatter_id_like_the_apps_deep_links() {
+    let fixture = graph();
+    fixture.write_note(
+        "notes/project-x.md",
+        "---\nid: 01hzy3v9k2m4n6p8q0r2s4t6vw\n---\n# Project X\nthe plan\n",
+    );
+    fixture.write_note(
+        "notes/hidden.md",
+        "---\nid: 01hzy3v9k2m4n6p8q0r2s4t6zz\nprivate: true\n---\n# Hidden\nsecret\n",
+    );
+    fixture.build_index();
+
+    let by_id = kore(&fixture, &["show", "01hzy3v9k2m4n6p8q0r2s4t6vw"]);
+    assert!(by_id.status.success(), "{}", stderr(&by_id));
+    assert!(stdout(&by_id).contains("the plan"));
+
+    let private = kore(&fixture, &["show", "01hzy3v9k2m4n6p8q0r2s4t6zz"]);
+    assert_eq!(private.status.code(), Some(3));
+    assert!(!stdout(&private).contains("secret"));
+}
+
+#[test]
 fn show_resolves_by_title_and_alias_without_an_index() {
     let fixture = graph();
     fixture.write_note(

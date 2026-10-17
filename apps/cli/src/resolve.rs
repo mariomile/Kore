@@ -1,7 +1,8 @@
 //! `<note>` argument resolution for `show`/`path`. The order mirrors
 //! `resolveWikiLink` (`packages/core/src/markdown/resolve.ts`) with a path
 //! convenience first-class for a CLI: calendar-valid `YYYY-MM-DD` → explicit
-//! graph path → title fold-key → alias fold-key → filename-stem fold-key.
+//! graph path → frontmatter `id` → title fold-key → alias fold-key →
+//! filename-stem fold-key.
 //! Index-backed when the index is open, with a file scan deriving the same
 //! keys on a miss (or with no index at all).
 
@@ -92,6 +93,17 @@ fn index_lookup(conn: &Connection, key: &str) -> Result<Vec<String>, CliError> {
     )
 }
 
+/// The note carrying frontmatter `id`; two claimants after a sync fork
+/// resolve to the first path, the same rule as every other tier.
+fn id_lookup(conn: &Connection, id: &str) -> Result<Option<String>, CliError> {
+    Ok(collect_paths(
+        conn,
+        "SELECT path FROM notes WHERE id = ?1 AND kind != 'template' ORDER BY path LIMIT 1",
+        id,
+    )?
+    .pop())
+}
+
 fn collect_paths(conn: &Connection, sql: &str, key: &str) -> Result<Vec<String>, CliError> {
     let mut statement = conn.prepare(sql)?;
     let rows = statement.query_map(params![key], |row| row.get::<_, String>(0))?;
@@ -162,6 +174,14 @@ pub fn resolve_note(
     if let Some(rel_path) = as_graph_path(trimmed, root) {
         return Ok(ResolvedNote::File { rel_path });
     }
+    // A frontmatter `id` — the form "Copy deep link" puts in `kore://note/…`
+    // because it survives renames (`resolveNoteTarget` in core). Index-only:
+    // ids are minted by the app, which indexes them as it writes.
+    if let Some(conn) = conn {
+        if let Some(rel_path) = id_lookup(conn, trimmed)? {
+            return Ok(ResolvedNote::File { rel_path });
+        }
+    }
     let key = fold_key(trimmed);
     // The index answers first; a miss falls back to the files, because the
     // index lags every write by a re-index — a note created a moment ago is
@@ -182,7 +202,7 @@ pub fn resolve_note(
                 }
             }
             Err(CliError::NotFound(format!(
-                "no note matching '{trimmed}' (by date, path, title, or alias)"
+                "no note matching '{trimmed}' (by date, path, id, title, or alias)"
             )))
         }
         Some((first, rest)) => {

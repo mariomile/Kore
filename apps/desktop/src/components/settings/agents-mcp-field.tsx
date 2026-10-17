@@ -43,7 +43,7 @@ export function AgentsMcpField({
   return (
     <SettingsField
       legend="MCP server"
-      description={`Give Claude Desktop, Claude Code, Cursor or any MCP client tools to search, read and write “${graphName}”. Private notes stay hidden.`}
+      description={`Give Claude Desktop, Claude Code, Cursor or any MCP client tools to search, read and write “${graphName}”, its notes to attach, and daily, weekly and linking prompts. Private notes stay hidden.`}
     >
       <div className="mt-3 flex items-center gap-3">
         <Switch

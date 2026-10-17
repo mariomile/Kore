@@ -1,4 +1,4 @@
-//! `kore show <note>` — resolve by date, path, title, or alias and print
+//! `kore show <note>` — resolve by date, path, id, title, or alias and print
 //! the raw markdown. Index-assisted when the index is present; file-scan
 //! fallback when it isn't (the command works with no index at all).
 

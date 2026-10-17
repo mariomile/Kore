@@ -11,6 +11,13 @@
 //! separate argv entries after `--`, never through a shell, so a query that
 //! starts with `-` stays a query.
 //!
+//! Resources and prompts ride the same runner. Every note is a resource
+//! addressed by the app's own deep link (`kore://note/<path>`), so a URI an
+//! agent reads is one the user can click to open the note in Kore, and a link
+//! copied from the app (`kore://note/<id>`, `kore://daily/<date>`) reads back
+//! here. Prompts gather notes the same way and only ever ask the model to
+//! read, so `--read-only` keeps all of them.
+//!
 //! Transport: newline-delimited JSON-RPC 2.0 on stdin/stdout (the MCP stdio
 //! transport). stdout carries protocol messages only; nothing else is printed.
 
@@ -27,9 +34,20 @@ const PROTOCOL_VERSIONS: [&str; 3] = ["2025-06-18", "2025-03-26", "2024-11-05"];
 const INSTRUCTIONS: &str = "Tools over the user's Kore notes: a local folder of \
 Markdown files with [[wiki links]], #tags, frontmatter properties, tasks, and one \
 daily note per day. A <note> argument accepts a YYYY-MM-DD date, a graph-relative \
-path, a title, or an alias. Search first, then read_note what you need. Notes the \
+path, a note id, a title, or an alias. Search first, then read_note what you need. Notes the \
 user marked private are never returned. Writes are structural: they append, create, \
-or set one property; nothing overwrites a note's prose.";
+or set one property; nothing overwrites a note's prose. Every note is also a resource \
+at kore://note/<path>, a link that opens it in the Kore app.";
+
+/// `resources/list` page size. Notes come newest first, so the notes a user
+/// is most likely to attach are on the first page.
+const RESOURCE_PAGE: usize = 1000;
+
+/// Most notes the weekly review lists as changed this week.
+const WEEKLY_CHANGED_CAP: usize = 200;
+
+/// JSON-RPC error for a resource that does not resolve (or is private).
+const RESOURCE_NOT_FOUND: i64 = -32002;
 
 /// What one subcommand run produced.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -524,6 +542,201 @@ fn tool_text(text: String, is_error: bool) -> Value {
     json!({ "content": [{ "type": "text", "text": text }], "isError": is_error })
 }
 
+/// `encodeURIComponent`, so a URI built here is byte-for-byte the app's
+/// `noteDeepLink` for the same path.
+fn encode_component(value: &str) -> String {
+    let mut encoded = String::with_capacity(value.len());
+    for byte in value.bytes() {
+        if byte.is_ascii_alphanumeric() || b"-_.!~*'()".contains(&byte) {
+            encoded.push(byte as char);
+        } else {
+            encoded.push_str(&format!("%{byte:02X}"));
+        }
+    }
+    encoded
+}
+
+fn decode_component(value: &str) -> Option<String> {
+    let bytes = value.as_bytes();
+    let mut decoded = Vec::with_capacity(bytes.len());
+    let mut index = 0;
+    while index < bytes.len() {
+        if bytes[index] == b'%' {
+            let hex = std::str::from_utf8(bytes.get(index + 1..index + 3)?).ok()?;
+            decoded.push(u8::from_str_radix(hex, 16).ok()?);
+            index += 3;
+        } else {
+            decoded.push(bytes[index]);
+            index += 1;
+        }
+    }
+    String::from_utf8(decoded).ok()
+}
+
+/// The deep link for a graph-relative path.
+fn note_uri(path: &str) -> String {
+    format!("kore://note/{}", encode_component(path))
+}
+
+/// What a `kore://` resource URI reads: argv for a subcommand whose `--json`
+/// output is a note (`show`/`today`), or the open-tasks list.
+enum ResourceTarget {
+    Note(Vec<String>),
+    Tasks,
+}
+
+fn resource_target(uri: &str) -> Option<ResourceTarget> {
+    let rest = uri.strip_prefix("kore://")?;
+    let rest = rest.split(['?', '#']).next().unwrap_or(rest);
+    let show = |target: String| {
+        (!target.trim().is_empty())
+            .then(|| ResourceTarget::Note(vec!["show".into(), "--".into(), target]))
+    };
+    match rest.split_once('/') {
+        None if rest == "today" => Some(ResourceTarget::Note(vec!["today".into()])),
+        None if rest == "tasks" => Some(ResourceTarget::Tasks),
+        Some(("note", target)) => show(decode_component(target)?),
+        Some(("daily", date)) => show(decode_component(date)?),
+        _ => None,
+    }
+}
+
+fn resource_templates() -> Value {
+    json!([
+        {
+            "uriTemplate": "kore://note/{note}",
+            "name": "note",
+            "title": "Note",
+            "description": "A note by graph-relative path, frontmatter id, title, or alias (URI-encoded). The same link opens the note in Kore.",
+            "mimeType": "text/markdown"
+        },
+        {
+            "uriTemplate": "kore://daily/{date}",
+            "name": "daily",
+            "title": "Daily note",
+            "description": "The daily note for a YYYY-MM-DD date.",
+            "mimeType": "text/markdown"
+        }
+    ])
+}
+
+/// Resources that are not a single note, listed ahead of the notes.
+fn fixed_resources() -> Vec<Value> {
+    vec![
+        json!({
+            "uri": "kore://today",
+            "name": "today",
+            "title": "Today",
+            "description": "Today's daily note. Missing until something is written to it today.",
+            "mimeType": "text/markdown"
+        }),
+        json!({
+            "uri": "kore://tasks",
+            "name": "tasks",
+            "title": "Open tasks",
+            "description": "Every open task with its note and due date.",
+            "mimeType": "application/json"
+        }),
+    ]
+}
+
+/// One prompt: its MCP definition. Prompts only read, so they all survive
+/// `--read-only`.
+struct Prompt {
+    name: &'static str,
+    title: &'static str,
+    description: &'static str,
+    /// (name, description, required)
+    arguments: &'static [(&'static str, &'static str, bool)],
+}
+
+const PROMPTS: [Prompt; 3] = [
+    Prompt {
+        name: "daily_review",
+        title: "Daily review",
+        description: "Review a day from its daily note and the open tasks: what happened, what was decided, what carries over.",
+        arguments: &[("date", "YYYY-MM-DD; today when omitted", false)],
+    },
+    Prompt {
+        name: "weekly_review",
+        title: "Weekly review",
+        description: "Review the last seven days from their daily notes, the other notes changed, and the open tasks.",
+        arguments: &[],
+    },
+    Prompt {
+        name: "connect_note",
+        title: "Connect a note",
+        description: "Find the notes one note should link to, or be linked from, that it isn't yet.",
+        arguments: &[("note", "A YYYY-MM-DD date, graph-relative path, note id, title, or alias", true)],
+    },
+];
+
+fn prompt_definition(prompt: &Prompt) -> Value {
+    json!({
+        "name": prompt.name,
+        "title": prompt.title,
+        "description": prompt.description,
+        "arguments": prompt.arguments.iter().map(|(name, description, required)| json!({
+            "name": name, "description": description, "required": required
+        })).collect::<Vec<_>>()
+    })
+}
+
+fn text_content(text: impl Into<String>) -> Value {
+    json!({ "type": "text", "text": text.into() })
+}
+
+/// A note embedded in a prompt message, as a `resource` content block.
+fn note_content(note: &Value) -> Value {
+    json!({ "type": "resource", "resource": note_resource(note, None) })
+}
+
+/// A `show`/`today` JSON object as resource contents. `uri` overrides the
+/// path-derived link so a read answers with the URI it was asked for.
+fn note_resource(note: &Value, uri: Option<&str>) -> Value {
+    let path = note["path"].as_str().unwrap_or_default();
+    json!({
+        "uri": uri.map(str::to_string).unwrap_or_else(|| note_uri(path)),
+        "mimeType": "text/markdown",
+        "text": note["content"].as_str().unwrap_or_default()
+    })
+}
+
+fn user_message(content: Value) -> Value {
+    json!({ "role": "user", "content": content })
+}
+
+/// `title (kore://note/…)` lines for a list of `{ path, title }` rows.
+fn note_lines(rows: &[Value]) -> String {
+    rows.iter()
+        .filter_map(|row| {
+            let path = row["path"].as_str()?;
+            let title = row["title"].as_str().unwrap_or(path);
+            Some(format!("- {title} ({})", note_uri(path)))
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+/// The local calendar date of an RFC 3339 UTC `updatedAt`, so it compares
+/// with the local dates the week is built from.
+fn local_date(updated_at: &str, zone: &jiff::tz::TimeZone) -> Option<String> {
+    let timestamp = updated_at.parse::<jiff::Timestamp>().ok()?;
+    Some(timestamp.to_zoned(zone.clone()).date().to_string())
+}
+
+/// The seven dates ending today, oldest first.
+fn last_seven_days(today: jiff::civil::Date) -> Vec<String> {
+    let mut dates = vec![today];
+    while dates.len() < 7 {
+        match dates[dates.len() - 1].yesterday() {
+            Ok(previous) => dates.push(previous),
+            Err(_) => break,
+        }
+    }
+    dates.iter().rev().map(ToString::to_string).collect()
+}
+
 /// The MCP request handler, independent of the transport.
 pub struct Server<R: Runner> {
     runner: R,
@@ -558,6 +771,13 @@ impl<R: Runner> Server<R> {
                 "tools": self.available().iter().map(tool_definition).collect::<Vec<_>>()
             })),
             "tools/call" => self.call(&params),
+            "resources/list" => self.list_resources(&params),
+            "resources/templates/list" => Ok(json!({ "resourceTemplates": resource_templates() })),
+            "resources/read" => self.read_resource(&params),
+            "prompts/list" => Ok(json!({
+                "prompts": PROMPTS.iter().map(prompt_definition).collect::<Vec<_>>()
+            })),
+            "prompts/get" => self.get_prompt(&params),
             _ => Err((-32601, format!("method not found: {method}"))),
         };
         Some(match result {
@@ -573,7 +793,11 @@ impl<R: Runner> Server<R> {
             .unwrap_or(PROTOCOL_VERSIONS[0]);
         json!({
             "protocolVersion": version,
-            "capabilities": { "tools": { "listChanged": false } },
+            "capabilities": {
+                "tools": { "listChanged": false },
+                "resources": { "subscribe": false, "listChanged": false },
+                "prompts": { "listChanged": false }
+            },
             "serverInfo": { "name": "kore", "title": "Kore", "version": env!("CARGO_PKG_VERSION") },
             "instructions": INSTRUCTIONS
         })
@@ -603,6 +827,248 @@ impl<R: Runner> Server<R> {
             .runner
             .run(&invocation.args, invocation.stdin.as_deref());
         Ok(tool_text(output.text, !output.success))
+    }
+
+    /// Run a subcommand and parse its `--json` output; a failure carries the
+    /// CLI's own message.
+    fn run_json(&self, args: &[String]) -> Result<Value, String> {
+        let output = self.runner.run(args, None);
+        if !output.success {
+            return Err(output.text);
+        }
+        serde_json::from_str(&output.text)
+            .map_err(|err| format!("unexpected output from kore {}: {err}", args[0]))
+    }
+
+    fn list_resources(&self, params: &Value) -> Result<Value, (i64, String)> {
+        let offset = match params.get("cursor") {
+            None | Some(Value::Null) => 0,
+            Some(cursor) => cursor
+                .as_str()
+                .and_then(|cursor| cursor.parse::<usize>().ok())
+                .ok_or((-32602, "invalid cursor".to_string()))?,
+        };
+        // One extra row tells whether another page follows.
+        let limit = offset + RESOURCE_PAGE + 1;
+        // Without an index (the app never opened this graph) there is no note
+        // list; the fixed resources and the templates still work, so a client
+        // connecting gets those rather than an error.
+        let notes = self
+            .run_json(&["list".to_string(), format!("--limit={limit}")])
+            .ok()
+            .and_then(|listed| listed["notes"].as_array().cloned())
+            .unwrap_or_default();
+        let mut resources = if offset == 0 {
+            fixed_resources()
+        } else {
+            Vec::new()
+        };
+        resources.extend(
+            notes
+                .iter()
+                .skip(offset)
+                .take(RESOURCE_PAGE)
+                .filter_map(|note| {
+                    let path = note["path"].as_str()?;
+                    Some(json!({
+                        "uri": note_uri(path),
+                        "name": path,
+                        "title": note["title"].as_str().unwrap_or(path),
+                        "mimeType": "text/markdown"
+                    }))
+                }),
+        );
+        let mut result = json!({ "resources": resources });
+        if notes.len() > offset + RESOURCE_PAGE {
+            result["nextCursor"] = json!((offset + RESOURCE_PAGE).to_string());
+        }
+        Ok(result)
+    }
+
+    fn read_resource(&self, params: &Value) -> Result<Value, (i64, String)> {
+        let uri = params
+            .get("uri")
+            .and_then(Value::as_str)
+            .ok_or((-32602, "missing resource uri".to_string()))?;
+        let target =
+            resource_target(uri).ok_or((RESOURCE_NOT_FOUND, format!("unknown resource: {uri}")))?;
+        let contents = match target {
+            ResourceTarget::Note(args) => {
+                let note = self
+                    .run_json(&args)
+                    .map_err(|message| (RESOURCE_NOT_FOUND, message))?;
+                note_resource(&note, Some(uri))
+            }
+            ResourceTarget::Tasks => {
+                let output = self.runner.run(&["tasks".to_string()], None);
+                if !output.success {
+                    return Err((RESOURCE_NOT_FOUND, output.text));
+                }
+                json!({ "uri": uri, "mimeType": "application/json", "text": output.text })
+            }
+        };
+        Ok(json!({ "contents": [contents] }))
+    }
+
+    fn get_prompt(&self, params: &Value) -> Result<Value, (i64, String)> {
+        let name = params
+            .get("name")
+            .and_then(Value::as_str)
+            .ok_or((-32602, "missing prompt name".to_string()))?;
+        let argument = |key: &str| {
+            params
+                .get("arguments")
+                .and_then(|args| args.get(key))
+                .and_then(Value::as_str)
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+                .map(str::to_string)
+        };
+        let prompt = PROMPTS
+            .iter()
+            .find(|prompt| prompt.name == name)
+            .ok_or((-32602, format!("unknown prompt: {name}")))?;
+        let messages = match prompt.name {
+            "daily_review" => self.daily_review(argument("date")),
+            "weekly_review" => self.weekly_review(),
+            _ => {
+                let note = argument("note").ok_or((-32602, "`note` is required".to_string()))?;
+                self.connect_note(note)?
+            }
+        };
+        Ok(json!({ "description": prompt.description, "messages": messages }))
+    }
+
+    /// The open tasks as an embedded resource, or nothing when there is no
+    /// index to read them from.
+    fn open_tasks(&self) -> Option<Value> {
+        let output = self.runner.run(&["tasks".to_string()], None);
+        output.success.then(|| {
+            user_message(json!({ "type": "resource", "resource": {
+                "uri": "kore://tasks", "mimeType": "application/json", "text": output.text
+            } }))
+        })
+    }
+
+    fn daily_review(&self, date: Option<String>) -> Vec<Value> {
+        let args = match &date {
+            Some(date) => vec!["show".to_string(), "--".to_string(), date.clone()],
+            None => vec!["today".to_string()],
+        };
+        let label = date.clone().unwrap_or_else(|| "today".to_string());
+        let mut messages = Vec::new();
+        match self.run_json(&args) {
+            Ok(note) => messages.push(user_message(note_content(&note))),
+            Err(message) => messages.push(user_message(text_content(format!(
+                "There is no daily note to review for {label} ({message})."
+            )))),
+        }
+        messages.extend(self.open_tasks());
+        messages.push(user_message(text_content(format!(
+            "This is my Kore daily note for {label} and my open tasks. Review the day: what \
+             happened, what I decided, and what is still open. Then list what should carry over \
+             to tomorrow, each with the note it comes from. Read linked notes or backlinks with \
+             the Kore tools when the daily note alone is not enough."
+        ))));
+        messages
+    }
+
+    fn weekly_review(&self) -> Vec<Value> {
+        let dates = last_seven_days(jiff::Zoned::now().date());
+        let (start, end) = (dates[0].clone(), dates[dates.len() - 1].clone());
+        let mut messages: Vec<Value> = dates
+            .iter()
+            .filter_map(|date| {
+                self.run_json(&["show".to_string(), "--".to_string(), date.clone()])
+                    .ok()
+            })
+            .map(|note| user_message(note_content(&note)))
+            .collect();
+        // `list` is newest first, so the week's changes are a prefix: read one
+        // more row than shown to know whether the cap cut the list short.
+        let listed: Vec<Value> = self
+            .run_json(&[
+                "list".to_string(),
+                "--kind=note".to_string(),
+                format!("--limit={}", WEEKLY_CHANGED_CAP + 1),
+            ])
+            .ok()
+            .and_then(|listed| listed["notes"].as_array().cloned())
+            .unwrap_or_default();
+        let zone = jiff::tz::TimeZone::system();
+        let in_week: Vec<Value> = listed
+            .into_iter()
+            .take_while(|note| {
+                note["updatedAt"]
+                    .as_str()
+                    .and_then(|at| local_date(at, &zone))
+                    .is_some_and(|date| date >= start)
+            })
+            .collect();
+        if !in_week.is_empty() {
+            let shown = &in_week[..in_week.len().min(WEEKLY_CHANGED_CAP)];
+            let more = if in_week.len() > WEEKLY_CHANGED_CAP {
+                format!(
+                    "\n(These are the {WEEKLY_CHANGED_CAP} most recent; more changed this week. \
+                     recent_notes or list_notes reach the rest.)"
+                )
+            } else {
+                String::new()
+            };
+            messages.push(user_message(text_content(format!(
+                "Other notes I changed this week:\n{}{more}",
+                note_lines(shown)
+            ))));
+        }
+        messages.extend(self.open_tasks());
+        messages.push(user_message(text_content(format!(
+            "This is my week in Kore, {start} to {end}: the daily notes that exist, the other \
+             notes I changed, and my open tasks. Write my weekly review: the main threads and \
+             decisions, what moved and what stalled, and the open loops worth closing next week. \
+             Read a changed note with read_note when its title is not enough, and cite notes by \
+             title."
+        ))));
+        messages
+    }
+
+    fn connect_note(&self, note: String) -> Result<Vec<Value>, (i64, String)> {
+        let shown = self
+            .run_json(&["show".to_string(), "--".to_string(), note])
+            .map_err(|message| (-32602, message))?;
+        let path = shown["path"].as_str().unwrap_or_default().to_string();
+        let title = shown["title"].as_str().unwrap_or(&path).to_string();
+        let rows = |subcommand: &str, key: &str| {
+            self.run_json(&[subcommand.to_string(), "--".to_string(), path.clone()])
+                .ok()
+                .and_then(|value| value[key].as_array().cloned())
+                .unwrap_or_default()
+        };
+        let links: Vec<Value> = rows("links", "links")
+            .into_iter()
+            .filter(|link| link["path"].is_string())
+            .collect();
+        let backlinks = rows("backlinks", "backlinks");
+        let listed = |rows: &[Value]| {
+            if rows.is_empty() {
+                "(none)".to_string()
+            } else {
+                note_lines(rows)
+            }
+        };
+        Ok(vec![
+            user_message(note_content(&shown)),
+            user_message(text_content(format!(
+                "It links to:\n{}\n\nIt is linked from:\n{}",
+                listed(&links),
+                listed(&backlinks)
+            ))),
+            user_message(text_content(format!(
+                "Help me connect \"{title}\" into my Kore notes. Summarize it in two lines. Then \
+                 search my notes for its main ideas, people and projects, and list the notes it \
+                 should link to, or that should link to it, which are not linked yet: one line \
+                 each, with why. Propose the links; do not edit any note unless I ask."
+            ))),
+        ])
     }
 }
 
@@ -762,9 +1228,280 @@ mod tests {
         assert!(server
             .handle(&json!({ "jsonrpc": "2.0", "method": "notifications/initialized" }))
             .is_none());
+        assert!(init["result"]["capabilities"]["resources"].is_object());
+        assert!(init["result"]["capabilities"]["prompts"].is_object());
         let unknown = server
-            .handle(&json!({ "jsonrpc": "2.0", "id": 2, "method": "resources/list" }))
+            .handle(&json!({ "jsonrpc": "2.0", "id": 2, "method": "completion/complete" }))
             .unwrap();
         assert_eq!(unknown["error"]["code"], -32601);
+    }
+
+    /// Answers each subcommand from a canned table; anything missing fails
+    /// the way a missing note does.
+    struct Canned {
+        outputs: Vec<(&'static str, Value)>,
+        calls: RefCell<Vec<Vec<String>>>,
+    }
+
+    impl Canned {
+        fn new(outputs: Vec<(&'static str, Value)>) -> Self {
+            Self {
+                outputs,
+                calls: RefCell::default(),
+            }
+        }
+    }
+
+    impl Runner for &Canned {
+        fn run(&self, args: &[String], _stdin: Option<&str>) -> RunOutput {
+            self.calls.borrow_mut().push(args.to_vec());
+            match self.outputs.iter().find(|(name, _)| *name == args[0]) {
+                Some((_, output)) => RunOutput {
+                    success: true,
+                    text: output.to_string(),
+                },
+                None => RunOutput {
+                    success: false,
+                    text: format!("no note matching '{}'", args[args.len() - 1]),
+                },
+            }
+        }
+    }
+
+    fn request(server: &Server<&Canned>, method: &str, params: Value) -> Value {
+        server
+            .handle(&json!({ "jsonrpc": "2.0", "id": 1, "method": method, "params": params }))
+            .unwrap()
+    }
+
+    #[test]
+    fn resource_uris_are_the_apps_deep_links() {
+        assert_eq!(
+            note_uri("Projects/Q3 plan (draft).md"),
+            "kore://note/Projects%2FQ3%20plan%20(draft).md"
+        );
+        assert_eq!(
+            note_uri("notes/caffè.md"),
+            "kore://note/notes%2Fcaff%C3%A8.md"
+        );
+        let decoded = decode_component("Projects%2FQ3%20plan%20(draft).md").unwrap();
+        assert_eq!(decoded, "Projects/Q3 plan (draft).md");
+
+        let argv = |uri: &str| match resource_target(uri) {
+            Some(ResourceTarget::Note(args)) => Some(args),
+            _ => None,
+        };
+        assert_eq!(
+            argv("kore://note/notes%2Fcaff%C3%A8.md").unwrap(),
+            ["show", "--", "notes/caffè.md"]
+        );
+        assert_eq!(
+            argv("kore://note/01hzy3v9k2m4n6p8q0r2s4t6vw").unwrap(),
+            ["show", "--", "01hzy3v9k2m4n6p8q0r2s4t6vw"]
+        );
+        assert_eq!(
+            argv("kore://daily/2026-10-17").unwrap(),
+            ["show", "--", "2026-10-17"]
+        );
+        assert_eq!(argv("kore://today").unwrap(), ["today"]);
+        assert!(matches!(
+            resource_target("kore://tasks"),
+            Some(ResourceTarget::Tasks)
+        ));
+        assert!(resource_target("kore://note/").is_none());
+        assert!(
+            resource_target("kore://note/%E2%28").is_none(),
+            "invalid UTF-8"
+        );
+        assert!(resource_target("kore://search?q=x").is_none());
+        assert!(resource_target("file:///etc/passwd").is_none());
+    }
+
+    #[test]
+    fn resources_list_pages_through_every_note_newest_first() {
+        let notes: Vec<Value> = (0..RESOURCE_PAGE + 2)
+            .map(|index| json!({ "path": format!("notes/{index}.md"), "title": format!("N{index}") }))
+            .collect();
+        let canned = Canned::new(vec![("list", json!({ "stale": false, "notes": notes }))]);
+        let server = Server::new(&canned, true);
+
+        let first = request(&server, "resources/list", json!({}));
+        let resources = first["result"]["resources"].as_array().unwrap();
+        assert_eq!(
+            resources.len(),
+            2 + RESOURCE_PAGE,
+            "today and tasks lead page one"
+        );
+        assert_eq!(resources[0]["uri"], "kore://today");
+        assert_eq!(resources[2]["uri"], "kore://note/notes%2F0.md");
+        assert_eq!(resources[2]["title"], "N0");
+        assert_eq!(first["result"]["nextCursor"], RESOURCE_PAGE.to_string());
+
+        let second = request(
+            &server,
+            "resources/list",
+            json!({ "cursor": first["result"]["nextCursor"] }),
+        );
+        let resources = second["result"]["resources"].as_array().unwrap();
+        assert_eq!(resources.len(), 2);
+        assert_eq!(
+            resources[1]["name"],
+            format!("notes/{}.md", RESOURCE_PAGE + 1)
+        );
+        assert!(second["result"].get("nextCursor").is_none());
+
+        let bad = request(&server, "resources/list", json!({ "cursor": "x" }));
+        assert_eq!(bad["error"]["code"], -32602);
+    }
+
+    #[test]
+    fn resources_read_answers_with_the_uri_it_was_asked_for() {
+        let canned = Canned::new(vec![(
+            "show",
+            json!({ "date": null, "path": "notes/a.md", "title": "A", "content": "# A\nbody\n" }),
+        )]);
+        let server = Server::new(&canned, false);
+        let uri = "kore://note/01hzy3v9k2m4n6p8q0r2s4t6vw";
+        let read = request(&server, "resources/read", json!({ "uri": uri }));
+        let contents = &read["result"]["contents"][0];
+        assert_eq!(contents["uri"], uri);
+        assert_eq!(contents["mimeType"], "text/markdown");
+        assert_eq!(contents["text"], "# A\nbody\n");
+
+        let missing = request(&server, "resources/read", json!({ "uri": "kore://today" }));
+        assert_eq!(missing["error"]["code"], RESOURCE_NOT_FOUND);
+        let unknown = request(
+            &server,
+            "resources/read",
+            json!({ "uri": "https://example.com" }),
+        );
+        assert_eq!(unknown["error"]["code"], RESOURCE_NOT_FOUND);
+    }
+
+    #[test]
+    fn prompts_survive_read_only_and_embed_the_notes_they_review() {
+        let canned = Canned::new(vec![
+            (
+                "show",
+                json!({ "date": null, "path": "notes/acme.md", "title": "Acme", "content": "# Acme\n" }),
+            ),
+            (
+                "links",
+                json!({ "path": "notes/acme.md", "stale": false, "links": [
+                    { "target": "Bob", "path": "people/bob.md", "title": "Bob" },
+                    { "target": "Ghost", "path": null, "title": null }
+                ] }),
+            ),
+            (
+                "backlinks",
+                json!({ "path": "notes/acme.md", "title": "Acme", "stale": false, "backlinks": [] }),
+            ),
+        ]);
+        let server = Server::new(&canned, true);
+        let listed = request(&server, "prompts/list", json!({}));
+        let names: Vec<&str> = listed["result"]["prompts"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|prompt| prompt["name"].as_str().unwrap())
+            .collect();
+        assert_eq!(names, ["daily_review", "weekly_review", "connect_note"]);
+
+        let prompt = request(
+            &server,
+            "prompts/get",
+            json!({ "name": "connect_note", "arguments": { "note": "Acme" } }),
+        );
+        let messages = prompt["result"]["messages"].as_array().unwrap();
+        assert_eq!(messages[0]["content"]["type"], "resource");
+        assert_eq!(
+            messages[0]["content"]["resource"]["uri"],
+            "kore://note/notes%2Facme.md"
+        );
+        let neighbours = messages[1]["content"]["text"].as_str().unwrap();
+        assert!(neighbours.contains("- Bob (kore://note/people%2Fbob.md)"));
+        assert!(
+            !neighbours.contains("Ghost"),
+            "unresolved links are not notes"
+        );
+        assert!(neighbours.contains("linked from:\n(none)"));
+        assert_eq!(
+            canned.calls.borrow()[1],
+            ["links", "--", "notes/acme.md"],
+            "neighbours are read by the resolved path"
+        );
+
+        let no_note = request(
+            &server,
+            "prompts/get",
+            json!({ "name": "connect_note", "arguments": {} }),
+        );
+        assert_eq!(no_note["error"]["code"], -32602);
+        let unknown = request(&server, "prompts/get", json!({ "name": "nope" }));
+        assert_eq!(unknown["error"]["code"], -32602);
+    }
+
+    #[test]
+    fn a_review_without_its_daily_note_still_has_something_to_say() {
+        let canned = Canned::new(vec![("tasks", json!({ "stale": false, "tasks": [] }))]);
+        let server = Server::new(&canned, false);
+        let prompt = request(
+            &server,
+            "prompts/get",
+            json!({ "name": "daily_review", "arguments": { "date": "2026-10-16" } }),
+        );
+        let messages = prompt["result"]["messages"].as_array().unwrap();
+        assert!(messages[0]["content"]["text"]
+            .as_str()
+            .unwrap()
+            .starts_with("There is no daily note to review for 2026-10-16"));
+        assert_eq!(messages[1]["content"]["resource"]["uri"], "kore://tasks");
+        assert_eq!(messages.len(), 3);
+
+        let weekly = request(&server, "prompts/get", json!({ "name": "weekly_review" }));
+        assert!(weekly["result"]["messages"].as_array().unwrap().len() >= 2);
+    }
+
+    #[test]
+    fn the_weekly_review_says_when_the_changed_list_is_cut_short() {
+        let now = jiff::Timestamp::now().to_string();
+        let notes: Vec<Value> = (0..=WEEKLY_CHANGED_CAP)
+            .map(|index| {
+                json!({ "path": format!("notes/{index}.md"), "title": format!("N{index}"),
+                                  "kind": "note", "updatedAt": now })
+            })
+            .chain([
+                json!({ "path": "notes/old.md", "title": "Old", "kind": "note",
+                            "updatedAt": "2020-01-01T00:00:00Z" }),
+            ])
+            .collect();
+        let canned = Canned::new(vec![("list", json!({ "stale": false, "notes": notes }))]);
+        let server = Server::new(&canned, true);
+        let weekly = request(&server, "prompts/get", json!({ "name": "weekly_review" }));
+        let changed = weekly["result"]["messages"][0]["content"]["text"]
+            .as_str()
+            .unwrap();
+        assert_eq!(changed.matches("\n- N").count(), WEEKLY_CHANGED_CAP);
+        assert!(changed.contains("more changed this week"));
+        assert!(!changed.contains("Old"));
+    }
+
+    #[test]
+    fn a_change_counts_on_its_local_day() {
+        let rome = jiff::tz::TimeZone::get("Europe/Rome").unwrap();
+        assert_eq!(
+            local_date("2026-10-11T22:30:00Z", &rome).as_deref(),
+            Some("2026-10-12"),
+            "half past midnight in Rome is still the 11th in UTC"
+        );
+        assert_eq!(local_date("not a time", &rome), None);
+    }
+
+    #[test]
+    fn the_week_ends_today() {
+        let dates = last_seven_days("2026-03-02".parse().unwrap());
+        assert_eq!(dates.first().unwrap(), "2026-02-24");
+        assert_eq!(dates.last().unwrap(), "2026-03-02");
+        assert_eq!(dates.len(), 7);
     }
 }

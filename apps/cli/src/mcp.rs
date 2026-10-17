@@ -715,6 +715,13 @@ fn note_lines(rows: &[Value]) -> String {
         .join("\n")
 }
 
+/// The local calendar date of an RFC 3339 UTC `updatedAt`, so it compares
+/// with the local dates the week is built from.
+fn local_date(updated_at: &str, zone: &jiff::tz::TimeZone) -> Option<String> {
+    let timestamp = updated_at.parse::<jiff::Timestamp>().ok()?;
+    Some(timestamp.to_zoned(zone.clone()).date().to_string())
+}
+
 /// The seven dates ending today, oldest first.
 fn last_seven_days(today: jiff::civil::Date) -> Vec<String> {
     let mut dates = vec![today];
@@ -985,9 +992,9 @@ impl<R: Runner> Server<R> {
             .unwrap_or_default()
             .into_iter()
             .filter(|note| {
-                note["updatedAt"]
-                    .as_str()
-                    .is_some_and(|at| at.get(..10) >= Some(start.as_str()))
+                note["updatedAt"].as_str().is_some_and(|at| {
+                    local_date(at, &jiff::tz::TimeZone::system()).is_some_and(|date| date >= start)
+                })
             })
             .collect();
         if !changed.is_empty() {
@@ -1436,6 +1443,17 @@ mod tests {
 
         let weekly = request(&server, "prompts/get", json!({ "name": "weekly_review" }));
         assert!(weekly["result"]["messages"].as_array().unwrap().len() >= 2);
+    }
+
+    #[test]
+    fn a_change_counts_on_its_local_day() {
+        let rome = jiff::tz::TimeZone::get("Europe/Rome").unwrap();
+        assert_eq!(
+            local_date("2026-10-11T22:30:00Z", &rome).as_deref(),
+            Some("2026-10-12"),
+            "half past midnight in Rome is still the 11th in UTC"
+        );
+        assert_eq!(local_date("not a time", &rome), None);
     }
 
     #[test]

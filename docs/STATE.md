@@ -2124,6 +2124,16 @@ screen: Agents then Close lands on today.
 
 ## Session log
 
+- 2026-10-17 — Clean note previews. The All notes snippet (and every other
+  surface reading `notes.preview`: search rows, recall, filtered search) no
+  longer shows Obsidian leftovers: `parseNote` now also returns
+  `previewText`, the plain text minus code/math/HTML blocks, HTML and `%%`
+  comments, Templater `<% … %>` tags, inline Dataview `` `= …` `` queries and
+  callout `[!type]` markers (`markdown/preview-noise.ts`). Search text is
+  unchanged, so query code stays findable. `PROJECTION_VERSION` 27 rebuilds
+  stored previews once; `PARSED_NOTE_VERSION` 8. Dataview and Templater stay
+  unimplemented on purpose (Bases replace Dataview); this only hides noise.
+  A note made only of a query now previews empty rather than as code.
 - 2026-10-17 — Renamed everything a user sees or types from `reflect` to
   `kore`: the CLI binary (`kore`, so the MCP config runs
   `Kore.app/Contents/MacOS/kore … mcp`), its help and error prefix,

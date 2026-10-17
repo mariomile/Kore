@@ -118,8 +118,11 @@ import {
  * 26 - frontmatter `tags:` joins body hashtags as a membership source, and
  * `tags` stops projecting as a property. Notes declaring tags only in
  * frontmatter carry no tag rows until reprojected, so the bump backfills them.
+ * 27 - `notes.preview` skips code and math blocks, HTML and Obsidian comments,
+ * Templater tags, inline Dataview queries, and callout markers. Existing rows
+ * keep the query code as their snippet until reprojected.
  */
-export const PROJECTION_VERSION = 26
+export const PROJECTION_VERSION = 27
 
 /**
  * The `index_meta` key holding the {@link PROJECTION_VERSION} the stored rows
@@ -477,7 +480,7 @@ export function buildIndexedNote(
     mtime: meta.mtime,
     text: parsed.text,
     assetText: meta.assetText ?? '',
-    preview: previewSnippet(parsed.text, parsed.title),
+    preview: previewSnippet(parsed.previewText, parsed.title),
     links: [...wikiLinks, ...mdLinks],
     tags: parsed.tags.map((tag) => ({ tag, tagKey: foldTag(tag) })),
     aliases,

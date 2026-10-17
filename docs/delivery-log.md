@@ -7,6 +7,12 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Note previews in All notes and search show the note's words, not
+  leftovers from Obsidian plugins. Dataview queries, Templater tags,
+  `%% comments %%`, code blocks and callout markers are skipped, so the
+  snippet starts at the first real sentence. Search still finds text
+  inside code.
+
 - The command line is called `kore` now, like the app. The MCP config in
   Settings → Agents, the agent skills, `kore --help`, error messages,
   `$KORE_GRAPH` and copied note links (`kore://…`) all say Kore. Old

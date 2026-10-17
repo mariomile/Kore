@@ -11,6 +11,7 @@ import { foldTag } from './keys'
 import { parseInlineLink } from './link-syntax'
 import { headingLevelOf } from './node-types'
 import { buildPlainText, plainTextOfRange, unescapeMarkdownText } from './plain-text'
+import { isPreviewNoiseNode, previewNoiseSpans } from './preview-noise'
 import { taskListBullet } from './round-task'
 import { taskBreadcrumbs } from './task-breadcrumbs'
 import { firstDue } from './task-due'
@@ -301,6 +302,7 @@ export function parseNote(input: { path: string; source: string }): ParsedNote {
   const cuts: Span[] = [] // body coords — syntax to drop from plain text
   const tagExcluded: Span[] = [] // body coords — regions that don't yield tags
   const literalPlainText: Span[] = [] // body coords — regions that render backslashes literally
+  const previewCuts: Span[] = [] // body coords — noise the list-row preview also drops
   const taskNodes: SyntaxNode[] = [] // body coords — `Task` nodes, resolved after the walk
 
   tree.iterate({
@@ -322,6 +324,9 @@ export function parseNote(input: { path: string; source: string }): ParsedNote {
       }
       if (isLiteralPlainTextNode(name)) {
         literalPlainText.push({ from, to })
+      }
+      if (isPreviewNoiseNode(name, body.slice(from, Math.min(to, from + 8)))) {
+        previewCuts.push({ from, to })
       }
 
       if (isWikiNodeName(name)) {
@@ -435,5 +440,10 @@ export function parseNote(input: { path: string; source: string }): ParsedNote {
     assets,
     tasks,
     text: buildPlainText(body, cuts, literalPlainText),
+    previewText: buildPlainText(
+      body,
+      [...cuts, ...previewCuts, ...previewNoiseSpans(body, literalPlainText)],
+      literalPlainText,
+    ),
   }
 }

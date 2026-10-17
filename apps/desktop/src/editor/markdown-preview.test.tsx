@@ -26,4 +26,13 @@ describe('MarkdownPreview callouts', () => {
     ;(quote.firstElementChild as HTMLElement).click()
     expect(quote.hasAttribute('data-callout-folded')).toBe(false)
   })
+
+  it('shows a collapsed callout open in a passive preview', async () => {
+    const view = await render(
+      <MarkdownPreview content={'> [!faq]- Why?\n> Because.'} interactive={false} />,
+    )
+    const quote = view.container.querySelector('blockquote')!
+    await expect.poll(() => quote.getAttribute('data-callout-fold')).toBe('none')
+    expect(quote.hasAttribute('data-callout-folded')).toBe(false)
+  })
 })

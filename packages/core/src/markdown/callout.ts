@@ -141,11 +141,12 @@ export function separateCalloutTitles(markdown: string): string {
     const depth = quoted === null ? 0 : quoteDepth(prefix)
     const fenceMatch = FENCE_RE.exec(content)
     if (fence !== null) {
-      if (fenceMatch !== null && fenceMatch[1]?.startsWith(fence)) {
+      const closing = fenceMatch?.[1] ?? ''
+      if (closing.charAt(0) === fence.charAt(0) && closing.length >= fence.length) {
         fence = null
       }
     } else if (fenceMatch !== null) {
-      fence = fenceMatch[1]?.charAt(0).repeat(3) ?? null
+      fence = fenceMatch[1] ?? null
     } else if (
       depth > 0 &&
       (depth > previousDepth || previousBlank) &&

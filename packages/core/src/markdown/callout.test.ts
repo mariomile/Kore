@@ -94,5 +94,7 @@ describe('separateCalloutTitles', () => {
   it('leaves plain quotes, lone titles and fenced code alone', () => {
     const untouched = '> quote\n> [!note] not first\n\n> [!tip] alone\n\n```\n> [!note] x\n> y\n```'
     expect(separateCalloutTitles(untouched)).toBe(untouched)
+    const longFence = '````\n```\n> [!note] x\n> y\n````'
+    expect(separateCalloutTitles(longFence)).toBe(longFence)
   })
 })

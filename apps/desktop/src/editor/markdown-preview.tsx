@@ -18,7 +18,7 @@ import { resolveWikiEmbed } from '@/editor/resolve-wiki-embed'
  *
  * Obsidian callouts get their title, icon and color here too
  * (`callout-dom.ts`); an interactive preview folds `[!x]-`/`[!x]+` callouts
- * on a title click, in the view only.
+ * on a title click, in the view only, and a passive one shows them open.
  */
 
 interface MarkdownPreviewProps {
@@ -87,11 +87,13 @@ export function MarkdownPreview({
     if (host === null) {
       return
     }
-    decorateCallouts(host)
+    // A passive preview can't be clicked open, so it shows folded callouts open.
+    const options = { folding: interactive }
+    decorateCallouts(host, options)
     // MarkdownView may re-render its tree after this commit; our own text
     // edits re-trigger this too, and decorateCallouts skips what it stamped.
     const observer = new MutationObserver(() => {
-      decorateCallouts(host)
+      decorateCallouts(host, options)
     })
     observer.observe(host, {
       subtree: true,
@@ -101,7 +103,7 @@ export function MarkdownPreview({
     return () => {
       observer.disconnect()
     }
-  }, [])
+  }, [interactive])
 
   return (
     <div

@@ -58,7 +58,7 @@ it('repaints a settled graph for theme and search changes without losing note na
     await view.rerender(surface(new Set(['notes/a.md'])))
     await vi.waitFor(() => expect(canvas.toDataURL()).not.toBe(themed))
     await view.getByRole('img', { name: 'Note graph' }).click()
-    expect(onOpen).toHaveBeenCalledExactlyOnceWith('notes/a.md')
+    expect(onOpen).toHaveBeenCalledExactlyOnceWith('notes/a.md', false)
   } finally {
     await view.unmount()
   }

@@ -126,6 +126,14 @@ export {
 } from './group-tasks'
 export { getGraphMap, type GraphMap, type GraphMapEdge, type GraphMapNode } from './graph-map'
 export {
+  getLocalGraph,
+  type LocalGraph,
+  type LocalGraphDepth,
+  type LocalGraphEdge,
+  type LocalGraphNode,
+  type LocalGraphOptions,
+} from './local-graph'
+export {
   loadGraphInsights,
   listPrivateNotePaths,
   type ActivityDay,

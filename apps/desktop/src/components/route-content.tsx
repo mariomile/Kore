@@ -100,7 +100,9 @@ function RouteView(): ReactElement {
       )
     case 'graphMap':
       // Owns its surface (a pan/zoom canvas), so no scroll wrapper.
-      return <GraphMapScreen />
+      // Keyed by the focus so a new hand-off starts from that note's
+      // neighborhood instead of whatever the screen was showing.
+      return <GraphMapScreen key={route.focus ?? ''} focus={route.focus ?? null} />
     case 'terminal':
       return <TerminalScreen />
     case 'browser':

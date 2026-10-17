@@ -43,6 +43,9 @@ at kore://note/<path>, a link that opens it in the Kore app.";
 /// is most likely to attach are on the first page.
 const RESOURCE_PAGE: usize = 1000;
 
+/// Most notes the weekly review lists as changed this week.
+const WEEKLY_CHANGED_CAP: usize = 200;
+
 /// JSON-RPC error for a resource that does not resolve (or is private).
 const RESOURCE_NOT_FOUND: i64 = -32002;
 
@@ -981,26 +984,40 @@ impl<R: Runner> Server<R> {
             })
             .map(|note| user_message(note_content(&note)))
             .collect();
-        let changed: Vec<Value> = self
+        // `list` is newest first, so the week's changes are a prefix: read one
+        // more row than shown to know whether the cap cut the list short.
+        let listed: Vec<Value> = self
             .run_json(&[
                 "list".to_string(),
                 "--kind=note".to_string(),
-                "--limit=50".to_string(),
+                format!("--limit={}", WEEKLY_CHANGED_CAP + 1),
             ])
             .ok()
             .and_then(|listed| listed["notes"].as_array().cloned())
-            .unwrap_or_default()
+            .unwrap_or_default();
+        let zone = jiff::tz::TimeZone::system();
+        let in_week: Vec<Value> = listed
             .into_iter()
-            .filter(|note| {
-                note["updatedAt"].as_str().is_some_and(|at| {
-                    local_date(at, &jiff::tz::TimeZone::system()).is_some_and(|date| date >= start)
-                })
+            .take_while(|note| {
+                note["updatedAt"]
+                    .as_str()
+                    .and_then(|at| local_date(at, &zone))
+                    .is_some_and(|date| date >= start)
             })
             .collect();
-        if !changed.is_empty() {
+        if !in_week.is_empty() {
+            let shown = &in_week[..in_week.len().min(WEEKLY_CHANGED_CAP)];
+            let more = if in_week.len() > WEEKLY_CHANGED_CAP {
+                format!(
+                    "\n(These are the {WEEKLY_CHANGED_CAP} most recent; more changed this week. \
+                     recent_notes or list_notes reach the rest.)"
+                )
+            } else {
+                String::new()
+            };
             messages.push(user_message(text_content(format!(
-                "Other notes I changed this week:\n{}",
-                note_lines(&changed)
+                "Other notes I changed this week:\n{}{more}",
+                note_lines(shown)
             ))));
         }
         messages.extend(self.open_tasks());
@@ -1443,6 +1460,30 @@ mod tests {
 
         let weekly = request(&server, "prompts/get", json!({ "name": "weekly_review" }));
         assert!(weekly["result"]["messages"].as_array().unwrap().len() >= 2);
+    }
+
+    #[test]
+    fn the_weekly_review_says_when_the_changed_list_is_cut_short() {
+        let now = jiff::Timestamp::now().to_string();
+        let notes: Vec<Value> = (0..=WEEKLY_CHANGED_CAP)
+            .map(|index| {
+                json!({ "path": format!("notes/{index}.md"), "title": format!("N{index}"),
+                                  "kind": "note", "updatedAt": now })
+            })
+            .chain([
+                json!({ "path": "notes/old.md", "title": "Old", "kind": "note",
+                            "updatedAt": "2020-01-01T00:00:00Z" }),
+            ])
+            .collect();
+        let canned = Canned::new(vec![("list", json!({ "stale": false, "notes": notes }))]);
+        let server = Server::new(&canned, true);
+        let weekly = request(&server, "prompts/get", json!({ "name": "weekly_review" }));
+        let changed = weekly["result"]["messages"][0]["content"]["text"]
+            .as_str()
+            .unwrap();
+        assert_eq!(changed.matches("\n- N").count(), WEEKLY_CHANGED_CAP);
+        assert!(changed.contains("more changed this week"));
+        assert!(!changed.contains("Old"));
     }
 
     #[test]

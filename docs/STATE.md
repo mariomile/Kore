@@ -1,5 +1,39 @@
 # Kore working state
 
+## MCP server for agents, 2026-10-17
+
+User ask (Mario, 2026-10-17, autonomous run): make Kore the second brain for
+humans *and* agents. Agents could already drive the graph through the
+`reflect` CLI plus the bundled skills, which only works for agents with a
+shell and a skill loader. Claude Desktop, Cursor and other MCP clients had no
+way in.
+
+- [x] `reflect mcp` (`apps/cli/src/mcp.rs`): an MCP stdio server with 19 tools
+  (12 reading, 7 writing). Each tool runs one existing subcommand as a child
+  process with `--graph <root> --json`, so the JSON contracts, structural
+  writes and the private-note block are the CLI's own, with no second code
+  path. Argv only, positionals after `--`. Failed commands are
+  `isError` tool results; `--read-only` hides and refuses the writers.
+- [x] Settings → Agents → MCP server: the `mcpServers` JSON and the
+  `claude mcp add` line for the open graph (bundled CLI path from
+  `skill_status`), a read-only switch, copy buttons. Built by
+  `mcpClientSetup` in core. Nothing is written to any client's config.
+- [x] `docs/cli.md` § MCP server.
+- Not done: MCP resources/prompts (tools only), a remote (HTTP) transport,
+  writing the config into Claude Desktop for the user.
+
+**Validation:** Rust unit tests (argv mapping, tool errors, read-only,
+protocol negotiation) and an end-to-end session over the real binary
+(`apps/cli/tests/mcp.rs`: initialize, search hiding a private note,
+read_note refused on it, append written); `cargo clippy -p reflect-cli
+--all-targets -D warnings`, fmt; core `agent-skill.test.ts`; desktop
+`agents-section.test.tsx` on Chromium; typecheck, oxfmt, oxlint, eslint on
+touched files. WebKit left to CI. Not yet tried from a real MCP client.
+
+**Next:** on the Mac, copy the config from Settings → Agents into Claude
+Desktop (or run the `claude mcp add` line) and ask it something a note
+answers.
+
 ## Obsidian templates, 2026-10-10
 
 Next batch after 0.76.0 ("Prossimo giro di funzionalità"). marioverse.ai
@@ -1824,6 +1858,10 @@ screen: Agents then Close lands on today.
 
 ## Session log
 
+- 2026-10-17 — Autonomous discovery run. Most Obsidian blockers from the
+  2026-10-09 gap analysis are shipped; picked four slices: `reflect mcp`
+  (this thread), Obsidian search operators, the full Obsidian callout set
+  with folding, and new notes from a Base (each in its own thread and PR).
 - 2026-10-14 — Daily stream scrolling with long days. Measured in the
   browser dev build on the Obsidian-shaped seed with 14 agent-log dailies
   (~700 lines each) under `Journal/Daily/` (a local seed tweak, not

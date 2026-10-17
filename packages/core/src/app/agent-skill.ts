@@ -52,3 +52,42 @@ export async function agentSkillInstall(generation: number): Promise<AgentSkills
 export async function agentSkillUninstall(generation: number): Promise<AgentSkillsStatus> {
   return await call('skill_uninstall', { generation }, agentSkillsStatusSchema)
 }
+
+/** What a user pastes into an MCP client to give it this graph. */
+export interface McpClientSetup {
+  /** `mcpServers` JSON for Claude Desktop, Cursor and other config-file clients. */
+  readonly configJson: string
+  /** One-line `claude mcp add` command for Claude Code. */
+  readonly claudeCodeCommand: string
+}
+
+/** Inputs for {@link mcpClientSetup}. */
+export interface McpClientSetupOptions {
+  /** Absolute path of the bundled `reflect` CLI. */
+  readonly cliPath: string
+  /** Absolute root of the graph the server serves. */
+  readonly graphRoot: string
+  /** Expose only the reading tools. */
+  readonly readOnly: boolean
+}
+
+function shellQuote(value: string): string {
+  return /^[\w@%+=:,./-]+$/.test(value) ? value : `'${value.replaceAll("'", String.raw`'\''`)}'`
+}
+
+/**
+ * How an MCP client launches `reflect mcp` against one graph: the bundled CLI
+ * pinned to the graph root, optionally `--read-only` (no write tools).
+ */
+export function mcpClientSetup(options: McpClientSetupOptions): McpClientSetup {
+  const args = ['--graph', options.graphRoot, 'mcp', ...(options.readOnly ? ['--read-only'] : [])]
+  const configJson = JSON.stringify(
+    { mcpServers: { kore: { command: options.cliPath, args } } },
+    null,
+    2,
+  )
+  const claudeCodeCommand = ['claude', 'mcp', 'add', 'kore', '--', options.cliPath, ...args]
+    .map(shellQuote)
+    .join(' ')
+  return { configJson, claudeCodeCommand }
+}

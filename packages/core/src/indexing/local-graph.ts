@@ -181,6 +181,7 @@ export async function getLocalGraph(path: string, options: LocalGraphOptions): P
   const direct = (await directNeighbors(path)).sort(byStrength)
   const kept = direct.slice(0, LOCAL_GRAPH_DIRECT_LIMIT)
   let hidden = direct.length - kept.length
+  const dropped = new Set(direct.slice(LOCAL_GRAPH_DIRECT_LIMIT).map((note) => note.path))
   const depthOf = new Map<string, 0 | 1 | 2>([[path, 0]])
   const meta = new Map<string, NoteMeta>([[path, center]])
   for (const note of kept) {
@@ -207,6 +208,12 @@ export async function getLocalGraph(path: string, options: LocalGraphOptions): P
       }
       const outer = sourceKept ? edge.target : edge.source
       const anchor = sourceKept ? edge.source : edge.target
+      // A direct neighbor the cap dropped is already in `hidden`; letting it
+      // back in through the center would show it a ring too far and count
+      // it twice.
+      if (dropped.has(outer)) {
+        continue
+      }
       const entry = reach.get(outer) ?? { anchors: new Set<string>(), weight: 0 }
       entry.anchors.add(anchor)
       entry.weight += edge.weight

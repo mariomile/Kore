@@ -74,6 +74,11 @@ describe('getLocalGraph', () => {
       expect(graph.hidden).toBe(5)
       // The double link outranks the alphabetical order.
       expect(graph.nodes[1]?.id).toBe('notes/n00.md')
+
+      // Depth 2 neither re-admits the dropped neighbors nor counts them twice.
+      const wide = await getLocalGraph('notes/home.md', { depth: 2, tags: false })
+      expect(wide.nodes).toHaveLength(LOCAL_GRAPH_DIRECT_LIMIT + 1)
+      expect(wide.hidden).toBe(5)
     } finally {
       setBridge(null)
       database.close()

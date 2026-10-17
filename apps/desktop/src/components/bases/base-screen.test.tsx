@@ -10,19 +10,24 @@ import { RouterProvider, useRouter } from '@/routing/router'
 const loadBaseRows = vi.hoisted(() => vi.fn<() => Promise<BaseNoteRow[]>>())
 const readBaseFile = vi.hoisted(() => vi.fn<(path: string) => Promise<string>>())
 const listBaseFiles = vi.hoisted(() => vi.fn<() => Promise<string[]>>())
+const createBaseNote = vi.hoisted(() => vi.fn(async () => 'notes/new.md'))
 vi.mock('@reflect/core', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@reflect/core')>()),
   hasBridge: () => true,
   loadBaseRows,
   readBaseFile,
   listBaseFiles,
+  createBaseNote,
 }))
 const commitProperty = vi.hoisted(() =>
   vi.fn<(path: string, key: string, value: unknown) => void>(),
 )
 vi.mock('@/lib/tags/use-commit-note-property', () => ({
   useCommitNoteProperty: () => commitProperty,
+  invalidateOnNextIndexApply: () => {},
 }))
+const toastAdd = vi.hoisted(() => vi.fn((_toast: { title?: string }) => 'toast-id'))
+vi.mock('@/components/ui/toast', () => ({ toast: { add: toastAdd, close: () => {} } }))
 vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({ graph: { root: '/g', name: 'g', generation: 1 } }),
 }))
@@ -61,6 +66,13 @@ views:
   - type: table
     name: Modifica
     order: [file.name, status, formula.label]
+  - type: list
+    name: Lista
+    filters:
+      or:
+        - status == "active"
+        - status == "hold"
+    order: [file.name]
   - type: kanban
     name: Board
     order: [file.name]
@@ -89,6 +101,8 @@ beforeEach(() => {
   readBaseFile.mockReset().mockResolvedValue(BASE)
   listBaseFiles.mockReset().mockResolvedValue(['Home/Projects.base'])
   commitProperty.mockReset()
+  createBaseNote.mockClear()
+  toastAdd.mockClear()
 })
 
 function drag(type: string, target: Element, data: DataTransfer): void {
@@ -161,6 +175,28 @@ describe('BaseScreen', () => {
     drag('dragover', lane, data)
     drag('drop', lane, data)
     expect(commitProperty).toHaveBeenCalledWith('Projects/Kore.md', 'status', 'hold')
+  })
+
+  it('adds a note from a lane, prefilled with the filters and the lane value', async () => {
+    const view = await renderScreen({ kind: 'base', path: 'Home/Projects.base', view: 'Board' })
+    await view.getByRole('button', { name: 'New note in hold' }).click()
+    await view.getByRole('textbox', { name: 'New note in hold, title' }).fill('Ship it')
+    await userEvent.keyboard('{Enter}')
+    expect(createBaseNote).toHaveBeenCalledWith(
+      'Ship it',
+      { folder: null, properties: { status: 'hold' }, tags: ['type/project'] },
+      1,
+    )
+    await Promise.resolve()
+    expect(toastAdd).not.toHaveBeenCalled()
+  })
+
+  it('adds a note from a list, saying when it falls outside the view', async () => {
+    const view = await renderScreen({ kind: 'base', path: 'Home/Projects.base', view: 'Lista' })
+    await view.getByRole('button', { name: 'New note' }).click()
+    await view.getByRole('textbox', { name: 'New note, title' }).fill('Idea')
+    await userEvent.keyboard('{Enter}')
+    await expect.poll(() => toastAdd.mock.calls[0]?.[0].title).toBe('Created “Idea”')
   })
 
   it('lists every base when no file is open', async () => {

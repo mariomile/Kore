@@ -7,6 +7,7 @@ import { useRouter } from '@/routing/router'
 import { BaseViewContent } from './base-view-content'
 import { BasesIndex } from './bases-index'
 import { useBaseView } from './use-base-view'
+import { useCreateBaseNote } from './use-create-base-note'
 
 interface BaseScreenProps {
   /** The `.base` file, or null for the list of every base. */
@@ -17,7 +18,7 @@ interface BaseScreenProps {
 /**
  * An Obsidian base: its views as tabs over the live vault. Cells edit the
  * notes' own frontmatter; the `.base` file is never written, so the same
- * base keeps working in Obsidian.
+ * base keeps working in Obsidian. "+ New" adds a note the view implies.
  */
 export function BaseScreen({ path, view }: BaseScreenProps): ReactElement {
   if (path === null) {
@@ -31,6 +32,7 @@ function BaseFileScreen({ path, view }: { path: string; view: string | null }): 
   const state = useBaseView(path, view)
   const commitProperty = useCommitNoteProperty()
   const openNote = (target: string): void => navigate(routeForPath(target))
+  const createNote = useCreateBaseNote(state.status === 'ready' ? state : null, openNote)
 
   return (
     <div className="flex h-full flex-col overflow-auto">
@@ -68,7 +70,12 @@ function BaseFileScreen({ path, view }: { path: string; view: string | null }): 
           Couldn’t open this base: {state.message}
         </p>
       ) : (
-        <BaseViewContent result={state.result} onOpenNote={openNote} onEdit={commitProperty} />
+        <BaseViewContent
+          result={state.result}
+          onOpenNote={openNote}
+          onEdit={commitProperty}
+          onCreate={createNote}
+        />
       )}
     </div>
   )

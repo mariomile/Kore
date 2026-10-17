@@ -1,4 +1,4 @@
-//! `reflect links <note>` — the wiki links a note makes, in document order,
+//! `kore links <note>` — the wiki links a note makes, in document order,
 //! each resolved to the note that answers to it through the index's
 //! `note_keys` view (the app's own link resolution), or `path: null` when
 //! nothing does. Requires the index (exit 4). A private source is refused;

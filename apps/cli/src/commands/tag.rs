@@ -1,4 +1,4 @@
-//! `reflect tag <note> <tag>` / `reflect untag <note> <tag>` — the inline
+//! `kore tag <note> <tag>` / `kore untag <note> <tag>` — the inline
 //! tag is the note's membership in a collection (TDR 0005, "the hashtag is
 //! the supertag"), so `tag` appends `#tag` as a trailing body line exactly
 //! like the app's bulk-tag action (`appendBodyTag`), stamping the type's

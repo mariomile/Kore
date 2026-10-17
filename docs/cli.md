@@ -1,4 +1,4 @@
-# The `reflect` CLI
+# The `kore` CLI
 
 A small, self-contained read/discovery/write CLI over a Kore graph (Plan 14,
 extended for agents by [Plan 30](plans/30-cli-agent-parity.md)). It reads
@@ -11,33 +11,33 @@ frontmatter key, one trailing tag line, one task marker) and nothing ever
 overwrites a note.
 
 ```
-reflect info               # graph root, index state, counts (never needs the index)
-reflect tags               # every tag with its count and whether it is typed
-reflect list               # notes newest first with tags (--tag, --kind)
-reflect collection <tag>   # a typed tag's rows with their property values
-reflect properties <note>  # a note's frontmatter properties, typed
-reflect links <note>       # the wiki links a note makes, resolved
-reflect today              # print today's daily note
-reflect today --path       # its absolute path (works before the file exists)
-reflect search <query>     # ranked full-text search over the index
-reflect show <note>        # print a note by date, path, title, or alias
-reflect path <note>        # resolve a note to its absolute path
-reflect open <note>        # open a note in the app (reflect:// deep link)
-reflect tasks              # the graph's open tasks (--all includes done)
-reflect backlinks <note>   # the notes linking to a note
-reflect recent             # the most recently updated notes, newest first
-reflect capture <text>     # append a bullet to today's daily (--to any note, --stdin)
-reflect append <note> <text>  # append a markdown block (--stdin)
-reflect new <title>        # create notes/<slug>.md (--template, --tag, --set, --stdin)
-reflect set <note> k=v…    # write frontmatter properties typed by the tag schemas
-reflect tag <note> <tag>   # add a trailing #tag line (untag removes it)
-reflect done <text>        # tick a task off by its text (--undo reopens)
-reflect mcp                # serve the graph to MCP clients over stdio (--read-only)
+kore info                  # graph root, index state, counts (never needs the index)
+kore tags                  # every tag with its count and whether it is typed
+kore list                  # notes newest first with tags (--tag, --kind)
+kore collection <tag>      # a typed tag's rows with their property values
+kore properties <note>     # a note's frontmatter properties, typed
+kore links <note>          # the wiki links a note makes, resolved
+kore today                 # print today's daily note
+kore today --path          # its absolute path (works before the file exists)
+kore search <query>        # ranked full-text search over the index
+kore show <note>           # print a note by date, path, title, or alias
+kore path <note>           # resolve a note to its absolute path
+kore open <note>           # open a note in the app (kore:// deep link)
+kore tasks                 # the graph's open tasks (--all includes done)
+kore backlinks <note>      # the notes linking to a note
+kore recent                # the most recently updated notes, newest first
+kore capture <text>        # append a bullet to today's daily (--to any note, --stdin)
+kore append <note> <text>     # append a markdown block (--stdin)
+kore new <title>           # create notes/<slug>.md (--template, --tag, --set, --stdin)
+kore set <note> k=v…       # write frontmatter properties typed by the tag schemas
+kore tag <note> <tag>      # add a trailing #tag line (untag removes it)
+kore done <text>           # tick a task off by its text (--undo reopens)
+kore mcp                   # serve the graph to MCP clients over stdio (--read-only)
 ```
 
 Built from `apps/cli` (`cargo build -p reflect-cli`); bundled with the desktop
-app as a Tauri sidecar (macOS: `Kore.app/Contents/MacOS/reflect`, Linux
-`.deb`: `/usr/bin/reflect`). For local development:
+app as a Tauri sidecar (macOS: `Kore.app/Contents/MacOS/kore`, Linux
+`.deb`: `/usr/bin/kore`). For local development:
 `cargo install --path apps/cli`.
 
 ## Graph resolution
@@ -45,7 +45,7 @@ app as a Tauri sidecar (macOS: `Kore.app/Contents/MacOS/reflect`, Linux
 First match wins:
 
 1. `--graph <path>` — must contain a `.reflect/` directory.
-2. `$REFLECT_GRAPH` — same requirement.
+2. `$KORE_GRAPH` — same requirement.
 3. The nearest ancestor of the current directory containing `.reflect/`
    (git-style walk-up).
 
@@ -84,7 +84,7 @@ excluded).
 
 ## Commands
 
-### `reflect today [--path] [--json]`
+### `kore today [--path] [--json]`
 
 Prints today's daily note (`daily/YYYY-MM-DD.md`, local timezone). File-only —
 works with no index. A missing daily is exit `3`; with `--path` the would-be
@@ -92,7 +92,7 @@ path is printed even before the file exists (dailies are created lazily, so
 this is how editors/scripts create them).
 
 ```jsonc
-// reflect today --json
+// kore today --json
 {
   "date": "2026-06-11",
   "path": "daily/2026-06-11.md",
@@ -100,11 +100,11 @@ this is how editors/scripts create them).
   "title": "2026-06-11",
   "content": "…"
 }
-// reflect today --path --json adds "exists" and omits title/content:
+// kore today --path --json adds "exists" and omits title/content:
 { "date": "…", "path": "…", "absolutePath": "…", "exists": false }
 ```
 
-### `reflect search <query> [--limit N] [--json]`
+### `kore search <query> [--limit N] [--json]`
 
 Search over note titles and bodies, ranked like the app: exact, prefix, and
 per-term title matches lead, followed by title-boosted bm25 matches. Title
@@ -124,7 +124,7 @@ hash), a staleness warning goes to stderr and `"stale": true` is set — results
 still return.
 
 ```jsonc
-// reflect search "meeting notes" --json
+// kore search "meeting notes" --json
 {
   "query": "meeting notes",
   "stale": false,
@@ -134,7 +134,7 @@ still return.
 }
 ```
 
-### `reflect show <note> [--json]`
+### `kore show <note> [--json]`
 
 Resolves `<note>` and prints the raw markdown. Resolution order:
 
@@ -150,25 +150,25 @@ are derived by scanning the files. Ambiguous matches resolve to the first path
 alphabetically and list the others on stderr.
 
 ```jsonc
-// reflect show "Project X" --json   ("date" is null for non-dailies)
+// kore show "Project X" --json   ("date" is null for non-dailies)
 { "date": null, "path": "notes/project-x.md", "absolutePath": "…", "title": "Project X", "content": "…" }
 ```
 
-### `reflect path <note> [--json]`
+### `kore path <note> [--json]`
 
 Same resolution, but prints only the absolute path — for piping into editors
-and tools (`$EDITOR "$(reflect path 'Project X')"`). A `YYYY-MM-DD` argument
+and tools (`$EDITOR "$(kore path 'Project X')"`). A `YYYY-MM-DD` argument
 prints the would-be daily path even before the file exists.
 
 ```jsonc
-// reflect path 2099-01-01 --json   ("date" only appears for dailies)
+// kore path 2099-01-01 --json   ("date" only appears for dailies)
 { "date": "2099-01-01", "path": "daily/2099-01-01.md", "absolutePath": "…", "exists": false }
 ```
 
-### `reflect open <note> [--print] [--json]`
+### `kore open <note> [--print] [--json]`
 
 Same resolution, then navigates the Reflect app there by handing the OS URL
-opener the note's `reflect://` deep link ([docs/deep-links.md](deep-links.md)).
+opener the note's `kore://` deep link ([docs/deep-links.md](deep-links.md)).
 The URL prefers the most durable address the note has: the date form for
 dailies (which need not exist yet — navigation creates them lazily), the
 frontmatter `id` form when the note carries one (it survives renames), else
@@ -180,11 +180,11 @@ the scriptable half. Private notes are refused (exit `3`) like every other
 CLI surface, before their address leaks.
 
 ```jsonc
-// reflect open "Project X" --json --print   ("date" only appears for dailies)
-{ "path": "notes/project-x.md", "url": "reflect://note/01hzy3…", "launched": false }
+// kore open "Project X" --json --print   ("date" only appears for dailies)
+{ "path": "notes/project-x.md", "url": "kore://note/01hzy3…", "launched": false }
 ```
 
-### `reflect tasks [--all] [--limit N] [--json]`
+### `kore tasks [--all] [--limit N] [--json]`
 
 Lists the graph's tasks (round `+ [ ]` checkboxes) from the index's tasks
 projection — open ones by default, `--all` includes completed. Rows come back
@@ -196,7 +196,7 @@ the last index run never surfaces. A stale index warns on stderr and sets
 `"stale": true`.
 
 ```jsonc
-// reflect tasks --json
+// kore tasks --json
 {
   "stale": false,
   "tasks": [
@@ -205,7 +205,7 @@ the last index run never surfaces. A stale index warns on stderr and sets
 }
 ```
 
-### `reflect backlinks <note> [--json]`
+### `kore backlinks <note> [--json]`
 
 Lists the notes linking *to* a note, from the index's `backlinks` view — the
 same resolution the app's Backlinks panel uses (ranked wiki-name joins with
@@ -217,7 +217,7 @@ Requires the index (exit `4` when missing); a stale index warns and sets
 `"stale": true`.
 
 ```jsonc
-// reflect backlinks "Project X" --json
+// kore backlinks "Project X" --json
 {
   "path": "notes/project-x.md",
   "title": "Project X",
@@ -228,7 +228,7 @@ Requires the index (exit `4` when missing); a stale index warns and sets
 }
 ```
 
-### `reflect recent [--limit N] [--json]`
+### `kore recent [--limit N] [--json]`
 
 The most recently updated notes, newest first (default limit 20), from the
 index — templates excluded, private notes filtered with the same on-disk
@@ -236,7 +236,7 @@ re-check as every index-backed command. Requires the index (exit `4`).
 `updatedAt` is an RFC 3339 UTC timestamp of the last indexed update.
 
 ```jsonc
-// reflect recent --limit 2 --json
+// kore recent --limit 2 --json
 {
   "stale": false,
   "notes": [
@@ -245,7 +245,7 @@ re-check as every index-backed command. Requires the index (exit `4`).
 }
 ```
 
-### `reflect collection <tag> [--sort KEY] [--desc] [--limit N] [--json]`
+### `kore collection <tag> [--sort KEY] [--desc] [--limit N] [--json]`
 
 A typed tag's collection (TDR 0005): the notes carrying `<tag>`, with the
 property values the tag's schema declares. Requires the index (exit `4`); a
@@ -257,7 +257,7 @@ pinned-first, then newest. Property values are typed JSON: numbers, booleans,
 and lists round-trip as themselves, everything else as strings.
 
 ```jsonc
-// reflect collection book --sort rating --desc --json
+// kore collection book --sort rating --desc --json
 {
   "tag": "book",
   "stale": false,
@@ -275,7 +275,7 @@ and lists round-trip as themselves, everything else as strings.
 }
 ```
 
-### `reflect capture <text> [--stdin] [--task] [--to <note>] [--json]`
+### `kore capture <text> [--stdin] [--task] [--to <note>] [--json]`
 
 The CLI's item write: appends `<text>` (or stdin, with `--stdin`) as one list
 item to today's daily note, or — with `--to` — to any note resolved the
@@ -290,7 +290,7 @@ anything is read or written. stdout prints the target's absolute path. The
 JSON `date` field appears only for daily targets.
 
 ```jsonc
-// reflect capture --task "Pay bill" --json
+// kore capture --task "Pay bill" --json
 {
   "date": "2026-08-20",
   "path": "daily/2026-08-20.md",
@@ -300,7 +300,7 @@ JSON `date` field appears only for daily targets.
 }
 ```
 
-### `reflect new <title> [--template <t>] [--tag <tag>]… [--set key=value]… [--stdin] [--json]`
+### `kore new <title> [--template <t>] [--tag <tag>]… [--set key=value]… [--stdin] [--json]`
 
 Creates a regular note the way the app would: a title-derived filename
 (`notes/<slug>.md` via the frozen slug rules, `-2` suffix on collision,
@@ -317,11 +317,11 @@ With `--tag` the note is born as a collection row, like the table's "+ New":
 each tag lands as a trailing `#tag` line; a typed tag's bound template seeds
 the body when no `--template`/`--stdin` is given; its `created` properties
 are stamped with today's date; and `--set` values are typed by the union of
-the tags' schemas (the [`set`](#reflect-set-note-keyvalue-unset-key-json)
+the tags' schemas (the [`set`](#kore-set-note-keyvalue-unset-key-json)
 rules). stdout prints the new note's absolute path.
 
 ```jsonc
-// reflect new "Left Hand of Darkness" --tag book --set rating=5 --json
+// kore new "Left Hand of Darkness" --tag book --set rating=5 --json
 {
   "path": "notes/left-hand-of-darkness.md",
   "absolutePath": "/…/graph/notes/left-hand-of-darkness.md",
@@ -331,7 +331,7 @@ rules). stdout prints the new note's absolute path.
 }
 ```
 
-### `reflect info [--json]`
+### `kore info [--json]`
 
 The graph at a glance — the one index-backed command that never exits `4`:
 an agent runs it first to learn what the others will be able to do. Counts
@@ -339,7 +339,7 @@ cover public notes and dailies and the distinct tags they carry; `counts`
 is null when the index is absent or unusable.
 
 ```jsonc
-// reflect info --json
+// kore info --json
 {
   "root": "/…/graph",
   "cliVersion": "0.1.0",
@@ -348,16 +348,16 @@ is null when the index is absent or unusable.
 }
 ```
 
-### `reflect tags [--json]`
+### `kore tags [--json]`
 
 Every tag with its public note count, grouped on the folded key with one
 display casing (the app's tag facet), most used first. `typed` marks a
 collection — a schema at `tags/<tag>.md` — whose columns
-[`collection`](#reflect-collection-tag-sort-key-desc-limit-n-json) lists.
+[`collection`](#kore-collection-tag-sort-key-desc-limit-n-json) lists.
 Requires the index (exit `4`).
 
 ```jsonc
-// reflect tags --json
+// kore tags --json
 {
   "stale": false,
   "tags": [
@@ -367,14 +367,14 @@ Requires the index (exit `4`).
 }
 ```
 
-### `reflect list [--tag <tag>] [--kind daily|note] [--limit N] [--json]`
+### `kore list [--tag <tag>] [--kind daily|note] [--limit N] [--json]`
 
 Notes newest first with their tags, narrowed to one tag and/or one kind.
 Requires the index (exit `4`); private notes are excluded with the same
 on-disk re-check as `recent`.
 
 ```jsonc
-// reflect list --tag book --kind note --json
+// kore list --tag book --kind note --json
 {
   "stale": false,
   "notes": [
@@ -384,7 +384,7 @@ on-disk re-check as `recent`.
 }
 ```
 
-### `reflect properties <note> [--json]`
+### `kore properties <note> [--json]`
 
 A note's frontmatter as typed property values — the same typing the
 `note_properties` projection stores (scalars and lists of scalars; objects,
@@ -395,7 +395,7 @@ open (empty otherwise). File-only like `show`. A private note is refused
 (exit `3`).
 
 ```jsonc
-// reflect properties Dune --json
+// kore properties Dune --json
 {
   "path": "notes/dune.md",
   "title": "Dune",
@@ -406,7 +406,7 @@ open (empty otherwise). File-only like `show`. A private note is refused
 }
 ```
 
-### `reflect links <note> [--json]`
+### `kore links <note> [--json]`
 
 The wiki links a note makes, in document order, one entry per distinct
 target, resolved through the index's link resolution to the note that
@@ -414,7 +414,7 @@ answers to it (`path: null` when none does). A private source is refused;
 a link whose target is private is dropped. Requires the index (exit `4`).
 
 ```jsonc
-// reflect links Dune --json
+// kore links Dune --json
 {
   "path": "notes/dune.md",
   "stale": false,
@@ -425,7 +425,7 @@ a link whose target is private is dropped. Requires the index (exit `4`).
 }
 ```
 
-### `reflect set <note> key=value… [--unset key]… [--json]`
+### `kore set <note> key=value… [--unset key]… [--json]`
 
 Writes frontmatter property values the way the app's property editors do.
 The value's type comes from the schemas of the tags the note carries (their
@@ -456,7 +456,7 @@ patch would leave unparseable, is refused untouched (exit `1`). A private
 note is refused (exit `3`). stdout prints the note's absolute path.
 
 ```jsonc
-// reflect set Dune rating=4 read=yes "author=Frank Herbert" --unset draft --json
+// kore set Dune rating=4 read=yes "author=Frank Herbert" --unset draft --json
 {
   "path": "notes/dune.md",
   "absolutePath": "/…/graph/notes/dune.md",
@@ -465,7 +465,7 @@ note is refused (exit `3`). stdout prints the note's absolute path.
 }
 ```
 
-### `reflect tag <note> <tag> [--json]` · `reflect untag <note> <tag> [--json]`
+### `kore tag <note> <tag> [--json]` · `kore untag <note> <tag> [--json]`
 
 Membership in a collection is the inline hashtag, so `tag` appends `#tag`
 as a trailing body line (one blank line after prose, none in an empty body;
@@ -478,13 +478,13 @@ must follow the tag grammar (a letter, then letters, digits, `/`, `_`, `-`;
 the leading `#` is optional). Private notes are refused.
 
 ```jsonc
-// reflect tag Dune book --json
+// kore tag Dune book --json
 { "path": "notes/dune.md", "tag": "book", "added": true, "stamped": { "added": "2026-09-05" } }
-// reflect untag Dune book --json
+// kore untag Dune book --json
 { "path": "notes/dune.md", "tag": "book", "removed": true }
 ```
 
-### `reflect done <text> [--in <note>] [--undo] [--json]`
+### `kore done <text> [--in <note>] [--undo] [--json]`
 
 Ticks a task off by its text: an exact (case-insensitive) match, else a
 unique substring match; `--undo` reopens a completed task. Zero or several
@@ -498,11 +498,11 @@ refuses (exit `1`) rather than toggling the wrong line. Only the three
 marker characters change.
 
 ```jsonc
-// reflect done "pay bill" --in 2026-09-05 --json
+// kore done "pay bill" --in 2026-09-05 --json
 { "path": "daily/2026-09-05.md", "text": "pay bill", "checked": true }
 ```
 
-### `reflect append <note> <text> [--stdin] [--json]`
+### `kore append <note> <text> [--stdin] [--json]`
 
 Appends a markdown block — headings, paragraphs, lists — after one blank
 line, in the note's own line ending. A daily target may not exist yet
@@ -510,7 +510,7 @@ line, in the note's own line ending. A daily target may not exist yet
 content with `--stdin`.
 
 ```jsonc
-// printf '## Notes\n\n- one\n' | reflect append Dune --stdin --json
+// printf '## Notes\n\n- one\n' | kore append Dune --stdin --json
 { "path": "notes/dune.md", "absolutePath": "/…/graph/notes/dune.md", "created": false, "bytesAppended": 16 }
 ```
 
@@ -531,7 +531,7 @@ Settings → Agents installs the bundled agent skills under
 
 | Skill | Teaches |
 |---|---|
-| `reflect-<graph-slug>` | This contract for one graph: its root, the bundled CLI's path, the commands, the privacy rules. Rendered per graph. |
+| `kore-graph-<graph-slug>` | This contract for one graph: its root, the bundled CLI's path, the commands, the privacy rules. Rendered per graph. |
 | `kore-markdown` | The note format: layout, titles, wiki links, tags, tasks, frontmatter, templates. |
 | `kore-collections` | Supertags and their schemas, property types and their YAML values, the ` ```collection ` fence, reusable collections. |
 | `kore-agent-memory` | The `agents/` folder: user profile, shared facts and log, souls, working memory, pending proposals, vault skills. |
@@ -543,14 +543,14 @@ one (`apps/desktop/src-tauri/src/skill.rs`).
 
 ## MCP server
 
-`reflect mcp` speaks the Model Context Protocol (JSON-RPC over stdio,
+`kore mcp` speaks the Model Context Protocol (JSON-RPC over stdio,
 revisions 2025-06-18, 2025-03-26 and 2024-11-05), so Claude Desktop, Claude
 Code, Cursor, Codex and any other MCP client can use the graph as tools
 without a skill or a shell. Settings → Agents → MCP server shows the config
 to paste, with the bundled CLI path and the open graph's root filled in:
 
 ```json
-{ "mcpServers": { "kore": { "command": "/Applications/Kore.app/Contents/MacOS/reflect",
+{ "mcpServers": { "kore": { "command": "/Applications/Kore.app/Contents/MacOS/kore",
                             "args": ["--graph", "/path/to/graph", "mcp"] } } }
 ```
 
@@ -558,7 +558,7 @@ or, for Claude Code, `claude mcp add kore -- <cli> --graph <root> mcp`.
 
 Each tool runs one subcommand above as a child process with `--json`, so the
 output contract, the structural writes and the privacy rule are exactly the
-CLI's: a private note is as invisible to an MCP client as to `reflect show`.
+CLI's: a private note is as invisible to an MCP client as to `kore show`.
 Arguments travel as argv after `--`, never through a shell. A command that
 fails (not found, private, no index) comes back as a tool result with
 `isError: true` and the CLI's message, not as a protocol error.

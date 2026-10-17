@@ -49,7 +49,7 @@ I modi in cui un tag finisce su una nota, tutti quanti:
 4. L'import CSV (`collection-import.tsx:122`).
 5. Il gesto Tana sul daily: clicchi un `#tag` dentro una riga e la trasformi
    in nota (`tag-actions-menu.tsx`).
-6. La CLI: `reflect tag <nota> <tag>` (`apps/cli/src/commands/tag.rs:46`).
+6. La CLI: `kore tag <nota> <tag>` (`apps/cli/src/commands/tag.rs:46`).
 
 Tutti e sei passano per `appendBodyTag`, che appende `#tag` su una riga in
 fondo al corpo. Non esiste un settimo modo, e in particolare **non esiste un
@@ -177,7 +177,7 @@ in giù **tutto il resto funziona già**: tabella `tags`, collection, filtri
   null-o-scrittura di `body-tag.ts`.
 - `use-remove-note-tag.ts` deve pulire entrambe le sorgenti.
 - Il mirror Rust della CLI: `apps/cli/src/body_tag.rs` ha la sua copia di
-  `append_body_tag` / `remove_trailing_tag`, e `reflect tag` / `reflect untag`
+  `append_body_tag` / `remove_trailing_tag`, e `kore tag` / `kore untag`
   devono scegliere il canale.
 - Le due skill (`kore-markdown/SKILL.md` riga 55 dice esplicitamente il
   contrario oggi, `kore-collections/SKILL.md`) e un emendamento a TDR 0005.

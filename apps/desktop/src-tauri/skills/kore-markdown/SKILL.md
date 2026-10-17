@@ -11,8 +11,8 @@ rebuildable projection. **Markdown is the source of truth.** Anything you
 write following these conventions renders as a first-class note; anything
 else stays visible as plain markdown, never corrupted, never hidden.
 
-Prefer the `reflect` CLI for structural writes (see the graph's own skill,
-`reflect-<graph>`): it types frontmatter, appends items, creates notes and
+Prefer the `kore` CLI for structural writes (see the graph's own skill,
+`kore-graph-<graph>`): it types frontmatter, appends items, creates notes and
 tags atomically. Edit the file directly only for prose.
 
 ## Layout
@@ -55,7 +55,7 @@ in frontmatter `tags:` (`tags: [book, sci-fi/classic]`, a block list, or a
 comma-separated string; a leading `#` is optional). Grammar: a letter, then
 letters, digits, `/`, `_`, `-`. Either source makes the note a member of
 that tag's collection, a daily included. `tags:` is membership, not an
-ordinary property. The app's Type field writes `tags:`; `reflect tag` and
+ordinary property. The app's Type field writes `tags:`; `kore tag` and
 the editor write one trailing `#tag` line at the end of the body. To take a
 tag off, remove it from both places.
 

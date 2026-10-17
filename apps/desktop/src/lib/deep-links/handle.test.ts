@@ -35,7 +35,7 @@ beforeEach(() => {
 
 describe('handleDeepLink', () => {
   it('navigates self-contained routes directly, with no status noise', async () => {
-    await handle('reflect://daily/2026-07-01')
+    await handle('kore://daily/2026-07-01')
     expect(navigate).toHaveBeenCalledWith({ kind: 'daily', date: '2026-07-01' })
     expect(resolveMock).not.toHaveBeenCalled()
     expect(startOperationMock).not.toHaveBeenCalled()
@@ -44,7 +44,7 @@ describe('handleDeepLink', () => {
   it('resolves a note target and navigates to its route', async () => {
     resolveMock.mockResolvedValue('notes/project-x.md')
 
-    await handle('reflect://note/Project%20X')
+    await handle('kore://note/Project%20X')
 
     expect(resolveMock).toHaveBeenCalledWith('Project X')
     expect(navigate).toHaveBeenCalledWith({ kind: 'note', path: 'notes/project-x.md' })
@@ -53,7 +53,7 @@ describe('handleDeepLink', () => {
   it('routes a daily-path resolution to the daily view', async () => {
     resolveMock.mockResolvedValue('daily/2026-07-01.md')
 
-    await handle('reflect://note/2026-07-01')
+    await handle('kore://note/2026-07-01')
 
     expect(navigate).toHaveBeenCalledWith({ kind: 'daily', date: '2026-07-01' })
   })
@@ -61,7 +61,7 @@ describe('handleDeepLink', () => {
   it('surfaces a failure instead of navigating when the target resolves to nothing', async () => {
     resolveMock.mockResolvedValue(null)
 
-    await handle('reflect://note/ghost')
+    await handle('kore://note/ghost')
 
     expect(navigate).not.toHaveBeenCalled()
     expect(startOperationMock).toHaveBeenCalledWith('Opening link')
@@ -71,7 +71,7 @@ describe('handleDeepLink', () => {
   it('surfaces a resolution failure instead of rejecting the handler', async () => {
     resolveMock.mockRejectedValue(new Error('index unavailable'))
 
-    await expect(handle('reflect://note/Project%20X')).resolves.toBeUndefined()
+    await expect(handle('kore://note/Project%20X')).resolves.toBeUndefined()
 
     expect(navigate).not.toHaveBeenCalled()
     expect(startOperationMock).toHaveBeenCalledWith('Opening link')
@@ -86,7 +86,7 @@ describe('handleDeepLink', () => {
       }),
     )
     let stale = false
-    const pending = handleDeepLink('reflect://note/Project%20X', {
+    const pending = handleDeepLink('kore://note/Project%20X', {
       navigate,
       generation: 3,
       isStale: () => stale,
@@ -109,7 +109,7 @@ describe('handleDeepLink', () => {
     )
     let stale = false
 
-    const pending = handleDeepLink('reflect://note/Project%20X', {
+    const pending = handleDeepLink('kore://note/Project%20X', {
       navigate,
       generation: 3,
       isStale: () => stale,
@@ -123,18 +123,18 @@ describe('handleDeepLink', () => {
   })
 
   it('surfaces a failure on a URL the grammar rejects', async () => {
-    await handle('reflect://edit-notes?content=evil')
+    await handle('kore://edit-notes?content=evil')
 
     expect(navigate).not.toHaveBeenCalled()
     expect(spoolMock).not.toHaveBeenCalled()
     expect(startOperationMock).toHaveBeenCalledWith('Opening link')
     expect(operationHandle.fail).toHaveBeenCalledWith(
-      'Unrecognized link: reflect://edit-notes?content=evil',
+      'Unrecognized link: kore://edit-notes?content=evil',
     )
   })
 
   it('spools a valid text-capture envelope for an append link', async () => {
-    await handle('reflect://append?text=call%20the%20bank')
+    await handle('kore://append?text=call%20the%20bank')
 
     expect(spoolMock).toHaveBeenCalledTimes(1)
     const [name, json, generation] = spoolMock.mock.calls[0]!
@@ -149,7 +149,7 @@ describe('handleDeepLink', () => {
   })
 
   it('spools a task envelope for a task link', async () => {
-    await handle('reflect://task?text=buy+milk')
+    await handle('kore://task?text=buy+milk')
 
     const [, json] = spoolMock.mock.calls[0]!
     const envelope = textCaptureEnvelopeSchema.parse(JSON.parse(json))
@@ -160,7 +160,7 @@ describe('handleDeepLink', () => {
   })
 
   it('spools a checkbox envelope for a checkbox link', async () => {
-    await handle('reflect://checkbox?text=pack+a+bag')
+    await handle('kore://checkbox?text=pack+a+bag')
 
     const [, json] = spoolMock.mock.calls[0]!
     const envelope = textCaptureEnvelopeSchema.parse(JSON.parse(json))
@@ -173,7 +173,7 @@ describe('handleDeepLink', () => {
   it('surfaces a spool failure instead of claiming success', async () => {
     spoolMock.mockRejectedValue(new Error('stale generation'))
 
-    await handle('reflect://append?text=milk')
+    await handle('kore://append?text=milk')
 
     expect(operationHandle.done).not.toHaveBeenCalled()
     expect(startOperationMock).toHaveBeenCalledWith('Saving capture')

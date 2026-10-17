@@ -51,10 +51,10 @@ describe('DeepLinkProvider navigation intent integration', () => {
     )
     await render(<DeepLinkProvider graph={GRAPH}>{null}</DeepLinkProvider>)
 
-    dispatchDeepLink('reflect://note/Project%20X')
+    dispatchDeepLink('kore://note/Project%20X')
     expect(resolveNoteTarget).toHaveBeenCalledWith('Project X')
 
-    dispatchDeepLink('reflect://append?text=captured%20while%20resolving')
+    dispatchDeepLink('kore://append?text=captured%20while%20resolving')
     await vi.waitFor(() => expect(captureInboxSpool).toHaveBeenCalledTimes(1))
 
     finishResolution('notes/project-x.md')

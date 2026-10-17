@@ -1,4 +1,4 @@
-//! `reflect path <note>` — resolve a note to its absolute path, for piping
+//! `kore path <note>` — resolve a note to its absolute path, for piping
 //! into editors and tools. A `YYYY-MM-DD` argument prints the would-be daily
 //! path even before the file exists (dailies are created lazily).
 

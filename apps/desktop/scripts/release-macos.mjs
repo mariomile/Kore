@@ -54,7 +54,7 @@ const ONNX_RUNTIME_DYLIB_RESOURCE = 'libonnxruntime.dylib'
 const INTEL_ONNX_RUNTIME_RESOURCE_SOURCE = `resources/onnxruntime/${ONNX_RUNTIME_DYLIB_RESOURCE}`
 const RELEASE_NOTES_FILENAME = 'release-notes.md'
 const MAC_DOWNLOAD_NOTICE_HEADING = '## Which Mac download should I choose?'
-const MACOS_SIDECARS = ['reflect', 'reflect-capture-host']
+const MACOS_SIDECARS = ['kore', 'reflect-capture-host']
 const MACOS_PROFILE_IDENTITY_ENTITLEMENTS = [
   'com.apple.application-identifier',
   'com.apple.developer.team-identifier',
@@ -956,9 +956,9 @@ function verifySidecarsLaunch({ flavor, target }) {
   const checks = [
     {
       args: ['--version'],
-      binary: join(app, 'Contents', 'MacOS', 'reflect'),
-      description: 'reflect CLI launch',
-      outputPattern: /^reflect \d/,
+      binary: join(app, 'Contents', 'MacOS', 'kore'),
+      description: 'kore CLI launch',
+      outputPattern: /^kore \d/,
     },
     {
       args: [],

@@ -1,4 +1,4 @@
-//! `reflect info` — the graph and its index at a glance: root, CLI version,
+//! `kore info` — the graph and its index at a glance: root, CLI version,
 //! whether the index exists and is usable/fresh, and public note, daily, and
 //! tag counts. The one index-backed command that never exits 4: an agent
 //! runs it first to learn what the other commands will be able to do.

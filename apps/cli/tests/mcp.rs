@@ -1,4 +1,4 @@
-//! End-to-end test for `reflect mcp`: a real client session over the real
+//! End-to-end test for `kore mcp`: a real client session over the real
 //! binary's stdio against a fixture graph.
 
 mod common;
@@ -34,7 +34,7 @@ fn an_mcp_session_searches_reads_and_writes_while_private_notes_stay_hidden() {
         .iter()
         .map(|message| format!("{message}\n"))
         .collect();
-    let output = reflect_stdin(&fixture, &["mcp"], &input);
+    let output = kore_stdin(&fixture, &["mcp"], &input);
     assert!(output.status.success(), "stderr: {}", stderr(&output));
 
     let replies: Vec<Value> = stdout(&output)

@@ -12,7 +12,7 @@ const agentSkillInstallStateSchema = z.enum(['missing', 'current', 'stale', 'con
 export type AgentSkillInstallState = z.infer<typeof agentSkillInstallStateSchema>
 
 const agentSkillStatusSchema = z.object({
-  /** The skill's directory name (`reflect-<slug>` for the graph's own, `kore-*` for the shared ones). */
+  /** The skill's directory name (`kore-graph-<slug>` for the graph's own, `kore-*` for the shared ones). */
   skillName: z.string(),
   /** Absolute path of the target `SKILL.md` under `~/.agents/skills/`. */
   skillPath: z.string(),
@@ -25,7 +25,7 @@ export type AgentSkillStatus = z.infer<typeof agentSkillStatusSchema>
 const agentSkillsStatusSchema = z.object({
   /** The skills directory (`~/.agents/skills`). */
   skillsRoot: z.string(),
-  /** Absolute path of the bundled `reflect` CLI the graph skill references. */
+  /** Absolute path of the bundled `kore` CLI the graph skill references. */
   cliPath: z.string(),
   /** The graph's own skill first, then the shared format skills. */
   skills: z.array(agentSkillStatusSchema),
@@ -63,7 +63,7 @@ export interface McpClientSetup {
 
 /** Inputs for {@link mcpClientSetup}. */
 export interface McpClientSetupOptions {
-  /** Absolute path of the bundled `reflect` CLI. */
+  /** Absolute path of the bundled `kore` CLI. */
   readonly cliPath: string
   /** Absolute root of the graph the server serves. */
   readonly graphRoot: string
@@ -76,7 +76,7 @@ function shellQuote(value: string): string {
 }
 
 /**
- * How an MCP client launches `reflect mcp` against one graph: the bundled CLI
+ * How an MCP client launches `kore mcp` against one graph: the bundled CLI
  * pinned to the graph root, optionally `--read-only` (no write tools).
  */
 export function mcpClientSetup(options: McpClientSetupOptions): McpClientSetup {

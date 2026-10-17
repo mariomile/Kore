@@ -29,7 +29,7 @@
   "plugins": {
     "deep-link": {
       "desktop": {
-        "schemes": ["reflect"]
+        "schemes": ["kore", "reflect"]
       }
     },
     "updater": {

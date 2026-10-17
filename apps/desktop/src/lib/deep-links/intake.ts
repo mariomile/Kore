@@ -1,7 +1,7 @@
 import { getCurrent, onOpenUrl } from '@tauri-apps/plugin-deep-link'
 
 /**
- * The app-lifetime deep-link intake. The OS delivers `reflect://` URLs to the
+ * The app-lifetime deep-link intake. The OS delivers `kore://` URLs to the
  * app as a whole, but they can only be *acted on* inside an open graph (the
  * router and the capture inbox are graph-scoped), so this module decouples
  * the two lifetimes: {@link startDeepLinkListener} subscribes exactly once
@@ -15,7 +15,7 @@ let activeHandler: ((url: string) => void) | null = null
 let started = false
 
 /**
- * Feed one `reflect://` URL into the intake as if the OS had delivered it —
+ * Feed one `kore://` URL into the intake as if the OS had delivered it —
  * the entry point for deep links clicked *inside* the app (a link in a note
  * body must not round-trip through the OS opener: the opener capability
  * denies the scheme, dev builds don't register it, and macOS could hand the

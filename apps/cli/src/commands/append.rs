@@ -1,4 +1,4 @@
-//! `reflect append <note> [text] [--stdin]` — append a markdown block to a
+//! `kore append <note> [text] [--stdin]` — append a markdown block to a
 //! note: the CLI's write for content longer than one list item. The block
 //! lands after one blank line, in the note's own line ending, and nothing
 //! above it changes. A daily target may not exist yet (created, like

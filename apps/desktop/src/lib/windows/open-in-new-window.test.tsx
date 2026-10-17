@@ -26,7 +26,7 @@ beforeEach(() => {
 describe('openRouteInNewWindow', () => {
   it('opens the route’s deep link', async () => {
     await expect(openRouteInNewWindow({ kind: 'note', path: 'notes/foo.md' })).resolves.toBe(true)
-    expect(openNoteWindow).toHaveBeenCalledWith('reflect://note/notes%2Ffoo.md')
+    expect(openNoteWindow).toHaveBeenCalledWith('kore://note/notes%2Ffoo.md')
   })
 
   it('shares one native request between concurrent opens of the same note', async () => {

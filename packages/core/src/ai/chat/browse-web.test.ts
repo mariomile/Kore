@@ -39,7 +39,7 @@ describe('open_web_page', () => {
   it('refuses non-web URLs without touching the shell', async () => {
     const deps = fakeDeps()
     const open = buildOpenWebPage(deps)
-    for (const url of ['file:///etc/passwd', 'javascript:alert(1)', 'example.com', 'reflect://x']) {
+    for (const url of ['file:///etc/passwd', 'javascript:alert(1)', 'example.com', 'kore://x']) {
       expect(await open(url)).toEqual({ ok: false, error: WEB_URL_ERROR })
     }
     expect(deps.browseOpenFn).not.toHaveBeenCalled()

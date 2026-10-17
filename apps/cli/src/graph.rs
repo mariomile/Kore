@@ -1,4 +1,4 @@
-//! Graph resolution: `--graph` flag → `REFLECT_GRAPH` env → git-style walk-up
+//! Graph resolution: `--graph` flag → `KORE_GRAPH` env → git-style walk-up
 //! from the current directory to the nearest ancestor containing `.reflect/`.
 //! Deliberately no desktop recents-config fallback (Plan 14) — the CLI must be
 //! deterministic for scripts and agents.
@@ -17,7 +17,7 @@ pub struct Graph {
 
 const NO_GRAPH_HELP: &str =
     "no graph found — run inside a graph (a directory containing .reflect/), \
-     pass --graph <path>, or set REFLECT_GRAPH";
+     pass --graph <path>, or set KORE_GRAPH";
 
 fn is_graph(path: &Path) -> bool {
     path.join(REFLECT_DIR).is_dir()
@@ -54,9 +54,9 @@ pub fn resolve(flag: Option<&Path>) -> Result<Graph, CliError> {
     if let Some(path) = flag {
         return explicit_graph(path, "--graph");
     }
-    if let Some(env) = std::env::var_os("REFLECT_GRAPH") {
+    if let Some(env) = std::env::var_os("KORE_GRAPH") {
         if !env.is_empty() {
-            return explicit_graph(Path::new(&env), "REFLECT_GRAPH");
+            return explicit_graph(Path::new(&env), "KORE_GRAPH");
         }
     }
     let cwd = std::env::current_dir()?;

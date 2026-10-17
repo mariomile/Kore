@@ -1,4 +1,4 @@
-//! `reflect mcp` — the CLI as a Model Context Protocol server over stdio, so
+//! `kore mcp` — the CLI as a Model Context Protocol server over stdio, so
 //! any MCP client (Claude Desktop, Claude Code, Cursor, Codex…) can search,
 //! read, and write a Kore graph as tools.
 //!
@@ -6,7 +6,7 @@
 //! binary with `--graph <root> --json`, so the server inherits the CLI's
 //! contracts unchanged: the `--json` shapes in `docs/cli.md`, the structural
 //! writes, and the privacy rule (a `private: true` note is invisible here
-//! exactly as it is to `reflect show`). The server adds no reading or writing
+//! exactly as it is to `kore show`). The server adds no reading or writing
 //! logic of its own; it only maps tool arguments to argv. Values travel as
 //! separate argv entries after `--`, never through a shell, so a query that
 //! starts with `-` stays a query.
@@ -39,7 +39,7 @@ pub struct RunOutput {
     pub text: String,
 }
 
-/// Runs a `reflect` subcommand. The process runner is the real one; tests
+/// Runs a `kore` subcommand. The process runner is the real one; tests
 /// substitute a recorder.
 pub trait Runner {
     /// `args` start at the subcommand name; `--graph` and `--json` are the
@@ -68,13 +68,13 @@ impl Runner for ProcessRunner {
             })
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
-            .env_remove("REFLECT_GRAPH");
+            .env_remove("KORE_GRAPH");
         let mut child = match command.spawn() {
             Ok(child) => child,
             Err(err) => {
                 return RunOutput {
                     success: false,
-                    text: format!("could not run reflect: {err}"),
+                    text: format!("could not run kore: {err}"),
                 }
             }
         };
@@ -89,11 +89,11 @@ impl Runner for ProcessRunner {
             },
             Ok(output) => {
                 let message = String::from_utf8_lossy(&output.stderr);
-                let message = message.trim().trim_start_matches("reflect: ");
+                let message = message.trim().trim_start_matches("kore: ");
                 RunOutput {
                     success: false,
                     text: if message.is_empty() {
-                        format!("reflect exited with {}", output.status)
+                        format!("kore exited with {}", output.status)
                     } else {
                         message.to_string()
                     },
@@ -101,7 +101,7 @@ impl Runner for ProcessRunner {
             }
             Err(err) => RunOutput {
                 success: false,
-                text: format!("could not run reflect: {err}"),
+                text: format!("could not run kore: {err}"),
             },
         }
     }

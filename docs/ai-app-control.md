@@ -48,7 +48,7 @@ is not duplicated in the tool.
 
 ## What the CLI engines can do today
 
-Claude Code, Codex and Cursor reach the graph through the `reflect` binary
+Claude Code, Codex and Cursor reach the graph through the `kore` binary
 ([docs/cli.md](cli.md), [Plan 30](plans/30-cli-agent-parity.md)): read and
 discovery (`info`, `tags`, `list`, `properties`, `links`, `search`, `show`,
 `collection`, `backlinks`, `tasks`, `recent`, `today`, `path`, `open`) and

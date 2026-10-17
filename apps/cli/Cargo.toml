@@ -5,7 +5,7 @@ description = "Read/discovery CLI over a Reflect graph (Plan 14)"
 edition = "2021"
 
 [[bin]]
-name = "reflect"
+name = "kore"
 path = "src/main.rs"
 
 [dependencies]

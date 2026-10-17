@@ -1,4 +1,4 @@
-//! `reflect search <query>` — ranked lexical search over the FTS index. The
+//! `kore search <query>` — ranked lexical search over the FTS index. The
 //! one command that requires the index: missing/unusable is exit 4 (the CLI
 //! never builds or repairs the index — that's the desktop app's job). A stale
 //! index warns and still returns rows.

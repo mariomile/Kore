@@ -24,7 +24,7 @@ export function getInitialWindowRoute(): Route | null {
 }
 
 /**
- * Derive a route from a `reflect://` link synchronously, or null when only
+ * Derive a route from a `kore://` link synchronously, or null when only
  * the index can answer. ⌘-click builds links with `deepLinkForRoute`, so its
  * note targets are path-shaped and resolve right here; id/title-shaped
  * targets (hand-written links) fall back to the intake's async resolution —

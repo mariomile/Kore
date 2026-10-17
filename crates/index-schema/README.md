@@ -2,7 +2,7 @@
 
 Shared schema + migrations for `<graph>/.reflect/index.sqlite` (Plan 04/14).
 
-The desktop app (writer) and the `reflect` CLI (read-only) both depend on
+The desktop app (writer) and the `kore` CLI (read-only) both depend on
 this crate, so the schema can never skew between them. Everything that
 creates or migrates the schema sits behind the `vec` feature — the vec0
 virtual tables require the sqlite-vec extension; read-only consumers build

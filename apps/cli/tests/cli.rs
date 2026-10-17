@@ -1,5 +1,5 @@
 //! End-to-end tests for the CLI's read and discovery surface, run against the
-//! real `reflect` binary and the fixture graphs in `common`.
+//! real `kore` binary and the fixture graphs in `common`.
 
 mod common;
 
@@ -22,7 +22,7 @@ fn today_prints_the_daily_note_with_no_index() {
     let content = "remember the milk\n";
     fixture.write_note(&daily_path(&today_date()), content);
 
-    let output = reflect(&fixture, &["today"]);
+    let output = kore(&fixture, &["today"]);
     assert!(output.status.success(), "stderr: {}", stderr(&output));
     assert_eq!(stdout(&output), content);
 }
@@ -30,12 +30,12 @@ fn today_prints_the_daily_note_with_no_index() {
 #[test]
 fn today_path_prints_the_would_be_path_before_the_file_exists() {
     let fixture = graph();
-    let output = reflect(&fixture, &["today", "--path"]);
+    let output = kore(&fixture, &["today", "--path"]);
     assert!(output.status.success());
     let expected = daily_path(&today_date());
     assert!(stdout(&output).trim_end().ends_with(&expected));
 
-    let missing = reflect(&fixture, &["today"]);
+    let missing = kore(&fixture, &["today"]);
     assert_eq!(missing.status.code(), Some(3));
     assert!(stderr(&missing).contains("no daily note"));
 }
@@ -45,7 +45,7 @@ fn today_json_shape() {
     let fixture = graph();
     fixture.write_note(&daily_path(&today_date()), "# Plans\nship it\n");
 
-    let value = json(&reflect(&fixture, &["today", "--json"]));
+    let value = json(&kore(&fixture, &["today", "--json"]));
     assert_eq!(value["date"], today_date());
     assert_eq!(value["path"], daily_path(&today_date()));
     assert_eq!(value["title"], "Plans");
@@ -61,12 +61,12 @@ fn today_refuses_a_private_daily() {
         "---\nprivate: true\n---\nsecret plans\n",
     );
 
-    let output = reflect(&fixture, &["today"]);
+    let output = kore(&fixture, &["today"]);
     assert_eq!(output.status.code(), Some(3));
     assert_eq!(stdout(&output), "");
     assert!(stderr(&output).contains("private"));
 
-    let path_output = reflect(&fixture, &["today", "--path"]);
+    let path_output = kore(&fixture, &["today", "--path"]);
     assert_eq!(path_output.status.code(), Some(3));
 }
 
@@ -78,10 +78,10 @@ fn graph_resolves_by_walking_up_from_a_subdirectory() {
     let content = "found from a subdir\n";
     fixture.write_note(&daily_path(&today_date()), content);
 
-    let output = Command::new(env!("CARGO_BIN_EXE_reflect"))
+    let output = Command::new(env!("CARGO_BIN_EXE_kore"))
         .args(["today"])
         .current_dir(fixture.root().join("notes"))
-        .env_remove("REFLECT_GRAPH")
+        .env_remove("KORE_GRAPH")
         .output()
         .unwrap();
     assert!(output.status.success());
@@ -92,7 +92,7 @@ fn graph_resolves_by_walking_up_from_a_subdirectory() {
 fn explicit_graph_flag_rejects_a_non_graph() {
     let fixture = graph();
     let not_a_graph = TempDir::new().unwrap();
-    let output = reflect(
+    let output = kore(
         &fixture,
         &["--graph", not_a_graph.path().to_str().unwrap(), "today"],
     );
@@ -107,10 +107,10 @@ fn reflect_graph_env_var_resolves_the_graph() {
     fixture.write_note(&daily_path(&today_date()), content);
 
     let elsewhere = TempDir::new().unwrap();
-    let output = Command::new(env!("CARGO_BIN_EXE_reflect"))
+    let output = Command::new(env!("CARGO_BIN_EXE_kore"))
         .args(["today"])
         .current_dir(elsewhere.path())
-        .env("REFLECT_GRAPH", fixture.root())
+        .env("KORE_GRAPH", fixture.root())
         .output()
         .unwrap();
     assert!(output.status.success(), "stderr: {}", stderr(&output));
@@ -133,7 +133,7 @@ fn search_ranks_hits_and_excludes_private_notes() {
     );
     fixture.build_index();
 
-    let output = reflect(&fixture, &["search", "zebra"]);
+    let output = kore(&fixture, &["search", "zebra"]);
     assert!(output.status.success(), "stderr: {}", stderr(&output));
     let text = stdout(&output);
     assert!(text.contains("notes/zebra.md"));
@@ -160,7 +160,7 @@ fn search_boosts_title_matches_over_body_matches() {
     );
     fixture.build_index();
 
-    let text = stdout(&reflect(&fixture, &["search", "quokka"]));
+    let text = stdout(&kore(&fixture, &["search", "quokka"]));
     let title_pos = text.find("notes/title-hit.md").unwrap();
     let body_pos = text.find("notes/body-hit.md").unwrap();
     assert!(
@@ -185,7 +185,7 @@ fn search_finds_a_short_japanese_term_inside_a_title() {
     );
     fixture.build_index();
 
-    let text = stdout(&reflect(&fixture, &["search", "東京"]));
+    let text = stdout(&kore(&fixture, &["search", "東京"]));
     let title_pos = text.find("notes/title-hit.md").unwrap();
     let body_pos = text.find("notes/body-hit.md").unwrap();
     assert!(
@@ -193,7 +193,7 @@ fn search_finds_a_short_japanese_term_inside_a_title() {
         "expected the title substring match before the body match:\n{text}"
     );
 
-    let multi_term = stdout(&reflect(&fixture, &["search", "東京 旅行"]));
+    let multi_term = stdout(&kore(&fixture, &["search", "東京 旅行"]));
     assert!(multi_term.contains("notes/title-hit.md"));
     assert!(!multi_term.contains("notes/body-hit.md"));
 }
@@ -215,7 +215,7 @@ fn search_matches_latin_title_terms_at_word_starts_only() {
     fixture.write_note("notes/garage.md", "# Garage\nthe car needs new brakes\n");
     fixture.build_index();
 
-    let text = stdout(&reflect(&fixture, &["search", "car"]));
+    let text = stdout(&kore(&fixture, &["search", "car"]));
     let title_pos = text.find("notes/car-log.md").unwrap();
     let body_pos = text.find("notes/garage.md").unwrap();
     assert!(
@@ -236,13 +236,13 @@ fn search_finds_a_multi_term_partial_latin_title() {
     fixture.write_note("notes/Tim MacCaw.md", "an otherwise unrelated body\n");
     fixture.build_index();
 
-    let text = stdout(&reflect(&fixture, &["search", "Tim Mac"]));
+    let text = stdout(&kore(&fixture, &["search", "Tim Mac"]));
     assert!(
         text.contains("notes/Tim MacCaw.md"),
         "expected the partial title match:\n{text}"
     );
 
-    let value = json(&reflect(&fixture, &["search", "Tim Mac", "--json"]));
+    let value = json(&kore(&fixture, &["search", "Tim Mac", "--json"]));
     assert_eq!(value["results"][0]["snippet"], "");
     assert_eq!(value["results"][0]["score"], 0.0);
 }
@@ -257,7 +257,7 @@ fn search_keeps_tokenizer_normalized_title_matches_above_body_matches() {
     );
     fixture.build_index();
 
-    let value = json(&reflect(&fixture, &["search", "cafe", "--json"]));
+    let value = json(&kore(&fixture, &["search", "cafe", "--json"]));
     assert_eq!(value["results"][0]["path"], "notes/Café Alpha.md");
     assert_eq!(value["results"][0]["snippet"], "");
     assert!(value["results"][0]["score"].as_f64().unwrap() < 0.0);
@@ -287,7 +287,7 @@ fn search_breaks_title_prefix_ties_by_pinned_then_recency() {
     .unwrap();
     drop(conn);
 
-    let text = stdout(&reflect(&fixture, &["search", "Tim Mac"]));
+    let text = stdout(&kore(&fixture, &["search", "Tim Mac"]));
     let pinned_pos = text
         .find("notes/Tim MacCaw Extended Project Planning.md")
         .unwrap();
@@ -309,13 +309,13 @@ fn search_finds_partial_terms_in_note_bodies() {
     );
     fixture.build_index();
 
-    let text = stdout(&reflect(&fixture, &["search", "authent migr"]));
+    let text = stdout(&kore(&fixture, &["search", "authent migr"]));
     assert!(
         text.contains("notes/security-rollout.md"),
         "expected partial body terms to match:\n{text}"
     );
 
-    let mixed = stdout(&reflect(&fixture, &["search", "secur migr"]));
+    let mixed = stdout(&kore(&fixture, &["search", "secur migr"]));
     assert!(
         mixed.contains("notes/security-rollout.md"),
         "expected partial title and body terms to match together:\n{mixed}"
@@ -334,13 +334,13 @@ fn search_ignores_terms_that_tokenize_to_nothing() {
     );
     fixture.build_index();
 
-    let text = stdout(&reflect(&fixture, &["search", "meeting - notes"]));
+    let text = stdout(&kore(&fixture, &["search", "meeting - notes"]));
     assert!(
         text.contains("notes/meeting-notes.md"),
         "expected the punctuation term to be ignored:\n{text}"
     );
 
-    let punctuation = stdout(&reflect(&fixture, &["search", ". -"]));
+    let punctuation = stdout(&kore(&fixture, &["search", ". -"]));
     assert!(
         !punctuation.contains("notes/meeting-notes.md"),
         "expected a punctuation-only query to match nothing:\n{punctuation}"
@@ -360,7 +360,7 @@ fn search_promotes_exact_title_over_a_stronger_lexical_match() {
     );
     fixture.build_index();
 
-    let text = stdout(&reflect(&fixture, &["search", "zebra"]));
+    let text = stdout(&kore(&fixture, &["search", "zebra"]));
     let exact_pos = text.find("notes/exact.md").unwrap();
     let loud_pos = text.find("notes/loud.md").unwrap();
     assert!(
@@ -394,7 +394,7 @@ fn search_breaks_ties_by_pinned_then_recency() {
     .unwrap();
     drop(conn);
 
-    let text = stdout(&reflect(&fixture, &["search", "apricot"]));
+    let text = stdout(&kore(&fixture, &["search", "apricot"]));
     let pinned_pos = text.find("notes/older-pinned.md").unwrap();
     let plain_pos = text.find("notes/newer-plain.md").unwrap();
     assert!(
@@ -407,7 +407,7 @@ fn search_breaks_ties_by_pinned_then_recency() {
 fn search_without_an_index_exits_4() {
     let fixture = graph();
     fixture.write_note("notes/a.md", "anything\n");
-    let output = reflect(&fixture, &["search", "anything"]);
+    let output = kore(&fixture, &["search", "anything"]);
     assert_eq!(output.status.code(), Some(4));
     assert!(stderr(&output).contains("no index at"));
 }
@@ -424,12 +424,12 @@ fn search_warns_when_the_index_is_stale_but_still_returns_rows() {
         .unwrap();
     drop(conn);
 
-    let output = reflect(&fixture, &["search", "alpha"]);
+    let output = kore(&fixture, &["search", "alpha"]);
     assert!(output.status.success());
     assert!(stderr(&output).contains("stale"));
     assert!(stdout(&output).contains("notes/a.md"));
 
-    let value = json(&reflect(&fixture, &["search", "alpha", "--json"]));
+    let value = json(&kore(&fixture, &["search", "alpha", "--json"]));
     assert_eq!(value["stale"], true);
 }
 
@@ -445,7 +445,7 @@ fn search_fails_closed_when_an_indexed_note_is_unavailable() {
     )
     .unwrap();
 
-    let output = reflect(&fixture, &["search", "searchable"]);
+    let output = kore(&fixture, &["search", "searchable"]);
     assert!(output.status.success(), "stderr: {}", stderr(&output));
     assert_eq!(stdout(&output), "");
 }
@@ -463,11 +463,11 @@ fn stale_index_never_follows_a_note_replaced_by_a_symlink() {
     fs::remove_file(note).unwrap();
     symlink(outside.path(), fixture.root().join("Projects/plan.md")).unwrap();
 
-    let show = reflect(&fixture, &["show", "Plan"]);
+    let show = kore(&fixture, &["show", "Plan"]);
     assert!(!show.status.success());
     assert!(!stdout(&show).contains("outside secret"));
 
-    let search = reflect(&fixture, &["search", "indexed"]);
+    let search = kore(&fixture, &["search", "indexed"]);
     assert!(search.status.success(), "stderr: {}", stderr(&search));
     assert_eq!(stdout(&search), "");
 }
@@ -478,7 +478,7 @@ fn search_json_shape() {
     fixture.write_note("notes/a.md", "# Alpha\nsearchable text\n");
     fixture.build_index();
 
-    let value = json(&reflect(&fixture, &["search", "searchable", "--json"]));
+    let value = json(&kore(&fixture, &["search", "searchable", "--json"]));
     assert_eq!(value["query"], "searchable");
     assert_eq!(value["stale"], false);
     let results = value["results"].as_array().unwrap();
@@ -499,7 +499,7 @@ fn search_drops_a_note_flagged_private_after_indexing() {
     fixture.build_index();
     fs::write(&note, "---\nprivate: true\n---\n# Alpha\nsearchable text\n").unwrap();
 
-    let output = reflect(&fixture, &["search", "searchable"]);
+    let output = kore(&fixture, &["search", "searchable"]);
     assert!(output.status.success());
     assert_eq!(stdout(&output), "", "a just-flagged note must not surface");
 }
@@ -517,17 +517,17 @@ fn show_resolves_by_title_alias_date_and_path() {
     fixture.build_index();
 
     for arg in ["Project X", "project x", "PX", "notes/project-x.md"] {
-        let output = reflect(&fixture, &["show", arg]);
+        let output = kore(&fixture, &["show", arg]);
         assert!(output.status.success(), "show {arg}: {}", stderr(&output));
         assert!(stdout(&output).contains("the plan"), "show {arg}");
     }
-    let by_date = reflect(&fixture, &["show", "2026-01-02"]);
+    let by_date = kore(&fixture, &["show", "2026-01-02"]);
     assert_eq!(stdout(&by_date), "daily body\n");
 
-    let missing_daily = reflect(&fixture, &["show", "2026-01-03"]);
+    let missing_daily = kore(&fixture, &["show", "2026-01-03"]);
     assert_eq!(missing_daily.status.code(), Some(3));
 
-    let unknown = reflect(&fixture, &["show", "No Such Note"]);
+    let unknown = kore(&fixture, &["show", "No Such Note"]);
     assert_eq!(unknown.status.code(), Some(3));
     assert!(stderr(&unknown).contains("no note matching"));
 }
@@ -541,7 +541,7 @@ fn show_resolves_by_title_and_alias_without_an_index() {
     );
 
     for arg in ["project x", "PX"] {
-        let output = reflect(&fixture, &["show", arg]);
+        let output = kore(&fixture, &["show", arg]);
         assert!(output.status.success(), "show {arg}: {}", stderr(&output));
         assert!(stdout(&output).contains("the plan"));
     }
@@ -554,12 +554,12 @@ fn show_blocks_a_private_note_even_when_the_index_says_public() {
     fixture.build_index();
     fs::write(&note, "---\nprivate: true\n---\n# Alpha\nnow secret\n").unwrap();
 
-    let output = reflect(&fixture, &["show", "Alpha"]);
+    let output = kore(&fixture, &["show", "Alpha"]);
     assert_eq!(output.status.code(), Some(3));
     assert_eq!(stdout(&output), "");
     assert!(stderr(&output).contains("private"));
 
-    let path_output = reflect(&fixture, &["path", "Alpha"]);
+    let path_output = kore(&fixture, &["path", "Alpha"]);
     assert_eq!(path_output.status.code(), Some(3));
 }
 
@@ -568,7 +568,7 @@ fn show_json_includes_the_daily_date() {
     let fixture = graph();
     fixture.write_note("daily/2026-01-02.md", "daily body\n");
 
-    let value = json(&reflect(&fixture, &["show", "2026-01-02", "--json"]));
+    let value = json(&kore(&fixture, &["show", "2026-01-02", "--json"]));
     assert_eq!(value["date"], "2026-01-02");
     assert_eq!(value["path"], "daily/2026-01-02.md");
     assert_eq!(value["title"], "2026-01-02");
@@ -581,19 +581,16 @@ fn path_resolves_notes_and_would_be_dailies() {
     fixture.write_note("notes/project-x.md", "# Project X\n");
     fixture.build_index();
 
-    let by_title = reflect(&fixture, &["path", "Project X"]);
+    let by_title = kore(&fixture, &["path", "Project X"]);
     assert!(by_title.status.success());
     assert!(stdout(&by_title).trim_end().ends_with("notes/project-x.md"));
 
-    let value = json(&reflect(&fixture, &["path", "2099-01-01", "--json"]));
+    let value = json(&kore(&fixture, &["path", "2099-01-01", "--json"]));
     assert_eq!(value["date"], "2099-01-01");
     assert_eq!(value["path"], "daily/2099-01-01.md");
     assert_eq!(value["exists"], false);
 
-    let existing = json(&reflect(
-        &fixture,
-        &["path", "notes/project-x.md", "--json"],
-    ));
+    let existing = json(&kore(&fixture, &["path", "notes/project-x.md", "--json"]));
     assert_eq!(existing["exists"], true);
     assert!(existing.get("date").is_none());
 }
@@ -609,12 +606,9 @@ fn open_print_prefers_the_frontmatter_id() {
     );
     fixture.build_index();
 
-    let output = reflect(&fixture, &["open", "Project X", "--print"]);
+    let output = kore(&fixture, &["open", "Project X", "--print"]);
     assert!(output.status.success(), "stderr: {}", stderr(&output));
-    assert_eq!(
-        stdout(&output),
-        "reflect://note/01hzy3v9k2m4n6p8q0r2s4t6vw\n"
-    );
+    assert_eq!(stdout(&output), "kore://note/01hzy3v9k2m4n6p8q0r2s4t6vw\n");
 }
 
 #[test]
@@ -623,26 +617,23 @@ fn open_print_falls_back_to_the_encoded_path_without_an_id() {
     fixture.write_note("notes/no id here.md", "# No Id Here\n");
     fixture.build_index();
 
-    let output = reflect(&fixture, &["open", "No Id Here", "--print"]);
+    let output = kore(&fixture, &["open", "No Id Here", "--print"]);
     assert!(output.status.success(), "stderr: {}", stderr(&output));
-    assert_eq!(
-        stdout(&output),
-        "reflect://note/notes%2Fno%20id%20here.md\n"
-    );
+    assert_eq!(stdout(&output), "kore://note/notes%2Fno%20id%20here.md\n");
 }
 
 #[test]
 fn open_print_gives_dailies_the_date_form_even_before_the_file_exists() {
     let fixture = graph();
 
-    let would_be = reflect(&fixture, &["open", "2099-01-01", "--print"]);
+    let would_be = kore(&fixture, &["open", "2099-01-01", "--print"]);
     assert!(would_be.status.success(), "stderr: {}", stderr(&would_be));
-    assert_eq!(stdout(&would_be), "reflect://daily/2099-01-01\n");
+    assert_eq!(stdout(&would_be), "kore://daily/2099-01-01\n");
 
     // An existing daily resolved by explicit path gets the date form too.
     fixture.write_note("daily/2026-01-02.md", "daily body\n");
-    let by_path = reflect(&fixture, &["open", "daily/2026-01-02.md", "--print"]);
-    assert_eq!(stdout(&by_path), "reflect://daily/2026-01-02\n");
+    let by_path = kore(&fixture, &["open", "daily/2026-01-02.md", "--print"]);
+    assert_eq!(stdout(&by_path), "kore://daily/2026-01-02\n");
 }
 
 #[test]
@@ -654,11 +645,11 @@ fn open_resolves_by_title_and_alias_without_an_index() {
     );
 
     for arg in ["project x", "PX"] {
-        let output = reflect(&fixture, &["open", arg, "--print"]);
+        let output = kore(&fixture, &["open", arg, "--print"]);
         assert!(output.status.success(), "open {arg}: {}", stderr(&output));
         assert_eq!(
             stdout(&output),
-            "reflect://note/01hzy3v9k2m4n6p8q0r2s4t6vw\n",
+            "kore://note/01hzy3v9k2m4n6p8q0r2s4t6vw\n",
             "open {arg}"
         );
     }
@@ -670,7 +661,7 @@ fn open_refuses_private_notes_and_unknown_targets() {
     fixture.write_note("notes/a.md", "---\nprivate: true\n---\n# Alpha\n");
     fixture.build_index();
 
-    let private = reflect(&fixture, &["open", "notes/a.md", "--print"]);
+    let private = kore(&fixture, &["open", "notes/a.md", "--print"]);
     assert_eq!(private.status.code(), Some(3));
     assert_eq!(
         stdout(&private),
@@ -679,7 +670,7 @@ fn open_refuses_private_notes_and_unknown_targets() {
     );
     assert!(stderr(&private).contains("private"));
 
-    let unknown = reflect(&fixture, &["open", "No Such Note", "--print"]);
+    let unknown = kore(&fixture, &["open", "No Such Note", "--print"]);
     assert_eq!(unknown.status.code(), Some(3));
     assert!(stderr(&unknown).contains("no note matching"));
 }
@@ -693,22 +684,19 @@ fn open_json_shape() {
     );
     fixture.build_index();
 
-    let note = json(&reflect(
-        &fixture,
-        &["open", "Project X", "--print", "--json"],
-    ));
+    let note = json(&kore(&fixture, &["open", "Project X", "--print", "--json"]));
     assert_eq!(note["path"], "notes/project-x.md");
-    assert_eq!(note["url"], "reflect://note/01hzy3v9k2m4n6p8q0r2s4t6vw");
+    assert_eq!(note["url"], "kore://note/01hzy3v9k2m4n6p8q0r2s4t6vw");
     assert_eq!(note["launched"], false);
     assert!(note.get("date").is_none());
 
-    let daily = json(&reflect(
+    let daily = json(&kore(
         &fixture,
         &["open", "2026-01-02", "--json", "--print"],
     ));
     assert_eq!(daily["date"], "2026-01-02");
     assert_eq!(daily["path"], "daily/2026-01-02.md");
-    assert_eq!(daily["url"], "reflect://daily/2026-01-02");
+    assert_eq!(daily["url"], "kore://daily/2026-01-02");
 }
 
 #[test]
@@ -718,12 +706,12 @@ fn show_resolves_a_note_by_its_filename_stem() {
     let fixture = graph();
     fixture.write_note("Projects/Plan.md", "# Weekly Planning\nstem body\n");
 
-    let by_stem = reflect(&fixture, &["show", "Plan"]);
+    let by_stem = kore(&fixture, &["show", "Plan"]);
     assert!(by_stem.status.success(), "{}", stderr(&by_stem));
     assert!(stdout(&by_stem).contains("stem body"));
 
     fixture.build_index();
-    let indexed = reflect(&fixture, &["show", "Plan"]);
+    let indexed = kore(&fixture, &["show", "Plan"]);
     assert!(indexed.status.success(), "{}", stderr(&indexed));
     assert!(stdout(&indexed).contains("stem body"));
 }
@@ -734,12 +722,12 @@ fn show_prefers_a_title_over_a_filename_stem() {
     fixture.write_note("Archive/old.md", "# Plan\ntitled body\n");
     fixture.write_note("Projects/Plan.md", "# Weekly Planning\nstem body\n");
 
-    let scanned = reflect(&fixture, &["show", "Plan"]);
+    let scanned = kore(&fixture, &["show", "Plan"]);
     assert!(scanned.status.success(), "{}", stderr(&scanned));
     assert!(stdout(&scanned).contains("titled body"));
 
     fixture.build_index();
-    let indexed = reflect(&fixture, &["show", "Plan"]);
+    let indexed = kore(&fixture, &["show", "Plan"]);
     assert!(indexed.status.success(), "{}", stderr(&indexed));
     assert!(stdout(&indexed).contains("titled body"));
 }
@@ -749,7 +737,7 @@ fn show_resolves_a_nested_vault_path_argument() {
     let fixture = graph();
     fixture.write_note("Projects/deep/Plan.md", "# Anything\nnested body\n");
 
-    let output = reflect(&fixture, &["show", "Projects/deep/Plan.md"]);
+    let output = kore(&fixture, &["show", "Projects/deep/Plan.md"]);
     assert!(output.status.success(), "{}", stderr(&output));
     assert!(stdout(&output).contains("nested body"));
 }
@@ -762,12 +750,12 @@ fn scan_resolution_agrees_with_the_index_on_stems() {
     fixture.write_note("a/Plan.md", "# One Thing\nfirst body\n");
     fixture.write_note("b/Plan.md", "# Another Thing\nsecond body\n");
 
-    let scanned = reflect(&fixture, &["path", "Plan"]);
+    let scanned = kore(&fixture, &["path", "Plan"]);
     assert!(scanned.status.success(), "{}", stderr(&scanned));
     let scanned_path = stdout(&scanned);
 
     fixture.build_index();
-    let indexed = reflect(&fixture, &["path", "Plan"]);
+    let indexed = kore(&fixture, &["path", "Plan"]);
     assert!(indexed.status.success(), "{}", stderr(&indexed));
     assert_eq!(stdout(&indexed), scanned_path);
     assert!(scanned_path.contains("a/Plan.md"));
@@ -798,7 +786,7 @@ fn tasks_lists_open_tasks_and_excludes_private_notes() {
     fixture.insert_task("notes/project.md", 27, "done", true, None, None);
     fixture.insert_task("notes/secret.md", 30, "hidden task", false, None, None);
 
-    let value = json(&reflect(&fixture, &["tasks", "--json"]));
+    let value = json(&kore(&fixture, &["tasks", "--json"]));
     let tasks = value["tasks"].as_array().unwrap();
     assert_eq!(tasks.len(), 1, "only the public open task: {value}");
     assert_eq!(tasks[0]["path"], "notes/project.md");
@@ -807,10 +795,10 @@ fn tasks_lists_open_tasks_and_excludes_private_notes() {
     assert_eq!(tasks[0]["checked"], false);
     assert_eq!(tasks[0]["dueDate"], "2026-08-22");
 
-    let all = json(&reflect(&fixture, &["tasks", "--all", "--json"]));
+    let all = json(&kore(&fixture, &["tasks", "--all", "--json"]));
     assert_eq!(all["tasks"].as_array().unwrap().len(), 2);
 
-    let human = reflect(&fixture, &["tasks"]);
+    let human = kore(&fixture, &["tasks"]);
     assert!(human.status.success());
     let text = stdout(&human);
     assert!(text.contains("notes/project.md\tProject X"));
@@ -832,13 +820,13 @@ fn tasks_includes_a_due_time_when_the_row_has_one() {
         Some("14:30"),
     );
 
-    let value = json(&reflect(&fixture, &["tasks", "--json"]));
+    let value = json(&kore(&fixture, &["tasks", "--json"]));
     let tasks = value["tasks"].as_array().unwrap();
     assert_eq!(tasks.len(), 1, "only the timed task: {value}");
     assert_eq!(tasks[0]["dueDate"], "2026-08-22");
     assert_eq!(tasks[0]["dueTime"], "14:30");
 
-    let human = reflect(&fixture, &["tasks"]);
+    let human = kore(&fixture, &["tasks"]);
     assert!(human.status.success());
     assert!(stdout(&human).contains("  [ ] dentist  (due 2026-08-22 14:30)"));
 }
@@ -846,7 +834,7 @@ fn tasks_includes_a_due_time_when_the_row_has_one() {
 #[test]
 fn tasks_without_an_index_exits_4() {
     let fixture = graph();
-    let output = reflect(&fixture, &["tasks"]);
+    let output = kore(&fixture, &["tasks"]);
     assert_eq!(output.status.code(), Some(4));
     assert!(stderr(&output).contains("open this graph in Kore"));
 }
@@ -859,7 +847,7 @@ fn capture_joins_todays_trailing_list() {
     let rel_path = daily_path(&today_date());
     let absolute = fixture.write_note(&rel_path, "# Plans\n\n- one\n");
 
-    let output = reflect(&fixture, &["capture", "two"]);
+    let output = kore(&fixture, &["capture", "two"]);
     assert!(output.status.success(), "stderr: {}", stderr(&output));
     // The CLI prints the canonical path (macOS: `/private/var/…` for a
     // `/var/…` temp dir), so compare canonical forms.
@@ -876,7 +864,7 @@ fn capture_joins_todays_trailing_list() {
 #[test]
 fn capture_task_creates_the_daily_and_reports_json() {
     let fixture = graph();
-    let value = json(&reflect(
+    let value = json(&kore(
         &fixture,
         &["capture", "--task", "Pay bill", "--json"],
     ));
@@ -896,7 +884,7 @@ fn capture_refuses_a_private_daily() {
     let content = "---\nprivate: true\n---\nsecret plans\n";
     let absolute = fixture.write_note(&rel_path, content);
 
-    let output = reflect(&fixture, &["capture", "never lands"]);
+    let output = kore(&fixture, &["capture", "never lands"]);
     assert_eq!(output.status.code(), Some(3));
     assert!(stderr(&output).contains("private"));
     assert_eq!(fs::read_to_string(absolute).unwrap(), content);
@@ -905,10 +893,10 @@ fn capture_refuses_a_private_daily() {
 #[test]
 fn capture_rejects_empty_text_and_collapses_line_breaks() {
     let fixture = graph();
-    let empty = reflect(&fixture, &["capture", "  \n  "]);
+    let empty = kore(&fixture, &["capture", "  \n  "]);
     assert_eq!(empty.status.code(), Some(1));
 
-    let output = reflect(&fixture, &["capture", "line one\nline two"]);
+    let output = kore(&fixture, &["capture", "line one\nline two"]);
     assert!(output.status.success(), "stderr: {}", stderr(&output));
     let absolute = fixture.root().join(daily_path(&today_date()));
     assert_eq!(
@@ -935,7 +923,7 @@ fn backlinks_lists_linking_notes_and_excludes_private_sources() {
     fixture.insert_wiki_link("notes/b.md", "Target", 20);
     fixture.insert_wiki_link("notes/secret.md", "Target", 12);
 
-    let value = json(&reflect(&fixture, &["backlinks", "Target", "--json"]));
+    let value = json(&kore(&fixture, &["backlinks", "Target", "--json"]));
     assert_eq!(value["path"], "notes/target.md");
     assert_eq!(value["title"], "Target");
     let backlinks = value["backlinks"].as_array().unwrap();
@@ -945,7 +933,7 @@ fn backlinks_lists_linking_notes_and_excludes_private_sources() {
     assert_eq!(backlinks[1]["path"], "notes/b.md");
     assert_eq!(backlinks[1]["count"], 2);
 
-    let human = reflect(&fixture, &["backlinks", "Target"]);
+    let human = kore(&fixture, &["backlinks", "Target"]);
     assert!(human.status.success());
     assert!(stdout(&human).contains("notes/b.md\tB\t(2 links)"));
     assert!(!stdout(&human).contains("secret"));
@@ -954,7 +942,7 @@ fn backlinks_lists_linking_notes_and_excludes_private_sources() {
 #[test]
 fn backlinks_refuses_a_private_target_and_needs_the_index() {
     let fixture = graph();
-    let no_index = reflect(&fixture, &["backlinks", "Anything"]);
+    let no_index = kore(&fixture, &["backlinks", "Anything"]);
     assert_eq!(no_index.status.code(), Some(4));
 
     fixture.write_note(
@@ -962,7 +950,7 @@ fn backlinks_refuses_a_private_target_and_needs_the_index() {
         "---\nprivate: true\n---\n# Secret\nbody\n",
     );
     fixture.build_index();
-    let output = reflect(&fixture, &["backlinks", "notes/secret.md"]);
+    let output = kore(&fixture, &["backlinks", "notes/secret.md"]);
     assert_eq!(output.status.code(), Some(3));
     assert!(stderr(&output).contains("private"));
 }
@@ -1000,7 +988,7 @@ fn recent_lists_newest_public_notes_first() {
     .unwrap();
     drop(conn);
 
-    let value = json(&reflect(&fixture, &["recent", "--json"]));
+    let value = json(&kore(&fixture, &["recent", "--json"]));
     let notes = value["notes"].as_array().unwrap();
     assert_eq!(notes.len(), 2, "private + template excluded: {value}");
     assert_eq!(notes[0]["path"], "notes/fresh.md");
@@ -1010,7 +998,7 @@ fn recent_lists_newest_public_notes_first() {
         .unwrap()
         .starts_with("1970-01-01T"));
 
-    let limited = json(&reflect(&fixture, &["recent", "--limit", "1", "--json"]));
+    let limited = json(&kore(&fixture, &["recent", "--limit", "1", "--json"]));
     assert_eq!(limited["notes"].as_array().unwrap().len(), 1);
 }
 
@@ -1083,7 +1071,7 @@ fn collection_lists_typed_tag_rows_with_properties() {
     }
     drop(conn);
 
-    let value = json(&reflect(&fixture, &["collection", "Book", "--json"]));
+    let value = json(&kore(&fixture, &["collection", "Book", "--json"]));
     assert_eq!(value["tag"], "Book");
     let schema = value["schema"].as_array().unwrap();
     assert_eq!(schema.len(), 2);
@@ -1102,7 +1090,7 @@ fn collection_lists_typed_tag_rows_with_properties() {
     assert_eq!(dispossessed["properties"]["rating"], 4.5);
 
     // A property sort orders by the stored value, missing values last.
-    let sorted = json(&reflect(
+    let sorted = json(&kore(
         &fixture,
         &["collection", "book", "--sort", "rating", "--json"],
     ));
@@ -1115,11 +1103,11 @@ fn collection_lists_typed_tag_rows_with_properties() {
 fn collection_refuses_untyped_tags_and_requires_the_index() {
     let fixture = graph();
     fixture.write_note("notes/a.md", "# A\n#plain\n");
-    let missing = reflect(&fixture, &["collection", "plain"]);
+    let missing = kore(&fixture, &["collection", "plain"]);
     assert_eq!(missing.status.code(), Some(4), "no index yet");
 
     fixture.build_index();
-    let untyped = reflect(&fixture, &["collection", "plain"]);
+    let untyped = kore(&fixture, &["collection", "plain"]);
     assert_eq!(untyped.status.code(), Some(3));
     assert!(stderr(&untyped).contains("no type"));
 }
@@ -1129,7 +1117,7 @@ fn collection_refuses_untyped_tags_and_requires_the_index() {
 #[test]
 fn new_creates_titled_notes_with_collision_suffixes() {
     let fixture = graph();
-    let value = json(&reflect(&fixture, &["new", "Meeting Notes!", "--json"]));
+    let value = json(&kore(&fixture, &["new", "Meeting Notes!", "--json"]));
     assert_eq!(value["path"], "notes/meeting-notes.md");
     assert_eq!(value["title"], "Meeting Notes!");
     assert_eq!(
@@ -1137,10 +1125,10 @@ fn new_creates_titled_notes_with_collision_suffixes() {
         "# Meeting Notes!\n"
     );
 
-    let second = json(&reflect(&fixture, &["new", "Meeting Notes!", "--json"]));
+    let second = json(&kore(&fixture, &["new", "Meeting Notes!", "--json"]));
     assert_eq!(second["path"], "notes/meeting-notes-2.md");
 
-    let human = reflect(&fixture, &["new", "Other"]);
+    let human = kore(&fixture, &["new", "Other"]);
     assert!(human.status.success());
     assert!(stdout(&human).trim_end().ends_with("notes/other.md"));
 }
@@ -1152,7 +1140,7 @@ fn new_seeds_from_a_template_with_placeholders_expanded() {
         "templates/journal.md",
         "---\ncolor: blue\n---\n# {{title}} — {{date:iso}}\n\nMood:\n",
     );
-    let value = json(&reflect(
+    let value = json(&kore(
         &fixture,
         &["new", "Aug Journal", "--template", "journal", "--json"],
     ));
@@ -1165,20 +1153,20 @@ fn new_seeds_from_a_template_with_placeholders_expanded() {
 
     // A template without its own H1 gets the title prepended.
     fixture.write_note("templates/plain.md", "Mood:\n");
-    reflect(&fixture, &["new", "Plain One", "--template", "plain"]);
+    kore(&fixture, &["new", "Plain One", "--template", "plain"]);
     assert_eq!(
         fs::read_to_string(fixture.root().join("notes/plain-one.md")).unwrap(),
         "# Plain One\n\nMood:\n"
     );
 
-    let missing = reflect(&fixture, &["new", "X", "--template", "nope"]);
+    let missing = kore(&fixture, &["new", "X", "--template", "nope"]);
     assert_eq!(missing.status.code(), Some(3));
 
     fixture.write_note(
         "templates/hidden.md",
         "---\nprivate: true\n---\nsecret seed\n",
     );
-    let private = reflect(&fixture, &["new", "Y", "--template", "hidden"]);
+    let private = kore(&fixture, &["new", "Y", "--template", "hidden"]);
     assert_eq!(private.status.code(), Some(3));
     assert!(stderr(&private).contains("private"));
 }
@@ -1194,7 +1182,7 @@ fn capture_to_resolves_titles_dates_and_refuses_private_targets() {
         "---\nprivate: true\n---\n# Secret\nbody\n",
     );
 
-    let value = json(&reflect(
+    let value = json(&kore(
         &fixture,
         &["capture", "two", "--to", "Project X", "--json"],
     ));
@@ -1209,7 +1197,7 @@ fn capture_to_resolves_titles_dates_and_refuses_private_targets() {
     );
 
     // A date target is a lazy daily: capture creates it.
-    let dated = json(&reflect(
+    let dated = json(&kore(
         &fixture,
         &["capture", "plan ahead", "--to", "2099-01-02", "--json"],
     ));
@@ -1220,10 +1208,10 @@ fn capture_to_resolves_titles_dates_and_refuses_private_targets() {
         "- plan ahead\n"
     );
 
-    let private = reflect(&fixture, &["capture", "x", "--to", "Secret"]);
+    let private = kore(&fixture, &["capture", "x", "--to", "Secret"]);
     assert_eq!(private.status.code(), Some(3));
 
-    let unknown = reflect(&fixture, &["capture", "x", "--to", "No Such Note"]);
+    let unknown = kore(&fixture, &["capture", "x", "--to", "No Such Note"]);
     assert_eq!(unknown.status.code(), Some(3));
 }
 
@@ -1236,7 +1224,7 @@ fn info_reports_the_missing_index_then_counts_once_built() {
     fixture.write_note("daily/2026-06-11.md", "- day\n");
     fixture.write_note("notes/secret.md", "---\nprivate: true\n---\n# S\n#idea\n");
 
-    let before = reflect(&fixture, &["info", "--json"]);
+    let before = kore(&fixture, &["info", "--json"]);
     assert_eq!(before.status.code(), Some(0), "info never needs the index");
     let value = json(&before);
     assert_eq!(value["index"]["present"], false);
@@ -1246,7 +1234,7 @@ fn info_reports_the_missing_index_then_counts_once_built() {
     fixture.build_index();
     fixture.insert_tag("notes/a.md", "idea");
     fixture.insert_tag("notes/secret.md", "idea");
-    let value = json(&reflect(&fixture, &["info", "--json"]));
+    let value = json(&kore(&fixture, &["info", "--json"]));
     assert_eq!(value["index"]["present"], true);
     assert_eq!(value["index"]["usable"], true);
     assert_eq!(value["index"]["stale"], false);
@@ -1254,7 +1242,7 @@ fn info_reports_the_missing_index_then_counts_once_built() {
     assert_eq!(value["counts"]["dailies"], 1);
     assert_eq!(value["counts"]["tags"], 1);
 
-    let human = stdout(&reflect(&fixture, &["info"]));
+    let human = stdout(&kore(&fixture, &["info"]));
     assert!(human.contains("index\tfresh"), "{human}");
 }
 
@@ -1264,7 +1252,7 @@ fn tags_lists_counts_and_typed_flags_excluding_private_notes() {
     fixture.write_note("notes/dune.md", "# Dune\n#Book\n");
     fixture.write_note("notes/emma.md", "# Emma\n#book #idea\n");
     fixture.write_note("notes/secret.md", "---\nprivate: true\n---\n# S\n#book\n");
-    let missing = reflect(&fixture, &["tags"]);
+    let missing = kore(&fixture, &["tags"]);
     assert_eq!(missing.status.code(), Some(4));
 
     fixture.build_index();
@@ -1277,7 +1265,7 @@ fn tags_lists_counts_and_typed_flags_excluding_private_notes() {
         r#"[{"name":"Author","key":"author","type":"text"}]"#,
     );
 
-    let value = json(&reflect(&fixture, &["tags", "--json"]));
+    let value = json(&kore(&fixture, &["tags", "--json"]));
     let tags = value["tags"].as_array().unwrap();
     assert_eq!(tags.len(), 2);
     assert_eq!(
@@ -1291,7 +1279,7 @@ fn tags_lists_counts_and_typed_flags_excluding_private_notes() {
     assert_eq!(tags[1]["typed"], false);
     assert!(tags[1]["definition"].is_null());
 
-    let human = stdout(&reflect(&fixture, &["tags"]));
+    let human = stdout(&kore(&fixture, &["tags"]));
     assert!(human.contains("#Book\t2\tcollection"), "{human}");
 }
 
@@ -1328,7 +1316,7 @@ fn list_filters_by_tag_and_kind_and_drops_notes_flagged_private_on_disk() {
         fixture.insert_tag(path, tag);
     }
 
-    let value = json(&reflect(&fixture, &["list", "--json"]));
+    let value = json(&kore(&fixture, &["list", "--json"]));
     let paths: Vec<&str> = value["notes"]
         .as_array()
         .unwrap()
@@ -1352,7 +1340,7 @@ fn list_filters_by_tag_and_kind_and_drops_notes_flagged_private_on_disk() {
         .unwrap()
         .starts_with("1970-01-01T00:00:03"));
 
-    let by_tag = json(&reflect(
+    let by_tag = json(&kore(
         &fixture,
         &["list", "--tag", "#Book", "--kind", "note", "--json"],
     ));
@@ -1369,11 +1357,11 @@ fn list_filters_by_tag_and_kind_and_drops_notes_flagged_private_on_disk() {
         "notes/fresh.md",
         "---\nprivate: true\n---\n# Fresh\n#book\n",
     );
-    let after = reflect(&fixture, &["list", "--tag", "book", "--json"]);
+    let after = kore(&fixture, &["list", "--tag", "book", "--json"]);
     assert!(!stdout(&after).contains("fresh"), "{}", stdout(&after));
     assert!(stderr(&after).contains("stale"));
 
-    let bad_kind = reflect(&fixture, &["list", "--kind", "page"]);
+    let bad_kind = kore(&fixture, &["list", "--kind", "page"]);
     assert_eq!(bad_kind.status.code(), Some(2), "clap rejects the value");
 }
 
@@ -1392,7 +1380,7 @@ fn properties_prints_typed_frontmatter_without_reserved_keys() {
     );
 
     // File-only: works before any index exists.
-    let value = json(&reflect(&fixture, &["properties", "Dune", "--json"]));
+    let value = json(&kore(&fixture, &["properties", "Dune", "--json"]));
     assert_eq!(value["path"], "notes/dune.md");
     assert_eq!(value["title"], "Dune");
     assert_eq!(value["pinned"], true);
@@ -1411,17 +1399,14 @@ fn properties_prints_typed_frontmatter_without_reserved_keys() {
 
     fixture.build_index();
     fixture.insert_tag("notes/dune.md", "book");
-    let value = json(&reflect(
-        &fixture,
-        &["properties", "notes/dune.md", "--json"],
-    ));
+    let value = json(&kore(&fixture, &["properties", "notes/dune.md", "--json"]));
     assert_eq!(value["tags"], serde_json::json!(["book"]));
-    let human = stdout(&reflect(&fixture, &["properties", "Dune"]));
+    let human = stdout(&kore(&fixture, &["properties", "Dune"]));
     assert!(human.contains("author\tHerbert"), "{human}");
     assert!(human.contains("genres\tscifi, classic"), "{human}");
     assert!(human.contains("tags\t#book"), "{human}");
 
-    let private = reflect(&fixture, &["properties", "notes/secret.md"]);
+    let private = kore(&fixture, &["properties", "notes/secret.md"]);
     assert_eq!(private.status.code(), Some(3));
     assert!(!stdout(&private).contains("X"));
 }
@@ -1435,7 +1420,7 @@ fn links_resolves_targets_and_drops_private_ones() {
     );
     fixture.write_note("notes/frank-herbert.md", "# Frank Herbert\n");
     fixture.write_note("notes/secret.md", "---\nprivate: true\n---\n# Secret\n");
-    let missing = reflect(&fixture, &["links", "Dune"]);
+    let missing = kore(&fixture, &["links", "Dune"]);
     assert_eq!(missing.status.code(), Some(4));
 
     fixture.build_index();
@@ -1444,7 +1429,7 @@ fn links_resolves_targets_and_drops_private_ones() {
     fixture.insert_wiki_link("notes/dune.md", "Frank Herbert", 50);
     fixture.insert_wiki_link("notes/dune.md", "Secret", 70);
 
-    let value = json(&reflect(&fixture, &["links", "Dune", "--json"]));
+    let value = json(&kore(&fixture, &["links", "Dune", "--json"]));
     assert_eq!(value["path"], "notes/dune.md");
     let links = value["links"].as_array().unwrap();
     assert_eq!(links.len(), 2, "deduped and private dropped: {value}");
@@ -1455,10 +1440,10 @@ fn links_resolves_targets_and_drops_private_ones() {
     assert!(links[1]["path"].is_null());
     assert!(!value.to_string().contains("secret"));
 
-    let human = stdout(&reflect(&fixture, &["links", "Dune"]));
+    let human = stdout(&kore(&fixture, &["links", "Dune"]));
     assert!(human.contains("Arrakis\t(unresolved)"), "{human}");
 
-    let private_source = reflect(&fixture, &["links", "notes/secret.md"]);
+    let private_source = kore(&fixture, &["links", "notes/secret.md"]);
     assert_eq!(private_source.status.code(), Some(3));
 }
 
@@ -1471,7 +1456,7 @@ fn a_missed_note_suggests_near_titles_from_the_index() {
         "---\nprivate: true\n---\n# Dune Secret\n",
     );
     fixture.build_index();
-    let missed = reflect(&fixture, &["show", "Dune"]);
+    let missed = kore(&fixture, &["show", "Dune"]);
     assert_eq!(missed.status.code(), Some(3));
     let message = stderr(&missed);
     assert!(message.contains("did you mean: Dune Messiah"), "{message}");
@@ -1479,7 +1464,7 @@ fn a_missed_note_suggests_near_titles_from_the_index() {
         !message.contains("Secret"),
         "private title leaked: {message}"
     );
-    let no_hint = reflect(&fixture, &["set", "Zzz", "a=b"]);
+    let no_hint = kore(&fixture, &["set", "Zzz", "a=b"]);
     assert_eq!(no_hint.status.code(), Some(3));
     assert!(!stderr(&no_hint).contains("did you mean"));
 }

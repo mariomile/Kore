@@ -1,4 +1,4 @@
-//! `reflect backlinks <note>` — the notes linking *to* a note, read from the
+//! `kore backlinks <note>` — the notes linking *to* a note, read from the
 //! index's `backlinks` view (the same resolution the app's Backlinks panel
 //! uses: ranked wiki-name joins with exact-file-first fallback, templates
 //! excluded). Requires the index like `search`/`tasks` (exit 4 when

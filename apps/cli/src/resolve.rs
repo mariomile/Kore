@@ -178,7 +178,7 @@ pub fn resolve_note(
             if let Some(conn) = conn {
                 let near = near_misses(conn, &key)?;
                 if !near.is_empty() {
-                    eprintln!("reflect: did you mean: {}", near.join(", "));
+                    eprintln!("kore: did you mean: {}", near.join(", "));
                 }
             }
             Err(CliError::NotFound(format!(
@@ -188,7 +188,7 @@ pub fn resolve_note(
         Some((first, rest)) => {
             if !rest.is_empty() {
                 eprintln!(
-                    "reflect: note: {} other match(es) for '{trimmed}': {}",
+                    "kore: note: {} other match(es) for '{trimmed}': {}",
                     rest.len(),
                     rest.join(", ")
                 );

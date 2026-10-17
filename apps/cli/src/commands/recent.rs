@@ -1,4 +1,4 @@
-//! `reflect recent` — the most recently updated notes, from the index
+//! `kore recent` — the most recently updated notes, from the index
 //! (templates excluded), newest first. Requires the index like
 //! `search`/`tasks` (exit 4 when missing); each row's own frontmatter is
 //! re-checked on disk so a note flagged private after the last index run

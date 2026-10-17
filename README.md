@@ -46,7 +46,7 @@ another git remote are connected directly by the user.
   disk) that give agents external tools in edit mode. All of it plain
   markdown under `agents/`, portable and versioned like any note. Outside
   the app, Settings → Agents installs skills that teach Claude Code, Codex,
-  and Cursor the `reflect` CLI and Kore's formats (markdown, collections,
+  and Cursor the `kore` CLI and Kore's formats (markdown, collections,
   agent memory).
 - **Everything else:** unlinked mentions with one-click linking, an All-notes
   masonry view, template placeholders (`{{date}}`, `{{time}}`, `{{title}}`),
@@ -166,7 +166,7 @@ Kore is a pnpm/Turborepo monorepo (structure inherited from Reflect):
 ```text
 kore/
 ├── apps/desktop/          # Mac and iOS app (Tauri 2 shell + React frontend)
-├── apps/cli/              # `reflect` CLI — Rust read/discovery/capture tool
+├── apps/cli/              # `kore` CLI — Rust read/discovery/capture tool
 ├── apps/extension/        # Chrome capture extension
 ├── apps/native-host/      # Browser capture helper (native-messaging spooler)
 ├── packages/core/         # Shared TypeScript business logic

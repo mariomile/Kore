@@ -38,7 +38,7 @@ export async function hideQuickCapture(): Promise<void> {
 }
 
 /**
- * Open (or focus) a secondary note window on a `reflect://` route link
+ * Open (or focus) a secondary note window on a `kore://` route link
  * (⌘-click a note link). Desktop-only; requires an open graph, which the new
  * window adopts — see {@link windowBootstrap}.
  */

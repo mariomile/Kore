@@ -6,7 +6,7 @@ import type { Route } from '@/routing/route'
 
 /**
  * Open a target in a secondary note window (Plan 06). Modifier-click callers
- * and the selected-note command resolve a route or an in-note `reflect://`
+ * and the selected-note command resolve a route or an in-note `kore://`
  * link to the shell's `open_note_window` command. Modifier-click callers fall
  * back to in-window navigation whenever a helper answers false, so the
  * modifier can never make a link do nothing.

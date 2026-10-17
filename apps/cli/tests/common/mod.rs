@@ -1,4 +1,4 @@
-//! Shared fixtures for the `reflect` integration tests: a temp graph on
+//! Shared fixtures for the `kore` integration tests: a temp graph on
 //! disk, an index built with the shared `reflect-index-schema` migrations
 //! plus direct row inserts that mirror the desktop's `apply_note` write path
 //! (`apps/desktop/src-tauri/src/db/write.rs`), and the process helpers that
@@ -124,11 +124,11 @@ pub fn graph() -> Fixture {
     Fixture { dir }
 }
 
-pub fn reflect(fixture: &Fixture, args: &[&str]) -> Output {
-    Command::new(env!("CARGO_BIN_EXE_reflect"))
+pub fn kore(fixture: &Fixture, args: &[&str]) -> Output {
+    Command::new(env!("CARGO_BIN_EXE_kore"))
         .args(args)
         .current_dir(fixture.root())
-        .env_remove("REFLECT_GRAPH")
+        .env_remove("KORE_GRAPH")
         .output()
         .unwrap()
 }
@@ -233,12 +233,12 @@ impl Fixture {
     }
 }
 
-pub fn reflect_stdin(fixture: &Fixture, args: &[&str], input: &str) -> Output {
+pub fn kore_stdin(fixture: &Fixture, args: &[&str], input: &str) -> Output {
     use std::io::Write;
-    let mut child = Command::new(env!("CARGO_BIN_EXE_reflect"))
+    let mut child = Command::new(env!("CARGO_BIN_EXE_kore"))
         .args(args)
         .current_dir(fixture.root())
-        .env_remove("REFLECT_GRAPH")
+        .env_remove("KORE_GRAPH")
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())

@@ -13,7 +13,7 @@ import { startOperation } from '@/lib/operations'
 
 /**
  * "Copy deep link" (the v1 `alt+mod+l` port): the clipboard gets the most
- * durable `reflect://` address the note can have. A daily note is addressed
+ * durable `kore://` address the note can have. A daily note is addressed
  * by its date. A regular note is addressed by its frontmatter `id` — minted
  * here on first copy for notes that predate Plan 17's ids or were created
  * outside Reflect — so the link survives every rename; the id lands through
@@ -31,7 +31,7 @@ export async function deepLinkForNote(path: string, generation: number): Promise
   }
   const source = await readNoteSource(path)
   // A blank `id:` counts as no id (same rule as the CLI's `reflect open`):
-  // linking it would emit `reflect://note/`, which the parser rejects.
+  // linking it would emit `kore://note/`, which the parser rejects.
   const existing = parseNote({ path, source }).frontmatter.id
   if (existing !== undefined && existing.trim() !== '') {
     return noteDeepLink(existing)

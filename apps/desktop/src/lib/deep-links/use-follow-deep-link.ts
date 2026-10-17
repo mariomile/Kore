@@ -1,7 +1,7 @@
 import { useCallback } from 'react'
 import { dispatchDeepLink } from '@/lib/deep-links/intake'
 
-/** Follow one in-app `reflect://` link. */
+/** Follow one in-app `kore://` link. */
 export type FollowDeepLink = (options: { href: string }) => void
 
 /**

@@ -1,4 +1,4 @@
-//! `reflect done <text> [--in <note>] [--undo]` — tick a task off (or back
+//! `kore done <text> [--in <note>] [--undo]` — tick a task off (or back
 //! on) by its text. Graph-wide, the index's tasks projection finds the task
 //! (exit 4 without it); with `--in`, the note's own lines do, so a task
 //! captured a moment ago needs no re-index. The file on disk is the truth
@@ -180,7 +180,7 @@ pub fn run(
         [task] => *task,
         several => {
             for candidate in several {
-                eprintln!("reflect: {}\t{}", candidate.path, candidate.text);
+                eprintln!("kore: {}\t{}", candidate.path, candidate.text);
             }
             return Err(CliError::NotFound(format!(
                 "'{wanted}' matches {} {state} tasks — give more of the text or --in <note>",

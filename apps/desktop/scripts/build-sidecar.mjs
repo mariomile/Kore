@@ -34,7 +34,7 @@ if (!triple) {
 // crate → binary name, mirroring the `externalBin` entries in the platform
 // tauri.*.conf.json overlays.
 const SIDECARS = [
-  { crate: 'reflect-cli', binary: 'reflect' },
+  { crate: 'reflect-cli', binary: 'kore' },
   { crate: 'reflect-capture-host', binary: 'reflect-capture-host' },
 ]
 

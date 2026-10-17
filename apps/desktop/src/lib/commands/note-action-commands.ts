@@ -99,8 +99,8 @@ export const NOTE_ACTION_COMMANDS: AppCommand[] = [
   {
     id: 'note.copyDeepLink',
     title: 'Copy deep link',
-    keywords: ['url', 'share', 'clipboard', 'reflect://', 'address'],
-    // The original app's copy-link shortcut. Copies a `reflect://` address for
+    keywords: ['url', 'share', 'clipboard', 'kore://', 'address'],
+    // The original app's copy-link shortcut. Copies a `kore://` address for
     // the note the current route edits — id-shaped so it survives renames,
     // minting the frontmatter id on first copy. `runCopyDeepLink` owns all
     // feedback (the "Deep link copied" status line and failure surfaces).
@@ -120,7 +120,7 @@ export const NOTE_ACTION_COMMANDS: AppCommand[] = [
     keywords: ['file', 'absolute', 'filesystem', 'clipboard', 'location'],
     // The OS-path sibling of "Copy deep link": copies the note's absolute
     // file path (Finder's Copy-as-Pathname chord) for use outside Reflect,
-    // where a reflect:// address cannot resolve. `runCopyNotePath` owns all
+    // where a kore:// address cannot resolve. `runCopyNotePath` owns all
     // feedback (the "Note path copied" status line and failure surfaces).
     keybinding: 'Alt-Mod-c',
     run: async (context) => {

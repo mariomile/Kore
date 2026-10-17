@@ -1,4 +1,4 @@
-//! `reflect tasks` — the graph's open tasks (round `+ [ ]` checkboxes), read
+//! `kore tasks` — the graph's open tasks (round `+ [ ]` checkboxes), read
 //! from the index's tasks projection. Like `search`, this command requires
 //! the index (exit 4 when missing) — the CLI never builds it — and re-checks
 //! each source note's own frontmatter so a note flagged private after the

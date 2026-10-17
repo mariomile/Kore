@@ -1,4 +1,4 @@
-//! `reflect collection` — a typed tag's collection, from the index (TDR
+//! `kore collection` — a typed tag's collection, from the index (TDR
 //! 0005): the notes carrying the tag as database rows, with the property
 //! values the tag's schema declares. Requires the index like
 //! `search`/`recent` (exit 4 when missing); a tag without a `tag_types` row

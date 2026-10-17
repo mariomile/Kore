@@ -17,7 +17,12 @@ vi.mock('@/providers/graph-provider', () => ({
 
 type InstallState = 'missing' | 'current' | 'stale' | 'conflict'
 
-const SKILL_NAMES = ['reflect-personal', 'kore-markdown', 'kore-collections', 'kore-agent-memory']
+const SKILL_NAMES = [
+  'kore-graph-personal',
+  'kore-markdown',
+  'kore-collections',
+  'kore-agent-memory',
+]
 
 let installStates: Record<string, InstallState>
 let installCalls: Array<Record<string, unknown>>
@@ -30,7 +35,7 @@ function setAll(state: InstallState): void {
 function statusPayload(): Record<string, unknown> {
   return {
     skillsRoot: '/Users/me/.agents/skills',
-    cliPath: '/Applications/Kore.app/Contents/MacOS/reflect',
+    cliPath: '/Applications/Kore.app/Contents/MacOS/kore',
     skills: SKILL_NAMES.map((name) => ({
       skillName: name,
       skillPath: `/Users/me/.agents/skills/${name}/SKILL.md`,
@@ -134,7 +139,7 @@ describe('AgentsSection', () => {
   it('shows the MCP client config for this graph, read-only on request', async () => {
     await renderSection()
     const config = page.getByText(/"mcpServers"/)
-    await expect.element(config).toHaveTextContent('/Applications/Kore.app/Contents/MacOS/reflect')
+    await expect.element(config).toHaveTextContent('/Applications/Kore.app/Contents/MacOS/kore')
     await expect.element(config).toHaveTextContent('/graphs/Personal')
     expect(config.element().textContent).not.toContain('--read-only')
 

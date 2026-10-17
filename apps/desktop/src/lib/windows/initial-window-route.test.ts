@@ -10,33 +10,33 @@ beforeEach(resetInitialWindowRouteForTests)
 
 describe('initialRouteForDeepLink', () => {
   it('derives navigate links directly', () => {
-    expect(initialRouteForDeepLink('reflect://daily/2026-07-05')).toEqual({
+    expect(initialRouteForDeepLink('kore://daily/2026-07-05')).toEqual({
       kind: 'daily',
       date: '2026-07-05',
     })
-    expect(initialRouteForDeepLink('reflect://today')).toEqual({ kind: 'today' })
+    expect(initialRouteForDeepLink('kore://today')).toEqual({ kind: 'today' })
   })
 
   it('derives path-shaped note targets without the index', () => {
     // ⌘-click builds these via deepLinkForRoute, so the target IS the path.
-    expect(initialRouteForDeepLink('reflect://note/notes%2Ffoo.md')).toEqual({
+    expect(initialRouteForDeepLink('kore://note/notes%2Ffoo.md')).toEqual({
       kind: 'note',
       path: 'notes/foo.md',
     })
     // A daily path routes to the daily view, same as routeForPath everywhere.
-    expect(initialRouteForDeepLink('reflect://note/daily%2F2026-07-04.md')).toEqual({
+    expect(initialRouteForDeepLink('kore://note/daily%2F2026-07-04.md')).toEqual({
       kind: 'daily',
       date: '2026-07-04',
     })
   })
 
   it('declines targets only the index can answer', () => {
-    expect(initialRouteForDeepLink('reflect://note/Meeting%20Notes')).toBeNull()
-    expect(initialRouteForDeepLink('reflect://note/01hzx4abc')).toBeNull()
+    expect(initialRouteForDeepLink('kore://note/Meeting%20Notes')).toBeNull()
+    expect(initialRouteForDeepLink('kore://note/01hzx4abc')).toBeNull()
   })
 
   it('declines capture links, garbage, and absence', () => {
-    expect(initialRouteForDeepLink('reflect://append?text=hi')).toBeNull()
+    expect(initialRouteForDeepLink('kore://append?text=hi')).toBeNull()
     expect(initialRouteForDeepLink('not a url')).toBeNull()
     expect(initialRouteForDeepLink(null)).toBeNull()
   })

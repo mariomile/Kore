@@ -467,7 +467,7 @@ export function NoteEditor({
         })
         return
       }
-      // A `reflect://` link routes through the in-app deep-link pipeline:
+      // A `kore://` link routes through the in-app deep-link pipeline:
       // the OS opener would deny the scheme (and a round-trip could land on
       // another installed flavor). It always dispatches in place, modifier or
       // not, because a deep link can be a write (a capture link) rather than

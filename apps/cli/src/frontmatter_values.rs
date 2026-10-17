@@ -2,8 +2,8 @@
 //! (`packages/core/src/tags/properties.ts`): every non-reserved scalar (or
 //! list-of-scalars) key of a note's frontmatter, typed the way the desktop's
 //! `note_properties` projection stores it. Objects, nested lists, nulls, and
-//! non-finite numbers are skipped, never errors. `reflect properties` reads
-//! through this; `reflect set` verifies its own write through it.
+//! non-finite numbers are skipped, never errors. `kore properties` reads
+//! through this; `kore set` verifies its own write through it.
 
 use saphyr::{LoadableYamlNode, Scalar, Yaml};
 use serde::ser::{SerializeSeq, Serializer};

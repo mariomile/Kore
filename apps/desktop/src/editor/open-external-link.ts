@@ -84,7 +84,7 @@ export function preferOsBrowser(altKey: boolean, openLinksInApp: boolean): boole
  * WebView frame. The static `MarkdownView` surfaces aren't contenteditable,
  * so an `<a href>` click would otherwise unload the whole app.
  *
- * Routing: a `reflect://` link goes through the in-app deep-link pipeline
+ * Routing: a `kore://` link goes through the in-app deep-link pipeline
  * (the OS opener denies the scheme); a web page opens the in-app browser
  * so reading a link never leaves the app — whatever the gesture, since
  * inside the editor mod-click IS the open gesture (a plain click just places

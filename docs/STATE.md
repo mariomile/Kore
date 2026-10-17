@@ -137,7 +137,7 @@ page of its own because no note carries it exactly.
   name, icons and configure stay per tag. A vault with no nested tags looks
   as before. `useNoteTags` is gone (the section was its only user).
 - Not done: iPhone (no Types section there), auto-expanding the active
-  tag's ancestors, the `reflect` CLI.
+  tag's ancestors, the `kore` CLI.
 
 **Validation:** core `tag-tree.test.ts` plus real-SQLite flow tests (tree
 counts with a daily excluded, parent page via list and collection, no
@@ -212,7 +212,7 @@ every word was a prefix term, quotes were split, `-word` was searched for.
   `buildAllNotesSearch`.
 - [x] The palette shows each operator it understood as a chip under the
   input (exclusions in red), and the footer lists the syntax.
-- Not done: the `reflect` CLI `search` still takes plain text only (it
+- Not done: the `kore` CLI `search` still takes plain text only (it
   never parsed Kore's own filter tokens either; porting the grammar to Rust
   is its own slice). Negated properties (`-[status:done]`), regex and
   Obsidian's `line:`/`block:`/`section:` operators are not supported.
@@ -271,11 +271,11 @@ status and the base's tag.
 
 User ask (Mario, 2026-10-17, autonomous run): make Kore the second brain for
 humans *and* agents. Agents could already drive the graph through the
-`reflect` CLI plus the bundled skills, which only works for agents with a
+`kore` CLI plus the bundled skills, which only works for agents with a
 shell and a skill loader. Claude Desktop, Cursor and other MCP clients had no
 way in.
 
-- [x] `reflect mcp` (`apps/cli/src/mcp.rs`): an MCP stdio server with 19 tools
+- [x] `kore mcp` (`apps/cli/src/mcp.rs`): an MCP stdio server with 19 tools
   (12 reading, 7 writing). Each tool runs one existing subcommand as a child
   process with `--graph <root> --json`, so the JSON contracts, structural
   writes and the private-note block are the CLI's own, with no second code
@@ -325,7 +325,7 @@ Company is most of the template.
   and `id:` never travel, placeholders expand in values. Malformed YAML on
   either side leaves the note alone. This applies to Kore's own templates
   too; one whose only frontmatter is its `title:` changes nothing.
-- Not done: the `reflect` CLI's `new --template` still reads `templates/`.
+- Not done: the `kore` CLI's `new --template` still reads `templates/`.
   Creating or renaming a template in Settings names the file by slug even
   in a title-named vault.
 
@@ -552,8 +552,8 @@ CI. Not tried on the real vault.
   title (`Meeting Notes.md`, collisions `Meeting Notes 2.md`), and the
   title-change rename keeps that shape. The `id:` frontmatter stays: Plan 17
   rename tracking depends on it.
-- [x] The `reflect` CLI reads the same `daily-notes.json`
-  (`apps/cli/src/paths.rs`, `DailyLayout`), so `reflect today`, `capture`
+- [x] The `kore` CLI reads the same `daily-notes.json`
+  (`apps/cli/src/paths.rs`, `DailyLayout`), so `kore today`, `capture`
   and date arguments hit the vault's own dailies.
 - [x] Today's daily starts from the vault's template
   (`_system/templates/Daily-Note`, copied whole with its frontmatter) and
@@ -601,14 +601,14 @@ TDR 0005 Amendment D.
   type (Type chip X, `set_note_type remove`) clears both sources.
   `set_note_type` asks both sources whether the note is typed; the test that
   pinned the old body-only boundary is flipped.
-- [x] CLI: `reflect tag` leaves a note that declares the tag in `tags:`
-  alone; `reflect untag` drops the `tags:` entry (key deleted when empty)
+- [x] CLI: `kore tag` leaves a note that declares the tag in `tags:`
+  alone; `kore untag` drops the `tags:` entry (key deleted when empty)
   before its trailing-line removal.
 - [x] Docs: TDR 0005 Amendment D, `kore-markdown` and `kore-collections`
   skills, Plan 03 marked superseded on this point.
 
 **Untouched by design:** the editor's `#` autocomplete, the bulk action,
-collection "+ New" rows, CSV import and `reflect tag` still write the body
+collection "+ New" rows, CSV import and `kore tag` still write the body
 hashtag, which stays valid. No hierarchy semantics for nested tags
 (`type/book` is one tag, as a body `#type/book` already was). Vault layout
 (daily notes, attachments, new-note folder) belongs to the "Profilo vault
@@ -2124,6 +2124,18 @@ screen: Agents then Close lands on today.
 
 ## Session log
 
+- 2026-10-17 — Renamed everything a user sees or types from `reflect` to
+  `kore`: the CLI binary (`kore`, so the MCP config runs
+  `Kore.app/Contents/MacOS/kore … mcp`), its help and error prefix,
+  `$KORE_GRAPH`, the per-graph agent skill (`kore-graph-<slug>`; a clean
+  managed `reflect-<slug>` install is removed on install/uninstall),
+  `.koreignore`, and `kore://` deep links (registered alongside `reflect://`,
+  which still parses so pasted links keep working, but is never written).
+  Kept on purpose, internal only: `reflect-*` crates and `@reflect/*`
+  packages, the `.reflect/` index directory, the `reflect-managed` skill
+  marker, `reflect-capture-host` and its `app.reflect.capture` native
+  messaging id (tied to the browser extension), the iOS
+  `reflect://record-audio` widget verb, CSS classes and storage keys.
 - 2026-10-17 — Autonomous discovery run. Most Obsidian blockers from the
   2026-10-09 gap analysis are shipped; picked four slices: `reflect mcp`
   (this thread), Obsidian search operators, the full Obsidian callout set

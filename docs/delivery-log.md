@@ -7,6 +7,11 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- The command line is called `kore` now, like the app. The MCP config in
+  Settings → Agents, the agent skills, `kore --help`, error messages,
+  `$KORE_GRAPH` and copied note links (`kore://…`) all say Kore. Old
+  `reflect://` links already in notes still open.
+
 - Every note now shows its local graph in the sidebar, like Obsidian's:
   the note in the middle, what it links to and what links to it
   (including `up:` and `related:`), with a switch to see two steps out

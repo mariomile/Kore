@@ -1,4 +1,4 @@
-//! `reflect properties <note>` — a note's frontmatter as typed property
+//! `kore properties <note>` — a note's frontmatter as typed property
 //! values (the `note_properties` typing, read from the file itself so it is
 //! never stale), plus aliases, pin state, and the note's tags from the index
 //! when one is open. File-only otherwise, like `show`. A private note is

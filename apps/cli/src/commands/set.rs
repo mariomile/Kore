@@ -1,4 +1,4 @@
-//! `reflect set <note> key=value… [--unset key]…` — write frontmatter
+//! `kore set <note> key=value… [--unset key]…` — write frontmatter
 //! property values the way the app's property editors do: typed by the
 //! schemas of the tags the note carries (union, first declaration wins),
 //! plain text for keys no schema declares, reserved keys refused, view-only

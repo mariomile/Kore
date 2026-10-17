@@ -1,9 +1,9 @@
 //! Agent-skill install (Settings → Agents): writes the bundled skills under
 //! `~/.agents/skills/` so coding agents (Claude Code and friends) discover
-//! the open graph, read it through the bundled `reflect` CLI, and know the
+//! the open graph, read it through the bundled `kore` CLI, and know the
 //! formats Kore renders.
 //!
-//! Four skills ship in `../skills/`: one **per graph** (`reflect-<slug>`,
+//! Four skills ship in `../skills/`: one **per graph** (`kore-graph-<slug>`,
 //! rendered with the graph root and the CLI's on-disk path baked in) and
 //! three **shared** format skills (`kore-markdown`, `kore-collections`,
 //! `kore-agent-memory`) installed verbatim once, whichever graph is open. A
@@ -48,11 +48,12 @@ const MANAGED_SUFFIX: &str = " -->";
 
 /// The CLI sidecar, staged beside the app binary by the Tauri bundler (and
 /// beside the dev binary by `tauri dev`) — same layout as the capture host.
-const CLI_BINARY: &str = if cfg!(windows) {
-    "reflect.exe"
-} else {
-    "reflect"
-};
+const CLI_BINARY: &str = if cfg!(windows) { "kore.exe" } else { "kore" };
+
+/// The per-graph skill's directory before the CLI was renamed to `kore`
+/// (`reflect-<slug>`). A managed install there names a CLI path that no
+/// longer exists, so install and uninstall both clear it.
+const LEGACY_GRAPH_SKILL_PREFIX: &str = "reflect-";
 
 /// Where an installed skill file stands relative to what this app would
 /// write today.
@@ -104,6 +105,8 @@ struct SkillSet {
     skills_root: PathBuf,
     cli_path: PathBuf,
     contexts: Vec<SkillContext>,
+    /// Where this graph's skill lived under its pre-rename name.
+    legacy_graph_target: PathBuf,
 }
 
 /// Kebab-case ASCII slug of a graph name; `"graph"` when nothing survives.
@@ -220,7 +223,7 @@ fn classify(
 }
 
 /// The staged CLI sidecar, next to the running executable in both dev
-/// (`target/debug/`) and the bundle (`Reflect.app/Contents/MacOS/`).
+/// (`target/debug/`) and the bundle (`Kore.app/Contents/MacOS/`).
 fn cli_path() -> AppResult<PathBuf> {
     let exe = std::env::current_exe().map_err(|err| AppError::io(err.to_string()))?;
     let dir = exe
@@ -251,7 +254,10 @@ fn skill_set(root: &Path, skills_root: &Path, cli: PathBuf) -> SkillSet {
         .file_name()
         .map(|name| name.to_string_lossy().into_owned())
         .unwrap_or_default();
-    let graph_skill_name = format!("reflect-{}", slugify(&graph_name));
+    let slug = slugify(&graph_name);
+    // `kore-graph-` rather than `kore-`: a graph named "Markdown" must not
+    // collide with the shared `kore-markdown` skill.
+    let graph_skill_name = format!("kore-graph-{slug}");
     let rendered = render_graph_skill(
         &graph_skill_name,
         &graph_name,
@@ -268,6 +274,9 @@ fn skill_set(root: &Path, skills_root: &Path, cli: PathBuf) -> SkillSet {
         skills_root: skills_root.to_path_buf(),
         cli_path: cli,
         contexts,
+        legacy_graph_target: skills_root
+            .join(format!("{LEGACY_GRAPH_SKILL_PREFIX}{slug}"))
+            .join("SKILL.md"),
     }
 }
 
@@ -338,6 +347,7 @@ pub async fn skill_install<R: tauri::Runtime>(
 fn skill_install_for(state: &State<'_, GraphState>, generation: u64) -> AppResult<SkillsStatus> {
     let root = root_for_generation(state, generation)?;
     let set = skill_set_for_graph(&root)?;
+    remove_legacy_graph_skill(&set.legacy_graph_target)?;
     for context in &set.contexts {
         install_one(context)?;
     }
@@ -388,10 +398,33 @@ pub async fn skill_uninstall<R: tauri::Runtime>(
 fn skill_uninstall_for(state: &State<'_, GraphState>, generation: u64) -> AppResult<SkillsStatus> {
     let root = root_for_generation(state, generation)?;
     let set = skill_set_for_graph(&root)?;
+    remove_legacy_graph_skill(&set.legacy_graph_target)?;
     for context in &set.contexts {
         uninstall_one(context)?;
     }
     statuses_of(&set)
+}
+
+/// Remove a pre-rename per-graph skill when it is still exactly what we
+/// wrote (its marker validates its own body). An edited or hand-written file
+/// stays, the same rule `uninstall_one` applies.
+fn remove_legacy_graph_skill(target: &Path) -> AppResult<()> {
+    let installed = match fs::read_to_string(target) {
+        Ok(content) => content,
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(err) => return Err(err.into()),
+    };
+    let ours = matches!(
+        (managed_hash(&installed), without_marker_line(&installed)),
+        (Some(hash), Some(body)) if content_hash(&body) == hash
+    );
+    if ours {
+        fs::remove_file(target)?;
+        if let Some(dir) = target.parent() {
+            let _ = fs::remove_dir(dir);
+        }
+    }
+    Ok(())
 }
 
 fn uninstall_one(context: &SkillContext) -> AppResult<()> {
@@ -424,7 +457,7 @@ mod tests {
         skill_set(
             graph,
             dir,
-            PathBuf::from("/Applications/Reflect.app/Contents/MacOS/reflect"),
+            PathBuf::from("/Applications/Kore.app/Contents/MacOS/kore"),
         )
     }
 
@@ -436,16 +469,18 @@ mod tests {
     fn render_bakes_in_the_graph_and_cli() {
         let set = test_set(Path::new("/skills"), Path::new("/graphs/Personal"));
         let context = graph_context(&set);
-        assert_eq!(context.skill_name, "reflect-personal");
+        assert_eq!(context.skill_name, "kore-graph-personal");
         assert_eq!(
             context.target,
-            Path::new("/skills/reflect-personal/SKILL.md")
+            Path::new("/skills/kore-graph-personal/SKILL.md")
         );
-        assert!(context.managed_content.contains("name: reflect-personal"));
+        assert!(context
+            .managed_content
+            .contains("name: kore-graph-personal"));
         assert!(context.managed_content.contains("/graphs/Personal"));
         assert!(context
             .managed_content
-            .contains("/Applications/Reflect.app/Contents/MacOS/reflect"));
+            .contains("/Applications/Kore.app/Contents/MacOS/kore"));
         assert!(context
             .managed_content
             .contains("git -C \"/graphs/Personal\""));
@@ -472,7 +507,7 @@ mod tests {
         assert_eq!(
             names,
             [
-                "reflect-personal",
+                "kore-graph-personal",
                 "kore-markdown",
                 "kore-collections",
                 "kore-agent-memory"
@@ -616,11 +651,11 @@ mod tests {
         let renamed = skill_set(
             Path::new("/graphs/Personal Renamed"),
             temp.path(),
-            PathBuf::from("/Applications/Reflect.app/Contents/MacOS/reflect"),
+            PathBuf::from("/Applications/Kore.app/Contents/MacOS/kore"),
         );
         assert_eq!(
             graph_context(&renamed).skill_name,
-            "reflect-personal-renamed"
+            "kore-graph-personal-renamed"
         );
         assert_eq!(renamed.contexts[1].skill_name, "kore-markdown");
 
@@ -642,5 +677,37 @@ mod tests {
         assert!(taken.target.exists(), "foreign file kept");
         assert!(!set.contexts[1].target.exists());
         assert!(!set.contexts[3].target.exists());
+    }
+    #[test]
+    fn pre_rename_graph_skill_is_cleared_only_when_untouched() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let set = test_set(temp.path(), Path::new("/graphs/Personal"));
+        assert_eq!(
+            set.legacy_graph_target,
+            temp.path().join("reflect-personal").join("SKILL.md")
+        );
+
+        // A clean managed install under the old name goes, directory too.
+        let old = skill_context(
+            temp.path(),
+            "reflect-personal",
+            "---\nname: reflect-personal\n---\nbody\n",
+        );
+        std::fs::create_dir_all(&old.dir).expect("mkdir");
+        std::fs::write(&old.target, &old.managed_content).expect("write");
+        remove_legacy_graph_skill(&set.legacy_graph_target).expect("remove");
+        assert!(!old.dir.exists());
+
+        // An edited one stays, as does a hand-written one.
+        std::fs::create_dir_all(&old.dir).expect("mkdir");
+        std::fs::write(&old.target, format!("{}\nmine\n", old.managed_content)).expect("write");
+        remove_legacy_graph_skill(&set.legacy_graph_target).expect("keep");
+        assert!(old.target.exists());
+        std::fs::write(&old.target, "# my own skill\n").expect("write");
+        remove_legacy_graph_skill(&set.legacy_graph_target).expect("keep");
+        assert!(old.target.exists());
+
+        // Nothing there is fine.
+        remove_legacy_graph_skill(&temp.path().join("nope/SKILL.md")).expect("missing");
     }
 }

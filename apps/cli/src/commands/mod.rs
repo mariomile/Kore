@@ -39,7 +39,7 @@ use crate::index::{detect_staleness, open_read_only, IndexOpen, OpenIndex, Stale
 use crate::note_file::read_note;
 
 pub(crate) fn warn(message: impl Display) {
-    eprintln!("reflect: warning: {message}");
+    eprintln!("kore: warning: {message}");
 }
 
 /// The privacy re-check shared by the index-backed commands: the index row

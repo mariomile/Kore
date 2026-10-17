@@ -19,9 +19,9 @@ import { useGraph } from '@/providers/graph-provider'
 /**
  * Settings → Agents: one-click install of the bundled agent skills under
  * `~/.agents/skills/` — the graph's own skill (named after it; teaches
- * coding agents to read this graph through the bundled `reflect` CLI) plus
+ * coding agents to read this graph through the bundled `kore` CLI) plus
  * the shared format skills (markdown, collections, agent memory), then the
- * copyable `reflect mcp` setup for MCP clients ({@link AgentsMcpField}). macOS
+ * copyable `kore mcp` setup for MCP clients ({@link AgentsMcpField}). macOS
  * desktop only, like the iCloud section — the navigator hides the entry
  * through the same gate (see use-visible-settings-sections).
  */
@@ -71,7 +71,7 @@ export function AgentsSection(): ReactElement | null {
     <SettingsSection id="agents">
       <SettingsField
         legend="Agent skills"
-        description={`Teach Claude Code and other agents to read and write “${graph.name}” with the reflect CLI, and the formats Kore uses: markdown, collections, agent memory.`}
+        description={`Teach Claude Code and other agents to read and write “${graph.name}” with the kore CLI, and the formats Kore uses: markdown, collections, agent memory.`}
       >
         {status !== undefined ? (
           <div className="mt-2 flex flex-col gap-2">

@@ -37,7 +37,7 @@ pub struct OpenJson<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub date: Option<&'a str>,
     pub path: &'a str,
-    /// The `reflect://` URL (docs/deep-links.md).
+    /// The `kore://` URL (docs/deep-links.md).
     pub url: &'a str,
     /// False under `--print` — the URL was emitted, not handed to the OS.
     pub launched: bool,

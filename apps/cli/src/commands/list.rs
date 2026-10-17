@@ -1,4 +1,4 @@
-//! `reflect list` — notes newest first, with their tags, optionally narrowed
+//! `kore list` — notes newest first, with their tags, optionally narrowed
 //! to one tag or one kind. Requires the index like `recent` (exit 4); each
 //! row's own frontmatter is re-checked on disk so a note flagged private
 //! after the last index run never surfaces.

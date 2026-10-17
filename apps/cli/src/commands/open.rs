@@ -1,5 +1,5 @@
-//! `reflect open <note>` — resolve like `show`/`path`, then navigate the
-//! Kore app there by handing the OS URL opener a `reflect://` deep link
+//! `kore open <note>` — resolve like `show`/`path`, then navigate the
+//! Kore app there by handing the OS URL opener a `kore://` deep link
 //! (docs/deep-links.md). The URL prefers the most durable address the note
 //! has: the date form for dailies, the frontmatter `id` form when the note
 //! carries one (it survives renames), else the graph-relative path form.
@@ -50,7 +50,7 @@ pub fn run(graph: &Graph, json: bool, note_arg: &str, print: bool) -> Result<(),
     Ok(())
 }
 
-/// The most durable `reflect://` address for a resolved note. Mirrors the
+/// The most durable `kore://` address for a resolved note. Mirrors the
 /// desktop's "Copy deep link" preference order, minus the minting — the CLI
 /// never writes, so a note without an id gets the path form instead.
 fn deep_link_url(root: &Path, resolved: &ResolvedNote) -> String {
@@ -58,17 +58,17 @@ fn deep_link_url(root: &Path, resolved: &ResolvedNote) -> String {
     if let Some(date) = daily_date.as_deref().and_then(parse_calendar_date) {
         // Calendar-validated: a daily/ file with an impossible date opens as
         // a plain note in the app, so it gets a note-form address below.
-        return format!("reflect://daily/{date}");
+        return format!("kore://daily/{date}");
     }
     match resolved {
-        ResolvedNote::Daily { date, .. } => format!("reflect://daily/{date}"),
+        ResolvedNote::Daily { date, .. } => format!("kore://daily/{date}"),
         ResolvedNote::File { rel_path } => {
             let id = fs::read_to_string(root.join(rel_path))
                 .ok()
                 .and_then(|content| parse_note_meta(rel_path, &content).id)
                 .filter(|id| !id.trim().is_empty());
             let target = id.as_deref().unwrap_or(rel_path);
-            format!("reflect://note/{}", encode_uri_component(target))
+            format!("kore://note/{}", encode_uri_component(target))
         }
     }
 }
@@ -155,7 +155,7 @@ mod tests {
         };
         assert_eq!(
             deep_link_url(dir.path(), &resolved),
-            "reflect://daily/2026-07-01"
+            "kore://daily/2026-07-01"
         );
     }
 
@@ -167,7 +167,7 @@ mod tests {
         };
         assert_eq!(
             deep_link_url(dir.path(), &resolved),
-            "reflect://daily/2026-07-01"
+            "kore://daily/2026-07-01"
         );
     }
 
@@ -179,7 +179,7 @@ mod tests {
         };
         assert_eq!(
             deep_link_url(dir.path(), &resolved),
-            "reflect://note/daily%2F2026-02-31.md"
+            "kore://note/daily%2F2026-02-31.md"
         );
     }
 
@@ -199,7 +199,7 @@ mod tests {
         };
         assert_eq!(
             deep_link_url(dir.path(), &with_id),
-            "reflect://note/01hzy3v9k2m4n6p8q0r2s4t6vw"
+            "kore://note/01hzy3v9k2m4n6p8q0r2s4t6vw"
         );
 
         let without_id = ResolvedNote::File {
@@ -207,7 +207,7 @@ mod tests {
         };
         assert_eq!(
             deep_link_url(dir.path(), &without_id),
-            "reflect://note/notes%2Fb.md"
+            "kore://note/notes%2Fb.md"
         );
     }
 }

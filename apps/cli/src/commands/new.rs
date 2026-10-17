@@ -1,4 +1,4 @@
-//! `reflect new <title>` — create a regular note the way the app would: a
+//! `kore new <title>` — create a regular note the way the app would: a
 //! title-derived filename (`notes/<slug>.md`, `-2` suffix on collision,
 //! claimed with an atomic no-clobber create) and an H1 title. `--template`
 //! seeds the body from a `templates/` file with its frontmatter stripped and

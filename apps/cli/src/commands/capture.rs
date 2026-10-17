@@ -1,4 +1,4 @@
-//! `reflect capture <text>` — the CLI's append-only write: a list item into
+//! `kore capture <text>` — the CLI's append-only write: a list item into
 //! today's daily note, mirroring the app's capture flow (all quick capture
 //! lands in the daily note; see `packages/core/src/markdown/append-list-item.ts`),
 //! or into any resolvable note via `--to`. Dailies are created lazily on

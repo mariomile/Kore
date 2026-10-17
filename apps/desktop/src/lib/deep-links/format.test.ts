@@ -20,7 +20,7 @@ describe('deepLinkForRoute', () => {
 
   it('emits a path-shaped note link that parses back to the same target', () => {
     const url = deepLinkForRoute({ kind: 'note', path: 'notes/project x.md' })
-    expect(url).toBe('reflect://note/notes%2Fproject%20x.md')
+    expect(url).toBe('kore://note/notes%2Fproject%20x.md')
     expect(parseDeepLink(url ?? '')).toEqual({
       kind: 'openNote',
       target: 'notes/project x.md',
@@ -37,7 +37,7 @@ describe('deepLinkForRoute', () => {
 describe('noteDeepLink', () => {
   it('percent-encodes the target and round-trips through the parser', () => {
     const url = noteDeepLink('Project X')
-    expect(url).toBe('reflect://note/Project%20X')
+    expect(url).toBe('kore://note/Project%20X')
     expect(parseDeepLink(url)).toEqual({ kind: 'openNote', target: 'Project X' })
   })
 })

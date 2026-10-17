@@ -1,6 +1,6 @@
 //! Title → filename slug derivation — the Rust mirror of
 //! `packages/core/src/markdown/slug.ts` (`slugForTitle`), used by
-//! `reflect new` so a CLI-created note lands on the same path the app would
+//! `kore new` so a CLI-created note lands on the same path the app would
 //! give it. The TS module is the rule's author; keep this in lockstep.
 
 use unicode_general_category::{get_general_category, GeneralCategory};

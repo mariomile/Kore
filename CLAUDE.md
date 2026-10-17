@@ -17,9 +17,11 @@ work that moves the program.
 
 Two names coexist on purpose and neither is a typo: **Reflect** is the upstream
 project this repo forked from (internal identifiers keep it — `@reflect/*`
-packages, `reflect-*` crates, the `reflect` CLI, `.reflect/`), while **Kore** is
-this fork and the only name a user ever sees. Apple identity stays `app.lore.*`
-and the keychain service stays `"lore"`. Never "fix" one into another.
+packages, `reflect-*` crates, `.reflect/`), while **Kore** is this fork and the
+only name a user ever sees or types: the `kore` CLI and `kore mcp`,
+`$KORE_GRAPH`, the agent skills, `kore://` links. If a user can see, type, or
+paste a name, it is Kore. Apple identity stays `app.lore.*` and the keychain
+service stays `"lore"`. Never "fix" one into another.
 
 ## Layering rules
 

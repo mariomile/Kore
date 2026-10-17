@@ -155,13 +155,18 @@ identifiers and historical upstream documentation.
 Two names coexist and are both intentional — do not "fix" one into the other:
 
 - **Reflect** is the upstream project this repo forked from; internal
-  identifiers keep its names (`@reflect/*` packages, `reflect-*` crates, the
-  `reflect` CLI, `.reflect/` index directory).
-- **Kore** is this fork and the only name a user ever sees: the repository,
-  the `productName` in `apps/desktop/src-tauri/tauri.conf.json` and its
-  overlays (the bundle is `Kore.app`; the flavors are Kore / Kore Beta /
-  Kore Dev), the window title, the iOS home screen, the iCloud Drive folder,
-  and every permission prompt.
+  identifiers keep its names (`@reflect/*` packages, `reflect-*` crates,
+  `.reflect/` index directory, CSS classes, storage keys).
+- **Kore** is this fork and the only name a user ever sees **or types**: the
+  repository, the `productName` in `apps/desktop/src-tauri/tauri.conf.json`
+  and its overlays (the bundle is `Kore.app`; the flavors are Kore / Kore
+  Beta / Kore Dev), the window title, the iOS home screen, the iCloud Drive
+  folder, every permission prompt, the `kore` CLI and its `kore mcp` server,
+  `$KORE_GRAPH`, the agent skills, `.koreignore`, and the `kore://` deep
+  links (`reflect://` is still parsed, never written).
+- The test for a new name: if a user can see it, type it, or paste it, it is
+  Kore. "Reflect" survives only where nobody but a contributor reads it, and
+  in "Reflect V1" import strings, which name the real upstream app.
 
 Two exceptions keep older spellings on purpose, and renaming either one
 breaks working installs:
@@ -344,7 +349,7 @@ Desktop JS tests are split into Vitest projects (details in
   `apps/desktop/src/test-utils/allowed-console.ts`; PRs may only shrink that
   list, and a new entry needs a stated reason.
 
-Rust tests (the Cargo workspace: desktop shell, `reflect` CLI, capture host,
+Rust tests (the Cargo workspace: desktop shell, `kore` CLI, capture host,
 shared crates, and the Tauri plugins — see the layout below):
 
 ```bash
@@ -354,7 +359,7 @@ cargo test -p reflect-open
 ```
 
 **Before any cargo build/check/test that compiles the desktop crate** (including
-`--workspace` commands and clippy), the sidecars (the `reflect` CLI and the
+`--workspace` commands and clippy), the sidecars (the `kore` CLI and the
 `reflect-capture-host` native-messaging host) must be staged once per checkout:
 
 ```bash
@@ -382,7 +387,7 @@ Kore/
 │   │   │   │               #   icloud/, conflict/, plus per-feature modules (watcher.rs,
 │   │   │   │               #   embed.rs, secrets.rs, settings.rs, calendar.rs, pty.rs, …)
 │   │   │   ├── tauri.conf.json          # build hooks, windows, bundle targets (incl. iOS)
-│   │   │   ├── tauri.<platform>.conf.json  # desktop overlays: bundle the reflect CLI sidecar
+│   │   │   ├── tauri.<platform>.conf.json  # desktop overlays: bundle the kore CLI sidecar
 │   │   │   ├── tauri.{dev,beta,ios,ios.dev}.conf.json  # flavor overlays (Kore Dev / Beta / iOS)
 │   │   │   ├── capabilities/            # Tauri 2 permission grants (default/desktop/ios/mobile)
 │   │   │   ├── icons/, icons-beta/, icons-dev/  # App icons per release channel
@@ -395,7 +400,7 @@ Kore/
 │   │   ├── e2e/            # run-e2e.mjs — Chromium smoke of the Vite app (no Tauri shell)
 │   │   ├── dist/           # Vite build output (frontendDist in tauri.conf.json)
 │   │   └── public/         # Static assets served by Vite
-│   ├── cli/                # `reflect` — self-contained Rust read/discovery/capture CLI (docs/cli.md)
+│   ├── cli/                # `kore` — self-contained Rust read/discovery/capture CLI (docs/cli.md)
 │   ├── extension/          # @reflect/extension — Chrome MV3 capture extension (WXT; see its README)
 │   └── native-host/        # `reflect-capture-host` — native-messaging spooler sidecar (Plan 11)
 ├── packages/
@@ -462,7 +467,7 @@ pnpm dev              # turbo dev across packages (Vite on http://localhost:1420
 pnpm tauri dev        # Full Tauri app with hot reload (stages the CLI sidecar first)
 pnpm tauri:dev        # `pnpm tauri dev` with the dev overlay → the "Kore Dev" flavor (green icon, own identifier; coexists with Kore / Kore Beta)
 pnpm build            # turbo build pipeline → apps/desktop/dist/
-pnpm tauri build      # Native app bundle, incl. the reflect CLI sidecar
+pnpm tauri build      # Native app bundle, incl. the kore CLI sidecar
 # Kore day-to-day publish: bump via release/dmg (see "Cutting a Kore release" above).
 # pnpm release:macos is the separate signed+notarized local path, not the bump.
 pnpm tauri:ios:dev "iPhone 17 Pro"  # Run the Tauri iOS target in the simulator (docs/contributing/mobile-simulator.md)

@@ -1,7 +1,7 @@
 # reflect-graph-paths
 
 Shared graph-relative path classification for the native surfaces (the
-desktop shell and the `reflect` CLI).
+desktop shell and the `kore` CLI).
 
 The durable boundary is deliberately lexical, with one canonical
 representation: a forward-slashed wire path, shared with TypeScript on every

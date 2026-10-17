@@ -54,18 +54,18 @@ describe('DeepLinkProvider', () => {
   it('routes URLs into handleDeepLink with the session io', async () => {
     await mount()
 
-    attachedHandler()('reflect://today')
+    attachedHandler()('kore://today')
 
     expect(handleDeepLink).toHaveBeenCalledTimes(1)
     const [url, io] = handleDeepLink.mock.calls[0]!
-    expect(url).toBe('reflect://today')
+    expect(url).toBe('kore://today')
     expect(io.navigate).toBe(navigate)
     expect(io.generation).toBe(7)
   })
 
   it('reports stale when the graph session changes — an in-flight resolve must not navigate', async () => {
     const view = await mount()
-    attachedHandler()('reflect://note/x')
+    attachedHandler()('kore://note/x')
     const io = handleDeepLink.mock.calls[0]![1]
 
     expect(io.isStale?.()).toBe(false)
@@ -77,7 +77,7 @@ describe('DeepLinkProvider', () => {
 
   it('reports stale when navigation changes while a note target resolves', async () => {
     await mount()
-    attachedHandler()('reflect://note/x')
+    attachedHandler()('kore://note/x')
     const io = handleDeepLink.mock.calls[0]![1]
 
     expect(io.isStale?.()).toBe(false)
@@ -87,7 +87,7 @@ describe('DeepLinkProvider', () => {
 
   it('reports stale when a newer note-link intent starts during resolution', async () => {
     await mount()
-    attachedHandler()('reflect://note/x')
+    attachedHandler()('kore://note/x')
     const io = handleDeepLink.mock.calls[0]![1]
 
     expect(io.isStale?.()).toBe(false)
@@ -96,12 +96,12 @@ describe('DeepLinkProvider', () => {
   })
 
   it.each([
-    'reflect://append?text=captured',
-    'reflect://task?text=captured',
-    'reflect://edit-notes?content=invalid',
+    'kore://append?text=captured',
+    'kore://task?text=captured',
+    'kore://edit-notes?content=invalid',
   ])('does not stale a pending note resolve for non-navigation URL %s', async (url) => {
     await mount()
-    attachedHandler()('reflect://note/x')
+    attachedHandler()('kore://note/x')
     const pendingNoteIo = handleDeepLink.mock.calls[0]![1]
 
     attachedHandler()(url)
@@ -110,11 +110,11 @@ describe('DeepLinkProvider', () => {
     expect(handleDeepLink.mock.calls[1]![1].isStale).toBeUndefined()
   })
 
-  it.each(['reflect://today', 'reflect://note/y'])(
+  it.each(['kore://today', 'kore://note/y'])(
     'stales a pending note resolve for newer navigation URL %s',
     async (url) => {
       await mount()
-      attachedHandler()('reflect://note/x')
+      attachedHandler()('kore://note/x')
       const pendingNoteIo = handleDeepLink.mock.calls[0]![1]
 
       attachedHandler()(url)
@@ -136,7 +136,7 @@ describe('DeepLinkProvider', () => {
     )
     const probeHandler = setDeepLinkHandler.mock.calls[0]?.[0]
     expect(probeHandler).toEqual(expect.any(Function))
-    probeHandler?.('reflect://note/x')
+    probeHandler?.('kore://note/x')
 
     const io = handleDeepLink.mock.calls[0]![1]
     expect(io.isStale?.()).toBe(false)
@@ -147,7 +147,7 @@ describe('DeepLinkProvider', () => {
     // keyed workspace remounts, so a late navigate hits a torn-down router
     // and no-ops. Staleness tracks the generation, nothing else.
     const view = await mount()
-    attachedHandler()('reflect://note/x')
+    attachedHandler()('kore://note/x')
     const io = handleDeepLink.mock.calls[0]![1]
 
     await view.unmount()
@@ -159,7 +159,7 @@ describe('DeepLinkProvider', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
     await mount()
-    attachedHandler()('reflect://append?text=x')
+    attachedHandler()('kore://append?text=x')
 
     await vi.waitFor(() => expect(errorSpy).toHaveBeenCalled())
     errorSpy.mockRestore()

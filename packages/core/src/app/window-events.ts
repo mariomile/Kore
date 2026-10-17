@@ -13,7 +13,7 @@ import { getBridge, type Unlisten } from '../ipc/bridge'
  */
 export const WINDOW_NAVIGATE_EVENT = 'window:navigate'
 
-/** Subscribe to shell-directed navigation requests (`reflect://` links). */
+/** Subscribe to shell-directed navigation requests (`kore://` links). */
 export function subscribeWindowNavigate(handler: (url: string) => void): Promise<Unlisten> {
   return getBridge().listen(WINDOW_NAVIGATE_EVENT, (payload) => {
     const parsed = z.string().safeParse(payload)

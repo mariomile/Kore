@@ -23,6 +23,10 @@ use crate::{
 
 /// Per-directory ignore file for user-configured exclusions, same syntax and
 /// precedence as `.gitignore`.
+pub const KORE_IGNORE_FILE: &str = ".koreignore";
+
+/// The ignore file's pre-rename name, still honored so an existing one keeps
+/// pruning.
 pub const REFLECT_IGNORE_FILE: &str = ".reflectignore";
 
 /// Machine-generated trees that are never notes, pruned at any depth. Kept
@@ -68,7 +72,8 @@ pub struct FileCatalog {
 /// Hidden entries are pruned except iCloud eviction placeholders, which list
 /// as their logical file. Symlinks are never followed and never listed. The
 /// vault's own `.gitignore` files (no repository required, no global or
-/// parent-directory rules) and [`REFLECT_IGNORE_FILE`] files prune subtrees;
+/// parent-directory rules) and [`KORE_IGNORE_FILE`] (or legacy
+/// [`REFLECT_IGNORE_FILE`]) files prune subtrees;
 /// [`PRUNED_DIR_NAMES`] and `CACHEDIR.TAG`-tagged directories are always
 /// pruned. Notes an Obsidian vault excludes (`userIgnoreFilters`, see
 /// [`ObsidianExclusions`]) are left out; attachments never are. Every refusal
@@ -85,7 +90,8 @@ pub fn walk_catalog(root: &Path) -> FileCatalog {
         .git_global(false)
         .require_git(false)
         .follow_links(false)
-        .add_custom_ignore_filename(REFLECT_IGNORE_FILE);
+        .add_custom_ignore_filename(REFLECT_IGNORE_FILE)
+        .add_custom_ignore_filename(KORE_IGNORE_FILE);
     let filter_skipped = Arc::clone(&skipped);
     builder.filter_entry(move |entry| {
         if entry.depth() == 0 {
@@ -351,13 +357,15 @@ mod tests {
     }
 
     #[test]
-    fn gitignore_and_reflectignore_prune_without_a_repository() {
+    fn gitignore_koreignore_and_legacy_reflectignore_prune_without_a_repository() {
         let dir = tempdir().unwrap();
         let root = dir.path();
         write(root, ".gitignore", "generated/\n");
-        write(root, ".reflectignore", "drafts/\n");
+        write(root, ".koreignore", "drafts/\n");
+        write(root, ".reflectignore", "old/\n");
         write(root, "generated/api.md", "generated");
         write(root, "drafts/wip.md", "draft");
+        write(root, "old/stale.md", "old");
         write(root, "notes/a.md", "a");
 
         assert_eq!(note_paths(root), vec!["notes/a.md"]);

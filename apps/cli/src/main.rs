@@ -1,4 +1,4 @@
-//! The `reflect` binary: clap surface + exit-code mapping. All behavior lives
+//! The `kore` binary: clap surface + exit-code mapping. All behavior lives
 //! in the library modules so integration tests exercise the same code paths.
 
 use std::path::PathBuf;
@@ -11,15 +11,15 @@ use reflect_cli::{commands, graph, mcp};
 
 /// Read, discover, and capture notes in a Kore graph.
 ///
-/// The graph resolves from --graph, then $REFLECT_GRAPH, then the nearest
+/// The graph resolves from --graph, then $KORE_GRAPH, then the nearest
 /// ancestor of the current directory containing .reflect/. Notes marked
 /// `private: true` are never returned (and never captured into). Exit codes:
 /// 0 ok, 1 error, 2 usage, 3 not found or private, 4 index missing
 /// (search/tasks).
 #[derive(Parser)]
-#[command(name = "reflect", version)]
+#[command(name = "kore", version)]
 struct Cli {
-    /// Graph directory (default: nearest ancestor with .reflect/, or $REFLECT_GRAPH)
+    /// Graph directory (default: nearest ancestor with .reflect/, or $KORE_GRAPH)
     #[arg(long, global = true, value_name = "PATH")]
     graph: Option<PathBuf>,
 
@@ -57,7 +57,7 @@ enum Command {
         /// A YYYY-MM-DD date, graph-relative path, note title, or alias
         note: String,
     },
-    /// Open a note in the Kore app via its reflect:// deep link
+    /// Open a note in the Kore app via its kore:// deep link
     Open {
         /// A YYYY-MM-DD date, graph-relative path, note title, or alias
         note: String,
@@ -296,7 +296,7 @@ fn main() -> ExitCode {
     match run(&Cli::parse()) {
         Ok(()) => ExitCode::SUCCESS,
         Err(err) => {
-            eprintln!("reflect: {err}");
+            eprintln!("kore: {err}");
             ExitCode::from(err.exit_code())
         }
     }

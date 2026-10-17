@@ -15,7 +15,7 @@
     ]
   },
   "bundle": {
-    "externalBin": ["binaries/reflect", "binaries/reflect-capture-host"],
+    "externalBin": ["binaries/kore", "binaries/reflect-capture-host"],
     "macOS": {
       "entitlements": "Entitlements.plist",
       "files": {

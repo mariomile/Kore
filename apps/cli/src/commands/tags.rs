@@ -1,4 +1,4 @@
-//! `reflect tags` — every tag in the graph with its public note count and
+//! `kore tags` — every tag in the graph with its public note count and
 //! whether it is typed (a collection with a schema at `tags/<tag>.md`). The
 //! facet mirrors `graph-stats.ts`: grouped on the folded `tag_key`, one
 //! deterministic display casing (`min(tag)`), counted over non-private

@@ -1,7 +1,7 @@
 # reflect-note-policy
 
 Shared frontmatter parsing and title-derivation policy for the native
-surfaces (the desktop shell and the `reflect` CLI).
+surfaces (the desktop shell and the `kore` CLI).
 
 `frontmatter` mirrors `packages/core/src/markdown/frontmatter.ts` (split
 semantics) and `model.ts` (field coercions): tolerant, read-only parsing of

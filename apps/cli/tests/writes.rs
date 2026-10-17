@@ -21,7 +21,7 @@ fn set_writes_typed_values_through_the_tag_schema_and_keeps_the_rest() {
     fixture.insert_tag("notes/secret.md", "book");
     fixture.insert_tag_type("book", BOOK_SCHEMA);
 
-    let value = json(&reflect(
+    let value = json(&kore(
         &fixture,
         &[
             "set",
@@ -53,25 +53,25 @@ fn set_writes_typed_values_through_the_tag_schema_and_keeps_the_rest() {
          # Dune\n\nBody stays.\n\n#book\n"
     );
     // The written values read back typed through the CLI's own reader.
-    let properties = json(&reflect(&fixture, &["properties", "Dune", "--json"]));
+    let properties = json(&kore(&fixture, &["properties", "Dune", "--json"]));
     assert_eq!(properties["properties"]["rating"], 4);
     assert_eq!(properties["properties"]["read"], true);
     assert!(properties["properties"].get("draft").is_none());
 
-    let bad_rating = reflect(&fixture, &["set", "Dune", "rating=9"]);
+    let bad_rating = kore(&fixture, &["set", "Dune", "rating=9"]);
     assert_eq!(bad_rating.status.code(), Some(2));
-    let reserved = reflect(&fixture, &["set", "Dune", "private=true"]);
+    let reserved = kore(&fixture, &["set", "Dune", "private=true"]);
     assert_eq!(reserved.status.code(), Some(2));
-    let view_only = reflect(&fixture, &["set", "Dune", "pages=3"]);
+    let view_only = kore(&fixture, &["set", "Dune", "pages=3"]);
     assert_eq!(view_only.status.code(), Some(2));
     assert!(stderr(&view_only).contains("computed"));
-    let private = reflect(&fixture, &["set", "notes/secret.md", "rating=1"]);
+    let private = kore(&fixture, &["set", "notes/secret.md", "rating=1"]);
     assert_eq!(private.status.code(), Some(3));
     assert!(read(&fixture, "notes/secret.md").contains("private: true\n---\n# S"));
 
     // No index: still writes, as text, with a warning.
     fs::remove_file(fixture.root().join(".reflect/index.sqlite")).unwrap();
-    let untyped = reflect(&fixture, &["set", "notes/dune.md", "year=1965", "--json"]);
+    let untyped = kore(&fixture, &["set", "notes/dune.md", "year=1965", "--json"]);
     assert_eq!(untyped.status.code(), Some(0));
     assert!(stderr(&untyped).contains("no index"));
     assert_eq!(json(&untyped)["set"]["year"], "1965");
@@ -86,7 +86,7 @@ fn tag_appends_a_trailing_line_and_stamps_created_and_untag_removes_only_that() 
     fixture.build_index();
     fixture.insert_tag_type("book", BOOK_SCHEMA);
 
-    let value = json(&reflect(&fixture, &["tag", "Dune", "#Book", "--json"]));
+    let value = json(&kore(&fixture, &["tag", "Dune", "#Book", "--json"]));
     assert_eq!(value["added"], true);
     let today = reflect_cli::paths::today_date();
     assert_eq!(value["stamped"]["added"], today);
@@ -94,20 +94,20 @@ fn tag_appends_a_trailing_line_and_stamps_created_and_untag_removes_only_that() 
         read(&fixture, "notes/dune.md"),
         format!("---\nid: 01abc\nadded: {today}\n---\n# Dune\n\nBody.\n\n#Book\n")
     );
-    let again = json(&reflect(&fixture, &["tag", "Dune", "book", "--json"]));
+    let again = json(&kore(&fixture, &["tag", "Dune", "book", "--json"]));
     assert_eq!(again["added"], false, "idempotent: {again}");
     assert_eq!(again["stamped"], serde_json::json!({}));
 
-    let removed = json(&reflect(&fixture, &["untag", "Dune", "book", "--json"]));
+    let removed = json(&kore(&fixture, &["untag", "Dune", "book", "--json"]));
     assert_eq!(removed["removed"], true);
     assert_eq!(
         read(&fixture, "notes/dune.md"),
         format!("---\nid: 01abc\nadded: {today}\n---\n# Dune\n\nBody.\n")
     );
-    let absent = json(&reflect(&fixture, &["untag", "Dune", "book", "--json"]));
+    let absent = json(&kore(&fixture, &["untag", "Dune", "book", "--json"]));
     assert_eq!(absent["removed"], false);
 
-    let inline = reflect(&fixture, &["untag", "Emma", "book"]);
+    let inline = kore(&fixture, &["untag", "Emma", "book"]);
     assert_eq!(inline.status.code(), Some(1));
     assert!(stderr(&inline).contains("inline"));
     assert_eq!(
@@ -115,7 +115,7 @@ fn tag_appends_a_trailing_line_and_stamps_created_and_untag_removes_only_that() 
         "# Emma\nA #book about manners.\n"
     );
 
-    let bad = reflect(&fixture, &["tag", "Dune", "2nd"]);
+    let bad = kore(&fixture, &["tag", "Dune", "2nd"]);
     assert_eq!(bad.status.code(), Some(2));
 
     // Frontmatter `tags:` is membership too: no body line, and untag drops it.
@@ -123,12 +123,12 @@ fn tag_appends_a_trailing_line_and_stamps_created_and_untag_removes_only_that() 
         "notes/arrival.md",
         "---\ntags:\n  - type/film\n  - \"#Book\"\n---\n# Arrival\n",
     );
-    let declared = json(&reflect(
+    let declared = json(&kore(
         &fixture,
         &["tag", "notes/arrival.md", "book", "--json"],
     ));
     assert_eq!(declared["added"], false, "already declared: {declared}");
-    let cleared = json(&reflect(
+    let cleared = json(&kore(
         &fixture,
         &["untag", "notes/arrival.md", "book", "--json"],
     ));
@@ -161,11 +161,11 @@ fn done_toggles_the_marker_by_text_and_refuses_ambiguity_or_drift() {
         )
         .unwrap();
 
-    let ambiguous = reflect(&fixture, &["done", "pay bill"]);
+    let ambiguous = kore(&fixture, &["done", "pay bill"]);
     assert_eq!(ambiguous.status.code(), Some(3));
     assert!(stderr(&ambiguous).contains("daily/2026-06-11.md\tpay bill"));
 
-    let value = json(&reflect(
+    let value = json(&kore(
         &fixture,
         &["done", "pay bill", "--in", "Project", "--json"],
     ));
@@ -174,13 +174,13 @@ fn done_toggles_the_marker_by_text_and_refuses_ambiguity_or_drift() {
         serde_json::json!({"path": "notes/project.md", "text": "pay bill", "checked": true})
     );
     // Exact match beats the substring match; only the marker changed.
-    let value = json(&reflect(&fixture, &["done", "Call Ann", "--json"]));
+    let value = json(&kore(&fixture, &["done", "Call Ann", "--json"]));
     assert_eq!(value["text"], "call Ann");
     assert_eq!(
         read(&fixture, "notes/project.md"),
         "# Project\n+ [x] pay bill\n+ [x] call Ann\n  - [ ] call Ann again\n+ [x] shipped\n"
     );
-    let undone = json(&reflect(&fixture, &["done", "shipped", "--undo", "--json"]));
+    let undone = json(&kore(&fixture, &["done", "shipped", "--undo", "--json"]));
     assert_eq!(undone["checked"], false);
     assert!(read(&fixture, "notes/project.md").contains("+ [ ] shipped\n"));
 
@@ -189,17 +189,17 @@ fn done_toggles_the_marker_by_text_and_refuses_ambiguity_or_drift() {
         "notes/project.md",
         "# Project\nIntro line.\n+ [x] pay bill\n+ [x] call Ann\n  - [ ] call Ann again\n+ [ ] shipped\n",
     );
-    let moved = json(&reflect(&fixture, &["done", "again", "--json"]));
+    let moved = json(&kore(&fixture, &["done", "again", "--json"]));
     assert_eq!(moved["text"], "call Ann again");
     assert!(read(&fixture, "notes/project.md").contains("  - [x] call Ann again\n"));
     // …and refused when it is gone.
     fixture.write_note("notes/project.md", "# Project\n+ [ ] something else\n");
     // (The index still lists `shipped` as done — the CLI never re-indexes.)
-    let drifted = reflect(&fixture, &["done", "shipped", "--undo"]);
+    let drifted = kore(&fixture, &["done", "shipped", "--undo"]);
     assert_eq!(drifted.status.code(), Some(1));
     assert!(stderr(&drifted).contains("no longer matches"));
 
-    let nothing = reflect(&fixture, &["done", "nope"]);
+    let nothing = kore(&fixture, &["done", "nope"]);
     assert_eq!(nothing.status.code(), Some(3));
 }
 
@@ -209,7 +209,7 @@ fn append_adds_a_block_and_creates_dailies_and_capture_reads_stdin() {
     fixture.write_note("notes/dune.md", "# Dune\n\nBody.\n");
     fixture.write_note("notes/secret.md", "---\nprivate: true\n---\n# S\n");
 
-    let value = json(&reflect_stdin(
+    let value = json(&kore_stdin(
         &fixture,
         &["append", "Dune", "--stdin", "--json"],
         "## Notes\n\n- one\n- two\n",
@@ -221,7 +221,7 @@ fn append_adds_a_block_and_creates_dailies_and_capture_reads_stdin() {
         "# Dune\n\nBody.\n\n## Notes\n\n- one\n- two\n"
     );
 
-    let daily = json(&reflect(
+    let daily = json(&kore(
         &fixture,
         &["append", "2026-06-11", "First entry", "--json"],
     ));
@@ -229,14 +229,14 @@ fn append_adds_a_block_and_creates_dailies_and_capture_reads_stdin() {
     assert_eq!(daily["date"], "2026-06-11");
     assert_eq!(read(&fixture, "daily/2026-06-11.md"), "First entry\n");
 
-    let private = reflect(&fixture, &["append", "notes/secret.md", "x"]);
+    let private = kore(&fixture, &["append", "notes/secret.md", "x"]);
     assert_eq!(private.status.code(), Some(3));
-    let missing = reflect(&fixture, &["append", "Nope", "x"]);
+    let missing = kore(&fixture, &["append", "Nope", "x"]);
     assert_eq!(missing.status.code(), Some(3));
-    let empty = reflect_stdin(&fixture, &["append", "Dune", "--stdin"], "  \n");
+    let empty = kore_stdin(&fixture, &["append", "Dune", "--stdin"], "  \n");
     assert_eq!(empty.status.code(), Some(2));
 
-    let captured = json(&reflect_stdin(
+    let captured = json(&kore_stdin(
         &fixture,
         &["capture", "--stdin", "--to", "Dune", "--json"],
         "from\nstdin\n",
@@ -255,7 +255,7 @@ fn new_with_tags_and_sets_births_a_typed_row() {
         r#"{"properties":[{"name":"Rating","key":"rating","type":"rating"},{"name":"Added","key":"added","type":"created"}],"template":"templates/book.md"}"#,
     );
 
-    let value = json(&reflect(
+    let value = json(&kore(
         &fixture,
         &[
             "new",
@@ -281,7 +281,7 @@ fn new_with_tags_and_sets_births_a_typed_row() {
         format!("---\nrating: 5\nadded: {today}\n---\n# Left Hand\n\nRating: Left Hand\n\n#book\n\n#idea\n")
     );
 
-    let from_stdin = json(&reflect_stdin(
+    let from_stdin = json(&kore_stdin(
         &fixture,
         &["new", "Plain", "--stdin", "--json"],
         "Some body.\n",
@@ -289,7 +289,7 @@ fn new_with_tags_and_sets_births_a_typed_row() {
     assert_eq!(from_stdin["properties"], serde_json::json!({}));
     assert_eq!(read(&fixture, "notes/plain.md"), "# Plain\n\nSome body.\n");
 
-    let bad = reflect(
+    let bad = kore(
         &fixture,
         &["new", "Bad", "--tag", "book", "--set", "rating=nine"],
     );
@@ -305,7 +305,7 @@ fn set_handles_zero_indent_block_sequences_and_refuses_conflicting_flags() {
         "---\ntitle: Seq\ngenres:\n- a\n- b\n---\n# Seq\n",
     );
 
-    let removed = reflect(&fixture, &["set", "notes/seq.md", "--unset", "genres"]);
+    let removed = kore(&fixture, &["set", "notes/seq.md", "--unset", "genres"]);
     assert_eq!(removed.status.code(), Some(0), "{}", stderr(&removed));
     assert_eq!(
         read(&fixture, "notes/seq.md"),
@@ -316,14 +316,14 @@ fn set_handles_zero_indent_block_sequences_and_refuses_conflicting_flags() {
         "notes/seq.md",
         "---\ntitle: Seq\ngenres:\n- a\n- b\n---\n# Seq\n",
     );
-    let replaced = reflect(&fixture, &["set", "notes/seq.md", "genres=noir"]);
+    let replaced = kore(&fixture, &["set", "notes/seq.md", "genres=noir"]);
     assert_eq!(replaced.status.code(), Some(0), "{}", stderr(&replaced));
     assert_eq!(
         read(&fixture, "notes/seq.md"),
         "---\ntitle: Seq\ngenres: noir\n---\n# Seq\n"
     );
 
-    let conflict = reflect(
+    let conflict = kore(
         &fixture,
         &["set", "notes/seq.md", "genres=x", "--unset", "genres"],
     );
@@ -345,7 +345,7 @@ fn done_never_toggles_a_task_sample_inside_a_code_fence() {
     // A drifted index still lists the real task that the user edited away.
     fixture.insert_task("notes/tasks.md", 10, "pay bill", false, None, None);
 
-    let drifted = reflect(&fixture, &["done", "pay bill"]);
+    let drifted = kore(&fixture, &["done", "pay bill"]);
     assert_eq!(drifted.status.code(), Some(1), "{}", stderr(&drifted));
     assert!(stderr(&drifted).contains("no longer matches"));
     assert!(read(&fixture, "notes/tasks.md").contains("```md\n+ [ ] pay bill\n```"));
@@ -357,11 +357,11 @@ fn values_a_command_cannot_honour_are_usage_errors() {
     fixture.write_note("notes/a.md", "# A\n");
     fixture.build_index();
     assert_eq!(
-        reflect(&fixture, &["list", "--kind", "page"]).status.code(),
+        kore(&fixture, &["list", "--kind", "page"]).status.code(),
         Some(2)
     );
-    assert_eq!(reflect(&fixture, &["new", "   "]).status.code(), Some(2));
-    assert_eq!(reflect(&fixture, &["set", "A"]).status.code(), Some(2));
+    assert_eq!(kore(&fixture, &["new", "   "]).status.code(), Some(2));
+    assert_eq!(kore(&fixture, &["set", "A"]).status.code(), Some(2));
 }
 
 #[test]
@@ -371,39 +371,36 @@ fn a_note_created_after_indexing_resolves_by_title_and_its_task_ticks_by_in() {
     fixture.build_index();
 
     // Created after the index was built: the index knows nothing about it.
-    let created = json(&reflect(&fixture, &["new", "Fresh Note", "--json"]));
+    let created = json(&kore(&fixture, &["new", "Fresh Note", "--json"]));
     assert_eq!(created["path"], "notes/fresh-note.md");
-    let shown = reflect(&fixture, &["show", "Fresh Note"]);
+    let shown = kore(&fixture, &["show", "Fresh Note"]);
     assert_eq!(shown.status.code(), Some(0), "{}", stderr(&shown));
     assert!(!stderr(&shown).contains("did you mean"));
 
-    let captured = reflect(
+    let captured = kore(
         &fixture,
         &["capture", "--task", "call Ann", "--to", "Fresh Note"],
     );
     assert_eq!(captured.status.code(), Some(0));
-    let done = json(&reflect(
+    let done = json(&kore(
         &fixture,
         &["done", "call ann", "--in", "Fresh Note", "--json"],
     ));
     assert_eq!(done["checked"], true);
     assert!(read(&fixture, "notes/fresh-note.md").ends_with("+ [x] call Ann\n"));
-    let undone = json(&reflect(
+    let undone = json(&kore(
         &fixture,
         &["done", "call Ann", "--in", "Fresh Note", "--undo", "--json"],
     ));
     assert_eq!(undone["checked"], false);
 
     // Graph-wide, the index is still the source and still required.
-    let graph_wide = reflect(&fixture, &["done", "call Ann"]);
+    let graph_wide = kore(&fixture, &["done", "call Ann"]);
     assert_eq!(graph_wide.status.code(), Some(3), "{}", stderr(&graph_wide));
     fs::remove_file(fixture.root().join(".reflect/index.sqlite")).unwrap();
+    assert_eq!(kore(&fixture, &["done", "call Ann"]).status.code(), Some(4));
     assert_eq!(
-        reflect(&fixture, &["done", "call Ann"]).status.code(),
-        Some(4)
-    );
-    assert_eq!(
-        reflect(&fixture, &["done", "call Ann", "--in", "Fresh Note"])
+        kore(&fixture, &["done", "call Ann", "--in", "Fresh Note"])
             .status
             .code(),
         Some(0)

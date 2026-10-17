@@ -583,22 +583,22 @@ describe('NoteEditor link opening', () => {
     expect(openUrl).not.toHaveBeenCalled()
   })
 
-  it('routes a reflect:// link through the in-app deep-link intake, not the URL opener', async () => {
-    await render(<NoteEditor initialContent="[note](reflect://note/abc123) here" />)
+  it('routes a kore:// link through the in-app deep-link intake, not the URL opener', async () => {
+    await render(<NoteEditor initialContent="[note](kore://note/abc123) here" />)
 
     await pmRoot.getByRole('link').click()
     await vi.waitFor(() => {
-      expect(dispatchDeepLink).toHaveBeenCalledWith('reflect://note/abc123')
+      expect(dispatchDeepLink).toHaveBeenCalledWith('kore://note/abc123')
     })
     expect(openUrl).not.toHaveBeenCalled()
   })
 
-  it('⌘-click dispatches a reflect:// link in place', async () => {
-    await render(<NoteEditor initialContent="[note](reflect://note/abc123) here" />)
+  it('⌘-click dispatches a kore:// link in place', async () => {
+    await render(<NoteEditor initialContent="[note](kore://note/abc123) here" />)
 
     await pmRoot.getByRole('link').click({ modifiers: ['ControlOrMeta'] })
     await vi.waitFor(() => {
-      expect(dispatchDeepLink).toHaveBeenCalledWith('reflect://note/abc123')
+      expect(dispatchDeepLink).toHaveBeenCalledWith('kore://note/abc123')
     })
   })
 })

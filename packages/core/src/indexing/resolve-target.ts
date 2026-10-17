@@ -4,7 +4,7 @@ import { foldKey } from '../markdown'
 import { db } from './db'
 
 /**
- * Resolve a free-form note target — a deep link's `reflect://note/<target>`
+ * Resolve a free-form note target — a deep link's `kore://note/<target>`
  * argument — to a graph-relative path, or null when nothing matches.
  *
  * The order mirrors the CLI's `<note>` argument, with the frontmatter `id`

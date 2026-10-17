@@ -17,7 +17,7 @@ pub use obsidian::{read_obsidian_file, ObsidianExclusions};
 
 pub use walk::{
     has_pruned_component, is_pruned_dir_name, walk_catalog, FileCatalog, FileEntry,
-    REFLECT_IGNORE_FILE,
+    KORE_IGNORE_FILE, REFLECT_IGNORE_FILE,
 };
 
 /// Root trees reserved for Reflect-managed attachments and recordings.

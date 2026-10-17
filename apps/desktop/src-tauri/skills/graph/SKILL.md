@@ -1,6 +1,6 @@
 ---
 name: {{SKILL_NAME}}
-description: Read, search, capture, and edit notes in the user's "{{GRAPH_NAME}}" Kore graph via the `reflect` CLI. Use when the user asks about their notes, daily notes, journal, tasks, collections, or anything they may have written down in Kore. The kore-markdown, kore-collections, and kore-agent-memory skills carry the formats.
+description: Read, search, capture, and edit notes in the user's "{{GRAPH_NAME}}" Kore graph via the `kore` CLI. Use when the user asks about their notes, daily notes, journal, tasks, collections, or anything they may have written down in Kore. The kore-markdown, kore-collections, and kore-agent-memory skills carry the formats.
 ---
 
 # Kore graph: {{GRAPH_NAME}}
@@ -10,56 +10,56 @@ one graph (a folder of notes):
 
     {{GRAPH_ROOT}}
 
-Read it through the `reflect` CLI rather than scanning the files — the CLI
+Read it through the `kore` CLI rather than scanning the files — the CLI
 resolves titles, aliases, and daily dates, searches the graph's ranked index,
 and enforces the privacy contract.
 
 ## The CLI
 
-Use `reflect` from PATH when available; the app also bundles the binary at:
+Use `kore` from PATH when available; the app also bundles the binary at:
 
     {{CLI_PATH}}
 
 Always target the graph explicitly so calls stay deterministic:
 
-    reflect --graph "{{GRAPH_ROOT}}" <command>
+    kore --graph "{{GRAPH_ROOT}}" <command>
 
-or export `REFLECT_GRAPH="{{GRAPH_ROOT}}"` for a sequence of calls.
+or export `KORE_GRAPH="{{GRAPH_ROOT}}"` for a sequence of calls.
 
 ## Commands
 
 Discover first, then read, then write. Every command takes `--json`.
 
-    reflect info               # graph root, index state, note/daily/tag counts
-    reflect tags               # every tag with its count; "collection" = typed
-    reflect list [--tag T] [--kind daily|note]   # notes newest first, with tags
-    reflect collection <tag>   # a typed tag's rows with their property values
-    reflect properties <note>  # a note's frontmatter properties, typed, and tags
-    reflect links <note>       # the wiki links a note makes, resolved
+    kore info                  # graph root, index state, note/daily/tag counts
+    kore tags                  # every tag with its count; "collection" = typed
+    kore list [--tag T] [--kind daily|note]      # notes newest first, with tags
+    kore collection <tag>      # a typed tag's rows with their property values
+    kore properties <note>     # a note's frontmatter properties, typed, and tags
+    kore links <note>          # the wiki links a note makes, resolved
 
-    reflect today              # print today's daily note
-    reflect today --path       # its absolute path (works before the file exists)
-    reflect search <query>     # ranked full-text search over the graph
-    reflect show <note>        # print a note by date, path, title, or alias
-    reflect path <note>        # resolve a note to its absolute path
-    reflect open <note>        # open the note in the Kore app
-    reflect tasks              # the graph's open tasks (--all includes done)
-    reflect backlinks <note>   # the notes linking to a note
-    reflect recent             # the most recently updated notes, newest first
+    kore today                 # print today's daily note
+    kore today --path          # its absolute path (works before the file exists)
+    kore search <query>        # ranked full-text search over the graph
+    kore show <note>           # print a note by date, path, title, or alias
+    kore path <note>           # resolve a note to its absolute path
+    kore open <note>           # open the note in the Kore app
+    kore tasks                 # the graph's open tasks (--all includes done)
+    kore backlinks <note>      # the notes linking to a note
+    kore recent                # the most recently updated notes, newest first
 
-    reflect capture <text>     # append a bullet to today's daily note
-    reflect capture --task <text>        # append an open task instead
-    reflect capture --to <note> <text>   # append to any note instead
-    reflect capture --stdin              # the text from stdin
-    reflect append <note> <text>         # append a markdown block (or --stdin)
-    reflect new <title>                  # create notes/<slug>.md with the H1 in place
-    reflect new <title> --tag <tag> --set key=value   # a typed collection row
-    reflect new <title> --template <t>   # seed the body from templates/
-    reflect set <note> key=value…        # write frontmatter properties, typed
-    reflect set <note> --unset key       # remove a property
-    reflect tag <note> <tag>             # add a #tag (trailing line)
-    reflect untag <note> <tag>           # remove that trailing #tag line
-    reflect done <text> [--in <note>]    # tick a task off (--undo reopens it)
+    kore capture <text>        # append a bullet to today's daily note
+    kore capture --task <text>           # append an open task instead
+    kore capture --to <note> <text>      # append to any note instead
+    kore capture --stdin                 # the text from stdin
+    kore append <note> <text>            # append a markdown block (or --stdin)
+    kore new <title>                     # create notes/<slug>.md with the H1 in place
+    kore new <title> --tag <tag> --set key=value      # a typed collection row
+    kore new <title> --template <t>      # seed the body from templates/
+    kore set <note> key=value…           # write frontmatter properties, typed
+    kore set <note> --unset key          # remove a property
+    kore tag <note> <tag>                # add a #tag (trailing line)
+    kore untag <note> <tag>              # remove that trailing #tag line
+    kore done <text> [--in <note>]       # tick a task off (--undo reopens it)
 
 - Add `--json` to any command for stable machine-readable output — the field
   names and exit codes are the supported automation contract.
@@ -85,27 +85,27 @@ Discover first, then read, then write. Every command takes `--json`.
 
 Use the CLI's writes — they are typed, atomic, and never overwrite:
 
-- **Items and content.** `reflect capture` for one bullet or task (today's
+- **Items and content.** `kore capture` for one bullet or task (today's
   daily by default — where all capture flows by convention — or `--to` any
-  note); `reflect append` for a block of markdown (headings, paragraphs,
+  note); `kore append` for a block of markdown (headings, paragraphs,
   lists) — pipe it with `--stdin`.
-- **Notes and rows.** `reflect new` creates a note with the app's own
+- **Notes and rows.** `kore new` creates a note with the app's own
   filename slug and H1. With `--tag` it is a collection row: the type's
   template seeds the body, `created` properties are stamped, and `--set`
   values are typed by the schema.
-- **Properties.** `reflect set` writes frontmatter the way the app's editors
-  do. Run `reflect tags` and `reflect collection <tag>` (its `schema`) first
-  to learn the keys and types; `reflect properties <note>` shows what a note
+- **Properties.** `kore set` writes frontmatter the way the app's editors
+  do. Run `kore tags` and `kore collection <tag>` (its `schema`) first
+  to learn the keys and types; `kore properties <note>` shows what a note
   carries now. Numbers, checkboxes (`true`/`false`), dates (`YYYY-MM-DD`),
   ratings (1–5) are checked; relations take a title and become `[[Title]]`;
   lists are comma-separated. The app's own keys (`id`, `private`, `pinned`,
   `aliases`, …) and computed properties (`rollup`, `reverse`, `formula`,
   `updated`) are refused.
-- **Tags and tasks.** `reflect tag` / `reflect untag` for membership in a
-  collection; `reflect done` to tick a task by its text.
+- **Tags and tasks.** `kore tag` / `kore untag` for membership in a
+  collection; `kore done` to tick a task by its text.
 
 Only for in-place prose edits, edit the markdown file directly
-(`reflect path <note>` resolves it); the running app watches the files and
+(`kore path <note>` resolves it); the running app watches the files and
 picks every edit up live.
 
 The formats are their own skills, installed beside this one by Kore:
@@ -142,8 +142,8 @@ or exposing its current or historical content unless the user explicitly asks.
    types frontmatter, `tag`/`untag` and `done` change exactly one line —
    nothing overwrites. Never hand-edit frontmatter, `.reflect/`, or a task
    marker when a command does it.
-3. **Discover before writing.** `reflect tags` and `reflect collection
-   <tag>` tell you the keys and types a row takes; `reflect properties
+3. **Discover before writing.** `kore tags` and `kore collection
+   <tag>` tell you the keys and types a row takes; `kore properties
    <note>` tells you what is there. Guessing a key creates an untyped stray.
-4. **Prefer search over enumeration.** `reflect search` uses the app's own
+4. **Prefer search over enumeration.** `kore search` uses the app's own
    ranked index; don't grep the whole graph when a search will do.

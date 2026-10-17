@@ -129,17 +129,17 @@ describe('openExternalLink', () => {
     consoleError.mockRestore()
   })
 
-  it('routes a reflect:// link through the in-app deep-link intake, not the URL opener', async () => {
-    await click('reflect://note/abc123')
+  it('routes a kore:// link through the in-app deep-link intake, not the URL opener', async () => {
+    await click('kore://note/abc123')
 
-    expect(dispatchDeepLink).toHaveBeenCalledWith('reflect://note/abc123')
+    expect(dispatchDeepLink).toHaveBeenCalledWith('kore://note/abc123')
     expect(openUrl).not.toHaveBeenCalled()
   })
 
-  it('⌘-clicks a rendered reflect:// link into the in-app deep-link intake', async () => {
-    await click('reflect://note/abc123', true)
+  it('⌘-clicks a rendered kore:// link into the in-app deep-link intake', async () => {
+    await click('kore://note/abc123', true)
 
-    await vi.waitFor(() => expect(dispatchDeepLink).toHaveBeenCalledWith('reflect://note/abc123'))
+    await vi.waitFor(() => expect(dispatchDeepLink).toHaveBeenCalledWith('kore://note/abc123'))
   })
 
   it('opens a custom app scheme in its OS default app', async () => {

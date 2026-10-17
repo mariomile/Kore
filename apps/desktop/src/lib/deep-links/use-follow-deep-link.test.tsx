@@ -23,17 +23,17 @@ describe('useFollowDeepLink', () => {
   it('dispatches an addressing link in place', async () => {
     await render(<Host />)
 
-    followDeepLink?.({ href: 'reflect://note/older' })
+    followDeepLink?.({ href: 'kore://note/older' })
 
-    expect(dispatchDeepLink).toHaveBeenCalledWith('reflect://note/older')
+    expect(dispatchDeepLink).toHaveBeenCalledWith('kore://note/older')
     expect(dispatchDeepLink).toHaveBeenCalledTimes(1)
   })
 
   it('dispatches a capture link, which is a write rather than a place', async () => {
     await render(<Host />)
 
-    followDeepLink?.({ href: 'reflect://append?text=captured' })
+    followDeepLink?.({ href: 'kore://append?text=captured' })
 
-    expect(dispatchDeepLink).toHaveBeenCalledWith('reflect://append?text=captured')
+    expect(dispatchDeepLink).toHaveBeenCalledWith('kore://append?text=captured')
   })
 })

@@ -40,13 +40,13 @@ describe('deep-link intake', () => {
   })
 
   it('buffers the launch URL from getCurrent — onOpenUrl does not replay it', async () => {
-    getCurrentMock.mockResolvedValue(['reflect://note/launch-target'])
+    getCurrentMock.mockResolvedValue(['kore://note/launch-target'])
     await startDeepLinkListener()
 
     const handler = vi.fn()
     setDeepLinkHandler(handler)
 
-    expect(handler).toHaveBeenCalledWith('reflect://note/launch-target')
+    expect(handler).toHaveBeenCalledWith('kore://note/launch-target')
   })
 
   it('retries after a failed subscription instead of latching disabled', async () => {
@@ -81,7 +81,7 @@ describe('deep-link intake', () => {
     await startDeepLinkListener()
     const handler = vi.fn()
     setDeepLinkHandler(handler)
-    pluginDeliver(['reflect://today'])
+    pluginDeliver(['kore://today'])
 
     expect(handler).toHaveBeenCalledTimes(1)
   })
@@ -91,37 +91,37 @@ describe('deep-link intake', () => {
     const handler = vi.fn()
     setDeepLinkHandler(handler)
 
-    pluginDeliver(['reflect://today'])
+    pluginDeliver(['kore://today'])
 
-    expect(handler).toHaveBeenCalledWith('reflect://today')
+    expect(handler).toHaveBeenCalledWith('kore://today')
   })
 
   it('buffers URLs that arrive with no handler and replays them in order on attach', async () => {
     await startDeepLinkListener()
-    pluginDeliver(['reflect://today', 'reflect://tasks'])
+    pluginDeliver(['kore://today', 'kore://tasks'])
 
     const handler = vi.fn()
     setDeepLinkHandler(handler)
 
-    expect(handler.mock.calls).toEqual([['reflect://today'], ['reflect://tasks']])
+    expect(handler.mock.calls).toEqual([['kore://today'], ['kore://tasks']])
   })
 
   it('delivers an in-app dispatch (a clicked note link) straight to the handler', () => {
     const handler = vi.fn()
     setDeepLinkHandler(handler)
 
-    dispatchDeepLink('reflect://note/from-a-note-body')
+    dispatchDeepLink('kore://note/from-a-note-body')
 
-    expect(handler).toHaveBeenCalledWith('reflect://note/from-a-note-body')
+    expect(handler).toHaveBeenCalledWith('kore://note/from-a-note-body')
   })
 
   it('buffers an in-app dispatch when no handler is attached', () => {
-    dispatchDeepLink('reflect://today')
+    dispatchDeepLink('kore://today')
 
     const handler = vi.fn()
     setDeepLinkHandler(handler)
 
-    expect(handler).toHaveBeenCalledWith('reflect://today')
+    expect(handler).toHaveBeenCalledWith('kore://today')
   })
 
   it('buffers again after the handler detaches (graph switch gap)', async () => {
@@ -130,11 +130,11 @@ describe('deep-link intake', () => {
     setDeepLinkHandler(first)
     setDeepLinkHandler(null)
 
-    pluginDeliver(['reflect://daily/2026-07-01'])
+    pluginDeliver(['kore://daily/2026-07-01'])
     expect(first).not.toHaveBeenCalled()
 
     const second = vi.fn()
     setDeepLinkHandler(second)
-    expect(second).toHaveBeenCalledWith('reflect://daily/2026-07-01')
+    expect(second).toHaveBeenCalledWith('kore://daily/2026-07-01')
   })
 })

@@ -56,7 +56,7 @@ can still build unsigned bundles with plain `pnpm tauri build`.
 1. Auto-detects the Developer ID identity from the keychain and derives the team ID.
 2. Loads notarization credentials (keychain item, or environment variables — see
    [Releasing from CI](#releasing-from-ci) below).
-3. Runs `pnpm tauri build --target <target> --bundles app`, which stages the `reflect`
+3. Runs `pnpm tauri build --target <target> --bundles app`, which stages the `kore`
    CLI sidecar for that target and signs the app bundle. The release helper then
    re-signs the bundled sidecars without the app's restricted entitlements, re-signs the
    `.app` with its entitlement file plus the flavor-specific identity entitlements from
@@ -386,8 +386,8 @@ on the runner keychain setup.
 - **Notarization fails (`status: Invalid`)** — the script automatically prints the notary
   log, which lists each offending file. Common cause: a binary that wasn't signed with
   hardened runtime.
-- **Bundled `reflect` or `reflect-capture-host` exits `Killed: 9`** — check its
-  entitlements with `codesign -d --entitlements :- Kore.app/Contents/MacOS/reflect`.
+- **Bundled `kore` or `reflect-capture-host` exits `Killed: 9`** — check its
+  entitlements with `codesign -d --entitlements :- Kore.app/Contents/MacOS/kore`.
   Sidecars must not carry the app's restricted iCloud entitlements; the release verifier
   launches both sidecars to catch this.
 - **Intel sidecar launch fails on Apple Silicon with `Bad CPU type in executable`** —

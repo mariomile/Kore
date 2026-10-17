@@ -58,7 +58,7 @@ export const windowBootstrapSchema = z.object({
   graph: graphInfoSchema,
   /** The open index session's generation, or null when no index is open. */
   indexGeneration: z.number().nullable(),
-  /** The `reflect://` link this window was opened for; absent on a reload. */
+  /** The `kore://` link this window was opened for; absent on a reload. */
   initialDeepLink: z.string().nullable(),
 })
 export type WindowBootstrap = z.infer<typeof windowBootstrapSchema>

@@ -1,4 +1,4 @@
-//! `reflect` — read/discovery/write CLI over a Kore graph (Plan 14, agent
+//! `kore` — read/discovery/write CLI over a Kore graph (Plan 14, agent
 //! parity per Plan 30).
 //!
 //! Self-contained: reads the graph's markdown files directly and opens

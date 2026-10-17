@@ -2,14 +2,20 @@ import { TEXT_CAPTURE_MAX_LENGTH, type TextCaptureKind } from '@reflect/core'
 import type { Route } from '@/routing/route'
 
 /**
- * The `reflect://` deep-link vocabulary (docs/deep-links.md). URLs are a codec
+ * The `kore://` deep-link vocabulary (docs/deep-links.md). URLs are a codec
  * over the existing {@link Route} union plus two capture verbs — never a
  * second navigation grammar. `parse.ts` and `format.ts` are the only modules
  * that read or write this syntax.
  */
 
-/** The URL scheme the app registers (`plugins.deep-link` in tauri.conf.json). */
-export const DEEP_LINK_SCHEME = 'reflect'
+/** The URL scheme the app writes and registers (`plugins.deep-link` in tauri.conf.json). */
+export const DEEP_LINK_SCHEME = 'kore'
+
+/**
+ * The scheme links used before the rename, still registered and read so a
+ * `reflect://` link already pasted into a note keeps opening. Never written.
+ */
+export const LEGACY_DEEP_LINK_SCHEME = 'reflect'
 
 /**
  * Cap on capture-link text (`append`/`task`) — the envelope schema's own cap,

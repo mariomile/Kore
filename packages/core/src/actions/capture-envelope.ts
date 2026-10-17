@@ -89,7 +89,7 @@ export const captureWireMessageSchema = z.object({
 export type CaptureWireMessage = z.infer<typeof captureWireMessageSchema>
 
 /**
- * Cap on a text capture's payload. A `reflect://` URL is a world-invokable
+ * Cap on a text capture's payload. A `kore://` URL is a world-invokable
  * surface, so its writes stay short and plain; the desktop's deep-link parser
  * enforces the same number before an envelope is ever spooled.
  */
@@ -97,8 +97,8 @@ export const TEXT_CAPTURE_MAX_LENGTH = 10_000
 
 /**
  * What a text capture materializes as on the capture-day daily note. One
- * vocabulary end-to-end: the `reflect://append`/`reflect://checkbox`/
- * `reflect://task` URL verb IS the envelope kind IS the drain behavior
+ * vocabulary end-to-end: the `kore://append`/`kore://checkbox`/
+ * `kore://task` URL verb IS the envelope kind IS the drain behavior
  * (`- ` bullet / `- [ ]` square checkbox / `+ [ ]` round task). Both checkbox
  * shapes project into the Tasks view (projection v25); the two kinds now
  * differ only in the bullet they write, matching the round-vs-square visuals
@@ -124,8 +124,8 @@ export const textCaptureSourceSchema = z.enum([
 ])
 
 /**
- * A text write (`reflect://append?text=…` / `reflect://checkbox?text=…` /
- * `reflect://task?text=…`), spooled into the same capture inbox the
+ * A text write (`kore://append?text=…` / `kore://checkbox?text=…` /
+ * `kore://task?text=…`), spooled into the same capture inbox the
  * native-messaging host writes. One single line of plain text — the drain
  * appends it to the capture-day daily note as a bullet (`append`), a square
  * checkbox (`checkbox`), or a round task (`task`), so an envelope can never

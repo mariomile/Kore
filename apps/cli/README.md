@@ -1,6 +1,6 @@
 # reflect-cli
 
-`reflect` — the read/discovery/capture CLI over a graph (Plan 14), bundled
+`kore` — the read/discovery/capture CLI over a graph (Plan 14), bundled
 with the desktop app as a Tauri sidecar and usable standalone.
 
 Self-contained Rust: it reads the graph's markdown files directly and opens

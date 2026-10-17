@@ -3,11 +3,12 @@ import { isIsoDate } from '@/lib/dates'
 import {
   DEEP_LINK_SCHEME,
   DEEP_LINK_TEXT_MAX_LENGTH,
+  LEGACY_DEEP_LINK_SCHEME,
   type DeepLink,
 } from '@/lib/deep-links/deep-link'
 
 /**
- * Parse a `reflect://` URL into a {@link DeepLink}, or null for anything the
+ * Parse a `kore://` (or legacy `reflect://`) URL into a {@link DeepLink}, or null for anything the
  * grammar doesn't name. Null — not a best-effort guess: a URL is untrusted
  * input from outside the app, so an unknown verb, a malformed date, an
  * over-long payload, or stray path segments all reject rather than "open
@@ -15,10 +16,10 @@ import {
  */
 export function parseDeepLink(raw: string): DeepLink | null {
   const url = tryParseUrl(raw)
-  if (url === null || url.protocol !== `${DEEP_LINK_SCHEME}:`) {
+  if (url === null || !isDeepLinkProtocol(url.protocol)) {
     return null
   }
-  // The verb rides in the URL's host position (`reflect://today`) — an opaque
+  // The verb rides in the URL's host position (`kore://today`) — an opaque
   // host on a non-special scheme, which the WHATWG parser does *not* fold, so
   // lower-case it here. The argument is the path remainder.
   const argument = decodedPathRemainder(url)
@@ -54,7 +55,7 @@ export function parseDeepLink(raw: string): DeepLink | null {
 }
 
 /**
- * Whether an href uses the app's `reflect:` scheme — the routing predicate
+ * Whether an href uses the app's `kore:` (or legacy `reflect:`) scheme — the routing predicate
  * for links clicked *inside* the app, which must dispatch through the in-app
  * deep-link pipeline instead of the OS opener (the opener capability denies
  * the scheme, dev builds don't register it, and another installed flavor
@@ -63,7 +64,12 @@ export function parseDeepLink(raw: string): DeepLink | null {
  * so it fails on the status line like any other bad deep link.
  */
 export function isDeepLinkUrl(href: string): boolean {
-  return tryParseUrl(href)?.protocol === `${DEEP_LINK_SCHEME}:`
+  const protocol = tryParseUrl(href)?.protocol
+  return protocol !== undefined && isDeepLinkProtocol(protocol)
+}
+
+function isDeepLinkProtocol(protocol: string): boolean {
+  return protocol === `${DEEP_LINK_SCHEME}:` || protocol === `${LEGACY_DEEP_LINK_SCHEME}:`
 }
 
 function tryParseUrl(raw: string): URL | null {
@@ -77,7 +83,7 @@ function tryParseUrl(raw: string): URL | null {
 /**
  * The path after the verb, percent-decoded — `''` when absent (a bare or
  * trailing-slash URL), null when the encoding itself is malformed. Raw
- * slashes are kept so a hand-written `reflect://note/notes/foo.md` addresses
+ * slashes are kept so a hand-written `kore://note/notes/foo.md` addresses
  * the same note as the encoded form.
  */
 function decodedPathRemainder(url: URL): string | null {

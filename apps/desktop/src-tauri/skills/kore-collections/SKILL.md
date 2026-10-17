@@ -12,10 +12,10 @@ note's own frontmatter; the schema lives in a definition note. Nothing is
 stored anywhere else, so every surface (table, board, calendar, note
 properties panel, CLI, AI chat) reads and writes the same YAML.
 
-Read before writing: `reflect tags` lists the tags and which are typed,
-`reflect collection <tag> --json` shows a tag's `schema` and rows,
-`reflect properties <note>` shows what a note carries now. Write values
-with `reflect set` / `reflect new --tag --set`; they type the value for
+Read before writing: `kore tags` lists the tags and which are typed,
+`kore collection <tag> --json` shows a tag's `schema` and rows,
+`kore properties <note>` shows what a note carries now. Write values
+with `kore set` / `kore new --tag --set`; they type the value for
 you. Hand-write YAML only when the CLI is unavailable, following the table
 below exactly.
 
@@ -109,10 +109,10 @@ Body from the bound template, then your notes.
 #book
 ```
 
-`reflect new "The Dispossessed" --tag book --set rating=4 --set "author=Ursula K. Le Guin"`
+`kore new "The Dispossessed" --tag book --set rating=4 --set "author=Ursula K. Le Guin"`
 produces exactly this (template body, `created` stamp, typed values, trailing
-tag). Turn an existing note into a row with `reflect tag <note> book`; set or
-change values with `reflect set <note> key=value`.
+tag). Turn an existing note into a row with `kore tag <note> book`; set or
+change values with `kore set <note> key=value`.
 
 ## The collection fence
 
@@ -179,6 +179,6 @@ the declaring tag.
 2. **Discover the schema before writing a key.** An undeclared key becomes
    an untyped stray column.
 3. **Relations are wiki links to titles that exist.** Create the target
-   first (`reflect new`), then link it.
+   first (`kore new`), then link it.
 4. **Dates are `YYYY-MM-DD`, ratings 1–5, checkboxes `true`/`false`.**
    The app shows a mismatch tint for anything else and never repairs it.

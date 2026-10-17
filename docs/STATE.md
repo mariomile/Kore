@@ -1,5 +1,272 @@
 # Kore working state
 
+## Local graph in the note sidebar, 2026-10-17
+
+Autonomous run, third discovery round ("Giro autonomo di miglioramenti"):
+Kore had the full-vault Graph screen but nothing per note, which is the
+Obsidian view people keep open beside a note.
+
+- [x] Core `getLocalGraph(path, { depth, tags })`
+  (`packages/core/src/indexing/local-graph.ts`): the note, its outgoing
+  links and backlinks (frontmatter `up:`/`related:` included, since the
+  index stores them as wiki links), and at depth 2 the notes around those,
+  ranked by how many direct neighbors reach them. Caps: 30 direct
+  neighbors, 60 notes in all, 12 tag nodes; the rest is `hidden` and shows
+  as "+N more". Strongest links first, ideas before dailies on a tie.
+  Links leaving and arriving run as two queries: an `OR` across the
+  view's two columns scanned the whole link table (depth 2 on a hub went
+  from 121 ms to 37 ms in the bench).
+- [x] Desktop: "Local graph" section in the note sidebar, after Outline,
+  on the Graph screen's canvas (no second engine). Depth 1/2, Tags (off by
+  default), click opens, ⌘-click opens in the split, a tag opens its note
+  list, "Open in Graph" opens the Graph screen focused on the note
+  (`graphMap` route gained `focus`). Plain wheel scrolls the sidebar;
+  pinch or ⌘-wheel zooms. The body mounts only while the section is open,
+  so a collapsed section queries and lays out nothing.
+- Not done: iPhone (its context sheet has no canvas surface), the daily
+  sidebar, links between two depth-2 notes (only links touching the first
+  ring are drawn).
+
+**Validation:** core `local-graph.test.ts`; browser
+`local-graph-section.test.tsx`, graph-map screen and canvas suites on
+Chromium; typecheck and lint on the touched files. Bench
+(`KORE_BENCH=1`, wasm SQLite, 5,166-note `?seed=obsidian` vault):
+depth 1 is 4 ms on an ordinary note and 12 ms on the busiest hub
+(31 nodes, +283 hidden); depth 2 with tags is 9 ms ordinary, 37 ms hub
+(72 nodes); layout settles in 1-25 ms of total compute. Rendered check
+in Chromium on the seeded vault: section, depth 2, tags and the hand-off
+to the focused Graph screen. WebKit left to CI; not tried on the real
+vault.
+
+**Next:** on the Mac, open a MOC note in marioverse.ai and check that the
+local graph reads well at sidebar width and that "Open in Graph" lands on
+the same neighborhood.
+
+## Pane error boundary, 2026-10-17
+
+Autonomous run ("Una nota rotta non blocca l'app"). In the browser dev build
+(`?seed=obsidian`) opening any note with an image white-screened the whole
+app: `convertFileSrc` from `@tauri-apps/api/core` throws without the Tauri
+global, and desktop had no error boundary, so one render exception unmounted
+the root.
+
+- [x] Every route renders inside `PaneErrorBoundary`
+  (`apps/desktop/src/components/pane-error-boundary.tsx`, mounted in
+  `RouteContent`, so each split pane and note window gets its own). A crash
+  shows `PaneErrorCard`: the file path, the error, "Reload pane", "Reveal in
+  Finder" (native shell only) and "Copy path"; the sidebar, tabs and other
+  panes stay live. Navigating the pane clears the card. The crash goes to the
+  local log via `logWebview` with the path (or route kind).
+- [x] `MarkdownPreview` wraps `MarkdownView` in the same boundary with a
+  one-line fallback, since previews (⌘K palette, hover cards, note peek,
+  chat) render outside the panes; the ⌘K preview was the surface that took
+  the app down in the repro.
+- [x] Asset URLs go through the bridge: `IpcBridge.assetUrl` (optional) and
+  core's `assetUrl(generation, path)`, which returns null instead of
+  throwing. The Tauri bridge maps it to `reflect-asset://` via
+  `convertFileSrc`; the dev bridge serves assets written this session as
+  `data:` URLs and null otherwise. `use-asset-persistence`, chat attachments
+  and HTML export no longer import `convertFileSrc`.
+
+**Validation:** new browser test (a pane child throws: card shows, the log
+line lands, a sibling button stays clickable, Reload and navigation
+recover), plus the asset-persistence, route-content, chat-attachments,
+command-palette and context-sidebar browser tests on Chromium; `pnpm check`.
+Dev build with Playwright: on master opening "Luca Rossi 1" (has an image
+embed) via ⌘K blanked the window; on the branch it opens; with the old asset
+code put back, the note pane shows the card and the rest of the app works.
+WebKit left to CI; not run in the native shell.
+
+**Next:** none required. If a crash card shows on the Mac, the log line
+(`pane crashed (<path>)`) in the app log names the file.
+
+## Folder pages, 2026-10-17
+
+Autonomous run, second discovery round. A sidebar folder only expanded in
+place, so `CRM/People` in marioverse.ai dumped 600 rows into the sidebar and
+a folder could not be seen as a page.
+
+- [x] A folder's name opens its page; the chevron still expands it. The page
+  is the All notes screen under a new `NoteListFilter` kind
+  (`{ kind: 'folder', folder }`): breadcrumb of parent folders, subfolders as
+  chips with counts, then the folder's notes in the same list/grid with the
+  shared sort, a title filter and an "Include subfolders" switch (both reset
+  per folder). Each folder keeps its own tab (`folder:<path>` tab key).
+- [x] `listNotes({ folder: { path, recursive } })` lists every kind filed in
+  the folder (dailies and templates included, matching the tree) with a
+  `substr` prefix match, so `_`/`%` match literally and case stays
+  significant.
+- [x] "+" on a folder page asks for a title and creates the note in that
+  folder (`createNoteInFolder`, vault naming rules and collision suffixes).
+  It is eager rather than ⌘N's lazy ULID note because only the new-note
+  folder renames a file after its first title.
+- [x] An expanded sidebar folder shows at most 50 note rows, then "Show all
+  N" to its page (the vault root is never capped).
+- Folders stay read-only: no create, rename or move.
+
+**Validation:** core flow test on a real SQLite index (own vs recursive,
+literal `_`, case), `createNoteInFolder` and `findFolder` unit tests; sidebar
+and All notes browser tests on Chromium; typecheck and lint on touched
+files. In the dev build with `?seed=obsidian`: Show all 600 opens People in
+~0.2 s, CRM shows its two subfolders, "+" created `CRM/Acme Corp.md`.
+WebKit left to CI.
+
+**Next:** on the Mac, open `CRM/People` from the Folders section.
+
+## Nested tags as a tree, 2026-10-17
+
+Autonomous run, second discovery round. marioverse.ai carries nested tags
+on 3,924 notes (`type/person`, `domain/ai`, …); the sidebar's Types section
+listed them flat, dozens of "Domain/ai"-style rows, and `#domain` had no
+page of its own because no note carries it exactly.
+
+- [x] Core (`packages/core/src/indexing/tag-tree.ts`): `listTagTreeCounts`
+  walks every tag's `/` segments in one recursive CTE (folded key and
+  display casing in step) and counts distinct non-daily notes per prefix,
+  so a note tagged `#domain/ai` and `#domain/design` counts once under
+  `domain`. `buildTagTree` (pure) nests the rows; a missing parent hangs a
+  child from its nearest ancestor, `#a/` (empty segment) is dropped.
+- [x] Prefix semantics for the tag page (`tag-match.ts`,
+  `carriesTagOrNested`): `listNotes({ tag })` and `listCollection` match the
+  tag or any tag nested under it (Obsidian's rule, like Bases' `hasTag`),
+  as an `EXISTS` over a key range, so `#domain` lists `#domain/ai` notes
+  once each and never `#domains` or `#domain_x`. This also widens rollups
+  and reusable collections on a parent tag the same way.
+- [x] Sidebar: rows nest with a chevron (expand state per session, shared
+  `useSessionExpanded` with the Folders shelf), children show their leaf
+  name, icons and configure stay per tag. A vault with no nested tags looks
+  as before. `useNoteTags` is gone (the section was its only user).
+- Not done: iPhone (no Types section there), auto-expanding the active
+  tag's ancestors, the `reflect` CLI.
+
+**Validation:** core `tag-tree.test.ts` plus real-SQLite flow tests (tree
+counts with a daily excluded, parent page via list and collection, no
+look-alikes); indexing/tags/ai node suites 101 files / 1,094 tests;
+`sidebar.test.tsx` and the all-notes screen and collection-flow suites on
+Chromium; typecheck and lint clean. Manual pass on `?seed=obsidian`
+(5,165 notes): Types shows Domain 3,908 and Type 4,786, expanding lists
+Ai, Design, Growth… with counts, and #Domain's page lists its notes.
+WebKit left to CI; query time not measured natively.
+
+**Next:** on the Mac, Types in marioverse.ai should show `type` and
+`domain` as two expandable rows.
+
+## Obsidian callouts, 2026-10-17
+
+Autonomous run ("Giro autonomo di miglioramenti"). Kore only recognized the
+five GitHub alert kinds, and drew them only in the live editor: Obsidian's
+`[!example]`, `[!faq]`, `[!quote]`, `[!bug]`, aliases like `[!tldr]`, custom
+types and foldable `[!x]-`/`[!x]+` callouts showed as plain blockquotes with
+a literal marker, and every preview showed the marker raw.
+
+- [x] Core (`packages/core/src/markdown/callout.ts`): the 13 Obsidian kinds
+  plus their aliases (`CALLOUT_ALIASES`), unknown types styled as `note`
+  and titled after the token (`calloutLabel`), the fold sign, and where the
+  title starts. `separateCalloutTitles` gives a title line its own
+  paragraph in the rendered copy of read-only views (never the file).
+- [x] Editor (`callout-plugin.ts`, mounted by `CalloutHighlighter`):
+  ProseMirror decorations instead of the old DOM observer. Kind color and
+  Solar icon, colored title, the `[!type]±` token hidden unless the caret is
+  on the title line, a fold button for `+`/`-` callouts. Folding is plugin
+  state only, never a document change; a caret inside a folded body shows it.
+- [x] Read-only views (`callout-dom.ts`): `MarkdownPreview` (palette preview,
+  transclusions, Canvas cards, hover previews, peek, chat), backlink
+  snippets and the HTML
+  export stamp the same attributes; interactive previews fold on a title
+  click, the export prints every callout open.
+- [x] Styles moved to `apps/desktop/src/styles/callouts.css`; new callout
+  hue tokens (`--blue-500`, `--cyan-500`, `--orange-500`, `--purple-500`).
+  The `/` menu lists all 13 kinds, aliases as keywords. The compatibility
+  report's Admonition hint now points at callouts.
+- [x] Backlink snippets share the read-only path (`use-callout-dom.ts`),
+  always shown open like their collapsed bullets.
+
+**Validation:** core callout tests (parser, aliases, fold, title split);
+browser tests on Chromium for the editor plugin (kind, hidden marker, fold
+button, markdown unchanged), `MarkdownPreview` (title, default label, fold
+click), the HTML export, the slash menu, plus Canvas, embedded note, tasks,
+link cards and hover preview suites; typecheck and lint. WebKit is left to CI.
+
+**Next:** on the Mac, open a marioverse.ai note with `> [!faq]-` and check
+the fold button, then a transclusion of it and an HTML export.
+
+## Obsidian search operators, 2026-10-17
+
+Autonomous run ("Giro autonomo di miglioramenti"). On marioverse.ai (~5,100
+notes) search had Kore's own tokens (`#tag`, `is:`, `links:`, `prop:`,
+`updated:`) but none of the Obsidian operators Mario types out of habit:
+every word was a prefix term, quotes were split, `-word` was searched for.
+
+- [x] The palette grammar (`packages/core/src/indexing/filter-query.ts`)
+  parses Obsidian's operators into `SearchFilters`: `"exact phrase"`,
+  `-word` / `-"phrase"`, `tag:#x` / `tag:x`, `-#tag`, `path:` / `-path:`,
+  `file:` / `-file:`, and `[key]` / `[key:value]` (spaces allowed inside
+  the brackets; same semantics as `prop:`). Half-formed tokens stay text.
+- [x] Every tag filter now matches nested tags (`#type` finds
+  `#type/person`), as an index range on `tag_key`, so `tag:#type` covers
+  the vault's `type/*` frontmatter tags.
+- [x] SQL (`search-operators-sql.ts`): path and file name are substring
+  matches on the folded `path_key`; phrases and exclusions are FTS rowid
+  sets (one MATCH each). Phrases also join the ranked MATCH, so they
+  highlight in snippets. Mobile All notes gets the operators through
+  `buildAllNotesSearch`.
+- [x] The palette shows each operator it understood as a chip under the
+  input (exclusions in red), and the footer lists the syntax.
+- Not done: the `reflect` CLI `search` still takes plain text only (it
+  never parsed Kore's own filter tokens either; porting the grammar to Rust
+  is its own slice). Negated properties (`-[status:done]`), regex and
+  Obsidian's `line:`/`block:`/`section:` operators are not supported.
+
+**Validation:** new parser tests, a real-SQLite flow test
+(`search-operators-flow.test.ts`: nested frontmatter tags, path, file,
+property, phrases, exclusions), a palette chip test on Chromium; core
+indexing and mobile search-filter suites green; typecheck and lint.
+WebKit is left to CI. Not tried on the real vault.
+
+**Next:** on the Mac, ⌘K in marioverse.ai: `tag:#type/person path:CRM/`
+should list people, `"Product Heroes" -path:Journal` the non-daily notes
+quoting it.
+
+## New notes from a base, 2026-10-17
+
+Autonomous run ("Giro autonomo di miglioramenti"). Bases were editable
+(PR #271) but you couldn't add a row, the gap left after editing.
+
+- [x] Core (`packages/core/src/bases/new-note.ts`): `baseNewNotePrefill`
+  reads the conditions every matching note must meet from the global and
+  view filters, through `and` lists and `&&` only: `prop == value` (bare,
+  `note.x`, `note["x"]`, either side), `file.hasTag(…)` (first tag) and
+  `file.tags.contains(…)`, `file.inFolder(…)` and `file.folder == …`.
+  `or`, `not`, computed keys and anything else prefill nothing.
+  `runBaseView` returns it as `newNote`; `baseNewNotePrefillForGroup` adds
+  a lane's `dropValue` (the lane wins over a filter on the same key; the
+  empty lane and link lanes add nothing). `createBaseNote` writes `id:`,
+  the H1, the properties and `tags:` (via `addNoteTag`) through the new
+  `createNoteWithSource`, which claims a collision-free title-derived path
+  in the filter's folder, else the vault's new-note folder (`_inbox`,
+  title-named, in an Obsidian vault). The `.base` file is never written.
+- [x] Desktop and iPhone (`BaseViewContent`): "+ New" ends every layout
+  (table, cards, list; each grouped section, with its group value), every
+  board lane, and an empty view. The title is typed in place and the note is born on Enter, like the
+  collection table's line; Escape or an empty title leaves no file. The
+  view refreshes on the write's re-index. `baseNoteFitsView` (run-view.ts)
+  runs the view's filters over the note as written; when a condition the
+  prefill can't satisfy (`or`, `not`, dates, formulas) leaves it out, a
+  toast says it was created but isn't listed here, with "Open".
+- Not done: the fit check sees the note without links or body tags, so a
+  filter on those can flag a note that does show once indexed.
+
+**Validation:** core `new-note.test.ts` (and-chain prefill, ignored `or`
+and computed keys, lane value, note source, view fit) and a
+`createNoteWithSource` folder test; desktop `base-screen.test.tsx` (lane
+"+ New" calls core with filter tag plus lane value and no notice; list
+"+ New" under an `or` filter shows the notice) on Chromium; typecheck, oxfmt, oxlint and eslint
+on the touched files. WebKit left to CI. Not tried on the real vault.
+
+**Next:** on the Mac, in a CRM or projects base of marioverse.ai, "+ New"
+in a board lane should create the note in the base's folder with the lane's
+status and the base's tag.
+
 ## MCP server for agents, 2026-10-17
 
 User ask (Mario, 2026-10-17, autonomous run): make Kore the second brain for
@@ -167,8 +434,7 @@ status meant opening the note.
   drag between lanes and write the grouped property. Writes go through
   `useCommitNoteProperty`, the same session-or-disk channel as collection
   cells. The `.base` file is still never written.
-- Not done: editing from cards/list layouts, adding notes from a base,
-  reordering within a lane (Obsidian has no rank to write).
+- Not done: editing from cards/list layouts, reordering within a lane (Obsidian has no rank to write).
 
 **Validation:** core `run-view.test.ts` (edit keys, read-only links, input
 parsing, lane drop values); desktop browser `base-screen.test.tsx` (edit,

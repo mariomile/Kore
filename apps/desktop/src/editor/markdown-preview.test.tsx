@@ -27,6 +27,16 @@ describe('MarkdownPreview callouts', () => {
     expect(quote.hasAttribute('data-callout-folded')).toBe(false)
   })
 
+  it('leaves the fold alone when a wiki link in the title is clicked', async () => {
+    const view = await render(<MarkdownPreview content={'> [!faq]- See [[Roadmap]]\n> Because.'} />)
+    const quote = view.container.querySelector('blockquote')!
+    await expect.poll(() => quote.hasAttribute('data-callout-folded')).toBe(true)
+    const chip = quote.querySelector<HTMLElement>('.md-wikilink-view')
+    expect(chip).not.toBeNull()
+    chip!.click()
+    expect(quote.hasAttribute('data-callout-folded')).toBe(true)
+  })
+
   it('shows a collapsed callout open in a passive preview', async () => {
     const view = await render(
       <MarkdownPreview content={'> [!faq]- Why?\n> Because.'} interactive={false} />,

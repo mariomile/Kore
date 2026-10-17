@@ -85,6 +85,13 @@ export function decorateCallouts(root: ParentNode, options: DecorateCalloutsOpti
 }
 
 /**
+ * Things in a title that act on their own click: native controls, plus the
+ * renderer's links, tags and atom chips (a wiki link is a span, not an `<a>`).
+ */
+const TITLE_CONTROLS =
+  'a, button, input, [role="button"], [role="link"], .md-link, .md-tag, .md-atom-view'
+
+/**
  * Fold or unfold the callout whose title was clicked. Returns whether the
  * click was a fold toggle, so the caller can stop it from doing anything else.
  */
@@ -97,7 +104,7 @@ export function toggleCalloutFromClick(target: EventTarget | null): boolean {
   if (quote == null || quote.tagName !== 'BLOCKQUOTE' || title !== quote.firstElementChild) {
     return false
   }
-  if (target.closest('a, button, input') !== null) {
+  if (target.closest(TITLE_CONTROLS) !== null) {
     return false
   }
   const fold = quote.getAttribute('data-callout-fold')

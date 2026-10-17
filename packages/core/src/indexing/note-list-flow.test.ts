@@ -178,6 +178,16 @@ describe('the tag tree against a real index', () => {
 
     const tree = await getTagTree()
 
+    // The facet list (All notes filter chips) counts what each tag's page
+    // lists: `domain/ai` includes its `domain/ai/agents` note.
+    expect(await listNoteTags()).toEqual([
+      { tag: 'Domain', count: 3 },
+      { tag: 'Domain/ai', count: 2 },
+      { tag: 'domain/ai/agents', count: 1 },
+      { tag: 'domain/design', count: 1 },
+      { tag: 'solo', count: 1 },
+    ])
+
     const shape = (nodes: readonly TagTreeNode[]): unknown =>
       nodes.map((node) => [node.tag, node.name, node.count, shape(node.children)])
     expect(shape(tree)).toEqual([

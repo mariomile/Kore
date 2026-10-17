@@ -6,6 +6,7 @@ import { foldTag } from '../markdown'
 import { db } from './db'
 import { recallOrder } from './filtered-search'
 import { carriesTagOrNested } from './tag-match'
+import { listUsedTagCounts } from './tag-tree'
 
 /**
  * The All Notes list: every regular note, pinned first then newest, optionally
@@ -210,22 +211,12 @@ export interface ListNoteTagsOptions {
 }
 
 /**
- * Every tag carried by at least one non-daily note, with how many such notes
- * carry it, alphabetical. Grouped on the stored `tag_key`, matching the tag
- * filter (and the `#tag` search token): `#Book` and `#book` are one facet,
- * displayed with one deterministic casing.
+ * Every tag carried by at least one non-daily note, alphabetical, with how
+ * many such notes carry it or a tag nested under it — the count of notes the
+ * tag's page (the prefix-matching filter above) lists. Grouped on the stored
+ * `tag_key`, matching the tag filter (and the `#tag` search token): `#Book`
+ * and `#book` are one facet, displayed with one deterministic casing.
  */
 export async function listNoteTags(options: ListNoteTagsOptions = {}): Promise<NoteTagFacet[]> {
-  let query = db
-    .selectFrom('tags')
-    .innerJoin('notes', 'notes.path', 'tags.notePath')
-    .where('notes.kind', '=', 'note')
-  if (options.excludePrivate === true) {
-    query = query.where('notes.isPrivate', '=', 0)
-  }
-  return await query
-    .select([sql<string>`min(tags.tag)`.as('tag'), sql<number>`count(*)`.as('count')])
-    .groupBy('tags.tagKey')
-    .orderBy('tags.tagKey')
-    .execute()
+  return await listUsedTagCounts(options)
 }

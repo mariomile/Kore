@@ -1,5 +1,6 @@
 import { sql } from 'kysely'
 import { db } from './db'
+import type { ListNoteTagsOptions, NoteTagFacet } from './note-list'
 
 /**
  * Nested tags (`#domain/ai`, `#type/person`) as a tree — the sidebar's Types
@@ -93,19 +94,26 @@ export function hasNestedTags(tree: readonly TagTreeNode[]): boolean {
   return tree.some((node) => node.children.length > 0)
 }
 
+interface TagPrefixRow extends TagTreeCount {
+  /** 1 when some note carries this exact tag, 0 for a pure parent prefix. */
+  readonly used: number
+}
+
 /**
  * Every tag prefix carried by a non-daily note, with its distinct note count.
  * A recursive CTE walks each tag's `/` segments on the folded key and the
  * display tag in step (folding never adds or removes a `/`), so `domain`
  * appears once with every note under `domain/…` counted once, even a note
- * tagged both `#domain/ai` and `#domain/design`.
+ * tagged both `#domain/ai` and `#domain/design`. `used` marks the prefixes
+ * that are whole tags (their segments are exhausted on some note).
  */
-export async function listTagTreeCounts(): Promise<TagTreeCount[]> {
-  const result = await sql<TagTreeCount>`
+async function listTagPrefixes(options: ListNoteTagsOptions): Promise<TagPrefixRow[]> {
+  const privacy = options.excludePrivate === true ? sql`AND notes.is_private = 0` : sql``
+  const result = await sql<TagPrefixRow>`
     WITH RECURSIVE parts(note_path, key_prefix, tag_prefix, key_rest, tag_rest) AS (
       SELECT tags.note_path, '', '', tags.tag_key || '/', tags.tag || '/'
       FROM tags JOIN notes ON notes.path = tags.note_path
-      WHERE notes.kind = 'note'
+      WHERE notes.kind = 'note' ${privacy}
       UNION
       SELECT
         note_path,
@@ -118,13 +126,36 @@ export async function listTagTreeCounts(): Promise<TagTreeCount[]> {
       FROM parts
       WHERE key_rest <> '' AND instr(tag_rest, '/') > 0
     )
-    SELECT key_prefix AS key, min(tag_prefix) AS tag, count(DISTINCT note_path) AS count
+    SELECT
+      key_prefix AS key,
+      min(tag_prefix) AS tag,
+      count(DISTINCT note_path) AS count,
+      max(key_rest = '') AS used
     FROM parts
     WHERE key_prefix <> ''
     GROUP BY key_prefix
     ORDER BY key_prefix
   `.execute(db)
   return result.rows
+}
+
+/** Every tag prefix on a non-daily note with its subtree note count. */
+export async function listTagTreeCounts(
+  options: ListNoteTagsOptions = {},
+): Promise<TagTreeCount[]> {
+  return (await listTagPrefixes(options)).map(({ key, tag, count }) => ({ key, tag, count }))
+}
+
+/**
+ * Every tag used on a non-daily note, alphabetical by folded key, counting the
+ * notes the tag's page lists: those carrying it or any tag nested under it.
+ */
+export async function listUsedTagCounts(
+  options: ListNoteTagsOptions = {},
+): Promise<NoteTagFacet[]> {
+  return (await listTagPrefixes(options))
+    .filter((row) => row.used !== 0)
+    .map(({ tag, count }) => ({ tag, count }))
 }
 
 /** The Types section's tree: every tag on a non-daily note, nested on `/`. */

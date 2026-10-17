@@ -1,4 +1,4 @@
-import { addPluginListener, invoke, isTauri } from '@tauri-apps/api/core'
+import { addPluginListener, convertFileSrc, invoke, isTauri } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { resetAgentRunLeases, setBridge, type IpcBridge } from '@reflect/core'
 
@@ -29,6 +29,9 @@ export const tauriBridge: IpcBridge = {
   listenPlugin: async (plugin, event, handler) => {
     await addPluginListener<unknown>(plugin, event, handler)
   },
+  // The `reflect-asset://` protocol (fs/asset_protocol.rs) keys files by graph
+  // session so a URL minted for a closed graph never serves the next one.
+  assetUrl: (generation, path) => convertFileSrc(`${generation}/${path}`, 'reflect-asset'),
 }
 
 /**

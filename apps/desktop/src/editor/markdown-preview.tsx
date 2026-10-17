@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, type ReactElement } from 'react'
 import { MarkdownView } from '@meowdown/react'
 import { separateCalloutTitles } from '@reflect/core'
+import { PaneErrorBoundary } from '@/components/pane-error-boundary'
 import { toggleCalloutFromClick } from '@/editor/callout-dom'
 import { useCalloutDom } from '@/editor/use-callout-dom'
 import { useOpenExternalLink } from '@/editor/open-external-link'
@@ -86,31 +87,40 @@ export function MarkdownPreview({
   // A passive preview can't be clicked open, so it shows folded callouts open.
   useCalloutDom(hostRef, interactive)
 
+  // Previews float outside the panes (palette, hover cards, chat), so a note
+  // that cannot render gets its own boundary here rather than blanking the app.
   return (
-    <div
-      ref={hostRef}
-      className="contents"
-      {...(interactive
-        ? {
-            onClick: (event) => {
-              if (toggleCalloutFromClick(event.target)) {
-                event.preventDefault()
-                event.stopPropagation()
-              }
-            },
-          }
-        : {})}
+    <PaneErrorBoundary
+      resetKey={content}
+      surface="preview"
+      path={null}
+      fallback={<p className="text-xs text-text-muted">This preview couldn’t be shown.</p>}
     >
-      <MarkdownView
-        markdown={markdown}
-        markMode="hide"
-        interactive={interactive}
-        resolveImageUrl={resolveImageUrlStable}
-        resolveWikiEmbed={resolveWikiEmbed}
-        {...(interactive ? { onLinkClick: openExternalLink } : {})}
-        {...(navigates ? { onWikilinkClick: onWikilinkClickStable } : {})}
-        className={cn('reflect-editor', className)}
-      />
-    </div>
+      <div
+        ref={hostRef}
+        className="contents"
+        {...(interactive
+          ? {
+              onClick: (event) => {
+                if (toggleCalloutFromClick(event.target)) {
+                  event.preventDefault()
+                  event.stopPropagation()
+                }
+              },
+            }
+          : {})}
+      >
+        <MarkdownView
+          markdown={markdown}
+          markMode="hide"
+          interactive={interactive}
+          resolveImageUrl={resolveImageUrlStable}
+          resolveWikiEmbed={resolveWikiEmbed}
+          {...(interactive ? { onLinkClick: openExternalLink } : {})}
+          {...(navigates ? { onWikilinkClick: onWikilinkClickStable } : {})}
+          className={cn('reflect-editor', className)}
+        />
+      </div>
+    </PaneErrorBoundary>
   )
 }

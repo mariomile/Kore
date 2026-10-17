@@ -2,8 +2,8 @@ import { createElement } from 'react'
 import { flushSync } from 'react-dom'
 import { createRoot } from 'react-dom/client'
 import { MarkdownView } from '@meowdown/react'
-import { convertFileSrc } from '@tauri-apps/api/core'
 import {
+  assetUrl,
   parseNote,
   resolveAttachmentSource,
   separateCalloutTitles,
@@ -223,9 +223,7 @@ export async function renderNoteBodyHtml(body: string, generation: number): Prom
               return src
             }
             const attachment = resolveAttachmentSource(src)
-            return attachment === null
-              ? undefined
-              : convertFileSrc(`${generation}/${attachment}`, 'reflect-asset')
+            return attachment === null ? undefined : (assetUrl(generation, attachment) ?? undefined)
           },
           className: 'reflect-editor',
         }),

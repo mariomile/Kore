@@ -1,5 +1,4 @@
-import { convertFileSrc } from '@tauri-apps/api/core'
-import type { ChatAttachment } from '@reflect/core'
+import { assetUrl, type ChatAttachment } from '@reflect/core'
 import { base64Of } from '@/lib/base64'
 
 /**
@@ -32,7 +31,7 @@ export function chatAttachmentSrc(
     return attachment.dataUrl
   }
   if (attachment.path !== undefined && generation !== null) {
-    return convertFileSrc(`${generation}/${attachment.path}`, 'reflect-asset')
+    return assetUrl(generation, attachment.path)
   }
   return null
 }

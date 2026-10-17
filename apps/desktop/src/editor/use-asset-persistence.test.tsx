@@ -1,13 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { renderHook } from 'vitest-browser-react'
 import { setBridge } from '@reflect/core'
-
-// jsdom has no Tauri runtime; mirror the macOS/iOS URL shape the injected
-// `convertFileSrc` produces (one percent-encoded path segment).
-vi.mock('@tauri-apps/api/core', () => ({
-  convertFileSrc: (filePath: string, protocol = 'asset') =>
-    `${protocol}://localhost/${encodeURIComponent(filePath)}`,
-}))
 import { resetOperations, useOperations, type Operation } from '@/lib/operations'
 import {
   LARGE_FILE_BYTES,
@@ -49,7 +42,14 @@ function installUploadBridge(): ReturnType<typeof vi.fn> {
         ? `assets/${args['desiredName'] as string}`
         : null,
   )
-  setBridge({ invoke, invokeBinary: async () => null, listen: async () => () => {} })
+  setBridge({
+    invoke,
+    invokeBinary: async () => null,
+    listen: async () => () => {},
+    // The macOS/iOS URL shape the Tauri bridge's `convertFileSrc` produces.
+    assetUrl: (generation, path) =>
+      `reflect-asset://localhost/${encodeURIComponent(`${generation}/${path}`)}`,
+  })
   return invoke
 }
 
@@ -156,6 +156,13 @@ describe('useAssetPersistence resolveImageUrl', () => {
     expect(persistence!.resolveImageUrl('assets/cat.png')).toBe(
       `reflect-asset://localhost/${encodeURIComponent('3/assets/cat.png')}`,
     )
+  })
+
+  it('resolves to null instead of throwing when the host serves no asset URLs', async () => {
+    setBridge({ invoke: async () => null, listen: async () => () => {} })
+    await renderPersistence({ generation: 3 })
+
+    expect(persistence!.resolveImageUrl('assets/cat.png')).toBeNull()
   })
 
   it('declines unsafe paths and missing sessions', async () => {

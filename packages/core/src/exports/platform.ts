@@ -3,6 +3,7 @@ export * from '../vault-compat'
 export * from '../canvas'
 export {
   setBridge,
+  assetUrl,
   hasBridge,
   subscribeBridgeChanges,
   type IpcBridge,

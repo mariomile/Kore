@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { convertFileSrc } from '@tauri-apps/api/core'
 import type { FileInfo, FileLinkPayload } from '@meowdown/core'
 import {
   assetFileName,
+  assetUrl,
   createAsset,
   errorMessage,
   listDir,
@@ -128,10 +128,11 @@ export function useAssetPersistence(generation: number | null, path?: string): A
       if (/^https?:\/\//.test(src)) {
         return src
       }
-      const attachment = generation === null ? null : resolveAttachmentSource(src)
-      return attachment === null
-        ? null
-        : convertFileSrc(`${generation}/${attachment}`, 'reflect-asset')
+      if (generation === null) {
+        return null
+      }
+      const attachment = resolveAttachmentSource(src)
+      return attachment === null ? null : assetUrl(generation, attachment)
     },
     [generation],
   )

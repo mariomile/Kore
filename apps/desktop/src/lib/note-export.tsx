@@ -3,7 +3,13 @@ import { flushSync } from 'react-dom'
 import { createRoot } from 'react-dom/client'
 import { MarkdownView } from '@meowdown/react'
 import { convertFileSrc } from '@tauri-apps/api/core'
-import { parseNote, resolveAttachmentSource, splitFrontmatter } from '@reflect/core'
+import {
+  parseNote,
+  resolveAttachmentSource,
+  separateCalloutTitles,
+  splitFrontmatter,
+} from '@reflect/core'
+import { decorateCallouts } from '@/editor/callout-dom'
 import { exportFileName, runFileExport } from '@/lib/export-file'
 import { readNoteSource } from '@/lib/note-frontmatter'
 
@@ -209,7 +215,7 @@ export async function renderNoteBodyHtml(body: string, generation: number): Prom
     flushSync(() => {
       root.render(
         createElement(MarkdownView, {
-          markdown: body,
+          markdown: separateCalloutTitles(body),
           markMode: 'hide',
           interactive: true,
           resolveImageUrl: (src: string) => {
@@ -229,6 +235,8 @@ export async function renderNoteBodyHtml(body: string, generation: number): Prom
     // layout, so the serialized tree is the settled one.
     await new Promise((resolve) => requestAnimationFrame(resolve))
     await new Promise((resolve) => requestAnimationFrame(resolve))
+    // A saved page has no script to unfold with, so every callout prints open.
+    decorateCallouts(host, { folding: false })
     await inlineAssetImages(host)
     return host.innerHTML
   } finally {

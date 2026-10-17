@@ -1,5 +1,8 @@
-import { useCallback, useEffect, useRef, type ReactElement } from 'react'
+import { useCallback, useEffect, useMemo, useRef, type ReactElement } from 'react'
 import { MarkdownView } from '@meowdown/react'
+import { separateCalloutTitles } from '@reflect/core'
+import { toggleCalloutFromClick } from '@/editor/callout-dom'
+import { useCalloutDom } from '@/editor/use-callout-dom'
 import { useOpenExternalLink } from '@/editor/open-external-link'
 import { cn } from '@/lib/utils'
 import { resolveWikiEmbed } from '@/editor/resolve-wiki-embed'
@@ -13,6 +16,10 @@ import { resolveWikiEmbed } from '@/editor/resolve-wiki-embed'
  *
  * `content` is live: changing it re-renders the preview, so one mounted preview
  * can follow a moving selection (the palette's preview pane).
+ *
+ * Obsidian callouts get their title, icon and color here too
+ * (`callout-dom.ts`); an interactive preview folds `[!x]-`/`[!x]+` callouts
+ * on a title click, in the view only, and a passive one shows them open.
  */
 
 interface MarkdownPreviewProps {
@@ -67,20 +74,43 @@ export function MarkdownPreview({
   )
   const onWikilinkClickStable = useCallback(
     (payload: { target: string; event: MouseEvent | KeyboardEvent; mod: boolean }) =>
-      navigateRef.current?.({ target: payload.target, openInSplit: payload.mod }),
+      navigateRef.current?.({
+        target: payload.target,
+        openInSplit: payload.mod,
+      }),
     [],
   )
 
+  const markdown = useMemo(() => separateCalloutTitles(content), [content])
+  const hostRef = useRef<HTMLDivElement>(null)
+  // A passive preview can't be clicked open, so it shows folded callouts open.
+  useCalloutDom(hostRef, interactive)
+
   return (
-    <MarkdownView
-      markdown={content}
-      markMode="hide"
-      interactive={interactive}
-      resolveImageUrl={resolveImageUrlStable}
-      resolveWikiEmbed={resolveWikiEmbed}
-      {...(interactive ? { onLinkClick: openExternalLink } : {})}
-      {...(navigates ? { onWikilinkClick: onWikilinkClickStable } : {})}
-      className={cn('reflect-editor', className)}
-    />
+    <div
+      ref={hostRef}
+      className="contents"
+      {...(interactive
+        ? {
+            onClick: (event) => {
+              if (toggleCalloutFromClick(event.target)) {
+                event.preventDefault()
+                event.stopPropagation()
+              }
+            },
+          }
+        : {})}
+    >
+      <MarkdownView
+        markdown={markdown}
+        markMode="hide"
+        interactive={interactive}
+        resolveImageUrl={resolveImageUrlStable}
+        resolveWikiEmbed={resolveWikiEmbed}
+        {...(interactive ? { onLinkClick: openExternalLink } : {})}
+        {...(navigates ? { onWikilinkClick: onWikilinkClickStable } : {})}
+        className={cn('reflect-editor', className)}
+      />
+    </div>
   )
 }

@@ -21,7 +21,7 @@ export const COMPAT_KINDS = [
   {
     id: 'admonition',
     label: 'Admonition blocks',
-    hint: 'Shown as code. Obsidian callouts (> [!note]) render in Kore.',
+    hint: 'Shown as code. Rewrite them as Obsidian callouts (> [!note]), which render in Kore with icons and folding.',
   },
   {
     id: 'mermaid',

@@ -1,5 +1,38 @@
 # Kore working state
 
+## Folder pages, 2026-10-17
+
+Autonomous run, second discovery round. A sidebar folder only expanded in
+place, so `CRM/People` in marioverse.ai dumped 600 rows into the sidebar and
+a folder could not be seen as a page.
+
+- [x] A folder's name opens its page; the chevron still expands it. The page
+  is the All notes screen under a new `NoteListFilter` kind
+  (`{ kind: 'folder', folder }`): breadcrumb of parent folders, subfolders as
+  chips with counts, then the folder's notes in the same list/grid with the
+  shared sort, a title filter and an "Include subfolders" switch (both reset
+  per folder). Each folder keeps its own tab (`folder:<path>` tab key).
+- [x] `listNotes({ folder: { path, recursive } })` lists every kind filed in
+  the folder (dailies and templates included, matching the tree) with a
+  `substr` prefix match, so `_`/`%` match literally and case stays
+  significant.
+- [x] "+" on a folder page asks for a title and creates the note in that
+  folder (`createNoteInFolder`, vault naming rules and collision suffixes).
+  It is eager rather than ⌘N's lazy ULID note because only the new-note
+  folder renames a file after its first title.
+- [x] An expanded sidebar folder shows at most 50 note rows, then "Show all
+  N" to its page (the vault root is never capped).
+- Folders stay read-only: no create, rename or move.
+
+**Validation:** core flow test on a real SQLite index (own vs recursive,
+literal `_`, case), `createNoteInFolder` and `findFolder` unit tests; sidebar
+and All notes browser tests on Chromium; typecheck and lint on touched
+files. In the dev build with `?seed=obsidian`: Show all 600 opens People in
+~0.2 s, CRM shows its two subfolders, "+" created `CRM/Acme Corp.md`.
+WebKit left to CI.
+
+**Next:** on the Mac, open `CRM/People` from the Folders section.
+
 ## Obsidian templates, 2026-10-10
 
 Next batch after 0.76.0 ("Prossimo giro di funzionalità"). marioverse.ai

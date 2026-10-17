@@ -86,6 +86,28 @@ export async function createNoteWithTitle(
   return claimed.path
 }
 
+/**
+ * Create a note titled `title` directly in `folder` (a folder page's "New
+ * note"), named by the vault's own rules — Kore's slug or Obsidian's title
+ * filename, with the same collision suffixes. The file is born with its title
+ * because a note outside the new-note folder is never auto-renamed, so the
+ * lazy ULID placeholder ⌘N uses would keep its ULID name forever.
+ */
+export async function createNoteInFolder(
+  folder: string,
+  title: string,
+  generation: number,
+): Promise<string> {
+  const claimed = await claimNotePathForSlug(
+    noteFileStemForTitle(title),
+    newNoteSource(title),
+    generation,
+    undefined,
+    folder,
+  )
+  return claimed.path
+}
+
 /** Far beyond any real graph's same-slug population; fail loud instead of spinning. */
 const MAX_CREATE_ATTEMPTS = 1000
 
@@ -101,7 +123,8 @@ type ExistingTitleResolution = Exclude<ExistingWikiTargetResolution, { kind: 'mi
 /**
  * Claim the first free path in `slug`'s collision family (`slug.md`, then
  * `slug-2.md`, … — see {@link collisionStem}) through the atomic no-clobber create — the one ordinal
- * convention both create entry points share. `onCollision` runs after each
+ * convention every create entry point shares, in the new-note folder unless
+ * `folder` names another. `onCollision` runs after each
  * lost claim; a non-null result short-circuits instead of trying the next
  * suffix (`resolveOrCreateNoteWithTitle` re-resolves the winner there).
  */
@@ -109,6 +132,8 @@ async function claimNotePathForSlug(
   slug: string,
   source: string,
   generation: number,
+  onCollision?: undefined,
+  folder?: string | null,
 ): Promise<{ kind: 'created'; path: string }>
 async function claimNotePathForSlug(
   slug: string,
@@ -121,9 +146,12 @@ async function claimNotePathForSlug(
   source: string,
   generation: number,
   onCollision?: () => Promise<ExistingTitleResolution | null>,
+  folder: string | null = null,
 ): Promise<ResolveOrCreateNoteResult> {
   for (let ordinal = 1; ordinal <= MAX_CREATE_ATTEMPTS; ordinal += 1) {
-    const path = notePath(collisionStem(slug, ordinal))
+    const stem = collisionStem(slug, ordinal)
+    const path =
+      folder === null ? notePath(stem) : folder === '' ? `${stem}.md` : `${folder}/${stem}.md`
     const outcome = await createNoteIfAbsent(path, source, generation)
     if (outcome.kind === 'created') {
       return { kind: 'created', path }

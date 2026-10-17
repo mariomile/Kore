@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 import type { ReactElement } from 'react'
-import { setBridge } from '@reflect/core'
+import { setBridge, type NoteListFilter } from '@reflect/core'
 import { resetOperations, useOperations } from '@/lib/operations'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { RouterProvider, useRouter } from '@/routing/router'
@@ -209,10 +209,13 @@ function ReArrive(): ReactElement {
   )
 }
 
-function renderScreen(client = new QueryClient({ defaultOptions: { queries: { retry: false } } })) {
+function renderScreen(
+  client = new QueryClient({ defaultOptions: { queries: { retry: false } } }),
+  filter: NoteListFilter = { kind: 'all' },
+) {
   return render(
     <QueryClientProvider client={client}>
-      <RouterProvider initialRoute={{ kind: 'allNotes', filter: { kind: 'all' } }}>
+      <RouterProvider initialRoute={{ kind: 'allNotes', filter }}>
         {/* The screen fills its container (`h-full`); hand it the viewport
             height so the scroll container gets a real, bounded size. */}
         <div style={{ height: '100vh' }}>
@@ -401,6 +404,53 @@ describe('AllNotesScreen', () => {
     expect(view.getByText('Health Stacked').query()).toBeNull()
     await expect.element(view.getByRole('button', { name: 'New note' })).toBeInTheDocument()
     expect(view.getByRole('button', { name: 'New note' }).element().textContent?.trim()).toBe('')
+    await view.unmount()
+  })
+
+  it('renders a folder as its own page: breadcrumb, subfolders, filtered notes', async () => {
+    const folderRows = [
+      { ...noteRows[0], path: 'CRM/People/health.md' },
+      { ...noteRows[1], path: 'CRM/People/tokyo.md' },
+    ]
+    const listed: unknown[][] = []
+    mockInvoke.mockImplementation(async (command, args) => {
+      if (command !== 'db_query') {
+        return null
+      }
+      const sql = String(args['sql'])
+      if (sql.includes('"preview"')) {
+        listed.push(args['params'] as unknown[])
+        return folderRows
+      }
+      // The folder tree reads every indexed path and title.
+      if (sql.includes('"notes"."title"') && !sql.includes('where')) {
+        return [...folderRows, { path: 'CRM/People/Team/ada.md', title: 'Ada' }]
+      }
+      return []
+    })
+    const view = await renderScreen(undefined, { kind: 'folder', folder: 'CRM/People' })
+
+    await expect.element(view.getByRole('heading', { name: 'People' })).toBeInTheDocument()
+    await expect.element(view.getByText('Tokyo Gâteau')).toBeInTheDocument()
+    expect(listed.at(-1)).toContain('CRM/People/')
+    // The filter box narrows by title, client-side.
+    await view.getByRole('searchbox', { name: 'Filter notes' }).fill('tokyo')
+    await expect.element(view.getByText('Health Stacked')).not.toBeInTheDocument()
+    await expect.element(view.getByText('Tokyo Gâteau')).toBeInTheDocument()
+
+    await view.getByRole('button', { name: /Team\s*1/ }).click()
+    expect(probedRoute(view)).toEqual({
+      kind: 'allNotes',
+      filter: { kind: 'folder', folder: 'CRM/People/Team' },
+    })
+    await view
+      .getByRole('navigation', { name: 'Parent folders' })
+      .getByRole('button', { name: 'CRM' })
+      .click()
+    expect(probedRoute(view)).toEqual({
+      kind: 'allNotes',
+      filter: { kind: 'folder', folder: 'CRM' },
+    })
     await view.unmount()
   })
 

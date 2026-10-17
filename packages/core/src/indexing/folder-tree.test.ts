@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildFolderTree, hasOwnFolders } from './folder-tree'
+import { buildFolderTree, findFolder, hasOwnFolders } from './folder-tree'
 
 describe('buildFolderTree', () => {
   it('nests notes under their folders, folders first, alphabetical with counts', () => {
@@ -38,5 +38,15 @@ describe('hasOwnFolders', () => {
     ])
     expect(hasOwnFolders(kore)).toBe(false)
     expect(hasOwnFolders(buildFolderTree([{ path: 'CRM/People/Ada.md', title: 'Ada' }]))).toBe(true)
+  })
+})
+
+describe('findFolder', () => {
+  it('walks to a nested folder by path, and misses unknown ones', () => {
+    const tree = buildFolderTree([{ path: 'CRM/People/Ada.md', title: 'Ada' }])
+
+    expect(findFolder(tree, 'CRM/People')?.noteCount).toBe(1)
+    expect(findFolder(tree, '')).toBe(tree)
+    expect(findFolder(tree, 'CRM/Companies')).toBeNull()
   })
 })

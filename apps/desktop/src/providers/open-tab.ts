@@ -17,7 +17,11 @@ export function tabKey(tab: OpenTab): string {
     case 'canvas':
       return `canvas:${tab.path ?? ''}`
     case 'surface':
-      return `surface:${tab.surface}`
+      // A folder page is a page of its own, like a base: each folder keeps
+      // its own tab instead of replacing the All notes one.
+      return tab.surface === 'allNotes' && tab.filter.kind === 'folder'
+        ? `folder:${tab.filter.folder}`
+        : `surface:${tab.surface}`
   }
 }
 

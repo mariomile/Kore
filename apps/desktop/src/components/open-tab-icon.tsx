@@ -6,6 +6,7 @@ import {
   Chart,
   Chat,
   Checklist,
+  Folder,
   Globe,
   Graph,
   Layers,
@@ -30,6 +31,9 @@ export function OpenTabIcon({ tab, className }: OpenTabIconProps): ReactElement 
   const tagIcons = useTagIcons()
   if (tab.kind === 'surface' && tab.surface === 'allNotes' && tab.filter.kind === 'tag') {
     return <TagIcon icon={tagIcons.get(foldTag(tab.filter.tag))} className={className} />
+  }
+  if (tab.kind === 'surface' && tab.surface === 'allNotes' && tab.filter.kind === 'folder') {
+    return <Folder aria-hidden className={className} />
   }
   if (tab.kind === 'note') {
     return <Note aria-hidden className={className} />

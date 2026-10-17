@@ -7,6 +7,13 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Folders open as pages. Click a folder's name in the sidebar to see it as
+  a page: its parent folders above the title, its subfolders as chips, and
+  its notes in the same list or grid as All notes, with a filter box and a
+  switch to include notes in subfolders. "+" creates a note right in that
+  folder. Long folders in the sidebar now stop at 50 notes with a "Show
+  all" link to the page.
+
 - Scrolling through daily notes no longer freezes on long days. The daily
   stream used to keep re-opening the same days while you scrolled past long
   ones, and restyled every open day each time a scroll started or stopped.

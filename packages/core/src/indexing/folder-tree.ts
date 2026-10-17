@@ -93,6 +93,26 @@ export function hasOwnFolders(tree: FolderTreeFolder): boolean {
   return tree.folders.some((folder) => !KORE_FOLDERS.has(folder.name))
 }
 
+/** A folder's display name: its last path segment (`CRM/People` → `People`). */
+export function folderDisplayName(path: string): string {
+  return path.slice(path.lastIndexOf('/') + 1)
+}
+
+/** The folder at graph-relative `path` in `tree`, or null when no indexed note lives under it. */
+export function findFolder(tree: FolderTreeFolder, path: string): FolderTreeFolder | null {
+  if (path === '') {
+    return tree
+  }
+  let folder: FolderTreeFolder | undefined = tree
+  for (const segment of path.split('/')) {
+    folder = folder.folders.find((child) => child.name === segment)
+    if (folder === undefined) {
+      return null
+    }
+  }
+  return folder
+}
+
 /** Every indexed note grouped into the vault's folder tree. */
 export async function getFolderTree(): Promise<FolderTreeFolder> {
   const rows = await db.selectFrom('notes').select(['notes.path', 'notes.title']).execute()

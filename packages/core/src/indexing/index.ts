@@ -155,6 +155,7 @@ export {
   listNoteTags,
   listRecentNotes,
   type NoteListEntry,
+  type NoteListFolder,
   type NoteListOptions,
   type NoteTagFacet,
   type RecentNoteRow,
@@ -164,6 +165,8 @@ export { sortNoteList } from './note-list-sort'
 export {
   buildFolderTree,
   getFolderTree,
+  findFolder,
+  folderDisplayName,
   hasOwnFolders,
   type FolderTreeFolder,
   type FolderTreeNote,

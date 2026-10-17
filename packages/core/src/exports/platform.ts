@@ -236,6 +236,7 @@ export {
   untitledNotePath,
   isUntitledNotePath,
   createNoteWithTitle,
+  createNoteInFolder,
   resolveOrCreateNoteWithTitle,
   type ResolveOrCreateNoteResult,
 } from '../graph/create-note'

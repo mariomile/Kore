@@ -9,7 +9,7 @@ describe('buildIndexedNote', () => {
     // but it must never happen by accident: bump it here together with the
     // migration that requires it, and with the changelog entry in
     // `indexed-note.ts` saying what the new rows carry.
-    expect(PROJECTION_VERSION).toBe(26)
+    expect(PROJECTION_VERSION).toBe(27)
   })
 
   it('flattens a parsed note into the index payload', () => {
@@ -196,6 +196,28 @@ describe('buildIndexedNote', () => {
     expect(indexed.preview).toBe('First body line. #CAFÉ')
     // Folding is Unicode-aware — exactly what SQLite's ASCII-only lower() misses.
     expect(indexed.tags).toEqual([{ tag: 'CAFÉ', tagKey: 'café' }])
+  })
+
+  it('previews the prose under an Obsidian query block, not the query', () => {
+    const source = [
+      '---',
+      'created: 2026-01-01',
+      '---',
+      '# Roadmap',
+      '',
+      '```dataview',
+      'TABLE status FROM "Active"',
+      '```',
+      '',
+      'Where the quarter is going.',
+    ].join('\n')
+    const indexed = buildIndexedNote(parseNote({ path: 'Active/Roadmap.md', source }), {
+      fileHash: 'h',
+      mtime: 0,
+      source,
+    })
+    expect(indexed.preview).toBe('Where the quarter is going.')
+    expect(indexed.text).toContain('TABLE status')
   })
 
   it('folds asset description text from meta, defaulting to empty', () => {

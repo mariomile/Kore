@@ -1,6 +1,7 @@
 export * from './base-file'
 export * from './edit'
 export * from './embeds'
+export * from './new-note'
 export { basePropertyValue, evaluateBaseExpression } from './evaluate'
 export * from './values'
 export { parseBaseExpression, BaseExpressionError, type BaseExpression } from './expression'

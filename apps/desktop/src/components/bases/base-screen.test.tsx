@@ -10,18 +10,21 @@ import { RouterProvider, useRouter } from '@/routing/router'
 const loadBaseRows = vi.hoisted(() => vi.fn<() => Promise<BaseNoteRow[]>>())
 const readBaseFile = vi.hoisted(() => vi.fn<(path: string) => Promise<string>>())
 const listBaseFiles = vi.hoisted(() => vi.fn<() => Promise<string[]>>())
+const createBaseNote = vi.hoisted(() => vi.fn(async () => 'notes/new.md'))
 vi.mock('@reflect/core', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@reflect/core')>()),
   hasBridge: () => true,
   loadBaseRows,
   readBaseFile,
   listBaseFiles,
+  createBaseNote,
 }))
 const commitProperty = vi.hoisted(() =>
   vi.fn<(path: string, key: string, value: unknown) => void>(),
 )
 vi.mock('@/lib/tags/use-commit-note-property', () => ({
   useCommitNoteProperty: () => commitProperty,
+  invalidateOnNextIndexApply: () => {},
 }))
 vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({ graph: { root: '/g', name: 'g', generation: 1 } }),
@@ -89,6 +92,7 @@ beforeEach(() => {
   readBaseFile.mockReset().mockResolvedValue(BASE)
   listBaseFiles.mockReset().mockResolvedValue(['Home/Projects.base'])
   commitProperty.mockReset()
+  createBaseNote.mockClear()
 })
 
 function drag(type: string, target: Element, data: DataTransfer): void {
@@ -161,6 +165,18 @@ describe('BaseScreen', () => {
     drag('dragover', lane, data)
     drag('drop', lane, data)
     expect(commitProperty).toHaveBeenCalledWith('Projects/Kore.md', 'status', 'hold')
+  })
+
+  it('adds a note from a lane, prefilled with the filters and the lane value', async () => {
+    const view = await renderScreen({ kind: 'base', path: 'Home/Projects.base', view: 'Board' })
+    await view.getByRole('button', { name: 'New note in hold' }).click()
+    await view.getByRole('textbox', { name: 'New note in hold, title' }).fill('Ship it')
+    await userEvent.keyboard('{Enter}')
+    expect(createBaseNote).toHaveBeenCalledWith(
+      'Ship it',
+      { folder: null, properties: { status: 'hold' }, tags: ['type/project'] },
+      1,
+    )
   })
 
   it('lists every base when no file is open', async () => {

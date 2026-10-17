@@ -7,6 +7,7 @@ import {
   type BaseGroupDropValue,
 } from './edit'
 import { basePropertyValue, evaluateBaseExpression } from './evaluate'
+import { baseNewNotePrefill, type BaseNewNotePrefill } from './new-note'
 import {
   baseValueText,
   compareBaseValues,
@@ -83,6 +84,8 @@ export interface BaseViewResult {
   readonly total: number
   /** The frontmatter key the grouping reads, when cards can move between lanes. */
   readonly groupEditKey: string | null
+  /** What a note created from this view starts with (before any lane's value). */
+  readonly newNote: BaseNewNotePrefill
 }
 
 const NATIVE_LAYOUTS: Record<string, BaseLayout> = {
@@ -336,6 +339,7 @@ export function runBaseView(
     groups: view.groupBy === null ? null : groupRows(view.groupBy, groupEditKey, limited, rows),
     total: matched.length,
     groupEditKey,
+    newNote: baseNewNotePrefill([definition.filters, view.filters]),
   }
 }
 

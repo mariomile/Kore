@@ -82,6 +82,28 @@ export async function createNoteWithTitle(
     noteFileStemForTitle(title),
     newNoteSource(title, body),
     generation,
+    null,
+  )
+  return claimed.path
+}
+
+/**
+ * Create a note titled `title` from a ready `source` (H1, `id:` and any
+ * frontmatter already in it) at a collision-free path named like every
+ * create-from-title. `folder` is graph-relative (`''` is the vault root);
+ * null keeps the vault's new-note folder. Returns the new path.
+ */
+export async function createNoteWithSource(
+  title: string,
+  source: string,
+  generation: number,
+  folder: string | null,
+): Promise<string> {
+  const claimed = await claimNotePathForSlug(
+    noteFileStemForTitle(title),
+    source,
+    generation,
+    folder,
   )
   return claimed.path
 }
@@ -109,21 +131,26 @@ async function claimNotePathForSlug(
   slug: string,
   source: string,
   generation: number,
+  folder: string | null,
 ): Promise<{ kind: 'created'; path: string }>
 async function claimNotePathForSlug(
   slug: string,
   source: string,
   generation: number,
+  folder: string | null,
   onCollision: () => Promise<ExistingTitleResolution | null>,
 ): Promise<ResolveOrCreateNoteResult>
 async function claimNotePathForSlug(
   slug: string,
   source: string,
   generation: number,
+  folder: string | null,
   onCollision?: () => Promise<ExistingTitleResolution | null>,
 ): Promise<ResolveOrCreateNoteResult> {
   for (let ordinal = 1; ordinal <= MAX_CREATE_ATTEMPTS; ordinal += 1) {
-    const path = notePath(collisionStem(slug, ordinal))
+    const stem = collisionStem(slug, ordinal)
+    const path =
+      folder === null ? notePath(stem) : folder === '' ? `${stem}.md` : `${folder}/${stem}.md`
     const outcome = await createNoteIfAbsent(path, source, generation)
     if (outcome.kind === 'created') {
       return { kind: 'created', path }
@@ -177,6 +204,7 @@ export async function resolveOrCreateNoteWithTitle(
     noteFileStemForTitle(title),
     newNoteSource(title, body),
     generation,
+    null,
     async () => {
       const collisionResolution = await resolveExistingWikiTarget(title, generation)
       return collisionResolution.kind === 'missing' ? null : collisionResolution

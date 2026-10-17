@@ -4,6 +4,7 @@ import { Plus } from '@/components/icons'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useGraph } from '@/providers/graph-provider'
+import { routeForPath } from '@/routing/route'
 import { useRouter } from '@/routing/router'
 
 interface NewFolderNoteButtonProps {
@@ -42,7 +43,7 @@ export function NewFolderNoteButton({ folder }: NewFolderNoteButtonProps): React
       const path = await createNoteWithSource(title, newNoteSource(title), graph.generation, folder)
       setOpen(false)
       reset()
-      navigate({ kind: 'note', path })
+      navigate(routeForPath(path))
     } catch (cause) {
       setError(errorMessage(cause))
       setSaving(false)

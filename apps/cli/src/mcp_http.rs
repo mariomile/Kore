@@ -239,9 +239,15 @@ fn is_loopback_redirect(uri: &str) -> bool {
     let Some(rest) = uri.strip_prefix("http://") else {
         return false;
     };
-    let authority = rest.split('/').next().unwrap_or_default();
-    let host = authority.split(':').next().unwrap_or_default();
-    host == "localhost" || host == "127.0.0.1"
+    // The authority ends at the first of these (browsers treat `\\` as `/`).
+    let authority = rest.split(['/', '\\', '?', '#']).next().unwrap_or_default();
+    // Userinfo (`localhost:80@evil.example`) would make the real host the
+    // part after `@`, so any `@` disqualifies the URI.
+    if authority.contains('@') {
+        return false;
+    }
+    let (host, port) = authority.split_once(':').unwrap_or((authority, ""));
+    (host == "localhost" || host == "127.0.0.1") && port.bytes().all(|byte| byte.is_ascii_digit())
 }
 
 /// The OAuth parameters of an authorize request, validated.
@@ -844,5 +850,13 @@ mod tests {
         );
         assert_eq!(response.status, 400);
         assert!(header(&response, "Location").is_empty());
+
+        for disguised in [
+            "http://127.0.0.1:80@evil.example/cb",
+            "http://localhost@evil.example/cb",
+        ] {
+            assert!(!is_loopback_redirect(disguised), "{disguised}");
+        }
+        assert!(is_loopback_redirect("http://localhost:3118/callback"));
     }
 }

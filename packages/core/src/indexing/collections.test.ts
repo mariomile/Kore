@@ -283,9 +283,11 @@ describe('deriveCollectionPropertySchema link inference', () => {
             related: value('["[[A]]","[[B|Bee]]"]', 'list'),
             topics: value('["[[A]]","plain"]', 'list'),
             source: value('[[Book]]', 'string'),
+            parent: value('[[Home]]', 'string'),
+            blank: value('', 'string'),
           },
         },
-        { properties: { source: value('a website', 'string') } },
+        { properties: { source: value('a website', 'string'), parent: value('', 'string') } },
       ],
     )
 
@@ -294,6 +296,8 @@ describe('deriveCollectionPropertySchema link inference', () => {
       ['related', 'relations'],
       ['topics', 'multiselect'],
       ['source', 'text'],
+      ['parent', 'relation'],
+      ['blank', 'text'],
     ])
   })
 })

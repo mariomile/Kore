@@ -30,24 +30,34 @@ export interface CollectionPropertySchema {
 }
 
 /**
- * Whether a stored value is made only of wiki links: a `[[Target]]` string,
- * or a non-empty list whose every entry is one. Obsidian vaults write
- * `up: "[[Parent]]"` and `related: ["[[A]]", "[[B]]"]` without declaring a
- * schema, and those read as links, not as text with brackets.
+ * How a stored value counts toward inferring a link field: `'link'` when it
+ * is made only of wiki links (a `[[Target]]` string, or a list whose every
+ * entry is one), `'empty'` for a blank scalar or an empty list, which says
+ * nothing either way (templates leave `up:` blank), and `'other'` for
+ * anything else. Obsidian vaults write `up: "[[Parent]]"` and `related:`
+ * lists of links without declaring a schema, and those read as links.
  */
-function isWikiLinkValue(raw: string, valueType: IndexedPropertyValueType): boolean {
+function linkEvidence(
+  raw: string,
+  valueType: IndexedPropertyValueType,
+): 'link' | 'empty' | 'other' {
   if (valueType === 'string') {
-    return relationTarget(raw) !== null
+    if (raw.trim() === '') {
+      return 'empty'
+    }
+    return relationTarget(raw) !== null ? 'link' : 'other'
   }
   if (valueType === 'list') {
     const entries = decodeStoredList(raw)
-    return (
-      entries !== null &&
-      entries.length > 0 &&
-      entries.every((entry) => relationTarget(entry) !== null)
-    )
+    if (entries === null) {
+      return 'other'
+    }
+    if (entries.length === 0) {
+      return 'empty'
+    }
+    return entries.every((entry) => relationTarget(entry) !== null) ? 'link' : 'other'
   }
-  return false
+  return 'other'
 }
 
 function inferredProperty(
@@ -126,7 +136,9 @@ export function deriveCollectionPropertySchema(
   }
 
   const valueTypes = new Map<string, Set<IndexedPropertyValueType>>()
-  // Keys where some row holds a value that is not purely wiki links.
+  // A key infers as a link field when some row holds links and no row holds
+  // anything else; blank values are neutral.
+  const sawLinks = new Set<string>()
   const notOnlyLinks = new Set<string>()
   for (const entry of entries) {
     for (const [key, value] of Object.entries(entry.properties)) {
@@ -139,7 +151,10 @@ export function deriveCollectionPropertySchema(
       const types = valueTypes.get(key) ?? new Set<IndexedPropertyValueType>()
       types.add(value.valueType)
       valueTypes.set(key, types)
-      if (!isWikiLinkValue(value.value, value.valueType)) {
+      const evidence = linkEvidence(value.value, value.valueType)
+      if (evidence === 'link') {
+        sawLinks.add(key)
+      } else if (evidence === 'other') {
         notOnlyLinks.add(key)
       }
     }
@@ -152,7 +167,11 @@ export function deriveCollectionPropertySchema(
       if (actualTypes.length === 0) {
         return []
       }
-      const property = inferredProperty(key, actualTypes[0]!, !notOnlyLinks.has(key))
+      const property = inferredProperty(
+        key,
+        actualTypes[0]!,
+        sawLinks.has(key) && !notOnlyLinks.has(key),
+      )
       const conflict = actualTypes.length > 1 ? 'value-type' : null
       return [
         {

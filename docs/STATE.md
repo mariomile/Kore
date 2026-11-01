@@ -2202,7 +2202,11 @@ screen: Agents then Close lands on today.
   properties (the page edits them under the title; the side peek on All
   notes keeps them, since no page is open there), and note actions moved
   from the top of the rail to the bottom, so tasks, outline and the local
-  graph are what the rail opens on. Same order on the daily rail. Next:
+  graph are what the rail opens on. Same order on the daily rail. Loose
+  frontmatter values made only of wiki links (`up: "[[X]]"`, `related:` lists
+  of links) now infer as `relation`/`relations` instead of text, and the
+  properties header and rail draw them as clickable links that open the
+  note (clicking beside a link still opens the editor). Next:
   slice 2, a clean shell (empty rail on list views, duplicate "Open" list,
   tab shape, sidebar pop-in at boot).
 

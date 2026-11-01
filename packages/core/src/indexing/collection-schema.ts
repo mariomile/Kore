@@ -1,5 +1,7 @@
 import {
   COLLECTION_DEFINITION_MARKER_KEY,
+  decodeStoredList,
+  relationTarget,
   type IndexedPropertyValueType,
   type TagProperty,
   type TagPropertyType,
@@ -27,15 +29,44 @@ export interface CollectionPropertySchema {
   readonly type: TagType
 }
 
-function inferredProperty(key: string, valueType: IndexedPropertyValueType): TagProperty {
+/**
+ * Whether a stored value is made only of wiki links: a `[[Target]]` string,
+ * or a non-empty list whose every entry is one. Obsidian vaults write
+ * `up: "[[Parent]]"` and `related: ["[[A]]", "[[B]]"]` without declaring a
+ * schema, and those read as links, not as text with brackets.
+ */
+function isWikiLinkValue(raw: string, valueType: IndexedPropertyValueType): boolean {
+  if (valueType === 'string') {
+    return relationTarget(raw) !== null
+  }
+  if (valueType === 'list') {
+    const entries = decodeStoredList(raw)
+    return (
+      entries !== null &&
+      entries.length > 0 &&
+      entries.every((entry) => relationTarget(entry) !== null)
+    )
+  }
+  return false
+}
+
+function inferredProperty(
+  key: string,
+  valueType: IndexedPropertyValueType,
+  allWikiLinks: boolean,
+): TagProperty {
   const type: TagPropertyType =
     valueType === 'number'
       ? 'number'
       : valueType === 'boolean'
         ? 'checkbox'
         : valueType === 'list'
-          ? 'multiselect'
-          : 'text'
+          ? allWikiLinks
+            ? 'relations'
+            : 'multiselect'
+          : allWikiLinks
+            ? 'relation'
+            : 'text'
   return { name: key, key, type }
 }
 
@@ -95,6 +126,8 @@ export function deriveCollectionPropertySchema(
   }
 
   const valueTypes = new Map<string, Set<IndexedPropertyValueType>>()
+  // Keys where some row holds a value that is not purely wiki links.
+  const notOnlyLinks = new Set<string>()
   for (const entry of entries) {
     for (const [key, value] of Object.entries(entry.properties)) {
       if (key === COLLECTION_DEFINITION_MARKER_KEY) {
@@ -106,6 +139,9 @@ export function deriveCollectionPropertySchema(
       const types = valueTypes.get(key) ?? new Set<IndexedPropertyValueType>()
       types.add(value.valueType)
       valueTypes.set(key, types)
+      if (!isWikiLinkValue(value.value, value.valueType)) {
+        notOnlyLinks.add(key)
+      }
     }
   }
 
@@ -116,7 +152,7 @@ export function deriveCollectionPropertySchema(
       if (actualTypes.length === 0) {
         return []
       }
-      const property = inferredProperty(key, actualTypes[0]!)
+      const property = inferredProperty(key, actualTypes[0]!, !notOnlyLinks.has(key))
       const conflict = actualTypes.length > 1 ? 'value-type' : null
       return [
         {

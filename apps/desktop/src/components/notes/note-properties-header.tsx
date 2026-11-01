@@ -55,7 +55,11 @@ export function NotePropertiesHeader({ path }: NotePropertiesHeaderProps): React
               onCommit={(value) => commitProperty(path, property.key, value)}
               onOpenRelation={openRelation}
             >
-              <PropertyFieldValue property={property} value={values?.[property.key]} />
+              <PropertyFieldValue
+                property={property}
+                value={values?.[property.key]}
+                onOpenRelation={openRelation}
+              />
             </PropertyValueEditor>
           </li>
         ))}

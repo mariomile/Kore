@@ -12,6 +12,10 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
   twice (you edit them under the title), and Pin, Lock, Export and Trash
   sit at the bottom of the panel, still one shortcut away.
 
+- Links in a note's properties are links. `up: [[Wealth MOC]]` or a
+  `related:` list now shows the note titles in link color, and a click opens
+  the note, instead of showing raw `[[...]]` text.
+
 - Kore's MCP server now offers your notes, not just tools. In Claude Desktop
   or Claude Code you can attach any note from the Kore server, and every
   note an agent cites is a `kore://` link that opens it in Kore. Three

@@ -259,10 +259,41 @@ describe('deriveCollectionPropertySchema', () => {
       expect.objectContaining({ key: 'score', editable: false, conflict: 'schema' }),
       expect.objectContaining({
         key: 'owner',
-        property: { name: 'owner', key: 'owner', type: 'text' },
+        property: { name: 'owner', key: 'owner', type: 'relation' },
         editable: true,
         conflict: null,
       }),
+    ])
+  })
+})
+
+describe('deriveCollectionPropertySchema link inference', () => {
+  it('reads loose wiki-link values as relations, and anything else as before', () => {
+    const value = (raw: string, valueType: 'string' | 'list') => ({
+      value: raw,
+      valueType,
+      valueNumber: null,
+    })
+    const schema = deriveCollectionPropertySchema(
+      [],
+      [
+        {
+          properties: {
+            up: value('[[Wealth MOC]]', 'string'),
+            related: value('["[[A]]","[[B|Bee]]"]', 'list'),
+            topics: value('["[[A]]","plain"]', 'list'),
+            source: value('[[Book]]', 'string'),
+          },
+        },
+        { properties: { source: value('a website', 'string') } },
+      ],
+    )
+
+    expect(schema.fields.map((field) => [field.key, field.property.type])).toEqual([
+      ['up', 'relation'],
+      ['related', 'relations'],
+      ['topics', 'multiselect'],
+      ['source', 'text'],
     ])
   })
 })

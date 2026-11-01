@@ -3,6 +3,7 @@ import { page } from 'vitest/browser'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
 import type { GraphInfo } from '@reflect/core'
+import type { ContextPanel } from '@/components/context-sidebar/context-panel'
 import type { ContextSidebarTarget } from '@/components/context-sidebar/sidebar-route'
 import type { Route } from '@/routing/route'
 
@@ -10,12 +11,14 @@ interface WorkspaceState {
   collapsed: boolean
   contextCollapsed: boolean
   target: ContextSidebarTarget | null
+  openedPanels: ContextPanel[]
 }
 
 const workspaceState = vi.hoisted<WorkspaceState>(() => ({
   collapsed: false,
   contextCollapsed: false,
   target: { kind: 'daily', date: '2026-07-11' },
+  openedPanels: [],
 }))
 const trafficLights = vi.hoisted(() => ({ inset: false }))
 const routerState = vi.hoisted(() => ({
@@ -30,6 +33,12 @@ vi.mock('@/components/context-sidebar/daily-context-sidebar', () => ({
   DailyContextSidebar: ({ date }: { date: string }) => (
     <div data-testid="daily-context">{date}</div>
   ),
+}))
+vi.mock('@/components/context-sidebar/day-calendar', () => ({
+  DayCalendar: () => <div data-testid="day-calendar" />,
+}))
+vi.mock('@/components/context-sidebar/daily-events-section', () => ({
+  DailyEventsSection: () => null,
 }))
 vi.mock('@/components/context-sidebar/note-context-sidebar', () => ({
   NoteContextSidebar: ({ path }: { path: string }) => <div data-testid="note-context">{path}</div>,
@@ -90,6 +99,10 @@ vi.mock('@/providers/sidebar-provider', () => ({
     toggleSidebar: vi.fn(),
     contextCollapsed: workspaceState.contextCollapsed,
     toggleContextSidebar: vi.fn(),
+    openedPanels: workspaceState.openedPanels,
+    setOpenedPanels: vi.fn(),
+    activePanel: 'details',
+    setActivePanel: vi.fn(),
   }),
 }))
 // The asides mount resize handles, which read the persisted widths. The
@@ -118,6 +131,7 @@ beforeEach(async () => {
   workspaceState.collapsed = false
   workspaceState.contextCollapsed = false
   workspaceState.target = { kind: 'daily', date: '2026-07-11' }
+  workspaceState.openedPanels = []
   trafficLights.inset = false
   routerState.route = { kind: 'today' }
   // The context sidebar is `hidden lg:block`, so it only renders on a
@@ -196,6 +210,25 @@ describe('WorkspaceContent', () => {
     workspaceState.contextCollapsed = true
     await view.rerender(<WorkspaceContent graph={GRAPH} />)
     expect(view.getByRole('complementary', { name: 'Context' }).query()).toBeNull()
+  })
+
+  it('gives the width back on a route with nothing for the context rail', async () => {
+    workspaceState.target = null
+    routerState.route = { kind: 'graphMap' }
+    const view = await render(<WorkspaceContent graph={GRAPH} />)
+    expect(view.getByRole('complementary', { name: 'Context' }).query()).toBeNull()
+    expect(view.getByRole('button', { name: 'Toggle context panel' }).query()).toBeNull()
+
+    // A panel the "+" opened keeps the rail, Details or not.
+    workspaceState.openedPanels = ['calendar']
+    await view.rerender(<WorkspaceContent graph={GRAPH} />)
+    await expect.element(view.getByRole('complementary', { name: 'Context' })).toBeInTheDocument()
+
+    // All notes peeks its selected row, so it keeps the rail too.
+    workspaceState.openedPanels = []
+    routerState.route = { kind: 'allNotes', filter: { kind: 'all' } }
+    await view.rerender(<WorkspaceContent graph={GRAPH} />)
+    await expect.element(view.getByRole('complementary', { name: 'Context' })).toBeInTheDocument()
   })
 
   it('keeps the sunken gutter around the note pane when both rails collapse', async () => {

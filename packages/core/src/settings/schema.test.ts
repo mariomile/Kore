@@ -27,7 +27,7 @@ describe('settingsSchema', () => {
       editorFontFamily: 'sans',
       editorLineSpacing: 'normal',
       sidebarWidth: 260,
-      sidebarSections: ['open', 'pinned', 'folders', 'tags'],
+      sidebarSections: ['pinned', 'folders', 'tags'],
       contextSidebarWidth: 320,
       semanticSearchEnabled: false,
       describeAssets: true,
@@ -393,7 +393,7 @@ describe('settingsSchema', () => {
       editorFontFamily: 'sans',
       editorLineSpacing: 'normal',
       sidebarWidth: 260,
-      sidebarSections: ['open', 'pinned', 'folders', 'tags'],
+      sidebarSections: ['pinned', 'folders', 'tags'],
       contextSidebarWidth: 320,
       semanticSearchEnabled: false,
       describeAssets: true,
@@ -727,18 +727,18 @@ describe('settingsSchema', () => {
   })
 
   it('normalizes the sidebar shelf order to a complete list', () => {
-    // A reordered document keeps its arrangement.
+    // A reordered document keeps its arrangement; the retired "open" shelf
+    // drops out of an older document like any unknown id.
     expect(
       settingsSchema.parse({ sidebarSections: ['tags', 'open', 'pinned'] }).sidebarSections,
-    ).toEqual(['tags', 'open', 'pinned', 'folders'])
+    ).toEqual(['tags', 'pinned', 'folders'])
     // Unknown and duplicate entries drop; unmentioned shelves join the end in
     // their default order, so a shelf added later cannot go missing.
     expect(
       settingsSchema.parse({ sidebarSections: ['tags', 'tags', 'ghost'] }).sidebarSections,
-    ).toEqual(['tags', 'open', 'pinned', 'folders'])
+    ).toEqual(['tags', 'pinned', 'folders'])
     // A non-array value degrades to the whole default order.
     expect(settingsSchema.parse({ sidebarSections: 'tags' }).sidebarSections).toEqual([
-      'open',
       'pinned',
       'folders',
       'tags',

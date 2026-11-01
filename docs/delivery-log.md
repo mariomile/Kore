@@ -7,6 +7,14 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- A cleaner frame. Graph, Tasks and the other full-page tools now use the
+  whole window instead of sitting next to an empty Details column; notes,
+  daily notes and All notes keep it. The sidebar no longer repeats your open
+  tabs in an "Open" list, inactive tabs have a light outline so they read as
+  tabs, and Folders and Types no longer pop in one after another while a big
+  vault indexes. In Tasks, groups are separated by space instead of grey
+  bands, and "+ Add" stays out of the way except on today's group.
+
 - Kore's MCP server now offers your notes, not just tools. In Claude Desktop
   or Claude Code you can attach any note from the Kore server, and every
   note an agent cites is a `kore://` link that opens it in Kore. Three

@@ -1,5 +1,7 @@
-import { render } from 'vitest-browser-react'
+import { render as renderBare } from 'vitest-browser-react'
+import type { ReactElement, ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
+import { SidebarProvider } from '@/providers/sidebar-provider'
 
 /**
  * The right rail's panel switcher: the band starts as Details alone plus the
@@ -41,6 +43,15 @@ vi.mock('@/lib/use-today', () => ({
 }))
 
 const { ContextSidebar } = await import('./context-sidebar')
+
+/** The rail's tabs live in the workspace's sidebar state, so it renders inside one. */
+function render(ui: ReactElement): ReturnType<typeof renderBare> {
+  return renderBare(ui, {
+    wrapper: ({ children }: { children: ReactNode }) => (
+      <SidebarProvider>{children}</SidebarProvider>
+    ),
+  })
+}
 
 /** Open a panel the way a user does: the "+" menu, then its entry. */
 async function openPanel(view: Awaited<ReturnType<typeof render>>, label: string): Promise<void> {
@@ -165,16 +176,23 @@ describe('ContextSidebar', () => {
     await view.unmount()
   })
 
-  it('describes a note target and falls back to the empty state', async () => {
+  it('describes a note target and falls back to the peek hint', async () => {
     const view = await render(<ContextSidebar target={{ kind: 'note', path: 'notes/plan.md' }} />)
     expect(view.getByTestId('note-details').element().textContent).toBe('notes/plan.md')
 
     await view.rerender(<ContextSidebar target={null} />)
-    await expect.element(view.getByText('Open a note to see its details here.')).toBeVisible()
+    await expect.element(view.getByText('Select a note to preview it here.')).toBeVisible()
 
     // Without a daily target the calendar anchors on today.
     await openPanel(view, 'Calendar')
     expect(view.getByTestId('month-calendar').element().textContent).toBe('2026-08-19')
+    await view.unmount()
+  })
+
+  it('drops the Details tab on a route with nothing to describe', async () => {
+    const view = await render(<ContextSidebar target={null} showDetails={false} />)
+    // Nothing to show: the rail draws no band and no empty card.
+    expect(view.container.querySelector('[role="tablist"]')).toBeNull()
     await view.unmount()
   })
 })

@@ -3,6 +3,7 @@ import { DndContext, PointerSensor, useSensor, useSensors, type DragEndEvent } f
 import { subscribeBrowserNavigated, type GraphInfo } from '@reflect/core'
 import { CommandPalette } from '@/components/command-palette/command-palette'
 import { ContextSidebar } from '@/components/context-sidebar/context-sidebar'
+import { routeHasDetails } from '@/components/context-sidebar/sidebar-route'
 import { AgentRoutinesRunner } from '@/components/agent-routines-runner'
 import { TaskRemindersRunner } from '@/components/task-reminders-runner'
 import { EmbeddingsSync } from '@/components/embeddings-sync'
@@ -147,7 +148,14 @@ function WorkspaceFrame({
   commandContext,
   contextTarget,
 }: WorkspaceFrameProps): ReactElement {
-  const { collapsed, contextCollapsed } = useSidebar()
+  const { collapsed, contextCollapsed, openedPanels } = useSidebar()
+  const { route } = useRouter()
+  // The rail exists on a route only when it has something to show: Details
+  // for a note, a day or a peeking list, or a panel the "+" opened. Graph and
+  // Tasks otherwise get the full width, and the toggle that would reveal an
+  // empty card goes with the rail.
+  const showDetails = routeHasDetails(route, contextTarget)
+  const contextRailAvailable = showDetails || openedPanels.length > 0
   const panes = usePanes()
   const { columns } = panes
   // A chat tab names its conversation, its route does not: dropping one into
@@ -222,7 +230,9 @@ function WorkspaceFrame({
                       pane={pane}
                       commandContext={commandContext}
                       showSidebarToggle={columnIndex === 0 && rowIndex === 0}
-                      showContextToggle={columnIndex === columns.length - 1 && rowIndex === 0}
+                      showContextToggle={
+                        contextRailAvailable && columnIndex === columns.length - 1 && rowIndex === 0
+                      }
                     />
                   </Fragment>
                 ))}
@@ -232,14 +242,14 @@ function WorkspaceFrame({
         </PaneDragContext>
       </DndContext>
 
-      {contextCollapsed ? undefined : (
+      {contextCollapsed || !contextRailAvailable ? undefined : (
         <aside
           id="context-sidebar"
           aria-label="Context"
           className="app-window-chrome relative hidden w-[var(--context-sidebar-width)] shrink-0 overflow-hidden bg-surface-sunken lg:flex lg:flex-col"
         >
           <SidebarResizeHandle panel="context" />
-          <ContextSidebar target={contextTarget} />
+          <ContextSidebar target={contextTarget} showDetails={showDetails} />
         </aside>
       )}
     </div>

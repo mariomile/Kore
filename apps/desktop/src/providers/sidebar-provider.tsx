@@ -7,6 +7,10 @@ import {
   type ReactElement,
   type ReactNode,
 } from 'react'
+import {
+  DEFAULT_CONTEXT_PANEL,
+  type ContextPanel,
+} from '@/components/context-sidebar/context-panel'
 import { haptic } from '@/lib/haptics'
 
 /**
@@ -14,8 +18,10 @@ import { haptic } from '@/lib/haptics'
  * (which renders or hides the two sidebar rails) and the command registry
  * (`⌘\` / "Toggle sidebar", `⌘⇧\` / "Toggle context panel") share one source
  * of truth. The rails collapse independently — hide the navigation to write,
- * hide the context rail to read wide, or both for a bare sheet. Session-only
- * by design — a relaunch starts with both expanded.
+ * hide the context rail to read wide, or both for a bare sheet. The context
+ * rail's panel tabs live here too: the shell has to know whether the rail
+ * carries anything before it reserves room for it. Session-only by design —
+ * a relaunch starts with both expanded and the rail on Details alone.
  */
 
 interface SidebarContextValue {
@@ -25,6 +31,12 @@ interface SidebarContextValue {
   /** The right (context) rail. */
   contextCollapsed: boolean
   toggleContextSidebar: () => void
+  /** The panels the context rail's "+" added as tabs, in the order opened. */
+  openedPanels: readonly ContextPanel[]
+  setOpenedPanels: (panels: readonly ContextPanel[]) => void
+  /** The context rail's selected tab. */
+  activePanel: ContextPanel
+  setActivePanel: (panel: ContextPanel) => void
 }
 
 const SidebarContext = createContext<SidebarContextValue | null>(null)
@@ -32,6 +44,8 @@ const SidebarContext = createContext<SidebarContextValue | null>(null)
 export function SidebarProvider({ children }: { children: ReactNode }): ReactElement {
   const [collapsed, setCollapsed] = useState(false)
   const [contextCollapsed, setContextCollapsed] = useState(false)
+  const [openedPanels, setOpenedPanels] = useState<readonly ContextPanel[]>([])
+  const [activePanel, setActivePanel] = useState<ContextPanel>(DEFAULT_CONTEXT_PANEL)
   const toggleSidebar = useCallback(() => {
     haptic('level-change')
     setCollapsed((current) => !current)
@@ -42,8 +56,17 @@ export function SidebarProvider({ children }: { children: ReactNode }): ReactEle
   }, [])
 
   const value = useMemo<SidebarContextValue>(
-    () => ({ collapsed, toggleSidebar, contextCollapsed, toggleContextSidebar }),
-    [collapsed, toggleSidebar, contextCollapsed, toggleContextSidebar],
+    () => ({
+      collapsed,
+      toggleSidebar,
+      contextCollapsed,
+      toggleContextSidebar,
+      openedPanels,
+      setOpenedPanels,
+      activePanel,
+      setActivePanel,
+    }),
+    [collapsed, toggleSidebar, contextCollapsed, toggleContextSidebar, openedPanels, activePanel],
   )
   return <SidebarContext value={value}>{children}</SidebarContext>
 }

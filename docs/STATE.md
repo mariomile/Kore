@@ -1,5 +1,37 @@
 # Kore working state
 
+## Remote MCP over HTTP, 2026-11-01
+
+User ask (Mario, 2026-11-01, thread "Dare il vault agli agenti cloud"):
+cloud agents (Claude on the phone, Grok-style bots, OpenAI) should read and
+use the vault. Kore is turning into a portable memory vault for agents. He
+picked a two-step plan: first `kore mcp` over HTTP served from the Mac, then
+an always-on server off the Mac.
+
+- [x] `kore mcp --http <addr>`: the existing handler over Streamable HTTP
+  (stateless `POST /mcp`, 202 for notifications, 405 on GET), four worker
+  threads, `tiny_http`. TLS and the public URL come from a tunnel.
+- [x] Auth from one secret, `KORE_MCP_TOKEN` (min 24 chars): a static bearer
+  for API clients, and a built-in single-user OAuth server for Claude's
+  connectors, which need OAuth on personal accounts (static headers are a
+  beta for some organizations). DCR, authorize page asking for the token,
+  PKCE S256, refresh; stateless HMAC-signed codes and tokens, one-use codes;
+  redirects limited to Claude's callback, loopback, and `--redirect-uri`.
+- [x] `docs/cli.md` "Remote access over HTTP".
+- Not done: starting the server from Settings → Agents; an index the CLI
+  builds without the app (step 2, the always-on server on a VPS over the
+  GitHub clone).
+
+**Validation:** `cargo test -p reflect-cli` (three new router tests: 401 with
+`resource_metadata`, full OAuth round trip with PKCE plus replay and expiry,
+foreign redirect refused), clippy `-D warnings`, fmt; a curl smoke against
+the real binary (401, discovery metadata, `read_note` with the bearer, 202
+for a notification, DCR). Not yet tried from claude.ai or Grok.
+
+**Next:** on the Mac, `tailscale funnel` the port, add `<url>/mcp` as a
+custom connector in claude.ai, sign in with the token, and ask Claude on the
+phone to search the vault. Then step 2: a headless indexer in the CLI.
+
 ## MCP resources and prompts, 2026-10-17
 
 User ask (Mario, 2026-10-17, "Continua" on the next round): the `kore mcp`

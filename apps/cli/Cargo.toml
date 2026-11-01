@@ -22,6 +22,9 @@ sha2 = { workspace = true }
 unicode-normalization = "0.1.24"
 unicode-general-category = "1.0.0"
 tempfile = { workspace = true }
+base64 = "0.22.1"
+getrandom = "0.3.4"
+tiny_http = "0.12.0"
 
 [dev-dependencies]
 reflect-index-schema = { path = "../../crates/index-schema" }

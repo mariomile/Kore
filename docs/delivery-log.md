@@ -7,6 +7,13 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Kore's MCP server can now be reached over the internet, so Claude on
+  the web and on the phone, cloud agents and API clients like Grok can use
+  your notes. Run `kore mcp --http`, put it behind a tunnel such as
+  Tailscale Funnel, and add the URL as a connector: Claude signs in by
+  asking for your token, API clients send it directly. Private notes stay
+  hidden and the read-only switch works the same.
+
 - Kore's MCP server now offers your notes, not just tools. In Claude Desktop
   or Claude Code you can attach any note from the Kore server, and every
   note an agent cites is a `kore://` link that opens it in Kore. Three

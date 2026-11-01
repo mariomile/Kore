@@ -189,6 +189,20 @@ describe('ContextSidebar', () => {
     await view.unmount()
   })
 
+  it('closing a tab without Details lands on the tab left on screen', async () => {
+    const view = await render(<ContextSidebar target={{ kind: 'note', path: 'notes/plan.md' }} />)
+    await openPanel(view, 'Chat')
+    await openPanel(view, 'Calendar')
+    await view.rerender(<ContextSidebar target={null} showDetails={false} />)
+    await view.getByRole('button', { name: 'Close Calendar' }).click()
+    await expect.element(view.getByTestId('chat-panel')).toBeInTheDocument()
+
+    // Back on a note, the rail still shows the panel that was on screen.
+    await view.rerender(<ContextSidebar target={{ kind: 'note', path: 'notes/plan.md' }} />)
+    await expect.element(view.getByTestId('chat-panel')).toBeInTheDocument()
+    await view.unmount()
+  })
+
   it('drops the Details tab on a route with nothing to describe', async () => {
     const view = await render(<ContextSidebar target={null} showDetails={false} />)
     // Nothing to show: the rail draws no band and no empty card.

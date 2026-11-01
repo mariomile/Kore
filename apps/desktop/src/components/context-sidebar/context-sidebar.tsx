@@ -208,12 +208,19 @@ export function ContextSidebar({
     setPanel(id)
   }
 
-  /** Closing the tab on screen falls back to Details, the one tab that never closes. */
+  /**
+   * Closing the tab on screen falls back to Details, the one tab that never
+   * closes, or, where the route has no Details tab, to the first tab still on
+   * the band, so the stored choice is always the panel you see.
+   */
   const closePanel = (id: ContextPanel): void => {
     haptic('alignment')
     setOpened(opened.filter((entry) => entry !== id))
-    if (panel === id) {
-      setPanel(DEFAULT_PANEL)
+    if (active.id === id) {
+      const fallback = showDetails
+        ? DEFAULT_PANEL
+        : (segments.find((spec) => spec.id !== id)?.id ?? DEFAULT_PANEL)
+      setPanel(fallback)
     }
   }
 

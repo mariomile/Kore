@@ -5,8 +5,10 @@ import { PropertyValueEditor } from '@/components/tags/property-editors'
 import { useCommitNoteProperty } from '@/lib/tags/use-commit-note-property'
 import { useNoteTypedProperties } from '@/lib/tags/use-note-typed-properties'
 import { useOpenRelation } from '@/lib/tags/use-open-relation'
-import { cn } from '@/lib/utils'
+import { Plus } from '@/components/icons'
+import { useAddNoteTag } from '@/lib/tags/use-add-note-tag'
 import { NoteTypeField } from './note-type-field'
+import { NoteTypePicker } from './note-type-picker'
 
 interface NotePropertiesHeaderProps {
   /** Graph-relative path of the note the pane is editing. */
@@ -21,27 +23,47 @@ interface NotePropertiesHeaderProps {
  * surfaces. Loose stored properties remain editable on ordinary notes without
  * turning those notes into a type.
  *
- * The Type row shows even when the note has none, so choosing what a note
- * *is* is always one click from the title instead of something the user has
- * to know to type into the prose. Daily notes are excluded by the caller
+ * A note with neither a type nor a property shows no rows at all: only a
+ * quiet "Add a type" that appears while the pointer is on the title (or the
+ * control has focus), the way Notion offers properties on a fresh page. So a
+ * new note starts as a title and a body, and choosing what it *is* stays one
+ * click away; `#type/...` in the prose and templates set it too. Daily notes are excluded by the caller
  * (a stream has no type) and templates here: a template's fields belong to
  * the notes it seeds, not to itself.
  */
 export function NotePropertiesHeader({ path }: NotePropertiesHeaderProps): ReactElement | null {
   const commitProperty = useCommitNoteProperty()
   const openRelation = useOpenRelation()
+  const addTag = useAddNoteTag()
   const { tags, properties, values } = useNoteTypedProperties(path)
 
   if (isTemplatePath(path)) {
     return null
   }
 
-  // With nothing but the empty Type row to show, the rule under it would read
-  // as a divider on every note in the graph. The offer stays, the chrome goes.
-  const bare = tags.length === 0 && properties.length === 0
+  if (tags.length === 0 && properties.length === 0) {
+    // Revealed by index.css while the title is hovered or the control is
+    // focused or open; it keeps its height either way so the body never
+    // shifts under the pointer.
+    return (
+      <section aria-label="Properties" data-bare-properties="" className="mb-0">
+        <NoteTypePicker
+          carried={[]}
+          onChoose={(tag) => {
+            void addTag(path, tag)
+          }}
+          triggerLabel="Add a type"
+          triggerClassName="reflect-note-add-type flex min-h-6 items-center gap-1 rounded-md px-1 text-[13px] text-text-muted transition-[opacity,color,background-color] duration-150 hover:bg-surface-hover hover:text-text"
+        >
+          <Plus aria-hidden className="size-3.5" />
+          <span>Add a type</span>
+        </NoteTypePicker>
+      </section>
+    )
+  }
 
   return (
-    <section aria-label="Properties" className={cn('mb-5', !bare && 'border-b border-border pb-4')}>
+    <section aria-label="Properties" className="mb-5 border-b border-border pb-4">
       <ul className="space-y-0.5">
         <NoteTypeField path={path} tags={tags} />
         {properties.map((property) => (

@@ -16,6 +16,10 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
   `related:` list now shows the note titles in link color, and a click opens
   the note, instead of showing raw `[[...]]` text.
 
+- A new note starts as just a title and a body. The empty Type row is gone;
+  hover the title and a quiet "Add a type" appears, the way Notion offers
+  properties on a fresh page.
+
 - Kore's MCP server now offers your notes, not just tools. In Claude Desktop
   or Claude Code you can attach any note from the Kore server, and every
   note an agent cites is a `kore://` link that opens it in Kore. Three

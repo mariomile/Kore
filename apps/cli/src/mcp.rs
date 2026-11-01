@@ -544,7 +544,7 @@ fn tool_text(text: String, is_error: bool) -> Value {
 
 /// `encodeURIComponent`, so a URI built here is byte-for-byte the app's
 /// `noteDeepLink` for the same path.
-fn encode_component(value: &str) -> String {
+pub(crate) fn encode_component(value: &str) -> String {
     let mut encoded = String::with_capacity(value.len());
     for byte in value.bytes() {
         if byte.is_ascii_alphanumeric() || b"-_.!~*'()".contains(&byte) {
@@ -556,7 +556,7 @@ fn encode_component(value: &str) -> String {
     encoded
 }
 
-fn decode_component(value: &str) -> Option<String> {
+pub(crate) fn decode_component(value: &str) -> Option<String> {
     let bytes = value.as_bytes();
     let mut decoded = Vec::with_capacity(bytes.len());
     let mut index = 0;
@@ -754,6 +754,23 @@ impl<R: Runner> Server<R> {
             .into_iter()
             .filter(|tool| tool.read_only || !self.read_only)
             .collect()
+    }
+
+    /// Answer one transport payload: a JSON-RPC message or a batch. `None`
+    /// when nothing needs a reply (only notifications). Both transports
+    /// funnel through here.
+    pub fn handle_payload(&self, payload: &[u8]) -> Option<Value> {
+        match serde_json::from_slice::<Value>(payload) {
+            Ok(Value::Array(batch)) => {
+                let replies: Vec<Value> = batch
+                    .iter()
+                    .filter_map(|message| self.handle(message))
+                    .collect();
+                (!replies.is_empty()).then_some(Value::Array(replies))
+            }
+            Ok(message) => self.handle(&message),
+            Err(_) => Some(error_response(Value::Null, -32700, "parse error")),
+        }
     }
 
     /// Answer one JSON-RPC message. Notifications (no `id`) get `None`.
@@ -1087,22 +1104,7 @@ pub fn serve<R: Runner>(
         if line.trim().is_empty() {
             continue;
         }
-        let response = match serde_json::from_str::<Value>(&line) {
-            Ok(Value::Array(batch)) => {
-                let replies: Vec<Value> = batch
-                    .iter()
-                    .filter_map(|message| server.handle(message))
-                    .collect();
-                if replies.is_empty() {
-                    None
-                } else {
-                    Some(Value::Array(replies))
-                }
-            }
-            Ok(message) => server.handle(&message),
-            Err(_) => Some(error_response(Value::Null, -32700, "parse error")),
-        };
-        if let Some(response) = response {
+        if let Some(response) = server.handle_payload(line.as_bytes()) {
             writeln!(output, "{response}")?;
             output.flush()?;
         }

@@ -395,6 +395,11 @@ impl<R: Runner> HttpServer<R> {
     }
 
     fn redirect_allowed(&self, uri: &str) -> bool {
+        // The URI ends up in a `Location` header: no control characters,
+        // whitespace or non-ASCII, so it can never split the response.
+        if !uri.bytes().all(|byte| byte.is_ascii_graphic()) {
+            return false;
+        }
         CLAUDE_REDIRECTS.contains(&uri)
             || is_loopback_redirect(uri)
             || self
@@ -856,6 +861,12 @@ mod tests {
             "http://localhost@evil.example/cb",
         ] {
             assert!(!is_loopback_redirect(disguised), "{disguised}");
+        }
+        for injected in [
+            "http://localhost:1/cb\r\nLocation: https://evil.example",
+            "http://localhost:1/cb x",
+        ] {
+            assert!(!server.redirect_allowed(injected), "{injected}");
         }
         assert!(is_loopback_redirect("http://localhost:3118/callback"));
     }

@@ -7,13 +7,6 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
-- Dates look the same everywhere. Lists, cards, properties, tasks and the
-  daily pill use one compact date with the month spelled out (`Nov 2`,
-  the year only when it isn't this year), so `6/9` can no longer mean two
-  different days. Lists say how recent a note is: the time today,
-  "Yesterday", the weekday this past week. Daily notes keep their full
-  heading, and everything follows Settings → Date format.
-
 - A cleaner frame. Graph, Tasks and the other full-page tools now use the
   whole window instead of sitting next to an empty Details column; notes,
   daily notes and All notes keep it. The sidebar no longer repeats your open

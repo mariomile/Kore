@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { useEffect, type ReactElement, type ReactNode } from 'react'
 import { FocusedDailyProvider, useSetFocusedDailyDate } from '@/providers/focused-daily-provider'
 import { RouterProvider, useRouter } from '@/routing/router'
-import { addDaysIso, formatDayPillLabel, todayIso } from '@/lib/dates'
+import { addDaysIso, formatShortDate, todayIso } from '@/lib/dates'
 import type { Route } from '@/routing/route'
 import { DailyDatePill } from './daily-date-pill'
 
@@ -49,14 +49,14 @@ describe('DailyDatePill', () => {
       </Providers>,
     )
 
-    await expect.element(view.getByText(formatDayPillLabel(today, 'mdy'))).toBeInTheDocument()
+    await expect.element(view.getByText(formatShortDate(today, 'mdy'))).toBeInTheDocument()
 
     await view.getByRole('button', { name: 'Next day' }).click()
     expect(log.at(-1)).toEqual({ kind: 'daily', date: addDaysIso(today, 1) })
 
     // The pill now names the routed day and keeps hopping from it.
     await expect
-      .element(view.getByText(formatDayPillLabel(addDaysIso(today, 1), 'mdy')))
+      .element(view.getByText(formatShortDate(addDaysIso(today, 1), 'mdy')))
       .toBeInTheDocument()
     await view.getByRole('button', { name: 'Previous day' }).click()
     expect(log.at(-1)).toEqual({ kind: 'daily', date: today })
@@ -75,7 +75,7 @@ describe('DailyDatePill', () => {
     )
 
     // The focused day wins over the routed one — the pill names what is read.
-    await expect.element(view.getByText(formatDayPillLabel(focused, 'mdy'))).toBeInTheDocument()
+    await expect.element(view.getByText(formatShortDate(focused, 'mdy'))).toBeInTheDocument()
     await view.getByRole('button', { name: 'Previous day' }).click()
     expect(log.at(-1)).toEqual({ kind: 'daily', date: addDaysIso(focused, -1) })
 

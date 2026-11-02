@@ -9,10 +9,11 @@ import {
   isUntitledNotePath,
   listChatConversations,
   noteExists,
-  noteFileStem,
+  openNoteTabTitle,
   type OpenTab,
   tagDisplayName,
 } from '@reflect/core'
+import { useDraftTitles } from '@/editor/draft-titles'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { CHAT_QUERY_SCOPE, INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { SURFACE_TAB_LABEL } from '@/providers/open-tab'
@@ -33,6 +34,7 @@ export function useOpenTabItems(): OpenTabItem[] {
   const { tabs, activePath, pruneTab } = useOpenTabs()
   const { graph, indexing } = useGraph()
   const bridgeReady = useBridgeReady()
+  const drafts = useDraftTitles()
   const notePaths = useMemo(
     () => tabs.flatMap((tab) => (tab.kind === 'note' ? [tab.path] : [])),
     [tabs],
@@ -94,9 +96,9 @@ export function useOpenTabItems(): OpenTabItem[] {
         case 'note':
           return {
             tab,
-            title: isUntitledNotePath(tab.path)
-              ? 'Untitled'
-              : displayNoteTitle(noteRows?.get(tab.path)?.title ?? noteFileStem(tab.path)),
+            title: displayNoteTitle(
+              openNoteTabTitle(tab.path, noteRows?.get(tab.path)?.title, drafts.get(tab.path)),
+            ),
           }
         case 'chat':
           return { tab, title: chatTitles.get(tab.conversationId) ?? 'New chat' }
@@ -127,5 +129,5 @@ export function useOpenTabItems(): OpenTabItem[] {
           }
       }
     })
-  }, [tabs, noteRows, conversations])
+  }, [tabs, noteRows, conversations, drafts])
 }

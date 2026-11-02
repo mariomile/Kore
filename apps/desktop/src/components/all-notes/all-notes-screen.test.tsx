@@ -280,8 +280,8 @@ describe('AllNotesScreen', () => {
     await expect.element(view.getByText('Shop your health goals.')).toBeInTheDocument()
     await expect.element(view.getByText('Tokyo Gâteau')).toBeInTheDocument()
     await expectLocatorToHaveCount(view.getByText('#link'), 2)
-    await expect.element(view.getByText('1/15/2020')).toBeInTheDocument()
-    await expect.element(view.getByText('1/10/2020')).toBeInTheDocument()
+    await expect.element(view.getByText('Jan 15, 2020')).toBeInTheDocument()
+    await expect.element(view.getByText('Jan 10, 2020')).toBeInTheDocument()
     await view.unmount()
   })
 

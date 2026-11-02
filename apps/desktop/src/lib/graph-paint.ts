@@ -35,6 +35,8 @@ export function paintEdges(
   styleOf: (edge: GraphLayoutEdge) => EdgeStyle,
   colors: { accent: string; border: string },
   scale: number,
+  /** Multiplies the resting edges' opacity — fainter on dense maps. */
+  baseAlpha = 1,
 ): void {
   const layers = (): GraphLayoutEdge[][] => Array.from({ length: EDGE_LAYERS }, () => [])
   const byStyle: Record<EdgeStyle, GraphLayoutEdge[][]> = {
@@ -48,7 +50,7 @@ export function paintEdges(
   }
   for (const style of EDGE_STYLE_ORDER) {
     ctx.strokeStyle = style === 'lit' ? colors.accent : colors.border
-    ctx.globalAlpha = EDGE_ALPHA[style]
+    ctx.globalAlpha = EDGE_ALPHA[style] * (style === 'lit' ? 1 : baseAlpha)
     ctx.lineWidth = (style === 'lit' ? 1.6 : 1) / scale
     for (const layer of byStyle[style]) {
       if (layer.length === 0) {
@@ -68,27 +70,33 @@ export function paintEdges(
   }
 }
 
-/** One circle's paint: its fill, and whether it recedes or carries the accent. */
+/** One circle's paint: its fill, and whether it recedes, is a hub, or carries the accent. */
 export interface CircleStyle {
   fill: string
   receded: boolean
   accent: boolean
+  /** Hubs paint after ordinary circles, so a dense cluster never buries them. */
+  hub?: boolean
 }
 
 /**
  * Fill every circle, one path per fill. Opaque fills look the same however
- * they are grouped; receded circles paint first and accents last, on top.
+ * they are grouped; receded circles paint first, then ordinary ones, hubs,
+ * and accents last, on top. With a `ring` color each batch also gets a thin
+ * outline in it (the canvas background), so overlapping circles in a dense
+ * cluster stay distinct instead of fusing into one blob.
  */
 export function paintCircles(
   ctx: CanvasRenderingContext2D,
   positions: readonly Point[],
   styleOf: (index: number) => CircleStyle,
   radiusOf: (index: number) => number,
+  ring?: { color: string; scale: number },
 ): void {
   const batches = new Map<string, { style: CircleStyle; indexes: number[] }>()
   for (const index of positions.keys()) {
     const style = styleOf(index)
-    const key = `${style.receded ? 0 : 1}${style.accent ? 1 : 0}${style.fill}`
+    const key = `${style.receded ? 0 : 1}${style.accent ? 1 : 0}${style.hub === true ? 1 : 0}${style.fill}`
     const batch = batches.get(key)
     if (batch === undefined) {
       batches.set(key, { style, indexes: [index] })
@@ -110,6 +118,11 @@ export function paintCircles(
       }
     }
     ctx.fill()
+    if (ring !== undefined) {
+      ctx.strokeStyle = ring.color
+      ctx.lineWidth = 1 / ring.scale
+      ctx.stroke()
+    }
   }
 }
 

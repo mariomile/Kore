@@ -1,19 +1,28 @@
-import { lazy, Suspense, type ReactElement } from 'react'
-import { AllNotesScreen } from '@/components/all-notes/all-notes-screen'
+import { lazy, Suspense, useEffect, type ReactElement } from 'react'
 import { PaneErrorBoundary } from '@/components/pane-error-boundary'
 import { ChatScreen } from '@/components/chat/chat-screen'
 import { DailyStream } from '@/components/daily-stream'
 import { SearchRoute } from '@/components/search-route'
 import { SingleNoteView } from '@/components/single-note-view'
-import { TasksScreen } from '@/components/tasks/tasks-screen'
 import { useRouter } from '@/routing/router'
 import { ScrollRestored } from '@/routing/scroll-restore'
 
-// The seven routes below are reached deliberately, never on boot, and one of
-// them (`terminal`) pulls xterm, 345 KB already minified. Statically imported
-// they all landed in `desktop-root`, which `warmPlatformRoot` fetches during
-// startup. The six eager ones above are the routes the app can open into or
-// that a keystroke reaches instantly, so they stay in the boot chunk.
+// The routes below are reached deliberately, never on boot, and one of them
+// (`terminal`) pulls xterm, 345 KB already minified. Statically imported they
+// all landed in `desktop-root`, which `warmPlatformRoot` fetches during
+// startup. The four eager ones above are the routes the app opens into (the
+// daily stream, a note, a search hand-off) and the chat the right rail shows,
+// so they stay in the boot chunk. All Notes and Tasks are one keystroke away,
+// so their chunks are fetched once the first screen has painted
+// ({@link prefetchKeystrokeRoutes}) and the keystroke still lands instantly.
+const loadAllNotesScreen = () => import('@/components/all-notes/all-notes-screen')
+const loadTasksScreen = () => import('@/components/tasks/tasks-screen')
+const AllNotesScreen = lazy(() =>
+  loadAllNotesScreen().then((module) => ({ default: module.AllNotesScreen })),
+)
+const TasksScreen = lazy(() =>
+  loadTasksScreen().then((module) => ({ default: module.TasksScreen })),
+)
 const BaseScreen = lazy(() =>
   import('@/components/bases/base-screen').then((module) => ({ default: module.BaseScreen })),
 )
@@ -62,6 +71,7 @@ const TerminalScreen = lazy(() =>
  */
 export function RouteContent(): ReactElement {
   const { route } = useRouter()
+  useEffect(() => prefetchKeystrokeRoutes(), [])
   return (
     <PaneErrorBoundary
       resetKey={JSON.stringify(route)}
@@ -73,6 +83,22 @@ export function RouteContent(): ReactElement {
       </Suspense>
     </PaneErrorBoundary>
   )
+}
+
+// Long enough for the first screen to paint and settle, short enough that a
+// user reaching for ⌘-shortcuts right after launch rarely beats it.
+const KEYSTROKE_ROUTE_PREFETCH_DELAY_MS = 1500
+
+/**
+ * Fetch the keystroke-reachable lazy routes off the boot path, once. Returns
+ * the cleanup that cancels a prefetch that has not started yet.
+ */
+function prefetchKeystrokeRoutes(): () => void {
+  const timer = window.setTimeout(() => {
+    void loadAllNotesScreen()
+    void loadTasksScreen()
+  }, KEYSTROKE_ROUTE_PREFETCH_DELAY_MS)
+  return () => window.clearTimeout(timer)
 }
 
 /**

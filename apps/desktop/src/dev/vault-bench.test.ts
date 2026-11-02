@@ -18,6 +18,7 @@ import { createDevFileStore } from '@/dev/dev-file-store'
 import { createDevIndexDb } from '@/dev/dev-index-db'
 import { seedObsidianVaultFiles } from '@/dev/seed-obsidian-vault'
 import { createGraphLayout, isSettled, stepGraphLayout } from '@/lib/graph-layout'
+import { nodeRadius } from '@/lib/graph-readability'
 
 /**
  * Opt-in scale bench, skipped unless `KORE_BENCH` is set:
@@ -101,7 +102,11 @@ describe.skipIf(process.env.KORE_BENCH === undefined)('obsidian-shaped vault ben
         ? []
         : [{ source, target, weight: edge.weight }]
     })
-    const layout = createGraphLayout(map.nodes.map((node) => node.path))
+    // Sized like the Graph view's canvas, so collision is in the timing.
+    const layout = createGraphLayout(
+      map.nodes.map((node) => node.path),
+      map.nodes.map((node) => nodeRadius(node.inbound)),
+    )
     const steps: number[] = []
     while (!isSettled(layout)) {
       const started = performance.now()

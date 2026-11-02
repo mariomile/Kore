@@ -18,6 +18,7 @@ import {
 } from '@/lib/agent-routine-running'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Switch } from '@/components/ui/switch'
+import { formatDateTime } from '@/lib/dates'
 import { useSettings } from '@/providers/settings-provider'
 import { useGraph } from '@/providers/graph-provider'
 import { scheduleLabel } from './agent-routine-schedule'
@@ -309,16 +310,6 @@ export function AgentRoutinesSection({ profiles }: AgentRoutinesSectionProps): R
   )
 }
 
-/** "21 Aug, 14:32" — compact but unambiguous within the 20-run window. */
-function runTimeLabel(startedMs: number): string {
-  return new Date(startedMs).toLocaleString(undefined, {
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
 interface RunHistoryDialogProps {
   routine: AgentRoutine
   onClose: () => void
@@ -329,6 +320,7 @@ interface RunHistoryDialogProps {
  * succeeded, the failure message when it didn't, and the notes it edited.
  */
 function RunHistoryDialog({ routine, onClose }: RunHistoryDialogProps): ReactElement {
+  const { settings } = useSettings()
   return (
     <Dialog
       open
@@ -354,7 +346,9 @@ function RunHistoryDialog({ routine, onClose }: RunHistoryDialogProps): ReactEle
                         : 'bg-red-500'
                   }`}
                 />
-                <span className="text-sm font-medium text-text">{runTimeLabel(run.startedMs)}</span>
+                <span className="text-sm font-medium text-text">
+                  {formatDateTime(run.startedMs, settings)}
+                </span>
                 <span className="text-xs text-text-muted">
                   {run.status === 'ok'
                     ? 'completed'

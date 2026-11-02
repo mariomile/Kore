@@ -1,13 +1,14 @@
 import type { ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { formatDistanceToNow } from 'date-fns'
 import { listChatConversations } from '@reflect/core'
 import { Check, Trash } from '@/components/icons'
 import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
+import { formatRecencyLabel } from '@/lib/dates'
 import { CHAT_QUERY_SCOPE } from '@/lib/query-client'
 import { useChatSession } from '@/providers/chat-provider'
 import { useGraph } from '@/providers/graph-provider'
+import { useSettings } from '@/providers/settings-provider'
 
 interface ChatHistoryDrawerProps {
   open: boolean
@@ -24,6 +25,7 @@ interface ChatHistoryDrawerProps {
 export function ChatHistoryDrawer({ open, onOpenChange }: ChatHistoryDrawerProps): ReactElement {
   const { graph, indexGeneration } = useGraph()
   const { activeConversationId, openConversation, deleteConversation } = useChatSession()
+  const { settings } = useSettings()
 
   const bridgeReady = useBridgeReady()
   const enabled = bridgeReady && indexGeneration !== null
@@ -63,7 +65,7 @@ export function ChatHistoryDrawer({ open, onOpenChange }: ChatHistoryDrawerProps
                     >
                       <span className="min-w-0 flex-1 truncate text-sm">{conversation.title}</span>
                       <span className="shrink-0 text-xs text-text-muted">
-                        {formatDistanceToNow(conversation.updatedMs, { addSuffix: true })}
+                        {formatRecencyLabel(conversation.updatedMs, settings)}
                       </span>
                     </button>
                     {current ? (

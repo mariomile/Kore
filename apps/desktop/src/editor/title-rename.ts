@@ -62,6 +62,15 @@ export interface TitleRenameTracker {
 
 const DEFAULT_QUIET_MS = 5000
 
+/**
+ * The title `content` itself authors (frontmatter `title:` or an H1), or
+ * `null` when the note is untitled — never the filename-stem fallback.
+ */
+export function authoredTitleOf(path: string, content: string): string | null {
+  const parsed = parseNote({ path, source: content })
+  return hasAuthoredTitle(parsed) ? parsed.title : null
+}
+
 export function createTitleRenameTracker(options: TitleRenameTrackerOptions): TitleRenameTracker {
   const { path, onRename, canFire } = options
   const quietMs = options.quietMs ?? DEFAULT_QUIET_MS
@@ -80,10 +89,7 @@ export function createTitleRenameTracker(options: TitleRenameTrackerOptions): Ti
   // make a fresh lazy note's first heading look like a rename from its ULID
   // filename, spraying a junk alias (and potentially rewrites) on every new
   // note. Untitled is `null` here.
-  const titleOf = (content: string): string | null => {
-    const parsed = parseNote({ path, source: content })
-    return hasAuthoredTitle(parsed) ? parsed.title : null
-  }
+  const titleOf = (content: string): string | null => authoredTitleOf(path, content)
 
   function cancelTimer(): void {
     if (timer !== null) {

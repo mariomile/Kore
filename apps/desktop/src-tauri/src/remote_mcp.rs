@@ -212,8 +212,8 @@ pub async fn remote_mcp_stop(state: State<'_, RemoteMcpState>) -> AppResult<Remo
 
 /// Command: whether the server is running, and why it stopped if it died.
 #[tauri::command]
-pub fn remote_mcp_status(state: State<'_, RemoteMcpState>) -> RemoteMcpStatus {
-    status_of(&mut state.lock())
+pub async fn remote_mcp_status(state: State<'_, RemoteMcpState>) -> AppResult<RemoteMcpStatus> {
+    Ok(status_of(&mut state.lock()))
 }
 
 #[derive(Clone, Serialize, Debug, PartialEq, Eq)]

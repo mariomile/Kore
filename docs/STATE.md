@@ -1,5 +1,44 @@
 # Kore working state
 
+## Movable Details panels, 2026-11-02
+
+User ask (Mario, 2026-11-01, design review "più vicino a Notion"): the right
+rail's panels should move, even into the main panel. Slice of the design and
+frontend review, steps 1 and 2 of the three proposed (step 3, a section
+embedded as a block in the note, needs Meowdown and is not started).
+
+- [x] Arrange the Details sections. Drag a section by its header (a click
+  still collapses it), or use the "…" menu that appears on hover: Move up,
+  Move down, Hide section. Hidden sections come back from a quiet
+  "N hidden sections" menu at the bottom of the panel. One arrangement for
+  notes and days, each showing the sections it has; it persists in two new
+  settings, `detailsSections` (complete order, same normalizing contract as
+  `sidebarSections`) and `hiddenDetailsSections`. Moving by menu skips
+  sections the route does not have (`moveDetailsSection` in core). The day's
+  calendar stays on top: it is the panel's navigation, not a section.
+- [x] Local graph in the main panel. Its "…" menu adds "Open in new tab"
+  and "Open beside" (a pane next to the note). New `localGraph` route and
+  tab kind (`{ kind: 'localGraph', path }`, keyed per note, restored with the
+  session); the page is the same map and controls filling the pane, with a
+  plain wheel zooming, and the tab reads "Graph · <note>". While that page is
+  active the Details panel describes its note.
+- Not done: other sections in the main panel (tasks and outline already
+  have their screens or live in the note), dragging a section out of the
+  rail onto a pane, step 3 (embed as a block).
+
+**Validation:** core `schema.test.ts` (order and hidden normalization,
+`moveDetailsSection`, the stored `localGraph` tab); browser
+`details-sections.test.tsx` (stored order, move from the menu, hide and
+show again) and `local-graph-section.test.tsx` (opens the page) plus the
+whole `context-sidebar` folder on Chromium; `open-tab`, routing and panes
+suites; `pnpm check`. Rendered check on the seeded `?seed=obsidian` vault in
+Chromium: the menu, hiding History, and the local graph opened beside the
+note. WebKit left to CI.
+
+**Next:** Mario tries it on the Mac; if the arrangement feels right, decide
+whether step 3 (local graph as a block inside a note) is worth a Meowdown
+change.
+
 ## Obsidian import, slice 1: dry run, 2026-11-02
 
 User ask (Mario, 2026-11-02, thread "Kore vs Obsidian gap"): Kore must not
@@ -2313,6 +2352,11 @@ screen: Agents then Close lands on today.
 
 ## Session log
 
+- 2026-11-02 — Movable Details panels (design review, Notion direction):
+  drag, move, hide and restore the Details sections, persisted in settings;
+  the local graph opens as its own tab or beside the note. See "Movable
+  Details panels" above. Next: Mario's pass on the Mac, then decide on
+  embedding a section as a block.
 - 2026-11-02 — New notes are named in their tab while you type. A ⌘N note
   keeps its ULID placeholder path until the birth rename settles (5s of
   quiet, blur or teardown, and forever if the move is refused), and the tab

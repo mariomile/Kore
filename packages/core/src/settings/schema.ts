@@ -464,6 +464,17 @@ export const taskRemindersSchema = z.boolean().catch(false)
  */
 export const quickCaptureEnabledSchema = z.boolean().catch(true)
 
+/**
+ * Settings → Agents → Remote access: the app keeps `kore mcp --http` running
+ * for the open graph and publishes it through Tailscale Funnel, so Claude on
+ * the web or iPhone, Grok and other cloud agents can use the vault. Off by
+ * default: turning it on puts the vault on the internet behind a token.
+ */
+export const remoteAccessEnabledSchema = z.boolean().catch(false)
+
+/** Remote agents can read but not write while this is on. On by default. */
+export const remoteAccessReadOnlySchema = z.boolean().catch(true)
+
 /** The keyboard-native default used by the desktop Quick Entry window. */
 export const DEFAULT_QUICK_CAPTURE_SHORTCUT = 'Mod-Shift-Slash'
 
@@ -567,6 +578,8 @@ const settingsDocumentSchema = z.looseObject({
   taskFilters: taskFiltersSchema,
   taskReminders: taskRemindersSchema,
   quickCaptureEnabled: quickCaptureEnabledSchema,
+  remoteAccessEnabled: remoteAccessEnabledSchema,
+  remoteAccessReadOnly: remoteAccessReadOnlySchema,
   quickCaptureShortcut: quickCaptureShortcutSchema,
   hapticFeedback: hapticFeedbackSchema,
   browserSearchEngine: browserSearchEngineSchema,

@@ -5,6 +5,7 @@ import { CommandPalette } from '@/components/command-palette/command-palette'
 import { ContextSidebar } from '@/components/context-sidebar/context-sidebar'
 import { routeHasDetails } from '@/components/context-sidebar/sidebar-route'
 import { AgentRoutinesRunner } from '@/components/agent-routines-runner'
+import { RemoteAccessRunner } from '@/components/remote-access-runner'
 import { TaskRemindersRunner } from '@/components/task-reminders-runner'
 import { EmbeddingsSync } from '@/components/embeddings-sync'
 import { RouteContent } from '@/components/route-content'
@@ -128,6 +129,7 @@ export function WorkspaceContent({ graph }: WorkspaceContentProps): ReactElement
       <EmbeddingsSync />
       <AgentRoutinesRunner />
       <TaskRemindersRunner />
+      <RemoteAccessRunner />
       <VaultCompatNotice graph={graph} />
     </div>
   )

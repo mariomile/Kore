@@ -1,5 +1,6 @@
 import {
   COLLECTION_DEFINITION_MARKER_KEY,
+  readWikiLinks,
   type IndexedPropertyValueType,
   type TagProperty,
   type TagPropertyType,
@@ -27,16 +28,23 @@ export interface CollectionPropertySchema {
   readonly type: TagType
 }
 
-function inferredProperty(key: string, valueType: IndexedPropertyValueType): TagProperty {
-  const type: TagPropertyType =
-    valueType === 'number'
-      ? 'number'
-      : valueType === 'boolean'
-        ? 'checkbox'
-        : valueType === 'list'
-          ? 'multiselect'
-          : 'text'
-  return { name: key, key, type }
+/**
+ * The type a loose (undeclared) key reads as. `linksOnly` means every non-blank
+ * value under the key is made of wiki links: Obsidian vaults write
+ * `up: "[[Parent]]"` and `related:` lists of links without declaring a schema,
+ * and those read as relations.
+ */
+function inferredType(valueType: IndexedPropertyValueType, linksOnly: boolean): TagPropertyType {
+  switch (valueType) {
+    case 'number':
+      return 'number'
+    case 'boolean':
+      return 'checkbox'
+    case 'list':
+      return linksOnly ? 'relations' : 'multiselect'
+    case 'string':
+      return linksOnly ? 'relation' : 'text'
+  }
 }
 
 function expectedValueType(type: TagPropertyType): IndexedPropertyValueType | null {
@@ -95,6 +103,10 @@ export function deriveCollectionPropertySchema(
   }
 
   const valueTypes = new Map<string, Set<IndexedPropertyValueType>>()
+  // Per key: true once a row holds links, false (for good) once a row holds
+  // anything else. Blank values say nothing either way (templates leave `up:`
+  // blank), so a key with only blanks stays unset and reads as text.
+  const linksOnly = new Map<string, boolean>()
   for (const entry of entries) {
     for (const [key, value] of Object.entries(entry.properties)) {
       if (key === COLLECTION_DEFINITION_MARKER_KEY) {
@@ -106,6 +118,12 @@ export function deriveCollectionPropertySchema(
       const types = valueTypes.get(key) ?? new Set<IndexedPropertyValueType>()
       types.add(value.valueType)
       valueTypes.set(key, types)
+      const links = readWikiLinks(value)
+      if (links === null) {
+        linksOnly.set(key, false)
+      } else if (links.length > 0 && linksOnly.get(key) !== false) {
+        linksOnly.set(key, true)
+      }
     }
   }
 
@@ -116,7 +134,11 @@ export function deriveCollectionPropertySchema(
       if (actualTypes.length === 0) {
         return []
       }
-      const property = inferredProperty(key, actualTypes[0]!)
+      const property: TagProperty = {
+        name: key,
+        key,
+        type: inferredType(actualTypes[0]!, linksOnly.get(key) === true),
+      }
       const conflict = actualTypes.length > 1 ? 'value-type' : null
       return [
         {

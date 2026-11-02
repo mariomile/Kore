@@ -61,12 +61,12 @@ beforeEach(() => {
 })
 
 describe('NotePropertiesHeader', () => {
-  it('offers an empty Type row on a note that has neither tags nor properties', async () => {
+  it('shows no rows on a note with neither tags nor properties, only "Add a type"', async () => {
     const view = await render(<Subject />)
 
     const header = view.getByRole('region', { name: 'Properties' })
-    await expect.element(header.getByText('Type')).toBeInTheDocument()
-    await expect.element(view.getByRole('button', { name: 'Set the type' })).toBeInTheDocument()
+    await expect.element(header.getByRole('button', { name: 'Add a type' })).toBeInTheDocument()
+    expect(header.getByText('Type', { exact: true }).elements()).toHaveLength(0)
   })
 
   it('renders nothing on a template', async () => {
@@ -173,7 +173,7 @@ describe('NotePropertiesHeader', () => {
     ]
     const view = await render(<Subject />)
 
-    await view.getByRole('button', { name: 'Set the type' }).click()
+    await view.getByRole('button', { name: 'Add a type' }).click()
     await expect.element(view.getByText('Types', { exact: true })).toBeInTheDocument()
     await expect.element(view.getByText('Other types')).toBeInTheDocument()
     // `book` is typed, so it appears once, above the untyped suggestions.

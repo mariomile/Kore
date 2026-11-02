@@ -15,6 +15,29 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
   vault indexes. In Tasks, groups are separated by space instead of grey
   bands, and "+ Add" stays out of the way except on today's group.
 
+- The Details panel beside a note opens on what you came for: the note's
+  tasks, its outline and its local graph. Properties are no longer listed
+  twice (you edit them under the title), and Pin, Lock, Export and Trash
+  sit at the bottom of the panel, still one shortcut away.
+
+- Links in a note's properties are links. `up: [[Wealth MOC]]` or a
+  `related:` list now shows the note titles in link color, and a click opens
+  the note, instead of showing raw `[[...]]` text.
+
+- A new note starts as just a title and a body. The empty Type row is gone;
+  hover the title and a quiet "Add a type" appears, the way Notion offers
+  properties on a fresh page.
+
+- Kore's MCP server can now be reached over the internet, so Claude on
+  the web and on the phone, cloud agents and API clients like Grok can use
+  your notes. Run `kore mcp --http`, put it behind a tunnel such as
+  Tailscale Funnel, and add the URL as a connector: Claude signs in by
+  asking for your token, API clients send it directly. Private notes stay
+  hidden and the read-only switch works the same. In the app it is one
+  switch: Settings → Agents → Remote access starts the server, keeps the
+  token in the keychain and publishes it through Tailscale Funnel; you copy
+  the URL and the token into the agent.
+
 - Kore's MCP server now offers your notes, not just tools. In Claude Desktop
   or Claude Code you can attach any note from the Kore server, and every
   note an agent cites is a `kore://` link that opens it in Kore. Three

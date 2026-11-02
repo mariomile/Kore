@@ -38,6 +38,53 @@ runs in CI.
 **Next:** Mario tries it on the Mac after the release; slice 3 (lighter
 boot) per the review plan.
 
+## Remote MCP over HTTP, 2026-11-01
+
+User ask (Mario, 2026-11-01, thread "Dare il vault agli agenti cloud"):
+cloud agents (Claude on the phone, Grok-style bots, OpenAI) should read and
+use the vault. Kore is turning into a portable memory vault for agents. He
+picked a two-step plan: first `kore mcp` over HTTP served from the Mac, then
+an always-on server off the Mac.
+
+- [x] `kore mcp --http <addr>`: the existing handler over Streamable HTTP
+  (stateless `POST /mcp`, 202 for notifications, 405 on GET), four worker
+  threads, `tiny_http`. TLS and the public URL come from a tunnel.
+- [x] Auth from one secret, `KORE_MCP_TOKEN` (min 24 chars): a static bearer
+  for API clients, and a built-in single-user OAuth server for Claude's
+  connectors, which need OAuth on personal accounts (static headers are a
+  beta for some organizations). DCR, authorize page asking for the token,
+  PKCE S256, refresh; stateless HMAC-signed codes and tokens, one-use codes;
+  redirects limited to Claude's callback, loopback, and `--redirect-uri`.
+- [x] `docs/cli.md` "Remote access over HTTP".
+- [x] Settings → Agents → Remote access (Mario picked "inside #294",
+  2026-11-01): one switch. The app makes a token and keeps it in the
+  keychain (`kore-mcp-token`), runs `kore mcp --http 127.0.0.1:8765` as its
+  own child for the open graph (restarted on a graph switch, a read-only
+  change or a new token; stopped on quit), reads this Mac's MagicDNS name
+  from `tailscale status --json`, passes `--public-url`, and runs
+  `tailscale funnel --bg 8765`. When Funnel is off for the tailnet it shows
+  the enable link; without Tailscale the server still runs locally. Copy URL,
+  Copy token, New token, Read-only (on by default). Rust (`remote_mcp.rs`)
+  only spawns the server and runs `tailscale status|funnel` with a timeout;
+  the policy is `packages/core/src/app/remote-access.ts`.
+- Not done: an index the CLI builds without the app (step 2, the always-on
+  server on a VPS over the GitHub clone).
+
+**Validation:** `cargo test -p reflect-cli` (three new router tests: 401 with
+`resource_metadata`, full OAuth round trip with PKCE plus replay and expiry,
+foreign redirect refused), clippy `-D warnings`, fmt; a curl smoke against
+the real binary (401, discovery metadata, `read_note` with the bearer, 202
+for a notification, DCR). Remote access switch: `cargo test -p reflect-open
+remote_mcp`, clippy, `remote-access.test.ts` (token, Tailscale parsing,
+start order with a fake bridge), browser tests for the field and the runner.
+The iOS `cargo check` can't run in the Linux container (objc2 needs Apple's
+toolchain); the module is plain `std`. Not yet tried on a real Mac with
+Tailscale, nor from claude.ai or Grok.
+
+**Next:** on the Mac, install Tailscale, turn on Remote access in
+Settings → Agents, add the URL as a custom connector in claude.ai, paste the
+token, and ask Claude on the phone to search the vault. Then step 2: a headless indexer in the CLI.
+
 ## MCP resources and prompts, 2026-10-17
 
 User ask (Mario, 2026-10-17, "Continua" on the next round): the `kore mcp`
@@ -2233,6 +2280,24 @@ screen: Agents then Close lands on today.
 **Next:** merge the Close fix, then bump.
 
 ## Session log
+
+- 2026-11-01 — Design and frontend review (audit + six-slice plan in the
+  project's Claude Doc "Kore: revisione design e frontend"). Slice 1, the
+  note at the center: the Details rail no longer repeats the note's
+  properties (the page edits them under the title; the side peek on All
+  notes keeps them, since no page is open there), and note actions moved
+  from the top of the rail to the bottom, so tasks, outline and the local
+  graph are what the rail opens on. Same order on the daily rail. Loose
+  frontmatter values made only of wiki links (`up: "[[X]]"`, `related:` lists
+  of links) now infer as `relation`/`relations` instead of text, and the
+  properties header and rail draw them as clickable links that open the
+  note (clicking beside a link still opens the editor); both read the value
+  through one core helper, `readWikiLinks`. A note with no type
+  and no properties no longer shows an empty Type row: only "Add a type",
+  revealed while the title is hovered or the control is focused/open
+  (Mario's pick on 2026-11-01). Next:
+  slice 2, a clean shell (empty rail on list views, duplicate "Open" list,
+  tab shape, sidebar pop-in at boot).
 
 - 2026-10-17 — MCP resources and prompts: every note is a `kore://note/…`
   resource (the app's deep link), `kore://today` and `kore://tasks`, three

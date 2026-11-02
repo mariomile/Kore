@@ -44,7 +44,11 @@ export function NotePropertiesSection({ path }: NotePropertiesSectionProps): Rea
               onOpenRelation={openRelation}
               align="end"
             >
-              <PropertyFieldValue property={property} value={values?.[property.key]} />
+              <PropertyFieldValue
+                property={property}
+                value={values?.[property.key]}
+                onOpenRelation={openRelation}
+              />
             </PropertyValueEditor>
           </li>
         ))}

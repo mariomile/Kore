@@ -242,7 +242,7 @@ export function CommandPalette({ context }: CommandPaletteProps): ReactElement |
                             event.stopPropagation()
                             removeSavedSearch(saved.id)
                           }}
-                          className="shrink-0 rounded p-0.5 text-text-muted opacity-0 transition-opacity hover:text-text focus-visible:opacity-100 group-hover:opacity-100 [[data-selected=true]_&]:opacity-100"
+                          className="shrink-0 rounded-sm p-0.5 text-text-muted opacity-0 transition-opacity hover:text-text focus-visible:opacity-100 group-hover:opacity-100 [[data-selected=true]_&]:opacity-100"
                         >
                           <Close aria-hidden className="size-3.5" />
                         </button>

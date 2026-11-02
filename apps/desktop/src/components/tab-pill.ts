@@ -37,7 +37,7 @@ const TAB_PILL_MIN_WIDTH = 'min-w-32'
  */
 export function tabCloseClass(active: boolean): string {
   return cn(
-    'flex size-4 shrink-0 items-center justify-center rounded text-text-muted',
+    'flex size-4 shrink-0 items-center justify-center rounded-sm text-text-muted',
     'transition-[color,background-color,opacity] duration-150 ease-swift hover:bg-surface-active hover:text-text',
     active ? '' : 'opacity-0 focus-visible:opacity-100 group-hover:opacity-100',
   )

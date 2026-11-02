@@ -88,7 +88,7 @@ export function CardPropertyChips({ type, entry }: CardPropertyChipsProps): Reac
           key={chip.key}
           title={chip.title}
           className={cn(
-            'flex max-w-full items-center gap-0.5 rounded px-1.5 py-px text-2xs font-medium',
+            'flex max-w-full items-center gap-0.5 rounded-sm px-1.5 py-px text-2xs font-medium',
             // The same `rounded` badge shape as the table cell, so a status
             // is recognizable across views; neutral values sit on the quiet
             // sunken wash instead of a border (the footer's tag chips keep

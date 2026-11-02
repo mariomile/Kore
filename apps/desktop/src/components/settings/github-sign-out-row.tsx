@@ -71,9 +71,7 @@ export function GithubSignOutRow({ signOut, description }: GithubSignOutRowProps
               backing up until you sign in again.
             </DialogDescription>
           </DialogHeader>
-          {action.error !== null ? (
-            <p className="text-xs text-red-700 dark:text-red-300">{action.error}</p>
-          ) : null}
+          {action.error !== null ? <p className="text-xs text-danger">{action.error}</p> : null}
           <DialogFooter>
             <DialogClose
               render={

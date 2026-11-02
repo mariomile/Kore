@@ -136,7 +136,7 @@ export function TagIconPicker({ value, onChange }: TagIconPickerProps): ReactEle
                 aria-pressed={stored === value}
                 onClick={() => pick(stored)}
                 className={cn(
-                  'flex size-7 items-center justify-center rounded text-text-secondary hover:bg-surface-hover hover:text-text',
+                  'flex size-7 items-center justify-center rounded-sm text-text-secondary hover:bg-surface-hover hover:text-text',
                   stored === value && 'bg-surface-active text-text',
                 )}
               >
@@ -157,7 +157,7 @@ export function TagIconPicker({ value, onChange }: TagIconPickerProps): ReactEle
               aria-pressed={icon === value}
               onClick={() => pick(icon)}
               className={cn(
-                'flex size-7 items-center justify-center rounded text-base hover:bg-surface-hover',
+                'flex size-7 items-center justify-center rounded-sm text-base hover:bg-surface-hover',
                 icon === value && 'bg-surface-active',
               )}
             >
@@ -181,7 +181,7 @@ export function TagIconPicker({ value, onChange }: TagIconPickerProps): ReactEle
           <button
             type="button"
             onClick={() => pick(null)}
-            className="self-start rounded px-1.5 py-0.5 text-xs text-text-muted hover:bg-surface-hover hover:text-text"
+            className="self-start rounded-sm px-1.5 py-0.5 text-xs text-text-muted hover:bg-surface-hover hover:text-text"
           >
             Remove icon
           </button>

@@ -566,7 +566,7 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
                         role="menuitemcheckbox"
                         aria-checked={!hidden}
                         onClick={() => toggleColumnHidden(property.key)}
-                        className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-surface-hover"
+                        className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-surface-hover"
                       >
                         <Check
                           aria-hidden

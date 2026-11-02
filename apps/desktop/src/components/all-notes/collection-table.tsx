@@ -349,7 +349,7 @@ export function CollectionTable({
               role="separator"
               aria-label={`Resize ${property.name}`}
               onPointerDown={startResize(property.key)}
-              className="absolute -right-2.5 top-1/2 h-5 w-2 -translate-y-1/2 cursor-col-resize rounded hover:bg-border"
+              className="absolute -right-2.5 top-1/2 h-5 w-2 -translate-y-1/2 cursor-col-resize rounded-sm hover:bg-border"
             />
           </span>
         ))}

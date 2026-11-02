@@ -56,7 +56,7 @@ export function OptionsChipsEditor({ value, onChange }: OptionsChipsEditorProps)
       {options.map((option) => (
         <span
           key={option}
-          className={`flex items-center gap-0.5 rounded px-1.5 py-0.5 text-xs font-medium ${selectOptionBadgeClass(option)}`}
+          className={`flex items-center gap-0.5 rounded-sm px-1.5 py-0.5 text-xs font-medium ${selectOptionBadgeClass(option)}`}
         >
           {option}
           <button

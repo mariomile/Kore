@@ -499,7 +499,7 @@ function EmbeddedReusableCollection({ embed, onChange }: EmbeddedCollectionProps
         <div className="mr-auto min-w-0">
           <p className="truncate text-sm font-medium text-text">{state.definition.title}</p>
           {state.diagnostics.length > 0 ? (
-            <p className="text-2xs text-amber-600">{state.diagnostics.length} unresolved source</p>
+            <p className="text-2xs text-warning">{state.diagnostics.length} unresolved source</p>
           ) : null}
         </div>
         <CollectionFilterMenu

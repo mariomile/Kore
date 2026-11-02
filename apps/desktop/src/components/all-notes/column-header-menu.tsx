@@ -42,7 +42,7 @@ export function ColumnHeaderMenu({
             type="button"
             aria-label={`Column options for ${property.name}`}
             title="Column options"
-            className="flex size-4 shrink-0 items-center justify-center rounded text-text-muted opacity-0 transition-opacity hover:text-text-secondary focus-visible:opacity-100 group-hover/header:opacity-100 data-[popup-open]:opacity-100"
+            className="flex size-4 shrink-0 items-center justify-center rounded-sm text-text-muted opacity-0 transition-opacity hover:text-text-secondary focus-visible:opacity-100 group-hover/header:opacity-100 data-[popup-open]:opacity-100"
           >
             <MoreHorizontal aria-hidden className="size-3" />
           </button>

@@ -1,39 +1,36 @@
 # Kore working state
 
-## One date format, 2026-11-02
+## Obsidian import, slice 1: dry run, 2026-11-02
 
-User ask (Mario, 2026-11-01, design review slice 5, started 2026-11-02 with
-"finisci tutto"): the audit found four date shapes on screen (`10/31/2026`
-in All notes, `2025-01-12` in properties, `Sun, November 1st` on dailies,
-`2 days ago` in chat history), which read like four different apps.
+User ask (Mario, 2026-11-02, thread "Kore vs Obsidian gap"): Kore must not
+change how it works to match Obsidian; an Obsidian vault should be migrated
+into Kore's shape. Granola and Readwise stay out of scope. Direction and
+slices in [Plan 31](plans/31-obsidian-import.md), which reopens Plan 13's
+"no Obsidian import" non-goal.
 
-- [x] Two shapes, both following Settings → Date format: the spelled-out
-  day for daily subjects and headings (`Mon, November 2nd, 2026`,
-  unchanged), and one compact date everywhere else (`Nov 2`, `2 Nov`, the
-  year only away from the current one; `iso` keeps `2026-11-02`).
-  `formatShortDate` in `apps/desktop/src/lib/dates.ts` is that compact
-  date; the daily pill's own copy of it is gone.
-- [x] Lists say how recent: the time today, `Yesterday`, the weekday within
-  the last week, the compact date beyond (`formatRecencyLabel`, now by
-  calendar days instead of the Sunday-start week). Chat history (desktop
-  and mobile) uses it instead of date-fns `formatDistanceToNow`.
-- [x] Date properties under the title and in Details render through the
-  compact date like table cells and cards already did; the desktop Tasks
-  row's source shows the compact date, as mobile already did.
-- [x] Moments with a time (connector "Last synced", agent run history) go
-  through `formatDateTime` (`Nov 2, 5:20pm`) instead of the browser locale.
-- Not changed on purpose: dates the user typed (note titles such as an
-  Obsidian `15-05-2024` daily outside the daily folder, property text that
-  is not a date), and the editor's `[[YYYY-MM-DD]]` links.
+- [x] Core (`packages/core/src/obsidian-import/`): `planImportMoves` (dailies
+  to `daily/YYYY-MM-DD.md`, the attachment folder to `assets/`, the templates
+  folder to `templates/`, case-folded conflicts leave a file in place),
+  `rewriteImportLinks` (links to a daily by path or old name become
+  `[[YYYY-MM-DD]]`; path embeds, Markdown images and template paths follow
+  their file; bare names, display text, fragments and code untouched), and
+  `dryRunObsidianImport` / `buildObsidianImportReport` (reads every note,
+  converts in memory, classifies each body with an injected round-trip check,
+  reuses the compatibility scan). Writes nothing.
+- [x] `dateFromDailyPath` takes an optional layout; `applySplices` is exported
+  from `markdown/retitle.ts`.
+- [x] Desktop: Settings → Sync & data → **Convert to Kore layout** (only for
+  vaults with Obsidian settings) runs the preview on request with the
+  editor's `checkRoundTrip` and lists moves, rewritten links, normalized
+  notes, lossy notes and conflicts.
+- Not done: the conversion itself (slice 2, to a copy), Bases (slice 3),
+  retiring the runtime vault profile (Mario's call, decision card open).
 
-**Validation:** `dates.test.ts` (compact date, recency with `Yesterday` and
-the last-week weekday, date and time), browser tests for All notes, cards,
-properties header and Details, Tasks (desktop and mobile), the daily pill,
-chat, agents and settings on Chromium; `pnpm typecheck`, `pnpm lint`; one
-screenshot of All notes on `?seed=obsidian` (Updated reads `Sat`, was
-`10/31/2026`). WebKit runs in CI.
+**Validation:** core `plan.test.ts` and `dry-run.test.ts` (7 tests), the
+settings browser test on Chromium (2 tests), `pnpm check` exit 0. WebKit is
+left to CI. Not run on the real vault.
 
-**Next:** slice 6 (readable graph) on Mario's go.
+**Next:** Mario runs the preview on marioverse.ai in Kore; then slice 2.
 
 ## Clean shell, 2026-11-01
 

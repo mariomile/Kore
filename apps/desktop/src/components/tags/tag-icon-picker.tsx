@@ -93,6 +93,9 @@ export function TagIconPicker({ value, onChange }: TagIconPickerProps): ReactEle
   }
 
   const needle = query.trim().toLowerCase()
+  // Subscribing here (the picker's trigger, not its popover) starts the
+  // table fetch when the dialog opens, so it has usually landed by the time
+  // the popover does. Until then the grid is empty but not a failed search.
   const symbolIcons = useTagSymbolIcons()
   const symbols = Object.entries(symbolIcons ?? {}).filter(
     ([name]) => needle === '' || name.includes(needle),
@@ -142,7 +145,7 @@ export function TagIconPicker({ value, onChange }: TagIconPickerProps): ReactEle
             )
           })}
         </div>
-        {symbols.length === 0 ? (
+        {symbolIcons !== null && symbols.length === 0 ? (
           <p className="px-1 text-xs text-text-muted">No icon matches.</p>
         ) : null}
         <div role="group" aria-label="Suggested emoji" className="grid grid-cols-9 gap-0.5">

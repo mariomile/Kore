@@ -7,13 +7,6 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
-- Colors and corners hold together on every theme. Errors, warnings and
-  success states use one set of colors that stay readable on Paper, Ink and
-  the dark themes; primary buttons on dark indigo get a deeper fill so their
-  label reads; Paper and Light secondary text is a touch darker; callouts
-  and note dividers follow the theme; and the Appearance corner setting now
-  reaches every rounded corner in the app.
-
 - A cleaner frame. Graph, Tasks and the other full-page tools now use the
   whole window instead of sitting next to an empty Details column; notes,
   daily notes and All notes keep it. The sidebar no longer repeats your open

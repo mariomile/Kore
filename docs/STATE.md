@@ -1,5 +1,52 @@
 # Kore working state
 
+## Remote MCP over HTTP, 2026-11-01
+
+User ask (Mario, 2026-11-01, thread "Dare il vault agli agenti cloud"):
+cloud agents (Claude on the phone, Grok-style bots, OpenAI) should read and
+use the vault. Kore is turning into a portable memory vault for agents. He
+picked a two-step plan: first `kore mcp` over HTTP served from the Mac, then
+an always-on server off the Mac.
+
+- [x] `kore mcp --http <addr>`: the existing handler over Streamable HTTP
+  (stateless `POST /mcp`, 202 for notifications, 405 on GET), four worker
+  threads, `tiny_http`. TLS and the public URL come from a tunnel.
+- [x] Auth from one secret, `KORE_MCP_TOKEN` (min 24 chars): a static bearer
+  for API clients, and a built-in single-user OAuth server for Claude's
+  connectors, which need OAuth on personal accounts (static headers are a
+  beta for some organizations). DCR, authorize page asking for the token,
+  PKCE S256, refresh; stateless HMAC-signed codes and tokens, one-use codes;
+  redirects limited to Claude's callback, loopback, and `--redirect-uri`.
+- [x] `docs/cli.md` "Remote access over HTTP".
+- [x] Settings → Agents → Remote access (Mario picked "inside #294",
+  2026-11-01): one switch. The app makes a token and keeps it in the
+  keychain (`kore-mcp-token`), runs `kore mcp --http 127.0.0.1:8765` as its
+  own child for the open graph (restarted on a graph switch, a read-only
+  change or a new token; stopped on quit), reads this Mac's MagicDNS name
+  from `tailscale status --json`, passes `--public-url`, and runs
+  `tailscale funnel --bg 8765`. When Funnel is off for the tailnet it shows
+  the enable link; without Tailscale the server still runs locally. Copy URL,
+  Copy token, New token, Read-only (on by default). Rust (`remote_mcp.rs`)
+  only spawns the server and runs `tailscale status|funnel` with a timeout;
+  the policy is `packages/core/src/app/remote-access.ts`.
+- Not done: an index the CLI builds without the app (step 2, the always-on
+  server on a VPS over the GitHub clone).
+
+**Validation:** `cargo test -p reflect-cli` (three new router tests: 401 with
+`resource_metadata`, full OAuth round trip with PKCE plus replay and expiry,
+foreign redirect refused), clippy `-D warnings`, fmt; a curl smoke against
+the real binary (401, discovery metadata, `read_note` with the bearer, 202
+for a notification, DCR). Remote access switch: `cargo test -p reflect-open
+remote_mcp`, clippy, `remote-access.test.ts` (token, Tailscale parsing,
+start order with a fake bridge), browser tests for the field and the runner.
+The iOS `cargo check` can't run in the Linux container (objc2 needs Apple's
+toolchain); the module is plain `std`. Not yet tried on a real Mac with
+Tailscale, nor from claude.ai or Grok.
+
+**Next:** on the Mac, install Tailscale, turn on Remote access in
+Settings → Agents, add the URL as a custom connector in claude.ai, paste the
+token, and ask Claude on the phone to search the vault. Then step 2: a headless indexer in the CLI.
+
 ## MCP resources and prompts, 2026-10-17
 
 User ask (Mario, 2026-10-17, "Continua" on the next round): the `kore mcp`

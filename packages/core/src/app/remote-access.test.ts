@@ -1,0 +1,163 @@
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { setBridge } from '../ipc/bridge'
+import {
+  REMOTE_ACCESS_TOKEN_SECRET,
+  parseFunnelRun,
+  parseTailscaleStatus,
+  startRemoteAccess,
+  stopRemoteAccess,
+} from './remote-access'
+
+afterEach(() => setBridge(null))
+
+const running = {
+  running: true,
+  port: 8765,
+  graphRoot: '/vault',
+  readOnly: true,
+  exitMessage: null,
+}
+
+function tailscaleRun(overrides: Record<string, unknown>) {
+  return { found: true, code: 0, stdout: '', stderr: '', timedOut: false, ...overrides }
+}
+
+const online = JSON.stringify({ BackendState: 'Running', Self: { DNSName: 'mac.tail1.ts.net.' } })
+
+/** A fake bridge answering each command from `answers`, recording every call. */
+function installBridge(answers: Record<string, (args: Record<string, unknown>) => unknown>) {
+  const calls: { command: string; args: Record<string, unknown> }[] = []
+  const secrets = new Map<string, string>()
+  setBridge({
+    invoke: vi.fn(async (command: string, args: Record<string, unknown> = {}) => {
+      calls.push({ command, args })
+      if (command === 'secret_get') {
+        return secrets.get(args.name as string) ?? null
+      }
+      if (command === 'secret_set') {
+        secrets.set(args.name as string, args.value as string)
+        return null
+      }
+      const answer = answers[command]
+      if (answer === undefined) {
+        throw new Error(`unexpected command ${command}`)
+      }
+      return answer(args)
+    }),
+    listen: async () => () => {},
+  })
+  return { calls, secrets }
+}
+
+describe('parseTailscaleStatus', () => {
+  it('reads the MagicDNS name without its trailing dot', () => {
+    expect(parseTailscaleStatus(online)).toEqual({ kind: 'online', dnsName: 'mac.tail1.ts.net' })
+  })
+
+  it('reports a stopped or signed-out client and garbage as offline', () => {
+    expect(parseTailscaleStatus(JSON.stringify({ BackendState: 'Stopped' })).kind).toBe('offline')
+    expect(parseTailscaleStatus('not json').kind).toBe('offline')
+    expect(parseTailscaleStatus(JSON.stringify({ BackendState: 'Running', Self: {} })).kind).toBe(
+      'offline',
+    )
+  })
+})
+
+describe('parseFunnelRun', () => {
+  it('a clean exit is on', () => {
+    expect(parseFunnelRun({ code: 0, stdout: 'Available on the internet:\n', stderr: '' })).toEqual(
+      { kind: 'on' },
+    )
+  })
+
+  it('finds the enable link even when the run was cut off waiting for it', () => {
+    const stdout =
+      'Funnel is not enabled on your tailnet.\nTo enable, visit:\n\n   https://login.tailscale.com/f/funnel?node=n123\n'
+    expect(parseFunnelRun({ code: null, stdout, stderr: '' })).toEqual({
+      kind: 'needs-enable',
+      enableUrl: 'https://login.tailscale.com/f/funnel?node=n123',
+    })
+  })
+
+  it('a failure carries the first line the CLI printed', () => {
+    expect(parseFunnelRun({ code: 1, stdout: '', stderr: '\nfunnel: port busy\nmore' })).toEqual({
+      kind: 'error',
+      message: 'funnel: port busy',
+    })
+  })
+})
+
+describe('startRemoteAccess', () => {
+  it('creates a keychain token, starts the server with the public origin, then publishes it', async () => {
+    const { calls, secrets } = installBridge({
+      tailscale_run: (args) =>
+        tailscaleRun((args.args as string[])[0] === 'status' ? { stdout: online } : {}),
+      remote_mcp_start: () => running,
+    })
+
+    const state = await startRemoteAccess({ generation: 3, readOnly: true })
+
+    const token = secrets.get(REMOTE_ACCESS_TOKEN_SECRET)
+    expect(token).toMatch(/^[0-9a-f]{64}$/)
+    expect(calls.map((entry) => entry.command)).toEqual([
+      'secret_get',
+      'secret_set',
+      'tailscale_run',
+      'remote_mcp_start',
+      'tailscale_run',
+    ])
+    expect(calls[3]?.args).toEqual({
+      generation: 3,
+      port: 8765,
+      token,
+      readOnly: true,
+      publicUrl: 'https://mac.tail1.ts.net',
+    })
+    expect(calls[4]?.args).toEqual({ args: ['funnel', '--bg', '8765'] })
+    expect(state).toEqual({
+      server: running,
+      localUrl: 'http://127.0.0.1:8765/mcp',
+      publicUrl: 'https://mac.tail1.ts.net/mcp',
+      tunnel: { kind: 'on' },
+    })
+  })
+
+  it('reuses the stored token', async () => {
+    const { calls, secrets } = installBridge({
+      tailscale_run: () => tailscaleRun({ stdout: online }),
+      remote_mcp_start: () => running,
+    })
+    secrets.set(REMOTE_ACCESS_TOKEN_SECRET, 'a'.repeat(64))
+    await startRemoteAccess({ generation: 1, readOnly: false })
+    expect(calls.some((entry) => entry.command === 'secret_set')).toBe(false)
+    expect(calls.find((entry) => entry.command === 'remote_mcp_start')?.args.token).toBe(
+      'a'.repeat(64),
+    )
+  })
+
+  it('without Tailscale the server still runs locally and nothing is published', async () => {
+    const { calls } = installBridge({
+      tailscale_run: () => tailscaleRun({ found: false, code: null }),
+      remote_mcp_start: () => running,
+    })
+    const state = await startRemoteAccess({ generation: 1, readOnly: true })
+    expect(state.tunnel).toEqual({ kind: 'no-tailscale' })
+    expect(state.publicUrl).toBeNull()
+    expect(calls.filter((entry) => entry.command === 'tailscale_run')).toHaveLength(1)
+    expect(calls.find((entry) => entry.command === 'remote_mcp_start')?.args.publicUrl).toBeNull()
+  })
+})
+
+describe('stopRemoteAccess', () => {
+  it('unpublishes, then stops the server, even when Tailscale fails', async () => {
+    const { calls } = installBridge({
+      tailscale_run: () => {
+        throw new Error('boom')
+      },
+      remote_mcp_stop: () => ({ ...running, running: false, port: null, graphRoot: null }),
+    })
+    await stopRemoteAccess()
+    expect(calls.map((entry) => entry.command)).toEqual(['tailscale_run', 'remote_mcp_stop'])
+    expect(calls[0]?.args).toEqual({ args: ['funnel', '--bg', '8765', 'off'] })
+  })
+})

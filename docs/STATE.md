@@ -57,6 +57,76 @@ CI only.
 **Next:** Mario reviews on the Mac (a dark theme, Paper, a callout, Settings
 errors) and merges after slices 2, 3, 5 and 6. Then DS2 phase 2 (primitives).
 
+## Obsidian import, slice 1: dry run, 2026-11-02
+
+User ask (Mario, 2026-11-02, thread "Kore vs Obsidian gap"): Kore must not
+change how it works to match Obsidian; an Obsidian vault should be migrated
+into Kore's shape. Granola and Readwise stay out of scope. Direction and
+slices in [Plan 31](plans/31-obsidian-import.md), which reopens Plan 13's
+"no Obsidian import" non-goal.
+
+- [x] Core (`packages/core/src/obsidian-import/`): `planImportMoves` (dailies
+  to `daily/YYYY-MM-DD.md`, the attachment folder to `assets/`, the templates
+  folder to `templates/`, case-folded conflicts leave a file in place),
+  `rewriteImportLinks` (links to a daily by path or old name become
+  `[[YYYY-MM-DD]]`; path embeds, Markdown images and template paths follow
+  their file; bare names, display text, fragments and code untouched), and
+  `dryRunObsidianImport` / `buildObsidianImportReport` (reads every note,
+  converts in memory, classifies each body with an injected round-trip check,
+  reuses the compatibility scan). Writes nothing.
+- [x] `dateFromDailyPath` takes an optional layout; `applySplices` is exported
+  from `markdown/retitle.ts`.
+- [x] Desktop: Settings → Sync & data → **Convert to Kore layout** (only for
+  vaults with Obsidian settings) runs the preview on request with the
+  editor's `checkRoundTrip` and lists moves, rewritten links, normalized
+  notes, lossy notes and conflicts.
+- Not done: the conversion itself (slice 2, to a copy), Bases (slice 3),
+  retiring the runtime vault profile (Mario's call, decision card open).
+
+**Validation:** core `plan.test.ts` and `dry-run.test.ts` (7 tests), the
+settings browser test on Chromium (2 tests), `pnpm check` exit 0. WebKit is
+left to CI. Not run on the real vault.
+
+**Next:** Mario runs the preview on marioverse.ai in Kore; then slice 2.
+
+## Clean shell, 2026-11-01
+
+User ask (Mario, 2026-11-01, "Revisione design e frontend", slice 2 of the
+review plan): make the app's frame simpler to read, by removing and
+reordering only, no new features.
+
+- [x] The context rail exists only where it has something to show: a note,
+  a day, or All notes (whose selected row is the side peek). Graph, Tasks,
+  Chat, Terminal, Browser, Bases, Canvas and Search get the full width, and
+  the strip's right toggle goes with the rail. A panel opened from the "+"
+  (Chat, Calendar, ...) keeps the rail on those routes too, without the
+  Details tab. The rail's tab state moved into `SidebarProvider` so the shell
+  can tell; `routeHasDetails` in `sidebar-route.ts`. All notes with no
+  selection now says "Select a note to preview it here."
+- [x] The sidebar's "Open" shelf is gone: it repeated the tab strip row for
+  row. `open` left the `sidebarSections` enum; a stored `open` entry is
+  dropped by the existing normalization.
+- [x] Inactive tabs keep a hairline outline (`tab-pill.ts`), so they read as
+  tabs; active and inactive share the 1px border, so selecting no longer
+  nudges the label.
+- [x] While a first index builds and no shelf has data yet, the shelves area
+  shows a quiet placeholder; the shelves then fade in together instead of
+  popping in one under another.
+- [x] Tasks: group headers sit on the list's surface (no tinted band, so no
+  empty band between groups), and "+ Add" shows at rest only on the Current
+  (today) group; elsewhere on hover or focus.
+- Not done: no PR video (Mario, 2026-11-01 19:55: videos only when he asks).
+
+**Validation:** browser tests on Chromium for context-sidebar,
+workspace-content (new: rail hidden on Graph, kept with an opened panel or on
+All notes), sidebar, note-tabs-strip, tasks-screen, workspace-pane (155
+pass); core `schema.test.ts`; `pnpm typecheck`; eslint, oxlint, oxfmt on the
+changed files. Visual check on the dev build with `?seed=obsidian`. WebKit
+runs in CI.
+
+**Next:** Mario tries it on the Mac after the release; slice 3 (lighter
+boot) per the review plan.
+
 ## Remote MCP over HTTP, 2026-11-01
 
 User ask (Mario, 2026-11-01, thread "Dare il vault agli agenti cloud"):

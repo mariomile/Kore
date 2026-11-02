@@ -20,6 +20,7 @@ import { EditorSection } from './settings/editor-section'
 import { ImportSection } from './settings/import-section'
 import { IntegrationsSection } from './settings/integrations-section'
 import { McpSection } from './settings/mcp-section'
+import { ObsidianImportSection } from './settings/obsidian-import-section'
 import { SearchSection } from './settings/search-section'
 import type { SettingsSectionId } from './settings/sections'
 import { SettingsNavigator } from './settings/settings-navigator'
@@ -50,6 +51,7 @@ const SECTION_COMPONENTS: Record<SettingsSectionId, ComponentType> = {
   integrations: IntegrationsSection,
   import: ImportSection,
   'vault-compat': VaultCompatSection,
+  'obsidian-import': ObsidianImportSection,
   about: AboutSection,
   destructive: DestructiveSection,
 }

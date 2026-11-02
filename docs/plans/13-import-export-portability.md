@@ -1,5 +1,9 @@
 # Plan 13 — Import / Export / Portability
 
+> **Update (2026-11-02):** The "no Obsidian import" non-goal is reopened by the
+> user's decision: [Plan 31](31-obsidian-import.md) converts an Obsidian vault to
+> Kore's layout. Everything else below stands.
+>
 > **Status (2026-06-14):** Closed by product decision. We are **not** building a
 > dedicated import/export portability surface. Reflect's portability contract is the
 > graph itself: ordinary Markdown and attachment files wherever they already live,

@@ -1,43 +1,36 @@
 # Kore working state
 
-## Movable Details panels, 2026-11-02
+## Obsidian import, slice 1: dry run, 2026-11-02
 
-User ask (Mario, 2026-11-01, design review "più vicino a Notion"): the right
-rail's panels should move, even into the main panel. Slice of the design and
-frontend review, steps 1 and 2 of the three proposed (step 3, a section
-embedded as a block in the note, needs Meowdown and is not started).
+User ask (Mario, 2026-11-02, thread "Kore vs Obsidian gap"): Kore must not
+change how it works to match Obsidian; an Obsidian vault should be migrated
+into Kore's shape. Granola and Readwise stay out of scope. Direction and
+slices in [Plan 31](plans/31-obsidian-import.md), which reopens Plan 13's
+"no Obsidian import" non-goal.
 
-- [x] Arrange the Details sections. Drag a section by its header (a click
-  still collapses it), or use the "…" menu that appears on hover: Move up,
-  Move down, Hide section. Hidden sections come back from a quiet
-  "N hidden sections" menu at the bottom of the panel. One arrangement for
-  notes and days, each showing the sections it has; it persists in two new
-  settings, `detailsSections` (complete order, same normalizing contract as
-  `sidebarSections`) and `hiddenDetailsSections`. Moving by menu skips
-  sections the route does not have (`moveDetailsSection` in core). The day's
-  calendar stays on top: it is the panel's navigation, not a section.
-- [x] Local graph in the main panel. Its "…" menu adds "Open in new tab"
-  and "Open beside" (a pane next to the note). New `localGraph` route and
-  tab kind (`{ kind: 'localGraph', path }`, keyed per note, restored with the
-  session); the page is the same map and controls filling the pane, with a
-  plain wheel zooming, and the tab reads "Graph · <note>". While that page is
-  active the Details panel describes its note.
-- Not done: other sections in the main panel (tasks and outline already
-  have their screens or live in the note), dragging a section out of the
-  rail onto a pane, step 3 (embed as a block).
+- [x] Core (`packages/core/src/obsidian-import/`): `planImportMoves` (dailies
+  to `daily/YYYY-MM-DD.md`, the attachment folder to `assets/`, the templates
+  folder to `templates/`, case-folded conflicts leave a file in place),
+  `rewriteImportLinks` (links to a daily by path or old name become
+  `[[YYYY-MM-DD]]`; path embeds, Markdown images and template paths follow
+  their file; bare names, display text, fragments and code untouched), and
+  `dryRunObsidianImport` / `buildObsidianImportReport` (reads every note,
+  converts in memory, classifies each body with an injected round-trip check,
+  reuses the compatibility scan). Writes nothing.
+- [x] `dateFromDailyPath` takes an optional layout; `applySplices` is exported
+  from `markdown/retitle.ts`.
+- [x] Desktop: Settings → Sync & data → **Convert to Kore layout** (only for
+  vaults with Obsidian settings) runs the preview on request with the
+  editor's `checkRoundTrip` and lists moves, rewritten links, normalized
+  notes, lossy notes and conflicts.
+- Not done: the conversion itself (slice 2, to a copy), Bases (slice 3),
+  retiring the runtime vault profile (Mario's call, decision card open).
 
-**Validation:** core `schema.test.ts` (order and hidden normalization,
-`moveDetailsSection`, the stored `localGraph` tab); browser
-`details-sections.test.tsx` (stored order, move from the menu, hide and
-show again) and `local-graph-section.test.tsx` (opens the page) plus the
-whole `context-sidebar` folder on Chromium; `open-tab`, routing and panes
-suites; `pnpm check`. Rendered check on the seeded `?seed=obsidian` vault in
-Chromium: the menu, hiding History, and the local graph opened beside the
-note. WebKit left to CI.
+**Validation:** core `plan.test.ts` and `dry-run.test.ts` (7 tests), the
+settings browser test on Chromium (2 tests), `pnpm check` exit 0. WebKit is
+left to CI. Not run on the real vault.
 
-**Next:** Mario tries it on the Mac; if the arrangement feels right, decide
-whether step 3 (local graph as a block inside a note) is worth a Meowdown
-change.
+**Next:** Mario runs the preview on marioverse.ai in Kore; then slice 2.
 
 ## Clean shell, 2026-11-01
 
@@ -2320,11 +2313,6 @@ screen: Agents then Close lands on today.
 
 ## Session log
 
-- 2026-11-02 — Movable Details panels (design review, Notion direction):
-  drag, move, hide and restore the Details sections, persisted in settings;
-  the local graph opens as its own tab or beside the note. See "Movable
-  Details panels" above. Next: Mario's pass on the Mac, then decide on
-  embedding a section as a block.
 - 2026-11-01 — Design and frontend review (audit + six-slice plan in the
   project's Claude Doc "Kore: revisione design e frontend"). Slice 1, the
   note at the center: the Details rail no longer repeats the note's

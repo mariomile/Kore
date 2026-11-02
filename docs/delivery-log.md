@@ -7,12 +7,6 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
-- The Details panel is yours to arrange. Drag a section by its title, or
-  use its "…" menu to move it up or down or hide it; hidden sections come
-  back from the bottom of the panel, and the layout is remembered. The
-  local graph can leave the panel: open it in its own tab or beside the
-  note, where it fills the pane.
-
 - A cleaner frame. Graph, Tasks and the other full-page tools now use the
   whole window instead of sitting next to an empty Details column; notes,
   daily notes and All notes keep it. The sidebar no longer repeats your open

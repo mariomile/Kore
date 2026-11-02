@@ -46,44 +46,71 @@ struct Running {
     stderr: Arc<Mutex<String>>,
 }
 
-/// The live server, if any.
+/// The live server, if any, and every port a server ran on this session.
 #[derive(Default)]
-pub struct RemoteMcpState(Mutex<Option<Running>>);
+pub struct RemoteMcpState {
+    running: Mutex<Option<Running>>,
+    /// Ports that may be published on Funnel. Kept apart from `running`:
+    /// a restart, a failed respawn or a server that died all empty that
+    /// slot while the port can still be published.
+    served_ports: Mutex<Vec<u16>>,
+}
 
 impl RemoteMcpState {
     fn lock(&self) -> std::sync::MutexGuard<'_, Option<Running>> {
-        self.0.lock().unwrap_or_else(|poison| poison.into_inner())
+        self.running
+            .lock()
+            .unwrap_or_else(|poison| poison.into_inner())
     }
 
-    /// Stop the server, returning the port it served.
-    fn stop_server(&self) -> Option<u16> {
-        let mut running = self.lock().take()?;
-        process_tree::terminate_tree(&mut running.child);
-        Some(running.port)
+    fn record_port(&self, port: u16) {
+        let mut ports = self
+            .served_ports
+            .lock()
+            .unwrap_or_else(|poison| poison.into_inner());
+        if !ports.contains(&port) {
+            ports.push(port);
+        }
+    }
+
+    fn take_ports(&self) -> Vec<u16> {
+        std::mem::take(
+            &mut *self
+                .served_ports
+                .lock()
+                .unwrap_or_else(|poison| poison.into_inner()),
+        )
     }
 
     /// Stop the server (a restart or the switch turned off; core unpublishes).
     pub fn stop(&self) {
-        self.stop_server();
+        if let Some(mut running) = self.lock().take() {
+            process_tree::terminate_tree(&mut running.child);
+        }
     }
 
-    /// App exit: stop the server and take its port off Tailscale Funnel.
-    /// `funnel --bg` lives in the node's config, so without this the public
-    /// URL would keep pointing at the port after Kore quits, ready to expose
-    /// whatever binds it next.
+    /// App exit: stop the server and take every port it ran on off
+    /// Tailscale Funnel. `funnel --bg` lives in the node's config, so without
+    /// this the public URL would keep pointing at the port after Kore quits,
+    /// ready to expose whatever binds it next.
     pub fn shutdown(&self) {
-        let Some(port) = self.stop_server() else {
+        self.stop();
+        let ports = self.take_ports();
+        if ports.is_empty() {
+            return;
+        }
+        let Some(binary) = find_tailscale() else {
             return;
         };
-        if let Some(binary) = find_tailscale() {
+        for port in ports {
             let off = vec![
                 "funnel".to_owned(),
                 "--bg".to_owned(),
                 port.to_string(),
                 "off".to_owned(),
             ];
-            if let Err(err) = run_bounded(binary, off, EXIT_TAILSCALE_TIMEOUT) {
-                tracing::warn!(?err, "could not unpublish remote access at shutdown");
+            if let Err(err) = run_bounded(binary.clone(), off, EXIT_TAILSCALE_TIMEOUT) {
+                tracing::warn!(?err, port, "could not unpublish remote access at shutdown");
             }
         }
     }
@@ -193,6 +220,7 @@ pub async fn remote_mcp_start(
 ) -> AppResult<RemoteMcpStatus> {
     let graph_root = root_for_generation(&graph, generation)?;
     state.stop();
+    state.record_port(port);
 
     let mut command = Command::new(crate::skill::cli_path()?);
     command
@@ -352,6 +380,18 @@ pub async fn tailscale_run(args: Vec<String>) -> AppResult<TailscaleRun> {
 mod tests {
     use super::*;
     use std::path::Path;
+
+    #[test]
+    fn served_ports_outlive_the_running_slot_until_shutdown_takes_them() {
+        let state = RemoteMcpState::default();
+        state.record_port(8765);
+        state.record_port(8765);
+        state.record_port(9000);
+        // A restart or a dead server empties the slot, not the port list.
+        state.stop();
+        assert_eq!(state.take_ports(), [8765, 9000]);
+        assert!(state.take_ports().is_empty());
+    }
 
     #[test]
     fn server_args_pin_loopback_and_pass_the_options() {

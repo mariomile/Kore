@@ -1,4 +1,4 @@
-import { useCallback, type ReactElement } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react'
 import {
   closestCenter,
   DndContext,
@@ -13,6 +13,7 @@ import { hasOwnFolders, SIDEBAR_SECTION_IDS, type SidebarSection } from '@reflec
 import { useFolderTree } from '@/hooks/use-folder-tree'
 import { usePinnedNotes } from '@/hooks/use-pinned-notes'
 import { useTagTree } from '@/hooks/use-tag-tree'
+import { INVALIDATE_THROTTLE_MS } from '@/lib/query-client'
 import { useGraph } from '@/providers/graph-provider'
 import { cn } from '@/lib/utils'
 import { useSettings } from '@/providers/settings-provider'
@@ -44,7 +45,10 @@ function sectionForId(id: UniqueIdentifier): SidebarSection | null {
  * of them are empty until the index lands, and then they would pop in one
  * under another. While the index is building and nothing has arrived yet,
  * a quiet placeholder holds their place instead, and the shelves fade in
- * together when it goes.
+ * together when it goes. The shelves refetch on the throttled index
+ * invalidation, so they can still be empty for one throttle window after
+ * the pass ends; the placeholder outlasts the pass by that window unless a
+ * shelf arrives first.
  */
 export function SidebarSections(): ReactElement {
   const { settings, updateSettingsWith } = useSettings()
@@ -52,8 +56,9 @@ export function SidebarSections(): ReactElement {
   const folderTree = useFolderTree()
   const tagTree = useTagTree()
   const pinned = usePinnedNotes()
+  const settling = useSettleWindow(indexing)
   const waitingForIndex =
-    indexing &&
+    (indexing || settling) &&
     pinned.length === 0 &&
     tagTree.length === 0 &&
     (folderTree === null || !hasOwnFolders(folderTree))
@@ -99,6 +104,27 @@ export function SidebarSections(): ReactElement {
       </DndContext>
     </div>
   )
+}
+
+/**
+ * True for one index-refetch window after `active` turns false, so a consumer
+ * can wait for the trailing invalidation that carries the pass's last rows.
+ */
+function useSettleWindow(active: boolean): boolean {
+  const [settling, setSettling] = useState(false)
+  const wasActive = useRef(active)
+  useEffect(() => {
+    const ended = wasActive.current && !active
+    wasActive.current = active
+    if (!ended) {
+      setSettling(false)
+      return
+    }
+    setSettling(true)
+    const timer = setTimeout(() => setSettling(false), INVALIDATE_THROTTLE_MS)
+    return () => clearTimeout(timer)
+  }, [active])
+  return settling
 }
 
 /** Row widths for the placeholder, so it reads as a list rather than a block. */

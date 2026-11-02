@@ -3,6 +3,7 @@ import {
   useCallback,
   use,
   useMemo,
+  useRef,
   useState,
   type ReactElement,
   type ReactNode,
@@ -30,7 +31,15 @@ interface SidebarContextValue {
   toggleSidebar: () => void
   /** The right (context) rail. */
   contextCollapsed: boolean
+  /** Flips the context rail; does nothing on a route where the shell hides it. */
   toggleContextSidebar: () => void
+  /**
+   * The shell reports whether the current route shows the context rail at
+   * all. Where it does not (Graph, Tasks, …) there is nothing to toggle, so
+   * `⌘⇧\` must not flip a flag the user cannot see and find inverted on the
+   * next note.
+   */
+  setContextRailAvailable: (available: boolean) => void
   /** The context rail's tabs: what the "+" opened, and which one is selected. */
   contextPanels: ContextPanels
   /** Show a panel, giving it a tab first when the "+" has not opened it yet. */
@@ -62,7 +71,15 @@ export function SidebarProvider({ children }: { children: ReactNode }): ReactEle
     haptic('level-change')
     setCollapsed((current) => !current)
   }, [])
+  // A ref, not state: availability only gates the toggle, it never renders.
+  const contextRailAvailable = useRef(true)
+  const setContextRailAvailable = useCallback((available: boolean) => {
+    contextRailAvailable.current = available
+  }, [])
   const toggleContextSidebar = useCallback(() => {
+    if (!contextRailAvailable.current) {
+      return
+    }
     haptic('level-change')
     setContextCollapsed((current) => !current)
   }, [])
@@ -88,6 +105,7 @@ export function SidebarProvider({ children }: { children: ReactNode }): ReactEle
       toggleSidebar,
       contextCollapsed,
       toggleContextSidebar,
+      setContextRailAvailable,
       contextPanels,
       openContextPanel,
       closeContextPanel,
@@ -97,6 +115,7 @@ export function SidebarProvider({ children }: { children: ReactNode }): ReactEle
       toggleSidebar,
       contextCollapsed,
       toggleContextSidebar,
+      setContextRailAvailable,
       contextPanels,
       openContextPanel,
       closeContextPanel,

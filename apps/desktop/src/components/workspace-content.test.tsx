@@ -103,6 +103,7 @@ vi.mock('@/providers/sidebar-provider', () => ({
     contextPanels: { opened: workspaceState.openedPanels, active: 'details' },
     openContextPanel: vi.fn(),
     closeContextPanel: vi.fn(),
+    setContextRailAvailable: vi.fn(),
   }),
 }))
 // The asides mount resize handles, which read the persisted widths. The

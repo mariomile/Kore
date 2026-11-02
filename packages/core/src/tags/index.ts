@@ -38,6 +38,8 @@ export {
   decodePropertyList,
   decodeStoredList,
   extractRelationTargets,
+  readWikiLinks,
+  type RelationLink,
   computeRollup,
   rollupSourceFromValue,
   type PropertyValue,

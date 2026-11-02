@@ -2243,6 +2243,24 @@ screen: Agents then Close lands on today.
 
 ## Session log
 
+- 2026-11-01 — Design and frontend review (audit + six-slice plan in the
+  project's Claude Doc "Kore: revisione design e frontend"). Slice 1, the
+  note at the center: the Details rail no longer repeats the note's
+  properties (the page edits them under the title; the side peek on All
+  notes keeps them, since no page is open there), and note actions moved
+  from the top of the rail to the bottom, so tasks, outline and the local
+  graph are what the rail opens on. Same order on the daily rail. Loose
+  frontmatter values made only of wiki links (`up: "[[X]]"`, `related:` lists
+  of links) now infer as `relation`/`relations` instead of text, and the
+  properties header and rail draw them as clickable links that open the
+  note (clicking beside a link still opens the editor); both read the value
+  through one core helper, `readWikiLinks`. A note with no type
+  and no properties no longer shows an empty Type row: only "Add a type",
+  revealed while the title is hovered or the control is focused/open
+  (Mario's pick on 2026-11-01). Next:
+  slice 2, a clean shell (empty rail on list views, duplicate "Open" list,
+  tab shape, sidebar pop-in at boot).
+
 - 2026-10-17 — MCP resources and prompts: every note is a `kore://note/…`
   resource (the app's deep link), `kore://today` and `kore://tasks`, three
   read-only prompts (daily review, weekly review, connect a note), and the

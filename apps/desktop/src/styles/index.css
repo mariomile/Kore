@@ -938,6 +938,28 @@ html:root {
 .reflect-note-properties-slot > [aria-label='Properties'] {
   margin-bottom: 0;
 }
+/* A note with no type and no properties offers only "Add a type", shown
+   while the title is hovered, the control is hovered or focused, or its picker
+   is open. The slot's bottom padding shrinks so a fresh note keeps its title
+   and body close together. */
+.reflect-note-properties-slot:has([data-bare-properties]) {
+  padding-bottom: 0.25rem;
+}
+.reflect-note-add-type {
+  opacity: 0;
+}
+.reflect-note-properties-host:has(h1:first-child:hover) .reflect-note-add-type,
+.reflect-note-add-type:hover,
+.reflect-note-add-type:focus-visible,
+.reflect-note-add-type[data-popup-open] {
+  opacity: 1;
+}
+/* Touch screens never hover, so the control stays visible there. */
+@media (hover: none) {
+  .reflect-note-add-type {
+    opacity: 1;
+  }
+}
 .reflect-editor.reflect-editor-has-properties > h1:first-child {
   margin-bottom: calc(0.4em + var(--reflect-note-properties-space, 0px));
 }

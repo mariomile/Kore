@@ -7,7 +7,9 @@ import {
   isEmailValue,
   parseRating,
   relationDisplay,
+  readWikiLinks,
   type CollectionValue,
+  type RelationLink,
   type TagProperty,
 } from '@reflect/core'
 import { Check } from '@/components/icons'
@@ -28,6 +30,23 @@ export interface CellReading {
    * tolerated, never destroyed (TDR 0005).
    */
   mismatch: boolean
+}
+
+/**
+ * The note links a relation value holds, in order, when every entry is a wiki
+ * link; `null` for any other type or value (blank included), which then reads
+ * as text through {@link readCellValue}. A single-valued relation or person
+ * only counts as links when stored as one string.
+ */
+export function readRelationLinks(
+  property: TagProperty,
+  value: CollectionValue | undefined,
+): RelationLink[] | null {
+  const linkTyped =
+    property.type === 'relations' ||
+    ((property.type === 'relation' || property.type === 'person') && value?.valueType === 'string')
+  const links = linkTyped && value !== undefined ? readWikiLinks(value) : null
+  return links !== null && links.length > 0 ? links : null
 }
 
 /** Decode a `note_properties` value for display under `property`'s type. */

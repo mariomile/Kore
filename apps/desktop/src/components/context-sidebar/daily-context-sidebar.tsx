@@ -16,8 +16,8 @@ interface DailyContextSidebarProps {
 /**
  * The daily note's contextual sidebar (modeled on the old app's note context
  * sidebar): the month calendar up top — itself the day-navigation surface,
- * with a jump-to-today button — then note actions, the day's calendar
- * events, and semantic neighbors. Inbound links live under the note itself
+ * with a jump-to-today button — then the day's calendar events, semantic
+ * neighbors, history, and last the rarely used note actions. Inbound links live under the note itself
  * (the incoming-backlinks section), not here. Rendered in the AppShell's
  * right region on daily routes only.
  */
@@ -28,11 +28,11 @@ export function DailyContextSidebar({ date }: DailyContextSidebarProps): ReactEl
     <div className="flex flex-col pt-2 text-text">
       <DayCalendar selectedDate={date} today={today} />
       <div className="my-4 space-y-4 pb-4">
-        <NoteActionsSection path={dailyPath(date)} />
         <DailyEventsSection date={date} />
         <PublishedUrlSection path={dailyPath(date)} />
         <SimilarNotesSection path={dailyPath(date)} />
         <NoteHistorySection path={dailyPath(date)} />
+        <NoteActionsSection path={dailyPath(date)} />
       </div>
     </div>
   )

@@ -56,9 +56,9 @@ and the conversion):
    never written. Open the copy as a Kore graph when done.
 3. **Bases**: simple `.base` views (filters on tags and properties) become
    supertag views; the rest stay readable and are reported.
-4. **Retire the runtime profile** if the user decides so (open decision card,
-   2026-11-02): an un-imported Obsidian vault would then open with Kore's
-   layout, and the importer becomes the only path.
+4. **Retire the runtime profile** (decided by the user 2026-11-02, after the
+   conversion has run on a real vault): an un-imported Obsidian vault then
+   opens with Kore's layout, and the importer becomes the only path.
 
 ## Out of scope
 

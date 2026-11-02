@@ -210,7 +210,7 @@ function NoteCard({
           onClick={(event) => {
             actions.openNote(path, isModEvent(event))
           }}
-          className="flex size-6 shrink-0 items-center justify-center rounded text-text-muted hover:bg-surface-hover hover:text-text"
+          className="flex size-6 shrink-0 items-center justify-center rounded-sm text-text-muted hover:bg-surface-hover hover:text-text"
         >
           <ExternalLink aria-hidden className="size-3.5" />
         </button>

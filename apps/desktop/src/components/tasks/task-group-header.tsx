@@ -60,7 +60,7 @@ export function TaskGroupHeader({
           aria-label={`Add a task to ${group.kind === 'current' ? 'today' : group.label}`}
           onClick={() => onAdd(addTarget)}
           className={cn(
-            'ml-auto flex flex-none items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium text-text-muted transition-[color,opacity] hover:text-text focus-visible:text-text focus-visible:outline-none',
+            'ml-auto flex flex-none items-center gap-1 rounded-sm px-1.5 py-0.5 text-xs font-medium text-text-muted transition-[color,opacity] hover:text-text focus-visible:text-text focus-visible:outline-none',
             group.kind !== 'current' &&
               'opacity-0 focus-visible:opacity-100 group-hover/header:opacity-100',
           )}

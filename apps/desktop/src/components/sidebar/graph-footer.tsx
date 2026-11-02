@@ -52,9 +52,9 @@ function backupDot(backup: BackupState): { className: string; label: string } | 
     case 'syncing':
       return { className: 'bg-accent motion-safe:animate-pulse', label: 'Backing up' }
     case 'offline':
-      return { className: 'bg-amber-500', label: 'Backup waiting for a connection' }
+      return { className: 'bg-warning', label: 'Backup waiting for a connection' }
     case 'error':
-      return { className: 'bg-red-500', label: 'Backup failed — see Settings' }
+      return { className: 'bg-danger', label: 'Backup failed — see Settings' }
   }
 }
 
@@ -143,7 +143,7 @@ export function GraphFooter({ graph, context }: GraphFooterProps): ReactElement 
                       }}
                       className={MENU_ITEM_CLASS}
                     >
-                      <GraphSwatch color={colorFor(recent.root)} className="size-3.5 rounded" />
+                      <GraphSwatch color={colorFor(recent.root)} className="size-3.5 rounded-sm" />
                       <span className="min-w-0 flex-1 truncate">{recent.name}</span>
                       {current ? (
                         <Check aria-hidden className="size-3.5 shrink-0 text-accent" />
@@ -172,7 +172,7 @@ export function GraphFooter({ graph, context }: GraphFooterProps): ReactElement 
           </DropdownMenuItem>
           <DropdownMenuSub>
             <DropdownMenuSubTrigger className={MENU_ITEM_CLASS}>
-              <GraphSwatch color={currentColor} className="size-3.5 rounded" />
+              <GraphSwatch color={currentColor} className="size-3.5 rounded-sm" />
               <span className="min-w-0 flex-1 truncate">Graph color</span>
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent aria-label="Graph color">
@@ -182,7 +182,7 @@ export function GraphFooter({ graph, context }: GraphFooterProps): ReactElement 
                   onClick={() => setColor(graph.root, option.id)}
                   className={MENU_ITEM_CLASS}
                 >
-                  <GraphSwatch color={option.id} className="size-3.5 rounded" />
+                  <GraphSwatch color={option.id} className="size-3.5 rounded-sm" />
                   <span className="min-w-0 flex-1">{option.label}</span>
                   {option.id === currentColor ? (
                     <Check aria-hidden className="size-3.5 shrink-0 text-accent" />

@@ -128,8 +128,8 @@ export function ModelCombobox({
           />
           <CommandList>
             <CommandEmpty>
-              Press <kbd className="rounded bg-muted px-1 py-0.5 font-mono text-xs">Enter</kbd> to
-              use &ldquo;{inputValue}&rdquo;
+              Press <kbd className="rounded-sm bg-muted px-1 py-0.5 font-mono text-xs">Enter</kbd>{' '}
+              to use &ldquo;{inputValue}&rdquo;
             </CommandEmpty>
             <CommandGroup>
               {models.map((model) => (

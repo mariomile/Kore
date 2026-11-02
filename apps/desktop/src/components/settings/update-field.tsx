@@ -65,7 +65,7 @@ export function UpdateField(): ReactElement {
           </span>
         ) : null}
         {state.phase === 'error' ? (
-          <span role="alert" className="text-xs text-red-500">
+          <span role="alert" className="text-xs text-danger">
             {state.message}
           </span>
         ) : null}

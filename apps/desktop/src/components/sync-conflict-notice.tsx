@@ -137,9 +137,7 @@ export function SyncConflictNotice({
           {manySided ? 'Keep all' : 'Keep both'}
         </ResolveButton>
       </div>
-      {error !== null ? (
-        <p className="mt-2 text-red-700 dark:text-red-300">Couldn’t resolve: {error}</p>
-      ) : null}
+      {error !== null ? <p className="mt-2 text-danger">Couldn’t resolve: {error}</p> : null}
     </InlineAlert>
   )
 }

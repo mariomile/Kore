@@ -143,7 +143,7 @@ function ShelvesPlaceholder(): ReactElement {
         <div
           key={index}
           className={cn(
-            'h-3 animate-pulse rounded bg-surface-hover motion-reduce:animate-none',
+            'h-3 animate-pulse rounded-sm bg-surface-hover motion-reduce:animate-none',
             index === 0 ? 'mb-3 h-2.5' : '',
             width,
           )}

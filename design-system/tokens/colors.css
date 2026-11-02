@@ -81,7 +81,7 @@
 
   --text: #17181c; /* primary copy                */
   --text-secondary: #6b6f76; /* note titles, meta           */
-  --text-muted: #9a9ea7; /* placeholders, shortcuts     */
+  --text-muted: #8a8e96; /* placeholders, shortcuts — 3:1 on the app bg */
   --text-on-brand: #ffffff;
   --text-on-inverse: hsl(210 40% 98%);
 
@@ -102,7 +102,35 @@
      own ink (warm on paper/ink, grey elsewhere) from this one declaration;
      the cascade resolves `--text` on the root, where the theme scopes live. */
   --border-focus: color-mix(in srgb, var(--text) 40%, transparent);
-  --destructive: var(--red-500);
+
+  /* Accent as fill vs. accent as ink. `--accent` stays the ink (links, the
+     focus ring, checked marks, the callout rule). A solid block with a label
+     on it — the primary button, a checked switch, a badge — reads
+     `--accent-fill` and labels itself with `--text-on-brand`, because the
+     lifted accent the dark themes use as ink leaves a white label at 3.4:1.
+     The `.dark` block and the accent scopes below retune both. */
+  --accent-fill: var(--accent);
+  --accent-fill-hover: var(--accent-hover);
+
+  /* Status. One ink per tone (text, icons, dots) and one soft wash for a
+     background. Every ink holds 4.5:1 on --surface, on --surface-app and on
+     its own wash in every theme of its family (tightest: danger on the Paper
+     wash, 4.83:1), so a status label on its own pill passes too. A status
+     color means one thing and is never a category color. `--info` is the
+     accent. `--destructive` is the shadcn name for `--danger`. */
+  --danger: #c42020;
+  --warning: #9a4a0a;
+  --success: #15703a;
+  --info: var(--accent);
+  --danger-soft: color-mix(in srgb, var(--danger) 10%, transparent);
+  --warning-soft: color-mix(in srgb, var(--warning) 12%, transparent);
+  --success-soft: color-mix(in srgb, var(--success) 10%, transparent);
+  --info-soft: var(--accent-soft);
+  --destructive: var(--danger);
+
+  /* A thematic break in a note: the theme's own ink, faded, so Paper and Ink
+     get a warm rule and the cool themes a grey one. */
+  --rule: color-mix(in srgb, var(--text) 16%, transparent);
 
   --radius: 0.5rem; /* 8px — the house radius      */
 
@@ -154,6 +182,18 @@
   --accent-soft-text: #a5a8f8;
 
   --focus-ring: #7b7ef4;
+  /* The lifted #7b7ef4 stays the ink; a solid fill uses a deeper indigo so
+     its white label clears 5:1. */
+  --accent-fill: #5e5ce6;
+  --accent-fill-hover: #6461e9;
+
+  --danger: #f87171;
+  --warning: #fbbf24;
+  --success: #4ade80;
+  --danger-soft: color-mix(in srgb, var(--danger) 16%, transparent);
+  --warning-soft: color-mix(in srgb, var(--warning) 14%, transparent);
+  --success-soft: color-mix(in srgb, var(--success) 14%, transparent);
+
   --border-hairline: 0 1px 0 rgba(255, 255, 255, 0.075);
   /* Dark elevations need deeper ink or cards read flat against the dark app
      background — same recipes as light, re-tinted, plus a hairline of light
@@ -220,6 +260,9 @@
   --accent-hover: #a888ff;
   --accent-soft: rgba(113, 47, 255, 0.28);
   --accent-soft-text: var(--purple-haze);
+  /* Space fills with its own purple: #712fff carries a white label at 5.9:1. */
+  --accent-fill: var(--purple-glow);
+  --accent-fill-hover: #7c3aed;
 
   --focus-ring: var(--purple-light);
 }
@@ -266,8 +309,9 @@
   --surface-inverse: #40382c;
 
   --text: #3c3527;
-  --text-secondary: #877a66;
-  --text-muted: #b0a48e;
+  /* 4.5:1 and 3:1 on both the card and the page. */
+  --text-secondary: #7a6e5a;
+  --text-muted: #978a73;
 
   --border: #efe8d9;
   --border-strong: rgba(64, 56, 44, 0.18);
@@ -570,4 +614,34 @@
   --accent-soft: rgba(51, 65, 85, 0.6);
   --accent-soft-text: #e2e8f0;
   --focus-ring: #94a3b8;
+}
+
+/* ============================================================
+   LABEL ON AN ACCENT FILL — `--text-on-brand` per accent.
+   White where it clears 4.5:1 on the fill, near-black where it
+   does not (the tightest flipped pair is dark violet, 4.64:1).
+   A chosen accent fills with itself in the dark family too;
+   only stock indigo keeps the deeper fill from `.dark`. A
+   custom hex keeps the white label.
+   ============================================================ */
+:root[data-accent='teal'],
+:root[data-accent='green'],
+:root[data-accent='amber'],
+:root[data-accent='orange'],
+:root[data-accent='lime'],
+:root[data-accent='emerald'],
+:root[data-accent='cyan'],
+:root[data-accent='sky'],
+:root.dark[data-accent='purple'],
+:root.dark[data-accent='blue'],
+:root.dark[data-accent='rose'],
+:root.dark[data-accent='red'],
+:root.dark[data-accent='violet'],
+:root.dark[data-accent='pink'],
+:root.dark[data-accent='slate'] {
+  --text-on-brand: #0b0b0e;
+}
+:root.dark[data-accent]:not([data-accent='indigo']) {
+  --accent-fill: var(--accent);
+  --accent-fill-hover: var(--accent-hover);
 }

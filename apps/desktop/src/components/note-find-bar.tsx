@@ -5,7 +5,7 @@ import { useNoteFind } from '@/providers/note-find-provider'
 import { useVaultReplaceDialog } from '@/providers/vault-replace-provider'
 
 const FIND_BUTTON_CLASS =
-  'flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-[5px] text-text-muted transition-colors hover:bg-surface-hover hover:text-text disabled:pointer-events-none disabled:opacity-40'
+  'flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-text-muted transition-colors hover:bg-surface-hover hover:text-text disabled:pointer-events-none disabled:opacity-40'
 
 function statusText(active: number, total: number): string {
   if (total === 0) {
@@ -86,7 +86,7 @@ export function NoteFindBar(): ReactElement | null {
       // Same frame as the sidebar's search field, so the two read as one
       // family. The bar is its own focus treatment: it exists only while its
       // input is focused, so a focus ring would draw a second box inside it.
-      className="absolute top-2 right-3 z-40 flex max-w-[calc(100%_-_1.5rem)] items-center gap-1 rounded-[7px] border border-border-strong bg-input-bg py-1 pr-1 pl-1.5 shadow-app-input"
+      className="absolute top-2 right-3 z-40 flex max-w-[calc(100%_-_1.5rem)] items-center gap-1 rounded-lg border border-border-strong bg-input-bg py-1 pr-1 pl-1.5 shadow-app-input"
       onKeyDown={handleSearchKeyDown}
     >
       <Search aria-hidden className="size-[18px] shrink-0 text-text-muted" />

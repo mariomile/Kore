@@ -226,7 +226,7 @@ export function AddAiProviderDialog({ onAdd, onClose }: AddAiProviderDialogProps
                   })}
                 />
                 {formState.errors.baseUrl ? (
-                  <span role="alert" className="text-xs text-red-600 dark:text-red-400">
+                  <span role="alert" className="text-xs text-danger">
                     {formState.errors.baseUrl.message}
                   </span>
                 ) : null}
@@ -251,7 +251,7 @@ export function AddAiProviderDialog({ onAdd, onClose }: AddAiProviderDialogProps
                   })}
                 />
                 {formState.errors.model ? (
-                  <span role="alert" className="text-xs text-red-600 dark:text-red-400">
+                  <span role="alert" className="text-xs text-danger">
                     {formState.errors.model.message}
                   </span>
                 ) : null}
@@ -287,7 +287,7 @@ export function AddAiProviderDialog({ onAdd, onClose }: AddAiProviderDialogProps
                 })}
               />
               {formState.errors.apiKey ? (
-                <span role="alert" className="text-xs text-red-600 dark:text-red-400">
+                <span role="alert" className="text-xs text-danger">
                   {formState.errors.apiKey.message}
                 </span>
               ) : null}

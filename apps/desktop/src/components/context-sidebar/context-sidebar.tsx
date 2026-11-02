@@ -311,7 +311,7 @@ function PanelTab({
         }}
         // The tabs have to fit the rail's 240px minimum, so the label gives up
         // width before the row overflows.
-        className="flex min-w-0 flex-1 items-center gap-1.5 rounded text-left"
+        className="flex min-w-0 flex-1 items-center gap-1.5 rounded-sm text-left"
       >
         <Glyph aria-hidden className="size-3 shrink-0" />
         <span className="truncate">{label}</span>

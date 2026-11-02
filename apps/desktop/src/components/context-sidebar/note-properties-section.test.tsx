@@ -22,6 +22,10 @@ vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({ graph: { root: '/g', generation: 1 } }),
 }))
 vi.mock('@/hooks/use-bridge-ready', () => ({ useBridgeReady: () => true }))
+vi.mock('@/providers/settings-provider', async () => {
+  const { DEFAULT_SETTINGS } = await import('@reflect/core')
+  return { useSettings: () => ({ settings: DEFAULT_SETTINGS }) }
+})
 vi.mock('@/lib/tags/use-commit-note-property', () => ({
   useCommitNoteProperty: () => commitProperty,
   invalidateOnNextIndexApply: () => {},

@@ -344,7 +344,7 @@ describe('MobileTasks', () => {
     // The undated task groups under its source note's title.
     view.getByRole('button', { name: 'N' })
     // Date buckets show the source note's compact date on the row.
-    view.getByText('6/1/2026')
+    view.getByText(/^Jun 1(, 2026)?$/)
     await view.unmount()
   })
 

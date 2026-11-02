@@ -1,11 +1,18 @@
 import { Fragment, type ReactElement } from 'react'
-import type { CollectionValue, RelationLink, TagProperty } from '@reflect/core'
+import {
+  isCalendarDate,
+  type CollectionValue,
+  type RelationLink,
+  type TagProperty,
+} from '@reflect/core'
 import {
   CheckboxFace,
   readCellValue,
   readRelationLinks,
 } from '@/components/all-notes/collection-cell'
+import { formatShortDate } from '@/lib/dates'
 import { cn } from '@/lib/utils'
+import { useSettings } from '@/providers/settings-provider'
 
 interface PropertyFieldValueProps {
   property: TagProperty
@@ -28,6 +35,7 @@ export function PropertyFieldValue({
   value,
   onOpenRelation,
 }: PropertyFieldValueProps): ReactElement {
+  const { settings } = useSettings()
   const reading = readCellValue(property, value)
   if (property.type === 'checkbox' && !reading.mismatch) {
     return <CheckboxFace checked={reading.checked} />
@@ -49,7 +57,11 @@ export function PropertyFieldValue({
             : 'text-text-secondary',
       )}
     >
-      {reading.text === '' ? 'Empty' : reading.text}
+      {reading.text === ''
+        ? 'Empty'
+        : property.type === 'date' && !reading.mismatch && isCalendarDate(reading.text)
+          ? formatShortDate(reading.text, settings.dateFormat)
+          : reading.text}
     </span>
   )
 }

@@ -42,12 +42,12 @@ describe('CardPropertyChips', () => {
     const status = view.getByText('Active').element()
     // The same deterministic wash the table badge and board dot use.
     expect(status.parentElement?.className).toContain('bg-')
-    await expect.element(view.getByText('9/6/2026')).toBeInTheDocument()
+    await expect.element(view.getByText(/^Sep 6(, 2026)?$/)).toBeInTheDocument()
     // A checked checkbox reads as its property name; the relation as its alias.
     await expect.element(view.getByText('Read')).toBeInTheDocument()
     await expect.element(view.getByText('Ada')).toBeInTheDocument()
     // The hover names what each chip is.
-    await expect.element(view.getByTitle('Due: 9/6/2026')).toBeInTheDocument()
+    await expect.element(view.getByTitle(/^Due: Sep 6(, 2026)?$/)).toBeInTheDocument()
   })
 
   it('skips empty and unchecked values, caps at four chips, hides entirely when bare', async () => {

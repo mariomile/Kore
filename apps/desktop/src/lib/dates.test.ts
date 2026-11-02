@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   addDaysIso,
   formatDayLabel,
-  formatDayPillLabel,
+  formatDateTime,
   formatFullDate,
   formatRecencyLabel,
   formatShortDate,
@@ -48,19 +48,20 @@ describe('dates', () => {
     expect(formatFullDate(new Date(2026, 0, 22), 'dmy')).toBe('22nd January, 2026')
   })
 
-  it('formatDayPillLabel is month-and-day, gaining the year only away from it', () => {
+  it('formatShortDate spells the month and gains the year only away from it', () => {
     const now = new Date(2026, 5, 10)
-    expect(formatDayPillLabel('2026-06-09', 'mdy', now)).toBe('Jun 9')
-    expect(formatDayPillLabel('2026-06-09', 'dmy', now)).toBe('9 Jun')
-    expect(formatDayPillLabel('2026-06-09', 'iso', now)).toBe('2026-06-09')
-    expect(formatDayPillLabel('2025-12-31', 'mdy', now)).toBe('Dec 31, 2025')
-    expect(formatDayPillLabel('2025-12-31', 'dmy', now)).toBe('31 Dec 2025')
+    expect(formatShortDate('2026-06-09', 'mdy', now)).toBe('Jun 9')
+    expect(formatShortDate('2026-06-09', 'dmy', now)).toBe('9 Jun')
+    expect(formatShortDate('2026-06-09', 'iso', now)).toBe('2026-06-09')
+    expect(formatShortDate('2025-12-31', 'mdy', now)).toBe('Dec 31, 2025')
+    expect(formatShortDate('2025-12-31', 'dmy', now)).toBe('31 Dec 2025')
   })
 
-  it('formatShortDate renders compact dates per the date format', () => {
-    expect(formatShortDate('2026-06-09', 'mdy')).toBe('6/9/2026')
-    expect(formatShortDate('2026-06-09', 'dmy')).toBe('9/6/2026')
-    expect(formatShortDate('2026-06-09', 'iso')).toBe('2026-06-09')
+  it('formatDateTime pairs the short date with the time', () => {
+    const now = new Date(2026, 5, 10)
+    const at = new Date(2026, 5, 9, 20, 22).getTime()
+    expect(formatDateTime(at, { timeFormat: '12h', dateFormat: 'mdy' }, now)).toBe('Jun 9, 8:22pm')
+    expect(formatDateTime(at, { timeFormat: '24h', dateFormat: 'dmy' }, now)).toBe('9 Jun, 20:22')
   })
 
   describe('formatTimeOfDay', () => {
@@ -91,21 +92,25 @@ describe('dates', () => {
       expect(formatRecencyLabel(new Date(2026, 5, 10, 9, 5).getTime(), dmy, now)).toBe('09:05')
     })
 
-    it('shows the weekday within the current week', () => {
-      expect(formatRecencyLabel(new Date(2026, 5, 8, 13, 0).getTime(), mdy, now)).toBe('Mon')
-      expect(formatRecencyLabel(new Date(2026, 5, 8, 13, 0).getTime(), dmy, now)).toBe('Mon')
-      expect(formatRecencyLabel(new Date(2026, 5, 8, 13, 0).getTime(), iso, now)).toBe('Mon')
+    it('says Yesterday for the previous calendar day', () => {
+      expect(formatRecencyLabel(new Date(2026, 5, 9, 23, 0).getTime(), mdy, now)).toBe('Yesterday')
     })
 
-    it('shows the short date beyond the current week, honoring the date format', () => {
-      expect(formatRecencyLabel(new Date(2026, 5, 3, 13, 0).getTime(), mdy, now)).toBe('6/3/2026')
-      expect(formatRecencyLabel(new Date(2026, 5, 3, 13, 0).getTime(), dmy, now)).toBe('3/6/2026')
+    it('shows the weekday within the last week', () => {
+      expect(formatRecencyLabel(new Date(2026, 5, 8, 13, 0).getTime(), mdy, now)).toBe('Mon')
+      expect(formatRecencyLabel(new Date(2026, 5, 8, 13, 0).getTime(), dmy, now)).toBe('Mon')
+      expect(formatRecencyLabel(new Date(2026, 5, 4, 13, 0).getTime(), iso, now)).toBe('Thu')
+    })
+
+    it('shows the short date beyond the last week, honoring the date format', () => {
+      expect(formatRecencyLabel(new Date(2026, 5, 3, 13, 0).getTime(), mdy, now)).toBe('Jun 3')
+      expect(formatRecencyLabel(new Date(2026, 5, 3, 13, 0).getTime(), dmy, now)).toBe('3 Jun')
       expect(formatRecencyLabel(new Date(2026, 5, 3, 13, 0).getTime(), iso, now)).toBe('2026-06-03')
       expect(formatRecencyLabel(new Date(2025, 11, 31, 13, 0).getTime(), mdy, now)).toBe(
-        '12/31/2025',
+        'Dec 31, 2025',
       )
       expect(formatRecencyLabel(new Date(2025, 11, 31, 13, 0).getTime(), dmy, now)).toBe(
-        '31/12/2025',
+        '31 Dec 2025',
       )
     })
   })

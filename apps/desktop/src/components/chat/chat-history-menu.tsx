@@ -1,6 +1,5 @@
 import type { ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { formatDistanceToNow } from 'date-fns'
 import { listChatConversations } from '@reflect/core'
 import { Check, Close, History } from '@/components/icons'
 import { Button } from '@/components/ui/button'
@@ -11,9 +10,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
+import { formatRecencyLabel } from '@/lib/dates'
 import { CHAT_QUERY_SCOPE } from '@/lib/query-client'
 import { useChatSession } from '@/providers/chat-provider'
 import { useGraph } from '@/providers/graph-provider'
+import { useSettings } from '@/providers/settings-provider'
 
 /**
  * The conversation history: a dropdown over the persisted conversations,
@@ -24,6 +25,7 @@ import { useGraph } from '@/providers/graph-provider'
 export function ChatHistoryMenu(): ReactElement | null {
   const { graph, indexGeneration } = useGraph()
   const { activeConversationId, openConversation, deleteConversation } = useChatSession()
+  const { settings } = useSettings()
 
   const bridgeReady = useBridgeReady()
   const enabled = bridgeReady && indexGeneration !== null
@@ -74,7 +76,7 @@ export function ChatHistoryMenu(): ReactElement | null {
               >
                 <span className="min-w-0 flex-1 truncate">{conversation.title}</span>
                 <span className="shrink-0 text-xs text-text-muted">
-                  {formatDistanceToNow(conversation.updatedMs, { addSuffix: true })}
+                  {formatRecencyLabel(conversation.updatedMs, settings)}
                 </span>
                 {current ? (
                   <Check aria-hidden className="size-3.5 shrink-0 text-accent" />

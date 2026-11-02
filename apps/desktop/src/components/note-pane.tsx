@@ -1,4 +1,13 @@
-import { memo, useCallback, useMemo, useRef, useState, type ReactElement } from 'react'
+import {
+  lazy,
+  memo,
+  Suspense,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+  type ReactElement,
+} from 'react'
 import type { ExitBoundaryHandler, SearchStatus } from '@meowdown/core'
 import type { CodeBlockRenderer } from '@meowdown/react'
 import {
@@ -46,7 +55,6 @@ import { useCollectionSlashItems } from '@/editor/use-collection-slash-items'
 import { useEmbedSlashItems } from '@/editor/use-embed-slash-items'
 import { useTemplateSlashItems } from '@/editor/use-template-slash-items'
 import { EmbeddedBase } from '@/components/notes/embedded-base'
-import { EmbeddedCollection } from '@/components/notes/embedded-collection'
 import { EmbeddedMedia } from '@/components/notes/embedded-media'
 import { EmbeddedNote } from '@/components/notes/embedded-note'
 import { NoteAppearance } from '@/components/notes/note-appearance'
@@ -59,6 +67,15 @@ import { useGraph } from '@/providers/graph-provider'
 import { useNoteSearchQuery, useNoteSearchReport } from '@/providers/note-find-provider'
 import { useSettings } from '@/providers/settings-provider'
 import { useRouter } from '@/routing/router'
+
+// A ```collection fence draws a table, board or calendar: the All Notes view
+// machinery. Only notes that embed one need it, so it loads with the first
+// such fence instead of on every launch.
+const EmbeddedCollection = lazy(() =>
+  import('@/components/notes/embedded-collection').then((module) => ({
+    default: module.EmbeddedCollection,
+  })),
+)
 
 interface NotePaneProps {
   /** Graph-relative path of the note to edit. */
@@ -348,10 +365,12 @@ export function NotePaneComponent({
       return null
     }
     return (
-      <EmbeddedCollection
-        embed={embed}
-        onChange={(updatedEmbed) => updateCode(formatCollectionEmbedBody(updatedEmbed))}
-      />
+      <Suspense fallback={null}>
+        <EmbeddedCollection
+          embed={embed}
+          onChange={(updatedEmbed) => updateCode(formatCollectionEmbedBody(updatedEmbed))}
+        />
+      </Suspense>
     )
   }, [])
 

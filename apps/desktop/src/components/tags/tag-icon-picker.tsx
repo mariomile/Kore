@@ -2,7 +2,7 @@ import { useState, type ReactElement } from 'react'
 import { parseNoteIcon, symbolIconValue } from '@reflect/core'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { TAG_SYMBOL_ICONS } from '@/lib/tags/tag-symbol-icons'
+import { useTagSymbolIcons } from '@/lib/tags/tag-symbol-icons'
 import { cn } from '@/lib/utils'
 import { TagIcon } from './tag-icon'
 
@@ -93,7 +93,8 @@ export function TagIconPicker({ value, onChange }: TagIconPickerProps): ReactEle
   }
 
   const needle = query.trim().toLowerCase()
-  const symbols = Object.entries(TAG_SYMBOL_ICONS).filter(
+  const symbolIcons = useTagSymbolIcons()
+  const symbols = Object.entries(symbolIcons ?? {}).filter(
     ([name]) => needle === '' || name.includes(needle),
   )
 

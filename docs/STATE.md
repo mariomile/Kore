@@ -2243,6 +2243,24 @@ screen: Agents then Close lands on today.
 
 ## Session log
 
+- 2026-11-02 — Design and frontend review, slice 3: a lighter boot. Measured
+  on a production build (dev bridge forced on, Chromium, the seeded dev
+  vault), the JS fetched before the first editor paints, dev bridge excluded,
+  went from 3,941 KB to 3,571 KB (-370 KB, -9.4%). Editor-visible time is
+  unchanged within noise unthrottled (~930 ms, most of it the WASM index, not
+  JS) and 2,870 → 2,672 ms at 4x CPU throttle. What moved off the boot path:
+  the tag symbol icon table (179 KB, `tag-symbol-icons.gen.tsx`) now loads
+  when the first symbol is drawn (`TagSymbolGlyph`, a size-holding blank in
+  the meantime); the All Notes and Tasks routes are lazy and prefetched
+  1.5 s after the shell mounts; a note's `collection` code fence loads the
+  collection views on first use. What stays and why: the editor chunk
+  (1.27 MB) is needed for today's note at first paint, and its heaviest
+  optional parts (CodeMirror via `@codemirror/language`, the HTML-paste
+  pipeline parse5/rehype/hast-to-mdast, ~400 KB) are static imports inside
+  Meowdown's single-file dist, so splitting them is a Meowdown change. Base
+  UI + Radix both bundled is slice 4 (design system). Next: slice 4, or the
+  Meowdown split if Mario wants more boot.
+
 - 2026-11-01 — Design and frontend review (audit + six-slice plan in the
   project's Claude Doc "Kore: revisione design e frontend"). Slice 1, the
   note at the center: the Details rail no longer repeats the note's

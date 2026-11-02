@@ -7,7 +7,7 @@ use std::process::ExitCode;
 use clap::{Parser, Subcommand};
 
 use reflect_cli::error::CliError;
-use reflect_cli::{commands, graph, mcp};
+use reflect_cli::{commands, graph, mcp, mcp_http};
 
 /// Read, discover, and capture notes in a Kore graph.
 ///
@@ -205,11 +205,21 @@ enum Command {
         #[arg(long, conflicts_with = "text")]
         stdin: bool,
     },
-    /// Serve the graph to AI agents as an MCP server over stdio
+    /// Serve the graph to AI agents as an MCP server (stdio, or HTTP with --http)
     Mcp {
         /// Expose only the tools that read; refuse every write
         #[arg(long)]
         read_only: bool,
+        /// Serve over HTTP on this address (e.g. 127.0.0.1:8765) instead of
+        /// stdio; requires KORE_MCP_TOKEN
+        #[arg(long, value_name = "ADDR")]
+        http: Option<String>,
+        /// Public HTTPS origin clients use (the tunnel's URL); defaults to the Host header
+        #[arg(long, value_name = "URL", requires = "http")]
+        public_url: Option<String>,
+        /// Extra OAuth redirect URI to allow, besides Claude's and loopback ones
+        #[arg(long = "redirect-uri", value_name = "URI", requires = "http")]
+        redirect_uris: Vec<String>,
     },
 }
 
@@ -280,13 +290,34 @@ fn run(cli: &Cli) -> Result<(), CliError> {
         Command::Append { note, text, stdin } => {
             commands::append::run(&graph, cli.json, note, text.as_deref(), *stdin)
         }
-        Command::Mcp { read_only } => {
+        Command::Mcp {
+            read_only,
+            http,
+            public_url,
+            redirect_uris,
+        } => {
             let runner = mcp::ProcessRunner {
                 exe: std::env::current_exe()?,
                 graph: graph.root.clone(),
             };
             let server = mcp::Server::new(runner, *read_only);
-            mcp::serve(&server, std::io::stdin().lock(), std::io::stdout().lock())?;
+            let Some(address) = http else {
+                mcp::serve(&server, std::io::stdin().lock(), std::io::stdout().lock())?;
+                return Ok(());
+            };
+            let secret = std::env::var("KORE_MCP_TOKEN").unwrap_or_default();
+            if secret.trim().len() < mcp_http::MIN_SECRET_LEN {
+                return Err(CliError::Usage(format!(
+                    "set KORE_MCP_TOKEN to a secret of at least {} characters (e.g. `openssl rand -hex 32`)",
+                    mcp_http::MIN_SECRET_LEN
+                )));
+            }
+            let options = mcp_http::HttpOptions {
+                secret: secret.trim().to_string(),
+                public_url: public_url.clone(),
+                extra_redirects: redirect_uris.clone(),
+            };
+            mcp_http::serve(mcp_http::HttpServer::new(server, options), address)?;
             Ok(())
         }
     }

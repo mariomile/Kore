@@ -32,7 +32,7 @@ kore new <title>           # create notes/<slug>.md (--template, --tag, --set, -
 kore set <note> k=v…       # write frontmatter properties typed by the tag schemas
 kore tag <note> <tag>      # add a trailing #tag line (untag removes it)
 kore done <text>           # tick a task off by its text (--undo reopens)
-kore mcp                   # serve the graph to MCP clients over stdio (--read-only)
+kore mcp                   # serve the graph to MCP clients over stdio (--read-only, --http <addr>)
 ```
 
 Built from `apps/cli` (`cargo build -p reflect-cli`); bundled with the desktop
@@ -617,6 +617,45 @@ propose, so `--read-only` keeps them: `daily_review` (`date`, default
 today: the daily note and open tasks), `weekly_review` (the last seven
 dailies, other notes changed since, open tasks) and `connect_note` (`note`:
 the note with its links and backlinks, asking which links are missing).
+
+### Remote access over HTTP
+
+In the Mac app, Settings → Agents → Remote access does all of this for the
+open graph: it makes and keeps the token in the keychain, runs the server
+on `127.0.0.1:8765` while Kore is open, and publishes it with Tailscale
+Funnel. The rest of this section is for running it by hand.
+
+`kore mcp --http <addr>` serves the same tools, resources and prompts over
+MCP's Streamable HTTP transport (stateless: `POST /mcp` with JSON in and
+out, no SSE stream), for agents that cannot launch a local process: Claude
+on the web and the phone, cloud agents, API clients such as Grok's or
+OpenAI's remote MCP tools.
+
+```sh
+export KORE_MCP_TOKEN="$(openssl rand -hex 32)"   # keep it somewhere safe
+kore --graph ~/Notes mcp --http 127.0.0.1:8765
+tailscale funnel 8765                              # or a Cloudflare Tunnel
+```
+
+The server binds a local address and never terminates TLS; the tunnel
+supplies the public HTTPS URL (pass it with `--public-url` if the tunnel
+does not forward the `Host` header). One secret, `KORE_MCP_TOKEN` (at least
+24 characters), guards everything:
+
+- **API clients** send it as `Authorization: Bearer <token>`.
+- **Claude** (custom connector at `<public url>/mcp`) signs in with OAuth.
+  The server is its own single-user authorization server: discovery
+  metadata, dynamic client registration, an authorize page that asks for
+  the token, PKCE S256, refresh. Codes and tokens are HMAC-signed with a key
+  derived from the token, so they survive a restart and changing
+  `KORE_MCP_TOKEN` revokes every connection. Access tokens last an hour,
+  refresh tokens 30 days.
+- OAuth redirects go only to Claude's callback and loopback addresses;
+  `--redirect-uri <uri>` (repeatable) allows another client's.
+
+`--read-only` applies here too. Search, tags, backlinks, lists and tasks
+read the index the Kore app keeps, so run the server where the app has the
+graph open.
 
 ## Development notes
 

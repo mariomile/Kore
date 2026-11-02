@@ -224,7 +224,7 @@ fn classify(
 
 /// The staged CLI sidecar, next to the running executable in both dev
 /// (`target/debug/`) and the bundle (`Kore.app/Contents/MacOS/`).
-fn cli_path() -> AppResult<PathBuf> {
+pub(crate) fn cli_path() -> AppResult<PathBuf> {
     let exe = std::env::current_exe().map_err(|err| AppError::io(err.to_string()))?;
     let dir = exe
         .parent()

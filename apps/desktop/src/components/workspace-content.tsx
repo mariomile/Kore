@@ -160,6 +160,8 @@ function WorkspaceFrame({
   const contextRailAvailable = showDetails || contextPanels.opened.length > 0
   useEffect(() => {
     setContextRailAvailable(contextRailAvailable)
+    // Settings and other full-page workspaces unmount the frame, rail and all.
+    return () => setContextRailAvailable(false)
   }, [contextRailAvailable, setContextRailAvailable])
   const panes = usePanes()
   const { columns } = panes

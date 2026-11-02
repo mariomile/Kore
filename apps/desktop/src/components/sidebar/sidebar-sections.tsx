@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react'
+import { useCallback, useEffect, useState, type ReactElement } from 'react'
 import {
   closestCenter,
   DndContext,
@@ -111,19 +111,21 @@ export function SidebarSections(): ReactElement {
  * can wait for the trailing invalidation that carries the pass's last rows.
  */
 function useSettleWindow(active: boolean): boolean {
+  const [previous, setPrevious] = useState(active)
   const [settling, setSettling] = useState(false)
-  const wasActive = useRef(active)
+  // Derived during render, not in an effect: the paint where `active` turns
+  // false must already be settling, or the consumer flashes for one frame.
+  if (previous !== active) {
+    setPrevious(active)
+    setSettling(previous && !active)
+  }
   useEffect(() => {
-    const ended = wasActive.current && !active
-    wasActive.current = active
-    if (!ended) {
-      setSettling(false)
+    if (!settling) {
       return
     }
-    setSettling(true)
     const timer = setTimeout(() => setSettling(false), INVALIDATE_THROTTLE_MS)
     return () => clearTimeout(timer)
-  }, [active])
+  }, [settling])
   return settling
 }
 

@@ -94,6 +94,7 @@ vi.mock('@/providers/open-tabs-provider', () => ({
 vi.mock('@/providers/note-find-provider', () => ({
   NoteFindProvider: ({ children }: { children: ReactNode }) => children,
 }))
+const setContextRailAvailable = vi.hoisted(() => vi.fn<(available: boolean) => void>())
 vi.mock('@/providers/sidebar-provider', () => ({
   useSidebar: () => ({
     collapsed: workspaceState.collapsed,
@@ -103,7 +104,7 @@ vi.mock('@/providers/sidebar-provider', () => ({
     contextPanels: { opened: workspaceState.openedPanels, active: 'details' },
     openContextPanel: vi.fn(),
     closeContextPanel: vi.fn(),
-    setContextRailAvailable: vi.fn(),
+    setContextRailAvailable,
   }),
 }))
 // The asides mount resize handles, which read the persisted widths. The
@@ -230,6 +231,20 @@ describe('WorkspaceContent', () => {
     routerState.route = { kind: 'allNotes', filter: { kind: 'all' } }
     await view.rerender(<WorkspaceContent graph={GRAPH} />)
     await expect.element(view.getByRole('complementary', { name: 'Context' })).toBeInTheDocument()
+  })
+
+  it('tells the context toggle whether the rail is there, and that it is gone on unmount', async () => {
+    workspaceState.target = null
+    routerState.route = { kind: 'graphMap' }
+    const view = await render(<WorkspaceContent graph={GRAPH} />)
+    expect(setContextRailAvailable).toHaveBeenLastCalledWith(false)
+
+    routerState.route = { kind: 'allNotes', filter: { kind: 'all' } }
+    await view.rerender(<WorkspaceContent graph={GRAPH} />)
+    expect(setContextRailAvailable).toHaveBeenLastCalledWith(true)
+
+    await view.unmount()
+    expect(setContextRailAvailable).toHaveBeenLastCalledWith(false)
   })
 
   it('keeps the sunken gutter around the note pane when both rails collapse', async () => {

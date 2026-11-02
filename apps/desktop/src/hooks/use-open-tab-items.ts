@@ -111,7 +111,7 @@ export function useOpenTabItems(): OpenTabItem[] {
           // once the strip truncates it.
           return {
             tab,
-            title: `Graph · ${displayNoteTitle(noteRows?.get(tab.path)?.title ?? noteFileStem(tab.path))}`,
+            title: `Graph · ${displayNoteTitle(openNoteTabTitle(tab.path, noteRows?.get(tab.path)?.title, drafts.get(tab.path)))}`,
           }
         case 'surface':
           // The All Notes surface routed to a tag is that tag's own page —

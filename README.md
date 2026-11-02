@@ -22,10 +22,11 @@ another git remote are connected directly by the user.
   a floating note card between two full-height rails — light and dark, with
   themes (Space, Midnight, Paper) and custom accent colors.
 - **Note tabs:** a Linear-style tab strip (`⌃Tab`/`⌃⇧Tab` cycle, `⌘W`
-  closes, double-click pins) plus an "Open" section in the sidebar, persisted
-  per graph and restored at launch.
+  closes, double-click pins), persisted per graph and restored at launch.
 - **Dual rails:** the left navigation and the right context rail (Details /
-  Chat / Calendar panels) collapse independently — `⌘\` and `⌘⇧\`.
+  Chat / Calendar panels) collapse independently — `⌘\` and `⌘⇧\`. The
+  context rail only takes room where it has something to show: Graph, Tasks
+  and the other full-page tools get the whole width.
 - **Graph view:** every note and wiki link as a force-directed map — pan,
   zoom, hover to spotlight a neighborhood, drag to rearrange, click to open.
 - **In-app browser:** web links in notes open in their own window inside the

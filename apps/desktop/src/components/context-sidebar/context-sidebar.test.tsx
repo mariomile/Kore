@@ -1,7 +1,7 @@
 import { render as renderBare } from 'vitest-browser-react'
 import type { ReactElement, ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
-import { SidebarProvider } from '@/providers/sidebar-provider'
+import { SidebarProvider, useSidebar } from '@/providers/sidebar-provider'
 
 /**
  * The right rail's panel switcher: the band starts as Details alone plus the
@@ -212,6 +212,45 @@ describe('ContextSidebar', () => {
       <ContextSidebar target={{ kind: 'note', path: 'notes/plan.md' }} showDetails />,
     )
     await expect.element(view.getByTestId('chat-panel')).toBeInTheDocument()
+    await view.unmount()
+  })
+
+  it('selecting Details does not count as an opened panel', async () => {
+    let railTabs = 0
+    function OpenedProbe(): null {
+      railTabs = useSidebar().contextPanels.opened.length
+      return null
+    }
+    const view = await render(
+      <>
+        <ContextSidebar target={{ kind: 'note', path: 'notes/plan.md' }} showDetails />
+        <OpenedProbe />
+      </>,
+    )
+    await openPanel(view, 'Chat')
+    await view.getByRole('tab', { name: 'Details' }).click()
+    await view.getByRole('button', { name: 'Close Chat' }).click()
+    // Nothing the "+" opened is left, so a route without Details drops the rail.
+    await vi.waitFor(() => expect(railTabs).toBe(0))
+    await view.unmount()
+  })
+
+  it('closing the shown tab where Details is hidden records the tab left on screen', async () => {
+    const view = await render(
+      <ContextSidebar target={{ kind: 'note', path: 'notes/plan.md' }} showDetails />,
+    )
+    await openPanel(view, 'Chat')
+    await openPanel(view, 'Calendar')
+    // Back on Details, then onto a route without it: the band shows Chat.
+    await view.getByRole('tab', { name: 'Details' }).click()
+    await view.rerender(<ContextSidebar target={null} showDetails={false} />)
+    await view.getByRole('button', { name: 'Close Chat' }).click()
+    await expect.element(view.getByTestId('month-calendar')).toBeInTheDocument()
+
+    await view.rerender(
+      <ContextSidebar target={{ kind: 'note', path: 'notes/plan.md' }} showDetails />,
+    )
+    await expect.element(view.getByTestId('month-calendar')).toBeInTheDocument()
     await view.unmount()
   })
 

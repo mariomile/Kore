@@ -36,10 +36,10 @@ interface SidebarContextValue {
   /** Show a panel, giving it a tab first when the "+" has not opened it yet. */
   openContextPanel: (panel: ContextPanel) => void
   /**
-   * Take a panel's tab off the rail. When it was the selected one, `fallback`
-   * is selected instead: the caller knows which tabs the route still shows.
+   * Take a panel's tab off the rail and select `next`: the caller knows which
+   * tab the band shows afterwards, which is what the choice has to record.
    */
-  closeContextPanel: (panel: ContextPanel, fallback: ContextPanel) => void
+  closeContextPanel: (panel: ContextPanel, next: ContextPanel) => void
 }
 
 /** The context rail's tab state, updated as one value so it is never half-applied. */
@@ -68,14 +68,17 @@ export function SidebarProvider({ children }: { children: ReactNode }): ReactEle
   }, [])
   const openContextPanel = useCallback((panel: ContextPanel) => {
     setContextPanels(({ opened }) => ({
-      opened: opened.includes(panel) ? opened : [...opened, panel],
+      // Details is the rail's own tab, not one the "+" adds: it never joins
+      // `opened`, which only counts panels that keep the rail up on their own.
+      opened:
+        panel === DEFAULT_CONTEXT_PANEL || opened.includes(panel) ? opened : [...opened, panel],
       active: panel,
     }))
   }, [])
-  const closeContextPanel = useCallback((panel: ContextPanel, fallback: ContextPanel) => {
-    setContextPanels(({ opened, active }) => ({
+  const closeContextPanel = useCallback((panel: ContextPanel, next: ContextPanel) => {
+    setContextPanels(({ opened }) => ({
       opened: opened.filter((entry) => entry !== panel),
-      active: active === panel ? fallback : active,
+      active: next,
     }))
   }, [])
 

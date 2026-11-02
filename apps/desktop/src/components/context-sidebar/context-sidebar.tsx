@@ -197,12 +197,14 @@ export function ContextSidebar({ target, showDetails }: ContextSidebarProps): Re
 
   /**
    * Closing the tab on screen lands on the first tab left on the band —
-   * Details wherever the route has it, the one tab that never closes — so
-   * the stored choice is always the panel you see.
+   * Details wherever the route has it, the one tab that never closes. Either
+   * way the stored choice becomes the panel you see afterwards.
    */
   const closePanel = (id: ContextPanel): void => {
     haptic('alignment')
-    closeContextPanel(id, segments.find((spec) => spec.id !== id)?.id ?? DEFAULT_PANEL)
+    const next =
+      active.id === id ? (segments.find((spec) => spec.id !== id)?.id ?? DEFAULT_PANEL) : active.id
+    closeContextPanel(id, next)
   }
 
   return (

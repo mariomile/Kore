@@ -7,12 +7,6 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
-- Kore starts with less to load: about 370 KB less JavaScript before the
-  first note appears. The tag icon set, All Notes, Tasks and the tables
-  embedded in notes now load when you first reach them (All Notes and Tasks
-  are fetched quietly right after launch, so the shortcut still opens them
-  instantly).
-
 - A cleaner frame. Graph, Tasks and the other full-page tools now use the
   whole window instead of sitting next to an empty Details column; notes,
   daily notes and All notes keep it. The sidebar no longer repeats your open

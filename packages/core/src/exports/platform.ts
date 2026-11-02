@@ -251,6 +251,7 @@ export {
   untitledNoteSeed,
   untitledNotePath,
   isUntitledNotePath,
+  openNoteTabTitle,
   createNoteWithTitle,
   createNoteWithSource,
   resolveOrCreateNoteWithTitle,

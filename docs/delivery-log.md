@@ -7,6 +7,9 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- A new note's tab and its entry in the sidebar's Open list show the title
+  as you type it, instead of "Untitled" until a few seconds after you stop.
+
 - The Details panel beside a note opens on what you came for: the note's
   tasks, its outline and its local graph. Properties are no longer listed
   twice (you edit them under the title), and Pin, Lock, Export and Trash

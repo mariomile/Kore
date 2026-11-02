@@ -2243,6 +2243,16 @@ screen: Agents then Close lands on today.
 
 ## Session log
 
+- 2026-11-02 — New notes are named in their tab while you type. A ⌘N note
+  keeps its ULID placeholder path until the birth rename settles (5s of
+  quiet, blur or teardown, and forever if the move is refused), and the tab
+  strip and the sidebar "Open" list hardcoded "Untitled" for that path. The
+  rename coordinator now publishes the saved title of a placeholder note to
+  a small store (`editor/draft-titles.ts`), and `openNoteTabTitle` in core
+  picks draft title, then the indexed title (an unauthored placeholder row
+  reads "Untitled", never the ULID), then the filename stem. Found by the
+  design review.
+
 - 2026-11-01 — Design and frontend review (audit + six-slice plan in the
   project's Claude Doc "Kore: revisione design e frontend"). Slice 1, the
   note at the center: the Details rail no longer repeats the note's

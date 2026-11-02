@@ -158,7 +158,9 @@ export const contextSidebarWidthSchema = sidebarWidthValueSchema(CONTEXT_SIDEBAR
  * the fixed navigation. A closed set of ids — the sections themselves live in
  * the app; this key only records the arrangement the user dragged them into.
  */
-const sidebarSectionEnum = z.enum(['open', 'pinned', 'folders', 'tags'])
+// There is no "open" shelf any more: it repeated the tab strip row for row.
+// A stored `open` entry is simply dropped by the normalization below.
+const sidebarSectionEnum = z.enum(['pinned', 'folders', 'tags'])
 
 export type SidebarSection = z.infer<typeof sidebarSectionEnum>
 

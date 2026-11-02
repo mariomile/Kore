@@ -13,6 +13,14 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
   local graph can leave the panel: open it in its own tab or beside the
   note, where it fills the pane.
 
+- A cleaner frame. Graph, Tasks and the other full-page tools now use the
+  whole window instead of sitting next to an empty Details column; notes,
+  daily notes and All notes keep it. The sidebar no longer repeats your open
+  tabs in an "Open" list, inactive tabs have a light outline so they read as
+  tabs, and Folders and Types no longer pop in one after another while a big
+  vault indexes. In Tasks, groups are separated by space instead of grey
+  bands, and "+ Add" stays out of the way except on today's group.
+
 - The Details panel beside a note opens on what you came for: the note's
   tasks, its outline and its local graph. Properties are no longer listed
   twice (you edit them under the title), and Pin, Lock, Export and Trash

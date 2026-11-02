@@ -106,7 +106,7 @@ vi.mock('@/providers/graph-provider', () => ({
 }))
 // The shelf order the rail renders — a test flips it to assert the stored
 // arrangement drives the stack.
-const sidebarSections = vi.hoisted(() => ({ order: ['open', 'pinned', 'folders', 'tags'] }))
+const sidebarSections = vi.hoisted(() => ({ order: ['pinned', 'folders', 'tags'] }))
 vi.mock('@/providers/settings-provider', () => ({
   useSettings: () => ({
     settings: {
@@ -168,7 +168,7 @@ beforeEach(() => {
   newChat.mockClear()
   getTagTree.mockReset().mockResolvedValue([])
   getFolderTree.mockReset().mockResolvedValue(buildFolderTree([]))
-  sidebarSections.order = ['open', 'pinned', 'folders', 'tags']
+  sidebarSections.order = ['pinned', 'folders', 'tags']
   audioMemo.available = true
   audioMemo.unavailableReason = null
   audioMemo.toggle.mockReset()
@@ -307,15 +307,15 @@ describe('Sidebar', () => {
       { path: 'notes/roadmap.md', title: 'Roadmap', dailyDate: null },
     ])
     getTagTree.mockResolvedValue(buildTagTree([{ key: 'book', tag: 'book', count: 3 }]))
-    sidebarSections.order = ['tags', 'pinned', 'open', 'folders']
+    sidebarSections.order = ['tags', 'pinned', 'folders']
     const { view } = await renderSidebar()
 
     await expect.element(view.getByRole('button', { name: /Book\s*3/i })).toBeVisible()
     const shelves = [...view.container.querySelectorAll('section[aria-label]')].map((section) =>
       section.getAttribute('aria-label'),
     )
-    // Open lists the window's tabs and there are none here, so it renders
-    // nothing while still holding its place in the stored order.
+    // The vault has no folders of its own here, so Folders renders nothing
+    // while still holding its place in the stored order.
     expect(shelves).toEqual(['Types', 'Pinned notes'])
   })
 

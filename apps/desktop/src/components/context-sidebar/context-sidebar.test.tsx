@@ -1,5 +1,7 @@
-import { render } from 'vitest-browser-react'
+import { render as renderBare } from 'vitest-browser-react'
+import type { ReactElement, ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
+import { SidebarProvider, useSidebar } from '@/providers/sidebar-provider'
 
 /**
  * The right rail's panel switcher: the band starts as Details alone plus the
@@ -42,6 +44,15 @@ vi.mock('@/lib/use-today', () => ({
 
 const { ContextSidebar } = await import('./context-sidebar')
 
+/** The rail's tabs live in the workspace's sidebar state, so it renders inside one. */
+function render(ui: ReactElement): ReturnType<typeof renderBare> {
+  return renderBare(ui, {
+    wrapper: ({ children }: { children: ReactNode }) => (
+      <SidebarProvider>{children}</SidebarProvider>
+    ),
+  })
+}
+
 /** Open a panel the way a user does: the "+" menu, then its entry. */
 async function openPanel(view: Awaited<ReturnType<typeof render>>, label: string): Promise<void> {
   await view.getByRole('button', { name: 'Open a panel' }).click()
@@ -50,7 +61,9 @@ async function openPanel(view: Awaited<ReturnType<typeof render>>, label: string
 
 describe('ContextSidebar', () => {
   it('starts with Details alone and adds panels through the "+"', async () => {
-    const view = await render(<ContextSidebar target={{ kind: 'daily', date: '2026-08-17' }} />)
+    const view = await render(
+      <ContextSidebar target={{ kind: 'daily', date: '2026-08-17' }} showDetails />,
+    )
     expect(view.getByTestId('daily-details').element().textContent).toBe('2026-08-17')
 
     // Details is the whole band until the "+" adds to it.
@@ -81,7 +94,9 @@ describe('ContextSidebar', () => {
   })
 
   it('closes a tab from the band and falls back to Details', async () => {
-    const view = await render(<ContextSidebar target={{ kind: 'daily', date: '2026-08-17' }} />)
+    const view = await render(
+      <ContextSidebar target={{ kind: 'daily', date: '2026-08-17' }} showDetails />,
+    )
 
     await openPanel(view, 'Chat')
     await expect.element(view.getByTestId('chat-panel')).toBeInTheDocument()
@@ -94,7 +109,9 @@ describe('ContextSidebar', () => {
   })
 
   it('closes a tab that is not the one on screen, and never Details', async () => {
-    const view = await render(<ContextSidebar target={{ kind: 'daily', date: '2026-08-17' }} />)
+    const view = await render(
+      <ContextSidebar target={{ kind: 'daily', date: '2026-08-17' }} showDetails />,
+    )
 
     await openPanel(view, 'Chat')
     await openPanel(view, 'Calendar')
@@ -113,7 +130,7 @@ describe('ContextSidebar', () => {
   })
 
   it('re-picking an open panel from the "+" shows it instead of duplicating its tab', async () => {
-    const view = await render(<ContextSidebar target={null} />)
+    const view = await render(<ContextSidebar target={null} showDetails />)
 
     await openPanel(view, 'Chat')
     await openPanel(view, 'Calendar')
@@ -125,7 +142,7 @@ describe('ContextSidebar', () => {
   })
 
   it('hosts the built-in browser and the terminal as panels', async () => {
-    const view = await render(<ContextSidebar target={null} />)
+    const view = await render(<ContextSidebar target={null} showDetails />)
 
     await openPanel(view, 'Browser')
     await expect.element(view.getByTestId('browser-panel')).toBeInTheDocument()
@@ -137,14 +154,14 @@ describe('ContextSidebar', () => {
   })
 
   it('leaves types to the left rail', async () => {
-    const view = await render(<ContextSidebar target={null} />)
+    const view = await render(<ContextSidebar target={null} showDetails />)
     await view.getByRole('button', { name: 'Open a panel' }).click()
     expect(view.getByRole('menuitem', { name: 'Types' }).query()).toBeNull()
     await view.unmount()
   })
 
   it('renders its panels inside the rail card', async () => {
-    const view = await render(<ContextSidebar target={null} />)
+    const view = await render(<ContextSidebar target={null} showDetails />)
     const gutter = view.getByTestId('context-pane-gutter').element()
     expect(gutter.querySelector('.app-glass-card')).not.toBeNull()
     // The switcher stays outside the card, on the window's drag band.
@@ -153,7 +170,7 @@ describe('ContextSidebar', () => {
   })
 
   it('draws its panels as ordinary tabs — named, not icon-only tiles', async () => {
-    const view = await render(<ContextSidebar target={null} />)
+    const view = await render(<ContextSidebar target={null} showDetails />)
     const details = view.getByRole('tab', { name: 'Details' })
     await expect.element(details).toHaveAttribute('aria-selected', 'true')
     // The panel's name is on the tab itself, the same pill the workspace
@@ -165,16 +182,82 @@ describe('ContextSidebar', () => {
     await view.unmount()
   })
 
-  it('describes a note target and falls back to the empty state', async () => {
-    const view = await render(<ContextSidebar target={{ kind: 'note', path: 'notes/plan.md' }} />)
+  it('describes a note target and falls back to the peek hint', async () => {
+    const view = await render(
+      <ContextSidebar target={{ kind: 'note', path: 'notes/plan.md' }} showDetails />,
+    )
     expect(view.getByTestId('note-details').element().textContent).toBe('notes/plan.md')
 
-    await view.rerender(<ContextSidebar target={null} />)
-    await expect.element(view.getByText('Open a note to see its details here.')).toBeVisible()
+    await view.rerender(<ContextSidebar target={null} showDetails />)
+    await expect.element(view.getByText('Select a note to preview it here.')).toBeVisible()
 
     // Without a daily target the calendar anchors on today.
     await openPanel(view, 'Calendar')
     expect(view.getByTestId('month-calendar').element().textContent).toBe('2026-08-19')
+    await view.unmount()
+  })
+
+  it('closing a tab without Details lands on the tab left on screen', async () => {
+    const view = await render(
+      <ContextSidebar target={{ kind: 'note', path: 'notes/plan.md' }} showDetails />,
+    )
+    await openPanel(view, 'Chat')
+    await openPanel(view, 'Calendar')
+    await view.rerender(<ContextSidebar target={null} showDetails={false} />)
+    await view.getByRole('button', { name: 'Close Calendar' }).click()
+    await expect.element(view.getByTestId('chat-panel')).toBeInTheDocument()
+
+    // Back on a note, the rail still shows the panel that was on screen.
+    await view.rerender(
+      <ContextSidebar target={{ kind: 'note', path: 'notes/plan.md' }} showDetails />,
+    )
+    await expect.element(view.getByTestId('chat-panel')).toBeInTheDocument()
+    await view.unmount()
+  })
+
+  it('selecting Details does not count as an opened panel', async () => {
+    let railTabs = 0
+    function OpenedProbe(): null {
+      railTabs = useSidebar().contextPanels.opened.length
+      return null
+    }
+    const view = await render(
+      <>
+        <ContextSidebar target={{ kind: 'note', path: 'notes/plan.md' }} showDetails />
+        <OpenedProbe />
+      </>,
+    )
+    await openPanel(view, 'Chat')
+    await view.getByRole('tab', { name: 'Details' }).click()
+    await view.getByRole('button', { name: 'Close Chat' }).click()
+    // Nothing the "+" opened is left, so a route without Details drops the rail.
+    await vi.waitFor(() => expect(railTabs).toBe(0))
+    await view.unmount()
+  })
+
+  it('closing the shown tab where Details is hidden records the tab left on screen', async () => {
+    const view = await render(
+      <ContextSidebar target={{ kind: 'note', path: 'notes/plan.md' }} showDetails />,
+    )
+    await openPanel(view, 'Chat')
+    await openPanel(view, 'Calendar')
+    // Back on Details, then onto a route without it: the band shows Chat.
+    await view.getByRole('tab', { name: 'Details' }).click()
+    await view.rerender(<ContextSidebar target={null} showDetails={false} />)
+    await view.getByRole('button', { name: 'Close Chat' }).click()
+    await expect.element(view.getByTestId('month-calendar')).toBeInTheDocument()
+
+    await view.rerender(
+      <ContextSidebar target={{ kind: 'note', path: 'notes/plan.md' }} showDetails />,
+    )
+    await expect.element(view.getByTestId('month-calendar')).toBeInTheDocument()
+    await view.unmount()
+  })
+
+  it('drops the Details tab on a route with nothing to describe', async () => {
+    const view = await render(<ContextSidebar target={null} showDetails={false} />)
+    // Nothing to show: the rail draws no band and no empty card.
+    expect(view.container.querySelector('[role="tablist"]')).toBeNull()
     await view.unmount()
   })
 })

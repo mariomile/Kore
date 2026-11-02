@@ -148,14 +148,14 @@ function WorkspaceFrame({
   commandContext,
   contextTarget,
 }: WorkspaceFrameProps): ReactElement {
-  const { collapsed, contextCollapsed, openedPanels } = useSidebar()
+  const { collapsed, contextCollapsed, contextPanels } = useSidebar()
   const { route } = useRouter()
   // The rail exists on a route only when it has something to show: Details
   // for a note, a day or a peeking list, or a panel the "+" opened. Graph and
   // Tasks otherwise get the full width, and the toggle that would reveal an
   // empty card goes with the rail.
   const showDetails = routeHasDetails(route, contextTarget)
-  const contextRailAvailable = showDetails || openedPanels.length > 0
+  const contextRailAvailable = showDetails || contextPanels.opened.length > 0
   const panes = usePanes()
   const { columns } = panes
   // A chat tab names its conversation, its route does not: dropping one into

@@ -31,21 +31,33 @@ interface SidebarContextValue {
   /** The right (context) rail. */
   contextCollapsed: boolean
   toggleContextSidebar: () => void
-  /** The panels the context rail's "+" added as tabs, in the order opened. */
-  openedPanels: readonly ContextPanel[]
-  setOpenedPanels: (panels: readonly ContextPanel[]) => void
-  /** The context rail's selected tab. */
-  activePanel: ContextPanel
-  setActivePanel: (panel: ContextPanel) => void
+  /** The context rail's tabs: what the "+" opened, and which one is selected. */
+  contextPanels: ContextPanels
+  /** Show a panel, giving it a tab first when the "+" has not opened it yet. */
+  openContextPanel: (panel: ContextPanel) => void
+  /**
+   * Take a panel's tab off the rail. When it was the selected one, `fallback`
+   * is selected instead: the caller knows which tabs the route still shows.
+   */
+  closeContextPanel: (panel: ContextPanel, fallback: ContextPanel) => void
 }
+
+/** The context rail's tab state, updated as one value so it is never half-applied. */
+export interface ContextPanels {
+  /** The panels the "+" added as tabs, in the order opened. */
+  readonly opened: readonly ContextPanel[]
+  /** The selected tab; it may name a panel the current route does not show. */
+  readonly active: ContextPanel
+}
+
+const INITIAL_CONTEXT_PANELS: ContextPanels = { opened: [], active: DEFAULT_CONTEXT_PANEL }
 
 const SidebarContext = createContext<SidebarContextValue | null>(null)
 
 export function SidebarProvider({ children }: { children: ReactNode }): ReactElement {
   const [collapsed, setCollapsed] = useState(false)
   const [contextCollapsed, setContextCollapsed] = useState(false)
-  const [openedPanels, setOpenedPanels] = useState<readonly ContextPanel[]>([])
-  const [activePanel, setActivePanel] = useState<ContextPanel>(DEFAULT_CONTEXT_PANEL)
+  const [contextPanels, setContextPanels] = useState<ContextPanels>(INITIAL_CONTEXT_PANELS)
   const toggleSidebar = useCallback(() => {
     haptic('level-change')
     setCollapsed((current) => !current)
@@ -54,6 +66,18 @@ export function SidebarProvider({ children }: { children: ReactNode }): ReactEle
     haptic('level-change')
     setContextCollapsed((current) => !current)
   }, [])
+  const openContextPanel = useCallback((panel: ContextPanel) => {
+    setContextPanels(({ opened }) => ({
+      opened: opened.includes(panel) ? opened : [...opened, panel],
+      active: panel,
+    }))
+  }, [])
+  const closeContextPanel = useCallback((panel: ContextPanel, fallback: ContextPanel) => {
+    setContextPanels(({ opened, active }) => ({
+      opened: opened.filter((entry) => entry !== panel),
+      active: active === panel ? fallback : active,
+    }))
+  }, [])
 
   const value = useMemo<SidebarContextValue>(
     () => ({
@@ -61,12 +85,19 @@ export function SidebarProvider({ children }: { children: ReactNode }): ReactEle
       toggleSidebar,
       contextCollapsed,
       toggleContextSidebar,
-      openedPanels,
-      setOpenedPanels,
-      activePanel,
-      setActivePanel,
+      contextPanels,
+      openContextPanel,
+      closeContextPanel,
     }),
-    [collapsed, toggleSidebar, contextCollapsed, toggleContextSidebar, openedPanels, activePanel],
+    [
+      collapsed,
+      toggleSidebar,
+      contextCollapsed,
+      toggleContextSidebar,
+      contextPanels,
+      openContextPanel,
+      closeContextPanel,
+    ],
   )
   return <SidebarContext value={value}>{children}</SidebarContext>
 }

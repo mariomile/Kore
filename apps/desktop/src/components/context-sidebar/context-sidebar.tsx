@@ -152,10 +152,11 @@ interface ContextSidebarProps {
   target: ContextSidebarTarget | null
   /**
    * Whether the route has anything for Details to describe: a note, a day, or
-   * a list that peeks. Without one the Details tab leaves the band, and the
-   * shell drops the rail altogether unless the "+" opened another panel.
+   * a list that peeks ({@link import('./sidebar-route').routeHasDetails}).
+   * Without one the Details tab leaves the band, and the shell drops the rail
+   * altogether unless the "+" opened another panel.
    */
-  showDetails?: boolean
+  showDetails: boolean
 }
 
 /**
@@ -167,16 +168,8 @@ interface ContextSidebarProps {
  * close it, and only Details cannot be closed. Both the open set and the
  * choice are per-window session state ({@link useSidebar}), not persisted.
  */
-export function ContextSidebar({
-  target,
-  showDetails = true,
-}: ContextSidebarProps): ReactElement | null {
-  const {
-    openedPanels: opened,
-    setOpenedPanels: setOpened,
-    activePanel: panel,
-    setActivePanel: setPanel,
-  } = useSidebar()
+export function ContextSidebar({ target, showDetails }: ContextSidebarProps): ReactElement | null {
+  const { contextPanels, openContextPanel, closeContextPanel } = useSidebar()
   const today = useToday()
   const peekPath = usePeekPath()
   // The calendar panel anchors on the described day when there is one, so it
@@ -185,43 +178,31 @@ export function ContextSidebar({
   // Segments keep `PANELS` order however the panels were opened, so the band
   // never reshuffles itself around the glyph you are aiming at.
   const segments = PANELS.filter((spec) =>
-    spec.id === DEFAULT_PANEL ? showDetails : opened.includes(spec.id),
+    spec.id === DEFAULT_PANEL ? showDetails : contextPanels.opened.includes(spec.id),
   )
-  const active = segments.find((spec) => spec.id === panel) ?? segments[0]
+  // The stored choice can name a panel this route does not show (Details on
+  // Graph); the band then leads with its first tab.
+  const active = segments.find((spec) => spec.id === contextPanels.active) ?? segments[0]
   if (active === undefined) {
     return null
   }
 
-  const selectPanel = (id: ContextPanel): void => {
+  /** Picking a tab, or a panel in the "+" menu, shows it — opening it first if needed. */
+  const showPanel = (id: ContextPanel): void => {
     if (id !== active.id) {
       haptic('alignment')
-      setPanel(id)
     }
-  }
-
-  /** Opening a panel from the "+" also brings it up; re-picking an open one just shows it. */
-  const openPanel = (id: ContextPanel): void => {
-    haptic('alignment')
-    if (!opened.includes(id)) {
-      setOpened([...opened, id])
-    }
-    setPanel(id)
+    openContextPanel(id)
   }
 
   /**
-   * Closing the tab on screen falls back to Details, the one tab that never
-   * closes, or, where the route has no Details tab, to the first tab still on
-   * the band, so the stored choice is always the panel you see.
+   * Closing the tab on screen lands on the first tab left on the band —
+   * Details wherever the route has it, the one tab that never closes — so
+   * the stored choice is always the panel you see.
    */
   const closePanel = (id: ContextPanel): void => {
     haptic('alignment')
-    setOpened(opened.filter((entry) => entry !== id))
-    if (active.id === id) {
-      const fallback = showDetails
-        ? DEFAULT_PANEL
-        : (segments.find((spec) => spec.id !== id)?.id ?? DEFAULT_PANEL)
-      setPanel(fallback)
-    }
+    closeContextPanel(id, segments.find((spec) => spec.id !== id)?.id ?? DEFAULT_PANEL)
   }
 
   return (
@@ -247,13 +228,13 @@ export function ContextSidebar({
                 key={spec.id}
                 spec={spec}
                 active={active.id === spec.id}
-                onSelect={selectPanel}
+                onSelect={showPanel}
                 onClose={spec.id === DEFAULT_PANEL ? undefined : closePanel}
               />
             ))}
           </div>
 
-          <ContextPanelsPlusMenu onOpen={openPanel} />
+          <ContextPanelsPlusMenu onOpen={showPanel} />
         </div>
       </div>
 

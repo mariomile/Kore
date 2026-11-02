@@ -79,6 +79,18 @@ export {
   type AgentSkillStatus,
   type AgentSkillsStatus,
 } from '../app/agent-skill'
+export {
+  REMOTE_ACCESS_PORT,
+  remoteAccessLocalUrl,
+  remoteAccessToken,
+  remoteMcpStatus,
+  rotateRemoteAccessToken,
+  startRemoteAccess,
+  stopRemoteAccess,
+  type RemoteAccessState,
+  type RemoteMcpStatus,
+  type RemoteTunnel,
+} from '../app/remote-access'
 export { chunkNote, type NoteChunk } from '../embeddings/chunk'
 export {
   embedStatus,

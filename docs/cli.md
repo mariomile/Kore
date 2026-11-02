@@ -620,6 +620,11 @@ the note with its links and backlinks, asking which links are missing).
 
 ### Remote access over HTTP
 
+In the Mac app, Settings → Agents → Remote access does all of this for the
+open graph: it makes and keeps the token in the keychain, runs the server
+on `127.0.0.1:8765` while Kore is open, and publishes it with Tailscale
+Funnel. The rest of this section is for running it by hand.
+
 `kore mcp --http <addr>` serves the same tools, resources and prompts over
 MCP's Streamable HTTP transport (stateless: `POST /mcp` with JSON in and
 out, no SSE stream), for agents that cannot launch a local process: Claude

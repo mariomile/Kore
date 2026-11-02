@@ -39,6 +39,7 @@ mod process_memory;
 mod process_tree;
 mod quit;
 mod recents;
+mod remote_mcp;
 mod routine_script;
 mod runtime;
 mod secrets;
@@ -299,6 +300,7 @@ pub fn run() {
         .manage(windows::WindowInit::default())
         .manage(embed::EmbedState::default())
         .manage(agent_cli::AgentCliState::default())
+        .manage(remote_mcp::RemoteMcpState::default())
         .manage(agent_cli::AgentCliStdinState::default())
         .manage(browser::BrowserState::default())
         .manage(pty::PtyState::default())
@@ -378,6 +380,10 @@ pub fn run() {
             skill::skill_status,
             skill::skill_install,
             skill::skill_uninstall,
+            remote_mcp::remote_mcp_start,
+            remote_mcp::remote_mcp_stop,
+            remote_mcp::remote_mcp_status,
+            remote_mcp::tailscale_run,
             secrets::secret_set,
             secrets::secret_get,
             secrets::secret_delete,
@@ -574,6 +580,7 @@ pub fn run() {
             tauri::RunEvent::Exit => {
                 app.state::<routine_script::RoutineScriptState>().cancel_all();
                 app.state::<agent_cli::AgentCliState>().terminate_all();
+                app.state::<remote_mcp::RemoteMcpState>().stop();
                 app.state::<pty::PtyState>().close_all();
             }
             tauri::RunEvent::WindowEvent {

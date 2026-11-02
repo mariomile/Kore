@@ -48,6 +48,8 @@ describe('settingsSchema', () => {
       glassIntensity: 'regular',
       taskReminders: false,
       quickCaptureEnabled: true,
+      remoteAccessEnabled: false,
+      remoteAccessReadOnly: true,
       quickCaptureShortcut: DEFAULT_QUICK_CAPTURE_SHORTCUT,
       hapticFeedback: true,
       browserSearchEngine: 'duckduckgo',
@@ -104,6 +106,8 @@ describe('settingsSchema', () => {
     expect(DEFAULT_SETTINGS.contextSidebarWidth).toBe(320)
     expect(DEFAULT_SETTINGS.semanticSearchEnabled).toBe(false)
     expect(DEFAULT_SETTINGS.quickCaptureEnabled).toBe(true)
+    expect(DEFAULT_SETTINGS.remoteAccessEnabled).toBe(false)
+    expect(DEFAULT_SETTINGS.remoteAccessReadOnly).toBe(true)
     expect(DEFAULT_SETTINGS.quickCaptureShortcut).toBe('Mod-Shift-Slash')
     expect(DEFAULT_SETTINGS.hapticFeedback).toBe(true)
     expect(DEFAULT_SETTINGS.browserSearchEngine).toBe('duckduckgo')
@@ -336,6 +340,8 @@ describe('settingsSchema', () => {
     expect(settingsSchema.parse({ semanticSearchEnabled: 'yes' }).semanticSearchEnabled).toBe(false)
     expect(settingsSchema.parse({ semanticSearchEnabled: 1 }).semanticSearchEnabled).toBe(false)
     expect(settingsSchema.parse({ quickCaptureEnabled: 'yes' }).quickCaptureEnabled).toBe(true)
+    expect(settingsSchema.parse({ remoteAccessEnabled: 'yes' }).remoteAccessEnabled).toBe(false)
+    expect(settingsSchema.parse({ remoteAccessReadOnly: 0 }).remoteAccessReadOnly).toBe(true)
     expect(settingsSchema.parse({ quickCaptureEnabled: 0 }).quickCaptureEnabled).toBe(true)
     expect(settingsSchema.parse({ quickCaptureShortcut: 'Shift-K' }).quickCaptureShortcut).toBe(
       DEFAULT_QUICK_CAPTURE_SHORTCUT,
@@ -414,6 +420,8 @@ describe('settingsSchema', () => {
       glassIntensity: 'regular',
       taskReminders: false,
       quickCaptureEnabled: true,
+      remoteAccessEnabled: false,
+      remoteAccessReadOnly: true,
       quickCaptureShortcut: DEFAULT_QUICK_CAPTURE_SHORTCUT,
       hapticFeedback: true,
       browserSearchEngine: 'duckduckgo',

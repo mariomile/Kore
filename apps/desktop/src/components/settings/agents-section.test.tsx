@@ -15,6 +15,11 @@ vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({ graph: GRAPH }),
 }))
 
+vi.mock('@/providers/settings-provider', async () => {
+  const { DEFAULT_SETTINGS } = await import('@reflect/core')
+  return { useSettings: () => ({ settings: DEFAULT_SETTINGS, updateSettings: () => {} }) }
+})
+
 type InstallState = 'missing' | 'current' | 'stale' | 'conflict'
 
 const SKILL_NAMES = [

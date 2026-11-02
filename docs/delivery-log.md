@@ -12,7 +12,10 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
   your notes. Run `kore mcp --http`, put it behind a tunnel such as
   Tailscale Funnel, and add the URL as a connector: Claude signs in by
   asking for your token, API clients send it directly. Private notes stay
-  hidden and the read-only switch works the same.
+  hidden and the read-only switch works the same. In the app it is one
+  switch: Settings → Agents → Remote access starts the server, keeps the
+  token in the keychain and publishes it through Tailscale Funnel; you copy
+  the URL and the token into the agent.
 
 - Kore's MCP server now offers your notes, not just tools. In Claude Desktop
   or Claude Code you can attach any note from the Kore server, and every

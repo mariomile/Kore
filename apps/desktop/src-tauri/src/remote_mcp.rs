@@ -31,6 +31,8 @@ const STARTUP_GRACE: Duration = Duration::from_millis(400);
 /// `tailscale funnel` waits for the tailnet admin to enable Funnel; the link
 /// it prints first is the useful part, so a run is cut off after this.
 const TAILSCALE_TIMEOUT: Duration = Duration::from_secs(15);
+/// Unpublishing at quit is quick or not happening; don't hold the exit.
+const EXIT_TAILSCALE_TIMEOUT: Duration = Duration::from_secs(3);
 const POLL: Duration = Duration::from_millis(50);
 
 /// The Tailscale subcommands the app may run.
@@ -53,11 +55,36 @@ impl RemoteMcpState {
         self.0.lock().unwrap_or_else(|poison| poison.into_inner())
     }
 
-    /// Stop the server. Called on exit, so no `kore mcp --http` outlives the
-    /// app that is supposed to keep its index fresh.
+    /// Stop the server, returning the port it served.
+    fn stop_server(&self) -> Option<u16> {
+        let mut running = self.lock().take()?;
+        process_tree::terminate_tree(&mut running.child);
+        Some(running.port)
+    }
+
+    /// Stop the server (a restart or the switch turned off; core unpublishes).
     pub fn stop(&self) {
-        if let Some(mut running) = self.lock().take() {
-            process_tree::terminate_tree(&mut running.child);
+        self.stop_server();
+    }
+
+    /// App exit: stop the server and take its port off Tailscale Funnel.
+    /// `funnel --bg` lives in the node's config, so without this the public
+    /// URL would keep pointing at the port after Kore quits, ready to expose
+    /// whatever binds it next.
+    pub fn shutdown(&self) {
+        let Some(port) = self.stop_server() else {
+            return;
+        };
+        if let Some(binary) = find_tailscale() {
+            let off = vec![
+                "funnel".to_owned(),
+                "--bg".to_owned(),
+                port.to_string(),
+                "off".to_owned(),
+            ];
+            if let Err(err) = run_bounded(binary, off, EXIT_TAILSCALE_TIMEOUT) {
+                tracing::warn!(?err, "could not unpublish remote access at shutdown");
+            }
         }
     }
 }
@@ -255,7 +282,7 @@ fn find_tailscale() -> Option<PathBuf> {
         .find(|path| path.is_file())
 }
 
-fn run_bounded(binary: PathBuf, args: Vec<String>) -> AppResult<TailscaleRun> {
+fn run_bounded(binary: PathBuf, args: Vec<String>, timeout: Duration) -> AppResult<TailscaleRun> {
     let mut command = Command::new(binary);
     command
         .args(&args)
@@ -272,7 +299,7 @@ fn run_bounded(binary: PathBuf, args: Vec<String>) -> AppResult<TailscaleRun> {
     if let Some(stream) = child.stderr.take() {
         drain_into(stream, Arc::clone(&stderr));
     }
-    let deadline = Instant::now() + TAILSCALE_TIMEOUT;
+    let deadline = Instant::now() + timeout;
     let (code, timed_out) = loop {
         if let Some(status) = child.try_wait()? {
             break (status.code(), false);
@@ -316,7 +343,7 @@ pub async fn tailscale_run(args: Vec<String>) -> AppResult<TailscaleRun> {
             timed_out: false,
         });
     };
-    tauri::async_runtime::spawn_blocking(move || run_bounded(binary, args))
+    tauri::async_runtime::spawn_blocking(move || run_bounded(binary, args, TAILSCALE_TIMEOUT))
         .await
         .map_err(|err| AppError::io(err.to_string()))?
 }
@@ -382,11 +409,25 @@ mod tests {
         let done = run_bounded(
             PathBuf::from("sh"),
             vec!["-c".into(), "echo hi; echo err >&2".into()],
+            TAILSCALE_TIMEOUT,
         )
         .expect("run");
         assert_eq!(done.code, Some(0));
         assert_eq!(done.stdout.trim(), "hi");
         assert_eq!(done.stderr.trim(), "err");
         assert!(!done.timed_out);
+    }
+
+    #[test]
+    fn a_bounded_run_cuts_off_a_hang_and_keeps_what_it_printed() {
+        let hung = run_bounded(
+            PathBuf::from("sh"),
+            vec!["-c".into(), "echo visit-this-link; sleep 30".into()],
+            Duration::from_millis(300),
+        )
+        .expect("run");
+        assert!(hung.timed_out);
+        assert_eq!(hung.code, None);
+        assert_eq!(hung.stdout.trim(), "visit-this-link");
     }
 }

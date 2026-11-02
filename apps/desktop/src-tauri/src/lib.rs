@@ -580,7 +580,7 @@ pub fn run() {
             tauri::RunEvent::Exit => {
                 app.state::<routine_script::RoutineScriptState>().cancel_all();
                 app.state::<agent_cli::AgentCliState>().terminate_all();
-                app.state::<remote_mcp::RemoteMcpState>().stop();
+                app.state::<remote_mcp::RemoteMcpState>().shutdown();
                 app.state::<pty::PtyState>().close_all();
             }
             tauri::RunEvent::WindowEvent {

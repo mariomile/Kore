@@ -1,7 +1,6 @@
 import {
   COLLECTION_DEFINITION_MARKER_KEY,
-  decodeStoredList,
-  relationTarget,
+  readWikiLinks,
   type IndexedPropertyValueType,
   type TagProperty,
   type TagPropertyType,
@@ -30,54 +29,22 @@ export interface CollectionPropertySchema {
 }
 
 /**
- * How a stored value counts toward inferring a link field: `'link'` when it
- * is made only of wiki links (a `[[Target]]` string, or a list whose every
- * entry is one), `'empty'` for a blank scalar or an empty list, which says
- * nothing either way (templates leave `up:` blank), and `'other'` for
- * anything else. Obsidian vaults write `up: "[[Parent]]"` and `related:`
- * lists of links without declaring a schema, and those read as links.
+ * The type a loose (undeclared) key reads as. `linksOnly` means every non-blank
+ * value under the key is made of wiki links: Obsidian vaults write
+ * `up: "[[Parent]]"` and `related:` lists of links without declaring a schema,
+ * and those read as relations.
  */
-function linkEvidence(
-  raw: string,
-  valueType: IndexedPropertyValueType,
-): 'link' | 'empty' | 'other' {
-  if (valueType === 'string') {
-    if (raw.trim() === '') {
-      return 'empty'
-    }
-    return relationTarget(raw) !== null ? 'link' : 'other'
+function inferredType(valueType: IndexedPropertyValueType, linksOnly: boolean): TagPropertyType {
+  switch (valueType) {
+    case 'number':
+      return 'number'
+    case 'boolean':
+      return 'checkbox'
+    case 'list':
+      return linksOnly ? 'relations' : 'multiselect'
+    case 'string':
+      return linksOnly ? 'relation' : 'text'
   }
-  if (valueType === 'list') {
-    const entries = decodeStoredList(raw)
-    if (entries === null) {
-      return 'other'
-    }
-    if (entries.length === 0) {
-      return 'empty'
-    }
-    return entries.every((entry) => relationTarget(entry) !== null) ? 'link' : 'other'
-  }
-  return 'other'
-}
-
-function inferredProperty(
-  key: string,
-  valueType: IndexedPropertyValueType,
-  allWikiLinks: boolean,
-): TagProperty {
-  const type: TagPropertyType =
-    valueType === 'number'
-      ? 'number'
-      : valueType === 'boolean'
-        ? 'checkbox'
-        : valueType === 'list'
-          ? allWikiLinks
-            ? 'relations'
-            : 'multiselect'
-          : allWikiLinks
-            ? 'relation'
-            : 'text'
-  return { name: key, key, type }
 }
 
 function expectedValueType(type: TagPropertyType): IndexedPropertyValueType | null {
@@ -136,10 +103,10 @@ export function deriveCollectionPropertySchema(
   }
 
   const valueTypes = new Map<string, Set<IndexedPropertyValueType>>()
-  // A key infers as a link field when some row holds links and no row holds
-  // anything else; blank values are neutral.
-  const sawLinks = new Set<string>()
-  const notOnlyLinks = new Set<string>()
+  // Per key: true once a row holds links, false (for good) once a row holds
+  // anything else. Blank values say nothing either way (templates leave `up:`
+  // blank), so a key with only blanks stays unset and reads as text.
+  const linksOnly = new Map<string, boolean>()
   for (const entry of entries) {
     for (const [key, value] of Object.entries(entry.properties)) {
       if (key === COLLECTION_DEFINITION_MARKER_KEY) {
@@ -151,11 +118,11 @@ export function deriveCollectionPropertySchema(
       const types = valueTypes.get(key) ?? new Set<IndexedPropertyValueType>()
       types.add(value.valueType)
       valueTypes.set(key, types)
-      const evidence = linkEvidence(value.value, value.valueType)
-      if (evidence === 'link') {
-        sawLinks.add(key)
-      } else if (evidence === 'other') {
-        notOnlyLinks.add(key)
+      const links = readWikiLinks(value)
+      if (links === null) {
+        linksOnly.set(key, false)
+      } else if (links.length > 0 && linksOnly.get(key) !== false) {
+        linksOnly.set(key, true)
       }
     }
   }
@@ -167,11 +134,11 @@ export function deriveCollectionPropertySchema(
       if (actualTypes.length === 0) {
         return []
       }
-      const property = inferredProperty(
+      const property: TagProperty = {
+        name: key,
         key,
-        actualTypes[0]!,
-        sawLinks.has(key) && !notOnlyLinks.has(key),
-      )
+        type: inferredType(actualTypes[0]!, linksOnly.get(key) === true),
+      }
       const conflict = actualTypes.length > 1 ? 'value-type' : null
       return [
         {

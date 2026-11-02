@@ -7,8 +7,9 @@ import {
   isEmailValue,
   parseRating,
   relationDisplay,
-  relationTarget,
+  readWikiLinks,
   type CollectionValue,
+  type RelationLink,
   type TagProperty,
 } from '@reflect/core'
 import { Check } from '@/components/icons'
@@ -31,46 +32,21 @@ export interface CellReading {
   mismatch: boolean
 }
 
-/** One wiki link inside a relation value: its target and the text it shows. */
-export interface RelationLink {
-  target: string
-  label: string
-}
-
 /**
  * The note links a relation value holds, in order, when every entry is a wiki
- * link; `null` for any other type or value, which then reads as text through
- * {@link readCellValue}.
+ * link; `null` for any other type or value (blank included), which then reads
+ * as text through {@link readCellValue}. A single-valued relation or person
+ * only counts as links when stored as one string.
  */
 export function readRelationLinks(
   property: TagProperty,
   value: CollectionValue | undefined,
 ): RelationLink[] | null {
-  if (value === undefined) {
-    return null
-  }
-  const single = property.type === 'relation' || property.type === 'person'
-  if (!single && property.type !== 'relations') {
-    return null
-  }
-  const entries =
-    value.valueType === 'string'
-      ? [value.value]
-      : value.valueType === 'list' && !single
-        ? decodeStoredList(value.value)
-        : null
-  if (entries === null || entries.length === 0) {
-    return null
-  }
-  const links: RelationLink[] = []
-  for (const entry of entries) {
-    const target = relationTarget(entry)
-    if (target === null) {
-      return null
-    }
-    links.push({ target, label: relationDisplay(entry) ?? target })
-  }
-  return links
+  const linkTyped =
+    property.type === 'relations' ||
+    ((property.type === 'relation' || property.type === 'person') && value?.valueType === 'string')
+  const links = linkTyped && value !== undefined ? readWikiLinks(value) : null
+  return links !== null && links.length > 0 ? links : null
 }
 
 /** Decode a `note_properties` value for display under `property`'s type. */

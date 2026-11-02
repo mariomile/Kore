@@ -7,6 +7,7 @@ import {
   formatRating,
   isEmailValue,
   parseRating,
+  readWikiLinks,
   rollupSourceFromValue,
   type PropertyValue,
 } from './property-values'
@@ -47,6 +48,27 @@ describe('files and relation targets', () => {
       'Dune',
       'Foundation',
     ])
+  })
+})
+
+describe('readWikiLinks', () => {
+  it('reads a link string and a list of links, alias as label', () => {
+    expect(readWikiLinks(cell('[[Wealth MOC]]', 'string'))).toEqual([
+      { target: 'Wealth MOC', label: 'Wealth MOC' },
+    ])
+    expect(readWikiLinks(cell('["[[Ada]]","[[Notes/Bob|Bob]]"]', 'list'))).toEqual([
+      { target: 'Ada', label: 'Ada' },
+      { target: 'Notes/Bob', label: 'Bob' },
+    ])
+  })
+
+  it('reads blanks as no links, and anything else as not links', () => {
+    expect(readWikiLinks(cell('  ', 'string'))).toEqual([])
+    expect(readWikiLinks(cell('[]', 'list'))).toEqual([])
+    expect(readWikiLinks(cell('plain text', 'string'))).toBeNull()
+    expect(readWikiLinks(cell('["[[Ada]]","plain"]', 'list'))).toBeNull()
+    expect(readWikiLinks(cell('not json', 'list'))).toBeNull()
+    expect(readWikiLinks(cell('3', 'number', 3))).toBeNull()
   })
 })
 

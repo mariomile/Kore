@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import type { IndexedPropertyValueType } from './properties'
-import { relationTarget, type RollupAggregation } from './tag-type'
+import { relationDisplay, relationTarget, type RollupAggregation } from './tag-type'
 
 const storedListSchema = z.array(z.unknown())
 
@@ -89,6 +89,42 @@ export function extractRelationTargets(value: PropertyValue | undefined): string
     return []
   }
   return [relationTarget(trimmed) ?? trimmed]
+}
+
+/** One wiki link inside a stored value: its target and the text it shows. */
+export interface RelationLink {
+  target: string
+  label: string
+}
+
+/**
+ * The wiki links a stored value is made of, in order: `[]` for a blank string
+ * or an empty list, and `null` when any entry is not a `[[link]]`, the list is
+ * malformed, or the value is neither a string nor a list. The one reading
+ * behind both link inference for loose properties and drawing a relation
+ * value as clickable links.
+ */
+export function readWikiLinks(value: PropertyValue): RelationLink[] | null {
+  let entries: string[] | null
+  if (value.valueType === 'string') {
+    entries = value.value.trim() === '' ? [] : [value.value]
+  } else if (value.valueType === 'list') {
+    entries = decodeStoredList(value.value)
+  } else {
+    return null
+  }
+  if (entries === null) {
+    return null
+  }
+  const links: RelationLink[] = []
+  for (const entry of entries) {
+    const target = relationTarget(entry)
+    if (target === null) {
+      return null
+    }
+    links.push({ target, label: relationDisplay(entry) ?? target })
+  }
+  return links
 }
 
 /** One related note's value, flattened for rollup aggregation. */

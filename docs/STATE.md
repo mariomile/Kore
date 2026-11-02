@@ -2206,7 +2206,8 @@ screen: Agents then Close lands on today.
   frontmatter values made only of wiki links (`up: "[[X]]"`, `related:` lists
   of links) now infer as `relation`/`relations` instead of text, and the
   properties header and rail draw them as clickable links that open the
-  note (clicking beside a link still opens the editor). A note with no type
+  note (clicking beside a link still opens the editor); both read the value
+  through one core helper, `readWikiLinks`. A note with no type
   and no properties no longer shows an empty Type row: only "Add a type",
   revealed while the title is hovered or the control is focused/open
   (Mario's pick on 2026-11-01). Next:

@@ -7,6 +7,12 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- The Graph view reads on a big vault. Zoomed out you see the names of
+  your most-linked notes; zoom in and more names appear, always at the same
+  size and never on top of each other. Hubs draw bigger and stay on top of
+  the crowd, links fade on dense maps, and a cluster zooms into separate
+  circles instead of a pile.
+
 - The Details panel beside a note opens on what you came for: the note's
   tasks, its outline and its local graph. Properties are no longer listed
   twice (you edit them under the title), and Pin, Lock, Export and Trash

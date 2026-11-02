@@ -3,6 +3,15 @@ import { isModEvent } from '@meowdown/core'
 import { createGraphFrameScheduler } from '@/lib/graph-frame-scheduler'
 import { createPaintPacer, paintCircles, paintEdges } from '@/lib/graph-paint'
 import {
+  ALWAYS_LABELED_HUBS,
+  LABEL_MIN_SCREEN_RADIUS,
+  createLabelIndex,
+  edgeDensityAlpha,
+  hubThreshold,
+  nodeRadius,
+  type LabelRect,
+} from '@/lib/graph-readability'
+import {
   createGraphLayout,
   isSettled,
   reheatGraphLayout,
@@ -76,14 +85,12 @@ interface DragState {
 const MIN_SCALE = 0.15
 const MAX_SCALE = 4
 const CLICK_SLOP = 4
-/** Show a node's label without hover when it has at least this many inbound links. */
-const HUB_LABEL_INBOUND = 3
-/** …or when the whole graph is small enough to label everything. */
+/** A graph this small labels every node it has room for, at any zoom. */
 const LABEL_ALL_BELOW = 60
-
-function nodeRadius(inbound: number): number {
-  return 4 + Math.min(inbound, 14) * 0.9
-}
+/** Label type, in screen px: names stay this size however far you zoom. */
+const LABEL_FONT_SIZE = 11
+const HUB_LABEL_FONT_SIZE = 12
+const FONT_FAMILY = 'Inter, system-ui, sans-serif'
 
 /**
  * The Graph view's rendering surface: a raw canvas over the shared force
@@ -132,7 +139,10 @@ export function GraphMapCanvas({
     const surface: HTMLCanvasElement = canvas
     const ctx: CanvasRenderingContext2D = context
 
-    const layout: GraphLayout = createGraphLayout(nodes.map((node) => node.id))
+    const layout: GraphLayout = createGraphLayout(
+      nodes.map((node) => node.id),
+      nodes.map((node) => nodeRadius(node.inbound)),
+    )
     const indexById = new Map(nodes.map((node, index) => [node.id, index]))
     const layoutEdges: GraphLayoutEdge[] = []
     for (const edge of edges) {
@@ -263,6 +273,23 @@ export function GraphMapCanvas({
       neighborSets[edge.target]?.add(edge.source)
     }
 
+    // Structure that does not change while this layout lives: who is a hub,
+    // the order labels are offered in (most-linked first), and how loud
+    // the resting edges are.
+    const hubFrom = hubThreshold(nodes.map((node) => node.inbound))
+    const isHub = (index: number): boolean => (nodes[index]?.inbound ?? 0) >= hubFrom
+    const labelOrder = [...nodes.keys()].sort(
+      (a, b) => (nodes[b]?.inbound ?? 0) - (nodes[a]?.inbound ?? 0),
+    )
+    const alwaysLabeled = new Set(
+      labelOrder.slice(0, ALWAYS_LABELED_HUBS).filter((index) => (nodes[index]?.inbound ?? 0) > 0),
+    )
+    const edgeAlpha = edgeDensityAlpha(layoutEdges.length)
+    const labelAll = nodes.length <= LABEL_ALL_BELOW
+    // measureText per label per paint is the label pass's main cost on a
+    // big map; names and fonts are fixed for this layout, so cache widths.
+    const labelWidths = new Map<string, number>()
+
     function draw(): void {
       const style = getComputedStyle(surface)
       const colorText = style.getPropertyValue('--text').trim() || '#17181c'
@@ -270,6 +297,7 @@ export function GraphMapCanvas({
       const colorSecondary = style.getPropertyValue('--text-secondary').trim() || '#6b6f76'
       const colorAccent = style.getPropertyValue('--accent').trim() || '#4f46e5'
       const colorBorder = style.getPropertyValue('--border-strong').trim() || 'rgba(18,19,23,0.13)'
+      const colorSurface = style.getPropertyValue('--surface').trim() || '#ffffff'
 
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       ctx.clearRect(0, 0, surface.clientWidth, surface.clientHeight)
@@ -277,7 +305,7 @@ export function GraphMapCanvas({
       ctx.scale(viewport.scale, viewport.scale)
 
       const highlight = hoverIndex ?? drag?.nodeIndex ?? null
-      const neighborhood = highlight === null ? null : neighborSets[highlight]
+      const neighborhood = highlight === null ? null : (neighborSets[highlight] ?? null)
       // The header search: matched nodes light accent, the rest recede.
       // Hover spotlighting stays the stronger signal while it is active.
       const searched = matchesRef.current
@@ -301,6 +329,7 @@ export function GraphMapCanvas({
         },
         { accent: colorAccent, border: colorBorder },
         viewport.scale,
+        edgeAlpha,
       )
       paintCircles(
         ctx,
@@ -319,76 +348,123 @@ export function GraphMapCanvas({
               (highlight !== null && !isHighlight && !isNeighbor) ||
               (searched !== null && !isMatch(index)),
             accent,
+            hub: isHub(index),
           }
         },
         (index) => nodeRadius(nodes[index]?.inbound ?? 0),
+        { color: colorSurface, scale: viewport.scale },
       )
 
-      // Labels in a second pass, above every circle, placed greedily in
-      // priority order (the spotlight first, then hubs) — a label that would
-      // overlap an already-placed one is skipped, so dense clusters degrade
-      // to their most important names instead of ink soup.
-      const labelAll = nodes.length <= LABEL_ALL_BELOW
-      const fontSize = Math.max(10 / viewport.scale, 11)
-      ctx.font = `500 ${fontSize}px Inter, system-ui, sans-serif`
+      // Labels in a second pass, above every circle, in screen space so
+      // names keep one size at every zoom. Offered in priority order (the
+      // spotlight, its neighbors, search matches, then by inbound links) and
+      // placed greedily: a name that would crowd an already placed one is
+      // skipped, so a dense map degrades to its most-linked names instead
+      // of ink soup. Zoom reveals the rest: a note earns its name once its
+      // circle is big enough on screen to tell apart.
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       ctx.textAlign = 'center'
       ctx.textBaseline = 'top'
-      const placed: { x: number; y: number; w: number; h: number }[] = []
-      const priority = (index: number): number =>
-        index === highlight || nodes[index]?.emphasis === true
-          ? 3
-          : neighborhood?.has(index)
-            ? 2
-            : isMatch(index)
-              ? 1
-              : 0
-      const order = [...layout.nodes.keys()].sort((a, b) => {
-        const byPriority = priority(b) - priority(a)
-        return byPriority !== 0 ? byPriority : (nodes[b]?.inbound ?? 0) - (nodes[a]?.inbound ?? 0)
-      })
-      for (const index of order) {
+      ctx.lineJoin = 'round'
+      const viewWidth = surface.clientWidth
+      const viewHeight = surface.clientHeight
+      const labels = createLabelIndex()
+      const tried = new Uint8Array(nodes.length)
+      const offer = (index: number, forced: boolean): void => {
+        if (tried[index] === 1) {
+          return
+        }
+        tried[index] = 1
         const node = layout.nodes[index]
         const meta = nodes[index]
         if (node === undefined || meta === undefined) {
-          continue
+          return
         }
         const isHighlight = index === highlight || meta.emphasis === true
         const isNeighbor = neighborhood?.has(index) ?? false
         const dimmed = highlight !== null && !isHighlight && !isNeighbor
         const searchMiss = searched !== null && !isMatch(index)
-        const wanted =
-          isHighlight ||
-          isNeighbor ||
-          (searched !== null && isMatch(index) && !dimmed) ||
-          ((labelAll || meta.inbound >= HUB_LABEL_INBOUND) && !dimmed && !searchMiss)
-        if (!wanted) {
-          continue
+        const screenX = node.x * viewport.scale + viewport.offsetX
+        const screenY = node.y * viewport.scale + viewport.offsetY
+        const screenRadius = nodeRadius(meta.inbound) * viewport.scale
+        if (!forced) {
+          if (dimmed || searchMiss) {
+            return
+          }
+          if (!labelAll && !alwaysLabeled.has(index) && screenRadius < LABEL_MIN_SCREEN_RADIUS) {
+            return
+          }
         }
-        const width = ctx.measureText(meta.label).width
+        const strong = isHighlight || isHub(index)
+        const fontSize = strong ? HUB_LABEL_FONT_SIZE : LABEL_FONT_SIZE
+        const font = `${strong ? 600 : 500} ${fontSize}px ${FONT_FAMILY}`
+        const widthKey = `${strong ? 1 : 0}${meta.label}`
+        let width = labelWidths.get(widthKey)
+        if (width === undefined) {
+          ctx.font = font
+          width = ctx.measureText(meta.label).width
+          labelWidths.set(widthKey, width)
+        }
         const height = fontSize * 1.25
-        const radius = nodeRadius(meta.inbound)
-        const overlapsPlaced = (rect: { x: number; y: number; w: number; h: number }): boolean =>
-          placed.some(
-            (other) =>
-              rect.x < other.x + other.w &&
-              rect.x + rect.w > other.x &&
-              rect.y < other.y + other.h &&
-              rect.y + rect.h > other.y,
-          )
+        // Off screen: nothing to read, and no reason to block a visible name.
+        if (
+          screenX + width / 2 < 0 ||
+          screenX - width / 2 > viewWidth ||
+          screenY + screenRadius + height < 0 ||
+          screenY - screenRadius - height > viewHeight
+        ) {
+          return
+        }
         // Below the node first, above it as the fallback; a name that fits
         // neither is skipped — except the spotlighted note, which always
         // keeps its name.
-        let rect = { x: node.x - width / 2, y: node.y + radius + 3, w: width, h: height }
-        if (overlapsPlaced(rect)) {
-          rect = { ...rect, y: node.y - radius - 3 - height }
-          if (overlapsPlaced(rect) && !isHighlight) {
-            continue
+        let rect: LabelRect = {
+          x: screenX - width / 2,
+          y: screenY + screenRadius + 3,
+          w: width,
+          h: height,
+        }
+        if (!labels.fits(rect)) {
+          rect = { ...rect, y: screenY - screenRadius - 3 - height }
+          if (!labels.fits(rect) && !isHighlight) {
+            return
           }
         }
-        placed.push(rect)
+        labels.add(rect)
+        ctx.font = font
         ctx.globalAlpha = dimmed || searchMiss ? 0.3 : 1
-        ctx.fillStyle = isHighlight ? colorText : colorSecondary
-        ctx.fillText(meta.label, node.x, rect.y)
+        // A halo in the canvas color lifts the name off the edges and
+        // circles beneath it.
+        ctx.strokeStyle = colorSurface
+        ctx.lineWidth = 3
+        ctx.strokeText(meta.label, screenX, rect.y)
+        ctx.fillStyle = strong ? colorText : colorSecondary
+        ctx.fillText(meta.label, screenX, rect.y)
+      }
+      if (highlight !== null) {
+        offer(highlight, true)
+      }
+      for (const [index, meta] of nodes.entries()) {
+        if (meta.emphasis === true) {
+          offer(index, true)
+        }
+      }
+      if (neighborhood !== null) {
+        for (const index of labelOrder) {
+          if (neighborhood.has(index)) {
+            offer(index, true)
+          }
+        }
+      }
+      if (searched !== null) {
+        for (const index of labelOrder) {
+          if (isMatch(index)) {
+            offer(index, highlight === null || (neighborhood?.has(index) ?? false))
+          }
+        }
+      }
+      for (const index of labelOrder) {
+        offer(index, false)
       }
       ctx.globalAlpha = 1
     }
@@ -475,6 +551,17 @@ export function GraphMapCanvas({
       frames.request()
     }
 
+    // The pointer left the canvas: the spotlight goes with it, or the last
+    // hovered note would stay lit (and every other note receded) until the
+    // pointer came back.
+    const handlePointerLeave = (): void => {
+      if (drag === null && hoverIndex !== null) {
+        hoverIndex = null
+        surface.style.cursor = 'default'
+        frames.request()
+      }
+    }
+
     const handleWheel = (event: WheelEvent): void => {
       // A trackpad pinch arrives as a ctrlKey wheel.
       if (wheelZoomRef.current === 'modifier' && !event.ctrlKey && !event.metaKey) {
@@ -498,6 +585,7 @@ export function GraphMapCanvas({
     surface.addEventListener('pointermove', handlePointerMove)
     surface.addEventListener('pointerup', handlePointerUp)
     surface.addEventListener('pointercancel', handlePointerUp)
+    surface.addEventListener('pointerleave', handlePointerLeave)
     surface.addEventListener('wheel', handleWheel, { passive: false })
 
     return () => {
@@ -509,6 +597,7 @@ export function GraphMapCanvas({
       surface.removeEventListener('pointermove', handlePointerMove)
       surface.removeEventListener('pointerup', handlePointerUp)
       surface.removeEventListener('pointercancel', handlePointerUp)
+      surface.removeEventListener('pointerleave', handlePointerLeave)
       surface.removeEventListener('wheel', handleWheel)
     }
   }, [nodes, edges])

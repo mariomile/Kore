@@ -1,5 +1,43 @@
 # Kore working state
 
+## Readable Graph view, 2026-11-02
+
+Slice 6 of the design and frontend review (project Claude Doc "Kore:
+revisione design e frontend"): on the 5,165-note `?seed=obsidian` vault the
+full Graph view was a ball of circles with names scattered on top, names
+grew to 40+ px when zooming in (the font size was in layout units), every
+note with 14 or more backlinks drew the same size, and the hover spotlight
+stayed on after the pointer left the canvas.
+
+- [x] Labels in screen space: 11 px (12 px semibold for hubs) at every zoom,
+  with a halo in the canvas color so a name reads over edges and circles.
+  Offered spotlight, neighbors, search matches, then by backlinks, and
+  placed greedily through a grid collision index with a gap
+  (`apps/desktop/src/lib/graph-readability.ts`). Zoom reveals names: a note
+  earns its label once its circle is at least 7 px on screen; the ten
+  most-linked notes are always offered. Off-screen names are skipped.
+- [x] Hubs: radius grows with the square root of backlinks up to 100 (was
+  linear, capped at 14). The top 2% of linked notes (at least 5 backlinks)
+  paint above other circles, with darker, bolder names.
+- [x] Dense maps: resting edges fade with edge count (full up to 1,000,
+  35% from 20,000); every circle gets a 1 px ring in the canvas color.
+- [x] Layout: optional radii turn on circle collision in the leaf pass of
+  the Barnes-Hut repulsion (not scaled by the cooling temperature), so a
+  dense core zooms into separate notes. The local graph gets it too.
+- [x] Leaving the canvas clears the hover spotlight.
+
+**Validation:** `graph-readability.test.ts` and `graph-layout.test.ts`
+(collision cuts overlaps in a dense 300-note core by more than 10x) on
+node; graph-map canvas/screen and local-graph suites on Chromium, with a new
+pointer-leave test; typecheck, eslint, oxfmt. Bench (`KORE_BENCH=1`): the
+5,165-note layout step p50 went from 17.6 ms to about 19.7 ms with collision,
+259 steps as before. Rendered before/after on the seeded vault in Chromium
+(project files, `screenshot/grafo-leggibile/`). WebKit left to CI; not tried
+on the real vault.
+
+**Next:** on the Mac, open Graph on marioverse.ai and check that the
+overview names the MOCs and that zooming into a cluster reads well.
+
 ## Remote MCP over HTTP, 2026-11-01
 
 User ask (Mario, 2026-11-01, thread "Dare il vault agli agenti cloud"):
@@ -2242,6 +2280,12 @@ screen: Agents then Close lands on today.
 **Next:** merge the Close fix, then bump.
 
 ## Session log
+
+- 2026-11-02 — Design review slice 6, a readable Graph view: fixed-size
+  labels with a halo, revealed by zoom and placed without crowding; hubs
+  grow with backlinks past the old 14-link cap and paint on top; dense maps
+  fade their edges and ring their circles; the layout keeps sized circles
+  from overlapping; the hover spotlight clears when the pointer leaves.
 
 - 2026-11-01 — Design and frontend review (audit + six-slice plan in the
   project's Claude Doc "Kore: revisione design e frontend"). Slice 1, the

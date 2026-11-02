@@ -7,6 +7,12 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- The Details panel is yours to arrange. Drag a section by its title, or
+  use its "…" menu to move it up or down or hide it; hidden sections come
+  back from the bottom of the panel, and the layout is remembered. The
+  local graph can leave the panel: open it in its own tab or beside the
+  note, where it fills the pane.
+
 - A new note's tab shows the title as you type it, instead of "Untitled"
   until a few seconds after you stop.
 

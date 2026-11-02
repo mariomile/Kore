@@ -16,6 +16,7 @@ import {
 } from '@/components/graph-map/graph-map-canvas'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { useNoteLinkNavigation } from '@/hooks/use-note-link-navigation'
+import { useOptionalPanes, usePaneId } from '@/providers/panes-provider'
 import { tagColorCss } from '@/lib/graph-colors'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { cn } from '@/lib/utils'
@@ -27,6 +28,14 @@ import { SidebarSection } from './sidebar-section'
 interface LocalGraphSectionProps {
   /** Graph-relative path of the note the local graph centers on. */
   path: string
+}
+
+interface LocalGraphBodyProps extends LocalGraphSectionProps {
+  /**
+   * `rail`: a fixed-height map inside the Details panel, where a plain wheel
+   * scrolls the panel. `page`: the map fills its pane and the wheel zooms.
+   */
+  layout: 'rail' | 'page'
 }
 
 function nodeLabel(node: LocalGraphNode): string {
@@ -69,16 +78,45 @@ const controlClass =
  * beside this one, a tag opens its note list, and "Open in Graph" hands off
  * to the full map focused here. The body only mounts while the section is
  * open, so a collapsed section queries and lays out nothing.
+ *
+ * The section's menu also opens the same map as a page of its own, in a tab
+ * or in a pane beside the note, for when the neighborhood deserves more room
+ * than the rail has.
  */
 export function LocalGraphSection({ path }: LocalGraphSectionProps): ReactElement {
+  const { navigate } = useRouter()
+  const panes = useOptionalPanes()
+  const paneId = usePaneId()
+  const route = { kind: 'localGraph', path } as const
   return (
-    <SidebarSection storageKey="local-graph" title="Local graph">
-      <LocalGraphBody path={path} />
+    <SidebarSection
+      storageKey="local-graph"
+      title="Local graph"
+      menuItems={[
+        {
+          label: 'Open in new tab',
+          onSelect: () => {
+            navigate(route)
+          },
+        },
+        ...(panes === null
+          ? []
+          : [
+              {
+                label: 'Open beside',
+                onSelect: () => {
+                  panes.openInPane(route, { from: paneId })
+                },
+              },
+            ]),
+      ]}
+    >
+      <LocalGraphBody path={path} layout="rail" />
     </SidebarSection>
   )
 }
 
-function LocalGraphBody({ path }: LocalGraphSectionProps): ReactElement {
+export function LocalGraphBody({ path, layout }: LocalGraphBodyProps): ReactElement {
   const { graph } = useGraph()
   const bridgeReady = useBridgeReady()
   const { navigate } = useRouter()
@@ -104,18 +142,24 @@ function LocalGraphBody({ path }: LocalGraphSectionProps): ReactElement {
   }
 
   const lonely = view !== null && view.nodes.length <= 1
+  const page = layout === 'page'
+  const mapClass = page ? 'min-h-0 flex-1' : 'h-52'
   return (
-    <div>
+    <div className={cn(page && 'flex min-h-0 flex-1 flex-col')}>
       {view === null ? (
-        <div className="h-52" />
+        <div className={mapClass} />
       ) : lonely ? (
-        <p className="px-2.5 py-2 text-xs text-text-muted">No links yet.</p>
+        <p
+          className={cn('px-2.5 py-2 text-xs text-text-muted', page && 'flex-1 px-6 py-8 text-sm')}
+        >
+          No links yet.
+        </p>
       ) : (
-        <div className="h-52">
+        <div className={mapClass}>
           <GraphMapCanvas
             nodes={view.nodes}
             edges={view.edges}
-            wheelZoom="modifier"
+            wheelZoom={page ? 'always' : 'modifier'}
             label="Local graph"
             onOpen={(id, openInSplit) => {
               if (id.startsWith('#')) {
@@ -127,7 +171,12 @@ function LocalGraphBody({ path }: LocalGraphSectionProps): ReactElement {
           />
         </div>
       )}
-      <div className="flex items-center gap-0.5 px-1 pt-1 text-text-secondary">
+      <div
+        className={cn(
+          'flex items-center gap-0.5 px-1 pt-1 text-text-secondary',
+          page && 'flex-none px-5 pb-3',
+        )}
+      >
         {([1, 2] as const).map((level) => (
           <button
             key={level}

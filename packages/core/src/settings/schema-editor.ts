@@ -187,3 +187,85 @@ export const sidebarSectionsSchema = z
     }
     return [...ordered, ...SIDEBAR_SECTION_IDS.filter((id) => !ordered.includes(id))]
   })
+
+/**
+ * The Details panel's sections (the right rail's note and daily context), by
+ * the id their stored arrangement is written in. One closed set across note
+ * and daily routes: each route renders the subset it has, in this order
+ * unless the user moved them. Events only exist on a day; tasks, outline and
+ * the local graph only on a note.
+ */
+const detailsSectionEnum = z.enum([
+  'events',
+  'tasks',
+  'outline',
+  'localGraph',
+  'publishedUrl',
+  'similar',
+  'history',
+  'actions',
+])
+
+export type DetailsSection = z.infer<typeof detailsSectionEnum>
+
+/** Every Details section id, in the order a fresh install stacks them. */
+export const DETAILS_SECTION_IDS: readonly DetailsSection[] = detailsSectionEnum.options
+
+/**
+ * The stored Details order, normalized the same way as
+ * {@link sidebarSectionsSchema}: a complete list, unknown and duplicate
+ * entries dropped, unmentioned sections appended in default order.
+ */
+export const detailsSectionsSchema = z
+  .array(z.unknown())
+  .catch([])
+  .transform((entries) => {
+    const ordered: DetailsSection[] = []
+    for (const entry of entries) {
+      const parsed = detailsSectionEnum.safeParse(entry)
+      if (parsed.success && !ordered.includes(parsed.data)) {
+        ordered.push(parsed.data)
+      }
+    }
+    return [...ordered, ...DETAILS_SECTION_IDS.filter((id) => !ordered.includes(id))]
+  })
+
+/**
+ * The Details sections the user hid. Hiding is a layout choice, not a
+ * deletion: the section keeps its place in the order and comes back there.
+ * Unknown and duplicate entries drop; anything else degrades to none hidden.
+ */
+export const hiddenDetailsSectionsSchema = z
+  .array(z.unknown())
+  .catch([])
+  .transform((entries) => {
+    const hidden: DetailsSection[] = []
+    for (const entry of entries) {
+      const parsed = detailsSectionEnum.safeParse(entry)
+      if (parsed.success && !hidden.includes(parsed.data)) {
+        hidden.push(parsed.data)
+      }
+    }
+    return hidden
+  })
+
+/**
+ * Move `id` one step up or down among the sections a route actually shows.
+ * `present` is that route's set: a step skips over sections it does not
+ * render (a note's rail has no Events), so one press always visibly moves the
+ * section. Returns the full order unchanged when there is nowhere to go.
+ */
+export function moveDetailsSection(
+  order: readonly DetailsSection[],
+  present: readonly DetailsSection[],
+  id: DetailsSection,
+  direction: 'up' | 'down',
+): DetailsSection[] {
+  const shown = order.filter((entry) => present.includes(entry))
+  const at = shown.indexOf(id)
+  const neighbor = shown[direction === 'up' ? at - 1 : at + 1]
+  if (at === -1 || neighbor === undefined) {
+    return [...order]
+  }
+  return order.map((entry) => (entry === id ? neighbor : entry === neighbor ? id : entry))
+}

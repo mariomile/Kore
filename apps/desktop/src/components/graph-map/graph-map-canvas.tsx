@@ -415,20 +415,26 @@ export function GraphMapCanvas({
         ) {
           return
         }
-        // Below the node first, above it as the fallback; a name that fits
-        // neither is skipped — except the spotlighted note, which always
-        // keeps its name.
-        let rect: LabelRect = {
+        // Below the node first, above it as the fallback, and the other way
+        // round when the slot below runs past the bottom edge, so a name near
+        // the edge lands where it can be read. A name that fits neither slot
+        // is skipped, except the spotlighted note, which always keeps its
+        // name (in the slot that stays on the canvas).
+        const below: LabelRect = {
           x: screenX - width / 2,
           y: screenY + screenRadius + 3,
           w: width,
           h: height,
         }
-        if (!labels.fits(rect)) {
-          rect = { ...rect, y: screenY - screenRadius - 3 - height }
-          if (!labels.fits(rect) && !isHighlight) {
+        const above: LabelRect = { ...below, y: screenY - screenRadius - 3 - height }
+        const slots =
+          below.y + below.h > viewHeight && above.y >= 0 ? [above, below] : [below, above]
+        let rect = slots.find((slot) => labels.fits(slot))
+        if (rect === undefined) {
+          if (!isHighlight) {
             return
           }
+          rect = slots[0] as LabelRect
         }
         labels.add(rect)
         ctx.font = font
@@ -470,7 +476,6 @@ export function GraphMapCanvas({
     }
 
     const handlePointerDown = (event: PointerEvent): void => {
-      surface.setPointerCapture(event.pointerId)
       drag = {
         pointerId: event.pointerId,
         nodeIndex: hitTest(event.clientX, event.clientY),
@@ -478,6 +483,9 @@ export function GraphMapCanvas({
         startClientY: event.clientY,
         moved: false,
       }
+      // Capture after the drag exists, so a pointerleave the capture may
+      // fire reads as "mid-drag" and keeps the spotlight.
+      surface.setPointerCapture(event.pointerId)
       if (drag.nodeIndex !== null) {
         const node = layout.nodes[drag.nodeIndex]
         if (node !== undefined) {
@@ -530,6 +538,20 @@ export function GraphMapCanvas({
       }
       const { nodeIndex, moved } = drag
       drag = null
+      // A drag released off the canvas: pointerleave was ignored mid-drag,
+      // so the spotlight goes now rather than waiting for the pointer to
+      // come back.
+      const bounds = surface.getBoundingClientRect()
+      if (
+        hoverIndex !== null &&
+        (event.clientX < bounds.left ||
+          event.clientX > bounds.right ||
+          event.clientY < bounds.top ||
+          event.clientY > bounds.bottom)
+      ) {
+        hoverIndex = null
+        surface.style.cursor = 'default'
+      }
       if (nodeIndex !== null) {
         const node = layout.nodes[nodeIndex]
         if (node !== undefined) {

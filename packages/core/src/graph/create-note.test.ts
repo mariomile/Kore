@@ -539,7 +539,7 @@ describe('openNoteTabTitle', () => {
   const placeholder = 'notes/01jxk2v9qz3m4n5p6r7s8t9vwx.md'
 
   it('names a new note by the title being typed, before its birth rename', () => {
-    // Regression: the tab and the sidebar "Open" entry read "Untitled" until
+    // Regression: the tab strip and its list menu read "Untitled" until
     // the placeholder file was renamed, seconds after the title was typed.
     expect(openNoteTabTitle(placeholder, undefined, 'Weekly plan')).toBe('Weekly plan')
     expect(openNoteTabTitle(placeholder, '01jxk2v9qz3m4n5p6r7s8t9vwx', 'Weekly plan')).toBe(

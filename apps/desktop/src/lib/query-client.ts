@@ -34,7 +34,7 @@ export function invalidateIndexQueries(): void {
  * couple of seconds for minutes; refetching every mounted index query per
  * batch is a large share of what makes a first sync feel slow.
  */
-const INVALIDATE_THROTTLE_MS = 3_000
+export const INVALIDATE_THROTTLE_MS = 3_000
 
 let lastInvalidateAt = 0
 let invalidateTimer: ReturnType<typeof setTimeout> | null = null

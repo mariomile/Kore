@@ -33,3 +33,13 @@ export function contextSidebarTarget(route: Route, today: string): ContextSideba
       return null
   }
 }
+
+/**
+ * Whether the Details panel has anything to say on `route`: a note or a day
+ * (`target`), or All notes, whose single selected row is the side peek. Graph,
+ * Tasks, Chat and the other full-page tools have neither, so the rail gives
+ * their width back instead of framing an empty card.
+ */
+export function routeHasDetails(route: Route, target: ContextSidebarTarget | null): boolean {
+  return target !== null || route.kind === 'allNotes'
+}

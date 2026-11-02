@@ -5,7 +5,7 @@ import { useSyncExternalStore } from 'react'
  * birth rename), published by the open note's rename coordinator on every
  * save. The file keeps its ULID name until the title settles (5s of quiet,
  * blur, or teardown), and the index trails the save, so without this the tab
- * strip and the sidebar "Open" list said "Untitled" while the user was
+ * strip and its list menu said "Untitled" while the user was
  * already looking at their typed title. Keyed by graph-relative path; an
  * entry lives only while that note is open and untitled.
  */

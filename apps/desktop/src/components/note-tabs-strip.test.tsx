@@ -5,7 +5,6 @@ import { page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 import { useSyncExternalStore, type ReactElement, type ReactNode } from 'react'
 import { setBridge, untitledNotePath, type OpenColumn, type OpenPane } from '@reflect/core'
-import { SidebarOpenTabs } from '@/components/sidebar/sidebar-open-notes'
 import { emitChatConversationDeleted } from '@/lib/chat-events'
 import { emitNoteMoved } from '@/lib/note-moves'
 import { OpenTabsProvider, useOpenTabs } from '@/providers/open-tabs-provider'
@@ -18,9 +17,8 @@ import { WorkspaceTabsStrip } from './note-tabs-strip'
 
 /**
  * The open-tabs system end to end in the browser: the provider over a
- * stateful settings mock and the real router, with both surfaces (strip +
- * sidebar Open section) mounted together, titles resolved through the fake
- * index bridge.
+ * stateful settings mock and the real router, with the strip mounted over
+ * them, titles resolved through the fake index bridge.
  */
 
 const settingsStore = vi.hoisted(() => {
@@ -350,7 +348,6 @@ function GraphHarness(): ReactElement {
       <SidebarProvider>
         <OpenTabsProvider paneId="main">
           <WorkspaceTabsStrip />
-          <SidebarOpenTabs />
           <Probe />
         </OpenTabsProvider>
       </SidebarProvider>
@@ -379,15 +376,14 @@ beforeEach(() => {
 })
 
 describe('workspace tabs', () => {
-  it('always shows the bar, and an opened note joins both surfaces', async () => {
+  it('always shows the bar, and an opened note joins it', async () => {
     const view = await renderTabs()
     // The bar is the title bar now: always present, Daily pill leading.
     await expect.element(view.getByRole('tab', { name: 'Daily notes' })).toBeVisible()
 
     await view.getByTestId('open-alpha').click()
     await expect.element(view.getByRole('tab', { name: /Alpha Plan/ })).toBeVisible()
-    // The sidebar Open section lists it too, and the Daily tab leads.
-    await expect.element(view.getByText('Open')).toBeVisible()
+    // The Daily tab still leads.
     await expect.element(view.getByRole('tab', { name: 'Daily notes' })).toBeVisible()
     await view.unmount()
   })

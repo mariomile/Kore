@@ -374,7 +374,7 @@ describe('rename coordinator', () => {
   })
 
   it("publishes a new note's typed title for its tab until the birth rename lands", async () => {
-    // Regression: a ⌘N note's tab and sidebar "Open" entry read "Untitled"
+    // Regression: a ⌘N note's tab (strip and list menu) read "Untitled"
     // while the title was already typed, until the placeholder file moved.
     const placeholder = 'notes/01jxk2v9qz3m4n5p6r7s8t9vwx.md'
     io.slugPathForTitle.mockResolvedValue('notes/fresh-note.md')

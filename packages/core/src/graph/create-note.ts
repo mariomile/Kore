@@ -73,7 +73,7 @@ export function isUntitledNotePath(path: string): boolean {
 }
 
 /**
- * The title an open-note tab (strip and sidebar "Open" list) shows for
+ * The title an open-note tab (the strip and its list menu) shows for
  * `path`. A ⌘N note keeps its ULID placeholder path until its title settles
  * (the birth rename fires after 5s of quiet or on blur, and a refused move
  * keeps the placeholder for good), so the path alone cannot name it:

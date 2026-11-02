@@ -101,6 +101,23 @@ describe('loadAgentContext', () => {
     expect(context.sharedFacts?.body).toContain('more lines')
   })
 
+  it('loads the vault contract from AGENTS.md, and not at all when it is private', async () => {
+    readNote.mockImplementation(async (path: string) => {
+      if (path === 'AGENTS.md') return '# Contract\n\nSearch before writing.\n'
+      throw new Error('missing')
+    })
+    const context = await loadAgentContext(null)
+    expect(context.vaultContract).toMatchObject({ path: 'AGENTS.md', truncated: false })
+    expect(context.vaultContract?.body).toContain('Search before writing.')
+
+    readNote.mockImplementation(async (path: string) => {
+      if (path === 'AGENTS.md') return '---\nprivate: true\n---\n# Contract\n'
+      if (path === 'CLAUDE.md') return '# Claude rules\n'
+      throw new Error('missing')
+    })
+    expect((await loadAgentContext(null)).vaultContract).toBeNull()
+  })
+
   it('honors private: a private soul or memory never loads', async () => {
     readNote.mockImplementation(async (path: string) => {
       if (path === 'agents/riley/soul.md') return '---\nprivate: true\n---\n# Riley\nsecret\n'
@@ -113,6 +130,7 @@ describe('loadAgentContext', () => {
 
 describe('agentContextPromptLines', () => {
   const context = {
+    vaultContract: null,
     profile: {
       slug: 'riley',
       name: 'Riley',
@@ -129,6 +147,23 @@ describe('agentContextPromptLines', () => {
     skills: [],
     memoryPath: 'agents/riley/memory.md',
   }
+
+  it("lets the vault's own contract replace the default memory routing", () => {
+    const withContract = {
+      ...context,
+      vaultContract: {
+        path: 'AGENTS.md',
+        body: 'Decisions go in _system/memory/decisions/.',
+        truncated: false,
+      },
+    }
+    const lines = agentContextPromptLines(withContract, { canEdit: true }).join('\n')
+    expect(lines).toContain("The vault's agent contract (AGENTS.md)")
+    expect(lines).toContain('Decisions go in _system/memory/decisions/.')
+    expect(lines.indexOf('Speak plainly.')).toBeLessThan(lines.indexOf('Decisions go in'))
+    expect(lines).toContain('where the vault contract says it goes')
+    expect(lines).not.toContain('[certain|likely|speculative]')
+  })
 
   it('puts the soul first and routes upkeep across all memory files', () => {
     const lines = agentContextPromptLines(context, { canEdit: true }).join('\n')

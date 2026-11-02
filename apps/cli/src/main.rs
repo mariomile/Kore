@@ -116,6 +116,14 @@ enum Command {
     },
     /// The graph and its index at a glance (works without an index)
     Info,
+    /// The vault's agent contract (AGENTS.md) and a map of its folders: what
+    /// an agent reads first (works without an index)
+    Guide {
+        /// Write a starter AGENTS.md (and a CLAUDE.md importing it) when the
+        /// vault has none; never overwrites
+        #[arg(long)]
+        init: bool,
+    },
     /// List every tag with its note count and whether it is a collection
     Tags,
     /// List notes newest first, with their tags
@@ -254,6 +262,7 @@ fn run(cli: &Cli) -> Result<(), CliError> {
             limit,
         } => commands::collection::run(&graph, cli.json, tag, sort.as_deref(), *desc, *limit),
         Command::Info => commands::info::run(&graph, cli.json),
+        Command::Guide { init } => commands::guide::run(&graph, cli.json, *init),
         Command::Tags => commands::tags::run(&graph, cli.json),
         Command::List { tag, kind, limit } => {
             commands::list::run(&graph, cli.json, tag.as_deref(), kind.as_deref(), *limit)

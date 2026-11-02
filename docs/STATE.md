@@ -2313,6 +2313,18 @@ screen: Agents then Close lands on today.
 
 ## Session log
 
+- 2026-11-02 — Every agent gets the vault's own rules. `kore guide` prints
+  the vault's agent contract (`AGENTS.md`, else `CLAUDE.md`, at the root;
+  withheld when private) and a live folder map; `--init` writes a starter
+  `AGENTS.md` plus a `CLAUDE.md` that imports it, never overwriting. `kore
+  mcp` gains a `vault_guide` tool and a `kore://guide` resource and puts the
+  contract in its `initialize` instructions, so MCP agents (local or remote)
+  and agents on a git clone follow the same file. In-app chat and routines
+  (`loadAgentContext`) inject the contract after the soul, and when it
+  exists its routing replaces the default `agents/` memory upkeep. The
+  bundled graph skill now starts with `kore guide`. Verified: cargo test,
+  clippy, fmt; vitest on the agent-profile and engine prompt suites.
+
 - 2026-11-02 — New notes are named in their tab while you type. A ⌘N note
   keeps its ULID placeholder path until the birth rename settles (5s of
   quiet, blur or teardown, and forever if the move is refused), and the tab

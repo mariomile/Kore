@@ -74,6 +74,16 @@ describe('LocalGraphSection', () => {
     await view.unmount()
   })
 
+  it('opens the map as a page of its own from the section menu', async () => {
+    const view = await renderSection()
+    await userEvent.click(view.getByRole('button', { name: 'Local graph options' }))
+    await userEvent.click(view.getByRole('menuitem', { name: 'Open in new tab' }))
+    await expect
+      .element(view.getByTestId('route'))
+      .toHaveTextContent('{"kind":"localGraph","path":"notes/atlas.md"}')
+    await view.unmount()
+  })
+
   it('never shows the previous note while the next one loads', async () => {
     const view = await renderSection()
     await expect.element(view.getByRole('img', { name: 'Local graph' })).toBeInTheDocument()

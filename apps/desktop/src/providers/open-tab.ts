@@ -16,6 +16,8 @@ export function tabKey(tab: OpenTab): string {
       return `base:${tab.path ?? ''}`
     case 'canvas':
       return `canvas:${tab.path ?? ''}`
+    case 'localGraph':
+      return `localGraph:${tab.path}`
     case 'surface':
       // A folder page is a page of its own, like a base: each folder keeps
       // its own tab instead of replacing the All notes one.
@@ -88,6 +90,8 @@ export function openTabForRoute(
       return { kind: 'base', path: route.path, view: route.view, pinned: false }
     case 'canvas':
       return { kind: 'canvas', path: route.path, pinned: false }
+    case 'localGraph':
+      return { kind: 'localGraph', path: route.path, pinned: false }
     case 'tasks':
     case 'insights':
     case 'graphMap':
@@ -110,6 +114,9 @@ export function routeForOpenTab(tab: OpenTab): Route {
   }
   if (tab.kind === 'canvas') {
     return { kind: 'canvas', path: tab.path }
+  }
+  if (tab.kind === 'localGraph') {
+    return { kind: 'localGraph', path: tab.path }
   }
   switch (tab.surface) {
     case 'daily':

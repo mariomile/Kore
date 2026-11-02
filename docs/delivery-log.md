@@ -7,12 +7,6 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
-- The Graph view reads on a big vault. Zoomed out you see the names of
-  your most-linked notes; zoom in and more names appear, always at the same
-  size and never on top of each other. Hubs draw bigger and stay on top of
-  the crowd, links fade on dense maps, and a cluster zooms into separate
-  circles instead of a pile.
-
 - A cleaner frame. Graph, Tasks and the other full-page tools now use the
   whole window instead of sitting next to an empty Details column; notes,
   daily notes and All notes keep it. The sidebar no longer repeats your open

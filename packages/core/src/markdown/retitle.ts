@@ -10,14 +10,14 @@ import { foldKey } from './keys'
  * needs the index, and lives in `indexing/rename.ts`.
  */
 
-interface Splice {
+export interface Splice {
   from: number
   to: number
   text: string
 }
 
 /** Apply non-overlapping splices, right-to-left so earlier offsets stay valid. */
-function applySplices(source: string, splices: Splice[]): string {
+export function applySplices(source: string, splices: readonly Splice[]): string {
   let result = source
   for (const splice of [...splices].sort((a, b) => b.from - a.from)) {
     result = result.slice(0, splice.from) + splice.text + result.slice(splice.to)

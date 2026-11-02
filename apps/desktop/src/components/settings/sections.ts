@@ -60,6 +60,8 @@ export const SETTINGS_GROUPS = [
       { id: 'import', title: 'Import' },
       // Only shown for vaults with Obsidian settings — see use-visible-settings-sections.
       { id: 'vault-compat', title: 'Obsidian compatibility' },
+      // Same visibility rule: a dry run of converting the vault to Kore's layout.
+      { id: 'obsidian-import', title: 'Convert to Kore layout' },
     ],
   },
   {

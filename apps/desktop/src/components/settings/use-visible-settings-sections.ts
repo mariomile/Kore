@@ -28,7 +28,7 @@ function sectionIsVisible(
   if (id === 'search') {
     return showAdvanced
   }
-  if (id === 'vault-compat') {
+  if (id === 'vault-compat' || id === 'obsidian-import') {
     return getVaultLayout().obsidian
   }
   return true

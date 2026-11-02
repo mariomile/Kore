@@ -1,5 +1,135 @@
 # Kore working state
 
+## Design System 2, phase 1: status tokens, one radius ramp, contrast, 2026-11-02
+
+User ask (Mario, 2026-11-01, design and frontend review, slice 4; plan in
+the "Kore: revisione design e frontend" doc): the design system had drifted
+about a third since the September audit (branch
+`claude/design-system-97m01d`, never merged). Replace hard-coded status
+colors and radii with tokens and make contrast pass on every theme. One PR,
+merged last among the parallel slices because it touches many files.
+
+- [x] Status tokens in `colors.css`: `--danger`, `--warning`, `--success`,
+  `--info`, each with `-soft`, light and dark inks; `--destructive` is now
+  `--danger` (`#c42020` light, `#f87171` dark, was red-500 at 3.76:1 on
+  white). Tailwind `text-danger`, `bg-warning-soft`, `bg-success`, ...
+- [x] Every raw status palette class in the app (`text-red-600
+  dark:text-red-400`, `bg-amber-500`, `border-amber-500/30 bg-amber-500/10`,
+  `bg-emerald-500`, ...) now reads a status token: 23 files, including
+  `InlineAlert`, settings errors, backup and sync dots, mobile pills.
+  `select-colors.ts` keeps its palette: tag option colors are categories.
+- [x] Callouts: note/info/todo read `--info` (the accent), success/warning/
+  failure/danger/bug read the status inks, so their titles pass and follow
+  Paper and Ink. The note `hr` reads `--rule` (theme ink at 16%), not
+  `--coolgray-200/700`.
+- [x] One radius ramp: `spacing.css` derives sm/md/lg/xl/2xl from `--radius`;
+  `data-radius` and Liquid Glass set only `--radius`; the `rounded-*`
+  utilities read the same tokens via `--ds-radius-*`. The DS's 7px md is
+  gone (the app already drew 6px). 39 bare `rounded` (fixed 4px, ignored the
+  setting) became `rounded-sm`; the `min(var(--radius-md),…)` and
+  `calc(var(--radius)-3px)` literals in Button, Select and InputGroup became
+  `rounded-md`; checkbox, find bar and the mobile note card moved onto the
+  ramp. Kept: chat composer `1.25rem`, the insights heatmap `3px` cells,
+  `rounded-[inherit]` in the drawer.
+- [x] Contrast: Light `--text-muted` `#8a8e96` (was 2.5:1 on the page),
+  Paper `--text-secondary` `#7a6e5a` and `--text-muted` `#978a73` (were
+  3.9:1 and 2.3:1). Dark indigo primary buttons fill with `--accent-fill`
+  `#5e5ce6` (white label 5.06:1, was 3.42:1) while links keep `#7b7ef4`;
+  Space fills with `#712fff`. `--text-on-brand` flips to near-black on the
+  accents where white falls under 4.5:1 (light teal/green/amber/orange/
+  lime/emerald/cyan/sky, every dark accent but indigo). A custom accent hex
+  keeps the white label.
+- [x] `theme-tokens.test.ts`: contrast floors for every solid-color theme
+  (text 4.5, secondary 4.5, muted 3, the three status inks 4.5, on card and
+  page) and the derived radius ramp. `docs/design.md` updated.
+- Spacing needed no sweep: 8 arbitrary spacing values, all deliberate
+  (safe-area, optical nudges).
+- Not done (DS2 phases 2-4): Button/Badge hover per design.md, focus-rule
+  opt-outs, `text-[13px]` and 9-11px literals (`text-3xs`), Tailwind
+  `shadow`, scrim/media tokens for the lightbox, off-scale durations, dead
+  tokens.
+
+**Validation:** `theme-tokens.test.ts` (20 tests; a mutation back to the old
+Paper value fails it), `pnpm check`, a production `vite build` confirming
+`rounded-md` compiles to `var(--ds-radius-md)` with no cycle. WebKit runs in
+CI only.
+
+**Next:** Mario reviews on the Mac (a dark theme, Paper, a callout, Settings
+errors) and merges after slices 2, 3, 5 and 6. Then DS2 phase 2 (primitives).
+
+## One date format, 2026-11-02
+
+User ask (Mario, 2026-11-01, design review slice 5, started 2026-11-02 with
+"finisci tutto"): the audit found four date shapes on screen (`10/31/2026`
+in All notes, `2025-01-12` in properties, `Sun, November 1st` on dailies,
+`2 days ago` in chat history), which read like four different apps.
+
+- [x] Two shapes, both following Settings → Date format: the spelled-out
+  day for daily subjects and headings (`Mon, November 2nd, 2026`,
+  unchanged), and one compact date everywhere else (`Nov 2`, `2 Nov`, the
+  year only away from the current one; `iso` keeps `2026-11-02`).
+  `formatShortDate` in `apps/desktop/src/lib/dates.ts` is that compact
+  date; the daily pill's own copy of it is gone.
+- [x] Lists say how recent: the time today, `Yesterday`, the weekday within
+  the last week, the compact date beyond (`formatRecencyLabel`, now by
+  calendar days instead of the Sunday-start week). Chat history (desktop
+  and mobile) uses it instead of date-fns `formatDistanceToNow`.
+- [x] Date properties under the title and in Details render through the
+  compact date like table cells and cards already did; the desktop Tasks
+  row's source shows the compact date, as mobile already did.
+- [x] Moments with a time (connector "Last synced", agent run history) go
+  through `formatDateTime` (`Nov 2, 5:20pm`) instead of the browser locale.
+- Not changed on purpose: dates the user typed (note titles such as an
+  Obsidian `15-05-2024` daily outside the daily folder, property text that
+  is not a date), and the editor's `[[YYYY-MM-DD]]` links.
+
+**Validation:** `dates.test.ts` (compact date, recency with `Yesterday` and
+the last-week weekday, date and time), browser tests for All notes, cards,
+properties header and Details, Tasks (desktop and mobile), the daily pill,
+chat, agents and settings on Chromium; `pnpm typecheck`, `pnpm lint`; one
+screenshot of All notes on `?seed=obsidian` (Updated reads `Sat`, was
+`10/31/2026`). WebKit runs in CI.
+
+**Next:** slice 6 (readable graph) on Mario's go.
+
+## Readable Graph view, 2026-11-02
+
+Slice 6 of the design and frontend review (project Claude Doc "Kore:
+revisione design e frontend"): on the 5,165-note `?seed=obsidian` vault the
+full Graph view was a ball of circles with names scattered on top, names
+grew to 40+ px when zooming in (the font size was in layout units), every
+note with 14 or more backlinks drew the same size, and the hover spotlight
+stayed on after the pointer left the canvas.
+
+- [x] Labels in screen space: 11 px (12 px semibold for hubs) at every zoom,
+  with a halo in the canvas color so a name reads over edges and circles.
+  Offered spotlight, neighbors, search matches, then by backlinks, and
+  placed greedily through a grid collision index with a gap
+  (`apps/desktop/src/lib/graph-readability.ts`). Zoom reveals names: a note
+  earns its label once its circle is at least 7 px on screen; the ten
+  most-linked notes are always offered. Off-screen names are skipped.
+- [x] Hubs: radius grows with the square root of backlinks up to 100 (was
+  linear, capped at 14). The top 2% of linked notes (at least 5 backlinks)
+  paint above other circles, with darker, bolder names.
+- [x] Dense maps: resting edges fade with edge count (full up to 1,000,
+  35% from 20,000); every circle gets a 1 px ring in the canvas color.
+- [x] Layout: optional radii turn on circle collision in the leaf pass of
+  the Barnes-Hut repulsion (not scaled by the cooling temperature), so a
+  dense core zooms into separate notes. The local graph gets it too.
+- [x] Leaving the canvas clears the hover spotlight.
+
+**Validation:** `graph-readability.test.ts` and `graph-layout.test.ts`
+(collision cuts overlaps in a dense 300-note core by more than 10x) on
+node; graph-map canvas/screen and local-graph suites on Chromium, with a new
+pointer-leave test; typecheck, eslint, oxfmt. Bench (`KORE_BENCH=1`): the
+5,165-note layout step p50 went from 17.6 ms to about 19.7 ms with collision,
+259 steps as before. Rendered before/after on the seeded vault in Chromium
+(project files, `screenshot/grafo-leggibile/`). WebKit left to CI; not tried
+on the real vault.
+
+**Next:** on the Mac, open Graph on marioverse.ai and check that the
+overview names the MOCs and that zooming into a cluster reads well.
+
 ## Obsidian import, slice 1: dry run, 2026-11-02
 
 User ask (Mario, 2026-11-02, thread "Kore vs Obsidian gap"): Kore must not
@@ -2313,6 +2443,18 @@ screen: Agents then Close lands on today.
 
 ## Session log
 
+- 2026-11-02 — Design review slice 4, Design System 2 phase 1 (PR #300): one set of status colors
+  readable on every theme, one radius ramp driven by the Appearance corner setting, and
+  contrast fixes on Paper, Light and dark indigo.
+- 2026-11-02 — Design review slice 5, one date format (PR #305): a compact date everywhere
+  but daily headings, recency labels in lists, date-and-time through one formatter, all
+  following Settings → Date format.
+- 2026-11-02 — Design review slice 6, a readable Graph view: fixed-size
+  labels with a halo, revealed by zoom and placed without crowding; hubs
+  grow with backlinks past the old 14-link cap and paint on top; dense maps
+  fade their edges and ring their circles; the layout keeps sized circles
+  from overlapping; the hover spotlight clears when the pointer leaves.
+- 2026-11-02 — Design and frontend review, slice 3: a lighter boot (PR #301). Measured on a production build (dev bridge forced on, Chromium, the seeded dev vault), the JS fetched before the first editor paints, dev bridge excluded, went from 3,941 KB to 3,571 KB (-370 KB, -9.4%). Editor-visible time is unchanged within noise unthrottled (~930 ms, most of it the WASM index, not JS) and 2,870 → 2,672 ms at 4x CPU throttle. Moved off the boot path: the tag symbol icon table (179 KB, `tag-symbol-icons.gen.tsx`) loads when the first symbol is drawn (`TagSymbolGlyph`, a size-holding blank meanwhile); the All Notes and Tasks routes are lazy and prefetched 1.5 s after the shell mounts; a note's `collection` code fence loads the collection views on first use. Stays: the editor chunk (1.27 MB) is needed for today's note; its heaviest optional parts (CodeMirror via `@codemirror/language`, the HTML-paste pipeline parse5/rehype/hast-to-mdast, ~400 KB) are static imports inside Meowdown's single-file dist, so splitting them is a Meowdown change. Base UI + Radix both bundled is slice 4.
 - 2026-11-02 — New notes are named in their tab while you type. A ⌘N note
   keeps its ULID placeholder path until the birth rename settles (5s of
   quiet, blur or teardown, and forever if the move is refused), and the tab

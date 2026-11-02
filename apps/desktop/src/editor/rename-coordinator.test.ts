@@ -416,6 +416,20 @@ describe('rename coordinator', () => {
     expect(draftTitles().has(placeholder)).toBe(false)
   })
 
+  it("an outgoing coordinator's late dispose keeps its successor's draft title", () => {
+    const placeholder = 'notes/01jxk2v9qz3m4n5p6r7s8t9vwz.md'
+    const make = () =>
+      createRenameCoordinator({ path: placeholder, generation: () => 7, canFire: () => true })
+    const outgoing = make()
+    outgoing.content(managed('# Draft\n'), 'saved')
+    const successor = make() // StrictMode remount / recreated session on the same path
+    successor.content(managed('# Draft\n'), 'saved')
+    outgoing.dispose()
+    expect(draftTitles().get(placeholder)).toBe('Draft')
+    successor.dispose()
+    expect(draftTitles().has(placeholder)).toBe(false)
+  })
+
   it('a failed move retargets the session back and reports filename drift', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
     const session = fakeSession('# New Title\n')

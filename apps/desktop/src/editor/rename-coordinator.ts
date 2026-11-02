@@ -13,7 +13,7 @@ import {
   writeNote,
 } from '@reflect/core'
 import { placeOldTitleAlias } from './alias-placement'
-import { setDraftTitle } from './draft-titles'
+import { clearDraftTitle, setDraftTitle } from './draft-titles'
 import { moveNoteCarryingSession } from './move-note'
 import type { NoteContentOrigin } from './note-session'
 import { composeRenameFailure, type RenamePhaseFailures } from './rename-failure'
@@ -80,6 +80,8 @@ export function createRenameCoordinator(options: RenameCoordinatorOptions): Rena
   let currentPath = options.path
   /** Serializes rewrites — a second settle waits for the first. */
   let chain: Promise<void> = Promise.resolve()
+  /** This coordinator's identity in the draft-title store (see `draft-titles.ts`). */
+  const draftOwner = {}
   /** Latest source saved or adopted by this session, used only for move ownership. */
   let latestSource = ''
 
@@ -101,7 +103,7 @@ export function createRenameCoordinator(options: RenameCoordinatorOptions): Rena
     await moveNoteCarryingSession(from, target, gen)
     currentPath = target
     // The note is named now: its tab reads the index under the slug path.
-    setDraftTitle(from, null)
+    clearDraftTitle(from, draftOwner)
     // Retarget inbound `[[notes/…]]` path links only after the move landed: a
     // refused move then touches nothing (rollback for free), while the
     // reverse order would strand every rewritten source on a destination that
@@ -231,7 +233,7 @@ export function createRenameCoordinator(options: RenameCoordinatorOptions): Rena
       // A ⌘N note keeps its placeholder path until the birth rename settles;
       // publish the typed title so its tab names it right away.
       if (isUntitledNotePath(currentPath)) {
-        setDraftTitle(currentPath, authoredTitleOf(currentPath, content))
+        setDraftTitle(currentPath, authoredTitleOf(currentPath, content), draftOwner)
       }
       if (origin === 'saved') {
         tracker.saved(content)
@@ -247,7 +249,7 @@ export function createRenameCoordinator(options: RenameCoordinatorOptions): Rena
     },
     dispose(): void {
       tracker.dispose()
-      setDraftTitle(currentPath, null)
+      clearDraftTitle(currentPath, draftOwner)
     },
   }
 }

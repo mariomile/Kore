@@ -60,7 +60,7 @@ function canvasView(graph: LocalGraph): { nodes: CanvasNode[]; edges: CanvasEdge
 }
 
 const controlClass =
-  'rounded px-1.5 py-0.5 text-2xs font-medium transition-colors duration-100 hover:bg-surface-hover hover:text-text'
+  'rounded-sm px-1.5 py-0.5 text-2xs font-medium transition-colors duration-100 hover:bg-surface-hover hover:text-text'
 
 /**
  * The open note's neighborhood as a small graph (Obsidian's local graph):

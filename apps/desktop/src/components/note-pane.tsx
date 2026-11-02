@@ -378,12 +378,7 @@ export function NotePaneComponent({
     return (
       <div
         role="alert"
-        className={cn(
-          'px-1 py-2 text-sm text-red-500',
-          gutterClassName,
-          editorClassName,
-          className,
-        )}
+        className={cn('px-1 py-2 text-sm text-danger', gutterClassName, editorClassName, className)}
       >
         Couldn’t open {path}: {document.error}
       </div>

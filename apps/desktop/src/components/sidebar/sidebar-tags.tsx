@@ -100,7 +100,7 @@ function TagRow({ node, depth, context }: TagRowProps): ReactElement {
             aria-expanded={isOpen}
             aria-label={`${isOpen ? 'Collapse' : 'Expand'} #${node.tag}`}
             onClick={() => context.toggle(node.key)}
-            className="mr-1 flex size-3.5 flex-none items-center justify-center rounded text-text-muted hover:text-text"
+            className="mr-1 flex size-3.5 flex-none items-center justify-center rounded-sm text-text-muted hover:text-text"
           >
             <Chevron aria-hidden className="size-3" />
           </button>
@@ -130,7 +130,7 @@ function TagRow({ node, depth, context }: TagRowProps): ReactElement {
           type="button"
           aria-label={`Configure #${node.tag}`}
           onClick={() => context.configure(node.tag)}
-          className="absolute right-1.5 top-1/2 flex size-4 -translate-y-1/2 items-center justify-center rounded text-text-muted opacity-0 transition-[color,background-color,opacity] duration-150 ease-swift hover:bg-surface-active hover:text-text focus-visible:opacity-100 group-hover:opacity-100"
+          className="absolute right-1.5 top-1/2 flex size-4 -translate-y-1/2 items-center justify-center rounded-sm text-text-muted opacity-0 transition-[color,background-color,opacity] duration-150 ease-swift hover:bg-surface-active hover:text-text focus-visible:opacity-100 group-hover:opacity-100"
         >
           <Settings aria-hidden className="size-3" />
         </button>

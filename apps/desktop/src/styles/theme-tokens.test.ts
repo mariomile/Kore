@@ -169,4 +169,90 @@ describe('theme tokens', () => {
       expect(scope, radius).toMatch(/^\s*(?:\/\*[\s\S]*?\*\/\s*)*--radius:/)
     }
   })
+
+  it('derives the whole radius ramp from --radius, so a scope sets nothing else', () => {
+    // Two ramps used to disagree (the DS said md = 7px, the rounded-* utilities
+    // 6px) and each scope carried a hand-written table. One formula now.
+    for (const step of ['sm', 'md', 'lg', 'xl', '2xl']) {
+      expect(SPACING, step).toMatch(new RegExp(String.raw`--radius-${step}:[^;]*var\(--radius\)`))
+    }
+    for (const radius of UI_RADIUS_IDS) {
+      const scope = new RegExp(String.raw`\[data-radius='${radius}']\s*\{([^}]*)}`).exec(
+        SPACING,
+      )?.[1]
+      expect(scope ?? '', radius).not.toMatch(/--radius-/)
+    }
+  })
+})
+
+/** WCAG relative luminance of a `#rrggbb` color. */
+function luminance(hex: string): number {
+  const channels = [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16) / 255)
+  const [r, g, b] = channels.map((c) => (c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4))
+  return 0.2126 * (r ?? 0) + 0.7152 * (g ?? 0) + 0.0722 * (b ?? 0)
+}
+
+function contrast(a: string, b: string): number {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x)
+  return ((hi ?? 0) + 0.05) / ((lo ?? 0) + 0.05)
+}
+
+/** The hex a token resolves to in a scope, falling back to its family's base. */
+function hexIn(scopes: string[], token: string): string | undefined {
+  for (const scope of scopes) {
+    const value = new RegExp(String.raw`(?:^|\n)\s*--${token}:\s*(#[0-9a-f]{6});`).exec(scope)?.[1]
+    if (value) {
+      return value
+    }
+  }
+  return undefined
+}
+
+describe('theme contrast floors', () => {
+  // docs/design.md promises 4.5:1 for primary and secondary text and 3:1 for
+  // muted meta text, on the card and on the page. Space paints its text with
+  // alpha over a purple ground, so only the solid-color themes are checked.
+  const block = (selector: string): string =>
+    new RegExp(String.raw`(?:^|\n)${selector} \{([^}]*)}`).exec(COLORS)?.[1] ?? ''
+  const light = block(':root')
+  const dark = block(String.raw`\.dark`)
+  const themes: Record<string, string[]> = {
+    light: [light],
+    ash: [block(String.raw`:root\[data-theme='ash']`), light],
+    paper: [block(String.raw`:root\[data-theme='paper']`), light],
+    dark: [dark],
+    graphite: [block(String.raw`:root\[data-theme='graphite']`), dark],
+    ink: [block(String.raw`:root\[data-theme='ink']`), dark],
+    midnight: [block(String.raw`:root\[data-theme='midnight']`), dark],
+    codex: [block(String.raw`:root\[data-theme='codex']`), dark],
+  }
+
+  for (const [theme, scopes] of Object.entries(themes)) {
+    it(`${theme} text and status inks clear their floors`, () => {
+      const floors: Array<[string, number]> = [
+        ['text', 4.5],
+        ['text-secondary', 4.5],
+        ['text-muted', 3],
+        ['danger', 4.5],
+        ['warning', 4.5],
+        ['success', 4.5],
+      ]
+      for (const ground of ['surface', 'surface-app']) {
+        const bg = hexIn(scopes, ground)
+        expect(bg, `${theme} --${ground}`).toBeDefined()
+        for (const [token, floor] of floors) {
+          const fg = hexIn(scopes, token)
+          expect(fg, `${theme} --${token}`).toBeDefined()
+          expect(
+            contrast(fg ?? '', bg ?? ''),
+            `${theme} --${token} on --${ground}`,
+          ).toBeGreaterThanOrEqual(floor)
+        }
+      }
+    })
+  }
+
+  it('fills stock dark indigo deep enough for a white label', () => {
+    expect(contrast(hexIn([dark], 'accent-fill') ?? '', '#ffffff')).toBeGreaterThanOrEqual(4.5)
+  })
 })

@@ -70,8 +70,21 @@ Cascade layer order, low to high priority.
   --color-accent-soft: var(--accent-soft);
   --color-accent-soft-text: var(--accent-soft-text);
 
+  --color-accent-fill: var(--accent-fill);
+  --color-accent-fill-hover: var(--accent-fill-hover);
+
   --color-focus-ring: var(--focus-ring);
   --color-destructive: var(--destructive);
+
+  /* Status inks and their washes (`text-danger`, `bg-warning-soft`, …). */
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
 
   --shadow-input: var(--ds-shadow-input);
   --shadow-sm: var(--ds-shadow-sm);
@@ -129,16 +142,17 @@ Cascade layer order, low to high priority.
   --color-foreground: var(--foreground);
   --color-background: var(--background);
 
-  /* shadcn's classic radius scale off the DS house radius (0.5rem): with that
-     base these formulas reproduce Tailwind's default scale exactly, so
-     existing rounded-* usage doesn't shift. 2xl+ keep Tailwind defaults.
-     `max(0px, …)` because the Appearance radius setting drives `--radius`
-     down to 0 on `sharp`, where the subtractions would otherwise compute a
-     negative radius and the whole declaration would be dropped. */
-  --radius-sm: max(0px, calc(var(--radius) - 4px));
-  --radius-md: max(0px, calc(var(--radius) - 2px));
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  /* The rounded-* utilities read the design system's one radius ramp
+     (spacing.css), which derives every step from `--radius`, so the
+     Appearance radius setting reaches every corner. Indirected through
+     `--ds-radius-*` like the shadows: the names are shared. Bare `rounded`
+     is a fixed 4px that ignores the setting; use `rounded-sm` (a chip) or
+     `rounded-md` / `rounded-lg` (a control) instead. */
+  --radius-sm: var(--ds-radius-sm);
+  --radius-md: var(--ds-radius-md);
+  --radius-lg: var(--ds-radius-lg);
+  --radius-xl: var(--ds-radius-xl);
+  --radius-2xl: var(--ds-radius-2xl);
 }
 
 /* The DS shadow tokens share Tailwind's `--shadow-*` theme namespace, so a
@@ -156,6 +170,11 @@ Cascade layer order, low to high priority.
   --ds-text-subject: var(--text-subject);
   --ds-font-shortcut: var(--font-shortcut);
   --ds-ease-swift: var(--ease-swift);
+  --ds-radius-sm: var(--radius-sm);
+  --ds-radius-md: var(--radius-md);
+  --ds-radius-lg: var(--radius-lg);
+  --ds-radius-xl: var(--radius-xl);
+  --ds-radius-2xl: var(--radius-2xl);
 }
 
 /* shadcn semantic tokens, bridged onto the DS tokens so both vocabularies
@@ -177,7 +196,7 @@ Cascade layer order, low to high priority.
   --layer-blur: 20px;
   --layer-saturate: 140%;
   --popover-foreground: var(--text);
-  --primary: var(--accent);
+  --primary: var(--accent-fill);
   --primary-foreground: var(--text-on-brand);
   --secondary: var(--accent-soft);
   --secondary-foreground: var(--accent-soft-text);
@@ -408,7 +427,7 @@ html:root {
   width: 2.25rem;
   height: 2.25rem;
   border: 1px solid var(--border);
-  border-radius: 0.375rem;
+  border-radius: var(--radius-md);
   background: var(--surface-sunken);
   font-size: 0.6875rem;
   font-weight: 600;
@@ -1210,13 +1229,10 @@ html:root {
   padding-left: 1em;
 }
 
-/* A thematic break is content, not chrome. Keep it at V1's stronger rule
-   colors instead of inheriting Reflect's deliberately quiet app hairline. */
+/* A thematic break is content, not chrome: stronger than the app hairline,
+   and drawn in the theme's own ink so Paper and Ink get a warm rule. */
 .reflect-editor hr {
-  border-top-color: var(--coolgray-200);
-}
-.dark .reflect-editor hr {
-  border-top-color: var(--coolgray-700);
+  border-top-color: var(--rule);
 }
 
 /* Inline code now inherits meowdown's neutral default (text color + the

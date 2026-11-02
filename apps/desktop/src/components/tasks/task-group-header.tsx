@@ -55,7 +55,7 @@ export function TaskGroupHeader({
           type="button"
           aria-label={`Add a task to ${group.kind === 'current' ? 'today' : group.label}`}
           onClick={() => onAdd(addTarget)}
-          className="ml-auto flex flex-none items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium text-text-muted transition-colors hover:text-text focus-visible:text-text focus-visible:outline-none"
+          className="ml-auto flex flex-none items-center gap-1 rounded-sm px-1.5 py-0.5 text-xs font-medium text-text-muted transition-colors hover:text-text focus-visible:text-text focus-visible:outline-none"
         >
           <Plus aria-hidden className="size-3.5" />
           Add

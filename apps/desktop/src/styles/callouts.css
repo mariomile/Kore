@@ -45,10 +45,13 @@
 }
 
 .reflect-editor blockquote[data-callout] {
-  --callout-color: var(--blue-500);
+  /* Note, info and todo are the accent (the `--info` status); success,
+     warning and the failure family read the status inks, so their titles
+     pass 4.5:1 and follow Paper and Ink. The rest are category hues. */
+  --callout-color: var(--info);
   --callout-icon: var(--callout-icon-note);
   border-left: 3px solid var(--callout-color);
-  border-radius: 0 6px 6px 0;
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
   background: color-mix(in oklab, var(--callout-color) 9%, transparent);
   color: var(--text);
   padding: 0.6em 1em;
@@ -69,7 +72,7 @@
   --callout-icon: var(--callout-icon-tip);
 }
 .reflect-editor blockquote[data-callout='success'] {
-  --callout-color: var(--green-500);
+  --callout-color: var(--success);
   --callout-icon: var(--callout-icon-success);
 }
 .reflect-editor blockquote[data-callout='question'] {
@@ -77,19 +80,19 @@
   --callout-icon: var(--callout-icon-question);
 }
 .reflect-editor blockquote[data-callout='warning'] {
-  --callout-color: var(--orange-500);
+  --callout-color: var(--warning);
   --callout-icon: var(--callout-icon-warning);
 }
 .reflect-editor blockquote[data-callout='failure'] {
-  --callout-color: var(--red-500);
+  --callout-color: var(--danger);
   --callout-icon: var(--callout-icon-failure);
 }
 .reflect-editor blockquote[data-callout='danger'] {
-  --callout-color: var(--red-500);
+  --callout-color: var(--danger);
   --callout-icon: var(--callout-icon-danger);
 }
 .reflect-editor blockquote[data-callout='bug'] {
-  --callout-color: var(--red-500);
+  --callout-color: var(--danger);
   --callout-icon: var(--callout-icon-bug);
 }
 .reflect-editor blockquote[data-callout='example'] {

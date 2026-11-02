@@ -95,7 +95,7 @@ export function AddPropertyPopover({ onAdd, onEditSchema }: AddPropertyPopoverPr
       <PopoverTrigger
         aria-label="Add property"
         title="Add a property"
-        className="flex size-4 shrink-0 items-center justify-center rounded text-text-muted hover:text-text-secondary"
+        className="flex size-4 shrink-0 items-center justify-center rounded-sm text-text-muted hover:text-text-secondary"
       >
         <Plus aria-hidden className="size-3" />
       </PopoverTrigger>

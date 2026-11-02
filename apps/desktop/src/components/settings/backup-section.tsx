@@ -40,9 +40,9 @@ function statusLine(backup: Extract<BackupState, { phase: 'connected' }>): strin
 function statusTone(backup: Extract<BackupState, { phase: 'connected' }>): string {
   switch (backup.status.state) {
     case 'offline':
-      return 'text-amber-700 dark:text-amber-300'
+      return 'text-warning'
     case 'error':
-      return 'text-red-700 dark:text-red-300'
+      return 'text-danger'
     default:
       return 'text-text-muted'
   }
@@ -161,7 +161,7 @@ export function BackupSettingsField(): ReactElement {
                 <span className={cn('ml-2 text-xs', statusTone(backup))}>{statusLine(backup)}</span>
               </p>
               {conflictCount > 0 ? (
-                <div className="text-xs text-amber-700 dark:text-amber-300">
+                <div className="text-xs text-warning">
                   <p>
                     {conflictCount === 1
                       ? '1 note needs review'
@@ -210,9 +210,7 @@ export function BackupSettingsField(): ReactElement {
             </>
           ) : null}
 
-          {action.error !== null ? (
-            <p className="text-xs text-red-700 dark:text-red-300">{action.error}</p>
-          ) : null}
+          {action.error !== null ? <p className="text-xs text-danger">{action.error}</p> : null}
         </div>
       </SettingsField>
       <GraphBackupSection />

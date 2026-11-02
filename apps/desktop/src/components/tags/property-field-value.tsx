@@ -41,9 +41,9 @@ export function PropertyFieldValue({
   return (
     <span
       className={cn(
-        'min-w-0 flex-1 truncate rounded px-1 py-0.5 text-[13px] transition-colors hover:bg-surface-hover',
+        'min-w-0 flex-1 truncate rounded-sm px-1 py-0.5 text-[13px] transition-colors hover:bg-surface-hover',
         reading.mismatch
-          ? 'text-amber-700 dark:text-amber-300'
+          ? 'text-warning'
           : reading.text === ''
             ? 'text-text-muted'
             : 'text-text-secondary',
@@ -68,7 +68,7 @@ function RelationLinks({
   onOpen: (target: string) => void
 }): ReactElement {
   return (
-    <span className="min-w-0 flex-1 truncate rounded px-1 py-0.5 text-[13px] transition-colors hover:bg-surface-hover">
+    <span className="min-w-0 flex-1 truncate rounded-sm px-1 py-0.5 text-[13px] transition-colors hover:bg-surface-hover">
       {links.map((link, index) => (
         <Fragment key={`${link.target}:${index}`}>
           {index > 0 ? <span className="text-text-muted">, </span> : null}

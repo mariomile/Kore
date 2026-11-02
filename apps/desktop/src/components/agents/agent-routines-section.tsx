@@ -348,10 +348,10 @@ function RunHistoryDialog({ routine, onClose }: RunHistoryDialogProps): ReactEle
                   aria-hidden
                   className={`size-1.5 rounded-full ${
                     run.status === 'ok'
-                      ? 'bg-green-500'
+                      ? 'bg-success'
                       : run.status === 'skipped'
                         ? 'bg-border'
-                        : 'bg-red-500'
+                        : 'bg-danger'
                   }`}
                 />
                 <span className="text-sm font-medium text-text">{runTimeLabel(run.startedMs)}</span>
@@ -366,9 +366,7 @@ function RunHistoryDialog({ routine, onClose }: RunHistoryDialogProps): ReactEle
                     : ''}
                 </span>
               </div>
-              {run.error !== null ? (
-                <p className="mt-1 text-xs text-red-600 dark:text-red-400">{run.error}</p>
-              ) : null}
+              {run.error !== null ? <p className="mt-1 text-xs text-danger">{run.error}</p> : null}
               {run.changedPaths.length > 0 ? (
                 <ul className="mt-1 space-y-0.5">
                   {run.changedPaths.map((path) => (

@@ -7,6 +7,13 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Colors and corners hold together on every theme. Errors, warnings and
+  success states use one set of colors that stay readable on Paper, Ink and
+  the dark themes; primary buttons on dark indigo get a deeper fill so their
+  label reads; Paper and Light secondary text is a touch darker; callouts
+  and note dividers follow the theme; and the Appearance corner setting now
+  reaches every rounded corner in the app.
+
 - The Details panel beside a note opens on what you came for: the note's
   tasks, its outline and its local graph. Properties are no longer listed
   twice (you edit them under the title), and Pin, Lock, Export and Trash

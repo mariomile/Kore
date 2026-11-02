@@ -954,6 +954,12 @@ html:root {
 .reflect-note-add-type[data-popup-open] {
   opacity: 1;
 }
+/* Touch screens never hover, so the control stays visible there. */
+@media (hover: none) {
+  .reflect-note-add-type {
+    opacity: 1;
+  }
+}
 .reflect-editor.reflect-editor-has-properties > h1:first-child {
   margin-bottom: calc(0.4em + var(--reflect-note-properties-space, 0px));
 }

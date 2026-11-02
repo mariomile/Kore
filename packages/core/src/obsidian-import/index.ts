@@ -1,3 +1,4 @@
 export * from './dry-run'
+export * from './mapping'
 export * from './plan'
 export * from './rewrite'

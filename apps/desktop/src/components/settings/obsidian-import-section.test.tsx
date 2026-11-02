@@ -1,29 +1,50 @@
 import { render } from 'vitest-browser-react'
 import { page } from 'vitest/browser'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { DEFAULT_VAULT_LAYOUT, type ObsidianImportReport } from '@reflect/core'
+import {
+  DEFAULT_VAULT_LAYOUT,
+  importMappingFromLayout,
+  type ObsidianImportReport,
+  type ObsidianImportSource,
+} from '@reflect/core'
 import type { ObsidianImportDryRunState } from '@/hooks/use-obsidian-import-dry-run'
 
 const run = vi.hoisted(() => vi.fn())
-const dryRun = vi.hoisted((): { state: Omit<ObsidianImportDryRunState, 'run'> } => ({
-  state: { report: undefined, isRunning: false, error: null },
-}))
+const setMapping = vi.hoisted(() => vi.fn())
+type State = Omit<ObsidianImportDryRunState, 'run' | 'setMapping'>
+const EMPTY: State = {
+  source: undefined,
+  report: undefined,
+  mapping: undefined,
+  isRunning: false,
+  error: null,
+}
+const dryRun = vi.hoisted((): { state: State | null } => ({ state: null }))
 
 vi.mock('@/providers/graph-provider', () => ({ useGraph: () => ({ graph: null }) }))
 vi.mock('@/hooks/use-obsidian-import-dry-run', () => ({
-  useObsidianImportDryRun: () => ({ ...dryRun.state, run }),
+  useObsidianImportDryRun: () => ({ ...(dryRun.state ?? EMPTY), run, setMapping }),
 }))
 
 const { ObsidianImportSection } = await import('./obsidian-import-section')
 
+const LAYOUT = {
+  ...DEFAULT_VAULT_LAYOUT,
+  dailyFolder: 'Journal/Daily',
+  dailyFormat: 'DD-MM-YYYY',
+  attachmentFolder: 'Resources/_attachments',
+  obsidian: true,
+}
+const MAPPING = importMappingFromLayout(LAYOUT)
+const SOURCE: ObsidianImportSource = {
+  layout: LAYOUT,
+  notes: [],
+  attachments: [],
+  folders: ['Journal', 'Journal/Daily', 'Resources', 'Resources/_attachments'],
+  skipped: 0,
+}
 const REPORT: ObsidianImportReport = {
-  layout: {
-    ...DEFAULT_VAULT_LAYOUT,
-    dailyFolder: 'Journal/Daily',
-    dailyFormat: 'DD-MM-YYYY',
-    attachmentFolder: 'Resources/_attachments',
-    obsidian: true,
-  },
+  mapping: MAPPING,
   moves: { daily: 878, attachment: 2362, template: 0 },
   conflicts: [
     {
@@ -37,11 +58,20 @@ const REPORT: ObsidianImportReport = {
   rewrittenLinks: 120,
   normalizing: 3000,
   lossy: ['Knowledge/Odd.md'],
+  excluded: 0,
   compat: { groups: [], affectedNotes: 0, scanned: 5116, skipped: 0 },
 }
 
+const READ: State = {
+  source: SOURCE,
+  report: REPORT,
+  mapping: MAPPING,
+  isRunning: false,
+  error: null,
+}
+
 afterEach(() => {
-  dryRun.state = { report: undefined, isRunning: false, error: null }
+  dryRun.state = null
   vi.clearAllMocks()
 })
 
@@ -55,12 +85,10 @@ describe('ObsidianImportSection', () => {
   })
 
   it('lists what the conversion would do and the files it leaves alone', async () => {
-    dryRun.state = { report: REPORT, isRunning: false, error: null }
+    dryRun.state = READ
     await render(<ObsidianImportSection />)
 
-    await expect
-      .element(page.getByText('Preview of 5,116 notes. Nothing has been written.'))
-      .toBeVisible()
+    await expect.element(page.getByText(/^Preview of 5,116 notes\./)).toBeVisible()
     await expect
       .element(
         page.getByText('878 daily notes move from Journal/Daily/DD-MM-YYYY to daily/YYYY-MM-DD.'),
@@ -79,5 +107,32 @@ describe('ObsidianImportSection', () => {
     await expect
       .element(page.getByText('Journal/Daily/09-10-2026.md → daily/2026-10-09.md'))
       .toBeVisible()
+  })
+
+  it('shows the mapping read from the vault and sends edits back', async () => {
+    dryRun.state = READ
+    await render(<ObsidianImportSection />)
+
+    await expect
+      .element(page.getByRole('combobox', { name: 'Daily notes folder' }))
+      .toHaveTextContent('Journal/Daily')
+    await expect
+      .element(page.getByRole('combobox', { name: 'Attachments folder' }))
+      .toHaveTextContent('Resources/_attachments')
+    await page.getByRole('textbox', { name: 'Daily note file name format' }).fill('YYYY')
+    expect(setMapping).toHaveBeenLastCalledWith({
+      ...MAPPING,
+      daily: { folder: 'Journal/Daily', format: 'YYYY' },
+    })
+  })
+
+  it('flags a daily format that cannot name one file per day', async () => {
+    dryRun.state = {
+      ...READ,
+      mapping: { ...MAPPING, daily: { folder: 'Journal/Daily', format: 'dddd' } },
+    }
+    await render(<ObsidianImportSection />)
+
+    await expect.element(page.getByRole('alert')).toHaveTextContent(/YYYY, MM/)
   })
 })

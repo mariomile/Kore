@@ -1,5 +1,32 @@
 # Kore working state
 
+## Obsidian import, slice 1b: folder mapping, 2026-11-02
+
+User ask (Mario, 2026-11-02, after slice 1 merged as #299): "dovremmo far
+fare una mappatura?", given how freely both Obsidian and Kore let a vault be
+organized. [Plan 31](plans/31-obsidian-import.md) slice 1b.
+
+- [x] Core: `ImportMapping` (`obsidian-import/mapping.ts`) names which folder
+  plays which role (daily folder + filename format, attachments, templates)
+  and which folders are left out. `importMappingFromLayout` proposes it from
+  `.obsidian/*.json`; `planImportMoves` now takes a mapping (a role on the
+  vault root, or an unusable daily format, moves nothing).
+- [x] Core: the dry run splits into `readObsidianImportSource` (the one slow
+  read, plus the vault's folder list) and `buildObsidianImportReport` (pure,
+  per mapping; reports excluded files). `dryRunObsidianImport` is gone.
+- [x] Desktop: the Convert to Kore layout section shows the mapping as a table
+  after the read; each edit rebuilds the report, reusing each note's
+  round-trip verdict while its converted text is unchanged.
+- Not done: remembering the mapping between runs (slice 2 will carry it into
+  the conversion), the conversion itself, Bases.
+
+**Validation:** core obsidian-import tests (10), the settings browser test on
+Chromium (4), `pnpm check` exit 0. WebKit is left to CI. Not run on the real
+vault.
+
+**Next:** Mario runs the preview on marioverse.ai and corrects the mapping;
+then slice 2.
+
 ## Obsidian import, slice 1: dry run, 2026-11-02
 
 User ask (Mario, 2026-11-02, thread "Kore vs Obsidian gap"): Kore must not
@@ -24,7 +51,7 @@ slices in [Plan 31](plans/31-obsidian-import.md), which reopens Plan 13's
   editor's `checkRoundTrip` and lists moves, rewritten links, normalized
   notes, lossy notes and conflicts.
 - Not done: the conversion itself (slice 2, to a copy), Bases (slice 3),
-  retiring the runtime vault profile (Mario's call, decision card open).
+  retiring the runtime vault profile (decided 2026-11-02: after the importer converts a real vault).
 
 **Validation:** core `plan.test.ts` and `dry-run.test.ts` (7 tests), the
 settings browser test on Chromium (2 tests), `pnpm check` exit 0. WebKit is

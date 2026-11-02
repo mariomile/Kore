@@ -1,6 +1,6 @@
 import { useMemo, type ReactElement } from 'react'
-import { parseNoteAppearanceFromSource } from '@reflect/core'
-import { renderSymbolIcon } from '@/lib/tags/tag-symbol-icons'
+import { isTagSymbolIconName, parseNoteAppearanceFromSource } from '@reflect/core'
+import { TagSymbolGlyph } from '@/components/tags/tag-symbol-glyph'
 import { cn } from '@/lib/utils'
 
 interface NoteAppearanceProps {
@@ -25,13 +25,17 @@ export function NoteAppearance({
   const icon = appearance.icon
   const iconUrl = icon?.kind === 'image' ? resolveImageUrl(icon.src) : null
 
+  // The placeholder holds the glyph's box while the symbol table loads, so
+  // the title does not shift when the icon arrives.
   const symbolEl =
-    icon?.kind === 'symbol'
-      ? renderSymbolIcon(icon.name, {
-          'aria-hidden': true,
-          className: 'size-10 text-text-secondary',
-        })
-      : null
+    icon?.kind === 'symbol' && isTagSymbolIconName(icon.name) ? (
+      <TagSymbolGlyph
+        name={icon.name}
+        aria-hidden
+        className="size-10 text-text-secondary"
+        fallback={<div aria-hidden className="size-10" />}
+      />
+    ) : null
   const iconEl =
     icon === null ? null : icon.kind === 'emoji' ? (
       <div data-testid="note-icon" className="text-4xl leading-none" aria-label="Note icon">

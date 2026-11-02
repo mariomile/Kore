@@ -25,6 +25,11 @@ const CanvasScreen = lazy(() =>
 const BrowserPane = lazy(() =>
   import('@/components/browser/browser-pane').then((module) => ({ default: module.BrowserPane })),
 )
+const LocalGraphScreen = lazy(() =>
+  import('@/components/context-sidebar/local-graph-screen').then((module) => ({
+    default: module.LocalGraphScreen,
+  })),
+)
 const GraphMapScreen = lazy(() =>
   import('@/components/graph-map/graph-map-screen').then((module) => ({
     default: module.GraphMapScreen,
@@ -123,6 +128,9 @@ function RouteView(): ReactElement {
     case 'canvas':
       // Owns its viewport: panning and zooming replace scrolling.
       return <CanvasScreen path={route.path} />
+    case 'localGraph':
+      // Owns its surface, like the full graph map.
+      return <LocalGraphScreen key={route.path} path={route.path} />
     case 'graphs':
     // The graph-switcher route is a mobile settings sub-screen; on desktop
     // graph switching lives in the sidebar footer, so it renders as the

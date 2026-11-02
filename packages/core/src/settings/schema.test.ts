@@ -6,6 +6,7 @@ import {
   settingsSchema,
 } from './schema'
 import { collectionViewForAllNotesView } from './schema-collections'
+import { moveDetailsSection } from './schema-editor'
 
 describe('collectionViewForAllNotesView', () => {
   it('keeps grid as a collection view and maps only list to table', () => {
@@ -29,6 +30,17 @@ describe('settingsSchema', () => {
       sidebarWidth: 260,
       sidebarSections: ['open', 'pinned', 'folders', 'tags'],
       contextSidebarWidth: 320,
+      detailsSections: [
+        'events',
+        'tasks',
+        'outline',
+        'localGraph',
+        'publishedUrl',
+        'similar',
+        'history',
+        'actions',
+      ],
+      hiddenDetailsSections: [],
       semanticSearchEnabled: false,
       describeAssets: true,
       transcriptionFormat: true,
@@ -401,6 +413,17 @@ describe('settingsSchema', () => {
       sidebarWidth: 260,
       sidebarSections: ['open', 'pinned', 'folders', 'tags'],
       contextSidebarWidth: 320,
+      detailsSections: [
+        'events',
+        'tasks',
+        'outline',
+        'localGraph',
+        'publishedUrl',
+        'similar',
+        'history',
+        'actions',
+      ],
+      hiddenDetailsSections: [],
       semanticSearchEnabled: false,
       describeAssets: true,
       transcriptionFormat: true,
@@ -753,6 +776,40 @@ describe('settingsSchema', () => {
     ])
   })
 
+  it('keeps the Details arrangement complete and the hidden list clean', () => {
+    const parsed = settingsSchema.parse({
+      detailsSections: ['actions', 'localGraph', 'ghost', 'actions'],
+      hiddenDetailsSections: ['history', 'ghost', 'history'],
+    })
+    expect(parsed.detailsSections).toEqual([
+      'actions',
+      'localGraph',
+      'events',
+      'tasks',
+      'outline',
+      'publishedUrl',
+      'similar',
+      'history',
+    ])
+    expect(parsed.hiddenDetailsSections).toEqual(['history'])
+    expect(
+      settingsSchema.parse({ hiddenDetailsSections: 'history' }).hiddenDetailsSections,
+    ).toEqual([])
+  })
+
+  it('moves a Details section past the ones its route does not show', () => {
+    // A note's rail has no Events: moving Tasks down swaps it with Outline,
+    // and moving it up from the top of what the note shows does nothing.
+    const order = settingsSchema.parse({}).detailsSections
+    const note = order.filter((id) => id !== 'events')
+    expect(moveDetailsSection(order, note, 'tasks', 'down').slice(0, 3)).toEqual([
+      'events',
+      'outline',
+      'tasks',
+    ])
+    expect(moveDetailsSection(order, note, 'tasks', 'up')).toEqual(order)
+  })
+
   it('accepts note, chat, and route tabs while dropping a malformed graph list', () => {
     const parsed = settingsSchema.parse({
       openTabs: {
@@ -770,6 +827,7 @@ describe('settingsSchema', () => {
                   { kind: 'surface', surface: 'allNotes', tag: 'book', pinned: false },
                   { kind: 'surface', surface: 'search', query: 'alpha', pinned: false },
                   { kind: 'surface', surface: 'tasks', pinned: false },
+                  { kind: 'localGraph', path: 'notes/alpha.md', pinned: false },
                 ],
               },
             ],
@@ -803,6 +861,7 @@ describe('settingsSchema', () => {
                 },
                 { kind: 'surface', surface: 'search', query: 'alpha', pinned: false },
                 { kind: 'surface', surface: 'tasks', pinned: false },
+                { kind: 'localGraph', path: 'notes/alpha.md', pinned: false },
               ],
             },
           ],

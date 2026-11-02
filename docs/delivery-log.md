@@ -7,6 +7,12 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- The Details panel is yours to arrange. Drag a section by its title, or
+  use its "…" menu to move it up or down or hide it; hidden sections come
+  back from the bottom of the panel, and the layout is remembered. The
+  local graph can leave the panel: open it in its own tab or beside the
+  note, where it fills the pane.
+
 - The Details panel beside a note opens on what you came for: the note's
   tasks, its outline and its local graph. Properties are no longer listed
   twice (you edit them under the title), and Pin, Lock, Export and Trash

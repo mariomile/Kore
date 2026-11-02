@@ -17,6 +17,8 @@ export function contextSidebarTarget(route: Route, today: string): ContextSideba
     case 'daily':
       return { kind: 'daily', date: route.date }
     case 'note':
+    // A note's local graph page describes that note, like the note itself.
+    case 'localGraph':
       return { kind: 'note', path: route.path }
     case 'allNotes':
     case 'search':

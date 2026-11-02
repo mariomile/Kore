@@ -1,42 +1,36 @@
 # Kore working state
 
-## Readable Graph view, 2026-11-02
+## Obsidian import, slice 1: dry run, 2026-11-02
 
-Slice 6 of the design and frontend review (project Claude Doc "Kore:
-revisione design e frontend"): on the 5,165-note `?seed=obsidian` vault the
-full Graph view was a ball of circles with names scattered on top, names
-grew to 40+ px when zooming in (the font size was in layout units), every
-note with 14 or more backlinks drew the same size, and the hover spotlight
-stayed on after the pointer left the canvas.
+User ask (Mario, 2026-11-02, thread "Kore vs Obsidian gap"): Kore must not
+change how it works to match Obsidian; an Obsidian vault should be migrated
+into Kore's shape. Granola and Readwise stay out of scope. Direction and
+slices in [Plan 31](plans/31-obsidian-import.md), which reopens Plan 13's
+"no Obsidian import" non-goal.
 
-- [x] Labels in screen space: 11 px (12 px semibold for hubs) at every zoom,
-  with a halo in the canvas color so a name reads over edges and circles.
-  Offered spotlight, neighbors, search matches, then by backlinks, and
-  placed greedily through a grid collision index with a gap
-  (`apps/desktop/src/lib/graph-readability.ts`). Zoom reveals names: a note
-  earns its label once its circle is at least 7 px on screen; the ten
-  most-linked notes are always offered. Off-screen names are skipped.
-- [x] Hubs: radius grows with the square root of backlinks up to 100 (was
-  linear, capped at 14). The top 2% of linked notes (at least 5 backlinks)
-  paint above other circles, with darker, bolder names.
-- [x] Dense maps: resting edges fade with edge count (full up to 1,000,
-  35% from 20,000); every circle gets a 1 px ring in the canvas color.
-- [x] Layout: optional radii turn on circle collision in the leaf pass of
-  the Barnes-Hut repulsion (not scaled by the cooling temperature), so a
-  dense core zooms into separate notes. The local graph gets it too.
-- [x] Leaving the canvas clears the hover spotlight.
+- [x] Core (`packages/core/src/obsidian-import/`): `planImportMoves` (dailies
+  to `daily/YYYY-MM-DD.md`, the attachment folder to `assets/`, the templates
+  folder to `templates/`, case-folded conflicts leave a file in place),
+  `rewriteImportLinks` (links to a daily by path or old name become
+  `[[YYYY-MM-DD]]`; path embeds, Markdown images and template paths follow
+  their file; bare names, display text, fragments and code untouched), and
+  `dryRunObsidianImport` / `buildObsidianImportReport` (reads every note,
+  converts in memory, classifies each body with an injected round-trip check,
+  reuses the compatibility scan). Writes nothing.
+- [x] `dateFromDailyPath` takes an optional layout; `applySplices` is exported
+  from `markdown/retitle.ts`.
+- [x] Desktop: Settings → Sync & data → **Convert to Kore layout** (only for
+  vaults with Obsidian settings) runs the preview on request with the
+  editor's `checkRoundTrip` and lists moves, rewritten links, normalized
+  notes, lossy notes and conflicts.
+- Not done: the conversion itself (slice 2, to a copy), Bases (slice 3),
+  retiring the runtime vault profile (Mario's call, decision card open).
 
-**Validation:** `graph-readability.test.ts` and `graph-layout.test.ts`
-(collision cuts overlaps in a dense 300-note core by more than 10x) on
-node; graph-map canvas/screen and local-graph suites on Chromium, with a new
-pointer-leave test; typecheck, eslint, oxfmt. Bench (`KORE_BENCH=1`): the
-5,165-note layout step p50 went from 17.6 ms to about 19.7 ms with collision,
-259 steps as before. Rendered before/after on the seeded vault in Chromium
-(project files, `screenshot/grafo-leggibile/`). WebKit left to CI; not tried
-on the real vault.
+**Validation:** core `plan.test.ts` and `dry-run.test.ts` (7 tests), the
+settings browser test on Chromium (2 tests), `pnpm check` exit 0. WebKit is
+left to CI. Not run on the real vault.
 
-**Next:** on the Mac, open Graph on marioverse.ai and check that the
-overview names the MOCs and that zooming into a cluster reads well.
+**Next:** Mario runs the preview on marioverse.ai in Kore; then slice 2.
 
 ## Clean shell, 2026-11-01
 
@@ -2318,12 +2312,6 @@ screen: Agents then Close lands on today.
 **Next:** merge the Close fix, then bump.
 
 ## Session log
-
-- 2026-11-02 — Design review slice 6, a readable Graph view: fixed-size
-  labels with a halo, revealed by zoom and placed without crowding; hubs
-  grow with backlinks past the old 14-link cap and paint on top; dense maps
-  fade their edges and ring their circles; the layout keeps sized circles
-  from overlapping; the hover spotlight clears when the pointer leaves.
 
 - 2026-11-01 — Design and frontend review (audit + six-slice plan in the
   project's Claude Doc "Kore: revisione design e frontend"). Slice 1, the

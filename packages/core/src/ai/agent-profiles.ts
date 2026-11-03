@@ -95,6 +95,19 @@ export const AGENT_MEMORY_MAX_CHARS = 1500
 export const AGENT_SHARED_FACTS_MAX_CHARS = 1500
 export const AGENT_SHARED_LOG_MAX_CHARS = 1000
 
+/**
+ * The vault's own agent contract: a root file the user writes for every
+ * agent that works in the vault — Kore's, and any other that reads the git
+ * repo (`AGENTS.md` is what Codex, Cursor and most runtimes look for;
+ * `CLAUDE.md` is Claude Code's). `kore mcp` serves the same file (`kore
+ * guide`), so an agent gets identical rules whichever way it reaches the
+ * vault. When present it is the authority on layout and memory: the
+ * built-in defaults below (the `agents/` memory files, `daily/` and
+ * `notes/`) yield to it.
+ */
+export const VAULT_CONTRACT_PATHS = ['AGENTS.md', 'CLAUDE.md'] as const
+export const VAULT_CONTRACT_MAX_CHARS = 8000
+
 /** One loaded agent file: body (frontmatter stripped), possibly digested. */
 export interface AgentFile {
   body: string
@@ -214,8 +227,35 @@ export async function listAgentProfiles(): Promise<AgentProfile[]> {
   return profiles
 }
 
+/** The vault contract as loaded for a prompt: which file, and its text. */
+export interface VaultContract extends AgentFile {
+  path: string
+}
+
+/**
+ * The first contract file that exists. A private one stops the lookup
+ * (null): the user withheld the rules on purpose, so a second file must not
+ * stand in for them.
+ */
+async function loadVaultContract(): Promise<VaultContract | null> {
+  for (const path of VAULT_CONTRACT_PATHS) {
+    try {
+      await readNote(path)
+    } catch {
+      continue
+    }
+    const file = await loadAgentFile(path, VAULT_CONTRACT_MAX_CHARS, {
+      digest: true,
+    })
+    return file === null ? null : { path, ...file }
+  }
+  return null
+}
+
 /** Everything a chat run injects about the active agent. */
 export interface AgentPromptContext {
+  /** The vault's own agent contract ({@link VAULT_CONTRACT_PATHS}), or null. */
+  vaultContract: VaultContract | null
   /** The active profile, or null when running as the plain assistant. */
   profile: AgentProfile | null
   soul: AgentFile | null
@@ -246,17 +286,35 @@ export async function loadAgentContext(activeSlug: string | null): Promise<Agent
     }
   }
   const memoryPath = agentMemoryPath(profile?.slug ?? DEFAULT_AGENT_SLUG)
-  const [soul, userMemory, agentMemory, sharedFacts, sharedLog, skills] = await Promise.all([
-    profile === null
-      ? Promise.resolve(null)
-      : loadAgentFile(profile.soulPath, AGENT_SOUL_MAX_CHARS),
-    loadAgentFile(AGENT_USER_MEMORY_PATH, AGENT_USER_MEMORY_MAX_CHARS, { digest: true }),
-    loadAgentFile(memoryPath, AGENT_MEMORY_MAX_CHARS, { digest: true }),
-    loadAgentFile(AGENT_SHARED_FACTS_PATH, AGENT_SHARED_FACTS_MAX_CHARS, { digest: true }),
-    loadAgentFile(AGENT_SHARED_LOG_PATH, AGENT_SHARED_LOG_MAX_CHARS, { takeTail: true }),
-    listVaultSkills(),
-  ])
-  return { profile, soul, userMemory, agentMemory, sharedFacts, sharedLog, skills, memoryPath }
+  const [vaultContract, soul, userMemory, agentMemory, sharedFacts, sharedLog, skills] =
+    await Promise.all([
+      loadVaultContract(),
+      profile === null
+        ? Promise.resolve(null)
+        : loadAgentFile(profile.soulPath, AGENT_SOUL_MAX_CHARS),
+      loadAgentFile(AGENT_USER_MEMORY_PATH, AGENT_USER_MEMORY_MAX_CHARS, {
+        digest: true,
+      }),
+      loadAgentFile(memoryPath, AGENT_MEMORY_MAX_CHARS, { digest: true }),
+      loadAgentFile(AGENT_SHARED_FACTS_PATH, AGENT_SHARED_FACTS_MAX_CHARS, {
+        digest: true,
+      }),
+      loadAgentFile(AGENT_SHARED_LOG_PATH, AGENT_SHARED_LOG_MAX_CHARS, {
+        takeTail: true,
+      }),
+      listVaultSkills(),
+    ])
+  return {
+    vaultContract,
+    profile,
+    soul,
+    userMemory,
+    agentMemory,
+    sharedFacts,
+    sharedLog,
+    skills,
+    memoryPath,
+  }
 }
 
 /**
@@ -281,6 +339,17 @@ export function agentContextPromptLines(
     )
     if (context.soul.truncated) {
       lines.push(`[soul truncated at ${AGENT_SOUL_MAX_CHARS} characters]`)
+    }
+  }
+  const contract = context?.vaultContract ?? null
+  if (contract !== null) {
+    lines.push(
+      '',
+      `The vault's agent contract (${contract.path}) — the user's standing rules for every agent working in this vault. Follow it. Wherever it says where things live or where memory, decisions and new notes go, it overrides the layout and memory defaults in this prompt:`,
+      contract.body,
+    )
+    if (contract.truncated) {
+      lines.push(`[summary of a longer file — read ${contract.path} for the full contract]`)
     }
   }
   if (context?.userMemory != null) {
@@ -332,6 +401,17 @@ export function agentContextPromptLines(
     '',
     'Recall: this digest is only the hot set — the vault itself is your long-term memory. Memory sections marked as summaries elide detail on purpose: read the named file when a turn needs it. When the digest lacks context, search the notes (dailies, linked notes, older journal entries) before concluding you don’t know.',
   )
+  if (contract !== null) {
+    lines.push(
+      '',
+      options.canEdit
+        ? options.writeApproval === true
+          ? `Memory upkeep: route each durable learning where the vault contract says it goes. Memory writes need the user's approval: instead of editing the target file, append a proposal section to ${AGENT_PENDING_MEMORY_PATH} — a heading "## <YYYY-MM-DD> ${signature} → <target path>" followed by the lines to add. Never store secrets or the content of private notes.`
+          : 'Memory upkeep: route each durable learning where the vault contract says it goes, in the format it asks for, in the same turn. Never store secrets or the content of private notes.'
+        : 'Memory upkeep: you cannot edit notes in this mode. When you learn something durable, say so and suggest the exact line and the file the vault contract routes it to — never claim to have saved it.',
+    )
+    return lines
+  }
   if (!options.canEdit) {
     lines.push(
       '',

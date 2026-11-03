@@ -21,6 +21,33 @@ mounting, no hide for overlays elsewhere or toasts); `pnpm check`;
 `cargo fmt --check`. Rust build, clippy and WebKit left to CI (no GTK in the
 container). Needs a look on the Mac.
 
+## Obsidian import, slice 1b: folder mapping, 2026-11-02
+
+User ask (Mario, 2026-11-02, after slice 1 merged as #299): "dovremmo far
+fare una mappatura?", given how freely both Obsidian and Kore let a vault be
+organized. [Plan 31](plans/31-obsidian-import.md) slice 1b.
+
+- [x] Core: `ImportMapping` (`obsidian-import/mapping.ts`) names which folder
+  plays which role (daily folder + filename format, attachments, templates)
+  and which folders are left out. `importMappingFromLayout` proposes it from
+  `.obsidian/*.json`; `planImportMoves` now takes a mapping (a role on the
+  vault root, or an unusable daily format, moves nothing).
+- [x] Core: the dry run splits into `readObsidianImportSource` (the one slow
+  read, plus the vault's folder list) and `buildObsidianImportReport` (pure,
+  per mapping; reports excluded files). `dryRunObsidianImport` is gone.
+- [x] Desktop: the Convert to Kore layout section shows the mapping as a table
+  after the read; each edit rebuilds the report, reusing each note's
+  round-trip verdict while its converted text is unchanged.
+- Not done: remembering the mapping between runs (slice 2 will carry it into
+  the conversion), the conversion itself, Bases.
+
+**Validation:** core obsidian-import tests (10), the settings browser test on
+Chromium (4), `pnpm check` exit 0. WebKit is left to CI. Not run on the real
+vault.
+
+**Next:** Mario runs the preview on marioverse.ai and corrects the mapping;
+then slice 2.
+
 ## Movable Details panels, 2026-11-02
 
 User ask (Mario, 2026-11-01, design review "più vicino a Notion"): the right
@@ -214,7 +241,7 @@ slices in [Plan 31](plans/31-obsidian-import.md), which reopens Plan 13's
   editor's `checkRoundTrip` and lists moves, rewritten links, normalized
   notes, lossy notes and conflicts.
 - Not done: the conversion itself (slice 2, to a copy), Bases (slice 3),
-  retiring the runtime vault profile (Mario's call, decision card open).
+  retiring the runtime vault profile (decided 2026-11-02: after the importer converts a real vault).
 
 **Validation:** core `plan.test.ts` and `dry-run.test.ts` (7 tests), the
 settings browser test on Chromium (2 tests), `pnpm check` exit 0. WebKit is
@@ -2502,6 +2529,18 @@ screen: Agents then Close lands on today.
 **Next:** merge the Close fix, then bump.
 
 ## Session log
+
+- 2026-11-02 — Every agent gets the vault's own rules. `kore guide` prints
+  the vault's agent contract (`AGENTS.md`, else `CLAUDE.md`, at the root;
+  withheld when private) and a live folder map; `--init` writes a starter
+  `AGENTS.md` plus a `CLAUDE.md` that imports it, never overwriting. `kore
+  mcp` gains a `vault_guide` tool and a `kore://guide` resource and puts the
+  contract in its `initialize` instructions, so MCP agents (local or remote)
+  and agents on a git clone follow the same file. In-app chat and routines
+  (`loadAgentContext`) inject the contract after the soul, and when it
+  exists its routing replaces the default `agents/` memory upkeep. The
+  bundled graph skill now starts with `kore guide`. Verified: cargo test,
+  clippy, fmt; vitest on the agent-profile and engine prompt suites.
 
 - 2026-11-02 — Movable Details panels (design review, Notion direction):
   drag, move, hide and restore the Details sections, persisted in settings;

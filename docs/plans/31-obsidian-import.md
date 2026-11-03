@@ -1,6 +1,7 @@
 # Plan 31 — Converting an Obsidian vault to Kore's layout
 
-> **Status (2026-11-02):** Slice 1 (dry run) in progress. Reopens one
+> **Status (2026-11-02):** Slice 1 (dry run) shipped in #299; slice 1b
+> (folder mapping) in progress. Reopens one
 > non-goal of [Plan 13](13-import-export-portability.md) on the user's
 > decision.
 
@@ -51,9 +52,15 @@ and the conversion):
 1. **Dry run** (this slice): Settings → Sync & data → *Convert to Kore layout*
    reads every note of the open Obsidian vault, plans the moves, rewrites links
    in memory, classifies, and reports. Writes nothing.
+1b. **Folder mapping**: after reading the vault, the preview shows which
+   folder plays which role (daily folder and filename format, attachments,
+   templates) as Obsidian's settings declare, plus folders to leave out. The
+   user corrects it and the report follows. Both apps let a vault be organized
+   freely, so the mapping is a proposal, not a fact; every unmapped folder
+   keeps its notes where they are.
 2. **Conversion to a copy**: pick an empty destination folder; Rust copies and
-   writes (a new command, thin), core decides every byte. The source vault is
-   never written. Open the copy as a Kore graph when done.
+   writes (a new command, thin), core decides every byte, following the mapping
+   the user confirmed. The source vault is never written. Open the copy as a Kore graph when done.
 3. **Bases**: simple `.base` views (filters on tags and properties) become
    supertag views; the rest stay readable and are reported.
 4. **Retire the runtime profile** (decided by the user 2026-11-02, after the

@@ -371,6 +371,40 @@ is null when the index is absent or unusable.
 }
 ```
 
+### `kore guide [--init] [--json]`
+
+What an agent reads first, before it touches the graph: the vault's own
+agent contract and a map of where the notes are. Needs no index.
+
+The contract is the first of `AGENTS.md`, `CLAUDE.md` at the graph root
+that exists: the user's own file, the rules every agent follows (where
+memory, decisions and new notes go, what not to touch). An agent working
+on a git clone of the vault reads the same file directly, so both paths
+give identical rules. A contract marked `private: true` is withheld
+(`contract` is null) and the lookup stops there. Text past 20,000
+characters is cut and `truncated` is true.
+
+The map counts every public note per top-level folder, lists each folder's
+eight largest subfolders, and spells where a daily note goes. Private notes
+are left out of every count, so a folder holding only private notes is not
+named.
+
+```jsonc
+// kore guide --json
+{
+  "contract": { "path": "AGENTS.md", "text": "# Agent contract\n…", "truncated": false },
+  "map": {
+    "notes": 5165, "rootNotes": 2, "dailyPattern": "Journal/Daily/YYYY-MM-DD.md",
+    "folders": [{ "path": "CRM", "notes": 410, "folders": [{ "path": "CRM/People", "notes": 300 }] }]
+  }
+}
+```
+
+`--init` writes a starter `AGENTS.md` (Kore's conventions plus the map) when
+the vault has no contract, and a `CLAUDE.md` that imports it (`@AGENTS.md`)
+when `AGENTS.md` exists and `CLAUDE.md` does not. It never overwrites a
+file; `--json` reports `{ "written": [...] }`.
+
 ### `kore tags [--json]`
 
 Every tag with its public note count, grouped on the folded key with one
@@ -588,10 +622,18 @@ fails (not found, private, no index) comes back as a tool result with
 
 | Tool | Runs |
 |---|---|
+| `vault_guide` | `guide` |
 | `search`, `read_note`, `today`, `backlinks`, `links`, `note_properties` | `search`, `show`, `today`, `backlinks`, `links`, `properties` |
 | `list_notes`, `recent_notes`, `list_tags`, `collection`, `list_tasks`, `graph_info` | `list`, `recent`, `tags`, `collection`, `tasks`, `info` |
 | `capture`, `append_to_note`, `create_note`, `set_properties` | `capture`, `append --stdin`, `new` (body on stdin), `set` |
 | `tag_note`, `untag_note`, `complete_task` | `tag`, `untag`, `done` |
+
+`vault_guide` is the tool to call first. The server's `initialize`
+`instructions` carry the vault's contract too (up to 12,000 characters,
+then a pointer to `vault_guide`), so a client that injects server
+instructions starts every session under the vault's rules, whether it
+connects over stdio or `--http`, and ChatGPT- or Grok-style clients that
+only use tools still reach them through `vault_guide`.
 
 `--read-only` drops the writing tools (the last two rows) from `tools/list`
 and refuses them if called. Tools carry `readOnlyHint`
@@ -606,10 +648,11 @@ reads back:
 | `kore://note/<note>` | `show` — a URI-encoded path, frontmatter id, title, or alias |
 | `kore://daily/<date>`, `kore://today` | `show <date>`, `today` |
 | `kore://tasks` | `tasks` (JSON) |
+| `kore://guide` | `guide` (JSON) |
 
 `resources/list` pages every public note newest first (1000 a page, from
-`list`), as `kore://note/<encoded path>`, after `kore://today` and
-`kore://tasks`. A private or missing note is a `-32002` error carrying the
+`list`), as `kore://note/<encoded path>`, after `kore://today`,
+`kore://tasks` and `kore://guide`. A private or missing note is a `-32002` error carrying the
 CLI's message.
 
 Prompts embed notes as resources and only ask the model to read and

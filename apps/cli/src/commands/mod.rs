@@ -11,6 +11,7 @@ pub mod backlinks;
 pub mod capture;
 pub mod collection;
 pub mod done;
+pub mod guide;
 pub mod info;
 pub mod links;
 pub mod list;

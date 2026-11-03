@@ -384,8 +384,10 @@ give identical rules. A contract marked `private: true` is withheld
 (`contract` is null) and the lookup stops there. Text past 20,000
 characters is cut and `truncated` is true.
 
-The map counts every note per top-level folder, lists each folder's eight
-largest subfolders, and spells where a daily note goes.
+The map counts every public note per top-level folder, lists each folder's
+eight largest subfolders, and spells where a daily note goes. Private notes
+are left out of every count, so a folder holding only private notes is not
+named.
 
 ```jsonc
 // kore guide --json

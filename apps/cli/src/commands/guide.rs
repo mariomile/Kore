@@ -58,7 +58,8 @@ pub struct ContractJson {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MapJson {
-    /// Every note in the graph, private ones included (only counted).
+    /// Every public note in the graph. Private notes are left out of every
+    /// count, so a folder holding only private notes does not appear.
     pub notes: usize,
     /// Notes directly at the root.
     pub root_notes: usize,
@@ -105,7 +106,14 @@ fn read_contract(root: &Path) -> Option<ContractJson> {
 
 /// Note counts per top-level folder and per second-level folder.
 pub fn vault_map(root: &Path) -> MapJson {
-    let notes = walk_notes(root);
+    // The privacy contract holds for the map too: a private note is
+    // invisible, so neither its folder nor its count may surface. iCloud
+    // placeholders fail closed, as everywhere else (their privacy can't be
+    // read from disk).
+    let notes: Vec<_> = walk_notes(root)
+        .into_iter()
+        .filter(|note| !note.placeholder && read_note(root, &note.rel_path).is_ok())
+        .collect();
     let mut root_notes = 0;
     let mut top: BTreeMap<String, (usize, BTreeMap<String, usize>)> = BTreeMap::new();
     for note in &notes {
@@ -352,13 +360,13 @@ mod tests {
         assert_eq!(contract.path, "AGENTS.md");
         assert!(contract.text.contains("Memory/decisions"));
         let map = vault_map(&graph.root);
-        assert_eq!(map.notes, 7);
+        assert_eq!(map.notes, 6, "the private note is not counted");
         assert_eq!(map.root_notes, 2);
         assert_eq!(map.folders[0].path, "CRM");
         assert_eq!(map.folders[0].notes, 4);
         assert_eq!(map.folders[0].folders[0].path, "CRM/People");
         assert_eq!(map.folders[0].folders[0].notes, 2);
-        assert_eq!(map.folders[1].path, "Journal");
+        assert_eq!(map.folders.len(), 1, "a private-only folder is not named");
         assert_eq!(map.daily_pattern, "daily/YYYY-MM-DD.md");
     }
 

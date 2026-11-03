@@ -40,6 +40,15 @@ export async function browserEmbedBounds(rect: BrowserEmbedRect): Promise<void> 
   await call('browser_embed_bounds', { ...rect }, voidSchema)
 }
 
+/**
+ * Hide the embedded page while keeping it loaded, so an app menu or dialog
+ * that overlaps the host is not drawn under the native webview.
+ * `browserEmbedShow` brings it back.
+ */
+export async function browserEmbedHide(): Promise<void> {
+  await call('browser_embed_hide', {}, voidSchema)
+}
+
 /** Close the embedded browser and release the remote page's resources. */
 export async function browserEmbedClose(): Promise<void> {
   await call('browser_embed_close', {}, voidSchema)

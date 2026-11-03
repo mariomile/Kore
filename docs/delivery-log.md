@@ -7,6 +7,10 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Menus open above the in-app browser. The "+" new-tab menu, the command
+  palette and other menus or dialogs that land on a web page no longer hide
+  behind it: the page steps aside while they are open.
+
 - The Details panel is yours to arrange. Drag a section by its title, or
   use its "…" menu to move it up or down or hide it; hidden sections come
   back from the bottom of the panel, and the layout is remembered. The

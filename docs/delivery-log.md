@@ -7,6 +7,10 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Menus open above the in-app browser. The "+" new-tab menu, the command
+  palette and other menus or dialogs that land on a web page no longer hide
+  behind it: the page steps aside while they are open.
+
 - Any agent follows your vault's rules. Put an `AGENTS.md` at the root of
   the vault (or run `kore guide --init` for a starter one) and every agent
   gets it: the ones inside Kore, the ones that connect through `kore mcp`

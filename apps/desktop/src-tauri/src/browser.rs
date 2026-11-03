@@ -242,6 +242,20 @@ pub fn browser_embed_bounds(
     }
 }
 
+/// Hide the embedded page without releasing it, so an app menu or dialog
+/// that overlaps the host is not drawn under the native webview (a child
+/// webview always sits above the main webview's DOM). `browser_embed_show`
+/// brings it back. No-op when the webview is gone.
+#[tauri::command]
+pub fn browser_embed_hide(app: AppHandle) -> AppResult<()> {
+    match embed(&app) {
+        Some(webview) => webview
+            .hide()
+            .map_err(|err| AppError::io(format!("failed to hide the embedded browser: {err}"))),
+        None => Ok(()),
+    }
+}
+
 /// Release the last visible host, closing immediately unless an AI read is
 /// still using the page. Idempotent.
 #[tauri::command]

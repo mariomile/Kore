@@ -1,5 +1,26 @@
 # Kore working state
 
+## Menus above the in-app browser, 2026-11-03
+
+Bug (Mario, 2026-11-03, screenshot): with a Browser tab open, the tab bar's
+"+" menu opened under the web page, only "New note" peeked out. The page is a
+native child webview, so it always draws above the app's DOM.
+
+- [x] The pane hides the page while an app overlay (menu, listbox, dialog,
+  popover, the command palette) overlaps its host, and shows it again when
+  the overlay closes. New `browser_embed_hide` command (hide without
+  releasing the page; `browser_embed_show` restores it), watcher in
+  `components/browser/overlay-occlusion.ts`. Only the owning host acts, and a
+  covered host that inherits the webview keeps it hidden. Toasts are skipped
+  so a clip toast does not blank the page.
+- Not done: toasts over the page are still drawn under it (pre-existing).
+
+**Validation:** `browser-pane.test.tsx` on Chromium (hide while a menu
+covers the page and show after, a menu that settles its position after
+mounting, no hide for overlays elsewhere or toasts); `pnpm check`;
+`cargo fmt --check`. Rust build, clippy and WebKit left to CI (no GTK in the
+container). Needs a look on the Mac.
+
 ## Obsidian import, slice 1b: folder mapping, 2026-11-02
 
 User ask (Mario, 2026-11-02, after slice 1 merged as #299): "dovremmo far

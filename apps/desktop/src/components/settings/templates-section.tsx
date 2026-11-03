@@ -159,7 +159,7 @@ function TemplateRenameDialog({ template, onClose }: TemplateDialogProps): React
             spellCheck={false}
           />
           {error !== null ? (
-            <span role="alert" className="text-xs text-red-600 dark:text-red-400">
+            <span role="alert" className="text-xs text-danger">
               {error}
             </span>
           ) : null}
@@ -214,7 +214,7 @@ function TemplateDeleteDialog({ template, onClose }: TemplateDialogProps): React
           “{template.title}” moves to the trash and can be recovered from there.
         </DialogDescription>
         {error !== null ? (
-          <span role="alert" className="text-xs text-red-600 dark:text-red-400">
+          <span role="alert" className="text-xs text-danger">
             {error}
           </span>
         ) : null}

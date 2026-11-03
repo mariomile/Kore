@@ -16,12 +16,16 @@ vi.mock('@reflect/core', async (importOriginal) => ({
 vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({ graph: { root: '/g', name: 'g', generation: 1 } }),
 }))
-vi.mock('@/providers/settings-provider', () => ({
-  useSettings: () => ({
-    settings: { semanticSearchEnabled: true },
-    updateSettings: () => {},
-  }),
-}))
+vi.mock('@/providers/settings-provider', async () => {
+  const { DEFAULT_SETTINGS } = await import('@reflect/core')
+  return {
+    useSettings: () => ({
+      settings: { ...DEFAULT_SETTINGS, semanticSearchEnabled: true },
+      updateSettings: () => {},
+      updateSettingsWith: () => {},
+    }),
+  }
+})
 
 function RouteProbe(): ReactNode {
   const { route } = useRouter()

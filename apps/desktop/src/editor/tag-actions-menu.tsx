@@ -41,7 +41,7 @@ export function TagActionsMenu({
         <button
           type="button"
           onClick={() => onOpenTag(tag)}
-          className="flex w-full items-center rounded px-2 py-1.5 text-left text-sm hover:bg-surface-hover"
+          className="flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm hover:bg-surface-hover"
         >
           Open #{tag}
         </button>
@@ -49,7 +49,7 @@ export function TagActionsMenu({
           type="button"
           onClick={onConvert}
           disabled={state.lineIndex === null}
-          className="flex w-full items-center rounded px-2 py-1.5 text-left text-sm hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex w-full items-center rounded-sm px-2 py-1.5 text-left text-sm hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-50"
         >
           Turn this line into a #{tag} note
         </button>

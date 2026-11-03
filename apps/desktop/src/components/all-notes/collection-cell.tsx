@@ -182,7 +182,7 @@ export function CollectionCell({ property, value, selected }: CollectionCellProp
       <span className="flex min-w-0 items-center">
         <span
           className={cn(
-            'truncate rounded px-1.5 py-px text-xs font-medium',
+            'truncate rounded-sm px-1.5 py-px text-xs font-medium',
             selectOptionBadgeClass(reading.text),
           )}
         >
@@ -212,11 +212,7 @@ export function CollectionCell({ property, value, selected }: CollectionCellProp
         (property.type === 'number' || property.type === 'rating') &&
           !reading.mismatch &&
           'text-right tabular-nums',
-        reading.mismatch
-          ? 'text-amber-700 dark:text-amber-300'
-          : selected
-            ? 'text-accent'
-            : 'text-text-secondary',
+        reading.mismatch ? 'text-warning' : selected ? 'text-accent' : 'text-text-secondary',
       )}
       title={reading.mismatch ? 'Value does not match the property type' : undefined}
     >

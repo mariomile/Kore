@@ -47,6 +47,9 @@ export type Route =
   // An Obsidian canvas (`.canvas` file), read-only. A null `path` lists
   // every canvas in the vault.
   | { kind: 'canvas'; path: string | null }
+  // One note's local graph as a page of its own: the Details panel's Local
+  // graph section opened into the workspace (a tab, or a pane beside the note).
+  | { kind: 'localGraph'; path: string }
 
 /** A route that addresses one concrete note, including a dated daily note. */
 export type NoteRoute = Extract<Route, { kind: 'daily' | 'note' }>
@@ -124,6 +127,8 @@ export function routesEqual(a: Route, b: Route): boolean {
     }
     case 'canvas':
       return a.path === (b as Extract<Route, { kind: 'canvas' }>).path
+    case 'localGraph':
+      return a.path === (b as Extract<Route, { kind: 'localGraph' }>).path
   }
 }
 

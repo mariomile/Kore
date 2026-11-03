@@ -27,12 +27,21 @@ vi.mock('@/hooks/use-note-row', () => ({ useNoteRow }))
 vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({ graph: { root: '/g', name: 'g', generation: 1 } }),
 }))
-vi.mock('@/providers/settings-provider', () => ({
-  useSettings: () => ({
-    settings: { semanticSearchEnabled: true, dateFormat: 'mdy', weekStartDay: 'monday' },
-    updateSettings: () => {},
-  }),
-}))
+vi.mock('@/providers/settings-provider', async () => {
+  const { DEFAULT_SETTINGS } = await import('@reflect/core')
+  return {
+    useSettings: () => ({
+      settings: {
+        ...DEFAULT_SETTINGS,
+        semanticSearchEnabled: true,
+        dateFormat: 'mdy',
+        weekStartDay: 'monday',
+      },
+      updateSettings: () => {},
+      updateSettingsWith: () => {},
+    }),
+  }
+})
 
 function RouteProbe(): ReactNode {
   const { route } = useRouter()
@@ -188,7 +197,7 @@ describe('DailyContextSidebar related notes', () => {
 describe('DailyContextSidebar sections', () => {
   it('collapses a section and persists the state for the session', async () => {
     const view = await renderSidebar('2026-06-09')
-    const header = page.getByRole('button', { name: /Note actions/ })
+    const header = page.getByRole('button', { name: 'Note actions', exact: true })
     await expect.element(header).toHaveAttribute('aria-expanded', 'true')
     await expect.element(page.getByText('Pin this note')).toBeVisible()
 
@@ -199,7 +208,7 @@ describe('DailyContextSidebar sections', () => {
 
     const reopened = await renderSidebar('2026-06-09')
     await expect
-      .element(page.getByRole('button', { name: /Note actions/ }))
+      .element(page.getByRole('button', { name: 'Note actions', exact: true }))
       .toHaveAttribute('aria-expanded', 'false')
     await reopened.unmount()
   })

@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils'
  */
 export const CONFLICT_SIDE_DOT: Record<'ours' | 'theirs', string> = {
   ours: 'bg-accent',
-  theirs: 'bg-gray-400 dark:bg-gray-500',
+  theirs: 'bg-text-muted',
 }
 
 const SIDE_TONES: Record<'ours' | 'theirs', { header: string; block: string }> = {

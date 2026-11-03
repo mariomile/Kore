@@ -153,7 +153,7 @@ export function CollectionCalendar({
             type="button"
             aria-label="Previous month"
             onClick={() => shift(-1)}
-            className="flex size-6 items-center justify-center rounded text-text-muted hover:text-text-secondary"
+            className="flex size-6 items-center justify-center rounded-sm text-text-muted hover:text-text-secondary"
           >
             <ChevronLeft aria-hidden className="size-3.5" />
           </button>
@@ -161,7 +161,7 @@ export function CollectionCalendar({
             type="button"
             aria-label="Today"
             onClick={() => setVisibleMonth(monthOf(today))}
-            className="rounded px-2 py-1 text-xs text-text-secondary hover:bg-surface-hover"
+            className="rounded-sm px-2 py-1 text-xs text-text-secondary hover:bg-surface-hover"
           >
             Today
           </button>
@@ -169,7 +169,7 @@ export function CollectionCalendar({
             type="button"
             aria-label="Next month"
             onClick={() => shift(1)}
-            className="flex size-6 items-center justify-center rounded text-text-muted hover:text-text-secondary"
+            className="flex size-6 items-center justify-center rounded-sm text-text-muted hover:text-text-secondary"
           >
             <ChevronRight aria-hidden className="size-3.5" />
           </button>
@@ -226,7 +226,7 @@ export function CollectionCalendar({
                   type="button"
                   aria-label={`New note on ${cell.date}`}
                   onClick={() => void createOnDay(cell.date)}
-                  className="flex size-4 items-center justify-center rounded text-text-muted opacity-0 hover:text-text-secondary group-hover:opacity-100 focus-visible:opacity-100"
+                  className="flex size-4 items-center justify-center rounded-sm text-text-muted opacity-0 hover:text-text-secondary group-hover:opacity-100 focus-visible:opacity-100"
                 >
                   <Plus aria-hidden className="size-3" />
                 </button>

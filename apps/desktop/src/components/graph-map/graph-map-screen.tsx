@@ -131,7 +131,7 @@ export function GraphMapScreen({ focus = null }: GraphMapScreenProps): ReactElem
               onClick={() => {
                 setFocusId(null)
               }}
-              className="rounded font-medium text-[var(--accent)] hover:underline"
+              className="rounded-sm font-medium text-[var(--accent)] hover:underline"
             >
               Show all
             </button>

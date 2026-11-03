@@ -14,6 +14,34 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
   ones that just clone the vault's git repo. Kore's own agents stop writing
   memory to `agents/` when your contract says it goes elsewhere.
 
+- The Details panel is yours to arrange. Drag a section by its title, or
+  use its "…" menu to move it up or down or hide it; hidden sections come
+  back from the bottom of the panel, and the layout is remembered. The
+  local graph can leave the panel: open it in its own tab or beside the
+  note, where it fills the pane.
+
+- Colors and corners hold together on every theme. Errors, warnings and
+  success states use one set of colors that stay readable on Paper, Ink and
+  the dark themes; primary buttons on dark indigo get a deeper fill so their
+  label reads; Paper and Light secondary text is a touch darker; callouts
+  and note dividers follow the theme; and the Appearance corner setting now
+  reaches every rounded corner in the app.
+
+- Dates look the same everywhere. Lists, cards, properties, tasks and the
+  daily pill use one compact date with the month spelled out (`Nov 2`,
+  the year only when it isn't this year), so `6/9` can no longer mean two
+  different days. Lists say how recent a note is: the time today,
+  "Yesterday", the weekday this past week. Daily notes keep their full
+  heading, and everything follows Settings → Date format.
+
+- The Graph view reads on a big vault. Zoomed out you see the names of
+  your most-linked notes; zoom in and more names appear, always at the same
+  size and never on top of each other. Hubs draw bigger and stay on top of
+  the crowd, links fade on dense maps, and a cluster zooms into separate
+  circles instead of a pile.
+
+- Kore starts with less to load: about 370 KB less JavaScript before the first note appears. The tag icon set, All Notes, Tasks and the tables embedded in notes now load when you first reach them (All Notes and Tasks are fetched quietly right after launch, so the shortcut still opens them instantly).
+
 - A new note's tab shows the title as you type it, instead of "Untitled"
   until a few seconds after you stop.
 

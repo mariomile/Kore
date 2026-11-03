@@ -18,7 +18,7 @@ export function SyncForkNotice({ groups }: SyncForkNoticeProps): ReactElement | 
     return null
   }
   return (
-    <div className="text-xs text-amber-700 dark:text-amber-300">
+    <div className="text-xs text-warning">
       <p>
         {groups.length === 1
           ? '1 note was renamed differently on two devices and now exists as separate files'

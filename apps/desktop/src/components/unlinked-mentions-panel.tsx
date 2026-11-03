@@ -83,7 +83,7 @@ export function UnlinkedMentionsPanel({ path }: UnlinkedMentionsPanelProps): Rea
                 <MentionSnippet mention={mention} />
               </p>
               {linkFailed.has(mention.sourcePath) ? (
-                <p role="alert" className="mt-0.5 text-2xs text-red-600 dark:text-red-400">
+                <p role="alert" className="mt-0.5 text-2xs text-danger">
                   Couldn’t link this mention — try again.
                 </p>
               ) : null}

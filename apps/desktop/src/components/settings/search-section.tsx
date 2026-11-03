@@ -44,7 +44,7 @@ export function SearchSection(): ReactElement {
     control = (
       <div className="flex items-center justify-between gap-4">
         <span className="flex items-center gap-2 text-xs text-text-muted">
-          <span aria-hidden className="size-1.5 rounded-full bg-emerald-500" />
+          <span aria-hidden className="size-1.5 rounded-full bg-success" />
           Model downloaded ({status.model})
         </span>
         <button
@@ -60,7 +60,7 @@ export function SearchSection(): ReactElement {
     control = (
       <div className="flex items-center justify-between gap-4">
         <span className="flex items-center gap-2 text-xs text-text-muted">
-          <span aria-hidden className="size-1.5 rounded-full bg-emerald-500" />
+          <span aria-hidden className="size-1.5 rounded-full bg-success" />
           Model downloaded ({status.model}) — released while idle, reloads on the next search
         </span>
         <button

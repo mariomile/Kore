@@ -47,6 +47,9 @@ export function OpenTabIcon({ tab, className }: OpenTabIconProps): ReactElement 
   if (tab.kind === 'canvas') {
     return <Layers aria-hidden className={className} />
   }
+  if (tab.kind === 'localGraph') {
+    return <Graph aria-hidden className={className} />
+  }
   switch (tab.surface) {
     case 'daily':
       return <Pencil aria-hidden className={className} />

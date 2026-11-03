@@ -5,8 +5,8 @@ import { cn } from '@/lib/utils'
 export type InlineAlertTone = 'warning' | 'error'
 
 const TONE_CLASSES: Record<InlineAlertTone, string> = {
-  warning: 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300',
-  error: 'border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300',
+  warning: 'border-warning/30 bg-warning-soft text-warning',
+  error: 'border-danger/30 bg-danger-soft text-danger',
 }
 
 interface InlineAlertProps {

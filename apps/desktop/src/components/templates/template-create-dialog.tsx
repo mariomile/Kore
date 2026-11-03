@@ -89,7 +89,7 @@ export function TemplateCreateDialog({ context }: TemplateCreateDialogProps): Re
             })}
           />
           {formState.errors.name ? (
-            <span role="alert" className="text-xs text-red-600 dark:text-red-400">
+            <span role="alert" className="text-xs text-danger">
               {formState.errors.name.message}
             </span>
           ) : null}

@@ -74,7 +74,7 @@ export function SuggestedContactCard({
         <div className="truncate text-sm font-medium text-text">{contact.fullName}</div>
         <div className="truncate text-xs text-text-muted">
           {error !== null ? (
-            <span role="alert" className="text-red-500">
+            <span role="alert" className="text-danger">
               {error}
             </span>
           ) : (

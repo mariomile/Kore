@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import { ChevronLeft, ChevronRight } from '@/components/icons'
-import { addDaysIso, formatDayPillLabel } from '@/lib/dates'
+import { addDaysIso, formatShortDate } from '@/lib/dates'
 import { useToday } from '@/lib/use-today'
 import { useFocusedDailyDate } from '@/providers/focused-daily-provider'
 import { useSettings } from '@/providers/settings-provider'
@@ -45,7 +45,7 @@ export function DailyDatePill(): ReactElement | null {
         onClick={() => navigate({ kind: 'today' })}
         className="rounded-full px-1.5 text-xs font-medium text-text-secondary transition-colors duration-150 ease-swift hover:text-text"
       >
-        {formatDayPillLabel(date, settings.dateFormat)}
+        {formatShortDate(date, settings.dateFormat)}
       </button>
       <button
         type="button"

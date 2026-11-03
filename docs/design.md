@@ -27,7 +27,11 @@ contract browsers implement.
 - **State is tone, not color.** Hover, active, selected, and text-field focus
   are all steps in the ink ramp (`--surface-hover` → `--surface-active`,
   `--border` → `--border-focus`). Color is reserved for the accent rule above
-  and for `--destructive`.
+  and for the status inks (`--danger`, `--warning`, `--success`).
+- **Every pair passes.** Each text token on each surface of its theme meets
+  its floor (4.5:1 for `--text` and `--text-secondary`, 3:1 for
+  `--text-muted`). `apps/desktop/src/styles/theme-tokens.test.ts` checks it
+  for every solid-color theme, so a new theme cannot ship a miss.
 - **Keyboard-native.** Every control reaches keyboard focus and shows it.
   Every text field reaches it and does *not* draw a ring (see States).
 - **Do less.** No surface competes with the editor. A new panel, badge,
@@ -47,9 +51,12 @@ Use the semantic aliases; reach for a ramp step (`--indigo-500`,
 | Dividers / input outline | `--border`, `--border-strong` | `border-border`, `border-border-strong` (shadcn: `border-input`) |
 | Focused text field | `--border-focus` | `border-border-focus` |
 | Keyboard focus on controls | `--focus-ring` | global rule, see States |
-| Accent | `--accent`, `--accent-hover`, `--accent-soft`, `--accent-soft-text` | `bg-accent`, `bg-accent-soft`, `text-accent-soft-text` |
-| Danger | `--destructive` | `text-destructive`, `bg-destructive/10` |
-| Corners | `--radius` (house, 8px) and `--radius-sm/md/lg/xl/full` | `rounded-md/lg/xl/full` |
+| Accent as ink (links, rings, checks) | `--accent`, `--accent-hover`, `--accent-soft`, `--accent-soft-text` | `text-accent`, `bg-accent-soft`, `text-accent-soft-text` |
+| Accent as fill (a solid block with a label) | `--accent-fill`, `--accent-fill-hover`, label `--text-on-brand` | `bg-primary` / `bg-accent-fill`, `text-primary-foreground` |
+| Status | `--danger`, `--warning`, `--success`, `--info`, each with `-soft` | `text-danger`, `bg-warning-soft`, `bg-success` (dots) |
+| Danger (shadcn name) | `--destructive` = `--danger` | `text-destructive`, `bg-destructive/10` |
+| Thematic break in a note | `--rule` | — |
+| Corners | `--radius` (house, 8px); `--radius-sm/md/lg/xl/2xl` derive from it | `rounded-sm/md/lg/xl/2xl/full` |
 | Elevation | `--shadow-input`, `--shadow-sm`, `--shadow-md`, `--shadow-pop` | `shadow-input`, `shadow-sm`, `shadow-md`, `shadow-pop` |
 | Motion | `--duration-fast/base/slow`, `--ease-swift` | `duration-100/150/300`, `ease-swift` |
 
@@ -64,7 +71,15 @@ bridged: `--accent` is the brand color, not shadcn's hover wash (use
 Themes (`data-theme`), accents (`data-accent`), radius (`data-radius`) and
 density (`data-density`) are scopes on the document root. A component only
 ever names a token, so a theme change moves every surface at once. Never
-hard-code a hex in a component.
+hard-code a hex in a component, and never use a raw palette class
+(`text-red-600`, `bg-amber-500`) for a state: that is what the status
+tokens are for, and they follow Paper, Ink and the dark themes.
+
+Radius is one ramp: `data-radius` and Liquid Glass set only `--radius`, and
+sm = r − 4, md = r − 2, lg = r, xl = r + 4, 2xl = r + 8 follow from it in
+`design-system/tokens/spacing.css`; the `rounded-*` utilities read the same
+tokens. Bare `rounded` is a fixed 4px that ignores the setting, so it is not
+used: a chip is `rounded-sm`, a control `rounded-md` or `rounded-lg`.
 
 ## Typography
 
@@ -111,10 +126,13 @@ radius setting rescales everything together.
 - Non-text UI (borders of inputs, icons that carry meaning, the focus ring)
   meets 3:1 against its surroundings (WCAG 1.4.11). `--border` (7% ink) is
   decorative and exempt; `--border-strong` is the input outline.
-- Semantic colors mean one thing each: `--destructive` for irreversible
-  actions and errors, `--green-500` success, `--amber-500` warning. Do not
-  color-code categories with them.
-- The callout hues (`--blue-500`, `--cyan-500`, `--orange-500`,
+- Status colors mean one thing each: `--danger` (`--destructive`) for
+  irreversible actions and errors, `--success` for success, `--warning` for
+  warning, `--info` (the accent) for information. Each ink holds 4.5:1 on
+  `--surface`, `--surface-app` and its own `-soft` wash. Do not color-code
+  categories with them.
+- Note, info, todo, success, warning and the failure family of callouts read
+  the status tokens. The remaining callout hues (`--cyan-500`, `--amber-500`,
   `--purple-500`) exist only to paint Obsidian callouts in their familiar
   colors (`apps/desktop/src/styles/callouts.css`); no other surface uses them.
 - Icons inherit `currentColor`. Use `text-text-muted` for a resting icon,

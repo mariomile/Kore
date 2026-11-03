@@ -227,7 +227,7 @@ function CollectionViewTab({
             event.stopPropagation()
             onDelete(tab.id)
           }}
-          className="absolute top-1/2 right-0.5 flex size-5 -translate-y-1/2 items-center justify-center rounded text-text-muted opacity-0 hover:text-text-secondary group-hover/tab:opacity-100 focus-visible:opacity-100"
+          className="absolute top-1/2 right-0.5 flex size-5 -translate-y-1/2 items-center justify-center rounded-sm text-text-muted opacity-0 hover:text-text-secondary group-hover/tab:opacity-100 focus-visible:opacity-100"
         >
           <Close aria-hidden className="size-3" />
         </button>

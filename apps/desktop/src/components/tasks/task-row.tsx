@@ -9,7 +9,7 @@ import { CheckCircle, Circle, Flag } from '@/components/icons'
 import type { OpenTask } from '@reflect/core'
 import { taskContentPriority } from '@reflect/core'
 import { getIsComposing } from '@meowdown/core'
-import { formatDayLabel } from '@/lib/dates'
+import { formatShortDate } from '@/lib/dates'
 import { taskContent } from '@/lib/tasks/task-content'
 import { taskKey } from '@/lib/tasks/task-identity'
 import { useTaskCheckboxToggle } from '@/lib/tasks/use-task-checkbox-toggle'
@@ -229,7 +229,7 @@ export function TaskRow({
           className="flex h-6 shrink-0 items-center whitespace-nowrap text-xs text-text-muted transition-colors hover:text-accent focus-visible:text-accent focus-visible:outline-none"
         >
           {task.dailyDate !== null
-            ? formatDayLabel(task.dailyDate, settings.dateFormat)
+            ? formatShortDate(task.dailyDate, settings.dateFormat)
             : task.noteTitle}
         </button>
       ) : null}

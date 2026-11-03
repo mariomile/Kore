@@ -1,4 +1,4 @@
-import { format, isSameDay, isSameWeek, parse } from 'date-fns'
+import { differenceInCalendarDays, format, parse } from 'date-fns'
 import type { DateFormat, TimeFormat } from '@reflect/core'
 
 /**
@@ -41,40 +41,30 @@ export function formatDayLabel(date: string, dateFormat: DateFormat): string {
 }
 
 /**
- * The daily pill's compact label (Plan 28 slice 3): `Aug 31` for `mdy`,
- * `31 Aug` for `dmy`, gaining the year only away from the current one;
- * `iso` keeps the daily-note key itself. `now` is injectable for tests.
+ * The app's one compact date, for every place a date sits in a row, a cell,
+ * a chip or a pill: `Jun 9` for `mdy`, `9 Jun` for `dmy`, gaining the year
+ * only away from the current one (`Dec 31, 2025` / `31 Dec 2025`); `iso`
+ * keeps the daily-note key (`2026-06-09`). Spelled-out months on purpose:
+ * `6/9/2026` reads as two different days depending on who reads it.
+ * `now` is injectable for tests.
  */
-export function formatDayPillLabel(
+export function formatShortDate(
   date: string,
   dateFormat: DateFormat,
   now: Date = new Date(),
 ): string {
-  if (dateFormat === 'iso') {
-    return date
-  }
-  const parsed = parseIsoDate(date)
-  const sameYear = parsed.getFullYear() === now.getFullYear()
-  if (dateFormat === 'dmy') {
-    return format(parsed, sameYear ? 'd MMM' : 'd MMM yyyy')
-  }
-  return format(parsed, sameYear ? 'MMM d' : 'MMM d, yyyy')
+  return dateFormat === 'iso' ? date : shortDateOf(parseIsoDate(date), dateFormat, now)
 }
 
-/**
- * Compact date for inline chips (the Tasks view's `[[YYYY-MM-DD]]` due link,
- * V1's blue date): `12/31/2025` for `mdy`, `31/12/2025` for `dmy`, and
- * `2025-12-31` for `iso`.
- */
-export function formatShortDate(date: string, dateFormat: DateFormat): string {
-  switch (dateFormat) {
-    case 'dmy':
-      return format(parseIsoDate(date), 'd/M/yyyy')
-    case 'iso':
-      return date
-    case 'mdy':
-      return format(parseIsoDate(date), 'M/d/yyyy')
+function shortDateOf(date: Date, dateFormat: DateFormat, now: Date): string {
+  if (dateFormat === 'iso') {
+    return format(date, ISO_DATE_FORMAT)
   }
+  const sameYear = date.getFullYear() === now.getFullYear()
+  if (dateFormat === 'dmy') {
+    return format(date, sameYear ? 'd MMM' : 'd MMM yyyy')
+  }
+  return format(date, sameYear ? 'MMM d' : 'MMM d, yyyy')
 }
 
 /**
@@ -111,10 +101,10 @@ export interface DateTimePrefs {
 }
 
 /**
- * Compact recency label for list rows (the original app's Updated column):
- * the time for today (per `timeFormat`), the weekday within the current week
- * (`Mon`), the short date otherwise (`6/3/2026`, `3/6/2026`, or
- * `2026-06-03`). `now` is injectable for tests.
+ * Recency label for list rows (Updated columns, history, chats): the time
+ * today (per `timeFormat`), `Yesterday`, the weekday within the last week
+ * (`Mon`), and the compact date of {@link formatShortDate} beyond that.
+ * `now` is injectable for tests.
  */
 export function formatRecencyLabel(
   epochMs: number,
@@ -122,18 +112,28 @@ export function formatRecencyLabel(
   now: Date = new Date(),
 ): string {
   const date = new Date(epochMs)
-  if (isSameDay(date, now)) {
+  const daysAgo = differenceInCalendarDays(now, date)
+  if (daysAgo <= 0) {
     return formatTimeOfDay(date, prefs.timeFormat)
   }
-  if (isSameWeek(date, now)) {
+  if (daysAgo === 1) {
+    return 'Yesterday'
+  }
+  if (daysAgo < 7) {
     return format(date, 'EEE')
   }
-  switch (prefs.dateFormat) {
-    case 'dmy':
-      return format(date, 'd/M/yyyy')
-    case 'iso':
-      return format(date, ISO_DATE_FORMAT)
-    case 'mdy':
-      return format(date, 'M/d/yyyy')
-  }
+  return shortDateOf(date, prefs.dateFormat, now)
+}
+
+/**
+ * A moment with its time, for one-off events (a sync, an agent run): the
+ * compact date and the time, `Jun 9, 8:22pm` / `9 Jun, 20:22`.
+ */
+export function formatDateTime(
+  epochMs: number,
+  prefs: DateTimePrefs,
+  now: Date = new Date(),
+): string {
+  const date = new Date(epochMs)
+  return `${shortDateOf(date, prefs.dateFormat, now)}, ${formatTimeOfDay(date, prefs.timeFormat)}`
 }

@@ -552,7 +552,7 @@ describe('TasksScreen', () => {
     ])
     const view = await renderScreen()
 
-    await userEvent.click(await view.findByRole('button', { name: 'Tue, June 9th, 2026' }))
+    await userEvent.click(await view.findByRole('button', { name: /^Jun 9(, 2026)?$/ }))
 
     expect(view.getByTestId('route').element().textContent).toBe(
       '{"kind":"daily","date":"2026-06-09"}',

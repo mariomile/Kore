@@ -34,7 +34,7 @@ export function MobileOperationsPills(): ReactElement | null {
             aria-hidden
             className={cn(
               'size-1.5 shrink-0 rounded-full',
-              operation.status === 'failed' ? 'bg-red-500' : 'bg-amber-500',
+              operation.status === 'failed' ? 'bg-danger' : 'bg-warning',
             )}
           />
           <span className="truncate">

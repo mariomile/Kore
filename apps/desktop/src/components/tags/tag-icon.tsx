@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react'
-import { parseNoteIcon } from '@reflect/core'
+import { isTagSymbolIconName, parseNoteIcon } from '@reflect/core'
 import { Hash } from '@/components/icons'
-import { renderSymbolIcon } from '@/lib/tags/tag-symbol-icons'
+import { TagSymbolGlyph } from '@/components/tags/tag-symbol-glyph'
 import { cn } from '@/lib/utils'
 
 interface TagIconProps {
@@ -28,6 +28,16 @@ export function TagIcon({ icon, className, emojiClassName }: TagIconProps): Reac
     )
   }
   const symbolProps = { 'aria-hidden': true, className: cn('shrink-0', className) }
-  const symbol = parsed?.kind === 'symbol' ? renderSymbolIcon(parsed.name, symbolProps) : null
-  return symbol ?? <Hash {...symbolProps} />
+  if (parsed?.kind === 'symbol' && isTagSymbolIconName(parsed.name)) {
+    // A blank box of the glyph's size while the symbol table loads, so the
+    // row does not flash a `#` it is about to replace.
+    return (
+      <TagSymbolGlyph
+        name={parsed.name}
+        {...symbolProps}
+        fallback={<span aria-hidden className={cn('inline-block shrink-0', className)} />}
+      />
+    )
+  }
+  return <Hash {...symbolProps} />
 }

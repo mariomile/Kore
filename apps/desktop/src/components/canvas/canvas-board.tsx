@@ -268,7 +268,7 @@ export function CanvasBoard({ canvas, label }: CanvasBoardProps): ReactElement {
               layout.edge.label === null ? null : (
                 <span
                   key={layout.edge.id}
-                  className="absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded bg-surface-sunken px-1.5 py-0.5 text-xs text-text-secondary"
+                  className="absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-sm bg-surface-sunken px-1.5 py-0.5 text-xs text-text-secondary"
                   style={{ left: layout.labelAt.x, top: layout.labelAt.y }}
                 >
                   {layout.edge.label}

@@ -163,7 +163,7 @@ export function IcloudSettingsField(): ReactElement | null {
             {pendingNotes.isPending ? <p>Checking downloaded notes...</p> : null}
             {pendingNotes.data !== undefined ? <p>{pendingNotesLine(pendingNotes.data)}</p> : null}
             {conflictCount !== undefined && forkCount !== undefined ? (
-              <div className={hasReviewIssues ? 'text-amber-700 dark:text-amber-300' : undefined}>
+              <div className={hasReviewIssues ? 'text-warning' : undefined}>
                 <p>{reviewLine(conflictCount, forkCount)}</p>
                 <ConflictedNoteLinks notes={conflicted.data ?? []} />
               </div>

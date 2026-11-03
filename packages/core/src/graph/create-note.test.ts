@@ -4,6 +4,7 @@ import {
   createNoteWithSource,
   createNoteWithTitle,
   isUntitledNotePath,
+  openNoteTabTitle,
   resolveOrCreateNoteWithTitle,
   untitledNotePath,
   untitledNoteSeed,
@@ -531,5 +532,34 @@ describe('isUntitledNotePath', () => {
     expect(isUntitledNotePath('notes/uuuuuuuuuuuuuuuuuuuuuuuuuu.md')).toBe(false)
     // A ULID-shaped name outside notes/ is not a placeholder.
     expect(isUntitledNotePath('01jxk2v9qz3m4n5p6r7s8t9vwx.md')).toBe(false)
+  })
+})
+
+describe('openNoteTabTitle', () => {
+  const placeholder = 'notes/01jxk2v9qz3m4n5p6r7s8t9vwx.md'
+
+  it('names a new note by the title being typed, before its birth rename', () => {
+    // Regression: the tab strip and its list menu read "Untitled" until
+    // the placeholder file was renamed, seconds after the title was typed.
+    expect(openNoteTabTitle(placeholder, undefined, 'Weekly plan')).toBe('Weekly plan')
+    expect(openNoteTabTitle(placeholder, '01jxk2v9qz3m4n5p6r7s8t9vwx', 'Weekly plan')).toBe(
+      'Weekly plan',
+    )
+  })
+
+  it('reads the indexed title when a placeholder note kept its name', () => {
+    // A refused birth move leaves the ULID path for good; the title is indexed.
+    expect(openNoteTabTitle(placeholder, 'Weekly plan', null)).toBe('Weekly plan')
+  })
+
+  it('shows Untitled, never the ULID, while a placeholder note has no title', () => {
+    expect(openNoteTabTitle(placeholder, undefined, null)).toBe('Untitled')
+    expect(openNoteTabTitle(placeholder, '01jxk2v9qz3m4n5p6r7s8t9vwx', undefined)).toBe('Untitled')
+    expect(openNoteTabTitle(placeholder, null, '  ')).toBe('Untitled')
+  })
+
+  it('uses the index title, then the filename stem, for named notes', () => {
+    expect(openNoteTabTitle('notes/reading-list.md', 'Reading list', null)).toBe('Reading list')
+    expect(openNoteTabTitle('notes/reading-list.md', undefined, null)).toBe('reading-list')
   })
 })

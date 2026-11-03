@@ -2,7 +2,13 @@ import { ulid } from 'ulidx'
 import { upsertFrontmatter } from '../markdown/frontmatter'
 import { createNoteIfAbsent } from './commands'
 import { wikiNoteReference } from './note-reference'
-import { collisionStem, newNoteFolderPrefix, notePath, noteFileStemForTitle } from './paths'
+import {
+  collisionStem,
+  newNoteFolderPrefix,
+  notePath,
+  noteFileStem,
+  noteFileStemForTitle,
+} from './paths'
 import {
   resolveExistingWikiTarget,
   type ExistingWikiTargetResolution,
@@ -64,6 +70,35 @@ const ULID_NOTE_FILE_RE = /^[0-7][0-9a-hjkmnp-tv-z]{25}\.md$/
 export function isUntitledNotePath(path: string): boolean {
   const prefix = newNoteFolderPrefix()
   return path.startsWith(prefix) && ULID_NOTE_FILE_RE.test(path.slice(prefix.length))
+}
+
+/**
+ * The title an open-note tab (the strip and its list menu) shows for
+ * `path`. A ⌘N note keeps its ULID placeholder path until its title settles
+ * (the birth rename fires after 5s of quiet or on blur, and a refused move
+ * keeps the placeholder for good), so the path alone cannot name it:
+ *
+ * - `draftTitle` — the title the open editor session last saved — wins, so
+ *   the tab follows typing instead of waiting for the rename;
+ * - otherwise the index title, except on a placeholder path where an
+ *   unauthored row falls back to the ULID stem: that reads "Untitled";
+ * - otherwise the filename stem, while the index has not caught up.
+ */
+export function openNoteTabTitle(
+  path: string,
+  indexTitle: string | null | undefined,
+  draftTitle: string | null | undefined,
+): string {
+  if (draftTitle !== null && draftTitle !== undefined && draftTitle.trim() !== '') {
+    return draftTitle
+  }
+  if (isUntitledNotePath(path)) {
+    const stem = noteFileStem(path)
+    return indexTitle !== null && indexTitle !== undefined && indexTitle !== stem
+      ? indexTitle
+      : 'Untitled'
+  }
+  return indexTitle ?? noteFileStem(path)
 }
 
 /**

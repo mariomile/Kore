@@ -82,7 +82,7 @@ function FilterRow({
     >
       <span
         className={cn(
-          'flex size-5 items-center justify-center rounded border',
+          'flex size-5 items-center justify-center rounded-sm border',
           checked ? 'border-accent bg-accent text-white' : 'border-border',
         )}
       >

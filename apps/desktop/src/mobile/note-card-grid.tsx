@@ -62,7 +62,7 @@ export function NoteCardGrid({ rows, onOpen }: NoteCardGridProps): ReactElement 
                 type="button"
                 aria-label={title}
                 onClick={() => onOpen(row.path)}
-                className="block w-full rounded-[10px] border border-border bg-surface p-3 text-left active:bg-surface-hover"
+                className="block w-full rounded-xl border border-border bg-surface p-3 text-left active:bg-surface-hover"
               >
                 <div className="flex items-start justify-between gap-2">
                   <h2 className="min-w-0 text-[13px] font-semibold leading-snug text-text">

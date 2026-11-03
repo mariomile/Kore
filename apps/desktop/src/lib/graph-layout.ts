@@ -28,6 +28,13 @@ export interface GraphLayoutEdge {
 
 export interface GraphLayout {
   nodes: GraphLayoutNode[]
+  /**
+   * Each node's drawn radius, when the caller sizes nodes. Circles closer
+   * than their radii (plus {@link COLLISION_PADDING}) push apart, so a dense
+   * cluster zooms into separate notes instead of a stack of coins. Empty:
+   * points, no collision.
+   */
+  radii: readonly number[]
   /** Cooling temperature: 1 hot → ~0 settled (see {@link isSettled}). */
   alpha: number
 }
@@ -55,8 +62,24 @@ const SETTLED_ALPHA = 0.02
  */
 const MAX_STEP = 24
 
-/** Deterministic starting positions on a golden-angle spiral. */
-export function createGraphLayout(ids: readonly string[]): GraphLayout {
+/** Gap kept between two colliding circles, in layout units. */
+const COLLISION_PADDING = 2
+/**
+ * Share of an overlap undone per tick. Collision ignores the cooling
+ * temperature (springs and repulsion fade with it, overlaps should not
+ * survive the settle), so it stays below one half: two circles each move
+ * at most half the overlap and cannot overshoot into oscillation.
+ */
+const COLLISION_STRENGTH = 0.35
+
+/**
+ * Deterministic starting positions on a golden-angle spiral. `radii` (index
+ * aligned with `ids`) turns on circle collision; see {@link GraphLayout.radii}.
+ */
+export function createGraphLayout(
+  ids: readonly string[],
+  radii: readonly number[] = [],
+): GraphLayout {
   const goldenAngle = Math.PI * (3 - Math.sqrt(5))
   return {
     nodes: ids.map((id, index) => {
@@ -71,6 +94,7 @@ export function createGraphLayout(ids: readonly string[]): GraphLayout {
         pinned: false,
       }
     }),
+    radii,
     alpha: 1,
   }
 }
@@ -187,12 +211,18 @@ function buildQuadtree(nodes: readonly GraphLayoutNode[]): QuadCell {
   )
 }
 
-/** Repulsion on `nodes[index]` from one quadtree cell, summed into `force`. */
+/**
+ * Repulsion on `nodes[index]` from one quadtree cell, summed into `force`;
+ * overlaps with circles in exactly summed leaves go into `collision`
+ * (colliding circles are always near enough to land in one).
+ */
 function accumulateRepulsion(
   nodes: readonly GraphLayoutNode[],
+  radii: readonly number[],
   index: number,
   cell: QuadCell,
   force: { x: number; y: number },
+  collision: { x: number; y: number },
 ): void {
   const node = nodes[index] as GraphLayoutNode
   // Nothing in a cell whose box lies beyond the cutoff can reach the node.
@@ -224,6 +254,14 @@ function accumulateRepulsion(
       const distance = Math.sqrt(squared)
       force.x += (deltaX / distance) * magnitude
       force.y += (deltaY / distance) * magnitude
+      if (radii.length > 0) {
+        const reach = (radii[index] ?? 0) + (radii[otherIndex] ?? 0) + COLLISION_PADDING
+        if (distance < reach) {
+          const push = (reach - distance) * COLLISION_STRENGTH * 0.5
+          collision.x += (deltaX / distance) * push
+          collision.y += (deltaY / distance) * push
+        }
+      }
     }
     return
   }
@@ -241,7 +279,7 @@ function accumulateRepulsion(
     return
   }
   for (const child of cell.children) {
-    accumulateRepulsion(nodes, index, child, force)
+    accumulateRepulsion(nodes, radii, index, child, force, collision)
   }
 }
 
@@ -259,15 +297,18 @@ export function stepGraphLayout(layout: GraphLayout, edges: readonly GraphLayout
   // where a flat cutoff grid degrades towards O(n²).
   const tree = buildQuadtree(nodes)
   const force = { x: 0, y: 0 }
+  const collision = { x: 0, y: 0 }
   for (const [index, node] of nodes.entries()) {
     if (node.pinned) {
       continue
     }
     force.x = -node.x * GRAVITY
     force.y = -node.y * GRAVITY
-    accumulateRepulsion(nodes, index, tree, force)
-    node.vx = (node.vx + force.x * alpha) * VELOCITY_DAMPING
-    node.vy = (node.vy + force.y * alpha) * VELOCITY_DAMPING
+    collision.x = 0
+    collision.y = 0
+    accumulateRepulsion(nodes, layout.radii, index, tree, force, collision)
+    node.vx = (node.vx + force.x * alpha) * VELOCITY_DAMPING + collision.x
+    node.vy = (node.vy + force.y * alpha) * VELOCITY_DAMPING + collision.y
   }
 
   for (const edge of edges) {

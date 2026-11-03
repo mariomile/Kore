@@ -142,7 +142,7 @@ function FolderRow({ folder, depth, context }: FolderChildrenProps): ReactElemen
           aria-expanded={open}
           aria-label={`${open ? 'Collapse' : 'Expand'} ${folder.name}`}
           onClick={() => context.toggle(folder.path)}
-          className="flex size-5 flex-none items-center justify-center rounded text-text-muted hover:text-text"
+          className="flex size-5 flex-none items-center justify-center rounded-sm text-text-muted hover:text-text"
         >
           <Chevron aria-hidden className="size-3" />
         </button>

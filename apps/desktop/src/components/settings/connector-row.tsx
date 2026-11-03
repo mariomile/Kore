@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { connectorStatusText, type ConnectorView } from '@/hooks/use-connectors'
 import { openUrlSync } from '@/lib/open-url'
+import { useSettings } from '@/providers/settings-provider'
 
 interface ConnectorRowProps {
   view: ConnectorView
@@ -30,6 +31,7 @@ export function ConnectorRow({
   onFolderChange,
 }: ConnectorRowProps): ReactElement {
   const { connector, settings } = view
+  const { settings: appSettings } = useSettings()
   const labelId = useId()
   const [token, setToken] = useState('')
   const [importHistory, setImportHistory] = useState(false)
@@ -70,7 +72,9 @@ export function ConnectorRow({
             {connector.label}
           </div>
           <p className="mt-0.5 text-xs text-text-muted">
-            {view.connected === true ? connectorStatusText(view) : connector.description}
+            {view.connected === true
+              ? connectorStatusText(view, appSettings)
+              : connector.description}
           </p>
         </div>
         {view.connected === true ? (

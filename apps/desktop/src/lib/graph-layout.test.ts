@@ -91,6 +91,40 @@ describe('graph layout', () => {
     expect(Math.max(maxX - minX, maxY - minY)).toBeLessThan(6000)
   })
 
+  it('keeps sized circles from overlapping in a dense cluster', () => {
+    // A dense core: 300 notes, each linked to a dozen others, sized like the
+    // Graph view sizes them. Springs pack such a core tighter than its
+    // circles; collision has to pull them apart.
+    const count = 300
+    const ids = Array.from({ length: count }, (_, index) => `note-${index}`)
+    const edges = Array.from({ length: count * 12 }, (_, index) => ({
+      source: index % count,
+      target: (index * 37 + 11) % count,
+      weight: 1,
+    })).filter((edge) => edge.source !== edge.target)
+    const radii = ids.map((_, index) => (index < 10 ? 30 : 14))
+    const overlaps = (layout: ReturnType<typeof createGraphLayout>): number => {
+      let total = 0
+      for (const [i, first] of layout.nodes.entries()) {
+        for (const [j, second] of layout.nodes.entries()) {
+          if (j > i && distance(first, second) < (radii[i] ?? 0) + (radii[j] ?? 0)) {
+            total += 1
+          }
+        }
+      }
+      return total
+    }
+    const points = createGraphLayout(ids)
+    settleGraphLayout(points, edges)
+    const circles = createGraphLayout(ids, radii)
+    settleGraphLayout(circles, edges)
+    // Collision is summed in the quadtree's exact leaves, so a rare pair a
+    // far cell approximates can stay touching; the stack of coins is gone.
+    const before = overlaps(points)
+    expect(before).toBeGreaterThan(20)
+    expect(overlaps(circles)).toBeLessThan(before / 10)
+  })
+
   it('steps an empty layout without dividing by zero', () => {
     const layout = createGraphLayout([])
     stepGraphLayout(layout, [])

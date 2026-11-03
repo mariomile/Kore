@@ -10,6 +10,7 @@ import {
   type UseConnectorsResult,
 } from '@/hooks/use-connectors'
 import { openUrlSync } from '@/lib/open-url'
+import { useSettings } from '@/providers/settings-provider'
 
 interface ConnectorDrawerProps {
   /** The connector shown; kept after close so the exit animation has content. */
@@ -45,6 +46,7 @@ function ConnectorSheet({
   actions: UseConnectorsResult
 }): ReactElement {
   const { connector, settings } = view
+  const { settings: appSettings } = useSettings()
   const [token, setToken] = useState('')
   const [importHistory, setImportHistory] = useState(false)
   const [folderDraft, setFolderDraft] = useState<string | null>(null)
@@ -89,7 +91,7 @@ function ConnectorSheet({
                 onCheckedChange={(checked) => actions.setEnabled(connector.id, checked)}
               />
             </label>
-            <p className="text-sm text-text-muted">{connectorStatusText(view)}</p>
+            <p className="text-sm text-text-muted">{connectorStatusText(view, appSettings)}</p>
             <Input
               aria-label="Folder"
               value={folderDraft ?? settings.folder ?? connector.defaultFolder}

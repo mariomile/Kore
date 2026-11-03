@@ -63,6 +63,7 @@ vi.mock('@/lib/operations', () => ({
 }))
 
 const { createRenameCoordinator } = await import('./rename-coordinator')
+const { draftTitles } = await import('./draft-titles')
 
 const PATH = 'notes/subject.md'
 const MANAGED_ID = '01hv3xq7c2dm8k4t9w5e6r1n98'
@@ -370,6 +371,63 @@ describe('rename coordinator', () => {
     expect(operationLog.records).toEqual([
       { label: 'Naming "Fresh Note"', outcome: 'done', message: null },
     ])
+  })
+
+  it("publishes a new note's typed title for its tab until the birth rename lands", async () => {
+    // Regression: a ⌘N note's tab (strip and list menu) read "Untitled"
+    // while the title was already typed, until the placeholder file moved.
+    const placeholder = 'notes/01jxk2v9qz3m4n5p6r7s8t9vwx.md'
+    io.slugPathForTitle.mockResolvedValue('notes/fresh-note.md')
+    const coordinator = createRenameCoordinator({
+      path: placeholder,
+      generation: () => 7,
+      canFire: () => true,
+    })
+    coordinator.content(managed('#\n'), 'load')
+    expect(draftTitles().has(placeholder)).toBe(false)
+
+    coordinator.content(managed('# Fresh No\n'), 'saved')
+    expect(draftTitles().get(placeholder)).toBe('Fresh No')
+    coordinator.content(managed('# Fresh Note\n'), 'saved')
+    expect(draftTitles().get(placeholder)).toBe('Fresh Note')
+
+    coordinator.settle()
+    await coordinator.settled()
+    expect(io.moveNoteIndexed).toHaveBeenCalledWith(placeholder, 'notes/fresh-note.md', 7)
+    // Named now: the tab reads the index under the slug path.
+    expect(draftTitles().has(placeholder)).toBe(false)
+    expect(draftTitles().has('notes/fresh-note.md')).toBe(false)
+    coordinator.dispose()
+  })
+
+  it("drops a new note's draft title when its title is cleared or the pane closes", () => {
+    const placeholder = 'notes/01jxk2v9qz3m4n5p6r7s8t9vwy.md'
+    const coordinator = createRenameCoordinator({
+      path: placeholder,
+      generation: () => 7,
+      canFire: () => true,
+    })
+    coordinator.content(managed('# Draft\n'), 'saved')
+    expect(draftTitles().get(placeholder)).toBe('Draft')
+    coordinator.content(managed('#\n'), 'saved')
+    expect(draftTitles().has(placeholder)).toBe(false)
+    coordinator.content(managed('# Draft again\n'), 'saved')
+    coordinator.dispose()
+    expect(draftTitles().has(placeholder)).toBe(false)
+  })
+
+  it("an outgoing coordinator's late dispose keeps its successor's draft title", () => {
+    const placeholder = 'notes/01jxk2v9qz3m4n5p6r7s8t9vwz.md'
+    const make = () =>
+      createRenameCoordinator({ path: placeholder, generation: () => 7, canFire: () => true })
+    const outgoing = make()
+    outgoing.content(managed('# Draft\n'), 'saved')
+    const successor = make() // StrictMode remount / recreated session on the same path
+    successor.content(managed('# Draft\n'), 'saved')
+    outgoing.dispose()
+    expect(draftTitles().get(placeholder)).toBe('Draft')
+    successor.dispose()
+    expect(draftTitles().has(placeholder)).toBe(false)
   })
 
   it('a failed move retargets the session back and reports filename drift', async () => {

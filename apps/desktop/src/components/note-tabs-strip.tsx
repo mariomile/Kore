@@ -277,7 +277,7 @@ function StripTab({
         onDoubleClick={() => {
           onTogglePin(tab)
         }}
-        className="min-w-0 flex-1 truncate rounded text-left"
+        className="min-w-0 flex-1 truncate rounded-sm text-left"
       >
         {title}
       </button>

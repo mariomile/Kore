@@ -6,6 +6,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { useObsidianImportDryRun } from '@/hooks/use-obsidian-import-dry-run'
 import { cn } from '@/lib/utils'
 import { useGraph } from '@/providers/graph-provider'
+import { ObsidianImportMapping } from './obsidian-import-mapping'
 import { SettingsSection } from './section'
 
 function count(value: number, one: string, many: string): string {
@@ -52,22 +53,25 @@ function PathList({ label, paths }: PathListProps): ReactElement {
 
 /** The plan, one line per effect. */
 function ReportLines({ report }: { readonly report: ObsidianImportReport }): ReactElement {
-  const { moves, layout } = report
+  const { moves, mapping } = report
   const lines: string[] = []
-  if (moves.daily > 0) {
+  if (moves.daily > 0 && mapping.daily !== null) {
     lines.push(
-      `${count(moves.daily, 'daily note moves', 'daily notes move')} from ${layout.dailyFolder || 'the vault root'}/${layout.dailyFormat} to daily/YYYY-MM-DD.`,
+      `${count(moves.daily, 'daily note moves', 'daily notes move')} from ${mapping.daily.folder || 'the vault root'}/${mapping.daily.format} to daily/YYYY-MM-DD.`,
     )
   }
   if (moves.attachment > 0) {
     lines.push(
-      `${count(moves.attachment, 'attachment moves', 'attachments move')} from ${layout.attachmentFolder ?? ''} to assets/.`,
+      `${count(moves.attachment, 'attachment moves', 'attachments move')} from ${mapping.attachments ?? ''} to assets/.`,
     )
   }
   if (moves.template > 0) {
     lines.push(
-      `${count(moves.template, 'template moves', 'templates move')} from ${layout.templatesFolder} to templates/.`,
+      `${count(moves.template, 'template moves', 'templates move')} from ${mapping.templates ?? ''} to templates/.`,
     )
+  }
+  if (report.excluded > 0) {
+    lines.push(`${count(report.excluded, 'file is', 'files are')} left out of the conversion.`)
   }
   if (report.rewrittenLinks > 0) {
     lines.push(
@@ -100,24 +104,28 @@ function ReportLines({ report }: { readonly report: ObsidianImportReport }): Rea
  * Settings → Convert to Kore layout: a dry run of converting an Obsidian
  * vault to Kore's own layout (dailies, attachments, templates, the links that
  * point at them, canonical Markdown). Shown only for vaults with Obsidian
- * settings. It reads every note and writes nothing.
+ * settings. It reads every note once, then lets the user correct which folder
+ * plays which role and recomputes the report; it writes nothing.
  */
 export function ObsidianImportSection(): ReactElement {
   const { graph } = useGraph()
-  const { report, isRunning, error, run } = useObsidianImportDryRun(graph)
+  const { source, report, mapping, setMapping, isRunning, error, run } =
+    useObsidianImportDryRun(graph)
 
   let summary: string
   if (error !== null) {
     summary = `The preview failed: ${error.message}`
   } else if (isRunning) {
     summary = 'Reading every note in the vault…'
-  } else if (report === undefined) {
+  } else if (source === undefined) {
     summary =
       'Preview what converting this vault to Kore’s layout would change. The preview reads every note and writes nothing.'
-  } else if (report === null) {
+  } else if (source === null) {
     summary = 'This vault has no Obsidian settings, so there is nothing to convert.'
+  } else if (report === undefined) {
+    summary = 'Working out the conversion…'
   } else {
-    summary = `Preview of ${count(report.compat.scanned, 'note', 'notes')}. Nothing has been written.`
+    summary = `Preview of ${count(report.compat.scanned, 'note', 'notes')}. Check which folder plays which role; the preview follows your changes. Nothing has been written.`
   }
 
   return (
@@ -126,9 +134,12 @@ export function ObsidianImportSection(): ReactElement {
         <p className="min-w-0 text-xs text-text-muted">{summary}</p>
         <Button type="button" variant="outline" size="sm" disabled={isRunning} onClick={run}>
           {isRunning ? <Spinner /> : <Refresh aria-hidden />}
-          {report === undefined ? 'Preview' : 'Run again'}
+          {source === undefined ? 'Preview' : 'Read again'}
         </Button>
       </div>
+      {source && mapping ? (
+        <ObsidianImportMapping mapping={mapping} folders={source.folders} onChange={setMapping} />
+      ) : null}
       {report ? (
         <>
           <ReportLines report={report} />

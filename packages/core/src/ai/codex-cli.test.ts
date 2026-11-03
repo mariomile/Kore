@@ -260,6 +260,7 @@ describe('codexCliSystemPrompt edit mode', () => {
       customSystemPrompt: '',
       allowEdits: true,
       agentContext: {
+        vaultContract: null,
         profile: {
           slug: 'riley',
           name: 'Riley',

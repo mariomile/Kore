@@ -7,6 +7,13 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Any agent follows your vault's rules. Put an `AGENTS.md` at the root of
+  the vault (or run `kore guide --init` for a starter one) and every agent
+  gets it: the ones inside Kore, the ones that connect through `kore mcp`
+  (a new `vault_guide` tool, also in the server's instructions), and the
+  ones that just clone the vault's git repo. Kore's own agents stop writing
+  memory to `agents/` when your contract says it goes elsewhere.
+
 - The Details panel is yours to arrange. Drag a section by its title, or
   use its "…" menu to move it up or down or hide it; hidden sections come
   back from the bottom of the panel, and the layout is remembered. The

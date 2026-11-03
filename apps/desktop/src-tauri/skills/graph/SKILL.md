@@ -29,7 +29,12 @@ or export `KORE_GRAPH="{{GRAPH_ROOT}}"` for a sequence of calls.
 ## Commands
 
 Discover first, then read, then write. Every command takes `--json`.
+Start every session with `kore guide`: it prints the vault's own agent
+contract (`AGENTS.md`, the user's rules for where memory, decisions and new
+notes go — follow it over the defaults in these skills) and a map of its
+folders.
 
+    kore guide                 # the vault's agent contract and folder map
     kore info                  # graph root, index state, note/daily/tag counts
     kore tags                  # every tag with its count; "collection" = typed
     kore list [--tag T] [--kind daily|note]      # notes newest first, with tags

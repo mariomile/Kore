@@ -37,7 +37,13 @@ daily note per day. A <note> argument accepts a YYYY-MM-DD date, a graph-relativ
 path, a note id, a title, or an alias. Search first, then read_note what you need. Notes the \
 user marked private are never returned. Writes are structural: they append, create, \
 or set one property; nothing overwrites a note's prose. Every note is also a resource \
-at kore://note/<path>, a link that opens it in the Kore app.";
+at kore://note/<path>, a link that opens it in the Kore app. Call vault_guide first: \
+it returns the vault's own agent contract (its rules, including where memory and new \
+notes go) and a map of its folders.";
+
+/// Contract text inlined into `instructions` beyond this is left to
+/// `vault_guide`: clients paste instructions into every session's context.
+const INSTRUCTIONS_CONTRACT_MAX_CHARS: usize = 12_000;
 
 /// `resources/list` page size. Notes come newest first, so the notes a user
 /// is most likely to attach are on the first page.
@@ -272,6 +278,14 @@ fn no_properties() -> Value {
 
 fn tools() -> Vec<Tool> {
     vec![
+        Tool {
+            name: "vault_guide",
+            description: "Start here, once per session, before reading or writing. Returns the vault's agent contract (the user's rules for every agent: where memory, decisions and new notes go, what not to touch; null when the vault has none) and a map of its folders with note counts and where daily notes live. Follow the contract over your own defaults.",
+            read_only: true,
+            properties: no_properties,
+            required: &[],
+            build: |_| Ok(Invocation::new("guide")),
+        },
         Tool {
             name: "search",
             description: "Full-text search over every note, ranked by relevance (title matches first). Returns paths, titles and snippets. The query takes Kore's search operators: #tag or tag:#tag (nested tags included), -#tag, \"exact phrase\", -word, path:CRM/, file:name, [key] or [key:value], is:daily, is:pinned, links:Note, linked-from:Note, updated:>YYYY-MM-DD. Filters alone list matching notes newest first.",
@@ -583,6 +597,7 @@ fn note_uri(path: &str) -> String {
 enum ResourceTarget {
     Note(Vec<String>),
     Tasks,
+    Guide,
 }
 
 fn resource_target(uri: &str) -> Option<ResourceTarget> {
@@ -595,6 +610,7 @@ fn resource_target(uri: &str) -> Option<ResourceTarget> {
     match rest.split_once('/') {
         None if rest == "today" => Some(ResourceTarget::Note(vec!["today".into()])),
         None if rest == "tasks" => Some(ResourceTarget::Tasks),
+        None if rest == "guide" => Some(ResourceTarget::Guide),
         Some(("note", target)) => show(decode_component(target)?),
         Some(("daily", date)) => show(decode_component(date)?),
         _ => None,
@@ -635,6 +651,13 @@ fn fixed_resources() -> Vec<Value> {
             "name": "tasks",
             "title": "Open tasks",
             "description": "Every open task with its note and due date.",
+            "mimeType": "application/json"
+        }),
+        json!({
+            "uri": "kore://guide",
+            "name": "guide",
+            "title": "Agent guide",
+            "description": "The vault's agent contract (AGENTS.md) and a map of its folders: read before working in the vault.",
             "mimeType": "application/json"
         }),
     ]
@@ -816,8 +839,39 @@ impl<R: Runner> Server<R> {
                 "prompts": { "listChanged": false }
             },
             "serverInfo": { "name": "kore", "title": "Kore", "version": env!("CARGO_PKG_VERSION") },
-            "instructions": INSTRUCTIONS
+            "instructions": self.instructions()
         })
+    }
+
+    /// The fixed instructions plus the vault's own contract, so a client
+    /// that injects server instructions starts every session already under
+    /// the vault's rules — the same text an agent reading the git repo finds
+    /// in AGENTS.md.
+    fn instructions(&self) -> String {
+        let Some(contract) = self
+            .run_json(&["guide".to_string()])
+            .ok()
+            .and_then(|guide| guide.get("contract").cloned())
+            .filter(|contract| contract.is_object())
+        else {
+            return INSTRUCTIONS.to_string();
+        };
+        let path = contract["path"].as_str().unwrap_or("AGENTS.md");
+        let text = contract["text"].as_str().unwrap_or_default();
+        let mut instructions = format!(
+            "{INSTRUCTIONS}\n\nThis vault has its own agent contract, {path}: the user's standing rules for every agent working in it. Follow it over these defaults wherever they differ.\n\n"
+        );
+        if text.chars().count() > INSTRUCTIONS_CONTRACT_MAX_CHARS
+            || contract["truncated"].as_bool() == Some(true)
+        {
+            instructions.extend(text.chars().take(INSTRUCTIONS_CONTRACT_MAX_CHARS));
+            instructions.push_str(&format!(
+                "\n\n[contract cut here: call vault_guide or read {path} for the rest]"
+            ));
+        } else {
+            instructions.push_str(text);
+        }
+        instructions
     }
 
     fn call(&self, params: &Value) -> Result<Value, (i64, String)> {
@@ -916,8 +970,13 @@ impl<R: Runner> Server<R> {
                     .map_err(|message| (RESOURCE_NOT_FOUND, message))?;
                 note_resource(&note, Some(uri))
             }
-            ResourceTarget::Tasks => {
-                let output = self.runner.run(&["tasks".to_string()], None);
+            ResourceTarget::Tasks | ResourceTarget::Guide => {
+                let command = if matches!(target, ResourceTarget::Tasks) {
+                    "tasks"
+                } else {
+                    "guide"
+                };
+                let output = self.runner.run(&[command.to_string()], None);
                 if !output.success {
                     return Err((RESOURCE_NOT_FOUND, output.text));
                 }
@@ -1310,6 +1369,10 @@ mod tests {
             resource_target("kore://tasks"),
             Some(ResourceTarget::Tasks)
         ));
+        assert!(matches!(
+            resource_target("kore://guide"),
+            Some(ResourceTarget::Guide)
+        ));
         assert!(resource_target("kore://note/").is_none());
         assert!(
             resource_target("kore://note/%E2%28").is_none(),
@@ -1331,12 +1394,12 @@ mod tests {
         let resources = first["result"]["resources"].as_array().unwrap();
         assert_eq!(
             resources.len(),
-            2 + RESOURCE_PAGE,
-            "today and tasks lead page one"
+            3 + RESOURCE_PAGE,
+            "today, tasks and the guide lead page one"
         );
         assert_eq!(resources[0]["uri"], "kore://today");
-        assert_eq!(resources[2]["uri"], "kore://note/notes%2F0.md");
-        assert_eq!(resources[2]["title"], "N0");
+        assert_eq!(resources[3]["uri"], "kore://note/notes%2F0.md");
+        assert_eq!(resources[3]["title"], "N0");
         assert_eq!(first["result"]["nextCursor"], RESOURCE_PAGE.to_string());
 
         let second = request(
@@ -1354,6 +1417,23 @@ mod tests {
 
         let bad = request(&server, "resources/list", json!({ "cursor": "x" }));
         assert_eq!(bad["error"]["code"], -32602);
+    }
+
+    #[test]
+    fn instructions_carry_the_vaults_own_contract() {
+        let without = Canned::new(vec![("guide", json!({ "contract": null, "map": {} }))]);
+        let init = request(&Server::new(&without, true), "initialize", json!({}));
+        assert_eq!(init["result"]["instructions"], INSTRUCTIONS);
+
+        let with = Canned::new(vec![(
+            "guide",
+            json!({ "contract": { "path": "AGENTS.md", "text": "Decisions go in _system/memory/decisions/.", "truncated": false }, "map": {} }),
+        )]);
+        let init = request(&Server::new(&with, true), "initialize", json!({}));
+        let instructions = init["result"]["instructions"].as_str().unwrap();
+        assert!(instructions.starts_with(INSTRUCTIONS));
+        assert!(instructions.contains("own agent contract, AGENTS.md"));
+        assert!(instructions.ends_with("Decisions go in _system/memory/decisions/."));
     }
 
     #[test]

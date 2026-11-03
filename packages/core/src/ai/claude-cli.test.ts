@@ -209,6 +209,7 @@ describe('claudeCliSystemPrompt', () => {
       customSystemPrompt: '',
       allowEdits: true,
       agentContext: {
+        vaultContract: null,
         profile: {
           slug: 'riley',
           name: 'Riley',

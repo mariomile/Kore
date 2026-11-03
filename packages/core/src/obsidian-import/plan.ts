@@ -10,6 +10,7 @@ import {
   isNotePath,
 } from '../graph/paths'
 import type { VaultLayout } from '../graph/vault-layout'
+import { dailyLayoutOf, isUnderFolder, type ImportMapping } from './mapping'
 
 /**
  * Where one file of an Obsidian vault goes when the vault is converted to
@@ -36,26 +37,36 @@ export interface ImportMovePlan {
   readonly moves: readonly ImportMove[]
   /** Sorted by source path. */
   readonly conflicts: readonly ImportConflict[]
+  /** Files under an excluded folder: left out of the conversion. Sorted. */
+  readonly excluded: readonly string[]
 }
 
-function underFolder(path: string, folder: string): string | null {
+function underFolder(path: string, folder: string | null): string | null {
+  // A role on the vault root would sweep in every file: never a real mapping.
+  if (folder === null || folder === '') {
+    return null
+  }
   return path.startsWith(`${folder}/`) ? path.slice(folder.length + 1) : null
 }
 
-function destinationOf(layout: VaultLayout, path: string): ImportMove | null {
+function destinationOf(
+  mapping: ImportMapping,
+  daily: VaultLayout | null,
+  path: string,
+): ImportMove | null {
   if (isNotePath(path)) {
-    const date = dateFromDailyPath(path, layout)
+    const date = daily === null ? null : dateFromDailyPath(path, daily)
     if (date !== null && isCalendarDate(date)) {
       return { from: path, to: `${DAILY_DIR}/${date}.md`, kind: 'daily' }
     }
-    const template = underFolder(path, layout.templatesFolder)
+    const template = underFolder(path, mapping.templates)
     if (template !== null) {
       return { from: path, to: `${TEMPLATES_DIR}/${template}`, kind: 'template' }
     }
     return null
   }
-  if (isAttachmentPath(path) && layout.attachmentFolder !== null) {
-    const attachment = underFolder(path, layout.attachmentFolder)
+  if (isAttachmentPath(path)) {
+    const attachment = underFolder(path, mapping.attachments)
     if (attachment !== null) {
       return { from: path, to: `${ASSETS_DIR}/${attachment}`, kind: 'attachment' }
     }
@@ -64,19 +75,25 @@ function destinationOf(layout: VaultLayout, path: string): ImportMove | null {
 }
 
 /**
- * Plan the moves that turn a vault laid out as `layout` declares into Kore's
+ * Plan the moves that turn a vault mapped as `mapping` says into Kore's
  * layout: dailies to `daily/YYYY-MM-DD.md`, the attachment folder's files
  * into `assets/`, the templates folder into `templates/`, each keeping its
- * path below the folder. Pure; `paths` is every note and attachment the vault
- * lists. A move whose destination (compared case-folded, as APFS does) is held
+ * path below the folder; files under an excluded folder are left out. Pure;
+ * `paths` is every note and attachment the vault lists. A move whose destination (compared case-folded, as APFS does) is held
  * by a file that stays, or by an earlier move, becomes a conflict and its file
  * stays where it is.
  */
-export function planImportMoves(layout: VaultLayout, paths: readonly string[]): ImportMovePlan {
+export function planImportMoves(mapping: ImportMapping, paths: readonly string[]): ImportMovePlan {
+  const daily = dailyLayoutOf(mapping)
   const candidates: ImportMove[] = []
   const staying = new Set<string>()
+  const excluded: string[] = []
   for (const path of [...paths].sort()) {
-    const move = destinationOf(layout, path)
+    if (mapping.exclude.some((folder) => isUnderFolder(path, folder))) {
+      excluded.push(path)
+      continue
+    }
+    const move = destinationOf(mapping, daily, path)
     if (move === null || move.to === path) {
       staying.add(foldGraphPath(path))
     } else {
@@ -97,7 +114,7 @@ export function planImportMoves(layout: VaultLayout, paths: readonly string[]): 
       moves.push(move)
     }
   }
-  return { moves, conflicts }
+  return { moves, conflicts, excluded }
 }
 
 /** The lookups {@link rewriteImportLinks} needs, built once per plan. */

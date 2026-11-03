@@ -5,6 +5,7 @@ import { splitFrontmatter } from '../markdown/frontmatter'
 import { buildVaultCompatReport, type VaultCompatReport } from '../vault-compat/scan'
 import { detectCompatFindings } from '../vault-compat/detect'
 import type { ScannedNote } from '../vault-compat/scan'
+import { importFolders, type ImportMapping } from './mapping'
 import { importLinkMap, planImportMoves, type ImportConflict, type ImportMoveKind } from './plan'
 import { rewriteImportLinks } from './rewrite'
 
@@ -22,10 +23,22 @@ export interface ImportSourceNote {
   readonly content: string
 }
 
+/** Everything the dry run reads from the vault, once; reports are built from it per mapping. */
+export interface ObsidianImportSource {
+  /** The layout the vault's Obsidian settings declare: where the default mapping comes from. */
+  readonly layout: VaultLayout
+  readonly notes: readonly ImportSourceNote[]
+  readonly attachments: readonly string[]
+  /** Every folder holding a note or attachment, for picking a mapping. Sorted. */
+  readonly folders: readonly string[]
+  /** Notes that couldn't be read (evicted to iCloud, or failing). */
+  readonly skipped: number
+}
+
 /** What converting an Obsidian vault to Kore's layout would do, without doing it. */
 export interface ObsidianImportReport {
-  /** The layout the vault declares, which the conversion moves away from. */
-  readonly layout: VaultLayout
+  /** The mapping the report was built for. */
+  readonly mapping: ImportMapping
   readonly moves: Readonly<Record<ImportMoveKind, number>>
   /** Moves that can't happen; those files stay put. */
   readonly conflicts: readonly ImportConflict[]
@@ -36,22 +49,28 @@ export interface ObsidianImportReport {
   readonly normalizing: number
   /** Notes the conversion would copy untouched because Kore can't save them losslessly. Sorted. */
   readonly lossy: readonly string[]
+  /** Files under an excluded folder, left out of the conversion. */
+  readonly excluded: number
   /** Plugin syntax Kore doesn't render, carried over as written. */
   readonly compat: VaultCompatReport
 }
 
-/** Build the report from what the vault holds (pure; {@link dryRunObsidianImport} feeds it). */
+/**
+ * Build the report for one mapping from what the vault holds. Pure and
+ * cheap enough to rerun on every mapping edit, provided `classify` is
+ * memoized: the round-trip check dominates.
+ */
 export function buildObsidianImportReport(input: {
-  readonly layout: VaultLayout
-  readonly notes: readonly ImportSourceNote[]
-  readonly attachments: readonly string[]
-  readonly skipped: number
+  readonly mapping: ImportMapping
+  readonly source: Pick<ObsidianImportSource, 'notes' | 'attachments' | 'skipped'>
   readonly classify: (body: string) => ImportFidelity
 }): ObsidianImportReport {
-  const plan = planImportMoves(input.layout, [
-    ...input.notes.map((note) => note.path),
-    ...input.attachments,
+  const { source } = input
+  const plan = planImportMoves(input.mapping, [
+    ...source.notes.map((note) => note.path),
+    ...source.attachments,
   ])
+  const excluded = new Set(plan.excluded)
   const map = importLinkMap(plan)
   const moves: Record<ImportMoveKind, number> = { daily: 0, attachment: 0, template: 0 }
   for (const move of plan.moves) {
@@ -62,7 +81,12 @@ export function buildObsidianImportReport(input: {
   let normalizing = 0
   const lossy: string[] = []
   const scanned: ScannedNote[] = []
-  for (const note of input.notes) {
+  let included = 0
+  for (const note of source.notes) {
+    if (excluded.has(note.path)) {
+      continue
+    }
+    included += 1
     const rewrite = rewriteImportLinks(note.path, note.content, map)
     if (rewrite.links > 0) {
       rewrittenNotes += 1
@@ -80,17 +104,15 @@ export function buildObsidianImportReport(input: {
     }
   }
   return {
-    layout: input.layout,
+    mapping: input.mapping,
     moves,
     conflicts: plan.conflicts,
     rewrittenNotes,
     rewrittenLinks,
     normalizing,
     lossy: lossy.sort(),
-    compat: buildVaultCompatReport(scanned, {
-      scanned: input.notes.length,
-      skipped: input.skipped,
-    }),
+    excluded: plan.excluded.length,
+    compat: buildVaultCompatReport(scanned, { scanned: included, skipped: source.skipped }),
   }
 }
 
@@ -98,21 +120,20 @@ export function buildObsidianImportReport(input: {
 const READ_CONCURRENCY = 8
 
 /**
- * Dry-run converting the open vault from its Obsidian layout to Kore's: read
- * every note, plan the moves, rewrite links in memory and classify each
- * result. Writes nothing. `null` when the vault carries no Obsidian settings,
- * so there is nothing to convert. Notes evicted to iCloud or failing to read
- * are counted as skipped. Pinned to `generation`.
+ * Read what a dry run of converting the open vault needs: its Obsidian
+ * layout, every note's content and every attachment's path. Writes nothing.
+ * `null` when the vault carries no Obsidian settings, so there is nothing to
+ * convert. Notes evicted to iCloud or failing to read are counted as skipped.
+ * Pinned to `generation`.
  */
-export async function dryRunObsidianImport(
+export async function readObsidianImportSource(
   generation: number,
-  classify: (body: string) => ImportFidelity,
-): Promise<ObsidianImportReport | null> {
+): Promise<ObsidianImportSource | null> {
   const layout = vaultLayoutFromObsidian(await readObsidianConfig(generation))
   if (!layout.obsidian) {
     return null
   }
-  const [files, attachments] = await Promise.all([
+  const [files, attachmentFiles] = await Promise.all([
     listFiles(generation),
     listAttachments(generation),
   ])
@@ -146,11 +167,12 @@ export async function dryRunObsidianImport(
   await Promise.all(
     Array.from({ length: Math.min(READ_CONCURRENCY, files.length) }, async () => await worker()),
   )
-  return buildObsidianImportReport({
+  const attachments = attachmentFiles.map((file) => file.path)
+  return {
     layout,
     notes,
-    attachments: attachments.map((file) => file.path),
+    attachments,
+    folders: importFolders([...files.map((file) => file.path), ...attachments]),
     skipped,
-    classify,
-  })
+  }
 }

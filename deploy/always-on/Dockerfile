@@ -27,6 +27,7 @@ COPY deploy/always-on/entrypoint.sh /usr/local/bin/kore-host
 ENV KORE_VAULT=/vault \
     KORE_LISTEN=0.0.0.0:8765 \
     KORE_SYNC_EVERY=60
+RUN mkdir -p /vault && chown node:node /vault
 VOLUME /vault
 EXPOSE 8765
 USER node

@@ -35,6 +35,8 @@ debug binary and the real indexer: `capture` over HTTP reached the Mac's
 clone as one `Kore host` commit; a note pushed from the Mac was found by
 `search` over HTTP within one 5 s interval. `cargo clippy -p reflect-cli
 --all-targets -D warnings`, `cargo fmt --check`.
+The Docker image builds and runs: it cloned a test vault, indexed it,
+answered `capture` over HTTP and pushed the commit (`pulled 0, pushed 1`).
 
 ## Shared brain for agents, slice 1, 2026-11-04
 

@@ -106,7 +106,11 @@ vi.mock('@/providers/graph-provider', () => ({
 }))
 // The shelf order the rail renders — a test flips it to assert the stored
 // arrangement drives the stack.
-const sidebarSections = vi.hoisted(() => ({ order: ['pinned', 'folders', 'tags'] }))
+const sidebarSections = vi.hoisted(() => ({
+  order: ['pinned', 'folders', 'tags'],
+  nav: ['daily', 'newNote', 'allNotes', 'tasks', 'graph'],
+  hidden: [] as string[],
+}))
 vi.mock('@/providers/settings-provider', () => ({
   useSettings: () => ({
     settings: {
@@ -114,6 +118,8 @@ vi.mock('@/providers/settings-provider', () => ({
       graphColors: {},
       collectionSorts: {},
       sidebarSections: sidebarSections.order,
+      sidebarNav: sidebarSections.nav,
+      hiddenSidebarItems: sidebarSections.hidden,
     },
     updateSettings: () => {},
     updateSettingsWith,
@@ -169,6 +175,9 @@ beforeEach(() => {
   getTagTree.mockReset().mockResolvedValue([])
   getFolderTree.mockReset().mockResolvedValue(buildFolderTree([]))
   sidebarSections.order = ['pinned', 'folders', 'tags']
+  sidebarSections.nav = ['daily', 'newNote', 'allNotes', 'tasks', 'graph']
+  sidebarSections.hidden = []
+  updateSettingsWith.mockClear()
   audioMemo.available = true
   audioMemo.unavailableReason = null
   audioMemo.toggle.mockReset()
@@ -464,11 +473,45 @@ describe('Sidebar', () => {
     expect(daily.element().querySelector('.sidebar-icon-slot')).not.toBeNull()
   })
 
-  it('offers Terminal after Graph on desktop, and no Agents row', async () => {
+  it('has no Terminal or Agents row: the terminal opens as a tab from "+"', async () => {
     const { view } = await renderSidebar()
     await expect.element(view.getByRole('button', { name: /graph/i })).toBeVisible()
-    await expect.element(view.getByRole('button', { name: /terminal/i })).toBeVisible()
+    expect(view.getByRole('button', { name: /terminal/i }).query()).toBeNull()
     expect(view.getByRole('button', { name: /^agents$/i }).query()).toBeNull()
+  })
+
+  it('lists the nav rows in the stored order, leaving hidden ones out', async () => {
+    sidebarSections.nav = ['graph', 'daily', 'newNote', 'allNotes', 'tasks']
+    sidebarSections.hidden = ['tasks']
+    const { view } = await renderSidebar()
+    await expect.element(view.getByRole('button', { name: /graph/i })).toBeVisible()
+    const rows = [...view.container.querySelectorAll('[data-sidebar-nav]')].map((row) =>
+      row.getAttribute('data-sidebar-nav'),
+    )
+    expect(rows).toEqual(['graph', 'daily', 'newNote', 'allNotes'])
+
+    // The way back: the hidden line at the foot of the shelves.
+    await view.getByRole('button', { name: '1 hidden item' }).click()
+    await page.getByRole('menuitem', { name: 'Show Tasks' }).click()
+    const update = updateSettingsWith.mock.lastCall?.[0]
+    expect(update?.({ ...DEFAULT_SETTINGS, hiddenSidebarItems: ['tasks'] })).toEqual({
+      hiddenSidebarItems: [],
+    })
+  })
+
+  it('moves a shelf from its header menu', async () => {
+    getPinnedNotes.mockResolvedValue([
+      { path: 'notes/roadmap.md', title: 'Roadmap', dailyDate: null },
+    ])
+    getTagTree.mockResolvedValue(buildTagTree([{ key: 'book', tag: 'book', count: 3 }]))
+    const { view } = await renderSidebar()
+    await expect.element(view.getByRole('button', { name: /Book\s*3/i })).toBeVisible()
+
+    await view.getByRole('button', { name: 'Types options' }).click()
+    // Folders is empty here, so one step up passes it and lands above Pinned.
+    await page.getByRole('menuitem', { name: 'Move up' }).click()
+    const update = updateSettingsWith.mock.lastCall?.[0]
+    expect(update?.(DEFAULT_SETTINGS)).toEqual({ sidebarSections: ['tags', 'folders', 'pinned'] })
   })
 
   it('the mic button starts an audio memo', async () => {

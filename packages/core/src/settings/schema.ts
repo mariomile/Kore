@@ -56,6 +56,8 @@ import {
   editorSpellCheckSchema,
   editorTextSizeSchema,
   hiddenDetailsSectionsSchema,
+  hiddenSidebarItemsSchema,
+  sidebarNavSchema,
   sidebarSectionsSchema,
   sidebarWidthSchema,
 } from './schema-editor'
@@ -568,6 +570,8 @@ const settingsDocumentSchema = z.looseObject({
   editorLineSpacing: editorLineSpacingSchema,
   sidebarWidth: sidebarWidthSchema,
   sidebarSections: sidebarSectionsSchema,
+  sidebarNav: sidebarNavSchema,
+  hiddenSidebarItems: hiddenSidebarItemsSchema,
   contextSidebarWidth: contextSidebarWidthSchema,
   detailsSections: detailsSectionsSchema,
   hiddenDetailsSections: hiddenDetailsSectionsSchema,

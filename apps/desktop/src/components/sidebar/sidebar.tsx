@@ -1,19 +1,16 @@
 import { useState, type ReactElement } from 'react'
-import { Checklist, Graph, Note, NoteEdit, Pencil, Terminal } from '@/components/icons'
-import { isUntitledNotePath, type GraphInfo } from '@reflect/core'
+import type { GraphInfo } from '@reflect/core'
 import { AudioMemoButton } from '@/components/audio-memo/audio-memo-button'
 import { usePinnedNotes } from '@/hooks/use-pinned-notes'
-import { keybindingFor } from '@/lib/commands/app-commands'
 import { runCommand } from '@/lib/commands/registry'
 import { useToday } from '@/lib/use-today'
 import type { CommandContext } from '@/lib/commands/types'
-import { isMobileSurface } from '@/lib/platform-surface'
 import { notePathForRoute } from '@/routing/route'
 import { useRouter } from '@/routing/router'
 import { GraphFooter } from './graph-footer'
 import { SidebarChatSection } from './sidebar-chat-section'
-import { SidebarItem } from './sidebar-item'
 import { SidebarMeetingsSection } from './sidebar-meetings-section'
+import { SidebarNav } from './sidebar-nav'
 import { SidebarSearch } from './sidebar-search'
 import { SidebarSections } from './sidebar-sections'
 import { SidebarSurfaceSwitcher } from './sidebar-surface-switcher'
@@ -29,14 +26,14 @@ interface SidebarProps {
  * The workspace sidebar. The Notion-style top bar (the Home pill, the
  * Chat/Meetings icon toggles, and the ever-present search + audio-memo
  * icons) and the graph-switcher footer are fixtures; between them the rail
- * is one of three surfaces — Home (the classic navigation plus the
- * Open/Pinned/Types shelves, which the user can drag into any order), Chat
+ * is one of three surfaces — Home (the navigation rows plus the
+ * Pinned/Folders/Types shelves, all of which the user can drag into any
+ * order or hide; see {@link SidebarNav} and {@link SidebarSections}), Chat
  * (the AI conversation list), and Meetings (the coming week's calendar
  * events). Picking Chat also opens the chat screen, since its rail is only
- * useful beside the conversation. Most nav rows run registered commands so a
- * binding and its behavior stay one definition; the Daily notes row is a
- * capture gesture like `Mod-D` — it asks the stream to focus today with the
- * caret at the end, ready to append.
+ * useful beside the conversation. The nav rows run registered commands so a
+ * binding and its behavior stay one definition. The terminal is not a row:
+ * it opens as a tab from the tab strip's "+" menu (or the palette).
  * (Sidebar collapse stays on `Mod-\` via the command registry.)
  */
 export function Sidebar({ graph, context }: SidebarProps): ReactElement {
@@ -93,67 +90,7 @@ export function Sidebar({ graph, context }: SidebarProps): ReactElement {
 
       {surface === 'home' && (
         <>
-          <nav aria-label="Primary" className="mt-4 flex-none space-y-1 px-2">
-            <SidebarItem
-              icon={<Pencil className="size-3.5" />}
-              label="Daily notes"
-              binding={keybindingFor('nav.today') ?? undefined}
-              active={(route.kind === 'today' || route.kind === 'daily') && !hasActivePinnedNote}
-              onClick={() => void runCommand('nav.today', context)}
-            />
-            <SidebarItem
-              icon={<NoteEdit className="size-3.5" />}
-              label="New note"
-              binding={keybindingFor('note.new') ?? undefined}
-              // Active while the open note is still on its ULID placeholder
-              // name — the state this row creates. The birth rename onto a
-              // title slug is also what hands the note off to ordinary
-              // navigation, releasing the highlight.
-              active={route.kind === 'note' && isUntitledNotePath(route.path)}
-              onClick={() => void runCommand('note.new', context)}
-            />
-            <SidebarItem
-              icon={<Note className="size-3.5" />}
-              label="All notes"
-              binding={keybindingFor('nav.allNotes') ?? undefined}
-              // A named note lives in the All Notes collection, so keep this row
-              // lit while editing one. A brand-new note is still an untitled
-              // placeholder, though, and the "New note" row above owns that
-              // highlight until the birth rename — so the two never light at once.
-              // A routed tag or folder is that tag's or folder's own page: its
-              // row in the Types or Folders section lights instead of this one.
-              active={
-                (route.kind === 'allNotes' &&
-                  route.filter.kind !== 'tag' &&
-                  route.filter.kind !== 'folder') ||
-                (route.kind === 'note' && !isUntitledNotePath(route.path) && !hasActivePinnedNote)
-              }
-              onClick={() => void runCommand('nav.allNotes', context)}
-            />
-            <SidebarItem
-              icon={<Checklist className="size-3.5" />}
-              label="Tasks"
-              binding={keybindingFor('nav.tasks') ?? undefined}
-              active={route.kind === 'tasks'}
-              onClick={() => void runCommand('nav.tasks', context)}
-            />
-            <SidebarItem
-              icon={<Graph className="size-3.5" />}
-              label="Graph"
-              binding={keybindingFor('nav.graphMap') ?? undefined}
-              active={route.kind === 'graphMap'}
-              onClick={() => void runCommand('nav.graphMap', context)}
-            />
-            {isMobileSurface() ? null : (
-              <SidebarItem
-                icon={<Terminal className="size-3.5" />}
-                label="Terminal"
-                binding={keybindingFor('nav.terminal') ?? undefined}
-                active={route.kind === 'terminal'}
-                onClick={() => void runCommand('nav.terminal', context)}
-              />
-            )}
-          </nav>
+          <SidebarNav context={context} route={route} hasActivePinnedNote={hasActivePinnedNote} />
           <div className="mt-1 min-h-0 flex-1 overflow-y-auto pb-2">
             <SidebarSections />
           </div>

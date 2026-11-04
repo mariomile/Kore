@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { Globe, NoteEdit, Plus } from '@/components/icons'
+import { Globe, NoteEdit, Plus, Terminal } from '@/components/icons'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,9 +14,9 @@ interface NoteTabsPlusMenuProps {
 }
 
 /**
- * The tab-strip "+" : New note (⌘N) or the built-in browser, which opens as
- * a workspace tab (the browser route) rather than a separate window. The
- * palette is still ⌘K.
+ * The tab-strip "+" : New note (⌘N), the built-in browser or the terminal.
+ * Both open as workspace tabs (their routes) rather than separate windows;
+ * the terminal lives here instead of a sidebar row. The palette is still ⌘K.
  */
 export function NoteTabsPlusMenu({ context }: NoteTabsPlusMenuProps): ReactElement {
   return (
@@ -25,7 +25,7 @@ export function NoteTabsPlusMenu({ context }: NoteTabsPlusMenuProps): ReactEleme
         render={
           <button
             type="button"
-            aria-label="New note or browser"
+            aria-label="New tab"
             className="flex size-6 shrink-0 items-center justify-center rounded-md text-text-muted transition-[color,background-color,transform] duration-150 ease-[cubic-bezier(0.32,0.72,0,1)] hover:bg-surface-hover hover:text-text-secondary active:scale-[0.97]"
           >
             <Plus aria-hidden className="size-3.5" />
@@ -48,6 +48,14 @@ export function NoteTabsPlusMenu({ context }: NoteTabsPlusMenuProps): ReactEleme
         >
           <Globe aria-hidden className="size-3.5" />
           Browser
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() => {
+            void runCommand('nav.terminal', context)
+          }}
+        >
+          <Terminal aria-hidden className="size-3.5" />
+          Terminal
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

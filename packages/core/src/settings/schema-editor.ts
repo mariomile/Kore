@@ -189,6 +189,60 @@ export const sidebarSectionsSchema = z
   })
 
 /**
+ * The workspace sidebar's primary navigation rows (Daily notes, New note, All
+ * notes, Tasks, Graph), in the order the user dragged them into. Same closed-
+ * set contract as {@link sidebarSectionsSchema}: the rows live in the app, this
+ * key only records their arrangement. The terminal is not a row: it opens as
+ * a tab from the tab strip's "+" menu.
+ */
+const sidebarNavEnum = z.enum(['daily', 'newNote', 'allNotes', 'tasks', 'graph'])
+
+export type SidebarNavItem = z.infer<typeof sidebarNavEnum>
+
+/** Every navigation row id, in the order a fresh install lists them. */
+export const SIDEBAR_NAV_IDS: readonly SidebarNavItem[] = sidebarNavEnum.options
+
+/** The stored row order, normalized like {@link sidebarSectionsSchema}. */
+export const sidebarNavSchema = z
+  .array(z.unknown())
+  .catch([])
+  .transform((entries) => {
+    const ordered: SidebarNavItem[] = []
+    for (const entry of entries) {
+      const parsed = sidebarNavEnum.safeParse(entry)
+      if (parsed.success && !ordered.includes(parsed.data)) {
+        ordered.push(parsed.data)
+      }
+    }
+    return [...ordered, ...SIDEBAR_NAV_IDS.filter((id) => !ordered.includes(id))]
+  })
+
+/** Anything on the sidebar's Home surface the user can hide: a row or a shelf. */
+export type SidebarHideable = SidebarNavItem | SidebarSection
+
+const sidebarHideableEnum = z.union([sidebarNavEnum, sidebarSectionEnum])
+
+/**
+ * The navigation rows and shelves the user hid from the sidebar. Hiding is a
+ * layout choice: the item keeps its place in its order and comes back there
+ * from the "hidden" menu at the foot of the shelves. Unknown and duplicate
+ * entries drop; anything else degrades to nothing hidden.
+ */
+export const hiddenSidebarItemsSchema = z
+  .array(z.unknown())
+  .catch([])
+  .transform((entries) => {
+    const hidden: SidebarHideable[] = []
+    for (const entry of entries) {
+      const parsed = sidebarHideableEnum.safeParse(entry)
+      if (parsed.success && !hidden.includes(parsed.data)) {
+        hidden.push(parsed.data)
+      }
+    }
+    return hidden
+  })
+
+/**
  * The Details panel's sections (the right rail's note and daily context), by
  * the id their stored arrangement is written in. One closed set across note
  * and daily routes: each route renders the subset it has, in this order
@@ -255,12 +309,12 @@ export const hiddenDetailsSectionsSchema = z
  * render (a note's rail has no Events), so one press always visibly moves the
  * section. Returns the full order unchanged when there is nowhere to go.
  */
-export function moveDetailsSection(
-  order: readonly DetailsSection[],
-  present: readonly DetailsSection[],
-  id: DetailsSection,
+export function moveDetailsSection<T extends string = DetailsSection>(
+  order: readonly T[],
+  present: readonly T[],
+  id: T,
   direction: 'up' | 'down',
-): DetailsSection[] {
+): T[] {
   const shown = order.filter((entry) => present.includes(entry))
   const at = shown.indexOf(id)
   const neighbor = shown[direction === 'up' ? at - 1 : at + 1]
@@ -269,3 +323,9 @@ export function moveDetailsSection(
   }
   return order.map((entry) => (entry === id ? neighbor : entry === neighbor ? id : entry))
 }
+
+/**
+ * {@link moveDetailsSection} for the sidebar's rows and shelves: one step past
+ * the neighbours that are actually on screen (a hidden row, an empty shelf).
+ */
+export const moveSidebarItem = moveDetailsSection

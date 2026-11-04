@@ -108,6 +108,9 @@ interface AllNotesScreenProps {
  */
 export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
   const tag = filter.kind === 'tag' ? filter.tag : null
+  // A type chip on All notes narrows the list in place: same query as the
+  // tag page, but none of its page chrome (title, collection views).
+  const listTag = tag ?? (filter.kind === 'all' ? (filter.tag ?? null) : null)
   const inbox = filter.kind === 'inbox'
   const folderPath = filter.kind === 'folder' ? filter.folder : null
   // A folder page's own lens — what it lists and the title filter — is
@@ -236,8 +239,8 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
   const enabled = bridgeReady && graph !== null
 
   const { data: allNotes } = useQuery({
-    queryKey: allNotesQueryKey(graph?.root, tag, folder),
-    queryFn: () => listNotes({ tag, folder }),
+    queryKey: allNotesQueryKey(graph?.root, listTag, folder),
+    queryFn: () => listNotes({ tag: listTag, folder }),
     enabled,
   })
   const { data: facets } = useQuery({
@@ -454,7 +457,9 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
               <AllNotesFilters
                 filter={filter}
                 facets={facets ?? []}
-                inboxCount={inboxNotes?.length}
+                // Under a type chip the list (and so its inbox subset) is that
+                // type only — a count there would read as the whole Inbox.
+                inboxCount={listTag === null ? inboxNotes?.length : undefined}
                 onSelect={handleFilterSelect}
               />
             )}
@@ -612,7 +617,7 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
             ) : view === 'grid' ? (
               <AllNotesGrid
                 notes={gridNotes}
-                tag={tag}
+                tag={listTag}
                 type={collectionAvailable ? tagType : null}
                 entries={collectionAvailable ? filteredCollection : undefined}
                 onOpen={openNote}
@@ -661,7 +666,7 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
             ) : (
               <AllNotesTable
                 notes={notes}
-                tag={tag}
+                tag={listTag}
                 selection={selection}
                 onOpen={openNote}
                 registerScrollToIndex={registerScrollToIndex}

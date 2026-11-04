@@ -7,6 +7,10 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- The type chips on All notes (`#person`, `#link`, Custom) filter the list
+  in place instead of opening the type's page. The type's page is still a
+  click away in the sidebar's Types section.
+
 - Kore stays on when the Mac sleeps. `kore mcp --http --sync` serves the
   vault from any always-on machine holding a git clone of it, with no app
   anywhere: it pulls and reindexes every minute, and commits and pushes

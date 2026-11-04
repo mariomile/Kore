@@ -32,4 +32,15 @@ describe('createStdioBridge', () => {
     await expect(result).rejects.toEqual({ kind: 'notFound', message: 'no such note' })
     bridge.close()
   })
+
+  it('fails pending calls when the host sends a line that is not a reply', async () => {
+    const { bridge, replies } = connect()
+    const result = bridge.invoke('note_read', { path: 'notes/kore.md' })
+    replies.write('not json\n')
+    await expect(result).rejects.toEqual({
+      kind: 'io',
+      message: 'malformed reply from the indexer host',
+    })
+    bridge.close()
+  })
 })

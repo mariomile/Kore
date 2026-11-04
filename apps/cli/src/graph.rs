@@ -31,15 +31,31 @@ fn canonical_graph(path: &Path) -> Result<Graph, CliError> {
     Ok(Graph { root })
 }
 
+/// The graph named explicitly, by flag then env var, with the name of its
+/// source for error messages.
+fn explicit_source(flag: Option<&Path>) -> Option<(PathBuf, &'static str)> {
+    flag.map(|path| (path.to_path_buf(), "--graph"))
+        .or_else(|| {
+            std::env::var_os("KORE_GRAPH")
+                .filter(|env| !env.is_empty())
+                .map(|env| (PathBuf::from(env), "KORE_GRAPH"))
+        })
+}
+
+fn require_dir(path: &Path, source: &str) -> Result<(), CliError> {
+    if path.is_dir() {
+        return Ok(());
+    }
+    Err(CliError::Runtime(format!(
+        "{source}: no such directory: {}",
+        path.display()
+    )))
+}
+
 /// Validate an explicitly-named graph (flag or env var); a non-graph path is
 /// an error with the hint, never a silent fall-through.
 fn explicit_graph(path: &Path, source: &str) -> Result<Graph, CliError> {
-    if !path.is_dir() {
-        return Err(CliError::Runtime(format!(
-            "{source}: no such directory: {}",
-            path.display()
-        )));
-    }
+    require_dir(path, source)?;
     if !is_graph(path) {
         return Err(CliError::Runtime(format!(
             "{source}: not a Kore graph (no {REFLECT_DIR}/ directory): {}",
@@ -49,43 +65,26 @@ fn explicit_graph(path: &Path, source: &str) -> Result<Graph, CliError> {
     canonical_graph(path)
 }
 
-/// Resolve the active graph. First hit wins: flag, env, then the walk-up.
 /// Resolve the graph for `kore index`, which may be the first thing to run
 /// on a folder: an explicit `--graph` or `$KORE_GRAPH` directory is adopted
 /// even without `.reflect/` (indexing creates it). The current-directory
 /// fallback still requires `.reflect/`, so a stray run never indexes `$HOME`.
 pub fn resolve_for_index(flag: Option<&Path>) -> Result<Graph, CliError> {
-    let explicit = flag
-        .map(|path| (path.to_path_buf(), "--graph"))
-        .or_else(|| {
-            std::env::var_os("KORE_GRAPH")
-                .filter(|env| !env.is_empty())
-                .map(|env| (PathBuf::from(env), "KORE_GRAPH"))
-        });
-    let Some((path, source)) = explicit else {
+    let Some((path, source)) = explicit_source(flag) else {
         return resolve(None).map_err(|_| {
             CliError::runtime(
                 "no graph found — pass --graph <path> to index a folder for the first time",
             )
         });
     };
-    if !path.is_dir() {
-        return Err(CliError::Runtime(format!(
-            "{source}: no such directory: {}",
-            path.display()
-        )));
-    }
+    require_dir(&path, source)?;
     canonical_graph(&path)
 }
 
+/// Resolve the active graph. First hit wins: flag, env, then the walk-up.
 pub fn resolve(flag: Option<&Path>) -> Result<Graph, CliError> {
-    if let Some(path) = flag {
-        return explicit_graph(path, "--graph");
-    }
-    if let Some(env) = std::env::var_os("KORE_GRAPH") {
-        if !env.is_empty() {
-            return explicit_graph(Path::new(&env), "KORE_GRAPH");
-        }
+    if let Some((path, source)) = explicit_source(flag) {
+        return explicit_graph(&path, source);
     }
     let cwd = std::env::current_dir()?;
     let mut current = cwd.as_path();

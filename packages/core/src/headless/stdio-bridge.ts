@@ -42,15 +42,34 @@ export function createStdioBridge(input: Readable, output: Writable): StdioBridg
   let nextId = 1
   const lines = createInterface({ input, crlfDelay: Infinity })
 
+  function rejectPending(message: string): void {
+    for (const call of pending.values()) {
+      call.reject({ kind: 'io', message })
+    }
+    pending.clear()
+  }
+
+  function parseReply(line: string): z.infer<typeof replySchema> | undefined {
+    try {
+      const parsed = replySchema.safeParse(JSON.parse(line))
+      return parsed.success ? parsed.data : undefined
+    } catch {
+      return undefined
+    }
+  }
+
   lines.on('line', (line) => {
     if (line.trim() === '') {
       return
     }
-    const parsed = replySchema.safeParse(JSON.parse(line))
-    if (!parsed.success) {
-      throw new Error(`malformed reply from the indexer host: ${parsed.error.message}`)
+    const reply = parseReply(line)
+    if (reply === undefined) {
+      // The stream is out of sync with the host: no later reply can be
+      // trusted to match its call, so fail everything still waiting.
+      rejectPending('malformed reply from the indexer host')
+      lines.close()
+      return
     }
-    const reply = parsed.data
     const call = pending.get(reply.id)
     if (call === undefined) {
       return
@@ -62,14 +81,9 @@ export function createStdioBridge(input: Readable, output: Writable): StdioBridg
       call.resolve(reply.ok)
     }
   })
-
-  function rejectPending(): void {
-    for (const call of pending.values()) {
-      call.reject({ kind: 'io', message: 'the indexer host closed the connection' })
-    }
-    pending.clear()
-  }
-  lines.on('close', rejectPending)
+  lines.on('close', () => {
+    rejectPending('the indexer host closed the connection')
+  })
 
   return {
     invoke: async (command, args) => {

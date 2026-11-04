@@ -1,3 +1,4 @@
+import { errorMessage } from '../errors'
 import { setBridge } from '../ipc/bridge'
 import { openIndex } from '../indexing/commands'
 import { rebuildIndex, syncIndex } from '../indexing/indexer'
@@ -47,11 +48,7 @@ main(process.argv.slice(2)).then(
     process.exitCode = code
   },
   (error: unknown) => {
-    const message =
-      typeof error === 'object' && error !== null && 'message' in error
-        ? String(error.message)
-        : String(error)
-    console.error(`kore index: ${message}`)
+    console.error(`kore index: ${errorMessage(error)}`)
     process.exitCode = 1
   },
 )

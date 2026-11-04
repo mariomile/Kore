@@ -5,6 +5,8 @@
 //! but never write it — writes go through the transactional path in
 //! [`crate::write`].
 
+use std::path::Path;
+
 use rusqlite::hooks::{AuthAction, AuthContext, Authorization};
 use rusqlite::{params_from_iter, Connection};
 use serde_json::{Map, Value};
@@ -42,15 +44,18 @@ fn read_only_authorization(context: AuthContext<'_>) -> Authorization {
     }
 }
 
-/// Guard a read bridge connection with [`read_only_authorization`] for its
-/// whole life. Installing the authorizer once matters:
-/// `sqlite3_set_authorizer` expires every prepared statement, so toggling it
-/// around each query made SQLite parse every read twice. A guarded connection
-/// serves only [`run_query`]; writes (and their `PRAGMA defer_foreign_keys`)
-/// use the writer connection.
-pub fn guard_read_connection(conn: &Connection) -> StoreResult<()> {
+/// Open the read bridge's connection: `<root>/.reflect/index.sqlite`
+/// read-only, guarded by [`read_only_authorization`] for its whole life.
+/// Installing the authorizer once matters: `sqlite3_set_authorizer` expires
+/// every prepared statement, so toggling it around each query made SQLite
+/// parse every read twice. This connection serves only [`run_query`]; writes
+/// (and their `PRAGMA defer_foreign_keys`) use the writer connection, which
+/// must have created and migrated the file first.
+pub fn open_read_connection(root: &Path) -> StoreResult<Connection> {
+    let conn = reflect_index_schema::open_index_read_only_at(root)
+        .map_err(|err| StoreError::io(err.to_string()))?;
     conn.authorizer(Some(read_only_authorization))?;
-    Ok(())
+    Ok(conn)
 }
 
 fn json_to_sql(value: &Value) -> rusqlite::types::Value {
@@ -87,7 +92,7 @@ pub fn run_query(
     params: &[Value],
 ) -> StoreResult<Vec<Map<String, Value>>> {
     // This bridge is reachable from the (untrusted) webview, so it must run only
-    // reads of our projection. On a guarded read connection ([`guard_read_connection`])
+    // reads of our projection. On the read connection ([`open_read_connection`])
     // the authorizer rejects ATTACH/DETACH/PRAGMA with `SQLITE_AUTH`, here at
     // prepare or, for table-valued pragmas like `pragma_database_list()`, at
     // the first step.

@@ -14,11 +14,10 @@
 pub mod backup;
 mod chat_write;
 mod migrations;
-mod query;
 #[cfg(test)]
 mod tests;
 
-use reflect_index_store::{embed_write, scan, write};
+use reflect_index_store::{embed_write, query, scan, write};
 
 use std::sync::{Mutex, MutexGuard};
 
@@ -355,14 +354,17 @@ pub async fn note_move_indexed<R: tauri::Runtime>(
             {
                 let mut state = lock_state(&index)?;
                 let conn = state.conn.as_mut().ok_or_else(AppError::no_graph)?;
-                move_rows(conn, &request.from, &request.to, &request.to_address)?;
+                write::move_note_rows(conn, &request.from, &request.to, &request.to_address)?;
                 if let Err(err) = crate::fs::move_note_file(&root, &request.from, &request.to) {
                     // Compensate: the disk refused, so the rows go back. Best-effort —
                     // a failed compensation must surface the *original* error, and the
                     // reconcile heals any residue by id.
-                    if let Err(comp) =
-                        move_rows(conn, &request.to, &request.from, &request.from_address)
-                    {
+                    if let Err(comp) = write::move_note_rows(
+                        conn,
+                        &request.to,
+                        &request.from,
+                        &request.from_address,
+                    ) {
                         tracing::error!(
                             ?comp,
                             "rename compensation failed; reconcile will heal by id"
@@ -379,16 +381,6 @@ pub async fn note_move_indexed<R: tauri::Runtime>(
     emit_index_written(&app);
     emit_note_moved(&app, &from, &to);
     Ok(())
-}
-
-/// One committed row-move transaction (the rename pipeline's halves).
-fn move_rows(
-    conn: &mut Connection,
-    from: &str,
-    to: &str,
-    address: &write::MovedNoteAddress,
-) -> AppResult<()> {
-    Ok(write::move_note_rows(conn, from, to, address)?)
 }
 
 /// Move a note's projection rows **only** (the id-based reconcile, Plan 17):
@@ -421,7 +413,7 @@ pub async fn index_move<R: tauri::Runtime>(
                 return Ok(false);
             }
             let conn = state.conn.as_mut().ok_or_else(AppError::no_graph)?;
-            move_rows(conn, &from, &to, &to_address)?;
+            write::move_note_rows(conn, &from, &to, &to_address)?;
             Ok(true)
         }
     })

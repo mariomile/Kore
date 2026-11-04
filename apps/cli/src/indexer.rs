@@ -15,7 +15,7 @@
 use std::io::{BufRead, Write};
 use std::path::{Component, Path, PathBuf};
 
-use reflect_index_store::query::{guard_read_connection, run_query};
+use reflect_index_store::query::{open_read_connection, run_query};
 use reflect_index_store::scan::scan_reconcile;
 use reflect_index_store::write::{
     apply_notes, clear_index, move_note_rows, remove_notes, set_index_meta, touch_notes,
@@ -158,12 +158,9 @@ impl Host {
     /// Open (creating and migrating as needed) the graph's index for writing,
     /// plus a guarded read-only connection for the core's queries.
     pub fn open(root: &Path) -> Result<Self, CliError> {
-        let index_error = |err: reflect_index_schema::SchemaError| {
-            CliError::runtime(format!("could not open the index: {err}"))
-        };
-        let writer = reflect_index_schema::open_index_at(root).map_err(index_error)?;
-        let reader = reflect_index_schema::open_index_read_only_at(root).map_err(index_error)?;
-        guard_read_connection(&reader)
+        let writer = reflect_index_schema::open_index_at(root)
+            .map_err(|err| CliError::runtime(format!("could not open the index: {err}")))?;
+        let reader = open_read_connection(root)
             .map_err(|err| CliError::runtime(format!("could not open the index: {err}")))?;
         Ok(Self {
             root: root.to_path_buf(),

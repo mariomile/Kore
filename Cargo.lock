@@ -4571,6 +4571,7 @@ name = "reflect-index-store"
 version = "0.1.0"
 dependencies = [
  "reflect-graph-paths",
+ "reflect-index-schema",
  "rusqlite",
  "serde",
  "serde_json",

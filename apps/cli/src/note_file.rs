@@ -284,25 +284,33 @@ pub(crate) fn checked_note_path(root: &Path, rel_path: &str) -> Result<PathBuf, 
             "unsafe or ineligible note path: {rel_path}"
         )));
     }
+    match symlink_free_path(root, rel_path) {
+        Ok(Some(absolute)) => Ok(absolute),
+        Ok(None) => Err(CliError::Runtime(format!(
+            "refusing symlinked note path: {rel_path}"
+        ))),
+        Err(error) => Err(CliError::Runtime(format!(
+            "could not inspect {rel_path}: {error}"
+        ))),
+    }
+}
+
+/// `root` joined with `rel_path`, or `None` when any existing component on
+/// the way (directory or leaf) is a symlink, so a read can never leave the
+/// graph through a linked directory. Missing components are fine: the read
+/// that follows reports them as not found.
+pub(crate) fn symlink_free_path(root: &Path, rel_path: &str) -> std::io::Result<Option<PathBuf>> {
     let mut absolute = root.to_path_buf();
     for component in Path::new(rel_path).components() {
         absolute.push(component.as_os_str());
         match fs::symlink_metadata(&absolute) {
-            Ok(metadata) if metadata.file_type().is_symlink() => {
-                return Err(CliError::Runtime(format!(
-                    "refusing symlinked note path: {rel_path}"
-                )))
-            }
+            Ok(metadata) if metadata.file_type().is_symlink() => return Ok(None),
             Ok(_) => {}
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-            Err(error) => {
-                return Err(CliError::Runtime(format!(
-                    "could not inspect {rel_path}: {error}"
-                )))
-            }
+            Err(error) => return Err(error),
         }
     }
-    Ok(absolute)
+    Ok(Some(absolute))
 }
 
 /// Every eligible `.md` in the graph, recursively — the shared vault walk

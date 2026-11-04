@@ -280,7 +280,8 @@ impl Host {
 
     /// Read a graph-relative markdown file. Paths come from the core, which
     /// got them from this host's listing; anything that escapes the graph, or
-    /// is a symlink, is refused like the desktop's `note_read` does.
+    /// runs through a symlink at any depth, is refused like the desktop's
+    /// `note_read` does.
     fn read_note(&self, path: &str) -> Result<String, HostError> {
         let relative = Path::new(path);
         let escapes = relative
@@ -292,22 +293,20 @@ impl Host {
                 message: format!("not a graph note path: {path}"),
             });
         }
-        let absolute = self.root.join(relative);
         let not_found = || HostError {
             kind: "notFound",
             message: format!("no such note: {path}"),
         };
-        match std::fs::symlink_metadata(&absolute) {
-            Ok(meta) if meta.file_type().is_symlink() => {
+        let absolute = match crate::note_file::symlink_free_path(&self.root, path) {
+            Ok(Some(absolute)) => absolute,
+            Ok(None) => {
                 return Err(HostError {
                     kind: "traversal",
                     message: format!("refusing to follow a symlink: {path}"),
                 })
             }
-            Ok(_) => {}
-            Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Err(not_found()),
             Err(err) => return Err(HostError::io(format!("{path}: {err}"))),
-        }
+        };
         std::fs::read_to_string(&absolute).map_err(|err| match err.kind() {
             std::io::ErrorKind::NotFound => not_found(),
             _ => HostError::io(format!("{path}: {err}")),
@@ -420,5 +419,23 @@ mod tests {
             )
             .unwrap_err();
         assert_eq!(write.kind, "io");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn refuses_reads_through_a_symlinked_directory() {
+        let outside = tempfile::tempdir().unwrap();
+        std::fs::create_dir(outside.path().join("assets")).unwrap();
+        std::fs::write(outside.path().join("assets/photo.png.reflect.md"), "secret").unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        std::os::unix::fs::symlink(outside.path(), dir.path().join("linked")).unwrap();
+        let mut host = Host::open(dir.path()).unwrap();
+        let linked = host
+            .handle(
+                "note_read_local",
+                &json!({ "path": "linked/assets/photo.png.reflect.md" }),
+            )
+            .unwrap_err();
+        assert_eq!(linked.kind, "traversal");
     }
 }

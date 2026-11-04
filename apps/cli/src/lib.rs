@@ -44,4 +44,5 @@ pub mod search;
 pub mod search_query;
 pub mod semantic;
 pub mod slug;
+pub mod vault_sync;
 pub mod write;

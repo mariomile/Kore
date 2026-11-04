@@ -7,6 +7,15 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Kore stays on when the Mac sleeps. `kore mcp --http --sync` serves the
+  vault from any always-on machine holding a git clone of it, with no app
+  anywhere: it pulls and reindexes every minute, and commits and pushes
+  every write an agent makes. When an agent's write collides with an edit
+  from the Mac, the host re-runs the agent's operation on top of the Mac's
+  version instead of merging text, so it never leaves conflict markers or
+  stops syncing. A Docker image and a systemd unit come with it
+  (`docs/always-on.md`).
+
 - Every agent can share your vault with its own key. Run `kore keys add
   "Grok bot"` (or use Settings, Remote access) and that agent gets a key of
   its own: read-only unless you allow writes, removable alone without

@@ -1,5 +1,41 @@
 # Kore working state
 
+## Always-on host (`kore mcp --sync`), 2026-11-04
+
+User ask (Mario, 2026-11-04 19:02Z and 19:48Z, Plan 32 slice 2): Kore must
+be the shared, portable memory of all his agents, reachable when the Mac
+sleeps, and it must work for someone who never opens the desktop or mobile
+app. Builds on `kore index` (#315).
+
+- [x] `apps/cli/src/vault_sync.rs`: `VaultSync`, a `Runner` in front of the
+  MCP server. Reads run concurrently; every other subcommand is a write:
+  pull first, run, commit (`Kore host`), journal the operation in
+  `.git/kore-sync/journal.jsonl`, push, `kore index`. Integration is
+  fast-forward, else rebase, else reset to the remote and replay the
+  journal through the CLI (no text merge, no conflict markers on the
+  host); a replay that fails is dropped and logged. Offline writes stay
+  journaled across restarts. Refuses a dirty clone; keeps `.reflect/` in
+  `.git/info/exclude`.
+- [x] `kore mcp --sync [--sync-every SECS]` (background pull + reindex) and
+  `kore sync [--json]` (one pass).
+- [x] `deploy/always-on/`: Dockerfile (CLI + bundled indexer + Node 22 +
+  git), entrypoint (clone on first run, token via credential helper, index,
+  serve), systemd unit. Guide: `docs/always-on.md`.
+- Not done: deploy on a real host (candidate `a3b09dc05af0`, which already
+  has `/opt/data/vaults/marioverse-ai`, or a VPS: Mario's call), a live run
+  against `mariomile/obsidian-sync-marioverse` with the Mac's sync job
+  pulling, named per-agent commit authors (needs slice 1's named tokens).
+
+**Validation:** 8 unit tests over real git repos (bare remote, Mac clone,
+host clone): write → push → index; same-note Mac edit replayed in order
+with no markers; unrelated change rebased; write on a deleted note dropped;
+journal survives an offline restart; reads never commit and `.reflect/`
+never enters history; dirty or non-git folders refused. End to end with the
+debug binary and the real indexer: `capture` over HTTP reached the Mac's
+clone as one `Kore host` commit; a note pushed from the Mac was found by
+`search` over HTTP within one 5 s interval. `cargo clippy -p reflect-cli
+--all-targets -D warnings`, `cargo fmt --check`.
+
 ## Shared brain for agents, slice 1, 2026-11-04
 
 Plan 32 slice 1 (Mario, 2026-11-04, "Entrambe in parallelo"): connect any

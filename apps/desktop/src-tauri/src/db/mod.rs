@@ -722,7 +722,7 @@ pub async fn db_query<R: tauri::Runtime>(
             return Err(AppError::io("index reopened during query"));
         }
         let conn = read.conn.as_ref().ok_or_else(AppError::no_graph)?;
-        query::run_query(conn, &sql, &params)
+        Ok(query::run_query(conn, &sql, &params)?)
     })
     .await
 }

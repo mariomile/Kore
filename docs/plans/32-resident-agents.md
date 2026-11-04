@@ -45,14 +45,27 @@ Copy URL / Copy token (#294), agent onboarding (#308). In flight: hybrid
 search (#316) is `recall`, so no new tool; `kore index` (#315) gates slice 2.
 Slice 1 therefore extends the Remote access card and adds only `remember`.
 
+## Prior art studied (2026-11-04)
+
+Living Brain, Honcho (plastic-labs, open-source core, peers/sessions,
+background "dreaming") and Past (past.dev: audience/identity on every
+write/read, current + previous values with dates and sources, one-line agent
+setup prompt). Taken: a public `/setup.md` an agent reads to connect itself;
+`remember` always records date, source, agent and the previous value (the
+vault's own "new (from date; previously old)" form). Not taken: per-message
+automatic reasoning, automatic capture of every turn, hosted memory store.
+Gap they expose: Kore has no recall-quality measure; #316's eval script is the
+place for one.
+
 ## Slices
 
-1. **Connect an agent in a minute (recommended first).** Settings → Agents
-   gets a Connect section: one card per client with the command/URL filled in
-   and a copy button (a ready-to-paste message for Grok bot). Each card mints a
+1. **Connect an agent in a minute (recommended first).** The HTTP server
+   serves a public, secret-free `/setup.md` (per-client steps and usage rules);
+   the Remote access card offers one sentence to paste into any agent, next to
+   the existing Claude Code command and JSON. Each connection mints a
    named token, revocable on its own, with "last seen". The MCP server gains
    `remember` (writes a fact where the vault contract's routing says, else the
-   inbox, signed with the agent's name and date) (`recall` is #316's hybrid search). Live test with ChatGPT and Grok
+   inbox, with date, source, agent name and the previous value on update) (`recall` is #316's hybrid search). Live test with ChatGPT and Grok
    bot. Outcome: four clients on Mario's vault; every `remember` signed.
    Layering: Rust owns tokens and caller identity; routing policy stays in the
    vault contract and core.

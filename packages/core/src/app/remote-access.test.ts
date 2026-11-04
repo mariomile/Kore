@@ -1,9 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { setBridge } from '../ipc/bridge'
 import {
+  REMOTE_ACCESS_AGENTS_SECRET,
   REMOTE_ACCESS_TOKEN_SECRET,
+  addRemoteAgent,
   parseFunnelRun,
   parseTailscaleStatus,
+  remoteAccessSetupPrompt,
+  remoteAgents,
+  removeRemoteAgent,
   startRemoteAccess,
   stopRemoteAccess,
 } from './remote-access'
@@ -102,18 +107,20 @@ describe('startRemoteAccess', () => {
     expect(calls.map((entry) => entry.command)).toEqual([
       'secret_get',
       'secret_set',
+      'secret_get',
       'tailscale_run',
       'remote_mcp_start',
       'tailscale_run',
     ])
-    expect(calls[3]?.args).toEqual({
+    expect(calls[4]?.args).toEqual({
       generation: 3,
       port: 8765,
       token,
+      agents: '[]',
       readOnly: true,
       publicUrl: 'https://mac.tail1.ts.net',
     })
-    expect(calls[4]?.args).toEqual({ args: ['funnel', '--bg', '8765'] })
+    expect(calls[5]?.args).toEqual({ args: ['funnel', '--bg', '8765'] })
     expect(state).toEqual({
       server: running,
       localUrl: 'http://127.0.0.1:8765/mcp',
@@ -145,6 +152,36 @@ describe('startRemoteAccess', () => {
     expect(state.publicUrl).toBeNull()
     expect(calls.filter((entry) => entry.command === 'tailscale_run')).toHaveLength(1)
     expect(calls.find((entry) => entry.command === 'remote_mcp_start')?.args.publicUrl).toBeNull()
+  })
+})
+
+describe('remote agents', () => {
+  it('each agent gets its own key, read-only by default, handed to the server', async () => {
+    const { calls, secrets } = installBridge({
+      tailscale_run: () => tailscaleRun({ found: false, code: null }),
+      remote_mcp_start: () => running,
+    })
+    const grok = await addRemoteAgent(' Grok bot ', false)
+    const chatgpt = await addRemoteAgent('ChatGPT', true)
+    expect(grok).toMatchObject({ name: 'Grok bot', write: false })
+    expect(grok.key).not.toBe(chatgpt.key)
+    await expect(addRemoteAgent('grok BOT', true)).rejects.toThrow('already has a key')
+
+    await removeRemoteAgent(grok.id)
+    expect((await remoteAgents()).map((agent) => agent.name)).toEqual(['ChatGPT'])
+
+    await startRemoteAccess({ generation: 1, readOnly: false })
+    const started = calls.find((entry) => entry.command === 'remote_mcp_start')
+    expect(JSON.parse(started?.args.agents as string)).toEqual([chatgpt])
+
+    secrets.set(REMOTE_ACCESS_AGENTS_SECRET, 'not json')
+    expect(await remoteAgents()).toEqual([])
+  })
+
+  it('the setup prompt points at the public setup page, never the key', () => {
+    expect(remoteAccessSetupPrompt('https://mac.tail1.ts.net/mcp')).toBe(
+      'Read https://mac.tail1.ts.net/setup.md and connect to my Kore vault. Ask me for the key when you need it.',
+    )
   })
 })
 

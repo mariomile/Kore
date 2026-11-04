@@ -1,6 +1,8 @@
 # Plan 32 — Kore as the shared brain for every agent
 
-> **Status (2026-11-04):** Concept; no slice approved yet. Reframed by Mario
+> **Status (2026-11-04):** Slice 1 (named keys, `/setup.md`, `remember`)
+> built on `claude/project-thread-3ac78v`; slice 2 (always-on host) in a
+> separate thread. Reframed by Mario
 > the same evening from "agents living inside Kore" to "Kore is the portable
 > memory every agent shares". Italian write-up for Mario:
 > `/mnt/project-files/analisi/kore-cervello-condiviso.md` (project files).

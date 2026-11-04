@@ -82,13 +82,18 @@ export {
 } from '../app/agent-skill'
 export {
   REMOTE_ACCESS_PORT,
+  addRemoteAgent,
   remoteAccessLocalUrl,
+  remoteAccessSetupPrompt,
   remoteAccessToken,
+  remoteAgents,
+  removeRemoteAgent,
   remoteMcpStatus,
   rotateRemoteAccessToken,
   startRemoteAccess,
   stopRemoteAccess,
   type RemoteAccessState,
+  type RemoteAgent,
   type RemoteMcpStatus,
   type RemoteTunnel,
 } from '../app/remote-access'

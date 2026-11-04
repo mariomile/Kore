@@ -6,9 +6,11 @@
 //! one JSON-RPC message (or a batch) and gets a JSON reply; there is no SSE
 //! stream, so `GET /mcp` is 405 as the spec allows.
 //!
-//! Auth: one secret, `KORE_MCP_TOKEN`, guards everything. API clients send
-//! it as `Authorization: Bearer <secret>`; Claude's connectors sign in
-//! through the built-in OAuth server in [`oauth`].
+//! Auth: the owner's secret, `KORE_MCP_TOKEN`, plus one key per named agent
+//! (`KORE_MCP_AGENTS`). API clients send either as `Authorization: Bearer
+//! <key>`; Claude's and ChatGPT's connectors sign in through the built-in
+//! OAuth server in [`oauth`]. `GET /setup.md` is the one public page: what
+//! an agent reads to connect itself, with no secret in it.
 //!
 //! The server never terminates TLS: it binds a local address and is meant to
 //! sit behind an HTTPS tunnel (Tailscale Funnel, Cloudflare Tunnel) that
@@ -23,8 +25,12 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde_json::{json, Value};
 
+pub use crate::agent_keys::AgentKey;
 use crate::mcp::{decode_component, Runner, Server};
 use oauth::Authorizer;
+
+/// The agent-facing setup guide; `{MCP_URL}` is filled per request.
+const SETUP_GUIDE: &str = include_str!("mcp_http/setup.md");
 
 /// Shortest secret accepted: long enough that guessing it online is hopeless.
 pub const MIN_SECRET_LEN: usize = 24;
@@ -111,8 +117,13 @@ pub struct HttpOptions {
     /// The public origin clients reach (the tunnel's URL). When absent it is
     /// taken from the `Host` header.
     pub public_url: Option<String>,
-    /// OAuth redirect URIs accepted on top of Claude's and loopback ones.
+    /// OAuth redirect URIs accepted on top of Claude's, ChatGPT's and
+    /// loopback ones.
     pub extra_redirects: Vec<String>,
+    /// Named agents' keys handed over at start (`KORE_MCP_AGENTS`).
+    pub agents: Vec<AgentKey>,
+    /// The keys file `kore keys` edits, read on every request.
+    pub keys_file: Option<std::path::PathBuf>,
 }
 
 /// The MCP handler behind HTTP routing and the OAuth endpoints.
@@ -149,7 +160,12 @@ impl<R: Runner> HttpServer<R> {
     pub fn new(mcp: Server<R>, options: HttpOptions) -> Self {
         Self {
             mcp,
-            auth: Authorizer::new(options.secret, options.extra_redirects),
+            auth: Authorizer::new(
+                options.secret,
+                options.extra_redirects,
+                options.agents,
+                options.keys_file,
+            ),
             public_url: options
                 .public_url
                 .map(|url| url.trim_end_matches('/').to_string()),
@@ -168,6 +184,11 @@ impl<R: Runner> HttpServer<R> {
             ("GET", path) if path.starts_with("/.well-known/oauth-authorization-server") => {
                 HttpResponse::json(200, &Authorizer::server_metadata(&base))
             }
+            ("GET", "/setup.md") => HttpResponse::new(
+                200,
+                &[("Content-Type", "text/markdown; charset=utf-8")],
+                SETUP_GUIDE.replace("{MCP_URL}", &format!("{base}/mcp")),
+            ),
             ("POST", "/register") => self.auth.register(&request.body),
             ("GET", "/authorize") => self.auth.authorize_page(&parse_form(&request.query)),
             ("POST", "/authorize") => self.auth.authorize_submit(&request.body_form(), at),
@@ -190,7 +211,7 @@ impl<R: Runner> HttpServer<R> {
             .header("authorization")
             .and_then(|value| value.strip_prefix("Bearer "))
             .map(str::trim);
-        if !bearer.is_some_and(|token| self.auth.accepts(token, at)) {
+        let Some(caller) = bearer.and_then(|token| self.auth.caller(token, at)) else {
             let mut response =
                 HttpResponse::oauth_error(401, "invalid_token", "missing or invalid bearer token");
             response.headers.push((
@@ -198,8 +219,8 @@ impl<R: Runner> HttpServer<R> {
                 format!("Bearer resource_metadata=\"{base}/.well-known/oauth-protected-resource\""),
             ));
             return response;
-        }
-        match self.mcp.handle_payload(&request.body) {
+        };
+        match self.mcp.handle_payload_as(&request.body, &caller) {
             Some(reply) => HttpResponse::json(200, &reply),
             None => HttpResponse::new(202, &[], Vec::new()),
         }
@@ -292,16 +313,24 @@ mod tests {
     }
 
     const SECRET: &str = "a-long-enough-test-secret-123";
+    const AGENT_KEY: &str = "grok-bots-own-long-enough-key-456";
     const AT: u64 = 1_800_000_000;
     const REDIRECT: &str = "https://claude.ai/api/mcp/auth_callback";
 
     fn server() -> HttpServer<NoRunner> {
         HttpServer::new(
-            Server::new(NoRunner, true),
+            Server::new(NoRunner, false),
             HttpOptions {
                 secret: SECRET.into(),
                 public_url: Some("https://kore.example.ts.net".into()),
                 extra_redirects: Vec::new(),
+                agents: vec![AgentKey {
+                    id: "a1".into(),
+                    name: "Grok bot".into(),
+                    key: AGENT_KEY.into(),
+                    write: false,
+                }],
+                keys_file: None,
             },
         )
     }
@@ -399,6 +428,81 @@ mod tests {
         assert_eq!(expired.status, 401);
     }
 
+    fn tool_names(response: &HttpResponse) -> Vec<String> {
+        body(response)["result"]["tools"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|tool| tool["name"].as_str().unwrap().to_string())
+            .collect()
+    }
+
+    #[test]
+    fn an_agent_key_is_its_own_read_only_caller_and_its_tokens_die_with_it() {
+        let server = server();
+        let direct = server.route(&post("/mcp", LIST_TOOLS, Some(AGENT_KEY)), AT);
+        assert_eq!(direct.status, 200);
+        let names = tool_names(&direct);
+        assert!(names.contains(&"search".to_string()));
+        assert!(!names.contains(&"remember".to_string()));
+        let owner = server.route(&post("/mcp", LIST_TOOLS, Some(SECRET)), AT);
+        assert!(tool_names(&owner).contains(&"remember".to_string()));
+
+        // Signing in with the agent key binds the OAuth tokens to the agent.
+        let verifier = "a-pkce-verifier-that-is-long-enough-for-the-spec-000";
+        let challenge = URL_SAFE_NO_PAD.encode(Sha256::digest(verifier));
+        let chatgpt = "https://chatgpt.com/connector/oauth/abc_123";
+        let form = format!(
+            "response_type=code&client_id=c1&redirect_uri={}&code_challenge={challenge}\
+&code_challenge_method=S256&secret={AGENT_KEY}",
+            encode_component(chatgpt)
+        );
+        let allowed = server.route(&post("/authorize", &form, None), AT);
+        assert_eq!(allowed.status, 302);
+        let code =
+            parse_form(header(&allowed, "Location").split_once('?').unwrap().1)["code"].clone();
+        let exchange = format!(
+            "grant_type=authorization_code&code={}&client_id=c1&redirect_uri={}&code_verifier={verifier}",
+            encode_component(&code),
+            encode_component(chatgpt)
+        );
+        let access = body(&server.route(&post("/token", &exchange, None), AT))["access_token"]
+            .as_str()
+            .unwrap()
+            .to_string();
+        let as_agent = server.route(&post("/mcp", LIST_TOOLS, Some(&access)), AT + 1);
+        assert!(!tool_names(&as_agent).contains(&"remember".to_string()));
+
+        // Removing the key (a restart with the agent gone) revokes its token.
+        let without_agent = HttpServer::new(
+            Server::new(NoRunner, false),
+            HttpOptions {
+                secret: SECRET.into(),
+                public_url: Some("https://kore.example.ts.net".into()),
+                extra_redirects: Vec::new(),
+                agents: Vec::new(),
+                keys_file: None,
+            },
+        );
+        let revoked = without_agent.route(&post("/mcp", LIST_TOOLS, Some(&access)), AT + 1);
+        assert_eq!(revoked.status, 401);
+    }
+
+    #[test]
+    fn the_setup_guide_is_public_and_names_this_servers_url() {
+        let server = server();
+        let request = HttpRequest {
+            method: "GET".into(),
+            path: "/setup.md".into(),
+            ..HttpRequest::default()
+        };
+        let response = server.route(&request, AT);
+        assert_eq!(response.status, 200);
+        let text = String::from_utf8(response.body).unwrap();
+        assert!(text.contains("https://kore.example.ts.net/mcp"));
+        assert!(!text.contains(SECRET) && !text.contains("{MCP_URL}"));
+    }
+
     #[test]
     fn an_unknown_redirect_uri_never_receives_a_code() {
         let server = server();
@@ -424,5 +528,8 @@ mod tests {
             assert!(!server.auth.redirect_allowed(injected), "{injected}");
         }
         assert!(is_loopback_redirect("http://localhost:3118/callback"));
+        assert!(!server
+            .auth
+            .redirect_allowed("https://chatgpt.com/connector/oauth/x/../../evil"));
     }
 }

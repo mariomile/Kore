@@ -7,6 +7,14 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Every agent can share your vault with its own key. Run `kore keys add
+  "Grok bot"` (or use Settings, Remote access) and that agent gets a key of
+  its own: read-only unless you allow writes, removable alone without
+  disconnecting the others, and the facts it saves with the new `remember`
+  tool carry its name and the date. Paste "Copy setup prompt" into any agent
+  and it reads the server's `/setup.md` to connect itself; ChatGPT now
+  connects too. Works without the Kore app on an always-on machine.
+
 - Agents search your vault by meaning. `kore search` and the MCP `search`
   tool now find notes the way Kore's own AI chat does, by words and by
   meaning, using the semantic index the app already builds. Agents can also

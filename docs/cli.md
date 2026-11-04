@@ -41,6 +41,7 @@ kore tag <note> <tag>      # add a trailing #tag line (untag removes it)
 kore done <text>           # tick a task off by its text (--undo reopens)
 kore mcp                   # serve the graph to MCP clients over stdio (--read-only, --http <addr>)
 kore index                 # build or refresh the index without the app (Node 22+, --rebuild)
+kore keys add <name>       # a named agent's own key for mcp --http (--write; list, remove)
 ```
 
 Built from `apps/cli` (`cargo build -p reflect-cli`); bundled with the desktop
@@ -763,6 +764,13 @@ fails (not found, private, no index) comes back as a tool result with
 | `explain_note`, `path_between_notes`, `grep_notes`, `list_skills`, `load_skill`, `active_note` | `explain`, `route`, `grep`, `skills`, `skills <name>`, `active` |
 | `capture`, `append_to_note`, `edit_note`, `create_note`, `set_properties` | `capture`, `append --stdin`, `edit`, `new` (body on stdin), `set` |
 | `tag_note`, `untag_note`, `complete_task` | `tag`, `untag`, `done` |
+| `remember` | `capture` (to today's daily, or `--to <note>`) |
+
+`remember` is the shared-memory verb: one fact as a signed bullet,
+`[likely] The fact (previously: old) — Grok bot, 2026-11-04`. The
+confidence tag is `certain`, `likely` (default) or `speculative`; the name
+is the calling agent's own when it connected with a named key (see below),
+whatever name it claims, else the `agent` argument.
 
 `search` takes an optional `mode` (`hybrid` by default, `lexical`,
 `semantic`), so an agent searches the way the in-app chat does.
@@ -775,7 +783,7 @@ instructions starts every session under the vault's rules, whether it
 connects over stdio or `--http`, and ChatGPT- or Grok-style clients that
 only use tools still reach them through `vault_guide`.
 
-`--read-only` drops the writing tools (the last two rows) from `tools/list`
+`--read-only` drops the writing tools (the last three rows) from `tools/list`
 and refuses them if called. Tools carry `readOnlyHint` and
 `destructiveHint` annotations either way, so clients that confirm writes can
 tell them apart: `edit_note`, the one tool that replaces existing text, is
@@ -824,19 +832,36 @@ tailscale funnel 8765                              # or a Cloudflare Tunnel
 
 The server binds a local address and never terminates TLS; the tunnel
 supplies the public HTTPS URL (pass it with `--public-url` if the tunnel
-does not forward the `Host` header). One secret, `KORE_MCP_TOKEN` (at least
-24 characters), guards everything:
+does not forward the `Host` header). The owner's secret, `KORE_MCP_TOKEN`
+(at least 24 characters), guards everything, and each named agent can have
+its own key:
 
-- **API clients** send it as `Authorization: Bearer <token>`.
-- **Claude** (custom connector at `<public url>/mcp`) signs in with OAuth.
+- **API clients** send the token or a key as `Authorization: Bearer <key>`.
+- **Claude and ChatGPT** (custom connector at `<public url>/mcp`) sign in with OAuth.
   The server is its own single-user authorization server: discovery
   metadata, dynamic client registration, an authorize page that asks for
   the token, PKCE S256, refresh. Codes and tokens are HMAC-signed with a key
   derived from the token, so they survive a restart and changing
   `KORE_MCP_TOKEN` revokes every connection. Access tokens last an hour,
   refresh tokens 30 days.
-- OAuth redirects go only to Claude's callback and loopback addresses;
-  `--redirect-uri <uri>` (repeatable) allows another client's.
+- OAuth redirects go only to Claude's and ChatGPT's callbacks and loopback
+  addresses; `--redirect-uri <uri>` (repeatable) allows another client's.
+- **`GET /setup.md`** is the one public page: the server's MCP URL, how
+  each client connects, and how to use the vault. It holds no secret, so a
+  user can tell any agent "read <url>/setup.md and connect to my Kore".
+
+**Named agents.** `kore keys add "Grok bot"` prints a new key once
+(`--write` lets that agent use the writing tools; keys are read-only by
+default). The agent signs in with it like the token, as a bearer header or
+on the "Connect to Kore" page; then what it `remember`s carries its name,
+and `kore keys remove "Grok bot"` disconnects it alone, OAuth tokens
+included, at its next request. `kore keys list` shows names and permissions,
+never keys. The keys live in `$KORE_MCP_KEYS_FILE`, else
+`$XDG_CONFIG_HOME/kore/mcp-agents.json`, else `~/.config/kore/mcp-agents.json`
+(mode 0600, outside the vault), and the server reads that file on every
+request, so none of this needs a restart or the app. The Mac app keeps its
+own list in the keychain and passes it as `KORE_MCP_AGENTS` (a JSON list of
+`{id, name, key, write}`).
 
 `--read-only` applies here too. Search, tags, backlinks, lists and tasks
 read the index the Kore app keeps, so run the server where the app has the

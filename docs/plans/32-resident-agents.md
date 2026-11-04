@@ -37,6 +37,14 @@ no lock-in.
 | ChatGPT | Developer Mode connector, HTTPS URL, OAuth or token | untested against our OAuth; Mac awake |
 | Grok bot | adds MCP by URL or by command on its cloud computer | untested; Mac awake |
 
+## Overlap check (2026-11-04)
+
+Already shipped: `mcpClientSetup` (Claude Code command, Claude Desktop/Cursor
+JSON, #277), bundled skills in `~/.agents/skills`, Remote access card with
+Copy URL / Copy token (#294), agent onboarding (#308). In flight: hybrid
+search (#316) is `recall`, so no new tool; `kore index` (#315) gates slice 2.
+Slice 1 therefore extends the Remote access card and adds only `remember`.
+
 ## Slices
 
 1. **Connect an agent in a minute (recommended first).** Settings → Agents
@@ -44,8 +52,7 @@ no lock-in.
    and a copy button (a ready-to-paste message for Grok bot). Each card mints a
    named token, revocable on its own, with "last seen". The MCP server gains
    `remember` (writes a fact where the vault contract's routing says, else the
-   inbox, signed with the agent's name and date) and `recall` (search over
-   memory and notes; hybrid once #316 lands). Live test with ChatGPT and Grok
+   inbox, signed with the agent's name and date) (`recall` is #316's hybrid search). Live test with ChatGPT and Grok
    bot. Outcome: four clients on Mario's vault; every `remember` signed.
    Layering: Rust owns tokens and caller identity; routing policy stays in the
    vault contract and core.

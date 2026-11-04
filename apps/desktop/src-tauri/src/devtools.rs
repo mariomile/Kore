@@ -9,17 +9,17 @@
 //! `toggleDevtools`); on macOS the webview's native ⌘⌥I and right-click
 //! "Inspect Element" work as well once the feature is compiled in.
 
-use tauri::WebviewWindow;
+use tauri::Webview;
 
 /// Open the calling window's web inspector, or close it if it is already open.
 ///
 /// A no-op-shaped command: it returns unit (serialized as `null`) so the typed
 /// binding can validate the response like any other IPC call.
 #[tauri::command]
-pub fn toggle_devtools(window: WebviewWindow) {
-    if window.is_devtools_open() {
-        window.close_devtools();
+pub fn toggle_devtools(webview: Webview) {
+    if webview.is_devtools_open() {
+        webview.close_devtools();
     } else {
-        window.open_devtools();
+        webview.open_devtools();
     }
 }

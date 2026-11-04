@@ -152,7 +152,7 @@ fn place(webview: &Webview, x: f64, y: f64, width: f64, height: f64) -> AppResul
 #[allow(clippy::too_many_arguments)]
 #[tauri::command]
 pub async fn browser_embed_show(
-    window: tauri::WebviewWindow,
+    window: tauri::Window,
     app: AppHandle,
     state: State<'_, BrowserState>,
     url: Option<String>,
@@ -191,7 +191,7 @@ pub async fn browser_embed_show(
 
 /// Build the child webview docked on the main window's `Window`.
 fn create_embed(
-    window: &tauri::WebviewWindow,
+    window: &tauri::Window,
     app: &AppHandle,
     url: tauri::Url,
     x: f64,
@@ -216,8 +216,6 @@ fn create_embed(
             allowed
         });
     window
-        .as_ref()
-        .window()
         .add_child(
             builder,
             LogicalPosition::new(x, y),
@@ -335,7 +333,7 @@ const READ_GRACE_ATTEMPTS: u32 = 8;
 /// visible host, the webview is created off-screen and released after the read.
 #[tauri::command]
 pub async fn browser_embed_open(
-    window: tauri::WebviewWindow,
+    window: tauri::Window,
     app: AppHandle,
     state: State<'_, BrowserState>,
     url: String,
@@ -536,6 +534,43 @@ pub async fn browser_embed_read(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Once `create_embed` docks the child webview, the main window holds two
+    /// webviews and Tauri stops treating it as a `WebviewWindow`: any command
+    /// taking a `tauri::WebviewWindow` argument then fails with "current
+    /// webview is not a WebviewWindow" (it broke re-showing the Browser pane
+    /// after a menu closed). Commands must take `tauri::Window` or
+    /// `tauri::Webview` instead.
+    #[test]
+    fn no_command_takes_a_webview_window_argument() {
+        let src = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+        let mut offenders = Vec::new();
+        let mut stack = vec![src];
+        while let Some(dir) = stack.pop() {
+            for entry in std::fs::read_dir(&dir).unwrap() {
+                let path = entry.unwrap().path();
+                if path.is_dir() {
+                    stack.push(path);
+                    continue;
+                }
+                if path.extension().and_then(|ext| ext.to_str()) != Some("rs") {
+                    continue;
+                }
+                let text = std::fs::read_to_string(&path).unwrap();
+                for (index, _) in text.match_indices("#[tauri::command]") {
+                    let rest = &text[index..];
+                    let signature = &rest[..rest.find('{').unwrap_or(rest.len())];
+                    if signature.contains("WebviewWindow") {
+                        offenders.push(format!("{}:{index}", path.display()));
+                    }
+                }
+            }
+        }
+        assert!(
+            offenders.is_empty(),
+            "commands taking WebviewWindow: {offenders:?}"
+        );
+    }
 
     #[test]
     fn host_release_waits_for_active_reads() {

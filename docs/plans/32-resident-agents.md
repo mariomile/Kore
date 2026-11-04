@@ -1,7 +1,8 @@
 # Plan 32 — Resident agents: Kore as the home agents share
 
-> **Status (2026-11-04):** Concept. No slice approved yet; slice 1 waits for
-> Mario's go. Italian write-up for Mario:
+> **Status (2026-11-04):** Concept only, by Mario's choice (2026-11-04); no slice
+> is built until he reopens it. Recommended first slice if reopened: slice 1.
+> Italian write-up for Mario:
 > `/mnt/project-files/analisi/agenti-residenti-in-kore.md` (project files).
 
 ## Why

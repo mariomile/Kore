@@ -7,6 +7,12 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Arrange the sidebar your way. Drag Daily notes, New note, All notes,
+  Tasks and Graph into any order, and move Pinned notes, Folders and Types
+  from the "…" on their header. Anything can be hidden and brought back from
+  the "hidden items" line. The terminal left the sidebar: open it as a tab
+  from the "+" in the tab bar.
+
 - The in-app browser shows its page again. Since 0.83.1 a Browser tab could
   show "current webview is not a WebviewWindow" instead of the page, after
   a menu or dialog had been open over it. Quitting or opening a note window

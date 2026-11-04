@@ -1,6 +1,19 @@
 import { useState, type ReactElement, type ReactNode } from 'react'
 import type { DraggableSyntheticListeners } from '@dnd-kit/core'
-import { ChevronDown, ChevronRight } from '@/components/icons'
+import {
+  ArrowDown,
+  ArrowUp,
+  ChevronDown,
+  ChevronRight,
+  Close,
+  MoreHorizontal,
+} from '@/components/icons'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 
 /**
@@ -12,6 +25,14 @@ export interface SidebarDisclosureHandle {
   listeners: DraggableSyntheticListeners
 }
 
+/** The header menu's arrangement commands, the keyboard path to a drag. */
+export interface SidebarDisclosureArrangement {
+  canMoveUp: boolean
+  canMoveDown: boolean
+  move: (direction: 'up' | 'down') => void
+  hide: () => void
+}
+
 interface SidebarDisclosureProps {
   /** Session-storage key suffix persisting this section's open state. */
   storageKey: string
@@ -20,6 +41,8 @@ interface SidebarDisclosureProps {
   label: string
   /** Present while the shelf can be dragged into a new position. */
   handle?: SidebarDisclosureHandle
+  /** Present when the header offers a "…" menu with Move up/down and Hide. */
+  arrangement?: SidebarDisclosureArrangement | undefined
   children: ReactNode
 }
 
@@ -46,9 +69,11 @@ export function SidebarDisclosure({
   title,
   label,
   handle,
+  arrangement,
   children,
 }: SidebarDisclosureProps): ReactElement {
   const [open, setOpen] = useState(() => readOpenState(storageKey))
+  const [menuOpen, setMenuOpen] = useState(false)
 
   const toggle = (): void => {
     const next = !open
@@ -59,22 +84,69 @@ export function SidebarDisclosure({
   const Chevron = open ? ChevronDown : ChevronRight
   return (
     <section aria-label={label} className="px-4.5">
-      <button
-        type="button"
-        ref={handle?.ref}
-        onClick={toggle}
-        aria-expanded={open}
-        className={cn(
-          'group flex w-full items-center pt-4 text-2xs font-medium leading-5 tracking-wide text-text-muted',
-          handle && 'touch-none select-none',
+      <div className="group flex items-center gap-1 pt-4">
+        <button
+          type="button"
+          ref={handle?.ref}
+          onClick={toggle}
+          aria-expanded={open}
+          className={cn(
+            'flex min-w-0 flex-1 items-center text-2xs font-medium leading-5 tracking-wide text-text-muted',
+            handle && 'touch-none select-none',
+          )}
+          {...handle?.listeners}
+        >
+          <span className="min-w-0 flex-1 truncate text-left">{title}</span>
+          <span className={cn('flex-none group-hover:visible', open && 'invisible')}>
+            <Chevron aria-hidden className="size-3" />
+          </span>
+        </button>
+        {arrangement === undefined ? null : (
+          <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+            <DropdownMenuTrigger
+              render={
+                <button
+                  type="button"
+                  aria-label={`${title} options`}
+                  title={`${title} options`}
+                  // Faded rather than `invisible` so Tab still reaches it, and
+                  // kept up while its menu is open.
+                  className={cn(
+                    'flex-none rounded text-text-muted opacity-0 transition-colors duration-100 hover:text-text-secondary group-hover:opacity-100 focus-visible:opacity-100',
+                    menuOpen && 'opacity-100',
+                  )}
+                >
+                  <MoreHorizontal aria-hidden className="size-3.5" />
+                </button>
+              }
+            />
+            <DropdownMenuContent align="end" sideOffset={4} className="min-w-44">
+              <DropdownMenuItem
+                disabled={!arrangement.canMoveUp}
+                onClick={() => {
+                  arrangement.move('up')
+                }}
+              >
+                <ArrowUp aria-hidden className="size-3.5" />
+                Move up
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={!arrangement.canMoveDown}
+                onClick={() => {
+                  arrangement.move('down')
+                }}
+              >
+                <ArrowDown aria-hidden className="size-3.5" />
+                Move down
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={arrangement.hide}>
+                <Close aria-hidden className="size-3.5" />
+                Hide section
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
-        {...handle?.listeners}
-      >
-        <span className="min-w-0 flex-1 truncate text-left">{title}</span>
-        <span className={cn('flex-none group-hover:visible', open && 'invisible')}>
-          <Chevron aria-hidden className="size-3" />
-        </span>
-      </button>
+      </div>
       <div
         className={cn(
           'grid transition-[grid-template-rows] duration-200 ease-[cubic-bezier(0.32,0.72,0,1)]',

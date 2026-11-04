@@ -1,5 +1,38 @@
 # Kore working state
 
+## Sidebar you arrange yourself, terminal as a tab, 2026-11-04
+
+User ask (Mario, 2026-11-04, screenshot): "nella sidebar dobbiamo poter
+riorganizzare la sidebar come vogliamo, quindi spostare le posizioni types e
+folder"; "terminal credo che lo possiamo togliere dalla sidebar", available
+as a tab instead; evaluate a library like Ghostty. (The type-chip filter ask
+from the same message is another thread's.)
+
+- [x] Shelves (Pinned notes, Folders, Types) already dragged by their header
+  since #263, but nothing said so. Each header now has a "…" menu on hover:
+  Move up, Move down, Hide section. A step skips empty shelves.
+- [x] Navigation rows (Daily notes, New note, All notes, Tasks, Graph) drag
+  into any order and offer Move Up / Move Down / Hide on right-click
+  (native menu). New settings `sidebarNav` (order) and `hiddenSidebarItems`
+  (rows and shelves); `moveDetailsSection` is now generic, exported for the
+  sidebar as `moveSidebarItem`.
+- [x] Hidden rows and shelves come back from an "N hidden items" line at the
+  foot of the shelves.
+- [x] Terminal row removed from the sidebar. The tab strip's "+" menu now
+  offers New note, Browser and Terminal; the palette, the app menu and the
+  right-rail Terminal panel are unchanged.
+- Ghostty: not adopted. Native Ghostty cannot draw inside the Tauri
+  webview; `ghostty-web` (Coder, WASM build of libghostty's VT parser,
+  xterm.js-compatible API, v0.4.0) is the only drop-in path. Recommendation
+  to Mario: keep xterm.js for now and try `ghostty-web` in a small spike
+  only if a concrete terminal bug (Unicode, rendering) shows up.
+
+**Validation:** core `schema.test.ts`; `sidebar.test.tsx`,
+`sidebar-sections.test.tsx`, `details-sections.test.tsx`,
+`note-tabs-strip.test.tsx` on Chromium; `pnpm check`. WebKit left to CI.
+Right-click menu on nav rows needs a look on the Mac (native menu is a no-op
+in the browser tests).
+
 ## In-app browser blank after a menu closes, 2026-11-04
 
 Bug (Mario, 2026-11-04, screenshot, v0.83.1): a Browser tab showed only

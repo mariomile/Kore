@@ -59,7 +59,7 @@ impl QuitState {
 /// Confirm a deferred quit for the calling window: its frontend has flushed.
 /// Settling the last owed window exits immediately.
 #[tauri::command]
-pub fn quit_confirm(window: tauri::WebviewWindow, app: AppHandle, state: State<'_, QuitState>) {
+pub fn quit_confirm(window: tauri::Window, app: AppHandle, state: State<'_, QuitState>) {
     if state.settle(window.label()) {
         app.exit(0);
     }

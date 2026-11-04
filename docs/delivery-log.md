@@ -7,6 +7,11 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- The in-app browser shows its page again. Since 0.83.1 a Browser tab could
+  show "current webview is not a WebviewWindow" instead of the page, after
+  a menu or dialog had been open over it. Quitting or opening a note window
+  while a web page was open could hit the same error.
+
 - Menus open above the in-app browser. The "+" new-tab menu, the command
   palette and other menus or dialogs that land on a web page no longer hide
   behind it: the page steps aside while they are open.

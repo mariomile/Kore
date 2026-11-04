@@ -1,5 +1,28 @@
 # Kore working state
 
+## In-app browser blank after a menu closes, 2026-11-04
+
+Bug (Mario, 2026-11-04, screenshot, v0.83.1): a Browser tab showed only
+"current webview is not a WebviewWindow" instead of the page. Regression
+from #310: once the child webview is docked, the main window holds two
+webviews and Tauri no longer resolves a `tauri::WebviewWindow` command
+argument for it. #310 made the pane call `browser_embed_show` again after a
+menu closes, while the child exists, so the extractor failed.
+
+- [x] `browser_embed_show`, `browser_embed_open`, `open_note_window`,
+  `open_browser_window`, `window_bootstrap` and `quit_confirm` take
+  `tauri::Window`; `toggle_devtools` takes `tauri::Webview`. Quit and
+  opening a note window with a browser page open were exposed to the same
+  error.
+- [x] Guard test `no_command_takes_a_webview_window_argument` (browser.rs)
+  fails on any `#[tauri::command]` with a `WebviewWindow` parameter.
+
+**Validation:** `cargo fmt --check`, `cargo clippy -p reflect-open
+--all-targets -D warnings`, `cargo test -p reflect-open` (426 pass; the 2
+chmod-based tests fail only because the container runs as root). Guard
+test checked red against the old `quit_confirm` signature. Needs a look on
+the Mac.
+
 ## Menus above the in-app browser, 2026-11-03
 
 Bug (Mario, 2026-11-03, screenshot): with a Browser tab open, the tab bar's

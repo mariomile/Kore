@@ -7,6 +7,15 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- `kore index` builds the search index without the app. On a plain clone of
+  a vault (a server that pulls it from GitHub, say) one command makes every
+  index-backed CLI command and every `kore mcp` tool answer: search, tags,
+  backlinks, lists, tasks. It runs the app's own indexer (`@reflect/core`
+  bundled as `kore-indexer.mjs`, under Node 22+) and writes rows through the
+  app's own Rust write path, now the shared `crates/index-store`, so the two
+  can never build different indexes. First run 5,155 notes in 13.4 s; a
+  rerun after one edit and one rename took 0.3 s. Embeddings stay app-side.
+
 - The in-app browser shows its page again. Since 0.83.1 a Browser tab could
   show "current webview is not a WebviewWindow" instead of the page, after
   a menu or dialog had been open over it. Quitting or opening a note window

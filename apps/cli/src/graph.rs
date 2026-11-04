@@ -50,6 +50,34 @@ fn explicit_graph(path: &Path, source: &str) -> Result<Graph, CliError> {
 }
 
 /// Resolve the active graph. First hit wins: flag, env, then the walk-up.
+/// Resolve the graph for `kore index`, which may be the first thing to run
+/// on a folder: an explicit `--graph` or `$KORE_GRAPH` directory is adopted
+/// even without `.reflect/` (indexing creates it). The current-directory
+/// fallback still requires `.reflect/`, so a stray run never indexes `$HOME`.
+pub fn resolve_for_index(flag: Option<&Path>) -> Result<Graph, CliError> {
+    let explicit = flag
+        .map(|path| (path.to_path_buf(), "--graph"))
+        .or_else(|| {
+            std::env::var_os("KORE_GRAPH")
+                .filter(|env| !env.is_empty())
+                .map(|env| (PathBuf::from(env), "KORE_GRAPH"))
+        });
+    let Some((path, source)) = explicit else {
+        return resolve(None).map_err(|_| {
+            CliError::runtime(
+                "no graph found — pass --graph <path> to index a folder for the first time",
+            )
+        });
+    };
+    if !path.is_dir() {
+        return Err(CliError::Runtime(format!(
+            "{source}: no such directory: {}",
+            path.display()
+        )));
+    }
+    canonical_graph(&path)
+}
+
 pub fn resolve(flag: Option<&Path>) -> Result<Graph, CliError> {
     if let Some(path) = flag {
         return explicit_graph(path, "--graph");

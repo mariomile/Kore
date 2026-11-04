@@ -13,17 +13,16 @@
 
 pub mod backup;
 mod chat_write;
-mod embed_write;
 mod migrations;
 mod query;
-mod scan;
 #[cfg(test)]
 mod tests;
-mod write;
+
+use reflect_index_store::{embed_write, scan, write};
 
 use std::sync::{Mutex, MutexGuard};
 
-use rusqlite::{params, Connection};
+use rusqlite::Connection;
 use serde_json::{Map, Value};
 use tauri::{Manager, State};
 
@@ -204,11 +203,7 @@ fn apply_in_txn(index: &IndexState, generation: u64, notes: &[IndexedNote]) -> A
         return Ok(false);
     }
     let conn = state.conn.as_mut().ok_or_else(AppError::no_graph)?;
-    let tx = conn.transaction()?;
-    for note in notes {
-        write::apply_note(&tx, note)?;
-    }
-    tx.commit()?;
+    write::apply_notes(conn, notes)?;
     Ok(true)
 }
 
@@ -295,12 +290,7 @@ pub async fn index_remove_batch<R: tauri::Runtime>(
                 return Ok(false);
             }
             let conn = state.conn.as_mut().ok_or_else(AppError::no_graph)?;
-            let tx = conn.transaction()?;
-            for path in &paths {
-                write::remove_note(&tx, path)?;
-                embed_write::remove_chunks(&tx, path)?;
-            }
-            tx.commit()?;
+            write::remove_notes(conn, &paths)?;
             Ok(true)
         }
     })
@@ -398,13 +388,7 @@ fn move_rows(
     to: &str,
     address: &write::MovedNoteAddress,
 ) -> AppResult<()> {
-    let tx = conn.transaction()?;
-    // Child tables FK `notes(path)`; deferring lets the parent key move first
-    // and the constraint re-check at commit, when the children have followed.
-    tx.execute_batch("PRAGMA defer_foreign_keys = ON;")?;
-    write::move_note(&tx, from, to, address)?;
-    tx.commit()?;
-    Ok(())
+    Ok(write::move_note_rows(conn, from, to, address)?)
 }
 
 /// Move a note's projection rows **only** (the id-based reconcile, Plan 17):
@@ -504,14 +488,6 @@ pub async fn index_reconcile_scan<R: tauri::Runtime>(
     .await
 }
 
-/// One `index_touch` entry: re-stamp `path`'s stored mtime to `mtime`
-/// (epoch ms, as listed by `list_files`).
-#[derive(Debug, serde::Deserialize)]
-pub struct IndexTouch {
-    path: String,
-    mtime: i64,
-}
-
 /// Re-stamp stored mtimes for notes whose content already matches disk (the
 /// reconcile's hash-match skip, no-op if stale). Rows written from a local
 /// write echo carry an echo-time stamp that never equals the listed on-disk
@@ -520,7 +496,7 @@ pub struct IndexTouch {
 /// vanished in between updates nothing.
 #[tauri::command]
 pub async fn index_touch<R: tauri::Runtime>(
-    entries: Vec<IndexTouch>,
+    entries: Vec<write::MtimeTouch>,
     generation: u64,
     app: tauri::AppHandle<R>,
     background_tasks: State<'_, BackgroundTaskState>,
@@ -533,12 +509,7 @@ pub async fn index_touch<R: tauri::Runtime>(
             return Ok(());
         }
         let conn = state.conn.as_mut().ok_or_else(AppError::no_graph)?;
-        let tx = conn.transaction()?;
-        for entry in &entries {
-            write::touch_note(&tx, &entry.path, entry.mtime)?;
-        }
-        tx.commit()?;
-        Ok(())
+        Ok(write::touch_notes(conn, &entries)?)
     })
     .await
 }
@@ -560,12 +531,7 @@ pub(super) fn set_index_meta_for(
         return Ok(());
     }
     let conn = state.conn.as_ref().ok_or_else(AppError::no_graph)?;
-    conn.prepare_cached(
-        "INSERT INTO index_meta(key, value) VALUES(?1, ?2)
-         ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-    )?
-    .execute(params![key, value])?;
-    Ok(())
+    Ok(write::set_index_meta(conn, key, value)?)
 }
 
 #[tauri::command]

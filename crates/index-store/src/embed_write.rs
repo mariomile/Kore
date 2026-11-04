@@ -6,7 +6,7 @@
 use rusqlite::{params, Connection};
 use serde::Deserialize;
 
-use crate::error::{AppError, AppResult};
+use crate::error::{StoreError, StoreResult};
 
 /// One chunk of a note, built in TS (`@reflect/core` chunker). `vector` is
 /// present only for new/changed chunks — `None` means "this chunk's hash
@@ -15,13 +15,13 @@ use crate::error::{AppError, AppResult};
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EmbeddedChunk {
-    pub(super) heading: Option<String>,
-    pub(super) pos_from: i64,
-    pub(super) pos_to: i64,
-    pub(super) text: String,
-    pub(super) content_hash: String,
-    pub(super) model_id: String,
-    pub(super) vector: Option<Vec<f32>>,
+    pub heading: Option<String>,
+    pub pos_from: i64,
+    pub pos_to: i64,
+    pub text: String,
+    pub content_hash: String,
+    pub model_id: String,
+    pub vector: Option<Vec<f32>>,
 }
 
 fn vector_json(vector: &[f32]) -> String {
@@ -41,11 +41,11 @@ fn vector_json(vector: &[f32]) -> String {
 /// in the set are dropped (vectors included), kept rows get fresh metadata,
 /// and chunks carrying a vector are inserted. A "new" chunk without a vector
 /// is a pipeline bug — fail loudly rather than store an unsearchable row.
-pub(super) fn apply_chunks(
+pub fn apply_chunks(
     conn: &Connection,
     note_path: &str,
     chunks: &[EmbeddedChunk],
-) -> AppResult<()> {
+) -> StoreResult<()> {
     // Chunks only exist for indexed notes. The embedding pipeline runs on its
     // own queue, so a slow in-flight embed can land after index_remove
     // deleted the note — without this guard it would reinsert vectors for a
@@ -74,7 +74,7 @@ pub(super) fn apply_chunks(
                     .iter()
                     .position(|(_, hash)| *hash == chunk.content_hash)
                     .ok_or_else(|| {
-                        AppError::parse(format!(
+                        StoreError::parse(format!(
                             "unchanged chunk has no stored row (hash {})",
                             chunk.content_hash
                         ))
@@ -130,7 +130,7 @@ pub(super) fn apply_chunks(
 }
 
 /// Drop every chunk + vector belonging to `note_path` (note deletion).
-pub(super) fn remove_chunks(conn: &Connection, note_path: &str) -> AppResult<()> {
+pub fn remove_chunks(conn: &Connection, note_path: &str) -> StoreResult<()> {
     conn.prepare_cached(
         "DELETE FROM embedding_vectors WHERE rowid IN
            (SELECT id FROM embedding_chunks WHERE note_path = ?1)",

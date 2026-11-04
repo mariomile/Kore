@@ -4,7 +4,8 @@ A small, self-contained read/discovery/write CLI over a Kore graph (Plan 14,
 extended for agents by [Plan 30](plans/30-cli-agent-parity.md)). It reads
 the graph's markdown files directly and opens `.reflect/index.sqlite`
 strictly read-only — no running desktop app required. The index is refreshed
-by the desktop app, never by the CLI. Markdown stays the source of truth and
+by the desktop app, or without it by `kore index`, which runs the app's own
+indexer under Node (see below). Markdown stays the source of truth and
 the CLI's writes stay **structural**: each one changes exactly the bytes it
 is about (an appended item or block, a new file claimed atomically, one
 frontmatter key, one trailing tag line, one task marker) and nothing ever
@@ -33,6 +34,7 @@ kore set <note> k=v…       # write frontmatter properties typed by the tag sch
 kore tag <note> <tag>      # add a trailing #tag line (untag removes it)
 kore done <text>           # tick a task off by its text (--undo reopens)
 kore mcp                   # serve the graph to MCP clients over stdio (--read-only, --http <addr>)
+kore index                 # build or refresh the index without the app (Node 22+, --rebuild)
 ```
 
 Built from `apps/cli` (`cargo build -p reflect-cli`); bundled with the desktop
@@ -371,6 +373,36 @@ is null when the index is absent or unusable.
 }
 ```
 
+### `kore index [--rebuild] [--json]`
+
+Builds or refreshes `.reflect/index.sqlite` with no app running, so every
+index-backed command (and `kore mcp`) works on a plain clone of a vault, for
+example on an always-on server that pulls the vault from GitHub. It is the
+app's projection, not a copy: `kore` spawns Node on `kore-indexer.mjs`, the
+`@reflect/core` indexer bundled into one script, and serves its file reads
+and index writes with the same Rust code the app uses
+(`crates/index-store`).
+
+- The first run on a folder indexes every note; an explicit `--graph` or
+  `$KORE_GRAPH` folder may lack `.reflect/` (it is created). Later runs
+  reconcile and read only files whose mtime moved, so
+  `git pull && kore index` is cheap. `--rebuild` rewrites every row.
+- Needs Node 22 or later (`KORE_NODE` names another binary) and
+  `kore-indexer.mjs` next to the `kore` binary, or its path in
+  `KORE_INDEXER`. Build it with `pnpm --filter @reflect/core build:indexer`
+  (it lands in `packages/core/dist/`).
+- Not done here: embeddings. Semantic vectors are still computed by the app;
+  a headless index answers lexical search, tags, backlinks, lists and tasks.
+- Do not run it on a graph the app has open: both would write the same file.
+- Exits `0` when the index is current, `1` on failure. Notes that fail to
+  read or parse are named on stderr and the run still exits `0`; the next
+  run retries them.
+
+```jsonc
+// kore index --json
+{ "notes": 5155, "written": 2, "removed": 1, "moved": 0, "elapsedMs": 270 }
+```
+
 ### `kore guide [--init] [--json]`
 
 What an agent reads first, before it touches the graph: the vault's own
@@ -699,6 +731,15 @@ does not forward the `Host` header). One secret, `KORE_MCP_TOKEN` (at least
 `--read-only` applies here too. Search, tags, backlinks, lists and tasks
 read the index the Kore app keeps, so run the server where the app has the
 graph open.
+
+**Without the Mac.** On a server that holds a clone of the vault, build the
+index first and refresh it after each pull; the server then answers every
+tool the Mac would:
+
+```sh
+git -C ~/vault pull && kore --graph ~/vault index   # e.g. from cron every few minutes
+kore --graph ~/vault mcp --http 127.0.0.1:8765
+```
 
 ## Development notes
 

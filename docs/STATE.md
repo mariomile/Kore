@@ -13,8 +13,8 @@ backlinks, list, tasks, recent, collection and done (`require_index`, exit
   writes and the read-only query guard moved out of the desktop crate, plus
   the batch transactions every host issues (`apply_notes`, `remove_notes`,
   `move_note_rows`, `touch_notes`, `set_index_meta`). The desktop's Tauri
-  commands call them unchanged in behavior; `db/query.rs` keeps only the
-  guarded read connection.
+  commands call them unchanged in behavior; the guarded read-only
+  connection (`query::open_read_connection`) lives there too.
 - [x] `packages/core/src/headless/`: an `IpcBridge` over newline-delimited
   JSON on stdio, and the entry that opens the index and runs `syncIndex`
   (or `rebuildIndex` with `--rebuild`). `pnpm --filter @reflect/core
@@ -32,7 +32,8 @@ backlinks, list, tasks, recent, collection and done (`require_index`, exit
 
 **Validation:** `cargo test -p reflect-cli -p reflect-index-store` (two new
 host tests: write then read back over the bridge; traversal, missing note
-and write-through-query refused), `cargo clippy -p reflect-index-store -p
+and write-through-query refused; a read through a symlinked directory is
+refused, from the Cursor security review), `cargo clippy -p reflect-index-store -p
 reflect-cli --all-targets -D warnings`, `cargo fmt --check`;
 `stdio-bridge.test.ts` (2); `pnpm check` exit 0. End to end on a synthetic
 5,155-note vault (frontmatter tags, `up:` links, tasks, 155 dailies) with a
@@ -45,6 +46,39 @@ run there.
 **Next:** release packaging for `kore-indexer.mjs` (attach to the GitHub
 release and bundle beside the sidecar), then run it on the agents' server
 over the marioverse.ai clone with a cron `git pull && kore index`.
+
+## Sidebar you arrange yourself, terminal as a tab, 2026-11-04
+
+User ask (Mario, 2026-11-04, screenshot): "nella sidebar dobbiamo poter
+riorganizzare la sidebar come vogliamo, quindi spostare le posizioni types e
+folder"; "terminal credo che lo possiamo togliere dalla sidebar", available
+as a tab instead; evaluate a library like Ghostty. (The type-chip filter ask
+from the same message is another thread's.)
+
+- [x] Shelves (Pinned notes, Folders, Types) already dragged by their header
+  since #263, but nothing said so. Each header now has a "…" menu on hover:
+  Move up, Move down, Hide section. A step skips empty shelves.
+- [x] Navigation rows (Daily notes, New note, All notes, Tasks, Graph) drag
+  into any order and offer Move Up / Move Down / Hide on right-click
+  (native menu). New settings `sidebarNav` (order) and `hiddenSidebarItems`
+  (rows and shelves); `moveDetailsSection` is now generic, exported for the
+  sidebar as `moveSidebarItem`.
+- [x] Hidden rows and shelves come back from an "N hidden items" line at the
+  foot of the shelves.
+- [x] Terminal row removed from the sidebar. The tab strip's "+" menu now
+  offers New note, Browser and Terminal; the palette, the app menu and the
+  right-rail Terminal panel are unchanged.
+- Ghostty: not adopted. Native Ghostty cannot draw inside the Tauri
+  webview; `ghostty-web` (Coder, WASM build of libghostty's VT parser,
+  xterm.js-compatible API, v0.4.0) is the only drop-in path. Recommendation
+  to Mario: keep xterm.js for now and try `ghostty-web` in a small spike
+  only if a concrete terminal bug (Unicode, rendering) shows up.
+
+**Validation:** core `schema.test.ts`; `sidebar.test.tsx`,
+`sidebar-sections.test.tsx`, `details-sections.test.tsx`,
+`note-tabs-strip.test.tsx` on Chromium; `pnpm check`. WebKit left to CI.
+Right-click menu on nav rows needs a look on the Mac (native menu is a no-op
+in the browser tests).
 
 ## In-app browser blank after a menu closes, 2026-11-04
 

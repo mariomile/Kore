@@ -29,6 +29,8 @@ describe('settingsSchema', () => {
       editorLineSpacing: 'normal',
       sidebarWidth: 260,
       sidebarSections: ['pinned', 'folders', 'tags'],
+      sidebarNav: ['daily', 'newNote', 'allNotes', 'tasks', 'graph'],
+      hiddenSidebarItems: [],
       contextSidebarWidth: 320,
       detailsSections: [
         'events',
@@ -412,6 +414,8 @@ describe('settingsSchema', () => {
       editorLineSpacing: 'normal',
       sidebarWidth: 260,
       sidebarSections: ['pinned', 'folders', 'tags'],
+      sidebarNav: ['daily', 'newNote', 'allNotes', 'tasks', 'graph'],
+      hiddenSidebarItems: [],
       contextSidebarWidth: 320,
       detailsSections: [
         'events',
@@ -774,6 +778,17 @@ describe('settingsSchema', () => {
       'folders',
       'tags',
     ])
+  })
+
+  it('normalizes the sidebar row order and keeps the hidden list clean', () => {
+    const parsed = settingsSchema.parse({
+      sidebarNav: ['graph', 'terminal', 'graph', 'daily'],
+      hiddenSidebarItems: ['tasks', 'tags', 'ghost', 'tasks'],
+    })
+    // The retired terminal row drops like any unknown id.
+    expect(parsed.sidebarNav).toEqual(['graph', 'daily', 'newNote', 'allNotes', 'tasks'])
+    expect(parsed.hiddenSidebarItems).toEqual(['tasks', 'tags'])
+    expect(settingsSchema.parse({ hiddenSidebarItems: 'tasks' }).hiddenSidebarItems).toEqual([])
   })
 
   it('keeps the Details arrangement complete and the hidden list clean', () => {

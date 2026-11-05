@@ -41,7 +41,9 @@ passage whose exact current text you pass (edit_note), so nothing overwrites a c
 you have not read. Every note is also a resource \
 at kore://note/<path>, a link that opens it in the Kore app. Call vault_guide first: \
 it returns the vault's own agent contract (its rules, including where memory and new \
-notes go) and a map of its folders.";
+notes go) and a map of its folders. To keep a durable fact for every agent that \
+uses this vault, call remember: it signs the fact with your name and the date, and keeps \
+the old value when a fact changes.";
 
 /// Contract text inlined into `instructions` beyond this is left to
 /// `vault_guide`: clients paste instructions into every session's context.
@@ -650,7 +652,65 @@ fn tools() -> Vec<Tool> {
                     .positionals(&[required_string(args, "text")?]))
             },
         },
+        Tool {
+            name: "remember",
+            description: "Keep one durable fact for every agent that uses this vault: a signed bullet with a confidence tag, your name and today's date, in today's daily note or in `note` (follow the vault guide on where facts go). Give `previously` when the fact replaces an older value.",
+            effect: Effect::Add,
+            properties: || json!({
+                "fact": { "type": "string", "description": "One line, in the vault's language" },
+                "note": note_schema(),
+                "confidence": { "type": "string", "enum": CONFIDENCES, "description": "Default likely" },
+                "previously": { "type": "string", "description": "The value this fact replaces" },
+                "agent": { "type": "string", "description": "Your name; used only when the server does not already know who you are" }
+            }),
+            required: &["fact"],
+            build: |args| {
+                let line = remembered_line(
+                    &required_string(args, "fact")?,
+                    string_arg(args, "confidence")?.as_deref(),
+                    string_arg(args, "previously")?.as_deref(),
+                    string_arg(args, "agent")?.as_deref(),
+                    &crate::paths::today_date(),
+                )?;
+                Ok(Invocation::new("capture")
+                    .option("to", string_arg(args, "note")?)
+                    .positionals(&[line]))
+            },
+        },
     ]
+}
+
+/// Confidence tags of a remembered fact, as the shared facts file uses them.
+const CONFIDENCES: [&str; 3] = ["certain", "likely", "speculative"];
+
+/// `[likely] The fact (previously: old) — agent, 2026-11-04`: the signed
+/// form every agent's memory takes, so who said what and since when is
+/// always on the line itself.
+fn remembered_line(
+    fact: &str,
+    confidence: Option<&str>,
+    previously: Option<&str>,
+    agent: Option<&str>,
+    date: &str,
+) -> Result<String, String> {
+    let one_line = |text: &str| text.split_whitespace().collect::<Vec<_>>().join(" ");
+    let confidence = confidence.unwrap_or("likely");
+    if !CONFIDENCES.contains(&confidence) {
+        return Err(format!(
+            "`confidence` must be one of {}",
+            CONFIDENCES.join(", ")
+        ));
+    }
+    let agent = agent
+        .map(one_line)
+        .filter(|name| !name.is_empty())
+        .unwrap_or_else(|| "agent".to_string());
+    let mut line = format!("[{confidence}] {}", one_line(fact));
+    if let Some(old) = previously.map(one_line).filter(|old| !old.is_empty()) {
+        line.push_str(&format!(" (previously: {old})"));
+    }
+    line.push_str(&format!(" — {agent}, {date}"));
+    Ok(line)
 }
 
 fn tool_definition(tool: &Tool) -> Value {
@@ -879,6 +939,26 @@ fn last_seven_days(today: jiff::civil::Date) -> Vec<String> {
     dates.iter().rev().map(ToString::to_string).collect()
 }
 
+/// Who is calling: a named agent (with its own write permission) or the
+/// vault's owner, who is unnamed and may write whenever the server does.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Caller {
+    /// The agent's name, signed onto what it remembers.
+    pub name: Option<String>,
+    /// Whether this caller may use the tools that write.
+    pub write: bool,
+}
+
+impl Caller {
+    /// The owner: the stdio client, or the HTTP server's own secret.
+    pub fn owner() -> Self {
+        Self {
+            name: None,
+            write: true,
+        }
+    }
+}
+
 /// The MCP request handler, independent of the transport.
 pub struct Server<R: Runner> {
     runner: R,
@@ -891,32 +971,43 @@ impl<R: Runner> Server<R> {
         Self { runner, read_only }
     }
 
-    fn available(&self) -> Vec<Tool> {
+    fn available(&self, caller: &Caller) -> Vec<Tool> {
+        let writes = !self.read_only && caller.write;
         tools()
             .into_iter()
-            .filter(|tool| tool.effect == Effect::Read || !self.read_only)
+            .filter(|tool| tool.effect == Effect::Read || writes)
             .collect()
+    }
+
+    /// Answer one transport payload as the owner.
+    pub fn handle_payload(&self, payload: &[u8]) -> Option<Value> {
+        self.handle_payload_as(payload, &Caller::owner())
     }
 
     /// Answer one transport payload: a JSON-RPC message or a batch. `None`
     /// when nothing needs a reply (only notifications). Both transports
     /// funnel through here.
-    pub fn handle_payload(&self, payload: &[u8]) -> Option<Value> {
+    pub fn handle_payload_as(&self, payload: &[u8], caller: &Caller) -> Option<Value> {
         match serde_json::from_slice::<Value>(payload) {
             Ok(Value::Array(batch)) => {
                 let replies: Vec<Value> = batch
                     .iter()
-                    .filter_map(|message| self.handle(message))
+                    .filter_map(|message| self.handle_as(message, caller))
                     .collect();
                 (!replies.is_empty()).then_some(Value::Array(replies))
             }
-            Ok(message) => self.handle(&message),
+            Ok(message) => self.handle_as(&message, caller),
             Err(_) => Some(error_response(Value::Null, -32700, "parse error")),
         }
     }
 
-    /// Answer one JSON-RPC message. Notifications (no `id`) get `None`.
+    /// Answer one JSON-RPC message as the owner.
     pub fn handle(&self, message: &Value) -> Option<Value> {
+        self.handle_as(message, &Caller::owner())
+    }
+
+    /// Answer one JSON-RPC message. Notifications (no `id`) get `None`.
+    pub fn handle_as(&self, message: &Value, caller: &Caller) -> Option<Value> {
         let id = message.get("id").cloned()?;
         let method = message.get("method").and_then(Value::as_str);
         let Some(method) = method else {
@@ -927,9 +1018,9 @@ impl<R: Runner> Server<R> {
             "initialize" => Ok(self.initialize(&params)),
             "ping" => Ok(json!({})),
             "tools/list" => Ok(json!({
-                "tools": self.available().iter().map(tool_definition).collect::<Vec<_>>()
+                "tools": self.available(caller).iter().map(tool_definition).collect::<Vec<_>>()
             })),
-            "tools/call" => self.call(&params),
+            "tools/call" => self.call(&params, caller),
             "resources/list" => self.list_resources(&params),
             "resources/templates/list" => Ok(json!({ "resourceTemplates": resource_templates() })),
             "resources/read" => self.read_resource(&params),
@@ -993,7 +1084,7 @@ impl<R: Runner> Server<R> {
         instructions
     }
 
-    fn call(&self, params: &Value) -> Result<Value, (i64, String)> {
+    fn call(&self, params: &Value, caller: &Caller) -> Result<Value, (i64, String)> {
         let name = params
             .get("name")
             .and_then(Value::as_str)
@@ -1005,10 +1096,20 @@ impl<R: Runner> Server<R> {
             Some(_) => return Err((-32602, "arguments must be an object".to_string())),
         };
         let tool = self
-            .available()
+            .available(caller)
             .into_iter()
             .find(|tool| tool.name == name)
             .ok_or((-32602, format!("unknown tool: {name}")))?;
+        // A named caller signs as itself, whatever name it claims.
+        let signed = match (&caller.name, tool.name) {
+            (Some(agent), "remember") => {
+                let mut signed = args.clone();
+                signed.insert("agent".to_string(), Value::String(agent.clone()));
+                Some(signed)
+            }
+            _ => None,
+        };
+        let args = signed.as_ref().unwrap_or(args);
         let invocation = match (tool.build)(args) {
             Ok(invocation) => invocation,
             Err(message) => return Ok(tool_text(message, true)),
@@ -1474,6 +1575,47 @@ mod tests {
         let refused = call(&server, "capture", json!({ "text": "x" }));
         assert_eq!(refused["error"]["code"], -32602);
         assert!(recorder.calls.borrow().is_empty());
+    }
+
+    #[test]
+    fn remember_signs_the_fact_with_the_callers_own_name() {
+        let recorder = Recorder::default();
+        let server = Server::new(&recorder, false);
+        let grok = Caller {
+            name: Some("Grok bot".into()),
+            write: true,
+        };
+        server.handle_as(
+            &json!({ "jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {
+                "name": "remember",
+                "arguments": { "fact": "Mario lives in\nRome", "previously": "Milan",
+                               "agent": "someone else", "note": "People/Mario" } } }),
+            &grok,
+        );
+        let calls = recorder.calls.borrow();
+        let line = calls[0].0.last().unwrap();
+        assert_eq!(calls[0].0[..3], ["capture", "--to=People/Mario", "--"]);
+        assert!(line.starts_with("[likely] Mario lives in Rome (previously: Milan) — Grok bot, "));
+
+        let reader = Caller {
+            name: Some("ChatGPT".into()),
+            write: false,
+        };
+        let refused = server
+            .handle_as(
+                &json!({ "jsonrpc": "2.0", "id": 2, "method": "tools/call",
+                    "params": { "name": "remember", "arguments": { "fact": "x" } } }),
+                &reader,
+            )
+            .unwrap();
+        assert!(refused["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("unknown tool"));
+        assert_eq!(
+            remembered_line("x", Some("sure"), None, None, "2026-11-04").unwrap_err(),
+            "`confidence` must be one of certain, likely, speculative"
+        );
     }
 
     #[test]

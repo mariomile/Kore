@@ -7,7 +7,7 @@ use std::process::ExitCode;
 use clap::{Parser, Subcommand};
 
 use reflect_cli::error::CliError;
-use reflect_cli::{commands, graph, mcp, mcp_http};
+use reflect_cli::{agent_keys, commands, graph, mcp, mcp_http};
 
 /// Read, discover, and capture notes in a Kore graph.
 ///
@@ -286,14 +286,96 @@ enum Command {
         #[arg(long = "redirect-uri", value_name = "URI", requires = "http")]
         redirect_uris: Vec<String>,
     },
+    /// Named agents' own keys for `kore mcp --http` (no app needed)
+    Keys {
+        #[command(subcommand)]
+        action: KeysAction,
+    },
+}
+
+#[derive(Subcommand)]
+enum KeysAction {
+    /// Give an agent its own key, printed once; read-only unless --write
+    Add {
+        /// The name its writes are signed with (e.g. "Grok bot")
+        name: String,
+        /// Let this agent use the tools that write
+        #[arg(long)]
+        write: bool,
+    },
+    /// List the agents that have a key (never the keys)
+    List,
+    /// Remove an agent's key; it is disconnected at its next request
+    Remove {
+        /// The agent's name
+        name: String,
+    },
+}
+
+/// `kore keys`: edits the keys file, so it needs no graph.
+fn run_keys(action: &KeysAction, json: bool) -> Result<(), CliError> {
+    let path = agent_keys::default_path().ok_or_else(|| {
+        CliError::Usage("set KORE_MCP_KEYS_FILE or HOME to say where agent keys live".into())
+    })?;
+    match action {
+        KeysAction::Add { name, write } => {
+            let agent = agent_keys::add(&path, name, *write)?;
+            if json {
+                println!(
+                    "{}",
+                    serde_json::json!({ "name": agent.name, "key": agent.key, "write": agent.write })
+                );
+            } else {
+                println!("{}", agent.key);
+                eprintln!(
+                    "kore: key for {:?} ({}), shown once. Give it to the agent with the server's /setup.md.",
+                    agent.name,
+                    if agent.write { "read and write" } else { "read-only" }
+                );
+            }
+        }
+        KeysAction::List => {
+            let agents = agent_keys::load(&path);
+            if json {
+                let listed: Vec<_> = agents
+                    .iter()
+                    .map(|agent| serde_json::json!({ "name": agent.name, "write": agent.write }))
+                    .collect();
+                println!("{}", serde_json::json!({ "file": path, "agents": listed }));
+            } else {
+                for agent in &agents {
+                    println!(
+                        "{}\t{}",
+                        agent.name,
+                        if agent.write { "write" } else { "read" }
+                    );
+                }
+            }
+        }
+        KeysAction::Remove { name } => {
+            if !agent_keys::remove(&path, name)? {
+                return Err(CliError::Usage(format!(
+                    "no agent called {name:?} has a key"
+                )));
+            }
+            if json {
+                println!("{}", serde_json::json!({ "removed": name }));
+            }
+        }
+    }
+    Ok(())
 }
 
 fn run(cli: &Cli) -> Result<(), CliError> {
+    if let Command::Keys { action } = &cli.command {
+        return run_keys(action, cli.json);
+    }
     let graph = match &cli.command {
         Command::Index { .. } => graph::resolve_for_index(cli.graph.as_deref())?,
         _ => graph::resolve(cli.graph.as_deref())?,
     };
     match &cli.command {
+        Command::Keys { action } => run_keys(action, cli.json),
         Command::Today { path } => commands::today::run(&graph, cli.json, *path),
         Command::Search { query, limit, mode } => {
             commands::search::run(&graph, cli.json, query, *limit, *mode)
@@ -396,10 +478,14 @@ fn run(cli: &Cli) -> Result<(), CliError> {
                     mcp_http::MIN_SECRET_LEN
                 )));
             }
+            let agents =
+                agent_keys::parse_env(&std::env::var("KORE_MCP_AGENTS").unwrap_or_default())?;
             let options = mcp_http::HttpOptions {
                 secret: secret.trim().to_string(),
                 public_url: public_url.clone(),
                 extra_redirects: redirect_uris.clone(),
+                agents,
+                keys_file: agent_keys::default_path(),
             };
             mcp_http::serve(mcp_http::HttpServer::new(server, options), address)?;
             Ok(())

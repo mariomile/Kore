@@ -1,5 +1,38 @@
 # Kore working state
 
+## Shared brain for agents, slice 1, 2026-11-04
+
+Plan 32 slice 1 (Mario, 2026-11-04, "Entrambe in parallelo"): connect any
+agent to the vault in a minute, give each its own key, and let it remember
+facts signed with its name. Everything works from the `kore` CLI alone, with
+no Kore app (Mario: "deve poter essere funzionante anche per chi non vuole
+mai usare l'app").
+
+- [x] Named agent keys: `kore keys add <name> [--write]`, `list`, `remove`.
+  File `~/.config/kore/mcp-agents.json` (0600, outside the vault), re-read on
+  every request, so adding or removing a key needs no restart. The Mac app
+  keeps its own list in the keychain and passes it as `KORE_MCP_AGENTS`.
+- [x] Each key is its own caller: read-only unless `--write`; OAuth tokens
+  issued from it carry its id and stop working once the key is removed.
+- [x] `remember` MCP tool: one fact per call, to today's daily or a named
+  note, line `[confidence] fact (previously: old) — Agent, YYYY-MM-DD`. A
+  named key's own name overrides whatever `agent` the caller claims.
+- [x] Public `GET /setup.md` on `kore mcp --http`: per-client steps (bearer
+  header, Grok bot, Claude, ChatGPT Developer Mode, Claude Code, Codex),
+  then `vault_guide`. Holds no secrets.
+- [x] ChatGPT OAuth redirect URIs accepted (fixed URI and
+  `connector/oauth/<id>` prefix, path traversal rejected).
+- [x] Settings, Remote access: "Copy setup prompt", and a list of named
+  agents with Copy key / Remove and a Write switch.
+- Not done: "last seen" per agent; recall stays the existing search.
+
+**Validation:** `cargo fmt --check`, `cargo clippy --workspace
+--all-targets -D warnings`, `cargo test -p reflect-cli` (all pass), core
+`remote-access.test.ts`, Chromium browser test of the Remote access field,
+`pnpm check`. The iOS bindings check could not run in the container (no
+Xcode toolchain); CI is its first pass. Needs a live test on the Mac with
+ChatGPT and Grok bot.
+
 ## MCP at par with the in-app chat, 2026-11-04
 
 User ask (Mario, 2026-11-04, slice C of the November analysis,

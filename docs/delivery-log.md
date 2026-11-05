@@ -7,6 +7,12 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- A pasted link on its own line now reads as a proper preview. An X post
+  shows the post itself: author, avatar, handle, date, its words, and the
+  reply, repost and like counts. A LinkedIn post shows its title, excerpt,
+  image and the LinkedIn mark. Any other page shows its title, description,
+  image and favicon. Click a card to edit the link; Cmd-click to open it.
+
 - The type chips on All notes (`#person`, `#link`, Custom) filter the list
   in place instead of opening the type's page. The type's page is still a
   click away in the sidebar's Types section.

@@ -1,5 +1,24 @@
 # Kore working state
 
+## All notes type chips filter in place, 2026-11-04
+
+Ask (Mario, 2026-11-04, screenshot): the `#link`, `#person` and Custom chips
+at the top of All notes opened the type's own page. They should only narrow
+the list to that type.
+
+- [x] The chips route to `{ kind: 'all', tag }` (new optional `tag` on the
+  `all` filter in `note-list-filter.ts`, so persisted tabs still parse). The
+  screen lists that tag's notes under the same header and chips, with the
+  chip lit; All clears it. Back/forward keeps the chip (route equality
+  compares the tag).
+- [x] `{ kind: 'tag' }` is still the type's page, reached from the sidebar's
+  Types section, links and chat cards.
+- The Inbox chip drops its count while a type is active, since the loaded
+  list is that type only.
+
+**Validation:** `all-notes-screen.test.tsx` (33 pass, Chromium), typecheck,
+eslint, oxlint, oxfmt. WebKit runs in CI.
+
 ## Always-on host (`kore mcp --sync`), 2026-11-04
 
 User ask (Mario, 2026-11-04 19:02Z and 19:48Z, Plan 32 slice 2): Kore must

@@ -7,7 +7,7 @@ use std::process::ExitCode;
 use clap::{Parser, Subcommand};
 
 use reflect_cli::error::CliError;
-use reflect_cli::{agent_keys, commands, graph, mcp, mcp_http};
+use reflect_cli::{agent_keys, commands, graph, mcp, mcp_http, vault_sync};
 
 /// Read, discover, and capture notes in a Kore graph.
 ///
@@ -285,12 +285,23 @@ enum Command {
         /// Extra OAuth redirect URI to allow, besides Claude's and loopback ones
         #[arg(long = "redirect-uri", value_name = "URI", requires = "http")]
         redirect_uris: Vec<String>,
+        /// Keep the graph's git clone in step with its remote: pull and
+        /// reindex in the background, commit and push every agent write
+        /// (for an always-on host)
+        #[arg(long)]
+        sync: bool,
+        /// Seconds between background pulls (with --sync)
+        #[arg(long, value_name = "SECS", default_value_t = 60, requires = "sync")]
+        sync_every: u64,
     },
     /// Named agents' own keys for `kore mcp --http` (no app needed)
     Keys {
         #[command(subcommand)]
         action: KeysAction,
     },
+    /// Pull the graph's git clone, push what kore wrote, refresh the index:
+    /// one pass of what `kore mcp --sync` does in the background
+    Sync,
 }
 
 #[derive(Subcommand)]
@@ -461,10 +472,17 @@ fn run(cli: &Cli) -> Result<(), CliError> {
             http,
             public_url,
             redirect_uris,
+            sync,
+            sync_every,
         } => {
             let runner = mcp::ProcessRunner {
                 exe: std::env::current_exe()?,
                 graph: graph.root.clone(),
+            };
+            let runner: vault_sync::AnyRunner = if *sync {
+                Box::new(start_sync(&graph.root, runner, *sync_every)?)
+            } else {
+                Box::new(runner)
             };
             let server = mcp::Server::new(runner, *read_only);
             let Some(address) = http else {
@@ -490,7 +508,62 @@ fn run(cli: &Cli) -> Result<(), CliError> {
             mcp_http::serve(mcp_http::HttpServer::new(server, options), address)?;
             Ok(())
         }
+        Command::Sync => {
+            let runner = mcp::ProcessRunner {
+                exe: std::env::current_exe()?,
+                graph: graph.root.clone(),
+            };
+            let sync = vault_sync::VaultSync::open(&graph.root, runner, Default::default())?;
+            let report = sync.sync()?;
+            if cli.json {
+                let json = serde_json::to_string_pretty(&report)
+                    .map_err(|err| CliError::runtime(err.to_string()))?;
+                println!("{json}");
+                return Ok(());
+            }
+            if let Some(offline) = &report.offline {
+                return Err(CliError::runtime(format!("remote unreachable: {offline}")));
+            }
+            println!(
+                "Pulled {}, pushed {}, replayed {} commit(s){}.",
+                report.pulled,
+                report.pushed,
+                report.replayed,
+                if report.reindexed {
+                    "; index refreshed"
+                } else {
+                    ""
+                }
+            );
+            for dropped in &report.dropped {
+                eprintln!("kore: dropped a write that no longer applies: {dropped}");
+            }
+            Ok(())
+        }
     }
+}
+
+/// Open the clone for syncing, run a first pass, and keep pulling every
+/// `every` seconds on a background thread.
+fn start_sync(
+    root: &std::path::Path,
+    runner: mcp::ProcessRunner,
+    every: u64,
+) -> Result<std::sync::Arc<vault_sync::VaultSync<mcp::ProcessRunner>>, CliError> {
+    let mut sync = vault_sync::VaultSync::open(root, runner, Default::default())?;
+    sync.log = true;
+    let sync = std::sync::Arc::new(sync);
+    if let Err(err) = sync.sync() {
+        eprintln!("kore sync: {err}");
+    }
+    let background = std::sync::Arc::clone(&sync);
+    std::thread::spawn(move || loop {
+        std::thread::sleep(std::time::Duration::from_secs(every.max(5)));
+        if let Err(err) = background.sync() {
+            eprintln!("kore sync: {err}");
+        }
+    });
+    Ok(sync)
 }
 
 fn main() -> ExitCode {

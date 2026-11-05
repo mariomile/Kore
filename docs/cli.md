@@ -42,6 +42,7 @@ kore done <text>           # tick a task off by its text (--undo reopens)
 kore mcp                   # serve the graph to MCP clients over stdio (--read-only, --http <addr>)
 kore index                 # build or refresh the index without the app (Node 22+, --rebuild)
 kore keys add <name>       # a named agent's own key for mcp --http (--write; list, remove)
+kore sync                  # pull the vault's git clone, push kore's writes, reindex (what mcp --sync does)
 ```
 
 Built from `apps/cli` (`cargo build -p reflect-cli`); bundled with the desktop
@@ -867,14 +868,23 @@ own list in the keychain and passes it as `KORE_MCP_AGENTS` (a JSON list of
 read the index the Kore app keeps, so run the server where the app has the
 graph open.
 
-**Without the Mac.** On a server that holds a clone of the vault, build the
-index first and refresh it after each pull; the server then answers every
-tool the Mac would:
+**Without the Mac.** On a server that holds a git clone of the vault, build
+the index once and add `--sync`; the server then answers every tool the Mac
+would and keeps the clone in step with its remote:
 
 ```sh
-git -C ~/vault pull && kore --graph ~/vault index   # e.g. from cron every few minutes
-kore --graph ~/vault mcp --http 127.0.0.1:8765
+kore --graph ~/vault index
+kore --graph ~/vault mcp --http 127.0.0.1:8765 --sync   # --sync-every 60 (seconds)
 ```
+
+`--sync` pulls and reindexes in the background, and commits and pushes every
+agent write (author `Kore host`). It never merges text: a write that
+collides with a Mac edit is re-run as the same CLI operation on top of the
+Mac's version, and one that no longer applies is dropped and logged.
+`kore sync [--json]` runs one such pass by hand
+(`{ "pulled", "pushed", "replayed", "dropped", "reindexed", "offline"? }`).
+The design, the Docker image and the systemd unit are in
+[always-on.md](always-on.md).
 
 ## Development notes
 

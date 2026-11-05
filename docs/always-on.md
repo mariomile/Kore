@@ -26,7 +26,8 @@ them by construction instead of resolving them.
 Every write an agent can make through Kore is a **structural** CLI operation:
 append a bullet (`capture`, `append`), claim a new file (`new`), splice one
 frontmatter key (`set`), add or remove one tag line (`tag`, `untag`), flip one
-task marker (`done`). None of them overwrites a note. So the host records the
+task marker (`done`), or replace one passage only if it is unchanged (`edit`).
+None of them overwrites a note blindly. So the host records the
 **operation**, not just its diff: each write becomes one commit plus one line
 in a journal (`.git/kore-sync/journal.jsonl`, outside the working tree). When
 the remote has moved, the host:
@@ -116,9 +117,9 @@ KORE_MCP_TOKEN=… kore --graph ~/vault mcp --http 127.0.0.1:8765 --sync
 
 - Semantic (embedding) search stays an app pass; the host's search is the
   full-text and operator search.
-- Edits that rewrite prose in place are not CLI operations today, so agents
-  cannot make them through the host; if a later tool adds one, it is
-  journaled and replayed like the others, and a replay that no longer
-  applies is dropped and logged.
+- `edit_note` (`kore edit`) replaces a passage only if it still reads what
+  the agent saw. It is journaled like the other writes; on replay, if the
+  Mac changed that passage meanwhile, the guard refuses it and the edit is
+  dropped and logged rather than overwriting the Mac's text.
 - One host per vault. Two hosts would each replay over the other and stay
   correct, but nothing tests that setup.

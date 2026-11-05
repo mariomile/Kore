@@ -6,11 +6,14 @@
 //! `set`, `tag`, `untag`, `done`) are atomic and structural — see the crate
 //! doc.
 
+pub mod active;
 pub mod append;
 pub mod backlinks;
 pub mod capture;
 pub mod collection;
 pub mod done;
+pub mod explain;
+pub mod grep;
 pub mod guide;
 pub mod index;
 pub mod info;
@@ -21,9 +24,11 @@ pub mod open;
 pub mod path;
 pub mod properties;
 pub mod recent;
+pub mod route;
 pub mod search;
 pub mod set;
 pub mod show;
+pub mod skills;
 pub mod tag;
 pub mod tags;
 pub mod tasks;

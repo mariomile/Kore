@@ -353,6 +353,7 @@ pub fn run() {
             fs::audio_memo_delete,
             fs::transcript_cache_read,
             fs::transcript_cache_write,
+            fs::workspace_state_write,
             fs::asset_open,
             fs::asset_reveal,
             fs::export_write,

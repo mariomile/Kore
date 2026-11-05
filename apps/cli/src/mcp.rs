@@ -412,6 +412,78 @@ fn tools() -> Vec<Tool> {
             build: |_| Ok(Invocation::new("info")),
         },
         Tool {
+            name: "grep_notes",
+            description: "Every line, in every note, that contains an exact text, with its path and line number. Use it when you need all occurrences (open tasks naming a person, every mention of an amount) rather than the top-ranked notes `search` returns.",
+            read_only: true,
+            properties: || json!({
+                "text": { "type": "string", "description": "Matched literally, not as a pattern" },
+                "ignore_case": { "type": "boolean" },
+                "limit": limit_schema(200)
+            }),
+            required: &["text"],
+            build: |args| {
+                Ok(Invocation::new("grep")
+                    .flag("ignore-case", bool_arg(args, "ignore_case")?)
+                    .option("limit", limit_arg(args)?)
+                    .positionals(&[required_string(args, "text")?]))
+            },
+        },
+        Tool {
+            name: "path_between_notes",
+            description: "How two notes are connected: the shortest chain of wiki links between them, followed in either direction, each step saying whether it links to or is linked from the previous note. found is false when no chain exists within max_hops.",
+            read_only: true,
+            properties: || json!({
+                "from": note_schema(),
+                "to": note_schema(),
+                "max_hops": { "type": "integer", "minimum": 1, "description": "Give up beyond this many links (default 6)" }
+            }),
+            required: &["from", "to"],
+            build: |args| {
+                let max_hops = match args.get("max_hops") {
+                    None | Some(Value::Null) => None,
+                    Some(value) => match value.as_u64() {
+                        Some(hops) if hops > 0 => Some(hops.to_string()),
+                        _ => return Err("`max_hops` must be a positive integer".to_string()),
+                    },
+                };
+                Ok(Invocation::new("route")
+                    .option("max-hops", max_hops)
+                    .positionals(&[required_string(args, "from")?, required_string(args, "to")?]))
+            },
+        },
+        Tool {
+            name: "explain_note",
+            description: "One note's place in the graph in a single call: title, aliases, tags, typed properties, word count, its headings, the notes it links to and the notes linking to it. Cheaper than read_note plus links plus backlinks when you need to understand a note before using it.",
+            read_only: true,
+            properties: || json!({ "note": note_schema() }),
+            required: &["note"],
+            build: |args| Ok(Invocation::new("explain").positionals(&[required_string(args, "note")?])),
+        },
+        Tool {
+            name: "list_skills",
+            description: "The procedures the user taught their agents, kept in the vault under agents/skills/: each skill's name and its description of when to use it. When a task matches a description, call load_skill and follow it.",
+            read_only: true,
+            properties: no_properties,
+            required: &[],
+            build: |_| Ok(Invocation::new("skills")),
+        },
+        Tool {
+            name: "load_skill",
+            description: "The full text of one vault skill, by the name list_skills gives (or its title). Follow its steps for the rest of the task.",
+            read_only: true,
+            properties: || json!({ "name": { "type": "string" } }),
+            required: &["name"],
+            build: |args| Ok(Invocation::new("skills").positionals(&[required_string(args, "name")?])),
+        },
+        Tool {
+            name: "active_note",
+            description: "The note the user has open in the Kore app right now, and the other note tabs open beside it. Use it when the user says \"this note\" or \"what I'm looking at\". Fails when the app has not shared its state for this vault.",
+            read_only: true,
+            properties: no_properties,
+            required: &[],
+            build: |_| Ok(Invocation::new("active")),
+        },
+        Tool {
             name: "capture",
             description: "Append one bullet (or an open task) to today's daily note, creating it if needed, or to another note with `to`.",
             read_only: false,

@@ -6,6 +6,7 @@
 //! path nor its title can surface.
 
 use std::collections::HashSet;
+use std::path::Path;
 
 use crate::commands::output::{print_json, LinkJson, LinksJson};
 use crate::commands::{require_index, still_public_on_disk};
@@ -19,8 +20,32 @@ pub fn run(graph: &Graph, json: bool, note_arg: &str) -> Result<(), CliError> {
     let resolved = resolve_note(note_arg, &graph.root, Some(&opened.conn))?;
     let rel_path = resolved.rel_path().to_string();
     ensure_not_private(&graph.root, &rel_path)?;
+    let links = collect(&graph.root, &opened.conn, &rel_path)?;
 
-    let mut statement = opened.conn.prepare(
+    if json {
+        return print_json(&LinksJson {
+            path: &rel_path,
+            stale: staleness.is_stale(),
+            links,
+        });
+    }
+    for link in &links {
+        match &link.path {
+            Some(path) => println!("{}\t{path}", link.target),
+            None => println!("{}\t(unresolved)", link.target),
+        }
+    }
+    Ok(())
+}
+
+/// The note's distinct wiki links in document order, private targets
+/// dropped. The caller has already refused a private source.
+pub(crate) fn collect(
+    root: &Path,
+    conn: &rusqlite::Connection,
+    rel_path: &str,
+) -> Result<Vec<LinkJson>, CliError> {
+    let mut statement = conn.prepare(
         "SELECT l.target_raw, l.target_key, k.note_path, n.title, n.is_private
          FROM links l
          LEFT JOIN note_keys k ON k.key = l.target_key
@@ -28,7 +53,7 @@ pub fn run(graph: &Graph, json: bool, note_arg: &str) -> Result<(), CliError> {
          WHERE l.source_path = ?1 AND l.kind = 'wiki'
          ORDER BY l.pos_from, k.note_path",
     )?;
-    let rows = statement.query_map([&rel_path], |row| {
+    let rows = statement.query_map([rel_path], |row| {
         Ok((
             row.get::<_, String>(0)?,
             row.get::<_, String>(1)?,
@@ -49,7 +74,7 @@ pub fn run(graph: &Graph, json: bool, note_arg: &str) -> Result<(), CliError> {
         }
         match path {
             Some(path) => {
-                if is_private == Some(1) || !still_public_on_disk(&graph.root, &path) {
+                if is_private == Some(1) || !still_public_on_disk(root, &path) {
                     continue;
                 }
                 links.push(LinkJson {
@@ -66,18 +91,5 @@ pub fn run(graph: &Graph, json: bool, note_arg: &str) -> Result<(), CliError> {
         }
     }
 
-    if json {
-        return print_json(&LinksJson {
-            path: &rel_path,
-            stale: staleness.is_stale(),
-            links,
-        });
-    }
-    for link in &links {
-        match &link.path {
-            Some(path) => println!("{}\t{path}", link.target),
-            None => println!("{}\t(unresolved)", link.target),
-        }
-    }
-    Ok(())
+    Ok(links)
 }

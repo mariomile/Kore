@@ -599,6 +599,27 @@ pub async fn transcript_cache_write<R: tauri::Runtime>(
     .await
 }
 
+/// Publish the main window's open-note state for external agents
+/// (`.reflect/workspace.json`, read by the `kore` CLI). Derived, rebuildable
+/// data outside the attachment fence, so it gets its own single-file command:
+/// the path is fixed here and never comes from the caller. Atomic, so a
+/// reader never sees a torn file.
+#[tauri::command]
+pub async fn workspace_state_write<R: tauri::Runtime>(
+    contents: String,
+    generation: u64,
+    app: tauri::AppHandle<R>,
+) -> AppResult<()> {
+    crate::blocking::run_blocking(move || {
+        let state = app.state::<GraphState>();
+        let root = root_for_generation(&state, generation)?;
+        let target = resolve(&root, &format!("{}/workspace.json", io::REFLECT_DIR))?;
+        atomic_write_bytes(&root, &target, contents.as_bytes())?;
+        Ok(())
+    })
+    .await
+}
+
 /// Compute an attachment's current content identity without transferring its bytes to JS.
 #[tauri::command]
 pub async fn asset_content_identity<R: tauri::Runtime>(

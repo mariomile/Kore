@@ -236,6 +236,7 @@ export {
   type VaultLayout,
 } from '../graph/vault-layout'
 export { loadVaultLayout } from '../graph/load-vault-layout'
+export { createWorkspaceStatePublisher, workspaceNotes } from '../graph/workspace-state'
 export { formatIsoDate, formatMoment } from '../markdown/template-placeholders'
 export {
   loadAttachmentIndex,

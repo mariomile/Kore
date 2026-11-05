@@ -340,6 +340,109 @@ pub struct LinkJson {
     pub title: Option<String>,
 }
 
+/// `grep`: every line containing the text, in path then line order.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GrepJson<'a> {
+    pub text: &'a str,
+    /// True when `--limit` cut the matches short.
+    pub truncated: bool,
+    pub matches: Vec<GrepMatchJson>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GrepMatchJson {
+    pub path: String,
+    pub title: String,
+    /// 1-based, counted over the whole file (frontmatter included).
+    pub line: usize,
+    pub text: String,
+}
+
+/// A note named by path and title (`route`, `active`).
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RouteNoteJson {
+    pub path: String,
+    pub title: String,
+}
+
+/// `route`: the shortest chain of wiki links between two notes.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RouteJson {
+    pub from: RouteNoteJson,
+    pub to: RouteNoteJson,
+    pub found: bool,
+    pub hops: usize,
+    pub stale: bool,
+    /// The notes after `from`, ending with `to`; empty when not found.
+    pub steps: Vec<RouteStepJson>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RouteStepJson {
+    pub path: String,
+    pub title: String,
+    /// `links` when the previous note links here, `linkedFrom` when this
+    /// note links to the previous one.
+    pub direction: &'static str,
+}
+
+/// `explain`: one note's place in the graph.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExplainJson<'a> {
+    pub path: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub date: Option<String>,
+    pub title: &'a str,
+    pub aliases: &'a [String],
+    pub tags: Vec<String>,
+    pub properties: serde_json::Map<String, serde_json::Value>,
+    pub words: usize,
+    /// The body's headings as written, in order.
+    pub outline: Vec<String>,
+    pub stale: bool,
+    pub links: Vec<LinkJson>,
+    pub backlinks: Vec<BacklinkJson>,
+}
+
+/// `skills`: the vault's agent skills.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SkillsJson {
+    pub skills: Vec<SkillJson>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SkillJson {
+    /// The file's slug, what `kore skills <name>` takes.
+    pub name: String,
+    pub path: String,
+    pub title: String,
+    /// When to use it, from the frontmatter; empty when missing.
+    pub description: String,
+    /// The whole skill, only when one skill is asked for.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub content: Option<String>,
+}
+
+/// `active`: what the Kore app has open.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ActiveJson {
+    /// The note in the focused tab; null when that tab is not a note.
+    pub active_note: Option<RouteNoteJson>,
+    /// Note tabs in tab order.
+    pub open_notes: Vec<RouteNoteJson>,
+    /// When the app last wrote its state (RFC 3339).
+    pub updated_at: String,
+}
+
 pub fn print_json<T: Serialize>(value: &T) -> Result<(), CliError> {
     let json = serde_json::to_string_pretty(value)
         .map_err(|err| CliError::Runtime(format!("could not serialize output: {err}")))?;

@@ -17,6 +17,11 @@ kore list                  # notes newest first with tags (--tag, --kind)
 kore collection <tag>      # a typed tag's rows with their property values
 kore properties <note>     # a note's frontmatter properties, typed
 kore links <note>          # the wiki links a note makes, resolved
+kore explain <note>        # properties, tags, outline, links and backlinks in one call
+kore route <from> <to>     # the shortest chain of links between two notes
+kore grep <text>           # every line containing an exact text (no index needed)
+kore skills [name]         # the vault's agent skills (agents/skills/), or one in full
+kore active                # the note open in the app and the note tabs beside it
 kore today                 # print today's daily note
 kore today --path          # its absolute path (works before the file exists)
 kore search <query>        # ranked full-text search over the index
@@ -482,6 +487,61 @@ a link whose target is private is dropped. Requires the index (exit `4`).
 }
 ```
 
+### `kore explain <note> [--json]`
+
+One note's place in the graph in a single call: title, aliases, tags, typed
+properties, word count, its headings in order (`outline`, fenced code
+skipped), and the `links`/`backlinks` arrays exactly as those two commands
+return them. A private note is refused; private neighbors are dropped.
+Requires the index (exit `4`).
+
+### `kore route <from> <to> [--max-hops N] [--json]`
+
+The shortest chain of wiki links joining two notes, followed in either
+direction (default limit 6 links). Each step names the note and its
+`direction`: `links` when the previous note links to it, `linkedFrom` when it
+links to the previous note. A route never passes through a private note,
+even when that would be shorter. No route is exit `3` in text mode and
+`"found": false` with `--json`. Requires the index (exit `4`).
+
+```jsonc
+// kore route Ada Plan --json
+{
+  "from": { "path": "notes/Ada.md", "title": "Ada" },
+  "to": { "path": "notes/Plan.md", "title": "Plan" },
+  "found": true, "hops": 2, "stale": false,
+  "steps": [
+    { "path": "notes/Acme.md", "title": "Acme", "direction": "links" },
+    { "path": "notes/Plan.md", "title": "Plan", "direction": "linkedFrom" }
+  ]
+}
+```
+
+### `kore grep <text> [-i] [--limit N] [--json]`
+
+Every line, in every note on disk, that contains the text literally, with
+its 1-based line number (frontmatter counts). For the cases ranked `search`
+cuts short: every task naming a person, every mention of an amount. `-i`
+ignores case; `--limit` (default 200) stops early and sets `truncated`.
+Walks the files, so it never needs the index. Private notes and iCloud
+placeholders are skipped.
+
+### `kore skills [name] [--json]`
+
+The procedures the user taught their agents, one file each under
+`agents/skills/<slug>.md` (H1 = name, frontmatter `description` = when to use
+it). Without a name: every skill's `name` (the slug), `path`, `title` and
+`description`. With a name (slug or title, any case): the whole file, or
+`content` with `--json`. Private skills are neither listed nor served.
+
+### `kore active [--json]`
+
+The note in the Kore app's focused tab (`activeNote`, null when that tab is
+not a note) and the open note tabs in order (`openNotes`), from
+`.reflect/workspace.json`, which the desktop app rewrites as tabs change.
+Private, deleted and not-yet-downloaded notes are left out. Exit `3` when
+the app has not written the file for this graph.
+
 ### `kore set <note> key=value… [--unset key]… [--json]`
 
 Writes frontmatter property values the way the app's property editors do.
@@ -625,6 +685,7 @@ fails (not found, private, no index) comes back as a tool result with
 | `vault_guide` | `guide` |
 | `search`, `read_note`, `today`, `backlinks`, `links`, `note_properties` | `search`, `show`, `today`, `backlinks`, `links`, `properties` |
 | `list_notes`, `recent_notes`, `list_tags`, `collection`, `list_tasks`, `graph_info` | `list`, `recent`, `tags`, `collection`, `tasks`, `info` |
+| `explain_note`, `path_between_notes`, `grep_notes`, `list_skills`, `load_skill`, `active_note` | `explain`, `route`, `grep`, `skills`, `skills <name>`, `active` |
 | `capture`, `append_to_note`, `create_note`, `set_properties` | `capture`, `append --stdin`, `new` (body on stdin), `set` |
 | `tag_note`, `untag_note`, `complete_task` | `tag`, `untag`, `done` |
 

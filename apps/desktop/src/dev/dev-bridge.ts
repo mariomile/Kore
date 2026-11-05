@@ -172,6 +172,7 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
       case 'background_task_end':
       case 'quit_confirm':
       case 'toggle_devtools':
+      case 'workspace_state_write':
         return null
       case 'capture_inbox_list':
         return []

@@ -278,6 +278,14 @@ export async function writeTranscriptCache(
 }
 
 /**
+ * Write `.reflect/workspace.json` (the open-note state external agents read).
+ * Rust fixes the path; the caller supplies only the contents.
+ */
+export async function writeWorkspaceState(contents: string, generation: number): Promise<void> {
+  await call('workspace_state_write', { contents, generation }, voidSchema)
+}
+
+/**
  * Delete one recording under `audio-memos/` — cancelling a session discards
  * its already-landed segments. Idempotent; scoped in Rust to `audio-memos/`
  * so this can never become a general file-delete IPC.

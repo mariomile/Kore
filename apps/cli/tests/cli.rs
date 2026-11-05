@@ -1647,3 +1647,179 @@ fn a_missed_note_suggests_near_titles_from_the_index() {
     assert_eq!(no_hint.status.code(), Some(3));
     assert!(!stderr(&no_hint).contains("did you mean"));
 }
+
+// ---- agent tools: grep, route, explain, skills, active -----------------------
+
+/// Ada -> Acme <- Mid -> Plan, with a private note linking Ada and Plan
+/// directly (a shorter route that must never be taken).
+fn agent_fixture() -> Fixture {
+    let fixture = graph();
+    fixture.write_note(
+        "notes/Ada.md",
+        "# Ada\n\n- [ ] call Ada about the budget\nsee [[Acme]]\n",
+    );
+    fixture.write_note(
+        "notes/Acme.md",
+        "---\nstatus: active\n---\n# Acme\n\n## Deals\nthe budget is 40k\n```md\n# fenced\n```\n",
+    );
+    fixture.write_note("notes/Mid.md", "# Mid\n\n[[Acme]] then [[Plan]]\n");
+    fixture.write_note("notes/Plan.md", "# Plan\n\nship it\n");
+    fixture.write_note(
+        "notes/Secret.md",
+        "---\nprivate: true\n---\n# Secret\n\nthe budget [[Ada]] [[Plan]]\n",
+    );
+    fixture.write_note(
+        "agents/skills/inbox-sort.md",
+        "---\ndescription: Sort the Inbox into folders\n---\n# Inbox sort\n\n1. Read the note.\n",
+    );
+    fixture.write_note(
+        "agents/skills/hidden.md",
+        "---\nprivate: true\ndescription: never listed\n---\n# Hidden\n",
+    );
+    fixture.build_index();
+    fixture.insert_wiki_link("notes/Ada.md", "Acme", 0);
+    fixture.insert_wiki_link("notes/Mid.md", "Acme", 0);
+    fixture.insert_wiki_link("notes/Mid.md", "Plan", 1);
+    fixture.insert_wiki_link("notes/Secret.md", "Ada", 0);
+    fixture.insert_wiki_link("notes/Secret.md", "Plan", 1);
+    fixture
+}
+
+#[test]
+fn grep_finds_every_line_and_skips_private_notes() {
+    let fixture = agent_fixture();
+    let output = kore(&fixture, &["--json", "grep", "budget"]);
+    assert!(output.status.success(), "stderr: {}", stderr(&output));
+    let body = json(&output);
+    let hits: Vec<(String, u64)> = body["matches"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|hit| {
+            (
+                hit["path"].as_str().unwrap().to_string(),
+                hit["line"].as_u64().unwrap(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        hits,
+        [
+            ("notes/Acme.md".to_string(), 7),
+            ("notes/Ada.md".to_string(), 3)
+        ]
+    );
+    assert_eq!(body["truncated"], false);
+
+    let limited = json(&kore(
+        &fixture,
+        &["--json", "grep", "--limit", "1", "budget"],
+    ));
+    assert_eq!(limited["truncated"], true);
+    assert!(
+        json(&kore(&fixture, &["--json", "grep", "BUDGET"]))["matches"]
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
+    assert_eq!(
+        json(&kore(&fixture, &["--json", "grep", "-i", "BUDGET"]))["matches"]
+            .as_array()
+            .unwrap()
+            .len(),
+        2
+    );
+}
+
+#[test]
+fn route_joins_notes_through_links_either_way_but_never_a_private_one() {
+    let fixture = agent_fixture();
+    let output = kore(&fixture, &["--json", "route", "Ada", "Plan"]);
+    assert!(output.status.success(), "stderr: {}", stderr(&output));
+    let body = json(&output);
+    assert_eq!(body["found"], true);
+    assert_eq!(body["hops"], 3);
+    let steps: Vec<(&str, &str)> = body["steps"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|step| {
+            (
+                step["path"].as_str().unwrap(),
+                step["direction"].as_str().unwrap(),
+            )
+        })
+        .collect();
+    // Three public hops, not the two through the private note.
+    assert_eq!(
+        steps,
+        [
+            ("notes/Acme.md", "links"),
+            ("notes/Mid.md", "linkedFrom"),
+            ("notes/Plan.md", "links")
+        ]
+    );
+
+    let refused = kore(&fixture, &["route", "Ada", "Secret"]);
+    assert_eq!(refused.status.code(), Some(3));
+}
+
+#[test]
+fn explain_gathers_a_note_and_its_neighbors() {
+    let fixture = agent_fixture();
+    let output = kore(&fixture, &["--json", "explain", "Acme"]);
+    assert!(output.status.success(), "stderr: {}", stderr(&output));
+    let body = json(&output);
+    assert_eq!(body["title"], "Acme");
+    assert_eq!(body["properties"]["status"], "active");
+    assert_eq!(body["outline"], serde_json::json!(["# Acme", "## Deals"]));
+    let backlinks: Vec<&str> = body["backlinks"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|backlink| backlink["path"].as_str().unwrap())
+        .collect();
+    assert_eq!(backlinks, ["notes/Ada.md", "notes/Mid.md"]);
+    assert_eq!(
+        kore(&fixture, &["explain", "Secret"]).status.code(),
+        Some(3)
+    );
+}
+
+#[test]
+fn skills_lists_and_loads_vault_skills_but_not_private_ones() {
+    let fixture = agent_fixture();
+    let listed = json(&kore(&fixture, &["--json", "skills"]));
+    assert_eq!(
+        listed["skills"],
+        serde_json::json!([{
+            "name": "inbox-sort",
+            "path": "agents/skills/inbox-sort.md",
+            "title": "Inbox sort",
+            "description": "Sort the Inbox into folders"
+        }])
+    );
+    let loaded = kore(&fixture, &["skills", "Inbox sort"]);
+    assert!(loaded.status.success(), "stderr: {}", stderr(&loaded));
+    assert!(stdout(&loaded).contains("1. Read the note."));
+    assert_eq!(kore(&fixture, &["skills", "hidden"]).status.code(), Some(3));
+}
+
+#[test]
+fn active_reads_the_app_state_and_drops_private_tabs() {
+    let fixture = agent_fixture();
+    assert_eq!(kore(&fixture, &["active"]).status.code(), Some(3));
+    fs::write(
+        fixture.root().join(".reflect/workspace.json"),
+        r#"{"version":1,"activeNote":"notes/Secret.md","openNotes":["notes/Ada.md","notes/Secret.md","notes/Gone.md"],"updatedAt":"2026-11-05T10:00:00Z"}"#,
+    )
+    .unwrap();
+    let output = kore(&fixture, &["--json", "active"]);
+    assert!(output.status.success(), "stderr: {}", stderr(&output));
+    let body = json(&output);
+    assert_eq!(body["activeNote"], serde_json::Value::Null);
+    assert_eq!(
+        body["openNotes"],
+        serde_json::json!([{ "path": "notes/Ada.md", "title": "Ada" }])
+    );
+}

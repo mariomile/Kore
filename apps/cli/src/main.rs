@@ -213,6 +213,39 @@ enum Command {
         #[arg(long, conflicts_with = "text")]
         stdin: bool,
     },
+    /// Print every line containing an exact text, across all notes (no index needed)
+    Grep {
+        /// The text to find, matched literally
+        text: String,
+        /// Match regardless of case
+        #[arg(long, short = 'i')]
+        ignore_case: bool,
+        /// Maximum number of matching lines
+        #[arg(long, default_value_t = 200)]
+        limit: usize,
+    },
+    /// The shortest chain of wiki links between two notes, either direction
+    Route {
+        /// Where the route starts (date, path, id, title, or alias)
+        from: String,
+        /// Where it ends
+        to: String,
+        /// Give up beyond this many links
+        #[arg(long, default_value_t = 6)]
+        max_hops: usize,
+    },
+    /// A note's place in the graph: properties, tags, outline, links, backlinks
+    Explain {
+        /// A YYYY-MM-DD date, graph-relative path, note id, title, or alias
+        note: String,
+    },
+    /// List the vault's agent skills (agents/skills/), or print one by name
+    Skills {
+        /// The skill's slug or title
+        name: Option<String>,
+    },
+    /// The note open in the Kore app and the note tabs beside it
+    Active,
     /// Serve the graph to AI agents as an MCP server (stdio, or HTTP with --http)
     Mcp {
         /// Expose only the tools that read; refuse every write
@@ -269,6 +302,17 @@ fn run(cli: &Cli) -> Result<(), CliError> {
         }
         Command::Properties { note } => commands::properties::run(&graph, cli.json, note),
         Command::Links { note } => commands::links::run(&graph, cli.json, note),
+        Command::Grep {
+            text,
+            ignore_case,
+            limit,
+        } => commands::grep::run(&graph, cli.json, text, *ignore_case, *limit),
+        Command::Route { from, to, max_hops } => {
+            commands::route::run(&graph, cli.json, from, to, *max_hops)
+        }
+        Command::Explain { note } => commands::explain::run(&graph, cli.json, note),
+        Command::Skills { name } => commands::skills::run(&graph, cli.json, name.as_deref()),
+        Command::Active => commands::active::run(&graph, cli.json),
         Command::New {
             title,
             template,

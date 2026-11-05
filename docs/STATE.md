@@ -1,5 +1,49 @@
 # Kore working state
 
+## Agent tools copied from Etch, 2026-11-05
+
+User ask (Mario, 2026-11-05, "Copiamo le cose interessanti"), after a
+read-only look at Etch (Makai Labs' markdown editor whose MCP server Claude
+Code and Codex use on his Mac). Kore already had the vault map
+(`vault_guide`), single-key frontmatter edits (`set_properties` with
+`unset`), property search operators, and `readOnlyHint` on every tool. Added
+what was missing, each a CLI command plus an MCP tool:
+
+- [x] `kore grep` / `grep_notes`: every line with an exact text, with line
+  numbers, from the files (no index). Private notes and placeholders skipped.
+- [x] `kore route` / `path_between_notes`: shortest wiki-link chain between
+  two notes in either direction, never through a private note (a route that
+  turns private on disk is banned and searched again).
+- [x] `kore explain` / `explain_note`: properties, tags, outline, word count,
+  links and backlinks in one call. `links` and `backlinks` now expose a
+  shared `collect`.
+- [x] `kore skills [name]` / `list_skills`, `load_skill`: the vault's
+  `agents/skills/*.md`, private ones hidden. Vault only: `~/.agents/skills`
+  and other agent folders are not served (a remote MCP client would read
+  the user's machine config).
+- [x] `kore active` / `active_note`: reads `.reflect/workspace.json`
+  (`version`, `activeNote`, `openNotes`, `updatedAt`), drops private and
+  missing notes.
+- [x] The desktop app writing `.reflect/workspace.json` as tabs change:
+  policy in `packages/core/src/graph/workspace-state.ts` (note tabs across
+  panes, pinned first, deduped; the Daily tab counts as its day's note;
+  debounced 500 ms, unchanged snapshots dropped), a fixed-path atomic
+  `workspace_state_write` Tauri command, mounted once in the main window.
+  The scrolling daily stream reports the tab's date, not the focused day.
+- [x] `docs/cli.md`, the graph skill and `kore-agent-memory` document them.
+- Not done, waiting on Mario: an Etch-style "Library" showing agent folders
+  (`~/.claude`, `~/.codex`, `~/.agents`) read-only inside Kore.
+
+**Validation:** `cargo test -p reflect-cli` (108 unit incl. route BFS and
+outline, 72 CLI incl. five new end-to-end tests with private notes, 2 MCP,
+14 other), `cargo clippy -p reflect-cli --all-targets -D warnings`,
+`cargo fmt --all --check`, `cargo clippy -p reflect-open --all-targets
+-D warnings`, `pnpm check`, `workspace-state.test.ts` (2 tests). Not yet
+tried in the running app or from a real MCP client.
+
+**Next:** on the Mac, open a few notes in Kore, then ask Claude Code "what am I
+looking at in Kore?" and "how is X connected to Y?" through `kore mcp`.
+
 ## Sidebar you arrange yourself, terminal as a tab, 2026-11-04
 
 User ask (Mario, 2026-11-04, screenshot): "nella sidebar dobbiamo poter

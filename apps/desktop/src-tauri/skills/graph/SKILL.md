@@ -41,6 +41,11 @@ folders.
     kore collection <tag>      # a typed tag's rows with their property values
     kore properties <note>     # a note's frontmatter properties, typed, and tags
     kore links <note>          # the wiki links a note makes, resolved
+    kore explain <note>        # properties, tags, outline, links, backlinks at once
+    kore route <from> <to>     # how two notes connect: the shortest link chain
+    kore grep <text>           # every line with an exact text (all of them, unranked)
+    kore skills [name]         # the vault's agent skills, or one to follow
+    kore active                # the note the user has open in the app right now
 
     kore today                 # print today's daily note
     kore today --path          # its absolute path (works before the file exists)

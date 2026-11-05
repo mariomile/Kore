@@ -59,6 +59,11 @@ const READS: &[&str] = &[
     "list",
     "properties",
     "links",
+    "grep",
+    "route",
+    "explain",
+    "skills",
+    "active",
 ];
 
 /// Who signs the host's commits.
@@ -857,6 +862,8 @@ mod tests {
     #[test]
     fn subcommands_are_reads_only_when_listed() {
         assert!(is_read(&args(&["search", "x"])));
+        assert!(is_read(&args(&["grep", "x"])));
+        assert!(is_read(&args(&["explain", "x"])));
         assert!(!is_read(&args(&["guide", "--init"])));
         assert!(!is_read(&args(&["capture", "x"])));
         assert!(!is_read(&args(&["edit", "x"])));

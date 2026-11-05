@@ -7,6 +7,13 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Your agents can read each other's notes. `kore library add --known`
+  points Kore at the folders where Claude Code, Codex, Gemini, Cursor and
+  others keep their own Markdown (rules, skills, memory), and any agent
+  using `kore mcp` on your Mac can list, search and read them. Read-only,
+  Markdown only (configs with tokens are never read), and never offered
+  to remote agents over `kore mcp --http`.
+
 - The type chips on All notes (`#person`, `#link`, Custom) filter the list
   in place instead of opening the type's page. The type's page is still a
   click away in the sidebar's Types section.

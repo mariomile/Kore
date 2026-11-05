@@ -189,6 +189,12 @@ impl Invocation {
         self
     }
 
+    /// A fixed nested subcommand (`library grep`), before any option.
+    fn subcommand(mut self, name: &str) -> Self {
+        self.args.push(name.to_string());
+        self
+    }
+
     /// Positionals go after `--` so a value beginning with `-` is never read
     /// as a flag.
     fn positionals(mut self, values: &[String]) -> Self {
@@ -503,6 +509,60 @@ fn tools() -> Vec<Tool> {
             properties: || json!({ "name": { "type": "string" } }),
             required: &["name"],
             build: |args| Ok(Invocation::new("skills").positionals(&[required_string(args, "name")?])),
+        },
+        Tool {
+            name: "library_sources",
+            description: "The user's Library: folders outside the vault that Kore reads but never writes, usually the homes of their other agents (~/.claude, ~/.codex, ~/.agents…), each with its Markdown file count. Use it to find what the user's agents already know: their rules (CLAUDE.md, AGENTS.md), skills and memory files. Only on this machine.",
+            effect: Effect::Read,
+            properties: no_properties,
+            required: &[],
+            build: |_| Ok(Invocation::new("library").subcommand("sources")),
+        },
+        Tool {
+            name: "library_files",
+            description: "The Markdown files in one Library folder (or all of them), as `<folder>/<path>` for library_read.",
+            effect: Effect::Read,
+            properties: || json!({ "source": { "type": "string", "description": "A folder name from library_sources; omit for every folder" } }),
+            required: &[],
+            build: |args| {
+                let invocation = Invocation::new("library").subcommand("files");
+                Ok(match string_arg(args, "source")? {
+                    Some(source) => invocation.positionals(&[source]),
+                    None => invocation,
+                })
+            },
+        },
+        Tool {
+            name: "library_grep",
+            description: "Every line containing an exact text across the Library's Markdown files, with file and line number. Use it to find which agent rule or skill already covers something.",
+            effect: Effect::Read,
+            properties: || json!({
+                "text": { "type": "string", "description": "Matched literally" },
+                "source": { "type": "string", "description": "Only this folder" },
+                "ignore_case": { "type": "boolean" },
+                "limit": limit_schema(200)
+            }),
+            required: &["text"],
+            build: |args| {
+                Ok(Invocation::new("library")
+                    .subcommand("grep")
+                    .flag("ignore-case", bool_arg(args, "ignore_case")?)
+                    .option("source", string_arg(args, "source")?)
+                    .option("limit", limit_arg(args)?)
+                    .positionals(&[required_string(args, "text")?]))
+            },
+        },
+        Tool {
+            name: "library_read",
+            description: "The full text of one Library file, by the `<folder>/<path>` library_files or library_grep gave (e.g. claude/CLAUDE.md). Read-only: to change it, ask the user.",
+            effect: Effect::Read,
+            properties: || json!({ "path": { "type": "string" } }),
+            required: &["path"],
+            build: |args| {
+                Ok(Invocation::new("library")
+                    .subcommand("read")
+                    .positionals(&[required_string(args, "path")?]))
+            },
         },
         Tool {
             name: "active_note",
@@ -959,16 +1019,39 @@ impl Caller {
     }
 }
 
+/// Tools that read folders outside the vault (the Library, which holds the
+/// user's other agents' rules and memory). Only a server for this machine
+/// offers them; the HTTP server never does, whoever calls.
+const LOCAL_ONLY_TOOLS: &[&str] = &[
+    "library_sources",
+    "library_files",
+    "library_grep",
+    "library_read",
+];
+
 /// The MCP request handler, independent of the transport.
 pub struct Server<R: Runner> {
     runner: R,
     read_only: bool,
+    local: bool,
 }
 
 impl<R: Runner> Server<R> {
-    /// `read_only` hides and refuses every tool that writes.
+    /// `read_only` hides and refuses every tool that writes. The server
+    /// starts remote-safe: see [`Server::for_this_machine`].
     pub fn new(runner: R, read_only: bool) -> Self {
-        Self { runner, read_only }
+        Self {
+            runner,
+            read_only,
+            local: false,
+        }
+    }
+
+    /// Also offer the tools that read outside the vault (`LOCAL_ONLY_TOOLS`).
+    /// Only for the stdio transport, whose client runs on this machine.
+    pub fn for_this_machine(mut self) -> Self {
+        self.local = true;
+        self
     }
 
     fn available(&self, caller: &Caller) -> Vec<Tool> {
@@ -976,6 +1059,7 @@ impl<R: Runner> Server<R> {
         tools()
             .into_iter()
             .filter(|tool| tool.effect == Effect::Read || writes)
+            .filter(|tool| self.local || !LOCAL_ONLY_TOOLS.contains(&tool.name))
             .collect()
     }
 
@@ -1527,6 +1611,65 @@ mod tests {
             .find(|tool| tool["name"] == "edit_note")
             .unwrap();
         assert_eq!(edit["annotations"]["readOnlyHint"], false);
+    }
+
+    fn tool_names(server: &Server<&Recorder>) -> Vec<String> {
+        let list = server
+            .handle(&json!({ "jsonrpc": "2.0", "id": 1, "method": "tools/list" }))
+            .unwrap();
+        list["result"]["tools"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|tool| tool["name"].as_str().unwrap().to_string())
+            .collect()
+    }
+
+    #[test]
+    fn the_library_is_offered_only_on_this_machine() {
+        let recorder = Recorder::default();
+        let remote = Server::new(&recorder, false);
+        let names = tool_names(&remote);
+        for tool in LOCAL_ONLY_TOOLS {
+            assert!(!names.iter().any(|name| name == tool), "{tool} leaked");
+        }
+        let refused = call(
+            &remote,
+            "library_read",
+            json!({ "path": "claude/CLAUDE.md" }),
+        );
+        assert_eq!(refused["error"]["code"], -32602);
+        assert!(recorder.calls.borrow().is_empty());
+
+        let local = Server::new(&recorder, false).for_this_machine();
+        let names = tool_names(&local);
+        for tool in LOCAL_ONLY_TOOLS {
+            assert!(names.iter().any(|name| name == tool), "{tool} missing");
+        }
+        call(
+            &local,
+            "library_grep",
+            json!({ "text": "-rule", "source": "claude", "ignore_case": true, "limit": 3 }),
+        );
+        call(
+            &local,
+            "library_read",
+            json!({ "path": "claude/CLAUDE.md" }),
+        );
+        let calls = recorder.calls.borrow();
+        assert_eq!(
+            calls[0].0,
+            [
+                "library",
+                "grep",
+                "--ignore-case",
+                "--source=claude",
+                "--limit=3",
+                "--",
+                "-rule"
+            ]
+        );
+        assert_eq!(calls[1].0, ["library", "read", "--", "claude/CLAUDE.md"]);
     }
 
     #[test]

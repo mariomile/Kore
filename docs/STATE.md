@@ -1,5 +1,27 @@
 # Kore working state
 
+## Library of agent folders (`kore library`), 2026-11-05
+
+Ask (Mario, 2026-11-05, "vai" on the card "Sì, solo locale"): copy Etch's
+read-only libraries over agent folders (`/mnt/project-files/analisi/etch-sul-mac.md`),
+offered to local agents only, never over the remote MCP.
+
+- [x] `apps/cli/src/library.rs`: the list in `~/.config/kore/libraries.json`
+  (`KORE_LIBRARIES_FILE`, XDG), `add` / `add --known` / `remove`, `files`,
+  `grep`, `read`. Markdown only; hidden, cache and transcript folders,
+  symlinks (any depth, `symlink_free_path`) and files over 512 KB are
+  never listed or read; `read` refuses anything `files` would not list.
+- [x] `kore library …` (no graph needed) and four MCP tools
+  `library_sources|files|grep|read`, offered only after
+  `Server::for_this_machine()`, which only the stdio branch calls.
+  `mcp --http` neither lists nor runs them.
+- [ ] App surface (Settings card, browsing): not built. The chat and any
+  local agent reach the Library through the tools.
+
+**Validation:** `cargo test -p reflect-cli` (library unit tests, MCP
+gating test), clippy `-D warnings`, fmt, smoke run with a temporary HOME
+(stdio `library_grep`, settings.json and projects/ refused).
+
 ## All notes type chips filter in place, 2026-11-04
 
 Ask (Mario, 2026-11-04, screenshot): the `#link`, `#person` and Custom chips

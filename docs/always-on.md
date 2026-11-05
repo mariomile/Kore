@@ -91,6 +91,11 @@ for 5,000 notes), and serves `http://0.0.0.0:8765/mcp` with `--sync`. The git
 token reaches git through a credential helper that reads the environment, so
 it is never written into `.git/config`.
 
+Each agent can have its own key (#321): pass them as `KORE_MCP_AGENTS`, or
+mount a volume for the keys file and point `KORE_MCP_KEYS_FILE` at it (then
+`docker exec kore kore keys add "Grok bot" --write`). Keep that file out of
+`/vault`, or the host would commit it.
+
 The server does not terminate TLS. Put an HTTPS tunnel in front of port 8765
 (Tailscale Funnel: `tailscale funnel 8765`; or Cloudflare Tunnel) and use its
 URL as `KORE_PUBLIC_URL`. Agents connect exactly as described in

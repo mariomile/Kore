@@ -1,5 +1,40 @@
 # Kore working state
 
+## Library: agent folders read-only in the sidebar, 2026-11-05
+
+Ask (Mario, 2026-11-05, "vai", answering whether to build the Etch-style
+Library left open below): show coding agents' home folders inside Kore,
+read-only.
+
+- [x] `apps/desktop/src-tauri/src/library.rs`: `library_roots`,
+  `library_list` (one folder level), `library_read`. Fixed folders
+  (`~/.claude`, `.codex`, `.agents`, `.gemini`, `.cursor`, `.copilot`,
+  `.config/opencode`, `.kiro`), named by id. Markdown only. No hidden
+  component below a folder, checked on the real path after symlinks, so
+  skills `~/.claude/skills` links in from `~/.agents`/`~/.codex` show and a
+  link to a dotfile or out of the folders does not. Reads capped at 2 MB by
+  the read itself.
+- [x] Sidebar shelf `library` (sortable and hideable like the others),
+  folders load when expanded (`~/.claude` alone has ~10k markdown files).
+  Hidden when no folder exists (mobile, plain-browser dev).
+- [x] Tab kind `library` (`root`, `path`): read-only page with title,
+  location, frontmatter shown verbatim, body via `MarkdownPreview`. Generic
+  names (`SKILL.md`, `README.md`) take their folder's name. Refetches when the
+  window regains focus, since no watcher covers these folders.
+- Not served over `kore mcp` (same privacy call as `kore skills`).
+
+**Validation:** `cargo test -p reflect-open` (441, incl. 6 library fence
+tests: dotfiles, `..`, symlink out, symlink to a hidden file or non-markdown,
+linked-in skill), `cargo clippy -p reflect-open --all-targets -D warnings`,
+`cargo fmt --check`, `pnpm check`, sidebar + route browser tests on Chromium
+and WebKit (62), core settings/library tests (50). Full Vitest: 5619 pass, 1
+fail (`all-notes-grid` card clipping, fails on master too). Independent
+review found the symlink-to-dotfile gap, fixed. Not yet seen in the running
+app.
+
+**Next:** open Kore on the Mac, check the Library shelf under Types, open a
+skill from Claude Code and one from Codex.
+
 ## All notes type chips filter in place, 2026-11-04
 
 Ask (Mario, 2026-11-04, screenshot): the `#link`, `#person` and Custom chips
@@ -209,8 +244,8 @@ what was missing, each a CLI command plus an MCP tool:
   `workspace_state_write` Tauri command, mounted once in the main window.
   The scrolling daily stream reports the tab's date, not the focused day.
 - [x] `docs/cli.md`, the graph skill and `kore-agent-memory` document them.
-- Not done, waiting on Mario: an Etch-style "Library" showing agent folders
-  (`~/.claude`, `~/.codex`, `~/.agents`) read-only inside Kore.
+- [x] The Etch-style Library: see "Library: agent folders read-only in the
+  sidebar" above.
 
 **Validation:** `cargo test -p reflect-cli` (108 unit incl. route BFS and
 outline, 72 CLI incl. five new end-to-end tests with private notes, 2 MCP,

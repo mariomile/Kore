@@ -175,6 +175,8 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
       case 'workspace_state_write':
         return null
       case 'capture_inbox_list':
+      // A plain browser has no home folder to browse: the Library shelf hides.
+      case 'library_roots':
         return []
       case 'agent_run_lock_acquire': {
         const id = runLock.next++

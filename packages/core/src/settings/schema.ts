@@ -171,6 +171,18 @@ export interface OpenLocalGraphTab {
   pinned: boolean
 }
 
+/**
+ * A markdown file from the Library (a coding agent's home folder such as
+ * `~/.claude`), shown read-only. `root` is the folder's id, `path` the file
+ * relative to it.
+ */
+export interface OpenLibraryTab {
+  kind: 'library'
+  root: string
+  path: string
+  pinned: boolean
+}
+
 export type OpenTab =
   | OpenNoteTab
   | OpenChatTab
@@ -178,6 +190,7 @@ export type OpenTab =
   | OpenBaseTab
   | OpenCanvasTab
   | OpenLocalGraphTab
+  | OpenLibraryTab
 
 /** One workspace pane's persisted tab strip and the tab it last showed. */
 export interface OpenPane {
@@ -223,6 +236,13 @@ const openLocalGraphTabStoredSchema = z.object({
   path: z.string(),
   pinned: z.boolean().catch(false),
 }) satisfies z.ZodType<OpenLocalGraphTab>
+
+const openLibraryTabStoredSchema = z.object({
+  kind: z.literal('library'),
+  root: z.string(),
+  path: z.string(),
+  pinned: z.boolean().catch(false),
+}) satisfies z.ZodType<OpenLibraryTab>
 
 const openDailyTabStoredSchema = z.object({
   kind: z.literal('surface'),
@@ -300,6 +320,7 @@ export const openTabSchema: z.ZodType<OpenTab> = z.union([
   openBaseTabStoredSchema,
   openCanvasTabStoredSchema,
   openLocalGraphTabStoredSchema,
+  openLibraryTabStoredSchema,
   openDailyTabStoredSchema,
   openAllNotesTabStoredSchema,
   openSearchTabStoredSchema,

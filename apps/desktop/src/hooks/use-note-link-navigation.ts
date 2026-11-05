@@ -1,10 +1,13 @@
 import { useCallback } from 'react'
 import { useOptionalPanes, usePaneId } from '@/providers/panes-provider'
-import type { NoteRoute } from '@/routing/route'
+import type { NoteRoute, Route } from '@/routing/route'
 import { useRouter } from '@/routing/router'
 
-/** Open one concrete note from a link-like UI control. */
-export type NoteLinkNavigation = (options: { target: NoteRoute; openInSplit: boolean }) => void
+/** Open one concrete note (or a read-only Library file) from a link-like UI control. */
+export type NoteLinkNavigation = (options: {
+  target: NoteRoute | Extract<Route, { kind: 'library' }>
+  openInSplit: boolean
+}) => void
 
 /**
  * The app-wide note-link convention: `openInSplit` (decided at the UI

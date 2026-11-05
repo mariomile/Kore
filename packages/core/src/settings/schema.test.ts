@@ -28,7 +28,7 @@ describe('settingsSchema', () => {
       editorFontFamily: 'sans',
       editorLineSpacing: 'normal',
       sidebarWidth: 260,
-      sidebarSections: ['pinned', 'folders', 'tags'],
+      sidebarSections: ['pinned', 'folders', 'tags', 'library'],
       sidebarNav: ['daily', 'newNote', 'allNotes', 'tasks', 'graph'],
       hiddenSidebarItems: [],
       contextSidebarWidth: 320,
@@ -413,7 +413,7 @@ describe('settingsSchema', () => {
       editorFontFamily: 'sans',
       editorLineSpacing: 'normal',
       sidebarWidth: 260,
-      sidebarSections: ['pinned', 'folders', 'tags'],
+      sidebarSections: ['pinned', 'folders', 'tags', 'library'],
       sidebarNav: ['daily', 'newNote', 'allNotes', 'tasks', 'graph'],
       hiddenSidebarItems: [],
       contextSidebarWidth: 320,
@@ -766,17 +766,18 @@ describe('settingsSchema', () => {
     // drops out of an older document like any unknown id.
     expect(
       settingsSchema.parse({ sidebarSections: ['tags', 'open', 'pinned'] }).sidebarSections,
-    ).toEqual(['tags', 'pinned', 'folders'])
+    ).toEqual(['tags', 'pinned', 'folders', 'library'])
     // Unknown and duplicate entries drop; unmentioned shelves join the end in
     // their default order, so a shelf added later cannot go missing.
     expect(
       settingsSchema.parse({ sidebarSections: ['tags', 'tags', 'ghost'] }).sidebarSections,
-    ).toEqual(['tags', 'pinned', 'folders'])
+    ).toEqual(['tags', 'pinned', 'folders', 'library'])
     // A non-array value degrades to the whole default order.
     expect(settingsSchema.parse({ sidebarSections: 'tags' }).sidebarSections).toEqual([
       'pinned',
       'folders',
       'tags',
+      'library',
     ])
   })
 

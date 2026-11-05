@@ -7,7 +7,7 @@
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::Deserialize;
 
-use crate::error::AppResult;
+use crate::error::{StoreError, StoreResult};
 
 /// A note's extracted projection, built in TS (Plan 03) and applied as one
 /// row-set. Mirrors the `indexedNoteSchema` zod contract in
@@ -17,93 +17,91 @@ use crate::error::AppResult;
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IndexedNote {
-    pub(super) path: String,
-    pub(super) id: Option<String>,
-    pub(super) title: String,
-    pub(super) title_key: String,
+    pub path: String,
+    pub id: Option<String>,
+    pub title: String,
+    pub title_key: String,
     /// ASCII-folded graph path: what a path-qualified link joins against.
-    pub(super) path_key: String,
+    pub path_key: String,
     /// 'daily' | 'note' | 'template' — templates are excluded from note surfaces.
-    pub(super) kind: String,
-    pub(super) daily_date: Option<String>,
-    pub(super) is_private: bool,
-    pub(super) is_pinned: bool,
-    pub(super) pinned_order: Option<f64>,
+    pub kind: String,
+    pub daily_date: Option<String>,
+    pub is_private: bool,
+    pub is_pinned: bool,
+    pub pinned_order: Option<f64>,
     /// The file carries Git conflict markers (sync merge, Plan 12).
-    pub(super) has_conflict: bool,
+    pub has_conflict: bool,
     /// The published GitHub Gist's html url, when the note has one.
-    pub(super) gist_url: Option<String>,
+    pub gist_url: Option<String>,
     /// The body changed since it was last published to the gist.
-    pub(super) gist_stale: bool,
-    pub(super) file_hash: String,
-    pub(super) mtime: i64,
-    pub(super) text: String,
+    pub gist_stale: bool,
+    pub file_hash: String,
+    pub mtime: i64,
+    pub text: String,
     /// Description text of referenced assets (Plan 20), folded into the FTS
     /// `body` only — never `note_text`, `preview`, or anything AI-reachable.
     #[serde(default)]
-    pub(super) asset_text: String,
-    pub(super) preview: String,
-    pub(super) links: Vec<IndexedLink>,
-    pub(super) tags: Vec<IndexedTag>,
-    pub(super) aliases: Vec<IndexedAlias>,
+    pub asset_text: String,
+    pub preview: String,
+    pub links: Vec<IndexedLink>,
+    pub tags: Vec<IndexedTag>,
+    pub aliases: Vec<IndexedAlias>,
     /// Every folded spelling this note answers to (see `note_claims`).
-    pub(super) claims: Vec<IndexedClaim>,
+    pub claims: Vec<IndexedClaim>,
     /// Emails the note owns via `- Email:` contact-field bullets.
-    pub(super) emails: Vec<IndexedEmail>,
-    pub(super) assets: Vec<String>,
-    pub(super) tasks: Vec<IndexedTask>,
+    pub emails: Vec<IndexedEmail>,
+    pub assets: Vec<String>,
+    pub tasks: Vec<IndexedTask>,
     /// Non-reserved frontmatter keys (`note_properties`, TDR 0005).
     #[serde(default)]
-    pub(super) properties: Vec<IndexedProperty>,
+    pub properties: Vec<IndexedProperty>,
     /// Property key/value text for the FTS `body` only (the `asset_text`
     /// arrangement) — frontmatter-only values stay findable.
     #[serde(default)]
-    pub(super) properties_text: String,
+    pub properties_text: String,
     /// The tag schema when this is a definition note (`tag_types` row).
     #[serde(default)]
-    pub(super) tag_type: Option<IndexedTagType>,
+    pub tag_type: Option<IndexedTagType>,
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub(super) struct IndexedLink {
-    pub(super) kind: String,
-    pub(super) target_raw: String,
-    pub(super) target_key: String,
+pub struct IndexedLink {
+    pub kind: String,
+    pub target_raw: String,
+    pub target_key: String,
     /// Folded vault path when the link names a file; None when it names a note.
-    pub(super) target_path_key: Option<String>,
-    pub(super) alias: Option<String>,
-    pub(super) pos_from: i64,
-    pub(super) pos_to: i64,
+    pub target_path_key: Option<String>,
+    pub alias: Option<String>,
+    pub pos_from: i64,
+    pub pos_to: i64,
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub(super) struct IndexedTag {
-    pub(super) tag: String,
-    pub(super) tag_key: String,
+pub struct IndexedTag {
+    pub tag: String,
+    pub tag_key: String,
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub(super) struct IndexedAlias {
-    pub(super) alias: String,
-    pub(super) alias_key: String,
+pub struct IndexedAlias {
+    pub alias: String,
+    pub alias_key: String,
 }
 
 /// Precedence of the spellings a note answers to (`note_claims.tier`): the
 /// lowest tier claiming a key wins it. Mirrors `CLAIM_TIER` in
 /// `packages/core/src/indexing/indexed-note.ts`; the numbers are the storage
 /// encoding migration 0019 and the CLI read.
-pub(super) mod claim_tier {
+pub mod claim_tier {
     /// Calendar-valid daily date.
     pub const DAILY_DATE: i64 = 1;
     /// Authored title. Production writes receive it from TypeScript inside
-    /// `IndexedClaim`; only the test fixtures restate it natively.
-    #[cfg(test)]
+    /// `IndexedClaim`; only test fixtures restate it natively.
     pub const TITLE: i64 = 2;
-    /// Frontmatter or derived alias (same test-only story as `TITLE`).
-    #[cfg(test)]
+    /// Frontmatter or derived alias (same story as `TITLE`).
     pub const ALIAS: i64 = 3;
     /// Filename stem — the weakest address.
     pub const BASENAME: i64 = 4;
@@ -111,18 +109,18 @@ pub(super) mod claim_tier {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub(super) struct IndexedClaim {
+pub struct IndexedClaim {
     /// Folded spelling this note answers to.
-    pub(super) key: String,
+    pub key: String,
     /// One of [`claim_tier`].
-    pub(super) tier: i64,
+    pub tier: i64,
 }
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub(super) struct IndexedEmail {
-    pub(super) email: String,
-    pub(super) email_key: String,
+pub struct IndexedEmail {
+    pub email: String,
+    pub email_key: String,
 }
 
 /// One non-reserved frontmatter key (`note_properties`, TDR 0005). `value` is
@@ -130,39 +128,39 @@ pub(super) struct IndexedEmail {
 /// the numeric sort key, set only for numbers. Mirrors `indexedPropertySchema`.
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub(super) struct IndexedProperty {
-    pub(super) key: String,
-    pub(super) value: String,
-    pub(super) value_type: String,
-    pub(super) value_number: Option<f64>,
+pub struct IndexedProperty {
+    pub key: String,
+    pub value: String,
+    pub value_type: String,
+    pub value_number: Option<f64>,
 }
 
 /// A tag definition note's schema (`tag_types`, TDR 0005). `tag_key` is
 /// folded in TypeScript — Rust never folds. Mirrors `indexedTagTypeSchema`.
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub(super) struct IndexedTagType {
-    pub(super) tag_key: String,
-    pub(super) schema_json: String,
+pub struct IndexedTagType {
+    pub tag_key: String,
+    pub schema_json: String,
 }
 
 /// One GFM checkbox (Plan 18). `marker_offset` is the `[`'s character offset in
 /// the file (UTF-16 units) and, with `note_path`, the row's primary key.
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub(super) struct IndexedTask {
-    pub(super) marker_offset: i64,
-    pub(super) text: String,
+pub struct IndexedTask {
+    pub marker_offset: i64,
+    pub text: String,
     /// Parent outline/list item text, top-down, displayed in the Tasks view.
     #[serde(default)]
-    pub(super) breadcrumbs: Vec<String>,
-    pub(super) raw: String,
-    pub(super) checked: bool,
+    pub breadcrumbs: Vec<String>,
+    pub raw: String,
+    pub checked: bool,
     /// Explicit due date (first `[[YYYY-MM-DD]]` in the item), or None.
-    pub(super) due_date: Option<String>,
+    pub due_date: Option<String>,
     /// Local `HH:MM` on `due_date` from `@HH:MM` after the date link, or None.
     #[serde(default)]
-    pub(super) due_time: Option<String>,
+    pub due_time: Option<String>,
 }
 
 /// Replace all rows for `note.path` with its current projection. Caller wraps
@@ -173,7 +171,7 @@ pub(super) struct IndexedTask {
 /// The schema's foreign keys — not a hand-maintained `DELETE` list here — are the
 /// single source of truth for what belongs to a note, so new child tables (Plan
 /// 09 embeddings, etc.) need no change to this function.
-pub(super) fn apply_note(conn: &Connection, note: &IndexedNote) -> AppResult<()> {
+pub fn apply_note(conn: &Connection, note: &IndexedNote) -> StoreResult<()> {
     remove_note(conn, &note.path)?;
 
     conn.prepare_cached(
@@ -264,9 +262,8 @@ pub(super) fn apply_note(conn: &Connection, note: &IndexedNote) -> AppResult<()>
             "INSERT INTO tasks(note_path, marker_offset, text, breadcrumbs, raw, checked, due_date, due_time) VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
         )?;
         for task in &note.tasks {
-            let breadcrumbs = serde_json::to_string(&task.breadcrumbs).map_err(|err| {
-                crate::error::AppError::io(format!("serialize task breadcrumbs: {err}"))
-            })?;
+            let breadcrumbs = serde_json::to_string(&task.breadcrumbs)
+                .map_err(|err| StoreError::io(format!("serialize task breadcrumbs: {err}")))?;
             stmt.execute(params![
                 note.path,
                 task.marker_offset,
@@ -332,10 +329,10 @@ pub(super) fn apply_note(conn: &Connection, note: &IndexedNote) -> AppResult<()>
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MovedNoteAddress {
-    pub(super) path_key: String,
-    pub(super) basename_key: String,
+    pub path_key: String,
+    pub basename_key: String,
     /// Set only for a calendar-valid `daily/YYYY-MM-DD.md` destination.
-    pub(super) daily_date: Option<String>,
+    pub daily_date: Option<String>,
 }
 
 /// Move every row keyed by `from` to `to` — the projection half of a file
@@ -354,17 +351,17 @@ pub struct MovedNoteAddress {
 /// drifts until the next settled rename retries. One rule, no adoption
 /// heuristics. A missing `from` row is fine: an unindexed file can still be
 /// renamed, and the watcher indexes it at the new path.
-pub(super) fn move_note(
+pub fn move_note(
     conn: &Connection,
     from: &str,
     to: &str,
     address: &MovedNoteAddress,
-) -> AppResult<()> {
+) -> StoreResult<()> {
     let occupied: bool = conn
         .prepare_cached("SELECT 1 FROM notes WHERE path = ?1")?
         .exists(params![to])?;
     if occupied {
-        return Err(crate::error::AppError::io(format!(
+        return Err(StoreError::io(format!(
             "cannot move note: {to} is already indexed"
         )));
     }
@@ -437,7 +434,7 @@ pub(super) fn move_note(
 /// Wipe every derived table (for a full rebuild driven by TS). Deleting `notes`
 /// cascades to every child table; `search_fts` (a virtual table, no FK) is
 /// cleared explicitly. `index_meta` is intentionally preserved across a rebuild.
-pub(super) fn clear_index(conn: &Connection) -> AppResult<()> {
+pub fn clear_index(conn: &Connection) -> StoreResult<()> {
     conn.execute_batch(
         "DELETE FROM notes; DELETE FROM search_fts;
          DELETE FROM embedding_vectors; DELETE FROM embedding_chunks;",
@@ -450,7 +447,7 @@ pub(super) fn clear_index(conn: &Connection) -> AppResult<()> {
 /// this when a file's content hash still matches but its listed mtime doesn't
 /// — otherwise the stale stamp costs a re-read on every future pass. A path
 /// with no row matches nothing: a touch must never resurrect a removed note.
-pub(super) fn touch_note(conn: &Connection, path: &str, mtime: i64) -> AppResult<()> {
+pub fn touch_note(conn: &Connection, path: &str, mtime: i64) -> StoreResult<()> {
     conn.prepare_cached("UPDATE notes SET mtime = ?2, updated_at = ?2 WHERE path = ?1")?
         .execute(params![path, mtime])?;
     Ok(())
@@ -458,7 +455,7 @@ pub(super) fn touch_note(conn: &Connection, path: &str, mtime: i64) -> AppResult
 
 /// Drop every row belonging to `path` (the `notes` row cascades to child
 /// tables; `search_fts` is standalone).
-pub(super) fn remove_note(conn: &Connection, path: &str) -> AppResult<()> {
+pub fn remove_note(conn: &Connection, path: &str) -> StoreResult<()> {
     // Read the rowid first: it is the FTS row's key, and deleting the `notes`
     // row is what makes it unrecoverable. A path with no row leaves nothing to
     // delete, which is the same answer the old path-scan gave.
@@ -472,5 +469,78 @@ pub(super) fn remove_note(conn: &Connection, path: &str) -> AppResult<()> {
         conn.prepare_cached("DELETE FROM search_fts WHERE rowid = ?1")?
             .execute(params![note_rowid])?;
     }
+    Ok(())
+}
+
+// ---- transactions ----------------------------------------------------------
+//
+// The batch shapes every host issues, each as one transaction. Hosts keep the
+// connection and the generation gate; these keep the row logic and the
+// transaction boundaries identical between the desktop app and `kore index`.
+
+/// Apply many notes' projections in one transaction.
+pub fn apply_notes(conn: &mut Connection, notes: &[IndexedNote]) -> StoreResult<()> {
+    let tx = conn.transaction()?;
+    for note in notes {
+        apply_note(&tx, note)?;
+    }
+    tx.commit()?;
+    Ok(())
+}
+
+/// Remove notes deleted on disk, embedding rows included, in one transaction.
+/// This is the genuine-deletion path: [`apply_note`]'s internal remove must
+/// not drop chunks (it runs on every upsert and would destroy the hash-skip).
+pub fn remove_notes(conn: &mut Connection, paths: &[String]) -> StoreResult<()> {
+    let tx = conn.transaction()?;
+    for path in paths {
+        remove_note(&tx, path)?;
+        crate::embed_write::remove_chunks(&tx, path)?;
+    }
+    tx.commit()?;
+    Ok(())
+}
+
+/// Move a note's projection rows from `from` to `to` in one transaction.
+pub fn move_note_rows(
+    conn: &mut Connection,
+    from: &str,
+    to: &str,
+    address: &MovedNoteAddress,
+) -> StoreResult<()> {
+    let tx = conn.transaction()?;
+    // Child tables FK `notes(path)`; deferring lets the parent key move first
+    // and the constraint re-check at commit, when the children have followed.
+    tx.execute_batch("PRAGMA defer_foreign_keys = ON;")?;
+    move_note(&tx, from, to, address)?;
+    tx.commit()?;
+    Ok(())
+}
+
+/// One mtime re-stamp: `path`'s stored mtime becomes `mtime` (epoch ms).
+#[derive(Debug, Deserialize)]
+pub struct MtimeTouch {
+    pub path: String,
+    pub mtime: i64,
+}
+
+/// Re-stamp stored mtimes for notes whose content already matches disk, in
+/// one transaction.
+pub fn touch_notes(conn: &mut Connection, entries: &[MtimeTouch]) -> StoreResult<()> {
+    let tx = conn.transaction()?;
+    for entry in entries {
+        touch_note(&tx, &entry.path, entry.mtime)?;
+    }
+    tx.commit()?;
+    Ok(())
+}
+
+/// Upsert one `index_meta` key.
+pub fn set_index_meta(conn: &Connection, key: &str, value: &str) -> StoreResult<()> {
+    conn.prepare_cached(
+        "INSERT INTO index_meta(key, value) VALUES(?1, ?2)
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+    )?
+    .execute(params![key, value])?;
     Ok(())
 }

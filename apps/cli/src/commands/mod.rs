@@ -15,6 +15,7 @@ pub mod done;
 pub mod explain;
 pub mod grep;
 pub mod guide;
+pub mod index;
 pub mod info;
 pub mod links;
 pub mod list;

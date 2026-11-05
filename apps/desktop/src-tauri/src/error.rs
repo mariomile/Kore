@@ -134,6 +134,15 @@ impl From<std::io::Error> for AppError {
     }
 }
 
+impl From<reflect_index_store::StoreError> for AppError {
+    fn from(err: reflect_index_store::StoreError) -> Self {
+        match err {
+            reflect_index_store::StoreError::Io(message) => Self::Io { message },
+            reflect_index_store::StoreError::Parse(message) => Self::Parse { message },
+        }
+    }
+}
+
 impl From<rusqlite::Error> for AppError {
     fn from(err: rusqlite::Error) -> Self {
         Self::Io {

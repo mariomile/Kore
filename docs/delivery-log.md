@@ -7,6 +7,15 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- `kore index` builds the search index without the app. On a plain clone of
+  a vault (a server that pulls it from GitHub, say) one command makes every
+  index-backed CLI command and every `kore mcp` tool answer: search, tags,
+  backlinks, lists, tasks. It runs the app's own indexer (`@reflect/core`
+  bundled as `kore-indexer.mjs`, under Node 22+) and writes rows through the
+  app's own Rust write path, now the shared `crates/index-store`, so the two
+  can never build different indexes. First run 5,155 notes in 13.4 s; a
+  rerun after one edit and one rename took 0.3 s. Embeddings stay app-side.
+
 - Arrange the sidebar your way. Drag Daily notes, New note, All notes,
   Tasks and Graph into any order, and move Pinned notes, Folders and Types
   from the "…" on their header. Anything can be hidden and brought back from

@@ -192,12 +192,23 @@ describe('BrowserPane', () => {
   })
 
   describe('app overlays over the page', () => {
+    // Overlays live on document.body, outside what cleanup() unmounts. A
+    // failed attempt must not leave one behind, or every retry of the same
+    // test (and the next test) starts with the page already covered.
+    const mounted: HTMLElement[] = []
+    afterEach(() => {
+      for (const overlay of mounted.splice(0)) {
+        overlay.remove()
+      }
+    })
+
     // A fixed-position overlay standing in for a portaled menu or dialog.
     const mountOverlay = (role: string, style: Partial<CSSStyleDeclaration>): HTMLElement => {
       const overlay = document.createElement('div')
       overlay.setAttribute('role', role)
       Object.assign(overlay.style, { position: 'fixed', ...style })
       document.body.append(overlay)
+      mounted.push(overlay)
       return overlay
     }
     const renderSized = () =>

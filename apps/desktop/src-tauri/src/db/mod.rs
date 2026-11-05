@@ -13,17 +13,15 @@
 
 pub mod backup;
 mod chat_write;
-mod embed_write;
 mod migrations;
-mod query;
-mod scan;
 #[cfg(test)]
 mod tests;
-mod write;
+
+use reflect_index_store::{embed_write, query, scan, write};
 
 use std::sync::{Mutex, MutexGuard};
 
-use rusqlite::{params, Connection};
+use rusqlite::Connection;
 use serde_json::{Map, Value};
 use tauri::{Manager, State};
 
@@ -204,11 +202,7 @@ fn apply_in_txn(index: &IndexState, generation: u64, notes: &[IndexedNote]) -> A
         return Ok(false);
     }
     let conn = state.conn.as_mut().ok_or_else(AppError::no_graph)?;
-    let tx = conn.transaction()?;
-    for note in notes {
-        write::apply_note(&tx, note)?;
-    }
-    tx.commit()?;
+    write::apply_notes(conn, notes)?;
     Ok(true)
 }
 
@@ -295,12 +289,7 @@ pub async fn index_remove_batch<R: tauri::Runtime>(
                 return Ok(false);
             }
             let conn = state.conn.as_mut().ok_or_else(AppError::no_graph)?;
-            let tx = conn.transaction()?;
-            for path in &paths {
-                write::remove_note(&tx, path)?;
-                embed_write::remove_chunks(&tx, path)?;
-            }
-            tx.commit()?;
+            write::remove_notes(conn, &paths)?;
             Ok(true)
         }
     })
@@ -365,14 +354,17 @@ pub async fn note_move_indexed<R: tauri::Runtime>(
             {
                 let mut state = lock_state(&index)?;
                 let conn = state.conn.as_mut().ok_or_else(AppError::no_graph)?;
-                move_rows(conn, &request.from, &request.to, &request.to_address)?;
+                write::move_note_rows(conn, &request.from, &request.to, &request.to_address)?;
                 if let Err(err) = crate::fs::move_note_file(&root, &request.from, &request.to) {
                     // Compensate: the disk refused, so the rows go back. Best-effort —
                     // a failed compensation must surface the *original* error, and the
                     // reconcile heals any residue by id.
-                    if let Err(comp) =
-                        move_rows(conn, &request.to, &request.from, &request.from_address)
-                    {
+                    if let Err(comp) = write::move_note_rows(
+                        conn,
+                        &request.to,
+                        &request.from,
+                        &request.from_address,
+                    ) {
                         tracing::error!(
                             ?comp,
                             "rename compensation failed; reconcile will heal by id"
@@ -388,22 +380,6 @@ pub async fn note_move_indexed<R: tauri::Runtime>(
     .await?;
     emit_index_written(&app);
     emit_note_moved(&app, &from, &to);
-    Ok(())
-}
-
-/// One committed row-move transaction (the rename pipeline's halves).
-fn move_rows(
-    conn: &mut Connection,
-    from: &str,
-    to: &str,
-    address: &write::MovedNoteAddress,
-) -> AppResult<()> {
-    let tx = conn.transaction()?;
-    // Child tables FK `notes(path)`; deferring lets the parent key move first
-    // and the constraint re-check at commit, when the children have followed.
-    tx.execute_batch("PRAGMA defer_foreign_keys = ON;")?;
-    write::move_note(&tx, from, to, address)?;
-    tx.commit()?;
     Ok(())
 }
 
@@ -437,7 +413,7 @@ pub async fn index_move<R: tauri::Runtime>(
                 return Ok(false);
             }
             let conn = state.conn.as_mut().ok_or_else(AppError::no_graph)?;
-            move_rows(conn, &from, &to, &to_address)?;
+            write::move_note_rows(conn, &from, &to, &to_address)?;
             Ok(true)
         }
     })
@@ -504,14 +480,6 @@ pub async fn index_reconcile_scan<R: tauri::Runtime>(
     .await
 }
 
-/// One `index_touch` entry: re-stamp `path`'s stored mtime to `mtime`
-/// (epoch ms, as listed by `list_files`).
-#[derive(Debug, serde::Deserialize)]
-pub struct IndexTouch {
-    path: String,
-    mtime: i64,
-}
-
 /// Re-stamp stored mtimes for notes whose content already matches disk (the
 /// reconcile's hash-match skip, no-op if stale). Rows written from a local
 /// write echo carry an echo-time stamp that never equals the listed on-disk
@@ -520,7 +488,7 @@ pub struct IndexTouch {
 /// vanished in between updates nothing.
 #[tauri::command]
 pub async fn index_touch<R: tauri::Runtime>(
-    entries: Vec<IndexTouch>,
+    entries: Vec<write::MtimeTouch>,
     generation: u64,
     app: tauri::AppHandle<R>,
     background_tasks: State<'_, BackgroundTaskState>,
@@ -533,12 +501,7 @@ pub async fn index_touch<R: tauri::Runtime>(
             return Ok(());
         }
         let conn = state.conn.as_mut().ok_or_else(AppError::no_graph)?;
-        let tx = conn.transaction()?;
-        for entry in &entries {
-            write::touch_note(&tx, &entry.path, entry.mtime)?;
-        }
-        tx.commit()?;
-        Ok(())
+        Ok(write::touch_notes(conn, &entries)?)
     })
     .await
 }
@@ -560,12 +523,7 @@ pub(super) fn set_index_meta_for(
         return Ok(());
     }
     let conn = state.conn.as_ref().ok_or_else(AppError::no_graph)?;
-    conn.prepare_cached(
-        "INSERT INTO index_meta(key, value) VALUES(?1, ?2)
-         ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-    )?
-    .execute(params![key, value])?;
-    Ok(())
+    Ok(write::set_index_meta(conn, key, value)?)
 }
 
 #[tauri::command]
@@ -756,7 +714,7 @@ pub async fn db_query<R: tauri::Runtime>(
             return Err(AppError::io("index reopened during query"));
         }
         let conn = read.conn.as_ref().ok_or_else(AppError::no_graph)?;
-        query::run_query(conn, &sql, &params)
+        Ok(query::run_query(conn, &sql, &params)?)
     })
     .await
 }

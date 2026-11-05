@@ -1,5 +1,52 @@
 # Kore working state
 
+## Index without the app (`kore index`), 2026-11-04
+
+User ask (Mario, 2026-11-04, analysis "Kore: cosa migliorare", slice 2,
+"ok per 2 e 3"): the CLI needed the app-built index for search, tags,
+backlinks, list, tasks, recent, collection and done (`require_index`, exit
+4), so an always-on `kore mcp` over a git clone could not search. Step 2 of
+"Remote MCP over HTTP" below.
+
+- [x] `crates/index-store` (`reflect-index-store`): the index write path
+  (`write.rs`), reconcile scan (`scan.rs`, now owning `FileMeta`), embedding
+  writes and the read-only query guard moved out of the desktop crate, plus
+  the batch transactions every host issues (`apply_notes`, `remove_notes`,
+  `move_note_rows`, `touch_notes`, `set_index_meta`). The desktop's Tauri
+  commands call them unchanged in behavior; the guarded read-only
+  connection (`query::open_read_connection`) lives there too.
+- [x] `packages/core/src/headless/`: an `IpcBridge` over newline-delimited
+  JSON on stdio, and the entry that opens the index and runs `syncIndex`
+  (or `rebuildIndex` with `--rebuild`). `pnpm --filter @reflect/core
+  build:indexer` bundles it into `dist/kore-indexer.mjs` (1.15 MB, no
+  dependencies beyond Node).
+- [x] `kore index [--rebuild] [--json]`: spawns Node on that script and
+  serves its commands (`apps/cli/src/indexer.rs`: listing via the shared
+  walker, guarded note reads, `db_query`, the index writes). An explicit
+  `--graph`/`$KORE_GRAPH` folder without `.reflect/` is adopted. Docs:
+  `docs/cli.md`.
+- Not done: embeddings headless (semantic vectors stay an app pass), a
+  `--watch` mode, shipping `kore-indexer.mjs` with releases and inside
+  `Kore.app` (today it is built from the repo), a guard against running it
+  on a graph the app has open.
+
+**Validation:** `cargo test -p reflect-cli -p reflect-index-store` (two new
+host tests: write then read back over the bridge; traversal, missing note
+and write-through-query refused; a read through a symlinked directory is
+refused, from the Cursor security review), `cargo clippy -p reflect-index-store -p
+reflect-cli --all-targets -D warnings`, `cargo fmt --check`;
+`stdio-bridge.test.ts` (2); `pnpm check` exit 0. End to end on a synthetic
+5,155-note vault (frontmatter tags, `up:` links, tasks, 155 dailies) with a
+debug `kore`: first run 13.4 s, `info` reports the index fresh, search,
+tags, backlinks and tasks answer; after one edit and one rename the rerun
+took 0.3 s (2 written, 1 removed). The desktop crate (the moved write path)
+compiles only in CI here (no GTK/WebKit in the container): its `db` tests
+run there.
+
+**Next:** release packaging for `kore-indexer.mjs` (attach to the GitHub
+release and bundle beside the sidecar), then run it on the agents' server
+over the marioverse.ai clone with a cron `git pull && kore index`.
+
 ## Agent tools copied from Etch, 2026-11-05
 
 User ask (Mario, 2026-11-05, "Copiamo le cose interessanti"), after a
@@ -2629,6 +2676,10 @@ screen: Agents then Close lands on today.
 **Next:** merge the Close fix, then bump.
 
 ## Session log
+
+- 2026-11-04 — `kore index` builds the index without the app: the core
+  indexer bundled for Node, row writes through the new shared
+  `crates/index-store`. 5,155 notes in 13.4 s, incremental rerun 0.3 s.
 
 - 2026-11-02 — Every agent gets the vault's own rules. `kore guide` prints
   the vault's agent contract (`AGENTS.md`, else `CLAUDE.md`, at the root;

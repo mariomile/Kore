@@ -213,6 +213,12 @@ enum Command {
         #[arg(long, conflicts_with = "text")]
         stdin: bool,
     },
+    /// Build or refresh the search index without the app (needs Node 22+)
+    Index {
+        /// Rebuild every row instead of reconciling what changed
+        #[arg(long)]
+        rebuild: bool,
+    },
     /// Print every line containing an exact text, across all notes (no index needed)
     Grep {
         /// The text to find, matched literally
@@ -265,7 +271,10 @@ enum Command {
 }
 
 fn run(cli: &Cli) -> Result<(), CliError> {
-    let graph = graph::resolve(cli.graph.as_deref())?;
+    let graph = match &cli.command {
+        Command::Index { .. } => graph::resolve_for_index(cli.graph.as_deref())?,
+        _ => graph::resolve(cli.graph.as_deref())?,
+    };
     match &cli.command {
         Command::Today { path } => commands::today::run(&graph, cli.json, *path),
         Command::Search { query, limit } => commands::search::run(&graph, cli.json, query, *limit),
@@ -343,6 +352,7 @@ fn run(cli: &Cli) -> Result<(), CliError> {
         Command::Append { note, text, stdin } => {
             commands::append::run(&graph, cli.json, note, text.as_deref(), *stdin)
         }
+        Command::Index { rebuild } => commands::index::run(&graph.root, cli.json, *rebuild),
         Command::Mcp {
             read_only,
             http,

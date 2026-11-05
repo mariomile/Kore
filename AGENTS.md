@@ -400,7 +400,8 @@ Kore/
 │   │   ├── e2e/            # run-e2e.mjs — Chromium smoke of the Vite app (no Tauri shell)
 │   │   ├── dist/           # Vite build output (frontendDist in tauri.conf.json)
 │   │   └── public/         # Static assets served by Vite
-│   ├── cli/                # `kore` — self-contained Rust read/discovery/capture CLI (docs/cli.md)
+│   ├── cli/                # `kore` — self-contained Rust read/discovery/capture CLI (docs/cli.md);
+│   │                       #   `kore index` hosts the core's indexer under Node
 │   ├── extension/          # @reflect/extension — Chrome MV3 capture extension (WXT; see its README)
 │   └── native-host/        # `reflect-capture-host` — native-messaging spooler sidecar (Plan 11)
 ├── packages/
@@ -411,6 +412,8 @@ Kore/
 ├── crates/
 │   ├── index-schema/       # Shared SQLite migrations for <graph>/.reflect/index.sqlite
 │   │                       #   (one schema for the desktop writer + CLI reader)
+│   ├── index-store/        # The index write path + read guard, shared by the desktop
+│   │                       #   writer and the CLI's headless indexer (`kore index`)
 │   ├── graph-paths/        # Shared graph-relative path classification + vault walker
 │   │                       #   (kept in lockstep with packages/core/src/graph/paths.ts)
 │   └── note-policy/        # Shared frontmatter parsing + first-H1 title extraction
@@ -422,7 +425,8 @@ Kore/
 ├── design-system/          # Design tokens + the Inter webfont (see design-system/readme.md)
 ├── docs/                   # Product/architecture docs + plans/, decisions/, contributing/, porting/
 ├── Cargo.toml              # Root Cargo workspace: reflect-open, reflect-cli, reflect-capture-host,
-│                           #   reflect-index-schema, reflect-graph-paths, reflect-note-policy, and
+│                           #   reflect-index-schema, reflect-index-store, reflect-graph-paths,
+│                           #   reflect-note-policy, and
 │                           #   the two Tauri plugins
 └── turbo.json, pnpm-workspace.yaml
 ```

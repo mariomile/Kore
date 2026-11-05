@@ -7,6 +7,13 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Agents search your vault by meaning. `kore search` and the MCP `search`
+  tool now find notes the way Kore's own AI chat does, by words and by
+  meaning, using the semantic index the app already builds. Agents can also
+  fix a passage in place with `edit_note` (or `kore edit`): the change only
+  lands if the text is still what they read, so they never overwrite your
+  edits.
+
 - `kore index` builds the search index without the app. On a plain clone of
   a vault (a server that pulls it from GitHub, say) one command makes every
   index-backed CLI command and every `kore mcp` tool answer: search, tags,

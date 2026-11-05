@@ -46,6 +46,11 @@ enum Command {
         /// Maximum number of results
         #[arg(long, default_value_t = 20)]
         limit: usize,
+        /// hybrid (words and meaning, the default), lexical (words only), or
+        /// semantic (meaning only). Hybrid falls back to lexical when the app
+        /// has not built semantic vectors or the model is not on this machine.
+        #[arg(long, value_enum, default_value_t = commands::search::SearchMode::Hybrid)]
+        mode: commands::search::SearchMode,
     },
     /// Print a note, resolved by date, path, id, title, or alias
     Show {
@@ -252,6 +257,19 @@ enum Command {
     },
     /// The note open in the Kore app and the note tabs beside it
     Active,
+    /// Replace one exact passage of a note's body (or append, with an empty
+    /// --old). Nothing is written unless --old occurs in the body exactly
+    /// once, so an edit never lands on a note that changed since it was read
+    Edit {
+        /// A YYYY-MM-DD date, graph-relative path, note id, title, or alias
+        note: String,
+        /// The exact current text to replace, unique in the note ("" appends)
+        #[arg(long, value_name = "TEXT", allow_hyphen_values = true)]
+        old: String,
+        /// The replacement text
+        #[arg(long, value_name = "TEXT", allow_hyphen_values = true)]
+        new: String,
+    },
     /// Serve the graph to AI agents as an MCP server (stdio, or HTTP with --http)
     Mcp {
         /// Expose only the tools that read; refuse every write
@@ -277,7 +295,9 @@ fn run(cli: &Cli) -> Result<(), CliError> {
     };
     match &cli.command {
         Command::Today { path } => commands::today::run(&graph, cli.json, *path),
-        Command::Search { query, limit } => commands::search::run(&graph, cli.json, query, *limit),
+        Command::Search { query, limit, mode } => {
+            commands::search::run(&graph, cli.json, query, *limit, *mode)
+        }
         Command::Show { note } => commands::show::run(&graph, cli.json, note),
         Command::Path { note } => commands::path::run(&graph, cli.json, note),
         Command::Open { note, print } => commands::open::run(&graph, cli.json, note, *print),
@@ -353,6 +373,7 @@ fn run(cli: &Cli) -> Result<(), CliError> {
             commands::append::run(&graph, cli.json, note, text.as_deref(), *stdin)
         }
         Command::Index { rebuild } => commands::index::run(&graph.root, cli.json, *rebuild),
+        Command::Edit { note, old, new } => commands::edit::run(&graph, cli.json, note, old, new),
         Command::Mcp {
             read_only,
             http,

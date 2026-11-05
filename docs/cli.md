@@ -8,8 +8,8 @@ by the desktop app, or without it by `kore index`, which runs the app's own
 indexer under Node (see below). Markdown stays the source of truth and
 the CLI's writes stay **structural**: each one changes exactly the bytes it
 is about (an appended item or block, a new file claimed atomically, one
-frontmatter key, one trailing tag line, one task marker) and nothing ever
-overwrites a note.
+frontmatter key, one trailing tag line, one task marker, one passage whose
+exact current text the caller passed) and nothing ever overwrites a note.
 
 ```
 kore info                  # graph root, index state, counts (never needs the index)
@@ -25,7 +25,7 @@ kore skills [name]         # the vault's agent skills (agents/skills/), or one i
 kore active                # the note open in the app and the note tabs beside it
 kore today                 # print today's daily note
 kore today --path          # its absolute path (works before the file exists)
-kore search <query>        # ranked full-text search over the index
+kore search <query>        # words + meaning, like the app's AI chat (--mode lexical|semantic)
 kore show <note>           # print a note by date, path, id, title, or alias
 kore path <note>           # resolve a note to its absolute path
 kore open <note>           # open a note in the app (kore:// deep link)
@@ -34,6 +34,7 @@ kore backlinks <note>      # the notes linking to a note
 kore recent                # the most recently updated notes, newest first
 kore capture <text>        # append a bullet to today's daily (--to any note, --stdin)
 kore append <note> <text>     # append a markdown block (--stdin)
+kore edit <note> --old T --new T  # replace one exact passage (empty --old appends)
 kore new <title>           # create notes/<slug>.md (--template, --tag, --set, --stdin)
 kore set <note> k=v…       # write frontmatter properties typed by the tag schemas
 kore tag <note> <tag>      # add a trailing #tag line (untag removes it)
@@ -111,9 +112,28 @@ this is how editors/scripts create them).
 { "date": "…", "path": "…", "absolutePath": "…", "exists": false }
 ```
 
-### `kore search <query> [--limit N] [--json]`
+### `kore search <query> [--limit N] [--mode hybrid|lexical|semantic] [--json]`
 
-Search over note titles and bodies, ranked like the app: exact, prefix, and
+Hybrid by default, the same search the in-app AI chat's `search_notes` runs
+(`retrieve()` in `packages/core/src/embeddings/retrieve.ts`): the lexical
+ranking below fused by reciprocal rank (K = 60) with semantic neighbors, so a
+plain-language question ("what did I decide about pricing") finds notes that
+discuss it without its exact words. The semantic leg embeds the query with
+the app's own model (all-MiniLM-L6-v2, read from the app's model cache, or
+`$KORE_MODEL_DIR`; the CLI never downloads it), runs a KNN over the chunk
+vectors the app stored in `embedding_chunks`, drops neighbors past cosine
+distance 0.7 and keeps each note's best chunk. Search filters constrain both
+legs. Before it trusts the model, the CLI re-embeds one stored chunk and
+compares it with the app's vector; below 0.99 cosine, semantic search stays
+off. When the app has no vectors (semantic search off in Settings → AI), the
+model is not on this machine, or that check fails, hybrid serves lexical
+results only, says why on stderr, and reports it in `semanticUnavailable`.
+`--mode lexical` runs the lexical leg alone; `--mode semantic` the semantic
+leg alone, and fails (exit `1`) when it is unavailable. `mode` in the JSON
+names the legs that ran. The model runs on `tract`, a pure-Rust ONNX runtime,
+so the binary needs no native library.
+
+The lexical leg searches note titles and bodies, ranked like the app: exact, prefix, and
 per-term title matches lead, followed by title-boosted bm25 matches. Title
 and body terms match at word starts (`car` finds `Car log`, never `Oscar party`);
 terms in scripts written without spaces (Japanese, Chinese, Korean, Thai, …)
@@ -156,10 +176,16 @@ score `0`. Quote the whole query in the shell so `#` and `"` reach the CLI.
 {
   "query": "meeting notes",
   "stale": false,
+  "mode": "hybrid",
   "results": [
-    { "path": "notes/standup.md", "title": "Standup", "snippet": "…meeting notes…", "score": -1.94 }
+    { "path": "notes/standup.md", "title": "Standup", "snippet": "…meeting notes…", "score": 0.0328 },
+    { "path": "notes/retro.md", "title": "Retro", "snippet": "What we agreed in the sync…", "heading": "Decisions", "score": 0.0161 }
   ]
 }
+// Scores: hybrid = fused rank score (higher is better), lexical = bm25 (more
+// negative is better, 0 for title recall), semantic = cosine similarity.
+// "heading" is the heading above a semantic match's passage.
+// Without semantic search: "mode": "lexical", "semanticUnavailable": "<why>".
 ```
 
 ### `kore show <note> [--json]`
@@ -663,6 +689,23 @@ content with `--stdin`.
 { "path": "notes/dune.md", "absolutePath": "/…/graph/notes/dune.md", "created": false, "bytesAppended": 16 }
 ```
 
+### `kore edit <note> --old <text> --new <text> [--json]`
+
+Replaces one exact passage of the note's body: the CLI's twin of the in-app
+chat's `edit_note` (`applyNoteEdit`). `--old` must occur in the body exactly
+once; otherwise nothing is written and the command exits `2` (not found, or
+more than once). That is the guard: an agent passes the text it read, so an
+edit never lands on a note that changed since (typed in the app, edited by
+another agent); it re-reads and retries. An empty `--old` appends `--new` to
+the end of the body. Frontmatter is out of reach (use `set`); private notes
+are refused (exit `3`). Text sent with LF line breaks is written in a CRLF
+note's own ending.
+
+```jsonc
+// kore edit Plan --old "Ship in May." --new "Ship in June." --json
+{ "path": "notes/plan.md", "absolutePath": "/…/graph/notes/plan.md", "appended": false }
+```
+
 ## For agents
 
 The commands above plus `--json` are the supported automation surface (e.g.
@@ -672,7 +715,7 @@ Reading or writing a private note is not possible through this surface by
 design — don't work around it by reading graph files directly unless the
 user asked for that. The intended loop is discover → read → write:
 `info`/`tags` to learn what exists, `collection`/`properties` to learn a
-row's keys and types, then `new`/`set`/`tag`/`done`/`append` instead of
+row's keys and types, then `new`/`set`/`tag`/`done`/`append`/`edit` instead of
 hand-written YAML.
 
 Settings → Agents installs the bundled agent skills under
@@ -718,8 +761,12 @@ fails (not found, private, no index) comes back as a tool result with
 | `search`, `read_note`, `today`, `backlinks`, `links`, `note_properties` | `search`, `show`, `today`, `backlinks`, `links`, `properties` |
 | `list_notes`, `recent_notes`, `list_tags`, `collection`, `list_tasks`, `graph_info` | `list`, `recent`, `tags`, `collection`, `tasks`, `info` |
 | `explain_note`, `path_between_notes`, `grep_notes`, `list_skills`, `load_skill`, `active_note` | `explain`, `route`, `grep`, `skills`, `skills <name>`, `active` |
-| `capture`, `append_to_note`, `create_note`, `set_properties` | `capture`, `append --stdin`, `new` (body on stdin), `set` |
+| `capture`, `append_to_note`, `edit_note`, `create_note`, `set_properties` | `capture`, `append --stdin`, `edit`, `new` (body on stdin), `set` |
 | `tag_note`, `untag_note`, `complete_task` | `tag`, `untag`, `done` |
+
+`search` takes an optional `mode` (`hybrid` by default, `lexical`,
+`semantic`), so an agent searches the way the in-app chat does.
+`edit_note` takes `note`, `oldText` and `newText` (the chat tool's names).
 
 `vault_guide` is the tool to call first. The server's `initialize`
 `instructions` carry the vault's contract too (up to 12,000 characters,
@@ -729,8 +776,10 @@ connects over stdio or `--http`, and ChatGPT- or Grok-style clients that
 only use tools still reach them through `vault_guide`.
 
 `--read-only` drops the writing tools (the last two rows) from `tools/list`
-and refuses them if called. Tools carry `readOnlyHint`
-annotations either way, so clients that confirm writes can tell them apart.
+and refuses them if called. Tools carry `readOnlyHint` and
+`destructiveHint` annotations either way, so clients that confirm writes can
+tell them apart: `edit_note`, the one tool that replaces existing text, is
+the only one marked destructive.
 
 Resources are the notes themselves, addressed by the app's deep links, so a
 URI an agent cites opens the note in Kore and a link copied from the app

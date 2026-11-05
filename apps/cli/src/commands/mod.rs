@@ -3,8 +3,8 @@
 //! `properties`/`set`/`tag`/`append`) degrade to a file scan when the index
 //! is missing or unusable, while the listing commands require it
 //! (`require_index`). The writing commands (`capture`, `append`, `new`,
-//! `set`, `tag`, `untag`, `done`) are atomic and structural — see the crate
-//! doc.
+//! `set`, `tag`, `untag`, `done`, `edit`) are atomic and structural — see the
+//! crate doc.
 
 pub mod active;
 pub mod append;
@@ -12,6 +12,7 @@ pub mod backlinks;
 pub mod capture;
 pub mod collection;
 pub mod done;
+pub mod edit;
 pub mod explain;
 pub mod grep;
 pub mod guide;

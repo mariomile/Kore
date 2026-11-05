@@ -34,9 +34,11 @@ const PROTOCOL_VERSIONS: [&str; 3] = ["2025-06-18", "2025-03-26", "2024-11-05"];
 const INSTRUCTIONS: &str = "Tools over the user's Kore notes: a local folder of \
 Markdown files with [[wiki links]], #tags, frontmatter properties, tasks, and one \
 daily note per day. A <note> argument accepts a YYYY-MM-DD date, a graph-relative \
-path, a note id, a title, or an alias. Search first, then read_note what you need. Notes the \
-user marked private are never returned. Writes are structural: they append, create, \
-or set one property; nothing overwrites a note's prose. Every note is also a resource \
+path, a note id, a title, or an alias. Search first (it matches meaning as well as words, so ask in plain \
+language), then read_note what you need. Notes the user marked private are never \
+returned. Writes are structural: they append, create, set one property, or replace one \
+passage whose exact current text you pass (edit_note), so nothing overwrites a change \
+you have not read. Every note is also a resource \
 at kore://note/<path>, a link that opens it in the Kore app. Call vault_guide first: \
 it returns the vault's own agent contract (its rules, including where memory and new \
 notes go) and a map of its folders.";
@@ -131,11 +133,24 @@ impl Runner for ProcessRunner {
     }
 }
 
+/// What a tool does to the vault, which decides its MCP annotations and
+/// whether `--read-only` keeps it.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Effect {
+    Read,
+    /// Writes that only add or set structure (append, create, one property,
+    /// one tag line, one task marker): existing prose survives.
+    Add,
+    /// Replaces existing text (`edit_note`): annotated destructive, so
+    /// clients that confirm destructive calls ask the user first.
+    Replace,
+}
+
 /// One tool: its MCP definition and how its arguments become argv.
 struct Tool {
     name: &'static str,
     description: &'static str,
-    read_only: bool,
+    effect: Effect,
     /// JSON Schema `properties` and `required` for the input.
     properties: fn() -> Value,
     required: &'static [&'static str],
@@ -281,26 +296,38 @@ fn tools() -> Vec<Tool> {
         Tool {
             name: "vault_guide",
             description: "Start here, once per session, before reading or writing. Returns the vault's agent contract (the user's rules for every agent: where memory, decisions and new notes go, what not to touch; null when the vault has none) and a map of its folders with note counts and where daily notes live. Follow the contract over your own defaults.",
-            read_only: true,
+            effect: Effect::Read,
             properties: no_properties,
             required: &[],
             build: |_| Ok(Invocation::new("guide")),
         },
         Tool {
             name: "search",
-            description: "Full-text search over every note, ranked by relevance (title matches first). Returns paths, titles and snippets. The query takes Kore's search operators: #tag or tag:#tag (nested tags included), -#tag, \"exact phrase\", -word, path:CRM/, file:name, [key] or [key:value], is:daily, is:pinned, links:Note, linked-from:Note, updated:>YYYY-MM-DD. Filters alone list matching notes newest first.",
-            read_only: true,
-            properties: || json!({ "query": { "type": "string", "description": "Search terms and operators, e.g. tag:#type/person path:CRM/ roadmap" }, "limit": limit_schema(20) }),
+            description: "Search every note by words and by meaning (hybrid, like the Kore app's own AI chat): a question in plain language (\"what do I know about X\", \"notes on pricing decisions\") finds notes that discuss it even without the exact words. Returns paths, titles, snippets and, for meaning matches, the heading above the passage; `mode` in the result says whether meaning search ran (it needs semantic search turned on in the app). The query also takes Kore's search operators, which filter both kinds of match: #tag or tag:#tag (nested tags included), -#tag, \"exact phrase\", -word, path:CRM/, file:name, [key] or [key:value], is:daily, is:pinned, links:Note, linked-from:Note, updated:>YYYY-MM-DD. Filters alone list matching notes newest first.",
+            effect: Effect::Read,
+            properties: || json!({
+                "query": { "type": "string", "description": "A question or search terms, plus any operators, e.g. tag:#type/person who works on pricing" },
+                "limit": limit_schema(20),
+                "mode": { "type": "string", "enum": ["hybrid", "lexical", "semantic"], "description": "hybrid (default): words and meaning; lexical: exact words only; semantic: meaning only" }
+            }),
             required: &["query"],
             build: |args| {
                 let query = required_string(args, "query")?;
-                Ok(Invocation::new("search").option("limit", limit_arg(args)?).positionals(&[query]))
+                let mode = match string_arg(args, "mode")?.as_deref() {
+                    None => None,
+                    Some(mode @ ("hybrid" | "lexical" | "semantic")) => Some(mode.to_string()),
+                    Some(_) => return Err("`mode` must be hybrid, lexical, or semantic".to_string()),
+                };
+                Ok(Invocation::new("search")
+                    .option("limit", limit_arg(args)?)
+                    .option("mode", mode)
+                    .positionals(&[query]))
             },
         },
         Tool {
             name: "read_note",
             description: "Read one note's full Markdown content, with its path, title and daily date.",
-            read_only: true,
+            effect: Effect::Read,
             properties: || json!({ "note": note_schema() }),
             required: &["note"],
             build: |args| Ok(Invocation::new("show").positionals(&[required_string(args, "note")?])),
@@ -308,7 +335,7 @@ fn tools() -> Vec<Tool> {
         Tool {
             name: "today",
             description: "Read today's daily note. Fails when it does not exist yet; capture creates it.",
-            read_only: true,
+            effect: Effect::Read,
             properties: no_properties,
             required: &[],
             build: |_| Ok(Invocation::new("today")),
@@ -316,7 +343,7 @@ fn tools() -> Vec<Tool> {
         Tool {
             name: "backlinks",
             description: "List the notes that link to a note.",
-            read_only: true,
+            effect: Effect::Read,
             properties: || json!({ "note": note_schema() }),
             required: &["note"],
             build: |args| Ok(Invocation::new("backlinks").positionals(&[required_string(args, "note")?])),
@@ -324,7 +351,7 @@ fn tools() -> Vec<Tool> {
         Tool {
             name: "links",
             description: "List the wiki links a note makes, each resolved to its target note when it exists.",
-            read_only: true,
+            effect: Effect::Read,
             properties: || json!({ "note": note_schema() }),
             required: &["note"],
             build: |args| Ok(Invocation::new("links").positionals(&[required_string(args, "note")?])),
@@ -332,7 +359,7 @@ fn tools() -> Vec<Tool> {
         Tool {
             name: "note_properties",
             description: "A note's frontmatter properties (typed by its tags' schemas), aliases and tags.",
-            read_only: true,
+            effect: Effect::Read,
             properties: || json!({ "note": note_schema() }),
             required: &["note"],
             build: |args| Ok(Invocation::new("properties").positionals(&[required_string(args, "note")?])),
@@ -340,7 +367,7 @@ fn tools() -> Vec<Tool> {
         Tool {
             name: "list_notes",
             description: "List notes newest first with their tags, optionally only one tag or one kind (daily or note).",
-            read_only: true,
+            effect: Effect::Read,
             properties: || json!({
                 "tag": { "type": "string", "description": "Only notes with this tag, without the #" },
                 "kind": { "type": "string", "enum": ["daily", "note"] },
@@ -357,7 +384,7 @@ fn tools() -> Vec<Tool> {
         Tool {
             name: "recent_notes",
             description: "The most recently updated notes, newest first.",
-            read_only: true,
+            effect: Effect::Read,
             properties: || json!({ "limit": limit_schema(20) }),
             required: &[],
             build: |args| Ok(Invocation::new("recent").option("limit", limit_arg(args)?)),
@@ -365,7 +392,7 @@ fn tools() -> Vec<Tool> {
         Tool {
             name: "list_tags",
             description: "Every tag with its note count and whether it is a typed collection.",
-            read_only: true,
+            effect: Effect::Read,
             properties: no_properties,
             required: &[],
             build: |_| Ok(Invocation::new("tags")),
@@ -373,7 +400,7 @@ fn tools() -> Vec<Tool> {
         Tool {
             name: "collection",
             description: "A typed tag's notes as rows with their property values, like a database view.",
-            read_only: true,
+            effect: Effect::Read,
             properties: || json!({
                 "tag": { "type": "string", "description": "The tag, without the #" },
                 "sort": { "type": "string", "description": "Property key to sort by" },
@@ -394,7 +421,7 @@ fn tools() -> Vec<Tool> {
         Tool {
             name: "list_tasks",
             description: "The graph's open tasks with their notes and due dates; `all` includes completed ones.",
-            read_only: true,
+            effect: Effect::Read,
             properties: || json!({ "all": { "type": "boolean" }, "limit": limit_schema(200) }),
             required: &[],
             build: |args| {
@@ -406,7 +433,7 @@ fn tools() -> Vec<Tool> {
         Tool {
             name: "graph_info",
             description: "The notes folder at a glance: its root, note counts, and whether the index is current.",
-            read_only: true,
+            effect: Effect::Read,
             properties: no_properties,
             required: &[],
             build: |_| Ok(Invocation::new("info")),
@@ -414,7 +441,7 @@ fn tools() -> Vec<Tool> {
         Tool {
             name: "grep_notes",
             description: "Every line, in every note, that contains an exact text, with its path and line number. Use it when you need all occurrences (open tasks naming a person, every mention of an amount) rather than the top-ranked notes `search` returns.",
-            read_only: true,
+            effect: Effect::Read,
             properties: || json!({
                 "text": { "type": "string", "description": "Matched literally, not as a pattern" },
                 "ignore_case": { "type": "boolean" },
@@ -431,7 +458,7 @@ fn tools() -> Vec<Tool> {
         Tool {
             name: "path_between_notes",
             description: "How two notes are connected: the shortest chain of wiki links between them, followed in either direction, each step saying whether it links to or is linked from the previous note. found is false when no chain exists within max_hops.",
-            read_only: true,
+            effect: Effect::Read,
             properties: || json!({
                 "from": note_schema(),
                 "to": note_schema(),
@@ -454,7 +481,7 @@ fn tools() -> Vec<Tool> {
         Tool {
             name: "explain_note",
             description: "One note's place in the graph in a single call: title, aliases, tags, typed properties, word count, its headings, the notes it links to and the notes linking to it. Cheaper than read_note plus links plus backlinks when you need to understand a note before using it.",
-            read_only: true,
+            effect: Effect::Read,
             properties: || json!({ "note": note_schema() }),
             required: &["note"],
             build: |args| Ok(Invocation::new("explain").positionals(&[required_string(args, "note")?])),
@@ -462,7 +489,7 @@ fn tools() -> Vec<Tool> {
         Tool {
             name: "list_skills",
             description: "The procedures the user taught their agents, kept in the vault under agents/skills/: each skill's name and its description of when to use it. When a task matches a description, call load_skill and follow it.",
-            read_only: true,
+            effect: Effect::Read,
             properties: no_properties,
             required: &[],
             build: |_| Ok(Invocation::new("skills")),
@@ -470,7 +497,7 @@ fn tools() -> Vec<Tool> {
         Tool {
             name: "load_skill",
             description: "The full text of one vault skill, by the name list_skills gives (or its title). Follow its steps for the rest of the task.",
-            read_only: true,
+            effect: Effect::Read,
             properties: || json!({ "name": { "type": "string" } }),
             required: &["name"],
             build: |args| Ok(Invocation::new("skills").positionals(&[required_string(args, "name")?])),
@@ -478,7 +505,7 @@ fn tools() -> Vec<Tool> {
         Tool {
             name: "active_note",
             description: "The note the user has open in the Kore app right now, and the other note tabs open beside it. Use it when the user says \"this note\" or \"what I'm looking at\". Fails when the app has not shared its state for this vault.",
-            read_only: true,
+            effect: Effect::Read,
             properties: no_properties,
             required: &[],
             build: |_| Ok(Invocation::new("active")),
@@ -486,7 +513,7 @@ fn tools() -> Vec<Tool> {
         Tool {
             name: "capture",
             description: "Append one bullet (or an open task) to today's daily note, creating it if needed, or to another note with `to`.",
-            read_only: false,
+            effect: Effect::Add,
             properties: || json!({
                 "text": { "type": "string", "description": "One line; line breaks collapse to spaces" },
                 "task": { "type": "boolean", "description": "Add an open task instead of a bullet" },
@@ -503,7 +530,7 @@ fn tools() -> Vec<Tool> {
         Tool {
             name: "append_to_note",
             description: "Append a Markdown block to the end of an existing note, after one blank line.",
-            read_only: false,
+            effect: Effect::Add,
             properties: || json!({ "note": note_schema(), "markdown": { "type": "string" } }),
             required: &["note", "markdown"],
             build: |args| {
@@ -515,9 +542,29 @@ fn tools() -> Vec<Tool> {
             },
         },
         Tool {
+            name: "edit_note",
+            description: "Replace one exact passage of a note's body with new text (or append, when oldText is empty). read_note first and copy oldText verbatim, whitespace included, with enough surrounding words to occur exactly once. Nothing is written when oldText is missing or repeated, so an edit never overwrites a change made since you read the note (by the user or another agent): re-read and retry. Frontmatter is out of reach (use set_properties); private notes are refused.",
+            effect: Effect::Replace,
+            properties: || json!({
+                "note": note_schema(),
+                "oldText": { "type": "string", "description": "The exact current text to replace, unique in the note's body. Empty string: append newText at the end." },
+                "newText": { "type": "string", "description": "The replacement Markdown (or the text to append)." }
+            }),
+            required: &["note", "oldText", "newText"],
+            build: |args| {
+                let note = required_string(args, "note")?;
+                let old_text = string_arg(args, "oldText")?.ok_or("`oldText` is required")?;
+                let new_text = string_arg(args, "newText")?.ok_or("`newText` is required")?;
+                Ok(Invocation::new("edit")
+                    .option("old", Some(old_text))
+                    .option("new", Some(new_text))
+                    .positionals(&[note]))
+            },
+        },
+        Tool {
             name: "create_note",
             description: "Create a new note with a title, optional Markdown body, tags and properties. Fails if a note with that title already exists.",
-            read_only: false,
+            effect: Effect::Add,
             properties: || json!({
                 "title": { "type": "string" },
                 "body": { "type": "string", "description": "Markdown placed under the title" },
@@ -544,7 +591,7 @@ fn tools() -> Vec<Tool> {
         Tool {
             name: "set_properties",
             description: "Set or remove frontmatter properties on a note, typed by its tags' schemas (relations by note title).",
-            read_only: false,
+            effect: Effect::Add,
             properties: || json!({
                 "note": note_schema(),
                 "set": { "type": "object", "description": "Values by key; lists as arrays" },
@@ -569,7 +616,7 @@ fn tools() -> Vec<Tool> {
         Tool {
             name: "tag_note",
             description: "Add a #tag to a note as a trailing tag line.",
-            read_only: false,
+            effect: Effect::Add,
             properties: || json!({ "note": note_schema(), "tag": { "type": "string" } }),
             required: &["note", "tag"],
             build: |args| {
@@ -579,7 +626,7 @@ fn tools() -> Vec<Tool> {
         Tool {
             name: "untag_note",
             description: "Remove a note's trailing #tag line (tags inside prose are left alone).",
-            read_only: false,
+            effect: Effect::Add,
             properties: || json!({ "note": note_schema(), "tag": { "type": "string" } }),
             required: &["note", "tag"],
             build: |args| {
@@ -589,7 +636,7 @@ fn tools() -> Vec<Tool> {
         Tool {
             name: "complete_task",
             description: "Tick a task off by its text (exact, or a unique part of it); `undo` reopens it.",
-            read_only: false,
+            effect: Effect::Add,
             properties: || json!({
                 "text": { "type": "string" },
                 "in": note_schema(),
@@ -617,8 +664,8 @@ fn tool_definition(tool: &Tool) -> Value {
             "additionalProperties": false
         },
         "annotations": {
-            "readOnlyHint": tool.read_only,
-            "destructiveHint": false,
+            "readOnlyHint": tool.effect == Effect::Read,
+            "destructiveHint": tool.effect == Effect::Replace,
             "openWorldHint": false
         }
     })
@@ -847,7 +894,7 @@ impl<R: Runner> Server<R> {
     fn available(&self) -> Vec<Tool> {
         tools()
             .into_iter()
-            .filter(|tool| tool.read_only || !self.read_only)
+            .filter(|tool| tool.effect == Effect::Read || !self.read_only)
             .collect()
     }
 
@@ -1307,6 +1354,91 @@ mod tests {
             ]
         );
         assert_eq!(calls[1].1.as_deref(), Some("line 1\nline 2"));
+    }
+
+    #[test]
+    fn search_mode_and_edit_note_reach_argv_as_single_entries() {
+        let recorder = Recorder::default();
+        let server = Server::new(&recorder, false);
+        call(
+            &server,
+            "search",
+            json!({ "query": "what do I know about pricing", "mode": "semantic" }),
+        );
+        call(
+            &server,
+            "edit_note",
+            json!({ "note": "Plan", "oldText": "-- ship\nin May", "newText": "ship in June" }),
+        );
+        call(
+            &server,
+            "edit_note",
+            json!({ "note": "Log", "oldText": "", "newText": "- two" }),
+        );
+        let bad_mode = call(&server, "search", json!({ "query": "x", "mode": "fuzzy" }));
+        let no_old = call(
+            &server,
+            "edit_note",
+            json!({ "note": "Plan", "newText": "y" }),
+        );
+        let calls = recorder.calls.borrow();
+        assert_eq!(
+            calls[0].0,
+            [
+                "search",
+                "--mode=semantic",
+                "--",
+                "what do I know about pricing"
+            ]
+        );
+        assert_eq!(
+            calls[1].0,
+            [
+                "edit",
+                "--old=-- ship\nin May",
+                "--new=ship in June",
+                "--",
+                "Plan"
+            ]
+        );
+        assert_eq!(calls[2].0, ["edit", "--old=", "--new=- two", "--", "Log"]);
+        assert_eq!(calls.len(), 3, "invalid arguments never run");
+        assert_eq!(bad_mode["result"]["isError"], true);
+        assert_eq!(no_old["result"]["isError"], true);
+    }
+
+    #[test]
+    fn only_edit_note_is_annotated_destructive() {
+        let recorder = Recorder::default();
+        let server = Server::new(&recorder, false);
+        let list = server
+            .handle(&json!({ "jsonrpc": "2.0", "id": 1, "method": "tools/list" }))
+            .unwrap();
+        let tools = list["result"]["tools"].as_array().unwrap();
+        let destructive: Vec<&str> = tools
+            .iter()
+            .filter(|tool| tool["annotations"]["destructiveHint"] == true)
+            .map(|tool| tool["name"].as_str().unwrap())
+            .collect();
+        assert_eq!(destructive, ["edit_note"]);
+        let edit = tools
+            .iter()
+            .find(|tool| tool["name"] == "edit_note")
+            .unwrap();
+        assert_eq!(edit["annotations"]["readOnlyHint"], false);
+    }
+
+    #[test]
+    fn edit_note_is_a_write_hidden_under_read_only() {
+        let recorder = Recorder::default();
+        let server = Server::new(&recorder, true);
+        let refused = call(
+            &server,
+            "edit_note",
+            json!({ "note": "Plan", "oldText": "a", "newText": "b" }),
+        );
+        assert_eq!(refused["error"]["code"], -32602);
+        assert!(recorder.calls.borrow().is_empty());
     }
 
     #[test]

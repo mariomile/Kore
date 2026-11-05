@@ -1,5 +1,46 @@
 # Kore working state
 
+## MCP at par with the in-app chat, 2026-11-04
+
+User ask (Mario, 2026-11-04, slice C of the November analysis,
+`/mnt/project-files/analisi/cosa-migliorare-2026-11.md`): agents reaching the
+vault through `kore mcp` should find notes by meaning and change a passage,
+like the in-app chat.
+
+- [x] `kore search` is hybrid by default, the twin of `retrieve()`: the
+  lexical ranking fused (RRF, K = 60) with semantic neighbors from the
+  `embedding_chunks` / `embedding_vectors` the app writes (KNN 24, cosine
+  cutoff 0.7, best chunk per note; filters constrain both legs, private and
+  template notes never surface). `--mode lexical|semantic`; JSON gains
+  `mode`, `semanticUnavailable` and a per-hit `heading`.
+- [x] The query is embedded with the app's own all-MiniLM-L6-v2, read from
+  the app's model cache (or `$KORE_MODEL_DIR`), run on `tract` (pure-Rust
+  ONNX) with fastembed's exact tokenizer setup, mean pooling and
+  normalization (`apps/cli/src/embed.rs`). Before trusting it the CLI
+  re-embeds one stored chunk and requires cosine >= 0.99 with the app's
+  vector; otherwise, or with no vectors / no model, hybrid serves lexical
+  and says why.
+- [x] `kore edit <note> --old --new` and MCP `edit_note` (`note`, `oldText`,
+  `newText`): replace one passage only when it occurs exactly once in the
+  body as read at write time; empty `oldText` appends. Frontmatter out of
+  reach, private notes refused. Twin of `applyNoteEdit`.
+- [x] `apps/desktop/scripts/search-recall.mjs`: recall@k of lexical vs hybrid
+  on a fixed question file.
+- Not done: the 20 fixed questions on marioverse.ai and their recall@5 run
+  (needs the vault and the app-built index, i.e. the Mac).
+
+**Validation:** `cargo test -p reflect-cli` (unit + integration + MCP
+end-to-end, including stale-text refusal and private refusal), `cargo
+clippy -p reflect-cli --all-targets -D warnings`, `cargo fmt`. The embedder
+was checked against onnxruntime on a random BERT-shaped ONNX model built in
+the container (cosine > 0.9999 on every reference text,
+`KORE_TEST_MODEL_DIR` test); the real model could not be downloaded here
+(Hugging Face blocked), so the stored-vector self-check is the first real
+parity check. On a MiniLM-sized model: ~0.3 s to load, ~10-20 ms per query.
+The release binary grows from 7.9 MB to 34.6 MB (tract + tokenizers).
+**Next:** on the Mac, `kore search "<a question>" --json` must report
+`"mode": "hybrid"`; then run the 20 questions.
+
 ## Index without the app (`kore index`), 2026-11-04
 
 User ask (Mario, 2026-11-04, analysis "Kore: cosa migliorare", slice 2,

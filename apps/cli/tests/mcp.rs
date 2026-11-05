@@ -61,6 +61,49 @@ fn an_mcp_session_searches_reads_and_writes_while_private_notes_stay_hidden() {
 }
 
 #[test]
+fn edit_note_replaces_a_passage_only_while_it_still_matches() {
+    let fixture = graph();
+    fixture.write_note("notes/plan.md", "# Plan\n\nShip in May.\n");
+    fixture.write_note(
+        "notes/secret.md",
+        "---\nprivate: true\n---\n# Secret\nShip in May.\n",
+    );
+    let edit = |id: u64, note: &str, old: &str, new: &str| {
+        json!({ "jsonrpc": "2.0", "id": id, "method": "tools/call",
+            "params": { "name": "edit_note",
+                        "arguments": { "note": note, "oldText": old, "newText": new } } })
+    };
+    let messages = [
+        json!({ "jsonrpc": "2.0", "id": 1, "method": "initialize",
+            "params": { "protocolVersion": "2025-06-18", "capabilities": {},
+                        "clientInfo": { "name": "test", "version": "0" } } }),
+        edit(2, "Plan", "Ship in May.", "Ship in June."),
+        // A second agent still holding the old text: refused, nothing written.
+        edit(3, "Plan", "Ship in May.", "Ship in April."),
+        edit(4, "notes/secret.md", "Ship in May.", "leak"),
+    ];
+    let input: String = messages
+        .iter()
+        .map(|message| format!("{message}\n"))
+        .collect();
+    let output = kore_stdin(&fixture, &["mcp"], &input);
+    assert!(output.status.success(), "stderr: {}", stderr(&output));
+    let replies: Vec<Value> = stdout(&output)
+        .lines()
+        .map(|line| serde_json::from_str(line).unwrap())
+        .collect();
+    assert_eq!(replies[1]["result"]["isError"], false);
+    assert_eq!(replies[2]["result"]["isError"], true);
+    assert!(replies[2]["result"]["content"][0]["text"]
+        .as_str()
+        .unwrap()
+        .contains("not found"));
+    assert_eq!(replies[3]["result"]["isError"], true);
+    assert_eq!(read(&fixture, "notes/plan.md"), "# Plan\n\nShip in June.\n");
+    assert!(read(&fixture, "notes/secret.md").contains("Ship in May."));
+}
+
+#[test]
 fn notes_are_resources_and_prompts_under_read_only_and_private_notes_stay_hidden() {
     let fixture = graph();
     fixture.write_note(

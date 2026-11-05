@@ -50,6 +50,11 @@ pub struct SearchJson<'a> {
     pub query: &'a str,
     /// True when files on disk diverge from the index — results may be stale.
     pub stale: bool,
+    /// The legs that ran: `hybrid`, `lexical`, or `semantic`.
+    pub mode: &'a str,
+    /// Why semantic search did not run, when hybrid was asked for.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub semantic_unavailable: Option<&'a str>,
     pub results: Vec<HitJson>,
 }
 
@@ -59,7 +64,12 @@ pub struct HitJson {
     pub path: String,
     pub title: String,
     pub snippet: String,
-    /// bm25 rank (more negative = better match); `0` for title-only substring hits.
+    /// The heading above the matching passage (semantic matches).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub heading: Option<String>,
+    /// `lexical`: bm25 rank (more negative = better match; `0` for title-only
+    /// substring hits). `hybrid`: reciprocal-rank-fusion score (higher =
+    /// better). `semantic`: cosine similarity.
     pub score: f64,
 }
 
@@ -238,6 +248,16 @@ pub struct AppendJson<'a> {
     /// True when this append created the daily note.
     pub created: bool,
     pub bytes_appended: usize,
+}
+
+/// `edit`: the note one passage was replaced in (or appended to).
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditJson<'a> {
+    pub path: &'a str,
+    pub absolute_path: String,
+    /// True when `--old` was empty and the text was appended.
+    pub appended: bool,
 }
 
 /// `info`: the graph and its index at a glance (works without an index).

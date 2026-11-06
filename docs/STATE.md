@@ -20,7 +20,8 @@ its AGENTS.md. Plan 31 slice 2.
   `vault_copy_tree` copies the graph pinned to a generation into an empty
   folder outside it, applying renames, skipping prefixes and symlinks, never
   overwriting; `vault_copy_write` overwrites only files the copy holds and
-  refuses the open graph. The source is only read.
+  refuses the open graph. Writes are bound to folders a copy went into
+  during this run of the app. The source is only read.
 - [x] The editor's canonicalizer (`canonicalizeImportBody` in
   `apps/desktop/src/editor/roundtrip.ts`) treats a rewrite that is not
   itself stable as lossy and keeps the note as written.
@@ -31,7 +32,7 @@ its AGENTS.md. Plan 31 slice 2.
   (`.claude/`, `_system/automations`, `_system/scripts`, Bases) are copied
   as written: a second pass before Mario switches. AGENTS.md is untouched.
 
-**Validation:** `vault_copy` Rust tests (4), `convert.test.ts` (core),
+**Validation:** `vault_copy` Rust tests (5), `convert.test.ts` (core),
 `roundtrip.test.ts`, `obsidian-import-section.test.tsx` (Chromium), `pnpm
 check`. WebKit runs in CI.
 

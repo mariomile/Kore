@@ -9,9 +9,10 @@
 //! copies bytes, applies the renames it is handed and overwrites files the
 //! copy itself produced.
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Component, Path, PathBuf};
+use std::sync::Mutex;
 
 use serde::{Deserialize, Serialize};
 use tauri::State;
@@ -33,6 +34,40 @@ pub struct VaultCopyRename {
 pub struct VaultCopyFile {
     pub path: String,
     pub contents: String,
+}
+
+/// The folders `vault_copy_tree` copied a vault into during this run of the
+/// app, canonicalized. `vault_copy_write` writes only inside one of them, so
+/// it is never a general file writer: the folder had to be empty and outside
+/// the graph when the copy was made.
+#[derive(Default)]
+pub struct VaultCopies(Mutex<HashSet<PathBuf>>);
+
+impl VaultCopies {
+    fn insert(&self, dest: PathBuf) -> AppResult<()> {
+        self.0
+            .lock()
+            .map_err(|_| AppError::io("vault copy registry poisoned"))?
+            .insert(dest);
+        Ok(())
+    }
+
+    /// `destination`, canonicalized, when it is a folder this run copied into.
+    fn made(&self, destination: &str) -> AppResult<PathBuf> {
+        let dest = existing_dir(destination)?;
+        let known = self
+            .0
+            .lock()
+            .map_err(|_| AppError::io("vault copy registry poisoned"))?
+            .contains(&dest);
+        if known {
+            Ok(dest)
+        } else {
+            Err(AppError::io(format!(
+                "not a folder Kore copied a vault into: {destination}"
+            )))
+        }
+    }
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
@@ -57,21 +92,28 @@ pub async fn vault_copy_tree(
     renames: Vec<VaultCopyRename>,
     skip: Vec<String>,
     state: State<'_, GraphState>,
+    copies: State<'_, VaultCopies>,
 ) -> AppResult<VaultCopyStats> {
     let root = root_for_generation(&state, generation)?;
-    crate::blocking::run_blocking(move || copy_tree(&root, &destination, &renames, &skip)).await
+    let (dest, stats) =
+        crate::blocking::run_blocking(move || copy_tree(&root, &destination, &renames, &skip))
+            .await?;
+    copies.insert(dest)?;
+    Ok(stats)
 }
 
 /// Overwrite files of a copy made by [`vault_copy_tree`] with the contents
-/// core decided. Only a file the copy already holds can be written, so this
-/// cannot create files, and a destination that is or overlaps the open graph
-/// is refused.
+/// core decided. Only a folder [`vault_copy_tree`] copied into during this
+/// run can be written, and only files the copy already holds, so this cannot
+/// create files; a destination that is or overlaps the open graph is refused.
 #[tauri::command]
 pub async fn vault_copy_write(
     destination: String,
     files: Vec<VaultCopyFile>,
     state: State<'_, GraphState>,
+    copies: State<'_, VaultCopies>,
 ) -> AppResult<()> {
+    copies.made(&destination)?;
     let graph = current_root(&state).ok();
     crate::blocking::run_blocking(move || write_files(graph.as_deref(), &destination, &files)).await
 }
@@ -144,7 +186,7 @@ fn copy_tree(
     destination: &str,
     renames: &[VaultCopyRename],
     skip: &[String],
-) -> AppResult<VaultCopyStats> {
+) -> AppResult<(PathBuf, VaultCopyStats)> {
     let root = root
         .canonicalize()
         .map_err(|err| AppError::io(format!("cannot open the graph: {err}")))?;
@@ -204,7 +246,7 @@ fn copy_tree(
             }
         }
     }
-    Ok(stats)
+    Ok((dest, stats))
 }
 
 fn write_files(graph: Option<&Path>, destination: &str, files: &[VaultCopyFile]) -> AppResult<()> {
@@ -268,7 +310,7 @@ mod tests {
             "kept: only the folder is left out",
         );
 
-        let stats = copy_tree(
+        let (_, stats) = copy_tree(
             vault.path(),
             &dest_str(out.path()),
             &[rename("Journal/Daily/09-10-2026.md", "daily/2026-10-09.md")],
@@ -330,6 +372,21 @@ mod tests {
             &[],
         )
         .is_err());
+    }
+
+    #[test]
+    fn only_folders_a_copy_went_into_are_writable() {
+        let vault = tempfile::tempdir().expect("vault");
+        write(vault.path(), "Note.md", "x");
+        let out = tempfile::tempdir().expect("out");
+        let elsewhere = tempfile::tempdir().expect("elsewhere");
+        let copies = VaultCopies::default();
+        let (dest, _) = copy_tree(vault.path(), &dest_str(out.path()), &[], &[]).expect("copy");
+        copies.insert(dest).expect("insert");
+
+        assert!(copies.made(&dest_str(out.path())).is_ok());
+        assert!(copies.made(&dest_str(elsewhere.path())).is_err());
+        assert!(copies.made(&dest_str(vault.path())).is_err());
     }
 
     #[test]

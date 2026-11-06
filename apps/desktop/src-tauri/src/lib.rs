@@ -293,6 +293,7 @@ pub fn run() {
         .manage(fs::GraphState::default())
         .manage(background_task::BackgroundTaskState::default())
         .manage(fs::ImportCancel::default())
+        .manage(fs::vault_copy::VaultCopies::default())
         .manage(fs::assets::AssetUploads::default())
         .manage(db::IndexState::default())
         .manage(watcher::WatcherState::default())

@@ -13,9 +13,8 @@
 //! or indexer beyond it (`kore index` hosts the core's, it does not copy it), and its writes stay **structural**: each one
 //! changes exactly the bytes it is about (`capture`/`append` add, `new`
 //! claims a file atomically, `set` splices one frontmatter key, `tag`/`untag`
-//! one trailing line, `done` one task marker) and nothing overwrites a note.
-//! In-place prose edits belong to markdown editing, which the desktop app
-//! picks up live.
+//! one trailing line, `done` one task marker, `edit` one passage it was told
+//! the exact current text of) and nothing overwrites a note.
 //!
 //! Privacy contract: notes with `private: true` frontmatter are invisible
 //! through this CLI — excluded from every index-backed listing, refused by
@@ -23,8 +22,10 @@
 //! file's own frontmatter is checked, never just the index row, so a stale
 //! index can't leak a just-flagged note.
 
+pub mod agent_keys;
 pub mod body_tag;
 pub mod commands;
+pub mod embed;
 pub mod error;
 pub mod frontmatter_values;
 pub mod frontmatter_write;
@@ -33,6 +34,7 @@ pub mod hash;
 pub mod index;
 pub mod indexer;
 pub mod keys;
+pub mod library;
 pub mod mcp;
 pub mod mcp_http;
 pub mod note_file;
@@ -41,5 +43,7 @@ pub mod resolve;
 pub mod schema;
 pub mod search;
 pub mod search_query;
+pub mod semantic;
 pub mod slug;
+pub mod vault_sync;
 pub mod write;

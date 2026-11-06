@@ -1,6 +1,7 @@
 import { useState, type ReactElement } from 'react'
 import {
   errorMessage,
+  remoteAccessSetupPrompt,
   remoteAccessToken,
   rotateRemoteAccessToken,
   type RemoteTunnel,
@@ -11,9 +12,10 @@ import { Switch } from '@/components/ui/switch'
 import { openUrlSync } from '@/lib/open-url'
 import { requestRemoteAccessRestart, useRemoteAccess } from '@/lib/remote-access-store'
 import { useSettings } from '@/providers/settings-provider'
+import { AgentsRemoteAgentsList } from './agents-remote-agents-list'
 import { SettingsField } from './field'
 
-type CopiedTarget = 'url' | 'token' | null
+type CopiedTarget = 'url' | 'token' | 'prompt' | null
 
 function tunnelNote(tunnel: RemoteTunnel, localUrl: string): string | null {
   switch (tunnel.kind) {
@@ -32,8 +34,9 @@ function tunnelNote(tunnel: RemoteTunnel, localUrl: string): string | null {
 /**
  * Settings → Agents → Remote access: one switch that runs `kore mcp --http`
  * for this graph and publishes it with Tailscale Funnel, so Claude on the
- * web and iPhone, Grok and other cloud agents can use it. The token lives in
- * the keychain; the user copies the URL and the token into the agent.
+ * web and iPhone, ChatGPT, Grok and other cloud agents can use it. The token
+ * and the agents' own keys live in the keychain; the user pastes one sentence
+ * into an agent, which reads the server's `/setup.md` and connects itself.
  */
 export function AgentsRemoteAccessField({ graphName }: { graphName: string }): ReactElement {
   const { settings, updateSettings } = useSettings()
@@ -71,7 +74,7 @@ export function AgentsRemoteAccessField({ graphName }: { graphName: string }): R
   return (
     <SettingsField
       legend="Remote access"
-      description={`Let Claude on the web and iPhone, Grok and other cloud agents use “${graphName}” over the internet through Tailscale Funnel, behind a token. Works while Kore is open and this Mac is awake. Private notes stay hidden.`}
+      description={`Let Claude on the web and iPhone, ChatGPT, Grok and other cloud agents use “${graphName}” over the internet through Tailscale Funnel, behind a token. Works while Kore is open and this Mac is awake. Private notes stay hidden.`}
     >
       <div className="mt-3 flex flex-col gap-2">
         <div className="flex items-center gap-3">
@@ -117,6 +120,15 @@ export function AgentsRemoteAccessField({ graphName }: { graphName: string }): R
         {enabled ? (
           <div className="flex flex-wrap items-center gap-2">
             {url !== null ? (
+              <Button
+                size="xs"
+                onClick={() => void copy('prompt', async () => remoteAccessSetupPrompt(url))}
+              >
+                {copied === 'prompt' ? <Check aria-hidden /> : <Copy aria-hidden />}
+                {copied === 'prompt' ? 'Copied' : 'Copy setup prompt'}
+              </Button>
+            ) : null}
+            {url !== null ? (
               <Button size="xs" variant="outline" onClick={() => void copy('url', async () => url)}>
                 {copied === 'url' ? <Check aria-hidden /> : <Copy aria-hidden />}
                 {copied === 'url' ? 'Copied' : 'Copy URL'}
@@ -147,10 +159,12 @@ export function AgentsRemoteAccessField({ graphName }: { graphName: string }): R
         ) : null}
         {enabled && live ? (
           <p className="text-xs text-text-muted">
-            In Claude: Settings → Connectors → Add custom connector, paste the URL, then paste the
-            token on the “Connect to Kore” page. A new token disconnects every agent.
+            Paste the setup prompt into any agent: it reads how to connect and asks you for a key.
+            Give it its own key from the list below, or the token. A new token disconnects every
+            agent that signed in with it.
           </p>
         ) : null}
+        {enabled ? <AgentsRemoteAgentsList /> : null}
         {error !== null ? <p className="text-xs text-destructive">{error}</p> : null}
       </div>
     </SettingsField>

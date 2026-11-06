@@ -391,7 +391,15 @@ export {
   type ReconcileCaptureEnrichmentOutcome,
 } from '../actions/capture'
 export { parsePageMeta, scrapePageMeta, type PageMeta } from '../actions/meta-scrape'
-export { parseLinkPreview, loadLinkPreview, type LinkPreview } from '../actions/link-preview'
+export {
+  parseLinkPreview,
+  parseXLinkPreview,
+  loadLinkPreview,
+  type LinkPreview,
+  type PageLinkPreview,
+  type PostLinkPreview,
+} from '../actions/link-preview'
+export { xPostId, type LinkPreviewProvider } from '../actions/link-preview-providers'
 export { linkUnlinkedMention, type LinkMentionOutcome } from '../actions/link-mention'
 export {
   calendarAuthorizationStatus,

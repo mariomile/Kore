@@ -45,6 +45,11 @@ pub fn open_read_only(root: &Path) -> IndexOpen {
     if !file.is_file() {
         return IndexOpen::Missing;
     }
+    // sqlite-vec registers as an auto-extension for every connection opened
+    // after it, so the semantic leg of `search` can run its KNN query here.
+    // Lexical commands never touch vec0; a failed registration only costs
+    // semantic search, which degrades on its own.
+    let _ = reflect_index_schema::register_sqlite_vec();
     let conn = match Connection::open_with_flags(&file, OpenFlags::SQLITE_OPEN_READ_ONLY) {
         Ok(conn) => conn,
         Err(err) => return IndexOpen::Unusable(format!("could not open the index: {err}")),

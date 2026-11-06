@@ -8,8 +8,8 @@ by the desktop app, or without it by `kore index`, which runs the app's own
 indexer under Node (see below). Markdown stays the source of truth and
 the CLI's writes stay **structural**: each one changes exactly the bytes it
 is about (an appended item or block, a new file claimed atomically, one
-frontmatter key, one trailing tag line, one task marker) and nothing ever
-overwrites a note.
+frontmatter key, one trailing tag line, one task marker, one passage whose
+exact current text the caller passed) and nothing ever overwrites a note.
 
 ```
 kore info                  # graph root, index state, counts (never needs the index)
@@ -25,7 +25,7 @@ kore skills [name]         # the vault's agent skills (agents/skills/), or one i
 kore active                # the note open in the app and the note tabs beside it
 kore today                 # print today's daily note
 kore today --path          # its absolute path (works before the file exists)
-kore search <query>        # ranked full-text search over the index
+kore search <query>        # words + meaning, like the app's AI chat (--mode lexical|semantic)
 kore show <note>           # print a note by date, path, id, title, or alias
 kore path <note>           # resolve a note to its absolute path
 kore open <note>           # open a note in the app (kore:// deep link)
@@ -34,12 +34,16 @@ kore backlinks <note>      # the notes linking to a note
 kore recent                # the most recently updated notes, newest first
 kore capture <text>        # append a bullet to today's daily (--to any note, --stdin)
 kore append <note> <text>     # append a markdown block (--stdin)
+kore edit <note> --old T --new T  # replace one exact passage (empty --old appends)
 kore new <title>           # create notes/<slug>.md (--template, --tag, --set, --stdin)
 kore set <note> k=v…       # write frontmatter properties typed by the tag schemas
 kore tag <note> <tag>      # add a trailing #tag line (untag removes it)
 kore done <text>           # tick a task off by its text (--undo reopens)
 kore mcp                   # serve the graph to MCP clients over stdio (--read-only, --http <addr>)
 kore index                 # build or refresh the index without the app (Node 22+, --rebuild)
+kore keys add <name>       # a named agent's own key for mcp --http (--write; list, remove)
+kore sync                  # pull the vault's git clone, push kore's writes, reindex (what mcp --sync does)
+kore library               # read-only Markdown in agent folders like ~/.claude (add --known, files, grep, read)
 ```
 
 Built from `apps/cli` (`cargo build -p reflect-cli`); bundled with the desktop
@@ -111,9 +115,28 @@ this is how editors/scripts create them).
 { "date": "…", "path": "…", "absolutePath": "…", "exists": false }
 ```
 
-### `kore search <query> [--limit N] [--json]`
+### `kore search <query> [--limit N] [--mode hybrid|lexical|semantic] [--json]`
 
-Search over note titles and bodies, ranked like the app: exact, prefix, and
+Hybrid by default, the same search the in-app AI chat's `search_notes` runs
+(`retrieve()` in `packages/core/src/embeddings/retrieve.ts`): the lexical
+ranking below fused by reciprocal rank (K = 60) with semantic neighbors, so a
+plain-language question ("what did I decide about pricing") finds notes that
+discuss it without its exact words. The semantic leg embeds the query with
+the app's own model (all-MiniLM-L6-v2, read from the app's model cache, or
+`$KORE_MODEL_DIR`; the CLI never downloads it), runs a KNN over the chunk
+vectors the app stored in `embedding_chunks`, drops neighbors past cosine
+distance 0.7 and keeps each note's best chunk. Search filters constrain both
+legs. Before it trusts the model, the CLI re-embeds one stored chunk and
+compares it with the app's vector; below 0.99 cosine, semantic search stays
+off. When the app has no vectors (semantic search off in Settings → AI), the
+model is not on this machine, or that check fails, hybrid serves lexical
+results only, says why on stderr, and reports it in `semanticUnavailable`.
+`--mode lexical` runs the lexical leg alone; `--mode semantic` the semantic
+leg alone, and fails (exit `1`) when it is unavailable. `mode` in the JSON
+names the legs that ran. The model runs on `tract`, a pure-Rust ONNX runtime,
+so the binary needs no native library.
+
+The lexical leg searches note titles and bodies, ranked like the app: exact, prefix, and
 per-term title matches lead, followed by title-boosted bm25 matches. Title
 and body terms match at word starts (`car` finds `Car log`, never `Oscar party`);
 terms in scripts written without spaces (Japanese, Chinese, Korean, Thai, …)
@@ -156,10 +179,16 @@ score `0`. Quote the whole query in the shell so `#` and `"` reach the CLI.
 {
   "query": "meeting notes",
   "stale": false,
+  "mode": "hybrid",
   "results": [
-    { "path": "notes/standup.md", "title": "Standup", "snippet": "…meeting notes…", "score": -1.94 }
+    { "path": "notes/standup.md", "title": "Standup", "snippet": "…meeting notes…", "score": 0.0328 },
+    { "path": "notes/retro.md", "title": "Retro", "snippet": "What we agreed in the sync…", "heading": "Decisions", "score": 0.0161 }
   ]
 }
+// Scores: hybrid = fused rank score (higher is better), lexical = bm25 (more
+// negative is better, 0 for title recall), semantic = cosine similarity.
+// "heading" is the heading above a semantic match's passage.
+// Without semantic search: "mode": "lexical", "semanticUnavailable": "<why>".
 ```
 
 ### `kore show <note> [--json]`
@@ -574,6 +603,32 @@ not a note) and the open note tabs in order (`openNotes`), from
 Private, deleted and not-yet-downloaded notes are left out. Exit `3` when
 the app has not written the file for this graph.
 
+### `kore library [sources|add|remove|files|grep|read] [--json]`
+
+The Library: folders outside the vault that the user's agents keep their own
+Markdown in (`~/.claude`, `~/.codex`, `~/.agents`, `~/.gemini`, `~/.cursor`,
+`~/.copilot`, `~/.config/opencode`), read-only, so one agent can find the
+rules, skills and memory files another agent wrote. Needs no graph: the list
+lives in `$KORE_LIBRARIES_FILE`, else `$XDG_CONFIG_HOME/kore/libraries.json`,
+else `~/.config/kore/libraries.json`.
+
+```bash
+kore library add --known          # every agent home above that exists in $HOME
+kore library add ~/notes/prompts --name prompts
+kore library                      # name, Markdown file count, folder
+kore library files [name]         # claude/CLAUDE.md, claude/skills/x/SKILL.md, ...
+kore library grep <text> [-i] [--source name] [--limit N]
+kore library read claude/CLAUDE.md
+kore library remove prompts       # stops reading it; the files are untouched
+```
+
+Only `.md` files are listed or read, never configs (`settings.json`,
+`config.toml`, `.claude.json` hold tokens), never hidden folders or the
+transcript and cache folders (`projects`, `sessions`, `todos`, `logs`,
+`node_modules`, ...), never through a symlink, never a file over 512 KB.
+`read` refuses any path `files` would not list. Nothing is ever written to
+these folders.
+
 ### `kore set <note> key=value… [--unset key]… [--json]`
 
 Writes frontmatter property values the way the app's property editors do.
@@ -663,6 +718,23 @@ content with `--stdin`.
 { "path": "notes/dune.md", "absolutePath": "/…/graph/notes/dune.md", "created": false, "bytesAppended": 16 }
 ```
 
+### `kore edit <note> --old <text> --new <text> [--json]`
+
+Replaces one exact passage of the note's body: the CLI's twin of the in-app
+chat's `edit_note` (`applyNoteEdit`). `--old` must occur in the body exactly
+once; otherwise nothing is written and the command exits `2` (not found, or
+more than once). That is the guard: an agent passes the text it read, so an
+edit never lands on a note that changed since (typed in the app, edited by
+another agent); it re-reads and retries. An empty `--old` appends `--new` to
+the end of the body. Frontmatter is out of reach (use `set`); private notes
+are refused (exit `3`). Text sent with LF line breaks is written in a CRLF
+note's own ending.
+
+```jsonc
+// kore edit Plan --old "Ship in May." --new "Ship in June." --json
+{ "path": "notes/plan.md", "absolutePath": "/…/graph/notes/plan.md", "appended": false }
+```
+
 ## For agents
 
 The commands above plus `--json` are the supported automation surface (e.g.
@@ -672,7 +744,7 @@ Reading or writing a private note is not possible through this surface by
 design — don't work around it by reading graph files directly unless the
 user asked for that. The intended loop is discover → read → write:
 `info`/`tags` to learn what exists, `collection`/`properties` to learn a
-row's keys and types, then `new`/`set`/`tag`/`done`/`append` instead of
+row's keys and types, then `new`/`set`/`tag`/`done`/`append`/`edit` instead of
 hand-written YAML.
 
 Settings → Agents installs the bundled agent skills under
@@ -718,8 +790,25 @@ fails (not found, private, no index) comes back as a tool result with
 | `search`, `read_note`, `today`, `backlinks`, `links`, `note_properties` | `search`, `show`, `today`, `backlinks`, `links`, `properties` |
 | `list_notes`, `recent_notes`, `list_tags`, `collection`, `list_tasks`, `graph_info` | `list`, `recent`, `tags`, `collection`, `tasks`, `info` |
 | `explain_note`, `path_between_notes`, `grep_notes`, `list_skills`, `load_skill`, `active_note` | `explain`, `route`, `grep`, `skills`, `skills <name>`, `active` |
-| `capture`, `append_to_note`, `create_note`, `set_properties` | `capture`, `append --stdin`, `new` (body on stdin), `set` |
+| `capture`, `append_to_note`, `edit_note`, `create_note`, `set_properties` | `capture`, `append --stdin`, `edit`, `new` (body on stdin), `set` |
 | `tag_note`, `untag_note`, `complete_task` | `tag`, `untag`, `done` |
+| `remember` | `capture` (to today's daily, or `--to <note>`) |
+| `library_sources`, `library_files`, `library_grep`, `library_read` | `library sources`, `library files`, `library grep`, `library read` (stdio only) |
+
+`remember` is the shared-memory verb: one fact as a signed bullet,
+`[likely] The fact (previously: old) — Grok bot, 2026-11-04`. The
+confidence tag is `certain`, `likely` (default) or `speculative`; the name
+is the calling agent's own when it connected with a named key (see below),
+whatever name it claims, else the `agent` argument.
+
+The four `library_*` tools read the agent folders of the machine `kore
+mcp` runs on, so only the stdio server offers them. `kore mcp --http` never
+lists them and refuses them if called, whatever the key: a remote agent
+reaches the vault, never your home folder.
+
+`search` takes an optional `mode` (`hybrid` by default, `lexical`,
+`semantic`), so an agent searches the way the in-app chat does.
+`edit_note` takes `note`, `oldText` and `newText` (the chat tool's names).
 
 `vault_guide` is the tool to call first. The server's `initialize`
 `instructions` carry the vault's contract too (up to 12,000 characters,
@@ -728,9 +817,11 @@ instructions starts every session under the vault's rules, whether it
 connects over stdio or `--http`, and ChatGPT- or Grok-style clients that
 only use tools still reach them through `vault_guide`.
 
-`--read-only` drops the writing tools (the last two rows) from `tools/list`
-and refuses them if called. Tools carry `readOnlyHint`
-annotations either way, so clients that confirm writes can tell them apart.
+`--read-only` drops the writing tools (the last three rows) from `tools/list`
+and refuses them if called. Tools carry `readOnlyHint` and
+`destructiveHint` annotations either way, so clients that confirm writes can
+tell them apart: `edit_note`, the one tool that replaces existing text, is
+the only one marked destructive.
 
 Resources are the notes themselves, addressed by the app's deep links, so a
 URI an agent cites opens the note in Kore and a link copied from the app
@@ -775,32 +866,58 @@ tailscale funnel 8765                              # or a Cloudflare Tunnel
 
 The server binds a local address and never terminates TLS; the tunnel
 supplies the public HTTPS URL (pass it with `--public-url` if the tunnel
-does not forward the `Host` header). One secret, `KORE_MCP_TOKEN` (at least
-24 characters), guards everything:
+does not forward the `Host` header). The owner's secret, `KORE_MCP_TOKEN`
+(at least 24 characters), guards everything, and each named agent can have
+its own key:
 
-- **API clients** send it as `Authorization: Bearer <token>`.
-- **Claude** (custom connector at `<public url>/mcp`) signs in with OAuth.
+- **API clients** send the token or a key as `Authorization: Bearer <key>`.
+- **Claude and ChatGPT** (custom connector at `<public url>/mcp`) sign in with OAuth.
   The server is its own single-user authorization server: discovery
   metadata, dynamic client registration, an authorize page that asks for
   the token, PKCE S256, refresh. Codes and tokens are HMAC-signed with a key
   derived from the token, so they survive a restart and changing
   `KORE_MCP_TOKEN` revokes every connection. Access tokens last an hour,
   refresh tokens 30 days.
-- OAuth redirects go only to Claude's callback and loopback addresses;
-  `--redirect-uri <uri>` (repeatable) allows another client's.
+- OAuth redirects go only to Claude's and ChatGPT's callbacks and loopback
+  addresses; `--redirect-uri <uri>` (repeatable) allows another client's.
+- **`GET /setup.md`** is the one public page: the server's MCP URL, how
+  each client connects, and how to use the vault. It holds no secret, so a
+  user can tell any agent "read <url>/setup.md and connect to my Kore".
+
+**Named agents.** `kore keys add "Grok bot"` prints a new key once
+(`--write` lets that agent use the writing tools; keys are read-only by
+default). The agent signs in with it like the token, as a bearer header or
+on the "Connect to Kore" page; then what it `remember`s carries its name,
+and `kore keys remove "Grok bot"` disconnects it alone, OAuth tokens
+included, at its next request. `kore keys list` shows names and permissions,
+never keys. The keys live in `$KORE_MCP_KEYS_FILE`, else
+`$XDG_CONFIG_HOME/kore/mcp-agents.json`, else `~/.config/kore/mcp-agents.json`
+(mode 0600, outside the vault), and the server reads that file on every
+request, so none of this needs a restart or the app. The Mac app keeps its
+own list in the keychain and passes it as `KORE_MCP_AGENTS` (a JSON list of
+`{id, name, key, write}`).
 
 `--read-only` applies here too. Search, tags, backlinks, lists and tasks
 read the index the Kore app keeps, so run the server where the app has the
 graph open.
 
-**Without the Mac.** On a server that holds a clone of the vault, build the
-index first and refresh it after each pull; the server then answers every
-tool the Mac would:
+**Without the Mac.** On a server that holds a git clone of the vault, build
+the index once and add `--sync`; the server then answers every tool the Mac
+would and keeps the clone in step with its remote:
 
 ```sh
-git -C ~/vault pull && kore --graph ~/vault index   # e.g. from cron every few minutes
-kore --graph ~/vault mcp --http 127.0.0.1:8765
+kore --graph ~/vault index
+kore --graph ~/vault mcp --http 127.0.0.1:8765 --sync   # --sync-every 60 (seconds)
 ```
+
+`--sync` pulls and reindexes in the background, and commits and pushes every
+agent write (author `Kore host`). It never merges text: a write that
+collides with a Mac edit is re-run as the same CLI operation on top of the
+Mac's version, and one that no longer applies is dropped and logged.
+`kore sync [--json]` runs one such pass by hand
+(`{ "pulled", "pushed", "replayed", "dropped", "reindexed", "offline"? }`).
+The design, the Docker image and the systemd unit are in
+[always-on.md](always-on.md).
 
 ## Development notes
 

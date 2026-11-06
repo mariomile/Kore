@@ -18,6 +18,23 @@ export const REMOTE_ACCESS_PORT = 8765
 /** Keychain entry holding the server's secret (the `KORE_MCP_TOKEN`). */
 export const REMOTE_ACCESS_TOKEN_SECRET = 'kore-mcp-token'
 
+/** Keychain entry holding the named agents' keys (the `KORE_MCP_AGENTS`). */
+export const REMOTE_ACCESS_AGENTS_SECRET = 'kore-mcp-agents'
+
+const remoteAgentSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  key: z.string().min(24),
+  write: z.boolean(),
+})
+
+/**
+ * One named agent with its own key: its writes are signed with `name`, it
+ * may write only when `write` is on (and the server is not read-only), and
+ * removing it disconnects that agent alone.
+ */
+export type RemoteAgent = z.infer<typeof remoteAgentSchema>
+
 const remoteMcpStatusSchema = z.object({
   running: z.boolean(),
   port: z.number().nullable(),
@@ -43,6 +60,7 @@ async function remoteMcpStart(options: {
   generation: number
   port: number
   token: string
+  agents: string
   readOnly: boolean
   publicUrl: string | null
 }): Promise<RemoteMcpStatus> {
@@ -88,6 +106,63 @@ export async function rotateRemoteAccessToken(): Promise<string> {
   const token = randomToken()
   await setSecret(REMOTE_ACCESS_TOKEN_SECRET, token)
   return token
+}
+
+/** The named agents, oldest first. A missing or unreadable entry is none. */
+export async function remoteAgents(): Promise<RemoteAgent[]> {
+  const stored = await getSecret(REMOTE_ACCESS_AGENTS_SECRET)
+  if (stored === null || stored === '') {
+    return []
+  }
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(stored)
+  } catch {
+    return []
+  }
+  const agents = z.array(remoteAgentSchema).safeParse(parsed)
+  return agents.success ? agents.data : []
+}
+
+/**
+ * Give a new agent its own key. It starts read-only unless `write` is set,
+ * and works once the server restarts.
+ */
+export async function addRemoteAgent(name: string, write: boolean): Promise<RemoteAgent> {
+  const trimmed = name.trim()
+  if (trimmed === '') {
+    throw new Error('Give the agent a name.')
+  }
+  const agents = await remoteAgents()
+  if (agents.some((agent) => agent.name.toLowerCase() === trimmed.toLowerCase())) {
+    throw new Error(`An agent called “${trimmed}” already has a key.`)
+  }
+  const agent: RemoteAgent = {
+    id: randomToken().slice(0, 16),
+    name: trimmed,
+    key: randomToken(),
+    write,
+  }
+  await setSecret(REMOTE_ACCESS_AGENTS_SECRET, JSON.stringify([...agents, agent]))
+  return agent
+}
+
+/** Remove an agent's key: that agent alone is disconnected at the restart. */
+export async function removeRemoteAgent(id: string): Promise<void> {
+  const agents = await remoteAgents()
+  await setSecret(
+    REMOTE_ACCESS_AGENTS_SECRET,
+    JSON.stringify(agents.filter((agent) => agent.id !== id)),
+  )
+}
+
+/**
+ * The sentence a user pastes into any agent so it connects itself: the
+ * server's public `setup.md` holds the steps and no secret.
+ */
+export function remoteAccessSetupPrompt(mcpUrl: string): string {
+  const setupUrl = `${mcpUrl.replace(/\/mcp$/, '')}/setup.md`
+  return `Read ${setupUrl} and connect to my Kore vault. Ask me for the key when you need it.`
 }
 
 /** What `tailscale status --json` says about this Mac. */
@@ -186,6 +261,7 @@ export async function startRemoteAccess(options: {
 }): Promise<RemoteAccessState> {
   const port = options.port ?? REMOTE_ACCESS_PORT
   const token = await remoteAccessToken()
+  const agents = await remoteAgents()
   const status = await tailscale(['status', '--json'])
   const node: TailscaleNode | null = status.found ? parseTailscaleStatus(status.stdout) : null
   const origin = node?.kind === 'online' ? `https://${node.dnsName}` : null
@@ -194,6 +270,7 @@ export async function startRemoteAccess(options: {
     generation: options.generation,
     port,
     token,
+    agents: JSON.stringify(agents),
     readOnly: options.readOnly,
     publicUrl: origin,
   })

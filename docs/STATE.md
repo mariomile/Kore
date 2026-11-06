@@ -1,5 +1,225 @@
 # Kore working state
 
+## Obsidian import, slice 2: conversion to a copy, 2026-11-06
+
+Ask (Mario, 2026-11-06, "Fai tutto tu"): read his vault, choose the mapping,
+and prepare the conversion on a COPY, never the original, without touching
+its AGENTS.md. Plan 31 slice 2.
+
+- [x] Settings → Convert to Kore layout gains *Convert to a copy…*: pick an
+  empty folder, the open vault is read again (after open notes are saved),
+  and a converted copy is written there. *Open the copy* opens it as a graph.
+- [x] Core decides every byte (`packages/core/src/obsidian-import/convert.ts`):
+  the planned moves, the rewritten links, canonical Markdown for
+  `normalizing` notes (frontmatter kept byte for byte), lossy notes kept as
+  written, and the copy's `.obsidian/*.json` repointed at `daily/`,
+  `assets/` and `templates/` so the runtime profile and Obsidian agree with
+  the new layout. `.git` and `.reflect` are never copied; excluded folders
+  are left out.
+- [x] Rust stays a primitive (`apps/desktop/src-tauri/src/fs/vault_copy.rs`):
+  `vault_copy_tree` copies the graph pinned to a generation into an empty
+  folder outside it, applying renames, skipping prefixes and symlinks, never
+  overwriting; `vault_copy_write` overwrites only files the copy holds and
+  refuses the open graph. Writes are bound to folders a copy went into
+  during this run of the app. The source is only read.
+- [x] The editor's canonicalizer (`canonicalizeImportBody` in
+  `apps/desktop/src/editor/roundtrip.ts`) treats a rewrite that is not
+  itself stable as lossy and keeps the note as written.
+- Run against the GitHub mirror of Mario's vault (4,795 notes, in the
+  container, nothing written to the vault): 2,408 files move, 3,297 files
+  rewritten (3,267 canonical), 1 note kept as written, every canonical note
+  stable on a second save. Agent files that hardcode `Journal/Daily` paths
+  (`.claude/`, `_system/automations`, `_system/scripts`, Bases) are copied
+  as written: a second pass before Mario switches. AGENTS.md is untouched.
+
+**Validation:** `vault_copy` Rust tests (5), `convert.test.ts` (core),
+`roundtrip.test.ts`, `obsidian-import-section.test.tsx` (Chromium), `pnpm
+check`. WebKit runs in CI.
+
+## Library of agent folders (`kore library`), 2026-11-05
+
+Ask (Mario, 2026-11-05, "vai" on the card "Sì, solo locale"): copy Etch's
+read-only libraries over agent folders (`/mnt/project-files/analisi/etch-sul-mac.md`),
+offered to local agents only, never over the remote MCP.
+
+- [x] `apps/cli/src/library.rs`: the list in `~/.config/kore/libraries.json`
+  (`KORE_LIBRARIES_FILE`, XDG), `add` / `add --known` / `remove`, `files`,
+  `grep`, `read`. Markdown only; hidden, cache and transcript folders,
+  symlinks (any depth, `symlink_free_path`) and files over 512 KB are
+  never listed or read; `read` refuses anything `files` would not list.
+- [x] `kore library …` (no graph needed) and four MCP tools
+  `library_sources|files|grep|read`, offered only after
+  `Server::for_this_machine()`, which only the stdio branch calls.
+  `mcp --http` neither lists nor runs them.
+- [ ] App surface (Settings card, browsing): not built. The chat and any
+  local agent reach the Library through the tools.
+
+**Validation:** `cargo test -p reflect-cli` (library unit tests, MCP
+gating test), clippy `-D warnings`, fmt, smoke run with a temporary HOME
+(stdio `library_grep`, settings.json and projects/ refused).
+
+## Rich link previews: X posts, LinkedIn, any page, 2026-11-05
+
+Ask (Mario, 2026-11-05, screenshot): previews for links in notes, above all
+X and LinkedIn, plus generic links, drawn like his dark reference cards.
+
+- [x] Card rendering moved from attribute-stamped CSS on the anchor to a
+  ProseMirror widget (`apps/desktop/src/editor/link-card-plugin.ts`,
+  DOM in `link-card-dom.ts`, styles in `styles/link-cards.css`). The file
+  still holds only the plain link; the paragraph hides while the caret is
+  elsewhere. Plain click on a card puts the caret on the link (shown under
+  the card, to edit or delete); mod-click opens it (Alt flips in-app/OS).
+- [x] X posts: author, avatar, handle, date, text (media link dropped,
+  t.co expanded), replies/reposts/likes. Read from X's own embed
+  syndication endpoint (`cdn.syndication.twimg.com/tweet-result`) through
+  the existing bounded `capture_oembed_fetch` primitive; no Rust change.
+  Policy in `packages/core/src/actions/link-preview-providers.ts`.
+- [x] LinkedIn: OpenGraph card with the LinkedIn mark, title chrome
+  (`| … posted on the topic | LinkedIn`) stripped, `/feed/update/urn:li:…`
+  links fetched at their public embed page instead of the sign-in wall.
+- [x] Generic pages: title, description, image, and the favicon (declared
+  `<link rel=icon>`, else `/favicon.ico`); images show only once loaded.
+- Still gated by `private: true` (a private note fetches nothing).
+- Not verified against live X/LinkedIn: neither the container nor the Mac
+  shell reaches them. If X's answer omits `retweet_count`, the card shows
+  replies and likes only. First live check belongs on Mario's Mac.
+
+**Validation:** `link-card-plugin.test.tsx` (6, Chromium),
+`link-preview.test.tsx` + `link-preview-providers.test.ts` (core), `pnpm
+check`. Dev build screenshots in
+`/mnt/project-files/screenshot/anteprima-link/`. WebKit runs in CI.
+
+## All notes type chips filter in place, 2026-11-04
+
+Ask (Mario, 2026-11-04, screenshot): the `#link`, `#person` and Custom chips
+at the top of All notes opened the type's own page. They should only narrow
+the list to that type.
+
+- [x] The chips route to `{ kind: 'all', tag }` (new optional `tag` on the
+  `all` filter in `note-list-filter.ts`, so persisted tabs still parse). The
+  screen lists that tag's notes under the same header and chips, with the
+  chip lit; All clears it. Back/forward keeps the chip (route equality
+  compares the tag).
+- [x] `{ kind: 'tag' }` is still the type's page, reached from the sidebar's
+  Types section, links and chat cards.
+- The Inbox chip drops its count while a type is active, since the loaded
+  list is that type only.
+
+**Validation:** `all-notes-screen.test.tsx` (33 pass, Chromium), typecheck,
+eslint, oxlint, oxfmt. WebKit runs in CI.
+
+## Always-on host (`kore mcp --sync`), 2026-11-04
+
+User ask (Mario, 2026-11-04 19:02Z and 19:48Z, Plan 32 slice 2): Kore must
+be the shared, portable memory of all his agents, reachable when the Mac
+sleeps, and it must work for someone who never opens the desktop or mobile
+app. Builds on `kore index` (#315).
+
+- [x] `apps/cli/src/vault_sync.rs`: `VaultSync`, a `Runner` in front of the
+  MCP server. Reads run concurrently; every other subcommand is a write:
+  pull first, run, commit (`Kore host`), journal the operation in
+  `.git/kore-sync/journal.jsonl`, push, `kore index`. Integration is
+  fast-forward, else rebase, else reset to the remote and replay the
+  journal through the CLI (no text merge, no conflict markers on the
+  host); a replay that fails is dropped and logged. Offline writes stay
+  journaled across restarts. Refuses a dirty clone; keeps `.reflect/` in
+  `.git/info/exclude`.
+- [x] `kore mcp --sync [--sync-every SECS]` (background pull + reindex) and
+  `kore sync [--json]` (one pass).
+- [x] `deploy/always-on/`: Dockerfile (CLI + bundled indexer + Node 22 +
+  git), entrypoint (clone on first run, token via credential helper, index,
+  serve), systemd unit. Guide: `docs/always-on.md`.
+- Not done: deploy on a real host (candidate `a3b09dc05af0`, which already
+  has `/opt/data/vaults/marioverse-ai`, or a VPS: Mario's call), a live run
+  against `mariomile/obsidian-sync-marioverse` with the Mac's sync job
+  pulling, named per-agent commit authors (needs slice 1's named tokens).
+
+**Validation:** 8 unit tests over real git repos (bare remote, Mac clone,
+host clone): write → push → index; same-note Mac edit replayed in order
+with no markers; unrelated change rebased; write on a deleted note dropped;
+journal survives an offline restart; reads never commit and `.reflect/`
+never enters history; dirty or non-git folders refused. End to end with the
+debug binary and the real indexer: `capture` over HTTP reached the Mac's
+clone as one `Kore host` commit; a note pushed from the Mac was found by
+`search` over HTTP within one 5 s interval. `cargo clippy -p reflect-cli
+--all-targets -D warnings`, `cargo fmt --check`.
+The Docker image builds and runs: it cloned a test vault, indexed it,
+answered `capture` over HTTP and pushed the commit (`pulled 0, pushed 1`).
+
+## Shared brain for agents, slice 1, 2026-11-04
+
+Plan 32 slice 1 (Mario, 2026-11-04, "Entrambe in parallelo"): connect any
+agent to the vault in a minute, give each its own key, and let it remember
+facts signed with its name. Everything works from the `kore` CLI alone, with
+no Kore app (Mario: "deve poter essere funzionante anche per chi non vuole
+mai usare l'app").
+
+- [x] Named agent keys: `kore keys add <name> [--write]`, `list`, `remove`.
+  File `~/.config/kore/mcp-agents.json` (0600, outside the vault), re-read on
+  every request, so adding or removing a key needs no restart. The Mac app
+  keeps its own list in the keychain and passes it as `KORE_MCP_AGENTS`.
+- [x] Each key is its own caller: read-only unless `--write`; OAuth tokens
+  issued from it carry its id and stop working once the key is removed.
+- [x] `remember` MCP tool: one fact per call, to today's daily or a named
+  note, line `[confidence] fact (previously: old) — Agent, YYYY-MM-DD`. A
+  named key's own name overrides whatever `agent` the caller claims.
+- [x] Public `GET /setup.md` on `kore mcp --http`: per-client steps (bearer
+  header, Grok bot, Claude, ChatGPT Developer Mode, Claude Code, Codex),
+  then `vault_guide`. Holds no secrets.
+- [x] ChatGPT OAuth redirect URIs accepted (fixed URI and
+  `connector/oauth/<id>` prefix, path traversal rejected).
+- [x] Settings, Remote access: "Copy setup prompt", and a list of named
+  agents with Copy key / Remove and a Write switch.
+- Not done: "last seen" per agent; recall stays the existing search.
+
+**Validation:** `cargo fmt --check`, `cargo clippy --workspace
+--all-targets -D warnings`, `cargo test -p reflect-cli` (all pass), core
+`remote-access.test.ts`, Chromium browser test of the Remote access field,
+`pnpm check`. The iOS bindings check could not run in the container (no
+Xcode toolchain); CI is its first pass. Needs a live test on the Mac with
+ChatGPT and Grok bot.
+
+## MCP at par with the in-app chat, 2026-11-04
+
+User ask (Mario, 2026-11-04, slice C of the November analysis,
+`/mnt/project-files/analisi/cosa-migliorare-2026-11.md`): agents reaching the
+vault through `kore mcp` should find notes by meaning and change a passage,
+like the in-app chat.
+
+- [x] `kore search` is hybrid by default, the twin of `retrieve()`: the
+  lexical ranking fused (RRF, K = 60) with semantic neighbors from the
+  `embedding_chunks` / `embedding_vectors` the app writes (KNN 24, cosine
+  cutoff 0.7, best chunk per note; filters constrain both legs, private and
+  template notes never surface). `--mode lexical|semantic`; JSON gains
+  `mode`, `semanticUnavailable` and a per-hit `heading`.
+- [x] The query is embedded with the app's own all-MiniLM-L6-v2, read from
+  the app's model cache (or `$KORE_MODEL_DIR`), run on `tract` (pure-Rust
+  ONNX) with fastembed's exact tokenizer setup, mean pooling and
+  normalization (`apps/cli/src/embed.rs`). Before trusting it the CLI
+  re-embeds one stored chunk and requires cosine >= 0.99 with the app's
+  vector; otherwise, or with no vectors / no model, hybrid serves lexical
+  and says why.
+- [x] `kore edit <note> --old --new` and MCP `edit_note` (`note`, `oldText`,
+  `newText`): replace one passage only when it occurs exactly once in the
+  body as read at write time; empty `oldText` appends. Frontmatter out of
+  reach, private notes refused. Twin of `applyNoteEdit`.
+- [x] `apps/desktop/scripts/search-recall.mjs`: recall@k of lexical vs hybrid
+  on a fixed question file.
+- Not done: the 20 fixed questions on marioverse.ai and their recall@5 run
+  (needs the vault and the app-built index, i.e. the Mac).
+
+**Validation:** `cargo test -p reflect-cli` (unit + integration + MCP
+end-to-end, including stale-text refusal and private refusal), `cargo
+clippy -p reflect-cli --all-targets -D warnings`, `cargo fmt`. The embedder
+was checked against onnxruntime on a random BERT-shaped ONNX model built in
+the container (cosine > 0.9999 on every reference text,
+`KORE_TEST_MODEL_DIR` test); the real model could not be downloaded here
+(Hugging Face blocked), so the stored-vector self-check is the first real
+parity check. On a MiniLM-sized model: ~0.3 s to load, ~10-20 ms per query.
+The release binary grows from 7.9 MB to 34.6 MB (tract + tokenizers).
+**Next:** on the Mac, `kore search "<a question>" --json` must report
+`"mode": "hybrid"`; then run the 20 questions.
+
 ## Index without the app (`kore index`), 2026-11-04
 
 User ask (Mario, 2026-11-04, analysis "Kore: cosa migliorare", slice 2,

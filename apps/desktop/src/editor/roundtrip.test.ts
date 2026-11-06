@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { checkRoundTrip } from './roundtrip'
+import { canonicalizeImportBody, checkRoundTrip } from './roundtrip'
 
 describe('checkRoundTrip', () => {
   it('classifies faithful content as exact', () => {
@@ -42,5 +42,25 @@ describe('checkRoundTrip', () => {
       '',
     ].join('\n')
     expect(checkRoundTrip(conflicted)).toBe('normalizing')
+  })
+})
+
+describe('canonicalizeImportBody', () => {
+  it('leaves an exact body alone', () => {
+    expect(canonicalizeImportBody('Hello\n')).toEqual({ fidelity: 'exact', canonical: 'Hello\n' })
+  })
+
+  it('writes a normalizing body the way its first save would', () => {
+    const body = '|a|b|\n|---|---|\n|1|2|\n'
+    const result = canonicalizeImportBody(body)
+    expect(result.fidelity).toBe('normalizing')
+    expect(result.canonical).not.toBe(body)
+    expect(checkRoundTrip(result.canonical)).toBe('exact')
+  })
+
+  it('keeps a body whose rewrite would move its structure', () => {
+    // An indented sub-list under a numbered item loses its nesting when rewritten.
+    const body = '  3. Compila:\n    - App name\n  4. Salva\n'
+    expect(canonicalizeImportBody(body)).toEqual({ fidelity: 'lossy', canonical: body })
   })
 })

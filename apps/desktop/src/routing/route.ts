@@ -113,6 +113,8 @@ export function routesEqual(a: Route, b: Route): boolean {
       const other = b as Extract<Route, { kind: 'allNotes' }>
       return (
         a.filter.kind === other.filter.kind &&
+        (a.filter.kind !== 'all' ||
+          (other.filter.kind === 'all' && a.filter.tag === other.filter.tag)) &&
         (a.filter.kind !== 'tag' ||
           (other.filter.kind === 'tag' && a.filter.tag === other.filter.tag)) &&
         (a.filter.kind !== 'folder' ||

@@ -7,6 +7,53 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- An Obsidian vault can be converted into a new folder in Kore's layout.
+  After the preview in Settings → Convert to Kore layout, *Convert to a
+  copy…* writes the converted vault into an empty folder you pick: dailies,
+  attachments and templates moved, links updated, notes in Kore's Markdown.
+  The original vault is only read, never written. *Open the copy* opens it.
+
+- Your agents can read each other's notes. `kore library add --known`
+  points Kore at the folders where Claude Code, Codex, Gemini, Cursor and
+  others keep their own Markdown (rules, skills, memory), and any agent
+  using `kore mcp` on your Mac can list, search and read them. Read-only,
+  Markdown only (configs with tokens are never read), and never offered
+  to remote agents over `kore mcp --http`.
+
+- A pasted link on its own line now reads as a proper preview. An X post
+  shows the post itself: author, avatar, handle, date, its words, and the
+  reply, repost and like counts. A LinkedIn post shows its title, excerpt,
+  image and the LinkedIn mark. Any other page shows its title, description,
+  image and favicon. Click a card to edit the link; Cmd-click to open it.
+
+- The type chips on All notes (`#person`, `#link`, Custom) filter the list
+  in place instead of opening the type's page. The type's page is still a
+  click away in the sidebar's Types section.
+
+- Kore stays on when the Mac sleeps. `kore mcp --http --sync` serves the
+  vault from any always-on machine holding a git clone of it, with no app
+  anywhere: it pulls and reindexes every minute, and commits and pushes
+  every write an agent makes. When an agent's write collides with an edit
+  from the Mac, the host re-runs the agent's operation on top of the Mac's
+  version instead of merging text, so it never leaves conflict markers or
+  stops syncing. A Docker image and a systemd unit come with it
+  (`docs/always-on.md`).
+
+- Every agent can share your vault with its own key. Run `kore keys add
+  "Grok bot"` (or use Settings, Remote access) and that agent gets a key of
+  its own: read-only unless you allow writes, removable alone without
+  disconnecting the others, and the facts it saves with the new `remember`
+  tool carry its name and the date. Paste "Copy setup prompt" into any agent
+  and it reads the server's `/setup.md` to connect itself; ChatGPT now
+  connects too. Works without the Kore app on an always-on machine.
+
+- Agents search your vault by meaning. `kore search` and the MCP `search`
+  tool now find notes the way Kore's own AI chat does, by words and by
+  meaning, using the semantic index the app already builds. Agents can also
+  fix a passage in place with `edit_note` (or `kore edit`): the change only
+  lands if the text is still what they read, so they never overwrite your
+  edits.
+
 - `kore index` builds the search index without the app. On a plain clone of
   a vault (a server that pulls it from GitHub, say) one command makes every
   index-backed CLI command and every `kore mcp` tool answer: search, tags,

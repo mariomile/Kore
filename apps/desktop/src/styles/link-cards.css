@@ -1,0 +1,155 @@
+/* Link preview cards (LinkPreviewCards / link-card-plugin): a line holding
+   nothing but a pasted URL draws as a card for its page. The card is a
+   widget decoration in front of that paragraph; the paragraph (the plain
+   markdown link, still the file's only content) is hidden until the caret
+   is on it, then shows under the card so it can be edited or deleted.
+
+   The look follows Craft/Notion bookmarks: the card sits on the page rather
+   than in a box, and only lifts on hover. A page reads as title, description
+   and site; a post (X) reads as the post: author, words, then counts. */
+
+.reflect-editor .kore-link-card-source:not(.is-editing) {
+  display: none;
+}
+.reflect-editor .kore-link-card-source.is-editing {
+  color: var(--text-muted);
+  font-size: 0.85em;
+}
+
+.reflect-editor .kore-link-card {
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+  margin: 0.35em 0;
+  padding: 0.85rem 1.25rem;
+  border-radius: var(--radius-lg, 8px);
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: background-color 120ms var(--ease-swift, ease);
+}
+.reflect-editor .kore-link-card:hover {
+  background-color: var(--surface-hover);
+}
+.reflect-editor .kore-link-card[data-kind='post'] {
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.reflect-editor .kore-link-card-body {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.reflect-editor .kore-link-card-title {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: var(--text);
+  font-weight: 650;
+  line-height: 1.3;
+}
+.reflect-editor .kore-link-card-description {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: var(--text-secondary);
+  font-size: 0.92em;
+  line-height: 1.4;
+}
+.reflect-editor .kore-link-card-thumb {
+  width: clamp(9rem, 30%, 15rem);
+  max-height: 10rem;
+  flex-shrink: 0;
+  border-radius: var(--radius-md, 6px);
+  object-fit: cover;
+  object-position: top center;
+}
+
+/* Footer: the site's mark and name, and for a post its counts. */
+.reflect-editor .kore-link-card-site {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.15rem;
+  color: var(--text-muted);
+  font-size: 0.82em;
+  white-space: nowrap;
+}
+.reflect-editor .kore-link-card-site > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.reflect-editor .kore-link-card-icon {
+  width: 1.05rem;
+  height: 1.05rem;
+  flex-shrink: 0;
+  border-radius: 3px;
+}
+.reflect-editor .kore-link-card-icon[data-brand='x'] {
+  width: 0.95rem;
+  color: var(--text-secondary);
+}
+.reflect-editor .kore-link-card-icon[data-brand='linkedin'] {
+  color: #0a66c2;
+}
+
+/* Post (X): the author row, then the post's words as written. */
+.reflect-editor .kore-link-card-author {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.75rem;
+}
+.reflect-editor .kore-link-card-avatar {
+  width: 2.75rem;
+  height: 2.75rem;
+  flex-shrink: 0;
+  border-radius: var(--radius-md, 6px);
+  object-fit: cover;
+}
+.reflect-editor .kore-link-card-names {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  line-height: 1.3;
+}
+.reflect-editor .kore-link-card-name {
+  overflow: hidden;
+  color: var(--text);
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.reflect-editor .kore-link-card-handle {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: 0.9em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.reflect-editor .kore-link-card-text {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 12;
+  color: var(--text);
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+.reflect-editor .kore-link-card-media {
+  max-width: 100%;
+  max-height: 20rem;
+  border-radius: var(--radius-md, 6px);
+  object-fit: cover;
+}
+
+.reflect-editor .kore-link-card img[hidden] {
+  display: none;
+}

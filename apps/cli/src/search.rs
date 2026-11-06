@@ -222,7 +222,10 @@ pub struct SearchHit {
     pub title: String,
     /// FTS5 `snippet()` over the indexed plain-text body.
     pub snippet: String,
-    /// Title-boosted bm25 score (more negative = better); `0` for title-recall hits.
+    /// The heading above a semantic match's passage; `None` for lexical hits.
+    pub heading: Option<String>,
+    /// Title-boosted bm25 score (more negative = better); `0` for title-recall
+    /// hits. Semantic hits carry cosine similarity, fused hits their RRF score.
     pub score: f64,
 }
 
@@ -443,6 +446,7 @@ pub fn recall_filtered(
             path: row.get(0)?,
             title: row.get(1)?,
             snippet: String::new(),
+            heading: None,
             score: 0.0,
         })
     })?;
@@ -556,6 +560,7 @@ pub fn search_index(
                 path,
                 title,
                 snippet,
+                heading: None,
                 score,
             }
         })

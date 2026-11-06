@@ -357,6 +357,8 @@ pub fn run() {
             fs::asset_open,
             fs::asset_reveal,
             fs::export_write,
+            fs::vault_copy::vault_copy_tree,
+            fs::vault_copy::vault_copy_write,
             haptics::haptic_feedback,
             fs::assets::asset_upload_begin,
             fs::assets::asset_upload_append,

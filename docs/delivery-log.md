@@ -7,6 +7,12 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- An Obsidian vault can be converted into a new folder in Kore's layout.
+  After the preview in Settings → Convert to Kore layout, *Convert to a
+  copy…* writes the converted vault into an empty folder you pick: dailies,
+  attachments and templates moved, links updated, notes in Kore's Markdown.
+  The original vault is only read, never written. *Open the copy* opens it.
+
 - A pasted link on its own line now reads as a proper preview. An X post
   shows the post itself: author, avatar, handle, date, its words, and the
   reply, repost and like counts. A LinkedIn post shows its title, excerpt,

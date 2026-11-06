@@ -169,6 +169,45 @@ export async function exportWrite(path: string, contents: string): Promise<void>
   await call('export_write', { path, contents }, voidSchema)
 }
 
+const vaultCopyStatsSchema = z.object({
+  files: z.number(),
+  bytes: z.number(),
+  symlinks: z.number(),
+})
+
+export type VaultCopyStats = z.infer<typeof vaultCopyStatsSchema>
+
+/**
+ * Copy the graph open at `generation` into the empty folder `destination`
+ * (absolute, fresh out of the folder picker), applying `renames`
+ * (graph-relative `from` → `to`) and leaving out every path under a `skip`
+ * prefix. The open graph is only read. Rust refuses a destination that isn't
+ * empty or overlaps the graph, and two files landing on one path.
+ */
+export async function vaultCopyTree(
+  generation: number,
+  destination: string,
+  renames: readonly { readonly from: string; readonly to: string }[],
+  skip: readonly string[],
+): Promise<VaultCopyStats> {
+  return await call(
+    'vault_copy_tree',
+    { generation, destination, renames, skip },
+    vaultCopyStatsSchema,
+  )
+}
+
+/**
+ * Overwrite files of a copy made by {@link vaultCopyTree}. Only files the
+ * copy already holds can be written, never the open graph.
+ */
+export async function vaultCopyWrite(
+  destination: string,
+  files: readonly { readonly path: string; readonly contents: string }[],
+): Promise<void> {
+  await call('vault_copy_write', { destination, files }, voidSchema)
+}
+
 const localNoteReadSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('content'), content: z.string() }),
   z.object({ kind: z.literal('evicted') }),

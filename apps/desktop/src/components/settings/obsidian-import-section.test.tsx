@@ -7,6 +7,7 @@ import {
   type ObsidianImportReport,
   type ObsidianImportSource,
 } from '@reflect/core'
+import type { ObsidianConversionState } from '@/hooks/use-obsidian-conversion'
 import type { ObsidianImportDryRunState } from '@/hooks/use-obsidian-import-dry-run'
 
 const run = vi.hoisted(() => vi.fn())
@@ -21,7 +22,23 @@ const EMPTY: State = {
 }
 const dryRun = vi.hoisted((): { state: State | null } => ({ state: null }))
 
-vi.mock('@/providers/graph-provider', () => ({ useGraph: () => ({ graph: null }) }))
+const openRecent = vi.hoisted(() => vi.fn(async () => true))
+const convert = vi.hoisted(() => vi.fn())
+const conversion = vi.hoisted((): { result: ObsidianConversionState['result'] } => ({
+  result: null,
+}))
+
+vi.mock('@/providers/graph-provider', () => ({ useGraph: () => ({ graph: null, openRecent }) }))
+vi.mock('@/lib/platform', () => ({ isNativeShell: () => true }))
+vi.mock('@/hooks/use-obsidian-conversion', () => ({
+  useObsidianConversion: (): ObsidianConversionState => ({
+    convert,
+    pending: false,
+    progress: null,
+    result: conversion.result,
+    error: null,
+  }),
+}))
 vi.mock('@/hooks/use-obsidian-import-dry-run', () => ({
   useObsidianImportDryRun: () => ({ ...(dryRun.state ?? EMPTY), run, setMapping }),
 }))
@@ -38,6 +55,7 @@ const LAYOUT = {
 const MAPPING = importMappingFromLayout(LAYOUT)
 const SOURCE: ObsidianImportSource = {
   layout: LAYOUT,
+  config: { dailyNotes: null, app: null, templates: null },
   notes: [],
   attachments: [],
   folders: ['Journal', 'Journal/Daily', 'Resources', 'Resources/_attachments'],
@@ -72,6 +90,7 @@ const READ: State = {
 
 afterEach(() => {
   dryRun.state = null
+  conversion.result = null
   vi.clearAllMocks()
 })
 
@@ -134,5 +153,41 @@ describe('ObsidianImportSection', () => {
     await render(<ObsidianImportSection />)
 
     await expect.element(page.getByRole('alert')).toHaveTextContent(/YYYY, MM/)
+  })
+
+  it('converts into a folder the user picks', async () => {
+    dryRun.state = READ
+    await render(<ObsidianImportSection />)
+
+    await page.getByRole('button', { name: 'Convert to a copy…' }).click()
+    expect(convert).toHaveBeenCalledWith(MAPPING)
+  })
+
+  it('reports the copy and opens it as a graph', async () => {
+    dryRun.state = READ
+    conversion.result = {
+      destination: '/Users/me/Vault (Kore)',
+      files: 10_000,
+      bytes: 1,
+      symlinks: 0,
+      written: 2990,
+    }
+    await render(<ObsidianImportSection />)
+
+    await expect
+      .element(page.getByText(/^Converted copy written to \/Users\/me\/Vault \(Kore\)/))
+      .toBeVisible()
+    await page.getByRole('button', { name: 'Open the copy' }).click()
+    expect(openRecent).toHaveBeenCalledWith('/Users/me/Vault (Kore)')
+  })
+
+  it('does not convert with a daily format that cannot name one file per day', async () => {
+    dryRun.state = {
+      ...READ,
+      mapping: { ...MAPPING, daily: { folder: 'Journal/Daily', format: 'dddd' } },
+    }
+    await render(<ObsidianImportSection />)
+
+    await expect.element(page.getByRole('button', { name: 'Convert to a copy…' })).toBeDisabled()
   })
 })

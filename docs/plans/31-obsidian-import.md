@@ -1,7 +1,7 @@
 # Plan 31 — Converting an Obsidian vault to Kore's layout
 
-> **Status (2026-11-02):** Slice 1 (dry run) shipped in #299; slice 1b
-> (folder mapping) in progress. Reopens one
+> **Status (2026-11-06):** Slice 1 (dry run) shipped in #299, slice 1b
+> (folder mapping) in #306; slice 2 (conversion to a copy) in progress. Reopens one
 > non-goal of [Plan 13](13-import-export-portability.md) on the user's
 > decision.
 
@@ -61,6 +61,11 @@ and the conversion):
 2. **Conversion to a copy**: pick an empty destination folder; Rust copies and
    writes (a new command, thin), core decides every byte, following the mapping
    the user confirmed. The source vault is never written. Open the copy as a Kore graph when done.
+   The copy's `.obsidian` settings are repointed at the new folders, so the
+   runtime profile (until slice 4) and Obsidian both read the new layout.
+   `.git` isn't copied: the copy starts without the source's history. A note
+   whose canonical form would change again on its next save is kept as
+   written.
 3. **Bases**: simple `.base` views (filters on tags and properties) become
    supertag views; the rest stay readable and are reported.
 4. **Retire the runtime profile** (decided by the user 2026-11-02, after the

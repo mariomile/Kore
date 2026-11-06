@@ -1,6 +1,10 @@
 import { errorMessage } from '../errors'
 import { listAttachments, listFiles, readNoteLocal, readObsidianConfig } from '../graph/commands'
-import { vaultLayoutFromObsidian, type VaultLayout } from '../graph/vault-layout'
+import {
+  vaultLayoutFromObsidian,
+  type ObsidianConfigFiles,
+  type VaultLayout,
+} from '../graph/vault-layout'
 import { splitFrontmatter } from '../markdown/frontmatter'
 import { buildVaultCompatReport, type VaultCompatReport } from '../vault-compat/scan'
 import { detectCompatFindings } from '../vault-compat/detect'
@@ -27,6 +31,8 @@ export interface ImportSourceNote {
 export interface ObsidianImportSource {
   /** The layout the vault's Obsidian settings declare: where the default mapping comes from. */
   readonly layout: VaultLayout
+  /** The raw `.obsidian` settings, which the conversion repoints in the copy. */
+  readonly config: ObsidianConfigFiles
   readonly notes: readonly ImportSourceNote[]
   readonly attachments: readonly string[]
   /** Every folder holding a note or attachment, for picking a mapping. Sorted. */
@@ -129,7 +135,8 @@ const READ_CONCURRENCY = 8
 export async function readObsidianImportSource(
   generation: number,
 ): Promise<ObsidianImportSource | null> {
-  const layout = vaultLayoutFromObsidian(await readObsidianConfig(generation))
+  const config = await readObsidianConfig(generation)
+  const layout = vaultLayoutFromObsidian(config)
   if (!layout.obsidian) {
     return null
   }
@@ -170,6 +177,7 @@ export async function readObsidianImportSource(
   const attachments = attachmentFiles.map((file) => file.path)
   return {
     layout,
+    config,
     notes,
     attachments,
     folders: importFolders([...files.map((file) => file.path), ...attachments]),

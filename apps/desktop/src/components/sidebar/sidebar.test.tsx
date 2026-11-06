@@ -107,7 +107,7 @@ vi.mock('@/providers/graph-provider', () => ({
 // The shelf order the rail renders — a test flips it to assert the stored
 // arrangement drives the stack.
 const sidebarSections = vi.hoisted(() => ({
-  order: ['pinned', 'folders', 'tags'],
+  order: ['pinned', 'folders', 'tags', 'library'],
   nav: ['daily', 'newNote', 'allNotes', 'tasks', 'graph'],
   hidden: [] as string[],
 }))
@@ -174,7 +174,7 @@ beforeEach(() => {
   newChat.mockClear()
   getTagTree.mockReset().mockResolvedValue([])
   getFolderTree.mockReset().mockResolvedValue(buildFolderTree([]))
-  sidebarSections.order = ['pinned', 'folders', 'tags']
+  sidebarSections.order = ['pinned', 'folders', 'tags', 'library']
   sidebarSections.nav = ['daily', 'newNote', 'allNotes', 'tasks', 'graph']
   sidebarSections.hidden = []
   updateSettingsWith.mockClear()
@@ -511,7 +511,9 @@ describe('Sidebar', () => {
     // Folders is empty here, so one step up passes it and lands above Pinned.
     await page.getByRole('menuitem', { name: 'Move up' }).click()
     const update = updateSettingsWith.mock.lastCall?.[0]
-    expect(update?.(DEFAULT_SETTINGS)).toEqual({ sidebarSections: ['tags', 'folders', 'pinned'] })
+    expect(update?.(DEFAULT_SETTINGS)).toEqual({
+      sidebarSections: ['tags', 'folders', 'pinned', 'library'],
+    })
   })
 
   it('the mic button starts an audio memo', async () => {

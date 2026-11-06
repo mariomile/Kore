@@ -50,6 +50,9 @@ export type Route =
   // One note's local graph as a page of its own: the Details panel's Local
   // graph section opened into the workspace (a tab, or a pane beside the note).
   | { kind: 'localGraph'; path: string }
+  // A markdown file from the Library (a coding agent's home folder such as
+  // `~/.claude`), read-only. `root` is the folder's id.
+  | { kind: 'library'; root: string; path: string }
 
 /** A route that addresses one concrete note, including a dated daily note. */
 export type NoteRoute = Extract<Route, { kind: 'daily' | 'note' }>
@@ -131,6 +134,10 @@ export function routesEqual(a: Route, b: Route): boolean {
       return a.path === (b as Extract<Route, { kind: 'canvas' }>).path
     case 'localGraph':
       return a.path === (b as Extract<Route, { kind: 'localGraph' }>).path
+    case 'library': {
+      const other = b as Extract<Route, { kind: 'library' }>
+      return a.root === other.root && a.path === other.path
+    }
   }
 }
 

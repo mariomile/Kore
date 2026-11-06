@@ -7,6 +7,7 @@ import {
   folderDisplayName,
   getNote,
   isUntitledNotePath,
+  libraryFileTitle,
   listChatConversations,
   noteExists,
   openNoteTabTitle,
@@ -113,6 +114,8 @@ export function useOpenTabItems(): OpenTabItem[] {
             tab,
             title: `Graph · ${displayNoteTitle(openNoteTabTitle(tab.path, noteRows?.get(tab.path)?.title, drafts.get(tab.path)))}`,
           }
+        case 'library':
+          return { tab, title: libraryFileTitle(tab.path) }
         case 'surface':
           // The All Notes surface routed to a tag is that tag's own page —
           // the strip names the tag, not the generic surface.

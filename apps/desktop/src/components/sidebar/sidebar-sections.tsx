@@ -23,6 +23,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useFolderTree } from '@/hooks/use-folder-tree'
+import { useLibraryRoots } from '@/hooks/use-library'
 import { usePinnedNotes } from '@/hooks/use-pinned-notes'
 import { useTagTree } from '@/hooks/use-tag-tree'
 import { INVALIDATE_THROTTLE_MS } from '@/lib/query-client'
@@ -30,6 +31,7 @@ import { useGraph } from '@/providers/graph-provider'
 import { cn } from '@/lib/utils'
 import { useSettings } from '@/providers/settings-provider'
 import { SidebarFolders } from './sidebar-folders'
+import { SidebarLibrary } from './sidebar-library'
 import { SIDEBAR_NAV_LABELS } from './sidebar-nav'
 import { SidebarPinned } from './sidebar-pinned'
 import {
@@ -43,6 +45,7 @@ const SECTION_COMPONENTS: Record<SidebarSection, () => ReactElement | null> = {
   pinned: SidebarPinned,
   folders: SidebarFolders,
   tags: SidebarTags,
+  library: SidebarLibrary,
 }
 
 /** Each shelf's header title, also its name in the "hidden" menu. */
@@ -50,6 +53,7 @@ const SECTION_TITLES: Record<SidebarSection, string> = {
   pinned: 'Pinned notes',
   folders: 'Folders',
   tags: 'Types',
+  library: 'Library',
 }
 
 /** The name a hidden row or shelf goes by in the "hidden" menu. */
@@ -89,6 +93,7 @@ export function SidebarSections(): ReactElement {
   const folderTree = useFolderTree()
   const tagTree = useTagTree()
   const pinned = usePinnedNotes()
+  const libraryRoots = useLibraryRoots()
   const settling = useSettleWindow(indexing)
   const waitingForIndex =
     (indexing || settling) &&
@@ -129,9 +134,10 @@ export function SidebarSections(): ReactElement {
       pinned: pinned.length > 0,
       folders: folderTree !== null && hasOwnFolders(folderTree),
       tags: tagTree.length > 0,
+      library: libraryRoots.length > 0,
     }
     return SIDEBAR_SECTION_IDS.filter((id) => shown[id] && !hidden.includes(id))
-  }, [pinned.length, folderTree, tagTree.length, hidden])
+  }, [pinned.length, folderTree, tagTree.length, libraryRoots.length, hidden])
   const arrangement = useMemo<SidebarShelfArrangement>(() => {
     const onScreen = settings.sidebarSections.filter((id) => present.includes(id))
     return {

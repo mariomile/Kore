@@ -39,6 +39,11 @@ const LocalGraphScreen = lazy(() =>
     default: module.LocalGraphScreen,
   })),
 )
+const LibraryFileScreen = lazy(() =>
+  import('@/components/library/library-file-screen').then((module) => ({
+    default: module.LibraryFileScreen,
+  })),
+)
 const GraphMapScreen = lazy(() =>
   import('@/components/graph-map/graph-map-screen').then((module) => ({
     default: module.GraphMapScreen,
@@ -157,6 +162,9 @@ function RouteView(): ReactElement {
     case 'localGraph':
       // Owns its surface, like the full graph map.
       return <LocalGraphScreen key={route.path} path={route.path} />
+    case 'library':
+      // Owns its scroll container, like a base.
+      return <LibraryFileScreen root={route.root} path={route.path} />
     case 'graphs':
     // The graph-switcher route is a mobile settings sub-screen; on desktop
     // graph switching lives in the sidebar footer, so it renders as the

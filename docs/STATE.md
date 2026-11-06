@@ -22,6 +22,37 @@ offered to local agents only, never over the remote MCP.
 gating test), clippy `-D warnings`, fmt, smoke run with a temporary HOME
 (stdio `library_grep`, settings.json and projects/ refused).
 
+## Rich link previews: X posts, LinkedIn, any page, 2026-11-05
+
+Ask (Mario, 2026-11-05, screenshot): previews for links in notes, above all
+X and LinkedIn, plus generic links, drawn like his dark reference cards.
+
+- [x] Card rendering moved from attribute-stamped CSS on the anchor to a
+  ProseMirror widget (`apps/desktop/src/editor/link-card-plugin.ts`,
+  DOM in `link-card-dom.ts`, styles in `styles/link-cards.css`). The file
+  still holds only the plain link; the paragraph hides while the caret is
+  elsewhere. Plain click on a card puts the caret on the link (shown under
+  the card, to edit or delete); mod-click opens it (Alt flips in-app/OS).
+- [x] X posts: author, avatar, handle, date, text (media link dropped,
+  t.co expanded), replies/reposts/likes. Read from X's own embed
+  syndication endpoint (`cdn.syndication.twimg.com/tweet-result`) through
+  the existing bounded `capture_oembed_fetch` primitive; no Rust change.
+  Policy in `packages/core/src/actions/link-preview-providers.ts`.
+- [x] LinkedIn: OpenGraph card with the LinkedIn mark, title chrome
+  (`| … posted on the topic | LinkedIn`) stripped, `/feed/update/urn:li:…`
+  links fetched at their public embed page instead of the sign-in wall.
+- [x] Generic pages: title, description, image, and the favicon (declared
+  `<link rel=icon>`, else `/favicon.ico`); images show only once loaded.
+- Still gated by `private: true` (a private note fetches nothing).
+- Not verified against live X/LinkedIn: neither the container nor the Mac
+  shell reaches them. If X's answer omits `retweet_count`, the card shows
+  replies and likes only. First live check belongs on Mario's Mac.
+
+**Validation:** `link-card-plugin.test.tsx` (6, Chromium),
+`link-preview.test.tsx` + `link-preview-providers.test.ts` (core), `pnpm
+check`. Dev build screenshots in
+`/mnt/project-files/screenshot/anteprima-link/`. WebKit runs in CI.
+
 ## All notes type chips filter in place, 2026-11-04
 
 Ask (Mario, 2026-11-04, screenshot): the `#link`, `#person` and Custom chips

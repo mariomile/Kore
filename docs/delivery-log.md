@@ -7,6 +7,12 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- An Obsidian vault can be converted into a new folder in Kore's layout.
+  After the preview in Settings → Convert to Kore layout, *Convert to a
+  copy…* writes the converted vault into an empty folder you pick: dailies,
+  attachments and templates moved, links updated, notes in Kore's Markdown.
+  The original vault is only read, never written. *Open the copy* opens it.
+
 - Your agents can read each other's notes. `kore library add --known`
   points Kore at the folders where Claude Code, Codex, Gemini, Cursor and
   others keep their own Markdown (rules, skills, memory), and any agent

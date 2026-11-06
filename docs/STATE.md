@@ -1,5 +1,41 @@
 # Kore working state
 
+## Obsidian import, slice 2: conversion to a copy, 2026-11-06
+
+Ask (Mario, 2026-11-06, "Fai tutto tu"): read his vault, choose the mapping,
+and prepare the conversion on a COPY, never the original, without touching
+its AGENTS.md. Plan 31 slice 2.
+
+- [x] Settings → Convert to Kore layout gains *Convert to a copy…*: pick an
+  empty folder, the open vault is read again (after open notes are saved),
+  and a converted copy is written there. *Open the copy* opens it as a graph.
+- [x] Core decides every byte (`packages/core/src/obsidian-import/convert.ts`):
+  the planned moves, the rewritten links, canonical Markdown for
+  `normalizing` notes (frontmatter kept byte for byte), lossy notes kept as
+  written, and the copy's `.obsidian/*.json` repointed at `daily/`,
+  `assets/` and `templates/` so the runtime profile and Obsidian agree with
+  the new layout. `.git` and `.reflect` are never copied; excluded folders
+  are left out.
+- [x] Rust stays a primitive (`apps/desktop/src-tauri/src/fs/vault_copy.rs`):
+  `vault_copy_tree` copies the graph pinned to a generation into an empty
+  folder outside it, applying renames, skipping prefixes and symlinks, never
+  overwriting; `vault_copy_write` overwrites only files the copy holds and
+  refuses the open graph. Writes are bound to folders a copy went into
+  during this run of the app. The source is only read.
+- [x] The editor's canonicalizer (`canonicalizeImportBody` in
+  `apps/desktop/src/editor/roundtrip.ts`) treats a rewrite that is not
+  itself stable as lossy and keeps the note as written.
+- Run against the GitHub mirror of Mario's vault (4,795 notes, in the
+  container, nothing written to the vault): 2,408 files move, 3,297 files
+  rewritten (3,267 canonical), 1 note kept as written, every canonical note
+  stable on a second save. Agent files that hardcode `Journal/Daily` paths
+  (`.claude/`, `_system/automations`, `_system/scripts`, Bases) are copied
+  as written: a second pass before Mario switches. AGENTS.md is untouched.
+
+**Validation:** `vault_copy` Rust tests (5), `convert.test.ts` (core),
+`roundtrip.test.ts`, `obsidian-import-section.test.tsx` (Chromium), `pnpm
+check`. WebKit runs in CI.
+
 ## Library of agent folders (`kore library`), 2026-11-05
 
 Ask (Mario, 2026-11-05, "vai" on the card "Sì, solo locale"): copy Etch's

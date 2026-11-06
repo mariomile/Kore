@@ -293,6 +293,7 @@ pub fn run() {
         .manage(fs::GraphState::default())
         .manage(background_task::BackgroundTaskState::default())
         .manage(fs::ImportCancel::default())
+        .manage(fs::vault_copy::VaultCopies::default())
         .manage(fs::assets::AssetUploads::default())
         .manage(db::IndexState::default())
         .manage(watcher::WatcherState::default())
@@ -357,6 +358,8 @@ pub fn run() {
             fs::asset_open,
             fs::asset_reveal,
             fs::export_write,
+            fs::vault_copy::vault_copy_tree,
+            fs::vault_copy::vault_copy_write,
             haptics::haptic_feedback,
             fs::assets::asset_upload_begin,
             fs::assets::asset_upload_append,

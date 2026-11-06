@@ -1,9 +1,12 @@
 import { useState, type ReactElement } from 'react'
-import type { ObsidianImportReport } from '@reflect/core'
+import { dailyFormatProblem, type ImportMapping, type ObsidianImportReport } from '@reflect/core'
 import { ChevronDown, Refresh } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
+import { useObsidianConversion } from '@/hooks/use-obsidian-conversion'
 import { useObsidianImportDryRun } from '@/hooks/use-obsidian-import-dry-run'
+import { isNativeShell } from '@/lib/platform'
+import { isMobileSurface } from '@/lib/platform-surface'
 import { cn } from '@/lib/utils'
 import { useGraph } from '@/providers/graph-provider'
 import { ObsidianImportMapping } from './obsidian-import-mapping'
@@ -100,12 +103,94 @@ function ReportLines({ report }: { readonly report: ObsidianImportReport }): Rea
   )
 }
 
+interface ConvertBlockProps {
+  /** The mapping as edited now, which the preview may still be catching up with. */
+  readonly mapping: ImportMapping
+}
+
+/** Converting into a copy: pick an empty folder, then open the copy as a graph. */
+function ConvertBlock({ mapping }: ConvertBlockProps): ReactElement {
+  const { graph, openRecent } = useGraph()
+  const conversion = useObsidianConversion(graph)
+  const [opening, setOpening] = useState(false)
+  const [openError, setOpenError] = useState<string | null>(null)
+  const available = isNativeShell() && !isMobileSurface()
+  const blocked = mapping.daily !== null && dailyFormatProblem(mapping.daily.format) !== null
+  const { progress, result } = conversion
+
+  let status: string
+  if (progress !== null) {
+    status =
+      progress.phase === 'copying'
+        ? 'Copying the vault…'
+        : `Writing converted notes: ${progress.done.toLocaleString('en-US')} of ${progress.total.toLocaleString('en-US')}…`
+  } else if (result !== null) {
+    status = `Converted copy written to ${result.destination}: ${count(result.files, 'file', 'files')}, ${count(result.written, 'converted', 'converted')}. This vault is unchanged.`
+  } else if (!available) {
+    status = 'Converting is available in the Mac app.'
+  } else {
+    status =
+      'Convert into a new, empty folder. This vault is only read; its Git history isn’t copied.'
+  }
+
+  const openCopy = (): void => {
+    if (result === null) {
+      return
+    }
+    setOpening(true)
+    setOpenError(null)
+    void openRecent(result.destination)
+      .then((opened) => {
+        if (!opened) {
+          setOpenError(`The copy at ${result.destination} could not be opened.`)
+        }
+      })
+      .finally(() => setOpening(false))
+  }
+
+  return (
+    <div className="flex flex-col gap-2 border-t border-border px-4 py-3">
+      <div className="flex items-center justify-between gap-4">
+        <p className="min-w-0 text-xs text-text-muted" aria-live="polite">
+          {status}
+        </p>
+        {result === null ? (
+          <Button
+            type="button"
+            size="sm"
+            disabled={!available || blocked || conversion.pending}
+            onClick={() => conversion.convert(mapping)}
+          >
+            {conversion.pending ? <Spinner /> : null}
+            Convert to a copy…
+          </Button>
+        ) : (
+          <Button type="button" size="sm" disabled={opening} onClick={openCopy}>
+            Open the copy
+          </Button>
+        )}
+      </div>
+      {result !== null && result.symlinks > 0 ? (
+        <p className="text-[11px] text-text-muted">
+          {count(result.symlinks, 'symbolic link was', 'symbolic links were')} not copied.
+        </p>
+      ) : null}
+      {(conversion.error ?? openError) === null ? null : (
+        <p role="alert" className="text-xs text-destructive">
+          {conversion.error ?? openError}
+        </p>
+      )}
+    </div>
+  )
+}
+
 /**
  * Settings → Convert to Kore layout: a dry run of converting an Obsidian
  * vault to Kore's own layout (dailies, attachments, templates, the links that
  * point at them, canonical Markdown). Shown only for vaults with Obsidian
  * settings. It reads every note once, then lets the user correct which folder
- * plays which role and recomputes the report; it writes nothing.
+ * plays which role and recomputes the report. Converting writes a new copy;
+ * the open vault is never written.
  */
 export function ObsidianImportSection(): ReactElement {
   const { graph } = useGraph()
@@ -155,6 +240,7 @@ export function ObsidianImportSection(): ReactElement {
               paths={report.conflicts.map((conflict) => `${conflict.from} → ${conflict.to}`)}
             />
           ) : null}
+          {mapping ? <ConvertBlock mapping={mapping} /> : null}
         </>
       ) : null}
     </SettingsSection>

@@ -14,6 +14,7 @@ mod import;
 mod import_assets;
 mod io;
 mod resolve;
+pub mod vault_copy;
 
 use std::fs;
 use std::path::{Path, PathBuf};

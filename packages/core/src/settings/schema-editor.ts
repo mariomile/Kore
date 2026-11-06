@@ -160,7 +160,7 @@ export const contextSidebarWidthSchema = sidebarWidthValueSchema(CONTEXT_SIDEBAR
  */
 // There is no "open" shelf any more: it repeated the tab strip row for row.
 // A stored `open` entry is simply dropped by the normalization below.
-const sidebarSectionEnum = z.enum(['pinned', 'folders', 'tags'])
+const sidebarSectionEnum = z.enum(['pinned', 'folders', 'tags', 'library'])
 
 export type SidebarSection = z.infer<typeof sidebarSectionEnum>
 

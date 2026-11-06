@@ -241,6 +241,14 @@ export {
   type VaultLayout,
 } from '../graph/vault-layout'
 export { loadVaultLayout } from '../graph/load-vault-layout'
+export {
+  libraryList,
+  libraryRead,
+  libraryRoots,
+  type LibraryDir,
+  type LibraryRoot,
+} from '../library/commands'
+export { libraryFileTitle } from '../library/title'
 export { createWorkspaceStatePublisher, workspaceNotes } from '../graph/workspace-state'
 export { formatIsoDate, formatMoment } from '../markdown/template-placeholders'
 export {
@@ -384,6 +392,7 @@ export {
   type OpenNoteTab,
   type OpenBaseTab,
   type OpenCanvasTab,
+  type OpenLibraryTab,
   type OpenLocalGraphTab,
   type OpenChatTab,
   type OpenTab,

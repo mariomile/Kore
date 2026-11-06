@@ -3,6 +3,7 @@ import { foldTag, type OpenTab } from '@reflect/core'
 import { TagIcon } from '@/components/tags/tag-icon'
 import { useTagIcons } from '@/hooks/use-tag-icons'
 import {
+  Book,
   Chart,
   Chat,
   Checklist,
@@ -49,6 +50,9 @@ export function OpenTabIcon({ tab, className }: OpenTabIconProps): ReactElement 
   }
   if (tab.kind === 'localGraph') {
     return <Graph aria-hidden className={className} />
+  }
+  if (tab.kind === 'library') {
+    return <Book aria-hidden className={className} />
   }
   switch (tab.surface) {
     case 'daily':

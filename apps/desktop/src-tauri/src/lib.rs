@@ -30,6 +30,7 @@ mod git;
 mod graph_gitignore;
 mod haptics;
 mod icloud;
+mod library;
 mod link_preview;
 #[cfg(desktop)]
 mod liquid_glass;
@@ -381,6 +382,9 @@ pub fn run() {
             recents::forget_recent,
             settings::settings_load,
             settings::settings_save,
+            library::library_roots,
+            library::library_list,
+            library::library_read,
             skill::skill_status,
             skill::skill_install,
             skill::skill_uninstall,

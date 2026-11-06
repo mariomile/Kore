@@ -9,6 +9,7 @@ const graphState = vi.hoisted(() => ({ indexing: true }))
 vi.mock('@/providers/graph-provider', () => ({ useGraph: () => graphState }))
 vi.mock('@/hooks/use-folder-tree', () => ({ useFolderTree: () => null }))
 vi.mock('@/hooks/use-tag-tree', () => ({ useTagTree: () => [] }))
+vi.mock('@/hooks/use-library', () => ({ useLibraryRoots: () => [], useLibraryDir: () => null }))
 vi.mock('@/hooks/use-pinned-notes', () => ({
   usePinnedNotes: () => [],
   pinnedNotesQueryKey: (root: string | undefined) => ['index', root, 'pinned-notes'],

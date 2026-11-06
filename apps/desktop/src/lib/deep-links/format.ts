@@ -46,6 +46,7 @@ export function deepLinkForRoute(route: Route): string | null {
     case 'base':
     case 'canvas':
     case 'localGraph':
+    case 'library':
       return null
   }
 }

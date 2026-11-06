@@ -18,6 +18,7 @@ pub mod grep;
 pub mod guide;
 pub mod index;
 pub mod info;
+pub mod library;
 pub mod links;
 pub mod list;
 pub mod new;

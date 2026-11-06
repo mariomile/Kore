@@ -460,6 +460,10 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
         // keeps link previews renderable in the dev preview — the same shape
         // the real scrape parses.
         return devPageHtml(String(args.url ?? ''))
+      case 'capture_oembed_fetch':
+        // Link previews ask X's syndication endpoint for posts; answer with a
+        // canned post so the dev preview draws the post card offline.
+        return devOEmbedJson(String(args.url ?? ''))
 
       default:
         console.error(`[dev-bridge] unimplemented command "${command}"`, args)
@@ -527,6 +531,27 @@ function devPageHtml(url: string): string {
     `<meta property="og:image" content="${thumbnail}">`,
     '</head><body></body></html>',
   ].join('')
+}
+
+/**
+ * A stand-in for `capture_oembed_fetch`: a post in the shape X's syndication
+ * endpoint answers, for any post the dev preview links to. Other endpoints
+ * refuse, as an unknown oEmbed provider would.
+ */
+function devOEmbedJson(url: string): string {
+  if (!url.startsWith('https://cdn.syndication.twimg.com/tweet-result')) {
+    throw new ReflectError('io', `dev bridge: no canned JSON for ${url}`)
+  }
+  const avatar = new URL('/vite.svg', window.location.origin).href
+  return JSON.stringify({
+    text: 'A seeded post for the dev preview &amp; its card.\n\nIt keeps line breaks, @mentions and links as written. https://t.co/abc',
+    display_text_range: [0, 104],
+    created_at: '2026-11-05T09:30:00.000Z',
+    favorite_count: 70,
+    conversation_count: 28,
+    retweet_count: 4,
+    user: { name: 'Kore Dev', screen_name: 'koredev', profile_image_url_https: avatar },
+  })
 }
 
 /** Mirrors `MTIME_TRUST_AGE_MS` in core's hash.ts and Rust's scan.rs. */

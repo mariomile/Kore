@@ -34,10 +34,20 @@ const PROTOCOL_VERSIONS: [&str; 3] = ["2025-06-18", "2025-03-26", "2024-11-05"];
 const INSTRUCTIONS: &str = "Tools over the user's Kore notes: a local folder of \
 Markdown files with [[wiki links]], #tags, frontmatter properties, tasks, and one \
 daily note per day. A <note> argument accepts a YYYY-MM-DD date, a graph-relative \
-path, a note id, a title, or an alias. Search first, then read_note what you need. Notes the \
-user marked private are never returned. Writes are structural: they append, create, \
-or set one property; nothing overwrites a note's prose. Every note is also a resource \
-at kore://note/<path>, a link that opens it in the Kore app.";
+path, a note id, a title, or an alias. Search first (it matches meaning as well as words, so ask in plain \
+language), then read_note what you need. Notes the user marked private are never \
+returned. Writes are structural: they append, create, set one property, or replace one \
+passage whose exact current text you pass (edit_note), so nothing overwrites a change \
+you have not read. Every note is also a resource \
+at kore://note/<path>, a link that opens it in the Kore app. Call vault_guide first: \
+it returns the vault's own agent contract (its rules, including where memory and new \
+notes go) and a map of its folders. To keep a durable fact for every agent that \
+uses this vault, call remember: it signs the fact with your name and the date, and keeps \
+the old value when a fact changes.";
+
+/// Contract text inlined into `instructions` beyond this is left to
+/// `vault_guide`: clients paste instructions into every session's context.
+const INSTRUCTIONS_CONTRACT_MAX_CHARS: usize = 12_000;
 
 /// `resources/list` page size. Notes come newest first, so the notes a user
 /// is most likely to attach are on the first page.
@@ -125,11 +135,24 @@ impl Runner for ProcessRunner {
     }
 }
 
+/// What a tool does to the vault, which decides its MCP annotations and
+/// whether `--read-only` keeps it.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Effect {
+    Read,
+    /// Writes that only add or set structure (append, create, one property,
+    /// one tag line, one task marker): existing prose survives.
+    Add,
+    /// Replaces existing text (`edit_note`): annotated destructive, so
+    /// clients that confirm destructive calls ask the user first.
+    Replace,
+}
+
 /// One tool: its MCP definition and how its arguments become argv.
 struct Tool {
     name: &'static str,
     description: &'static str,
-    read_only: bool,
+    effect: Effect,
     /// JSON Schema `properties` and `required` for the input.
     properties: fn() -> Value,
     required: &'static [&'static str],
@@ -163,6 +186,12 @@ impl Invocation {
         if let Some(value) = value {
             self.args.push(format!("--{name}={value}"));
         }
+        self
+    }
+
+    /// A fixed nested subcommand (`library grep`), before any option.
+    fn subcommand(mut self, name: &str) -> Self {
+        self.args.push(name.to_string());
         self
     }
 
@@ -273,20 +302,40 @@ fn no_properties() -> Value {
 fn tools() -> Vec<Tool> {
     vec![
         Tool {
+            name: "vault_guide",
+            description: "Start here, once per session, before reading or writing. Returns the vault's agent contract (the user's rules for every agent: where memory, decisions and new notes go, what not to touch; null when the vault has none) and a map of its folders with note counts and where daily notes live. Follow the contract over your own defaults.",
+            effect: Effect::Read,
+            properties: no_properties,
+            required: &[],
+            build: |_| Ok(Invocation::new("guide")),
+        },
+        Tool {
             name: "search",
-            description: "Full-text search over every note, ranked by relevance (title matches first). Returns paths, titles and snippets. The query takes Kore's search operators: #tag or tag:#tag (nested tags included), -#tag, \"exact phrase\", -word, path:CRM/, file:name, [key] or [key:value], is:daily, is:pinned, links:Note, linked-from:Note, updated:>YYYY-MM-DD. Filters alone list matching notes newest first.",
-            read_only: true,
-            properties: || json!({ "query": { "type": "string", "description": "Search terms and operators, e.g. tag:#type/person path:CRM/ roadmap" }, "limit": limit_schema(20) }),
+            description: "Search every note by words and by meaning (hybrid, like the Kore app's own AI chat): a question in plain language (\"what do I know about X\", \"notes on pricing decisions\") finds notes that discuss it even without the exact words. Returns paths, titles, snippets and, for meaning matches, the heading above the passage; `mode` in the result says whether meaning search ran (it needs semantic search turned on in the app). The query also takes Kore's search operators, which filter both kinds of match: #tag or tag:#tag (nested tags included), -#tag, \"exact phrase\", -word, path:CRM/, file:name, [key] or [key:value], is:daily, is:pinned, links:Note, linked-from:Note, updated:>YYYY-MM-DD. Filters alone list matching notes newest first.",
+            effect: Effect::Read,
+            properties: || json!({
+                "query": { "type": "string", "description": "A question or search terms, plus any operators, e.g. tag:#type/person who works on pricing" },
+                "limit": limit_schema(20),
+                "mode": { "type": "string", "enum": ["hybrid", "lexical", "semantic"], "description": "hybrid (default): words and meaning; lexical: exact words only; semantic: meaning only" }
+            }),
             required: &["query"],
             build: |args| {
                 let query = required_string(args, "query")?;
-                Ok(Invocation::new("search").option("limit", limit_arg(args)?).positionals(&[query]))
+                let mode = match string_arg(args, "mode")?.as_deref() {
+                    None => None,
+                    Some(mode @ ("hybrid" | "lexical" | "semantic")) => Some(mode.to_string()),
+                    Some(_) => return Err("`mode` must be hybrid, lexical, or semantic".to_string()),
+                };
+                Ok(Invocation::new("search")
+                    .option("limit", limit_arg(args)?)
+                    .option("mode", mode)
+                    .positionals(&[query]))
             },
         },
         Tool {
             name: "read_note",
             description: "Read one note's full Markdown content, with its path, title and daily date.",
-            read_only: true,
+            effect: Effect::Read,
             properties: || json!({ "note": note_schema() }),
             required: &["note"],
             build: |args| Ok(Invocation::new("show").positionals(&[required_string(args, "note")?])),
@@ -294,7 +343,7 @@ fn tools() -> Vec<Tool> {
         Tool {
             name: "today",
             description: "Read today's daily note. Fails when it does not exist yet; capture creates it.",
-            read_only: true,
+            effect: Effect::Read,
             properties: no_properties,
             required: &[],
             build: |_| Ok(Invocation::new("today")),
@@ -302,7 +351,7 @@ fn tools() -> Vec<Tool> {
         Tool {
             name: "backlinks",
             description: "List the notes that link to a note.",
-            read_only: true,
+            effect: Effect::Read,
             properties: || json!({ "note": note_schema() }),
             required: &["note"],
             build: |args| Ok(Invocation::new("backlinks").positionals(&[required_string(args, "note")?])),
@@ -310,7 +359,7 @@ fn tools() -> Vec<Tool> {
         Tool {
             name: "links",
             description: "List the wiki links a note makes, each resolved to its target note when it exists.",
-            read_only: true,
+            effect: Effect::Read,
             properties: || json!({ "note": note_schema() }),
             required: &["note"],
             build: |args| Ok(Invocation::new("links").positionals(&[required_string(args, "note")?])),
@@ -318,7 +367,7 @@ fn tools() -> Vec<Tool> {
         Tool {
             name: "note_properties",
             description: "A note's frontmatter properties (typed by its tags' schemas), aliases and tags.",
-            read_only: true,
+            effect: Effect::Read,
             properties: || json!({ "note": note_schema() }),
             required: &["note"],
             build: |args| Ok(Invocation::new("properties").positionals(&[required_string(args, "note")?])),
@@ -326,7 +375,7 @@ fn tools() -> Vec<Tool> {
         Tool {
             name: "list_notes",
             description: "List notes newest first with their tags, optionally only one tag or one kind (daily or note).",
-            read_only: true,
+            effect: Effect::Read,
             properties: || json!({
                 "tag": { "type": "string", "description": "Only notes with this tag, without the #" },
                 "kind": { "type": "string", "enum": ["daily", "note"] },
@@ -343,7 +392,7 @@ fn tools() -> Vec<Tool> {
         Tool {
             name: "recent_notes",
             description: "The most recently updated notes, newest first.",
-            read_only: true,
+            effect: Effect::Read,
             properties: || json!({ "limit": limit_schema(20) }),
             required: &[],
             build: |args| Ok(Invocation::new("recent").option("limit", limit_arg(args)?)),
@@ -351,7 +400,7 @@ fn tools() -> Vec<Tool> {
         Tool {
             name: "list_tags",
             description: "Every tag with its note count and whether it is a typed collection.",
-            read_only: true,
+            effect: Effect::Read,
             properties: no_properties,
             required: &[],
             build: |_| Ok(Invocation::new("tags")),
@@ -359,7 +408,7 @@ fn tools() -> Vec<Tool> {
         Tool {
             name: "collection",
             description: "A typed tag's notes as rows with their property values, like a database view.",
-            read_only: true,
+            effect: Effect::Read,
             properties: || json!({
                 "tag": { "type": "string", "description": "The tag, without the #" },
                 "sort": { "type": "string", "description": "Property key to sort by" },
@@ -380,7 +429,7 @@ fn tools() -> Vec<Tool> {
         Tool {
             name: "list_tasks",
             description: "The graph's open tasks with their notes and due dates; `all` includes completed ones.",
-            read_only: true,
+            effect: Effect::Read,
             properties: || json!({ "all": { "type": "boolean" }, "limit": limit_schema(200) }),
             required: &[],
             build: |args| {
@@ -392,15 +441,141 @@ fn tools() -> Vec<Tool> {
         Tool {
             name: "graph_info",
             description: "The notes folder at a glance: its root, note counts, and whether the index is current.",
-            read_only: true,
+            effect: Effect::Read,
             properties: no_properties,
             required: &[],
             build: |_| Ok(Invocation::new("info")),
         },
         Tool {
+            name: "grep_notes",
+            description: "Every line, in every note, that contains an exact text, with its path and line number. Use it when you need all occurrences (open tasks naming a person, every mention of an amount) rather than the top-ranked notes `search` returns.",
+            effect: Effect::Read,
+            properties: || json!({
+                "text": { "type": "string", "description": "Matched literally, not as a pattern" },
+                "ignore_case": { "type": "boolean" },
+                "limit": limit_schema(200)
+            }),
+            required: &["text"],
+            build: |args| {
+                Ok(Invocation::new("grep")
+                    .flag("ignore-case", bool_arg(args, "ignore_case")?)
+                    .option("limit", limit_arg(args)?)
+                    .positionals(&[required_string(args, "text")?]))
+            },
+        },
+        Tool {
+            name: "path_between_notes",
+            description: "How two notes are connected: the shortest chain of wiki links between them, followed in either direction, each step saying whether it links to or is linked from the previous note. found is false when no chain exists within max_hops.",
+            effect: Effect::Read,
+            properties: || json!({
+                "from": note_schema(),
+                "to": note_schema(),
+                "max_hops": { "type": "integer", "minimum": 1, "description": "Give up beyond this many links (default 6)" }
+            }),
+            required: &["from", "to"],
+            build: |args| {
+                let max_hops = match args.get("max_hops") {
+                    None | Some(Value::Null) => None,
+                    Some(value) => match value.as_u64() {
+                        Some(hops) if hops > 0 => Some(hops.to_string()),
+                        _ => return Err("`max_hops` must be a positive integer".to_string()),
+                    },
+                };
+                Ok(Invocation::new("route")
+                    .option("max-hops", max_hops)
+                    .positionals(&[required_string(args, "from")?, required_string(args, "to")?]))
+            },
+        },
+        Tool {
+            name: "explain_note",
+            description: "One note's place in the graph in a single call: title, aliases, tags, typed properties, word count, its headings, the notes it links to and the notes linking to it. Cheaper than read_note plus links plus backlinks when you need to understand a note before using it.",
+            effect: Effect::Read,
+            properties: || json!({ "note": note_schema() }),
+            required: &["note"],
+            build: |args| Ok(Invocation::new("explain").positionals(&[required_string(args, "note")?])),
+        },
+        Tool {
+            name: "list_skills",
+            description: "The procedures the user taught their agents, kept in the vault under agents/skills/: each skill's name and its description of when to use it. When a task matches a description, call load_skill and follow it.",
+            effect: Effect::Read,
+            properties: no_properties,
+            required: &[],
+            build: |_| Ok(Invocation::new("skills")),
+        },
+        Tool {
+            name: "load_skill",
+            description: "The full text of one vault skill, by the name list_skills gives (or its title). Follow its steps for the rest of the task.",
+            effect: Effect::Read,
+            properties: || json!({ "name": { "type": "string" } }),
+            required: &["name"],
+            build: |args| Ok(Invocation::new("skills").positionals(&[required_string(args, "name")?])),
+        },
+        Tool {
+            name: "library_sources",
+            description: "The user's Library: folders outside the vault that Kore reads but never writes, usually the homes of their other agents (~/.claude, ~/.codex, ~/.agents…), each with its Markdown file count. Use it to find what the user's agents already know: their rules (CLAUDE.md, AGENTS.md), skills and memory files. Only on this machine.",
+            effect: Effect::Read,
+            properties: no_properties,
+            required: &[],
+            build: |_| Ok(Invocation::new("library").subcommand("sources")),
+        },
+        Tool {
+            name: "library_files",
+            description: "The Markdown files in one Library folder (or all of them), as `<folder>/<path>` for library_read.",
+            effect: Effect::Read,
+            properties: || json!({ "source": { "type": "string", "description": "A folder name from library_sources; omit for every folder" } }),
+            required: &[],
+            build: |args| {
+                let invocation = Invocation::new("library").subcommand("files");
+                Ok(match string_arg(args, "source")? {
+                    Some(source) => invocation.positionals(&[source]),
+                    None => invocation,
+                })
+            },
+        },
+        Tool {
+            name: "library_grep",
+            description: "Every line containing an exact text across the Library's Markdown files, with file and line number. Use it to find which agent rule or skill already covers something.",
+            effect: Effect::Read,
+            properties: || json!({
+                "text": { "type": "string", "description": "Matched literally" },
+                "source": { "type": "string", "description": "Only this folder" },
+                "ignore_case": { "type": "boolean" },
+                "limit": limit_schema(200)
+            }),
+            required: &["text"],
+            build: |args| {
+                Ok(Invocation::new("library")
+                    .subcommand("grep")
+                    .flag("ignore-case", bool_arg(args, "ignore_case")?)
+                    .option("source", string_arg(args, "source")?)
+                    .option("limit", limit_arg(args)?)
+                    .positionals(&[required_string(args, "text")?]))
+            },
+        },
+        Tool {
+            name: "library_read",
+            description: "The full text of one Library file, by the `<folder>/<path>` library_files or library_grep gave (e.g. claude/CLAUDE.md). Read-only: to change it, ask the user.",
+            effect: Effect::Read,
+            properties: || json!({ "path": { "type": "string" } }),
+            required: &["path"],
+            build: |args| {
+                Ok(Invocation::new("library")
+                    .subcommand("read")
+                    .positionals(&[required_string(args, "path")?]))
+            },
+        },
+        Tool {
+            name: "active_note",
+            description: "The note the user has open in the Kore app right now, and the other note tabs open beside it. Use it when the user says \"this note\" or \"what I'm looking at\". Fails when the app has not shared its state for this vault.",
+            effect: Effect::Read,
+            properties: no_properties,
+            required: &[],
+            build: |_| Ok(Invocation::new("active")),
+        },
+        Tool {
             name: "capture",
             description: "Append one bullet (or an open task) to today's daily note, creating it if needed, or to another note with `to`.",
-            read_only: false,
+            effect: Effect::Add,
             properties: || json!({
                 "text": { "type": "string", "description": "One line; line breaks collapse to spaces" },
                 "task": { "type": "boolean", "description": "Add an open task instead of a bullet" },
@@ -417,7 +592,7 @@ fn tools() -> Vec<Tool> {
         Tool {
             name: "append_to_note",
             description: "Append a Markdown block to the end of an existing note, after one blank line.",
-            read_only: false,
+            effect: Effect::Add,
             properties: || json!({ "note": note_schema(), "markdown": { "type": "string" } }),
             required: &["note", "markdown"],
             build: |args| {
@@ -429,9 +604,29 @@ fn tools() -> Vec<Tool> {
             },
         },
         Tool {
+            name: "edit_note",
+            description: "Replace one exact passage of a note's body with new text (or append, when oldText is empty). read_note first and copy oldText verbatim, whitespace included, with enough surrounding words to occur exactly once. Nothing is written when oldText is missing or repeated, so an edit never overwrites a change made since you read the note (by the user or another agent): re-read and retry. Frontmatter is out of reach (use set_properties); private notes are refused.",
+            effect: Effect::Replace,
+            properties: || json!({
+                "note": note_schema(),
+                "oldText": { "type": "string", "description": "The exact current text to replace, unique in the note's body. Empty string: append newText at the end." },
+                "newText": { "type": "string", "description": "The replacement Markdown (or the text to append)." }
+            }),
+            required: &["note", "oldText", "newText"],
+            build: |args| {
+                let note = required_string(args, "note")?;
+                let old_text = string_arg(args, "oldText")?.ok_or("`oldText` is required")?;
+                let new_text = string_arg(args, "newText")?.ok_or("`newText` is required")?;
+                Ok(Invocation::new("edit")
+                    .option("old", Some(old_text))
+                    .option("new", Some(new_text))
+                    .positionals(&[note]))
+            },
+        },
+        Tool {
             name: "create_note",
             description: "Create a new note with a title, optional Markdown body, tags and properties. Fails if a note with that title already exists.",
-            read_only: false,
+            effect: Effect::Add,
             properties: || json!({
                 "title": { "type": "string" },
                 "body": { "type": "string", "description": "Markdown placed under the title" },
@@ -458,7 +653,7 @@ fn tools() -> Vec<Tool> {
         Tool {
             name: "set_properties",
             description: "Set or remove frontmatter properties on a note, typed by its tags' schemas (relations by note title).",
-            read_only: false,
+            effect: Effect::Add,
             properties: || json!({
                 "note": note_schema(),
                 "set": { "type": "object", "description": "Values by key; lists as arrays" },
@@ -483,7 +678,7 @@ fn tools() -> Vec<Tool> {
         Tool {
             name: "tag_note",
             description: "Add a #tag to a note as a trailing tag line.",
-            read_only: false,
+            effect: Effect::Add,
             properties: || json!({ "note": note_schema(), "tag": { "type": "string" } }),
             required: &["note", "tag"],
             build: |args| {
@@ -493,7 +688,7 @@ fn tools() -> Vec<Tool> {
         Tool {
             name: "untag_note",
             description: "Remove a note's trailing #tag line (tags inside prose are left alone).",
-            read_only: false,
+            effect: Effect::Add,
             properties: || json!({ "note": note_schema(), "tag": { "type": "string" } }),
             required: &["note", "tag"],
             build: |args| {
@@ -503,7 +698,7 @@ fn tools() -> Vec<Tool> {
         Tool {
             name: "complete_task",
             description: "Tick a task off by its text (exact, or a unique part of it); `undo` reopens it.",
-            read_only: false,
+            effect: Effect::Add,
             properties: || json!({
                 "text": { "type": "string" },
                 "in": note_schema(),
@@ -517,7 +712,65 @@ fn tools() -> Vec<Tool> {
                     .positionals(&[required_string(args, "text")?]))
             },
         },
+        Tool {
+            name: "remember",
+            description: "Keep one durable fact for every agent that uses this vault: a signed bullet with a confidence tag, your name and today's date, in today's daily note or in `note` (follow the vault guide on where facts go). Give `previously` when the fact replaces an older value.",
+            effect: Effect::Add,
+            properties: || json!({
+                "fact": { "type": "string", "description": "One line, in the vault's language" },
+                "note": note_schema(),
+                "confidence": { "type": "string", "enum": CONFIDENCES, "description": "Default likely" },
+                "previously": { "type": "string", "description": "The value this fact replaces" },
+                "agent": { "type": "string", "description": "Your name; used only when the server does not already know who you are" }
+            }),
+            required: &["fact"],
+            build: |args| {
+                let line = remembered_line(
+                    &required_string(args, "fact")?,
+                    string_arg(args, "confidence")?.as_deref(),
+                    string_arg(args, "previously")?.as_deref(),
+                    string_arg(args, "agent")?.as_deref(),
+                    &crate::paths::today_date(),
+                )?;
+                Ok(Invocation::new("capture")
+                    .option("to", string_arg(args, "note")?)
+                    .positionals(&[line]))
+            },
+        },
     ]
+}
+
+/// Confidence tags of a remembered fact, as the shared facts file uses them.
+const CONFIDENCES: [&str; 3] = ["certain", "likely", "speculative"];
+
+/// `[likely] The fact (previously: old) — agent, 2026-11-04`: the signed
+/// form every agent's memory takes, so who said what and since when is
+/// always on the line itself.
+fn remembered_line(
+    fact: &str,
+    confidence: Option<&str>,
+    previously: Option<&str>,
+    agent: Option<&str>,
+    date: &str,
+) -> Result<String, String> {
+    let one_line = |text: &str| text.split_whitespace().collect::<Vec<_>>().join(" ");
+    let confidence = confidence.unwrap_or("likely");
+    if !CONFIDENCES.contains(&confidence) {
+        return Err(format!(
+            "`confidence` must be one of {}",
+            CONFIDENCES.join(", ")
+        ));
+    }
+    let agent = agent
+        .map(one_line)
+        .filter(|name| !name.is_empty())
+        .unwrap_or_else(|| "agent".to_string());
+    let mut line = format!("[{confidence}] {}", one_line(fact));
+    if let Some(old) = previously.map(one_line).filter(|old| !old.is_empty()) {
+        line.push_str(&format!(" (previously: {old})"));
+    }
+    line.push_str(&format!(" — {agent}, {date}"));
+    Ok(line)
 }
 
 fn tool_definition(tool: &Tool) -> Value {
@@ -531,8 +784,8 @@ fn tool_definition(tool: &Tool) -> Value {
             "additionalProperties": false
         },
         "annotations": {
-            "readOnlyHint": tool.read_only,
-            "destructiveHint": false,
+            "readOnlyHint": tool.effect == Effect::Read,
+            "destructiveHint": tool.effect == Effect::Replace,
             "openWorldHint": false
         }
     })
@@ -583,6 +836,7 @@ fn note_uri(path: &str) -> String {
 enum ResourceTarget {
     Note(Vec<String>),
     Tasks,
+    Guide,
 }
 
 fn resource_target(uri: &str) -> Option<ResourceTarget> {
@@ -595,6 +849,7 @@ fn resource_target(uri: &str) -> Option<ResourceTarget> {
     match rest.split_once('/') {
         None if rest == "today" => Some(ResourceTarget::Note(vec!["today".into()])),
         None if rest == "tasks" => Some(ResourceTarget::Tasks),
+        None if rest == "guide" => Some(ResourceTarget::Guide),
         Some(("note", target)) => show(decode_component(target)?),
         Some(("daily", date)) => show(decode_component(date)?),
         _ => None,
@@ -635,6 +890,13 @@ fn fixed_resources() -> Vec<Value> {
             "name": "tasks",
             "title": "Open tasks",
             "description": "Every open task with its note and due date.",
+            "mimeType": "application/json"
+        }),
+        json!({
+            "uri": "kore://guide",
+            "name": "guide",
+            "title": "Agent guide",
+            "description": "The vault's agent contract (AGENTS.md) and a map of its folders: read before working in the vault.",
             "mimeType": "application/json"
         }),
     ]
@@ -737,44 +999,99 @@ fn last_seven_days(today: jiff::civil::Date) -> Vec<String> {
     dates.iter().rev().map(ToString::to_string).collect()
 }
 
+/// Who is calling: a named agent (with its own write permission) or the
+/// vault's owner, who is unnamed and may write whenever the server does.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Caller {
+    /// The agent's name, signed onto what it remembers.
+    pub name: Option<String>,
+    /// Whether this caller may use the tools that write.
+    pub write: bool,
+}
+
+impl Caller {
+    /// The owner: the stdio client, or the HTTP server's own secret.
+    pub fn owner() -> Self {
+        Self {
+            name: None,
+            write: true,
+        }
+    }
+}
+
+/// Tools that read folders outside the vault (the Library, which holds the
+/// user's other agents' rules and memory). Only a server for this machine
+/// offers them; the HTTP server never does, whoever calls.
+const LOCAL_ONLY_TOOLS: &[&str] = &[
+    "library_sources",
+    "library_files",
+    "library_grep",
+    "library_read",
+];
+
 /// The MCP request handler, independent of the transport.
 pub struct Server<R: Runner> {
     runner: R,
     read_only: bool,
+    local: bool,
 }
 
 impl<R: Runner> Server<R> {
-    /// `read_only` hides and refuses every tool that writes.
+    /// `read_only` hides and refuses every tool that writes. The server
+    /// starts remote-safe: see [`Server::for_this_machine`].
     pub fn new(runner: R, read_only: bool) -> Self {
-        Self { runner, read_only }
+        Self {
+            runner,
+            read_only,
+            local: false,
+        }
     }
 
-    fn available(&self) -> Vec<Tool> {
+    /// Also offer the tools that read outside the vault (`LOCAL_ONLY_TOOLS`).
+    /// Only for the stdio transport, whose client runs on this machine.
+    pub fn for_this_machine(mut self) -> Self {
+        self.local = true;
+        self
+    }
+
+    fn available(&self, caller: &Caller) -> Vec<Tool> {
+        let writes = !self.read_only && caller.write;
         tools()
             .into_iter()
-            .filter(|tool| tool.read_only || !self.read_only)
+            .filter(|tool| tool.effect == Effect::Read || writes)
+            .filter(|tool| self.local || !LOCAL_ONLY_TOOLS.contains(&tool.name))
             .collect()
+    }
+
+    /// Answer one transport payload as the owner.
+    pub fn handle_payload(&self, payload: &[u8]) -> Option<Value> {
+        self.handle_payload_as(payload, &Caller::owner())
     }
 
     /// Answer one transport payload: a JSON-RPC message or a batch. `None`
     /// when nothing needs a reply (only notifications). Both transports
     /// funnel through here.
-    pub fn handle_payload(&self, payload: &[u8]) -> Option<Value> {
+    pub fn handle_payload_as(&self, payload: &[u8], caller: &Caller) -> Option<Value> {
         match serde_json::from_slice::<Value>(payload) {
             Ok(Value::Array(batch)) => {
                 let replies: Vec<Value> = batch
                     .iter()
-                    .filter_map(|message| self.handle(message))
+                    .filter_map(|message| self.handle_as(message, caller))
                     .collect();
                 (!replies.is_empty()).then_some(Value::Array(replies))
             }
-            Ok(message) => self.handle(&message),
+            Ok(message) => self.handle_as(&message, caller),
             Err(_) => Some(error_response(Value::Null, -32700, "parse error")),
         }
     }
 
-    /// Answer one JSON-RPC message. Notifications (no `id`) get `None`.
+    /// Answer one JSON-RPC message as the owner.
     pub fn handle(&self, message: &Value) -> Option<Value> {
+        self.handle_as(message, &Caller::owner())
+    }
+
+    /// Answer one JSON-RPC message. Notifications (no `id`) get `None`.
+    pub fn handle_as(&self, message: &Value, caller: &Caller) -> Option<Value> {
         let id = message.get("id").cloned()?;
         let method = message.get("method").and_then(Value::as_str);
         let Some(method) = method else {
@@ -785,9 +1102,9 @@ impl<R: Runner> Server<R> {
             "initialize" => Ok(self.initialize(&params)),
             "ping" => Ok(json!({})),
             "tools/list" => Ok(json!({
-                "tools": self.available().iter().map(tool_definition).collect::<Vec<_>>()
+                "tools": self.available(caller).iter().map(tool_definition).collect::<Vec<_>>()
             })),
-            "tools/call" => self.call(&params),
+            "tools/call" => self.call(&params, caller),
             "resources/list" => self.list_resources(&params),
             "resources/templates/list" => Ok(json!({ "resourceTemplates": resource_templates() })),
             "resources/read" => self.read_resource(&params),
@@ -816,11 +1133,42 @@ impl<R: Runner> Server<R> {
                 "prompts": { "listChanged": false }
             },
             "serverInfo": { "name": "kore", "title": "Kore", "version": env!("CARGO_PKG_VERSION") },
-            "instructions": INSTRUCTIONS
+            "instructions": self.instructions()
         })
     }
 
-    fn call(&self, params: &Value) -> Result<Value, (i64, String)> {
+    /// The fixed instructions plus the vault's own contract, so a client
+    /// that injects server instructions starts every session already under
+    /// the vault's rules — the same text an agent reading the git repo finds
+    /// in AGENTS.md.
+    fn instructions(&self) -> String {
+        let Some(contract) = self
+            .run_json(&["guide".to_string()])
+            .ok()
+            .and_then(|guide| guide.get("contract").cloned())
+            .filter(|contract| contract.is_object())
+        else {
+            return INSTRUCTIONS.to_string();
+        };
+        let path = contract["path"].as_str().unwrap_or("AGENTS.md");
+        let text = contract["text"].as_str().unwrap_or_default();
+        let mut instructions = format!(
+            "{INSTRUCTIONS}\n\nThis vault has its own agent contract, {path}: the user's standing rules for every agent working in it. Follow it over these defaults wherever they differ.\n\n"
+        );
+        if text.chars().count() > INSTRUCTIONS_CONTRACT_MAX_CHARS
+            || contract["truncated"].as_bool() == Some(true)
+        {
+            instructions.extend(text.chars().take(INSTRUCTIONS_CONTRACT_MAX_CHARS));
+            instructions.push_str(&format!(
+                "\n\n[contract cut here: call vault_guide or read {path} for the rest]"
+            ));
+        } else {
+            instructions.push_str(text);
+        }
+        instructions
+    }
+
+    fn call(&self, params: &Value, caller: &Caller) -> Result<Value, (i64, String)> {
         let name = params
             .get("name")
             .and_then(Value::as_str)
@@ -832,10 +1180,20 @@ impl<R: Runner> Server<R> {
             Some(_) => return Err((-32602, "arguments must be an object".to_string())),
         };
         let tool = self
-            .available()
+            .available(caller)
             .into_iter()
             .find(|tool| tool.name == name)
             .ok_or((-32602, format!("unknown tool: {name}")))?;
+        // A named caller signs as itself, whatever name it claims.
+        let signed = match (&caller.name, tool.name) {
+            (Some(agent), "remember") => {
+                let mut signed = args.clone();
+                signed.insert("agent".to_string(), Value::String(agent.clone()));
+                Some(signed)
+            }
+            _ => None,
+        };
+        let args = signed.as_ref().unwrap_or(args);
         let invocation = match (tool.build)(args) {
             Ok(invocation) => invocation,
             Err(message) => return Ok(tool_text(message, true)),
@@ -916,8 +1274,13 @@ impl<R: Runner> Server<R> {
                     .map_err(|message| (RESOURCE_NOT_FOUND, message))?;
                 note_resource(&note, Some(uri))
             }
-            ResourceTarget::Tasks => {
-                let output = self.runner.run(&["tasks".to_string()], None);
+            ResourceTarget::Tasks | ResourceTarget::Guide => {
+                let command = if matches!(target, ResourceTarget::Tasks) {
+                    "tasks"
+                } else {
+                    "guide"
+                };
+                let output = self.runner.run(&[command.to_string()], None);
                 if !output.success {
                     return Err((RESOURCE_NOT_FOUND, output.text));
                 }
@@ -1179,6 +1542,150 @@ mod tests {
     }
 
     #[test]
+    fn search_mode_and_edit_note_reach_argv_as_single_entries() {
+        let recorder = Recorder::default();
+        let server = Server::new(&recorder, false);
+        call(
+            &server,
+            "search",
+            json!({ "query": "what do I know about pricing", "mode": "semantic" }),
+        );
+        call(
+            &server,
+            "edit_note",
+            json!({ "note": "Plan", "oldText": "-- ship\nin May", "newText": "ship in June" }),
+        );
+        call(
+            &server,
+            "edit_note",
+            json!({ "note": "Log", "oldText": "", "newText": "- two" }),
+        );
+        let bad_mode = call(&server, "search", json!({ "query": "x", "mode": "fuzzy" }));
+        let no_old = call(
+            &server,
+            "edit_note",
+            json!({ "note": "Plan", "newText": "y" }),
+        );
+        let calls = recorder.calls.borrow();
+        assert_eq!(
+            calls[0].0,
+            [
+                "search",
+                "--mode=semantic",
+                "--",
+                "what do I know about pricing"
+            ]
+        );
+        assert_eq!(
+            calls[1].0,
+            [
+                "edit",
+                "--old=-- ship\nin May",
+                "--new=ship in June",
+                "--",
+                "Plan"
+            ]
+        );
+        assert_eq!(calls[2].0, ["edit", "--old=", "--new=- two", "--", "Log"]);
+        assert_eq!(calls.len(), 3, "invalid arguments never run");
+        assert_eq!(bad_mode["result"]["isError"], true);
+        assert_eq!(no_old["result"]["isError"], true);
+    }
+
+    #[test]
+    fn only_edit_note_is_annotated_destructive() {
+        let recorder = Recorder::default();
+        let server = Server::new(&recorder, false);
+        let list = server
+            .handle(&json!({ "jsonrpc": "2.0", "id": 1, "method": "tools/list" }))
+            .unwrap();
+        let tools = list["result"]["tools"].as_array().unwrap();
+        let destructive: Vec<&str> = tools
+            .iter()
+            .filter(|tool| tool["annotations"]["destructiveHint"] == true)
+            .map(|tool| tool["name"].as_str().unwrap())
+            .collect();
+        assert_eq!(destructive, ["edit_note"]);
+        let edit = tools
+            .iter()
+            .find(|tool| tool["name"] == "edit_note")
+            .unwrap();
+        assert_eq!(edit["annotations"]["readOnlyHint"], false);
+    }
+
+    fn tool_names(server: &Server<&Recorder>) -> Vec<String> {
+        let list = server
+            .handle(&json!({ "jsonrpc": "2.0", "id": 1, "method": "tools/list" }))
+            .unwrap();
+        list["result"]["tools"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|tool| tool["name"].as_str().unwrap().to_string())
+            .collect()
+    }
+
+    #[test]
+    fn the_library_is_offered_only_on_this_machine() {
+        let recorder = Recorder::default();
+        let remote = Server::new(&recorder, false);
+        let names = tool_names(&remote);
+        for tool in LOCAL_ONLY_TOOLS {
+            assert!(!names.iter().any(|name| name == tool), "{tool} leaked");
+        }
+        let refused = call(
+            &remote,
+            "library_read",
+            json!({ "path": "claude/CLAUDE.md" }),
+        );
+        assert_eq!(refused["error"]["code"], -32602);
+        assert!(recorder.calls.borrow().is_empty());
+
+        let local = Server::new(&recorder, false).for_this_machine();
+        let names = tool_names(&local);
+        for tool in LOCAL_ONLY_TOOLS {
+            assert!(names.iter().any(|name| name == tool), "{tool} missing");
+        }
+        call(
+            &local,
+            "library_grep",
+            json!({ "text": "-rule", "source": "claude", "ignore_case": true, "limit": 3 }),
+        );
+        call(
+            &local,
+            "library_read",
+            json!({ "path": "claude/CLAUDE.md" }),
+        );
+        let calls = recorder.calls.borrow();
+        assert_eq!(
+            calls[0].0,
+            [
+                "library",
+                "grep",
+                "--ignore-case",
+                "--source=claude",
+                "--limit=3",
+                "--",
+                "-rule"
+            ]
+        );
+        assert_eq!(calls[1].0, ["library", "read", "--", "claude/CLAUDE.md"]);
+    }
+
+    #[test]
+    fn edit_note_is_a_write_hidden_under_read_only() {
+        let recorder = Recorder::default();
+        let server = Server::new(&recorder, true);
+        let refused = call(
+            &server,
+            "edit_note",
+            json!({ "note": "Plan", "oldText": "a", "newText": "b" }),
+        );
+        assert_eq!(refused["error"]["code"], -32602);
+        assert!(recorder.calls.borrow().is_empty());
+    }
+
+    #[test]
     fn a_failing_command_is_a_tool_error_not_a_protocol_error() {
         let recorder = Recorder::default();
         let server = Server::new(&recorder, false);
@@ -1211,6 +1718,47 @@ mod tests {
         let refused = call(&server, "capture", json!({ "text": "x" }));
         assert_eq!(refused["error"]["code"], -32602);
         assert!(recorder.calls.borrow().is_empty());
+    }
+
+    #[test]
+    fn remember_signs_the_fact_with_the_callers_own_name() {
+        let recorder = Recorder::default();
+        let server = Server::new(&recorder, false);
+        let grok = Caller {
+            name: Some("Grok bot".into()),
+            write: true,
+        };
+        server.handle_as(
+            &json!({ "jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {
+                "name": "remember",
+                "arguments": { "fact": "Mario lives in\nRome", "previously": "Milan",
+                               "agent": "someone else", "note": "People/Mario" } } }),
+            &grok,
+        );
+        let calls = recorder.calls.borrow();
+        let line = calls[0].0.last().unwrap();
+        assert_eq!(calls[0].0[..3], ["capture", "--to=People/Mario", "--"]);
+        assert!(line.starts_with("[likely] Mario lives in Rome (previously: Milan) — Grok bot, "));
+
+        let reader = Caller {
+            name: Some("ChatGPT".into()),
+            write: false,
+        };
+        let refused = server
+            .handle_as(
+                &json!({ "jsonrpc": "2.0", "id": 2, "method": "tools/call",
+                    "params": { "name": "remember", "arguments": { "fact": "x" } } }),
+                &reader,
+            )
+            .unwrap();
+        assert!(refused["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("unknown tool"));
+        assert_eq!(
+            remembered_line("x", Some("sure"), None, None, "2026-11-04").unwrap_err(),
+            "`confidence` must be one of certain, likely, speculative"
+        );
     }
 
     #[test]
@@ -1310,6 +1858,10 @@ mod tests {
             resource_target("kore://tasks"),
             Some(ResourceTarget::Tasks)
         ));
+        assert!(matches!(
+            resource_target("kore://guide"),
+            Some(ResourceTarget::Guide)
+        ));
         assert!(resource_target("kore://note/").is_none());
         assert!(
             resource_target("kore://note/%E2%28").is_none(),
@@ -1331,12 +1883,12 @@ mod tests {
         let resources = first["result"]["resources"].as_array().unwrap();
         assert_eq!(
             resources.len(),
-            2 + RESOURCE_PAGE,
-            "today and tasks lead page one"
+            3 + RESOURCE_PAGE,
+            "today, tasks and the guide lead page one"
         );
         assert_eq!(resources[0]["uri"], "kore://today");
-        assert_eq!(resources[2]["uri"], "kore://note/notes%2F0.md");
-        assert_eq!(resources[2]["title"], "N0");
+        assert_eq!(resources[3]["uri"], "kore://note/notes%2F0.md");
+        assert_eq!(resources[3]["title"], "N0");
         assert_eq!(first["result"]["nextCursor"], RESOURCE_PAGE.to_string());
 
         let second = request(
@@ -1354,6 +1906,23 @@ mod tests {
 
         let bad = request(&server, "resources/list", json!({ "cursor": "x" }));
         assert_eq!(bad["error"]["code"], -32602);
+    }
+
+    #[test]
+    fn instructions_carry_the_vaults_own_contract() {
+        let without = Canned::new(vec![("guide", json!({ "contract": null, "map": {} }))]);
+        let init = request(&Server::new(&without, true), "initialize", json!({}));
+        assert_eq!(init["result"]["instructions"], INSTRUCTIONS);
+
+        let with = Canned::new(vec![(
+            "guide",
+            json!({ "contract": { "path": "AGENTS.md", "text": "Decisions go in _system/memory/decisions/.", "truncated": false }, "map": {} }),
+        )]);
+        let init = request(&Server::new(&with, true), "initialize", json!({}));
+        let instructions = init["result"]["instructions"].as_str().unwrap();
+        assert!(instructions.starts_with(INSTRUCTIONS));
+        assert!(instructions.contains("own agent contract, AGENTS.md"));
+        assert!(instructions.ends_with("Decisions go in _system/memory/decisions/."));
     }
 
     #[test]

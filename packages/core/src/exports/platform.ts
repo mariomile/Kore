@@ -1,6 +1,7 @@
 export * from '../bases'
 export * from '../vault-compat'
 export * from '../canvas'
+export * from '../obsidian-import'
 export {
   setBridge,
   assetUrl,
@@ -81,13 +82,18 @@ export {
 } from '../app/agent-skill'
 export {
   REMOTE_ACCESS_PORT,
+  addRemoteAgent,
   remoteAccessLocalUrl,
+  remoteAccessSetupPrompt,
   remoteAccessToken,
+  remoteAgents,
+  removeRemoteAgent,
   remoteMcpStatus,
   rotateRemoteAccessToken,
   startRemoteAccess,
   stopRemoteAccess,
   type RemoteAccessState,
+  type RemoteAgent,
   type RemoteMcpStatus,
   type RemoteTunnel,
 } from '../app/remote-access'
@@ -235,6 +241,7 @@ export {
   type VaultLayout,
 } from '../graph/vault-layout'
 export { loadVaultLayout } from '../graph/load-vault-layout'
+export { createWorkspaceStatePublisher, workspaceNotes } from '../graph/workspace-state'
 export { formatIsoDate, formatMoment } from '../markdown/template-placeholders'
 export {
   loadAttachmentIndex,
@@ -251,6 +258,7 @@ export {
   untitledNoteSeed,
   untitledNotePath,
   isUntitledNotePath,
+  openNoteTabTitle,
   createNoteWithTitle,
   createNoteWithSource,
   resolveOrCreateNoteWithTitle,
@@ -344,6 +352,13 @@ export {
   type SidebarWidthRange,
   type SidebarSection,
   SIDEBAR_SECTION_IDS,
+  type SidebarNavItem,
+  SIDEBAR_NAV_IDS,
+  type SidebarHideable,
+  type DetailsSection,
+  DETAILS_SECTION_IDS,
+  moveDetailsSection,
+  moveSidebarItem,
   type TranscriptionModels,
   type ThemePreference,
   type AccentColor,
@@ -369,6 +384,7 @@ export {
   type OpenNoteTab,
   type OpenBaseTab,
   type OpenCanvasTab,
+  type OpenLocalGraphTab,
   type OpenChatTab,
   type OpenTab,
   type OpenPane,
@@ -456,6 +472,7 @@ export {
 export {
   browserEmbedShow,
   browserEmbedBounds,
+  browserEmbedHide,
   browserEmbedClose,
   browserEmbedNavigate,
   browserEmbedBack,

@@ -171,6 +171,7 @@ describe('chatSystemPrompt agent memory', () => {
       customSystemPrompt: '',
       context: null,
       agentContext: {
+        vaultContract: null,
         profile: null,
         soul: null,
         userMemory: { body: '- Prefers Italian replies', truncated: false },

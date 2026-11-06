@@ -18,6 +18,7 @@ import {
 } from '@/lib/agent-routine-running'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Switch } from '@/components/ui/switch'
+import { formatDateTime } from '@/lib/dates'
 import { useSettings } from '@/providers/settings-provider'
 import { useGraph } from '@/providers/graph-provider'
 import { scheduleLabel } from './agent-routine-schedule'
@@ -309,16 +310,6 @@ export function AgentRoutinesSection({ profiles }: AgentRoutinesSectionProps): R
   )
 }
 
-/** "21 Aug, 14:32" — compact but unambiguous within the 20-run window. */
-function runTimeLabel(startedMs: number): string {
-  return new Date(startedMs).toLocaleString(undefined, {
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
 interface RunHistoryDialogProps {
   routine: AgentRoutine
   onClose: () => void
@@ -329,6 +320,7 @@ interface RunHistoryDialogProps {
  * succeeded, the failure message when it didn't, and the notes it edited.
  */
 function RunHistoryDialog({ routine, onClose }: RunHistoryDialogProps): ReactElement {
+  const { settings } = useSettings()
   return (
     <Dialog
       open
@@ -348,13 +340,15 @@ function RunHistoryDialog({ routine, onClose }: RunHistoryDialogProps): ReactEle
                   aria-hidden
                   className={`size-1.5 rounded-full ${
                     run.status === 'ok'
-                      ? 'bg-green-500'
+                      ? 'bg-success'
                       : run.status === 'skipped'
                         ? 'bg-border'
-                        : 'bg-red-500'
+                        : 'bg-danger'
                   }`}
                 />
-                <span className="text-sm font-medium text-text">{runTimeLabel(run.startedMs)}</span>
+                <span className="text-sm font-medium text-text">
+                  {formatDateTime(run.startedMs, settings)}
+                </span>
                 <span className="text-xs text-text-muted">
                   {run.status === 'ok'
                     ? 'completed'
@@ -366,9 +360,7 @@ function RunHistoryDialog({ routine, onClose }: RunHistoryDialogProps): ReactEle
                     : ''}
                 </span>
               </div>
-              {run.error !== null ? (
-                <p className="mt-1 text-xs text-red-600 dark:text-red-400">{run.error}</p>
-              ) : null}
+              {run.error !== null ? <p className="mt-1 text-xs text-danger">{run.error}</p> : null}
               {run.changedPaths.length > 0 ? (
                 <ul className="mt-1 space-y-0.5">
                   {run.changedPaths.map((path) => (

@@ -18,7 +18,11 @@ interface TaskGroupHeaderProps {
 /**
  * One task group's header (V1 design): a colour-coded icon + label — a date
  * bucket (Current/Overdue/Upcoming) or a note — with a "+ Add" button where V1
- * allows one. A note group's label opens that note.
+ * allows one. A note group's label opens that note. Only the Current group
+ * (today) shows its "+ Add" at rest; on every other group it waits for the
+ * pointer or focus, so a long list is not a column of identical buttons. The
+ * header sits on the list's own surface: whitespace, not a tinted band,
+ * separates one group from the next.
  *
  * Shared by {@link import('./task-list').TaskList}'s in-flow row and its pinned
  * stand-in for the active group (the two would otherwise drift on styling or
@@ -35,7 +39,7 @@ export function TaskGroupHeader({
   const addTarget = addTargetForGroup(group, today)
 
   return (
-    <div className="flex items-center gap-2 bg-surface-sunken px-4 py-1.5 lg:px-12">
+    <div className="group/header flex items-center gap-2 bg-surface px-4 py-1.5 lg:px-12">
       <h2 className={cn('flex min-w-0 items-center gap-2 text-sm font-medium', labelClass)}>
         <span className={iconClass}>{icon}</span>
         {group.kind === 'note' && notePath !== null ? (
@@ -55,7 +59,11 @@ export function TaskGroupHeader({
           type="button"
           aria-label={`Add a task to ${group.kind === 'current' ? 'today' : group.label}`}
           onClick={() => onAdd(addTarget)}
-          className="ml-auto flex flex-none items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium text-text-muted transition-colors hover:text-text focus-visible:text-text focus-visible:outline-none"
+          className={cn(
+            'ml-auto flex flex-none items-center gap-1 rounded-sm px-1.5 py-0.5 text-xs font-medium text-text-muted transition-[color,opacity] hover:text-text focus-visible:text-text focus-visible:outline-none',
+            group.kind !== 'current' &&
+              'opacity-0 focus-visible:opacity-100 group-hover/header:opacity-100',
+          )}
         >
           <Plus aria-hidden className="size-3.5" />
           Add

@@ -158,7 +158,9 @@ export const contextSidebarWidthSchema = sidebarWidthValueSchema(CONTEXT_SIDEBAR
  * the fixed navigation. A closed set of ids — the sections themselves live in
  * the app; this key only records the arrangement the user dragged them into.
  */
-const sidebarSectionEnum = z.enum(['open', 'pinned', 'folders', 'tags'])
+// There is no "open" shelf any more: it repeated the tab strip row for row.
+// A stored `open` entry is simply dropped by the normalization below.
+const sidebarSectionEnum = z.enum(['pinned', 'folders', 'tags'])
 
 export type SidebarSection = z.infer<typeof sidebarSectionEnum>
 
@@ -185,3 +187,145 @@ export const sidebarSectionsSchema = z
     }
     return [...ordered, ...SIDEBAR_SECTION_IDS.filter((id) => !ordered.includes(id))]
   })
+
+/**
+ * The workspace sidebar's primary navigation rows (Daily notes, New note, All
+ * notes, Tasks, Graph), in the order the user dragged them into. Same closed-
+ * set contract as {@link sidebarSectionsSchema}: the rows live in the app, this
+ * key only records their arrangement. The terminal is not a row: it opens as
+ * a tab from the tab strip's "+" menu.
+ */
+const sidebarNavEnum = z.enum(['daily', 'newNote', 'allNotes', 'tasks', 'graph'])
+
+export type SidebarNavItem = z.infer<typeof sidebarNavEnum>
+
+/** Every navigation row id, in the order a fresh install lists them. */
+export const SIDEBAR_NAV_IDS: readonly SidebarNavItem[] = sidebarNavEnum.options
+
+/** The stored row order, normalized like {@link sidebarSectionsSchema}. */
+export const sidebarNavSchema = z
+  .array(z.unknown())
+  .catch([])
+  .transform((entries) => {
+    const ordered: SidebarNavItem[] = []
+    for (const entry of entries) {
+      const parsed = sidebarNavEnum.safeParse(entry)
+      if (parsed.success && !ordered.includes(parsed.data)) {
+        ordered.push(parsed.data)
+      }
+    }
+    return [...ordered, ...SIDEBAR_NAV_IDS.filter((id) => !ordered.includes(id))]
+  })
+
+/** Anything on the sidebar's Home surface the user can hide: a row or a shelf. */
+export type SidebarHideable = SidebarNavItem | SidebarSection
+
+const sidebarHideableEnum = z.union([sidebarNavEnum, sidebarSectionEnum])
+
+/**
+ * The navigation rows and shelves the user hid from the sidebar. Hiding is a
+ * layout choice: the item keeps its place in its order and comes back there
+ * from the "hidden" menu at the foot of the shelves. Unknown and duplicate
+ * entries drop; anything else degrades to nothing hidden.
+ */
+export const hiddenSidebarItemsSchema = z
+  .array(z.unknown())
+  .catch([])
+  .transform((entries) => {
+    const hidden: SidebarHideable[] = []
+    for (const entry of entries) {
+      const parsed = sidebarHideableEnum.safeParse(entry)
+      if (parsed.success && !hidden.includes(parsed.data)) {
+        hidden.push(parsed.data)
+      }
+    }
+    return hidden
+  })
+
+/**
+ * The Details panel's sections (the right rail's note and daily context), by
+ * the id their stored arrangement is written in. One closed set across note
+ * and daily routes: each route renders the subset it has, in this order
+ * unless the user moved them. Events only exist on a day; tasks, outline and
+ * the local graph only on a note.
+ */
+const detailsSectionEnum = z.enum([
+  'events',
+  'tasks',
+  'outline',
+  'localGraph',
+  'publishedUrl',
+  'similar',
+  'history',
+  'actions',
+])
+
+export type DetailsSection = z.infer<typeof detailsSectionEnum>
+
+/** Every Details section id, in the order a fresh install stacks them. */
+export const DETAILS_SECTION_IDS: readonly DetailsSection[] = detailsSectionEnum.options
+
+/**
+ * The stored Details order, normalized the same way as
+ * {@link sidebarSectionsSchema}: a complete list, unknown and duplicate
+ * entries dropped, unmentioned sections appended in default order.
+ */
+export const detailsSectionsSchema = z
+  .array(z.unknown())
+  .catch([])
+  .transform((entries) => {
+    const ordered: DetailsSection[] = []
+    for (const entry of entries) {
+      const parsed = detailsSectionEnum.safeParse(entry)
+      if (parsed.success && !ordered.includes(parsed.data)) {
+        ordered.push(parsed.data)
+      }
+    }
+    return [...ordered, ...DETAILS_SECTION_IDS.filter((id) => !ordered.includes(id))]
+  })
+
+/**
+ * The Details sections the user hid. Hiding is a layout choice, not a
+ * deletion: the section keeps its place in the order and comes back there.
+ * Unknown and duplicate entries drop; anything else degrades to none hidden.
+ */
+export const hiddenDetailsSectionsSchema = z
+  .array(z.unknown())
+  .catch([])
+  .transform((entries) => {
+    const hidden: DetailsSection[] = []
+    for (const entry of entries) {
+      const parsed = detailsSectionEnum.safeParse(entry)
+      if (parsed.success && !hidden.includes(parsed.data)) {
+        hidden.push(parsed.data)
+      }
+    }
+    return hidden
+  })
+
+/**
+ * Move `id` one step up or down among the sections a route actually shows.
+ * `present` is that route's set: a step skips over sections it does not
+ * render (a note's rail has no Events), so one press always visibly moves the
+ * section. Returns the full order unchanged when there is nowhere to go.
+ */
+export function moveDetailsSection<T extends string = DetailsSection>(
+  order: readonly T[],
+  present: readonly T[],
+  id: T,
+  direction: 'up' | 'down',
+): T[] {
+  const shown = order.filter((entry) => present.includes(entry))
+  const at = shown.indexOf(id)
+  const neighbor = shown[direction === 'up' ? at - 1 : at + 1]
+  if (at === -1 || neighbor === undefined) {
+    return [...order]
+  }
+  return order.map((entry) => (entry === id ? neighbor : entry === neighbor ? id : entry))
+}
+
+/**
+ * {@link moveDetailsSection} for the sidebar's rows and shelves: one step past
+ * the neighbours that are actually on screen (a hidden row, an empty shelf).
+ */
+export const moveSidebarItem = moveDetailsSection

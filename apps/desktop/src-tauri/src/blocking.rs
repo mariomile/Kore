@@ -96,6 +96,16 @@ mod tests {
             "unsupported-platform stub: returns immediately, touches nothing",
         ),
         (
+            "browser_embed_hide",
+            "browser.rs",
+            "owns webview lifetime and geometry, which AppKit requires on the main thread",
+        ),
+        (
+            "browser_embed_hide",
+            "browser_mobile.rs",
+            "unsupported-platform stub: returns immediately, touches nothing",
+        ),
+        (
             "browser_embed_navigate",
             "browser.rs",
             "owns webview lifetime and geometry, which AppKit requires on the main thread",

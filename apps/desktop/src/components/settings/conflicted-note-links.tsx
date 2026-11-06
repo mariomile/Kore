@@ -21,7 +21,7 @@ function ConflictedNoteLink({ note }: ConflictedNoteLinkProps): ReactElement {
       <Button
         variant="ghost"
         size="sm"
-        className="h-auto w-full max-w-sm justify-start whitespace-normal px-2 py-1 text-left text-xs text-current hover:bg-amber-500/10 hover:text-current"
+        className="h-auto w-full max-w-sm justify-start whitespace-normal px-2 py-1 text-left text-xs text-current hover:bg-warning-soft hover:text-current"
         onClick={(event) =>
           navigateNoteLink({
             target: { kind: 'note', path: note.path },

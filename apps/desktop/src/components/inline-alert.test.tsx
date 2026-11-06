@@ -10,18 +10,18 @@ describe('InlineAlert', () => {
   })
 
   // TONE_CLASSES is the contract under test, so class substrings are asserted here.
-  it('defaults to the warning (amber) tone', async () => {
+  it('defaults to the warning tone', async () => {
     const view = await render(<InlineAlert>Heads up.</InlineAlert>)
-    expect(view.getByRole('alert').element().className).toContain('amber')
+    expect(view.getByRole('alert').element().className).toContain('text-warning')
     await view.unmount()
   })
 
-  it('renders the error tone in red', async () => {
+  it('renders the error tone in danger', async () => {
     const view = await render(<InlineAlert tone="error">It broke.</InlineAlert>)
     const alert = view.getByRole('alert').element()
     expect(alert.textContent).toBe('It broke.')
-    expect(alert.className).toContain('red')
-    expect(alert.className).not.toContain('amber')
+    expect(alert.className).toContain('text-danger')
+    expect(alert.className).not.toContain('warning')
     await view.unmount()
   })
 

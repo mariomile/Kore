@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, type ReactElement, type ReactNode } from 'react'
+import { lazy, Suspense, type ReactElement, type ReactNode } from 'react'
 import {
   CalendarDays,
   Chat,
@@ -39,16 +39,9 @@ import { DayCalendar } from './day-calendar'
 import { NoteContextSidebar } from './note-context-sidebar'
 import { NotePeek } from './note-peek'
 import { usePeekPath } from '@/lib/selection/peek-store'
+import { useSidebar } from '@/providers/sidebar-provider'
+import { DEFAULT_CONTEXT_PANEL as DEFAULT_PANEL, type ContextPanel } from './context-panel'
 import type { ContextSidebarTarget } from './sidebar-route'
-
-type ContextPanel = 'details' | 'chat' | 'calendar' | 'browser' | 'terminal'
-
-/**
- * The one panel the rail always carries. Every other panel is opt-in through
- * the "+" menu, so the default switcher is a single glyph rather than a row
- * of five — the rail opens on what the route is already about.
- */
-const DEFAULT_PANEL: ContextPanel = 'details'
 
 /** What a panel's body gets to describe: the route's note, and the day. */
 interface PanelContext {
@@ -87,8 +80,10 @@ const PANELS: ContextPanelSpec[] = [
     render: ({ target, peekPath }) =>
       target === null ? (
         peekPath === null ? (
+          // Only a list that peeks gets here (routes with nothing to describe
+          // drop the Details tab), so the hint names the gesture that fills it.
           <div className="flex h-full items-center justify-center px-6 text-center text-xs text-text-muted">
-            Open a note to see its details here.
+            Select a note to preview it here.
           </div>
         ) : (
           <NotePeek path={peekPath} />
@@ -155,6 +150,13 @@ const OPTIONAL_PANELS = PANELS.filter((spec) => spec.id !== DEFAULT_PANEL)
 interface ContextSidebarProps {
   /** What the Details panel describes — null on routes without a note. */
   target: ContextSidebarTarget | null
+  /**
+   * Whether the route has anything for Details to describe: a note, a day, or
+   * a list that peeks ({@link import('./sidebar-route').routeHasDetails}).
+   * Without one the Details tab leaves the band, and the shell drops the rail
+   * altogether unless the "+" opened another panel.
+   */
+  showDetails: boolean
 }
 
 /**
@@ -164,11 +166,10 @@ interface ContextSidebarProps {
  * fills the card, and starts as Details alone plus the "+" that adds the
  * rest. What the "+" opens is a real tab: it stays on the band until you
  * close it, and only Details cannot be closed. Both the open set and the
- * choice are per-window session state, not persisted.
+ * choice are per-window session state ({@link useSidebar}), not persisted.
  */
-export function ContextSidebar({ target }: ContextSidebarProps): ReactElement {
-  const [opened, setOpened] = useState<ContextPanel[]>([])
-  const [panel, setPanel] = useState<ContextPanel>(DEFAULT_PANEL)
+export function ContextSidebar({ target, showDetails }: ContextSidebarProps): ReactElement | null {
+  const { contextPanels, openContextPanel, closeContextPanel } = useSidebar()
   const today = useToday()
   const peekPath = usePeekPath()
   // The calendar panel anchors on the described day when there is one, so it
@@ -176,32 +177,34 @@ export function ContextSidebar({ target }: ContextSidebarProps): ReactElement {
   const calendarDate = target?.kind === 'daily' ? target.date : today
   // Segments keep `PANELS` order however the panels were opened, so the band
   // never reshuffles itself around the glyph you are aiming at.
-  const segments = PANELS.filter((spec) => spec.id === DEFAULT_PANEL || opened.includes(spec.id))
-  const active = segments.find((spec) => spec.id === panel) ?? segments[0]!
+  const segments = PANELS.filter((spec) =>
+    spec.id === DEFAULT_PANEL ? showDetails : contextPanels.opened.includes(spec.id),
+  )
+  // The stored choice can name a panel this route does not show (Details on
+  // Graph); the band then leads with its first tab.
+  const active = segments.find((spec) => spec.id === contextPanels.active) ?? segments[0]
+  if (active === undefined) {
+    return null
+  }
 
-  const selectPanel = (id: ContextPanel): void => {
-    if (id !== panel) {
+  /** Picking a tab, or a panel in the "+" menu, shows it — opening it first if needed. */
+  const showPanel = (id: ContextPanel): void => {
+    if (id !== active.id) {
       haptic('alignment')
-      setPanel(id)
     }
+    openContextPanel(id)
   }
 
-  /** Opening a panel from the "+" also brings it up; re-picking an open one just shows it. */
-  const openPanel = (id: ContextPanel): void => {
-    haptic('alignment')
-    if (!opened.includes(id)) {
-      setOpened([...opened, id])
-    }
-    setPanel(id)
-  }
-
-  /** Closing the tab on screen falls back to Details, the one tab that never closes. */
+  /**
+   * Closing the tab on screen lands on the first tab left on the band —
+   * Details wherever the route has it, the one tab that never closes. Either
+   * way the stored choice becomes the panel you see afterwards.
+   */
   const closePanel = (id: ContextPanel): void => {
     haptic('alignment')
-    setOpened(opened.filter((entry) => entry !== id))
-    if (panel === id) {
-      setPanel(DEFAULT_PANEL)
-    }
+    const next =
+      active.id === id ? (segments.find((spec) => spec.id !== id)?.id ?? DEFAULT_PANEL) : active.id
+    closeContextPanel(id, next)
   }
 
   return (
@@ -226,14 +229,14 @@ export function ContextSidebar({ target }: ContextSidebarProps): ReactElement {
               <PanelTab
                 key={spec.id}
                 spec={spec}
-                active={panel === spec.id}
-                onSelect={selectPanel}
+                active={active.id === spec.id}
+                onSelect={showPanel}
                 onClose={spec.id === DEFAULT_PANEL ? undefined : closePanel}
               />
             ))}
           </div>
 
-          <ContextPanelsPlusMenu onOpen={openPanel} />
+          <ContextPanelsPlusMenu onOpen={showPanel} />
         </div>
       </div>
 
@@ -308,7 +311,7 @@ function PanelTab({
         }}
         // The tabs have to fit the rail's 240px minimum, so the label gives up
         // width before the row overflows.
-        className="flex min-w-0 flex-1 items-center gap-1.5 rounded text-left"
+        className="flex min-w-0 flex-1 items-center gap-1.5 rounded-sm text-left"
       >
         <Glyph aria-hidden className="size-3 shrink-0" />
         <span className="truncate">{label}</span>

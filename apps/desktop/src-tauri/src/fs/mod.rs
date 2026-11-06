@@ -14,6 +14,7 @@ mod import;
 mod import_assets;
 mod io;
 mod resolve;
+pub mod vault_copy;
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -100,24 +101,8 @@ pub struct GraphInfo {
     pub generation: u64,
 }
 
-/// Metadata for a file inside the graph.
-#[derive(Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct FileMeta {
-    /// Graph-relative path, forward-slashed.
-    pub path: String,
-    pub size: u64,
-    /// Last-modified time in epoch milliseconds.
-    pub modified_ms: u64,
-    /// True when the file is iCloud-evicted: the note exists but its content
-    /// is not on disk until re-downloaded. Consumers must not read it — a
-    /// read blocks on an on-demand download — and must not treat it as
-    /// deleted (Plan 21). Covers both eviction forms: for a legacy `.icloud`
-    /// stub, `size` and `modified_ms` describe the stub; for a modern
-    /// dataless file they are the real (preserved) values.
-    #[serde(skip_serializing_if = "std::ops::Not::not")]
-    pub placeholder: bool,
-}
+/// Metadata for a file inside the graph (shared with the CLI indexer).
+pub use reflect_index_store::FileMeta;
 
 /// Result of claiming a note path without overwriting an existing file.
 #[derive(Debug, Serialize)]
@@ -610,6 +595,27 @@ pub async fn transcript_cache_write<R: tauri::Runtime>(
         let state = app.state::<GraphState>();
         let root = root_for_generation(&state, generation)?;
         fs::write(transcript_cache_file(&root, &name)?, contents)?;
+        Ok(())
+    })
+    .await
+}
+
+/// Publish the main window's open-note state for external agents
+/// (`.reflect/workspace.json`, read by the `kore` CLI). Derived, rebuildable
+/// data outside the attachment fence, so it gets its own single-file command:
+/// the path is fixed here and never comes from the caller. Atomic, so a
+/// reader never sees a torn file.
+#[tauri::command]
+pub async fn workspace_state_write<R: tauri::Runtime>(
+    contents: String,
+    generation: u64,
+    app: tauri::AppHandle<R>,
+) -> AppResult<()> {
+    crate::blocking::run_blocking(move || {
+        let state = app.state::<GraphState>();
+        let root = root_for_generation(&state, generation)?;
+        let target = resolve(&root, &format!("{}/workspace.json", io::REFLECT_DIR))?;
+        atomic_write_bytes(&root, &target, contents.as_bytes())?;
         Ok(())
     })
     .await

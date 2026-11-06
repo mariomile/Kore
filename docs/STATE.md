@@ -1,5 +1,659 @@
 # Kore working state
 
+## Obsidian import, slice 2: conversion to a copy, 2026-11-06
+
+Ask (Mario, 2026-11-06, "Fai tutto tu"): read his vault, choose the mapping,
+and prepare the conversion on a COPY, never the original, without touching
+its AGENTS.md. Plan 31 slice 2.
+
+- [x] Settings → Convert to Kore layout gains *Convert to a copy…*: pick an
+  empty folder, the open vault is read again (after open notes are saved),
+  and a converted copy is written there. *Open the copy* opens it as a graph.
+- [x] Core decides every byte (`packages/core/src/obsidian-import/convert.ts`):
+  the planned moves, the rewritten links, canonical Markdown for
+  `normalizing` notes (frontmatter kept byte for byte), lossy notes kept as
+  written, and the copy's `.obsidian/*.json` repointed at `daily/`,
+  `assets/` and `templates/` so the runtime profile and Obsidian agree with
+  the new layout. `.git` and `.reflect` are never copied; excluded folders
+  are left out.
+- [x] Rust stays a primitive (`apps/desktop/src-tauri/src/fs/vault_copy.rs`):
+  `vault_copy_tree` copies the graph pinned to a generation into an empty
+  folder outside it, applying renames, skipping prefixes and symlinks, never
+  overwriting; `vault_copy_write` overwrites only files the copy holds and
+  refuses the open graph. Writes are bound to folders a copy went into
+  during this run of the app. The source is only read.
+- [x] The editor's canonicalizer (`canonicalizeImportBody` in
+  `apps/desktop/src/editor/roundtrip.ts`) treats a rewrite that is not
+  itself stable as lossy and keeps the note as written.
+- Run against the GitHub mirror of Mario's vault (4,795 notes, in the
+  container, nothing written to the vault): 2,408 files move, 3,297 files
+  rewritten (3,267 canonical), 1 note kept as written, every canonical note
+  stable on a second save. Agent files that hardcode `Journal/Daily` paths
+  (`.claude/`, `_system/automations`, `_system/scripts`, Bases) are copied
+  as written: a second pass before Mario switches. AGENTS.md is untouched.
+
+**Validation:** `vault_copy` Rust tests (5), `convert.test.ts` (core),
+`roundtrip.test.ts`, `obsidian-import-section.test.tsx` (Chromium), `pnpm
+check`. WebKit runs in CI.
+
+## Library of agent folders (`kore library`), 2026-11-05
+
+Ask (Mario, 2026-11-05, "vai" on the card "Sì, solo locale"): copy Etch's
+read-only libraries over agent folders (`/mnt/project-files/analisi/etch-sul-mac.md`),
+offered to local agents only, never over the remote MCP.
+
+- [x] `apps/cli/src/library.rs`: the list in `~/.config/kore/libraries.json`
+  (`KORE_LIBRARIES_FILE`, XDG), `add` / `add --known` / `remove`, `files`,
+  `grep`, `read`. Markdown only; hidden, cache and transcript folders,
+  symlinks (any depth, `symlink_free_path`) and files over 512 KB are
+  never listed or read; `read` refuses anything `files` would not list.
+- [x] `kore library …` (no graph needed) and four MCP tools
+  `library_sources|files|grep|read`, offered only after
+  `Server::for_this_machine()`, which only the stdio branch calls.
+  `mcp --http` neither lists nor runs them.
+- [ ] App surface (Settings card, browsing): not built. The chat and any
+  local agent reach the Library through the tools.
+
+**Validation:** `cargo test -p reflect-cli` (library unit tests, MCP
+gating test), clippy `-D warnings`, fmt, smoke run with a temporary HOME
+(stdio `library_grep`, settings.json and projects/ refused).
+
+## Rich link previews: X posts, LinkedIn, any page, 2026-11-05
+
+Ask (Mario, 2026-11-05, screenshot): previews for links in notes, above all
+X and LinkedIn, plus generic links, drawn like his dark reference cards.
+
+- [x] Card rendering moved from attribute-stamped CSS on the anchor to a
+  ProseMirror widget (`apps/desktop/src/editor/link-card-plugin.ts`,
+  DOM in `link-card-dom.ts`, styles in `styles/link-cards.css`). The file
+  still holds only the plain link; the paragraph hides while the caret is
+  elsewhere. Plain click on a card puts the caret on the link (shown under
+  the card, to edit or delete); mod-click opens it (Alt flips in-app/OS).
+- [x] X posts: author, avatar, handle, date, text (media link dropped,
+  t.co expanded), replies/reposts/likes. Read from X's own embed
+  syndication endpoint (`cdn.syndication.twimg.com/tweet-result`) through
+  the existing bounded `capture_oembed_fetch` primitive; no Rust change.
+  Policy in `packages/core/src/actions/link-preview-providers.ts`.
+- [x] LinkedIn: OpenGraph card with the LinkedIn mark, title chrome
+  (`| … posted on the topic | LinkedIn`) stripped, `/feed/update/urn:li:…`
+  links fetched at their public embed page instead of the sign-in wall.
+- [x] Generic pages: title, description, image, and the favicon (declared
+  `<link rel=icon>`, else `/favicon.ico`); images show only once loaded.
+- Still gated by `private: true` (a private note fetches nothing).
+- Not verified against live X/LinkedIn: neither the container nor the Mac
+  shell reaches them. If X's answer omits `retweet_count`, the card shows
+  replies and likes only. First live check belongs on Mario's Mac.
+
+**Validation:** `link-card-plugin.test.tsx` (6, Chromium),
+`link-preview.test.tsx` + `link-preview-providers.test.ts` (core), `pnpm
+check`. Dev build screenshots in
+`/mnt/project-files/screenshot/anteprima-link/`. WebKit runs in CI.
+
+## All notes type chips filter in place, 2026-11-04
+
+Ask (Mario, 2026-11-04, screenshot): the `#link`, `#person` and Custom chips
+at the top of All notes opened the type's own page. They should only narrow
+the list to that type.
+
+- [x] The chips route to `{ kind: 'all', tag }` (new optional `tag` on the
+  `all` filter in `note-list-filter.ts`, so persisted tabs still parse). The
+  screen lists that tag's notes under the same header and chips, with the
+  chip lit; All clears it. Back/forward keeps the chip (route equality
+  compares the tag).
+- [x] `{ kind: 'tag' }` is still the type's page, reached from the sidebar's
+  Types section, links and chat cards.
+- The Inbox chip drops its count while a type is active, since the loaded
+  list is that type only.
+
+**Validation:** `all-notes-screen.test.tsx` (33 pass, Chromium), typecheck,
+eslint, oxlint, oxfmt. WebKit runs in CI.
+
+## Always-on host (`kore mcp --sync`), 2026-11-04
+
+User ask (Mario, 2026-11-04 19:02Z and 19:48Z, Plan 32 slice 2): Kore must
+be the shared, portable memory of all his agents, reachable when the Mac
+sleeps, and it must work for someone who never opens the desktop or mobile
+app. Builds on `kore index` (#315).
+
+- [x] `apps/cli/src/vault_sync.rs`: `VaultSync`, a `Runner` in front of the
+  MCP server. Reads run concurrently; every other subcommand is a write:
+  pull first, run, commit (`Kore host`), journal the operation in
+  `.git/kore-sync/journal.jsonl`, push, `kore index`. Integration is
+  fast-forward, else rebase, else reset to the remote and replay the
+  journal through the CLI (no text merge, no conflict markers on the
+  host); a replay that fails is dropped and logged. Offline writes stay
+  journaled across restarts. Refuses a dirty clone; keeps `.reflect/` in
+  `.git/info/exclude`.
+- [x] `kore mcp --sync [--sync-every SECS]` (background pull + reindex) and
+  `kore sync [--json]` (one pass).
+- [x] `deploy/always-on/`: Dockerfile (CLI + bundled indexer + Node 22 +
+  git), entrypoint (clone on first run, token via credential helper, index,
+  serve), systemd unit. Guide: `docs/always-on.md`.
+- Not done: deploy on a real host (candidate `a3b09dc05af0`, which already
+  has `/opt/data/vaults/marioverse-ai`, or a VPS: Mario's call), a live run
+  against `mariomile/obsidian-sync-marioverse` with the Mac's sync job
+  pulling, named per-agent commit authors (needs slice 1's named tokens).
+
+**Validation:** 8 unit tests over real git repos (bare remote, Mac clone,
+host clone): write → push → index; same-note Mac edit replayed in order
+with no markers; unrelated change rebased; write on a deleted note dropped;
+journal survives an offline restart; reads never commit and `.reflect/`
+never enters history; dirty or non-git folders refused. End to end with the
+debug binary and the real indexer: `capture` over HTTP reached the Mac's
+clone as one `Kore host` commit; a note pushed from the Mac was found by
+`search` over HTTP within one 5 s interval. `cargo clippy -p reflect-cli
+--all-targets -D warnings`, `cargo fmt --check`.
+The Docker image builds and runs: it cloned a test vault, indexed it,
+answered `capture` over HTTP and pushed the commit (`pulled 0, pushed 1`).
+
+## Shared brain for agents, slice 1, 2026-11-04
+
+Plan 32 slice 1 (Mario, 2026-11-04, "Entrambe in parallelo"): connect any
+agent to the vault in a minute, give each its own key, and let it remember
+facts signed with its name. Everything works from the `kore` CLI alone, with
+no Kore app (Mario: "deve poter essere funzionante anche per chi non vuole
+mai usare l'app").
+
+- [x] Named agent keys: `kore keys add <name> [--write]`, `list`, `remove`.
+  File `~/.config/kore/mcp-agents.json` (0600, outside the vault), re-read on
+  every request, so adding or removing a key needs no restart. The Mac app
+  keeps its own list in the keychain and passes it as `KORE_MCP_AGENTS`.
+- [x] Each key is its own caller: read-only unless `--write`; OAuth tokens
+  issued from it carry its id and stop working once the key is removed.
+- [x] `remember` MCP tool: one fact per call, to today's daily or a named
+  note, line `[confidence] fact (previously: old) — Agent, YYYY-MM-DD`. A
+  named key's own name overrides whatever `agent` the caller claims.
+- [x] Public `GET /setup.md` on `kore mcp --http`: per-client steps (bearer
+  header, Grok bot, Claude, ChatGPT Developer Mode, Claude Code, Codex),
+  then `vault_guide`. Holds no secrets.
+- [x] ChatGPT OAuth redirect URIs accepted (fixed URI and
+  `connector/oauth/<id>` prefix, path traversal rejected).
+- [x] Settings, Remote access: "Copy setup prompt", and a list of named
+  agents with Copy key / Remove and a Write switch.
+- Not done: "last seen" per agent; recall stays the existing search.
+
+**Validation:** `cargo fmt --check`, `cargo clippy --workspace
+--all-targets -D warnings`, `cargo test -p reflect-cli` (all pass), core
+`remote-access.test.ts`, Chromium browser test of the Remote access field,
+`pnpm check`. The iOS bindings check could not run in the container (no
+Xcode toolchain); CI is its first pass. Needs a live test on the Mac with
+ChatGPT and Grok bot.
+
+## MCP at par with the in-app chat, 2026-11-04
+
+User ask (Mario, 2026-11-04, slice C of the November analysis,
+`/mnt/project-files/analisi/cosa-migliorare-2026-11.md`): agents reaching the
+vault through `kore mcp` should find notes by meaning and change a passage,
+like the in-app chat.
+
+- [x] `kore search` is hybrid by default, the twin of `retrieve()`: the
+  lexical ranking fused (RRF, K = 60) with semantic neighbors from the
+  `embedding_chunks` / `embedding_vectors` the app writes (KNN 24, cosine
+  cutoff 0.7, best chunk per note; filters constrain both legs, private and
+  template notes never surface). `--mode lexical|semantic`; JSON gains
+  `mode`, `semanticUnavailable` and a per-hit `heading`.
+- [x] The query is embedded with the app's own all-MiniLM-L6-v2, read from
+  the app's model cache (or `$KORE_MODEL_DIR`), run on `tract` (pure-Rust
+  ONNX) with fastembed's exact tokenizer setup, mean pooling and
+  normalization (`apps/cli/src/embed.rs`). Before trusting it the CLI
+  re-embeds one stored chunk and requires cosine >= 0.99 with the app's
+  vector; otherwise, or with no vectors / no model, hybrid serves lexical
+  and says why.
+- [x] `kore edit <note> --old --new` and MCP `edit_note` (`note`, `oldText`,
+  `newText`): replace one passage only when it occurs exactly once in the
+  body as read at write time; empty `oldText` appends. Frontmatter out of
+  reach, private notes refused. Twin of `applyNoteEdit`.
+- [x] `apps/desktop/scripts/search-recall.mjs`: recall@k of lexical vs hybrid
+  on a fixed question file.
+- Not done: the 20 fixed questions on marioverse.ai and their recall@5 run
+  (needs the vault and the app-built index, i.e. the Mac).
+
+**Validation:** `cargo test -p reflect-cli` (unit + integration + MCP
+end-to-end, including stale-text refusal and private refusal), `cargo
+clippy -p reflect-cli --all-targets -D warnings`, `cargo fmt`. The embedder
+was checked against onnxruntime on a random BERT-shaped ONNX model built in
+the container (cosine > 0.9999 on every reference text,
+`KORE_TEST_MODEL_DIR` test); the real model could not be downloaded here
+(Hugging Face blocked), so the stored-vector self-check is the first real
+parity check. On a MiniLM-sized model: ~0.3 s to load, ~10-20 ms per query.
+The release binary grows from 7.9 MB to 34.6 MB (tract + tokenizers).
+**Next:** on the Mac, `kore search "<a question>" --json` must report
+`"mode": "hybrid"`; then run the 20 questions.
+
+## Index without the app (`kore index`), 2026-11-04
+
+User ask (Mario, 2026-11-04, analysis "Kore: cosa migliorare", slice 2,
+"ok per 2 e 3"): the CLI needed the app-built index for search, tags,
+backlinks, list, tasks, recent, collection and done (`require_index`, exit
+4), so an always-on `kore mcp` over a git clone could not search. Step 2 of
+"Remote MCP over HTTP" below.
+
+- [x] `crates/index-store` (`reflect-index-store`): the index write path
+  (`write.rs`), reconcile scan (`scan.rs`, now owning `FileMeta`), embedding
+  writes and the read-only query guard moved out of the desktop crate, plus
+  the batch transactions every host issues (`apply_notes`, `remove_notes`,
+  `move_note_rows`, `touch_notes`, `set_index_meta`). The desktop's Tauri
+  commands call them unchanged in behavior; the guarded read-only
+  connection (`query::open_read_connection`) lives there too.
+- [x] `packages/core/src/headless/`: an `IpcBridge` over newline-delimited
+  JSON on stdio, and the entry that opens the index and runs `syncIndex`
+  (or `rebuildIndex` with `--rebuild`). `pnpm --filter @reflect/core
+  build:indexer` bundles it into `dist/kore-indexer.mjs` (1.15 MB, no
+  dependencies beyond Node).
+- [x] `kore index [--rebuild] [--json]`: spawns Node on that script and
+  serves its commands (`apps/cli/src/indexer.rs`: listing via the shared
+  walker, guarded note reads, `db_query`, the index writes). An explicit
+  `--graph`/`$KORE_GRAPH` folder without `.reflect/` is adopted. Docs:
+  `docs/cli.md`.
+- Not done: embeddings headless (semantic vectors stay an app pass), a
+  `--watch` mode, shipping `kore-indexer.mjs` with releases and inside
+  `Kore.app` (today it is built from the repo), a guard against running it
+  on a graph the app has open.
+
+**Validation:** `cargo test -p reflect-cli -p reflect-index-store` (two new
+host tests: write then read back over the bridge; traversal, missing note
+and write-through-query refused; a read through a symlinked directory is
+refused, from the Cursor security review), `cargo clippy -p reflect-index-store -p
+reflect-cli --all-targets -D warnings`, `cargo fmt --check`;
+`stdio-bridge.test.ts` (2); `pnpm check` exit 0. End to end on a synthetic
+5,155-note vault (frontmatter tags, `up:` links, tasks, 155 dailies) with a
+debug `kore`: first run 13.4 s, `info` reports the index fresh, search,
+tags, backlinks and tasks answer; after one edit and one rename the rerun
+took 0.3 s (2 written, 1 removed). The desktop crate (the moved write path)
+compiles only in CI here (no GTK/WebKit in the container): its `db` tests
+run there.
+
+**Next:** release packaging for `kore-indexer.mjs` (attach to the GitHub
+release and bundle beside the sidecar), then run it on the agents' server
+over the marioverse.ai clone with a cron `git pull && kore index`.
+
+## Agent tools copied from Etch, 2026-11-05
+
+User ask (Mario, 2026-11-05, "Copiamo le cose interessanti"), after a
+read-only look at Etch (Makai Labs' markdown editor whose MCP server Claude
+Code and Codex use on his Mac). Kore already had the vault map
+(`vault_guide`), single-key frontmatter edits (`set_properties` with
+`unset`), property search operators, and `readOnlyHint` on every tool. Added
+what was missing, each a CLI command plus an MCP tool:
+
+- [x] `kore grep` / `grep_notes`: every line with an exact text, with line
+  numbers, from the files (no index). Private notes and placeholders skipped.
+- [x] `kore route` / `path_between_notes`: shortest wiki-link chain between
+  two notes in either direction, never through a private note (a route that
+  turns private on disk is banned and searched again).
+- [x] `kore explain` / `explain_note`: properties, tags, outline, word count,
+  links and backlinks in one call. `links` and `backlinks` now expose a
+  shared `collect`.
+- [x] `kore skills [name]` / `list_skills`, `load_skill`: the vault's
+  `agents/skills/*.md`, private ones hidden. Vault only: `~/.agents/skills`
+  and other agent folders are not served (a remote MCP client would read
+  the user's machine config).
+- [x] `kore active` / `active_note`: reads `.reflect/workspace.json`
+  (`version`, `activeNote`, `openNotes`, `updatedAt`), drops private and
+  missing notes.
+- [x] The desktop app writing `.reflect/workspace.json` as tabs change:
+  policy in `packages/core/src/graph/workspace-state.ts` (note tabs across
+  panes, pinned first, deduped; the Daily tab counts as its day's note;
+  debounced 500 ms, unchanged snapshots dropped), a fixed-path atomic
+  `workspace_state_write` Tauri command, mounted once in the main window.
+  The scrolling daily stream reports the tab's date, not the focused day.
+- [x] `docs/cli.md`, the graph skill and `kore-agent-memory` document them.
+- Not done, waiting on Mario: an Etch-style "Library" showing agent folders
+  (`~/.claude`, `~/.codex`, `~/.agents`) read-only inside Kore.
+
+**Validation:** `cargo test -p reflect-cli` (108 unit incl. route BFS and
+outline, 72 CLI incl. five new end-to-end tests with private notes, 2 MCP,
+14 other), `cargo clippy -p reflect-cli --all-targets -D warnings`,
+`cargo fmt --all --check`, `cargo clippy -p reflect-open --all-targets
+-D warnings`, `pnpm check`, `workspace-state.test.ts` (2 tests). Not yet
+tried in the running app or from a real MCP client.
+
+**Next:** on the Mac, open a few notes in Kore, then ask Claude Code "what am I
+looking at in Kore?" and "how is X connected to Y?" through `kore mcp`.
+
+## Sidebar you arrange yourself, terminal as a tab, 2026-11-04
+
+User ask (Mario, 2026-11-04, screenshot): "nella sidebar dobbiamo poter
+riorganizzare la sidebar come vogliamo, quindi spostare le posizioni types e
+folder"; "terminal credo che lo possiamo togliere dalla sidebar", available
+as a tab instead; evaluate a library like Ghostty. (The type-chip filter ask
+from the same message is another thread's.)
+
+- [x] Shelves (Pinned notes, Folders, Types) already dragged by their header
+  since #263, but nothing said so. Each header now has a "…" menu on hover:
+  Move up, Move down, Hide section. A step skips empty shelves.
+- [x] Navigation rows (Daily notes, New note, All notes, Tasks, Graph) drag
+  into any order and offer Move Up / Move Down / Hide on right-click
+  (native menu). New settings `sidebarNav` (order) and `hiddenSidebarItems`
+  (rows and shelves); `moveDetailsSection` is now generic, exported for the
+  sidebar as `moveSidebarItem`.
+- [x] Hidden rows and shelves come back from an "N hidden items" line at the
+  foot of the shelves.
+- [x] Terminal row removed from the sidebar. The tab strip's "+" menu now
+  offers New note, Browser and Terminal; the palette, the app menu and the
+  right-rail Terminal panel are unchanged.
+- Ghostty: not adopted. Native Ghostty cannot draw inside the Tauri
+  webview; `ghostty-web` (Coder, WASM build of libghostty's VT parser,
+  xterm.js-compatible API, v0.4.0) is the only drop-in path. Recommendation
+  to Mario: keep xterm.js for now and try `ghostty-web` in a small spike
+  only if a concrete terminal bug (Unicode, rendering) shows up.
+
+**Validation:** core `schema.test.ts`; `sidebar.test.tsx`,
+`sidebar-sections.test.tsx`, `details-sections.test.tsx`,
+`note-tabs-strip.test.tsx` on Chromium; `pnpm check`. WebKit left to CI.
+Right-click menu on nav rows needs a look on the Mac (native menu is a no-op
+in the browser tests).
+
+## In-app browser blank after a menu closes, 2026-11-04
+
+Bug (Mario, 2026-11-04, screenshot, v0.83.1): a Browser tab showed only
+"current webview is not a WebviewWindow" instead of the page. Regression
+from #310: once the child webview is docked, the main window holds two
+webviews and Tauri no longer resolves a `tauri::WebviewWindow` command
+argument for it. #310 made the pane call `browser_embed_show` again after a
+menu closes, while the child exists, so the extractor failed.
+
+- [x] `browser_embed_show`, `browser_embed_open`, `open_note_window`,
+  `open_browser_window`, `window_bootstrap` and `quit_confirm` take
+  `tauri::Window`; `toggle_devtools` takes `tauri::Webview`. Quit and
+  opening a note window with a browser page open were exposed to the same
+  error.
+- [x] Guard test `no_command_takes_a_webview_window_argument` (browser.rs)
+  fails on any `#[tauri::command]` with a `WebviewWindow` parameter.
+
+**Validation:** `cargo fmt --check`, `cargo clippy -p reflect-open
+--all-targets -D warnings`, `cargo test -p reflect-open` (426 pass; the 2
+chmod-based tests fail only because the container runs as root). Guard
+test checked red against the old `quit_confirm` signature. Needs a look on
+the Mac.
+
+## Menus above the in-app browser, 2026-11-03
+
+Bug (Mario, 2026-11-03, screenshot): with a Browser tab open, the tab bar's
+"+" menu opened under the web page, only "New note" peeked out. The page is a
+native child webview, so it always draws above the app's DOM.
+
+- [x] The pane hides the page while an app overlay (menu, listbox, dialog,
+  popover, the command palette) overlaps its host, and shows it again when
+  the overlay closes. New `browser_embed_hide` command (hide without
+  releasing the page; `browser_embed_show` restores it), watcher in
+  `components/browser/overlay-occlusion.ts`. Only the owning host acts, and a
+  covered host that inherits the webview keeps it hidden. Toasts are skipped
+  so a clip toast does not blank the page.
+- Not done: toasts over the page are still drawn under it (pre-existing).
+
+**Validation:** `browser-pane.test.tsx` on Chromium (hide while a menu
+covers the page and show after, a menu that settles its position after
+mounting, no hide for overlays elsewhere or toasts); `pnpm check`;
+`cargo fmt --check`. Rust build, clippy and WebKit left to CI (no GTK in the
+container). Needs a look on the Mac.
+
+## Obsidian import, slice 1b: folder mapping, 2026-11-02
+
+User ask (Mario, 2026-11-02, after slice 1 merged as #299): "dovremmo far
+fare una mappatura?", given how freely both Obsidian and Kore let a vault be
+organized. [Plan 31](plans/31-obsidian-import.md) slice 1b.
+
+- [x] Core: `ImportMapping` (`obsidian-import/mapping.ts`) names which folder
+  plays which role (daily folder + filename format, attachments, templates)
+  and which folders are left out. `importMappingFromLayout` proposes it from
+  `.obsidian/*.json`; `planImportMoves` now takes a mapping (a role on the
+  vault root, or an unusable daily format, moves nothing).
+- [x] Core: the dry run splits into `readObsidianImportSource` (the one slow
+  read, plus the vault's folder list) and `buildObsidianImportReport` (pure,
+  per mapping; reports excluded files). `dryRunObsidianImport` is gone.
+- [x] Desktop: the Convert to Kore layout section shows the mapping as a table
+  after the read; each edit rebuilds the report, reusing each note's
+  round-trip verdict while its converted text is unchanged.
+- Not done: remembering the mapping between runs (slice 2 will carry it into
+  the conversion), the conversion itself, Bases.
+
+**Validation:** core obsidian-import tests (10), the settings browser test on
+Chromium (4), `pnpm check` exit 0. WebKit is left to CI. Not run on the real
+vault.
+
+**Next:** Mario runs the preview on marioverse.ai and corrects the mapping;
+then slice 2.
+
+## Movable Details panels, 2026-11-02
+
+User ask (Mario, 2026-11-01, design review "più vicino a Notion"): the right
+rail's panels should move, even into the main panel. Slice of the design and
+frontend review, steps 1 and 2 of the three proposed (step 3, a section
+embedded as a block in the note, needs Meowdown and is not started).
+
+- [x] Arrange the Details sections. Drag a section by its header (a click
+  still collapses it), or use the "…" menu that appears on hover: Move up,
+  Move down, Hide section. Hidden sections come back from a quiet
+  "N hidden sections" menu at the bottom of the panel. One arrangement for
+  notes and days, each showing the sections it has; it persists in two new
+  settings, `detailsSections` (complete order, same normalizing contract as
+  `sidebarSections`) and `hiddenDetailsSections`. Moving by menu skips
+  sections the route does not have (`moveDetailsSection` in core). The day's
+  calendar stays on top: it is the panel's navigation, not a section.
+- [x] Local graph in the main panel. Its "…" menu adds "Open in new tab"
+  and "Open beside" (a pane next to the note). New `localGraph` route and
+  tab kind (`{ kind: 'localGraph', path }`, keyed per note, restored with the
+  session); the page is the same map and controls filling the pane, with a
+  plain wheel zooming, and the tab reads "Graph · <note>". While that page is
+  active the Details panel describes its note.
+- Not done: other sections in the main panel (tasks and outline already
+  have their screens or live in the note), dragging a section out of the
+  rail onto a pane, step 3 (embed as a block).
+
+**Validation:** core `schema.test.ts` (order and hidden normalization,
+`moveDetailsSection`, the stored `localGraph` tab); browser
+`details-sections.test.tsx` (stored order, move from the menu, hide and
+show again) and `local-graph-section.test.tsx` (opens the page) plus the
+whole `context-sidebar` folder on Chromium; `open-tab`, routing and panes
+suites; `pnpm check`. Rendered check on the seeded `?seed=obsidian` vault in
+Chromium: the menu, hiding History, and the local graph opened beside the
+note. WebKit left to CI.
+
+**Next:** Mario tries it on the Mac; if the arrangement feels right, decide
+whether step 3 (local graph as a block inside a note) is worth a Meowdown
+change.
+
+## Design System 2, phase 1: status tokens, one radius ramp, contrast, 2026-11-02
+
+User ask (Mario, 2026-11-01, design and frontend review, slice 4; plan in
+the "Kore: revisione design e frontend" doc): the design system had drifted
+about a third since the September audit (branch
+`claude/design-system-97m01d`, never merged). Replace hard-coded status
+colors and radii with tokens and make contrast pass on every theme. One PR,
+merged last among the parallel slices because it touches many files.
+
+- [x] Status tokens in `colors.css`: `--danger`, `--warning`, `--success`,
+  `--info`, each with `-soft`, light and dark inks; `--destructive` is now
+  `--danger` (`#c42020` light, `#f87171` dark, was red-500 at 3.76:1 on
+  white). Tailwind `text-danger`, `bg-warning-soft`, `bg-success`, ...
+- [x] Every raw status palette class in the app (`text-red-600
+  dark:text-red-400`, `bg-amber-500`, `border-amber-500/30 bg-amber-500/10`,
+  `bg-emerald-500`, ...) now reads a status token: 23 files, including
+  `InlineAlert`, settings errors, backup and sync dots, mobile pills.
+  `select-colors.ts` keeps its palette: tag option colors are categories.
+- [x] Callouts: note/info/todo read `--info` (the accent), success/warning/
+  failure/danger/bug read the status inks, so their titles pass and follow
+  Paper and Ink. The note `hr` reads `--rule` (theme ink at 16%), not
+  `--coolgray-200/700`.
+- [x] One radius ramp: `spacing.css` derives sm/md/lg/xl/2xl from `--radius`;
+  `data-radius` and Liquid Glass set only `--radius`; the `rounded-*`
+  utilities read the same tokens via `--ds-radius-*`. The DS's 7px md is
+  gone (the app already drew 6px). 39 bare `rounded` (fixed 4px, ignored the
+  setting) became `rounded-sm`; the `min(var(--radius-md),…)` and
+  `calc(var(--radius)-3px)` literals in Button, Select and InputGroup became
+  `rounded-md`; checkbox, find bar and the mobile note card moved onto the
+  ramp. Kept: chat composer `1.25rem`, the insights heatmap `3px` cells,
+  `rounded-[inherit]` in the drawer.
+- [x] Contrast: Light `--text-muted` `#8a8e96` (was 2.5:1 on the page),
+  Paper `--text-secondary` `#7a6e5a` and `--text-muted` `#978a73` (were
+  3.9:1 and 2.3:1). Dark indigo primary buttons fill with `--accent-fill`
+  `#5e5ce6` (white label 5.06:1, was 3.42:1) while links keep `#7b7ef4`;
+  Space fills with `#712fff`. `--text-on-brand` flips to near-black on the
+  accents where white falls under 4.5:1 (light teal/green/amber/orange/
+  lime/emerald/cyan/sky, every dark accent but indigo). A custom accent hex
+  keeps the white label.
+- [x] `theme-tokens.test.ts`: contrast floors for every solid-color theme
+  (text 4.5, secondary 4.5, muted 3, the three status inks 4.5, on card and
+  page) and the derived radius ramp. `docs/design.md` updated.
+- Spacing needed no sweep: 8 arbitrary spacing values, all deliberate
+  (safe-area, optical nudges).
+- Not done (DS2 phases 2-4): Button/Badge hover per design.md, focus-rule
+  opt-outs, `text-[13px]` and 9-11px literals (`text-3xs`), Tailwind
+  `shadow`, scrim/media tokens for the lightbox, off-scale durations, dead
+  tokens.
+
+**Validation:** `theme-tokens.test.ts` (20 tests; a mutation back to the old
+Paper value fails it), `pnpm check`, a production `vite build` confirming
+`rounded-md` compiles to `var(--ds-radius-md)` with no cycle. WebKit runs in
+CI only.
+
+**Next:** Mario reviews on the Mac (a dark theme, Paper, a callout, Settings
+errors) and merges after slices 2, 3, 5 and 6. Then DS2 phase 2 (primitives).
+
+## One date format, 2026-11-02
+
+User ask (Mario, 2026-11-01, design review slice 5, started 2026-11-02 with
+"finisci tutto"): the audit found four date shapes on screen (`10/31/2026`
+in All notes, `2025-01-12` in properties, `Sun, November 1st` on dailies,
+`2 days ago` in chat history), which read like four different apps.
+
+- [x] Two shapes, both following Settings → Date format: the spelled-out
+  day for daily subjects and headings (`Mon, November 2nd, 2026`,
+  unchanged), and one compact date everywhere else (`Nov 2`, `2 Nov`, the
+  year only away from the current one; `iso` keeps `2026-11-02`).
+  `formatShortDate` in `apps/desktop/src/lib/dates.ts` is that compact
+  date; the daily pill's own copy of it is gone.
+- [x] Lists say how recent: the time today, `Yesterday`, the weekday within
+  the last week, the compact date beyond (`formatRecencyLabel`, now by
+  calendar days instead of the Sunday-start week). Chat history (desktop
+  and mobile) uses it instead of date-fns `formatDistanceToNow`.
+- [x] Date properties under the title and in Details render through the
+  compact date like table cells and cards already did; the desktop Tasks
+  row's source shows the compact date, as mobile already did.
+- [x] Moments with a time (connector "Last synced", agent run history) go
+  through `formatDateTime` (`Nov 2, 5:20pm`) instead of the browser locale.
+- Not changed on purpose: dates the user typed (note titles such as an
+  Obsidian `15-05-2024` daily outside the daily folder, property text that
+  is not a date), and the editor's `[[YYYY-MM-DD]]` links.
+
+**Validation:** `dates.test.ts` (compact date, recency with `Yesterday` and
+the last-week weekday, date and time), browser tests for All notes, cards,
+properties header and Details, Tasks (desktop and mobile), the daily pill,
+chat, agents and settings on Chromium; `pnpm typecheck`, `pnpm lint`; one
+screenshot of All notes on `?seed=obsidian` (Updated reads `Sat`, was
+`10/31/2026`). WebKit runs in CI.
+
+**Next:** slice 6 (readable graph) on Mario's go.
+
+## Readable Graph view, 2026-11-02
+
+Slice 6 of the design and frontend review (project Claude Doc "Kore:
+revisione design e frontend"): on the 5,165-note `?seed=obsidian` vault the
+full Graph view was a ball of circles with names scattered on top, names
+grew to 40+ px when zooming in (the font size was in layout units), every
+note with 14 or more backlinks drew the same size, and the hover spotlight
+stayed on after the pointer left the canvas.
+
+- [x] Labels in screen space: 11 px (12 px semibold for hubs) at every zoom,
+  with a halo in the canvas color so a name reads over edges and circles.
+  Offered spotlight, neighbors, search matches, then by backlinks, and
+  placed greedily through a grid collision index with a gap
+  (`apps/desktop/src/lib/graph-readability.ts`). Zoom reveals names: a note
+  earns its label once its circle is at least 7 px on screen; the ten
+  most-linked notes are always offered. Off-screen names are skipped.
+- [x] Hubs: radius grows with the square root of backlinks up to 100 (was
+  linear, capped at 14). The top 2% of linked notes (at least 5 backlinks)
+  paint above other circles, with darker, bolder names.
+- [x] Dense maps: resting edges fade with edge count (full up to 1,000,
+  35% from 20,000); every circle gets a 1 px ring in the canvas color.
+- [x] Layout: optional radii turn on circle collision in the leaf pass of
+  the Barnes-Hut repulsion (not scaled by the cooling temperature), so a
+  dense core zooms into separate notes. The local graph gets it too.
+- [x] Leaving the canvas clears the hover spotlight.
+
+**Validation:** `graph-readability.test.ts` and `graph-layout.test.ts`
+(collision cuts overlaps in a dense 300-note core by more than 10x) on
+node; graph-map canvas/screen and local-graph suites on Chromium, with a new
+pointer-leave test; typecheck, eslint, oxfmt. Bench (`KORE_BENCH=1`): the
+5,165-note layout step p50 went from 17.6 ms to about 19.7 ms with collision,
+259 steps as before. Rendered before/after on the seeded vault in Chromium
+(project files, `screenshot/grafo-leggibile/`). WebKit left to CI; not tried
+on the real vault.
+
+**Next:** on the Mac, open Graph on marioverse.ai and check that the
+overview names the MOCs and that zooming into a cluster reads well.
+
+## Obsidian import, slice 1: dry run, 2026-11-02
+
+User ask (Mario, 2026-11-02, thread "Kore vs Obsidian gap"): Kore must not
+change how it works to match Obsidian; an Obsidian vault should be migrated
+into Kore's shape. Granola and Readwise stay out of scope. Direction and
+slices in [Plan 31](plans/31-obsidian-import.md), which reopens Plan 13's
+"no Obsidian import" non-goal.
+
+- [x] Core (`packages/core/src/obsidian-import/`): `planImportMoves` (dailies
+  to `daily/YYYY-MM-DD.md`, the attachment folder to `assets/`, the templates
+  folder to `templates/`, case-folded conflicts leave a file in place),
+  `rewriteImportLinks` (links to a daily by path or old name become
+  `[[YYYY-MM-DD]]`; path embeds, Markdown images and template paths follow
+  their file; bare names, display text, fragments and code untouched), and
+  `dryRunObsidianImport` / `buildObsidianImportReport` (reads every note,
+  converts in memory, classifies each body with an injected round-trip check,
+  reuses the compatibility scan). Writes nothing.
+- [x] `dateFromDailyPath` takes an optional layout; `applySplices` is exported
+  from `markdown/retitle.ts`.
+- [x] Desktop: Settings → Sync & data → **Convert to Kore layout** (only for
+  vaults with Obsidian settings) runs the preview on request with the
+  editor's `checkRoundTrip` and lists moves, rewritten links, normalized
+  notes, lossy notes and conflicts.
+- Not done: the conversion itself (slice 2, to a copy), Bases (slice 3),
+  retiring the runtime vault profile (decided 2026-11-02: after the importer converts a real vault).
+
+**Validation:** core `plan.test.ts` and `dry-run.test.ts` (7 tests), the
+settings browser test on Chromium (2 tests), `pnpm check` exit 0. WebKit is
+left to CI. Not run on the real vault.
+
+**Next:** Mario runs the preview on marioverse.ai in Kore; then slice 2.
+
+## Clean shell, 2026-11-01
+
+User ask (Mario, 2026-11-01, "Revisione design e frontend", slice 2 of the
+review plan): make the app's frame simpler to read, by removing and
+reordering only, no new features.
+
+- [x] The context rail exists only where it has something to show: a note,
+  a day, or All notes (whose selected row is the side peek). Graph, Tasks,
+  Chat, Terminal, Browser, Bases, Canvas and Search get the full width, and
+  the strip's right toggle goes with the rail. A panel opened from the "+"
+  (Chat, Calendar, ...) keeps the rail on those routes too, without the
+  Details tab. The rail's tab state moved into `SidebarProvider` so the shell
+  can tell; `routeHasDetails` in `sidebar-route.ts`. All notes with no
+  selection now says "Select a note to preview it here."
+- [x] The sidebar's "Open" shelf is gone: it repeated the tab strip row for
+  row. `open` left the `sidebarSections` enum; a stored `open` entry is
+  dropped by the existing normalization.
+- [x] Inactive tabs keep a hairline outline (`tab-pill.ts`), so they read as
+  tabs; active and inactive share the 1px border, so selecting no longer
+  nudges the label.
+- [x] While a first index builds and no shelf has data yet, the shelves area
+  shows a quiet placeholder; the shelves then fade in together instead of
+  popping in one under another.
+- [x] Tasks: group headers sit on the list's surface (no tinted band, so no
+  empty band between groups), and "+ Add" shows at rest only on the Current
+  (today) group; elsewhere on hover or focus.
+- Not done: no PR video (Mario, 2026-11-01 19:55: videos only when he asks).
+
+**Validation:** browser tests on Chromium for context-sidebar,
+workspace-content (new: rail hidden on Graph, kept with an opened panel or on
+All notes), sidebar, note-tabs-strip, tasks-screen, workspace-pane (155
+pass); core `schema.test.ts`; `pnpm typecheck`; eslint, oxlint, oxfmt on the
+changed files. Visual check on the dev build with `?seed=obsidian`. WebKit
+runs in CI.
+
+**Next:** Mario tries it on the Mac after the release; slice 3 (lighter
+boot) per the review plan.
+
 ## Remote MCP over HTTP, 2026-11-01
 
 User ask (Mario, 2026-11-01, thread "Dare il vault agli agenti cloud"):
@@ -2242,6 +2896,67 @@ screen: Agents then Close lands on today.
 **Next:** merge the Close fix, then bump.
 
 ## Session log
+
+- 2026-11-04 — `kore index` builds the index without the app: the core
+  indexer bundled for Node, row writes through the new shared
+  `crates/index-store`. 5,155 notes in 13.4 s, incremental rerun 0.3 s.
+
+- 2026-11-02 — Every agent gets the vault's own rules. `kore guide` prints
+  the vault's agent contract (`AGENTS.md`, else `CLAUDE.md`, at the root;
+  withheld when private) and a live folder map; `--init` writes a starter
+  `AGENTS.md` plus a `CLAUDE.md` that imports it, never overwriting. `kore
+  mcp` gains a `vault_guide` tool and a `kore://guide` resource and puts the
+  contract in its `initialize` instructions, so MCP agents (local or remote)
+  and agents on a git clone follow the same file. In-app chat and routines
+  (`loadAgentContext`) inject the contract after the soul, and when it
+  exists its routing replaces the default `agents/` memory upkeep. The
+  bundled graph skill now starts with `kore guide`. Verified: cargo test,
+  clippy, fmt; vitest on the agent-profile and engine prompt suites.
+
+- 2026-11-02 — Movable Details panels (design review, Notion direction):
+  drag, move, hide and restore the Details sections, persisted in settings;
+  the local graph opens as its own tab or beside the note. See "Movable
+  Details panels" above. Next: Mario's pass on the Mac, then decide on
+  embedding a section as a block.
+- 2026-11-02 — Design review slice 4, Design System 2 phase 1 (PR #300): one set of status colors
+  readable on every theme, one radius ramp driven by the Appearance corner setting, and
+  contrast fixes on Paper, Light and dark indigo.
+- 2026-11-02 — Design review slice 5, one date format (PR #305): a compact date everywhere
+  but daily headings, recency labels in lists, date-and-time through one formatter, all
+  following Settings → Date format.
+- 2026-11-02 — Design review slice 6, a readable Graph view: fixed-size
+  labels with a halo, revealed by zoom and placed without crowding; hubs
+  grow with backlinks past the old 14-link cap and paint on top; dense maps
+  fade their edges and ring their circles; the layout keeps sized circles
+  from overlapping; the hover spotlight clears when the pointer leaves.
+- 2026-11-02 — Design and frontend review, slice 3: a lighter boot (PR #301). Measured on a production build (dev bridge forced on, Chromium, the seeded dev vault), the JS fetched before the first editor paints, dev bridge excluded, went from 3,941 KB to 3,571 KB (-370 KB, -9.4%). Editor-visible time is unchanged within noise unthrottled (~930 ms, most of it the WASM index, not JS) and 2,870 → 2,672 ms at 4x CPU throttle. Moved off the boot path: the tag symbol icon table (179 KB, `tag-symbol-icons.gen.tsx`) loads when the first symbol is drawn (`TagSymbolGlyph`, a size-holding blank meanwhile); the All Notes and Tasks routes are lazy and prefetched 1.5 s after the shell mounts; a note's `collection` code fence loads the collection views on first use. Stays: the editor chunk (1.27 MB) is needed for today's note; its heaviest optional parts (CodeMirror via `@codemirror/language`, the HTML-paste pipeline parse5/rehype/hast-to-mdast, ~400 KB) are static imports inside Meowdown's single-file dist, so splitting them is a Meowdown change. Base UI + Radix both bundled is slice 4.
+- 2026-11-02 — New notes are named in their tab while you type. A ⌘N note
+  keeps its ULID placeholder path until the birth rename settles (5s of
+  quiet, blur or teardown, and forever if the move is refused), and the tab
+  strip and its list menu hardcoded "Untitled" for that path. The
+  rename coordinator now publishes the saved title of a placeholder note to
+  a small store (`editor/draft-titles.ts`), and `openNoteTabTitle` in core
+  picks draft title, then the indexed title (an unauthored placeholder row
+  reads "Untitled", never the ULID), then the filename stem. Found by the
+  design review.
+
+- 2026-11-01 — Design and frontend review (audit + six-slice plan in the
+  project's Claude Doc "Kore: revisione design e frontend"). Slice 1, the
+  note at the center: the Details rail no longer repeats the note's
+  properties (the page edits them under the title; the side peek on All
+  notes keeps them, since no page is open there), and note actions moved
+  from the top of the rail to the bottom, so tasks, outline and the local
+  graph are what the rail opens on. Same order on the daily rail. Loose
+  frontmatter values made only of wiki links (`up: "[[X]]"`, `related:` lists
+  of links) now infer as `relation`/`relations` instead of text, and the
+  properties header and rail draw them as clickable links that open the
+  note (clicking beside a link still opens the editor); both read the value
+  through one core helper, `readWikiLinks`. A note with no type
+  and no properties no longer shows an empty Type row: only "Add a type",
+  revealed while the title is hovered or the control is focused/open
+  (Mario's pick on 2026-11-01). Next:
+  slice 2, a clean shell (empty rail on list views, duplicate "Open" list,
+  tab shape, sidebar pop-in at boot).
 
 - 2026-10-17 — MCP resources and prompts: every note is a `kore://note/…`
   resource (the app's deep link), `kore://today` and `kore://tasks`, three

@@ -100,9 +100,7 @@ const SURFACE_APP_DARK: tauri::webview::Color = tauri::webview::Color(16, 16, 19
 /// `--surface-app` so the native layer matches the first webview paint;
 /// `native_background_matches_the_surface_app_token` keeps them from drifting
 /// out of step with the stylesheet.
-fn theme_background_color<R: tauri::Runtime>(
-    window: &tauri::WebviewWindow<R>,
-) -> tauri::webview::Color {
+fn theme_background_color<R: tauri::Runtime>(window: &tauri::Window<R>) -> tauri::webview::Color {
     use tauri::Theme;
 
     match window.theme() {
@@ -120,7 +118,9 @@ fn theme_background_color<R: tauri::Runtime>(
 /// that side.
 #[cfg(desktop)]
 fn apply_theme_background<R: tauri::Runtime>(window: &tauri::WebviewWindow<R>) {
-    if let Err(err) = window.set_background_color(Some(theme_background_color(window))) {
+    if let Err(err) =
+        window.set_background_color(Some(theme_background_color(&window.as_ref().window())))
+    {
         tracing::warn!(error = %err, label = window.label(), "failed to set window background color");
     }
 }
@@ -353,7 +353,7 @@ fn cascade_offset(app: &tauri::AppHandle) -> f64 {
 #[tauri::command]
 pub async fn open_note_window(
     deep_link: String,
-    window: tauri::WebviewWindow,
+    window: tauri::Window,
     app: tauri::AppHandle,
     graph: State<'_, GraphState>,
     init: State<'_, WindowInit>,
@@ -517,7 +517,7 @@ pub(crate) fn parse_browser_url(url: &str) -> AppResult<tauri::Url> {
 #[tauri::command]
 pub async fn open_browser_window(
     url: String,
-    window: tauri::WebviewWindow,
+    window: tauri::Window,
     app: tauri::AppHandle,
 ) -> AppResult<()> {
     let parsed = parse_browser_url(&url)?;
@@ -612,7 +612,7 @@ pub struct WindowBootstrap {
 /// chooser (choosing from a note window would re-root every other window).
 #[tauri::command]
 pub fn window_bootstrap(
-    window: tauri::WebviewWindow,
+    window: tauri::Window,
     graph: State<GraphState>,
     index: State<IndexState>,
     init: State<WindowInit>,

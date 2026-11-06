@@ -15,6 +15,7 @@ const browserEmbedShow = vi.hoisted(() =>
 )
 const browserEmbedBounds = vi.hoisted(() => vi.fn<() => Promise<void>>())
 const browserEmbedClose = vi.hoisted(() => vi.fn<() => Promise<void>>())
+const browserEmbedHide = vi.hoisted(() => vi.fn<() => Promise<void>>())
 const browserEmbedNavigate = vi.hoisted(() => vi.fn<(url: string) => Promise<void>>())
 const browserEmbedBack = vi.hoisted(() => vi.fn<() => Promise<void>>())
 const browserEmbedForward = vi.hoisted(() => vi.fn<() => Promise<void>>())
@@ -33,6 +34,7 @@ vi.mock('@reflect/core', async (importOriginal) => ({
   browserEmbedShow,
   browserEmbedBounds,
   browserEmbedClose,
+  browserEmbedHide,
   browserEmbedNavigate,
   browserEmbedBack,
   browserEmbedForward,
@@ -70,6 +72,7 @@ beforeEach(() => {
   browserEmbedBounds.mockResolvedValue(undefined)
   browserEmbedNavigate.mockResolvedValue(undefined)
   browserEmbedClose.mockResolvedValue(undefined)
+  browserEmbedHide.mockResolvedValue(undefined)
   browserEmbedBack.mockResolvedValue(undefined)
   browserEmbedForward.mockResolvedValue(undefined)
   browserEmbedReload.mockResolvedValue(undefined)
@@ -186,6 +189,101 @@ describe('BrowserPane', () => {
 
     await first.unmount()
     await vi.waitFor(() => expect(browserEmbedClose).toHaveBeenCalledTimes(1))
+  })
+
+  describe('app overlays over the page', () => {
+    // Overlays live on document.body, outside what cleanup() unmounts. A
+    // failed attempt must not leave one behind, or every retry of the same
+    // test (and the next test) starts with the page already covered.
+    const mounted: HTMLElement[] = []
+    afterEach(() => {
+      for (const overlay of mounted.splice(0)) {
+        overlay.remove()
+      }
+    })
+
+    // A fixed-position overlay standing in for a portaled menu or dialog.
+    const mountOverlay = (role: string, style: Partial<CSSStyleDeclaration>): HTMLElement => {
+      const overlay = document.createElement('div')
+      overlay.setAttribute('role', role)
+      Object.assign(overlay.style, { position: 'fixed', ...style })
+      document.body.append(overlay)
+      mounted.push(overlay)
+      return overlay
+    }
+    const renderSized = () =>
+      render(
+        <div
+          style={{ position: 'fixed', top: '0px', left: '0px', width: '600px', height: '400px' }}
+        >
+          <BrowserPane />
+        </div>,
+      )
+
+    it('hides the page while a menu covers it and brings it back after', async () => {
+      const view = await renderSized()
+      await vi.waitFor(() => expect(browserEmbedShow).toHaveBeenCalledTimes(1))
+
+      const menu = mountOverlay('menu', {
+        top: '20px',
+        left: '100px',
+        width: '180px',
+        height: '90px',
+      })
+      await vi.waitFor(() => expect(browserEmbedHide).toHaveBeenCalledOnce())
+
+      menu.remove()
+      await vi.waitFor(() => expect(browserEmbedShow).toHaveBeenCalledTimes(2))
+      expect(browserEmbedHide).toHaveBeenCalledOnce()
+      await view.unmount()
+    })
+
+    it('reacts when a mounted overlay moves over the page', async () => {
+      const view = await renderSized()
+      await vi.waitFor(() => expect(browserEmbedShow).toHaveBeenCalledTimes(1))
+
+      // Mounted off the page first, then positioned over it, the way a
+      // floating menu settles its position after mounting.
+      const menu = mountOverlay('menu', {
+        top: '500px',
+        left: '700px',
+        width: '180px',
+        height: '90px',
+      })
+      await new Promise((resolve) => requestAnimationFrame(resolve))
+      expect(browserEmbedHide).not.toHaveBeenCalled()
+      Object.assign(menu.style, { top: '20px', left: '100px' })
+      await vi.waitFor(() => expect(browserEmbedHide).toHaveBeenCalledOnce())
+
+      menu.remove()
+      await view.unmount()
+    })
+
+    it('leaves the page up for overlays elsewhere and for toasts', async () => {
+      const view = await renderSized()
+      await vi.waitFor(() => expect(browserEmbedShow).toHaveBeenCalledTimes(1))
+
+      const away = mountOverlay('menu', {
+        top: '500px',
+        left: '700px',
+        width: '180px',
+        height: '90px',
+      })
+      const toast = mountOverlay('dialog', {
+        top: '300px',
+        left: '300px',
+        width: '200px',
+        height: '60px',
+      })
+      toast.dataset['slot'] = 'toast'
+      await new Promise((resolve) => requestAnimationFrame(resolve))
+      await new Promise((resolve) => requestAnimationFrame(resolve))
+      expect(browserEmbedHide).not.toHaveBeenCalled()
+
+      away.remove()
+      toast.remove()
+      await view.unmount()
+    })
   })
 
   it('resumes the session page instead of the default one', async () => {

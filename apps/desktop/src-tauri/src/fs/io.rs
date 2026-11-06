@@ -525,22 +525,13 @@ pub(super) fn collect_note_files(root: &Path) -> Vec<FileMeta> {
 pub(super) fn collect_file_catalog(root: &Path) -> FileCatalog {
     let catalog = reflect_graph_paths::walk_catalog(root);
     FileCatalog {
-        notes: catalog.notes.into_iter().map(file_meta_from).collect(),
+        notes: catalog.notes.into_iter().map(FileMeta::from).collect(),
         attachments: catalog
             .attachments
             .into_iter()
-            .map(file_meta_from)
+            .map(FileMeta::from)
             .collect(),
         skipped: catalog.skipped,
-    }
-}
-
-fn file_meta_from(entry: reflect_graph_paths::FileEntry) -> FileMeta {
-    FileMeta {
-        path: entry.path,
-        size: entry.size,
-        modified_ms: entry.modified_ms,
-        placeholder: entry.placeholder,
     }
 }
 

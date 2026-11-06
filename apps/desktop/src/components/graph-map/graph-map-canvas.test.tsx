@@ -88,3 +88,30 @@ it('lets an empty graph sleep and stops observing themes after unmount', async (
   await nextFrame()
   expect(observed.frames).toBe(disposedFrames)
 })
+
+it('drops the hover spotlight when the pointer leaves the canvas', async () => {
+  const view = await render(
+    <div style={{ width: 640, height: 480 }}>
+      <GraphMapCanvas nodes={NODES} edges={EDGES} onOpen={() => {}} />
+    </div>,
+  )
+  try {
+    await vi.waitFor(() => expect(observed.settled).toBe(true), { timeout: 8000 })
+    const canvas = document.querySelector<HTMLCanvasElement>('canvas[aria-label="Note graph"]')!
+    const resting = canvas.toDataURL()
+    // A lone node is framed at the center of the canvas.
+    const rect = canvas.getBoundingClientRect()
+    canvas.dispatchEvent(
+      new PointerEvent('pointermove', {
+        pointerId: 1,
+        clientX: rect.left + rect.width / 2,
+        clientY: rect.top + rect.height / 2,
+      }),
+    )
+    await vi.waitFor(() => expect(canvas.toDataURL()).not.toBe(resting))
+    canvas.dispatchEvent(new PointerEvent('pointerleave', { pointerId: 1 }))
+    await vi.waitFor(() => expect(canvas.toDataURL()).toBe(resting))
+  } finally {
+    await view.unmount()
+  }
+})

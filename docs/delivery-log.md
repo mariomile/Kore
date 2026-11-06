@@ -7,6 +7,136 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- An Obsidian vault can be converted into a new folder in Kore's layout.
+  After the preview in Settings → Convert to Kore layout, *Convert to a
+  copy…* writes the converted vault into an empty folder you pick: dailies,
+  attachments and templates moved, links updated, notes in Kore's Markdown.
+  The original vault is only read, never written. *Open the copy* opens it.
+
+- Your agents can read each other's notes. `kore library add --known`
+  points Kore at the folders where Claude Code, Codex, Gemini, Cursor and
+  others keep their own Markdown (rules, skills, memory), and any agent
+  using `kore mcp` on your Mac can list, search and read them. Read-only,
+  Markdown only (configs with tokens are never read), and never offered
+  to remote agents over `kore mcp --http`.
+
+- A pasted link on its own line now reads as a proper preview. An X post
+  shows the post itself: author, avatar, handle, date, its words, and the
+  reply, repost and like counts. A LinkedIn post shows its title, excerpt,
+  image and the LinkedIn mark. Any other page shows its title, description,
+  image and favicon. Click a card to edit the link; Cmd-click to open it.
+
+- The type chips on All notes (`#person`, `#link`, Custom) filter the list
+  in place instead of opening the type's page. The type's page is still a
+  click away in the sidebar's Types section.
+
+- Kore stays on when the Mac sleeps. `kore mcp --http --sync` serves the
+  vault from any always-on machine holding a git clone of it, with no app
+  anywhere: it pulls and reindexes every minute, and commits and pushes
+  every write an agent makes. When an agent's write collides with an edit
+  from the Mac, the host re-runs the agent's operation on top of the Mac's
+  version instead of merging text, so it never leaves conflict markers or
+  stops syncing. A Docker image and a systemd unit come with it
+  (`docs/always-on.md`).
+
+- Every agent can share your vault with its own key. Run `kore keys add
+  "Grok bot"` (or use Settings, Remote access) and that agent gets a key of
+  its own: read-only unless you allow writes, removable alone without
+  disconnecting the others, and the facts it saves with the new `remember`
+  tool carry its name and the date. Paste "Copy setup prompt" into any agent
+  and it reads the server's `/setup.md` to connect itself; ChatGPT now
+  connects too. Works without the Kore app on an always-on machine.
+
+- Agents search your vault by meaning. `kore search` and the MCP `search`
+  tool now find notes the way Kore's own AI chat does, by words and by
+  meaning, using the semantic index the app already builds. Agents can also
+  fix a passage in place with `edit_note` (or `kore edit`): the change only
+  lands if the text is still what they read, so they never overwrite your
+  edits.
+
+- `kore index` builds the search index without the app. On a plain clone of
+  a vault (a server that pulls it from GitHub, say) one command makes every
+  index-backed CLI command and every `kore mcp` tool answer: search, tags,
+  backlinks, lists, tasks. It runs the app's own indexer (`@reflect/core`
+  bundled as `kore-indexer.mjs`, under Node 22+) and writes rows through the
+  app's own Rust write path, now the shared `crates/index-store`, so the two
+  can never build different indexes. First run 5,155 notes in 13.4 s; a
+  rerun after one edit and one rename took 0.3 s. Embeddings stay app-side.
+
+- Arrange the sidebar your way. Drag Daily notes, New note, All notes,
+  Tasks and Graph into any order, and move Pinned notes, Folders and Types
+  from the "…" on their header. Anything can be hidden and brought back from
+  the "hidden items" line. The terminal left the sidebar: open it as a tab
+  from the "+" in the tab bar.
+
+- The in-app browser shows its page again. Since 0.83.1 a Browser tab could
+  show "current webview is not a WebviewWindow" instead of the page, after
+  a menu or dialog had been open over it. Quitting or opening a note window
+  while a web page was open could hit the same error.
+
+- Menus open above the in-app browser. The "+" new-tab menu, the command
+  palette and other menus or dialogs that land on a web page no longer hide
+  behind it: the page steps aside while they are open.
+
+- Any agent follows your vault's rules. Put an `AGENTS.md` at the root of
+  the vault (or run `kore guide --init` for a starter one) and every agent
+  gets it: the ones inside Kore, the ones that connect through `kore mcp`
+  (a new `vault_guide` tool, also in the server's instructions), and the
+  ones that just clone the vault's git repo. Kore's own agents stop writing
+  memory to `agents/` when your contract says it goes elsewhere.
+
+- The Details panel is yours to arrange. Drag a section by its title, or
+  use its "…" menu to move it up or down or hide it; hidden sections come
+  back from the bottom of the panel, and the layout is remembered. The
+  local graph can leave the panel: open it in its own tab or beside the
+  note, where it fills the pane.
+
+- Colors and corners hold together on every theme. Errors, warnings and
+  success states use one set of colors that stay readable on Paper, Ink and
+  the dark themes; primary buttons on dark indigo get a deeper fill so their
+  label reads; Paper and Light secondary text is a touch darker; callouts
+  and note dividers follow the theme; and the Appearance corner setting now
+  reaches every rounded corner in the app.
+
+- Dates look the same everywhere. Lists, cards, properties, tasks and the
+  daily pill use one compact date with the month spelled out (`Nov 2`,
+  the year only when it isn't this year), so `6/9` can no longer mean two
+  different days. Lists say how recent a note is: the time today,
+  "Yesterday", the weekday this past week. Daily notes keep their full
+  heading, and everything follows Settings → Date format.
+
+- The Graph view reads on a big vault. Zoomed out you see the names of
+  your most-linked notes; zoom in and more names appear, always at the same
+  size and never on top of each other. Hubs draw bigger and stay on top of
+  the crowd, links fade on dense maps, and a cluster zooms into separate
+  circles instead of a pile.
+
+- Kore starts with less to load: about 370 KB less JavaScript before the first note appears. The tag icon set, All Notes, Tasks and the tables embedded in notes now load when you first reach them (All Notes and Tasks are fetched quietly right after launch, so the shortcut still opens them instantly).
+
+- A new note's tab shows the title as you type it, instead of "Untitled"
+  until a few seconds after you stop.
+
+- A cleaner frame. Graph, Tasks and the other full-page tools now use the
+  whole window instead of sitting next to an empty Details column; notes,
+  daily notes and All notes keep it. The sidebar no longer repeats your open
+  tabs in an "Open" list, inactive tabs have a light outline so they read as
+  tabs, and Folders and Types no longer pop in one after another while a big
+  vault indexes. In Tasks, groups are separated by space instead of grey
+  bands, and "+ Add" stays out of the way except on today's group.
+
+- The Details panel beside a note opens on what you came for: the note's
+  tasks, its outline and its local graph. Properties are no longer listed
+  twice (you edit them under the title), and Pin, Lock, Export and Trash
+  sit at the bottom of the panel, still one shortcut away.
+
+- Links in a note's properties are links. `up: [[Wealth MOC]]` or a
+  `related:` list now shows the note titles in link color, and a click opens
+  the note, instead of showing raw `[[...]]` text.
+
+- A new note starts as just a title and a body. The empty Type row is gone;
+  hover the title and a quiet "Add a type" appears, the way Notion offers
+  properties on a fresh page.
+
 - Kore's MCP server can now be reached over the internet, so Claude on
   the web and on the phone, cloud agents and API clients like Grok can use
   your notes. Run `kore mcp --http`, put it behind a tunnel such as

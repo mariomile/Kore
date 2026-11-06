@@ -25,7 +25,9 @@ export function AllNotesFilters({
   onSelect,
 }: AllNotesFiltersProps): ReactElement {
   const { settings } = useSettings()
-  const tag = filter.kind === 'tag' ? filter.tag : null
+  // The chips filter All notes in place (`{ kind: 'all', tag }`); a tag's own
+  // page is reached from the sidebar's Types section instead.
+  const tag = filter.kind === 'all' ? (filter.tag ?? null) : null
 
   // The setting is user-edited JSON — dedupe case-insensitively and drop
   // blanks so a hand-edited document can't render twin or empty tabs.
@@ -57,7 +59,7 @@ export function AllNotesFilters({
       />
       <FilterTab
         label="All"
-        active={filter.kind === 'all'}
+        active={filter.kind === 'all' && tag === null}
         onClick={() => onSelect({ kind: 'all' })}
       />
       {pinned.map((pinnedTag) => (
@@ -65,13 +67,13 @@ export function AllNotesFilters({
           key={foldTag(pinnedTag)}
           label={`#${pinnedTag}`}
           active={activeKey === foldTag(pinnedTag)}
-          onClick={() => onSelect({ kind: 'tag', tag: pinnedTag })}
+          onClick={() => onSelect({ kind: 'all', tag: pinnedTag })}
         />
       ))}
       <CustomFilterMenu
         facets={customFacets}
         activeTag={customTag}
-        onSelect={(tag) => onSelect({ kind: 'tag', tag })}
+        onSelect={(tag) => onSelect({ kind: 'all', tag })}
       />
     </div>
   )

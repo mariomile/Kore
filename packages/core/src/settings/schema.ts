@@ -45,6 +45,7 @@ import {
 } from './schema-collections'
 import {
   contextSidebarWidthSchema,
+  detailsSectionsSchema,
   editorBulletAfterHeadingSchema,
   editorDefaultBulletSchema,
   editorFontFamilySchema,
@@ -54,6 +55,9 @@ import {
   editorSmoothCaretAnimationSchema,
   editorSpellCheckSchema,
   editorTextSizeSchema,
+  hiddenDetailsSectionsSchema,
+  hiddenSidebarItemsSchema,
+  sidebarNavSchema,
   sidebarSectionsSchema,
   sidebarWidthSchema,
 } from './schema-editor'
@@ -156,7 +160,24 @@ export interface OpenCanvasTab {
   pinned: boolean
 }
 
-export type OpenTab = OpenNoteTab | OpenChatTab | OpenSurfaceTab | OpenBaseTab | OpenCanvasTab
+/**
+ * One note's local graph opened as a page of its own, out of the Details
+ * panel. Keyed by the note, like a base by its file: each note's map keeps its
+ * own tab.
+ */
+export interface OpenLocalGraphTab {
+  kind: 'localGraph'
+  path: string
+  pinned: boolean
+}
+
+export type OpenTab =
+  | OpenNoteTab
+  | OpenChatTab
+  | OpenSurfaceTab
+  | OpenBaseTab
+  | OpenCanvasTab
+  | OpenLocalGraphTab
 
 /** One workspace pane's persisted tab strip and the tab it last showed. */
 export interface OpenPane {
@@ -196,6 +217,12 @@ const openCanvasTabStoredSchema = z.object({
   path: z.string().nullable().catch(null),
   pinned: z.boolean().catch(false),
 }) satisfies z.ZodType<OpenCanvasTab>
+
+const openLocalGraphTabStoredSchema = z.object({
+  kind: z.literal('localGraph'),
+  path: z.string(),
+  pinned: z.boolean().catch(false),
+}) satisfies z.ZodType<OpenLocalGraphTab>
 
 const openDailyTabStoredSchema = z.object({
   kind: z.literal('surface'),
@@ -272,6 +299,7 @@ export const openTabSchema: z.ZodType<OpenTab> = z.union([
   openChatTabStoredSchema,
   openBaseTabStoredSchema,
   openCanvasTabStoredSchema,
+  openLocalGraphTabStoredSchema,
   openDailyTabStoredSchema,
   openAllNotesTabStoredSchema,
   openSearchTabStoredSchema,
@@ -542,7 +570,11 @@ const settingsDocumentSchema = z.looseObject({
   editorLineSpacing: editorLineSpacingSchema,
   sidebarWidth: sidebarWidthSchema,
   sidebarSections: sidebarSectionsSchema,
+  sidebarNav: sidebarNavSchema,
+  hiddenSidebarItems: hiddenSidebarItemsSchema,
   contextSidebarWidth: contextSidebarWidthSchema,
+  detailsSections: detailsSectionsSchema,
+  hiddenDetailsSections: hiddenDetailsSectionsSchema,
   semanticSearchEnabled: semanticSearchEnabledSchema,
   describeAssets: describeAssetsSchema,
   transcriptionFormat: transcriptionFormatSchema,

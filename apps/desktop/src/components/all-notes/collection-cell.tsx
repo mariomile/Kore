@@ -7,7 +7,9 @@ import {
   isEmailValue,
   parseRating,
   relationDisplay,
+  readWikiLinks,
   type CollectionValue,
+  type RelationLink,
   type TagProperty,
 } from '@reflect/core'
 import { Check } from '@/components/icons'
@@ -28,6 +30,23 @@ export interface CellReading {
    * tolerated, never destroyed (TDR 0005).
    */
   mismatch: boolean
+}
+
+/**
+ * The note links a relation value holds, in order, when every entry is a wiki
+ * link; `null` for any other type or value (blank included), which then reads
+ * as text through {@link readCellValue}. A single-valued relation or person
+ * only counts as links when stored as one string.
+ */
+export function readRelationLinks(
+  property: TagProperty,
+  value: CollectionValue | undefined,
+): RelationLink[] | null {
+  const linkTyped =
+    property.type === 'relations' ||
+    ((property.type === 'relation' || property.type === 'person') && value?.valueType === 'string')
+  const links = linkTyped && value !== undefined ? readWikiLinks(value) : null
+  return links !== null && links.length > 0 ? links : null
 }
 
 /** Decode a `note_properties` value for display under `property`'s type. */
@@ -163,7 +182,7 @@ export function CollectionCell({ property, value, selected }: CollectionCellProp
       <span className="flex min-w-0 items-center">
         <span
           className={cn(
-            'truncate rounded px-1.5 py-px text-xs font-medium',
+            'truncate rounded-sm px-1.5 py-px text-xs font-medium',
             selectOptionBadgeClass(reading.text),
           )}
         >
@@ -193,11 +212,7 @@ export function CollectionCell({ property, value, selected }: CollectionCellProp
         (property.type === 'number' || property.type === 'rating') &&
           !reading.mismatch &&
           'text-right tabular-nums',
-        reading.mismatch
-          ? 'text-amber-700 dark:text-amber-300'
-          : selected
-            ? 'text-accent'
-            : 'text-text-secondary',
+        reading.mismatch ? 'text-warning' : selected ? 'text-accent' : 'text-text-secondary',
       )}
       title={reading.mismatch ? 'Value does not match the property type' : undefined}
     >

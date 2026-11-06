@@ -144,8 +144,7 @@ function escapeRegExp(text: string): string {
   return text.replaceAll(/[.*+?^${}()|[\]\\/]/g, String.raw`\$&`)
 }
 
-function dailyCodec(): DailyCodec {
-  const layout = getVaultLayout()
+function dailyCodec(layout: VaultLayout = getVaultLayout()): DailyCodec {
   if (codecCache?.layout === layout) {
     return codecCache.codec
   }
@@ -403,10 +402,14 @@ export function isTemplatePath(path: string): boolean {
  * The date is shape-checked, not calendar-checked (`daily/2026-02-31.md`
  * yields `2026-02-31`; callers gate on {@link isCalendarDate}). A file whose
  * name doesn't spell the date exactly as the layout would (an unpadded day
- * under a padded format, or the reverse) is not a daily.
+ * under a padded format, or the reverse) is not a daily. `layout` defaults to
+ * the open graph's; the Obsidian importer passes the source vault's.
  */
-export function dateFromDailyPath(path: string): string | null {
-  const codec = dailyCodec()
+export function dateFromDailyPath(
+  path: string,
+  layout: VaultLayout = getVaultLayout(),
+): string | null {
+  const codec = dailyCodec(layout)
   const match = codec.pattern.exec(path)
   if (match === null) {
     return null

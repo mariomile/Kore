@@ -19,6 +19,7 @@ import { OpenTabsProvider } from '@/providers/open-tabs-provider'
 import { NoteTemplatesProvider } from '@/providers/note-templates-provider'
 import { PanesProvider, usePanes } from '@/providers/panes-provider'
 import { ShortcutsProvider } from '@/providers/shortcuts-provider'
+import { useWorkspaceStatePublisher } from '@/providers/use-workspace-state-publisher'
 import { VaultReplaceProvider } from '@/providers/vault-replace-provider'
 import { SidebarProvider } from '@/providers/sidebar-provider'
 import { SyncProvider } from '@/providers/sync-provider'
@@ -151,6 +152,7 @@ function ActivePaneRouter({ children }: { children: ReactNode }): ReactElement {
  */
 function ActivePaneChrome({ children }: { children: ReactNode }): ReactElement {
   const { activePane } = usePanes()
+  useWorkspaceStatePublisher()
   return (
     <FocusedDailyProvider store={activePane.focusedDaily}>
       <OpenTabsProvider paneId={activePane.id}>{children}</OpenTabsProvider>

@@ -2,7 +2,7 @@ import { useState, type ReactElement } from 'react'
 import { parseNoteIcon, symbolIconValue } from '@reflect/core'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { TAG_SYMBOL_ICONS } from '@/lib/tags/tag-symbol-icons'
+import { useTagSymbolIcons } from '@/lib/tags/tag-symbol-icons'
 import { cn } from '@/lib/utils'
 import { TagIcon } from './tag-icon'
 
@@ -93,7 +93,11 @@ export function TagIconPicker({ value, onChange }: TagIconPickerProps): ReactEle
   }
 
   const needle = query.trim().toLowerCase()
-  const symbols = Object.entries(TAG_SYMBOL_ICONS).filter(
+  // Subscribing here (the picker's trigger, not its popover) starts the
+  // table fetch when the dialog opens, so it has usually landed by the time
+  // the popover does. Until then the grid is empty but not a failed search.
+  const symbolIcons = useTagSymbolIcons()
+  const symbols = Object.entries(symbolIcons ?? {}).filter(
     ([name]) => needle === '' || name.includes(needle),
   )
 
@@ -132,7 +136,7 @@ export function TagIconPicker({ value, onChange }: TagIconPickerProps): ReactEle
                 aria-pressed={stored === value}
                 onClick={() => pick(stored)}
                 className={cn(
-                  'flex size-7 items-center justify-center rounded text-text-secondary hover:bg-surface-hover hover:text-text',
+                  'flex size-7 items-center justify-center rounded-sm text-text-secondary hover:bg-surface-hover hover:text-text',
                   stored === value && 'bg-surface-active text-text',
                 )}
               >
@@ -141,7 +145,7 @@ export function TagIconPicker({ value, onChange }: TagIconPickerProps): ReactEle
             )
           })}
         </div>
-        {symbols.length === 0 ? (
+        {symbolIcons !== null && symbols.length === 0 ? (
           <p className="px-1 text-xs text-text-muted">No icon matches.</p>
         ) : null}
         <div role="group" aria-label="Suggested emoji" className="grid grid-cols-9 gap-0.5">
@@ -153,7 +157,7 @@ export function TagIconPicker({ value, onChange }: TagIconPickerProps): ReactEle
               aria-pressed={icon === value}
               onClick={() => pick(icon)}
               className={cn(
-                'flex size-7 items-center justify-center rounded text-base hover:bg-surface-hover',
+                'flex size-7 items-center justify-center rounded-sm text-base hover:bg-surface-hover',
                 icon === value && 'bg-surface-active',
               )}
             >
@@ -177,7 +181,7 @@ export function TagIconPicker({ value, onChange }: TagIconPickerProps): ReactEle
           <button
             type="button"
             onClick={() => pick(null)}
-            className="self-start rounded px-1.5 py-0.5 text-xs text-text-muted hover:bg-surface-hover hover:text-text"
+            className="self-start rounded-sm px-1.5 py-0.5 text-xs text-text-muted hover:bg-surface-hover hover:text-text"
           >
             Remove icon
           </button>

@@ -17,6 +17,8 @@ export function contextSidebarTarget(route: Route, today: string): ContextSideba
     case 'daily':
       return { kind: 'daily', date: route.date }
     case 'note':
+    // A note's local graph page describes that note, like the note itself.
+    case 'localGraph':
       return { kind: 'note', path: route.path }
     case 'allNotes':
     case 'search':
@@ -32,4 +34,14 @@ export function contextSidebarTarget(route: Route, today: string): ContextSideba
     case 'canvas':
       return null
   }
+}
+
+/**
+ * Whether the Details panel has anything to say on `route`: a note or a day
+ * (`target`), or All notes, whose single selected row is the side peek. Graph,
+ * Tasks, Chat and the other full-page tools have neither, so the rail gives
+ * their width back instead of framing an empty card.
+ */
+export function routeHasDetails(route: Route, target: ContextSidebarTarget | null): boolean {
+  return target !== null || route.kind === 'allNotes'
 }

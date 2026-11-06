@@ -9,7 +9,8 @@
     "./capture-envelope": "./src/actions/capture-envelope.ts"
   },
   "scripts": {
-    "test": "vitest run --config ../../vitest.config.ts --project core-browser --project core-node"
+    "test": "vitest run --config ../../vitest.config.ts --project core-browser --project core-node",
+    "build:indexer": "vite build --config vite.indexer.config.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.45",
@@ -32,6 +33,7 @@
     "playwright": "^1.62.1",
     "sqlite-vec": "^0.1.9",
     "typescript": "~6.0.3",
+    "vite": "^8.2.2",
     "vitest": "^4.1.10"
   }
 }

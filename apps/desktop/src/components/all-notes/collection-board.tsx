@@ -449,7 +449,7 @@ export function CollectionBoard({
               type="button"
               aria-label={`New note in ${column.label}`}
               onClick={() => void createInLane(column)}
-              className="flex size-4 items-center justify-center rounded text-text-muted hover:text-text-secondary"
+              className="flex size-4 items-center justify-center rounded-sm text-text-muted hover:text-text-secondary"
             >
               <Plus aria-hidden className="size-3" />
             </button>

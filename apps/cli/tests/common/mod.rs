@@ -268,3 +268,56 @@ pub const BOOK_SCHEMA: &str = r#"[
   {"name":"Added","key":"added","type":"created"},
   {"name":"Pages","key":"pages","type":"rollup","rollup":{"relation":"author","property":"x","aggregation":"count"}}
 ]"#;
+
+impl Fixture {
+    /// Store one embedded chunk the way the app's `embed_apply` does: a row in
+    /// `embedding_chunks` and its vector in `embedding_vectors` at that rowid.
+    pub fn insert_chunk(
+        &self,
+        rel_path: &str,
+        heading: Option<&str>,
+        text: &str,
+        model_id: &str,
+        vector: &[f32],
+    ) {
+        reflect_index_schema::register_sqlite_vec().unwrap();
+        let conn = self.index_conn();
+        conn.execute(
+            "INSERT INTO embedding_chunks
+               (note_path, heading, pos_from, pos_to, text, content_hash, model_id)
+             VALUES (?1, ?2, 0, ?3, ?4, ?5, ?6)",
+            params![
+                rel_path,
+                heading,
+                text.len() as i64,
+                text,
+                hash_content(text),
+                model_id
+            ],
+        )
+        .unwrap();
+        let id = conn.last_insert_rowid();
+        conn.execute(
+            "INSERT INTO embedding_vectors(rowid, embedding) VALUES (?1, ?2)",
+            params![id, serde_json::to_string(vector).unwrap()],
+        )
+        .unwrap();
+    }
+}
+
+/// Run the binary with extra environment (the model lookup reads `HOME`,
+/// `KORE_MODEL_DIR`, `HF_HOME` and `XDG_DATA_HOME`).
+pub fn kore_env(fixture: &Fixture, args: &[&str], envs: &[(&str, &Path)]) -> Output {
+    let mut command = Command::new(env!("CARGO_BIN_EXE_kore"));
+    command
+        .args(args)
+        .current_dir(fixture.root())
+        .env_remove("KORE_GRAPH")
+        .env_remove("KORE_MODEL_DIR")
+        .env_remove("HF_HOME")
+        .env_remove("XDG_DATA_HOME");
+    for (key, value) in envs {
+        command.env(key, value);
+    }
+    command.output().unwrap()
+}

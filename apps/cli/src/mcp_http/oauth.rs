@@ -6,8 +6,14 @@
 //! (S256) and refresh. Nothing is stored except used code ids: codes and
 //! tokens are HMAC-signed [`Claims`] with a key derived from the secret, so
 //! they survive a restart and changing the secret revokes them all.
+//!
+//! Besides the owner's secret, each named agent can have its own key
+//! ([`AgentKey`]). Signing in with an agent key binds every token issued
+//! from it to that agent, so its writes are signed with its name, its
+//! permission is its own, and removing the key revokes exactly that agent.
 
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::Mutex;
 
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
@@ -18,13 +24,19 @@ use sha2::{Digest, Sha256};
 
 use super::pages;
 use super::HttpResponse;
-use crate::mcp::encode_component;
+use crate::agent_keys::{self, AgentKey};
+use crate::mcp::{encode_component, Caller};
 
-/// Redirect URIs every hosted Claude surface (web, Desktop, mobile) uses.
-const CLAUDE_REDIRECTS: [&str; 2] = [
+/// Redirect URIs every hosted Claude surface (web, Desktop, mobile) uses,
+/// and ChatGPT's fixed connector callback.
+const HOSTED_REDIRECTS: [&str; 3] = [
     "https://claude.ai/api/mcp/auth_callback",
     "https://claude.com/api/mcp/auth_callback",
+    "https://chatgpt.com/connector_platform_oauth_redirect",
 ];
+
+/// ChatGPT's per-connector callbacks: this prefix plus one id segment.
+const CHATGPT_REDIRECT_PREFIX: &str = "https://chatgpt.com/connector/oauth/";
 
 pub(super) const ACCESS_TTL_SECS: u64 = 60 * 60;
 const REFRESH_TTL_SECS: u64 = 60 * 60 * 24 * 30;
@@ -54,6 +66,9 @@ struct Claims {
     redirect_uri: String,
     #[serde(default, skip_serializing_if = "String::is_empty")]
     challenge: String,
+    /// The [`AgentKey::id`] this was issued from; empty for the owner.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    agent: String,
 }
 
 /// The validated parameters of an authorize request.
@@ -68,6 +83,10 @@ pub(super) struct Authorizer {
     secret: String,
     key: [u8; 32],
     extra_redirects: Vec<String>,
+    /// Agents handed over at start (`KORE_MCP_AGENTS`).
+    agents: Vec<AgentKey>,
+    /// The keys file, read on every check so edits apply without a restart.
+    keys_file: Option<PathBuf>,
     /// Ids of codes already exchanged, with their expiry.
     spent_codes: Mutex<HashMap<String, u64>>,
 }
@@ -124,12 +143,34 @@ pub(super) fn is_loopback_redirect(uri: &str) -> bool {
     (host == "localhost" || host == "127.0.0.1") && port.bytes().all(|byte| byte.is_ascii_digit())
 }
 
+/// `https://chatgpt.com/connector/oauth/<id>`, the id one URL-safe segment.
+fn is_chatgpt_redirect(uri: &str) -> bool {
+    uri.strip_prefix(CHATGPT_REDIRECT_PREFIX).is_some_and(|id| {
+        !id.is_empty()
+            && id
+                .bytes()
+                .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-' || byte == b'_')
+    })
+}
+
+fn agent_caller(agent: &AgentKey) -> Caller {
+    Caller {
+        name: Some(agent.name.clone()),
+        write: agent.write,
+    }
+}
+
 fn invalid_grant(description: &str) -> HttpResponse {
     HttpResponse::oauth_error(400, "invalid_grant", description)
 }
 
 impl Authorizer {
-    pub(super) fn new(secret: String, extra_redirects: Vec<String>) -> Self {
+    pub(super) fn new(
+        secret: String,
+        extra_redirects: Vec<String>,
+        agents: Vec<AgentKey>,
+        keys_file: Option<PathBuf>,
+    ) -> Self {
         let key = Sha256::new()
             .chain_update(b"kore-mcp-oauth\0")
             .chain_update(secret.as_bytes())
@@ -139,15 +180,62 @@ impl Authorizer {
             secret,
             key,
             extra_redirects,
+            agents,
+            keys_file,
             spent_codes: Mutex::new(HashMap::new()),
         }
     }
 
-    /// Whether a bearer token grants access: the secret itself, or an access
-    /// token this server issued that has not expired.
-    pub(super) fn accepts(&self, bearer: &str, at: u64) -> bool {
-        constant_time_eq(bearer.as_bytes(), self.secret.as_bytes())
-            || self.verify(bearer, Kind::Access, at).is_some()
+    /// Every configured agent: the ones handed over at start, then the keys
+    /// file as it is right now.
+    fn agents(&self) -> Vec<AgentKey> {
+        let mut agents = self.agents.clone();
+        if let Some(path) = &self.keys_file {
+            agents.extend(agent_keys::load(path));
+        }
+        agents
+    }
+
+    /// Who a bearer token speaks for: the owner (the secret itself), a named
+    /// agent (its key), or whoever an unexpired access token was issued to.
+    /// `None` when it grants nothing, including a token from a removed key.
+    pub(super) fn caller(&self, bearer: &str, at: u64) -> Option<Caller> {
+        if constant_time_eq(bearer.as_bytes(), self.secret.as_bytes()) {
+            return Some(Caller::owner());
+        }
+        if let Some(agent) = self
+            .agents
+            .iter()
+            .find(|agent| constant_time_eq(bearer.as_bytes(), agent.key.as_bytes()))
+        {
+            return Some(agent_caller(agent));
+        }
+        let claims = self.verify(bearer, Kind::Access, at)?;
+        self.issuer(&claims.agent)
+    }
+
+    /// The caller tokens bound to `agent` act as: the owner for an empty id,
+    /// otherwise that agent while its key is still configured.
+    fn issuer(&self, agent: &str) -> Option<Caller> {
+        if agent.is_empty() {
+            return Some(Caller::owner());
+        }
+        self.agents()
+            .iter()
+            .find(|candidate| candidate.id == agent)
+            .map(agent_caller)
+    }
+
+    /// The agent id a consent-page secret signs in as: `Some("")` for the
+    /// owner's secret, `Some(id)` for an agent key, `None` when it is wrong.
+    fn signer(&self, secret: &str) -> Option<String> {
+        if constant_time_eq(secret.as_bytes(), self.secret.as_bytes()) {
+            return Some(String::new());
+        }
+        self.agents()
+            .iter()
+            .find(|agent| constant_time_eq(secret.as_bytes(), agent.key.as_bytes()))
+            .map(|agent| agent.id.clone())
     }
 
     pub(super) fn protected_resource_metadata(base: &str) -> Value {
@@ -178,7 +266,7 @@ impl Authorizer {
         format!("{body}.{mac}")
     }
 
-    fn issue(&self, kind: Kind, ttl: u64, at: u64, client: &str) -> String {
+    fn issue(&self, kind: Kind, ttl: u64, at: u64, client: &str, agent: &str) -> String {
         self.sign(&Claims {
             kind,
             id: random_id(),
@@ -186,6 +274,7 @@ impl Authorizer {
             client: client.to_string(),
             redirect_uri: String::new(),
             challenge: String::new(),
+            agent: agent.to_string(),
         })
     }
 
@@ -205,7 +294,8 @@ impl Authorizer {
         // The URI ends up in a `Location` header: no control characters,
         // whitespace or non-ASCII, so it can never split the response.
         uri.bytes().all(|byte| byte.is_ascii_graphic())
-            && (CLAUDE_REDIRECTS.contains(&uri)
+            && (HOSTED_REDIRECTS.contains(&uri)
+                || is_chatgpt_redirect(uri)
                 || is_loopback_redirect(uri)
                 || self.extra_redirects.iter().any(|allowed| allowed == uri))
     }
@@ -281,9 +371,9 @@ impl Authorizer {
             Err(message) => return HttpResponse::html(400, pages::error(&message)),
         };
         let secret = form.get("secret").map(String::as_str).unwrap_or_default();
-        if !constant_time_eq(secret.trim().as_bytes(), self.secret.as_bytes()) {
+        let Some(agent) = self.signer(secret.trim()) else {
             return HttpResponse::html(401, pages::consent(form, Some("That token is not right.")));
-        }
+        };
         let code = self.sign(&Claims {
             kind: Kind::Code,
             id: random_id(),
@@ -291,6 +381,7 @@ impl Authorizer {
             client: request.client,
             redirect_uri: request.redirect_uri.clone(),
             challenge: request.challenge,
+            agent,
         });
         let separator = if request.redirect_uri.contains('?') {
             '&'
@@ -312,7 +403,7 @@ impl Authorizer {
     /// token for a fresh access + refresh pair.
     pub(super) fn token(&self, form: &HashMap<String, String>, at: u64) -> HttpResponse {
         let field = |key: &str| form.get(key).map(String::as_str).unwrap_or_default();
-        let client = match field("grant_type") {
+        let (client, agent) = match field("grant_type") {
             "authorization_code" => {
                 let Some(code) = self.verify(field("code"), Kind::Code, at) else {
                     return invalid_grant("invalid or expired code");
@@ -327,10 +418,10 @@ impl Authorizer {
                 if !self.spend_code(&code.id, at) {
                     return invalid_grant("code already used");
                 }
-                code.client
+                (code.client, code.agent)
             }
             "refresh_token" => match self.verify(field("refresh_token"), Kind::Refresh, at) {
-                Some(refresh) => refresh.client,
+                Some(refresh) => (refresh.client, refresh.agent),
                 None => return invalid_grant("invalid or expired refresh token"),
             },
             _ => {
@@ -341,13 +432,16 @@ impl Authorizer {
                 )
             }
         };
+        if self.issuer(&agent).is_none() {
+            return invalid_grant("this agent's key was removed");
+        }
         HttpResponse::json(
             200,
             &json!({
-                "access_token": self.issue(Kind::Access, ACCESS_TTL_SECS, at, ""),
+                "access_token": self.issue(Kind::Access, ACCESS_TTL_SECS, at, "", &agent),
                 "token_type": "Bearer",
                 "expires_in": ACCESS_TTL_SECS,
-                "refresh_token": self.issue(Kind::Refresh, REFRESH_TTL_SECS, at, &client),
+                "refresh_token": self.issue(Kind::Refresh, REFRESH_TTL_SECS, at, &client, &agent),
             }),
         )
     }

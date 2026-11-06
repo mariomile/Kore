@@ -280,8 +280,8 @@ describe('AllNotesScreen', () => {
     await expect.element(view.getByText('Shop your health goals.')).toBeInTheDocument()
     await expect.element(view.getByText('Tokyo Gâteau')).toBeInTheDocument()
     await expectLocatorToHaveCount(view.getByText('#link'), 2)
-    await expect.element(view.getByText('1/15/2020')).toBeInTheDocument()
-    await expect.element(view.getByText('1/10/2020')).toBeInTheDocument()
+    await expect.element(view.getByText('Jan 15, 2020')).toBeInTheDocument()
+    await expect.element(view.getByText('Jan 10, 2020')).toBeInTheDocument()
     await view.unmount()
   })
 
@@ -388,14 +388,33 @@ describe('AllNotesScreen', () => {
     await view.unmount()
   })
 
-  it('renders pinned tags from settings as tabs and opens a tag as its own page', async () => {
+  it('renders pinned tags from settings as tabs that filter All notes in place', async () => {
     const view = await renderScreen()
     await expect.element(view.getByText('Health Stacked')).toBeInTheDocument()
 
     await expect.element(view.getByRole('button', { name: '#person' })).toBeInTheDocument()
     await view.getByRole('button', { name: '#book' }).click()
 
-    expect(probedRoute(view)).toEqual({ kind: 'allNotes', filter: { kind: 'tag', tag: 'book' } })
+    expect(probedRoute(view)).toEqual({ kind: 'allNotes', filter: { kind: 'all', tag: 'book' } })
+    // A chip only narrows the list: the page stays All notes, its filter tabs
+    // stay put with the chip lit, and the tag's own page is not opened.
+    await expect.element(view.getByRole('heading', { name: 'Notes' })).toBeInTheDocument()
+    await expect.element(view.getByRole('group', { name: 'Filter by type' })).toBeInTheDocument()
+    await expect
+      .element(view.getByRole('button', { name: '#book' }))
+      .toHaveAttribute('aria-pressed', 'true')
+    expect(view.getByRole('button', { name: 'Configure #book' }).query()).toBeNull()
+    await expect.element(view.getByText('No #book notes yet.')).toBeInTheDocument()
+    expect(view.getByText('Health Stacked').query()).toBeNull()
+
+    await view.getByRole('button', { name: 'All', exact: true }).click()
+    expect(probedRoute(view)).toEqual({ kind: 'allNotes', filter: { kind: 'all' } })
+    await expect.element(view.getByText('Health Stacked')).toBeInTheDocument()
+    await view.unmount()
+  })
+
+  it('opens a routed tag as its own page', async () => {
+    const view = await renderScreen(undefined, { kind: 'tag', tag: 'book' })
     // The tag renders as its own page: the tag is the title and the filter
     // tabs stay behind on the unfiltered view.
     await expect.element(view.getByRole('heading', { name: 'Book' })).toBeInTheDocument()
@@ -456,10 +475,7 @@ describe('AllNotesScreen', () => {
   })
 
   it('renders a tag with no definition note as a collection table, with the schema gear', async () => {
-    const view = await renderScreen()
-    await expect.element(view.getByText('Health Stacked')).toBeInTheDocument()
-
-    await view.getByRole('button', { name: '#book' }).click()
+    const view = await renderScreen(undefined, { kind: 'tag', tag: 'book' })
 
     // `#book` has no definition note in this fixture, yet every tag is a
     // collection: the page is the zero-property table (Title and Updated),
@@ -555,13 +571,13 @@ describe('AllNotesScreen', () => {
 
     await page.getByRole('option', { name: /#travel/ }).click()
 
-    expect(probedRoute(view)).toEqual({ kind: 'allNotes', filter: { kind: 'tag', tag: 'travel' } })
-    // The tag page is its collection table: the tagged daily is a row (a
-    // title, no preview), the untagged notes are not.
+    expect(probedRoute(view)).toEqual({ kind: 'allNotes', filter: { kind: 'all', tag: 'travel' } })
+    // The list narrows in place: the tagged daily is listed, the untagged
+    // notes are not, and the page is still All notes.
     await expect.element(view.getByText('June 9, 2026')).toBeInTheDocument()
     expect(view.getByText('Health Stacked').query()).toBeNull()
-    // The chosen tag becomes the page's own title.
-    await expect.element(view.getByRole('heading', { name: 'Travel' })).toBeInTheDocument()
+    await expect.element(view.getByRole('heading', { name: 'Notes' })).toBeInTheDocument()
+    await expect.element(view.getByRole('button', { name: /#travel/ })).toBeInTheDocument()
     await view.getByRole('button', { name: 'June 9, 2026' }).click()
     expect(probedRoute(view)).toEqual({ kind: 'daily', date: '2026-06-09' })
     await view.unmount()
@@ -582,7 +598,7 @@ describe('AllNotesScreen', () => {
     await input.fill('#zettel')
     await page.getByRole('option', { name: 'Filter by #zettel' }).click()
 
-    expect(probedRoute(view)).toEqual({ kind: 'allNotes', filter: { kind: 'tag', tag: 'zettel' } })
+    expect(probedRoute(view)).toEqual({ kind: 'allNotes', filter: { kind: 'all', tag: 'zettel' } })
     await expect.element(view.getByText('No #zettel notes yet.')).toBeInTheDocument()
     await view.unmount()
   })
@@ -602,7 +618,7 @@ describe('AllNotesScreen', () => {
     expect(page.getByRole('option', { name: /Filter by/ }).query()).toBeNull()
 
     await page.getByRole('option', { name: /#travel/ }).click()
-    expect(probedRoute(view)).toEqual({ kind: 'allNotes', filter: { kind: 'tag', tag: 'travel' } })
+    expect(probedRoute(view)).toEqual({ kind: 'allNotes', filter: { kind: 'all', tag: 'travel' } })
     await view.unmount()
   })
 })

@@ -7,7 +7,7 @@ use std::process::ExitCode;
 use clap::{Parser, Subcommand};
 
 use reflect_cli::error::CliError;
-use reflect_cli::{commands, graph, mcp, mcp_http};
+use reflect_cli::{agent_keys, commands, graph, mcp, mcp_http, vault_sync};
 
 /// Read, discover, and capture notes in a Kore graph.
 ///
@@ -46,6 +46,11 @@ enum Command {
         /// Maximum number of results
         #[arg(long, default_value_t = 20)]
         limit: usize,
+        /// hybrid (words and meaning, the default), lexical (words only), or
+        /// semantic (meaning only). Hybrid falls back to lexical when the app
+        /// has not built semantic vectors or the model is not on this machine.
+        #[arg(long, value_enum, default_value_t = commands::search::SearchMode::Hybrid)]
+        mode: commands::search::SearchMode,
     },
     /// Print a note, resolved by date, path, id, title, or alias
     Show {
@@ -116,6 +121,14 @@ enum Command {
     },
     /// The graph and its index at a glance (works without an index)
     Info,
+    /// The vault's agent contract (AGENTS.md) and a map of its folders: what
+    /// an agent reads first (works without an index)
+    Guide {
+        /// Write a starter AGENTS.md (and a CLAUDE.md importing it) when the
+        /// vault has none; never overwrites
+        #[arg(long)]
+        init: bool,
+    },
     /// List every tag with its note count and whether it is a collection
     Tags,
     /// List notes newest first, with their tags
@@ -205,6 +218,58 @@ enum Command {
         #[arg(long, conflicts_with = "text")]
         stdin: bool,
     },
+    /// Build or refresh the search index without the app (needs Node 22+)
+    Index {
+        /// Rebuild every row instead of reconciling what changed
+        #[arg(long)]
+        rebuild: bool,
+    },
+    /// Print every line containing an exact text, across all notes (no index needed)
+    Grep {
+        /// The text to find, matched literally
+        text: String,
+        /// Match regardless of case
+        #[arg(long, short = 'i')]
+        ignore_case: bool,
+        /// Maximum number of matching lines
+        #[arg(long, default_value_t = 200)]
+        limit: usize,
+    },
+    /// The shortest chain of wiki links between two notes, either direction
+    Route {
+        /// Where the route starts (date, path, id, title, or alias)
+        from: String,
+        /// Where it ends
+        to: String,
+        /// Give up beyond this many links
+        #[arg(long, default_value_t = 6)]
+        max_hops: usize,
+    },
+    /// A note's place in the graph: properties, tags, outline, links, backlinks
+    Explain {
+        /// A YYYY-MM-DD date, graph-relative path, note id, title, or alias
+        note: String,
+    },
+    /// List the vault's agent skills (agents/skills/), or print one by name
+    Skills {
+        /// The skill's slug or title
+        name: Option<String>,
+    },
+    /// The note open in the Kore app and the note tabs beside it
+    Active,
+    /// Replace one exact passage of a note's body (or append, with an empty
+    /// --old). Nothing is written unless --old occurs in the body exactly
+    /// once, so an edit never lands on a note that changed since it was read
+    Edit {
+        /// A YYYY-MM-DD date, graph-relative path, note id, title, or alias
+        note: String,
+        /// The exact current text to replace, unique in the note ("" appends)
+        #[arg(long, value_name = "TEXT", allow_hyphen_values = true)]
+        old: String,
+        /// The replacement text
+        #[arg(long, value_name = "TEXT", allow_hyphen_values = true)]
+        new: String,
+    },
     /// Serve the graph to AI agents as an MCP server (stdio, or HTTP with --http)
     Mcp {
         /// Expose only the tools that read; refuse every write
@@ -220,14 +285,122 @@ enum Command {
         /// Extra OAuth redirect URI to allow, besides Claude's and loopback ones
         #[arg(long = "redirect-uri", value_name = "URI", requires = "http")]
         redirect_uris: Vec<String>,
+        /// Keep the graph's git clone in step with its remote: pull and
+        /// reindex in the background, commit and push every agent write
+        /// (for an always-on host)
+        #[arg(long)]
+        sync: bool,
+        /// Seconds between background pulls (with --sync)
+        #[arg(long, value_name = "SECS", default_value_t = 60, requires = "sync")]
+        sync_every: u64,
+    },
+    /// Named agents' own keys for `kore mcp --http` (no app needed)
+    Keys {
+        #[command(subcommand)]
+        action: KeysAction,
+    },
+    /// The read-only Library: agent homes such as ~/.claude and ~/.codex,
+    /// served to local agents only (no graph needed)
+    Library {
+        #[command(subcommand)]
+        action: Option<commands::library::LibraryAction>,
+    },
+    /// Pull the graph's git clone, push what kore wrote, refresh the index:
+    /// one pass of what `kore mcp --sync` does in the background
+    Sync,
+}
+
+#[derive(Subcommand)]
+enum KeysAction {
+    /// Give an agent its own key, printed once; read-only unless --write
+    Add {
+        /// The name its writes are signed with (e.g. "Grok bot")
+        name: String,
+        /// Let this agent use the tools that write
+        #[arg(long)]
+        write: bool,
+    },
+    /// List the agents that have a key (never the keys)
+    List,
+    /// Remove an agent's key; it is disconnected at its next request
+    Remove {
+        /// The agent's name
+        name: String,
     },
 }
 
+/// `kore keys`: edits the keys file, so it needs no graph.
+fn run_keys(action: &KeysAction, json: bool) -> Result<(), CliError> {
+    let path = agent_keys::default_path().ok_or_else(|| {
+        CliError::Usage("set KORE_MCP_KEYS_FILE or HOME to say where agent keys live".into())
+    })?;
+    match action {
+        KeysAction::Add { name, write } => {
+            let agent = agent_keys::add(&path, name, *write)?;
+            if json {
+                println!(
+                    "{}",
+                    serde_json::json!({ "name": agent.name, "key": agent.key, "write": agent.write })
+                );
+            } else {
+                println!("{}", agent.key);
+                eprintln!(
+                    "kore: key for {:?} ({}), shown once. Give it to the agent with the server's /setup.md.",
+                    agent.name,
+                    if agent.write { "read and write" } else { "read-only" }
+                );
+            }
+        }
+        KeysAction::List => {
+            let agents = agent_keys::load(&path);
+            if json {
+                let listed: Vec<_> = agents
+                    .iter()
+                    .map(|agent| serde_json::json!({ "name": agent.name, "write": agent.write }))
+                    .collect();
+                println!("{}", serde_json::json!({ "file": path, "agents": listed }));
+            } else {
+                for agent in &agents {
+                    println!(
+                        "{}\t{}",
+                        agent.name,
+                        if agent.write { "write" } else { "read" }
+                    );
+                }
+            }
+        }
+        KeysAction::Remove { name } => {
+            if !agent_keys::remove(&path, name)? {
+                return Err(CliError::Usage(format!(
+                    "no agent called {name:?} has a key"
+                )));
+            }
+            if json {
+                println!("{}", serde_json::json!({ "removed": name }));
+            }
+        }
+    }
+    Ok(())
+}
+
 fn run(cli: &Cli) -> Result<(), CliError> {
-    let graph = graph::resolve(cli.graph.as_deref())?;
+    if let Command::Keys { action } = &cli.command {
+        return run_keys(action, cli.json);
+    }
+    if let Command::Library { action } = &cli.command {
+        return commands::library::run(action.as_ref(), cli.json);
+    }
+    let graph = match &cli.command {
+        Command::Index { .. } => graph::resolve_for_index(cli.graph.as_deref())?,
+        _ => graph::resolve(cli.graph.as_deref())?,
+    };
     match &cli.command {
+        Command::Keys { action } => run_keys(action, cli.json),
+        Command::Library { action } => commands::library::run(action.as_ref(), cli.json),
         Command::Today { path } => commands::today::run(&graph, cli.json, *path),
-        Command::Search { query, limit } => commands::search::run(&graph, cli.json, query, *limit),
+        Command::Search { query, limit, mode } => {
+            commands::search::run(&graph, cli.json, query, *limit, *mode)
+        }
         Command::Show { note } => commands::show::run(&graph, cli.json, note),
         Command::Path { note } => commands::path::run(&graph, cli.json, note),
         Command::Open { note, print } => commands::open::run(&graph, cli.json, note, *print),
@@ -254,12 +427,24 @@ fn run(cli: &Cli) -> Result<(), CliError> {
             limit,
         } => commands::collection::run(&graph, cli.json, tag, sort.as_deref(), *desc, *limit),
         Command::Info => commands::info::run(&graph, cli.json),
+        Command::Guide { init } => commands::guide::run(&graph, cli.json, *init),
         Command::Tags => commands::tags::run(&graph, cli.json),
         Command::List { tag, kind, limit } => {
             commands::list::run(&graph, cli.json, tag.as_deref(), kind.as_deref(), *limit)
         }
         Command::Properties { note } => commands::properties::run(&graph, cli.json, note),
         Command::Links { note } => commands::links::run(&graph, cli.json, note),
+        Command::Grep {
+            text,
+            ignore_case,
+            limit,
+        } => commands::grep::run(&graph, cli.json, text, *ignore_case, *limit),
+        Command::Route { from, to, max_hops } => {
+            commands::route::run(&graph, cli.json, from, to, *max_hops)
+        }
+        Command::Explain { note } => commands::explain::run(&graph, cli.json, note),
+        Command::Skills { name } => commands::skills::run(&graph, cli.json, name.as_deref()),
+        Command::Active => commands::active::run(&graph, cli.json),
         Command::New {
             title,
             template,
@@ -290,18 +475,28 @@ fn run(cli: &Cli) -> Result<(), CliError> {
         Command::Append { note, text, stdin } => {
             commands::append::run(&graph, cli.json, note, text.as_deref(), *stdin)
         }
+        Command::Index { rebuild } => commands::index::run(&graph.root, cli.json, *rebuild),
+        Command::Edit { note, old, new } => commands::edit::run(&graph, cli.json, note, old, new),
         Command::Mcp {
             read_only,
             http,
             public_url,
             redirect_uris,
+            sync,
+            sync_every,
         } => {
             let runner = mcp::ProcessRunner {
                 exe: std::env::current_exe()?,
                 graph: graph.root.clone(),
             };
+            let runner: vault_sync::AnyRunner = if *sync {
+                Box::new(start_sync(&graph.root, runner, *sync_every)?)
+            } else {
+                Box::new(runner)
+            };
             let server = mcp::Server::new(runner, *read_only);
             let Some(address) = http else {
+                let server = server.for_this_machine();
                 mcp::serve(&server, std::io::stdin().lock(), std::io::stdout().lock())?;
                 return Ok(());
             };
@@ -312,15 +507,74 @@ fn run(cli: &Cli) -> Result<(), CliError> {
                     mcp_http::MIN_SECRET_LEN
                 )));
             }
+            let agents =
+                agent_keys::parse_env(&std::env::var("KORE_MCP_AGENTS").unwrap_or_default())?;
             let options = mcp_http::HttpOptions {
                 secret: secret.trim().to_string(),
                 public_url: public_url.clone(),
                 extra_redirects: redirect_uris.clone(),
+                agents,
+                keys_file: agent_keys::default_path(),
             };
             mcp_http::serve(mcp_http::HttpServer::new(server, options), address)?;
             Ok(())
         }
+        Command::Sync => {
+            let runner = mcp::ProcessRunner {
+                exe: std::env::current_exe()?,
+                graph: graph.root.clone(),
+            };
+            let sync = vault_sync::VaultSync::open(&graph.root, runner, Default::default())?;
+            let report = sync.sync()?;
+            if cli.json {
+                let json = serde_json::to_string_pretty(&report)
+                    .map_err(|err| CliError::runtime(err.to_string()))?;
+                println!("{json}");
+                return Ok(());
+            }
+            if let Some(offline) = &report.offline {
+                return Err(CliError::runtime(format!("remote unreachable: {offline}")));
+            }
+            println!(
+                "Pulled {}, pushed {}, replayed {} commit(s){}.",
+                report.pulled,
+                report.pushed,
+                report.replayed,
+                if report.reindexed {
+                    "; index refreshed"
+                } else {
+                    ""
+                }
+            );
+            for dropped in &report.dropped {
+                eprintln!("kore: dropped a write that no longer applies: {dropped}");
+            }
+            Ok(())
+        }
     }
+}
+
+/// Open the clone for syncing, run a first pass, and keep pulling every
+/// `every` seconds on a background thread.
+fn start_sync(
+    root: &std::path::Path,
+    runner: mcp::ProcessRunner,
+    every: u64,
+) -> Result<std::sync::Arc<vault_sync::VaultSync<mcp::ProcessRunner>>, CliError> {
+    let mut sync = vault_sync::VaultSync::open(root, runner, Default::default())?;
+    sync.log = true;
+    let sync = std::sync::Arc::new(sync);
+    if let Err(err) = sync.sync() {
+        eprintln!("kore sync: {err}");
+    }
+    let background = std::sync::Arc::clone(&sync);
+    std::thread::spawn(move || loop {
+        std::thread::sleep(std::time::Duration::from_secs(every.max(5)));
+        if let Err(err) = background.sync() {
+            eprintln!("kore sync: {err}");
+        }
+    });
+    Ok(sync)
 }
 
 fn main() -> ExitCode {

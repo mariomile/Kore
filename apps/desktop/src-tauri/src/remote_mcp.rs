@@ -207,12 +207,16 @@ fn server_args(
 }
 
 /// Command: (re)start `kore mcp --http` on `127.0.0.1:<port>` for the open
-/// graph, with `token` as its secret. Any running server is stopped first.
+/// graph, with `token` as its secret and `agents` (a JSON list of named
+/// agents' keys, passed through untouched) as `KORE_MCP_AGENTS`. Any running
+/// server is stopped first.
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn remote_mcp_start(
     generation: u64,
     port: u16,
     token: String,
+    agents: String,
     read_only: bool,
     public_url: Option<String>,
     graph: State<'_, GraphState>,
@@ -231,6 +235,7 @@ pub async fn remote_mcp_start(
             public_url.as_deref(),
         ))
         .env("KORE_MCP_TOKEN", token)
+        .env("KORE_MCP_AGENTS", agents)
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::piped());

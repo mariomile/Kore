@@ -37,6 +37,10 @@ rule); no `kore` alias.
 **Out:** an MCP server (Plan 25 I20), semantic search (needs the embedding
 model), delete/rename (destructive), whole-body rewrite (violates "never
 overwrite"), a long-running server, editing prose in place.
+(Later, 2026-11: the MCP server shipped in #277; hybrid search and
+guarded passage edits — `kore edit`, MCP `edit_note`, which replace text only
+while it still matches what the agent read — in the "MCP alla pari con la
+chat" slice; see `docs/STATE.md`.)
 
 ## Invariants that do not move
 

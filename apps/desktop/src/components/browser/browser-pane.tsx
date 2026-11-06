@@ -4,6 +4,7 @@ import {
   browserEmbedBounds,
   browserEmbedClose,
   browserEmbedForward,
+  browserEmbedHide,
   browserEmbedNavigate,
   browserEmbedRead,
   browserEmbedReload,
@@ -29,6 +30,7 @@ import { isNativeShell } from '@/lib/platform'
 import { cn } from '@/lib/utils'
 import { GraphContext } from '@/providers/graph-context'
 import { useSettings } from '@/providers/settings-provider'
+import { watchOverlayOcclusion } from './overlay-occlusion'
 
 /** Turn address-bar text into a navigable web URL (or a search for it). */
 export function normalizeAddress(
@@ -61,6 +63,8 @@ export function normalizeAddress(
  */
 interface BrowserHost {
   dock: () => void
+  /** An app menu or dialog overlaps this host, so the page stays hidden. */
+  covered: boolean
 }
 const hostStack: BrowserHost[] = []
 let hostTransition = Promise.resolve()
@@ -117,7 +121,12 @@ export function BrowserPane({ className }: BrowserPaneProps): ReactElement {
       return { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height }
     }
     const entry: BrowserHost = {
+      covered: false,
       dock: () => {
+        if (entry.covered) {
+          void queueHostTransition(browserEmbedHide).catch(() => undefined)
+          return
+        }
         void queueHostTransition(() =>
           browserEmbedShow(browserSessionUrl() ?? homeRef.current, rect()),
         ).catch((cause: unknown) => {
@@ -144,6 +153,15 @@ export function BrowserPane({ className }: BrowserPaneProps): ReactElement {
     const unlistenNavigated = subscribeBrowserNavigated((event) => {
       setBrowserSessionUrl(event.url)
     })
+    // The native page draws above every DOM element, so a menu or dialog
+    // overlapping the host (the tab bar's "+" menu, the command palette)
+    // would open under it. Hide the page while one covers it.
+    const stopWatchingOverlays = watchOverlayOcclusion(host, (covered) => {
+      entry.covered = covered
+      if (hostStack.at(-1) === entry) {
+        entry.dock()
+      }
+    })
     const observer = new ResizeObserver(replaceBounds)
     observer.observe(host)
     window.addEventListener('resize', replaceBounds)
@@ -151,6 +169,7 @@ export function BrowserPane({ className }: BrowserPaneProps): ReactElement {
     return () => {
       window.removeEventListener('resize', replaceBounds)
       observer.disconnect()
+      stopWatchingOverlays()
       unsubscribeSession()
       void unlistenNavigated.then((unlisten) => {
         unlisten()

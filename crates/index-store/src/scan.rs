@@ -13,8 +13,37 @@ use std::collections::{HashMap, HashSet};
 use rusqlite::Connection;
 use serde::Serialize;
 
-use crate::error::AppResult;
-use crate::fs::FileMeta;
+use crate::error::StoreResult;
+
+/// Metadata for a file inside the graph.
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FileMeta {
+    /// Graph-relative path, forward-slashed.
+    pub path: String,
+    pub size: u64,
+    /// Last-modified time in epoch milliseconds.
+    pub modified_ms: u64,
+    /// True when the file is iCloud-evicted: the note exists but its content
+    /// is not on disk until re-downloaded. Consumers must not read it — a
+    /// read blocks on an on-demand download — and must not treat it as
+    /// deleted (Plan 21). Covers both eviction forms: for a legacy `.icloud`
+    /// stub, `size` and `modified_ms` describe the stub; for a modern
+    /// dataless file they are the real (preserved) values.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub placeholder: bool,
+}
+
+impl From<reflect_graph_paths::FileEntry> for FileMeta {
+    fn from(entry: reflect_graph_paths::FileEntry) -> Self {
+        Self {
+            path: entry.path,
+            size: entry.size,
+            modified_ms: entry.modified_ms,
+            placeholder: entry.placeholder,
+        }
+    }
+}
 
 /// Mirrors `MTIME_TRUST_AGE_MS` in `packages/core/src/indexing/hash.ts`: an
 /// mtime match may only skip the read once the file has settled — local write
@@ -93,11 +122,11 @@ impl ReconcileScan {
 /// mtimes, too-fresh mtimes, and rowless arrivals — is a candidate the TS
 /// side reads and hashes (hashes stay the authority for "did content
 /// change"). Rows with no listed file are orphans.
-pub(super) fn scan_reconcile(
+pub fn scan_reconcile(
     conn: &Connection,
     files: &[FileMeta],
     now_ms: u64,
-) -> AppResult<ReconcileScan> {
+) -> StoreResult<ReconcileScan> {
     let mut stored: HashMap<String, (i64, String)> = HashMap::new();
     let mut stmt = conn.prepare_cached("SELECT path, mtime, file_hash FROM notes")?;
     let rows = stmt.query_map([], |row| {

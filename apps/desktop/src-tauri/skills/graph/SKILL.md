@@ -29,17 +29,27 @@ or export `KORE_GRAPH="{{GRAPH_ROOT}}"` for a sequence of calls.
 ## Commands
 
 Discover first, then read, then write. Every command takes `--json`.
+Start every session with `kore guide`: it prints the vault's own agent
+contract (`AGENTS.md`, the user's rules for where memory, decisions and new
+notes go — follow it over the defaults in these skills) and a map of its
+folders.
 
+    kore guide                 # the vault's agent contract and folder map
     kore info                  # graph root, index state, note/daily/tag counts
     kore tags                  # every tag with its count; "collection" = typed
     kore list [--tag T] [--kind daily|note]      # notes newest first, with tags
     kore collection <tag>      # a typed tag's rows with their property values
     kore properties <note>     # a note's frontmatter properties, typed, and tags
     kore links <note>          # the wiki links a note makes, resolved
+    kore explain <note>        # properties, tags, outline, links, backlinks at once
+    kore route <from> <to>     # how two notes connect: the shortest link chain
+    kore grep <text>           # every line with an exact text (all of them, unranked)
+    kore skills [name]         # the vault's agent skills, or one to follow
+    kore active                # the note the user has open in the app right now
 
     kore today                 # print today's daily note
     kore today --path          # its absolute path (works before the file exists)
-    kore search <query>        # ranked full-text search over the graph
+    kore search <query>        # words + meaning, like the app's AI chat
     kore show <note>           # print a note by date, path, title, or alias
     kore path <note>           # resolve a note to its absolute path
     kore open <note>           # open the note in the Kore app
@@ -52,6 +62,7 @@ Discover first, then read, then write. Every command takes `--json`.
     kore capture --to <note> <text>      # append to any note instead
     kore capture --stdin                 # the text from stdin
     kore append <note> <text>            # append a markdown block (or --stdin)
+    kore edit <note> --old <text> --new <text>   # replace one exact passage
     kore new <title>                     # create notes/<slug>.md with the H1 in place
     kore new <title> --tag <tag> --set key=value      # a typed collection row
     kore new <title> --template <t>      # seed the body from templates/
@@ -89,6 +100,10 @@ Use the CLI's writes — they are typed, atomic, and never overwrite:
   daily by default — where all capture flows by convention — or `--to` any
   note); `kore append` for a block of markdown (headings, paragraphs,
   lists) — pipe it with `--stdin`.
+- **Changing prose.** `kore edit <note> --old <text> --new <text>` replaces
+  one passage: `show` the note first and pass the exact current text, with
+  enough context to occur once. If the note changed since you read it the
+  edit is refused and nothing is written: re-read, then retry.
 - **Notes and rows.** `kore new` creates a note with the app's own
   filename slug and H1. With `--tag` it is a collection row: the type's
   template seeds the body, `created` properties are stamped, and `--set`
@@ -139,14 +154,15 @@ or exposing its current or historical content unless the user explicitly asks.
    writes into them. Never work around this by reading graph files directly
    unless the user explicitly asks for that.
 2. **Write through the CLI.** `capture`/`append` add, `new` creates, `set`
-   types frontmatter, `tag`/`untag` and `done` change exactly one line —
-   nothing overwrites. Never hand-edit frontmatter, `.reflect/`, or a task
+   types frontmatter, `tag`/`untag` and `done` change exactly one line,
+   `edit` replaces one passage you quote exactly — nothing overwrites. Never hand-edit frontmatter, `.reflect/`, or a task
    marker when a command does it.
 3. **Discover before writing.** `kore tags` and `kore collection
    <tag>` tell you the keys and types a row takes; `kore properties
    <note>` tells you what is there. Guessing a key creates an untyped stray.
 4. **Prefer search over enumeration.** `kore search` uses the app's own
-   ranked index; don't grep the whole graph when a search will do. It
-   takes the app's operators: `kore search "tag:#type/person path:CRM/
+   index and matches meaning as well as words (when semantic search is on
+   in the app), so ask in plain language; don't grep the whole graph when a
+   search will do. It takes the app's operators: `kore search "tag:#type/person path:CRM/
    -#archive"`, `"exact phrase"`, `-word`, `file:`, `[status:active]`,
    `links:Note`, `is:daily`, `updated:>2026-01-01`.

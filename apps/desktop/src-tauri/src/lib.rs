@@ -293,6 +293,7 @@ pub fn run() {
         .manage(fs::GraphState::default())
         .manage(background_task::BackgroundTaskState::default())
         .manage(fs::ImportCancel::default())
+        .manage(fs::vault_copy::VaultCopies::default())
         .manage(fs::assets::AssetUploads::default())
         .manage(db::IndexState::default())
         .manage(watcher::WatcherState::default())
@@ -353,9 +354,12 @@ pub fn run() {
             fs::audio_memo_delete,
             fs::transcript_cache_read,
             fs::transcript_cache_write,
+            fs::workspace_state_write,
             fs::asset_open,
             fs::asset_reveal,
             fs::export_write,
+            fs::vault_copy::vault_copy_tree,
+            fs::vault_copy::vault_copy_write,
             haptics::haptic_feedback,
             fs::assets::asset_upload_begin,
             fs::assets::asset_upload_append,
@@ -446,6 +450,7 @@ pub fn run() {
             windows::open_browser_window,
             browser::browser_embed_show,
             browser::browser_embed_bounds,
+            browser::browser_embed_hide,
             browser::browser_embed_close,
             browser::browser_embed_navigate,
             browser::browser_embed_back,

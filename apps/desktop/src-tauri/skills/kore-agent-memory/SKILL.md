@@ -61,7 +61,8 @@ bullets that approval will append:
 
 **skills/<slug>.md** — an H1 as the name, a frontmatter `description`, and
 the procedure as steps. Save a refined workflow here when the user says
-"save this as a skill".
+"save this as a skill". `kore skills` lists them and `kore skills <name>`
+prints one (over MCP: `list_skills` and `load_skill`).
 
 ## When to write what
 

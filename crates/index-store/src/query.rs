@@ -3,7 +3,7 @@
 //! Parameters are bound (never interpolated) and any mutating statement is
 //! rejected via `Statement::readonly`, so this surface can read the projection
 //! but never write it — writes go through the transactional path in
-//! [`super::write`].
+//! [`crate::write`].
 
 use std::path::Path;
 
@@ -11,7 +11,7 @@ use rusqlite::hooks::{AuthAction, AuthContext, Authorization};
 use rusqlite::{params_from_iter, Connection};
 use serde_json::{Map, Value};
 
-use crate::error::{AppError, AppResult};
+use crate::error::{StoreError, StoreResult};
 
 /// Authorize only pure reads of our own projection. `Statement::readonly()`
 /// (checked in [`run_query`]) already rejects writes, but SQLite still considers
@@ -44,14 +44,16 @@ fn read_only_authorization(context: AuthContext<'_>) -> Authorization {
     }
 }
 
-/// Open the read bridge's connection: the index read-only, guarded by
-/// [`read_only_authorization`] for its whole life. Installing the authorizer
-/// once matters: `sqlite3_set_authorizer` expires every prepared statement, so
-/// toggling it around each query made SQLite parse every read twice. This
-/// connection serves only [`run_query`]; writes (and their
-/// `PRAGMA defer_foreign_keys`) use the writer connection.
-pub(super) fn open_read_connection(root: &Path) -> AppResult<Connection> {
-    let conn = super::migrations::open_index_read_only_at(root)?;
+/// Open the read bridge's connection: `<root>/.reflect/index.sqlite`
+/// read-only, guarded by [`read_only_authorization`] for its whole life.
+/// Installing the authorizer once matters: `sqlite3_set_authorizer` expires
+/// every prepared statement, so toggling it around each query made SQLite
+/// parse every read twice. This connection serves only [`run_query`]; writes
+/// (and their `PRAGMA defer_foreign_keys`) use the writer connection, which
+/// must have created and migrated the file first.
+pub fn open_read_connection(root: &Path) -> StoreResult<Connection> {
+    let conn = reflect_index_schema::open_index_read_only_at(root)
+        .map_err(|err| StoreError::io(err.to_string()))?;
     conn.authorizer(Some(read_only_authorization))?;
     Ok(conn)
 }
@@ -72,7 +74,7 @@ fn json_to_sql(value: &Value) -> rusqlite::types::Value {
     }
 }
 
-fn column_to_json(row: &rusqlite::Row, index: usize) -> AppResult<Value> {
+fn column_to_json(row: &rusqlite::Row, index: usize) -> StoreResult<Value> {
     use rusqlite::types::ValueRef;
     Ok(match row.get_ref(index)? {
         ValueRef::Null => Value::Null,
@@ -84,11 +86,11 @@ fn column_to_json(row: &rusqlite::Row, index: usize) -> AppResult<Value> {
 }
 
 /// Execute a read query the frontend compiled with Kysely; rows as JSON objects.
-pub(super) fn run_query(
+pub fn run_query(
     conn: &Connection,
     sql: &str,
     params: &[Value],
-) -> AppResult<Vec<Map<String, Value>>> {
+) -> StoreResult<Vec<Map<String, Value>>> {
     // This bridge is reachable from the (untrusted) webview, so it must run only
     // reads of our projection. On the read connection ([`open_read_connection`])
     // the authorizer rejects ATTACH/DETACH/PRAGMA with `SQLITE_AUTH`, here at
@@ -98,7 +100,9 @@ pub(super) fn run_query(
     // `Statement::readonly()` rejects any remaining mutating statement so a
     // compromised/buggy caller can't write through the read bridge.
     if !stmt.readonly() {
-        return Err(AppError::io("db_query only executes read-only statements"));
+        return Err(StoreError::io(
+            "db_query only executes read-only statements",
+        ));
     }
     let columns: Vec<String> = stmt.column_names().iter().map(|c| c.to_string()).collect();
     let bound: Vec<rusqlite::types::Value> = params.iter().map(json_to_sql).collect();

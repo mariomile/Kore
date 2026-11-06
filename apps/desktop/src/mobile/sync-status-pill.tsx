@@ -31,7 +31,7 @@ export function SyncStatusPill(): ReactElement | null {
           'size-1.5 rounded-full',
           // `ok` never reaches here — the pill hides on it above.
           status.tone === 'active' && 'bg-accent motion-safe:animate-pulse',
-          status.tone === 'attention' && 'bg-amber-500',
+          status.tone === 'attention' && 'bg-warning',
         )}
       />
       {status.label}

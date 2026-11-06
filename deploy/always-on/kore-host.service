@@ -1,0 +1,20 @@
+# systemd unit for a host without Docker (a small VPS). Install kore and
+# kore-indexer.mjs side by side in /usr/local/bin, clone the vault to
+# /srv/vault as the `kore` user, put the secrets in /etc/kore-host.env
+# (KORE_MCP_TOKEN, KORE_PUBLIC_URL, KORE_GIT_TOKEN), then:
+#   systemctl enable --now kore-host
+[Unit]
+Description=Kore always-on MCP host
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=kore
+EnvironmentFile=/etc/kore-host.env
+Environment=KORE_VAULT=/srv/vault
+ExecStart=/usr/local/bin/kore-host
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

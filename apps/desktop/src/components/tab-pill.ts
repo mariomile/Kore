@@ -7,19 +7,21 @@ import { cn } from '@/lib/utils'
  * rail's panel switcher — so the two can never drift into different tabs.
  *
  * A tab is a compact pill; the selected one is raised onto its own surface,
- * the rest stay quiet until hovered. It gives up width down to
+ * and the rest keep a hairline outline so they still read as tabs (not loose
+ * text) at a glance. Both carry the same 1px border, so selecting a tab never
+ * nudges its label. It gives up width down to
  * {@link TAB_PILL_MIN_WIDTH} and no further: past that the row scrolls, since
  * a strip of two-letter stumps names nothing. Tabs that carry no label (the
  * strip's pinned tabs, which collapse to their icon) drop the floor.
  */
 export function tabPillClass(active: boolean): string {
   return cn(
-    'workspace-tab-pill flex h-7 max-w-[12rem] shrink items-center gap-1.5 rounded-lg px-3 text-xs font-medium',
+    'workspace-tab-pill flex h-7 max-w-[12rem] shrink items-center gap-1.5 rounded-lg border px-3 text-xs font-medium',
     TAB_PILL_MIN_WIDTH,
     'transition-all duration-150 ease-swift active:scale-[0.97]',
     active
-      ? 'border border-border bg-surface text-text shadow-sm'
-      : 'text-text-secondary hover:bg-surface-hover hover:text-text',
+      ? 'border-border bg-surface text-text shadow-sm'
+      : 'border-border/60 text-text-secondary hover:bg-surface-hover hover:text-text',
   )
 }
 
@@ -35,7 +37,7 @@ const TAB_PILL_MIN_WIDTH = 'min-w-32'
  */
 export function tabCloseClass(active: boolean): string {
   return cn(
-    'flex size-4 shrink-0 items-center justify-center rounded text-text-muted',
+    'flex size-4 shrink-0 items-center justify-center rounded-sm text-text-muted',
     'transition-[color,background-color,opacity] duration-150 ease-swift hover:bg-surface-active hover:text-text',
     active ? '' : 'opacity-0 focus-visible:opacity-100 group-hover:opacity-100',
   )

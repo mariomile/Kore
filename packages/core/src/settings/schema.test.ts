@@ -6,6 +6,7 @@ import {
   settingsSchema,
 } from './schema'
 import { collectionViewForAllNotesView } from './schema-collections'
+import { moveDetailsSection } from './schema-editor'
 
 describe('collectionViewForAllNotesView', () => {
   it('keeps grid as a collection view and maps only list to table', () => {
@@ -27,8 +28,21 @@ describe('settingsSchema', () => {
       editorFontFamily: 'sans',
       editorLineSpacing: 'normal',
       sidebarWidth: 260,
-      sidebarSections: ['open', 'pinned', 'folders', 'tags'],
+      sidebarSections: ['pinned', 'folders', 'tags'],
+      sidebarNav: ['daily', 'newNote', 'allNotes', 'tasks', 'graph'],
+      hiddenSidebarItems: [],
       contextSidebarWidth: 320,
+      detailsSections: [
+        'events',
+        'tasks',
+        'outline',
+        'localGraph',
+        'publishedUrl',
+        'similar',
+        'history',
+        'actions',
+      ],
+      hiddenDetailsSections: [],
       semanticSearchEnabled: false,
       describeAssets: true,
       transcriptionFormat: true,
@@ -399,8 +413,21 @@ describe('settingsSchema', () => {
       editorFontFamily: 'sans',
       editorLineSpacing: 'normal',
       sidebarWidth: 260,
-      sidebarSections: ['open', 'pinned', 'folders', 'tags'],
+      sidebarSections: ['pinned', 'folders', 'tags'],
+      sidebarNav: ['daily', 'newNote', 'allNotes', 'tasks', 'graph'],
+      hiddenSidebarItems: [],
       contextSidebarWidth: 320,
+      detailsSections: [
+        'events',
+        'tasks',
+        'outline',
+        'localGraph',
+        'publishedUrl',
+        'similar',
+        'history',
+        'actions',
+      ],
+      hiddenDetailsSections: [],
       semanticSearchEnabled: false,
       describeAssets: true,
       transcriptionFormat: true,
@@ -735,22 +762,67 @@ describe('settingsSchema', () => {
   })
 
   it('normalizes the sidebar shelf order to a complete list', () => {
-    // A reordered document keeps its arrangement.
+    // A reordered document keeps its arrangement; the retired "open" shelf
+    // drops out of an older document like any unknown id.
     expect(
       settingsSchema.parse({ sidebarSections: ['tags', 'open', 'pinned'] }).sidebarSections,
-    ).toEqual(['tags', 'open', 'pinned', 'folders'])
+    ).toEqual(['tags', 'pinned', 'folders'])
     // Unknown and duplicate entries drop; unmentioned shelves join the end in
     // their default order, so a shelf added later cannot go missing.
     expect(
       settingsSchema.parse({ sidebarSections: ['tags', 'tags', 'ghost'] }).sidebarSections,
-    ).toEqual(['tags', 'open', 'pinned', 'folders'])
+    ).toEqual(['tags', 'pinned', 'folders'])
     // A non-array value degrades to the whole default order.
     expect(settingsSchema.parse({ sidebarSections: 'tags' }).sidebarSections).toEqual([
-      'open',
       'pinned',
       'folders',
       'tags',
     ])
+  })
+
+  it('normalizes the sidebar row order and keeps the hidden list clean', () => {
+    const parsed = settingsSchema.parse({
+      sidebarNav: ['graph', 'terminal', 'graph', 'daily'],
+      hiddenSidebarItems: ['tasks', 'tags', 'ghost', 'tasks'],
+    })
+    // The retired terminal row drops like any unknown id.
+    expect(parsed.sidebarNav).toEqual(['graph', 'daily', 'newNote', 'allNotes', 'tasks'])
+    expect(parsed.hiddenSidebarItems).toEqual(['tasks', 'tags'])
+    expect(settingsSchema.parse({ hiddenSidebarItems: 'tasks' }).hiddenSidebarItems).toEqual([])
+  })
+
+  it('keeps the Details arrangement complete and the hidden list clean', () => {
+    const parsed = settingsSchema.parse({
+      detailsSections: ['actions', 'localGraph', 'ghost', 'actions'],
+      hiddenDetailsSections: ['history', 'ghost', 'history'],
+    })
+    expect(parsed.detailsSections).toEqual([
+      'actions',
+      'localGraph',
+      'events',
+      'tasks',
+      'outline',
+      'publishedUrl',
+      'similar',
+      'history',
+    ])
+    expect(parsed.hiddenDetailsSections).toEqual(['history'])
+    expect(
+      settingsSchema.parse({ hiddenDetailsSections: 'history' }).hiddenDetailsSections,
+    ).toEqual([])
+  })
+
+  it('moves a Details section past the ones its route does not show', () => {
+    // A note's rail has no Events: moving Tasks down swaps it with Outline,
+    // and moving it up from the top of what the note shows does nothing.
+    const order = settingsSchema.parse({}).detailsSections
+    const note = order.filter((id) => id !== 'events')
+    expect(moveDetailsSection(order, note, 'tasks', 'down').slice(0, 3)).toEqual([
+      'events',
+      'outline',
+      'tasks',
+    ])
+    expect(moveDetailsSection(order, note, 'tasks', 'up')).toEqual(order)
   })
 
   it('accepts note, chat, and route tabs while dropping a malformed graph list', () => {
@@ -770,6 +842,7 @@ describe('settingsSchema', () => {
                   { kind: 'surface', surface: 'allNotes', tag: 'book', pinned: false },
                   { kind: 'surface', surface: 'search', query: 'alpha', pinned: false },
                   { kind: 'surface', surface: 'tasks', pinned: false },
+                  { kind: 'localGraph', path: 'notes/alpha.md', pinned: false },
                 ],
               },
             ],
@@ -803,6 +876,7 @@ describe('settingsSchema', () => {
                 },
                 { kind: 'surface', surface: 'search', query: 'alpha', pinned: false },
                 { kind: 'surface', surface: 'tasks', pinned: false },
+                { kind: 'localGraph', path: 'notes/alpha.md', pinned: false },
               ],
             },
           ],

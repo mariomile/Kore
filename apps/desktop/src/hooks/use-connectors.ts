@@ -12,6 +12,7 @@ import {
   type ConnectorSettings,
 } from '@reflect/core'
 import type { ConnectorRunStatus } from '@/lib/connector-controller'
+import { formatDateTime, type DateTimePrefs } from '@/lib/dates'
 import { providerFetch } from '@/lib/provider-fetch'
 import { useConnectorSync } from '@/providers/connector-sync-provider'
 import { useSettings } from '@/providers/settings-provider'
@@ -148,7 +149,7 @@ export function useConnectors(): UseConnectorsResult {
 }
 
 /** One line describing a connector's sync state. */
-export function connectorStatusText(view: ConnectorView): string {
+export function connectorStatusText(view: ConnectorView, prefs: DateTimePrefs): string {
   if (view.running) {
     return 'Syncing…'
   }
@@ -168,10 +169,7 @@ export function connectorStatusText(view: ConnectorView): string {
       .join(', ')
   }
   if (view.settings.lastSyncedAt !== null) {
-    return `Last synced ${new Date(view.settings.lastSyncedAt).toLocaleString(undefined, {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    })}`
+    return `Last synced ${formatDateTime(Date.parse(view.settings.lastSyncedAt), prefs)}`
   }
   return view.settings.enabled ? 'Waiting for the first sync' : 'Off'
 }

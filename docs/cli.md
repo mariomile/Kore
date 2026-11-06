@@ -43,6 +43,7 @@ kore mcp                   # serve the graph to MCP clients over stdio (--read-o
 kore index                 # build or refresh the index without the app (Node 22+, --rebuild)
 kore keys add <name>       # a named agent's own key for mcp --http (--write; list, remove)
 kore sync                  # pull the vault's git clone, push kore's writes, reindex (what mcp --sync does)
+kore library               # read-only Markdown in agent folders like ~/.claude (add --known, files, grep, read)
 ```
 
 Built from `apps/cli` (`cargo build -p reflect-cli`); bundled with the desktop
@@ -602,6 +603,32 @@ not a note) and the open note tabs in order (`openNotes`), from
 Private, deleted and not-yet-downloaded notes are left out. Exit `3` when
 the app has not written the file for this graph.
 
+### `kore library [sources|add|remove|files|grep|read] [--json]`
+
+The Library: folders outside the vault that the user's agents keep their own
+Markdown in (`~/.claude`, `~/.codex`, `~/.agents`, `~/.gemini`, `~/.cursor`,
+`~/.copilot`, `~/.config/opencode`), read-only, so one agent can find the
+rules, skills and memory files another agent wrote. Needs no graph: the list
+lives in `$KORE_LIBRARIES_FILE`, else `$XDG_CONFIG_HOME/kore/libraries.json`,
+else `~/.config/kore/libraries.json`.
+
+```bash
+kore library add --known          # every agent home above that exists in $HOME
+kore library add ~/notes/prompts --name prompts
+kore library                      # name, Markdown file count, folder
+kore library files [name]         # claude/CLAUDE.md, claude/skills/x/SKILL.md, ...
+kore library grep <text> [-i] [--source name] [--limit N]
+kore library read claude/CLAUDE.md
+kore library remove prompts       # stops reading it; the files are untouched
+```
+
+Only `.md` files are listed or read, never configs (`settings.json`,
+`config.toml`, `.claude.json` hold tokens), never hidden folders or the
+transcript and cache folders (`projects`, `sessions`, `todos`, `logs`,
+`node_modules`, ...), never through a symlink, never a file over 512 KB.
+`read` refuses any path `files` would not list. Nothing is ever written to
+these folders.
+
 ### `kore set <note> key=value… [--unset key]… [--json]`
 
 Writes frontmatter property values the way the app's property editors do.
@@ -766,12 +793,18 @@ fails (not found, private, no index) comes back as a tool result with
 | `capture`, `append_to_note`, `edit_note`, `create_note`, `set_properties` | `capture`, `append --stdin`, `edit`, `new` (body on stdin), `set` |
 | `tag_note`, `untag_note`, `complete_task` | `tag`, `untag`, `done` |
 | `remember` | `capture` (to today's daily, or `--to <note>`) |
+| `library_sources`, `library_files`, `library_grep`, `library_read` | `library sources`, `library files`, `library grep`, `library read` (stdio only) |
 
 `remember` is the shared-memory verb: one fact as a signed bullet,
 `[likely] The fact (previously: old) — Grok bot, 2026-11-04`. The
 confidence tag is `certain`, `likely` (default) or `speculative`; the name
 is the calling agent's own when it connected with a named key (see below),
 whatever name it claims, else the `agent` argument.
+
+The four `library_*` tools read the agent folders of the machine `kore
+mcp` runs on, so only the stdio server offers them. `kore mcp --http` never
+lists them and refuses them if called, whatever the key: a remote agent
+reaches the vault, never your home folder.
 
 `search` takes an optional `mode` (`hybrid` by default, `lexical`,
 `semantic`), so an agent searches the way the in-app chat does.

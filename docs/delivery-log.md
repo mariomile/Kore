@@ -7,6 +7,13 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Your agents can read each other's notes. `kore library add --known`
+  points Kore at the folders where Claude Code, Codex, Gemini, Cursor and
+  others keep their own Markdown (rules, skills, memory), and any agent
+  using `kore mcp` on your Mac can list, search and read them. Read-only,
+  Markdown only (configs with tokens are never read), and never offered
+  to remote agents over `kore mcp --http`.
+
 - A pasted link on its own line now reads as a proper preview. An X post
   shows the post itself: author, avatar, handle, date, its words, and the
   reply, repost and like counts. A LinkedIn post shows its title, excerpt,

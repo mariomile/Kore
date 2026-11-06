@@ -34,6 +34,7 @@ pub mod hash;
 pub mod index;
 pub mod indexer;
 pub mod keys;
+pub mod library;
 pub mod mcp;
 pub mod mcp_http;
 pub mod note_file;

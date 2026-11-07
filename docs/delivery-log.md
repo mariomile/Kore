@@ -7,6 +7,13 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- The chat shows its work. With Claude Code as the engine, every file it
+  reads, every search and edit, and every MCP call appears as a step while
+  the answer is being prepared, folded into "Worked · N steps" once it is
+  done. The agent can now hand independent lookups to subagents, each shown
+  as a card with its own steps. Private notes stay blocked for subagents
+  too, and a blocked read says so.
+
 - An X post pasted into a note is saved with the note: its card shows the
   whole post (long posts included, media at full size) even offline, and
   search finds the note by the post's words or author.

@@ -1,5 +1,43 @@
 # Kore working state
 
+## Advanced chat, slice 1: agent steps and subagents visible, 2026-11-07
+
+Ask (Mario, 2026-11-07): turn the in-app chat into an advanced
+knowledge-work chat (uploads, HTML in chat, interactive questions, visible
+subagents), inspired by Claude Code and the best chat apps. Plan and ranked
+slices: `/mnt/project-files/analisi/chat-avanzata.md` (project files). One PR
+per slice.
+
+- [x] The Claude Code engine no longer hides its work. The stream-json
+  parser (`createClaudeCliLineParser` in `packages/core/src/ai/claude-cli.ts`)
+  turns every `tool_use` into a step and every `tool_result` into its
+  outcome; `parent_tool_use_id` nests a subagent's steps under its call.
+- [x] Steps are content-free by design (`packages/core/src/ai/chat/agent-steps.ts`):
+  tool, label, graph-relative path or pattern, and a summary built from
+  counts (`3 lines`, `6 files`, `4 steps · 12s`), never the tool output. A
+  sandbox denial reads "Blocked — private or protected file". New transcript
+  part `kind: 'step'`, persisted with the turn (store schema), settled on
+  stop/error/complete so nothing spins forever. Not part of the
+  model-facing history.
+- [x] Subagents enabled: `Task` joins the CLI tool list in both modes. The
+  `--settings` deny rules bind subagents too: verified with claude 2.1.319,
+  a subagent read an allowed note and was refused the denied one.
+- [x] UI (`apps/desktop/src/components/chat/chat-agent-steps.tsx`): each
+  run of consecutive steps is one block, open with "Working <current step>"
+  while the turn streams, folded to "Worked · N steps" (and "· N failed")
+  once done; subagents render as cards holding their own steps; Read/Edit
+  paths open the note.
+- Codex and Cursor still show text only (their parsers emit no steps).
+
+**Validation:** `claude-cli.test.ts` (parser on real-shaped lines),
+`transcript.test.ts`, `chat-agent-steps.test.tsx` (Chromium), the parser
+replayed over three real `claude -p` stream-json captures, `pnpm typecheck`,
+oxfmt/oxlint/eslint on touched files. WebKit runs in CI. Not yet tried in
+the app on the Mac.
+
+**Next:** slice 2, real uploads (images and files reaching the CLI), in a
+new thread.
+
 ## X and YouTube embed cards fetch through Rust, 2026-11-07
 
 Bug (Mario, 2026-11-07, screenshot): a pasted X link in a daily note showed
@@ -2980,6 +3018,11 @@ screen: Agents then Close lands on today.
 **Next:** merge the Close fix, then bump.
 
 ## Session log
+
+- 2026-11-07 — The chat shows what the Claude Code agent is doing: each
+  tool call as a step (Read, Find files, Edit, MCP), subagents as cards
+  with their own steps, failures and privacy blocks in red. Subagents
+  enabled under the same deny rules.
 
 - 2026-11-04 — `kore index` builds the index without the app: the core
   indexer bundled for Node, row writes through the new shared

@@ -196,6 +196,17 @@ const partSchema = z.discriminatedUnion('kind', [
     ),
   }),
   z.object({ kind: z.literal('steer'), text: z.string() }),
+  z.object({
+    kind: z.literal('step'),
+    step: z.object({
+      id: z.string(),
+      tool: z.string(),
+      label: z.string(),
+      detail: z.string().nullable(),
+      parentId: z.string().nullable(),
+    }),
+    outcome: z.object({ error: z.string().nullable(), summary: z.string().nullable() }).nullable(),
+  }),
 ])
 
 function isRecord(value: unknown): value is Record<string, unknown> {

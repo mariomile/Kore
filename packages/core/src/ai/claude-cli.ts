@@ -12,6 +12,7 @@ import {
 } from './agent-cli'
 import { claudeMcpConfigJson, mcpSpawnEnv, type ResolvedMcpServer } from './mcp'
 import { dailyPathPattern } from '../graph/paths'
+import { describeClaudeToolCall, summarizeClaudeToolResult } from './chat/agent-steps'
 
 /**
  * The Claude Code CLI provider ("subscription" AI): chat runs through the
@@ -30,8 +31,14 @@ import { dailyPathPattern } from '../graph/paths'
  * layer, which keeps the hard privacy block intact.
  */
 
-/** The built-in CLI tools available in read-only chat (see the module doc). */
-export const CLAUDE_CLI_TOOLS = ['Read', 'Glob']
+/**
+ * The built-in CLI tools available in read-only chat (see the module doc).
+ * `Task` is the subagent tool (emitted as `Agent` by current CLIs): a
+ * subagent runs inside the same session, so the `--settings` deny rules —
+ * the privacy block included — bind it exactly as they bind the main agent,
+ * and it can only use the tools this list grants.
+ */
+export const CLAUDE_CLI_TOOLS = ['Read', 'Glob', 'Task']
 
 /**
  * The tool set in edit mode: reading plus targeted file writes. `Bash` stays
@@ -39,7 +46,7 @@ export const CLAUDE_CLI_TOOLS = ['Read', 'Glob']
  * and `Grep` stays out because its matches print file content past the
  * per-file permission rules.
  */
-export const CLAUDE_CLI_EDIT_TOOLS = ['Read', 'Glob', 'Write', 'Edit']
+export const CLAUDE_CLI_EDIT_TOOLS = ['Read', 'Glob', 'Task', 'Write', 'Edit']
 
 /** Ceiling on the CLI's internal tool round-trips per question. */
 export const CLAUDE_CLI_MAX_TURNS = 25
@@ -74,8 +81,8 @@ export function claudeCliSystemPrompt(options: {
     '',
     'Grounding rules:',
     allowEdits
-      ? '- When a question could be answered by the user’s notes, look them up before answering: use Glob to discover files (e.g. "daily/2026-06-*.md", "notes/*.md") and Read to read them. Read, Glob, Write, and Edit are available — never attempt any other tool.'
-      : '- When a question could be answered by the user’s notes, look them up before answering: use Glob to discover files (e.g. "daily/2026-06-*.md", "notes/*.md") and Read to read them. Only Read and Glob are available — never attempt any other tool.',
+      ? '- When a question could be answered by the user’s notes, look them up before answering: use Glob to discover files (e.g. "daily/2026-06-*.md", "notes/*.md") and Read to read them. Read, Glob, Write, Edit, and Task (a subagent, for independent lookups worth delegating) are available — never attempt any other tool.'
+      : '- When a question could be answered by the user’s notes, look them up before answering: use Glob to discover files (e.g. "daily/2026-06-*.md", "notes/*.md") and Read to read them. Only Read, Glob, and Task (a subagent, for independent lookups worth delegating) are available — never attempt any other tool.',
     ...(mcpServerNames.length > 0
       ? [
           `- Exception: the user turned on their configured external MCP tools for this conversation (servers: ${mcpServerNames.join(', ')}). Use them only when the user’s request needs them; the safety rules below still apply to everything you send them.`,
@@ -183,50 +190,124 @@ export function claudeCliArgs(options: {
   ]
 }
 
-/**
- * Parse one stream-json stdout line. Only top-level assistant text deltas
- * and the terminal result matter; every other event type (init, tool use,
- * full assistant snapshots that would duplicate the streamed deltas) is
- * dropped. A non-JSON line is noise, not an error.
- */
-export function parseClaudeCliLine(line: string): AgentCliChunk | null {
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(line)
-  } catch {
-    return null
-  }
-  const event = z
+const contentBlockSchema = z.object({
+  type: z.string(),
+  id: z.string().optional(),
+  name: z.string().optional(),
+  input: z.record(z.string(), z.unknown()).optional(),
+  tool_use_id: z.string().optional(),
+  is_error: z.boolean().optional(),
+  content: z.unknown().optional(),
+})
+
+const lineSchema = z.object({
+  type: z.string(),
+  parent_tool_use_id: z.string().nullable().optional(),
+  event: z
     .object({
       type: z.string(),
-      parent_tool_use_id: z.string().nullable().optional(),
-      event: z
-        .object({
-          type: z.string(),
-          delta: z.object({ type: z.string(), text: z.string().optional() }).optional(),
-        })
-        .optional(),
-      is_error: z.boolean().optional(),
-      result: z.string().optional(),
+      delta: z.object({ type: z.string(), text: z.string().optional() }).optional(),
     })
-    .safeParse(parsed)
-  if (!event.success) {
+    .optional(),
+  message: z.object({ content: z.union([z.string(), z.array(contentBlockSchema)]) }).optional(),
+  tool_use_result: z.unknown().optional(),
+  is_error: z.boolean().optional(),
+  result: z.string().optional(),
+})
+
+/**
+ * A stateful stream-json line parser for one run. It yields top-level
+ * assistant text deltas, the terminal result, and the run's tool activity:
+ * every `tool_use` block in an assistant message becomes a `step-start`
+ * (subagent steps carry their `parent_tool_use_id`), every `tool_result` a
+ * content-free `step-end` (see `./chat/agent-steps`). Full assistant text
+ * snapshots (they would duplicate the streamed deltas), thinking, and system
+ * events are dropped. A non-JSON line is noise, not an error.
+ *
+ * `graphRoot` turns absolute file paths into graph-relative labels.
+ */
+export function createClaudeCliLineParser(
+  graphRoot: string,
+): (line: string) => AgentCliChunk | AgentCliChunk[] | null {
+  // Tool names by call id, so a result can be summarized per tool.
+  const tools = new Map<string, string>()
+  return (line: string) => {
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(line)
+    } catch {
+      return null
+    }
+    const event = lineSchema.safeParse(parsed)
+    if (!event.success) {
+      return null
+    }
+    const data = event.data
+    const parentId = data.parent_tool_use_id ?? null
+    if (
+      data.type === 'stream_event' &&
+      parentId === null &&
+      data.event?.type === 'content_block_delta' &&
+      data.event.delta?.type === 'text_delta' &&
+      data.event.delta.text !== undefined
+    ) {
+      return { type: 'text-delta', text: data.event.delta.text }
+    }
+    if (data.type === 'result') {
+      return { type: 'result', isError: data.is_error === true, message: data.result ?? null }
+    }
+    const content = data.message?.content
+    const blocks = Array.isArray(content) ? content : []
+    if (data.type === 'assistant') {
+      const chunks: AgentCliChunk[] = []
+      for (const block of blocks) {
+        if (block.type !== 'tool_use' || block.id === undefined || block.name === undefined) {
+          continue
+        }
+        tools.set(block.id, block.name)
+        chunks.push({
+          type: 'step-start',
+          step: describeClaudeToolCall({
+            id: block.id,
+            tool: block.name,
+            input: block.input ?? {},
+            parentId,
+            graphRoot,
+          }),
+        })
+      }
+      return chunks.length > 0 ? chunks : null
+    }
+    if (data.type === 'user') {
+      const results = blocks.filter(
+        (block) => block.type === 'tool_result' && block.tool_use_id !== undefined,
+      )
+      const chunks = results.map((block): AgentCliChunk => {
+        const id = block.tool_use_id ?? ''
+        return {
+          type: 'step-end',
+          id,
+          outcome: summarizeClaudeToolResult({
+            tool: tools.get(id) ?? null,
+            isError: block.is_error === true,
+            content: block.content,
+            // The structured result describes the message's one result.
+            structured: results.length === 1 ? data.tool_use_result : undefined,
+          }),
+        }
+      })
+      return chunks.length > 0 ? chunks : null
+    }
     return null
   }
-  const data = event.data
-  if (
-    data.type === 'stream_event' &&
-    (data.parent_tool_use_id ?? null) === null &&
-    data.event?.type === 'content_block_delta' &&
-    data.event.delta?.type === 'text_delta' &&
-    data.event.delta.text !== undefined
-  ) {
-    return { type: 'text-delta', text: data.event.delta.text }
-  }
-  if (data.type === 'result') {
-    return { type: 'result', isError: data.is_error === true, message: data.result ?? null }
-  }
-  return null
+}
+
+/**
+ * Parse one stdout line with a fresh parser (no graph root, no per-run tool
+ * memory) — enough for text, results, and single-line activity.
+ */
+export function parseClaudeCliLine(line: string): AgentCliChunk | AgentCliChunk[] | null {
+  return createClaudeCliLineParser('')(line)
 }
 
 export interface StreamCliChatOptions {
@@ -316,7 +397,7 @@ export function streamClaudeCliChat(
         : agentCliPrompt(options.messages),
     cwd: options.graphRoot,
     env: mcpSpawnEnv(options.mcpServers ?? []),
-    parseLine: parseClaudeCliLine,
+    parseLine: createClaudeCliLineParser(options.graphRoot),
     startFailureMessage: 'Could not start the Claude Code CLI.',
     signal: options.signal,
     steering:

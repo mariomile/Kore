@@ -1,14 +1,37 @@
 import type { ReactElement } from 'react'
-import type { ChatTurn as ChatTurnModel } from '@reflect/core'
+import type { AssistantPart, ChatTurn as ChatTurnModel } from '@reflect/core'
 import { Bubble, BubbleContent } from '@/components/ui/bubble'
 import { Marker, MarkerContent } from '@/components/ui/marker'
 import { Message, MessageContent, MessageFooter, MessageGroup } from '@/components/ui/message'
 import { useWikiLinkNavigation } from '@/editor/use-wiki-link-navigation'
 import { assistantReplyMarkdown } from '@/lib/chat-copy'
+import { ChatAgentSteps } from './chat-agent-steps'
 import { ChatAssistantPart } from './chat-assistant-part'
 import { ChatCopyButton } from './chat-copy-button'
 import { ChatSaveNoteButton } from './chat-save-note-button'
 import { ChatUserAttachments } from './chat-user-attachments'
+
+type StepPart = Extract<AssistantPart, { kind: 'step' }>
+
+type RenderBlock =
+  | { kind: 'part'; part: AssistantPart; index: number }
+  | { kind: 'steps'; steps: StepPart[]; index: number }
+
+/** Parts in render order, with each run of consecutive agent steps as one block. */
+function renderBlocks(parts: readonly AssistantPart[]): RenderBlock[] {
+  const blocks: RenderBlock[] = []
+  for (const [index, part] of parts.entries()) {
+    const last = blocks.at(-1)
+    if (part.kind !== 'step') {
+      blocks.push({ kind: 'part', part, index })
+    } else if (last?.kind === 'steps') {
+      last.steps.push(part)
+    } else {
+      blocks.push({ kind: 'steps', steps: [part], index })
+    }
+  }
+  return blocks
+}
 
 interface ChatTurnProps {
   turn: ChatTurnModel
@@ -56,14 +79,18 @@ export function ChatTurn({ turn }: ChatTurnProps): ReactElement {
               <MarkerContent>Thinking…</MarkerContent>
             </Marker>
           ) : null}
-          {turn.parts.map((part, index) => (
-            <ChatAssistantPart
-              key={index}
-              part={part}
-              status={turn.status}
-              onWikiLinkClick={navigateWikiLink}
-            />
-          ))}
+          {renderBlocks(turn.parts).map((block) =>
+            block.kind === 'steps' ? (
+              <ChatAgentSteps key={block.index} steps={block.steps} turnStatus={turn.status} />
+            ) : (
+              <ChatAssistantPart
+                key={block.index}
+                part={block.part}
+                status={turn.status}
+                onWikiLinkClick={navigateWikiLink}
+              />
+            ),
+          )}
           {replyMarkdown !== null ? (
             /* Hover-revealed on fine pointers; a touch screen has no hover,
                so coarse pointers get the actions always visible. */

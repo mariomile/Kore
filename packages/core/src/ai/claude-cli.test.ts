@@ -6,6 +6,7 @@ import {
   claudeCliArgs,
   claudeCliSettingsJson,
   claudeCliSystemPrompt,
+  createClaudeCliLineParser,
   parseClaudeCliLine,
   streamClaudeCliChat,
 } from './claude-cli'
@@ -50,6 +51,112 @@ describe('parseClaudeCliLine', () => {
       isError: true,
       message: null,
     })
+  })
+})
+
+describe('createClaudeCliLineParser', () => {
+  const root = '/Users/me/vault'
+
+  it('turns tool calls and results into content-free steps, nesting subagent work', () => {
+    const parse = createClaudeCliLineParser(root)
+    const toolUse = (parentId: string | null, blocks: unknown[]): string =>
+      JSON.stringify({
+        type: 'assistant',
+        parent_tool_use_id: parentId,
+        message: { content: blocks },
+      })
+    const toolResult = (block: unknown, structured?: unknown): string =>
+      JSON.stringify({
+        type: 'user',
+        parent_tool_use_id: null,
+        message: { content: [block] },
+        tool_use_result: structured,
+      })
+
+    expect(
+      parse(
+        toolUse(null, [
+          {
+            type: 'tool_use',
+            id: 'agent-1',
+            name: 'Agent',
+            input: { description: 'Summarize alpha', subagent_type: 'general-purpose' },
+          },
+          { type: 'tool_use', id: 'glob-1', name: 'Glob', input: { pattern: 'notes/*.md' } },
+        ]),
+      ),
+    ).toEqual([
+      {
+        type: 'step-start',
+        step: {
+          id: 'agent-1',
+          tool: 'Agent',
+          label: 'Subagent',
+          detail: 'Summarize alpha',
+          parentId: null,
+        },
+      },
+      {
+        type: 'step-start',
+        step: {
+          id: 'glob-1',
+          tool: 'Glob',
+          label: 'Find files',
+          detail: 'notes/*.md',
+          parentId: null,
+        },
+      },
+    ])
+    expect(
+      parse(
+        toolUse('agent-1', [
+          {
+            type: 'tool_use',
+            id: 'read-1',
+            name: 'Read',
+            input: { file_path: `${root}/notes/alpha.md` },
+          },
+        ]),
+      ),
+    ).toEqual([
+      {
+        type: 'step-start',
+        step: {
+          id: 'read-1',
+          tool: 'Read',
+          label: 'Read',
+          detail: 'notes/alpha.md',
+          parentId: 'agent-1',
+        },
+      },
+    ])
+    // A successful read keeps a line count, never the note's text.
+    expect(
+      parse(
+        toolResult(
+          { type: 'tool_result', tool_use_id: 'read-1', content: '1\tSecret plans' },
+          { type: 'text', file: { content: 'Secret plans', numLines: 3 } },
+        ),
+      ),
+    ).toEqual([{ type: 'step-end', id: 'read-1', outcome: { error: null, summary: '3 lines' } }])
+    // A denied call keeps the denial, so the user learns a note is off-limits.
+    expect(
+      parse(
+        toolResult({
+          type: 'tool_result',
+          tool_use_id: 'glob-1',
+          is_error: true,
+          content:
+            '<tool_use_error>File is in a directory that is denied by your permission settings.</tool_use_error>',
+        }),
+      ),
+    ).toEqual([
+      {
+        type: 'step-end',
+        id: 'glob-1',
+        outcome: { error: 'Blocked — private or protected file', summary: null },
+      },
+    ])
   })
 })
 
@@ -133,7 +240,7 @@ describe('claudeCliArgs', () => {
     const args = claudeCliArgs({ model: 'sonnet', systemPrompt: 'sys', settingsJson: '{}' })
     expect(args).toContain('-p')
     expect(args).toContain('--include-partial-messages')
-    expect(args.join(' ')).toContain('--tools Read,Glob')
+    expect(args.join(' ')).toContain('--tools Read,Glob,Task ')
     expect(args.join(' ')).toContain('--model sonnet')
   })
 
@@ -149,7 +256,7 @@ describe('claudeCliArgs', () => {
       settingsJson: '{}',
       allowEdits: true,
     })
-    expect(args.join(' ')).toContain('--tools Read,Glob,Write,Edit')
+    expect(args.join(' ')).toContain('--tools Read,Glob,Task,Write,Edit')
   })
 
   it('read mode with MCP servers mounts the config but keeps read-only tools', () => {

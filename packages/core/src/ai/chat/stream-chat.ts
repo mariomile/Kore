@@ -6,6 +6,7 @@ import { modelContextWindow } from '../provider-catalog'
 import type { AiProviderConfig } from '../../settings/schema'
 import type { CloudGraphContext, CloudSafe } from '../checkers'
 import type { AgentPromptContext } from '../agent-profiles'
+import type { AgentStep, AgentStepOutcome } from './agent-steps'
 import { fitToContextWindow } from './context-window'
 import { chatSystemPrompt } from './system-prompt'
 import {
@@ -92,6 +93,10 @@ export type ChatStreamEvent =
   | { type: 'tool-call'; call: NoteToolCall }
   | { type: 'tool-result'; result: NoteToolResult }
   | { type: 'tool-error'; toolCallId: string; message: string }
+  /** A CLI engine started a tool call inside its own loop. */
+  | { type: 'agent-step'; step: AgentStep }
+  /** That tool call settled. */
+  | { type: 'agent-step-end'; id: string; outcome: AgentStepOutcome }
   /** A user message steered into the turn, at the point the reply split around it. */
   | { type: 'steer'; text: string }
   | { type: 'error'; message: string; messages: ModelMessage[] }

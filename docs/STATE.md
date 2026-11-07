@@ -1,5 +1,31 @@
 # Kore working state
 
+## X and YouTube embed cards fetch through Rust, 2026-11-07
+
+Bug (Mario, 2026-11-07, screenshot): a pasted X link in a daily note showed
+"X post / This post is unavailable / View on X".
+
+- Cause: pasting an X (or YouTube) link makes Meowdown write an embed
+  (`![](url)`) and draw its own post-embed card. Meowdown's default resolvers
+  `fetch()` from the webview (X via `react-tweet.vercel.app`, YouTube via
+  its oEmbed endpoint); the app CSP's `connect-src` allows neither, so every
+  card fell back to unavailable. #326's card only covers a bare link line,
+  which a paste never produces. Neither path had been tried on live X.
+- [x] `packages/core/src/actions/post-embed.ts`: `resolveXPostEmbed`
+  (syndication JSON through `capture_oembed_fetch`, mapped with
+  `@post-embed/exporter`'s `fromSyndication`, the same mapper Meowdown
+  uses) and `resolveYouTubeEmbed`. Per-URL cache; failures retried.
+- [x] `NoteEditor` passes them as `resolveXPost` / `resolveYouTubeVideo`
+  via `use-post-embed-resolvers.ts`, gated on the note's privacy
+  (`embedsAllowed`, waits while unknown). Read-only `MarkdownView`s pass
+  no-op resolvers (they can show private notes).
+- Still unverified on live X from here (no network to x.com); Mario's Mac is
+  the first real check.
+
+**Validation:** `post-embed.test.ts` (4), editor/preview/note-pane browser
+tests (53, Chromium), `pnpm check`. Dev build shows the X card filled
+(`/mnt/project-files/screenshot/anteprima-link/embed-x-funzionante.png`).
+
 ## Obsidian import, slice 2: conversion to a copy, 2026-11-06
 
 Ask (Mario, 2026-11-06, "Fai tutto tu"): read his vault, choose the mapping,

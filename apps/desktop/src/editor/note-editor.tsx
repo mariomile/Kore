@@ -9,6 +9,7 @@ import {
 } from 'react'
 import { resourceUrl, errorMessage, type TimeFormat } from '@reflect/core'
 import { docToMarkdown } from '@meowdown/core'
+import { usePostEmbedResolvers } from './use-post-embed-resolvers'
 import type {
   AcceptPendingReplacementOptions,
   ExitBoundaryHandler,
@@ -221,6 +222,13 @@ interface NoteEditorProps {
   /** Resolve an image `![…](…)` source to a displayable URL; unresolved images are skipped. */
   resolveImageUrl?: (src: string) => string | null
   /**
+   * Whether X post and YouTube embeds may fetch their card data: `true` for a
+   * note known to be public, `false` for a private one, `undefined` while the
+   * host does not know yet (cards wait). Fetching reaches X or YouTube, so the
+   * default is closed: those cards render as unavailable.
+   */
+  embedsAllowed?: boolean | undefined
+  /**
    * Vet a source (an image `src` or a link `href`) as a graph-relative asset
    * path for {@link openAsset}. Returns null for remote or unsafe sources.
    */
@@ -330,6 +338,7 @@ export function NoteEditor({
   bulletAfterHeading = false,
   blockHandle = false,
   resolveImageUrl,
+  embedsAllowed,
   resolveAssetOpenPath,
   openAsset,
   saveFile,
@@ -445,6 +454,7 @@ export function NoteEditor({
       ),
     [],
   )
+  const postEmbeds = usePostEmbedResolvers(embedsAllowed)
   const handleResolveImageUrl = useCallback(
     (src: string) => latestRef.current.resolveImageUrl?.(src) ?? undefined,
     [],
@@ -595,6 +605,8 @@ export function NoteEditor({
           {...(onPendingReplacementResolve !== undefined ? { onPendingReplacementResolve } : {})}
           {...(onSlashMenuSearch !== undefined ? { onSlashMenuSearch } : {})}
           resolveImageUrl={handleResolveImageUrl}
+          resolveXPost={postEmbeds.resolveXPost}
+          resolveYouTubeVideo={postEmbeds.resolveYouTubeVideo}
           resolveWikiEmbed={resolveWikiEmbed}
           onFilePaste={handleFilePaste}
           {...(resolveFileLink !== undefined ? { resolveFileLink } : {})}

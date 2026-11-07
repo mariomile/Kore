@@ -1,4 +1,5 @@
 import { useMemo, useRef, type ReactElement } from 'react'
+import { NO_POST_EMBEDS } from '@/editor/use-post-embed-resolvers'
 import { MarkdownView } from '@meowdown/react'
 import type { WikilinkClickHandler } from '@meowdown/core'
 import { requoteCalloutBlock, separateCalloutTitles, type SnippetTask } from '@reflect/core'
@@ -60,6 +61,9 @@ export function BacklinkSnippet({
         onLinkClick={openExternalLink}
         {...(onTaskClick ? { onTaskClick } : {})}
         resolveImageUrl={resolveImageUrl}
+        // Read-only views never fetch embed data: they can show private notes.
+        resolveXPost={NO_POST_EMBEDS.resolveXPost}
+        resolveYouTubeVideo={NO_POST_EMBEDS.resolveYouTubeVideo}
       />
     </div>
   )

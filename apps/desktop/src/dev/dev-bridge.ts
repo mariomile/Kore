@@ -545,14 +545,34 @@ function devOEmbedJson(url: string): string {
     throw new ReflectError('io', `dev bridge: no canned JSON for ${url}`)
   }
   const avatar = new URL('/vite.svg', window.location.origin).href
+  const id = new URL(url).searchParams.get('id') ?? '1'
   return JSON.stringify({
+    __typename: 'Tweet',
+    id_str: id,
     text: 'A seeded post for the dev preview &amp; its card.\n\nIt keeps line breaks, @mentions and links as written. https://t.co/abc',
     display_text_range: [0, 104],
     created_at: '2026-11-05T09:30:00.000Z',
     favorite_count: 70,
     conversation_count: 28,
     retweet_count: 4,
-    user: { name: 'Kore Dev', screen_name: 'koredev', profile_image_url_https: avatar },
+    entities: { hashtags: [], urls: [], user_mentions: [], symbols: [] },
+    user: {
+      id_str: '1',
+      name: 'Kore Dev',
+      screen_name: 'koredev',
+      profile_image_url_https: avatar,
+      verified: false,
+      is_blue_verified: false,
+      profile_image_shape: 'Circle',
+    },
+    edit_control: {
+      edit_tweet_ids: [id],
+      editable_until_msecs: '0',
+      is_edit_eligible: false,
+      edits_remaining: '0',
+    },
+    isEdited: false,
+    isStaleEdit: false,
   })
 }
 

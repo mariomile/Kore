@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react'
 import { Chat } from '@/components/icons'
 import { Button } from '@/components/ui/button'
-import { imageFilesFrom } from '@/lib/chat-attachments'
+import { attachableFilesFrom } from '@/lib/chat-attachments'
 import { useChatSession } from '@/providers/chat-provider'
 import { useRouter } from '@/routing/router'
 import { ChatHeader } from './chat-header'
@@ -21,11 +21,11 @@ interface ChatScreenProps {
  * Settings; the conversation itself lives in {@link useChatSession}, so
  * navigating away and back keeps it.
  *
- * The whole view accepts dropped images — aiming for the composer exactly
+ * The whole view accepts dropped files (images, PDFs, text files) — aiming for the composer exactly
  * shouldn't be required — and queues them as the next message's attachments.
  */
 export function ChatScreen({ autoFocus = true }: ChatScreenProps = {}): ReactElement {
-  const { providers, attachImages } = useChatSession()
+  const { providers, attachFiles } = useChatSession()
   const { navigate } = useRouter()
 
   if (providers.length === 0) {
@@ -61,9 +61,9 @@ export function ChatScreen({ autoFocus = true }: ChatScreenProps = {}): ReactEle
         // Claim every file drop, matching or not: the webview's default for
         // an unhandled file is to navigate to it, replacing the app.
         event.preventDefault()
-        const files = imageFilesFrom(event.dataTransfer)
+        const files = attachableFilesFrom(event.dataTransfer)
         if (files.length > 0) {
-          void attachImages(files)
+          void attachFiles(files)
         }
       }}
     >

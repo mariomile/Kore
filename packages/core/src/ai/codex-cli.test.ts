@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import type { ModelMessage } from 'ai'
 import { setBridge } from '../ipc/bridge'
+import { codexTurnStartLine } from './codex-app-server'
 import { cliProviderSteerMode, cliProviderSupportsMcp } from './cli-providers'
 import {
   codexAppServerHandshakePrompt,
@@ -536,6 +537,25 @@ describe('streamCodexCliChat', () => {
         { role: 'user', content: 'actually, mountains' },
         { role: 'assistant', content: [{ type: 'text', text: 'Mountains…' }] },
       ],
+    })
+  })
+})
+
+describe('codexTurnStartLine', () => {
+  it('sends images as data-URL image items after their labels', () => {
+    const line: unknown = JSON.parse(
+      codexTurnStartLine('thread-1', 'Look', [
+        { label: 'Attachment 1: a.png', name: 'a.png', mediaType: 'image/png', base64: 'AAA' },
+      ]),
+    )
+    expect(line).toMatchObject({
+      params: {
+        input: [
+          { type: 'text', text: 'Look' },
+          { type: 'text', text: '[Attachment 1: a.png]' },
+          { type: 'image', url: 'data:image/png;base64,AAA' },
+        ],
+      },
     })
   })
 })

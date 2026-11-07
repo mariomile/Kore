@@ -2,8 +2,8 @@ import { z } from 'zod'
 import type { ModelMessage } from 'ai'
 import type { ChatStreamEvent } from './chat/stream-chat'
 import { agentContextPromptLines, type AgentPromptContext } from './agent-profiles'
+import { agentCliInput, type AgentCliAttachment } from './agent-cli-input'
 import {
-  agentCliPrompt,
   streamAgentCliTurn,
   noteCardAndMentionRules,
   noteContentSafetyRules,
@@ -350,14 +350,40 @@ export interface StreamCliChatOptions {
   steering?: { onSteerReady: (steer: (text: string) => Promise<void>) => void } | undefined
 }
 
+/** Media types Claude Code reads natively from a stream-json user message. */
+const CLAUDE_CLI_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp'])
+
+/** Whether Claude Code can take an attachment of this media type as a content block. */
+export function claudeCliAcceptsAttachment(mediaType: string): boolean {
+  return CLAUDE_CLI_IMAGE_TYPES.has(mediaType) || mediaType === 'application/pdf'
+}
+
 /**
  * One `--input-format stream-json` stdin line carrying a user message. The
  * streaming-input session may absorb the message into its active turn.
+ * Attachments ride as Messages-API content blocks after the text — images
+ * as `image`, PDFs as `document` — each preceded by its label so the
+ * prompt's `[Attachment N: name]` markers resolve.
  */
-export function claudeStreamJsonUserLine(text: string): string {
+export function claudeStreamJsonUserLine(
+  text: string,
+  attachments: readonly AgentCliAttachment[] = [],
+): string {
   return JSON.stringify({
     type: 'user',
-    message: { role: 'user', content: [{ type: 'text', text }] },
+    message: {
+      role: 'user',
+      content: [
+        { type: 'text', text },
+        ...attachments.flatMap((attachment) => [
+          { type: 'text', text: `[${attachment.label}]` },
+          {
+            type: attachment.mediaType === 'application/pdf' ? 'document' : 'image',
+            source: { type: 'base64', media_type: attachment.mediaType, data: attachment.base64 },
+          },
+        ]),
+      ],
+    },
   })
 }
 
@@ -366,6 +392,10 @@ export function streamClaudeCliChat(
   options: StreamCliChatOptions,
 ): AsyncGenerator<ChatStreamEvent> {
   const steering = options.steering
+  const input = agentCliInput(options.messages, claudeCliAcceptsAttachment)
+  // Attachments need the stream-json input channel (content blocks); so does
+  // steering. A plain question keeps the simple text prompt.
+  const streamingInput = steering !== undefined || input.attachments.length > 0
   return streamAgentCliTurn({
     binary: 'claude',
     args: claudeCliArgs({
@@ -387,14 +417,13 @@ export function streamClaudeCliChat(
       ),
       allowEdits: options.allowEdits,
       mcpServers: options.mcpServers,
-      streamingInput: steering !== undefined,
+      streamingInput,
     }),
-    // With steering, the prompt itself rides as the first stream-json user
-    // line — the same channel later steers arrive on.
-    prompt:
-      steering !== undefined
-        ? `${claudeStreamJsonUserLine(agentCliPrompt(options.messages))}\n`
-        : agentCliPrompt(options.messages),
+    // In streaming-input mode the prompt itself rides as the first
+    // stream-json user line — the same channel later steers arrive on.
+    prompt: streamingInput
+      ? `${claudeStreamJsonUserLine(input.text, input.attachments)}\n`
+      : input.text,
     cwd: options.graphRoot,
     env: mcpSpawnEnv(options.mcpServers ?? []),
     parseLine: createClaudeCliLineParser(options.graphRoot),
@@ -403,7 +432,7 @@ export function streamClaudeCliChat(
     steering:
       steering !== undefined
         ? {
-            encodeLine: claudeStreamJsonUserLine,
+            encodeLine: (text) => claudeStreamJsonUserLine(text),
             onReady: steering.onSteerReady,
             // Claude can absorb queued input into the active turn and emit one result.
             resultMode: 'same-turn',

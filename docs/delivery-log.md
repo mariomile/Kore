@@ -7,6 +7,12 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Files you attach in chat now reach the AI. Images, PDFs, and Markdown,
+  text, CSV or JSON files can be picked from the + menu, pasted or dropped
+  onto the chat; with Claude Code the agent reads images and PDFs directly,
+  Codex reads images, and text files work with every engine. Follow-up
+  questions about an earlier file keep working.
+
 - Readwise and Granola connectors are yours to lay out: choose the folder,
   a file name pattern (subfolders and fields like `{category}/{title}`) and
   the tags new notes carry. Notes another sync already wrote are continued,

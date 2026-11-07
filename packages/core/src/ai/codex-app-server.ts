@@ -1,4 +1,5 @@
 import type { AgentCliChunk } from './agent-cli'
+import type { AgentCliAttachment } from './agent-cli-input'
 
 /**
  * Codex app-server JSON-RPC helpers: handshake lines, stdout parse, and
@@ -192,13 +193,28 @@ export function turnIdFromAppServerLine(parsed: Record<string, unknown>): string
   return idFromAppServerLine(parsed, CODEX_TURN_START_ID, 'turn/started', 'turn')
 }
 
-export function codexTurnStartLine(threadId: string, userPrompt: string): string {
+/**
+ * The `turn/start` request. Images ride as `image` input items with a
+ * `data:` URL, each after a text item carrying its label so the prompt's
+ * `[Attachment N: name]` markers resolve.
+ */
+export function codexTurnStartLine(
+  threadId: string,
+  userPrompt: string,
+  images: readonly AgentCliAttachment[] = [],
+): string {
   return jsonRpcLine({
     method: 'turn/start',
     id: CODEX_TURN_START_ID,
     params: {
       threadId,
-      input: [{ type: 'text', text: userPrompt }],
+      input: [
+        { type: 'text', text: userPrompt },
+        ...images.flatMap((image) => [
+          { type: 'text', text: `[${image.label}]` },
+          { type: 'image', url: `data:${image.mediaType};base64,${image.base64}` },
+        ]),
+      ],
     },
   })
 }

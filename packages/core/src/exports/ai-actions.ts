@@ -234,12 +234,8 @@ export {
   type McpTransport,
   type ResolvedMcpServer,
 } from '../ai/mcp'
-export {
-  agentCliPrompt,
-  checkAgentCli,
-  type AgentCliBinary,
-  type AgentCliChunk,
-} from '../ai/agent-cli'
+export { agentCliPrompt } from '../ai/agent-cli-input'
+export { checkAgentCli, type AgentCliBinary, type AgentCliChunk } from '../ai/agent-cli'
 export { agentCliFailureMessage, isAgentCliRuntimeFailure } from '../ai/agent-cli-failure'
 export {
   claudeCliArgs,
@@ -327,6 +323,13 @@ export {
   persistChatAttachmentFile,
   readChatAttachmentDataUrl,
 } from '../ai/chat/attachment-files'
+export {
+  attachmentKindLabel,
+  CHAT_ATTACHMENT_ACCEPT,
+  chatAttachmentMediaType,
+  isImageMediaType,
+  MAX_ATTACHMENT_BYTES,
+} from '../ai/chat/attachment-types'
 export {
   estimateTokens,
   fitToContextWindow,

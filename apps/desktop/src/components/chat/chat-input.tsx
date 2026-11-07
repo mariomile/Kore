@@ -7,7 +7,6 @@ import {
   AttachmentAction,
   AttachmentActions,
   AttachmentGroup,
-  AttachmentMedia,
 } from '@/components/ui/attachment'
 import { Button } from '@/components/ui/button'
 import {
@@ -30,13 +29,14 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useNoteMentionAutocomplete } from '@/hooks/use-note-mention-autocomplete'
 import { cn } from '@/lib/utils'
-import { imageFilesFrom } from '@/lib/chat-attachments'
+import { attachableFilesFrom } from '@/lib/chat-attachments'
 import { groupModelOptions, shortModelLabel } from '@/lib/chat-model-groups'
 import { useChatSession } from '@/providers/chat-provider'
 import { conversationTitle } from '@/providers/chat-title'
 import { useSettings } from '@/providers/settings-provider'
 import { settingsRoute } from '@/routing/route'
 import { useRouter } from '@/routing/router'
+import { ChatAttachmentThumb } from './chat-attachment-thumb'
 import { ChatDraftMentions } from './chat-draft-mentions'
 import { ChatContextMenu } from './chat-context-menu'
 import { useComposerHeightVar } from './use-composer-height'
@@ -82,7 +82,7 @@ export function ChatInput({ autoFocus = true }: ChatInputProps = {}): ReactEleme
     draft,
     setDraft,
     attachments,
-    attachImages,
+    attachFiles,
     removeAttachment,
     send,
     canSteer,
@@ -173,7 +173,7 @@ export function ChatInput({ autoFocus = true }: ChatInputProps = {}): ReactEleme
               </p>
               {queued.map((message) => {
                 const images = message.attachments.length
-                const imagesLabel = `${images} image${images === 1 ? '' : 's'}`
+                const imagesLabel = `${images} file${images === 1 ? '' : 's'}`
                 const label = message.text !== '' ? conversationTitle(message.text) : imagesLabel
                 return (
                   <div
@@ -217,9 +217,7 @@ export function ChatInput({ autoFocus = true }: ChatInputProps = {}): ReactEleme
                   size="sm"
                   className="w-16 bg-surface"
                 >
-                  <AttachmentMedia variant="image" className="w-14">
-                    <img src={attachment.dataUrl ?? ''} alt={attachment.name} />
-                  </AttachmentMedia>
+                  <ChatAttachmentThumb attachment={attachment} />
                   <AttachmentActions className="!top-0 !right-0 -translate-y-1/2 translate-x-1/2">
                     <AttachmentAction
                       aria-label={`Remove ${attachment.name}`}
@@ -270,7 +268,7 @@ export function ChatInput({ autoFocus = true }: ChatInputProps = {}): ReactEleme
           <ChatDraftMentions draft={draft} />
           <div className="flex items-end gap-1.5 p-2">
             <ChatContextMenu
-              onAttachImages={(files) => void attachImages(files)}
+              onAttachFiles={(files) => void attachFiles(files)}
               onMentionNote={startNoteMention}
             />
             <div className="relative min-w-0 flex-1">
@@ -315,12 +313,12 @@ export function ChatInput({ autoFocus = true }: ChatInputProps = {}): ReactEleme
                   }
                 }}
                 onPaste={(event) => {
-                  const files = imageFilesFrom(event.clipboardData)
+                  const files = attachableFilesFrom(event.clipboardData)
                   if (files.length === 0) {
                     return
                   }
                   event.preventDefault()
-                  void attachImages(files)
+                  void attachFiles(files)
                 }}
                 aria-label="Chat message"
                 rows={1}

@@ -1,14 +1,14 @@
 import { useRef, useState, type ReactElement } from 'react'
-import { aiModelLabel } from '@reflect/core'
+import { aiModelLabel, CHAT_ATTACHMENT_ACCEPT } from '@reflect/core'
 import { ArrowUp, ChevronDown, Close, Plus, Stop } from '@/components/icons'
 import {
   Attachment,
   AttachmentAction,
   AttachmentActions,
   AttachmentGroup,
-  AttachmentMedia,
 } from '@/components/ui/attachment'
 import { Button } from '@/components/ui/button'
+import { ChatAttachmentThumb } from '@/components/chat/chat-attachment-thumb'
 import { useComposerHeightVar } from '@/components/chat/use-composer-height'
 import { ChatModelDrawer } from '@/mobile/chat-model-drawer'
 import { useArrivalFocus } from '@/mobile/use-arrival-focus'
@@ -18,7 +18,7 @@ import { useRouter } from '@/routing/router'
 /**
  * The mobile chat composer (Plan 23): a plain textarea bound to the
  * session's draft — provider state, so a half-typed message survives tab
- * switches — with a photo-picker attach button, the model trigger (a bottom
+ * switches — with a photo/file attach button, the model trigger (a bottom
  * sheet, not desktop's dropdown), and send/stop. Enter inserts a newline;
  * sending is the button, the mobile convention. The textarea never registers
  * with the formatting-toolbar store, so the shell's keyboard slot stays
@@ -37,7 +37,7 @@ export function MobileChatComposer(): ReactElement {
     draft,
     setDraft,
     attachments,
-    attachImages,
+    attachFiles,
     removeAttachment,
     send,
     canSteer,
@@ -86,9 +86,7 @@ export function MobileChatComposer(): ReactElement {
                 size="sm"
                 className="w-16 bg-surface"
               >
-                <AttachmentMedia variant="image" className="w-14">
-                  <img src={attachment.dataUrl ?? ''} alt={attachment.name} />
-                </AttachmentMedia>
+                <ChatAttachmentThumb attachment={attachment} />
                 <AttachmentActions className="!top-0 !right-0 -translate-y-1/2 translate-x-1/2">
                   <AttachmentAction
                     aria-label={`Remove ${attachment.name}`}
@@ -116,7 +114,7 @@ export function MobileChatComposer(): ReactElement {
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*"
+            accept={CHAT_ATTACHMENT_ACCEPT}
             multiple
             className="hidden"
             aria-hidden
@@ -124,7 +122,7 @@ export function MobileChatComposer(): ReactElement {
             onChange={(event) => {
               const files = Array.from(event.target.files ?? [])
               if (files.length > 0) {
-                void attachImages(files)
+                void attachFiles(files)
               }
               // Reset so picking the same photo twice fires change again.
               event.target.value = ''
@@ -134,7 +132,7 @@ export function MobileChatComposer(): ReactElement {
             variant="ghost"
             size="icon-sm"
             className="rounded-full bg-surface-hover"
-            aria-label="Attach a photo"
+            aria-label="Attach a photo or file"
             onClick={() => fileInputRef.current?.click()}
           >
             <Plus aria-hidden />

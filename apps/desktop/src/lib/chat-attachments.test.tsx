@@ -80,4 +80,15 @@ describe('toChatAttachment', () => {
     expect(attachment.mediaType).toBe('image/tiff')
     expect(attachment.dataUrl?.startsWith('data:image/tiff;base64,')).toBe(true)
   })
+
+  it('keeps the bytes of a document under its canonical media type', async () => {
+    const attachment = await toChatAttachment(new File(['# Hi'], 'note.md', { type: '' }))
+
+    expect(attachment.mediaType).toBe('text/markdown')
+    expect(attachment.dataUrl).toBe(`data:text/markdown;base64,${btoa('# Hi')}`)
+  })
+
+  it('refuses a file type the chat cannot carry', async () => {
+    await expect(toChatAttachment(new File(['x'], 'deck.pptx'))).rejects.toThrow('not a supported')
+  })
 })

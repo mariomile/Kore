@@ -1,4 +1,5 @@
-import type { ModelMessage } from 'ai'
+import type { FilePart, ModelMessage, TextPart } from 'ai'
+import { attachedFileBlock, decodeDataUrlText, isTextMediaType } from './attachment-types'
 import type { AgentStep, AgentStepOutcome } from './agent-steps'
 import type { ChatStreamEvent } from './stream-chat'
 import type { NoteEditDecision, NoteToolCall, NoteToolResult } from './tools'
@@ -18,7 +19,7 @@ import type { NoteEditDecision, NoteToolCall, NoteToolResult } from './tools'
  * switches on which tool it was.
  */
 
-/** One image the user attached to a chat turn. */
+/** One file the user attached to a chat turn (an image, PDF, or text file — see `./attachment-types`). */
 export interface ChatAttachment {
   id: string
   /** Original filename — the preview's alt text and accessible labels. */
@@ -26,7 +27,7 @@ export interface ChatAttachment {
   /** IANA media type, e.g. `image/png`. */
   mediaType: string
   /**
-   * The image bytes as a `data:` URL. Present on a freshly attached image
+   * The file bytes as a `data:` URL. Present on a freshly attached file
    * (the composer preview and the provider payload) and hydrated back from
    * disk at send time for restored turns; absent on a persisted row whose
    * bytes live at {@link ChatAttachment.path}, so a restored conversation
@@ -63,7 +64,7 @@ export type AssistantPart =
 export interface ChatTurn {
   id: string
   userText: string
-  /** Images attached to the user message (possibly its whole content). */
+  /** Files attached to the user message (possibly its whole content). */
   attachments: ChatAttachment[]
   parts: AssistantPart[]
   /** The model-facing messages this turn contributed once it settled. */
@@ -231,8 +232,11 @@ function settleTools(
 
 /**
  * The model-facing user message for one turn: plain text when nothing is
- * attached, otherwise image file parts (the data URL is the payload) followed by
- * the text — which may be absent entirely for a photo-only message.
+ * attached, otherwise the attachments followed by the typed text — which may
+ * be absent entirely for an attachment-only message. Images and PDFs ride as
+ * file parts (the data URL is the payload, the name rides as `filename`);
+ * text files are decoded into `<attached-file>` text blocks, which every
+ * engine reads, file channel or not.
  */
 export function userMessage(text: string, attachments: readonly ChatAttachment[]): ModelMessage {
   // Only hydrated attachments ride: a path-only attachment (restored from
@@ -245,16 +249,23 @@ export function userMessage(text: string, attachments: readonly ChatAttachment[]
   if (withBytes.length === 0) {
     return { role: 'user', content: text }
   }
+  const parts = withBytes.map((attachment): FilePart | TextPart => {
+    const decoded = isTextMediaType(attachment.mediaType)
+      ? decodeDataUrlText(attachment.dataUrl)
+      : null
+    if (decoded !== null) {
+      return { type: 'text', text: attachedFileBlock(attachment.name, decoded) }
+    }
+    return {
+      type: 'file',
+      data: attachment.dataUrl,
+      mediaType: attachment.mediaType,
+      filename: attachment.name,
+    }
+  })
   return {
     role: 'user',
-    content: [
-      ...withBytes.map((attachment) => ({
-        type: 'file' as const,
-        data: attachment.dataUrl,
-        mediaType: attachment.mediaType,
-      })),
-      ...(text === '' ? [] : [{ type: 'text' as const, text }]),
-    ],
+    content: [...parts, ...(text === '' ? [] : [{ type: 'text' as const, text }])],
   }
 }
 

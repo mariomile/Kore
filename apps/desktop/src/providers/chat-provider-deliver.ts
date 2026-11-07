@@ -329,19 +329,17 @@ export async function deliverChatTurn(
       // Replace the initial inline attachment with a file-backed snapshot: the
       // next persisted row carries only the file path (the store strips the
       // dataUrl), while this in-memory copy keeps its dataUrl for the session's
-      // rendering and provider payload. Best-effort per image — a failed write
+      // rendering and provider payload. Best-effort per file — a failed write
       // keeps that attachment on the legacy inline persistence.
       const attachedWithFiles = await withPersistedAttachmentFiles(
         sendConversationId,
         attached,
         generation,
       )
-      // Restored turns hold path-only attachments; a BYOK payload needs the
-      // bytes back. CLI engines never embed image bytes in their prompt, so the
-      // reads are skipped there.
-      const historyTurns = isCliAgentProvider(config.provider)
-        ? history
-        : await withHydratedAttachmentHistory(history, generation)
+      // Restored turns hold path-only attachments; every engine needs the
+      // bytes back — BYOK as file parts, the CLIs as image/document blocks
+      // (stateless runs resend earlier files for follow-up questions).
+      const historyTurns = await withHydratedAttachmentHistory(history, generation)
       const messages = [...buildHistory(historyTurns), userMessage(trimmed, attachedWithFiles)]
       updateTurn((turn) => ({ ...turn, attachments: attachedWithFiles }))
       if (attached.length > 0) {

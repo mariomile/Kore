@@ -498,13 +498,25 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
     [updateSettings],
   )
 
-  const attachImages = useCallback(async (files: File[]): Promise<void> => {
+  const attachFiles = useCallback(async (files: File[]): Promise<void> => {
     // Reading files is async: a drop still in flight when New chat clears
     // the session must not land in the fresh composer afterwards.
     const session = sessionRef.current
-    const queued = await Promise.all(files.map(toChatAttachment))
+    const results = await Promise.allSettled(files.map(toChatAttachment))
     if (session !== sessionRef.current) {
       return
+    }
+    const queued: ChatAttachment[] = []
+    for (const result of results) {
+      if (result.status === 'fulfilled') {
+        queued.push(result.value)
+      } else {
+        toast.add({
+          type: 'error',
+          title: "Couldn't attach the file",
+          description: errorMessage(result.reason),
+        })
+      }
     }
     setAttachments((current) => [...current, ...queued])
   }, [])
@@ -524,7 +536,7 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
       draft,
       setDraft,
       attachments,
-      attachImages,
+      attachFiles,
       removeAttachment,
       send,
       canSteer,
@@ -552,7 +564,7 @@ export function ChatProvider({ graph, children }: ChatProviderProps): ReactEleme
       selectModel,
       draft,
       attachments,
-      attachImages,
+      attachFiles,
       removeAttachment,
       send,
       canSteer,

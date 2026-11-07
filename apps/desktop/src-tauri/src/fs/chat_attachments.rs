@@ -1,4 +1,4 @@
-//! Chat image attachments on disk.
+//! Chat attachments (images, PDFs, text files) on disk.
 //!
 //! A sent image used to live as a base64 `data:` URL inside the persisted
 //! turn row, which put the bytes on the webview heap for as long as the
@@ -11,9 +11,11 @@
 //! `.reflect/` is the right home: excluded from sync, indexing, agent access
 //! and Git like the chat database these files belong to, and deleted with
 //! the graph. The path shape is closed — both id segments must be plain
-//! `[A-Za-z0-9-]` tokens and the extension must be a known raster type — so
-//! neither the commands here nor the protocol carve-out ever resolve a name
-//! a caller composed from anything but our own generated ids.
+//! `[A-Za-z0-9-]` tokens and the extension must be a known attachment type
+//! (the asset-protocol carve-out narrows that to raster images, the only kind
+//! the webview renders) — so neither the commands here nor the protocol
+//! carve-out ever resolve a name a caller composed from anything but our own
+//! generated ids.
 
 use std::fs;
 use std::path::PathBuf;
@@ -27,8 +29,16 @@ use crate::fs::GraphState;
 /// Graph-relative directory all chat attachments live under.
 const CHAT_ATTACHMENTS_DIR: &str = ".reflect/chat-attachments";
 
-/// Extensions the app writes (see the media-type map in `@reflect/core`).
-const ALLOWED_EXTENSIONS: [&str; 5] = ["jpeg", "jpg", "png", "webp", "gif"];
+/// Raster image extensions — the only attachments the webview renders.
+const RASTER_EXTENSIONS: [&str; 5] = ["jpeg", "jpg", "png", "webp", "gif"];
+
+/// Document extensions the app writes beside images (see the media-type map
+/// in `@reflect/core`'s attachment types).
+const DOCUMENT_EXTENSIONS: [&str; 5] = ["pdf", "txt", "md", "csv", "json"];
+
+fn is_allowed_extension(ext: &str) -> bool {
+    RASTER_EXTENSIONS.contains(&ext) || DOCUMENT_EXTENSIONS.contains(&ext)
+}
 
 /// A plain id segment: what `crypto.randomUUID()` produces, nothing more.
 fn is_id_segment(segment: &str) -> bool {
@@ -42,27 +52,44 @@ fn is_id_segment(segment: &str) -> bool {
 /// `<attachment-id>.<ext>` with both halves from the closed sets above.
 fn is_attachment_file_name(name: &str) -> bool {
     match name.rsplit_once('.') {
-        Some((stem, ext)) => is_id_segment(stem) && ALLOWED_EXTENSIONS.contains(&ext),
+        Some((stem, ext)) => is_id_segment(stem) && is_allowed_extension(ext),
         None => false,
     }
 }
 
-/// Whether a graph-relative wire path is a chat attachment file. The asset
+/// The file name of a graph-relative wire path shaped like a chat
+/// attachment file, or None for anything else.
+fn chat_attachment_file_name(rel: &str) -> Option<&str> {
+    let mut parts = rel.split('/');
+    match (
+        parts.next(),
+        parts.next(),
+        parts.next(),
+        parts.next(),
+        parts.next(),
+    ) {
+        (Some(".reflect"), Some("chat-attachments"), Some(conversation), Some(file), None)
+            if is_id_segment(conversation) && is_attachment_file_name(file) =>
+        {
+            Some(file)
+        }
+        _ => None,
+    }
+}
+
+/// Whether a graph-relative wire path is a chat attachment file (any kind) —
+/// what [`chat_attachment_read`] accepts.
+pub(super) fn is_chat_attachment_rel(rel: &str) -> bool {
+    chat_attachment_file_name(rel).is_some()
+}
+
+/// Whether a graph-relative wire path is a chat attachment *image*. The asset
 /// protocol calls this to carve these files out of its "no hidden
 /// components" rule — exactly this shape, nothing else under `.reflect/`.
-pub(super) fn is_chat_attachment_rel(rel: &str) -> bool {
-    let mut parts = rel.split('/');
-    matches!(
-        (
-            parts.next(),
-            parts.next(),
-            parts.next(),
-            parts.next(),
-            parts.next(),
-        ),
-        (Some(".reflect"), Some("chat-attachments"), Some(conversation), Some(file), None)
-            if is_id_segment(conversation) && is_attachment_file_name(file)
-    )
+pub(super) fn is_chat_attachment_image_rel(rel: &str) -> bool {
+    chat_attachment_file_name(rel)
+        .and_then(|file| file.rsplit_once('.'))
+        .is_some_and(|(_, ext)| RASTER_EXTENSIONS.contains(&ext))
 }
 
 fn conversation_dir(root: &std::path::Path, conversation_id: &str) -> AppResult<PathBuf> {
@@ -178,6 +205,19 @@ mod tests {
         ] {
             assert!(!is_chat_attachment_rel(rel), "{rel} must be refused");
         }
+    }
+
+    #[test]
+    fn documents_are_attachments_but_not_renderable_images() {
+        let pdf = ".reflect/chat-attachments/conv-1/att-2.pdf";
+        assert!(is_chat_attachment_rel(pdf));
+        assert!(!is_chat_attachment_image_rel(pdf));
+        assert!(is_chat_attachment_rel(
+            ".reflect/chat-attachments/conv-1/att-2.csv"
+        ));
+        assert!(is_chat_attachment_image_rel(
+            ".reflect/chat-attachments/conv-1/att-2.png"
+        ));
     }
 
     #[test]

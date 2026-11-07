@@ -23,6 +23,12 @@ Kore patches the exact installed `@meowdown/core@0.74.1` and
 - `@meowdown/react`: Adds the host `renderCodeBlock` callback, atomic `updateCode`,
   and the custom code-block presentation styles.
 
+- Both: X post embeds render from a saved snapshot when the image comment
+  holds one whose id matches the link, and the editor persists the first
+  resolved X post into that comment (Meowdown did both only for YouTube).
+  Kore-only hunks, in `ImageMarkView#buildPostEmbed` (core) and `PostEmbed`
+  (react); keep them when regenerating until upstream does the same.
+
 The code-block changes come from [Meowdown PR #612](https://github.com/prosekit/meowdown/pull/612)
 (the rebase of #546), head `671687c`, whose base is `7fd9427`, the commit that
 published core 0.74.1 and react 0.73.1. The patch payloads are the built

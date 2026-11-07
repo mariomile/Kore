@@ -5,6 +5,7 @@ import {
   isAttachmentEmbedTarget,
   wikiEmbedAssetPath,
 } from './asset-paths'
+import { embedSnapshotText } from './embed-snapshot'
 import { parseFrontmatter, splitFrontmatter } from './frontmatter'
 import { parseBody } from './grammar'
 import { foldTag } from './keys'
@@ -53,6 +54,33 @@ const TAG_NAME_RE = /^\p{L}[\p{L}\p{N}/_-]*$/u
  */
 export function isTagName(value: string): boolean {
   return TAG_NAME_RE.test(value)
+}
+
+/**
+ * The body's plain text with each saved post-embed comment read as the post
+ * it holds (see `embed-snapshot.ts`) rather than as its JSON.
+ */
+function plainTextWithEmbeds(
+  body: string,
+  cuts: Span[],
+  literalRanges: Span[],
+  embeds: readonly (Span & { text: string })[],
+): string {
+  if (embeds.length === 0) {
+    return buildPlainText(body, cuts, literalRanges)
+  }
+  const parts: string[] = []
+  let pos = 0
+  for (const embed of embeds) {
+    parts.push(plainTextOfRange(body, pos, embed.from, cuts, literalRanges), embed.text)
+    pos = embed.to
+  }
+  parts.push(plainTextOfRange(body, pos, body.length, cuts, literalRanges))
+  return parts
+    .filter((part) => part !== '')
+    .join(' ')
+    .replaceAll(/\s+/g, ' ')
+    .trim()
 }
 
 /** Names whose source range is markup to drop from plain text. */
@@ -304,6 +332,7 @@ export function parseNote(input: { path: string; source: string }): ParsedNote {
   const literalPlainText: Span[] = [] // body coords — regions that render backslashes literally
   const previewCuts: Span[] = [] // body coords — noise the list-row preview also drops
   const taskNodes: SyntaxNode[] = [] // body coords — `Task` nodes, resolved after the walk
+  const embedSnapshots: (Span & { text: string })[] = [] // body coords — saved post-embed comments
 
   tree.iterate({
     enter: (node) => {
@@ -324,6 +353,12 @@ export function parseNote(input: { path: string; source: string }): ParsedNote {
       }
       if (isLiteralPlainTextNode(name)) {
         literalPlainText.push({ from, to })
+      }
+      if (name === 'Comment') {
+        const embedText = embedSnapshotText(body.slice(from, to))
+        if (embedText !== null) {
+          embedSnapshots.push({ from, to, text: embedText })
+        }
       }
       if (isPreviewNoiseNode(name, body.slice(from, Math.min(to, from + 8)))) {
         previewCuts.push({ from, to })
@@ -439,7 +474,7 @@ export function parseNote(input: { path: string; source: string }): ParsedNote {
     headings,
     assets,
     tasks,
-    text: buildPlainText(body, cuts, literalPlainText),
+    text: plainTextWithEmbeds(body, cuts, literalPlainText, embedSnapshots),
     previewText: buildPlainText(
       body,
       [...cuts, ...previewCuts, ...previewNoiseSpans(body, literalPlainText)],

@@ -14,6 +14,13 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
   as a card with its own steps. Private notes stay blocked for subagents
   too, and a blocked read says so.
 
+- An X post pasted into a note is saved with the note: its card shows the
+  whole post (long posts included, media at full size) even offline, and
+  search finds the note by the post's words or author.
+- Pasted X posts and YouTube videos now show their card instead of "This
+  post is unavailable": Kore fetches the post itself instead of asking a
+  web service the app blocks. Private notes still fetch nothing.
+
 - An Obsidian vault can be converted into a new folder in Kore's layout.
   After the preview in Settings → Convert to Kore layout, *Convert to a
   copy…* writes the converted vault into an empty folder you pick: dailies,

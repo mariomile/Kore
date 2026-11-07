@@ -84,7 +84,7 @@ index c2b882b2f29a0fcd0b87127eb964172cb741d807..5e9f38f03e4d9ffa9d74d20435bf8633
 +export { type CodeBlockRenderOptions, type CodeBlockRenderer, type EditorHandle, type EditorMode, type EditorProps, type EditorStateSnapshot, type LightboxCloseOptions, type LightboxController, type LightboxFrameItem, type LightboxFrameProps, type LightboxImageItem, type LightboxImageProps, type LightboxItem, type LightboxRootProps, type LightboxVideoItem, type LightboxVideoProps, type LinkPreview, type LinkPreviewResolver, type MarkdownViewProps, type PendingReplacementResolveHandler, type ReactNodeViewComponent, type SelectionHint, type SelectionJSON, type SelectionMenuContext, type SelectionMenuItem, type SelectionMenuSearchHandler, type SlashMenuItem, type SlashMenuSearchHandler, type TagItem, type TagSearchHandler, type TaskClickHandler, type TaskClickPayload, type TimeFormat, type WikilinkHoverCardProps, type WikilinkItem, type WikilinkSearchHandler, type XPostResolver, type YouTubeVideoResolver, useEditor, useExtension, useKeymap };
 \ No newline at end of file
 diff --git a/dist/index.js b/dist/index.js
-index dda0d22efe8dd1b4483f042bd6af7739cea24a3a..bb0944676eca2f9af762f030c8a77ad159d65d80 100644
+index dda0d22efe8dd1b4483f042bd6af7739cea24a3a..c881f13ccd8e9ee5b22886ab0a921e7dd0d67e39 100644
 --- a/dist/index.js
 +++ b/dist/index.js
 @@ -7,8 +7,9 @@ import { Selection, TextSelection } from "@prosekit/pm/state";
@@ -98,11 +98,13 @@ index dda0d22efe8dd1b4483f042bd6af7739cea24a3a..bb0944676eca2f9af762f030c8a77ad1
  import { BlockHandleDraggable, BlockHandlePopup, BlockHandlePositioner, BlockHandleRoot } from "@prosekit/react/block-handle";
  import { DropIndicator } from "@prosekit/react/drop-indicator";
  import { Popover } from "@base-ui/react/popover";
-@@ -18,7 +19,6 @@ import { TableHandleColumnMenuRoot, TableHandleColumnMenuTrigger, TableHandleCol
+@@ -17,8 +18,7 @@ import { MenuItem, MenuPopup, MenuPositioner } from "@prosekit/react/menu";
+ import { TableHandleColumnMenuRoot, TableHandleColumnMenuTrigger, TableHandleColumnPopup, TableHandleColumnPositioner, TableHandleDragPreview, TableHandleDropIndicator, TableHandleRoot, TableHandleRowMenuRoot, TableHandleRowMenuTrigger, TableHandleRowPopup, TableHandleRowPositioner } from "@prosekit/react/table-handle";
  import { X_POST_MEDIA_CLICK, registerXPost } from "@meowdown/embed/x";
  import { YOUTUBE_VIDEO_CLICK, registerYouTubeVideo } from "@meowdown/embed/youtube";
- import { matchEmbed } from "@meowdown/markdown";
+-import { matchEmbed } from "@meowdown/markdown";
 -import { Mark } from "@prosekit/pm/model";
++import { matchEmbed, parseXPostId } from "@meowdown/markdown";
  import { BOOLEAN, OVERLOADED_BOOLEAN, getPropertyInfo, possibleStandardNames } from "react-property";
  import { PreviewCard } from "@base-ui/react/preview-card";
  
@@ -294,6 +296,15 @@ index dda0d22efe8dd1b4483f042bd6af7739cea24a3a..bb0944676eca2f9af762f030c8a77ad1
  			onSlashMenuSearch,
  			onTagSearch,
  			onWikilinkSearch,
+@@ -2395,7 +2440,7 @@ function PostEmbed(props) {
+ 		"data-testid": `${kind}-embed`,
+ 		"data-post-embed": kind,
+ 		children: kind === "x-post" ? createElement("meowdown-embed-x", {
+-			data: null,
++			data: saved?.kind === "x-post" && saved.data.id === parseXPostId(src) ? saved.data : null,
+ 			url: src,
+ 			resolver: resolveXPost ?? defaultResolveXPost,
+ 			mediaUrlProtocols: mediaUrlProtocols ?? null
 diff --git a/dist/style.css b/dist/style.css
 index 7d739a383bc446d9a5305a906e21d5f30fd59b71..4b811f0bc1203592f52476fd96c8aae62cbbe555 100644
 --- a/dist/style.css

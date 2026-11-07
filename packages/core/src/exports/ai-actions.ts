@@ -400,6 +400,7 @@ export {
   type PostLinkPreview,
 } from '../actions/link-preview'
 export { xPostId, type LinkPreviewProvider } from '../actions/link-preview-providers'
+export { resolveXPostEmbed, resolveYouTubeEmbed } from '../actions/post-embed'
 export { linkUnlinkedMention, type LinkMentionOutcome } from '../actions/link-mention'
 export {
   calendarAuthorizationStatus,

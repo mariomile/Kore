@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, type ReactElement } from 'react'
+import { NO_POST_EMBEDS } from '@/editor/use-post-embed-resolvers'
 import { MarkdownView } from '@meowdown/react'
 import { separateCalloutTitles } from '@reflect/core'
 import { PaneErrorBoundary } from '@/components/pane-error-boundary'
@@ -115,6 +116,9 @@ export function MarkdownPreview({
           markMode="hide"
           interactive={interactive}
           resolveImageUrl={resolveImageUrlStable}
+          // Read-only views never fetch embed data: they can show private notes.
+          resolveXPost={NO_POST_EMBEDS.resolveXPost}
+          resolveYouTubeVideo={NO_POST_EMBEDS.resolveYouTubeVideo}
           resolveWikiEmbed={resolveWikiEmbed}
           {...(interactive ? { onLinkClick: openExternalLink } : {})}
           {...(navigates ? { onWikilinkClick: onWikilinkClickStable } : {})}

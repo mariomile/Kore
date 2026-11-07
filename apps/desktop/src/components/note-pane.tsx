@@ -491,6 +491,9 @@ export function NotePaneComponent({
       />
 
       <NoteEditor
+        // X / YouTube embed cards fetch from those hosts: public notes only,
+        // and they wait while the privacy flag is unknown.
+        embedsAllowed={noteRow === null ? undefined : !noteRow.isPrivate}
         // Keyed on the session, not the path: a rename retargets the live
         // session under a new filename (Plan 17), and remounting the editor
         // for that would throw away the cursor mid-thought.

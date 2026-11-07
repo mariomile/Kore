@@ -1,5 +1,53 @@
 # Kore working state
 
+## X and YouTube embed cards fetch through Rust, 2026-11-07
+
+Bug (Mario, 2026-11-07, screenshot): a pasted X link in a daily note showed
+"X post / This post is unavailable / View on X".
+
+- Cause: pasting an X (or YouTube) link makes Meowdown write an embed
+  (`![](url)`) and draw its own post-embed card. Meowdown's default resolvers
+  `fetch()` from the webview (X via `react-tweet.vercel.app`, YouTube via
+  its oEmbed endpoint); the app CSP's `connect-src` allows neither, so every
+  card fell back to unavailable. #326's card only covers a bare link line,
+  which a paste never produces. Neither path had been tried on live X.
+- [x] `packages/core/src/actions/post-embed.ts`: `resolveXPostEmbed`
+  (syndication JSON through `capture_oembed_fetch`, mapped with
+  `@post-embed/exporter`'s `fromSyndication`, the same mapper Meowdown
+  uses) and `resolveYouTubeEmbed`. Per-URL cache; failures retried.
+- [x] `NoteEditor` passes them as `resolveXPost` / `resolveYouTubeVideo`
+  via `use-post-embed-resolvers.ts`, gated on the note's privacy
+  (`embedsAllowed`, waits while unknown). Read-only `MarkdownView`s pass
+  no-op resolvers (they can show private notes).
+- Still unverified on live X from here (no network to x.com); Mario's Mac is
+  the first real check.
+
+**Validation:** `post-embed.test.ts` (4), editor/preview/note-pane browser
+tests (53, Chromium), `pnpm check`. Dev build shows the X card filled
+(`/mnt/project-files/screenshot/anteprima-link/embed-x-funzionante.png`).
+
+Follow-up, same day (Mario: "La preview si deve vedere tutta e devo poter
+anche cercare il contenuto del tweet"):
+
+- [x] X posts are saved into the note. Meowdown already writes a YouTube
+  answer into the image's trailing comment (`![](url)<!-- {"snapshot":…} -->`)
+  but always re-fetched X; the core and react patches give X the same path
+  (render from the saved snapshot when its id matches the link, persist the
+  first answer otherwise). Cards render offline, and read-only previews
+  (palette, hover) show the saved post without fetching. Upstream candidate.
+- [x] Long posts: syndication cuts a "note" post at 280 characters with a
+  "Show more" link; `resolveXPostEmbed` then reads the whole text from
+  FxEmbed's `api.fxtwitter.com/status/<id>` (only the id leaves the app) and
+  keeps the cut post if that fails.
+- [x] `styles/post-embeds.css`: the X card takes the text column (up to
+  40rem), media at 20rem instead of 7.5rem thumbnails, quoted posts unclamped.
+- [x] Search: `markdown/embed-snapshot.ts` reads a saved snapshot comment as
+  the post's author, handle and words (quote included; YouTube: title and
+  channel) in the note's plain text, where the JSON used to sit. FTS and the
+  AI's note text both see it. `PROJECTION_VERSION` 28 rebuilds the index once.
+- Live X and FxEmbed still unverified from here. Screenshots:
+  `x-card-completa.png`, `x-ricerca-tweet.png` in the same folder.
+
 ## Obsidian import, slice 2: conversion to a copy, 2026-11-06
 
 Ask (Mario, 2026-11-06, "Fai tutto tu"): read his vault, choose the mapping,

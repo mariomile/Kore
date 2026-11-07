@@ -1,5 +1,56 @@
 # Kore working state
 
+## Readwise and Granola keep flowing without Obsidian, 2026-11-07
+
+Ask (Mario, 2026-11-07, decision card "Readwise e Granola"): make Kore the way
+context gets collected for agents, starting with the two biggest streams.
+Analysis: `/mnt/project-files/analisi/raccogliere-contesto.md`. His vault
+gets highlights and meetings only through two Obsidian plugins
+(`readwise-official`: ~700 files in `Input/Readwise/{Articles,Books,Tweets,Podcasts}`;
+`granola-sync`: `Input/Granola/YYYY-MM/<title>, <date>.md`), which stop when
+Obsidian does. The #259 connectors wrote a flat layout and ran only in the
+app window.
+
+- [x] Connector notes can name a subfolder; Readwise files by category
+  (`Articles`, `Books`, `Tweets`, `Podcasts`), Granola by month with the
+  plugin's `<title>, <YYYY-MM-DD>` name. Granola's `granola_id` is the
+  plugin's key and the same `not_…` ids, so its meetings are recognized.
+- [x] Adoption: a file without our id at the note's natural path is merged
+  into when the connector recognizes it (`ConnectorNote.adopts`). Readwise
+  adopts on the same `url` or the plugin's marks (`![rw-book-cover]`, a
+  Readwise link), and dedupes highlights by Readwise id, Reader id
+  (`read.readwise.io/read/<id>`, the plugin's links) or text (Kindle and
+  podcast highlights). New highlights go under `### New highlights added
+  <date>`, like the plugin. The frontmatter key is now `url` (was
+  `source_url`), the plugin's.
+- [x] `kore sources` runs the same engine headless: the core indexer bundle
+  with `--sources` indexes, asks the CLI for its configuration over the
+  bridge (`sources_config`; tokens from `KORE_READWISE_TOKEN` /
+  `KORE_GRANOLA_TOKEN`, folders from `KORE_*_FOLDER`), syncs, reindexes and
+  reports (`sources_report`). The CLI host serves `note_create` /
+  `note_write` only in that session (atomic, no-clobber create, symlink-free
+  note paths). Windows per source in `.reflect/sources.json`; the first run
+  starts from now, `--since` backfills.
+- [x] `kore sync --sources` runs it as a journaled write with an explicit
+  `--since`, so a replay after a lost push fetches the same window again.
+- Docs: `docs/cli.md`, `docs/always-on.md`.
+
+**Validation:** core connector tests (14), `cargo test -p reflect-cli`
+(all suites), clippy `-D warnings`, `pnpm check`. End to end in the
+container with Readwise and Granola stubbed in Node: a plugin-style article
+was adopted (only the missing highlight appended), a tweet landed in
+`Readwise/Tweets/`, the plugin's Granola meeting was skipped without a detail
+fetch, the new one landed as `Granola/2026-11/Standup SaaS, 2026-11-07.md`,
+a second run wrote nothing, and `kore search` found the new highlight.
+Neither API has been called live yet.
+
+**Next:** Mario's first live run, with the Obsidian plugins off: on the Mac,
+Settings → Connectors with folders `Input/Readwise` and `Input/Granola`, or
+`kore sources --since <a recent date>` with the two tokens; check no
+duplicates in `Input/Readwise`. Then on the always-on host,
+`kore sync --sources` every 15 minutes. Remaining capture slices (web
+clipper, full text of pasted links) are in the analysis.
+
 ## Advanced chat, slice 1: agent steps and subagents visible, 2026-11-07
 
 Ask (Mario, 2026-11-07): turn the in-app chat into an advanced

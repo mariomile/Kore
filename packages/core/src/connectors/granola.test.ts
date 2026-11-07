@@ -77,7 +77,9 @@ describe('granolaConnector.fetchNotes', () => {
       'https://public-api.granola.ai/v1/notes/not_abc',
       'https://public-api.granola.ai/v1/notes?page_size=30&cursor=next',
     ])
-    expect(notes.map((note) => note.fileStem)).toEqual(['2026-10-08 Weekly sync roadmap'])
+    expect(notes.map((note) => [note.subfolder, note.fileStem])).toEqual([
+      ['2026-10', 'Weekly sync roadmap, 2026-10-08'],
+    ])
     expect(notes[0]?.merge('anything')).toBeNull()
   })
 })

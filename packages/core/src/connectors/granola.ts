@@ -11,6 +11,10 @@ import type { Connector, ConnectorFetchInput, ConnectorNote } from './types'
  * whose summary is ready, so a meeting lands once it is complete and is never
  * rewritten afterwards: what the user adds to the note in Kore stays theirs.
  *
+ * Notes land where the Granola Obsidian plugin (`granola-sync`) puts them,
+ * `YYYY-MM/<title>, <YYYY-MM-DD>.md`, under the same `granola_id` key, so a
+ * meeting that plugin already wrote is recognized and never written twice.
+ *
  * API reference: https://docs.granola.ai/introduction
  */
 
@@ -103,7 +107,8 @@ function meetingNote(note: GranolaNote): ConnectorNote | null {
   const title = headingText(note.title ?? '') || 'Untitled meeting'
   return {
     sourceId: note.id,
-    fileStem: connectorFileStem(date === null ? title : `${date} ${title}`, note.id),
+    fileStem: connectorFileStem(date === null ? title : `${title}, ${date}`, note.id),
+    ...(date === null ? {} : { subfolder: date.slice(0, 7) }),
     source,
     merge: () => null,
   }
@@ -165,7 +170,7 @@ async function* fetchNotes(input: ConnectorFetchInput): AsyncIterable<ConnectorN
 export const granolaConnector: Connector = {
   id: 'granola',
   label: 'Granola',
-  description: 'Meeting notes with Granola’s AI summary, one note per meeting.',
+  description: 'Meeting notes with Granola’s AI summary, one note per meeting, filed by month.',
   idKey: 'granola_id',
   defaultFolder: 'Granola',
   tokenUrl: 'https://docs.granola.ai/introduction',

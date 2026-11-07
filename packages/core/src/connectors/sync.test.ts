@@ -116,6 +116,24 @@ describe('syncConnector', () => {
   })
 })
 
+describe('syncConnector adoption', () => {
+  it('files a note in its subfolder and merges into a file another app wrote for it', async () => {
+    files.set('Sample/Articles/Book.md', '# Book\n\nfrom the plugin\n')
+    const adoptable: ConnectorNote = {
+      ...note('1', 'Book', 'alpha'),
+      subfolder: 'Articles',
+      adopts: (existing) => existing.includes('from the plugin'),
+    }
+
+    const result = await run([adoptable, { ...note('2', 'Other', 'beta'), subfolder: 'Tweets' }])
+
+    expect(result).toMatchObject({ created: 1, updated: 1 })
+    expect(files.get('Sample/Articles/Book.md')).toBe('# Book\n\nfrom the plugin\nalpha\n')
+    expect(files.has('Sample/Articles/Book 2.md')).toBe(false)
+    expect(files.get('Sample/Tweets/Other.md')).toContain('beta')
+  })
+})
+
 describe('syncConnector window', () => {
   it('looks back by the overlap but never before the import floor', async () => {
     const seen: (Date | null)[] = []

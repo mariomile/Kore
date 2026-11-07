@@ -78,6 +78,15 @@ function frontmatterId(source: string, idKey: string): string | null {
   return typeof value === 'string' || typeof value === 'number' ? String(value) : null
 }
 
+/** Ours by id, or adoptable: the same item, written without our id by another app. */
+function ownsFile(existing: string, note: ConnectorNote, idKey: string): boolean {
+  const id = frontmatterId(existing, idKey)
+  if (id !== null) {
+    return id === note.sourceId
+  }
+  return note.adopts?.(existing) === true
+}
+
 async function indexedPath(idKey: string, sourceId: string): Promise<string | null> {
   const row = await db
     .selectFrom('noteProperties')
@@ -116,9 +125,10 @@ async function mergeInto(
   return 'updated'
 }
 
-function candidatePath(folder: string, stem: string, ordinal: number): string {
-  const name = ordinal === 1 ? `${stem}.md` : `${stem} ${ordinal}.md`
-  return folder === '' ? name : `${folder}/${name}`
+function candidatePath(folder: string, note: ConnectorNote, ordinal: number): string {
+  const name = ordinal === 1 ? `${note.fileStem}.md` : `${note.fileStem} ${ordinal}.md`
+  const dir = [folder, note.subfolder ?? ''].filter((part) => part !== '').join('/')
+  return dir === '' ? name : `${dir}/${name}`
 }
 
 /** The window start: the last sync minus the overlap, but never before `floor`. */
@@ -155,16 +165,17 @@ export async function syncConnector(input: SyncConnectorInput): Promise<Connecto
       }
     }
     for (let ordinal = 1; ordinal <= MAX_PATH_ATTEMPTS; ordinal += 1) {
-      const path = candidatePath(folder, note.fileStem, ordinal)
+      const path = candidatePath(folder, note, ordinal)
       const outcome = await createNoteIfAbsent(path, note.source, generation)
       if (outcome.kind === 'created') {
         placed.set(note.sourceId, path)
         return 'created'
       }
-      // Occupied: ours from another device (merge into it), or a file Kore
-      // didn't write for this item (never touched; try the next name).
+      // Occupied: ours from another device, or the same item written by the
+      // source's Obsidian plugin (merge into either), or an unrelated file
+      // (never touched; try the next name).
       const existing = await readIfPresent(path, generation)
-      if (existing !== null && frontmatterId(existing, connector.idKey) === note.sourceId) {
+      if (existing !== null && ownsFile(existing, note, connector.idKey)) {
         placed.set(note.sourceId, path)
         return await mergeInto(path, existing, note, generation)
       }

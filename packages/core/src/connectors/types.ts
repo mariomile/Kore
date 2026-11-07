@@ -16,6 +16,12 @@ export interface ConnectorNote {
   readonly sourceId: string
   /** Filename stem (no folder, no `.md`), already filesystem-safe. */
   readonly fileStem: string
+  /**
+   * Subfolder inside the connector's folder (`Articles`, `2026-11`), already
+   * filesystem-safe; omitted for the folder itself. Mirrors the layout the
+   * source's Obsidian plugin writes, so a vault moving over keeps one tree.
+   */
+  readonly subfolder?: string
   /** The full markdown for a note that does not exist yet. */
   readonly source: string
   /**
@@ -24,6 +30,13 @@ export interface ConnectorNote {
    * rewrite what the user may have edited; they only append what is new.
    */
   merge(existing: string): string | null
+  /**
+   * Whether a file without this connector's id, sitting at this note's
+   * natural path, is the same item written by another app (the source's
+   * Obsidian plugin). An adopted file is merged into like one of ours, so a
+   * vault that already holds the item gets no duplicate. Omitted: never.
+   */
+  adopts?(existing: string): boolean
 }
 
 /** What a connector receives for one fetch. */

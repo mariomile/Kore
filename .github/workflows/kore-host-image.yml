@@ -1,0 +1,98 @@
+# Publishes the always-on server image (deploy/always-on/Dockerfile) to
+# ghcr.io/mariomile/kore-host for amd64 and arm64, so a host only needs
+# `docker run` and never builds Kore from source. See docs/always-on.md.
+#
+# Runs on the same pointer branch as the DMG release (release/dmg), by
+# hand, and on PRs that touch the image (build only, nothing pushed).
+# Each architecture builds on its own native runner; a last job joins the
+# two digests into one multi-arch tag.
+
+name: Kore host image
+
+on:
+  push:
+    branches: ['release/dmg']
+  workflow_dispatch: {}
+  pull_request:
+    paths:
+      - 'deploy/always-on/**'
+      - '.github/workflows/kore-host-image.yml'
+
+concurrency:
+  group: kore-host-image-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  IMAGE: ghcr.io/${{ github.repository_owner }}/kore-host
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            runner: ubuntu-24.04
+          - platform: linux/arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deploy/always-on/Dockerfile
+          platforms: ${{ matrix.platform }}
+          cache-from: type=gha,scope=${{ matrix.platform }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.platform }}
+          outputs: ${{ github.event_name == 'pull_request' && 'type=cacheonly' || format('type=image,name={0},push-by-digest=true,name-canonical=true,push=true', env.IMAGE) }}
+      - if: github.event_name != 'pull_request'
+        run: |
+          mkdir -p /tmp/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "/tmp/digests/${digest#sha256:}"
+      - if: github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: digest-${{ matrix.runner }}
+          path: /tmp/digests/*
+          retention-days: 1
+
+  publish:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: digest-*
+          merge-multiple: true
+          path: /tmp/digests
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Tag latest and the app version
+        working-directory: /tmp/digests
+        run: |
+          version=$(node -p "require('$GITHUB_WORKSPACE/apps/desktop/package.json').version")
+          docker buildx imagetools create \
+            -t "$IMAGE:latest" -t "$IMAGE:$version" \
+            $(printf "$IMAGE@sha256:%s " *)
+          docker buildx imagetools inspect "$IMAGE:latest"

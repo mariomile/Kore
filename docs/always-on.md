@@ -106,12 +106,15 @@ URL as `KORE_PUBLIC_URL`. Agents connect exactly as described in
 `deploy/always-on/vm-setup.sh` does the whole Docker setup on a fresh Ubuntu
 VM in one run, tunnel included. The tested target is Oracle Cloud's Always
 Free tier (an Ampere A1 VM, 2 OCPU and 12 GB, Ubuntu 24.04); any Ubuntu box
-works. It needs two fine-grained GitHub tokens, each on one repository:
-`KORE_SRC_TOKEN` (Contents read on Kore, to build) and `KORE_GIT_TOKEN`
-(Contents read and write on the vault). Without `CF_TUNNEL_TOKEN` it opens a
-Tailscale Funnel and prints a login link; with it, it runs a Cloudflare named
-tunnel. Agent keys go in `~/kore-host/keys`, outside the vault. Running it
-again updates Kore and keeps the clone, the keys and the token.
+works. It needs one fine-grained GitHub token, `KORE_GIT_TOKEN`, with
+Contents read and write on the vault only. It pulls the prebuilt image
+`ghcr.io/mariomile/kore-host` (amd64 and arm64, published by the
+`Kore host image` workflow on every release); only when that pull fails does
+it build from source, which then needs `KORE_SRC_TOKEN` (Contents read on
+Kore). Without `CF_TUNNEL_TOKEN` it opens a Tailscale Funnel and prints a
+login link; with it, it runs a Cloudflare named tunnel. Agent keys go in
+`~/kore-host/keys`, outside the vault. Running it again updates Kore and
+keeps the clone, the keys and the token.
 
 ## Run it without Docker
 

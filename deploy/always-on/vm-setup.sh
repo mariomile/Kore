@@ -4,10 +4,12 @@
 # kore-host image, opens an HTTPS tunnel and starts the server. Run it again
 # to update Kore; the vault clone and the keys survive.
 #
-# Set before running (both GitHub fine-grained tokens, one repository each):
-#   KORE_SRC_TOKEN   Contents: read on the Kore repository (to build)
+# Set before running (a GitHub fine-grained token, this one repository):
 #   KORE_GIT_TOKEN   Contents: read and write on the vault repository
 # Optional:
+#   KORE_IMAGE       the prebuilt image (default ghcr.io/mariomile/kore-host:latest);
+#                    when it cannot be pulled the script builds from source
+#   KORE_SRC_TOKEN   Contents: read on the Kore repository, only for that build
 #   CF_TUNNEL_TOKEN  a Cloudflare named tunnel token; without it the script
 #                    uses Tailscale Funnel and prints a login link
 #   KORE_PUBLIC_URL  the tunnel's https URL (required with CF_TUNNEL_TOKEN)
@@ -20,7 +22,7 @@ KORE_REPO="${KORE_REPO:-github.com/mariomile/Kore}"
 KORE_REF="${KORE_REF:-master}"
 VAULT_REPO="${VAULT_REPO:-https://github.com/mariomile/obsidian-sync-marioverse.git}"
 BASE="$HOME/kore-host"
-: "${KORE_SRC_TOKEN:?export KORE_SRC_TOKEN (read access to the Kore repo)}"
+KORE_IMAGE="${KORE_IMAGE:-ghcr.io/mariomile/kore-host:latest}"
 : "${KORE_GIT_TOKEN:?export KORE_GIT_TOKEN (read and write on the vault repo)}"
 
 mkdir -p "$BASE" && cd "$BASE"
@@ -34,17 +36,22 @@ if ! command -v docker >/dev/null; then
 fi
 DOCKER="docker"; docker ps >/dev/null 2>&1 || DOCKER="sudo docker"
 
-say "2/5 sorgenti Kore"
-src_url="https://x-access-token:${KORE_SRC_TOKEN}@${KORE_REPO}.git"
-if [ -d src/.git ]; then
-  git -C src fetch -q --depth 1 "$src_url" "$KORE_REF" && git -C src checkout -q --force FETCH_HEAD
+say "2/5 immagine di Kore"
+if $DOCKER pull -q "$KORE_IMAGE" >/dev/null 2>&1; then
+  $DOCKER tag "$KORE_IMAGE" kore-host
+  echo "Immagine pronta scaricata: $KORE_IMAGE"
 else
-  git clone -q --depth 1 --branch "$KORE_REF" "$src_url" src
-  git -C src remote set-url origin "https://${KORE_REPO}.git"   # token not kept
+  : "${KORE_SRC_TOKEN:?immagine non scaricabile: export KORE_SRC_TOKEN (lettura sul repo Kore) per costruirla}"
+  src_url="https://x-access-token:${KORE_SRC_TOKEN}@${KORE_REPO}.git"
+  if [ -d src/.git ]; then
+    git -C src fetch -q --depth 1 "$src_url" "$KORE_REF" && git -C src checkout -q --force FETCH_HEAD
+  else
+    git clone -q --depth 1 --branch "$KORE_REF" "$src_url" src
+    git -C src remote set-url origin "https://${KORE_REPO}.git"   # token not kept
+  fi
+  say "3/5 build dell'immagine (la prima volta 15-25 minuti su ARM)"
+  $DOCKER build -q -f src/deploy/always-on/Dockerfile -t kore-host src >/dev/null
 fi
-
-say "3/5 build dell'immagine (la prima volta 15-25 minuti su ARM)"
-$DOCKER build -q -f src/deploy/always-on/Dockerfile -t kore-host src >/dev/null
 
 [ -f secrets.env ] || { umask 077; echo "KORE_MCP_TOKEN=$(openssl rand -hex 32)" > secrets.env; }
 set -a; . ./secrets.env; set +a

@@ -18,6 +18,8 @@ RUN pnpm install --frozen-lockfile --filter @reflect/core... \
  && pnpm --filter @reflect/core build:indexer
 
 FROM node:22-bookworm-slim
+LABEL org.opencontainers.image.source="https://github.com/mariomile/Kore" \
+      org.opencontainers.image.description="Kore, always on: kore mcp --http --sync over a git clone of a vault"
 RUN apt-get update \
  && apt-get install -y --no-install-recommends git ca-certificates tini \
  && rm -rf /var/lib/apt/lists/*

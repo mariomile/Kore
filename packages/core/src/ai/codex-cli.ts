@@ -1,7 +1,7 @@
 import type { ChatStreamEvent } from './chat/stream-chat'
 import { agentCliFailureMessage, isAgentCliRuntimeFailure } from './agent-cli-failure'
+import { agentCliInput } from './agent-cli-input'
 import {
-  agentCliPrompt,
   runAgentCliCommand,
   streamAgentCliTurn,
   noteCardAndMentionRules,
@@ -272,6 +272,11 @@ export function codexCliArgs(options: {
   ]
 }
 
+/** Whether Codex can take an attachment of this media type (images only). */
+export function codexCliAcceptsAttachment(mediaType: string): boolean {
+  return ['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(mediaType)
+}
+
 /** Run one chat turn through the Codex CLI (see `./agent-cli`). */
 export function streamCodexCliChat(options: StreamCliChatOptions): AsyncGenerator<ChatStreamEvent> {
   const preamble = codexCliSystemPrompt({
@@ -283,7 +288,10 @@ export function streamCodexCliChat(options: StreamCliChatOptions): AsyncGenerato
     memoryWriteApproval: options.memoryWriteApproval,
     mcpServerNames: (options.mcpServers ?? []).map((server) => server.name),
   })
-  const userPrompt = `<instructions>\n${preamble}\n</instructions>\n\n${agentCliPrompt(options.messages)}`
+  // Codex app-server takes images as `image` input items; PDFs have no
+  // channel there, so they are named in the prompt as unreadable.
+  const input = agentCliInput(options.messages, codexCliAcceptsAttachment)
+  const userPrompt = `<instructions>\n${preamble}\n</instructions>\n\n${input.text}`
   const parseState: CodexCliParseState = { sawAgentMessageDelta: false }
   let threadId: string | undefined
   let turnId: string | undefined
@@ -349,7 +357,7 @@ export function streamCodexCliChat(options: StreamCliChatOptions): AsyncGenerato
       if (startedThread !== null && !sentTurnStart) {
         sentTurnStart = true
         threadId = startedThread
-        await sendLine(codexTurnStartLine(threadId, userPrompt))
+        await sendLine(codexTurnStartLine(threadId, userPrompt, input.attachments))
       }
       const startedTurn = turnIdFromAppServerLine(parsed)
       if (startedTurn !== null) {

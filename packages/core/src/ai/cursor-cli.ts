@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import type { ChatStreamEvent } from './chat/stream-chat'
+import { agentCliPrompt } from './agent-cli-input'
 import {
-  agentCliPrompt,
   streamAgentCliTurn,
   noteCardAndMentionRules,
   noteContentSafetyRules,

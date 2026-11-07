@@ -53,11 +53,11 @@ export interface ChatContextValue {
   draft: string
   /** Replace the composer draft (the composer's onChange). */
   setDraft: (text: string) => void
-  /** Images queued for the next message (dropped or pasted onto the chat). */
+  /** Files queued for the next message (picked, dropped, or pasted onto the chat). */
   attachments: ChatAttachment[]
-  /** Queue image files for the next message. */
-  attachImages: (files: File[]) => Promise<void>
-  /** Drop one queued image. */
+  /** Queue files (images, PDFs, text files) for the next message. */
+  attachFiles: (files: File[]) => Promise<void>
+  /** Drop one queued attachment. */
   removeAttachment: (id: string) => void
   /**
    * Send one user message (text, queued images, or both). Nothing

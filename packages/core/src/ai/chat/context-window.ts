@@ -79,8 +79,8 @@ function partTokens(part: ContentPart): number {
     case 'reasoning':
       return textTokens(part.text)
     case 'file':
-      // Attachments arrive as image file parts; anything else falls through
-      // to its JSON size like the other parts.
+      // Images get the flat estimate; a PDF falls through to its encoded
+      // size, which errs toward sending less (text files are text parts).
       return part.mediaType.startsWith('image') ? IMAGE_TOKENS : textTokens(JSON.stringify(part))
     default:
       // Tool calls, tool results, files: the JSON encoding is what travels.

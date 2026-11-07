@@ -1,11 +1,19 @@
-import { assetUrl, type ChatAttachment } from '@reflect/core'
+import {
+  assetUrl,
+  chatAttachmentMediaType,
+  isImageMediaType,
+  MAX_ATTACHMENT_BYTES,
+  type ChatAttachment,
+} from '@reflect/core'
 import { base64Of } from '@/lib/base64'
 
 /**
- * Image attachments for the chat composer. A dropped, pasted, or picked photo
- * is read once into a {@link ChatAttachment} whose `data:` URL serves double
- * duty — it is the `<img src>` for the composer preview and the transcript
- * bubble, and the image payload the AI SDK sends to the provider. The type
+ * File attachments for the chat composer: images, PDFs, and text files
+ * (markdown, plain text, CSV, JSON — the closed set in `@reflect/core`'s
+ * attachment types). A dropped, pasted, or picked file is read once into a
+ * {@link ChatAttachment} whose `data:` URL serves double duty — for an image
+ * it is the `<img src>` for the composer preview and the transcript bubble —
+ * and is the payload every engine receives. The type
  * itself lives in `@reflect/core` (it is part of the persisted conversation
  * model); this module owns only the browser side — reading `File`s into it.
  *
@@ -48,12 +56,14 @@ const JPEG_QUALITY = 0.85
 /** Formats every provider accepts as-is; anything else gets re-encoded. */
 const PROVIDER_SAFE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
 
-/** The image files in a drop or paste payload; everything else is ignored. */
-export function imageFilesFrom(data: DataTransfer | null): File[] {
+/** The attachable files in a drop or paste payload; everything else is ignored. */
+export function attachableFilesFrom(data: DataTransfer | null): File[] {
   if (!data) {
     return []
   }
-  return Array.from(data.files).filter((file) => file.type.startsWith('image/'))
+  return Array.from(data.files).filter(
+    (file) => chatAttachmentMediaType(file.name, file.type) !== null,
+  )
 }
 
 /**
@@ -92,8 +102,28 @@ async function downscaledImage(file: File): Promise<{ dataUrl: string; mediaType
   }
 }
 
-/** Read an image file into an attachment, bytes inlined as a `data:` URL. */
+/**
+ * Read a file into an attachment, bytes inlined as a `data:` URL. Images are
+ * downscaled first; other files keep their bytes under a canonical media
+ * type. Throws for a file the chat cannot carry
+ * (unsupported kind, or over {@link MAX_ATTACHMENT_BYTES}).
+ */
 export async function toChatAttachment(file: File): Promise<ChatAttachment> {
+  const mediaType = chatAttachmentMediaType(file.name, file.type)
+  if (mediaType === null) {
+    throw new Error(`${file.name} is not a supported file type`)
+  }
+  if (!isImageMediaType(mediaType)) {
+    if (file.size > MAX_ATTACHMENT_BYTES) {
+      throw new Error(`${file.name} is larger than ${MAX_ATTACHMENT_BYTES / (1024 * 1024)} MB`)
+    }
+    return {
+      id: crypto.randomUUID(),
+      name: file.name,
+      mediaType,
+      dataUrl: `data:${mediaType};base64,${base64Of(await file.arrayBuffer())}`,
+    }
+  }
   const downscaled = await downscaledImage(file)
   if (downscaled !== null) {
     return {

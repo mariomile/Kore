@@ -543,7 +543,7 @@ describe('ChatScreen', () => {
     const view = await renderChat()
 
     await view.getByRole('button', { name: 'Add context' }).click()
-    await expect.element(page.getByText('Upload images', { exact: true })).toBeVisible()
+    await expect.element(page.getByText('Upload files', { exact: true })).toBeVisible()
     await page.getByRole('menuitem', { name: /Mention a note/ }).click()
 
     await expect.element(view.getByLabelText('Chat message')).toHaveValue('@')
@@ -843,7 +843,14 @@ describe('ChatScreen', () => {
     await vi.waitFor(() => expect(streamChat).toHaveBeenCalled())
     expect(streamChat.mock.lastCall?.[0]?.messages.at(-1)).toEqual({
       role: 'user',
-      content: [{ type: 'file', data: 'data:image/png;base64,iVBORw==', mediaType: 'image/png' }],
+      content: [
+        {
+          type: 'file',
+          data: 'data:image/png;base64,iVBORw==',
+          mediaType: 'image/png',
+          filename: 'cat.png',
+        },
+      ],
     })
     // The queue cleared; the photo now lives in the transcript bubble.
     expect(view.getByRole('button', { name: 'Remove cat.png' }).query()).toBeNull()

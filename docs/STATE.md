@@ -1,5 +1,47 @@
 # Kore working state
 
+## Advanced chat, slice 2: real uploads in chat, 2026-11-07
+
+Ask (Mario, 2026-11-07, "Vai" on slice 2 of
+`/mnt/project-files/analisi/chat-avanzata.md`): images and files attached in
+chat must actually reach the engine. Before this, the Claude Code and Codex
+engines got "[1 attachment not shown]" and only images could be attached.
+
+- [x] Attachable kinds are a closed set (`packages/core/src/ai/chat/attachment-types.ts`):
+  images, PDF, and text files (`.md`, `.txt`, `.csv`, `.json`, 20 MB cap for
+  binaries). Text files are decoded once in `userMessage` into an
+  `<attached-file>` block, so every engine (BYOK, Claude Code, Codex,
+  Cursor) reads them the same way; images and PDFs stay file parts (now
+  with `filename`).
+- [x] CLI engines get the bytes. `agentCliInput` (`packages/core/src/ai/agent-cli-input.ts`)
+  flattens history into the prompt plus labeled attachments
+  (`[Attachment N: name]`), newest first, at most 8 per run, so follow-ups
+  about an earlier file still work in a stateless run. Claude Code receives
+  them as `image` / `document` content blocks on `--input-format
+  stream-json` (used whenever there are attachments, steering or not);
+  Codex receives images as `image` input items with a data URL, PDFs are
+  named as unreadable there; Cursor gets text only. Verified with a real
+  `claude 2.1.319 -p --input-format stream-json` run: it read a PNG's color
+  and a word inside a PDF.
+- [x] Privacy unchanged: no new file permission. The bytes ride the input
+  message, so `.reflect/` and private notes stay denied exactly as before.
+- [x] Persistence: `.reflect/chat-attachments/` accepts pdf/txt/md/csv/json
+  (`chat_attachments.rs`); the asset-protocol carve-out stays raster-only
+  (`is_chat_attachment_image_rel`). Restored turns are hydrated for CLI
+  engines too.
+- [x] UI: "Upload files" in the + menu, paste and drop accept the new kinds,
+  composer shows a file tile (kind + name) for non-images, the sent bubble
+  shows a file chip; unsupported or oversized files raise a toast. Mobile
+  picker accepts the same kinds.
+
+**Validation:** core tests (`claude-cli`, `codex-cli`, `transcript`,
+`attachment-types`), Chromium browser tests for chat and mobile, Rust
+`chat_attachments` / `asset_protocol` tests, `pnpm typecheck`,
+oxfmt/oxlint/eslint on touched files. WebKit runs in CI. Not yet tried in
+the app on the Mac (attach a PDF and a CSV with Claude Code selected).
+
+**Next:** slice 3, clickable questions (`::ask{}`), in a new thread.
+
 ## Advanced chat, slice 1: agent steps and subagents visible, 2026-11-07
 
 Ask (Mario, 2026-11-07): turn the in-app chat into an advanced

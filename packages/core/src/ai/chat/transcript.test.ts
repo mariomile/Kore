@@ -250,7 +250,9 @@ describe('buildHistory', () => {
     expect(buildHistory(turns)).toEqual([
       {
         role: 'user',
-        content: [{ type: 'file', data: photo.dataUrl, mediaType: 'image/png' }],
+        content: [
+          { type: 'file', data: photo.dataUrl, mediaType: 'image/png', filename: 'cat.png' },
+        ],
       },
       { role: 'assistant', content: 'A cat.' },
     ])
@@ -273,7 +275,7 @@ describe('userMessage', () => {
     expect(userMessage('what is this?', [photo])).toEqual({
       role: 'user',
       content: [
-        { type: 'file', data: photo.dataUrl, mediaType: 'image/png' },
+        { type: 'file', data: photo.dataUrl, mediaType: 'image/png', filename: 'cat.png' },
         { type: 'text', text: 'what is this?' },
       ],
     })
@@ -282,7 +284,26 @@ describe('userMessage', () => {
   it('omits the text part for a photo-only message', () => {
     expect(userMessage('', [photo])).toEqual({
       role: 'user',
-      content: [{ type: 'file', data: photo.dataUrl, mediaType: 'image/png' }],
+      content: [{ type: 'file', data: photo.dataUrl, mediaType: 'image/png', filename: 'cat.png' }],
+    })
+  })
+
+  it('inlines a text file as an <attached-file> block', () => {
+    const csv: ChatAttachment = {
+      id: 'att-3',
+      name: 'sales.csv',
+      mediaType: 'text/csv',
+      dataUrl: `data:text/csv;base64,${btoa('month,total\njan,10')}`,
+    }
+    expect(userMessage('sum it', [csv])).toEqual({
+      role: 'user',
+      content: [
+        {
+          type: 'text',
+          text: '<attached-file name="sales.csv">\nmonth,total\njan,10\n</attached-file>',
+        },
+        { type: 'text', text: 'sum it' },
+      ],
     })
   })
 
@@ -300,7 +321,7 @@ describe('userMessage', () => {
     expect(userMessage('what are these?', [photo, onDisk])).toEqual({
       role: 'user',
       content: [
-        { type: 'file', data: photo.dataUrl, mediaType: 'image/png' },
+        { type: 'file', data: photo.dataUrl, mediaType: 'image/png', filename: 'cat.png' },
         { type: 'text', text: 'what are these?' },
       ],
     })

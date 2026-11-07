@@ -7,6 +7,12 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Files you attach in chat now reach the AI. Images, PDFs, and Markdown,
+  text, CSV or JSON files can be picked from the + menu, pasted or dropped
+  onto the chat; with Claude Code the agent reads images and PDFs directly,
+  Codex reads images, and text files work with every engine. Follow-up
+  questions about an earlier file keep working.
+
 - The chat shows its work. With Claude Code as the engine, every file it
   reads, every search and edit, and every MCP call appears as a step while
   the answer is being prepared, folded into "Worked · N steps" once it is

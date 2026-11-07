@@ -1,5 +1,6 @@
 import { useRef, type ReactElement } from 'react'
-import { Image, Note, Plus } from '@/components/icons'
+import { CHAT_ATTACHMENT_ACCEPT } from '@reflect/core'
+import { Note, Paperclip, Plus } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -10,30 +11,30 @@ import {
 } from '@/components/ui/dropdown-menu'
 
 interface ChatContextMenuProps {
-  onAttachImages: (files: File[]) => void
+  onAttachFiles: (files: File[]) => void
   onMentionNote: () => void
 }
 
-/** Adds the context types the chat can actually consume: images and note mentions. */
+/** Adds the context types the chat can actually consume: files (images, PDFs, text) and note mentions. */
 export function ChatContextMenu({
-  onAttachImages,
+  onAttachFiles,
   onMentionNote,
 }: ChatContextMenuProps): ReactElement {
-  const imageInputRef = useRef<HTMLInputElement | null>(null)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   return (
     <>
       <input
-        ref={imageInputRef}
+        ref={fileInputRef}
         type="file"
-        accept="image/*"
+        accept={CHAT_ATTACHMENT_ACCEPT}
         multiple
         className="sr-only"
-        aria-label="Choose images"
+        aria-label="Choose files"
         onChange={(event) => {
           const files = Array.from(event.currentTarget.files ?? [])
           if (files.length > 0) {
-            onAttachImages(files)
+            onAttachFiles(files)
           }
           event.currentTarget.value = ''
         }}
@@ -54,10 +55,10 @@ export function ChatContextMenu({
         <DropdownMenuContent side="top" align="start" sideOffset={8} className="min-w-52">
           <DropdownMenuItem
             className="gap-2 px-2 py-1.5"
-            onClick={() => imageInputRef.current?.click()}
+            onClick={() => fileInputRef.current?.click()}
           >
-            <Image aria-hidden />
-            Upload images
+            <Paperclip aria-hidden />
+            Upload files
           </DropdownMenuItem>
           <DropdownMenuItem className="gap-2 px-2 py-1.5" onClick={onMentionNote}>
             <Note aria-hidden />

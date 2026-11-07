@@ -1,10 +1,11 @@
 import { z } from 'zod'
 import { call } from '../../ipc/invoke'
 import type { ChatAttachment } from './transcript'
+import { CHAT_ATTACHMENT_EXTENSIONS } from './attachment-types'
 
 /**
- * Chat attachment bytes on disk. A freshly attached image enters the
- * composer as a `data:` URL (downscaled, bounded — see the app's
+ * Chat attachment bytes on disk. A freshly attached file enters the
+ * composer as a `data:` URL (images downscaled, all bounded — see the app's
  * chat-attachments module); the send path persists those bytes to
  * `.reflect/chat-attachments/<conversation>/<attachment>.<ext>` through the
  * commands here, so the *persisted* turn row carries only the file path and
@@ -12,14 +13,6 @@ import type { ChatAttachment } from './transcript'
  * the `reflect-asset://` protocol; only a send that must rebuild a provider
  * payload reads the bytes back.
  */
-
-/** Extension for the on-disk file, from the attachment's media type. */
-const EXTENSION_BY_MEDIA_TYPE: Record<string, string> = {
-  'image/jpeg': 'jpeg',
-  'image/png': 'png',
-  'image/webp': 'webp',
-  'image/gif': 'gif',
-}
 
 const pathSchema = z.string()
 const base64Schema = z.string()
@@ -37,7 +30,7 @@ export async function persistChatAttachmentFile(
   attachment: ChatAttachment,
   generation: number,
 ): Promise<ChatAttachment> {
-  const extension = EXTENSION_BY_MEDIA_TYPE[attachment.mediaType]
+  const extension = CHAT_ATTACHMENT_EXTENSIONS[attachment.mediaType]
   const dataUrl = attachment.dataUrl
   if (dataUrl === undefined || extension === undefined || attachment.path !== undefined) {
     return attachment

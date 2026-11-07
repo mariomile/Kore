@@ -1,12 +1,14 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import type { ModelMessage } from 'ai'
+import type { FilePart, ModelMessage } from 'ai'
 import { setBridge } from '../ipc/bridge'
-import { agentCliPrompt } from './agent-cli'
+import { agentCliInput, agentCliPrompt } from './agent-cli-input'
 import {
+  claudeCliAcceptsAttachment,
   claudeCliArgs,
   claudeCliSettingsJson,
   claudeCliSystemPrompt,
   createClaudeCliLineParser,
+  claudeStreamJsonUserLine,
   parseClaudeCliLine,
   streamClaudeCliChat,
 } from './claude-cli'
@@ -179,19 +181,78 @@ describe('agentCliPrompt', () => {
     expect(prompt.endsWith('Current question:\nFollow-up')).toBe(true)
   })
 
-  it('notes attachments instead of embedding their bytes', () => {
+  it('names attachments an engine cannot read instead of embedding their bytes', () => {
     const prompt = agentCliPrompt([
       {
         role: 'user',
         content: [
-          { type: 'file', data: 'data:image/png;base64,xxx', mediaType: 'image/png' },
+          {
+            type: 'file',
+            data: 'data:image/png;base64,xxx',
+            mediaType: 'image/png',
+            filename: 'cat.png',
+          },
           { type: 'text', text: 'What is this?' },
         ],
       },
     ])
     expect(prompt).toContain('What is this?')
-    expect(prompt).toContain('[1 attachment not shown]')
+    expect(prompt).toContain('[Attachment: cat.png (image/png) — this engine cannot read it]')
     expect(prompt).not.toContain('base64')
+  })
+})
+
+describe('agentCliInput', () => {
+  it('labels readable attachments, newest first within the cap, across turns', () => {
+    const file = (name: string): FilePart => ({
+      type: 'file',
+      data: `data:image/png;base64,${name}`,
+      mediaType: 'image/png',
+      filename: `${name}.png`,
+    })
+    const input = agentCliInput(
+      [
+        { role: 'user', content: [file('old'), { type: 'text', text: 'First' }] },
+        { role: 'assistant', content: [{ type: 'text', text: 'Seen' }] },
+        { role: 'user', content: [file('new'), { type: 'text', text: 'And this?' }] },
+      ],
+      claudeCliAcceptsAttachment,
+    )
+    expect(input.attachments.map((attachment) => attachment.label)).toEqual([
+      'Attachment 1: old.png',
+      'Attachment 2: new.png',
+    ])
+    expect(input.attachments[1]?.base64).toBe('new')
+    expect(input.text).toContain('User: [Attachment 1: old.png]\nFirst')
+    expect(input.text.endsWith('Current question:\n[Attachment 2: new.png]\nAnd this?')).toBe(true)
+  })
+
+  it('puts images and PDFs in the stream-json line as content blocks', () => {
+    const line: unknown = JSON.parse(
+      claudeStreamJsonUserLine('Compare them', [
+        { label: 'Attachment 1: a.png', name: 'a.png', mediaType: 'image/png', base64: 'AAA' },
+        {
+          label: 'Attachment 2: b.pdf',
+          name: 'b.pdf',
+          mediaType: 'application/pdf',
+          base64: 'BBB',
+        },
+      ]),
+    )
+    expect(line).toMatchObject({
+      message: {
+        content: [
+          { type: 'text', text: 'Compare them' },
+          { type: 'text', text: '[Attachment 1: a.png]' },
+          { type: 'image', source: { type: 'base64', media_type: 'image/png', data: 'AAA' } },
+          { type: 'text', text: '[Attachment 2: b.pdf]' },
+          {
+            type: 'document',
+            source: { type: 'base64', media_type: 'application/pdf', data: 'BBB' },
+          },
+        ],
+      },
+    })
   })
 })
 
@@ -443,6 +504,43 @@ describe('streamClaudeCliChat', () => {
     // sends no --model flag.
     expect(fake.runs[0]).toMatchObject({ binary: 'claude', cwd: '/g' })
     expect(fake.runs[0]?.['args']).not.toContain('--model')
+  })
+
+  it('sends an attached image over stream-json input without steering', async () => {
+    const fake = installFakeCli()
+    const stream = streamClaudeCliChat({
+      ...baseOptions,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'file',
+              data: 'data:image/png;base64,AAA',
+              mediaType: 'image/png',
+              filename: 'a.png',
+            },
+            { type: 'text', text: 'What is this?' },
+          ],
+        },
+      ],
+    })
+    const first = stream.next()
+    await Promise.resolve()
+    const requestId = requestIdOf(fake)
+    fake.emit?.({ kind: 'done', requestId, code: 0 })
+    await first
+    expect(fake.runs[0]?.['args']).toContain('--input-format')
+    const prompt: unknown = JSON.parse(String(fake.runs[0]?.['prompt']))
+    expect(prompt).toMatchObject({
+      message: {
+        content: [
+          { type: 'text' },
+          { type: 'text', text: '[Attachment 1: a.png]' },
+          { type: 'image', source: { type: 'base64', media_type: 'image/png', data: 'AAA' } },
+        ],
+      },
+    })
   })
 
   it('yields an error carrying the CLI failure message', async () => {

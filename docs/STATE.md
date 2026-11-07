@@ -1,5 +1,43 @@
 # Kore working state
 
+## Context capture, slice 3: pasted links keep their text, 2026-11-07
+
+Ask (Mario, 2026-11-07, "Facciamo prima resto articoli. Lasciamo il web
+clipper per ora", slice 3 of `/mnt/project-files/analisi/raccogliere-contesto.md`):
+a pasted article link should save the article's words in its `#link` card,
+and a YouTube link its transcript, so search and agents find them and they
+survive the page going away. The web clipper (slice 2) stays parked.
+
+- [x] One article extractor in core: `packages/core/src/actions/article-text.ts`
+  (Defuddle + the GFM converter moved from `apps/extension/lib` to
+  `packages/core/src/markdown/html-to-markdown*.ts`), exported as
+  `@reflect/core/article-text`. The Kore Capture extension now uses it too,
+  so the future web clipper starts from the same code.
+- [x] `saveLinkText` (`actions/link-text.ts`), called after a paste collects
+  the card: fetches the page through `capture_meta_fetch`, keeps the text
+  under `## Page Text` (the heading extension captures use), and swaps the
+  host placeholder title for the page's own. Skips X (the embed snapshot
+  keeps it), LinkedIn (sign-in wall), pages under 200 characters, cards
+  edited meanwhile, and cards that already keep text; at most 200k
+  characters. Tried once per card per session; a network failure retries
+  on the next paste.
+- [x] YouTube transcripts (`actions/youtube-transcript.ts`): the Android
+  player API (the route `youtube-transcript-api` takes, Mario's vault script
+  reference) gives caption tracks; a human track in the spoken language wins
+  over auto-generated. Saved under `## Transcript`, one `[m:ss]` paragraph
+  per minute. Transport is the new bounded Rust primitive
+  `capture_data_fetch` (https, JSON/XML only, optional JSON POST body,
+  4 MiB cap, no redirects).
+- [x] Privacy: a card collected from a `private: true` note is never fetched
+  (checked in the editor hook and again on the card's own frontmatter).
+
+**Validation:** Chromium test `link-text.test.tsx` (article saved and
+retitled, transcript saved, private card never fetched), moved
+`html-to-markdown` tests, extension tests, `pnpm typecheck`, eslint/oxlint/
+oxfmt, `cargo fmt`, clippy on `reflect-open`. **Not verified on live sites**:
+neither this container nor the Mac shell reach the web, so the YouTube
+player call in particular needs a first real paste on the Mac.
+
 ## Advanced chat, slice 2: real uploads in chat, 2026-11-07
 
 Ask (Mario, 2026-11-07, "Vai" on slice 2 of
@@ -3118,6 +3156,10 @@ screen: Agents then Close lands on today.
 **Next:** merge the Close fix, then bump.
 
 ## Session log
+
+- 2026-11-07 — A pasted article link keeps the article's text in its
+  `#link` card, a YouTube link its transcript. One shared article extractor
+  in core, used by the extension too.
 
 - 2026-11-07 — The chat shows what the Claude Code agent is doing: each
   tool call as a step (Read, Find files, Edit, MCP), subagents as cards

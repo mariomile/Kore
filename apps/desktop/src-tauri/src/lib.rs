@@ -437,6 +437,7 @@ pub fn run() {
             capture::capture_link_preview,
             capture::capture_meta_fetch,
             capture::capture_oembed_fetch,
+            capture::capture_data_fetch,
             git::git_status,
             git::git_setup,
             git::git_disconnect,

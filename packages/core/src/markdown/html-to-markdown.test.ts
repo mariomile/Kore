@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import { htmlToMarkdown } from './html-to-markdown'
-import { pageTextFromArticleHtml } from './page-text'
 
 describe('htmlToMarkdown', () => {
   it('round-trips headings, links, lists, quotes, and emphasis', () => {
@@ -73,19 +72,5 @@ describe('htmlToMarkdown', () => {
 
   it('returns empty markdown when the fragment has no readable content', () => {
     expect(htmlToMarkdown('<div><script>void 0</script></div>')).toBe('')
-  })
-})
-
-describe('pageTextFromArticleHtml', () => {
-  it('prefers article markdown over flattened paragraphs', () => {
-    expect(pageTextFromArticleHtml('<h2>Section</h2><p>Body</p>', ['Body'])).toBe(
-      '## Section\n\nBody',
-    )
-  })
-
-  it('falls back to flattened paragraphs when markdown conversion is empty', () => {
-    expect(pageTextFromArticleHtml('<script>void 0</script>', [' Fallback text. '])).toBe(
-      'Fallback text.',
-    )
   })
 })

@@ -466,6 +466,10 @@ export function createDevBridge(backend: DevBridgeBackend): IpcBridge {
         // Link previews ask X's syndication endpoint for posts; answer with a
         // canned post so the dev preview draws the post card offline.
         return devOEmbedJson(String(args.url ?? ''))
+      case 'capture_data_fetch':
+        // Video transcripts need YouTube; the harness is offline, which is
+        // exactly what a real fetch reports when there is no network.
+        throw new ReflectError('network', 'dev bridge: no network for capture_data_fetch')
 
       default:
         console.error(`[dev-bridge] unimplemented command "${command}"`, args)

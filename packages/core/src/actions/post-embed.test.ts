@@ -74,6 +74,45 @@ describe('resolveXPostEmbed', () => {
   })
 })
 
+describe('resolveXPostEmbed for a long post', () => {
+  const LONG = {
+    ...TWEET,
+    id_str: '21',
+    edit_control: { ...TWEET.edit_control, edit_tweet_ids: ['21'] },
+    note_tweet: { id: 'note-21' },
+  }
+  const WHOLE = 'Congrats to the team @conductor_build, and here is the rest of the long post.'
+
+  it('reads the whole text instead of the cut one', async () => {
+    fetchJson.mockResolvedValueOnce(JSON.stringify(LONG))
+    fetchJson.mockResolvedValueOnce(JSON.stringify({ tweet: { id: '21', text: WHOLE } }))
+    const post = await resolveXPostEmbed('https://x.com/grimcodes/status/21')
+    expect(fetchJson).toHaveBeenLastCalledWith('https://api.fxtwitter.com/status/21')
+    expect(post?.body).toEqual([{ type: 'text', text: WHOLE }])
+    expect(post?.truncated).toBe(undefined)
+  })
+
+  it('keeps the cut post when the whole text cannot be read', async () => {
+    fetchJson.mockResolvedValueOnce(JSON.stringify({ ...LONG, id_str: '22' }))
+    fetchJson.mockRejectedValueOnce(new Error('offline'))
+    const post = await resolveXPostEmbed('https://x.com/grimcodes/status/22')
+    expect(post?.truncated).toBe(true)
+    expect(JSON.stringify(post?.body)).toContain('Congrats')
+  })
+
+  it('never asks for the whole text of a short post', async () => {
+    fetchJson.mockResolvedValueOnce(
+      JSON.stringify({
+        ...TWEET,
+        id_str: '23',
+        edit_control: { ...TWEET.edit_control, edit_tweet_ids: ['23'] },
+      }),
+    )
+    await resolveXPostEmbed('https://x.com/grimcodes/status/23')
+    expect(fetchJson).toHaveBeenCalledTimes(1)
+  })
+})
+
 describe('resolveYouTubeEmbed', () => {
   it('reads the oEmbed answer and keeps the link', async () => {
     fetchJson.mockResolvedValue(JSON.stringify({ title: 'Talk', author_name: 'Kore' }))

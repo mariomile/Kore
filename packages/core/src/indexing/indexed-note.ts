@@ -121,8 +121,12 @@ import {
  * 27 - `notes.preview` skips code and math blocks, HTML and Obsidian comments,
  * Templater tags, inline Dataview queries, and callout markers. Existing rows
  * keep the query code as their snippet until reprojected.
+ * 28 - a saved X or YouTube embed snapshot (the JSON comment Meowdown writes
+ * after the image) reads as the post's author and words in the note text, so
+ * search finds a tweet by what it says. Existing rows hold the raw JSON until
+ * reprojected.
  */
-export const PROJECTION_VERSION = 27
+export const PROJECTION_VERSION = 28
 
 /**
  * The `index_meta` key holding the {@link PROJECTION_VERSION} the stored rows

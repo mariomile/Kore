@@ -42,7 +42,7 @@ index c9a7398865634156e4ef521f1087f3ac4d671233..adf496ddcfe54eda18047c3def307963
 +export { type AcceptPendingReplacementOptions, type CheckRoundTripOptions, type CodeBlockAttrs, type CodeBlockFenceStyle, type CodeToken, type DocToMarkdownOptions, type EditorConfig, type EditorExtension, type EditorExtensionOptions, type ExitBoundaryHandler, type ExitBoundaryOptions, type FileClickHandler, type FileClickPayload, type FileInfo, type FileInfoResolver, type FileLinkOptions, type FileLinkPayload, type FileLinkResolver, type FilePasteHandler, type FilePasteOptions, type FileSaveErrorHandler, type FileViewOptions, type FollowLinkHandlers, type ImageClickHandler, type ImageClickPayload, type ImageOptions, type InlineMarkContext, type InlineMarkOptions, type InsertMarkdownOptions, type KaTeXRender, type LanguageItem, type LinkAttrs, type LinkClickHandler, type LinkClickPayload, type LinkCopyHandler, type LinkCopyPayload, type LinkEditHandler, type LinkEditOptions, type LinkHoverHandler, type LinkHoverOptions, type LinkPreview, type LinkPreviewResolver, type LinkUnit, type ListMarker, type MarkChunk, type MarkMode, type MarkName, type MarkdownToDocOptions, type MdFileAttrs, type MdImageAttrs, type MdLinkTextAttrs, type MdMathAttrs, type MdWikilinkAttrs, type MeowdownCodeBlockAttrs, type MeowdownHTMLCommentAttrs, type MeowdownListAttrs, type MeowdownTableCellAttrs, type NodeName, type ParsedWikiEmbed, type PendingReplacement, type PendingReplacementEvent, type PendingReplacementHandler, type PendingReplacementMode, type PendingReplacementOutcome, type PlaceholderOptions, type PositionRange, type PostEmbedSnapshot, Priority, type ReferenceDefinition, type ReferenceDefinitionIndex, type ReferenceDefinitions, type RoundTripFidelity, type SearchStatus, type SearchStatusHandler, type StartPendingReplacementOptions, type TableColumnAlign, type TagClickHandler, type TagClickPayload, type TypedEditor, type TypedMarkBuilders, type VirtualElement, type WikiEmbedOptions, type WikiEmbedResolution, type WikiEmbedResolver, type WikilinkClickHandler, type WikilinkClickPayload, type WikilinkHoverHandler, type WikilinkHoverHit, type WikilinkOptions, type WikilinkPayload, type WikilinkResolution, type WikilinkResolver, type XPostMediaClickHandler, type XPostResolver, type YouTubeVideoClickHandler, type YouTubeVideoResolver, defineCodeBlockPreviewPlugin, definePlaceholder, defineSearchStatusHandler, getSearchStatus, isCodeBlockPreviewHiddenDecoration, withPriority };
 \ No newline at end of file
 diff --git a/dist/index.js b/dist/index.js
-index 4cab7b49b6f166fda66cfc8d2afa7bedd898759b..abd12a29dc9407b807c523946d5abc5a1dad4428 100644
+index 4cab7b49b6f166fda66cfc8d2afa7bedd898759b..ba11c2946994a34f9e3c5e6f608d8a56072f4680 100644
 --- a/dist/index.js
 +++ b/dist/index.js
 @@ -2260,6 +2260,30 @@ function getCodeTokens(code, language) {
@@ -160,7 +160,27 @@ index 4cab7b49b6f166fda66cfc8d2afa7bedd898759b..abd12a29dc9407b807c523946d5abc5a
  		}
  		return true;
  	};
-@@ -8777,6 +8839,7 @@ var VirtualCaretView = class {
+@@ -3975,7 +4037,8 @@ var ImageMarkView = class {
+ 		return wrapper;
+ 	}
+ 	/**
+-	* Resolve X cards from their URL; YouTube cards may reuse a saved snapshot.
++	* Build a post-embed card. Both kinds render from a saved snapshot when the
++	* image carries one, and persist their first resolved answer otherwise.
+ 	*/
+ 	#buildPostEmbed(kind, src) {
+ 		const saved = this.#attrs.snapshot == null ? void 0 : parsePostEmbedSnapshot(this.#attrs.snapshot);
+@@ -3983,7 +4046,8 @@ var ImageMarkView = class {
+ 			registerXPost();
+ 			const element = document.createElement("meowdown-embed-x");
+ 			element.mediaUrlProtocols = this.#mediaUrlProtocols ?? null;
+-			element.resolver = this.#resolveXPost;
++			element.data = saved?.kind === "x-post" && saved.data.id === parseXPostId(src) ? saved.data : null;
++			element.resolver = this.#persisting(kind, this.#resolveXPost);
+ 			element.url = src;
+ 			return element;
+ 		}
+@@ -8777,6 +8841,7 @@ var VirtualCaretView = class {
  	#lastTail;
  	#blinkIndex = 0;
  	#repositionRequested = false;
@@ -168,7 +188,7 @@ index 4cab7b49b6f166fda66cfc8d2afa7bedd898759b..abd12a29dc9407b807c523946d5abc5a
  	constructor(view, layer) {
  		this.#view = view;
  		this.#document = view.dom.ownerDocument;
-@@ -8787,6 +8850,8 @@ var VirtualCaretView = class {
+@@ -8787,6 +8852,8 @@ var VirtualCaretView = class {
  		this.#caret.dataset.testid = "virtual-caret";
  		this.#document.addEventListener("selectionchange", this.#requestReposition);
  		this.#unsubscribeModality = onIsTouchInputChange(this.#requestReposition);
@@ -177,7 +197,7 @@ index 4cab7b49b6f166fda66cfc8d2afa7bedd898759b..abd12a29dc9407b807c523946d5abc5a
  		view.dom.addEventListener("focus", this.#handleFocus);
  		view.dom.addEventListener("blur", this.#handleBlur);
  		if (typeof ResizeObserver !== "undefined") {
-@@ -8803,6 +8868,8 @@ var VirtualCaretView = class {
+@@ -8803,6 +8870,8 @@ var VirtualCaretView = class {
  	destroy() {
  		this.#document.removeEventListener("selectionchange", this.#requestReposition);
  		this.#unsubscribeModality();
@@ -186,7 +206,7 @@ index 4cab7b49b6f166fda66cfc8d2afa7bedd898759b..abd12a29dc9407b807c523946d5abc5a
  		this.#view.dom.removeEventListener("focus", this.#handleFocus);
  		this.#view.dom.removeEventListener("blur", this.#handleBlur);
  		this.#resizeObserver?.disconnect();
-@@ -8811,6 +8878,12 @@ var VirtualCaretView = class {
+@@ -8811,6 +8880,12 @@ var VirtualCaretView = class {
  		delete this.#layer.dataset.focused;
  		this.#view.dom.removeAttribute(DATA_ATTRIBUTE);
  	}
@@ -199,7 +219,7 @@ index 4cab7b49b6f166fda66cfc8d2afa7bedd898759b..abd12a29dc9407b807c523946d5abc5a
  	#handleFocus = () => {
  		this.#layer.dataset.focused = "";
  	};
-@@ -8874,13 +8947,14 @@ var VirtualCaretView = class {
+@@ -8874,13 +8949,14 @@ var VirtualCaretView = class {
  			view.dom.removeAttribute(DATA_ATTRIBUTE);
  			return;
  		}

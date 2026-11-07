@@ -1,5 +1,6 @@
 import { fromSyndication } from '@post-embed/exporter/x/syndication'
 import type { XPost, YouTubeVideo } from '@post-embed/types'
+import { z } from 'zod'
 import { captureOEmbedFetch } from '../graph/commands'
 import { xPostId, xSyndicationUrl } from './link-preview-providers'
 import { oembedRequestURL } from './oembed'
@@ -43,7 +44,48 @@ function cached<T>(
   }
 }
 
-/** The X post behind an embed URL, read from X's syndication endpoint. */
+/**
+ * FxEmbed's public status API, asked only for a long post. X's syndication
+ * endpoint cuts a long ("note") post at its first 280 characters and points
+ * at x.com for the rest; this one answers the whole text. Only the post id
+ * leaves the app, as it already does for the syndication read.
+ */
+export function xFullTextUrl(id: string): string {
+  return `https://api.fxtwitter.com/status/${id}`
+}
+
+const fullTextAnswer = z.object({
+  tweet: z.object({ id: z.string(), text: z.string().min(1) }),
+})
+
+/**
+ * The post with its whole text when syndication cut it short, or the post
+ * as it was when the full text cannot be read: a cut post with a "Show more"
+ * link beats no card. The full text replaces the segments, so its links
+ * show as written rather than as links.
+ */
+async function withFullText(post: XPost): Promise<XPost> {
+  if (post.truncated !== true) {
+    return post
+  }
+  try {
+    const answer = fullTextAnswer.safeParse(
+      JSON.parse(await captureOEmbedFetch(xFullTextUrl(post.id))),
+    )
+    if (!answer.success || answer.data.tweet.id !== post.id) {
+      return post
+    }
+    return { ...post, body: [{ type: 'text', text: answer.data.tweet.text }], truncated: undefined }
+  } catch {
+    return post
+  }
+}
+
+/**
+ * The X post behind an embed URL, read from X's syndication endpoint (and
+ * its whole text for a long post). Meowdown saves the answer into the note's
+ * image comment, so the card renders offline and search can read the words.
+ */
 export const resolveXPostEmbed = cached(async (url: string): Promise<XPost | undefined> => {
   const id = xPostId(url)
   if (id === null) {
@@ -51,7 +93,7 @@ export const resolveXPostEmbed = cached(async (url: string): Promise<XPost | und
   }
   const json: unknown = JSON.parse(await captureOEmbedFetch(xSyndicationUrl(id)))
   const result = fromSyndication(json)
-  return result.issues === undefined ? result.value : undefined
+  return result.issues === undefined ? await withFullText(result.value) : undefined
 })
 
 /** The YouTube video behind an embed URL, read from YouTube's oEmbed endpoint. */

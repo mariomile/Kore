@@ -26,6 +26,28 @@ Bug (Mario, 2026-11-07, screenshot): a pasted X link in a daily note showed
 tests (53, Chromium), `pnpm check`. Dev build shows the X card filled
 (`/mnt/project-files/screenshot/anteprima-link/embed-x-funzionante.png`).
 
+Follow-up, same day (Mario: "La preview si deve vedere tutta e devo poter
+anche cercare il contenuto del tweet"):
+
+- [x] X posts are saved into the note. Meowdown already writes a YouTube
+  answer into the image's trailing comment (`![](url)<!-- {"snapshot":…} -->`)
+  but always re-fetched X; the core and react patches give X the same path
+  (render from the saved snapshot when its id matches the link, persist the
+  first answer otherwise). Cards render offline, and read-only previews
+  (palette, hover) show the saved post without fetching. Upstream candidate.
+- [x] Long posts: syndication cuts a "note" post at 280 characters with a
+  "Show more" link; `resolveXPostEmbed` then reads the whole text from
+  FxEmbed's `api.fxtwitter.com/status/<id>` (only the id leaves the app) and
+  keeps the cut post if that fails.
+- [x] `styles/post-embeds.css`: the X card takes the text column (up to
+  40rem), media at 20rem instead of 7.5rem thumbnails, quoted posts unclamped.
+- [x] Search: `markdown/embed-snapshot.ts` reads a saved snapshot comment as
+  the post's author, handle and words (quote included; YouTube: title and
+  channel) in the note's plain text, where the JSON used to sit. FTS and the
+  AI's note text both see it. `PROJECTION_VERSION` 28 rebuilds the index once.
+- Live X and FxEmbed still unverified from here. Screenshots:
+  `x-card-completa.png`, `x-ricerca-tweet.png` in the same folder.
+
 ## Obsidian import, slice 2: conversion to a copy, 2026-11-06
 
 Ask (Mario, 2026-11-06, "Fai tutto tu"): read his vault, choose the mapping,

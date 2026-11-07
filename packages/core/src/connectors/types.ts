@@ -14,8 +14,16 @@ export interface ConnectorNote {
    * later run — on this device or another — finds the note again.
    */
   readonly sourceId: string
-  /** Filename stem (no folder, no `.md`), already filesystem-safe. */
+  /**
+   * Filename stem used when the user's path pattern renders to nothing (no
+   * folder, no `.md`), already filesystem-safe.
+   */
   readonly fileStem: string
+  /**
+   * The values this item offers to the user's path pattern, by token name
+   * (`title`, `category`, `date`...). See {@link Connector.patternFields}.
+   */
+  readonly fields: Readonly<Record<string, string>>
   /** The full markdown for a note that does not exist yet. */
   readonly source: string
   /**
@@ -24,12 +32,22 @@ export interface ConnectorNote {
    * rewrite what the user may have edited; they only append what is new.
    */
   merge(existing: string): string | null
+  /**
+   * Whether a file without this connector's id, sitting at this note's
+   * natural path, is the same item written by another app (another sync
+   * tool pointed at the same folder). An adopted file is merged into like
+   * one of ours, so a vault that already holds the item gets no duplicate.
+   * Omitted: never.
+   */
+  adopts?(existing: string): boolean
 }
 
 /** What a connector receives for one fetch. */
 export interface ConnectorFetchInput {
   /** The user's credential for the source (from the OS keychain). */
   readonly token: string
+  /** Tags every new note carries (the user's choice, else the connector's default). */
+  readonly tags: readonly string[]
   /** Only items changed after this instant are needed; `null` fetches everything. */
   readonly since: Date | null
   /** The HTTP transport (the Tauri HTTP plugin in the app, a fake in tests). */
@@ -58,6 +76,15 @@ export interface Connector {
   readonly idKey: string
   /** Default graph-relative folder for new notes. */
   readonly defaultFolder: string
+  /**
+   * Default path pattern inside the folder, e.g. `{title}`. The user can
+   * replace it: `/` makes subfolders, `{name}` inserts a field.
+   */
+  readonly defaultPattern: string
+  /** Fields a pattern may use, in the order the settings hint lists them. */
+  readonly patternFields: readonly string[]
+  /** Tags new notes carry unless the user chooses others. */
+  readonly defaultTags: readonly string[]
   /** Where the user creates the credential this connector needs. */
   readonly tokenUrl: string
   /** Label for the credential field. */

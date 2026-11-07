@@ -31,6 +31,7 @@ pub mod search;
 pub mod set;
 pub mod show;
 pub mod skills;
+pub mod sources;
 pub mod tag;
 pub mod tags;
 pub mod tasks;

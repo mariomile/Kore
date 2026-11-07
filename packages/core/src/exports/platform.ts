@@ -512,3 +512,8 @@ export {
   disconnectConnector,
   isConnectorConnected,
 } from '../connectors/credentials'
+export {
+  normalizeConnectorPattern,
+  parseConnectorTags,
+  renderNotePlacement,
+} from '../connectors/pattern'

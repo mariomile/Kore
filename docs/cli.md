@@ -41,8 +41,9 @@ kore tag <note> <tag>      # add a trailing #tag line (untag removes it)
 kore done <text>           # tick a task off by its text (--undo reopens)
 kore mcp                   # serve the graph to MCP clients over stdio (--read-only, --http <addr>)
 kore index                 # build or refresh the index without the app (Node 22+, --rebuild)
+kore sources               # pull Readwise highlights and Granola meetings without the app (--only, --since)
 kore keys add <name>       # a named agent's own key for mcp --http (--write; list, remove)
-kore sync                  # pull the vault's git clone, push kore's writes, reindex (what mcp --sync does)
+kore sync                  # pull the vault's git clone, push kore's writes, reindex (what mcp --sync does; --sources pulls them too)
 kore library               # read-only Markdown in agent folders like ~/.claude (add --known, files, grep, read)
 ```
 
@@ -435,6 +436,47 @@ and index writes with the same Rust code the app uses
 ```jsonc
 // kore index --json
 { "notes": 5155, "written": 2, "removed": 1, "moved": 0, "elapsedMs": 270 }
+```
+
+### `kore sources [--only readwise|granola] [--since WHEN] [--json]`
+
+Pulls Readwise highlights and Granola meetings into the graph with no app
+running, through the same connector engine the app runs every fifteen
+minutes, hosted under Node like `kore index` (same `KORE_NODE` and
+`KORE_INDEXER`). It indexes first, so it recognizes notes already there,
+and again afterwards, so what it wrote is searchable at once.
+
+- Tokens come only from the environment: `KORE_READWISE_TOKEN`
+  (readwise.io/access_token) and `KORE_GRANOLA_TOKEN` (Granola's personal API
+  key). A source without one is skipped; neither set is a usage error.
+- Where notes land and what they carry is yours, per source, the same three
+  settings the app has under Settings → Connectors:
+  - `KORE_<SOURCE>_FOLDER`: the folder (defaults `Readwise`, `Granola`);
+  - `KORE_<SOURCE>_PATTERN`: the file name inside it, where `/` makes
+    subfolders and `{field}` inserts a value. Readwise offers `{title}`,
+    `{category}`, `{author}` (default `{title}`); Granola `{title}`,
+    `{date}`, `{month}`, `{year}` (default `{date} {title}`). For example
+    `{category}/{title}` or `{month}/{title}, {date}`;
+  - `KORE_<SOURCE>_TAGS`: comma-separated tags for new notes (defaults
+    `readwise`, `meeting`).
+- A vault that already holds notes from another sync gets no duplicates: a
+  Granola meeting is matched by `granola_id` wherever it sits, and a Readwise
+  file at the book's path is adopted (same `url`, or a Readwise cover or
+  link); only highlights it lacks are appended, under
+  `### New highlights added <date>`.
+- Each source's window lives in `.reflect/sources.json` (per machine, never
+  committed). The first run starts from that moment, so history another app
+  already wrote is not imported; `--since YYYY-MM-DD` reaches back further.
+- On an always-on host, `kore sync --sources` runs it as a journaled write
+  and pushes the commit (see [always-on.md](always-on.md)).
+- Exits `1` when a source fails (named on stderr); the others still land.
+
+```jsonc
+// kore sources --json
+{ "sources": [
+  { "id": "readwise", "created": 1, "updated": 3, "syncedAt": "2026-11-07T17:30:10.204Z" },
+  { "id": "granola", "created": 2, "updated": 0, "syncedAt": "2026-11-07T17:30:10.254Z" }
+] }
 ```
 
 ### `kore guide [--init] [--json]`

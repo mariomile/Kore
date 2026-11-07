@@ -42,6 +42,64 @@ the app on the Mac (attach a PDF and a CSV with Claude Code selected).
 
 **Next:** slice 3, clickable questions (`::ask{}`), in a new thread.
 
+## Readwise and Granola: your layout, with or without the app, 2026-11-07
+
+Ask (Mario, 2026-11-07, decision card "Readwise e Granola"): make Kore the way
+context gets collected for agents, starting with the two biggest streams.
+Analysis: `/mnt/project-files/analisi/raccogliere-contesto.md`. His vault
+gets highlights and meetings only through two Obsidian plugins, which stop
+when Obsidian does; the #259 connectors had a fixed layout and ran only in
+the app window. Follow-up the same evening (Mario: "I connettori devono
+essere customizzabili. Lascia stare come facciamo ora in obsidian"): the
+first cut copied the plugins' layout; it now leaves the layout to the user.
+
+- [x] Per connector, the user sets the folder, a file name pattern
+  (`connectors/pattern.ts`: `/` for subfolders, `{field}` for values;
+  Readwise `{title}` `{category}` `{author}`, Granola `{title}` `{date}`
+  `{month}` `{year}`; defaults `{title}` and `{date} {title}`) and the tags
+  new notes carry (defaults `readwise`, `meeting`). Settings `pattern` and
+  `tags` (null = default); desktop Settings → Connectors and the iPhone
+  drawer share `ConnectorLayoutFields`. Unknown fields and patterns with no
+  field are refused with a message.
+- [x] No duplicates when another sync already wrote the item: a file without
+  our id at the note's path is merged into when the connector recognizes it
+  (`ConnectorNote.adopts`). Readwise adopts on the same `url` or a Readwise
+  cover or link, and dedupes highlights by Readwise id, Reader id
+  (`read.readwise.io/read/<id>`) or text; new ones go under
+  `### New highlights added <date>`. Granola matches `granola_id` (the
+  `granola-sync` plugin uses the same key and ids) wherever the note sits.
+  Readwise's frontmatter key is now `url` (was `source_url`).
+- [x] `kore sources` runs the same engine headless: the core indexer bundle
+  with `--sources` indexes, asks the CLI for its configuration over the
+  bridge (`sources_config`; tokens from `KORE_READWISE_TOKEN` /
+  `KORE_GRANOLA_TOKEN`, layout from `KORE_<SOURCE>_FOLDER` / `_PATTERN` /
+  `_TAGS`), syncs, reindexes and reports (`sources_report`). The CLI host
+  serves `note_create` / `note_write` only in that session (atomic,
+  no-clobber create, symlink-free note paths). Windows per source in
+  `.reflect/sources.json`; the first run starts from now, `--since`
+  backfills.
+- [x] `kore sync --sources` runs it as a journaled write with an explicit
+  `--since`, so a replay after a lost push fetches the same window again.
+- Docs: `docs/cli.md`, `docs/always-on.md`.
+
+**Validation:** core connector and pattern tests (17), the connectors
+settings and mobile browser suites on Chromium (348; WebKit left to CI),
+`cargo test -p reflect-cli` (all suites), clippy `-D warnings`,
+`pnpm check`. End to end in the container with Readwise and Granola stubbed
+in Node: an existing article note was adopted (only the missing highlight
+appended), a second run wrote nothing, `kore search` found the new
+highlight, and `KORE_READWISE_PATTERN='{category}/{author} - {title}'` with
+custom tags filed notes as `Fonti/Tweets/A new tweet.md` carrying those
+tags; an unknown field was refused by name. Neither API has been called
+live yet.
+
+**Next:** Mario's first live run (Settings → Connectors on the Mac with the
+folder and pattern he wants, or `kore sources --since <date>` with the two
+tokens), with any other Readwise/Granola sync into the same folder turned
+off. Then `kore sync --sources` every 15 minutes on the always-on host.
+Remaining capture slices (web clipper, full text of pasted links) are in
+the analysis.
+
 ## Advanced chat, slice 1: agent steps and subagents visible, 2026-11-07
 
 Ask (Mario, 2026-11-07): turn the in-app chat into an advanced

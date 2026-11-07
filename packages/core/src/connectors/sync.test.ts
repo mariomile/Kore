@@ -35,6 +35,7 @@ function note(sourceId: string, fileStem: string, body: string): ConnectorNote {
   return {
     sourceId,
     fileStem,
+    fields: { title: fileStem, kind: 'Articles' },
     source: `---\nsample_id: "${sourceId}"\n---\n${body}\n`,
     merge: (existing) => (existing.includes(body) ? null : `${existing}${body}\n`),
   }
@@ -47,6 +48,9 @@ function connector(notes: ConnectorNote[]): Connector {
     description: '',
     idKey: 'sample_id',
     defaultFolder: 'Sample',
+    defaultPattern: '{title}',
+    patternFields: ['title', 'kind'],
+    defaultTags: [],
     tokenUrl: '',
     tokenLabel: '',
     overlapMs: 0,
@@ -57,11 +61,13 @@ function connector(notes: ConnectorNote[]): Connector {
   }
 }
 
-function run(notes: ConnectorNote[]) {
+function run(notes: ConnectorNote[], pattern: string | null = null) {
   return syncConnector({
     connector: connector(notes),
     token: 'token',
     folder: 'Sample/',
+    pattern,
+    tags: null,
     since: null,
     floor: null,
     generation: 1,
@@ -116,6 +122,24 @@ describe('syncConnector', () => {
   })
 })
 
+describe('syncConnector adoption', () => {
+  it('places notes by the user’s pattern and merges into a file another app wrote', async () => {
+    files.set('Sample/Articles/Book.md', '# Book\n\nfrom the plugin\n')
+    const adoptable: ConnectorNote = {
+      ...note('1', 'Book', 'alpha'),
+      adopts: (existing) => existing.includes('from the plugin'),
+    }
+    const tweet = { ...note('2', 'Other', 'beta'), fields: { title: 'Other', kind: 'Tweets' } }
+
+    const result = await run([adoptable, tweet], '{kind}/{title}')
+
+    expect(result).toMatchObject({ created: 1, updated: 1 })
+    expect(files.get('Sample/Articles/Book.md')).toBe('# Book\n\nfrom the plugin\nalpha\n')
+    expect(files.has('Sample/Articles/Book 2.md')).toBe(false)
+    expect(files.get('Sample/Tweets/Other.md')).toContain('beta')
+  })
+})
+
 describe('syncConnector window', () => {
   it('looks back by the overlap but never before the import floor', async () => {
     const seen: (Date | null)[] = []
@@ -130,6 +154,8 @@ describe('syncConnector window', () => {
       connector: windowed,
       token: 'token',
       folder: '',
+      pattern: null,
+      tags: null,
       generation: 1,
       fetchFn: fetch,
       isStale: () => false,

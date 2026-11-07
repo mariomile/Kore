@@ -3,12 +3,17 @@ import { setBridge } from '../ipc/bridge'
 import { openIndex } from '../indexing/commands'
 import { rebuildIndex, syncIndex } from '../indexing/indexer'
 import { createStdioBridge } from './stdio-bridge'
+import { syncSources } from './sync-sources'
 
 /**
  * The headless indexer's entry point (`kore index`): the same projection the
  * desktop app builds on open, driven from Node with no app running. The CLI
  * spawns this script with piped stdio and serves its native commands (file
  * listing, note reads, the index writes) itself; see `apps/cli/src/indexer.rs`.
+ *
+ * With `--sources` (`kore sources`), the pass then pulls the configured
+ * connectors into the graph and indexes again, so what they wrote is
+ * searchable at once.
  *
  * Stdout carries the bridge protocol, so every log goes to stderr. Exits 0
  * when the index is current, 1 on failure, 2 when some notes were skipped
@@ -36,6 +41,13 @@ async function main(argv: readonly string[]): Promise<number> {
       await rebuildIndex(options)
     } else {
       await syncIndex(options)
+    }
+    if (argv.includes('--sources')) {
+      // The index above lets the engine find notes the plugins already wrote.
+      const reports = await syncSources(generation)
+      if (reports.some((report) => report.created + report.updated > 0)) {
+        await syncIndex(options)
+      }
     }
   } finally {
     bridge.close()

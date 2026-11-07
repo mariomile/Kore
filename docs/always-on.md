@@ -75,10 +75,10 @@ commits are authored `Kore host <kore-host@localhost>` with subjects like
 
 ## Readwise and Granola on the host
 
-Set `KORE_READWISE_TOKEN` and/or `KORE_GRANOLA_TOKEN` (and, for a vault laid
-out by the Obsidian plugins, `KORE_READWISE_FOLDER=Input/Readwise`,
-`KORE_GRANOLA_FOLDER=Input/Granola` or wherever they write) in the host's
-environment, then run `kore sync --sources` from a timer, for example every
+Set `KORE_READWISE_TOKEN` and/or `KORE_GRANOLA_TOKEN` in the host's
+environment, plus the folder, file name pattern and tags you want
+(`KORE_<SOURCE>_FOLDER`, `_PATTERN`, `_TAGS`; see `kore sources` in
+[cli.md](cli.md)), then run `kore sync --sources` from a timer, for example every
 15 minutes:
 
 ```cron

@@ -4,7 +4,9 @@
 //!
 //! Tokens come from the environment (`KORE_READWISE_TOKEN`,
 //! `KORE_GRANOLA_TOKEN`), never from flags or the vault; a source without a
-//! token is skipped. Each source keeps its window in `.reflect/sources.json`
+//! token is skipped. Where notes land and what they carry is the user's:
+//! `KORE_<SOURCE>_FOLDER`, `KORE_<SOURCE>_PATTERN` (a file name pattern like
+//! `{category}/{title}`) and `KORE_<SOURCE>_TAGS` (comma-separated). Each source keeps its window in `.reflect/sources.json`
 //! (per machine, never committed): the first run starts from that moment,
 //! so history another app already wrote is not duplicated; `--since` reaches
 //! further back.
@@ -28,12 +30,16 @@ const SOURCES: &[Source] = &[
         id: "readwise",
         token_var: "KORE_READWISE_TOKEN",
         folder_var: "KORE_READWISE_FOLDER",
+        pattern_var: "KORE_READWISE_PATTERN",
+        tags_var: "KORE_READWISE_TAGS",
         default_folder: "Readwise",
     },
     Source {
         id: "granola",
         token_var: "KORE_GRANOLA_TOKEN",
         folder_var: "KORE_GRANOLA_FOLDER",
+        pattern_var: "KORE_GRANOLA_PATTERN",
+        tags_var: "KORE_GRANOLA_TAGS",
         default_folder: "Granola",
     },
 ];
@@ -42,6 +48,8 @@ struct Source {
     id: &'static str,
     token_var: &'static str,
     folder_var: &'static str,
+    pattern_var: &'static str,
+    tags_var: &'static str,
     default_folder: &'static str,
 }
 
@@ -151,6 +159,10 @@ pub fn run(
             "id": source.id,
             "token": token,
             "folder": env(source.folder_var).unwrap_or_else(|| source.default_folder.to_string()),
+            "pattern": env(source.pattern_var),
+            "tags": env(source.tags_var).map(|tags| {
+                tags.split(',').map(str::trim).filter(|tag| !tag.is_empty()).map(str::to_string).collect::<Vec<_>>()
+            }),
             "since": since,
             "floor": floor,
         }));
@@ -158,7 +170,7 @@ pub fn run(
     if configs.is_empty() {
         return Err(CliError::Usage(
             "no source to pull: set KORE_READWISE_TOKEN and/or KORE_GRANOLA_TOKEN \
-             (folders: KORE_READWISE_FOLDER, KORE_GRANOLA_FOLDER)"
+             (optional: KORE_<SOURCE>_FOLDER, KORE_<SOURCE>_PATTERN, KORE_<SOURCE>_TAGS)"
                 .into(),
         ));
     }

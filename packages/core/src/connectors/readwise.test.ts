@@ -131,6 +131,7 @@ describe('readwiseConnector.fetchNotes', () => {
     const notes = []
     for await (const note of readwiseConnector.fetchNotes({
       token: 'secret',
+      tags: ['readwise'],
       since: new Date('2026-10-01T00:00:00.000Z'),
       fetchFn,
       isStale: () => false,
@@ -143,8 +144,8 @@ describe('readwiseConnector.fetchNotes', () => {
       'https://readwise.io/api/v2/export/?updatedAfter=2026-10-01T00%3A00%3A00.000Z',
       'https://readwise.io/api/v2/export/?updatedAfter=2026-10-01T00%3A00%3A00.000Z&pageCursor=7',
     ])
-    expect(notes.map((note) => [note.sourceId, note.subfolder, note.fileStem])).toEqual([
-      ['42', 'Books', 'Meditations'],
+    expect(notes.map((note) => [note.sourceId, note.fileStem, note.fields])).toEqual([
+      ['42', 'Meditations', { title: 'Meditations', category: 'Books', author: 'Marcus Aurelius' }],
     ])
   })
 })

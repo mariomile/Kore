@@ -64,6 +64,7 @@ describe('granolaConnector.fetchNotes', () => {
     const notes = []
     for await (const note of granolaConnector.fetchNotes({
       token: 'grn_key',
+      tags: ['meeting'],
       since: null,
       fetchFn,
       isStale: () => false,
@@ -77,8 +78,8 @@ describe('granolaConnector.fetchNotes', () => {
       'https://public-api.granola.ai/v1/notes/not_abc',
       'https://public-api.granola.ai/v1/notes?page_size=30&cursor=next',
     ])
-    expect(notes.map((note) => [note.subfolder, note.fileStem])).toEqual([
-      ['2026-10', 'Weekly sync roadmap, 2026-10-08'],
+    expect(notes.map((note) => [note.fileStem, note.fields['month']])).toEqual([
+      ['2026-10-08 Weekly sync roadmap', '2026-10'],
     ])
     expect(notes[0]?.merge('anything')).toBeNull()
   })

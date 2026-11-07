@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { connectorById } from '../connectors/registry'
+import { normalizeConnectorPattern, parseConnectorTags } from '../connectors/pattern'
 import { syncConnector } from '../connectors/sync'
 import { errorMessage } from '../errors'
 import { call } from '../ipc/invoke'
@@ -8,7 +9,8 @@ import { call } from '../ipc/invoke'
  * `kore sources`: pull the configured connectors (Readwise, Granola) into the
  * graph with no app running, through the same engine the app runs every
  * fifteen minutes. The CLI owns the configuration (tokens from its
- * environment, folders, each source's window) and serves it over the bridge;
+ * environment, folders, file name patterns and tags, each source's window)
+ * and serves it over the bridge;
  * this side only fetches and places notes, then reports what each run did.
  */
 
@@ -16,6 +18,8 @@ const sourceConfigSchema = z.object({
   id: z.enum(['readwise', 'granola']),
   token: z.string().min(1),
   folder: z.string(),
+  pattern: z.string().nullable(),
+  tags: z.array(z.string()).nullable(),
   since: z.iso.datetime({ offset: true }).nullable(),
   floor: z.iso.datetime({ offset: true }).nullable(),
 })
@@ -46,6 +50,11 @@ export async function syncSources(generation: number): Promise<SourceRunReport[]
         connector: connectorById(source.id),
         token: source.token,
         folder: source.folder,
+        pattern:
+          source.pattern === null
+            ? null
+            : normalizeConnectorPattern(source.pattern, connectorById(source.id)),
+        tags: source.tags === null ? null : parseConnectorTags(source.tags.join(',')),
         since: date(source.since),
         floor: date(source.floor),
         generation,

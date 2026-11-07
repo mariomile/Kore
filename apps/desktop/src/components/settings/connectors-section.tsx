@@ -11,7 +11,8 @@ import { SettingsSection } from './section'
  * keychain; Kore syncs on launch, every 15 minutes and on return to the app.
  */
 export function ConnectorsSection(): ReactElement {
-  const { items, connect, disconnect, setEnabled, setFolder, syncNow } = useConnectors()
+  const connectors = useConnectors()
+  const { items, connect, disconnect, setEnabled, syncNow } = connectors
   const anyEnabled = items.some((item) => item.connected === true && item.settings.enabled)
   const running = items.some((item) => item.running)
 
@@ -24,7 +25,7 @@ export function ConnectorsSection(): ReactElement {
           onConnect={connect}
           onDisconnect={disconnect}
           onEnabledChange={setEnabled}
-          onFolderChange={setFolder}
+          layout={connectors}
         />
       ))}
       <div className="flex items-center justify-between gap-4 px-4 py-3">

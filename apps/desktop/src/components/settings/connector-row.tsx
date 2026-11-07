@@ -6,29 +6,35 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
-import { connectorStatusText, type ConnectorView } from '@/hooks/use-connectors'
+import {
+  connectorStatusText,
+  type ConnectorView,
+  type UseConnectorsResult,
+} from '@/hooks/use-connectors'
 import { openUrlSync } from '@/lib/open-url'
 import { useSettings } from '@/providers/settings-provider'
+import { ConnectorLayoutFields } from './connector-layout-fields'
 
 interface ConnectorRowProps {
   view: ConnectorView
   onConnect: (id: ConnectorId, token: string, importHistory: boolean) => Promise<void>
   onDisconnect: (id: ConnectorId) => Promise<void>
   onEnabledChange: (id: ConnectorId, enabled: boolean) => void
-  onFolderChange: (id: ConnectorId, folder: string) => string | null
+  /** Folder, file name pattern and tags. */
+  layout: Pick<UseConnectorsResult, 'setFolder' | 'setPattern' | 'setTags'>
 }
 
 /**
  * One connector in the Connectors settings card: the credential form while
- * disconnected; the on/off switch, destination folder and sync status once
- * connected.
+ * disconnected; the on/off switch, sync status, and where and how notes
+ * land (folder, file name pattern, tags) once connected.
  */
 export function ConnectorRow({
   view,
   onConnect,
   onDisconnect,
   onEnabledChange,
-  onFolderChange,
+  layout,
 }: ConnectorRowProps): ReactElement {
   const { connector, settings } = view
   const { settings: appSettings } = useSettings()
@@ -37,8 +43,6 @@ export function ConnectorRow({
   const [importHistory, setImportHistory] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [folderDraft, setFolderDraft] = useState<string | null>(null)
-  const folder = settings.folder ?? connector.defaultFolder
 
   async function connect(): Promise<void> {
     setBusy(true)
@@ -50,17 +54,6 @@ export function ConnectorRow({
       setError(errorMessage(cause))
     } finally {
       setBusy(false)
-    }
-  }
-
-  function commitFolder(): void {
-    if (folderDraft === null) {
-      return
-    }
-    const problem = onFolderChange(connector.id, folderDraft)
-    setError(problem)
-    if (problem === null) {
-      setFolderDraft(null)
     }
   }
 
@@ -125,32 +118,19 @@ export function ConnectorRow({
         </form>
       ) : null}
       {view.connected === true ? (
-        <div className="mt-3 flex items-center gap-2">
-          <label className="text-xs text-text-muted" htmlFor={`${labelId}-folder`}>
-            Folder
-          </label>
-          <Input
-            id={`${labelId}-folder`}
-            value={folderDraft ?? folder}
-            onChange={(event) => setFolderDraft(event.target.value)}
-            onBlur={commitFolder}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') {
-                commitFolder()
-              }
-            }}
-            placeholder="Graph root"
-            className="flex-1 text-xs"
-          />
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="text-text-muted hover:text-destructive"
-            onClick={() => void onDisconnect(connector.id)}
-          >
-            Disconnect
-          </Button>
+        <div className="mt-3 grid gap-2">
+          <ConnectorLayoutFields view={view} actions={layout} onProblem={setError} />
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="text-text-muted hover:text-destructive"
+              onClick={() => void onDisconnect(connector.id)}
+            >
+              Disconnect
+            </Button>
+          </div>
         </div>
       ) : null}
       {error !== null ? (

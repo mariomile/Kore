@@ -7,11 +7,11 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
-- Readwise highlights and Granola meetings land where the Obsidian plugins
-  put them (by category, by month) and continue the notes those plugins
-  already wrote instead of duplicating them. `kore sources` pulls both with
-  no app running, and `kore sync --sources` keeps them flowing on an
-  always-on host.
+- Readwise and Granola connectors are yours to lay out: choose the folder,
+  a file name pattern (subfolders and fields like `{category}/{title}`) and
+  the tags new notes carry. Notes another sync already wrote are continued,
+  not duplicated. `kore sources` pulls both with no app running, and
+  `kore sync --sources` keeps them flowing on an always-on host.
 
 - The chat shows its work. With Claude Code as the engine, every file it
   reads, every search and edit, and every MCP call appears as a step while

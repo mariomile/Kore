@@ -19,11 +19,11 @@ import type { Connector, ConnectorFetchInput, ConnectorNote } from './types'
  * appends only highlights the note does not already carry: edits, reordering
  * and deletions the user made stay untouched.
  *
- * Notes land where the official Readwise Obsidian plugin puts them (one
- * subfolder per category: `Articles`, `Books`, `Tweets`, `Podcasts`), and a
- * file that plugin wrote is adopted rather than duplicated: its highlights are
- * recognized by their Reader link or by their text, and new ones are appended
- * under a dated heading, as the plugin does.
+ * Where notes land is the user's path pattern (`{title}` by default, with
+ * `{category}` and `{author}` available). A file another Readwise sync wrote
+ * at that path (the official Obsidian plugin, say) is adopted rather than
+ * duplicated: its highlights are recognized by their Reader link or by their
+ * text, and new ones are appended under a dated heading.
  *
  * API reference: https://readwise.io/api_deets
  */
@@ -132,10 +132,10 @@ function renderHighlight(highlight: ReadwiseHighlight): string {
   return lines.join('\n')
 }
 
-/** The plugin's subfolder for a category (`articles` → `Articles`). */
-export function readwiseCategoryFolder(category: string | null | undefined): string | undefined {
-  const name = (category ?? '').replaceAll(/[^\p{L}\p{N} _-]/gu, '').trim()
-  return name === '' ? undefined : name.charAt(0).toUpperCase() + name.slice(1)
+/** A category as a `{category}` value (`articles` → `Articles`). */
+export function readwiseCategoryName(category: string | null | undefined): string {
+  const name = (category ?? '').trim()
+  return name === '' ? '' : name.charAt(0).toUpperCase() + name.slice(1)
 }
 
 function bookUrl(book: ReadwiseBook): string | undefined {
@@ -146,8 +146,11 @@ function bookTitle(book: ReadwiseBook): string {
   return headingText(book.readable_title ?? book.title ?? '') || `Readwise ${book.user_book_id}`
 }
 
-/** The full markdown for a book's first sync. */
-export function renderReadwiseBook(book: ReadwiseBook): string {
+/** The full markdown for a book's first sync; `tags` lead its tag list. */
+export function renderReadwiseBook(
+  book: ReadwiseBook,
+  tags: readonly string[] = readwiseConnector.defaultTags,
+): string {
   const title = bookTitle(book)
   const url = bookUrl(book)
   const meta: string[] = []
@@ -171,7 +174,9 @@ export function renderReadwiseBook(book: ReadwiseBook): string {
       author: book.author ?? undefined,
       category: book.category ?? undefined,
       url,
-      tags: ['readwise', ...(book.book_tags ?? []).map((tag) => tagSlug(tag.name))],
+      tags: Array.from(
+        new Set([...tags, ...(book.book_tags ?? []).map((tag) => tagSlug(tag.name))]),
+      ),
     },
     `${sections.join('\n\n')}\n`,
   )
@@ -221,16 +226,19 @@ export function adoptsReadwiseFile(existing: string, book: ReadwiseBook): boolea
   return existing.includes('![rw-book-cover]') || /readwise\.io\//.test(existing)
 }
 
-function bookNote(book: ReadwiseBook): ConnectorNote | null {
+function bookNote(book: ReadwiseBook, tags: readonly string[]): ConnectorNote | null {
   if (liveHighlights(book).length === 0) {
     return null
   }
-  const subfolder = readwiseCategoryFolder(book.category)
   return {
     sourceId: String(book.user_book_id),
     fileStem: connectorFileStem(bookTitle(book), `Readwise ${book.user_book_id}`),
-    ...(subfolder === undefined ? {} : { subfolder }),
-    source: renderReadwiseBook(book),
+    fields: {
+      title: bookTitle(book),
+      category: readwiseCategoryName(book.category),
+      author: headingText(book.author ?? ''),
+    },
+    source: renderReadwiseBook(book, tags),
     merge: (existing) => mergeReadwiseBook(existing, book),
     adopts: (existing) => adoptsReadwiseFile(existing, book),
   }
@@ -265,7 +273,7 @@ async function* fetchNotes(input: ConnectorFetchInput): AsyncIterable<ConnectorN
       'Readwise export',
     )
     for (const book of page.results) {
-      const note = bookNote(book)
+      const note = bookNote(book, input.tags)
       if (note !== null) {
         yield note
       }
@@ -278,10 +286,12 @@ async function* fetchNotes(input: ConnectorFetchInput): AsyncIterable<ConnectorN
 export const readwiseConnector: Connector = {
   id: 'readwise',
   label: 'Readwise',
-  description:
-    'Highlights from books, articles and podcasts, one note per source, filed by category.',
+  description: 'Highlights from books, articles and podcasts, one note per source.',
   idKey: 'readwise_id',
   defaultFolder: 'Readwise',
+  defaultPattern: '{title}',
+  patternFields: ['title', 'category', 'author'],
+  defaultTags: ['readwise'],
   tokenUrl: 'https://readwise.io/access_token',
   tokenLabel: 'Access token',
   overlapMs: 10 * 60 * 1000,

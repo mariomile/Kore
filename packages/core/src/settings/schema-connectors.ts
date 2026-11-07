@@ -7,13 +7,17 @@ import { z } from 'zod'
  * `lastSyncedAt` is the start of the last complete run, the next run's
  * cursor; `null` means the next run is a full sync. `importFrom` is the
  * oldest item worth importing — set to the connect time when the user skips
- * history; `null` imports everything.
+ * history; `null` imports everything. `pattern` is where a note lands
+ * inside the folder (`connectors/pattern`) and `tags` what new notes carry;
+ * `null` for either means the connector's default.
  */
 export const connectorSettingsSchema = z.object({
   enabled: z.boolean().catch(false),
   folder: z.string().nullable().catch(null),
   lastSyncedAt: z.iso.datetime().nullable().catch(null),
   importFrom: z.iso.datetime().nullable().catch(null),
+  pattern: z.string().nullable().catch(null),
+  tags: z.array(z.string()).nullable().catch(null),
 })
 
 /** One connector's persisted settings. */
@@ -24,6 +28,8 @@ const DEFAULT_CONNECTOR_SETTINGS: ConnectorSettings = {
   folder: null,
   lastSyncedAt: null,
   importFrom: null,
+  pattern: null,
+  tags: null,
 }
 
 const connectorEntrySchema = connectorSettingsSchema.catch(DEFAULT_CONNECTOR_SETTINGS)

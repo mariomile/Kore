@@ -7,6 +7,8 @@ import {
   hasBridge,
   isConnectorConnected,
   normalizeConnectorFolder,
+  normalizeConnectorPattern,
+  parseConnectorTags,
   type Connector,
   type ConnectorId,
   type ConnectorSettings,
@@ -39,6 +41,10 @@ export interface UseConnectorsResult {
   setEnabled(id: ConnectorId, enabled: boolean): void
   /** Save the destination folder; returns an error message for an unusable one. */
   setFolder(id: ConnectorId, folder: string): string | null
+  /** Save the file name pattern; returns an error message for an unusable one. */
+  setPattern(id: ConnectorId, pattern: string): string | null
+  /** Save the tags new notes carry (comma-separated); empty restores the default. */
+  setTags(id: ConnectorId, tags: string): void
   syncNow(): void
 }
 
@@ -130,6 +136,31 @@ export function useConnectors(): UseConnectorsResult {
     [patch],
   )
 
+  const setPattern = useCallback(
+    (id: ConnectorId, pattern: string): string | null => {
+      const connector = CONNECTORS.find((candidate) => candidate.id === id)
+      if (connector === undefined) {
+        return null
+      }
+      try {
+        const normalized = normalizeConnectorPattern(pattern, connector)
+        patch(id, { pattern: normalized === connector.defaultPattern ? null : normalized })
+        return null
+      } catch (cause) {
+        return errorMessage(cause)
+      }
+    },
+    [patch],
+  )
+
+  const setTags = useCallback(
+    (id: ConnectorId, tags: string): void => {
+      const parsed = parseConnectorTags(tags)
+      patch(id, { tags: parsed.length === 0 ? null : parsed })
+    },
+    [patch],
+  )
+
   const items = CONNECTORS.map((connector) => ({
     connector,
     settings: settings.connectors[connector.id],
@@ -144,6 +175,8 @@ export function useConnectors(): UseConnectorsResult {
     disconnect,
     setEnabled: (id, enabled) => patch(id, { enabled }),
     setFolder,
+    setPattern,
+    setTags,
     syncNow,
   }
 }

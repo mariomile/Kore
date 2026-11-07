@@ -11,9 +11,10 @@ import type { Connector, ConnectorFetchInput, ConnectorNote } from './types'
  * whose summary is ready, so a meeting lands once it is complete and is never
  * rewritten afterwards: what the user adds to the note in Kore stays theirs.
  *
- * Notes land where the Granola Obsidian plugin (`granola-sync`) puts them,
- * `YYYY-MM/<title>, <YYYY-MM-DD>.md`, under the same `granola_id` key, so a
- * meeting that plugin already wrote is recognized and never written twice.
+ * Where notes land is the user's path pattern (`{date} {title}` by default,
+ * with `{month}` and `{year}` for folders). The id key, `granola_id`, is the
+ * one other Granola syncs (the `granola-sync` Obsidian plugin) write, so a
+ * meeting already in the vault is recognized wherever it sits.
  *
  * API reference: https://docs.granola.ai/introduction
  */
@@ -81,7 +82,10 @@ function summaryBody(note: GranolaNote): string | null {
 }
 
 /** The full markdown for a meeting note; `null` when it has no summary yet. */
-export function renderGranolaNote(note: GranolaNote): string | null {
+export function renderGranolaNote(
+  note: GranolaNote,
+  tags: readonly string[] = granolaConnector.defaultTags,
+): string | null {
   const summary = summaryBody(note)
   if (summary === null) {
     return null
@@ -92,14 +96,14 @@ export function renderGranolaNote(note: GranolaNote): string | null {
       granola_id: note.id,
       date: localDate(note.created_at) ?? undefined,
       attendees: attendeeNames(note),
-      tags: ['meeting'],
+      tags: [...tags],
     },
     `# ${title}\n\n${summary}\n`,
   )
 }
 
-function meetingNote(note: GranolaNote): ConnectorNote | null {
-  const source = renderGranolaNote(note)
+function meetingNote(note: GranolaNote, tags: readonly string[]): ConnectorNote | null {
+  const source = renderGranolaNote(note, tags)
   if (source === null) {
     return null
   }
@@ -107,8 +111,13 @@ function meetingNote(note: GranolaNote): ConnectorNote | null {
   const title = headingText(note.title ?? '') || 'Untitled meeting'
   return {
     sourceId: note.id,
-    fileStem: connectorFileStem(date === null ? title : `${title}, ${date}`, note.id),
-    ...(date === null ? {} : { subfolder: date.slice(0, 7) }),
+    fileStem: connectorFileStem(date === null ? title : `${date} ${title}`, note.id),
+    fields: {
+      title,
+      date: date ?? '',
+      month: date?.slice(0, 7) ?? '',
+      year: date?.slice(0, 4) ?? '',
+    },
     source,
     merge: () => null,
   }
@@ -157,7 +166,7 @@ async function* fetchNotes(input: ConnectorFetchInput): AsyncIterable<ConnectorN
         noteSchema,
         'Granola note',
       )
-      const rendered = meetingNote(note)
+      const rendered = meetingNote(note, input.tags)
       if (rendered !== null) {
         yield rendered
       }
@@ -170,9 +179,12 @@ async function* fetchNotes(input: ConnectorFetchInput): AsyncIterable<ConnectorN
 export const granolaConnector: Connector = {
   id: 'granola',
   label: 'Granola',
-  description: 'Meeting notes with Granola’s AI summary, one note per meeting, filed by month.',
+  description: 'Meeting notes with Granola’s AI summary, one note per meeting.',
   idKey: 'granola_id',
   defaultFolder: 'Granola',
+  defaultPattern: '{date} {title}',
+  patternFields: ['title', 'date', 'month', 'year'],
+  defaultTags: ['meeting'],
   tokenUrl: 'https://docs.granola.ai/introduction',
   tokenLabel: 'API key',
   overlapMs: 3 * 24 * 60 * 60 * 1000,

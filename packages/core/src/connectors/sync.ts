@@ -4,6 +4,7 @@ import { classifyGraphPath } from '../graph/paths'
 import { db } from '../indexing/db'
 import { parseFrontmatter, splitFrontmatter } from '../markdown/frontmatter'
 import type { FetchFn } from '../sync/github-api'
+import { renderNotePlacement } from './pattern'
 import type { Connector, ConnectorNote } from './types'
 
 /**
@@ -27,6 +28,10 @@ export interface SyncConnectorInput {
   readonly token: string
   /** Graph-relative destination folder; `''` is the graph root. */
   readonly folder: string
+  /** Path pattern inside the folder (see `./pattern`); `null` uses the connector's. */
+  readonly pattern: string | null
+  /** Tags for new notes; `null` uses the connector's. */
+  readonly tags: readonly string[] | null
   /** The last successful sync, or `null` for a first (full) sync. */
   readonly since: Date | null
   /**
@@ -125,9 +130,15 @@ async function mergeInto(
   return 'updated'
 }
 
-function candidatePath(folder: string, note: ConnectorNote, ordinal: number): string {
-  const name = ordinal === 1 ? `${note.fileStem}.md` : `${note.fileStem} ${ordinal}.md`
-  const dir = [folder, note.subfolder ?? ''].filter((part) => part !== '').join('/')
+function candidatePath(
+  folder: string,
+  pattern: string,
+  note: ConnectorNote,
+  ordinal: number,
+): string {
+  const { dir: subfolder, stem } = renderNotePlacement(pattern, note.fields, note.fileStem)
+  const name = ordinal === 1 ? `${stem}.md` : `${stem} ${ordinal}.md`
+  const dir = [folder, subfolder].filter((part) => part !== '').join('/')
   return dir === '' ? name : `${dir}/${name}`
 }
 
@@ -147,6 +158,7 @@ function effectiveSince(since: Date | null, floor: Date | null, overlapMs: numbe
 export async function syncConnector(input: SyncConnectorInput): Promise<ConnectorSyncResult> {
   const { connector, generation } = input
   const folder = normalizeConnectorFolder(input.folder)
+  const pattern = input.pattern ?? connector.defaultPattern
   const startedAt = new Date().toISOString()
   /** Paths placed by this run — the index lags our own writes. */
   const placed = new Map<string, string>()
@@ -165,7 +177,7 @@ export async function syncConnector(input: SyncConnectorInput): Promise<Connecto
       }
     }
     for (let ordinal = 1; ordinal <= MAX_PATH_ATTEMPTS; ordinal += 1) {
-      const path = candidatePath(folder, note, ordinal)
+      const path = candidatePath(folder, pattern, note, ordinal)
       const outcome = await createNoteIfAbsent(path, note.source, generation)
       if (outcome.kind === 'created') {
         placed.set(note.sourceId, path)
@@ -191,6 +203,7 @@ export async function syncConnector(input: SyncConnectorInput): Promise<Connecto
   const since = effectiveSince(input.since, input.floor, connector.overlapMs)
   const notes = connector.fetchNotes({
     token: input.token,
+    tags: input.tags ?? connector.defaultTags,
     since,
     fetchFn: input.fetchFn,
     isStale: input.isStale,

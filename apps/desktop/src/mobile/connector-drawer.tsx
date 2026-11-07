@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Drawer, DrawerBody, DrawerContent, DrawerTitle } from '@/components/ui/drawer'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
+import { ConnectorLayoutFields } from '@/components/settings/connector-layout-fields'
 import {
   connectorStatusText,
   type ConnectorView,
@@ -20,7 +21,7 @@ interface ConnectorDrawerProps {
   actions: UseConnectorsResult
 }
 
-/** The mobile sheet for one connector: connect, folder, sync, disconnect. */
+/** The mobile sheet for one connector: connect, where notes land, sync, disconnect. */
 export function ConnectorDrawer({
   view,
   open,
@@ -49,7 +50,6 @@ function ConnectorSheet({
   const { settings: appSettings } = useSettings()
   const [token, setToken] = useState('')
   const [importHistory, setImportHistory] = useState(false)
-  const [folderDraft, setFolderDraft] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -63,17 +63,6 @@ function ConnectorSheet({
       setError(errorMessage(cause))
     } finally {
       setBusy(false)
-    }
-  }
-
-  function commitFolder(): void {
-    if (folderDraft === null) {
-      return
-    }
-    const problem = actions.setFolder(connector.id, folderDraft)
-    setError(problem)
-    if (problem === null) {
-      setFolderDraft(null)
     }
   }
 
@@ -92,13 +81,7 @@ function ConnectorSheet({
               />
             </label>
             <p className="text-sm text-text-muted">{connectorStatusText(view, appSettings)}</p>
-            <Input
-              aria-label="Folder"
-              value={folderDraft ?? settings.folder ?? connector.defaultFolder}
-              onChange={(event) => setFolderDraft(event.target.value)}
-              onBlur={commitFolder}
-              placeholder="Graph root"
-            />
+            <ConnectorLayoutFields view={view} actions={actions} onProblem={setError} />
             <div className="flex justify-between gap-2">
               <Button
                 type="button"

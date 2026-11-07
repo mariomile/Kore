@@ -16,7 +16,8 @@ export function connectorFileStem(title: string, fallback: string): string {
   return cleanStem(title) || cleanStem(fallback) || 'Untitled'
 }
 
-function cleanStem(text: string): string {
+/** `text` as one safe path segment, or `''` when nothing printable is left. */
+export function cleanStem(text: string): string {
   return text
     .replaceAll(UNSAFE_FILENAME_CHARS, ' ')
     .replaceAll(/\s+/g, ' ')

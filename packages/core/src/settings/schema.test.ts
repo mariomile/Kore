@@ -97,8 +97,22 @@ describe('settingsSchema', () => {
       memoryWriteApproval: false,
       aiPrompts: [],
       connectors: {
-        readwise: { enabled: false, folder: null, lastSyncedAt: null, importFrom: null },
-        granola: { enabled: false, folder: null, lastSyncedAt: null, importFrom: null },
+        readwise: {
+          enabled: false,
+          folder: null,
+          lastSyncedAt: null,
+          importFrom: null,
+          pattern: null,
+          tags: null,
+        },
+        granola: {
+          enabled: false,
+          folder: null,
+          lastSyncedAt: null,
+          importFrom: null,
+          pattern: null,
+          tags: null,
+        },
       },
       savedSearches: [],
       collectionSorts: {},
@@ -482,8 +496,22 @@ describe('settingsSchema', () => {
       memoryWriteApproval: false,
       aiPrompts: [],
       connectors: {
-        readwise: { enabled: false, folder: null, lastSyncedAt: null, importFrom: null },
-        granola: { enabled: false, folder: null, lastSyncedAt: null, importFrom: null },
+        readwise: {
+          enabled: false,
+          folder: null,
+          lastSyncedAt: null,
+          importFrom: null,
+          pattern: null,
+          tags: null,
+        },
+        granola: {
+          enabled: false,
+          folder: null,
+          lastSyncedAt: null,
+          importFrom: null,
+          pattern: null,
+          tags: null,
+        },
       },
       savedSearches: [],
       collectionSorts: {},
@@ -952,8 +980,17 @@ describe('connectors settings', () => {
         folder: 'Library',
         lastSyncedAt: '2026-10-09T10:00:00.000Z',
         importFrom: null,
+        pattern: null,
+        tags: null,
       },
-      granola: { enabled: false, folder: null, lastSyncedAt: null, importFrom: null },
+      granola: {
+        enabled: false,
+        folder: null,
+        lastSyncedAt: null,
+        importFrom: null,
+        pattern: null,
+        tags: null,
+      },
     })
   })
 })

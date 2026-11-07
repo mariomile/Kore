@@ -30,23 +30,20 @@ fn indexer_script() -> Result<PathBuf, CliError> {
     )))
 }
 
-/// Run one headless index pass over `root` and print what it wrote.
-pub fn run(root: &Path, json: bool, rebuild: bool) -> Result<(), CliError> {
+/// Spawn the bundled core under Node with `args` and serve it with `host`
+/// until it exits; returns the script's exit code.
+pub(crate) fn run_script(host: &mut Host, args: &[&str]) -> Result<Option<i32>, CliError> {
     let script = indexer_script()?;
     let node = std::env::var_os("KORE_NODE")
         .filter(|node| !node.is_empty())
         .unwrap_or_else(|| "node".into());
-    let mut host = Host::open(root)?;
-    let started = Instant::now();
     let mut command = Command::new(&node);
     command
         .arg(&script)
+        .args(args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::inherit());
-    if rebuild {
-        command.arg("--rebuild");
-    }
     let mut child = command.spawn().map_err(|err| {
         CliError::runtime(format!(
             "could not start Node ({}): {err}; install Node 22 or set KORE_NODE",
@@ -55,20 +52,29 @@ pub fn run(root: &Path, json: bool, rebuild: bool) -> Result<(), CliError> {
     })?;
     let requests = BufReader::new(child.stdout.take().expect("piped stdout"));
     let replies = child.stdin.take().expect("piped stdin");
-    let served = serve(&mut host, requests, replies);
+    let served = serve(host, requests, replies);
     let status = child.wait()?;
     served?;
+    Ok(status.code())
+}
+
+/// Run one headless index pass over `root` and print what it wrote.
+pub fn run(root: &Path, json: bool, rebuild: bool) -> Result<(), CliError> {
+    let mut host = Host::open(root)?;
+    let started = Instant::now();
+    let args: &[&str] = if rebuild { &["--rebuild"] } else { &[] };
+    let code = run_script(&mut host, args)?;
     let elapsed_ms = started.elapsed().as_millis() as u64;
     let stats = host.stats();
-    match status.code() {
+    match code {
         Some(0) => {}
         Some(2) => {
             warn("some notes could not be indexed (named above); the rest of the index is current")
         }
         _ => {
-            return Err(CliError::runtime(format!(
-                "the indexer failed ({status}); the index keeps what it had written"
-            )))
+            return Err(CliError::runtime(
+                "the indexer failed; the index keeps what it had written",
+            ))
         }
     }
     if json {

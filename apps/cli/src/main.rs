@@ -224,6 +224,18 @@ enum Command {
         #[arg(long)]
         rebuild: bool,
     },
+    /// Pull Readwise highlights and Granola meetings into the graph without the app
+    /// (tokens from KORE_READWISE_TOKEN / KORE_GRANOLA_TOKEN; needs Node 22+)
+    Sources {
+        /// Only this source (readwise or granola)
+        #[arg(long, value_name = "SOURCE")]
+        only: Option<String>,
+        /// Also bring items from this date on (YYYY-MM-DD or RFC 3339); the
+        /// default is everything since the last run, and nothing older than the
+        /// first one
+        #[arg(long, value_name = "WHEN")]
+        since: Option<String>,
+    },
     /// Print every line containing an exact text, across all notes (no index needed)
     Grep {
         /// The text to find, matched literally
@@ -307,7 +319,12 @@ enum Command {
     },
     /// Pull the graph's git clone, push what kore wrote, refresh the index:
     /// one pass of what `kore mcp --sync` does in the background
-    Sync,
+    Sync {
+        /// Also run `kore sources` and commit what it pulled, so a host's
+        /// timer keeps Readwise and Granola flowing into the vault
+        #[arg(long)]
+        sources: bool,
+    },
 }
 
 #[derive(Subcommand)]
@@ -391,7 +408,9 @@ fn run(cli: &Cli) -> Result<(), CliError> {
         return commands::library::run(action.as_ref(), cli.json);
     }
     let graph = match &cli.command {
-        Command::Index { .. } => graph::resolve_for_index(cli.graph.as_deref())?,
+        Command::Index { .. } | Command::Sources { .. } => {
+            graph::resolve_for_index(cli.graph.as_deref())?
+        }
         _ => graph::resolve(cli.graph.as_deref())?,
     };
     match &cli.command {
@@ -476,6 +495,9 @@ fn run(cli: &Cli) -> Result<(), CliError> {
             commands::append::run(&graph, cli.json, note, text.as_deref(), *stdin)
         }
         Command::Index { rebuild } => commands::index::run(&graph.root, cli.json, *rebuild),
+        Command::Sources { only, since } => {
+            commands::sources::run(&graph.root, cli.json, only.as_deref(), since.as_deref())
+        }
         Command::Edit { note, old, new } => commands::edit::run(&graph, cli.json, note, old, new),
         Command::Mcp {
             read_only,
@@ -519,13 +541,26 @@ fn run(cli: &Cli) -> Result<(), CliError> {
             mcp_http::serve(mcp_http::HttpServer::new(server, options), address)?;
             Ok(())
         }
-        Command::Sync => {
+        Command::Sync { sources } => {
             let runner = mcp::ProcessRunner {
                 exe: std::env::current_exe()?,
                 graph: graph.root.clone(),
             };
             let sync = vault_sync::VaultSync::open(&graph.root, runner, Default::default())?;
-            let report = sync.sync()?;
+            let mut report = sync.sync()?;
+            if *sources {
+                // A journaled write like an agent's: committed, pushed, and
+                // re-run over the same window if the Mac's push wins the race.
+                let args = commands::sources::replay_args(&graph.root);
+                let output = mcp::Runner::run(&sync, &args, None);
+                eprint!("{}", output.text);
+                if !output.success {
+                    return Err(CliError::runtime(
+                        "kore sources failed; nothing was committed",
+                    ));
+                }
+                report = sync.sync()?;
+            }
             if cli.json {
                 let json = serde_json::to_string_pretty(&report)
                     .map_err(|err| CliError::runtime(err.to_string()))?;

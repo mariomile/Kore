@@ -33,6 +33,38 @@ pub fn atomic_write(path: &Path, contents: &str) -> Result<(), CliError> {
     Ok(())
 }
 
+/// Why [`atomic_create`] did not create the file.
+#[derive(Debug)]
+pub enum CreateError {
+    /// Something already sits at the path; it was left untouched.
+    Exists,
+    Other(std::io::Error),
+}
+
+/// Like [`atomic_write`], but never replaces a file that is already there:
+/// the rename is a no-clobber link, so a concurrent creator always wins.
+pub fn atomic_create(path: &Path, contents: &str) -> Result<(), CreateError> {
+    let dir = path.parent().ok_or_else(|| {
+        CreateError::Other(std::io::Error::other(format!(
+            "no parent directory for {}",
+            path.display()
+        )))
+    })?;
+    fs::create_dir_all(dir).map_err(CreateError::Other)?;
+    let mut tmp = tempfile::NamedTempFile::new_in(dir).map_err(CreateError::Other)?;
+    tmp.write_all(contents.as_bytes())
+        .and_then(|()| tmp.flush())
+        .map_err(CreateError::Other)?;
+    tmp.persist_noclobber(path).map_err(|err| {
+        if err.error.kind() == std::io::ErrorKind::AlreadyExists {
+            CreateError::Exists
+        } else {
+            CreateError::Other(err.error)
+        }
+    })?;
+    Ok(())
+}
+
 /// Read everything on stdin (the `--stdin` flags), trimmed of trailing
 /// line breaks.
 pub fn read_stdin() -> Result<String, CliError> {

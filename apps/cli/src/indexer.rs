@@ -95,6 +95,22 @@ pub struct Host {
     writer: Connection,
     reader: Connection,
     stats: IndexStats,
+    /// Set by `kore sources`: the connector configuration the core asks for,
+    /// and the only session in which the core may write notes.
+    sources: Option<Value>,
+    /// What `kore sources` reported back, one entry per source.
+    reports: Option<Value>,
+}
+
+#[derive(Deserialize)]
+struct WriteArgs {
+    path: String,
+    contents: String,
+}
+
+#[derive(Deserialize)]
+struct ReportArgs {
+    reports: Value,
 }
 
 #[derive(Deserialize)]
@@ -167,7 +183,20 @@ impl Host {
             writer,
             reader,
             stats: IndexStats::default(),
+            sources: None,
+            reports: None,
         })
+    }
+
+    /// Let this session write notes and serve `config` to `kore sources`.
+    pub fn with_sources(mut self, config: Value) -> Self {
+        self.sources = Some(config);
+        self
+    }
+
+    /// The per-source reports `kore sources` sent back, if it got that far.
+    pub fn take_reports(&mut self) -> Option<Value> {
+        self.reports.take()
     }
 
     /// What this session has written so far.
@@ -264,6 +293,35 @@ impl Host {
                 let scan = scan_reconcile(&self.writer, &files, now_ms)?;
                 Ok(serde_json::to_value(scan).map_err(|err| HostError::io(err.to_string()))?)
             }
+            "sources_config" => self
+                .sources
+                .clone()
+                .ok_or_else(|| HostError::io("this session runs no sources")),
+            "sources_report" => {
+                let ReportArgs { reports } = parse_args(command, args)?;
+                self.reports = Some(reports);
+                Ok(Value::Null)
+            }
+            "note_create" => {
+                let WriteArgs { path, contents } = parse_args(command, args)?;
+                let absolute = self.writable_note(&path)?;
+                match crate::write::atomic_create(&absolute, &contents) {
+                    Ok(()) => {
+                        Ok(json!({ "kind": "created", "modifiedMs": modified_ms(&absolute) }))
+                    }
+                    Err(crate::write::CreateError::Exists) => Ok(json!({ "kind": "collision" })),
+                    Err(crate::write::CreateError::Other(err)) => {
+                        Err(HostError::io(err.to_string()))
+                    }
+                }
+            }
+            "note_write" => {
+                let WriteArgs { path, contents } = parse_args(command, args)?;
+                let absolute = self.writable_note(&path)?;
+                crate::write::atomic_write(&absolute, &contents)
+                    .map_err(|err| HostError::io(err.to_string()))?;
+                Ok(json!(modified_ms(&absolute)))
+            }
             other => Err(HostError::io(format!(
                 "kore index does not serve \"{other}\""
             ))),
@@ -276,6 +334,18 @@ impl Host {
             .into_iter()
             .map(FileMeta::from)
             .collect()
+    }
+
+    /// Resolve a note path the core wants to write. Only a `kore sources`
+    /// session writes, and only eligible, symlink-free note paths.
+    fn writable_note(&self, path: &str) -> Result<PathBuf, HostError> {
+        if self.sources.is_none() {
+            return Err(HostError::io("kore index never writes notes"));
+        }
+        crate::note_file::checked_note_path(&self.root, path).map_err(|err| HostError {
+            kind: "traversal",
+            message: err.to_string(),
+        })
     }
 
     /// Read a graph-relative markdown file. Paths come from the core, which
@@ -312,6 +382,12 @@ impl Host {
             _ => HostError::io(format!("{path}: {err}")),
         })
     }
+}
+
+fn modified_ms(path: &Path) -> Option<u64> {
+    let modified = std::fs::metadata(path).ok()?.modified().ok()?;
+    let elapsed = modified.duration_since(std::time::UNIX_EPOCH).ok()?;
+    Some(elapsed.as_millis() as u64)
 }
 
 #[derive(Deserialize)]
@@ -398,6 +474,40 @@ mod tests {
             json!({ "id": 4, "ok": [{ "path": "notes/kore.md" }] })
         );
         assert_eq!(host.stats().written, 1);
+    }
+
+    #[test]
+    fn writes_notes_only_in_a_sources_session_and_never_clobbers() {
+        let dir = tempfile::tempdir().unwrap();
+        let args = json!({ "path": "Readwise/Books/A.md", "contents": "one\n", "generation": 1 });
+        let mut index = Host::open(dir.path()).unwrap();
+        assert!(index.handle("note_create", &args).is_err());
+
+        let mut host = Host::open(dir.path())
+            .unwrap()
+            .with_sources(json!({ "sources": [] }));
+        let created = host.handle("note_create", &args).unwrap();
+        assert_eq!(created["kind"], "created");
+        let again = host
+            .handle(
+                "note_create",
+                &json!({ "path": "Readwise/Books/A.md", "contents": "two\n" }),
+            )
+            .unwrap();
+        assert_eq!(again["kind"], "collision");
+        host.handle(
+            "note_write",
+            &json!({ "path": "Readwise/Books/A.md", "contents": "three\n" }),
+        )
+        .unwrap();
+        let read = host
+            .handle("note_read", &json!({ "path": "Readwise/Books/A.md" }))
+            .unwrap();
+        assert_eq!(read, json!("three\n"));
+        let escape = host
+            .handle("note_write", &json!({ "path": "../x.md", "contents": "" }))
+            .unwrap_err();
+        assert_eq!(escape.kind, "traversal");
     }
 
     #[test]

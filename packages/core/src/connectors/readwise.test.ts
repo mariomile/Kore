@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  adoptsReadwiseFile,
   mergeReadwiseBook,
   readwiseConnector,
   readwiseHighlightIds,
@@ -62,13 +63,52 @@ describe('mergeReadwiseBook', () => {
       ],
     })
 
-    const merged = mergeReadwiseBook(existing, next)
+    const merged = mergeReadwiseBook(existing, next, new Date(2026, 10, 7))
 
     expect(merged).toBe(
-      `${existing.trimEnd()}\n\n- New one ([View highlight](https://readwise.io/open/9))\n`,
+      `${existing.trimEnd()}\n\n### New highlights added 2026-11-07\n\n- New one ([View highlight](https://readwise.io/open/9))\n`,
     )
     expect(readwiseHighlightIds(merged ?? '')).toEqual(new Set([1, 2, 9]))
     expect(mergeReadwiseBook(merged ?? '', next)).toBeNull()
+  })
+})
+
+describe('a note the Obsidian plugin wrote', () => {
+  const pluginNote = [
+    '---',
+    'tags:',
+    '  - type/reference',
+    'category: books',
+    'url: "https://example.com/meditations"',
+    '---',
+    '',
+    '![rw-book-cover](https://example.com/cover.jpg)',
+    '',
+    '## Highlights',
+    '',
+    '- First line two ([Location 10](https://readwise.io/to_kindle?action=open&asin=X&location=10))',
+    '- Second ([View Highlight](https://read.readwise.io/read/01abc))',
+    '',
+  ].join('\n')
+
+  it('is adopted and gets only the highlights it lacks', () => {
+    const next = book({
+      source_url: 'https://example.com/meditations',
+      highlights: [
+        { id: 1, text: 'First\nline two', location: 10 },
+        { id: 2, external_id: '01ABC', text: 'Second, as edited in Reader', location: 20 },
+        { id: 9, text: 'Brand new', location: 90 },
+      ],
+    })
+
+    expect(adoptsReadwiseFile(pluginNote, next)).toBe(true)
+    expect(mergeReadwiseBook(pluginNote, next, new Date(2026, 10, 7))).toBe(
+      `${pluginNote.trimEnd()}\n\n### New highlights added 2026-11-07\n\n- Brand new ([View highlight](https://readwise.io/open/9))\n`,
+    )
+  })
+
+  it('is not confused with an unrelated note of the same title', () => {
+    expect(adoptsReadwiseFile('# Meditations\n\nMy own thoughts.\n', book())).toBe(false)
   })
 })
 
@@ -91,6 +131,7 @@ describe('readwiseConnector.fetchNotes', () => {
     const notes = []
     for await (const note of readwiseConnector.fetchNotes({
       token: 'secret',
+      tags: ['readwise'],
       since: new Date('2026-10-01T00:00:00.000Z'),
       fetchFn,
       isStale: () => false,
@@ -103,6 +144,8 @@ describe('readwiseConnector.fetchNotes', () => {
       'https://readwise.io/api/v2/export/?updatedAfter=2026-10-01T00%3A00%3A00.000Z',
       'https://readwise.io/api/v2/export/?updatedAfter=2026-10-01T00%3A00%3A00.000Z&pageCursor=7',
     ])
-    expect(notes.map((note) => [note.sourceId, note.fileStem])).toEqual([['42', 'Meditations']])
+    expect(notes.map((note) => [note.sourceId, note.fileStem, note.fields])).toEqual([
+      ['42', 'Meditations', { title: 'Meditations', category: 'Books', author: 'Marcus Aurelius' }],
+    ])
   })
 })

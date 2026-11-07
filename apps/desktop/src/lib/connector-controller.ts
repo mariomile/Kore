@@ -102,6 +102,8 @@ export function createConnectorController(
         connector,
         token: token.trim(),
         folder: entry.folder ?? connector.defaultFolder,
+        pattern: entry.pattern,
+        tags: entry.tags,
         since: entry.lastSyncedAt === null ? null : new Date(entry.lastSyncedAt),
         floor: entry.importFrom === null ? null : new Date(entry.importFrom),
         generation: options.generation,

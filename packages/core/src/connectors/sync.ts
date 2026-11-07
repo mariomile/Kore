@@ -4,6 +4,7 @@ import { classifyGraphPath } from '../graph/paths'
 import { db } from '../indexing/db'
 import { parseFrontmatter, splitFrontmatter } from '../markdown/frontmatter'
 import type { FetchFn } from '../sync/github-api'
+import { renderNotePlacement } from './pattern'
 import type { Connector, ConnectorNote } from './types'
 
 /**
@@ -27,6 +28,10 @@ export interface SyncConnectorInput {
   readonly token: string
   /** Graph-relative destination folder; `''` is the graph root. */
   readonly folder: string
+  /** Path pattern inside the folder (see `./pattern`); `null` uses the connector's. */
+  readonly pattern: string | null
+  /** Tags for new notes; `null` uses the connector's. */
+  readonly tags: readonly string[] | null
   /** The last successful sync, or `null` for a first (full) sync. */
   readonly since: Date | null
   /**
@@ -78,6 +83,15 @@ function frontmatterId(source: string, idKey: string): string | null {
   return typeof value === 'string' || typeof value === 'number' ? String(value) : null
 }
 
+/** Ours by id, or adoptable: the same item, written without our id by another app. */
+function ownsFile(existing: string, note: ConnectorNote, idKey: string): boolean {
+  const id = frontmatterId(existing, idKey)
+  if (id !== null) {
+    return id === note.sourceId
+  }
+  return note.adopts?.(existing) === true
+}
+
 async function indexedPath(idKey: string, sourceId: string): Promise<string | null> {
   const row = await db
     .selectFrom('noteProperties')
@@ -116,9 +130,16 @@ async function mergeInto(
   return 'updated'
 }
 
-function candidatePath(folder: string, stem: string, ordinal: number): string {
+function candidatePath(
+  folder: string,
+  pattern: string,
+  note: ConnectorNote,
+  ordinal: number,
+): string {
+  const { dir: subfolder, stem } = renderNotePlacement(pattern, note.fields, note.fileStem)
   const name = ordinal === 1 ? `${stem}.md` : `${stem} ${ordinal}.md`
-  return folder === '' ? name : `${folder}/${name}`
+  const dir = [folder, subfolder].filter((part) => part !== '').join('/')
+  return dir === '' ? name : `${dir}/${name}`
 }
 
 /** The window start: the last sync minus the overlap, but never before `floor`. */
@@ -137,6 +158,7 @@ function effectiveSince(since: Date | null, floor: Date | null, overlapMs: numbe
 export async function syncConnector(input: SyncConnectorInput): Promise<ConnectorSyncResult> {
   const { connector, generation } = input
   const folder = normalizeConnectorFolder(input.folder)
+  const pattern = input.pattern ?? connector.defaultPattern
   const startedAt = new Date().toISOString()
   /** Paths placed by this run — the index lags our own writes. */
   const placed = new Map<string, string>()
@@ -155,16 +177,17 @@ export async function syncConnector(input: SyncConnectorInput): Promise<Connecto
       }
     }
     for (let ordinal = 1; ordinal <= MAX_PATH_ATTEMPTS; ordinal += 1) {
-      const path = candidatePath(folder, note.fileStem, ordinal)
+      const path = candidatePath(folder, pattern, note, ordinal)
       const outcome = await createNoteIfAbsent(path, note.source, generation)
       if (outcome.kind === 'created') {
         placed.set(note.sourceId, path)
         return 'created'
       }
-      // Occupied: ours from another device (merge into it), or a file Kore
-      // didn't write for this item (never touched; try the next name).
+      // Occupied: ours from another device, or the same item written by the
+      // source's Obsidian plugin (merge into either), or an unrelated file
+      // (never touched; try the next name).
       const existing = await readIfPresent(path, generation)
-      if (existing !== null && frontmatterId(existing, connector.idKey) === note.sourceId) {
+      if (existing !== null && ownsFile(existing, note, connector.idKey)) {
         placed.set(note.sourceId, path)
         return await mergeInto(path, existing, note, generation)
       }
@@ -180,6 +203,7 @@ export async function syncConnector(input: SyncConnectorInput): Promise<Connecto
   const since = effectiveSince(input.since, input.floor, connector.overlapMs)
   const notes = connector.fetchNotes({
     token: input.token,
+    tags: input.tags ?? connector.defaultTags,
     since,
     fetchFn: input.fetchFn,
     isStale: input.isStale,

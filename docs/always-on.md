@@ -14,6 +14,9 @@ This is Plan 32's slice 2. The pieces:
   its remote: it pulls and reindexes in the background, and commits and pushes
   every write an agent makes.
 - `kore sync` is one pass of the same thing, for cron or for a look by hand.
+- `kore sync --sources` also pulls Readwise and Granola into the vault and
+  pushes the result, so those flows keep running with the Mac asleep and
+  Obsidian closed (see below).
 - `deploy/always-on/` has a Docker image and a systemd unit that wire it up.
 
 ## Two writers, one repository
@@ -69,6 +72,27 @@ uncommitted changes, and keeps `.reflect/` (the index) out of history by
 adding it to `.git/info/exclude`, never to the vault's own `.gitignore`. Host
 commits are authored `Kore host <kore-host@localhost>` with subjects like
 `kore: capture --to=daily/2026-11-04.md … (via MCP)`.
+
+## Readwise and Granola on the host
+
+Set `KORE_READWISE_TOKEN` and/or `KORE_GRANOLA_TOKEN` in the host's
+environment, plus the folder, file name pattern and tags you want
+(`KORE_<SOURCE>_FOLDER`, `_PATTERN`, `_TAGS`; see `kore sources` in
+[cli.md](cli.md)), then run `kore sync --sources` from a timer, for example every
+15 minutes:
+
+```cron
+*/15 * * * * kore --graph /srv/vault sync --sources
+```
+
+It is an ordinary journaled write: `kore sources --since <last run>` is run,
+committed as one `kore: sources …` commit and pushed. If the Mac's push wins
+the race, the operation is replayed over the same window on top of the Mac's
+version; the connector only appends what a note lacks, so a replay never
+duplicates. Run it on the host only, not also from the app on the Mac, or two
+writers append the same highlights to the same note at once. The first run
+imports nothing older than itself; run `kore sources --since YYYY-MM-DD` once
+by hand to backfill.
 
 ## Run it with Docker
 

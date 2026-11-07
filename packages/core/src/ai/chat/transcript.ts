@@ -1,4 +1,5 @@
 import type { ModelMessage } from 'ai'
+import type { AgentStep, AgentStepOutcome } from './agent-steps'
 import type { ChatStreamEvent } from './stream-chat'
 import type { NoteEditDecision, NoteToolCall, NoteToolResult } from './tools'
 
@@ -55,6 +56,8 @@ export type AssistantPart =
     }
   /** A user message steered into the live turn mid-run. */
   | { kind: 'steer'; text: string }
+  /** A tool call a CLI engine ran in its own loop; `outcome` null while running. */
+  | { kind: 'step'; step: AgentStep; outcome: AgentStepOutcome | null }
 
 /** One user message and everything the assistant did in response. */
 export interface ChatTurn {
@@ -111,6 +114,17 @@ export function appendEvent(parts: AssistantPart[], event: ChatStreamEvent): Ass
           ? { ...part, result: event.result }
           : part,
       )
+    case 'agent-step':
+      // A repeated snapshot of the same call must not add a second row.
+      return parts.some((part) => part.kind === 'step' && part.step.id === event.step.id)
+        ? parts
+        : [...parts, { kind: 'step', step: event.step, outcome: null }]
+    case 'agent-step-end':
+      return parts.map((part) =>
+        part.kind === 'step' && part.step.id === event.id
+          ? { ...part, outcome: event.outcome }
+          : part,
+      )
     case 'tool-error':
       return [
         ...settleTools(parts, event.message, event.toolCallId),
@@ -120,7 +134,7 @@ export function appendEvent(parts: AssistantPart[], event: ChatStreamEvent): Ass
       // A terminal event settles every still-pending tool call — a chip must
       // never keep spinning after its turn is over.
       return [
-        ...settleTools(parts, event.message),
+        ...settleSteps(settleTools(parts, event.message), event.message),
         { kind: 'notice', tone: 'error', text: event.message },
       ]
     case 'steer':
@@ -129,14 +143,19 @@ export function appendEvent(parts: AssistantPart[], event: ChatStreamEvent): Ass
       // chip settles rather than spinning on into the next leg.
       return [...settleTools(parts, STEER_INTERRUPTED), { kind: 'steer', text: event.text }]
     case 'aborted':
-      return [...settleTools(parts, 'Stopped.'), { kind: 'notice', tone: 'info', text: 'Stopped.' }]
+      return [
+        ...settleSteps(settleTools(parts, 'Stopped.'), 'Stopped.'),
+        { kind: 'notice', tone: 'info', text: 'Stopped.' },
+      ]
     case 'complete':
       // A turn can settle with no reply — e.g. the model spent its whole step
       // budget on tool calls and never synthesized. Rather than leave the user
       // with tool chips and silence, surface a notice.
+      // A step whose result line never came (the CLI's own bookkeeping)
+      // stops spinning: the run finished cleanly around it.
       return hasRenderableReply(parts)
-        ? parts
-        : [...parts, { kind: 'notice', tone: 'info', text: NO_REPLY_NOTICE }]
+        ? settleSteps(parts, null)
+        : [...settleSteps(parts, null), { kind: 'notice', tone: 'info', text: NO_REPLY_NOTICE }]
   }
 }
 
@@ -175,6 +194,19 @@ export function settleNoteEdit(
     }
     return { ...part, result: { ...part.result, decision } }
   })
+}
+
+/**
+ * Settle every still-running step when the turn ends: as failed with
+ * `message`, or (null) as finished without a summary.
+ */
+function settleSteps(parts: AssistantPart[], message: string | null): AssistantPart[] {
+  return parts.map(
+    (part): AssistantPart =>
+      part.kind === 'step' && part.outcome === null
+        ? { ...part, outcome: { error: message, summary: null } }
+        : part,
+  )
 }
 
 /**

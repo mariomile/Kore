@@ -3,6 +3,7 @@ import type { ModelMessage } from 'ai'
 import { getBridge } from '../ipc/bridge'
 import { call } from '../ipc/invoke'
 import type { ChatStreamEvent } from './chat/stream-chat'
+import type { AgentStep, AgentStepOutcome } from './chat/agent-steps'
 import { dailyPathPattern } from '../graph/paths'
 
 /**
@@ -144,6 +145,10 @@ export type AgentCliChunk =
   | { type: 'text-delta'; text: string }
   | { type: 'text-block'; text: string }
   | { type: 'result'; isError: boolean; message: string | null }
+  /** The agent started a tool call inside its own loop (see `./chat/agent-steps`). */
+  | { type: 'step-start'; step: AgentStep }
+  /** A tool call settled — its content-free outcome. */
+  | { type: 'step-end'; id: string; outcome: AgentStepOutcome }
 
 const cliEventSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('line'), requestId: z.string(), line: z.string() }),
@@ -253,8 +258,8 @@ export interface AgentCliTurnOptions {
    * profiles) stays out of the run.
    */
   isolatedCodexHome?: boolean | undefined
-  /** Parse one stdout line into a chunk, or null for noise. */
-  parseLine: (line: string) => AgentCliChunk | null
+  /** Parse one stdout line into chunks (parallel tool calls), or null for noise. */
+  parseLine: (line: string) => AgentCliChunk | AgentCliChunk[] | null
   /** Message when the spawn itself fails without a specific cause. */
   startFailureMessage: string
   /** Aborts the run mid-stream (the UI's stop button). */
@@ -300,9 +305,10 @@ export interface AgentCliTurnOptions {
 /**
  * Run one headless CLI turn, yielding the same normalized
  * {@link ChatStreamEvent}s as the BYOK engine so the transcript renders
- * identically. The CLI's internal tool activity is not surfaced as chips
- * (its file reads are its own affair, like thinking); only answer text
- * streams — as deltas when the binary emits them, as one block otherwise.
+ * identically. Answer text streams as deltas when the binary emits them, as
+ * one block otherwise; engines whose parser reports tool activity also
+ * stream it as `agent-step` events (rendered as the run's steps, never part
+ * of the model-facing history — the CLI re-reads what it needs).
  */
 export async function* streamAgentCliTurn(
   options: AgentCliTurnOptions,
@@ -418,35 +424,41 @@ export async function* streamAgentCliTurn(
         if (options.onRawLine !== undefined) {
           await options.onRawLine(event.line, sendRawLine)
         }
-        const chunk = options.parseLine(event.line)
-        if (chunk === null) {
+        const parsed = options.parseLine(event.line)
+        if (parsed === null) {
           continue
         }
-        const open = segments.at(-1)
-        const text = open?.role === 'assistant' ? open.text : ''
-        if (chunk.type === 'text-delta') {
-          appendText(chunk.text)
-          yield { type: 'text-delta', text: chunk.text }
-        } else if (chunk.type === 'text-block') {
-          const delta = text === '' ? chunk.text : `\n\n${chunk.text}`
-          appendText(delta)
-          yield { type: 'text-delta', text: delta }
-        } else {
-          if (chunk.isError) {
-            resultError = chunk.message ?? 'The CLI reported an error.'
-          }
-          if (keepStdinOpen) {
-            if (pendingSteers > 0 && resultError === null) {
-              // A steered message is still owed its turn: this result only
-              // closes the previous one, so keep listening. The steer's own
-              // transcript part already separates the two replies on screen,
-              // and the next delta opens a fresh assistant segment.
-              pendingSteers -= 1
-              continue
+        for (const chunk of Array.isArray(parsed) ? parsed : [parsed]) {
+          const open = segments.at(-1)
+          const text = open?.role === 'assistant' ? open.text : ''
+          if (chunk.type === 'step-start') {
+            yield { type: 'agent-step', step: chunk.step }
+          } else if (chunk.type === 'step-end') {
+            yield { type: 'agent-step-end', id: chunk.id, outcome: chunk.outcome }
+          } else if (chunk.type === 'text-delta') {
+            appendText(chunk.text)
+            yield { type: 'text-delta', text: chunk.text }
+          } else if (chunk.type === 'text-block') {
+            const delta = text === '' ? chunk.text : `\n\n${chunk.text}`
+            appendText(delta)
+            yield { type: 'text-delta', text: delta }
+          } else {
+            if (chunk.isError) {
+              resultError = chunk.message ?? 'The CLI reported an error.'
             }
-            // The last owed turn settled (or errored): end-of-input — the
-            // process exits and `done` below delivers the terminal event.
-            closeStdin()
+            if (keepStdinOpen) {
+              if (pendingSteers > 0 && resultError === null) {
+                // A steered message is still owed its turn: this result only
+                // closes the previous one, so keep listening. The steer's own
+                // transcript part already separates the two replies on screen,
+                // and the next delta opens a fresh assistant segment.
+                pendingSteers -= 1
+                continue
+              }
+              // The last owed turn settled (or errored): end-of-input — the
+              // process exits and `done` below delivers the terminal event.
+              closeStdin()
+            }
           }
         }
       } else if (event.kind === 'failed') {

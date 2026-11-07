@@ -7,6 +7,13 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- The chat shows its work. With Claude Code as the engine, every file it
+  reads, every search and edit, and every MCP call appears as a step while
+  the answer is being prepared, folded into "Worked · N steps" once it is
+  done. The agent can now hand independent lookups to subagents, each shown
+  as a card with its own steps. Private notes stay blocked for subagents
+  too, and a blocked read says so.
+
 - An Obsidian vault can be converted into a new folder in Kore's layout.
   After the preview in Settings → Convert to Kore layout, *Convert to a
   copy…* writes the converted vault into an empty folder you pick: dailies,

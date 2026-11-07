@@ -409,3 +409,26 @@ describe('settleNoteEdit', () => {
     expect(settled[1]).toMatchObject({ result: { tool: 'setNoteType', decision: 'accepted' } })
   })
 })
+
+describe('appendEvent agent steps', () => {
+  const step = { id: 's1', tool: 'Read', label: 'Read', detail: 'notes/a.md', parentId: null }
+
+  it('adds a step once, settles it with its outcome, and stops a dangling one on abort', () => {
+    let parts = appendEvent([], { type: 'agent-step', step })
+    parts = appendEvent(parts, { type: 'agent-step', step })
+    expect(parts).toEqual([{ kind: 'step', step, outcome: null }])
+    parts = appendEvent(parts, {
+      type: 'agent-step-end',
+      id: 's1',
+      outcome: { error: null, summary: '3 lines' },
+    })
+    expect(parts[0]).toEqual({ kind: 'step', step, outcome: { error: null, summary: '3 lines' } })
+
+    const dangling = appendEvent([], { type: 'agent-step', step })
+    expect(appendEvent(dangling, { type: 'aborted', messages: [] })[0]).toEqual({
+      kind: 'step',
+      step,
+      outcome: { error: 'Stopped.', summary: null },
+    })
+  })
+})

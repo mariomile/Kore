@@ -295,6 +295,15 @@ export {
   type TransformStreamEvent,
 } from '../ai/transform-selection'
 export {
+  agentStepTree,
+  describeClaudeToolCall,
+  isSubagentTool,
+  summarizeClaudeToolResult,
+  type AgentStep,
+  type AgentStepNode,
+  type AgentStepOutcome,
+} from '../ai/chat/agent-steps'
+export {
   appendEvent,
   buildHistory,
   isToolPending,

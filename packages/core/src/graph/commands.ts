@@ -525,6 +525,17 @@ export async function captureOEmbedFetch(url: string): Promise<string> {
   return await call('capture_oembed_fetch', { url }, z.string())
 }
 
+/**
+ * Fetch one JSON or XML document as text, POSTing `jsonBody` when given: the
+ * transport for a pasted link's saved text (a video's player answer and its
+ * caption track). The Rust side only bounds it (https only, JSON or XML
+ * only, a byte cap, no redirects); which URLs are asked is policy in
+ * `actions/link-text`, behind the same privacy gate as {@link captureMetaFetch}.
+ */
+export async function captureDataFetch(url: string, jsonBody?: string): Promise<string> {
+  return await call('capture_data_fetch', { url, jsonBody: jsonBody ?? null }, z.string())
+}
+
 /** The recently-opened graphs, newest first. */
 export async function recentGraphs(): Promise<RecentGraph[]> {
   return await call('recent_graphs', {}, z.array(recentGraphSchema))

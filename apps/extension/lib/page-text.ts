@@ -1,5 +1,4 @@
 import { z } from 'zod'
-import { htmlToMarkdown, type HtmlToMarkdownOptions } from './html-to-markdown'
 
 export const EXTRACT_PAGE_TEXT_MESSAGE_TYPE = 'reflect:capture-page-text'
 
@@ -43,14 +42,4 @@ export function normalizeParagraphText(text: string): string {
 /** Join non-empty paragraphs into plain text suitable for markdown capture. */
 export function formatParagraphs(paragraphs: readonly string[]): string {
   return paragraphs.map(normalizeParagraphText).filter(Boolean).join('\n\n')
-}
-
-/** Prefer structured article markdown; flatten to paragraphs only when conversion is empty. */
-export function pageTextFromArticleHtml(
-  html: string,
-  fallbackParagraphs: readonly string[],
-  options: HtmlToMarkdownOptions = {},
-): string {
-  const markdown = htmlToMarkdown(html, options)
-  return markdown !== '' ? markdown : formatParagraphs(fallbackParagraphs)
 }

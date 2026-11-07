@@ -723,6 +723,71 @@ pub async fn capture_oembed_fetch(url: String) -> AppResult<String> {
         .map_err(|err| AppError::parse(format!("{url} answered non-UTF-8: {err}")))
 }
 
+// ---- data fetch -----------------------------------------------------------------
+
+/// A video's caption track is the largest document this fetch exists for: an
+/// hour of speech is ~1 MiB of timed-text XML. Past the cap the answer is an
+/// error, not a cut, because truncated JSON or XML does not parse.
+const DATA_FETCH_MAX_BYTES: usize = 4 * 1024 * 1024;
+
+/// Fetch one JSON or XML document as text, optionally POSTing a JSON body.
+/// This is the transport for the text a pasted link keeps (a video's player
+/// answer and caption track); which URLs are asked, and what is posted, is
+/// policy in `@reflect/core` (`actions/link-text`), behind the same privacy
+/// gate as `capture_meta_fetch`. This side only bounds it: https only, JSON
+/// or XML only, a byte cap, no redirects.
+#[tauri::command]
+pub async fn capture_data_fetch(url: String, json_body: Option<String>) -> AppResult<String> {
+    if !url.starts_with("https://") {
+        return Err(AppError::parse(format!("not an https url: {url}")));
+    }
+    let client = reqwest::Client::builder()
+        .redirect(reqwest::redirect::Policy::none())
+        .timeout(META_FETCH_TIMEOUT)
+        .user_agent(META_FETCH_USER_AGENT)
+        .build()
+        .map_err(|err| AppError::io(err.to_string()))?;
+    let request = match json_body {
+        Some(body) => client
+            .post(&url)
+            .header(reqwest::header::CONTENT_TYPE, "application/json")
+            .body(body),
+        None => client.get(&url),
+    };
+    let response = request
+        .header("Accept", "application/json, application/xml, text/xml")
+        .header("Accept-Language", "en-US,en;q=0.9")
+        .send()
+        .await
+        .map_err(classify_fetch_error)?;
+    if let Some(err) = classify_fetch_status(&url, response.status()) {
+        return Err(err);
+    }
+    let content_type = response
+        .headers()
+        .get(reqwest::header::CONTENT_TYPE)
+        .and_then(|value| value.to_str().ok())
+        .unwrap_or("")
+        .to_ascii_lowercase(); // MIME types are case-insensitive
+    if !content_type.contains("json") && !content_type.contains("xml") {
+        return Err(AppError::parse(format!(
+            "{url} did not answer JSON or XML ({content_type})"
+        )));
+    }
+    let mut body: Vec<u8> = Vec::new();
+    let mut response = response;
+    while let Some(chunk) = response.chunk().await.map_err(classify_fetch_error)? {
+        if body.len() + chunk.len() > DATA_FETCH_MAX_BYTES {
+            return Err(AppError::parse(format!(
+                "{url} answered more than {DATA_FETCH_MAX_BYTES} bytes"
+            )));
+        }
+        body.extend_from_slice(&chunk);
+    }
+    String::from_utf8(body)
+        .map_err(|err| AppError::parse(format!("{url} answered non-UTF-8: {err}")))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

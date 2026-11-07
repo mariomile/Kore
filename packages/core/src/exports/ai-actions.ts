@@ -477,3 +477,4 @@ export {
   resourceFileKind,
   type ResourceOrigin,
 } from '../actions/resource-collection'
+export { fetchLinkText, saveLinkText, type LinkText } from '../actions/link-text'

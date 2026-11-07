@@ -7,6 +7,11 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Paste an article link and its card keeps the article's text; paste a
+  YouTube link and it keeps the transcript. Search and agents find the
+  words, and they stay even if the page goes away. Links pasted in private
+  notes are never fetched.
+
 - Files you attach in chat now reach the AI. Images, PDFs, and Markdown,
   text, CSV or JSON files can be picked from the + menu, pasted or dropped
   onto the chat; with Claude Code the agent reads images and PDFs directly,

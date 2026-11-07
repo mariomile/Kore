@@ -1,11 +1,9 @@
-import Defuddle from 'defuddle'
 import { browser } from 'wxt/browser'
-import { htmlToMarkdown } from '@/lib/html-to-markdown'
+import { extractArticle, htmlToMarkdown } from '@reflect/core/article-text'
 import {
   extractPageTextRequestSchema,
   formatParagraphs,
   normalizeParagraphText,
-  pageTextFromArticleHtml,
   samePageUrl,
   type ExtractPageTextResponse,
 } from '@/lib/page-text'
@@ -82,18 +80,11 @@ function extractPageText(expectedUrl: string): ExtractPageTextResponse {
     if (!(clone instanceof Document)) {
       return { ok: true, contentText: fallbackPageText() }
     }
-    const article = new Defuddle(clone, {
-      url: document.location.href,
-      useAsync: false,
-      includeReplies: false,
-      removeImages: false,
-    }).parse()
-    const contentText = article.content
-      ? pageTextFromArticleHtml(article.content, fallbackParagraphs(), {
-          baseUrl: document.location.href,
-        })
-      : fallbackPageText()
-    return { ok: true, contentText }
+    const { markdown } = extractArticle(clone, document.location.href)
+    return {
+      ok: true,
+      contentText: markdown !== '' ? markdown : formatParagraphs(fallbackParagraphs()),
+    }
   } catch (cause) {
     try {
       return { ok: true, contentText: fallbackPageText() }

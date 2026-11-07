@@ -4,6 +4,7 @@ import {
   collectResourceLink,
   errorMessage,
   parseFrontmatter,
+  saveLinkText,
   splitFrontmatter,
 } from '@reflect/core'
 import { startOperation } from '@/lib/operations'
@@ -67,9 +68,14 @@ export function useResourceCollection(
         private: isPrivate,
         updateSources: (cardPath, sourceLink, forGeneration) =>
           appendResourceSource(cardPath, sourceLink, forGeneration, isStale),
-      }).catch((cause) => {
-        if (!isStale()) startOperation('Collecting link').fail(errorMessage(cause))
       })
+        .then(async (cardPath) => {
+          // Keeping the page's words is an outbound fetch: never for a private note.
+          if (!isPrivate) await saveLinkText(cardPath, generation)
+        })
+        .catch((cause) => {
+          if (!isStale()) startOperation('Collecting link').fail(errorMessage(cause))
+        })
     },
     [generation, path, isPrivate],
   )

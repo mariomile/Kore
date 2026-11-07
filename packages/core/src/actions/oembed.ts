@@ -28,24 +28,29 @@ function isYouTubeHost(host: string): boolean {
 const YOUTUBE_VIDEO_ID = /^[\w-]+$/
 
 /**
+ * The video id a YouTube URL addresses (`watch?v=`, `youtu.be/`, `shorts/`,
+ * `live/`, `embed/`), or `null` for every other URL.
+ */
+export function youtubeVideoId(url: URL): string | null {
+  if (!isYouTubeHost(url.hostname)) {
+    return null
+  }
+  const candidate =
+    url.hostname === 'youtu.be'
+      ? url.pathname.slice(1)
+      : url.pathname === '/watch'
+        ? (url.searchParams.get('v') ?? '')
+        : (/^\/(?:shorts|live|embed)\/([^/]+)$/.exec(url.pathname)?.[1] ?? '')
+  return YOUTUBE_VIDEO_ID.test(candidate) ? candidate : null
+}
+
+/**
  * YouTube watch pages bury `<title>` and the `og:` tags ~700 KB into ~1.2 MB
  * of identity-encoded HTML, so the HTML scrape must pull the whole page to
  * read them; the oEmbed answer carries the exact title in ~1 KB.
  */
 const youtube: OEmbedProvider = {
-  matches: (url) => {
-    if (!isYouTubeHost(url.hostname)) {
-      return false
-    }
-    if (url.hostname === 'youtu.be') {
-      return YOUTUBE_VIDEO_ID.test(url.pathname.slice(1))
-    }
-    if (url.pathname === '/watch') {
-      return YOUTUBE_VIDEO_ID.test(url.searchParams.get('v') ?? '')
-    }
-    const prefixed = /^\/(?:shorts|live|embed)\/([^/]+)$/.exec(url.pathname)
-    return prefixed !== null && YOUTUBE_VIDEO_ID.test(prefixed[1]!)
-  },
+  matches: (url) => youtubeVideoId(url) !== null,
   endpoint: 'https://www.youtube.com/oembed',
 }
 

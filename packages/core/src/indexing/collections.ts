@@ -7,9 +7,9 @@ import {
   type TagType,
 } from '../tags'
 import { db } from './db'
-import { resolvedTagTypes } from './resolved-tag-types'
+import { collectionTagKeys, resolvedTagTypes } from './resolved-tag-types'
 import { recallOrder } from './filtered-search'
-import { carriesTagOrNested } from './tag-match'
+import { carriesAnyTagOrNested } from './tag-match'
 import type { IndexedPropertyValueType } from '../tags'
 
 /**
@@ -364,11 +364,18 @@ export interface ListCollectionOptions {
    * the uncapped join.
    */
   limit?: number
+  /**
+   * List only the notes carrying `tag` itself (or a tag nested under it),
+   * leaving out the notes of tags that build on it (Plan 33 B2): the
+   * collection's "only #tag" filter.
+   */
+  ownOnly?: boolean
 }
 
 /**
  * The notes carrying `tag` or a tag nested under it (regular and daily, like
- * the tag-filtered All Notes list) with their property values. Unsorted collections keep the list
+ * the tag-filtered All Notes list), plus the notes of tags that build on it
+ * unless `ownOnly`, with their property values. Unsorted collections keep the list
  * order (pinned first, then newest); a property sort orders missing values
  * last, numbers by their numeric key, everything else by string,
  * case-insensitive.
@@ -381,10 +388,11 @@ export async function listCollection(
   // SQL orders by the chain's head; a longer chain re-sorts the (uncapped,
   // fully materialized) rows in memory below with the same semantics.
   const sort = sorts[0] ?? null
+  const tagKeys = await collectionTagKeys(tag, options.ownOnly === true)
   let baseQuery = db
     .selectFrom('notes')
     .where('notes.kind', 'in', ['note', 'daily'])
-    .where(carriesTagOrNested('"notes"."path"', tag))
+    .where(carriesAnyTagOrNested('"notes"."path"', tagKeys))
     .select(['notes.path', 'notes.title', 'notes.mtime', 'notes.isPinned'])
   if (options.excludePrivate === true) {
     baseQuery = baseQuery.where('notes.isPrivate', '=', 0)
@@ -430,7 +438,7 @@ export async function listCollection(
     .selectFrom('noteProperties')
     .innerJoin('notes', 'notes.path', 'noteProperties.notePath')
     .where('notes.kind', 'in', ['note', 'daily'])
-    .where(carriesTagOrNested('"notes"."path"', tag))
+    .where(carriesAnyTagOrNested('"notes"."path"', tagKeys))
   if (options.excludePrivate === true) {
     propertiesQuery = propertiesQuery.where('notes.isPrivate', '=', 0)
   }

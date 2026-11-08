@@ -19,7 +19,7 @@ import { TagConfigDialog } from '@/components/tags/tag-config-dialog'
 import { toast } from '@/components/ui/toast'
 import { cn } from '@/lib/utils'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
-import { useCollection } from '@/hooks/use-collection'
+import { useCollection, useTagChildren } from '@/hooks/use-collection'
 import { useFolderTree } from '@/hooks/use-folder-tree'
 import { tagTypeQueryKey, useTagType } from '@/hooks/use-tag-type'
 import { useTemplateValues } from '@/hooks/use-template-values'
@@ -268,7 +268,15 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
   // The grid isn't a collection view, but on a typed tag its cards carry
   // property chips — so the projection loads there too (Plan 28 slice 2).
   const collectionWanted = collectionView || (view === 'grid' && collectionAvailable)
-  const collection = useCollection(collectionWanted ? tag : null, collectionSorts)
+  // Tags that build on this one (Plan 33 B2) list their notes here too,
+  // unless the "only #tag" filter is on; ephemeral like the property filters.
+  const tagChildren = useTagChildren(collectionAvailable ? tag : null)
+  const [ownOnly, setOwnOnly] = useState(false)
+  const collection = useCollection(
+    collectionWanted ? tag : null,
+    collectionSorts,
+    ownOnly && tagChildren.length > 0,
+  )
   // Property filters are ephemeral (unlike the persisted sort) and belong to
   // one tag's schema — a tag switch drops them at render time.
   const [collectionFilters, setCollectionFilters] = useState<CollectionFilter[]>([])
@@ -278,6 +286,7 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
     setFilterTag(tag)
     setCollectionFilters([])
     setFilterMatch('all')
+    setOwnOnly(false)
   }
   const filteredCollection = useMemo(
     () =>
@@ -541,6 +550,30 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
                       {property.name}
                     </SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+            ) : null}
+            {tagChildren.length > 0 ? (
+              <Select
+                value={ownOnly ? 'own' : 'all'}
+                items={{
+                  all: `With ${tagChildren.map((child) => `#${child}`).join(', ')}`,
+                  own: `Only #${tag}`,
+                }}
+                onValueChange={(value) => {
+                  if (value === 'own' || value === 'all') {
+                    setOwnOnly(value === 'own')
+                  }
+                }}
+              >
+                <SelectTrigger aria-label="Tags that build on this one" data-size="sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">
+                    With {tagChildren.map((child) => `#${child}`).join(', ')}
+                  </SelectItem>
+                  <SelectItem value="own">Only #{tag}</SelectItem>
                 </SelectContent>
               </Select>
             ) : null}

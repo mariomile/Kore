@@ -227,6 +227,7 @@ export {
   type BlockContextLines,
   type BlockContextSource,
 } from './block-context'
+export { listTagChildren, collectionTagKeys } from './resolved-tag-types'
 export { extractSnippetTasks, type SnippetTask } from './snippet-tasks'
 export {
   getTagType,

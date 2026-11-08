@@ -110,6 +110,9 @@ const propertyRows = [
 
 const mockInvoke = vi.fn<(command: string, args: Record<string, unknown>) => Promise<unknown>>()
 
+/** Extra `tag_types` rows a test adds, e.g. a tag that builds on `#book`. */
+let extraTagTypes: { tag_key: string; note_path: string; schema_json: string }[] = []
+
 setBridge({ invoke: mockInvoke, listen: async () => () => {} })
 
 beforeEach(() => {
@@ -121,6 +124,7 @@ beforeEach(() => {
   updateSettings.mockReset()
   updateSettingsWith.mockReset()
   mockInvoke.mockReset()
+  extraTagTypes = []
   mockInvoke.mockImplementation(async (command, args) => {
     if (command === 'note_read') {
       return DISPOSSESSED_SOURCE
@@ -137,7 +141,10 @@ beforeEach(() => {
     }
     if (sql.includes('tag_types')) {
       // The tag's type row — `#book` is typed in this fixture.
-      return [{ tag_key: 'book', note_path: 'tags/book.md', schema_json: BOOK_SCHEMA_JSON }]
+      return [
+        { tag_key: 'book', note_path: 'tags/book.md', schema_json: BOOK_SCHEMA_JSON },
+        ...extraTagTypes,
+      ]
     }
     if (sql.includes('note_properties')) {
       return propertyRows
@@ -238,6 +245,37 @@ describe('Collection flow (fake bridge, no module mocks below the hooks)', () =>
     await expect.element(view.getByRole('button', { name: 'Sort by Author' })).toBeInTheDocument()
     expect(view.getByRole('button', { name: 'List view' }).query()).toBeNull()
     await expect.element(view.getByRole('tab', { name: 'Table' })).toBeInTheDocument()
+    await view.unmount()
+  })
+
+  it('lists the notes of tags that build on this one, with an only-this-tag filter', async () => {
+    extraTagTypes = [
+      {
+        tag_key: 'novel',
+        note_path: 'tags/novel.md',
+        schema_json: JSON.stringify({ properties: [], extends: ['book'] }),
+      },
+    ]
+    const baseQueryParams = (): unknown[][] =>
+      mockInvoke.mock.calls
+        .filter(
+          ([command, args]) =>
+            command === 'db_query' &&
+            String(args['sql']).includes('from "tags" as "filter_tags"') &&
+            !String(args['sql']).includes('note_properties'),
+        )
+        .map(([, args]) => args['params'] as unknown[])
+    const view = await render(<Screen />)
+
+    const filter = view.getByRole('combobox', { name: 'Tags that build on this one' })
+    await expect.element(filter).toHaveTextContent('With #novel')
+    await expect.poll(() => baseQueryParams().some((params) => params.includes('novel'))).toBe(true)
+
+    await filter.click()
+    mockInvoke.mockClear()
+    await view.getByRole('option', { name: 'Only #book' }).click()
+    await expect.poll(() => baseQueryParams().length).toBeGreaterThan(0)
+    expect(baseQueryParams().every((params) => !params.includes('novel'))).toBe(true)
     await view.unmount()
   })
 

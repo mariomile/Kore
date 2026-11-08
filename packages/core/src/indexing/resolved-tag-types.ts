@@ -1,4 +1,5 @@
-import { decodeTagTypeJson, resolveTagTypes, type TagType } from '../tags'
+import { foldTag } from '../markdown'
+import { decodeTagTypeJson, resolveTagTypes, tagDescendants, type TagType } from '../tags'
 import { db } from './db'
 
 /**
@@ -27,4 +28,25 @@ export async function resolvedTagTypes(excludePrivate = false): Promise<Map<stri
     }
   }
   return resolveTagTypes(own)
+}
+
+/**
+ * The tag keys a collection of `tag` lists: the tag itself and, unless
+ * `ownOnly`, every tag that builds on it (`extends:`), directly or not.
+ */
+export async function collectionTagKeys(tag: string, ownOnly = false): Promise<string[]> {
+  const key = foldTag(tag)
+  if (ownOnly) {
+    return [key]
+  }
+  return [key, ...tagDescendants(await resolvedTagTypes(), key)]
+}
+
+/**
+ * The tags that build on `tag`, directly or not, folded and sorted. Empty
+ * for a tag nothing extends; the collection shows its "only #tag" filter
+ * only when this is not.
+ */
+export async function listTagChildren(tag: string): Promise<string[]> {
+  return tagDescendants(await resolvedTagTypes(), foldTag(tag))
 }

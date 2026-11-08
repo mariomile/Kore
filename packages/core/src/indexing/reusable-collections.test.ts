@@ -5,9 +5,21 @@ import { listReusableCollection, resolveCollectionNoteReference } from './reusab
 
 const mockInvoke = vi.fn<(command: string, args: Record<string, unknown>) => Promise<unknown>>()
 
+/** The tag table inheritance resolves over (Plan 33 B2), kept out of the positional mocks. */
+const TAG_TYPES_TABLE = [
+  { tag_key: 'project', schema_json: '[{"name":"Project","key":"project","type":"relation"}]' },
+]
+
 beforeEach(() => {
   mockInvoke.mockReset()
-  setBridge({ invoke: mockInvoke, listen: async () => () => {} })
+  setBridge({
+    invoke: async (command, args) =>
+      command === 'db_query' &&
+      String(args['sql']) === 'select "tag_key", "schema_json" from "tag_types"'
+        ? TAG_TYPES_TABLE
+        : await mockInvoke(command, args),
+    listen: async () => () => {},
+  })
 })
 
 afterEach(() => {
@@ -45,12 +57,6 @@ describe('reusable collections', () => {
         {
           tag_key: 'project',
           note_path: 'tags/project.md',
-          schema_json: '[{"name":"Project","key":"project","type":"relation"}]',
-        },
-      ])
-      .mockResolvedValueOnce([
-        {
-          tag_key: 'project',
           schema_json: '[{"name":"Project","key":"project","type":"relation"}]',
         },
       ])

@@ -13,14 +13,33 @@ import {
   type CollectionEntry,
 } from './collections'
 import { deriveCollectionPropertySchema } from './collection-schema'
+import { collectionTagKeys, listTagChildren } from './resolved-tag-types'
 
 // A fake bridge resolves `db_query` so the tests exercise the real compiled
 // SQL (snake_case columns, parameters) — the same harness note-list.test uses.
 const mockInvoke = vi.fn<(command: string, args: Record<string, unknown>) => Promise<unknown>>()
 
+/**
+ * The whole-table `tag_types` read every schema lookup resolves inheritance
+ * over (Plan 33 B2) is answered from `tagTypesTable`, so the positional
+ * mocks below keep describing only the query under test.
+ */
+let tagTypesTable: { tag_key: string; schema_json: string }[] = []
+
+function isTagTypesTableRead(query: string): boolean {
+  return query === 'select "tag_key", "schema_json" from "tag_types"'
+}
+
 beforeEach(() => {
   mockInvoke.mockReset()
-  setBridge({ invoke: mockInvoke, listen: async () => () => {} })
+  tagTypesTable = []
+  setBridge({
+    invoke: async (command, args) =>
+      command === 'db_query' && isTagTypesTableRead(String(args['sql']))
+        ? tagTypesTable
+        : await mockInvoke(command, args),
+    listen: async () => () => {},
+  })
 })
 
 afterEach(() => {
@@ -31,9 +50,8 @@ const bookSchema = '[{"name":"Author","key":"author","type":"text"}]'
 
 describe('getTagType', () => {
   it('decodes the stored schema for a folded tag key', async () => {
-    mockInvoke
-      .mockResolvedValueOnce([{ schema_json: bookSchema }])
-      .mockResolvedValueOnce([{ tag_key: 'book', schema_json: bookSchema }])
+    tagTypesTable = [{ tag_key: 'book', schema_json: bookSchema }]
+    mockInvoke.mockResolvedValueOnce([{ schema_json: bookSchema }])
     const type = await getTagType('Book')
     expect(type).toEqual({ properties: [{ name: 'Author', key: 'author', type: 'text' }] })
     const [command, args] = mockInvoke.mock.calls[0]!
@@ -56,10 +74,7 @@ describe('listTagTypes', () => {
       { tag_key: 'book', note_path: 'tags/book.md', schema_json: bookSchema },
       { tag_key: 'broken', note_path: 'tags/broken.md', schema_json: 'not json' },
     ])
-    mockInvoke.mockResolvedValueOnce([
-      { tag_key: 'book', schema_json: bookSchema },
-      { tag_key: 'broken', schema_json: 'not json' },
-    ])
+    tagTypesTable = [{ tag_key: 'book', schema_json: bookSchema }]
     expect(await listTagTypes()).toEqual([
       {
         tagKey: 'book',
@@ -76,10 +91,7 @@ describe('listNoteTagTypes', () => {
       { tag_key: 'book', note_path: 'tags/book.md', schema_json: bookSchema },
       { tag_key: 'broken', note_path: 'tags/broken.md', schema_json: '?' },
     ])
-    mockInvoke.mockResolvedValueOnce([
-      { tag_key: 'book', schema_json: bookSchema },
-      { tag_key: 'broken', schema_json: '?' },
-    ])
+    tagTypesTable = [{ tag_key: 'book', schema_json: bookSchema }]
     const entries = await listNoteTagTypes('notes/a.md')
     expect(entries.map((entry) => entry.tagKey)).toEqual(['book'])
     const [, args] = mockInvoke.mock.calls[0]!
@@ -319,10 +331,7 @@ describe('listTagsOnNote', () => {
       { tag: 'idea', tag_key: 'idea', note_path: null, schema_json: null },
       { tag: 'broken', tag_key: 'broken', note_path: 'tags/broken.md', schema_json: '?' },
     ])
-    mockInvoke.mockResolvedValueOnce([
-      { tag_key: 'book', schema_json: bookSchema },
-      { tag_key: 'broken', schema_json: '?' },
-    ])
+    tagTypesTable = [{ tag_key: 'book', schema_json: bookSchema }]
     const entries = await listTagsOnNote('notes/a.md')
     expect(entries).toEqual([
       {
@@ -355,7 +364,8 @@ describe('tag inheritance (Plan 33 B2)', () => {
   ]
 
   it('getTagType merges the parent’s fields ahead of the child’s own', async () => {
-    mockInvoke.mockResolvedValueOnce([{ schema_json: clientSchema }]).mockResolvedValueOnce(table)
+    tagTypesTable = table
+    mockInvoke.mockResolvedValueOnce([{ schema_json: clientSchema }])
     const type = await getTagType('Client')
     expect(type?.properties.map((property) => property.key)).toEqual([
       'email',
@@ -366,11 +376,10 @@ describe('tag inheritance (Plan 33 B2)', () => {
   })
 
   it('a note carrying the child gets the parent’s fields in its panel', async () => {
-    mockInvoke
-      .mockResolvedValueOnce([
-        { tag_key: 'client', note_path: 'tags/client.md', schema_json: clientSchema },
-      ])
-      .mockResolvedValueOnce(table)
+    mockInvoke.mockResolvedValueOnce([
+      { tag_key: 'client', note_path: 'tags/client.md', schema_json: clientSchema },
+    ])
+    tagTypesTable = table
     const [entry] = await listNoteTagTypes('people/ada.md')
     expect(entry?.type.properties.map((property) => property.key)).toEqual([
       'email',
@@ -380,14 +389,45 @@ describe('tag inheritance (Plan 33 B2)', () => {
   })
 
   it('outbound listings resolve over public definitions only', async () => {
-    mockInvoke
-      .mockResolvedValueOnce([
-        { tag_key: 'client', note_path: 'tags/client.md', schema_json: clientSchema },
-      ])
-      .mockResolvedValueOnce([{ tag_key: 'client', schema_json: clientSchema }])
+    mockInvoke.mockResolvedValueOnce([
+      { tag_key: 'client', note_path: 'tags/client.md', schema_json: clientSchema },
+    ])
+    // The public-only table read joins `notes`, so it is not the plain read
+    // `tagTypesTable` answers: the mock sees it, and the private parent is
+    // simply absent from what it returns.
+    tagTypesTable = table
+    mockInvoke.mockResolvedValueOnce([{ tag_key: 'client', schema_json: clientSchema }])
     const [entry] = await listTagTypes({ excludePrivate: true })
     expect(entry?.type.properties.map((property) => property.key)).toEqual(['contract'])
     const [, args] = mockInvoke.mock.calls[1]!
     expect(String(args['sql'])).toContain('"is_private"')
+  })
+
+  it('lists the notes of child tags in the parent’s collection', async () => {
+    tagTypesTable = table
+    mockInvoke.mockResolvedValueOnce([
+      { path: 'people/ada.md', title: 'Ada', mtime: 2, is_pinned: 0 },
+    ])
+    mockInvoke.mockResolvedValueOnce([])
+    await listCollection('Contact')
+    const [, args] = mockInvoke.mock.calls[0]!
+    expect(args['params']).toEqual(
+      expect.arrayContaining(['contact', 'contact/', 'contact0', 'client', 'client/', 'client0']),
+    )
+  })
+
+  it('lists only the tag’s own notes under ownOnly', async () => {
+    tagTypesTable = table
+    mockInvoke.mockResolvedValueOnce([])
+    await listCollection('contact', [], { ownOnly: true })
+    const [, args] = mockInvoke.mock.calls[0]!
+    expect(args['params']).not.toContain('client')
+    expect(await collectionTagKeys('contact', true)).toEqual(['contact'])
+  })
+
+  it('names the children a parent has', async () => {
+    tagTypesTable = table
+    expect(await listTagChildren('Contact')).toEqual(['client'])
+    expect(await listTagChildren('client')).toEqual([])
   })
 })

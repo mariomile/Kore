@@ -15,6 +15,8 @@
 //! of acting on the new graph, so commands never interleave across graphs.
 //! The one exception is `git_clone`, which runs before any graph is open.
 
+mod activity;
+mod agent_writes;
 mod commit;
 mod commit_message;
 mod history;
@@ -23,6 +25,7 @@ mod remote;
 mod repo;
 #[cfg(test)]
 mod tests;
+mod undo;
 
 use std::path::Path;
 
@@ -177,6 +180,81 @@ pub async fn git_commit_all(
         );
     }
     outcome
+}
+
+/// Commit only `paths`, authored by someone other than the repository's own
+/// identity (an agent), with `trailer` appended to the message. See
+/// [`commit::commit_paths`].
+#[tauri::command]
+#[allow(clippy::too_many_arguments)]
+pub async fn git_commit_paths(
+    paths: Vec<String>,
+    author_name: String,
+    author_email: String,
+    trailer: String,
+    message: String,
+    generation: u64,
+    state: State<'_, GraphState>,
+) -> AppResult<CommitOutcome> {
+    let root = crate::fs::root_for_generation(&state, generation)?;
+    let author = commit::CommitAuthor {
+        name: author_name,
+        email: author_email,
+        trailer,
+    };
+    run_blocking(move || commit::commit_paths(&root, &paths, &author, &message, MAX_FILE_BYTES))
+        .await
+}
+
+/// One page of the graph's commit log, newest first: author, time, message
+/// trailers and changed files per commit. `after` is a previous page's
+/// `next`. See [`activity::activity`].
+#[tauri::command]
+pub async fn git_activity(
+    after: Option<String>,
+    limit: Option<usize>,
+    generation: u64,
+    state: State<'_, GraphState>,
+) -> AppResult<activity::ActivityPage> {
+    let root = crate::fs::root_for_generation(&state, generation)?;
+    run_blocking(move || activity::activity(&root, after.as_deref(), limit.unwrap_or(50))).await
+}
+
+/// What undoing the commits `oldest..=newest` would leave in each file they
+/// changed, three-way merged with what is on disk now. Writes nothing. See
+/// [`undo::undo_preview`].
+#[tauri::command]
+pub async fn git_undo_preview(
+    newest: String,
+    oldest: String,
+    generation: u64,
+    state: State<'_, GraphState>,
+) -> AppResult<undo::UndoPreview> {
+    let root = crate::fs::root_for_generation(&state, generation)?;
+    run_blocking(move || undo::undo_preview(&root, &newest, &oldest)).await
+}
+
+/// The notes agents wrote through `kore mcp` since the journal was last
+/// cleared.
+#[tauri::command]
+pub async fn git_agent_writes(
+    generation: u64,
+    state: State<'_, GraphState>,
+) -> AppResult<agent_writes::AgentWrites> {
+    let root = crate::fs::root_for_generation(&state, generation)?;
+    run_blocking(move || agent_writes::read(&root)).await
+}
+
+/// Drop the first `lines` journal lines (the ones a `git_agent_writes` read
+/// returned), keeping anything appended since.
+#[tauri::command]
+pub async fn git_agent_writes_clear(
+    lines: usize,
+    generation: u64,
+    state: State<'_, GraphState>,
+) -> AppResult<()> {
+    let root = crate::fs::root_for_generation(&state, generation)?;
+    run_blocking(move || agent_writes::clear(&root, lines)).await
 }
 
 /// Fetch `origin` and report ahead/behind for the current branch.

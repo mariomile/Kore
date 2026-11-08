@@ -22,6 +22,7 @@
 //! file's own frontmatter is checked, never just the index row, so a stale
 //! index can't leak a just-flagged note.
 
+pub mod agent_identity;
 pub mod agent_keys;
 pub mod body_tag;
 pub mod commands;

@@ -434,13 +434,16 @@ Kore/
 ### Related repos
 
 - **Meowdown:** [prosekit/meowdown](https://github.com/prosekit/meowdown); clone
-  it locally when investigating (no fixed checkout path is assumed). Meowdown is the
-  first-party hybrid/live-preview Markdown editor that Kore uses through
-  `@meowdown/core` and `@meowdown/react`. When investigating editor behavior,
-  markdown round-tripping, keybindings, slash menus, wiki links, task checkboxes,
-  paste/drop handling, or mobile editor quirks, check that repo as well as this
-  one. If the root cause is in Meowdown, fix it there and open the PR against the
-  Meowdown project rather than papering over it in Kore.
+  it locally when investigating (no fixed checkout path is assumed). Meowdown is a
+  third-party hybrid/live-preview Markdown editor that Kore uses through
+  `@meowdown/core` and `@meowdown/react`; Kore does not own it, and its
+  maintainers won't make changes for us (Mario, 2026-11-08). When investigating
+  editor behavior, markdown round-tripping, keybindings, slash menus, wiki links,
+  task checkboxes, paste/drop handling, or mobile editor quirks, check that repo
+  as well as this one. Build Kore's own editor features as ProseMirror plugins in
+  this repo (like `apps/desktop/src/editor/link-card-plugin.ts`); use a pnpm
+  patch in `patches/` only when no plugin can do it, and offer an upstream PR
+  for real Meowdown bugs without depending on it landing.
 
 **Design system**
 

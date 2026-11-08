@@ -48,6 +48,12 @@ describe('reusable collections', () => {
           schema_json: '[{"name":"Project","key":"project","type":"relation"}]',
         },
       ])
+      .mockResolvedValueOnce([
+        {
+          tag_key: 'project',
+          schema_json: '[{"name":"Project","key":"project","type":"relation"}]',
+        },
+      ])
 
     const definition: CollectionDefinition = {
       id: '01COLLECTION',

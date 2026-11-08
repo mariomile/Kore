@@ -7,6 +7,8 @@ export {
   isPropertyKey,
   propertyKeyForName,
   parseTagTypeFrontmatter,
+  parseTagExtends,
+  TAG_EXTENDS_KEY,
   encodeTagTypeJson,
   decodeTagTypeJson,
   tagNameForDefinitionPath,
@@ -54,6 +56,12 @@ export {
   type TagIconResolution,
   type TagSymbolIconEntry,
 } from './tag-icon-catalog'
+export {
+  resolveTagTypes,
+  tagDescendants,
+  tagLoopThrough,
+  wouldCreateTagLoop,
+} from './tag-inheritance'
 export { localCalendarDate, createdStampValues, missingCreatedStamps } from './timestamps'
 export { evaluateFormula, type FormulaResult } from './formula'
 export {

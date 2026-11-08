@@ -7,6 +7,7 @@ import {
   type TagType,
 } from '../tags'
 import { db } from './db'
+import { resolvedTagTypes } from './resolved-tag-types'
 import { recallOrder } from './filtered-search'
 import { carriesTagOrNested } from './tag-match'
 import type { IndexedPropertyValueType } from '../tags'
@@ -171,41 +172,36 @@ export function collectionValue(row: {
 /**
  * The parsed type of one tag, or `null` when the tag has no definition (or a
  * mangled `schema_json` column — tolerated as untyped, never a broken UI).
+ * Inherited fields are merged in (Plan 33 B2, `resolveTagTypes`).
  */
 export async function getTagType(tag: string): Promise<TagType | null> {
+  const key = foldTag(tag)
   const row = await db
     .selectFrom('tagTypes')
-    .where('tagKey', '=', foldTag(tag))
+    .where('tagKey', '=', key)
     .select(['schemaJson'])
     .executeTakeFirst()
-  if (row === undefined) {
+  if (row === undefined || decodeTagTypeOrNull(row.schemaJson) === null) {
     return null
   }
-  try {
-    return decodeTagTypeJson(row.schemaJson)
-  } catch {
-    return null
-  }
+  return (await resolvedTagTypes()).get(key) ?? null
 }
 
 /**
  * The one tolerant decode for `tag_types` result rows: a hand-mangled
  * `schema_json` column loses its type until the definition is re-saved,
- * never a broken query.
+ * never a broken query. Each type comes back with inheritance resolved
+ * against `resolved`.
  */
 function decodeTagTypeRows(
   rows: readonly { tagKey: string; notePath: string; schemaJson: string }[],
+  resolved: ReadonlyMap<string, TagType>,
 ): TagTypeEntry[] {
   const entries: TagTypeEntry[] = []
   for (const row of rows) {
-    try {
-      entries.push({
-        tagKey: row.tagKey,
-        notePath: row.notePath,
-        type: decodeTagTypeJson(row.schemaJson),
-      })
-    } catch {
-      // Skipped — see above.
+    const type = resolved.get(row.tagKey)
+    if (type !== undefined) {
+      entries.push({ tagKey: row.tagKey, notePath: row.notePath, type })
     }
   }
   return entries
@@ -236,7 +232,7 @@ export async function listTagTypes(options: ListTagTypesOptions = {}): Promise<T
           .select(['tagKey', 'notePath', 'schemaJson'])
           .orderBy('tagKey')
           .execute()
-  return decodeTagTypeRows(rows)
+  return decodeTagTypeRows(rows, await resolvedTagTypes(options.excludePrivate === true))
 }
 
 /**
@@ -252,7 +248,7 @@ export async function listNoteTagTypes(path: string): Promise<TagTypeEntry[]> {
     .select(['tagTypes.tagKey', 'tagTypes.notePath', 'tagTypes.schemaJson'])
     .orderBy('tagTypes.tagKey')
     .execute()
-  return decodeTagTypeRows(rows)
+  return decodeTagTypeRows(rows, await resolvedTagTypes())
 }
 
 /**
@@ -274,8 +270,12 @@ export async function listTagsOnNote(path: string): Promise<NoteTagEntry[]> {
     .select(['tags.tag', 'tags.tagKey', 'tagTypes.notePath', 'tagTypes.schemaJson'])
     .orderBy('tags.tagKey')
     .execute()
+  const resolved = rows.some((row) => row.schemaJson !== null)
+    ? await resolvedTagTypes()
+    : new Map<string, TagType>()
   return rows.map((row) => {
-    const type = decodeTagTypeOrNull(row.schemaJson)
+    const type =
+      decodeTagTypeOrNull(row.schemaJson) === null ? null : (resolved.get(row.tagKey) ?? null)
     return {
       tag: row.tag,
       tagKey: row.tagKey,

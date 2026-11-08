@@ -31,7 +31,9 @@ const bookSchema = '[{"name":"Author","key":"author","type":"text"}]'
 
 describe('getTagType', () => {
   it('decodes the stored schema for a folded tag key', async () => {
-    mockInvoke.mockResolvedValueOnce([{ schema_json: bookSchema }])
+    mockInvoke
+      .mockResolvedValueOnce([{ schema_json: bookSchema }])
+      .mockResolvedValueOnce([{ tag_key: 'book', schema_json: bookSchema }])
     const type = await getTagType('Book')
     expect(type).toEqual({ properties: [{ name: 'Author', key: 'author', type: 'text' }] })
     const [command, args] = mockInvoke.mock.calls[0]!
@@ -54,6 +56,10 @@ describe('listTagTypes', () => {
       { tag_key: 'book', note_path: 'tags/book.md', schema_json: bookSchema },
       { tag_key: 'broken', note_path: 'tags/broken.md', schema_json: 'not json' },
     ])
+    mockInvoke.mockResolvedValueOnce([
+      { tag_key: 'book', schema_json: bookSchema },
+      { tag_key: 'broken', schema_json: 'not json' },
+    ])
     expect(await listTagTypes()).toEqual([
       {
         tagKey: 'book',
@@ -69,6 +75,10 @@ describe('listNoteTagTypes', () => {
     mockInvoke.mockResolvedValueOnce([
       { tag_key: 'book', note_path: 'tags/book.md', schema_json: bookSchema },
       { tag_key: 'broken', note_path: 'tags/broken.md', schema_json: '?' },
+    ])
+    mockInvoke.mockResolvedValueOnce([
+      { tag_key: 'book', schema_json: bookSchema },
+      { tag_key: 'broken', schema_json: '?' },
     ])
     const entries = await listNoteTagTypes('notes/a.md')
     expect(entries.map((entry) => entry.tagKey)).toEqual(['book'])
@@ -309,6 +319,10 @@ describe('listTagsOnNote', () => {
       { tag: 'idea', tag_key: 'idea', note_path: null, schema_json: null },
       { tag: 'broken', tag_key: 'broken', note_path: 'tags/broken.md', schema_json: '?' },
     ])
+    mockInvoke.mockResolvedValueOnce([
+      { tag_key: 'book', schema_json: bookSchema },
+      { tag_key: 'broken', schema_json: '?' },
+    ])
     const entries = await listTagsOnNote('notes/a.md')
     expect(entries).toEqual([
       {
@@ -323,5 +337,57 @@ describe('listTagsOnNote', () => {
     const [, args] = mockInvoke.mock.calls[0]!
     expect(String(args['sql'])).toContain('left join "tag_types"')
     expect(args['params']).toEqual(['notes/a.md'])
+  })
+})
+
+describe('tag inheritance (Plan 33 B2)', () => {
+  const contactSchema = JSON.stringify([
+    { name: 'Email', key: 'email', type: 'text' },
+    { name: 'Company', key: 'company', type: 'text' },
+  ])
+  const clientSchema = JSON.stringify({
+    properties: [{ name: 'Contract', key: 'contract', type: 'text' }],
+    extends: ['contact'],
+  })
+  const table = [
+    { tag_key: 'contact', schema_json: contactSchema },
+    { tag_key: 'client', schema_json: clientSchema },
+  ]
+
+  it('getTagType merges the parent’s fields ahead of the child’s own', async () => {
+    mockInvoke.mockResolvedValueOnce([{ schema_json: clientSchema }]).mockResolvedValueOnce(table)
+    const type = await getTagType('Client')
+    expect(type?.properties.map((property) => property.key)).toEqual([
+      'email',
+      'company',
+      'contract',
+    ])
+    expect(type?.extends).toEqual(['contact'])
+  })
+
+  it('a note carrying the child gets the parent’s fields in its panel', async () => {
+    mockInvoke
+      .mockResolvedValueOnce([
+        { tag_key: 'client', note_path: 'tags/client.md', schema_json: clientSchema },
+      ])
+      .mockResolvedValueOnce(table)
+    const [entry] = await listNoteTagTypes('people/ada.md')
+    expect(entry?.type.properties.map((property) => property.key)).toEqual([
+      'email',
+      'company',
+      'contract',
+    ])
+  })
+
+  it('outbound listings resolve over public definitions only', async () => {
+    mockInvoke
+      .mockResolvedValueOnce([
+        { tag_key: 'client', note_path: 'tags/client.md', schema_json: clientSchema },
+      ])
+      .mockResolvedValueOnce([{ tag_key: 'client', schema_json: clientSchema }])
+    const [entry] = await listTagTypes({ excludePrivate: true })
+    expect(entry?.type.properties.map((property) => property.key)).toEqual(['contract'])
+    const [, args] = mockInvoke.mock.calls[1]!
+    expect(String(args['sql'])).toContain('"is_private"')
   })
 })

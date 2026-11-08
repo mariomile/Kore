@@ -6,15 +6,19 @@ Ask (Mario, 2026-11-08, "fai tutti sti passi dai", then "ok vai" after the
 product walkthrough; plan in `docs/plans/33-trust-and-structure.md`, order
 C1, C3, C2; one step = one commit, Mario's ok before each next feature).
 
-- [x] C1 zoom into a list item (`apps/desktop/src/editor/list-zoom-plugin.ts`,
-  mounted by `list-zoom.tsx` in the note pane). ⌘-click a bullet or ⌘⇧. zooms,
-  ⌘⇧, or the breadcrumb goes back up. Decorations and selection clamping
-  only: the Markdown never changes, a plain bullet click still folds, Enter
-  at the end of the zoomed line opens a first child, keys that would carry
-  an edit out of the branch do nothing on that line. Verified:
-  `list-zoom.test.tsx` (chromium; tags inside the branch still open, the
-  file is byte-identical after zoom in/out), keymap collision test,
-  `pnpm typecheck`, eslint/oxfmt on touched files.
+- [x] C1 zoom into a block (`apps/desktop/src/editor/block-zoom-plugin.ts`,
+  mounted by `block-zoom.tsx` in the note pane). ⌘⇧. zooms the block at the
+  caret: a list item with its children, a heading with its section (to the
+  next heading at its level or above), any other top-level block alone;
+  ⌘-click on a bullet zooms it too (a plain click still folds). ⌘⇧, or the
+  breadcrumb (note, enclosing headings, enclosing items) steps out one level.
+  Decorations and selection clamping only, so the Markdown never changes;
+  Enter at the end of a zoomed item opens a first child, keys that would
+  carry an edit out of the zoom do nothing at its edges. Mario asked on
+  2026-11-08 for "ogni blocco" after the list-only first commit. Verified:
+  `block-zoom.test.tsx` (chromium: tags in the branch still open, the file is
+  byte-identical after zoom in/out, sections step out one level at a time),
+  keymap collision test, `pnpm typecheck`, eslint/oxfmt on touched files.
 - [ ] C3 `^id` line references: resolve, open at the line, transclude,
   "copy link to line".
 - [ ] C2 move a branch to another note (`⌘⇧M`), updating `^id` links.
@@ -3208,9 +3212,9 @@ screen: Agents then Close lands on today.
 
 ## Session log
 
-- 2026-11-08 — Zoom into a list item (Plan 33 C1): ⌘-click a bullet or
-  ⌘⇧. shows only that branch with a breadcrumb back; view state only, the
-  note's Markdown never changes.
+- 2026-11-08 — Zoom into any block (Plan 33 C1): ⌘⇧. shows only the list
+  item, heading section or block at the caret (⌘-click on a bullet too),
+  with a breadcrumb back; view state only, the note's Markdown never changes.
 
 - 2026-11-07 — A pasted article link keeps the article's text in its
   `#link` card, a YouTube link its transcript. One shared article extractor

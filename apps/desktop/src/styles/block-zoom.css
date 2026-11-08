@@ -1,7 +1,7 @@
-/* Zoom into a list item (Plan 33, C1; `editor/list-zoom-plugin.ts`). The
-   plugin only decorates: blocks outside the zoomed branch carry
-   `.kore-zoom-hidden`, the list items around it `.kore-zoom-ancestor`, the
-   item itself `.kore-zoom-root`, and a breadcrumb widget sits above it. */
+/* Zoom into a block (Plan 33, C1; `editor/block-zoom-plugin.ts`). The
+   plugin only decorates: blocks outside the zoom carry `.kore-zoom-hidden`,
+   and a breadcrumb widget sits above it. A zoomed list item also marks the
+   items around it `.kore-zoom-ancestor` and itself `.kore-zoom-root`. */
 
 .reflect-editor .kore-zoom-hidden {
   display: none !important;

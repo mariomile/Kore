@@ -10,6 +10,7 @@ import {
   Folder,
   Globe,
   Graph,
+  History,
   Layers,
   LayoutGrid,
   Note,
@@ -65,6 +66,8 @@ export function OpenTabIcon({ tab, className }: OpenTabIconProps): ReactElement 
       return <Checklist aria-hidden className={className} />
     case 'insights':
       return <Chart aria-hidden className={className} />
+    case 'activity':
+      return <History aria-hidden className={className} />
     case 'graphMap':
       return <Graph aria-hidden className={className} />
     case 'terminal':

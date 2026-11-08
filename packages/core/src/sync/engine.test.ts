@@ -27,11 +27,24 @@ interface Call {
   args: Record<string, unknown>
 }
 
-/** Bridge fake: scripted responses per command, every call recorded. */
+/** Agent-attribution commands (covered by `agent-commits.test.ts`). */
+const AGENT_JOURNAL_COMMANDS = new Set([
+  'git_agent_writes',
+  'git_agent_writes_clear',
+  'git_commit_paths',
+])
+
+/**
+ * Bridge fake: scripted responses per command, every call recorded except
+ * the agent-journal read that opens each cycle (no journal here).
+ */
 function fakeGit(respond: (command: string, calls: Call[]) => unknown) {
   const calls: Call[] = []
   setBridge({
     invoke: async (command, args) => {
+      if (AGENT_JOURNAL_COMMANDS.has(command)) {
+        return { writes: [], lines: 0 }
+      }
       calls.push({ command, args })
       return respond(command, calls)
     },

@@ -54,6 +54,11 @@ const InsightsScreen = lazy(() =>
     default: module.InsightsScreen,
   })),
 )
+const ActivityScreen = lazy(() =>
+  import('@/components/activity/activity-screen').then((module) => ({
+    default: module.ActivityScreen,
+  })),
+)
 const SettingsScreen = lazy(() =>
   import('@/components/settings-screen').then((module) => ({ default: module.SettingsScreen })),
 )
@@ -141,6 +146,12 @@ function RouteView(): ReactElement {
       return (
         <ScrollRestored className="h-full overflow-auto">
           <InsightsScreen />
+        </ScrollRestored>
+      )
+    case 'activity':
+      return (
+        <ScrollRestored className="h-full overflow-auto">
+          <ActivityScreen />
         </ScrollRestored>
       )
     case 'graphMap':

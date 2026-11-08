@@ -1,5 +1,52 @@
 # Kore working state
 
+## Vault activity log with per-agent undo (Plan 33, A1), 2026-11-08
+
+Ask (Mario, 2026-11-08, after studying Fennick): every change an agent makes
+should be visible and reversible, the way Fennick's Op Log is. Plan:
+`docs/plans/33-trust-and-structure.md`; analysis in Italian at
+`/mnt/project-files/analisi/fennick.md`. Mario's rule for this work: one
+step = one commit, pushed, so a bad step is reverted alone.
+
+- [x] Step 1, the always-on host signs per agent: `Runner::run_as` carries
+  the MCP caller's name; `VaultSync` commits a named caller's write as
+  `<Name> <slug@agents.kore>` with a `Kore-Agent: <Name>` trailer (the
+  journal keeps it, so a replay signs the same way). The owner's own edits
+  stay `Kore host`.
+- [x] Step 2, local agents are journaled: `ProcessRunner` passes
+  `KORE_AGENT`/`KORE_AGENT_GRAPH` to the child, and every `atomic_write`/
+  `atomic_create` appends `{at, agent, email, path}` to
+  `.reflect/agent-writes.jsonl`. The app's backup cycle first commits each
+  agent's journaled notes under its name (`git_commit_paths`), then
+  everything else as before. Name, address and trailer are decided once,
+  in `apps/cli/src/agent_identity.rs`; a caller without its own key is the
+  `MCP` agent on both paths, never the owner. Known limit: an owner edit to the same note
+  before the backup lands in the agent's commit (file-level, not line-level).
+- [x] Step 3, `git_activity`: paged first-parent log with author, time,
+  trailers and changed files.
+- [x] Step 4, core `sync/activity.ts`: commits grouped into sittings (same
+  author, gaps under 30 minutes); authors named agent / host / owner.
+- [x] Step 5, the Activity screen (`components/activity/`): command palette
+  ("Activity") and the graph menu; sittings by day, author filter, a note
+  row opens the note's history at that change; empty state points at
+  backup settings.
+- [x] Step 6, undo a sitting: `git_undo_preview` reverse-merges the
+  sitting's commits into what is on disk, per file, and writes nothing;
+  core `undoSitting` snapshots, refuses the whole undo on any conflict
+  (naming the notes), writes back through `writeNote`/delete, and commits
+  once as the owner. Created daily notes are emptied, not deleted.
+- [x] Step 7, docs: this entry, the delivery log, and the Meowdown wording
+  in `CLAUDE.md`/`AGENTS.md` (third-party, plugins first).
+
+**Validation:** core unit tests (`activity`, `agent-commits`, `undo`,
+engine), Chromium tests for the Activity screen (list, filter, history,
+undo, conflict, empty state), CLI tests for signing and the journal,
+`pnpm typecheck`, eslint/oxlint/oxfmt, `cargo fmt`, clippy on
+`reflect-open`. The desktop crate's Rust tests (`commit_paths`, activity,
+undo preview) can't link in this container (ort download blocked) and run
+in CI. **Not verified on the Mac** yet: a real agent write, then Activity,
+then Undo.
+
 ## Tasks like Todoist, slice 1: views and board, 2026-11-08
 
 Ask (Mario, 2026-11-08, "Miglioriamo la sezione task, deve riprendere come

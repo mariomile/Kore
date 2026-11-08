@@ -63,7 +63,14 @@ vi.mock('@/providers/settings-provider', async () => {
   let cachedVersion = -1
   function currentSettings(): Record<string, unknown> {
     if (cached === null || cachedVersion !== settingsState.version) {
-      cached = { ...DEFAULT_SETTINGS, dateFormat: 'mdy', ...settingsState.overrides }
+      cached = {
+        ...DEFAULT_SETTINGS,
+        dateFormat: 'mdy',
+        // The bucketed All list these tests were written against; the Todoist
+        // views have their own cases below.
+        taskView: 'all',
+        ...settingsState.overrides,
+      }
       cachedVersion = settingsState.version
     }
     return cached
@@ -2156,6 +2163,68 @@ describe('TasksScreen', () => {
     // A batch failure reconciles by refetching the index, not by restoring the
     // pre-batch snapshot (which would un-do any write that already landed).
     await waitFor(() => expect(getOpenTasks.mock.calls.length).toBeGreaterThan(1))
+    await view.unmount()
+  })
+})
+
+describe('TasksScreen Todoist views', () => {
+  const tasks = [
+    task({
+      notePath: 'daily/2026-06-14.md',
+      markerOffset: 2,
+      raw: '[ ] jotted today',
+      text: 'jotted today',
+      dailyDate: '2026-06-14',
+    }),
+    task({
+      notePath: 'daily/2026-06-10.md',
+      markerOffset: 2,
+      raw: '[ ] stale capture',
+      text: 'stale capture',
+      dailyDate: '2026-06-10',
+    }),
+    task({
+      notePath: 'notes/plan.md',
+      markerOffset: 2,
+      raw: '[ ] ship it',
+      text: 'ship it',
+      dueDate: '2026-06-15',
+      noteTitle: 'Plan',
+    }),
+  ]
+
+  it('opens on Today and switches views from the tabs and the g shortcut', async () => {
+    settingsState.overrides = { taskView: 'today' }
+    settingsState.version += 1
+    getOpenTasks.mockResolvedValue(tasks)
+    const view = await renderScreen()
+
+    await view.findByRole('button', { name: 'jotted today' })
+    expect(view.queryByRole('button', { name: 'stale capture' })).toBeNull()
+
+    await userEvent.click(view.getByRole('tab', { name: /^Inbox/ }))
+    await view.findByRole('button', { name: 'stale capture' })
+    expect(view.queryByRole('button', { name: 'jotted today' })).toBeNull()
+
+    await view.findByRole('tab', { name: /^Inbox/, selected: true })
+    await userEvent.keyboard('gu')
+    await view.findByRole('button', { name: 'ship it' })
+    await view.unmount()
+  })
+
+  it('lays Upcoming out as day columns on the board', async () => {
+    settingsState.overrides = { taskView: 'upcoming', taskLayout: 'board' }
+    settingsState.version += 1
+    getOpenTasks.mockResolvedValue(tasks)
+    const view = await renderScreen()
+
+    const columns = await waitFor(() => {
+      const regions = view.container.querySelectorAll('section[aria-label]')
+      expect(regions.length).toBe(7)
+      return regions
+    })
+    expect(columns[0]?.textContent).toContain('ship it')
+    expect(columns[1]?.textContent).not.toContain('ship it')
     await view.unmount()
   })
 })

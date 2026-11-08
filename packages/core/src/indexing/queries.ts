@@ -24,6 +24,7 @@ export {
   getCompletedTasks,
   getOpenTasks,
   getOpenTasksForNote,
+  getProjectNotePaths,
   type NoteTaskRef,
   type OpenTask,
 } from './queries-tasks'

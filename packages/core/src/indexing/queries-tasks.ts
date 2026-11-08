@@ -2,6 +2,7 @@ import { sql, type SqlBool } from 'kysely'
 import type { TaskMarker } from '../markdown'
 import { db } from './db'
 import { decodeTaskBreadcrumbs } from './indexed-note'
+import { isFolderNotePath } from './task-views'
 
 /**
  * One open task plus the note context the Tasks view (Plan 18) groups and
@@ -93,6 +94,20 @@ export async function getCompletedTasks(): Promise<OpenTask[]> {
     .orderBy('tasks.markerOffset')
     .execute()
   return rows.map(toTaskRow)
+}
+
+/**
+ * The graph's folder notes (`…/<Name>/<Name>.md`) — the projects the Tasks
+ * view's Projects grouping gathers a folder's notes under
+ * ({@link import('./task-views').projectForNote}).
+ */
+export async function getProjectNotePaths(): Promise<string[]> {
+  const rows = await db
+    .selectFrom('notes')
+    .where('notes.kind', '!=', 'template')
+    .select('notes.path')
+    .execute()
+  return rows.map((row) => row.path).filter(isFolderNotePath)
 }
 
 /** An ISO `[[YYYY-MM-DD]]` target is a due-date association, not a reference. */

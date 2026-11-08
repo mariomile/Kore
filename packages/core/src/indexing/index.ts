@@ -80,6 +80,7 @@ export {
   countOpenTasksForNotes,
   getOpenTasks,
   getOpenTasksForNote,
+  getProjectNotePaths,
   getCompletedTasks,
   getPinnedNotes,
   getWikiAddressForPath,
@@ -124,6 +125,17 @@ export {
   type TaskGroup,
   type TaskGroupKind,
 } from './group-tasks'
+export {
+  countTasksByView,
+  groupTasksForView,
+  isFolderNotePath,
+  projectForNote,
+  taskViewsFor,
+  TASK_VIEWS,
+  UPCOMING_DAYS,
+  type TaskProject,
+  type TaskView,
+} from './task-views'
 export { getGraphMap, type GraphMap, type GraphMapEdge, type GraphMapNode } from './graph-map'
 export {
   getLocalGraph,

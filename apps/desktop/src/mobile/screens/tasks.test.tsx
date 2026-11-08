@@ -71,6 +71,8 @@ vi.mock('@/providers/settings-provider', async () => {
         weekStartDay: 'monday',
         editorMarkdownSyntax: 'hide',
         editorSpellCheck: false,
+        // The bucketed All list these tests were written against.
+        taskView: 'all',
         ...settingsState.overrides,
       }
       cachedVersion = settingsState.version

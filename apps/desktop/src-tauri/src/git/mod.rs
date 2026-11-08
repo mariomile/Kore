@@ -15,6 +15,7 @@
 //! of acting on the new graph, so commands never interleave across graphs.
 //! The one exception is `git_clone`, which runs before any graph is open.
 
+mod activity;
 mod agent_writes;
 mod commit;
 mod commit_message;
@@ -202,6 +203,20 @@ pub async fn git_commit_paths(
     };
     run_blocking(move || commit::commit_paths(&root, &paths, &author, &message, MAX_FILE_BYTES))
         .await
+}
+
+/// One page of the graph's commit log, newest first: author, time, message
+/// trailers and changed files per commit. `after` is a previous page's
+/// `next`. See [`activity::activity`].
+#[tauri::command]
+pub async fn git_activity(
+    after: Option<String>,
+    limit: Option<usize>,
+    generation: u64,
+    state: State<'_, GraphState>,
+) -> AppResult<activity::ActivityPage> {
+    let root = crate::fs::root_for_generation(&state, generation)?;
+    run_blocking(move || activity::activity(&root, after.as_deref(), limit.unwrap_or(50))).await
 }
 
 /// The notes agents wrote through `kore mcp` since the journal was last

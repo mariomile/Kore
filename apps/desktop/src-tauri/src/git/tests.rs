@@ -1024,3 +1024,44 @@ fn commit_paths_commits_only_the_agents_notes_under_its_name() {
     agent_writes::clear(root, journal.lines).unwrap();
     assert_eq!(agent_writes::read(root).unwrap().lines, 0);
 }
+
+#[test]
+fn activity_pages_through_commits_with_authors_trailers_and_files() {
+    use super::activity::{activity, ActivityFileKind};
+    use super::commit::{commit_paths, CommitAuthor};
+
+    let fixture = fixture();
+    let root = &fixture.graph_a;
+    write(root, "notes/a.md", "# A\n");
+    commit_all(root, "Update notes", MAX_FILE_BYTES).unwrap();
+    write(root, "notes/a.md", "# A\n\nfrom grok\n");
+    let author = CommitAuthor {
+        name: "Grok".into(),
+        email: "grok@agents.kore".into(),
+        trailer: "Kore-Agent: Grok".into(),
+    };
+    commit_paths(
+        root,
+        &["notes/a.md".into()],
+        &author,
+        "Update notes",
+        MAX_FILE_BYTES,
+    )
+    .unwrap();
+    fs::remove_file(root.join("notes/a.md")).unwrap();
+    commit_all(root, "Update notes", MAX_FILE_BYTES).unwrap();
+
+    let first = activity(root, None, 2).unwrap();
+    assert_eq!(first.commits.len(), 2);
+    assert_eq!(first.commits[0].files[0].kind, ActivityFileKind::Deleted);
+    let grok = &first.commits[1];
+    assert_eq!(grok.author_name, "Grok");
+    assert_eq!(grok.trailers[0].value, "Grok");
+    assert_eq!(grok.files[0].path, "notes/a.md");
+    assert_eq!(grok.files[0].kind, ActivityFileKind::Modified);
+
+    let rest = activity(root, first.next.as_deref(), 2).unwrap();
+    assert_eq!(rest.commits.len(), 1);
+    assert!(rest.next.is_none());
+    assert_eq!(rest.commits[0].files[0].kind, ActivityFileKind::Added);
+}

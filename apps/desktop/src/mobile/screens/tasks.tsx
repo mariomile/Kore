@@ -1,7 +1,14 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Archive, CheckCircle, Sliders } from '@/components/icons'
-import { getCompletedTasks, getOpenTasks, type OpenTask } from '@reflect/core'
+import {
+  countTasksByView,
+  getCompletedTasks,
+  getOpenTasks,
+  getProjectNotePaths,
+  TASK_VIEWS,
+  type OpenTask,
+} from '@reflect/core'
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
@@ -11,7 +18,14 @@ import { useTaskFilters } from '@/lib/tasks/task-filters'
 import type { InsertTaskTarget } from '@/lib/tasks/task-insert-target'
 import { todaysDailyTarget } from '@/lib/tasks/task-navigation'
 import { composeVisibleTaskGroups } from '@/lib/tasks/task-visibility'
-import { completedTasksQueryKey, tasksQueryKey } from '@/lib/tasks/tasks-query'
+import {
+  completedTasksQueryKey,
+  projectNotePathsQueryKey,
+  tasksQueryKey,
+} from '@/lib/tasks/tasks-query'
+import { taskViewLabel } from '@/lib/tasks/task-view-labels'
+import { useTaskView } from '@/lib/tasks/use-task-view'
+import { cn } from '@/lib/utils'
 import { useTaskActions } from '@/lib/tasks/use-task-actions'
 import { useToday } from '@/lib/use-today'
 import { hapticImpactLight } from '@/mobile/haptics'
@@ -53,6 +67,7 @@ export function MobileTasks({
   const { scopeRef, barRef } = useBarHeightVar('--mobile-header-height')
   const today = useToday()
   const { filters, toggle } = useTaskFilters()
+  const { view, setView } = useTaskView()
   const [query, setQuery] = useState('')
   const searchHeaderFocus = useSearchHeaderFocus()
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -87,6 +102,13 @@ export function MobileTasks({
     queryFn: () => getCompletedTasks(),
     enabled: enabled && filters.archived,
   })
+  const { data: projectNotes } = useQuery({
+    queryKey: projectNotePathsQueryKey(graph?.root),
+    queryFn: () => getProjectNotePaths(),
+    enabled: enabled && view === 'projects',
+  })
+  const projectNotePaths = useMemo(() => new Set(projectNotes ?? []), [projectNotes])
+  const counts = useMemo(() => countTasksByView(open ?? [], today), [open, today])
   const isError = openFailed || (filters.archived && completedFailed)
   const ready = open !== undefined && (!filters.archived || completed !== undefined)
 
@@ -100,8 +122,18 @@ export function MobileTasks({
   const deferredQuery = useDeferredValue(query)
   const needle = (query === '' ? '' : deferredQuery).trim().toLowerCase()
   const groups = useMemo(
-    () => composeVisibleTaskGroups({ open, completed, recentlyCompleted, filters, needle, today }),
-    [open, completed, recentlyCompleted, filters, needle, today],
+    () =>
+      composeVisibleTaskGroups({
+        open,
+        completed,
+        recentlyCompleted,
+        filters,
+        needle,
+        today,
+        view,
+        projectNotePaths,
+      }),
+    [open, completed, recentlyCompleted, filters, needle, today, view, projectNotePaths],
   )
 
   // The sheet edits the task's *live* row, not the snapshot taken when it
@@ -211,6 +243,31 @@ export function MobileTasks({
             <Sliders />
           </Button>
         </div>
+        <div
+          role="tablist"
+          aria-label="Task views"
+          className="-mx-4 flex gap-1.5 overflow-x-auto px-4"
+        >
+          {TASK_VIEWS.map((entry) => (
+            <button
+              key={entry}
+              type="button"
+              role="tab"
+              aria-selected={entry === view}
+              onClick={() => {
+                hapticImpactLight()
+                setView(entry)
+              }}
+              className={cn(
+                'flex h-8 flex-none items-center gap-1.5 rounded-full px-3 text-sm',
+                entry === view ? 'bg-accent-soft text-text' : 'bg-surface-hover text-text-muted',
+              )}
+            >
+              {taskViewLabel(entry)}
+              <span className="text-xs tabular-nums text-text-muted">{counts[entry]}</span>
+            </button>
+          ))}
+        </div>
       </header>
       {isError ? (
         <p role="alert" className="px-4 py-6 text-sm text-text-muted">
@@ -251,7 +308,11 @@ export function MobileTasks({
         >
           {groups.map((group) => (
             <MobileTaskGroup
-              key={group.kind === 'note' ? `note:${group.notePath}` : group.kind}
+              key={
+                group.kind === 'note'
+                  ? `note:${group.notePath}`
+                  : `${group.kind}:${group.date ?? ''}`
+              }
               group={group}
               today={today}
               onAdd={onAdd}
@@ -278,6 +339,7 @@ export function MobileTasks({
         onOpenChange={setFiltersOpen}
         filters={filters}
         toggle={toggle}
+        bucketFilters={view === 'all'}
       />
     </div>
   )

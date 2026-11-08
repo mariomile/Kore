@@ -1,4 +1,4 @@
-import { dailyPath, taskDateBucket, type OpenTask } from '@reflect/core'
+import { dailyPath, taskDateBucket, type OpenTask, type TaskView } from '@reflect/core'
 import type { InsertTaskTarget } from '@/lib/tasks/task-insert-target'
 import { sameTask, taskKey } from '@/lib/tasks/task-identity'
 
@@ -21,15 +21,20 @@ export function insertTargetForTask(task: OpenTask): InsertTaskTarget {
   }
 }
 
-/** Today's daily note as an insert target — V1's "add to Today" / Current bucket. */
-export function todaysDailyTarget(today: string): InsertTaskTarget {
+/** A day's daily note as an insert target (an Upcoming day's "+ Add"). */
+export function dailyTarget(date: string): InsertTaskTarget {
   return {
-    notePath: dailyPath(today),
-    noteTitle: today,
-    dailyDate: today,
+    notePath: dailyPath(date),
+    noteTitle: date,
+    dailyDate: date,
     isPinned: false,
     pinnedOrder: null,
   }
+}
+
+/** Today's daily note as an insert target — V1's "add to Today" / Current bucket. */
+export function todaysDailyTarget(today: string): InsertTaskTarget {
+  return dailyTarget(today)
 }
 
 /**
@@ -38,7 +43,16 @@ export function todaysDailyTarget(today: string): InsertTaskTarget {
  * task adds to its own note, and Overdue/Upcoming refuse — those buckets
  * aggregate tasks across many notes, so "add here" has no single home (`null`).
  */
-export function insertTargetForBucket(task: OpenTask, today: string): InsertTaskTarget | null {
+export function insertTargetForBucket(
+  task: OpenTask,
+  today: string,
+  view: TaskView = 'all',
+): InsertTaskTarget | null {
+  if (view === 'inbox' || view === 'projects') {
+    // These views list tasks where they live: a neighbour joins the same note,
+    // so it stays in the view beside the task it was added after.
+    return insertTargetForTask(task)
+  }
   switch (taskDateBucket(task, today)) {
     case 'current':
       return todaysDailyTarget(today)

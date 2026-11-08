@@ -7,6 +7,11 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Tasks work like Todoist: Inbox, Today, Upcoming and Projects views with
+  counts (`g` then a letter switches), and a Board layout. Drag a card onto
+  a day in Upcoming to reschedule it. Notes inside a project folder gather
+  under that project.
+
 - Paste an article link and its card keeps the article's text; paste a
   YouTube link and it keeps the transcript. Search and agents find the
   words, and they stay even if the page goes away. Links pasted in private

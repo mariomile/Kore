@@ -24,6 +24,8 @@ interface TaskFiltersMenuProps extends TaskFiltersControl {
   /** Controlled open state, so ⌘⇧E can toggle the menu (V1). */
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** Show the per-bucket toggles — they only apply to the All view. */
+  bucketFilters?: boolean
 }
 
 /**
@@ -37,6 +39,7 @@ export function TaskFiltersMenu({
   toggle,
   open,
   onOpenChange,
+  bucketFilters = true,
 }: TaskFiltersMenuProps): ReactElement {
   return (
     <DropdownMenu open={open} onOpenChange={onOpenChange}>
@@ -52,19 +55,23 @@ export function TaskFiltersMenu({
         }
       />
       <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuGroup>
-          <DropdownMenuLabel>Tasks</DropdownMenuLabel>
-          {BUCKET_FILTERS.map(({ key, label }) => (
-            <DropdownMenuCheckboxItem
-              key={key}
-              checked={filters[key]}
-              onCheckedChange={() => toggle(key)}
-            >
-              {label}
-            </DropdownMenuCheckboxItem>
-          ))}
-        </DropdownMenuGroup>
-        <DropdownMenuSeparator />
+        {bucketFilters ? (
+          <>
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>Tasks</DropdownMenuLabel>
+              {BUCKET_FILTERS.map(({ key, label }) => (
+                <DropdownMenuCheckboxItem
+                  key={key}
+                  checked={filters[key]}
+                  onCheckedChange={() => toggle(key)}
+                >
+                  {label}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuGroup>
+            <DropdownMenuSeparator />
+          </>
+        ) : null}
         <DropdownMenuCheckboxItem
           checked={filters.archived}
           onCheckedChange={() => toggle('archived')}

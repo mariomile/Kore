@@ -1,5 +1,5 @@
 import { useEffect, useRef, type RefObject } from 'react'
-import type { OpenTask } from '@reflect/core'
+import type { OpenTask, TaskView } from '@reflect/core'
 import { getIsComposing } from '@meowdown/core'
 import { taskKey } from '@/lib/tasks/task-identity'
 import {
@@ -35,7 +35,23 @@ export interface TaskKeyboardOptions {
   onConvertToBullet: () => void
   /** ⌘⇧P: cycle the selection's priority marker (none → ! → !!). */
   onCyclePriority: () => void
+  /** The open view — Return's insert target depends on it. */
+  view?: TaskView
+  /** `g` then `i`/`t`/`u`/`p`/`a`: switch to Inbox / Today / Upcoming / Projects / All (Todoist). */
+  onGoToView?: (view: TaskView) => void
 }
+
+/** The second key of a `g` sequence and the view it opens (Todoist's "go to"). */
+const GO_TO_KEYS: Readonly<Record<string, TaskView>> = {
+  i: 'inbox',
+  t: 'today',
+  u: 'upcoming',
+  p: 'projects',
+  a: 'all',
+}
+
+/** How long a pending `g` waits for its second key. */
+const GO_TO_TIMEOUT_MS = 1500
 
 /** Elements that own their own keyboard nav — the shortcuts back off entirely. */
 const OWNS_KEYS = '[data-task-editor], [role="menu"], [role="dialog"], [role="listbox"]'
@@ -81,8 +97,11 @@ export function useTaskKeyboard({
   onToggleSchedule,
   onConvertToBullet,
   onCyclePriority,
+  view = 'all',
+  onGoToView,
 }: TaskKeyboardOptions): void {
   const handlerRef = useRef<(event: KeyboardEvent) => void>(() => {})
+  const pendingGoToRef = useRef(0)
   useEffect(() => {
     handlerRef.current = (event) => {
       // Respect anything a focused widget already handled (e.g. the filters menu's
@@ -180,6 +199,22 @@ export function useTaskKeyboard({
         }
         return
       }
+      const plain = !mod && !event.altKey && !event.shiftKey
+      if (plain && onGoToView !== undefined) {
+        const goTo = GO_TO_KEYS[event.key.toLowerCase()]
+        if (goTo !== undefined && Date.now() - pendingGoToRef.current < GO_TO_TIMEOUT_MS) {
+          event.preventDefault()
+          pendingGoToRef.current = 0
+          onGoToView(goTo)
+          return
+        }
+        if (event.key === 'g' || event.key === 'G') {
+          event.preventDefault()
+          pendingGoToRef.current = Date.now()
+          return
+        }
+      }
+      pendingGoToRef.current = 0
       if (mod && event.key === 'Enter') {
         event.preventDefault()
         if (event.shiftKey) {
@@ -201,7 +236,7 @@ export function useTaskKeyboard({
             ? todaysDailyTarget(today)
             : active.breadcrumbs.length > 0
               ? insertTargetForTask(active)
-              : insertTargetForBucket(active, today)
+              : insertTargetForBucket(active, today, view)
         if (taskTarget !== null && !actions.isPending) {
           const insertion =
             active !== undefined && active.breadcrumbs.length > 0

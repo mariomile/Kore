@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import type { OpenTask } from '@reflect/core'
+import type { OpenTask, TaskView } from '@reflect/core'
 import type { TaskNavigate } from '@/components/tasks/task-editor'
 import {
   insertTargetForBucket,
@@ -33,6 +33,8 @@ export interface TaskRowHandlerDeps {
   today: string
   /** Bring a row into view after a keyboard move (V1 scrolls the selection). */
   scrollToKey: (key: string | null) => void
+  /** The open view — Enter's insert target depends on it. */
+  view?: TaskView
 }
 
 /**
@@ -49,6 +51,7 @@ export function useTaskRowHandlers({
   orderedTasks,
   today,
   scrollToKey,
+  view = 'all',
 }: TaskRowHandlerDeps): (task: OpenTask) => TaskRowEditHandlers {
   const selectExclusively = useCallback(
     (key: string) => {
@@ -71,7 +74,7 @@ export function useTaskRowHandlers({
         const target =
           task.breadcrumbs.length > 0
             ? insertTargetForTask(task)
-            : insertTargetForBucket(task, today)
+            : insertTargetForBucket(task, today, view)
         if (target === null) {
           // An ungrouped Overdue/Upcoming bucket spans many notes, so V1 can't add
           // there. Persist the edit (or delete an emptied row) and exit cleanly.
@@ -155,6 +158,6 @@ export function useTaskRowHandlers({
         scrollToKey(selection.activeKey())
       },
     }),
-    [actions, selection, orderedTasks, today, selectExclusively, scrollToKey],
+    [actions, selection, orderedTasks, today, selectExclusively, scrollToKey, view],
   )
 }

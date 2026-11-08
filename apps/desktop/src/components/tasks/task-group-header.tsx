@@ -1,10 +1,16 @@
 import type { ReactElement } from 'react'
 import { Plus } from '@/components/icons'
 import type { TaskGroup } from '@reflect/core'
-import { addTargetForGroup, taskGroupHeaderStyle } from '@/lib/tasks/task-group-presentation'
+import { formatDayLabel } from '@/lib/dates'
+import {
+  addTargetForGroup,
+  taskGroupHeaderStyle,
+  taskGroupLabel,
+} from '@/lib/tasks/task-group-presentation'
 import type { InsertTaskTarget } from '@/lib/tasks/task-insert-target'
 import { cn } from '@/lib/utils'
 import type { ModClickEvent } from '@/lib/windows/open-in-new-window'
+import { useSettings } from '@/providers/settings-provider'
 
 interface TaskGroupHeaderProps {
   group: TaskGroup
@@ -37,6 +43,9 @@ export function TaskGroupHeader({
   const { notePath } = group
   const { icon, iconClass, labelClass } = taskGroupHeaderStyle(group)
   const addTarget = addTargetForGroup(group, today)
+  const { settings } = useSettings()
+  const label = taskGroupLabel(group, (iso) => formatDayLabel(iso, settings.dateFormat))
+  const isToday = group.kind === 'current' || group.kind === 'today'
 
   return (
     <div className="group/header flex items-center gap-2 bg-surface px-4 py-1.5 lg:px-12">
@@ -48,21 +57,20 @@ export function TaskGroupHeader({
             onClick={(event) => onOpen(notePath, event)}
             className="truncate hover:underline focus-visible:underline focus-visible:outline-none"
           >
-            {group.label}
+            {label}
           </button>
         ) : (
-          <span className="truncate">{group.label}</span>
+          <span className="truncate">{label}</span>
         )}
       </h2>
       {addTarget !== null ? (
         <button
           type="button"
-          aria-label={`Add a task to ${group.kind === 'current' ? 'today' : group.label}`}
+          aria-label={`Add a task to ${isToday ? 'today' : label}`}
           onClick={() => onAdd(addTarget)}
           className={cn(
             'ml-auto flex flex-none items-center gap-1 rounded-sm px-1.5 py-0.5 text-xs font-medium text-text-muted transition-[color,opacity] hover:text-text focus-visible:text-text focus-visible:outline-none',
-            group.kind !== 'current' &&
-              'opacity-0 focus-visible:opacity-100 group-hover/header:opacity-100',
+            !isToday && 'opacity-0 focus-visible:opacity-100 group-hover/header:opacity-100',
           )}
         >
           <Plus aria-hidden className="size-3.5" />

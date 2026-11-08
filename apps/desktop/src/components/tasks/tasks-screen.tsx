@@ -10,9 +10,11 @@ import {
 import { useQuery } from '@tanstack/react-query'
 import { Archive, CalendarClock, Flag, List, Search } from '@/components/icons'
 import {
+  countTasksByView,
   cycleTaskContentPriority,
   getCompletedTasks,
   getOpenTasks,
+  getProjectNotePaths,
   type OpenTask,
 } from '@reflect/core'
 import { Button } from '@/components/ui/button'
@@ -30,7 +32,14 @@ import { useTaskFilters } from '@/lib/tasks/task-filters'
 import { composeVisibleTaskGroups } from '@/lib/tasks/task-visibility'
 import { useTaskKeyboard } from '@/lib/tasks/use-task-keyboard'
 import { useTaskSelection } from '@/lib/tasks/use-task-selection'
-import { completedTasksQueryKey, tasksQueryKey } from '@/lib/tasks/tasks-query'
+import { formatDayLabel } from '@/lib/dates'
+import {
+  completedTasksQueryKey,
+  projectNotePathsQueryKey,
+  tasksQueryKey,
+} from '@/lib/tasks/tasks-query'
+import { useTaskView } from '@/lib/tasks/use-task-view'
+import { useSettings } from '@/providers/settings-provider'
 import { useScrollRestoration } from '@/lib/use-scroll-restoration'
 import { useScrollToIndexBridge } from '@/lib/use-scroll-to-index-bridge'
 import { useToday } from '@/lib/use-today'
@@ -38,10 +47,13 @@ import type { ModClickEvent } from '@/lib/windows/open-in-new-window'
 import { useGraph } from '@/providers/graph-provider'
 import { routeForPath } from '@/routing/route'
 import { TaskFiltersMenu } from './task-filters-menu'
+import { TaskBoard } from './task-board'
 import { TaskList } from './task-list'
 import { TaskScheduleCalendar } from './task-schedule-calendar'
 import { TaskToolbarCountBadge } from './task-toolbar-count-badge'
+import { TaskViewTabs } from './task-view-tabs'
 import { isModEvent } from '@meowdown/core'
+import { cn } from '@/lib/utils'
 
 /** The selected task that owns keyboard focus: the cursor/anchor, else the first row left selected. */
 function focusedSelectedKey(
@@ -83,6 +95,8 @@ export function TasksScreen(): ReactElement {
   const navigateNoteLink = useNoteLinkNavigation()
   const today = useToday()
   const { filters, toggle } = useTaskFilters()
+  const { view, setView, layout, setLayout } = useTaskView()
+  const { settings } = useSettings()
   const [query, setQuery] = useState('')
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [scheduleOpen, setScheduleOpen] = useState(false)
@@ -101,6 +115,13 @@ export function TasksScreen(): ReactElement {
     queryFn: () => getCompletedTasks(),
     enabled: enabled && filters.archived,
   })
+  const { data: projectNotes } = useQuery({
+    queryKey: projectNotePathsQueryKey(graph?.root),
+    queryFn: () => getProjectNotePaths(),
+    enabled: enabled && view === 'projects',
+  })
+  const projectNotePaths = useMemo(() => new Set(projectNotes ?? []), [projectNotes])
+  const counts = useMemo(() => countTasksByView(open ?? [], today), [open, today])
 
   // Either read failing surfaces the alert — a failed completed read must not
   // leave `ready` stuck (and the list blank) just because its data never arrived.
@@ -120,8 +141,18 @@ export function TasksScreen(): ReactElement {
 
   const needle = query.trim().toLowerCase()
   const groups = useMemo(
-    () => composeVisibleTaskGroups({ open, completed, recentlyCompleted, filters, needle, today }),
-    [open, completed, recentlyCompleted, filters, needle, today],
+    () =>
+      composeVisibleTaskGroups({
+        open,
+        completed,
+        recentlyCompleted,
+        filters,
+        needle,
+        today,
+        view,
+        projectNotePaths,
+      }),
+    [open, completed, recentlyCompleted, filters, needle, today, view, projectNotePaths],
   )
 
   // The flat, render-order list of tasks the selection and its shortcuts act on.
@@ -170,7 +201,14 @@ export function TasksScreen(): ReactElement {
     },
     [taskItemIndex, scrollToIndex],
   )
-  const editHandlers = useTaskRowHandlers({ selection, actions, orderedTasks, today, scrollToKey })
+  const editHandlers = useTaskRowHandlers({
+    selection,
+    actions,
+    orderedTasks,
+    today,
+    scrollToKey,
+    view,
+  })
   const selectedTaskKeys = selection.selected
   const activeTaskKey = selection.activeKey
   // Selection opens the focused task's inline editor, often after an async insert
@@ -280,7 +318,20 @@ export function TasksScreen(): ReactElement {
     onToggleSchedule: () => setScheduleOpen((open) => !open),
     onConvertToBullet,
     onCyclePriority,
+    view,
+    onGoToView: (next) => {
+      selection.clear()
+      setView(next)
+    },
   })
+  const onBoardSchedule = useCallback(
+    (task: OpenTask, isoDate: string) => actions.schedule([task], isoDate),
+    [actions],
+  )
+  const formatDay = useCallback(
+    (iso: string) => formatDayLabel(iso, settings.dateFormat),
+    [settings.dateFormat],
+  )
 
   // Move focus into the Tasks surface on mount so the shortcuts work the moment
   // you navigate here — without it, focus would linger on the sidebar link that
@@ -375,9 +426,27 @@ export function TasksScreen(): ReactElement {
           toggle={toggle}
           open={filtersOpen}
           onOpenChange={setFiltersOpen}
+          bucketFilters={view === 'all'}
         />
       </header>
-      <div ref={setScrollElement} onScroll={onScroll} className="min-h-0 flex-1 overflow-auto pb-8">
+      <TaskViewTabs
+        view={view}
+        counts={counts}
+        onSelect={(next) => {
+          selection.clear()
+          setView(next)
+        }}
+        layout={layout}
+        onLayoutChange={setLayout}
+      />
+      <div
+        ref={setScrollElement}
+        onScroll={onScroll}
+        className={cn(
+          'min-h-0 flex-1',
+          layout === 'board' ? 'overflow-hidden' : 'overflow-auto pb-8',
+        )}
+      >
         {isError ? (
           <p role="alert" className="px-4 py-6 text-sm text-text-muted lg:px-12">
             Couldn’t load tasks.
@@ -386,6 +455,15 @@ export function TasksScreen(): ReactElement {
           <p className="px-4 py-6 text-sm text-text-muted lg:px-12">
             {needle ? 'No matching tasks.' : 'No tasks to show.'}
           </p>
+        ) : layout === 'board' ? (
+          <TaskBoard
+            groups={groups}
+            today={today}
+            formatDay={formatDay}
+            onAdd={onAdd}
+            onSchedule={onBoardSchedule}
+            onOpen={openNote}
+          />
         ) : (
           <TaskList
             items={items}

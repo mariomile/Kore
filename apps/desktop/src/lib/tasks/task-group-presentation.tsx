@@ -1,8 +1,17 @@
 import type { ReactElement } from 'react'
-import { AlarmClock, Calendar, Note, Pin, Star } from '@/components/icons'
+import {
+  AlarmClock,
+  Calendar,
+  CalendarDays,
+  Folder,
+  Inbox,
+  Note,
+  Pin,
+  Star,
+} from '@/components/icons'
 import type { TaskGroup } from '@reflect/core'
 import type { InsertTaskTarget } from '@/lib/tasks/task-insert-target'
-import { insertTargetForTask, todaysDailyTarget } from '@/lib/tasks/task-navigation'
+import { dailyTarget, insertTargetForTask, todaysDailyTarget } from '@/lib/tasks/task-navigation'
 
 /**
  * The presentation contract a task-group section shares across surfaces —
@@ -28,6 +37,7 @@ export interface TaskGroupHeaderStyle {
 export function taskGroupHeaderStyle(group: TaskGroup): TaskGroupHeaderStyle {
   switch (group.kind) {
     case 'current':
+    case 'today':
       return {
         icon: <Star aria-hidden className="size-4" />,
         iconClass: 'text-accent',
@@ -39,13 +49,34 @@ export function taskGroupHeaderStyle(group: TaskGroup): TaskGroupHeaderStyle {
         iconClass: 'text-destructive',
         labelClass: 'text-destructive',
       }
+    case 'inbox':
+      return {
+        icon: <Inbox aria-hidden className="size-4" />,
+        iconClass: 'text-accent',
+        labelClass: 'text-text',
+      }
+    case 'day':
+      return {
+        icon: <CalendarDays aria-hidden className="size-4" />,
+        iconClass: 'text-text-muted',
+        labelClass: 'text-text',
+      }
     case 'upcoming':
+    case 'later':
       return {
         icon: <Calendar aria-hidden className="size-4" />,
         iconClass: 'text-text-muted',
         labelClass: 'text-text',
       }
     case 'note':
+      if (group.notePath !== null && group.tasks[0]?.notePath !== group.notePath) {
+        // A Projects group gathered under a folder note.
+        return {
+          icon: <Folder aria-hidden className="size-4" />,
+          iconClass: 'text-text-muted',
+          labelClass: 'text-text',
+        }
+      }
       return group.tasks[0]?.isPinned
         ? {
             icon: <Pin aria-hidden className="size-4" />,
@@ -61,14 +92,23 @@ export function taskGroupHeaderStyle(group: TaskGroup): TaskGroupHeaderStyle {
 }
 
 /**
- * Where this group's add button adds a task (V1: Current → today's daily, a
- * note → that note), or `null` for the aggregate Overdue/Upcoming buckets,
- * which span many notes and so show no add button.
+ * Where this group's add button adds a task (V1: Current/Today → today's
+ * daily, an Upcoming day → that day's daily, a note → that note), or `null`
+ * for the aggregate Overdue/Upcoming/Later/Inbox groups, which span many notes
+ * and so show no add button.
  */
 export function addTargetForGroup(group: TaskGroup, today: string): InsertTaskTarget | null {
-  if (group.kind === 'current') {
+  if (group.kind === 'current' || group.kind === 'today') {
     return todaysDailyTarget(today)
+  }
+  if (group.kind === 'day' && group.date !== undefined) {
+    return dailyTarget(group.date)
   }
   const first = group.tasks[0]
   return group.kind === 'note' && first !== undefined ? insertTargetForTask(first) : null
+}
+
+/** A group's display label: an Upcoming day reads as a date, the rest as named. */
+export function taskGroupLabel(group: TaskGroup, formatDay: (iso: string) => string): string {
+  return group.kind === 'day' && group.date !== undefined ? formatDay(group.date) : group.label
 }

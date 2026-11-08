@@ -44,7 +44,7 @@ async function main(argv: readonly string[]): Promise<number> {
     }
     if (argv.includes('--sources')) {
       // The index above lets the engine find notes the plugins already wrote.
-      const reports = await syncSources(generation)
+      const reports = await syncSources(generation, process.env)
       if (reports.some((report) => report.created + report.updated > 0)) {
         await syncIndex(options)
       }

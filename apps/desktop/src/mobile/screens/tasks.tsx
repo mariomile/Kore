@@ -263,8 +263,10 @@ export function MobileTasks({
                 entry === view ? 'bg-accent-soft text-text' : 'bg-surface-hover text-text-muted',
               )}
             >
-              {taskViewLabel(entry)}
-              <span className="text-xs tabular-nums text-text-muted">{counts[entry]}</span>
+              <span className="flex items-baseline gap-1.5">
+                {taskViewLabel(entry)}
+                <span className="text-xs tabular-nums text-text-muted">{counts[entry]}</span>
+              </span>
             </button>
           ))}
         </div>

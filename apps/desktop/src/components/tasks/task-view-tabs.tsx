@@ -69,8 +69,11 @@ export function TaskViewTabs({
               )}
             >
               <Glyph aria-hidden className="size-3.5 shrink-0" />
-              {label}
-              <span className="text-xs tabular-nums text-text-muted">{counts[entry]}</span>
+              {/* Baseline-align the smaller count with the label, not center it. */}
+              <span className="flex items-baseline gap-1.5">
+                {label}
+                <span className="text-xs tabular-nums text-text-muted">{counts[entry]}</span>
+              </span>
             </button>
           )
         })}

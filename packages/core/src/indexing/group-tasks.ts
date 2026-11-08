@@ -20,7 +20,16 @@ import { compareTaskPriority, taskRawPriority } from './task-priority'
  */
 
 /** A date bucket (tasks aggregated across daily notes) or a single regular note. */
-export type TaskGroupKind = 'current' | 'overdue' | 'upcoming' | 'note'
+export type TaskGroupKind =
+  | 'current'
+  | 'overdue'
+  | 'upcoming'
+  | 'note'
+  // The Todoist-style views ({@link groupTasksForView} in `task-views.ts`):
+  | 'today'
+  | 'inbox'
+  | 'day'
+  | 'later'
 
 export interface TaskGroup {
   kind: TaskGroupKind
@@ -28,6 +37,8 @@ export interface TaskGroup {
   label: string
   /** The note a `note` group's header opens; null for the date buckets. */
   notePath: string | null
+  /** The ISO day a `day` group stands for (Upcoming, board drop target); else absent. */
+  date?: string
   tasks: OpenTask[]
 }
 
@@ -112,7 +123,7 @@ export function taskDateBucket(task: OpenTask, today: string): TaskGroupKind {
  * before `!` before none), then document order. Date outranks priority so
  * Upcoming stays chronological — priority orders tasks *within* a day.
  */
-function compareDated(left: OpenTask, right: OpenTask): number {
+export function compareDated(left: OpenTask, right: OpenTask): number {
   // Every task in a date bucket has an effective date; ISO `YYYY-MM-DD` sorts
   // chronologically. (The `?? ''` only satisfies the type — it never fires here.)
   const leftDate = effectiveDate(left) ?? ''
@@ -163,7 +174,7 @@ function comparePinPrecedence(
  * then by most-recently edited, then by path for a stable tiebreak. Each group's
  * note metadata is shared by all its tasks, so the first task carries the sort key.
  */
-function compareNoteGroups(left: TaskGroup, right: TaskGroup): number {
+export function compareNoteGroups(left: TaskGroup, right: TaskGroup): number {
   // Groups are never built empty, so each has a first task carrying the sort key.
   const first = left.tasks[0]!
   const second = right.tasks[0]!

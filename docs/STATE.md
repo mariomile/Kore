@@ -45,6 +45,38 @@ undo preview) can't link in this container (ort download blocked) and run
 in CI. **Not verified on the Mac** yet: a real agent write, then Activity,
 then Undo.
 
+## Tasks like Todoist, slice 1: views and board, 2026-11-08
+
+Ask (Mario, 2026-11-08, "Miglioriamo la sezione task, deve riprendere come
+funziona todoist", then "Voglio anche la vista Kanban"; plan in
+`/mnt/project-files/analisi/task-come-todoist.md`, slice 1 approved on the
+decision card: every checkbox stays a task, the views do the filtering).
+
+- [x] Core views (`packages/core/src/indexing/task-views.ts`):
+  `groupTasksForView` for Inbox (bare tasks left in past dailies), Today
+  (overdue + due today + jotted in today's daily), Upcoming (seven day
+  groups, empty ones included, then Later), Projects (non-daily notes,
+  grouped under the nearest folder note `…/<Name>/<Name>.md`, else the note
+  itself) and All (the original buckets). `countTasksByView`,
+  `getProjectNotePaths`. No new store: a projection over the `tasks` table.
+- [x] Settings `taskView` (default `today`) and `taskLayout` (`list`/`board`).
+- [x] Desktop: view tabs with counts, `g` then `i`/`t`/`u`/`p`/`a` to
+  switch, bucket filters only in All, "+ Add" on an Upcoming day writes to
+  that day's daily. Board layout (`task-board.tsx`): the view's groups as
+  columns; dragging a card onto an Upcoming day or Today writes the due
+  date link, with an optimistic overlay until the reindex.
+- [x] Mobile: view chips on the Tasks tab (list only).
+
+**Validation:** core `task-views.test.ts`, existing `group-tasks` and
+`lib/tasks` node tests, Chromium `tasks-screen.test.tsx` (69, two new view
+cases) and mobile `tasks.test.tsx` (33), `pnpm check`. Rendered check in the
+dev build (default seed). WebKit not run here (CI is the first pass). The
+`?seed=obsidian` dev vault has no daily-notes config, so its DD-MM-YYYY
+dailies read as regular notes there; Mario's vault declares
+`Journal/Daily` + `DD-MM-YYYY` in `.obsidian/daily-notes.json`, so they
+should count as dailies on the Mac. **Next:** try the views on the real vault;
+then slice 2 (natural-language Quick Add) on Mario's go.
+
 ## Context capture, slice 3: pasted links keep their text, 2026-11-07
 
 Ask (Mario, 2026-11-07, "Facciamo prima resto articoli. Lasciamo il web

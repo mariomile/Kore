@@ -500,6 +500,18 @@ export const taskFiltersSchema = z
 export type TaskFilters = z.infer<typeof taskFiltersSchema>
 
 /**
+ * Which Tasks view is open (Todoist-style: Inbox / Today / Upcoming /
+ * Projects, plus the original bucketed All list). Persisted so the view
+ * survives relaunch; mirrors `TaskView` in `indexing/task-views.ts`.
+ */
+export const taskViewSchema = z
+  .enum(['inbox', 'today', 'upcoming', 'projects', 'all'])
+  .catch('today')
+
+/** How the Tasks view lays its groups out: a list, or a board of columns. */
+export const taskLayoutSchema = z.enum(['list', 'board']).catch('list')
+
+/**
  * Task reminders: a daily native notification summarizing date-only tasks due
  * today and every overdue task, plus a per-task notification at `@HH:MM` for
  * timed ones. Off by default — notifications are a capability the user turns
@@ -630,6 +642,8 @@ const settingsDocumentSchema = z.looseObject({
   collectionSavedViews: collectionSavedViewsSchema,
   collectionActiveViewId: collectionActiveViewIdSchema,
   taskFilters: taskFiltersSchema,
+  taskView: taskViewSchema,
+  taskLayout: taskLayoutSchema,
   taskReminders: taskRemindersSchema,
   quickCaptureEnabled: quickCaptureEnabledSchema,
   remoteAccessEnabled: remoteAccessEnabledSchema,

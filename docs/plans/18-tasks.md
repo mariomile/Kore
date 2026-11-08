@@ -9,6 +9,12 @@ Square checklist checkboxes (`- [ ]` / `- [x]`) stay in the note and do not aggr
 
 **Status:** Add-on — not part of the first macOS release. Build after launch.
 
+**Update 2026-11-08:** the "never a task manager" scope is superseded: priorities,
+`@repeat` and reminders shipped since, and Todoist-style views (Inbox / Today /
+Upcoming / Projects) plus a board landed in `indexing/task-views.ts`. Rationale
+and the remaining slices: `task-come-todoist.md` (project analysis) and
+`docs/STATE.md`.
+
 **Depends on:** Plan 03 (parser/extraction), Plan 04 (index + watcher), Plan 05
 (editor; step 8's upstream blocker is now **cleared** — see below), Plan 06 (daily
 dates), Plan 08 (commands/palette), Plan 17 (path-keyed projections survive moves).

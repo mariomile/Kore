@@ -1186,6 +1186,12 @@ html:root {
 .reflect-task-preview .md-wikilink-view-preview {
   vertical-align: baseline;
 }
+/* The hidden raw-source span (font-size 0) still carries the 24px line box on
+   its own zero-height baseline, which grows a row holding a [[date]] by ~5px.
+   Collapse it so every row keeps the same height. */
+.reflect-task-preview .md-atom-view-content {
+  line-height: 0;
+}
 .line-through .reflect-task-preview .md-link,
 .line-through .reflect-task-preview .md-wikilink-view-label,
 .line-through .reflect-task-preview .md-tag {

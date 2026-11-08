@@ -10,6 +10,8 @@ interface TaskFiltersDrawerProps {
   onOpenChange: (open: boolean) => void
   filters: TaskFilters
   toggle: (key: keyof TaskFilters) => void
+  /** Show the bucket toggles — they only apply to the All view. */
+  bucketFilters?: boolean
 }
 
 const BUCKETS: ReadonlyArray<{ key: keyof TaskFilters; label: string }> = [
@@ -32,6 +34,7 @@ export function TaskFiltersDrawer({
   onOpenChange,
   filters,
   toggle,
+  bucketFilters = true,
 }: TaskFiltersDrawerProps): ReactElement {
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
@@ -39,15 +42,19 @@ export function TaskFiltersDrawer({
         <DrawerTitle>Task filters</DrawerTitle>
         <DrawerBody className="px-4">
           <div className="flex flex-col">
-            {BUCKETS.map(({ key, label }) => (
-              <FilterRow
-                key={key}
-                label={label}
-                checked={filters[key]}
-                onToggle={() => toggle(key)}
-              />
-            ))}
-            <div className="my-1 border-t border-border" />
+            {bucketFilters ? (
+              <>
+                {BUCKETS.map(({ key, label }) => (
+                  <FilterRow
+                    key={key}
+                    label={label}
+                    checked={filters[key]}
+                    onToggle={() => toggle(key)}
+                  />
+                ))}
+                <div className="my-1 border-t border-border" />
+              </>
+            ) : null}
             <FilterRow
               label="Show archived"
               checked={filters.archived}

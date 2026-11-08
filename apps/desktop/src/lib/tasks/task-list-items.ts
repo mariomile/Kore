@@ -15,9 +15,12 @@ export type TaskListItem =
   | { kind: 'breadcrumb'; group: TaskGroup; context: TaskContext }
   | { kind: 'task'; group: TaskGroup; task: OpenTask; showSource: boolean }
 
-/** A group's stable identity — a date bucket's kind, or a note group's path. */
+/** A group's stable identity — a date bucket's kind, an Upcoming day's date, or a note group's path. */
 function groupIdentity(group: TaskGroup): string {
-  return group.kind === 'note' ? `note:${group.notePath}` : group.kind
+  if (group.kind === 'note') {
+    return `note:${group.notePath}`
+  }
+  return group.date === undefined ? group.kind : `${group.kind}:${group.date}`
 }
 
 /** The React/virtua key for one flattened row — unique across the whole list. */

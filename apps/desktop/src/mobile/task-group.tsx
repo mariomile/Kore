@@ -2,12 +2,18 @@ import { Fragment, type ReactElement } from 'react'
 import { Plus } from '@/components/icons'
 import { groupTaskContexts, type OpenTask, type TaskGroup } from '@reflect/core'
 import { TaskBreadcrumbs } from '@/components/tasks/task-breadcrumbs'
-import { addTargetForGroup, taskGroupHeaderStyle } from '@/lib/tasks/task-group-presentation'
+import { formatDayLabel } from '@/lib/dates'
+import {
+  addTargetForGroup,
+  taskGroupHeaderStyle,
+  taskGroupLabel,
+} from '@/lib/tasks/task-group-presentation'
 import { taskKey } from '@/lib/tasks/task-identity'
 import type { InsertTaskTarget } from '@/lib/tasks/task-insert-target'
 import { cn } from '@/lib/utils'
 import { hapticImpactLight } from '@/mobile/haptics'
 import { MobileTaskRow } from '@/mobile/task-row'
+import { useSettings } from '@/providers/settings-provider'
 
 interface MobileTaskGroupProps {
   group: TaskGroup
@@ -39,6 +45,8 @@ export function MobileTaskGroup({
   const showSource = group.kind !== 'note'
   const { notePath } = group
   const { icon, iconClass, labelClass } = taskGroupHeaderStyle(group)
+  const { settings } = useSettings()
+  const label = taskGroupLabel(group, (iso) => formatDayLabel(iso, settings.dateFormat))
   const addTarget = addTargetForGroup(group, today)
   const contexts = groupTaskContexts(group.tasks)
 
@@ -64,17 +72,17 @@ export function MobileTaskGroup({
               }}
               className="truncate"
             >
-              {group.label}
+              {label}
             </button>
           ) : (
-            <span className="truncate">{group.label}</span>
+            <span className="truncate">{label}</span>
           )}
           <span className="text-xs font-normal text-text-muted">{group.tasks.length}</span>
         </h2>
         {addTarget !== null ? (
           <button
             type="button"
-            aria-label={`Add a task to ${group.kind === 'current' ? 'today' : group.label}`}
+            aria-label={`Add a task to ${group.kind === 'current' || group.kind === 'today' ? 'today' : label}`}
             onClick={() => onAdd(addTarget)}
             className="-my-2.5 ml-auto flex size-11 flex-none items-center justify-center rounded-full text-text-muted active:bg-surface-hover"
           >

@@ -1,11 +1,20 @@
-import { groupTasks, type OpenTask, type TaskGroup } from '@reflect/core'
+import { groupTasksForView, type OpenTask, type TaskGroup, type TaskView } from '@reflect/core'
 import { sameTask, taskKey } from '@/lib/tasks/task-identity'
 import type { TaskFilters } from '@/lib/tasks/task-filters'
 
-/** Keep only the groups the active filters allow (V1's per-bucket toggles). */
+/**
+ * Keep only the groups the active filters allow (V1's per-bucket toggles). The
+ * bucket toggles belong to the All view; the Todoist views are themselves the
+ * filter, so their groups always show.
+ */
 export function visibleGroups(groups: TaskGroup[], filters: TaskFilters): TaskGroup[] {
   return groups.filter((group) => {
     switch (group.kind) {
+      case 'today':
+      case 'inbox':
+      case 'day':
+      case 'later':
+        return true
       case 'current':
         return filters.current
       case 'overdue':
@@ -30,6 +39,10 @@ export interface TaskListSources {
   readonly needle: string
   /** Today's ISO `YYYY-MM-DD` date. */
   readonly today: string
+  /** The open Tasks view; omitted means All. */
+  readonly view?: TaskView
+  /** The graph's folder notes, for the Projects grouping. */
+  readonly projectNotePaths?: ReadonlySet<string>
 }
 
 function taskMatchesNeedle(task: OpenTask, needle: string): boolean {
@@ -63,6 +76,8 @@ export function composeVisibleTaskGroups({
   filters,
   needle,
   today,
+  view = 'all',
+  projectNotePaths,
 }: TaskListSources): TaskGroup[] {
   if (open === undefined) {
     return []
@@ -78,5 +93,6 @@ export function composeVisibleTaskGroups({
   const completedKeys = new Set(completedRows.map(taskKey))
   const all = [...open.filter((task) => !completedKeys.has(taskKey(task))), ...completedRows]
   const matched = needle ? all.filter((task) => taskMatchesNeedle(task, needle)) : all
-  return visibleGroups(groupTasks(matched, today), filters)
+  const groups = groupTasksForView(view, matched, today, projectNotePaths)
+  return view === 'all' ? visibleGroups(groups, filters) : groups
 }

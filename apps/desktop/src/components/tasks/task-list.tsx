@@ -125,7 +125,7 @@ export function TaskList({
               return (
                 <div
                   key={taskListItemKey(item)}
-                  className="px-4 py-1.5 text-sm text-text-muted lg:px-12"
+                  className="py-1.5 pl-[46px] pr-4 text-sm text-text-muted lg:pl-[78px] lg:pr-12"
                 >
                   No tasks
                 </div>

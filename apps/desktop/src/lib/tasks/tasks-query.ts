@@ -23,3 +23,10 @@ export function completedTasksQueryKey(
 ): readonly [string, string | undefined, 'tasks-completed'] {
   return [INDEX_QUERY_SCOPE, graphRoot, 'tasks-completed']
 }
+
+/** The query key for the graph's folder notes (the Projects view's grouping). */
+export function projectNotePathsQueryKey(
+  graphRoot: string | undefined,
+): readonly [string, string | undefined, 'tasks-project-notes'] {
+  return [INDEX_QUERY_SCOPE, graphRoot, 'tasks-project-notes']
+}

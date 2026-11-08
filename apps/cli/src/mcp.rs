@@ -22,6 +22,8 @@
 //! transport). stdout carries protocol messages only; nothing else is printed.
 
 use crate::agent_identity::AgentIdentity;
+use crate::agent_keys::Access;
+use crate::proposals::Proposal;
 use std::io::{self, BufRead, Write};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
@@ -1040,8 +1042,8 @@ fn last_seven_days(today: jiff::civil::Date) -> Vec<String> {
 pub struct Caller {
     /// The agent's name, signed onto what it remembers.
     pub name: Option<String>,
-    /// Whether this caller may use the tools that write.
-    pub write: bool,
+    /// What this caller may do with the tools that write.
+    pub access: Access,
 }
 
 impl Caller {
@@ -1049,7 +1051,7 @@ impl Caller {
     pub fn owner() -> Self {
         Self {
             name: None,
-            write: true,
+            access: Access::Write,
         }
     }
 }
@@ -1090,7 +1092,7 @@ impl<R: Runner> Server<R> {
     }
 
     fn available(&self, caller: &Caller) -> Vec<Tool> {
-        let writes = !self.read_only && caller.write;
+        let writes = !self.read_only && caller.access.sees_writes();
         tools()
             .into_iter()
             .filter(|tool| tool.effect == Effect::Read || writes)
@@ -1233,12 +1235,35 @@ impl<R: Runner> Server<R> {
             Ok(invocation) => invocation,
             Err(message) => return Ok(tool_text(message, true)),
         };
-        let output = self.runner.run_as(
-            &invocation.args,
-            invocation.stdin.as_deref(),
-            &AgentIdentity::for_caller(caller.name.as_deref()),
-        );
+        let agent = AgentIdentity::for_caller(caller.name.as_deref());
+        if caller.access == Access::Propose && tool.effect != Effect::Read {
+            return Ok(self.propose(agent, tool.name, invocation));
+        }
+        let output = self
+            .runner
+            .run_as(&invocation.args, invocation.stdin.as_deref(), &agent);
         Ok(tool_text(output.text, !output.success))
+    }
+
+    /// Keep a write as a proposal for the owner instead of running it.
+    fn propose(&self, agent: AgentIdentity, tool: &str, invocation: Invocation) -> Value {
+        let proposal = Proposal::new(agent, tool, invocation.args, invocation.stdin);
+        let json = serde_json::to_string(&proposal).expect("proposals serialize");
+        let output = self.runner.run_as(
+            &["proposals".to_string(), "add".to_string()],
+            Some(&json),
+            &proposal.agent,
+        );
+        if !output.success {
+            return tool_text(output.text, true);
+        }
+        tool_text(
+            format!(
+                "Not written yet: your key proposes changes, so this one waits for the vault's owner to accept it (proposal {}). Don't retry it.",
+                proposal.id
+            ),
+            false,
+        )
     }
 
     /// Run a subcommand and parse its `--json` output; a failure carries the
@@ -1758,12 +1783,51 @@ mod tests {
     }
 
     #[test]
+    fn a_propose_key_sees_the_write_tools_but_its_writes_become_proposals() {
+        let recorder = Recorder::default();
+        let server = Server::new(&recorder, false);
+        let grok = Caller {
+            name: Some("Grok".into()),
+            access: Access::Propose,
+        };
+        let list = server
+            .handle_as(
+                &json!({ "jsonrpc": "2.0", "id": 1, "method": "tools/list" }),
+                &grok,
+            )
+            .unwrap();
+        assert!(list["result"]["tools"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|tool| tool["name"] == "capture"));
+
+        let reply = server
+            .handle_as(
+                &json!({ "jsonrpc": "2.0", "id": 2, "method": "tools/call",
+                    "params": { "name": "capture", "arguments": { "text": "buy milk" } } }),
+                &grok,
+            )
+            .unwrap();
+        let text = reply["result"]["content"][0]["text"].as_str().unwrap();
+        assert!(text.starts_with("Not written yet"), "{text}");
+        let calls = recorder.calls.borrow();
+        assert_eq!(calls.len(), 1);
+        assert_eq!(calls[0].0, ["proposals", "add"]);
+        let proposal: Proposal = serde_json::from_str(calls[0].1.as_deref().unwrap()).unwrap();
+        assert_eq!(proposal.tool, "capture");
+        assert_eq!(proposal.agent.name, "Grok");
+        assert_eq!(proposal.args[0], "capture");
+        assert!(proposal.args.iter().any(|arg| arg == "buy milk"));
+    }
+
+    #[test]
     fn remember_signs_the_fact_with_the_callers_own_name() {
         let recorder = Recorder::default();
         let server = Server::new(&recorder, false);
         let grok = Caller {
             name: Some("Grok bot".into()),
-            write: true,
+            access: Access::Write,
         };
         server.handle_as(
             &json!({ "jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {
@@ -1779,7 +1843,7 @@ mod tests {
 
         let reader = Caller {
             name: Some("ChatGPT".into()),
-            write: false,
+            access: Access::Read,
         };
         let refused = server
             .handle_as(

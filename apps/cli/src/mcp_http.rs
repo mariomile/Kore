@@ -329,6 +329,7 @@ mod tests {
                     name: "Grok bot".into(),
                     key: AGENT_KEY.into(),
                     write: false,
+                    propose: false,
                 }],
                 keys_file: None,
             },

@@ -32,9 +32,52 @@ pub struct AgentKey {
     /// Whether the agent may use the tools that write.
     #[serde(default)]
     pub write: bool,
+    /// Whether the agent's writes wait for the owner instead (Plan 33, A2).
+    /// Wins over `write`.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub propose: bool,
+}
+
+/// What an MCP caller may do with the tools that write.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Access {
+    /// The write tools are hidden.
+    Read,
+    /// The write tools are offered, but each call is kept as a proposal for
+    /// the owner to accept or reject.
+    Propose,
+    /// The write tools run.
+    Write,
+}
+
+impl Access {
+    /// Whether the caller sees the tools that write.
+    pub fn sees_writes(self) -> bool {
+        self != Self::Read
+    }
+
+    /// How `kore keys` describes it.
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Read => "read",
+            Self::Propose => "propose",
+            Self::Write => "write",
+        }
+    }
 }
 
 impl AgentKey {
+    /// What this key may do.
+    pub fn access(&self) -> Access {
+        if self.propose {
+            Access::Propose
+        } else if self.write {
+            Access::Write
+        } else {
+            Access::Read
+        }
+    }
+
     fn usable(&self) -> bool {
         !self.id.is_empty() && !self.name.trim().is_empty() && self.key.len() >= MIN_KEY_LEN
     }
@@ -107,8 +150,8 @@ fn save(path: &Path, agents: &[AgentKey]) -> Result<(), CliError> {
     Ok(())
 }
 
-/// Give `name` a new key (read-only unless `write`) and return it.
-pub fn add(path: &Path, name: &str, write: bool) -> Result<AgentKey, CliError> {
+/// Give `name` a new key with `access` and return it.
+pub fn add(path: &Path, name: &str, access: Access) -> Result<AgentKey, CliError> {
     let name = name.trim();
     if name.is_empty() {
         return Err(CliError::Usage("give the agent a name".into()));
@@ -126,7 +169,8 @@ pub fn add(path: &Path, name: &str, write: bool) -> Result<AgentKey, CliError> {
         id: random(9),
         name: name.to_string(),
         key: random(32),
-        write,
+        write: access == Access::Write,
+        propose: access == Access::Propose,
     };
     agents.push(agent.clone());
     save(path, &agents)?;
@@ -153,10 +197,10 @@ mod tests {
     fn keys_are_added_listed_and_removed_by_name_in_a_private_file() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("kore").join("mcp-agents.json");
-        let grok = add(&path, "Grok bot", false).unwrap();
+        let grok = add(&path, "Grok bot", Access::Read).unwrap();
         assert!(grok.key.len() >= MIN_KEY_LEN && !grok.write);
-        assert!(add(&path, "grok BOT", true).is_err());
-        add(&path, "ChatGPT", true).unwrap();
+        assert!(add(&path, "grok BOT", Access::Write).is_err());
+        add(&path, "ChatGPT", Access::Propose).unwrap();
         assert_eq!(load(&path).len(), 2);
         #[cfg(unix)]
         {

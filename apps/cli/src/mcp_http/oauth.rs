@@ -156,7 +156,7 @@ fn is_chatgpt_redirect(uri: &str) -> bool {
 fn agent_caller(agent: &AgentKey) -> Caller {
     Caller {
         name: Some(agent.name.clone()),
-        write: agent.write,
+        access: agent.access(),
     }
 }
 

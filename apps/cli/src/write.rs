@@ -5,7 +5,8 @@
 
 use std::fs;
 use std::io::Write;
-use std::path::Path;
+use std::path::{Component, Path, PathBuf};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::error::CliError;
 use crate::note_file::checked_note_path;
@@ -30,6 +31,7 @@ pub fn atomic_write(path: &Path, contents: &str) -> Result<(), CliError> {
     tmp.flush()?;
     tmp.persist(path)
         .map_err(|err| CliError::Runtime(err.to_string()))?;
+    record_agent_write(path);
     Ok(())
 }
 
@@ -62,7 +64,87 @@ pub fn atomic_create(path: &Path, contents: &str) -> Result<(), CreateError> {
             CreateError::Other(err.error)
         }
     })?;
+    record_agent_write(path);
     Ok(())
+}
+
+/// Set by `kore mcp` on the child that runs a tool call: the name of the
+/// agent the write is made for.
+pub const AGENT_ENV: &str = "KORE_AGENT";
+
+/// Set alongside [`AGENT_ENV`]: the graph root the journal lives in.
+pub const AGENT_GRAPH_ENV: &str = "KORE_AGENT_GRAPH";
+
+/// The name recorded for a tool call from a caller without its own key
+/// (the local stdio client, or the HTTP server's own secret).
+pub const UNNAMED_AGENT: &str = "MCP";
+
+/// The graph-relative journal of notes agents wrote, which the app reads to
+/// commit each agent's writes under its own name.
+pub const AGENT_JOURNAL: &str = ".reflect/agent-writes.jsonl";
+
+/// Append `path` to the agent journal when this process runs a tool call
+/// for an agent. Best effort: the note is already written, and a missing
+/// journal line only means the write is attributed to the owner.
+fn record_agent_write(path: &Path) {
+    let Some(agent) = std::env::var(AGENT_ENV)
+        .ok()
+        .filter(|agent| !agent.trim().is_empty())
+    else {
+        return;
+    };
+    let Some((root, rel_path)) = graph_relative(path) else {
+        return;
+    };
+    let at = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|elapsed| elapsed.as_millis())
+        .unwrap_or_default();
+    let line = serde_json::json!({ "at": at, "agent": agent.trim(), "path": rel_path });
+    let journal = root.join(AGENT_JOURNAL);
+    let appended = journal
+        .parent()
+        .map_or(Ok(()), fs::create_dir_all)
+        .and_then(|()| {
+            fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(&journal)
+        })
+        .and_then(|mut file| writeln!(file, "{line}"));
+    if let Err(err) = appended {
+        eprintln!("kore: could not record the agent write in {AGENT_JOURNAL}: {err}");
+    }
+}
+
+/// The graph the tool call runs against (`AGENT_GRAPH_ENV`) and `path`
+/// relative to it with `/` separators. `None` for anything inside
+/// `.reflect/` itself or outside that graph.
+fn graph_relative(path: &Path) -> Option<(PathBuf, String)> {
+    let root = PathBuf::from(std::env::var_os(AGENT_GRAPH_ENV)?);
+    let rel = path
+        .strip_prefix(&root)
+        .map(Path::to_path_buf)
+        .or_else(|_| {
+            let canonical_root = root.canonicalize()?;
+            let canonical = path.canonicalize()?;
+            canonical
+                .strip_prefix(&canonical_root)
+                .map(Path::to_path_buf)
+                .map_err(std::io::Error::other)
+        });
+    let rel = rel.ok()?;
+    let parts = rel
+        .components()
+        .map(|component| match component {
+            Component::Normal(part) => part.to_str(),
+            _ => None,
+        })
+        .collect::<Option<Vec<_>>>()?;
+    if parts.is_empty() || parts.first() == Some(&".reflect") {
+        return None;
+    }
+    Some((root, parts.join("/")))
 }
 
 /// Read everything on stdin (the `--stdin` flags), trimmed of trailing

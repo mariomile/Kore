@@ -376,11 +376,7 @@ impl<R: Runner> VaultSync<R> {
     fn replay(&self, journal: &mut Journal, report: &mut SyncReport) -> Result<(), CliError> {
         let mut kept = Vec::with_capacity(journal.operations.len());
         for operation in journal.operations.drain(..) {
-            let output = self.inner.run_as(
-                &operation.args,
-                operation.stdin.as_deref(),
-                operation.agent.as_deref(),
-            );
+            let output = self.inner.run(&operation.args, operation.stdin.as_deref());
             if output.success && self.commit(&operation)? {
                 report.replayed += 1;
                 kept.push(operation);
@@ -454,11 +450,8 @@ impl<R: Runner> VaultSync<R> {
                 eprintln!("kore sync: {err}");
             }
         }
-        let output = self.inner.run_as(
-            &operation.args,
-            operation.stdin.as_deref(),
-            operation.agent.as_deref(),
-        );
+        // The host signs the commit itself, so its child keeps no journal.
+        let output = self.inner.run(&operation.args, operation.stdin.as_deref());
         if !output.success {
             return output;
         }
@@ -507,7 +500,7 @@ impl<R: Runner> Runner for VaultSync<R> {
         };
         if operation.is_read() {
             let _tree = self.tree.read().unwrap_or_else(|err| err.into_inner());
-            return self.inner.run_as(args, stdin, agent);
+            return self.inner.run(args, stdin);
         }
         self.write(operation)
     }

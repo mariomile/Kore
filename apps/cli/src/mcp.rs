@@ -91,7 +91,31 @@ pub struct ProcessRunner {
 
 impl Runner for ProcessRunner {
     fn run(&self, args: &[String], stdin: Option<&str>) -> RunOutput {
+        self.spawn(args, stdin, None)
+    }
+
+    /// A tool call: the child records the notes it writes as this agent's
+    /// (an unnamed caller is the generic MCP agent).
+    fn run_as(&self, args: &[String], stdin: Option<&str>, agent: Option<&str>) -> RunOutput {
+        self.spawn(
+            args,
+            stdin,
+            Some(agent.unwrap_or(crate::write::UNNAMED_AGENT)),
+        )
+    }
+}
+
+impl ProcessRunner {
+    fn spawn(&self, args: &[String], stdin: Option<&str>, agent: Option<&str>) -> RunOutput {
         let mut command = Command::new(&self.exe);
+        match agent {
+            Some(agent) => command
+                .env(crate::write::AGENT_ENV, agent)
+                .env(crate::write::AGENT_GRAPH_ENV, &self.graph),
+            None => command
+                .env_remove(crate::write::AGENT_ENV)
+                .env_remove(crate::write::AGENT_GRAPH_ENV),
+        };
         command
             .arg("--graph")
             .arg(&self.graph)

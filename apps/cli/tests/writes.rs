@@ -406,3 +406,31 @@ fn a_note_created_after_indexing_resolves_by_title_and_its_task_ticks_by_in() {
         Some(0)
     );
 }
+
+#[test]
+fn a_write_for_an_agent_is_journaled_and_a_plain_write_is_not() {
+    let fixture = graph();
+    fixture.write_note("notes/dune.md", "# Dune\n");
+    let journal = fixture.root().join(".reflect/agent-writes.jsonl");
+
+    assert_eq!(
+        kore(&fixture, &["append", "Dune", "by hand"]).status.code(),
+        Some(0)
+    );
+    assert!(!journal.exists());
+
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_kore"))
+        .args(["append", "2026-06-11", "from grok"])
+        .current_dir(fixture.root())
+        .env_remove("KORE_GRAPH")
+        .env("KORE_AGENT", "Grok")
+        .env("KORE_AGENT_GRAPH", fixture.root())
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(0));
+    let line: serde_json::Value =
+        serde_json::from_str(fs::read_to_string(&journal).unwrap().trim()).unwrap();
+    assert_eq!(line["agent"], "Grok");
+    assert_eq!(line["path"], "daily/2026-06-11.md");
+    assert!(line["at"].as_u64().unwrap() > 0);
+}

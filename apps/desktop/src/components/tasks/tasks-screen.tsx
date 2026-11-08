@@ -347,18 +347,18 @@ export function TasksScreen(): ReactElement {
       aria-label="Tasks"
       className="flex h-full min-h-0 flex-col outline-none"
     >
-      <header className="flex flex-none items-center gap-2 py-2.5 pl-2 pr-3 lg:pl-10">
+      <header className="flex flex-none items-center gap-2 py-2.5 px-2 lg:px-10">
         <div className="window-drag-control min-w-0 flex-1">
           <Search
             aria-hidden
-            className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-text-muted"
+            className="pointer-events-none absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-text-muted"
           />
           <Input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search..."
             aria-label="Search tasks"
-            className="h-9 border-none bg-transparent pl-8 shadow-none"
+            className="h-9 border-none bg-transparent pl-[38px] shadow-none"
           />
         </div>
         {selection.selectedCount > 0 ? (

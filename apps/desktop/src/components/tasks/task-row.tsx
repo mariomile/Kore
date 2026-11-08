@@ -129,7 +129,9 @@ export function TaskRow({
       data-task-key={taskKey(task)}
       onClick={selectFromRow}
       className={cn(
-        'group/task flex min-h-10 items-start gap-3 border-b border-border bg-surface px-4 py-2 transition-colors duration-100 lg:px-12',
+        // The separator is inset to the text column (HIG lists), not full-bleed.
+        'group/task relative flex min-h-10 items-start gap-3 bg-surface px-4 py-2 transition-colors duration-100 lg:px-12',
+        'after:pointer-events-none after:absolute after:bottom-0 after:left-[46px] after:right-4 after:h-px after:bg-border lg:after:left-[78px] lg:after:right-12',
         !editing && 'cursor-pointer',
         selected
           ? 'bg-accent-soft ring-1 ring-inset ring-accent/20 dark:ring-accent/10'

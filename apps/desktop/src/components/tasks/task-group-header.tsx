@@ -49,8 +49,9 @@ export function TaskGroupHeader({
 
   return (
     <div className="group/header flex items-center gap-2 bg-surface px-4 py-1.5 lg:px-12">
-      <h2 className={cn('flex min-w-0 items-center gap-2 text-sm font-medium', labelClass)}>
-        <span className={iconClass}>{icon}</span>
+      <h2 className={cn('flex min-w-0 items-center gap-3 text-sm font-medium', labelClass)}>
+        {/* An 18px slot, like a row's checkbox, so icons and labels share its columns. */}
+        <span className={cn('flex w-[18px] flex-none justify-center', iconClass)}>{icon}</span>
         {group.kind === 'note' && notePath !== null ? (
           <button
             type="button"
@@ -69,7 +70,7 @@ export function TaskGroupHeader({
           aria-label={`Add a task to ${isToday ? 'today' : label}`}
           onClick={() => onAdd(addTarget)}
           className={cn(
-            'ml-auto flex flex-none items-center gap-1 rounded-sm px-1.5 py-0.5 text-xs font-medium text-text-muted transition-[color,opacity] hover:text-text focus-visible:text-text focus-visible:outline-none',
+            '-mr-1.5 ml-auto flex flex-none items-center gap-1 rounded-sm px-1.5 py-0.5 text-xs font-medium text-text-muted transition-[color,opacity] hover:text-text focus-visible:text-text focus-visible:outline-none',
             !isToday && 'opacity-0 focus-visible:opacity-100 group-hover/header:opacity-100',
           )}
         >

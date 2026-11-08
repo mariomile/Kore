@@ -47,7 +47,7 @@ export function TaskFiltersMenu({
         render={
           <Button
             variant="ghost"
-            className="window-drag-control text-xs font-normal text-text-muted"
+            className="window-drag-control pr-2 text-xs font-normal text-text-muted"
           >
             <Filter aria-hidden className="size-3.5" />
             Task filters

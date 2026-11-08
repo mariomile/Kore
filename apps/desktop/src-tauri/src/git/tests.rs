@@ -1007,7 +1007,7 @@ fn commit_paths_commits_only_the_agents_notes_under_its_name() {
     assert!(outcome.committed);
     let repo = Repository::open(root).unwrap();
     let head = repo.head().unwrap().peel_to_commit().unwrap();
-    assert_eq!(head.author().name(), Some("Grok"));
+    assert_eq!(head.author().name().ok(), Some("Grok"));
     assert!(head.message().unwrap().ends_with("\n\nKore-Agent: Grok"));
     let paths = head_tree_paths(root);
     assert!(!paths.contains(&"notes/mine.md".to_string()));

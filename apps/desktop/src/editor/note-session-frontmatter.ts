@@ -1,5 +1,6 @@
 import {
   RESERVED_FRONTMATTER_KEYS,
+  TAG_EXTENDS_KEY,
   TAG_TYPE_MARKER,
   type GistFrontmatter,
   type TagProperty,
@@ -67,6 +68,11 @@ export interface FrontmatterPatch {
    * deletes the key; omitted leaves whatever is there.
    */
   tagIcon?: string | null
+  /**
+   * The tags this one builds on (`extends:` on the definition, Plan 33 B2),
+   * folded keys. An empty list deletes the key; omitted leaves it alone.
+   */
+  tagExtends?: readonly string[]
 }
 
 /**
@@ -105,6 +111,9 @@ export function frontmatterPatchToYaml(patch: FrontmatterPatch): Record<string, 
   }
   if (patch.tagIcon !== undefined) {
     yaml['icon'] = patch.tagIcon === null ? undefined : patch.tagIcon
+  }
+  if (patch.tagExtends !== undefined) {
+    yaml[TAG_EXTENDS_KEY] = patch.tagExtends.length === 0 ? undefined : [...patch.tagExtends]
   }
   if (patch.id !== undefined) {
     yaml['id'] = patch.id

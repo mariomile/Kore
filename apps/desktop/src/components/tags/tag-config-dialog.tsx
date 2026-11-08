@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useState, type ReactElement } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { foldTag, isPropertyKey, listTemplates, type TemplateEntry } from '@reflect/core'
+import {
+  foldTag,
+  isPropertyKey,
+  listTagParentCandidates,
+  listTemplates,
+  type TemplateEntry,
+} from '@reflect/core'
 import { Book, Calendar, Chart, Folder, Plus, User } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import {
@@ -34,6 +40,7 @@ import {
   schemaFromDrafts,
   type PropertyDraft,
 } from './tag-config-drafts'
+import { TagParentsField } from './tag-parents-field'
 import { TagIconPicker } from './tag-icon-picker'
 import { TagPropertyRow } from './tag-property-row'
 import { TagViewsStrip } from './tag-views-strip'
@@ -74,6 +81,9 @@ export function TagConfigDialog({ tag, onClose }: TagConfigDialogProps): ReactEl
   const [template, setTemplate] = useState<string | null>(null)
   const [templates, setTemplates] = useState<TemplateEntry[]>([])
   const [icon, setIcon] = useState<string | null>(null)
+  // The tags this one builds on (Plan 33 B2) and the ones it may pick.
+  const [parents, setParents] = useState<string[]>([])
+  const [parentCandidates, setParentCandidates] = useState<string[]>([])
 
   useEffect(() => {
     let active = true
@@ -85,6 +95,12 @@ export function TagConfigDialog({ tag, onClose }: TagConfigDialogProps): ReactEl
       } catch {
         available = []
       }
+      let candidates: string[] = []
+      try {
+        candidates = await listTagParentCandidates(tag)
+      } catch {
+        candidates = []
+      }
       if (!active) {
         return
       }
@@ -95,6 +111,8 @@ export function TagConfigDialog({ tag, onClose }: TagConfigDialogProps): ReactEl
       setTemplate(definition.template)
       setTemplates(available)
       setIcon(definition.icon)
+      setParents(definition.parents)
+      setParentCandidates(candidates)
       setLoading(false)
     })()
     return () => {
@@ -182,7 +200,7 @@ export function TagConfigDialog({ tag, onClose }: TagConfigDialogProps): ReactEl
     }
     setSaving(true)
     try {
-      await saveTagType(tag, schemaFromDrafts(drafts), graph.generation, template, icon)
+      await saveTagType(tag, schemaFromDrafts(drafts), graph.generation, template, icon, parents)
       if (migrate) {
         await migratePropertyRenames(renames, graph.generation)
       }
@@ -245,6 +263,12 @@ export function TagConfigDialog({ tag, onClose }: TagConfigDialogProps): ReactEl
           <span className={FIELD_LABEL_CLASS}>Icon</span>
           <TagIconPicker value={icon} onChange={setIcon} />
         </div>
+        <TagParentsField
+          tag={foldTag(tag)}
+          parents={parents}
+          candidates={parentCandidates}
+          onChange={setParents}
+        />
         <div className="flex flex-col gap-2" aria-busy={loading || undefined}>
           {!loading && drafts.length === 0 ? (
             <div className="flex flex-col gap-1 rounded-md bg-surface-hover p-2">

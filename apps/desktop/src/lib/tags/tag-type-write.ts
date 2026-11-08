@@ -1,6 +1,8 @@
 import {
   createNoteIfAbsent,
+  foldTag,
   parseNote,
+  tagExtendsLoop,
   parseTagTypeFrontmatter,
   tagDefinitionPath,
   upsertFrontmatter,
@@ -36,6 +38,8 @@ export interface TagDefinitionState {
   template: string | null
   /** The tag's emoji glyph, or `null` when the definition sets none. */
   icon: string | null
+  /** The tags this one builds on (`extends:`, Plan 33 B2), folded keys. */
+  parents: string[]
 }
 
 /** Read the tag's definition state for the config dialog. */
@@ -52,6 +56,7 @@ export async function readTagDefinition(tag: string): Promise<TagDefinitionState
       properties: [],
       template: null,
       icon: null,
+      parents: [],
     }
   }
   const type = parseTagTypeFrontmatter(parseNote({ path, source }).frontmatter)
@@ -62,6 +67,7 @@ export async function readTagDefinition(tag: string): Promise<TagDefinitionState
     properties: type?.properties ?? [],
     template: type?.template ?? null,
     icon: type?.icon ?? null,
+    parents: type?.extends ?? [],
   }
 }
 
@@ -70,7 +76,10 @@ export async function readTagDefinition(tag: string): Promise<TagDefinitionState
  * the marker + `properties` as a `tagSchema` frontmatter patch (the
  * conversion confirm happens in the dialog, before this runs).
  * `upsertFrontmatter` refuses a file whose YAML is broken — the caller
- * surfaces that instead of destroying anything.
+ * surfaces that instead of destroying anything. `parents` (the `extends:`
+ * list) is written only when given, so the one-gesture edits that don't
+ * know about it leave it alone; a list that would close a loop is refused
+ * before anything is written.
  */
 export async function saveTagType(
   tag: string,
@@ -78,7 +87,19 @@ export async function saveTagType(
   generation: number,
   template: string | null = null,
   icon: string | null = null,
+  parents?: readonly string[],
 ): Promise<void> {
+  if (parents !== undefined) {
+    const loop = await tagExtendsLoop(tag, parents)
+    if (loop !== null) {
+      throw new Error(
+        loop === foldTag(tag)
+          ? `#${foldTag(tag)} can't build on itself.`
+          : `#${foldTag(tag)} can't build on #${loop}: #${loop} already builds on #${foldTag(tag)}.`,
+      )
+    }
+  }
+  const extendsPatch = parents === undefined ? {} : { tagExtends: parents }
   const path = tagDefinitionPath(tag)
   // The seed rides the SAME serializer as the update path below — a schema
   // field spelled in one place only. This exact fork once dropped `target`
@@ -86,7 +107,12 @@ export async function saveTagType(
   // kept them.
   const seed = upsertFrontmatter(
     '',
-    frontmatterPatchToYaml({ tagSchema: properties, tagTemplate: template, tagIcon: icon }),
+    frontmatterPatchToYaml({
+      tagSchema: properties,
+      tagTemplate: template,
+      tagIcon: icon,
+      ...extendsPatch,
+    }),
   )
   const created = await createNoteIfAbsent(path, seed, generation)
   if (created.kind === 'created') {
@@ -94,7 +120,7 @@ export async function saveTagType(
   }
   await commitNoteFrontmatter(
     path,
-    { tagSchema: properties, tagTemplate: template, tagIcon: icon },
+    { tagSchema: properties, tagTemplate: template, tagIcon: icon, ...extendsPatch },
     generation,
   )
 }

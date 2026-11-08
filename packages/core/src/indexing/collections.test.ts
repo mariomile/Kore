@@ -13,7 +13,12 @@ import {
   type CollectionEntry,
 } from './collections'
 import { deriveCollectionPropertySchema } from './collection-schema'
-import { collectionTagKeys, listTagChildren } from './resolved-tag-types'
+import {
+  collectionTagKeys,
+  listTagChildren,
+  listTagParentCandidates,
+  tagExtendsLoop,
+} from './resolved-tag-types'
 
 // A fake bridge resolves `db_query` so the tests exercise the real compiled
 // SQL (snake_case columns, parameters) — the same harness note-list.test uses.
@@ -429,5 +434,18 @@ describe('tag inheritance (Plan 33 B2)', () => {
     tagTypesTable = table
     expect(await listTagChildren('Contact')).toEqual(['client'])
     expect(await listTagChildren('client')).toEqual([])
+  })
+
+  it('offers as parents every typed tag but itself and its children', async () => {
+    tagTypesTable = [...table, { tag_key: 'book', schema_json: bookSchema }]
+    expect(await listTagParentCandidates('contact')).toEqual(['book'])
+    expect(await listTagParentCandidates('client')).toEqual(['book', 'contact'])
+  })
+
+  it('names the parent that would close a loop on save', async () => {
+    tagTypesTable = table
+    expect(await tagExtendsLoop('Contact', ['client'])).toBe('client')
+    expect(await tagExtendsLoop('contact', ['contact'])).toBe('contact')
+    expect(await tagExtendsLoop('client', ['contact'])).toBeNull()
   })
 })

@@ -313,6 +313,8 @@ export {
   listCollection,
   listTagChildren,
   collectionTagKeys,
+  tagExtendsLoop,
+  listTagParentCandidates,
   attachRollups,
   attachReverseRelations,
   attachTimestampColumns,

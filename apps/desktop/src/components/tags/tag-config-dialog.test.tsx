@@ -25,6 +25,7 @@ const definition = vi.hoisted(() => ({
     properties: [],
     template: null,
     icon: null,
+    parents: [],
   } as TagDefinitionState,
 }))
 const saveTagType = vi.hoisted(() => vi.fn(async () => {}))
@@ -44,6 +45,7 @@ const commitNoteFrontmatter = vi.hoisted(() => vi.fn(async () => {}))
 const tagTypesRows = vi.hoisted(() => ({
   current: [] as { tagKey: string; notePath: string }[],
 }))
+const parentCandidates = vi.hoisted(() => ({ current: [] as string[] }))
 const noteTagsRows = vi.hoisted(() => ({
   current: [] as { tag: string; count: number }[],
 }))
@@ -53,6 +55,7 @@ vi.mock('@reflect/core', async (importOriginal) => ({
   listNotesWithProperty: async () => propertyUses.current,
   listTemplates: async () => templates.current,
   listTagTypes: async () => tagTypesRows.current,
+  listTagParentCandidates: async () => parentCandidates.current,
   listNoteTags: async () => noteTagsRows.current,
 }))
 vi.mock('@/lib/note-frontmatter', () => ({ commitNoteFrontmatter }))
@@ -72,6 +75,7 @@ beforeEach(() => {
     properties: [],
     template: null,
     icon: null,
+    parents: [],
   }
   propertyUses.current = []
   templates.current = []
@@ -91,6 +95,7 @@ describe('TagConfigDialog', () => {
       properties: [{ name: 'Author', key: 'author', type: 'text' }],
       template: null,
       icon: null,
+      parents: [],
     }
     const onClose = vi.fn()
     const view = await render(<Dialog tag="Book" onClose={onClose} />)
@@ -112,9 +117,33 @@ describe('TagConfigDialog', () => {
       7,
       null,
       null,
+      [],
     )
     expect(invalidateQueries).toHaveBeenCalled()
     expect(onClose).toHaveBeenCalled()
+  })
+
+  it('picks a tag to build on and saves it as the definition’s parents', async () => {
+    parentCandidates.current = ['contact', 'person']
+    definition.current = {
+      path: 'tags/client.md',
+      exists: true,
+      needsConversion: false,
+      properties: [],
+      template: null,
+      icon: null,
+      parents: ['person'],
+    }
+    const view = await render(<Dialog tag="client" onClose={vi.fn()} />)
+
+    await expect.element(view.getByText('#person', { exact: true })).toBeInTheDocument()
+    await view.getByRole('combobox', { name: 'Tag #client builds on' }).click()
+    await view.getByRole('option', { name: '#contact' }).click()
+    await view.getByRole('button', { name: 'Stop building on #person' }).click()
+    await view.getByRole('button', { name: 'Save' }).click()
+
+    expect(saveTagType).toHaveBeenCalledWith('client', [], 7, null, null, ['contact'])
+    parentCandidates.current = []
   })
 
   it('types a relation at a target collection and saves it into the schema', async () => {
@@ -125,6 +154,7 @@ describe('TagConfigDialog', () => {
       properties: [{ name: 'Author', key: 'author', type: 'text' }],
       template: null,
       icon: null,
+      parents: [],
     }
     tagTypesRows.current = [
       { tagKey: 'person', notePath: 'tags/person.md' },
@@ -149,6 +179,7 @@ describe('TagConfigDialog', () => {
       7,
       null,
       null,
+      [],
     )
   })
 
@@ -160,6 +191,7 @@ describe('TagConfigDialog', () => {
       properties: [{ name: 'Topic', key: 'topic', type: 'relations' }],
       template: null,
       icon: null,
+      parents: [],
     }
     tagTypesRows.current = [{ tagKey: 'person', notePath: 'tags/person.md' }]
     noteTagsRows.current = [{ tag: 'topic', count: 3 }]
@@ -179,6 +211,7 @@ describe('TagConfigDialog', () => {
       properties: [],
       template: null,
       icon: null,
+      parents: [],
     }
     const view = await render(<Dialog tag="book" onClose={() => {}} />)
 
@@ -194,6 +227,7 @@ describe('TagConfigDialog', () => {
       properties: [{ name: 'Author', key: 'author', type: 'text' }],
       template: null,
       icon: null,
+      parents: [],
     }
     propertyUses.current = [
       {
@@ -221,6 +255,7 @@ describe('TagConfigDialog', () => {
       7,
       null,
       null,
+      [],
     )
     expect(commitNoteFrontmatter).toHaveBeenCalledWith(
       'notes/dune.md',
@@ -238,6 +273,7 @@ describe('TagConfigDialog', () => {
       properties: [{ name: 'Author', key: 'author', type: 'text' }],
       template: null,
       icon: null,
+      parents: [],
     }
     propertyUses.current = [
       {
@@ -289,6 +325,7 @@ describe('TagConfigDialog', () => {
       7,
       null,
       null,
+      [],
     )
   })
 
@@ -300,6 +337,7 @@ describe('TagConfigDialog', () => {
       properties: [{ name: 'Author', key: 'author', type: 'text' }],
       template: null,
       icon: null,
+      parents: [],
     }
     const view = await render(<Dialog tag="book" onClose={() => {}} />)
 
@@ -318,6 +356,7 @@ describe('TagConfigDialog', () => {
       properties: [{ name: 'Status', key: 'status', type: 'select', options: ['to-read', 'done'] }],
       template: null,
       icon: null,
+      parents: [],
     }
     const view = await render(<Dialog tag="book" onClose={() => {}} />)
 
@@ -333,6 +372,7 @@ describe('TagConfigDialog', () => {
       7,
       null,
       null,
+      [],
     )
   })
 
@@ -344,6 +384,7 @@ describe('TagConfigDialog', () => {
       properties: [{ name: 'Author', key: 'author', type: 'text' }],
       template: null,
       icon: null,
+      parents: [],
     }
     const view = await render(<Dialog tag="book" onClose={() => {}} />)
 
@@ -363,6 +404,7 @@ describe('TagConfigDialog', () => {
       properties: [{ name: 'Author', key: 'author', type: 'text' }],
       template: null,
       icon: null,
+      parents: [],
     }
     const view = await render(<Dialog tag="Book" onClose={() => {}} />)
 
@@ -378,6 +420,7 @@ describe('TagConfigDialog', () => {
       7,
       null,
       '📚',
+      [],
     )
   })
 
@@ -389,6 +432,7 @@ describe('TagConfigDialog', () => {
       properties: [],
       template: null,
       icon: '📚',
+      parents: [],
     }
     const view = await render(<Dialog tag="Book" onClose={() => {}} />)
 
@@ -401,7 +445,7 @@ describe('TagConfigDialog', () => {
     await view.getByRole('button', { name: 'Remove icon' }).click()
     await view.getByRole('button', { name: 'Save' }).click()
 
-    expect(saveTagType).toHaveBeenCalledWith('Book', [], 7, null, null)
+    expect(saveTagType).toHaveBeenCalledWith('Book', [], 7, null, null, [])
   })
 
   it('picks a symbol icon and stores it as an icon: reference', async () => {
@@ -412,6 +456,7 @@ describe('TagConfigDialog', () => {
       properties: [],
       template: null,
       icon: null,
+      parents: [],
     }
     const view = await render(<Dialog tag="Book" onClose={() => {}} />)
 
@@ -422,6 +467,6 @@ describe('TagConfigDialog', () => {
       .click()
     await view.getByRole('button', { name: 'Save' }).click()
 
-    expect(saveTagType).toHaveBeenCalledWith('Book', [], 7, null, 'icon:folder')
+    expect(saveTagType).toHaveBeenCalledWith('Book', [], 7, null, 'icon:folder', [])
   })
 })

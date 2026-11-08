@@ -8,12 +8,16 @@ const createNoteIfAbsent = vi.hoisted(() =>
   vi.fn<() => Promise<{ kind: 'created' | 'exists'; modifiedMs?: number }>>(),
 )
 const openSession = vi.hoisted(() => vi.fn(() => null))
+const tagExtendsLoop = vi.hoisted(() =>
+  vi.fn<(tag: string, parents: readonly string[]) => Promise<string | null>>(async () => null),
+)
 
 vi.mock('@reflect/core', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@reflect/core')>()),
   readNote,
   writeNote,
   createNoteIfAbsent,
+  tagExtendsLoop,
 }))
 vi.mock('@/editor/open-documents', () => ({ openSession }))
 
@@ -24,6 +28,7 @@ beforeEach(() => {
   writeNote.mockClear()
   createNoteIfAbsent.mockReset()
   openSession.mockReset().mockReturnValue(null)
+  tagExtendsLoop.mockClear()
 })
 
 describe('readTagDefinition', () => {
@@ -36,6 +41,7 @@ describe('readTagDefinition', () => {
       properties: [],
       template: null,
       icon: null,
+      parents: [],
     })
   })
 
@@ -181,5 +187,36 @@ describe('saveTagType', () => {
 
     const [, contents] = createNoteIfAbsent.mock.calls[0] as unknown as [string, string, number]
     expect(contents).toMatch(/icon: "?📚"?/)
+  })
+})
+
+describe('saveTagType parents (Plan 33 B2)', () => {
+  it('reads extends: from the definition', async () => {
+    readNote.mockResolvedValue('---\nlore: tag\nextends: [contact]\nproperties: []\n---\n')
+    expect(await readTagDefinition('client')).toMatchObject({ parents: ['contact'] })
+  })
+
+  it('writes extends: on a new definition when parents are given', async () => {
+    createNoteIfAbsent.mockResolvedValue({ kind: 'created' })
+    await saveTagType('client', [], 7, null, null, ['contact'])
+    const seed = (createNoteIfAbsent.mock.calls[0] as unknown as [string, string])[1]
+    expect(seed).toContain('extends:')
+    expect(seed).toContain('contact')
+  })
+
+  it('refuses parents that would close a loop, writing nothing', async () => {
+    tagExtendsLoop.mockResolvedValueOnce('client')
+    await expect(saveTagType('contact', [], 7, null, null, ['client'])).rejects.toThrow(
+      "#contact can't build on #client",
+    )
+    expect(createNoteIfAbsent).not.toHaveBeenCalled()
+  })
+
+  it('leaves extends: alone when parents are not given', async () => {
+    createNoteIfAbsent.mockResolvedValue({ kind: 'created' })
+    await saveTagType('client', [], 7)
+    expect(tagExtendsLoop).not.toHaveBeenCalled()
+    const seed = (createNoteIfAbsent.mock.calls[0] as unknown as [string, string])[1]
+    expect(seed).not.toContain('extends')
   })
 })

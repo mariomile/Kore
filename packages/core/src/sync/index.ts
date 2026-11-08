@@ -81,3 +81,16 @@ export {
   type SyncStatus,
 } from './engine'
 export { AGENT_TRAILER, agentDisplayName, agentSlug, commitAgentWrites } from './agent-commits'
+export {
+  SITTING_GAP_MS,
+  activityAuthor,
+  activityAuthorKey,
+  gitActivity,
+  groupSittings,
+  type ActivityAuthor,
+  type ActivityCommit,
+  type ActivityFile,
+  type ActivityPage,
+  type ActivitySitting,
+  type SittingNote,
+} from './activity'

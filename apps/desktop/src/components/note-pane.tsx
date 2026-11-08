@@ -47,6 +47,7 @@ import { BlockSwipeGestures } from '@/editor/block-swipe'
 import { CalloutHighlighter } from '@/editor/callout-highlighter'
 import { CollectionFenceGuard } from '@/editor/collection-fence-guard'
 import { LinkPreviewCards } from '@/editor/link-preview-cards'
+import { ListZoom } from '@/editor/list-zoom'
 import { EditorNoteProperties } from '@/editor/editor-note-properties'
 import { dailyConflictWritePath } from '@/hooks/use-daily-note-seed'
 import { useNoteRow } from '@/hooks/use-note-row'
@@ -554,6 +555,7 @@ export function NotePaneComponent({
         <EditorAiKeymap onTrigger={aiMenu.openMenu} />
         <CalloutHighlighter />
         <CollectionFenceGuard />
+        <ListZoom />
         {/* Fetching a link's preview reaches the linked host, so a private
             note previews nothing — and an unresolved row counts as private,
             the same fail-closed rule the AI menu applies. */}

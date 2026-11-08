@@ -1,4 +1,5 @@
 import { EDITOR_KEY_BINDINGS } from '@meowdown/core'
+import { LIST_ZOOM_IN_BINDING, LIST_ZOOM_OUT_BINDING } from './list-zoom-plugin'
 
 /**
  * The central keymap registry (Plan 05 step 9). Every shortcut the app binds —
@@ -70,6 +71,8 @@ export const AI_MENU_BINDING = 'Mod-Shift-j'
  */
 const REFLECT_EDITOR_BINDINGS: Record<string, string> = {
   [AI_MENU_BINDING]: 'Open the AI menu on the selection',
+  [LIST_ZOOM_IN_BINDING]: 'Zoom into the list item (or ⌘-click its bullet)',
+  [LIST_ZOOM_OUT_BINDING]: 'Zoom out of the list item',
 }
 
 export const EDITOR_BINDING_DESCRIPTIONS: Record<string, string> = registerKeymap('editor', {

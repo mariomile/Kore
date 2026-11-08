@@ -1,5 +1,24 @@
 # Kore working state
 
+## Plan 33 group C: outliner gestures without changing the format, 2026-11-08
+
+Ask (Mario, 2026-11-08, "fai tutti sti passi dai", then "ok vai" after the
+product walkthrough; plan in `docs/plans/33-trust-and-structure.md`, order
+C1, C3, C2; one step = one commit, Mario's ok before each next feature).
+
+- [x] C1 zoom into a list item (`apps/desktop/src/editor/list-zoom-plugin.ts`,
+  mounted by `list-zoom.tsx` in the note pane). ⌘-click a bullet or ⌘⇧. zooms,
+  ⌘⇧, or the breadcrumb goes back up. Decorations and selection clamping
+  only: the Markdown never changes, a plain bullet click still folds, Enter
+  at the end of the zoomed line opens a first child, keys that would carry
+  an edit out of the branch do nothing on that line. Verified:
+  `list-zoom.test.tsx` (chromium; tags inside the branch still open, the
+  file is byte-identical after zoom in/out), keymap collision test,
+  `pnpm typecheck`, eslint/oxfmt on touched files.
+- [ ] C3 `^id` line references: resolve, open at the line, transclude,
+  "copy link to line".
+- [ ] C2 move a branch to another note (`⌘⇧M`), updating `^id` links.
+
 ## Tasks like Todoist, slice 1: views and board, 2026-11-08
 
 Ask (Mario, 2026-11-08, "Miglioriamo la sezione task, deve riprendere come
@@ -3188,6 +3207,10 @@ screen: Agents then Close lands on today.
 **Next:** merge the Close fix, then bump.
 
 ## Session log
+
+- 2026-11-08 — Zoom into a list item (Plan 33 C1): ⌘-click a bullet or
+  ⌘⇧. shows only that branch with a breadcrumb back; view state only, the
+  note's Markdown never changes.
 
 - 2026-11-07 — A pasted article link keeps the article's text in its
   `#link` card, a YouTube link its transcript. One shared article extractor

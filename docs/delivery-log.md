@@ -7,6 +7,10 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Zoom into a list item: ⌘-click a bullet (or press ⌘⇧.) to see only that
+  item and its children, with a breadcrumb to go back up. The note's file
+  doesn't change.
+
 - Tasks work like Todoist: Inbox, Today, Upcoming and Projects views with
   counts (`g` then a letter switches), and a Board layout. Drag a card onto
   a day in Upcoming to reschedule it. Notes inside a project folder gather

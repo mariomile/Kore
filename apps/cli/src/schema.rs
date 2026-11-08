@@ -5,7 +5,9 @@
 //! (`typedValueForText`, `apps/desktop/src/components/tags/property-editor-shared.tsx`,
 //! and the per-type editors). View-only types are refused, never written.
 
-use rusqlite::{params, Connection};
+use std::collections::HashMap;
+
+use rusqlite::Connection;
 
 use crate::commands::warn;
 use crate::error::CliError;
@@ -27,11 +29,13 @@ pub struct SchemaProperty {
     pub options: Option<Vec<String>>,
 }
 
-/// A decoded tag type: its properties and the bound new-row template path.
+/// A decoded tag type: its properties, the bound new-row template path, and
+/// the tags it builds on (`extends:`, Plan 33 B2; folded keys).
 #[derive(Clone, Debug, Default)]
 pub struct TagSchema {
     pub properties: Vec<SchemaProperty>,
     pub template: Option<String>,
+    pub extends: Vec<String>,
 }
 
 /// The two on-disk forms of `tag_types.schema_json`, mirroring
@@ -45,6 +49,8 @@ enum SchemaJson {
         properties: Vec<SchemaProperty>,
         #[serde(default)]
         template: Option<String>,
+        #[serde(default)]
+        extends: Vec<String>,
     },
 }
 
@@ -55,32 +61,113 @@ pub fn decode_schema(schema_json: &str) -> TagSchema {
         Ok(SchemaJson::Properties(properties)) => TagSchema {
             properties,
             template: None,
+            extends: Vec::new(),
         },
         Ok(SchemaJson::Object {
             properties,
             template,
+            extends,
         }) => TagSchema {
             properties,
             template,
+            extends: extends.iter().map(|parent| fold_tag(parent)).collect(),
         },
         Err(_) => TagSchema::default(),
     }
 }
 
-/// The schema of one tag, or `None` when the tag has no type.
+/// The schema of one tag, or `None` when the tag has no type. Inherited
+/// fields are merged in the way the app merges them (`resolveTagTypes`,
+/// `packages/core/src/tags/tag-inheritance.ts`): the parents' fields first,
+/// then the tag's own, its own winning a key clash in the parent's slot.
 pub fn load_schema(conn: &Connection, tag: &str) -> Result<Option<TagSchema>, CliError> {
-    let schema_json: Option<String> = conn
-        .query_row(
-            "SELECT schema_json FROM tag_types WHERE tag_key = ?1",
-            params![fold_tag(tag)],
-            |row| row.get(0),
-        )
-        .map(Some)
-        .or_else(|err| match err {
-            rusqlite::Error::QueryReturnedNoRows => Ok(None),
-            other => Err(other),
-        })?;
-    Ok(schema_json.as_deref().map(decode_schema))
+    let key = fold_tag(tag);
+    let schemas = load_all_schemas(conn)?;
+    if !schemas.contains_key(&key) {
+        return Ok(None);
+    }
+    Ok(resolve_schema(&schemas, &key, &mut Vec::new()))
+}
+
+/// Every stored tag schema by folded key, as written (inheritance not yet
+/// applied). The table holds one row per definition note.
+pub fn load_all_schemas(conn: &Connection) -> Result<HashMap<String, TagSchema>, CliError> {
+    let mut statement = conn.prepare("SELECT tag_key, schema_json FROM tag_types")?;
+    let rows = statement
+        .query_map([], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(rows
+        .into_iter()
+        .map(|(key, schema_json)| (key, decode_schema(&schema_json)))
+        .collect())
+}
+
+/// One tag's effective schema; a parent already on `trail` closes a loop
+/// and is skipped, the way the app cuts it.
+fn resolve_schema(
+    schemas: &HashMap<String, TagSchema>,
+    key: &str,
+    trail: &mut Vec<String>,
+) -> Option<TagSchema> {
+    let own = schemas.get(key)?;
+    trail.push(key.to_string());
+    let mut inherited: Vec<SchemaProperty> = Vec::new();
+    for parent in &own.extends {
+        if trail.iter().any(|seen| seen == parent) {
+            continue;
+        }
+        let Some(parent_schema) = resolve_schema(schemas, parent, trail) else {
+            continue;
+        };
+        for property in parent_schema.properties {
+            if !inherited
+                .iter()
+                .any(|existing| existing.key == property.key)
+            {
+                inherited.push(property);
+            }
+        }
+    }
+    trail.pop();
+    let mut properties: Vec<SchemaProperty> = inherited
+        .into_iter()
+        .map(|property| own.property(&property.key).cloned().unwrap_or(property))
+        .collect();
+    for property in &own.properties {
+        if !properties
+            .iter()
+            .any(|existing| existing.key == property.key)
+        {
+            properties.push(property.clone());
+        }
+    }
+    Some(TagSchema {
+        properties,
+        template: own.template.clone(),
+        extends: own.extends.clone(),
+    })
+}
+
+/// Every tag that builds on `key`, directly or not, sorted, without `key`.
+/// A parent's collection lists these tags' notes too (Plan 33 B2).
+pub fn tag_descendants(schemas: &HashMap<String, TagSchema>, key: &str) -> Vec<String> {
+    let mut found: Vec<String> = Vec::new();
+    let mut queue = vec![key.to_string()];
+    while let Some(next) = queue.pop() {
+        for (child, schema) in schemas {
+            if child != key
+                && schema.extends.iter().any(|parent| parent == &next)
+                && !found.contains(child)
+            {
+                found.push(child.clone());
+                queue.push(child.clone());
+            }
+        }
+    }
+    found.sort();
+    found
 }
 
 /// The tags the index knows for a note, display-cased, one per key.
@@ -299,6 +386,47 @@ pub fn parse_assignments(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn typed(keys: &[&str], parents: &[&str]) -> TagSchema {
+        TagSchema {
+            properties: keys.iter().map(|key| property(key, "text")).collect(),
+            template: None,
+            extends: parents.iter().map(|parent| (*parent).to_string()).collect(),
+        }
+    }
+
+    fn keys_of(schema: &TagSchema) -> Vec<&str> {
+        schema
+            .properties
+            .iter()
+            .map(|property| property.key.as_str())
+            .collect()
+    }
+
+    #[test]
+    fn inherited_fields_come_first_and_loops_are_cut() {
+        let schemas = HashMap::from([
+            ("contact".to_string(), typed(&["email", "status"], &[])),
+            (
+                "client".to_string(),
+                typed(&["contract", "status"], &["contact"]),
+            ),
+            ("a".to_string(), typed(&["a"], &["b"])),
+            ("b".to_string(), typed(&["b"], &["a"])),
+        ]);
+        let client = resolve_schema(&schemas, "client", &mut Vec::new()).unwrap();
+        assert_eq!(keys_of(&client), ["email", "status", "contract"]);
+        let a = resolve_schema(&schemas, "a", &mut Vec::new()).unwrap();
+        assert_eq!(keys_of(&a), ["b", "a"]);
+        assert_eq!(tag_descendants(&schemas, "contact"), ["client"]);
+        assert_eq!(tag_descendants(&schemas, "a"), ["b"]);
+    }
+
+    #[test]
+    fn extends_is_decoded_folded() {
+        let schema = decode_schema(r#"{"properties":[],"extends":["Contact"]}"#);
+        assert_eq!(schema.extends, ["contact"]);
+    }
 
     fn property(key: &str, kind: &str) -> SchemaProperty {
         SchemaProperty {

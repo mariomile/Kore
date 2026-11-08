@@ -1279,6 +1279,95 @@ fn collection_lists_typed_tag_rows_with_properties() {
 }
 
 #[test]
+fn collection_merges_inherited_fields_and_lists_child_tag_rows() {
+    // Plan 33 B2: `#client` builds on `#contact`.
+    let fixture = graph();
+    fixture.write_note(
+        "people/ada.md",
+        "---\nemail: ada@x.io\n---\n# Ada\n#contact\n",
+    );
+    fixture.write_note(
+        "people/acme.md",
+        "---\nemail: hi@acme.io\ncontract: yearly\n---\n# Acme\n#client\n",
+    );
+    fixture.build_index();
+    let conn =
+        rusqlite::Connection::open(fixture.root().join(".reflect").join("index.sqlite")).unwrap();
+    for (path, tag) in [("people/ada.md", "contact"), ("people/acme.md", "client")] {
+        conn.execute(
+            "INSERT INTO tags(note_path, tag, tag_key) VALUES(?1, ?2, ?2)",
+            params![path, tag],
+        )
+        .unwrap();
+    }
+    for (tag, schema) in [
+        (
+            "contact",
+            r#"[{"name":"Email","key":"email","type":"text"}]"#,
+        ),
+        (
+            "client",
+            r#"{"properties":[{"name":"Contract","key":"contract","type":"text"}],"extends":["contact"]}"#,
+        ),
+    ] {
+        conn.execute(
+            "INSERT INTO notes(path, id, title, title_key, kind, is_private, is_pinned,
+                               file_hash, mtime, updated_at, preview)
+             VALUES(?1, ?2, ?3, ?3, 'tag', 0, 0, 'x', 0, 0, '')",
+            params![format!("tags/{tag}.md"), format!("tag-{tag}"), tag],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO tag_types(tag_key, note_path, schema_json) VALUES(?1, ?2, ?3)",
+            params![tag, format!("tags/{tag}.md"), schema],
+        )
+        .unwrap();
+    }
+    for (path, key, value) in [
+        ("people/ada.md", "email", "ada@x.io"),
+        ("people/acme.md", "email", "hi@acme.io"),
+        ("people/acme.md", "contract", "yearly"),
+    ] {
+        conn.execute(
+            "INSERT INTO note_properties(note_path, key, value, value_type, value_number)
+             VALUES(?1, ?2, ?3, 'string', NULL)",
+            params![path, key, value],
+        )
+        .unwrap();
+    }
+    drop(conn);
+
+    let client = json(&kore(&fixture, &["collection", "client", "--json"]));
+    let keys: Vec<&str> = client["schema"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|property| property["key"].as_str().unwrap())
+        .collect();
+    assert_eq!(keys, ["email", "contract"], "inherited first: {client}");
+
+    let contact = json(&kore(&fixture, &["collection", "contact", "--json"]));
+    let mut paths: Vec<&str> = contact["notes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|note| note["path"].as_str().unwrap())
+        .collect();
+    paths.sort_unstable();
+    assert_eq!(
+        paths,
+        ["people/acme.md", "people/ada.md"],
+        "child rows listed: {contact}"
+    );
+
+    let sorted = json(&kore(
+        &fixture,
+        &["collection", "contact", "--sort", "email", "--json"],
+    ));
+    assert_eq!(sorted["notes"][0]["path"], "people/ada.md");
+}
+
+#[test]
 fn collection_refuses_untyped_tags_and_requires_the_index() {
     let fixture = graph();
     fixture.write_note("notes/a.md", "# A\n#plain\n");

@@ -29,6 +29,7 @@
 //! refused, and `.reflect/` is added to `.git/info/exclude` (never to the
 //! vault's own `.gitignore`) so the index is never committed.
 
+use crate::agent_identity::AgentIdentity;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -70,12 +71,6 @@ const READS: &[&str] = &[
 const AUTHOR_NAME: &str = "Kore host";
 const AUTHOR_EMAIL: &str = "kore-host@localhost";
 
-/// Domain of the address a named agent's commits carry.
-const AGENT_EMAIL_DOMAIN: &str = "agents.kore";
-
-/// Trailer naming the agent on its commits, read by the app's activity log.
-pub const AGENT_TRAILER: &str = "Kore-Agent";
-
 /// Attempts at fetch → integrate → push before giving up until the next sync.
 const PUSH_ATTEMPTS: usize = 3;
 
@@ -85,9 +80,9 @@ pub struct Operation {
     pub args: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub stdin: Option<String>,
-    /// The named agent that asked for the write; `None` is the owner.
+    /// The agent that asked for the write; `None` is the owner.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub agent: Option<String>,
+    pub agent: Option<AgentIdentity>,
 }
 
 impl Operation {
@@ -405,12 +400,11 @@ impl<R: Runner> VaultSync<R> {
         }
         self.git.ok(&["add", "--all"])?;
         let message = format!("kore: {} (via MCP)", summary(operation));
-        match operation.agent.as_deref().map(str::trim) {
-            Some(agent) if !agent.is_empty() => {
-                let name = agent_display_name(agent);
-                let message = format!("{message}\n\n{AGENT_TRAILER}: {name}");
-                let user = format!("user.name={name}");
-                let email = format!("user.email={}@{AGENT_EMAIL_DOMAIN}", agent_slug(agent));
+        match &operation.agent {
+            Some(agent) => {
+                let message = format!("{message}\n\n{}", agent.trailer());
+                let user = format!("user.name={}", agent.name);
+                let email = format!("user.email={}", agent.email);
                 self.git.ok(&[
                     "-c",
                     &user,
@@ -423,7 +417,7 @@ impl<R: Runner> VaultSync<R> {
                     &message,
                 ])?;
             }
-            _ => {
+            None => {
                 self.git
                     .ok(&["commit", "--quiet", "--no-verify", "-m", &message])?;
             }
@@ -489,14 +483,25 @@ impl<R: Runner> VaultSync<R> {
 
 impl<R: Runner> Runner for VaultSync<R> {
     fn run(&self, args: &[String], stdin: Option<&str>) -> RunOutput {
-        self.run_as(args, stdin, None)
+        self.run_operation(args, stdin, None)
     }
 
-    fn run_as(&self, args: &[String], stdin: Option<&str>, agent: Option<&str>) -> RunOutput {
+    fn run_as(&self, args: &[String], stdin: Option<&str>, agent: &AgentIdentity) -> RunOutput {
+        self.run_operation(args, stdin, Some(agent.clone()))
+    }
+}
+
+impl<R: Runner> VaultSync<R> {
+    fn run_operation(
+        &self,
+        args: &[String],
+        stdin: Option<&str>,
+        agent: Option<AgentIdentity>,
+    ) -> RunOutput {
         let operation = Operation {
             args: args.to_vec(),
             stdin: stdin.map(str::to_string),
-            agent: agent.map(str::to_string),
+            agent,
         };
         if operation.is_read() {
             let _tree = self.tree.read().unwrap_or_else(|err| err.into_inner());
@@ -514,7 +519,7 @@ impl Runner for AnyRunner {
         self.as_ref().run(args, stdin)
     }
 
-    fn run_as(&self, args: &[String], stdin: Option<&str>, agent: Option<&str>) -> RunOutput {
+    fn run_as(&self, args: &[String], stdin: Option<&str>, agent: &AgentIdentity) -> RunOutput {
         self.as_ref().run_as(args, stdin, agent)
     }
 }
@@ -524,7 +529,7 @@ impl<R: Runner> Runner for std::sync::Arc<VaultSync<R>> {
         self.as_ref().run(args, stdin)
     }
 
-    fn run_as(&self, args: &[String], stdin: Option<&str>, agent: Option<&str>) -> RunOutput {
+    fn run_as(&self, args: &[String], stdin: Option<&str>, agent: &AgentIdentity) -> RunOutput {
         self.as_ref().run_as(args, stdin, agent)
     }
 }
@@ -559,43 +564,6 @@ fn exclude_index(git: &Git, git_dir: &Path) -> Result<(), CliError> {
 
 /// The commit subject for one operation: the subcommand and its first
 /// argument, never the stdin body.
-/// The agent's name as a git author: one line, none of the characters git
-/// reserves for the address.
-fn agent_display_name(agent: &str) -> String {
-    agent
-        .chars()
-        .map(|ch| {
-            if ch.is_control() || "<>".contains(ch) {
-                ' '
-            } else {
-                ch
-            }
-        })
-        .collect::<String>()
-        .split_whitespace()
-        .collect::<Vec<_>>()
-        .join(" ")
-}
-
-/// The local part of the agent's commit address: lowercase ASCII letters,
-/// digits and dashes.
-fn agent_slug(agent: &str) -> String {
-    let slug = agent
-        .to_lowercase()
-        .chars()
-        .map(|ch| if ch.is_ascii_alphanumeric() { ch } else { '-' })
-        .collect::<String>()
-        .split('-')
-        .filter(|part| !part.is_empty())
-        .collect::<Vec<_>>()
-        .join("-");
-    if slug.is_empty() {
-        "agent".to_string()
-    } else {
-        slug
-    }
-}
-
 fn summary(operation: &Operation) -> String {
     let mut words: Vec<&str> = operation.args.iter().map(String::as_str).collect();
     words.retain(|word| *word != "--");
@@ -831,7 +799,10 @@ mod tests {
         let sync = open(&fixture.host);
         git(&fixture.host, &["remote", "set-url", "origin", "/nowhere"]);
         let write = args(&["capture", "from grok", "--to", "daily/2026-11-04.md"]);
-        assert!(sync.run_as(&write, None, Some("Grok <bot>")).success);
+        assert!(
+            sync.run_as(&write, None, &AgentIdentity::for_caller(Some("Grok <bot>")))
+                .success
+        );
         mac_capture(&fixture, "- later on the mac");
         git(
             &fixture.host,

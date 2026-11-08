@@ -20,7 +20,7 @@ fn commit_paths_commits_only_the_agents_notes_under_its_name() {
     write(
         root,
         ".reflect/agent-writes.jsonl",
-        "{\"at\":1,\"agent\":\"Grok\",\"path\":\"notes/a.md\"}\nnot json\n",
+        "{\"at\":1,\"agent\":\"Grok\",\"email\":\"grok@agents.kore\",\"path\":\"notes/a.md\"}\nnot json\n",
     );
 
     let journal = agent_writes::read(root).unwrap();

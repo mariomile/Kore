@@ -15,10 +15,12 @@ step = one commit, pushed, so a bad step is reverted alone.
   stay `Kore host`.
 - [x] Step 2, local agents are journaled: `ProcessRunner` passes
   `KORE_AGENT`/`KORE_AGENT_GRAPH` to the child, and every `atomic_write`/
-  `atomic_create` appends `{at, agent, path}` to
+  `atomic_create` appends `{at, agent, email, path}` to
   `.reflect/agent-writes.jsonl`. The app's backup cycle first commits each
   agent's journaled notes under its name (`git_commit_paths`), then
-  everything else as before. Known limit: an owner edit to the same note
+  everything else as before. Name, address and trailer are decided once,
+  in `apps/cli/src/agent_identity.rs`; a caller without its own key is the
+  `MCP` agent on both paths, never the owner. Known limit: an owner edit to the same note
   before the backup lands in the agent's commit (file-level, not line-level).
 - [x] Step 3, `git_activity`: paged first-parent log with author, time,
   trailers and changed files.

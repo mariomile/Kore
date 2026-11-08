@@ -11,45 +11,31 @@ import { gitAgentWrites, gitAgentWritesClear, gitCommitPaths, type AgentWrite } 
  * agent's commit with both edits: the journal names files, not lines.
  */
 
-/** Trailer naming the agent on its commits (shared with the `kore` CLI). */
+/** Trailer naming the agent on its commits (`TRAILER` in the CLI's `agent_identity.rs`). */
 export const AGENT_TRAILER = 'Kore-Agent'
 
-/** Domain of the address on an agent's commits (shared with the `kore` CLI). */
-const AGENT_EMAIL_DOMAIN = 'agents.kore'
-
-/** The agent's name as a git author: one line, no address delimiters. */
-export function agentDisplayName(agent: string): string {
-  return agent
-    .replaceAll(/[\p{Cc}<>]/gu, ' ')
-    .split(/\s+/u)
-    .filter((word) => word.length > 0)
-    .join(' ')
+/** One agent's distinct paths. */
+export interface AgentWriteGroup {
+  readonly name: string
+  readonly email: string
+  readonly paths: string[]
 }
 
-/** Lowercase ASCII letters, digits and dashes: the commit address's local part. */
-export function agentSlug(agent: string): string {
-  const slug = agent
-    .toLowerCase()
-    .replaceAll(/[^a-z0-9]+/gu, '-')
-    .replaceAll(/^-+|-+$/gu, '')
-  return slug.length > 0 ? slug : 'agent'
-}
-
-/** Each agent's distinct paths, agents in the order they first wrote. */
-export function groupAgentWrites(writes: readonly AgentWrite[]): Map<string, string[]> {
-  const groups = new Map<string, string[]>()
+/**
+ * Each agent's distinct paths, agents in the order they first wrote. The
+ * CLI already resolved each agent's name and address (`agent_identity.rs`),
+ * so this only groups.
+ */
+export function groupAgentWrites(writes: readonly AgentWrite[]): AgentWriteGroup[] {
+  const groups = new Map<string, AgentWriteGroup>()
   for (const write of writes) {
-    const name = agentDisplayName(write.agent)
-    if (name.length === 0) {
-      continue
+    const group = groups.get(write.email) ?? { name: write.agent, email: write.email, paths: [] }
+    if (!group.paths.includes(write.path)) {
+      group.paths.push(write.path)
     }
-    const paths = groups.get(name) ?? []
-    if (!paths.includes(write.path)) {
-      paths.push(write.path)
-    }
-    groups.set(name, paths)
+    groups.set(write.email, group)
   }
-  return groups
+  return [...groups.values()]
 }
 
 /**
@@ -70,14 +56,10 @@ export async function commitAgentWrites(generation: number): Promise<boolean> {
   }
   let committed = false
   try {
-    for (const [name, paths] of groupAgentWrites(journal.writes)) {
+    for (const { name, email, paths } of groupAgentWrites(journal.writes)) {
       const outcome = await gitCommitPaths(
         paths,
-        {
-          name,
-          email: `${agentSlug(name)}@${AGENT_EMAIL_DOMAIN}`,
-          trailer: `${AGENT_TRAILER}: ${name}`,
-        },
+        { name, email, trailer: `${AGENT_TRAILER}: ${name}` },
         'Update notes',
         generation,
       )

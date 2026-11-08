@@ -17,9 +17,9 @@ describe('commitAgentWrites', () => {
         if (command === 'git_agent_writes') {
           return {
             writes: [
-              { at: 1, agent: 'Grok', path: 'daily/2026-11-08.md' },
-              { at: 2, agent: 'Claude Code', path: 'notes/a.md' },
-              { at: 3, agent: 'Grok', path: 'daily/2026-11-08.md' },
+              { at: 1, agent: 'Grok', email: 'grok@agents.kore', path: 'daily/2026-11-08.md' },
+              { at: 2, agent: 'Claude Code', email: 'claude-code@agents.kore', path: 'notes/a.md' },
+              { at: 3, agent: 'Grok', email: 'grok@agents.kore', path: 'daily/2026-11-08.md' },
             ],
             lines: 4,
           }
@@ -56,7 +56,10 @@ describe('commitAgentWrites', () => {
       invoke: async (command) => {
         commands.push(command)
         if (command === 'git_agent_writes') {
-          return { writes: [{ at: 1, agent: 'Grok', path: 'notes/a.md' }], lines: 1 }
+          return {
+            writes: [{ at: 1, agent: 'Grok', email: 'grok@agents.kore', path: 'notes/a.md' }],
+            lines: 1,
+          }
         }
         throw new Error('repository locked')
       },

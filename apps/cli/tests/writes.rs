@@ -424,6 +424,7 @@ fn a_write_for_an_agent_is_journaled_and_a_plain_write_is_not() {
         .current_dir(fixture.root())
         .env_remove("KORE_GRAPH")
         .env("KORE_AGENT", "Grok")
+        .env("KORE_AGENT_EMAIL", "grok@agents.kore")
         .env("KORE_AGENT_GRAPH", fixture.root())
         .output()
         .unwrap();
@@ -431,6 +432,7 @@ fn a_write_for_an_agent_is_journaled_and_a_plain_write_is_not() {
     let line: serde_json::Value =
         serde_json::from_str(fs::read_to_string(&journal).unwrap().trim()).unwrap();
     assert_eq!(line["agent"], "Grok");
+    assert_eq!(line["email"], "grok@agents.kore");
     assert_eq!(line["path"], "daily/2026-06-11.md");
     assert!(line["at"].as_u64().unwrap() > 0);
 }

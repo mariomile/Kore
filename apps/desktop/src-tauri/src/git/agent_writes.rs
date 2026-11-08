@@ -20,7 +20,9 @@ const JOURNAL: &str = ".reflect/agent-writes.jsonl";
 pub struct AgentWrite {
     /// Milliseconds since the Unix epoch.
     pub at: u64,
+    /// The agent's name and commit address, as `kore mcp` resolved them.
     pub agent: String,
+    pub email: String,
     /// Graph-relative path the agent wrote.
     pub path: String,
 }

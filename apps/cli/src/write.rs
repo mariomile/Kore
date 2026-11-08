@@ -72,12 +72,11 @@ pub fn atomic_create(path: &Path, contents: &str) -> Result<(), CreateError> {
 /// agent the write is made for.
 pub const AGENT_ENV: &str = "KORE_AGENT";
 
+/// Set alongside [`AGENT_ENV`]: the agent's commit address.
+pub const AGENT_EMAIL_ENV: &str = "KORE_AGENT_EMAIL";
+
 /// Set alongside [`AGENT_ENV`]: the graph root the journal lives in.
 pub const AGENT_GRAPH_ENV: &str = "KORE_AGENT_GRAPH";
-
-/// The name recorded for a tool call from a caller without its own key
-/// (the local stdio client, or the HTTP server's own secret).
-pub const UNNAMED_AGENT: &str = "MCP";
 
 /// The graph-relative journal of notes agents wrote, which the app reads to
 /// commit each agent's writes under its own name.
@@ -87,10 +86,8 @@ pub const AGENT_JOURNAL: &str = ".reflect/agent-writes.jsonl";
 /// for an agent. Best effort: the note is already written, and a missing
 /// journal line only means the write is attributed to the owner.
 fn record_agent_write(path: &Path) {
-    let Some(agent) = std::env::var(AGENT_ENV)
-        .ok()
-        .filter(|agent| !agent.trim().is_empty())
-    else {
+    // Both are set by `kore mcp` from one `AgentIdentity`, already cleaned.
+    let (Ok(agent), Ok(email)) = (std::env::var(AGENT_ENV), std::env::var(AGENT_EMAIL_ENV)) else {
         return;
     };
     let Some((root, rel_path)) = graph_relative(path) else {
@@ -100,7 +97,7 @@ fn record_agent_write(path: &Path) {
         .duration_since(UNIX_EPOCH)
         .map(|elapsed| elapsed.as_millis())
         .unwrap_or_default();
-    let line = serde_json::json!({ "at": at, "agent": agent.trim(), "path": rel_path });
+    let line = serde_json::json!({ "at": at, "agent": agent, "email": email, "path": rel_path });
     let journal = root.join(AGENT_JOURNAL);
     let appended = journal
         .parent()

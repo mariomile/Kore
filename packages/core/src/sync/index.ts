@@ -80,7 +80,7 @@ export {
   type SyncErrorKind,
   type SyncStatus,
 } from './engine'
-export { AGENT_TRAILER, agentDisplayName, agentSlug, commitAgentWrites } from './agent-commits'
+export { AGENT_TRAILER, commitAgentWrites } from './agent-commits'
 export {
   SITTING_GAP_MS,
   activityAuthor,

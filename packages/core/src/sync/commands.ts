@@ -126,7 +126,9 @@ export async function gitCommitAll(
 export const agentWriteSchema = z.object({
   /** Epoch milliseconds. */
   at: z.number(),
+  /** The agent's name and commit address, as `kore mcp` resolved them. */
   agent: z.string(),
+  email: z.string(),
   /** Graph-relative path. */
   path: z.string(),
 })

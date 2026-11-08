@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react'
 import type { GraphInfo } from '@reflect/core'
 import { revealItemInDir } from '@tauri-apps/plugin-opener'
-import { Chart, Check, FolderOpen, Locate, Settings } from '@/components/icons'
+import { Chart, Check, FolderOpen, History, Locate, Settings } from '@/components/icons'
 import { GraphSwatch } from '@/components/graph-swatch'
 import { ShortcutKeys } from '@/components/shortcut-keys'
 import { SidebarIconSlot } from '@/components/sidebar/sidebar-icon-slot'
@@ -169,6 +169,13 @@ export function GraphFooter({ graph, context }: GraphFooterProps): ReactElement 
             {INSIGHTS_BINDING !== null ? (
               <ShortcutKeys binding={INSIGHTS_BINDING} className="text-[10px]" />
             ) : null}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => void runCommand('nav.activity', context)}
+            className={MENU_ITEM_CLASS}
+          >
+            <History aria-hidden className="size-3.5 shrink-0" />
+            <span className="min-w-0 flex-1 truncate">Activity</span>
           </DropdownMenuItem>
           <DropdownMenuSub>
             <DropdownMenuSubTrigger className={MENU_ITEM_CLASS}>

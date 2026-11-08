@@ -39,7 +39,7 @@ describe('groupSittings', () => {
     ])
     const grok = sittings[1]!
     expect(grok.author).toEqual({ kind: 'agent', name: 'Grok' })
-    expect(grok.notes).toEqual([{ path: 'notes/a.md', kind: 'added' }])
+    expect(grok.notes).toEqual([{ path: 'notes/a.md', kind: 'added', commit: 'd' }])
     expect([grok.startMs, grok.endMs]).toEqual([80 * MINUTE, 90 * MINUTE])
   })
 })

@@ -71,6 +71,8 @@ export function activityAuthorKey(author: ActivityAuthor): string {
 export interface SittingNote {
   readonly path: string
   readonly kind: ActivityFile['kind']
+  /** The newest commit in the sitting that touched the note. */
+  readonly commit: string
 }
 
 /** One author's run of consecutive commits. */
@@ -124,9 +126,9 @@ export function groupSittings(
     for (const file of commit.files) {
       const index = notes.findIndex((note) => note.path === file.path)
       if (index === -1) {
-        notes.push({ path: file.path, kind: file.kind })
+        notes.push({ path: file.path, kind: file.kind, commit: commit.commit })
       } else if (file.kind === 'added' && notes[index]!.kind !== 'deleted') {
-        notes[index] = { path: file.path, kind: 'added' }
+        notes[index] = { ...notes[index]!, kind: 'added' }
       }
     }
     current.sitting = {

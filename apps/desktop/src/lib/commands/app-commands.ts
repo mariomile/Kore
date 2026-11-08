@@ -173,6 +173,12 @@ const APP_COMMANDS: AppCommand[] = [
     run: (context) => context.navigate({ kind: 'insights' }),
   },
   {
+    id: 'nav.activity',
+    title: 'Activity',
+    keywords: ['agents', 'history', 'changes', 'log', 'undo', 'who', 'edits'],
+    run: (context) => context.navigate({ kind: 'activity' }),
+  },
+  {
     id: 'nav.bases',
     title: 'Bases',
     keywords: ['base', 'obsidian', 'views', 'dashboard', 'database', 'table', 'kanban'],

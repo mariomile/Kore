@@ -73,6 +73,14 @@ pub trait Runner {
     /// `args` start at the subcommand name; `--graph` and `--json` are the
     /// runner's business. `stdin` is piped to the child when present.
     fn run(&self, args: &[String], stdin: Option<&str>) -> RunOutput;
+
+    /// Run on behalf of a named agent, so a runner that records writes can
+    /// sign them with that name. `None` is the vault's owner. Runners that
+    /// do not record anything just run.
+    fn run_as(&self, args: &[String], stdin: Option<&str>, agent: Option<&str>) -> RunOutput {
+        let _ = agent;
+        self.run(args, stdin)
+    }
 }
 
 /// Spawns this binary against one graph.
@@ -1198,9 +1206,11 @@ impl<R: Runner> Server<R> {
             Ok(invocation) => invocation,
             Err(message) => return Ok(tool_text(message, true)),
         };
-        let output = self
-            .runner
-            .run(&invocation.args, invocation.stdin.as_deref());
+        let output = self.runner.run_as(
+            &invocation.args,
+            invocation.stdin.as_deref(),
+            caller.name.as_deref(),
+        );
         Ok(tool_text(output.text, !output.success))
     }
 

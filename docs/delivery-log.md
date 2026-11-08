@@ -7,6 +7,12 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Activity shows everything that changed in your vault, grouped by who did
+  it: you, the always-on host, or each agent by name (Claude, Grok, any
+  `kore mcp` key). Open a note at the change, filter by agent, and undo one
+  agent's whole sitting in two clicks; edits made since are kept, and when
+  they would be lost nothing is undone and the notes are named.
+
 - Paste an article link and its card keeps the article's text; paste a
   YouTube link and it keeps the transcript. Search and agents find the
   words, and they stay even if the page goes away. Links pasted in private

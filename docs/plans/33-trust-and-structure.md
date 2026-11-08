@@ -1,7 +1,7 @@
 # Plan 33 — Trust and structure (ideas taken from Fennick)
 
-> **Status (2026-11-08):** plan written; A1 step 1 in progress on
-> `claude/project-thread-xdktwu`. Italian analysis for Mario:
+> **Status (2026-11-08):** A1 (steps 1-7) done on
+> `claude/project-thread-xdktwu`, PR #343; the other slices wait for Mario's go. Italian analysis for Mario:
 > `/mnt/project-files/analisi/fennick.md` (project files).
 
 ## Why

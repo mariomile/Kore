@@ -5,6 +5,7 @@ import {
   noteFileStem,
   undoSitting,
   type ActivitySitting,
+  type UndoConflictReason,
   type UndoSittingResult,
 } from '@reflect/core'
 import { Button } from '@/components/ui/button'
@@ -27,7 +28,7 @@ interface UndoSittingDialogProps {
   onClose: () => void
 }
 
-const REASON: Record<string, string> = {
+const REASON: Record<UndoConflictReason, string> = {
   changedSince: 'edited again since',
   binary: 'not a text file',
   notANote: 'not a note',

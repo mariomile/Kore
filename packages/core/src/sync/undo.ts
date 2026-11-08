@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { deleteNote, writeNote } from '../graph/commands'
+import { deleteNote, readNote, writeNote } from '../graph/commands'
 import { isDaily } from '../graph/paths'
 import { call } from '../ipc/invoke'
 import type { ActivitySitting } from './activity'
@@ -46,7 +46,8 @@ export interface UndoSittingOptions {
 /**
  * Undo `sitting`. The current state is committed first, so the undo is
  * itself a change in the log that can be undone; the undo is then one
- * commit by the owner. Daily notes the sitting created are emptied, not
+ * commit by the owner. If a write fails, the notes already written are put
+ * back as they were and the error is rethrown. Daily notes the sitting created are emptied, not
  * removed, since daily notes are never deleted.
  */
 export async function undoSitting(
@@ -74,14 +75,31 @@ export async function undoSitting(
     return { kind: 'nothing' }
   }
   const remove = options.remove ?? deleteNote
-  for (const file of preview.files) {
-    if (file.content !== null) {
-      await writeNote(file.path, file.content, generation)
-    } else if (isDaily(file.path)) {
-      await writeNote(file.path, '', generation)
+  const put = async (path: string, content: string | null): Promise<void> => {
+    if (content !== null) {
+      await writeNote(path, content, generation)
+    } else if (isDaily(path)) {
+      await writeNote(path, '', generation)
     } else {
-      await remove(file.path, generation)
+      await remove(path, generation)
     }
+  }
+  // What is on disk now, so a write that fails halfway can be rolled back
+  // and the undo stays all or nothing.
+  const originals = await Promise.all(
+    preview.files.map((file) => readNote(file.path, generation).catch(() => null)),
+  )
+  const applied: number[] = []
+  try {
+    for (const [index, file] of preview.files.entries()) {
+      await put(file.path, file.content)
+      applied.push(index)
+    }
+  } catch (error: unknown) {
+    for (const index of applied.toReversed()) {
+      await put(preview.files[index]!.path, originals[index] ?? null).catch(() => {})
+    }
+    throw error
   }
   await gitCommitAll('Undo changes', generation)
   return { kind: 'undone', notes: preview.files.map((file) => file.path) }

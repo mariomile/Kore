@@ -100,44 +100,48 @@ export function groupSittings(
   commits: readonly ActivityCommit[],
   gapMs: number = SITTING_GAP_MS,
 ): ActivitySitting[] {
-  const sittings: ActivitySitting[] = []
-  let current: { sitting: ActivitySitting; key: string } | null = null
+  return runsOf(commits, gapMs).map(toSitting)
+}
+
+/** Split the log into runs: same author, each commit within `gapMs` of the next. */
+function runsOf(commits: readonly ActivityCommit[], gapMs: number): ActivityCommit[][] {
+  const runs: ActivityCommit[][] = []
   for (const commit of commits) {
-    const author = activityAuthor(commit)
-    const key = activityAuthorKey(author)
+    const run = runs.at(-1)
+    const previous = run?.at(-1)
     const joins =
-      current !== null && current.key === key && current.sitting.startMs - commit.timeMs <= gapMs
-    if (current === null || !joins) {
-      current = {
-        key,
-        sitting: {
-          id: commit.commit,
-          author,
-          startMs: commit.timeMs,
-          endMs: commit.timeMs,
-          commits: [],
-          notes: [],
-        },
-      }
-      sittings.push(current.sitting)
+      previous !== undefined &&
+      activityAuthorKey(activityAuthor(previous)) === activityAuthorKey(activityAuthor(commit)) &&
+      previous.timeMs - commit.timeMs <= gapMs
+    if (joins) {
+      run!.push(commit)
+    } else {
+      runs.push([commit])
     }
-    const previous = current.sitting
-    const notes = [...previous.notes]
-    for (const file of commit.files) {
-      const index = notes.findIndex((note) => note.path === file.path)
-      if (index === -1) {
-        notes.push({ path: file.path, kind: file.kind, commit: commit.commit })
-      } else if (file.kind === 'added' && notes[index]!.kind !== 'deleted') {
-        notes[index] = { ...notes[index]!, kind: 'added' }
-      }
-    }
-    current.sitting = {
-      ...previous,
-      startMs: commit.timeMs,
-      commits: [...previous.commits, commit.commit],
-      notes,
-    }
-    sittings[sittings.length - 1] = current.sitting
   }
-  return sittings
+  return runs
+}
+
+/** One run as a sitting: commits newest first, each note once. */
+function toSitting(run: readonly ActivityCommit[]): ActivitySitting {
+  const newest = run[0]!
+  const notes = new Map<string, SittingNote>()
+  for (const commit of run) {
+    for (const file of commit.files) {
+      const seen = notes.get(file.path)
+      if (seen === undefined) {
+        notes.set(file.path, { path: file.path, kind: file.kind, commit: commit.commit })
+      } else if (file.kind === 'added' && seen.kind !== 'deleted') {
+        notes.set(file.path, { ...seen, kind: 'added' })
+      }
+    }
+  }
+  return {
+    id: newest.commit,
+    author: activityAuthor(newest),
+    startMs: run.at(-1)!.timeMs,
+    endMs: newest.timeMs,
+    commits: run.map((commit) => commit.commit),
+    notes: [...notes.values()],
+  }
 }

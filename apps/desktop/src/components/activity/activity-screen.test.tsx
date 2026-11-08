@@ -105,7 +105,7 @@ describe('ActivityScreen', () => {
   it('points at backup settings when there is no history to read', async () => {
     gitActivity.mockRejectedValue(new Error('no repository'))
     const view = await renderScreen()
-    await expect.element(view.getByRole('status')).toBeVisible()
+    await expect.element(view.getByText(/read from the vault’s backup history/)).toBeVisible()
     await view.getByRole('button', { name: 'Open backup settings' }).click()
     await expect
       .element(view.getByTestId('route'))

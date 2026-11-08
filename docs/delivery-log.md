@@ -11,6 +11,12 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
   list item with its children, that heading's section, or that paragraph,
   with a breadcrumb to go back up. The note's file doesn't change.
 
+- Activity shows everything that changed in your vault, grouped by who did
+  it: you, the always-on host, or each agent by name (Claude, Grok, any
+  `kore mcp` key). Open a note at the change, filter by agent, and undo one
+  agent's whole sitting in two clicks; edits made since are kept, and when
+  they would be lost nothing is undone and the notes are named.
+
 - Tasks work like Todoist: Inbox, Today, Upcoming and Projects views with
   counts (`g` then a letter switches), and a Board layout. Drag a card onto
   a day in Upcoming to reschedule it. Notes inside a project folder gather

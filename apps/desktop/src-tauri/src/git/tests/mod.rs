@@ -970,3 +970,5 @@ fn diverging_renames_keep_both_files_and_never_wedge() {
     assert!(read(root_a, "notes/title-b.md").contains("Title B"));
     assert!(push(root_a, None).unwrap().pushed);
 }
+
+mod agents;

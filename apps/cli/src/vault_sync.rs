@@ -29,6 +29,7 @@
 //! refused, and `.reflect/` is added to `.git/info/exclude` (never to the
 //! vault's own `.gitignore`) so the index is never committed.
 
+use crate::agent_identity::AgentIdentity;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -79,6 +80,9 @@ pub struct Operation {
     pub args: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub stdin: Option<String>,
+    /// The agent that asked for the write; `None` is the owner.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub agent: Option<AgentIdentity>,
 }
 
 impl Operation {
@@ -396,8 +400,28 @@ impl<R: Runner> VaultSync<R> {
         }
         self.git.ok(&["add", "--all"])?;
         let message = format!("kore: {} (via MCP)", summary(operation));
-        self.git
-            .ok(&["commit", "--quiet", "--no-verify", "-m", &message])?;
+        match &operation.agent {
+            Some(agent) => {
+                let message = format!("{message}\n\n{}", agent.trailer());
+                let user = format!("user.name={}", agent.name);
+                let email = format!("user.email={}", agent.email);
+                self.git.ok(&[
+                    "-c",
+                    &user,
+                    "-c",
+                    &email,
+                    "commit",
+                    "--quiet",
+                    "--no-verify",
+                    "-m",
+                    &message,
+                ])?;
+            }
+            None => {
+                self.git
+                    .ok(&["commit", "--quiet", "--no-verify", "-m", &message])?;
+            }
+        }
         Ok(true)
     }
 
@@ -420,6 +444,7 @@ impl<R: Runner> VaultSync<R> {
                 eprintln!("kore sync: {err}");
             }
         }
+        // The host signs the commit itself, so its child keeps no journal.
         let output = self.inner.run(&operation.args, operation.stdin.as_deref());
         if !output.success {
             return output;
@@ -458,9 +483,25 @@ impl<R: Runner> VaultSync<R> {
 
 impl<R: Runner> Runner for VaultSync<R> {
     fn run(&self, args: &[String], stdin: Option<&str>) -> RunOutput {
+        self.run_operation(args, stdin, None)
+    }
+
+    fn run_as(&self, args: &[String], stdin: Option<&str>, agent: &AgentIdentity) -> RunOutput {
+        self.run_operation(args, stdin, Some(agent.clone()))
+    }
+}
+
+impl<R: Runner> VaultSync<R> {
+    fn run_operation(
+        &self,
+        args: &[String],
+        stdin: Option<&str>,
+        agent: Option<AgentIdentity>,
+    ) -> RunOutput {
         let operation = Operation {
             args: args.to_vec(),
             stdin: stdin.map(str::to_string),
+            agent,
         };
         if operation.is_read() {
             let _tree = self.tree.read().unwrap_or_else(|err| err.into_inner());
@@ -477,11 +518,19 @@ impl Runner for AnyRunner {
     fn run(&self, args: &[String], stdin: Option<&str>) -> RunOutput {
         self.as_ref().run(args, stdin)
     }
+
+    fn run_as(&self, args: &[String], stdin: Option<&str>, agent: &AgentIdentity) -> RunOutput {
+        self.as_ref().run_as(args, stdin, agent)
+    }
 }
 
 impl<R: Runner> Runner for std::sync::Arc<VaultSync<R>> {
     fn run(&self, args: &[String], stdin: Option<&str>) -> RunOutput {
         self.as_ref().run(args, stdin)
+    }
+
+    fn run_as(&self, args: &[String], stdin: Option<&str>, agent: &AgentIdentity) -> RunOutput {
+        self.as_ref().run_as(args, stdin, agent)
     }
 }
 
@@ -742,6 +791,37 @@ mod tests {
         );
         assert!(!body.contains("<<<<<<<"));
         assert!(sync.journal.lock().unwrap().operations.is_empty());
+    }
+
+    #[test]
+    fn a_named_agents_write_is_signed_with_its_name_even_after_a_replay() {
+        let fixture = fixture();
+        let sync = open(&fixture.host);
+        git(&fixture.host, &["remote", "set-url", "origin", "/nowhere"]);
+        let write = args(&["capture", "from grok", "--to", "daily/2026-11-04.md"]);
+        assert!(
+            sync.run_as(&write, None, &AgentIdentity::for_caller(Some("Grok <bot>")))
+                .success
+        );
+        mac_capture(&fixture, "- later on the mac");
+        git(
+            &fixture.host,
+            &[
+                "remote",
+                "set-url",
+                "origin",
+                fixture.remote.to_str().unwrap(),
+            ],
+        );
+
+        let report = sync.sync().unwrap();
+        assert_eq!(report.replayed, 1);
+        mac_pull(&fixture);
+        let signed = git(&fixture.mac, &["log", "-1", "--format=%an <%ae>|%B"]);
+        assert_eq!(
+            signed,
+            "Grok bot <grok-bot@agents.kore>|kore: capture from grok --to daily/2026-11-04.md (via MCP)\n\nKore-Agent: Grok bot"
+        );
     }
 
     #[test]

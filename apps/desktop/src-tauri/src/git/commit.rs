@@ -56,38 +56,14 @@ pub(super) fn commit_all(
     let skipped = add_all_with_size_guard(&mut index, root, max_file_bytes)?;
 
     let parent = repo.head().ok().and_then(|head| head.peel_to_commit().ok());
-    if parent.is_none() && index.is_empty() {
-        return Ok(CommitOutcome {
-            committed: false,
-            sha: None,
-            ahead: ahead_of_remote(&repo),
-            skipped_large_files: skipped,
-        });
-    }
-
-    let tree_id = index.write_tree()?;
-    if let Some(parent) = &parent {
-        if parent.tree_id() == tree_id {
-            return Ok(CommitOutcome {
-                committed: false,
-                sha: None,
-                ahead: ahead_of_remote(&repo),
-                skipped_large_files: skipped,
-            });
-        }
-    }
-
-    let tree = repo.find_tree(tree_id)?;
-    let message = message_for_commit(&repo, parent.as_ref(), &tree, fallback_message)?;
-    let sig = signature(&repo)?;
-    let parents: Vec<&git2::Commit> = parent.iter().collect();
-    let oid = repo.commit(Some("HEAD"), &sig, &sig, &message, &tree, &parents)?;
-    Ok(CommitOutcome {
-        committed: true,
-        sha: Some(oid.to_string()),
-        ahead: ahead_of_remote(&repo),
-        skipped_large_files: skipped,
-    })
+    commit_index(
+        &repo,
+        &mut index,
+        parent.as_ref(),
+        None,
+        fallback_message,
+        skipped,
+    )
 }
 
 /// Stage every change (adds, edits, deletes — `.gitignore` respected) into
@@ -223,8 +199,30 @@ pub(super) fn commit_paths(
             Err(err) => return Err(err.into()),
         }
     }
+    commit_index(
+        &repo,
+        &mut index,
+        parent.as_ref(),
+        Some(author),
+        fallback_message,
+        Vec::new(),
+    )
+}
+
+/// Commit `index` on HEAD unless its tree matches `parent`'s (or it is empty
+/// on an unborn branch). `author` signs it with its trailer closing the
+/// message; `None` is the repository's own identity. The on-disk index is
+/// written so it matches the new HEAD.
+fn commit_index(
+    repo: &git2::Repository,
+    index: &mut Index,
+    parent: Option<&git2::Commit<'_>>,
+    author: Option<&CommitAuthor>,
+    fallback_message: &str,
+    skipped_large_files: Vec<SkippedFile>,
+) -> AppResult<CommitOutcome> {
     let tree_id = index.write_tree()?;
-    let unchanged = match &parent {
+    let unchanged = match parent {
         Some(parent) => parent.tree_id() == tree_id,
         None => index.is_empty(),
     };
@@ -232,16 +230,21 @@ pub(super) fn commit_paths(
         return Ok(CommitOutcome {
             committed: false,
             sha: None,
-            ahead: ahead_of_remote(&repo),
-            skipped_large_files: Vec::new(),
+            ahead: ahead_of_remote(repo),
+            skipped_large_files,
         });
     }
     let tree = repo.find_tree(tree_id)?;
-    let subject = message_for_commit(&repo, parent.as_ref(), &tree, fallback_message)?;
-    let message = format!("{subject}\n\n{}", author.trailer);
-    let committer = signature(&repo)?;
-    let author_sig = git2::Signature::now(&author.name, &author.email)?;
-    let parents: Vec<&git2::Commit> = parent.iter().collect();
+    let subject = message_for_commit(repo, parent, &tree, fallback_message)?;
+    let committer = signature(repo)?;
+    let (author_sig, message) = match author {
+        Some(author) => (
+            git2::Signature::now(&author.name, &author.email)?,
+            format!("{subject}\n\n{}", author.trailer),
+        ),
+        None => (committer.clone(), subject),
+    };
+    let parents: Vec<&git2::Commit> = parent.into_iter().collect();
     let oid = repo.commit(
         Some("HEAD"),
         &author_sig,
@@ -250,13 +253,12 @@ pub(super) fn commit_paths(
         &tree,
         &parents,
     )?;
-    // The on-disk index now matches the new HEAD.
     index.write()?;
     Ok(CommitOutcome {
         committed: true,
         sha: Some(oid.to_string()),
-        ahead: ahead_of_remote(&repo),
-        skipped_large_files: Vec::new(),
+        ahead: ahead_of_remote(repo),
+        skipped_large_files,
     })
 }
 

@@ -7,6 +7,11 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Quick Add for tasks: press `q` in Tasks (or ⌘T in Quick Entry) and type
+  "call Anna tomorrow at 3pm p1 #Kore". Dates, times, priority, repeats and
+  the project are understood in Italian and English, shown as chips, and
+  written as plain Kore task syntax.
+
 - Tasks work like Todoist: Inbox, Today, Upcoming and Projects views with
   counts (`g` then a letter switches), and a Board layout. Drag a card onto
   a day in Upcoming to reschedule it. Notes inside a project folder gather

@@ -33,6 +33,7 @@ function makeActions(over: Partial<TaskActions> = {}): TaskActions {
     edit: vi.fn(),
     checkboxToggle: vi.fn(),
     insert: vi.fn().mockResolvedValue(null),
+    add: vi.fn().mockResolvedValue(true),
     insertAfter: vi.fn().mockResolvedValue(null),
     editAndToggle: vi.fn(),
     schedule: vi.fn(),

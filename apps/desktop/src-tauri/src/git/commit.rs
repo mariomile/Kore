@@ -175,3 +175,100 @@ fn ahead_of_remote(repo: &git2::Repository) -> usize {
         .map(|delta| delta.ahead)
         .unwrap_or(1)
 }
+
+/// Who a [`commit_paths`] commit is authored by, and the trailer naming them.
+pub(super) struct CommitAuthor {
+    pub name: String,
+    pub email: String,
+    /// A `Key: value` line appended to the message (e.g. `Kore-Agent: Grok`).
+    pub trailer: String,
+}
+
+/// Commit only `paths` (graph-relative; adds, edits and deletions), authored
+/// by `author` and committed by the repository's own identity. Everything
+/// else in the working tree stays uncommitted for the next
+/// [`commit_all`]. Paths inside `.reflect/`, absolute paths, paths that
+/// climb out of the graph, and files at/above the size guardrail are
+/// ignored. `committed: false` when the paths match HEAD.
+pub(super) fn commit_paths(
+    root: &Path,
+    paths: &[String],
+    author: &CommitAuthor,
+    fallback_message: &str,
+    max_file_bytes: u64,
+) -> AppResult<CommitOutcome> {
+    let repo = open_existing(root)?;
+    ensure_clean_state(&repo)?;
+    let parent = repo.head().ok().and_then(|head| head.peel_to_commit().ok());
+    let mut index = repo.index()?;
+    // Start from HEAD, so nothing staged earlier rides along.
+    match &parent {
+        Some(parent) => index.read_tree(&parent.tree()?)?,
+        None => index.clear()?,
+    }
+    for rel in paths {
+        if !is_committable(rel) {
+            continue;
+        }
+        let rel_path = Path::new(rel);
+        match root.join(rel_path).metadata() {
+            Ok(meta) if meta.is_file() && meta.len() < max_file_bytes => {
+                index.add_path(rel_path)?;
+            }
+            Ok(_) => {}
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
+                // Already absent from HEAD is fine: nothing to record.
+                let _ = index.remove_path(rel_path);
+            }
+            Err(err) => return Err(err.into()),
+        }
+    }
+    let tree_id = index.write_tree()?;
+    let unchanged = match &parent {
+        Some(parent) => parent.tree_id() == tree_id,
+        None => index.is_empty(),
+    };
+    if unchanged {
+        return Ok(CommitOutcome {
+            committed: false,
+            sha: None,
+            ahead: ahead_of_remote(&repo),
+            skipped_large_files: Vec::new(),
+        });
+    }
+    let tree = repo.find_tree(tree_id)?;
+    let subject = message_for_commit(&repo, parent.as_ref(), &tree, fallback_message)?;
+    let message = format!("{subject}\n\n{}", author.trailer);
+    let committer = signature(&repo)?;
+    let author_sig = git2::Signature::now(&author.name, &author.email)?;
+    let parents: Vec<&git2::Commit> = parent.iter().collect();
+    let oid = repo.commit(
+        Some("HEAD"),
+        &author_sig,
+        &committer,
+        &message,
+        &tree,
+        &parents,
+    )?;
+    // The on-disk index now matches the new HEAD.
+    index.write()?;
+    Ok(CommitOutcome {
+        committed: true,
+        sha: Some(oid.to_string()),
+        ahead: ahead_of_remote(&repo),
+        skipped_large_files: Vec::new(),
+    })
+}
+
+/// A plain graph-relative path outside `.reflect/`.
+fn is_committable(rel: &str) -> bool {
+    let path = Path::new(rel);
+    !rel.is_empty()
+        && path
+            .components()
+            .all(|component| matches!(component, std::path::Component::Normal(_)))
+        && path
+            .components()
+            .next()
+            .is_some_and(|first| first.as_os_str() != ".reflect")
+}

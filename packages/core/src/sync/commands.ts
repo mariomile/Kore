@@ -122,6 +122,65 @@ export async function gitCommitAll(
   return await call('git_commit_all', { message: fallbackMessage, generation }, commitOutcomeSchema)
 }
 
+/** One note an agent wrote through `kore mcp`, from its journal. */
+export const agentWriteSchema = z.object({
+  /** Epoch milliseconds. */
+  at: z.number(),
+  agent: z.string(),
+  /** Graph-relative path. */
+  path: z.string(),
+})
+export type AgentWrite = z.infer<typeof agentWriteSchema>
+
+export const agentWritesSchema = z.object({
+  writes: z.array(agentWriteSchema),
+  /** Journal lines read (malformed ones included) — what to clear afterwards. */
+  lines: z.number(),
+})
+export type AgentWrites = z.infer<typeof agentWritesSchema>
+
+/** The agent-write journal `kore mcp` keeps under `.reflect/`. */
+export async function gitAgentWrites(generation: number): Promise<AgentWrites> {
+  return await call('git_agent_writes', { generation }, agentWritesSchema)
+}
+
+/** Drop the first `lines` journal lines, keeping anything appended since. */
+export async function gitAgentWritesClear(lines: number, generation: number): Promise<void> {
+  await call('git_agent_writes_clear', { lines, generation }, z.null())
+}
+
+/** The author of a {@link gitCommitPaths} commit and the trailer naming it. */
+export interface CommitAuthor {
+  readonly name: string
+  readonly email: string
+  /** `Key: value` line appended to the commit message. */
+  readonly trailer: string
+}
+
+/**
+ * Commit only `paths` (graph-relative), authored by `author` and committed by
+ * the repository's own identity; the rest of the working tree stays pending.
+ */
+export async function gitCommitPaths(
+  paths: readonly string[],
+  author: CommitAuthor,
+  fallbackMessage: string,
+  generation: number,
+): Promise<CommitOutcome> {
+  return await call(
+    'git_commit_paths',
+    {
+      paths,
+      authorName: author.name,
+      authorEmail: author.email,
+      trailer: author.trailer,
+      message: fallbackMessage,
+      generation,
+    },
+    commitOutcomeSchema,
+  )
+}
+
 /** Fetch `origin`; returns ahead/behind for the current branch. */
 export async function gitFetch(token: string | null, generation: number): Promise<RemoteDelta> {
   return await call('git_fetch', { token, generation }, remoteDeltaSchema)

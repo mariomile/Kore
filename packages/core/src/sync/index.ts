@@ -9,6 +9,14 @@ export {
   gitDisconnect,
   gitClone,
   gitCommitAll,
+  gitCommitPaths,
+  gitAgentWrites,
+  gitAgentWritesClear,
+  agentWriteSchema,
+  agentWritesSchema,
+  type AgentWrite,
+  type AgentWrites,
+  type CommitAuthor,
   gitFetch,
   gitMergeRemote,
   gitPush,
@@ -72,3 +80,4 @@ export {
   type SyncErrorKind,
   type SyncStatus,
 } from './engine'
+export { AGENT_TRAILER, agentDisplayName, agentSlug, commitAgentWrites } from './agent-commits'

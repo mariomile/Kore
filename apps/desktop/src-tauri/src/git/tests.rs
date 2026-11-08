@@ -970,3 +970,57 @@ fn diverging_renames_keep_both_files_and_never_wedge() {
     assert!(read(root_a, "notes/title-b.md").contains("Title B"));
     assert!(push(root_a, None).unwrap().pushed);
 }
+
+#[test]
+fn commit_paths_commits_only_the_agents_notes_under_its_name() {
+    use super::agent_writes;
+    use super::commit::{commit_paths, CommitAuthor};
+
+    let fixture = fixture();
+    let root = &fixture.graph_a;
+    write(root, "notes/a.md", "# A\n");
+    commit_all(root, "Update notes", MAX_FILE_BYTES).unwrap();
+    write(root, "notes/a.md", "# A\n\nfrom grok\n");
+    write(root, "notes/mine.md", "# Mine\n");
+    write(
+        root,
+        ".reflect/agent-writes.jsonl",
+        "{\"at\":1,\"agent\":\"Grok\",\"path\":\"notes/a.md\"}\nnot json\n",
+    );
+
+    let journal = agent_writes::read(root).unwrap();
+    assert_eq!(journal.lines, 2);
+    assert_eq!(journal.writes.len(), 1);
+    let author = CommitAuthor {
+        name: "Grok".into(),
+        email: "grok@agents.kore".into(),
+        trailer: "Kore-Agent: Grok".into(),
+    };
+    let outcome = commit_paths(
+        root,
+        &["notes/a.md".into(), ".reflect/index.sqlite".into()],
+        &author,
+        "Update notes",
+        MAX_FILE_BYTES,
+    )
+    .unwrap();
+    assert!(outcome.committed);
+    let repo = Repository::open(root).unwrap();
+    let head = repo.head().unwrap().peel_to_commit().unwrap();
+    assert_eq!(head.author().name(), Some("Grok"));
+    assert!(head.message().unwrap().ends_with("\n\nKore-Agent: Grok"));
+    let paths = head_tree_paths(root);
+    assert!(!paths.contains(&"notes/mine.md".to_string()));
+    assert!(!paths.iter().any(|path| path.starts_with(".reflect")));
+
+    // The owner's own note is still pending for the regular commit.
+    assert!(
+        commit_all(root, "Update notes", MAX_FILE_BYTES)
+            .unwrap()
+            .committed
+    );
+    assert!(head_tree_paths(root).contains(&"notes/mine.md".to_string()));
+
+    agent_writes::clear(root, journal.lines).unwrap();
+    assert_eq!(agent_writes::read(root).unwrap().lines, 0);
+}

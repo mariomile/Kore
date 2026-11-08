@@ -94,3 +94,11 @@ export {
   type ActivitySitting,
   type SittingNote,
 } from './activity'
+export {
+  gitUndoPreview,
+  undoSitting,
+  type UndoConflictReason,
+  type UndoPreview,
+  type UndoSittingOptions,
+  type UndoSittingResult,
+} from './undo'

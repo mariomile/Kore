@@ -7,11 +7,13 @@ import { RouterProvider, useRouter } from '@/routing/router'
 
 const gitActivity = vi.hoisted(() => vi.fn<() => Promise<ActivityPage>>())
 const gitNoteHistory = vi.hoisted(() => vi.fn(() => Promise.resolve([])))
+const undoSitting = vi.hoisted(() => vi.fn())
 vi.mock('@reflect/core', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@reflect/core')>()),
   hasBridge: () => true,
   gitActivity,
   gitNoteHistory,
+  undoSitting,
 }))
 vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({ graph: { root: '/g', name: 'g', generation: 1 }, indexGeneration: 1 }),
@@ -62,6 +64,7 @@ function RouteProbe(): ReactNode {
 
 beforeEach(() => {
   gitActivity.mockReset().mockResolvedValue(PAGE)
+  undoSitting.mockReset()
 })
 
 async function renderScreen() {
@@ -88,7 +91,7 @@ describe('ActivityScreen', () => {
 
   it('filters to one author', async () => {
     const view = await renderScreen()
-    await view.getByRole('button', { name: 'Grok bot' }).click()
+    await view.getByRole('button', { name: 'Grok bot', exact: true }).click()
     await expect.element(view.getByText('Inbox')).toBeVisible()
     await expect.element(view.getByText('Plan')).not.toBeInTheDocument()
   })
@@ -107,5 +110,32 @@ describe('ActivityScreen', () => {
     await expect
       .element(view.getByTestId('route'))
       .toHaveTextContent('{"kind":"settings","group":"data"}')
+  })
+
+  it('undoes a sitting after confirming', async () => {
+    undoSitting.mockResolvedValue({ kind: 'undone', notes: ['notes/Inbox.md'] })
+    const view = await renderScreen()
+    await view.getByRole('button', { name: 'Undo Grok bot’s changes' }).click()
+    await expect.element(view.getByText('Undo Grok bot’s changes?')).toBeVisible()
+    await view.getByRole('button', { name: 'Undo', exact: true }).click()
+    await vi.waitFor(() =>
+      expect(undoSitting).toHaveBeenCalledWith(
+        expect.objectContaining({ commits: ['c2', 'c1'] }),
+        1,
+        expect.anything(),
+      ),
+    )
+  })
+
+  it('names the notes that block an undo and writes nothing', async () => {
+    undoSitting.mockResolvedValue({
+      kind: 'conflict',
+      conflicts: [{ path: 'notes/Inbox.md', reason: 'changedSince' }],
+    })
+    const view = await renderScreen()
+    await view.getByRole('button', { name: 'Undo Grok bot’s changes' }).click()
+    await view.getByRole('button', { name: 'Undo', exact: true }).click()
+    await expect.element(view.getByText(/Nothing was undone/)).toBeVisible()
+    await expect.element(view.getByText('edited again since')).toBeVisible()
   })
 })

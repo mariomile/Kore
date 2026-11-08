@@ -25,6 +25,7 @@ mod remote;
 mod repo;
 #[cfg(test)]
 mod tests;
+mod undo;
 
 use std::path::Path;
 
@@ -217,6 +218,20 @@ pub async fn git_activity(
 ) -> AppResult<activity::ActivityPage> {
     let root = crate::fs::root_for_generation(&state, generation)?;
     run_blocking(move || activity::activity(&root, after.as_deref(), limit.unwrap_or(50))).await
+}
+
+/// What undoing the commits `oldest..=newest` would leave in each file they
+/// changed, three-way merged with what is on disk now. Writes nothing. See
+/// [`undo::undo_preview`].
+#[tauri::command]
+pub async fn git_undo_preview(
+    newest: String,
+    oldest: String,
+    generation: u64,
+    state: State<'_, GraphState>,
+) -> AppResult<undo::UndoPreview> {
+    let root = crate::fs::root_for_generation(&state, generation)?;
+    run_blocking(move || undo::undo_preview(&root, &newest, &oldest)).await
 }
 
 /// The notes agents wrote through `kore mcp` since the journal was last

@@ -1065,3 +1065,48 @@ fn activity_pages_through_commits_with_authors_trailers_and_files() {
     assert!(rest.next.is_none());
     assert_eq!(rest.commits[0].files[0].kind, ActivityFileKind::Added);
 }
+
+#[test]
+fn undo_preview_takes_back_a_runs_lines_and_keeps_later_edits() {
+    use super::activity::activity;
+    use super::undo::{undo_preview, UndoConflictReason, UndoFile};
+
+    let fixture = fixture();
+    let root = &fixture.graph_a;
+    write(root, "notes/a.md", "one\n\ntwo\n\nthree\n");
+    commit_all(root, "Update notes", MAX_FILE_BYTES).unwrap();
+    write(root, "notes/a.md", "one\n\nTWO\n\nthree\n");
+    write(root, "notes/b.md", "from the agent\n");
+    commit_all(root, "Update notes", MAX_FILE_BYTES).unwrap();
+    let run = activity(root, None, 1).unwrap().commits[0].commit.clone();
+
+    // A later edit to another line survives the undo.
+    write(root, "notes/a.md", "one\n\nTWO\n\nTHREE\n");
+    let preview = undo_preview(root, &run, &run).unwrap();
+    assert!(preview.conflicts.is_empty());
+    assert_eq!(
+        preview.files,
+        vec![
+            UndoFile {
+                path: "notes/a.md".into(),
+                content: Some("one\n\ntwo\n\nTHREE\n".into()),
+            },
+            UndoFile {
+                path: "notes/b.md".into(),
+                content: None,
+            },
+        ]
+    );
+
+    // A later edit to the run's own line is a conflict, and the preview
+    // writes nothing.
+    write(root, "notes/a.md", "one\n\nTwo again\n\nthree\n");
+    let preview = undo_preview(root, &run, &run).unwrap();
+    assert_eq!(preview.conflicts.len(), 1);
+    assert_eq!(preview.conflicts[0].path, "notes/a.md");
+    assert_eq!(
+        preview.conflicts[0].reason,
+        UndoConflictReason::ChangedSince
+    );
+    assert_eq!(read(root, "notes/a.md"), "one\n\nTwo again\n\nthree\n");
+}

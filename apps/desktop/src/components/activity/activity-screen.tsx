@@ -11,6 +11,7 @@ import {
   type SittingNote,
 } from '@reflect/core'
 import { NoteHistoryDialog } from '@/components/note-history-dialog'
+import { UndoSittingDialog } from '@/components/activity/undo-sitting-dialog'
 import { Button } from '@/components/ui/button'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { formatDayLabel, formatTimeOfDay } from '@/lib/dates'
@@ -70,7 +71,7 @@ function groupByDay(sittings: readonly ActivitySitting[]): DayGroup[] {
  * repository, grouped into sittings (one author's run of work) and days,
  * newest first. Agents are named by their `Kore-Agent` trailer, so you can
  * see what each one did; a note row opens that note's history at the change.
- * Read-only: undoing a sitting comes in the next step.
+ * Each sitting can be undone (step 6), keeping later edits.
  */
 export function ActivityScreen(): ReactElement {
   const { graph } = useGraph()
@@ -80,6 +81,7 @@ export function ActivityScreen(): ReactElement {
   const generation = graph?.generation ?? null
   const [authorFilter, setAuthorFilter] = useState<string>(ALL_AUTHORS)
   const [historyOf, setHistoryOf] = useState<SittingNote | null>(null)
+  const [undoing, setUndoing] = useState<ActivitySitting | null>(null)
 
   const { data, isError, isPending, hasNextPage, fetchNextPage, isFetchingNextPage } =
     useInfiniteQuery({
@@ -180,6 +182,7 @@ export function ActivityScreen(): ReactElement {
                     sitting={sitting}
                     timeFormat={settings.timeFormat}
                     onOpenNote={setHistoryOf}
+                    onUndo={setUndoing}
                   />
                 ))}
               </ol>
@@ -198,6 +201,15 @@ export function ActivityScreen(): ReactElement {
         >
           {isFetchingNextPage ? 'Loading…' : 'Load older changes'}
         </Button>
+      ) : null}
+
+      {undoing !== null && generation !== null ? (
+        <UndoSittingDialog
+          sitting={undoing}
+          authorName={authorLabel(undoing.author)}
+          generation={generation}
+          onClose={() => setUndoing(null)}
+        />
       ) : null}
 
       {historyOf !== null ? (
@@ -246,10 +258,12 @@ function SittingRow({
   sitting,
   timeFormat,
   onOpenNote,
+  onUndo,
 }: {
   sitting: ActivitySitting
   timeFormat: Parameters<typeof formatTimeOfDay>[1]
   onOpenNote: (note: SittingNote) => void
+  onUndo: (sitting: ActivitySitting) => void
 }): ReactElement {
   const start = formatTimeOfDay(new Date(sitting.startMs), timeFormat)
   const end = formatTimeOfDay(new Date(sitting.endMs), timeFormat)
@@ -272,6 +286,15 @@ function SittingRow({
         <span className="ml-auto text-xs text-text-muted">
           {sitting.notes.length === 1 ? '1 note' : `${sitting.notes.length} notes`}
         </span>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-6 px-2 text-xs"
+          aria-label={`Undo ${authorLabel(sitting.author)}’s changes`}
+          onClick={() => onUndo(sitting)}
+        >
+          Undo
+        </Button>
       </div>
       <ul className="mt-1">
         {shown.map((note) => (

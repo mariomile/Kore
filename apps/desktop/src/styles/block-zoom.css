@@ -66,19 +66,22 @@
 
 .reflect-editor .kore-zoom-breadcrumb {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 0.25em;
-  margin-bottom: 0.75em;
+  gap: 0.125em;
+  min-width: 0;
+  margin: 0 0 0.75em -0.4em;
   font-size: 0.8125rem;
   line-height: 1.4;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   user-select: none;
 }
+/* One line: long names truncate, the last crumb (the parent) shrinks last. */
 .reflect-editor .kore-zoom-crumb {
+  flex: 0 1 auto;
+  min-width: 0;
   max-width: 16em;
   overflow: hidden;
-  padding: 0.1em 0.35em;
+  padding: 0.15em 0.4em;
   border: 0;
   border-radius: var(--radius-md);
   background: none;
@@ -88,12 +91,20 @@
   white-space: nowrap;
   cursor: pointer;
 }
+.reflect-editor .kore-zoom-crumb:last-child {
+  flex-shrink: 0.2;
+}
 .reflect-editor .kore-zoom-crumb:hover {
   background: var(--surface-hover);
   color: var(--text);
 }
+.reflect-editor .kore-zoom-more {
+  flex-shrink: 0;
+  letter-spacing: 0.05em;
+}
 .reflect-editor .kore-zoom-separator {
-  opacity: 0.6;
+  flex-shrink: 0;
+  color: var(--text-muted);
 }
 
 /* Zooming animates with a View Transition (`animateZoom`): the block shared

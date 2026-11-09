@@ -379,36 +379,100 @@ function stepsStayInside(tr: Transaction, target: ZoomTarget, doc: ProseMirrorNo
   return true
 }
 
+/** Each breadcrumb's width watcher, disconnected when its widget is destroyed. */
+const crumbObservers = new WeakMap<Node, ResizeObserver>()
+
+/** Crumbs that never fold: the note, and the last two levels. */
+const MIN_FOLDABLE_CRUMBS = 4
+
+function separator(): HTMLElement {
+  const element = document.createElement('span')
+  element.className = 'kore-zoom-separator'
+  element.setAttribute('aria-hidden', 'true')
+  element.textContent = '›'
+  return element
+}
+
+/** Whether the crumbs need more room than one line gives them. */
+function overflows(nav: HTMLElement): boolean {
+  return [...nav.querySelectorAll('.kore-zoom-crumb')].some(
+    (crumb) => crumb.scrollWidth > crumb.clientWidth + 1,
+  )
+}
+
+function crumbButton(label: string, onClick: () => void): HTMLButtonElement {
+  const button = document.createElement('button')
+  button.type = 'button'
+  button.className = 'kore-zoom-crumb'
+  button.textContent = label
+  button.title = label
+  // Keep the caret where it is: the click zooms, it does not move focus.
+  button.addEventListener('mousedown', (event) => {
+    event.preventDefault()
+  })
+  button.addEventListener('click', (event) => {
+    event.preventDefault()
+    onClick()
+  })
+  return button
+}
+
 function breadcrumb(view: EditorView, target: ZoomTarget): HTMLElement {
   const nav = document.createElement('nav')
   nav.className = 'kore-zoom-breadcrumb'
   nav.contentEditable = 'false'
   nav.setAttribute('aria-label', 'Zoomed block')
-  for (const [index, crumb] of crumbsFor(view.state.doc, target).entries()) {
-    if (index > 0) {
-      const separator = document.createElement('span')
-      separator.className = 'kore-zoom-separator'
-      separator.setAttribute('aria-hidden', 'true')
-      separator.textContent = '›'
-      nav.append(separator)
+  const crumbs = crumbsFor(view.state.doc, target)
+  const jumpTo = (index: number): void => {
+    // Edits inside the zoom move later sections, so read the crumb afresh.
+    const current = zoomTarget(view.state)
+    const fresh = current === null ? undefined : crumbsFor(view.state.doc, current)[index]
+    zoomTo(view, fresh === undefined ? null : fresh.target)
+    view.focus()
+  }
+  // The middle crumbs fold into "…" when the path doesn't fit on one line;
+  // clicking "…" unfolds them for good.
+  let expanded = false
+  const render = (fold: boolean): void => {
+    const hidden = fold ? crumbs.slice(1, -2) : []
+    const parts: HTMLElement[] = []
+    for (const [index, crumb] of crumbs.entries()) {
+      if (fold && index >= 1 && index < crumbs.length - 2) {
+        if (index === 1) {
+          const more = crumbButton('…', () => {
+            expanded = true
+            render(false)
+          })
+          more.classList.add('kore-zoom-more')
+          more.title = hidden.map(({ label }) => label).join(' › ')
+          more.setAttribute('aria-label', `Show ${hidden.length} more levels`)
+          parts.push(separator(), more)
+        }
+        continue
+      }
+      if (index > 0) {
+        parts.push(separator())
+      }
+      parts.push(
+        crumbButton(crumb.label, () => {
+          jumpTo(index)
+        }),
+      )
     }
-    const button = document.createElement('button')
-    button.type = 'button'
-    button.className = 'kore-zoom-crumb'
-    button.textContent = crumb.label
-    button.title = crumb.label
-    button.addEventListener('mousedown', (event) => {
-      event.preventDefault()
-    })
-    button.addEventListener('click', (event) => {
-      event.preventDefault()
-      // Edits inside the zoom move later sections, so read the crumb afresh.
-      const current = zoomTarget(view.state)
-      const fresh = current === null ? undefined : crumbsFor(view.state.doc, current)[index]
-      zoomTo(view, fresh === undefined ? null : fresh.target)
-      view.focus()
-    })
-    nav.append(button)
+    nav.replaceChildren(...parts)
+  }
+  const fit = (): void => {
+    render(false)
+    if (!expanded && crumbs.length >= MIN_FOLDABLE_CRUMBS && overflows(nav)) {
+      render(true)
+    }
+  }
+  render(false)
+  // Measure once attached, and again whenever the editor's width changes.
+  if (typeof ResizeObserver === 'function') {
+    const observer = new ResizeObserver(fit)
+    observer.observe(nav)
+    crumbObservers.set(nav, observer)
   }
   return nav
 }
@@ -499,6 +563,9 @@ function buildDecorations(
       side: -1,
       ignoreSelection: true,
       stopEvent: () => true,
+      destroy: (node) => {
+        crumbObservers.get(node)?.disconnect()
+      },
       key: 'zoom-breadcrumb',
     }),
   )

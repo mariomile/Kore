@@ -155,6 +155,7 @@ export {
   type NoteIcon,
   displayNoteTitle,
   stripLeadingHeading,
+  inlineEmbedSnapshots,
   wikiLinkTargetForTitle,
   convertTaggedLineToNote,
   type TaggedLineConversion,

@@ -1,6 +1,6 @@
 import type { ReactElement } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { splitFrontmatter, stripLeadingHeading } from '@reflect/core'
+import { inlineEmbedSnapshots, splitFrontmatter, stripLeadingHeading } from '@reflect/core'
 import { MarkdownPreview } from '@/editor/markdown-preview'
 import { useNearViewport } from '@/hooks/use-near-viewport'
 import { useOverflowing } from '@/hooks/use-overflowing'
@@ -69,7 +69,11 @@ export function NoteCardPreview({
         return null
       }
       const source = await readExistingNoteSource(path, generation)
-      return truncateAtBlockBoundary(stripLeadingHeading(splitFrontmatter(source).body))
+      // A passive card loads no remote embed, so a saved X/YouTube card
+      // reads as its quoted words rather than its snapshot JSON.
+      return truncateAtBlockBoundary(
+        inlineEmbedSnapshots(stripLeadingHeading(splitFrontmatter(source).body)),
+      )
     },
     enabled: near && generation !== null,
     // A grid's worth of bodies has no business outliving the view by long.

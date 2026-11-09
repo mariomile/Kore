@@ -108,6 +108,7 @@ export {
 } from './edit'
 export { retitleWikiLinks, type WikiLinkRetitleOptions } from './retitle'
 export { displayNoteTitle, stripLeadingHeading, wikiLinkTargetForTitle } from './note-title'
+export { inlineEmbedSnapshots } from './embed-snapshot'
 export { convertTaggedLineToNote, type TaggedLineConversion } from './tagged-line-conversion'
 export { parseTaskMarker } from './task-marker'
 export {

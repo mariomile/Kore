@@ -7,6 +7,11 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- A tag can build on another: give `#client` the line `extends: contact`
+  and every client gets the contact fields plus its own. The `#contact`
+  collection also lists clients, with a filter to show only plain
+  contacts. Private tag definitions stay out of everything agents see.
+
 - Activity shows everything that changed in your vault, grouped by who did
   it: you, the always-on host, or each agent by name (Claude, Grok, any
   `kore mcp` key). Open a note at the change, filter by agent, and undo one

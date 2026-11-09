@@ -1,5 +1,34 @@
 # Kore working state
 
+## Tags that build on other tags (Plan 33, B2), 2026-11-09
+
+Ask (Mario, 2026-11-08): a tag can build on another, so `#client` gets
+`#contact`'s fields plus its own, and `#contact`'s collection also lists
+the clients. Plan: `docs/plans/33-trust-and-structure.md`. Draft PR #348,
+one step per commit.
+
+- [x] `extends:` on a definition note (`tags/<name>.md`), one tag or a
+  list. `resolveTagTypes` (`packages/core/src/tags/tag-inheritance.ts`)
+  puts parents' fields first; the tag's own field wins a clash in the
+  parent's slot; a hand-written loop is cut at the edge that closes it.
+- [x] Resolved once, in core: after every index write that touches
+  `tags/`, `refreshTagTypeResolutions` stores the effective schema and the
+  child list per tag in `tag_types` (migration 0024), plus public variants
+  with private definitions left out. The app, `kore` and `kore mcp` only
+  read those columns; before the first pass they fall back to the own
+  schema.
+- [x] The parent's collection lists child-tag notes, nested ones too
+  (`#client/vip`), with a "With #child / Only #tag" filter. The CLI's
+  `kore collection` matches the same way.
+- [x] "Builds on" in the tag dialog; a save that would close a loop is
+  refused and the picker leaves those tags out.
+- [x] Outbound reads (chat `list_collection`/`list_tags`, CLI, MCP) use the
+  public columns: a private parent's fields never reach an agent through a
+  public child, and a private definition reads as untyped there.
+- Known limits: the tag dialog shows only the tag's own fields; the plain
+  list view of a tag shows only the exact tag.
+- [ ] B4 (field defaults) waits for Mario's ok.
+
 ## Vault activity log with per-agent undo (Plan 33, A1), 2026-11-08
 
 Ask (Mario, 2026-11-08, after studying Fennick): every change an agent makes
@@ -3235,6 +3264,13 @@ screen: Agents then Close lands on today.
 **Next:** merge the Close fix, then bump.
 
 ## Session log
+
+- 2026-11-09 — Tags build on other tags (Plan 33 B2, PR #348). Inheritance
+  is resolved once in core and stored in `tag_types` (migration 0024);
+  app, CLI and MCP read the stored columns, outbound ones the public
+  variant. Verified: core and desktop vitest, browser suites for
+  all-notes/tags/dev, cargo test/clippy/fmt on the CLI and index crates
+  (the desktop crate does not build in the container: no GTK).
 
 - 2026-11-07 — A pasted article link keeps the article's text in its
   `#link` card, a YouTube link its transcript. One shared article extractor

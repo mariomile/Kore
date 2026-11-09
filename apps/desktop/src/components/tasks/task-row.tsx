@@ -9,19 +9,21 @@ import { CheckCircle, Circle, Flag } from '@/components/icons'
 import type { OpenTask } from '@reflect/core'
 import { taskContentPriority } from '@reflect/core'
 import { getIsComposing } from '@meowdown/core'
-import { formatShortDate } from '@/lib/dates'
 import { taskContent } from '@/lib/tasks/task-content'
 import { taskKey } from '@/lib/tasks/task-identity'
 import { useTaskCheckboxToggle } from '@/lib/tasks/use-task-checkbox-toggle'
 import { cn } from '@/lib/utils'
 import type { ModClickEvent } from '@/lib/windows/open-in-new-window'
-import { useSettings } from '@/providers/settings-provider'
 import { TaskEditor, type TaskNavigate } from './task-editor'
+import { TaskSourceLink } from './task-source-link'
 import { TaskText } from './task-text'
 
 interface TaskRowProps {
   task: OpenTask
-  /** Show the source-note date — date buckets aggregate tasks from many notes. */
+  /**
+   * Name the source note — date buckets aggregate tasks from many notes. Every
+   * row links to its note either way.
+   */
   showSource: boolean
   /** Whether this row is part of the current multi-selection (Plan 18). */
   selected: boolean
@@ -95,7 +97,6 @@ export function TaskRow({
   onOpen,
   onCyclePriority,
 }: TaskRowProps): ReactElement {
-  const { settings } = useSettings()
   const { toggle, isPending } = useTaskCheckboxToggle(task)
   const checkboxToggleControllerRef = useRef<(() => void) | null>(null)
   const checkboxPending = isPending || taskActionPending
@@ -220,21 +221,7 @@ export function TaskRow({
           <Flag aria-hidden className="size-[15px]" />
         </button>
       ) : null}
-      {showSource ? (
-        <button
-          type="button"
-          disabled={editing}
-          onClick={(event) => {
-            event.stopPropagation()
-            onOpen(task.notePath, event)
-          }}
-          className="flex h-6 shrink-0 items-center whitespace-nowrap text-xs text-text-muted transition-colors hover:text-accent focus-visible:text-accent focus-visible:outline-none"
-        >
-          {task.dailyDate !== null
-            ? formatShortDate(task.dailyDate, settings.dateFormat)
-            : task.noteTitle}
-        </button>
-      ) : null}
+      <TaskSourceLink task={task} labelled={showSource} onOpen={onOpen} />
     </div>
   )
 }

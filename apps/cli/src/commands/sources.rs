@@ -2,56 +2,25 @@
 //! graph with no app running, through the same connector engine the app
 //! uses (`packages/core/src/connectors`), hosted under Node like `kore index`.
 //!
-//! Tokens come from the environment (`KORE_READWISE_TOKEN`,
-//! `KORE_GRANOLA_TOKEN`), never from flags or the vault; a source without a
-//! token is skipped. Where notes land and what they carry is the user's:
-//! `KORE_<SOURCE>_FOLDER`, `KORE_<SOURCE>_PATTERN` (a file name pattern like
-//! `{category}/{title}`) and `KORE_<SOURCE>_TAGS` (comma-separated). Each source keeps its window in `.kore/sources.json`
-//! (per machine, never committed): the first run starts from that moment,
-//! so history another app already wrote is not duplicated; `--since` reaches
-//! further back.
+//! The core owns the policy (`packages/core/src/headless/sync-sources.ts`):
+//! which sources exist, the `KORE_<SOURCE>_TOKEN` / `_FOLDER` / `_PATTERN` /
+//! `_TAGS` variables it reads from the environment this process passes on,
+//! and the defaults. This side owns what only it can: the flags, and each
+//! source's window in `.kore/sources.json` (per machine, never
+//! committed), which it serves to the core and saves from its reports.
 
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::json;
 
 use crate::commands::index::run_script;
 use crate::commands::output::print_json;
 use crate::commands::warn;
 use crate::error::CliError;
 use crate::indexer::Host;
-
-/// The sources `kore sources` knows, with their token and folder variables.
-const SOURCES: &[Source] = &[
-    Source {
-        id: "readwise",
-        token_var: "KORE_READWISE_TOKEN",
-        folder_var: "KORE_READWISE_FOLDER",
-        pattern_var: "KORE_READWISE_PATTERN",
-        tags_var: "KORE_READWISE_TAGS",
-        default_folder: "Readwise",
-    },
-    Source {
-        id: "granola",
-        token_var: "KORE_GRANOLA_TOKEN",
-        folder_var: "KORE_GRANOLA_FOLDER",
-        pattern_var: "KORE_GRANOLA_PATTERN",
-        tags_var: "KORE_GRANOLA_TAGS",
-        default_folder: "Granola",
-    },
-];
-
-struct Source {
-    id: &'static str,
-    token_var: &'static str,
-    folder_var: &'static str,
-    pattern_var: &'static str,
-    tags_var: &'static str,
-    default_folder: &'static str,
-}
 
 /// One source's window, as `.kore/sources.json` keeps it.
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -82,13 +51,6 @@ fn save_state(root: &Path, state: &State) -> Result<(), CliError> {
     let text =
         serde_json::to_string_pretty(state).map_err(|err| CliError::runtime(err.to_string()))?;
     crate::write::atomic_write(&state_path(root), &format!("{text}\n"))
-}
-
-fn env(name: &str) -> Option<String> {
-    std::env::var(name)
-        .ok()
-        .map(|value| value.trim().to_string())
-        .filter(|value| !value.is_empty())
 }
 
 /// `YYYY-MM-DD` (local midnight) or an RFC 3339 instant, as RFC 3339 UTC.
@@ -131,57 +93,24 @@ pub fn run(
     only: Option<&str>,
     since: Option<&str>,
 ) -> Result<(), CliError> {
-    if let Some(only) = only {
-        if !SOURCES.iter().any(|source| source.id == only) {
-            return Err(CliError::Usage(format!(
-                "unknown source {only:?}; known: readwise, granola"
-            )));
-        }
-    }
     let since = since.map(parse_since).transpose()?;
     let mut state = load_state(root)?;
-    let now = jiff::Timestamp::now().to_string();
-    let mut configs = Vec::new();
-    for source in SOURCES
-        .iter()
-        .filter(|source| only.is_none_or(|id| id == source.id))
-    {
-        let Some(token) = env(source.token_var) else {
-            continue;
-        };
-        let saved = state.entry(source.id.to_string()).or_default();
-        let floor = saved.floor.get_or_insert_with(|| now.clone()).clone();
-        let (since, floor) = match &since {
-            Some(since) => (Some(since.clone()), None),
-            None => (saved.last_synced_at.clone(), Some(floor)),
-        };
-        configs.push(json!({
-            "id": source.id,
-            "token": token,
-            "folder": env(source.folder_var).unwrap_or_else(|| source.default_folder.to_string()),
-            "pattern": env(source.pattern_var),
-            "tags": env(source.tags_var).map(|tags| {
-                tags.split(',').map(str::trim).filter(|tag| !tag.is_empty()).map(str::to_string).collect::<Vec<_>>()
-            }),
-            "since": since,
-            "floor": floor,
-        }));
-    }
-    if configs.is_empty() {
-        return Err(CliError::Usage(
-            "no source to pull: set KORE_READWISE_TOKEN and/or KORE_GRANOLA_TOKEN \
-             (optional: KORE_<SOURCE>_FOLDER, KORE_<SOURCE>_PATTERN, KORE_<SOURCE>_TAGS)"
-                .into(),
-        ));
-    }
-
-    let mut host = Host::open(root)?.with_sources(json!({ "sources": configs }));
+    let request = json!({ "only": only, "since": since, "state": state });
+    let mut host = Host::open(root)?.with_sources(request);
     let code = run_script(&mut host, &["--sources"])?;
-    let reports = host.take_reports().unwrap_or(Value::Null);
-    let reports: Vec<Report> = serde_json::from_value(reports).unwrap_or_default();
+    let outcome: Outcome = host
+        .take_report()
+        .and_then(|report| serde_json::from_value(report).ok())
+        .unwrap_or_default();
+    if let Some(usage) = outcome.usage {
+        return Err(CliError::Usage(usage));
+    }
+    let reports = outcome.reports;
     for report in &reports {
+        let saved = state.entry(report.id.clone()).or_default();
+        saved.floor = report.floor.clone().or(saved.floor.take());
         if let Some(synced) = &report.synced_at {
-            state.entry(report.id.clone()).or_default().last_synced_at = Some(synced.clone());
+            saved.last_synced_at = Some(synced.clone());
         }
     }
     save_state(root, &state)?;
@@ -219,6 +148,15 @@ pub fn run(
     Ok(())
 }
 
+/// What the core sent back: one report per source that ran, or the usage
+/// problem that stopped any from running.
+#[derive(Debug, Default, Deserialize)]
+struct Outcome {
+    #[serde(default)]
+    reports: Vec<Report>,
+    usage: Option<String>,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct Report {
@@ -226,6 +164,9 @@ struct Report {
     created: u64,
     updated: u64,
     synced_at: Option<String>,
+    /// The window floor to keep; never printed.
+    #[serde(default, skip_serializing)]
+    floor: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     error: Option<String>,
 }

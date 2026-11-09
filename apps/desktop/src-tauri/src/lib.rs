@@ -20,6 +20,7 @@ mod background_task;
 mod blocking;
 mod calendar;
 mod capture;
+mod capture_fetch;
 mod conflict;
 mod contacts;
 mod db;
@@ -427,9 +428,9 @@ pub fn run() {
             capture::capture_shared_inbox_relay,
             capture::capture_screenshot_promote,
             capture::capture_link_preview,
-            capture::capture_meta_fetch,
-            capture::capture_oembed_fetch,
-            capture::capture_data_fetch,
+            capture_fetch::capture_meta_fetch,
+            capture_fetch::capture_oembed_fetch,
+            capture_fetch::capture_data_fetch,
             git::git_status,
             git::git_setup,
             git::git_disconnect,

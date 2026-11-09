@@ -264,6 +264,24 @@ describe('BlockZoom', () => {
     await expect.element(hint).not.toBeInTheDocument()
     await expect.poll(() => handle.getMarkdown()).toContain('- Buildrs\n  - first\n')
   })
+
+  it('zooms out until a range selected outside it shows (a Find match)', async () => {
+    const handle = await renderNote()
+    await pmRoot.getByText(/^pricing/).click()
+    await userEvent.keyboard('{End}')
+    const end = handle.getSelection?.() ?? { type: 'text', anchor: 0, head: 0 }
+    const head = 'head' in end ? end.head : 0
+    await pmRoot.getByText('call with').click()
+    await userEvent.keyboard(zoomIn)
+    await expect.element(pmRoot.getByText(/^pricing/)).not.toBeVisible()
+    handle.setSelection({ type: 'text', anchor: head - 8, head })
+    await expect.element(pmRoot.getByText(/^pricing/)).toBeVisible()
+    // One level up is enough: the DeepAgent branch, not the whole note.
+    await expect.element(pmRoot.getByText('Buildrs')).not.toBeVisible()
+    await expect
+      .element(breadcrumb.getByRole('button', { name: 'Work', exact: true }))
+      .toBeVisible()
+  })
 })
 
 function clickGrip(element: Element): void {

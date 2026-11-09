@@ -742,16 +742,35 @@ export function createBlockZoomPlugin(options: BlockZoomOptions = {}): Plugin<Bl
       const target = zoomTarget(state)
       return target === null || !tr.docChanged || stepsStayInside(tr, target, state.doc)
     },
-    appendTransaction: (_transactions, _oldState, newState) => {
+    appendTransaction: (transactions, _oldState, newState) => {
       const target = zoomTarget(newState)
       const span = target === null ? null : targetSpan(newState.doc, target)
-      if (span === null) {
+      if (target === null || span === null) {
         return null
       }
       const inner = { from: span.from + 1, to: span.to - 1 }
-      const { from, to } = newState.selection
+      const { from, to, empty } = newState.selection
       if (from >= inner.from && to <= inner.to) {
         return null
+      }
+      // A range selected wholly outside the zoom was put there on purpose (a
+      // Find match, a link to a line): zoom out until it shows instead of
+      // pulling it back. Arrow keys at the edge only nudge a caret out, and
+      // that is clamped below.
+      const jumped =
+        !empty &&
+        (to <= inner.from || from >= inner.to) &&
+        transactions.some((tr) => tr.selectionSet)
+      if (jumped) {
+        let wider = parentTarget(newState.doc, target)
+        for (
+          let widerSpan = wider === null ? null : targetSpan(newState.doc, wider);
+          wider !== null && (widerSpan === null || from <= widerSpan.from || to >= widerSpan.to);
+          widerSpan = wider === null ? null : targetSpan(newState.doc, wider)
+        ) {
+          wider = parentTarget(newState.doc, wider)
+        }
+        return withZoomMeta(newState.tr, wider, null).scrollIntoView()
       }
       const clamp = (pos: number): number => Math.min(Math.max(pos, inner.from), inner.to)
       return newState.tr.setSelection(

@@ -17,9 +17,10 @@ fn commit_paths_commits_only_the_agents_notes_under_its_name() {
     commit_all(root, "Update notes", MAX_FILE_BYTES).unwrap();
     write(root, "notes/a.md", "# A\n\nfrom grok\n");
     write(root, "notes/mine.md", "# Mine\n");
+    write(root, ".kore/proposals/p1.json", "{}\n");
     write(
         root,
-        ".reflect/agent-writes.jsonl",
+        ".kore/agent-writes.jsonl",
         "{\"at\":1,\"agent\":\"Grok\",\"email\":\"grok@agents.kore\",\"path\":\"notes/a.md\"}\nnot json\n",
     );
 
@@ -33,7 +34,11 @@ fn commit_paths_commits_only_the_agents_notes_under_its_name() {
     };
     let outcome = commit_paths(
         root,
-        &["notes/a.md".into(), ".reflect/index.sqlite".into()],
+        &[
+            "notes/a.md".into(),
+            ".kore/index.sqlite".into(),
+            ".kore/proposals/p1.json".into(),
+        ],
         &author,
         "Update notes",
         MAX_FILE_BYTES,
@@ -46,7 +51,10 @@ fn commit_paths_commits_only_the_agents_notes_under_its_name() {
     assert!(head.message().unwrap().ends_with("\n\nKore-Agent: Grok"));
     let paths = head_tree_paths(root);
     assert!(!paths.contains(&"notes/mine.md".to_string()));
-    assert!(!paths.iter().any(|path| path.starts_with(".reflect")));
+    assert!(paths.contains(&".kore/proposals/p1.json".to_string()));
+    assert!(!paths
+        .iter()
+        .any(|path| path.starts_with(".kore") && !path.starts_with(".kore/proposals/")));
 
     // The owner's own note is still pending for the regular commit.
     assert!(

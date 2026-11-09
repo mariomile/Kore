@@ -1,4 +1,4 @@
-//! Read-only access to `.reflect/index.sqlite` plus staleness detection.
+//! Read-only access to `.kore/index.sqlite` plus staleness detection.
 //!
 //! The CLI never writes: connections open `SQLITE_OPEN_READ_ONLY` with
 //! `query_only` belt-and-braces and a busy timeout to coexist with the desktop
@@ -15,7 +15,7 @@ use std::time::Duration;
 
 use rusqlite::{Connection, OpenFlags};
 
-use reflect_index_schema::{INDEX_FILE, LATEST_SCHEMA_VERSION, REFLECT_DIR};
+use reflect_index_schema::{INDEX_FILE, KORE_DIR, LATEST_SCHEMA_VERSION};
 
 use crate::error::CliError;
 use crate::hash::hash_content;
@@ -33,7 +33,7 @@ pub struct OpenIndex {
 /// (`search` needs the index; `show`/`path` fall back to scanning files).
 pub enum IndexOpen {
     Opened(OpenIndex),
-    /// No `.reflect/index.sqlite` on disk.
+    /// No `.kore/index.sqlite` on disk.
     Missing,
     /// Present but unopenable/unreadable (e.g. WAL recovery needs a writer).
     Unusable(String),
@@ -41,7 +41,7 @@ pub enum IndexOpen {
 
 /// Open the graph's index strictly read-only.
 pub fn open_read_only(root: &Path) -> IndexOpen {
-    let file = root.join(REFLECT_DIR).join(INDEX_FILE);
+    let file = root.join(KORE_DIR).join(INDEX_FILE);
     if !file.is_file() {
         return IndexOpen::Missing;
     }

@@ -1,4 +1,4 @@
-//! The `reflect-asset://` custom protocol: serves graph `assets/` files to
+//! The `kore-asset://` custom protocol: serves graph `assets/` files to
 //! the webview **off the UI thread**.
 //!
 //! WebKit delivers custom-scheme requests on the main thread and wry invokes
@@ -9,14 +9,14 @@
 //! runtime's blocking pool and responds when the bytes are ready, so a slow
 //! read costs the image a pop-in, never the app a freeze.
 //!
-//! URL shape: `reflect-asset://localhost/<generation>/<graph-relative path>`,
-//! built by `convertFileSrc(…, 'reflect-asset')` in the frontend (which
+//! URL shape: `kore-asset://localhost/<generation>/<graph-relative path>`,
+//! built by `convertFileSrc(…, 'kore-asset')` in the frontend (which
 //! percent-encodes the whole path into one segment). The generation pins the
 //! request to the graph session that issued it, exactly like mutating
 //! commands — a request racing a graph switch is refused, never resolved
 //! against the new graph. The path must live under `assets/` and passes the
 //! shared symlink-aware traversal guard before any IO.
-//! Passive previews append `?reflect-preview=raster`; those responses are
+//! Passive previews append `?kore-preview=raster`; those responses are
 //! served only when byte sniffing identifies PNG, JPEG, GIF, or WebP content,
 //! so an SVG renamed with a raster extension cannot load subresources there.
 
@@ -31,8 +31,8 @@ use super::GraphState;
 /// The scheme name, shared with the `lib.rs` registration. The frontend and
 /// the CSP `img-src` / `frame-src` grants in `tauri.conf.json` (images and
 /// the in-app PDF/HTML attachment viewer) spell it out literally.
-pub(crate) const SCHEME: &str = "reflect-asset";
-const PREVIEW_RASTER_QUERY: &str = "reflect-preview=raster";
+pub(crate) const SCHEME: &str = "kore-asset";
+const PREVIEW_RASTER_QUERY: &str = "kore-preview=raster";
 
 /// Protocol entry point (`register_asynchronous_uri_scheme_protocol`). Runs
 /// on the webview's calling thread — on WebKit, the app's main thread — so it
@@ -134,7 +134,7 @@ fn parse_request_path(request_path: &str) -> Result<(u64, &str), StatusCode> {
     let generation: u64 = generation.parse().map_err(|_| StatusCode::BAD_REQUEST)?;
     // Chat attachment files are the one carve-out from the "no hidden
     // components" rule: their shape is closed (id segments plus a raster
-    // extension, validated below), so nothing else under `.reflect/` becomes
+    // extension, validated below), so nothing else under `.kore/` becomes
     // reachable through it.
     if super::chat_attachments::is_chat_attachment_image_rel(rel) {
         return Ok((generation, rel));
@@ -182,16 +182,16 @@ mod tests {
     #[test]
     fn carves_out_chat_attachment_files_and_nothing_else_hidden() {
         assert_eq!(
-            parse_request_path("3/.reflect/chat-attachments/conv-1/att-2.jpeg").unwrap(),
-            (3, ".reflect/chat-attachments/conv-1/att-2.jpeg"),
+            parse_request_path("3/.kore/chat-attachments/conv-1/att-2.jpeg").unwrap(),
+            (3, ".kore/chat-attachments/conv-1/att-2.jpeg"),
         );
         for path in [
-            "3/.reflect/chat-attachments/conv-1/att-2.svg",
-            "3/.reflect/chat-attachments/conv-1/att-2.pdf",
-            "3/.reflect/chat-attachments/../index.db",
-            "3/.reflect/chat-attachments/conv-1",
-            "3/.reflect/index.db",
-            "3/.reflect/tmp/att.jpeg",
+            "3/.kore/chat-attachments/conv-1/att-2.svg",
+            "3/.kore/chat-attachments/conv-1/att-2.pdf",
+            "3/.kore/chat-attachments/../index.db",
+            "3/.kore/chat-attachments/conv-1",
+            "3/.kore/index.db",
+            "3/.kore/tmp/att.jpeg",
         ] {
             assert_eq!(
                 parse_request_path(path).unwrap_err(),
@@ -227,12 +227,10 @@ mod tests {
 
     #[test]
     fn recognizes_only_the_explicit_preview_raster_query() {
-        assert!(requests_preview_raster(Some("reflect-preview=raster")));
-        assert!(requests_preview_raster(Some(
-            "cache=1&reflect-preview=raster"
-        )));
+        assert!(requests_preview_raster(Some("kore-preview=raster")));
+        assert!(requests_preview_raster(Some("cache=1&kore-preview=raster")));
         assert!(!requests_preview_raster(None));
-        assert!(!requests_preview_raster(Some("reflect-preview=svg")));
+        assert!(!requests_preview_raster(Some("kore-preview=svg")));
     }
 
     #[test]

@@ -242,7 +242,6 @@ export {
   claudeCliSettingsJson,
   claudeCliSystemPrompt,
   claudeStreamJsonUserLine,
-  parseClaudeCliLine,
   streamClaudeCliChat,
   CLAUDE_CLI_DEFAULT_MODEL,
   type StreamCliChatOptions,
@@ -293,9 +292,9 @@ export {
 export {
   agentStepTree,
   describeClaudeToolCall,
-  isSubagentTool,
   summarizeClaudeToolResult,
   type AgentStep,
+  type AgentStepKind,
   type AgentStepNode,
   type AgentStepOutcome,
 } from '../ai/chat/agent-steps'

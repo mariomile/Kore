@@ -15,3 +15,6 @@ vec = ["dep:sqlite-vec"]
 rusqlite = { workspace = true }
 rusqlite_migration = { workspace = true }
 sqlite-vec = { workspace = true, optional = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

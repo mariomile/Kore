@@ -72,7 +72,7 @@ export function vaultEditRules(): string[] {
     '- Follow the vault’s conventions: new notes are notes/<kebab-case-title>.md with an H1 title; [[Exact Title]] links notes and [[YYYY-MM-DD]] links a daily; tasks are round checkboxes `+ [ ] text` (a leading ! or !! sets priority; the first [[YYYY-MM-DD]] inside the item is its due date), while square `- [ ]` checkboxes are plain checklists.',
     `- Quick additions belong in today’s daily note (${dailyPathPattern()} — create it if missing): capture flows there by convention.`,
     '- Preserve frontmatter you don’t understand and never invent an `id:` — the app mints those.',
-    '- Never write into .reflect/, .git/, assets/, or audio-memos/, and never touch private notes — the sandbox denies those writes; when a change would need one, say so instead of working around it.',
+    '- Never write into .kore/, .git/, assets/, or audio-memos/, and never touch private notes — the sandbox denies those writes; when a change would need one, say so instead of working around it.',
   ]
 }
 
@@ -90,6 +90,11 @@ export type AgentCliChunk =
   | { type: 'step-start'; step: AgentStep }
   /** A tool call settled — its content-free outcome. */
   | { type: 'step-end'; id: string; outcome: AgentStepOutcome }
+
+/** The chunk list of a parser that yields at most one chunk per line. */
+export function chunkList(chunk: AgentCliChunk | null): AgentCliChunk[] {
+  return chunk === null ? [] : [chunk]
+}
 
 const cliEventSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('line'), requestId: z.string(), line: z.string() }),
@@ -200,7 +205,7 @@ export interface AgentCliTurnOptions {
    */
   isolatedCodexHome?: boolean | undefined
   /** Parse one stdout line into chunks (parallel tool calls), or null for noise. */
-  parseLine: (line: string) => AgentCliChunk | AgentCliChunk[] | null
+  parseLine: (line: string) => readonly AgentCliChunk[]
   /** Message when the spawn itself fails without a specific cause. */
   startFailureMessage: string
   /** Aborts the run mid-stream (the UI's stop button). */
@@ -365,11 +370,7 @@ export async function* streamAgentCliTurn(
         if (options.onRawLine !== undefined) {
           await options.onRawLine(event.line, sendRawLine)
         }
-        const parsed = options.parseLine(event.line)
-        if (parsed === null) {
-          continue
-        }
-        for (const chunk of Array.isArray(parsed) ? parsed : [parsed]) {
+        for (const chunk of options.parseLine(event.line)) {
           const open = segments.at(-1)
           const text = open?.role === 'assistant' ? open.text : ''
           if (chunk.type === 'step-start') {

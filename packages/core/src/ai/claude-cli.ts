@@ -26,7 +26,7 @@ import { describeClaudeToolCall, summarizeClaudeToolResult } from './chat/agent-
  * and `Glob` always, plus `Write` and `Edit` in chat edit mode. `Grep` is deliberately excluded — its matches would print
  * file *content*, and per-file permission rules can't filter it, so allowing
  * it would leak private-note lines. `Read` is covered: every `private: true`
- * note gets an explicit deny rule (plus `.reflect/` and `.git/`, whose index
+ * note gets an explicit deny rule (plus `.kore/` and `.git/`, whose index
  * and history embed private content), enforced by the CLI's permission
  * layer, which keeps the hard privacy block intact.
  */
@@ -132,7 +132,7 @@ export function claudeCliSettingsJson(
   // nothing and cannot drift when the tool set changes.
   const fencedPaths = [
     ...privateNotePaths.map((path) => `${root}/${path}`),
-    `${root}/.reflect/**`,
+    `${root}/.kore/**`,
     `${root}/.git/**`,
   ]
   // Binary user data stays readable but never writable: attachments and
@@ -200,6 +200,12 @@ const contentBlockSchema = z.object({
   content: z.unknown().optional(),
 })
 
+type ContentBlock = z.infer<typeof contentBlockSchema>
+
+function isToolResult(block: ContentBlock): block is ContentBlock & { tool_use_id: string } {
+  return block.type === 'tool_result' && block.tool_use_id !== undefined
+}
+
 const lineSchema = z.object({
   type: z.string(),
   parent_tool_use_id: z.string().nullable().optional(),
@@ -226,9 +232,7 @@ const lineSchema = z.object({
  *
  * `graphRoot` turns absolute file paths into graph-relative labels.
  */
-export function createClaudeCliLineParser(
-  graphRoot: string,
-): (line: string) => AgentCliChunk | AgentCliChunk[] | null {
+export function createClaudeCliLineParser(graphRoot: string): (line: string) => AgentCliChunk[] {
   // Tool names by call id, so a result can be summarized per tool.
   const tools = new Map<string, string>()
   return (line: string) => {
@@ -236,11 +240,11 @@ export function createClaudeCliLineParser(
     try {
       parsed = JSON.parse(line)
     } catch {
-      return null
+      return []
     }
     const event = lineSchema.safeParse(parsed)
     if (!event.success) {
-      return null
+      return []
     }
     const data = event.data
     const parentId = data.parent_tool_use_id ?? null
@@ -251,10 +255,10 @@ export function createClaudeCliLineParser(
       data.event.delta?.type === 'text_delta' &&
       data.event.delta.text !== undefined
     ) {
-      return { type: 'text-delta', text: data.event.delta.text }
+      return [{ type: 'text-delta', text: data.event.delta.text }]
     }
     if (data.type === 'result') {
-      return { type: 'result', isError: data.is_error === true, message: data.result ?? null }
+      return [{ type: 'result', isError: data.is_error === true, message: data.result ?? null }]
     }
     const content = data.message?.content
     const blocks = Array.isArray(content) ? content : []
@@ -276,14 +280,12 @@ export function createClaudeCliLineParser(
           }),
         })
       }
-      return chunks.length > 0 ? chunks : null
+      return chunks
     }
     if (data.type === 'user') {
-      const results = blocks.filter(
-        (block) => block.type === 'tool_result' && block.tool_use_id !== undefined,
-      )
-      const chunks = results.map((block): AgentCliChunk => {
-        const id = block.tool_use_id ?? ''
+      const results = blocks.filter(isToolResult)
+      return results.map((block): AgentCliChunk => {
+        const id = block.tool_use_id
         return {
           type: 'step-end',
           id,
@@ -296,18 +298,9 @@ export function createClaudeCliLineParser(
           }),
         }
       })
-      return chunks.length > 0 ? chunks : null
     }
-    return null
+    return []
   }
-}
-
-/**
- * Parse one stdout line with a fresh parser (no graph root, no per-run tool
- * memory) — enough for text, results, and single-line activity.
- */
-export function parseClaudeCliLine(line: string): AgentCliChunk | AgentCliChunk[] | null {
-  return createClaudeCliLineParser('')(line)
 }
 
 export interface StreamCliChatOptions {

@@ -155,7 +155,7 @@ or exposing its current or historical content unless the user explicitly asks.
    unless the user explicitly asks for that.
 2. **Write through the CLI.** `capture`/`append` add, `new` creates, `set`
    types frontmatter, `tag`/`untag` and `done` change exactly one line,
-   `edit` replaces one passage you quote exactly — nothing overwrites. Never hand-edit frontmatter, `.reflect/`, or a task
+   `edit` replaces one passage you quote exactly — nothing overwrites. Never hand-edit frontmatter, `.kore/`, or a task
    marker when a command does it.
 3. **Discover before writing.** `kore tags` and `kore collection
    <tag>` tell you the keys and types a row takes; `kore properties

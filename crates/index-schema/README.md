@@ -1,6 +1,6 @@
 # reflect-index-schema
 
-Shared schema + migrations for `<graph>/.reflect/index.sqlite` (Plan 04/14).
+Shared schema + migrations for `<graph>/.kore/index.sqlite` (Plan 04/14).
 
 The desktop app (writer) and the `kore` CLI (read-only) both depend on
 this crate, so the schema can never skew between them. Everything that

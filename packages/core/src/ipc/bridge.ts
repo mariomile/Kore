@@ -45,7 +45,7 @@ export interface IpcBridge {
   /**
    * Build a URL an `<img>` can load for a graph-relative attachment in the
    * given graph session, or null when this host cannot serve it. The real
-   * shell maps it to its `reflect-asset://` protocol; the browser dev bridge
+   * shell maps it to its `kore-asset://` protocol; the browser dev bridge
    * answers from its in-memory asset store. Optional: a host without it
    * simply shows no attachment images (see {@link assetUrl}).
    */

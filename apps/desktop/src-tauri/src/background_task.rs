@@ -123,7 +123,7 @@ pub(crate) fn scoped(state: &State<'_, BackgroundTaskState>, name: &str) -> Scop
 /// cannot grant background time, and on non-iOS platforms.
 #[tauri::command]
 pub fn background_task_begin(state: State<'_, BackgroundTaskState>) -> Option<String> {
-    state.begin_frontend("Reflect background persistence")
+    state.begin_frontend("Kore background persistence")
 }
 
 /// End a frontend-owned persistence assertion. Unknown and already-expired

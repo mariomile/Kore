@@ -7,7 +7,7 @@
 //! - **Streamed upload** (`asset_upload_begin` / `_append` / `_commit` /
 //!   `_abort`): the paste/drop path. The webview holds a `File` with no OS
 //!   path, so bytes cross the IPC — as **raw request bodies** (no base64, no
-//!   JSON), in chunks, into a temp file under `.reflect/tmp/` (excluded from
+//!   JSON), in chunks, into a temp file under `.kore/tmp/` (excluded from
 //!   indexing and sync, so the watcher never sees a half-written upload).
 //!   Commit renames into `assets/`.
 //! - **Import** (`asset_import`): the file-picker path. The source has a real
@@ -15,7 +15,7 @@
 //!   memory at all.
 //!
 //! Both are generation-pinned like every mutating command: a graph switch
-//! mid-upload strands the temp file in the *old* graph's `.reflect/tmp/` and
+//! mid-upload strands the temp file in the *old* graph's `.kore/tmp/` and
 //! the commit is rejected loudly.
 
 use std::collections::HashMap;
@@ -117,10 +117,10 @@ fn persist_unique(
 
 /// The staging directory for in-flight uploads (and the V1 import's asset
 /// downloads): inside the graph (so the commit rename stays on one
-/// filesystem) but under `.reflect/` (so the watcher, indexer, and sync never
+/// filesystem) but under `.kore/` (so the watcher, indexer, and sync never
 /// see a partial file).
 pub(super) fn staging_dir(root: &Path) -> AppResult<std::path::PathBuf> {
-    let dir = root.join(".reflect").join("tmp");
+    let dir = root.join(".kore").join("tmp");
     fs::create_dir_all(&dir)?;
     Ok(dir)
 }
@@ -443,7 +443,7 @@ mod tests {
         let graph = tempdir().unwrap();
         bootstrap(graph.path()).unwrap();
         let dir = staging_dir(graph.path()).unwrap();
-        assert!(dir.starts_with(graph.path().join(".reflect")));
+        assert!(dir.starts_with(graph.path().join(".kore")));
         assert!(dir.is_dir());
     }
 }

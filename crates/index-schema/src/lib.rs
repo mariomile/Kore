@@ -1,4 +1,4 @@
-//! Shared schema + migrations for `<graph>/.reflect/index.sqlite` (Plan 04/14).
+//! Shared schema + migrations for `<graph>/.kore/index.sqlite` (Plan 04/14).
 //!
 //! The desktop app (writer) and the `reflect` CLI (read-only) both depend on
 //! this crate, so the schema can never skew between them. Everything that
@@ -14,10 +14,14 @@
 //! the `chat_*` tables (0008), which hold durable chat history. Wipe-style
 //! migrations (0004, 0006) and `index_clear` must never touch them.
 
-/// Directory inside a graph that holds the index (and marks a dir as a graph).
-pub const REFLECT_DIR: &str = ".reflect";
+mod runtime_dir;
 
-/// The index database's filename inside [`REFLECT_DIR`].
+pub use runtime_dir::{
+    has_runtime_dir, migrate_legacy_dir, move_dir_without_overwrite, IGNORE_RULES, KORE_DIR,
+    LEGACY_DIR, LEGACY_SELF_GITIGNORE, SELF_GITIGNORE, SYNCED_SUBDIR,
+};
+
+/// The index database's filename inside [`KORE_DIR`].
 pub const INDEX_FILE: &str = "index.sqlite";
 
 /// `user_version` after every migration has run. Read-only consumers compare
@@ -161,10 +165,10 @@ mod schema {
             .map_err(|err| SchemaError::Migration(format!("to version {version}: {err}")))
     }
 
-    /// Open (creating if needed) and migrate `<root>/.reflect/index.sqlite`.
+    /// Open (creating if needed) and migrate `<root>/.kore/index.sqlite`.
     pub fn open_index_at(root: &Path) -> Result<Connection, SchemaError> {
         register_sqlite_vec()?;
-        let dir = root.join(super::REFLECT_DIR);
+        let dir = root.join(super::KORE_DIR);
         std::fs::create_dir_all(&dir)?;
         let mut conn = Connection::open(dir.join(super::INDEX_FILE))?;
         // Another PROCESS can hold this database too — a second app flavor on
@@ -183,14 +187,14 @@ mod schema {
         Ok(conn)
     }
 
-    /// Open `<root>/.reflect/index.sqlite` **read-only** (no create, no
+    /// Open `<root>/.kore/index.sqlite` **read-only** (no create, no
     /// migrate) — a second connection for query traffic, so a long read never
     /// holds the writer's lock. WAL readers see the last committed state, and
     /// the writer connection (opened first via [`open_index_at`]) owns the
     /// file's existence and schema.
     pub fn open_index_read_only_at(root: &Path) -> Result<Connection, SchemaError> {
         register_sqlite_vec()?;
-        let path = root.join(super::REFLECT_DIR).join(super::INDEX_FILE);
+        let path = root.join(super::KORE_DIR).join(super::INDEX_FILE);
         let conn = Connection::open_with_flags(
             path,
             rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY

@@ -9,7 +9,7 @@ import { useRouter } from '@/routing/router'
 import { SidebarSortableSection } from './sidebar-sortable-section'
 import { useSessionExpanded } from './use-session-expanded'
 
-const EXPANDED_KEY = 'reflect.workspace-sidebar.library.expanded'
+const EXPANDED_KEY = 'kore.workspace-sidebar.library.expanded'
 
 const ROW_CLASS =
   'flex w-full items-center gap-1.5 rounded-md py-1 pr-2.5 text-left leading-5 transition-colors duration-[50ms]'

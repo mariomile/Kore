@@ -120,7 +120,7 @@ impl Fixture {
 
 pub fn graph() -> Fixture {
     let dir = TempDir::new().unwrap();
-    for sub in [".reflect", "daily", "notes"] {
+    for sub in [".kore", "daily", "notes"] {
         fs::create_dir_all(dir.path().join(sub)).unwrap();
     }
     Fixture { dir }
@@ -159,7 +159,7 @@ impl Fixture {
         due_time: Option<&str>,
     ) {
         let conn =
-            rusqlite::Connection::open(self.root().join(".reflect").join("index.sqlite")).unwrap();
+            rusqlite::Connection::open(self.root().join(".kore").join("index.sqlite")).unwrap();
         conn.execute(
             "INSERT INTO tasks(note_path, marker_offset, text, raw, checked, due_date, due_time)
              VALUES(?1, ?2, ?3, ?4, ?5, ?6, ?7)",
@@ -181,7 +181,7 @@ impl Fixture {
     /// Insert one wiki link the way the desktop projection would.
     pub fn insert_wiki_link(&self, source: &str, target_title: &str, pos: i64) {
         let conn =
-            rusqlite::Connection::open(self.root().join(".reflect").join("index.sqlite")).unwrap();
+            rusqlite::Connection::open(self.root().join(".kore").join("index.sqlite")).unwrap();
         conn.execute(
             "INSERT INTO links(source_path, kind, target_raw, target_key, alias,
                                pos_from, pos_to, target_path_key)
@@ -194,7 +194,7 @@ impl Fixture {
 
 impl Fixture {
     pub fn index_conn(&self) -> rusqlite::Connection {
-        rusqlite::Connection::open(self.root().join(".reflect").join("index.sqlite")).unwrap()
+        rusqlite::Connection::open(self.root().join(".kore").join("index.sqlite")).unwrap()
     }
 
     /// Mirror the desktop's tag projection: one row per tag occurrence.

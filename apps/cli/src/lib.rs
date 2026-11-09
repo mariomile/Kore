@@ -2,7 +2,7 @@
 //! parity per Plan 30).
 //!
 //! Self-contained: reads the graph's markdown files directly and opens
-//! `.reflect/index.sqlite` strictly read-only — no Node runtime, no running
+//! `.kore/index.sqlite` strictly read-only — no Node runtime, no running
 //! desktop app, no IPC. The one exception is `kore index` ([`indexer`]),
 //! which builds the index without the app by running `@reflect/core`'s own
 //! indexer under Node and writing its rows through `reflect-index-store`. The modules mirror the small contract owned by

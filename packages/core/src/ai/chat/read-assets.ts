@@ -13,7 +13,7 @@ import {
 
 /**
  * The read_assets tool's executor (Plan 20 meets Plan 10): resolve an
- * `assets/…` path to its stored description sidecar (`<asset>.reflect.md`)
+ * `assets/…` path to its stored description sidecar (`<asset>.kore.md`)
  * and gate it for the provider. The tool registration, name, and transcript
  * unions stay in `./tools` — this module only knows how to read one asset.
  */

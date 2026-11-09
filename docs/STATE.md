@@ -69,6 +69,28 @@ Draft without typing. Same draft PR #348, one step per commit.
 - Known limit: two notes born at the same instant can draw the same
   number.
 
+## Rename visible Reflect leftovers to Kore, 2026-11-09
+
+Ask: Mario, "ora deve essere tutto Kore" / "ci deve essere solo Kore". PR #354,
+one commit per step. Apple identity (`app.lore.*`, keychain `lore`) is another
+thread; the mechanical internal rename (`@reflect/*`, crates, CSS) is draft #355.
+
+- [x] Vault runtime dir `.reflect/` → `.kore/` (`crates/index-schema/src/runtime_dir.rs`),
+  migrated by app and CLI on open, merging without overwrite; git ignores
+  `/.kore/*` except `proposals/`.
+- [x] Deep links: only `kore://` is registered and parsed (desktop, iOS, widget).
+- [x] Visible labels, reflog message and the old `.gitignore` group.
+- [x] Reflect V1 zip import removed (Rust commands, core bindings, settings section).
+- [x] Asset descriptions `*.reflect.md` → `*.kore.md` (`fs/legacy_descriptions.rs`);
+  core still reads `reflectAsset: true` for evicted iCloud files.
+- [x] localStorage `reflect.*` → `kore.*` (copied once in `public/theme-init.js`),
+  `kore-asset://`, `kore-preview=raster`, `kore:capture-page-text`.
+- [x] Config dir `reflect-open/` → `kore/` (`app_dir.rs`, once per launch),
+  native host `app.kore.capture` (old manifest removed on register).
+- [x] Default backup repo `kore-backup`; AGENTS.md / CLAUDE.md naming rules.
+- Not verified on a real Mac: the migrations run in tests only. An extension
+  built before this PR calls the old host name until it is rebuilt.
+
 ## Quick Add review fixes, 2026-11-09
 
 Ask: Mario OK'd the strict review of #346
@@ -3374,6 +3396,15 @@ screen: Agents then Close lands on today.
 
 ## Session log
 
+- 2026-11-09 — Review fixes for PR #348 (Plan 33 B2/B4), six commits:
+  projection bump 29 so upgraded indexes fill the inheritance columns;
+  starting values validated once in core and stored as `start` for the
+  CLI; `created` is a `today` starting value; a failing inheritance pass
+  no longer fails indexing and every open re-runs it; options objects for
+  `collectionTagKeys`/`saveTagType`/`useCollection`; `TagChildrenFilter`.
+  Verified: core and desktop vitest (Chromium), typecheck, oxlint, eslint,
+  cargo test/clippy/fmt on the CLI.
+
 - 2026-11-09 — Starting values for fields (Plan 33 B4, PR #348): `today`,
   `now`, `next-number` or a fixed value, written when a note joins a tag
   through Kore or `kore new`/`kore tag`. Verified: core and desktop vitest,
@@ -3385,6 +3416,15 @@ screen: Agents then Close lands on today.
   variant. Verified: core and desktop vitest, browser suites for
   all-notes/tags/dev, cargo test/clippy/fmt on the CLI and index crates
   (the desktop crate does not build in the container: no GTK).
+
+- 2026-11-09 — Quality refactor, no behavior change. Agent steps carry a
+  `kind` and the `notePath` they touched, set in core by the Claude Code
+  describer, so `chat-agent-steps.tsx` maps kind to icon and no longer
+  switches on tool names; steps persisted before this are upgraded on load.
+  Only subagent steps nest (the UI's `flatten` is gone), the dead lone-step
+  case in `ChatAssistantPart` is removed, and every engine's `parseLine`
+  returns a chunk list (`parseClaudeCliLine` removed). Verified: core
+  vitest (2,563), chat browser tests on Chromium, typecheck and lint.
 
 - 2026-11-08 — Quality refactor, no behavior change. `kore sources` policy
   moves to core: `headless/sync-sources.ts` resolves which connectors run,

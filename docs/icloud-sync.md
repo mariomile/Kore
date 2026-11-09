@@ -63,7 +63,7 @@ resolving the same conflict produce identical bytes and converge):
    Nothing is ever discarded silently.
 
 Before any resolution is written, every involved version is archived under
-`.reflect/conflict-archive/<note-path>/` (kept ~90 days / 20 versions per
+`.kore/conflict-archive/<note-path>/` (kept ~90 days / 20 versions per
 note), so even a bad merge is recoverable. Binary assets never text-merge:
 the other device's copy lands alongside as `name (conflict).ext`.
 

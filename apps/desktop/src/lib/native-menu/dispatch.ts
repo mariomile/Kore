@@ -29,7 +29,7 @@ const FocusedNoteMenuCommandSchema = z.enum([
 /** Native menu commands whose target is the focused note webview. */
 export type FocusedNoteMenuCommand = z.infer<typeof FocusedNoteMenuCommandSchema>
 
-const FOCUSED_NOTE_MENU_EVENT = 'reflect://focused-note-menu-command'
+const FOCUSED_NOTE_MENU_EVENT = 'kore://focused-note-menu-command'
 
 /** Publish (or with `null`, withdraw) the active menu-command dispatcher. */
 export function setMenuCommandDispatch(dispatch: MenuCommandDispatch | null): void {

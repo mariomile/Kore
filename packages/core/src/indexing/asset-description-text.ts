@@ -6,7 +6,7 @@ import { splitFrontmatter } from '../markdown/frontmatter'
 /**
  * Folding asset descriptions into a note's search text (Plan 20, search
  * integration). A note's referenced assets each may have a description file
- * (`<asset>.reflect.md`); their bodies are appended to the note's FTS document
+ * (`<asset>.kore.md`); their bodies are appended to the note's FTS document
  * so a query matching a description surfaces the note — transparently, as an
  * ordinary hit. The same bodies feed the note's embedding chunks (the semantic
  * leg), so lexical and semantic retrieval see the same asset text. It never
@@ -42,7 +42,7 @@ export interface AssetDescriptionGather {
 
 /**
  * The per-asset description bodies for a note's referenced assets. Reads any
- * `<asset>.reflect.md` that exists (managed or user-authored — it is the
+ * `<asset>.kore.md` that exists (managed or user-authored — it is the
  * user's content about the asset) and strips frontmatter. Missing files and
  * empty bodies are skipped; an iCloud-evicted sidecar is reported in
  * `evicted` instead of being read (a read would block on an on-demand

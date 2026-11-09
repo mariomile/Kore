@@ -17,7 +17,7 @@ import type {
  * no imports), which is why the key literal is repeated there;
  * `theme-cache.test.ts` guards against the two drifting apart.
  */
-export const THEME_PREFERENCE_CACHE_KEY = 'reflect.theme.preference'
+export const THEME_PREFERENCE_CACHE_KEY = 'kore.theme.preference'
 
 /**
  * Best-effort mirror shared by every writer below: the settings document is
@@ -51,7 +51,7 @@ export function writeCachedThemePreference(preference: ThemePreference): void {
  * {@link THEME_PREFERENCE_CACHE_KEY}: `public/theme-init.js` repeats this
  * literal because it cannot import, and `theme-cache.test.ts` guards the pair.
  */
-export const THEME_ACCENT_CACHE_KEY = 'reflect.theme.accent'
+export const THEME_ACCENT_CACHE_KEY = 'kore.theme.accent'
 
 /**
  * Mirror the persisted accent color so the next launch's first paint already
@@ -68,7 +68,7 @@ export function writeCachedAccentColor(accentColor: AccentColor): void {
  * repeats this literal because it cannot import, and `theme-cache.test.ts`
  * guards the pair.
  */
-export const VISUAL_THEME_CACHE_KEY = 'reflect.theme.visual'
+export const VISUAL_THEME_CACHE_KEY = 'kore.theme.visual'
 
 /**
  * Mirror the persisted visual theme so the first painted frame already carries
@@ -84,7 +84,7 @@ export function writeCachedVisualTheme(theme: VisualTheme): void {
  * repeats this literal because it cannot import, and `theme-cache.test.ts`
  * guards the pair.
  */
-export const THEME_RADIUS_CACHE_KEY = 'reflect.theme.radius'
+export const THEME_RADIUS_CACHE_KEY = 'kore.theme.radius'
 
 /**
  * Mirror the persisted corner radius so the first painted frame already has
@@ -102,7 +102,7 @@ export function writeCachedUiRadius(radius: UiRadius): void {
  * repeats this literal because it cannot import, and `theme-cache.test.ts`
  * guards the pair.
  */
-export const THEME_GLASS_LEVEL_CACHE_KEY = 'reflect.theme.glass-level'
+export const THEME_GLASS_LEVEL_CACHE_KEY = 'kore.theme.glass-level'
 
 /**
  * Mirror the persisted Liquid Glass intensity. Only consulted when the glass
@@ -117,7 +117,7 @@ export function writeCachedGlassIntensity(intensity: GlassIntensity): void {
  * {@link THEME_PREFERENCE_CACHE_KEY}: `public/theme-init.js` repeats this
  * literal because it cannot import, and `theme-cache.test.ts` guards the pair.
  */
-export const THEME_DENSITY_CACHE_KEY = 'reflect.theme.density'
+export const THEME_DENSITY_CACHE_KEY = 'kore.theme.density'
 
 /**
  * Mirror the persisted density so rows are the right height on the first

@@ -7,10 +7,10 @@ import { CHAT_ATTACHMENT_EXTENSIONS } from './attachment-types'
  * Chat attachment bytes on disk. A freshly attached file enters the
  * composer as a `data:` URL (images downscaled, all bounded — see the app's
  * chat-attachments module); the send path persists those bytes to
- * `.reflect/chat-attachments/<conversation>/<attachment>.<ext>` through the
+ * `.kore/chat-attachments/<conversation>/<attachment>.<ext>` through the
  * commands here, so the *persisted* turn row carries only the file path and
  * a restored conversation holds no base64. The webview renders the file via
- * the `reflect-asset://` protocol; only a send that must rebuild a provider
+ * the `kore-asset://` protocol; only a send that must rebuild a provider
  * payload reads the bytes back.
  */
 

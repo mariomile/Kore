@@ -56,6 +56,15 @@ export {
   type LinkKindInfo,
 } from './link-kind'
 export {
+  blockIdsIn,
+  extractBlockSection,
+  isBlockId,
+  lineBlockId,
+  newBlockId,
+  noteLinkBlockId,
+  withoutBlockIds,
+} from './block-ids'
+export {
   extractHeadingSection,
   formatNoteTransclusion,
   parseNoteTransclusions,

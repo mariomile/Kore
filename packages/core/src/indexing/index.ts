@@ -138,6 +138,7 @@ export {
 } from './task-views'
 export {
   parseQuickAdd,
+  QUICK_ADD_MAX_ADDED,
   type QuickAdd,
   type QuickAddToken,
   type QuickAddTokenKind,

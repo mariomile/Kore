@@ -310,7 +310,7 @@ function projectSections(
       section.push(task)
     }
   }
-  return [...bySection.entries()]
+  return [...bySection]
     .filter(([, sectionTasks]) => sectionTasks.length > 0)
     .map(([label, sectionTasks]) => ({ label, tasks: sectionTasks }))
 }

@@ -78,7 +78,7 @@ export function countTaskTags(tasks: readonly { readonly raw: string }[]): TaskT
       }
     }
   }
-  return [...counts.entries()]
+  return [...counts]
     .map(([key, { tag, count }]) => ({ tag, key, count }))
     .sort((a, b) => b.count - a.count || a.key.localeCompare(b.key))
 }

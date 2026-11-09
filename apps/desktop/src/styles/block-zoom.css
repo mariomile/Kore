@@ -131,6 +131,14 @@
 ::view-transition-group(kore-zoom-page) {
   animation-duration: 0s;
 }
+/* The sliding block shows only its new look: crossfading the old one with
+   it doubled the text mid-slide. */
+::view-transition-old(kore-zoom-block) {
+  display: none;
+}
+::view-transition-new(kore-zoom-block) {
+  animation: none;
+}
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-group(kore-zoom-block),
   ::view-transition-old(kore-zoom-page),

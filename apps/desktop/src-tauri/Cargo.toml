@@ -80,8 +80,8 @@ tauri-plugin-http = { version = "2.5.9", features = ["unsafe-headers"] }
 # reqwest 0.12 rides the exact version tauri-plugin-http already compiles.
 image = { version = "0.25.10", default-features = false, features = ["jpeg", "png"] }
 reqwest = { version = "0.12.28", default-features = false, features = ["rustls-tls"] }
-# Reflect V1 exports are zip archives of the graph-folder layout. Keep the
-# reader lean: stored entries plus the usual deflate method are enough here.
+# Graph backups are zip archives (`db/backup.rs`). Keep the codec lean:
+# stored entries plus the usual deflate method are enough here.
 zip = { version = "8.6.0", default-features = false, features = ["deflate-flate2-zlib-rs"] }
 
 # Process-group kill for routine script timeouts (`routine_script.rs`):

@@ -1,18 +1,13 @@
 import { z } from 'zod'
 import { echoLocalWrite } from '../indexing/local-write-echo'
-import { getBridge, type Unlisten } from '../ipc/bridge'
 import { call } from '../ipc/invoke'
 import {
   fileMetaSchema,
-  graphImportProgressSchema,
-  graphImportSummarySchema,
   graphInfoSchema,
   noteCreateOutcomeSchema,
   recentGraphSchema,
   windowBootstrapSchema,
   type FileMeta,
-  type GraphImportProgress,
-  type GraphImportSummary,
   type GraphInfo,
   type NoteCreateOutcome,
   type RecentGraph,
@@ -80,62 +75,6 @@ export async function closeNoteWindows(): Promise<void> {
 /** Create a new graph at `path` and open it. */
 export async function createGraph(path: string): Promise<GraphInfo> {
   return await call('graph_create', { path }, graphInfoSchema)
-}
-
-/**
- * Import a Reflect V1 export `.zip` into the open graph. V1 exports already use
- * Reflect Open's graph-folder layout; Rust extracts safe entries under the
- * active graph root without ever replacing an existing file (identical files
- * skip, conflicting notes rename, conflicting daily notes merge). Attachments
- * the notes link to on Firebase Storage or Reflect's asset CDN are downloaded
- * into `assets/` and the links rewritten, so the call can take a while on
- * attachment-heavy graphs — observe {@link subscribeImportProgress} and offer
- * {@link cancelReflectV1Import} while it runs.
- */
-export async function importReflectV1Zip(
-  path: string,
-  generation: number,
-): Promise<GraphImportSummary> {
-  return await call('graph_import_reflect_v1_zip', { path, generation }, graphImportSummarySchema)
-}
-
-/** Event name the running import emits {@link GraphImportProgress} ticks on. */
-export const IMPORT_PROGRESS_EVENT = 'import:progress'
-
-/** Live progress ticks of the running Reflect V1 import. */
-export function subscribeImportProgress(
-  handler: (progress: GraphImportProgress) => void,
-): Promise<Unlisten> {
-  return getBridge().listen(IMPORT_PROGRESS_EVENT, (payload) => {
-    const parsed = graphImportProgressSchema.safeParse(payload)
-    if (parsed.success) {
-      handler(parsed.data)
-    } else {
-      console.error('invalid import:progress payload:', parsed.error)
-    }
-  })
-}
-
-/**
- * Cancel the running Reflect V1 import (a no-op when none runs). The import
- * aborts before anything lands in the graph, so cancelling is always safe;
- * the pending {@link importReflectV1Zip} call rejects.
- */
-export async function cancelReflectV1Import(): Promise<void> {
-  await call('graph_import_cancel', {}, voidSchema)
-}
-
-/**
- * Mark files imported by {@link importReflectV1Zip} as this device's writes.
- * Call only after the UI confirms the imported graph is still the active graph:
- * these paths are graph-relative and the own-write channel is scoped to the
- * currently running iCloud controller.
- */
-export function markReflectV1ImportOwnWrites(summary: GraphImportSummary): void {
-  const modifiedMs = Date.now()
-  for (const changedPath of summary.changedPaths) {
-    echoLocalWrite({ path: changedPath, kind: 'upsert', modifiedMs })
-  }
 }
 
 /**

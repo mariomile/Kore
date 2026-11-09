@@ -10,8 +10,6 @@ mod asset_identity;
 pub mod asset_protocol;
 pub mod assets;
 pub mod chat_attachments;
-mod import;
-mod import_assets;
 mod io;
 mod resolve;
 pub mod vault_copy;
@@ -21,7 +19,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
 use serde::Serialize;
-use tauri::{Emitter, Manager, State};
+use tauri::{Manager, State};
 use tauri_plugin_opener::OpenerExt;
 
 use crate::error::{AppError, AppResult};
@@ -30,10 +28,6 @@ use self::io::{
     atomic_create, atomic_write, bootstrap, collect_files, initialize_runtime, AtomicCreateOutcome,
 };
 use self::resolve::resolve;
-
-/// Cancellation flag for the running Reflect V1 import, managed as Tauri
-/// state in `lib.rs` (`graph_import_cancel` trips it).
-pub use self::import::ImportCancel;
 
 /// Atomic byte write staged under `.kore/tmp/`, shared with the conflict
 /// machinery (shadow bases, resolution writes) so every graph write follows
@@ -244,77 +238,6 @@ pub async fn graph_create<R: tauri::Runtime>(
         activate(&state, &root)
     })
     .await
-}
-
-/// Import a user-selected Reflect V1 export `.zip` into the open graph. V1's
-/// export is already the graph folder shape, so this extracts safe entries
-/// directly under the current root; existing files are never replaced (and
-/// never fail the import — identical files skip, conflicting notes rename,
-/// conflicting daily notes merge). Attachments the notes link to on Firebase
-/// Storage or Reflect's asset CDN are downloaded into `assets/` first and the
-/// links rewritten, so the imported graph doesn't depend on Reflect V1's
-/// infrastructure staying up. Progress is emitted as `import:progress` events,
-/// and [`graph_import_cancel`] aborts the run before anything lands in the
-/// graph.
-#[tauri::command]
-pub async fn graph_import_reflect_v1_zip(
-    path: String,
-    generation: u64,
-    app: tauri::AppHandle,
-    state: State<'_, GraphState>,
-    cancel: State<'_, ImportCancel>,
-) -> AppResult<import::ImportSummary> {
-    let root = root_for_generation(&state, generation)?;
-    // Holds the one import slot until this command returns on any path — a
-    // second import starting mid-run would clear a cancel meant for the
-    // first and race its writes.
-    let _running = cancel.begin()?;
-    let prepared = import::prepare_zip_import(&root, Path::new(&path))?;
-    if prepared.remote_asset_count() > 0 {
-        emit_import_progress(&app, "downloading", 0, prepared.remote_asset_count());
-    }
-    let download_app = app.clone();
-    let user_agent = crate::app_user_agent(&app);
-    let downloads = prepared
-        .download_assets(
-            &user_agent,
-            cancel.flag(),
-            std::sync::Arc::new(move |done, total| {
-                emit_import_progress(&download_app, "downloading", done, total);
-            }),
-        )
-        .await?;
-    // The downloads can take a while; refuse to write into a graph the user
-    // has switched away from (or an import the user cancelled) in the
-    // meantime — nothing has been written yet.
-    cancel.ensure_active()?;
-    root_for_generation(&state, generation)?;
-    // Writing is fast and local; throttle the events to ~100 per import so a
-    // large graph doesn't flood the webview.
-    let mut last_emitted = 0usize;
-    let summary = import::finalize_import(&root, prepared, downloads, |done, total| {
-        let step = (total / 100).max(1);
-        if done == total || done >= last_emitted + step {
-            last_emitted = done;
-            emit_import_progress(&app, "writing", done, total);
-        }
-    })?;
-    invalidate_file_catalog(&state, &root);
-    Ok(summary)
-}
-
-/// Cancel the running Reflect V1 import (a no-op when none is running). The
-/// import aborts before any graph write, so cancellation is always safe.
-#[tauri::command]
-pub fn graph_import_cancel(cancel: State<ImportCancel>) {
-    cancel.cancel();
-}
-
-fn emit_import_progress(app: &tauri::AppHandle, stage: &'static str, done: usize, total: usize) {
-    let _ = app.emit(
-        "import:progress",
-        import::ImportProgress { stage, done, total },
-    );
 }
 
 /// Open an existing Markdown vault in place, adding only `.kore/` runtime

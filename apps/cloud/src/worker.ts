@@ -39,10 +39,58 @@ async function storeFor(env: Env): Promise<NoteStore> {
   return store
 }
 
+/**
+ * Dynamic client registrations allowed per day. Registration is open (the
+ * MCP spec requires it) and each one writes to KV, whose free tier allows
+ * 1,000 writes a day: a cap far above a person's own agents keeps a stranger
+ * with the URL from spending that budget and blocking sign-ins.
+ */
+export const MAX_REGISTRATIONS_PER_DAY = 25
+
+function isAllowedRedirect(uri: unknown): boolean {
+  if (typeof uri !== 'string') {
+    return false
+  }
+  try {
+    const url = new URL(uri)
+    const loopback = ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)
+    return url.protocol === 'https:' || (url.protocol === 'http:' && loopback)
+  } catch {
+    return false
+  }
+}
+
+async function registrationGate(
+  env: Env,
+  clientMetadata: Record<string, unknown>,
+): Promise<{ code: string; description: string } | undefined> {
+  const uris = clientMetadata.redirect_uris
+  if (
+    !Array.isArray(uris) ||
+    uris.length === 0 ||
+    uris.length > 10 ||
+    !uris.every(isAllowedRedirect)
+  ) {
+    return {
+      code: 'invalid_redirect_uri',
+      description: 'redirect_uris must be https (or loopback http)',
+    }
+  }
+  const store = await storeFor(env)
+  const day = new Date().toISOString().slice(0, 10)
+  if (!(await store.countUnder(`registrations:${day}`, MAX_REGISTRATIONS_PER_DAY))) {
+    return {
+      code: 'access_denied',
+      description: 'Too many client registrations today; try tomorrow',
+    }
+  }
+  return undefined
+}
+
 const providers = new Map<string, OAuthProvider<Env>>()
 
 /** One provider per origin: its metadata names the Worker's own URL. */
-function providerFor(origin: string): OAuthProvider<Env> {
+function providerFor(origin: string, env: Env): OAuthProvider<Env> {
   let provider = providers.get(origin)
   if (provider === undefined) {
     provider = new OAuthProvider<Env>({
@@ -66,6 +114,8 @@ function providerFor(origin: string): OAuthProvider<Env> {
       tokenEndpoint: '/oauth/token',
       clientRegistrationEndpoint: '/oauth/register',
       clientIdMetadataDocumentEnabled: true,
+      clientRegistrationCallback: async ({ clientMetadata }) =>
+        await registrationGate(env, clientMetadata),
       scopesSupported: ['mcp', 'offline_access'],
       resourceMetadata: { resource: `${origin}/mcp`, authorization_servers: [origin] },
       requiredScopes: ['mcp'],
@@ -92,6 +142,6 @@ export default {
     ) {
       return await handleMcp(request, await storeFor(env))
     }
-    return await providerFor(url.origin).fetch(request, env, ctx)
+    return await providerFor(url.origin, env).fetch(request, env, ctx)
   },
 } satisfies ExportedHandler<Env>

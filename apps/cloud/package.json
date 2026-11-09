@@ -1,5 +1,5 @@
 {
-  "name": "@reflect/cloud",
+  "name": "@kore/cloud",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -9,7 +9,8 @@
   },
   "dependencies": {
     "@cloudflare/workers-oauth-provider": "1.2.4",
-    "@reflect/core": "workspace:*"
+    "@reflect/core": "workspace:*",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20260702.1",

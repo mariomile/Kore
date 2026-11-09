@@ -91,3 +91,10 @@ describe('sync meta', () => {
     ).toBe(400)
   })
 })
+
+describe('sync meta caps', () => {
+  it('refuses meta text larger than a note may be', async () => {
+    const meta = { title: 't', tags: [], text: 'x'.repeat(1_000_001) }
+    expect((await push([{ path: 'a.md', source: '# A\n', baseVersion: 0, meta }])).status).toBe(400)
+  })
+})

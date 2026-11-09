@@ -59,6 +59,9 @@ importers:
       '@reflect/core':
         specifier: workspace:*
         version: link:../../packages/core
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
     devDependencies:
       '@cloudflare/workers-types':
         specifier: ^4.20260702.1

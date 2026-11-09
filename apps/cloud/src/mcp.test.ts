@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { fakeD1 } from './d1-fake'
-import { handleMcp } from './mcp'
+import { MAX_BATCH, handleMcp } from './mcp'
 import { NoteStore } from './store'
 
 let store: NoteStore
@@ -66,5 +66,20 @@ describe('MCP endpoint', () => {
         )
       ).status,
     ).toBe(400)
+  })
+})
+
+describe('MCP limits', () => {
+  it('refuses an oversized batch and a request without a method', async () => {
+    const batch = Array.from({ length: MAX_BATCH + 1 }, (_, id) => ({
+      jsonrpc: '2.0',
+      id,
+      method: 'ping',
+    }))
+    expect((await post(batch)).status).toBe(400)
+    const bad = (await (await post({ jsonrpc: '2.0', id: 1 })).json()) as {
+      error: { code: number }
+    }
+    expect(bad.error.code).toBe(-32600)
   })
 })

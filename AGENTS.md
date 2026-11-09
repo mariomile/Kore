@@ -409,7 +409,7 @@ Kore/
 │   │   └── public/         # Static assets served by Vite
 │   ├── cli/                # `kore` — self-contained Rust read/discovery/capture CLI (docs/cli.md);
 │   │                       #   `kore index` hosts the core's indexer under Node
-│   ├── cloud/              # @reflect/cloud — Kore Cloud, the always-on Worker (D1 + MCP + OAuth +
+│   ├── cloud/              # @kore/cloud — Kore Cloud, the always-on Worker (D1 + MCP + OAuth +
 │   │                       #   app sync) that setup deploys to the user's own Cloudflare (Plan 34)
 │   ├── extension/          # @reflect/extension — Chrome MV3 capture extension (WXT; see its README)
 │   └── native-host/        # `reflect-capture-host` — native-messaging spooler sidecar (Plan 11)

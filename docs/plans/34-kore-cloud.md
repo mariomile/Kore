@@ -86,6 +86,15 @@ in the user's account; Kore operates nothing.
 
 ## Open
 
+- **One key does everything today** (review 2026-11-09): the access key
+  approves agents, drives `/sync/*` and works as a bearer on `/mcp`, and
+  every OAuth grant is the same `owner`, so a write carries no agent name and
+  bypasses Plan 33's activity log and propose-only keys. Proposed: an owner
+  key for sync kept by the app only, per-agent grants named at consent, and
+  the author stored on every write. Waiting on Mario before slice 4.
+- Open registration is capped at 25 clients a day (counted in D1) so a
+  stranger cannot spend the KV free tier (1,000 writes a day) and block
+  sign-ins; redirect URIs must be https or loopback.
 - Notes in Kore Cloud are not end-to-end encrypted (as on GitHub today).
 - ChatGPT mobile and Grok sign-in still to verify live.
 - The Worker keeps no session and answers `initialize` for clients that

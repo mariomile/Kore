@@ -1,5 +1,6 @@
+import { z } from 'zod'
 import { MAX_SOURCE_BYTES, byteLength, isNotePath, isPrivateSource } from './note'
-import type { NoteStore, NoteText, WriteOutcome, WriteRequest } from './store'
+import type { NoteStore, WriteOutcome, WriteRequest } from './store'
 
 /**
  * The Kore app's two-way sync over plain HTTP, authenticated with the vault's
@@ -81,61 +82,46 @@ export function rejectWrite(write: WriteRequest): string | null {
   return null
 }
 
-function parseMeta(value: unknown): NoteText | undefined | 'invalid' {
-  if (value === undefined || value === null) {
-    return undefined
-  }
-  const { title, tags, text } = value as Record<string, unknown>
-  if (
-    typeof title !== 'string' ||
-    typeof text !== 'string' ||
-    !Array.isArray(tags) ||
-    tags.some((tag) => typeof tag !== 'string')
-  ) {
-    return 'invalid'
-  }
-  return { title, tags: tags as string[], text }
-}
+/** Longest title or index text a push may carry for one note. */
+const MAX_META_CHARS = MAX_SOURCE_BYTES
+
+const metaSchema = z.object({
+  title: z.string().max(MAX_META_CHARS),
+  tags: z.array(z.string().max(200)).max(500),
+  text: z.string().max(MAX_META_CHARS),
+})
+
+const writeSchema = z.object({
+  path: z.string().max(1024),
+  source: z.string().nullable(),
+  baseVersion: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
+  meta: metaSchema.nullish(),
+})
+
+const pushSchema = z.object({ writes: z.array(writeSchema).max(MAX_PUSH_WRITES) })
 
 function parseWrites(body: unknown): WriteRequest[] | string {
-  const writes = (body as { writes?: unknown } | null)?.writes
-  if (!Array.isArray(writes)) {
-    return 'body must be { writes: [...] }'
+  const parsed = pushSchema.safeParse(body)
+  if (!parsed.success) {
+    return z.prettifyError(parsed.error)
   }
-  if (writes.length > MAX_PUSH_WRITES) {
-    return `at most ${MAX_PUSH_WRITES} writes per push`
-  }
-  const parsed: WriteRequest[] = []
   const seen = new Set<string>()
   let unparsed = 0
-  for (const write of writes as unknown[]) {
-    const { path, source, baseVersion, meta } = (write ?? {}) as Record<string, unknown>
-    if (
-      typeof path !== 'string' ||
-      (source !== null && typeof source !== 'string') ||
-      typeof baseVersion !== 'number' ||
-      !Number.isSafeInteger(baseVersion) ||
-      baseVersion < 0
-    ) {
-      return 'each write needs a string path, a string or null source, and an integer baseVersion'
-    }
+  const writes: WriteRequest[] = []
+  for (const { path, source, baseVersion, meta } of parsed.data.writes) {
     if (seen.has(path)) {
       return `${path} appears twice in one push`
     }
     seen.add(path)
-    const text = parseMeta(meta)
-    if (text === 'invalid') {
-      return 'meta must be { title: string, tags: string[], text: string }'
-    }
-    if (source !== null && text === undefined) {
+    if (source !== null && (meta === undefined || meta === null)) {
       unparsed += 1
     }
-    parsed.push({ path, source, baseVersion, meta: text })
+    writes.push({ path, source, baseVersion, meta: meta ?? undefined })
   }
   if (unparsed > MAX_UNPARSED_PUSH_WRITES) {
     return `at most ${MAX_UNPARSED_PUSH_WRITES} writes without meta per push`
   }
-  return parsed
+  return writes
 }
 
 async function push(request: Request, store: NoteStore): Promise<Response> {

@@ -2,7 +2,7 @@ import { createHash, randomBytes } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
 import { fakeD1 } from './d1-fake'
 import { fakeKV } from './kv-fake'
-import worker, { type Env } from './worker'
+import worker, { MAX_REGISTRATIONS_PER_DAY, type Env } from './worker'
 
 const ORIGIN = 'https://kore-cloud.example.workers.dev'
 const KEY = 'test-access-key'
@@ -129,5 +129,29 @@ describe('Kore Cloud Worker', () => {
       result: { tools: { name: string }[] }
     }
     expect(listed.result.tools.map((tool) => tool.name)).toContain('append_to_note')
+  })
+})
+
+describe('client registration', () => {
+  const register = async (redirect: string) =>
+    await fetchWorker('/oauth/register', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        client_name: 'x',
+        redirect_uris: [redirect],
+        token_endpoint_auth_method: 'none',
+      }),
+    })
+
+  it('refuses non-https redirects and caps registrations per day', async () => {
+    expect((await register('http://evil.example/cb')).status).toBe(400)
+    let accepted = 1 // the sign-in test above registered one client today
+    for (let attempt = 0; attempt < MAX_REGISTRATIONS_PER_DAY + 2; attempt += 1) {
+      if ((await register(REDIRECT)).status < 300) {
+        accepted += 1
+      }
+    }
+    expect(accepted).toBe(MAX_REGISTRATIONS_PER_DAY)
   })
 })

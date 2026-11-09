@@ -142,6 +142,22 @@ export class NoteStore {
     await this.#db.batch(SCHEMA.map((statement) => this.#db.prepare(statement)))
   }
 
+  /**
+   * Add one to the counter `name` unless it already reached `cap`; true when
+   * it was counted. Guards writes that anyone with the URL can trigger.
+   */
+  async countUnder(name: string, cap: number): Promise<boolean> {
+    const row = await this.#db
+      .prepare(
+        `INSERT INTO counters(name, value) VALUES (?1, 1)
+         ON CONFLICT(name) DO UPDATE SET value = value + 1 WHERE value < ?2
+         RETURNING value`,
+      )
+      .bind(name, cap)
+      .first<{ value: number }>()
+    return row !== null
+  }
+
   /** The live note at `path`, or null (absent, deleted). */
   async get(path: string): Promise<StoredNote | null> {
     const row = await this.#db

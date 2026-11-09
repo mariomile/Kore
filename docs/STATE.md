@@ -7,7 +7,7 @@ free, no server, a flow anyone can do; on the decision card he chose notes in
 the user's own Cloudflare (D1), app syncing both ways. Plan
 [34](plans/34-kore-cloud.md); PR #332 (VM route) is superseded.
 
-- [x] `apps/cloud/` (`@reflect/cloud`): D1 store with per-note versions,
+- [x] `apps/cloud/` (`@kore/cloud`): D1 store with per-note versions,
   vault-wide `seq` and tombstones (`store.ts`, `schema.ts`); structural edits
   mirroring the CLI (`edits.ts`); MCP tools with CAS retry (`tools.ts`,
   `mcp.ts`); OAuth consent with the access key (`consent.ts`, `worker.ts`);

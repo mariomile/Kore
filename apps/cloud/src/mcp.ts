@@ -1,3 +1,4 @@
+import { z } from 'zod'
 import type { NoteStore } from './store'
 import {
   INSTRUCTIONS,
@@ -18,12 +19,21 @@ export const PROTOCOL_VERSIONS = ['2025-11-25', '2025-06-18', '2025-03-26', '202
 
 export const SERVER_INFO = { name: 'kore-cloud', title: 'Kore', version: '0.1.0' } as const
 
-interface RpcRequest {
-  jsonrpc?: unknown
-  id?: string | number | null
-  method?: unknown
-  params?: Record<string, unknown>
-}
+const rpcRequestSchema = z.object({
+  jsonrpc: z.literal('2.0').optional(),
+  id: z.union([z.string(), z.number(), z.null()]).optional(),
+  method: z.string(),
+  params: z.record(z.string(), z.unknown()).optional(),
+})
+type RpcRequest = z.infer<typeof rpcRequestSchema>
+
+const toolCallSchema = z.object({
+  name: z.string(),
+  arguments: z.record(z.string(), z.unknown()).optional(),
+})
+
+/** Most calls one JSON-RPC batch may carry: each can touch D1 several times. */
+export const MAX_BATCH = 10
 
 type RpcResponse =
   | { jsonrpc: '2.0'; id: string | number | null; result: unknown }
@@ -54,9 +64,6 @@ function error(id: RpcRequest['id'], code: number, message: string): RpcResponse
 async function answer(store: NoteStore, request: RpcRequest): Promise<RpcResponse | null> {
   const { id, method, params } = request
   const isNotification = id === undefined
-  if (typeof method !== 'string') {
-    return error(id, INVALID_REQUEST, 'Missing method')
-  }
   if (method.startsWith('notifications/')) {
     return null
   }
@@ -88,12 +95,11 @@ async function answer(store: NoteStore, request: RpcRequest): Promise<RpcRespons
       }
       break
     case 'tools/call': {
-      const name = params?.name
-      const args = params?.arguments ?? {}
-      if (typeof name !== 'string' || typeof args !== 'object' || args === null) {
+      const call = toolCallSchema.safeParse(params)
+      if (!call.success) {
         return error(id, INVALID_REQUEST, 'tools/call needs a name and object arguments')
       }
-      result = await callTool(store, name, args as Record<string, unknown>)
+      result = await callTool(store, call.data.name, call.data.arguments ?? {})
       break
     }
     default:
@@ -103,10 +109,11 @@ async function answer(store: NoteStore, request: RpcRequest): Promise<RpcRespons
 }
 
 async function safeAnswer(store: NoteStore, request: unknown): Promise<RpcResponse | null> {
-  if (typeof request !== 'object' || request === null || Array.isArray(request)) {
-    return error(null, INVALID_REQUEST, 'Expected a JSON-RPC object')
+  const parsed = rpcRequestSchema.safeParse(request)
+  if (!parsed.success) {
+    return error(null, INVALID_REQUEST, 'Expected a JSON-RPC request object with a method')
   }
-  const rpc = request as RpcRequest
+  const rpc = parsed.data
   try {
     return await answer(store, rpc)
   } catch (cause) {
@@ -134,6 +141,9 @@ export async function handleMcp(request: Request, store: NoteStore): Promise<Res
     return json(error(null, PARSE_ERROR, 'Body is not JSON'), 400)
   }
   if (Array.isArray(body)) {
+    if (body.length > MAX_BATCH) {
+      return json(error(null, INVALID_REQUEST, `At most ${MAX_BATCH} calls per batch`), 400)
+    }
     const responses = (await Promise.all(body.map((item) => safeAnswer(store, item)))).filter(
       (response) => response !== null,
     )

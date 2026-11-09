@@ -29,6 +29,13 @@ export type ZoomTarget =
 
 interface BlockZoomState {
   readonly target: ZoomTarget | null
+  /** Built when the zoom changes, then mapped through each edit. */
+  readonly decorations: DecorationSet
+}
+
+/** The transaction meta that sets the zoom; only this module writes it. */
+interface ZoomMeta {
+  readonly target: ZoomTarget | null
 }
 
 const blockZoomKey = new PluginKey<BlockZoomState>('kore-block-zoom')
@@ -43,33 +50,6 @@ function headingLevel(node: ProseMirrorNode | null | undefined): number | null {
   }
   const level: unknown = node.attrs['level']
   return typeof level === 'number' ? level : null
-}
-
-function isTarget(value: unknown): value is ZoomTarget {
-  if (typeof value !== 'object' || value === null || !('kind' in value)) {
-    return false
-  }
-  if (value.kind === 'list') {
-    return 'root' in value && typeof value.root === 'number'
-  }
-  return (
-    value.kind === 'range' &&
-    'from' in value &&
-    typeof value.from === 'number' &&
-    'to' in value &&
-    typeof value.to === 'number'
-  )
-}
-
-function readZoomMeta(tr: Transaction): { readonly target: ZoomTarget | null } | null {
-  const meta: unknown = tr.getMeta(blockZoomKey)
-  if (typeof meta !== 'object' || meta === null || !('target' in meta)) {
-    return null
-  }
-  if (meta.target === null) {
-    return { target: null }
-  }
-  return isTarget(meta.target) ? { target: meta.target } : null
 }
 
 /** What the editor is zoomed into, or null when it shows the whole note. */
@@ -201,7 +181,8 @@ function targetSpan(doc: ProseMirrorNode, target: ZoomTarget): { from: number; t
 }
 
 function setZoom(tr: Transaction, target: ZoomTarget | null): Transaction {
-  tr.setMeta(blockZoomKey, { target })
+  const meta: ZoomMeta = { target }
+  tr.setMeta(blockZoomKey, meta)
   const span = target === null ? null : targetSpan(tr.doc, target)
   if (span !== null) {
     const { from, to } = tr.selection
@@ -461,7 +442,10 @@ function breadcrumb(view: EditorView, target: ZoomTarget): HTMLElement {
     })
     button.addEventListener('click', (event) => {
       event.preventDefault()
-      zoomTo(view, crumb.target)
+      // Edits inside the zoom move later sections, so read the crumb afresh.
+      const current = zoomTarget(view.state)
+      const fresh = current === null ? undefined : crumbsFor(view.state.doc, current)[index]
+      zoomTo(view, fresh === undefined ? null : fresh.target)
       view.focus()
     })
     nav.append(button)
@@ -508,8 +492,10 @@ function rangeDecorations(doc: ProseMirrorNode, from: number, to: number): Decor
   return decorations
 }
 
-function buildDecorations(state: EditorState, target: ZoomTarget): DecorationSet {
-  const { doc } = state
+function buildDecorations(doc: ProseMirrorNode, target: ZoomTarget | null): DecorationSet {
+  if (target === null) {
+    return DecorationSet.empty
+  }
   const span = targetSpan(doc, target)
   if (span === null) {
     return DecorationSet.empty
@@ -523,7 +509,7 @@ function buildDecorations(state: EditorState, target: ZoomTarget): DecorationSet
       side: -1,
       ignoreSelection: true,
       stopEvent: () => true,
-      key: `zoom-breadcrumb:${span.from}:${span.to}`,
+      key: 'zoom-breadcrumb',
     }),
   )
   return DecorationSet.create(doc, decorations)
@@ -601,17 +587,21 @@ export function createBlockZoomPlugin(): Plugin<BlockZoomState> {
   return new Plugin<BlockZoomState>({
     key: blockZoomKey,
     state: {
-      init: () => ({ target: null }),
+      init: () => ({ target: null, decorations: DecorationSet.empty }),
       apply: (tr, previous, _oldState, newState) => {
-        const meta = readZoomMeta(tr)
-        if (meta !== null) {
-          return meta
+        const meta = tr.getMeta(blockZoomKey) as ZoomMeta | undefined
+        if (meta !== undefined) {
+          return { target: meta.target, decorations: buildDecorations(newState.doc, meta.target) }
         }
         if (previous.target === null || !tr.docChanged) {
           return previous
         }
         const target = mapTarget(tr, previous.target, newState.doc)
-        return target === previous.target ? previous : { target }
+        // Edits inside the zoom only shift what it hides, so the decorations
+        // map; the zoom moving or ending rebuilds them.
+        return target === previous.target
+          ? { target, decorations: previous.decorations.map(tr.mapping, tr.doc) }
+          : { target, decorations: buildDecorations(newState.doc, target) }
       },
     },
     filterTransaction: (tr, state) => {
@@ -635,12 +625,7 @@ export function createBlockZoomPlugin(): Plugin<BlockZoomState> {
       )
     },
     props: {
-      decorations: (state) => {
-        const target = zoomTarget(state)
-        return target === null ? DecorationSet.empty : buildDecorations(state, target)
-      },
-      attributes: (state): Record<string, string> =>
-        zoomTarget(state) === null ? {} : { 'data-block-zoomed': '' },
+      decorations: (state) => blockZoomKey.getState(state)?.decorations ?? DecorationSet.empty,
       handleDOMEvents: {
         mousedown: handleMarkerMouseDown,
       },

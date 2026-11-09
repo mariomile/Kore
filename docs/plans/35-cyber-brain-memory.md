@@ -1,4 +1,6 @@
-# Plan 34: cyber-brain as Kore's memory engine
+# Plan 35: cyber-brain as Kore's memory engine
+
+(Numbered 35 because Plan 34 is Kore Cloud, #364.)
 
 Status: slice 1 in progress (2026-11-09). Asked by Mario: "cyber-brain as a
 native plugin for Kore, so memory management shows there and the chat learns
@@ -27,6 +29,32 @@ memory is read-only and Kore says so, it never writes another format.
 When `AGENTS.md` declares `cyber_brain:`, Kore's own agent memory
 (`agents/user.md`, `agents/memory/*`, the `remember` line format) is off for
 that vault.
+
+## Trust model
+
+`kit_script_run` executes a file that lives in the vault, and the vault
+syncs (git, Kore Cloud). Whoever can write `System/scripts/brain.mjs` there
+gets code run on this Mac at the next memory write, with the user's rights.
+That is the same trust Claude Code, Codex and the nightly `dream` already
+place in the file, since they run it too; Kore adds no new writer, but it
+does add a runner. Guards that hold today: the script must resolve inside
+the graph (no traversal, no symlink out), only `.mjs`/`.js`, Node gets an
+argv and never a shell, a timeout kills the whole process tree, and core
+only ever runs the subcommands listed in `cyber-brain/script.ts`.
+
+To add in step 4, before the chat can trigger a run: Kore remembers the
+hash of the script it last ran for this vault and, when the file changed
+since (a kit upgrade, or a synced edit nobody made here), asks once before
+running it, naming what changed. A vault never seen before asks too.
+
+Git: with `git: true` the kit commits the files it wrote, and Kore's own
+backup sync (`git/commit.rs`, libgit2 `commit_all`) commits the same repo.
+They can meet on `.git/index.lock`. Both sides fail soft: the kit catches
+a failed commit and keeps the write (the run record then has no `commit:`
+line) and Kore's next sync pass stages whatever is left. Nothing is lost;
+at worst one write is committed by Kore's backup instead of the kit. Kore
+does not pass `--no-commit`: the run record must match what Claude Code
+writes.
 
 ## Slices
 

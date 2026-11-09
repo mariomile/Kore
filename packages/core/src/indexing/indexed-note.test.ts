@@ -9,7 +9,23 @@ describe('buildIndexedNote', () => {
     // but it must never happen by accident: bump it here together with the
     // migration that requires it, and with the changelog entry in
     // `indexed-note.ts` saying what the new rows carry.
-    expect(PROJECTION_VERSION).toBe(28)
+    expect(PROJECTION_VERSION).toBe(31)
+  })
+
+  it('indexes a cyber-brain sensitivity: private note as private', () => {
+    for (const [frontmatter, expected] of [
+      ['sensitivity: private', true],
+      ['sensitivity: personal', false],
+      ['sensitivity: shareable', false],
+    ] as const) {
+      const source = `---\n${frontmatter}\n---\n# Alice\n`
+      const indexed = buildIndexedNote(parseNote({ path: 'CRM/People/Alice.md', source }), {
+        fileHash: 'h',
+        mtime: 1,
+        source,
+      })
+      expect(indexed.isPrivate).toBe(expected)
+    }
   })
 
   it('flattens a parsed note into the index payload', () => {

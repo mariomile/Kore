@@ -1,4 +1,4 @@
-//! The vault's own kit script (Plan 34): run one Node script that lives in
+//! The vault's own kit script (Plan 35): run one Node script that lives in
 //! the open graph — cyber-brain's `System/scripts/brain.mjs` — with an argv
 //! the caller builds, never through a shell. Which script and which
 //! arguments is `@reflect/core`'s policy (`cyber-brain/script.ts`); this
@@ -88,11 +88,15 @@ fn check_args(args: &[String]) -> AppResult<()> {
     if args.len() > MAX_ARGS {
         return Err(AppError::io("too many script arguments"));
     }
-    if args
-        .iter()
-        .any(|arg| arg.len() > MAX_ARG_BYTES || arg.contains('\0'))
-    {
-        return Err(AppError::io("a script argument is too long or not text"));
+    if let Some(arg) = args.iter().find(|arg| arg.len() > MAX_ARG_BYTES) {
+        return Err(AppError::io(format!(
+            "a script argument is {} KB; the limit is {} KB",
+            arg.len().div_ceil(1024),
+            MAX_ARG_BYTES / 1024
+        )));
+    }
+    if args.iter().any(|arg| arg.contains('\0')) {
+        return Err(AppError::io("a script argument is not text"));
     }
     Ok(())
 }

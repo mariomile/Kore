@@ -3327,7 +3327,19 @@ screen: Agents then Close lands on today.
 
 ## Session log
 
-- 2026-11-09 — Plan 34 slice 1, step 3. Kore can run the vault's own kit
+- 2026-11-09 — Plan 35 review fixes (full review, B2/I9). The cyber-brain
+  plan moves from 34 to 35 (34 is Kore Cloud, #364). `PROJECTION_VERSION`
+  31 (29 and 30 are taken by #348 and #365): rows indexed before
+  `sensitivity: private` counted held `is_private = false`, so the CLI,
+  `kore mcp` and search kept serving those notes until edited; the bump
+  reprojects every note. The plan now states the trust model of running
+  the vault's synced `brain.mjs` (and the hash-and-ask guard step 4 adds
+  before the chat can run it) and why the kit's commits and Kore's backup
+  sync can meet on `index.lock` without losing a write. An oversized
+  script argument names its size. Verified: core indexing + cyber-brain
+  tests, `pnpm check`, desktop clippy.
+
+- 2026-11-09 — Plan 35 slice 1, step 3. Kore can run the vault's own kit
   script. Rust `kit_script_run` (`src-tauri/src/kit_script.rs`) spawns
   Node (found like the agent CLIs, GUI PATH included) on a `.mjs`/`.js`
   inside the graph (traversal and symlink guarded, generation-pinned),
@@ -3344,7 +3356,7 @@ screen: Agents then Close lands on today.
   `pnpm check`, desktop clippy; desktop Rust tests can't link in the
   container (ort), CI runs them.
 
-- 2026-11-09 — Plan 34 slice 1, step 2. Core reads a vault's cyber-brain
+- 2026-11-09 — Plan 35 slice 1, step 2. Core reads a vault's cyber-brain
   configuration from the frontmatter of its `AGENTS.md`
   (`packages/core/src/cyber-brain/config.ts`): kit version, `writers`,
   `git`, `daily_notes` and its heading, `paths.system`/`paths.inbox`,
@@ -3354,8 +3366,8 @@ screen: Agents then Close lands on today.
   kit's defaults, and a path that leaves the vault is refused. Nothing
   uses it yet. Verified: core node tests (2,555), `pnpm check`.
 
-- 2026-11-09 — Plan 34 slice 1, step 1 (cyber-brain as Kore's memory
-  engine, `docs/plans/34-cyber-brain-memory.md`). `sensitivity: private`
+- 2026-11-09 — Plan 35 slice 1, step 1 (cyber-brain as Kore's memory
+  engine, `docs/plans/35-cyber-brain-memory.md`). `sensitivity: private`
   (cyber-brain's privacy level) is now the same hard block as
   `private: true`, in the TS frontmatter schema and the Rust
   `note-policy` mirror, so every existing gate (MCP, chat, search, CLI

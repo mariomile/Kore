@@ -4,7 +4,7 @@ import { call } from '../ipc/invoke'
 import type { CyberBrainConfig } from './config'
 
 /**
- * Memory writes through the vault's own kit script (Plan 34). Kore never
+ * Memory writes through the vault's own kit script (Plan 35). Kore never
  * re-implements cyber-brain's formats: every write runs the vault's
  * `brain.mjs`, the same code Claude Code and the nightly `dream` run, so a
  * fact, a loop or a decision lands identically whoever wrote it, with its

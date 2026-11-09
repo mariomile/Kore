@@ -125,8 +125,13 @@ import {
  * after the image) reads as the post's author and words in the note text, so
  * search finds a tweet by what it says. Existing rows hold the raw JSON until
  * reprojected.
+ * 29, 30 - taken by other changes in flight (#348, #365).
+ * 31 - `sensitivity: private` (cyber-brain's privacy level, Plan 35) sets
+ * `notes.is_private` like `private: true`. Rows indexed before hold `false`,
+ * so the CLI, `kore mcp` and search would still serve those notes until they
+ * were edited: the bump reprojects every note so the block holds at once.
  */
-export const PROJECTION_VERSION = 28
+export const PROJECTION_VERSION = 31
 
 /**
  * The `index_meta` key holding the {@link PROJECTION_VERSION} the stored rows

@@ -3,7 +3,7 @@ import { readNote } from '../graph/commands'
 import { parseFrontmatter, splitFrontmatter } from '../markdown/frontmatter'
 
 /**
- * cyber-brain (Plan 34): the user's own kit that turns a vault into a memory
+ * cyber-brain (Plan 35): the user's own kit that turns a vault into a memory
  * every agent shares. A vault opts in by declaring it in the frontmatter of
  * its agent contract, `AGENTS.md` (`cyber_brain: "0.1"`); that frontmatter is
  * the kit's whole configuration (its `System/SPEC.md` §3.1). Kore reads it,

@@ -91,6 +91,11 @@ export type AgentCliChunk =
   /** A tool call settled — its content-free outcome. */
   | { type: 'step-end'; id: string; outcome: AgentStepOutcome }
 
+/** The chunk list of a parser that yields at most one chunk per line. */
+export function chunkList(chunk: AgentCliChunk | null): AgentCliChunk[] {
+  return chunk === null ? [] : [chunk]
+}
+
 const cliEventSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('line'), requestId: z.string(), line: z.string() }),
   z.object({ kind: z.literal('done'), requestId: z.string(), code: z.number().nullable() }),
@@ -200,7 +205,7 @@ export interface AgentCliTurnOptions {
    */
   isolatedCodexHome?: boolean | undefined
   /** Parse one stdout line into chunks (parallel tool calls), or null for noise. */
-  parseLine: (line: string) => AgentCliChunk | AgentCliChunk[] | null
+  parseLine: (line: string) => readonly AgentCliChunk[]
   /** Message when the spawn itself fails without a specific cause. */
   startFailureMessage: string
   /** Aborts the run mid-stream (the UI's stop button). */
@@ -365,11 +370,7 @@ export async function* streamAgentCliTurn(
         if (options.onRawLine !== undefined) {
           await options.onRawLine(event.line, sendRawLine)
         }
-        const parsed = options.parseLine(event.line)
-        if (parsed === null) {
-          continue
-        }
-        for (const chunk of Array.isArray(parsed) ? parsed : [parsed]) {
+        for (const chunk of options.parseLine(event.line)) {
           const open = segments.at(-1)
           const text = open?.role === 'assistant' ? open.text : ''
           if (chunk.type === 'step-start') {

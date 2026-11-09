@@ -6,6 +6,7 @@ import {
   noteCardAndMentionRules,
   noteContentSafetyRules,
   type AgentCliChunk,
+  chunkList,
 } from './agent-cli'
 import { agentContextPromptLines, type AgentPromptContext } from './agent-profiles'
 import type { StreamCliChatOptions } from './claude-cli'
@@ -273,7 +274,7 @@ export async function* streamCursorCliChat(
       relativePath: '.cursor/cli.json',
       contents: cursorCliPermissionsJson(options.privateNotePaths),
     },
-    parseLine: (line) => parseCursorCliLine(line, state),
+    parseLine: (line) => chunkList(parseCursorCliLine(line, state)),
     startFailureMessage: 'Could not start the Cursor CLI.',
     signal: options.signal,
   })

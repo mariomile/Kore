@@ -1,9 +1,11 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 import '@/test-utils/locator'
 import { BlockIds } from './block-ids'
+import { lastFocusedBlockIdView } from './block-id-plugin'
 import { BlockZoom } from './block-zoom'
+import { copyLinkToBlock, copyLinkToLastFocusedLine } from './copy-block-link'
 import { NoteEditor, type NoteEditorHandle } from './note-editor'
 
 const NOTE = [
@@ -25,21 +27,30 @@ const NOTE = [
 const mod = /Mac|iPhone|iPad/.test(navigator.platform) ? 'Meta' : 'Control'
 const pmRoot = page.locate('.ProseMirror')
 
-async function renderNote(): Promise<NoteEditorHandle> {
+async function renderNote(
+  content = NOTE,
+  linkTarget: string | null = 'Pricing',
+): Promise<NoteEditorHandle> {
   let handle: NoteEditorHandle | null = null
   await render(
     <NoteEditor
-      initialContent={NOTE}
+      initialContent={content}
       handleRef={(grabbed) => {
         handle = grabbed
       }}
     >
       <BlockZoom />
-      <BlockIds />
+      <BlockIds linkTarget={linkTarget} />
     </NoteEditor>,
   )
   await expect.element(pmRoot.getByText('Last line')).toBeVisible()
   return handle!
+}
+
+function stubClipboard(): ReturnType<typeof vi.fn> {
+  const writeText = vi.fn(() => Promise.resolve())
+  vi.spyOn(navigator.clipboard, 'writeText').mockImplementation(writeText)
+  return writeText
 }
 
 function caretText(): string {
@@ -94,5 +105,51 @@ describe('BlockIds', () => {
     expect(handle.revealHeading?.('^pro')).toBe(true)
     await expect.element(pmRoot.getByText('Pro costs 49')).toBeVisible()
     await expect.element(pmRoot.getByText('Last line')).toBeVisible()
+  })
+
+  it('copy link to line adds an id to that line only and copies [[Note#^id]]', async () => {
+    const writeText = stubClipboard()
+    const handle = await renderNote()
+    await pmRoot.getByText('Other').click()
+    expect(copyLinkToLastFocusedLine()).toBe(true)
+    await expect.poll(() => writeText.mock.calls.length).toBe(1)
+    const id = /- Other \^([a-z0-9]{6})\n/.exec(handle.getMarkdown())?.[1]
+    expect(id).toBeDefined()
+    expect(writeText).toHaveBeenCalledWith(`[[Pricing#^${id}]]`)
+    expect(handle.getMarkdown()).toBe(NOTE.replace('- Other', `- Other ^${id}`))
+  })
+
+  it("reuses a line's existing id", async () => {
+    const writeText = stubClipboard()
+    const handle = await renderNote()
+    await pmRoot.getByText('Pro costs 49').click()
+    expect(copyLinkToLastFocusedLine()).toBe(true)
+    await expect.poll(() => writeText.mock.calls.length).toBe(1)
+    expect(writeText).toHaveBeenCalledWith('[[Pricing#^pro]]')
+    expect(handle.getMarkdown()).toBe(NOTE)
+  })
+
+  it('ids a code block from a line of its own under it', async () => {
+    const writeText = stubClipboard()
+    const note = ['```js', 'const a = 1', '```', '', 'Last line', ''].join('\n')
+    const handle = await renderNote(note)
+    await pmRoot.getByText('Last line').click()
+    const view = lastFocusedBlockIdView()!
+    expect(await copyLinkToBlock(view, 0)).toBe(true)
+    const id = /```\n\n\^([a-z0-9]{6})\n/.exec(handle.getMarkdown())?.[1]
+    expect(id).toBeDefined()
+    expect(writeText).toHaveBeenCalledWith(`[[Pricing#^${id}]]`)
+    // A second copy finds the id it added.
+    expect(await copyLinkToBlock(lastFocusedBlockIdView()!, 0)).toBe(true)
+    expect(writeText).toHaveBeenLastCalledWith(`[[Pricing#^${id}]]`)
+  })
+
+  it('offers nothing before the note has a link target', async () => {
+    const writeText = stubClipboard()
+    const handle = await renderNote(NOTE, null)
+    await pmRoot.getByText('Other').click()
+    expect(copyLinkToLastFocusedLine()).toBe(false)
+    expect(writeText).not.toHaveBeenCalled()
+    expect(handle.getMarkdown()).toBe(NOTE)
   })
 })

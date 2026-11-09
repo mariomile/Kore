@@ -7,6 +7,7 @@ import { toggleNotePinned } from '@/lib/note-pin'
 import { toggleNotePrivate } from '@/lib/note-private'
 import { startOperation } from '@/lib/operations'
 import { zoomLastFocusedEditor } from '@/editor/block-zoom-plugin'
+import { copyLinkToLastFocusedLine } from '@/editor/copy-block-link'
 import type { AppCommand } from './types'
 
 /**
@@ -175,6 +176,16 @@ export const NOTE_ACTION_COMMANDS: AppCommand[] = [
     // zooms the note editor that last had the caret.
     run: () => {
       zoomLastFocusedEditor('in')
+    },
+  },
+  {
+    id: 'note.copyLineLink',
+    title: 'Copy link to line',
+    keywords: ['block', 'reference', 'anchor', 'obsidian', '^id'],
+    // Adds an Obsidian ^id to the caret's line in the last focused note
+    // (only when it has none) and copies [[Note#^id]].
+    run: () => {
+      copyLinkToLastFocusedLine()
     },
   },
   {

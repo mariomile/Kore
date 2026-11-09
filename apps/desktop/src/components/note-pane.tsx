@@ -16,6 +16,7 @@ import {
   isCanvasPath,
   formatCollectionEmbedBody,
   parseCollectionEmbedBody,
+  wikiLinkTargetForTitle,
 } from '@reflect/core'
 import { BacklinksPanel } from '@/components/backlinks-panel'
 import { NoteBreadcrumb } from '@/components/note-breadcrumb'
@@ -557,7 +558,14 @@ export function NotePaneComponent({
         <CalloutHighlighter />
         <CollectionFenceGuard />
         <BlockZoom />
-        <BlockIds />
+        <BlockIds
+          linkTarget={
+            noteRow === null
+              ? null
+              : (noteRow.dailyDate ??
+                (noteRow.title === '' ? null : wikiLinkTargetForTitle(noteRow.title)))
+          }
+        />
         {/* Fetching a link's preview reaches the linked host, so a private
             note previews nothing — and an unresolved row counts as private,
             the same fail-closed rule the AI menu applies. */}

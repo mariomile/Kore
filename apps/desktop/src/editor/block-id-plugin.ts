@@ -1,4 +1,4 @@
-import { lineBlockId } from '@reflect/core'
+import { lineBlockId, newBlockId } from '@reflect/core'
 import type { Node as ProseMirrorNode } from '@prosekit/pm/model'
 import { Plugin, PluginKey, TextSelection, type EditorState } from '@prosekit/pm/state'
 import { Decoration, DecorationSet, type EditorView } from '@prosekit/pm/view'
@@ -129,8 +129,158 @@ function flashDecorations(
   ])
 }
 
-/** The plugin that draws the arrival flash for {@link revealBlockId}. */
-export function createBlockIdPlugin(): Plugin<BlockIdState> {
+/**
+ * Where "Copy link to line" adds its id: the textblock a block starts with
+ * (a list item's own line, a paragraph, a heading), or, for a block that has
+ * no such line (a code block, a table), an id-only line under it.
+ */
+type IdPlace =
+  | { readonly kind: 'line'; readonly pos: number; readonly node: ProseMirrorNode }
+  | { readonly kind: 'below'; readonly after: number; readonly next: ProseMirrorNode | null }
+
+function firstTextblock(
+  node: ProseMirrorNode,
+  pos: number,
+): { node: ProseMirrorNode; pos: number } | null {
+  if (node.isTextblock) {
+    return { node, pos }
+  }
+  const first = node.firstChild
+  // A table's first cell is not "the line": the table gets an id-only line.
+  if (first === null || node.type.spec.tableRole !== undefined) {
+    return null
+  }
+  return firstTextblock(first, pos + 1)
+}
+
+function idPlaceAt(doc: ProseMirrorNode, pos: number): IdPlace | null {
+  if (pos < 0 || pos >= doc.content.size) {
+    return null
+  }
+  const $pos = doc.resolve(pos)
+  const node = doc.nodeAt(pos)
+  if (node === null) {
+    return null
+  }
+  const line = node.isInline ? null : firstTextblock(node, pos)
+  if (line !== null && line.node.type.spec.code !== true) {
+    return { kind: 'line', pos: line.pos, node: line.node }
+  }
+  // Code and tables: Obsidian ids the block from a line of its own under it.
+  const top = $pos.depth === 0 ? pos : $pos.before(1)
+  const topNode = doc.nodeAt(top)
+  if (topNode === null) {
+    return null
+  }
+  const after = top + topNode.nodeSize
+  return { kind: 'below', after, next: doc.nodeAt(after) }
+}
+
+/** The block start of the caret's line, for commands run on the selection. */
+function caretBlockStart(state: EditorState): number {
+  const { $from } = state.selection
+  for (let depth = $from.depth; depth > 0; depth -= 1) {
+    const node = $from.node(depth)
+    if (node.isTextblock && node.type.spec.code !== true) {
+      return $from.before(depth)
+    }
+  }
+  return $from.depth === 0 ? $from.pos : $from.before(1)
+}
+
+/**
+ * The `^id` of the block starting at `pos`, adding one (six letters or
+ * digits, unique in the note) to that line only when it has none. Null when
+ * there is no block there. The edit is one undoable transaction.
+ */
+export function ensureBlockIdAt(view: EditorView, pos: number): string | null {
+  const { state } = view
+  const place = idPlaceAt(state.doc, pos)
+  if (place === null) {
+    return null
+  }
+  if (place.kind === 'line') {
+    const existing = lineBlockId(place.node.textContent)
+    if (existing !== null && place.node.lastChild?.isText === true) {
+      return existing
+    }
+  } else if (place.next?.isTextblock === true) {
+    const existing = place.next.textContent.trim()
+    if (/^\^[\da-z-]+$/i.test(existing)) {
+      return existing.slice(1)
+    }
+  }
+  const taken = new Set(blockIdsInDoc(state.doc))
+  let id = newBlockId()
+  while (taken.has(id)) {
+    id = newBlockId()
+  }
+  if (place.kind === 'line') {
+    const end = place.pos + place.node.nodeSize - 1
+    const text = place.node.textContent
+    const gap = text === '' || /\s$/.test(text) ? '' : ' '
+    view.dispatch(state.tr.insertText(`${gap}^${id}`, end))
+  } else {
+    const paragraph = state.schema.nodes.paragraph?.create(null, state.schema.text(`^${id}`))
+    if (paragraph === undefined) {
+      return null
+    }
+    view.dispatch(state.tr.insert(place.after, paragraph))
+  }
+  return id
+}
+
+/** {@link ensureBlockIdAt} for the caret's block. */
+export function ensureBlockIdAtCaret(view: EditorView): string | null {
+  return ensureBlockIdAt(view, caretBlockStart(view.state))
+}
+
+function blockIdsInDoc(doc: ProseMirrorNode): string[] {
+  const ids: string[] = []
+  doc.descendants((node) => {
+    if (!node.isTextblock) {
+      return true
+    }
+    const id = lineBlockId(node.textContent)
+    if (id !== null) {
+      ids.push(id)
+    }
+    return false
+  })
+  return ids
+}
+
+export interface BlockIdOptions {
+  /**
+   * The wiki target other notes link this note by (its title, or its date
+   * for a daily note), or null when it has none yet: "Copy link to line" is
+   * offered only with one.
+   */
+  readonly linkTarget?: () => string | null
+}
+
+const linkTargets = new WeakMap<EditorView, () => string | null>()
+let lastFocusedView: EditorView | null = null
+
+/** The `[[Note#^id]]` text for a line, or null when the note has no link target. */
+export function blockLinkText(view: EditorView, id: string): string | null {
+  const target = linkTargets.get(view)?.()
+  return target === undefined || target === null || target === '' ? null : `[[${target}#^${id}]]`
+}
+
+/** Whether this editor can copy a link to one of its lines. */
+export function canLinkToBlock(view: EditorView): boolean {
+  const target = linkTargets.get(view)?.()
+  return target !== undefined && target !== null && target !== ''
+}
+
+/** The editor that last had focus, for "Copy link to line" run from the palette. */
+export function lastFocusedBlockIdView(): EditorView | null {
+  return lastFocusedView !== null && !lastFocusedView.isDestroyed ? lastFocusedView : null
+}
+
+/** The plugin behind `^id` markers, arrival flashes and "Copy link to line". */
+export function createBlockIdPlugin(options: BlockIdOptions = {}): Plugin<BlockIdState> {
   let timer: ReturnType<typeof setTimeout> | undefined
   return new Plugin<BlockIdState>({
     key: blockIdKey,
@@ -161,23 +311,38 @@ export function createBlockIdPlugin(): Plugin<BlockIdState> {
           : value.markers.add(state.doc, value.flash.find())
       },
     },
-    view: () => ({
-      update(view, previous) {
-        const before = blockIdKey.getState(previous)?.flash
-        const after = blockIdKey.getState(view.state)?.flash
-        if (after === undefined || after === before || after === DecorationSet.empty) {
-          return
-        }
-        clearTimeout(timer)
-        timer = setTimeout(() => {
-          if (!view.isDestroyed) {
-            view.dispatch(view.state.tr.setMeta(blockIdKey, { flash: null }))
+    view: (editorView) => {
+      if (options.linkTarget !== undefined) {
+        linkTargets.set(editorView, options.linkTarget)
+      }
+      if (editorView.hasFocus()) {
+        lastFocusedView = editorView
+      }
+      return {
+        update(view, previous) {
+          if (view.hasFocus()) {
+            lastFocusedView = view
           }
-        }, FLASH_MS)
-      },
-      destroy() {
-        clearTimeout(timer)
-      },
-    }),
+          const before = blockIdKey.getState(previous)?.flash
+          const after = blockIdKey.getState(view.state)?.flash
+          if (after === undefined || after === before || after === DecorationSet.empty) {
+            return
+          }
+          clearTimeout(timer)
+          timer = setTimeout(() => {
+            if (!view.isDestroyed) {
+              view.dispatch(view.state.tr.setMeta(blockIdKey, { flash: null }))
+            }
+          }, FLASH_MS)
+        },
+        destroy() {
+          clearTimeout(timer)
+          linkTargets.delete(editorView)
+          if (lastFocusedView === editorView) {
+            lastFocusedView = null
+          }
+        },
+      }
+    },
   })
 }

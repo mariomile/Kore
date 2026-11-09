@@ -8,6 +8,7 @@ import {
   ArrowUp,
   Checklist,
   Copy,
+  Link,
   List,
   Locate,
   MoreHorizontal,
@@ -25,7 +26,9 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { canLinkToBlock } from './block-id-plugin'
 import { canZoom, zoomIntoBlockAt } from './block-zoom-plugin'
+import { copyLinkToBlock } from './copy-block-link'
 import { whenEditorMounted } from './when-editor-mounted'
 
 const HANDLE_CLICK_PX = 5
@@ -311,6 +314,12 @@ function BlockActionMenuItems({
         <DropdownMenuItem onClick={() => run(() => zoomIntoBlockAt(editor.view, state.from))}>
           <Locate aria-hidden />
           Zoom in
+        </DropdownMenuItem>
+      ) : null}
+      {state.count === 1 && canLinkToBlock(editor.view) ? (
+        <DropdownMenuItem onClick={() => run(() => void copyLinkToBlock(editor.view, state.from))}>
+          <Link aria-hidden />
+          Copy link to line
         </DropdownMenuItem>
       ) : null}
       <DropdownMenuItem onClick={() => run(() => duplicateRange(editor, state))}>

@@ -10,7 +10,7 @@
 const VALID_ID_RE = /^[\da-z-]+$/i
 /** A marker at the end of a line, after whitespace or alone on the line. */
 const LINE_ID_RE = /(?:^|[ \t])\^([\da-z-]+)[ \t]*$/i
-const LINE_IDS_RE = /[ \t]+\^[\da-z-]+[ \t]*$/gim
+const LINE_ID_TAIL_RE = /[ \t]+\^[\da-z-]+[ \t]*$/i
 const ID_ONLY_RE = /^[ \t]*\^[\da-z-]+[ \t]*$/i
 const LIST_ITEM_RE = /^[ \t]*(?:[-*+]|\d+[.)])[ \t]/
 const FENCE_RE = /^ {0,3}(`{3,}|~{3,})/
@@ -63,11 +63,16 @@ export function blockIdsIn(markdown: string): string[] {
 
 /** `markdown` with every end-of-line `^id` marker removed, for previews. */
 export function withoutBlockIds(markdown: string): string {
-  return markdown
-    .split('\n')
-    .filter((line) => !ID_ONLY_RE.test(line))
-    .join('\n')
-    .replaceAll(LINE_IDS_RE, '')
+  const kept: string[] = []
+  // Fenced code is literal: `x ^2` inside a fence is code, not an id.
+  for (const { line, fenced } of scanLines(markdown.split('\n'))) {
+    if (fenced) {
+      kept.push(line)
+    } else if (!ID_ONLY_RE.test(line)) {
+      kept.push(line.replace(LINE_ID_TAIL_RE, ''))
+    }
+  }
+  return kept.join('\n')
 }
 
 function* scanLines(lines: readonly string[]): Generator<{ line: string; fenced: boolean }> {

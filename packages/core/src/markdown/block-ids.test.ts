@@ -53,6 +53,11 @@ describe('blockIdsIn / withoutBlockIds', () => {
     expect(blockIdsIn(note)).toEqual(['a', 'c', 'd'])
   })
 
+  it('leaves fenced code alone', () => {
+    const md = ['```js', 'const x = a ^b', '^c', '```', 'text ^d'].join('\n')
+    expect(withoutBlockIds(md)).toBe(['```js', 'const x = a ^b', '^c', '```', 'text'].join('\n'))
+  })
+
   it('removes markers and id-only lines', () => {
     expect(withoutBlockIds('- one ^a\n| t |\n^d\nx^2')).toBe('- one\n| t |\nx^2')
   })
@@ -106,7 +111,7 @@ describe('extractBlockSection', () => {
     const note = `---\ntitle: Pricing\n---\n${source}`
     expect(transclusionMarkdown(note, '^monthly')).toBe('- billed monthly')
     expect(transclusionMarkdown(note, '^missing')).toBeNull()
-    expect(transclusionMarkdown(note, null)).not.toContain('^pro')
+    expect(transclusionMarkdown(note, null)).not.toContain('49€ ^pro')
   })
 })
 

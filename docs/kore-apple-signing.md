@@ -49,13 +49,15 @@ steps below are only needed for iCloud sync and for installing on an iPhone.
 
 ## Older names still in the tree
 
-Mario decided on 2026-11-08 that everything becomes Kore. Already done: the
-Apple identity (`app.kore.*`, `iCloud.app.kore`, `group.app.kore`), the
-config folder (`kore`, migrated from `reflect-open`) and the keychain service
-(`kore`, migrated from `lore`). Still pending in their own PRs: the
-`reflect://` scheme, the `.reflect/` index directory, `@reflect/*` packages,
-`reflect-*` crates, and `app.reflect.capture` (the Chrome native-messaging
-host name, which must change together with the extension's allowlist).
+- `@reflect/*` package and `reflect-*` crate names (internal; renamed in a
+  separate mechanical pass). The deep-link scheme (`kore://`), the vault
+  directory (`.kore/`), the native-messaging host (`app.kore.capture`) and the
+  config dir (`kore/`) are Kore since the rename; each old name is migrated
+  on first launch.
+- Apple technical identity is Kore too: bundle ids `app.kore.*`, iCloud
+  container `iCloud.app.kore`, App Group `group.app.kore`, keychain service
+  `kore` (older `app.lore.*` data and `lore` keychain entries are migrated).
+- Desktop bundle name `Kore.app` (`productName` in `tauri.conf.json`).
 
 ## Publishing a Kore release
 

@@ -19,7 +19,12 @@ use crate::fs::{current_root, modified_ms, root_for_generation, FileMeta, GraphS
 /// The native-messaging host name browsers route on; must match the name the
 /// extension passes to `runtime.sendNativeMessage`.
 #[cfg(any(target_os = "macos", test))]
-const HOST_NAME: &str = "app.reflect.capture";
+const HOST_NAME: &str = "app.kore.capture";
+
+/// The host name before the Kore rename; its manifest is removed when the new
+/// one is written, so browsers list one Kore host.
+#[cfg(any(target_os = "macos", test))]
+const LEGACY_HOST_NAME: &str = "app.reflect.capture";
 
 /// The sidecar binary, staged beside the app binary by the Tauri bundler (and
 /// beside the dev binary by `tauri dev`).
@@ -36,7 +41,7 @@ const EXTENSION_ORIGINS: [&str; 2] = [
 ];
 
 /// Graph-relative spool directory the host writes and the drain reads.
-const INBOX_DIR: &str = ".reflect/inbox";
+const INBOX_DIR: &str = ".kore/inbox";
 
 // ---- pointer file ------------------------------------------------------------
 
@@ -44,7 +49,7 @@ const INBOX_DIR: &str = ".reflect/inbox";
 /// `settings.rs`/`recents.rs`; the shape is versioned so a future change reads
 /// as a typed host error, never a silent mis-spool.
 fn pointer_path() -> AppResult<PathBuf> {
-    Ok(crate::app_dirs::config_dir()?.join("capture-pointer.json"))
+    Ok(crate::app_dir::app_config_dir()?.join("capture-pointer.json"))
 }
 
 fn pointer_json(root: &Path) -> String {
@@ -85,7 +90,7 @@ fn atomic_write_bytes_to(path: &Path, contents: &[u8]) -> AppResult<()> {
 fn host_manifest_json(host_path: &Path) -> String {
     serde_json::to_string_pretty(&serde_json::json!({
         "name": HOST_NAME,
-        "description": "Reflect link capture",
+        "description": "Kore link capture",
         "path": host_path.to_string_lossy(),
         "type": "stdio",
         "allowed_origins": EXTENSION_ORIGINS,
@@ -134,6 +139,12 @@ fn register_manifests(app_support: &Path, host_path: &Path) -> AppResult<usize> 
     for dir in detected_manifest_dirs(app_support) {
         fs::create_dir_all(&dir)?;
         atomic_write_to(&dir.join(format!("{HOST_NAME}.json")), &manifest)?;
+        match fs::remove_file(dir.join(format!("{LEGACY_HOST_NAME}.json"))) {
+            Err(error) if error.kind() != std::io::ErrorKind::NotFound => {
+                tracing::warn!(%error, "could not remove the legacy capture host manifest");
+            }
+            _ => {}
+        }
         written += 1;
     }
     Ok(written)
@@ -231,7 +242,7 @@ fn capture_inbox_list_for(
             path: format!("{INBOX_DIR}/{name}"),
             size: meta.len(),
             modified_ms: modified_ms(&meta).unwrap_or(0),
-            placeholder: false, // the inbox lives under `.reflect/`, never synced/evicted
+            placeholder: false, // the inbox lives under `.kore/`, never synced/evicted
         });
     }
     out.sort_by(|first, second| first.path.cmp(&second.path));
@@ -306,8 +317,8 @@ pub async fn capture_inbox_remove<R: tauri::Runtime>(
 }
 
 /// Where the drain quarantines spool files it cannot parse. Outside
-/// `.reflect/inbox/`, so nothing here re-triggers the watcher or a drain.
-const INBOX_REJECTED_DIR: &str = ".reflect/inbox-rejected";
+/// `.kore/inbox/`, so nothing here re-triggers the watcher or a drain.
+const INBOX_REJECTED_DIR: &str = ".kore/inbox-rejected";
 
 fn quarantine_spool(root: &Path, name: &str) -> AppResult<()> {
     let source = inbox_file(root, name)?;
@@ -358,7 +369,7 @@ const SHARED_GROUP_ID: &str = "group.app.kore";
 const SHARED_INBOX_DIR: &str = "inbox";
 
 /// Where oversized shared spools are quarantined, beside the shared inbox —
-/// moved, never deleted, mirroring the drain's `.reflect/inbox-rejected/`.
+/// moved, never deleted, mirroring the drain's `.kore/inbox-rejected/`.
 const SHARED_REJECTED_DIR: &str = "inbox-rejected";
 
 /// A `.json.tmp` older than this is debris from an extension crash between
@@ -506,7 +517,7 @@ fn downscale_jpeg(bytes: &[u8], max_dim: u32) -> AppResult<Vec<u8>> {
 /// Delegates to `atomic_write_bytes` rather than staging beside the target.
 /// `assets/` can live inside an iCloud Drive folder, and a temp created there
 /// is synced and, after a crash, stranded on every device. That helper stages
-/// under `.reflect/tmp/`, which is excluded from sync, swept on graph open, and
+/// under `.kore/tmp/`, which is excluded from sync, swept on graph open, and
 /// on the same volume so the rename stays atomic.
 fn persist_asset(root: &Path, asset_path: &str, bytes: &[u8]) -> AppResult<()> {
     let target = crate::fs::resolve_in_graph(root, asset_path)?;
@@ -557,262 +568,9 @@ pub async fn capture_link_preview(app: tauri::AppHandle, url: String) -> AppResu
     Ok(Some(base64::engine::general_purpose::STANDARD.encode(jpeg)))
 }
 
-// ---- meta fetch -----------------------------------------------------------------
-
-/// How much HTML the meta scrape reads. Sized for the worst page measured:
-/// a YouTube watch page is ~1.2 MiB of identity-encoded HTML with every
-/// meta tag at ~690 KiB, near the end of a ~697 KiB `<head>` (2026-08).
-/// 2 MiB keeps whole pages of that shape, with margin for head growth,
-/// while still bounding what this command buffers and ships over IPC.
-const META_FETCH_MAX_BYTES: usize = 2 * 1024 * 1024;
-const META_FETCH_TIMEOUT: Duration = Duration::from_secs(15);
-
-/// The meta fetch presents as a mainstream browser navigation: sites that
-/// gate on client fingerprint (Instagram among them) can answer bare app
-/// user agents with login walls or challenges a normal browser request never
-/// sees. Safari's platform token is frozen upstream, so the string stays
-/// plausible without tracking macOS releases.
-const META_FETCH_USER_AGENT: &str = concat!(
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) ",
-    "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15"
-);
-
-fn classify_fetch_error(err: reqwest::Error) -> AppError {
-    if err.is_timeout() || err.is_connect() || err.is_request() {
-        AppError::Network {
-            message: err.to_string(),
-        }
-    } else {
-        AppError::io(err.to_string())
-    }
-}
-
-/// Map a meta-fetch response status to its error: `None` for success,
-/// retryable `Network` for server errors and rate limiting (sites like
-/// Instagram answer `429` to bursts and recover — the enrichment pass keeps
-/// the capture pending and tries again later), permanent `io` for everything
-/// else.
-fn classify_fetch_status(url: &str, status: reqwest::StatusCode) -> Option<AppError> {
-    if status.is_success() {
-        return None;
-    }
-    let message = format!("{url} answered {status}");
-    if status.is_server_error() || status == reqwest::StatusCode::TOO_MANY_REQUESTS {
-        return Some(AppError::Network { message });
-    }
-    Some(AppError::io(message))
-}
-
-/// Fetch a captured page's HTML for meta-tag scraping, hard-capped (timeout,
-/// byte cap, redirect limit, http(s) only). Lives here rather than widening
-/// the webview's HTTP-plugin capability to every URL — the only things that
-/// can reach arbitrary hosts are this module's bounded fetch primitives, and
-/// the privacy gate in `@reflect/core` runs before either is ever called.
-#[tauri::command]
-pub async fn capture_meta_fetch(url: String) -> AppResult<String> {
-    if !url.starts_with("https://") && !url.starts_with("http://") {
-        return Err(AppError::parse(format!("not an http(s) url: {url}")));
-    }
-    let client = reqwest::Client::builder()
-        .redirect(reqwest::redirect::Policy::limited(5))
-        .timeout(META_FETCH_TIMEOUT)
-        .user_agent(META_FETCH_USER_AGENT)
-        .build()
-        .map_err(|err| AppError::io(err.to_string()))?;
-    let response = client
-        .get(&url)
-        // The full header set a browser sends on a typed-URL navigation —
-        // absent Sec-Fetch/Accept-Language headers are themselves a bot
-        // signal to fingerprinting CDNs.
-        .header(
-            "Accept",
-            "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        )
-        .header("Accept-Language", "en-US,en;q=0.9")
-        .header("Sec-Fetch-Dest", "document")
-        .header("Sec-Fetch-Mode", "navigate")
-        .header("Sec-Fetch-Site", "none")
-        .header("Upgrade-Insecure-Requests", "1")
-        .send()
-        .await
-        .map_err(classify_fetch_error)?;
-
-    if let Some(err) = classify_fetch_status(&url, response.status()) {
-        return Err(err);
-    }
-    let content_type = response
-        .headers()
-        .get(reqwest::header::CONTENT_TYPE)
-        .and_then(|value| value.to_str().ok())
-        .unwrap_or("")
-        .to_ascii_lowercase(); // MIME types are case-insensitive (`TEXT/HTML`)
-    if !content_type.contains("html") {
-        return Err(AppError::parse(format!(
-            "{url} is not an HTML page ({content_type})"
-        )));
-    }
-
-    let mut body: Vec<u8> = Vec::new();
-    let mut response = response;
-    while let Some(chunk) = response.chunk().await.map_err(classify_fetch_error)? {
-        let remaining = META_FETCH_MAX_BYTES - body.len();
-        body.extend_from_slice(&chunk[..chunk.len().min(remaining)]);
-        if body.len() >= META_FETCH_MAX_BYTES {
-            break;
-        }
-    }
-    Ok(String::from_utf8_lossy(&body).into_owned())
-}
-
-// ---- oEmbed fetch ---------------------------------------------------------------
-
-/// oEmbed answers are ~1 KB of JSON; anything past this cap is not an oEmbed
-/// answer, and a truncated one would be unparseable, so oversize is an error
-/// rather than a cut.
-const OEMBED_FETCH_MAX_BYTES: usize = 64 * 1024;
-
-/// Fetch an oEmbed endpoint's JSON answer for the capture meta scrape. Which
-/// URLs are oEmbed endpoints is policy and lives in `@reflect/core`
-/// (`actions/oembed`), behind the same privacy gate as `capture_meta_fetch`;
-/// this side only bounds the transport, strictly tighter than the HTML
-/// fetch: https only, JSON only, a small byte cap, and no redirects (oEmbed
-/// endpoints answer directly, so a redirect is a failure).
-#[tauri::command]
-pub async fn capture_oembed_fetch(url: String) -> AppResult<String> {
-    if !url.starts_with("https://") {
-        return Err(AppError::parse(format!("not an https url: {url}")));
-    }
-    let client = reqwest::Client::builder()
-        .redirect(reqwest::redirect::Policy::none())
-        .timeout(META_FETCH_TIMEOUT)
-        .user_agent(META_FETCH_USER_AGENT)
-        .build()
-        .map_err(|err| AppError::io(err.to_string()))?;
-    let response = client
-        .get(&url)
-        .header("Accept", "application/json")
-        .send()
-        .await
-        .map_err(classify_fetch_error)?;
-    if let Some(err) = classify_fetch_status(&url, response.status()) {
-        return Err(err);
-    }
-    let content_type = response
-        .headers()
-        .get(reqwest::header::CONTENT_TYPE)
-        .and_then(|value| value.to_str().ok())
-        .unwrap_or("")
-        .to_ascii_lowercase(); // MIME types are case-insensitive (`TEXT/HTML`)
-    if !content_type.contains("json") {
-        return Err(AppError::parse(format!(
-            "{url} did not answer JSON ({content_type})"
-        )));
-    }
-    let mut body: Vec<u8> = Vec::new();
-    let mut response = response;
-    while let Some(chunk) = response.chunk().await.map_err(classify_fetch_error)? {
-        if body.len() + chunk.len() > OEMBED_FETCH_MAX_BYTES {
-            return Err(AppError::parse(format!(
-                "{url} answered more than {OEMBED_FETCH_MAX_BYTES} bytes"
-            )));
-        }
-        body.extend_from_slice(&chunk);
-    }
-    String::from_utf8(body)
-        .map_err(|err| AppError::parse(format!("{url} answered non-UTF-8: {err}")))
-}
-
-// ---- data fetch -----------------------------------------------------------------
-
-/// A video's caption track is the largest document this fetch exists for: an
-/// hour of speech is ~1 MiB of timed-text XML. Past the cap the answer is an
-/// error, not a cut, because truncated JSON or XML does not parse.
-const DATA_FETCH_MAX_BYTES: usize = 4 * 1024 * 1024;
-
-/// Fetch one JSON or XML document as text, optionally POSTing a JSON body.
-/// This is the transport for the text a pasted link keeps (a video's player
-/// answer and caption track); which URLs are asked, and what is posted, is
-/// policy in `@reflect/core` (`actions/link-text`), behind the same privacy
-/// gate as `capture_meta_fetch`. This side only bounds it: https only, JSON
-/// or XML only, a byte cap, no redirects.
-#[tauri::command]
-pub async fn capture_data_fetch(url: String, json_body: Option<String>) -> AppResult<String> {
-    if !url.starts_with("https://") {
-        return Err(AppError::parse(format!("not an https url: {url}")));
-    }
-    let client = reqwest::Client::builder()
-        .redirect(reqwest::redirect::Policy::none())
-        .timeout(META_FETCH_TIMEOUT)
-        .user_agent(META_FETCH_USER_AGENT)
-        .build()
-        .map_err(|err| AppError::io(err.to_string()))?;
-    let request = match json_body {
-        Some(body) => client
-            .post(&url)
-            .header(reqwest::header::CONTENT_TYPE, "application/json")
-            .body(body),
-        None => client.get(&url),
-    };
-    let response = request
-        .header("Accept", "application/json, application/xml, text/xml")
-        .header("Accept-Language", "en-US,en;q=0.9")
-        .send()
-        .await
-        .map_err(classify_fetch_error)?;
-    if let Some(err) = classify_fetch_status(&url, response.status()) {
-        return Err(err);
-    }
-    let content_type = response
-        .headers()
-        .get(reqwest::header::CONTENT_TYPE)
-        .and_then(|value| value.to_str().ok())
-        .unwrap_or("")
-        .to_ascii_lowercase(); // MIME types are case-insensitive
-    if !content_type.contains("json") && !content_type.contains("xml") {
-        return Err(AppError::parse(format!(
-            "{url} did not answer JSON or XML ({content_type})"
-        )));
-    }
-    let mut body: Vec<u8> = Vec::new();
-    let mut response = response;
-    while let Some(chunk) = response.chunk().await.map_err(classify_fetch_error)? {
-        if body.len() + chunk.len() > DATA_FETCH_MAX_BYTES {
-            return Err(AppError::parse(format!(
-                "{url} answered more than {DATA_FETCH_MAX_BYTES} bytes"
-            )));
-        }
-        body.extend_from_slice(&chunk);
-    }
-    String::from_utf8(body)
-        .map_err(|err| AppError::parse(format!("{url} answered non-UTF-8: {err}")))
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn meta_fetch_statuses_classify_rate_limits_as_retryable() {
-        use reqwest::StatusCode;
-        let url = "https://www.instagram.com/reel/example/";
-        assert!(classify_fetch_status(url, StatusCode::OK).is_none());
-        assert!(matches!(
-            classify_fetch_status(url, StatusCode::TOO_MANY_REQUESTS),
-            Some(AppError::Network { .. })
-        ));
-        assert!(matches!(
-            classify_fetch_status(url, StatusCode::BAD_GATEWAY),
-            Some(AppError::Network { .. })
-        ));
-        assert!(matches!(
-            classify_fetch_status(url, StatusCode::NOT_FOUND),
-            Some(AppError::Io { .. })
-        ));
-        assert!(matches!(
-            classify_fetch_status(url, StatusCode::FORBIDDEN),
-            Some(AppError::Io { .. })
-        ));
-    }
 
     #[test]
     fn manifest_pins_name_path_and_origins() {
@@ -820,7 +578,7 @@ mod tests {
             "/Applications/Reflect.app/Contents/MacOS/reflect-capture-host",
         ));
         let parsed: serde_json::Value = serde_json::from_str(&manifest).unwrap();
-        assert_eq!(parsed["name"], "app.reflect.capture");
+        assert_eq!(parsed["name"], "app.kore.capture");
         assert_eq!(parsed["type"], "stdio");
         assert_eq!(
             parsed["path"],
@@ -854,14 +612,17 @@ mod tests {
     #[test]
     fn register_writes_a_manifest_per_detected_browser() {
         let dir = tempfile::tempdir().unwrap();
-        fs::create_dir_all(dir.path().join("Google/Chrome")).unwrap();
+        let hosts = dir.path().join("Google/Chrome/NativeMessagingHosts");
+        fs::create_dir_all(&hosts).unwrap();
+        fs::write(hosts.join("app.reflect.capture.json"), "{}").unwrap();
         let written =
             register_manifests(dir.path(), Path::new("/bundle/reflect-capture-host")).unwrap();
         assert_eq!(written, 1);
         let manifest = dir
             .path()
-            .join("Google/Chrome/NativeMessagingHosts/app.reflect.capture.json");
+            .join("Google/Chrome/NativeMessagingHosts/app.kore.capture.json");
         assert!(manifest.is_file());
+        assert!(!hosts.join("app.reflect.capture.json").exists());
     }
 
     #[test]

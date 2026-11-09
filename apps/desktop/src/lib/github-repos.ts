@@ -23,5 +23,5 @@ export function suggestRepoName(graphName: string | undefined): string {
     .toLowerCase()
     .replaceAll(/[^a-z0-9]+/g, '-')
     .replaceAll(/^-+|-+$/g, '')
-  return slug.length > 0 ? `${slug}-backup` : 'reflect-backup'
+  return slug.length > 0 ? `${slug}-backup` : 'kore-backup'
 }

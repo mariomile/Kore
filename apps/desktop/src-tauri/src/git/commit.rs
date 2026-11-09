@@ -49,45 +49,22 @@ pub(super) fn commit_all(
     ensure_clean_state(&repo)?;
     // In-memory hard guarantee, independent of any on-disk ignore file: the
     // runtime directory must never enter a backup commit (Plan 21 — a synced
-    // `.reflect/` is index corruption on every other device).
-    repo.add_ignore_rule("/.reflect/")?;
+    // `.kore/` is index corruption on every other device). Its `proposals/`
+    // subtree is the one exception: it syncs by design (Plan 33, A2).
+    repo.add_ignore_rule(&reflect_index_schema::IGNORE_RULES.join("\n"))?;
 
     let mut index = repo.index()?;
     let skipped = add_all_with_size_guard(&mut index, root, max_file_bytes)?;
 
     let parent = repo.head().ok().and_then(|head| head.peel_to_commit().ok());
-    if parent.is_none() && index.is_empty() {
-        return Ok(CommitOutcome {
-            committed: false,
-            sha: None,
-            ahead: ahead_of_remote(&repo),
-            skipped_large_files: skipped,
-        });
-    }
-
-    let tree_id = index.write_tree()?;
-    if let Some(parent) = &parent {
-        if parent.tree_id() == tree_id {
-            return Ok(CommitOutcome {
-                committed: false,
-                sha: None,
-                ahead: ahead_of_remote(&repo),
-                skipped_large_files: skipped,
-            });
-        }
-    }
-
-    let tree = repo.find_tree(tree_id)?;
-    let message = message_for_commit(&repo, parent.as_ref(), &tree, fallback_message)?;
-    let sig = signature(&repo)?;
-    let parents: Vec<&git2::Commit> = parent.iter().collect();
-    let oid = repo.commit(Some("HEAD"), &sig, &sig, &message, &tree, &parents)?;
-    Ok(CommitOutcome {
-        committed: true,
-        sha: Some(oid.to_string()),
-        ahead: ahead_of_remote(&repo),
-        skipped_large_files: skipped,
-    })
+    commit_index(
+        &repo,
+        &mut index,
+        parent.as_ref(),
+        None,
+        fallback_message,
+        skipped,
+    )
 }
 
 /// Stage every change (adds, edits, deletes — `.gitignore` respected) into
@@ -174,4 +151,132 @@ fn ahead_of_remote(repo: &git2::Repository) -> usize {
     super::remote::local_delta(repo)
         .map(|delta| delta.ahead)
         .unwrap_or(1)
+}
+
+/// Who a [`commit_paths`] commit is authored by, and the trailer naming them.
+pub(super) struct CommitAuthor {
+    pub name: String,
+    pub email: String,
+    /// A `Key: value` line appended to the message (e.g. `Kore-Agent: Grok`).
+    pub trailer: String,
+}
+
+/// Commit only `paths` (graph-relative; adds, edits and deletions), authored
+/// by `author` and committed by the repository's own identity. Everything
+/// else in the working tree stays uncommitted for the next
+/// [`commit_all`]. Paths inside `.kore/` (other than `proposals/`), absolute paths, paths that
+/// climb out of the graph, and files at/above the size guardrail are
+/// ignored. `committed: false` when the paths match HEAD.
+pub(super) fn commit_paths(
+    root: &Path,
+    paths: &[String],
+    author: &CommitAuthor,
+    fallback_message: &str,
+    max_file_bytes: u64,
+) -> AppResult<CommitOutcome> {
+    let repo = open_existing(root)?;
+    ensure_clean_state(&repo)?;
+    let parent = repo.head().ok().and_then(|head| head.peel_to_commit().ok());
+    let mut index = repo.index()?;
+    // Start from HEAD, so nothing staged earlier rides along.
+    match &parent {
+        Some(parent) => index.read_tree(&parent.tree()?)?,
+        None => index.clear()?,
+    }
+    for rel in paths {
+        if !is_committable(rel) {
+            continue;
+        }
+        let rel_path = Path::new(rel);
+        match root.join(rel_path).metadata() {
+            Ok(meta) if meta.is_file() && meta.len() < max_file_bytes => {
+                index.add_path(rel_path)?;
+            }
+            Ok(_) => {}
+            Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
+                // Already absent from HEAD is fine: nothing to record.
+                let _ = index.remove_path(rel_path);
+            }
+            Err(err) => return Err(err.into()),
+        }
+    }
+    commit_index(
+        &repo,
+        &mut index,
+        parent.as_ref(),
+        Some(author),
+        fallback_message,
+        Vec::new(),
+    )
+}
+
+/// Commit `index` on HEAD unless its tree matches `parent`'s (or it is empty
+/// on an unborn branch). `author` signs it with its trailer closing the
+/// message; `None` is the repository's own identity. The on-disk index is
+/// written so it matches the new HEAD.
+fn commit_index(
+    repo: &git2::Repository,
+    index: &mut Index,
+    parent: Option<&git2::Commit<'_>>,
+    author: Option<&CommitAuthor>,
+    fallback_message: &str,
+    skipped_large_files: Vec<SkippedFile>,
+) -> AppResult<CommitOutcome> {
+    let tree_id = index.write_tree()?;
+    let unchanged = match parent {
+        Some(parent) => parent.tree_id() == tree_id,
+        None => index.is_empty(),
+    };
+    if unchanged {
+        return Ok(CommitOutcome {
+            committed: false,
+            sha: None,
+            ahead: ahead_of_remote(repo),
+            skipped_large_files,
+        });
+    }
+    let tree = repo.find_tree(tree_id)?;
+    let subject = message_for_commit(repo, parent, &tree, fallback_message)?;
+    let committer = signature(repo)?;
+    let (author_sig, message) = match author {
+        Some(author) => (
+            git2::Signature::now(&author.name, &author.email)?,
+            format!("{subject}\n\n{}", author.trailer),
+        ),
+        None => (committer.clone(), subject),
+    };
+    let parents: Vec<&git2::Commit> = parent.into_iter().collect();
+    let oid = repo.commit(
+        Some("HEAD"),
+        &author_sig,
+        &committer,
+        &message,
+        &tree,
+        &parents,
+    )?;
+    index.write()?;
+    Ok(CommitOutcome {
+        committed: true,
+        sha: Some(oid.to_string()),
+        ahead: ahead_of_remote(repo),
+        skipped_large_files,
+    })
+}
+
+/// A plain graph-relative path outside `.kore/`, or inside its synced
+/// `proposals/` subtree.
+fn is_committable(rel: &str) -> bool {
+    let path = Path::new(rel);
+    let mut components = path.components();
+    !rel.is_empty()
+        && path
+            .components()
+            .all(|component| matches!(component, std::path::Component::Normal(_)))
+        && match components.next() {
+            Some(first) if first.as_os_str() == reflect_index_schema::KORE_DIR => components
+                .next()
+                .is_some_and(|second| second.as_os_str() == reflect_index_schema::SYNCED_SUBDIR),
+            Some(_) => true,
+            None => false,
+        }
 }

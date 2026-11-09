@@ -323,3 +323,40 @@ export function insertTask(notePath: string, generation: number): Promise<number
     return markerOffset
   })
 }
+
+/**
+ * Append a filled `+ [ ] <content>` task to `notePath` (Quick Add). Unlike
+ * {@link insertTask} it never needs the new row's offset — the reindex brings
+ * it into the views — so an **open** note takes the append through its live
+ * session (`commitBodyAppend`, like a recurring task's next occurrence)
+ * instead of refusing. A missing note (today's daily not yet created) starts
+ * empty. Serialized per path with the other task writes.
+ */
+export function addTask(notePath: string, content: string, generation: number): Promise<void> {
+  return serializeByPath(notePath, async () => {
+    const owner = openSession(notePath)
+    if (owner !== null) {
+      if (await owner.commitBodyAppend(`+ [ ] ${content}`)) {
+        return
+      }
+      throw new NoteBusyError('This note can’t be updated right now — try again in a moment.')
+    }
+    let source: string
+    try {
+      source = await readNote(notePath)
+    } catch (cause) {
+      if (isAppError(cause) && cause.kind === 'notFound') {
+        source = ''
+      } else {
+        throw cause
+      }
+    }
+    const appended = appendTaskLine(source)
+    const filled = editTaskLine(
+      appended.source,
+      { markerOffset: appended.markerOffset, raw: '[ ] ' },
+      content,
+    )
+    await writeNote(notePath, filled, generation)
+  })
+}

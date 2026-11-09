@@ -216,7 +216,7 @@ export function createBackupController(options: BackupControllerOptions): Backup
    */
   async function adoptEngine(next: SyncEngine): Promise<boolean> {
     engine = next
-    // Spooled capture envelopes (`.reflect/inbox/`) are git-ignored and
+    // Spooled capture envelopes (`.kore/inbox/`) are git-ignored and
     // drained within seconds — they must not tick the commit debounce. The
     // drain's own note writes arrive as ordinary changes right after.
     const subscription = await subscribeFileChanges((changes) => {

@@ -136,6 +136,13 @@ export {
   type TaskProject,
   type TaskView,
 } from './task-views'
+export {
+  parseQuickAdd,
+  QUICK_ADD_MAX_ADDED,
+  type QuickAdd,
+  type QuickAddToken,
+  type QuickAddTokenKind,
+} from './quick-add'
 export { getGraphMap, type GraphMap, type GraphMapEdge, type GraphMapNode } from './graph-map'
 export {
   getLocalGraph,

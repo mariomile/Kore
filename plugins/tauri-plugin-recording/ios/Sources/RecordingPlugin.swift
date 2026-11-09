@@ -39,7 +39,7 @@ struct RecordingStatus: Encodable {
 }
 
 /// The payload of the `nativeAction` event — an OS entry point (Siri, the
-/// home-screen quick action, the lock-screen widget's `reflect://` URL)
+/// home-screen quick action, the lock-screen widget's `kore://` URL)
 /// asked for something only the webview can present.
 struct NativeAction: Encodable {
   /// Currently only `recordAudio`.
@@ -556,7 +556,7 @@ class RecordingPlugin: Plugin {
   }
 
   /// Queue a native action from the Rust side (the lock-screen widget's
-  /// `reflect://record-audio` URL arrives as a tao `Opened` event).
+  /// `kore://record-audio` URL arrives as a tao `Opened` event).
   @objc public func queueAction(_ invoke: Invoke) throws {
     let args = try invoke.parseArgs(QueueActionArgs.self)
     DispatchQueue.main.async {

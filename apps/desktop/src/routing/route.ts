@@ -26,6 +26,8 @@ export type Route =
   | { kind: 'tasks' }
   | { kind: 'chat' }
   | { kind: 'insights' }
+  // The vault's activity log: what you and each agent changed (Plan 33).
+  | { kind: 'activity' }
   // The link map over the whole graph (not the graph *switcher* below).
   // `focus` opens it on one note's neighborhood (the note sidebar's local
   // graph hands off here).
@@ -100,6 +102,7 @@ export function routesEqual(a: Route, b: Route): boolean {
     case 'tasks':
     case 'chat':
     case 'insights':
+    case 'activity':
     case 'graphs':
     case 'terminal':
     case 'browser':

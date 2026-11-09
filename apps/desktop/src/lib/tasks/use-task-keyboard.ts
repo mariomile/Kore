@@ -35,6 +35,8 @@ export interface TaskKeyboardOptions {
   onConvertToBullet: () => void
   /** ⌘⇧P: cycle the selection's priority marker (none → ! → !!). */
   onCyclePriority: () => void
+  /** `q`: open Quick Add (Todoist). */
+  onQuickAdd?: () => void
   /** The open view — Return's insert target depends on it. */
   view?: TaskView
   /** `g` then `i`/`t`/`u`/`p`/`a`: switch to Inbox / Today / Upcoming / Projects / All (Todoist). */
@@ -97,6 +99,7 @@ export function useTaskKeyboard({
   onToggleSchedule,
   onConvertToBullet,
   onCyclePriority,
+  onQuickAdd,
   view = 'all',
   onGoToView,
 }: TaskKeyboardOptions): void {
@@ -215,6 +218,11 @@ export function useTaskKeyboard({
         }
       }
       pendingGoToRef.current = 0
+      if (plain && onQuickAdd !== undefined && event.key === 'q') {
+        event.preventDefault()
+        onQuickAdd()
+        return
+      }
       if (mod && event.key === 'Enter') {
         event.preventDefault()
         if (event.shiftKey) {

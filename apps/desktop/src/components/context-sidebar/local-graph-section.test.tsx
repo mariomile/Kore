@@ -94,7 +94,7 @@ describe('LocalGraphSection', () => {
   })
 
   it('collapsed, it queries nothing', async () => {
-    window.sessionStorage.setItem('reflect.context-sidebar.local-graph', 'closed')
+    window.sessionStorage.setItem('kore.context-sidebar.local-graph', 'closed')
     const view = await renderSection()
     await expect.element(view.getByText('Local graph')).toBeVisible()
     expect(getLocalGraph).not.toHaveBeenCalled()

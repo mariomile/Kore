@@ -128,7 +128,7 @@ pub(super) fn merge_remote(root: &Path) -> AppResult<MergeOutcome> {
         let new_tree = repo.find_commit(remote_oid)?.tree()?;
         let mut changed_files = changed_between(&repo, old_tree.as_ref(), &new_tree)?;
         let refname = format!("refs/heads/{branch}");
-        repo.reference(&refname, remote_oid, true, "reflect sync: fast-forward")?;
+        repo.reference(&refname, remote_oid, true, "kore sync: fast-forward")?;
         repo.set_head(&refname)?;
         // Force is safe here: the pre-merge invariant is a committed working
         // tree, so there is nothing uncommitted to clobber.

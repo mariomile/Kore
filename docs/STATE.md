@@ -11,13 +11,13 @@ own threads.
 - [x] Bundle ids `app.lore.*` → `app.kore.*` (desktop flavors, iOS app, share
   extension, widgets), `group.app.kore`, `iCloud.app.kore`, the recording
   notification names and the home-screen shortcut type.
-- [x] `apps/desktop/src-tauri/src/app_dirs.rs`: settings, recents and the
-  capture pointer live in `<config dir>/kore`; on desktop launch the old
-  `reflect-open` folder and `<data dir>/app.lore.<flavor>` are renamed into
-  place when only the old one exists (never overwrites). The capture host
-  and the CLI's model lookup fall back to the old paths until then.
+- [x] `apps/desktop/src-tauri/src/app_dir.rs` (added by #354 for the config
+  dir) also moves `<data dir>/app.lore.<flavor>` into `app.kore.<flavor>` at
+  launch, before any plugin reads it, without overwriting. The CLI's model
+  lookup falls back to the old dirs until then.
 - [x] Keychain service `"kore"`; reads fall back to `"lore"` and
-  `"reflect-open"` and migrate forward.
+  `"reflect-open"` and copy forward, keeping the old entry for one release
+  so a rollback still finds the keys (review I8).
 - [x] CLAUDE.md / AGENTS.md naming rule rewritten: Kore everywhere, old names
   only as migration fallbacks.
 - Not done: `DEVELOPMENT_TEAM` is still upstream's `789ULN5MZB`, waiting for
@@ -25,10 +25,150 @@ own threads.
   localStorage under the old bundle id (collapsed sections, theme cache) is
   not moved; it rebuilds itself. The bundled `Reflect*.provisionprofile`
   files are upstream's and unused by the unsigned DMG.
-- Verified: `app_dirs` unit tests (built standalone: the desktop crate can't
-  compile in the container, onnxruntime's download is blocked), capture-host
-  and CLI embed tests, the touched Vitest suites (node + Chromium). `secrets.rs`
-  and the full desktop crate are left to CI. Mac upgrade not tried live.
+- Known cost: a new bundle id resets macOS permissions (notifications, so
+  task reminders stay silent until re-allowed; calendar, contacts) and WebKit
+  storage (UI conveniences only). Dry run on Kore Dev before the bump.
+- Verified: CLI embed tests, the touched Vitest suites (node + Chromium).
+  The desktop crate can't compile in the container (onnxruntime download
+  blocked), so `app_dir.rs` and `secrets.rs` tests are left to CI. Mac
+  upgrade not tried live.
+## Rename visible Reflect leftovers to Kore, 2026-11-09
+
+Ask: Mario, "ora deve essere tutto Kore" / "ci deve essere solo Kore". PR #354,
+one commit per step. Apple identity (`app.lore.*`, keychain `lore`) is another
+thread; the mechanical internal rename (`@reflect/*`, crates, CSS) is draft #355.
+
+- [x] Vault runtime dir `.reflect/` → `.kore/` (`crates/index-schema/src/runtime_dir.rs`),
+  migrated by app and CLI on open, merging without overwrite; git ignores
+  `/.kore/*` except `proposals/`.
+- [x] Deep links: only `kore://` is registered and parsed (desktop, iOS, widget).
+- [x] Visible labels, reflog message and the old `.gitignore` group.
+- [x] Reflect V1 zip import removed (Rust commands, core bindings, settings section).
+- [x] Asset descriptions `*.reflect.md` → `*.kore.md` (`fs/legacy_descriptions.rs`);
+  core still reads `reflectAsset: true` for evicted iCloud files.
+- [x] localStorage `reflect.*` → `kore.*` (copied once in `public/theme-init.js`),
+  `kore-asset://`, `kore-preview=raster`, `kore:capture-page-text`.
+- [x] Config dir `reflect-open/` → `kore/` (`app_dir.rs`, once per launch),
+  native host `app.kore.capture` (old manifest removed on register).
+- [x] Default backup repo `kore-backup`; AGENTS.md / CLAUDE.md naming rules.
+- Not verified on a real Mac: the migrations run in tests only. An extension
+  built before this PR calls the old host name until it is rebuilt.
+
+## Quick Add review fixes, 2026-11-09
+
+Ask: Mario OK'd the strict review of #346
+(`/mnt/project-files/analisi/review-qualita-pr-aperte-2026-11-08.md`, section
+"#346"). One commit per step.
+
+- [x] Core grammar: `QuickAdd.repeat` is a `TaskRepeat`; content is built with
+  `withTaskContentPriority`, `formatTaskDue` (task-due.ts) and
+  `formatTaskRepeat` (task-repeat.ts). "ogni 0 giorni" and `@repeat(foo)` stay
+  text; a second `[[date]]` stays plain text. Round-trip test re-reads content
+  with core's parsers.
+- [x] Look-alikes stay text: set/ago/mar/mag/gen/may need a preposition or a
+  year ("3 gen" alone no longer counts; "il 3 gen", "3 gennaio" do), "at 2"
+  needs minutes or am/pm, "1/2" needs a preposition or a year.
+- [x] Minor: projects load with the Tasks view, `Q` dropped (Shift never
+  reached it), ⌘T input capped at `TEXT_CAPTURE_MAX_LENGTH - QUICK_ADD_MAX_ADDED`,
+  ⌘T window documented as daily-only (no project list).
+- Left as is: `addTask`'s session path vs disk path mirrors the recurring-task
+  append; a missing daily note starts without its template, same as
+  `insertTask` (pre-existing, worth one fix for both). Quick Add stays in
+  `core/indexing` next to task-repeat/task-priority/task-views.
+
+## Tasks: a way to the task's note, 2026-11-09
+
+Ask (Mario, 2026-11-09 08:33, with a screenshot of the Inbox: "devo avere il
+modo di andare sulla nota del task se c'è"). The source date on the right
+already opened the note, but read as a due date and was disabled on the row
+being edited, which is the row you just clicked.
+
+- [x] `components/tasks/task-source-link.tsx`, shared by list rows and board
+  cards: note glyph + daily date or note title, `aria-label` "Open note: …",
+  ⌘-click opens in a split. Stays enabled while the row is in edit (the
+  editor's unmount flush keeps the draft). Rows under a note header get the
+  glyph alone, on hover.
+- [x] Tests in `tasks-screen.test.tsx` (edit-row case, glyph-only case); the
+  inherited "without an arrow" assertion is inverted on purpose.
+- No keyboard shortcut: a plain key would type into the focused inline editor.
+
+## Tasks like Todoist, slice 2: Quick Add, 2026-11-08
+
+Ask (Mario, 2026-11-08 21:58, "procedi" after v0.92.0 shipped slice 1; plan
+in `/mnt/project-files/analisi/task-come-todoist.md`).
+
+- [x] Core parser (`packages/core/src/indexing/quick-add.ts`):
+  `parseQuickAdd(input, today, projects)` reads dates (oggi/today,
+  domani/tomorrow, dopodomani, weekdays, "prossima settimana"/"next week",
+  "tra 3 giorni"/"in 2 weeks", "15 nov", "nov 15", "15/11", ISO), times
+  ("alle 15", "at 3pm", "15:30"), priority (`p1`/`p2`/`p3`, `!`/`!!`),
+  repeats ("ogni lunedì", "every 2 weeks", daily/weekly…) and `#Project`
+  (only a known folder-note project; other tags stay text). Returns the
+  canonical content (`!! call Anna [[2026-11-09]] @15:00 @repeat(weekly)`)
+  plus tokens for chips. Fixed rules: a weekday is never today, numeric
+  dates are day/month, a passed date without year is next year, 24h times.
+  Deterministic and offline, so it does not overlap the AI-chat rule.
+- [x] Desktop Tasks: `q` or "Add task" opens Quick Add; chips show what was
+  understood and the footer shows exactly what gets written and where
+  (the project note, else today's daily). `addTask` appends through the
+  open note's session when the note is open instead of refusing.
+- [x] Global Quick Entry: ⌘T or the "Task" button switches to task mode,
+  spooling a `task` capture with the canonical content (no project routing
+  there: the window has no graph index).
+
+**Validation:** core `quick-add.test.ts` (28), desktop `note-task.test.ts`,
+Chromium `tasks-screen.test.tsx` (two Quick Add cases) and
+`quick-capture-root.test.tsx`, `pnpm typecheck`. Rendered check in the dev
+build: typed "chiamare Luca domani alle 15 p1 ogni lunedì", the task landed
+in Upcoming on the right day. WebKit not run here (CI is the first pass).
+Not yet tried on Mario's vault. Mobile has no Quick Add yet.
+
+## Vault activity log with per-agent undo (Plan 33, A1), 2026-11-08
+
+Ask (Mario, 2026-11-08, after studying Fennick): every change an agent makes
+should be visible and reversible, the way Fennick's Op Log is. Plan:
+`docs/plans/33-trust-and-structure.md`; analysis in Italian at
+`/mnt/project-files/analisi/fennick.md`. Mario's rule for this work: one
+step = one commit, pushed, so a bad step is reverted alone.
+
+- [x] Step 1, the always-on host signs per agent: `Runner::run_as` carries
+  the MCP caller's name; `VaultSync` commits a named caller's write as
+  `<Name> <slug@agents.kore>` with a `Kore-Agent: <Name>` trailer (the
+  journal keeps it, so a replay signs the same way). The owner's own edits
+  stay `Kore host`.
+- [x] Step 2, local agents are journaled: `ProcessRunner` passes
+  `KORE_AGENT`/`KORE_AGENT_GRAPH` to the child, and every `atomic_write`/
+  `atomic_create` appends `{at, agent, email, path}` to
+  `.reflect/agent-writes.jsonl`. The app's backup cycle first commits each
+  agent's journaled notes under its name (`git_commit_paths`), then
+  everything else as before. Name, address and trailer are decided once,
+  in `apps/cli/src/agent_identity.rs`; a caller without its own key is the
+  `MCP` agent on both paths, never the owner. Known limit: an owner edit to the same note
+  before the backup lands in the agent's commit (file-level, not line-level).
+- [x] Step 3, `git_activity`: paged first-parent log with author, time,
+  trailers and changed files.
+- [x] Step 4, core `sync/activity.ts`: commits grouped into sittings (same
+  author, gaps under 30 minutes); authors named agent / host / owner.
+- [x] Step 5, the Activity screen (`components/activity/`): command palette
+  ("Activity") and the graph menu; sittings by day, author filter, a note
+  row opens the note's history at that change; empty state points at
+  backup settings.
+- [x] Step 6, undo a sitting: `git_undo_preview` reverse-merges the
+  sitting's commits into what is on disk, per file, and writes nothing;
+  core `undoSitting` snapshots, refuses the whole undo on any conflict
+  (naming the notes), writes back through `writeNote`/delete, and commits
+  once as the owner. Created daily notes are emptied, not deleted.
+- [x] Step 7, docs: this entry, the delivery log, and the Meowdown wording
+  in `CLAUDE.md`/`AGENTS.md` (third-party, plugins first).
+
+**Validation:** core unit tests (`activity`, `agent-commits`, `undo`,
+engine), Chromium tests for the Activity screen (list, filter, history,
+undo, conflict, empty state), CLI tests for signing and the journal,
+`pnpm typecheck`, eslint/oxlint/oxfmt, `cargo fmt`, clippy on
+`reflect-open`. The desktop crate's Rust tests (`commit_paths`, activity,
+undo preview) can't link in this container (ort download blocked) and run
+in CI. **Not verified on the Mac** yet: a real agent write, then Activity,
+then Undo.
 
 ## Tasks like Todoist, slice 1: views and board, 2026-11-08
 
@@ -3218,6 +3358,25 @@ screen: Agents then Close lands on today.
 **Next:** merge the Close fix, then bump.
 
 ## Session log
+
+- 2026-11-09 — Quality refactor, no behavior change. Agent steps carry a
+  `kind` and the `notePath` they touched, set in core by the Claude Code
+  describer, so `chat-agent-steps.tsx` maps kind to icon and no longer
+  switches on tool names; steps persisted before this are upgraded on load.
+  Only subagent steps nest (the UI's `flatten` is gone), the dead lone-step
+  case in `ChatAssistantPart` is removed, and every engine's `parseLine`
+  returns a chunk list (`parseClaudeCliLine` removed). Verified: core
+  vitest (2,563), chat browser tests on Chromium, typecheck and lint.
+
+- 2026-11-08 — Quality refactor, no behavior change. `kore sources` policy
+  moves to core: `headless/sync-sources.ts` resolves which connectors run,
+  their `KORE_<SOURCE>_*` variables and defaults from `CONNECTORS`; the
+  Rust side keeps only the flags and the `.reflect/sources.json` windows,
+  and the indexer host's write permission is an explicit `Session` mode.
+  The three bounded fetches (meta, oEmbed, data) share one request path in
+  `src-tauri/src/capture_fetch.rs`, bringing `capture.rs` from 1,063 to 810
+  lines. Verified: cargo test/clippy (cli), vitest headless + connectors,
+  a real `kore sources` run (usage errors, failed fetch, window saved).
 
 - 2026-11-07 — A pasted article link keeps the article's text in its
   `#link` card, a YouTube link its transcript. One shared article extractor

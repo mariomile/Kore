@@ -11,7 +11,8 @@ Square checklist checkboxes (`- [ ]` / `- [x]`) stay in the note and do not aggr
 
 **Update 2026-11-08:** the "never a task manager" scope is superseded: priorities,
 `@repeat` and reminders shipped since, and Todoist-style views (Inbox / Today /
-Upcoming / Projects) plus a board landed in `indexing/task-views.ts`. Rationale
+Upcoming / Projects) plus a board landed in `indexing/task-views.ts`, and a
+natural-language Quick Add in `indexing/quick-add.ts`. Rationale
 and the remaining slices: `task-come-todoist.md` (project analysis) and
 `docs/STATE.md`.
 

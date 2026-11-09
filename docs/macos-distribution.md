@@ -303,7 +303,7 @@ off anyway). The stable feed is pinned into stable builds at build time by
 
 Distinct identifiers give each flavor its own webview storage and embeddings cache.
 Settings, recent graphs and keychain secrets are currently **shared** across flavors (the
-`reflect-open` config dir and keychain service are hardcoded, not derived from the
+`kore` config dir and keychain service are hardcoded, not derived from the
 identifier).
 
 Local builds:

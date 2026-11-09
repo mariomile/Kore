@@ -15,15 +15,17 @@ For work on the Personal OS program (roadmap slices, Plans 25/26), also read
 [docs/STATE.md](docs/STATE.md) first and update it in the same session as any
 work that moves the program.
 
-**Kore** is the only name this product carries (Mario, 2026-11-08: "ora deve
-essere tutto Kore"). **Reflect** is the upstream project this repo forked
-from, and its name is being removed everywhere, internals included. Until the
-internal rename lands, `@reflect/*` packages, `reflect-*` crates and
-`.reflect/` still exist: don't build new names on them, and don't add new
-"reflect" or "lore" names. The Apple identity is `app.kore.*` (iCloud
-`iCloud.app.kore`, App Group `group.app.kore`) and the keychain service is
-`"kore"`; the old `app.lore.*`, `reflect-open` and `"lore"` names survive only
-as migration fallbacks that read old data and move it forward.
+Everything a user sees, types, pastes, or finds on disk is **Kore**: the `kore`
+CLI and `kore mcp`, `$KORE_GRAPH`, the agent skills, `kore://` links, the
+vault's `.kore/` directory, `*.kore.md` asset descriptions, the `kore/` config
+dir, `kore.*` storage keys and `kore-asset://`. The old Reflect-era stored
+names are migrated on first open; never write them again. **Reflect** (the
+upstream project this repo forked from) survives only in internal code
+identifiers (`@reflect/*` packages, `reflect-*` crates) until the mechanical
+internal rename lands. The Apple identity is `app.kore.*` (`iCloud.app.kore`,
+`group.app.kore`) and the keychain service is `"kore"`; the old `app.lore.*`
+data folder and `"lore"` keychain entries are read as migration fallbacks
+only. See AGENTS.md, Naming.
 
 ## Layering rules
 
@@ -86,9 +88,12 @@ in AGENTS.md. These additional gates are what actually turn CI red:
   [docs/plans/](docs/plans/) — start at
   [docs/plans/00-overview.md](docs/plans/00-overview.md).
 - Editor behavior (markdown round-tripping, keybindings, slash menus, wiki
-  links, paste/drop) often bottoms out in Meowdown, the first-party editor
-  consumed as `@meowdown/core` / `@meowdown/react`. Fix it there rather than
-  papering over it here.
+  links, paste/drop) often bottoms out in Meowdown, a third-party editor
+  (prosekit/meowdown) consumed as `@meowdown/core` / `@meowdown/react`. Kore
+  does not own it and its maintainers won't change it for us (Mario,
+  2026-11-08): build editor features as Kore ProseMirror plugins (like
+  `apps/desktop/src/editor/link-card-plugin.ts`), and patch it in `patches/`
+  only when no plugin can do the job.
 
 ## Cutting a Kore release (bump)
 

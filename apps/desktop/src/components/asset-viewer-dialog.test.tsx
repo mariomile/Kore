@@ -31,7 +31,7 @@ describe('data views', () => {
     const view = await render(
       <AssetViewerDialog
         assetPath="assets/signups.csv"
-        url="reflect-asset://localhost/1/assets/signups.csv"
+        url="kore-asset://localhost/1/assets/signups.csv"
         onClose={() => {}}
         onOpenExternally={() => {}}
       />,
@@ -52,7 +52,7 @@ describe('data views', () => {
     const view = await render(
       <AssetViewerDialog
         assetPath="assets/build.log"
-        url="reflect-asset://localhost/1/assets/build.log"
+        url="kore-asset://localhost/1/assets/build.log"
         onClose={() => {}}
         onOpenExternally={() => {}}
       />,
@@ -71,7 +71,7 @@ describe('data views', () => {
     const view = await render(
       <AssetViewerDialog
         assetPath="assets/memo.docx"
-        url="reflect-asset://localhost/1/assets/memo.docx"
+        url="kore-asset://localhost/1/assets/memo.docx"
         onClose={() => {}}
         onOpenExternally={() => {}}
       />,
@@ -87,7 +87,7 @@ describe('AssetViewerDialog', () => {
     const view = await render(
       <AssetViewerDialog
         assetPath="assets/quarterly-report.pdf"
-        url="reflect-asset://localhost/1/assets/quarterly-report.pdf"
+        url="kore-asset://localhost/1/assets/quarterly-report.pdf"
         onClose={() => {}}
         onOpenExternally={() => {}}
       />,
@@ -104,7 +104,7 @@ describe('AssetViewerDialog', () => {
     const view = await render(
       <AssetViewerDialog
         assetPath="assets/clipped-page.html"
-        url="reflect-asset://localhost/1/assets/clipped-page.html"
+        url="kore-asset://localhost/1/assets/clipped-page.html"
         onClose={() => {}}
         onOpenExternally={() => {}}
       />,
@@ -134,7 +134,7 @@ describe('AssetViewerDialog', () => {
     const view = await render(
       <AssetViewerDialog
         assetPath="assets/report.pdf"
-        url="reflect-asset://localhost/1/assets/report.pdf"
+        url="kore-asset://localhost/1/assets/report.pdf"
         onClose={onClose}
         onOpenExternally={onOpenExternally}
       />,

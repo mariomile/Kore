@@ -312,7 +312,7 @@ describe('userMessage', () => {
       id: 'att-2',
       name: 'dog.jpeg',
       mediaType: 'image/jpeg',
-      path: '.reflect/chat-attachments/conv-1/att-2.jpeg',
+      path: '.kore/chat-attachments/conv-1/att-2.jpeg',
     }
     expect(userMessage('what is this?', [onDisk])).toEqual({
       role: 'user',
@@ -432,7 +432,15 @@ describe('settleNoteEdit', () => {
 })
 
 describe('appendEvent agent steps', () => {
-  const step = { id: 's1', tool: 'Read', label: 'Read', detail: 'notes/a.md', parentId: null }
+  const step = {
+    id: 's1',
+    tool: 'Read',
+    label: 'Read',
+    detail: 'notes/a.md',
+    parentId: null,
+    kind: 'read' as const,
+    notePath: 'notes/a.md',
+  }
 
   it('adds a step once, settles it with its outcome, and stops a dangling one on abort', () => {
     let parts = appendEvent([], { type: 'agent-step', step })

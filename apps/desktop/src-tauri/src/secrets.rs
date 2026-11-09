@@ -1,7 +1,7 @@
 //! Secrets in the OS keychain (Plan 10): the only place BYOK API keys live.
 //!
 //! Per the product principles, credentials never touch markdown, Git, or
-//! `.reflect/`. Rust exposes the keychain as an opaque name → value store (a
+//! `.kore/`. Rust exposes the keychain as an opaque name → value store (a
 //! capability); which names exist and what they hold is `@reflect/core`
 //! policy (see `ai/secrets.ts`).
 
@@ -26,16 +26,10 @@ fn service_entry(service: &str, name: &str) -> AppResult<Entry> {
     Entry::new(service, name).map_err(|err| AppError::io(err.to_string()))
 }
 
-/// Best-effort removal of every legacy copy of `name`.
-fn drop_legacy(name: &str) {
-    for service in LEGACY_SERVICES {
-        let _ = service_entry(service, name).and_then(|old| delete_from(&old));
-    }
-}
-
 /// Read under the current service, falling back to the legacy ones; a legacy
-/// hit is migrated forward (copy, then best-effort delete of every old entry)
-/// so the fallback path runs at most once per secret.
+/// hit is copied forward so the fallback runs at most once per secret. The
+/// legacy entry is deliberately kept for now: a rollback to a pre-`kore`
+/// build still finds its keys. A later release can drop the copies.
 fn get_migrating(name: &str) -> AppResult<Option<String>> {
     if let Some(value) = get_from(&entry(name)?)? {
         return Ok(Some(value));
@@ -43,7 +37,6 @@ fn get_migrating(name: &str) -> AppResult<Option<String>> {
     for service in LEGACY_SERVICES {
         if let Some(value) = get_from(&service_entry(service, name)?)? {
             set_in(&entry(name)?, &value)?;
-            drop_legacy(name);
             return Ok(Some(value));
         }
     }
@@ -87,13 +80,11 @@ async fn run_blocking<T: Send + 'static>(
         .map_err(|err| AppError::io(err.to_string()))?
 }
 
-/// Write under the current service and drop any leftover legacy copy.
-/// Leaving one would let a later `secret_get` migrate it back after a delete
-/// that only touched `"kore"`.
+/// Write under the current service. A legacy copy may remain (see
+/// [`get_migrating`]); it is never read again once `"kore"` holds a value,
+/// and [`erase_secret`] clears every service so it cannot resurrect.
 fn write_secret(name: &str, value: &str) -> AppResult<()> {
-    set_in(&entry(name)?, value)?;
-    drop_legacy(name);
-    Ok(())
+    set_in(&entry(name)?, value)
 }
 
 /// Delete under every service name so a cleared key cannot resurrect from a

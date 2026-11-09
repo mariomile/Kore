@@ -48,7 +48,7 @@ function installUploadBridge(): ReturnType<typeof vi.fn> {
     listen: async () => () => {},
     // The macOS/iOS URL shape the Tauri bridge's `convertFileSrc` produces.
     assetUrl: (generation, path) =>
-      `reflect-asset://localhost/${encodeURIComponent(`${generation}/${path}`)}`,
+      `kore-asset://localhost/${encodeURIComponent(`${generation}/${path}`)}`,
   })
   return invoke
 }
@@ -149,12 +149,12 @@ describe('useAssetPersistence resolveImageUrl', () => {
     )
   })
 
-  it('maps a safe assets/ path onto the generation-pinned reflect-asset URL', async () => {
+  it('maps a safe assets/ path onto the generation-pinned kore-asset URL', async () => {
     installUploadBridge()
     await renderPersistence({ generation: 3 })
 
     expect(persistence!.resolveImageUrl('assets/cat.png')).toBe(
-      `reflect-asset://localhost/${encodeURIComponent('3/assets/cat.png')}`,
+      `kore-asset://localhost/${encodeURIComponent('3/assets/cat.png')}`,
     )
   })
 

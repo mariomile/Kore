@@ -36,6 +36,14 @@ export function matchDueTimePrefix(text: string): DueTimeMatch | null {
 }
 
 /**
+ * A due date (and optional time) in task syntax, `[[2026-11-09]] @15:00`: the
+ * form {@link firstDue} reads back.
+ */
+export function formatTaskDue(date: string, time: string | null): string {
+  return time === null ? `[[${date}]]` : `[[${date}]] @${time}`
+}
+
+/**
  * The task's due date and optional time: the first calendar-valid `[[YYYY-MM-DD]]`
  * link inside the marker line (file coords), plus `@HH:MM` immediately after that
  * link when present. Reuses {@link normalizeWikiTarget} so an impossible date

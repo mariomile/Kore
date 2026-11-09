@@ -147,39 +147,45 @@ as an overengineering warning.
 
 Kore is an offline-first, Markdown-backed note-taking and agentic workspace built
 with TypeScript, React, Rust, and Tauri. It originated from Reflect V2, but Kore
-is the product and repository name; Reflect remains only in inherited internal
-identifiers and historical upstream documentation.
+is the product and repository name; Reflect remains only in internal code
+identifiers (being renamed) and historical upstream documentation.
 
 ### Naming
 
-Kore is the only name the product carries (Mario, 2026-11-08: everything is
-Kore, internals included). The Reflect names are being removed:
+Everything a user sees, types, pastes, or finds on disk is **Kore**:
 
-- **Reflect** is the upstream project this repo forked from. Its names still
-  sit in internal identifiers (`@reflect/*` packages, `reflect-*` crates,
-  `.reflect/` index directory, CSS classes, storage keys) until the internal
-  rename lands. Don't add new ones.
-- **Kore** is this fork and the only name a user ever sees **or types**: the
-  repository, the `productName` in `apps/desktop/src-tauri/tauri.conf.json`
+- the repository, the `productName` in `apps/desktop/src-tauri/tauri.conf.json`
   and its overlays (the bundle is `Kore.app`; the flavors are Kore / Kore
   Beta / Kore Dev), the window title, the iOS home screen, the iCloud Drive
   folder, every permission prompt, the `kore` CLI and its `kore mcp` server,
-  `$KORE_GRAPH`, the agent skills, `.koreignore`, and the `kore://` deep
-  links (`reflect://` is still parsed, never written).
-- The test for a new name: if a user can see it, type it, or paste it, it is
-  Kore. "Reflect" survives only where nobody but a contributor reads it, and
-  in "Reflect V1" import strings, which name the real upstream app.
+  `$KORE_GRAPH`, the agent skills, `.koreignore`, and the `kore://` deep links;
+- what Kore stores: the vault's runtime directory `.kore/`, asset
+  descriptions `*.kore.md` (`koreAsset: true`), the `kore/` config directory,
+  `kore.*` localStorage keys, the `kore-asset://` protocol, and the
+  `app.kore.capture` native-messaging host.
+
+Each stored name had a Reflect-era spelling (`.reflect/`, `*.reflect.md`,
+`reflect-open/`, `reflect.*`, `app.reflect.capture`); the app and CLI migrate
+it on first open without overwriting anything, and nothing writes the old
+name again. Do not add new code that reads an old name outside those
+migrations.
+
+**Reflect** is the upstream project this repo forked from. Its name survives
+only in internal code identifiers (`@reflect/*` packages, `reflect-*` crates,
+CSS classes) until the mechanical internal rename lands, and in historical
+docs about the upstream app. Never introduce a new one.
 
 Earlier builds used older spellings, kept only as migration fallbacks so an
 upgrade loses nothing:
 
 - Apple identity is `app.kore.*`, `iCloud.app.kore` and `group.app.kore`
   (previously `app.lore.*`, inherited from upstream). On launch the desktop
-  app moves `<data dir>/app.lore.<flavor>` and `<config dir>/reflect-open`
-  into `app.kore.<flavor>` and `kore` (`apps/desktop/src-tauri/src/app_dirs.rs`).
+  app moves `<data dir>/app.lore.<flavor>` into `app.kore.<flavor>`
+  without overwriting (`apps/desktop/src-tauri/src/app_dir.rs`, which also
+  moves the `reflect-open` config dir to `kore`).
 - The keychain service in `apps/desktop/src-tauri/src/secrets.rs` is
-  `"kore"`; reads fall back to `"lore"` and `"reflect-open"` and migrate the
-  entry forward.
+  `"kore"`; reads fall back to `"lore"` and `"reflect-open"` and copy the
+  entry forward, keeping the old one for now so a rollback still finds it.
 
 ### Product Principles
 
@@ -189,13 +195,13 @@ Drawn from the product docs — read these for deeper context:
 
 - **Daily notes first.** The app opens to today's note. All capture flows into the daily note by default.
 - **Association over hierarchy.** `[[Wiki Links]]` replace folders. The note graph is the organizing model; there are no folders.
-- **Markdown is the source of truth.** Notes are `.md` files (`daily/YYYY-MM-DD.md`, `notes/`). SQLite under `.reflect/` is a rebuildable projection of the notes — with one durable exception: the `chat_*` tables hold AI chat history, which is not derivable from markdown. Index wipes and rebuilds must leave them untouched.
+- **Markdown is the source of truth.** Notes are `.md` files (`daily/YYYY-MM-DD.md`, `notes/`). SQLite under `.kore/` is a rebuildable projection of the notes — with one durable exception: the `chat_*` tables hold AI chat history, which is not derivable from markdown. Index wipes and rebuilds must leave them untouched.
 - **No Kore-hosted APIs.** LLM calls go directly to user-approved providers (OpenAI, Anthropic, etc.). Sync goes to GitHub/iCloud/Git. Never proxy through Kore infrastructure.
 - **BYOK AI.** AI features use user-supplied keys. Never assume Kore operates AI infrastructure.
 - **`private: true` is a hard block.** Notes with this frontmatter flag must never have their content sent to any external service — AI, transcription, or otherwise. Enforce at every call site.
 - **Keyboard-native UX.** Every core workflow must be reachable from the keyboard. This is product identity, not polish.
 - **Minimal UI.** Do less, and do it well. Don't add surfaces that compete with the editor.
-- **Secrets in the OS keychain.** API keys and credentials never go in markdown, Git, or `.reflect/`.
+- **Secrets in the OS keychain.** API keys and credentials never go in markdown, Git, or `.kore/`.
 - **Portable data.** Full export (JSON, markdown, HTML) must work from day one.
 - **No Electron.** Desktop shell is Tauri.
 - **MIT open-source core.** Write as if the code is public and will be critiqued.
@@ -413,7 +419,7 @@ Kore/
 │   ├── db/                 # @reflect/db — generated Kysely schema + the IPC dialect
 │   └── utils/              # @reflect/utils — small dependency-free helpers (ISO date math)
 ├── crates/
-│   ├── index-schema/       # Shared SQLite migrations for <graph>/.reflect/index.sqlite
+│   ├── index-schema/       # Shared SQLite migrations for <graph>/.kore/index.sqlite
 │   │                       #   (one schema for the desktop writer + CLI reader)
 │   ├── index-store/        # The index write path + read guard, shared by the desktop
 │   │                       #   writer and the CLI's headless indexer (`kore index`)
@@ -437,13 +443,16 @@ Kore/
 ### Related repos
 
 - **Meowdown:** [prosekit/meowdown](https://github.com/prosekit/meowdown); clone
-  it locally when investigating (no fixed checkout path is assumed). Meowdown is the
-  first-party hybrid/live-preview Markdown editor that Kore uses through
-  `@meowdown/core` and `@meowdown/react`. When investigating editor behavior,
-  markdown round-tripping, keybindings, slash menus, wiki links, task checkboxes,
-  paste/drop handling, or mobile editor quirks, check that repo as well as this
-  one. If the root cause is in Meowdown, fix it there and open the PR against the
-  Meowdown project rather than papering over it in Kore.
+  it locally when investigating (no fixed checkout path is assumed). Meowdown is a
+  third-party hybrid/live-preview Markdown editor that Kore uses through
+  `@meowdown/core` and `@meowdown/react`; Kore does not own it, and its
+  maintainers won't make changes for us (Mario, 2026-11-08). When investigating
+  editor behavior, markdown round-tripping, keybindings, slash menus, wiki links,
+  task checkboxes, paste/drop handling, or mobile editor quirks, check that repo
+  as well as this one. Build Kore's own editor features as ProseMirror plugins in
+  this repo (like `apps/desktop/src/editor/link-card-plugin.ts`); use a pnpm
+  patch in `patches/` only when no plugin can do it, and offer an upstream PR
+  for real Meowdown bugs without depending on it landing.
 
 **Design system**
 

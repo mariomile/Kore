@@ -22,6 +22,10 @@ vi.mock('@reflect/core', async (importOriginal) => ({
   hideQuickCapture,
 }))
 
+vi.mock('@/providers/settings-provider', () => ({
+  useSettings: () => ({ settings: { dateFormat: 'iso' } }),
+}))
+
 afterEach(async () => {
   await cleanup()
   vi.clearAllMocks()
@@ -51,5 +55,21 @@ describe('QuickCaptureRoot', () => {
     await userEvent.keyboard('{Escape}')
     await vi.waitFor(() => expect(hideQuickCapture).toHaveBeenCalledTimes(1))
     expect(captureInboxSpool).not.toHaveBeenCalled()
+  })
+
+  it('task mode (⌘T) spools a Quick Add task in canonical syntax', async () => {
+    await render(<QuickCaptureRoot />)
+    await userEvent.click(page.getByRole('button', { name: 'Task' }))
+    await userEvent.fill(page.getByLabelText('Capture a task'), 'call Anna at 3pm p1')
+    await expect.element(page.getByRole('list', { name: 'Understood' })).toHaveTextContent('15:00')
+    await userEvent.click(page.getByRole('button', { name: 'Add' }))
+
+    await vi.waitFor(() => expect(captureInboxSpool).toHaveBeenCalledTimes(1))
+    const envelope = JSON.parse(captureInboxSpool.mock.calls[0]![1]) as {
+      kind: string
+      text: string
+    }
+    expect(envelope.kind).toBe('task')
+    expect(envelope.text).toMatch(/^!! call Anna \[\[\d{4}-\d{2}-\d{2}\]\] @15:00$/)
   })
 })

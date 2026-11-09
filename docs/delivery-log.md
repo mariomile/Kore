@@ -11,6 +11,25 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
   settings, recent vaults, model cache and saved keys: the old folders and
   keychain entries move over on first launch.
 
+- Kore is the only name left: the vault folder is `.kore/`, links are
+  `kore://`, asset descriptions end in `.kore.md`, and settings live in
+  `kore/`. Opening an existing vault moves every old name across once and
+  never overwrites a file. The Reflect V1 import is gone.
+
+- Every task links to the note it lives in: the note icon next to its date
+  or note name, also on the task you are editing. ⌘-click opens it beside.
+
+- Quick Add for tasks: press `q` in Tasks (or ⌘T in Quick Entry) and type
+  "call Anna tomorrow at 3pm p1 #Kore". Dates, times, priority, repeats and
+  the project are understood in Italian and English, shown as chips, and
+  written as plain Kore task syntax.
+
+- Activity shows everything that changed in your vault, grouped by who did
+  it: you, the always-on host, or each agent by name (Claude, Grok, any
+  `kore mcp` key). Open a note at the change, filter by agent, and undo one
+  agent's whole sitting in two clicks; edits made since are kept, and when
+  they would be lost nothing is undone and the notes are named.
+
 - Tasks work like Todoist: Inbox, Today, Upcoming and Projects views with
   counts (`g` then a letter switches), and a Board layout. Drag a card onto
   a day in Upcoming to reschedule it. Notes inside a project folder gather

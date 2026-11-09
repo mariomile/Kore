@@ -3,7 +3,7 @@ import { dailyPath } from './paths'
 import { writeWorkspaceState } from './commands'
 
 /**
- * What the app tells external agents (via `.reflect/workspace.json`, read by
+ * What the app tells external agents (via `.kore/workspace.json`, read by
  * the `kore` CLI) about the main window: which notes are open and which one
  * the user is looking at. Paths are graph-relative.
  */

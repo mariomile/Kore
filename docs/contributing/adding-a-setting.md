@@ -1,7 +1,7 @@
 # Adding a user setting
 
 User settings are one JSON document in the OS config dir (next to the recents
-store — never inside a graph's `.reflect/`, because preferences follow the
+store — never inside a graph's `.kore/`, because preferences follow the
 user across graphs and must survive graph deletion). The split of
 responsibilities follows the usual rule:
 

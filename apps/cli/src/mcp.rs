@@ -21,6 +21,7 @@
 //! Transport: newline-delimited JSON-RPC 2.0 on stdin/stdout (the MCP stdio
 //! transport). stdout carries protocol messages only; nothing else is printed.
 
+use crate::agent_identity::AgentIdentity;
 use std::io::{self, BufRead, Write};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
@@ -73,6 +74,14 @@ pub trait Runner {
     /// `args` start at the subcommand name; `--graph` and `--json` are the
     /// runner's business. `stdin` is piped to the child when present.
     fn run(&self, args: &[String], stdin: Option<&str>) -> RunOutput;
+
+    /// Run a tool call on behalf of `agent`, so a runner that records writes
+    /// can sign them as that agent ([`Runner::run`] is the vault's owner).
+    /// Runners that record nothing just run.
+    fn run_as(&self, args: &[String], stdin: Option<&str>, agent: &AgentIdentity) -> RunOutput {
+        let _ = agent;
+        self.run(args, stdin)
+    }
 }
 
 /// Spawns this binary against one graph.
@@ -83,7 +92,33 @@ pub struct ProcessRunner {
 
 impl Runner for ProcessRunner {
     fn run(&self, args: &[String], stdin: Option<&str>) -> RunOutput {
+        self.spawn(args, stdin, None)
+    }
+
+    /// A tool call: the child records the notes it writes as this agent's.
+    fn run_as(&self, args: &[String], stdin: Option<&str>, agent: &AgentIdentity) -> RunOutput {
+        self.spawn(args, stdin, Some(agent))
+    }
+}
+
+impl ProcessRunner {
+    fn spawn(
+        &self,
+        args: &[String],
+        stdin: Option<&str>,
+        agent: Option<&AgentIdentity>,
+    ) -> RunOutput {
         let mut command = Command::new(&self.exe);
+        match agent {
+            Some(agent) => command
+                .env(crate::write::AGENT_ENV, &agent.name)
+                .env(crate::write::AGENT_EMAIL_ENV, &agent.email)
+                .env(crate::write::AGENT_GRAPH_ENV, &self.graph),
+            None => command
+                .env_remove(crate::write::AGENT_ENV)
+                .env_remove(crate::write::AGENT_EMAIL_ENV)
+                .env_remove(crate::write::AGENT_GRAPH_ENV),
+        };
         command
             .arg("--graph")
             .arg(&self.graph)
@@ -1198,9 +1233,11 @@ impl<R: Runner> Server<R> {
             Ok(invocation) => invocation,
             Err(message) => return Ok(tool_text(message, true)),
         };
-        let output = self
-            .runner
-            .run(&invocation.args, invocation.stdin.as_deref());
+        let output = self.runner.run_as(
+            &invocation.args,
+            invocation.stdin.as_deref(),
+            &AgentIdentity::for_caller(caller.name.as_deref()),
+        );
         Ok(tool_text(output.text, !output.success))
     }
 

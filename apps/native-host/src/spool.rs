@@ -24,18 +24,13 @@ struct Pointer {
 }
 
 /// Default pointer-file location, shared with the desktop app's conventions
-/// (`settings.rs`/`recents.rs` live in the same directory). Falls back to the
-/// pre-rename `reflect-open` folder while only that one exists: the app moves
-/// it on its next launch.
+/// (`settings.rs`/`recents.rs` live in the same directory).
 pub fn default_pointer_path() -> Option<PathBuf> {
-    let base = dirs::config_dir()?;
-    let current = base.join("kore").join("capture-pointer.json");
-    let legacy = base.join("reflect-open").join("capture-pointer.json");
-    Some(if !current.exists() && legacy.exists() {
-        legacy
-    } else {
-        current
-    })
+    Some(
+        dirs::config_dir()?
+            .join("kore")
+            .join("capture-pointer.json"),
+    )
 }
 
 /// Resolve the capture inbox from the pointer file, creating the inbox
@@ -60,7 +55,7 @@ pub fn inbox_dir(pointer_path: &Path) -> Result<PathBuf, HostError> {
     if !root.is_dir() {
         return Err(HostError::NoGraph);
     }
-    let inbox = root.join(".reflect").join("inbox");
+    let inbox = root.join(".kore").join("inbox");
     std::fs::create_dir_all(&inbox)
         .map_err(|error| HostError::Io(format!("cannot create inbox: {error}")))?;
     Ok(inbox)
@@ -163,7 +158,7 @@ mod tests {
         let pointer = pointer_to(dir.path(), &graph);
 
         let inbox = inbox_dir(&pointer).unwrap();
-        assert_eq!(inbox, graph.join(".reflect/inbox"));
+        assert_eq!(inbox, graph.join(".kore/inbox"));
         assert!(inbox.is_dir());
     }
 

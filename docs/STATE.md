@@ -3357,6 +3357,11 @@ screen: Agents then Close lands on today.
 
 ## Session log
 
+- 2026-11-09 — Line references with `^id` (Plan 33 C3): `[[Note#^id]]`
+  opens the note on that line and flashes it, `![[Note#^id]]` embeds the
+  line with its children, markers draw small and muted, and "Copy link to
+  line" (block menu, ⌘K) adds an id to that line only.
+
 - 2026-11-09 — Zoom UX pass (Plan 33 C1): clean top, one title style,
   word-only crumbs that fold, Escape and Back step out, block menu and
   palette entries, a hint under leaves, and Find widens the zoom to its match.

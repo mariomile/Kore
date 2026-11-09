@@ -7,6 +7,12 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Links to a single line, Obsidian-style: `[[Note#^id]]` opens the note on
+  the line that ends with `^id` and highlights it for a moment, and
+  `![[Note#^id]]` shows that line (with its sub-items) inside another note.
+  The `^id` stays in the file but reads small and grey. "Copy link to line"
+  in the block menu or ⌘K adds an id only to that line and copies the link.
+
 - Zoom into any block: press ⌘⇧. (or ⌘-click a bullet) to see only that
   list item with its children, that heading's section, or that paragraph,
   with a breadcrumb to go back up. The note's file doesn't change. The

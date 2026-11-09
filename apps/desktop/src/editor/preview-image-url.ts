@@ -15,7 +15,7 @@ function isSvgAsset(path: string): boolean {
 
 function previewRasterUrl(url: string): string {
   const separator = url.includes('?') ? '&' : '?'
-  return `${url}${separator}reflect-preview=raster`
+  return `${url}${separator}kore-preview=raster`
 }
 
 interface PassivePreviewImageSource {

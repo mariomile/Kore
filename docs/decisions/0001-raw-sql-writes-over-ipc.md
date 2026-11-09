@@ -3,7 +3,7 @@
 - **Status:** Proposed (decision deferred — this record exists to inform it)
 - **Date:** 2026-06-12
 - **Scope:** The write path between the React webview and the SQLite index
-  (`<graph>/.reflect/index.sqlite`). Reads are out of scope — they already ship
+  (`<graph>/.kore/index.sqlite`). Reads are out of scope — they already ship
   Kysely-compiled `SELECT`s over the read-only `db_query` bridge and that is not
   in question.
 - **Decision driver:** Could a generic, generation-gated, transactional

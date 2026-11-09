@@ -39,8 +39,8 @@ describe('captureFromPath', () => {
 
 describe('isCaptureSpoolPath', () => {
   it('matches only inbox envelopes', () => {
-    expect(isCaptureSpoolPath('.reflect/inbox/7c9e6679.json')).toBe(true)
-    expect(isCaptureSpoolPath('.reflect/inbox/7c9e6679.jpg')).toBe(false)
+    expect(isCaptureSpoolPath('.kore/inbox/7c9e6679.json')).toBe(true)
+    expect(isCaptureSpoolPath('.kore/inbox/7c9e6679.jpg')).toBe(false)
     expect(isCaptureSpoolPath('notes/a.json')).toBe(false)
   })
 })

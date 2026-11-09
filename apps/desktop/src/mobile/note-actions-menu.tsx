@@ -26,7 +26,7 @@ interface NoteActionsMenuProps {
  * bridged by the last toggle result while the mobile write echo and index
  * catch up. {@link shareNote} hands the note's body to the OS share sheet via
  * the Web Share API (`navigator.share`); delete confirms first (it's
- * destructive, even if recoverable from `.reflect/trash/`) and routes through
+ * destructive, even if recoverable from `.kore/trash/`) and routes through
  * {@link deleteOpenNote} so the open session is discarded rather than flushed.
  */
 export function NoteActionsMenu({ path, onDeleted }: NoteActionsMenuProps): ReactElement {

@@ -65,7 +65,7 @@ function ConnectWizardSheet({
   // Never derived from the graph name: the local graph's display name is the
   // sandbox folder's basename — literally "Documents".
   const wizard = useConnectGithubWizard({
-    suggestedRepoName: 'reflect-backup',
+    suggestedRepoName: 'kore-backup',
     onClose,
     ...(pollIntervalMs !== undefined ? { pollIntervalMs } : {}),
   })

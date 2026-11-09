@@ -169,7 +169,7 @@ describe('createAssetDescribeController', () => {
     create().start()
     await flush()
     emitApplied([
-      upsert('assets/a.png.reflect.md'),
+      upsert('assets/a.png.kore.md'),
       upsert('assets/notes.txt'),
       { path: 'assets/a.png', kind: 'remove' },
       upsert('notes/x.md'), // readNote default returns a note with no asset refs

@@ -14,7 +14,7 @@ import { ChatUserAttachments } from './chat-user-attachments'
 type StepPart = Extract<AssistantPart, { kind: 'step' }>
 
 type RenderBlock =
-  | { kind: 'part'; part: AssistantPart; index: number }
+  | { kind: 'part'; part: Exclude<AssistantPart, StepPart>; index: number }
   | { kind: 'steps'; steps: StepPart[]; index: number }
 
 /** Parts in render order, with each run of consecutive agent steps as one block. */

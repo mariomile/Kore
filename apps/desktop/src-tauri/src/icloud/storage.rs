@@ -191,7 +191,7 @@ fn find_graph_dirs(documents: &Path) -> Vec<PathBuf> {
 /// True when `root` already contains note files (downloaded, or eviction
 /// placeholders, which the shared walk lists as their logical file).
 ///
-/// Walks for notes rather than requiring `.reflect/meta.json`: the index
+/// Walks for notes rather than requiring `.kore/meta.json`: the index
 /// directory is excluded from sync on purpose, so a synced-down graph
 /// arrives as bare Markdown content.
 fn dir_has_notes(root: &Path) -> bool {
@@ -436,10 +436,10 @@ pub async fn icloud_status() -> AppResult<IcloudStatus> {
 /// the desktop move-in) and return the new root. The copy is verified by
 /// file count + byte totals before anything is reported; the original graph
 /// is left untouched at its old path as the recovery copy — the caller
-/// re-opens at the returned root, which re-bootstraps `.reflect/` and
+/// re-opens at the returned root, which re-bootstraps `.kore/` and
 /// rebuilds the index there.
 ///
-/// `.reflect/` and `.git/` are deliberately not copied: the index is a
+/// `.kore/` and `.git/` are deliberately not copied: the index is a
 /// rebuildable projection, and a backup repo must never ride a file-sync
 /// provider. The Git remote, if any, is disconnected by the caller first —
 /// iCloud sync and a Git remote are mutually exclusive per graph (Plan 21).
@@ -507,11 +507,11 @@ fn copy_and_verify(root: &Path, target: &Path) -> AppResult<()> {
 /// Names that never ride a file-sync provider: the rebuildable local state,
 /// the backup repo, and OS litter. A move-in leaves them behind
 /// ([`copy_graph_tree`]), and the pending-download walk never descends into
-/// them — `.reflect/` and `.git/` are marked sync-excluded at bootstrap
+/// them — `.kore/` and `.git/` are marked sync-excluded at bootstrap
 /// (`fs::io::mark_dir_local_only`), so iCloud can never hold a placeholder
 /// under either.
 fn local_only_name(name: &str) -> bool {
-    matches!(name, ".reflect" | ".git" | ".DS_Store")
+    matches!(name, ".kore" | ".git" | ".DS_Store")
 }
 
 /// Recursively copy the graph tree, returning `(files, bytes)` copied.
@@ -612,10 +612,10 @@ mod tests {
     fn adopt_copy_skips_local_state_and_verifies() {
         let source = tempfile::tempdir().expect("tempdir");
         std::fs::create_dir_all(source.path().join("notes")).expect("mkdir");
-        std::fs::create_dir_all(source.path().join(".reflect")).expect("mkdir");
+        std::fs::create_dir_all(source.path().join(".kore")).expect("mkdir");
         std::fs::create_dir_all(source.path().join(".git")).expect("mkdir");
         std::fs::write(source.path().join("notes/a.md"), b"# A").expect("write");
-        std::fs::write(source.path().join(".reflect/index.sqlite"), b"db").expect("write");
+        std::fs::write(source.path().join(".kore/index.sqlite"), b"db").expect("write");
         std::fs::write(source.path().join(".git/HEAD"), b"ref").expect("write");
         std::fs::write(source.path().join(".DS_Store"), b"junk").expect("write");
 
@@ -628,14 +628,14 @@ mod tests {
             std::fs::read_to_string(target.join("notes/a.md")).expect("read"),
             "# A"
         );
-        assert!(!target.join(".reflect").exists());
+        assert!(!target.join(".kore").exists());
         assert!(!target.join(".git").exists());
         assert!(!target.join(".DS_Store").exists());
     }
 
     /// The pending walk must count placeholders anywhere in the graph but
     /// never descend into the sync-excluded directories: `.git/` and
-    /// `.reflect/` are marked local-only at bootstrap, so a placeholder can
+    /// `.kore/` are marked local-only at bootstrap, so a placeholder can
     /// never exist under them, and a backup repo's object store would
     /// otherwise dominate the walk's stat count on every poll tick.
     #[cfg(any(target_os = "ios", target_os = "macos"))]
@@ -644,12 +644,12 @@ mod tests {
         let root = tempfile::tempdir().expect("tempdir");
         std::fs::create_dir_all(root.path().join("notes")).expect("mkdir");
         std::fs::create_dir_all(root.path().join(".git/objects")).expect("mkdir");
-        std::fs::create_dir_all(root.path().join(".reflect/tmp")).expect("mkdir");
+        std::fs::create_dir_all(root.path().join(".kore/tmp")).expect("mkdir");
         std::fs::write(root.path().join("notes/.a.md.icloud"), b"stub").expect("write");
         std::fs::write(root.path().join("notes/b.md"), b"# B").expect("write");
         // Placeholder-shaped names under excluded dirs must not be reached.
         std::fs::write(root.path().join(".git/objects/.x.md.icloud"), b"stub").expect("write");
-        std::fs::write(root.path().join(".reflect/tmp/.y.md.icloud"), b"stub").expect("write");
+        std::fs::write(root.path().join(".kore/tmp/.y.md.icloud"), b"stub").expect("write");
 
         assert_eq!(platform::pending_walk(root.path(), false, false), 1);
     }

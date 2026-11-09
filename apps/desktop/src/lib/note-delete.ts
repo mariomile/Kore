@@ -5,7 +5,7 @@ import { openSession } from '@/editor/open-documents'
  * Delete an open regular note and detach its editor session without flushing.
  *
  * `deleteNote` sends the file to the trash — the OS-native trash on desktop, the
- * graph-local `.reflect/trash/` on mobile (which has no OS trash) — recoverable
+ * graph-local `.kore/trash/` on mobile (which has no OS trash) — recoverable
  * either way, and sync-ignored. The index and queries drop the note once the
  * change lands (the desktop watcher's reindex, or the mobile write echo). Daily
  * notes are intentionally blocked: they are the app's chronological spine and

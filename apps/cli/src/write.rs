@@ -80,7 +80,7 @@ pub const AGENT_GRAPH_ENV: &str = "KORE_AGENT_GRAPH";
 
 /// The graph-relative journal of notes agents wrote, which the app reads to
 /// commit each agent's writes under its own name.
-pub const AGENT_JOURNAL: &str = ".reflect/agent-writes.jsonl";
+pub const AGENT_JOURNAL: &str = ".kore/agent-writes.jsonl";
 
 /// Append `path` to the agent journal when this process runs a tool call
 /// for an agent. Best effort: the note is already written, and a missing
@@ -116,7 +116,7 @@ fn record_agent_write(path: &Path) {
 
 /// The graph the tool call runs against (`AGENT_GRAPH_ENV`) and `path`
 /// relative to it with `/` separators. `None` for anything inside
-/// `.reflect/` itself or outside that graph.
+/// `.kore/` itself or outside that graph.
 fn graph_relative(path: &Path) -> Option<(PathBuf, String)> {
     let root = PathBuf::from(std::env::var_os(AGENT_GRAPH_ENV)?);
     let rel = path
@@ -138,7 +138,7 @@ fn graph_relative(path: &Path) -> Option<(PathBuf, String)> {
             _ => None,
         })
         .collect::<Option<Vec<_>>>()?;
-    if parts.is_empty() || parts.first() == Some(&".reflect") {
+    if parts.is_empty() || parts.first() == Some(&".kore") {
         return None;
     }
     Some((root, parts.join("/")))

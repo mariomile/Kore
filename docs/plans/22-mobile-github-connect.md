@@ -135,7 +135,7 @@ leftover from the pre-iCloud mobile onboarding that no longer exists.
     into `suggestRepoName` here:** the local graph's display name is the
     sandbox folder's basename — literally "Documents" — so desktop's
     `suggestRepoName(graph?.name)` would suggest `documents-backup`. Mobile
-    passes no name and takes the `reflect-backup` fallback.
+    passes no name and takes the `kore-backup` fallback.
   - *Auth step:* reuse `GithubAuthStep` as-is — it is deliberately
     surface-agnostic (device flow + PAT fallback). Touch-specific styling
     tweaks only if something actually breaks in the sheet.

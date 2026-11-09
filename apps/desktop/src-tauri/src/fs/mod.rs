@@ -10,9 +10,8 @@ mod asset_identity;
 pub mod asset_protocol;
 pub mod assets;
 pub mod chat_attachments;
-mod import;
-mod import_assets;
 mod io;
+mod legacy_descriptions;
 mod resolve;
 pub mod vault_copy;
 
@@ -21,7 +20,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
 use serde::Serialize;
-use tauri::{Emitter, Manager, State};
+use tauri::{Manager, State};
 use tauri_plugin_opener::OpenerExt;
 
 use crate::error::{AppError, AppResult};
@@ -31,11 +30,7 @@ use self::io::{
 };
 use self::resolve::resolve;
 
-/// Cancellation flag for the running Reflect V1 import, managed as Tauri
-/// state in `lib.rs` (`graph_import_cancel` trips it).
-pub use self::import::ImportCancel;
-
-/// Atomic byte write staged under `.reflect/tmp/`, shared with the conflict
+/// Atomic byte write staged under `.kore/tmp/`, shared with the conflict
 /// machinery (shadow bases, resolution writes) so every graph write follows
 /// the same crash-safe, sync-clean path.
 pub(crate) use self::io::atomic_write_bytes;
@@ -49,7 +44,7 @@ pub(crate) use self::io::file_occupied;
 pub(crate) use self::io::mark_dir_local_only;
 pub(crate) use self::io::modified_ms;
 /// The lexical traversal guard, shared with the conflict stores that mirror
-/// note paths under `.reflect/` (shadow bases, conflict archive).
+/// note paths under `.kore/` (shadow bases, conflict archive).
 pub(crate) use self::resolve::ensure_relative;
 /// The full traversal guard, shared with sibling modules that address graph
 /// files (capture promotes screenshots into `assets/`).
@@ -246,78 +241,7 @@ pub async fn graph_create<R: tauri::Runtime>(
     .await
 }
 
-/// Import a user-selected Reflect V1 export `.zip` into the open graph. V1's
-/// export is already the graph folder shape, so this extracts safe entries
-/// directly under the current root; existing files are never replaced (and
-/// never fail the import — identical files skip, conflicting notes rename,
-/// conflicting daily notes merge). Attachments the notes link to on Firebase
-/// Storage or Reflect's asset CDN are downloaded into `assets/` first and the
-/// links rewritten, so the imported graph doesn't depend on Reflect V1's
-/// infrastructure staying up. Progress is emitted as `import:progress` events,
-/// and [`graph_import_cancel`] aborts the run before anything lands in the
-/// graph.
-#[tauri::command]
-pub async fn graph_import_reflect_v1_zip(
-    path: String,
-    generation: u64,
-    app: tauri::AppHandle,
-    state: State<'_, GraphState>,
-    cancel: State<'_, ImportCancel>,
-) -> AppResult<import::ImportSummary> {
-    let root = root_for_generation(&state, generation)?;
-    // Holds the one import slot until this command returns on any path — a
-    // second import starting mid-run would clear a cancel meant for the
-    // first and race its writes.
-    let _running = cancel.begin()?;
-    let prepared = import::prepare_zip_import(&root, Path::new(&path))?;
-    if prepared.remote_asset_count() > 0 {
-        emit_import_progress(&app, "downloading", 0, prepared.remote_asset_count());
-    }
-    let download_app = app.clone();
-    let user_agent = crate::app_user_agent(&app);
-    let downloads = prepared
-        .download_assets(
-            &user_agent,
-            cancel.flag(),
-            std::sync::Arc::new(move |done, total| {
-                emit_import_progress(&download_app, "downloading", done, total);
-            }),
-        )
-        .await?;
-    // The downloads can take a while; refuse to write into a graph the user
-    // has switched away from (or an import the user cancelled) in the
-    // meantime — nothing has been written yet.
-    cancel.ensure_active()?;
-    root_for_generation(&state, generation)?;
-    // Writing is fast and local; throttle the events to ~100 per import so a
-    // large graph doesn't flood the webview.
-    let mut last_emitted = 0usize;
-    let summary = import::finalize_import(&root, prepared, downloads, |done, total| {
-        let step = (total / 100).max(1);
-        if done == total || done >= last_emitted + step {
-            last_emitted = done;
-            emit_import_progress(&app, "writing", done, total);
-        }
-    })?;
-    invalidate_file_catalog(&state, &root);
-    Ok(summary)
-}
-
-/// Cancel the running Reflect V1 import (a no-op when none is running). The
-/// import aborts before any graph write, so cancellation is always safe.
-#[tauri::command]
-pub fn graph_import_cancel(cancel: State<ImportCancel>) {
-    cancel.cancel();
-}
-
-fn emit_import_progress(app: &tauri::AppHandle, stage: &'static str, done: usize, total: usize) {
-    let _ = app.emit(
-        "import:progress",
-        import::ImportProgress { stage, done, total },
-    );
-}
-
-/// Open an existing Markdown vault in place, adding only `.reflect/` runtime
+/// Open an existing Markdown vault in place, adding only `.kore/` runtime
 /// state. Reflect's authoring directories remain lazy for adopted vaults.
 ///
 /// Async so the directory check and `initialize_runtime` writes run off the
@@ -533,10 +457,10 @@ pub async fn audio_memo_delete<R: tauri::Runtime>(
     .await
 }
 
-/// The per-segment transcript cache lives under `.reflect/transcripts/`:
+/// The per-segment transcript cache lives under `.kore/transcripts/`:
 /// derived, rebuildable data (deleting it re-bills a transcription, never
 /// loses content), invisible to the watcher, indexer, and sync like the rest
-/// of `.reflect/`. It gets its own narrow commands because the attachment
+/// of `.kore/`. It gets its own narrow commands because the attachment
 /// IPC is deliberately fenced to `assets/` and `audio-memos/`.
 fn transcript_cache_file(root: &Path, name: &str) -> AppResult<std::path::PathBuf> {
     if name.is_empty()
@@ -554,7 +478,7 @@ fn transcript_cache_file(root: &Path, name: &str) -> AppResult<std::path::PathBu
     // outside the graph must not redirect IO past the generation-pinned
     // root. The plain-filename check above stays — `resolve` would accept a
     // nested relative path, and a cache name must be a single segment.
-    let path = resolve(root, &format!(".reflect/transcripts/{name}"))?;
+    let path = resolve(root, &format!(".kore/transcripts/{name}"))?;
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)?;
     }
@@ -601,7 +525,7 @@ pub async fn transcript_cache_write<R: tauri::Runtime>(
 }
 
 /// Publish the main window's open-note state for external agents
-/// (`.reflect/workspace.json`, read by the `kore` CLI). Derived, rebuildable
+/// (`.kore/workspace.json`, read by the `kore` CLI). Derived, rebuildable
 /// data outside the attachment fence, so it gets its own single-file command:
 /// the path is fixed here and never comes from the caller. Atomic, so a
 /// reader never sees a torn file.
@@ -614,7 +538,7 @@ pub async fn workspace_state_write<R: tauri::Runtime>(
     crate::blocking::run_blocking(move || {
         let state = app.state::<GraphState>();
         let root = root_for_generation(&state, generation)?;
-        let target = resolve(&root, &format!("{}/workspace.json", io::REFLECT_DIR))?;
+        let target = resolve(&root, &format!("{}/workspace.json", io::KORE_DIR))?;
         atomic_write_bytes(&root, &target, contents.as_bytes())?;
         Ok(())
     })
@@ -867,8 +791,8 @@ pub(crate) fn move_note_file(root: &Path, from: &str, to: &str) -> AppResult<()>
 
 /// Send a note to the OS trash (recoverable), not a hard delete (pinned to
 /// `generation`). Mobile has no OS trash: the file moves into the graph-local
-/// `.reflect/trash/` instead (Plan 19), the same recoverability promise, and
-/// `.reflect/` is already excluded from sync and indexing.
+/// `.kore/trash/` instead (Plan 19), the same recoverability promise, and
+/// `.kore/` is already excluded from sync and indexing.
 #[tauri::command]
 pub async fn note_delete<R: tauri::Runtime>(
     path: String,
@@ -984,12 +908,12 @@ fn os_trash_delete(abs: &Path) -> AppResult<()> {
     ctx.delete(abs).map_err(|err| AppError::io(err.to_string()))
 }
 
-/// Move a deleted file under `<graph>/.reflect/trash/`, stamping the name
+/// Move a deleted file under `<graph>/.kore/trash/`, stamping the name
 /// with epoch millis — and a counter beyond that — until the name is free
 /// (repeat deletes of `a.md`, even within one millisecond).
 #[cfg(mobile)]
 fn move_to_graph_trash(root: &Path, abs: &Path) -> AppResult<()> {
-    let trash_dir = root.join(".reflect").join("trash");
+    let trash_dir = root.join(".kore").join("trash");
     fs::create_dir_all(&trash_dir)?;
     let name = abs
         .file_name()
@@ -1297,8 +1221,8 @@ mod transcript_cache_tests {
     fn accepts_a_plain_name_and_creates_the_cache_dir() {
         let graph = tempfile::tempdir().expect("graph");
         let path = transcript_cache_file(graph.path(), "memo.part-001.m4a.json").expect("path");
-        assert!(path.ends_with(".reflect/transcripts/memo.part-001.m4a.json"));
-        assert!(graph.path().join(".reflect/transcripts").is_dir());
+        assert!(path.ends_with(".kore/transcripts/memo.part-001.m4a.json"));
+        assert!(graph.path().join(".kore/transcripts").is_dir());
     }
 
     #[test]
@@ -1314,8 +1238,8 @@ mod transcript_cache_tests {
     fn rejects_a_cache_dir_symlinked_outside_the_graph() {
         let graph = tempfile::tempdir().expect("graph");
         let outside = tempfile::tempdir().expect("outside");
-        std::fs::create_dir_all(graph.path().join(".reflect")).expect("reflect dir");
-        std::os::unix::fs::symlink(outside.path(), graph.path().join(".reflect/transcripts"))
+        std::fs::create_dir_all(graph.path().join(".kore")).expect("reflect dir");
+        std::os::unix::fs::symlink(outside.path(), graph.path().join(".kore/transcripts"))
             .expect("symlink");
         assert!(transcript_cache_file(graph.path(), "memo.json").is_err());
     }
@@ -1510,7 +1434,7 @@ mod move_tests {
         assert!(ensure_revealable_path("assets/tool.xyz").is_ok());
         assert!(ensure_revealable_path("assets/report.docx").is_ok());
         assert!(ensure_revealable_path("Projects/Media/cat.png").is_ok());
-        assert!(ensure_revealable_path(".reflect/index.sqlite").is_err());
+        assert!(ensure_revealable_path(".kore/index.sqlite").is_err());
         assert!(ensure_revealable_path("../outside.png").is_err());
         assert!(ensure_revealable_path("/absolute.png").is_err());
     }

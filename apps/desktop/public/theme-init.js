@@ -13,18 +13,44 @@
 // absent value just paints its default. ThemeProvider re-applies the real
 // values once settings load.
 {
+  // Kore's localStorage keys were spelled `reflect.*` before the rename.
+  // This script is the first one every window runs, so move them here once,
+  // before anything reads them: copy to `kore.*` (unless already there) and
+  // drop the old key. Theme, sidebar and section state then survive the
+  // update.
+  try {
+    const legacy = []
+    for (let index = 0; index < localStorage.length; index++) {
+      const key = localStorage.key(index)
+      if (key !== null && key.startsWith('reflect.')) {
+        legacy.push(key)
+      }
+    }
+    for (const key of legacy) {
+      const next = `kore.${key.slice('reflect.'.length)}`
+      const value = localStorage.getItem(key)
+      if (value !== null && localStorage.getItem(next) === null) {
+        localStorage.setItem(next, value)
+      }
+      localStorage.removeItem(key)
+    }
+  } catch {
+    // Storage unavailable: nothing to move, and nothing below can read it.
+  }
+}
+{
   // Keep in sync with THEME_PREFERENCE_CACHE_KEY in src/lib/theme-cache.ts.
-  const PREFERENCE_KEY = 'reflect.theme.preference'
+  const PREFERENCE_KEY = 'kore.theme.preference'
   // Keep in sync with THEME_ACCENT_CACHE_KEY in src/lib/theme-cache.ts.
-  const ACCENT_KEY = 'reflect.theme.accent'
+  const ACCENT_KEY = 'kore.theme.accent'
   // Keep in sync with VISUAL_THEME_CACHE_KEY in src/lib/theme-cache.ts.
-  const VISUAL_THEME_KEY = 'reflect.theme.visual'
+  const VISUAL_THEME_KEY = 'kore.theme.visual'
   // Keep in sync with THEME_GLASS_LEVEL_CACHE_KEY in src/lib/theme-cache.ts.
-  const GLASS_LEVEL_KEY = 'reflect.theme.glass-level'
+  const GLASS_LEVEL_KEY = 'kore.theme.glass-level'
   // Keep in sync with THEME_RADIUS_CACHE_KEY in src/lib/theme-cache.ts.
-  const RADIUS_KEY = 'reflect.theme.radius'
+  const RADIUS_KEY = 'kore.theme.radius'
   // Keep in sync with THEME_DENSITY_CACHE_KEY in src/lib/theme-cache.ts.
-  const DENSITY_KEY = 'reflect.theme.density'
+  const DENSITY_KEY = 'kore.theme.density'
 
   // Keep in sync with themePreferenceSchema / DARK_THEME_IDS /
   // accentColorSchema / uiRadiusSchema / glassIntensitySchema in

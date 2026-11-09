@@ -23,7 +23,7 @@ Uploading was a genuine *upload*, with all the machinery that implies:
   MIME map covered 80+ — became an **attachment card**: file-type badge,
   filename, size, download icon, and a progress bar.
 - **Pipeline.** Client-side encryption (`@team-reflect/file-crypto`) →
-  Cloudflare Worker → `reflect-assets.app` CDN, under `users/{uid}/{id}`.
+  Cloudflare Worker → `kore-assets.app` CDN, under `users/{uid}/{id}`.
   Three automatic retries ("Error uploading file. Please try again and
   ensure you are online."), an unload warning ("Files are currently
   uploading."), and background re-upload on reconnect.
@@ -52,7 +52,7 @@ plain relative markdown, which fixes v1's export quirk: in v2 the markdown
   (`apps/desktop/src/editor/use-image-persistence.ts`): named
   `pasted-<timestamp>-<random>.<ext>` under `assets/`, written through the
   traversal-guarded `asset_write` command, pinned to the graph generation,
-  resolved for display through the app's `reflect-asset://` protocol
+  resolved for display through the app's `kore-asset://` protocol
   (asynchronous — the file read happens off the webview's UI thread), and
   openable in the OS viewer. Save failures surface on the pane.
 - Plan 20 gives every image (and, notably, **PDF**) under `assets/` an AI
@@ -120,7 +120,7 @@ else as `[…](…)`, in one drop). Rendering needs nothing new: it's a link;
 
 - The entire upload lifecycle (encryption, CDN, progress, retries,
   settled/pending states) — removed by architecture, not deferred.
-- `reflect-assets://` URL rewriting and signed download proxying.
+- `kore-assets://` URL rewriting and signed download proxying.
 - v1's attachment download flow — "download" is meaningless for a file
   already on disk; "open" and "reveal in Finder" replace it.
 

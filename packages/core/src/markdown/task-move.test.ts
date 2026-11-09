@@ -36,6 +36,23 @@ describe('cutTaskBlock', () => {
     expect(block.lines).toEqual(['+ [ ] scrivere i prezzi', '  - nota sotto'])
   })
 
+  it('keeps blank lines inside the item, such as a nested code block', () => {
+    const source = [
+      '- [ ] ship',
+      '',
+      '  ```',
+      '  a',
+      '',
+      '  b',
+      '  ```',
+      '',
+      '- [ ] after',
+      '',
+    ].join('\n')
+    const { block } = cutTaskBlock(source, marker(source, 'ship'))
+    expect(block.lines).toEqual(['- [ ] ship', '', '  ```', '  a', '', '  b', '  ```'])
+  })
+
   it('refuses a stale marker', () => {
     expect(() => cutTaskBlock(DAILY, { markerOffset: 3, raw: '[ ] gone' })).toThrow()
   })

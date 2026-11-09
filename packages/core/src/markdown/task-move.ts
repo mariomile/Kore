@@ -44,9 +44,14 @@ export function cutTaskBlock(
   const text = source.slice(lineStart, blockEnd).replace(/\r?\n$/, '')
   const rawLines = text.split(/\r?\n/)
   const indent = /^[ \t]*/.exec(rawLines[0]!)![0].length
-  const lines = rawLines
-    .map((line) => (line.slice(0, indent).trim() === '' ? line.slice(indent) : line.trimStart()))
-    .filter((line, index) => index === 0 || line.trim() !== '')
+  const lines = rawLines.map((line) =>
+    line.slice(0, indent).trim() === '' ? line.slice(indent) : line.trimStart(),
+  )
+  // Blank lines inside the item (a nested code block, a second paragraph) are
+  // content and travel with it; only trailing ones are dropped.
+  while (lines.length > 1 && lines.at(-1)!.trim() === '') {
+    lines.pop()
+  }
   return { source: source.slice(0, lineStart) + source.slice(blockEnd), block: { lines } }
 }
 

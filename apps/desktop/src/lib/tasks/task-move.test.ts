@@ -75,7 +75,7 @@ describe('moveTask', () => {
     expect(disk.get(TARGET)).toContain('typed after')
   })
 
-  it('puts the task back in its note when the paste fails', async () => {
+  it('leaves the source untouched when the paste fails', async () => {
     const original = '- [ ] ship it\n- [ ] stays\n'
     disk.set(SOURCE, original)
     disk.set(TARGET, '# Kore\n')
@@ -90,6 +90,24 @@ describe('moveTask', () => {
       moveTask(taskIn(SOURCE, 'ship it'), { notePath: TARGET, section: null }, 1),
     ).rejects.toThrow('disk full')
     expect(disk.get(SOURCE)).toBe(original)
+    expect(disk.get(TARGET)).toBe('# Kore\n')
+  })
+
+  it('takes the copy back out of the target when the cut fails', async () => {
+    disk.set(SOURCE, '- [ ] ship it\n')
+    disk.set(TARGET, '# Kore\n')
+    writeNote.mockImplementation(async (path: string, content: string) => {
+      if (path === SOURCE) {
+        throw new Error('locked')
+      }
+      disk.set(path, content)
+    })
+
+    await expect(
+      moveTask(taskIn(SOURCE, 'ship it'), { notePath: TARGET, section: null }, 1),
+    ).rejects.toThrow('locked')
+    expect(disk.get(SOURCE)).toBe('- [ ] ship it\n')
+    expect(disk.get(TARGET)).toBe('# Kore\n')
   })
 
   it('moves within one note to another of its sections', async () => {

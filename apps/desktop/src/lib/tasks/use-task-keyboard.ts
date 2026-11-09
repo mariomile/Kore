@@ -160,8 +160,22 @@ export function useTaskKeyboard({
         }
         return
       }
-      // ⌘⇧M opens "Move to…" for the selection: a screen-level chord, so it
-      // works while a sole selected row has its editor open, where plain `m`
+      const target = event.target as HTMLElement | null
+      // Focus outside the Tasks surface (the workspace sidebar, another panel) keeps
+      // its own keys — only `body`/no-focus and elements inside the surface drive the
+      // shortcuts. `body` is allowed so they still fire when focus falls back to it.
+      const root = rootRef.current
+      if (
+        root !== null &&
+        target !== null &&
+        target !== root.ownerDocument.body &&
+        !root.contains(target)
+      ) {
+        return
+      }
+      // ⌘⇧M opens "Move to…" for the selection. Checked after the surface
+      // scope (another panel keeps the chord) but before the editor bail, so
+      // it works while a sole selected row's editor is open, where plain `m`
       // types a letter.
       if (
         onMove !== undefined &&
@@ -176,19 +190,6 @@ export function useTaskKeyboard({
           event.preventDefault()
           onMove(tasks)
         }
-        return
-      }
-      const target = event.target as HTMLElement | null
-      // Focus outside the Tasks surface (the workspace sidebar, another panel) keeps
-      // its own keys — only `body`/no-focus and elements inside the surface drive the
-      // shortcuts. `body` is allowed so they still fire when focus falls back to it.
-      const root = rootRef.current
-      if (
-        root !== null &&
-        target !== null &&
-        target !== root.ownerDocument.body &&
-        !root.contains(target)
-      ) {
         return
       }
       // Back off when a focused control inside the surface owns the key: the inline

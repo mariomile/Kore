@@ -68,7 +68,9 @@ function rewriteNote(
       }
     }
     const after = transform(before)
-    await writeNote(path, after, generation)
+    if (after !== before) {
+      await writeNote(path, after, generation)
+    }
     return { path, before, after }
   })
 }
@@ -89,9 +91,9 @@ function restoreNote(rewrite: NoteRewrite, generation: number): Promise<NoteRewr
 
 /**
  * Move a task, with the items nested under it, to `target` (Todoist's "Move
- * to project"). The source note loses the block before the target gains it;
- * if the paste fails, the source is put back, so a task is never lost or
- * doubled. The core transforms ({@link cutTaskBlock}, {@link pasteTaskBlock})
+ * to project"). The target gains the block before the source loses it; if
+ * the cut fails, the target is put back, so a failure can at worst leave the
+ * task in both notes, never in neither. The core transforms ({@link cutTaskBlock}, {@link pasteTaskBlock})
  * carry the line verbatim, so date, priority and repeat travel with it.
  */
 export async function moveTask(
@@ -111,25 +113,43 @@ export async function moveTask(
     )
     return { rewrites: [rewrite] }
   }
+  // Paste before cutting: if anything fails part-way, the worst case is the
+  // task in both notes, visible and fixable, never in neither.
   let block: TaskBlock | null = null
-  const removed = await rewriteNote(
+  await rewriteNote(
     task.notePath,
     (source) => {
-      const cut = cutTaskBlock(source, marker)
-      block = cut.block
-      return cut.source
+      block = cutTaskBlock(source, marker).block
+      return source // a read: nothing changes yet
     },
     generation,
   )
+  const pasted = block as TaskBlock | null
+  if (pasted === null) {
+    throw new TaskStaleError('The task is no longer in its note.')
+  }
+  const added = await rewriteNote(
+    target.notePath,
+    (source) => pasteTaskBlock(source, pasted, target.section),
+    generation,
+  )
   try {
-    const added = await rewriteNote(
-      target.notePath,
-      (source) => pasteTaskBlock(source, block!, target.section),
+    const removed = await rewriteNote(
+      task.notePath,
+      (source) => {
+        const cut = cutTaskBlock(source, marker)
+        if (cut.block.lines.join('\n') !== pasted.lines.join('\n')) {
+          throw new TaskStaleError('The task changed while it was being moved.')
+        }
+        return cut.source
+      },
       generation,
     )
-    return { rewrites: [removed, added] }
+    return { rewrites: [added, removed] }
   } catch (cause) {
-    await restoreNote(removed, generation).catch(() => {})
+    // Take the copy back out of the target; if even that fails, the task is
+    // duplicated rather than lost.
+    await restoreNote(added, generation).catch(() => {})
     throw cause
   }
 }

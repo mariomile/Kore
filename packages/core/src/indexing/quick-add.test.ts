@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { matchDueTimePrefix } from '../markdown/task-due'
-import { parseQuickAdd } from './quick-add'
+import { parseQuickAdd, QUICK_ADD_MAX_ADDED } from './quick-add'
 import { taskContentPriority } from './task-priority'
 import { taskContentDueDate, taskContentRepeat } from './task-repeat'
 
@@ -180,5 +180,16 @@ describe('parseQuickAdd: everyday words are not dates or times', () => {
     ['chiamare alle 3', 'chiamare [[2026-11-08]] @03:00'],
   ])('still reads %s', (input, expected) => {
     expect(content(input)).toBe(expected)
+  })
+})
+
+describe('parseQuickAdd: length', () => {
+  it('never grows its input by more than QUICK_ADD_MAX_ADDED', () => {
+    const input = `${'x'.repeat(200)} domani alle 15 p1 ogni mese`
+    const worst = parseQuickAdd('x !! domani alle 23:59 monthly', TODAY).content
+    expect(worst.length - 'x'.length).toBeLessThanOrEqual(QUICK_ADD_MAX_ADDED)
+    expect(parseQuickAdd(input, TODAY).content.length).toBeLessThanOrEqual(
+      input.length + QUICK_ADD_MAX_ADDED,
+    )
   })
 })

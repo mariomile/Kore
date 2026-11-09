@@ -12,6 +12,7 @@ import {
   errorMessage,
   hideQuickCapture,
   parseQuickAdd,
+  QUICK_ADD_MAX_ADDED,
   windowBootstrap,
 } from '@reflect/core'
 import { QuickAddChips } from '@/components/tasks/task-quick-add'
@@ -39,7 +40,9 @@ export function QuickCaptureRoot(): ReactElement {
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
   // Task mode (⌘T): the line is read as a Quick Add task — "call Anna
-  // tomorrow at 3pm p1" lands as `+ [ ] !! call Anna [[…]] @15:00`.
+  // tomorrow at 3pm p1" lands as `+ [ ] !! call Anna [[…]] @15:00`. This
+  // window has no project list, so `#Name` stays text and the task always
+  // lands in today's note; projects are picked from Quick Add in Tasks (`q`).
   const [asTask, setAsTask] = useState(false)
   const parsed = useMemo(() => (asTask ? parseQuickAdd(text, todayIso()) : null), [asTask, text])
 
@@ -115,7 +118,11 @@ export function QuickCaptureRoot(): ReactElement {
             <Input
               ref={inputRef}
               value={text}
-              maxLength={TEXT_CAPTURE_MAX_LENGTH}
+              // A task line grows by its date, time and repeat; keep it under
+              // the capture envelope's limit.
+              maxLength={
+                asTask ? TEXT_CAPTURE_MAX_LENGTH - QUICK_ADD_MAX_ADDED : TEXT_CAPTURE_MAX_LENGTH
+              }
               disabled={pending}
               placeholder={
                 asTask ? 'Call Anna tomorrow at 3pm p1' : 'What do you want to remember?'

@@ -57,6 +57,14 @@ export interface QuickAdd {
   readonly tokens: readonly QuickAddToken[]
 }
 
+/**
+ * The most characters {@link parseQuickAdd} can add to its input: a priority
+ * marker, a due date with time and the longest repeat token
+ * (`!! ` + ` [[YYYY-MM-DD]]` + ` @HH:MM` + ` @repeat(monthly)`). Recognized
+ * words are removed, so content never outgrows input by more than this.
+ */
+export const QUICK_ADD_MAX_ADDED = 3 + 15 + 7 + 17
+
 const L = String.raw`\p{L}\p{N}`
 /** Word boundaries that understand accented letters ("lunedì"). */
 const B = `(?<![${L}])`

@@ -212,6 +212,7 @@ export {
   relationDisplay,
   relationTarget,
   relationTargetOf,
+  relationCreateTarget,
   PERSON_DEFAULT_TARGET,
   localCalendarDate,
   createdStampValues,

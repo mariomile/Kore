@@ -17,6 +17,7 @@ import {
   creatableRowTitle,
   EditorTrigger,
   editorSeedList,
+  useRelationCreateTarget,
   useRelationSuggestions,
   type PropertyEditorProps,
 } from './property-editor-shared'
@@ -52,17 +53,19 @@ export function MultiRelationPropertyEditor({
   // `person` scopes to its default collection even with no explicit target.
   const target = relationTargetOf(property)
   const suggestions = useRelationSuggestions(open, query, target)
-  // Same "Create in #target" entry as the single relation's picker.
-  const newRowTitle = target === undefined ? null : creatableRowTitle(query)
+  // The "Create" entry is always offered: into the field's collection when
+  // it has one (declared, or named like the field), else as a plain note.
+  const createTarget = useRelationCreateTarget(property, open)
+  const newRowTitle = creatableRowTitle(query)
   const canCreate =
     newRowTitle !== null &&
     graph !== null &&
     !suggestions.some((suggestion) => suggestion.title.toLowerCase() === newRowTitle.toLowerCase())
   const createAndToggle = async (): Promise<void> => {
-    if (target === undefined || newRowTitle === null || graph === null) {
+    if (newRowTitle === null || graph === null) {
       return
     }
-    append(await createRelationRow(target, newRowTitle, graph.generation))
+    append(await createRelationRow(createTarget, newRowTitle, graph.generation))
   }
 
   const toggle = (insertText: string): void => {
@@ -164,8 +167,11 @@ export function MultiRelationPropertyEditor({
                 })}
               {canCreate ? (
                 <CommandItem value="__create" onSelect={() => void createAndToggle()}>
-                  <span className="min-w-0 flex-1 truncate">
-                    Create “{newRowTitle}” in #{target}
+                  {/* Wraps instead of truncating: the collection name is the point. */}
+                  <span className="min-w-0 flex-1 break-words">
+                    {createTarget === undefined
+                      ? `Create note “${newRowTitle}”`
+                      : `Create “${newRowTitle}” in #${createTarget}`}
                   </span>
                 </CommandItem>
               ) : null}

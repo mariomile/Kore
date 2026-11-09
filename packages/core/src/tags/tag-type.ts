@@ -163,6 +163,36 @@ export function relationTargetOf(property: TagProperty): string | undefined {
   return property.type === 'relation' || property.type === 'relations' ? property.target : undefined
 }
 
+/**
+ * The collection a relation picker's "Create" entry files a new note into.
+ * A declared target (or `person`'s default) wins. An untargeted `relation` /
+ * `relations` field falls back to the collection named like the field itself
+ * (a `Company` field and a `#company` tag), so creating "Trade Republic" from
+ * a meeting's Company makes a Company note without the schema naming a
+ * target. `collections` is every tag the vault knows, in any casing.
+ * `undefined` means the new note is created plain, with no tag.
+ */
+export function relationCreateTarget(
+  property: TagProperty,
+  collections: readonly string[],
+): string | undefined {
+  const declared = relationTargetOf(property)
+  if (declared !== undefined) {
+    return declared
+  }
+  if (property.type !== 'relation' && property.type !== 'relations') {
+    return undefined
+  }
+  const known = new Set(collections.map((tag) => foldTag(tag)))
+  for (const candidate of [property.name, property.key]) {
+    const key = foldTag(candidate)
+    if (key !== '' && known.has(key)) {
+      return key
+    }
+  }
+  return undefined
+}
+
 /** A tag's schema: the ordered property list a Collection renders as columns. */
 export interface TagType {
   properties: TagProperty[]

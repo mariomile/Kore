@@ -17,6 +17,7 @@ export {
   relationDisplay,
   relationTarget,
   relationTargetOf,
+  relationCreateTarget,
   PERSON_DEFAULT_TARGET,
   rollupAggregationSchema,
   rollupConfigSchema,

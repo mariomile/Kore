@@ -10,6 +10,7 @@ import {
   relationDisplay,
   relationTarget,
   relationTargetOf,
+  relationCreateTarget,
   relationValue,
   tagDefinitionPath,
   tagDisplayName,
@@ -349,6 +350,33 @@ describe('new property types', () => {
       ],
     }
     expect(decodeTagTypeJson(encodeTagTypeJson(type))).toEqual(type)
+  })
+})
+
+describe('relationCreateTarget', () => {
+  const company = { name: 'Company', key: 'company', type: 'relation' } as const
+
+  it('keeps a declared target, and person keeps its default', () => {
+    expect(relationCreateTarget({ ...company, target: 'org' }, ['company'])).toBe('org')
+    expect(relationCreateTarget({ name: 'Owner', key: 'owner', type: 'person' }, [])).toBe('person')
+  })
+
+  it('files an untargeted relation into the collection named like the field', () => {
+    expect(relationCreateTarget(company, ['Meeting', 'Company'])).toBe('company')
+    expect(
+      relationCreateTarget({ name: 'With', key: 'with', type: 'relations' }, ['with', 'meeting']),
+    ).toBe('with')
+    // The key is the fallback when the display name has no collection.
+    expect(
+      relationCreateTarget({ name: 'Client', key: 'company', type: 'relation' }, ['company']),
+    ).toBe('company')
+  })
+
+  it('creates plain when no collection matches, and never for other types', () => {
+    expect(relationCreateTarget(company, ['meeting'])).toBeUndefined()
+    expect(
+      relationCreateTarget({ name: 'Company', key: 'company', type: 'text' }, ['company']),
+    ).toBeUndefined()
   })
 })
 

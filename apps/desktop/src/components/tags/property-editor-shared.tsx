@@ -7,7 +7,10 @@ import {
   foldTag,
   getTagType,
   getWikiAddressForPath,
+  listNoteTags,
+  listTagTypes,
   parseRating,
+  relationCreateTarget,
   suggestRelationTargets,
   suggestWikiLinkTargets,
   type CollectionValue,
@@ -16,6 +19,7 @@ import {
 } from '@reflect/core'
 import { PopoverTrigger } from '@/components/ui/popover'
 import { commitNoteFrontmatter } from '@/lib/note-frontmatter'
+import { allNotesTagsQueryKey } from '@/lib/notes/all-notes-query'
 import { useBridgeReady } from '@/hooks/use-bridge-ready'
 import { INDEX_QUERY_SCOPE } from '@/lib/query-client'
 import { useGraph } from '@/providers/graph-provider'
@@ -136,28 +140,66 @@ export function creatableRowTitle(query: string): string | null {
 }
 
 /**
- * Create one row of a typed relation's target collection from its picker: a
- * note titled `title` carrying `#targetTag` in the body, born at a
- * collision-free slug path like every create-from-title. Returns the wiki
+ * The collection a relation picker's "Create" entry files new notes into
+ * (`relationCreateTarget`): the declared target, else the vault's collection
+ * named like the field, else none (a plain note). The tag lists load only
+ * while the picker is open and only for an untargeted field, sharing the
+ * cache keys the schema dialog's target picker reads.
+ */
+export function useRelationCreateTarget(property: TagProperty, open: boolean): string | undefined {
+  const { graph } = useGraph()
+  const bridgeReady = useBridgeReady()
+  const needsLookup =
+    open &&
+    bridgeReady &&
+    graph !== null &&
+    (property.type === 'relation' || property.type === 'relations') &&
+    property.target === undefined
+  const { data: noteTags } = useQuery({
+    queryKey: allNotesTagsQueryKey(graph?.root),
+    queryFn: () => listNoteTags(),
+    enabled: needsLookup,
+  })
+  const { data: tagTypes } = useQuery({
+    queryKey: [INDEX_QUERY_SCOPE, graph?.root, 'tag-types'],
+    queryFn: () => listTagTypes(),
+    enabled: needsLookup,
+  })
+  return relationCreateTarget(property, [
+    ...(noteTags ?? []).map((facet) => facet.tag),
+    ...(tagTypes ?? []).map((entry) => entry.tagKey),
+  ])
+}
+
+/**
+ * Create the note a relation picker's "Create" entry names: a note titled
+ * `title`, carrying `#targetTag` in the body when the field files into a
+ * collection (else a plain note), born at a collision-free slug path like
+ * every create-from-title. Returns the wiki
  * insert text for the new note — its verified address when the index has it
  * already (the local-write echo usually has), else the title itself, which
  * the new note claims as soon as the projection lands.
  */
 export async function createRelationRow(
-  targetTag: string,
+  targetTag: string | undefined,
   title: string,
   generation: number,
 ): Promise<string> {
-  const path = await createNoteWithTitle(title, generation, `#${targetTag}`)
+  const path =
+    targetTag === undefined
+      ? await createNoteWithTitle(title, generation)
+      : await createNoteWithTitle(title, generation, `#${targetTag}`)
   // A row born from the picker carries its `created` stamps too (Plan 29
   // T1) — best-effort: a failed stamp never loses the created note.
-  try {
-    const stamps = createdStampValues(await getTagType(targetTag))
-    if (Object.keys(stamps).length > 0) {
-      await commitNoteFrontmatter(path, { properties: stamps }, generation)
+  if (targetTag !== undefined) {
+    try {
+      const stamps = createdStampValues(await getTagType(targetTag))
+      if (Object.keys(stamps).length > 0) {
+        await commitNoteFrontmatter(path, { properties: stamps }, generation)
+      }
+    } catch {
+      // The note exists; the stamp can be filled by hand.
     }
-  } catch {
-    // The note exists; the stamp can be filled by hand.
   }
   try {
     const address = await getWikiAddressForPath(path)

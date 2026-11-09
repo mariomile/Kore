@@ -14,6 +14,7 @@ import {
   createRelationRow,
   creatableRowTitle,
   EditorTrigger,
+  useRelationCreateTarget,
   useRelationSuggestions,
   type PropertyEditorProps,
 } from './property-editor-shared'
@@ -46,7 +47,10 @@ export function RelationPropertyEditor({
   // `person` scopes to its default collection even with no explicit target.
   const target = relationTargetOf(property)
   const suggestions = useRelationSuggestions(open, query, target)
-  const newRowTitle = target === undefined ? null : creatableRowTitle(query)
+  // The "Create" entry is always offered: into the field's collection when
+  // it has one (declared, or named like the field), else as a plain note.
+  const createTarget = useRelationCreateTarget(property, open)
+  const newRowTitle = creatableRowTitle(query)
   const canCreate =
     newRowTitle !== null &&
     graph !== null &&
@@ -57,10 +61,10 @@ export function RelationPropertyEditor({
     setOpen(false)
   }
   const createAndChoose = async (): Promise<void> => {
-    if (target === undefined || newRowTitle === null || graph === null) {
+    if (newRowTitle === null || graph === null) {
       return
     }
-    choose(await createRelationRow(target, newRowTitle, graph.generation))
+    choose(await createRelationRow(createTarget, newRowTitle, graph.generation))
   }
   const clear = (): void => {
     onCommit(undefined)
@@ -117,8 +121,11 @@ export function RelationPropertyEditor({
               ))}
               {canCreate ? (
                 <CommandItem value="__create" onSelect={() => void createAndChoose()}>
-                  <span className="min-w-0 flex-1 truncate">
-                    Create “{newRowTitle}” in #{target}
+                  {/* Wraps instead of truncating: the collection name is the point. */}
+                  <span className="min-w-0 flex-1 break-words">
+                    {createTarget === undefined
+                      ? `Create note “${newRowTitle}”`
+                      : `Create “${newRowTitle}” in #${createTarget}`}
                   </span>
                 </CommandItem>
               ) : null}

@@ -263,7 +263,7 @@ describe('claudeCliSettingsJson', () => {
     ) as { permissions: { deny: string[] } }
     expect(parsed.permissions.deny).toContain('Read(//graphs/work/notes/secret.md)')
     expect(parsed.permissions.deny).toContain('Read(//graphs/work/daily/2026-01-01.md)')
-    expect(parsed.permissions.deny).toContain('Read(//graphs/work/.reflect/**)')
+    expect(parsed.permissions.deny).toContain('Read(//graphs/work/.kore/**)')
     expect(parsed.permissions.deny).toContain('Read(//graphs/work/.git/**)')
     for (const tool of ['Grep', 'Bash', 'Write', 'Edit', 'WebSearch', 'WebFetch']) {
       expect(parsed.permissions.deny).toContain(tool)
@@ -276,7 +276,7 @@ describe('claudeCliSettingsJson', () => {
     }
     for (const rule of ['Read', 'Write', 'Edit']) {
       expect(parsed.permissions.deny).toContain(`${rule}(//graphs/work/notes/secret.md)`)
-      expect(parsed.permissions.deny).toContain(`${rule}(//graphs/work/.reflect/**)`)
+      expect(parsed.permissions.deny).toContain(`${rule}(//graphs/work/.kore/**)`)
       expect(parsed.permissions.deny).toContain(`${rule}(//graphs/work/.git/**)`)
     }
     expect(parsed.permissions.deny).not.toContain('Write')
@@ -292,7 +292,7 @@ describe('claudeCliSettingsJson', () => {
       permissions: { deny: string[] }
     }
     expect(parsed.permissions.deny).toContain('Read(//C:/graphs/work/notes/secret.md)')
-    expect(parsed.permissions.deny).toContain('Read(//C:/graphs/work/.reflect/**)')
+    expect(parsed.permissions.deny).toContain('Read(//C:/graphs/work/.kore/**)')
   })
 })
 

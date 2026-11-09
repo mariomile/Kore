@@ -89,7 +89,7 @@ describe('saveChatMessage', () => {
           name: 'cat.png',
           mediaType: 'image/png',
           dataUrl: 'data:image/png;base64,iVBORw==',
-          path: '.reflect/chat-attachments/conv-1/att-1.png',
+          path: '.kore/chat-attachments/conv-1/att-1.png',
         },
       ],
     }
@@ -101,7 +101,7 @@ describe('saveChatMessage', () => {
         id: 'att-1',
         name: 'cat.png',
         mediaType: 'image/png',
-        path: '.reflect/chat-attachments/conv-1/att-1.png',
+        path: '.kore/chat-attachments/conv-1/att-1.png',
       },
     ])
   })

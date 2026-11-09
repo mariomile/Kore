@@ -1,4 +1,4 @@
-//! `kore index` — build or refresh `.reflect/index.sqlite` without the app.
+//! `kore index` — build or refresh `.kore/index.sqlite` without the app.
 //!
 //! The projection is the desktop app's, not a second implementation: parsing
 //! and extraction run in `@reflect/core` (the bundled `kore-indexer.mjs`,

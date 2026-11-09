@@ -1,5 +1,5 @@
 //! The journal `kore mcp` keeps of the notes each agent wrote
-//! (`.reflect/agent-writes.jsonl`, one JSON object per line). Reading and
+//! (`.kore/agent-writes.jsonl`, one JSON object per line). Reading and
 //! trimming it are primitives; deciding how to commit the entries is the
 //! sync engine's policy in `@reflect/core`.
 
@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use crate::error::AppResult;
 
 /// Graph-relative location of the journal.
-const JOURNAL: &str = ".reflect/agent-writes.jsonl";
+const JOURNAL: &str = ".kore/agent-writes.jsonl";
 
 /// One recorded write.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

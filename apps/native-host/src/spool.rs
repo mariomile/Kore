@@ -55,7 +55,7 @@ pub fn inbox_dir(pointer_path: &Path) -> Result<PathBuf, HostError> {
     if !root.is_dir() {
         return Err(HostError::NoGraph);
     }
-    let inbox = root.join(".reflect").join("inbox");
+    let inbox = root.join(".kore").join("inbox");
     std::fs::create_dir_all(&inbox)
         .map_err(|error| HostError::Io(format!("cannot create inbox: {error}")))?;
     Ok(inbox)
@@ -158,7 +158,7 @@ mod tests {
         let pointer = pointer_to(dir.path(), &graph);
 
         let inbox = inbox_dir(&pointer).unwrap();
-        assert_eq!(inbox, graph.join(".reflect/inbox"));
+        assert_eq!(inbox, graph.join(".kore/inbox"));
         assert!(inbox.is_dir());
     }
 

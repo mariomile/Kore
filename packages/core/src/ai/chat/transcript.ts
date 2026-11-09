@@ -36,7 +36,7 @@ export interface ChatAttachment {
   dataUrl?: string | undefined
   /**
    * Graph-relative file the bytes were persisted to
-   * (`.reflect/chat-attachments/<conversation>/<attachment>.<ext>`), set
+   * (`.kore/chat-attachments/<conversation>/<attachment>.<ext>`), set
    * once the send path lands them on disk. Legacy rows carry only
    * {@link ChatAttachment.dataUrl}.
    */

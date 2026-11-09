@@ -36,7 +36,7 @@ const EXTENSION_ORIGINS: [&str; 2] = [
 ];
 
 /// Graph-relative spool directory the host writes and the drain reads.
-const INBOX_DIR: &str = ".reflect/inbox";
+const INBOX_DIR: &str = ".kore/inbox";
 
 // ---- pointer file ------------------------------------------------------------
 
@@ -232,7 +232,7 @@ fn capture_inbox_list_for(
             path: format!("{INBOX_DIR}/{name}"),
             size: meta.len(),
             modified_ms: modified_ms(&meta).unwrap_or(0),
-            placeholder: false, // the inbox lives under `.reflect/`, never synced/evicted
+            placeholder: false, // the inbox lives under `.kore/`, never synced/evicted
         });
     }
     out.sort_by(|first, second| first.path.cmp(&second.path));
@@ -307,8 +307,8 @@ pub async fn capture_inbox_remove<R: tauri::Runtime>(
 }
 
 /// Where the drain quarantines spool files it cannot parse. Outside
-/// `.reflect/inbox/`, so nothing here re-triggers the watcher or a drain.
-const INBOX_REJECTED_DIR: &str = ".reflect/inbox-rejected";
+/// `.kore/inbox/`, so nothing here re-triggers the watcher or a drain.
+const INBOX_REJECTED_DIR: &str = ".kore/inbox-rejected";
 
 fn quarantine_spool(root: &Path, name: &str) -> AppResult<()> {
     let source = inbox_file(root, name)?;
@@ -359,7 +359,7 @@ const SHARED_GROUP_ID: &str = "group.app.lore";
 const SHARED_INBOX_DIR: &str = "inbox";
 
 /// Where oversized shared spools are quarantined, beside the shared inbox —
-/// moved, never deleted, mirroring the drain's `.reflect/inbox-rejected/`.
+/// moved, never deleted, mirroring the drain's `.kore/inbox-rejected/`.
 const SHARED_REJECTED_DIR: &str = "inbox-rejected";
 
 /// A `.json.tmp` older than this is debris from an extension crash between
@@ -507,7 +507,7 @@ fn downscale_jpeg(bytes: &[u8], max_dim: u32) -> AppResult<Vec<u8>> {
 /// Delegates to `atomic_write_bytes` rather than staging beside the target.
 /// `assets/` can live inside an iCloud Drive folder, and a temp created there
 /// is synced and, after a crash, stranded on every device. That helper stages
-/// under `.reflect/tmp/`, which is excluded from sync, swept on graph open, and
+/// under `.kore/tmp/`, which is excluded from sync, swept on graph open, and
 /// on the same volume so the rename stays atomic.
 fn persist_asset(root: &Path, asset_path: &str, bytes: &[u8]) -> AppResult<()> {
     let target = crate::fs::resolve_in_graph(root, asset_path)?;

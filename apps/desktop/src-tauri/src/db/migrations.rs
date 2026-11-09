@@ -13,7 +13,7 @@ fn map_err(err: reflect_index_schema::SchemaError) -> AppError {
     AppError::io(err.to_string())
 }
 
-/// Open (creating if needed) and migrate `<root>/.reflect/index.sqlite`.
+/// Open (creating if needed) and migrate `<root>/.kore/index.sqlite`.
 pub(super) fn open_index_at(root: &Path) -> AppResult<Connection> {
     reflect_index_schema::open_index_at(root).map_err(map_err)
 }

@@ -300,7 +300,7 @@ export async function readAssetBinary(
 }
 
 /**
- * Per-segment transcript cache IO (`.reflect/transcripts/<name>`): derived
+ * Per-segment transcript cache IO (`.kore/transcripts/<name>`): derived
  * data outside the attachment fence, so it rides its own narrow commands.
  * The read throws `notFound` while nothing is cached.
  */
@@ -317,7 +317,7 @@ export async function writeTranscriptCache(
 }
 
 /**
- * Write `.reflect/workspace.json` (the open-note state external agents read).
+ * Write `.kore/workspace.json` (the open-note state external agents read).
  * Rust fixes the path; the caller supplies only the contents.
  */
 export async function writeWorkspaceState(contents: string, generation: number): Promise<void> {
@@ -432,7 +432,7 @@ export async function captureHostRegister(): Promise<void> {
 }
 
 /**
- * List the capture inbox (`.reflect/inbox/`): spooled `.json` envelopes and
+ * List the capture inbox (`.kore/inbox/`): spooled `.json` envelopes and
  * their screenshot siblings. A missing inbox lists as empty. Pinned to
  * `generation` like every background-pass read.
  */
@@ -475,7 +475,7 @@ export async function captureSharedInboxRelay(generation: number): Promise<numbe
 }
 
 /**
- * Quarantine an unparseable spool file into `.reflect/inbox-rejected/` —
+ * Quarantine an unparseable spool file into `.kore/inbox-rejected/` —
  * moved, never deleted: "the raw link is never lost" holds even for an
  * envelope a newer extension wrote that this app version can't read yet.
  */

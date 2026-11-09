@@ -1,7 +1,7 @@
 //! User settings store: one JSON document in the OS config dir.
 //!
 //! Settings live next to the recents store — **never** inside any one graph's
-//! `.reflect/` — because they are per-user preferences that must follow the
+//! `.kore/` — because they are per-user preferences that must follow the
 //! user across graphs and survive graph deletion. Rust treats the document as
 //! an opaque JSON object (a capability, per the architecture conventions);
 //! the schema, defaults, and validation are policy and live in

@@ -737,7 +737,7 @@ fn wrapper_prefix(paths: &[String]) -> Option<String> {
         }
     }
     let shared = shared?;
-    if matches!(shared, "daily" | "notes" | "assets" | ".reflect") {
+    if matches!(shared, "daily" | "notes" | "assets" | ".kore") {
         return None;
     }
     Some(shared.to_string())
@@ -762,7 +762,7 @@ fn sanitized_relative(raw: &str, prefix: Option<&str>) -> Option<String> {
     }
     let first = *parts.first()?;
     let last = *parts.last()?;
-    if matches!(first, ".reflect" | ".git" | "__MACOSX") || is_junk(last) {
+    if matches!(first, ".kore" | ".git" | "__MACOSX") || is_junk(last) {
         return None;
     }
     Some(parts.join("/"))
@@ -1013,7 +1013,7 @@ mod tests {
             &zip_path,
             &[
                 ("Reflect/.gitignore", "ignored"),
-                ("Reflect/.reflect/index.sqlite", "stale"),
+                ("Reflect/.kore/index.sqlite", "stale"),
                 ("Reflect/.git/config", "git"),
                 ("Reflect/notes/.DS_Store", "junk"),
                 ("Reflect/notes/a.md", "# A\n"),
@@ -1024,7 +1024,7 @@ mod tests {
 
         assert_eq!(summary.imported_files, 1);
         assert!(root.path().join("notes/a.md").is_file());
-        assert!(!root.path().join(".reflect/index.sqlite").exists());
+        assert!(!root.path().join(".kore/index.sqlite").exists());
         assert!(!root.path().join(".git/config").exists());
         assert!(!root.path().join("notes/.DS_Store").exists());
     }

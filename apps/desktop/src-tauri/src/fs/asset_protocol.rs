@@ -134,7 +134,7 @@ fn parse_request_path(request_path: &str) -> Result<(u64, &str), StatusCode> {
     let generation: u64 = generation.parse().map_err(|_| StatusCode::BAD_REQUEST)?;
     // Chat attachment files are the one carve-out from the "no hidden
     // components" rule: their shape is closed (id segments plus a raster
-    // extension, validated below), so nothing else under `.reflect/` becomes
+    // extension, validated below), so nothing else under `.kore/` becomes
     // reachable through it.
     if super::chat_attachments::is_chat_attachment_image_rel(rel) {
         return Ok((generation, rel));
@@ -182,16 +182,16 @@ mod tests {
     #[test]
     fn carves_out_chat_attachment_files_and_nothing_else_hidden() {
         assert_eq!(
-            parse_request_path("3/.reflect/chat-attachments/conv-1/att-2.jpeg").unwrap(),
-            (3, ".reflect/chat-attachments/conv-1/att-2.jpeg"),
+            parse_request_path("3/.kore/chat-attachments/conv-1/att-2.jpeg").unwrap(),
+            (3, ".kore/chat-attachments/conv-1/att-2.jpeg"),
         );
         for path in [
-            "3/.reflect/chat-attachments/conv-1/att-2.svg",
-            "3/.reflect/chat-attachments/conv-1/att-2.pdf",
-            "3/.reflect/chat-attachments/../index.db",
-            "3/.reflect/chat-attachments/conv-1",
-            "3/.reflect/index.db",
-            "3/.reflect/tmp/att.jpeg",
+            "3/.kore/chat-attachments/conv-1/att-2.svg",
+            "3/.kore/chat-attachments/conv-1/att-2.pdf",
+            "3/.kore/chat-attachments/../index.db",
+            "3/.kore/chat-attachments/conv-1",
+            "3/.kore/index.db",
+            "3/.kore/tmp/att.jpeg",
         ] {
             assert_eq!(
                 parse_request_path(path).unwrap_err(),

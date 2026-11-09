@@ -8,8 +8,8 @@ use crate::error::AppResult;
 
 const DEFAULT_GROUPS: &[(&str, &[&str])] = &[
     (
-        "Reflect local index + caches (rebuildable; never committed)",
-        &["/.reflect/"],
+        "Kore local index + caches (rebuildable; never committed), agent proposals excepted",
+        &reflect_index_schema::IGNORE_RULES,
     ),
     ("macOS Finder metadata", &[".DS_Store", "._*"]),
     (
@@ -85,9 +85,9 @@ fn has_pattern(existing: &str, pattern: &str) -> bool {
     existing
         .lines()
         .map(str::trim)
-        .any(|line| line == pattern || is_reflect_equivalent(line, pattern))
+        .any(|line| line == pattern || is_runtime_equivalent(line, pattern))
 }
 
-fn is_reflect_equivalent(line: &str, pattern: &str) -> bool {
-    pattern == "/.reflect/" && matches!(line, "/.reflect" | ".reflect/" | ".reflect")
+fn is_runtime_equivalent(line: &str, pattern: &str) -> bool {
+    pattern == "/.kore/*" && matches!(line, ".kore/*")
 }

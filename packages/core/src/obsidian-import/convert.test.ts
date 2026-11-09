@@ -68,7 +68,7 @@ describe('buildObsidianConversion', () => {
       { from: 'Journal/Daily/09-10-2026.md', to: 'daily/2026-10-09.md', kind: 'daily' },
       { from: 'Resources/_attachments/x.png', to: 'assets/x.png', kind: 'attachment' },
     ])
-    expect(conversion.skip).toEqual(['.git', '.reflect', 'Archive'])
+    expect(conversion.skip).toEqual(['.git', '.kore', '.reflect', 'Archive'])
     expect(conversion.canonical).toBe(1)
     expect(conversion.lossy).toBe(1)
     const writes = new Map(conversion.writes.map((write) => [write.path, write.contents]))

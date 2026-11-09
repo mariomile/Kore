@@ -182,7 +182,7 @@ export function summarizeClaudeToolResult(options: {
 }): AgentStepOutcome {
   if (options.isError) {
     const message = clip(resultText(options.content).replaceAll(/<\/?tool_use_error>/g, ''))
-    // The sandbox's deny rules (private notes, .reflect/, .git/) answer in
+    // The sandbox's deny rules (private notes, .kore/, .git/) answer in
     // CLI jargon; say what it means instead.
     if (/denied by your permission settings/i.test(message)) {
       return { error: PRIVACY_DENIED, summary: null }

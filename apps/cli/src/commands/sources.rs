@@ -6,7 +6,7 @@
 //! `KORE_GRANOLA_TOKEN`), never from flags or the vault; a source without a
 //! token is skipped. Where notes land and what they carry is the user's:
 //! `KORE_<SOURCE>_FOLDER`, `KORE_<SOURCE>_PATTERN` (a file name pattern like
-//! `{category}/{title}`) and `KORE_<SOURCE>_TAGS` (comma-separated). Each source keeps its window in `.reflect/sources.json`
+//! `{category}/{title}`) and `KORE_<SOURCE>_TAGS` (comma-separated). Each source keeps its window in `.kore/sources.json`
 //! (per machine, never committed): the first run starts from that moment,
 //! so history another app already wrote is not duplicated; `--since` reaches
 //! further back.
@@ -53,7 +53,7 @@ struct Source {
     default_folder: &'static str,
 }
 
-/// One source's window, as `.reflect/sources.json` keeps it.
+/// One source's window, as `.kore/sources.json` keeps it.
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct SourceState {
@@ -66,13 +66,13 @@ struct SourceState {
 type State = BTreeMap<String, SourceState>;
 
 fn state_path(root: &Path) -> PathBuf {
-    root.join(".reflect").join("sources.json")
+    root.join(".kore").join("sources.json")
 }
 
 fn load_state(root: &Path) -> Result<State, CliError> {
     match fs::read_to_string(state_path(root)) {
         Ok(text) => serde_json::from_str(&text)
-            .map_err(|err| CliError::runtime(format!("unreadable .reflect/sources.json: {err}"))),
+            .map_err(|err| CliError::runtime(format!("unreadable .kore/sources.json: {err}"))),
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(State::new()),
         Err(err) => Err(err.into()),
     }

@@ -1,8 +1,8 @@
-//! The conflict archive: `.reflect/conflict-archive/<note-path>/` keeps the
+//! The conflict archive: `.kore/conflict-archive/<note-path>/` keeps the
 //! full content of every version a resolution consumed, stamped with its
 //! modification time and saving device. Resolution must never be the only
 //! copy-holder — `removeOtherVersionsOfItem` is called strictly after the
-//! archive write lands (Plan 21 layer 3). Local-only: `.reflect/` never syncs.
+//! archive write lands (Plan 21 layer 3). Local-only: `.kore/` never syncs.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -47,7 +47,7 @@ pub fn archive_version(
 /// drop anything older than [`MAX_AGE_MS`]. Best-effort — pruning must never
 /// fail a sweep.
 pub fn prune(root: &Path) {
-    let archive = root.join(".reflect").join(ARCHIVE_DIR);
+    let archive = root.join(".kore").join(ARCHIVE_DIR);
     let now_ms = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map(|dur| dur.as_millis() as u64)
@@ -88,12 +88,12 @@ fn prune_dir(dir: &Path, now_ms: u64) {
     }
 }
 
-/// `notes/a.md` → `<root>/.reflect/conflict-archive/notes/a.md/` (the note
+/// `notes/a.md` → `<root>/.kore/conflict-archive/notes/a.md/` (the note
 /// path becomes a directory). Refuses whatever the shared traversal guard
 /// refuses ([`crate::fs::ensure_relative`]).
 fn note_archive_dir(root: &Path, rel: &str) -> Option<PathBuf> {
     crate::fs::ensure_relative(rel).ok()?;
-    Some(root.join(".reflect").join(ARCHIVE_DIR).join(rel))
+    Some(root.join(".kore").join(ARCHIVE_DIR).join(rel))
 }
 
 fn sanitize_device(device: Option<&str>) -> String {
@@ -118,10 +118,10 @@ mod tests {
     #[test]
     fn archives_versions_without_clobbering_same_stamp_entries() {
         let root = tempdir().unwrap();
-        fs::create_dir_all(root.path().join(".reflect")).unwrap();
+        fs::create_dir_all(root.path().join(".kore")).unwrap();
         archive_version(root.path(), "notes/a.md", Some("Alex's Mac"), 1000, b"one").unwrap();
         archive_version(root.path(), "notes/a.md", Some("Alex's Mac"), 1000, b"two").unwrap();
-        let dir = root.path().join(".reflect/conflict-archive/notes/a.md");
+        let dir = root.path().join(".kore/conflict-archive/notes/a.md");
         let mut names: Vec<String> = fs::read_dir(&dir)
             .unwrap()
             .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
@@ -133,7 +133,7 @@ mod tests {
     #[test]
     fn prune_drops_old_and_excess_versions_and_empty_dirs() {
         let root = tempdir().unwrap();
-        fs::create_dir_all(root.path().join(".reflect")).unwrap();
+        fs::create_dir_all(root.path().join(".kore")).unwrap();
         let now_ms = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
@@ -144,7 +144,7 @@ mod tests {
             archive_version(root.path(), "notes/a.md", None, now_ms - offset, b"recent").unwrap();
         }
         prune(root.path());
-        let dir = root.path().join(".reflect/conflict-archive/notes/a.md");
+        let dir = root.path().join(".kore/conflict-archive/notes/a.md");
         let count = fs::read_dir(&dir).unwrap().count();
         assert_eq!(count, MAX_PER_NOTE);
         assert!(!dir.join("1-unknown.md").exists(), "ancient entry survived");
@@ -154,7 +154,7 @@ mod tests {
         prune(root.path());
         assert!(!root
             .path()
-            .join(".reflect/conflict-archive/notes/b.md")
+            .join(".kore/conflict-archive/notes/b.md")
             .exists());
     }
 

@@ -3,12 +3,12 @@
 //! A sent image used to live as a base64 `data:` URL inside the persisted
 //! turn row, which put the bytes on the webview heap for as long as the
 //! conversation was open (see docs/memory-budget.md). The bytes now land in
-//! `.reflect/chat-attachments/<conversation-id>/<attachment-id>.<ext>` and
+//! `.kore/chat-attachments/<conversation-id>/<attachment-id>.<ext>` and
 //! the row keeps only the graph-relative path; the webview renders the file
 //! through the `reflect-asset://` protocol and reads it back (base64, for a
 //! provider payload) only at send time.
 //!
-//! `.reflect/` is the right home: excluded from sync, indexing, agent access
+//! `.kore/` is the right home: excluded from sync, indexing, agent access
 //! and Git like the chat database these files belong to, and deleted with
 //! the graph. The path shape is closed — both id segments must be plain
 //! `[A-Za-z0-9-]` tokens and the extension must be a known attachment type
@@ -27,7 +27,7 @@ use crate::error::{AppError, AppResult};
 use crate::fs::GraphState;
 
 /// Graph-relative directory all chat attachments live under.
-const CHAT_ATTACHMENTS_DIR: &str = ".reflect/chat-attachments";
+const CHAT_ATTACHMENTS_DIR: &str = ".kore/chat-attachments";
 
 /// Raster image extensions — the only attachments the webview renders.
 const RASTER_EXTENSIONS: [&str; 5] = ["jpeg", "jpg", "png", "webp", "gif"];
@@ -68,7 +68,7 @@ fn chat_attachment_file_name(rel: &str) -> Option<&str> {
         parts.next(),
         parts.next(),
     ) {
-        (Some(".reflect"), Some("chat-attachments"), Some(conversation), Some(file), None)
+        (Some(".kore"), Some("chat-attachments"), Some(conversation), Some(file), None)
             if is_id_segment(conversation) && is_attachment_file_name(file) =>
         {
             Some(file)
@@ -85,7 +85,7 @@ pub(super) fn is_chat_attachment_rel(rel: &str) -> bool {
 
 /// Whether a graph-relative wire path is a chat attachment *image*. The asset
 /// protocol calls this to carve these files out of its "no hidden
-/// components" rule — exactly this shape, nothing else under `.reflect/`.
+/// components" rule — exactly this shape, nothing else under `.kore/`.
 pub(super) fn is_chat_attachment_image_rel(rel: &str) -> bool {
     chat_attachment_file_name(rel)
         .and_then(|file| file.rsplit_once('.'))
@@ -182,25 +182,25 @@ mod tests {
     #[test]
     fn accepts_exactly_the_generated_shape() {
         assert!(is_chat_attachment_rel(
-            ".reflect/chat-attachments/0b0e6a34-1111-4222-8333-444455556666/9f8e7d6c-1111-4222-8333-444455556666.jpeg"
+            ".kore/chat-attachments/0b0e6a34-1111-4222-8333-444455556666/9f8e7d6c-1111-4222-8333-444455556666.jpeg"
         ));
         assert!(is_chat_attachment_rel(
-            ".reflect/chat-attachments/conv-1/att-2.png"
+            ".kore/chat-attachments/conv-1/att-2.png"
         ));
     }
 
     #[test]
     fn refuses_everything_else_under_reflect() {
         for rel in [
-            ".reflect/chat-attachments/conv/att.jpeg/extra",
-            ".reflect/chat-attachments/conv",
-            ".reflect/chat-attachments/../secrets/att.jpeg",
-            ".reflect/chat-attachments/conv/att.svg",
-            ".reflect/chat-attachments/conv/att",
-            ".reflect/chat-attachments/co nv/att.jpeg",
-            ".reflect/chat-attachments/conv/.jpeg",
-            ".reflect/tmp/att.jpeg",
-            ".reflect/index.db",
+            ".kore/chat-attachments/conv/att.jpeg/extra",
+            ".kore/chat-attachments/conv",
+            ".kore/chat-attachments/../secrets/att.jpeg",
+            ".kore/chat-attachments/conv/att.svg",
+            ".kore/chat-attachments/conv/att",
+            ".kore/chat-attachments/co nv/att.jpeg",
+            ".kore/chat-attachments/conv/.jpeg",
+            ".kore/tmp/att.jpeg",
+            ".kore/index.db",
             "assets/photo.jpeg",
         ] {
             assert!(!is_chat_attachment_rel(rel), "{rel} must be refused");
@@ -209,14 +209,14 @@ mod tests {
 
     #[test]
     fn documents_are_attachments_but_not_renderable_images() {
-        let pdf = ".reflect/chat-attachments/conv-1/att-2.pdf";
+        let pdf = ".kore/chat-attachments/conv-1/att-2.pdf";
         assert!(is_chat_attachment_rel(pdf));
         assert!(!is_chat_attachment_image_rel(pdf));
         assert!(is_chat_attachment_rel(
-            ".reflect/chat-attachments/conv-1/att-2.csv"
+            ".kore/chat-attachments/conv-1/att-2.csv"
         ));
         assert!(is_chat_attachment_image_rel(
-            ".reflect/chat-attachments/conv-1/att-2.png"
+            ".kore/chat-attachments/conv-1/att-2.png"
         ));
     }
 

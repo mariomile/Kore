@@ -48,7 +48,7 @@ pub(super) struct RemoteSpan {
 
 /// What a download attempt produced for one URL.
 pub(super) enum DownloadOutcome {
-    /// Bytes staged in `.reflect/tmp`, waiting for the import to persist them.
+    /// Bytes staged in `.kore/tmp`, waiting for the import to persist them.
     Fetched(FetchedAsset),
     /// The remote answered a permanent 4xx; the note keeps the remote link.
     Gone,

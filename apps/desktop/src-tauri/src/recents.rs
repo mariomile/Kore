@@ -1,7 +1,7 @@
 //! Recent-graphs list (Plan 02).
 //!
 //! The recents list lives in the OS config dir — **never** inside any one
-//! graph's `.reflect/` — so it survives graph deletion and isn't synced as note
+//! graph's `.kore/` — so it survives graph deletion and isn't synced as note
 //! content.
 
 use std::fs;

@@ -312,7 +312,7 @@ describe('userMessage', () => {
       id: 'att-2',
       name: 'dog.jpeg',
       mediaType: 'image/jpeg',
-      path: '.reflect/chat-attachments/conv-1/att-2.jpeg',
+      path: '.kore/chat-attachments/conv-1/att-2.jpeg',
     }
     expect(userMessage('what is this?', [onDisk])).toEqual({
       role: 'user',

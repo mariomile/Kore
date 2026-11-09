@@ -41,7 +41,7 @@ export {
  * Grounding: Codex reads notes with its own sandboxed shell. The run gets a
  * custom permission profile whose base is *restricted* — nothing on disk is
  * readable except the entries it grants: the graph subtree is readable, and
- * every `private: true` note (plus `.reflect/` and `.git/`, whose index and
+ * every `private: true` note (plus `.kore/` and `.git/`, whose index and
  * history embed private content) carries an explicit deny entry, enforced
  * fail-closed by Codex's sandbox. Network stays restricted; writes are never
  * granted in read-only chat. That keeps the hard privacy block intact even
@@ -225,7 +225,7 @@ export function codexCliFilesystemToml(
           `${tomlString(`${globRoot}/audio-memos/**`)} = "read"`,
         ]
       : []),
-    ...deny(`${root}/.reflect`, `${globRoot}/.reflect/**`),
+    ...deny(`${root}/.kore`, `${globRoot}/.kore/**`),
     ...deny(`${root}/.git`, `${globRoot}/.git/**`),
     ...privateNotePaths.flatMap((path) =>
       // Trailing `*` over-denies same-prefix siblings, which is the safe

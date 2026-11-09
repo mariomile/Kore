@@ -28,7 +28,7 @@ export const WELCOME_NOTE_PATH = notePath(slugForTitle(WELCOME_TITLE))
 /**
  * The `index_meta` key marking that onboarding was considered for this graph.
  * `index_clear` deliberately preserves `index_meta`, so the marker survives
- * index rebuilds; only deleting `.reflect/` wholesale resets it.
+ * index rebuilds; only deleting `.kore/` wholesale resets it.
  */
 export const WELCOME_SEEDED_META_KEY = 'welcomeSeeded'
 

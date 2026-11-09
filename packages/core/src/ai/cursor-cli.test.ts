@@ -37,7 +37,7 @@ describe('cursorCliPermissionsJson', () => {
       'Delete(**)',
       'Grep(**)',
       'Mcp(:)',
-      'Read(.reflect/**)',
+      'Read(.kore/**)',
       'Read(.git/**)',
       'Read(notes/secret.md)',
       'Read(daily/2026-01-01.md)',

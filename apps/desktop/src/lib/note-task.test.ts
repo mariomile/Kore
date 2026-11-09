@@ -1,6 +1,7 @@
 import { parseNote, TaskStaleError } from '@reflect/core'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  addTask,
   convertTaskToBullet,
   continueTaskInContext,
   deleteTask,
@@ -309,6 +310,30 @@ describe('insertTask', () => {
 
     await expect(insertTask('notes/a.md', 7)).resolves.toBe('# Notes\n\nbody\n+ '.length)
     expect(writeNote).toHaveBeenCalledWith('notes/a.md', '# Notes\n\nbody\n+ [ ] \n', 7)
+  })
+})
+
+describe('addTask', () => {
+  it('appends a filled task, creating a missing daily note', async () => {
+    openSession.mockReturnValue(null)
+    readNote.mockRejectedValue({ kind: 'notFound', message: 'missing' })
+    writeNote.mockResolvedValue(undefined)
+
+    await addTask('daily/2026-11-08.md', '!! call [[2026-11-09]] @15:00', 7)
+    expect(writeNote).toHaveBeenCalledWith(
+      'daily/2026-11-08.md',
+      '+ [ ] !! call [[2026-11-09]] @15:00\n',
+      7,
+    )
+  })
+
+  it("goes through an open note's live session instead of refusing", async () => {
+    const commitBodyAppend = vi.fn().mockResolvedValue(true)
+    openSession.mockReturnValue({ commitBodyAppend })
+
+    await addTask('notes/a.md', 'buy milk', 7)
+    expect(commitBodyAppend).toHaveBeenCalledWith('+ [ ] buy milk')
+    expect(writeNote).not.toHaveBeenCalled()
   })
 })
 

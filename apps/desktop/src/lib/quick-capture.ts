@@ -15,13 +15,17 @@ export function foldQuickCaptureText(raw: string): string {
 /**
  * A text-capture envelope the global-shortcut mini window spools into the
  * same inbox the deep-link and share-sheet producers write. Callers must
- * pass already-folded, non-empty text.
+ * pass already-folded, non-empty text. `task` lands as a `+ [ ]` task line
+ * (Quick Add's canonical content) instead of a bullet.
  */
-export function buildGlobalShortcutEnvelope(text: string): TextCaptureEnvelope {
+export function buildGlobalShortcutEnvelope(
+  text: string,
+  kind: 'append' | 'task' = 'append',
+): TextCaptureEnvelope {
   return textCaptureEnvelopeSchema.parse({
     version: 1,
     id: crypto.randomUUID(),
-    kind: 'append',
+    kind,
     text,
     capturedAt: new Date().toISOString(),
     source: 'global-shortcut',

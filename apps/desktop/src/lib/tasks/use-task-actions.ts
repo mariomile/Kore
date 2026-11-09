@@ -1,6 +1,13 @@
 import { useMutation } from '@tanstack/react-query'
 import type { OpenTask } from '@reflect/core'
-import { convertTaskToBullet, deleteTask, editTask, insertTask, toggleTask } from '@/lib/note-task'
+import {
+  addTask,
+  convertTaskToBullet,
+  deleteTask,
+  editTask,
+  insertTask,
+  toggleTask,
+} from '@/lib/note-task'
 import { editAndToggleError, isEditAndToggleError } from '@/lib/tasks/edit-and-toggle-error'
 import {
   archiveRecentlyCompleted,
@@ -56,6 +63,12 @@ export interface TaskActions {
    * `null` when there's no graph or the write failed (the toast already fired).
    */
   insert: (target: InsertTaskTarget) => Promise<OpenTask | null>
+  /**
+   * Quick Add: append a filled task (`content` in canonical syntax) to
+   * `notePath`. Resolves true once written; the reindex brings the row in.
+   * False when there's no graph or the write failed (the toast already fired).
+   */
+  add: (notePath: string, content: string) => Promise<boolean>
   /**
    * Enter while editing (V1 continuous entry): persist the current row's edit
    * (when `content` isn't null), then add the next task in `target` and return it
@@ -314,6 +327,17 @@ export function useTaskActions(): TaskActions {
     onError: (cause) => cache.reconcile('Adding task', cause),
   })
 
+  const addMutation = useMutation({
+    mutationFn: ({ notePath, content }: { notePath: string; content: string }) => {
+      const generation = graph?.generation
+      if (generation === undefined) {
+        throw new Error('No graph is open.')
+      }
+      return addTask(notePath, content, generation)
+    },
+    onError: (cause) => cache.reconcile('Adding task', cause),
+  })
+
   const editAndToggleMutation = useMutation({
     mutationFn: async ({ task, content }: { task: OpenTask; content: string }) => {
       const generation = graph?.generation
@@ -441,6 +465,17 @@ export function useTaskActions(): TaskActions {
       const created = insertedTaskRow(target, markerOffset)
       cache.addOpen(created)
       return created
+    },
+    add: async (notePath, content) => {
+      if (graph?.generation === undefined) {
+        return false
+      }
+      try {
+        await addMutation.mutateAsync({ notePath, content })
+        return true
+      } catch {
+        return false // reconcile already surfaced the failure
+      }
     },
     insertAfter: async (task, content, target) => {
       if (graph?.generation === undefined) {

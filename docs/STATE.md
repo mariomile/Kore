@@ -3287,8 +3287,10 @@ screen: Agents then Close lands on today.
   keeps an agent's writes in `.kore/proposals/` as the tool call it sent,
   signed by the process; `kore proposals accept/reject`. After a strict
   review: no stored argv, accept rebuilds through the MCP tool table, one
-  `access` field per key, tool table moved to `mcp/tools.rs`. App list
-  and the app's own propose keys are the next steps.
+  `access` field per key, tool table moved to `mcp/tools.rs`. Activity
+  now lists them under "Waiting for you" with a preview and Accept/Reject
+  (app runs the bundled CLI via `proposals_run`). Next: propose option on
+  the app's own agent keys.
 
 - 2026-11-07 — A pasted article link keeps the article's text in its
   `#link` card, a YouTube link its transcript. One shared article extractor

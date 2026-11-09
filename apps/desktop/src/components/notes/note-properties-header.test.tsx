@@ -129,7 +129,7 @@ describe('NotePropertiesHeader', () => {
     const view = await render(<Subject />)
 
     const header = view.getByRole('region', { name: 'Properties' })
-    await expect.element(header.getByText('#book')).toBeInTheDocument()
+    await expect.element(header.getByText('Book', { exact: true })).toBeInTheDocument()
     await expect.element(header.getByText('📚')).toBeInTheDocument()
   })
 
@@ -138,7 +138,9 @@ describe('NotePropertiesHeader', () => {
     const view = await render(<Subject />)
 
     const header = view.getByRole('region', { name: 'Properties' })
-    await expect.element(header.getByText('#idea')).toBeInTheDocument()
+    await expect.element(header.getByText('Idea', { exact: true })).toBeInTheDocument()
+    // The chip's glyph is the `#`; the name never repeats it (`# #idea`).
+    expect(header.element().textContent).not.toContain('#')
   })
 
   it('lists Type chips for each tag and unsets one on remove', async () => {
@@ -162,8 +164,8 @@ describe('NotePropertiesHeader', () => {
 
     const header = view.getByRole('region', { name: 'Properties' })
     await expect.element(header.getByText('Type')).toBeInTheDocument()
-    await expect.element(header.getByText('#project')).toBeInTheDocument()
-    await expect.element(header.getByText('#person')).toBeInTheDocument()
+    await expect.element(header.getByText('Project', { exact: true })).toBeInTheDocument()
+    await expect.element(header.getByText('Person', { exact: true })).toBeInTheDocument()
 
     await view.getByRole('button', { name: 'Remove #project' }).click()
     expect(removeTag).toHaveBeenCalledWith('notes/dispossessed.md', 'project')

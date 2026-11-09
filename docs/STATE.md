@@ -31,6 +31,23 @@ C1, C3, C2; one step = one commit, Mario's ok before each next feature).
   outdent/Enter-on-empty/⌘A-delete stay inside, Meowdown DOM guard),
   `block-zoom-target.test.ts` (7, incl. the schema guard), all 27 editor
   browser files, keymap test, `pnpm typecheck`, eslint/oxfmt.
+  UX pass (2026-11-09, Mario asked for an expert UX/UI review, then "fai
+  tutte le migliorie proposte"): the properties slot hides while zoomed (it
+  left an orphan divider), one `kore-zoom-title` style for a list item's line
+  and a section's heading (bullet and number dropped, task checkbox kept and
+  centred), crumbs show words only (`crumbText`: no tags or Markdown, wiki
+  links by label) and a tag stays body-sized in the title, Escape steps out
+  (after Meowdown's selection collapse) and Back does too (router store
+  `setViewBack`: a view in the current entry takes Back first, `canBack`
+  stays true), no block handle on the zoomed item's own line, "Zoom in" in
+  the block menu and "Zoom into/out of block" in the palette (last focused
+  editor), crumbs in the secondary colour folding their middle into "…" when
+  they don't fit, a hint under a zoomed leaf, the sliding block no longer
+  doubled, and a range selected outside the zoom (a Find match) widens it
+  until it shows (Find read 0/1 before). Video:
+  `/mnt/project-files/video/zoom-rifinito.mp4`. Verified: `block-zoom.test.tsx`
+  15, `block-zoom-target.test.ts` 8, router-store test, 31 browser files
+  (editor, routing, palette), palette and Back checked in the dev app.
 - [ ] C3 `^id` line references: resolve, open at the line, transclude,
   "copy link to line".
 - [ ] C2 move a branch to another note (`⌘⇧M`), updating `^id` links.
@@ -3317,6 +3334,10 @@ screen: Agents then Close lands on today.
 **Next:** merge the Close fix, then bump.
 
 ## Session log
+
+- 2026-11-09 — Zoom UX pass (Plan 33 C1): clean top, one title style,
+  word-only crumbs that fold, Escape and Back step out, block menu and
+  palette entries, a hint under leaves, and Find widens the zoom to its match.
 
 - 2026-11-09 — Zoom review fixes and a smooth switch (Plan 33 C1): no edit
   can push content out of the zoomed block, ⌘A and delete stay inside it,

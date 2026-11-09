@@ -11,6 +11,8 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
   list item with its children, that heading's section, or that paragraph,
   with a breadcrumb to go back up. The note's file doesn't change. The
   switch is animated: the block slides to the top while the rest fades.
+  Escape or Back steps out, the block menu and ⌘K offer it too, and Find
+  widens the zoom when the match is elsewhere in the note.
 
 - Every task links to the note it lives in: the note icon next to its date
   or note name, also on the task you are editing. ⌘-click opens it beside.

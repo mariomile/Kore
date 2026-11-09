@@ -61,6 +61,28 @@ export function taskContentRepeat(content: string): TaskRepeat | null {
   return { every, unit: UNIT_LETTERS[counted[2]!]! }
 }
 
+const UNIT_WORDS: Record<TaskRepeat['unit'], string> = {
+  day: 'daily',
+  week: 'weekly',
+  month: 'monthly',
+  year: 'yearly',
+}
+
+/**
+ * The `@repeat(…)` token for a rule, the inverse of {@link taskContentRepeat}:
+ * `{ every: 1, unit: 'week' }` → `@repeat(weekly)`, `{ every: 2, unit: 'week' }`
+ * → `@repeat(2w)`. Null for a count {@link taskContentRepeat} would not read
+ * back (below 1 or above 999), so a writer never emits a token that recurs
+ * nowhere.
+ */
+export function formatTaskRepeat(repeat: TaskRepeat): string | null {
+  if (!Number.isSafeInteger(repeat.every) || repeat.every < 1 || repeat.every > 999) {
+    return null
+  }
+  const spec = repeat.every === 1 ? UNIT_WORDS[repeat.unit] : `${repeat.every}${repeat.unit[0]}`
+  return `@repeat(${spec})`
+}
+
 const DATE_LINK_RE = /\[\[(\d{4}-\d{2}-\d{2})\]\]/
 
 /** The first `[[YYYY-MM-DD]]` link in a task's content, or null. */

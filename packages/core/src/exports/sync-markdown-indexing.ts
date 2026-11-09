@@ -369,6 +369,7 @@ export {
   TASK_VIEWS,
   UPCOMING_DAYS,
   parseQuickAdd,
+  QUICK_ADD_MAX_ADDED,
   compareTaskPriority,
   cycleTaskContentPriority,
   stripTaskContentPriority,

@@ -147,8 +147,8 @@ as an overengineering warning.
 
 Kore is an offline-first, Markdown-backed note-taking and agentic workspace built
 with TypeScript, React, Rust, and Tauri. It originated from Reflect V2, but Kore
-is the product and repository name; Reflect remains only in internal code
-identifiers (being renamed) and historical upstream documentation.
+is the product and repository name; Reflect remains only in historical
+upstream documentation and the Reflect V1 importer.
 
 ### Naming
 
@@ -173,9 +173,14 @@ name again. Do not add new code that reads an old name outside those
 migrations.
 
 **Reflect** is the upstream project this repo forked from. Its name survives
-only in internal code identifiers (`@kore/*` packages, `reflect-*` crates,
-CSS classes) until the mechanical internal rename lands, and in historical
-docs about the upstream app. Never introduce a new one.
+only where it means that upstream app (the Reflect V1 importer, upstream docs
+under `docs/upstream-*`) and in history (changelog, delivery log, STATE).
+Code identifiers are Kore: `@kore/*` packages, `kore-*` crates, the
+`kore-open` desktop crate and Xcode project, `kore-*` CSS classes. Never
+introduce a new one: `pnpm lint:names` (`scripts/check-legacy-names.mjs`)
+counts "reflect" per file against `scripts/legacy-names-baseline.json` and
+fails when a file goes over it. When you remove names, lower the baseline
+with `node scripts/check-legacy-names.mjs --update` in the same commit.
 
 Two exceptions keep older spellings on purpose, and renaming either one
 breaks working installs:

@@ -10,7 +10,7 @@ describe('frontmatterPatchToYaml', () => {
       frontmatterPatchToYaml({
         tagSchema: [
           { name: 'Company', key: 'company', type: 'relation', target: 'company' },
-          { name: 'Status', key: 'status', type: 'select', options: ['to-read'] },
+          { name: 'Status', key: 'status', type: 'select', options: ['to-read'], default: 'to-read' },
           {
             name: 'People',
             key: 'people',
@@ -29,7 +29,7 @@ describe('frontmatterPatchToYaml', () => {
       lore: 'tag',
       properties: [
         { name: 'Company', key: 'company', type: 'relation', target: 'company' },
-        { name: 'Status', key: 'status', type: 'select', options: ['to-read'] },
+        { name: 'Status', key: 'status', type: 'select', options: ['to-read'], default: 'to-read' },
         {
           name: 'People',
           key: 'people',

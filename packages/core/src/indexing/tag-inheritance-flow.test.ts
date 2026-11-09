@@ -9,6 +9,7 @@ import {
   project,
 } from './flow-test-harness'
 import { getTagType, listCollection, listNoteTagTypes, listTagTypes } from './collections'
+import { nextNumbers, rowStartingValues } from './starting-values'
 import {
   listTagChildren,
   listTagParentCandidates,
@@ -147,5 +148,34 @@ describe('private definitions on outbound reads', () => {
     expect(local.map((entry) => entry.path).sort()).toEqual(['people/acme.md', 'people/x.md'])
     const outbound = await listCollection('client', [], { excludePrivate: true })
     expect(outbound.map((entry) => entry.path)).toEqual(['people/acme.md'])
+  })
+})
+
+describe('starting values through the index (Plan 33 B4)', () => {
+  function invoice(
+    fields = '  - {name: Number, key: number, type: number, default: next-number}',
+  ): string {
+    return `---\nlore: tag\nproperties:\n${fields}\n---\n`
+  }
+
+  it('numbers a new row one past the highest, child tags included', async () => {
+    addNote('tags/invoice.md', invoice())
+    addNote('tags/credit.md', '---\nlore: tag\nextends: invoice\n---\n')
+    addNote('bills/a.md', '---\nnumber: 41\n---\n# A\n\n#invoice')
+    addNote('bills/b.md', '---\nnumber: 44\n---\n# B\n\n#credit')
+    addNote('bills/c.md', '---\nnumber: 900\n---\n# C\n\n#other')
+    await refreshTagTypeResolutions(1)
+    const type = await getTagType('invoice')
+    expect(await nextNumbers('invoice', type)).toEqual(new Map([['number', 45]]))
+    expect(await rowStartingValues('invoice', type)).toEqual({ number: 45 })
+  })
+
+  it('starts at 1 in an empty collection, and an inherited field counts too', async () => {
+    addNote('tags/invoice.md', invoice())
+    addNote('tags/credit.md', '---\nlore: tag\nextends: invoice\n---\n')
+    await refreshTagTypeResolutions(1)
+    expect(await nextNumbers('credit', await getTagType('credit'))).toEqual(
+      new Map([['number', 1]]),
+    )
   })
 })

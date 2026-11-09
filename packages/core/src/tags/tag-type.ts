@@ -144,6 +144,13 @@ export const tagPropertySchema = z.object({
   reverse: reverseConfigSchema.optional(),
   /** View-only formula config ({@link formulaConfigSchema}). */
   formula: formulaConfigSchema.optional(),
+  /**
+   * The value a note gets when it joins the tag through Kore (Plan 33 B4):
+   * `today`, `now`, `next-number`, or a fixed value. Hand-edited Markdown is
+   * never stamped. Read by `startingValues` (`./starting-values.ts`), which
+   * ignores a default the field's type can't hold.
+   */
+  default: z.union([z.string().min(1), z.number(), z.boolean()]).optional(),
 })
 export type TagProperty = z.infer<typeof tagPropertySchema>
 

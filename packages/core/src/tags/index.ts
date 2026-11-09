@@ -58,6 +58,20 @@ export {
 } from './tag-icon-catalog'
 export { resolveTagTypes, tagDescendants } from './tag-inheritance'
 export { localCalendarDate, createdStampValues, missingCreatedStamps } from './timestamps'
+export {
+  STARTING_VALUE_NEXT_NUMBER,
+  STARTING_VALUE_NOW,
+  STARTING_VALUE_TODAY,
+  localDateTime,
+  missingStartingValues,
+  nextNumberKeys,
+  propertyStartingValue,
+  startingValueKind,
+  startingValueKinds,
+  startingValues,
+  type StartingValueContext,
+  type StartingValueKind,
+} from './starting-values'
 export { evaluateFormula, type FormulaResult } from './formula'
 export {
   extractNoteProperties,

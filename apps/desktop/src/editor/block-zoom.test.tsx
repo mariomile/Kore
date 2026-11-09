@@ -228,4 +228,15 @@ describe('BlockZoom', () => {
     await item.locate('> .list-marker').click()
     await expect.element(item).toHaveAttribute('data-list-collapsed')
   })
+
+  it('hides the block handle on the zoomed item, not on its children', async () => {
+    await renderNote()
+    await pmRoot.getByText('DeepAgent').click()
+    await userEvent.keyboard(zoomIn)
+    const host = pmRoot.element().parentElement
+    await pmRoot.getByText('DeepAgent').hover()
+    await vi.waitFor(() => expect(host?.hasAttribute('data-zoom-over-root')).toBe(true))
+    await pmRoot.getByText('call with').hover()
+    await vi.waitFor(() => expect(host?.hasAttribute('data-zoom-over-root')).toBe(false))
+  })
 })

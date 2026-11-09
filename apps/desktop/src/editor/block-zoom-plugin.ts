@@ -471,6 +471,32 @@ function buildDecorations(
   return DecorationSet.create(doc, [...decorations, ...slide])
 }
 
+/** Marks the editor host while the pointer is over the zoomed item itself. */
+const OVER_ROOT_ATTRIBUTE = 'data-zoom-over-root'
+
+function setPointerOverRoot(view: EditorView, over: boolean): void {
+  const host = view.dom.parentElement
+  if (host !== null && host.hasAttribute(OVER_ROOT_ATTRIBUTE) !== over) {
+    host.toggleAttribute(OVER_ROOT_ATTRIBUTE, over)
+  }
+}
+
+/**
+ * The block handle can't do anything with the zoomed item (moving it out of
+ * the zoom is refused, deleting it would end the zoom), so it hides while
+ * the pointer is on the item's own line. Its children keep their handles.
+ */
+function markPointerOverRoot(view: EditorView, event: MouseEvent): boolean {
+  const target = zoomTarget(view.state)
+  if (target?.kind !== 'list' || !(event.target instanceof Element)) {
+    setPointerOverRoot(view, false)
+    return false
+  }
+  const item = event.target.closest('.prosemirror-flat-list')
+  setPointerOverRoot(view, item !== null && item === view.nodeDOM(target.root))
+  return false
+}
+
 /** The list item a marker element belongs to, as the position before it. */
 function markerListPos(view: EditorView, marker: Element): number | null {
   const listElement = marker.parentElement
@@ -533,6 +559,7 @@ export function createBlockZoomPlugin(options: BlockZoomOptions = {}): Plugin<Bl
       update: (view, previous) => {
         const target = zoomTarget(view.state)
         if (!sameTarget(target, zoomTarget(previous))) {
+          setPointerOverRoot(view, false)
           options.onZoomChange?.(view, target)
         }
       },
@@ -596,6 +623,11 @@ export function createBlockZoomPlugin(options: BlockZoomOptions = {}): Plugin<Bl
       },
       handleDOMEvents: {
         mousedown: handleMarkerMouseDown,
+        mousemove: markPointerOverRoot,
+        mouseleave: (view) => {
+          setPointerOverRoot(view, false)
+          return false
+        },
       },
     },
   })

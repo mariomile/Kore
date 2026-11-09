@@ -34,6 +34,12 @@
 .reflect-editor .kore-zoom-root:not([data-list-kind='task']) > .list-marker {
   display: none;
 }
+/* No block handle on the zoomed item's own line: it can be neither moved
+   out of the zoom nor deleted from inside it. */
+.meowdown[data-zoom-over-root] > prosekit-block-handle-root {
+  visibility: hidden;
+}
+
 /* A tag stays body-sized next to the title: it labels the block, it is not
    part of its name. */
 .reflect-editor .kore-zoom-title .md-tag {

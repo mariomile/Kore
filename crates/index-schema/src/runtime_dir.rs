@@ -40,9 +40,9 @@ pub fn has_runtime_dir(root: &Path) -> bool {
 /// Move `<root>/.reflect/` to `<root>/.kore/`. A single rename when only the
 /// old directory exists, so trash, conflict archive, attachments and journal
 /// come along untouched. When both exist (a newer writer created `.kore/`
-/// first), each old entry moves across only where `.kore/` has no entry of
-/// that name, and the old directory is removed once empty: nothing is ever
-/// overwritten or deleted. Symlinks are never followed or moved.
+/// first), old entries move across wherever the name is free, directories
+/// on both sides are combined, and the old directory is removed once empty:
+/// nothing is ever overwritten or deleted. Symlinks are never followed.
 pub fn migrate_legacy_dir(root: &Path) -> io::Result<()> {
     let legacy = root.join(LEGACY_DIR);
     if !is_real_dir(&legacy) {
@@ -57,15 +57,30 @@ pub fn migrate_legacy_dir(root: &Path) -> io::Result<()> {
         Ok(metadata) if !metadata.file_type().is_dir() => return Ok(()),
         Ok(_) => {}
     }
-    for entry in fs::read_dir(&legacy)? {
+    merge_into(&legacy, &current)
+}
+
+/// Move each entry of `from` into `into` where the name is free, descending
+/// into directories present on both sides (so a capture inbox or trash that
+/// both names hold is combined, not stranded). Clashing files stay in
+/// `from`, which is removed only once empty.
+fn merge_into(from: &Path, into: &Path) -> io::Result<()> {
+    for entry in fs::read_dir(from)? {
         let entry = entry?;
-        let target = current.join(entry.file_name());
-        if fs::symlink_metadata(&target).is_err() {
-            fs::rename(entry.path(), target)?;
+        let target = into.join(entry.file_name());
+        match fs::symlink_metadata(&target) {
+            Err(error) if error.kind() == io::ErrorKind::NotFound => {
+                fs::rename(entry.path(), target)?;
+            }
+            Err(error) => return Err(error),
+            Ok(metadata) if metadata.file_type().is_dir() && is_real_dir(&entry.path()) => {
+                merge_into(&entry.path(), &target)?;
+            }
+            Ok(_) => {}
         }
     }
     // Fails (and is ignored) while clashing leftovers remain.
-    let _ = fs::remove_dir(&legacy);
+    let _ = fs::remove_dir(from);
     Ok(())
 }
 
@@ -107,6 +122,10 @@ mod tests {
         fs::write(legacy.join("index.sqlite"), "old").unwrap();
         fs::write(legacy.join("meta.json"), "old").unwrap();
         fs::write(current.join("meta.json"), "new").unwrap();
+        fs::create_dir_all(legacy.join("inbox")).unwrap();
+        fs::create_dir_all(current.join("inbox")).unwrap();
+        fs::write(legacy.join("inbox/a.json"), "pending").unwrap();
+        fs::write(current.join("inbox/b.json"), "pending").unwrap();
 
         migrate_legacy_dir(graph.path()).unwrap();
 
@@ -120,5 +139,8 @@ mod tests {
         );
         assert_eq!(fs::read_to_string(legacy.join("meta.json")).unwrap(), "old");
         assert!(current.join(SYNCED_SUBDIR).is_dir());
+        assert!(current.join("inbox/a.json").is_file());
+        assert!(current.join("inbox/b.json").is_file());
+        assert!(!legacy.join("inbox").exists());
     }
 }

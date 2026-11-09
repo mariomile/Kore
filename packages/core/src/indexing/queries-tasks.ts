@@ -21,6 +21,8 @@ export interface OpenTask extends TaskMarker {
   dueDate: string | null
   /** Local `HH:MM` on {@link dueDate}, or null when the task is date-only. */
   dueTime: string | null
+  /** The nearest top-level heading above the task (level 2+), or null. */
+  section: string | null
   /** ISO date for daily-note tasks; null for tasks in regular notes. */
   dailyDate: string | null
   /** Pin flag mapped to a real boolean at the read boundary. */
@@ -43,6 +45,7 @@ function taskRowsQuery() {
       'tasks.checked',
       'tasks.dueDate',
       'tasks.dueTime',
+      'tasks.section',
       'notes.title as noteTitle',
       'notes.dailyDate',
       'notes.isPinned',

@@ -203,7 +203,7 @@ function readTask(
   cuts: Span[],
   literalRanges: Span[],
   wikiLinks: WikiLink[],
-): ParsedTask | null {
+): Omit<ParsedTask, 'section'> | null {
   const { from, to } = taskNode
   if (taskListBullet(body, taskNode) === null) {
     return null
@@ -224,6 +224,21 @@ function readTask(
     // line — a `[[YYYY-MM-DD]]` on a wrapped or child line still counts.
     ...firstDue(body, bodyOffset, wikiLinks, markerOffset, to + bodyOffset),
   }
+}
+
+/**
+ * The section a task at `offset` sits in: the nearest top-level heading above
+ * it, unless that heading is the H1 title. `sections` are in document order.
+ */
+function taskSection(sections: readonly Heading[], offset: number): string | null {
+  let nearest: Heading | undefined
+  for (const heading of sections) {
+    if (heading.from >= offset) {
+      break
+    }
+    nearest = heading
+  }
+  return nearest === undefined || nearest.level === 1 || nearest.text === '' ? null : nearest.text
 }
 
 function inAnyRange(index: number, ranges: Span[]): boolean {
@@ -455,10 +470,11 @@ export function parseNote(input: { path: string; source: string }): ParsedNote {
   collectTags(body, tagExcluded, tags)
 
   const tasks: ParsedTask[] = []
+  const sections = headings.filter((heading) => heading.topLevel)
   for (const taskNode of taskNodes) {
     const task = readTask(body, taskNode, bodyOffset, cuts, literalPlainText, wikiLinks)
     if (task) {
-      tasks.push(task)
+      tasks.push({ ...task, section: taskSection(sections, task.markerOffset) })
     }
   }
 

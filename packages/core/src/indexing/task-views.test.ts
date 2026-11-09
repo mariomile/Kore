@@ -10,6 +10,7 @@ import {
   taskLocationKey,
   taskViewsFor,
 } from './task-views'
+import { subtaskDepths } from './group-tasks'
 
 const TODAY = '2026-11-08'
 
@@ -24,6 +25,7 @@ function task(overrides: Partial<OpenTask> = {}): OpenTask {
     noteTitle: 'N',
     dueDate: null,
     dueTime: null,
+    section: null,
     dailyDate: null,
     isPinned: false,
     pinnedOrder: null,
@@ -207,5 +209,69 @@ describe('tasks linked to a project', () => {
     expect(groups[0]!.tasks).toEqual([own, fromDaily])
     expect(countTasksByView([fromDaily, own], TODAY, linked).projects).toBe(2)
     expect(countTasksByView([fromDaily, own], TODAY).projects).toBe(1)
+  })
+})
+
+describe('project sections and subtasks', () => {
+  const FOLDERS = new Set(['P/DeepAgent/DeepAgent.md'])
+  const inNote = (
+    markerOffset: number,
+    text: string,
+    section: string | null,
+    breadcrumbs: string[] = [],
+  ) =>
+    task({
+      notePath: 'P/DeepAgent/DeepAgent.md',
+      noteTitle: 'DeepAgent',
+      markerOffset,
+      text,
+      section,
+      breadcrumbs,
+    })
+
+  it('lists a project by its headings, unsectioned and linked tasks first', () => {
+    const top = inNote(1, 'top', null)
+    const pricing = inNote(2, 'proposal', 'Pricing')
+    const onboarding = inNote(3, 'welcome mail', 'Onboarding')
+    const pricingLater = inNote(4, 'tiers', 'Pricing')
+    const linked = task({
+      notePath: 'daily/2026-11-09.md',
+      dailyDate: '2026-11-09',
+      markerOffset: 9,
+      text: 'call Andrea',
+      section: 'Tasks',
+    })
+    const deep = { path: 'P/DeepAgent/DeepAgent.md', title: 'DeepAgent' }
+    const [group] = groupTasksForView(
+      'projects',
+      [onboarding, pricingLater, linked, top, pricing],
+      TODAY,
+      FOLDERS,
+      new Map([[taskLocationKey(linked), deep]]),
+    )
+    expect(
+      group!.sections!.map((section) => [section.label, section.tasks.map((t) => t.text)]),
+    ).toEqual([
+      [null, ['top', 'call Andrea']],
+      ['Pricing', ['proposal', 'tiers']],
+      ['Onboarding', ['welcome mail']],
+    ])
+    expect(group!.tasks.map((t) => t.text)).toEqual([
+      'top',
+      'call Andrea',
+      'proposal',
+      'tiers',
+      'welcome mail',
+    ])
+  })
+
+  it('nests a subtask under the parent task listed above it', () => {
+    const parent = inNote(1, 'launch', null)
+    const child = inNote(2, 'write copy', null, ['launch'])
+    const grandchild = inNote(3, 'headline', null, ['launch', 'write copy'])
+    const underBullet = inNote(4, 'loose', null, ['Notes'])
+    expect(subtaskDepths([parent, child, grandchild, underBullet])).toEqual([0, 1, 2, 0])
+    // The parent not shown (e.g. completed and hidden): no indent.
+    expect(subtaskDepths([child])).toEqual([0])
   })
 })

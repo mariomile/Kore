@@ -40,6 +40,19 @@ export interface TaskGroup {
   /** The ISO day a `day` group stands for (Upcoming, board drop target); else absent. */
   date?: string
   tasks: OpenTask[]
+  /**
+   * A project's tasks split by the note's headings (Projects view), in display
+   * order: concatenated they are exactly {@link tasks}. The first section's
+   * label is null when some tasks sit above every heading (or come from
+   * outside the project's notes). Absent on every other group.
+   */
+  sections?: readonly TaskSection[]
+}
+
+/** One heading's run of tasks inside a project group. */
+export interface TaskSection {
+  readonly label: string | null
+  readonly tasks: readonly OpenTask[]
 }
 
 const PUNCTUATION_RE = /[\p{P}\p{S}]/gu
@@ -91,6 +104,38 @@ export function groupTaskContexts(tasks: readonly OpenTask[]): TaskContext[] {
   }
 
   return contexts
+}
+
+/**
+ * How deep each task nests under the tasks shown before it: a task whose
+ * parent outline item is itself a listed task (`+ [ ] parent` / `  + [ ] child`)
+ * sits one level under that parent, so the list can indent it instead of
+ * repeating the parent as a breadcrumb. Parentage is read off the breadcrumbs
+ * (the parent's label is the parent task's own text) within one note. Returns
+ * one depth per task, in order; 0 for top-level and unparented tasks.
+ */
+export function subtaskDepths(tasks: readonly OpenTask[]): number[] {
+  const depths: number[] = []
+  for (const [index, task] of tasks.entries()) {
+    let depth = 0
+    const parentText = task.breadcrumbs.at(-1)
+    if (parentText !== undefined) {
+      for (let back = index - 1; back >= 0; back -= 1) {
+        const candidate = tasks[back]!
+        if (
+          candidate.notePath === task.notePath &&
+          candidate.text === parentText &&
+          candidate.markerOffset < task.markerOffset &&
+          haveSameBreadcrumbs(candidate.breadcrumbs, task.breadcrumbs.slice(0, -1))
+        ) {
+          depth = depths[back]! + 1
+          break
+        }
+      }
+    }
+    depths.push(depth)
+  }
+  return depths
 }
 
 /** The date a task is bucketed by: its explicit due date, else its note's date. */

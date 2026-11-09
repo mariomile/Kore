@@ -120,11 +120,13 @@ export {
 } from './unlinked-mentions'
 export {
   groupTaskContexts,
+  subtaskDepths,
   groupTasks,
   taskDateBucket,
   type TaskContext,
   type TaskGroup,
   type TaskGroupKind,
+  type TaskSection,
 } from './group-tasks'
 export {
   countTasksByView,

@@ -1,5 +1,11 @@
 import { addDaysIso } from '@reflect/utils'
-import { compareDated, compareNoteGroups, groupTasks, type TaskGroup } from './group-tasks'
+import {
+  compareDated,
+  compareNoteGroups,
+  groupTasks,
+  type TaskGroup,
+  type TaskSection,
+} from './group-tasks'
 import type { OpenTask } from './queries'
 import { compareTaskPriority, taskRawPriority } from './task-priority'
 
@@ -261,15 +267,52 @@ function groupProjects(
     }
   }
   return [...byProject.values()]
-    .map(({ project, tasks: projectTasks }) => ({
-      kind: 'note' as const,
-      label: project.title,
-      notePath: project.path,
+    .map(({ project, tasks: projectTasks }) => {
       // Keep each source note's tasks together, in document order; tasks
       // linked in from daily notes follow the project's own, newest first.
-      tasks: projectTasks.sort(compareProjectTasks),
-    }))
+      const sections = projectSections(
+        projectTasks.sort(compareProjectTasks),
+        project,
+        projectNotePaths,
+      )
+      return {
+        kind: 'note' as const,
+        label: project.title,
+        notePath: project.path,
+        tasks: sections.flatMap((section) => section.tasks),
+        sections,
+      }
+    })
     .sort(compareNoteGroups)
+}
+
+/**
+ * Split a project's sorted tasks by their headings, Todoist-style: tasks above
+ * every heading (and tasks linked in from elsewhere, whose heading belongs to
+ * another note) come first, unlabeled; then one section per heading, in the
+ * order the headings first appear. Order inside a section is kept.
+ */
+function projectSections(
+  tasks: readonly OpenTask[],
+  project: TaskProject,
+  projectNotePaths: ReadonlySet<string>,
+): TaskSection[] {
+  const bySection = new Map<string | null, OpenTask[]>([[null, []]])
+  for (const task of tasks) {
+    const writtenInProject =
+      task.dailyDate === null &&
+      projectForNote(task.notePath, task.noteTitle, projectNotePaths).path === project.path
+    const label = writtenInProject ? task.section : null
+    const section = bySection.get(label)
+    if (section === undefined) {
+      bySection.set(label, [task])
+    } else {
+      section.push(task)
+    }
+  }
+  return [...bySection.entries()]
+    .filter(([, sectionTasks]) => sectionTasks.length > 0)
+    .map(([label, sectionTasks]) => ({ label, tasks: sectionTasks }))
 }
 
 function compareProjectTasks(left: OpenTask, right: OpenTask): number {

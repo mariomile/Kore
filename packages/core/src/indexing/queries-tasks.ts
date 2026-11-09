@@ -2,7 +2,7 @@ import { sql, type SqlBool } from 'kysely'
 import type { TaskMarker } from '../markdown'
 import { db } from './db'
 import { decodeTaskBreadcrumbs } from './indexed-note'
-import { isFolderNotePath } from './task-views'
+import { isFolderNotePath, type TaskLineLink } from './task-views'
 
 /**
  * One open task plus the note context the Tasks view (Plan 18) groups and
@@ -146,6 +146,52 @@ function linkInsideTaskLine(
  */
 const linkMayBeOnTaskLine = sql<SqlBool>`"backlinks"."pos_from" >= "tasks"."marker_offset"
   and "backlinks"."pos_from" < "tasks"."marker_offset" + length(cast("tasks"."raw" as blob))`
+
+/**
+ * Every resolved wiki link written on a task's own line, in line order — what
+ * {@link import('./task-views').linkedProjectsByTask} reads to count a
+ * `+ [ ] … [[Project]]` task under that project. Open and completed tasks
+ * both, so a just-completed row stays in its project while it shows struck.
+ * Due-date `[[YYYY-MM-DD]]` links are the task's date, never a reference.
+ */
+export async function getTaskProjectLinks(): Promise<TaskLineLink[]> {
+  const rows = await db
+    .selectFrom('tasks')
+    .innerJoin('notes', 'notes.path', 'tasks.notePath')
+    .innerJoin('backlinks', 'backlinks.sourcePath', 'tasks.notePath')
+    .where('notes.kind', '!=', 'template')
+    .where('backlinks.kind', '=', 'wiki')
+    .where('backlinks.targetPath', 'is not', null)
+    .whereRef('backlinks.targetPath', '!=', 'tasks.notePath')
+    .where(linkMayBeOnTaskLine)
+    .select([
+      'tasks.notePath',
+      'tasks.markerOffset',
+      'tasks.raw',
+      'backlinks.posFrom as linkPos',
+      'backlinks.targetRaw as linkTarget',
+      'backlinks.targetPath',
+    ])
+    .orderBy('tasks.notePath')
+    .orderBy('tasks.markerOffset')
+    .orderBy('backlinks.posFrom')
+    .execute()
+  const links: TaskLineLink[] = []
+  for (const row of rows) {
+    if (
+      row.targetPath === null ||
+      !linkInsideTaskLine(row.linkPos, row.linkTarget, row.markerOffset, row.raw)
+    ) {
+      continue
+    }
+    links.push({
+      notePath: row.notePath,
+      markerOffset: row.markerOffset,
+      targetPath: row.targetPath,
+    })
+  }
+  return links
+}
 
 /** One of a note's open tasks: written in the note, or linking it by name. */
 export interface NoteTaskRef extends OpenTask {

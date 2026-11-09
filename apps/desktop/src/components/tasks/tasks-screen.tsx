@@ -14,7 +14,6 @@ import {
   cycleTaskContentPriority,
   getCompletedTasks,
   getOpenTasks,
-  getProjectNotePaths,
   projectForNote,
   type OpenTask,
   type QuickAdd,
@@ -35,12 +34,9 @@ import { composeVisibleTaskGroups } from '@/lib/tasks/task-visibility'
 import { useTaskKeyboard } from '@/lib/tasks/use-task-keyboard'
 import { useTaskSelection } from '@/lib/tasks/use-task-selection'
 import { formatDayLabel } from '@/lib/dates'
-import {
-  completedTasksQueryKey,
-  projectNotePathsQueryKey,
-  tasksQueryKey,
-} from '@/lib/tasks/tasks-query'
+import { completedTasksQueryKey, tasksQueryKey } from '@/lib/tasks/tasks-query'
 import { dailyTarget } from '@/lib/tasks/task-navigation'
+import { useTaskProjects } from '@/lib/tasks/use-task-projects'
 import { useTaskView } from '@/lib/tasks/use-task-view'
 import { useSettings } from '@/providers/settings-provider'
 import { useScrollRestoration } from '@/lib/use-scroll-restoration'
@@ -120,19 +116,17 @@ export function TasksScreen(): ReactElement {
     queryFn: () => getCompletedTasks(),
     enabled: enabled && filters.archived,
   })
-  const { data: projectNotes } = useQuery({
-    queryKey: projectNotePathsQueryKey(graph?.root),
-    queryFn: () => getProjectNotePaths(),
-    // Projects groups by them; Quick Add's `#Name` picks one, so load them
-    // before the dialog opens: a fast "q, #Kore, Return" must still find it.
-    enabled,
-  })
-  const projectNotePaths = useMemo(() => new Set(projectNotes ?? []), [projectNotes])
+  // Projects groups by them; Quick Add's `#Name` picks one, so load them
+  // before the dialog opens: a fast "q, #Kore, Return" must still find it.
+  const { projectNotes, projectNotePaths, linkedProjects } = useTaskProjects(graph?.root, enabled)
   const projects = useMemo(
-    () => (projectNotes ?? []).map((path) => projectForNote(path, path, projectNotePaths)),
+    () => projectNotes.map((path) => projectForNote(path, path, projectNotePaths)),
     [projectNotes, projectNotePaths],
   )
-  const counts = useMemo(() => countTasksByView(open ?? [], today), [open, today])
+  const counts = useMemo(
+    () => countTasksByView(open ?? [], today, linkedProjects),
+    [open, today, linkedProjects],
+  )
 
   // Either read failing surfaces the alert — a failed completed read must not
   // leave `ready` stuck (and the list blank) just because its data never arrived.
@@ -162,8 +156,19 @@ export function TasksScreen(): ReactElement {
         today,
         view,
         projectNotePaths,
+        linkedProjects,
       }),
-    [open, completed, recentlyCompleted, filters, needle, today, view, projectNotePaths],
+    [
+      open,
+      completed,
+      recentlyCompleted,
+      filters,
+      needle,
+      today,
+      view,
+      projectNotePaths,
+      linkedProjects,
+    ],
   )
 
   // The flat, render-order list of tasks the selection and its shortcuts act on.

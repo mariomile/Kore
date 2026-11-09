@@ -1,4 +1,10 @@
-import { groupTasksForView, type OpenTask, type TaskGroup, type TaskView } from '@reflect/core'
+import {
+  groupTasksForView,
+  type LinkedTaskProjects,
+  type OpenTask,
+  type TaskGroup,
+  type TaskView,
+} from '@reflect/core'
 import { sameTask, taskKey } from '@/lib/tasks/task-identity'
 import type { TaskFilters } from '@/lib/tasks/task-filters'
 
@@ -43,6 +49,8 @@ export interface TaskListSources {
   readonly view?: TaskView
   /** The graph's folder notes, for the Projects grouping. */
   readonly projectNotePaths?: ReadonlySet<string>
+  /** The projects task lines link ({@link linkedProjectsByTask}). */
+  readonly linkedProjects?: LinkedTaskProjects
 }
 
 function taskMatchesNeedle(task: OpenTask, needle: string): boolean {
@@ -78,6 +86,7 @@ export function composeVisibleTaskGroups({
   today,
   view = 'all',
   projectNotePaths,
+  linkedProjects,
 }: TaskListSources): TaskGroup[] {
   if (open === undefined) {
     return []
@@ -93,6 +102,6 @@ export function composeVisibleTaskGroups({
   const completedKeys = new Set(completedRows.map(taskKey))
   const all = [...open.filter((task) => !completedKeys.has(taskKey(task))), ...completedRows]
   const matched = needle ? all.filter((task) => taskMatchesNeedle(task, needle)) : all
-  const groups = groupTasksForView(view, matched, today, projectNotePaths)
+  const groups = groupTasksForView(view, matched, today, projectNotePaths, linkedProjects)
   return view === 'all' ? visibleGroups(groups, filters) : groups
 }

@@ -45,19 +45,23 @@ pub fn has_runtime_dir(root: &Path) -> bool {
 /// nothing is ever overwritten or deleted. Symlinks are never followed.
 pub fn migrate_legacy_dir(root: &Path) -> io::Result<()> {
     let legacy = root.join(LEGACY_DIR);
-    if !is_real_dir(&legacy) {
+    move_dir_without_overwrite(&legacy, &root.join(KORE_DIR))
+}
+
+/// Move the directory `from` to `into` with the same rules as
+/// [`migrate_legacy_dir`]: a single rename when `into` is absent, otherwise a
+/// merge that never overwrites. For other directories renamed with the fork
+/// (the app's per-user config directory).
+pub fn move_dir_without_overwrite(from: &Path, into: &Path) -> io::Result<()> {
+    if !is_real_dir(from) {
         return Ok(());
     }
-    let current = root.join(KORE_DIR);
-    match fs::symlink_metadata(&current) {
-        Err(error) if error.kind() == io::ErrorKind::NotFound => {
-            return fs::rename(&legacy, &current);
-        }
-        Err(error) => return Err(error),
-        Ok(metadata) if !metadata.file_type().is_dir() => return Ok(()),
-        Ok(_) => {}
+    match fs::symlink_metadata(into) {
+        Err(error) if error.kind() == io::ErrorKind::NotFound => fs::rename(from, into),
+        Err(error) => Err(error),
+        Ok(metadata) if !metadata.file_type().is_dir() => Ok(()),
+        Ok(_) => merge_into(from, into),
     }
-    merge_into(&legacy, &current)
 }
 
 /// Move each entry of `from` into `into` where the name is free, descending

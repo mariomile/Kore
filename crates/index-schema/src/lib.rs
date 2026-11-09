@@ -17,8 +17,8 @@
 mod runtime_dir;
 
 pub use runtime_dir::{
-    has_runtime_dir, migrate_legacy_dir, IGNORE_RULES, KORE_DIR, LEGACY_DIR, LEGACY_SELF_GITIGNORE,
-    SELF_GITIGNORE, SYNCED_SUBDIR,
+    has_runtime_dir, migrate_legacy_dir, move_dir_without_overwrite, IGNORE_RULES, KORE_DIR,
+    LEGACY_DIR, LEGACY_SELF_GITIGNORE, SELF_GITIGNORE, SYNCED_SUBDIR,
 };
 
 /// The index database's filename inside [`KORE_DIR`].

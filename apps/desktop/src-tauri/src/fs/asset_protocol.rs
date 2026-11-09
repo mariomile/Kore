@@ -228,9 +228,7 @@ mod tests {
     #[test]
     fn recognizes_only_the_explicit_preview_raster_query() {
         assert!(requests_preview_raster(Some("kore-preview=raster")));
-        assert!(requests_preview_raster(Some(
-            "cache=1&kore-preview=raster"
-        )));
+        assert!(requests_preview_raster(Some("cache=1&kore-preview=raster")));
         assert!(!requests_preview_raster(None));
         assert!(!requests_preview_raster(Some("kore-preview=svg")));
     }

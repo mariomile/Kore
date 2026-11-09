@@ -1,5 +1,5 @@
 //! Inbox discovery and atomic spool writes. The desktop app maintains the
-//! pointer file (`<config_dir>/reflect-open/capture-pointer.json`, rewritten
+//! pointer file (`<config_dir>/kore/capture-pointer.json`, rewritten
 //! on every launch and graph switch); the host only ever reads it. Spool
 //! writes are Maildir-discipline: tmp file + rename, screenshot first, the
 //! `.json` envelope last — the `.json` is the commit point the desktop
@@ -28,7 +28,7 @@ struct Pointer {
 pub fn default_pointer_path() -> Option<PathBuf> {
     Some(
         dirs::config_dir()?
-            .join("reflect-open")
+            .join("kore")
             .join("capture-pointer.json"),
     )
 }

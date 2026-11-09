@@ -21,8 +21,7 @@ use crate::error::{AppError, AppResult};
 pub type SettingsDoc = Map<String, Value>;
 
 fn store_path() -> AppResult<PathBuf> {
-    let base = dirs::config_dir().ok_or_else(|| AppError::io("no OS config dir"))?;
-    Ok(base.join("reflect-open").join("settings.json"))
+    Ok(crate::app_dir::app_config_dir()?.join("settings.json"))
 }
 
 /// Load the stored document. A missing store is an empty object, but a real IO

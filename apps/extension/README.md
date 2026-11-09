@@ -55,7 +55,7 @@ allowlisted by) the native-messaging host. Check, in order:
    **Reload** the extension. The host allowlists only the store and pinned dev
    IDs, so a wrong ID is rejected as "forbidden" → this message.
 2. **The desktop app has run at least once** on this machine, so it has written
-   `~/Library/Application Support/<browser>/NativeMessagingHosts/app.reflect.capture.json`.
+   `~/Library/Application Support/<browser>/NativeMessagingHosts/app.kore.capture.json`.
    If Chrome was already open when that file appeared, restart Chrome.
 3. **A graph is selected** in the app. The `no-graph` variant of this message
    ("Open Kore and pick a graph first") means the host ran but has no active

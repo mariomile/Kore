@@ -19,7 +19,12 @@ use crate::fs::{current_root, modified_ms, root_for_generation, FileMeta, GraphS
 /// The native-messaging host name browsers route on; must match the name the
 /// extension passes to `runtime.sendNativeMessage`.
 #[cfg(any(target_os = "macos", test))]
-const HOST_NAME: &str = "app.reflect.capture";
+const HOST_NAME: &str = "app.kore.capture";
+
+/// The host name before the Kore rename; its manifest is removed when the new
+/// one is written, so browsers list one Kore host.
+#[cfg(any(target_os = "macos", test))]
+const LEGACY_HOST_NAME: &str = "app.reflect.capture";
 
 /// The sidecar binary, staged beside the app binary by the Tauri bundler (and
 /// beside the dev binary by `tauri dev`).
@@ -44,8 +49,7 @@ const INBOX_DIR: &str = ".kore/inbox";
 /// `settings.rs`/`recents.rs`; the shape is versioned so a future change reads
 /// as a typed host error, never a silent mis-spool.
 fn pointer_path() -> AppResult<PathBuf> {
-    let base = dirs::config_dir().ok_or_else(|| AppError::io("no OS config dir"))?;
-    Ok(base.join("reflect-open").join("capture-pointer.json"))
+    Ok(crate::app_dir::app_config_dir()?.join("capture-pointer.json"))
 }
 
 fn pointer_json(root: &Path) -> String {
@@ -135,6 +139,12 @@ fn register_manifests(app_support: &Path, host_path: &Path) -> AppResult<usize> 
     for dir in detected_manifest_dirs(app_support) {
         fs::create_dir_all(&dir)?;
         atomic_write_to(&dir.join(format!("{HOST_NAME}.json")), &manifest)?;
+        match fs::remove_file(dir.join(format!("{LEGACY_HOST_NAME}.json"))) {
+            Err(error) if error.kind() != std::io::ErrorKind::NotFound => {
+                tracing::warn!(%error, "could not remove the legacy capture host manifest");
+            }
+            _ => {}
+        }
         written += 1;
     }
     Ok(written)
@@ -821,7 +831,7 @@ mod tests {
             "/Applications/Reflect.app/Contents/MacOS/reflect-capture-host",
         ));
         let parsed: serde_json::Value = serde_json::from_str(&manifest).unwrap();
-        assert_eq!(parsed["name"], "app.reflect.capture");
+        assert_eq!(parsed["name"], "app.kore.capture");
         assert_eq!(parsed["type"], "stdio");
         assert_eq!(
             parsed["path"],
@@ -855,14 +865,17 @@ mod tests {
     #[test]
     fn register_writes_a_manifest_per_detected_browser() {
         let dir = tempfile::tempdir().unwrap();
-        fs::create_dir_all(dir.path().join("Google/Chrome")).unwrap();
+        let hosts = dir.path().join("Google/Chrome/NativeMessagingHosts");
+        fs::create_dir_all(&hosts).unwrap();
+        fs::write(hosts.join("app.reflect.capture.json"), "{}").unwrap();
         let written =
             register_manifests(dir.path(), Path::new("/bundle/reflect-capture-host")).unwrap();
         assert_eq!(written, 1);
         let manifest = dir
             .path()
-            .join("Google/Chrome/NativeMessagingHosts/app.reflect.capture.json");
+            .join("Google/Chrome/NativeMessagingHosts/app.kore.capture.json");
         assert!(manifest.is_file());
+        assert!(!hosts.join("app.reflect.capture.json").exists());
     }
 
     #[test]

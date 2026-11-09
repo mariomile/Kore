@@ -15,6 +15,7 @@
 //! [`error`] (the shared error contract).
 
 mod agent_cli;
+mod app_dir;
 mod background_task;
 mod blocking;
 mod calendar;

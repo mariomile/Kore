@@ -6,6 +6,7 @@ import { runGistPublish } from '@/lib/note-gist'
 import { toggleNotePinned } from '@/lib/note-pin'
 import { toggleNotePrivate } from '@/lib/note-private'
 import { startOperation } from '@/lib/operations'
+import { zoomLastFocusedEditor } from '@/editor/block-zoom-plugin'
 import type { AppCommand } from './types'
 
 /**
@@ -164,6 +165,24 @@ export const NOTE_ACTION_COMMANDS: AppCommand[] = [
       if (path !== null) {
         context.navigate({ kind: 'note', path })
       }
+    },
+  },
+  {
+    id: 'note.zoomIn',
+    title: 'Zoom into block',
+    keywords: ['focus', 'outline', 'branch', 'section', 'hoist'],
+    // ⌘⇧. inside the editor (an editor-scope binding); the palette entry
+    // zooms the note editor that last had the caret.
+    run: () => {
+      zoomLastFocusedEditor('in')
+    },
+  },
+  {
+    id: 'note.zoomOut',
+    title: 'Zoom out of block',
+    keywords: ['focus', 'outline', 'unhoist', 'back'],
+    run: () => {
+      zoomLastFocusedEditor('out')
     },
   },
 ]

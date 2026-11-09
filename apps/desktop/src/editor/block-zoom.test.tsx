@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
 import '@/test-utils/locator'
+import { hover, unhover } from '@/test-utils/mouse'
 import { BlockZoom } from './block-zoom'
 import { NoteEditor, type NoteEditorHandle } from './note-editor'
 
@@ -48,11 +49,12 @@ async function placeCaret(text: string, offset: number): Promise<void> {
   throw new Error(`no text node starts with ${text}`)
 }
 
-async function renderNote(onTagClick = vi.fn()): Promise<NoteEditorHandle> {
+async function renderNote(onTagClick = vi.fn(), blockHandle = false): Promise<NoteEditorHandle> {
   let handle: NoteEditorHandle | null = null
   await render(
     <NoteEditor
       initialContent={NOTE}
+      blockHandle={blockHandle}
       onTagClick={onTagClick}
       handleRef={(grabbed) => {
         handle = grabbed
@@ -239,4 +241,23 @@ describe('BlockZoom', () => {
     await pmRoot.getByText('call with').hover()
     await vi.waitFor(() => expect(host?.hasAttribute('data-zoom-over-root')).toBe(false))
   })
+
+  it('zooms from the block menu', async () => {
+    await unhover()
+    await renderNote(vi.fn(), true)
+    await hover(pmRoot.getByText('Intro paragraph'))
+    const grip = page.getByTestId('block-handle-drag')
+    await expect.element(grip).toBeVisible()
+    clickGrip(grip.element())
+    await page.getByTestId('block-handle-menu').getByRole('menuitem', { name: 'Zoom in' }).click()
+    await expect.element(pmRoot.getByText('Groceries')).not.toBeVisible()
+    await expect.element(pmRoot.getByText('Intro paragraph')).toBeVisible()
+  })
 })
+
+function clickGrip(element: Element): void {
+  const pointer = { bubbles: true, cancelable: true, isPrimary: true, pointerId: 1 }
+  element.dispatchEvent(new PointerEvent('pointerdown', { ...pointer, button: 0, buttons: 1 }))
+  element.dispatchEvent(new PointerEvent('pointerup', { ...pointer, button: 0, buttons: 0 }))
+  element.dispatchEvent(new MouseEvent('click', { bubbles: true, button: 0, cancelable: true }))
+}

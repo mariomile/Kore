@@ -283,6 +283,40 @@ function coversBranch(state: EditorState, root: number, item: ProseMirrorNode): 
   )
 }
 
+/** Whether this editor has the zoom installed (a block menu offers it then). */
+export function canZoom(state: EditorState): boolean {
+  return blockZoomKey.getState(state) !== undefined
+}
+
+/** Zoom into the block that starts at `pos` (a block handle's block). */
+export function zoomIntoBlockAt(view: EditorView, pos: number): void {
+  const doc = view.state.doc
+  if (pos < 0 || pos >= doc.content.size) {
+    return
+  }
+  const target = targetAt(doc, doc.resolve(pos + 1))
+  if (target !== null && !sameTarget(target, zoomTarget(view.state))) {
+    zoomTo(view, target)
+  }
+}
+
+/** The editor that last had focus, for commands run from outside it (the palette). */
+let lastFocusedView: EditorView | null = null
+
+/**
+ * Zoom the last focused editor in (around its caret) or out one level, and
+ * give it focus back. Returns whether anything changed.
+ */
+export function zoomLastFocusedEditor(direction: 'in' | 'out'): boolean {
+  const view = lastFocusedView
+  if (view === null || view.isDestroyed || !view.dom.isConnected) {
+    return false
+  }
+  const ran = (direction === 'in' ? zoomIn : zoomOut)(view.state, view.dispatch, view)
+  view.focus()
+  return ran
+}
+
 /** The editor keymap the zoom installs (see `REFLECT_EDITOR_BINDINGS`). */
 export const ZOOM_IN_BINDING = 'Mod-Shift-.'
 export const ZOOM_OUT_BINDING = 'Mod-Shift-,'
@@ -557,6 +591,11 @@ export function createBlockZoomPlugin(options: BlockZoomOptions = {}): Plugin<Bl
     key: blockZoomKey,
     view: (editorView) => ({
       update: (view, previous) => {
+        // Focus may predate this plugin (it mounts after the editor), so any
+        // update while focused counts as well as the focus event.
+        if (view.hasFocus()) {
+          lastFocusedView = view
+        }
         const target = zoomTarget(view.state)
         if (!sameTarget(target, zoomTarget(previous))) {
           setPointerOverRoot(view, false)
@@ -564,6 +603,9 @@ export function createBlockZoomPlugin(options: BlockZoomOptions = {}): Plugin<Bl
         }
       },
       destroy: () => {
+        if (lastFocusedView === editorView) {
+          lastFocusedView = null
+        }
         options.onZoomChange?.(editorView, null)
       },
     }),
@@ -622,6 +664,10 @@ export function createBlockZoomPlugin(options: BlockZoomOptions = {}): Plugin<Bl
         }
       },
       handleDOMEvents: {
+        focus: (view) => {
+          lastFocusedView = view
+          return false
+        },
         mousedown: handleMarkerMouseDown,
         mousemove: markPointerOverRoot,
         mouseleave: (view) => {

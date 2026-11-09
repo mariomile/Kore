@@ -9,6 +9,7 @@ import {
   Checklist,
   Copy,
   List,
+  Locate,
   MoreHorizontal,
   Sparkles,
   Trash,
@@ -24,6 +25,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { canZoom, zoomIntoBlockAt } from './block-zoom-plugin'
 import { whenEditorMounted } from './when-editor-mounted'
 
 const HANDLE_CLICK_PX = 5
@@ -305,6 +307,12 @@ function BlockActionMenuItems({
         </DropdownMenuItem>
       ) : null}
       <DropdownMenuSeparator />
+      {state.count === 1 && canZoom(editor.state) ? (
+        <DropdownMenuItem onClick={() => run(() => zoomIntoBlockAt(editor.view, state.from))}>
+          <Locate aria-hidden />
+          Zoom in
+        </DropdownMenuItem>
+      ) : null}
       <DropdownMenuItem onClick={() => run(() => duplicateRange(editor, state))}>
         <Copy aria-hidden />
         Duplicate

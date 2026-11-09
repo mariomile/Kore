@@ -64,3 +64,26 @@
 .reflect-editor .kore-zoom-separator {
   opacity: 0.6;
 }
+
+/* Zooming animates with a View Transition (`animateZoom`): the block shared
+   by both zooms slides between its place and the top while the page around
+   it crossfades. Clicks pass through to the live editor while it runs. */
+:root.kore-zoom-transition::view-transition {
+  pointer-events: none;
+}
+::view-transition-group(kore-zoom-block),
+::view-transition-old(kore-zoom-page),
+::view-transition-new(kore-zoom-page) {
+  animation-duration: 180ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+::view-transition-group(kore-zoom-page) {
+  animation-duration: 0s;
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(kore-zoom-block),
+  ::view-transition-old(kore-zoom-page),
+  ::view-transition-new(kore-zoom-page) {
+    animation: none;
+  }
+}

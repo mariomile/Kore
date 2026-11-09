@@ -34,11 +34,19 @@ interface BlockZoomState {
   readonly target: ZoomTarget | null
   /** Built when the zoom changes, then mapped through each edit. */
   readonly decorations: DecorationSet
+  /** While a zoom animates: the block that slides, by its position. */
+  readonly transition: number | null
 }
 
 /** The transaction meta that sets the zoom; only this module writes it. */
 interface ZoomMeta {
   readonly target: ZoomTarget | null
+  readonly transition: number | null
+}
+
+function withZoomMeta(tr: Transaction, target: ZoomTarget | null, transition: number | null) {
+  const meta: ZoomMeta = { target, transition }
+  return tr.setMeta(blockZoomKey, meta)
 }
 
 const blockZoomKey = new PluginKey<BlockZoomState>('kore-block-zoom')
@@ -48,9 +56,12 @@ export function zoomTarget(state: EditorState): ZoomTarget | null {
   return blockZoomKey.getState(state)?.target ?? null
 }
 
-function setZoom(tr: Transaction, target: ZoomTarget | null): Transaction {
-  const meta: ZoomMeta = { target }
-  tr.setMeta(blockZoomKey, meta)
+function setZoom(
+  tr: Transaction,
+  target: ZoomTarget | null,
+  transition: number | null = null,
+): Transaction {
+  withZoomMeta(tr, target, transition)
   const span = target === null ? null : targetSpan(tr.doc, target)
   if (span !== null) {
     const { from, to } = tr.selection
@@ -66,27 +77,108 @@ export function zoomTo(view: EditorView, target: ZoomTarget | null): void {
   if (target !== null && targetSpan(view.state.doc, target) === null) {
     return
   }
-  view.dispatch(setZoom(view.state.tr, target))
+  animateZoom(view, zoomTarget(view.state), target)
 }
 
 /** Zoom into the block around the caret. */
-export const zoomIn: Command = (state, dispatch) => {
+export const zoomIn: Command = (state, dispatch, view) => {
   const target = targetAt(state.doc, state.selection.$from)
   if (target === null || sameTarget(target, zoomTarget(state))) {
     return false
   }
-  dispatch?.(setZoom(state.tr, target))
+  if (view !== undefined) {
+    animateZoom(view, zoomTarget(state), target)
+  } else {
+    dispatch?.(setZoom(state.tr, target))
+  }
   return true
 }
 
 /** Zoom out one level: parent item, enclosing section, then the whole note. */
-export const zoomOut: Command = (state, dispatch) => {
+export const zoomOut: Command = (state, dispatch, view) => {
   const target = zoomTarget(state)
   if (target === null) {
     return false
   }
-  dispatch?.(setZoom(state.tr, parentTarget(state.doc, target)))
+  const parent = parentTarget(state.doc, target)
+  if (view !== undefined) {
+    animateZoom(view, target, parent)
+  } else {
+    dispatch?.(setZoom(state.tr, parent))
+  }
   return true
+}
+
+/** View Transition names for the zoom: the block that stays, and the page around it. */
+const ZOOM_BLOCK_TRANSITION = 'view-transition-name: kore-zoom-block'
+const ZOOM_PAGE_TRANSITION = 'view-transition-name: kore-zoom-page'
+const ZOOM_TRANSITION_CLASS = 'kore-zoom-transition'
+
+function prefersReducedMotion(): boolean {
+  return (
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  )
+}
+
+/** Each view's latest zoom animation, so an older one never clears a newer one. */
+const zoomAnimations = new WeakMap<EditorView, number>()
+
+/**
+ * Change the zoom with a short View Transition: the block shared by both
+ * zooms (the inner one's first block) slides between its place in the note
+ * and the top, while the rest of the page crossfades. Instant when the
+ * browser has no View Transitions or the user asks for reduced motion. The
+ * transition names go on through decorations, since ProseMirror redraws a
+ * block whose DOM is touched from outside.
+ */
+function animateZoom(view: EditorView, from: ZoomTarget | null, to: ZoomTarget | null): void {
+  const apply = (transition: number | null): void => {
+    if (!view.isDestroyed && (to === null || targetSpan(view.state.doc, to) !== null)) {
+      view.dispatch(setZoom(view.state.tr, to, transition))
+    }
+  }
+  const inner = to === null || (from !== null && isInside(view.state.doc, from, to)) ? from : to
+  const span = inner === null ? null : targetSpan(view.state.doc, inner)
+  if (
+    span === null ||
+    typeof document.startViewTransition !== 'function' ||
+    prefersReducedMotion()
+  ) {
+    apply(null)
+    return
+  }
+  const block = span.from
+  const run = (zoomAnimations.get(view) ?? 0) + 1
+  zoomAnimations.set(view, run)
+  const root = document.documentElement
+  root.classList.add(ZOOM_TRANSITION_CLASS)
+  view.dispatch(withZoomMeta(view.state.tr, zoomTarget(view.state), block))
+  const transition = document.startViewTransition(() => {
+    apply(block)
+  })
+  const cleanup = (): void => {
+    if (zoomAnimations.get(view) !== run) {
+      return
+    }
+    root.classList.remove(ZOOM_TRANSITION_CLASS)
+    if (!view.isDestroyed && blockZoomKey.getState(view.state)?.transition !== null) {
+      view.dispatch(withZoomMeta(view.state.tr, zoomTarget(view.state), null))
+    }
+  }
+  void transition.finished.then(cleanup, cleanup)
+}
+
+/** Whether zoom `inner` sits inside zoom `outer`. */
+function isInside(doc: ProseMirrorNode, inner: ZoomTarget, outer: ZoomTarget): boolean {
+  const innerSpan = targetSpan(doc, inner)
+  const outerSpan = targetSpan(doc, outer)
+  return (
+    innerSpan !== null &&
+    outerSpan !== null &&
+    innerSpan.from >= outerSpan.from &&
+    innerSpan.to <= outerSpan.to
+  )
 }
 
 /**
@@ -315,13 +407,23 @@ function rangeDecorations(doc: ProseMirrorNode, from: number, to: number): Decor
   return decorations
 }
 
-function buildDecorations(doc: ProseMirrorNode, target: ZoomTarget | null): DecorationSet {
-  if (target === null) {
-    return DecorationSet.empty
-  }
-  const span = targetSpan(doc, target)
-  if (span === null) {
-    return DecorationSet.empty
+function buildDecorations(
+  doc: ProseMirrorNode,
+  target: ZoomTarget | null,
+  transition: number | null,
+): DecorationSet {
+  const sliding = transition === null ? null : doc.nodeAt(transition)
+  const slide =
+    transition === null || sliding === null
+      ? []
+      : [
+          Decoration.node(transition, transition + sliding.nodeSize, {
+            style: ZOOM_BLOCK_TRANSITION,
+          }),
+        ]
+  const span = target === null ? null : targetSpan(doc, target)
+  if (target === null || span === null) {
+    return slide.length === 0 ? DecorationSet.empty : DecorationSet.create(doc, slide)
   }
   const decorations =
     target.kind === 'list'
@@ -335,7 +437,7 @@ function buildDecorations(doc: ProseMirrorNode, target: ZoomTarget | null): Deco
       key: 'zoom-breadcrumb',
     }),
   )
-  return DecorationSet.create(doc, decorations)
+  return DecorationSet.create(doc, [...decorations, ...slide])
 }
 
 /** The list item a marker element belongs to, as the position before it. */
@@ -392,21 +494,28 @@ export function createBlockZoomPlugin(): Plugin<BlockZoomState> {
   return new Plugin<BlockZoomState>({
     key: blockZoomKey,
     state: {
-      init: () => ({ target: null, decorations: DecorationSet.empty }),
+      init: () => ({ target: null, decorations: DecorationSet.empty, transition: null }),
       apply: (tr, previous, _oldState, newState) => {
         const meta = tr.getMeta(blockZoomKey) as ZoomMeta | undefined
         if (meta !== undefined) {
-          return { target: meta.target, decorations: buildDecorations(newState.doc, meta.target) }
+          return {
+            target: meta.target,
+            decorations: buildDecorations(newState.doc, meta.target, meta.transition),
+            transition: meta.transition,
+          }
         }
-        if (previous.target === null || !tr.docChanged) {
+        if (!tr.docChanged || (previous.target === null && previous.transition === null)) {
           return previous
+        }
+        if (previous.target === null) {
+          return { target: null, decorations: DecorationSet.empty, transition: null }
         }
         const target = mapTarget(tr.mapping, previous.target, newState.doc)
         // Edits inside the zoom only shift what it hides, so the decorations
         // map; the zoom moving or ending rebuilds them.
-        return target === previous.target
-          ? { target, decorations: previous.decorations.map(tr.mapping, tr.doc) }
-          : { target, decorations: buildDecorations(newState.doc, target) }
+        return target === previous.target && previous.transition === null
+          ? { target, decorations: previous.decorations.map(tr.mapping, tr.doc), transition: null }
+          : { target, decorations: buildDecorations(newState.doc, target, null), transition: null }
       },
     },
     filterTransaction: (tr, state) => {
@@ -431,6 +540,10 @@ export function createBlockZoomPlugin(): Plugin<BlockZoomState> {
     },
     props: {
       decorations: (state) => blockZoomKey.getState(state)?.decorations ?? DecorationSet.empty,
+      attributes: (state): Record<string, string> =>
+        (blockZoomKey.getState(state)?.transition ?? null) === null
+          ? {}
+          : { style: ZOOM_PAGE_TRANSITION },
       handleDOMEvents: {
         mousedown: handleMarkerMouseDown,
       },

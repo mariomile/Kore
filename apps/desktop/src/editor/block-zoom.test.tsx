@@ -124,6 +124,10 @@ describe('BlockZoom', () => {
     await userEvent.keyboard(zoomOut)
     await expect.element(pmRoot.getByText('Groceries')).toBeVisible()
     expect(handle.getMarkdown()).toBe(NOTE)
+    // The zoom animation leaves no transition names behind.
+    await expect
+      .poll(() => document.querySelectorAll('[style*="view-transition-name"]').length)
+      .toBe(0)
   })
 
   it('zooms a paragraph alone and keeps a new paragraph from Enter in view', async () => {

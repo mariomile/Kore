@@ -2,7 +2,6 @@ import { useMemo, useState, type DragEvent, type ReactElement } from 'react'
 import { Virtualizer } from 'virtua'
 import type { OpenTask, TaskGroup } from '@reflect/core'
 import { CheckCircle, Circle, Plus } from '@/components/icons'
-import { formatShortDate } from '@/lib/dates'
 import { applyBoardMoves, boardDropDate, pendingBoardMoves } from '@/lib/tasks/task-board-moves'
 import {
   addTargetForGroup,
@@ -14,7 +13,7 @@ import type { InsertTaskTarget } from '@/lib/tasks/task-insert-target'
 import { useTaskCheckboxToggle } from '@/lib/tasks/use-task-checkbox-toggle'
 import { cn } from '@/lib/utils'
 import type { ModClickEvent } from '@/lib/windows/open-in-new-window'
-import { useSettings } from '@/providers/settings-provider'
+import { TaskSourceLink } from './task-source-link'
 import { TaskText } from './task-text'
 
 interface TaskBoardProps {
@@ -177,7 +176,6 @@ function TaskBoardCard({
   onDragEnd,
   onOpen,
 }: TaskBoardCardProps): ReactElement {
-  const { settings } = useSettings()
   const { toggle, isPending } = useTaskCheckboxToggle(task)
   const label = task.text || 'Empty task'
   return (
@@ -187,7 +185,7 @@ function TaskBoardCard({
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       className={cn(
-        'flex cursor-grab items-start gap-2 rounded-xl border border-border bg-surface p-2.5 shadow-sm active:cursor-grabbing',
+        'group/task flex cursor-grab items-start gap-2 rounded-xl border border-border bg-surface p-2.5 shadow-sm active:cursor-grabbing',
         dragging && 'opacity-50',
       )}
     >
@@ -213,17 +211,7 @@ function TaskBoardCard({
         >
           <TaskText task={task} />
         </div>
-        {showSource ? (
-          <button
-            type="button"
-            onClick={(event) => onOpen(task.notePath, event)}
-            className="self-start truncate text-xs text-text-muted transition-colors hover:text-accent focus-visible:text-accent focus-visible:outline-none"
-          >
-            {task.dailyDate !== null
-              ? formatShortDate(task.dailyDate, settings.dateFormat)
-              : task.noteTitle}
-          </button>
-        ) : null}
+        <TaskSourceLink task={task} labelled={showSource} onOpen={onOpen} className="self-start" />
       </div>
     </article>
   )

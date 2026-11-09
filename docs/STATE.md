@@ -29,6 +29,53 @@ one step per commit.
   list view of a tag shows only the exact tag.
 - [ ] B4 (field defaults) waits for Mario's ok.
 
+## Tasks: a way to the task's note, 2026-11-09
+
+Ask (Mario, 2026-11-09 08:33, with a screenshot of the Inbox: "devo avere il
+modo di andare sulla nota del task se c'è"). The source date on the right
+already opened the note, but read as a due date and was disabled on the row
+being edited, which is the row you just clicked.
+
+- [x] `components/tasks/task-source-link.tsx`, shared by list rows and board
+  cards: note glyph + daily date or note title, `aria-label` "Open note: …",
+  ⌘-click opens in a split. Stays enabled while the row is in edit (the
+  editor's unmount flush keeps the draft). Rows under a note header get the
+  glyph alone, on hover.
+- [x] Tests in `tasks-screen.test.tsx` (edit-row case, glyph-only case); the
+  inherited "without an arrow" assertion is inverted on purpose.
+- No keyboard shortcut: a plain key would type into the focused inline editor.
+
+## Tasks like Todoist, slice 2: Quick Add, 2026-11-08
+
+Ask (Mario, 2026-11-08 21:58, "procedi" after v0.92.0 shipped slice 1; plan
+in `/mnt/project-files/analisi/task-come-todoist.md`).
+
+- [x] Core parser (`packages/core/src/indexing/quick-add.ts`):
+  `parseQuickAdd(input, today, projects)` reads dates (oggi/today,
+  domani/tomorrow, dopodomani, weekdays, "prossima settimana"/"next week",
+  "tra 3 giorni"/"in 2 weeks", "15 nov", "nov 15", "15/11", ISO), times
+  ("alle 15", "at 3pm", "15:30"), priority (`p1`/`p2`/`p3`, `!`/`!!`),
+  repeats ("ogni lunedì", "every 2 weeks", daily/weekly…) and `#Project`
+  (only a known folder-note project; other tags stay text). Returns the
+  canonical content (`!! call Anna [[2026-11-09]] @15:00 @repeat(weekly)`)
+  plus tokens for chips. Fixed rules: a weekday is never today, numeric
+  dates are day/month, a passed date without year is next year, 24h times.
+  Deterministic and offline, so it does not overlap the AI-chat rule.
+- [x] Desktop Tasks: `q` or "Add task" opens Quick Add; chips show what was
+  understood and the footer shows exactly what gets written and where
+  (the project note, else today's daily). `addTask` appends through the
+  open note's session when the note is open instead of refusing.
+- [x] Global Quick Entry: ⌘T or the "Task" button switches to task mode,
+  spooling a `task` capture with the canonical content (no project routing
+  there: the window has no graph index).
+
+**Validation:** core `quick-add.test.ts` (28), desktop `note-task.test.ts`,
+Chromium `tasks-screen.test.tsx` (two Quick Add cases) and
+`quick-capture-root.test.tsx`, `pnpm typecheck`. Rendered check in the dev
+build: typed "chiamare Luca domani alle 15 p1 ogni lunedì", the task landed
+in Upcoming on the right day. WebKit not run here (CI is the first pass).
+Not yet tried on Mario's vault. Mobile has no Quick Add yet.
+
 ## Vault activity log with per-agent undo (Plan 33, A1), 2026-11-08
 
 Ask (Mario, 2026-11-08, after studying Fennick): every change an agent makes

@@ -9,35 +9,45 @@ use keyring::Entry;
 
 use crate::error::{AppError, AppResult};
 
-/// The keychain service every Reflect secret is filed under.
-const SERVICE: &str = "lore";
+/// The keychain service every Kore secret is filed under.
+const SERVICE: &str = "kore";
 
-/// The pre-rebrand service name. Reads fall back to it and migrate the entry
-/// forward, so an upgrade from a build that filed secrets under
-/// "reflect-open" never silently loses every configured key.
-const LEGACY_SERVICE: &str = "reflect-open";
+/// Service names earlier builds filed secrets under, newest first: "lore"
+/// (the inherited Apple identity, until the rename to `app.kore.*`) and
+/// "reflect-open" (the upstream build). Reads fall back to them and migrate
+/// the entry forward, so an upgrade never silently loses a configured key.
+const LEGACY_SERVICES: [&str; 2] = ["lore", "reflect-open"];
 
 fn entry(name: &str) -> AppResult<Entry> {
-    Entry::new(SERVICE, name).map_err(|err| AppError::io(err.to_string()))
+    service_entry(SERVICE, name)
 }
 
-fn legacy_entry(name: &str) -> AppResult<Entry> {
-    Entry::new(LEGACY_SERVICE, name).map_err(|err| AppError::io(err.to_string()))
+fn service_entry(service: &str, name: &str) -> AppResult<Entry> {
+    Entry::new(service, name).map_err(|err| AppError::io(err.to_string()))
 }
 
-/// Read under the current service, falling back to the legacy one; a legacy
-/// hit is migrated forward (copy, then best-effort delete of the old entry)
+/// Best-effort removal of every legacy copy of `name`.
+fn drop_legacy(name: &str) {
+    for service in LEGACY_SERVICES {
+        let _ = service_entry(service, name).and_then(|old| delete_from(&old));
+    }
+}
+
+/// Read under the current service, falling back to the legacy ones; a legacy
+/// hit is migrated forward (copy, then best-effort delete of every old entry)
 /// so the fallback path runs at most once per secret.
 fn get_migrating(name: &str) -> AppResult<Option<String>> {
     if let Some(value) = get_from(&entry(name)?)? {
         return Ok(Some(value));
     }
-    let Some(value) = get_from(&legacy_entry(name)?)? else {
-        return Ok(None);
-    };
-    set_in(&entry(name)?, &value)?;
-    let _ = legacy_entry(name).and_then(|old| delete_from(&old));
-    Ok(Some(value))
+    for service in LEGACY_SERVICES {
+        if let Some(value) = get_from(&service_entry(service, name)?)? {
+            set_in(&entry(name)?, &value)?;
+            drop_legacy(name);
+            return Ok(Some(value));
+        }
+    }
+    Ok(None)
 }
 
 fn set_in(entry: &Entry, value: &str) -> AppResult<()> {
@@ -77,20 +87,22 @@ async fn run_blocking<T: Send + 'static>(
         .map_err(|err| AppError::io(err.to_string()))?
 }
 
-/// Write under the current service and drop any leftover pre-rebrand copy.
-/// Leaving the legacy entry would let a later `secret_get` migrate it back
-/// after a delete that only touched `"lore"`.
+/// Write under the current service and drop any leftover legacy copy.
+/// Leaving one would let a later `secret_get` migrate it back after a delete
+/// that only touched `"kore"`.
 fn write_secret(name: &str, value: &str) -> AppResult<()> {
     set_in(&entry(name)?, value)?;
-    let _ = legacy_entry(name).and_then(|old| delete_from(&old));
+    drop_legacy(name);
     Ok(())
 }
 
-/// Delete under both service names so a cleared key cannot resurrect from
-/// the pre-rebrand `"reflect-open"` entry that `secret_get` still migrates.
+/// Delete under every service name so a cleared key cannot resurrect from a
+/// legacy entry that `secret_get` still migrates.
 fn erase_secret(name: &str) -> AppResult<()> {
     delete_from(&entry(name)?)?;
-    delete_from(&legacy_entry(name)?)?;
+    for service in LEGACY_SERVICES {
+        delete_from(&service_entry(service, name)?)?;
+    }
     Ok(())
 }
 
@@ -141,7 +153,7 @@ mod tests {
         delete_from(&entry).unwrap();
     }
 
-    /// A secret filed by a pre-rebrand build (service "reflect-open") is
+    /// A secret filed by an earlier build ("lore" or "reflect-open") is
     /// found by the migrating read and rewritten under the current service.
     /// The mock keystore scopes state per Entry, so persistence across the
     /// two services isn't observable here — what this pins is that the

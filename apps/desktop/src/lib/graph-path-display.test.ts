@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { displayGraphPath } from './graph-path-display'
 
 const HOME = '/Users/alex'
-const CONTAINER = `${HOME}/Library/Mobile Documents/iCloud~app~lore/Documents`
+const CONTAINER = `${HOME}/Library/Mobile Documents/iCloud~app~kore/Documents`
 
 describe('displayGraphPath', () => {
   it('names the app container after the brand, not its container id', () => {

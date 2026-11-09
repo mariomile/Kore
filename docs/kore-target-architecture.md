@@ -22,7 +22,7 @@ product; they do not justify replacing the editor with a second application.
 
 “Lore” in the supplied document means Kore's target direction. It does not
 authorize renaming `@reflect/*`, Rust crates, the `reflect` CLI, `.reflect/`,
-`app.lore.*`, `iCloud.app.lore`, or the Memento desktop bundle.
+`app.kore.*`, `iCloud.app.kore`, or the Memento desktop bundle.
 
 ## Evidence and current gaps
 

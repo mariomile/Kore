@@ -26,8 +26,7 @@ pub struct RecentGraph {
 }
 
 fn store_path() -> AppResult<PathBuf> {
-    let base = dirs::config_dir().ok_or_else(|| AppError::io("no OS config dir"))?;
-    Ok(base.join("reflect-open").join("recent-graphs.json"))
+    Ok(crate::app_dirs::config_dir()?.join("recent-graphs.json"))
 }
 
 /// Load the stored list. A missing store is an empty list, but a real IO error

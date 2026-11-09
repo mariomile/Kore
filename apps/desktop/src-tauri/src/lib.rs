@@ -15,6 +15,7 @@
 //! [`error`] (the shared error contract).
 
 mod agent_cli;
+mod app_dirs;
 mod background_task;
 mod blocking;
 mod calendar;
@@ -150,6 +151,14 @@ fn app_platform() -> &'static str {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let context = tauri::generate_context!();
+
+    // Move the pre-rename `reflect-open` / `app.lore.*` folders into place
+    // before any plugin or command reads them (see `app_dirs.rs`). Mobile
+    // installs never had them: a new bundle id is a new sandbox.
+    #[cfg(desktop)]
+    app_dirs::migrate_legacy(&context.config().identifier);
+
     let builder = tauri::Builder::default();
 
     // Single-instance must be the first plugin so a second launch is caught
@@ -477,7 +486,7 @@ pub fn run() {
             logs::logs_reveal,
             diagnostics::memory_report,
         ])
-        .build(tauri::generate_context!())
+        .build(context)
         .expect("error while building tauri application")
         .run(move |app, event| match &event {
             // Ready no longer reveals the main window — the page-load hook

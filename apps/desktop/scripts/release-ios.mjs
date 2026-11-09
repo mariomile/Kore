@@ -20,10 +20,10 @@ import { pathToFileURL } from 'node:url'
 
 const DEFAULT_EXPORT_METHOD = 'app-store-connect'
 const EXPORT_METHODS = new Set(['app-store-connect', 'release-testing', 'debugging', 'validation'])
-const IOS_BUNDLE_IDENTIFIER = 'app.lore.ios'
+const IOS_BUNDLE_IDENTIFIER = 'app.kore.ios'
 const NON_EXEMPT_ENCRYPTION_KEY = 'ITSAppUsesNonExemptEncryption'
 const KEYCHAIN_SERVICE = 'reflect-notary'
-const SHARE_EXTENSION_APP_GROUP = 'group.app.lore'
+const SHARE_EXTENSION_APP_GROUP = 'group.app.kore'
 
 const here = import.meta.dirname
 const appDir = join(here, '..')

@@ -23,7 +23,7 @@ import XCTest
 ///   (`/^[^\r\n]+$/`).
 ///
 /// `spoolLink`/`spoolText` write into the real App Group container
-/// (`~/Library/Group Containers/group.app.lore.dev/inbox`, `CaptureInbox`'s
+/// (`~/Library/Group Containers/group.app.kore.dev/inbox`, `CaptureInbox`'s
 /// debug-flavor `groupId`): a bare `swift test` binary carries no App
 /// Sandbox, so `containerURL(forSecurityApplicationGroupIdentifier:)`
 /// succeeds instead of returning nil the way it would inside the real

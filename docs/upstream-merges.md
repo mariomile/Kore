@@ -61,7 +61,7 @@ Files where both sides move often — resolve with intent, not mechanically:
 These are identity, not code — an upstream hunk touching them is always
 resolved to Kore's side:
 
-- Bundle identifiers (`app.lore.*`) and product names in
+- Bundle identifiers (`app.kore.*`) and product names in
   `apps/desktop/src-tauri/tauri.conf.json` and its overlays.
 - The updater `pubkey` and `endpoints` (they pin Kore's release channel and
   signing keypair; upstream's would brick auto-update).

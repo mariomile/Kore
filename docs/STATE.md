@@ -1,5 +1,35 @@
 # Kore working state
 
+## Apple identity becomes Kore, 2026-11-09
+
+Ask (Mario, 2026-11-08, "Vedi cosa rimane ancora di reflect, ora deve essere
+tutto Kore", then "ok" on the three-PR plan). This is PR 2 of 3: the Apple
+identity and the app's own folders. PR 1 (visible leftovers, `.reflect/` in
+the vault) and PR 3 (internal `@reflect/*` / `reflect-*` rename) run in their
+own threads.
+
+- [x] Bundle ids `app.lore.*` → `app.kore.*` (desktop flavors, iOS app, share
+  extension, widgets), `group.app.kore`, `iCloud.app.kore`, the recording
+  notification names and the home-screen shortcut type.
+- [x] `apps/desktop/src-tauri/src/app_dirs.rs`: settings, recents and the
+  capture pointer live in `<config dir>/kore`; on desktop launch the old
+  `reflect-open` folder and `<data dir>/app.lore.<flavor>` are renamed into
+  place when only the old one exists (never overwrites). The capture host
+  and the CLI's model lookup fall back to the old paths until then.
+- [x] Keychain service `"kore"`; reads fall back to `"lore"` and
+  `"reflect-open"` and migrate forward.
+- [x] CLAUDE.md / AGENTS.md naming rule rewritten: Kore everywhere, old names
+  only as migration fallbacks.
+- Not done: `DEVELOPMENT_TEAM` is still upstream's `789ULN5MZB`, waiting for
+  Mario's Team ID (needed before the first TestFlight build). WebKit
+  localStorage under the old bundle id (collapsed sections, theme cache) is
+  not moved; it rebuilds itself. The bundled `Reflect*.provisionprofile`
+  files are upstream's and unused by the unsigned DMG.
+- Verified: `app_dirs` unit tests (built standalone: the desktop crate can't
+  compile in the container, onnxruntime's download is blocked), capture-host
+  and CLI embed tests, the touched Vitest suites (node + Chromium). `secrets.rs`
+  and the full desktop crate are left to CI. Mac upgrade not tried live.
+
 ## Tasks like Todoist, slice 1: views and board, 2026-11-08
 
 Ask (Mario, 2026-11-08, "Miglioriamo la sezione task, deve riprendere come

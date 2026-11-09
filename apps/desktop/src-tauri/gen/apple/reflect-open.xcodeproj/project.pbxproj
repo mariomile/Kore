@@ -714,7 +714,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = app.lore.ios.share;
+				PRODUCT_BUNDLE_IDENTIFIER = app.kore.ios.share;
 				PRODUCT_NAME = ShareExtension;
 				REFLECT_DISPLAY_NAME = Kore;
 				SDKROOT = iphoneos;
@@ -748,7 +748,7 @@
 				);
 				"LIBRARY_SEARCH_PATHS[arch=arm64]" = "$(inherited) $(PROJECT_DIR)/Externals/arm64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/$(PLATFORM_NAME) $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/$(PLATFORM_NAME)";
 				"LIBRARY_SEARCH_PATHS[arch=x86_64]" = "$(inherited) $(PROJECT_DIR)/Externals/x86_64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/$(PLATFORM_NAME) $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/$(PLATFORM_NAME)";
-				PRODUCT_BUNDLE_IDENTIFIER = app.lore.ios.dev;
+				PRODUCT_BUNDLE_IDENTIFIER = app.kore.ios.dev;
 				PRODUCT_NAME = Kore;
 				REFLECT_DISPLAY_NAME = Kore;
 				SDKROOT = iphoneos;
@@ -834,7 +834,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = app.lore.ios.dev.widgets;
+				PRODUCT_BUNDLE_IDENTIFIER = app.kore.ios.dev.widgets;
 				PRODUCT_NAME = RecordingWidget;
 				REFLECT_DISPLAY_NAME = "Kore Dev";
 				SDKROOT = iphoneos;
@@ -855,7 +855,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = app.lore.ios.dev.share;
+				PRODUCT_BUNDLE_IDENTIFIER = app.kore.ios.dev.share;
 				PRODUCT_NAME = ShareExtension;
 				REFLECT_DISPLAY_NAME = "Kore Dev";
 				SDKROOT = iphoneos;
@@ -877,7 +877,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = app.lore.ios.widgets;
+				PRODUCT_BUNDLE_IDENTIFIER = app.kore.ios.widgets;
 				PRODUCT_NAME = RecordingWidget;
 				REFLECT_DISPLAY_NAME = Kore;
 				SDKROOT = iphoneos;
@@ -911,7 +911,7 @@
 				);
 				"LIBRARY_SEARCH_PATHS[arch=arm64]" = "$(inherited) $(PROJECT_DIR)/Externals/arm64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/$(PLATFORM_NAME) $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/$(PLATFORM_NAME)";
 				"LIBRARY_SEARCH_PATHS[arch=x86_64]" = "$(inherited) $(PROJECT_DIR)/Externals/x86_64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/$(PLATFORM_NAME) $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/$(PLATFORM_NAME)";
-				PRODUCT_BUNDLE_IDENTIFIER = app.lore.ios.dev;
+				PRODUCT_BUNDLE_IDENTIFIER = app.kore.ios.dev;
 				PRODUCT_NAME = Kore;
 				REFLECT_DISPLAY_NAME = "Kore Dev";
 				SDKROOT = iphoneos;

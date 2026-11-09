@@ -47,7 +47,13 @@ const DEFAULT_MAX_LENGTH: usize = 512;
 
 /// The app's bundle identifiers, release first: Tauri's `app_data_dir` is
 /// `<data dir>/<identifier>`, and the app caches the model under `models/`.
-const APP_IDENTIFIERS: [&str; 3] = [
+/// The pre-rename `app.lore.*` dirs come last: the app moves them on its
+/// first launch after the rename, but a CLI run before that still finds the
+/// model there.
+const APP_IDENTIFIERS: [&str; 6] = [
+    "app.kore.desktop",
+    "app.kore.desktop.beta",
+    "app.kore.desktop.dev",
     "app.lore.desktop",
     "app.lore.desktop.beta",
     "app.lore.desktop.dev",

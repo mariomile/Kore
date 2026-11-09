@@ -164,11 +164,11 @@ test('altool validation uses the same upload credentials', () => {
 test('altool app lookup filters by bundle identifier', () => {
   const authArgs = ['--api-key', 'ABC123DEFG', '--api-issuer', 'issuer-uuid']
 
-  expect(createAltoolListAppsArgs({ authArgs, bundleIdentifier: 'app.lore.ios' })).toEqual([
+  expect(createAltoolListAppsArgs({ authArgs, bundleIdentifier: 'app.kore.ios' })).toEqual([
     'altool',
     '--list-apps',
     '--filter-bundle-id',
-    'app.lore.ios',
+    'app.kore.ios',
     '--api-key',
     'ABC123DEFG',
     '--api-issuer',

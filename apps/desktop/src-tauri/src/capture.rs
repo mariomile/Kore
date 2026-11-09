@@ -44,8 +44,7 @@ const INBOX_DIR: &str = ".reflect/inbox";
 /// `settings.rs`/`recents.rs`; the shape is versioned so a future change reads
 /// as a typed host error, never a silent mis-spool.
 fn pointer_path() -> AppResult<PathBuf> {
-    let base = dirs::config_dir().ok_or_else(|| AppError::io("no OS config dir"))?;
-    Ok(base.join("reflect-open").join("capture-pointer.json"))
+    Ok(crate::app_dirs::config_dir()?.join("capture-pointer.json"))
 }
 
 fn pointer_json(root: &Path) -> String {
@@ -349,9 +348,9 @@ pub async fn capture_inbox_reject<R: tauri::Runtime>(
 /// debug configuration compiles the Rust dev profile, so `debug_assertions`
 /// tracks the flavor exactly.
 #[cfg(all(target_os = "ios", debug_assertions))]
-const SHARED_GROUP_ID: &str = "group.app.lore.dev";
+const SHARED_GROUP_ID: &str = "group.app.kore.dev";
 #[cfg(all(target_os = "ios", not(debug_assertions)))]
-const SHARED_GROUP_ID: &str = "group.app.lore";
+const SHARED_GROUP_ID: &str = "group.app.kore";
 
 /// The envelope spool directory inside the App Group container. The extension
 /// creates it lazily; a missing directory relays as zero.

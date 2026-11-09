@@ -2,12 +2,11 @@
  * How a graph's absolute root reads in the UI.
  *
  * The app's iCloud container directory is named after its container id, and
- * that id is permanent: `iCloud~app~lore`, from the `app.lore.*` Apple identity
- * this fork inherited and cannot rename without breaking every installed copy's
- * signing and sync (see AGENTS.md — Naming). Finder and the Files app hide it
- * behind the container's `NSUbiquitousContainerName` ("Kore"), but anything
- * that prints a real path — a terminal, a backup tool, and until now Kore's own
- * graph list — shows the raw directory and reads as a stray "Lore" folder.
+ * that id is permanent once a build has shipped with it: `iCloud~app~kore`,
+ * from the `app.kore.*` Apple identity. Finder and the Files app hide it behind
+ * the container's `NSUbiquitousContainerName` ("Kore"), but anything that
+ * prints a real path (a terminal, a backup tool, Kore's own graph list) shows
+ * the raw directory.
  *
  * So the app spells its own paths the way the file managers do: the container
  * becomes `iCloud Drive › Kore`, plain iCloud Drive becomes `iCloud Drive`, and
@@ -15,7 +14,7 @@
  */
 
 /** The app's iCloud container directory name — the container id, `.` → `~`. */
-const CONTAINER_DIR = 'iCloud~app~lore'
+const CONTAINER_DIR = 'iCloud~app~kore'
 /** Apple's own iCloud Drive container, where a user-placed graph lives. */
 const CLOUD_DOCS_DIR = 'com~apple~CloudDocs'
 /** The segment separator Finder and the Files app use in a location breadcrumb. */

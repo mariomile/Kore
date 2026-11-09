@@ -14,8 +14,8 @@ for `pnpm release:ios testflight`.
 
 ## What You Need
 
-1. **An App Store Connect app for `app.lore.ios`.** The iOS template already
-   sets `PRODUCT_BUNDLE_IDENTIFIER` to `app.lore.ios` and `DEVELOPMENT_TEAM`
+1. **An App Store Connect app for `app.kore.ios`.** The iOS template already
+   sets `PRODUCT_BUNDLE_IDENTIFIER` to `app.kore.ios` and `DEVELOPMENT_TEAM`
    to `789ULN5MZB`. This is intentionally separate from the old Capacitor mobile
    app (`app.reflect.ReflectMobile`), so TestFlight uploads from this repo do not
    replace the existing mobile app record. The release helper verifies the IPA
@@ -28,8 +28,8 @@ for `pnpm release:ios testflight`.
    grows non-exempt cryptography, update the Info.plist value and the App Store
    Connect encryption answers before uploading.
 
-2. **Signing access for `app.lore.ios`.** For local builds, signing into Xcode
-   with a team account that can provision `app.lore.ios` is enough for
+2. **Signing access for `app.kore.ios`.** For local builds, signing into Xcode
+   with a team account that can provision `app.kore.ios` is enough for
    `pnpm release:ios build`. For CI, use an App Store Connect API key with
    permission to manage signing and upload builds. When the API key is present,
    the release helper exposes it to Tauri/xcodebuild through environment
@@ -88,7 +88,7 @@ pnpm release:ios preflight
 
 Checks Xcode/altool, the build number, signing auth, and upload auth before
 spending time on the native archive. It also verifies that App Store Connect has
-a separate app record for `app.lore.ios`.
+a separate app record for `app.kore.ios`.
 
 ```bash
 pnpm release:ios build --build-number="$(date -u +%Y%m%d%H%M)"
@@ -157,16 +157,16 @@ workflow.
 
 ## Troubleshooting
 
-- **`exportArchive No Accounts`** or **`No profiles for 'app.lore.ios' were
+- **`exportArchive No Accounts`** or **`No profiles for 'app.kore.ios' were
   found`**: xcodebuild could not provision the App Store build. Sign into Xcode
   with a team account that can create an App Store provisioning profile for
-  `app.lore.ios`, or set the App Store Connect API key env vars.
-- **`Cannot determine the Apple ID from Bundle ID 'app.lore.ios'`**: the
+  `app.kore.ios`, or set the App Store Connect API key env vars.
+- **`Cannot determine the Apple ID from Bundle ID 'app.kore.ios'`**: the
   bundle id exists for signing, but no App Store Connect app record exists yet.
-  Create a new iOS app in App Store Connect for `app.lore.ios`; do not reuse
+  Create a new iOS app in App Store Connect for `app.kore.ios`; do not reuse
   the old Capacitor app record (`app.reflect.ReflectMobile`).
-- **`Automatic signing cannot register bundle identifier "app.lore.ios.<ext>"`**
-  (with **`No profiles for 'app.lore.ios.<ext>' were found`**): a NEW app
+- **`Automatic signing cannot register bundle identifier "app.kore.ios.<ext>"`**
+  (with **`No profiles for 'app.kore.ios.<ext>' were found`**): a NEW app
   extension target (ShareExtension, RecordingWidget, …) is shipping for the
   first time and its bundle identifier does not exist on the developer portal
   yet. The CI App Store Connect key can create provisioning profiles for

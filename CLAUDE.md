@@ -15,13 +15,15 @@ For work on the Personal OS program (roadmap slices, Plans 25/26), also read
 [docs/STATE.md](docs/STATE.md) first and update it in the same session as any
 work that moves the program.
 
-Two names coexist on purpose and neither is a typo: **Reflect** is the upstream
-project this repo forked from (internal identifiers keep it — `@reflect/*`
-packages, `reflect-*` crates, `.reflect/`), while **Kore** is this fork and the
-only name a user ever sees or types: the `kore` CLI and `kore mcp`,
-`$KORE_GRAPH`, the agent skills, `kore://` links. If a user can see, type, or
-paste a name, it is Kore. Apple identity stays `app.lore.*` and the keychain
-service stays `"lore"`. Never "fix" one into another.
+**Kore** is the only name this product carries (Mario, 2026-11-08: "ora deve
+essere tutto Kore"). **Reflect** is the upstream project this repo forked
+from, and its name is being removed everywhere, internals included. Until the
+internal rename lands, `@reflect/*` packages, `reflect-*` crates and
+`.reflect/` still exist: don't build new names on them, and don't add new
+"reflect" or "lore" names. The Apple identity is `app.kore.*` (iCloud
+`iCloud.app.kore`, App Group `group.app.kore`) and the keychain service is
+`"kore"`; the old `app.lore.*`, `reflect-open` and `"lore"` names survive only
+as migration fallbacks that read old data and move it forward.
 
 ## Layering rules
 

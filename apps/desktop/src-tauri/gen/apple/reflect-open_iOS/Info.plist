@@ -51,7 +51,7 @@
 	<true/>
 	<key>NSUbiquitousContainers</key>
 	<dict>
-		<key>iCloud.app.lore</key>
+		<key>iCloud.app.kore</key>
 		<dict>
 			<key>NSUbiquitousContainerIsDocumentScopePublic</key>
 			<true/>
@@ -69,7 +69,7 @@
 			<key>UIApplicationShortcutItemTitle</key>
 			<string>Record audio</string>
 			<key>UIApplicationShortcutItemType</key>
-			<string>app.lore.record-audio</string>
+			<string>app.kore.record-audio</string>
 		</dict>
 	</array>
 	<key>UIBackgroundModes</key>

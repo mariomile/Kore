@@ -116,8 +116,8 @@ built it. To produce signed, notarized installers for other Macs (with
 auto-update), use `pnpm release:macos` — see
 [docs/macos-distribution.md](docs/macos-distribution.md).
 
-Kore ships with its own Apple identity (`app.lore.*`, iCloud container
-`iCloud.app.lore`). iCloud sync and iPhone installs need an Apple Developer
+Kore ships with its own Apple identity (`app.kore.*`, iCloud container
+`iCloud.app.kore`). iCloud sync and iPhone installs need an Apple Developer
 account — the one-time checklist is in
 [docs/kore-apple-signing.md](docs/kore-apple-signing.md); everything else
 (local graphs, Git history, GitHub sync) works with no account at all.

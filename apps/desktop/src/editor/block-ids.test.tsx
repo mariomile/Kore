@@ -1,3 +1,4 @@
+import { TextSelection } from '@prosekit/pm/state'
 import { describe, expect, it, vi } from 'vitest'
 import { page, userEvent } from 'vitest/browser'
 import { render } from 'vitest-browser-react'
@@ -51,6 +52,13 @@ function stubClipboard(): ReturnType<typeof vi.fn> {
   const writeText = vi.fn(() => Promise.resolve())
   vi.spyOn(navigator.clipboard, 'writeText').mockImplementation(writeText)
   return writeText
+}
+
+/** The caret to the start of its line. `{Home}` does nothing in WebKit on macOS. */
+function caretToLineStart(): void {
+  const view = lastFocusedBlockIdView()!
+  const { $from } = view.state.selection
+  view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, $from.start())))
 }
 
 function caretText(): string {
@@ -125,7 +133,7 @@ describe('BlockIds', () => {
       .replace('^abc\nbar', '^abc\n\nbar')
     const handle = await renderNote(note)
     await pmRoot.getByText('bar', { exact: true }).click()
-    await userEvent.keyboard('{Home}')
+    caretToLineStart()
     await userEvent.keyboard('{Backspace}')
     await expect.poll(() => handle.getMarkdown()).toContain('foobar ^abc')
     await expect.element(pmRoot.getByText('foobar')).toBeVisible()
@@ -134,7 +142,7 @@ describe('BlockIds', () => {
   it('Backspace under a hidden id-only line does not join into it', async () => {
     const handle = await renderNote()
     await pmRoot.getByText('Last line').click()
-    await userEvent.keyboard('{Home}')
+    caretToLineStart()
     await userEvent.keyboard('{Backspace}')
     await userEvent.keyboard('X')
     await expect.poll(() => handle.getMarkdown()).toContain('A table-like quoteX')

@@ -11,6 +11,7 @@ pub mod asset_protocol;
 pub mod assets;
 pub mod chat_attachments;
 mod io;
+mod legacy_descriptions;
 mod resolve;
 pub mod vault_copy;
 

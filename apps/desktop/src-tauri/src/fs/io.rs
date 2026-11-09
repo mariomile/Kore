@@ -67,6 +67,7 @@ pub(super) fn initialize_runtime(root: &Path) -> AppResult<()> {
     mark_dir_local_only(&root.join(KORE_DIR));
     ensure_runtime_gitignore(root)?;
     graph_gitignore::upgrade_legacy_group(root)?;
+    super::legacy_descriptions::migrate(root);
     // A backup repo must never ride a file-sync provider: two devices' object
     // stores merging file-by-file is repository corruption (Plan 21). New
     // repos are marked at init (`git::repo`); this covers pre-existing ones.

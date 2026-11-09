@@ -392,7 +392,7 @@ describe('read_notes', () => {
 
 describe('read_assets', () => {
   const ASSET = 'assets/chart.png'
-  const SIDECAR = 'assets/chart.png.reflect.md'
+  const SIDECAR = 'assets/chart.png.kore.md'
   const DESCRIPTION_BODY = 'sentinel-description-01jxq3'
   const PUBLIC_REF = '# Board deck\n\n![chart](assets/chart.png)\n'
   const PRIVATE_REF = `---\nprivate: true\n---\n# Diary\n\n![chart](assets/chart.png)\n`
@@ -414,7 +414,7 @@ describe('read_assets', () => {
   it('returns the sidecar body without frontmatter for a public-referenced asset', async () => {
     const tools = assetTools(
       {
-        [SIDECAR]: `---\nreflectAsset: true\nsource: ${ASSET}\n---\nA bar chart.\n\nOCR: ${DESCRIPTION_BODY}\n`,
+        [SIDECAR]: `---\nkoreAsset: true\nsource: ${ASSET}\n---\nA bar chart.\n\nOCR: ${DESCRIPTION_BODY}\n`,
         'notes/deck.md': PUBLIC_REF,
       },
       ['notes/deck.md'],
@@ -429,11 +429,11 @@ describe('read_assets', () => {
   })
 
   it('canonicalizes markdown-spelled paths to the indexed assets/… form', async () => {
-    const spacedSidecar = 'assets/chart one.png.reflect.md'
+    const spacedSidecar = 'assets/chart one.png.kore.md'
     const tools = assetTools(
       {
-        [SIDECAR]: `---\nreflectAsset: true\n---\n${DESCRIPTION_BODY}\n`,
-        [spacedSidecar]: `---\nreflectAsset: true\n---\n${DESCRIPTION_BODY}\n`,
+        [SIDECAR]: `---\nkoreAsset: true\n---\n${DESCRIPTION_BODY}\n`,
+        [spacedSidecar]: `---\nkoreAsset: true\n---\n${DESCRIPTION_BODY}\n`,
         'notes/deck.md': '# Deck\n\n![a](assets/chart.png)\n\n![b](assets/chart%20one.png)\n',
       },
       ['notes/deck.md'],
@@ -454,7 +454,7 @@ describe('read_assets', () => {
   it('reads several assets in one call, isolating a per-asset miss', async () => {
     const tools = assetTools(
       {
-        [SIDECAR]: `---\nreflectAsset: true\n---\n${DESCRIPTION_BODY}\n`,
+        [SIDECAR]: `---\nkoreAsset: true\n---\n${DESCRIPTION_BODY}\n`,
         'notes/deck.md': PUBLIC_REF,
       },
       ['notes/deck.md'],
@@ -471,7 +471,7 @@ describe('read_assets', () => {
   it('refuses when any referencing note is private — live, and without the description', async () => {
     const tools = assetTools(
       {
-        [SIDECAR]: `---\nreflectAsset: true\n---\n${DESCRIPTION_BODY}\n`,
+        [SIDECAR]: `---\nkoreAsset: true\n---\n${DESCRIPTION_BODY}\n`,
         'notes/deck.md': PUBLIC_REF,
         [PRIVATE_PATH]: PRIVATE_REF,
       },
@@ -487,7 +487,7 @@ describe('read_assets', () => {
 
   it('refuses an asset no note references, with the same unspecific message', async () => {
     const tools = assetTools(
-      { [SIDECAR]: `---\nreflectAsset: true\n---\n${DESCRIPTION_BODY}\n` },
+      { [SIDECAR]: `---\nkoreAsset: true\n---\n${DESCRIPTION_BODY}\n` },
       [],
     )
     const output = await runReadAsset(tools, ASSET)
@@ -502,7 +502,7 @@ describe('read_assets', () => {
     const tools = buildNoteTools({
       readNoteFn: async (path) => {
         if (path === SIDECAR) {
-          return `---\nreflectAsset: true\n---\n${DESCRIPTION_BODY}\n`
+          return `---\nkoreAsset: true\n---\n${DESCRIPTION_BODY}\n`
         }
         throw { kind: 'io', message: 'disk error' }
       },
@@ -524,7 +524,7 @@ describe('read_assets', () => {
       },
       assetReferencingNotePathsFn: async () => [],
     })
-    for (const path of ['notes/secret.md', 'assets/chart.png.reflect.md']) {
+    for (const path of ['notes/secret.md', 'assets/chart.png.kore.md']) {
       const output = await runReadAsset(tools, path)
       if (output.ok) {
         expect.unreachable('expected a refusal')
@@ -536,7 +536,7 @@ describe('read_assets', () => {
 
   it('treats an empty sidecar body as no description', async () => {
     const tools = assetTools(
-      { [SIDECAR]: '---\nreflectAsset: true\n---\n\n', 'notes/deck.md': PUBLIC_REF },
+      { [SIDECAR]: '---\nkoreAsset: true\n---\n\n', 'notes/deck.md': PUBLIC_REF },
       ['notes/deck.md'],
     )
     const output = await runReadAsset(tools, ASSET)
@@ -548,7 +548,7 @@ describe('read_assets', () => {
 
   it('answers unavailable, not no-description, for a blocked asset with an empty sidecar', async () => {
     const tools = assetTools(
-      { [SIDECAR]: '---\nreflectAsset: true\n---\n\n', [PRIVATE_PATH]: PRIVATE_REF },
+      { [SIDECAR]: '---\nkoreAsset: true\n---\n\n', [PRIVATE_PATH]: PRIVATE_REF },
       [PRIVATE_PATH],
     )
     const output = await runReadAsset(tools, ASSET)

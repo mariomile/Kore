@@ -483,7 +483,7 @@ mod tests {
         // loop a write back into the controller, so it must never be tracked
         // (`assets/` is a reserved tree: its markdown is metadata, not notes).
         assert_eq!(
-            tracked_relpath(Path::new("/g/assets/diagram.png.reflect.md"), root),
+            tracked_relpath(Path::new("/g/assets/diagram.png.kore.md"), root),
             None
         );
         assert_eq!(tracked_relpath(Path::new("/g/assets/data.xyz"), root), None);

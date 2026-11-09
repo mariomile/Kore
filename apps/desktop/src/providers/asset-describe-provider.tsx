@@ -7,7 +7,7 @@ import { useSettings } from '@/providers/settings-provider'
 /**
  * Mounts the asset-description lifecycle for the open graph (Plan 20): runs the
  * {@link createAssetDescribeController} loop that describes new eligible
- * images/PDFs into managed `.reflect.md` descriptions. No UI — the only surface is
+ * images/PDFs into managed `.kore.md` descriptions. No UI — the only surface is
  * the Settings backfill button; this provider only handles the automatic path
  * for newly added assets, and only when `describeAssets` is on.
  */

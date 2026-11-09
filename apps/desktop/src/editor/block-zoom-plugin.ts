@@ -113,6 +113,8 @@ export const zoomOut: Command = (state, dispatch, view) => {
 const ZOOM_BLOCK_TRANSITION = 'view-transition-name: kore-zoom-block'
 const ZOOM_PAGE_TRANSITION = 'view-transition-name: kore-zoom-page'
 const ZOOM_TRANSITION_CLASS = 'kore-zoom-transition'
+/** On the editor root while zoomed, so the note's chrome (properties) can step aside. */
+const ZOOMED_CLASS = 'kore-zoomed'
 
 function prefersReducedMotion(): boolean {
   return (
@@ -540,10 +542,13 @@ export function createBlockZoomPlugin(): Plugin<BlockZoomState> {
     },
     props: {
       decorations: (state) => blockZoomKey.getState(state)?.decorations ?? DecorationSet.empty,
-      attributes: (state): Record<string, string> =>
-        (blockZoomKey.getState(state)?.transition ?? null) === null
-          ? {}
-          : { style: ZOOM_PAGE_TRANSITION },
+      attributes: (state): Record<string, string> => {
+        const zoom = blockZoomKey.getState(state)
+        return {
+          ...(zoom?.target == null ? {} : { class: ZOOMED_CLASS }),
+          ...(zoom?.transition == null ? {} : { style: ZOOM_PAGE_TRANSITION }),
+        }
+      },
       handleDOMEvents: {
         mousedown: handleMarkerMouseDown,
       },

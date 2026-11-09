@@ -7,6 +7,12 @@
   display: none !important;
 }
 
+/* The note's properties belong to its title, which the zoom hides: without
+   this their slot keeps its divider at the top of the zoomed page. */
+.meowdown:has(> .kore-zoomed) > .reflect-note-properties-slot {
+  display: none;
+}
+
 /* An ancestor's bullet and indent go away so the branch starts at the margin. */
 .reflect-editor .kore-zoom-ancestor > .list-marker {
   display: none;

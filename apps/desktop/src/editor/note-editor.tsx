@@ -54,6 +54,7 @@ import { isDeepLinkUrl } from '@/lib/deep-links/parse'
 import { useFollowDeepLink } from '@/lib/deep-links/use-follow-deep-link'
 import { cn } from '@/lib/utils'
 import { resolveWikiEmbed } from '@/editor/resolve-wiki-embed'
+import { revealBlockId } from '@/editor/block-id-plugin'
 
 type WikilinkHoverRenderer = (hit: WikilinkHoverHit) => ReactNode | Promise<ReactNode>
 
@@ -65,6 +66,11 @@ type WikilinkHoverRenderer = (hit: WikilinkHoverHit) => ReactNode | Promise<Reac
  * the top of the view the way Obsidian lands on a linked heading.
  */
 function revealHeading(handle: EditorHandle | null, fragment: string): boolean {
+  if (fragment.startsWith('^')) {
+    // A block reference (`[[Note#^id]]`, Plan 33 C3) names a line, not a heading.
+    const view = handle?.editor?.view
+    return view !== undefined && revealBlockId(view, fragment.slice(1))
+  }
   if (handle?.revealHeading(fragment) !== true) {
     return false
   }
@@ -179,8 +185,9 @@ export interface NoteEditorHandle {
   /** Redo the latest undone editor transaction. */
   redo(): void
   /**
-   * Move the caret to the heading a link fragment names (text or slug) and
-   * scroll it into view; false when the note has no such heading.
+   * Move the caret to the heading a link fragment names (text or slug), or to
+   * the line a `^id` fragment names, and scroll it into view; false when the
+   * note has no such heading or line.
    */
   revealHeading?(fragment: string): boolean
 }

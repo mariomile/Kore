@@ -18,6 +18,7 @@ Cascade layer order, low to high priority.
 @import './callouts.css';
 @import './link-cards.css';
 @import './block-zoom.css';
+@import './block-ids.css';
 @import './post-embeds.css';
 
 /* Tailwind v4 dark variant keyed to the design-system `.dark` scope set by the

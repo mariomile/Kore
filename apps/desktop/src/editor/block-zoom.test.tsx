@@ -33,6 +33,21 @@ const zoomOut = `{${mod}>}{Shift>},{/Shift}{/${mod}}`
 const pmRoot = page.locate('.ProseMirror')
 const breadcrumb = page.getByRole('navigation', { name: 'Zoomed block' })
 
+/** Put the caret `offset` characters into the text node that starts with `text`. */
+async function placeCaret(text: string, offset: number): Promise<void> {
+  const root = pmRoot.element()
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+  for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
+    if (node.textContent?.startsWith(text) === true) {
+      document.getSelection()?.collapse(node, offset)
+      // ProseMirror reads the DOM selection on selectionchange.
+      await new Promise((resolve) => setTimeout(resolve, 50))
+      return
+    }
+  }
+  throw new Error(`no text node starts with ${text}`)
+}
+
 async function renderNote(onTagClick = vi.fn()): Promise<NoteEditorHandle> {
   let handle: NoteEditorHandle | null = null
   await render(
@@ -121,6 +136,71 @@ describe('BlockZoom', () => {
     await expect
       .poll(() => handle.getMarkdown())
       .toBe(NOTE.replace('Intro paragraph\n', 'Intro paragraph\n\nSecond line\n'))
+  })
+
+  it('refuses edits that would move content out of view', async () => {
+    const handle = await renderNote()
+    await pmRoot.getByText('DeepAgent').click()
+    await userEvent.keyboard(zoomIn)
+
+    // Outdenting a direct child would make it a hidden sibling.
+    await pmRoot.getByText('call with').click()
+    await userEvent.keyboard('{Shift>}{Tab}{/Shift}')
+    // Enter on an empty child would outdent it the same way.
+    await pmRoot.getByText(/^pricing /).click()
+    await userEvent.keyboard('{End}{Enter}{Enter}kept')
+    await expect.element(pmRoot.getByText('kept')).toBeVisible()
+    await expect.element(pmRoot.getByText('call with')).toBeVisible()
+
+    // Select-all and delete stays inside the branch.
+    await userEvent.keyboard(`{${mod}>}a{/${mod}}{Backspace}`)
+    await userEvent.keyboard(zoomOut)
+    await expect.element(pmRoot.getByText('Buildrs')).toBeVisible()
+    await expect.element(pmRoot.getByText('Intro paragraph')).toBeVisible()
+    expect(handle.getMarkdown()).toContain('- Buildrs\n')
+    expect(handle.getMarkdown()).not.toContain('call with')
+  })
+
+  it('keeps the last block of a section zoom from moving past its end', async () => {
+    const handle = await renderNote()
+    await pmRoot.getByText('Calls', { exact: true }).click()
+    await userEvent.keyboard(zoomIn)
+    await pmRoot.getByText('Call notes').click()
+    await userEvent.keyboard('{Alt>}{ArrowDown}{/Alt}')
+    await expect.element(pmRoot.getByText('Call notes')).toBeVisible()
+    expect(handle.getMarkdown()).toBe(NOTE)
+  })
+
+  it('ends the zoom when the note is reloaded from disk', async () => {
+    const handle = await renderNote()
+    await pmRoot.getByText('DeepAgent').click()
+    await userEvent.keyboard(zoomIn)
+    await expect.element(breadcrumb).toBeVisible()
+    handle.setMarkdown(NOTE.replace('Groceries', 'Groceries and wine'))
+    await expect.element(breadcrumb).not.toBeInTheDocument()
+    await expect.element(pmRoot.getByText('Groceries and wine')).toBeVisible()
+  })
+
+  it('jumps to a middle crumb', async () => {
+    await renderNote()
+    await pmRoot.getByText('call with').click()
+    await userEvent.keyboard(zoomIn)
+    await expect.element(pmRoot.getByText(/^pricing /)).not.toBeVisible()
+    await breadcrumb.getByRole('button', { name: 'Work', exact: true }).click()
+    await expect.element(pmRoot.getByText('Intro paragraph')).toBeVisible()
+    await expect.element(pmRoot.getByText('Groceries')).not.toBeVisible()
+  })
+
+  it('splits the zoomed line into a first child on a mid-line Enter', async () => {
+    const handle = await renderNote()
+    await pmRoot.getByText('DeepAgent').click()
+    await userEvent.keyboard(zoomIn)
+    await pmRoot.getByText('DeepAgent').click()
+    await placeCaret('DeepAgent', 4)
+    await userEvent.keyboard('{Enter}')
+    await expect
+      .poll(() => handle.getMarkdown())
+      .toBe(NOTE.replace('- DeepAgent #work\n', '- Deep\n  - Agent #work\n'))
   })
 
   it('zooms with a modifier-click on a bullet', async () => {

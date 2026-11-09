@@ -3305,6 +3305,16 @@ screen: Agents then Close lands on today.
 
 ## Session log
 
+- 2026-11-08 — Quality refactor, no behavior change. `kore sources` policy
+  moves to core: `headless/sync-sources.ts` resolves which connectors run,
+  their `KORE_<SOURCE>_*` variables and defaults from `CONNECTORS`; the
+  Rust side keeps only the flags and the `.reflect/sources.json` windows,
+  and the indexer host's write permission is an explicit `Session` mode.
+  The three bounded fetches (meta, oEmbed, data) share one request path in
+  `src-tauri/src/capture_fetch.rs`, bringing `capture.rs` from 1,063 to 810
+  lines. Verified: cargo test/clippy (cli), vitest headless + connectors,
+  a real `kore sources` run (usage errors, failed fetch, window saved).
+
 - 2026-11-07 — A pasted article link keeps the article's text in its
   `#link` card, a YouTube link its transcript. One shared article extractor
   in core, used by the extension too.

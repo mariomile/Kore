@@ -171,7 +171,7 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_http::init());
 
-    // Deep links (`kore://`, legacy `reflect://`) are desktop-only for now: the scheme is
+    // Deep links (`kore://`) are desktop-only for now: the scheme is
     // registered at bundle time (`plugins.deep-link` in tauri.conf.json) and
     // the frontend consumes URLs through `onOpenUrl`.
     #[cfg(desktop)]
@@ -541,7 +541,7 @@ pub fn run() {
                     windows::reopen_main_window(app);
                 }
             }
-            // The lock-screen widget opens `reflect://record-audio`; hand it
+            // The lock-screen widget opens `kore://record-audio`; hand it
             // to the recording plugin's persisted action queue (the V1
             // handshake) so the request survives webview churn and cold
             // starts. Desktop scheme opens flow through
@@ -550,7 +550,7 @@ pub fn run() {
             tauri::RunEvent::Opened { urls } => {
                 #[cfg(mobile)]
                 for url in urls {
-                    if url.scheme() == "reflect" && url.host_str() == Some("record-audio") {
+                    if url.scheme() == "kore" && url.host_str() == Some("record-audio") {
                         // This callback runs on the main thread, and
                         // `run_mobile_plugin` blocks its caller until the
                         // Swift command resolves — which `queueAction` does

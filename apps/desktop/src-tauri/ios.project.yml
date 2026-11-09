@@ -108,17 +108,17 @@ targets:
         # session only while a recording is live, so the mode never keeps the
         # app running outside an actual capture.
         UIBackgroundModes: [audio]
-        # The `reflect://` scheme (audio-memos wave 3): the lock-screen
-        # widget opens `reflect://record-audio`, which the Rust shell hands
+        # The `kore://` scheme (audio-memos wave 3): the lock-screen
+        # widget opens `kore://record-audio`, which the Rust shell hands
         # to the recording plugin's action queue. Desktop registers the same
         # scheme through the deep-link plugin config in tauri.conf.json.
         # Both flavors register the same scheme: widget taps and quick
         # actions always open their own containing app, so the dev widget
-        # opens the dev app without a per-flavor scheme. Only reflect://
+        # opens the dev app without a per-flavor scheme. Only kore://
         # links from other apps are ambiguous when both are installed.
         CFBundleURLTypes:
           - CFBundleURLName: $(PRODUCT_BUNDLE_IDENTIFIER)
-            CFBundleURLSchemes: [reflect]
+            CFBundleURLSchemes: [kore]
         # The recording Live Activity (audio-memos wave 3).
         NSSupportsLiveActivities: true
         # Home-screen quick action (audio-memos wave 3); handled by the

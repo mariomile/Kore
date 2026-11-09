@@ -1,7 +1,8 @@
 //! Writes waiting for the owner (Plan 33, A2). An agent whose key is in
 //! "propose" mode never writes a note: each write tool call is kept here as
-//! one JSON file, and the owner accepts it (the CLI then runs it signed as
-//! that agent) or rejects it (the file is dropped).
+//! one JSON file: the tool and the arguments the agent sent, never argv.
+//! The owner accepts it (the CLI rebuilds the call through the MCP tool
+//! table and runs it signed as that agent) or rejects it (the file goes).
 //!
 //! The folder lives in the vault, not in `.reflect/`, so a proposal an agent
 //! makes through an always-on host reaches the owner's Mac with the next
@@ -16,29 +17,26 @@ use serde::{Deserialize, Serialize};
 
 use crate::agent_identity::AgentIdentity;
 use crate::error::CliError;
+use crate::mcp::propose::ProposedCall;
 
 /// Graph-relative folder holding one `<id>.json` per proposal.
 pub const DIR: &str = ".kore/proposals";
 
 /// One write an agent proposed.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Proposal {
     /// File stem: milliseconds then randomness, so names sort by time.
     pub id: String,
     /// Milliseconds since the Unix epoch.
     pub at: u64,
     pub agent: AgentIdentity,
-    /// The MCP tool the agent called (`capture`, `edit_note` ...).
-    pub tool: String,
-    /// The CLI invocation the tool call became, from the subcommand on.
-    pub args: Vec<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub stdin: Option<String>,
+    /// What the agent called, as it sent it.
+    pub call: ProposedCall,
 }
 
 impl Proposal {
     /// A new proposal with a fresh id.
-    pub fn new(agent: AgentIdentity, tool: &str, args: Vec<String>, stdin: Option<String>) -> Self {
+    pub fn new(agent: AgentIdentity, call: ProposedCall) -> Self {
         let at = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .map(|elapsed| u64::try_from(elapsed.as_millis()).unwrap_or(u64::MAX))
@@ -49,9 +47,7 @@ impl Proposal {
             id: format!("{at:013}-{}", URL_SAFE_NO_PAD.encode(random)),
             at,
             agent,
-            tool: tool.to_string(),
-            args,
-            stdin,
+            call,
         }
     }
 }
@@ -115,13 +111,12 @@ mod tests {
     fn proposals_round_trip_in_time_order_and_ids_cannot_escape() {
         let dir = tempfile::tempdir().unwrap();
         let grok = AgentIdentity::for_caller(Some("Grok"));
-        let first = Proposal::new(
-            grok.clone(),
-            "capture",
-            vec!["capture".into(), "hi".into()],
-            None,
-        );
-        let mut second = Proposal::new(grok, "edit_note", vec!["edit".into()], Some("x".into()));
+        let call = |tool: &str| ProposedCall {
+            tool: tool.to_string(),
+            arguments: serde_json::Map::new(),
+        };
+        let first = Proposal::new(grok.clone(), call("capture"));
+        let mut second = Proposal::new(grok, call("edit_note"));
         second.id = format!("{}z", first.id);
         save(dir.path(), &second).unwrap();
         save(dir.path(), &first).unwrap();

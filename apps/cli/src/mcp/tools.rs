@@ -658,3 +658,20 @@ pub(super) fn tool_definition(tool: &Tool) -> Value {
         }
     })
 }
+
+/// `tool`'s invocation for `args`. A named agent's `remember` is signed with
+/// the agent's own name, whatever name the arguments claim.
+pub(super) fn invocation_for(
+    tool: &Tool,
+    args: &Map<String, Value>,
+    agent: Option<&str>,
+) -> Result<Invocation, String> {
+    match (agent, tool.name) {
+        (Some(agent), "remember") => {
+            let mut signed = args.clone();
+            signed.insert("agent".to_string(), Value::String(agent.to_string()));
+            (tool.build)(&signed)
+        }
+        _ => (tool.build)(args),
+    }
+}

@@ -23,13 +23,13 @@
 
 use crate::agent_identity::AgentIdentity;
 use crate::agent_keys::Access;
-use crate::proposals::Proposal;
 use std::io::{self, BufRead, Write};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
 use serde_json::{json, Map, Value};
 
+pub mod propose;
 mod tools;
 use tools::*;
 
@@ -568,49 +568,18 @@ impl<R: Runner> Server<R> {
             .into_iter()
             .find(|tool| tool.name == name)
             .ok_or((-32602, format!("unknown tool: {name}")))?;
-        // A named caller signs as itself, whatever name it claims.
-        let signed = match (&caller.name, tool.name) {
-            (Some(agent), "remember") => {
-                let mut signed = args.clone();
-                signed.insert("agent".to_string(), Value::String(agent.clone()));
-                Some(signed)
-            }
-            _ => None,
-        };
-        let args = signed.as_ref().unwrap_or(args);
-        let invocation = match (tool.build)(args) {
+        let invocation = match invocation_for(&tool, args, caller.name.as_deref()) {
             Ok(invocation) => invocation,
             Err(message) => return Ok(tool_text(message, true)),
         };
         let agent = AgentIdentity::for_caller(caller.name.as_deref());
         if caller.access == Access::Propose && tool.effect != Effect::Read {
-            return Ok(self.propose(agent, tool.name, invocation));
+            return Ok(self.propose(&agent, &tool, args));
         }
         let output = self
             .runner
             .run_as(&invocation.args, invocation.stdin.as_deref(), &agent);
         Ok(tool_text(output.text, !output.success))
-    }
-
-    /// Keep a write as a proposal for the owner instead of running it.
-    fn propose(&self, agent: AgentIdentity, tool: &str, invocation: Invocation) -> Value {
-        let proposal = Proposal::new(agent, tool, invocation.args, invocation.stdin);
-        let json = serde_json::to_string(&proposal).expect("proposals serialize");
-        let output = self.runner.run_as(
-            &["proposals".to_string(), "add".to_string()],
-            Some(&json),
-            &proposal.agent,
-        );
-        if !output.success {
-            return tool_text(output.text, true);
-        }
-        tool_text(
-            format!(
-                "Not written yet: your key proposes changes, so this one waits for the vault's owner to accept it (proposal {}). Don't retry it.",
-                proposal.id
-            ),
-            false,
-        )
     }
 
     /// Run a subcommand and parse its `--json` output; a failure carries the
@@ -1161,11 +1130,79 @@ mod tests {
         let calls = recorder.calls.borrow();
         assert_eq!(calls.len(), 1);
         assert_eq!(calls[0].0, ["proposals", "add"]);
-        let proposal: Proposal = serde_json::from_str(calls[0].1.as_deref().unwrap()).unwrap();
-        assert_eq!(proposal.tool, "capture");
-        assert_eq!(proposal.agent.name, "Grok");
-        assert_eq!(proposal.args[0], "capture");
-        assert!(proposal.args.iter().any(|arg| arg == "buy milk"));
+        // Only the call travels: `proposals add` signs it from its own process.
+        let call: propose::ProposedCall =
+            serde_json::from_str(calls[0].1.as_deref().unwrap()).unwrap();
+        assert_eq!(call.tool, "capture");
+        assert_eq!(call.arguments["text"], "buy milk");
+        drop(calls);
+
+        // Arguments that would not build are refused now, not kept.
+        let reply = server
+            .handle_as(
+                &json!({ "jsonrpc": "2.0", "id": 3, "method": "tools/call",
+                    "params": { "name": "capture", "arguments": {} } }),
+                &grok,
+            )
+            .unwrap();
+        assert_eq!(reply["result"]["isError"], true);
+        assert_eq!(recorder.calls.borrow().len(), 1);
+    }
+
+    #[test]
+    fn a_read_only_server_gives_a_propose_key_no_writes_to_propose() {
+        let recorder = Recorder::default();
+        let server = Server::new(&recorder, true);
+        let grok = Caller {
+            name: Some("Grok".into()),
+            access: Access::Propose,
+        };
+        let list = server
+            .handle_as(
+                &json!({ "jsonrpc": "2.0", "id": 1, "method": "tools/list" }),
+                &grok,
+            )
+            .unwrap();
+        assert!(!list["result"]["tools"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|tool| tool["name"] == "capture"));
+        let reply = server
+            .handle_as(
+                &json!({ "jsonrpc": "2.0", "id": 2, "method": "tools/call",
+                    "params": { "name": "capture", "arguments": { "text": "x" } } }),
+                &grok,
+            )
+            .unwrap();
+        assert!(reply["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("unknown tool"));
+        assert!(recorder.calls.borrow().is_empty());
+    }
+
+    #[test]
+    fn an_accepted_call_is_rebuilt_and_checked_like_a_direct_one() {
+        let call = |tool: &str, arguments: Value| propose::ProposedCall {
+            tool: tool.to_string(),
+            arguments: arguments.as_object().unwrap().clone(),
+        };
+        let (args, _) =
+            propose::invocation(&call("capture", json!({ "text": "hi" })), "Grok").unwrap();
+        assert_eq!(args[0], "capture");
+        // A read tool, or a made-up one, is never run from a proposal.
+        assert!(propose::invocation(&call("search", json!({ "query": "x" })), "Grok").is_err());
+        assert!(propose::invocation(&call("rm", json!({})), "Grok").is_err());
+        assert!(propose::invocation(&call("capture", json!({})), "Grok").is_err());
+        // `remember` is signed by the proposing agent, whatever it claimed.
+        let (signed, _) = propose::invocation(
+            &call("remember", json!({ "fact": "f", "agent": "Owner" })),
+            "Grok",
+        )
+        .unwrap();
+        let line = signed.last().unwrap();
+        assert!(line.contains("Grok") && !line.contains("Owner"), "{line}");
     }
 
     #[test]

@@ -12,13 +12,25 @@ C1, C3, C2; one step = one commit, Mario's ok before each next feature).
   next heading at its level or above), any other top-level block alone;
   ⌘-click on a bullet zooms it too (a plain click still folds). ⌘⇧, or the
   breadcrumb (note, enclosing headings, enclosing items) steps out one level.
-  Decorations and selection clamping only, so the Markdown never changes;
-  Enter at the end of a zoomed item opens a first child, keys that would
-  carry an edit out of the zoom do nothing at its edges. Mario asked on
-  2026-11-08 for "ogni blocco" after the list-only first commit. Verified:
-  `block-zoom.test.tsx` (chromium: tags in the branch still open, the file is
-  byte-identical after zoom in/out, sections step out one level at a time),
-  keymap collision test, `pnpm typecheck`, eslint/oxfmt on touched files.
+  Decorations and selection clamping only, so the Markdown never changes.
+  Mario asked on 2026-11-08 for "ogni blocco" after the list-only first
+  commit. Review fixes (2026-11-09, from the quality review of the open PRs,
+  Mario's "ok"): one `filterTransaction` rule refuses any step that would
+  move, join or insert content outside the zoom (replacing per-key guards;
+  whole-document replaces pass, so a reload ends the zoom); Enter on the
+  zoomed item's line opens a first child carrying the text after the caret;
+  ⌘A selects the zoomed text only and deleting a fully selected branch
+  empties its item; decorations live in plugin state and map through edits;
+  the pure model is split into `block-zoom-target.ts`. Mario asked for a
+  "super fluido" switch (2026-11-09): zooming in and out is a 180 ms View
+  Transition (the shared block slides, the page crossfades), names applied
+  through decorations because ProseMirror redraws a block whose DOM is
+  touched from outside; instant under reduced motion. Video:
+  `/mnt/project-files/video/zoom-fluido.mp4`. Verified: `block-zoom.test.tsx`
+  (11, chromium: tags in the branch still open, the file is byte-identical,
+  outdent/Enter-on-empty/⌘A-delete stay inside, Meowdown DOM guard),
+  `block-zoom-target.test.ts` (7, incl. the schema guard), all 27 editor
+  browser files, keymap test, `pnpm typecheck`, eslint/oxfmt.
 - [ ] C3 `^id` line references: resolve, open at the line, transclude,
   "copy link to line".
 - [ ] C2 move a branch to another note (`⌘⇧M`), updating `^id` links.
@@ -3258,6 +3270,10 @@ screen: Agents then Close lands on today.
 **Next:** merge the Close fix, then bump.
 
 ## Session log
+
+- 2026-11-09 — Zoom review fixes and a smooth switch (Plan 33 C1): no edit
+  can push content out of the zoomed block, ⌘A and delete stay inside it,
+  and zooming in or out slides the block in about 180 ms.
 
 - 2026-11-08 — Zoom into any block (Plan 33 C1): ⌘⇧. shows only the list
   item, heading section or block at the caret (⌘-click on a bullet too),

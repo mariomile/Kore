@@ -9,7 +9,8 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 - Zoom into any block: press ⌘⇧. (or ⌘-click a bullet) to see only that
   list item with its children, that heading's section, or that paragraph,
-  with a breadcrumb to go back up. The note's file doesn't change.
+  with a breadcrumb to go back up. The note's file doesn't change. The
+  switch is animated: the block slides to the top while the rest fades.
 
 - Activity shows everything that changed in your vault, grouped by who did
   it: you, the always-on host, or each agent by name (Claude, Grok, any

@@ -11,10 +11,13 @@ import { useQuery } from '@tanstack/react-query'
 import { Archive, CalendarClock, Flag, List, Plus, Search } from '@/components/icons'
 import {
   countTasksByView,
+  countTaskTags,
   cycleTaskContentPriority,
   getCompletedTasks,
   getOpenTasks,
+  parseTaskQuery,
   projectForNote,
+  toggleQueryTag,
   type OpenTask,
   type QuickAdd,
 } from '@reflect/core'
@@ -149,6 +152,8 @@ export function TasksScreen(): ReactElement {
   const recentlyCompleted = useRecentlyCompleted(graph?.root ?? null, open)
 
   const needle = query.trim().toLowerCase()
+  const activeTags = useMemo(() => parseTaskQuery(needle).tags, [needle])
+  const tagCounts = useMemo(() => countTaskTags(open ?? []), [open])
   const groups = useMemo(
     () =>
       composeVisibleTaskGroups({
@@ -385,7 +390,7 @@ export function TasksScreen(): ReactElement {
           <Input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search..."
+            placeholder="Search or #tag…"
             aria-label="Search tasks"
             className="h-9 border-none bg-transparent pl-[38px] shadow-none"
           />
@@ -466,6 +471,9 @@ export function TasksScreen(): ReactElement {
           open={filtersOpen}
           onOpenChange={setFiltersOpen}
           bucketFilters={view === 'all'}
+          tags={tagCounts}
+          activeTags={activeTags}
+          onToggleTag={(tag) => setQuery((current) => toggleQueryTag(current, tag))}
         />
       </header>
       <TaskViewTabs

@@ -7,6 +7,11 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Tasks projects work like Todoist's: a task that links `[[Project]]`
+  shows under it, projects list tasks by the note's sections with subtasks
+  indented, `m` moves tasks to a project or section (⌘Z undoes), and
+  `#tag` in the search (or the filters menu) narrows any view to a tag.
+
 - Every task links to the note it lives in: the note icon next to its date
   or note name, also on the task you are editing. ⌘-click opens it beside.
 

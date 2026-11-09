@@ -73,7 +73,13 @@ export {
   type NoteAppearance,
   type NoteIcon,
 } from './note-appearance'
-export { parseNote, isTagName, hasAuthoredTitle, frontmatterTagNames } from './extract'
+export {
+  parseNote,
+  isTagName,
+  inlineTagNames,
+  hasAuthoredTitle,
+  frontmatterTagNames,
+} from './extract'
 export { appendBodyTag, bodyHasTag, removeBodyTag } from './body-tag'
 export { addNoteTag, noteHasTag, removeNoteTag } from './note-tag'
 export {

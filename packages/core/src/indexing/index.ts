@@ -145,6 +145,15 @@ export {
   type TaskView,
 } from './task-views'
 export {
+  countTaskTags,
+  parseTaskQuery,
+  taskHasTags,
+  taskTagKeys,
+  toggleQueryTag,
+  type TaskQuery,
+  type TaskTagCount,
+} from './task-tags'
+export {
   parseQuickAdd,
   QUICK_ADD_MAX_ADDED,
   type QuickAdd,

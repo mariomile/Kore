@@ -1,67 +1,66 @@
-import { useEffect, useRef, type RefObject } from "react";
-import type { OpenTask, TaskView } from "@reflect/core";
-import { getIsComposing } from "@meowdown/core";
-import { taskKey } from "@/lib/tasks/task-identity";
+import { useEffect, useRef, type RefObject } from 'react'
+import type { OpenTask, TaskView } from '@reflect/core'
+import { getIsComposing } from '@meowdown/core'
+import { taskKey } from '@/lib/tasks/task-identity'
 import {
   insertTargetForBucket,
   insertTargetForTask,
   previousTaskKey,
   todaysDailyTarget,
-} from "@/lib/tasks/task-navigation";
-import type { TaskActions } from "@/lib/tasks/use-task-actions";
-import type { TaskSelection } from "@/lib/tasks/use-task-selection";
+} from '@/lib/tasks/task-navigation'
+import type { TaskActions } from '@/lib/tasks/use-task-actions'
+import type { TaskSelection } from '@/lib/tasks/use-task-selection'
 
 export interface TaskKeyboardOptions {
-  selection: TaskSelection;
-  actions: TaskActions;
+  selection: TaskSelection
+  actions: TaskActions
   /** The flat, render-order tasks the selection's keys resolve against. */
-  tasksByKey: ReadonlyMap<string, OpenTask>;
+  tasksByKey: ReadonlyMap<string, OpenTask>
   /** The flat, render-order tasks — used to pick the row to select after a delete. */
-  orderedTasks: readonly OpenTask[];
+  orderedTasks: readonly OpenTask[]
   /** The search box's text, and its setter — Escape clears it. */
-  query: string;
-  setQuery: (value: string) => void;
+  query: string
+  setQuery: (value: string) => void
   /** Today's ISO date — Return with no selection adds a task to today's daily. */
-  today: string;
+  today: string
   /** The Tasks surface; shortcuts back off when focus is outside it (another panel). */
-  rootRef: RefObject<HTMLElement | null>;
+  rootRef: RefObject<HTMLElement | null>
   /** Bring a row into view after a keyboard move (V1 scrolls the selection). */
-  scrollToKey: (key: string | null) => void;
+  scrollToKey: (key: string | null) => void
   /** ⌘⇧E: open/close the "Task filters" menu (V1). */
-  onToggleFilters: () => void;
+  onToggleFilters: () => void
   /** ⌘⇧S: open/close the schedule calendar for the selection (V1). */
-  onToggleSchedule: () => void;
+  onToggleSchedule: () => void
   /** ⌘⇧K: convert the selection to plain bullets (V1's "Convert to checklist"). */
-  onConvertToBullet: () => void;
+  onConvertToBullet: () => void
   /** ⌘⇧P: cycle the selection's priority marker (none → ! → !!). */
-  onCyclePriority: () => void;
+  onCyclePriority: () => void
   /** `q`: open Quick Add (Todoist). */
-  onQuickAdd?: () => void;
+  onQuickAdd?: () => void
   /** `m` (or ⌘⇧M, which also works from an open row editor) on a selection: move it to a project (Todoist). */
-  onMove?: (tasks: OpenTask[]) => void;
+  onMove?: (tasks: OpenTask[]) => void
   /** ⌘Z: undo the last move, when there is one to undo. */
-  onUndoMove?: () => boolean;
+  onUndoMove?: () => boolean
   /** The open view — Return's insert target depends on it. */
-  view?: TaskView;
+  view?: TaskView
   /** `g` then `i`/`t`/`u`/`p`/`a`: switch to Inbox / Today / Upcoming / Projects / All (Todoist). */
-  onGoToView?: (view: TaskView) => void;
+  onGoToView?: (view: TaskView) => void
 }
 
 /** The second key of a `g` sequence and the view it opens (Todoist's "go to"). */
 const GO_TO_KEYS: Readonly<Record<string, TaskView>> = {
-  i: "inbox",
-  t: "today",
-  u: "upcoming",
-  p: "projects",
-  a: "all",
-};
+  i: 'inbox',
+  t: 'today',
+  u: 'upcoming',
+  p: 'projects',
+  a: 'all',
+}
 
 /** How long a pending `g` waits for its second key. */
-const GO_TO_TIMEOUT_MS = 1500;
+const GO_TO_TIMEOUT_MS = 1500
 
 /** Elements that own their own keyboard nav — the shortcuts back off entirely. */
-const OWNS_KEYS =
-  '[data-task-editor], [role="menu"], [role="dialog"], [role="listbox"]';
+const OWNS_KEYS = '[data-task-editor], [role="menu"], [role="dialog"], [role="listbox"]'
 
 /**
  * The Tasks view's keyboard shortcuts (Plan 18, V1 parity), bound to a single
@@ -108,20 +107,20 @@ export function useTaskKeyboard({
   onQuickAdd,
   onMove,
   onUndoMove,
-  view = "all",
+  view = 'all',
   onGoToView,
 }: TaskKeyboardOptions): void {
-  const handlerRef = useRef<(event: KeyboardEvent) => void>(() => {});
-  const pendingGoToRef = useRef(0);
+  const handlerRef = useRef<(event: KeyboardEvent) => void>(() => {})
+  const pendingGoToRef = useRef(0)
   useEffect(() => {
     handlerRef.current = (event) => {
       // Respect anything a focused widget already handled (e.g. the filters menu's
       // own arrow/Escape navigation).
       if (event.defaultPrevented) {
-        return;
+        return
       }
       if (getIsComposing()) {
-        return;
+        return
       }
       // ⌘⇧E toggles the filters menu (V1) — a screen-level chord that fires
       // regardless of focus, before the surface-scoping bails, so the same keys
@@ -129,37 +128,37 @@ export function useTaskKeyboard({
       if (
         (event.metaKey || event.ctrlKey) &&
         event.shiftKey &&
-        (event.key === "e" || event.key === "E")
+        (event.key === 'e' || event.key === 'E')
       ) {
-        event.preventDefault();
-        onToggleFilters();
-        return;
+        event.preventDefault()
+        onToggleFilters()
+        return
       }
       // ⌘⇧S opens/closes the schedule calendar for the selection (V1) — also a
       // screen-level chord, but only when there's something to schedule.
       if (
         (event.metaKey || event.ctrlKey) &&
         event.shiftKey &&
-        (event.key === "s" || event.key === "S")
+        (event.key === 's' || event.key === 'S')
       ) {
         if (selection.selectedCount > 0) {
-          event.preventDefault();
-          onToggleSchedule();
+          event.preventDefault()
+          onToggleSchedule()
         }
-        return;
+        return
       }
       // ⌘⇧P cycles the selection's priority marker — same screen-level chord
       // shape as scheduling, and likewise inert without a selection.
       if (
         (event.metaKey || event.ctrlKey) &&
         event.shiftKey &&
-        (event.key === "p" || event.key === "P")
+        (event.key === 'p' || event.key === 'P')
       ) {
         if (selection.selectedCount > 0) {
-          event.preventDefault();
-          onCyclePriority();
+          event.preventDefault()
+          onCyclePriority()
         }
-        return;
+        return
       }
       // ⌘⇧M opens "Move to…" for the selection: a screen-level chord, so it
       // works while a sole selected row has its editor open, where plain `m`
@@ -168,213 +167,201 @@ export function useTaskKeyboard({
         onMove !== undefined &&
         (event.metaKey || event.ctrlKey) &&
         event.shiftKey &&
-        (event.key === "m" || event.key === "M")
+        (event.key === 'm' || event.key === 'M')
       ) {
         const tasks = [...selection.selected]
           .map((key) => tasksByKey.get(key))
-          .filter((task): task is OpenTask => task !== undefined);
+          .filter((task): task is OpenTask => task !== undefined)
         if (tasks.length > 0) {
-          event.preventDefault();
-          onMove(tasks);
+          event.preventDefault()
+          onMove(tasks)
         }
-        return;
+        return
       }
-      const target = event.target as HTMLElement | null;
+      const target = event.target as HTMLElement | null
       // Focus outside the Tasks surface (the workspace sidebar, another panel) keeps
       // its own keys — only `body`/no-focus and elements inside the surface drive the
       // shortcuts. `body` is allowed so they still fire when focus falls back to it.
-      const root = rootRef.current;
+      const root = rootRef.current
       if (
         root !== null &&
         target !== null &&
         target !== root.ownerDocument.body &&
         !root.contains(target)
       ) {
-        return;
+        return
       }
       // Back off when a focused control inside the surface owns the key: the inline
       // editor (it owns its keys, and a ⌘⌫ there must not race its commit-on-unmount)
       // or a portaled overlay (filters menu, dialog, ⌘K palette).
       if (target?.closest?.(OWNS_KEYS) != null) {
-        return;
+        return
       }
-      const inSearch = target instanceof HTMLInputElement;
+      const inSearch = target instanceof HTMLInputElement
       // Resolve the active row that Return pivots from. Breadcrumb context takes
       // precedence and can always be continued structurally; otherwise the bucket
       // decides whether insertion is available (Current/note yes, aggregate
       // Overdue/Upcoming no). The pivot must still be selected: `activeKey()` keeps
       // pointing at the last touched row after deselection, which falls back to today.
       const activeTask = (): OpenTask | undefined => {
-        const activeKey = selection.activeKey();
+        const activeKey = selection.activeKey()
         return activeKey !== null && selection.selected.has(activeKey)
           ? tasksByKey.get(activeKey)
-          : undefined;
-      };
+          : undefined
+      }
       const selectExclusively = (key: string): void => {
         selection.clickSelect(key, {
           metaKey: false,
           ctrlKey: false,
           shiftKey: false,
-        });
-        scrollToKey(key);
-      };
-      const mod = event.metaKey || event.ctrlKey;
+        })
+        scrollToKey(key)
+      }
+      const mod = event.metaKey || event.ctrlKey
       const selectedTasks = (): OpenTask[] =>
         [...selection.selected]
           .map((key) => tasksByKey.get(key))
-          .filter((task): task is OpenTask => task !== undefined);
+          .filter((task): task is OpenTask => task !== undefined)
 
       if (inSearch) {
-        if (event.key === "Escape") {
-          setQuery("");
-          selection.clear();
-          target.blur();
+        if (event.key === 'Escape') {
+          setQuery('')
+          selection.clear()
+          target.blur()
         }
-        return;
+        return
       }
-      const plain = !mod && !event.altKey && !event.shiftKey;
+      const plain = !mod && !event.altKey && !event.shiftKey
       if (plain && onGoToView !== undefined) {
-        const goTo = GO_TO_KEYS[event.key.toLowerCase()];
-        if (
-          goTo !== undefined &&
-          Date.now() - pendingGoToRef.current < GO_TO_TIMEOUT_MS
-        ) {
-          event.preventDefault();
-          pendingGoToRef.current = 0;
-          onGoToView(goTo);
-          return;
+        const goTo = GO_TO_KEYS[event.key.toLowerCase()]
+        if (goTo !== undefined && Date.now() - pendingGoToRef.current < GO_TO_TIMEOUT_MS) {
+          event.preventDefault()
+          pendingGoToRef.current = 0
+          onGoToView(goTo)
+          return
         }
-        if (event.key === "g" || event.key === "G") {
-          event.preventDefault();
-          pendingGoToRef.current = Date.now();
-          return;
+        if (event.key === 'g' || event.key === 'G') {
+          event.preventDefault()
+          pendingGoToRef.current = Date.now()
+          return
         }
       }
-      pendingGoToRef.current = 0;
-      if (plain && onQuickAdd !== undefined && event.key === "q") {
-        event.preventDefault();
-        onQuickAdd();
-        return;
+      pendingGoToRef.current = 0
+      if (plain && onQuickAdd !== undefined && event.key === 'q') {
+        event.preventDefault()
+        onQuickAdd()
+        return
       }
-      if (plain && onMove !== undefined && event.key === "m") {
-        const tasks = selectedTasks();
+      if (plain && onMove !== undefined && event.key === 'm') {
+        const tasks = selectedTasks()
         if (tasks.length > 0) {
-          event.preventDefault();
-          onMove(tasks);
+          event.preventDefault()
+          onMove(tasks)
         }
-        return;
+        return
       }
-      if (
-        mod &&
-        !event.shiftKey &&
-        !event.altKey &&
-        (event.key === "z" || event.key === "Z")
-      ) {
+      if (mod && !event.shiftKey && !event.altKey && (event.key === 'z' || event.key === 'Z')) {
         if (onUndoMove?.() === true) {
-          event.preventDefault();
+          event.preventDefault()
         }
-        return;
+        return
       }
-      if (mod && event.key === "Enter") {
-        event.preventDefault();
+      if (mod && event.key === 'Enter') {
+        event.preventDefault()
         if (event.shiftKey) {
-          actions.archive(); // ⌘⇧↵ — hide the session's completed tasks
+          actions.archive() // ⌘⇧↵ — hide the session's completed tasks
         } else {
-          actions.toggle(selectedTasks()); // ⌘↵ — complete, or reopen if all checked
+          actions.toggle(selectedTasks()) // ⌘↵ — complete, or reopen if all checked
         }
-      } else if (event.key === "Enter") {
+      } else if (event.key === 'Enter') {
         // Return adds a task (V1). A sole selection's editor owns Enter (it bailed
         // above via OWNS_KEYS and continues the entry there), so this fires from the
         // list itself: insert, then select the new row to open its editor focused.
         // A null target means the active row is Overdue/Upcoming — nothing to add to.
         // Skip while a write is in flight so a held/rapid Return can't append several
         // empty rows before the first insert's editor takes focus.
-        event.preventDefault();
-        const active = activeTask();
+        event.preventDefault()
+        const active = activeTask()
         const taskTarget =
           active === undefined
             ? todaysDailyTarget(today)
             : active.breadcrumbs.length > 0
               ? insertTargetForTask(active)
-              : insertTargetForBucket(active, today, view);
+              : insertTargetForBucket(active, today, view)
         if (taskTarget !== null && !actions.isPending) {
           const insertion =
             active !== undefined && active.breadcrumbs.length > 0
               ? actions.insertAfter(active, null, taskTarget)
-              : actions.insert(taskTarget);
+              : actions.insert(taskTarget)
           void insertion.then((created) => {
             if (created !== null) {
-              selectExclusively(taskKey(created));
+              selectExclusively(taskKey(created))
             }
-          });
+          })
         }
-      } else if (mod && event.key === "Backspace") {
-        event.preventDefault();
-        actions.remove(selectedTasks());
-        selection.clear();
-      } else if (event.key === "Backspace") {
+      } else if (mod && event.key === 'Backspace') {
+        event.preventDefault()
+        actions.remove(selectedTasks())
+        selection.clear()
+      } else if (event.key === 'Backspace') {
         // Plain ⌫ deletes only a single empty row (V1) — never content, and never a
         // multi-selection (which is ambiguous). The sole-selection case usually runs
         // in the focused editor; here it covers an unfocused single selection, and
         // lands on the previous row so the keyboard flow continues.
-        const selected = selectedTasks();
-        const sole = selected.length === 1 ? selected[0] : undefined;
-        if (sole !== undefined && sole.text.trim() === "") {
-          event.preventDefault();
-          const previous = previousTaskKey(orderedTasks, sole);
-          actions.remove(selected);
+        const selected = selectedTasks()
+        const sole = selected.length === 1 ? selected[0] : undefined
+        if (sole !== undefined && sole.text.trim() === '') {
+          event.preventDefault()
+          const previous = previousTaskKey(orderedTasks, sole)
+          actions.remove(selected)
           if (previous !== null) {
-            selectExclusively(previous);
+            selectExclusively(previous)
           } else {
-            selection.clear();
+            selection.clear()
           }
         }
-      } else if (mod && (event.key === "a" || event.key === "A")) {
-        event.preventDefault();
-        selection.selectAll();
-      } else if (
-        mod &&
-        event.shiftKey &&
-        (event.key === "k" || event.key === "K")
-      ) {
+      } else if (mod && (event.key === 'a' || event.key === 'A')) {
+        event.preventDefault()
+        selection.selectAll()
+      } else if (mod && event.shiftKey && (event.key === 'k' || event.key === 'K')) {
         // ⌘⇧K converts the selection to plain bullets (V1's "Convert to checklist").
         // Below the OWNS_KEYS bail on purpose: while the inline editor is focused it
         // handles ⌘⇧K itself (flush the draft, then convert), so this fires only for a
         // multi-selection or an unfocused single selection — never racing a live draft.
         if (selection.selectedCount > 0) {
-          event.preventDefault();
-          onConvertToBullet();
+          event.preventDefault()
+          onConvertToBullet()
         }
-      } else if (event.key === "ArrowDown") {
-        event.preventDefault();
+      } else if (event.key === 'ArrowDown') {
+        event.preventDefault()
         if (event.shiftKey) {
-          selection.extend(1);
+          selection.extend(1)
         } else {
-          selection.move(1);
+          selection.move(1)
         }
-        scrollToKey(selection.activeKey());
-      } else if (event.key === "ArrowUp") {
-        event.preventDefault();
+        scrollToKey(selection.activeKey())
+      } else if (event.key === 'ArrowUp') {
+        event.preventDefault()
         if (event.shiftKey) {
-          selection.extend(-1);
+          selection.extend(-1)
         } else {
-          selection.move(-1);
+          selection.move(-1)
         }
-        scrollToKey(selection.activeKey());
-      } else if (event.key === "Escape") {
+        scrollToKey(selection.activeKey())
+      } else if (event.key === 'Escape') {
         // V1 clears the selection and the search query together.
-        if (selection.selectedCount > 0 || query !== "") {
-          event.preventDefault();
-          selection.clear();
-          setQuery("");
+        if (selection.selectedCount > 0 || query !== '') {
+          event.preventDefault()
+          selection.clear()
+          setQuery('')
         }
       }
-    };
-  });
+    }
+  })
 
   useEffect(() => {
-    const listener = (event: KeyboardEvent): void => handlerRef.current(event);
-    document.addEventListener("keydown", listener);
-    return () => document.removeEventListener("keydown", listener);
-  }, []);
+    const listener = (event: KeyboardEvent): void => handlerRef.current(event)
+    document.addEventListener('keydown', listener)
+    return () => document.removeEventListener('keydown', listener)
+  }, [])
 }

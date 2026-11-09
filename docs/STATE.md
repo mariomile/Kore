@@ -1,5 +1,31 @@
 # Kore working state
 
+## Tasks like Todoist, slice 3: real projects, 2026-11-09
+
+Ask (Mario, 2026-11-09 17:43, "Ok, fai tutto." on the four-step proposal;
+plan in `/mnt/project-files/analisi/task-come-todoist.md`). One commit per step.
+
+- [x] A task whose own line links `[[Project]]` counts under that project
+  (`linkedProjectsByTask`, `projectForTask`, `getTaskProjectLinks`); a task
+  written inside a project folder stays there. Linked daily tasks follow the
+  project's own, newest first.
+- [x] Projects list their tasks by section: `tasks.section` (migration 0024)
+  is the nearest top-level H2+ heading above the task; subtasks are indented
+  under their parent (`subtaskDepths`). Migration 0023 (fts rowid) was never
+  registered on the Rust side; it is now, and `LATEST_SCHEMA_VERSION` is 24.
+  Mobile does not render sections yet.
+- [x] `m` (or ⌘⇧M, which also works from an open row editor) moves the
+  selection to a project, then a section when the note has headings. Core
+  transforms `cutTaskBlock` / `pasteTaskBlock` carry the line and its nested
+  items verbatim; the desktop restores the source if the paste fails, and
+  the toast's Undo or ⌘Z puts both notes back, refusing if either changed.
+- [x] `#tag` in the Tasks search filters every view (desktop and mobile) to
+  tasks whose own line carries the tag or a child of it (`parseTaskQuery`,
+  `taskHasTags`); the filters menu lists the open tasks' tags and toggles
+  them in the search.
+- Out of scope, as proposed: nested projects, archived projects, drag and
+  drop between projects. Next: slice 4 polish, mobile Quick Add and sections.
+
 ## Quick Add review fixes, 2026-11-09
 
 Ask: Mario OK'd the strict review of #346

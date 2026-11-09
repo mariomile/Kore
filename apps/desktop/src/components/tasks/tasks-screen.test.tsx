@@ -2333,6 +2333,28 @@ describe('TasksScreen Todoist views', () => {
     await view.unmount()
   })
 
+  it('filters by a tag from the filters menu, writing #tag into the search', async () => {
+    getOpenTasks.mockResolvedValue([
+      task({
+        notePath: 'notes/a.md',
+        markerOffset: 2,
+        raw: '[ ] buy milk #home',
+        text: 'buy milk',
+      }),
+      task({ notePath: 'notes/b.md', markerOffset: 2, raw: '[ ] ship #work', text: 'ship' }),
+    ])
+    const view = await renderScreen()
+    await view.findByRole('button', { name: /^ship/ })
+
+    await userEvent.click(view.getByRole('button', { name: 'Task filters' }))
+    await userEvent.click(await view.findByRole('menuitemcheckbox', { name: /#home/ }))
+
+    await expect.element(view.getByRole('textbox', { name: 'Search tasks' })).toHaveValue('#home')
+    await waitFor(() => expect(view.queryByRole('button', { name: /^ship/ })).toBeNull())
+    await view.findByRole('button', { name: /^buy milk/ })
+    await view.unmount()
+  })
+
   it("Quick Add without a project lands in today's daily note", async () => {
     getOpenTasks.mockResolvedValue(tasks)
     const view = await renderScreen()

@@ -1,5 +1,7 @@
 import {
   groupTasksForView,
+  parseTaskQuery,
+  taskHasTags,
   type LinkedTaskProjects,
   type OpenTask,
   type TaskGroup,
@@ -41,7 +43,11 @@ export interface TaskListSources {
   /** This session's completed tasks, still showing struck until archived. */
   readonly recentlyCompleted: readonly OpenTask[]
   readonly filters: TaskFilters
-  /** The search text, already trimmed and lowercased (empty = no filter). */
+  /**
+   * The search, already trimmed and lowercased (empty = no filter): `#tag`
+   * tokens keep the tasks that carry the tag ({@link parseTaskQuery}), the
+   * rest matches text.
+   */
   readonly needle: string
   /** Today's ISO `YYYY-MM-DD` date. */
   readonly today: string
@@ -101,7 +107,15 @@ export function composeVisibleTaskGroups({
     : recentlyCompleted
   const completedKeys = new Set(completedRows.map(taskKey))
   const all = [...open.filter((task) => !completedKeys.has(taskKey(task))), ...completedRows]
-  const matched = needle ? all.filter((task) => taskMatchesNeedle(task, needle)) : all
+  const query = parseTaskQuery(needle)
+  const matched =
+    query.text === '' && query.tags.length === 0
+      ? all
+      : all.filter(
+          (task) =>
+            (query.text === '' || taskMatchesNeedle(task, query.text)) &&
+            taskHasTags(task, query.tags),
+        )
   const groups = groupTasksForView(view, matched, today, projectNotePaths, linkedProjects)
   return view === 'all' ? visibleGroups(groups, filters) : groups
 }

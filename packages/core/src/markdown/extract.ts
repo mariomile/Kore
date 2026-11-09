@@ -270,6 +270,17 @@ export function frontmatterTagNames(frontmatter: Readonly<Record<string, unknown
   return names
 }
 
+/**
+ * The `#tags` one piece of inline text carries (a task line, say), by the
+ * indexer's own rules: code, URLs and wiki targets yield none. Deduped
+ * case-insensitively, first-seen casing kept.
+ */
+export function inlineTagNames(text: string): string[] {
+  const tags = new Map<string, string>()
+  collectTags(text, tagExcludedRanges(text), tags)
+  return [...tags.values()]
+}
+
 function collectTags(body: string, excluded: Span[], into: Map<string, string>): void {
   for (const match of body.matchAll(TAG_RE)) {
     // Both groups are mandatory in TAG_RE, so a match always populates them.

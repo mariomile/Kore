@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { refreshTagTypeResolutions } from './resolved-tag-types'
 import type { DatabaseSync } from 'node:sqlite'
 import { setBridge } from '../ipc/bridge'
 import { applyProjection, connectIndex, openMigratedIndex, project } from './flow-test-harness'
@@ -165,6 +166,9 @@ describe('tag listings for outbound surfaces against a real index', () => {
     )
     insertType.run('company', 'tags/company.md', '{"properties":[],"icon":"icon:buildings"}')
     insertType.run('diary', 'tags/diary.md', '{"properties":[],"icon":"🔒"}')
+    // What the index write would do next: the inheritance pass fills the
+    // stored columns every read decodes.
+    await refreshTagTypeResolutions(1)
 
     // The user's own sidebar still sees everything.
     expect(await listNoteTags()).toEqual([

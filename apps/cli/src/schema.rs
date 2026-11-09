@@ -71,41 +71,26 @@ pub fn decode_schema(schema_json: &str) -> TagSchema {
     }
 }
 
-/// A `tag_types` row as `load_schema` reads it: the own schema, the stored
-/// effective and public schemas, and the definition note's privacy.
-type StoredTagType = (String, Option<String>, Option<String>, Option<i64>);
-
 /// The schema of one tag, or `None` when the tag has no type. Inherited
 /// fields are already merged: core stores each tag's effective schema in
 /// `tag_types` (Plan 33 B2, `refreshTagTypeResolutions`), and the CLI reads
 /// the public one, because everything it prints reaches an agent. A private
-/// definition is no type at all here (it fails closed when its `notes` row is
-/// missing), and a private parent's fields are not in a public child's.
-/// Before core's first pass the own `schema_json` stands in.
+/// definition has no public schema, so it is no type at all here, and a
+/// private parent's fields are not in a public child's. A row the pass has
+/// not stored yet (NULL) reads as untyped too: it fails closed.
 pub fn load_schema(conn: &Connection, tag: &str) -> Result<Option<TagSchema>, CliError> {
-    let row: Option<StoredTagType> = conn
+    let column: Option<Option<String>> = conn
         .query_row(
-            "SELECT t.schema_json, t.resolved_json, t.public_resolved_json, n.is_private
-             FROM tag_types t LEFT JOIN notes n ON n.path = t.note_path
-             WHERE t.tag_key = ?1",
+            "SELECT public_resolved_json FROM tag_types WHERE tag_key = ?1",
             params![fold_tag(tag)],
-            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+            |row| row.get(0),
         )
         .map(Some)
         .or_else(|err| match err {
             rusqlite::Error::QueryReturnedNoRows => Ok(None),
             other => Err(other),
         })?;
-    let Some((schema_json, resolved_json, public_resolved_json, is_private)) = row else {
-        return Ok(None);
-    };
-    if is_private != Some(0) {
-        return Ok(None);
-    }
-    Ok(match resolved_json {
-        None => Some(decode_schema(&schema_json)),
-        Some(_) => public_resolved_json.as_deref().map(decode_schema),
-    })
+    Ok(column.flatten().as_deref().map(decode_schema))
 }
 
 /// The public tags that build on `tag`, directly or not, as core stored

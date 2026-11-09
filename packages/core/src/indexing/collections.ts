@@ -189,11 +189,7 @@ export async function getTagType(
 }
 
 /** The `tag_types` columns every typed read decodes ({@link decodeStoredTagType}). */
-const TAG_TYPE_COLUMNS = [
-  'tagTypes.schemaJson',
-  'tagTypes.resolvedJson',
-  'tagTypes.publicResolvedJson',
-] as const
+const TAG_TYPE_COLUMNS = ['tagTypes.resolvedJson', 'tagTypes.publicResolvedJson'] as const
 
 /**
  * The one tolerant decode for `tag_types` result rows: a hand-mangled
@@ -266,7 +262,8 @@ export async function listNoteTagTypes(path: string): Promise<TagTypeEntry[]> {
  * property union above still comes from {@link listNoteTagTypes}, because an
  * untyped tag declares nothing to union.
  *
- * A definition whose `schema_json` fails to parse degrades to `type: null`
+ * A definition the inheritance pass skipped (a `schema_json` that fails to
+ * parse) degrades to `type: null`
  * (the tag is still carried) rather than dropping the row, the same
  * tolerance {@link listNoteTagTypes} applies.
  */
@@ -279,14 +276,8 @@ export async function listTagsOnNote(path: string): Promise<NoteTagEntry[]> {
     .orderBy('tags.tagKey')
     .execute()
   return rows.map((row) => {
-    const type =
-      row.schemaJson === null
-        ? null
-        : decodeStoredTagType({
-            schemaJson: row.schemaJson,
-            resolvedJson: row.resolvedJson,
-            publicResolvedJson: row.publicResolvedJson,
-          })
+    // No `tag_types` row (the left join found none) is an untyped tag.
+    const type = row.notePath === null ? null : decodeStoredTagType(row)
     return {
       tag: row.tag,
       tagKey: row.tagKey,

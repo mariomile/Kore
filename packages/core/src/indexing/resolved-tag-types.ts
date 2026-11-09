@@ -22,9 +22,11 @@ import { db } from './db'
  * The public columns are the same computation with private definitions
  * left out, for outbound surfaces: a private parent's fields never reach an
  * agent through a public child, and a private definition has no public
- * schema at all. Until the first pass after the migration the columns are
- * NULL and readers fall back to `schema_json`, which is what a graph
- * without `extends:` has anyway.
+ * schema at all. A NULL column reads as untyped: the pass has not stored
+ * that row yet (a mangled `schema_json` it skipped, or the instant between
+ * a write and its pass). Migration 0024 ships with a projection bump
+ * (`PROJECTION_VERSION` 29), so an existing index is rebuilt and the pass
+ * fills every row before anything reads it.
  */
 
 /** Does a write to these paths need the inheritance pass? */
@@ -97,29 +99,25 @@ export interface TagTypeReadOptions {
 
 /** The stored columns one tag type read decodes from. */
 export interface StoredTagTypeColumns {
-  schemaJson: string
   resolvedJson: string | null
   publicResolvedJson: string | null
 }
 
 /**
- * The effective type a stored row carries, or `null` for a mangled row (and,
- * under `excludePrivate`, for a private definition once the pass has run).
- * Before the first pass the own schema stands in.
+ * The effective type a stored row carries: the full schema, or under
+ * `excludePrivate` the public one (none for a private definition). `null`
+ * when the pass stored nothing for the row, which fails closed.
  */
 export function decodeStoredTagType(
   row: StoredTagTypeColumns,
   options: TagTypeReadOptions = {},
 ): TagType | null {
-  // `??` folds a column a row shape left out into NULL: both mean "no value".
-  const resolved = row.resolvedJson ?? null
-  const column = options.excludePrivate === true ? (row.publicResolvedJson ?? null) : resolved
-  const pending = resolved === null
-  if (!pending && column === null) {
+  const column = options.excludePrivate === true ? row.publicResolvedJson : row.resolvedJson
+  if (column === null) {
     return null
   }
   try {
-    return decodeTagTypeJson(pending ? row.schemaJson : column!)
+    return decodeTagTypeJson(column)
   } catch {
     return null
   }

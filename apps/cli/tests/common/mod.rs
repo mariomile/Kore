@@ -207,7 +207,8 @@ impl Fixture {
             .unwrap();
     }
 
-    /// A typed tag: its definition note row plus the `tag_types` schema.
+    /// A typed tag: its definition note row plus the `tag_types` schema, with
+    /// the columns core's inheritance pass stores (no parents, no children).
     pub fn insert_tag_type(&self, tag: &str, schema_json: &str) {
         let conn = self.index_conn();
         let path = format!("tags/{tag}.md");
@@ -219,7 +220,9 @@ impl Fixture {
         )
         .unwrap();
         conn.execute(
-            "INSERT INTO tag_types(tag_key, note_path, schema_json) VALUES(?1, ?2, ?3)",
+            "INSERT INTO tag_types(tag_key, note_path, schema_json, resolved_json,
+                                   public_resolved_json, descendants_json, public_descendants_json)
+             VALUES(?1, ?2, ?3, ?3, ?3, '[]', '[]')",
             params![tag.to_lowercase(), path, schema_json],
         )
         .unwrap();

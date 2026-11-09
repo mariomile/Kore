@@ -145,7 +145,15 @@ beforeEach(() => {
     }
     if (sql.includes('tag_types')) {
       // The tag's type row — `#book` is typed in this fixture.
-      return [{ tag_key: 'book', note_path: 'tags/book.md', schema_json: BOOK_SCHEMA_JSON }]
+      return [
+        {
+          tag_key: 'book',
+          note_path: 'tags/book.md',
+          schema_json: BOOK_SCHEMA_JSON,
+          resolved_json: BOOK_SCHEMA_JSON,
+          public_resolved_json: BOOK_SCHEMA_JSON,
+        },
+      ]
     }
     if (sql.includes('note_properties')) {
       return propertyRows

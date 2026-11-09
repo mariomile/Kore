@@ -78,9 +78,9 @@ describe('tag inheritance through the index', () => {
     expect(keys(entry?.type)).toEqual(['email', 'company', 'contract'])
   })
 
-  it('falls back to the own schema before the first pass', async () => {
+  it('reads a definition as untyped until the pass stores it', async () => {
     crm()
-    expect(keys(await getTagType('client'))).toEqual(['contract'])
+    expect(await getTagType('client')).toBeNull()
     expect(await listTagChildren('contact')).toEqual([])
   })
 

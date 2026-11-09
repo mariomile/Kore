@@ -19,7 +19,7 @@ struct Definition<'a> {
 }
 
 fn open(fixture: &Fixture) -> Connection {
-    Connection::open(fixture.root().join(".reflect").join("index.sqlite")).unwrap()
+    fixture.index_conn()
 }
 
 fn tag_note(conn: &Connection, path: &str, tag: &str) {
@@ -167,7 +167,7 @@ fn a_private_parent_reaches_no_agent() {
 }
 
 #[test]
-fn before_cores_first_pass_the_own_schema_stands_in() {
+fn a_row_the_pass_has_not_stored_is_untyped() {
     let fixture = graph();
     fixture.write_note("people/acme.md", "# Acme\n#client\n");
     fixture.build_index();
@@ -185,6 +185,6 @@ fn before_cores_first_pass_the_own_schema_stands_in() {
         },
     );
     drop(conn);
-    let client = json(&kore(&fixture, &["collection", "client", "--json"]));
-    assert_eq!(schema_keys(&client), ["contract"]);
+    let client = kore(&fixture, &["collection", "client"]);
+    assert_eq!(client.status.code(), Some(3), "{}", stderr(&client));
 }

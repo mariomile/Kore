@@ -409,6 +409,22 @@ function rangeDecorations(doc: ProseMirrorNode, from: number, to: number): Decor
   return decorations
 }
 
+/**
+ * The block that reads as the zoomed page's title: a list item's own line,
+ * or the heading a section zoom starts with. A lone paragraph has none.
+ */
+function titleDecoration(doc: ProseMirrorNode, target: ZoomTarget): Decoration | null {
+  const pos = target.kind === 'list' ? target.root + 1 : target.from
+  const node = doc.nodeAt(pos)
+  if (node === null || !node.isTextblock) {
+    return null
+  }
+  if (target.kind === 'range' && node.type.name !== 'heading') {
+    return null
+  }
+  return Decoration.node(pos, pos + node.nodeSize, { class: 'kore-zoom-title' })
+}
+
 function buildDecorations(
   doc: ProseMirrorNode,
   target: ZoomTarget | null,
@@ -431,6 +447,10 @@ function buildDecorations(
     target.kind === 'list'
       ? listDecorations(doc, target.root, doc.nodeAt(target.root) ?? doc)
       : rangeDecorations(doc, span.from, span.to)
+  const title = titleDecoration(doc, target)
+  if (title !== null) {
+    decorations.push(title)
+  }
   decorations.push(
     Decoration.widget(span.from, (view) => breadcrumb(view, target), {
       side: -1,

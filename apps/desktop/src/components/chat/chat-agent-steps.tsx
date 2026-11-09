@@ -1,7 +1,7 @@
-import { useState, type MouseEvent, type ReactElement } from 'react'
+import { useState, type ComponentType, type MouseEvent, type ReactElement } from 'react'
 import {
   agentStepTree,
-  isSubagentTool,
+  type AgentStepKind,
   type AgentStepNode,
   type AssistantPart,
   type ChatTurn,
@@ -47,45 +47,24 @@ function currentStep(steps: readonly StepPart[]): StepPart | null {
   return null
 }
 
-function stepIcon(tool: string): ReactElement {
-  const className = 'size-3.5 shrink-0'
-  if (isSubagentTool(tool)) {
-    return <Bot aria-hidden className={className} />
-  }
-  switch (tool) {
-    case 'Read':
-      return <Note aria-hidden className={className} />
-    case 'Glob':
-    case 'Grep':
-      return <Search aria-hidden className={className} />
-    case 'Write':
-    case 'Edit':
-    case 'MultiEdit':
-    case 'NotebookEdit':
-      return <Pencil aria-hidden className={className} />
-    case 'TodoWrite':
-      return <Checklist aria-hidden className={className} />
-    default:
-      return tool.startsWith('mcp__') ? (
-        <Plug aria-hidden className={className} />
-      ) : (
-        <Sparkles aria-hidden className={className} />
-      )
-  }
+const STEP_ICONS: Record<AgentStepKind, ComponentType<{ className?: string }>> = {
+  read: Note,
+  write: Pencil,
+  search: Search,
+  plan: Checklist,
+  subagent: Bot,
+  mcp: Plug,
+  other: Sparkles,
 }
 
-/** File tools name a graph-relative markdown path; those open the note. */
-function notePath(part: StepPart): string | null {
-  const { tool, detail } = part.step
-  const fileTool = tool === 'Read' || tool === 'Write' || tool === 'Edit' || tool === 'MultiEdit'
-  return fileTool && detail !== null && detail.endsWith('.md') && !detail.startsWith('/')
-    ? detail
-    : null
+function StepIcon({ kind }: { kind: AgentStepKind }): ReactElement {
+  const Icon = STEP_ICONS[kind]
+  return <Icon aria-hidden className="size-3.5 shrink-0" />
 }
 
 function StepDetail({ part }: { part: StepPart }): ReactElement | null {
   const navigate = useNoteLinkNavigation()
-  const path = notePath(part)
+  const path = part.step.notePath
   if (part.step.detail === null) {
     return null
   }
@@ -126,7 +105,11 @@ function StepOutcome({ part }: { part: StepPart }): ReactElement | null {
 function StepRow({ part }: { part: StepPart }): ReactElement {
   return (
     <li className="flex min-w-0 items-center gap-1.5 text-xs text-text-muted">
-      {isRunning(part) ? <Spinner className="size-3.5 shrink-0" /> : stepIcon(part.step.tool)}
+      {isRunning(part) ? (
+        <Spinner className="size-3.5 shrink-0" />
+      ) : (
+        <StepIcon kind={part.step.kind} />
+      )}
       <span className="shrink-0 text-text">{part.step.label}</span>
       <StepDetail part={part} />
       <StepOutcome part={part} />
@@ -137,7 +120,6 @@ function StepRow({ part }: { part: StepPart }): ReactElement {
 /** A subagent: its own card, with the steps it ran nested inside. */
 function SubagentCard({ node }: { node: StepNode }): ReactElement {
   const part = node.item
-  const children = flatten(node.children)
   return (
     <li className="flex min-w-0 flex-col gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-2">
       <div className="flex min-w-0 items-center gap-1.5 text-xs">
@@ -152,29 +134,23 @@ function SubagentCard({ node }: { node: StepNode }): ReactElement {
         ) : null}
         <StepOutcome part={part} />
       </div>
-      {children.length > 0 ? (
+      {node.children.length > 0 ? (
         <ul className="ml-1.5 flex min-w-0 flex-col gap-1 border-l border-border pl-2.5">
-          {children.map((child) =>
-            isSubagentTool(child.item.step.tool) ? (
-              <SubagentCard key={child.item.step.id} node={child} />
-            ) : (
-              <StepRow key={child.item.step.id} part={child.item} />
-            ),
-          )}
+          {node.children.map((child) => (
+            <StepNodeItem key={child.item.step.id} node={child} />
+          ))}
         </ul>
       ) : null}
     </li>
   )
 }
 
-/**
- * A subagent's nested steps, in order. Non-subagent steps cannot have
- * children of their own, so their (impossible) children are lifted up rather
- * than lost; nested subagents keep their own card.
- */
-function flatten(nodes: readonly StepNode[]): StepNode[] {
-  return nodes.flatMap((node) =>
-    isSubagentTool(node.item.step.tool) ? [node] : [node, ...flatten(node.children)],
+/** One step: a subagent's card, or a plain row. */
+function StepNodeItem({ node }: { node: StepNode }): ReactElement {
+  return node.item.step.kind === 'subagent' ? (
+    <SubagentCard node={node} />
+  ) : (
+    <StepRow part={node.item} />
   )
 }
 
@@ -220,11 +196,9 @@ export function ChatAgentSteps({ steps, turnStatus }: ChatAgentStepsProps): Reac
       </button>
       {open ? (
         <ul className="flex min-w-0 flex-col gap-1 pl-1" aria-label="Agent steps">
-          {tree.flatMap((node) =>
-            isSubagentTool(node.item.step.tool)
-              ? [<SubagentCard key={node.item.step.id} node={node} />]
-              : flatten([node]).map((flat) => <StepRow key={flat.item.step.id} part={flat.item} />),
-          )}
+          {tree.map((node) => (
+            <StepNodeItem key={node.item.step.id} node={node} />
+          ))}
         </ul>
       ) : null}
     </div>

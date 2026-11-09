@@ -16,7 +16,16 @@ function step(
 ): StepPart {
   return {
     kind: 'step',
-    step: { id, tool: 'Read', label: 'Read', detail: null, parentId: null, ...fields },
+    step: {
+      id,
+      tool: 'Read',
+      label: 'Read',
+      detail: null,
+      parentId: null,
+      kind: 'read',
+      notePath: null,
+      ...fields,
+    },
     outcome,
   }
 }
@@ -24,15 +33,19 @@ function step(
 const steps: StepPart[] = [
   step(
     'agent-1',
-    { tool: 'Agent', label: 'Subagent', detail: 'Summarize alpha' },
+    { tool: 'Agent', label: 'Subagent', detail: 'Summarize alpha', kind: 'subagent' },
     { error: null, summary: '1 step · 3s' },
   ),
   step(
     'glob-1',
-    { tool: 'Glob', label: 'Find files', detail: 'notes/*.md' },
+    { tool: 'Glob', label: 'Find files', detail: 'notes/*.md', kind: 'search' },
     { error: null, summary: '2 files' },
   ),
-  step('read-1', { detail: 'notes/alpha.md', parentId: 'agent-1' }, null),
+  step(
+    'read-1',
+    { detail: 'notes/alpha.md', notePath: 'notes/alpha.md', parentId: 'agent-1' },
+    null,
+  ),
 ]
 
 describe('ChatAgentSteps', () => {
@@ -51,6 +64,8 @@ describe('ChatAgentSteps', () => {
           .getByText('notes/alpha.md'),
       )
       .toBeVisible()
+    // The note a step touched opens from the row.
+    await expect.element(list.getByRole('button', { name: 'notes/alpha.md' })).toBeVisible()
   })
 
   it('folds a settled run into a step count that expands on click', async () => {

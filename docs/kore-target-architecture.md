@@ -21,7 +21,7 @@ remain constraints. Structured data and an Action Center extend the current
 product; they do not justify replacing the editor with a second application.
 
 “Lore” in the supplied document means Kore's target direction. It does not
-authorize renaming `@reflect/*`, Rust crates, the `reflect` CLI, `.reflect/`,
+authorize renaming `@reflect/*`, Rust crates, the `reflect` CLI, `.kore/`,
 `app.lore.*`, `iCloud.app.lore`, or the Memento desktop bundle.
 
 ## Evidence and current gaps

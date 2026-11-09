@@ -15,6 +15,7 @@
 //! [`error`] (the shared error contract).
 
 mod agent_cli;
+mod app_dir;
 mod background_task;
 mod blocking;
 mod calendar;
@@ -90,14 +91,9 @@ fn app_version<R: tauri::Runtime>(app: tauri::AppHandle<R>) -> String {
     app.package_info().version.to_string()
 }
 
-/// Builds the HTTP User-Agent from the same resolved version shown in the UI.
-pub(crate) fn app_user_agent<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> String {
-    format!("Kore/{}", app.package_info().version)
-}
-
 #[cfg(test)]
 mod app_metadata_tests {
-    use super::{app_user_agent, app_version};
+    use super::app_version;
 
     #[test]
     fn app_metadata_uses_tauri_package_info() {
@@ -108,7 +104,6 @@ mod app_metadata_tests {
             .expect("mock app");
 
         assert_eq!(app_version(app.handle().clone()), "7.8.9-beta.4");
-        assert_eq!(app_user_agent(app.handle()), "Kore/7.8.9-beta.4");
     }
 }
 
@@ -172,7 +167,7 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_http::init());
 
-    // Deep links (`kore://`, legacy `reflect://`) are desktop-only for now: the scheme is
+    // Deep links (`kore://`) are desktop-only for now: the scheme is
     // registered at bundle time (`plugins.deep-link` in tauri.conf.json) and
     // the frontend consumes URLs through `onOpenUrl`.
     #[cfg(desktop)]
@@ -294,7 +289,6 @@ pub fn run() {
         )
         .manage(fs::GraphState::default())
         .manage(background_task::BackgroundTaskState::default())
-        .manage(fs::ImportCancel::default())
         .manage(fs::vault_copy::VaultCopies::default())
         .manage(fs::assets::AssetUploads::default())
         .manage(db::IndexState::default())
@@ -343,8 +337,6 @@ pub fn run() {
             fs::graph_open,
             fs::graph_create,
             fs::graph_delete,
-            fs::graph_import_reflect_v1_zip,
-            fs::graph_import_cancel,
             fs::note_read,
             fs::note_read_local,
             fs::note_create,
@@ -542,7 +534,7 @@ pub fn run() {
                     windows::reopen_main_window(app);
                 }
             }
-            // The lock-screen widget opens `reflect://record-audio`; hand it
+            // The lock-screen widget opens `kore://record-audio`; hand it
             // to the recording plugin's persisted action queue (the V1
             // handshake) so the request survives webview churn and cold
             // starts. Desktop scheme opens flow through
@@ -551,7 +543,7 @@ pub fn run() {
             tauri::RunEvent::Opened { urls } => {
                 #[cfg(mobile)]
                 for url in urls {
-                    if url.scheme() == "reflect" && url.host_str() == Some("record-audio") {
+                    if url.scheme() == "kore" && url.host_str() == Some("record-audio") {
                         // This callback runs on the main thread, and
                         // `run_mobile_plugin` blocks its caller until the
                         // Swift command resolves — which `queueAction` does

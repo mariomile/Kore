@@ -54,7 +54,7 @@ interface SidebarSectionProps {
   children: ReactNode
 }
 
-const STORAGE_PREFIX = 'reflect.context-sidebar.'
+const STORAGE_PREFIX = 'kore.context-sidebar.'
 
 function readOpenState(storageKey: string): boolean {
   return window.sessionStorage.getItem(STORAGE_PREFIX + storageKey) !== 'closed'

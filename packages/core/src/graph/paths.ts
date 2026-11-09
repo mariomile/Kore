@@ -295,11 +295,17 @@ export function audioMemoPath(name: string): string {
 
 /**
  * Suffix of a managed asset-description file (Plan 20): the AI description +
- * OCR for an asset lives beside it as `<asset>.reflect.md`.
+ * OCR for an asset lives beside it as `<asset>.kore.md`.
  */
-export const DESCRIPTION_SUFFIX = '.reflect.md'
+export const DESCRIPTION_SUFFIX = '.kore.md'
 
-/** Graph-relative description path for an asset (`assets/x.png` → `assets/x.png.reflect.md`). */
+/**
+ * The suffix descriptions had before the Kore rename. Opening a vault renames
+ * them (`fs/legacy_descriptions.rs`); until then they are never assets.
+ */
+const LEGACY_DESCRIPTION_SUFFIX = '.reflect.md'
+
+/** Graph-relative description path for an asset (`assets/x.png` → `assets/x.png.kore.md`). */
 export function descriptionPathFor(assetPath: string): string {
   return `${assetPath}${DESCRIPTION_SUFFIX}`
 }
@@ -311,7 +317,11 @@ export function descriptionPathFor(assetPath: string): string {
  * asset-description pass; precise eligibility is `isEligibleAssetPath`.
  */
 export function isAssetPath(path: string): boolean {
-  return path.startsWith(`${ASSETS_DIR}/`) && !path.endsWith(DESCRIPTION_SUFFIX)
+  return (
+    path.startsWith(`${ASSETS_DIR}/`) &&
+    !path.endsWith(DESCRIPTION_SUFFIX) &&
+    !path.endsWith(LEGACY_DESCRIPTION_SUFFIX)
+  )
 }
 
 /**

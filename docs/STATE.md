@@ -1,5 +1,27 @@
 # Kore working state
 
+## Rename visible Reflect leftovers to Kore, 2026-11-09
+
+Ask: Mario, "ora deve essere tutto Kore" / "ci deve essere solo Kore". PR #354,
+one commit per step. Apple identity (`app.lore.*`, keychain `lore`) is another
+thread; the mechanical internal rename (`@reflect/*`, crates, CSS) is draft #355.
+
+- [x] Vault runtime dir `.reflect/` → `.kore/` (`crates/index-schema/src/runtime_dir.rs`),
+  migrated by app and CLI on open, merging without overwrite; git ignores
+  `/.kore/*` except `proposals/`.
+- [x] Deep links: only `kore://` is registered and parsed (desktop, iOS, widget).
+- [x] Visible labels, reflog message and the old `.gitignore` group.
+- [x] Reflect V1 zip import removed (Rust commands, core bindings, settings section).
+- [x] Asset descriptions `*.reflect.md` → `*.kore.md` (`fs/legacy_descriptions.rs`);
+  core still reads `reflectAsset: true` for evicted iCloud files.
+- [x] localStorage `reflect.*` → `kore.*` (copied once in `public/theme-init.js`),
+  `kore-asset://`, `kore-preview=raster`, `kore:capture-page-text`.
+- [x] Config dir `reflect-open/` → `kore/` (`app_dir.rs`, once per launch),
+  native host `app.kore.capture` (old manifest removed on register).
+- [x] Default backup repo `kore-backup`; AGENTS.md / CLAUDE.md naming rules.
+- Not verified on a real Mac: the migrations run in tests only. An extension
+  built before this PR calls the old host name until it is rebuilt.
+
 ## Quick Add review fixes, 2026-11-09
 
 Ask: Mario OK'd the strict review of #346
@@ -3304,6 +3326,15 @@ screen: Agents then Close lands on today.
 **Next:** merge the Close fix, then bump.
 
 ## Session log
+
+- 2026-11-09 — Quality refactor, no behavior change. Agent steps carry a
+  `kind` and the `notePath` they touched, set in core by the Claude Code
+  describer, so `chat-agent-steps.tsx` maps kind to icon and no longer
+  switches on tool names; steps persisted before this are upgraded on load.
+  Only subagent steps nest (the UI's `flatten` is gone), the dead lone-step
+  case in `ChatAssistantPart` is removed, and every engine's `parseLine`
+  returns a chunk list (`parseClaudeCliLine` removed). Verified: core
+  vitest (2,563), chat browser tests on Chromium, typecheck and lint.
 
 - 2026-11-08 — Quality refactor, no behavior change. `kore sources` policy
   moves to core: `headless/sync-sources.ts` resolves which connectors run,

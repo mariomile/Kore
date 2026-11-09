@@ -5,14 +5,14 @@ import { Bubble, BubbleContent } from '@/components/ui/bubble'
 import { Marker, MarkerContent } from '@/components/ui/marker'
 import { MarkdownPreview } from '@/editor/markdown-preview'
 import { cn } from '@/lib/utils'
-import { ChatAgentSteps } from './chat-agent-steps'
 import { ChatChangesCard } from './chat-changes-card'
 import { ChatContextSources } from './chat-context-sources'
 import { ChatNoteCard } from './chat-note-card'
 import { ChatToolChip } from './chat-tool-chip'
 
 interface ChatAssistantPartProps {
-  part: AssistantPart
+  /** Agent steps never come here: the turn renders each run of them as one block. */
+  part: Exclude<AssistantPart, { kind: 'step' }>
   status: ChatTurn['status']
   onWikiLinkClick: (options: { target: string; openInSplit: boolean }) => void
 }
@@ -53,10 +53,6 @@ export function ChatAssistantPart({
       )
     case 'tool':
       return <ChatToolChip part={part} turnStatus={status} />
-    case 'step':
-      // The turn groups consecutive steps into one block; a lone step
-      // rendered here is that block of one.
-      return <ChatAgentSteps steps={[part]} turnStatus={status} />
     case 'changes':
       return <ChatChangesCard paths={part.paths} />
     case 'context':

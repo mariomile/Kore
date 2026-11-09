@@ -558,7 +558,7 @@ mod tests {
             Some("notes/idea.md".to_string())
         );
         assert_eq!(
-            tracked_note_relpath("/var/mobile/Containers/Notes/.reflect/index.sqlite", &roots),
+            tracked_note_relpath("/var/mobile/Containers/Notes/.kore/index.sqlite", &roots),
             None
         );
         assert_eq!(tracked_note_relpath("/elsewhere/notes/a.md", &roots), None);

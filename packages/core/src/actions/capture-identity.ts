@@ -1,6 +1,6 @@
 import { assetPath, dailyPath, notePath } from '../graph/paths'
 
-const INBOX_PREFIX = '.reflect/inbox/'
+const INBOX_PREFIX = '.kore/inbox/'
 
 /** Is this watcher path a spooled capture envelope? */
 export function isCaptureSpoolPath(path: string): boolean {

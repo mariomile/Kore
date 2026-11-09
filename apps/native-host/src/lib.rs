@@ -1,7 +1,7 @@
 //! The Chrome native-messaging host (Plan 11). Chrome spawns this binary per
 //! capture (`runtime.sendNativeMessage`); it validates the wire message and
 //! **spools** it into the active graph's capture inbox
-//! (`<graph>/.reflect/inbox/`), then acks `queued` and exits. It is a spooler,
+//! (`<graph>/.kore/inbox/`), then acks `queued` and exits. It is a spooler,
 //! not a relay: it never talks to the running app — the inbox *is* the IPC,
 //! drained by the desktop app's watcher (or on next launch when the app is
 //! closed).
@@ -147,7 +147,7 @@ mod tests {
             read_ack(&output),
             serde_json::json!({ "ok": true, "status": "queued" })
         );
-        let inbox = graph.join(".reflect/inbox");
+        let inbox = graph.join(".kore/inbox");
         let id = "7c9e6679-7425-40de-944b-e07fc1f90ae7";
         assert_eq!(
             std::fs::read(inbox.join(format!("{id}.jpg"))).unwrap(),

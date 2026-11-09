@@ -2,7 +2,7 @@
 //!
 //! Pure IO — no Tauri state, no path policy (that's [`super::resolve`]). Writes
 //! are atomic (temp file + rename) so a crash mid-write can never truncate a
-//! note. Temp files are staged under `.reflect/tmp/` — the same volume, so the
+//! note. Temp files are staged under `.kore/tmp/` — the same volume, so the
 //! rename stays atomic, but excluded from cloud sync so a crash-stranded temp
 //! can never replicate to another device (Plan 21).
 
@@ -30,7 +30,7 @@ pub(super) struct FileCatalog {
     pub skipped: u32,
 }
 
-pub(super) const REFLECT_DIR: &str = ".reflect";
+pub(super) use reflect_index_schema::KORE_DIR;
 const META_SCHEMA_VERSION: u32 = 1;
 pub(super) const TOP_LEVEL_DIRS: [&str; 3] = ["daily", "notes", "assets"];
 #[cfg(any(target_os = "macos", target_os = "ios"))]
@@ -56,14 +56,18 @@ pub(super) fn bootstrap(root: &Path) -> AppResult<()> {
     Ok(())
 }
 
-/// Initialize only Reflect's rebuildable runtime state for an existing vault.
+/// Initialize only Kore's rebuildable runtime state for an existing vault.
 /// Existing Markdown folders are opened in place; user-facing directories and
-/// the root `.gitignore` remain byte-for-byte untouched.
+/// the root `.gitignore` remain byte-for-byte untouched, except for renaming
+/// the `.reflect/` group earlier Kore builds wrote there.
 pub(super) fn initialize_runtime(root: &Path) -> AppResult<()> {
+    reflect_index_schema::migrate_legacy_dir(root)?;
     ensure_runtime_directory(root)?;
     sweep_upload_staging(root);
-    mark_dir_local_only(&root.join(REFLECT_DIR));
+    mark_dir_local_only(&root.join(KORE_DIR));
     ensure_runtime_gitignore(root)?;
+    graph_gitignore::upgrade_legacy_group(root)?;
+    super::legacy_descriptions::migrate(root);
     // A backup repo must never ride a file-sync provider: two devices' object
     // stores merging file-by-file is repository corruption (Plan 21). New
     // repos are marked at init (`git::repo`); this covers pre-existing ones.
@@ -77,12 +81,12 @@ pub(super) fn initialize_runtime(root: &Path) -> AppResult<()> {
     Ok(())
 }
 
-/// Establish the one directory Reflect is allowed to add when adopting an
+/// Establish the one directory Kore is allowed to add when adopting an
 /// existing vault. `create_dir_all` follows a pre-existing symlink, which
 /// would let an untrusted vault redirect cleanup and metadata writes outside
 /// its root; inspect the entry itself and fail closed on every non-directory.
 fn ensure_runtime_directory(root: &Path) -> AppResult<()> {
-    let runtime = root.join(REFLECT_DIR);
+    let runtime = root.join(KORE_DIR);
     match fs::symlink_metadata(&runtime) {
         Ok(metadata) if metadata.file_type().is_dir() => Ok(()),
         Ok(_) => Err(AppError::traversal(format!(
@@ -100,18 +104,28 @@ fn ensure_runtime_directory(root: &Path) -> AppResult<()> {
     }
 }
 
-/// `*` makes `.reflect/` self-ignoring: git never shows a directory whose
+/// `*` makes `.kore/` self-ignoring: git never shows a directory whose
 /// entire contents are ignored (the pattern uv uses for `.venv/`). One file
-/// inside the directory Reflect itself creates covers plain repositories,
+/// inside the directory Kore itself creates covers plain repositories,
 /// linked worktrees, submodules, and vaults that are subdirectories of a
-/// larger repository — without ever touching `.git`.
+/// larger repository — without ever touching `.git`. Only `proposals/` is
+/// re-included, so agent proposals sync (Plan 33, A2). A file still holding
+/// the pre-rename `*` alone is upgraded in place.
 fn ensure_runtime_gitignore(root: &Path) -> AppResult<()> {
-    create_runtime_file(&root.join(REFLECT_DIR).join(".gitignore"), "*\n")
+    let path = root.join(KORE_DIR).join(".gitignore");
+    if fs::symlink_metadata(&path).is_ok_and(|metadata| metadata.file_type().is_file())
+        && fs::read_to_string(&path)
+            .is_ok_and(|text| text == reflect_index_schema::LEGACY_SELF_GITIGNORE)
+    {
+        fs::write(&path, reflect_index_schema::SELF_GITIGNORE)?;
+        return Ok(());
+    }
+    create_runtime_file(&path, reflect_index_schema::SELF_GITIGNORE)
 }
 
 fn ensure_runtime_meta(root: &Path) -> AppResult<()> {
     create_runtime_file(
-        &root.join(REFLECT_DIR).join("meta.json"),
+        &root.join(KORE_DIR).join("meta.json"),
         &format!("{{\n  \"schemaVersion\": {META_SCHEMA_VERSION}\n}}\n"),
     )
 }
@@ -176,13 +190,13 @@ pub(super) fn read_note_no_follow(root: &Path, abs: &Path) -> std::io::Result<St
     }
 }
 
-/// Drop leftover staging files (`.reflect/tmp/`: asset uploads, `fs::assets`,
+/// Drop leftover staging files (`.kore/tmp/`: asset uploads, `fs::assets`,
 /// and atomic-write temps) — a crash mid-write strands its temp file, and
 /// nothing else ever reclaims it. Opening the graph is the natural sweep
 /// point: a generation bump rejects any commit that was still in flight, so
 /// nothing live is removed. Best-effort — a locked file must not fail the open.
 fn sweep_upload_staging(root: &Path) {
-    let staging = root.join(REFLECT_DIR).join("tmp");
+    let staging = root.join(KORE_DIR).join("tmp");
     if !staging.exists() {
         return;
     }
@@ -195,7 +209,7 @@ fn sweep_upload_staging(root: &Path) {
 ///
 /// On Apple targets the `NSURL` resource keys exclude the directory from
 /// iCloud Drive sync and device backups — load-bearing once the graph lives in
-/// the iCloud container (Plan 21), where `.reflect/` (live SQLite + WAL) and
+/// the iCloud container (Plan 21), where `.kore/` (live SQLite + WAL) and
 /// `.git/` syncing would mean corruption. macOS additionally sets the
 /// provider-ignore xattrs that third-party sync clients (Dropbox, File
 /// Provider extensions) honor for graphs kept in such folders.
@@ -312,10 +326,10 @@ pub(super) fn atomic_create(
 /// stamps its rows with this so a later listing compares equal and skips the
 /// re-read.
 ///
-/// The temp file is staged under `.reflect/tmp/`, not next to `target`: the
+/// The temp file is staged under `.kore/tmp/`, not next to `target`: the
 /// note directories may live inside a file-sync folder (iCloud Drive —
 /// Plan 21), and a temp created there is synced and, after a crash, stranded
-/// on every device. `.reflect/` is excluded from sync and swept on graph open,
+/// on every device. `.kore/` is excluded from sync and swept on graph open,
 /// and it shares `target`'s volume, so the final rename stays atomic.
 pub(crate) fn atomic_write_bytes(
     root: &Path,
@@ -335,7 +349,7 @@ fn stage_bytes(root: &Path, target: &Path, contents: &[u8]) -> AppResult<tempfil
         .parent()
         .ok_or_else(|| AppError::io(format!("no parent directory for {}", target.display())))?;
     fs::create_dir_all(dir)?;
-    let staging = root.join(REFLECT_DIR).join("tmp");
+    let staging = root.join(KORE_DIR).join("tmp");
     fs::create_dir_all(&staging)?;
     let mut tmp = tempfile::NamedTempFile::new_in(&staging)?;
     tmp.write_all(contents)?;
@@ -601,11 +615,11 @@ mod tests {
             assert!(dir.path().join(sub).is_dir(), "missing dir {sub}");
         }
         let gitignore = fs::read_to_string(dir.path().join(".gitignore")).unwrap();
-        assert!(gitignore.contains("/.reflect/"));
+        assert!(gitignore.contains("/.kore/*"));
         assert!(gitignore.contains(".DS_Store"));
         assert!(gitignore.contains("Thumbs.db"));
         assert!(gitignore.contains("*.swp"));
-        assert!(dir.path().join(".reflect/meta.json").exists());
+        assert!(dir.path().join(".kore/meta.json").exists());
     }
 
     #[test]
@@ -616,7 +630,7 @@ mod tests {
 
         initialize_runtime(dir.path()).unwrap();
 
-        assert!(dir.path().join(".reflect/meta.json").is_file());
+        assert!(dir.path().join(".kore/meta.json").is_file());
         assert_eq!(
             fs::read_to_string(dir.path().join(".gitignore")).unwrap(),
             "node_modules/\n"
@@ -635,8 +649,43 @@ mod tests {
         let dir = tempdir().unwrap();
         initialize_runtime(dir.path()).unwrap();
         assert_eq!(
-            fs::read_to_string(dir.path().join(".reflect/.gitignore")).unwrap(),
-            "*\n"
+            fs::read_to_string(dir.path().join(".kore/.gitignore")).unwrap(),
+            reflect_index_schema::SELF_GITIGNORE
+        );
+    }
+
+    #[test]
+    fn opening_a_pre_rename_vault_renames_only_its_kore_written_ignore_group() {
+        let dir = tempdir().unwrap();
+        let legacy = "node_modules/\n\n# Reflect local index + caches (rebuildable; never committed)\n/.reflect/\n\n# mine\n/.reflect/\n";
+        fs::write(dir.path().join(".gitignore"), legacy).unwrap();
+
+        initialize_runtime(dir.path()).unwrap();
+
+        let gitignore = fs::read_to_string(dir.path().join(".gitignore")).unwrap();
+        assert!(gitignore.starts_with("node_modules/\n\n# Kore local index"));
+        assert!(gitignore.contains("/.kore/*\n!/.kore/proposals/\n"));
+        assert!(gitignore.ends_with("# mine\n/.reflect/\n"));
+        assert!(!gitignore.contains("Reflect"));
+    }
+
+    #[test]
+    fn opening_a_pre_rename_vault_moves_its_runtime_directory() {
+        let dir = tempdir().unwrap();
+        fs::create_dir_all(dir.path().join(".reflect/trash")).unwrap();
+        fs::write(dir.path().join(".reflect/.gitignore"), "*\n").unwrap();
+        fs::write(dir.path().join(".reflect/trash/old.md"), "kept").unwrap();
+
+        initialize_runtime(dir.path()).unwrap();
+
+        assert!(!dir.path().join(".reflect").exists());
+        assert_eq!(
+            fs::read_to_string(dir.path().join(".kore/trash/old.md")).unwrap(),
+            "kept"
+        );
+        assert_eq!(
+            fs::read_to_string(dir.path().join(".kore/.gitignore")).unwrap(),
+            reflect_index_schema::SELF_GITIGNORE
         );
     }
 
@@ -647,13 +696,13 @@ mod tests {
         fs::write(dir.path().join("note.md"), "# Note\n").unwrap();
 
         initialize_runtime(dir.path()).unwrap();
-        fs::write(dir.path().join(".reflect/index.sqlite"), b"db").unwrap();
+        fs::write(dir.path().join(".kore/index.sqlite"), b"db").unwrap();
 
-        // The self-ignoring `.reflect/.gitignore` makes every runtime file
+        // The self-ignoring `.kore/.gitignore` makes every runtime file
         // ignored — `git status` (CLI) shows nothing for the directory, and
         // the backup's `add_all` can never stage it.
-        assert!(repo.is_path_ignored(".reflect/index.sqlite").unwrap());
-        assert!(repo.is_path_ignored(".reflect/.gitignore").unwrap());
+        assert!(repo.is_path_ignored(".kore/index.sqlite").unwrap());
+        assert!(repo.is_path_ignored(".kore/.gitignore").unwrap());
         let mut index = repo.index().unwrap();
         index
             .add_all(["*"], git2::IndexAddOption::DEFAULT, None)
@@ -663,8 +712,11 @@ mod tests {
             .map(|entry| String::from_utf8_lossy(&entry.path).into_owned())
             .collect();
         assert_eq!(staged, vec!["note.md".to_string()]);
+        // Proposals are the one runtime subtree that syncs (Plan 33, A2).
+        fs::create_dir_all(dir.path().join(".kore/proposals")).unwrap();
+        assert!(!repo.is_path_ignored(".kore/proposals/p1.json").unwrap());
         // (The git CLI hides a directory whose entire contents are ignored,
-        // so `git status` shows nothing for `.reflect/`. libgit2's *status
+        // so `git status` shows nothing for `.kore/`. libgit2's *status
         // listing* is known to diverge cosmetically on such directories, but
         // its ignore machinery and staging — asserted above — do not.)
     }
@@ -677,13 +729,13 @@ mod tests {
         let dir = tempdir().unwrap();
         fs::write(dir.path().join(".git"), "gitdir: /nonexistent\n").unwrap();
         initialize_runtime(dir.path()).unwrap();
-        assert!(dir.path().join(".reflect/meta.json").is_file());
+        assert!(dir.path().join(".kore/meta.json").is_file());
     }
 
     #[test]
     fn existing_non_directory_runtime_path_is_rejected_unchanged() {
         let vault = tempdir().unwrap();
-        let runtime = vault.path().join(REFLECT_DIR);
+        let runtime = vault.path().join(KORE_DIR);
         fs::write(&runtime, b"not a directory").unwrap();
 
         assert!(initialize_runtime(vault.path()).is_err());
@@ -701,7 +753,7 @@ mod tests {
         fs::create_dir(outside.path().join("tmp")).unwrap();
         let sentinel = outside.path().join("tmp/keep");
         fs::write(&sentinel, b"outside").unwrap();
-        symlink(outside.path(), vault.path().join(REFLECT_DIR)).unwrap();
+        symlink(outside.path(), vault.path().join(KORE_DIR)).unwrap();
 
         assert!(initialize_runtime(vault.path()).is_err());
 
@@ -716,13 +768,9 @@ mod tests {
 
         let vault = tempdir().unwrap();
         let outside = tempdir().unwrap();
-        fs::create_dir(vault.path().join(REFLECT_DIR)).unwrap();
+        fs::create_dir(vault.path().join(KORE_DIR)).unwrap();
         let outside_meta = outside.path().join("meta.json");
-        symlink(
-            &outside_meta,
-            vault.path().join(REFLECT_DIR).join("meta.json"),
-        )
-        .unwrap();
+        symlink(&outside_meta, vault.path().join(KORE_DIR).join("meta.json")).unwrap();
 
         assert!(initialize_runtime(vault.path()).is_err());
         assert!(!outside_meta.exists());
@@ -733,7 +781,7 @@ mod tests {
     fn bootstrap_marks_reflect_dir_with_provider_ignore_xattrs() {
         let dir = tempdir().unwrap();
         bootstrap(dir.path()).unwrap();
-        let reflect_dir = dir.path().join(REFLECT_DIR);
+        let reflect_dir = dir.path().join(KORE_DIR);
         assert_eq!(
             xattr::get(&reflect_dir, "com.apple.fileprovider.ignore#P").unwrap(),
             Some(b"1".to_vec())
@@ -760,7 +808,7 @@ mod tests {
     #[test]
     fn apple_sync_exclusion_accepts_reflect_dir() {
         let dir = tempdir().unwrap();
-        let reflect_dir = dir.path().join(REFLECT_DIR);
+        let reflect_dir = dir.path().join(KORE_DIR);
         fs::create_dir_all(&reflect_dir).unwrap();
         assert!(set_apple_sync_exclusions(&reflect_dir).is_empty());
     }
@@ -769,7 +817,7 @@ mod tests {
     fn bootstrap_sweeps_stale_upload_staging() {
         let dir = tempdir().unwrap();
         bootstrap(dir.path()).unwrap();
-        let staging = dir.path().join(".reflect/tmp");
+        let staging = dir.path().join(".kore/tmp");
         fs::create_dir_all(&staging).unwrap();
         fs::write(staging.join(".tmpAbC123"), b"stranded upload").unwrap();
         // Re-opening the graph re-bootstraps; the stranded file goes away.
@@ -788,7 +836,7 @@ mod tests {
 
     #[test]
     fn atomic_write_leaves_no_temp_litter_in_the_target_dir() {
-        // Temps stage under `.reflect/tmp/` — a note directory inside a synced
+        // Temps stage under `.kore/tmp/` — a note directory inside a synced
         // folder must only ever contain the notes themselves.
         let dir = tempdir().unwrap();
         bootstrap(dir.path()).unwrap();
@@ -798,7 +846,7 @@ mod tests {
             .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
             .collect();
         assert_eq!(entries, vec!["a.md".to_string()]);
-        assert!(dir.path().join(".reflect/tmp").is_dir());
+        assert!(dir.path().join(".kore/tmp").is_dir());
     }
 
     #[test]

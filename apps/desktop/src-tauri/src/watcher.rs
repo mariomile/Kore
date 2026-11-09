@@ -3,12 +3,12 @@
 //! A debounced `notify` watcher over the graph root. It's the **sole** trigger
 //! for incremental re-indexing: an edit (ours or external) writes the markdown
 //! file, the watcher fires, and the frontend re-indexes that file. The index
-//! lives under `.reflect/`, which is filtered out here, so index writes can't
+//! lives under `.kore/`, which is filtered out here, so index writes can't
 //! loop back. The watcher reports eligible markdown notes and supported
 //! attachments anywhere in the vault (the shared `reflect-graph-paths`
 //! policy), plus anything under `audio-memos/` (recordings feed the sync
 //! debounce and the transcription reconciler, not the index) and capture
-//! envelopes under `.reflect/inbox/`. Non-note consumers filter by path. The
+//! envelopes under `.kore/inbox/`. Non-note consumers filter by path. The
 //! frontend resolves create-vs-delete and re-indexes (content-hash gated).
 //!
 //! Directory-level changes are deliberately **not** diffed here: no platform
@@ -54,7 +54,7 @@ pub struct WatcherState(pub Mutex<Option<Debouncer<RecommendedWatcher, PrunedFil
 ///
 /// The platform-recommended `FileIdMap` stats **every path under the graph
 /// root** — including `.git/objects/**` (which local history grows on every
-/// edit session) and `.reflect/` — at every `watch_start` and again on every
+/// edit session) and `.kore/` — at every `watch_start` and again on every
 /// FSEvents rescan: a multi-second launch burn on mature graphs. But the
 /// cache cannot simply be dropped (`NoCache`): FSEvents carries no rename
 /// cookies, so file IDs are the only thing stitching an external
@@ -65,7 +65,7 @@ pub struct WatcherState(pub Mutex<Option<Debouncer<RecommendedWatcher, PrunedFil
 /// the move and derived state is rebuilt instead of carried.
 ///
 /// So: same cache contract, pruned walk. Below the watch root, hidden names
-/// (`.git`, `.reflect`, `.DS_Store` — the same blackout `collect_changes`
+/// (`.git`, `.kore`, `.DS_Store` — the same blackout `collect_changes`
 /// applies to events) and the shared prune list (`node_modules` and friends)
 /// never enter the cache, at install time or from later create events.
 /// Rename stitching only matters for paths the watcher tracks, and those are
@@ -162,14 +162,14 @@ struct BatchEffects {
 /// Graph-relative wire path if `path` is tracked: an eligible markdown note
 /// or supported attachment anywhere visible (the shared classification), an
 /// audio-memo recording (anything under `audio-memos/`), or a spooled capture
-/// envelope (`.json` under `.reflect/inbox/` — the one carve-out from the
-/// `.reflect/` blackout; the envelope is the spool's commit point and
+/// envelope (`.json` under `.kore/inbox/` — the one carve-out from the
+/// `.kore/` blackout; the envelope is the spool's commit point and
 /// triggers the capture drain), else `None`. Pure — the filtering rule,
 /// unit-tested.
 fn tracked_relpath(path: &Path, root: &Path) -> Option<String> {
     let rel = path.strip_prefix(root).ok()?;
     let rel_str = rel.to_string_lossy().replace('\\', "/");
-    if rel_str.starts_with(".reflect/inbox/") && rel_str.ends_with(".json") {
+    if rel_str.starts_with(".kore/inbox/") && rel_str.ends_with(".json") {
         return Some(rel_str);
     }
     // An iCloud eviction placeholder tracks as the file it stands in for —
@@ -200,7 +200,7 @@ fn tracked_relpath(path: &Path, root: &Path) -> Option<String> {
 ///
 /// An **untracked but visible** path flips `reconcile` when it is (or was) a
 /// directory: a folder created, renamed, or removed can hold tracked
-/// descendants the platform never enumerates. Hidden paths (`.reflect/`
+/// descendants the platform never enumerates. Hidden paths (`.kore/`
 /// index churn, `.git/`) can never flip it — that is what keeps the
 /// reconcile pass's own index writes from looping back in here.
 fn collect_changes(paths: &[PathBuf], root: &Path) -> BatchEffects {
@@ -433,30 +433,30 @@ mod tests {
             .as_deref(),
             Some("audio-memos/audio-memo-2026-06-09-090000-000.m4a")
         );
-        // Capture envelopes are tracked: `.json` under `.reflect/inbox/` is
+        // Capture envelopes are tracked: `.json` under `.kore/inbox/` is
         // the spool's commit point and triggers the drain. Sibling screenshots
         // and host tmp files are not.
         assert_eq!(
-            tracked_relpath(Path::new("/g/.reflect/inbox/7c9e6679.json"), root).as_deref(),
-            Some(".reflect/inbox/7c9e6679.json")
+            tracked_relpath(Path::new("/g/.kore/inbox/7c9e6679.json"), root).as_deref(),
+            Some(".kore/inbox/7c9e6679.json")
         );
         assert_eq!(
-            tracked_relpath(Path::new("/g/.reflect/inbox/7c9e6679.jpg"), root),
+            tracked_relpath(Path::new("/g/.kore/inbox/7c9e6679.jpg"), root),
             None
         );
         assert_eq!(
-            tracked_relpath(Path::new("/g/.reflect/inbox/.tmp-x8f2"), root),
+            tracked_relpath(Path::new("/g/.kore/inbox/.tmp-x8f2"), root),
             None
         );
         // Quarantined spools must not re-trigger the drain.
         assert_eq!(
-            tracked_relpath(Path::new("/g/.reflect/inbox-rejected/bad.json"), root),
+            tracked_relpath(Path::new("/g/.kore/inbox-rejected/bad.json"), root),
             None
         );
         // Not tracked: the index, unsupported extensions, dotfiles, outside
         // root, or the audio-memos directory entry itself.
         assert_eq!(
-            tracked_relpath(Path::new("/g/.reflect/index.sqlite"), root),
+            tracked_relpath(Path::new("/g/.kore/index.sqlite"), root),
             None
         );
         assert_eq!(tracked_relpath(Path::new("/g/notes/x.xyz"), root), None);
@@ -483,7 +483,7 @@ mod tests {
         // loop a write back into the controller, so it must never be tracked
         // (`assets/` is a reserved tree: its markdown is metadata, not notes).
         assert_eq!(
-            tracked_relpath(Path::new("/g/assets/diagram.png.reflect.md"), root),
+            tracked_relpath(Path::new("/g/assets/diagram.png.kore.md"), root),
             None
         );
         assert_eq!(tracked_relpath(Path::new("/g/assets/data.xyz"), root), None);
@@ -500,7 +500,7 @@ mod tests {
             &[
                 PathBuf::from("/g/notes/a.md"),
                 PathBuf::from("/g/notes/a.md"),
-                PathBuf::from("/g/.reflect/index.sqlite"),
+                PathBuf::from("/g/.kore/index.sqlite"),
             ],
             root,
         );
@@ -590,14 +590,14 @@ mod tests {
     fn hidden_churn_never_triggers_a_reconcile() {
         let dir = tempfile::tempdir().unwrap();
         let root = dir.path();
-        std::fs::create_dir_all(root.join(".reflect")).unwrap();
-        // Index writes and checkpoints under `.reflect/` — exactly what the
+        std::fs::create_dir_all(root.join(".kore")).unwrap();
+        // Index writes and checkpoints under `.kore/` — exactly what the
         // reconcile pass itself produces. Feeding them back as reconcile
         // demands would loop forever.
         let effects = collect_changes(
             &[
-                root.join(".reflect/index.sqlite"),
-                root.join(".reflect/index.sqlite-wal"),
+                root.join(".kore/index.sqlite"),
+                root.join(".kore/index.sqlite-wal"),
                 root.join(".git/objects/pack"),
             ],
             root,
@@ -699,7 +699,7 @@ mod tests {
         let root = dir.path();
         std::fs::create_dir_all(root.join("notes")).unwrap();
         std::fs::create_dir_all(root.join(".git/objects/aa")).unwrap();
-        std::fs::create_dir_all(root.join(".reflect")).unwrap();
+        std::fs::create_dir_all(root.join(".kore")).unwrap();
         std::fs::create_dir_all(root.join("node_modules/pkg")).unwrap();
         std::fs::write(root.join("notes/a.md"), "note").unwrap();
         // Visible temp names must stay cached: an external editor's atomic
@@ -707,7 +707,7 @@ mod tests {
         // the reason this cache exists at all.
         std::fs::write(root.join("notes/b.md.tmp"), "tmp").unwrap();
         std::fs::write(root.join(".git/objects/aa/bb"), "obj").unwrap();
-        std::fs::write(root.join(".reflect/index.sqlite"), "db").unwrap();
+        std::fs::write(root.join(".kore/index.sqlite"), "db").unwrap();
         std::fs::write(root.join("node_modules/pkg/x.js"), "js").unwrap();
 
         let mut cache = PrunedFileIdMap::new(root.to_path_buf());
@@ -720,7 +720,7 @@ mod tests {
                 .paths
                 .keys()
                 .any(|path| path.starts_with(root.join(".git"))
-                    || path.starts_with(root.join(".reflect"))
+                    || path.starts_with(root.join(".kore"))
                     || path.starts_with(root.join("node_modules"))),
             "hidden and pruned trees must never enter the cache"
         );

@@ -9,6 +9,7 @@ import {
   noteLinkBlockId,
   withoutBlockIds,
 } from './block-ids'
+import { parseNote } from './extract'
 import { transclusionMarkdown } from './note-transclusion'
 
 describe('lineBlockId', () => {
@@ -140,5 +141,28 @@ describe('blockLinkLabel', () => {
     expect(blockLinkLabel('#^q')).toBe('Link to line')
     expect(blockLinkLabel('Prezzi#Plans')).toBeNull()
     expect(blockLinkLabel('Prezzi')).toBeNull()
+  })
+})
+
+describe('extraction drops ^id markers', () => {
+  it('keeps ids out of task text, note text and preview, but not out of code', () => {
+    const source = [
+      '+ [ ] Call Luca ^call1',
+      '',
+      'A paragraph ^para',
+      '',
+      '| a |',
+      '',
+      '^table',
+      '',
+      '```',
+      'x ^code',
+      '```',
+    ].join('\n')
+    const note = parseNote({ path: 'notes/ids.md', source })
+    expect(note.tasks[0]?.text).toBe('Call Luca')
+    expect(note.text).not.toMatch(/\^(call1|para|table)/)
+    expect(note.text).toContain('x ^code')
+    expect(note.previewText).not.toContain('^para')
   })
 })

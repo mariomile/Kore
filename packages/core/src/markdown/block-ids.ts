@@ -75,6 +75,30 @@ export function withoutBlockIds(markdown: string): string {
   return kept.join('\n')
 }
 
+/**
+ * Body offsets of every `^id` marker outside fenced code: an end-of-line
+ * marker with the whitespace before it, or a whole id-only line. Extraction
+ * cuts them, so task titles, search text and previews never carry an id.
+ */
+export function blockIdSpans(body: string): { from: number; to: number }[] {
+  const spans: { from: number; to: number }[] = []
+  let offset = 0
+  for (const { line, fenced } of scanLines(body.split('\n'))) {
+    if (!fenced) {
+      if (ID_ONLY_RE.test(line)) {
+        spans.push({ from: offset, to: offset + line.length })
+      } else {
+        const tail = LINE_ID_TAIL_RE.exec(line)
+        if (tail !== null) {
+          spans.push({ from: offset + tail.index, to: offset + line.length })
+        }
+      }
+    }
+    offset += line.length + 1
+  }
+  return spans
+}
+
 function* scanLines(lines: readonly string[]): Generator<{ line: string; fenced: boolean }> {
   let fence: string | null = null
   for (const line of lines) {

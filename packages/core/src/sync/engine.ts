@@ -1,4 +1,5 @@
 import { isAppError } from '../errors'
+import { commitAgentWrites } from './agent-commits'
 import {
   gitCommitAll,
   gitFetch,
@@ -295,7 +296,9 @@ export function createSyncEngine(options: SyncEngineOptions): SyncEngine {
     remoteChanges: (changes: ChangedFile[]) => void,
   ): Promise<void> {
     const token = options.localOnly === true ? null : await step(options.getToken())
-    const commit = await step(gitCommitAll('Update notes', options.generation))
+    const agentCommitted = await step(commitAgentWrites(options.generation))
+    const allCommit = await step(gitCommitAll('Update notes', options.generation))
+    const commit = agentCommitted ? { ...allCommit, committed: true } : allCommit
     if (commit.skippedLargeFiles.length > 0) {
       options.onLargeFilesSkipped?.(commit.skippedLargeFiles)
     }

@@ -9,6 +9,14 @@ export {
   gitDisconnect,
   gitClone,
   gitCommitAll,
+  gitCommitPaths,
+  gitAgentWrites,
+  gitAgentWritesClear,
+  agentWriteSchema,
+  agentWritesSchema,
+  type AgentWrite,
+  type AgentWrites,
+  type CommitAuthor,
   gitFetch,
   gitMergeRemote,
   gitPush,
@@ -72,3 +80,25 @@ export {
   type SyncErrorKind,
   type SyncStatus,
 } from './engine'
+export { AGENT_TRAILER, commitAgentWrites } from './agent-commits'
+export {
+  SITTING_GAP_MS,
+  activityAuthor,
+  activityAuthorKey,
+  gitActivity,
+  groupSittings,
+  type ActivityAuthor,
+  type ActivityCommit,
+  type ActivityFile,
+  type ActivityPage,
+  type ActivitySitting,
+  type SittingNote,
+} from './activity'
+export {
+  gitUndoPreview,
+  undoSitting,
+  type UndoConflictReason,
+  type UndoPreview,
+  type UndoSittingOptions,
+  type UndoSittingResult,
+} from './undo'

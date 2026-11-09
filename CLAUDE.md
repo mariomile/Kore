@@ -84,9 +84,12 @@ in AGENTS.md. These additional gates are what actually turn CI red:
   [docs/plans/](docs/plans/) — start at
   [docs/plans/00-overview.md](docs/plans/00-overview.md).
 - Editor behavior (markdown round-tripping, keybindings, slash menus, wiki
-  links, paste/drop) often bottoms out in Meowdown, the first-party editor
-  consumed as `@meowdown/core` / `@meowdown/react`. Fix it there rather than
-  papering over it here.
+  links, paste/drop) often bottoms out in Meowdown, a third-party editor
+  (prosekit/meowdown) consumed as `@meowdown/core` / `@meowdown/react`. Kore
+  does not own it and its maintainers won't change it for us (Mario,
+  2026-11-08): build editor features as Kore ProseMirror plugins (like
+  `apps/desktop/src/editor/link-card-plugin.ts`), and patch it in `patches/`
+  only when no plugin can do the job.
 
 ## Cutting a Kore release (bump)
 

@@ -213,4 +213,14 @@ describe('BlockZoom', () => {
     await expect.element(pmRoot.getByText('call with')).toBeVisible()
     expect(handle.getMarkdown()).toBe(NOTE)
   })
+
+  it('finds the Meowdown list DOM the zoom styles and clicks rely on', async () => {
+    // A guard on third-party markup: block-zoom.css and the bullet click use these.
+    await renderNote()
+    const item = page.locate('.prosemirror-flat-list[data-list-kind="bullet"]').first()
+    await expect.element(item.locate('> .list-marker')).toBeInTheDocument()
+    await expect.element(item.locate('> .list-content')).toBeInTheDocument()
+    await item.locate('> .list-marker').click()
+    await expect.element(item).toHaveAttribute('data-list-collapsed')
+  })
 })

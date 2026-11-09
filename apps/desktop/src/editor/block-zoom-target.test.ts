@@ -121,4 +121,13 @@ describe('block zoom target', () => {
       'DeepAgent',
     ])
   })
+
+  it('relies on Meowdown list nodes named list with kind and collapsed attrs', () => {
+    // A guard on a third-party schema: if Meowdown renames these, zoom breaks.
+    const item = doc.nodeAt(headingPos('DeepAgent'))
+    expect(item?.type.name).toBe('list')
+    expect(item?.attrs).toMatchObject({ kind: 'bullet', collapsed: false })
+    expect(doc.nodeAt(headingPos('Calls'))?.type.name).toBe('heading')
+    expect(doc.nodeAt(headingPos('Calls'))?.attrs['level']).toBe(3)
+  })
 })

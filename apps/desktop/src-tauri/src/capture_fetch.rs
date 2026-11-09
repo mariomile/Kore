@@ -265,6 +265,74 @@ mod tests {
         ));
     }
 
+    /// Serve one canned HTTP answer on a local port; returns its URL.
+    fn serve_once(content_type: &'static str, body: Vec<u8>) -> String {
+        use std::io::{Read, Write};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let url = format!("http://{}/", listener.local_addr().unwrap());
+        std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut request = [0u8; 4096];
+            let _ = stream.read(&mut request);
+            let head = format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: {content_type}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                body.len()
+            );
+            let _ = stream.write_all(head.as_bytes());
+            let _ = stream.write_all(&body);
+        });
+        url
+    }
+
+    fn bounds(
+        content_types: &'static [&'static str],
+        max_bytes: usize,
+        oversize: Oversize,
+    ) -> Bounds {
+        Bounds {
+            redirects: Policy::none(),
+            content_types,
+            expected: "the test type",
+            max_bytes,
+            oversize,
+        }
+    }
+
+    fn fetch(url: &str, bounds: Bounds) -> AppResult<Vec<u8>> {
+        tauri::async_runtime::block_on(fetch_bounded(url, bounds, |client| client.get(url)))
+    }
+
+    #[test]
+    fn fetch_bounded_reads_an_answer_within_its_cap() {
+        let url = serve_once("application/json", b"{\"ok\":true}".to_vec());
+        let body = fetch(&url, bounds(&["json"], 64, Oversize::Refuse)).unwrap();
+        assert_eq!(body, b"{\"ok\":true}");
+    }
+
+    #[test]
+    fn fetch_bounded_cuts_or_refuses_past_the_cap() {
+        let url = serve_once("text/html", vec![b'a'; 100]);
+        let cut = fetch(&url, bounds(&["html"], 10, Oversize::Cut)).unwrap();
+        assert_eq!(cut, vec![b'a'; 10]);
+
+        let url = serve_once("application/json", vec![b'a'; 100]);
+        let refused = fetch(&url, bounds(&["json"], 10, Oversize::Refuse)).unwrap_err();
+        assert!(
+            format!("{refused:?}").contains("more than 10 bytes"),
+            "{refused:?}"
+        );
+    }
+
+    #[test]
+    fn fetch_bounded_refuses_an_unexpected_content_type() {
+        let url = serve_once("Image/PNG", vec![0; 4]);
+        let refused = fetch(&url, bounds(&["json", "xml"], 64, Oversize::Refuse)).unwrap_err();
+        assert!(
+            format!("{refused:?}").contains("did not answer the test type (image/png)"),
+            "{refused:?}"
+        );
+    }
+
     #[test]
     fn only_https_reaches_the_strict_fetches() {
         assert!(require_https("https://example.com/a.json").is_ok());

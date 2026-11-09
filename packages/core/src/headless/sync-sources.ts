@@ -61,8 +61,10 @@ export interface SourceRun {
   readonly keptFloor: string
 }
 
-/** What the CLI shows when nothing can run. */
-export type SourcesProblem = { readonly usage: string }
+/** The resolved plan: the runs to make, or the usage problem when none can run. */
+export type SourcesPlan =
+  | { readonly kind: 'runs'; readonly runs: readonly SourceRun[] }
+  | { readonly kind: 'usage'; readonly usage: string }
 
 function envValue(env: SourcesEnv, name: string): string | null {
   const value = env[name]?.trim() ?? ''
@@ -85,9 +87,10 @@ export function resolveSourceRuns(
   request: SourcesRequest,
   env: SourcesEnv,
   now: string,
-): SourceRun[] | SourcesProblem {
+): SourcesPlan {
   if (request.only !== null && !CONNECTORS.some((connector) => connector.id === request.only)) {
     return {
+      kind: 'usage',
       usage: `unknown source "${request.only}"; known: ${CONNECTORS.map((c) => c.id).join(', ')}`,
     }
   }
@@ -114,10 +117,11 @@ export function resolveSourceRuns(
   if (runs.length === 0) {
     const tokens = CONNECTORS.map((connector) => envName(connector, 'TOKEN')).join(' and/or ')
     return {
+      kind: 'usage',
       usage: `no source to pull: set ${tokens} (optional: KORE_<SOURCE>_FOLDER, KORE_<SOURCE>_PATTERN, KORE_<SOURCE>_TAGS)`,
     }
   }
-  return runs
+  return { kind: 'runs', runs }
 }
 
 function date(value: string | null): Date | null {
@@ -139,7 +143,7 @@ async function runSource(run: SourceRun, generation: number): Promise<SourceRunR
       fetchFn: fetch,
       isStale: () => false,
     })
-    return { ...base, ...result }
+    return { ...result, ...base }
   } catch (error) {
     return {
       ...base,
@@ -152,16 +156,27 @@ async function runSource(run: SourceRun, generation: number): Promise<SourceRunR
 }
 
 /**
- * Run every configured source in turn (one failing source never stops the
- * next) and send the CLI the reports, or the usage problem when none can run.
+ * Ask the CLI for its flags and windows and resolve the plan. A usage
+ * problem is reported at once, so the caller can stop before any indexing.
  */
-export async function syncSources(generation: number, env: SourcesEnv): Promise<SourceRunReport[]> {
+export async function planSources(env: SourcesEnv): Promise<readonly SourceRun[] | null> {
   const request = await call('sources_config', {}, sourcesRequestSchema)
-  const runs = resolveSourceRuns(request, env, new Date().toISOString())
-  if (!Array.isArray(runs)) {
-    await call('sources_report', { reports: [], usage: runs.usage }, z.null())
-    return []
+  const plan = resolveSourceRuns(request, env, new Date().toISOString())
+  if (plan.kind === 'usage') {
+    await call('sources_report', { reports: [], usage: plan.usage }, z.null())
+    return null
   }
+  return plan.runs
+}
+
+/**
+ * Run the planned sources in turn (one failing source never stops the next)
+ * and send the CLI their reports.
+ */
+export async function syncSources(
+  runs: readonly SourceRun[],
+  generation: number,
+): Promise<SourceRunReport[]> {
   const reports: SourceRunReport[] = []
   for (const run of runs) {
     reports.push(await runSource(run, generation))

@@ -1,6 +1,13 @@
 import { lineBlockId, newBlockId } from '@reflect/core'
 import type { Node as ProseMirrorNode } from '@prosekit/pm/model'
-import { Plugin, PluginKey, TextSelection, type EditorState } from '@prosekit/pm/state'
+import {
+  Plugin,
+  PluginKey,
+  TextSelection,
+  type EditorState,
+  type Transaction,
+} from '@prosekit/pm/state'
+import { Mapping } from '@prosekit/pm/transform'
 import { Decoration, DecorationSet, type EditorView } from '@prosekit/pm/view'
 import { targetSpan } from './block-zoom-target'
 import { zoomTarget, zoomTo } from './block-zoom-plugin'
@@ -77,12 +84,60 @@ function markerDecorations(doc: ProseMirrorNode): DecorationSet {
       decorations.push(
         marker.idOnly && parent === doc
           ? Decoration.node(pos, pos + node.nodeSize, { class: 'kore-block-id-line' })
-          : Decoration.inline(marker.from, marker.to, { class: 'kore-block-id' }),
+          : Decoration.inline(
+              marker.from,
+              marker.to,
+              { class: 'kore-block-id' },
+              { kind: 'inline' },
+            ),
       )
     }
     return false
   })
   return DecorationSet.create(doc, decorations)
+}
+
+/**
+ * After an edit that joined a line onto the end of a line with an id
+ * (Backspace at the start of the next line, a paste, an agent's edit), the id
+ * would sit mid-line: links to it would break and the joined text would hide
+ * with it. Move each such marker back to the end of its line. Null when no
+ * marker moved.
+ */
+function keepMarkersAtLineEnd(
+  transactions: readonly Transaction[],
+  oldState: EditorState,
+  newState: EditorState,
+): Transaction | null {
+  const before = blockIdKey.getState(oldState)?.markers
+  if (before === undefined || before === DecorationSet.empty) {
+    return null
+  }
+  const mapping = new Mapping()
+  for (const tr of transactions) {
+    mapping.appendMapping(tr.mapping)
+  }
+  const tr = newState.tr
+  for (const marker of before.find()) {
+    if ((marker.spec as { kind?: string }).kind !== 'inline') {
+      continue
+    }
+    const text = oldState.doc.textBetween(marker.from, marker.to)
+    const from = mapping.mapResult(marker.from, 1)
+    const to = mapping.mapResult(marker.to, -1)
+    if (from.deleted || to.deleted || to.pos - from.pos !== text.length) {
+      continue
+    }
+    const start = tr.mapping.map(from.pos)
+    const end = tr.mapping.map(to.pos)
+    const $end = tr.doc.resolve(end)
+    if (!$end.parent.isTextblock || end >= $end.end() || tr.doc.textBetween(start, end) !== text) {
+      continue
+    }
+    const lineEnd = $end.end()
+    tr.insertText(text, lineEnd).delete(start, end)
+  }
+  return tr.docChanged ? tr.setMeta(SKIP_CLAMP, true) : null
 }
 
 /** A selection change this plugin makes itself, which the caret rule leaves alone. */
@@ -122,6 +177,9 @@ function handleMarkerKey(view: EditorView, event: KeyboardEvent): boolean {
   if (event.altKey || event.metaKey || event.ctrlKey || event.shiftKey) {
     return false
   }
+  if (event.key === 'Backspace') {
+    return skipHiddenLineBackward(view)
+  }
   if (event.key !== 'Enter' && event.key !== 'ArrowRight') {
     return false
   }
@@ -144,6 +202,32 @@ function handleMarkerKey(view: EditorView, event: KeyboardEvent): boolean {
     state.tr.setSelection(TextSelection.create(state.doc, marker.to)).setMeta(SKIP_CLAMP, true),
   )
   return false
+}
+
+/**
+ * Backspace at the start of a line right under a hidden id-only line would
+ * join into the hidden line (and hide the text with it). Treat the hidden line
+ * as a wall instead: the caret moves to the end of the block above it.
+ */
+function skipHiddenLineBackward(view: EditorView): boolean {
+  const { state } = view
+  const { $from, empty } = state.selection
+  if (!empty || $from.depth !== 1 || $from.parentOffset !== 0) {
+    return false
+  }
+  const index = $from.index(0)
+  if (index === 0) {
+    return false
+  }
+  const previous = state.doc.child(index - 1)
+  const start = $from.before() - previous.nodeSize
+  const marker = hiddenMarker(previous, start)
+  if (marker === null || !marker.idOnly) {
+    return false
+  }
+  const near = TextSelection.near(state.doc.resolve(start), -1)
+  view.dispatch(state.tr.setSelection(near).setMeta(SKIP_CLAMP, true).scrollIntoView())
+  return true
 }
 
 const blockIdKey = new PluginKey<BlockIdState>('kore-block-ids')
@@ -450,6 +534,12 @@ export function createBlockIdPlugin(options: BlockIdOptions = {}): Plugin<BlockI
         const { text } = lifted
         lifted = null
         return putBack(newState, at, text)
+      }
+      if (transactions.some((tr) => tr.docChanged)) {
+        const kept = keepMarkersAtLineEnd(transactions, oldState, newState)
+        if (kept !== null) {
+          return kept
+        }
       }
       if (!transactions.some((tr) => tr.selectionSet || tr.docChanged)) {
         return null

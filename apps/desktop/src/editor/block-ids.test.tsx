@@ -119,6 +119,28 @@ describe('BlockIds', () => {
     await expect.poll(() => handle.getMarkdown()).toContain('Para oneXstill para ^one')
   })
 
+  it('Backspace at the start of the next line keeps the id at the end of the joined line', async () => {
+    const note = ['foo ^abc', 'bar', '', 'Last line', '']
+      .join('\n')
+      .replace('^abc\nbar', '^abc\n\nbar')
+    const handle = await renderNote(note)
+    await pmRoot.getByText('bar', { exact: true }).click()
+    await userEvent.keyboard('{Home}')
+    await userEvent.keyboard('{Backspace}')
+    await expect.poll(() => handle.getMarkdown()).toContain('foobar ^abc')
+    await expect.element(pmRoot.getByText('foobar')).toBeVisible()
+  })
+
+  it('Backspace under a hidden id-only line does not join into it', async () => {
+    const handle = await renderNote()
+    await pmRoot.getByText('Last line').click()
+    await userEvent.keyboard('{Home}')
+    await userEvent.keyboard('{Backspace}')
+    await userEvent.keyboard('X')
+    await expect.poll(() => handle.getMarkdown()).toContain('A table-like quoteX')
+    expect(handle.getMarkdown()).toContain('\n^quote\n\nLast line')
+  })
+
   it('labels [[Note#^id]] with the note name only', async () => {
     const note = [
       'See [[Pricing#^pro]] and [[#^quote]] and [[Pricing#^pro|the price]].',

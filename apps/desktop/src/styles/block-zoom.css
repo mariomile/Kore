@@ -59,6 +59,15 @@
 .reflect-editor .kore-zoom-root[data-list-kind='task'] > .list-marker > label {
   transform: scale(1.25);
 }
+/* The hint under a zoomed item that has no children yet. */
+.reflect-editor .kore-zoom-leaf-hint {
+  margin-top: 0.25em;
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  pointer-events: none;
+  user-select: none;
+}
+
 /* A folded bullet opens while zoomed in, without rewriting its `+` marker. */
 .reflect-editor .kore-zoom-root[data-list-collapsed] > .list-content > :nth-child(n + 2) {
   display: block !important;

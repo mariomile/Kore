@@ -253,6 +253,17 @@ describe('BlockZoom', () => {
     await expect.element(pmRoot.getByText('Groceries')).not.toBeVisible()
     await expect.element(pmRoot.getByText('Intro paragraph')).toBeVisible()
   })
+
+  it('hints how to start children under a zoomed leaf, until there is one', async () => {
+    const handle = await renderNote()
+    await pmRoot.getByText('Buildrs').click()
+    await userEvent.keyboard(zoomIn)
+    const hint = pmRoot.getByText('Press Enter at the end of the line to add a sub-item')
+    await expect.element(hint).toBeVisible()
+    await userEvent.keyboard('{End}{Enter}first')
+    await expect.element(hint).not.toBeInTheDocument()
+    await expect.poll(() => handle.getMarkdown()).toContain('- Buildrs\n  - first\n')
+  })
 })
 
 function clickGrip(element: Element): void {

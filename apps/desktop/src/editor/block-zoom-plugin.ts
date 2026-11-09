@@ -532,6 +532,28 @@ function titleDecoration(doc: ProseMirrorNode, target: ZoomTarget): Decoration |
   return Decoration.node(pos, pos + node.nodeSize, { class: 'kore-zoom-title' })
 }
 
+/** Whether a zoomed list item has nothing under its own line yet. */
+function isLeaf(doc: ProseMirrorNode, target: ZoomTarget): boolean {
+  if (target.kind !== 'list') {
+    return false
+  }
+  const item = doc.nodeAt(target.root)
+  return item !== null && isListNode(item) && item.childCount <= 1
+}
+
+function isListNode(node: ProseMirrorNode): boolean {
+  return node.type.name === 'list'
+}
+
+/** Under a zoomed item with no children: how to start them. */
+function leafHint(): HTMLElement {
+  const hint = document.createElement('div')
+  hint.className = 'kore-zoom-leaf-hint'
+  hint.contentEditable = 'false'
+  hint.textContent = 'Press Enter at the end of the line to add a sub-item'
+  return hint
+}
+
 function buildDecorations(
   doc: ProseMirrorNode,
   target: ZoomTarget | null,
@@ -557,6 +579,15 @@ function buildDecorations(
   const title = titleDecoration(doc, target)
   if (title !== null) {
     decorations.push(title)
+  }
+  if (target.kind === 'list' && isLeaf(doc, target)) {
+    decorations.push(
+      Decoration.widget(span.to - 1, leafHint, {
+        side: 1,
+        ignoreSelection: true,
+        key: 'zoom-leaf-hint',
+      }),
+    )
   }
   decorations.push(
     Decoration.widget(span.from, (view) => breadcrumb(view, target), {
@@ -678,7 +709,7 @@ export function createBlockZoomPlugin(options: BlockZoomOptions = {}): Plugin<Bl
     }),
     state: {
       init: () => ({ target: null, decorations: DecorationSet.empty, transition: null }),
-      apply: (tr, previous, _oldState, newState) => {
+      apply: (tr, previous, oldState, newState) => {
         const meta = tr.getMeta(blockZoomKey) as ZoomMeta | undefined
         if (meta !== undefined) {
           return {
@@ -696,7 +727,13 @@ export function createBlockZoomPlugin(options: BlockZoomOptions = {}): Plugin<Bl
         const target = mapTarget(tr.mapping, previous.target, newState.doc)
         // Edits inside the zoom only shift what it hides, so the decorations
         // map; the zoom moving or ending rebuilds them.
-        return target === previous.target && previous.transition === null
+        // A leaf's hint comes and goes with its first child, so that rebuilds too.
+        const sameShape =
+          target === previous.target &&
+          previous.transition === null &&
+          (target === null ||
+            isLeaf(oldState.doc, previous.target) === isLeaf(newState.doc, target))
+        return sameShape
           ? { target, decorations: previous.decorations.map(tr.mapping, tr.doc), transition: null }
           : { target, decorations: buildDecorations(newState.doc, target, null), transition: null }
       },

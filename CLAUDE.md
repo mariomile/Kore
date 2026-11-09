@@ -15,13 +15,15 @@ For work on the Personal OS program (roadmap slices, Plans 25/26), also read
 [docs/STATE.md](docs/STATE.md) first and update it in the same session as any
 work that moves the program.
 
-Two names coexist on purpose and neither is a typo: **Reflect** is the upstream
-project this repo forked from (internal identifiers keep it — `@reflect/*`
-packages, `reflect-*` crates, `.reflect/`), while **Kore** is this fork and the
-only name a user ever sees or types: the `kore` CLI and `kore mcp`,
-`$KORE_GRAPH`, the agent skills, `kore://` links. If a user can see, type, or
-paste a name, it is Kore. Apple identity stays `app.lore.*` and the keychain
-service stays `"lore"`. Never "fix" one into another.
+Everything a user sees, types, pastes, or finds on disk is **Kore**: the `kore`
+CLI and `kore mcp`, `$KORE_GRAPH`, the agent skills, `kore://` links, the
+vault's `.kore/` directory, `*.kore.md` asset descriptions, the `kore/` config
+dir, `kore.*` storage keys and `kore-asset://`. The old Reflect-era stored
+names are migrated on first open; never write them again. **Reflect** (the
+upstream project this repo forked from) survives only in internal code
+identifiers (`@reflect/*` packages, `reflect-*` crates) until the mechanical
+internal rename lands. Apple identity stays `app.lore.*` and the keychain
+service stays `"lore"` until their own migration ships. See AGENTS.md, Naming.
 
 ## Layering rules
 

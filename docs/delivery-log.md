@@ -10,7 +10,8 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 - Links to a single line, Obsidian-style: `[[Note#^id]]` opens the note on
   the line that ends with `^id` and highlights it for a moment, and
   `![[Note#^id]]` shows that line (with its sub-items) inside another note.
-  The `^id` stays in the file but reads small and grey. "Copy link to line"
+  The `^id` stays in the file but never shows in the note, and the link
+  reads just the note's name. "Copy link to line"
   in the block menu or ⌘K adds an id only to that line and copies the link.
 
 - Zoom into any block: press ⌘⇧. (or ⌘-click a bullet) to see only that
@@ -19,6 +20,11 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
   switch is animated: the block slides to the top while the rest fades.
   Escape or Back steps out, the block menu and ⌘K offer it too, and Find
   widens the zoom when the match is elsewhere in the note.
+
+- Kore is the only name left: the vault folder is `.kore/`, links are
+  `kore://`, asset descriptions end in `.kore.md`, and settings live in
+  `kore/`. Opening an existing vault moves every old name across once and
+  never overwrites a file. The Reflect V1 import is gone.
 
 - Every task links to the note it lives in: the note icon next to its date
   or note name, also on the task you are editing. ⌘-click opens it beside.

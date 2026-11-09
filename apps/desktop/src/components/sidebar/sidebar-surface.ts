@@ -8,7 +8,7 @@
 
 export type SidebarSurface = 'home' | 'chat' | 'meetings'
 
-const STORAGE_KEY = 'reflect.workspace-sidebar.surface'
+const STORAGE_KEY = 'kore.workspace-sidebar.surface'
 
 /** Type guard over the persisted (and therefore untrusted) surface value. */
 function isSidebarSurface(value: string | null): value is SidebarSurface {

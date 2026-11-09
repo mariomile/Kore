@@ -7,7 +7,7 @@ title, selection, screenshot, and optional page text when Chrome allows them,
 then hand off to the **installed desktop app** through a local native-messaging
 host. No Kore-hosted services are involved, and capture works even while the
 app is closed: the host spools into the graph's capture inbox
-(`<graph>/.reflect/inbox/`), and the app drains it on next launch.
+(`<graph>/.kore/inbox/`), and the app drains it on next launch.
 [Plan 11](../../docs/plans/11-link-capture.md) is the design doc.
 
 Install the published extension from the
@@ -55,7 +55,7 @@ allowlisted by) the native-messaging host. Check, in order:
    **Reload** the extension. The host allowlists only the store and pinned dev
    IDs, so a wrong ID is rejected as "forbidden" → this message.
 2. **The desktop app has run at least once** on this machine, so it has written
-   `~/Library/Application Support/<browser>/NativeMessagingHosts/app.reflect.capture.json`.
+   `~/Library/Application Support/<browser>/NativeMessagingHosts/app.kore.capture.json`.
    If Chrome was already open when that file appeared, restart Chrome.
 3. **A graph is selected** in the app. The `no-graph` variant of this message
    ("Open Kore and pick a graph first") means the host ran but has no active

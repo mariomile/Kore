@@ -1,11 +1,12 @@
 //! Graph resolution: `--graph` flag → `KORE_GRAPH` env → git-style walk-up
-//! from the current directory to the nearest ancestor containing `.reflect/`.
+//! from the current directory to the nearest ancestor containing `.kore/`
+//! (or the pre-rename `.reflect/`, which is moved to `.kore/` on resolve).
 //! Deliberately no desktop recents-config fallback (Plan 14) — the CLI must be
 //! deterministic for scripts and agents.
 
 use std::path::{Path, PathBuf};
 
-use reflect_index_schema::REFLECT_DIR;
+use reflect_index_schema::KORE_DIR;
 
 use crate::error::CliError;
 
@@ -15,18 +16,23 @@ pub struct Graph {
     pub root: PathBuf,
 }
 
-const NO_GRAPH_HELP: &str =
-    "no graph found — run inside a graph (a directory containing .reflect/), \
+const NO_GRAPH_HELP: &str = "no graph found — run inside a graph (a directory containing .kore/), \
      pass --graph <path>, or set KORE_GRAPH";
 
 fn is_graph(path: &Path) -> bool {
-    path.join(REFLECT_DIR).is_dir()
+    reflect_index_schema::has_runtime_dir(path)
 }
 
 fn canonical_graph(path: &Path) -> Result<Graph, CliError> {
     let root = path
         .canonicalize()
         .map_err(|err| CliError::Runtime(format!("cannot resolve {}: {err}", path.display())))?;
+    reflect_index_schema::migrate_legacy_dir(&root).map_err(|err| {
+        CliError::Runtime(format!(
+            "cannot move {}/.reflect to {KORE_DIR}: {err}",
+            root.display()
+        ))
+    })?;
     crate::paths::configure_for_graph(&root);
     Ok(Graph { root })
 }
@@ -58,7 +64,7 @@ fn explicit_graph(path: &Path, source: &str) -> Result<Graph, CliError> {
     require_dir(path, source)?;
     if !is_graph(path) {
         return Err(CliError::Runtime(format!(
-            "{source}: not a Kore graph (no {REFLECT_DIR}/ directory): {}",
+            "{source}: not a Kore graph (no {KORE_DIR}/ directory): {}",
             path.display()
         )));
     }
@@ -67,8 +73,8 @@ fn explicit_graph(path: &Path, source: &str) -> Result<Graph, CliError> {
 
 /// Resolve the graph for `kore index`, which may be the first thing to run
 /// on a folder: an explicit `--graph` or `$KORE_GRAPH` directory is adopted
-/// even without `.reflect/` (indexing creates it). The current-directory
-/// fallback still requires `.reflect/`, so a stray run never indexes `$HOME`.
+/// even without `.kore/` (indexing creates it). The current-directory
+/// fallback still requires `.kore/`, so a stray run never indexes `$HOME`.
 pub fn resolve_for_index(flag: Option<&Path>) -> Result<Graph, CliError> {
     let Some((path, source)) = explicit_source(flag) else {
         return resolve(None).map_err(|_| {
@@ -113,10 +119,20 @@ mod tests {
     }
 
     #[test]
-    fn explicit_graph_resolves_when_reflect_dir_exists() {
+    fn explicit_graph_resolves_when_runtime_dir_exists() {
         let dir = tempdir().unwrap();
-        std::fs::create_dir(dir.path().join(REFLECT_DIR)).unwrap();
+        std::fs::create_dir(dir.path().join(KORE_DIR)).unwrap();
         let graph = explicit_graph(dir.path(), "--graph").unwrap();
-        assert!(graph.root.join(REFLECT_DIR).is_dir());
+        assert!(graph.root.join(KORE_DIR).is_dir());
+    }
+
+    #[test]
+    fn a_pre_rename_graph_resolves_and_moves_to_kore() {
+        let dir = tempdir().unwrap();
+        std::fs::create_dir(dir.path().join(".reflect")).unwrap();
+        std::fs::write(dir.path().join(".reflect/sources.json"), "{}").unwrap();
+        let graph = explicit_graph(dir.path(), "--graph").unwrap();
+        assert!(graph.root.join(KORE_DIR).join("sources.json").is_file());
+        assert!(!graph.root.join(".reflect").exists());
     }
 }

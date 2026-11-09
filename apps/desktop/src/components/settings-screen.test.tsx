@@ -54,16 +54,6 @@ vi.mock('@/lib/windows/window-role', async (importOriginal) => ({
   isMainWindow: () => true,
   requireMainWindow: () => true,
 }))
-// The Import section only hands the picked zip to the workspace-level V1
-// import controller, which these screen tests don't mount.
-vi.mock('@/providers/v1-import-provider', () => ({
-  useV1Import: () => ({
-    state: { phase: 'idle' },
-    startImport: () => {},
-    cancelImport: () => {},
-    dismiss: () => {},
-  }),
-}))
 
 let stored: Record<string, unknown>
 let saved: unknown[]

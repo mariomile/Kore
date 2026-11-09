@@ -14,7 +14,7 @@ import { call } from '../ipc/invoke'
  * This side owns the policy: which connectors exist ({@link CONNECTORS}),
  * the `KORE_<SOURCE>_*` variables that configure each one, their defaults,
  * and each source's window. The CLI only serves what it cannot know: the
- * user's flags and the per-machine window state in `.reflect/sources.json`,
+ * user's flags and the per-machine window state in `.kore/sources.json`,
  * which it persists from the reports this run sends back.
  */
 

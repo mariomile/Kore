@@ -31,7 +31,7 @@ describe('SidebarSection', () => {
     await userEvent.click(header)
     await expect.element(header).toHaveAttribute('aria-expanded', 'false')
     expect(view.getByText('section body').query()).toBeNull()
-    expect(window.sessionStorage.getItem('reflect.context-sidebar.probe')).toBe('closed')
+    expect(window.sessionStorage.getItem('kore.context-sidebar.probe')).toBe('closed')
     await view.unmount()
   })
 
@@ -49,7 +49,7 @@ describe('SidebarSection', () => {
   })
 
   it('persists reopening so the next mount starts open again', async () => {
-    window.sessionStorage.setItem('reflect.context-sidebar.probe', 'closed')
+    window.sessionStorage.setItem('kore.context-sidebar.probe', 'closed')
     const view = await renderSection()
     const header = view.getByRole('button', { name: /Probe/ })
     await expect.element(header).toHaveAttribute('aria-expanded', 'false')
@@ -57,7 +57,7 @@ describe('SidebarSection', () => {
     await userEvent.click(header)
     await expect.element(header).toHaveAttribute('aria-expanded', 'true')
     await expect.element(view.getByText('section body')).toBeInTheDocument()
-    expect(window.sessionStorage.getItem('reflect.context-sidebar.probe')).toBe('open')
+    expect(window.sessionStorage.getItem('kore.context-sidebar.probe')).toBe('open')
     await view.unmount()
 
     const remounted = await renderSection()

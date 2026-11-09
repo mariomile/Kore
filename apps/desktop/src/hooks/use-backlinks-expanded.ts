@@ -1,7 +1,7 @@
 import { useSessionFlag } from '@/lib/use-session-flag'
 
 /** Session-wide (all notes) expanded state, old Kore's `backlinks-expanded`. */
-const EXPANDED_STORAGE_KEY = 'reflect.backlinks-expanded'
+const EXPANDED_STORAGE_KEY = 'kore.backlinks-expanded'
 
 /**
  * The incoming-backlinks section's expanded state: one flag for the whole

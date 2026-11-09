@@ -2,7 +2,7 @@
 
 A small, self-contained read/discovery/write CLI over a Kore graph (Plan 14,
 extended for agents by [Plan 30](plans/30-cli-agent-parity.md)). It reads
-the graph's markdown files directly and opens `.reflect/index.sqlite`
+the graph's markdown files directly and opens `.kore/index.sqlite`
 strictly read-only — no running desktop app required. The index is refreshed
 by the desktop app, or without it by `kore index`, which runs the app's own
 indexer under Node (see below). Markdown stays the source of truth and
@@ -56,9 +56,9 @@ app as a Tauri sidecar (macOS: `Kore.app/Contents/MacOS/kore`, Linux
 
 First match wins:
 
-1. `--graph <path>` — must contain a `.reflect/` directory.
+1. `--graph <path>` — must contain a `.kore/` directory.
 2. `$KORE_GRAPH` — same requirement.
-3. The nearest ancestor of the current directory containing `.reflect/`
+3. The nearest ancestor of the current directory containing `.kore/`
    (git-style walk-up).
 
 There is deliberately no fallback to the desktop app's recent-graphs config:
@@ -148,7 +148,7 @@ matches include snippets. Terms are matched literally (FTS5 operators in the
 query have no special meaning); a term the tokenizer finds no word in, such as
 a lone `-`, is ignored entirely. JSON results without a body match have an empty
 snippet; title-prefix recall scores `0`, while tokenizer-normalized title matches
-retain their bm25 score. Requires the index: if `.reflect/index.sqlite` is missing
+retain their bm25 score. Requires the index: if `.kore/index.sqlite` is missing
 the exit code is `4` — open the graph in Reflect to build it; the CLI never runs the
 indexer. If files on disk diverge from the index (checked by mtime, then content
 hash), a staleness warning goes to stderr and `"stale": true` is set — results
@@ -410,7 +410,7 @@ is null when the index is absent or unusable.
 
 ### `kore index [--rebuild] [--json]`
 
-Builds or refreshes `.reflect/index.sqlite` with no app running, so every
+Builds or refreshes `.kore/index.sqlite` with no app running, so every
 index-backed command (and `kore mcp`) works on a plain clone of a vault, for
 example on an always-on server that pulls the vault from GitHub. It is the
 app's projection, not a copy: `kore` spawns Node on `kore-indexer.mjs`, the
@@ -419,7 +419,7 @@ and index writes with the same Rust code the app uses
 (`crates/index-store`).
 
 - The first run on a folder indexes every note; an explicit `--graph` or
-  `$KORE_GRAPH` folder may lack `.reflect/` (it is created). Later runs
+  `$KORE_GRAPH` folder may lack `.kore/` (it is created). Later runs
   reconcile and read only files whose mtime moved, so
   `git pull && kore index` is cheap. `--rebuild` rewrites every row.
 - Needs Node 22 or later (`KORE_NODE` names another binary) and
@@ -464,7 +464,7 @@ and again afterwards, so what it wrote is searchable at once.
   file at the book's path is adopted (same `url`, or a Readwise cover or
   link); only highlights it lacks are appended, under
   `### New highlights added <date>`.
-- Each source's window lives in `.reflect/sources.json` (per machine, never
+- Each source's window lives in `.kore/sources.json` (per machine, never
   committed). The first run starts from that moment, so history another app
   already wrote is not imported; `--since YYYY-MM-DD` reaches back further.
 - On an always-on host, `kore sync --sources` runs it as a journaled write
@@ -641,7 +641,7 @@ it). Without a name: every skill's `name` (the slug), `path`, `title` and
 
 The note in the Kore app's focused tab (`activeNote`, null when that tab is
 not a note) and the open note tabs in order (`openNotes`), from
-`.reflect/workspace.json`, which the desktop app rewrites as tabs change.
+`.kore/workspace.json`, which the desktop app rewrites as tabs change.
 Private, deleted and not-yet-downloaded notes are left out. Exit `3` when
 the app has not written the file for this graph.
 

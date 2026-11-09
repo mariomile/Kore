@@ -3,7 +3,7 @@
 //! Rust owns the primitive only — authorization and on-demand lookups by
 //! email or name. Which note titles count as person-like, and what contact
 //! details get written into a note, is `@reflect/core` policy. The address
-//! book is never mirrored into `.reflect/index.sqlite` (the index stays a
+//! book is never mirrored into `.kore/index.sqlite` (the index stays a
 //! pure projection of markdown), and Reflect never writes back to Contacts.
 //!
 //! On platforms without the Contacts framework (Windows, Linux, Android) the

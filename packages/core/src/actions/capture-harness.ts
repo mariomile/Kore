@@ -69,9 +69,9 @@ const notFound = () => ({ kind: 'notFound', message: 'missing' })
 
 /** The in-memory graph: note/asset paths to contents. */
 export const files = new Map<string, string>()
-/** The in-memory spool (`.reflect/inbox/`). */
+/** The in-memory spool (`.kore/inbox/`). */
 export const spool = new Map<string, { contents: string; modifiedMs: number }>()
-/** What `captureInboxReject` moved into `.reflect/inbox-rejected/`. */
+/** What `captureInboxReject` moved into `.kore/inbox-rejected/`. */
 export const rejected = new Map<string, string>()
 
 export function envelope(overrides: Partial<CaptureEnvelope> = {}): CaptureEnvelope {
@@ -126,7 +126,7 @@ export function wireCaptureMocks(): void {
 
   inboxListMock.mockImplementation(async () =>
     [...spool].map(([name, entry]) => ({
-      path: `.reflect/inbox/${name}`,
+      path: `.kore/inbox/${name}`,
       size: entry.contents.length,
       modifiedMs: entry.modifiedMs,
     })),

@@ -1,7 +1,7 @@
 # What leaves the device, and when
 
 Kore is local-first: your notes are markdown files in a folder you chose, the search
-index is SQLite in `.reflect/` beside them, and **no Kore-hosted server exists in any
+index is SQLite in `.kore/` beside them, and **no Kore-hosted server exists in any
 path** — there is no product analytics and no account. Kore does not send exception diagnostics or product analytics. Every network call the app can make is listed here, with what it carries.
 
 The one hard rule sits above all of it: **a note with `private: true` frontmatter never
@@ -57,7 +57,7 @@ practice. Both are covered by tests.
 ## Semantic search (off by default)
 
 - Embeddings are computed **on-device** (a bundled ONNX runtime; `all-MiniLM-L6-v2`)
-  and stored in `.reflect/`. Note content never leaves the machine for embedding.
+  and stored in `.kore/`. Note content never leaves the machine for embedding.
 - Enabling it downloads the model (~90 MB) **from Hugging Face, once**. That request
   carries no user data; the model is cached locally afterwards.
 
@@ -66,7 +66,7 @@ practice. Both are covered by tests.
 - **Where:** the git repository you connect — GitHub guided in-app (created **private**
   by default; a public repo requires explicit confirmation), or any git host over SSH.
 - **What:** graph files as git commits — including notes marked `private: true`.
-  The ignored `.reflect/` directory is excluded: Git sync does not include chat
+  The ignored `.kore/` directory is excluded: Git sync does not include chat
   history or chat attachments.
   The privacy flag blocks *services that read your content*; backup is your own
   repository, and excluding private notes from it would silently lose them.
@@ -93,7 +93,7 @@ entries or more than 20 GiB of uncompressed data are refused.
 - **Where:** nowhere on the network. The **Kore Capture** extension hands each
   capture to a local native-messaging host (`reflect-capture-host`) that the desktop
   app registers on your machine; the host spools it to the capture inbox on disk
-  (`<graph>/.reflect/inbox/`) and the app drains it on next launch. **No Kore-hosted
+  (`<graph>/.kore/inbox/`) and the app drains it on next launch. **No Kore-hosted
   server, no third party, and no other destination is ever contacted** — the extension
   stores no keys and makes no AI or network calls of its own.
 - **What:** only the page you explicitly capture (toolbar button or ⌘⇧K) — its URL,
@@ -124,7 +124,7 @@ entries or more than 20 GiB of uncompressed data are refused.
   where Reflect is not the thing assembling the payload.
 - **How private notes are fenced:** before each run, Reflect queries the index for every
   `private: true` note and writes absolute per-file `Read`, `Write` and `Edit` deny rules
-  into the CLI's own permission layer, alongside `.reflect/**` and `.git/**`. The rules
+  into the CLI's own permission layer, alongside `.kore/**` and `.git/**`. The rules
   are matched by the CLI, not by prompting, so the agent cannot talk itself past them.
 - **The limits, stated plainly:** the list comes from the SQLite index rather than from
   the files, so it is only as good as the index. If the index cannot answer, because it is
@@ -147,7 +147,7 @@ entries or more than 20 GiB of uncompressed data are refused.
 - **Where:** nowhere on the network. Enabling the Contacts integration reads the
   **macOS/iOS contacts store on-device** (the same store System Settings governs),
   behind the standard OS permission prompt. There is no Kore copy of your address
-  book: lookups are live queries, nothing is mirrored into `.reflect/`, and Kore
+  book: lookups are live queries, nothing is mirrored into `.kore/`, and Kore
   never writes back to Contacts.
 - **What:** a note title or a meeting attendee's email is matched against your
   contacts; a match's name, email, and phone are shown on a suggestion card. Contact
@@ -176,7 +176,7 @@ Kore does not include an external exception reporter. Errors remain local; no di
 ## Secrets
 
 API keys and tokens live in the **OS keychain only** — never in markdown, never in
-`.reflect/`, never in git. Deleting a provider in Settings deletes its keychain entry.
+`.kore/`, never in git. Deleting a provider in Settings deletes its keychain entry.
 
 ## Summary table
 

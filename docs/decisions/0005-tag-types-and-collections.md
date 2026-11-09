@@ -46,9 +46,9 @@ properties:
 Free body: describe the type.
 ```
 
-Why a note and not app settings or `.reflect/`: the schema is graph content —
+Why a note and not app settings or `.kore/`: the schema is graph content —
 it must sync (Git/iCloud), survive index rebuilds, be editable outside the
-app, and travel with an exported vault. `.reflect/` is a local-only
+app, and travel with an exported vault. `.kore/` is a local-only
 rebuildable cache and settings are app-level; both fail those tests. The
 `agents/` tree set the precedent: markdown with config frontmatter,
 "user-visible, editable, linkable, synced".

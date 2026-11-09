@@ -7,7 +7,7 @@ title, selection, screenshot, and optional page text when Chrome allows them,
 then hand off to the **installed desktop app** through a local native-messaging
 host. No Kore-hosted services are involved, and capture works even while the
 app is closed: the host spools into the graph's capture inbox
-(`<graph>/.reflect/inbox/`), and the app drains it on next launch.
+(`<graph>/.kore/inbox/`), and the app drains it on next launch.
 [Plan 11](../../docs/plans/11-link-capture.md) is the design doc.
 
 Install the published extension from the

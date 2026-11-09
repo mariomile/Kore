@@ -169,7 +169,7 @@ budget by `fitToContextWindow`, from the newest turn backwards — and nothing i
 lost, because the full conversation stays in the database.
 
 **Closed 2026-08-30:** image attachment bytes now land in
-`.reflect/chat-attachments/<conversation>/<attachment>.<ext>` at send time and
+`.kore/chat-attachments/<conversation>/<attachment>.<ext>` at send time and
 the persisted row keeps only the path; a restored conversation renders the
 file through the `kore-asset://` protocol and holds no base64. The bytes
 come back (per send, per image) only when a BYOK payload needs a restored

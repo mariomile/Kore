@@ -86,7 +86,7 @@ fn atomic_write_bytes_to(path: &Path, contents: &[u8]) -> AppResult<()> {
 fn host_manifest_json(host_path: &Path) -> String {
     serde_json::to_string_pretty(&serde_json::json!({
         "name": HOST_NAME,
-        "description": "Reflect link capture",
+        "description": "Kore link capture",
         "path": host_path.to_string_lossy(),
         "type": "stdio",
         "allowed_origins": EXTENSION_ORIGINS,

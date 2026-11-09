@@ -40,6 +40,7 @@ pub(crate) fn default_contents() -> String {
 /// Ensure graph repositories ignore only local machine/cache noise.
 pub(crate) fn ensure_defaults(root: &Path) -> AppResult<()> {
     let path = root.join(".gitignore");
+    upgrade_legacy_group(root)?;
     let existing = fs::read_to_string(&path).unwrap_or_default();
     let mut missing_groups: Vec<(&str, Vec<&str>)> = Vec::new();
 
@@ -78,6 +79,32 @@ pub(crate) fn ensure_defaults(root: &Path) -> AppResult<()> {
         prefix = "\n";
     }
 
+    Ok(())
+}
+
+/// The group earlier builds wrote for the pre-rename `.reflect/` folder,
+/// byte for byte.
+const LEGACY_GROUP: &str =
+    "# Reflect local index + caches (rebuildable; never committed)\n/.reflect/\n";
+
+/// Rewrite the Kore-written `.reflect/` group of `<root>/.gitignore` into the
+/// current runtime group, in place. Only that exact block is touched; a line
+/// the user typed themselves never is, and a file without it is left alone.
+pub(crate) fn upgrade_legacy_group(root: &Path) -> AppResult<()> {
+    let path = root.join(".gitignore");
+    let Ok(existing) = fs::read_to_string(&path) else {
+        return Ok(());
+    };
+    if !existing.contains(LEGACY_GROUP) {
+        return Ok(());
+    }
+    let (heading, patterns) = DEFAULT_GROUPS[0];
+    let mut group = format!("# {heading}\n");
+    for pattern in patterns {
+        group.push_str(pattern);
+        group.push('\n');
+    }
+    fs::write(&path, existing.replacen(LEGACY_GROUP, &group, 1))?;
     Ok(())
 }
 

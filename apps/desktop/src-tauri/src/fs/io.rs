@@ -58,13 +58,15 @@ pub(super) fn bootstrap(root: &Path) -> AppResult<()> {
 
 /// Initialize only Kore's rebuildable runtime state for an existing vault.
 /// Existing Markdown folders are opened in place; user-facing directories and
-/// the root `.gitignore` remain byte-for-byte untouched.
+/// the root `.gitignore` remain byte-for-byte untouched, except for renaming
+/// the `.reflect/` group earlier Kore builds wrote there.
 pub(super) fn initialize_runtime(root: &Path) -> AppResult<()> {
     reflect_index_schema::migrate_legacy_dir(root)?;
     ensure_runtime_directory(root)?;
     sweep_upload_staging(root);
     mark_dir_local_only(&root.join(KORE_DIR));
     ensure_runtime_gitignore(root)?;
+    graph_gitignore::upgrade_legacy_group(root)?;
     // A backup repo must never ride a file-sync provider: two devices' object
     // stores merging file-by-file is repository corruption (Plan 21). New
     // repos are marked at init (`git::repo`); this covers pre-existing ones.
@@ -649,6 +651,21 @@ mod tests {
             fs::read_to_string(dir.path().join(".kore/.gitignore")).unwrap(),
             reflect_index_schema::SELF_GITIGNORE
         );
+    }
+
+    #[test]
+    fn opening_a_pre_rename_vault_renames_only_its_kore_written_ignore_group() {
+        let dir = tempdir().unwrap();
+        let legacy = "node_modules/\n\n# Reflect local index + caches (rebuildable; never committed)\n/.reflect/\n\n# mine\n/.reflect/\n";
+        fs::write(dir.path().join(".gitignore"), legacy).unwrap();
+
+        initialize_runtime(dir.path()).unwrap();
+
+        let gitignore = fs::read_to_string(dir.path().join(".gitignore")).unwrap();
+        assert!(gitignore.starts_with("node_modules/\n\n# Kore local index"));
+        assert!(gitignore.contains("/.kore/*\n!/.kore/proposals/\n"));
+        assert!(gitignore.ends_with("# mine\n/.reflect/\n"));
+        assert!(!gitignore.contains("Reflect"));
     }
 
     #[test]

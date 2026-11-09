@@ -486,10 +486,7 @@ describe('read_assets', () => {
   })
 
   it('refuses an asset no note references, with the same unspecific message', async () => {
-    const tools = assetTools(
-      { [SIDECAR]: `---\nkoreAsset: true\n---\n${DESCRIPTION_BODY}\n` },
-      [],
-    )
+    const tools = assetTools({ [SIDECAR]: `---\nkoreAsset: true\n---\n${DESCRIPTION_BODY}\n` }, [])
     const output = await runReadAsset(tools, ASSET)
     if (output.ok) {
       expect.unreachable('expected a refusal')

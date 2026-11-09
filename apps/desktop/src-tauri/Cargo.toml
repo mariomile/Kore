@@ -31,7 +31,7 @@ tauri-build = { version = "2.6.3", features = [] }
 # native window instead of painting an opaque rectangular frame.
 tauri = { version = "2.11.5", features = ["devtools", "macos-private-api", "unstable"] }
 tauri-plugin-opener = "2.5.4"
-# Decodes `reflect-asset://` request paths (`fs/asset_protocol.rs`); the same
+# Decodes `kore-asset://` request paths (`fs/asset_protocol.rs`); the same
 # crate tauri itself uses for its protocol URLs.
 percent-encoding = "2.3.2"
 # `time` backs the bounded waits in `windows::close_note_windows` and the

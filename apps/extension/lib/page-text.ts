@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-export const EXTRACT_PAGE_TEXT_MESSAGE_TYPE = 'reflect:capture-page-text'
+export const EXTRACT_PAGE_TEXT_MESSAGE_TYPE = 'kore:capture-page-text'
 
 /** Popup request sent to the injected content script. */
 export const extractPageTextRequestSchema = z.object({

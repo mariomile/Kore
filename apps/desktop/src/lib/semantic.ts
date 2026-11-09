@@ -16,7 +16,7 @@ import {
  */
 
 /** Where the opt-in lived before it moved into the settings document. */
-const LEGACY_ENABLED_KEY = 'reflect.semantic.enabled'
+const LEGACY_ENABLED_KEY = 'kore.semantic.enabled'
 
 /**
  * Read-and-clear the pre-settings localStorage opt-in. Returns true exactly

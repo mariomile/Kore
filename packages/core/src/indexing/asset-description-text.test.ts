@@ -60,10 +60,7 @@ describe('gatherAssetDescriptionText', () => {
   })
 
   it('also folds a user-authored description file (no managed marker)', async () => {
-    files.set(
-      'assets/a.png.kore.md',
-      '# My own caption\n\nHand-written notes about this image.\n',
-    )
+    files.set('assets/a.png.kore.md', '# My own caption\n\nHand-written notes about this image.\n')
     const text = await gatherAssetDescriptionText(['assets/a.png'])
     expect(text).toContain('Hand-written notes about this image.')
   })

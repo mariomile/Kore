@@ -10,7 +10,7 @@ import { useRouter } from '@/routing/router'
 import { SidebarSortableSection } from './sidebar-sortable-section'
 import { useSessionExpanded } from './use-session-expanded'
 
-const EXPANDED_KEY = 'reflect.workspace-sidebar.tags.expanded'
+const EXPANDED_KEY = 'kore.workspace-sidebar.tags.expanded'
 const INDENT_PX = 12
 const BASE_PADDING_PX = 10
 

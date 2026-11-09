@@ -5,7 +5,7 @@
 //! conversation was open (see docs/memory-budget.md). The bytes now land in
 //! `.kore/chat-attachments/<conversation-id>/<attachment-id>.<ext>` and
 //! the row keeps only the graph-relative path; the webview renders the file
-//! through the `reflect-asset://` protocol and reads it back (base64, for a
+//! through the `kore-asset://` protocol and reads it back (base64, for a
 //! provider payload) only at send time.
 //!
 //! `.kore/` is the right home: excluded from sync, indexing, agent access

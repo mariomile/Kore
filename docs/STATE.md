@@ -3327,6 +3327,16 @@ screen: Agents then Close lands on today.
 
 ## Session log
 
+- 2026-11-09 — Plan 34 slice 1, step 2. Core reads a vault's cyber-brain
+  configuration from the frontmatter of its `AGENTS.md`
+  (`packages/core/src/cyber-brain/config.ts`): kit version, `writers`,
+  `git`, `daily_notes` and its heading, `paths.system`/`paths.inbox`,
+  `content` destinations, and the kit script path
+  (`<system>/scripts/brain.mjs`). Read-only, never cached; a private
+  contract or broken YAML means no brain, bad fields fall back to the
+  kit's defaults, and a path that leaves the vault is refused. Nothing
+  uses it yet. Verified: core node tests (2,555), `pnpm check`.
+
 - 2026-11-09 — Plan 34 slice 1, step 1 (cyber-brain as Kore's memory
   engine, `docs/plans/34-cyber-brain-memory.md`). `sensitivity: private`
   (cyber-brain's privacy level) is now the same hard block as

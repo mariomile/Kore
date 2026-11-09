@@ -5,18 +5,20 @@ import { listReusableCollection, resolveCollectionNoteReference } from './reusab
 
 const mockInvoke = vi.fn<(command: string, args: Record<string, unknown>) => Promise<unknown>>()
 
-/** The tag table inheritance resolves over (Plan 33 B2), kept out of the positional mocks. */
-const TAG_TYPES_TABLE = [
-  { tag_key: 'project', schema_json: '[{"name":"Project","key":"project","type":"relation"}]' },
-]
+/**
+ * A collection first reads which tags build on its own (Plan 33 B2); none do
+ * here, so that lookup is answered before the positional mocks below.
+ */
+function isDescendantsRead(query: string): boolean {
+  return query.startsWith('select "descendants_json", "public_descendants_json" from "tag_types"')
+}
 
 beforeEach(() => {
   mockInvoke.mockReset()
   setBridge({
     invoke: async (command, args) =>
-      command === 'db_query' &&
-      String(args['sql']) === 'select "tag_key", "schema_json" from "tag_types"'
-        ? TAG_TYPES_TABLE
+      command === 'db_query' && isDescendantsRead(String(args['sql']))
+        ? []
         : await mockInvoke(command, args),
     listen: async () => () => {},
   })

@@ -18,8 +18,9 @@ use std::path::{Component, Path, PathBuf};
 use reflect_index_store::query::{open_read_connection, run_query};
 use reflect_index_store::scan::scan_reconcile;
 use reflect_index_store::write::{
-    apply_notes, clear_index, move_note_rows, remove_notes, set_index_meta, touch_notes,
-    IndexedNote, MovedNoteAddress, MtimeTouch,
+    apply_notes, clear_index, move_note_rows, remove_notes, set_index_meta,
+    set_tag_type_resolutions, touch_notes, IndexedNote, MovedNoteAddress, MtimeTouch,
+    TagTypeResolution,
 };
 use reflect_index_store::{FileMeta, StoreError};
 use rusqlite::Connection;
@@ -163,6 +164,11 @@ struct TouchArgs {
     entries: Vec<MtimeTouch>,
 }
 
+#[derive(Deserialize)]
+struct ResolveArgs {
+    rows: Vec<TagTypeResolution>,
+}
+
 fn parse_args<T: serde::de::DeserializeOwned>(command: &str, args: &Value) -> Result<T, HostError> {
     serde_json::from_value(args.clone()).map_err(|err| HostError {
         kind: "parse",
@@ -281,6 +287,11 @@ impl Host {
             "index_touch" => {
                 let TouchArgs { entries } = parse_args(command, args)?;
                 touch_notes(&mut self.writer, &entries)?;
+                Ok(Value::Null)
+            }
+            "index_tag_types_resolve" => {
+                let ResolveArgs { rows } = parse_args(command, args)?;
+                set_tag_type_resolutions(&mut self.writer, &rows)?;
                 Ok(Value::Null)
             }
             "index_reconcile_scan" => {

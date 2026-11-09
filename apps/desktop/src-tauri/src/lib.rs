@@ -402,6 +402,7 @@ pub fn run() {
             db::index_remove_batch,
             db::index_clear,
             db::index_move,
+            db::index_tag_types_resolve,
             db::index_reconcile_scan,
             db::index_touch,
             db::note_move_indexed,

@@ -3,6 +3,7 @@ import { noteBasenameKey } from '../graph/note-reference'
 import { dateFromDailyPath, foldGraphPath, isCalendarDate } from '../graph/paths'
 import { call } from '../ipc/invoke'
 import type { IndexedNote } from './indexed-note'
+import { refreshTagTypeResolutions, touchesTagDefinitions } from './resolved-tag-types'
 
 /** Index commands return `()` from Rust, which serializes to `null` over IPC. */
 const voidSchema = z.null()
@@ -20,6 +21,18 @@ export async function openIndex(): Promise<number> {
 /** Apply one note's projection in a single Rust transaction (for `generation`). */
 export async function applyIndexedNote(note: IndexedNote, generation: number): Promise<void> {
   await call('index_apply', { note, generation }, voidSchema)
+  await afterTagWrite([note.path], generation)
+}
+
+/**
+ * Re-run the tag inheritance pass (Plan 33 B2) when a write touched a
+ * definition note: a parent's change reshapes every child's stored schema,
+ * so the pass covers the whole table, not only the written rows.
+ */
+async function afterTagWrite(paths: Iterable<string>, generation: number): Promise<void> {
+  if (touchesTagDefinitions(paths)) {
+    await refreshTagTypeResolutions(generation)
+  }
 }
 
 /**
@@ -33,6 +46,10 @@ export async function applyIndexedNotes(notes: IndexedNote[], generation: number
     return
   }
   await call('index_apply_batch', { notes, generation }, voidSchema)
+  await afterTagWrite(
+    notes.map((note) => note.path),
+    generation,
+  )
 }
 
 /** Remove a note (deleted on disk) from the index (for `generation`). */
@@ -53,6 +70,7 @@ export async function removeFromIndexBatch(
     return
   }
   await call('index_remove_batch', { paths, generation }, voidSchema)
+  await afterTagWrite(paths, generation)
 }
 
 /**
@@ -64,6 +82,7 @@ export async function removeFromIndexBatch(
  */
 export async function moveIndexedRows(from: string, to: string, generation: number): Promise<void> {
   await call('index_move', { from, to, generation, toAddress: movedNoteAddress(to) }, voidSchema)
+  await afterTagWrite([from, to], generation)
 }
 
 /**

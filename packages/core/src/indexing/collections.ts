@@ -1,13 +1,13 @@
 import { sql } from 'kysely'
 import { foldTag } from '../markdown'
-import {
-  COLLECTION_DEFINITION_MARKER_KEY,
-  decodeStoredList,
-  decodeTagTypeJson,
-  type TagType,
-} from '../tags'
+import { COLLECTION_DEFINITION_MARKER_KEY, decodeStoredList, type TagType } from '../tags'
 import { db } from './db'
-import { collectionTagKeys, resolvedTagTypes } from './resolved-tag-types'
+import {
+  collectionTagKeys,
+  decodeStoredTagType,
+  type StoredTagTypeColumns,
+  type TagTypeReadOptions,
+} from './resolved-tag-types'
 import { recallOrder } from './filtered-search'
 import { carriesAnyTagOrNested } from './tag-match'
 import type { IndexedPropertyValueType } from '../tags'
@@ -172,35 +172,42 @@ export function collectionValue(row: {
 /**
  * The parsed type of one tag, or `null` when the tag has no definition (or a
  * mangled `schema_json` column — tolerated as untyped, never a broken UI).
- * Inherited fields are merged in (Plan 33 B2, `resolveTagTypes`).
+ * Inherited fields are merged in: the index stores each tag's effective
+ * schema (Plan 33 B2, `refreshTagTypeResolutions`). `excludePrivate` reads
+ * the outbound view, where a private definition is untyped.
  */
-export async function getTagType(tag: string): Promise<TagType | null> {
-  const key = foldTag(tag)
+export async function getTagType(
+  tag: string,
+  options: TagTypeReadOptions = {},
+): Promise<TagType | null> {
   const row = await db
     .selectFrom('tagTypes')
-    .where('tagKey', '=', key)
-    .select(['schemaJson'])
+    .where('tagKey', '=', foldTag(tag))
+    .select(TAG_TYPE_COLUMNS)
     .executeTakeFirst()
-  if (row === undefined || decodeTagTypeOrNull(row.schemaJson) === null) {
-    return null
-  }
-  return (await resolvedTagTypes()).get(key) ?? null
+  return row === undefined ? null : decodeStoredTagType(row, options)
 }
+
+/** The `tag_types` columns every typed read decodes ({@link decodeStoredTagType}). */
+const TAG_TYPE_COLUMNS = [
+  'tagTypes.schemaJson',
+  'tagTypes.resolvedJson',
+  'tagTypes.publicResolvedJson',
+] as const
 
 /**
  * The one tolerant decode for `tag_types` result rows: a hand-mangled
  * `schema_json` column loses its type until the definition is re-saved,
- * never a broken query. Each type comes back with inheritance resolved
- * against `resolved`.
+ * never a broken query.
  */
 function decodeTagTypeRows(
-  rows: readonly { tagKey: string; notePath: string; schemaJson: string }[],
-  resolved: ReadonlyMap<string, TagType>,
+  rows: readonly (StoredTagTypeColumns & { tagKey: string; notePath: string })[],
+  options: TagTypeReadOptions = {},
 ): TagTypeEntry[] {
   const entries: TagTypeEntry[] = []
   for (const row of rows) {
-    const type = resolved.get(row.tagKey)
-    if (type !== undefined) {
+    const type = decodeStoredTagType(row, options)
+    if (type !== null) {
       entries.push({ tagKey: row.tagKey, notePath: row.notePath, type })
     }
   }
@@ -210,8 +217,9 @@ function decodeTagTypeRows(
 export interface ListTagTypesOptions {
   /**
    * Drop types whose definition note is `private: true` (or is not in the
-   * `notes` index at all — fail closed). Outbound surfaces pass this: a
-   * private definition's icon and schema are that note's content.
+   * `notes` index at all — fail closed), and read the public schemas, so a
+   * private parent's fields are not in a public child's. Outbound surfaces
+   * pass this: a private definition's icon and schema are that note's content.
    */
   excludePrivate?: boolean
 }
@@ -224,15 +232,15 @@ export async function listTagTypes(options: ListTagTypesOptions = {}): Promise<T
           .selectFrom('tagTypes')
           .innerJoin('notes', 'notes.path', 'tagTypes.notePath')
           .where('notes.isPrivate', '=', 0)
-          .select(['tagTypes.tagKey', 'tagTypes.notePath', 'tagTypes.schemaJson'])
+          .select(['tagTypes.tagKey', 'tagTypes.notePath', ...TAG_TYPE_COLUMNS])
           .orderBy('tagTypes.tagKey')
           .execute()
       : await db
           .selectFrom('tagTypes')
-          .select(['tagKey', 'notePath', 'schemaJson'])
-          .orderBy('tagKey')
+          .select(['tagTypes.tagKey', 'tagTypes.notePath', ...TAG_TYPE_COLUMNS])
+          .orderBy('tagTypes.tagKey')
           .execute()
-  return decodeTagTypeRows(rows, await resolvedTagTypes(options.excludePrivate === true))
+  return decodeTagTypeRows(rows, options)
 }
 
 /**
@@ -245,10 +253,10 @@ export async function listNoteTagTypes(path: string): Promise<TagTypeEntry[]> {
     .selectFrom('tags')
     .innerJoin('tagTypes', 'tagTypes.tagKey', 'tags.tagKey')
     .where('tags.notePath', '=', path)
-    .select(['tagTypes.tagKey', 'tagTypes.notePath', 'tagTypes.schemaJson'])
+    .select(['tagTypes.tagKey', 'tagTypes.notePath', ...TAG_TYPE_COLUMNS])
     .orderBy('tagTypes.tagKey')
     .execute()
-  return decodeTagTypeRows(rows, await resolvedTagTypes())
+  return decodeTagTypeRows(rows)
 }
 
 /**
@@ -267,15 +275,18 @@ export async function listTagsOnNote(path: string): Promise<NoteTagEntry[]> {
     .selectFrom('tags')
     .leftJoin('tagTypes', 'tagTypes.tagKey', 'tags.tagKey')
     .where('tags.notePath', '=', path)
-    .select(['tags.tag', 'tags.tagKey', 'tagTypes.notePath', 'tagTypes.schemaJson'])
+    .select(['tags.tag', 'tags.tagKey', 'tagTypes.notePath', ...TAG_TYPE_COLUMNS])
     .orderBy('tags.tagKey')
     .execute()
-  const resolved = rows.some((row) => row.schemaJson !== null)
-    ? await resolvedTagTypes()
-    : new Map<string, TagType>()
   return rows.map((row) => {
     const type =
-      decodeTagTypeOrNull(row.schemaJson) === null ? null : (resolved.get(row.tagKey) ?? null)
+      row.schemaJson === null
+        ? null
+        : decodeStoredTagType({
+            schemaJson: row.schemaJson,
+            resolvedJson: row.resolvedJson,
+            publicResolvedJson: row.publicResolvedJson,
+          })
     return {
       tag: row.tag,
       tagKey: row.tagKey,
@@ -283,18 +294,6 @@ export async function listTagsOnNote(path: string): Promise<NoteTagEntry[]> {
       definitionPath: type === null ? null : row.notePath,
     }
   })
-}
-
-/** A stored schema, or `null` when there is none or it no longer parses. */
-function decodeTagTypeOrNull(schemaJson: string | null): TagType | null {
-  if (schemaJson === null) {
-    return null
-  }
-  try {
-    return decodeTagTypeJson(schemaJson)
-  } catch {
-    return null
-  }
 }
 
 /**
@@ -388,7 +387,11 @@ export async function listCollection(
   // SQL orders by the chain's head; a longer chain re-sorts the (uncapped,
   // fully materialized) rows in memory below with the same semantics.
   const sort = sorts[0] ?? null
-  const tagKeys = await collectionTagKeys(tag, options.ownOnly === true)
+  const tagKeys = await collectionTagKeys(
+    tag,
+    options.ownOnly === true,
+    options.excludePrivate === true,
+  )
   let baseQuery = db
     .selectFrom('notes')
     .where('notes.kind', 'in', ['note', 'daily'])

@@ -16,6 +16,15 @@ import {
  * executes the exact SQL Kysely compiles — FTS5 search included. Write
  * commands mirror `src-tauri/src/db/write.rs` statement-for-statement.
  */
+/** One `index_tag_types_resolve` row (Plan 33 B2), as core sends it. */
+export interface DevTagTypeResolution {
+  tagKey: string
+  resolvedJson: string
+  publicResolvedJson: string | null
+  descendantsJson: string
+  publicDescendantsJson: string
+}
+
 export interface DevIndexDb {
   /** Execute a read query (the `db_query` contract): rows as column-keyed objects. */
   query: (sql: string, params: readonly unknown[]) => Record<string, SqlValue>[]
@@ -27,6 +36,7 @@ export interface DevIndexDb {
   moveNote: (from: string, to: string) => void
   /** Re-stamp a row's `mtime`/`updated_at` (one `index_touch` entry). */
   touchNote: (path: string, mtime: number) => void
+  setTagTypeResolutions: (rows: readonly DevTagTypeResolution[]) => void
   /** Wipe derived tables, preserving `index_meta` (`index_clear`). */
   clear: () => void
   /** Upsert one `index_meta` key (`index_meta_set`). */
@@ -307,6 +317,22 @@ export async function createDevIndexDb(): Promise<DevIndexDb> {
       }
     },
 
+    setTagTypeResolutions: (rows) => {
+      for (const row of rows) {
+        run(
+          db,
+          `UPDATE tag_types SET resolved_json = ?, public_resolved_json = ?,
+             descendants_json = ?, public_descendants_json = ? WHERE tag_key = ?`,
+          [
+            row.resolvedJson,
+            row.publicResolvedJson,
+            row.descendantsJson,
+            row.publicDescendantsJson,
+            row.tagKey,
+          ],
+        )
+      }
+    },
     touchNote: (path, mtime) => {
       run(db, 'UPDATE notes SET mtime = ?, updated_at = ? WHERE path = ?', [mtime, mtime, path])
     },

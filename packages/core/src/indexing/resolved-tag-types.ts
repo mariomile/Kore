@@ -1,51 +1,172 @@
+import { z } from 'zod'
+import { TAGS_DIR } from '../graph/paths'
+import { call } from '../ipc/invoke'
 import { foldTag } from '../markdown'
 import {
   decodeTagTypeJson,
+  encodeTagTypeJson,
   resolveTagTypes,
   tagDescendants,
-  tagLoopThrough,
   type TagType,
 } from '../tags'
 import { db } from './db'
 
 /**
- * Every stored tag type with inheritance resolved, keyed by folded tag. The
- * table holds one row per definition note (a handful to a few hundred), so
- * reading it whole for each lookup costs less than tracking a cache that
- * every definition save would have to invalidate. `excludePrivate` leaves
- * private definitions out before resolving, so their fields never reach a
- * public child on an outbound surface either.
+ * Tag inheritance in the index (Plan 33 B2). `resolveTagTypes` is the one
+ * place the policy runs: after every index write that touches a definition
+ * note, {@link refreshTagTypeResolutions} recomputes every tag type and
+ * stores the effective schemas and the descendant lists in `tag_types`
+ * (migration 0024). Every reader (the app's queries below, `kore` and
+ * `kore mcp`) reads those columns instead of resolving again.
+ *
+ * The public columns are the same computation with private definitions
+ * left out, for outbound surfaces: a private parent's fields never reach an
+ * agent through a public child, and a private definition has no public
+ * schema at all. Until the first pass after the migration the columns are
+ * NULL and readers fall back to `schema_json`, which is what a graph
+ * without `extends:` has anyway.
  */
-export async function resolvedTagTypes(excludePrivate = false): Promise<Map<string, TagType>> {
-  const rows = excludePrivate
-    ? await db
-        .selectFrom('tagTypes')
-        .innerJoin('notes', 'notes.path', 'tagTypes.notePath')
-        .where('notes.isPrivate', '=', 0)
-        .select(['tagTypes.tagKey', 'tagTypes.schemaJson'])
-        .execute()
-    : await db.selectFrom('tagTypes').select(['tagKey', 'schemaJson']).execute()
-  const own = new Map<string, TagType>()
-  for (const row of rows) {
-    try {
-      own.set(row.tagKey, decodeTagTypeJson(row.schemaJson))
-    } catch {
-      // A mangled column is untyped until re-saved, as everywhere else.
+
+/** Does a write to these paths need the inheritance pass? */
+export function touchesTagDefinitions(paths: Iterable<string>): boolean {
+  for (const path of paths) {
+    if (path.startsWith(`${TAGS_DIR}/`)) {
+      return true
     }
   }
-  return resolveTagTypes(own)
+  return false
+}
+
+const voidSchema = z.null()
+
+/**
+ * Recompute and store every tag type's inheritance result. The table holds
+ * one row per definition note (a handful to a few hundred), so one read and
+ * one write transaction cover the whole graph. A mangled `schema_json` row
+ * is left out: readers treat it as untyped, as they always have.
+ */
+export async function refreshTagTypeResolutions(generation: number): Promise<void> {
+  const rows = await db
+    .selectFrom('tagTypes')
+    .leftJoin('notes', 'notes.path', 'tagTypes.notePath')
+    .select(['tagTypes.tagKey', 'tagTypes.schemaJson', 'notes.isPrivate'])
+    .execute()
+  const all = new Map<string, TagType>()
+  const publicTypes = new Map<string, TagType>()
+  for (const row of rows) {
+    let type: TagType
+    try {
+      type = decodeTagTypeJson(row.schemaJson)
+    } catch {
+      continue
+    }
+    all.set(row.tagKey, type)
+    // A definition missing from `notes` fails closed, like `listTagTypes`.
+    if (row.isPrivate === 0) {
+      publicTypes.set(row.tagKey, type)
+    }
+  }
+  if (all.size === 0) {
+    return
+  }
+  const resolved = resolveTagTypes(all)
+  const resolvedPublic = resolveTagTypes(publicTypes)
+  const resolutions = [...all.keys()].map((tagKey) => {
+    const publicType = resolvedPublic.get(tagKey)
+    return {
+      tagKey,
+      resolvedJson: encodeTagTypeJson(resolved.get(tagKey)!),
+      publicResolvedJson: publicType === undefined ? null : encodeTagTypeJson(publicType),
+      descendantsJson: JSON.stringify(tagDescendants(all, tagKey)),
+      publicDescendantsJson: JSON.stringify(
+        publicTypes.has(tagKey) ? tagDescendants(publicTypes, tagKey) : [],
+      ),
+    }
+  })
+  await call('index_tag_types_resolve', { rows: resolutions, generation }, voidSchema)
+}
+
+/** Which stored view a read wants: everything, or the outbound one. */
+export interface TagTypeReadOptions {
+  /**
+   * Read the public columns: private definitions are untyped, and their
+   * fields are not in any child's schema. Outbound surfaces pass this.
+   */
+  excludePrivate?: boolean
+}
+
+/** The stored columns one tag type read decodes from. */
+export interface StoredTagTypeColumns {
+  schemaJson: string
+  resolvedJson: string | null
+  publicResolvedJson: string | null
+}
+
+/**
+ * The effective type a stored row carries, or `null` for a mangled row (and,
+ * under `excludePrivate`, for a private definition once the pass has run).
+ * Before the first pass the own schema stands in.
+ */
+export function decodeStoredTagType(
+  row: StoredTagTypeColumns,
+  options: TagTypeReadOptions = {},
+): TagType | null {
+  // `??` folds a column a row shape left out into NULL: both mean "no value".
+  const resolved = row.resolvedJson ?? null
+  const column = options.excludePrivate === true ? (row.publicResolvedJson ?? null) : resolved
+  const pending = resolved === null
+  if (!pending && column === null) {
+    return null
+  }
+  try {
+    return decodeTagTypeJson(pending ? row.schemaJson : column!)
+  } catch {
+    return null
+  }
+}
+
+const storedKeysSchema = z.array(z.string())
+
+/** A stored descendants column as keys; NULL (pass not run yet) reads as none. */
+function decodeStoredKeys(column: string | null): string[] {
+  if (column === null) {
+    return []
+  }
+  try {
+    return storedKeysSchema.parse(JSON.parse(column))
+  } catch {
+    return []
+  }
+}
+
+/** The tags that build on `tagKey`, from the stored columns. */
+async function storedDescendants(tagKey: string, excludePrivate: boolean): Promise<string[]> {
+  const row = await db
+    .selectFrom('tagTypes')
+    .where('tagKey', '=', tagKey)
+    .select(['descendantsJson', 'publicDescendantsJson'])
+    .executeTakeFirst()
+  if (row === undefined) {
+    return []
+  }
+  return decodeStoredKeys(excludePrivate ? row.publicDescendantsJson : row.descendantsJson)
 }
 
 /**
  * The tag keys a collection of `tag` lists: the tag itself and, unless
  * `ownOnly`, every tag that builds on it (`extends:`), directly or not.
+ * `excludePrivate` leaves out children whose definitions are private.
  */
-export async function collectionTagKeys(tag: string, ownOnly = false): Promise<string[]> {
+export async function collectionTagKeys(
+  tag: string,
+  ownOnly = false,
+  excludePrivate = false,
+): Promise<string[]> {
   const key = foldTag(tag)
   if (ownOnly) {
     return [key]
   }
-  return [key, ...tagDescendants(await resolvedTagTypes(), key)]
+  return [key, ...(await storedDescendants(key, excludePrivate))]
 }
 
 /**
@@ -54,7 +175,7 @@ export async function collectionTagKeys(tag: string, ownOnly = false): Promise<s
  * only when this is not.
  */
 export async function listTagChildren(tag: string): Promise<string[]> {
-  return tagDescendants(await resolvedTagTypes(), foldTag(tag))
+  return await storedDescendants(foldTag(tag), false)
 }
 
 /**
@@ -62,17 +183,21 @@ export async function listTagChildren(tag: string): Promise<string[]> {
  * the parent that closes it (the tag itself for a self-reference), or
  * `null` when the save is fine. The writers call this before writing a
  * definition, so a loop only ever exists if someone typed it by hand, and
- * reads cut it then (`resolveTagTypes`).
+ * the pass cuts it then (`resolveTagTypes`).
  */
 export async function tagExtendsLoop(
   tag: string,
   parents: readonly string[],
 ): Promise<string | null> {
-  return tagLoopThrough(
-    await resolvedTagTypes(),
-    foldTag(tag),
-    parents.map((parent) => foldTag(parent)),
-  )
+  const key = foldTag(tag)
+  const descendants = new Set(await storedDescendants(key, false))
+  for (const entry of parents) {
+    const parent = foldTag(entry)
+    if (parent === key || descendants.has(parent)) {
+      return parent
+    }
+  }
+  return null
 }
 
 /**
@@ -81,10 +206,10 @@ export async function tagExtendsLoop(
  * of those would close a loop). Feeds the "Builds on" picker.
  */
 export async function listTagParentCandidates(tag: string): Promise<string[]> {
-  const types = await resolvedTagTypes()
   const key = foldTag(tag)
-  const descendants = new Set(tagDescendants(types, key))
-  return [...types.keys()]
+  const descendants = new Set(await storedDescendants(key, false))
+  const rows = await db.selectFrom('tagTypes').select(['tagKey']).orderBy('tagKey').execute()
+  return rows
+    .map((row) => row.tagKey)
     .filter((candidate) => candidate !== key && !descendants.has(candidate))
-    .sort()
 }

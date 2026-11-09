@@ -110,8 +110,8 @@ const propertyRows = [
 
 const mockInvoke = vi.fn<(command: string, args: Record<string, unknown>) => Promise<unknown>>()
 
-/** Extra `tag_types` rows a test adds, e.g. a tag that builds on `#book`. */
-let extraTagTypes: { tag_key: string; note_path: string; schema_json: string }[] = []
+/** The tags that build on `#book`, as the inheritance pass stored them. */
+let bookDescendants: string[] = []
 
 setBridge({ invoke: mockInvoke, listen: async () => () => {} })
 
@@ -124,7 +124,7 @@ beforeEach(() => {
   updateSettings.mockReset()
   updateSettingsWith.mockReset()
   mockInvoke.mockReset()
-  extraTagTypes = []
+  bookDescendants = []
   mockInvoke.mockImplementation(async (command, args) => {
     if (command === 'note_read') {
       return DISPOSSESSED_SOURCE
@@ -139,12 +139,13 @@ beforeEach(() => {
     if (sql.includes('group by')) {
       return []
     }
+    if (sql.startsWith('select "descendants_json"')) {
+      const stored = JSON.stringify(bookDescendants)
+      return [{ descendants_json: stored, public_descendants_json: stored }]
+    }
     if (sql.includes('tag_types')) {
       // The tag's type row — `#book` is typed in this fixture.
-      return [
-        { tag_key: 'book', note_path: 'tags/book.md', schema_json: BOOK_SCHEMA_JSON },
-        ...extraTagTypes,
-      ]
+      return [{ tag_key: 'book', note_path: 'tags/book.md', schema_json: BOOK_SCHEMA_JSON }]
     }
     if (sql.includes('note_properties')) {
       return propertyRows
@@ -249,13 +250,7 @@ describe('Collection flow (fake bridge, no module mocks below the hooks)', () =>
   })
 
   it('lists the notes of tags that build on this one, with an only-this-tag filter', async () => {
-    extraTagTypes = [
-      {
-        tag_key: 'novel',
-        note_path: 'tags/novel.md',
-        schema_json: JSON.stringify({ properties: [], extends: ['book'] }),
-      },
-    ]
+    bookDescendants = ['novel']
     const baseQueryParams = (): unknown[][] =>
       mockInvoke.mock.calls
         .filter(

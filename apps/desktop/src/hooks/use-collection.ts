@@ -59,7 +59,7 @@ const NO_CHILDREN: readonly string[] = []
 export function useCollection(
   tag: string | null,
   sorts: readonly CollectionSort[],
-  ownOnly = false,
+  { ownOnly = false }: { ownOnly?: boolean } = {},
 ): CollectionEntry[] | undefined {
   const { graph } = useGraph()
   const bridgeReady = useBridgeReady()

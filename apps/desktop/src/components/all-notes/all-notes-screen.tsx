@@ -58,6 +58,7 @@ import { CollectionBoard, tableGroupRows } from './collection-board'
 import { CollectionCalendar } from './collection-calendar'
 import { CollectionOptionsMenu } from './collection-options-menu'
 import { CollectionTable } from './collection-table'
+import { TagChildrenFilter } from './tag-children-filter'
 import { CollectionViewTabs } from './collection-view-tabs'
 import { NoteListContextMenu } from '@/components/notes/note-context-menu'
 import { NoteTrashDialog } from '@/components/notes/note-trash-dialog'
@@ -272,11 +273,9 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
   // unless the "only #tag" filter is on; ephemeral like the property filters.
   const tagChildren = useTagChildren(collectionAvailable ? tag : null)
   const [ownOnly, setOwnOnly] = useState(false)
-  const collection = useCollection(
-    collectionWanted ? tag : null,
-    collectionSorts,
-    ownOnly && tagChildren.length > 0,
-  )
+  const collection = useCollection(collectionWanted ? tag : null, collectionSorts, {
+    ownOnly: ownOnly && tagChildren.length > 0,
+  })
   // Property filters are ephemeral (unlike the persisted sort) and belong to
   // one tag's schema — a tag switch drops them at render time.
   const [collectionFilters, setCollectionFilters] = useState<CollectionFilter[]>([])
@@ -553,30 +552,12 @@ export function AllNotesScreen({ filter }: AllNotesScreenProps): ReactElement {
                 </SelectContent>
               </Select>
             ) : null}
-            {tagChildren.length > 0 ? (
-              <Select
-                value={ownOnly ? 'own' : 'all'}
-                items={{
-                  all: `With ${tagChildren.map((child) => `#${child}`).join(', ')}`,
-                  own: `Only #${tag}`,
-                }}
-                onValueChange={(value) => {
-                  if (value === 'own' || value === 'all') {
-                    setOwnOnly(value === 'own')
-                  }
-                }}
-              >
-                <SelectTrigger aria-label="Tags that build on this one" data-size="sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">
-                    With {tagChildren.map((child) => `#${child}`).join(', ')}
-                  </SelectItem>
-                  <SelectItem value="own">Only #{tag}</SelectItem>
-                </SelectContent>
-              </Select>
-            ) : null}
+            <TagChildrenFilter
+              tag={tag}
+              childTags={tagChildren}
+              ownOnly={ownOnly}
+              onOwnOnlyChange={setOwnOnly}
+            />
             <CollectionFilterMenu
               type={tagType}
               entries={collection}

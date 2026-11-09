@@ -63,6 +63,9 @@ Draft without typing. Same draft PR #348, one step per commit.
   parents})` where an omitted field is left alone (an icon edit can no
   longer wipe a template), and one starting-values read,
   `startingValuesFor`, plus the pure `valuesMissingFrom`.
+- [x] The "only #tag" filter is its own component (`TagChildrenFilter`),
+  and the collection unit tests no longer match the descendants query by
+  its SQL text (review fix, 2026-11-09).
 - Known limit: two notes born at the same instant can draw the same
   number.
 

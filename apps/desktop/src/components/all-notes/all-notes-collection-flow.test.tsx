@@ -139,7 +139,8 @@ beforeEach(() => {
     if (sql.includes('group by')) {
       return []
     }
-    if (sql.startsWith('select "descendants_json"')) {
+    // Which tags build on #book (Plan 33 B2), as the pass stored it.
+    if (sql.includes('"descendants_json"')) {
       const stored = JSON.stringify(bookDescendants)
       return [{ descendants_json: stored, public_descendants_json: stored }]
     }

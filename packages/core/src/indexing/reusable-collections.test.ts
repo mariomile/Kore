@@ -1,27 +1,22 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { setBridge } from '../ipc/bridge'
+import { foldTag } from '../markdown'
 import type { CollectionDefinition } from '../tags'
 import { listReusableCollection, resolveCollectionNoteReference } from './reusable-collections'
 
 const mockInvoke = vi.fn<(command: string, args: Record<string, unknown>) => Promise<unknown>>()
 
-/**
- * A collection first reads which tags build on its own (Plan 33 B2); none do
- * here, so that lookup is answered before the positional mocks below.
- */
-function isDescendantsRead(query: string): boolean {
-  return query.startsWith('select "descendants_json", "public_descendants_json" from "tag_types"')
-}
+// Which tags build on a collection's own (Plan 33 B2) is covered against a
+// real index in tag-inheritance-flow.test.ts; here none do, so the
+// positional query mocks below see only the collection's own reads.
+vi.mock('./resolved-tag-types', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./resolved-tag-types')>()),
+  collectionTagKeys: async (tag: string) => [foldTag(tag)],
+}))
 
 beforeEach(() => {
   mockInvoke.mockReset()
-  setBridge({
-    invoke: async (command, args) =>
-      command === 'db_query' && isDescendantsRead(String(args['sql']))
-        ? []
-        : await mockInvoke(command, args),
-    listen: async () => () => {},
-  })
+  setBridge({ invoke: mockInvoke, listen: async () => () => {} })
 })
 
 afterEach(() => {

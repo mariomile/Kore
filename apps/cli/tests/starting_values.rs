@@ -1,0 +1,92 @@
+//! Starting values for schema fields (Plan 33 B4) from `kore new` and
+//! `kore tag`, the writes MCP's `create_note` and type tools go through.
+
+mod common;
+
+use rusqlite::params;
+
+use common::*;
+
+const INVOICE: &str = r#"[
+  {"name":"Number","key":"number","type":"number","default":"next-number"},
+  {"name":"Status","key":"status","type":"status","options":["Draft","Sent"],"default":"Draft"},
+  {"name":"Issued","key":"issued","type":"date","default":"today"}
+]"#;
+
+fn number_on(fixture: &Fixture, rel_path: &str, number: f64) {
+    fixture
+        .index_conn()
+        .execute(
+            "INSERT INTO note_properties(note_path, key, value, value_type, value_number)
+             VALUES(?1, 'number', ?2, 'number', ?3)",
+            params![rel_path, number.to_string(), number],
+        )
+        .unwrap();
+}
+
+fn invoices(fixture: &Fixture) {
+    fixture.write_note("bills/a.md", "---\nnumber: 41\n---\n# A\n#invoice\n");
+    fixture.write_note(
+        "bills/secret.md",
+        "---\nprivate: true\nnumber: 99\n---\n# S\n#invoice\n",
+    );
+    fixture.write_note("bills/loose.md", "# Loose\n");
+    fixture.build_index();
+    fixture.insert_tag("bills/a.md", "invoice");
+    fixture.insert_tag("bills/secret.md", "invoice");
+    number_on(fixture, "bills/a.md", 41.0);
+    number_on(fixture, "bills/secret.md", 99.0);
+    fixture.insert_tag_type("invoice", INVOICE);
+}
+
+#[test]
+fn new_rows_start_with_the_fields_values() {
+    let fixture = graph();
+    invoices(&fixture);
+    let value = json(&kore(
+        &fixture,
+        &["new", "March", "--tag", "invoice", "--json"],
+    ));
+    let properties = &value["properties"];
+    // One past the highest public number: the private note's 99 stays out.
+    assert_eq!(properties["number"], 42, "{value}");
+    assert_eq!(properties["status"], "Draft");
+    assert!(properties["issued"]
+        .as_str()
+        .is_some_and(|day| day.len() == 10));
+    let written = read(&fixture, value["path"].as_str().unwrap());
+    assert!(written.contains("number: 42"), "{written}");
+
+    // A value the agent sets wins over the starting value.
+    let set = json(&kore(
+        &fixture,
+        &[
+            "new",
+            "April",
+            "--tag",
+            "invoice",
+            "--set",
+            "status=Sent",
+            "--json",
+        ],
+    ));
+    assert_eq!(set["properties"]["status"], "Sent");
+}
+
+#[test]
+fn tagging_a_note_stamps_it_once() {
+    let fixture = graph();
+    invoices(&fixture);
+    let joined = json(&kore(
+        &fixture,
+        &["tag", "bills/loose.md", "invoice", "--json"],
+    ));
+    assert_eq!(joined["added"], true);
+    assert_eq!(joined["stamped"]["number"], 42, "{joined}");
+    assert_eq!(joined["stamped"]["status"], "Draft");
+
+    // A note already in the tag keeps what it has: no starting values.
+    let again = json(&kore(&fixture, &["tag", "bills/a.md", "invoice", "--json"]));
+    assert_eq!(again["added"], false);
+    assert!(again["stamped"].as_object().unwrap().is_empty(), "{again}");
+}

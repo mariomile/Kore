@@ -22,6 +22,7 @@ use crate::frontmatter_write::{patch_source, Patch};
 use crate::graph::Graph;
 use crate::keys::fold_tag;
 use crate::schema::{load_schema, TagSchema};
+use crate::starting_values::starting_values;
 use crate::write::update_note;
 
 fn tag_name(arg: &str) -> Result<&str, CliError> {
@@ -34,16 +35,27 @@ fn tag_name(arg: &str) -> Result<&str, CliError> {
     Ok(tag)
 }
 
-/// A typed tag's `created` stamps, like a row born in the app — only for
-/// keys the note does not already carry, so re-tagging never rewrites a
-/// history the note already has.
-fn missing_stamps(schema: Option<&TagSchema>, source: &str) -> Vec<(String, PropertyValue)> {
+/// A typed tag's `created` stamps, like a row born in the app, plus its
+/// fields' starting values (Plan 33 B4) when this write is what puts the
+/// note into the tag (`joined`): a note already in it keeps what it has.
+/// Only keys the note does not already carry, so re-tagging never rewrites
+/// a history the note already has.
+fn missing_stamps(
+    schema: Option<&TagSchema>,
+    source: &str,
+    joined: bool,
+    starting: &[(String, PropertyValue)],
+) -> Vec<(String, PropertyValue)> {
     let Some(schema) = schema else {
         return Vec::new();
     };
     let existing = extract_properties(split_frontmatter(source).raw);
-    schema
-        .created_stamps()
+    let candidates = if joined {
+        starting.to_vec()
+    } else {
+        schema.created_stamps()
+    };
+    candidates
         .into_iter()
         .filter(|(key, _)| !existing.iter().any(|(present, _)| present == key))
         .collect()
@@ -56,6 +68,13 @@ pub fn run_tag(graph: &Graph, json: bool, note_arg: &str, tag_arg: &str) -> Resu
     let schema = match &index {
         Some(open) => load_schema(&open.conn, tag)?,
         None => None,
+    };
+    // Read before the write: `next-number` counts the notes already in it.
+    let starting = match (&schema, &index) {
+        (Some(schema), Some(open)) => {
+            starting_values(schema, Some(&open.conn), &[tag.to_string()])?
+        }
+        _ => Vec::new(),
     };
 
     let mut added = false;
@@ -70,7 +89,7 @@ pub fn run_tag(graph: &Graph, json: bool, note_arg: &str, tag_arg: &str) -> Resu
             }
             None => source.to_string(),
         };
-        stamped = missing_stamps(schema.as_ref(), &tagged);
+        stamped = missing_stamps(schema.as_ref(), &tagged, added, &starting);
         let patch: Patch = stamped
             .iter()
             .map(|(key, value)| (key.clone(), Some(value.clone())))

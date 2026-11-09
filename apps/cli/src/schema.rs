@@ -25,6 +25,10 @@ pub struct SchemaProperty {
     /// `select`/`multiselect`/`status` choices, when declared.
     #[serde(default)]
     pub options: Option<Vec<String>>,
+    /// The field's starting value (Plan 33 B4), as stored; read by
+    /// `crate::starting_values`.
+    #[serde(default)]
+    pub default: Option<serde_json::Value>,
 }
 
 /// A decoded tag type: its properties and the bound new-row template path.
@@ -348,6 +352,7 @@ mod tests {
             key: key.to_string(),
             kind: kind.to_string(),
             options: None,
+            default: None,
         }
     }
 

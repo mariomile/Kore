@@ -26,7 +26,7 @@
 //! refreshed with `kore index` so search sees the new state.
 //!
 //! The clone must be dedicated to the host: a dirty working tree at start is
-//! refused, and `.reflect/` is added to `.git/info/exclude` (never to the
+//! refused, and `.kore/` (bar `proposals/`) is added to `.git/info/exclude` (never to the
 //! vault's own `.gitignore`) so the index is never committed.
 
 use crate::agent_identity::AgentIdentity;
@@ -543,9 +543,10 @@ fn rejected(push: &GitOutput) -> bool {
         || text.contains("[remote rejected]")
 }
 
-/// Keep `.reflect/` out of the vault's history without touching its files.
+/// Keep `.kore/` out of the vault's history without touching its files,
+/// except `proposals/`, which syncs (Plan 33, A2).
 fn exclude_index(git: &Git, git_dir: &Path) -> Result<(), CliError> {
-    let ignored = git.run(&["check-ignore", "-q", ".reflect/index.sqlite"])?;
+    let ignored = git.run(&["check-ignore", "-q", ".kore/index.sqlite"])?;
     if ignored.success {
         return Ok(());
     }
@@ -557,7 +558,8 @@ fn exclude_index(git: &Git, git_dir: &Path) -> Result<(), CliError> {
         .open(&exclude)?;
     writeln!(
         file,
-        "\n# kore: the search index is rebuilt on each machine\n.reflect/"
+        "\n# kore: the search index is rebuilt on each machine\n{}",
+        reflect_index_schema::IGNORE_RULES.join("\n")
     )?;
     Ok(())
 }
@@ -914,13 +916,13 @@ mod tests {
     fn reads_do_not_commit_and_the_index_stays_out_of_history() {
         let fixture = fixture();
         let sync = open(&fixture.host);
-        fs::create_dir_all(fixture.host.join(".reflect")).unwrap();
-        fs::write(fixture.host.join(".reflect/index.sqlite"), "db").unwrap();
+        fs::create_dir_all(fixture.host.join(".kore")).unwrap();
+        fs::write(fixture.host.join(".kore/index.sqlite"), "db").unwrap();
         let shown = sync.run(&args(&["show", "daily/2026-11-04.md"]), None);
         assert!(shown.text.contains("from the mac"));
         assert!(capture(&sync, "x").success);
         let files = git(&fixture.host, &["ls-files"]);
-        assert!(!files.contains(".reflect"), "{files}");
+        assert!(!files.contains(".kore"), "{files}");
         assert_eq!(git(&fixture.host, &["rev-list", "--count", "HEAD"]), "2");
     }
 

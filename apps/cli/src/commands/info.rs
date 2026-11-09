@@ -3,7 +3,7 @@
 //! tag counts. The one index-backed command that never exits 4: an agent
 //! runs it first to learn what the other commands will be able to do.
 
-use reflect_index_schema::{INDEX_FILE, REFLECT_DIR};
+use reflect_index_schema::{INDEX_FILE, KORE_DIR};
 
 use crate::commands::output::{print_json, CountsJson, IndexInfoJson, InfoJson};
 use crate::commands::warn;
@@ -86,7 +86,7 @@ pub fn run(graph: &Graph, json: bool) -> Result<(), CliError> {
     println!("root\t{}", graph.root.display());
     println!("cli\t{}", env!("CARGO_PKG_VERSION"));
     let index_state = if !index.present {
-        format!("missing ({REFLECT_DIR}/{INDEX_FILE}) — open the graph in Kore to build it")
+        format!("missing ({KORE_DIR}/{INDEX_FILE}) — open the graph in Kore to build it")
     } else if !index.usable {
         "unusable".to_string()
     } else if index.stale {

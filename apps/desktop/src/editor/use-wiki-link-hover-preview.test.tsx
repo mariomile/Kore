@@ -44,7 +44,7 @@ async function setupRenderer(
       generation: 7,
       graphKey: '/graph',
       dateFormat: 'mdy',
-      resolveImageUrl: (source) => `reflect-asset://${source}`,
+      resolveImageUrl: (source) => `kore-asset://${source}`,
       resolveAssetOpenPath: (source) =>
         source.startsWith('assets/') && !source.includes('..') ? source : null,
       ...overrides,
@@ -128,7 +128,7 @@ describe('useWikiLinkHoverPreview', () => {
     expect(props.resolveImageUrl('assets/../secret.png')).toBeNull()
     expect(props.resolveImageUrl('assets/vector.svg')).toBeNull()
     expect(props.resolveImageUrl('assets/cat.png')).toBe(
-      'reflect-asset://assets/cat.png?reflect-preview=raster',
+      'kore-asset://assets/cat.png?kore-preview=raster',
     )
   })
 

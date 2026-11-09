@@ -1,6 +1,6 @@
 //! `kore active`: the note the user has in front of them in the Kore app,
 //! and the note tabs they have open, so an agent asked about "this note"
-//! knows which one. The desktop app writes `.reflect/workspace.json` as the
+//! knows which one. The desktop app writes `.kore/workspace.json` as the
 //! tabs change; this reads it. Works without an index. A note that is
 //! private, gone, or only an iCloud placeholder is left out.
 
@@ -11,7 +11,7 @@ use crate::error::CliError;
 use crate::graph::Graph;
 use crate::note_file::read_note;
 
-/// The state file, inside the graph's `.reflect/` directory.
+/// The state file, inside the graph's `.kore/` directory.
 pub const WORKSPACE_FILE: &str = "workspace.json";
 
 #[derive(Deserialize)]
@@ -27,7 +27,7 @@ struct WorkspaceFile {
 pub fn run(graph: &Graph, json: bool) -> Result<(), CliError> {
     let file = graph
         .root
-        .join(reflect_index_schema::REFLECT_DIR)
+        .join(reflect_index_schema::KORE_DIR)
         .join(WORKSPACE_FILE);
     let text = std::fs::read_to_string(&file).map_err(|_| {
         CliError::NotFound(

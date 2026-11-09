@@ -12,8 +12,8 @@ use zip::write::SimpleFileOptions;
 
 use crate::error::{AppError, AppResult};
 
-const MANIFEST: &str = ".reflect/backup.json";
-const DATABASE: &str = ".reflect/index.sqlite";
+const MANIFEST: &str = ".kore/backup.json";
+const DATABASE: &str = ".kore/index.sqlite";
 const MAX_FILES: usize = 100_000;
 const MAX_MANIFEST_BYTES: u64 = 1024 * 1024;
 const MAX_BYTES: u64 = 20 * 1024 * 1024 * 1024;
@@ -109,10 +109,10 @@ fn allowed_path(path: &str) -> bool {
             .components()
             .all(|part| matches!(part, Component::Normal(_)))
         && path.split('/').next() != Some(".git")
-        && (path.split('/').next() != Some(".reflect")
+        && (path.split('/').next() != Some(".kore")
             || path == DATABASE
             || path == MANIFEST
-            || path.starts_with(".reflect/chat-attachments/"))
+            || path.starts_with(".kore/chat-attachments/"))
 }
 
 struct ArchiveBudget {
@@ -153,9 +153,9 @@ fn append_directory<W: Write + std::io::Seek>(
             continue;
         }
         let kind = entry.file_type()?;
-        if relative == ".reflect" {
+        if relative == ".kore" {
             if kind.is_symlink() {
-                return Err(AppError::io("backup refuses a linked .reflect directory"));
+                return Err(AppError::io("backup refuses a linked .kore directory"));
             }
             let attachments = path.join("chat-attachments");
             if fs::symlink_metadata(&attachments).is_ok() {
@@ -282,12 +282,10 @@ mod tests {
     fn restores_notes_chats_and_images_into_a_new_graph() {
         let source = tempfile::tempdir().unwrap();
         fs::create_dir_all(source.path().join("notes")).unwrap();
-        fs::create_dir_all(source.path().join(".reflect/chat-attachments/conv")).unwrap();
+        fs::create_dir_all(source.path().join(".kore/chat-attachments/conv")).unwrap();
         fs::write(source.path().join("notes/hello.md"), "# Hello").unwrap();
         fs::write(
-            source
-                .path()
-                .join(".reflect/chat-attachments/conv/image.png"),
+            source.path().join(".kore/chat-attachments/conv/image.png"),
             b"image",
         )
         .unwrap();
@@ -307,7 +305,7 @@ mod tests {
             "# Hello"
         );
         assert_eq!(
-            fs::read(Path::new(&restored.root).join(".reflect/chat-attachments/conv/image.png"))
+            fs::read(Path::new(&restored.root).join(".kore/chat-attachments/conv/image.png"))
                 .unwrap(),
             b"image"
         );

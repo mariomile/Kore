@@ -171,11 +171,6 @@ mod tests {
             "reads and writes a small in-memory list behind a mutex",
         ),
         (
-            "graph_import_cancel",
-            "fs/mod.rs",
-            "flips an atomic cancel flag; the import it cancels already runs off the main thread",
-        ),
-        (
             "haptic_feedback",
             "haptics.rs",
             "fires a native haptic, a UI-thread call that returns immediately",

@@ -51,7 +51,7 @@ A URL scheme is a world-invokable surface — any web page can attempt
 `kore://` — so writes are deliberately narrow: **one line of plain text,
 onto today's daily note, nothing else**. The payload is whitespace-folded to
 a single line (no markdown-block smuggling), capped at 10k characters, and
-lands through the capture inbox (`.reflect/inbox/`) — the same audited drain
+lands through the capture inbox (`.kore/inbox/`) — the same audited drain
 browser captures use — never spliced directly into a note by the URL
 handler. There is no URL that writes into an arbitrary note, creates a note
 with content, or runs a command.
@@ -67,9 +67,9 @@ exactly, so a crashed drain re-runs cleanly.
   a built bundle to exercise real OS-delivered links.
 - All flavors (Kore, Kore Beta, Kore Dev) register `kore://`;
   when several are installed, macOS picks one handler.
-- `reflect://` is the scheme's name from before the rename. It stays
-  registered and parsed, so a link already pasted into a note keeps
-  working, but the app and the CLI only ever write `kore://`.
+- `reflect://`, the scheme's name before the rename, is no longer
+  registered or parsed, so a link that still uses it no longer opens Kore;
+  replace it with `kore://`.
 - On Windows/Linux the single-instance plugin forwards a second launch's URL
   to the running instance and focuses it; macOS does this natively.
 - A link that arrives while no graph is open (cold launch, graph chooser)
@@ -79,7 +79,7 @@ exactly, so a crashed drain re-runs cleanly.
   round-trip, so it works in dev builds and can never land on a different
   installed flavor.
 - iOS registers the scheme too (`CFBundleURLTypes` in `ios.project.yml`), but
-  only for one **mobile-native verb**: `reflect://record-audio`, the
+  only for one **mobile-native verb**: `kore://record-audio`, the
   lock-screen widget's start-recording entry point. It is handled in the Rust
   shell (queued into the recording plugin's native action handshake — see
   `docs/porting/reflect-mobile/audio-memos.md`) and deliberately absent from

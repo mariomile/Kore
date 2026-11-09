@@ -5,7 +5,7 @@ import { parseCsv } from '@/lib/csv'
 /**
  * The attachment viewer's non-iframe bodies: CSV as a real table, DOCX
  * converted to sandboxed HTML, plain text as a scrolling pre. Each fetches
- * its bytes off the graph's `reflect-asset://` protocol and renders locally
+ * its bytes off the graph's `kore-asset://` protocol and renders locally
  * — nothing leaves the device, and converted DOCX markup goes into a fully
  * sandboxed iframe exactly like HTML attachments do.
  */

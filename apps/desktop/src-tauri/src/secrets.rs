@@ -1,7 +1,7 @@
 //! Secrets in the OS keychain (Plan 10): the only place BYOK API keys live.
 //!
 //! Per the product principles, credentials never touch markdown, Git, or
-//! `.reflect/`. Rust exposes the keychain as an opaque name → value store (a
+//! `.kore/`. Rust exposes the keychain as an opaque name → value store (a
 //! capability); which names exist and what they hold is `@reflect/core`
 //! policy (see `ai/secrets.ts`).
 

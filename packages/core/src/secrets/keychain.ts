@@ -4,7 +4,7 @@ import { call } from '../ipc/invoke'
 /**
  * Typed bindings for the OS-keychain commands (Plan 10, shared by Plan 12).
  * Every credential — BYOK AI keys, the GitHub backup token — goes through
- * here and **only** here: never into markdown, Git, `.reflect/`, or the
+ * here and **only** here: never into markdown, Git, `.kore/`, or the
  * settings document. Which keys exist is each domain's policy (`ai/secrets`
  * names the AI entries, `sync/github` the GitHub one); this module is just
  * the storage primitive.

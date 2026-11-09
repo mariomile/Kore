@@ -57,7 +57,6 @@ export const SETTINGS_GROUPS = [
       { id: 'connectors', title: 'Connectors' },
       // Only shown where the OS frameworks exist — see use-visible-settings-sections.
       { id: 'integrations', title: 'Integrations' },
-      { id: 'import', title: 'Import' },
       // Only shown for vaults with Obsidian settings — see use-visible-settings-sections.
       { id: 'vault-compat', title: 'Obsidian compatibility' },
       // Same visibility rule: a dry run of converting the vault to Kore's layout.

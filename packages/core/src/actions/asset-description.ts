@@ -33,7 +33,7 @@ export { classifyAsset, classifyAssetFromNotes, type AssetVerdict } from './asse
 /**
  * Asset descriptions (Plan 20). For each eligible image/PDF under `assets/`
  * that is safely associated with public notes, generate a managed markdown
- * description file (`<asset>.reflect.md`) holding an AI description + OCR. The
+ * description file (`<asset>.kore.md`) holding an AI description + OCR. The
  * note index is untouched; this only writes files next to the asset.
  *
  * The reconcile pass mirrors `reconcileCaptureEnrichment`: generation-pinned,

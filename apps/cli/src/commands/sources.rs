@@ -6,7 +6,7 @@
 //! which sources exist, the `KORE_<SOURCE>_TOKEN` / `_FOLDER` / `_PATTERN` /
 //! `_TAGS` variables it reads from the environment this process passes on,
 //! and the defaults. This side owns what only it can: the flags, and each
-//! source's window in `.reflect/sources.json` (per machine, never
+//! source's window in `.kore/sources.json` (per machine, never
 //! committed), which it serves to the core and saves from its reports.
 
 use std::collections::BTreeMap;
@@ -22,7 +22,7 @@ use crate::commands::warn;
 use crate::error::CliError;
 use crate::indexer::Host;
 
-/// One source's window, as `.reflect/sources.json` keeps it.
+/// One source's window, as `.kore/sources.json` keeps it.
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct SourceState {
@@ -35,13 +35,13 @@ struct SourceState {
 type State = BTreeMap<String, SourceState>;
 
 fn state_path(root: &Path) -> PathBuf {
-    root.join(".reflect").join("sources.json")
+    root.join(".kore").join("sources.json")
 }
 
 fn load_state(root: &Path) -> Result<State, CliError> {
     match fs::read_to_string(state_path(root)) {
         Ok(text) => serde_json::from_str(&text)
-            .map_err(|err| CliError::runtime(format!("unreadable .reflect/sources.json: {err}"))),
+            .map_err(|err| CliError::runtime(format!("unreadable .kore/sources.json: {err}"))),
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(State::new()),
         Err(err) => Err(err.into()),
     }

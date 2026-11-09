@@ -1,5 +1,7 @@
 import { addDaysIso, addMonthsIso, isCalendarDate, isoFromParts, weekdayIso } from '@reflect/utils'
-import type { TaskPriority } from './task-priority'
+import { formatTaskDue } from '../markdown/task-due'
+import { withTaskContentPriority, type TaskPriority } from './task-priority'
+import { formatTaskRepeat, taskContentRepeat, type TaskRepeat } from './task-repeat'
 import type { TaskProject } from './task-views'
 
 /**
@@ -21,6 +23,9 @@ import type { TaskProject } from './task-views'
  * - `#Name` is a project only when it names a known project (folder note),
  *   ignoring case, spaces and dashes; any other `#tag` stays in the text.
  * - Only the first match of each kind counts; later ones stay as text.
+ *
+ * The content is written with core's own task grammar (priority, due date,
+ * `@repeat`) so what the chips show is exactly what the index reads back.
  */
 
 export type QuickAddTokenKind = 'date' | 'time' | 'priority' | 'repeat' | 'project'
@@ -42,8 +47,8 @@ export interface QuickAdd {
   readonly dueDate: string | null
   readonly dueTime: string | null
   readonly priority: TaskPriority | null
-  /** The `@repeat(…)` spec (`weekly`, `2w`, …), or null. */
-  readonly repeat: string | null
+  /** The repeat rule, as core's task grammar reads it back, or null. */
+  readonly repeat: TaskRepeat | null
   /** The project note the task belongs in, or null for today's daily note. */
   readonly project: TaskProject | null
   readonly tokens: readonly QuickAddToken[]
@@ -139,7 +144,9 @@ function alternation(words: Iterable<string>): string {
 const WEEKDAY = alternation(Object.keys(WEEKDAYS))
 const MONTH = alternation(Object.keys(MONTHS))
 
-const UNIT_LETTER: Readonly<Record<string, 'd' | 'w' | 'm' | 'y'>> = {
+type UnitLetter = 'd' | 'w' | 'm' | 'y'
+
+const UNIT_LETTER: Readonly<Record<string, UnitLetter>> = {
   giorno: 'd',
   giorni: 'd',
   day: 'd',
@@ -188,7 +195,7 @@ function nextWeekday(today: string, weekday: number): string {
   return addDaysIso(today, offset === 0 ? 7 : offset)
 }
 
-function shiftBy(today: string, count: number, letter: 'd' | 'w' | 'm' | 'y'): string {
+function shiftBy(today: string, count: number, letter: UnitLetter): string {
   switch (letter) {
     case 'd':
       return addDaysIso(today, count)
@@ -266,30 +273,41 @@ const DATE_RULES: readonly (readonly [RegExp, DateRule])[] = [
   ],
 ]
 
+const REPEAT_UNIT: Readonly<Record<UnitLetter, TaskRepeat['unit']>> = {
+  d: 'day',
+  w: 'week',
+  m: 'month',
+  y: 'year',
+}
+
+/** A rule's repeat, or null when core wouldn't read it back (the words stay text). */
 type RepeatRule = (groups: readonly (string | undefined)[]) => {
-  spec: string
+  repeat: TaskRepeat | null
   weekday?: number
 }
 
+function every(count: number, letter: UnitLetter): TaskRepeat | null {
+  const repeat: TaskRepeat = { every: count, unit: REPEAT_UNIT[letter] }
+  return formatTaskRepeat(repeat) === null ? null : repeat
+}
+
 const REPEAT_RULES: readonly (readonly [RegExp, RepeatRule])[] = [
-  [re(String.raw`@repeat\(\s*([^()\s]+)\s*\)`), ([spec]) => ({ spec: spec!.toLowerCase() })],
+  [
+    re(String.raw`@repeat\(\s*([^()\s]+)\s*\)`),
+    ([spec]) => ({ repeat: taskContentRepeat(`@repeat(${spec!})`) }),
+  ],
   [
     re(String.raw`(?:ogni|every)\s+(\d{1,3})\s+(${UNIT})`),
-    ([count, unit]) => ({
-      spec: `${Number(count)}${UNIT_LETTER[unit!.toLowerCase()]!}`,
-    }),
+    ([count, unit]) => ({ repeat: every(Number(count), UNIT_LETTER[unit!.toLowerCase()]!) }),
   ],
   [
     re(String.raw`(?:ogni|every)\s+(${WEEKDAY})`),
-    ([weekday]) => ({
-      spec: 'weekly',
-      weekday: WEEKDAYS[weekday!.toLowerCase()]!,
-    }),
+    ([weekday]) => ({ repeat: every(1, 'w'), weekday: WEEKDAYS[weekday!.toLowerCase()]! }),
   ],
-  [re('(?:ogni giorno|every day|daily)'), () => ({ spec: 'daily' })],
-  [re('(?:ogni settimana|every week|weekly)'), () => ({ spec: 'weekly' })],
-  [re('(?:ogni mese|every month|monthly)'), () => ({ spec: 'monthly' })],
-  [re('(?:ogni anno|every year|yearly)'), () => ({ spec: 'yearly' })],
+  [re('(?:ogni giorno|every day|daily)'), () => ({ repeat: every(1, 'd') })],
+  [re('(?:ogni settimana|every week|weekly)'), () => ({ repeat: every(1, 'w') })],
+  [re('(?:ogni mese|every month|monthly)'), () => ({ repeat: every(1, 'm') })],
+  [re('(?:ogni anno|every year|yearly)'), () => ({ repeat: every(1, 'y') })],
 ]
 
 type Groups = readonly (string | undefined)[]
@@ -358,13 +376,16 @@ export function parseQuickAdd(
     })
   }
 
-  let repeat: string | null = null
+  let repeat: TaskRepeat | null = null
   let repeatWeekday: number | null = null
   for (const [pattern, rule] of REPEAT_RULES) {
     const match = find(input, pattern, taken)
-    if (match !== null) {
-      const parsed = rule(match.groups)
-      repeat = parsed.spec
+    if (match === null) {
+      continue
+    }
+    const parsed = rule(match.groups)
+    if (parsed.repeat !== null) {
+      repeat = parsed.repeat
       repeatWeekday = parsed.weekday ?? null
       take('repeat', match)
       break
@@ -441,24 +462,24 @@ export function parseQuickAdd(
     title += `${input.slice(cursor, span.start)} `
     cursor = span.end
   }
-  title = `${title}${input.slice(cursor)}`.replaceAll(/\s+/g, ' ').trim()
+  // Core reads the first date link in a task as its due date, so any other
+  // `[[YYYY-MM-DD]]` left in the text would outrank the one appended below and
+  // contradict the chip: keep it as plain text instead.
+  title = `${title}${input.slice(cursor)}`
+    .replaceAll(/\[\[(\d{4}-\d{2}-\d{2})\]\]/g, '$1')
+    .replaceAll(/\s+/g, ' ')
+    .trim()
 
-  const parts: string[] = []
-  if (priority !== null) {
-    parts.push(priority === 'high' ? '!!' : '!')
-  }
-  if (title !== '') {
-    parts.push(title)
-  }
+  const parts = [title]
   if (dueDate !== null) {
-    parts.push(dueTime === null ? `[[${dueDate}]]` : `[[${dueDate}]] @${dueTime}`)
+    parts.push(formatTaskDue(dueDate, dueTime))
   }
   if (repeat !== null) {
-    parts.push(`@repeat(${repeat})`)
+    parts.push(formatTaskRepeat(repeat)!)
   }
 
   return {
-    content: title === '' ? '' : parts.join(' '),
+    content: title === '' ? '' : withTaskContentPriority(parts.join(' '), priority),
     title,
     dueDate,
     dueTime,

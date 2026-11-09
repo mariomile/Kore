@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
+import { matchDueTimePrefix } from '../markdown/task-due'
 import { parseQuickAdd } from './quick-add'
+import { taskContentPriority } from './task-priority'
+import { taskContentDueDate, taskContentRepeat } from './task-repeat'
 
 // Sunday 2026-11-08.
 const TODAY = '2026-11-08'
@@ -90,5 +93,61 @@ describe('parseQuickAdd: rules', () => {
   it('does not read words inside other words', () => {
     expect(content('lunedìssimo marzapane')).toBe('lunedìssimo marzapane')
     expect(content('update todays notes')).toBe('update todays notes')
+  })
+})
+
+/** What core's task grammar reads back from written content. */
+function readBack(written: string): Record<string, unknown> {
+  const dueDate = taskContentDueDate(written)
+  const afterLink =
+    dueDate === null ? '' : written.slice(written.indexOf(`[[${dueDate}]]`) + dueDate.length + 4)
+  return {
+    dueDate,
+    dueTime: matchDueTimePrefix(afterLink)?.time ?? null,
+    priority: taskContentPriority(written),
+    repeat: taskContentRepeat(written),
+  }
+}
+
+describe('parseQuickAdd: core reads back what the chips show', () => {
+  it.each([
+    'chiamare Luca domani alle 15 p1 ogni lunedì',
+    'backup ogni 2 settimane p2',
+    'pay rent every month at 9am',
+    'x @repeat(3m) 15/11',
+    'review [[2026-11-20]] e poi [[2026-11-25]]',
+    'call domani and see [[2026-11-25]] @10:00',
+    'water plants every 999 days',
+  ])('%s', (input) => {
+    const parsed = parseQuickAdd(input, TODAY, PROJECTS)
+    expect(readBack(parsed.content)).toEqual({
+      dueDate: parsed.dueDate,
+      dueTime: parsed.dueTime,
+      priority: parsed.priority,
+      repeat: parsed.repeat,
+    })
+  })
+
+  it('leaves a repeat core would ignore as text', () => {
+    const zero = parseQuickAdd('stretch ogni 0 giorni', TODAY)
+    expect(zero.repeat).toBeNull()
+    expect(zero.content).toBe('stretch ogni 0 giorni')
+    const nonsense = parseQuickAdd('x @repeat(foo)', TODAY)
+    expect(nonsense.repeat).toBeNull()
+    expect(nonsense.content).toBe('x @repeat(foo)')
+  })
+
+  it('keeps a second date link as plain text so the chip date stays the due date', () => {
+    const parsed = parseQuickAdd('review [[2026-11-20]] e poi [[2026-11-25]]', TODAY)
+    expect(parsed.dueDate).toBe('2026-11-20')
+    expect(parsed.content).toBe('review e poi 2026-11-25 [[2026-11-20]]')
+  })
+
+  it('types the repeat rule', () => {
+    expect(parseQuickAdd('backup ogni 2 settimane', TODAY).repeat).toEqual({
+      every: 2,
+      unit: 'week',
+    })
+    expect(parseQuickAdd('x weekly', TODAY).repeat).toEqual({ every: 1, unit: 'week' })
   })
 })

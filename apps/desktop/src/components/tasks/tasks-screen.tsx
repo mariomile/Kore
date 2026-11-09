@@ -37,6 +37,7 @@ import { formatDayLabel } from '@/lib/dates'
 import { completedTasksQueryKey, tasksQueryKey } from '@/lib/tasks/tasks-query'
 import { dailyTarget } from '@/lib/tasks/task-navigation'
 import { useTaskProjects } from '@/lib/tasks/use-task-projects'
+import { useTaskMove } from '@/lib/tasks/use-task-move'
 import { useTaskView } from '@/lib/tasks/use-task-view'
 import { useSettings } from '@/providers/settings-provider'
 import { useScrollRestoration } from '@/lib/use-scroll-restoration'
@@ -50,6 +51,7 @@ import { TaskBoard } from './task-board'
 import { TaskList } from './task-list'
 import { TaskScheduleCalendar } from './task-schedule-calendar'
 import { TaskToolbarCountBadge } from './task-toolbar-count-badge'
+import { TaskMovePicker } from '@/components/tasks/task-move-picker'
 import { TaskQuickAdd } from './task-quick-add'
 import { TaskViewTabs } from './task-view-tabs'
 import { isModEvent } from '@meowdown/core'
@@ -101,6 +103,8 @@ export function TasksScreen(): ReactElement {
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [scheduleOpen, setScheduleOpen] = useState(false)
   const [quickAddOpen, setQuickAddOpen] = useState(false)
+  const [moving, setMoving] = useState<OpenTask[] | null>(null)
+  const taskMove = useTaskMove()
   const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
   const bridgeReady = useBridgeReady()
@@ -335,6 +339,8 @@ export function TasksScreen(): ReactElement {
     onConvertToBullet,
     onCyclePriority,
     onQuickAdd: () => setQuickAddOpen(true),
+    onMove: setMoving,
+    onUndoMove: taskMove.undo,
     view,
     onGoToView: (next) => {
       selection.clear()
@@ -519,6 +525,19 @@ export function TasksScreen(): ReactElement {
         today={today}
         projects={projects}
         onSubmit={onQuickAddSubmit}
+      />
+      <TaskMovePicker
+        tasks={moving}
+        projects={projects}
+        onClose={() => {
+          setMoving(null)
+          // Back to the list, not the search box, so ⌘Z and the arrows act on it.
+          requestAnimationFrame(() => rootRef.current?.focus({ preventScroll: true }))
+        }}
+        onMove={(tasks, target, label) => {
+          selection.clear()
+          taskMove.move(tasks, target, label)
+        }}
       />
     </div>
   )

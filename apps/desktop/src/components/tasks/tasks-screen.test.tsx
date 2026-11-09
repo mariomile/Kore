@@ -122,6 +122,11 @@ const insertTask = vi.hoisted(() => vi.fn())
 const addTask = vi.hoisted(() => vi.fn())
 const continueTaskInContext = vi.hoisted(() => vi.fn())
 const convertTaskToBullet = vi.hoisted(() => vi.fn())
+const moveTask = vi.hoisted(() => vi.fn())
+const undoTaskMoves = vi.hoisted(() => vi.fn())
+const projectSections = vi.hoisted(() => vi.fn())
+vi.mock('@/lib/tasks/task-move', () => ({ moveTask, undoTaskMoves, projectSections }))
+
 vi.mock('@/lib/note-task', () => ({
   toggleTask,
   deleteTask,
@@ -319,6 +324,9 @@ beforeEach(() => {
   insertTask.mockResolvedValue(0)
   addTask.mockReset().mockResolvedValue(undefined)
   getProjectNotePaths.mockReset().mockResolvedValue([])
+  moveTask.mockReset().mockResolvedValue({ rewrites: [] })
+  undoTaskMoves.mockReset().mockResolvedValue(undefined)
+  projectSections.mockReset().mockResolvedValue([])
   continueTaskInContext.mockReset()
   continueTaskInContext.mockResolvedValue({
     created: { markerOffset: 0, raw: '[ ] ' },
@@ -2294,6 +2302,34 @@ describe('TasksScreen Todoist views', () => {
       ),
     )
     await waitFor(() => expect(view.queryByRole('textbox', { name: 'Task' })).toBeNull())
+    await view.unmount()
+  })
+
+  it('moves the selection to a project section with m, and ⌘Z undoes it', async () => {
+    getOpenTasks.mockResolvedValue(tasks)
+    getProjectNotePaths.mockResolvedValue(['Projects/Kore/Kore.md'])
+    projectSections.mockResolvedValue(['Doing', 'Later'])
+    const view = await renderScreen()
+    await view.findByRole('button', { name: 'jotted today' })
+
+    await userEvent.keyboard('{Meta>}a{/Meta}')
+    await userEvent.keyboard('m')
+    await userEvent.click(await view.findByRole('option', { name: 'Kore' }))
+    getOpenTasks.mockResolvedValue([]) // the reindex after the move
+    await userEvent.click(await view.findByRole('option', { name: 'Doing' }))
+
+    await waitFor(() => expect(moveTask).toHaveBeenCalledTimes(tasks.length))
+    expect(moveTask).toHaveBeenCalledWith(
+      expect.objectContaining({ raw: '[ ] jotted today' }),
+      { notePath: 'Projects/Kore/Kore.md', section: 'Doing' },
+      1,
+    )
+    await waitFor(() => expect(view.queryByRole('button', { name: 'jotted today' })).toBeNull())
+    await waitFor(() => expect(document.activeElement?.getAttribute('aria-label')).toBe('Tasks'))
+
+    await userEvent.keyboard('{Meta>}z{/Meta}')
+    await waitFor(() => expect(undoTaskMoves).toHaveBeenCalledTimes(1))
+    expect(undoTaskMoves.mock.calls[0]?.[0]).toHaveLength(tasks.length)
     await view.unmount()
   })
 

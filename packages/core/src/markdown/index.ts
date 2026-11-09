@@ -106,6 +106,7 @@ export {
   toggleTaskMarker,
   TaskStaleError,
 } from './edit'
+export { cutTaskBlock, pasteTaskBlock, taskSectionNames, type TaskBlock } from './task-move'
 export { retitleWikiLinks, type WikiLinkRetitleOptions } from './retitle'
 export { displayNoteTitle, stripLeadingHeading, wikiLinkTargetForTitle } from './note-title'
 export { convertTaggedLineToNote, type TaggedLineConversion } from './tagged-line-conversion'

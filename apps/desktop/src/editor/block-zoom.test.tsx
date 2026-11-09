@@ -121,7 +121,8 @@ describe('BlockZoom', () => {
     await expect.element(pmRoot.getByText('Call notes')).toBeVisible()
     await expect.element(pmRoot.getByText('Groceries')).not.toBeVisible()
 
-    await userEvent.keyboard(zoomOut)
+    // Escape steps out too, once there is no selection to collapse.
+    await userEvent.keyboard('{Escape}')
     await expect.element(pmRoot.getByText('Groceries')).toBeVisible()
     expect(handle.getMarkdown()).toBe(NOTE)
     // The zoom animation leaves no transition names behind.

@@ -287,9 +287,18 @@ function coversBranch(state: EditorState, root: number, item: ProseMirrorNode): 
 export const ZOOM_IN_BINDING = 'Mod-Shift-.'
 export const ZOOM_OUT_BINDING = 'Mod-Shift-,'
 
+/**
+ * Escape steps out of a zoom when there is nothing else for it to do: an
+ * open menu claims it first (higher priority), and a selection is left for
+ * Meowdown to collapse (this falls through when the selection is not empty).
+ */
+const escapeZoom: Command = (state, dispatch, view) =>
+  state.selection.empty && zoomOut(state, dispatch, view)
+
 export const blockZoomKeymap: Readonly<Record<string, Command>> = {
   [ZOOM_IN_BINDING]: zoomIn,
   [ZOOM_OUT_BINDING]: zoomOut,
+  Escape: escapeZoom,
   Enter: enterOnRoot,
   'Mod-a': selectAllInZoom,
   Backspace: deleteInZoom,
@@ -512,9 +521,25 @@ function handleMarkerMouseDown(view: EditorView, event: MouseEvent): boolean {
  * edit and ends by itself when its block is deleted or the document is
  * replaced (a reload or a note switch).
  */
-export function createBlockZoomPlugin(): Plugin<BlockZoomState> {
+export interface BlockZoomOptions {
+  /** Called when the zoom starts, moves or ends (null), and on teardown. */
+  readonly onZoomChange?: (view: EditorView, target: ZoomTarget | null) => void
+}
+
+export function createBlockZoomPlugin(options: BlockZoomOptions = {}): Plugin<BlockZoomState> {
   return new Plugin<BlockZoomState>({
     key: blockZoomKey,
+    view: (editorView) => ({
+      update: (view, previous) => {
+        const target = zoomTarget(view.state)
+        if (!sameTarget(target, zoomTarget(previous))) {
+          options.onZoomChange?.(view, target)
+        }
+      },
+      destroy: () => {
+        options.onZoomChange?.(editorView, null)
+      },
+    }),
     state: {
       init: () => ({ target: null, decorations: DecorationSet.empty, transition: null }),
       apply: (tr, previous, _oldState, newState) => {

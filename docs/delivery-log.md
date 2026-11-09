@@ -7,6 +7,11 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Notes marked `sensitivity: private` (the cyber-brain kit's privacy level)
+  are kept away from AI and agents exactly like `private: true`. The chat
+  now reads up to 20,000 characters of the vault's AGENTS.md, as `kore
+  guide` already did.
+
 - Every task links to the note it lives in: the note icon next to its date
   or note name, also on the task you are editing. ⌘-click opens it beside.
 

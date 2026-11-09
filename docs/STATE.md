@@ -3305,6 +3305,18 @@ screen: Agents then Close lands on today.
 
 ## Session log
 
+- 2026-11-09 — Plan 34 slice 1, step 1 (cyber-brain as Kore's memory
+  engine, `docs/plans/34-cyber-brain-memory.md`). `sensitivity: private`
+  (cyber-brain's privacy level) is now the same hard block as
+  `private: true`, in the TS frontmatter schema and the Rust
+  `note-policy` mirror, so every existing gate (MCP, chat, search, CLI
+  sandbox, `kore guide`) honors it. The chat's vault-contract budget goes
+  from 8,000 to 20,000 characters, matching `kore guide`: Mario's
+  cyber-brain AGENTS.md body is 8,038. Known limit: the editor's privacy
+  toggle clears only `private:`, so turning privacy off on a
+  `sensitivity: private` note does not stick. Verified: core node tests
+  (2,544), note-policy tests, `pnpm check`, `cargo fmt`.
+
 - 2026-11-08 — Quality refactor, no behavior change. `kore sources` policy
   moves to core: `headless/sync-sources.ts` resolves which connectors run,
   their `KORE_<SOURCE>_*` variables and defaults from `CONNECTORS`; the

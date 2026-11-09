@@ -7,6 +7,7 @@ export {
   frontmatterSchema,
   gistFrontmatterSchema,
   isPinned,
+  isSensitivityPrivate,
   pinnedOrder,
   PARSED_NOTE_VERSION,
   type Frontmatter,

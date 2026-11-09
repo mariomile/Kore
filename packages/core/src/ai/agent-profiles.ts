@@ -106,7 +106,8 @@ export const AGENT_SHARED_LOG_MAX_CHARS = 1000
  * `notes/`) yield to it.
  */
 export const VAULT_CONTRACT_PATHS = ['AGENTS.md', 'CLAUDE.md'] as const
-export const VAULT_CONTRACT_MAX_CHARS = 8000
+/** Same budget as `kore guide` (CONTRACT_MAX_CHARS), so chat and MCP agents get the same rules. */
+export const VAULT_CONTRACT_MAX_CHARS = 20_000
 
 /** One loaded agent file: body (frontmatter stripped), possibly digested. */
 export interface AgentFile {

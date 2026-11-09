@@ -7,6 +7,7 @@ import {
   noteCardAndMentionRules,
   noteContentSafetyRules,
   vaultEditRules,
+  chunkList,
 } from './agent-cli'
 import { agentContextPromptLines, type AgentPromptContext } from './agent-profiles'
 import { codexMcpConfigArgs, mcpSpawnEnv, type ResolvedMcpServer } from './mcp'
@@ -333,7 +334,7 @@ export function streamCodexCliChat(options: StreamCliChatOptions): AsyncGenerato
     env: mcpSpawnEnv(options.mcpServers ?? []),
     isolatedCodexHome: true,
     keepStdinOpen: true,
-    parseLine: (line) => parseCodexCliLine(line, parseState),
+    parseLine: (line) => chunkList(parseCodexCliLine(line, parseState)),
     startFailureMessage: 'Could not start the Codex CLI.',
     signal: options.signal,
     onRawLine: async (line, sendLine) => {

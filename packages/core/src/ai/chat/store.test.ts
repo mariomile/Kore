@@ -282,6 +282,32 @@ describe('loadChatMessages', () => {
     ])
   })
 
+  it('upgrades an agent step persisted before steps carried a kind and note path', async () => {
+    const legacyStep = (id: string, tool: string, detail: string | null) => ({
+      kind: 'step',
+      step: { id, tool, label: tool, detail, parentId: null },
+      outcome: null,
+    })
+    const parts = [
+      legacyStep('s1', 'Read', 'notes/a.md'),
+      legacyStep('s2', 'Task', 'Summarize'),
+      legacyStep('s3', 'mcp__notion__search', 'notion'),
+      legacyStep('s4', 'Edit', '/outside/b.md'),
+    ]
+    invoke.mockResolvedValue([messageRow({ parts: JSON.stringify(parts) })])
+    const [restored] = await loadChatMessages('conv-1')
+    expect(
+      restored?.parts.map((part) =>
+        part.kind === 'step' ? [part.step.kind, part.step.notePath] : null,
+      ),
+    ).toEqual([
+      ['read', 'notes/a.md'],
+      ['subagent', null],
+      ['mcp', null],
+      ['write', null],
+    ])
+  })
+
   it('loads a legacy setProperty result that has no proposed value', async () => {
     const parts = [
       {

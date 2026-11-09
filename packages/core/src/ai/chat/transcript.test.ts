@@ -432,7 +432,15 @@ describe('settleNoteEdit', () => {
 })
 
 describe('appendEvent agent steps', () => {
-  const step = { id: 's1', tool: 'Read', label: 'Read', detail: 'notes/a.md', parentId: null }
+  const step = {
+    id: 's1',
+    tool: 'Read',
+    label: 'Read',
+    detail: 'notes/a.md',
+    parentId: null,
+    kind: 'read' as const,
+    notePath: 'notes/a.md',
+  }
 
   it('adds a step once, settles it with its outcome, and stops a dangling one on abort', () => {
     let parts = appendEvent([], { type: 'agent-step', step })

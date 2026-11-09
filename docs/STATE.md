@@ -3305,6 +3305,15 @@ screen: Agents then Close lands on today.
 
 ## Session log
 
+- 2026-11-09 — Quality refactor, no behavior change. Agent steps carry a
+  `kind` and the `notePath` they touched, set in core by the Claude Code
+  describer, so `chat-agent-steps.tsx` maps kind to icon and no longer
+  switches on tool names; steps persisted before this are upgraded on load.
+  Only subagent steps nest (the UI's `flatten` is gone), the dead lone-step
+  case in `ChatAssistantPart` is removed, and every engine's `parseLine`
+  returns a chunk list (`parseClaudeCliLine` removed). Verified: core
+  vitest (2,563), chat browser tests on Chromium, typecheck and lint.
+
 - 2026-11-08 — Quality refactor, no behavior change. `kore sources` policy
   moves to core: `headless/sync-sources.ts` resolves which connectors run,
   their `KORE_<SOURCE>_*` variables and defaults from `CONNECTORS`; the

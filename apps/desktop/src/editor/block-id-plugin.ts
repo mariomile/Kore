@@ -10,7 +10,7 @@ import {
 import { Mapping } from '@prosekit/pm/transform'
 import { Decoration, DecorationSet, type EditorView } from '@prosekit/pm/view'
 import { targetSpan } from './block-zoom-target'
-import { zoomTarget, zoomTo } from './block-zoom-plugin'
+import { clearZoom, zoomTarget } from './block-zoom-plugin'
 
 /**
  * Obsidian block ids in the live editor (Plan 33 C3). A followed
@@ -278,18 +278,21 @@ export function revealBlockId(view: EditorView, id: string): boolean {
   if (hit === null) {
     return false
   }
-  const zoom = zoomTarget(view.state)
-  if (zoom !== null) {
-    const span = targetSpan(view.state.doc, zoom)
-    if (span === null || hit.from < span.from || hit.to > span.to) {
-      zoomTo(view, null)
-    }
-  }
   const { state } = view
   const caret = Math.min(hit.caret, state.doc.content.size)
   const tr = state.tr
-    .setSelection(TextSelection.near(state.doc.resolve(caret)))
-    .setMeta(blockIdKey, { flash: { from: hit.from, to: hit.to } })
+  const zoom = zoomTarget(state)
+  if (zoom !== null) {
+    const span = targetSpan(state.doc, zoom)
+    if (span === null || hit.from < span.from || hit.to > span.to) {
+      // Leave the zoom in this same transaction, so the caret lands on the
+      // line instead of being clamped back into the zoomed block.
+      clearZoom(tr)
+    }
+  }
+  tr.setSelection(TextSelection.near(state.doc.resolve(caret))).setMeta(blockIdKey, {
+    flash: { from: hit.from, to: hit.to },
+  })
   view.dispatch(tr)
   const element = view.nodeDOM(hit.from)
   if (element instanceof HTMLElement) {
@@ -408,7 +411,9 @@ export function ensureBlockIdAt(view: EditorView, pos: number): string | null {
     }
     view.dispatch(state.tr.insert(place.after, paragraph))
   }
-  return id
+  // A zoom refuses edits outside it (an id line under a zoomed code block):
+  // no id was written, so there is nothing to link to.
+  return view.state.doc === state.doc ? null : id
 }
 
 /** {@link ensureBlockIdAt} for the caret's block. */

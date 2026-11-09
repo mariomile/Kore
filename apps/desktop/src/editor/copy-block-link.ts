@@ -22,6 +22,9 @@ export async function copyLinkToBlock(view: EditorView, pos?: number): Promise<b
   const id = pos === undefined ? ensureBlockIdAtCaret(view) : ensureBlockIdAt(view, pos)
   const link = id === null ? null : blockLinkText(view, id)
   if (link === null) {
+    startOperation('Copying link to line').fail(
+      'Couldn’t add a link to this line here. Zoom out and try again.',
+    )
     return false
   }
   try {

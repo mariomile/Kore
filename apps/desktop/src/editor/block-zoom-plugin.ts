@@ -80,6 +80,15 @@ export function zoomTo(view: EditorView, target: ZoomTarget | null): void {
   animateZoom(view, zoomTarget(view.state), target)
 }
 
+/**
+ * End any zoom in `tr` itself, without the animated switch: for a caller that
+ * moves the selection outside the zoom in the same transaction (a followed
+ * `[[Note#^id]]`), so the caret lands before the zoom could clamp it.
+ */
+export function clearZoom(tr: Transaction): Transaction {
+  return withZoomMeta(tr, null, null)
+}
+
 /** Zoom into the block around the caret. */
 export const zoomIn: Command = (state, dispatch, view) => {
   const target = targetAt(state.doc, state.selection.$from)

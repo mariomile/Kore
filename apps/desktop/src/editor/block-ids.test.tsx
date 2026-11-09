@@ -169,6 +169,8 @@ describe('BlockIds', () => {
     expect(handle.revealHeading?.('^pro')).toBe(true)
     await expect.element(pmRoot.getByText('Pro costs 49')).toBeVisible()
     await expect.element(pmRoot.getByText('Last line')).toBeVisible()
+    // The caret lands on the line, not clamped back into the old zoom.
+    await expect.poll(() => caretText()).toContain('Pro costs 49')
   })
 
   it('copy link to line adds an id to that line only and copies [[Note#^id]]', async () => {
@@ -206,6 +208,19 @@ describe('BlockIds', () => {
     // A second copy finds the id it added.
     expect(await copyLinkToBlock(lastFocusedBlockIdView()!, 0)).toBe(true)
     expect(writeText).toHaveBeenLastCalledWith(`[[Pricing#^${id}]]`)
+  })
+
+  it('copies a link to a zoomed code block, its id line kept with it', async () => {
+    const writeText = stubClipboard()
+    const note = ['```js', 'const a = 1', '```', '', 'Last line', ''].join('\n')
+    const handle = await renderNote(note)
+    await pmRoot.getByText('const a = 1').click()
+    await userEvent.keyboard(`{${mod}>}{Shift>}.{/Shift}{/${mod}}`)
+    await expect.element(pmRoot.getByText('Last line')).not.toBeVisible()
+    expect(await copyLinkToBlock(lastFocusedBlockIdView()!, 0)).toBe(true)
+    const id = /```\n\n\^([a-z0-9]{6})\n/.exec(handle.getMarkdown())?.[1]
+    expect(id).toBeDefined()
+    expect(writeText).toHaveBeenCalledWith(`[[Pricing#^${id}]]`)
   })
 
   it('offers nothing before the note has a link target', async () => {

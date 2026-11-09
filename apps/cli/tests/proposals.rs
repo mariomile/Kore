@@ -87,3 +87,61 @@ fn a_forged_agent_a_non_agent_or_a_bad_call_is_never_kept() {
     }
     assert!(waiting(&fixture).is_empty());
 }
+
+fn propose(fixture: &Fixture, call: Value) -> String {
+    let output = kore_as(
+        fixture,
+        Some("Grok"),
+        &["proposals", "add"],
+        &call.to_string(),
+    );
+    assert!(output.status.success(), "stderr: {}", stderr(&output));
+    json(&output)["id"].as_str().unwrap().to_string()
+}
+
+#[test]
+fn accepting_writes_the_call_as_the_agent_and_rejecting_writes_nothing() {
+    let fixture = graph();
+    let kept = propose(
+        &fixture,
+        json!({ "tool": "create_note", "arguments": { "title": "Milk", "body": "buy milk" } }),
+    );
+    let dropped = propose(
+        &fixture,
+        json!({ "tool": "create_note", "arguments": { "title": "Eggs", "body": "buy eggs" } }),
+    );
+    assert!(!fixture.root().join("Milk.md").exists());
+
+    let output = kore_as(&fixture, None, &["proposals", "reject", &dropped], "");
+    assert!(output.status.success(), "stderr: {}", stderr(&output));
+    let output = kore_as(&fixture, None, &["proposals", "accept", &kept], "");
+    assert!(output.status.success(), "stderr: {}", stderr(&output));
+    assert_eq!(json(&output)["accepted"], true);
+
+    assert!(waiting(&fixture).is_empty());
+    let notes = std::fs::read_dir(fixture.root().join("notes"))
+        .unwrap()
+        .map(|entry| std::fs::read_to_string(entry.unwrap().path()).unwrap())
+        .collect::<Vec<_>>()
+        .concat();
+    assert!(notes.contains("buy milk"), "{notes}");
+    assert!(!notes.contains("buy eggs"), "{notes}");
+    let journal = read(&fixture, ".reflect/agent-writes.jsonl");
+    assert!(journal.contains("\"agent\":\"Grok\""), "{journal}");
+}
+
+#[test]
+fn only_the_owner_decides_and_only_on_a_proposal_that_exists() {
+    let fixture = graph();
+    let id = propose(
+        &fixture,
+        json!({ "tool": "capture", "arguments": { "text": "x" } }),
+    );
+    for verb in ["accept", "reject"] {
+        let output = kore_as(&fixture, Some("Grok"), &["proposals", verb, &id], "");
+        assert!(!output.status.success(), "an agent could {verb}");
+        let output = kore_as(&fixture, None, &["proposals", verb, "0000-missing"], "");
+        assert!(!output.status.success(), "{verb} of a missing proposal");
+    }
+    assert_eq!(waiting(&fixture).len(), 1);
+}

@@ -27,7 +27,7 @@ export interface DeepLinkIo {
 /**
  * Act on one incoming `kore://` URL: navigation links navigate (a note
  * target resolving through the index first), capture links spool an envelope
- * into `.reflect/inbox/` for the watcher-triggered drain to materialize.
+ * into `.kore/inbox/` for the watcher-triggered drain to materialize.
  * Every outcome that isn't a navigation surfaces on the operations status
  * line — an outside-world input must never crash or silently vanish.
  */

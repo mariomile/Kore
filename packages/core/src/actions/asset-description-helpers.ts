@@ -56,13 +56,21 @@ export interface AssetDescriptionMeta {
   generatedAt: string
 }
 
-/** The managed marker; its presence means Reflect owns the file. */
-const managedDescriptionSchema = z.object({
-  reflectAsset: z.literal(true),
-  sourceHash: z.string().optional(),
-  sourceSize: z.number().optional(),
-  generatedAt: z.string().optional(),
-})
+/**
+ * The managed marker; its presence means Kore owns the file. `reflectAsset`
+ * is the pre-rename spelling, still read on a description the vault-open
+ * migration could only rename (an evicted iCloud file) and rewritten as
+ * `koreAsset` on its next regeneration.
+ */
+const managedDescriptionSchema = z
+  .object({
+    koreAsset: z.literal(true).optional(),
+    reflectAsset: z.literal(true).optional(),
+    sourceHash: z.string().optional(),
+    sourceSize: z.number().optional(),
+    generatedAt: z.string().optional(),
+  })
+  .refine((marker) => marker.koreAsset === true || marker.reflectAsset === true)
 
 /** A managed description's identity, as read back from disk. */
 export interface ManagedDescription {
@@ -76,7 +84,7 @@ export interface ManagedDescription {
 
 /**
  * Read a description's managed marker. `null` means the file is **user-authored**
- * (no `reflectAsset: true`) and must never be overwritten or trusted.
+ * (no `koreAsset: true`) and must never be overwritten or trusted.
  */
 export function readManagedDescription(source: string): ManagedDescription | null {
   const parsed = managedDescriptionSchema.safeParse(
@@ -96,7 +104,7 @@ export function readManagedDescription(source: string): ManagedDescription | nul
 /** Assemble a managed description's full source from its provenance + body. */
 export function buildDescriptionSource(meta: AssetDescriptionMeta, body: string): string {
   return upsertFrontmatter(`${body.trimEnd()}\n`, {
-    reflectAsset: true,
+    koreAsset: true,
     source: meta.source,
     sourceHash: meta.sourceHash,
     sourceSize: meta.sourceSize,

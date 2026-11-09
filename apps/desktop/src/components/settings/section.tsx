@@ -9,7 +9,7 @@ import { settingsSectionDomId, settingsSectionTitle, type SettingsSectionId } fr
  * card opens expanded.
  */
 function collapseStorageKey(id: SettingsSectionId): string {
-  return `reflect.settings.section-collapsed:${id}`
+  return `kore.settings.section-collapsed:${id}`
 }
 
 function readCollapsed(id: SettingsSectionId): boolean {

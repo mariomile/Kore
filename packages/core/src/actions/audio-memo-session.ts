@@ -24,7 +24,7 @@ import type { AudioMemoIdentity } from './audio-memo'
  *
  * Everything here is pure bookkeeping over already-parsed parts — grouping,
  * closed/ready judgement, transcript stitching, and the codec for the
- * per-part transcript cache under `.reflect/transcripts/`. The cache is what
+ * per-part transcript cache under `.kore/transcripts/`. The cache is what
  * makes retries cheap: a pass that dies at part 7 of 12 never re-bills the
  * first six.
  */
@@ -121,11 +121,11 @@ export function isSessionReady(session: AudioMemoSession, nowMs: number): boolea
 export type AudioMemoPartResult = { text: string } | { rejected: string }
 
 /**
- * Per-part transcript cache, inside the graph but under `.reflect/` so the
+ * Per-part transcript cache, inside the graph but under `.kore/` so the
  * watcher, indexer, and sync never see it. Derived data: deleting it costs a
  * re-transcription, never content.
  */
-/** The cache entry's filename under `.reflect/transcripts/`. */
+/** The cache entry's filename under `.kore/transcripts/`. */
 export function partTranscriptName(part: AudioMemoPart): string {
   return `${part.path.slice(part.path.lastIndexOf('/') + 1)}.json`
 }

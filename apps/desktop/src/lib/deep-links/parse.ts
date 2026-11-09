@@ -3,12 +3,11 @@ import { isIsoDate } from '@/lib/dates'
 import {
   DEEP_LINK_SCHEME,
   DEEP_LINK_TEXT_MAX_LENGTH,
-  LEGACY_DEEP_LINK_SCHEME,
   type DeepLink,
 } from '@/lib/deep-links/deep-link'
 
 /**
- * Parse a `kore://` (or legacy `reflect://`) URL into a {@link DeepLink}, or null for anything the
+ * Parse a `kore://` URL into a {@link DeepLink}, or null for anything the
  * grammar doesn't name. Null — not a best-effort guess: a URL is untrusted
  * input from outside the app, so an unknown verb, a malformed date, an
  * over-long payload, or stray path segments all reject rather than "open
@@ -55,7 +54,7 @@ export function parseDeepLink(raw: string): DeepLink | null {
 }
 
 /**
- * Whether an href uses the app's `kore:` (or legacy `reflect:`) scheme — the routing predicate
+ * Whether an href uses the app's `kore:` scheme — the routing predicate
  * for links clicked *inside* the app, which must dispatch through the in-app
  * deep-link pipeline instead of the OS opener (the opener capability denies
  * the scheme, dev builds don't register it, and another installed flavor
@@ -69,7 +68,7 @@ export function isDeepLinkUrl(href: string): boolean {
 }
 
 function isDeepLinkProtocol(protocol: string): boolean {
-  return protocol === `${DEEP_LINK_SCHEME}:` || protocol === `${LEGACY_DEEP_LINK_SCHEME}:`
+  return protocol === `${DEEP_LINK_SCHEME}:`
 }
 
 function tryParseUrl(raw: string): URL | null {

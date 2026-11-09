@@ -26,7 +26,7 @@ import { describeClaudeToolCall, summarizeClaudeToolResult } from './chat/agent-
  * and `Glob` always, plus `Write` and `Edit` in chat edit mode. `Grep` is deliberately excluded — its matches would print
  * file *content*, and per-file permission rules can't filter it, so allowing
  * it would leak private-note lines. `Read` is covered: every `private: true`
- * note gets an explicit deny rule (plus `.reflect/` and `.git/`, whose index
+ * note gets an explicit deny rule (plus `.kore/` and `.git/`, whose index
  * and history embed private content), enforced by the CLI's permission
  * layer, which keeps the hard privacy block intact.
  */
@@ -132,7 +132,7 @@ export function claudeCliSettingsJson(
   // nothing and cannot drift when the tool set changes.
   const fencedPaths = [
     ...privateNotePaths.map((path) => `${root}/${path}`),
-    `${root}/.reflect/**`,
+    `${root}/.kore/**`,
     `${root}/.git/**`,
   ]
   // Binary user data stays readable but never writable: attachments and

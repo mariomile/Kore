@@ -301,7 +301,7 @@ export interface CloudAssetDescription {
 }
 
 /**
- * Gate one asset's stored description (Plan 20's `<asset>.reflect.md`) for an
+ * Gate one asset's stored description (Plan 20's `<asset>.kore.md`) for an
  * outbound payload. Callers pass the asset's **live** privacy verdict as
  * `isPrivate` — sendable only when the asset is referenced by ≥1 public note
  * and 0 private notes, decided from each referencing note's markdown at call

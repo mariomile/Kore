@@ -18,7 +18,7 @@ vi.mock('wxt/browser', () => ({
 }))
 
 vi.mock('@/lib/page-text', () => ({
-  EXTRACT_PAGE_TEXT_MESSAGE_TYPE: 'reflect:capture-page-text',
+  EXTRACT_PAGE_TEXT_MESSAGE_TYPE: 'kore:capture-page-text',
   extractPageTextResponseSchema: {
     parse: (value: unknown) => value,
   },
@@ -36,7 +36,7 @@ describe('tryExtractPageText', () => {
       'Article text',
     )
     expect(browserMocks.sendMessage).toHaveBeenCalledWith(42, {
-      type: 'reflect:capture-page-text',
+      type: 'kore:capture-page-text',
       expectedUrl: 'https://example.com/article',
     })
   })

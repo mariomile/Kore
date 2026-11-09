@@ -23,7 +23,7 @@ import { dailyPathPattern } from '../graph/paths'
  * workspace. Its permission layer is declarative and file-based — the
  * bridge materializes `.cursor/cli.json` in the workspace before the spawn
  * (project config wins over the user's global one) with reads allowed,
- * every `private: true` note plus `.reflect/` and `.git/` denied, and
+ * every `private: true` note plus `.kore/` and `.git/` denied, and
  * `Shell`/`WebFetch`/`Write`/`Delete`/`Grep`/`Mcp` denied outright. The run
  * also passes `--mode ask` (Cursor's read-only posture) and omits
  * `--force`, which headless writes additionally require — three layers
@@ -58,7 +58,7 @@ export function cursorCliPermissionsJson(privateNotePaths: string[]): string {
         'Grep(**)',
         // The user's own MCP servers must never ride a vault run.
         'Mcp(:)',
-        'Read(.reflect/**)',
+        'Read(.kore/**)',
         'Read(.git/**)',
         ...privateNotePaths.map((path) => `Read(${path})`),
       ],

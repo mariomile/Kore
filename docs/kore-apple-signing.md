@@ -49,12 +49,11 @@ steps below are only needed for iCloud sync and for installing on an iPhone.
 
 ## What deliberately did NOT change
 
-- `reflect://` deep-link scheme, the `reflect` CLI name, the `.reflect/`
-  index directory, and `@reflect/*` package names — internal identifiers;
-  renaming them buys nothing and risks breaking links, graphs, and scripts.
-- `app.reflect.capture` — the Chrome native-messaging host name, paired
-  with the browser extension's allowlist on both sides.
-- Config-dir name `reflect-open` (recents/settings/capture pointer paths).
+- `@reflect/*` package and `reflect-*` crate names (internal; renamed in a
+  separate mechanical pass). The deep-link scheme (`kore://`), the vault
+  directory (`.kore/`), the native-messaging host (`app.kore.capture`) and the
+  config dir (`kore/`) are Kore since the rename; each old name is migrated
+  on first launch.
 - Apple technical identity: bundle ids `app.lore.*`, iCloud container key
   `iCloud.app.lore`, App Group `group.app.lore`, and keychain service `lore`.
 - Desktop bundle name `Kore.app` (`productName` in `tauri.conf.json`).

@@ -72,7 +72,7 @@ export function vaultEditRules(): string[] {
     '- Follow the vault’s conventions: new notes are notes/<kebab-case-title>.md with an H1 title; [[Exact Title]] links notes and [[YYYY-MM-DD]] links a daily; tasks are round checkboxes `+ [ ] text` (a leading ! or !! sets priority; the first [[YYYY-MM-DD]] inside the item is its due date), while square `- [ ]` checkboxes are plain checklists.',
     `- Quick additions belong in today’s daily note (${dailyPathPattern()} — create it if missing): capture flows there by convention.`,
     '- Preserve frontmatter you don’t understand and never invent an `id:` — the app mints those.',
-    '- Never write into .reflect/, .git/, assets/, or audio-memos/, and never touch private notes — the sandbox denies those writes; when a change would need one, say so instead of working around it.',
+    '- Never write into .kore/, .git/, assets/, or audio-memos/, and never touch private notes — the sandbox denies those writes; when a change would need one, say so instead of working around it.',
   ]
 }
 

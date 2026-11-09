@@ -1,4 +1,4 @@
-//! `kore index` — build or refresh `.reflect/index.sqlite` without the app.
+//! `kore index` — build or refresh `.kore/index.sqlite` without the app.
 //!
 //! The projection is the desktop app's, not a second implementation: parsing
 //! and extraction run in `@reflect/core` (the bundled `kore-indexer.mjs`,
@@ -547,14 +547,14 @@ mod tests {
     fn refuses_reads_through_a_symlinked_directory() {
         let outside = tempfile::tempdir().unwrap();
         std::fs::create_dir(outside.path().join("assets")).unwrap();
-        std::fs::write(outside.path().join("assets/photo.png.reflect.md"), "secret").unwrap();
+        std::fs::write(outside.path().join("assets/photo.png.kore.md"), "secret").unwrap();
         let dir = tempfile::tempdir().unwrap();
         std::os::unix::fs::symlink(outside.path(), dir.path().join("linked")).unwrap();
         let mut host = Host::open(dir.path()).unwrap();
         let linked = host
             .handle(
                 "note_read_local",
-                &json!({ "path": "linked/assets/photo.png.reflect.md" }),
+                &json!({ "path": "linked/assets/photo.png.kore.md" }),
             )
             .unwrap_err();
         assert_eq!(linked.kind, "traversal");

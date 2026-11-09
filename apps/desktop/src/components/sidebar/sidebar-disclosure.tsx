@@ -46,7 +46,7 @@ interface SidebarDisclosureProps {
   children: ReactNode
 }
 
-const STORAGE_PREFIX = 'reflect.workspace-sidebar.'
+const STORAGE_PREFIX = 'kore.workspace-sidebar.'
 
 function readOpenState(storageKey: string): boolean {
   return window.sessionStorage.getItem(STORAGE_PREFIX + storageKey) !== 'closed'

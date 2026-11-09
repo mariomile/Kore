@@ -84,7 +84,7 @@ commit message and, for `feat`/`fix`, the user-facing changelog entry.
 
 - Notes with `private: true` frontmatter must never reach an external service.
   Enforce at every call site.
-- Markdown files are the source of truth; SQLite under `.reflect/` is a
+- Markdown files are the source of truth; SQLite under `.kore/` is a
   rebuildable cache. Never make the index durable.
 - No Reflect-hosted APIs, no Electron, secrets only in the OS keychain.
 

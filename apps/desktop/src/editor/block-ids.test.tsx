@@ -81,14 +81,56 @@ describe('BlockIds', () => {
     await expect.element(pmRoot.locate('.kore-block-flash')).toHaveTextContent('A table-like quote')
   })
 
-  it('draws each end-of-line marker muted, and leaves a mid-line caret alone', async () => {
+  it('never shows an id in the note', async () => {
     await renderNote()
-    const markers = [...document.querySelectorAll('.kore-block-id')].map((el) => el.textContent)
-    expect(markers).toEqual(['^pro', '^quote'])
-    await pmRoot.getByText('Last line').click()
-    await userEvent.keyboard(' x^2 and ^tail')
-    await expect.poll(() => document.querySelectorAll('.kore-block-id').length).toBe(3)
-    expect(document.querySelectorAll('.kore-block-id')[2]?.textContent).toBe('^tail')
+    await expect.element(pmRoot.getByText('Pro costs 49')).toBeVisible()
+    expect((pmRoot.element() as HTMLElement).innerText).not.toContain('^')
+    expect(document.querySelector('.kore-block-id')?.textContent).toBe(' ^pro')
+    expect(document.querySelector('.kore-block-id-line')?.textContent).toBe('^quote')
+  })
+
+  it('typing at the end of a line goes before its id', async () => {
+    const handle = await renderNote()
+    await pmRoot.getByText('Pro costs 49').click()
+    await userEvent.keyboard('{End}€ a month')
+    await expect.poll(() => handle.getMarkdown()).toContain('  - Pro costs 49€ a month ^pro\n')
+  })
+
+  it('Enter at the end of a line leaves the id on that line', async () => {
+    const handle = await renderNote()
+    await pmRoot.getByText('Other').click()
+    await userEvent.keyboard('{End}{Enter}Third')
+    await expect.poll(() => handle.getMarkdown()).toContain('- Other\n- Third')
+    expect(handle.getMarkdown()).toContain('  - Pro costs 49 ^pro\n')
+    await pmRoot.getByText('Pro costs 49').click()
+    await userEvent.keyboard('{End}{Enter}Team')
+    await expect.poll(() => handle.getMarkdown()).toContain('Team')
+    expect(handle.getMarkdown()).toMatch(/- Pro costs 49 \^pro\n/)
+    expect(handle.getMarkdown()).not.toMatch(/Team \^pro/)
+  })
+
+  it('Delete at the end of a line keeps the id at the end of the joined line', async () => {
+    const note = ['Para one ^one', 'still para', '', 'Last line', ''].join('\n')
+    const handle = await renderNote(note.replace('^one\nstill para', '^one\n\nstill para'))
+    await pmRoot.getByText('Para one').click()
+    await userEvent.keyboard('{End}{Delete}')
+    await expect.poll(() => handle.getMarkdown()).toContain('Para onestill para ^one')
+    await userEvent.keyboard('X')
+    await expect.poll(() => handle.getMarkdown()).toContain('Para oneXstill para ^one')
+  })
+
+  it('labels [[Note#^id]] with the note name only', async () => {
+    const note = [
+      'See [[Pricing#^pro]] and [[#^quote]] and [[Pricing#^pro|the price]].',
+      '',
+      'Last line',
+      '',
+    ].join('\n')
+    await renderNote(note)
+    const labels = [...document.querySelectorAll('.md-wikilink-view-label')].map(
+      (el) => el.textContent,
+    )
+    expect(labels).toEqual(['Pricing', 'Link to line', 'the price'])
   })
 
   it('is false for an unknown id', async () => {

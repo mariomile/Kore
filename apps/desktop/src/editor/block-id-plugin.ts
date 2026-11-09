@@ -8,45 +8,142 @@ import { zoomTarget, zoomTo } from './block-zoom-plugin'
 /**
  * Obsidian block ids in the live editor (Plan 33 C3). A followed
  * `[[Note#^id]]` lands on the line that ends with `^id` (or, for an id alone
- * on its line, on the block above it) and flashes it. Every marker draws small
- * and muted, so the id stays in the file (Obsidian reads the same links)
- * without crowding the line. The markdown is never touched by this plugin.
+ * on its line, on the block above it) and flashes it. The `^id` stays in the
+ * file, so Obsidian reads the same links, but the editor never shows it: the
+ * marker is hidden and the caret steps around it, so typing, Enter and Delete
+ * at the end of the line never break or move the id. The markdown is never
+ * touched by this plugin.
  */
 
 interface BlockIdState {
-  /** The quiet look of every `^id` marker at the end of a line. */
+  /** Hides every `^id` marker (and every id-only line). */
   readonly markers: DecorationSet
   readonly flash: DecorationSet
 }
 
 /** A marker the way {@link lineBlockId} reads it, at the end of a text run. */
-const MARKER_RE = /(?:^|[ \t])(\^[\da-z-]+)[ \t]*$/i
+const MARKER_RE = /(?:^|[ \t])\^[\da-z-]+[ \t]*$/i
+const ID_ONLY_RE = /^[ \t]*\^[\da-z-]+[ \t]*$/i
 
 /**
- * Inline decorations over every end-of-line `^id`. Only a marker in the
- * textblock's last text node counts: an atom (a wiki link, a tag) after it
- * means the caret is not at the end of the line.
+ * The hidden tail of a textblock: from the whitespace before its `^id` to the
+ * end of the line. Only a marker in the textblock's last text node counts: an
+ * atom (a wiki link, a tag) after it means it is not at the end of the line.
  */
+interface HiddenMarker {
+  /** First hidden position: the caret's visible end of the line. */
+  readonly from: number
+  /** End of the textblock's content. */
+  readonly to: number
+  /** The whole line is the id (Obsidian's id for the block above). */
+  readonly idOnly: boolean
+}
+
+function hiddenMarker(node: ProseMirrorNode, pos: number): HiddenMarker | null {
+  const last = node.lastChild
+  if (!node.isTextblock || node.type.spec.code === true || last?.isText !== true) {
+    return null
+  }
+  const text = last.text ?? ''
+  const match = MARKER_RE.exec(text)
+  if (match === null) {
+    return null
+  }
+  const to = pos + 1 + node.content.size
+  return {
+    from: to - (text.length - match.index),
+    to,
+    idOnly: ID_ONLY_RE.test(node.textContent),
+  }
+}
+
+/** The hidden marker of the caret's textblock, when the caret's line has one. */
+function markerAtCaret(state: EditorState): HiddenMarker | null {
+  const { $from } = state.selection
+  return $from.parent.isTextblock ? hiddenMarker($from.parent, $from.before()) : null
+}
+
 function markerDecorations(doc: ProseMirrorNode): DecorationSet {
   const decorations: Decoration[] = []
-  doc.descendants((node, pos) => {
+  doc.descendants((node, pos, parent) => {
     if (!node.isTextblock) {
       return true
     }
-    const last = node.lastChild
-    if (node.type.spec.code === true || last?.isText !== true) {
-      return false
-    }
-    const text = last.text ?? ''
-    const match = MARKER_RE.exec(text)
-    if (match?.[1] !== undefined) {
-      const end = pos + 1 + node.content.size
-      const from = end - (text.length - (match.index + match[0].indexOf('^')))
-      decorations.push(Decoration.inline(from, from + match[1].length, { class: 'kore-block-id' }))
+    const marker = hiddenMarker(node, pos)
+    if (marker !== null) {
+      // An id-only paragraph between blocks names the block above: the whole
+      // line goes. Inside a list it is that item's own line, so only the
+      // marker does.
+      decorations.push(
+        marker.idOnly && parent === doc
+          ? Decoration.node(pos, pos + node.nodeSize, { class: 'kore-block-id-line' })
+          : Decoration.inline(marker.from, marker.to, { class: 'kore-block-id' }),
+      )
     }
     return false
   })
   return DecorationSet.create(doc, decorations)
+}
+
+/** A selection change this plugin makes itself, which the caret rule leaves alone. */
+const SKIP_CLAMP = 'kore-block-id-skip-clamp'
+
+/**
+ * Keep an empty caret out of hidden text: inside a marker it sits at the
+ * line's visible end, and on an id-only line it moves to the nearest visible
+ * line in the direction it was going.
+ */
+function clampCaret(oldState: EditorState, newState: EditorState): TextSelection | null {
+  const { selection } = newState
+  if (!selection.empty || !(selection instanceof TextSelection)) {
+    return null
+  }
+  const marker = markerAtCaret(newState)
+  if (marker === null || selection.head <= marker.from) {
+    return null
+  }
+  const { $from } = selection
+  if (marker.idOnly && $from.depth === 1) {
+    const forward = selection.head >= oldState.selection.head
+    const target = forward ? $from.after() : $from.before()
+    const near = TextSelection.near(newState.doc.resolve(target), forward ? 1 : -1)
+    return near instanceof TextSelection && near.head !== selection.head ? near : null
+  }
+  return TextSelection.create(newState.doc, marker.from)
+}
+
+/**
+ * Keys that must act on the real end of the line, not the visible one: Enter
+ * splits after the id (the id stays on its line), and → leaves the line
+ * instead of stepping into the hidden text. Delete is handled by the plugin
+ * (it carries the id to the end of the joined line).
+ */
+function handleMarkerKey(view: EditorView, event: KeyboardEvent): boolean {
+  if (event.altKey || event.metaKey || event.ctrlKey || event.shiftKey) {
+    return false
+  }
+  if (event.key !== 'Enter' && event.key !== 'ArrowRight') {
+    return false
+  }
+  const { state } = view
+  const { selection } = state
+  const marker = markerAtCaret(state)
+  if (!selection.empty || marker === null || selection.head !== marker.from) {
+    return false
+  }
+  if (event.key === 'ArrowRight') {
+    const near = TextSelection.near(state.doc.resolve(selection.$from.after()), 1)
+    if (near.head <= marker.to) {
+      return false
+    }
+    view.dispatch(state.tr.setSelection(near).scrollIntoView())
+    return true
+  }
+  // Move to the real end, then let the editor's own Enter run there.
+  view.dispatch(
+    state.tr.setSelection(TextSelection.create(state.doc, marker.to)).setMeta(SKIP_CLAMP, true),
+  )
+  return false
 }
 
 const blockIdKey = new PluginKey<BlockIdState>('kore-block-ids')
@@ -282,6 +379,50 @@ export function lastFocusedBlockIdView(): EditorView | null {
 /** The plugin behind `^id` markers, arrival flashes and "Copy link to line". */
 export function createBlockIdPlugin(options: BlockIdOptions = {}): Plugin<BlockIdState> {
   let timer: ReturnType<typeof setTimeout> | undefined
+  /**
+   * Delete at a line's visible end joins the next line, which would land
+   * after the id and break it. The marker is lifted off first and put back at
+   * the end of whatever line the caret is on once the editor's own Delete has
+   * run (or right away when it did nothing).
+   */
+  let lifted: { text: string; at: number } | null = null
+  const putBack = (state: EditorState, at: number, text: string) => {
+    const $at = state.doc.resolve(Math.min(at, state.doc.content.size))
+    const end = $at.parent.isTextblock ? $at.end() : at
+    const tr = state.tr.insertText(text, end).setMeta(SKIP_CLAMP, true)
+    // The caret stays on the visible side of the marker it just got back.
+    if (state.selection.empty) {
+      tr.setSelection(TextSelection.create(tr.doc, tr.mapping.map(state.selection.head, -1)))
+    }
+    return tr
+  }
+  const handleDelete = (view: EditorView, event: KeyboardEvent): boolean => {
+    if (
+      event.key !== 'Delete' ||
+      event.altKey ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey
+    ) {
+      return false
+    }
+    const { state } = view
+    const marker = markerAtCaret(state)
+    if (!state.selection.empty || marker === null || state.selection.head !== marker.from) {
+      return false
+    }
+    const text = state.doc.textBetween(marker.from, marker.to)
+    view.dispatch(state.tr.delete(marker.from, marker.to).setMeta(SKIP_CLAMP, true))
+    lifted = { text, at: marker.from }
+    queueMicrotask(() => {
+      const pending = lifted
+      lifted = null
+      if (pending !== null && !view.isDestroyed) {
+        view.dispatch(putBack(view.state, pending.at, pending.text))
+      }
+    })
+    return false
+  }
   return new Plugin<BlockIdState>({
     key: blockIdKey,
     state: {
@@ -300,7 +441,27 @@ export function createBlockIdPlugin(options: BlockIdOptions = {}): Plugin<BlockI
         return tr.docChanged ? { markers, flash: value.flash.map(tr.mapping, tr.doc) } : value
       },
     },
+    appendTransaction(transactions, oldState, newState) {
+      if (lifted !== null && transactions.some((tr) => tr.docChanged)) {
+        let at = lifted.at
+        for (const tr of transactions) {
+          at = tr.mapping.map(at, -1)
+        }
+        const { text } = lifted
+        lifted = null
+        return putBack(newState, at, text)
+      }
+      if (!transactions.some((tr) => tr.selectionSet || tr.docChanged)) {
+        return null
+      }
+      if (transactions.some((tr) => tr.getMeta(SKIP_CLAMP) === true)) {
+        return null
+      }
+      const clamped = clampCaret(oldState, newState)
+      return clamped === null ? null : newState.tr.setSelection(clamped)
+    },
     props: {
+      handleKeyDown: (view, event) => handleDelete(view, event) || handleMarkerKey(view, event),
       decorations(state) {
         const value = blockIdKey.getState(state)
         if (value === undefined) {

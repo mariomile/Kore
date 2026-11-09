@@ -21,8 +21,9 @@ const PREVIEW_CLASS = 'max-h-48 overflow-auto rounded-md bg-surface font-mono te
  * The writes agents with a "propose" key asked for (Plan 33, A2 step 3), at
  * the top of Activity. Each shows what it would change; Accept writes it in
  * the agent's name (it then appears below like any of its changes), Reject
- * drops it. Shows nothing when none wait, or when the CLI that keeps them
- * cannot answer, so the log itself never depends on it.
+ * drops it. Shows nothing when none wait. When the CLI that keeps them cannot
+ * answer it says so in one line with a retry, so proposals never vanish
+ * silently, and the log below still shows.
  */
 export function WaitingProposals({
   generation,
@@ -30,13 +31,34 @@ export function WaitingProposals({
   generation: number | null
 }): ReactElement | null {
   const bridgeReady = useBridgeReady()
-  const { data } = useQuery({
+  const { data, error, refetch, isFetching } = useQuery({
     queryKey: ['proposals', generation],
     queryFn: () => (generation === null ? Promise.resolve([]) : listProposals(generation)),
     enabled: bridgeReady && generation !== null,
     staleTime: 10_000,
   })
-  if (generation === null || data === undefined || data.length === 0) {
+  if (generation === null) {
+    return null
+  }
+  if (error !== null && data === undefined) {
+    return (
+      <section aria-label="Waiting for you" className="mt-6">
+        <p role="alert" className="text-xs text-destructive">
+          Couldn't load agents' proposals: {errorMessage(error)}
+        </p>
+        <Button
+          size="sm"
+          variant="outline"
+          className="mt-2"
+          disabled={isFetching}
+          onClick={() => void refetch()}
+        >
+          Try again
+        </Button>
+      </section>
+    )
+  }
+  if (data === undefined || data.length === 0) {
     return null
   }
   return (

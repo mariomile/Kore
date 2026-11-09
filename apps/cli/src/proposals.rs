@@ -104,6 +104,56 @@ pub fn remove(root: &Path, id: &str) -> Result<(), CliError> {
         .map_err(|_| CliError::Usage(format!("no proposal {id:?}")))
 }
 
+/// A proposal taken out of the waiting list while it is being accepted, so
+/// a second accept (a double click, two windows) finds nothing to write.
+/// It waits in the local, unsynced part of `.kore/` until [`Claim::finish`]
+/// drops it or [`Claim::release`] puts it back.
+pub struct Claim {
+    pub proposal: Proposal,
+    waiting: PathBuf,
+    claimed: PathBuf,
+}
+
+/// Claim proposal `id` for accepting. A rename is atomic, so only one caller
+/// ever gets it.
+pub fn claim(root: &Path, id: &str) -> Result<Claim, CliError> {
+    let waiting = path_for(root, id)?;
+    let claimed = root
+        .join(reflect_index_schema::KORE_DIR)
+        .join(format!("accepting-{id}.json"));
+    std::fs::rename(&waiting, &claimed)
+        .map_err(|_| CliError::Usage(format!("no proposal {id:?}")))?;
+    let read = std::fs::read(&claimed)
+        .map_err(CliError::from)
+        .and_then(|bytes| {
+            serde_json::from_slice(&bytes)
+                .map_err(|err| CliError::Runtime(format!("proposal {id} is unreadable: {err}")))
+        });
+    match read {
+        Ok(proposal) => Ok(Claim {
+            proposal,
+            waiting,
+            claimed,
+        }),
+        Err(err) => {
+            let _ = std::fs::rename(&claimed, &waiting);
+            Err(err)
+        }
+    }
+}
+
+impl Claim {
+    /// The write went through: the proposal is done.
+    pub fn finish(self) -> Result<(), CliError> {
+        Ok(std::fs::remove_file(&self.claimed)?)
+    }
+
+    /// The write failed: the proposal waits again, unchanged.
+    pub fn release(self) -> Result<(), CliError> {
+        Ok(std::fs::rename(&self.claimed, &self.waiting)?)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -134,5 +184,29 @@ mod tests {
         remove(dir.path(), &first.id).unwrap();
         assert_eq!(list(dir.path()), vec![second]);
         assert!(load(dir.path(), "../../etc/passwd").is_err());
+    }
+
+    #[test]
+    fn only_one_caller_claims_a_proposal_and_a_release_puts_it_back() {
+        let dir = tempfile::tempdir().unwrap();
+        let proposal = Proposal::new(
+            AgentIdentity::for_caller(Some("Grok")),
+            ProposedCall {
+                tool: "capture".to_string(),
+                arguments: serde_json::Map::new(),
+            },
+        );
+        save(dir.path(), &proposal).unwrap();
+
+        let claimed = claim(dir.path(), &proposal.id).unwrap();
+        assert_eq!(claimed.proposal, proposal);
+        assert!(list(dir.path()).is_empty());
+        assert!(claim(dir.path(), &proposal.id).is_err());
+        claimed.release().unwrap();
+        assert_eq!(list(dir.path()), vec![proposal.clone()]);
+
+        claim(dir.path(), &proposal.id).unwrap().finish().unwrap();
+        assert!(list(dir.path()).is_empty());
+        assert!(claim(dir.path(), &proposal.id).is_err());
     }
 }

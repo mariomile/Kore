@@ -176,6 +176,17 @@ describe('ActivityScreen', () => {
     await expect.element(view.getByText('Waiting for you')).toBeVisible()
   })
 
+  it('says when proposals cannot be read and retries', async () => {
+    listProposals.mockRejectedValueOnce(new Error('kore is missing')).mockResolvedValue([EDIT])
+    const view = await renderScreen()
+    await expect
+      .element(view.getByText("Couldn't load agents' proposals: kore is missing"))
+      .toBeVisible()
+    await expect.element(view.getByText('Plan')).toBeVisible()
+    await view.getByRole('button', { name: 'Try again' }).click()
+    await expect.element(view.getByRole('listitem', { name: 'Grok bot: Edit Atlas' })).toBeVisible()
+  })
+
   it('rejects a proposal even before backup is on', async () => {
     gitActivity.mockRejectedValue(new Error('no repository'))
     listProposals.mockResolvedValueOnce([EDIT]).mockResolvedValue([])

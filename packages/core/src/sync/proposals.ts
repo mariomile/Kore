@@ -72,10 +72,20 @@ function optionalNote(value: unknown): string | null {
 
 /**
  * The preview of a proposal, from its tool and arguments: the text it would
- * add or remove and the note it targets. A tool this version does not know
- * shows its arguments as they are.
+ * add or remove and the note it targets. Every argument the tool's own lines
+ * leave out follows as a `key: value` detail, so what the owner accepts is
+ * always what they read, whatever arguments a tool gains later.
  */
 export function describeProposal(proposal: Proposal): ProposalPreview {
+  const { shown, ...preview } = describeKnown(proposal)
+  const rest = Object.entries(proposal.call.arguments)
+    .filter(([key, value]) => !shown.includes(key) && text(value) !== '')
+    .map(([key, value]): ProposalLine => ({ kind: 'detail', text: `${key}: ${text(value)}` }))
+  return { ...preview, lines: [...preview.lines, ...rest] }
+}
+
+/** A tool's own preview, and the arguments it already shows. */
+function describeKnown(proposal: Proposal): ProposalPreview & { shown: readonly string[] } {
   const args = proposal.call.arguments
   const add = (value: unknown): ProposalLine => ({ kind: 'add', text: text(value) })
   const remove = (value: unknown): ProposalLine => ({ kind: 'remove', text: text(value) })
@@ -87,16 +97,23 @@ export function describeProposal(proposal: Proposal): ProposalPreview {
         action: note === null ? "Add to today's note" : 'Add to',
         note,
         lines: [add(args.task === true ? `[ ] ${text(args.text)}` : args.text)],
+        shown: ['to', 'task', 'text'],
       }
     }
     case 'append_to_note':
-      return { action: 'Append to', note: optionalNote(args.note), lines: [add(args.markdown)] }
+      return {
+        action: 'Append to',
+        note: optionalNote(args.note),
+        lines: [add(args.markdown)],
+        shown: ['note', 'markdown'],
+      }
     case 'edit_note': {
       const old = text(args.oldText)
       return {
         action: 'Edit',
         note: optionalNote(args.note),
         lines: [...(old === '' ? [] : [remove(old)]), add(args.newText)],
+        shown: ['note', 'oldText', 'newText'],
       }
     }
     case 'create_note': {
@@ -108,6 +125,7 @@ export function describeProposal(proposal: Proposal): ProposalPreview {
           ...(text(args.body) === '' ? [] : [add(args.body)]),
           ...(tags.length === 0 ? [] : [detail(tags.map((tag) => `#${tag}`).join(' '))]),
         ],
+        shown: ['title', 'body', 'tags'],
       }
     }
     case 'set_properties': {
@@ -123,20 +141,32 @@ export function describeProposal(proposal: Proposal): ProposalPreview {
           ...set.map(([key, value]) => add(`${key}: ${text(value)}`)),
           ...unset.map((key) => remove(key)),
         ],
+        shown: ['note', 'set', 'unset'],
       }
     }
     case 'tag_note':
-      return { action: 'Tag', note: optionalNote(args.note), lines: [add(`#${text(args.tag)}`)] }
+      return {
+        action: 'Tag',
+        note: optionalNote(args.note),
+        lines: [add(`#${text(args.tag)}`)],
+        shown: ['note', 'tag'],
+      }
     case 'untag_note':
       return {
         action: 'Untag',
         note: optionalNote(args.note),
         lines: [remove(`#${text(args.tag)}`)],
+        shown: ['note', 'tag'],
       }
     case 'complete_task': {
       const note = optionalNote(args.in)
       const verb = args.undo === true ? 'Reopen a task' : 'Tick off a task'
-      return { action: note === null ? verb : `${verb} in`, note, lines: [detail(text(args.text))] }
+      return {
+        action: note === null ? verb : `${verb} in`,
+        note,
+        lines: [detail(text(args.text))],
+        shown: ['in', 'undo', 'text'],
+      }
     }
     case 'remember': {
       const note = optionalNote(args.note)
@@ -144,13 +174,10 @@ export function describeProposal(proposal: Proposal): ProposalPreview {
         action: note === null ? "Remember in today's note" : 'Remember in',
         note,
         lines: [add(args.fact)],
+        shown: ['note', 'fact'],
       }
     }
     default:
-      return {
-        action: proposal.call.tool,
-        note: null,
-        lines: Object.entries(args).map(([key, value]) => detail(`${key}: ${text(value)}`)),
-      }
+      return { action: proposal.call.tool, note: null, lines: [], shown: [] }
   }
 }

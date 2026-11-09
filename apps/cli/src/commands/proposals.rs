@@ -47,24 +47,18 @@ pub fn run(graph: &Graph, json: bool, action: Option<&ProposalsAction>) -> Resul
         }
         ProposalsAction::Accept { id } => {
             owner_only("accept")?;
-            let proposal = proposals::load(&graph.root, id)?;
-            let (args, stdin) =
-                propose::invocation(&proposal.call, &proposal.agent.name).map_err(|err| {
-                    CliError::Usage(format!("proposal {id} no longer applies: {err}"))
-                })?;
-            let runner = ProcessRunner {
-                exe: std::env::current_exe()?,
-                graph: graph.root.clone(),
+            // Claimed first, so a second accept of the same proposal finds
+            // nothing and the write never happens twice.
+            let claim = proposals::claim(&graph.root, id)?;
+            let output = match write_as_agent(graph, &claim.proposal) {
+                Ok(output) => output,
+                Err(err) => {
+                    claim.release()?;
+                    return Err(err);
+                }
             };
-            // Signed as the agent, so the write lands in its activity.
-            let output = runner.run_as(&args, stdin.as_deref(), &proposal.agent);
-            if !output.success {
-                return Err(CliError::Runtime(format!(
-                    "proposal {id} was not written: {}",
-                    output.text
-                )));
-            }
-            proposals::remove(&graph.root, id)?;
+            let agent = claim.proposal.agent.name.clone();
+            claim.finish()?;
             if json {
                 let result = serde_json::from_str(&output.text)
                     .unwrap_or(serde_json::Value::String(output.text));
@@ -72,7 +66,7 @@ pub fn run(graph: &Graph, json: bool, action: Option<&ProposalsAction>) -> Resul
                     &serde_json::json!({ "id": id, "accepted": true, "result": result }),
                 );
             }
-            println!("Accepted {id} from {}", proposal.agent.name);
+            println!("Accepted {id} from {agent}");
             Ok(())
         }
         ProposalsAction::Reject { id } => {
@@ -101,6 +95,26 @@ pub fn run(graph: &Graph, json: bool, action: Option<&ProposalsAction>) -> Resul
             }
         }
     }
+}
+
+/// Carry out `proposal` through the MCP tool table, signed as its agent so
+/// the write lands in that agent's activity.
+fn write_as_agent(graph: &Graph, proposal: &Proposal) -> Result<crate::mcp::RunOutput, CliError> {
+    let id = &proposal.id;
+    let (args, stdin) = propose::invocation(&proposal.call, &proposal.agent.name)
+        .map_err(|err| CliError::Usage(format!("proposal {id} no longer applies: {err}")))?;
+    let runner = ProcessRunner {
+        exe: std::env::current_exe()?,
+        graph: graph.root.clone(),
+    };
+    let output = runner.run_as(&args, stdin.as_deref(), &proposal.agent);
+    if !output.success {
+        return Err(CliError::Runtime(format!(
+            "proposal {id} was not written: {}",
+            output.text
+        )));
+    }
+    Ok(output)
 }
 
 /// Deciding on a proposal is the owner's: a process running an agent's tool

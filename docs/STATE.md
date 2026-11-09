@@ -3336,6 +3336,10 @@ screen: Agents then Close lands on today.
   (app runs the bundled CLI via `proposals_run`). Settings → Agents picks
   read / propose / write per agent, changeable without a new key; new
   agents start at propose. A2 is complete pending Mario's live check.
+  Full-review fixes: the preview lists every argument a tool's own lines
+  leave out (remember's confidence, create_note's properties), accept
+  claims the file by rename first so a double click writes once and a
+  failed write puts it back, and Activity says when proposals can't load.
 
 - 2026-11-09 — Quality refactor, no behavior change. Agent steps carry a
   `kind` and the `notePath` they touched, set in core by the Claude Code

@@ -148,3 +148,29 @@ fn only_the_owner_decides_and_only_on_a_proposal_that_exists() {
     }
     assert_eq!(waiting(&fixture).len(), 1);
 }
+
+#[test]
+fn a_write_that_fails_leaves_the_proposal_waiting_and_a_second_accept_writes_nothing() {
+    let fixture = graph();
+    let failing = propose(
+        &fixture,
+        json!({ "tool": "edit_note", "arguments": {
+            "note": "No such note", "oldText": "a", "newText": "b" } }),
+    );
+    let output = kore_as(&fixture, None, &["proposals", "accept", &failing], "");
+    assert!(!output.status.success(), "a failed write was accepted");
+    let ids: Vec<_> = waiting(&fixture).iter().map(|p| p["id"].clone()).collect();
+    assert_eq!(ids, vec![json!(failing)]);
+
+    let kept = propose(
+        &fixture,
+        json!({ "tool": "create_note", "arguments": { "title": "Once", "body": "only once" } }),
+    );
+    let output = kore_as(&fixture, None, &["proposals", "accept", &kept], "");
+    assert!(output.status.success(), "stderr: {}", stderr(&output));
+    let output = kore_as(&fixture, None, &["proposals", "accept", &kept], "");
+    assert!(
+        !output.status.success(),
+        "the same proposal was written twice"
+    );
+}

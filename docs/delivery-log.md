@@ -14,6 +14,8 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
   written in its name and shows in the log. Reject drops it. In Settings →
   Agents each agent is Read-only, Proposes changes (the default for a new
   one) or Reads and writes, and you can change it without a new key.
+  The preview shows every detail the agent sent, and accepting twice never
+  writes twice.
 
 - Kore is the only name left: the vault folder is `.kore/`, links are
   `kore://`, asset descriptions end in `.kore.md`, and settings live in

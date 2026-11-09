@@ -84,4 +84,36 @@ describe('proposals', () => {
       lines: [{ kind: 'detail', text: 'a: 1' }],
     })
   })
+
+  it('shows every argument the tool lines leave out, so nothing accepted goes unread', () => {
+    expect(
+      describeProposal(
+        proposal('remember', { fact: 'x', confidence: 0.4, previously: 'y', agent: 'Bot' }),
+      ).lines,
+    ).toEqual([
+      { kind: 'add', text: 'x' },
+      { kind: 'detail', text: 'confidence: 0.4' },
+      { kind: 'detail', text: 'previously: y' },
+      { kind: 'detail', text: 'agent: Bot' },
+    ])
+    expect(
+      describeProposal(proposal('create_note', { title: 'T', properties: { stage: 'lead' } }))
+        .lines,
+    ).toEqual([{ kind: 'detail', text: 'properties: {"stage":"lead"}' }])
+    const tools = [
+      'capture',
+      'append_to_note',
+      'edit_note',
+      'create_note',
+      'set_properties',
+      'tag_note',
+      'untag_note',
+      'complete_task',
+      'remember',
+    ]
+    for (const tool of tools) {
+      const { lines } = describeProposal(proposal(tool, { added_later: 'visible' }))
+      expect(lines, tool).toContainEqual({ kind: 'detail', text: 'added_later: visible' })
+    }
+  })
 })

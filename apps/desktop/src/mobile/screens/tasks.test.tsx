@@ -198,6 +198,7 @@ vi.mock('@/lib/note-task', () => ({
   deleteTask,
   editTask,
   insertTask,
+  addTask: vi.fn(),
   continueTaskInContext,
   convertTaskToBullet,
 }))

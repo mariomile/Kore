@@ -7,6 +7,11 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Quick Add for tasks: press `q` in Tasks (or ⌘T in Quick Entry) and type
+  "call Anna tomorrow at 3pm p1 #Kore". Dates, times, priority, repeats and
+  the project are understood in Italian and English, shown as chips, and
+  written as plain Kore task syntax.
+
 - Activity shows everything that changed in your vault, grouped by who did
   it: you, the always-on host, or each agent by name (Claude, Grok, any
   `kore mcp` key). Open a note at the change, filter by agent, and undo one

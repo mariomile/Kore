@@ -15,12 +15,14 @@ import { act } from '@/test-utils/act'
 
 const getOpenTasks = vi.hoisted(() => vi.fn())
 const getCompletedTasks = vi.hoisted(() => vi.fn())
+const getProjectNotePaths = vi.hoisted(() => vi.fn())
 const openRouteInNewWindow = vi.hoisted(() => vi.fn<() => Promise<boolean>>())
 vi.mock('@reflect/core', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@reflect/core')>()),
   hasBridge: () => true,
   getOpenTasks,
   getCompletedTasks,
+  getProjectNotePaths,
 }))
 vi.mock('@/lib/windows/open-in-new-window', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/windows/open-in-new-window')>()),
@@ -117,6 +119,7 @@ const toggleTask = vi.hoisted(() => vi.fn())
 const deleteTask = vi.hoisted(() => vi.fn())
 const editTask = vi.hoisted(() => vi.fn())
 const insertTask = vi.hoisted(() => vi.fn())
+const addTask = vi.hoisted(() => vi.fn())
 const continueTaskInContext = vi.hoisted(() => vi.fn())
 const convertTaskToBullet = vi.hoisted(() => vi.fn())
 vi.mock('@/lib/note-task', () => ({
@@ -124,6 +127,7 @@ vi.mock('@/lib/note-task', () => ({
   deleteTask,
   editTask,
   insertTask,
+  addTask,
   continueTaskInContext,
   convertTaskToBullet,
 }))
@@ -313,6 +317,8 @@ beforeEach(() => {
   editTask.mockReset()
   insertTask.mockReset()
   insertTask.mockResolvedValue(0)
+  addTask.mockReset().mockResolvedValue(undefined)
+  getProjectNotePaths.mockReset().mockResolvedValue([])
   continueTaskInContext.mockReset()
   continueTaskInContext.mockResolvedValue({
     created: { markerOffset: 0, raw: '[ ] ' },
@@ -2225,6 +2231,43 @@ describe('TasksScreen Todoist views', () => {
     })
     expect(columns[0]?.textContent).toContain('ship it')
     expect(columns[1]?.textContent).not.toContain('ship it')
+    await view.unmount()
+  })
+
+  it('Quick Add parses plain words and writes canonical syntax to the named project', async () => {
+    settingsState.overrides = { taskView: 'today' }
+    settingsState.version += 1
+    getOpenTasks.mockResolvedValue(tasks)
+    getProjectNotePaths.mockResolvedValue(['Projects/Kore/Kore.md'])
+    const view = await renderScreen()
+    await view.findByRole('button', { name: 'jotted today' })
+
+    await userEvent.keyboard('q')
+    const input = await view.findByRole('textbox', { name: 'Task' })
+    await userEvent.type(input, 'call Anna tomorrow at 3pm p1 #kore')
+    const chips = await view.findByRole('list', { name: 'Understood' })
+    await waitFor(() => expect(chips.textContent).toContain('Kore'))
+    expect(chips.textContent).toContain('15:00')
+    expect(chips.textContent).toContain('High priority')
+    await userEvent.keyboard('{Enter}')
+
+    await waitFor(() =>
+      expect(addTask).toHaveBeenCalledWith(
+        'Projects/Kore/Kore.md',
+        '!! call Anna [[2026-06-15]] @15:00',
+        1,
+      ),
+    )
+    await waitFor(() => expect(view.queryByRole('textbox', { name: 'Task' })).toBeNull())
+    await view.unmount()
+  })
+
+  it("Quick Add without a project lands in today's daily note", async () => {
+    getOpenTasks.mockResolvedValue(tasks)
+    const view = await renderScreen()
+    await userEvent.click(await view.findByRole('button', { name: 'Add task' }))
+    await userEvent.type(await view.findByRole('textbox', { name: 'Task' }), 'buy milk{Enter}')
+    await waitFor(() => expect(addTask).toHaveBeenCalledWith('daily/2026-06-14.md', 'buy milk', 1))
     await view.unmount()
   })
 })

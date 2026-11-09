@@ -19,6 +19,9 @@ import type { TaskProject } from './task-views'
  * - Numeric dates are day/month ("15/11"); a date without a year that has
  *   already passed this year means next year.
  * - Times are 24-hour unless they carry am/pm; a time without a date is today.
+ * - Look-alikes stay text: "at 2" needs minutes or am/pm ("alle 3" doesn't),
+ *   "1/2" needs a preposition or a year, and month abbreviations that are
+ *   everyday words (set, ago, mar, mag, gen, may) need one too.
  * - `p1` is high (`!!`), `p2` medium (`!`), `p3`/`p4` none.
  * - `#Name` is a project only when it names a known project (folder note),
  *   ignoring case, spaces and dashes; any other `#tag` stays in the text.
@@ -176,14 +179,24 @@ interface Match {
   readonly groups: readonly (string | undefined)[]
 }
 
-/** The first match of `pattern` in `text` that doesn't overlap a taken span. */
-function find(text: string, pattern: RegExp, taken: readonly Match[]): Match | null {
+/**
+ * The first match of `pattern` in `text` that doesn't overlap a taken span and
+ * that `accept` keeps, so a rejected look-alike ("1/2") doesn't hide a real
+ * one later in the line ("15/11").
+ */
+function find(
+  text: string,
+  pattern: RegExp,
+  taken: readonly Match[],
+  accept: (match: Match) => boolean = () => true,
+): Match | null {
   const global = new RegExp(pattern.source, `${pattern.flags.replace('g', '')}g`)
   for (const found of text.matchAll(global)) {
     const start = found.index
     const end = start + found[0].length
-    if (taken.every((span) => end <= span.start || start >= span.end)) {
-      return { start, end, groups: found.slice(1) }
+    const match = { start, end, groups: found.slice(1) }
+    if (taken.every((span) => end <= span.start || start >= span.end) && accept(match)) {
+      return match
     }
   }
   return null
@@ -233,6 +246,29 @@ function countWord(word: string): number {
 
 const COUNT = String.raw`(\d{1,3}|un|una|a|an)`
 const DATE_PREFIX = String.raw`(?:(?:entro|by|on|il|lo)\s+)?`
+/** {@link DATE_PREFIX}, captured: an ambiguous date needs it (or a year) to count. */
+const CAPTURED_PREFIX = String.raw`(?:(entro|by|on|il|lo)\s+)?`
+
+/**
+ * Month abbreviations that are also everyday words ("2 set di piatti", "Set 2
+ * reminders", "2 days ago", "may 3 people"): a date only after a preposition
+ * ("il 3 set", "by may 3") or with a year ("3 set 2027").
+ */
+const AMBIGUOUS_MONTHS: ReadonlySet<string> = new Set(['set', 'ago', 'mar', 'mag', 'gen', 'may'])
+
+function monthDate(
+  today: string,
+  prefix: string | undefined,
+  day: string,
+  month: string,
+  year: string | undefined,
+): string | null {
+  const key = month.toLowerCase()
+  if (AMBIGUOUS_MONTHS.has(key) && prefix === undefined && year === undefined) {
+    return null
+  }
+  return calendarDate(today, Number(day), MONTHS[key]!, year ? Number(year) : null)
+}
 
 type DateRule = (groups: readonly (string | undefined)[], today: string) => string | null
 
@@ -252,18 +288,21 @@ const DATE_RULES: readonly (readonly [RegExp, DateRule])[] = [
       shiftBy(today, countWord(count!.toLowerCase()), UNIT_LETTER[unit!.toLowerCase()]!),
   ],
   [
-    re(String.raw`${DATE_PREFIX}(\d{1,2})\s+(${MONTH})(?:\s+(\d{4}))?`),
-    ([d, m, y], today) =>
-      calendarDate(today, Number(d), MONTHS[m!.toLowerCase()]!, y ? Number(y) : null),
+    re(String.raw`${CAPTURED_PREFIX}(\d{1,2})\s+(${MONTH})(?:\s+(\d{4}))?`),
+    ([prefix, d, m, y], today) => monthDate(today, prefix, d!, m!, y),
   ],
   [
-    re(String.raw`${DATE_PREFIX}(${MONTH})\s+(\d{1,2})(?:,?\s+(\d{4}))?`),
-    ([m, d, y], today) =>
-      calendarDate(today, Number(d), MONTHS[m!.toLowerCase()]!, y ? Number(y) : null),
+    re(String.raw`${CAPTURED_PREFIX}(${MONTH})\s+(\d{1,2})(?:,?\s+(\d{4}))?`),
+    ([prefix, m, d, y], today) => monthDate(today, prefix, d!, m!, y),
   ],
   [
-    re(String.raw`${DATE_PREFIX}(\d{1,2})/(\d{1,2})(?:/(\d{2}|\d{4}))?`),
-    ([d, m, y], today) => calendarDate(today, Number(d), Number(m), y ? Number(y) : null),
+    // "15/11" or "5/11" is a date; "1/2" alone reads as a fraction, so two
+    // single digits need a preposition or a year ("il 1/2", "1/2/2027").
+    re(String.raw`${CAPTURED_PREFIX}(\d{1,2})/(\d{1,2})(?:/(\d{2}|\d{4}))?`),
+    ([prefix, d, m, y], today) =>
+      prefix === undefined && y === undefined && d!.length === 1 && m!.length === 1
+        ? null
+        : calendarDate(today, Number(d), Number(m), y ? Number(y) : null),
   ],
   [
     re(
@@ -312,11 +351,16 @@ const REPEAT_RULES: readonly (readonly [RegExp, RepeatRule])[] = [
 
 type Groups = readonly (string | undefined)[]
 
-/** Each time pattern with how its groups map to hour, minute and am/pm. */
-const TIME_RULES: readonly (readonly [RegExp, (groups: Groups) => Groups])[] = [
+/**
+ * Each time pattern with how its groups map to hour, minute and am/pm (null
+ * rejects the match). "alle 3" is a time on its own; English "at 2" needs
+ * minutes or am/pm, since "meet at 2 locations" is not 02:00.
+ */
+const TIME_RULES: readonly (readonly [RegExp, (groups: Groups) => Groups | null])[] = [
   [
-    re(String.raw`(?:alle(?:\s+ore)?|at)\s+(\d{1,2})(?:[:.](\d{2}))?(?:\s*(am|pm))?`),
-    (groups) => groups,
+    re(String.raw`(alle(?:\s+ore)?|at)\s+(\d{1,2})(?:[:.](\d{2}))?(?:\s*(am|pm))?`),
+    ([word, hour, minute, meridiem]) =>
+      word!.toLowerCase() === 'at' && !minute && !meridiem ? null : [hour, minute, meridiem],
   ],
   [new RegExp(String.raw`(?<![${L}@])@(\d{1,2}):(\d{2})${E}`, 'iu'), (groups) => groups],
   [re(String.raw`(\d{1,2}):(\d{2})(?:\s*(am|pm))?`), (groups) => groups],
@@ -395,7 +439,7 @@ export function parseQuickAdd(
   let dueDate: string | null = null
   let dateMatch: Match | null = null
   for (const [pattern, rule] of DATE_RULES) {
-    const match = find(input, pattern, taken)
+    const match = find(input, pattern, taken, (found) => rule(found.groups, today) !== null)
     if (match === null) {
       continue
     }
@@ -410,15 +454,17 @@ export function parseQuickAdd(
   }
 
   let dueTime: string | null = null
-  for (const [pattern, parts] of TIME_RULES) {
-    const match = find(input, pattern, taken)
-    if (match === null) {
-      continue
+  const timeOf = (groups: Groups | null): string | null => {
+    if (groups === null) {
+      return null
     }
-    const [hour, minute, meridiem] = parts(match.groups)
-    const time = clockTime(hour!, minute || undefined, meridiem || undefined)
-    if (time !== null) {
-      dueTime = time
+    const [hour, minute, meridiem] = groups
+    return clockTime(hour!, minute || undefined, meridiem || undefined)
+  }
+  for (const [pattern, parts] of TIME_RULES) {
+    const match = find(input, pattern, taken, (found) => timeOf(parts(found.groups)) !== null)
+    if (match !== null) {
+      dueTime = timeOf(parts(match.groups))
       take('time', match)
       break
     }

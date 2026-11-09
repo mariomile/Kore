@@ -23,7 +23,8 @@ describe('parseQuickAdd: canonical content', () => {
     ['Report entro venerdì p1', '!! Report [[2026-11-13]]'],
     ['dentista dopodomani alle 9:30', 'dentista [[2026-11-10]] @09:30'],
     ['pagare F24 il 16 novembre', 'pagare F24 [[2026-11-16]]'],
-    ['rinnovo dominio 3 gen', 'rinnovo dominio [[2027-01-03]]'],
+    ['rinnovo dominio il 3 gen', 'rinnovo dominio [[2027-01-03]]'],
+    ['rinnovo dominio 3 gennaio', 'rinnovo dominio [[2027-01-03]]'],
     ['bolletta 15/11', 'bolletta [[2026-11-15]]'],
     ['review tra 3 giorni p2', '! review [[2026-11-11]]'],
     ['retro prossima settimana', 'retro [[2026-11-09]]'],
@@ -149,5 +150,35 @@ describe('parseQuickAdd: core reads back what the chips show', () => {
       unit: 'week',
     })
     expect(parseQuickAdd('x weekly', TODAY).repeat).toEqual({ every: 1, unit: 'week' })
+  })
+})
+
+describe('parseQuickAdd: everyday words are not dates or times', () => {
+  it.each([
+    ['Set 2 reminders', 'Set 2 reminders'],
+    ['compra 2 set di piatti', 'compra 2 set di piatti'],
+    ['meet at 2 locations', 'meet at 2 locations'],
+    ['fai 1/2 del lavoro', 'fai 1/2 del lavoro'],
+    ['sent 3 days ago', 'sent 3 days ago'],
+    ['may 3 people join', 'may 3 people join'],
+    ['2 mar di bottiglie', '2 mar di bottiglie'],
+  ])('%s', (input, expected) => {
+    const parsed = parseQuickAdd(input, TODAY)
+    expect(parsed.content).toBe(expected)
+    expect(parsed.tokens).toEqual([])
+  })
+
+  it.each([
+    ['visita il 2 set', 'visita [[2027-09-02]]'],
+    ['call by may 3', 'call [[2027-05-03]]'],
+    ['ferie 3 ago 2027', 'ferie [[2027-08-03]]'],
+    ['bolletta il 1/2', 'bolletta [[2027-02-01]]'],
+    ['bolletta 5/11', 'bolletta [[2027-11-05]]'],
+    ['1/2 torta e poi 15/11', '1/2 torta e poi [[2026-11-15]]'],
+    ['meet at 2pm', 'meet [[2026-11-08]] @14:00'],
+    ['meet at 2:30', 'meet [[2026-11-08]] @02:30'],
+    ['chiamare alle 3', 'chiamare [[2026-11-08]] @03:00'],
+  ])('still reads %s', (input, expected) => {
+    expect(content(input)).toBe(expected)
   })
 })

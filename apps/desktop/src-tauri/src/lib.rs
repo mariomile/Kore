@@ -38,6 +38,7 @@ mod logs;
 mod menu;
 mod process_memory;
 mod process_tree;
+mod proposals;
 mod quit;
 mod recents;
 mod remote_mcp;
@@ -392,6 +393,7 @@ pub fn run() {
             remote_mcp::remote_mcp_stop,
             remote_mcp::remote_mcp_status,
             remote_mcp::tailscale_run,
+            proposals::proposals_run,
             secrets::secret_set,
             secrets::secret_get,
             secrets::secret_delete,

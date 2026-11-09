@@ -327,6 +327,7 @@ export {
   CHAT_ATTACHMENT_ACCEPT,
   chatAttachmentMediaType,
   isImageMediaType,
+  isPortableImageType,
   MAX_ATTACHMENT_BYTES,
 } from '../ai/chat/attachment-types'
 export {

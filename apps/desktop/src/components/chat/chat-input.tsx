@@ -172,19 +172,19 @@ export function ChatInput({ autoFocus = true }: ChatInputProps = {}): ReactEleme
                   : 'Queued — held after Stop; send or discard'}
               </p>
               {queued.map((message) => {
-                const images = message.attachments.length
-                const imagesLabel = `${images} file${images === 1 ? '' : 's'}`
-                const label = message.text !== '' ? conversationTitle(message.text) : imagesLabel
+                const fileCount = message.attachments.length
+                const filesLabel = `${fileCount} file${fileCount === 1 ? '' : 's'}`
+                const label = message.text !== '' ? conversationTitle(message.text) : filesLabel
                 return (
                   <div
                     key={message.id}
                     className="flex items-center gap-2 rounded-xl border border-border bg-surface-sunken px-2.5 py-1"
                   >
                     <p className="min-w-0 flex-1 truncate text-xs text-text-secondary">
-                      {message.text !== '' ? message.text : imagesLabel}
+                      {message.text !== '' ? message.text : filesLabel}
                     </p>
-                    {message.text !== '' && images > 0 ? (
-                      <span className="flex-none text-xs text-text-muted">+{imagesLabel}</span>
+                    {message.text !== '' && fileCount > 0 ? (
+                      <span className="flex-none text-xs text-text-muted">+{filesLabel}</span>
                     ) : null}
                     <Button
                       variant="ghost"

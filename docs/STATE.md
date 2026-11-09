@@ -3327,6 +3327,15 @@ screen: Agents then Close lands on today.
 
 ## Session log
 
+- 2026-11-09 — Quality refactor, no behavior change. Chat attachment media
+  types live in one table (`ATTACHMENT_KINDS` in
+  `ai/chat/attachment-types.ts`: media type, extensions, channel image /
+  document / text); the extension maps, the composer's re-encode check and
+  each engine's accepted types derive from it. Engines declare the channels
+  they read (Claude image + document, Codex image) and an attachment carries
+  its channel, so encoders no longer branch on `application/pdf`. A core
+  test holds the Rust store's closed extension lists to the table.
+
 - 2026-11-09 — Quality refactor, no behavior change. Agent steps carry a
   `kind` and the `notePath` they touched, set in core by the Claude Code
   describer, so `chat-agent-steps.tsx` maps kind to icon and no longer

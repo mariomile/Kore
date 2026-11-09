@@ -14,7 +14,8 @@ use crate::commands::{require_index, still_public_on_disk};
 use crate::error::CliError;
 use crate::frontmatter_values::PropertyValue;
 use crate::graph::Graph;
-use crate::schema::{load_all_schemas, load_schema, tag_descendants, SchemaProperty};
+use crate::schema::{load_descendants, load_schema, SchemaProperty};
+use crate::search::{tag_match_sql, Binds};
 
 pub fn run(
     graph: &Graph,
@@ -36,45 +37,44 @@ pub fn run(
     };
     let schema: Vec<SchemaProperty> = resolved.properties;
     // The notes of tags that build on this one are rows too, like the app's
-    // collection (`listCollection` without `ownOnly`).
+    // collection (`listCollection` without `ownOnly`), and so are the notes of
+    // tags nested under any of them (`#contact/vip`), with the same match
+    // `kore search` uses. The descendants come from core's stored pass.
+    let mut binds = Binds::default();
+    let sort_bind = sort.map(|key| binds.text(key));
     let mut member_keys = vec![tag_key.clone()];
-    member_keys.extend(tag_descendants(&load_all_schemas(&opened.conn)?, &tag_key));
-    let member_placeholders = (0..member_keys.len())
-        .map(|index| format!("?{}", index + 2))
+    member_keys.extend(load_descendants(&opened.conn, tag)?);
+    let member_clauses = member_keys
+        .iter()
+        .map(|key| tag_match_sql("t.tag_key", key, &mut binds))
         .collect::<Vec<_>>()
-        .join(", ");
-    let member_filter = format!(
-        "EXISTS (SELECT 1 FROM tags t WHERE t.note_path = n.path AND t.tag_key IN ({member_placeholders}))"
-    );
+        .join(" OR ");
+    let member_filter =
+        format!("EXISTS (SELECT 1 FROM tags t WHERE t.note_path = n.path AND ({member_clauses}))");
 
     // Mirrors `listCollection`: missing sort values last regardless of
     // direction, then the numeric key, then the string form, case-insensitive.
     let direction = if desc { "DESC" } else { "ASC" };
-    let query = if sort.is_some() {
-        format!(
+    let query = match &sort_bind {
+        Some(sort_key) => format!(
             "SELECT n.path, n.title, n.mtime FROM notes n
-             LEFT JOIN note_properties sp ON sp.note_path = n.path AND sp.key = ?1
+             LEFT JOIN note_properties sp ON sp.note_path = n.path AND sp.key = {sort_key}
              WHERE {member_filter} AND n.kind IN ('note','daily') AND n.is_private = 0
              ORDER BY sp.value IS NULL, sp.value_number {direction},
                       sp.value COLLATE NOCASE {direction}, n.mtime DESC, n.path"
-        )
-    } else {
-        format!(
+        ),
+        None => format!(
             "SELECT n.path, n.title, n.mtime FROM notes n
              WHERE {member_filter} AND n.kind IN ('note','daily') AND n.is_private = 0
              ORDER BY n.is_pinned DESC, n.mtime DESC, n.path"
-        )
+        ),
     };
     // The row cursor is walked lazily and abandoned at the limit, so rows
     // past the cap never leave SQLite (the `recent` idiom); the on-disk
     // privacy re-check runs inside the walk, before a row takes a slot.
     let mut statement = opened.conn.prepare(&query)?;
-    // ?1 is the sort key (bound even when unused, so the member keys keep
-    // their ?2.. slots in both query shapes).
-    let mut query_params: Vec<&str> = vec![sort.unwrap_or("")];
-    query_params.extend(member_keys.iter().map(String::as_str));
     let mut kept: Vec<(String, String)> = Vec::new();
-    let rows = statement.query_map(rusqlite::params_from_iter(query_params), |row| {
+    let rows = statement.query_map(rusqlite::params_from_iter(binds.values), |row| {
         Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
     })?;
     for row in rows {

@@ -11,7 +11,7 @@ use crate::commands::warn;
 use crate::error::CliError;
 use crate::frontmatter_values::{is_reserved_key, PropertyValue};
 use crate::keys::fold_tag;
-use crate::paths::{parse_calendar_date, today_date};
+use crate::paths::parse_calendar_date;
 
 /// One schema entry of `tag_types.schema_json` — the fields the CLI uses.
 /// Serde mirrors `tagPropertySchema` (`packages/core/src/tags/tag-type.ts`);
@@ -163,17 +163,6 @@ pub fn union_schema(conn: &Connection, tags: &[String]) -> Result<TagSchema, Cli
 impl TagSchema {
     pub fn property(&self, key: &str) -> Option<&SchemaProperty> {
         self.properties.iter().find(|property| property.key == key)
-    }
-
-    /// The `created` stamps a row born today would carry
-    /// (`createdStampValues`, `packages/core/src/tags/timestamps.ts`).
-    pub fn created_stamps(&self) -> Vec<(String, PropertyValue)> {
-        let today = today_date();
-        self.properties
-            .iter()
-            .filter(|property| property.kind == "created")
-            .map(|property| (property.key.clone(), PropertyValue::String(today.clone())))
-            .collect()
     }
 }
 
@@ -402,7 +391,6 @@ mod tests {
             r#"{"properties":[{"name":"A","key":"a","type":"created","target":"x"}],"template":"templates/book.md"}"#,
         );
         assert_eq!(object.template.as_deref(), Some("templates/book.md"));
-        assert_eq!(object.created_stamps()[0].0, "a");
         assert!(decode_schema("nonsense").properties.is_empty());
     }
 }

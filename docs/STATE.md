@@ -49,6 +49,9 @@ Draft without typing. Same draft PR #348, one step per commit.
   inheritance pass stores it on the resolved schema as `start`; the CLI
   (`apps/cli/src/starting_values.rs`) only materializes `start`, so the two
   sides cannot disagree on what a default means (review fix, 2026-11-09).
+- [x] A `created` field is a starting value that is always `today`, so one
+  rule stamps it everywhere (`missingCreatedStamps` is gone), and
+  `kore tag` on a note already in the tag stamps nothing, like the app.
 - [x] Next number counts every note in the tag, private ones included, in
   the app and the CLI alike (Mario, 2026-11-09), so a number is never
   handed out twice.

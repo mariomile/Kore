@@ -133,11 +133,13 @@ describe('startingValueOf', () => {
       properties: [
         field({ key: 'n', type: 'number', default: '3' }),
         field({ key: 'd', type: 'date', default: 'friday' }),
+        field({ key: 'added', type: 'created' }),
       ],
     })
     expect(stored.properties).toEqual([
       { name: 'n', key: 'n', type: 'number', default: '3', start: { kind: 'fixed', value: 3 } },
       { name: 'd', key: 'd', type: 'date', default: 'friday' },
+      { name: 'added', key: 'added', type: 'created', start: { kind: 'today' } },
     ])
   })
 })

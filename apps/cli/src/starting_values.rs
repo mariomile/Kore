@@ -81,19 +81,17 @@ fn next_number(conn: &Connection, tags: &[String], key: &str) -> Result<f64, Cli
     Ok(highest.map_or(1.0, |top| top.floor() + 1.0))
 }
 
-/// Every value a note joining `tags` now starts with: the `created` stamps,
-/// then each field's starting value (`startingValues`). `conn` is the
-/// index, for `next-number`; without one those fields stay empty.
+/// Every value a note joining `tags` now starts with (`startingValues`),
+/// `created` stamps included: core stores those as `today` like any other
+/// starting value. `conn` is the index, for `next-number`; without one
+/// those fields stay empty.
 pub fn starting_values(
     schema: &TagSchema,
     conn: Option<&Connection>,
     tags: &[String],
 ) -> Result<Vec<(String, PropertyValue)>, CliError> {
-    let mut values = schema.created_stamps();
+    let mut values = Vec::new();
     for property in &schema.properties {
-        if values.iter().any(|(key, _)| *key == property.key) {
-            continue;
-        }
         let value = match &property.start {
             None => None,
             Some(Start::Today) => Some(PropertyValue::String(today_date())),

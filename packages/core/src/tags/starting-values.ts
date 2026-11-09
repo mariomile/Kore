@@ -1,6 +1,6 @@
 import { parseFrontmatter, splitFrontmatter } from '../markdown'
 import type { TagProperty, TagPropertyType, TagType } from './tag-type'
-import { createdStampValues, localCalendarDate } from './timestamps'
+import { localCalendarDate } from './timestamps'
 
 /**
  * Starting values for schema fields (Plan 33 B4). A field's `default` says
@@ -13,7 +13,9 @@ import { createdStampValues, localCalendarDate } from './timestamps'
  * `today` is the local day, `now` the local day and minute, `next-number`
  * one more than the highest number the tag's notes hold in that field (the
  * caller reads it from the index), anything else is a fixed value. A
- * default the field's type can't hold is ignored, never written.
+ * default the field's type can't hold is ignored, never written. A
+ * `created` field needs no default: it always starts as `today`, which is
+ * all its stamp ever was (Plan 29 T1).
  */
 
 export type StartingValueKind = 'today' | 'now' | 'next-number' | 'fixed'
@@ -143,6 +145,9 @@ function hasOptions(property: TagProperty): boolean {
  * so an option literally named `today` is a fixed value, not a date.
  */
 export function startingValueOf(property: TagProperty): StartingValue | null {
+  if (property.type === 'created') {
+    return { kind: 'today' }
+  }
   const declared = property.default
   if (declared === undefined) {
     return null
@@ -210,20 +215,16 @@ export function nextNumberKeys(type: TagType | null | undefined): string[] {
 }
 
 /**
- * Every value a note joining the tag now starts with: the `created` stamps
- * and each field's starting value. Callers spread these *under* their own
- * values, so a value the caller already knows (a board lane, a CSV cell)
- * wins.
+ * Every value a note joining the tag now starts with, `created` stamps
+ * included. Callers spread these *under* their own values, so a value the
+ * caller already knows (a board lane, a CSV cell) wins.
  */
 export function startingValues(
   type: TagType | null | undefined,
   context: StartingValueContext = {},
 ): Record<string, unknown> {
-  const values: Record<string, unknown> = { ...createdStampValues(type, context.at) }
+  const values: Record<string, unknown> = {}
   for (const property of type?.properties ?? []) {
-    if (property.key in values) {
-      continue
-    }
     const value = propertyStartingValue(property, context)
     if (value !== undefined) {
       values[property.key] = value

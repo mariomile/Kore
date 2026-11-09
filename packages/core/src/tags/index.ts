@@ -57,7 +57,7 @@ export {
   type TagSymbolIconEntry,
 } from './tag-icon-catalog'
 export { resolveTagTypes, tagDescendants } from './tag-inheritance'
-export { localCalendarDate, createdStampValues, missingCreatedStamps } from './timestamps'
+export { localCalendarDate } from './timestamps'
 export {
   STARTING_VALUE_NEXT_NUMBER,
   STARTING_VALUE_NOW,

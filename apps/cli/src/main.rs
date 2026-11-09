@@ -367,16 +367,12 @@ fn run_keys(action: &KeysAction, json: bool) -> Result<(), CliError> {
             write,
             propose,
         } => {
-            let access = match (*write, *propose) {
-                (_, true) => agent_keys::Access::Propose,
-                (true, false) => agent_keys::Access::Write,
-                (false, false) => agent_keys::Access::Read,
-            };
+            let access = agent_keys::Access::from_flags(*write, *propose);
             let agent = agent_keys::add(&path, name, access)?;
             if json {
                 println!(
                     "{}",
-                    serde_json::json!({ "name": agent.name, "key": agent.key, "write": agent.write, "access": access.label() })
+                    serde_json::json!({ "name": agent.name, "key": agent.key, "access": access })
                 );
             } else {
                 println!("{}", agent.key);
@@ -396,12 +392,12 @@ fn run_keys(action: &KeysAction, json: bool) -> Result<(), CliError> {
             if json {
                 let listed: Vec<_> = agents
                     .iter()
-                    .map(|agent| serde_json::json!({ "name": agent.name, "write": agent.write, "access": agent.access().label() }))
+                    .map(|agent| serde_json::json!({ "name": agent.name, "access": agent.access }))
                     .collect();
                 println!("{}", serde_json::json!({ "file": path, "agents": listed }));
             } else {
                 for agent in &agents {
-                    println!("{}\t{}", agent.name, agent.access().label());
+                    println!("{}\t{}", agent.name, agent.access.label());
                 }
             }
         }

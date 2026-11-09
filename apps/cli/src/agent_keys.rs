@@ -21,6 +21,7 @@ pub const MIN_KEY_LEN: usize = 24;
 
 /// One named agent's key.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(from = "StoredKey")]
 pub struct AgentKey {
     /// Stable id: tokens issued from this key name it, so they stop working
     /// the moment the key is removed.
@@ -29,17 +30,42 @@ pub struct AgentKey {
     pub name: String,
     /// The secret the agent presents (bearer header or the consent page).
     pub key: String,
-    /// Whether the agent may use the tools that write.
+    /// What the agent may do with the tools that write.
+    pub access: Access,
+}
+
+/// A key as files and `KORE_MCP_AGENTS` hold it: `access`, or the
+/// `write: bool` written before propose mode existed (Plan 33, A2).
+#[derive(Deserialize)]
+struct StoredKey {
+    id: String,
+    name: String,
+    key: String,
     #[serde(default)]
-    pub write: bool,
-    /// Whether the agent's writes wait for the owner instead (Plan 33, A2).
-    /// Wins over `write`.
-    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
-    pub propose: bool,
+    access: Option<Access>,
+    #[serde(default)]
+    write: bool,
+}
+
+impl From<StoredKey> for AgentKey {
+    fn from(stored: StoredKey) -> Self {
+        let legacy = if stored.write {
+            Access::Write
+        } else {
+            Access::Read
+        };
+        Self {
+            id: stored.id,
+            name: stored.name,
+            key: stored.key,
+            access: stored.access.unwrap_or(legacy),
+        }
+    }
 }
 
 /// What an MCP caller may do with the tools that write.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum Access {
     /// The write tools are hidden.
     Read,
@@ -51,6 +77,17 @@ pub enum Access {
 }
 
 impl Access {
+    /// `kore keys add`'s `--write` and `--propose` (clap keeps them apart).
+    pub fn from_flags(write: bool, propose: bool) -> Self {
+        if propose {
+            Self::Propose
+        } else if write {
+            Self::Write
+        } else {
+            Self::Read
+        }
+    }
+
     /// Whether the caller sees the tools that write.
     pub fn sees_writes(self) -> bool {
         self != Self::Read
@@ -67,17 +104,6 @@ impl Access {
 }
 
 impl AgentKey {
-    /// What this key may do.
-    pub fn access(&self) -> Access {
-        if self.propose {
-            Access::Propose
-        } else if self.write {
-            Access::Write
-        } else {
-            Access::Read
-        }
-    }
-
     fn usable(&self) -> bool {
         !self.id.is_empty() && !self.name.trim().is_empty() && self.key.len() >= MIN_KEY_LEN
     }
@@ -169,8 +195,7 @@ pub fn add(path: &Path, name: &str, access: Access) -> Result<AgentKey, CliError
         id: random(9),
         name: name.to_string(),
         key: random(32),
-        write: access == Access::Write,
-        propose: access == Access::Propose,
+        access,
     };
     agents.push(agent.clone());
     save(path, &agents)?;
@@ -198,7 +223,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("kore").join("mcp-agents.json");
         let grok = add(&path, "Grok bot", Access::Read).unwrap();
-        assert!(grok.key.len() >= MIN_KEY_LEN && !grok.write);
+        assert!(grok.key.len() >= MIN_KEY_LEN && grok.access == Access::Read);
         assert!(add(&path, "grok BOT", Access::Write).is_err());
         add(&path, "ChatGPT", Access::Propose).unwrap();
         assert_eq!(load(&path).len(), 2);
@@ -211,5 +236,24 @@ mod tests {
         assert!(remove(&path, "grok bot").unwrap());
         assert!(!remove(&path, "grok bot").unwrap());
         assert_eq!(load(&path)[0].name, "ChatGPT");
+    }
+
+    #[test]
+    fn a_key_stores_one_access_and_still_reads_the_old_write_flag() {
+        let old = r#"[
+            {"id":"a","name":"Old writer","key":"kkkkkkkkkkkkkkkkkkkkkkkkkk","write":true},
+            {"id":"b","name":"Old reader","key":"kkkkkkkkkkkkkkkkkkkkkkkkkk"},
+            {"id":"c","name":"Proposer","key":"kkkkkkkkkkkkkkkkkkkkkkkkkk","access":"propose"}
+        ]"#;
+        let access: Vec<Access> = parse_env(old)
+            .unwrap()
+            .iter()
+            .map(|agent| agent.access)
+            .collect();
+        assert_eq!(access, [Access::Write, Access::Read, Access::Propose]);
+
+        let stored = serde_json::to_value(&parse_env(old).unwrap()[2]).unwrap();
+        assert_eq!(stored["access"], "propose");
+        assert!(stored.get("write").is_none() && stored.get("propose").is_none());
     }
 }

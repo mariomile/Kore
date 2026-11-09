@@ -56,12 +56,7 @@ export {
   type TagIconResolution,
   type TagSymbolIconEntry,
 } from './tag-icon-catalog'
-export {
-  resolveTagTypes,
-  tagDescendants,
-  tagLoopThrough,
-  wouldCreateTagLoop,
-} from './tag-inheritance'
+export { resolveTagTypes, tagDescendants } from './tag-inheritance'
 export { localCalendarDate, createdStampValues, missingCreatedStamps } from './timestamps'
 export { evaluateFormula, type FormulaResult } from './formula'
 export {

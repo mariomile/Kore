@@ -1,10 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  resolveTagTypes,
-  tagDescendants,
-  tagLoopThrough,
-  wouldCreateTagLoop,
-} from './tag-inheritance'
+import { resolveTagTypes, tagDescendants } from './tag-inheritance'
 import type { TagProperty, TagType } from './tag-type'
 
 function text(key: string, name = key): TagProperty {
@@ -115,25 +110,5 @@ describe('tagDescendants', () => {
       b: { properties: [], extends: ['a'] },
     })
     expect(tagDescendants(looped, 'a')).toEqual(['b'])
-  })
-})
-
-describe('wouldCreateTagLoop', () => {
-  const graph = types({
-    contact: { properties: [] },
-    person: { properties: [], extends: ['contact'] },
-  })
-
-  it('refuses a parent that already builds on the tag', () => {
-    expect(wouldCreateTagLoop(graph, 'contact', ['person'])).toBe(true)
-    expect(tagLoopThrough(graph, 'contact', ['book', 'person'])).toBe('person')
-  })
-
-  it('refuses the tag itself', () => {
-    expect(wouldCreateTagLoop(graph, 'contact', ['contact'])).toBe(true)
-  })
-
-  it('allows an ordinary parent', () => {
-    expect(wouldCreateTagLoop(graph, 'person', ['contact'])).toBe(false)
   })
 })

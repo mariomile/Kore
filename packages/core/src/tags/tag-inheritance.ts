@@ -5,14 +5,15 @@ import type { TagProperty, TagType } from './tag-type'
  * names parent tags; its effective schema is the parents' fields followed by
  * its own, and the parent's collection also lists the children's notes.
  *
- * Inheritance is resolved here, at read time, over the stored per-tag
- * schemas (`tag_types`), never written into member notes or into the child's
- * definition: editing the parent reaches every child on the next read, and
- * the child's file keeps only what the user wrote in it. Reads are tolerant
+ * Inheritance is resolved here, over the per-tag schemas, never written
+ * into member notes or into the child's definition: the index pass
+ * (`refreshTagTypeResolutions`) stores the result after every definition
+ * write, so editing the parent reaches every child, and the child's file
+ * keeps only what the user wrote in it. Reads are tolerant
  * the way every schema read is: a parent with no definition contributes
  * nothing, and a loop (`#a` builds on `#b` builds on `#a`) is cut at the
  * edge that closes it. Saving a definition that would close a loop is
- * refused by the writers ({@link wouldCreateTagLoop}).
+ * refused by the writers (`tagExtendsLoop`, over the stored child lists).
  */
 
 /**
@@ -113,32 +114,4 @@ export function tagDescendants(types: ReadonlyMap<string, TagType>, key: string)
     }
   }
   return [...found].sort()
-}
-
-/**
- * Would saving `key` with `parents` close a loop? True when a parent is
- * `key` itself or already builds on `key`. The writers refuse such a save
- * and name the tag that closes it ({@link tagLoopThrough}).
- */
-export function wouldCreateTagLoop(
-  types: ReadonlyMap<string, TagType>,
-  key: string,
-  parents: readonly string[],
-): boolean {
-  return tagLoopThrough(types, key, parents) !== null
-}
-
-/** The first parent through which saving `key` with `parents` loops back, or `null`. */
-export function tagLoopThrough(
-  types: ReadonlyMap<string, TagType>,
-  key: string,
-  parents: readonly string[],
-): string | null {
-  const descendants = new Set(tagDescendants(types, key))
-  for (const parent of parents) {
-    if (parent === key || descendants.has(parent)) {
-      return parent
-    }
-  }
-  return null
 }

@@ -181,11 +181,12 @@ export interface TagType {
   icon?: string
   /**
    * The tags this one builds on (`extends:` on the definition note), folded
-   * keys in declared order (Plan 33 B2). Stored as written; the inherited
-   * fields are merged at read time by `resolveTagTypes`, so a parent's edit
-   * reaches its children without re-indexing them.
+   * keys in declared order (Plan 33 B2). Stored as written; the index pass
+   * merges the inherited fields (`resolveTagTypes`), so a parent's edit
+   * reaches its children without touching them. Absent when the tag builds
+   * on nothing, like `icon`, so the many hand-built types stay valid.
    */
-  extends?: string[]
+  extends?: readonly string[]
 }
 
 /**

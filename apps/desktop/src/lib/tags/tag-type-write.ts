@@ -67,7 +67,7 @@ export async function readTagDefinition(tag: string): Promise<TagDefinitionState
     properties: type?.properties ?? [],
     template: type?.template ?? null,
     icon: type?.icon ?? null,
-    parents: type?.extends ?? [],
+    parents: [...(type?.extends ?? [])],
   }
 }
 

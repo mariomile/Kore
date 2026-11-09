@@ -206,8 +206,6 @@ export {
   TAG_EXTENDS_KEY,
   resolveTagTypes,
   tagDescendants,
-  tagLoopThrough,
-  wouldCreateTagLoop,
   encodeTagTypeJson,
   decodeTagTypeJson,
   tagNameForDefinitionPath,

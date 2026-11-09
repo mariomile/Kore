@@ -45,10 +45,15 @@ Draft without typing. Same draft PR #348, one step per commit.
   MCP through them). Hand-edited Markdown and notes already in the tag are
   never stamped; a value the note or the caller already has wins.
 - [x] "Starting value" select per field in the tag dialog.
-- [x] CLI mirrors the rule in `apps/cli/src/starting_values.rs` (the same
-  way it already mirrors `created`), with tests pinning both.
-- Known limits: two notes born at the same instant can draw the same
-  number; the CLI's next number skips private notes (the app counts them).
+- [x] Core validates each default once (`startingValueOf`) and the
+  inheritance pass stores it on the resolved schema as `start`; the CLI
+  (`apps/cli/src/starting_values.rs`) only materializes `start`, so the two
+  sides cannot disagree on what a default means (review fix, 2026-11-09).
+- [x] Next number counts every note in the tag, private ones included, in
+  the app and the CLI alike (Mario, 2026-11-09), so a number is never
+  handed out twice.
+- Known limit: two notes born at the same instant can draw the same
+  number.
 
 ## Quick Add review fixes, 2026-11-09
 

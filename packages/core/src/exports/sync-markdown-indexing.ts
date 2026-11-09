@@ -228,6 +228,7 @@ export {
   propertyStartingValue,
   startingValueKind,
   startingValueKinds,
+  startingValueOf,
   startingValues,
   type StartingValueContext,
   type StartingValueKind,

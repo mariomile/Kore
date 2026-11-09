@@ -1,89 +1,48 @@
 //! Starting values for schema fields (Plan 33 B4), for the notes `kore new`
-//! and `kore tag` put into a tag: the same rule as the app's
-//! `startingValues` (`packages/core/src/tags/starting-values.ts`), which
-//! is the reference; the tests below pin the two together. `today` is the
-//! local day, `now` the local day and minute, `next-number` one past the
-//! highest number the tag's notes hold, anything else a fixed value. A
-//! default the field's type can't hold is ignored.
+//! and `kore tag` put into a tag. Core decides what a field's `default`
+//! means (`startingValueOf`, `packages/core/src/tags/starting-values.ts`)
+//! and stores the validated result on each property of the stored schema
+//! as `start`; this module only turns it into a value: today, now, the next
+//! number, or the fixed value as stored.
 
 use rusqlite::Connection;
-use serde_json::Value;
+use serde::Deserialize;
 
 use crate::error::CliError;
 use crate::frontmatter_values::PropertyValue;
 use crate::keys::fold_tag;
 use crate::paths::today_date;
-use crate::schema::{load_descendants, SchemaProperty, TagSchema};
+use crate::schema::{load_descendants, TagSchema};
 use crate::search::{tag_match_sql, Binds};
 
-/// Which kinds a field of `kind` takes (`startingValueKinds`).
-fn allowed(kind: &str) -> &'static [&'static str] {
-    match kind {
-        "date" => &["today", "fixed"],
-        "text" => &["today", "now", "fixed"],
-        "number" => &["next-number", "fixed"],
-        "rating" | "checkbox" | "select" | "multiselect" | "status" | "url" | "email" | "phone" => {
-            &["fixed"]
+/// A stored starting value (`StartingValue` in core).
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(tag = "kind", rename_all = "kebab-case")]
+pub enum Start {
+    Today,
+    Now,
+    NextNumber,
+    Fixed { value: Fixed },
+}
+
+/// A fixed value in the form the field's type stores it.
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[serde(untagged)]
+pub enum Fixed {
+    Bool(bool),
+    Number(f64),
+    Text(String),
+    List(Vec<String>),
+}
+
+impl From<&Fixed> for PropertyValue {
+    fn from(fixed: &Fixed) -> Self {
+        match fixed {
+            Fixed::Bool(flag) => PropertyValue::Bool(*flag),
+            Fixed::Number(number) => PropertyValue::Number(*number),
+            Fixed::Text(text) => PropertyValue::String(text.clone()),
+            Fixed::List(items) => PropertyValue::List(items.clone()),
         }
-        _ => &[],
-    }
-}
-
-fn kind_of(value: &Value) -> &'static str {
-    match value.as_str() {
-        Some("today") => "today",
-        Some("now") => "now",
-        Some("next-number") => "next-number",
-        _ => "fixed",
-    }
-}
-
-fn is_calendar_date(text: &str) -> bool {
-    let bytes = text.as_bytes();
-    bytes.len() == 10
-        && bytes.iter().enumerate().all(|(index, byte)| match index {
-            4 | 7 => *byte == b'-',
-            _ => byte.is_ascii_digit(),
-        })
-}
-
-/// A fixed default as the value the field's type stores (`fixedValue`).
-fn fixed_value(property: &SchemaProperty, value: &Value) -> Option<PropertyValue> {
-    let options = property.options.as_deref().unwrap_or_default();
-    match property.kind.as_str() {
-        "number" | "rating" => match value {
-            Value::Number(number) => number.as_f64().map(PropertyValue::Number),
-            Value::String(text) if !text.trim().is_empty() => text
-                .trim()
-                .parse::<f64>()
-                .ok()
-                .filter(|n| n.is_finite())
-                .map(PropertyValue::Number),
-            _ => None,
-        },
-        "checkbox" => match value {
-            Value::Bool(flag) => Some(PropertyValue::Bool(*flag)),
-            Value::String(text) if text == "true" => Some(PropertyValue::Bool(true)),
-            Value::String(text) if text == "false" => Some(PropertyValue::Bool(false)),
-            _ => None,
-        },
-        "date" => value
-            .as_str()
-            .filter(|text| is_calendar_date(text))
-            .map(|text| PropertyValue::String(text.to_string())),
-        "select" | "status" => value
-            .as_str()
-            .filter(|text| options.iter().any(|option| option == text))
-            .map(|text| PropertyValue::String(text.to_string())),
-        "multiselect" => value
-            .as_str()
-            .filter(|text| options.iter().any(|option| option == text))
-            .map(|text| PropertyValue::List(vec![text.to_string()])),
-        "text" | "url" | "email" | "phone" => Some(PropertyValue::String(match value {
-            Value::String(text) => text.clone(),
-            other => other.to_string(),
-        })),
-        _ => None,
     }
 }
 
@@ -93,27 +52,10 @@ fn now_text() -> String {
     format!("{} {:02}:{:02}", now.date(), now.hour(), now.minute())
 }
 
-/// The `next-number` fields of `schema` (`nextNumberKeys`).
-fn next_number_keys(schema: &TagSchema) -> Vec<&str> {
-    schema
-        .properties
-        .iter()
-        .filter(|property| {
-            property
-                .default
-                .as_ref()
-                .is_some_and(|value| kind_of(value) == "next-number")
-                && allowed(&property.kind).contains(&"next-number")
-        })
-        .map(|property| property.key.as_str())
-        .collect()
-}
-
-/// One past the highest number the public notes of `tags` (and of the tags
-/// that build on them) hold under `key`, or 1. Private notes are left out:
-/// everything the CLI prints can reach an agent, and a number drawn from a
-/// private note would say what it holds. The app counts them, so a CLI row
-/// can draw a number a private note already has.
+/// One past the highest number any note of `tags` (and of the tags that
+/// build on them) holds under `key`, or 1, as `nextNumbers` counts it:
+/// private notes included, so a number is never handed out twice (Mario,
+/// 2026-11-09). Only the number leaves the index, never a note's content.
 fn next_number(conn: &Connection, tags: &[String], key: &str) -> Result<f64, CliError> {
     let mut binds = Binds::default();
     let key_bind = binds.text(key);
@@ -129,7 +71,6 @@ fn next_number(conn: &Connection, tags: &[String], key: &str) -> Result<f64, Cli
         .join(" OR ");
     let query = format!(
         "SELECT max(p.value_number) FROM note_properties p
-         JOIN notes n ON n.path = p.note_path AND n.is_private = 0
          WHERE p.key = {key_bind} AND p.value_number IS NOT NULL
            AND EXISTS (SELECT 1 FROM tags t WHERE t.note_path = p.note_path AND ({clauses}))"
     );
@@ -149,31 +90,23 @@ pub fn starting_values(
     tags: &[String],
 ) -> Result<Vec<(String, PropertyValue)>, CliError> {
     let mut values = schema.created_stamps();
-    let mut numbers: Vec<(String, f64)> = Vec::new();
-    if let Some(conn) = conn {
-        for key in next_number_keys(schema) {
-            numbers.push((key.to_string(), next_number(conn, tags, key)?));
-        }
-    }
     for property in &schema.properties {
         if values.iter().any(|(key, _)| *key == property.key) {
             continue;
         }
-        let Some(declared) = &property.default else {
-            continue;
-        };
-        let kind = kind_of(declared);
-        if !allowed(&property.kind).contains(&kind) {
-            continue;
-        }
-        let value = match kind {
-            "today" => Some(PropertyValue::String(today_date())),
-            "now" => Some(PropertyValue::String(now_text())),
-            "next-number" => numbers
-                .iter()
-                .find(|(key, _)| *key == property.key)
-                .map(|(_, number)| PropertyValue::Number(*number)),
-            _ => fixed_value(property, declared),
+        let value = match &property.start {
+            None => None,
+            Some(Start::Today) => Some(PropertyValue::String(today_date())),
+            Some(Start::Now) => Some(PropertyValue::String(now_text())),
+            Some(Start::NextNumber) => match conn {
+                Some(conn) => Some(PropertyValue::Number(next_number(
+                    conn,
+                    tags,
+                    &property.key,
+                )?)),
+                None => None,
+            },
+            Some(Start::Fixed { value }) => Some(PropertyValue::from(value)),
         };
         if let Some(value) = value {
             values.push((property.key.clone(), value));
@@ -185,68 +118,70 @@ pub fn starting_values(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_json::json;
+    use crate::schema::SchemaProperty;
 
-    fn property(kind: &str, default: Value, options: Option<Vec<&str>>) -> SchemaProperty {
-        SchemaProperty {
-            name: "Field".into(),
-            key: "field".into(),
-            kind: kind.into(),
-            options: options.map(|list| list.into_iter().map(String::from).collect()),
-            default: Some(default),
-        }
+    /// The stored shapes core writes (`withStoredStartingValues`).
+    #[test]
+    fn decodes_every_stored_start() {
+        let decoded: Vec<Start> = serde_json::from_str(
+            r#"[{"kind":"today"},{"kind":"now"},{"kind":"next-number"},
+                {"kind":"fixed","value":3},{"kind":"fixed","value":false},
+                {"kind":"fixed","value":"Draft"},{"kind":"fixed","value":["a"]}]"#,
+        )
+        .unwrap();
+        assert_eq!(
+            decoded,
+            vec![
+                Start::Today,
+                Start::Now,
+                Start::NextNumber,
+                Start::Fixed {
+                    value: Fixed::Number(3.0)
+                },
+                Start::Fixed {
+                    value: Fixed::Bool(false)
+                },
+                Start::Fixed {
+                    value: Fixed::Text("Draft".into())
+                },
+                Start::Fixed {
+                    value: Fixed::List(vec!["a".into()])
+                },
+            ]
+        );
     }
 
-    fn start(property: SchemaProperty) -> Option<PropertyValue> {
+    #[test]
+    fn materializes_today_now_and_fixed_values() {
+        let field = |key: &str, start: Start| SchemaProperty {
+            name: key.into(),
+            key: key.into(),
+            kind: "text".into(),
+            options: None,
+            start: Some(start),
+        };
         let schema = TagSchema {
-            properties: vec![property],
+            properties: vec![
+                field("day", Start::Today),
+                field("at", Start::Now),
+                field(
+                    "status",
+                    Start::Fixed {
+                        value: Fixed::Text("Draft".into()),
+                    },
+                ),
+                // No index: nothing to count, so no number.
+                field("number", Start::NextNumber),
+            ],
             template: None,
         };
-        starting_values(&schema, None, &[])
-            .unwrap()
-            .into_iter()
-            .next()
-            .map(|(_, value)| value)
-    }
-
-    #[test]
-    fn fixed_values_take_the_type_they_are_stored_as() {
-        assert_eq!(
-            start(property("number", json!("3"), None)),
-            Some(PropertyValue::Number(3.0))
-        );
-        assert_eq!(
-            start(property("checkbox", json!(false), None)),
-            Some(PropertyValue::Bool(false))
-        );
-        assert_eq!(
-            start(property("status", json!("Inbox"), Some(vec!["Inbox"]))),
-            Some(PropertyValue::String("Inbox".into()))
-        );
-        assert_eq!(
-            start(property("multiselect", json!("a"), Some(vec!["a"]))),
-            Some(PropertyValue::List(vec!["a".into()]))
-        );
-    }
-
-    #[test]
-    fn a_default_the_type_cannot_hold_is_ignored() {
-        assert_eq!(start(property("select", json!("b"), Some(vec!["a"]))), None);
-        assert_eq!(start(property("date", json!("friday"), None)), None);
-        assert_eq!(start(property("text", json!("next-number"), None)), None);
-        assert_eq!(start(property("formula", json!("x"), None)), None);
-    }
-
-    #[test]
-    fn today_and_now_are_local() {
-        let Some(PropertyValue::String(day)) = start(property("date", json!("today"), None)) else {
-            panic!("no day");
-        };
-        assert!(is_calendar_date(&day));
-        let Some(PropertyValue::String(at)) = start(property("text", json!("now"), None)) else {
+        let values = starting_values(&schema, None, &[]).unwrap();
+        let keys: Vec<&str> = values.iter().map(|(key, _)| key.as_str()).collect();
+        assert_eq!(keys, ["day", "at", "status"]);
+        let PropertyValue::String(at) = &values[1].1 else {
             panic!("no time");
         };
         assert_eq!(at.len(), 16);
-        assert!(at.starts_with(&day[..4]));
+        assert_eq!(values[2].1, PropertyValue::String("Draft".into()));
     }
 }

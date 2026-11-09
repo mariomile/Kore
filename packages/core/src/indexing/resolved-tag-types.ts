@@ -7,6 +7,7 @@ import {
   encodeTagTypeJson,
   resolveTagTypes,
   tagDescendants,
+  withStoredStartingValues,
   type TagType,
 } from '../tags'
 import { db } from './db'
@@ -77,8 +78,11 @@ export async function refreshTagTypeResolutions(generation: number): Promise<voi
     const publicType = resolvedPublic.get(tagKey)
     return {
       tagKey,
-      resolvedJson: encodeTagTypeJson(resolved.get(tagKey)!),
-      publicResolvedJson: publicType === undefined ? null : encodeTagTypeJson(publicType),
+      // Each property carries its validated starting value (Plan 33 B4) so
+      // the CLI never re-validates a `default`.
+      resolvedJson: encodeTagTypeJson(withStoredStartingValues(resolved.get(tagKey)!)),
+      publicResolvedJson:
+        publicType === undefined ? null : encodeTagTypeJson(withStoredStartingValues(publicType)),
       descendantsJson: JSON.stringify(tagDescendants(all, tagKey)),
       publicDescendantsJson: JSON.stringify(
         publicTypes.has(tagKey) ? tagDescendants(publicTypes, tagKey) : [],

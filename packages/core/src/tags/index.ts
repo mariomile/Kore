@@ -68,7 +68,11 @@ export {
   propertyStartingValue,
   startingValueKind,
   startingValueKinds,
+  startingValueOf,
   startingValues,
+  withStoredStartingValues,
+  type FixedValue,
+  type StartingValue,
   type StartingValueContext,
   type StartingValueKind,
 } from './starting-values'

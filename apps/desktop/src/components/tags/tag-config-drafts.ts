@@ -1,7 +1,7 @@
 import {
   foldTag,
   startingValueKind,
-  startingValueKinds,
+  startingValueOf,
   type RollupAggregation,
   type StartingValueKind,
   type TagProperty,
@@ -82,30 +82,33 @@ export function draftsFromSchema(properties: readonly TagProperty[]): PropertyDr
   }))
 }
 
-/** A draft's starting value as stored, or `undefined` for none (or one the
- * type can't take, e.g. after the type changed). */
-export function draftStartingValue(draft: PropertyDraft): string | number | boolean | undefined {
-  if (
-    draft.startingKind === 'none' ||
-    !startingValueKinds(draft.type).includes(draft.startingKind)
-  ) {
+/**
+ * A draft's starting value as the definition stores it, or `undefined` for
+ * none. Core decides what is valid (`startingValueOf`), so a value the type
+ * can't hold, or a kind left over from a changed type, is dropped here the
+ * same way a note never gets it.
+ */
+export function draftStartingValue(
+  draft: PropertyDraft,
+  options: readonly string[],
+): string | number | boolean | undefined {
+  const declared = draft.startingKind === 'fixed' ? draft.startingFixed.trim() : draft.startingKind
+  if (declared === 'none' || declared === '') {
     return undefined
   }
-  if (draft.startingKind !== 'fixed') {
-    return draft.startingKind
-  }
-  const fixed = draft.startingFixed.trim()
-  if (fixed === '') {
+  const start = startingValueOf({
+    name: draft.name,
+    key: draft.key,
+    type: draft.type,
+    options: [...options],
+    default: declared,
+  })
+  if (start === null) {
     return undefined
   }
-  if (draft.type === 'number' || draft.type === 'rating') {
-    const number = Number(fixed)
-    return Number.isFinite(number) ? number : undefined
-  }
-  if (draft.type === 'checkbox') {
-    return fixed === 'true'
-  }
-  return fixed
+  // A fixed value is stored as its type holds it (`3`, `true`); a
+  // multiselect's single option stays the option text.
+  return start.kind === 'fixed' && !Array.isArray(start.value) ? start.value : declared
 }
 
 /** Draft rows for properties that were never stored (a preset seeding an
@@ -146,7 +149,7 @@ export function schemaFromDrafts(drafts: readonly PropertyDraft[]): TagProperty[
             aggregation: draft.rollupAggregation,
           }
         : undefined
-    const startingValue = draftStartingValue(draft)
+    const startingValue = draftStartingValue(draft, options)
     return {
       name: draft.name.trim(),
       key: draft.key,

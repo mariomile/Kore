@@ -7,10 +7,14 @@ use rusqlite::params;
 
 use common::*;
 
+/// The stored schema as core's pass writes it: each `default` validated
+/// into `start` (`withStoredStartingValues`).
 const INVOICE: &str = r#"[
-  {"name":"Number","key":"number","type":"number","default":"next-number"},
-  {"name":"Status","key":"status","type":"status","options":["Draft","Sent"],"default":"Draft"},
-  {"name":"Issued","key":"issued","type":"date","default":"today"}
+  {"name":"Number","key":"number","type":"number","default":"next-number",
+   "start":{"kind":"next-number"}},
+  {"name":"Status","key":"status","type":"status","options":["Draft","Sent"],"default":"Draft",
+   "start":{"kind":"fixed","value":"Draft"}},
+  {"name":"Issued","key":"issued","type":"date","default":"today","start":{"kind":"today"}}
 ]"#;
 
 fn number_on(fixture: &Fixture, rel_path: &str, number: f64) {
@@ -48,14 +52,15 @@ fn new_rows_start_with_the_fields_values() {
         &["new", "March", "--tag", "invoice", "--json"],
     ));
     let properties = &value["properties"];
-    // One past the highest public number: the private note's 99 stays out.
-    assert_eq!(properties["number"], 42, "{value}");
+    // One past the highest number, the private note's 99 included, so a
+    // number is never handed out twice.
+    assert_eq!(properties["number"], 100, "{value}");
     assert_eq!(properties["status"], "Draft");
     assert!(properties["issued"]
         .as_str()
         .is_some_and(|day| day.len() == 10));
     let written = read(&fixture, value["path"].as_str().unwrap());
-    assert!(written.contains("number: 42"), "{written}");
+    assert!(written.contains("number: 100"), "{written}");
 
     // A value the agent sets wins over the starting value.
     let set = json(&kore(
@@ -82,7 +87,7 @@ fn tagging_a_note_stamps_it_once() {
         &["tag", "bills/loose.md", "invoice", "--json"],
     ));
     assert_eq!(joined["added"], true);
-    assert_eq!(joined["stamped"]["number"], 42, "{joined}");
+    assert_eq!(joined["stamped"]["number"], 100, "{joined}");
     assert_eq!(joined["stamped"]["status"], "Draft");
 
     // A note already in the tag keeps what it has: no starting values.

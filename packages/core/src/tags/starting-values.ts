@@ -68,7 +68,10 @@ export function localDateTime(at: Date): string {
 const CALENDAR_DATE_RE = /^\d{4}-\d{2}-\d{2}$/
 
 /** A fixed default as the value the field's type stores, or `undefined`. */
-function fixedValue(property: TagProperty, value: string | number | boolean): unknown {
+function fixedValue(
+  property: TagProperty,
+  value: string | number | boolean,
+): FixedValue | undefined {
   switch (property.type) {
     case 'number':
     case 'rating': {
@@ -114,24 +117,64 @@ export interface StartingValueContext {
   nextNumbers?: ReadonlyMap<string, number>
 }
 
+/** A fixed starting value in the form the field's type stores it. */
+export type FixedValue = string | number | boolean | string[]
+
 /**
- * The value `property` starts with, or `undefined` when it declares none
- * (or one its type can't hold).
+ * A field's starting value once validated: the one decision the app, the
+ * index and the CLI share. The inheritance pass stores it on every stored
+ * property as `start` (`refreshTagTypeResolutions`), so `kore` only
+ * materializes it and never re-validates.
+ */
+export type StartingValue =
+  | { kind: 'today' }
+  | { kind: 'now' }
+  | { kind: 'next-number' }
+  | { kind: 'fixed'; value: FixedValue }
+
+/** Option-typed fields, whose fixed value must be one of the options. */
+function hasOptions(property: TagProperty): boolean {
+  return property.type === 'select' || property.type === 'multiselect' || property.type === 'status'
+}
+
+/**
+ * What `property`'s `default` means, or `null` when it declares none or one
+ * its type can't hold. For an option field an option wins over a keyword,
+ * so an option literally named `today` is a fixed value, not a date.
+ */
+export function startingValueOf(property: TagProperty): StartingValue | null {
+  const declared = property.default
+  if (declared === undefined) {
+    return null
+  }
+  if (hasOptions(property)) {
+    const value = fixedValue(property, declared)
+    return value === undefined ? null : { kind: 'fixed', value }
+  }
+  const kind = startingValueKind(declared)
+  if (!startingValueKinds(property.type).includes(kind)) {
+    return null
+  }
+  if (kind !== 'fixed') {
+    return { kind }
+  }
+  const value = fixedValue(property, declared)
+  return value === undefined ? null : { kind: 'fixed', value }
+}
+
+/**
+ * The value `property` starts with now, or `undefined` when it declares
+ * none (or one its type can't hold, or a `next-number` nobody read).
  */
 export function propertyStartingValue(
   property: TagProperty,
   context: StartingValueContext = {},
-): unknown {
-  const declared = property.default
-  if (declared === undefined) {
-    return undefined
-  }
-  const kind = startingValueKind(declared)
-  if (!startingValueKinds(property.type).includes(kind)) {
-    return undefined
-  }
+): FixedValue | undefined {
+  const start = startingValueOf(property)
   const at = context.at ?? new Date()
-  switch (kind) {
+  switch (start?.kind) {
+    case undefined:
+      return undefined
     case 'today':
       return localCalendarDate(at)
     case 'now':
@@ -139,19 +182,30 @@ export function propertyStartingValue(
     case 'next-number':
       return context.nextNumbers?.get(property.key)
     case 'fixed':
-      return fixedValue(property, declared)
+      return start.value
+  }
+}
+
+/**
+ * A stored type with each property's validated starting value under
+ * `start`, for the index columns the CLI reads. TypeScript readers drop the
+ * key on decode and call {@link startingValueOf} again: same function, so
+ * the two sides cannot drift.
+ */
+export function withStoredStartingValues(type: TagType): TagType {
+  return {
+    ...type,
+    properties: type.properties.map((property) => {
+      const start = startingValueOf(property)
+      return start === null ? property : { ...property, start }
+    }),
   }
 }
 
 /** The keys of the `next-number` fields, which need the index to stamp. */
 export function nextNumberKeys(type: TagType | null | undefined): string[] {
   return (type?.properties ?? [])
-    .filter(
-      (property) =>
-        property.default !== undefined &&
-        startingValueKind(property.default) === 'next-number' &&
-        startingValueKinds(property.type).includes('next-number'),
-    )
+    .filter((property) => startingValueOf(property)?.kind === 'next-number')
     .map((property) => property.key)
 }
 

@@ -6,7 +6,9 @@ import {
   nextNumberKeys,
   propertyStartingValue,
   startingValueKinds,
+  startingValueOf,
   startingValues,
+  withStoredStartingValues,
 } from './starting-values'
 import { parseTagTypeFrontmatter, type TagProperty, type TagType } from './tag-type'
 
@@ -114,5 +116,28 @@ describe('startingValues', () => {
       }),
     )
     expect(parsed?.properties[0]?.default).toBe('today')
+  })
+})
+
+describe('startingValueOf', () => {
+  it('lets an option named like a keyword be a fixed value', () => {
+    expect(
+      startingValueOf(
+        field({ key: 'when', type: 'select', options: ['today', 'later'], default: 'today' }),
+      ),
+    ).toEqual({ kind: 'fixed', value: 'today' })
+  })
+
+  it('stores the validated value on each property for the CLI, dropping invalid ones', () => {
+    const stored = withStoredStartingValues({
+      properties: [
+        field({ key: 'n', type: 'number', default: '3' }),
+        field({ key: 'd', type: 'date', default: 'friday' }),
+      ],
+    })
+    expect(stored.properties).toEqual([
+      { name: 'n', key: 'n', type: 'number', default: '3', start: { kind: 'fixed', value: 3 } },
+      { name: 'd', key: 'd', type: 'date', default: 'friday' },
+    ])
   })
 })

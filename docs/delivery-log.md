@@ -7,6 +7,11 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Fields can start with a value: a new `#invoice` gets the next number,
+  today's date and status Draft by itself. Set it per field under
+  "Starting value" in the tag's settings. It applies when a note joins the
+  tag from Kore or from an agent; notes you already have are left alone.
+
 - A tag can build on another: give `#client` the line `extends: contact`
   and every client gets the contact fields plus its own. The `#contact`
   collection also lists clients, with a filter to show only plain

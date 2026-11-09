@@ -27,7 +27,28 @@ one step per commit.
   public child, and a private definition reads as untyped there.
 - Known limits: the tag dialog shows only the tag's own fields; the plain
   list view of a tag shows only the exact tag.
-- [ ] B4 (field defaults) waits for Mario's ok.
+
+## Starting values for fields (Plan 33, B4), 2026-11-09
+
+Ask (Mario, 2026-11-08; go 2026-11-09): a field can say what a note gets
+when it joins the tag, so a new `#invoice` gets the next number and status
+Draft without typing. Same draft PR #348, one step per commit.
+
+- [x] `default:` on a schema field: `today`, `now` (day and minute),
+  `next-number`, or a fixed value. `startingValues`
+  (`packages/core/src/tags/starting-values.ts`) decides what to write and
+  ignores a default the type can't hold; `nextNumbers`
+  (`indexing/starting-values.ts`) reads one past the highest number in the
+  tag's collection, child tags included.
+- [x] Written only when a note joins the tag through Kore: new rows, the
+  Type field, an accepted chat `set_note_type`, `kore new`/`kore tag` (and
+  MCP through them). Hand-edited Markdown and notes already in the tag are
+  never stamped; a value the note or the caller already has wins.
+- [x] "Starting value" select per field in the tag dialog.
+- [x] CLI mirrors the rule in `apps/cli/src/starting_values.rs` (the same
+  way it already mirrors `created`), with tests pinning both.
+- Known limits: two notes born at the same instant can draw the same
+  number; the CLI's next number skips private notes (the app counts them).
 
 ## Tasks: a way to the task's note, 2026-11-09
 
@@ -3311,6 +3332,11 @@ screen: Agents then Close lands on today.
 **Next:** merge the Close fix, then bump.
 
 ## Session log
+
+- 2026-11-09 — Starting values for fields (Plan 33 B4, PR #348): `today`,
+  `now`, `next-number` or a fixed value, written when a note joins a tag
+  through Kore or `kore new`/`kore tag`. Verified: core and desktop vitest,
+  the tag dialog and Type field suites, cargo test/clippy/fmt on the CLI.
 
 - 2026-11-09 — Tags build on other tags (Plan 33 B2, PR #348). Inheritance
   is resolved once in core and stored in `tag_types` (migration 0024);

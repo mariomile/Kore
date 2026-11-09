@@ -11,7 +11,9 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
   It sees the writing tools, but nothing it writes touches your notes until
   you accept it, in Activity under "Waiting for you" (with what it would
   add or remove) or with `kore proposals accept <id>`; then the change is
-  written in its name and shows in the log. Reject drops it.
+  written in its name and shows in the log. Reject drops it. In Settings →
+  Agents each agent is Read-only, Proposes changes (the default for a new
+  one) or Reads and writes, and you can change it without a new key.
 
 - Every task links to the note it lives in: the note icon next to its date
   or note name, also on the task you are editing. ⌘-click opens it beside.

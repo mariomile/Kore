@@ -3289,8 +3289,9 @@ screen: Agents then Close lands on today.
   review: no stored argv, accept rebuilds through the MCP tool table, one
   `access` field per key, tool table moved to `mcp/tools.rs`. Activity
   now lists them under "Waiting for you" with a preview and Accept/Reject
-  (app runs the bundled CLI via `proposals_run`). Next: propose option on
-  the app's own agent keys.
+  (app runs the bundled CLI via `proposals_run`). Settings → Agents picks
+  read / propose / write per agent, changeable without a new key; new
+  agents start at propose. A2 is complete pending Mario's live check.
 
 - 2026-11-07 — A pasted article link keeps the article's text in its
   `#link` card, a YouTube link its transcript. One shared article extractor

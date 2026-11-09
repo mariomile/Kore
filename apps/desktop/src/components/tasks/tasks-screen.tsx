@@ -8,14 +8,16 @@ import {
   type ReactElement,
 } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Archive, CalendarClock, Flag, List, Search } from '@/components/icons'
+import { Archive, CalendarClock, Flag, List, Plus, Search } from '@/components/icons'
 import {
   countTasksByView,
   cycleTaskContentPriority,
   getCompletedTasks,
   getOpenTasks,
   getProjectNotePaths,
+  projectForNote,
   type OpenTask,
+  type QuickAdd,
 } from '@reflect/core'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -38,6 +40,7 @@ import {
   projectNotePathsQueryKey,
   tasksQueryKey,
 } from '@/lib/tasks/tasks-query'
+import { dailyTarget } from '@/lib/tasks/task-navigation'
 import { useTaskView } from '@/lib/tasks/use-task-view'
 import { useSettings } from '@/providers/settings-provider'
 import { useScrollRestoration } from '@/lib/use-scroll-restoration'
@@ -51,6 +54,7 @@ import { TaskBoard } from './task-board'
 import { TaskList } from './task-list'
 import { TaskScheduleCalendar } from './task-schedule-calendar'
 import { TaskToolbarCountBadge } from './task-toolbar-count-badge'
+import { TaskQuickAdd } from './task-quick-add'
 import { TaskViewTabs } from './task-view-tabs'
 import { isModEvent } from '@meowdown/core'
 import { cn } from '@/lib/utils'
@@ -100,6 +104,7 @@ export function TasksScreen(): ReactElement {
   const [query, setQuery] = useState('')
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [scheduleOpen, setScheduleOpen] = useState(false)
+  const [quickAddOpen, setQuickAddOpen] = useState(false)
   const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
   const bridgeReady = useBridgeReady()
@@ -118,9 +123,14 @@ export function TasksScreen(): ReactElement {
   const { data: projectNotes } = useQuery({
     queryKey: projectNotePathsQueryKey(graph?.root),
     queryFn: () => getProjectNotePaths(),
-    enabled: enabled && view === 'projects',
+    // Projects groups by them; Quick Add's `#Name` picks one.
+    enabled: enabled && (view === 'projects' || quickAddOpen),
   })
   const projectNotePaths = useMemo(() => new Set(projectNotes ?? []), [projectNotes])
+  const projects = useMemo(
+    () => (projectNotes ?? []).map((path) => projectForNote(path, path, projectNotePaths)),
+    [projectNotes, projectNotePaths],
+  )
   const counts = useMemo(() => countTasksByView(open ?? [], today), [open, today])
 
   // Either read failing surfaces the alert — a failed completed read must not
@@ -318,12 +328,19 @@ export function TasksScreen(): ReactElement {
     onToggleSchedule: () => setScheduleOpen((open) => !open),
     onConvertToBullet,
     onCyclePriority,
+    onQuickAdd: () => setQuickAddOpen(true),
     view,
     onGoToView: (next) => {
       selection.clear()
       setView(next)
     },
   })
+  // Quick Add writes to the `#project` it named, else today's daily note.
+  const onQuickAddSubmit = useCallback(
+    (parsed: QuickAdd) =>
+      actions.add(parsed.project?.path ?? dailyTarget(today).notePath, parsed.content),
+    [actions, today],
+  )
   const onBoardSchedule = useCallback(
     (task: OpenTask, isoDate: string) => actions.schedule([task], isoDate),
     [actions],
@@ -421,6 +438,16 @@ export function TasksScreen(): ReactElement {
             <TaskToolbarCountBadge count={recentlyCompleted.length} />
           </Button>
         ) : null}
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={() => setQuickAddOpen(true)}
+          title="Add a task in plain words (Q)"
+          className="window-drag-control text-xs font-normal text-text-muted"
+        >
+          <Plus aria-hidden className="size-3.5" />
+          Add task
+        </Button>
         <TaskFiltersMenu
           filters={filters}
           toggle={toggle}
@@ -480,6 +507,13 @@ export function TasksScreen(): ReactElement {
           />
         )}
       </div>
+      <TaskQuickAdd
+        open={quickAddOpen}
+        onOpenChange={setQuickAddOpen}
+        today={today}
+        projects={projects}
+        onSubmit={onQuickAddSubmit}
+      />
     </div>
   )
 }

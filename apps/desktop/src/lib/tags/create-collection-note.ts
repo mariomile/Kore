@@ -2,11 +2,11 @@ import {
   appendBodyTag,
   createNoteIfAbsent,
   createNoteWithTitle,
-  createdStampValues,
   expandTemplatePlaceholders,
   isTemplatePath,
   newNoteId,
   readNote,
+  rowStartingValues,
   splitFrontmatter,
   stripLeadingHeading,
   untitledNotePath,
@@ -51,9 +51,10 @@ export async function createTypedCollectionNote(
   return await createCollectionNote(
     tag,
     generation,
-    // A row born in the app carries its `created` stamps (Plan 29 T1);
-    // values the caller already set (a lane, a day) win over the stamp.
-    { ...createdStampValues(type), ...properties },
+    // A row born in the app carries its `created` stamps (Plan 29 T1) and
+    // its fields' starting values (Plan 33 B4); values the caller already
+    // set (a lane, a day) win over them.
+    { ...(await rowStartingValues(tag, type)), ...properties },
     await bodyForCollectionCreate(type, values, generation),
   )
 }
@@ -61,7 +62,7 @@ export async function createTypedCollectionNote(
 /**
  * Birth a row already titled — the table's "+ New" line: a note named
  * `title` at a slug path (like every create-from-title), carrying the tag,
- * the type's `created` stamps, and its bound template's body with the
+ * the type's `created` stamps and starting values, and its bound template's body with the
  * title expanded into it. Returns the path.
  */
 export async function createTitledCollectionNote(
@@ -79,7 +80,7 @@ export async function createTitledCollectionNote(
   const body = stripLeadingHeading(splitFrontmatter(seed).body.replace(/^\s*#\n/, '')).trim()
   const tagged = appendBodyTag(body, tag) ?? body
   const path = await createNoteWithTitle(title, generation, tagged)
-  const stamps = createdStampValues(type)
+  const stamps = await rowStartingValues(tag, type)
   if (Object.keys(stamps).length > 0) {
     await commitNoteFrontmatter(path, { properties: stamps }, generation)
   }

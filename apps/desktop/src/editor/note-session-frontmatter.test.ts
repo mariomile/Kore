@@ -10,7 +10,13 @@ describe('frontmatterPatchToYaml', () => {
       frontmatterPatchToYaml({
         tagSchema: [
           { name: 'Company', key: 'company', type: 'relation', target: 'company' },
-          { name: 'Status', key: 'status', type: 'select', options: ['to-read'], default: 'to-read' },
+          {
+            name: 'Status',
+            key: 'status',
+            type: 'select',
+            options: ['to-read'],
+            default: 'to-read',
+          },
           {
             name: 'People',
             key: 'people',

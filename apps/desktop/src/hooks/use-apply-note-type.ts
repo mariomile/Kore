@@ -2,7 +2,8 @@ import { useCallback } from 'react'
 import {
   addNoteTag,
   getTagType,
-  missingCreatedStamps,
+  missingStartingValues,
+  startingValueContext,
   noteHasTag,
   parseFrontmatter,
   PRIVATE_NOTE_EDIT_ERROR,
@@ -29,7 +30,7 @@ export interface NoteTypeChange {
 /**
  * Land a chat-proposed note type the user accepted (the review card's
  * Accept). The write is the Type field's own — `addNoteTag` plus the
- * type's `created` stamps in one transform, or `removeNoteTag` — so a note
+ * type's `created` stamps and starting values in one transform, or `removeNoteTag` — so a note
  * typed from chat is byte-identical to one typed from the picker.
  *
  * The note is re-checked as it is *now*, on the same channel the write goes
@@ -58,6 +59,7 @@ export function useApplyNoteType(): (change: NoteTypeChange) => Promise<void> {
       // which stamps exist, and an untyped tag simply has none. Nothing is
       // stamped on the way out — unsetting a type must not date anything.
       const type = remove ? null : await getTagType(tag)
+      const context = await startingValueContext(tag, type)
       await commitNoteBodyTransform(
         path,
         (current) => {
@@ -68,7 +70,7 @@ export function useApplyNoteType(): (change: NoteTypeChange) => Promise<void> {
           if (tagged === null) {
             return current
           }
-          return upsertFrontmatter(tagged, missingCreatedStamps(tagged, type))
+          return upsertFrontmatter(tagged, missingStartingValues(tagged, type, context))
         },
         generation,
       )

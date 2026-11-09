@@ -11,6 +11,8 @@ const toastAdd = vi.hoisted(() => vi.fn())
 vi.mock('@reflect/core', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@reflect/core')>()),
   getTagType: async () => tagType.value,
+  // The index read `next-number` needs; this note's tag already holds 41.
+  startingValueContext: async () => ({ nextNumbers: new Map([['number', 42]]) }),
 }))
 vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({ graph: { root: '/g', name: 'g', generation: 7 } }),
@@ -49,6 +51,20 @@ describe('useAddNoteTag', () => {
     const next = await setType('# The Dispossessed\n')
     expect(next).toMatch(
       /^---\ntags:\n {2}- book\nadded: \d{4}-\d{2}-\d{2}\n---\n# The Dispossessed\n$/,
+    )
+  })
+
+  it('writes the fields’ starting values, keeping a value the note already has', async () => {
+    tagType.value = {
+      properties: [
+        { name: 'Status', key: 'status', type: 'select', options: ['to-read'], default: 'to-read' },
+        { name: 'Number', key: 'number', type: 'number', default: 'next-number' },
+        { name: 'Rating', key: 'rating', type: 'rating', default: 3 },
+      ],
+    }
+    const next = await setType('---\nrating: 5\n---\n# The Dispossessed\n')
+    expect(next).toBe(
+      '---\nrating: 5\ntags:\n  - book\nstatus: to-read\nnumber: 42\n---\n# The Dispossessed\n',
     )
   })
 

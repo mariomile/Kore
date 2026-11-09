@@ -14,7 +14,7 @@ use crate::commands::{require_index, still_public_on_disk};
 use crate::error::CliError;
 use crate::frontmatter_values::PropertyValue;
 use crate::graph::Graph;
-use crate::schema::{load_descendants, load_schema, SchemaProperty};
+use crate::schema::{load_descendants, load_schema, Descendants, SchemaProperty};
 use crate::search::{tag_match_sql, Binds};
 
 pub fn run(
@@ -43,7 +43,7 @@ pub fn run(
     let mut binds = Binds::default();
     let sort_bind = sort.map(|key| binds.text(key));
     let mut member_keys = vec![tag_key.clone()];
-    member_keys.extend(load_descendants(&opened.conn, tag)?);
+    member_keys.extend(load_descendants(&opened.conn, tag, Descendants::Public)?);
     let member_clauses = member_keys
         .iter()
         .map(|key| tag_match_sql("t.tag_key", key, &mut binds))

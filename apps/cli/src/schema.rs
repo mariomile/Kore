@@ -93,16 +93,30 @@ pub fn load_schema(conn: &Connection, tag: &str) -> Result<Option<TagSchema>, Cl
     Ok(column.flatten().as_deref().map(decode_schema))
 }
 
-/// The public tags that build on `tag`, directly or not, as core stored
-/// them (Plan 33 B2): a parent's collection lists their notes too. Empty
-/// before core's first pass and for a tag nothing extends.
-pub fn load_descendants(conn: &Connection, tag: &str) -> Result<Vec<String>, CliError> {
+/// Which stored child list a read wants (Plan 33 B2).
+#[derive(Clone, Copy)]
+pub enum Descendants {
+    /// Children with public definitions: what a collection shows outbound.
+    Public,
+    /// Every child, private definitions included: for counts that never
+    /// reveal a note (`next-number`), so the CLI agrees with the app.
+    All,
+}
+
+/// The tags that build on `tag`, directly or not, as core stored them
+/// (Plan 33 B2): a parent's collection lists their notes too. Empty before
+/// core's first pass and for a tag nothing extends.
+pub fn load_descendants(
+    conn: &Connection,
+    tag: &str,
+    which: Descendants,
+) -> Result<Vec<String>, CliError> {
+    let sql = match which {
+        Descendants::Public => "SELECT public_descendants_json FROM tag_types WHERE tag_key = ?1",
+        Descendants::All => "SELECT descendants_json FROM tag_types WHERE tag_key = ?1",
+    };
     let column: Option<Option<String>> = conn
-        .query_row(
-            "SELECT public_descendants_json FROM tag_types WHERE tag_key = ?1",
-            params![fold_tag(tag)],
-            |row| row.get(0),
-        )
+        .query_row(sql, params![fold_tag(tag)], |row| row.get(0))
         .map(Some)
         .or_else(|err| match err {
             rusqlite::Error::QueryReturnedNoRows => Ok(None),

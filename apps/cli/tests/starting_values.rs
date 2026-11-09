@@ -95,3 +95,28 @@ fn tagging_a_note_stamps_it_once() {
     assert_eq!(again["added"], false);
     assert!(again["stamped"].as_object().unwrap().is_empty(), "{again}");
 }
+
+#[test]
+fn next_number_counts_a_child_tag_with_a_private_definition() {
+    let fixture = graph();
+    fixture.write_note("bills/credit.md", "---\nnumber: 120\n---\n# C\n#credit\n");
+    invoices(&fixture);
+    fixture.insert_tag("bills/credit.md", "credit");
+    number_on(&fixture, "bills/credit.md", 120.0);
+    // `#credit` builds on `#invoice` but its definition is private: it is in
+    // the full child list only, as core's pass stores it.
+    fixture
+        .index_conn()
+        .execute(
+            "UPDATE tag_types SET descendants_json = '[\"credit\"]' WHERE tag_key = 'invoice'",
+            [],
+        )
+        .unwrap();
+
+    let value = json(&kore(
+        &fixture,
+        &["new", "May", "--tag", "invoice", "--json"],
+    ));
+    // Like the app: the count spans every child, private ones included.
+    assert_eq!(value["properties"]["number"], 121, "{value}");
+}

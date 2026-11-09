@@ -13,9 +13,12 @@
 -- * `descendants_json` / `public_descendants_json` — JSON arrays of the
 --   folded tags that build on this one, directly or not.
 --
--- All four are NULL until core's first pass after this migration; readers
--- then fall back to `schema_json` (no inheritance), which is exactly what a
--- graph without `extends:` has. No rebuild is needed.
+-- All four are NULL until core's inheritance pass stores the row, and a
+-- NULL reads as untyped (never as the raw `schema_json`, which could leak
+-- a private parent's fields outbound). This migration ships with a
+-- projection bump (`PROJECTION_VERSION` 29), so an existing index is
+-- rebuilt on first open and the pass fills every row before anything reads
+-- it; every later open runs the pass once more.
 --
 -- (This file is numbered 0024 because an unregistered 0023_fts_rowid.sql
 -- already sits in this folder; it is the 23rd migration.)

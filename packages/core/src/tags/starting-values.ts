@@ -246,6 +246,6 @@ export function valuesMissingFrom(
   if (Object.keys(values).length === 0) {
     return {}
   }
-  const present = parseFrontmatter(splitFrontmatter(source).raw).data as Record<string, unknown>
+  const present: Record<string, unknown> = parseFrontmatter(splitFrontmatter(source).raw).data
   return Object.fromEntries(Object.entries(values).filter(([key]) => present[key] === undefined))
 }

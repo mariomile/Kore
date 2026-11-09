@@ -12,7 +12,7 @@ use crate::error::CliError;
 use crate::frontmatter_values::PropertyValue;
 use crate::keys::fold_tag;
 use crate::paths::today_date;
-use crate::schema::{load_descendants, TagSchema};
+use crate::schema::{load_descendants, Descendants, TagSchema};
 use crate::search::{tag_match_sql, Binds};
 
 /// A stored starting value (`StartingValue` in core).
@@ -53,7 +53,7 @@ fn now_text() -> String {
 }
 
 /// One past the highest number any note of `tags` (and of the tags that
-/// build on them) holds under `key`, or 1, as `nextNumbers` counts it:
+/// build on them, private definitions included) holds under `key`, or 1, as `nextNumbers` counts it:
 /// private notes included, so a number is never handed out twice (Mario,
 /// 2026-11-09). Only the number leaves the index, never a note's content.
 fn next_number(conn: &Connection, tags: &[String], key: &str) -> Result<f64, CliError> {
@@ -62,7 +62,7 @@ fn next_number(conn: &Connection, tags: &[String], key: &str) -> Result<f64, Cli
     let mut members: Vec<String> = Vec::new();
     for tag in tags {
         members.push(fold_tag(tag));
-        members.extend(load_descendants(conn, tag)?);
+        members.extend(load_descendants(conn, tag, Descendants::All)?);
     }
     let clauses = members
         .iter()

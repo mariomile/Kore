@@ -60,7 +60,7 @@ const TURN: ChatTurn = {
       id: 'image',
       name: 'image.png',
       mediaType: 'image/png',
-      path: '.reflect/chat-attachments/conv-1/image.png',
+      path: '.kore/chat-attachments/conv-1/image.png',
     },
   ],
   parts: [

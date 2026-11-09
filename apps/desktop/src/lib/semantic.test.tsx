@@ -12,10 +12,10 @@ afterEach(() => {
 
 describe('consumeLegacySemanticOptIn', () => {
   it('returns a stored opt-in exactly once (the settings document owns it after)', () => {
-    localStorage.setItem('reflect.semantic.enabled', 'true')
+    localStorage.setItem('kore.semantic.enabled', 'true')
     expect(consumeLegacySemanticOptIn()).toBe(true)
     expect(consumeLegacySemanticOptIn()).toBe(false)
-    expect(localStorage.getItem('reflect.semantic.enabled')).toBeNull()
+    expect(localStorage.getItem('kore.semantic.enabled')).toBeNull()
   })
 
   it('is false when the legacy key was never set', () => {

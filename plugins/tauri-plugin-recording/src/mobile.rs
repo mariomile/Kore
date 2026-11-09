@@ -68,7 +68,7 @@ impl<R: Runtime> Recording<R> {
     /// Queue a native action for the webview (see the handshake in
     /// `RecordingPlugin.swift`): persisted until the webview confirms it ran,
     /// so it survives crashes and cold starts. The Rust shell calls this when
-    /// a `reflect://record-audio` URL opens the app (the lock-screen widget).
+    /// a `kore://record-audio` URL opens the app (the lock-screen widget).
     pub fn queue_action(&self, action: &str) -> crate::Result<()> {
         self.0
             .run_mobile_plugin(

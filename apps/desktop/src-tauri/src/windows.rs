@@ -343,8 +343,7 @@ fn cascade_offset(app: &tauri::AppHandle) -> f64 {
     48.0 * ((open_note_windows % 10) + 1) as f64
 }
 
-/// Open (or focus) a secondary window on a `kore://` (or legacy `reflect://`)
-/// route link.
+/// Open (or focus) a secondary window on a `kore://` route link.
 ///
 /// Requires an open graph: a note window can only *adopt* the main window's
 /// session, so with nothing open there is nothing to show. Async on purpose —
@@ -359,7 +358,7 @@ pub async fn open_note_window(
     init: State<'_, WindowInit>,
     quit: State<'_, QuitState>,
 ) -> AppResult<()> {
-    if !deep_link.starts_with("kore://") && !deep_link.starts_with("reflect://") {
+    if !deep_link.starts_with("kore://") {
         return Err(AppError::parse(format!("not a kore:// link: {deep_link}")));
     }
     let issued_generation = fs::current_graph_info(&graph)?.generation;
@@ -410,7 +409,7 @@ pub async fn open_note_window(
     let revealed = Arc::new(Once::new());
 
     let mut builder = WebviewWindowBuilder::new(&app, &label, WebviewUrl::default())
-        .title("Reflect")
+        .title("Kore")
         .inner_size(1000.0, 650.0)
         // Paint the OS-preferred theme color at build time so the note window
         // doesn't briefly flash white before its webview loads the frontend
@@ -492,7 +491,7 @@ fn browser_window_label(url: &str) -> String {
 }
 
 /// Validate a URL for the in-app browser: web pages only. Everything else —
-/// `file:`, `reflect:`, custom app schemes, script URIs — must go through the
+/// `file:`, `kore:`, custom app schemes, script URIs — must go through the
 /// deep-link pipeline or the OS opener with their own policies, never into a
 /// live webview.
 pub(crate) fn parse_browser_url(url: &str) -> AppResult<tauri::Url> {

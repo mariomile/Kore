@@ -23,7 +23,6 @@ import { useWorkspaceStatePublisher } from '@/providers/use-workspace-state-publ
 import { VaultReplaceProvider } from '@/providers/vault-replace-provider'
 import { SidebarProvider } from '@/providers/sidebar-provider'
 import { SyncProvider } from '@/providers/sync-provider'
-import { V1ImportProvider } from '@/providers/v1-import-provider'
 import { RouterProvider } from '@/routing/router'
 
 interface GraphWorkspaceProps {
@@ -53,13 +52,9 @@ export function GraphWorkspace({ graph }: GraphWorkspaceProps): ReactElement {
         <ActivePaneRouter>
           <WorkspaceProviders graph={graph}>
             {/* Tabs and the focused day are per pane; the chrome reads the
-              active one. The V1 import lives above the routed views so
-              closing settings can't orphan a running import; main window
-              only: its dialog is the import's single face. */}
+              active one. */}
             <ActivePaneChrome>
-              <V1ImportProvider graph={graph}>
-                <WorkspaceContent graph={graph} />
-              </V1ImportProvider>
+              <WorkspaceContent graph={graph} />
             </ActivePaneChrome>
           </WorkspaceProviders>
         </ActivePaneRouter>

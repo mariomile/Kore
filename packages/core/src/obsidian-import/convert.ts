@@ -39,9 +39,10 @@ export interface ObsidianConversion {
 
 /**
  * Left out of every copy. `.git` is the source's history, which the copy
- * doesn't share; `.reflect` is Kore's index of the source, rebuilt on open.
+ * doesn't share; `.kore` is Kore's index of the source, rebuilt on open
+ * (`.reflect` is its pre-rename name, in a source Kore hasn't reopened since).
  */
-const ALWAYS_SKIPPED = ['.git', '.reflect']
+const ALWAYS_SKIPPED = ['.git', '.kore', '.reflect']
 
 const OBSIDIAN_FILES = {
   dailyNotes: '.obsidian/daily-notes.json',

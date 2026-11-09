@@ -42,7 +42,7 @@ mod output;
 use std::fmt::Display;
 use std::path::Path;
 
-use reflect_index_schema::{INDEX_FILE, REFLECT_DIR};
+use reflect_index_schema::{INDEX_FILE, KORE_DIR};
 
 use crate::error::CliError;
 use crate::index::{detect_staleness, open_read_only, IndexOpen, OpenIndex, Staleness};
@@ -87,7 +87,7 @@ fn require_index(root: &Path) -> Result<(OpenIndex, Staleness), CliError> {
         IndexOpen::Opened(opened) => opened,
         IndexOpen::Missing => {
             return Err(CliError::NoIndex(format!(
-                "no index at {REFLECT_DIR}/{INDEX_FILE} — open this graph in Kore to build it"
+                "no index at {KORE_DIR}/{INDEX_FILE} — open this graph in Kore to build it"
             )))
         }
         IndexOpen::Unusable(message) => return Err(CliError::NoIndex(message)),

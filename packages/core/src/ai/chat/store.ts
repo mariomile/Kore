@@ -4,6 +4,7 @@ import { db } from '../../indexing/db'
 import { call } from '../../ipc/invoke'
 import { tagPropertySchema } from '../../tags'
 import type { AssistantPart, ChatTurn } from './transcript'
+import { upgradeLegacyStep } from './agent-steps'
 
 /**
  * Chat history persistence (the durable `chat_*` tables in the graph's
@@ -204,6 +205,8 @@ const partSchema = z.discriminatedUnion('kind', [
       label: z.string(),
       detail: z.string().nullable(),
       parentId: z.string().nullable(),
+      kind: z.enum(['read', 'write', 'search', 'plan', 'subagent', 'mcp', 'other']),
+      notePath: z.string().nullable(),
     }),
     outcome: z.object({ error: z.string().nullable(), summary: z.string().nullable() }).nullable(),
   }),
@@ -251,9 +254,34 @@ function upgradeLegacyReadPart(part: unknown): unknown {
   return upgraded
 }
 
-const partsSchema: z.ZodType<AssistantPart[]> = z.array(
-  z.preprocess(upgradeLegacyReadPart, partSchema),
-)
+/**
+ * Upgrade an agent step persisted before steps carried `kind` and
+ * `notePath` (see {@link upgradeLegacyStep}); a current step passes through.
+ */
+function upgradeLegacyStepPart(part: unknown): unknown {
+  if (!isRecord(part) || part['kind'] !== 'step') {
+    return part
+  }
+  const step = part['step']
+  if (
+    !isRecord(step) ||
+    'kind' in step ||
+    typeof step['tool'] !== 'string' ||
+    (typeof step['detail'] !== 'string' && step['detail'] !== null)
+  ) {
+    return part
+  }
+  return {
+    ...part,
+    step: upgradeLegacyStep({ ...step, tool: step['tool'], detail: step['detail'] }),
+  }
+}
+
+function upgradeLegacyPart(part: unknown): unknown {
+  return upgradeLegacyStepPart(upgradeLegacyReadPart(part))
+}
+
+const partsSchema: z.ZodType<AssistantPart[]> = z.array(z.preprocess(upgradeLegacyPart, partSchema))
 
 const attachmentsSchema = z.array(
   z.object({

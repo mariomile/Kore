@@ -33,7 +33,7 @@ function attachmentDir(): string | null {
  * `desiredName` — or the first free `-2`-suffixed variant; Rust decides the
  * final name race-free and returns it as a graph-relative `assets/…` path.
  * Bytes travel as raw binary IPC bodies in {@link CHUNK_BYTES} chunks staged
- * under `.reflect/tmp/`, so neither webview memory nor the file watcher ever
+ * under `.kore/tmp/`, so neither webview memory nor the file watcher ever
  * sees the whole file in flight. `generation` pins the write to the graph it
  * was issued for; a failure aborts the upload (best-effort) and rethrows.
  */
@@ -72,7 +72,7 @@ export async function createAsset(
  * Stream a blob's bytes to an **exact graph-relative path** — the audio-memo
  * intake, where the path is the memo's identity and collision renaming would
  * corrupt it. Same transport as {@link createAsset}: raw binary IPC bodies in
- * {@link CHUNK_BYTES} chunks staged under `.reflect/tmp/`, so neither webview
+ * {@link CHUNK_BYTES} chunks staged under `.kore/tmp/`, so neither webview
  * IPC nor the file watcher ever sees the whole file in flight. Requires a
  * binary-capable bridge (see `hasBinaryIpc`); hosts without one use the
  * base64 `writeAsset` fallback instead.

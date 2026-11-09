@@ -4,7 +4,7 @@
 with the desktop app as a Tauri sidecar and usable standalone.
 
 Self-contained Rust: it reads the graph's markdown files directly and opens
-`.reflect/index.sqlite` strictly read-only — no Node runtime, no running
+`.kore/index.sqlite` strictly read-only — no Node runtime, no running
 desktop app, no IPC. Its modules mirror the small contract owned by
 `@reflect/core` (paths, fold keys, frontmatter, title derivation, slugs,
 hashing, FTS match syntax); each names its TS counterpart and is

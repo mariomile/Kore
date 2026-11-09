@@ -70,7 +70,7 @@ fn set_writes_typed_values_through_the_tag_schema_and_keeps_the_rest() {
     assert!(read(&fixture, "notes/secret.md").contains("private: true\n---\n# S"));
 
     // No index: still writes, as text, with a warning.
-    fs::remove_file(fixture.root().join(".reflect/index.sqlite")).unwrap();
+    fs::remove_file(fixture.root().join(".kore/index.sqlite")).unwrap();
     let untyped = kore(&fixture, &["set", "notes/dune.md", "year=1965", "--json"]);
     assert_eq!(untyped.status.code(), Some(0));
     assert!(stderr(&untyped).contains("no index"));
@@ -397,7 +397,7 @@ fn a_note_created_after_indexing_resolves_by_title_and_its_task_ticks_by_in() {
     // Graph-wide, the index is still the source and still required.
     let graph_wide = kore(&fixture, &["done", "call Ann"]);
     assert_eq!(graph_wide.status.code(), Some(3), "{}", stderr(&graph_wide));
-    fs::remove_file(fixture.root().join(".reflect/index.sqlite")).unwrap();
+    fs::remove_file(fixture.root().join(".kore/index.sqlite")).unwrap();
     assert_eq!(kore(&fixture, &["done", "call Ann"]).status.code(), Some(4));
     assert_eq!(
         kore(&fixture, &["done", "call Ann", "--in", "Fresh Note"])
@@ -411,7 +411,7 @@ fn a_note_created_after_indexing_resolves_by_title_and_its_task_ticks_by_in() {
 fn a_write_for_an_agent_is_journaled_and_a_plain_write_is_not() {
     let fixture = graph();
     fixture.write_note("notes/dune.md", "# Dune\n");
-    let journal = fixture.root().join(".reflect/agent-writes.jsonl");
+    let journal = fixture.root().join(".kore/agent-writes.jsonl");
 
     assert_eq!(
         kore(&fixture, &["append", "Dune", "by hand"]).status.code(),

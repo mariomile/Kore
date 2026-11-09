@@ -362,7 +362,7 @@ export const semanticSearchEnabledSchema = z.boolean().catch(false)
 
 /**
  * Whether new eligible images/PDFs added under `assets/` are automatically
- * described by the configured AI provider into a managed `.reflect.md` description
+ * described by the configured AI provider into a managed `.kore.md` description
  * (Plan 20). On by default — only new assets, gated to those referenced by
  * public notes; existing assets are never auto-scanned (the Settings backfill
  * action handles those, with a cost warning). Off disables the automatic path

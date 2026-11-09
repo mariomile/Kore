@@ -6,7 +6,7 @@ description: Read and write notes in a Kore graph — the markdown conventions K
 # Kore markdown
 
 Kore is a local-first note app. A graph is a folder of `.md` files; the app
-watches the files and indexes them into `.reflect/index.sqlite`, a
+watches the files and indexes them into `.kore/index.sqlite`, a
 rebuildable projection. **Markdown is the source of truth.** Anything you
 write following these conventions renders as a first-class note; anything
 else stays visible as plain markdown, never corrupted, never hidden.
@@ -25,7 +25,7 @@ tags atomically. Edit the file directly only for prose.
 | `templates/*.md` | Templates that seed new notes; `templates/daily.md` seeds today's daily. |
 | `assets/` | Pasted and dropped files. Never write here by hand. |
 | `agents/` | Agent profiles and memory — see the `kore-agent-memory` skill. |
-| `.reflect/` | The app's index. Never write here. |
+| `.kore/` | The app's index. Never write here. |
 
 Any other `.md` file anywhere in the graph is an ordinary note too;
 hidden folders (`.git`, `.reflect`) and `assets/` are excluded.
@@ -101,6 +101,6 @@ template that opens with its own `# H1` owns the note's structure. A
 
 1. **Never bypass `private: true`.** Do not read, quote, or write into a
    private note unless the user explicitly asked for that note.
-2. **Never write `id:`, `.reflect/`, or `assets/` by hand.**
+2. **Never write `id:`, `.kore/`, or `assets/` by hand.**
 3. **Keep edits minimal:** change the lines you mean to change, keep the
    note's line endings, keep the frontmatter block intact.

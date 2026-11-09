@@ -59,7 +59,7 @@ See [`apps/desktop/src-tauri/src/fs/mod.rs`](../../apps/desktop/src-tauri/src/fs
   model for where deleted notes live.
 
 **Mobile note.** Mobile has no OS trash, so `note_delete` there moves files into
-the graph-local `.reflect/trash/` instead (Plan 19) — the same recoverability
+the graph-local `.kore/trash/` instead (Plan 19) — the same recoverability
 promise by a different mechanism. An in-app browser for *that* folder is out of
 scope for this decision and can be revisited if mobile needs it; it does not
 change the desktop All Notes scope.
@@ -105,6 +105,6 @@ tag-rename UI either.
 
 - The frontend comment in
   [`apps/desktop/src/lib/note-delete.ts`](../../apps/desktop/src/lib/note-delete.ts)
-  still describes the delete as moving into `.reflect/trash/`. That is the
+  still describes the delete as moving into `.kore/trash/`. That is the
   *mobile* behavior; on desktop it is the OS trash. The comment (and the
   "graph trash" wording in the trash-confirm dialog) should be corrected to match.

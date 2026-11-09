@@ -68,7 +68,7 @@ runs `kore index`, so search sees the new state within one sync interval
 (default 60 s) of a Mac push.
 
 The clone must be dedicated to the host. `--sync` refuses a working tree with
-uncommitted changes, and keeps `.reflect/` (the index) out of history by
+uncommitted changes, and keeps `.kore/` (the index) out of history by
 adding it to `.git/info/exclude`, never to the vault's own `.gitignore`. Host
 commits are authored `Kore host <kore-host@localhost>` with subjects like
 `kore: capture --to=daily/2026-11-04.md … (via MCP)`.

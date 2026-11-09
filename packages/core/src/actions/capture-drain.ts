@@ -76,7 +76,7 @@ export interface DrainCaptureInboxOutcome {
    * by design (Plan 24), so every text envelope appends.
    */
   deduped: number
-  /** Unparseable spool files quarantined under `.reflect/inbox-rejected/`. */
+  /** Unparseable spool files quarantined under `.kore/inbox-rejected/`. */
   invalid: number
   /** Why spool files remain, or `null` when the inbox drained. */
   stopped: ReconcileStop | null

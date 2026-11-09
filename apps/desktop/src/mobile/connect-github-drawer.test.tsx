@@ -63,23 +63,23 @@ afterEach(async () => {
 })
 
 describe('ConnectGithubDrawer', () => {
-  it('suggests reflect-backup — never the local graph name — and connects', async () => {
+  it('suggests kore-backup — never the local graph name — and connects', async () => {
     sync.connectExistingRepo.mockResolvedValueOnce('notFound')
     const onOpenChange = vi.fn()
     await render(<ConnectGithubDrawer open onOpenChange={onOpenChange} pollIntervalMs={15} />)
 
     // The local graph's display name is the sandbox folder ("Documents") —
     // the prefill must be the fixed fallback, not a graph-derived slug.
-    await expect.element(page.getByLabelText('Repository name')).toHaveValue('reflect-backup')
+    await expect.element(page.getByLabelText('Repository name')).toHaveValue('kore-backup')
     await page.getByRole('button', { name: 'Continue' }).click()
 
     await vi.waitFor(() =>
       expect(sync.connectExistingRepo).toHaveBeenCalledWith(
-        { owner: 'alex', name: 'reflect-backup' },
+        { owner: 'alex', name: 'kore-backup' },
         { allowPublic: false },
       ),
     )
-    await vi.waitFor(() => expect(sync.connectNewRepo).toHaveBeenCalledWith('reflect-backup'))
+    await vi.waitFor(() => expect(sync.connectNewRepo).toHaveBeenCalledWith('kore-backup'))
     await vi.waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false))
   })
 
@@ -125,7 +125,7 @@ describe('ConnectGithubDrawer', () => {
     await expect
       .element(page.getByRole('radio', { name: /create a new private repository/i }))
       .toBeChecked()
-    await expect.element(page.getByLabelText('Repository name')).toHaveValue('reflect-backup')
+    await expect.element(page.getByLabelText('Repository name')).toHaveValue('kore-backup')
     await expect
       .element(page.getByText('Enter the repository as owner/name or a GitHub URL.'))
       .not.toBeInTheDocument()

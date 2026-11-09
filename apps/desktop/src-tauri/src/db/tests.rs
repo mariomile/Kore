@@ -1131,7 +1131,7 @@ fn open_index_at_creates_migrates_and_reopens() {
     let root = dir.path();
 
     let conn = open_index_at(root).expect("first open");
-    assert!(root.join(".reflect/index.sqlite").exists());
+    assert!(root.join(".kore/index.sqlite").exists());
     let version: i64 = conn
         .query_row("PRAGMA user_version", [], |row| row.get(0))
         .unwrap();

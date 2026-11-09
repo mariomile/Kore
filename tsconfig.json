@@ -2,6 +2,9 @@
   "extends": "@ocavue/tsconfig/dom/root.json",
   "references": [
     {
+      "path": "./apps/cloud/tsconfig.json"
+    },
+    {
       "path": "./apps/desktop/tsconfig.json"
     },
     {

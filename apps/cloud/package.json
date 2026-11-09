@@ -1,0 +1,23 @@
+{
+  "name": "@reflect/cloud",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@cloudflare/workers-oauth-provider": "1.2.4",
+    "@reflect/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260702.1",
+    "@ocavue/tsconfig": "^0.7.1",
+    "@types/better-sqlite3": "^9.6.0",
+    "better-sqlite3": "^12.11.1",
+    "typescript": "~6.0.3",
+    "vitest": "^4.1.10",
+    "wrangler": "4.158.0"
+  }
+}

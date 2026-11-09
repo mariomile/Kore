@@ -1,5 +1,24 @@
 # Kore working state
 
+## Kore Cloud slice 1: the Worker, 2026-11-09
+
+Ask (Mario, 2026-11-09): Kore always on for every agent without the Mac,
+free, no server, a flow anyone can do; on the decision card he chose notes in
+the user's own Cloudflare (D1), app syncing both ways. Plan
+[34](plans/34-kore-cloud.md); PR #332 (VM route) is superseded.
+
+- [x] `apps/cloud/` (`@reflect/cloud`): D1 store with per-note versions,
+  vault-wide `seq` and tombstones (`store.ts`, `schema.ts`); structural edits
+  mirroring the CLI (`edits.ts`); MCP tools with CAS retry (`tools.ts`,
+  `mcp.ts`); OAuth consent with the access key (`consent.ts`, `worker.ts`);
+  app sync API (`sync.ts`); vault layout from `KORE_VAULT_LAYOUT`.
+- [x] 37 tests (better-sqlite3 D1 stand-in, full OAuth round trip in Node);
+  `wrangler dev` smoke: 5,165-note push in 16 s locally, MCP calls 9-26 ms.
+- [x] Core exports `./graph/paths` and `./graph/vault-layout` (plus the
+  markdown modules) for the Worker.
+- Next: slice 2, `kore cloud setup` and the first run on Mario's account
+  (measure CPU per request and rows written for the first upload).
+
 ## Rename visible Reflect leftovers to Kore, 2026-11-09
 
 Ask: Mario, "ora deve essere tutto Kore" / "ci deve essere solo Kore". PR #354,

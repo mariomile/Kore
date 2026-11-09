@@ -16,6 +16,7 @@ allowBuilds:
   esbuild: true
   simple-git-hooks: false
   spawn-sync: true
+  workerd: true
 
 dedupePeers: true
 

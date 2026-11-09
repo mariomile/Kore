@@ -7,7 +7,13 @@
   "exports": {
     ".": "./src/index.ts",
     "./capture-envelope": "./src/actions/capture-envelope.ts",
-    "./article-text": "./src/actions/article-text.ts"
+    "./article-text": "./src/actions/article-text.ts",
+    "./markdown/extract": "./src/markdown/extract.ts",
+    "./markdown/frontmatter": "./src/markdown/frontmatter.ts",
+    "./markdown/body-tag": "./src/markdown/body-tag.ts",
+    "./markdown/slug": "./src/markdown/slug.ts",
+    "./graph/paths": "./src/graph/paths.ts",
+    "./graph/vault-layout": "./src/graph/vault-layout.ts"
   },
   "scripts": {
     "test": "vitest run --config ../../vitest.config.ts --project core-browser --project core-node",

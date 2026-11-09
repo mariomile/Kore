@@ -194,7 +194,7 @@ Drawn from the product docs — read these for deeper context:
 - **Daily notes first.** The app opens to today's note. All capture flows into the daily note by default.
 - **Association over hierarchy.** `[[Wiki Links]]` replace folders. The note graph is the organizing model; there are no folders.
 - **Markdown is the source of truth.** Notes are `.md` files (`daily/YYYY-MM-DD.md`, `notes/`). SQLite under `.kore/` is a rebuildable projection of the notes — with one durable exception: the `chat_*` tables hold AI chat history, which is not derivable from markdown. Index wipes and rebuilds must leave them untouched.
-- **No Kore-hosted APIs.** LLM calls go directly to user-approved providers (OpenAI, Anthropic, etc.). Sync goes to GitHub/iCloud/Git. Never proxy through Kore infrastructure.
+- **No Kore-hosted APIs.** LLM calls go directly to user-approved providers (OpenAI, Anthropic, etc.). Sync goes to GitHub/iCloud/Git, or to Kore Cloud running in the user's own Cloudflare account (Plan 34). Never proxy through Kore infrastructure.
 - **BYOK AI.** AI features use user-supplied keys. Never assume Kore operates AI infrastructure.
 - **`private: true` is a hard block.** Notes with this frontmatter flag must never have their content sent to any external service — AI, transcription, or otherwise. Enforce at every call site.
 - **Keyboard-native UX.** Every core workflow must be reachable from the keyboard. This is product identity, not polish.
@@ -409,6 +409,8 @@ Kore/
 │   │   └── public/         # Static assets served by Vite
 │   ├── cli/                # `kore` — self-contained Rust read/discovery/capture CLI (docs/cli.md);
 │   │                       #   `kore index` hosts the core's indexer under Node
+│   ├── cloud/              # @reflect/cloud — Kore Cloud, the always-on Worker (D1 + MCP + OAuth +
+│   │                       #   app sync) that setup deploys to the user's own Cloudflare (Plan 34)
 │   ├── extension/          # @reflect/extension — Chrome MV3 capture extension (WXT; see its README)
 │   └── native-host/        # `reflect-capture-host` — native-messaging spooler sidecar (Plan 11)
 ├── packages/

@@ -7,6 +7,10 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- Groundwork for Kore Cloud: the always-on service that will keep your
+  vault reachable by Claude, ChatGPT and other agents when your Mac is off,
+  in your own free Cloudflare account. Not reachable from the app yet.
+
 - Kore is the only name left: the vault folder is `.kore/`, links are
   `kore://`, asset descriptions end in `.kore.md`, and settings live in
   `kore/`. Opening an existing vault moves every old name across once and

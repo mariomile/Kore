@@ -1,0 +1,10 @@
+{
+  "extends": "@ocavue/tsconfig/es/app.json",
+  "compilerOptions": {
+    "noUnusedParameters": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "types": ["@cloudflare/workers-types"]
+  },
+  "include": ["src", "./*.ts"]
+}

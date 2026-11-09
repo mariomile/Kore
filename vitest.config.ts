@@ -10,6 +10,7 @@ export default defineConfig({
     // belongs to one project: the desktop browser suite drives real keyboard
     // focus, which is a per-page global. That project sets it itself.
     projects: [
+      './apps/cloud',
       './apps/desktop/vitest.*.config.ts',
       './apps/extension',
       './packages/core/vitest.*.config.ts',

@@ -165,8 +165,26 @@ export function targetAt(doc: ProseMirrorNode, $from: ResolvedPos): ZoomTarget |
   return $from.depth === 0 ? null : topLevelTarget(doc, $from.before(1))
 }
 
+/**
+ * A line's text as a crumb shows it: the words only. Tags go (they are
+ * metadata, and a crumb is a name), a wiki link shows its label, and the
+ * Markdown punctuation the editor keeps in the text is dropped.
+ */
+export function crumbText(text: string): string {
+  const plain = text
+    .replaceAll(
+      /\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/gu,
+      (_match, target: string, label?: string) => label ?? target,
+    )
+    .replaceAll(/(^|\s)#[\p{L}\p{N}_/-]+/gu, '$1')
+    .replaceAll(/\*\*|__|~~|`/gu, '')
+    .replaceAll(/\s+/gu, ' ')
+    .trim()
+  return plain === '' ? text.trim() : plain
+}
+
 function crumbLabel(node: ProseMirrorNode | null): string {
-  const text = node?.textContent.trim() ?? ''
+  const text = crumbText(node?.textContent ?? '')
   return text === '' ? 'Untitled' : text
 }
 

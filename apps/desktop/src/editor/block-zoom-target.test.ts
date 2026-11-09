@@ -2,6 +2,7 @@ import { markdownToDoc } from '@meowdown/core'
 import type { Node as ProseMirrorNode } from '@prosekit/pm/model'
 import { describe, expect, it } from 'vitest'
 import {
+  crumbText,
   crumbsFor,
   enclosingHeadings,
   parentTarget,
@@ -129,5 +130,14 @@ describe('block zoom target', () => {
     expect(item?.attrs).toMatchObject({ kind: 'bullet', collapsed: false })
     expect(doc.nodeAt(headingPos('Calls'))?.type.name).toBe('heading')
     expect(doc.nodeAt(headingPos('Calls'))?.attrs['level']).toBe(3)
+  })
+
+  it('names a crumb by its words: no tags, wiki links by label, no Markdown marks', () => {
+    expect(crumbText('DeepAgent #deepagent')).toBe('DeepAgent')
+    expect(crumbText('Call with [[Luca Rossi|Luca]] about **pricing**')).toBe(
+      'Call with Luca about pricing',
+    )
+    expect(crumbText('See [[Project X]] #work/q4 now')).toBe('See Project X now')
+    expect(crumbText('#inbox')).toBe('#inbox')
   })
 })

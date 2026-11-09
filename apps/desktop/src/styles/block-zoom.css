@@ -34,6 +34,13 @@
 .reflect-editor .kore-zoom-root:not([data-list-kind='task']) > .list-marker {
   display: none;
 }
+/* A tag stays body-sized next to the title: it labels the block, it is not
+   part of its name. */
+.reflect-editor .kore-zoom-title .md-tag {
+  font-size: calc(1em / 1.5);
+  font-weight: 500;
+  vertical-align: 0.15em;
+}
 .reflect-editor .kore-zoom-root[data-list-kind='ordered']::before {
   display: none;
 }

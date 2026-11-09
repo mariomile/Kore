@@ -7,6 +7,11 @@ code. New target work belongs in the [roadmap](roadmap.md), not here.
 
 ## Shipped (this fork)
 
+- An agent can get a key that only proposes: `kore keys add "Grok" --propose`.
+  It sees the writing tools, but nothing it writes touches your notes until
+  you run `kore proposals accept <id>`; then the change is written in its
+  name and shows in Activity. `reject <id>` drops it.
+
 - Every task links to the note it lives in: the note icon next to its date
   or note name, also on the task you are editing. ⌘-click opens it beside.
 

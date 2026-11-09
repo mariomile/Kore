@@ -42,7 +42,8 @@ kore done <text>           # tick a task off by its text (--undo reopens)
 kore mcp                   # serve the graph to MCP clients over stdio (--read-only, --http <addr>)
 kore index                 # build or refresh the index without the app (Node 22+, --rebuild)
 kore sources               # pull Readwise highlights and Granola meetings without the app (--only, --since)
-kore keys add <name>       # a named agent's own key for mcp --http (--write; list, remove)
+kore keys add <name>       # a named agent's own key for mcp --http (--write or --propose; list, remove)
+kore proposals             # writes from --propose keys waiting for you (accept <id>, reject <id>)
 kore sync                  # pull the vault's git clone, push kore's writes, reindex (what mcp --sync does; --sources pulls them too)
 kore library               # read-only Markdown in agent folders like ~/.claude (add --known, files, grep, read)
 ```
@@ -928,7 +929,10 @@ its own key:
 
 **Named agents.** `kore keys add "Grok bot"` prints a new key once
 (`--write` lets that agent use the writing tools; keys are read-only by
-default). The agent signs in with it like the token, as a bearer header or
+default). With `--propose` the agent sees the writing tools, but each call
+is kept in `.kore/proposals/` instead of written: `kore proposals` lists
+them, `kore proposals accept <id>` writes one signed as that agent (checked
+again exactly like a direct call), `reject <id>` drops it. The agent signs in with it like the token, as a bearer header or
 on the "Connect to Kore" page; then what it `remember`s carries its name,
 and `kore keys remove "Grok bot"` disconnects it alone, OAuth tokens
 included, at its next request. `kore keys list` shows names and permissions,
@@ -937,7 +941,8 @@ never keys. The keys live in `$KORE_MCP_KEYS_FILE`, else
 (mode 0600, outside the vault), and the server reads that file on every
 request, so none of this needs a restart or the app. The Mac app keeps its
 own list in the keychain and passes it as `KORE_MCP_AGENTS` (a JSON list of
-`{id, name, key, write}`).
+`{id, name, key, access}`, where `access` is `read`, `propose` or `write`;
+an older `write: true|false` is still read).
 
 `--read-only` applies here too. Search, tags, backlinks, lists and tasks
 read the index the Kore app keeps, so run the server where the app has the

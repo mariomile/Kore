@@ -1,6 +1,6 @@
-# Contributing to Reflect
+# Contributing to Kore
 
-Thanks for helping build Reflect. This is the short version; the full
+Thanks for helping build Kore. This is the short version; the full
 contributor/agent guide lives in [AGENTS.md](AGENTS.md), and the architecture
 decisions in
 [docs/plans/architecture-conventions.md](docs/plans/architecture-conventions.md).
@@ -42,7 +42,7 @@ commit message and, for `feat`/`fix`, the user-facing changelog entry.
 - `fix: …` — a fix; bumps the patch version (of the next beta and stable).
 - `docs:` / `chore:` / `ci:` / `test:` / `refactor:` / `build:` — no release,
   no changelog entry.
-- Reflect is an app, not a library: `feat!:` and `BREAKING CHANGE:` footers are
+- Kore is an app, not a library: `feat!:` and `BREAKING CHANGE:` footers are
   not used (CI rejects `!`). Going 1.0 someday is a product decision: set a
   one-time `release-as` in the release-please configs so the Release PRs offer
   `1.0.0-beta.N` and `1.0.0`, then drop it once both have merged.
@@ -86,7 +86,7 @@ commit message and, for `feat`/`fix`, the user-facing changelog entry.
   Enforce at every call site.
 - Markdown files are the source of truth; SQLite under `.kore/` is a
   rebuildable cache. Never make the index durable.
-- No Reflect-hosted APIs, no Electron, secrets only in the OS keychain.
+- No Kore-hosted APIs, no Electron, secrets only in the OS keychain.
 
 ## Guides
 

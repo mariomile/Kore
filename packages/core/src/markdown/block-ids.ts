@@ -187,3 +187,23 @@ export function extractBlockSection(source: string, id: string): string | null {
   const slice = withoutBlockIds(dedent(lines.slice(range[0], range[1]), indent).join('\n')).trim()
   return slice === '' ? null : slice
 }
+
+/**
+ * The label a `[[Note#^id]]` shows wherever Kore draws it: the note's name,
+ * never the id, which means nothing to a reader. An alias
+ * (`[[Note#^id|text]]`) wins, and a same-note `[[#^id]]` reads "Link to
+ * line". Null for any link that is not a block reference.
+ */
+export function blockLinkLabel(target: string): string | null {
+  if (noteLinkBlockId(target) === null) {
+    return null
+  }
+  const pipe = target.indexOf('|')
+  const alias = pipe === -1 ? '' : target.slice(pipe + 1).trim()
+  if (alias !== '') {
+    return alias
+  }
+  const link = pipe === -1 ? target : target.slice(0, pipe)
+  const note = link.slice(0, link.lastIndexOf('#')).trim()
+  return note === '' ? 'Link to line' : note
+}

@@ -133,6 +133,7 @@ export {
   transclusionMarkdown,
   wikiEmbedKind,
   blockIdsIn,
+  blockLinkLabel,
   extractBlockSection,
   isBlockId,
   lineBlockId,

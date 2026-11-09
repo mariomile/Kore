@@ -55,6 +55,7 @@ import { useFollowDeepLink } from '@/lib/deep-links/use-follow-deep-link'
 import { cn } from '@/lib/utils'
 import { resolveWikiEmbed } from '@/editor/resolve-wiki-embed'
 import { revealBlockId } from '@/editor/block-id-plugin'
+import { resolveWikilink } from '@/editor/resolve-wikilink'
 
 type WikilinkHoverRenderer = (hit: WikilinkHoverHit) => ReactNode | Promise<ReactNode>
 
@@ -615,6 +616,7 @@ export function NoteEditor({
           resolveXPost={postEmbeds.resolveXPost}
           resolveYouTubeVideo={postEmbeds.resolveYouTubeVideo}
           resolveWikiEmbed={resolveWikiEmbed}
+          resolveWikilink={resolveWikilink}
           onFilePaste={handleFilePaste}
           {...(resolveFileLink !== undefined ? { resolveFileLink } : {})}
           resolveFileInfo={handleResolveFileInfo}

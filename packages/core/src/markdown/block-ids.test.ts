@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   blockIdsIn,
+  blockLinkLabel,
   extractBlockSection,
   isBlockId,
   lineBlockId,
@@ -106,5 +107,15 @@ describe('extractBlockSection', () => {
     expect(transclusionMarkdown(note, '^monthly')).toBe('- billed monthly')
     expect(transclusionMarkdown(note, '^missing')).toBeNull()
     expect(transclusionMarkdown(note, null)).not.toContain('^pro')
+  })
+})
+
+describe('blockLinkLabel', () => {
+  it('labels block links by note name; alias wins; other links are not its business', () => {
+    expect(blockLinkLabel('Prezzi#^p1')).toBe('Prezzi')
+    expect(blockLinkLabel('Prezzi#^p1|the price')).toBe('the price')
+    expect(blockLinkLabel('#^q')).toBe('Link to line')
+    expect(blockLinkLabel('Prezzi#Plans')).toBeNull()
+    expect(blockLinkLabel('Prezzi')).toBeNull()
   })
 })

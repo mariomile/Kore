@@ -57,6 +57,7 @@ export {
 } from './link-kind'
 export {
   blockIdsIn,
+  blockLinkLabel,
   extractBlockSection,
   isBlockId,
   lineBlockId,

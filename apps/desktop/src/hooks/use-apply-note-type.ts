@@ -2,8 +2,8 @@ import { useCallback } from 'react'
 import {
   addNoteTag,
   getTagType,
-  missingStartingValues,
-  startingValueContext,
+  startingValuesFor,
+  valuesMissingFrom,
   noteHasTag,
   parseFrontmatter,
   PRIVATE_NOTE_EDIT_ERROR,
@@ -59,7 +59,7 @@ export function useApplyNoteType(): (change: NoteTypeChange) => Promise<void> {
       // which stamps exist, and an untyped tag simply has none. Nothing is
       // stamped on the way out — unsetting a type must not date anything.
       const type = remove ? null : await getTagType(tag)
-      const context = await startingValueContext(tag, type)
+      const starting = await startingValuesFor(tag, type)
       await commitNoteBodyTransform(
         path,
         (current) => {
@@ -70,7 +70,7 @@ export function useApplyNoteType(): (change: NoteTypeChange) => Promise<void> {
           if (tagged === null) {
             return current
           }
-          return upsertFrontmatter(tagged, missingStartingValues(tagged, type, context))
+          return upsertFrontmatter(tagged, valuesMissingFrom(tagged, starting))
         },
         generation,
       )

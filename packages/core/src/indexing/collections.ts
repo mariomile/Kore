@@ -6,6 +6,7 @@ import {
   collectionTagKeys,
   decodeStoredTagType,
   type StoredTagTypeColumns,
+  type CollectionScope,
   type TagTypeReadOptions,
 } from './resolved-tag-types'
 import { recallOrder } from './filtered-search'
@@ -338,9 +339,9 @@ export async function getNoteProperties(path: string): Promise<Record<string, Co
   return properties
 }
 
-export interface ListCollectionOptions {
+export interface ListCollectionOptions extends CollectionScope {
   /**
-   * Drop `private: true` rows in SQL. Outbound surfaces (the AI tool) pass
+   * Drop `private: true` rows in SQL (and private child tags). Outbound surfaces (the AI tool) pass
    * this so a private note's row never even reaches their layer — their live
    * on-disk re-check stays the gate; this is the index-side prefilter.
    * Local surfaces (the Collection table) omit it: privacy blocks external
@@ -354,12 +355,6 @@ export interface ListCollectionOptions {
    * the uncapped join.
    */
   limit?: number
-  /**
-   * List only the notes carrying `tag` itself (or a tag nested under it),
-   * leaving out the notes of tags that build on it (Plan 33 B2): the
-   * collection's "only #tag" filter.
-   */
-  ownOnly?: boolean
 }
 
 /**
@@ -378,11 +373,7 @@ export async function listCollection(
   // SQL orders by the chain's head; a longer chain re-sorts the (uncapped,
   // fully materialized) rows in memory below with the same semantics.
   const sort = sorts[0] ?? null
-  const tagKeys = await collectionTagKeys(
-    tag,
-    options.ownOnly === true,
-    options.excludePrivate === true,
-  )
+  const tagKeys = await collectionTagKeys(tag, options)
   let baseQuery = db
     .selectFrom('notes')
     .where('notes.kind', 'in', ['note', 'daily'])

@@ -57,7 +57,7 @@ export function useApplyTagIcon(): (change: TagIconChange) => Promise<void> {
       if (definition.icon !== previousIcon) {
         throw new Error(STALE_TAG_ICON_MESSAGE)
       }
-      await saveTagType(tag, definition.properties, generation, definition.template, icon)
+      await saveTagType(tag, definition.properties, generation, { icon })
       invalidateOnNextIndexApply()
     },
     [generation],

@@ -43,13 +43,9 @@ describe('useApplyTagIcon', () => {
   it('writes the icon through the definition writer, keeping schema and template', async () => {
     const { result } = await renderHook(() => useApplyTagIcon())
     await result.current({ tag: 'Company', icon: 'icon:buildings', previousIcon: '🏢' })
-    expect(saveTagType).toHaveBeenCalledWith(
-      'Company',
-      definition.properties,
-      7,
-      'templates/company.md',
-      'icon:buildings',
-    )
+    expect(saveTagType).toHaveBeenCalledWith('Company', definition.properties, 7, {
+      icon: 'icon:buildings',
+    })
   })
 
   it('creates the definition for a tag that has none yet', async () => {
@@ -63,7 +59,7 @@ describe('useApplyTagIcon', () => {
     definition.icon = null
     const { result } = await renderHook(() => useApplyTagIcon())
     await result.current({ tag: 'decision', icon: '✅', previousIcon: null })
-    expect(saveTagType).toHaveBeenCalledWith('decision', [], 7, null, '✅')
+    expect(saveTagType).toHaveBeenCalledWith('decision', [], 7, { icon: '✅' })
   })
 
   it('refuses a stale, private, or unmarked definition without writing', async () => {

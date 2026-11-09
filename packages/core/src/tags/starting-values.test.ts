@@ -2,12 +2,12 @@ import { describe, expect, it } from 'vitest'
 import { frontmatterSchema } from '../markdown'
 import {
   localDateTime,
-  missingStartingValues,
   nextNumberKeys,
   propertyStartingValue,
   startingValueKinds,
   startingValueOf,
   startingValues,
+  valuesMissingFrom,
   withStoredStartingValues,
 } from './starting-values'
 import { parseTagTypeFrontmatter, type TagProperty, type TagType } from './tag-type'
@@ -99,7 +99,9 @@ describe('startingValues', () => {
 
   it('leaves a value the note already holds alone', () => {
     const source = '---\nstatus: Won\n---\n# Acme\n'
-    expect(missingStartingValues(source, type, { at: AT })).toEqual({ added: '2026-11-09' })
+    expect(valuesMissingFrom(source, startingValues(type, { at: AT }))).toEqual({
+      added: '2026-11-09',
+    })
   })
 
   it('offers each type only the starting values it can hold', () => {

@@ -202,7 +202,11 @@ export function TagConfigDialog({ tag, onClose }: TagConfigDialogProps): ReactEl
     }
     setSaving(true)
     try {
-      await saveTagType(tag, schemaFromDrafts(drafts), graph.generation, template, icon, parents)
+      await saveTagType(tag, schemaFromDrafts(drafts), graph.generation, {
+        template,
+        icon,
+        parents,
+      })
       if (migrate) {
         await migratePropertyRenames(renames, graph.generation)
       }

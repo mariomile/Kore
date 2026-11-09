@@ -72,22 +72,30 @@ export async function readTagDefinition(tag: string): Promise<TagDefinitionState
 }
 
 /**
+ * The rest of a definition `saveTagType` can write. Each one is written
+ * only when given (`null` clears it), so a one-gesture edit that knows
+ * nothing about, say, the icon can never wipe it.
+ */
+export interface TagTypeExtras {
+  template?: string | null
+  icon?: string | null
+  /** The `extends:` list (Plan 33 B2). */
+  parents?: readonly string[]
+}
+
+/**
  * Persist a tag's schema: create `tags/<key>.md` when missing, else commit
  * the marker + `properties` as a `tagSchema` frontmatter patch (the
  * conversion confirm happens in the dialog, before this runs).
  * `upsertFrontmatter` refuses a file whose YAML is broken — the caller
- * surfaces that instead of destroying anything. `parents` (the `extends:`
- * list) is written only when given, so the one-gesture edits that don't
- * know about it leave it alone; a list that would close a loop is refused
- * before anything is written.
+ * surfaces that instead of destroying anything. Parents that would close a
+ * loop are refused before anything is written.
  */
 export async function saveTagType(
   tag: string,
   properties: readonly TagProperty[],
   generation: number,
-  template: string | null = null,
-  icon: string | null = null,
-  parents?: readonly string[],
+  { template, icon, parents }: TagTypeExtras = {},
 ): Promise<void> {
   if (parents !== undefined) {
     const loop = await tagExtendsLoop(tag, parents)
@@ -99,28 +107,21 @@ export async function saveTagType(
       )
     }
   }
-  const extendsPatch = parents === undefined ? {} : { tagExtends: parents }
+  const patch = {
+    tagSchema: properties,
+    ...(template === undefined ? {} : { tagTemplate: template }),
+    ...(icon === undefined ? {} : { tagIcon: icon }),
+    ...(parents === undefined ? {} : { tagExtends: parents }),
+  }
   const path = tagDefinitionPath(tag)
   // The seed rides the SAME serializer as the update path below — a schema
   // field spelled in one place only. This exact fork once dropped `target`
   // (and later `formula`) from freshly created collections while updates
   // kept them.
-  const seed = upsertFrontmatter(
-    '',
-    frontmatterPatchToYaml({
-      tagSchema: properties,
-      tagTemplate: template,
-      tagIcon: icon,
-      ...extendsPatch,
-    }),
-  )
+  const seed = upsertFrontmatter('', frontmatterPatchToYaml(patch))
   const created = await createNoteIfAbsent(path, seed, generation)
   if (created.kind === 'created') {
     return
   }
-  await commitNoteFrontmatter(
-    path,
-    { tagSchema: properties, tagTemplate: template, tagIcon: icon, ...extendsPatch },
-    generation,
-  )
+  await commitNoteFrontmatter(path, patch, generation)
 }

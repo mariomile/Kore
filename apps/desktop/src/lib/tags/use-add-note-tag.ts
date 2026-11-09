@@ -3,8 +3,8 @@ import {
   addNoteTag,
   errorMessage,
   getTagType,
-  missingStartingValues,
-  startingValueContext,
+  startingValuesFor,
+  valuesMissingFrom,
   upsertFrontmatter,
 } from '@reflect/core'
 import { toast } from '@/components/ui/toast'
@@ -36,7 +36,7 @@ export function useAddNoteTag(): (path: string, tag: string) => Promise<void> {
         // Read before the write: the schema decides which stamps exist, and
         // an untyped tag simply has none.
         const type = await getTagType(tag)
-        const context = await startingValueContext(tag, type)
+        const starting = await startingValuesFor(tag, type)
         await commitNoteBodyTransform(
           path,
           (source) => {
@@ -44,7 +44,7 @@ export function useAddNoteTag(): (path: string, tag: string) => Promise<void> {
             if (tagged === null) {
               return source
             }
-            return upsertFrontmatter(tagged, missingStartingValues(tagged, type, context))
+            return upsertFrontmatter(tagged, valuesMissingFrom(tagged, starting))
           },
           generation,
         )

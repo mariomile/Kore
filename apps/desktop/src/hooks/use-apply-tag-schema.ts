@@ -69,7 +69,7 @@ export function useApplyTagSchema(): (change: TagSchemaChange) => Promise<void> 
       // saw: a note that gained the old key since the proposal migrates too,
       // and one that lost it drops out instead of writing an empty value.
       const planned = await planPropertyRenames(renames)
-      await saveTagType(tag, properties, generation, definition.template, definition.icon)
+      await saveTagType(tag, properties, generation)
       await migratePropertyRenames(planned, generation)
       invalidateOnNextIndexApply()
     },

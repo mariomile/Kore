@@ -234,17 +234,15 @@ export function startingValues(
 }
 
 /**
- * The starting values a note does not already carry, for a membership the
- * app writes on an existing note (the Type field, the chat). A key already
- * in the frontmatter is left alone: the note's own value is the truth, and a
+ * The `values` a note does not already carry, for a membership the app
+ * writes on an existing note (the Type field, the chat). A key already in
+ * the frontmatter is left alone: the note's own value is the truth, and a
  * second tagging must not move it.
  */
-export function missingStartingValues(
+export function valuesMissingFrom(
   source: string,
-  type: TagType | null | undefined,
-  context: StartingValueContext = {},
+  values: Record<string, unknown>,
 ): Record<string, unknown> {
-  const values = startingValues(type, context)
   if (Object.keys(values).length === 0) {
     return {}
   }

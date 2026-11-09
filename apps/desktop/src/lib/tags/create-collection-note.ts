@@ -6,7 +6,7 @@ import {
   isTemplatePath,
   newNoteId,
   readNote,
-  rowStartingValues,
+  startingValuesFor,
   splitFrontmatter,
   stripLeadingHeading,
   untitledNotePath,
@@ -54,7 +54,7 @@ export async function createTypedCollectionNote(
     // A row born in the app carries its `created` stamps (Plan 29 T1) and
     // its fields' starting values (Plan 33 B4); values the caller already
     // set (a lane, a day) win over them.
-    { ...(await rowStartingValues(tag, type)), ...properties },
+    { ...(await startingValuesFor(tag, type)), ...properties },
     await bodyForCollectionCreate(type, values, generation),
   )
 }
@@ -80,7 +80,7 @@ export async function createTitledCollectionNote(
   const body = stripLeadingHeading(splitFrontmatter(seed).body.replace(/^\s*#\n/, '')).trim()
   const tagged = appendBodyTag(body, tag) ?? body
   const path = await createNoteWithTitle(title, generation, tagged)
-  const stamps = await rowStartingValues(tag, type)
+  const stamps = await startingValuesFor(tag, type)
   if (Object.keys(stamps).length > 0) {
     await commitNoteFrontmatter(path, { properties: stamps }, generation)
   }

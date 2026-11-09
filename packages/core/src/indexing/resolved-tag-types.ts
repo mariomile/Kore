@@ -171,21 +171,31 @@ async function storedDescendants(tagKey: string, excludePrivate: boolean): Promi
   return decodeStoredKeys(excludePrivate ? row.publicDescendantsJson : row.descendantsJson)
 }
 
+/** Which tags a collection spans (Plan 33 B2). */
+export interface CollectionScope {
+  /**
+   * List only the notes carrying the tag itself (or a tag nested under it),
+   * leaving out the notes of tags that build on it: the collection's
+   * "only #tag" filter.
+   */
+  ownOnly?: boolean
+  /** Leave out child tags whose definitions are private (outbound reads). */
+  excludePrivate?: boolean
+}
+
 /**
  * The tag keys a collection of `tag` lists: the tag itself and, unless
  * `ownOnly`, every tag that builds on it (`extends:`), directly or not.
- * `excludePrivate` leaves out children whose definitions are private.
  */
 export async function collectionTagKeys(
   tag: string,
-  ownOnly = false,
-  excludePrivate = false,
+  scope: CollectionScope = {},
 ): Promise<string[]> {
   const key = foldTag(tag)
-  if (ownOnly) {
+  if (scope.ownOnly === true) {
     return [key]
   }
-  return [key, ...(await storedDescendants(key, excludePrivate))]
+  return [key, ...(await storedDescendants(key, scope.excludePrivate === true))]
 }
 
 /**

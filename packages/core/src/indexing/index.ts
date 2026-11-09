@@ -240,7 +240,7 @@ export {
   tagExtendsLoop,
   listTagParentCandidates,
 } from './resolved-tag-types'
-export { nextNumbers, rowStartingValues, startingValueContext } from './starting-values'
+export { nextNumbers, startingValuesFor } from './starting-values'
 export { extractSnippetTasks, type SnippetTask } from './snippet-tasks'
 export {
   getTagType,

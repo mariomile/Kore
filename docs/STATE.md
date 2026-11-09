@@ -58,6 +58,11 @@ Draft without typing. Same draft PR #348, one step per commit.
 - [x] The tag inheritance pass can no longer fail indexing a note (its
   write already committed; a failure is logged), and every graph open runs
   it once, so a failed pass heals itself (review fix, 2026-11-09).
+- [x] Cleaner APIs (review fix, 2026-11-09): `collectionTagKeys(tag,
+  scope)`, `saveTagType(tag, properties, generation, {template, icon,
+  parents})` where an omitted field is left alone (an icon edit can no
+  longer wipe a template), and one starting-values read,
+  `startingValuesFor`, plus the pure `valuesMissingFrom`.
 - Known limit: two notes born at the same instant can draw the same
   number.
 

@@ -46,16 +46,10 @@ export async function nextNumbers(
   return result
 }
 
-/**
- * The context a note joining `tag` now is stamped with, read up front (the
- * write transforms are synchronous). A failed index read leaves the
- * `next-number` fields empty rather than failing the write: the note
- * matters more than its number.
- */
-export async function startingValueContext(
+async function startingValueContext(
   tag: string,
   type: TagType | null | undefined,
-  at: Date = new Date(),
+  at: Date,
 ): Promise<StartingValueContext> {
   try {
     return { at, nextNumbers: await nextNumbers(tag, type) }
@@ -64,8 +58,15 @@ export async function startingValueContext(
   }
 }
 
-/** {@link startingValues} for a note joining `tag` now (a new row). */
-export async function rowStartingValues(
+/**
+ * Every value a note joining `tag` now starts with ({@link startingValues}),
+ * read up front because the write transforms are synchronous. A new row
+ * spreads them under its own values; an existing note joining the tag keeps
+ * only those it lacks (`valuesMissingFrom`). A failed index read leaves the
+ * `next-number` fields empty rather than failing the write: the note
+ * matters more than its number.
+ */
+export async function startingValuesFor(
   tag: string,
   type: TagType | null | undefined,
   at: Date = new Date(),

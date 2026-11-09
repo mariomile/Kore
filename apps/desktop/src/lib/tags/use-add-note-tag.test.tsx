@@ -8,12 +8,16 @@ const commitNoteBodyTransform = vi.hoisted(() =>
 )
 const toastAdd = vi.hoisted(() => vi.fn())
 
-vi.mock('@reflect/core', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@reflect/core')>()),
-  getTagType: async () => tagType.value,
-  // The index read `next-number` needs; this note's tag already holds 41.
-  startingValueContext: async () => ({ nextNumbers: new Map([['number', 42]]) }),
-}))
+vi.mock('@reflect/core', async (importOriginal) => {
+  const core = await importOriginal<typeof import('@reflect/core')>()
+  return {
+    ...core,
+    getTagType: async () => tagType.value,
+    // The index read `next-number` needs; this note's tag already holds 41.
+    startingValuesFor: async (_tag: string, type: TagType | null) =>
+      core.startingValues(type, { nextNumbers: new Map([['number', 42]]) }),
+  }
+})
 vi.mock('@/providers/graph-provider', () => ({
   useGraph: () => ({ graph: { root: '/g', name: 'g', generation: 7 } }),
 }))

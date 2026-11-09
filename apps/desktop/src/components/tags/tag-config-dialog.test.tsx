@@ -115,9 +115,7 @@ describe('TagConfigDialog', () => {
         { name: 'Read on', key: 'read-on', type: 'text' },
       ],
       7,
-      null,
-      null,
-      [],
+      { template: null, icon: null, parents: [] },
     )
     expect(invalidateQueries).toHaveBeenCalled()
     expect(onClose).toHaveBeenCalled()
@@ -142,7 +140,11 @@ describe('TagConfigDialog', () => {
     await view.getByRole('button', { name: 'Stop building on #person' }).click()
     await view.getByRole('button', { name: 'Save' }).click()
 
-    expect(saveTagType).toHaveBeenCalledWith('client', [], 7, null, null, ['contact'])
+    expect(saveTagType).toHaveBeenCalledWith('client', [], 7, {
+      template: null,
+      icon: null,
+      parents: ['contact'],
+    })
     parentCandidates.current = []
   })
 
@@ -177,9 +179,7 @@ describe('TagConfigDialog', () => {
       'Book',
       [{ name: 'Author', key: 'author', type: 'relation', target: 'person' }],
       7,
-      null,
-      null,
-      [],
+      { template: null, icon: null, parents: [] },
     )
   })
 
@@ -253,9 +253,7 @@ describe('TagConfigDialog', () => {
       'book',
       [{ name: 'Author', key: 'writer', type: 'text' }],
       7,
-      null,
-      null,
-      [],
+      { template: null, icon: null, parents: [] },
     )
     expect(commitNoteFrontmatter).toHaveBeenCalledWith(
       'notes/dune.md',
@@ -323,9 +321,7 @@ describe('TagConfigDialog', () => {
         { name: 'Priority', key: 'priority', type: 'select', options: ['High', 'Medium', 'Low'] },
       ],
       7,
-      null,
-      null,
-      [],
+      { template: null, icon: null, parents: [] },
     )
   })
 
@@ -370,9 +366,7 @@ describe('TagConfigDialog', () => {
       'book',
       [{ name: 'Status', key: 'status', type: 'select', options: ['done', 'reading'] }],
       7,
-      null,
-      null,
-      [],
+      { template: null, icon: null, parents: [] },
     )
   })
 
@@ -412,9 +406,7 @@ describe('TagConfigDialog', () => {
         },
       ],
       7,
-      null,
-      null,
-      [],
+      { template: null, icon: null, parents: [] },
     )
   })
 
@@ -460,9 +452,7 @@ describe('TagConfigDialog', () => {
       'Book',
       [{ name: 'Author', key: 'author', type: 'text' }],
       7,
-      null,
-      '📚',
-      [],
+      { template: null, icon: '📚', parents: [] },
     )
   })
 
@@ -487,7 +477,11 @@ describe('TagConfigDialog', () => {
     await view.getByRole('button', { name: 'Remove icon' }).click()
     await view.getByRole('button', { name: 'Save' }).click()
 
-    expect(saveTagType).toHaveBeenCalledWith('Book', [], 7, null, null, [])
+    expect(saveTagType).toHaveBeenCalledWith('Book', [], 7, {
+      template: null,
+      icon: null,
+      parents: [],
+    })
   })
 
   it('picks a symbol icon and stores it as an icon: reference', async () => {
@@ -509,6 +503,10 @@ describe('TagConfigDialog', () => {
       .click()
     await view.getByRole('button', { name: 'Save' }).click()
 
-    expect(saveTagType).toHaveBeenCalledWith('Book', [], 7, null, 'icon:folder', [])
+    expect(saveTagType).toHaveBeenCalledWith('Book', [], 7, {
+      template: null,
+      icon: 'icon:folder',
+      parents: [],
+    })
   })
 })

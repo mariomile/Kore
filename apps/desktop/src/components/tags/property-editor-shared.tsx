@@ -2,7 +2,7 @@ import type { ReactElement, ReactNode } from 'react'
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import {
   createNoteWithTitle,
-  rowStartingValues,
+  startingValuesFor,
   decodeStoredList,
   foldTag,
   getTagType,
@@ -153,7 +153,7 @@ export async function createRelationRow(
   // and starting values (Plan 33 B4) too — best-effort: a failed stamp
   // never loses the created note.
   try {
-    const stamps = await rowStartingValues(targetTag, await getTagType(targetTag))
+    const stamps = await startingValuesFor(targetTag, await getTagType(targetTag))
     if (Object.keys(stamps).length > 0) {
       await commitNoteFrontmatter(path, { properties: stamps }, generation)
     }

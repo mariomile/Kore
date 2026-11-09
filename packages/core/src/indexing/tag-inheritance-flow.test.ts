@@ -9,7 +9,7 @@ import {
   project,
 } from './flow-test-harness'
 import { getTagType, listCollection, listNoteTagTypes, listTagTypes } from './collections'
-import { nextNumbers, rowStartingValues } from './starting-values'
+import { nextNumbers, startingValuesFor } from './starting-values'
 import {
   listTagChildren,
   listTagParentCandidates,
@@ -167,7 +167,7 @@ describe('starting values through the index (Plan 33 B4)', () => {
     await refreshTagTypeResolutions(1)
     const type = await getTagType('invoice')
     expect(await nextNumbers('invoice', type)).toEqual(new Map([['number', 45]]))
-    expect(await rowStartingValues('invoice', type)).toEqual({ number: 45 })
+    expect(await startingValuesFor('invoice', type)).toEqual({ number: 45 })
     // The stored column carries the validated value the CLI reads.
     const row = database
       .prepare("SELECT resolved_json FROM tag_types WHERE tag_key = 'credit'")
